@@ -23,7 +23,7 @@ Tests sit next to the code they test; cross-module tests live in `tests/`.
 
 ## Getting started
 
-1. **Install Rust.** The crate uses edition 2024 and needs the toolchain in `rust-version` of `Cargo.toml` (currently 1.97) or newer; install it with [rustup](https://rustup.rs/).
+1. **Install Rust.** The crate uses edition 2024 and needs the toolchain in `rust-version` of `Cargo.toml` (currently 1.100) or newer; install it with [rustup](https://rustup.rs/).
 2. **Fork and clone.**
    ```bash
    git clone https://github.com/YOUR-USERNAME/rssn.git
@@ -83,9 +83,9 @@ Both repositories (rssn and aevia) use the same three workflows in `.github/work
 
 | Workflow | Runs on | What it does |
 |---|---|---|
-| `ci.yml` | pushes to `main`, pull requests | rustfmt (nightly), clippy `-D warnings`, tests on Linux and Windows, contract checks (`signature-audit`, generated bindings, C headers and the C smoke test), rustdoc. The single `CI success` job is the one required check. |
-| `security.yml` | `main`, pull requests, weekly | CodeQL, dependency review (pull requests), RustSec advisories. |
-| `release.yml` | tags `vX.Y.Z[-pre]` | checks that the tag equals the `Cargo.toml` version, builds the C libraries for three platforms, creates the GitHub release with checksummed archives, and publishes to crates.io after approval of the `crates-io` environment (secret `CARGO_REGISTRY_TOKEN`). Run it by hand with `dry_run` to only build the artifacts. |
+| `ci.yml` | pushes to `main` or `v0.3`, pull requests, manual dispatch | rustfmt (nightly), clippy `-D warnings`, tests on Linux and Windows, contract checks (`signature-audit`, generated bindings, C headers and the C smoke test), rustdoc. The single `CI success` job is the one required check. |
+| `security.yml` | `main` and `v0.3`, pull requests, weekly | CodeQL, dependency review (pull requests), RustSec advisories. |
+| `release.yml` | manual dispatch | validates the Cargo version and change notes, builds C libraries on the release target matrix, and creates a draft with checksummed archives. The crates.io job uses the `crates-io` environment. `dry_run` builds artifacts without publishing. |
 
 Everything CI checks can be run locally with the commands in the workflow above.
 

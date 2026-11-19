@@ -1,4 +1,6 @@
-# rssn architecture
+# RSSN implementation reference
+
+The [system architecture manual](https://aevia.apich.org/architecture/03-rssn-engine?lang=en) covers RSSN in the context of Aevia and the registry. This reference describes kernel implementation details.
 
 rssn is a computer algebra and scientific computing library built around one
 idea: **every symbolic operation is an identity transformation**.
@@ -37,9 +39,9 @@ halves share.
 
 | Module | Role |
 |---|---|
-| `graph` | The engine, free of any mathematical domain. `store` holds hash-consed nodes, union-find classes and literal folding. `op` is an **open** operator registry with descriptors: arity, flags such as `HEAVY`, `OPAQUE_ON_APPLY` and `COMMUTATIVE`, cost, and binders. `pattern`/`subst` handle text patterns with guards; `rule` holds `RuleSet`, `Installer`, kernels and definitions. `schedule` runs the tiered fixpoint engine (Reduce → Normalize → Explore, with budgets and bans); `window` does destructive local search on tree windows. `extract` provides `ClosedForm` and `SizeCost`. `facts` stores assumptions and sign/integer analysis. `eval` evaluates interval-ball numerics. `soundness` checks every rewrite numerically. `dim`, `dim_expr`, `dim_infer` and `dim_signature` are the dimensional typing layer (below). |
+| `graph` | The engine, free of any mathematical domain. `store` holds hash-consed nodes, union-find classes and literal folding. `op` is an **open** operator registry with descriptors: arity, flags such as `HEAVY`, `OPAQUE_ON_APPLY` and `COMMUTATIVE`, cost, and binders. `pattern`/`subst` handle text patterns with guards; `rule` holds `RuleSet`, `Installer`, kernels and definitions. `schedule` runs the tiered fixpoint engine (Reduce → Normalize → Explore, with budgets and bans); `window` does destructive local search on tree windows. `extract` provides `ClosedForm` and `SizeCost`. `facts` stores assumptions and sign/integer analysis. `eval` evaluates interval-ball numerics. `soundness` samples declarative rewrites with numeric interpretations in the test suite. `dim`, `dim_expr`, `dim_infer` and `dim_signature` are the dimensional typing layer (below). |
 | `rules` | One `RuleSet` per mathematical domain; `rules::standard()` installs all of them (list below). |
-| `kernels` | Plain numerical algorithms on `f64`, slices and `ndarray`, with no terms involved: quadrature, ODE/SDE/PDE solvers, special functions, linear algebra (dense, CSR and block-sparse BSR with block-Jacobi/BILU(0) preconditioners, Krylov solvers, eigensolvers), FFT, optimisation, finite fields, graph, homology and Lie-structure routines and more. `kernels::pde` solves heat, wave, Poisson/Laplace and advection problems by finite differences in 1D, 2D and 3D on a unit box (`pde.rs` holds the 1D and 2D solvers and the `PdeProblem` dispatcher, `pde/three.rs` the 3D solvers, `Grid3D`/`Field3D` and the 1D Poisson/Laplace solvers); `kernels::interpolate` has tensor-product interpolation in any dimension. Rules call them to produce numeric witnesses, and users can call them directly. Kernels never panic on degenerate input (NaN, empty, huge, mismatched shapes); the conventions and the honest list of gaps are in [docs/MATH_COVERAGE.md](docs/MATH_COVERAGE.md). |
+| `kernels` | Plain numerical algorithms on `f64`, slices and `ndarray`, with no terms involved: quadrature, ODE/SDE/PDE solvers, special functions, linear algebra (dense, CSR and block-sparse BSR with block-Jacobi/BILU(0) preconditioners, Krylov solvers, eigensolvers), FFT, optimisation, finite fields, graph, homology and Lie-structure routines and more. `kernels::pde` solves heat, wave, Poisson/Laplace and advection problems by finite differences in 1D, 2D and 3D on a unit box (`pde.rs` holds the 1D and 2D solvers and the `PdeProblem` dispatcher, `pde/three.rs` the 3D solvers, `Grid3D`/`Field3D` and the 1D Poisson/Laplace solvers); `kernels::interpolate` has tensor-product interpolation in any dimension. Rules call them to produce numeric witnesses, and users can call them directly. Checked APIs document input validation and error behavior. Low-level constructors and accessors can require valid shapes and indices. For example, `csr_from_triplets` panics on an out-of-bounds triplet. See [docs/MATH_COVERAGE.md](docs/MATH_COVERAGE.md) for the checked numerical ABI conventions. |
 | `api` | `Session`, `Term<'s>` (a `Copy` handle with overloaded operators), `Config` (rule sets, target phase, bindings, assumptions, dimensions, budget), `Session::compute -> Answer`, `ComputeError`, and the answer/lemma cache (`api::cache`). `api::value` adds the dynamic-value entry points (`call_value`, `call_key`, `call_ho`, `fork`/`merge`, plugin registration). |
 | `kernel` | The **embedding kernel**: everything a host needs to drive rssn from outside the crate. The signature/type language, the dynamic `Value` ABI, the calling convention (`CallCtx`, `OpError`), plugins and host callbacks, the self-describing `KernelManifest`, the deterministic `bincode-next` codec, and the optional shared-library plugin ABI (`cdylib`). See [docs/KERNEL.md](docs/KERNEL.md). |
 | `dim` | The public dimension and unit layer: the one unit table (`UnitDef`, `UnitRegistry`), CODATA physical constants and the unit systems (natural, Planck, atomic, geometrized). Re-exports the dimension types that `graph::dim` implements. |
@@ -101,7 +103,11 @@ The engine's own overhead is kept proportional to what a request touches, not to
 
 Inside one run, `Engine::apply_tier` searches each maximal run of consecutive rewrite rules of a tier against the frozen graph (in parallel from 512 candidate nodes, each rule keeping its own match limit, fuel and ban decision) and applies the builds and unions serially in rule order, then match order (egg's scheme); the batched semantics are used on both paths, so results do not depend on the cut-off or the thread count. Kernels keep their position and run sequentially, except kernels that opt in to **two-phase** execution (`Kernel::two_phase`, `prepare`, `commit`): the scheduler prepares every eligible node first, runs the returned `PreparedWork` items (plain data, no graph) in parallel and commits in node order. `groebner(..)` requests use it. Window optimisation stays sequential: it mutates the graph. Parallel sites are listed in `src/kernels/par.rs` and are kept only where they beat the sequential path (threshold about 1.1×).
 
-There is no cancellation and no streaming: a run ends when it reaches a fixpoint or exhausts its `Budget` (`max_iterations`, `max_nodes`, optional `time_limit`).
+A run ends at a fixpoint, when it reaches a configured budget, or at a cooperative
+cancellation checkpoint. An embedding host installs a token with
+`rssn::cancellation::install`. A worker explicitly inherits the caller's token,
+and the previous scope is restored afterward. Results are returned after
+computation finishes.
 
 ## Embedding: `kernel` and `dim`
 
@@ -117,7 +123,7 @@ An operator whose evaluator rejects its arguments (a shape mismatch, a tolerance
 
 Dimensions are a typing layer over the term graph (`graph::dim`): every scalar term has a dimension, every operator states how the dimensions of its arguments determine its value's dimension, and `Session::compute` reports the dimension of the answer. Base dimensions are interned and extensible, exponents are exact rationals or rational functions over atoms (so `x^n`, `x^(a+b)` and `x^(1/n)` are supported), and unknown symbols get dimension variables that are solved by unification. `dim_signature` gives plugin operators polymorphic dimension signatures (monomials over signature variables, solved per use by the generic `signature_rule`).
 
-A `DimRule` is attached to an operator like `Partials` (`i.dim(op, DimRule::Same(0))`); a scanning test requires every standard operator to carry one. The default mode is `Advisory`: dimensions are inferred and conflicts reported in `Answer::diagnostics` without changing the answer. `DimensionMode::Strict` turns a conflict into `ComputeError::Dimension`; `Config::bypass_dimension_checks` is the explicit escape hatch. Unit expressions are resolved by the `units` rule set through a resolver installed on `quantity`, so `graph` does not depend on `rules`. [docs/DIMENSIONS.md](docs/DIMENSIONS.md) is the design document and lists the known limits.
+A `DimRule` is attached to an operator like `Partials` (`i.dim(op, DimRule::Same(0))`); a scanning test requires every standard operator to carry one. The default mode is `Advisory`: dimensions are inferred and conflicts reported in `Answer::diagnostics` without changing the answer. `DimensionMode::Strict` turns a conflict into `ComputeError::Dimension`; `Config::bypass_dimension_checks` is the explicit escape hatch. Unit expressions are resolved by the `units` rule set through a resolver installed on `quantity`, so `graph` does not depend on `rules`. [docs/DIMENSIONS.md](docs/DIMENSIONS.md) defines inference modes, units and the evidence hosts can inspect.
 
 ## Compiled evaluation and the JIT
 
@@ -150,7 +156,7 @@ No call unwinds: a panic becomes `RSSN_STATUS_PANIC`. The module documentation o
 
 ## Extending rssn
 
-- **New operator or domain.** Write a `RuleSet` containing operators, rewrites, definitions and kernels. Add it with `Config::with`, or with `Session::with_rules` for a session. Every operator needs a dimension rule and a signature (or a `DynamicReason`); the soundness, dimension-coverage and signature-audit tests check them.
+- **New operator or domain.** Write a `RuleSet` containing operators, rewrites, definitions and kernels. Add it with `Config::with`, or with `Session::with_rules` for a session. Every operator needs a dimension rule and a signature (or a `DynamicReason`). Dimension coverage and signature audit check these contracts. The standard rule tests sample declarative rewrites with a numeric interpretation.
 - **Plugin from outside the crate.** Register a `Plugin` through `Session::register`, or load a shared library with feature `plugin-cdylib` ([docs/KERNEL.md](docs/KERNEL.md)).
 - **New integral forms.** Register extra antiderivative functions in the `rules::calculus::IntegralTable` attribute of the `integral` operator.
 - **New backend.** Implement `backend::Backend` and pass it to `Term::compile_with`, or install it with `backend::set_default`.
@@ -176,7 +182,7 @@ Local `#[allow]`s are used sparingly and carry a comment.
 ## Testing
 
 - **Unit tests** sit next to each rule set and kernel. Each rule set's tests check identities symbolically and, where applicable, numerically.
-- **`graph::soundness`** evaluates both sides of every rewrite of every standard rule set at sampled points (`rules::tests::no_standard_rewrite_is_refuted`).
+- **`graph::soundness`** evaluates both sides of standard declarative rewrites at sampled points (`rules::tests::no_standard_rewrite_is_refuted`). Separate dual-phase tests cover `calculus/ftc` and `calculus/defint-empty`, whose request patterns do not have a numeric value to compare.
 - **`graph::proptests`** runs property tests of the kernel.
 - **Dimension tests** (`graph::dim` unit tests, `tests/dimensions*.rs`) include the operator-coverage scanner and a per-rewrite dimension scan.
 - **Integration tests** live in `tests/` (symbolic batteries, kernels, sim, io, callbacks and numerical ABI, JIT and tape contracts, plugin loading, signature overlay). `tests/kernels.rs` and `tests/sim.rs` are single test binaries that include the files under `tests/kernels/` and `tests/sim/` as modules (`dimension_coverage.rs` in each pins the 1D/2D/3D families against analytic solutions and lower-dimensional results). The `tests/coverage_*.rs` files exercise the public API only: `coverage_algebra` (Lie classification, exact homology), `coverage_api_complex` (complex analysis, the session cache, printers, a parser/evaluator differential test), `coverage_numeric_a` (Fresnel/Faddeeva, low-rank kernels, structure-preserving integrators) and `coverage_numeric_b` (BSR, exact sparse linear algebra). The device tests in `src/backend/device/tests.rs` run on a real GPU only with `--features gpu-wgpu` and an adapter. Some suites are expensive; how to run them cheaply is in [README.md](README.md#testing).
@@ -189,7 +195,7 @@ Local `#[allow]`s are used sparingly and carry a comment.
 |---|---|
 | [README.md](README.md) | Features and a quick start |
 | [docs/KERNEL.md](docs/KERNEL.md) | The embedding kernel: manifest, dynamic ABI, plugins, units, structured results |
-| [docs/DIMENSIONS.md](docs/DIMENSIONS.md) | The dimension layer: design, API, coverage, limits |
+| [docs/DIMENSIONS.md](docs/DIMENSIONS.md) | Dimension algebra, inference and embedding API |
 | [docs/CALLBACKS.md](docs/CALLBACKS.md), [docs/NUMERICAL_CALLBACKS.md](docs/NUMERICAL_CALLBACKS.md) | Host callbacks and the numerical callback operators |
 | [docs/BUILDING.md](docs/BUILDING.md) | Rust and C artifacts, headers, build metadata |
 | [docs/MATH_COVERAGE.md](docs/MATH_COVERAGE.md) | Edge-case conventions of the numerical kernels, where each area is tested, known mathematical gaps |

@@ -1,5 +1,7 @@
 # Numerical host callbacks
 
+[中文](NUMERICAL_CALLBACKS.zh.md)
+
 The `numerical_callback` rule set registers serial, effectful numerical
 operations through the same manifest and dynamic-call protocol as other RSSN
 operators. Each trailing function argument is a `CallbackRef` registered in the
@@ -28,7 +30,7 @@ its initial step is chosen automatically within the requested interval.
 `num_least_squares` is damped nonlinear least squares (Levenberg–Marquardt
 style) over a scoped residual callback. The parameter and residual vectors have
 independent dimensions `D` and `E`; the residual tolerance has dimension `E`, the
-other three tolerances and the damping are dimensionless, and the parameter
+gradient tolerance, step tolerance and damping are dimensionless, and the parameter
 vector must be nonempty. The Jacobian is formed by finite differences of the
 callback (an analytic Jacobian is available only through the Rust kernel
 `kernels::rootfind::least_squares`). `status` is one of `residual_converged`,
@@ -39,8 +41,8 @@ The state vector of an ODE operator must be nonempty. Every derivative has the s
 callback extents, when present in its signature, are checked before executing
 the host, and every returned tensor is checked for rank, shape/storage agreement,
 width and physical dimension. The state result stores one row per accepted time
-point. All four methods support reverse time. Native event, mass-matrix, DAE and
-dense-output facilities remain available through the Rust solver APIs.
+point. All four methods support reverse time. Separate native operators and Rust solver APIs expose events, mass matrices,
+DAE methods and dense output.
 
 The first host or callback-result conversion error propagates unchanged, including
 `OpError::HostDiagnostic`'s code. Once it fails, the operation never invokes the

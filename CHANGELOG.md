@@ -1,25 +1,57 @@
-# Changelog
+# RSSN changelog · 变更日志
 
-All notable changes to rssn are recorded here. The format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The crate version in
-`Cargo.toml` is `3.0.0-rc.1`; entries under "Unreleased" are in the working tree
-of the `v0.3` branch and not yet part of a tagged release.
+Release changes to the RSSN kernel, algorithms and embedding APIs. 本文记录 RSSN 内核、算法和嵌入 API 的版本变化。
 
-## [Unreleased]
+## [3.0.0-beta.1]
 
-### Added
+### Engine and embedding
 
-- `poisson_fd_bc(f, kind, boundary_value)`: Poisson on the unit box in 1D/2D/3D with Dirichlet or Neumann conditions per face or per axis, including **Neumann on every face**. `kind` is `dirichlet`, `neumann`, or a pattern of `d`/`n` letters: `rank` letters give one condition per axis (`dn` in 2D: Dirichlet on the `x` faces, Neumann on the `y` faces), `2 * rank` letters one per face in the order `x-, x+, y-, y+, z-, z+` (`x` is the first nesting level of the data). `boundary_value` is a number, a list of `rank` numbers (per axis) or of `2 * rank` (per face); a Neumann value is the outward normal derivative. `heat_fd_bc` and `wave_fd_bc` accept the same patterns and value lists (a single symbol and a number behave as before). The all-Neumann problem is singular and solvable only if the source and fluxes balance: the discrete compatibility `sum_i w_i (f_i + b_i) = 0` (trapezoid weights, the left null vector of the ghost-node operator) is checked to a relative `1e-8`, data that violate it are reported as incompatible, and otherwise the symmetrised system is solved by Jacobi-preconditioned CG in the space orthogonal to the constants and the **zero-mean solution** (trapezoid-weighted mean zero) is returned. Kernel: `PoissonSolver::MeanFree { tol }` and `PdeError::{Incompatible, NotConverged}`; the other solvers still refuse pure Neumann as before.
-- A diagnostics channel, `kernel::diag`: `Diag { op, arg, kind, message }`, `DiagKind { Arity, Shape, Domain, Singular, Incompatible, NotConverged, Unsupported, Symbolic, Unspecified }`, `diag::fail`/`report`/`capture`, and the host entry points `Session::apply_diag(name, args, ctx) -> Result<Value, Diag>` and `Session::explain(term) -> Option<Diag>` that say why a numeric call stayed unreduced (`From<Diag> for OpError` gives an `OpError::HostDiagnostic` with a stable `rssn.diag.<kind>` code). Evaluators keep their `Option` signature and record a reason on the way out, so no existing result changes; every argument helper of the numeric bridge reports the argument it rejected, and the PDE solvers, Krylov and sparse solvers, tensor operators (`tensordot`, `tensor_contract`, `tensor_inner`, `tensor_outer`), `hosvd`/`hooi`/`cp_als`/`tt_svd`/`tt_dense`/`tucker_dense`/`cp_dense`, the wavelet transforms and `polynomial_system_roots` report the underlying cause (a mismatched axis extent, a Courant number over the limit, incompatible Neumann data, an iteration that stopped at a residual, ...).
-- Three-dimensional shallow water in `sim::euler_nd` and `sim::euler_amr`: `Law::ShallowWater` now runs on 3D grids as the barotropic (`γ = 2`, `p = g h²/2`) system with state `(h, hu, hv, hw)` (HLLC, Roe and Rusanov, all reconstructions, reflective/periodic/fixed boundaries, AMR); 1D/2D results are bit-identical, and a bed or Manning friction are rejected in 3D. `physics_fvm::solve_shallow_water_3d` is the first-order Lax-Friedrichs sibling of `solve_shallow_water_2d`.
+- The scientific kernel exposes a deterministic manifest, type and dimension contracts, structured results and typed numerical callbacks. Embedded hosts generate checked interfaces from the operator registry that executes the calls.
+- Indexed rewrites and incremental matching reduce repeated search. Independent requests use private computation graphs with ordered result import. Optional JIT and device backends define their supported precision and fallback behavior.
+- Binary manifest, plugin and compute records use native bincode-next 3.2 traits. Signature and manifest bytes remain deterministic. Manifest verification reads the existing operator and unit tables in place and streams the canonical encoding into the hash. Compatibility tests compare the supported previous wire layouts with the native encoding. JSON and CBOR expose metadata to self-describing consumers.
 
-- Numeric operators that close gaps in existing families: `heat_fd_bc` and `wave_fd_bc` (finite differences with `dirichlet` or `neumann` walls in 1D/2D/3D; the kernel already supported Neumann, the bridge only exposed Dirichlet), `advect_fd_upwind` (monotone first-order scheme beside Lax-Wendroff), `ifft_abs` (the missing magnitude beside `ifft_re`/`ifft_im`), `tensor_contract` (generalised trace; the kernel `contract` had no operator), `tucker_dense` and `cp_dense` (inverses of `hosvd`/`hooi` and `cp_als`, as `tt_dense` is of `tt_svd`; kernel `tensor::tucker_reconstruct` and `tensor::cp_reconstruct`), and `erf_complex`, `fresnel_s_complex`, `fresnel_c_complex` (the kernels existed without operators).
-- Typed, rank-polymorphic entries in `signatures.overlay.json` for 38 operators that had only the blanket derived or witnessed signatures: `heat_fd`, `wave_fd`, `poisson_fd`, `advect_fd` (rank `n` tied across arguments and result), `minres_solve`, `fgmres_solve`, `bicgstab_l_solve`, `randomized_singular_values`, `lobpcg_eigenvalues`, `tensor_*`, `tensordot`, `function_*`, `wavedec`, `waverec`, `nested_dissection_order`, `polynomial_system_roots`, `hosvd`, `hooi`, `cp_als`, `tt_svd`, `tt_dense`, plus every operator added above. A test now requires every numeric table operator to have an overlay signature of its own arity.
+### Numerical and symbolic algorithms
 
-### Changed
+- Added weighted empirical quantiles and CDFs, discrete logarithms for composite moduli with non-invertible bases, and checked exact integer polynomial products. Improved LU factor reuse, eigensolver scaling, least-squares projections and parallel fractal correlation counts.
+- The Rust LOBPCG API solves matrix-free generalized eigenproblems with a positive-definite mass operator and soft-locks converged vectors.
+- Fixed-step ODE solvers reject invalid time grids and unrepresentable trajectory sizes before calling user functions. Event location reuses its state buffers.
+- Binomial masses and beta densities handle support endpoints. A bounded binomial recurrence preserves low-count probabilities when the success probability is tiny. Binomial sampling uses discrete inversion with one uniform draw for nondegenerate parameters. Uniform density, CDF and sampling also support finite endpoints whose difference exceeds the floating-point range. Seeded binomial sample sequences change with the new algorithm.
+- Improved extreme-tail probabilities for statistical tests and used thin SVD for ridge and OLS regression. Kendall correlation handles ties in O(n log n). Bootstrap procedures check sample and output sizes before allocating.
+- Extended symbolic Mellin integrals, limits and infinite sums. Large-argument complex Faddeeva, error and Fresnel functions use scaled computations to avoid intermediate overflow.
+- Poisson, heat and wave grid solvers accept per-face Dirichlet and Neumann conditions. Pure-Neumann Poisson checks the source–flux balance and returns a zero-mean solution. Structured kernel diagnostics identify rejected shapes, domains and convergence criteria.
+- Three-dimensional shallow-water Euler and AMR runs accept a barotropic state in `(h, hu, hv, hw)`. The kernel manifest describes boundary conditions and tensor ranks for typed hosts.
 
-- The dimension rules of the new siblings are explicit (`heat_fd_bc`, `wave_fd_bc`, `advect_fd_upwind` keep the field's dimension; `tensor_norm`, `tensor_contract`, `tt_dense`, `tucker_dense`, `cp_dense`, `ifft_abs` keep the tensor's; the complex error and Fresnel functions take bare numbers). `hooi` documents that a rank of `0` means the full extent, as `hosvd` does.
+### Build and compatibility
 
-### Fixed
+- Source builds require Rust 1.100 or newer. The default Rust artifact is an rlib. Build C libraries explicitly with their generated headers. C archives include English and Chinese instructions for linking directly from the extracted directory. [Build guide](docs/BUILDING.md)
+- C batch computation accepts uninitialized output buffers. The `ffi` build profile supports converting unwinding Rust panics to C error codes at guarded entry points.
+- The manifest API version stays at 2. Inspect the manifest hash before sharing serialized contracts across independently built kernels. [Kernel embedding](docs/KERNEL.md)
 
-- `tensor::tensordot` (and so `tensordot`, `tensor_vec_mul`) panicked on a contracted axis past the rank or named twice; it now returns an error and the operator stays a request.
+### 内核与嵌入
+
+- 科学计算内核提供确定性的清单、类型与量纲契约、结构化结果以及类型化数值回调。宿主从实际执行调用的同一算子注册表生成受检查的接口。
+- 重写索引和增量匹配减少重复搜索。独立请求使用各自的计算图，结果按输入顺序导入。可选 JIT 和设备后端明确支持的精度与回退行为。
+- 二进制清单、插件消息和计算记录采用 bincode-next 3.2 原生编码。签名和清单保持确定性编码，校验清单时直接读取现有的算子表和单位表，逐段将规范编码传给哈希器。兼容性测试将支持的旧线格式与原生编码进行比较。JSON 与 CBOR 继续提供自描述元数据。
+
+### 数值与符号算法
+
+- 增加加权经验分位数和累积分布、含不可逆底数的复合模数离散对数，以及带溢出检查的精确整数多项式乘法。改进 LU 分解复用、特征值计算的缩放、最小二乘投影和并行分形关联计数。
+- Rust LOBPCG API 支持带正定质量算子的无矩阵广义特征值问题，并软锁定已收敛的向量。
+- 固定步长 ODE 求解器在调用用户函数前检查时间网格和轨迹容量。事件定位复用状态缓冲区。
+- 二项分布概率质量与 Beta 密度正确处理支撑集端点。成功概率极小时，有界递推可保持小计数的二项概率。非退化二项分布使用一次均匀随机数反演采样。即使有限端点之差超出浮点范围，均匀分布的密度、累积分布与采样仍可求值。新算法会改变给定种子的二项采样序列。
+- 改进统计检验的极端尾部概率，岭回归与普通最小二乘采用薄 SVD。Kendall 相关系数以 O(n log n) 处理并列值。自助法在分配内存前检查样本与输出大小。
+- 扩展符号 Mellin 积分、极限和无穷级数。复数 Faddeeva 函数、误差函数和菲涅耳积分在大参数下采用缩放计算，避免中间溢出。
+- 泊松、热传导和波动网格求解器支持按面指定 Dirichlet 或 Neumann 条件。全 Neumann 泊松问题检查源项与通量平衡并返回零均值解。结构化内核诊断指出不符合要求的形状、定义域或收敛准则。
+- 三维浅水 Euler 和自适应网格细化求解器接收 `(h, hu, hv, hw)` 形式的正压状态。内核清单声明宿主所需的边界条件和张量秩约束。
+
+### 构建与兼容性
+
+- 源码构建需要 Rust 1.100 或更新版本。默认生成 Rust rlib。C 库按独立流程构建并携带生成的头文件。C 归档提供中英文说明，可从解压目录直接链接库和运行示例。[构建指南](docs/BUILDING.zh.md)
+- C 批量计算允许传入未初始化的输出缓冲区。`ffi` 构建配置允许受保护的入口将可展开的 Rust panic 转为 C 错误码。
+- 清单 API 版本保持为 2。不同构建的内核共享序列化契约前，应核对清单哈希。[内核嵌入](docs/KERNEL.md)
+
+## [3.0.0-rc.1]
+
+The release candidate establishes the graph rewriting engine, numerical ABI and standard operator registry on the 3.0 branch. The release notes above cover changes to this architecture through the beta series.
+
+该候选版本在 3.0 分支建立图重写引擎、数值 ABI 与标准算子注册表。上方发布说明覆盖该架构在 beta 系列中的变更。

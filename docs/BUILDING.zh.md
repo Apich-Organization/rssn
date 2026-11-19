@@ -1,0 +1,23 @@
+# 构建 Rust 和 C 产物
+
+[English](BUILDING.md)
+
+普通的 `cargo build`、`cargo check` 和下游 Rust 依赖构建生成 Rust `rlib`。C 静态库与共享库通过独立命令构建。这样 Rust 增量开发无需重复链接 C 发行产物。
+
+构建 C 库并重生成 cbindgen 头文件：
+
+```sh
+DEV=1 bash scripts/build_ffi.sh --features dev-headers
+cc -I. examples/c/smoke.c target/ffi/librssn.a -lm -lpthread -ldl -o smoke
+./smoke
+```
+
+脚本调用 `cargo rustc --lib --crate-type staticlib,cdylib`。产物保存在对应的目标和 profile 目录中。可设置 `CARGO_TARGET_DIR`，也可传入 `--features jit`、`--target`、`--locked` 或 `--offline` 等 Cargo 参数。默认 `ffi` 配置继承发布优化并启用栈展开，C 接口可将 Rust panic 转为 `RssnStatus::Panic`。若需开发构建，设置 `RSSN_FFI_PROFILE=dev`，产物目录为 `debug`。C 链接参数因平台而异。
+
+运行 `bash scripts/build_ffi.sh --package`，或在 Windows 运行 `scripts/build_ffi.ps1 -Package`，将本机库、头文件、示例、双语指南及校验值一起打包。
+
+使用已有头文件时可省略 `DEV=1`。重新生成头文件时，须同时设置 `DEV=1` 并启用 `dev-headers`，以免普通 Rust 构建引入 cbindgen。单独启用 Cargo 特性不会改变产物类型。从 `cargo build --release` 获得 C 库的既有宿主请改用上述脚本。
+
+`signatures.overlay.json` 和 `signatures.witnessed.json` 都是必需的源码文件，源码归档与 Cargo 包也必须包含它们。构建会原样复制 overlay，缺少文件直接报错，签名无效则在构建内核清单时报错。手写覆盖应与使用它的代码一起更新。见证表根据实际调用生成。修改算子后，运行 `cargo run --profile tools --bin signature-mine` 更新。无见证的算子仍具有其直接声明、覆盖或推导的签名。[签名生成规则](KERNEL.zh.md#3a-见证签名)
+
+构建元数据支持 `SOURCE_DATE_EPOCH`、`VERGEN_IDEMPOTENT` 和显式 `VERGEN_*` 覆盖。Linux 可从 `/etc/os-release`、`/proc` 与 `uname` 查询主机信息。相应来源或 Git 不可用时，缺失值显示为 `unknown`。CPU 数取自 Rust 可用并行度，可能反映容器配额。跨宿主复现元数据时同时设置 `VERGEN_IDEMPOTENT=1` 与 `SOURCE_DATE_EPOCH`，并按需要为归档来源设置 `VERGEN_*`。

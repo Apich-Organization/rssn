@@ -1,47 +1,38 @@
 # The embedding kernel
 
-This document describes `rssn::kernel` and `rssn::dim`: the two modules a host
-program talks to when it drives rssn from outside the crate. It is written for
-someone implementing that host, and for someone changing the engine without
-breaking them.
+[中文](KERNEL.zh.md) · [Dimensions and units](DIMENSIONS.md)
 
-## Why two modules and not two crates
+RSSN exposes two embedding modules. They share the graph, operator table and dimension arena.
 
-A downstream project asked for `rssn-api` and `rssn-dim` as separate crates. We
-did not split the crate, because both halves share the expression graph, the
-operator table and the dimension arena: a crate boundary would mean either
-re-exporting half of `graph` through a facade or duplicating it. The *interfaces*
-live in these two modules instead, with no `pub(crate)` shortcuts, so the split
-remains a packaging decision rather than an architectural one.
+| Module | Interface |
+|---|---|
+| `rssn::kernel` | Manifest, dynamic values, signatures, plugins, codecs and structured results |
+| `rssn::dim` | Dimension terms, dimension arena, unit registry and physical constants |
 
-| Module | Would have been | What it is |
-|---|---|---|
-| `rssn::kernel` | `rssn-api` | manifest, dynamic value ABI, signatures, plugins, codec, structured results |
-| `rssn::dim` | `rssn-dim` | dimension terms, the dimension arena, the unit registry |
+## Kernel contracts
 
-## The four contracts
-
-### 1. One wire format
+### 1. Encodings
 
 `kernel::codec` is the only place that turns a value into bytes, and it always
 uses `bincode-next`:
 
-* `encode_deterministic` / `decode_deterministic` — deterministic bincode, for
+* `encode_binary` / `decode_binary` — native deterministic bincode-next 3.2, for
   hashing and for storage. The same value always produces the same bytes.
 * `encode_cbor` / `decode_cbor` — deterministic CBOR, for interchange.
 * `digest` / `short_digest` — BLAKE3 over the deterministic encoding.
 
-Nothing in rssn writes JSON to a peer. `KernelManifest::to_json` exists for
-humans and for the C ABI's `rssn_manifest_json`, and is documented as such.
+`KernelManifest::to_json` and the C ABI's JSON accessors provide inspectable
+metadata and results. The build embeds required `signatures.overlay.json`
+and `signatures.witnessed.json`. Edit the overlay to declare a stronger
+contract. Regenerate the witnessed table from replayed evidence. Missing files
+fail the build. [Build guide](BUILDING.md)
 
-The one JSON file the crate *reads* is `signatures.overlay.json`. It is
-version-controlled source (the `*.json` ignore rule has an explicit exception for
-it); `build.rs` copies it into `$OUT_DIR` and the crate `include_str!`s that copy.
-It is the one place a human corrects an inferred signature. A missing file fails
-the build and an invalid signature fails manifest construction; see
-[BUILDING.md](BUILDING.md).
+Rust hosts with Serde types can also use `encode_deterministic` and
+`decode_deterministic`. The native and Serde encoders share the deterministic
+binary format for the supported kernel records. The native decoder expects one
+complete value. Deterministic CBOR uses the self-describing Serde representation.
 
-### 2. One description
+### 2. Operator identity
 
 An operator is described once, by `OpDescriptor`, and that description becomes:
 
@@ -57,7 +48,7 @@ assert!(!sin.overloads.is_empty());
 let key = &sin.keys[0];                 // cache on (manifest_hash, key)
 ```
 
-### 3. Every operator is typed, and the type is derived from the registration
+### 3. Signature derivation
 
 A host generating typed bindings cannot work from names. Every non-leaf
 operator therefore has at least one signature, and it is *derived from what the
@@ -80,13 +71,11 @@ corrected it in `signatures.overlay.json`), `Derived` (the rules above),
 `Witnessed` (derived, plus overloads the engine was seen to satisfy; next
 section), or `None`.
 
-### 3a. Witnessed signatures: the engine types its own operators
+### 3a. Witnessed signatures
 
-The derivation above is sound and nearly empty: for `det`, `factorint` or
-`groebner` the registration only says "a heavy operator of arity `n`", so the
-derived signature is the symbolic contract `(Term, ..) -> Term`. A host cannot
-generate a useful typed binding from that, and writing a thousand signatures by
-hand is the drift the manifest exists to prevent.
+For operators such as `factorint` or `groebner`, a registration that supplies
+only arity derives the broad symbolic contract `(Term, ..) -> Term`. Evidence
+from successful graph computations can give a more specific result.
 
 `kernel::sort` closes the gap with evidence the engine already produces. A
 finished run leaves a request such as `factorint(360)` in the same equivalence
@@ -126,18 +115,10 @@ cargo run --profile tools --bin signature-mine -- sorts.tsv
 cargo run --profile tools --bin signature-mine -- --check   # replay the shipped table
 ```
 
-The table is versioned like the overlay (the manifest of a clean clone must not
-depend on having run the tests) and, like the overlay, **required**: `build.rs`
-fails with a message naming the file when `signatures.witnessed.json` is
-missing (it used to fall back to an empty table, which made two builds of the
-same sources produce different manifests). It is regenerated, never edited. In the manifest
-such an operator has `signature_source: witnessed`; `overload_sources` says per
-overload whether it is derived or witnessed, `refinements` lists the sharper
-results of existing overloads, and `witnesses` carries the calls. At
-3.0.0-rc.1 the table types the answers of about 700 operators that were
-`(Term, ..) -> Term` before.
-Every operator that has a test is thereby typed, and a new operator arrives
-typed as soon as it is tested.
+The required `signatures.witnessed.json` table is generated and versioned. The
+manifest records `signature_source: witnessed`, the source of each overload in
+`overload_sources`, sharper results in `refinements`, and replayable calls in
+`witnesses`.
 
 What a witnessed signature promises is what a gradual type promises at a
 dynamic boundary. It is evidence, not a totality proof: the parameter side may
@@ -148,7 +129,7 @@ witnessed signature is kept only when its parameter list is comparable with, or
 disjoint from, every other overload (`sort::coherent`), and the overload
 matcher breaks a tie between comparable overloads by pointwise dominance.
 
-### 4. No silent unknowns
+### 4. Dynamic operator reasons
 
 Every operator is either typed or explained. The explanation is a
 `DynamicReason`:
@@ -162,13 +143,9 @@ Every operator is either typed or explained. The explanation is a
 | `opaque_payload` | it carries host data the kernel does not interpret |
 | `not_yet_specified` | a declaration is missing; the audit treats this as a defect |
 
-`cargo run --bin signature-audit` reports the split between declared, overlay
-and derived signatures and exits non-zero if any operator is neither typed nor
-explained. At 3.0.0-rc.1 it reports 1476 operators in 37 rule sets, every one
-typed (124 declared, 25 overlay and 1352 derived signatures), 82 units, 30
-constants (18 exact) and 0 unexplained operators. The counts change whenever a
-rule set changes; the audit (and `KernelManifest`) is the authority, not this
-paragraph.
+`cargo run --locked --bin signature-audit` reports the live operator counts by
+signature source. Its exit status is nonzero if an operator has neither a
+signature nor an accepted reason.
 
 ### 5. Determinism
 
@@ -300,16 +277,18 @@ without the capability refuses it with a precise diagnostic.
 | `sde` | the `sde` rule set ships, so the noise operators below are callable |
 | `plugin_abi`, `plugin_kinds` | the plugin ABI, and how a plugin may reach this build |
 
-`sde` is specifically about *noise*: `sde_wiener(seed, m, steps, h)` returns the
-`steps × m` matrix of seeded Brownian increments (dimension `sqrt(T)` for a step
-of dimension `T`) and `sde_levy_areas(seed, h, dw, terms)` the iterated Ito
-integrals conditioned on given increments. `sde_scheme_info(name)` answers what a
-scheme promises — `list(strong_order, ito, commutative_only, adaptive,
-levy_areas)` for the eight solvers — without running it; the name crosses as a
-string value. The solvers themselves are not in the manifest and never will be:
-they take host closures for `a(t, x)` and `g(t, x)`, which a `Value` cannot
-carry. A host that wants an ensemble keeps its own loop and uses the noise
-operators so that every scheme in the loop sees one path.
+The `sde` flag covers the SDE rule set. `sde_wiener(seed, m, steps, h)` returns
+seeded Brownian increments of shape `steps × m` and dimension `sqrt(dim(h))`.
+`sde_levy_areas(seed, h, dw, terms)` returns conditioned iterated integrals
+with the step's dimension. `sde_scheme_info(name)` reports a named scheme's
+strong order, stochastic calculus, commutativity, adaptivity and Lévy-area
+requirements.
+
+Separate native SDE bindings expose owned drift and diffusion tapes, retained
+noise samples and actual integration methods. `num_analysis_sde_ensemble`
+executes an ensemble with a shared evaluation budget. Rust drivers also accept
+native closures. For host callback values and their validation, see the
+[callback contract](CALLBACKS.md) and [numerical callback operators](NUMERICAL_CALLBACKS.md).
 
 ## Which values can enter the graph
 
@@ -363,8 +342,7 @@ its exhaustive `list(...)` form; a single root found on the way is reported with
   units (`au`, `ly`, `pc`, `Rsun`, `Msun`, `Mearth`, `jup`), the CGS set
   (`dyn`, `erg`, `Gal`, `P`, `St`, `G`, `Oe`, `Mx`, `Ba`), and the common
   non-SI units of the Aevia design standard (`Da`/`u`, `kn`, `mph`, `acre`,
-  and the dimensionless information units `bit`, `B`, `KiB`) — 82 units at
-  3.0.0-rc.1.
+  and the dimensionless information units `bit`, `B`, `KiB`).
 * `KernelManifest.units` carries `aliases`, `prefixable`, `category` and
   `since` as well as the name, dimension and scale, so a host can generate its
   unit table from the manifest alone.
@@ -403,7 +381,7 @@ parallel inside one session.
 ## The C ABI
 
 ```c
-const char *json = rssn_manifest_json();   /* caller frees */
+char       *json = rssn_manifest_json();   /* rssn_string_free(json) */
 uint64_t    hash = rssn_manifest_hash();
 ```
 
@@ -433,4 +411,4 @@ summarised in [ARCHITECTURE.md](../ARCHITECTURE.md#c-interface).
    (`.dynamic_reason(..)`).
 3. Add `.doc(..)`, `.category(..)` and `.since(..)` — the manifest is the
    documentation a host reads.
-4. Run `cargo run --bin signature-audit` and `cargo test`.
+4. Run `cargo run --locked --bin signature-audit` and the operator tests.

@@ -1,5 +1,7 @@
 # Checked host callbacks
 
+[中文](CALLBACKS.zh.md)
+
 RSSN's dynamic ABI supports serial, synchronous host callbacks. Register a
 `HostCallback` in a `CallCtx`, then pass its returned handle to `Session::call_ho`.
 The handles are appended after the ordinary arguments in their supplied order;
@@ -8,7 +10,7 @@ they are ordinary function parameters in the operator's declared signature.
 ```rust
 use std::sync::Arc;
 use rssn::api::Session;
-use rssn::kernel::{CallCtx, Value};
+use rssn::kernel::{CallCtx, OpError, Value};
 use rssn::kernel::plugin::NativeCallback;
 use rssn::kernel::signature::{Signature, TypeExpr};
 
@@ -16,7 +18,8 @@ let session = Session::new();
 let mut context = CallCtx::new();
 let square = context.add_callback(Arc::new(NativeCallback::new(
     |args: &[Value]| {
-        let x = args[0].as_f64().unwrap();
+        let x = args.first().and_then(Value::as_f64)
+            .ok_or_else(|| OpError::Host("expected a floating-point input".into()))?;
         Ok(Value::Float(x * x))
     },
     Signature::new(vec![TypeExpr::Float], TypeExpr::Float),
@@ -29,7 +32,7 @@ let result = session.call_ho(
     ],
     &[square], &context,
 )?;
-# Ok::<(), rssn::kernel::OpError>(())
+# Ok::<(), OpError>(())
 ```
 
 The result is a record with `value`, `error`, `evaluations` and `converged`

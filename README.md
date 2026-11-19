@@ -1,14 +1,10 @@
-# rssn: A High-Performance Scientific Computing Library for Rust
+# RSSN: Scientific computing for Rust
+
+[简体中文](README.zh-CN.md)
 
 [![Crates.io](https://img.shields.io/crates/v/rssn.svg)](https://crates.io/crates/rssn)
 [![Docs.rs](https://docs.rs/rssn/badge.svg)](https://docs.rs/rssn)
 [![License](https://img.shields.io/crates/l/rssn)](LICENSE)
-[![Scc Count Badge Code](https://sloc.xyz/github/Apich-Organization/rssn/?category=code)](https://github.com/Apich-Organization/rssn/)
-[![Scc Count Badge Blanks](https://sloc.xyz/github/Apich-Organization/rssn/?category=blanks)](https://github.com/Apich-Organization/rssn/)
-[![Scc Count Badge Lines](https://sloc.xyz/github/Apich-Organization/rssn/?category=lines)](https://github.com/Apich-Organization/rssn/)
-[![Scc Count Badge Comments](https://sloc.xyz/github/Apich-Organization/rssn/?category=comments)](https://github.com/Apich-Organization/rssn/)
-[![Scc Count Badge Cocomo](https://sloc.xyz/github/Apich-Organization/rssn/?category=cocomo)](https://github.com/Apich-Organization/rssn/)
-[![Scc Count Badge Effort](https://sloc.xyz/github/Apich-Organization/rssn/?category=effort)](https://github.com/Apich-Organization/rssn/)
 [![Discord Server](https://img.shields.io/discord/1459399539403522074.svg?label=Discord&logo=discord&color=blue)](https://discord.gg/D5e2czMTT9)
 [![DOI](https://zenodo.org/badge/DOI/10.6084/m9.figshare.31044715.svg)](https://doi.org/10.6084/m9.figshare.31044715)
 
@@ -22,7 +18,7 @@ Every symbolic operation is an *identity transformation*. Differentiating, integ
 
 - **One entry point**: `Session::compute(term, &config)`. The answer is symbolic or numeric, depending on the target phase.
 - **Dimensions**: every scalar term has an inferred dimension, every operator declares how dimensions combine, and answers report theirs. Exact rational and symbolic exponents (`x^n`, `x^(a+b)`, `x^(1/n)`), SI and affine units, user-defined base dimensions; advisory by default, strict hard errors on request, explicit bypass. See [docs/DIMENSIONS.md](docs/DIMENSIONS.md).
-- **Open e-graph engine**: a hash-consed DAG with equivalence classes, an operator registry open to plugins, tiered rule scheduling, cost-based extraction, assumptions such as `positive`, `integer` and `real`, and a numeric soundness check of every rewrite.
+- **Open e-graph engine**: a hash-consed DAG with equivalence classes, an operator registry open to plugins, tiered rule scheduling, cost-based extraction, and assumptions such as `positive`, `integer` and `real`. The test suite samples standard declarative rewrites whose two sides can be evaluated numerically.
 - **Calculus**: derivatives (including of undetermined functions); indefinite, definite and improper integrals (including Hermite reduction in `Q(x)(√D)` for algebraic integrands); limits; univariate and multivariate series; Meijer G evaluation, reduction, differentiation and integration; Gosper summation, indefinite sums and products (`indefinite_sum`, `indefinite_product`); integral transforms.
 - **Algebra**: rational normal form, multivariate factorisation, Gröbner bases (Buchberger, F4 and F5), polynomial, transcendental and inequality solving, systems of equations (with free parameters), real quantifier elimination by CAD, general trigonometric solution families, linear algebra (symbolic and numeric), number theory (including a quadratic sieve for large composites), combinatorics, logic.
 - **Differential equations**: ODE classification and solution (linear, exact, Bernoulli, Riccati, Clairaut/Lagrange, integrating factors, Lie symmetries, systems with first integrals); PDE solution in 1D/2D/3D on boxes, disks, cylinders, balls, annuli, shells, half-spaces and exterior domains with Dirichlet/Neumann/Robin/periodic conditions (eigenfunction expansions, images, Kirchhoff/Poisson/Riemann formulas, linear systems); calculus of variations (Euler–Lagrange).
@@ -38,33 +34,46 @@ Every symbolic operation is an *identity transformation*. Differentiating, integ
 
 ---
 
-## Quick Start
+## Quick start for the 3.0 beta API
+
+In an existing Cargo project, add RSSN from a checkout of the `v0.3` branch. Use the path to that checkout if you already have one.
 
 ```bash
-cargo add rssn
+git clone --branch v0.3 https://github.com/Apich-Organization/rssn.git ../rssn
+cargo add --path ../rssn
 ```
+
+Save this program as `src/main.rs` and run `cargo run`.
 
 ```rust
 use rssn::api::*;
 
-let s = Session::new();
-let x = s.sym("x");
+fn main() -> Result<(), ComputeError> {
+    let s = Session::new();
+    let x = s.sym("x");
 
-// Symbolic phase: a closed form.
-let d = s.compute(diff(sin(x) * cos(x), x), &Config::new())?;
-assert_eq!(d.term.to_string(), "cos(2*x)");
+    // Symbolic phase: a closed form.
+    let d = s.compute(diff(sin(x) * cos(x), x), &Config::new())?;
+    assert_eq!(d.term.to_string(), "cos(2*x)");
 
-// Numeric phase: the same request, evaluated.
-let n = s.compute(diff(sin(x) * cos(x), x), &Config::new().numeric(1e-12).bind("x", 0.0))?;
-assert_eq!(n.value, Some(1.0));
+    // Numeric phase: the same request, evaluated.
+    let n = s.compute(
+        diff(sin(x) * cos(x), x),
+        &Config::new().numeric(1e-12).bind("x", 0.0),
+    )?;
+    assert_eq!(n.value, Some(1.0));
 
-// Any request can be parsed from text.
-let sum = s.compute(s.parse("sum(1/(k*(k+1)), k, 1, n)")?, &Config::new())?;
-assert_eq!(sum.term.to_string(), "1 - 1/(n + 1)");
-# Ok::<(), ComputeError>(())
+    // Requests can also be parsed from text.
+    let sum = s.compute(s.parse("sum(1/(k*(k+1)), k, 1, n)")?, &Config::new())?;
+    assert_eq!(sum.term.to_string(), "1 - 1/(n + 1)");
+
+    Ok(())
+}
 ```
 
-More examples:
+See the [examples index](examples/README.md) for complete programs.
+
+A few starting points
 
 - `cargo run --release --example quickstart`: a tour of the API.
 - `cargo run --release --example simulation`: simulations by name with JSON parameters.
@@ -89,9 +98,9 @@ Benchmarks: `cargo bench --bench engine`.
 
 ```bash
 cargo test                       # everything: slow, see below
-cargo test --lib kernels::pde    # one module of the unit tests
+cargo test --lib graph::dim      # dimension unit tests
 cargo test --test dimensions     # one integration test file
-cargo test --test kernels pde    # a filter inside a large test binary
+cargo test --test kernels pde    # PDE kernel integration tests
 cargo test --features gpu-wgpu --lib backend::device   # GPU device tests (run on an adapter if present)
 ```
 

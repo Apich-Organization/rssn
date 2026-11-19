@@ -1,5 +1,7 @@
 # Building Rust and C artifacts
 
+[中文](BUILDING.zh.md)
+
 Ordinary `cargo build`, `cargo check`, and downstream Rust dependency builds
 produce the Rust library (`rlib`). They do not also link a shared C library or
 copy all dependencies into a static C archive. This keeps each Rust build from
@@ -9,17 +11,21 @@ To produce the C libraries and refresh the checked-in cbindgen headers:
 
 ```sh
 DEV=1 bash scripts/build_ffi.sh --features dev-headers
-cc -I. examples/c/smoke.c target/release/librssn.a -lm -lpthread -ldl -o smoke
+cc -I. examples/c/smoke.c target/ffi/librssn.a -lm -lpthread -ldl -o smoke
 ./smoke
 ```
 
-The script invokes `cargo rustc --lib --crate-type staticlib,cdylib`. The C ABI
-and filenames are unchanged: static and shared libraries are placed under the
-selected target/profile directory. `CARGO_TARGET_DIR` and Cargo arguments such
-as `--features jit`, `--target`, `--locked`, or `--offline` are respected. The
-default profile is `release`; set `RSSN_FFI_PROFILE=dev` for a development C
-build (its output directory is `debug`). Platform-specific C linker flags may
-be needed outside Linux.
+The script invokes `cargo rustc --lib --crate-type staticlib,cdylib`. Static and shared libraries are placed under the selected target and profile
+directory. The default `ffi` profile inherits the release optimizations and
+enables unwinding, so the C wrappers can report Rust panics as
+`RssnStatus::Panic`. Set `RSSN_FFI_PROFILE=dev` for a development C build in
+`debug`. The scripts accept `CARGO_TARGET_DIR` and Cargo options such as
+`--features jit`, `--target`, `--locked`, and `--offline`. C linker flags
+vary by platform.
+
+Use `bash scripts/build_ffi.sh --package` or
+`scripts/build_ffi.ps1 -Package` on Windows to assemble a native archive with
+its headers, examples, bilingual guides, and checksum.
 
 Migration: C consumers previously using `cargo build --release` to obtain
 `librssn.a` or a shared library should use this explicit distribution command.
