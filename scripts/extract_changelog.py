@@ -58,6 +58,7 @@ def main() -> int:
         default="",
         help="Optional output file path; prints to stdout if omitted.",
     )
+    parser.add_argument("--required", action="store_true", help="Fail when the release has no notes.")
     args = parser.parse_args()
 
     version = args.version.lstrip("v")
@@ -68,6 +69,8 @@ def main() -> int:
         text = changelog_path.read_text(encoding="utf-8")
         notes = extract_section(text, version)
 
+    if not notes and args.required:
+        parser.error(f"{changelog_path}: no release notes for {version}")
     if not notes:
         notes = f"Release v{version}."
 

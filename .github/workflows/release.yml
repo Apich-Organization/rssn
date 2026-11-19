@@ -26,7 +26,7 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_TOOLCHAIN: "1.97"
+  RUST_TOOLCHAIN: "1.100.0"
 
 jobs:
   verify:
@@ -41,14 +41,16 @@ jobs:
         env:
           INPUT_VERSION: ${{ inputs.version }}
         run: |
-          if [ -n "${INPUT_VERSION}" ]; then
-            version="${INPUT_VERSION#v}"
-          else
-            version=$(cargo metadata --no-deps --format-version 1 \
-              | jq -r '.packages[] | select(.name == "rssn") | .version')
+          version=$(sed -n '/^\[package\]/,/^\[/{s/^version = "\(.*\)"$/\1/p}' Cargo.toml)
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::invalid Cargo.toml release version"
+            exit 1
           fi
-          echo "release version: $version"
-          if [ -z "$version" ]; then echo "::error::no release version found"; exit 1; fi
+          if [ -n "$INPUT_VERSION" ] && [ "${INPUT_VERSION#v}" != "$version" ]; then
+            echo "::error::the requested version must match Cargo.toml ($version)"
+            exit 1
+          fi
+          python3 scripts/extract_changelog.py --required --version "$version" >/dev/null
           echo "version=${version}" >> "$GITHUB_OUTPUT"
           case "$version" in *-*) pre=true ;; *) pre=false ;; esac
           echo "prerelease=${pre}" >> "$GITHUB_OUTPUT"
@@ -74,11 +76,11 @@ jobs:
       RUSTFLAGS: "-C target-cpu=generic"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           targets: ${{ matrix.rust_target }}
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
         with:
           key: ${{ matrix.target }}
       - name: System dependencies
@@ -90,7 +92,7 @@ jobs:
         run: |
           bash scripts/build_ffi.sh \
             --target "${{ matrix.rust_target }}" \
-            --package \
+            --profile ffi --package --locked \
             --dist-name "rssn-${{ needs.verify.outputs.version }}-${{ matrix.target }}"
       - name: Build and package FFI libraries (Windows)
         if: runner.os == 'Windows'
@@ -98,11 +100,14 @@ jobs:
         run: |
           scripts/build_ffi.ps1 `
             -Target "${{ matrix.rust_target }}" `
+            -Profile ffi `
             -Package `
+            -CargoArgs @('--locked') `
             -DistName "rssn-${{ needs.verify.outputs.version }}-${{ matrix.target }}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: rssn-${{ matrix.target }}
+          if-no-files-found: error
           path: |
             dist/*.tar.gz
             dist/*.sha256
@@ -116,36 +121,69 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: dist
           merge-multiple: true
       - name: Extract release notes
         run: |
-          python3 scripts/extract_changelog.py \
+          python3 scripts/extract_changelog.py --required \
             --version "${{ needs.verify.outputs.version }}" \
             --output release_notes.md
       - name: Create the draft release
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+          PRERELEASE: ${{ needs.verify.outputs.prerelease }}
         run: |
-          flags=()
-          if [ "${{ needs.verify.outputs.prerelease }}" = "true" ]; then flags+=(--prerelease); fi
-          gh release create "v${{ needs.verify.outputs.version }}" dist/* \
-            --title "rssn ${{ needs.verify.outputs.version }}" \
+          tag="v$RELEASE_VERSION"
+          ref="refs/tags/$tag"
+          git check-ref-format "$ref"
+          if [[ "$(git rev-parse HEAD)" != "$GITHUB_SHA" ]]; then
+            echo "::error::Release checkout does not match the workflow commit $GITHUB_SHA"
+            exit 1
+          fi
+          remote_refs=$(git ls-remote --tags origin "$ref" "$ref^{}")
+          tag_commit=$(awk -v ref="$ref" '
+            $2 == ref { tag = $1 }
+            $2 == (ref "^{}") { peeled = $1 }
+            END { print peeled ? peeled : tag }
+          ' <<< "$remote_refs")
+          flags=(--target "$GITHUB_SHA")
+          if [[ -n "$tag_commit" ]]; then
+            if [[ "$tag_commit" != "$GITHUB_SHA" ]]; then
+              echo "::error::Tag $tag points to $tag_commit, expected $GITHUB_SHA"
+              exit 1
+            fi
+            flags+=(--verify-tag)
+          fi
+          existing_targets=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" |
+            jq -r --arg tag "$tag" '.[] | select(.tag_name == $tag) | .target_commitish')
+          if [[ -n "$existing_targets" ]]; then
+            if [[ -z "$tag_commit" ]] && grep -Fqxv "$GITHUB_SHA" <<< "$existing_targets"; then
+              echo "::error::An existing release or draft for $tag has a different or unpinned target"
+            else
+              echo "::error::A release or draft already exists for $tag"
+            fi
+            exit 1
+          fi
+          if [[ "$PRERELEASE" == "true" ]]; then flags+=(--prerelease); fi
+          gh release create "$tag" dist/* \
+            --title "rssn $RELEASE_VERSION" \
             --draft \
             --notes-file release_notes.md \
             "${flags[@]}"
 
   publish:
     name: Publish to crates.io
-    needs: [verify, ffi]
+    needs: github-release
     if: ${{ !inputs.dry_run }}
     runs-on: ubuntu-latest
     environment: crates-io
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
       - name: System dependencies

@@ -6,7 +6,7 @@ name: CI
 
 "on":
   push:
-    branches: [main]
+    branches: [main, v0.3]
   pull_request:
   workflow_dispatch:
 
@@ -21,7 +21,7 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: "0"
   # Workspace `rust-version`; the toolchain every gate below uses.
-  RUST_TOOLCHAIN: "1.97"
+  RUST_TOOLCHAIN: "1.100.0"
 
 jobs:
   fmt:
@@ -30,8 +30,9 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable action, nightly toolchain
         with:
+          toolchain: nightly
           components: rustfmt
       - run: cargo +nightly fmt --all --check
 
@@ -41,33 +42,39 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           components: clippy
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
       - name: System dependencies
         run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
-      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 
   test:
     name: test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 90
+    timeout-minutes: 150
+    env:
+      CARGO_PROFILE_TEST_DEBUG: "0"
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
       - name: System dependencies
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
-      - run: cargo test --workspace --all-features
+      - name: Run the workspace tests
+        env:
+          # MSVC otherwise writes a large PDB for every linked test.
+          _LINK_: ${{ runner.os == 'Windows' && '/DEBUG:NONE' || '' }}
+        run: cargo test --locked --workspace --all-features
 
   contracts:
     name: contracts (signature audit, generated bindings)
@@ -75,22 +82,22 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
       - name: System dependencies
         run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
       - name: Every operator is typed or explained
-        run: cargo run --bin signature-audit
+        run: cargo run --locked --bin signature-audit
       - name: Every operator has documentation
-        run: cargo run --bin doc_gen_check
+        run: cargo run --locked --bin doc_gen_check
       - name: Generated numerical bindings are current
         run: |
-          cargo run -p rssn-api-gen -- --bindings-check
-          cargo run -p rssn-api-gen -- --structured-check
-          cargo run -p rssn-api-gen -- --codecs-check
-          cargo run -p rssn-api-gen -- --contracts-check
+          cargo run --locked -p rssn-api-gen -- --bindings-check
+          cargo run --locked -p rssn-api-gen -- --structured-check
+          cargo run --locked -p rssn-api-gen -- --codecs-check
+          cargo run --locked -p rssn-api-gen -- --contracts-check
 
   ffi:
     name: C interface (headers, smoke test)
@@ -98,19 +105,19 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
       - name: System dependencies
         run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
       - name: Regenerate headers and build the C libraries
-        run: DEV=1 bash scripts/build_ffi.sh --features dev-headers
+        run: DEV=1 bash scripts/build_ffi.sh --locked --features dev-headers
       - name: Checked-in headers are current
         run: git diff --exit-code -- rssn.h rssn.hpp
       - name: Build and run the C smoke test
         run: |
-          cc -I. examples/c/smoke.c target/release/librssn.a -lm -lpthread -ldl -o smoke
+          cc -I. examples/c/smoke.c target/ffi/librssn.a -lm -lpthread -ldl -o smoke
           ./smoke
 
   docs:
@@ -119,13 +126,14 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
       - name: System dependencies
         run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
-      - run: cargo doc --workspace --no-deps --all-features
+      - run: python3 scripts/check_doc_editions.py
+      - run: cargo doc --locked --workspace --no-deps --all-features
 
   ci-success:
     name: CI success
@@ -134,6 +142,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Require every job to have succeeded
+        env:
+          JOB_RESULTS: ${{ toJSON(needs) }}
         run: |
-          echo '${{ toJSON(needs) }}'
-          test "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" = "false"
+          jq -e 'all(.[]; .result == "success")' <<< "$JOB_RESULTS"
