@@ -37,6 +37,21 @@ impl std::fmt::Display for NumericError {
 
 impl std::error::Error for NumericError {}
 
+// Scaling before subtraction recovers finite results when the unscaled
+// distance between two finite observations exceeds the float range.
+pub(super) fn scaled_difference(
+    left: f64,
+    right: f64,
+    scale: f64,
+) -> f64 {
+    let difference = left - right;
+    if difference.is_finite() {
+        difference / scale
+    } else {
+        left / scale - right / scale
+    }
+}
+
 // Positive reference scales may individually be extreme while their product
 // or quotient is representable. Keep mantissas normalized and accumulate the
 // binary exponent separately, including correctly rounded subnormal results.

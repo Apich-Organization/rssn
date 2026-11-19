@@ -165,6 +165,10 @@ uint64_t hash = rssn_manifest_hash();
 
 ## 添加算子
 
+对于可组合编解码器支持的数值函数，在 `codec-policy.tsv` 中登记 Rust 路径、ABI 名称、命名空间及量纲策略。运行 `cargo run --locked -p rssn-api-gen -- --codecs-write` 生成重载，宿主仍通过内核清单与值调用接口访问它。 [绑定生成与支持的契约结构](../tools/rssn-api-gen/README.md)
+
+符号规则、回调与原生对象适配器按下列步骤直接注册。
+
 1. 用 `Installer::op` 或 `Registry::register_op` 注册。
 2. 给出 `Signature` 或 `DynamicReason`，并声明量纲规则。
 3. 填写 `.doc(..)`、`.category(..)` 和 `.since(..)`。这些字段随清单提供给宿主。

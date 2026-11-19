@@ -5,6 +5,10 @@
 //! combined by Chan's parallel formula, without retaining their observations.
 //! Storage is quadratic in the number of variables, independent of sample size.
 
+// Matrix storage is checked at construction. Row and packed offsets are
+// derived from that checked dimension and the corresponding slice lengths.
+#![allow(clippy::indexing_slicing, clippy::arithmetic_side_effects)]
+
 /// Failure while constructing or updating an accumulator.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OnlineStatsError {
@@ -149,12 +153,28 @@ mod tests {
 /// and [`Self::merge`] leave the accumulator unchanged on error. To avoid
 /// silently rounding observation counts when converting them to `f64`, the
 /// number of observations is limited to 2^53.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct OnlineCovariance {
     count: u64,
     mean: Vec<f64>,
-    // Symmetric centred sum of products, row-major.
+    // Centred sum of products in row-major packed lower-triangle storage.
     m2: Vec<f64>,
+    // Delta, staged mean and staged triangle. Reused across updates.
+    scratch: Vec<f64>,
+}
+
+impl std::fmt::Debug for OnlineCovariance {
+    fn fmt(
+        &self,
+        formatter: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        formatter
+            .debug_struct("OnlineCovariance")
+            .field("count", &self.count)
+            .field("mean", &self.mean)
+            .field("m2", &self.m2)
+            .finish_non_exhaustive()
+    }
 }
 
 impl OnlineCovariance {
@@ -168,17 +188,26 @@ impl OnlineCovariance {
     pub fn new(dimension: usize) -> Result<Self, OnlineStatsError> {
         let len = dimension
             .checked_mul(dimension)
-            .filter(|_| dimension != 0)
+            .filter(|&len| len != 0 && len <= isize::MAX as usize / std::mem::size_of::<f64>())
             .ok_or(OnlineStatsError::InvalidDimension)?;
-        let mut m2 = Vec::new();
-        m2.try_reserve_exact(len)
-            .map_err(|_| OnlineStatsError::InvalidDimension)?;
-        m2.resize(len, 0.0);
-        let mut mean = Vec::new();
-        mean.try_reserve_exact(dimension)
-            .map_err(|_| OnlineStatsError::InvalidDimension)?;
-        mean.resize(dimension, 0.0);
-        Ok(Self { count: 0, mean, m2 })
+        let packed = len / 2 + dimension.div_ceil(2);
+        let scratch_len = packed
+            .checked_add(dimension.saturating_mul(2))
+            .ok_or(OnlineStatsError::InvalidDimension)?;
+        let zeroed = |len| -> Result<Vec<f64>, OnlineStatsError> {
+            let mut values = Vec::new();
+            values
+                .try_reserve_exact(len)
+                .map_err(|_| OnlineStatsError::InvalidDimension)?;
+            values.resize(len, 0.0);
+            Ok(values)
+        };
+        Ok(Self {
+            count: 0,
+            mean: zeroed(dimension)?,
+            m2: zeroed(packed)?,
+            scratch: zeroed(scratch_len)?,
+        })
     }
 
     /// Number of variables.
@@ -218,32 +247,59 @@ impl OnlineCovariance {
             self.count = 1;
             return Ok(());
         }
-        let next = self
-            .count
-            .checked_add(1)
-            .filter(|&n| n <= Self::MAX_COUNT)
-            .ok_or(OnlineStatsError::Overflow)?;
-        let delta: Vec<_> = observation
-            .iter()
-            .zip(&self.mean)
-            .map(|(x, m)| x - m)
-            .collect();
-        let ratio = 1.0 / next as f64;
-        let mean: Vec<_> = self
-            .mean
-            .iter()
-            .zip(&delta)
-            .map(|(m, d)| m + d * ratio)
-            .collect();
-        let factor = self.count as f64 * ratio;
-        let m2 = self.updated_m2(&delta, factor, None)?;
-        if mean.iter().any(|x| !x.is_finite()) {
-            return Err(OnlineStatsError::Overflow);
+        self.update(observation, 1, None)
+    }
+
+    /// Incorporate a flat row-major batch atomically.
+    ///
+    /// Each row contains [`Self::dimension`] values. Large batches use bounded
+    /// shards and combine them in row order, independent of worker count.
+    /// An empty batch leaves the accumulator unchanged.
+    ///
+    /// # Errors
+    /// Returns an error for an incomplete row, non-finite input, count or
+    /// arithmetic overflow, or failure to allocate a shard.
+    pub fn push_batch(
+        &mut self,
+        observations: &[f64],
+    ) -> Result<(), OnlineStatsError> {
+        let dimension = self.dimension();
+        if !observations.len().is_multiple_of(dimension) {
+            return Err(OnlineStatsError::DimensionMismatch);
         }
-        self.count = next;
-        self.mean = mean;
-        self.m2 = m2;
-        Ok(())
+        let rows = observations.len() / dimension;
+        if rows == 0 {
+            return Ok(());
+        }
+        if rows == 1 {
+            return self.push(observations);
+        }
+        let count = u64::try_from(rows).map_err(|_| OnlineStatsError::Overflow)?;
+        self.checked_count(count)?;
+
+        // Shards depend on input shape only. Cap scratch retention and work
+        // inflation when each partial covariance already occupies many bytes.
+        let min_rows = (32_768 / self.m2.len()).clamp(64, 1_024);
+        let max_shards = (262_144 / self.m2.len()).clamp(1, 8);
+        let rows_per_shard = rows.div_ceil((rows / min_rows).clamp(1, max_shards));
+        let shard_size = rows_per_shard * dimension;
+        let shard_count = rows.div_ceil(rows_per_shard);
+        let shards =
+            super::par::map_indexed(shard_count, 2, |shard| -> Result<Self, OnlineStatsError> {
+                let start = shard * shard_size;
+                let end = start.saturating_add(shard_size).min(observations.len());
+                let mut partial = Self::new(dimension)?;
+                for row in observations[start..end].chunks_exact(dimension) {
+                    partial.push(row)?;
+                }
+                Ok(partial)
+            });
+        let mut shards = shards.into_iter();
+        let mut batch = shards.next().ok_or(OnlineStatsError::DimensionMismatch)??;
+        for shard in shards {
+            batch.merge(&shard?)?;
+        }
+        self.merge(&batch)
     }
 
     /// Merge another independent accumulator into this one.
@@ -261,76 +317,120 @@ impl OnlineCovariance {
             return Ok(());
         }
         if self.count == 0 {
-            self.clone_from(other);
+            self.count = other.count;
+            self.mean.copy_from_slice(&other.mean);
+            self.m2.copy_from_slice(&other.m2);
             return Ok(());
         }
-        let next = self
-            .count
-            .checked_add(other.count)
-            .filter(|&n| n <= Self::MAX_COUNT)
-            .ok_or(OnlineStatsError::Overflow)?;
-        let delta: Vec<_> = other
-            .mean
-            .iter()
-            .zip(&self.mean)
-            .map(|(b, a)| b - a)
-            .collect();
-        let ratio = other.count as f64 / next as f64;
-        let mean: Vec<_> = self
-            .mean
-            .iter()
-            .zip(&delta)
-            .map(|(m, d)| m + d * ratio)
-            .collect();
-        let factor = self.count as f64 * ratio;
-        let m2 = self.updated_m2(&delta, factor, Some(&other.m2))?;
-        if mean.iter().any(|x| !x.is_finite()) {
-            return Err(OnlineStatsError::Overflow);
-        }
-        self.count = next;
-        self.mean = mean;
-        self.m2 = m2;
-        Ok(())
+        self.update(&other.mean, other.count, Some(&other.m2))
     }
 
-    fn updated_m2(
+    fn checked_count(
         &self,
-        delta: &[f64],
-        factor: f64,
-        other: Option<&[f64]>,
-    ) -> Result<Vec<f64>, OnlineStatsError> {
+        added: u64,
+    ) -> Result<u64, OnlineStatsError> {
+        self.count
+            .checked_add(added)
+            .filter(|&n| n <= Self::MAX_COUNT)
+            .ok_or(OnlineStatsError::Overflow)
+    }
+
+    fn update(
+        &mut self,
+        incoming_mean: &[f64],
+        incoming_count: u64,
+        incoming_m2: Option<&[f64]>,
+    ) -> Result<(), OnlineStatsError> {
+        let next = self.checked_count(incoming_count)?;
+        let ratio = incoming_count as f64 / next as f64;
+        let factor = self.count as f64 * ratio;
         let n = self.dimension();
-        let mut result = self.m2.clone();
+        let (delta, stage) = self.scratch.split_at_mut(n);
+        let (new_mean, new_m2) = stage.split_at_mut(n);
         for i in 0..n {
-            for j in 0..=i {
-                let k = i * n + j;
-                let value =
-                    self.m2[k] + other.map_or(0.0, |m| m[k]) + (delta[i] * factor) * delta[j];
-                if !value.is_finite() {
-                    return Err(OnlineStatsError::Overflow);
-                }
-                result[k] = value;
-                result[j * n + i] = value;
-            }
+            delta[i] = incoming_mean[i] - self.mean[i];
+            new_mean[i] = self.mean[i] + delta[i] * ratio;
         }
-        Ok(result)
+        let mut start = 0;
+        for (i, &d) in delta.iter().enumerate() {
+            let stop = start + i + 1;
+            let area = d * factor;
+            let old_row = &self.m2[start..stop];
+            let new_row = &mut new_m2[start..stop];
+            if let Some(other) = incoming_m2 {
+                for (j, slot) in new_row.iter_mut().enumerate() {
+                    *slot = old_row[j] + other[start + j] + area * delta[j];
+                }
+            } else {
+                for (j, slot) in new_row.iter_mut().enumerate() {
+                    *slot = old_row[j] + area * delta[j];
+                }
+            }
+            start = stop;
+        }
+        if new_mean.iter().chain(new_m2.iter()).any(|x| !x.is_finite()) {
+            return Err(OnlineStatsError::Overflow);
+        }
+        self.mean.copy_from_slice(new_mean);
+        self.m2.copy_from_slice(new_m2);
+        self.count = next;
+        Ok(())
     }
 
     /// Population covariance (divisor `n`), or `None` when empty.
     #[must_use]
     pub fn population_covariance(&self) -> Option<Vec<f64>> {
-        (self.count != 0).then(|| self.m2.iter().map(|v| v / self.count as f64).collect())
+        (self.count != 0).then(|| self.matrix(|_, _, v| v / self.count as f64))
     }
 
     /// Unbiased sample covariance (divisor `n - 1`), or `None` for fewer
     /// than two observations.
     #[must_use]
     pub fn sample_covariance(&self) -> Option<Vec<f64>> {
-        (self.count >= 2).then(|| {
-            self.m2
-                .iter()
-                .map(|v| v / (self.count - 1) as f64)
-                .collect()
-        })
+        (self.count >= 2).then(|| self.matrix(|_, _, v| v / (self.count - 1) as f64))
+    }
+
+    /// Row-major Pearson correlation matrix, or `None` when the sample has
+    /// fewer than two observations or any column has zero variance.
+    #[must_use]
+    pub fn correlation(&self) -> Option<Vec<f64>> {
+        if self.count < 2 {
+            return None;
+        }
+        let mut diagonal = 0;
+        let mut standard_deviations = Vec::with_capacity(self.dimension());
+        for i in 0..self.dimension() {
+            let deviation = self.m2[diagonal].sqrt();
+            if deviation <= 0.0 {
+                return None;
+            }
+            standard_deviations.push(deviation);
+            diagonal += i + 2;
+        }
+        Some(self.matrix(|row, col, value| {
+            if row == col {
+                1.0
+            } else {
+                ((value / standard_deviations[row]) / standard_deviations[col]).clamp(-1.0, 1.0)
+            }
+        }))
+    }
+
+    fn matrix(
+        &self,
+        transform: impl Fn(usize, usize, f64) -> f64,
+    ) -> Vec<f64> {
+        let n = self.dimension();
+        let mut matrix = vec![0.0; n * n];
+        let mut index = 0;
+        for i in 0..n {
+            for j in 0..=i {
+                let value = transform(i, j, self.m2[index]);
+                matrix[i * n + j] = value;
+                matrix[j * n + i] = value;
+                index += 1;
+            }
+        }
+        matrix
     }
 }

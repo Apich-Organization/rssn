@@ -29,6 +29,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
 
+use super::extract::BuildMemo;
 use super::extract::ClosedForm;
 use super::extract::CostModel;
 use super::extract::Extractor;
@@ -1451,11 +1452,12 @@ impl Engine {
             return false;
         }
         let classes = reachable(graph, roots);
-        let extractor = Extractor::new(graph, roots, &SizeCost);
-        let root_classes: Vec<_> = roots.iter().map(|&r| graph.find(r)).collect();
+        let extractor = Extractor::for_classes(graph, &classes, &SizeCost);
+        let root_classes: super::id::FastSet<_> = roots.iter().map(|&r| graph.find(r)).collect();
         // Build every window's term before merging anything: the extractor
         // describes the graph as it is now.
         let mut terms = Vec::new();
+        let mut memo = BuildMemo::default();
         for &class in classes.iter().rev() {
             if crate::cancellation::is_cancelled() {
                 return false;
@@ -1464,7 +1466,8 @@ impl Engine {
                 // Unshared: some ancestor's window covers it.
                 continue;
             }
-            let Some(term) = extractor.build(graph, NodeId::from_raw(class.raw())) else {
+            let origin = NodeId::from_raw(class.raw());
+            let Some(term) = extractor.build_shared(graph, origin, &mut memo) else {
                 continue;
             };
             // A term is worth another look once the graph has learnt
@@ -1477,7 +1480,7 @@ impl Engine {
                 .get(&term)
                 .is_none_or(|&last| term_touched(graph, term) > last);
             if fresh {
-                terms.push((NodeId::from_raw(class.raw()), term));
+                terms.push((origin, term));
             }
         }
         let mut changed = false;

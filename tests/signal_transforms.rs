@@ -5,12 +5,16 @@ use std::f64::consts::TAU;
 
 use num_complex::Complex64;
 use rssn::kernels::fft;
+use rssn::kernels::fftconv;
+use rssn::kernels::fftconv::OverlapSavePlan;
 use rssn::kernels::signal;
+use rssn::kernels::signal::FilterError;
 use rssn::kernels::signal::SignalError;
 use rssn::kernels::wavelets;
 use rssn::kernels::wavelets::FrftPlan;
 use rssn::kernels::wavelets::Wavelet;
 use rssn::kernels::wavelets::WaveletError;
+use rssn::kernels::wavelets::WaveletProcessingError;
 
 fn close(
     got: f64,
@@ -289,7 +293,7 @@ fn packet_bands_follow_tree_order_and_reconstruct_all_families() {
         Err(WaveletError::Shape)
     );
     assert_eq!(
-        wavelets::inverse_wavelet_packet(&[vec![0.0]; 0], Wavelet::Haar),
+        wavelets::inverse_wavelet_packet(&[], Wavelet::Haar),
         Err(WaveletError::Shape)
     );
 }
@@ -324,4 +328,307 @@ fn reusable_fractional_fourier_plan_matches_matrix_fft_and_group_law() {
     }
     assert!(FrftPlan::new(1).is_err());
     assert!(FrftPlan::new(usize::MAX).is_err());
+}
+
+#[test]
+fn packed_fft_handles_degenerate_inputs_and_real_endpoints() {
+    assert!(fft::fft(&[]).is_empty());
+    assert!(fft::rfft(&[]).is_empty());
+    assert!(fft::irfft(&[], 0).is_empty());
+    assert_eq!(
+        fft::fft(&[Complex64::new(3.0, -0.0)])[0].im.to_bits(),
+        (-0.0_f64).to_bits()
+    );
+    assert_eq!(fft::rfft(&[3.0]), [Complex64::new(3.0, 0.0)]);
+    assert_eq!(fft::irfft(&[Complex64::new(3.0, f64::NAN)], 1), [3.0]);
+
+    let original = [3.0, -2.0, 1.5, 2.0, 4.0, 0.5];
+    let mut spectrum = fft::rfft(&original);
+    assert_eq!(spectrum[0].im.to_bits(), 0);
+    assert_eq!(spectrum[3].im.to_bits(), 0);
+    spectrum[0].im = f64::NAN;
+    spectrum[3].im = f64::INFINITY;
+    for (got, want) in fft::irfft(&spectrum, original.len())
+        .into_iter()
+        .zip(original)
+    {
+        close(got, want);
+    }
+    let filled = fft::irfft(&[Complex64::ONE], 4);
+    assert_eq!(filled, [0.25; 4]);
+}
+
+#[test]
+fn wide_strided_fft_matches_independent_lanes() {
+    let shape = [257, 1_024];
+    let [rows, cols] = shape;
+    let data = (0..rows * cols)
+        .map(|index| {
+            let index = index as f64;
+            Complex64::new((index * 0.037).cos(), (index * 0.107).sin())
+        })
+        .collect::<Vec<_>>();
+    let compute = |threads| {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap()
+            .install(|| fft::fft_axes(&data, &shape, &[0], false, fft::Norm::Backward).unwrap())
+    };
+    let parallel = compute(4);
+    assert_eq!(compute(1), parallel);
+    for column in [0, 1, 512, 1_023] {
+        let lane = data
+            .chunks_exact(cols)
+            .map(|row| row[column])
+            .collect::<Vec<_>>();
+        for (row, expected) in parallel.chunks_exact(cols).zip(fft::fft(&lane)) {
+            close_complex(row[column], expected);
+        }
+    }
+}
+
+#[test]
+fn overlap_save_matches_direct_convolution_across_blocks_and_tail() {
+    let taps = (0..37)
+        .map(|index| (f64::from(index) * 0.13).sin() * 0.125)
+        .collect::<Vec<_>>();
+    let plan = OverlapSavePlan::new(&taps).unwrap();
+    for len in [1, 8, 214, 215, 216, 537, 70_001] {
+        let x = (0..len)
+            .map(|index| (f64::from(index) * 0.11).cos())
+            .collect::<Vec<_>>();
+        let expected = signal::convolve(&x, &taps);
+        let got = plan.apply(&x).unwrap();
+        let automatic = fftconv::convolve(&taps, &x);
+        assert_eq!(got.len(), expected.len());
+        assert_eq!(automatic.len(), expected.len());
+        for (got, expected) in got.into_iter().zip(&expected) {
+            close(got, *expected);
+        }
+        for (got, expected) in automatic.into_iter().zip(expected) {
+            close(got, expected);
+        }
+    }
+    assert!(plan.apply(&[]).unwrap().is_empty());
+    assert_eq!(
+        plan.apply(&[f64::NAN]),
+        Err(FilterError::Signal(SignalError::NonFiniteInput))
+    );
+    assert!(matches!(
+        OverlapSavePlan::new(&[]),
+        Err(FilterError::InvalidParameters)
+    ));
+}
+
+#[test]
+fn fft_convolution_retains_inputs_of_very_different_scales() {
+    let x = [1e80; 30];
+    let y = [1e-80; 31];
+    for (got, expected) in fftconv::convolve(&x, &y)
+        .into_iter()
+        .zip(signal::convolve(&x, &y))
+    {
+        close(got, expected);
+    }
+    for period in [1, 2, 3, 4, 31, 32] {
+        let a = (0..period)
+            .map(|index| (index as f64 * 0.271).sin())
+            .collect::<Vec<_>>();
+        let b = (0..period)
+            .map(|index| (index as f64 * 0.089).cos())
+            .collect::<Vec<_>>();
+        let output = fftconv::circular_convolve(&a, &b);
+        for (lag, value) in output.into_iter().enumerate() {
+            let expected = a
+                .iter()
+                .enumerate()
+                .map(|(index, sample)| sample * b[(lag + period - index) % period])
+                .sum();
+            close(value, expected);
+        }
+    }
+}
+
+#[test]
+fn fft_autocorrelation_is_linear_and_uses_nonnegative_lags() {
+    for n in [0, 1, 2, 19, 48] {
+        let samples = (0..n)
+            .map(|index| (f64::from(index) * 0.4).cos())
+            .collect::<Vec<_>>();
+        let output = fftconv::autocorrelate(&samples);
+        assert_eq!(output.len(), samples.len());
+        for (lag, got) in output.into_iter().enumerate() {
+            let expected = samples
+                .iter()
+                .zip(&samples[lag..])
+                .map(|(a, b)| a * b)
+                .sum();
+            close(got, expected);
+        }
+    }
+}
+
+#[test]
+fn windowed_fir_filters_have_symmetric_taps_and_expected_passbands() {
+    let lowpass = signal::firwin_lowpass(65, 0.25, 6.0).unwrap();
+    let bandpass = signal::firwin_bandpass(64, 0.3, 0.7, 6.0).unwrap();
+    for taps in [&lowpass, &bandpass] {
+        for (&left, &right) in taps.iter().zip(taps.iter().rev()) {
+            close(left, right);
+        }
+    }
+    let low = signal::frequency_response(&lowpass, &[1.0], &[0.0, 0.25, 1.0]).unwrap();
+    close(low[0].norm(), 1.0);
+    assert!(low[1].norm() < 0.001);
+    close_complex(low[0], low[2]);
+    let band = signal::frequency_response(&bandpass, &[1.0], &[0.0, 0.25, 0.5]).unwrap();
+    assert!(band[0].norm() < 0.001);
+    close(band[1].norm(), 1.0);
+    assert!(band[2].norm() < 0.001);
+    assert_eq!(
+        signal::firwin_lowpass(0, 0.5, 2.0),
+        Err(FilterError::InvalidParameters)
+    );
+    assert_eq!(
+        signal::firwin_bandpass(10, 0.6, 0.5, 2.0),
+        Err(FilterError::InvalidParameters)
+    );
+    assert_eq!(
+        signal::firwin_lowpass(usize::MAX, 0.5, 2.0),
+        Err(FilterError::Signal(SignalError::OutputSize))
+    );
+}
+
+#[test]
+fn second_order_sections_agree_with_direct_filtering_and_response() {
+    let sections = [
+        [2.0, 1.0, -0.5, 2.0, -0.25, 0.125],
+        [1.0, 0.0, 0.5, 1.0, 0.2, 0.0],
+    ];
+    let x = (0..150)
+        .map(|i| (f64::from(i) * 0.31).sin())
+        .collect::<Vec<_>>();
+    let expected = sections.iter().fold(x.clone(), |state, row| {
+        signal::lfilter(&row[..3], &row[3..], &state)
+    });
+    let got = signal::sos_filter(&x, &sections).unwrap();
+    for (got, expected) in got.into_iter().zip(expected) {
+        close(got, expected);
+    }
+
+    assert_eq!(signal::sos_filter(&x, &[]).unwrap(), x);
+    assert_eq!(
+        signal::sos_filter(&x, &[[0.0; 6]]),
+        Err(FilterError::InvalidParameters)
+    );
+    let response = signal::frequency_response(&[1.0], &[1.0, -0.5], &[0.0, 0.25, 0.5]).unwrap();
+    close_complex(response[0], Complex64::new(2.0, 0.0));
+    close_complex(response[1], Complex64::new(0.8, -0.4));
+    close_complex(response[2], Complex64::new(2.0 / 3.0, 0.0));
+    assert_eq!(
+        signal::frequency_response(&[1.0], &[1.0, -1.0], &[0.0]),
+        Err(FilterError::Signal(SignalError::NonFiniteResult))
+    );
+}
+
+#[test]
+fn polyphase_resampling_is_centered_and_rejects_aliases() {
+    let impulse = (0..51)
+        .map(|index| f64::from(index == 25))
+        .collect::<Vec<_>>();
+    let output = signal::resample_poly(&impulse, 4, 2).unwrap();
+    assert_eq!(output, signal::resample_poly(&impulse, 2, 1).unwrap());
+    assert_eq!(output.len(), 102);
+    assert!((output[50] - 1.0).abs() < 0.002);
+    for offset in 1..=30 {
+        close(output[50 + offset], output[50 - offset]);
+    }
+    let signal = (0..600)
+        .map(|i| {
+            let i = f64::from(i);
+            (TAU * 0.05 * i).cos() + (TAU * 0.35 * i).sin()
+        })
+        .collect::<Vec<_>>();
+    let down = signal::resample_poly(&signal, 1, 3).unwrap();
+    assert_eq!(down.len(), 200);
+    for (index, value) in down.into_iter().enumerate().skip(15).take(170) {
+        let expected = (TAU * 0.15 * index as f64).cos();
+        assert!((value - expected).abs() < 0.005, "{value} vs {expected}");
+    }
+    assert_eq!(
+        signal::resample_poly(&[1.0, 2.0], 3, 3).unwrap(),
+        [1.0, 2.0]
+    );
+    assert_eq!(
+        signal::resample_poly(&[1.0], usize::MAX, 1),
+        Err(FilterError::Signal(SignalError::OutputSize))
+    );
+    assert_eq!(
+        signal::resample_poly(&[1.0], 1, 0),
+        Err(FilterError::Signal(SignalError::InvalidRate))
+    );
+}
+
+#[test]
+fn stationary_wavelets_reconstruct_and_commute_with_periodic_shifts() {
+    for wavelet in Wavelet::ALL {
+        let original = (0..29)
+            .map(|index| (f64::from(index) * 0.26).cos())
+            .collect::<Vec<_>>();
+        let bands = wavelets::swt(&original, wavelet, 4).unwrap();
+        let back = wavelets::iswt(&bands, wavelet).unwrap();
+        let mut rotated = original.clone();
+        rotated.rotate_right(3);
+        let shifted = wavelets::swt(&rotated, wavelet, 4).unwrap();
+        assert_eq!(bands.len(), 5);
+        for (band, shifted) in bands.into_iter().zip(shifted) {
+            assert_eq!(band.len(), original.len());
+            for (value, shifted) in band.iter().cycle().skip(26).take(29).zip(shifted) {
+                close(*value, shifted);
+            }
+        }
+        for (got, expected) in back.into_iter().zip(original) {
+            close(got, expected);
+        }
+    }
+    assert_eq!(
+        wavelets::swt(&[1.0], Wavelet::Haar, 1),
+        Err(WaveletProcessingError::Transform(
+            WaveletError::TooManyLevels
+        ))
+    );
+    assert_eq!(
+        wavelets::iswt(&[vec![1.0; 4], vec![0.0; 3]], Wavelet::Haar),
+        Err(WaveletProcessingError::Transform(WaveletError::Shape))
+    );
+}
+
+#[test]
+fn wavelet_denoising_treats_approximation_and_details_separately() {
+    use wavelets::Boundary;
+
+    let signal = [3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0];
+    let hard = |threshold| {
+        wavelets::wavelet_hard_threshold(&signal, threshold, Wavelet::Haar, 1, Boundary::Periodic)
+    };
+    let soft = |threshold| {
+        wavelets::wavelet_soft_threshold(&signal, threshold, Wavelet::Haar, 1, Boundary::Periodic)
+    };
+    for (got, expected) in hard(0.5).unwrap().into_iter().zip(signal) {
+        close(got, expected);
+    }
+    for got in hard(2.0).unwrap() {
+        close(got, 2.0);
+    }
+    for (got, expected) in soft(0.5).unwrap().into_iter().zip(signal) {
+        let shrink = std::f64::consts::FRAC_1_SQRT_2 * 0.5;
+        close(got, expected - (expected - 2.0).signum() * shrink);
+    }
+    assert_eq!(soft(-0.1), Err(WaveletProcessingError::InvalidCoefficient));
+    assert_eq!(Wavelet::Db10.coeff_len(0, Boundary::Zero), 0);
+    assert_eq!(
+        wavelets::idwt2(&[], usize::MAX, 1, Wavelet::Haar, Boundary::Periodic),
+        Err(WaveletError::Shape)
+    );
 }

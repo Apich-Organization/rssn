@@ -3,8 +3,9 @@ use std::fmt;
 use rustfft::FftDirection;
 use rustfft::num_complex::Complex;
 
+use crate::kernels::par;
 use crate::kernels::reuse::fft_plan;
-use crate::kernels::reuse::fft_scratch;
+use crate::kernels::reuse::fft_scratch_for;
 
 /// Error in a checked signal transform, spectral estimate or resampler.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -152,8 +153,9 @@ pub(super) fn welch_psd(
     let rate_scale = sample_rate.sqrt();
     let fft = fft_plan(frame_len, FftDirection::Forward);
     let mut spectrum = vec![Complex::ZERO; frame_len];
-    let mut scratch = fft_scratch();
-    scratch.resize(fft.get_inplace_scratch_len(), Complex::ZERO);
+    let scratch_len = fft.get_inplace_scratch_len();
+    let mut scratch = fft_scratch_for(scratch_len);
+    scratch.resize(scratch_len, Complex::ZERO);
     let bins = frame_len / 2 + 1;
     let mut density = vec![0.0; bins];
     for (index, frame) in samples.windows(frame_len).step_by(hop).enumerate() {
@@ -211,8 +213,9 @@ pub(super) fn welch_cross_spectrum(
     let plan = fft_plan(frame_len, FftDirection::Forward);
     let mut first = vec![Complex::ZERO; frame_len];
     let mut second = vec![Complex::ZERO; frame_len];
-    let mut scratch = fft_scratch();
-    scratch.resize(plan.get_inplace_scratch_len(), Complex::ZERO);
+    let scratch_len = plan.get_inplace_scratch_len();
+    let mut scratch = fft_scratch_for(scratch_len);
+    scratch.resize(scratch_len, Complex::ZERO);
     let mut statistics = vec![(0.0, 0.0, Complex::ZERO); frame_len / 2 + 1];
     let rate_scale = sample_rate.sqrt();
     let frames = x.windows(frame_len).zip(y.windows(frame_len)).step_by(hop);
@@ -329,8 +332,9 @@ pub(super) fn inverse_stft(
     overlapping.resize(len, Overlap::default());
     let fft = fft_plan(frame_len, FftDirection::Inverse);
     let mut time = vec![Complex::ZERO; frame_len];
-    let mut scratch = fft_scratch();
-    scratch.resize(fft.get_inplace_scratch_len(), Complex::ZERO);
+    let scratch_len = fft.get_inplace_scratch_len();
+    let mut scratch = fft_scratch_for(scratch_len);
+    scratch.resize(scratch_len, Complex::ZERO);
     let inverse_len = 1.0 / frame_len as f64;
     for (index, frame) in frames.iter().enumerate() {
         let offset = index * hop;
@@ -408,25 +412,37 @@ pub(super) fn upfirdn(
     // when the upsampled signal would be much too large to materialize.
     let end = (samples.len() as u128 - 1) * up as u128 + taps.len() as u128 - 1;
     let len = usize::try_from(end / down as u128 + 1).map_err(|_| SignalError::OutputSize)?;
+    evaluate_polyphase(samples, taps, up, down, 0, len)
+}
+
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "each output is confined to the support of the two input slices"
+)]
+pub(super) fn evaluate_polyphase(
+    samples: &[f64],
+    taps: &[f64],
+    up: usize,
+    down: usize,
+    delay: usize,
+    len: usize,
+) -> Result<Vec<f64>, SignalError> {
     let mut output = zeroed_output(len)?;
-    for (index, result) in output.iter_mut().enumerate() {
-        let output_time = index as u128 * down as u128;
+    par::for_each_mut(&mut output, 16_384, |index, result| {
+        let output_time = index as u128 * down as u128 + delay as u128;
         let head = output_time / up as u128;
         let phase = (output_time % up as u128) as usize;
         let first = head.saturating_sub(samples.len() as u128 - 1);
         let first_tap = phase as u128 + first * up as u128;
-        if first_tap >= taps.len() as u128 {
-            continue;
+        if first_tap < taps.len() as u128 {
+            let last_sample = (head - first) as usize;
+            let filter = taps[first_tap as usize..].iter().step_by(up);
+            let inputs = samples[..=last_sample].iter().rev();
+            *result = filter.zip(inputs).map(|(tap, sample)| tap * sample).sum();
         }
-        let last = head.min((taps.len().saturating_sub(1).saturating_sub(phase) / up) as u128);
-        let count = (last - first + 1) as usize;
-        let last_sample = (head - first) as usize;
-        let filter = taps.iter().skip(first_tap as usize).step_by(up).take(count);
-        let inputs = samples.iter().rev().skip(samples.len() - 1 - last_sample);
-        *result = filter.zip(inputs).map(|(tap, sample)| tap * sample).sum();
-        if !result.is_finite() {
-            return Err(SignalError::NonFiniteResult);
-        }
+    });
+    if output.iter().any(|value| !value.is_finite()) {
+        return Err(SignalError::NonFiniteResult);
     }
     Ok(output)
 }

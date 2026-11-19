@@ -90,6 +90,59 @@ fn field<'a>(
     };
     &r.fields.iter().find(|(n, _)| n == name).unwrap().1
 }
+
+#[test]
+fn batched_statistics_validate_probability_and_measurement_dimensions() {
+    let sample = vector(&[3., 1., 2., 4.], dim("Length"));
+    let probabilities = vector(&[0.5, 1.], DimExpr::Dimless);
+    let quantiles = call(
+        "num_descriptive_quantiles",
+        &[sample.clone(), probabilities],
+    );
+    assert_units(&quantiles, dim("Length"));
+    let Value::Tensor(quantiles) = quantiles else {
+        panic!("quantile vector");
+    };
+    assert_eq!(
+        quantiles.data.iter().map(number).collect::<Vec<_>>(),
+        vec![2.5, 4.]
+    );
+
+    let cdf = call(
+        "num_robust_ecdf_batch",
+        &[sample.clone(), vector(&[0., 2.], dim("Length"))],
+    );
+    assert_units(&cdf, DimExpr::Dimless);
+    let Value::Tensor(cdf) = cdf else {
+        panic!("CDF vector");
+    };
+    assert_eq!(
+        cdf.data.iter().map(number).collect::<Vec<_>>(),
+        vec![0., 0.5]
+    );
+
+    let s = Session::new();
+    let wrong_units = vector(&[0.5, 1.], dim("Time"));
+    for operator in ["num_descriptive_quantiles", "num_robust_ecdf_batch"] {
+        assert!(
+            s.call_value(
+                operator,
+                &[sample.clone(), wrong_units.clone()],
+                &CallCtx::new()
+            )
+            .is_err()
+        );
+    }
+    assert!(
+        s.call_value(
+            "num_stats_ext_adjust_p_holm",
+            &[wrong_units],
+            &CallCtx::new()
+        )
+        .is_err()
+    );
+}
+
 #[test]
 fn sampled_norms_projection_and_normalization_keep_independent_units() {
     let f = sample(&[0., 1., 2.], &[2., 2., 2.], dim("Length"));

@@ -1,4 +1,4 @@
-//! Hypothesis testing, regression (OLS, ridge, lasso, logistic), PCA,
+//! Hypothesis testing, p-value adjustment, regression (OLS, ridge, lasso, logistic), PCA,
 //! rank correlations (Spearman, Kendall), KDE, and bootstrap / jackknife resampling.
 
 use crate::kernels::dense::DenseError;
@@ -6,7 +6,11 @@ use crate::kernels::dense::Mat;
 use crate::kernels::dense::{
     self,
 };
+use crate::kernels::descriptive;
 use crate::kernels::distributions::Distribution;
+use crate::kernels::numeric_common::scaled_difference;
+use crate::kernels::par;
+use crate::kernels::reuse::f64_scratch;
 use crate::kernels::robust;
 use crate::kernels::special::ln_beta_numerical;
 use crate::kernels::special::regularized_beta;
@@ -59,55 +63,6 @@ fn map_fit_error(error: DenseError) -> StatsExtError {
     }
 }
 
-fn quantile(
-    values: &[f64],
-    p: f64,
-) -> Result<f64, StatsExtError> {
-    if values.is_empty() {
-        return Err(StatsExtError::Empty);
-    }
-    if !(0.0..=1.0).contains(&p) || p.is_nan() {
-        return Err(StatsExtError::Domain(
-            "quantile p must be in [0, 1]".to_string(),
-        ));
-    }
-    Ok(robust::quantile(values, p, 7))
-}
-
-fn corr(
-    x: &[f64],
-    y: &[f64],
-    _population: bool,
-) -> Result<f64, StatsExtError> {
-    if x.len() != y.len() {
-        return Err(StatsExtError::ShapeMismatch(
-            "corr length mismatch".to_string(),
-        ));
-    }
-    if x.len() < 2 {
-        return Err(StatsExtError::Domain(
-            "corr requires at least 2 observations".to_string(),
-        ));
-    }
-    let n = x.len() as f64;
-    let mx = x.iter().sum::<f64>() / n;
-    let my = y.iter().sum::<f64>() / n;
-    let mut num = 0.0;
-    let mut sx = 0.0;
-    let mut sy = 0.0;
-    for (&xi, &yi) in x.iter().zip(y.iter()) {
-        let dx = xi - mx;
-        let dy = yi - my;
-        num += dx * dy;
-        sx += dx * dx;
-        sy += dy * dy;
-    }
-    if sx == 0.0 || sy == 0.0 {
-        return Err(StatsExtError::Domain("zero variance in corr".to_string()));
-    }
-    Ok(num / (sx.sqrt() * sy.sqrt()))
-}
-
 /// The outcome of a statistical hypothesis test.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TestResult {
@@ -117,6 +72,75 @@ pub struct TestResult {
     pub p_value: f64,
     /// Degrees of freedom, when applicable.
     pub df: Option<f64>,
+}
+
+fn sorted_p_values(probabilities: &[f64]) -> Result<Vec<(usize, f64)>, StatsExtError> {
+    if probabilities.iter().any(|p| !(0.0..=1.0).contains(p)) {
+        return Err(StatsExtError::Domain(
+            "p-values must be finite and in [0, 1]".into(),
+        ));
+    }
+    let mut order: Vec<_> = probabilities.iter().copied().enumerate().collect();
+    order.sort_unstable_by(|(_, a), (_, b)| a.total_cmp(b));
+    Ok(order)
+}
+
+fn adjust_p_step_up(
+    probabilities: &[f64],
+    dependence_factor: f64,
+) -> Result<Vec<f64>, StatsExtError> {
+    let order = sorted_p_values(probabilities)?;
+    let mut adjusted = vec![0.0; order.len()];
+    let tests = order.len() as f64;
+    let mut upper: f64 = 1.0;
+    for (rank, (index, probability)) in order.into_iter().enumerate().rev() {
+        let multiplier = dependence_factor * (tests / (rank + 1) as f64);
+        upper = upper.min(multiplier * probability);
+        adjusted[index] = upper;
+    }
+    Ok(adjusted)
+}
+
+/// Benjamini–Hochberg adjusted p-values for false discovery rate control.
+///
+/// The guarantee holds under independence or positive regression dependence
+/// of the null tests.
+/// Results retain the original order. An empty input yields an empty vector.
+///
+/// # Errors
+/// [`StatsExtError::Domain`] if any p-value is outside `[0, 1]` or non-finite.
+pub fn adjust_p_bh(probabilities: &[f64]) -> Result<Vec<f64>, StatsExtError> {
+    adjust_p_step_up(probabilities, 1.0)
+}
+
+/// Benjamini–Yekutieli adjusted p-values for false discovery rate control
+/// under arbitrary dependence. Results retain the original order.
+/// An empty input yields an empty vector.
+///
+/// # Errors
+/// [`StatsExtError::Domain`] if any p-value is outside `[0, 1]` or non-finite.
+pub fn adjust_p_by(probabilities: &[f64]) -> Result<Vec<f64>, StatsExtError> {
+    let harmonic = (1..=probabilities.len())
+        .map(|rank| 1.0 / rank as f64)
+        .sum();
+    adjust_p_step_up(probabilities, harmonic)
+}
+
+/// Holm step-down adjusted p-values for family-wise error rate control.
+/// Results retain the original order. An empty input yields an empty vector.
+///
+/// # Errors
+/// [`StatsExtError::Domain`] if any p-value is outside `[0, 1]` or non-finite.
+pub fn adjust_p_holm(probabilities: &[f64]) -> Result<Vec<f64>, StatsExtError> {
+    let order = sorted_p_values(probabilities)?;
+    let mut adjusted = vec![0.0; order.len()];
+    let tests = order.len();
+    let mut lower: f64 = 0.0;
+    for (rank, (index, probability)) in order.into_iter().enumerate() {
+        lower = lower.max((tests - rank) as f64 * probability).min(1.0);
+        adjusted[index] = lower;
+    }
+    Ok(adjusted)
 }
 
 /// The result of a linear regression (`ols`, `ridge`, or `lasso`).
@@ -244,24 +268,11 @@ fn scaled_moments(values: &[f64]) -> Result<ScaledMoments, StatsExtError> {
     })
 }
 
-fn scaled_difference(
-    left: f64,
-    right: f64,
-    scale: f64,
-) -> f64 {
-    let difference = left - right;
-    if difference.is_finite() {
-        difference / scale
-    } else {
-        left / scale - right / scale
-    }
-}
-
 /// Average 1-based ranks with tie averaging, plus `sum(t^3 - t)` for tie groups.
 fn average_ranks_and_tie_sum(values: &[f64]) -> (Vec<f64>, f64) {
     let n = values.len();
     let mut order: Vec<usize> = (0..n).collect();
-    order.sort_by(|&a, &b| values[a].total_cmp(&values[b]));
+    order.sort_unstable_by(|&a, &b| values[a].total_cmp(&values[b]));
 
     let mut ranks = vec![0.0; n];
     let mut tie_sum = 0.0;
@@ -1341,9 +1352,14 @@ pub fn spearman(
     if left.is_empty() {
         return Err(StatsExtError::Empty);
     }
-    let (r_left, _) = average_ranks_and_tie_sum(left);
-    let (r_right, _) = average_ranks_and_tie_sum(right);
-    corr(&r_left, &r_right, false)
+    let rank = |sample: &&[f64]| average_ranks_and_tie_sum(sample).0;
+    let ranks = par::map_slice(
+        &[left, right],
+        if left.len() >= 16_384 { 2 } else { 3 },
+        rank,
+    );
+    descriptive::corr(&ranks[0], &ranks[1], false)
+        .map_err(|error| StatsExtError::Domain(error.to_string()))
 }
 
 /// Kendall's tau-b rank correlation, adjusted for ties in either sample.
@@ -1495,15 +1511,7 @@ pub fn kde(
             bw
         },
         | None => {
-            let moments = scaled_moments(samples)?;
-            let std = moments.variance.sqrt();
-            let iqr = robust::iqr(samples) / moments.scale;
-            let spread = if iqr > 0.0 {
-                std.min(iqr / 1.34)
-            } else {
-                std
-            };
-            let bw = moments.scale * (0.9 * spread * (samples.len() as f64).powf(-0.2));
+            let bw = robust::bandwidth_silverman(samples);
             if bw <= 0.0 || !bw.is_finite() {
                 return Err(StatsExtError::Domain(
                     "cannot infer kde bandwidth for a zero-spread sample".to_string(),
@@ -1513,20 +1521,7 @@ pub fn kde(
         },
     };
 
-    let n = samples.len() as f64;
-    let divisor = n * (2.0 * PI).sqrt();
-    let mut densities = Vec::with_capacity(points.len());
-    for &x in points {
-        let sum: f64 = samples
-            .iter()
-            .map(|&xi| {
-                let u = scaled_difference(x, xi, h);
-                (-0.5 * u * u).exp()
-            })
-            .sum();
-        densities.push((sum / divisor) / h);
-    }
-    Ok(densities)
+    Ok(robust::gaussian_kde_finite(samples, points, h))
 }
 
 // ----- resampling (bootstrap & jackknife) -----------------------------------
@@ -1571,10 +1566,11 @@ pub fn bootstrap(
     })?;
     let estimate = finite_statistic(statistic, samples)?;
     let n = samples.len();
-    let mut resample = vec![0.0; n];
+    let mut resample = f64_scratch(n.max(n_resamples));
+    resample.resize(n, 0.0);
 
     for _ in 0..n_resamples {
-        for slot in &mut resample {
+        for slot in resample.iter_mut() {
             let draw = uniform();
             if !(0.0..1.0).contains(&draw) {
                 return Err(StatsExtError::Domain(
@@ -1588,8 +1584,10 @@ pub fn bootstrap(
     }
 
     let moments = scaled_moments(&replicates)?;
-    let ci_low = quantile(&replicates, 0.025)?;
-    let ci_high = quantile(&replicates, 0.975)?;
+    resample.clear();
+    resample.extend_from_slice(&replicates);
+    let ci_low = robust::quantile_select(&mut resample, 0.025, 7);
+    let ci_high = robust::quantile_select(&mut resample, 0.975, 7);
 
     Ok(BootstrapResult {
         estimate,
@@ -1619,13 +1617,15 @@ pub fn jackknife(
     }
     let estimate = finite_statistic(statistic, samples)?;
     let mut jackknife_estimates = Vec::with_capacity(n);
-    let mut loo = Vec::with_capacity(n - 1);
+    let mut loo = f64_scratch(n - 1);
+    loo.extend_from_slice(&samples[1..]);
 
-    for i in 0..n {
-        loo.clear();
-        loo.extend_from_slice(&samples[..i]);
-        loo.extend_from_slice(&samples[i + 1..]);
+    for (i, &sample) in samples.iter().enumerate() {
         jackknife_estimates.push(finite_statistic(statistic, &loo)?);
+        // Moving the omitted index from i to i+1 changes just one element.
+        if let Some(slot) = loo.get_mut(i) {
+            *slot = sample;
+        }
     }
 
     let moments = scaled_moments(&jackknife_estimates)?;

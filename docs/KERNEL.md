@@ -406,6 +406,15 @@ summarised in [ARCHITECTURE.md](../ARCHITECTURE.md#c-interface).
 
 ## Adding an operator
 
+For numerical functions supported by the composable codecs, add a Rust source
+path, ABI name, namespace and dimension policy to `codec-policy.tsv`. Run
+`cargo run --locked -p rssn-api-gen -- --codecs-write` and use the emitted
+overload through the same manifest and value-call APIs.
+[Binding generation and supported contract shapes](../tools/rssn-api-gen/README.md)
+
+For operators registered directly, including symbolic rules and callback or
+native object adapters, follow the registration steps below.
+
 1. Register it with `Installer::op` or `Registry::register_op`.
 2. Declare a `Signature` (`.signature(..)`), or a `DynamicReason`
    (`.dynamic_reason(..)`).

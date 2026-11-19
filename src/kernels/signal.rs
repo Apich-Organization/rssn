@@ -20,11 +20,13 @@ use rustfft::num_complex::Complex;
 use super::fftconv::convolve_direct;
 use super::par;
 use super::reuse::fft_plan;
-use super::reuse::fft_scratch;
+use super::reuse::fft_scratch_for;
 
+mod filters;
 mod framed;
 mod spectral;
 
+pub use filters::FilterError;
 pub use framed::CrossSpectrum;
 pub use framed::PowerSpectrum;
 pub use framed::SignalError;
@@ -483,8 +485,9 @@ fn inverse_cosine_transform(
         spectrum.push(Complex::new(re * scale, -neg_im * scale) * Complex::from_polar(1.0, angle));
     }
     let plan = fft_plan(n, FftDirection::Inverse);
-    let mut scratch = fft_scratch();
-    scratch.resize(plan.get_inplace_scratch_len(), Complex::ZERO);
+    let scratch_len = plan.get_inplace_scratch_len();
+    let mut scratch = fft_scratch_for(scratch_len);
+    scratch.resize(scratch_len, Complex::ZERO);
     plan.process_with_scratch(&mut spectrum, &mut scratch);
     let (even, odd) = spectrum.split_at(n.div_ceil(2));
     let mut result = Vec::with_capacity(n);
@@ -518,13 +521,13 @@ pub fn stft(
     let count = (x.len() - frame_len) / hop + 1;
     let mut output = vec![Vec::new(); count];
     let transform_frames = |block: usize, frames: &mut [Vec<Complex<f64>>]| {
-        let mut scratch = fft_scratch();
-        scratch.resize(plan.get_inplace_scratch_len(), Complex::ZERO);
+        let scratch_len = plan.get_inplace_scratch_len();
+        let mut scratch = fft_scratch_for(scratch_len);
+        scratch.resize(scratch_len, Complex::ZERO);
         for (offset, frame) in frames.iter_mut().enumerate() {
             let start = (block + offset) * hop;
-            *frame = x
+            *frame = x[start..start + frame_len]
                 .iter()
-                .skip(start)
                 .zip(window)
                 .map(|(sample, weight)| Complex::new(sample * weight, 0.0))
                 .collect();
@@ -555,6 +558,97 @@ pub fn spectrogram(
         .collect()
 }
 
+/// Evaluates a digital transfer function at frequencies in cycles per sample.
+///
+/// Uses the coefficient convention of [`lfilter`]. Frequencies are periodic
+/// modulo one, with Nyquist at `0.5`. Returns a complex response per frequency.
+///
+/// # Errors
+///
+/// Errors for empty coefficients, non-finite inputs or a singular or
+/// unrepresentable response at a requested frequency.
+pub fn frequency_response(
+    b: &[f64],
+    a: &[f64],
+    frequencies: &[f64],
+) -> Result<Vec<Complex64>, FilterError> {
+    filters::frequency_response(b, a, frequencies)
+}
+
+/// Designs a symmetric, unit-DC-gain low-pass FIR using a Kaiser window.
+///
+/// The cutoff is normalized to Nyquist and must lie strictly between zero
+/// and one. A larger absolute `beta` improves sidelobe attenuation at the
+/// expense of transition width.
+///
+/// # Errors
+///
+/// Errors for invalid parameters or unrepresentable coefficients.
+pub fn firwin_lowpass(
+    num_taps: usize,
+    cutoff: f64,
+    beta: f64,
+) -> Result<Vec<f64>, FilterError> {
+    filters::firwin(num_taps, 0.0, cutoff, beta)
+}
+
+/// Designs a symmetric band-pass FIR with unit gain at the passband center.
+///
+/// The cutoffs are ordered and normalized to Nyquist, with
+/// `0 < low < high < 1`. The window is Kaiser, parameterized by `beta`.
+///
+/// # Errors
+///
+/// Errors for invalid parameters or unrepresentable coefficients.
+pub fn firwin_bandpass(
+    num_taps: usize,
+    low: f64,
+    high: f64,
+    beta: f64,
+) -> Result<Vec<f64>, FilterError> {
+    if low <= 0.0 {
+        return Err(FilterError::InvalidParameters);
+    }
+    filters::firwin(num_taps, low, high, beta)
+}
+
+/// Applies a zero-state cascade of second-order digital sections.
+///
+/// Each row of `sections` is `[b0, b1, b2, a0, a1, a2]`. The coefficients
+/// are normalized by `a0` and evaluated with transposed direct form II.
+/// An empty cascade is the identity.
+///
+/// # Errors
+///
+/// Errors for a zero leading denominator, non-finite input, or
+/// unrepresentable state or output.
+pub fn sos_filter(
+    samples: &[f64],
+    sections: &[[f64; 6]],
+) -> Result<Vec<f64>, FilterError> {
+    filters::sos_filter(samples, sections)
+}
+
+/// Resamples a real signal by a rational factor using a centered polyphase FIR.
+///
+/// Reduces the factors by their greatest common divisor, then designs a
+/// Kaiser low-pass filter with 10 taps on each side per rate phase
+/// (`beta = 5`). The input is zero extended at the boundaries. Output
+/// time zero aligns with input time zero, and the output contains
+/// `ceil(samples.len() * up / down)` samples.
+///
+/// # Errors
+///
+/// Errors for a zero factor, non-finite input or output, or unallocatable
+/// filter or output dimensions.
+pub fn resample_poly(
+    samples: &[f64],
+    up: usize,
+    down: usize,
+) -> Result<Vec<f64>, FilterError> {
+    filters::resample_poly(samples, up, down)
+}
+
 /// Linear FIR/IIR digital filter (`a[0] * y[n] = sum_k b[k]*x[n-k] - sum_{k>=1} a[k]*y[n-k]`).
 #[must_use]
 pub fn lfilter(
@@ -569,22 +663,30 @@ pub fn lfilter(
     if a0 == 0.0 {
         return vec![f64::NAN; x.len()];
     }
+    let numerator: Vec<_> = b
+        .iter()
+        .take(x.len())
+        .map(|coefficient| coefficient / a0)
+        .collect();
+    let feedback: Vec<_> = a
+        .iter()
+        .skip(1)
+        .take(x.len() - 1)
+        .map(|coefficient| coefficient / a0)
+        .collect();
     let mut y = vec![0.0; x.len()];
-    for n in 0..x.len() {
+    for (n, &sample) in x.iter().enumerate() {
         let mut acc = 0.0;
-        for (k, &bk) in b.iter().enumerate() {
-            if n >= k {
-                acc += (bk / a0) * x.get(n.saturating_sub(k)).copied().unwrap_or(0.0);
-            }
+        for (&tap, &input) in numerator
+            .iter()
+            .zip(std::iter::once(&sample).chain(x[..n].iter().rev()))
+        {
+            acc += tap * input;
         }
-        for (k, &ak) in a.iter().enumerate().skip(1) {
-            if n >= k {
-                acc -= (ak / a0) * y.get(n.saturating_sub(k)).copied().unwrap_or(0.0);
-            }
+        for (&tap, &previous) in feedback.iter().zip(y[..n].iter().rev()) {
+            acc -= tap * previous;
         }
-        if let Some(slot) = y.get_mut(n) {
-            *slot = acc;
-        }
+        y[n] = acc;
     }
     y
 }

@@ -47,7 +47,16 @@ describe capabilities compiled into a build, independently of adapter discovery.
 The global Rayon pool detects available CPUs. `RAYON_NUM_THREADS` sets its
 size, and a host can install a dedicated Rayon pool around its kernel work.
 Parallel helpers use the active pool and skip dispatch below their work limits
-or with one worker. [CPU execution policy](../src/execution.rs)
+or with one worker. Embedders with their own pools can query
+`execution::default_cpu_threads()` to apply the host default without starting
+the global pool. [CPU execution policy](../src/execution.rs)
+
+Compiled CPU batches lease exclusive temporary `f64` buffers. Numerical
+kernels can use the same reuse module for typed scratch and shared immutable
+plans. Sized scratch requests can reuse an idle allocation that already fits.
+Concurrent requests for the same cached plan share its construction. Returned
+results and active scratch leases remain owned by their callers.
+[Scratch and plan APIs](../src/kernels/reuse.rs)
 
 `DeviceInfo` describes device kind, supported `Dtype` values and operations,
 parallelism, buffer capacity, unified memory and determinism. Use `ops.structured`

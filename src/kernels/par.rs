@@ -117,12 +117,14 @@ where
         }
         s
     };
-    let parts = map_indexed(nb, grain.div_ceil(block).max(2), part);
-    let mut s = 0.0;
-    for p in parts {
-        s += p;
+    let minimum = grain.div_ceil(block).max(2);
+    if crate::execution::should_split(nb, minimum) {
+        map_indexed(nb, minimum, part)
+            .into_iter()
+            .fold(0.0, |total, value| total + value)
+    } else {
+        (0..nb).map(part).fold(0.0, |total, value| total + value)
     }
-    s
 }
 
 /// Runs `f(i, &mut items[i])` for every element, in parallel when there are
@@ -170,7 +172,7 @@ mod tests {
             }
             let mut flags = vec![true; 100];
             for_each_mut(&mut flags, 2, |_, flag| {
-                *flag = cancellation::is_cancelled()
+                *flag = cancellation::is_cancelled();
             });
             assert!(flags.into_iter().all(|flag| !flag));
         });

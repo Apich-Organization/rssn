@@ -157,7 +157,7 @@ proptest! {
 }
 
 // -------------------------------------------------------------------------
-// Arbitrary lengths (Bluestein chirp-z) against a direct-DFT oracle
+// Arbitrary lengths against a direct-DFT oracle
 // -------------------------------------------------------------------------
 
 /// Naive `O(n^2)` DFT, the reference every fast path is checked against.
@@ -318,20 +318,7 @@ fn power_of_two_results_are_bit_identical_to_the_radix2_kernel() {
 }
 
 #[test]
-fn cost_of_the_general_path() {
-    let m = 2048_usize;
-    let log_m = 11_usize;
-    println!(
-        "n = 1000 (not a power of two): Bluestein, m = {m}, \
-         3 transforms x {log_m} stages of {}/2 = {} butterflies",
-        m,
-        3 * m * log_m / 2
-    );
-    println!(
-        "n = 1024 (power of two): 10 stages of 512 = {} butterflies",
-        1024 * 10 / 2
-    );
-
+fn composite_and_power_of_two_plans_return_finite_values() {
     let reps = 32_u32;
     for (label, n) in [("n = 1000", 1000usize), ("n = 1024", 1024)] {
         let pattern = sample(n);
@@ -349,28 +336,8 @@ fn cost_of_the_general_path() {
 }
 
 // -------------------------------------------------------------------------
-// Prime lengths (Rader) and threaded batches
+// Prime lengths and threaded batches
 // -------------------------------------------------------------------------
-
-/// The convolution size Rader uses for a prime against the Bluestein size it
-/// replaces; `p = 2^(k-1) + 1` (17, 257, ...) gets an exact factor two.
-#[test]
-fn prime_length_convolution_sizes() {
-    for p in [17usize, 97, 257, 1021, 4099] {
-        let rader = (2 * p - 3).next_power_of_two();
-        let bluestein = (2 * p).next_power_of_two();
-        println!("p = {p}: Rader m = {rader}, Bluestein m = {bluestein}");
-        assert!(rader <= bluestein, "p = {p}");
-    }
-    assert_eq!(
-        (2 * 17usize - 3).next_power_of_two() * 2,
-        (2 * 17usize).next_power_of_two()
-    );
-    assert_eq!(
-        (2 * 257usize - 3).next_power_of_two() * 2,
-        (2 * 257usize).next_power_of_two()
-    );
-}
 
 #[test]
 fn prime_lengths_round_trip_and_match_the_direct_dft() {

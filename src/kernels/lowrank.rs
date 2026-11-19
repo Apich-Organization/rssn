@@ -1423,7 +1423,7 @@ mod tests {
         assert_eq!(rank_one.columns, [2]);
         assert_eq!(rank_one.coefficients.at(0, 2), 1.0);
         let zero = interpolative_decomposition(&Mat::zeros(2, 3), 2).unwrap();
-        assert!(zero.columns.is_empty());
+        assert_eq!(zero.columns, [] as [usize; 0]);
         assert_eq!((zero.coefficients.rows, zero.coefficients.cols), (0, 3));
         assert!(interpolative_decomposition(&a, 4).is_err());
         assert!(interpolative_decomposition(&mat(&[&[f64::NAN]]), 0).is_err());

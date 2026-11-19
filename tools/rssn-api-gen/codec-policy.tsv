@@ -52,8 +52,10 @@ crate::kernels::fft::rfft	num_fft_rfft	numerical_vector	Preserve
 crate::kernels::fft::rfft_axes	num_fft_rfft_axes	numerical_vector	TuplePreserve
 crate::kernels::fft::rfftfreq	num_fft_rfftfreq	numerical_vector	InverseSecond
 crate::kernels::fft::shift_permutation	num_fft_shift_permutation	numerical_vector	Dimensionless
+crate::kernels::fftconv::autocorrelate	num_fftconv_autocorrelate	numerical_vector	Square
 crate::kernels::fftconv::circular_convolve	num_fftconv_circular_convolve	numerical_vector	Product
 crate::kernels::fftconv::convolve	num_fftconv_convolve	numerical_vector	Product
+crate::kernels::fftconv::convolve_overlap_save	num_fftconv_convolve_overlap_save	numerical_vector	Product
 crate::kernels::fftconv::correlate	num_fftconv_correlate	numerical_vector	Product
 crate::kernels::fftconv::poly_mul_i64	num_fftconv_poly_mul_i64	numerical_vector	Dimensionless
 crate::kernels::fftconv::poly_mul_i64_checked	num_fftconv_poly_mul_i64_checked	numerical_vector	Dimensionless
@@ -145,6 +147,9 @@ crate::kernels::signal::convolve	num_signal_convolve	numerical_vector	Product
 crate::kernels::signal::cross_correlation	num_signal_cross_correlation	numerical_vector	Product
 crate::kernels::signal::dct	num_signal_dct	numerical_vector	Preserve
 crate::kernels::signal::dst	num_signal_dst	numerical_vector	Preserve
+crate::kernels::signal::firwin_bandpass	num_signal_firwin_bandpass	numerical_vector	Dimensionless
+crate::kernels::signal::firwin_lowpass	num_signal_firwin_lowpass	numerical_vector	Dimensionless
+crate::kernels::signal::frequency_response	num_signal_frequency_response	numerical_vector	Dimensionless
 crate::kernels::signal::hamming_window	num_signal_hamming_window	numerical_vector	Dimensionless
 crate::kernels::signal::hann_window	num_signal_hann_window	numerical_vector	Dimensionless
 crate::kernels::signal::hilbert	num_signal_hilbert	numerical_vector	Preserve
@@ -153,8 +158,10 @@ crate::kernels::signal::idst	num_signal_idst	numerical_vector	Preserve
 crate::kernels::signal::inverse_stft	num_signal_inverse_stft	numerical_vector	Quotient
 crate::kernels::signal::kaiser_window	num_signal_kaiser_window	numerical_vector	Dimensionless
 crate::kernels::signal::lfilter	num_signal_lfilter	numerical_vector	PreserveThird
+crate::kernels::signal::resample_poly	num_signal_resample_poly	numerical_vector	Preserve
 crate::kernels::signal::savgol_coeffs	num_signal_savgol_coeffs	numerical_vector	Dimensionless
 crate::kernels::signal::savgol_filter	num_signal_savgol_filter	numerical_vector	Preserve
+crate::kernels::signal::sos_filter	num_signal_sos_filter	numerical_vector	Preserve
 crate::kernels::signal::spectrogram	num_signal_spectrogram	numerical_vector	Square
 crate::kernels::signal::upfirdn	num_signal_upfirdn	numerical_vector	Product
 crate::kernels::signal::welch_cross_spectrum	num_signal_welch_cross_spectrum	numerical_vector	WelchCross
@@ -244,7 +251,11 @@ crate::kernels::vector::lerp	num_vector_lerp	numerical_vector	EqualPreserve
 crate::kernels::wavelets::frft	num_wavelets_frft	numerical_vector	Preserve
 crate::kernels::wavelets::frft_matrix	num_wavelets_frft_matrix	numerical_vector	Dimensionless
 crate::kernels::wavelets::inverse_wavelet_packet	num_wavelets_inverse_wavelet_packet	numerical_vector	Preserve
+crate::kernels::wavelets::iswt	num_wavelets_iswt	numerical_vector	Preserve
+crate::kernels::wavelets::swt	num_wavelets_swt	numerical_vector	Preserve
+crate::kernels::wavelets::wavelet_hard_threshold	num_wavelets_wavelet_hard_threshold	numerical_vector	EqualPreserve
 crate::kernels::wavelets::wavelet_packet	num_wavelets_wavelet_packet	numerical_vector	Preserve
+crate::kernels::wavelets::wavelet_soft_threshold	num_wavelets_wavelet_soft_threshold	numerical_vector	EqualPreserve
 
 crate::kernels::functional_analysis::l1_norm	num_functional_l1_norm	numerical_vector	SampledL1
 crate::kernels::functional_analysis::l2_norm	num_functional_l2_norm	numerical_vector	SampledL2
@@ -415,3 +426,11 @@ crate::sim::physics_cfd::reynolds_number	num_native_sim_physics_cfd_reynolds_num
 crate::sim::physics_fea::max_shear_stress	num_native_sim_physics_fea_max_shear_stress	numerical_vector	Dimensionless
 crate::sim::physics_fvm::minmod	num_native_sim_physics_fvm_minmod	numerical_vector	Dimensionless
 crate::sim::physics_fvm::van_leer	num_native_sim_physics_fvm_van_leer	numerical_vector	Dimensionless
+crate::kernels::descriptive::quantiles	num_descriptive_quantiles	numerical_vector	Preserve
+crate::kernels::distributions::multivariate_normal_log_pdfs	num_distributions_multivariate_normal_log_pdfs	numerical_stats	Dimensionless
+crate::kernels::robust::ecdf_batch	num_robust_ecdf_batch	numerical_stats	EqualInputs
+crate::kernels::robust::quantiles	num_robust_quantiles	numerical_stats	Preserve
+crate::kernels::robust::weighted_quantiles	num_robust_weighted_quantiles	numerical_stats	WeightedQuantile
+crate::kernels::stats_ext::adjust_p_bh	num_stats_ext_adjust_p_bh	numerical_stats	Dimensionless
+crate::kernels::stats_ext::adjust_p_by	num_stats_ext_adjust_p_by	numerical_stats	Dimensionless
+crate::kernels::stats_ext::adjust_p_holm	num_stats_ext_adjust_p_holm	numerical_stats	Dimensionless

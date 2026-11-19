@@ -21,7 +21,9 @@ RSSN 将数值表达式的编译与批量内核执行分开。选择 `Backend` �
 `registry().list()` 列出运行时可用设备。可通过 `get(id)` 指定设备。`default_device()` 优先选择已注册的首个 GPU，其次是在当前 Rayon 池有多个工作线程时选择 `cpu-parallel`，最后选择 `cpu` 或首个可用设备。wgpu 会在名称中标明软件适配器。即使缺少可用适配器，两种 CPU 设备仍然可用。内核清单的 `features.devices` 通过 `build_devices()` 描述本次构建包含的设备支持，运行时探测通过注册表完成。
 [设备注册表](../src/backend/device/mod.rs) · [适配器探测](../src/backend/device/gpu.rs) · [内核清单](../src/kernel/manifest.rs)
 
-全局 Rayon 池自动探测可用 CPU，也可用 `RAYON_NUM_THREADS` 指定线程数。宿主可将内核计算放在自有的 Rayon 池内。并行辅助函数使用当前池，单线程或低于工作量阈值时直接执行。 [CPU 执行策略](../src/execution.rs)
+全局 Rayon 池自动探测可用 CPU，也可用 `RAYON_NUM_THREADS` 指定线程数。宿主可将内核计算放在自有的 Rayon 池内。并行辅助函数使用当前池，单线程或低于工作量阈值时直接执行。自建线程池的宿主可通过 `execution::default_cpu_threads()` 查询默认线程数，无需启动全局池。 [CPU 执行策略](../src/execution.rs)
+
+编译后的 CPU 批处理借用独占的 `f64` 临时缓冲区。数值内核可通过同一个复用模块借用有类型的缓冲区和共享不可变计划。指定容量时，优先选用符合要求的空闲分配。并发请求可共用同一个缓存计划的构建过程。返回的结果与借出的缓冲区由调用方持有。 [缓冲区与计划接口](../src/kernels/reuse.rs)
 
 `DeviceInfo` 记录设备类型、支持的 `Dtype` 和操作、并行度、缓冲区容量、统一内存及确定性。`ops.structured` 表示设备支持独立列长、按地址读取和折叠的程序。设备未实现的可选操作返回 `DeviceError::Unsupported`。可通过 `emulated_f64` 识别 `F64` 的实现方式。`preferred_dtype` 在设备支持 `F64` 时选择它，否则选择 `F32`。
 

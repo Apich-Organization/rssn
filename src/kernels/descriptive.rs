@@ -36,7 +36,7 @@ fn finite_range(values: &[f64]) -> Result<(f64, f64), NumericError> {
     Ok((low, high))
 }
 
-fn interpolate(
+pub(super) fn interpolate(
     low: f64,
     high: f64,
     fraction: f64,
@@ -251,25 +251,81 @@ pub fn quantile(
     values: &[f64],
     q: f64,
 ) -> Result<f64, NumericError> {
-    if values.is_empty() {
-        return Err(NumericError::Empty);
+    let (low, high) = finite_range(values)?;
+    check_probabilities(&[q])?;
+    // Preserve the total-order treatment of signed zeros at the endpoints.
+    if q == 0.0 && low != 0.0 {
+        return Ok(low);
     }
-    if !(0.0..=1.0).contains(&q) {
+    if q >= 1.0 && high != 0.0 {
+        return Ok(high);
+    }
+    let (rank, fraction) = type7_position(values.len(), q);
+    let mut sample = values.to_vec();
+    let (_, lower, upper) = sample.select_nth_unstable_by(rank, f64::total_cmp);
+    if fraction == 0.0 {
+        return Ok(*lower);
+    }
+    let next = upper
+        .iter()
+        .copied()
+        .min_by(f64::total_cmp)
+        .unwrap_or(*lower);
+    Ok(interpolate(*lower, next, fraction))
+}
+
+fn check_probabilities(probabilities: &[f64]) -> Result<(), NumericError> {
+    if probabilities.iter().any(|p| !(0.0..=1.0).contains(p)) {
         return Err(NumericError::Domain(
-            "a quantile needs `0 <= q <= 1`".to_string(),
+            "a quantile needs `0 <= q <= 1`".into(),
         ));
     }
-    finite_range(values)?;
-    let mut sorted = values.to_vec();
-    sorted.sort_by(f64::total_cmp);
-    let last = sorted.len() - 1;
+    Ok(())
+}
+
+pub(super) fn type7_position(
+    len: usize,
+    q: f64,
+) -> (usize, f64) {
+    let last = len - 1;
     let position = q * last as f64;
     let lower = position.floor().to_usize().unwrap_or(last).min(last);
-    if lower == last {
-        return Ok(sorted[last]);
+    (lower, position - lower as f64)
+}
+
+/// Type-7 quantiles of a finite sample, in the supplied probability order.
+///
+/// A single query selects the two adjacent ranks in linear time. Multiple
+/// queries share one ordered copy of the sample.
+///
+/// # Errors
+/// Returns [`NumericError::Empty`] for an empty sample and [`NumericError::Domain`]
+/// for non-finite observations or a probability outside `[0, 1]`.
+pub fn quantiles(
+    values: &[f64],
+    probabilities: &[f64],
+) -> Result<Vec<f64>, NumericError> {
+    if let [probability] = probabilities {
+        return Ok(vec![quantile(values, *probability)?]);
     }
-    let fraction = position - lower as f64;
-    Ok(interpolate(sorted[lower], sorted[lower + 1], fraction))
+    finite_range(values)?;
+    check_probabilities(probabilities)?;
+    if probabilities.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut sorted = values.to_vec();
+    sorted.sort_unstable_by(f64::total_cmp);
+    Ok(probabilities
+        .iter()
+        .map(|&q| {
+            let (rank, fraction) = type7_position(sorted.len(), q);
+            interpolate(
+                sorted[rank],
+                sorted[(rank + 1).min(sorted.len() - 1)],
+                fraction,
+            )
+        })
+        .collect())
 }
 
 /// The arithmetic mean of a float sample.
@@ -347,12 +403,25 @@ pub fn std_dev(
     values: &[f64],
     population: bool,
 ) -> Result<f64, NumericError> {
-    let sample = ScaledSample::new(values)?;
-    if sample.scale > 0.0 {
-        scale_product(sample.variance(population).sqrt(), &[sample.scale], &[])
+    let (normalized, scale) = std_dev_parts(values, population)?;
+    if scale > 0.0 {
+        scale_product(normalized, &[scale], &[])
     } else {
         Ok(0.0)
     }
+}
+
+pub(super) fn std_dev_parts(
+    values: &[f64],
+    population: bool,
+) -> Result<(f64, f64), NumericError> {
+    let sample = ScaledSample::new(values)?;
+    let normalized = if sample.scale > 0.0 {
+        sample.variance(population).sqrt()
+    } else {
+        0.0
+    };
+    Ok((normalized, sample.scale))
 }
 
 /// The sample covariance of two equally long samples.

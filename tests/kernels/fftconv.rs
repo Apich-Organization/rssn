@@ -59,8 +59,7 @@ fn max_error(
 
 #[test]
 fn fft_matches_the_definition_for_power_of_two_and_arbitrary_lengths() {
-    // 1, 2, 8, 64 take the radix-2 path; 3, 5, 12, 13, 97, 100 (primes and
-    // composites) go through Bluestein's chirp-z transform.
+    // Cover power-of-two, prime and awkward composite lengths.
     for n in [1_usize, 2, 3, 5, 8, 12, 13, 64, 97, 100] {
         let x = random_signal(n, 100 + n as u64);
         let want = dft(&x, false);
@@ -112,7 +111,7 @@ fn fft_round_trip_parseval_and_known_spectra() {
             assert!(v.0.abs() < 1e-12 && v.1.abs() < 1e-12, "n = {n}: {v:?}");
         }
     }
-    // A pure harmonic e^{2πi 3 j/10} (length 10, Bluestein) has one line at k = 3.
+    // A pure harmonic e^{2πi 3 j/10} (length 10) has one line at k = 3.
     let harmonic: Vec<C> = (0..10)
         .map(|j| {
             (

@@ -373,6 +373,13 @@ impl Device for CpuDevice {
         if rows == 0 {
             return Ok(());
         }
+        let elementwise = ir.is_elementwise() && lens.iter().all(|&l| l == rows);
+        let grain = if elementwise {
+            GRAIN
+        } else {
+            GRAIN / 16
+        };
+        let parallel = self.parallel && crate::execution::should_split(rows, grain + 1);
         let cols: Vec<&mut [f64]> = out.chunks_mut(rows).collect();
         #[cfg(feature = "jit")]
         let mut cols = cols;
@@ -391,13 +398,13 @@ impl Device for CpuDevice {
                 .map(|(&at, &len)| input.get(at..at.saturating_add(len)).unwrap_or(&[]))
                 .collect();
             let parts: Vec<&mut [f64]> = cols.iter_mut().map(|c| &mut **c).collect();
-            if run_native(native, &inputs, params, parts, 0, rows, self.parallel) {
+            if run_native(native, &inputs, params, parts, 0, rows, parallel) {
                 return Ok(());
             }
             // A bail (an index overflow): interpret the whole launch.
         }
-        if ir.is_elementwise() && lens.iter().all(|&l| l == rows) {
-            run_range(ir, input, rows, params, 0, cols, self.parallel);
+        if elementwise {
+            run_range(ir, input, rows, params, 0, cols, parallel);
         } else {
             let offsets = column_offsets(lens);
             let view = Columns {
@@ -405,7 +412,7 @@ impl Device for CpuDevice {
                 offsets: &offsets,
                 lens,
             };
-            run_rows(ir, analysis, view, rows, params, 0, cols, self.parallel);
+            run_rows(ir, analysis, view, rows, params, 0, cols, parallel);
         }
         Ok(())
     }
@@ -417,12 +424,19 @@ impl Device for CpuDevice {
     ) -> Result<f64, DeviceError> {
         let data = self.data(input)?;
         let fold = |c: &[f64]| c.iter().fold(op.identity(), |a, &x| op.combine(a, x));
-        let parts: Vec<f64> = if self.parallel {
-            data.par_chunks(REDUCE_CHUNK).map(fold).collect()
+        let result = if self.parallel
+            && crate::execution::should_split(data.len().div_ceil(REDUCE_CHUNK), 3)
+        {
+            let parts: Vec<_> = data.par_chunks(REDUCE_CHUNK).map(fold).collect();
+            parts
+                .into_iter()
+                .fold(op.identity(), |a, x| op.combine(a, x))
         } else {
-            data.chunks(REDUCE_CHUNK).map(fold).collect()
+            data.chunks(REDUCE_CHUNK)
+                .map(fold)
+                .fold(op.identity(), |a, x| op.combine(a, x))
         };
-        Ok(parts.iter().fold(op.identity(), |a, &x| op.combine(a, x)))
+        Ok(result)
     }
 
     fn matmul(
@@ -437,15 +451,16 @@ impl Device for CpuDevice {
         let a = self.data(a)?;
         let b = self.data(b)?;
         let c = self.data_mut(c)?;
-        if a.len() != m * k || b.len() != k * n || c.len() != m * n {
+        let sizes = [m.checked_mul(k), k.checked_mul(n), m.checked_mul(n)];
+        if sizes != [Some(a.len()), Some(b.len()), Some(c.len())] {
             return Err(DeviceError::Mismatch(format!(
-                "matmul {m}x{k} * {k}x{n} needs buffers of {}, {}, {} elements",
-                m * k,
-                k * n,
-                m * n
+                "matmul {m}x{k} * {k}x{n} is incompatible with buffers of {}, {}, {} elements",
+                a.len(),
+                b.len(),
+                c.len()
             )));
         }
-        if m * n == 0 {
+        if c.is_empty() {
             return Ok(());
         }
         let row = |(i, ci): (usize, &mut [f64])| {
@@ -458,7 +473,8 @@ impl Device for CpuDevice {
                 }
             }
         };
-        if self.parallel {
+        let min_rows = 16_384_usize.div_ceil(k.saturating_mul(n).max(1));
+        if self.parallel && crate::execution::should_split(m, min_rows) {
             c.par_chunks_mut(n).enumerate().for_each(row);
         } else {
             c.chunks_mut(n).enumerate().for_each(row);
@@ -498,7 +514,8 @@ fn run_rows(
         return;
     }
     let mut scratch = Scratch::default();
-    let mut out = vec![f64::NAN; ir.outputs.len()];
+    let mut out = crate::kernels::reuse::f64_scratch(ir.outputs.len());
+    out.resize(ir.outputs.len(), f64::NAN);
     for at in 0..len {
         ir.eval_at(
             analysis,
@@ -509,7 +526,7 @@ fn run_rows(
             &mut scratch,
             &mut out,
         );
-        for (col, &value) in cols.iter_mut().zip(&out) {
+        for (col, &value) in cols.iter_mut().zip(out.iter()) {
             col[at] = value;
         }
     }
@@ -541,7 +558,9 @@ fn run_range(
         );
         return;
     }
-    let mut regs = vec![0.0f64; ir.ops.len() * LANES];
+    let register_slots = ir.ops.len() * LANES;
+    let mut regs = crate::kernels::reuse::f64_scratch(register_slots);
+    regs.resize(register_slots, 0.0);
     let mut at = 0;
     while at < len {
         let n = LANES.min(len - at);

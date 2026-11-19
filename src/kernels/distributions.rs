@@ -4,6 +4,9 @@ use crate::kernels::dense::Mat;
 use crate::kernels::dense::{
     self,
 };
+use crate::kernels::numeric_common::scaled_difference;
+use crate::kernels::par;
+use crate::kernels::reuse::f64_scratch;
 use crate::kernels::special::erfc_numerical as erfc;
 use crate::kernels::special::gamma_numerical as gamma;
 use crate::kernels::special::ln_gamma_numerical as ln_gamma;
@@ -47,7 +50,7 @@ fn cholesky(
     cols: usize,
     data: &[f64],
 ) -> Result<Vec<f64>, DistError> {
-    if rows != cols || data.len() != rows * cols {
+    if rows != cols || rows.checked_mul(cols) != Some(data.len()) {
         return Err(DistError::ShapeMismatch(
             "expected square matrix".to_string(),
         ));
@@ -74,6 +77,104 @@ fn cholesky(
     dense::cholesky(&m)
         .map(|l| l.data)
         .map_err(|_| DistError::NotPositiveDefinite)
+}
+
+/// The validated triangular factor and normalizing constant shared by a batch.
+struct NormalDensity<'a> {
+    mean: &'a [f64],
+    lower: Vec<f64>,
+    normalizer: f64,
+}
+
+impl<'a> NormalDensity<'a> {
+    fn new(
+        mean: &'a [f64],
+        covariance: &[f64],
+    ) -> Result<Self, DistError> {
+        let dim = mean.len();
+        if dim == 0 {
+            return Err(DistError::Empty);
+        }
+        if mean.iter().any(|value| !value.is_finite()) {
+            return Err(DistError::Domain("mean coordinates must be finite".into()));
+        }
+        let lower = cholesky(dim, dim, covariance)?;
+        let mut log_diagonal = 0.0;
+        for i in 0..dim {
+            let diagonal = lower[i * dim + i];
+            if diagonal <= 0.0 || !diagonal.is_finite() {
+                return Err(DistError::NotPositiveDefinite);
+            }
+            log_diagonal += diagonal.ln();
+        }
+        let normalizer = -0.5 * dim as f64 * (2.0 * PI).ln() - log_diagonal;
+        Ok(Self {
+            mean,
+            lower,
+            normalizer,
+        })
+    }
+
+    fn solve_log_pdf(
+        &self,
+        point: &[f64],
+        whitened: &mut [f64],
+    ) -> f64 {
+        let dim = self.mean.len();
+        let mut energy = 0.0;
+        for i in 0..dim {
+            let row = &self.lower[i * dim..=i * dim + i];
+            let diag = row[i];
+            let shifted = point[i] - self.mean[i];
+            let mut value = shifted;
+            if shifted.is_finite() {
+                for j in 0..i {
+                    value -= row[j] * whitened[j];
+                }
+                value /= diag;
+            } else {
+                value = scaled_difference(point[i], self.mean[i], diag);
+                for j in 0..i {
+                    value -= (row[j] * whitened[j]) / diag;
+                }
+            }
+            whitened[i] = value;
+            // Half the square can be representable even when the square is not.
+            energy += (0.5 * value) * value;
+            if energy.is_infinite() {
+                return f64::NEG_INFINITY;
+            }
+        }
+        self.normalizer - energy
+    }
+}
+
+fn check_density_coordinates(coordinates: &[f64]) -> Result<(), DistError> {
+    if coordinates.iter().any(|v| !v.is_finite()) {
+        return Err(DistError::Domain(
+            "density coordinates must be finite".into(),
+        ));
+    }
+    Ok(())
+}
+
+fn normal_log_pdf(
+    mean: &[f64],
+    covariance: &[f64],
+    point: &[f64],
+) -> Result<f64, DistError> {
+    let dim = mean.len();
+    if dim == 0 {
+        return Err(DistError::Empty);
+    }
+    if point.len() != dim {
+        return Err(DistError::ShapeMismatch(format!(
+            "expected vector of length {dim}, found {}",
+            point.len()
+        )));
+    }
+    let density = NormalDensity::new(mean, covariance)?;
+    Ok(density.solve_log_pdf(point, &mut vec![0.0; dim]))
 }
 
 // Bounded integer bisection avoids unbounded mass summation and overflow in
@@ -318,8 +419,8 @@ impl Distribution {
                 if sigma <= 0.0 {
                     return f64::NAN;
                 }
-                let z = (x - mu) / sigma;
-                (-0.5 * z * z).exp() / (sigma * (2.0 * PI).sqrt())
+                let z = scaled_difference(x, mu, sigma);
+                ((-0.5 * z * z).exp() / (2.0 * PI).sqrt()) / sigma
             },
             | Self::Uniform { lo, hi } => {
                 if x < lo || x > hi {
@@ -447,8 +548,9 @@ impl Distribution {
                 if x <= 0.0 {
                     return 0.0;
                 }
-                let z = (x.ln() - mu) / sigma;
-                (-0.5 * z * z).exp() / (x * sigma * (2.0 * PI).sqrt())
+                let log_x = x.ln();
+                let z = scaled_difference(log_x, mu, sigma);
+                (-0.5 * z * z - log_x - sigma.ln() - 0.5 * (2.0 * PI).ln()).exp()
             },
             | Self::Weibull { shape, scale } => {
                 if shape <= 0.0 || scale <= 0.0 {
@@ -509,10 +611,8 @@ impl Distribution {
                 if crate::kernels::exact_eq(p, 1.0) {
                     return if x == 0.0 { 1.0 } else { 0.0 };
                 }
-                (ln_gamma(x + r) - ln_gamma(x + 1.0) - ln_gamma(r)
-                    + r * p.ln()
-                    + x * (1.0 - p).ln())
-                .exp()
+                (ln_gamma(x + r) - ln_gamma(x + 1.0) - ln_gamma(r) + r * p.ln() + x * (-p).ln_1p())
+                    .exp()
             },
             | Self::Geometric { p } => {
                 if p <= 0.0 || p > 1.0 {
@@ -524,7 +624,7 @@ impl Distribution {
                 if crate::kernels::exact_eq(p, 1.0) {
                     return if x == 0.0 { 1.0 } else { 0.0 };
                 }
-                p * (1.0 - p).powf(x)
+                p * (x * (-p).ln_1p()).exp()
             },
         }
     }
@@ -549,7 +649,7 @@ impl Distribution {
                 if sigma <= 0.0 {
                     return f64::NAN;
                 }
-                let z = (x - mu) / sigma;
+                let z = scaled_difference(x, mu, sigma);
                 0.5 * erfc(-z / std::f64::consts::SQRT_2)
             },
             | Self::Uniform { lo, hi } => {
@@ -653,7 +753,19 @@ impl Distribution {
                 if scale <= 0.0 {
                     return f64::NAN;
                 }
-                0.5 + ((x - loc) / scale).atan() / PI
+                let z = scaled_difference(x, loc, scale);
+                if z < -1.0 {
+                    // atan's complementary angle preserves small lower-tail probabilities.
+                    let distance = loc - x;
+                    let reciprocal = if distance.is_finite() {
+                        scale / distance
+                    } else {
+                        (0.5 * scale) / (0.5 * loc - 0.5 * x)
+                    };
+                    reciprocal.atan() / PI
+                } else {
+                    0.5 + z.atan() / PI
+                }
             },
             | Self::F { df1, df2 } => {
                 if df1 <= 0.0 || df2 <= 0.0 {
@@ -662,7 +774,17 @@ impl Distribution {
                 if x <= 0.0 {
                     0.0
                 } else {
-                    let arg = (df1 * x) / (df1 * x + df2);
+                    let product = df1 * x;
+                    let ratio = if product.is_finite() && product > 0.0 {
+                        product / df2
+                    } else {
+                        (df1.ln() + x.ln() - df2.ln()).exp()
+                    };
+                    let arg = if ratio > 1.0 {
+                        1.0 / (1.0 + ratio.recip())
+                    } else {
+                        ratio / (1.0 + ratio)
+                    };
                     regularized_beta(arg, 0.5 * df1, 0.5 * df2)
                 }
             },
@@ -1171,52 +1293,9 @@ impl MultivariateDistribution {
         &self,
         x: &[f64],
     ) -> Result<f64, DistError> {
-        if x.iter().any(|v| !v.is_finite()) {
-            return Err(DistError::Domain(
-                "density coordinates must be finite".to_string(),
-            ));
-        }
+        check_density_coordinates(x)?;
         match self {
-            | Self::MultivariateNormal { mu, cov } => {
-                if mu.iter().any(|v| !v.is_finite()) {
-                    return Err(DistError::Domain(
-                        "mean coordinates must be finite".to_string(),
-                    ));
-                }
-                let d = mu.len();
-                if d == 0 {
-                    return Err(DistError::Empty);
-                }
-                if x.len() != d {
-                    return Err(DistError::ShapeMismatch(format!(
-                        "expected vector of length {d}, found {}",
-                        x.len()
-                    )));
-                }
-                if cov.len() != d * d {
-                    return Err(DistError::ShapeMismatch(format!(
-                        "expected {d}x{d} covariance matrix, found {} entries",
-                        cov.len()
-                    )));
-                }
-                let l = cholesky(d, d, cov)?;
-                // Forward substitution: L * y = x - mu
-                let mut y = vec![0.0; d];
-                for i in 0..d {
-                    let mut sum = x[i] - mu[i];
-                    for j in 0..i {
-                        sum -= l[i * d + j] * y[j];
-                    }
-                    let diag = l[i * d + i];
-                    if diag <= 0.0 || !diag.is_finite() {
-                        return Err(DistError::NotPositiveDefinite);
-                    }
-                    y[i] = sum / diag;
-                }
-                let log_det: f64 = 2.0 * (0..d).map(|i| l[i * d + i].ln()).sum::<f64>();
-                let quad: f64 = y.iter().map(|v| v * v).sum();
-                Ok(-0.5 * (d as f64 * (2.0 * PI).ln() + log_det + quad))
-            },
+            | Self::MultivariateNormal { mu, cov } => normal_log_pdf(mu, cov, x),
             | Self::Dirichlet { alpha } => {
                 let d = alpha.len();
                 if d == 0 {
@@ -1443,11 +1522,51 @@ pub fn multivariate_normal_log_pdf(
             "covariance dimensions must match mean length".to_string(),
         ));
     }
-    MultivariateDistribution::MultivariateNormal {
-        mu: mu.to_vec(),
-        cov: covariance.data.clone(),
+    check_density_coordinates(x)?;
+    normal_log_pdf(mu, &covariance.data, x)
+}
+
+/// Dimensionless multivariate normal log densities in row-major query order.
+/// A single covariance factor is reused by every query.
+///
+/// # Errors
+/// Returns an error for a dimension mismatch (including malformed matrix
+/// storage), non-finite coordinates or an invalid covariance matrix.
+pub fn multivariate_normal_log_pdfs(
+    mu: &[f64],
+    covariance: &Mat,
+    points: &Mat,
+) -> Result<Vec<f64>, DistError> {
+    let dim = mu.len();
+    if covariance.rows != dim || covariance.cols != dim {
+        return Err(DistError::ShapeMismatch(
+            "covariance dimensions must match mean length".into(),
+        ));
     }
-    .log_pdf(x)
+    if points.cols != dim || points.rows.checked_mul(dim) != Some(points.data.len()) {
+        return Err(DistError::ShapeMismatch(
+            "query rows must match the mean dimension".into(),
+        ));
+    }
+    check_density_coordinates(&points.data)?;
+    let density = NormalDensity::new(mu, &covariance.data)?;
+    let mut result = vec![0.0; points.rows];
+    let rows_per_chunk = points.rows.div_ceil(32).max(16);
+    let work_per_chunk = density.lower.len().saturating_mul(rows_per_chunk);
+    let grain = 32_768usize.div_ceil(work_per_chunk.max(1)).max(2);
+    par::for_chunks_mut(&mut result, rows_per_chunk, grain, |block, output| {
+        let start = block * rows_per_chunk * dim;
+        let end = start + output.len() * dim;
+        let mut work = f64_scratch(dim);
+        work.resize(dim, 0.0);
+        for (target, point) in output
+            .iter_mut()
+            .zip(points.data[start..end].chunks_exact(dim))
+        {
+            *target = density.solve_log_pdf(point, &mut work);
+        }
+    });
+    Ok(result)
 }
 
 /// Dimensionless multivariate normal density; covariance dimensions must match the mean.

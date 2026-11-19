@@ -15,6 +15,7 @@
 //!   decomposition and its inverse.
 //! * [`wavelet_packet`] / [`inverse_wavelet_packet`]: the complete periodic binary tree,
 //!   decomposing both branches at each level into equal-length leaf bands.
+//! * [`swt`] / [`iswt`]: a shift-equivariant periodic stationary transform.
 //! * [`dwt2`] / [`idwt2`]: the separable two-dimensional transform on a rectangular grid.
 //! * [`wavedec2`] / [`waverec2`] and [`wavedec2_with`] / [`waverec2_with`]: the multilevel 2-D
 //!   decomposition, recursing the separable transform on the `LL` band.
@@ -58,8 +59,8 @@
 //! packs the four sub-bands into one `(2*ra) x (2*ca)` array, where `ra`/`ca` are the row/column
 //! coefficient counts: `LL` in rows `0..ra`, columns `0..ca`; `LH` in rows `0..ra`, columns
 //! `ca..2ca`; `HL` in rows `ra..2ra`, columns `0..ca`; `HH` in rows `ra..2ra`, columns `ca..2ca`.
-//! The first letter names the band along the row index (the vertical direction), the second along
-//! the column index.
+//! The first letter names the filter applied within each row (horizontal),
+//! and the second the filter applied within each column (vertical).
 //!
 //! ## Limitations
 //!
@@ -94,6 +95,8 @@ use num_complex::Complex64;
 
 use crate::kernels::dense::Mat;
 use crate::kernels::dense::eigen_symmetric;
+use crate::kernels::par;
+use crate::kernels::reuse::f64_scratch;
 
 /// A wavelet family: orthogonal (`Haar`, `db2`..`db10`, `sym4`..`sym6`) or biorthogonal (`bior*`).
 ///
@@ -346,6 +349,9 @@ impl Wavelet {
         n: usize,
         b: Boundary,
     ) -> usize {
+        if n == 0 {
+            return 0;
+        }
         match b {
             | Boundary::Periodic => n.div_ceil(2),
             | _ => {
@@ -753,7 +759,7 @@ fn ext_layout(
     for (m, v) in low.iter().enumerate().chain(high.iter().enumerate()) {
         if *v != 0.0 {
             lo = lo.min(m);
-            hi = m;
+            hi = hi.max(m);
         }
     }
     if lo == usize::MAX {
@@ -968,6 +974,261 @@ pub fn idwt_with(
     }
 }
 
+/// Errors from stationary wavelet transforms and thresholding.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WaveletProcessingError {
+    /// The transform rejected the signal or coefficient shape or the requested depth.
+    Transform(WaveletError),
+    /// An input coefficient or threshold is non-finite, or a threshold is negative.
+    InvalidCoefficient,
+    /// A computed coefficient is not finite.
+    NonFiniteResult,
+}
+
+impl From<WaveletError> for WaveletProcessingError {
+    fn from(error: WaveletError) -> Self {
+        Self::Transform(error)
+    }
+}
+
+impl fmt::Display for WaveletProcessingError {
+    fn fmt(
+        &self,
+        formatter: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        match self {
+            | Self::Transform(error) => error.fmt(formatter),
+            | Self::InvalidCoefficient => formatter.write_str(
+                "wavelet coefficients and thresholds must be finite, with nonnegative thresholds",
+            ),
+            | Self::NonFiniteResult => formatter.write_str("non-finite wavelet result"),
+        }
+    }
+}
+
+impl std::error::Error for WaveletProcessingError {}
+
+/// Periodic stationary wavelet transform without decimation.
+///
+/// Returns `[approximation_L, detail_L, ..., detail_1]`. Each band has the
+/// same length as `samples`. The filter-tap spacing doubles each level,
+/// giving a shift-equivariant decomposition. Odd lengths are supported.
+/// At least one level is required, and the longest tap spacing must be
+/// strictly less than the signal length.
+///
+/// # Errors
+///
+/// Errors for an unsupported length or level count or non-finite inputs
+/// or computed coefficients.
+pub fn swt(
+    samples: &[f64],
+    wavelet: Wavelet,
+    levels: usize,
+) -> Result<Vec<Vec<f64>>, WaveletProcessingError> {
+    check_stationary_levels(samples.len(), levels)?;
+    if samples.iter().any(|value| !value.is_finite()) {
+        return Err(WaveletProcessingError::InvalidCoefficient);
+    }
+    let low = wavelet.analysis_low_taps();
+    let high = wavelet.analysis_high();
+    let n = samples.len();
+    let mut approximation = samples.to_vec();
+    let mut bands = Vec::with_capacity(levels + 1);
+    for level in 0..levels {
+        let offsets = stationary_offsets(n, 1 << level, low.len());
+        let mut next = vec![0.0; n];
+        let detail = par::map_indexed(n, 4_096, |index| {
+            let values = offsets.iter().map(|&offset| {
+                let wrapped = if offset >= n - index {
+                    offset - (n - index)
+                } else {
+                    index + offset
+                };
+                approximation[wrapped]
+            });
+            apply_analysis(low, &high, values)
+        });
+        let mut high_band = Vec::with_capacity(n);
+        for ((a, d), output) in detail.into_iter().zip(&mut next) {
+            if !a.is_finite() || !d.is_finite() {
+                return Err(WaveletProcessingError::NonFiniteResult);
+            }
+            *output = a;
+            high_band.push(d);
+        }
+        bands.push(high_band);
+        approximation = next;
+    }
+    bands.push(approximation);
+    bands.reverse();
+    Ok(bands)
+}
+
+/// Reconstructs a periodic signal from [`swt`] bands.
+///
+/// Uses the dual synthesis filters and averages all decimation phases.
+/// Input bands must be equal length and in the order returned by [`swt`].
+///
+/// # Errors
+///
+/// Errors for malformed or non-finite bands, unsupported level counts
+/// or non-finite reconstruction.
+pub fn iswt(
+    bands: &[Vec<f64>],
+    wavelet: Wavelet,
+) -> Result<Vec<f64>, WaveletProcessingError> {
+    let Some((approximation, details)) = bands.split_first() else {
+        return Err(WaveletError::Shape.into());
+    };
+    let n = approximation.len();
+    check_stationary_levels(n, details.len())?;
+    if details.iter().any(|detail| detail.len() != n) {
+        return Err(WaveletError::Shape.into());
+    }
+    if bands.iter().flatten().any(|value| !value.is_finite()) {
+        return Err(WaveletProcessingError::InvalidCoefficient);
+    }
+    let low = wavelet.synthesis_low_taps();
+    let high = wavelet.synthesis_high();
+    let mut approximation = approximation.clone();
+    for (level, detail) in (0..details.len()).rev().zip(details) {
+        let offsets = stationary_offsets(n, 1 << level, low.len());
+        approximation = par::map_indexed(n, 4_096, |index| {
+            low.iter()
+                .zip(&high)
+                .zip(&offsets)
+                .map(|((&l, &h), &offset)| {
+                    let wrapped = if index >= offset {
+                        index - offset
+                    } else {
+                        n - (offset - index)
+                    };
+                    l * (approximation[wrapped] * 0.5) + h * (detail[wrapped] * 0.5)
+                })
+                .sum::<f64>()
+        });
+        if approximation.iter().any(|value| !value.is_finite()) {
+            return Err(WaveletProcessingError::NonFiniteResult);
+        }
+    }
+    Ok(approximation)
+}
+
+fn check_stationary_levels(
+    n: usize,
+    levels: usize,
+) -> Result<(), WaveletProcessingError> {
+    if n == 0 {
+        return Err(WaveletError::Shape.into());
+    }
+    let max_levels = (n - 1).bit_width();
+    if levels == 0 || levels > max_levels as usize {
+        return Err(WaveletError::TooManyLevels.into());
+    }
+    Ok(())
+}
+
+fn stationary_offsets(
+    n: usize,
+    stride: usize,
+    count: usize,
+) -> Vec<usize> {
+    (0..count)
+        .scan(0, |offset, _| {
+            let current = *offset;
+            *offset = if current >= n - stride {
+                current - (n - stride)
+            } else {
+                current + stride
+            };
+            Some(current)
+        })
+        .collect()
+}
+
+/// Denoises a signal by soft-thresholding its wavelet detail coefficients.
+///
+/// Keeps the coarsest approximation and uses [`wavedec_with`] with the
+/// chosen wavelet and boundary rule. Detail magnitudes are shrunk toward
+/// zero by the threshold, in the same units as `samples`.
+///
+/// # Errors
+///
+/// Errors for non-finite data, a negative threshold, an unrepresentable
+/// signal or unsupported depth or shape.
+pub fn wavelet_soft_threshold(
+    samples: &[f64],
+    threshold: f64,
+    wavelet: Wavelet,
+    levels: usize,
+    boundary: Boundary,
+) -> Result<Vec<f64>, WaveletProcessingError> {
+    threshold_details(
+        samples,
+        threshold,
+        wavelet,
+        levels,
+        boundary,
+        |value, threshold| (value.abs() - threshold).max(0.0).copysign(value),
+    )
+}
+
+/// Denoises a signal by zeroing wavelet details below a magnitude threshold.
+///
+/// Uses the same decomposition and threshold units as [`wavelet_soft_threshold`].
+/// A detail coefficient exactly at the threshold is retained.
+///
+/// # Errors
+///
+/// As [`wavelet_soft_threshold`].
+pub fn wavelet_hard_threshold(
+    samples: &[f64],
+    threshold: f64,
+    wavelet: Wavelet,
+    levels: usize,
+    boundary: Boundary,
+) -> Result<Vec<f64>, WaveletProcessingError> {
+    threshold_details(
+        samples,
+        threshold,
+        wavelet,
+        levels,
+        boundary,
+        |value, threshold| {
+            if value.abs() < threshold {
+                0.0
+            } else {
+                value
+            }
+        },
+    )
+}
+
+fn threshold_details(
+    samples: &[f64],
+    threshold: f64,
+    wavelet: Wavelet,
+    levels: usize,
+    boundary: Boundary,
+    apply: impl Fn(f64, f64) -> f64,
+) -> Result<Vec<f64>, WaveletProcessingError> {
+    if !threshold.is_finite() || threshold < 0.0 || samples.iter().any(|value| !value.is_finite()) {
+        return Err(WaveletProcessingError::InvalidCoefficient);
+    }
+    let mut bands = wavedec_with(samples, wavelet, levels, boundary)?;
+    if bands.iter().flatten().any(|value| !value.is_finite()) {
+        return Err(WaveletProcessingError::NonFiniteResult);
+    }
+    for detail in bands.iter_mut().skip(1).flatten() {
+        *detail = apply(*detail, threshold);
+    }
+    let output = waverec_with(&bands, wavelet, boundary, samples.len())?;
+    if output.iter().any(|value| !value.is_finite()) {
+        return Err(WaveletProcessingError::NonFiniteResult);
+    }
+    Ok(output)
+}
+
 /// Multilevel decomposition: `[approximation_L, detail_L, ..., detail_1]`.
 ///
 /// Requires `2^levels` to divide the length, as before; use [`wavedec_with`] for the general case.
@@ -1173,29 +1434,18 @@ pub fn dwt2(
     let mut high = vec![0.0; band];
     for r in 0..rows {
         let start = r * cols;
-        let row: Vec<f64> = x
-            .get(start..start + cols)
-            .map_or_else(Vec::new, <[f64]>::to_vec);
-        let (a, d) = dwt_with(&row, w, b)?;
-        for (c, v) in a.iter().enumerate() {
-            if let Some(slot) = low.get_mut(r * ca + c) {
-                *slot = *v;
-            }
-        }
-        for (c, v) in d.iter().enumerate() {
-            if let Some(slot) = high.get_mut(r * ca + c) {
-                *slot = *v;
-            }
-        }
+        let (a, d) = dwt_with(&x[start..start + cols], w, b)?;
+        low[r * ca..][..ca].copy_from_slice(&a);
+        high[r * ca..][..ca].copy_from_slice(&d);
     }
-    let out_rows = 2 * ra;
-    let out_cols = 2 * ca;
+    let out_rows = ra.checked_mul(2).ok_or(WaveletError::Shape)?;
+    let out_cols = ca.checked_mul(2).ok_or(WaveletError::Shape)?;
     let mut out = vec![0.0; out_rows.checked_mul(out_cols).ok_or(WaveletError::Shape)?];
+    let mut column = f64_scratch(rows);
     for c in 0..ca {
         for (src, offset) in [(&low, 0_usize), (&high, ra)] {
-            let column: Vec<f64> = (0..rows)
-                .map(|r| src.get(r * ca + c).copied().unwrap_or(0.0))
-                .collect();
+            column.clear();
+            column.extend(src.chunks_exact(ca).map(|row| row[c]));
             let (a, d) = dwt_with(&column, w, b)?;
             for (i, v) in a.iter().enumerate() {
                 if let Some(slot) = out.get_mut((offset + i) * out_cols + c) {
@@ -1224,53 +1474,38 @@ pub fn idwt2(
     w: Wavelet,
     b: Boundary,
 ) -> Result<Vec<f64>, WaveletError> {
-    if rows == 0 || cols == 0 {
-        return Err(WaveletError::Shape);
-    }
+    let total = rows.checked_mul(cols).ok_or(WaveletError::Shape)?;
     let ca = w.coeff_len(cols, b);
     let ra = w.coeff_len(rows, b);
-    let out_rows = 2 * ra;
-    let out_cols = 2 * ca;
+    if total == 0 || ca == 0 || ra == 0 {
+        return Err(WaveletError::Shape);
+    }
+    let out_rows = ra.checked_mul(2).ok_or(WaveletError::Shape)?;
+    let out_cols = ca.checked_mul(2).ok_or(WaveletError::Shape)?;
     if c.len() != out_rows.checked_mul(out_cols).ok_or(WaveletError::Shape)? {
         return Err(WaveletError::Shape);
     }
     let band = rows.checked_mul(ca).ok_or(WaveletError::Shape)?;
     let mut low = vec![0.0; band];
     let mut high = vec![0.0; band];
+    let mut ll = f64_scratch(ra);
+    let mut hh = f64_scratch(ra);
     for col in 0..ca {
         for (dst, offset) in [(&mut low, 0_usize), (&mut high, ra)] {
-            let ll: Vec<f64> = (0..ra)
-                .map(|i| c.get((offset + i) * out_cols + col).copied().unwrap_or(0.0))
-                .collect();
-            let hh: Vec<f64> = (0..ra)
-                .map(|i| {
-                    c.get((offset + i) * out_cols + ca + col)
-                        .copied()
-                        .unwrap_or(0.0)
-                })
-                .collect();
+            ll.clear();
+            hh.clear();
+            let source = c[offset * out_cols..].chunks_exact(out_cols).take(ra);
+            ll.extend(source.clone().map(|row| row[col]));
+            hh.extend(source.map(|row| row[ca + col]));
             let column = idwt_with(&ll, &hh, w, b, rows)?;
-            for (r, v) in column.iter().enumerate() {
-                if let Some(slot) = dst.get_mut(r * ca + col) {
-                    *slot = *v;
-                }
+            for (row, value) in dst.chunks_exact_mut(ca).zip(column) {
+                row[col] = value;
             }
         }
     }
-    let mut out = vec![0.0; rows.checked_mul(cols).ok_or(WaveletError::Shape)?];
-    for r in 0..rows {
-        let row_low: Vec<f64> = (0..ca)
-            .map(|k| low.get(r * ca + k).copied().unwrap_or(0.0))
-            .collect();
-        let row_high: Vec<f64> = (0..ca)
-            .map(|k| high.get(r * ca + k).copied().unwrap_or(0.0))
-            .collect();
-        let row = idwt_with(&row_low, &row_high, w, b, cols)?;
-        for (k, v) in row.iter().enumerate() {
-            if let Some(slot) = out.get_mut(r * cols + k) {
-                *slot = *v;
-            }
-        }
+    let mut out = Vec::with_capacity(total);
+    for (a, d) in low.chunks_exact(ca).zip(high.chunks_exact(ca)) {
+        out.extend(idwt_with(a, d, w, b, cols)?);
     }
     Ok(out)
 }

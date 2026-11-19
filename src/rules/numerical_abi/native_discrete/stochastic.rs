@@ -1,5 +1,6 @@
 #![allow(clippy::wildcard_imports)] // Shared checked method declarations.
 use super::*;
+use crate::kernels::dense::Mat;
 use crate::kernels::online_stats::OnlineCovariance;
 use crate::kernels::random::Rng;
 impl NativeType for Rng {
@@ -42,10 +43,25 @@ object_binding!(online_covariance_new,"num_native_online_covariance_new","crate:
 object_binding!(online_covariance_count,"num_native_online_covariance_count","crate::kernels::online_stats::OnlineCovariance::count","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(a:Handle<OnlineCovariance>)->u64,|ctx:&CallCtx<'_>,a:Handle<OnlineCovariance>|{a.with(ctx,|o|Ok(o.count()))});
 object_binding!(online_covariance_dimension,"num_native_online_covariance_dimension","crate::kernels::online_stats::OnlineCovariance::dimension","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(a:Handle<OnlineCovariance>)->usize,|ctx:&CallCtx<'_>,a:Handle<OnlineCovariance>|{a.with(ctx,|o|Ok(o.dimension()))});
 object_binding!(online_covariance_push,"num_native_online_covariance_push","crate::kernels::online_stats::OnlineCovariance::push","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(a:Handle<OnlineCovariance>,data:Input)->bool,|ctx:&CallCtx<'_>,a:Handle<OnlineCovariance>,data:Input|{let d=object_dimension(&a,ctx)?;api::same_dimension(&d,&api::dimension(&data.0)?)?;let data=<Vec<f64> as Arg>::decode(&data.0,1)?;a.with_mut(ctx,|o|{o.push(&data).map_err(error)?;Ok(true)})});
+object_binding!(online_covariance_push_batch,"num_native_online_covariance_push_batch","crate::kernels::online_stats::OnlineCovariance::push_batch","Atomically incorporate a row-major tensor of observations with the accumulator's coordinate units. Columns must match the accumulator dimension.",false,(a:Handle<OnlineCovariance>,data:Input)->bool,|ctx:&CallCtx<'_>,a:Handle<OnlineCovariance>,data:Input|{
+    let dimensions=object_dimension(&a,ctx)?;
+    api::same_dimension(&dimensions,&api::dimension(&data.0)?)?;
+    let data=<Mat as Arg>::decode(&data.0,1)?;
+    a.with_mut(ctx,|accumulator|{
+        if data.cols!=accumulator.dimension(){return Err(error("online covariance batch columns must match its dimension"));}
+        limit(data.data.len().saturating_mul(data.cols),16_777_216)?;
+        accumulator.push_batch(&data.data).map_err(error)?;
+        Ok(true)
+    })
+});
 object_binding!(online_covariance_merge,"num_native_online_covariance_merge","crate::kernels::online_stats::OnlineCovariance::merge","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(a:Handle<OnlineCovariance>,b:Handle<OnlineCovariance>)->bool,|ctx:&CallCtx<'_>,a:Handle<OnlineCovariance>,b:Handle<OnlineCovariance>|{same(&a,&b,ctx)?;let other=b.with(ctx,|o|Ok(o.clone()))?;a.with_mut(ctx,|o|{o.merge(&other).map_err(error)?;Ok(true)})});
 object_binding!(online_covariance_mean,"num_native_online_covariance_mean","crate::kernels::online_stats::OnlineCovariance::mean","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(a:Handle<OnlineCovariance>)->Maybe<Dynamic>,|ctx:&CallCtx<'_>,a:Handle<OnlineCovariance>|{let d=object_dimension(&a,ctx)?;a.with(ctx,|o|Ok(Maybe(o.mean().map(|v|quantities(v.to_vec(),&(d))).transpose()?)))});
 object_binding!(online_covariance_sample_covariance,"num_native_online_covariance_sample_covariance","crate::kernels::online_stats::OnlineCovariance::sample_covariance","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(a:Handle<OnlineCovariance>)->Maybe<Dynamic>,|ctx:&CallCtx<'_>,a:Handle<OnlineCovariance>|{let d=canonical(&(object_dimension(&a,ctx)?.pow(Exp::Rat(Rational::int(2)))))?;a.with(ctx,|o|{let n=o.dimension();Ok(Maybe(o.sample_covariance().map(|v|quantities_matrix(v.chunks_exact(n).map(<[f64]>::to_vec).collect(),&(d))).transpose()?))})});
 object_binding!(online_covariance_population_covariance,"num_native_online_covariance_population_covariance","crate::kernels::online_stats::OnlineCovariance::population_covariance","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(a:Handle<OnlineCovariance>)->Maybe<Dynamic>,|ctx:&CallCtx<'_>,a:Handle<OnlineCovariance>|{let d=canonical(&(object_dimension(&a,ctx)?.pow(Exp::Rat(Rational::int(2)))))?;a.with(ctx,|o|{let n=o.dimension();Ok(Maybe(o.population_covariance().map(|v|quantities_matrix(v.chunks_exact(n).map(<[f64]>::to_vec).collect(),&(d))).transpose()?))})});
+object_binding!(online_covariance_correlation,"num_native_online_covariance_correlation","crate::kernels::online_stats::OnlineCovariance::correlation","Dimensionless Pearson correlation matrix. Returns None for fewer than two observations or any constant column.",false,(a:Handle<OnlineCovariance>)->Maybe<Mat>,|ctx:&CallCtx<'_>,a:Handle<OnlineCovariance>|a.with(ctx,|accumulator|{
+    let n=accumulator.dimension();
+    Ok(Maybe(accumulator.correlation().map(|data|Mat{rows:n,cols:n,data})))
+}));
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     api::install(
         i,
@@ -70,10 +86,12 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &online_covariance_count::BINDING,
             &online_covariance_dimension::BINDING,
             &online_covariance_push::BINDING,
+            &online_covariance_push_batch::BINDING,
             &online_covariance_merge::BINDING,
             &online_covariance_mean::BINDING,
             &online_covariance_sample_covariance::BINDING,
             &online_covariance_population_covariance::BINDING,
+            &online_covariance_correlation::BINDING,
         ],
         "numerical_vector",
     )

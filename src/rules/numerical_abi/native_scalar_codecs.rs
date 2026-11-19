@@ -844,6 +844,18 @@ fn native_scalar_preflight(
             ));
         }
     }
+    if name == "num_distributions_multivariate_normal_log_pdfs" {
+        let [dimension] = native_tensor_shape(&args[0])? else {
+            return Err(OpError::Domain("normal mean requires a vector".into()));
+        };
+        let [rows, _] = native_tensor_shape(&args[2])? else {
+            return Err(OpError::Domain(
+                "normal log density requires a matrix of query rows".into(),
+            ));
+        };
+        native_budget(&[*dimension, *dimension, *dimension], 50_000_000)?;
+        native_budget(&[*rows, *dimension, *dimension], 50_000_000)?;
+    }
     Ok(())
 }
 

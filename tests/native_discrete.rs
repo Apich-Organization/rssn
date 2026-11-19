@@ -561,6 +561,56 @@ fn native_rng_and_online_covariance_are_mutable_session_objects() {
         vec![2., 4., 4., 8.]
     );
 }
+
+#[test]
+fn online_covariance_batch_preserves_units_and_returns_dimensionless_correlation() {
+    let s = Session::new();
+    let length = dim("Length");
+    let covariance = call(
+        &s,
+        "num_native_online_covariance_new",
+        &[Value::int(2), scalar(1., length.clone())],
+    );
+    let data = [1., 3., 3., 7., 5., 11.].map(Value::Float).to_vec();
+    for (shape, dimension) in [(vec![3, 2], dim("Time")), (vec![2, 3], length.clone())] {
+        let invalid = tensor(shape, data.clone(), TypeExpr::Float.with_dim(dimension));
+        assert!(
+            s.call_value(
+                "num_native_online_covariance_push_batch",
+                &[covariance.clone(), invalid],
+                &CallCtx::new(),
+            )
+            .is_err()
+        );
+    }
+    let valid = tensor(vec![3, 2], data, TypeExpr::Float.with_dim(length));
+    assert_eq!(
+        call(
+            &s,
+            "num_native_online_covariance_push_batch",
+            &[covariance.clone(), valid]
+        ),
+        Value::Bool(true)
+    );
+    let handle = std::slice::from_ref(&covariance);
+    assert_eq!(
+        call(&s, "num_native_online_covariance_count", handle),
+        Value::int(3)
+    );
+    let correlation = call(&s, "num_native_online_covariance_correlation", handle);
+    let Value::Tensor(result) = some(&correlation) else {
+        panic!("correlation matrix");
+    };
+    assert_eq!(result.shape, vec![2, 2]);
+    assert_eq!(result.elem, TypeExpr::Float);
+    assert!(
+        result
+            .data
+            .iter()
+            .all(|value| (number(value) - 1.).abs() < 1e-15)
+    );
+}
+
 #[test]
 fn general_multivector_inverse_covers_nonhomogeneous_and_tiny_elements() {
     use rssn::kernels::geometric_algebra::Multivector3D;

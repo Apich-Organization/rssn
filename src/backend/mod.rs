@@ -99,7 +99,9 @@ pub trait Compiled: Send + Sync {
         columns: &[&[f64]],
         out: &mut [f64],
     ) {
-        let mut args = vec![f64::NAN; self.arity()];
+        let arity = self.arity();
+        let mut args = crate::kernels::reuse::f64_scratch(arity);
+        args.resize(arity, f64::NAN);
         for (row, slot) in out.iter_mut().enumerate() {
             for (arg, column) in args.iter_mut().zip(columns) {
                 *arg = column.get(row).copied().unwrap_or(f64::NAN);
@@ -122,21 +124,18 @@ pub fn call_batch_par(
     columns: &[&[f64]],
     out: &mut [f64],
 ) {
-    use rayon::prelude::*;
     if !crate::execution::should_split(out.len().div_ceil(BATCH_PAR_ROWS), 3) {
         f.call_batch(columns, out);
         return;
     }
-    out.par_chunks_mut(BATCH_PAR_ROWS)
-        .enumerate()
-        .for_each(|(k, chunk)| {
-            let lo = k * BATCH_PAR_ROWS;
-            let cols: Vec<&[f64]> = columns
-                .iter()
-                .map(|c| &c[lo.min(c.len())..(lo + chunk.len()).min(c.len())])
-                .collect();
-            f.call_batch(&cols, chunk);
-        });
+    crate::kernels::par::for_chunks_mut(out, BATCH_PAR_ROWS, 3, |k, chunk| {
+        let lo = k * BATCH_PAR_ROWS;
+        let cols: Vec<&[f64]> = columns
+            .iter()
+            .map(|c| &c[lo.min(c.len())..(lo + chunk.len()).min(c.len())])
+            .collect();
+        f.call_batch(&cols, chunk);
+    });
 }
 
 /// A compiled program with several inputs, parameters and outputs (an ODE
@@ -165,14 +164,17 @@ pub trait CompiledMulti: Send + Sync {
         out: &mut [&mut [f64]],
     ) {
         let rows = out.iter().map(|o| o.len()).min().unwrap_or(0);
-        let mut point = vec![f64::NAN; self.inputs()];
-        let mut values = vec![f64::NAN; self.outputs()];
+        let (inputs, outputs) = (self.inputs(), self.outputs());
+        let mut point = crate::kernels::reuse::f64_scratch(inputs);
+        point.resize(inputs, f64::NAN);
+        let mut values = crate::kernels::reuse::f64_scratch(outputs);
+        values.resize(outputs, f64::NAN);
         for row in 0..rows {
             for (arg, column) in point.iter_mut().zip(columns) {
                 *arg = column.get(row).copied().unwrap_or(f64::NAN);
             }
             self.eval(&point, params, &mut values);
-            for (column, &v) in out.iter_mut().zip(&values) {
+            for (column, &v) in out.iter_mut().zip(values.iter()) {
                 if let Some(slot) = column.get_mut(row) {
                     *slot = v;
                 }

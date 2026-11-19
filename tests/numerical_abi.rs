@@ -172,6 +172,30 @@ fn typed_signal_resampling_and_inverse_stft_reconstruct_samples() {
 }
 
 #[test]
+fn checked_fft_convolution_preserves_both_operand_dimensions() {
+    use rssn::kernel::signature::DimExpr;
+
+    let session = Session::new();
+    let args = [
+        measured_geometry(vec![2], &[2.0, 3.0], "Length"),
+        measured_geometry(vec![2], &[1.0, -1.0], "Time"),
+    ];
+    let op = "num_fftconv_convolve_overlap_save";
+    let Value::Tensor(result) = call(&session, op, &args).unwrap() else {
+        panic!("expected a vector of quantities");
+    };
+    assert_eq!(result.shape, [3]);
+    let product = DimExpr::Mul(vec![DimExpr::base("Length"), DimExpr::base("Time")]);
+    assert!(
+        rssn::kernel::overload::matches_type(&TypeExpr::Float.with_dim(product), &result.elem)
+            .accepted()
+    );
+    for (sample, expected) in result.data.iter().zip([2.0, 1.0, -3.0]) {
+        assert!((geometry_scalar(sample) - expected).abs() < 1e-12);
+    }
+}
+
+#[test]
 fn welch_record_fields_preserve_their_independent_dimensions() {
     use rssn::kernel::signature::DimExpr;
     use rssn::kernel::value::QuantityValue;

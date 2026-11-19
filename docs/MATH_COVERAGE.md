@@ -34,6 +34,10 @@ The checked ABI reports malformed shapes and unsupported domains as an error or 
 - The typed `num_signal_welch_psd` and `num_signal_welch_cross_spectrum` records carry separate dimensions for frequencies, density and coherence. Frequency bins use the sample rate units. Density is measured per unit frequency, and coherence is dimensionless.
 - `analytic_signal`, `hilbert` and `analytic_envelope` use periodic boundaries. `zoom_fft` evaluates uniformly spaced frequencies in cycles per input sample via chirp convolution. The typed `num_signal_zoom_fft` operator takes and returns a vector of complex samples.
 - `kernels::wavelets::wavelet_packet` decomposes both low and high branches into equal-width leaf bands, with the low branch preceding the high branch. `inverse_wavelet_packet` reconstructs a signal from that leaf matrix. `FrftPlan` reuses the eigenbasis of the discrete fractional Fourier transform for multiple orders on signals of the same length.
+- One-dimensional real FFTs share their even-length packing and twiddles. Wide strided axes can run in parallel through contiguous batches. The power-of-two complex entry points in `kernels::transforms` preserve their historical scalar radix-2 rounding order.
+- `fftconv::convolve_overlap_save` computes full linear convolution in independent blocks. `OverlapSavePlan` reuses the filter spectrum with multiple recordings. `autocorrelate` returns the nonnegative lags of the linear autocorrelation, starting at the sum of squares.
+- `firwin_lowpass` and `firwin_bandpass` design Kaiser-windowed FIR filters with cutoffs normalized to Nyquist. `frequency_response` instead takes cycles per sample, with Nyquist at 0.5. `sos_filter` accepts second-order sections, and `resample_poly` applies centered, rational-rate polyphase FIR resampling.
+- The stationary wavelet pair `swt` and `iswt` uses periodic boundaries with one coefficient per sample in every band, including for odd input lengths. `wavelet_soft_threshold` and `wavelet_hard_threshold` denoise detail bands using a threshold in the units of the input samples.
 
 ## Weighted graphs
 
@@ -68,6 +72,14 @@ Literal term operators under `rules::numeric` accept numbers, lists and method s
 
 The typed numerical ABI additionally exposes checked records, tensors and session-owned models. It supports reusable CHOL/LU and multigrid state, tensor-train algebra, complex transform data, checked homotopy certificates and ODE/SDE objects with solver-specific controls. Discover the exact callable names and signatures in `KernelManifest` or Aevia's `aevia rssn` output. Native methods that accept Rust callbacks or borrow host storage also remain available directly. [Kernel embedding contract](KERNEL.md) · [Numerical callbacks](NUMERICAL_CALLBACKS.md)
 
+## Statistics
+
+`num_descriptive_quantiles` uses type-7 interpolation. `num_robust_quantiles` accepts all nine Hyndman–Fan definitions, and `num_robust_weighted_quantiles` inverts the weighted empirical CDF. Each batch shares an ordered sample, returns results in query order, and preserves the sample units. `num_robust_ecdf_batch` requires matching sample and query units and returns probabilities.
+
+`num_stats_ext_adjust_p_bh`, `num_stats_ext_adjust_p_by`, and `num_stats_ext_adjust_p_holm` adjust dimensionless p-values in their original order. Benjamini–Hochberg controls the false discovery rate under independence or positive regression dependence of null tests. Benjamini–Yekutieli allows arbitrary dependence. Holm controls the family-wise error rate.
+
+`num_native_online_covariance_push_batch` accepts a row-major observation matrix with the dimensions of the accumulator. It commits only after the entire batch succeeds, combining large shards in a fixed order regardless of worker count. `num_native_online_covariance_correlation` returns a dimensionless Pearson correlation matrix, or `None` if any column is constant or there are fewer than two observations. `num_distributions_multivariate_normal_log_pdfs` factors the covariance once for all query rows and requires data normalized to a common dimensionless reference.
+
 ## Verification map
 
 | Area | Representative tests |
@@ -76,11 +88,12 @@ The typed numerical ABI additionally exposes checked records, tensors and sessio
 | Complex functions and real tails | `tests/math_special_complex.rs`, `tests/math_special_edges.rs`, `kernels::fresnel` regressions |
 | Primality, factors, modular roots and discrete logarithms | `tests/math_number_theory.rs` |
 | Statistics, quadrature, interpolation and inverse problems | `tests/math_numeric_edges.rs`, `tests/math_robustness.rs`, `tests/kernels/robust.rs` |
+| Batched quantiles, p-value adjustment, covariance and normal density | `tests/statistics_batch.rs`, `tests/native_discrete.rs`, `tests/source_policy_math.rs` |
 | ABI domain, shape and work-budget behavior | `tests/abi_fuzz.rs`, `tests/analysis_native.rs`, `tests/source_policy_math.rs` |
 | Integrals, limits, sums, series and symbolic solving | `tests/math_symbolic_classics.rs`, `tests/symbolic_battery.rs` |
 | Scientific layouts and invariants | `tests/native_*.rs`, `tests/dimensioned_coverage.rs` |
 | Signal analysis, FIR resampling, directed graph traversal | `tests/numerical_signal_graph.rs` |
-| Real tensor FFTs, cosine and sine transforms, Hilbert, zoom FFT, coherence and wavelet packets | `tests/signal_transforms.rs` |
+| Real tensor FFTs, cosine and sine transforms, Hilbert, zoom FFT, coherence, wavelet packets, stationary wavelets, overlap-save convolution, and digital filtering | `tests/signal_transforms.rs` |
 | Weighted paths, minimum cuts, graph isomorphism and native graph schemas | `tests/kernels/graph.rs`, `tests/native_discrete.rs` |
 | Low-rank approximation and units of interpolation coefficients | `src/kernels/lowrank.rs`, `tests/native_linear.rs` |
 

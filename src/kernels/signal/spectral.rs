@@ -5,7 +5,7 @@ use rustfft::FftDirection;
 
 use super::SignalError;
 use crate::kernels::reuse::fft_plan;
-use crate::kernels::reuse::fft_scratch;
+use crate::kernels::reuse::fft_scratch_for;
 
 #[allow(
     clippy::arithmetic_side_effects,
@@ -38,13 +38,11 @@ pub(super) fn analytic_signal(samples: &[f64]) -> Result<Vec<Complex64>, SignalE
         .collect();
     let forward = fft_plan(len, FftDirection::Forward);
     let inverse = fft_plan(len, FftDirection::Inverse);
-    let mut scratch = fft_scratch();
-    scratch.resize(
-        forward
-            .get_inplace_scratch_len()
-            .max(inverse.get_inplace_scratch_len()),
-        Complex64::ZERO,
-    );
+    let scratch_len = forward
+        .get_inplace_scratch_len()
+        .max(inverse.get_inplace_scratch_len());
+    let mut scratch = fft_scratch_for(scratch_len);
+    scratch.resize(scratch_len, Complex64::ZERO);
     forward.process_with_scratch(&mut spectrum, &mut scratch);
     // DC and Nyquist contribute only to the real part, which is copied
     // directly from the input. Drop them before the inverse FFT.
@@ -159,13 +157,11 @@ pub(super) fn zoom_fft(
 
     let forward = fft_plan(size, FftDirection::Forward);
     let inverse = fft_plan(size, FftDirection::Inverse);
-    let mut scratch = fft_scratch();
-    scratch.resize(
-        forward
-            .get_inplace_scratch_len()
-            .max(inverse.get_inplace_scratch_len()),
-        Complex64::ZERO,
-    );
+    let scratch_len = forward
+        .get_inplace_scratch_len()
+        .max(inverse.get_inplace_scratch_len());
+    let mut scratch = fft_scratch_for(scratch_len);
+    scratch.resize(scratch_len, Complex64::ZERO);
     forward.process_with_scratch(&mut input, &mut scratch);
     forward.process_with_scratch(&mut kernel, &mut scratch);
     let reciprocal_size = 1.0 / size as f64;

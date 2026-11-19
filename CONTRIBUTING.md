@@ -17,6 +17,7 @@ Read [ARCHITECTURE.md](ARCHITECTURE.md) first; it explains how the pieces fit. I
 | change the C interface | `src/ffi`; see [docs/BUILDING.md](docs/BUILDING.md) for headers |
 | change parsing/printing, LaTeX, Typst, plots | `src/io` |
 | change compiled evaluation or the JIT | `src/backend` |
+| share CPU dispatch policy, temporary buffers or immutable plans | `src/execution.rs`, `src/kernels/par.rs` and `src/kernels/reuse.rs` |
 | generated numerical bindings | `tools/rssn-api-gen` ([README](tools/rssn-api-gen/README.md)) |
 
 Tests sit next to the code they test; cross-module tests live in `tests/`.
@@ -56,6 +57,7 @@ Tests sit next to the code they test; cross-module tests live in `tests/`.
    and, when you touched the corresponding area:
    ```bash
    cargo run --bin signature-audit            # every operator is typed or explained
+   cargo run -p rssn-api-gen -- --codecs-check
    cargo run -p rssn-api-gen -- --bindings-check
    cargo run -p rssn-api-gen -- --structured-check
    cargo run -p rssn-api-gen -- --contracts-check
@@ -66,12 +68,22 @@ Tests sit next to the code they test; cross-module tests live in `tests/`.
 
 ### Adding an operator
 
+For a plain Rust numerical function supported by the codecs, put the algorithm
+and its tests in the relevant `src/kernels` or `src/sim` module. Use the existing
+`num_<family>_<operation>` namespace spelling for a new ABI export and keep
+published names and keys stable. Register the Rust path and dimensional
+contract in `codec-policy.tsv`. Generated overloads use the Rust signature,
+and the same dimensional policy drives runtime decoding and result units.
+[Binding generation](tools/rssn-api-gen/README.md)
+
+Use direct registration for a symbolic rule, host callback or native object.
+
 1. Register it in a rule set's install function (`Installer::op`).
 2. Give it a dimension rule (`i.dim(op, rule)`); the coverage scanner in `graph::dim` fails the build otherwise.
 3. Declare a `Signature`, or a `DynamicReason` if it cannot have one. Add `.doc(..)`, `.category(..)` and `.since(..)`; the manifest is the documentation a host reads.
 4. Run the checks above, including `signature-audit`.
 
-`signatures.overlay.json` is version-controlled source: when you correct an inferred signature there, commit the change together with the code that needs it. `signatures.witnessed.json` is version-controlled too, and `build.rs` fails when either file is missing. The witnessed table is mined from the test corpus, never edited by hand; after adding operators, regenerate it as described in [docs/KERNEL.md](docs/KERNEL.md) (`cargo run --profile tools --bin signature-mine`, about ten minutes) and commit it with the code, or the new operators carry only their derived and overlay signatures.
+`signatures.overlay.json` supplies reviewed corrections to inferred signatures. `signatures.witnessed.json` contains signatures mined from the test corpus. Keep both files with the sources so `build.rs` can load them. When new or changed inferred signatures need witnesses, regenerate the witnessed table with `cargo run --profile tools --bin signature-mine`. Codec-generated numerical operators carry declared signatures. [Kernel signature sources](docs/KERNEL.md#3a-witnessed-signatures)
 
 ### Changing the C interface
 
@@ -79,7 +91,7 @@ Tests sit next to the code they test; cross-module tests live in `tests/`.
 
 ## CI/CD
 
-Both repositories (rssn and aevia) use the same three workflows in `.github/workflows`:
+RSSN has the following workflows in `.github/workflows`.
 
 | Workflow | Runs on | What it does |
 |---|---|---|

@@ -528,6 +528,14 @@ pub struct Extractor {
     best: Vec<Option<(u64, NodeId)>>,
 }
 
+/// Scratch for materializing several roots of one extraction snapshot.
+#[derive(Default)]
+pub(super) struct BuildMemo {
+    built: super::id::FastMap<ClassId, NodeId>,
+    open: super::id::FastSet<ClassId>,
+    stack: Vec<(ClassId, bool)>,
+}
+
 impl Extractor {
     /// Computes best members under `model` for everything reachable from
     /// `roots`. The graph must be rebuilt (no pending unions).
@@ -537,7 +545,15 @@ impl Extractor {
         roots: &[NodeId],
         model: &dyn CostModel,
     ) -> Self {
-        let classes = reachable(graph, roots);
+        Self::for_classes(graph, &reachable(graph, roots), model)
+    }
+
+    /// The same extraction using an existing reachable-class traversal.
+    pub(super) fn for_classes(
+        graph: &Graph,
+        classes: &[ClassId],
+        model: &dyn CostModel,
+    ) -> Self {
         let mut local: super::id::FastMap<u32, u32> = super::id::FastMap::default();
         local.reserve(classes.len());
         for (i, class) in classes.iter().enumerate() {
@@ -547,7 +563,7 @@ impl Extractor {
         // Bellman-Ford style relaxation. Processing in reverse discovery
         // order visits most children before their parents, so this usually
         // converges in two or three sweeps.
-        for (slot, &class) in best.iter_mut().zip(&classes) {
+        for (slot, &class) in best.iter_mut().zip(classes) {
             if let Some(pin) = graph.pinned(class) {
                 *slot = Some((1, pin));
             }
@@ -647,10 +663,22 @@ impl Extractor {
         graph: &mut Graph,
         node: NodeId,
     ) -> Option<NodeId> {
+        self.build_shared(graph, node, &mut BuildMemo::default())
+    }
+
+    /// Reuses materialized terms across roots. The caller must use a fresh
+    /// memo for each extractor and discard it before merging graph classes.
+    pub(super) fn build_shared(
+        &self,
+        graph: &mut Graph,
+        node: NodeId,
+        memo: &mut BuildMemo,
+    ) -> Option<NodeId> {
         let root = graph.find(node);
-        let mut built: super::id::FastMap<ClassId, NodeId> = super::id::FastMap::default();
-        let mut open: super::id::FastSet<ClassId> = super::id::FastSet::default();
-        let mut stack = vec![(root, false)];
+        let BuildMemo { built, open, stack } = memo;
+        open.clear();
+        stack.clear();
+        stack.push((root, false));
         while let Some((class, expanded)) = stack.pop() {
             if built.contains_key(&class) {
                 continue;
@@ -726,6 +754,27 @@ mod tests {
         let ex = Extractor::new(&g, &[outer], &SizeCost);
         let out = ex.build(&mut g, outer);
         assert_eq!(out.map(|n| g.display(n)).as_deref(), Some("f(f(w))"));
+    }
+
+    #[test]
+    fn shared_extraction_materializes_overlapping_roots() {
+        let mut g = Graph::new();
+        let first = g.parse("sin(x + y)").unwrap_or(NodeId::NONE);
+        let second = g.parse("cos(x + y)").unwrap_or(NodeId::NONE);
+        let sum = g.parse("x + y").unwrap_or(NodeId::NONE);
+        let replacement = g.sym("z");
+        g.union(sum, replacement);
+        g.rebuild();
+        let extractor = Extractor::new(&g, &[first, second], &SizeCost);
+        let mut memo = BuildMemo::default();
+        let first = extractor.build_shared(&mut g, first, &mut memo);
+        let second = extractor.build_shared(&mut g, second, &mut memo);
+        assert_eq!(first.map(|node| g.display(node)).as_deref(), Some("sin(z)"));
+        assert_eq!(
+            second.map(|node| g.display(node)).as_deref(),
+            Some("cos(z)")
+        );
+        assert_eq!(memo.built.get(&g.find(sum)), Some(&replacement));
     }
 
     #[test]

@@ -4,18 +4,18 @@
 //! (§8.8). The other conventions are reachable through [`fft_norm`], which is
 //! what `fft_norm(x, Norm.Unitary)` needs.
 //!
-//! The transform itself is `rustfft`'s: it handles every length (including
-//! primes) through Bluestein's algorithm, and it was already in the dependency
-//! graph.
+//! RustFFT chooses a plan for the transform length and the available CPU
+//! instructions. Calls of matching lengths can reuse plans and scratch.
 
 use num_complex::Complex64 as Complex;
 /// Complex representation used by the FFT kernels.
 pub use num_complex::Complex64;
+use rustfft::Fft;
 use rustfft::FftDirection;
 
 use super::par;
 use super::reuse::fft_plan;
-use super::reuse::fft_scratch;
+use super::reuse::fft_scratch_for;
 
 /// The normalisation convention of [`fft_norm`] (§8.8).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -53,20 +53,38 @@ fn transform(
     inverse: bool,
     norm: Norm,
 ) -> Vec<Complex> {
-    if input.is_empty() {
-        return input;
+    transform_in_place(&mut input, inverse, norm);
+    input
+}
+
+pub(super) fn transform_in_place(
+    data: &mut [Complex],
+    inverse: bool,
+    norm: Norm,
+) {
+    if data.len() <= 1 {
+        return;
     }
-    let plan = fft_plan(input.len(), direction(inverse));
-    let mut scratch = fft_scratch();
-    scratch.resize(plan.get_inplace_scratch_len(), Complex64::default());
-    plan.process_with_scratch(&mut input, &mut scratch);
-    let scale = scale_for(norm, inverse, input.len());
+    let plan = fft_plan(data.len(), direction(inverse));
+    let scratch_len = plan.get_inplace_scratch_len();
+    let mut scratch = fft_scratch_for(scratch_len);
+    scratch.resize(scratch_len, Complex64::ZERO);
+    plan.process_with_scratch(data, &mut scratch);
+    scale_transform(data, norm, inverse, data.len());
+}
+
+fn scale_transform(
+    data: &mut [Complex],
+    norm: Norm,
+    inverse: bool,
+    count: usize,
+) {
+    let scale = scale_for(norm, inverse, count);
     if scale < 1.0 {
-        for value in &mut input {
+        for value in data {
             *value *= scale;
         }
     }
-    input
 }
 
 const fn direction(inverse: bool) -> FftDirection {
@@ -179,12 +197,7 @@ fn transform_axes(
         transform_axis(&mut data, extent, inner, inverse);
     }
     let count: usize = axes.iter().map(|axis| shape[*axis]).product();
-    let scale = scale_for(norm, inverse, count);
-    if scale < 1.0 {
-        for value in &mut data {
-            *value *= scale;
-        }
-    }
+    scale_transform(&mut data, norm, inverse, count);
     data
 }
 
@@ -197,16 +210,36 @@ fn transform_axis(
 ) {
     // The shape has already been checked. Each chunk is a whole number of
     // outer blocks and therefore contains only complete transforms.
+    if extent <= 1 {
+        return;
+    }
     let block_len = extent * inner;
     let plan = fft_plan(extent, direction(inverse));
+    // A single wide strided block has many independent lanes, but the outer
+    // block scheduler below cannot split it. Pack its lanes contiguously to
+    // give workers independent FFT batches and avoid repeated strided reads.
+    if inner >= 16
+        && block_len >= 262_144
+        && data.len() / block_len < 4
+        && crate::execution::should_split(inner, 16)
+    {
+        let mut transposed = fft_scratch_for(block_len);
+        transposed.resize(block_len, Complex64::ZERO);
+        for block in data.chunks_exact_mut(block_len) {
+            transform_wide_block(block, &mut transposed, extent, inner, plan.as_ref());
+        }
+        return;
+    }
     let work = |_: usize, data: &mut [Complex64]| {
-        let mut scratch = fft_scratch();
-        scratch.resize(plan.get_inplace_scratch_len(), Complex64::default());
+        let scratch_len = plan.get_inplace_scratch_len();
+        let mut scratch = fft_scratch_for(scratch_len);
+        scratch.resize(scratch_len, Complex64::ZERO);
         if inner == 1 {
             plan.process_with_scratch(data, &mut scratch);
             return;
         }
-        let mut lane = vec![Complex64::default(); extent];
+        let mut lane = fft_scratch_for(extent);
+        lane.resize(extent, Complex64::ZERO);
         for block in data.chunks_exact_mut(block_len) {
             for offset in 0..inner {
                 for (slot, value) in lane
@@ -216,7 +249,12 @@ fn transform_axis(
                     *slot = *value;
                 }
                 plan.process_with_scratch(&mut lane, &mut scratch);
-                for (slot, value) in block.iter_mut().skip(offset).step_by(inner).zip(&lane) {
+                for (slot, value) in block
+                    .iter_mut()
+                    .skip(offset)
+                    .step_by(inner)
+                    .zip(lane.iter())
+                {
                     *slot = *value;
                 }
             }
@@ -228,6 +266,41 @@ fn transform_axis(
     } else {
         work(0, data);
     }
+}
+
+fn transform_wide_block(
+    block: &mut [Complex64],
+    transposed: &mut [Complex64],
+    extent: usize,
+    inner: usize,
+    plan: &dyn Fft<f64>,
+) {
+    let lanes_per_batch = (32_768 / extent).clamp(8, inner.div_ceil(2));
+    let lane_chunk = lanes_per_batch * extent;
+    par::for_chunks_mut(transposed, lane_chunk, 2, |chunk, lanes| {
+        let first = chunk * lanes_per_batch;
+        // Work on a tile of adjacent columns so each source row is read
+        // contiguously and a tile remains resident across the gather pass.
+        for (row, source) in block.chunks_exact(inner).enumerate() {
+            for (value, lane) in source[first..].iter().zip(lanes.chunks_exact_mut(extent)) {
+                lane[row] = *value;
+            }
+        }
+        let scratch_len = plan.get_inplace_scratch_len();
+        let mut scratch = fft_scratch_for(scratch_len);
+        scratch.resize(scratch_len, Complex64::ZERO);
+        plan.process_with_scratch(lanes, &mut scratch);
+    });
+
+    let rows_per_batch = (32_768 / inner).max(1);
+    par::for_chunks_mut(block, rows_per_batch * inner, 2, |chunk, rows| {
+        let first = chunk * rows_per_batch;
+        for (column, lane) in transposed.chunks_exact(extent).enumerate() {
+            for (row, value) in rows.chunks_exact_mut(inner).zip(&lane[first..]) {
+                row[column] = *value;
+            }
+        }
+    });
 }
 
 /// The half-spectrum transform of a real tensor over `axes`: the last listed
@@ -401,13 +474,7 @@ pub fn rfftfreq(
 /// `n/2 + 1` bins.
 #[must_use]
 pub fn rfft(input: &[f64]) -> Vec<Complex> {
-    let spectrum = fft_owned(
-        input
-            .iter()
-            .map(|value| Complex::new(*value, 0.0))
-            .collect(),
-    );
-    spectrum.into_iter().take(input.len() / 2 + 1).collect()
+    super::transforms::rfft(input)
 }
 
 /// Rebuilds a real signal of length `n` from the half spectrum.
@@ -416,6 +483,11 @@ pub fn irfft(
     input: &[Complex],
     n: usize,
 ) -> Vec<f64> {
+    if n == 0 || input.len() == n / 2 + 1 {
+        return super::transforms::irfft(input, n);
+    }
+    // Retain this entry point's explicit zero-fill and overwrite behavior for
+    // incomplete or overlong spectra.
     let mut spectrum = Vec::new();
     if spectrum.try_reserve_exact(n).is_err() {
         return Vec::new();

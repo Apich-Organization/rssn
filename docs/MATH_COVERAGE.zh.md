@@ -34,6 +34,10 @@
 - 带类型的 `num_signal_welch_psd` 和 `num_signal_welch_cross_spectrum` 为各返回字段记录各自的量纲。频率沿用采样率单位，谱密度按单位频率计，相干度无量纲。
 - `analytic_signal`、`hilbert` 和 `analytic_envelope` 使用周期边界。`zoom_fft` 通过线性调频卷积计算等间隔频点，频率单位为每输入样本的周期数。带类型的 `num_signal_zoom_fft` 算子接收和返回复数向量。
 - `kernels::wavelets::wavelet_packet` 对低频和高频分支继续分解，得到等宽的叶子频带，每个低频子带排列在相应高频子带之前。`inverse_wavelet_packet` 从叶子矩阵重建信号。对长度相同的信号计算多个阶数的离散分数傅里叶变换时，`FrftPlan` 可以复用特征基。
+- 一维实 FFT 共用奇偶长度处理和旋转因子。宽跨步轴通过连续缓冲区分批并行计算。`kernels::transforms` 在二次幂长度上保留原有标量基二 FFT 的舍入次序。
+- `fftconv::convolve_overlap_save` 用独立的重叠保留块计算完整线性卷积，`OverlapSavePlan` 可为多段信号复用滤波器频谱。`autocorrelate` 返回非负延迟的线性自相关，零延迟等于平方和。
+- `firwin_lowpass` 和 `firwin_bandpass` 设计 Kaiser 窗 FIR，截止频率以 Nyquist 频率为 1。`frequency_response` 则使用每采样周期数（Nyquist 为 0.5）。`sos_filter` 接收二阶节系数，`resample_poly` 用居中的多相 FIR 完成有理倍率重采样。
+- `swt` 和 `iswt` 提供周期平稳小波变换，各频带与输入等长，支持奇数长度。`wavelet_soft_threshold` 和 `wavelet_hard_threshold` 对细节频带去噪，阈值与样本量纲一致。
 
 ## 加权图
 
@@ -68,6 +72,14 @@
 
 类型化数值 ABI 还公开受检查的记录、张量和会话所属模型，支持复用 Cholesky、LU 与多重网格状态、张量列车代数、复数变换数据、受检查的同伦认证，以及具备专用求解控制的 ODE 和 SDE 对象。可从 `KernelManifest` 或 Aevia 的 `aevia rssn` 输出查询确切名称与签名。需要 Rust 回调或借用宿主存储的原生方法也可直接调用。[内核嵌入契约](KERNEL.zh.md) · [数值回调](NUMERICAL_CALLBACKS.zh.md)
 
+## 统计
+
+`num_descriptive_quantiles` 使用第 7 型插值。`num_robust_quantiles` 支持九种 Hyndman–Fan 定义，`num_robust_weighted_quantiles` 求加权经验分布函数的逆。每批查询共享排序后的样本，按查询顺序返回结果并保留样本量纲。`num_robust_ecdf_batch` 要求样本与查询量纲相同，返回概率。
+
+`num_stats_ext_adjust_p_bh`、`num_stats_ext_adjust_p_by` 和 `num_stats_ext_adjust_p_holm` 按原顺序返回校正后的无量纲 p 值。Benjamini–Hochberg 在检验独立或零假设满足正回归依赖时控制错误发现率，Benjamini–Yekutieli 适用于任意依赖，Holm 控制族错误率。
+
+`num_native_online_covariance_push_batch` 接收与累加器量纲相符的行主序观测矩阵。整个批次成功后才提交，并始终按固定顺序合并大型输入的分块。`num_native_online_covariance_correlation` 返回无量纲 Pearson 相关矩阵。任一列为常量或观测不足两条时，返回 `None`。`num_distributions_multivariate_normal_log_pdfs` 对所有查询行复用一次协方差分解，输入须按同一参考尺度归一化为无量纲值。
+
 ## 验证位置
 
 | 领域 | 代表测试 |
@@ -76,11 +88,12 @@
 | 复函数与实函数尾部 | `tests/math_special_complex.rs`、`tests/math_special_edges.rs`、`kernels::fresnel` 的回归测试 |
 | 素性、因子、模根及离散对数 | `tests/math_number_theory.rs` |
 | 统计、求积、插值与逆问题 | `tests/math_numeric_edges.rs`、`tests/math_robustness.rs`、`tests/kernels/robust.rs` |
+| 批量分位数、p 值校正、协方差和正态密度 | `tests/statistics_batch.rs`、`tests/native_discrete.rs`、`tests/source_policy_math.rs` |
 | ABI 定义域、形状及工作量控制 | `tests/abi_fuzz.rs`、`tests/analysis_native.rs`、`tests/source_policy_math.rs` |
 | 积分、极限、求和、级数和符号求解 | `tests/math_symbolic_classics.rs`、`tests/symbolic_battery.rs` |
 | 科学计算布局与不变量 | `tests/native_*.rs`、`tests/dimensioned_coverage.rs` |
 | 信号分析、FIR 重采样与有向图遍历 | `tests/numerical_signal_graph.rs` |
-| 实数张量 FFT、余弦与正弦变换、Hilbert 变换、局部 FFT、相干度、小波包 | `tests/signal_transforms.rs` |
+| 实数张量 FFT、余弦与正弦变换、Hilbert 变换、局部 FFT、相干度、小波包、平稳小波、重叠保留卷积、数字滤波 | `tests/signal_transforms.rs` |
 | 带权路径、最小割、图同构与原生图算子类型 | `tests/kernels/graph.rs`、`tests/native_discrete.rs` |
 | 低秩近似及插值系数的量纲 | `src/kernels/lowrank.rs`、`tests/native_linear.rs` |
 

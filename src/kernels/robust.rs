@@ -23,11 +23,14 @@
 
 use std::f64::consts::PI;
 
+use crate::kernels::descriptive;
+use crate::kernels::numeric_common::scaled_difference;
+use crate::kernels::par;
 use crate::kernels::random::Rng;
 
 fn sorted(data: &[f64]) -> Vec<f64> {
     let mut v: Vec<f64> = data.iter().copied().filter(|x| !x.is_nan()).collect();
-    v.sort_by(f64::total_cmp);
+    v.sort_unstable_by(f64::total_cmp);
     v
 }
 
@@ -43,7 +46,34 @@ pub fn quantile(
     if !(0.0..=1.0).contains(&p) || !(1..=9).contains(&kind) {
         return f64::NAN;
     }
-    quantile_sorted(&sorted(data), p, kind)
+    let mut sample: Vec<_> = data.iter().copied().filter(|x| !x.is_nan()).collect();
+    quantile_select(&mut sample, p, kind)
+}
+
+/// Hyndman-Fan sample quantiles in query order, using one shared sort.
+///
+/// NaN observations are ignored. An empty sample or invalid definition yields
+/// NaN at every query. An invalid probability yields NaN at that query.
+#[must_use]
+pub fn quantiles(
+    data: &[f64],
+    probabilities: &[f64],
+    kind: u8,
+) -> Vec<f64> {
+    if probabilities.is_empty() {
+        return Vec::new();
+    }
+    if !(1..=9).contains(&kind) {
+        return vec![f64::NAN; probabilities.len()];
+    }
+    if let [p] = probabilities {
+        return vec![quantile(data, *p, kind)];
+    }
+    let sample = sorted(data);
+    probabilities
+        .iter()
+        .map(|&p| quantile_sorted(&sample, p, kind))
+        .collect()
 }
 
 fn quantile_sorted(
@@ -51,17 +81,43 @@ fn quantile_sorted(
     p: f64,
     kind: u8,
 ) -> f64 {
-    let Some(&first) = x.first() else {
+    if x.is_empty() || !(0.0..=1.0).contains(&p) {
         return f64::NAN;
-    };
-    let n = x.len();
+    }
+    let (lower, upper, fraction) = quantile_position(x.len(), p, kind);
+    interpolate(x[lower], x[upper], fraction)
+}
+
+pub(super) fn quantile_select(
+    data: &mut [f64],
+    p: f64,
+    kind: u8,
+) -> f64 {
+    if data.is_empty() {
+        return f64::NAN;
+    }
+    let (lower, upper, fraction) = quantile_position(data.len(), p, kind);
+    let (_, &mut value, tail) = data.select_nth_unstable_by(lower, f64::total_cmp);
+    if lower == upper || fraction == 0.0 {
+        return value;
+    }
+    let next = tail.iter().copied().min_by(f64::total_cmp).unwrap_or(value);
+    interpolate(value, next, fraction)
+}
+
+fn quantile_position(
+    n: usize,
+    p: f64,
+    kind: u8,
+) -> (usize, usize, f64) {
     let nf = n as f64;
-    let at = |i: isize| x[(i.clamp(1, n as isize) - 1) as usize];
+    let at = |i: isize| (i.clamp(1, n as isize) - 1) as usize;
+    let selected = |index| (index, index, 0.0);
     if n == 1 || p == 0.0 {
-        return first;
+        return selected(0);
     }
     if p >= 1.0 {
-        return at(n as isize);
+        return selected(n - 1);
     }
     match kind {
         | 1 | 2 => {
@@ -70,28 +126,31 @@ fn quantile_sorted(
             let g = np - j;
             let ji = j as isize;
             if g > 0.0 {
-                at(ji + 1)
+                selected(at(ji + 1))
             } else if kind == 1 {
-                at(ji)
+                selected(at(ji))
             } else {
-                interpolate(at(ji), at(ji + 1), 0.5)
+                (at(ji), at(ji + 1), 0.5)
             }
         },
         | 3 => {
             let h = nf * p - 0.5;
             let j = h.floor();
             if h.fract() == 0.0 && (j as isize) % 2 == 0 {
-                at(j as isize)
+                selected(at(j as isize))
             } else {
-                at(j as isize + 1)
+                selected(at(j as isize + 1))
             }
+        },
+        | 7 => {
+            let (lower, fraction) = descriptive::type7_position(n, p);
+            (lower, (lower + 1).min(n - 1), fraction)
         },
         | _ => {
             let (a, b) = match kind {
                 | 4 => (0.0, 1.0),
                 | 5 => (0.5, 0.5),
                 | 6 => (0.0, 0.0),
-                | 7 => (1.0, 1.0),
                 | 8 => (1.0 / 3.0, 1.0 / 3.0),
                 | _ => (0.375, 0.375),
             };
@@ -99,7 +158,7 @@ fn quantile_sorted(
             let m = a + p * (1.0 - a - b);
             let h = nf * p + m;
             let j = h.floor();
-            interpolate(at(j as isize), at(j as isize + 1), h - j)
+            (at(j as isize), at(j as isize + 1), h - j)
         },
     }
 }
@@ -115,13 +174,7 @@ fn interpolate(
     if crate::kernels::exact_eq(left, right) {
         return f64::midpoint(left, right);
     }
-    let width = right - left;
-    if width.is_finite() {
-        left + fraction * width
-    } else {
-        // Avoid an overflowing difference and cancellation such as -inf + inf.
-        (1.0 - fraction) * left + fraction * right
-    }
+    descriptive::interpolate(left, right, fraction)
 }
 
 fn weight_scale(
@@ -156,9 +209,17 @@ pub fn weighted_quantile(
     if !(0.0..=1.0).contains(&p) {
         return f64::NAN;
     }
-    let Some(scale) = weight_scale(data, weights) else {
+    let Some(sample) = cumulative_weights(data, weights) else {
         return f64::NAN;
     };
+    weighted_quantile_sorted(&sample, p)
+}
+
+fn cumulative_weights(
+    data: &[f64],
+    weights: &[f64],
+) -> Option<Vec<(f64, f64)>> {
+    let scale = weight_scale(data, weights)?;
     let mut sample: Vec<_> = data
         .iter()
         .copied()
@@ -166,23 +227,53 @@ pub fn weighted_quantile(
         .filter(|&(_, weight)| weight > 0.0)
         .collect();
     sample.sort_unstable_by(|(a, _), (b, _)| a.total_cmp(b));
+    let mut cumulative = 0.0;
+    for (_, weight) in &mut sample {
+        cumulative += *weight / scale;
+        *weight = cumulative;
+    }
+    Some(sample)
+}
+
+fn weighted_quantile_sorted(
+    sample: &[(f64, f64)],
+    p: f64,
+) -> f64 {
+    if !(0.0..=1.0).contains(&p) {
+        return f64::NAN;
+    }
     if p == 0.0 {
         return sample.first().map_or(f64::NAN, |&(value, _)| value);
     }
-    let last = sample.last().map_or(f64::NAN, |&(value, _)| value);
+    let Some(&(last, total)) = sample.last() else {
+        return f64::NAN;
+    };
     if p >= 1.0 {
         return last;
     }
-    let total_weight: f64 = sample.iter().map(|&(_, weight)| weight / scale).sum();
-    let target_weight = p * total_weight;
-    let mut cumulative_weight = 0.0;
-    for (value, weight) in sample {
-        cumulative_weight += weight / scale;
-        if cumulative_weight >= target_weight {
-            return value;
-        }
+    let rank = sample.partition_point(|&(_, cumulative)| cumulative < p * total);
+    sample.get(rank).map_or(last, |&(value, _)| value)
+}
+
+/// Weighted empirical quantiles, sharing one sort and cumulative weight scan.
+///
+/// Zero-weight observations are ignored. Invalid weights yield NaN at every
+/// query and an invalid probability yields NaN at that query.
+#[must_use]
+pub fn weighted_quantiles(
+    data: &[f64],
+    weights: &[f64],
+    probabilities: &[f64],
+) -> Vec<f64> {
+    if probabilities.is_empty() {
+        return Vec::new();
     }
-    last
+    let Some(sample) = cumulative_weights(data, weights) else {
+        return vec![f64::NAN; probabilities.len()];
+    };
+    par::map_slice(probabilities, 1_024, |&p| {
+        weighted_quantile_sorted(&sample, p)
+    })
 }
 
 /// Fraction of total weight on observations at or below `x`.
@@ -217,21 +308,7 @@ pub fn weighted_ecdf(
 #[must_use]
 pub fn median(data: &[f64]) -> f64 {
     let mut sample: Vec<_> = data.iter().copied().filter(|v| !v.is_nan()).collect();
-    let n = sample.len();
-    if n == 0 {
-        return f64::NAN;
-    }
-    let (lower, &mut middle, _) = sample.select_nth_unstable_by(n / 2, f64::total_cmp);
-    if n.is_multiple_of(2) {
-        let previous = lower
-            .iter()
-            .copied()
-            .max_by(f64::total_cmp)
-            .unwrap_or(middle);
-        interpolate(previous, middle, 0.5)
-    } else {
-        middle
-    }
+    quantile_select(&mut sample, 0.5, 7)
 }
 
 /// Median absolute deviation; multiplied by 1.4826 when `normal` is true so
@@ -255,15 +332,27 @@ fn mad_about(
     data: &[f64],
     median_value: f64,
 ) -> f64 {
-    let deviations: Vec<f64> = data.iter().map(|v| (v - median_value).abs()).collect();
-    median(&deviations)
+    let mut deviations: Vec<_> = data
+        .iter()
+        .map(|v| (v - median_value).abs())
+        .filter(|v| !v.is_nan())
+        .collect();
+    quantile_select(&mut deviations, 0.5, 7)
 }
 
 /// Interquartile range (type 7 quantiles).
 #[must_use]
 pub fn iqr(data: &[f64]) -> f64 {
-    let x = sorted(data);
-    quantile_sorted(&x, 0.75, 7) - quantile_sorted(&x, 0.25, 7)
+    let mut sample: Vec<_> = data.iter().copied().filter(|v| !v.is_nan()).collect();
+    let (lower, upper) = quartiles(&mut sample);
+    upper - lower
+}
+
+fn quartiles(sample: &mut [f64]) -> (f64, f64) {
+    (
+        quantile_select(sample, 0.25, 7),
+        quantile_select(sample, 0.75, 7),
+    )
 }
 
 /// Mean after discarding the fraction `trim` from each tail.
@@ -277,7 +366,7 @@ pub fn trimmed_mean(
         return f64::NAN;
     }
     let k = (x.len() as f64 * trim.clamp(0.0, 0.499)).floor() as usize;
-    crate::kernels::stats::mean(&x[k..x.len() - k])
+    descriptive::mean(&x[k..x.len() - k]).unwrap_or(f64::NAN)
 }
 
 /// Mean after replacing the lowest and highest fraction `trim` by the
@@ -297,7 +386,7 @@ pub fn winsorized_mean(
     for v in &mut x {
         *v = v.clamp(lo, hi);
     }
-    crate::kernels::stats::mean(&x)
+    descriptive::mean(&x).unwrap_or(f64::NAN)
 }
 
 /// Huber M-estimator of location with tuning constant `k` (1.345 is the
@@ -386,26 +475,66 @@ pub fn ecdf(
     at_or_below as f64 / total as f64
 }
 
-/// Standard deviation with Bessel's correction.
-fn std_dev(data: &[f64]) -> f64 {
-    let n = data.len() as f64;
-    let m = data.iter().sum::<f64>() / n;
-    (data.iter().map(|v| (v - m).powi(2)).sum::<f64>() / (n - 1.0)).sqrt()
+/// Empirical CDF at several query points, in the supplied order.
+///
+/// NaN observations are ignored and NaN queries yield NaN. An empty effective
+/// sample yields NaN at every query. The ordered sample is prepared once and
+/// each query uses a binary search.
+#[must_use]
+pub fn ecdf_batch(
+    data: &[f64],
+    queries: &[f64],
+) -> Vec<f64> {
+    if queries.is_empty() {
+        return Vec::new();
+    }
+    if let [query] = queries {
+        return vec![ecdf(data, *query)];
+    }
+    let sample = sorted(data);
+    par::map_slice(queries, 1_024, |&x| {
+        if x.is_nan() {
+            return f64::NAN;
+        }
+        let count = sample.partition_point(|&value| value <= x);
+        count as f64 / sample.len() as f64
+    })
 }
 
 /// Silverman's rule-of-thumb bandwidth `0.9 min(sd, IQR/1.34) n^(-1/5)`.
+/// Uses `sd` when `IQR` is zero. Requires at least two finite observations.
 #[must_use]
 pub fn bandwidth_silverman(data: &[f64]) -> f64 {
-    let sd = std_dev(data);
-    let a = sd.min(iqr(data) / 1.34);
-    let a = if a > 0.0 { a } else { sd };
-    0.9 * a * (data.len() as f64).powf(-0.2)
+    let Ok((sd, scale)) = descriptive::std_dev_parts(data, false) else {
+        return f64::NAN;
+    };
+    if data.len() < 2 {
+        return f64::NAN;
+    }
+    if scale == 0.0 {
+        return 0.0;
+    }
+    let (lower, upper) = quartiles(&mut data.to_vec());
+    let iqr = scaled_difference(upper, lower, scale);
+    let spread = if iqr > 0.0 {
+        sd.min(iqr / 1.34)
+    } else {
+        sd
+    };
+    scale * (0.9 * (data.len() as f64).powf(-0.2) * spread)
 }
 
 /// Scott's rule bandwidth `1.06 sd n^(-1/5)`.
+/// Requires at least two finite observations.
 #[must_use]
 pub fn bandwidth_scott(data: &[f64]) -> f64 {
-    1.06 * std_dev(data) * (data.len() as f64).powf(-0.2)
+    let Ok((sd, scale)) = descriptive::std_dev_parts(data, false) else {
+        return f64::NAN;
+    };
+    if data.len() < 2 {
+        return f64::NAN;
+    }
+    scale * (1.06 * (data.len() as f64).powf(-0.2) * sd)
 }
 
 /// Kernel shape for [`kde`].
@@ -434,25 +563,37 @@ pub fn kde(
         .filter(|d| !d.is_nan())
         .map(|&d| {
             count += 1;
-            let difference = x - d;
-            let u = if difference.is_infinite() && x.is_finite() && d.is_finite() {
-                x / h - d / h
-            } else {
-                difference / h
-            };
-            match kernel {
-                | Kernel::Gaussian => (-0.5 * u * u).exp() / (2.0 * PI).sqrt(),
-                | Kernel::Epanechnikov => {
-                    if u.abs() < 1.0 {
-                        0.75 * (1.0 - u * u)
-                    } else {
-                        0.0
-                    }
-                },
-            }
+            kernel_weight(scaled_difference(x, d, h), kernel)
         })
         .sum();
     (s / count as f64) / h
+}
+
+fn kernel_weight(
+    u: f64,
+    kernel: Kernel,
+) -> f64 {
+    match kernel {
+        | Kernel::Gaussian => (-0.5 * u * u).exp() / (2.0 * PI).sqrt(),
+        | Kernel::Epanechnikov if u.abs() < 1.0 => 0.75 * (1.0 - u * u),
+        | Kernel::Epanechnikov => 0.0,
+    }
+}
+
+pub(super) fn gaussian_kde_finite(
+    data: &[f64],
+    points: &[f64],
+    h: f64,
+) -> Vec<f64> {
+    let grain = 32_768usize.div_ceil(data.len()).max(2);
+    let count = data.len() as f64;
+    par::map_slice(points, grain, |&point| {
+        let sum: f64 = data
+            .iter()
+            .map(|&value| kernel_weight(scaled_difference(point, value, h), Kernel::Gaussian))
+            .sum();
+        (sum / count) / h
+    })
 }
 
 /// Percentile bootstrap confidence interval for `statistic` at level
@@ -483,9 +624,8 @@ pub fn bootstrap_ci<S: Fn(&[f64]) -> f64>(
             stats.push(value);
         }
     }
-    stats.sort_unstable_by(f64::total_cmp);
     (
-        quantile_sorted(&stats, alpha / 2.0, 7),
-        quantile_sorted(&stats, 1.0 - alpha / 2.0, 7),
+        quantile_select(&mut stats, alpha / 2.0, 7),
+        quantile_select(&mut stats, 1.0 - alpha / 2.0, 7),
     )
 }

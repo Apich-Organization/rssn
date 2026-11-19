@@ -9,12 +9,15 @@ Release changes to the RSSN kernel, algorithms and embedding APIs. 本文记录 
 - The scientific kernel exposes a deterministic manifest, type and dimension contracts, structured results and typed numerical callbacks. Embedded hosts generate checked interfaces from the operator registry that executes the calls.
 - Indexed rewrites and incremental matching reduce repeated search. Independent requests use private computation graphs with ordered result import. Optional JIT and device backends define their supported precision and fallback behavior.
 - Workers prepare and evaluate symbolic batches on private graphs with bounded in-flight jobs. CPU dispatch reads the active Rayon pool size, and FFT routines share plans and scratch storage through `kernels::reuse`.
+- Symbolic windows reuse extraction work across overlapping terms. Compiled CPU batches lease sized scratch buffers and skip parallel dispatch for small work. Concurrent FFT requests share a plan build for the same length and direction.
 - Binary manifest, plugin and compute records use native bincode-next 3.2 traits. Signature and manifest bytes remain deterministic. Manifest verification reads the existing operator and unit tables in place and streams the canonical encoding into the hash. Compatibility tests compare the supported previous wire layouts with the native encoding. JSON and CBOR expose metadata to self-describing consumers.
 
 ### Numerical and symbolic algorithms
 
 - Add one-sided Welch spectral density, inverse STFT with overlap normalization, and polyphase FIR resampling. Add checked topological ordering and a nonrecursive strongly connected component API shared with symbolic graph operators.
 - Add analytic signals, Hilbert transforms, zoom FFT, spectral coherence and wavelet packets. DCT and DST use FFT-based algorithms and fractional Fourier transforms can reuse their spectral basis.
+- Add overlap-save convolution, autocorrelation, FIR filter design, frequency response, second-order-section filtering, polyphase resampling and stationary wavelet transforms with coefficient thresholding.
+- Add batched quantiles and empirical CDF, Benjamini–Hochberg, Benjamini–Yekutieli and Holm adjustment, batched multivariate normal log densities, and atomic covariance batch updates with correlation output.
 - Add signed shortest paths, weak components, maximum flow with its minimum cut, and column interpolative decomposition. The kernel manifest carries the numerical inputs, structured results and dimensional contracts.
 - Sparse conjugate gradients rescale extreme right-hand sides. Fixed-step delay solvers reject time grids that cannot advance, and the wave stencil combines speed and step before squaring.
 
@@ -38,12 +41,15 @@ Release changes to the RSSN kernel, algorithms and embedding APIs. 本文记录 
 - 科学计算内核提供确定性的清单、类型与量纲契约、结构化结果以及类型化数值回调。宿主从实际执行调用的同一算子注册表生成受检查的接口。
 - 重写索引和增量匹配减少重复搜索。独立请求使用各自的计算图，结果按输入顺序导入。可选 JIT 和设备后端明确支持的精度与回退行为。
 - 工作线程在独立计算图中准备和执行符号批处理，并限制同时保留的任务数。CPU 调度读取当前 Rayon 池的大小，FFT 通过 `kernels::reuse` 共享计划并复用临时空间。
+- 符号化简的树窗口复用相交子图的抽取结果。编译后的 CPU 批处理按容量借用临时缓冲区，小任务顺序执行。同尺寸、同方向的并发 FFT 请求共享计划构建。
 - 二进制清单、插件消息和计算记录采用 bincode-next 3.2 原生编码。签名和清单保持确定性编码，校验清单时直接读取现有的算子表和单位表，逐段将规范编码传给哈希器。兼容性测试将支持的旧线格式与原生编码进行比较。JSON 与 CBOR 继续提供自描述元数据。
 
 ### 数值与符号算法
 
 - 增加单边 Welch 功率谱密度、重叠归一化逆 STFT 和多相 FIR 重采样。增加受检查的拓扑排序，并让 Rust 和符号图算子共用非递归强连通分量实现。
 - 增加解析信号、Hilbert 变换、zoom FFT、谱相干度和小波包。DCT、DST 采用 FFT 算法，分数阶 Fourier 变换支持复用谱基。
+- 增加重叠保留卷积、自相关、FIR 滤波器设计、频率响应、二阶节滤波、多相重采样，以及支持系数阈值处理的平稳小波变换。
+- 增加批量分位数和经验分布函数、Benjamini–Hochberg、Benjamini–Yekutieli 与 Holm 多重检验校正、多元正态批量对数密度，以及可输出相关矩阵的原子协方差批量更新。
 - 增加含负边权的最短路径、弱连通分量、最大流及最小割、列插值分解。内核清单声明输入、结构化输出和量纲契约。
 - 稀疏共轭梯度对极端尺度的右端项做缩放。固定步长时滞求解拒绝无法前进的时间网格，波动方程离散格式先合并波速和步长再计算平方。
 

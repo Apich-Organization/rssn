@@ -292,6 +292,10 @@ fn matmul_matches_the_naive_product() {
         assert_eq!(got, want);
         let mut bad = dev.alloc(3, Dtype::F64).unwrap();
         assert!(dev.matmul(&ba, &bb, &mut bad, m, k, n).is_err());
+        assert!(matches!(
+            dev.matmul(&ba, &bb, &mut bad, usize::MAX, 2, 1),
+            Err(DeviceError::Mismatch(_))
+        ));
     }
 }
 
