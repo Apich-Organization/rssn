@@ -4,7 +4,7 @@
 
 | Version · 版本 | Security updates · 安全更新 |
 | --- | --- |
-| `3.0.0-rc.1` | Supported · 支持 |
+| `3.0.0-beta.1` | Supported · 支持 |
 
 ## Reporting a vulnerability · 报告漏洞
 

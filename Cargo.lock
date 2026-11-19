@@ -2302,7 +2302,7 @@ checksum = "6c20b6793b5c2fa6553b250154b78d6d0db37e72700ae35fad9387a46f487c97"
 
 [[package]]
 name = "rssn"
-version = "3.0.0-rc.1"
+version = "3.0.0-beta.1"
 dependencies = [
  "argmin",
  "argmin-math",
@@ -2342,14 +2342,14 @@ dependencies = [
 
 [[package]]
 name = "rssn-api-gen"
-version = "3.0.0-rc.1"
+version = "3.0.0-beta.1"
 dependencies = [
  "rssn-api-model",
 ]
 
 [[package]]
 name = "rssn-api-model"
-version = "3.0.0-rc.1"
+version = "3.0.0-beta.1"
 dependencies = [
  "quote",
  "syn 2.0.119",
