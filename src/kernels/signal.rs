@@ -1,29 +1,28 @@
 //! # Signal processing kernels
 //!
-//! A small signal-processing toolbox built on `rustfft`: the complex forward
-//! and inverse DFT, linear convolution, cross-correlation, and symmetric
-//! Hann/Hamming/Blackman analysis windows.
+//! Complex Fourier transforms, time-frequency analysis, windows and digital
+//! filters. Use [`welch_psd`] to estimate one-sided power spectral density
+//! and [`inverse_stft`] for overlap-add reconstruction. [`upfirdn`] applies
+//! a caller-supplied FIR filter while changing the sample rate.
 //!
-//! # Limitations and coverage
-//!
-//! * `fft` / `ifft` are complex transforms: `fft` is unnormalised and `ifft`
-//!   divides by `n`. A fresh planner is built on every call, so repeated short
-//!   transforms pay rustfft's planning cost; there is no plan reuse, batched,
-//!   multi-dimensional or in-place transform here. For a dependency-free FFT
-//!   with real-input packing see [`crate::kernels::transforms`].
-//! * Convolution and cross-correlation are direct `O(n m)`; there is no
-//!   FFT-based fast convolution in this module, no 2-D or circular convolution
-//!   and no boundary-mode choice.
-//! * The windows are symmetric (not periodic / DFT-even) Hann, Hamming and
-//!   Blackman; there is no Kaiser, flat-top, Tukey or custom window, and the
-//!   windows are provided for analysis, not for filter design.
-//! * There is no filtering, resampling, spectral estimation, STFT or wavelet
-//!   helper; the transform accuracy is rustfft's `O(eps log n)` round-off.
+//! The single-frame [`fft`] and [`ifft`] functions build a plan on each call.
+//! Direct [`convolve`] and [`cross_correlation`] cost `O(n m)`; for FFT-based
+//! convolution see [`crate::kernels::fftconv`]. The built-in Hann, Hamming,
+//! Blackman and Kaiser windows are symmetric. Filtered frames use the exact
+//! window or filter taps supplied by the caller.
 
 use std::f64::consts::PI;
 
 use rustfft::FftPlanner;
 use rustfft::num_complex::Complex;
+
+mod framed;
+
+pub use framed::PowerSpectrum;
+pub use framed::SignalError;
+pub use framed::inverse_stft;
+pub use framed::upfirdn;
+pub use framed::welch_psd;
 
 /// Computes the one-dimensional discrete Fourier Transform.
 ///
@@ -52,6 +51,9 @@ use rustfft::num_complex::Complex;
 /// assert!((output[0].re - 4.0).abs() < 1e-9);
 /// ```
 pub fn fft(input: &mut [Complex<f64>]) -> Vec<Complex<f64>> {
+    if input.is_empty() {
+        return Vec::new();
+    }
     let mut planner = FftPlanner::new();
 
     let fft = planner.plan_fft_forward(input.len());
@@ -259,7 +261,10 @@ pub fn blackman_window(n: usize) -> Vec<f64> {
         .collect()
 }
 
-/// Generates a Kaiser window of length `n` with shape parameter `beta`.
+/// Generates a symmetric Kaiser window with shape parameter `beta`.
+///
+/// Either sign of a finite `beta` produces the same coefficients. For
+/// `n > 1`, a non-finite shape parameter returns NaNs.
 #[must_use]
 pub fn kaiser_window(
     n: usize,
@@ -271,13 +276,21 @@ pub fn kaiser_window(
     if n == 1 {
         return vec![1.0];
     }
-    let denom = crate::kernels::special::bessel_i0(beta);
+    if !beta.is_finite() {
+        return vec![f64::NAN; n];
+    }
+    let beta = beta.abs();
+    let denom = crate::kernels::special::bessel_i0e(beta);
     let half = 0.5 * (n.saturating_sub(1) as f64);
     (0..n)
         .map(|i| {
             let r = (i as f64 - half) / half;
-            let arg = beta * (1.0 - r * r).max(0.0).sqrt();
-            crate::kernels::special::bessel_i0(arg) / denom
+            let r_squared = r * r;
+            let shape = (1.0 - r_squared).max(0.0).sqrt();
+            let scaled = crate::kernels::special::bessel_i0e(beta * shape) / denom;
+            // beta * (shape - 1) loses the attenuation near the window center.
+            let decay = beta * (r_squared / (1.0 + shape));
+            (scaled.ln() - decay).exp()
         })
         .collect()
 }
@@ -386,32 +399,35 @@ pub fn idst(x: &[f64]) -> Vec<f64> {
         .collect()
 }
 
-/// Short-Time Fourier Transform (STFT) of `x` with window `window` and hop size `hop`.
+/// Short-time Fourier transform of complete frames with starts `hop` samples apart.
+///
+/// Returns full unnormalised complex spectra. The number of bins per frame is
+/// the window length. Incomplete trailing frames are discarded. Empty windows,
+/// zero hops and signals shorter than a window yield an empty result.
 #[must_use]
 pub fn stft(
     x: &[f64],
     window: &[f64],
     hop: usize,
 ) -> Vec<Vec<Complex<f64>>> {
-    let win_len = window.len();
-    if win_len == 0 || hop == 0 || x.len() < win_len {
+    let frame_len = window.len();
+    if frame_len == 0 || hop == 0 || x.len() < frame_len {
         return Vec::new();
     }
-    let mut frames = Vec::new();
-    let mut start = 0usize;
-    while start.saturating_add(win_len) <= x.len() {
-        let mut frame: Vec<Complex<f64>> = (0..win_len)
-            .map(|j| {
-                let xi = x.get(start.saturating_add(j)).copied().unwrap_or(0.0);
-                let wi = window.get(j).copied().unwrap_or(0.0);
-                Complex::new(xi * wi, 0.0)
-            })
-            .collect();
-        crate::kernels::transforms::fft_slice(&mut frame);
-        frames.push(frame);
-        start = start.saturating_add(hop);
-    }
-    frames
+    let fft = FftPlanner::new().plan_fft_forward(frame_len);
+    let mut scratch = vec![Complex::ZERO; fft.get_inplace_scratch_len()];
+    x.windows(frame_len)
+        .step_by(hop)
+        .map(|samples| {
+            let mut frame: Vec<_> = samples
+                .iter()
+                .zip(window)
+                .map(|(sample, weight)| Complex::new(sample * weight, 0.0))
+                .collect();
+            fft.process_with_scratch(&mut frame, &mut scratch);
+            frame
+        })
+        .collect()
 }
 
 /// Power spectrogram `|STFT|^2` of `x` with `window` and `hop`.

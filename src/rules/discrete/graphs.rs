@@ -91,6 +91,8 @@ use crate::kernels::graph::CanonicalLabelling;
 use crate::kernels::graph::ColourGraph;
 use crate::kernels::graph::SearchBudget;
 use crate::kernels::graph::canonical_labelling;
+use crate::kernels::graph::strongly_connected_by;
+use crate::kernels::graph::topological_by;
 use crate::kernels::graph::wl_equivalent;
 
 /// One adjacency entry.
@@ -626,71 +628,24 @@ fn graph_is_connected(
     Some(V::Bool(components(&gr).len() == 1))
 }
 
-struct Tarjan {
-    time: usize,
-    disc: Vec<Option<usize>>,
-    low: Vec<usize>,
-    stack: Vec<usize>,
-    on: Vec<bool>,
-    out: Vec<Vec<usize>>,
-}
-
-fn tarjan(
-    gr: &Gr,
-    u: usize,
-    s: &mut Tarjan,
-) {
-    s.disc[u] = Some(s.time);
-    s.low[u] = s.time;
-    s.time += 1;
-    s.stack.push(u);
-    s.on[u] = true;
-    for e in &gr.adj[u] {
-        let v = e.to;
-        match s.disc[v] {
-            | None => {
-                tarjan(gr, v, s);
-                s.low[u] = s.low[u].min(s.low[v]);
-            },
-            | Some(dv) if s.on[v] => s.low[u] = s.low[u].min(dv),
-            | Some(_) => {},
-        }
-    }
-    if Some(s.low[u]) == s.disc[u] {
-        let mut comp = Vec::new();
-        while let Some(v) = s.stack.pop() {
-            s.on[v] = false;
-            comp.push(v);
-            if v == u {
-                break;
-            }
-        }
-        comp.sort_unstable();
-        s.out.push(comp);
-    }
-}
-
 fn graph_scc(
     cx: &mut Cx<'_>,
     a: &[NodeId],
 ) -> Option<V> {
     let gr = read(cx, *a.first()?)?;
-    let mut s = Tarjan {
-        time: 0,
-        disc: vec![None; gr.n],
-        low: vec![0; gr.n],
-        stack: Vec::new(),
-        on: vec![false; gr.n],
-        out: Vec::new(),
-    };
-    for u in 0..gr.n {
-        if s.disc[u].is_none() {
-            tarjan(&gr, u, &mut s);
-        }
+    let labels = strongly_connected_by(&gr.adj, |edge| edge.to)?;
+    let count = labels.iter().max().map_or(0, |label| label + 1);
+    let mut components = vec![Vec::new(); count];
+    for (vertex, label) in labels.into_iter().enumerate() {
+        components[label].push(vertex);
     }
-    let mut comps = s.out;
-    comps.sort_by_key(|c| c.first().copied());
-    Some(V::List(comps.iter().map(|c| indices(c)).collect()))
+    components.sort_unstable_by_key(|vertices| vertices.first().copied());
+    Some(V::List(
+        components
+            .iter()
+            .map(|vertices| indices(vertices))
+            .collect(),
+    ))
 }
 
 fn directed_cycle(
@@ -1731,19 +1686,7 @@ fn kahn(gr: &Gr) -> Option<Vec<usize>> {
     if !gr.directed {
         return None;
     }
-    let mut indegree: Vec<usize> = gr.radj.iter().map(Vec::len).collect();
-    let mut queue: VecDeque<usize> = (0..gr.n).filter(|&u| indegree[u] == 0).collect();
-    let mut order = Vec::new();
-    while let Some(u) = queue.pop_front() {
-        order.push(u);
-        for e in &gr.adj[u] {
-            indegree[e.to] -= 1;
-            if indegree[e.to] == 0 {
-                queue.push_back(e.to);
-            }
-        }
-    }
-    (order.len() == gr.n).then_some(order)
+    topological_by(&gr.adj, |edge| edge.to).ok()
 }
 
 fn topo_visit(

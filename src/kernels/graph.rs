@@ -37,6 +37,14 @@
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 
+mod directed;
+
+pub use directed::GraphStructureError;
+pub(crate) use directed::strongly_connected_by;
+pub use directed::strongly_connected_components;
+pub(crate) use directed::topological_by;
+pub use directed::topological_sort;
+
 /// Represents a graph with weighted edges for numerical algorithms.
 /// The graph is represented by an adjacency list.
 pub struct Graph {
@@ -327,7 +335,9 @@ pub fn floyd_warshall(graph: &Graph) -> Vec<f64> {
     dist
 }
 
-/// Finds the connected components of the graph.
+/// Finds the connected components of an undirected graph stored as symmetric arcs.
+///
+/// For directed reachability in both directions, use [`strongly_connected_components`].
 /// Returns a vector where each element corresponds to a node and contains its component ID.
 #[must_use]
 pub fn connected_components(graph: &Graph) -> Vec<usize> {

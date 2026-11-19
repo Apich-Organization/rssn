@@ -985,9 +985,9 @@ fn bessel_i_series(
     sum
 }
 
-/// Asymptotic expansion `Iν(x) ~ e^x / sqrt(2πx) Σ (-1)^k a_k(ν) / x^k`
-/// (A&S 9.7.1) for large positive `x`.
-fn bessel_i_asymptotic(
+/// Scaled asymptotic expansion of `exp(-x) Iν(x)` for large positive `x`.
+/// See [DLMF 10.40.1](https://dlmf.nist.gov/10.40.E1).
+fn bessel_i_scaled_asymptotic(
     nu: u32,
     x: f64,
 ) -> f64 {
@@ -1002,7 +1002,7 @@ fn bessel_i_asymptotic(
     for k in 1..100 {
         let kf = f64::from(k);
 
-        term *= -(mu - (2.0 * kf - 1.0).powi(2)) / (8.0 * kf * x);
+        term *= (-(mu - (2.0 * kf - 1.0).powi(2)) / (8.0 * kf)) / x;
 
         if term.abs() > last {
             break;
@@ -1017,10 +1017,16 @@ fn bessel_i_asymptotic(
         }
     }
 
-    // exp(x/2) twice avoids overflow of the intermediate for x near 709.
-    let e = (x / 2.0).exp();
+    (sum / x.sqrt()) / std::f64::consts::TAU.sqrt()
+}
 
-    (e / (2.0 * std::f64::consts::PI * x).sqrt()) * e * sum
+fn bessel_i_asymptotic(
+    nu: u32,
+    x: f64,
+) -> f64 {
+    // Scaling each half separately avoids premature overflow near x = 709.
+    let e = (x / 2.0).exp();
+    (bessel_i_scaled_asymptotic(nu, x) * e) * e
 }
 
 /// Computes the modified Bessel function of the first kind, I₀(x).
@@ -1038,6 +1044,20 @@ pub fn bessel_i0(x: f64) -> f64 {
         bessel_i_series(0, ax)
     } else {
         bessel_i_asymptotic(0, ax)
+    }
+}
+
+/// Exponentially scaled modified Bessel I₀, `exp(-|x|) I₀(x)`.
+///
+/// The scaled form stays finite when the unscaled function overflows.
+/// Both infinities map to zero and NaN is propagated.
+#[must_use]
+pub fn bessel_i0e(x: f64) -> f64 {
+    let magnitude = x.abs();
+    if magnitude <= BESSEL_I_SERIES_MAX {
+        bessel_i_series(0, magnitude) * (-magnitude).exp()
+    } else {
+        bessel_i_scaled_asymptotic(0, magnitude)
     }
 }
 
