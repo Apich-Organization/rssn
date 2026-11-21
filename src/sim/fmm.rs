@@ -1,3 +1,5 @@
+//! Adaptive 2-D and 3-D fast multipole methods.
+//!
 //! # Adaptive fast multipole methods in two and three dimensions
 //!
 //! Both solvers evaluate the Gauss-law field `E(x_i) = sum_j s_j (x_j - x_i) / r^D`
@@ -16,9 +18,9 @@
 //! * [`fmm2d`] is the 2-D analogue (complex-variable expansions of the
 //!   logarithmic potential, M2M/M2L/L2L) on an adaptive quadtree.
 //!
-//! Plummer softening `eps` is applied **consistently** to the near field and to the
-//! expansions: the multipole-to-local translation uses the derivative tensors of the
-//! softened kernel `(|x|^2 + eps^2)^(-1/2)`, so the result converges to the direct softened sum.
+//! In 3-D, Plummer softening `eps` is applied to the near field and to the expansions
+//! using the derivatives of the softened kernel `(|x|^2 + eps^2)^(-1/2)`.
+//! The 2-D method enlarges the direct near field to bound the softening error.
 //!
 //! * [`periodic_fmm3d`] is the **periodic** 3-D FMM for a general triclinic cell: the central cell
 //!   and its `(2w+1)^3 - 1` nearest images are treated by the tree code and the remaining lattice
@@ -641,15 +643,16 @@ impl Cx {
     }
 }
 
-fn powers(
+fn fill_powers(
     z: Cx,
-    n: usize,
-) -> Vec<Cx> {
-    let mut o = vec![Cx::new(1.0, 0.0); n + 1];
-    for k in 1..=n {
-        o[k] = o[k - 1].mul(z);
+    out: &mut [Cx],
+) {
+    let mut power = Cx::new(1.0, 0.0);
+    out[0] = power;
+    for coefficient in &mut out[1..] {
+        power = power.mul(z);
+        *coefficient = power;
     }
-    o
 }
 
 fn binom_table(n: usize) -> Vec<Vec<f64>> {
@@ -663,137 +666,581 @@ fn binom_table(n: usize) -> Vec<Vec<f64>> {
     c
 }
 
-/// Adaptive 2-D FMM: the field `sum_j s_j (x_j - x_i) / (|x_j - x_i|^2 + eps^2)`
-/// at every point (self excluded) on an adaptive quadtree.
+/// Adaptive 2-D FMM: the field sum of each source strength times
+/// `(x_j - x_i) / (|x_j - x_i|^2 + eps^2)`, with self excluded.
 ///
-/// The expansions are those of the unsoftened kernel `1/z`; the softened one
-/// differs from it by a relative `(eps / r)^2`. Box pairs therefore take the
-/// expansions only when their gap is at least `eps / sqrt(theta^(order + 1))`
-/// (below the truncation error), and are summed directly otherwise, so the
-/// result converges to the direct softened sum for every `eps`. A softening
-/// comparable to the extent of the point set makes this the direct `O(N^2)`
-/// sum; use [`fmm3d`] (which differentiates the softened kernel itself) for
-/// large softened problems.
+/// Expansions use the unsoftened kernel `1/z`. Interactions closer than
+/// `eps / sqrt(theta^(order + 1))` are summed directly so the softening
+/// error is bounded by the same scale as the truncation error. Softening
+/// comparable to the domain extent can therefore require a quadratic sum.
+/// Use [`PreparedFmm2d`] to evaluate new source strengths at fixed positions.
 ///
 /// # Errors
-/// Fails for empty input, length mismatch or `theta` outside `(0, 1)`.
+/// Rejects empty, mismatched or non-finite input, invalid options, coincident
+/// unsoftened points and fields that are outside the finite range.
 pub fn fmm2d(
     pos: &[[f64; 2]],
     src: &[f64],
     opts: &FmmOptions,
 ) -> Result<Vec<[f64; 2]>, String> {
-    let n = pos.len();
-    if n == 0 || src.len() != n {
-        return Err("positions and sources must be non-empty and of equal length".into());
+    check_fmm2d_sources(pos.len(), src)?;
+    Fmm2dPlan::new(pos, *opts, false)?.evaluate(pos, src)
+}
+
+/// Open-boundary 2-D FMM geometry and interaction lists for a fixed point set.
+///
+/// The same tree and interaction order are reused with each set of source
+/// strengths. Interaction lists that would exceed a linear storage budget
+/// are traversed again at evaluation time.
+pub struct PreparedFmm2d {
+    pos: Vec<[f64; 2]>,
+    plan: Fmm2dPlan,
+}
+
+impl PreparedFmm2d {
+    /// Prepares the input positions and the expansion and softening options.
+    ///
+    /// # Errors
+    /// Rejects empty or non-finite positions and invalid expansion options.
+    pub fn new(
+        pos: &[[f64; 2]],
+        opts: &FmmOptions,
+    ) -> Result<Self, String> {
+        Ok(Self {
+            plan: Fmm2dPlan::new(pos, *opts, true)?,
+            pos: pos.to_vec(),
+        })
     }
-    if !(opts.theta > 0.0 && opts.theta < 1.0) {
-        return Err("theta must lie in (0, 1)".into());
+
+    /// Number of source strengths expected per evaluation.
+    #[must_use]
+    pub const fn particle_count(&self) -> usize {
+        self.pos.len()
     }
-    let p = opts.order;
-    let binom = binom_table(2 * p + 2);
-    let tree = build_tree::<2>(pos, opts.leaf_size);
-    let nn = tree.nodes.len();
-    let cen = |id: usize| Cx::new(tree.nodes[id].center[0], tree.nodes[id].center[1]);
-    let mut mp = vec![vec![Cx::default(); p + 1]; nn];
-    let mut lo = vec![vec![Cx::default(); p + 1]; nn];
-    for (id, nd) in tree.nodes.iter().enumerate() {
-        if !nd.children.is_empty() {
-            continue;
+
+    /// Bytes occupied by the prepared value and its retained allocations.
+    #[must_use]
+    pub fn retained_bytes(&self) -> usize {
+        use std::mem::size_of;
+
+        let plan = &self.plan;
+        let mut bytes = size_of::<Self>()
+            .saturating_add(self.pos.capacity().saturating_mul(size_of::<[f64; 2]>()))
+            .saturating_add(
+                plan.tree
+                    .nodes
+                    .capacity()
+                    .saturating_mul(size_of::<TNode<2>>()),
+            )
+            .saturating_add(plan.tree.perm.capacity().saturating_mul(size_of::<usize>()))
+            .saturating_add(
+                plan.direct_sources
+                    .capacity()
+                    .saturating_mul(size_of::<usize>()),
+            )
+            .saturating_add(plan.binom.capacity().saturating_mul(size_of::<Vec<f64>>()));
+        for node in &plan.tree.nodes {
+            bytes =
+                bytes.saturating_add(node.children.capacity().saturating_mul(size_of::<usize>()));
         }
-        for &i in &tree.perm[nd.start..nd.end] {
-            let dz = Cx::new(pos[i][0], pos[i][1]);
-            let pw = powers(Cx::new(dz.re - cen(id).re, dz.im - cen(id).im), p);
-            for k in 0..=p {
-                mp[id][k] = mp[id][k].add(pw[k].scale(src[i]));
-            }
+        for row in &plan.binom {
+            bytes = bytes.saturating_add(row.capacity().saturating_mul(size_of::<f64>()));
         }
+        for pairs in [&plan.near, &plan.far].into_iter().flatten() {
+            bytes =
+                bytes.saturating_add(pairs.capacity().saturating_mul(size_of::<(usize, usize)>()));
+        }
+        if let Some((pos, _)) = &plan.scaled {
+            bytes = bytes.saturating_add(pos.capacity().saturating_mul(size_of::<[f64; 2]>()));
+        }
+        bytes
     }
-    for id in (0..nn).rev() {
-        for &c in &tree.nodes[id].children {
-            let t = Cx::new(cen(c).re - cen(id).re, cen(c).im - cen(id).im);
-            let tp = powers(t, p);
-            let child = mp[c].clone();
-            for k in 0..=p {
-                for l in 0..=k {
-                    mp[id][k] = mp[id][k].add(tp[k - l].mul(child[l]).scale(binom[k][l]));
+
+    /// Evaluates the field in input particle order with new source strengths.
+    ///
+    /// # Errors
+    /// Rejects a wrong source count, non-finite strengths, coincident
+    /// unsoftened points and fields that are outside the finite range.
+    pub fn evaluate(
+        &self,
+        src: &[f64],
+    ) -> Result<Vec<[f64; 2]>, String> {
+        check_fmm2d_sources(self.particle_count(), src)?;
+        self.plan.evaluate(&self.pos, src)
+    }
+}
+
+type FmmPair = (usize, usize);
+
+struct Fmm2dPlan {
+    tree: Tree<2>,
+    opts: FmmOptions,
+    scaled: Option<(Vec<[f64; 2]>, f64)>,
+    near: Option<Vec<FmmPair>>,
+    far: Option<Vec<FmmPair>>,
+    min_gap: f64,
+    max_r2: f64,
+    discover_far: bool,
+    direct_sources: Vec<usize>,
+    binom: Vec<Vec<f64>>,
+}
+
+impl Fmm2dPlan {
+    fn new(
+        pos: &[[f64; 2]],
+        opts: FmmOptions,
+        cache_interactions: bool,
+    ) -> Result<Self, String> {
+        if pos.is_empty() {
+            return Err("positions and sources must be non-empty and of equal length".into());
+        }
+        if !(opts.theta > 0.0 && opts.theta < 1.0) {
+            return Err("theta must lie in (0, 1)".into());
+        }
+        if !opts.eps.is_finite() || opts.eps < 0.0 {
+            return Err("softening must be finite and nonnegative".into());
+        }
+        // The 2p+2 Pascal table must have finite coefficients.
+        if opts.order > 513 {
+            return Err("2-D expansion order exceeds the finite Pascal table".into());
+        }
+
+        let mut lo = [f64::INFINITY; 2];
+        let mut hi = [f64::NEG_INFINITY; 2];
+        for point in pos {
+            for a in 0..2 {
+                if !point[a].is_finite() {
+                    return Err("positions must be finite".into());
                 }
+                lo[a] = lo[a].min(point[a]);
+                hi[a] = hi[a].max(point[a]);
             }
         }
+        let center = [f64::midpoint(lo[0], hi[0]), f64::midpoint(lo[1], hi[1])];
+        let extent = (0..2)
+            .map(|a| (hi[a] - center[a]).abs().max((lo[a] - center[a]).abs()))
+            .fold(0.0, f64::max);
+        let power_limit = (900.0 / (2 * opts.order + 2) as f64).exp2().min(1e130);
+        let offset = center[0].abs().max(center[1].abs());
+        let scaled = (extent > 0.0
+            && (extent < 1e-6 || extent > power_limit * 0.25 || offset / extent > 1e8))
+            .then(|| {
+                let positions = pos
+                    .iter()
+                    .map(|x| [(x[0] - center[0]) / extent, (x[1] - center[1]) / extent])
+                    .collect::<Vec<_>>();
+                (positions, extent)
+            });
+        let (geometry, length) = scaled
+            .as_ref()
+            .map_or((pos, 1.0), |(points, extent)| (points.as_slice(), *extent));
+        let tree = build_tree(geometry, opts.leaf_size);
+        let truncation = opts.theta.powi((opts.order + 1) as i32);
+        let min_gap = if opts.eps > 0.0 {
+            ((opts.eps / length) / truncation.sqrt()).max(1.0 / power_limit)
+        } else {
+            1.0 / power_limit
+        };
+        let direct_only = min_gap > 2.0 * tree.nodes[0].rad;
+        let discover_far =
+            !cache_interactions && !tree.nodes[0].children.is_empty() && !direct_only;
+        let direct_sources = if direct_only && !tree.nodes[0].children.is_empty() {
+            // For each fixed target, a full dual traversal visits source
+            // children in reverse depth-first order, preserving leaf contents.
+            let mut sources = Vec::with_capacity(pos.len());
+            for leaf in tree
+                .nodes
+                .iter()
+                .rev()
+                .filter(|node| node.children.is_empty())
+            {
+                sources.extend_from_slice(&tree.perm[leaf.start..leaf.end]);
+            }
+            sources
+        } else {
+            Vec::new()
+        };
+        let mut far = Some(Vec::new());
+        let near = if tree.nodes[0].children.is_empty() {
+            Some(vec![(0, 0)])
+        } else if direct_only {
+            // Any pair's gap is bounded by a particle separation. When the
+            // minimum gap exceeds the diameter, all pairs must stream directly.
+            None
+        } else if discover_far {
+            None
+        } else {
+            let budget = fmm_pair_budget(pos.len());
+            let mut near = Some(Vec::new());
+            traverse(
+                &tree,
+                opts.theta,
+                min_gap,
+                |a, b| cache_fmm_pair(&mut far, (a, b), budget),
+                |a, b| cache_fmm_pair(&mut near, (a, b), budget),
+            );
+            near
+        };
+        let binom = if far.as_ref().is_some_and(Vec::is_empty) {
+            Vec::new()
+        } else {
+            binom_table(2 * opts.order + 2)
+        };
+
+        Ok(Self {
+            tree,
+            opts,
+            scaled,
+            near,
+            far,
+            min_gap,
+            max_r2: 16.0 * extent * extent + opts.eps * opts.eps,
+            discover_far,
+            direct_sources,
+            binom,
+        })
     }
-    let mut out = vec![[0.0; 2]; n];
-    let eps2 = opts.eps * opts.eps;
-    let mut m2l_list: Vec<(usize, usize)> = Vec::new();
-    // The multipole and local expansions are those of the unsoftened kernel
-    // 1/z. The softened field differs from it by a relative (eps / r)^2, so a
-    // pair may use them only when that is below the truncation error of the
-    // expansion, theta^(p+1): closer pairs are summed directly. With a
-    // softening comparable to the domain this degrades to the direct sum, which
-    // is the correct answer, not a fast one (the 3-D solver differentiates the
-    // softened kernel itself and has no such limit).
-    let truncation = opts.theta.powi(i32::try_from(p + 1).unwrap_or(i32::MAX));
-    let min_gap = if opts.eps > 0.0 {
-        opts.eps / truncation.sqrt()
-    } else {
-        0.0
-    };
-    traverse(
-        &tree,
-        opts.theta,
-        min_gap,
-        |a, b| m2l_list.push((a, b)),
-        |a, b| {
-            let (na, nb) = (&tree.nodes[a], &tree.nodes[b]);
-            for &i in &tree.perm[na.start..na.end] {
-                for &j in &tree.perm[nb.start..nb.end] {
+
+    fn evaluate(
+        &self,
+        pos: &[[f64; 2]],
+        src: &[f64],
+    ) -> Result<Vec<[f64; 2]>, String> {
+        let mut out = vec![[0.0; 2]; pos.len()];
+        let (smallest, largest) = src.iter().map(|strength| strength.abs()).fold(
+            (f64::INFINITY, 0.0_f64),
+            |(lo, hi), abs| {
+                (
+                    if abs == 0.0 {
+                        lo
+                    } else {
+                        lo.min(abs)
+                    },
+                    hi.max(abs),
+                )
+            },
+        );
+        // Bound the denominator so the squared norm and each nonzero
+        // strength divided by it stay in the normal finite range.
+        let lo = (2.0 * (largest / f64::MAX)).max(f64::MIN_POSITIVE);
+        let hi = (smallest / f64::MIN_POSITIVE).min(f64::MAX);
+        let mut discovered = Some(Vec::new());
+        let discover = self.discover_far.then_some(&mut discovered);
+        if self.max_r2 <= hi {
+            if self.opts.eps * self.opts.eps >= lo {
+                self.accumulate_near::<false, false>(pos, src, &mut out, (lo, hi), discover)?;
+            } else {
+                self.accumulate_near::<true, false>(pos, src, &mut out, (lo, hi), discover)?;
+            }
+        } else {
+            self.accumulate_near::<true, true>(pos, src, &mut out, (lo, hi), discover)?;
+        }
+        let far = if self.discover_far {
+            discovered.as_deref()
+        } else {
+            self.far.as_deref()
+        };
+        if !far.is_some_and(<[_]>::is_empty) {
+            self.add_expansions(pos, src, &mut out, far)?;
+        }
+        if out.iter().flatten().any(|value| !value.is_finite()) {
+            return Err("2-D field is outside the finite range".into());
+        }
+        Ok(out)
+    }
+
+    fn accumulate_near<const CHECK_LOWER: bool, const CHECK_UPPER: bool>(
+        &self,
+        pos: &[[f64; 2]],
+        src: &[f64],
+        out: &mut [[f64; 2]],
+        (lo, hi): (f64, f64),
+        discover: Option<&mut Option<Vec<FmmPair>>>,
+    ) -> Result<(), String> {
+        let eps = self.opts.eps;
+        let eps2 = eps * eps;
+        let tree = &self.tree;
+        let mut failure = Ok(());
+        let mut sum = |targets: &[usize], sources: &[usize]| {
+            if failure.is_err() {
+                return;
+            }
+            for &i in targets {
+                let mut field = out[i];
+                let target = pos[i];
+                for &j in sources {
                     if i == j {
                         continue;
                     }
-                    let d = [pos[j][0] - pos[i][0], pos[j][1] - pos[i][1]];
-                    let f = src[j] / (d[0] * d[0] + d[1] * d[1] + eps2);
-                    out[i][0] += f * d[0];
-                    out[i][1] += f * d[1];
+                    let source = pos[j];
+                    let delta = [source[0] - target[0], source[1] - target[1]];
+                    let r2 = delta[0] * delta[0] + delta[1] * delta[1] + eps2;
+                    if (!CHECK_LOWER || r2 >= lo) && (!CHECK_UPPER || r2 <= hi) {
+                        let factor = src[j] / r2;
+                        field[0] += factor * delta[0];
+                        field[1] += factor * delta[1];
+                    } else {
+                        match scaled_near_field(target, source, delta, src[j], eps) {
+                            | Ok(value) => {
+                                field[0] += value[0];
+                                field[1] += value[1];
+                            },
+                            | Err(error) => {
+                                failure = Err(error);
+                                return;
+                            },
+                        }
+                    }
+                }
+                out[i] = field;
+            }
+        };
+        if !self.direct_sources.is_empty() {
+            sum(&tree.perm, &self.direct_sources);
+            return failure;
+        }
+        let near = |a: usize, b: usize| {
+            let (na, nb) = (&tree.nodes[a], &tree.nodes[b]);
+            sum(&tree.perm[na.start..na.end], &tree.perm[nb.start..nb.end]);
+        };
+        if let Some(far) = discover {
+            let budget = fmm_pair_budget(pos.len());
+            traverse(
+                tree,
+                self.opts.theta,
+                self.min_gap,
+                |a, b| cache_fmm_pair(far, (a, b), budget),
+                near,
+            );
+        } else {
+            self.visit_pairs(self.near.as_deref(), false, near);
+        }
+        failure
+    }
+
+    fn visit_pairs(
+        &self,
+        cached: Option<&[FmmPair]>,
+        far: bool,
+        mut visit: impl FnMut(usize, usize),
+    ) {
+        if let Some(pairs) = cached {
+            for &(a, b) in pairs {
+                visit(a, b);
+            }
+        } else if far {
+            traverse(&self.tree, self.opts.theta, self.min_gap, visit, |_, _| {});
+        } else {
+            traverse(&self.tree, self.opts.theta, self.min_gap, |_, _| {}, visit);
+        }
+    }
+
+    fn add_expansions(
+        &self,
+        pos: &[[f64; 2]],
+        src: &[f64],
+        out: &mut [[f64; 2]],
+        far: Option<&[FmmPair]>,
+    ) -> Result<(), String> {
+        use crate::kernels::numeric_common::scale_product;
+
+        let tree = &self.tree;
+        let p = self.opts.order;
+        let width = p + 1;
+        let block = tree
+            .nodes
+            .len()
+            .checked_mul(width)
+            .filter(|&length| length <= isize::MAX as usize / std::mem::size_of::<Cx>())
+            .ok_or("2-D expansion workspace is too large")?;
+        let transient;
+        let binom = if self.binom.is_empty() {
+            transient = binom_table(2 * p + 2);
+            &transient
+        } else {
+            &self.binom
+        };
+        let (geometry, length) = self.scaled.as_ref().map_or((pos, None), |(points, scale)| {
+            (points.as_slice(), Some(*scale))
+        });
+        let max_source = src.iter().copied().map(f64::abs).fold(0.0, f64::max);
+        let source_scale =
+            (max_source > 0.0 && !(1e-130..=1e130).contains(&max_source)).then_some(max_source);
+        let cen = |id: usize| Cx::new(tree.nodes[id].center[0], tree.nodes[id].center[1]);
+        let mut mp = vec![Cx::default(); block];
+        let mut lo = vec![Cx::default(); block];
+        let mut pw = vec![Cx::default(); 2 * width];
+
+        for (id, nd) in tree.nodes.iter().enumerate() {
+            if !nd.children.is_empty() {
+                continue;
+            }
+            let center = cen(id);
+            for &i in &tree.perm[nd.start..nd.end] {
+                let dz = Cx::new(geometry[i][0] - center.re, geometry[i][1] - center.im);
+                fill_powers(dz, &mut pw[..width]);
+                let strength = source_scale.map_or(src[i], |scale| src[i] / scale);
+                for k in 0..width {
+                    mp[id * width + k] = mp[id * width + k].add(pw[k].scale(strength));
                 }
             }
-        },
-    );
-    for (a, b) in m2l_list {
-        let u = Cx::new(cen(a).re - cen(b).re, cen(a).im - cen(b).im);
-        let upow = powers(u.inv(), 2 * p + 1);
-        for l in 0..=p {
+        }
+        for id in (0..tree.nodes.len()).rev() {
+            for &c in &tree.nodes[id].children {
+                let t = Cx::new(cen(c).re - cen(id).re, cen(c).im - cen(id).im);
+                fill_powers(t, &mut pw[..width]);
+                let (before, after) = mp.split_at_mut(c * width);
+                let parent = &mut before[id * width..(id + 1) * width];
+                let child = &after[..width];
+                for k in 0..width {
+                    for l in 0..=k {
+                        parent[k] = parent[k].add(pw[k - l].mul(child[l]).scale(binom[k][l]));
+                    }
+                }
+            }
+        }
+
+        let mut translation = Vec::with_capacity(width * width);
+        for l in 0..width {
             let sign = if l % 2 == 0 { 1.0 } else { -1.0 };
-            for k in 0..=p {
-                let term = mp[b][k].mul(upow[k + l + 1]).scale(sign * binom[k + l][l]);
-                lo[a][l] = lo[a][l].add(term);
-            }
+            translation.extend((0..width).map(|k| sign * binom[k + l][l]));
         }
-    }
-    for id in 0..nn {
-        for &c in &tree.nodes[id].children {
-            let t = Cx::new(cen(c).re - cen(id).re, cen(c).im - cen(id).im);
-            let tp = powers(t, p);
-            let par = lo[id].clone();
-            for m in 0..=p {
-                for l in m..=p {
-                    lo[c][m] = lo[c][m].add(par[l].mul(tp[l - m]).scale(binom[l][m]));
+        self.visit_pairs(far, true, |a, b| {
+            let u = Cx::new(cen(a).re - cen(b).re, cen(a).im - cen(b).im);
+            fill_powers(u.inv(), &mut pw);
+            let moments = &mp[b * width..(b + 1) * width];
+            let target = &mut lo[a * width..(a + 1) * width];
+            for (l, (coefficient, weights)) in target
+                .iter_mut()
+                .zip(translation.chunks_exact(width))
+                .enumerate()
+            {
+                for ((&moment, &power), &weight) in moments.iter().zip(&pw[l + 1..]).zip(weights) {
+                    *coefficient = coefficient.add(moment.mul(power).scale(weight));
+                }
+            }
+        });
+        for id in 0..tree.nodes.len() {
+            for &c in &tree.nodes[id].children {
+                let t = Cx::new(cen(c).re - cen(id).re, cen(c).im - cen(id).im);
+                fill_powers(t, &mut pw[..width]);
+                let (before, after) = lo.split_at_mut(c * width);
+                let parent = &before[id * width..(id + 1) * width];
+                let child = &mut after[..width];
+                for m in 0..width {
+                    for l in m..width {
+                        child[m] = child[m].add(parent[l].mul(pw[l - m]).scale(binom[l][m]));
+                    }
                 }
             }
         }
-    }
-    for (id, nd) in tree.nodes.iter().enumerate() {
-        if !nd.children.is_empty() {
-            continue;
-        }
-        for &i in &tree.perm[nd.start..nd.end] {
-            let w = Cx::new(pos[i][0] - cen(id).re, pos[i][1] - cen(id).im);
-            let mut acc = Cx::default();
-            for l in (0..=p).rev() {
-                acc = acc.mul(w).add(lo[id][l]);
+        for (id, nd) in tree.nodes.iter().enumerate() {
+            if !nd.children.is_empty() {
+                continue;
             }
-            out[i][0] -= acc.re;
-            out[i][1] += acc.im;
+            for &i in &tree.perm[nd.start..nd.end] {
+                let w = Cx::new(geometry[i][0] - cen(id).re, geometry[i][1] - cen(id).im);
+                let mut acc = Cx::default();
+                for l in (0..width).rev() {
+                    acc = acc.mul(w).add(lo[id * width + l]);
+                }
+                if source_scale.is_some() || length.is_some() {
+                    let factor = &[source_scale.unwrap_or(1.0)];
+                    let divisor = &[length.unwrap_or(1.0)];
+                    acc.re = scale_product(acc.re, factor, divisor).map_err(|e| e.to_string())?;
+                    acc.im = scale_product(acc.im, factor, divisor).map_err(|e| e.to_string())?;
+                }
+                out[i][0] -= acc.re;
+                out[i][1] += acc.im;
+            }
+        }
+        Ok(())
+    }
+}
+
+const fn fmm_pair_budget(n: usize) -> usize {
+    n.saturating_mul(24)
+}
+
+fn cache_fmm_pair(
+    list: &mut Option<Vec<FmmPair>>,
+    pair: FmmPair,
+    budget: usize,
+) {
+    if let Some(pairs) = list {
+        if pairs.len() == budget {
+            *list = None;
+        } else {
+            if pairs.len() == pairs.capacity() {
+                pairs.reserve_exact((budget - pairs.len()).min(pairs.len().max(8)));
+            }
+            pairs.push(pair);
         }
     }
-    Ok(out)
+}
+
+fn check_fmm2d_sources(
+    n: usize,
+    src: &[f64],
+) -> Result<(), String> {
+    if n == 0 || src.len() != n {
+        return Err("positions and sources must be non-empty and of equal length".into());
+    }
+    if src.iter().any(|value| !value.is_finite()) {
+        return Err("source strengths must be finite".into());
+    }
+    Ok(())
+}
+
+#[cold]
+#[inline(never)]
+fn scaled_near_field(
+    target: [f64; 2],
+    source: [f64; 2],
+    delta: [f64; 2],
+    strength: f64,
+    eps: f64,
+) -> Result<[f64; 2], String> {
+    use crate::kernels::numeric_common::scale_product;
+
+    let max_delta = delta[0].abs().max(delta[1].abs());
+    let scale = if max_delta.is_finite() {
+        max_delta.max(eps)
+    } else {
+        target
+            .into_iter()
+            .chain(source)
+            .map(f64::abs)
+            .fold(eps, f64::max)
+    };
+    if scale == 0.0 {
+        return Err("unsoftened source positions must be distinct".into());
+    }
+    let dx = [0, 1].map(|a| {
+        if delta[a].is_finite() {
+            delta[a] / scale
+        } else {
+            source[a] / scale - target[a] / scale
+        }
+    });
+    let eps_scaled = eps / scale;
+    let r2 = dx[0] * dx[0] + dx[1] * dx[1] + eps_scaled * eps_scaled;
+    let component = |distance: f64| {
+        if distance == 0.0 {
+            Ok(distance * strength.signum())
+        } else {
+            scale_product(strength, &[distance.abs()], &[r2, scale])
+                .map(|value| {
+                    if distance.is_sign_negative() {
+                        -value
+                    } else {
+                        value
+                    }
+                })
+                .map_err(|error| error.to_string())
+        }
+    };
+    Ok([component(dx[0])?, component(dx[1])?])
 }
 
 // ---------------------------------------------------------------------------

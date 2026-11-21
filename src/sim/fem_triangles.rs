@@ -1,3 +1,5 @@
+//! Finite elements (P1/P2) on unstructured triangle meshes, adaptive.
+//!
 //! # Finite elements on unstructured triangle meshes
 //!
 //! `-∇·(k ∇u) + c u = f` on a polygonal domain given as a triangle mesh,
@@ -123,8 +125,15 @@ impl TriMesh {
     /// Vertices on the boundary (on an edge with a single triangle).
     #[must_use]
     pub fn boundary_vertices(&self) -> Vec<bool> {
+        self.boundary_from_edges(&self.edges())
+    }
+
+    fn boundary_from_edges(
+        &self,
+        edges: &HashMap<(usize, usize), Vec<usize>>,
+    ) -> Vec<bool> {
         let mut on = vec![false; self.nodes.len()];
-        for ((a, b), ts) in self.edges() {
+        for (&(a, b), ts) in edges {
             if ts.len() == 1 {
                 on[a] = true;
                 on[b] = true;
@@ -236,6 +245,15 @@ pub enum Degree {
     P2,
 }
 
+impl Degree {
+    const fn element_dofs(self) -> usize {
+        match self {
+            | Self::P1 => 3,
+            | Self::P2 => 6,
+        }
+    }
+}
+
 /// The problem data.
 pub struct Problem<'a> {
     /// Diffusion coefficient `k(x, y) > 0`.
@@ -267,7 +285,7 @@ pub struct Solution {
 
 /// Strang–Fix seven-point rule on the reference triangle (degree 5):
 /// barycentric points and weights summing to 1.
-fn quadrature() -> Vec<([f64; 3], f64)> {
+fn quadrature() -> [([f64; 3], f64); 7] {
     let a1 = 0.059_715_871_789_769_82;
     let b1 = 0.470_142_064_105_115_1;
     let a2 = 0.797_426_985_353_087_3;
@@ -275,7 +293,7 @@ fn quadrature() -> Vec<([f64; 3], f64)> {
     let w0 = 0.225;
     let w1 = 0.132_394_152_788_506_2;
     let w2 = 0.125_939_180_544_827_1;
-    vec![
+    [
         ([1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0], w0),
         ([a1, b1, b1], w1),
         ([b1, a1, b1], w1),
@@ -291,12 +309,19 @@ fn quadrature() -> Vec<([f64; 3], f64)> {
 fn basis(
     degree: Degree,
     l: [f64; 3],
-) -> (Vec<f64>, Vec<[f64; 3]>) {
+) -> ([f64; 6], [[f64; 3]; 6]) {
     match degree {
         | Degree::P1 => {
             (
-                l.to_vec(),
-                vec![[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+                [l[0], l[1], l[2], 0.0, 0.0, 0.0],
+                [
+                    [1.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0],
+                    [0.0, 0.0, 1.0],
+                    [0.0; 3],
+                    [0.0; 3],
+                    [0.0; 3],
+                ],
             )
         },
         | Degree::P2 => {
@@ -314,8 +339,8 @@ fn basis(
                 g
             };
             (
-                vec![v(0), v(1), v(2), e(0, 1), e(1, 2), e(2, 0)],
-                vec![dv(0), dv(1), dv(2), de(0, 1), de(1, 2), de(2, 0)],
+                [v(0), v(1), v(2), e(0, 1), e(1, 2), e(2, 0)],
+                [dv(0), dv(1), dv(2), de(0, 1), de(1, 2), de(2, 0)],
             )
         },
     }
@@ -358,14 +383,13 @@ impl Csr {
     fn apply(
         &self,
         x: &[f64],
-    ) -> Vec<f64> {
-        (0..self.starts.len() - 1)
-            .map(|i| {
-                (self.starts[i]..self.starts[i + 1])
-                    .map(|k| self.values[k] * x[self.columns[k]])
-                    .sum()
-            })
-            .collect()
+        out: &mut [f64],
+    ) {
+        for (i, yi) in out.iter_mut().enumerate() {
+            *yi = (self.starts[i]..self.starts[i + 1])
+                .map(|k| self.values[k] * x[self.columns[k]])
+                .sum();
+        }
     }
 
     fn diagonal(&self) -> Vec<f64> {
@@ -373,156 +397,475 @@ impl Csr {
             .map(|i| {
                 (self.starts[i]..self.starts[i + 1])
                     .find(|&k| self.columns[k] == i)
-                    .map_or(1.0, |k| self.values[k])
+                    .map_or(0.0, |k| self.values[k])
             })
             .collect()
     }
 }
 
-/// Jacobi-preconditioned conjugate gradients; returns the solution and the
-/// iteration count.
 fn pcg(
     a: &Csr,
     b: &[f64],
     tolerance: f64,
     max_iterations: usize,
-) -> (Vec<f64>, usize) {
-    let n = b.len();
-    let inv_diag: Vec<f64> = a
-        .diagonal()
-        .iter()
-        .map(|d| {
-            if d.abs() > 0.0 {
-                1.0 / d
-            } else {
-                1.0
+) -> Result<(Vec<f64>, usize), String> {
+    let diagonal = a.diagonal();
+    if diagonal.iter().any(|d| *d <= 0.0 || !d.is_finite()) {
+        return Err("triangle system has a missing or nonpositive diagonal".into());
+    }
+    let peak = b.iter().map(|x| x.abs()).fold(0.0, f64::max);
+    if peak == 0.0 {
+        return Ok((vec![0.0; b.len()], 0));
+    }
+    let fast = (1e-130..=1e130)
+        .contains(&peak)
+        .then(|| pcg_flat(a, b, &diagonal, tolerance, max_iterations));
+    let (initial, used) = match fast {
+        | Some(result) if result.converged => return Ok((result.x, result.iterations)),
+        | Some(result) => {
+            let initial = result.x.iter().all(|x| x.is_finite()).then_some(result.x);
+            (initial, result.iterations)
+        },
+        | None => (None, 0),
+    };
+
+    // Normalize the Jacobi weights by a common factor to keep the inverse
+    // finite even for subnormal positive diagonals.
+    let lower = diagonal.iter().copied().fold(f64::INFINITY, f64::min);
+    let inverse: Vec<_> = diagonal.iter().map(|d| lower / d).collect();
+    let result = crate::kernels::krylov::cg(
+        |x, out| a.apply(x, out),
+        |r, out| {
+            for ((z, &ri), &scale) in out.iter_mut().zip(r).zip(&inverse) {
+                *z = ri * scale;
             }
-        })
-        .collect();
+        },
+        b,
+        initial.as_deref(),
+        tolerance,
+        max_iterations - used,
+    );
+    if !result.converged {
+        return Err("triangle system did not converge".into());
+    }
+    Ok((result.x, used + result.iterations))
+}
+
+fn pcg_flat(
+    a: &Csr,
+    b: &[f64],
+    diagonal: &[f64],
+    tolerance: f64,
+    max_iterations: usize,
+) -> crate::kernels::krylov::IterResult {
+    let n = b.len();
+    let inv_diag: Vec<_> = diagonal.iter().map(|d| 1.0 / d).collect();
     let mut x = vec![0.0; n];
     let mut r = b.to_vec();
     let mut z: Vec<f64> = r.iter().zip(&inv_diag).map(|(r, d)| r * d).collect();
     let mut p = z.clone();
     let mut rz: f64 = r.iter().zip(&z).map(|(a, b)| a * b).sum();
-    let b_norm = b.iter().map(|v| v * v).sum::<f64>().sqrt().max(1e-300);
-    for iteration in 0..max_iterations {
-        if r.iter().map(|v| v * v).sum::<f64>().sqrt() <= tolerance * b_norm {
-            return (x, iteration);
+    let b_norm = b.iter().map(|v| v * v).sum::<f64>().sqrt();
+    let target = tolerance * b_norm;
+    let mut ap = vec![0.0; n];
+    let mut iterations = 0;
+    while iterations < max_iterations
+        && rz.is_finite()
+        && rz > 0.0
+        && r.iter().map(|v| v * v).sum::<f64>().sqrt() > target
+    {
+        a.apply(&p, &mut ap);
+        let curvature: f64 = p.iter().zip(&ap).map(|(a, b)| a * b).sum();
+        if !curvature.is_finite() || curvature <= 0.0 {
+            break;
         }
-        let ap = a.apply(&p);
-        let alpha = rz / p.iter().zip(&ap).map(|(a, b)| a * b).sum::<f64>();
+        let alpha = rz / curvature;
+        if !alpha.is_finite() || alpha <= 0.0 {
+            break;
+        }
         for i in 0..n {
             x[i] += alpha * p[i];
             r[i] -= alpha * ap[i];
         }
-        z = r.iter().zip(&inv_diag).map(|(r, d)| r * d).collect();
-        let rz_new: f64 = r.iter().zip(&z).map(|(a, b)| a * b).sum();
-        let beta = rz_new / rz;
-        rz = rz_new;
+        for ((z, r), d) in z.iter_mut().zip(&r).zip(&inv_diag) {
+            *z = r * d;
+        }
+        let rz_next: f64 = r.iter().zip(&z).map(|(a, b)| a * b).sum();
+        let beta = rz_next / rz;
+        rz = rz_next;
         for i in 0..n {
             p[i] = z[i] + beta * p[i];
         }
+        iterations += 1;
     }
-    (x, max_iterations)
+    a.apply(&x, &mut ap);
+    let norm = b
+        .iter()
+        .zip(&ap)
+        .map(|(b, ax)| (b - ax).powi(2))
+        .sum::<f64>()
+        .sqrt();
+    crate::kernels::krylov::IterResult {
+        x,
+        residual: norm / b_norm,
+        iterations,
+        converged: norm <= target,
+    }
+}
+
+#[derive(Clone, Debug)]
+struct TriangleGeometry {
+    gradients: [[f64; 2]; 3],
+    measure: f64,
+    length_scale: Option<f64>,
+}
+
+impl TriangleGeometry {
+    fn new([a, b, c]: [[f64; 2]; 3]) -> Result<Self, String> {
+        let mut u = [b[0] - a[0], b[1] - a[1]];
+        let mut v = [c[0] - a[0], c[1] - a[1]];
+        let mut scale = u.into_iter().chain(v).map(f64::abs).fold(0.0, f64::max);
+        let area = 0.5 * (u[0] * v[1] - v[0] * u[1]);
+        if (1e-130..=1e130).contains(&scale) && area.is_normal() && scale / area.abs() <= 1e140 {
+            let den = 2.0 * area;
+            return Ok(Self {
+                gradients: [
+                    [(b[1] - c[1]) / den, (c[0] - b[0]) / den],
+                    [(c[1] - a[1]) / den, (a[0] - c[0]) / den],
+                    [(a[1] - b[1]) / den, (b[0] - a[0]) / den],
+                ],
+                measure: area.abs(),
+                length_scale: None,
+            });
+        }
+        if scale == 0.0 {
+            return Err("degenerate triangle".into());
+        }
+        if scale.is_finite() {
+            u = u.map(|value| value / scale);
+            v = v.map(|value| value / scale);
+        } else {
+            scale = a
+                .into_iter()
+                .chain(b)
+                .chain(c)
+                .map(f64::abs)
+                .fold(0.0, f64::max);
+            u = [0, 1].map(|i| b[i] / scale - a[i] / scale);
+            v = [0, 1].map(|i| c[i] / scale - a[i] / scale);
+        }
+        let positive = u[0] * v[1];
+        let negative = v[0] * u[1];
+        let det = positive - negative;
+        // Rescaling rounds the two edge vectors. Within their cancellation
+        // error the sign of the determinant is unreliable.
+        let error = 4.0 * f64::EPSILON * (positive.abs() + negative.abs());
+        if det.abs() <= error || !det.is_finite() {
+            return Err("degenerate triangle".into());
+        }
+        // Factor sqrt(area) into each gradient. The physical scale cancels
+        // from the 2D diffusion term before any squaring takes place.
+        let den = (2.0 * det.abs()).sqrt().copysign(det);
+        Ok(Self {
+            gradients: [
+                [(u[1] - v[1]) / den, (v[0] - u[0]) / den],
+                [v[1] / den, -v[0] / den],
+                [-u[1] / den, u[0] / den],
+            ],
+            measure: det.abs(),
+            length_scale: Some(scale),
+        })
+    }
+
+    fn weighted_coefficient(
+        &self,
+        weight: f64,
+        value: f64,
+    ) -> Result<f64, String> {
+        match self.length_scale {
+            | Some(scale) => {
+                crate::kernels::numeric_common::scale_product(
+                    value,
+                    &[weight, self.measure, 0.5, scale, scale],
+                    &[],
+                )
+                .map_err(|error| error.to_string())
+            },
+            | None => Ok(weight * self.measure * value),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct PreparedElement {
+    dofs: [usize; 6],
+    geometry: TriangleGeometry,
+}
+
+#[derive(Clone, Debug)]
+struct ReferenceSample {
+    barycentric: [f64; 3],
+    weight: f64,
+    values: [f64; 6],
+    gradients: [[f64; 3]; 6],
+}
+
+/// Static geometry and degree-of-freedom layout for repeated triangle solves.
+///
+/// The prepared mesh owns its coordinates and can be reused with different
+/// diffusion, reaction, source and Dirichlet callbacks. Each solve evaluates
+/// these callbacks afresh at the same points and in the same order as [`solve`].
+#[derive(Clone, Debug)]
+pub struct PreparedTriangles {
+    points: Vec<[f64; 2]>,
+    boundary: Vec<bool>,
+    elements: Vec<PreparedElement>,
+    rule: [ReferenceSample; 7],
+    degree: Degree,
+}
+
+impl PreparedTriangles {
+    /// Prepares the P1 or P2 finite-element layout on `mesh`.
+    ///
+    /// # Errors
+    /// Rejects non-finite vertex coordinates, invalid indices and degenerate triangles.
+    pub fn new(
+        mesh: &TriMesh,
+        degree: Degree,
+    ) -> Result<Self, String> {
+        if mesh.nodes.iter().flatten().any(|coord| !coord.is_finite()) {
+            return Err("triangle coordinates must be finite".into());
+        }
+        let mut elements = mesh
+            .triangles
+            .iter()
+            .map(|t| {
+                let [Some(&a), Some(&b), Some(&c)] = t.map(|i| mesh.nodes.get(i)) else {
+                    return Err("triangle vertex index is outside the mesh".into());
+                };
+                let [i, j, k] = *t;
+                Ok(PreparedElement {
+                    dofs: [i, j, k, 0, 0, 0],
+                    geometry: TriangleGeometry::new([a, b, c])?,
+                })
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        let edges = mesh.edges();
+        let mut points = mesh.nodes.clone();
+        let mut boundary = mesh.boundary_from_edges(&edges);
+        if degree == Degree::P2 {
+            points.reserve_exact(edges.len());
+            boundary.reserve_exact(edges.len());
+            let mut sorted: Vec<_> = edges.into_iter().collect();
+            sorted.sort_unstable_by_key(|(key, _)| *key);
+            let mut edge_dofs = HashMap::with_capacity(sorted.len());
+            for ((a, b), cells) in sorted {
+                let (p, q) = (points[a], points[b]);
+                edge_dofs.insert((a, b), points.len());
+                points.push([f64::midpoint(p[0], q[0]), f64::midpoint(p[1], q[1])]);
+                boundary.push(cells.len() == 1);
+            }
+            for element in &mut elements {
+                let [a, b, c, ..] = element.dofs;
+                element.dofs = [
+                    a,
+                    b,
+                    c,
+                    edge_dofs[&(a.min(b), a.max(b))],
+                    edge_dofs[&(b.min(c), b.max(c))],
+                    edge_dofs[&(c.min(a), c.max(a))],
+                ];
+            }
+        }
+        let rule = quadrature().map(|(barycentric, weight)| {
+            let (values, gradients) = basis(degree, barycentric);
+            ReferenceSample {
+                barycentric,
+                weight,
+                values,
+                gradients,
+            }
+        });
+        Ok(Self {
+            points,
+            boundary,
+            elements,
+            rule,
+            degree,
+        })
+    }
+
+    /// The number of finite-element degrees of freedom.
+    #[must_use]
+    pub const fn degrees_of_freedom(&self) -> usize {
+        self.points.len()
+    }
+
+    /// Bytes occupied by this prepared value and its retained allocations.
+    #[must_use]
+    pub const fn retained_bytes(&self) -> usize {
+        use std::mem::size_of;
+
+        size_of::<Self>()
+            .saturating_add(self.points.capacity().saturating_mul(size_of::<[f64; 2]>()))
+            .saturating_add(self.boundary.capacity().saturating_mul(size_of::<bool>()))
+            .saturating_add(
+                self.elements
+                    .capacity()
+                    .saturating_mul(size_of::<PreparedElement>()),
+            )
+    }
+
+    /// Solves another problem on the prepared layout.
+    ///
+    /// # Errors
+    /// Rejects invalid callback values or non-finite assembled systems or solutions.
+    pub fn solve(
+        &self,
+        problem: &Problem<'_>,
+    ) -> Result<Solution, String> {
+        let (values, iterations) = self.solve_values(problem)?;
+        Ok(Solution {
+            points: self.points.clone(),
+            elements: self.solution_elements(),
+            values,
+            iterations,
+            degree: self.degree,
+        })
+    }
+
+    fn solution_elements(&self) -> Vec<Vec<usize>> {
+        let count = self.degree.element_dofs();
+        self.elements
+            .iter()
+            .map(|element| element.dofs[..count].to_vec())
+            .collect()
+    }
+
+    fn solve_values(
+        &self,
+        problem: &Problem<'_>,
+    ) -> Result<(Vec<f64>, usize), String> {
+        let n = self.points.len();
+        let count = self.degree.element_dofs();
+        let mut triplets: HashMap<(usize, usize), f64> = HashMap::new();
+        let mut load = vec![0.0; n];
+        for element in &self.elements {
+            let [i, j, k, ..] = element.dofs;
+            let [a, b, c] = [i, j, k].map(|index| self.points[index]);
+            let mut local = [[0.0; 6]; 6];
+            let geometry = &element.geometry;
+            let scaled = geometry.length_scale.is_some();
+            let diffusion_measure = if scaled {
+                1.0
+            } else {
+                geometry.measure
+            };
+            for sample in &self.rule {
+                let [l0, l1, l2] = sample.barycentric;
+                let x = l0 * a[0] + l1 * b[0] + l2 * c[0];
+                let y = l0 * a[1] + l1 * b[1] + l2 * c[1];
+                let (k, c, f) = ((problem.k)(x, y), (problem.c)(x, y), (problem.f)(x, y));
+                if !(k.is_finite() && k > 0.0 && c.is_finite() && c >= 0.0 && f.is_finite()) {
+                    return Err("invalid triangle diffusion, reaction or source value".into());
+                }
+                let source = geometry.weighted_coefficient(sample.weight, f)?;
+                let reaction = if scaled {
+                    geometry.weighted_coefficient(sample.weight, c)?
+                } else {
+                    c
+                };
+                let weight = sample.weight * diffusion_measure;
+                let mut grad = [[0.0; 2]; 6];
+                for (gradient, d) in grad.iter_mut().zip(&sample.gradients[..count]) {
+                    *gradient = [0, 1].map(|axis| {
+                        d[0] * geometry.gradients[0][axis]
+                            + d[1] * geometry.gradients[1][axis]
+                            + d[2] * geometry.gradients[2][axis]
+                    });
+                }
+                for i in 0..count {
+                    load[element.dofs[i]] += source * sample.values[i];
+                    for j in 0..count {
+                        let stiff = k * (grad[i][0] * grad[j][0] + grad[i][1] * grad[j][1]);
+                        let mass = reaction * sample.values[i] * sample.values[j];
+                        local[i][j] += if scaled {
+                            weight * stiff + mass
+                        } else {
+                            weight * (stiff + mass)
+                        };
+                    }
+                }
+            }
+            for i in 0..count {
+                for j in 0..count {
+                    *triplets
+                        .entry((element.dofs[i], element.dofs[j]))
+                        .or_insert(0.0) += local[i][j];
+                }
+            }
+        }
+        // Dirichlet rows: u = g, eliminated symmetrically from other rows.
+        let fixed: Vec<Option<f64>> = self
+            .points
+            .iter()
+            .zip(&self.boundary)
+            .map(|(p, &on)| on.then(|| (problem.g)(p[0], p[1])))
+            .collect();
+        if fixed.iter().flatten().any(|value| !value.is_finite()) {
+            return Err("triangle Dirichlet data must be finite".into());
+        }
+        let mut reduced = HashMap::with_capacity(triplets.len());
+        for ((i, j), v) in triplets {
+            match (fixed[i], fixed[j]) {
+                | (Some(_), _) => {},
+                | (None, Some(gj)) => load[i] -= v * gj,
+                | (None, None) => {
+                    reduced.insert((i, j), v);
+                },
+            }
+        }
+        for (i, &g) in fixed.iter().enumerate() {
+            if let Some(g) = g {
+                reduced.insert((i, i), 1.0);
+                load[i] = g;
+            }
+        }
+        let matrix = Csr::from_triplets(n, &reduced);
+        if load
+            .iter()
+            .chain(&matrix.values)
+            .any(|value| !value.is_finite())
+        {
+            return Err("assembled triangle system is non-finite".into());
+        }
+        let (values, iterations) = pcg(
+            &matrix,
+            &load,
+            1e-12,
+            n.saturating_mul(20).saturating_add(100),
+        )?;
+        if values.iter().any(|value| !value.is_finite()) {
+            return Err("triangle solve produced a non-finite solution".into());
+        }
+        Ok((values, iterations))
+    }
 }
 
 /// Solves the problem on `mesh` with elements of `degree`.
 ///
 /// # Errors
-/// A degenerate (zero-area) triangle.
+/// For invalid mesh geometry, callback values or a non-finite solve.
 pub fn solve(
     mesh: &TriMesh,
     degree: Degree,
     problem: &Problem<'_>,
 ) -> Result<Solution, String> {
-    // Degrees of freedom: vertices, then (P2) one per edge.
-    let mut points = mesh.nodes.clone();
-    let mut boundary = mesh.boundary_vertices();
-    let mut elements: Vec<Vec<usize>> = mesh.triangles.iter().map(|t| t.to_vec()).collect();
-    if degree == Degree::P2 {
-        let edges = mesh.edges();
-        let mut edge_dof: HashMap<(usize, usize), usize> = HashMap::new();
-        let mut sorted: Vec<_> = edges.iter().collect();
-        sorted.sort_by_key(|(k, _)| **k);
-        for (&(a, b), ts) in sorted {
-            let (p, q) = (mesh.nodes[a], mesh.nodes[b]);
-            edge_dof.insert((a, b), points.len());
-            points.push([f64::midpoint(p[0], q[0]), f64::midpoint(p[1], q[1])]);
-            boundary.push(ts.len() == 1);
-        }
-        for (element, t) in elements.iter_mut().zip(&mesh.triangles) {
-            for (i, j) in [(0, 1), (1, 2), (2, 0)] {
-                element.push(edge_dof[&(t[i].min(t[j]), t[i].max(t[j]))]);
-            }
-        }
-    }
-    let n = points.len();
-    let rule = quadrature();
-    let mut triplets: HashMap<(usize, usize), f64> = HashMap::new();
-    let mut load = vec![0.0; n];
-    for (t, dofs) in mesh.triangles.iter().zip(&elements) {
-        let area = mesh.area(t);
-        if area.abs() < 1e-300 {
-            return Err("degenerate triangle".to_owned());
-        }
-        let [a, b, c] = t.map(|v| mesh.nodes[v]);
-        // ∇λ_i = (y_j - y_k, x_k - x_j) / (2A)
-        let grad_l = [
-            [(b[1] - c[1]) / (2.0 * area), (c[0] - b[0]) / (2.0 * area)],
-            [(c[1] - a[1]) / (2.0 * area), (a[0] - c[0]) / (2.0 * area)],
-            [(a[1] - b[1]) / (2.0 * area), (b[0] - a[0]) / (2.0 * area)],
-        ];
-        for &(l, w) in &rule {
-            let (x, y) = (
-                l[0] * a[0] + l[1] * b[0] + l[2] * c[0],
-                l[0] * a[1] + l[1] * b[1] + l[2] * c[1],
-            );
-            let weight = w * area.abs();
-            let (phi, dphi) = basis(degree, l);
-            let grads: Vec<[f64; 2]> = dphi
-                .iter()
-                .map(|d| {
-                    [0, 1].map(|k| d[0] * grad_l[0][k] + d[1] * grad_l[1][k] + d[2] * grad_l[2][k])
-                })
-                .collect();
-            let (kv, cv, fv) = ((problem.k)(x, y), (problem.c)(x, y), (problem.f)(x, y));
-            for (i, &gi) in dofs.iter().enumerate() {
-                load[gi] += weight * fv * phi[i];
-                for (j, &gj) in dofs.iter().enumerate() {
-                    let value = weight
-                        * (kv * (grads[i][0] * grads[j][0] + grads[i][1] * grads[j][1])
-                            + cv * phi[i] * phi[j]);
-                    *triplets.entry((gi, gj)).or_insert(0.0) += value;
-                }
-            }
-        }
-    }
-    // Dirichlet rows: u = g, eliminated symmetrically from other rows.
-    let fixed: Vec<Option<f64>> = points
-        .iter()
-        .zip(&boundary)
-        .map(|(p, &on)| on.then(|| (problem.g)(p[0], p[1])))
-        .collect();
-    let mut reduced: HashMap<(usize, usize), f64> = HashMap::with_capacity(triplets.len());
-    for (&(i, j), &v) in &triplets {
-        match (fixed[i], fixed[j]) {
-            | (Some(_), _) => {},
-            | (None, Some(gj)) => load[i] -= v * gj,
-            | (None, None) => {
-                reduced.insert((i, j), v);
-            },
-        }
-    }
-    for (i, g) in fixed.iter().enumerate() {
-        if let Some(g) = g {
-            reduced.insert((i, i), 1.0);
-            load[i] = *g;
-        }
-    }
-    let matrix = Csr::from_triplets(n, &reduced);
-    let (values, iterations) = pcg(&matrix, &load, 1e-12, 20 * n + 100);
+    let prepared = PreparedTriangles::new(mesh, degree)?;
+    let (values, iterations) = prepared.solve_values(problem)?;
+    let elements = prepared.solution_elements();
     Ok(Solution {
-        points,
+        points: prepared.points,
         values,
         elements,
         degree,

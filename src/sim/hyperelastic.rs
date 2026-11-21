@@ -1,3 +1,5 @@
+//! Large-deformation hyperelasticity, elastodynamics and penalty contact.
+//!
 //! # Large-deformation elasticity, elastodynamics and penalty contact
 //!
 //! Total-Lagrangian finite elements on the linear simplex meshes of
@@ -68,26 +70,29 @@ impl HyperMaterial {
     }
 }
 
+const JACOBIAN_MIN: f64 = 1e-12;
+// With this bound and the Jacobian floor, inverse entries are at most
+// 2e72. Even the Neo-Hookean directional term (two inverse factors,
+// a direction and a modulus times log J) then stays below 1e210.
+const BOUNDED_POINT_INPUT: f64 = 1e30;
+
 fn det3(m: &M3) -> f64 {
     m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1])
         - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
         + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])
 }
 
-fn inv3(m: &M3) -> M3 {
-    let d = det3(m);
-    let c = |i: usize, j: usize| {
+fn inverse_transpose(
+    m: &M3,
+    determinant: f64,
+) -> M3 {
+    std::array::from_fn(|i| {
         let (r0, r1) = ((i + 1) % 3, (i + 2) % 3);
-        let (c0, c1) = ((j + 1) % 3, (j + 2) % 3);
-        m[r0][c0] * m[r1][c1] - m[r0][c1] * m[r1][c0]
-    };
-    let mut inv = [[0.0; 3]; 3];
-    for i in 0..3 {
-        for j in 0..3 {
-            inv[i][j] = c(j, i) / d;
-        }
-    }
-    inv
+        std::array::from_fn(|j| {
+            let (c0, c1) = ((j + 1) % 3, (j + 2) % 3);
+            (m[r0][c0] * m[r1][c1] - m[r0][c1] * m[r1][c0]) / determinant
+        })
+    })
 }
 
 fn matmul(
@@ -113,112 +118,408 @@ fn transpose(a: &M3) -> M3 {
     t
 }
 
+#[inline]
+fn matrix_bounded(
+    m: &M3,
+    maximum: f64,
+) -> bool {
+    m.iter()
+        .flatten()
+        .fold(true, |valid, x| valid & (x.abs() <= maximum))
+}
+
+fn matrix_finite(m: &M3) -> bool {
+    matrix_bounded(m, f64::MAX)
+}
+
+fn finite_moduli(mat: &HyperMaterial) -> Result<(f64, f64), String> {
+    let (lam, mu) = mat.lame();
+    if !lam.is_finite() || !mu.is_finite() {
+        return Err("hyperelastic Lamé parameters must be finite".into());
+    }
+    Ok((lam, mu))
+}
+
+fn direct_jacobian(f: &M3) -> Result<Option<f64>, String> {
+    let j = det3(f);
+    if !j.is_finite() {
+        return Ok(None);
+    }
+    if j <= JACOBIAN_MIN {
+        return Err("element deformation must have det F > 1e-12".into());
+    }
+    Ok(Some(j))
+}
+
+struct ScaledJacobian {
+    normalized: M3,
+    scale: [f64; 3],
+    determinant: f64,
+    log_j: f64,
+}
+
+#[cold]
+fn scaled_jacobian(f: &M3) -> Result<ScaledJacobian, String> {
+    if !matrix_finite(f) {
+        return Err("deformation gradient must be finite".into());
+    }
+    // Scale columns separately so that large rotations of unequal stretches
+    // retain each column's own scale. F = normalized * diag(scale).
+    let scale: [f64; 3] =
+        std::array::from_fn(|j| f.iter().map(|row| row[j].abs()).fold(0.0, f64::max));
+    if scale.contains(&0.0) {
+        return Err("element deformation must have det F > 1e-12".into());
+    }
+    let normalized: M3 = std::array::from_fn(|i| std::array::from_fn(|j| f[i][j] / scale[j]));
+    let determinant = det3(&normalized);
+    if determinant <= 0.0 {
+        return Err("element deformation must have det F > 1e-12".into());
+    }
+    let log_j = determinant.ln() + scale.into_iter().map(f64::ln).sum::<f64>();
+    if log_j <= JACOBIAN_MIN.ln() {
+        return Err("element deformation must have det F > 1e-12".into());
+    }
+    Ok(ScaledJacobian {
+        normalized,
+        scale,
+        determinant,
+        log_j,
+    })
+}
+
+#[inline]
+fn neo_geometry<const INVERSE: bool>(
+    f: &M3,
+    bounded: bool,
+) -> Result<(f64, M3), String> {
+    if let Some(j) = direct_jacobian(f)? {
+        if !INVERSE {
+            return Ok((j.ln(), [[0.0; 3]; 3]));
+        }
+        let q = inverse_transpose(f, j);
+        if bounded || matrix_finite(&q) {
+            return Ok((j.ln(), q));
+        }
+    }
+    let jac = scaled_jacobian(f)?;
+    let mut q = [[0.0; 3]; 3];
+    if INVERSE {
+        q = inverse_transpose(&jac.normalized, jac.determinant);
+        for row in &mut q {
+            for (x, scale) in row.iter_mut().zip(jac.scale) {
+                *x /= scale;
+            }
+        }
+        if !matrix_finite(&q) {
+            return Err("inverse deformation gradient exceeds the finite range".into());
+        }
+    }
+    Ok((jac.log_j, q))
+}
+
+fn green_strain(f: &M3) -> Result<M3, String> {
+    if direct_jacobian(f)?.is_none() {
+        scaled_jacobian(f)?;
+    }
+    let c = matmul(&transpose(f), f);
+    Ok(std::array::from_fn(|i| {
+        std::array::from_fn(|j| 0.5 * (c[i][j] - f64::from(u8::from(i == j))))
+    }))
+}
+
+fn second_piola(
+    e: &M3,
+    lam: f64,
+    mu: f64,
+) -> M3 {
+    let tr = e[0][0] + e[1][1] + e[2][2];
+    std::array::from_fn(|i| {
+        std::array::from_fn(|j| 2.0 * mu * e[i][j] + if i == j { lam * tr } else { 0.0 })
+    })
+}
+
+#[inline]
+fn neo_piola(
+    f: &M3,
+    q: &M3,
+    mu: f64,
+    volumetric: f64,
+) -> M3 {
+    std::array::from_fn(|i| {
+        std::array::from_fn(|j| mu * (f[i][j] - q[i][j]) + volumetric * q[i][j])
+    })
+}
+
+fn finite_piola(p: M3) -> Result<M3, String> {
+    if !matrix_finite(&p) {
+        return Err("first Piola stress exceeds the finite range".into());
+    }
+    Ok(p)
+}
+
+fn svk_energy(
+    e: &M3,
+    lam: f64,
+    mu: f64,
+) -> f64 {
+    let tr: f64 = (0..3).map(|i| e[i][i]).sum();
+    let e2: f64 = e.iter().flatten().map(|x| x * x).sum();
+    0.5 * lam * tr * tr + mu * e2
+}
+
+fn neo_energy(
+    f: &M3,
+    log_j: f64,
+    lam: f64,
+    mu: f64,
+) -> f64 {
+    let diagonal: [f64; 3] = std::array::from_fn(|j| f.iter().map(|row| row[j] * row[j]).sum());
+    let i1 = diagonal[0] + diagonal[1] + diagonal[2];
+    let volume = 0.5 * lam * log_j.powi(2);
+    let ordinary = 0.5 * mu * (i1 - 3.0) - mu * log_j + volume;
+    if ordinary.is_finite() {
+        return ordinary;
+    }
+    // The squared gradient alone can overflow even when the modulus-scaled
+    // energy is representable. Apply half of the modulus before squaring.
+    let weight = mu.abs().sqrt() * std::f64::consts::FRAC_1_SQRT_2;
+    let weighted = f
+        .iter()
+        .flatten()
+        .map(|x| (weight * x).powi(2))
+        .sum::<f64>();
+    mu.signum() * weighted - 1.5 * mu - mu * log_j + volume
+}
+
+#[derive(Clone, Copy, Debug)]
+enum ConstitutiveBasis {
+    StVenantKirchhoff { e: M3, s: M3 },
+    NeoHookean { q: M3, log_j: f64, volumetric: f64 },
+}
+
+/// Reusable constitutive evaluation at one deformation gradient.
+///
+/// Stress, energy density and the tangent use the same deformation gradient,
+/// Lamé parameters and material invariants. The point owns fixed-size data
+/// and can be used for several tangent directions without allocating.
+#[derive(Clone, Copy, Debug)]
+pub struct HyperelasticPoint {
+    f: M3,
+    lam: f64,
+    mu: f64,
+    basis: ConstitutiveBasis,
+    bounded: bool,
+}
+
+impl HyperelasticPoint {
+    /// Prepares a material with a dimensionless deformation gradient `f`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for invalid Lamé parameters, non-finite gradients,
+    /// `det F <= 1e-12`, or an unrepresentable inverse needed by neo-Hooke.
+    #[inline]
+    pub fn new(
+        mat: &HyperMaterial,
+        f: &M3,
+    ) -> Result<Self, String> {
+        Self::from_moduli(mat.model, f, finite_moduli(mat)?)
+    }
+
+    #[inline]
+    fn from_moduli(
+        model: HyperModel,
+        f: &M3,
+        (lam, mu): (f64, f64),
+    ) -> Result<Self, String> {
+        let bounded = lam.abs() <= BOUNDED_POINT_INPUT
+            && mu.abs() <= BOUNDED_POINT_INPUT
+            && matrix_bounded(f, BOUNDED_POINT_INPUT);
+        let basis = match model {
+            | HyperModel::StVenantKirchhoff => {
+                let e = green_strain(f)?;
+                ConstitutiveBasis::StVenantKirchhoff {
+                    e,
+                    s: second_piola(&e, lam, mu),
+                }
+            },
+            | HyperModel::NeoHookean => {
+                let (log_j, q) = neo_geometry::<true>(f, bounded)?;
+                ConstitutiveBasis::NeoHookean {
+                    q,
+                    log_j,
+                    volumetric: lam * log_j,
+                }
+            },
+        };
+        Ok(Self {
+            f: *f,
+            lam,
+            mu,
+            basis,
+            bounded,
+        })
+    }
+
+    /// First Piola–Kirchhoff stress `P(F)`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a stress component is outside the finite range.
+    #[inline]
+    pub fn first_piola(&self) -> Result<M3, String> {
+        let p = match &self.basis {
+            | ConstitutiveBasis::StVenantKirchhoff { s, .. } => matmul(&self.f, s),
+            | ConstitutiveBasis::NeoHookean { q, volumetric, .. } => {
+                neo_piola(&self.f, q, self.mu, *volumetric)
+            },
+        };
+        if self.bounded {
+            Ok(p)
+        } else {
+            finite_piola(p)
+        }
+    }
+
+    /// Material tangent `∂P[i][J] / ∂F[k][L]`, indexed as `a[i][J][k][L]`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a tangent component is outside the finite range.
+    #[inline]
+    pub fn tangent_moduli(&self) -> Result<[[M3; 3]; 3], String> {
+        let (f, lam, mu) = (&self.f, self.lam, self.mu);
+        let delta = |i, j| f64::from(u8::from(i == j));
+        let mut a = [[[[0.0; 3]; 3]; 3]; 3];
+        match &self.basis {
+            | ConstitutiveBasis::StVenantKirchhoff { s, .. } => {
+                let fft = matmul(f, &transpose(f));
+                for i in 0..3 {
+                    for j in 0..3 {
+                        for k in 0..3 {
+                            for l in 0..3 {
+                                a[i][j][k][l] = delta(i, k) * s[j][l]
+                                    + lam * f[i][j] * f[k][l]
+                                    + mu * (fft[i][k] * delta(j, l) + f[i][l] * f[k][j]);
+                            }
+                        }
+                    }
+                }
+            },
+            | ConstitutiveBasis::NeoHookean { q, volumetric, .. } => {
+                for i in 0..3 {
+                    for j in 0..3 {
+                        for k in 0..3 {
+                            for l in 0..3 {
+                                a[i][j][k][l] = mu * delta(i, k) * delta(j, l)
+                                    + (mu - volumetric) * q[k][j] * q[i][l]
+                                    + lam * q[i][j] * q[k][l];
+                            }
+                        }
+                    }
+                }
+            },
+        }
+        if !self.bounded && !a.iter().flatten().all(matrix_finite) {
+            return Err("material tangent exceeds the finite range".into());
+        }
+        Ok(a)
+    }
+
+    /// Applies the material tangent to a dimensionless gradient increment.
+    ///
+    /// Returns the stress increment `dP(F)[h]` without forming the fourth-order
+    /// tangent. The result has the same units as the stress.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a non-finite direction or stress increment.
+    pub fn tangent_action(
+        &self,
+        h: &M3,
+    ) -> Result<M3, String> {
+        let bounded_direction = matrix_bounded(h, BOUNDED_POINT_INPUT);
+        if !bounded_direction && !matrix_finite(h) {
+            return Err("deformation gradient direction must be finite".into());
+        }
+        let (f, lam, mu) = (&self.f, self.lam, self.mu);
+        let result = match &self.basis {
+            | ConstitutiveBasis::StVenantKirchhoff { s, .. } => {
+                let ft_h = matmul(&transpose(f), h);
+                let de = std::array::from_fn(|i| {
+                    std::array::from_fn(|j| f64::midpoint(ft_h[i][j], ft_h[j][i]))
+                });
+                let hs = matmul(h, s);
+                let fds = matmul(f, &second_piola(&de, lam, mu));
+                std::array::from_fn(|i| std::array::from_fn(|j| hs[i][j] + fds[i][j]))
+            },
+            | ConstitutiveBasis::NeoHookean { q, volumetric, .. } => {
+                // Pair each inverse column with its corresponding direction
+                // column before mixing the other columns' stretch scales.
+                let qh = matmul(q, &transpose(h));
+                let trace = qh[0][0] + qh[1][1] + qh[2][2];
+                let qhq = matmul(&qh, q);
+                std::array::from_fn(|i| {
+                    std::array::from_fn(|j| {
+                        mu * h[i][j] + (mu - volumetric) * qhq[i][j] + lam * trace * q[i][j]
+                    })
+                })
+            },
+        };
+        if (!self.bounded || !bounded_direction) && !matrix_finite(&result) {
+            return Err("material tangent action exceeds the finite range".into());
+        }
+        Ok(result)
+    }
+
+    /// Stored strain energy per unit reference volume.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the energy density is outside the finite range.
+    pub fn energy_density(&self) -> Result<f64, String> {
+        let (lam, mu) = (self.lam, self.mu);
+        let value = match &self.basis {
+            | ConstitutiveBasis::StVenantKirchhoff { e, .. } => svk_energy(e, lam, mu),
+            | ConstitutiveBasis::NeoHookean { log_j, .. } => neo_energy(&self.f, *log_j, lam, mu),
+        };
+        if !value.is_finite() {
+            return Err("strain energy density exceeds the finite range".into());
+        }
+        Ok(value)
+    }
+}
+
 /// First Piola–Kirchhoff stress `P(F)`.
 ///
 /// # Errors
-/// If `det F <= 0` (inverted element).
+///
+/// If the deformation or stress is invalid. See [`HyperelasticPoint::new`].
 pub fn first_piola(
     mat: &HyperMaterial,
     f: &M3,
 ) -> Result<M3, String> {
-    let (lam, mu) = mat.lame();
-    let j = det3(f);
-    if j <= 1e-12 {
-        return Err("element inverted during the iteration (det F <= 0)".into());
-    }
-    let mut p = [[0.0; 3]; 3];
-    match mat.model {
-        | HyperModel::StVenantKirchhoff => {
-            let c = matmul(&transpose(f), f);
-            let mut e = [[0.0; 3]; 3];
-            for a in 0..3 {
-                for b in 0..3 {
-                    e[a][b] = 0.5 * (c[a][b] - f64::from(u8::from(a == b)));
-                }
-            }
-            let tr = e[0][0] + e[1][1] + e[2][2];
-            let mut s = [[0.0; 3]; 3];
-            for a in 0..3 {
-                for b in 0..3 {
-                    s[a][b] = 2.0 * mu * e[a][b] + if a == b { lam * tr } else { 0.0 };
-                }
-            }
-            p = matmul(f, &s);
-        },
+    let (lam, mu) = finite_moduli(mat)?;
+    let p = match mat.model {
+        | HyperModel::StVenantKirchhoff => matmul(f, &second_piola(&green_strain(f)?, lam, mu)),
         | HyperModel::NeoHookean => {
-            let fit = transpose(&inv3(f));
-            let lnj = j.ln();
-            for a in 0..3 {
-                for b in 0..3 {
-                    p[a][b] = mu * (f[a][b] - fit[a][b]) + lam * lnj * fit[a][b];
-                }
-            }
+            let (log_j, q) = neo_geometry::<true>(f, false)?;
+            neo_piola(f, &q, mu, lam * log_j)
         },
-    }
-    Ok(p)
+    };
+    finite_piola(p)
 }
 
 /// Material tangent `A_{iJkL} = ∂P_{iJ}/∂F_{kL}` stored as `a[i][J][k][L]`.
 ///
 /// # Errors
-/// If `det F <= 0`.
+///
+/// If the deformation or tangent is invalid. See [`HyperelasticPoint::new`].
 pub fn tangent_moduli(
     mat: &HyperMaterial,
     f: &M3,
 ) -> Result<[[M3; 3]; 3], String> {
-    let (lam, mu) = mat.lame();
-    let j = det3(f);
-    if j <= 1e-12 {
-        return Err("element inverted during the iteration (det F <= 0)".into());
-    }
-    let mut a = [[[[0.0; 3]; 3]; 3]; 3];
-    let delta = |x: usize, y: usize| f64::from(u8::from(x == y));
-    match mat.model {
-        | HyperModel::StVenantKirchhoff => {
-            let c = matmul(&transpose(f), f);
-            let mut e = [[0.0; 3]; 3];
-            for p in 0..3 {
-                for q in 0..3 {
-                    e[p][q] = 0.5 * (c[p][q] - delta(p, q));
-                }
-            }
-            let tr = e[0][0] + e[1][1] + e[2][2];
-            let mut s = [[0.0; 3]; 3];
-            for p in 0..3 {
-                for q in 0..3 {
-                    s[p][q] = 2.0 * mu * e[p][q] + if p == q { lam * tr } else { 0.0 };
-                }
-            }
-            let fft = matmul(f, &transpose(f));
-            for i in 0..3 {
-                for jj in 0..3 {
-                    for k in 0..3 {
-                        for l in 0..3 {
-                            a[i][jj][k][l] = delta(i, k) * s[jj][l]
-                                + lam * f[i][jj] * f[k][l]
-                                + mu * (fft[i][k] * delta(jj, l) + f[i][l] * f[k][jj]);
-                        }
-                    }
-                }
-            }
-        },
-        | HyperModel::NeoHookean => {
-            let fi = inv3(f);
-            let lnj = j.ln();
-            for i in 0..3 {
-                for jj in 0..3 {
-                    for k in 0..3 {
-                        for l in 0..3 {
-                            a[i][jj][k][l] = mu * delta(i, k) * delta(jj, l)
-                                + (mu - lam * lnj) * fi[jj][k] * fi[l][i]
-                                + lam * fi[jj][i] * fi[l][k];
-                        }
-                    }
-                }
-            }
-        },
-    }
-    Ok(a)
+    HyperelasticPoint::new(mat, f)?.tangent_moduli()
 }
 
 /// Frictionless penalty contact of the nodes of a boundary marker with a rigid obstacle.
@@ -253,6 +554,42 @@ struct Assembler<'a> {
     dim: usize,
     grads: Vec<Vec<[f64; 3]>>,
     volumes: Vec<f64>,
+}
+
+fn push_element_tangent<const D: usize>(
+    cell: &[usize],
+    grads: &[[f64; 3]],
+    at: &[[M3; 3]; 3],
+    volume: f64,
+    triplets: &mut Triplets,
+) {
+    for (a, &na) in cell.iter().enumerate() {
+        // The left gradient is the same for all trial nodes. Store its
+        // product in the contraction's i/k/J/L order on the stack.
+        let mut left = [[[[0.0; D]; D]; D]; D];
+        for i in 0..D {
+            for k in 0..D {
+                for j in 0..D {
+                    for l in 0..D {
+                        left[i][k][j][l] = at[i][j][k][l] * grads[a][j];
+                    }
+                }
+            }
+        }
+        for (b, &nb) in cell.iter().enumerate() {
+            for i in 0..D {
+                for k in 0..D {
+                    let mut sum = 0.0;
+                    for j in 0..D {
+                        for l in 0..D {
+                            sum += left[i][k][j][l] * grads[b][l];
+                        }
+                    }
+                    triplets.push((na * D + i, nb * D + k, volume * sum));
+                }
+            }
+        }
+    }
 }
 
 impl<'a> Assembler<'a> {
@@ -303,11 +640,25 @@ impl<'a> Assembler<'a> {
         want_tangent: bool,
     ) -> Result<(Vec<f64>, Triplets), String> {
         let (dim, mat) = (self.dim, &self.prob.material);
+        let moduli = finite_moduli(mat)?;
         let mut fint = vec![0.0; self.ndof()];
         let mut trip = Vec::new();
+        if want_tangent {
+            let cell_dofs = dim * (dim + 1);
+            let count = self
+                .prob
+                .mesh
+                .cells
+                .len()
+                .checked_mul(cell_dofs * cell_dofs)
+                .ok_or("hyperelastic tangent triplet count overflow")?;
+            trip.try_reserve_exact(count)
+                .map_err(|_| "hyperelastic tangent triplet reservation failed")?;
+        }
         for (c, cell) in self.prob.mesh.cells.iter().enumerate() {
             let f = self.deformation_gradient(c, u);
-            let p = first_piola(mat, &f)?;
+            let point = HyperelasticPoint::from_moduli(mat.model, &f, moduli)?;
+            let p = point.first_piola()?;
             let v = self.volumes[c];
             for (a, &na) in cell.iter().enumerate() {
                 for i in 0..dim {
@@ -316,23 +667,11 @@ impl<'a> Assembler<'a> {
                 }
             }
             if want_tangent {
-                let at = tangent_moduli(mat, &f)?;
-                for (a, &na) in cell.iter().enumerate() {
-                    for (b, &nb) in cell.iter().enumerate() {
-                        for i in 0..dim {
-                            for k in 0..dim {
-                                let mut s = 0.0;
-                                for j in 0..dim {
-                                    for l in 0..dim {
-                                        s += at[i][j][k][l]
-                                            * self.grads[c][a][j]
-                                            * self.grads[c][b][l];
-                                    }
-                                }
-                                trip.push((na * dim + i, nb * dim + k, v * s));
-                            }
-                        }
-                    }
+                let at = point.tangent_moduli()?;
+                if dim == 2 {
+                    push_element_tangent::<2>(cell, &self.grads[c], &at, v, &mut trip);
+                } else {
+                    push_element_tangent::<3>(cell, &self.grads[c], &at, v, &mut trip);
                 }
             }
         }
@@ -701,40 +1040,31 @@ pub fn kinetic_energy(
 /// Strain energy `∫ W dV` of the displacement field `u`.
 ///
 /// # Errors
-/// If an element is inverted.
+///
+/// If the field length is wrong or the deformation or energy is invalid.
 pub fn strain_energy(
     prob: &HyperProblem<'_>,
     u: &[f64],
 ) -> Result<f64, String> {
     let asm = Assembler::new(prob)?;
-    let (lam, mu) = prob.material.lame();
+    if u.len() != asm.ndof() {
+        return Err("hyperelastic displacement field length does not match the mesh".into());
+    }
+    let (lam, mu) = finite_moduli(&prob.material)?;
     let mut w = 0.0;
     for c in 0..prob.mesh.cells.len() {
         let f = asm.deformation_gradient(c, u);
-        let j = det3(&f);
-        if j <= 1e-12 {
-            return Err("element inverted".into());
-        }
-        let ct = matmul(&transpose(&f), &f);
         let density = match prob.material.model {
-            | HyperModel::StVenantKirchhoff => {
-                let mut e2 = 0.0;
-                let mut tr = 0.0;
-                for a in 0..3 {
-                    tr += 0.5 * (ct[a][a] - 1.0);
-                    for b in 0..3 {
-                        let e = 0.5 * (ct[a][b] - f64::from(u8::from(a == b)));
-                        e2 += e * e;
-                    }
-                }
-                0.5 * lam * tr * tr + mu * e2
-            },
+            | HyperModel::StVenantKirchhoff => svk_energy(&green_strain(&f)?, lam, mu),
             | HyperModel::NeoHookean => {
-                let i1 = ct[0][0] + ct[1][1] + ct[2][2];
-                0.5 * mu * (i1 - 3.0) - mu * j.ln() + 0.5 * lam * j.ln().powi(2)
+                let (log_j, _) = neo_geometry::<false>(&f, false)?;
+                neo_energy(&f, log_j, lam, mu)
             },
         };
         w += asm.volumes[c] * density;
+    }
+    if !w.is_finite() {
+        return Err("strain energy exceeds the finite range".into());
     }
     Ok(w)
 }

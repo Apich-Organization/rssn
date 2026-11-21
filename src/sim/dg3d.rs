@@ -1,3 +1,5 @@
+//! Nodal DG on hexahedra (3D).
+//!
 //! # Nodal discontinuous Galerkin on hexahedra (3D)
 //!
 //! Collocation (DGSEM) discontinuous Galerkin on a tensor-product mesh of
@@ -63,6 +65,7 @@
 //! Parallelism: the element-local right-hand side and the troubled-element test run concurrently
 //! over the elements.
 
+use crate::kernels::reuse::f64_scratch;
 use crate::sim::dg::DgLaw;
 use crate::sim::dg::euler_ec_flux;
 use crate::sim::dg::euler_prim;
@@ -72,6 +75,8 @@ use crate::sim::dg::legendre;
 use crate::sim::dg::lgl;
 use crate::sim::dg::lgl_diff_matrix;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
 
 /// Linear advection `u_t + a·∇u = 0` in 3D.
 #[derive(Clone, Copy, Debug)]
@@ -555,9 +560,12 @@ impl Ctx<'_> {
         &self,
         q: &[f64],
         t: f64,
-    ) -> Vec<f64> {
+    ) -> Result<Vec<f64>, String> {
         let m = &self.mesh;
         let (nv, np, n1) = (self.nv, self.np, self.n1);
+        let spacing: [f64; 3] = std::array::from_fn(|a| m.h(a));
+        let scratch_len = (3 + if self.es { 0 } else { np }) * nv;
+        let invalid_boundary = AtomicBool::new(false);
         let mut r = vec![0.0; q.len()];
         let at = |e: usize, nd: usize| -> &[f64] {
             let o = (e * np + nd) * nv;
@@ -568,14 +576,26 @@ impl Ctx<'_> {
         // elements are independent: they are processed in parallel (the
         // result is identical to the serial loop, element by element).
         crate::kernels::par::for_chunks_mut(&mut r, np * nv, RHS_PAR_ELEMENTS, |e, re| {
-            let mut fbuf = vec![0.0; nv];
-            let mut flux = vec![0.0; np * nv];
+            if invalid_boundary.load(Ordering::Relaxed) {
+                return;
+            }
+            let mut scratch = f64_scratch(scratch_len);
+            scratch.resize(scratch_len, 0.0);
+            let (fbuf, scratch) = scratch.split_at_mut(nv);
+            let (wall, scratch) = scratch.split_at_mut(nv);
+            let (fstar, flux) = scratch.split_at_mut(nv);
+            let ex = [
+                e % m.ne[0],
+                (e / m.ne[0]) % m.ne[1],
+                e / (m.ne[0] * m.ne[1]),
+            ];
             for a in 0..3 {
-                let sc = 2.0 / m.h(a);
+                let sc = 2.0 / spacing[a];
+                let neighbours = [self.neighbour(e, a, false), self.neighbour(e, a, true)];
                 if !self.es {
                     for nd in 0..np {
-                        self.law.flux(at(e, nd), a, &mut fbuf);
-                        flux[nd * nv..(nd + 1) * nv].copy_from_slice(&fbuf);
+                        self.law.flux(at(e, nd), a, fbuf);
+                        flux[nd * nv..(nd + 1) * nv].copy_from_slice(fbuf);
                     }
                 }
                 // index of the line node `s` for transverse indices (t1, t2)
@@ -593,7 +613,7 @@ impl Ctx<'_> {
                             for k in 0..n1 {
                                 let nk = idx(k, t1, t2);
                                 if self.es {
-                                    self.law.two_point_flux(at(e, nd), at(e, nk), a, &mut fbuf);
+                                    self.law.two_point_flux(at(e, nd), at(e, nk), a, fbuf);
                                     for c in 0..nv {
                                         re[nd * nv + c] -= 2.0 * sc * self.d[i][k] * fbuf[c];
                                     }
@@ -604,23 +624,17 @@ impl Ctx<'_> {
                                 }
                             }
                         }
-                        for max in [false, true] {
+                        for (face, neighbour) in neighbours.into_iter().enumerate() {
+                            let max = face == 1;
                             let edge = if max { n1 - 1 } else { 0 };
                             let nd = idx(edge, t1, t2);
                             let qi = at(e, nd);
-                            let mut qo = vec![0.0; nv];
-                            match self.neighbour(e, a, max) {
-                                | Some(en) => {
-                                    qo.copy_from_slice(at(en, idx(n1 - 1 - edge, t1, t2)));
-                                },
+                            let fixed;
+                            let qo = match neighbour {
+                                | Some(en) => at(en, idx(n1 - 1 - edge, t1, t2)),
                                 | None => {
-                                    match &self.bcs[2 * a + usize::from(max)] {
+                                    match &self.bcs[2 * a + face] {
                                         | Dg3Bc::Fixed(f) => {
-                                            let ex = [
-                                                e % m.ne[0],
-                                                (e / m.ne[0]) % m.ne[1],
-                                                e / (m.ne[0] * m.ne[1]),
-                                            ];
                                             let ij = match a {
                                                 | 0 => [edge, t1, t2],
                                                 | 1 => [t1, edge, t2],
@@ -630,27 +644,36 @@ impl Ctx<'_> {
                                                 m.lo[b]
                                                     + (ex[b] as f64
                                                         + f64::midpoint(1.0, self.xi[ij[b]]))
-                                                        * m.h(b)
+                                                        * spacing[b]
                                             });
-                                            qo.copy_from_slice(&f(t, x));
+                                            fixed = f(t, x);
+                                            if fixed.len() != nv {
+                                                invalid_boundary.store(true, Ordering::Relaxed);
+                                                return;
+                                            }
+                                            fixed.as_slice()
                                         },
-                                        | Dg3Bc::Wall => self.law.wall_state(qi, a, &mut qo),
-                                        | _ => qo.copy_from_slice(qi),
+                                        | Dg3Bc::Wall => {
+                                            wall.fill(0.0);
+                                            self.law.wall_state(qi, a, wall);
+                                            &*wall
+                                        },
+                                        | _ => qi,
                                     }
                                 },
-                            }
-                            let mut fstar = vec![0.0; nv];
+                            };
+                            fstar.fill(0.0);
                             match (max, self.es) {
-                                | (true, false) => self.law.numerical_flux(qi, &qo, a, &mut fstar),
-                                | (false, false) => self.law.numerical_flux(&qo, qi, a, &mut fstar),
+                                | (true, false) => self.law.numerical_flux(qi, qo, a, fstar),
+                                | (false, false) => self.law.numerical_flux(qo, qi, a, fstar),
                                 | (true, true) => {
-                                    self.law.entropy_stable_flux(qi, &qo, a, &mut fstar);
+                                    self.law.entropy_stable_flux(qi, qo, a, fstar);
                                 },
                                 | (false, true) => {
-                                    self.law.entropy_stable_flux(&qo, qi, a, &mut fstar);
+                                    self.law.entropy_stable_flux(qo, qi, a, fstar);
                                 },
                             }
-                            self.law.flux(qi, a, &mut fbuf);
+                            self.law.flux(qi, a, fbuf);
                             let sign = if max { -1.0 } else { 1.0 };
                             for c in 0..nv {
                                 re[nd * nv + c] += sign * sc * (fstar[c] - fbuf[c]) / self.w[edge];
@@ -660,7 +683,10 @@ impl Ctx<'_> {
                 }
             }
         });
-        r
+        if invalid_boundary.into_inner() {
+            return Err("fixed DG boundary state has the wrong number of components".into());
+        }
+        Ok(r)
     }
 
     fn max_rate(
@@ -1595,8 +1621,8 @@ impl Ctx<'_> {
 /// `bcs` lists `[XMin, XMax, YMin, YMax, ZMin, ZMax]`.
 ///
 /// # Errors
-/// For an invalid mesh, inconsistent periodic faces, wrong initial data size
-/// or a non-finite wave speed.
+/// For an invalid mesh, inconsistent periodic faces, a wrong component count in the
+/// initial state or a fixed face used by the spatial operator, or a non-finite wave speed.
 pub fn solve_dg3d(
     mesh: &Dg3Mesh,
     law: &dyn DgLaw,
@@ -1669,19 +1695,19 @@ pub fn solve_dg3d(
             return Err("non-finite wave speed".into());
         }
         let dt = (cfl / ((2 * mesh.p + 1) as f64 * rate)).min(t_end - t);
-        let l0 = ctx.rhs(&q, t);
+        let l0 = ctx.rhs(&q, t)?;
         let mut q1: Vec<f64> = q.iter().zip(&l0).map(|(a, b)| a + dt * b).collect();
         if limiting {
             troubled_cells += ctx.limit_all(&mut q1, t + dt);
         }
-        let l1 = ctx.rhs(&q1, t + dt);
+        let l1 = ctx.rhs(&q1, t + dt)?;
         let mut q2: Vec<f64> = (0..q.len())
             .map(|i| 0.75 * q[i] + 0.25 * (q1[i] + dt * l1[i]))
             .collect();
         if limiting {
             troubled_cells += ctx.limit_all(&mut q2, t + 0.5 * dt);
         }
-        let l2 = ctx.rhs(&q2, t + 0.5 * dt);
+        let l2 = ctx.rhs(&q2, t + 0.5 * dt)?;
         q = (0..q.len())
             .map(|i| q[i] / 3.0 + 2.0 / 3.0 * (q2[i] + dt * l2[i]))
             .collect();

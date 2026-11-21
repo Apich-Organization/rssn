@@ -1,3 +1,5 @@
+//! Compressible gas dynamics (Euler equations, HLLC, MUSCL).
+//!
 //! # Compressible gas dynamics
 //!
 //! The one-dimensional Euler equations of an ideal gas,
@@ -368,8 +370,8 @@ fn side_function(
     p: f64,
     w: Primitive,
     gamma: f64,
+    c: f64,
 ) -> (f64, f64) {
-    let c = sound_speed(w, gamma);
     if p > w.p {
         // Shock.
         let a = 2.0 / ((gamma + 1.0) * w.rho);
@@ -387,24 +389,57 @@ fn side_function(
     }
 }
 
-/// The exact solution of the Riemann problem `l | r` at `ξ = x/t`.
-#[must_use]
-pub fn exact_riemann(
+// A common rescaling of density and pressure leaves all velocities unchanged.
+fn riemann_reference(
+    left: Primitive,
+    right: Primitive,
+) -> (Primitive, Primitive, f64) {
+    let reference = left.p.max(right.p);
+    // At low scales the legacy Newton pressure floor dominates. At high
+    // scales the product of the shock density and pressure factors can exceed
+    // the range of f64 even though their square root is representable.
+    if !(1e-4..=1e150).contains(&reference) && reference > 0.0 && reference.is_finite() {
+        let scale = |state: Primitive| {
+            Primitive {
+                rho: state.rho / reference,
+                p: state.p / reference,
+                ..state
+            }
+        };
+        let l = scale(left);
+        let r = scale(right);
+        if [l.rho, l.p, r.rho, r.p]
+            .into_iter()
+            .all(|value| value > 0.0 && value.is_finite())
+        {
+            return (l, r, reference);
+        }
+    }
+    (left, right, 1.0)
+}
+
+fn star_pressure(
     l: Primitive,
     r: Primitive,
     gamma: f64,
-    xi: f64,
-) -> Primitive {
-    // Star pressure by Newton from the two-rarefaction guess.
-    let (cl, cr) = (sound_speed(l, gamma), sound_speed(r, gamma));
+    cl: f64,
+    cr: f64,
+) -> f64 {
     let z = (gamma - 1.0) / (2.0 * gamma);
-    let mut p = ((cl + cr - 0.5 * (gamma - 1.0) * (r.u - l.u))
+    let estimate = ((cl + cr - 0.5 * (gamma - 1.0) * (r.u - l.u))
         / (cl / l.p.powf(z) + cr / r.p.powf(z)))
-    .powf(1.0 / z)
-    .max(1e-10);
+    .powf(1.0 / z);
+
+    // This estimate is exact when both waves are rarefactions. Keep the
+    // positive pressure arbitrarily close to vacuum, below the Newton floor.
+    if estimate < 1e-10 && estimate <= l.p.min(r.p) {
+        return estimate;
+    }
+
+    let mut p = estimate.max(1e-10);
     for _ in 0..100 {
-        let (fl, dl) = side_function(p, l, gamma);
-        let (fr, dr) = side_function(p, r, gamma);
+        let (fl, dl) = side_function(p, l, gamma, cl);
+        let (fr, dr) = side_function(p, r, gamma, cr);
         let next = (p - (fl + fr + r.u - l.u) / (dl + dr)).max(1e-12);
         let done = (next - p).abs() < 1e-14 * (next + p);
         p = next;
@@ -412,92 +447,327 @@ pub fn exact_riemann(
             break;
         }
     }
-    let (fl, _) = side_function(p, l, gamma);
-    let (fr, _) = side_function(p, r, gamma);
-    let u_star = f64::midpoint(l.u, r.u) + 0.5 * (fr - fl);
-    let g = gamma;
-    let star_density = |w: Primitive| -> f64 {
-        if p > w.p {
-            let ratio = p / w.p;
-            let k = (g - 1.0) / (g + 1.0);
-            w.rho * (ratio + k) / (k * ratio + 1.0)
+    p
+}
+
+#[derive(Clone, Copy, Debug)]
+struct RiemannSide {
+    initial: Primitive,
+    star: Primitive,
+    sound: f64,
+    head: f64,
+    tail: f64,
+}
+
+impl RiemannSide {
+    fn with_star<const LEFT: bool>(
+        initial: Primitive,
+        pressure: f64,
+        sound: f64,
+        gamma: f64,
+        p_star: f64,
+        star: Primitive,
+    ) -> Self {
+        let ratio = p_star / pressure;
+        let (head, tail, rho) = if p_star > pressure {
+            let k = (gamma - 1.0) / (gamma + 1.0);
+            let jump = sound
+                * ((gamma + 1.0) / (2.0 * gamma) * p_star / pressure
+                    + (gamma - 1.0) / (2.0 * gamma))
+                    .sqrt();
+            let speed = if LEFT {
+                initial.u - jump
+            } else {
+                initial.u + jump
+            };
+            // A shock occupies one similarity velocity and has no fan.
+            (speed, speed, initial.rho * (ratio + k) / (k * ratio + 1.0))
         } else {
-            w.rho * (p / w.p).powf(1.0 / g)
-        }
-    };
-    if xi <= u_star {
-        // Left of the contact.
-        let c = cl;
-        if p > l.p {
-            let s = l.u - c * ((g + 1.0) / (2.0 * g) * p / l.p + (g - 1.0) / (2.0 * g)).sqrt();
-            if xi <= s {
-                l
+            let (c_star, rho) = if ratio.to_bits() == 1.0f64.to_bits() {
+                (sound, initial.rho)
             } else {
-                Primitive {
-                    rho: star_density(l),
-                    u: u_star,
-                    p,
-                }
-            }
+                (
+                    sound * ratio.powf((gamma - 1.0) / (2.0 * gamma)),
+                    initial.rho * ratio.powf(1.0 / gamma),
+                )
+            };
+            (
+                if LEFT {
+                    initial.u - sound
+                } else {
+                    initial.u + sound
+                },
+                if LEFT {
+                    star.u - c_star
+                } else {
+                    star.u + c_star
+                },
+                rho,
+            )
+        };
+        Self {
+            initial,
+            sound,
+            head,
+            tail,
+            star: Primitive { rho, ..star },
+        }
+    }
+
+    fn toward_vacuum<const LEFT: bool>(
+        initial: Primitive,
+        sound: f64,
+        tail: f64,
+    ) -> Self {
+        Self {
+            initial,
+            sound,
+            head: if LEFT {
+                initial.u - sound
+            } else {
+                initial.u + sound
+            },
+            tail,
+            star: vacuum(tail),
+        }
+    }
+
+    fn sample<const LEFT: bool>(
+        &self,
+        gamma: f64,
+        xi: f64,
+    ) -> Primitive {
+        if (LEFT && xi <= self.head) || (!LEFT && xi >= self.head) {
+            return self.initial;
+        }
+        if (LEFT && xi >= self.tail) || (!LEFT && xi <= self.tail) {
+            return self.star;
+        }
+
+        let c = self.sound;
+        let u0 = self.initial.u;
+        let (u, cf) = if LEFT {
+            (
+                2.0 / (gamma + 1.0) * (c + 0.5 * (gamma - 1.0) * u0 + xi),
+                2.0 / (gamma + 1.0) * (c + 0.5 * (gamma - 1.0) * (u0 - xi)),
+            )
         } else {
-            let head = l.u - c;
-            let c_star = c * (p / l.p).powf((g - 1.0) / (2.0 * g));
-            let tail = u_star - c_star;
-            if xi <= head {
-                l
-            } else if xi >= tail {
-                Primitive {
-                    rho: star_density(l),
-                    u: u_star,
-                    p,
+            (
+                2.0 / (gamma + 1.0) * (-c + 0.5 * (gamma - 1.0) * u0 + xi),
+                2.0 / (gamma + 1.0) * (c - 0.5 * (gamma - 1.0) * (u0 - xi)),
+            )
+        };
+        // Rounding immediately inside a vacuum tail can make cf negative.
+        let ratio = (cf / c).max(0.0);
+        Primitive {
+            rho: self.initial.rho * ratio.powf(2.0 / (gamma - 1.0)),
+            u,
+            p: self.initial.p * ratio.powf(2.0 * gamma / (gamma - 1.0)),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+enum RiemannInterface {
+    Contact(f64),
+    Vacuum { left: f64, right: f64 },
+}
+
+enum WaveLocation {
+    Left,
+    Vacuum,
+    Right,
+}
+
+impl RiemannInterface {
+    fn locate(
+        self,
+        xi: f64,
+    ) -> WaveLocation {
+        match self {
+            | Self::Contact(speed) => {
+                if xi <= speed {
+                    WaveLocation::Left
+                } else {
+                    WaveLocation::Right
                 }
-            } else {
-                let u = 2.0 / (g + 1.0) * (c + 0.5 * (g - 1.0) * l.u + xi);
-                let cf = 2.0 / (g + 1.0) * (c + 0.5 * (g - 1.0) * (l.u - xi));
-                let rho = l.rho * (cf / c).powf(2.0 / (g - 1.0));
-                Primitive {
-                    rho,
-                    u,
-                    p: l.p * (cf / c).powf(2.0 * g / (g - 1.0)),
+            },
+            | Self::Vacuum { left, right } => {
+                if xi < left {
+                    WaveLocation::Left
+                } else if xi > right {
+                    WaveLocation::Right
+                } else {
+                    WaveLocation::Vacuum
                 }
+            },
+        }
+    }
+}
+
+struct StarSolution {
+    initial: [Primitive; 2],
+    pressure: [f64; 2],
+    sound: [f64; 2],
+    star_pressure: f64,
+    output_pressure: f64,
+    interface: RiemannInterface,
+    gamma: f64,
+}
+
+impl StarSolution {
+    #[inline]
+    fn solve(
+        left: Primitive,
+        right: Primitive,
+        gamma: f64,
+    ) -> Self {
+        let (l, r, scale) = riemann_reference(left, right);
+        let (cl, cr) = (sound_speed(l, gamma), sound_speed(r, gamma));
+        if r.u > l.u {
+            let left_vacuum = l.u + 2.0 * cl / (gamma - 1.0);
+            let right_vacuum = r.u - 2.0 * cr / (gamma - 1.0);
+            if left_vacuum <= right_vacuum {
+                return Self {
+                    initial: [left, right],
+                    pressure: [l.p, r.p],
+                    sound: [cl, cr],
+                    star_pressure: 0.0,
+                    output_pressure: 0.0,
+                    interface: RiemannInterface::Vacuum {
+                        left: left_vacuum,
+                        right: right_vacuum,
+                    },
+                    gamma,
+                };
             }
         }
-    } else {
-        let c = cr;
-        if p > r.p {
-            let s = r.u + c * ((g + 1.0) / (2.0 * g) * p / r.p + (g - 1.0) / (2.0 * g)).sqrt();
-            if xi >= s {
-                r
-            } else {
-                Primitive {
-                    rho: star_density(r),
-                    u: u_star,
-                    p,
-                }
-            }
-        } else {
-            let head = r.u + c;
-            let c_star = c * (p / r.p).powf((g - 1.0) / (2.0 * g));
-            let tail = u_star + c_star;
-            if xi >= head {
-                r
-            } else if xi <= tail {
-                Primitive {
-                    rho: star_density(r),
-                    u: u_star,
-                    p,
-                }
-            } else {
-                let u = 2.0 / (g + 1.0) * (-c + 0.5 * (g - 1.0) * r.u + xi);
-                let cf = 2.0 / (g + 1.0) * (c - 0.5 * (g - 1.0) * (r.u - xi));
-                let rho = r.rho * (cf / c).powf(2.0 / (g - 1.0));
-                Primitive {
-                    rho,
-                    u,
-                    p: r.p * (cf / c).powf(2.0 * g / (g - 1.0)),
-                }
-            }
+
+        let star_pressure = star_pressure(l, r, gamma, cl, cr);
+        let (fl, _) = side_function(star_pressure, l, gamma, cl);
+        let (fr, _) = side_function(star_pressure, r, gamma, cr);
+        let u_star = f64::midpoint(l.u, r.u) + 0.5 * (fr - fl);
+        Self {
+            initial: [left, right],
+            pressure: [l.p, r.p],
+            sound: [cl, cr],
+            star_pressure,
+            output_pressure: star_pressure * scale,
+            interface: RiemannInterface::Contact(u_star),
+            gamma,
         }
+    }
+
+    fn side<const LEFT: bool>(&self) -> RiemannSide {
+        let i = usize::from(!LEFT);
+        match self.interface {
+            | RiemannInterface::Contact(speed) => {
+                RiemannSide::with_star::<LEFT>(
+                    self.initial[i],
+                    self.pressure[i],
+                    self.sound[i],
+                    self.gamma,
+                    self.star_pressure,
+                    Primitive {
+                        rho: 0.0,
+                        u: speed,
+                        p: self.output_pressure,
+                    },
+                )
+            },
+            | RiemannInterface::Vacuum { left, right } => {
+                RiemannSide::toward_vacuum::<LEFT>(
+                    self.initial[i],
+                    self.sound[i],
+                    if LEFT { left } else { right },
+                )
+            },
+        }
+    }
+}
+
+const fn vacuum(xi: f64) -> Primitive {
+    Primitive {
+        rho: 0.0,
+        u: xi,
+        p: 0.0,
+    }
+}
+
+/// Prepared exact Riemann solution for two one-dimensional ideal-gas states.
+///
+/// Preparation determines the waves and star states once. The input states
+/// require finite velocities, positive finite densities and pressures, and a
+/// finite adiabatic index greater than one. A common change of density and
+/// pressure scale preserves the wave velocities.
+#[derive(Clone, Copy, Debug)]
+pub struct ExactRiemann {
+    left: RiemannSide,
+    right: RiemannSide,
+    interface: RiemannInterface,
+    gamma: f64,
+}
+
+impl ExactRiemann {
+    /// Solves the wave pattern for initial states separated by a discontinuity.
+    #[must_use]
+    pub fn new(
+        left: Primitive,
+        right: Primitive,
+        gamma: f64,
+    ) -> Self {
+        let star = StarSolution::solve(left, right, gamma);
+        Self {
+            left: star.side::<true>(),
+            right: star.side::<false>(),
+            interface: star.interface,
+            gamma,
+        }
+    }
+
+    /// Samples at the self-similar velocity `xi = x/t`.
+    ///
+    /// At a contact this returns the left star state, and at a shock it
+    /// returns the undisturbed state. In a vacuum, including its fan tails,
+    /// density and pressure are zero and velocity is continued as `xi`.
+    #[must_use]
+    pub fn sample(
+        &self,
+        xi: f64,
+    ) -> Primitive {
+        match self.interface.locate(xi) {
+            | WaveLocation::Left => self.left.sample::<true>(self.gamma, xi),
+            | WaveLocation::Vacuum => vacuum(xi),
+            | WaveLocation::Right => self.right.sample::<false>(self.gamma, xi),
+        }
+    }
+
+    /// Samples a series of self-similar velocities in their input order.
+    /// Large queries share the active CPU pool without altering any state value.
+    #[must_use]
+    pub fn sample_batch(
+        &self,
+        similarities: &[f64],
+    ) -> Vec<Primitive> {
+        crate::kernels::par::map_slice(similarities, 8192, |&xi| self.sample(xi))
+    }
+}
+
+/// The exact solution of the Riemann problem `l | r` at `ξ = x/t`.
+///
+/// Use [`ExactRiemann`] to sample the same initial states at several points.
+#[must_use]
+pub fn exact_riemann(
+    l: Primitive,
+    r: Primitive,
+    gamma: f64,
+    xi: f64,
+) -> Primitive {
+    let star = StarSolution::solve(l, r, gamma);
+    match star.interface.locate(xi) {
+        | WaveLocation::Left => star.side::<true>().sample::<true>(gamma, xi),
+        | WaveLocation::Vacuum => vacuum(xi),
+        | WaveLocation::Right => star.side::<false>().sample::<false>(gamma, xi),
     }
 }
 
@@ -520,8 +790,9 @@ pub fn sod_shock_tube(
         u: 0.0,
         p: 0.1,
     };
+    let initial = |x| if x < 0.5 { left } else { right };
     let (x, w) = solve_euler_1d(
-        |x| if x < 0.5 { left } else { right },
+        initial,
         0.0,
         1.0,
         cells,
@@ -531,10 +802,14 @@ pub fn sod_shock_tube(
         limiter,
         Boundary::Transmissive,
     );
-    let exact: Vec<f64> = x
-        .iter()
-        .map(|&xc| exact_riemann(left, right, gamma, (xc - 0.5) / t).rho)
-        .collect();
+    let exact = if t == 0.0 {
+        x.iter().map(|&xc| initial(xc).rho).collect()
+    } else {
+        let solution = ExactRiemann::new(left, right, gamma);
+        x.iter()
+            .map(|&xc| solution.sample((xc - 0.5) / t).rho)
+            .collect()
+    };
     (x, w.into_iter().map(|s| s.rho).collect(), exact)
 }
 

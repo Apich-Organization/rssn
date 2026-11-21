@@ -1,5 +1,7 @@
 //! Structured finite element, finite volume, DG and spectral simulation entry points.
 
+use crate::kernels::reuse::Scratch;
+use crate::kernels::reuse::f64_scratch;
 use crate::sim::fdm_nd::Boundary1D;
 use crate::sim::fdm_nd::Boundary2D;
 use crate::sim::fdm_nd::Boundary3D;
@@ -342,7 +344,9 @@ pub enum FvmScheme {
 ///
 /// # Errors
 ///
-/// Returns [`FdmError::Domain`] for invalid grid, time step, or non-finite fluxes.
+/// Returns [`FdmError::Domain`] for an invalid grid (including a cell width
+/// that rounds to zero), invalid time step or non-finite initial state.
+/// Returns [`FdmError::NotConverged`] if flux evaluation produces a non-finite state.
 // Preserve the established solver API with explicit grid, rates, and callbacks.
 #[allow(clippy::too_many_arguments)]
 pub fn solve_fvm_conservation_1d<IC, FL, DFL>(
@@ -361,95 +365,147 @@ where
     FL: Fn(f64) -> f64,
     DFL: Fn(f64) -> f64,
 {
-    use crate::sim::physics_fvm::minmod;
-    use crate::sim::physics_fvm::van_leer;
+    if !dt.is_finite() || dt <= 0.0 {
+        return Err(FdmError::Domain("invalid 1D FVM parameters".into()));
+    }
+    let dx = scalar_fvm_cell_width(num_cells, domain_size)?;
+    let centers: Vec<f64> = (0..num_cells).map(|i| (i as f64 + 0.5) * dx).collect();
+    let mut state: Vec<f64> = centers.iter().copied().map(initial).collect();
+    if state.iter().any(|v| !v.is_finite()) {
+        return Err(FdmError::Domain("non-finite initial FVM state".into()));
+    }
+    if steps != 0 {
+        let mut step = ScalarFvmStep::new(num_cells, dx, periodic, scheme);
+        let mut next = vec![0.0; num_cells];
+        for _ in 0..steps {
+            step.advance(&state, dt, &flux, &max_wave_speed, &mut next)?;
+            std::mem::swap(&mut state, &mut next);
+        }
+    }
+    Ok((centers, state))
+}
 
-    if num_cells < 3
-        || domain_size <= 0.0
-        || dt <= 0.0
-        || !domain_size.is_finite()
-        || !dt.is_finite()
+fn scalar_fvm_cell_width(
+    cells: usize,
+    length: f64,
+) -> Result<f64, FdmError> {
+    let dx = length / cells as f64;
+    if !(3..=isize::MAX as usize / size_of::<f64>()).contains(&cells)
+        || !dx.is_finite()
+        || dx <= 0.0
     {
         return Err(FdmError::Domain("invalid 1D FVM parameters".into()));
     }
-    let dx = domain_size / num_cells as f64;
-    let centers: Vec<f64> = (0..num_cells).map(|i| (i as f64 + 0.5) * dx).collect();
-    let mut u: Vec<f64> = centers.iter().map(|&x| initial(x)).collect();
-    if !u.iter().all(|v| v.is_finite()) {
-        return Err(FdmError::Domain("non-finite initial FVM state".into()));
+    Ok(dx)
+}
+
+/// Work buffers shared across time steps and adaptive retries. Flux and
+/// speed callbacks are still visited in the public solver's original order.
+struct ScalarFvmStep {
+    dx: f64,
+    periodic: bool,
+    scheme: FvmScheme,
+    left: Scratch<'static, f64>,
+    right: Scratch<'static, f64>,
+}
+
+impl ScalarFvmStep {
+    fn new(
+        cells: usize,
+        dx: f64,
+        periodic: bool,
+        scheme: FvmScheme,
+    ) -> Self {
+        let mut left = f64_scratch(cells);
+        let mut right = f64_scratch(cells);
+        left.resize(cells, 0.0);
+        right.resize(cells, 0.0);
+        Self {
+            dx,
+            periodic,
+            scheme,
+            left,
+            right,
+        }
     }
 
-    let get_cell = |state: &[f64], idx: isize| -> f64 {
-        let n = state.len() as isize;
-        if periodic {
-            state[((idx % n + n) % n) as usize]
-        } else {
-            state[idx.clamp(0, n - 1) as usize]
-        }
-    };
+    fn advance(
+        &mut self,
+        state: &[f64],
+        dt: f64,
+        flux: impl Fn(f64) -> f64,
+        wave_speed: impl Fn(f64) -> f64,
+        next: &mut [f64],
+    ) -> Result<(), FdmError> {
+        use crate::sim::physics_fvm::minmod;
+        use crate::sim::physics_fvm::van_leer;
 
-    let num_flux = |ul: f64, ur: f64| -> f64 {
-        let fl = flux(ul);
-        let fr = flux(ur);
-        let alpha = max_wave_speed(ul).abs().max(max_wave_speed(ur).abs());
-        match scheme {
-            | FvmScheme::LaxFriedrichs => f64::midpoint(fl, fr) - 0.5 * (dx / dt) * (ur - ul),
-            | FvmScheme::Upwind | FvmScheme::MusclMinmod | FvmScheme::MusclVanLeer => {
-                f64::midpoint(fl, fr) - 0.5 * alpha * (ur - ul)
-            },
-        }
-    };
-
-    for _ in 0..steps {
-        // Reconstruct left and right cell-interface states at every cell i
-        let mut u_left_edge = vec![0.0; num_cells];
-        let mut u_right_edge = vec![0.0; num_cells];
-        for i in 0..num_cells {
-            let idx = i as isize;
-            let um1 = get_cell(&u, idx - 1);
-            let u0 = u[i];
-            let up1 = get_cell(&u, idx + 1);
-            let slope = match scheme {
-                | FvmScheme::Upwind | FvmScheme::LaxFriedrichs => 0.0,
-                | FvmScheme::MusclMinmod => minmod(u0 - um1, up1 - u0),
-                | FvmScheme::MusclVanLeer => van_leer(u0 - um1, up1 - u0),
-            };
-            let ul = u0 - 0.5 * slope;
-            let ur = u0 + 0.5 * slope;
-            // MUSCL-Hancock half-step evolution within cell
-            let dflux = if matches!(scheme, FvmScheme::MusclMinmod | FvmScheme::MusclVanLeer) {
-                0.5 * (dt / dx) * (flux(ur) - flux(ul))
-            } else {
-                0.0
-            };
-            u_left_edge[i] = ul - dflux;
-            u_right_edge[i] = ur - dflux;
-        }
-
-        // Compute interface fluxes F_{i+1/2} for i = -1..num_cells-1
-        let mut next = vec![0.0; num_cells];
-        for i in 0..num_cells {
-            let im1 = if i == 0 {
-                if periodic { num_cells - 1 } else { 0 }
+        let n = state.len();
+        let left_boundary = if self.periodic { n - 1 } else { 0 };
+        let right_boundary = if self.periodic { 0 } else { n - 1 };
+        let neighbors = |i| {
+            let before = if i == 0 {
+                left_boundary
             } else {
                 i - 1
             };
-            let ip1 = if i + 1 == num_cells {
-                if periodic { 0 } else { num_cells - 1 }
+            let after = if i + 1 == n {
+                right_boundary
             } else {
                 i + 1
             };
-            let f_minus = num_flux(u_right_edge[im1], u_left_edge[i]);
-            let f_plus = num_flux(u_right_edge[i], u_left_edge[ip1]);
-            next[i] = u[i] - (dt / dx) * (f_plus - f_minus);
+            (before, after)
+        };
+        let courant_factor = dt / self.dx;
+        let muscl = matches!(
+            self.scheme,
+            FvmScheme::MusclMinmod | FvmScheme::MusclVanLeer
+        );
+        for (i, &center) in state.iter().enumerate() {
+            let slope = if muscl {
+                let (before, after) = neighbors(i);
+                let left_delta = center - state[before];
+                let right_delta = state[after] - center;
+                match self.scheme {
+                    | FvmScheme::MusclMinmod => minmod(left_delta, right_delta),
+                    | _ => van_leer(left_delta, right_delta),
+                }
+            } else {
+                0.0
+            };
+            let left = center - 0.5 * slope;
+            let right = center + 0.5 * slope;
+            let half_step = if muscl {
+                0.5 * courant_factor * (flux(right) - flux(left))
+            } else {
+                0.0
+            };
+            self.left[i] = left - half_step;
+            self.right[i] = right - half_step;
         }
-        if !next.iter().all(|v| v.is_finite()) {
+
+        let num_flux = |left, right| {
+            let fl = flux(left);
+            let fr = flux(right);
+            let speed = wave_speed(left).abs().max(wave_speed(right).abs());
+            let dissipation = if matches!(self.scheme, FvmScheme::LaxFriedrichs) {
+                self.dx / dt
+            } else {
+                speed
+            };
+            f64::midpoint(fl, fr) - 0.5 * dissipation * (right - left)
+        };
+        for (i, out) in next.iter_mut().enumerate() {
+            let (before, after) = neighbors(i);
+            let minus = num_flux(self.right[before], self.left[i]);
+            let plus = num_flux(self.right[i], self.left[after]);
+            *out = state[i] - courant_factor * (plus - minus);
+        }
+        if next.iter().any(|v| !v.is_finite()) {
             return Err(FdmError::NotConverged);
         }
-        u = next;
+        Ok(())
     }
-
-    Ok((centers, u))
 }
 
 /// Solves the 1D inviscid Burgers' equation `u_t + (u^2 / 2)_x = 0` using

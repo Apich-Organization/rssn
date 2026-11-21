@@ -1,3 +1,5 @@
+//! Yee FDTD for Maxwell in 1D-3D with PML and TF/SF.
+//!
 //! # Yee FDTD for Maxwell's equations in 1D, 2D and 3D
 //!
 //! Second-order staggered-grid finite-difference time-domain solver for
@@ -131,6 +133,19 @@ pub struct PlaneWave {
     pub psi: f64,
     /// Waveform of the incident electric field at the source plane.
     pub waveform: Box<dyn Fn(f64) -> f64 + Send + Sync>,
+}
+
+/// Staggered incident fields from the normal-incidence auxiliary line.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PlaneWaveSample {
+    /// Electric amplitude at position `i * h_x` along the source polarisation.
+    pub electric: f64,
+    /// Magnetic amplitude at `(i + 1/2) * h_x` along the magnetic polarisation.
+    pub magnetic: f64,
+    /// Integer time of the electric sample.
+    pub electric_time: f64,
+    /// Half-step time of the magnetic sample.
+    pub magnetic_time: f64,
 }
 
 /// Plane wave with arbitrary direction on an arbitrary axis-aligned TF/SF box.
@@ -342,8 +357,43 @@ struct DeyMittra {
 
 struct PlaneWaveState {
     spec: PlaneWave,
+    polarisation: (f64, f64),
     e: Vec<f64>,
     h: Vec<f64>,
+    active: usize,
+    electric_time: f64,
+    magnetic_time: f64,
+}
+
+impl PlaneWaveState {
+    fn advance_h(
+        &mut self,
+        courant: f64,
+        time: f64,
+    ) {
+        if !courant.is_finite() {
+            self.active = self.e.len();
+        }
+        let stop = self.active.min(self.h.len() - 1);
+        for (field, e) in self.h[..stop].iter_mut().zip(self.e.windows(2)) {
+            *field -= courant * (e[1] - e[0]);
+        }
+        self.magnetic_time = time;
+    }
+
+    fn advance_e(
+        &mut self,
+        courant: f64,
+        time: f64,
+    ) {
+        // A nearest-neighbor Yee step can extend the nonzero prefix by one cell.
+        self.active = self.active.saturating_add(1).min(self.e.len());
+        for (field, h) in self.e[1..self.active].iter_mut().zip(self.h.windows(2)) {
+            *field -= courant * (h[1] - h[0]);
+        }
+        self.e[0] = (self.spec.waveform)(time);
+        self.electric_time = time;
+    }
 }
 
 const fn comp_index(c: Comp) -> usize {
@@ -654,24 +704,69 @@ impl Yee {
 
     /// Installs the TF/SF plane-wave source.
     ///
+    /// The auxiliary line starts at rest. The first drive sample is taken
+    /// at the next electric time, after the first magnetic half-step.
+    ///
     /// # Errors
-    /// If the slab is outside the grid or touches the PML.
+    /// The slab is outside the grid, a correction touches the PML along
+    /// the propagation axis, or the auxiliary line cannot be allocated.
     pub fn set_plane_wave(
         &mut self,
         pw: PlaneWave,
         total_steps: usize,
     ) -> Result<(), String> {
         let nx = self.cfg.n[0];
-        if pw.ia < 2 || pw.ib + 2 >= nx || pw.ia >= pw.ib {
+        if pw.ia < 2 || pw.ib >= nx.saturating_sub(2) || pw.ia >= pw.ib {
             return Err("TF/SF slab must lie inside the grid".into());
         }
-        let n_aux = nx + (total_steps as f64 * self.cfg.cfl).ceil() as usize + 20;
+        let pml = self.cfg.pml_cells;
+        if (matches!(self.cfg.bcs.get(Face::XMin), BoundaryCondition::Absorbing) && pw.ia <= pml)
+            || (matches!(self.cfg.bcs.get(Face::XMax), BoundaryCondition::Absorbing)
+                && pw.ib >= nx.saturating_sub(pml))
+        {
+            return Err("TF/SF slab corrections must lie outside the x-axis PML".into());
+        }
+        let padding = (total_steps as f64 * self.cfg.cfl).ceil() as usize;
+        let n_aux = nx
+            .checked_add(padding)
+            .and_then(|n| n.checked_add(20))
+            .ok_or("TF/SF auxiliary line length overflow")?;
+        let mut e = Vec::new();
+        let mut h = Vec::new();
+        e.try_reserve_exact(n_aux)
+            .and_then(|()| h.try_reserve_exact(n_aux))
+            .map_err(|_| "TF/SF auxiliary line allocation failed")?;
+        e.resize(n_aux, 0.0);
+        h.resize(n_aux, 0.0);
         self.pw = Some(PlaneWaveState {
+            polarisation: pw.psi.sin_cos(),
             spec: pw,
-            e: vec![0.0; n_aux],
-            h: vec![0.0; n_aux],
+            e,
+            h,
+            active: 0,
+            electric_time: self.t,
+            magnetic_time: self.t - 0.5 * self.dt,
         });
         Ok(())
+    }
+
+    /// Samples the auxiliary line of the normal-incidence TF/SF source.
+    ///
+    /// Returns `None` without an installed source or past the auxiliary
+    /// endpoint. The sample carries the electric and magnetic times of the
+    /// actual stored values, including after time-step changes.
+    #[must_use]
+    pub fn plane_wave_sample(
+        &self,
+        i: usize,
+    ) -> Option<PlaneWaveSample> {
+        let wave = self.pw.as_ref()?;
+        Some(PlaneWaveSample {
+            electric: *wave.e.get(i)?,
+            magnetic: *wave.h.get(i)?,
+            electric_time: wave.electric_time,
+            magnetic_time: wave.magnetic_time,
+        })
     }
 
     /// Installs an oblique plane wave on an arbitrary TF/SF box.
@@ -1350,7 +1445,7 @@ impl Yee {
     ) {
         let Some(pw) = &self.pw else { return };
         let (ia, ib) = (pw.spec.ia, pw.spec.ib);
-        let (s, c) = pw.spec.psi.sin_cos();
+        let (s, c) = pw.polarisation;
         let (einc_a, einc_b) = (pw.e[ia], pw.e[ib]);
         let hx = self.cfg.h[0];
         let [_, ny, nz] = self.cfg.n;
@@ -1367,14 +1462,11 @@ impl Yee {
         }
     }
 
-    fn tfsf_e(
-        &mut self,
-        hinc_at: &dyn Fn(usize) -> f64,
-    ) {
+    fn tfsf_e(&mut self) {
         let Some(pw) = &self.pw else { return };
         let (ia, ib) = (pw.spec.ia, pw.spec.ib);
-        let (s, c) = pw.spec.psi.sin_cos();
-        let (ha, hb) = (hinc_at(ia - 1), hinc_at(ib));
+        let (s, c) = pw.polarisation;
+        let (ha, hb) = (pw.h[ia - 1], pw.h[ib]);
         let hx = self.cfg.h[0];
         let dt = self.dt;
         let [_, ny, nz] = self.cfg.n;
@@ -1400,37 +1492,24 @@ impl Yee {
     /// One leapfrog step (`H` then `E`).
     pub fn step(&mut self) {
         let dt = self.dt;
+        let t_now = self.t + 0.5 * dt;
+        let t_next = self.t + dt;
         self.update_h(dt);
         self.tfsf_h(dt);
-        // aux H update
         if let Some(pw) = &mut self.pw {
-            let hx = self.cfg.h[0];
-            let n = pw.e.len();
-            for i in 0..n - 1 {
-                pw.h[i] -= dt / hx * (pw.e[i + 1] - pw.e[i]);
-            }
+            pw.advance_h(dt / self.cfg.h[0], t_now);
         }
         self.update_e();
-        let h_snapshot: Option<Vec<f64>> = self.pw.as_ref().map(|p| p.h.clone());
-        if let Some(hs) = &h_snapshot {
-            self.tfsf_e(&|i| hs[i]);
-        }
+        self.tfsf_e();
         if let Some(pw) = &mut self.pw {
-            let hx = self.cfg.h[0];
-            let n = pw.e.len();
-            for i in 1..n {
-                let hm = if i > 0 { pw.h[i - 1] } else { 0.0 };
-                pw.e[i] -= dt / hx * (pw.h[i] - hm);
-            }
-            pw.e[0] = (pw.spec.waveform)(self.t + dt);
+            pw.advance_e(dt / self.cfg.h[0], t_next);
         }
-        let t_now = self.t + 0.5 * dt;
         for s in &self.sources {
             let p = self.idx(s.cell[0], s.cell[1], s.cell[2]);
             let ci = comp_index(s.comp);
             self.f[ci][p] -= dt * self.eps_inv[p] * (s.waveform)(t_now);
         }
-        self.t += dt;
+        self.t = t_next;
     }
 
     /// Runs `steps` steps.

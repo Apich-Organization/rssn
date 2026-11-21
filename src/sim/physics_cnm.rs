@@ -1,16 +1,17 @@
+//! Crank–Nicolson time stepping.
+//!
 //! # Crank–Nicolson solvers
 //!
 //! | Equation | 1D | 2D | 3D | Boundary conditions |
 //! |---|---|---|---|---|
 //! | Schrödinger | yes | no | no | vanishing wavefunction |
-//! | heat | yes | yes (ADI) | no | Dirichlet |
+//! | heat | yes | yes (ADI) | yes (ADI) | Dirichlet |
 //!
 //! The θ-method on 1D/2D/3D grids with Robin, Neumann, periodic faces,
 //! time-dependent data and adaptive step control is in
 //! [`crate::sim::structured`].
 
 use num_complex::Complex;
-use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -278,131 +279,236 @@ pub struct HeatEquationSolverConfig {
 }
 
 /// Solves the 2D heat equation `u_t` = D * (`u_xx` + `u_yy`) using the ADI method.
-/// ADI splits the problem into two half-steps, each solving one dimension implicitly.
+///
+/// Uses homogeneous Dirichlet boundaries from the first half-step. With
+/// zero steps, returns the initial values verbatim. Grid data is x-fastest.
+///
+/// # Panics
+///
+/// Panics for a positive-step nonempty grid whose extents overflow or
+/// exceed the supplied data length.
 #[must_use]
 pub fn solve_heat_equation_2d_cn_adi(
     initial_condition: &[f64],
     config: &HeatEquationSolverConfig,
 ) -> Vec<f64> {
+    if config.steps == 0 || config.nx == 0 || config.ny == 0 {
+        return initial_condition.to_vec();
+    }
     let mut u = initial_condition.to_vec();
-
-    let alpha_x = config.d_coeff * config.dt / (2.0 * config.dx * config.dx);
-
-    let alpha_y = config.d_coeff * config.dt / (2.0 * config.dy * config.dy);
-
-    let mut ax = vec![-alpha_x; config.nx - 1];
-
-    let mut bx = vec![2.0f64.mul_add(alpha_x, 1.0); config.nx];
-
-    let mut cx = vec![-alpha_x; config.nx - 1];
-
-    bx[0] = 1.0;
-
-    cx[0] = 0.0;
-
-    bx[config.nx - 1] = 1.0;
-
-    ax[config.nx - 2] = 0.0;
-
-    let mut ay = vec![-alpha_y; config.ny - 1];
-
-    let mut by = vec![2.0f64.mul_add(alpha_y, 1.0); config.ny];
-
-    let mut cy = vec![-alpha_y; config.ny - 1];
-
-    by[0] = 1.0;
-
-    cy[0] = 0.0;
-
-    by[config.ny - 1] = 1.0;
-
-    ay[config.ny - 2] = 0.0;
-
-    let mut u_half = vec![0.0; config.nx * config.ny];
-
-    for _ in 0..config.steps {
-        // Step 1: Solve implicitly in x, explicitly in y
-        u_half
-            .par_chunks_mut(config.nx)
-            .enumerate()
-            .for_each(|(j, row_half)| {
-                if j == 0 || j == config.ny - 1 {
-                    for i in 0..config.nx {
-                        row_half[i] = u[j * config.nx + i];
-                    }
-
-                    return;
-                }
-
-                let mut d = vec![0.0; config.nx];
-
-                for i in 1..config.nx - 1 {
-                    let u_ij = u[j * config.nx + i];
-
-                    let u_ijm1 = u[(j - 1) * config.nx + i];
-
-                    let u_ijp1 = u[(j + 1) * config.nx + i];
-
-                    d[i] =
-                        alpha_y * u_ijm1 + 2.0f64.mul_add(-alpha_y, 1.0) * u_ij + alpha_y * u_ijp1;
-                }
-
-                let row_sol = solve_tridiagonal_system(&ax, &bx, &cx, &mut d);
-
-                row_half[..config.nx].copy_from_slice(&row_sol[..config.nx]);
-            });
-
-        // Step 2: Solve implicitly in y, explicitly in x
-        // Transpose u_half into a temporary buffer for efficient memory access
-        let mut u_half_t = vec![0.0; config.nx * config.ny];
-
-        for j in 0..config.ny {
-            for i in 0..config.nx {
-                u_half_t[i * config.ny + j] = u_half[j * config.nx + i];
-            }
-        }
-
-        let mut u_next_t = vec![0.0; config.nx * config.ny];
-
-        u_next_t
-            .par_chunks_mut(config.ny)
-            .enumerate()
-            .for_each(|(i, row_next_t)| {
-                if i == 0 || i == config.nx - 1 {
-                    for j in 0..config.ny {
-                        row_next_t[j] = u_half_t[i * config.ny + j];
-                    }
-
-                    return;
-                }
-
-                let mut d_transposed = vec![0.0; config.ny];
-
-                for j in 1..config.ny - 1 {
-                    let u_im1j = u_half_t[(i - 1) * config.ny + j];
-
-                    let u_ij = u_half_t[i * config.ny + j];
-
-                    let u_ip1j = u_half_t[(i + 1) * config.ny + j];
-
-                    d_transposed[j] =
-                        alpha_x * u_im1j + 2.0f64.mul_add(-alpha_x, 1.0) * u_ij + alpha_x * u_ip1j;
-                }
-
-                let col_sol = solve_tridiagonal_system(&ay, &by, &cy, &mut d_transposed);
-
-                row_next_t[..config.ny].copy_from_slice(&col_sol[..config.ny]);
-            });
-
-        // Transpose back
-        for i in 0..config.nx {
-            for j in 0..config.ny {
-                u[j * config.nx + i] = u_next_t[i * config.ny + j];
-            }
+    let size = config
+        .nx
+        .checked_mul(config.ny)
+        .unwrap_or_else(|| panic!("Crank–Nicolson ADI grid extents overflow"));
+    let grid = &mut u[..size];
+    let [nx, ny] = [config.nx, config.ny];
+    for (j, row) in grid.chunks_exact_mut(nx).enumerate() {
+        row[0] = 0.0;
+        row[nx - 1] = 0.0;
+        if j == 0 || j + 1 == ny {
+            row.fill(0.0);
         }
     }
+    heat_adi(grid, config, adi_coefficients(config), || Ok(()))
+        .unwrap_or_else(|()| unreachable!("unchecked Crank–Nicolson ADI cannot be cancelled"));
 
     u
+}
+
+/// Evolves a two-dimensional heat field with fixed Dirichlet boundaries.
+///
+/// The x-fastest initial field supplies the four boundary edges. They remain
+/// fixed during both ADI half-steps. The grid has `nx * ny` nodes, including
+/// the boundaries. Spacings must be positive, and diffusivity and the time
+/// step must be nonnegative. A grid without interior nodes is stationary.
+///
+/// # Errors
+///
+/// Returns an error for shape mismatches, non-finite data or results, invalid
+/// physical parameters, unrepresentable coefficients, or cancellation.
+pub fn solve_heat_equation_2d_cn_adi_fixed_boundary(
+    initial_condition: &[f64],
+    config: &HeatEquationSolverConfig,
+) -> Result<Vec<f64>, String> {
+    if config.nx == 0
+        || config.ny == 0
+        || config.nx.checked_mul(config.ny) != Some(initial_condition.len())
+        || initial_condition.iter().any(|value| !value.is_finite())
+        || [config.dx, config.dy]
+            .iter()
+            .any(|&spacing| !spacing.is_finite() || spacing <= 0.0)
+        || [config.d_coeff, config.dt]
+            .iter()
+            .any(|&parameter| !parameter.is_finite() || parameter < 0.0)
+    {
+        return Err("invalid Crank–Nicolson ADI field or controls".into());
+    }
+    let checkpoint = || crate::cancellation::checkpoint().map_err(|error| error.to_string());
+    checkpoint()?;
+    if config.steps == 0 || config.nx <= 2 || config.ny <= 2 {
+        return Ok(initial_condition.to_vec());
+    }
+    let alpha = adi_coefficients(config);
+    if alpha
+        .iter()
+        .any(|factor| !factor.mul_add(2.0, 1.0).is_finite())
+    {
+        return Err("Crank–Nicolson ADI coefficient is not representable".into());
+    }
+    let mut u = initial_condition.to_vec();
+    heat_adi(&mut u, config, alpha, checkpoint)?;
+    if u.iter().any(|value| !value.is_finite()) {
+        return Err("Crank–Nicolson ADI state is not representable".into());
+    }
+    Ok(u)
+}
+
+fn adi_coefficients(config: &HeatEquationSolverConfig) -> [f64; 2] {
+    let product = config.d_coeff * config.dt;
+    [config.dx, config.dy].map(|spacing| {
+        let denominator = 2.0 * spacing * spacing;
+        let direct = product / denominator;
+        if (product.is_normal() && denominator.is_normal())
+            || !config.d_coeff.is_finite()
+            || !config.dt.is_finite()
+            || !spacing.is_finite()
+            || spacing <= 0.0
+        {
+            direct
+        } else if config.d_coeff == 0.0 || config.dt == 0.0 {
+            0.0
+        } else {
+            crate::kernels::numeric_common::scale_product(
+                config.d_coeff.copysign(product),
+                &[config.dt.abs()],
+                &[2.0, spacing, spacing],
+            )
+            .unwrap_or(direct)
+        }
+    })
+}
+
+struct AdiFactors {
+    lower: f64,
+    // Reciprocal pivot and modified upper diagonal at each interior node.
+    interior: Vec<[f64; 2]>,
+}
+
+impl AdiFactors {
+    fn new(
+        nodes: usize,
+        alpha: f64,
+    ) -> Self {
+        let lower = -alpha;
+        let diagonal = 2.0_f64.mul_add(alpha, 1.0);
+        let mut interior = Vec::with_capacity(nodes - 2);
+        let mut upper = 0.0;
+        for _ in 1..nodes - 1 {
+            let inverse = 1.0 / lower.mul_add(-upper, diagonal);
+            upper = lower * inverse;
+            interior.push([inverse, upper]);
+        }
+        Self { lower, interior }
+    }
+
+    fn solve(
+        &self,
+        line: &mut [f64],
+    ) {
+        let last = line.len() - 1;
+        // The identity rows for the fixed endpoints seed the two substitutions.
+        let mut previous = line[0];
+        let mut next = line[last];
+        let interior = &mut line[1..last];
+        for (value, &[inverse, _]) in interior.iter_mut().zip(&self.interior) {
+            previous = self.lower.mul_add(-previous, *value) * inverse;
+            *value = previous;
+        }
+        for (value, &[_, upper]) in interior.iter_mut().zip(&self.interior).rev() {
+            next = upper.mul_add(-next, *value);
+            *value = next;
+        }
+    }
+}
+
+fn heat_adi<E>(
+    u: &mut [f64],
+    config: &HeatEquationSolverConfig,
+    alpha: [f64; 2],
+    checkpoint: impl Fn() -> Result<(), E>,
+) -> Result<(), E> {
+    let [nx, ny] = [config.nx, config.ny];
+    let [alpha_x, alpha_y] = alpha;
+    if nx <= 2 || ny <= 2 || (alpha_x == 0.0 && alpha_y == 0.0) {
+        return Ok(());
+    }
+    let x_factors = AdiFactors::new(nx, alpha_x);
+    let y_factors = AdiFactors::new(ny, alpha_y);
+    let mut half = crate::kernels::reuse::f64_scratch(u.len());
+    let mut transposed = crate::kernels::reuse::f64_scratch(u.len());
+    half.resize(u.len(), 0.0);
+    transposed.resize(u.len(), 0.0);
+    for _ in 0..config.steps {
+        checkpoint()?;
+        adi_sweep(u, &mut half, nx, alpha_y, &x_factors);
+        transpose_heat(&half, &mut transposed, nx, ny);
+        adi_sweep(&transposed, &mut half, ny, alpha_x, &y_factors);
+        transpose_heat(&half, u, ny, nx);
+    }
+    checkpoint()
+}
+
+fn adi_sweep(
+    field: &[f64],
+    result: &mut [f64],
+    line_len: usize,
+    alpha: f64,
+    implicit: &AdiFactors,
+) {
+    let lines = result.len() / line_len;
+    let rows_per_chunk = (4096 / line_len).max(1);
+    let center = 2.0_f64.mul_add(-alpha, 1.0);
+    crate::kernels::par::for_chunks_mut(result, rows_per_chunk * line_len, 4, |chunk, rows| {
+        for (local, row) in rows.chunks_exact_mut(line_len).enumerate() {
+            let j = chunk * rows_per_chunk + local;
+            let start = j * line_len;
+            let current = &field[start..start + line_len];
+            if j == 0 || j + 1 == lines {
+                row.copy_from_slice(current);
+                continue;
+            }
+            let lower = &field[start - line_len..start];
+            let upper = &field[start + line_len..start + 2 * line_len];
+            for i in 1..line_len - 1 {
+                row[i] = alpha * lower[i] + center * current[i] + alpha * upper[i];
+            }
+            row[0] = current[0];
+            row[line_len - 1] = current[line_len - 1];
+            implicit.solve(row);
+        }
+    });
+}
+
+fn transpose_heat(
+    source: &[f64],
+    target: &mut [f64],
+    nx: usize,
+    ny: usize,
+) {
+    const TILE: usize = 32;
+    let columns_per_chunk = nx.min(TILE);
+    crate::kernels::par::for_chunks_mut(target, columns_per_chunk * ny, 4, |block, columns| {
+        let x0 = block * columns_per_chunk;
+        for y0 in (0..ny).step_by(TILE) {
+            let y_end = (y0 + TILE).min(ny);
+            for (column, output) in columns.chunks_exact_mut(ny).enumerate() {
+                let x = x0 + column;
+                for y in y0..y_end {
+                    output[y] = source[y * nx + x];
+                }
+            }
+        }
+    });
 }
 
 /// Scenario for the 2D Crank-Nicolson ADI solver.

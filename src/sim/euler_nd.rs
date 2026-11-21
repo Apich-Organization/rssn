@@ -1,3 +1,5 @@
+//! High-order finite volumes for Euler and shallow water in 1D-3D.
+//!
 //! # High-order finite volumes for Euler and shallow-water systems in 1D–3D
 //!
 //! Unsplit finite-volume solver on uniform Cartesian grids with
@@ -5,8 +7,8 @@
 //! * **reconstruction** of the primitive variables: first order, **MUSCL**
 //!   with a minmod, van Leer, monotonised-central or superbee limiter, or
 //!   fifth-order **WENO5** (Jiang–Shu);
-//! * **Riemann solvers**: **HLLC**, **Roe** (Harten entropy fix) and
-//!   Rusanov, for the Euler equations of an ideal gas and the shallow-water
+//! * **Riemann solvers**: **HLLC**, **HLLE**, **Roe** (Harten entropy fix)
+//!   and Rusanov, for the Euler equations of an ideal gas and the shallow-water
 //!   equations;
 //! * **SSP-RK3** time stepping with a CFL condition summed over axes;
 //! * boundary treatment per face: transmissive, reflective wall, periodic, a
@@ -15,8 +17,8 @@
 //!
 //! | Equation | 1D | 2D | 3D | Riemann solvers | Reconstruction |
 //! |---|---|---|---|---|---|
-//! | Euler (`ρ, ρu, ρv, ρw, E`) | yes | yes | yes | HLLC, Roe, Rusanov | first order, MUSCL (4 limiters), WENO5 |
-//! | Shallow water (`h, hu, hv, hw`) | yes | yes | yes (barotropic) | HLLC, Roe, Rusanov | same |
+//! | Euler (`ρ, ρu, ρv, ρw, E`) | yes | yes | yes | HLLC, HLLE, Roe, Rusanov | first order, MUSCL (4 limiters), WENO5 |
+//! | Shallow water (`h, hu, hv, hw`) | yes | yes | yes (barotropic) | HLLC, HLLE, Roe, Rusanov | same |
 //!
 //! Variables are stored as `[f64; 5]`: Euler uses all five slots, shallow
 //! water the first `1 + dim`. Initial data are given in primitive variables
@@ -83,8 +85,8 @@
 //! not well-balanced against a wet/dry front; this solver itself uses a
 //! uniform grid (adaptive refinement is [`euler_amr`](crate::sim::euler_amr)).
 //!
-//! Parallelism: the flux sweeps of the residual process the lines of a sweep concurrently; the cell
-//! updates are applied in line order, so the residual is bit-identical to the serial sweep.
+//! Independent lines of a flux sweep can run on the active CPU pool. Each pass
+//! updates a cell once, and the axis order is fixed across worker counts.
 
 /// Conserved or primitive state with up to five components.
 pub type State = [f64; 5];
@@ -118,6 +120,8 @@ pub enum Reconstruction {
 pub enum RiemannSolver {
     /// HLLC (contact-resolving).
     Hllc,
+    /// Two-wave Harten–Lax–van Leer flux with Einfeldt wave-speed estimates.
+    Hlle,
     /// Roe linearisation with entropy fix.
     Roe,
     /// Local Lax–Friedrichs.
@@ -174,15 +178,14 @@ impl FvGrid {
     /// Creates a grid.
     ///
     /// # Errors
-    /// For a bad dimension or too few cells.
+    /// Returns an error for an invalid dimension, extent, spacing or storage size.
     pub fn new(
         n: &[usize],
         lo: &[f64],
         hi: &[f64],
     ) -> Result<Self, String> {
         let dim = n.len();
-        if !(1..=3).contains(&dim) || lo.len() != dim || hi.len() != dim || n.iter().any(|&c| c < 2)
-        {
+        if !(1..=3).contains(&dim) || lo.len() != dim || hi.len() != dim {
             return Err("invalid finite-volume grid".into());
         }
         let mut g = Self {
@@ -194,7 +197,27 @@ impl FvGrid {
         g.n[..dim].copy_from_slice(&n[..dim]);
         g.lo[..dim].copy_from_slice(&lo[..dim]);
         g.hi[..dim].copy_from_slice(&hi[..dim]);
+        g.check()?;
         Ok(g)
+    }
+
+    pub(super) fn check(&self) -> Result<(), String> {
+        if !(1..=3).contains(&self.dim)
+            || self.n[self.dim..].iter().any(|&n| n != 1)
+            || (0..self.dim).any(|axis| {
+                let spacing = self.h(axis);
+                self.n[axis] < 2 || !spacing.is_finite() || spacing <= 0.0
+            })
+        {
+            return Err("invalid finite-volume grid or spacing".into());
+        }
+        let capacity = self.n[..self.dim].iter().try_fold(1usize, |size, n| {
+            size.checked_mul(n.checked_add(2 * GHOST)?)
+        });
+        if capacity.is_none_or(|size| size > isize::MAX as usize / size_of::<CellUpdate>()) {
+            return Err("finite-volume grid exceeds addressable storage".into());
+        }
+        Ok(())
     }
 
     /// Cell width along `axis`.
@@ -468,6 +491,18 @@ pub(crate) fn admissible(
     }
 }
 
+fn finite_primitive(
+    law: Law,
+    state: &State,
+) -> bool {
+    let used = if matches!(law, Law::Euler { .. }) {
+        5
+    } else {
+        4
+    };
+    admissible(law, state) && state[..used].iter().all(|value| value.is_finite())
+}
+
 pub(crate) fn sound_speed(
     law: Law,
     w: &State,
@@ -568,6 +603,26 @@ pub(crate) fn riemann_flux(
             let mut f = [0.0; 5];
             for c in 0..nv {
                 f[c] = f64::midpoint(fl[c], fr[c]) - 0.5 * s * (qr[c] - ql[c]);
+            }
+            f
+        },
+        | RiemannSolver::Hlle => {
+            if sl >= 0.0 {
+                return fl;
+            }
+            if sr <= 0.0 {
+                return fr;
+            }
+            // Normalize the two wave speeds before forming their sum or product.
+            let scale = sr.max(-sl);
+            let left = -sl / scale;
+            let right = sr / scale;
+            let width = left + right;
+            let diffusion = sr.min(-sl) / width;
+            let mut f = [0.0; 5];
+            for c in 0..nv {
+                f[c] =
+                    (right / width) * fl[c] + (left / width) * fr[c] - diffusion * (qr[c] - ql[c]);
             }
             f
         },
@@ -862,11 +917,49 @@ fn manning_friction(
     q[2] *= fac;
 }
 
-/// A cell index, its flux-difference update and the optional source term.
-type CellUpdate = (usize, [f64; 5], Option<f64>);
+#[derive(Clone, Copy, Default)]
+struct CellUpdate {
+    delta: State,
+    bed_slope: f64,
+}
 
-/// Lines from which a flux sweep of the finite-volume residual runs in parallel.
-const SWEEP_PAR_LINES: usize = 16;
+impl CellUpdate {
+    fn subtract(
+        self,
+        out: &mut State,
+        axis: usize,
+        with_bed: bool,
+    ) {
+        for (r, delta) in out.iter_mut().zip(self.delta) {
+            *r -= delta;
+        }
+        if with_bed {
+            out[1 + axis] -= self.bed_slope;
+        }
+    }
+}
+
+struct BedFace {
+    left: State,
+    right: State,
+    left_height: f64,
+    left_bed: f64,
+    right_height: f64,
+    right_bed: f64,
+}
+
+#[derive(Default)]
+struct ResidualWorkspace {
+    padded: Vec<State>,
+    updates: Vec<CellUpdate>,
+    residual: Vec<State>,
+}
+
+const SWEEP_LINES_PER_CHUNK: usize = 8;
+const SWEEP_MIN_CHUNKS: usize = 2;
+const CELL_CHUNK: usize = 512;
+pub(super) static LINE_STORAGE: crate::kernels::reuse::ScratchPool<State> =
+    crate::kernels::reuse::ScratchPool::new(16, 256 * 1024);
 
 struct Padded {
     np: [usize; 3],
@@ -891,6 +984,13 @@ impl Padded {
         i[0] + self.np[0] * (i[1] + self.np[1] * i[2])
     }
 
+    const fn stride(
+        &self,
+        axis: usize,
+    ) -> usize {
+        [1, self.np[0], self.np[0] * self.np[1]][axis]
+    }
+
     fn len(&self) -> usize {
         self.np.iter().product()
     }
@@ -912,45 +1012,37 @@ impl Stepper<'_> {
     fn fill_padded(
         &self,
         q: &[State],
-    ) -> Vec<State> {
+        p: &mut [State],
+    ) {
         let g = self.grid;
         let pad = &self.pad;
         let law = self.cfg.law;
-        let mut p = vec![[0.0; 5]; pad.len()];
-        for c in 0..g.len() {
-            let ijk = g.ijk(c);
-            let pi = [ijk[0] + pad.g[0], ijk[1] + pad.g[1], ijk[2] + pad.g[2]];
-            p[pad.idx(pi)] = q[c];
+        let width = g.n[0];
+        for (row, states) in q.chunks_exact(width).enumerate() {
+            let start = pad.idx([pad.g[0], row % g.n[1] + pad.g[1], row / g.n[1] + pad.g[2]]);
+            let interior = &mut p[start..start + width];
+            interior.copy_from_slice(states);
+            if let Some(bed) = &self.bed {
+                for (state, &height) in interior.iter_mut().zip(&bed[row * width..][..width]) {
+                    state[4] = height;
+                }
+            }
         }
         for a in 0..g.dim {
             let n = g.n[a] as isize;
             let gh = GHOST as isize;
-            let ranges: Vec<std::ops::Range<usize>> = (0..3)
-                .map(|b| {
-                    if b == a {
-                        0..0
-                    } else if b < a || b >= g.dim {
-                        0..pad.np[b]
-                    } else {
-                        pad.g[b]..pad.g[b] + g.n[b]
-                    }
-                })
-                .collect();
-            for i2 in if a == 2 {
-                0..1
-            } else {
-                ranges[2].clone()
-            } {
-                for i1 in if a == 1 {
+            let ranges: [std::ops::Range<usize>; 3] = std::array::from_fn(|b| {
+                if b == a {
                     0..1
+                } else if b < a || b >= g.dim {
+                    0..pad.np[b]
                 } else {
-                    ranges[1].clone()
-                } {
-                    for i0 in if a == 0 {
-                        0..1
-                    } else {
-                        ranges[0].clone()
-                    } {
+                    pad.g[b]..pad.g[b] + g.n[b]
+                }
+            });
+            for i2 in ranges[2].clone() {
+                for i1 in ranges[1].clone() {
+                    for i0 in ranges[0].clone() {
                         for layer in 0..GHOST {
                             for max in [false, true] {
                                 let mut dst = [i0, i1, i2];
@@ -1012,7 +1104,6 @@ impl Stepper<'_> {
                 }
             }
         }
-        p
     }
 
     fn max_rate(
@@ -1068,185 +1159,226 @@ impl Stepper<'_> {
         }
     }
 
+    fn regular_face(
+        &self,
+        line: &[State],
+        d: usize,
+        f: usize,
+        well_balanced: bool,
+    ) -> State {
+        let law = self.cfg.law;
+        let (mut l, mut r) = face_states(self.cfg.recon, line, GHOST + f, self.nv);
+        if !admissible(law, &l) || !admissible(law, &r) {
+            l = line[GHOST + f - 1];
+            r = line[GHOST + f];
+        }
+        swap_dir(&mut l, d);
+        swap_dir(&mut r, d);
+        if well_balanced {
+            // Both Riemann states carry the face pressure balanced by the cell source.
+            let pressure = self.well_balanced_face_pressure(line, d, self.grid.n[d], f);
+            l[4] = pressure;
+            r[4] = pressure;
+        }
+        let mut flux = riemann_flux(law, self.cfg.riemann, &l, &r);
+        swap_dir(&mut flux, d);
+        flux
+    }
+
+    fn bed_face(
+        &self,
+        line: &[State],
+        d: usize,
+        f: usize,
+        gravity: f64,
+    ) -> BedFace {
+        // Reconstruct (eta, u, v, -, b), then use the higher bed on both sides.
+        let law = self.cfg.law;
+        let (mut l, mut r) = face_states(self.cfg.recon, line, GHOST + f, 5);
+        let low = |s: &State| s[0] - s[4] < 0.0 || !s[0].is_finite();
+        if low(&l) || low(&r) {
+            l = line[GHOST + f - 1];
+            r = line[GHOST + f];
+        }
+        let (h_l, h_r) = ((l[0] - l[4]).max(0.0), (r[0] - r[4]).max(0.0));
+        let b_star = l[4].max(r[4]);
+        let (hs_l, hs_r) = ((l[0] - b_star).max(0.0), (r[0] - b_star).max(0.0));
+        let mut wl = [hs_l, l[1], l[2], l[3], 0.0];
+        let mut wr = [hs_r, r[1], r[2], r[3], 0.0];
+        swap_dir(&mut wl, d);
+        swap_dir(&mut wr, d);
+        let mut left = if hs_l + hs_r > 1e-12 && admissible(law, &wl) && admissible(law, &wr) {
+            riemann_flux(law, self.cfg.riemann, &wl, &wr)
+        } else if hs_l > 1e-12 && admissible(law, &wl) {
+            flux_x(law, &wl)
+        } else if hs_r > 1e-12 && admissible(law, &wr) {
+            flux_x(law, &wr)
+        } else {
+            [0.0; 5]
+        };
+        swap_dir(&mut left, d);
+        let mut right = left;
+        left[1 + d] += 0.5 * gravity * (h_l * h_l - hs_l * hs_l);
+        right[1 + d] += 0.5 * gravity * (h_r * h_r - hs_r * hs_r);
+        BedFace {
+            left,
+            right,
+            left_height: h_l,
+            left_bed: l[4],
+            right_height: h_r,
+            right_bed: r[4],
+        }
+    }
+
+    fn line_updates(
+        &self,
+        d: usize,
+        line: &[State],
+        mut store: impl FnMut(usize, CellUpdate),
+    ) {
+        let n = self.grid.n[d];
+        let spacing = self.grid.h(d);
+        if let (Some(_), Law::ShallowWater { g }) = (&self.bed, self.cfg.law) {
+            let mut lower = self.bed_face(line, d, 0, g);
+            for cell in 0..n {
+                let upper = self.bed_face(line, d, cell + 1, g);
+                let delta = std::array::from_fn(|v| (upper.left[v] - lower.right[v]) / spacing);
+                let bed_slope = g
+                    * 0.5
+                    * (lower.right_height + upper.left_height)
+                    * (upper.left_bed - lower.right_bed)
+                    / spacing;
+                store(cell, CellUpdate { delta, bed_slope });
+                lower = upper;
+            }
+        } else {
+            let well_balanced = matches!(self.cfg.law, Law::Euler { .. }) && self.gravity[d] != 0.0;
+            let mut lower = self.regular_face(line, d, 0, well_balanced);
+            for cell in 0..n {
+                let upper = self.regular_face(line, d, cell + 1, well_balanced);
+                let delta = std::array::from_fn(|v| (upper[v] - lower[v]) / spacing);
+                store(
+                    cell,
+                    CellUpdate {
+                        delta,
+                        bed_slope: 0.0,
+                    },
+                );
+                lower = upper;
+            }
+        }
+    }
+
     fn residual(
         &self,
         q: &[State],
-    ) -> Vec<State> {
-        let g = self.grid;
+        work: &mut ResidualWorkspace,
+    ) {
+        use crate::kernels::par::for_chunks_mut;
+
+        let grid = self.grid;
         let pad = &self.pad;
         let law = self.cfg.law;
-        // The bed travels in the unused slot 4 of the shallow-water states
-        // through the boundary fill.
-        let qp = match &self.bed {
-            | Some(bed) => {
-                let mut with_bed = q.to_vec();
-                for (state, &z) in with_bed.iter_mut().zip(bed) {
-                    state[4] = z;
-                }
-                self.fill_padded(&with_bed)
-            },
-            | None => self.fill_padded(q),
-        };
-        let wp: Vec<State> = qp.iter().map(|&c| to_prim(law, c)).collect();
-        let bp: Vec<f64> = if self.bed.is_some() {
-            qp.iter().map(|s| s[4]).collect()
-        } else {
-            Vec::new()
-        };
-        let mut res = vec![[0.0; 5]; g.len()];
-        for d in 0..g.dim {
-            let n = g.n[d];
-            let hd = g.h(d);
-            let o: Vec<usize> = (0..3).filter(|&b| b != d).collect();
-            let (na, nb) = (g.n[o[0]].max(1), g.n[o[1]].max(1));
-            let well_balanced = matches!(law, Law::Euler { .. }) && self.gravity[d] != 0.0;
-            // The lines of one sweep are independent: every line computes the
-            // updates of its own cells in parallel, and the updates are then
-            // applied in line order, so each cell sees exactly the serial
-            // sequence of subtractions.
-            let updates: Vec<Vec<CellUpdate>> =
-                crate::kernels::par::map_indexed(na * nb, SWEEP_PAR_LINES, |li| {
-                    let (ia, ib) = (li % na, li / na);
-                    let mut out: Vec<CellUpdate> = Vec::with_capacity(n);
-                    let mut line = vec![[0.0; 5]; pad.np[d]];
-                    let mut flux = vec![[0.0; 5]; n + 1];
-                    let mut base = [0usize; 3];
-                    base[o[0]] = ia + pad.g[o[0]];
-                    base[o[1]] = ib + pad.g[o[1]];
-                    for k in 0..pad.np[d] {
-                        let mut i = base;
-                        i[d] = k;
-                        line[k] = wp[pad.idx(i)];
-                    }
-                    if let (Some(_), Law::ShallowWater { g: gravity }) = (&self.bed, law) {
-                        // Hydrostatic reconstruction on (eta, u, v, -, b).
-                        let mut eta_line = vec![[0.0; 5]; pad.np[d]];
-                        for k in 0..pad.np[d] {
-                            let mut i = base;
-                            i[d] = k;
-                            let (w, z) = (wp[pad.idx(i)], bp[pad.idx(i)]);
-                            eta_line[k] = [w[0] + z, w[1], w[2], w[3], z];
-                        }
-                        let mut flux_right = vec![[0.0; 5]; n + 1];
-                        let mut faces = vec![(0.0, 0.0, 0.0, 0.0); n + 1];
-                        for f in 0..=n {
-                            let (mut l, mut r) =
-                                face_states(self.cfg.recon, &eta_line, GHOST + f, 5);
-                            let low = |s: &State| s[0] - s[4] < 0.0 || !s[0].is_finite();
-                            if low(&l) || low(&r) {
-                                l = eta_line[GHOST + f - 1];
-                                r = eta_line[GHOST + f];
-                            }
-                            let (h_l, h_r) = ((l[0] - l[4]).max(0.0), (r[0] - r[4]).max(0.0));
-                            let b_star = l[4].max(r[4]);
-                            let (hs_l, hs_r) = ((l[0] - b_star).max(0.0), (r[0] - b_star).max(0.0));
-                            let mut wl = [hs_l, l[1], l[2], l[3], 0.0];
-                            let mut wr = [hs_r, r[1], r[2], r[3], 0.0];
-                            swap_dir(&mut wl, d);
-                            swap_dir(&mut wr, d);
-                            let mut fl = if hs_l + hs_r > 1e-12
-                                && admissible(law, &wl)
-                                && admissible(law, &wr)
-                            {
-                                riemann_flux(law, self.cfg.riemann, &wl, &wr)
-                            } else if hs_l > 1e-12 && admissible(law, &wl) {
-                                flux_x(law, &wl)
-                            } else if hs_r > 1e-12 && admissible(law, &wr) {
-                                flux_x(law, &wr)
-                            } else {
-                                [0.0; 5]
-                            };
-                            swap_dir(&mut fl, d);
-                            let mut fr = fl;
-                            fl[1 + d] += 0.5 * gravity * (h_l * h_l - hs_l * hs_l);
-                            fr[1 + d] += 0.5 * gravity * (h_r * h_r - hs_r * hs_r);
-                            flux[f] = fl;
-                            flux_right[f] = fr;
-                            faces[f] = (h_l, l[4], h_r, r[4]);
-                        }
-                        for c in 0..n {
-                            let mut i = [0usize; 3];
-                            i[o[0]] = ia;
-                            i[o[1]] = ib;
-                            i[d] = c;
-                            let cell = g.index(i);
-                            let mut delta = [0.0; 5];
-                            for v in 0..5 {
-                                delta[v] = (flux[c + 1][v] - flux_right[c][v]) / hd;
-                            }
-                            // Centred source: -g * mean depth * bed slope.
-                            let (h_minus, b_minus) = (faces[c].2, faces[c].3);
-                            let (h_plus, b_plus) = (faces[c + 1].0, faces[c + 1].1);
-                            let source =
-                                gravity * 0.5 * (h_minus + h_plus) * (b_plus - b_minus) / hd;
-                            out.push((cell, delta, Some(source)));
-                        }
-                        return out;
-                    }
-                    for f in 0..=n {
-                        let (mut l, mut r) = face_states(self.cfg.recon, &line, GHOST + f, self.nv);
-                        if !admissible(law, &l) || !admissible(law, &r) {
-                            l = line[GHOST + f - 1];
-                            r = line[GHOST + f];
-                        }
-                        swap_dir(&mut l, d);
-                        swap_dir(&mut r, d);
-                        if well_balanced {
-                            // The cell-centred gravity source is balanced by
-                            // the hydrostatic pressure difference across the
-                            // cell, so both Riemann states carry the same
-                            // well-balanced interface pressure.
-                            let p_h = self.well_balanced_face_pressure(&line, d, n, f);
-                            l[4] = p_h;
-                            r[4] = p_h;
-                        }
-                        let mut fl = riemann_flux(law, self.cfg.riemann, &l, &r);
-                        swap_dir(&mut fl, d);
-                        flux[f] = fl;
-                    }
-                    for c in 0..n {
-                        let mut i = [0usize; 3];
-                        i[o[0]] = ia;
-                        i[o[1]] = ib;
-                        i[d] = c;
-                        let cell = g.index(i);
-                        let mut delta = [0.0; 5];
-                        for v in 0..5 {
-                            delta[v] = (flux[c + 1][v] - flux[c][v]) / hd;
-                        }
-                        out.push((cell, delta, None));
-                    }
-                    out
-                });
-            for line_updates in updates {
-                for (cell, delta, source) in line_updates {
-                    for v in 0..5 {
-                        res[cell][v] -= delta[v];
-                    }
-                    if let Some(src) = source {
-                        res[cell][1 + d] -= src;
-                    }
+        let with_bed = self.bed.is_some();
+        work.padded.resize(pad.len(), [0.0; 5]);
+        self.fill_padded(q, &mut work.padded);
+        for_chunks_mut(&mut work.padded, CELL_CHUNK, 16, |_, cells| {
+            for state in cells {
+                let bed = state[4];
+                *state = to_prim(law, *state);
+                if with_bed {
+                    state[0] += bed;
+                    state[4] = bed;
                 }
             }
+        });
+        work.residual.resize(q.len(), [0.0; 5]);
+        work.residual.fill([0.0; 5]);
+
+        let [nx, ny, _] = grid.n;
+        let padded = &work.padded;
+        // The first-axis lines are contiguous in both the padded states and the residual.
+        for_chunks_mut(
+            &mut work.residual,
+            nx * SWEEP_LINES_PER_CHUNK,
+            SWEEP_MIN_CHUNKS,
+            |block, cells| {
+                for (line, row) in cells.chunks_exact_mut(nx).enumerate() {
+                    let flat = block * SWEEP_LINES_PER_CHUNK + line;
+                    let start = pad.idx([0, flat % ny + pad.g[1], flat / ny + pad.g[2]]);
+                    self.line_updates(0, &padded[start..start + pad.np[0]], |i, update| {
+                        update.subtract(&mut row[i], 0, with_bed);
+                    });
+                }
+            },
+        );
+
+        for d in 1..grid.dim {
+            let n = grid.n[d];
+            let outer_axis = 3 - d;
+            let stride = pad.stride(d);
+            let line_len = pad.np[d];
+            work.updates.resize(q.len(), CellUpdate::default());
+            // Pack one strided line per work block, and write its updates in line order.
+            for_chunks_mut(
+                &mut work.updates,
+                n * SWEEP_LINES_PER_CHUNK,
+                SWEEP_MIN_CHUNKS,
+                |block, updates| {
+                    let mut packed = LINE_STORAGE.checkout_for(line_len);
+                    packed.resize(line_len, [0.0; 5]);
+                    for (line, row) in updates.chunks_exact_mut(n).enumerate() {
+                        let flat = block * SWEEP_LINES_PER_CHUNK + line;
+                        let mut i = [0; 3];
+                        i[0] = flat % nx + pad.g[0];
+                        i[outer_axis] = flat / nx + pad.g[outer_axis];
+                        let start = pad.idx(i);
+                        for (k, value) in packed.iter_mut().enumerate() {
+                            *value = padded[start + k * stride];
+                        }
+                        self.line_updates(d, &packed, |i, update| row[i] = update);
+                    }
+                },
+            );
+            // Each chunk owns complete x rows. Every cell sees x, then y, then z.
+            let updates = &work.updates;
+            for_chunks_mut(
+                &mut work.residual,
+                nx * SWEEP_LINES_PER_CHUNK,
+                SWEEP_MIN_CHUNKS,
+                |block, cells| {
+                    for (line, row) in cells.chunks_exact_mut(nx).enumerate() {
+                        let flat = block * SWEEP_LINES_PER_CHUNK + line;
+                        let (y, z) = (flat % ny, flat / ny);
+                        let start = if d == 1 {
+                            z * nx * n + y
+                        } else {
+                            y * nx * n + z
+                        };
+                        for (i, out) in row.iter_mut().enumerate() {
+                            updates[start + i * n].subtract(out, d, with_bed);
+                        }
+                    }
+                },
+            );
         }
         if matches!(law, Law::Euler { .. }) && self.gravity.iter().any(|&a| a != 0.0) {
-            for (cell, state) in q.iter().enumerate() {
-                let w = to_prim(law, *state);
-                for a in 0..g.dim {
-                    res[cell][1 + a] += w[0] * self.gravity[a];
-                    res[cell][4] += w[0] * w[1 + a] * self.gravity[a];
+            for (res, &state) in work.residual.iter_mut().zip(q) {
+                let w = to_prim(law, state);
+                for a in 0..grid.dim {
+                    res[1 + a] += w[0] * self.gravity[a];
+                    res[4] += w[0] * w[1 + a] * self.gravity[a];
                 }
             }
         }
-        res
     }
 }
 
 /// Runs the solver from primitive initial data to `t_end`.
 ///
 /// # Errors
-/// For inconsistent periodic faces, a CFL number outside `(0, 1)`, an
-/// or non-admissible initial data.
+/// Returns an error for an invalid grid, an invalid time or CFL number,
+/// inconsistent periodic faces or inadmissible initial data.
 pub fn solve(
     grid: &FvGrid,
     cfg: &FvConfig,
@@ -1272,8 +1404,19 @@ pub fn solve_with_sources(
     sources: &Sources<'_>,
     t_end: f64,
 ) -> Result<FvSolution, String> {
+    grid.check()?;
+    if !t_end.is_finite() || t_end < 0.0 {
+        return Err("final time must be finite and nonnegative".into());
+    }
     if !(cfg.cfl > 0.0 && cfg.cfl < 1.0) {
         return Err("cfl must be in (0, 1)".into());
+    }
+    let valid_law = match cfg.law {
+        | Law::Euler { gamma } => gamma.is_finite() && gamma > 1.0,
+        | Law::ShallowWater { g } => g.is_finite() && g >= 0.0,
+    };
+    if !valid_law || !sources.gravity.iter().all(|g| g.is_finite()) {
+        return Err("invalid conservation law or gravity".into());
     }
     match cfg.law {
         | Law::ShallowWater { .. } if sources.gravity.iter().any(|&a| a != 0.0) => {
@@ -1315,6 +1458,13 @@ pub fn solve_with_sources(
             return Err("periodic must be set on both faces of an axis".into());
         }
     }
+    for boundary in &cfg.bcs[..2 * grid.dim] {
+        if let GasBc::Fixed(state) | GasBc::NonReflecting(state) = boundary
+            && !finite_primitive(cfg.law, state)
+        {
+            return Err("boundary state is not admissible".into());
+        }
+    }
     let nv = match cfg.law {
         | Law::Euler { .. } => 5,
         | Law::ShallowWater { .. } => 1 + grid.dim,
@@ -1326,16 +1476,30 @@ pub fn solve_with_sources(
             // Slot 3 is the vertical-axis velocity of the 3D system only.
             w[3] = 0.0;
         }
-        if !admissible(cfg.law, &w) {
+        if !finite_primitive(cfg.law, &w) {
             return Err("initial state is not admissible".into());
         }
-        q.push(to_cons(cfg.law, w));
+        let state = to_cons(cfg.law, w);
+        if state.iter().any(|value| !value.is_finite()) {
+            return Err("initial conserved state is not representable".into());
+        }
+        q.push(state);
     }
-    let bed = sources.bed.map(|b| {
-        (0..grid.len())
-            .map(|p| b(grid.centre(p)))
-            .collect::<Vec<f64>>()
-    });
+    let bed = sources
+        .bed
+        .map(|sample| {
+            (0..grid.len())
+                .map(|p| {
+                    let height = sample(grid.centre(p));
+                    if height.is_finite() {
+                        Ok(height)
+                    } else {
+                        Err("bed elevation must be finite")
+                    }
+                })
+                .collect::<Result<Vec<f64>, _>>()
+        })
+        .transpose()?;
     let st = Stepper {
         grid,
         cfg,
@@ -1347,18 +1511,8 @@ pub fn solve_with_sources(
     };
     let mut t = 0.0;
     let mut steps = 0;
-    let add = |a: &[State], b: &[State], wa: f64, wb: f64, dt: f64| -> Vec<State> {
-        a.iter()
-            .zip(b)
-            .map(|(x, y)| {
-                let mut o = [0.0; 5];
-                for c in 0..5 {
-                    o[c] = wa * x[c] + wb * (y[c] * dt);
-                }
-                o
-            })
-            .collect()
-    };
+    let mut work = ResidualWorkspace::default();
+    let mut stage = Vec::new();
     while t < t_end * (1.0 - 1e-14) {
         crate::sim::models_geodesic_relativity::native_charge();
         let rate = st.max_rate(&q);
@@ -1366,6 +1520,10 @@ pub fn solve_with_sources(
             return Err("non-finite wave speed".into());
         }
         let dt = (cfg.cfl / rate).min(t_end - t);
+        let next_time = t + dt;
+        if next_time <= t {
+            return Err("finite-volume time step cannot advance time".into());
+        }
         // Strang splitting of the Manning friction: the source is integrated
         // exactly over a half step before and after the hyperbolic update.
         let friction = st.manning > 0.0;
@@ -1374,40 +1532,28 @@ pub fn solve_with_sources(
                 manning_friction(cfg.law, state, 0.5 * dt, st.manning);
             }
         }
-        let l0 = st.residual(&q);
-        let q1: Vec<State> = add(&q, &l0, 1.0, 1.0, dt);
-        let l1 = st.residual(&q1);
-        let tmp = add(&q1, &l1, 1.0, 1.0, dt);
-        let q2: Vec<State> = q
-            .iter()
-            .zip(&tmp)
-            .map(|(a, b)| {
-                let mut o = [0.0; 5];
-                for c in 0..5 {
-                    o[c] = 0.75 * a[c] + 0.25 * b[c];
-                }
-                o
-            })
-            .collect();
-        let l2 = st.residual(&q2);
-        let tmp = add(&q2, &l2, 1.0, 1.0, dt);
-        q = q
-            .iter()
-            .zip(&tmp)
-            .map(|(a, b)| {
-                let mut o = [0.0; 5];
-                for c in 0..5 {
-                    o[c] = a[c] / 3.0 + 2.0 * b[c] / 3.0;
-                }
-                o
-            })
-            .collect();
+        // Reuse the same intermediate state and residual storage through SSP-RK3.
+        st.residual(&q, &mut work);
+        stage.resize(q.len(), [0.0; 5]);
+        for ((out, &start), &rate) in stage.iter_mut().zip(&q).zip(&work.residual) {
+            *out = std::array::from_fn(|c| start[c] + rate[c] * dt);
+        }
+        st.residual(&stage, &mut work);
+        for ((out, &start), &rate) in stage.iter_mut().zip(&q).zip(&work.residual) {
+            *out = std::array::from_fn(|c| 0.75 * start[c] + 0.25 * (out[c] + rate[c] * dt));
+        }
+        st.residual(&stage, &mut work);
+        for ((out, &intermediate), &rate) in q.iter_mut().zip(&stage).zip(&work.residual) {
+            *out = std::array::from_fn(|c| {
+                out[c] / 3.0 + 2.0 * (intermediate[c] + rate[c] * dt) / 3.0
+            });
+        }
         if friction {
             for state in &mut q {
                 manning_friction(cfg.law, state, 0.5 * dt, st.manning);
             }
         }
-        t += dt;
+        t = next_time;
         steps += 1;
         if steps > 2_000_000 {
             return Err("too many steps".into());

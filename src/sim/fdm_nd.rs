@@ -57,6 +57,9 @@ impl Grid {
                 "a PDE grid needs a positive spacing".to_string(),
             ));
         }
+        if self.nx.checked_mul(self.ny).is_none() {
+            return Err(FdmError::Domain("grid size is too large".into()));
+        }
         Ok(())
     }
 
@@ -232,12 +235,16 @@ pub struct WaveSpec {
     pub velocity: Vec<f64>,
 }
 
-/// Solves the wave equation with the leapfrog scheme.
+/// Solves the wave equation by leapfrog with zero Dirichlet boundaries.
+///
+/// Returns the initial field with zeroed boundaries and each of the `steps`
+/// subsequent fields. Initial velocities on the boundary are ignored.
 ///
 /// # Errors
 ///
 /// [`FdmError::ShapeMismatch`] when a field does not fit, and
-/// [`FdmError::Domain`] when the CFL condition fails.
+/// [`FdmError::Domain`] for invalid grid or evolution parameters, including a
+/// CFL violation or an unrepresentable snapshot count.
 pub fn solve_wave(spec: &WaveSpec) -> Result<Vec<Field>, FdmError> {
     spec.grid.check()?;
     if spec.initial.len() != spec.grid.len() || spec.velocity.len() != spec.grid.len() {
@@ -245,44 +252,27 @@ pub fn solve_wave(spec: &WaveSpec) -> Result<Vec<Field>, FdmError> {
             "the initial fields do not fit the grid".to_string(),
         ));
     }
-    let courant = spec.c * spec.dt / spec.grid.h;
-    if !(courant.is_finite() && courant.abs() <= std::f64::consts::FRAC_1_SQRT_2 + 1e-12) {
-        return Err(FdmError::Domain(format!(
-            "the leapfrog scheme needs `c*dt/h <= 1/sqrt(2)`, found {courant}"
-        )));
-    }
-    let squared = courant * courant;
-    let mut previous = spec.initial.clone();
-    let mut current = spec.initial.clone();
-    // The first step needs the velocity: u^1 = u^0 + dt v^0 + dt²/2 c² ∇²u^0.
-    let lap = laplacian(spec.grid, &current);
-    for index in 0..current.len() {
-        current[index] += spec.dt * spec.velocity[index] + 0.5 * squared * lap[index];
-    }
-    let mut out = vec![
-        Field {
-            grid: spec.grid,
-            values: previous.clone(),
-        },
-        Field {
-            grid: spec.grid,
-            values: current.clone(),
-        },
-    ];
-    for _ in 1..spec.steps {
-        let lap = laplacian(spec.grid, &current);
-        let mut next = vec![0.0; current.len()];
-        for index in 0..current.len() {
-            next[index] = 2.0 * current[index] - previous[index] + squared * lap[index];
-        }
-        previous = current;
-        current = next;
-        out.push(Field {
-            grid: spec.grid,
-            values: current.clone(),
-        });
-    }
-    Ok(out)
+    super::dimensional::solve_wave_leapfrog_nd(
+        &spec.initial,
+        &spec.velocity,
+        &[spec.grid.nx, spec.grid.ny],
+        &[spec.grid.h; 2],
+        spec.c,
+        spec.dt,
+        spec.steps,
+    )
+    .map(|snapshots| {
+        snapshots
+            .into_iter()
+            .map(|values| {
+                Field {
+                    grid: spec.grid,
+                    values,
+                }
+            })
+            .collect()
+    })
+    .map_err(FdmError::Domain)
 }
 
 /// An advection equation `u_t + v·∇u = 0`.
@@ -1908,8 +1898,9 @@ pub fn solve_wave_1d(
 ///
 /// # Errors
 ///
-/// [`FdmError::Domain`] if CFL `|c| dt / h > 1/\sqrt{2}`, [`FdmError::ShapeMismatch`]
-/// if `initial` or `velocity` does not match `spec.grid.len()`.
+/// [`FdmError::Domain`] for an invalid time step, CFL `|c| dt / h > 1/\sqrt{2}`,
+/// or too many snapshots. [`FdmError::ShapeMismatch`] if `initial` or `velocity`
+/// does not match `spec.grid.len()`.
 pub fn solve_wave_with_bc(
     spec: &WaveSpec,
     bc: &Boundary2D,
@@ -1923,7 +1914,11 @@ pub fn solve_wave_with_bc(
         ));
     }
     let courant = spec.c * spec.dt / h;
-    if !(courant.is_finite() && courant.abs() <= std::f64::consts::FRAC_1_SQRT_2 + 1e-12) {
+    if !(spec.dt.is_finite()
+        && spec.dt > 0.0
+        && courant.is_finite()
+        && courant.abs() <= std::f64::consts::FRAC_1_SQRT_2 + 1e-12)
+    {
         return Err(FdmError::Domain(format!(
             "the leapfrog scheme needs `c*dt/h <= 1/sqrt(2)`, found {courant}"
         )));
@@ -1954,22 +1949,30 @@ pub fn solve_wave_with_bc(
 
     let mut prev = spec.initial.clone();
     enforce_dirichlet_2d(&mut prev, spec.grid, bc);
+    let mut out = Vec::new();
+    let count = spec
+        .steps
+        .checked_add(1)
+        .ok_or_else(|| FdmError::Domain("too many wave snapshots".into()))?;
+    out.try_reserve_exact(count)
+        .map_err(|_| FdmError::Domain("too many wave snapshots".into()))?;
+    out.push(Field {
+        grid: spec.grid,
+        values: prev.clone(),
+    });
+    if spec.steps == 0 {
+        return Ok(out);
+    }
     let lap0 = lap_bc(&prev);
     let mut curr: Vec<f64> = (0..prev.len())
         .map(|i| prev[i] + spec.dt * spec.velocity[i] + 0.5 * c2_dt2 * lap0[i])
         .collect();
     enforce_dirichlet_2d(&mut curr, spec.grid, bc);
 
-    let mut out = vec![
-        Field {
-            grid: spec.grid,
-            values: prev.clone(),
-        },
-        Field {
-            grid: spec.grid,
-            values: curr.clone(),
-        },
-    ];
+    out.push(Field {
+        grid: spec.grid,
+        values: curr.clone(),
+    });
     for _ in 1..spec.steps {
         let lap = lap_bc(&curr);
         let mut next: Vec<f64> = (0..curr.len())

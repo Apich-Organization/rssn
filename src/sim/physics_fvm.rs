@@ -34,8 +34,8 @@
 //!
 //! | Equation | 1D | 2D | 3D | Scheme | Boundary conditions |
 //! |---|---|---|---|---|---|
-//! | linear advection | yes | yes | yes | first-order upwind | callback-selected fixed value |
-//! | Burgers | yes | no | no | Lax–Friedrichs | fixed |
+//! | linear advection | yes | yes | yes | first-order upwind | callback-selected fixed value; unmarked 3D faces use zero inflow and free outflow |
+//! | Burgers | yes | yes | yes | Lax–Friedrichs | zero-gradient or periodic on each axis |
 //! | shallow water | yes | yes | yes (barotropic, `γ = 2`) | Lax–Friedrichs | fixed |
 //!
 //! High-order finite volumes (MUSCL with four limiters, WENO5; HLLC, Roe and
@@ -609,7 +609,18 @@ impl Mesh3D {
     }
 }
 
-/// Solves the 3D linear advection equation using FVM.
+/// Advances the 3D linear advection equation with first-order upwind fluxes.
+///
+/// The callback marks cells to set to zero on each time step. All other cells
+/// use a zero exterior state at an inflow face and their own state at an
+/// outflow face. The returned values use the mesh's x-fastest storage order.
+///
+/// For stability, choose `dt` so that the sum of the three directional
+/// Courant numbers `dt * |velocity| / spacing` is at most one.
+///
+/// # Panics
+/// Panics if a mesh advanced for at least one step has inconsistent extents
+/// and cell storage.
 pub fn solve_advection_3d<F>(
     mesh: &mut Mesh3D,
     velocity: (f64, f64, f64),
@@ -620,72 +631,97 @@ pub fn solve_advection_3d<F>(
 where
     F: Fn(usize, usize, usize, usize, usize, usize) -> bool + Sync,
 {
+    const CHUNK: usize = 2048;
     let (width, height, depth) = (mesh.width, mesh.height, mesh.depth);
-
-    let (dx, dy, dz) = (mesh.dx, mesh.dy, mesh.dz);
-
-    let mut current_values: Vec<f64> = mesh.cells.iter().map(|c| c.value).collect();
-
-    let mut next_values = vec![0.0; width * height * depth];
-
-    let plane_size = width * height;
-
-    for _ in 0..steps {
-        next_values
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(idx, next_val)| {
-                let i = idx % width;
-
-                let j = (idx / width) % height;
-
-                let k = idx / plane_size;
-
-                if boundary_conditions(i, j, k, width, height, depth) {
-                    *next_val = 0.0;
-
-                    return;
-                }
-
-                let u_ijk = current_values[idx];
-
-                let u_left = current_values[idx - 1];
-
-                let u_right = current_values[idx + 1];
-
-                let u_down = current_values[idx - width];
-
-                let u_up = current_values[idx + width];
-
-                let u_back = current_values[idx - plane_size];
-
-                let u_front = current_values[idx + plane_size];
-
-                let flux_west = upwind_flux(u_left, u_ijk, velocity.0);
-
-                let flux_east = upwind_flux(u_ijk, u_right, velocity.0);
-
-                let flux_south = upwind_flux(u_down, u_ijk, velocity.1);
-
-                let flux_north = upwind_flux(u_ijk, u_up, velocity.1);
-
-                let flux_back = upwind_flux(u_back, u_ijk, velocity.2);
-
-                let flux_front = upwind_flux(u_ijk, u_front, velocity.2);
-
-                *next_val = (dt / dz).mul_add(
-                    -(flux_front - flux_back),
-                    (dt / dy).mul_add(
-                        -(flux_north - flux_south),
-                        (dt / dx).mul_add(-(flux_east - flux_west), u_ijk),
-                    ),
-                );
-            });
-
-        current_values.copy_from_slice(&next_values);
+    let mut current: Vec<f64> = mesh.cells.iter().map(|cell| cell.value).collect();
+    if steps == 0 {
+        return current;
     }
+    if [width, height, depth].contains(&0) {
+        assert!(
+            current.is_empty(),
+            "3D advection mesh has inconsistent extents"
+        );
+        return current;
+    }
+    assert_eq!(
+        width
+            .checked_mul(height)
+            .and_then(|plane| plane.checked_mul(depth)),
+        Some(current.len()),
+        "3D advection mesh has inconsistent extents"
+    );
+    let plane_size = width * height;
+    let (step_x, step_y, step_z) = (dt / mesh.dx, dt / mesh.dy, dt / mesh.dz);
+    let mut next = crate::kernels::reuse::f64_scratch(current.len());
+    next.resize(current.len(), 0.0);
+    for _ in 0..steps {
+        crate::kernels::par::for_chunks_mut(&mut next, CHUNK, 4, |chunk, values| {
+            let start = chunk * CHUNK;
+            let (mut i, mut j, mut k) =
+                (start % width, (start / width) % height, start / plane_size);
+            for (offset, next_value) in values.iter_mut().enumerate() {
+                if boundary_conditions(i, j, k, width, height, depth) {
+                    *next_value = 0.0;
+                } else {
+                    let idx = start + offset;
+                    let u = current[idx];
+                    let flux_x =
+                        advection_flux_difference(&current, idx, u, (i, width), 1, velocity.0);
+                    let flux_y =
+                        advection_flux_difference(&current, idx, u, (j, height), width, velocity.1);
+                    let flux_z = advection_flux_difference(
+                        &current,
+                        idx,
+                        u,
+                        (k, depth),
+                        plane_size,
+                        velocity.2,
+                    );
+                    *next_value = step_z
+                        .mul_add(-flux_z, step_y.mul_add(-flux_y, step_x.mul_add(-flux_x, u)));
+                }
+                i += 1;
+                if i == width {
+                    i = 0;
+                    j += 1;
+                    if j == height {
+                        j = 0;
+                        k += 1;
+                    }
+                }
+            }
+        });
+        std::mem::swap(&mut current, &mut *next);
+    }
+    current
+}
 
-    current_values
+#[inline]
+fn advection_flux_difference(
+    current: &[f64],
+    idx: usize,
+    center: f64,
+    (coordinate, extent): (usize, usize),
+    stride: usize,
+    speed: f64,
+) -> f64 {
+    let center_flux = speed * center;
+    if speed > 0.0 {
+        let upwind = if coordinate == 0 {
+            0.0
+        } else {
+            current[idx - stride]
+        };
+        center_flux - speed * upwind
+    } else {
+        let upwind = if coordinate + 1 == extent {
+            0.0
+        } else {
+            current[idx + stride]
+        };
+        speed * upwind - center_flux
+    }
 }
 
 /// Example scenario: Simulates the advection of a 3D Gaussian blob.
@@ -777,16 +813,36 @@ pub use crate::sim::euler_nd::solve as solve_conservation_law_nd;
 // zero-gradient (outflow) boundaries. High-order MUSCL/WENO solvers for Euler
 // and shallow water in 1D-3D are in [`crate::sim::euler_nd`] (re-exported at the end of this module).
 
+/// Boundary applied at both ends of one Burgers grid axis.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BurgersBoundary {
+    /// Copies the nearest boundary cell into the ghost cells.
+    Outflow,
+    /// Wraps the first and last cells onto the same interface.
+    Periodic,
+}
+
+#[derive(Clone, Copy)]
+struct BurgersAxis {
+    extent: usize,
+    stride: usize,
+    boundary: BurgersBoundary,
+    transport: f64,
+    viscosity: f64,
+}
+
+type BurgersStencil = [BurgersAxis; 3];
+
 /// Burgers' equation `u_t + Σ_a (u²/2)_{x_a} = 0` on a 1D, 2D or 3D grid.
 ///
-/// Cells (`dims` cells per axis, `h` cell sizes, flat, `x` fastest) with the
-/// Lax-Friedrichs flux (numerical viscosity shared between the axes, as the
-/// unsplit multi-dimensional scheme requires) and zero-gradient boundaries. With
-/// `dims.len() == 1` it reproduces [`solve_burgers_1d`]; the scheme is stable for
-/// `max|u| dt Σ_a 1/h_a <= 1`.
+/// The cells are stored flat, with x fastest. Uses the multi-dimensional
+/// Lax–Friedrichs flux with equal numerical-viscosity shares per axis and
+/// zero-gradient outflow boundaries. The one-dimensional stencil agrees with
+/// [`solve_burgers_1d`] up to arithmetic roundoff. See
+/// [`solve_burgers_nd_with_boundaries`] for the stability condition.
 ///
 /// # Errors
-/// For 0 or more than 3 axes, a length mismatch or non-positive `dt`/`h`.
+/// As [`solve_burgers_nd_with_boundaries`].
 pub fn solve_burgers_nd(
     u0: &[f64],
     dims: &[usize],
@@ -794,71 +850,217 @@ pub fn solve_burgers_nd(
     dt: f64,
     steps: usize,
 ) -> Result<Vec<f64>, String> {
-    if dims.is_empty() || dims.len() > 3 || dims.len() != h.len() || dims.contains(&0) {
-        return Err("1 to 3 axes with one spacing and a positive size each".to_owned());
-    }
+    let outflow = [BurgersBoundary::Outflow; 3];
+    solve_burgers_nd_with_boundaries(
+        u0,
+        dims,
+        h,
+        dt,
+        steps,
+        outflow.get(..dims.len()).unwrap_or(&[]),
+    )
+}
 
-    if u0.len() != dims.iter().product::<usize>()
-        || dt.is_nan()
-        || dt <= 0.0
-        || h.iter().any(|&v| v.is_nan() || v <= 0.0)
+/// Advances Burgers' equation with a boundary choice for each active axis.
+///
+/// Uses the same Lax–Friedrichs flux on both sides of an interface. A
+/// fully periodic grid conserves the sum of cell averages up to roundoff.
+/// Zero-gradient faces allow the boundary physical flux to leave or enter
+/// the grid. For the equal viscosity shares used here, a sufficient
+/// monotonicity condition is `D * dt * max|u| <= h[a]` on each active axis,
+/// where `D` is the number of axes. At fixed grid spacing, the one-step
+/// limit as `dt` tends to zero retains Lax–Friedrichs averaging.
+///
+/// # Errors
+/// An invalid grid, boundary count, initial field, or step size, or a flux
+/// or state that cannot be represented.
+pub fn solve_burgers_nd_with_boundaries(
+    u0: &[f64],
+    dims: &[usize],
+    h: &[f64],
+    dt: f64,
+    steps: usize,
+    boundaries: &[BurgersBoundary],
+) -> Result<Vec<f64>, String> {
+    if !(1..=3).contains(&dims.len())
+        || dims.len() != h.len()
+        || dims.len() != boundaries.len()
+        || dims.contains(&0)
     {
-        return Err("array length / step sizes inconsistent".to_owned());
+        return Err(
+            "Burgers needs one positive extent, spacing and boundary per active axis".into(),
+        );
+    }
+    let points = dims
+        .iter()
+        .try_fold(1usize, |count, extent| count.checked_mul(*extent));
+    if points != Some(u0.len())
+        || !dt.is_finite()
+        || dt <= 0.0
+        || h.iter().any(|&v| !v.is_finite() || v <= 0.0)
+    {
+        return Err("Burgers field length or time/space steps are invalid".into());
+    }
+    let mut peak = 0.0_f64;
+    let first = u0[0].to_bits();
+    let mut uniform = true;
+    for &value in u0 {
+        if !value.is_finite() {
+            return Err("Burgers initial field must be finite".into());
+        }
+        peak = peak.max(value.abs());
+        uniform &= value.to_bits() == first;
+    }
+    if steps == 0 || uniform || peak == 0.0 {
+        return Ok(u0.to_vec());
     }
 
-    let dim = dims.len();
-
-    let mut n = [1usize; 3];
-
-    n[..dim].copy_from_slice(dims);
-
-    let stride = [1, n[0], n[0] * n[1]];
-
-    let flux = |u: f64| 0.5 * u * u;
-
-    let mut cur = u0.to_vec();
-
-    let mut next = vec![0.0; cur.len()];
-
-    for _ in 0..steps {
-        next.par_iter_mut().enumerate().for_each(|(p, out)| {
-            let u = cur[p];
-
-            let q = [p % n[0], (p / stride[1]) % n[1], p / stride[2]];
-
-            let mut value = u;
-
-            for a in 0..dim {
-                let left = if q[a] > 0 {
-                    cur[p - stride[a]]
-                } else {
-                    u
-                };
-
-                let right = if q[a] + 1 < n[a] {
-                    cur[p + stride[a]]
-                } else {
-                    u
-                };
-
-                // the numerical viscosity is shared between the axes (dim * dt), the
-                // unsplit multi-dimensional Lax-Friedrichs condition
-                let dt_lf = dt * dim as f64;
-
-                let f_left = lax_friedrichs_flux(left, u, dt_lf, h[a], flux);
-
-                let f_right = lax_friedrichs_flux(u, right, dt_lf, h[a], flux);
-
-                value -= dt / h[a] * (f_right - f_left);
-            }
-
-            *out = value;
+    let mut shape = [1; 3];
+    shape[..dims.len()].copy_from_slice(dims);
+    let strides = [1, shape[0], shape[0] * shape[1]];
+    let dimension = dims.len() as f64;
+    let lf_step = dt * dimension;
+    let mut stencil: BurgersStencil = std::array::from_fn(|axis| {
+        BurgersAxis {
+            extent: shape[axis],
+            stride: strides[axis],
+            boundary: boundaries
+                .get(axis)
+                .copied()
+                .unwrap_or(BurgersBoundary::Outflow),
+            transport: h.get(axis).map_or(1.0, |dx| dt / dx),
+            viscosity: h.get(axis).map_or(0.0, |dx| 0.5 * (dx / lf_step)),
+        }
+    });
+    // Preserve the original factor ordering on ordinary data. At extreme
+    // scales use a dimensionless flux, so dt cancels before forming the
+    // viscosity and the physical flux never squares a large raw state.
+    let safe = f64::from_bits((1023 - 300) << 52)..=f64::from_bits((1023 + 300) << 52);
+    let extended = !safe.contains(&peak)
+        || stencil[..dims.len()].iter().any(|axis| {
+            axis.extent > 1
+                && (!axis.transport.is_finite()
+                    || axis.transport == 0.0
+                    || axis.viscosity == 0.0
+                    || axis.viscosity * peak > f64::MAX * 0.125)
         });
-
-        std::mem::swap(&mut cur, &mut next);
+    if !extended {
+        return evolve_burgers::<false>(u0.to_vec(), &stencil, dims.len(), steps);
     }
+    let exponent = peak.to_bits() & 0x7ff0_0000_0000_0000;
+    let scale = if exponent == 0 {
+        f64::MIN_POSITIVE
+    } else {
+        f64::from_bits(exponent)
+    };
+    for (axis, dx) in stencil.iter_mut().zip(h) {
+        if axis.extent > 1 {
+            axis.transport = 0.5
+                * crate::kernels::numeric_common::scale_product(scale, &[dt], &[*dx])
+                    .map_err(|error| error.to_string())?;
+            axis.viscosity = 0.5 / dimension;
+        }
+    }
+    let initial = u0.iter().map(|value| value / scale).collect();
+    let mut result = evolve_burgers::<true>(initial, &stencil, dims.len(), steps)?;
+    for value in &mut result {
+        *value *= scale;
+        if !value.is_finite() {
+            return Err("Burgers state is not representable".into());
+        }
+    }
+    Ok(result)
+}
 
-    Ok(cur)
+fn evolve_burgers<const SCALED: bool>(
+    mut current: Vec<f64>,
+    axes: &BurgersStencil,
+    dim: usize,
+    steps: usize,
+) -> Result<Vec<f64>, String> {
+    use std::sync::atomic::AtomicBool;
+    use std::sync::atomic::Ordering;
+
+    const CHUNK: usize = 2048;
+    let [x, y, z] = *axes;
+    let mut next = crate::kernels::reuse::f64_scratch(current.len());
+    next.resize(current.len(), 0.0);
+    let physical = |value| 0.5 * value * value;
+    for _ in 0..steps {
+        let invalid = AtomicBool::new(false);
+        crate::kernels::par::for_chunks_mut(&mut next, CHUNK, 4, |chunk, out| {
+            let start = chunk * CHUNK;
+            // Compute coordinates once per chunk and advance in x-fastest order.
+            let mut cell = [
+                start % x.extent,
+                (start / y.stride) % y.extent,
+                start / z.stride,
+            ];
+            for (offset, output) in out.iter_mut().enumerate() {
+                let p = start + offset;
+                let u = current[p];
+                let physical_u = physical(u);
+                let mut value = u;
+                for a in 0..dim {
+                    let axis = axes[a];
+                    if axis.extent == 1 {
+                        continue;
+                    }
+                    let periodic = axis.boundary == BurgersBoundary::Periodic;
+                    let left = if cell[a] > 0 {
+                        p - axis.stride
+                    } else if periodic {
+                        p + (axis.extent - 1) * axis.stride
+                    } else {
+                        p
+                    };
+                    let right = if cell[a] + 1 < axis.extent {
+                        p + axis.stride
+                    } else if periodic {
+                        p - (axis.extent - 1) * axis.stride
+                    } else {
+                        p
+                    };
+                    let (left, right) = (current[left], current[right]);
+                    let face_scale = if SCALED {
+                        axis.transport
+                    } else {
+                        0.5
+                    };
+                    let update_scale = if SCALED {
+                        1.0
+                    } else {
+                        axis.transport
+                    };
+                    let f_left = face_scale
+                        .mul_add(physical(left) + physical_u, -(axis.viscosity * (u - left)));
+                    let f_right = face_scale.mul_add(
+                        physical_u + physical(right),
+                        -(axis.viscosity * (right - u)),
+                    );
+                    value -= update_scale * (f_right - f_left);
+                }
+                if !value.is_finite() {
+                    invalid.store(true, Ordering::Relaxed);
+                }
+                *output = value;
+                cell[0] += 1;
+                if cell[0] == x.extent {
+                    cell[0] = 0;
+                    cell[1] += 1;
+                    if cell[1] == y.extent {
+                        cell[1] = 0;
+                        cell[2] += 1;
+                    }
+                }
+            }
+        });
+        if invalid.into_inner() {
+            return Err("Burgers flux or state is not representable".into());
+        }
+        std::mem::swap(&mut current, &mut *next);
+    }
+    Ok(current)
 }
 
 /// 2D Burgers' equation; 2D counterpart of [`solve_burgers_1d`]. See

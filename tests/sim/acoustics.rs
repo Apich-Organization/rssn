@@ -12,6 +12,8 @@ use rssn::sim::boundary::BoundaryCondition as Bc;
 use rssn::sim::boundary::Face;
 use rssn::sim::boundary::FaceBcs;
 use std::f64::consts::PI;
+use std::sync::Arc;
+use std::sync::Mutex;
 
 fn solver(
     n: &[usize],
@@ -85,6 +87,292 @@ fn configuration_and_time_step() {
     assert_eq!(a.idx(0, 1, 0), 5);
     assert_eq!(a.idx(0, 0, 1), 30);
     assert_eq!(a.p.len(), 210);
+}
+
+#[test]
+fn staggered_periodic_planes_match_the_three_dimensional_gradient() {
+    let n = [5, 6, 7];
+    let h = [0.125, 0.25, 0.5];
+    let mut cfg = AcousticsConfig::new(&n, &h, 1.5).unwrap();
+    cfg.rho = 1.25;
+    cfg.bcs = FaceBcs::uniform(&Bc::Periodic);
+    let mut sound = Acoustics::new(cfg).unwrap();
+    for k in 0..n[2] {
+        for j in 0..n[1] {
+            for i in 0..n[0] {
+                let q = sound.idx(i, j, k);
+                sound.p[q] = (i + 3 * j + 7 * k + i * j) as f64;
+            }
+        }
+    }
+    sound.start_from_rest();
+    for axis in 0..3 {
+        let mut faces = n;
+        faces[axis] += 1;
+        let mut flat = 0;
+        for k in 0..faces[2] {
+            for j in 0..faces[1] {
+                for i in 0..faces[0] {
+                    let mut right = [i, j, k];
+                    right[axis] %= n[axis];
+                    let mut left = right;
+                    left[axis] = (right[axis] + n[axis] - 1) % n[axis];
+                    let right = sound.p[sound.idx(right[0], right[1], right[2])];
+                    let left = sound.p[sound.idx(left[0], left[1], left[2])];
+                    let expected = (0.5 * sound.dt) * ((right - left) / h[axis]) / 1.25;
+                    assert_eq!(sound.v[axis][flat].to_bits(), expected.to_bits());
+                    flat += 1;
+                }
+            }
+        }
+        assert_eq!(flat, sound.v[axis].len());
+    }
+}
+
+#[test]
+fn mixed_faces_and_sources_keep_sampling_order_and_coordinates() {
+    let n = [4, 5, 6];
+    let h = [0.125, 0.25, 0.5];
+    let events = Arc::new(Mutex::new(Vec::new()));
+    let mut cfg = AcousticsConfig::new(&n, &h, 1.5).unwrap();
+    let datum = |tag| {
+        let events = Arc::clone(&events);
+        Bc::Dirichlet(BcValue::spacetime(move |time, point| {
+            events.lock().unwrap().push((tag, time, point));
+            0.5
+        }))
+    };
+    cfg.pml_cells = 1;
+    cfg.bcs = cfg
+        .bcs
+        .with(Face::XMin, datum(0))
+        .with(Face::XMax, datum(1))
+        .with(Face::YMin, Bc::Periodic)
+        .with(Face::YMax, Bc::Periodic)
+        .with(Face::ZMin, Bc::Absorbing)
+        .with(Face::ZMax, datum(2));
+    let mut sound = Acoustics::new(cfg).unwrap();
+    let trace = Arc::clone(&events);
+    sound.add_source(0, move |time| {
+        trace.lock().unwrap().push((3, time, [0.0; 3]));
+        1.0
+    });
+    sound.t = 0.5;
+    sound.step();
+
+    let mut expected = Vec::new();
+    for k in 0..n[2] {
+        for j in 0..n[1] {
+            for (tag, face) in [(0, 0), (1, n[0])] {
+                expected.push((
+                    tag,
+                    0.5,
+                    [
+                        face as f64 * h[0],
+                        (j as f64 + 0.5) * h[1],
+                        (k as f64 + 0.5) * h[2],
+                    ],
+                ));
+            }
+        }
+    }
+    for j in 0..n[1] {
+        for i in 0..n[0] {
+            expected.push((
+                2,
+                0.5,
+                [
+                    (i as f64 + 0.5) * h[0],
+                    (j as f64 + 0.5) * h[1],
+                    n[2] as f64 * h[2],
+                ],
+            ));
+        }
+    }
+    expected.push((3, 0.5 + 0.5 * sound.dt, [0.0; 3]));
+    assert_eq!(*events.lock().unwrap(), expected);
+}
+
+#[test]
+fn pml_velocity_face_preserves_its_memory_across_steps() {
+    let mut cfg = AcousticsConfig::new(&[8], &[0.5], 2.0).unwrap();
+    cfg.rho = 1.25;
+    cfg.pml_cells = 2;
+    cfg.pml_order = 2.0;
+    cfg.bcs = cfg.bcs.with(Face::XMin, Bc::Absorbing);
+    let mut sound = Acoustics::new(cfg).unwrap();
+    for (i, value) in sound.p.iter_mut().enumerate() {
+        *value = i as f64;
+    }
+    let b = (-((0.8 * 3.0 * 2.0 / 0.5) * 0.25) * sound.dt).exp();
+    let mut memory = 0.0;
+    for _ in 0..3 {
+        let gradient = (sound.p[1] - sound.p[0]) / 0.5;
+        memory = b * memory + (b - 1.0) * gradient;
+        let expected = sound.v[0][1] - sound.dt * (gradient + memory) / 1.25;
+        sound.step();
+        assert_eq!(sound.v[0][1].to_bits(), expected.to_bits());
+        assert_eq!(sound.v[0][0].to_bits(), 0);
+    }
+}
+
+#[test]
+fn pressure_rows_use_each_axis_stride_and_the_original_sum_order() {
+    let n = [5, 7, 6];
+    let h = [0.125, 0.25, 0.5];
+    for dim in 1..=3 {
+        let cfg = AcousticsConfig::new(&n[..dim], &h[..dim], 1.0).unwrap();
+        let mut sound = Acoustics::new(cfg).unwrap();
+        sound.p.fill(0.25);
+        let shape = sound.n();
+        for axis in 0..dim {
+            let mut faces = shape;
+            faces[axis] += 1;
+            for k in 0..faces[2] {
+                for j in 0..faces[1] {
+                    for i in 0..faces[0] {
+                        let q = i + faces[0] * (j + faces[1] * k);
+                        sound.v[axis][q] = match axis {
+                            | 0 => (i * (1 + j + 2 * k)) as f64,
+                            | 1 => (j * (2 + 3 * i + k)) as f64,
+                            | _ => k as f64 * (-3.0 + i as f64 - j as f64),
+                        };
+                    }
+                }
+            }
+        }
+        sound.step();
+        for k in 0..shape[2] {
+            for j in 0..shape[1] {
+                for i in 0..shape[0] {
+                    let gradients = [
+                        (1 + j + 2 * k) as f64 / h[0],
+                        (2 + 3 * i + k) as f64 / h[1],
+                        (-3.0 + i as f64 - j as f64) / h[2],
+                    ];
+                    let div = gradients[..dim].iter().fold(0.0, |sum, value| sum + value);
+                    let expected = 0.25 - sound.dt * div;
+                    assert_eq!(sound.p[sound.idx(i, j, k)].to_bits(), expected.to_bits());
+                }
+            }
+        }
+    }
+
+    let mut sound = solver(&[4, 4, 4], 1.0, None);
+    sound.v[0][1] = 2.5e15;
+    sound.v[1][4] = -2.5e15;
+    sound.v[2][16] = 0.25;
+    sound.step();
+    assert_eq!(sound.p[0].to_bits(), (-sound.dt).to_bits());
+
+    let mut sound = solver(&[4], 1.0, None);
+    sound.p.fill(-0.0);
+    sound.v[0][1] = -0.0;
+    sound.step();
+    assert_eq!(sound.p[0].to_bits(), (-0.0_f64).to_bits());
+}
+
+#[test]
+fn pressure_cpml_reuses_the_memory_of_the_correct_y_and_z_planes() {
+    let n = [5, 8, 6];
+    let h = [0.25, 0.5, 0.75];
+    let mut cfg = AcousticsConfig::new(&n, &h, 1.0).unwrap();
+    cfg.pml_cells = 2;
+    cfg.pml_order = 1.0;
+    cfg.bcs = cfg
+        .bcs
+        .with(Face::YMin, Bc::Absorbing)
+        .with(Face::ZMax, Bc::Absorbing);
+    let mut sound = Acoustics::new(cfg).unwrap();
+    let cell = [3, 0, n[2] - 1];
+    let below_face = |axis: usize| {
+        let mut dims = n;
+        dims[axis] += 1;
+        let start = cell[0] + dims[0] * (cell[1] + dims[1] * cell[2]);
+        let stride = dims[..axis].iter().product::<usize>();
+        (start, start + stride)
+    };
+    sound.v[1][below_face(1).1] = 0.75;
+    sound.v[2][below_face(2).0] = -0.125;
+    let flat = sound.idx(cell[0], cell[1], cell[2]);
+    let damping = [
+        1.0,
+        (-((1.6 / h[1]) * 0.75) * sound.dt).exp(),
+        (-((1.6 / h[2]) * 0.75) * sound.dt).exp(),
+    ];
+    let mut memory = [0.0; 3];
+    for _ in 0..5 {
+        let pressure = sound.p[flat];
+        sound.step();
+        let mut div = 0.0;
+        for axis in 0..3 {
+            let (lo, hi) = below_face(axis);
+            let g = (sound.v[axis][hi] - sound.v[axis][lo]) / h[axis];
+            let b = damping[axis];
+            memory[axis] = b * memory[axis] + (b - 1.0) * g;
+            div += g + memory[axis];
+        }
+        assert_eq!(
+            sound.p[flat].to_bits(),
+            (pressure - sound.dt * div).to_bits()
+        );
+    }
+}
+
+#[test]
+fn large_pressure_updates_match_with_one_and_two_workers() {
+    let one = rayon::ThreadPoolBuilder::new()
+        .num_threads(1)
+        .build()
+        .unwrap();
+    let two = rayon::ThreadPoolBuilder::new()
+        .num_threads(2)
+        .build()
+        .unwrap();
+    for (shape, absorbing) in [
+        (&[131_073][..], false),
+        (&[513, 257][..], false),
+        (&[513, 257][..], true),
+    ] {
+        let run = || {
+            let mut cfg = AcousticsConfig::new(shape, &[0.25, 0.5][..shape.len()], 1.0).unwrap();
+            if absorbing {
+                cfg.pml_cells = 2;
+                cfg.bcs = cfg.bcs.with(Face::YMin, Bc::Absorbing);
+            }
+            let mut sound = Acoustics::new(cfg).unwrap();
+            sound.set_pressure(|[x, y, _]| (0.125 * x).sin() + 0.25 * (0.5 * y).cos());
+            let clock = std::thread::current().id();
+            let calls = Arc::new(Mutex::new(Vec::new()));
+            for (tag, amplitude) in [(0, 0.5), (1, -0.125)] {
+                let trace = Arc::clone(&calls);
+                sound.add_source(1, move |time| {
+                    assert_eq!(std::thread::current().id(), clock);
+                    trace.lock().unwrap().push((tag, time.to_bits()));
+                    amplitude
+                });
+            }
+            sound.run(4);
+            let mut expected = Vec::new();
+            let mut t = 0.0;
+            for _ in 0..4 {
+                let half = (t + 0.5 * sound.dt).to_bits();
+                expected.extend([(0, half), (1, half)]);
+                t += sound.dt;
+            }
+            assert_eq!(*calls.lock().unwrap(), expected);
+            sound
+        };
+        let serial = one.install(run);
+        let parallel = two.install(run);
+        assert_eq!(serial.t.to_bits(), parallel.t.to_bits());
+        for (a, b) in
+            std::iter::once((&serial.p, &parallel.p)).chain(serial.v.iter().zip(&parallel.v))
+        {
+            assert_eq!(a.len(), b.len());
+            assert!(a.iter().zip(b).all(|(a, b)| a.to_bits() == b.to_bits()));
+        }
+    }
 }
 
 #[test]

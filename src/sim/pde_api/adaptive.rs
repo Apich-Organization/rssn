@@ -1,7 +1,8 @@
 //! Advanced spatial discretizations share the verified temporal controller.
 use super::FdmError;
 use super::FvmScheme;
-use super::solve_fvm_conservation_1d;
+use super::ScalarFvmStep;
+use super::scalar_fvm_cell_width;
 use super::solve_spectral_etdrk4;
 use crate::sim::fdm_nd::adaptive::PdeAdaptiveOptions;
 use crate::sim::fdm_nd::adaptive::PdeAdaptiveSolution;
@@ -73,10 +74,9 @@ where
     F: Fn(f64) -> f64,
     G: Fn(f64) -> f64,
 {
-    if initial.len() < 3 || !domain_size.is_finite() || domain_size <= 0.0 {
-        return Err(FdmError::Domain("invalid adaptive FVM domain".into()));
-    }
-    let dx = domain_size / initial.len() as f64;
+    let dx = scalar_fvm_cell_width(initial.len(), domain_size)
+        .map_err(|_| FdmError::Domain("invalid adaptive FVM domain".into()))?;
+    let mut step = None;
     let order = if matches!(scheme, FvmScheme::MusclMinmod | FvmScheme::MusclVanLeer) {
         2
     } else {
@@ -88,17 +88,9 @@ where
         &vec![options.atol; initial.len()],
         options,
         |_, state, h| {
-            let (_, next) = solve_fvm_conservation_1d(
-                state.len(),
-                domain_size,
-                h,
-                1,
-                periodic,
-                scheme,
-                |x| state[((x / dx).floor() as usize).min(state.len() - 1)],
-                &flux,
-                &wave_speed,
-            )?;
+            let mut next = vec![0.0; state.len()];
+            step.get_or_insert_with(|| ScalarFvmStep::new(state.len(), dx, periodic, scheme))
+                .advance(state, h, &flux, &wave_speed, &mut next)?;
             Ok(next)
         },
         |_, state| {

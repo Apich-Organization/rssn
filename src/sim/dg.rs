@@ -1,3 +1,5 @@
+//! Nodal discontinuous Galerkin (1D/2D) for conservation laws.
+//!
 //! # Nodal discontinuous Galerkin for conservation laws (1D and 2D)
 //!
 //! Collocation (DGSEM) discontinuous Galerkin on Cartesian element meshes:
@@ -47,6 +49,8 @@
 //! single element), and limits against a missing neighbour only through them.
 
 use std::sync::Arc;
+
+use crate::kernels::reuse::f64_scratch;
 
 /// A system of conservation laws `q_t + ∇·F(q) = 0`.
 pub trait DgLaw: Send + Sync {
@@ -2122,6 +2126,211 @@ pub fn solve_dg_with(
     Ok(sol)
 }
 
+/// Prepared periodic scalar advection operator on a one-dimensional DG mesh.
+///
+/// The mesh and velocity determine the local differentiation and surface weights.
+/// The time step may vary at each call within the same DG CFL bound.
+#[derive(Debug, Clone)]
+pub struct DgAdvection1dPlan {
+    elements: usize,
+    nodes: usize,
+    state_len: usize,
+    scratch_len: usize,
+    velocity: f64,
+    rate: f64,
+    scale: f64,
+    derivative: Vec<f64>,
+    edge_weights: [f64; 2],
+}
+
+impl DgAdvection1dPlan {
+    /// Prepares the Legendre–Gauss–Lobatto operator for a fixed mesh and velocity.
+    ///
+    /// # Errors
+    /// Returns an error for invalid one-dimensional geometry, degree, velocity or work size.
+    pub fn new(
+        mesh: &DgMesh,
+        velocity: f64,
+    ) -> Result<Self, String> {
+        let elements = mesh.ne[0];
+        if mesh.dim != 1
+            || elements == 0
+            || mesh.p == 0
+            || !velocity.is_finite()
+            || !mesh.lo[0].is_finite()
+            || !mesh.hi[0].is_finite()
+            || mesh.hi[0] <= mesh.lo[0]
+        {
+            return Err("invalid DG advection restart data".into());
+        }
+        let nodes = mesh.p.checked_add(1).ok_or("DG degree is too large")?;
+        let state_len = elements.checked_mul(nodes).ok_or("DG state is too large")?;
+        let max_buffer_len = isize::MAX as usize / size_of::<f64>();
+        let scratch_len = state_len
+            .checked_mul(3)
+            .and_then(|len| len.checked_add(nodes))
+            .filter(|&len| len <= max_buffer_len)
+            .ok_or("DG advection work buffer is too large")?;
+        let entries = nodes
+            .checked_mul(nodes)
+            .filter(|&len| len <= max_buffer_len)
+            .ok_or("DG differentiation matrix is too large")?;
+        let (xi, weights) = lgl(mesh.p);
+        let spacing = mesh.h(0);
+        let scale = 2.0 / spacing;
+        let mut derivative = Vec::with_capacity(entries);
+        derivative.extend(
+            lgl_diff_matrix(&xi)
+                .into_iter()
+                .flatten()
+                .map(|weight| scale * weight),
+        );
+        Ok(Self {
+            elements,
+            nodes,
+            state_len,
+            scratch_len,
+            velocity,
+            rate: velocity.abs() / spacing,
+            scale,
+            derivative,
+            edge_weights: [weights[0], weights[mesh.p]],
+        })
+    }
+
+    /// Advances a nodal state by one SSPRK3 step and returns the new state.
+    ///
+    /// # Errors
+    /// Returns the same validation and numerical errors as [`Self::step_into`].
+    pub fn step(
+        &self,
+        state: &[f64],
+        dt: f64,
+    ) -> Result<Vec<f64>, String> {
+        self.validate_step(state, dt)?;
+        let mut output = vec![0.0; self.state_len];
+        self.step_validated(state, dt, &mut output)?;
+        Ok(output)
+    }
+
+    /// Advances one SSPRK3 step into a caller-owned nodal output slice.
+    ///
+    /// Both slices use the element-major layout of [`advection_step`]. The plan can
+    /// be shared across calls and temporarily leases an exclusive stage workspace.
+    ///
+    /// # Errors
+    /// Returns an error for invalid lengths, a non-finite state or result, or a time step
+    /// outside the positive DG CFL range. The output is unchanged on error.
+    pub fn step_into(
+        &self,
+        state: &[f64],
+        dt: f64,
+        output: &mut [f64],
+    ) -> Result<(), String> {
+        if output.len() != self.state_len {
+            return Err("DG advection output has the wrong number of nodes".into());
+        }
+        self.validate_step(state, dt)?;
+        self.step_validated(state, dt, output)
+    }
+
+    fn validate_step(
+        &self,
+        state: &[f64],
+        dt: f64,
+    ) -> Result<(), String> {
+        if state.len() != self.state_len
+            || !dt.is_finite()
+            || dt <= 0.0
+            || state.iter().any(|v| !v.is_finite())
+        {
+            return Err("invalid DG advection restart data".into());
+        }
+        if self.rate * dt * (2.0 * (self.nodes - 1) as f64 + 1.0) > 1.0 {
+            return Err("DG advection CFL bound exceeded".into());
+        }
+        Ok(())
+    }
+
+    fn step_validated(
+        &self,
+        state: &[f64],
+        dt: f64,
+        output: &mut [f64],
+    ) -> Result<(), String> {
+        let mut scratch = f64_scratch(self.scratch_len);
+        scratch.resize(self.scratch_len, 0.0);
+        let (first, tail) = scratch.split_at_mut(self.state_len);
+        let (second, tail) = tail.split_at_mut(self.state_len);
+        let (rhs, flux) = tail.split_at_mut(self.state_len);
+
+        self.rhs(state, rhs, flux);
+        for i in 0..self.state_len {
+            first[i] = state[i] + dt * rhs[i];
+        }
+        self.rhs(first, rhs, flux);
+        for i in 0..self.state_len {
+            second[i] = 0.75 * state[i] + 0.25 * (first[i] + dt * rhs[i]);
+        }
+        self.rhs(second, rhs, flux);
+        for i in 0..self.state_len {
+            first[i] = state[i] / 3.0 + (2.0 / 3.0) * (second[i] + dt * rhs[i]);
+        }
+        if first.iter().any(|v| !v.is_finite()) {
+            return Err("non-finite DG state".into());
+        }
+        output.copy_from_slice(first);
+        Ok(())
+    }
+
+    fn rhs(
+        &self,
+        state: &[f64],
+        rhs: &mut [f64],
+        flux: &mut [f64],
+    ) {
+        let n = self.nodes;
+        let last = n - 1;
+        let speed = self.velocity.abs();
+        for (element, (u, r)) in state
+            .chunks_exact(n)
+            .zip(rhs.chunks_exact_mut(n))
+            .enumerate()
+        {
+            for (flux, value) in flux.iter_mut().zip(u) {
+                *flux = self.velocity * value;
+            }
+            for (row, result) in self.derivative.chunks_exact(n).zip(r.iter_mut()) {
+                let mut volume = 0.0;
+                for (derivative, flux) in row.iter().zip(flux.iter()) {
+                    volume -= derivative * flux;
+                }
+                *result = volume;
+            }
+            let previous = if element == 0 {
+                self.elements - 1
+            } else {
+                element - 1
+            };
+            let next = if element + 1 == self.elements {
+                0
+            } else {
+                element + 1
+            };
+            let faces = [
+                (state[previous * n + last], u[0], 0, 1.0),
+                (u[last], state[next * n], last, -1.0),
+            ];
+            for (face, (left, right, edge, sign)) in faces.into_iter().enumerate() {
+                // Keep the generic Rusanov evaluation order for scalar advection.
+                let interface = f64::midpoint(self.velocity * left, self.velocity * right)
+                    - 0.5 * speed * (right - left);
+                r[edge] += sign * self.scale * (interface - flux[edge]) / self.edge_weights[face];
+            }
+        }
+    }
+}
+
 /// Advance periodic scalar DG advection from its nodal state by one SSPRK3 step.
 ///
 /// The caller controls the physical step and must respect the DG CFL limit;
@@ -2178,6 +2387,12 @@ pub fn advection_step_nd(
         .sum::<f64>();
     if rate * dt * (2.0 * mesh.p as f64 + 1.0) > 1.0 {
         return Err("DG advection CFL bound exceeded".into());
+    }
+    if mesh.dim == 1 {
+        let plan = DgAdvection1dPlan::new(mesh, velocity[0])?;
+        let mut next = vec![0.0; state.len()];
+        plan.step_validated(state, dt, &mut next)?;
+        return Ok(next);
     }
     let (xi, w) = lgl(mesh.p);
     let d = lgl_diff_matrix(&xi);

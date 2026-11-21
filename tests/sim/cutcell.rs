@@ -8,6 +8,55 @@ use rssn::sim::cutcell::default_depth;
 use rssn::sim::cutcell::open_fraction;
 use rssn::sim::cutcell::open_length_fraction;
 use rssn::sim::cutcell::simplex_positive_fraction;
+
+#[test]
+fn finite_extreme_level_sets_preserve_their_fraction() {
+    let big = f64::MAX;
+    assert_eq!(simplex_positive_fraction(&[big, -big]), 0.5);
+    assert_eq!(simplex_positive_fraction(&[big, -big, -big]), 0.25);
+    assert_eq!(simplex_positive_fraction(&[big, big, -big]), 0.75);
+    assert_eq!(simplex_positive_fraction(&[big, big, -big, -big]), 0.5);
+    assert_eq!(simplex_positive_fraction(&[big, big, big, -big]), 0.875);
+
+    let thin = f64::from_bits(1);
+    assert_eq!(simplex_positive_fraction(&[thin, thin, -1.0]).to_bits(), 2);
+    assert_eq!(
+        simplex_positive_fraction(&[thin, thin, thin, -1.0]).to_bits(),
+        3
+    );
+}
+
+#[test]
+fn invalid_geometry_and_samples_are_not_classified_as_solid_or_open() {
+    assert!(simplex_positive_fraction(&[]).is_nan());
+    assert!(simplex_positive_fraction(&[1.0, f64::NAN]).is_nan());
+    assert!(simplex_positive_fraction(&[1.0; 5]).is_nan());
+    let constant = |_: [f64; 3]| 1.0;
+    assert!(open_length_fraction(&constant, [0.0; 3], 3, 1.0).is_nan());
+    assert!(open_length_fraction(&constant, [f64::MAX, 0.0, 0.0], 0, f64::MAX).is_nan());
+    assert!(open_fraction(&constant, [0.0; 3], [1.0; 3], &[1, 1], 2).is_nan());
+
+    let nonfinite = |p: [f64; 3]| {
+        if (p[0] - 0.375).abs() < 1e-15 {
+            f64::NAN
+        } else {
+            p[0] - 0.5
+        }
+    };
+    assert!(open_length_fraction(&nonfinite, [0.0; 3], 0, 1.0).is_nan());
+}
+
+#[test]
+fn segment_bisection_stops_once_two_representable_positions_are_adjacent() {
+    let calls = std::cell::Cell::new(0);
+    let cut = 0.312_345_678_901_234_5_f64;
+    let level_set = |p: [f64; 3]| {
+        calls.set(calls.get() + 1);
+        p[0] - cut
+    };
+    assert!((open_length_fraction(&level_set, [0.0; 3], 0, 1.0) - (1.0 - cut)).abs() < 2e-16);
+    assert!(calls.get() < 17 + 60);
+}
 use std::f64::consts::PI;
 
 const UNIT: [f64; 3] = [1.0, 1.0, 1.0];

@@ -1,3 +1,5 @@
+//! Boundary element method.
+//!
 //! # Boundary element method (Laplace equation)
 //!
 //! | Problem | Dimension | Elements | Data | Solver |
@@ -6,8 +8,9 @@
 //! | interior Laplace | 3D | constant triangles on a closed surface | potential or flux per element | dense LU |
 //!
 //! [`crate::sim::bem_aca`] adds an iterative GMRES solve with hierarchical
-//! ACA compression of the far field for the 3D problem. Exterior problems,
-//! higher-order elements and Helmholtz kernels are not available.
+//! ACA compression of the far field, exterior Laplace problems, and linear
+//! triangular elements. [`crate::sim::bem_helmholtz`] solves exterior
+//! Helmholtz scattering.
 
 use std::ops::Add;
 use std::ops::Mul;
@@ -17,6 +20,7 @@ use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::kernels::dense::Lu;
 use crate::kernels::dense::Mat;
 use crate::kernels::dense::lu_factor;
 use crate::kernels::matrix::Matrix;
@@ -924,174 +928,344 @@ pub struct Bem3dSolution {
 /// compatibility condition `sum_j q_j A_j = 0` to within `1e-6` of the flux
 /// scale.
 ///
+/// For repeated values with the same mesh and boundary kinds, use
+/// [`PreparedLaplaceBem3d`].
+///
 /// # Errors
 /// Fails for an invalid mesh (see [`SurfaceMesh3D::validate`]), a number of
 /// boundary conditions different from the number of triangles, non-finite
-/// data, an incompatible pure-Neumann problem, or a singular system.
+/// data, an incompatible pure-Neumann problem, or a singular system. Reports
+/// cancellation.
 pub fn solve_laplace_bem_3d_mesh(
     mesh: &SurfaceMesh3D,
     bcs: &[BoundaryCondition<f64>],
 ) -> Result<Bem3dSolution, String> {
     mesh.validate()?;
+    check_boundary_count(mesh.triangles.len(), bcs.len())?;
+    let (kinds, values): (Vec<_>, Vec<_>) = bcs
+        .iter()
+        .map(|&bc| {
+            match bc {
+                | BoundaryCondition::Potential(value) => (BoundaryKind::Potential, value),
+                | BoundaryCondition::Flux(value) => (BoundaryKind::Flux, value),
+            }
+        })
+        .unzip();
+    let areas = neumann_areas(mesh, &kinds);
+    validate_boundary_values(&values, &areas)?;
+    PreparedLaplaceBem3d::factor(mesh, kinds, areas)?.solve_validated(&values)
+}
 
-    let n = mesh.triangles.len();
+/// The prescribed quantity on one boundary panel in a prepared 3D solve.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BoundaryKind {
+    /// Prescribe potential and solve for outward normal derivative.
+    Potential,
+    /// Prescribe outward normal derivative and solve for potential.
+    Flux,
+}
 
-    if bcs.len() != n {
-        return Err(format!(
-            "expected {n} boundary conditions, got {}",
-            bcs.len()
-        ));
+/// Dense interior Laplace BEM factorization for a fixed mesh and boundary pattern.
+///
+/// Reuses the collocation integrals and LU factors when the prescribed values
+/// change. The boundary kinds stay fixed because they select the equation
+/// columns. The two retained dense matrices use quadratic storage.
+pub struct PreparedLaplaceBem3d {
+    kinds: Vec<BoundaryKind>,
+    neumann_areas: Vec<f64>,
+    rhs_operator: Mat,
+    lu: Lu,
+}
+
+impl PreparedLaplaceBem3d {
+    /// Factors the system for the supplied trianglewise boundary kinds.
+    ///
+    /// # Errors
+    /// Rejects invalid meshes, a mismatched number of kinds, singular
+    /// systems and non-finite boundary operators. Reports cancellation.
+    pub fn new(
+        mesh: &SurfaceMesh3D,
+        kinds: &[BoundaryKind],
+    ) -> Result<Self, String> {
+        mesh.validate()?;
+        check_boundary_count(mesh.triangles.len(), kinds.len())?;
+        let areas = neumann_areas(mesh, kinds);
+        Self::factor(mesh, kinds.to_vec(), areas)
     }
 
-    if bcs
-        .iter()
-        .any(|bc| matches!(bc, BoundaryCondition::Potential(v) | BoundaryCondition::Flux(v) if !v.is_finite()))
-    {
+    /// Number of panels and prescribed values in each solve.
+    #[must_use]
+    pub const fn panel_count(&self) -> usize {
+        self.kinds.len()
+    }
+
+    /// Bytes occupied by this prepared value and its retained allocations.
+    #[must_use]
+    pub const fn retained_bytes(&self) -> usize {
+        use std::mem::size_of;
+
+        size_of::<Self>()
+            .saturating_add(
+                self.kinds
+                    .capacity()
+                    .saturating_mul(size_of::<BoundaryKind>()),
+            )
+            .saturating_add(
+                self.neumann_areas
+                    .capacity()
+                    .saturating_mul(size_of::<f64>()),
+            )
+            .saturating_add(
+                self.rhs_operator
+                    .data
+                    .capacity()
+                    .saturating_mul(size_of::<f64>()),
+            )
+            .saturating_add(self.lu.heap_bytes())
+    }
+
+    /// Solves for new values in mesh triangle order, using the fixed boundary kinds.
+    ///
+    /// # Errors
+    /// Rejects a mismatched number of values, non-finite data or an
+    /// incompatible pure-Neumann problem. Reports cancellation or a non-finite solution.
+    pub fn solve(
+        &self,
+        values: &[f64],
+    ) -> Result<Bem3dSolution, String> {
+        check_boundary_count(self.panel_count(), values.len())?;
+        validate_boundary_values(values, &self.neumann_areas)?;
+        self.solve_validated(values)
+    }
+
+    fn factor(
+        mesh: &SurfaceMesh3D,
+        kinds: Vec<BoundaryKind>,
+        neumann_areas: Vec<f64>,
+    ) -> Result<Self, String> {
+        let cancellation_error = || "BEM assembly cancelled".to_string();
+        crate::cancellation::checkpoint().map_err(|_| cancellation_error())?;
+        let n = kinds.len();
+        let all_flux = !neumann_areas.is_empty();
+        let dim = n + usize::from(all_flux);
+        if dim > (isize::MAX as usize / std::mem::size_of::<f64>()) / dim {
+            return Err("BEM dense system is too large".to_string());
+        }
+        let corners: Vec<_> = (0..n).filter_map(|t| mesh.corners(t)).collect();
+        let centroids: Vec<_> = corners
+            .iter()
+            .map(|&[a, b, c]| v_scale(v_add(v_add(a, b), c), 1.0 / 3.0))
+            .collect();
+
+        let mut matrix = Mat::zeros(dim, dim);
+        let mut rhs_operator = Mat::zeros(n, n);
+        let assemble = |(i, (row, rhs)): (usize, (&mut [f64], &mut [f64]))| {
+            crate::cancellation::checkpoint().map_err(|_| cancellation_error())?;
+            assemble_bem3d_row(i, centroids[i], &corners, &kinds, row, rhs);
+            if all_flux {
+                // Lagrange column removes the constant null space.
+                row[n] = 1.0;
+            }
+            Ok::<(), String>(())
+        };
+        // Each worker writes directly into two disjoint rows. The last
+        // equation of a pure-Neumann problem is filled separately below.
+        let primary_rows = &mut matrix.data[..n * dim];
+        if crate::execution::should_split(n, 16) {
+            let cancellation = crate::cancellation::current();
+            primary_rows
+                .par_chunks_exact_mut(dim)
+                .zip(rhs_operator.data.par_chunks_exact_mut(n))
+                .enumerate()
+                .try_for_each_init(
+                    || crate::cancellation::install_optional(cancellation.clone()),
+                    |_, row| assemble(row),
+                )?;
+        } else {
+            primary_rows
+                .chunks_exact_mut(dim)
+                .zip(rhs_operator.data.chunks_exact_mut(n))
+                .enumerate()
+                .try_for_each(assemble)?;
+        }
+        if all_flux {
+            matrix.data[n * dim..n * dim + n].copy_from_slice(&neumann_areas);
+        }
+        if !rhs_operator.is_finite() {
+            return Err("BEM boundary operators must be finite".to_string());
+        }
+        let lu = lu_factor(&matrix).map_err(|e| format!("BEM system is singular: {e:?}"))?;
+        Ok(Self {
+            kinds,
+            neumann_areas,
+            rhs_operator,
+            lu,
+        })
+    }
+
+    fn solve_validated(
+        &self,
+        values: &[f64],
+    ) -> Result<Bem3dSolution, String> {
+        crate::cancellation::checkpoint().map_err(|_| "BEM solve cancelled".to_string())?;
+        let n = self.panel_count();
+        let solution = self
+            .solve_unknowns(values)
+            .or_else(|| {
+                // The system is linear. If assembly or substitution overflowed,
+                // solve for scaled data before testing the output range.
+                let scale = values.iter().copied().map(f64::abs).fold(0.0, f64::max);
+                if scale <= 1.0 {
+                    return None;
+                }
+                let scaled: Vec<_> = values.iter().map(|value| value / scale).collect();
+                let mut solution = self.solve_unknowns(&scaled)?;
+                for value in &mut solution[..n] {
+                    *value *= scale;
+                }
+                solution[..n]
+                    .iter()
+                    .all(|value| value.is_finite())
+                    .then_some(solution)
+            })
+            .ok_or_else(|| "BEM system has no finite solution".to_string())?;
+
+        let mut u = Vec::with_capacity(n);
+        let mut q = Vec::with_capacity(n);
+        for ((&known, unknown), kind) in values.iter().zip(solution).zip(&self.kinds) {
+            match kind {
+                | BoundaryKind::Potential => {
+                    u.push(known);
+                    q.push(unknown);
+                },
+                | BoundaryKind::Flux => {
+                    u.push(unknown);
+                    q.push(known);
+                },
+            }
+        }
+        Ok(Bem3dSolution { u, q })
+    }
+
+    fn solve_unknowns(
+        &self,
+        values: &[f64],
+    ) -> Option<Vec<f64>> {
+        let n = self.panel_count();
+        let mut rhs = vec![0.0; n + usize::from(!self.neumann_areas.is_empty())];
+        for (b, row) in rhs.iter_mut().zip(self.rhs_operator.data.chunks_exact(n)) {
+            for ((&coefficient, &value), kind) in row.iter().zip(values).zip(&self.kinds) {
+                match kind {
+                    | BoundaryKind::Potential => *b -= coefficient * value,
+                    | BoundaryKind::Flux => *b += coefficient * value,
+                }
+            }
+        }
+        let mut solution = vec![0.0; rhs.len()];
+        self.lu.solve_into(&rhs, &mut solution).ok()?;
+        solution
+            .iter()
+            .all(|value| value.is_finite())
+            .then_some(solution)
+    }
+}
+
+fn check_boundary_count(
+    expected: usize,
+    actual: usize,
+) -> Result<(), String> {
+    if expected == actual {
+        Ok(())
+    } else {
+        Err(format!(
+            "expected {expected} boundary conditions, got {actual}"
+        ))
+    }
+}
+
+fn neumann_areas(
+    mesh: &SurfaceMesh3D,
+    kinds: &[BoundaryKind],
+) -> Vec<f64> {
+    if kinds.iter().all(|&kind| kind == BoundaryKind::Flux) {
+        (0..kinds.len()).filter_map(|t| mesh.area(t)).collect()
+    } else {
+        Vec::new()
+    }
+}
+
+fn validate_boundary_values(
+    values: &[f64],
+    neumann_areas: &[f64],
+) -> Result<(), String> {
+    if values.iter().any(|value| !value.is_finite()) {
         return Err("boundary data must be finite".to_string());
     }
-
-    let corners: Vec<[V3; 3]> = (0..n).filter_map(|t| mesh.corners(t)).collect();
-
-    let centroids: Vec<V3> = corners
-        .iter()
-        .map(|&[a, b, c]| v_scale(v_add(v_add(a, b), c), 1.0 / 3.0))
-        .collect();
-
-    // Rows of G and of Hhat (free term and rigid-body diagonal included).
-    let rows: Vec<(Vec<f64>, Vec<f64>)> = (0..n)
-        .into_par_iter()
-        .map(|i| {
-            let x = centroids[i];
-
-            let mut g_row = vec![0.0; n];
-
-            let mut h_row = vec![0.0; n];
-
-            let mut off_diagonal = 0.0;
-
-            for j in 0..n {
-                if i == j {
-                    g_row[j] =
-                        inv_r_integral_in_plane(x, corners[j]) / (4.0 * std::f64::consts::PI);
-                } else {
-                    g_row[j] = inv_r_integral(x, corners[j], 0) / (4.0 * std::f64::consts::PI);
-
-                    let h = -solid_angle(x, corners[j]) / (4.0 * std::f64::consts::PI);
-
-                    h_row[j] = h;
-
-                    off_diagonal += h;
-                }
-            }
-
-            h_row[i] = -off_diagonal;
-
-            (g_row, h_row)
-        })
-        .collect();
-
-    let all_flux = bcs
-        .iter()
-        .all(|bc| matches!(bc, BoundaryCondition::Flux(_)));
-
-    let areas: Vec<f64> = (0..n).filter_map(|t| mesh.area(t)).collect();
-
-    if all_flux {
-        let scale: f64 = bcs
+    if neumann_areas.is_empty() {
+        return Ok(());
+    }
+    let flux_total = |flux_scale: f64, area_scale: f64| {
+        values
             .iter()
-            .zip(&areas)
-            .map(|(bc, a)| {
-                if let BoundaryCondition::Flux(q) = bc {
-                    (q * a).abs()
-                } else {
-                    0.0
-                }
+            .zip(neumann_areas)
+            .fold((0.0, 0.0), |(net, norm), (&q, &a)| {
+                let term = (q / flux_scale) * (a / area_scale);
+                (net + term, norm + term.abs())
             })
-            .sum();
-
-        let net: f64 = bcs
-            .iter()
-            .zip(&areas)
-            .map(|(bc, a)| {
-                if let BoundaryCondition::Flux(q) = bc {
-                    q * a
-                } else {
-                    0.0
-                }
-            })
-            .sum();
-
-        if net.abs() > 1e-6 * scale.max(f64::MIN_POSITIVE) {
-            return Err(
-                "pure Neumann data violates the compatibility condition (net flux must vanish)"
-                    .to_string(),
-            );
+    };
+    let (mut net, mut norm) = flux_total(1.0, 1.0);
+    if !norm.is_normal() {
+        let flux_scale = values.iter().copied().map(f64::abs).fold(0.0, f64::max);
+        if flux_scale == 0.0 {
+            return Ok(());
         }
+        let area_scale = neumann_areas.iter().copied().fold(0.0, f64::max);
+        (net, norm) = flux_total(flux_scale, area_scale);
     }
-
-    // Unknown x_j = q_j on Dirichlet elements, u_j on Neumann elements.
-    let dim = if all_flux { n + 1 } else { n };
-
-    let mut a_mat = Mat::zeros(dim, dim);
-
-    let mut rhs = vec![0.0; dim];
-
-    for (i, (g_row, h_row)) in rows.iter().enumerate() {
-        for (j, bc) in bcs.iter().enumerate() {
-            match *bc {
-                | BoundaryCondition::Potential(u_val) => {
-                    a_mat.set(i, j, -g_row[j]);
-
-                    rhs[i] -= h_row[j] * u_val;
-                },
-                | BoundaryCondition::Flux(q_val) => {
-                    a_mat.set(i, j, h_row[j]);
-
-                    rhs[i] += g_row[j] * q_val;
-                },
-            }
-        }
-
-        if all_flux {
-            // Lagrange column removes the constant null space.
-            a_mat.set(i, n, 1.0);
-        }
+    if net.abs() > 1e-6 * norm {
+        return Err(
+            "pure Neumann data violates the compatibility condition (net flux must vanish)"
+                .to_string(),
+        );
     }
+    Ok(())
+}
 
-    if all_flux {
-        for (j, &area) in areas.iter().enumerate() {
-            a_mat.set(n, j, area);
-        }
-    }
+fn assemble_bem3d_row(
+    i: usize,
+    x: V3,
+    corners: &[[V3; 3]],
+    kinds: &[BoundaryKind],
+    matrix: &mut [f64],
+    rhs: &mut [f64],
+) {
+    const FOUR_PI: f64 = 4.0 * std::f64::consts::PI;
 
-    let lu = lu_factor(&a_mat).map_err(|e| format!("BEM system is singular: {e:?}"))?;
-
-    let solution = lu.solve(&rhs);
-
-    if solution.iter().any(|v| !v.is_finite()) {
-        return Err("BEM system has no finite solution".to_string());
-    }
-
-    let mut u = vec![0.0; n];
-
-    let mut q = vec![0.0; n];
-
-    for (j, bc) in bcs.iter().enumerate() {
-        match *bc {
-            | BoundaryCondition::Potential(u_val) => {
-                u[j] = u_val;
-
-                q[j] = solution[j];
+    let mut diagonal = 0.0;
+    for (j, (&triangle, kind)) in corners.iter().zip(kinds).enumerate() {
+        let (g, h) = if j == i {
+            (inv_r_integral_in_plane(x, triangle) / FOUR_PI, 0.0)
+        } else {
+            let g = inv_r_integral(x, triangle, 0) / FOUR_PI;
+            let h = -solid_angle(x, triangle) / FOUR_PI;
+            diagonal += h;
+            (g, h)
+        };
+        match kind {
+            | BoundaryKind::Potential => {
+                matrix[j] = -g;
+                rhs[j] = h;
             },
-            | BoundaryCondition::Flux(q_val) => {
-                q[j] = q_val;
-
-                u[j] = solution[j];
+            | BoundaryKind::Flux => {
+                matrix[j] = h;
+                rhs[j] = g;
             },
         }
     }
-
-    Ok(Bem3dSolution { u, q })
+    *match kinds[i] {
+        | BoundaryKind::Potential => &mut rhs[i],
+        | BoundaryKind::Flux => &mut matrix[i],
+    } = -diagonal;
 }
 
 /// Evaluates the potential at an interior point from a solved boundary:

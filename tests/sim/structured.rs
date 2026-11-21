@@ -8,8 +8,10 @@ use rssn::sim::structured::AdaptiveOptions;
 use rssn::sim::structured::FaceAverage;
 use rssn::sim::structured::Grid;
 use rssn::sim::structured::HeatProblem;
+use rssn::sim::structured::LaplacianOp;
 use rssn::sim::structured::LinearSolver;
 use rssn::sim::structured::NonlinearDiffusion;
+use rssn::sim::structured::VariableDiffusionOp;
 use rssn::sim::structured::VariableHeatProblem;
 use rssn::sim::structured::WaveProblem;
 use rssn::sim::structured::heat_adaptive;
@@ -127,6 +129,76 @@ fn pure_neumann_is_singular() {
     let bcs = FaceBcs::uniform(&Bc::neumann(0.0));
     let g = Grid::unit(1, 9, &bcs).unwrap();
     assert!(solve_helmholtz(&g, &bcs, 0.0, |_| 1.0, LinearSolver::Direct).is_err());
+}
+
+#[test]
+fn grid_rejects_invalid_size_spacing_and_face_combinations_before_assembly() {
+    let bcs = FaceBcs::dirichlet_zero();
+    for (lo, hi) in [(f64::NAN, 1.0), (0.0, f64::INFINITY), (-f64::MAX, f64::MAX)] {
+        assert!(Grid::new(&[3], &[lo], &[hi], &bcs).is_err());
+    }
+    assert!(Grid::new(&[4], &[0.0], &[f64::from_bits(1)], &bcs).is_err());
+    assert!(Grid::unit(usize::MAX, 3, &bcs).is_err());
+    assert!(Grid::unit(2, usize::MAX, &bcs).is_err());
+    assert!(bcs.axis_periodic(3).is_err());
+
+    let periodic = FaceBcs::uniform(&Bc::Periodic);
+    let grid = Grid::unit(2, 3, &periodic).unwrap();
+    assert!(LaplacianOp::new(&grid, &bcs).is_err());
+    assert!(VariableDiffusionOp::new(&grid, &bcs, &[1.0; 9], FaceAverage::Harmonic).is_err());
+
+    let grid = Grid::unit(2, 2, &bcs).unwrap();
+    for (alpha, beta) in [(0.0, 0.0), (f64::NAN, 1.0)] {
+        let invalid = bcs.clone().with(
+            Face::YMin,
+            Bc::Robin {
+                alpha,
+                beta,
+                g: BcValue::constant(0.0),
+            },
+        );
+        assert!(LaplacianOp::new(&grid, &invalid).is_err());
+        assert!(
+            VariableDiffusionOp::new(&grid, &invalid, &[1.0; 4], FaceAverage::Harmonic).is_err()
+        );
+    }
+}
+
+#[test]
+fn sparse_dirichlet_updates_preserve_corner_precedence_and_callback_order() {
+    use std::sync::Arc;
+    use std::sync::Mutex;
+    let seen = Arc::new(Mutex::new(Vec::new()));
+    let datum = |face_value| {
+        let seen = Arc::clone(&seen);
+        BcValue::spacetime(move |time, point| {
+            seen.lock().unwrap().push(point);
+            face_value + time
+        })
+    };
+    let bcs = FaceBcs::uniform(&Bc::Symmetry)
+        .with(Face::XMin, Bc::Dirichlet(datum(10.0)))
+        .with(
+            Face::YMin,
+            Bc::Robin {
+                alpha: 2.0,
+                beta: 0.0,
+                g: datum(30.0),
+            },
+        );
+    let grid = Grid::unit(2, 3, &bcs).unwrap();
+    let op = LaplacianOp::new(&grid, &bcs).unwrap();
+    let variable = VariableDiffusionOp::new(&grid, &bcs, &[1.0; 9], FaceAverage::Harmonic).unwrap();
+    let mut a = [0.0; 9];
+    let mut b = [0.0; 9];
+    op.set_dirichlet(&mut a, 2.0);
+    variable.set_dirichlet(&mut b, 2.0);
+    assert_eq!(op.dirichlet_count(), 5);
+    assert_eq!(variable.dirichlet_count(), 5);
+    assert_eq!(a, [12.0, 16.0, 16.0, 12.0, 0.0, 0.0, 12.0, 0.0, 0.0]);
+    assert_eq!(a, b);
+    let order: Vec<_> = [0, 1, 2, 3, 6].into_iter().map(|p| grid.coord(p)).collect();
+    assert_eq!(*seen.lock().unwrap(), [order.clone(), order].concat());
 }
 
 /// 1D heat with Robin data on the right and time-dependent Dirichlet on the left.

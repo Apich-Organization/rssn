@@ -1,23 +1,29 @@
+//! Pseudo-spectral Fourier and Chebyshev solvers (1D-3D).
+//!
 //! # Pseudo-spectral solvers: Fourier (periodic) and Chebyshev (bounded), 1D–3D
 //!
 //! | Capability | 1D | 2D | 3D | Boundary conditions |
 //! |---|---|---|---|---|
 //! | N-D FFT ([`fft_nd`]), spectral derivatives ([`SpectralGrid`]) | yes | yes | yes | periodic |
 //! | Spectral Helmholtz `-Δu + σu = f` ([`SpectralGrid::helmholtz`]) | yes | yes | yes | periodic |
+//! | Prepared [`PeriodicHelmholtzPlan`] for repeated or batched forcing | yes | yes | yes | periodic |
 //! | ETDRK4 for `u_t = L u + N(u, t)` ([`etdrk4`]) with 2/3 dealiasing | yes | yes | yes | periodic |
 //! | Chebyshev collocation Helmholtz ([`ChebGrid::solve_helmholtz`]) | yes | yes | yes | Dirichlet, Neumann, Robin per face, time dependent data |
 //! | Chebyshev heat equation θ-method ([`ChebGrid::heat`]) | yes | yes | yes | same |
 //!
-//! The Fourier grids here need power-of-two sizes: [`fft_nd`] passes rows and
-//! columns to the in-place radix-2 slice kernels, and it rejects any other
-//! extent. (The transforms in [`crate::kernels::transforms`] themselves accept
-//! any length; the restriction is this module's, not the FFT's.) Chebyshev
+//! The periodic grids require power-of-two sizes. [`fft_nd`] uses the
+//! in-place radix-2 slice kernels. Prepared Helmholtz solves use the shared
+//! planned axis transforms. Chebyshev
 //! grids use Gauss–Lobatto points, dense differentiation matrices and the
 //! sparse LU of [`crate::kernels::krylov`] for the (dense-block) collocation
 //! systems, so they are meant for modest sizes (up to a few thousand unknowns).
 
+use crate::kernels::fft::Norm;
+use crate::kernels::fft::transform_axes_in_place;
 use crate::kernels::krylov::Csr;
 use crate::kernels::krylov::SparseOrdering;
+use crate::kernels::reuse::PlanCache;
+use crate::kernels::reuse::fft_scratch_for;
 use crate::kernels::transforms::fft_slice;
 use crate::kernels::transforms::ifft_slice;
 use crate::sim::boundary::BcValue;
@@ -26,6 +32,7 @@ use crate::sim::boundary::Face;
 use crate::sim::boundary::FaceBcs;
 use num_complex::Complex;
 use std::f64::consts::PI;
+use std::sync::Arc;
 
 /// In-place N-dimensional FFT of row-major (x fastest) data with extents `n`
 /// (each a power of two). The inverse includes the `1/N` normalisation.
@@ -268,29 +275,265 @@ impl SpectralGrid {
             .collect()
     }
 
-    /// Solves `-Δu + σ u = f` spectrally (periodic). For `σ = 0` the mean of
-    /// `f` must vanish and the solution gets zero mean.
+    /// Solves `-Δu + σ u = f` spectrally with periodic boundaries.
+    ///
+    /// For `σ = 0` the forcing must have zero mean up to transform roundoff,
+    /// and the solution has zero mean. For repeated or batched sources use
+    /// [`Self::helmholtz_plan`].
     ///
     /// # Errors
-    /// For a singular mode (`σ = 0` with non-zero mean forcing).
+    /// Invalid grid, shift or forcing, incompatible forcing in a singular
+    /// mode, or a nonrepresentable symbol, transform or solution.
     pub fn helmholtz(
         &self,
         sigma: f64,
         f: &[f64],
     ) -> Result<Vec<f64>, String> {
-        let mut fh = self.to_spec(f);
-        for (p, v) in fh.iter_mut().enumerate() {
-            let d = self.k2(p) + sigma;
-            if d.abs() < 1e-14 {
-                if v.norm() > 1e-9 * (f.len() as f64) {
-                    return Err("singular Helmholtz mode with non-zero forcing".into());
+        let size = self.helmholtz_size(sigma)?;
+        if f.len() != size {
+            return Err("periodic Helmholtz forcing length does not match the grid".into());
+        }
+        self.helmholtz_plan_at_size(sigma, size)?.solve(f)
+    }
+
+    /// Prepares the shifted Fourier symbol for repeated periodic solves.
+    /// Moderate grids share a bounded cache of immutable plans.
+    ///
+    /// # Errors
+    /// Invalid grid lengths, extents or shift, a nonrepresentable Fourier
+    /// symbol, or an unavailable plan allocation.
+    pub fn helmholtz_plan(
+        &self,
+        sigma: f64,
+    ) -> Result<Arc<PeriodicHelmholtzPlan>, String> {
+        self.helmholtz_plan_at_size(sigma, self.helmholtz_size(sigma)?)
+    }
+
+    fn helmholtz_size(
+        &self,
+        sigma: f64,
+    ) -> Result<usize, String> {
+        if !(1..=3).contains(&self.dim)
+            || self.n[..self.dim]
+                .iter()
+                .any(|&n| n < 4 || !n.is_power_of_two())
+            || self.n[self.dim..].iter().any(|&n| n != 1)
+            || self.len[..self.dim]
+                .iter()
+                .any(|&length| !length.is_finite() || length <= 0.0)
+            || !sigma.is_finite()
+        {
+            return Err("periodic Helmholtz needs a valid Fourier grid and a finite shift".into());
+        }
+        self.n
+            .iter()
+            .try_fold(1usize, |size, n| size.checked_mul(*n))
+            .filter(|&size| size <= isize::MAX as usize / std::mem::size_of::<Complex<f64>>())
+            .ok_or_else(|| "periodic Helmholtz grid size is not representable".into())
+    }
+
+    fn helmholtz_plan_at_size(
+        &self,
+        sigma: f64,
+        size: usize,
+    ) -> Result<Arc<PeriodicHelmholtzPlan>, String> {
+        const MAX_CACHED_POINTS: usize = 262_144;
+        static PLANS: PlanCache<HelmholtzKey, PeriodicHelmholtzPlan> = PlanCache::new(4);
+        let build = || PeriodicHelmholtzPlan::new(self, sigma, size).map(Arc::new);
+        if size > MAX_CACHED_POINTS {
+            return build();
+        }
+        let key = HelmholtzKey {
+            dim: self.dim,
+            n: self.n,
+            lengths: std::array::from_fn(|axis| {
+                if axis < self.dim {
+                    self.len[axis].to_bits()
+                } else {
+                    0
                 }
-                *v = Complex::new(0.0, 0.0);
+            }),
+            shift: sigma.to_bits(),
+        };
+        PLANS.try_get_or_insert_with(key, build)
+    }
+}
+
+#[derive(PartialEq, Eq)]
+struct HelmholtzKey {
+    dim: usize,
+    n: [usize; 3],
+    lengths: [u64; 3],
+    shift: u64,
+}
+
+/// Prepared `-Δ + σ` operator on a periodic Fourier grid.
+///
+/// The plan owns the shifted symbol and uses the shared FFT plans and
+/// workspace pool. Only exactly zero shifted modes are singular. A
+/// compatible singular mode is set to zero to select one solution.
+#[derive(Debug)]
+pub struct PeriodicHelmholtzPlan {
+    dim: usize,
+    shape: [usize; 3],
+    symbol: Vec<f64>,
+    min_abs_symbol: f64,
+}
+
+impl PeriodicHelmholtzPlan {
+    #[allow(
+        clippy::single_call_fn,
+        reason = "Keep Fourier symbol construction separate from cache policy."
+    )]
+    fn new(
+        grid: &SpectralGrid,
+        sigma: f64,
+        size: usize,
+    ) -> Result<Self, String> {
+        let mut symbol = Vec::new();
+        symbol
+            .try_reserve_exact(size)
+            .map_err(|_| "periodic Helmholtz symbol allocation failed")?;
+        let square = |axis| -> Result<Vec<f64>, String> {
+            if axis < grid.dim {
+                let mut squared = Vec::new();
+                squared
+                    .try_reserve_exact(grid.n[axis])
+                    .map_err(|_| "periodic Helmholtz axis allocation failed")?;
+                squared.extend((0..grid.n[axis]).map(|j| {
+                    let k = grid.wavenumber(axis, j);
+                    k * k
+                }));
+                Ok(squared)
             } else {
-                *v /= d;
+                Ok(vec![0.0])
+            }
+        };
+        let (kx, ky, kz) = (square(0)?, square(1)?, square(2)?);
+        let mut min_abs_symbol = 1.0_f64;
+        for &z in &kz {
+            for &y in &ky {
+                for &x in &kx {
+                    let squared = x + y + z;
+                    let value = squared + sigma;
+                    if !value.is_finite() {
+                        return Err("periodic Helmholtz symbol is not representable".into());
+                    }
+                    if squared == 0.0 && !symbol.is_empty() {
+                        return Err(
+                            "periodic Laplacian symbol underflows for a nonconstant mode".into(),
+                        );
+                    }
+                    if value != 0.0 {
+                        min_abs_symbol = min_abs_symbol.min(value.abs());
+                    }
+                    symbol.push(value);
+                }
             }
         }
-        Ok(self.to_phys(&fh))
+        let mut shape = grid.n;
+        shape[..grid.dim].reverse();
+        Ok(Self {
+            dim: grid.dim,
+            shape,
+            symbol,
+            min_abs_symbol,
+        })
+    }
+
+    /// Number of real forcing values in one solve, with the x axis fastest.
+    #[must_use]
+    pub const fn size(&self) -> usize {
+        self.symbol.len()
+    }
+
+    /// Solves one real periodic forcing with this plan.
+    ///
+    /// A singular mode is compatible when its Fourier coefficient, divided
+    /// by the number of points and the peak absolute forcing, is at most
+    /// `64 * f64::EPSILON * (1 + log2(number of points))` in magnitude.
+    ///
+    /// # Errors
+    /// A wrong input length, non-finite input, incompatible singular mode,
+    /// or a nonrepresentable transform or solution.
+    pub fn solve(
+        &self,
+        forcing: &[f64],
+    ) -> Result<Vec<f64>, String> {
+        if forcing.len() != self.size() {
+            return Err("periodic Helmholtz forcing length does not match the grid".into());
+        }
+        let mut peak = 0.0_f64;
+        for &value in forcing {
+            if !value.is_finite() {
+                return Err("periodic Helmholtz forcing must be finite".into());
+            }
+            peak = peak.max(value.abs());
+        }
+        if peak == 0.0 {
+            return Ok(vec![0.0; forcing.len()]);
+        }
+        let count = self.size() as f64;
+        // Give intermediate Fourier coefficients room when either the
+        // input amplitude or the inverse diagonal can approach overflow.
+        let prescale = peak > (f64::MAX / count / count * self.min_abs_symbol) * 0.5;
+        let scale = if prescale {
+            count.recip()
+        } else {
+            1.0
+        };
+        let scaled_peak = peak * scale;
+        let mut spectrum = fft_scratch_for(self.size());
+        spectrum.extend(forcing.iter().map(|value| Complex::new(value * scale, 0.0)));
+        let shape = &self.shape[..self.dim];
+        let axes = &[2, 1, 0][3 - self.dim..];
+        transform_axes_in_place(&mut spectrum, shape, axes, false, Norm::Backward);
+        let tolerance = 64.0 * f64::EPSILON * f64::from(self.size().ilog2() + 1);
+        for (mode, &diagonal) in spectrum.iter_mut().zip(&self.symbol) {
+            if diagonal == 0.0 {
+                let relative = (mode.re / scaled_peak).hypot(mode.im / scaled_peak) / count;
+                if !relative.is_finite() {
+                    return Err("periodic Helmholtz transform overflowed".into());
+                }
+                if relative > tolerance {
+                    return Err("singular Helmholtz mode with non-zero forcing".into());
+                }
+                *mode = Complex::new(0.0, 0.0);
+            } else {
+                *mode /= diagonal;
+                if !mode.re.is_finite() || !mode.im.is_finite() {
+                    return Err("periodic Helmholtz solution is not representable".into());
+                }
+            }
+        }
+        let norm = if prescale {
+            Norm::Forward
+        } else {
+            Norm::Backward
+        };
+        transform_axes_in_place(&mut spectrum, shape, axes, true, norm);
+        let mut solution = Vec::with_capacity(self.size());
+        for mode in spectrum.iter() {
+            if !mode.re.is_finite() || !mode.im.is_finite() {
+                return Err("periodic Helmholtz solution is not representable".into());
+            }
+            solution.push(mode.re);
+        }
+        Ok(solution)
+    }
+
+    /// Solves several real periodic forcings in input order. Larger batches
+    /// use independent workers under the active execution policy.
+    ///
+    /// # Errors
+    /// The first failing source in input order, as for [`Self::solve`].
+    pub fn solve_batch(
+        &self,
+        forcing: &[Vec<f64>],
+    ) -> Result<Vec<Vec<f64>>, String> {
+        crate::kernels::par::map_slice(forcing, 8, |source| self.solve(source))
+            .into_iter()
+            .collect()
     }
 }
 

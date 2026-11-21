@@ -35,6 +35,10 @@ use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::kernels::par::for_chunks_mut;
+use crate::kernels::reuse::Scratch;
+use crate::kernels::reuse::f64_scratch;
+
 /// Defines the interface for a system of first-order ODEs: dy/dt = f(t, y).
 pub trait OdeSystem: Sync + Send {
     /// The dimension of the system (number of equations).
@@ -228,7 +232,13 @@ impl DormandPrince54 {
         }
     }
 
-    /// Solves an ODE system using the Dormand-Prince 5(4) method.
+    /// Solves an ODE system forward in time using the Dormand-Prince 5(4) method.
+    ///
+    /// The output includes the initial state and every accepted step. The
+    /// last time is exactly the requested endpoint when it is reached.
+    /// Invalid controls, non-finite rates, or a step that cannot advance
+    /// return the accepted prefix. Tolerances are nonnegative and at
+    /// least one must be positive.
     pub fn solve<S: OdeSystem + Sync>(
         &self,
         system: &S,
@@ -237,96 +247,205 @@ impl DormandPrince54 {
         mut dt: f64,
         tol: (f64, f64),
     ) -> Vec<(f64, Vec<f64>)> {
-        let (t_start, t_end) = t_span;
-
+        let (mut t, t_end) = t_span;
         let (rtol, atol) = tol;
+        let mut history = vec![(t, y0.to_vec())];
+        if !t.is_finite()
+            || !t_end.is_finite()
+            || t >= t_end
+            || !dt.is_finite()
+            || dt <= 0.0
+            || !rtol.is_finite()
+            || !atol.is_finite()
+            || rtol < 0.0
+            || atol < 0.0
+            || (rtol == 0.0 && atol == 0.0)
+            || y0.is_empty()
+            || y0.len() != system.dim()
+            || y0.iter().any(|v| !v.is_finite())
+        {
+            return history;
+        }
 
-        let mut t = t_start;
-
+        // Keep the ordinary minimum step and scale it down for short spans.
+        let minimum_dt = 1e-12 * (t_end - t).min(1.0);
         let mut y = y0.to_vec();
-
-        let mut history = vec![(t, y.clone())];
-
-        let dim = system.dim();
-
-        let mut k = vec![vec![0.0; dim]; 7];
-
-        loop {
-            if (t_end - t).abs() <= 1e-15 {
-                break;
-            }
-
-            if t + dt > t_end {
+        let mut work = DormandWorkspace::new(y.len());
+        while t < t_end {
+            let mut next = t + dt;
+            if next > t_end {
+                next = t_end;
                 dt = t_end - t;
             }
-
-            system.eval(t, &y, &mut k[0]);
-
-            for i in 1..7 {
-                let mut y_temp = y.clone();
-
-                for (j, _vars) in k.iter().enumerate().take(i) {
-                    let a_val = self.a[i - 1][j];
-
-                    if a_val != 0.0 {
-                        y_temp.par_iter_mut().zip(&k[j]).for_each(|(yt, &kj)| {
-                            *yt += dt * a_val * kj;
-                        });
-                    }
-                }
-
-                system.eval(self.c[i].mul_add(dt, t), &y_temp, &mut k[i]);
-            }
-
-            let mut error = 0.0;
-
-            for i in 0..dim {
-                let mut y5_i = y[i];
-
-                let mut y4_i = y[i];
-
-                for (j, kj) in k.iter().enumerate().take(7) {
-                    y5_i += dt * kj[i] * self.b5[j];
-
-                    y4_i += dt * kj[i] * self.b4[j];
-                }
-
-                let scale = y[i].abs().max(y5_i.abs()).mul_add(rtol, atol);
-
-                error += ((y5_i - y4_i) / scale).powi(2);
-            }
-
-            error = (error / dim as f64).sqrt();
-            // Invalid stages cannot produce an accepted path. In particular a
-            // bounded host oracle returns NaN after its first failure; allowing
-            // NaN step sizes here would otherwise leave the loop running forever.
-            if !error.is_finite() || !dt.is_finite() || dt <= 0.0 || t + dt <= t {
+            if !dt.is_finite() || dt <= 0.0 || next <= t {
                 break;
             }
 
-            let factor = (0.9 * (1.0 / error).powf(0.2)).clamp(0.1, 4.0);
-
+            let Some(error) = work.attempt(self, system, &y, (t, next, dt), tol) else {
+                break;
+            };
             if error <= 1.0 {
-                t += dt;
-
-                y.par_iter_mut().enumerate().for_each(|(i, yi)| {
-                    for (j, kj) in k.iter().enumerate().take(7) {
-                        *yi += dt * kj[i] * self.b5[j];
-                    }
-                });
-
+                t = next;
+                std::mem::swap(&mut y, &mut work.high_order);
                 history.push((t, y.clone()));
             }
 
+            let factor = (0.9 * (1.0 / error).powf(0.2)).clamp(0.1, 4.0);
             dt *= factor;
-
-            if dt < 1e-12 {
+            if dt == 0.0 || dt < minimum_dt {
                 break;
             }
         }
 
         history
     }
+}
+
+const DORMAND_BLOCK: usize = 512;
+const DORMAND_PARALLEL_MIN: usize = 16_384;
+
+struct DormandWorkspace {
+    derivatives: [Vec<f64>; 7],
+    stage: Scratch<'static, f64>,
+    high_order: Vec<f64>,
+}
+
+impl DormandWorkspace {
+    fn new(dim: usize) -> Self {
+        let mut stage = f64_scratch(dim);
+        stage.resize(dim, 0.0);
+        Self {
+            derivatives: std::array::from_fn(|_| vec![0.0; dim]),
+            stage,
+            high_order: vec![0.0; dim],
+        }
+    }
+
+    // None indicates an invalid callback. An infinite error is a rejected
+    // trial based on finite rates and can be retried with a smaller step.
+    fn attempt<S: OdeSystem>(
+        &mut self,
+        solver: &DormandPrince54,
+        system: &S,
+        y: &[f64],
+        (t, next, dt): (f64, f64, f64),
+        (rtol, atol): (f64, f64),
+    ) -> Option<f64> {
+        system.eval(t, y, &mut self.derivatives[0]);
+        if self.derivatives[0].iter().any(|d| !d.is_finite()) {
+            return None;
+        }
+        let parallel_grain = if y.len() >= DORMAND_PARALLEL_MIN {
+            2
+        } else {
+            usize::MAX
+        };
+        for i in 1..7 {
+            let (earlier, current) = self.derivatives.split_at_mut(i);
+            let weights = &solver.a[i - 1];
+            let scaled = weights.map(|a| dt * a);
+            for_chunks_mut(
+                &mut self.stage,
+                DORMAND_BLOCK,
+                parallel_grain,
+                |block, out| {
+                    let start = block * DORMAND_BLOCK;
+                    let end = start + out.len();
+                    out.copy_from_slice(&y[start..end]);
+                    for ((&a, &w), rate) in weights.iter().zip(&scaled).zip(earlier.iter()) {
+                        if a == 0.0 {
+                            continue;
+                        }
+                        let rate = &rate[start..end];
+                        if w.is_normal() {
+                            for (v, &k) in out.iter_mut().zip(rate) {
+                                *v += w * k;
+                            }
+                        } else {
+                            for (v, &k) in out.iter_mut().zip(rate) {
+                                *v += (dt * k) * a;
+                            }
+                        }
+                    }
+                },
+            );
+            if self.stage.iter().any(|value| !value.is_finite()) {
+                return Some(f64::INFINITY);
+            }
+            let c = solver.c[i];
+            let stage_time = if c >= 1.0 {
+                next
+            } else {
+                c.mul_add(dt, t).min(next)
+            };
+            system.eval(stage_time, &self.stage, &mut current[0]);
+            if current[0].iter().any(|d| !d.is_finite()) {
+                return None;
+            }
+        }
+
+        let mut squared_error = 0.0;
+        // Fill both embedded estimates in cache-sized blocks, then sum the
+        // error ratios in the original global component order.
+        for (block, (high, low)) in self
+            .high_order
+            .chunks_mut(DORMAND_BLOCK)
+            .zip(self.stage.chunks_mut(DORMAND_BLOCK))
+            .enumerate()
+        {
+            let start = block * DORMAND_BLOCK;
+            let end = start + high.len();
+            let state = &y[start..end];
+            high.copy_from_slice(state);
+            low.copy_from_slice(state);
+            for (j, rate) in self.derivatives.iter().enumerate() {
+                let (b5, b4) = (solver.b5[j], solver.b4[j]);
+                for ((high, low), &k) in high.iter_mut().zip(low.iter_mut()).zip(&rate[start..end])
+                {
+                    let increment = dt * k;
+                    *high += increment * b5;
+                    *low += increment * b4;
+                }
+            }
+            for ((&old, &high), &low) in state.iter().zip(high.iter()).zip(low.iter()) {
+                if !high.is_finite() || !low.is_finite() {
+                    return Some(f64::INFINITY);
+                }
+                squared_error += dormand_error_ratio(old, high, low, rtol, atol).powi(2);
+            }
+        }
+
+        Some((squared_error / y.len() as f64).sqrt())
+    }
+}
+
+fn dormand_error_ratio(
+    old: f64,
+    high: f64,
+    low: f64,
+    rtol: f64,
+    atol: f64,
+) -> f64 {
+    let amplitude = old.abs().max(high.abs());
+    let scale = amplitude.mul_add(rtol, atol);
+    let difference = high - low;
+    if difference == 0.0 {
+        return 0.0;
+    }
+    if difference.is_finite() && scale.is_finite() && scale > 0.0 {
+        return difference / scale;
+    }
+
+    // Rescale by finite state magnitudes when either subtraction or the
+    // tolerance scale overflows, or the tolerance product underflows.
+    let reference = amplitude.max(low.abs());
+    let normalized_scale = (amplitude / reference).mul_add(rtol, atol / reference);
+    let normalized_difference = if difference.is_finite() {
+        difference / reference
+    } else {
+        high / reference - low / reference
+    };
+    normalized_difference / normalized_scale
 }
 
 /// Adaptive Runge-Kutta solver using Cash-Karp 4(5).

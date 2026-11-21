@@ -11,9 +11,10 @@
 //!
 //! Key components include:
 //! - **Dimensional Solvers**: Specialized solvers for 1D (`solve_poisson_1d`), 2D (`solve_poisson_2d`), and 3D (`solve_poisson_3d`) problems.
-//! - **Parallel Assembly**: Utilizes `rayon` to assemble the global stiffness matrix and load vector in parallel, significantly speeding up the process for large meshes.
-//! - **Numerical Integration**: Implements Gaussian Quadrature for accurate evaluation of element stiffness matrices.
-//! - **Sparse Linear Solver**: Leverages a Conjugate Gradient method to solve the resulting large, sparse linear systems.
+//! - **Parallel Assembly**: Independent elements compute their load contributions on the active CPU pool for large grids. Contributions are added in grid order.
+//! - **Numerical Integration**: Uses Gaussian quadrature for quadrilateral and hexahedral loads.
+//! - **Linear Solves**: The one-dimensional path uses sparse conjugate gradients.
+//!   Uniform quadrilateral and hexahedral meshes share a prepared sine-basis solver.
 //! - **Simulation Scenarios**: Ready-to-run examples demonstrating the application of the solvers to standard test problems.
 //!
 //! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/fem_bridge_3d_disp.png)
@@ -41,9 +42,9 @@ type FemTriplet = (usize, usize, f64);
 
 type ElementData1D = (Vec<FemTriplet>, [f64; 2]);
 
-type ElementData2D = (Vec<FemTriplet>, [f64; 4], [usize; 4]);
+mod cartesian;
 
-type ElementData3D = (Vec<FemTriplet>, [f64; 8], [usize; 8]);
+pub use cartesian::PreparedCartesianPoisson;
 
 /// A struct for Gaussian quadrature.
 #[allow(dead_code)]
@@ -169,10 +170,12 @@ pub fn simulate_1d_poisson_scenario() -> Result<Vec<f64>, String> {
 
 /// Solves the 2D Poisson equation on a unit square with zero Dirichlet boundaries.
 ///
-/// # Errors
+/// Uses the same tensor-product Q1 stiffness assembled from bilinear or
+/// trilinear elements, diagonalized by the discrete sine basis.
 ///
-/// This function will return an error if the Conjugate Gradient solver fails to converge
-/// or if the linear system is ill-conditioned.
+/// # Errors
+/// Reports invalid extents, non-finite source values, cancellation or an
+/// unrepresentable result.
 pub fn solve_poisson_2d<F>(
     n_elements_x: usize,
     n_elements_y: usize,
@@ -181,129 +184,8 @@ pub fn solve_poisson_2d<F>(
 where
     F: Fn(f64, f64) -> f64 + Send + Sync,
 {
-    let (nx, ny) = (n_elements_x, n_elements_y);
-
-    let (n_nodes_x, n_nodes_y) = (nx + 1, ny + 1);
-
-    let n_nodes = n_nodes_x * n_nodes_y;
-
-    let (hx, hy) = (1.0 / nx as f64, 1.0 / ny as f64);
-
-    let force_fn = &force_fn;
-
-    let element_data: Vec<ElementData2D> = (0..ny)
-        .into_par_iter()
-        .flat_map(move |j| {
-            (0..nx).into_par_iter().map(move |i| {
-                let gauss = GaussQuadrature::new();
-
-                let mut k_local = ndarray::Array2::<f64>::zeros((4, 4));
-
-                let mut f_local = [0.0; 4];
-
-                for gp_y in &gauss.points {
-                    for gp_x in &gauss.points {
-                        let n = [
-                            0.25 * (1.0 - gp_x) * (1.0 - gp_y),
-                            0.25 * (1.0 + gp_x) * (1.0 - gp_y),
-                            0.25 * (1.0 + gp_x) * (1.0 + gp_y),
-                            0.25 * (1.0 - gp_x) * (1.0 + gp_y),
-                        ];
-
-                        let d_n_dxi = [
-                            -0.25 * (1.0 - gp_y),
-                            0.25 * (1.0 - gp_y),
-                            0.25 * (1.0 + gp_y),
-                            -0.25 * (1.0 + gp_y),
-                        ];
-
-                        let d_n_deta = [
-                            -0.25 * (1.0 - gp_x),
-                            -0.25 * (1.0 + gp_x),
-                            0.25 * (1.0 + gp_x),
-                            0.25 * (1.0 - gp_x),
-                        ];
-
-                        let det_j = (hx * hy) / 4.0;
-
-                        let d_n_dx: Vec<f64> = d_n_dxi.iter().map(|&d| d * 2.0 / hx).collect();
-
-                        let d_n_dy: Vec<f64> = d_n_deta.iter().map(|&d| d * 2.0 / hy).collect();
-
-                        for r in 0..4 {
-                            for c in 0..4 {
-                                k_local[[r, c]] +=
-                                    d_n_dx[r].mul_add(d_n_dx[c], d_n_dy[r] * d_n_dy[c]) * det_j;
-                            }
-                        }
-
-                        let x = (i as f64 + (1.0 + gp_x) / 2.0) * hx;
-
-                        let y = (j as f64 + (1.0 + gp_y) / 2.0) * hy;
-
-                        for k in 0..4 {
-                            f_local[k] += n[k] * force_fn(x, y) * det_j;
-                        }
-                    }
-                }
-
-                let nodes = [
-                    j * n_nodes_x + i,
-                    j * n_nodes_x + i + 1,
-                    (j + 1) * n_nodes_x + i + 1,
-                    (j + 1) * n_nodes_x + i,
-                ];
-
-                let mut local_triplets = Vec::with_capacity(16);
-
-                for r in 0..4 {
-                    for c in 0..4 {
-                        local_triplets.push((nodes[r], nodes[c], k_local[[r, c]]));
-                    }
-                }
-
-                (local_triplets, f_local, nodes)
-            })
-        })
-        .collect();
-
-    let mut triplets = Vec::with_capacity(nx * ny * 16);
-
-    let mut f = vec![0.0; n_nodes];
-
-    for (local_triplets, f_vals, nodes) in element_data {
-        triplets.extend(local_triplets);
-
-        for k in 0..4 {
-            f[nodes[k]] += f_vals[k];
-        }
-    }
-
-    let mut boundary_nodes = std::collections::HashSet::new();
-
-    for j in 0..n_nodes_y {
-        for i in 0..n_nodes_x {
-            if i == 0 || i == n_nodes_x - 1 || j == 0 || j == n_nodes_y - 1 {
-                boundary_nodes.insert(j * n_nodes_x + i);
-            }
-        }
-    }
-
-    triplets.retain(|(r, c, _)| !boundary_nodes.contains(r) && !boundary_nodes.contains(c));
-
-    for node_idx in &boundary_nodes {
-        triplets.push((*node_idx, *node_idx, 1.0));
-
-        f[*node_idx] = 0.0;
-    }
-
-    let k_sparse = csr_from_triplets(n_nodes, n_nodes, &triplets);
-
-    let f_array = Array1::from(f);
-
-    let u_array = solve_conjugate_gradient(&k_sparse, &f_array, None, 2000, 1e-9)?;
-
-    Ok(u_array.to_vec())
+    let plan = PreparedCartesianPoisson::new(&[n_elements_x, n_elements_y])?;
+    plan.solve_legacy(|[x, y, _]| force_fn(x, y))
 }
 
 /// Example scenario for the 2D FEM Poisson solver.
@@ -327,10 +209,12 @@ pub fn simulate_2d_poisson_scenario() -> Result<Vec<f64>, String> {
 
 /// Solves the 3D Poisson equation on a unit cube with zero Dirichlet boundaries.
 ///
-/// # Errors
+/// Uses the same tensor-product Q1 stiffness assembled from bilinear or
+/// trilinear elements, diagonalized by the discrete sine basis.
 ///
-/// This function will return an error if the Conjugate Gradient solver fails to converge
-/// or if the linear system is ill-conditioned.
+/// # Errors
+/// Reports invalid extents, non-finite source values, cancellation or an
+/// unrepresentable result.
 pub fn solve_poisson_3d<F>(
     n_elements: usize,
     force_fn: F,
@@ -338,167 +222,8 @@ pub fn solve_poisson_3d<F>(
 where
     F: Fn(f64, f64, f64) -> f64 + Send + Sync,
 {
-    let (nx, ny, nz) = (n_elements, n_elements, n_elements);
-
-    let (n_nodes_x, n_nodes_y, n_nodes_z) = (nx + 1, ny + 1, nz + 1);
-
-    let n_nodes = n_nodes_x * n_nodes_y * n_nodes_z;
-
-    let (hx, hy, hz) = (1.0 / nx as f64, 1.0 / ny as f64, 1.0 / nz as f64);
-
-    let force_fn = &force_fn;
-
-    let element_data: Vec<ElementData3D> = (0..nz)
-        .into_par_iter()
-        .flat_map(move |k_el| {
-            (0..ny).into_par_iter().flat_map(move |j_el| {
-                (0..nx).into_par_iter().map(move |i_el| {
-                    let mut k_local = ndarray::Array2::<f64>::zeros((8, 8));
-
-                    let mut f_local = [0.0; 8];
-
-                    let gauss = GaussQuadrature::new();
-
-                    for gp_z in &gauss.points {
-                        for gp_y in &gauss.points {
-                            for gp_x in &gauss.points {
-                                let mut n = [0.0; 8];
-
-                                let mut d_n_dxi = [0.0; 8];
-
-                                let mut d_n_deta = [0.0; 8];
-
-                                let mut d_n_dzeta = [0.0; 8];
-
-                                let xi = [-1.0, 1.0];
-
-                                for l in 0..8 {
-                                    let i = l & 1;
-
-                                    let j = (l >> 1) & 1;
-
-                                    let m = (l >> 2) & 1;
-
-                                    n[l] = 0.125
-                                        * (1.0 + xi[i] * gp_x)
-                                        * (1.0 + xi[j] * gp_y)
-                                        * (1.0 + xi[m] * gp_z);
-
-                                    d_n_dxi[l] =
-                                        0.125 * xi[i] * (1.0 + xi[j] * gp_y) * (1.0 + xi[m] * gp_z);
-
-                                    d_n_deta[l] =
-                                        0.125 * (1.0 + xi[i] * gp_x) * xi[j] * (1.0 + xi[m] * gp_z);
-
-                                    d_n_dzeta[l] =
-                                        0.125 * (1.0 + xi[i] * gp_x) * (1.0 + xi[j] * gp_y) * xi[m];
-                                }
-
-                                let det_j = (hx * hy * hz) / 8.0;
-
-                                let d_n_dx: Vec<f64> =
-                                    d_n_dxi.iter().map(|&d| d * 2.0 / hx).collect();
-
-                                let d_n_dy: Vec<f64> =
-                                    d_n_deta.iter().map(|&d| d * 2.0 / hy).collect();
-
-                                let d_n_dz: Vec<f64> =
-                                    d_n_dzeta.iter().map(|&d| d * 2.0 / hz).collect();
-
-                                for r in 0..8 {
-                                    for c in 0..8 {
-                                        k_local[[r, c]] += d_n_dz[r].mul_add(
-                                            d_n_dz[c],
-                                            d_n_dx[r].mul_add(d_n_dx[c], d_n_dy[r] * d_n_dy[c]),
-                                        ) * det_j;
-                                    }
-                                }
-
-                                let x = (i_el as f64 + (1.0 + gp_x) / 2.0) * hx;
-
-                                let y = (j_el as f64 + (1.0 + gp_y) / 2.0) * hy;
-
-                                let z = (k_el as f64 + (1.0 + gp_z) / 2.0) * hz;
-
-                                for l in 0..8 {
-                                    f_local[l] += n[l] * force_fn(x, y, z) * det_j;
-                                }
-                            }
-                        }
-                    }
-
-                    let nodes = [
-                        (k_el * n_nodes_y + j_el) * n_nodes_x + i_el,
-                        (k_el * n_nodes_y + j_el) * n_nodes_x + i_el + 1,
-                        (k_el * n_nodes_y + j_el + 1) * n_nodes_x + i_el,
-                        (k_el * n_nodes_y + j_el + 1) * n_nodes_x + i_el + 1,
-                        ((k_el + 1) * n_nodes_y + j_el) * n_nodes_x + i_el,
-                        ((k_el + 1) * n_nodes_y + j_el) * n_nodes_x + i_el + 1,
-                        ((k_el + 1) * n_nodes_y + j_el + 1) * n_nodes_x + i_el,
-                        ((k_el + 1) * n_nodes_y + j_el + 1) * n_nodes_x + i_el + 1,
-                    ];
-
-                    // The order above is the shape-function bit order
-                    // l = i + 2 j + 4 m (x fastest), matching `n[l]` and `xi` in the quadrature.
-                    let mut local_triplets = Vec::with_capacity(64);
-
-                    for r in 0..8 {
-                        for c in 0..8 {
-                            local_triplets.push((nodes[r], nodes[c], k_local[[r, c]]));
-                        }
-                    }
-
-                    (local_triplets, f_local, nodes)
-                })
-            })
-        })
-        .collect();
-
-    let mut triplets = Vec::with_capacity(nx * ny * nz * 64);
-
-    let mut f = vec![0.0; n_nodes];
-
-    for (local_triplets, f_vals, nodes) in element_data {
-        triplets.extend(local_triplets);
-
-        for l in 0..8 {
-            f[nodes[l]] += f_vals[l];
-        }
-    }
-
-    let mut boundary_nodes = std::collections::HashSet::new();
-
-    for k in 0..n_nodes_z {
-        for j in 0..n_nodes_y {
-            for i in 0..n_nodes_x {
-                let idx = (k * n_nodes_y + j) * n_nodes_x + i;
-
-                let is_boundary = i == 0 || j == 0 || k == 0 || i == nx || j == ny || k == nz;
-
-                // Interior loads stay as assembled from the element integrals
-                // (∫ N_l f dV); only Dirichlet nodes are overwritten below.
-                if is_boundary {
-                    boundary_nodes.insert(idx);
-                }
-            }
-        }
-    }
-
-    triplets.retain(|(r, c, _)| !boundary_nodes.contains(r) && !boundary_nodes.contains(c));
-
-    for node_idx in &boundary_nodes {
-        triplets.push((*node_idx, *node_idx, 1.0));
-
-        f[*node_idx] = 0.0;
-    }
-
-    let k_sparse = csr_from_triplets(n_nodes, n_nodes, &triplets);
-
-    let f_array = Array1::from(f);
-
-    let u_array = solve_conjugate_gradient(&k_sparse, &f_array, None, 3000, 1e-9)?;
-
-    Ok(u_array.to_vec())
+    let plan = PreparedCartesianPoisson::new(&[n_elements; 3])?;
+    plan.solve_legacy(|[x, y, z]| force_fn(x, y, z))
 }
 
 /// Example scenario for the 3D FEM Poisson solver.

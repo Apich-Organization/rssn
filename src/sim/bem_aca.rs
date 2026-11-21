@@ -1,3 +1,5 @@
+//! Iterative 3D BEM with ACA-compressed operators and GMRES.
+//!
 //! # Iterative 3D BEM with hierarchical (ACA) compression
 //!
 //! Solves the same collocation boundary integral equation as
@@ -37,7 +39,9 @@
 //! assume a closed surface; the P1 cluster admissibility uses the vertex
 //! bounding boxes (use `eta <= 1`); the Helmholtz solver is dense.
 
+use crate::execution;
 use crate::kernels::krylov::gmres;
+use crate::kernels::reuse::f64_scratch;
 use crate::sim::physics_bem::Bem3dSolution;
 use crate::sim::physics_bem::BoundaryCondition;
 use crate::sim::physics_bem::SurfaceMesh3D;
@@ -45,6 +49,7 @@ use crate::sim::physics_bem::inv_r_integral;
 use crate::sim::physics_bem::inv_r_integral_in_plane;
 use crate::sim::physics_bem::solid_angle;
 use rayon::prelude::*;
+use std::cell::RefCell;
 use std::f64::consts::PI;
 
 type V3 = [f64; 3];
@@ -139,20 +144,30 @@ impl Block {
         }
     }
 
-    /// `y += B x` in permuted ordering.
+    const fn row_range_and_rank(&self) -> (usize, usize, usize) {
+        match *self {
+            | Self::Dense { r0, m, .. } => (r0, r0 + m, 0),
+            | Self::LowRank { r0, m, k, .. } => (r0, r0 + m, k),
+        }
+    }
+
+    /// Accumulates `B x` into the chunk beginning at `first_row`.
     fn apply(
         &self,
         x: &[f64],
         y: &mut [f64],
+        first_row: usize,
+        rank: &mut [f64],
     ) {
         match self {
             | Self::Dense { r0, c0, m, n, data } => {
+                let row = r0 - first_row;
                 for i in 0..*m {
                     let mut s = 0.0;
                     for j in 0..*n {
                         s += data[i * n + j] * x[c0 + j];
                     }
-                    y[r0 + i] += s;
+                    y[row + i] += s;
                 }
             },
             | Self::LowRank {
@@ -164,46 +179,377 @@ impl Block {
                 u,
                 v,
             } => {
-                let mut t = vec![0.0; *k];
+                let row = r0 - first_row;
+                let t = &mut rank[..*k];
                 for q in 0..*k {
                     t[q] = (0..*n).map(|j| v[q * n + j] * x[c0 + j]).sum();
                 }
                 for i in 0..*m {
-                    y[r0 + i] += (0..*k).map(|q| u[i * k + q] * t[q]).sum::<f64>();
+                    y[row + i] += (0..*k).map(|q| u[i * k + q] * t[q]).sum::<f64>();
                 }
             },
         }
     }
 }
 
+const PRODUCT_CHUNK: usize = 64;
+const PRODUCT_CHUNKS_PER_WORKER: usize = 4;
+
+#[derive(Clone, Copy)]
+struct ProductRows {
+    first: usize,
+    end: usize,
+    rank: usize,
+}
+
+impl ProductRows {
+    const EMPTY: Self = Self {
+        first: usize::MAX,
+        end: 0,
+        rank: 0,
+    };
+
+    const fn relative_to(
+        self,
+        first: usize,
+    ) -> std::ops::Range<usize> {
+        self.first - first..self.end - first
+    }
+
+    fn include(
+        &mut self,
+        first: usize,
+        end: usize,
+        rank: usize,
+    ) {
+        self.first = self.first.min(first);
+        self.end = self.end.max(end);
+        self.rank = self.rank.max(rank);
+    }
+}
+
 struct HMatrix {
     blocks: Vec<Block>,
+    // One-based binary reduction tree over fixed groups of blocks. Each node
+    // records the covered rows and the largest intermediate rank below it.
+    rows: Vec<ProductRows>,
 }
 
 impl HMatrix {
+    fn new(blocks: Vec<Block>) -> Self {
+        let groups = blocks.len().div_ceil(PRODUCT_CHUNK).next_power_of_two();
+        let mut rows = vec![ProductRows::EMPTY; 2 * groups];
+        Self::prepare_rows(&blocks, &mut rows, 1);
+        Self { blocks, rows }
+    }
+
+    fn prepare_rows(
+        blocks: &[Block],
+        rows: &mut [ProductRows],
+        index: usize,
+    ) -> ProductRows {
+        let mut bounds = ProductRows::EMPTY;
+        if blocks.len() <= PRODUCT_CHUNK {
+            for block in blocks {
+                let (first, end, rank) = block.row_range_and_rank();
+                bounds.include(first, end, rank);
+            }
+        } else {
+            let (left, right) = split_product(blocks);
+            bounds = Self::prepare_rows(left, rows, 2 * index);
+            let right_rows = Self::prepare_rows(right, rows, 2 * index + 1);
+            bounds.include(right_rows.first, right_rows.end, right_rows.rank);
+        }
+        rows[index] = bounds;
+        bounds
+    }
+
     fn matvec(
         &self,
         x: &[f64],
     ) -> Vec<f64> {
-        let n = x.len();
-        self.blocks
-            .par_chunks(64)
-            .map(|chunk| {
-                let mut y = vec![0.0; n];
-                for b in chunk {
-                    b.apply(x, &mut y);
-                }
-                y
-            })
-            .reduce(
-                || vec![0.0; n],
-                |mut a, b| {
-                    for (p, q) in a.iter_mut().zip(&b) {
-                        *p += q;
-                    }
-                    a
+        let mut output = vec![0.0; x.len()];
+        self.matvec_into(x, &mut output);
+        output
+    }
+
+    fn matvec_into(
+        &self,
+        x: &[f64],
+        y: &mut [f64],
+    ) {
+        y.fill(0.0);
+        if self.blocks.is_empty() {
+            return;
+        }
+        let root = self.rows[1];
+        let mut rank = f64_scratch(root.rank);
+        rank.resize(root.rank, 0.0);
+        let chunks = self.blocks.len().div_ceil(PRODUCT_CHUNK);
+        let workers = if chunks < 2 * PRODUCT_CHUNKS_PER_WORKER {
+            1
+        } else {
+            execution::cpu_threads().min(chunks / PRODUCT_CHUNKS_PER_WORKER)
+        };
+        self.apply_tree(
+            &self.blocks,
+            1,
+            x,
+            &mut y[root.relative_to(0)],
+            &mut rank,
+            workers,
+        );
+    }
+
+    fn apply_tree(
+        &self,
+        blocks: &[Block],
+        index: usize,
+        x: &[f64],
+        y: &mut [f64],
+        rank: &mut [f64],
+        workers: usize,
+    ) {
+        let first = self.rows[index].first;
+        if blocks.len() <= PRODUCT_CHUNK {
+            for block in blocks {
+                block.apply(x, y, first, rank);
+            }
+            return;
+        }
+
+        let left = 2 * index;
+        let right = left + 1;
+        let right_rows = self.rows[right];
+        let (left_blocks, right_blocks) = split_product(blocks);
+        let mut partial = f64_scratch(right_rows.end - right_rows.first);
+        partial.resize(right_rows.end - right_rows.first, 0.0);
+        let left_output = &mut y[self.rows[left].relative_to(first)];
+        if workers > 1 {
+            let mut right_rank = f64_scratch(right_rows.rank);
+            right_rank.resize(right_rows.rank, 0.0);
+            rayon::join(
+                || self.apply_tree(left_blocks, left, x, left_output, rank, workers / 2),
+                || {
+                    self.apply_tree(
+                        right_blocks,
+                        right,
+                        x,
+                        &mut partial,
+                        &mut right_rank,
+                        workers - workers / 2,
+                    );
                 },
-            )
+            );
+        } else {
+            self.apply_tree(left_blocks, left, x, left_output, rank, 1);
+            self.apply_tree(right_blocks, right, x, &mut partial, rank, 1);
+        }
+        for (value, contribution) in y[right_rows.relative_to(first)]
+            .iter_mut()
+            .zip(partial.iter())
+        {
+            *value += contribution;
+        }
+    }
+}
+
+const fn split_product(blocks: &[Block]) -> (&[Block], &[Block]) {
+    let middle = blocks.len().div_ceil(PRODUCT_CHUNK).div_ceil(2) * PRODUCT_CHUNK;
+    blocks.split_at(middle)
+}
+
+struct BoundaryMatvec<'a> {
+    single_layer: &'a HMatrix,
+    double_layer: &'a HMatrix,
+    is_potential: &'a [bool],
+    diagonal: Option<&'a [f64]>,
+    areas: Option<&'a [f64]>,
+    // The shared GMRES invokes its `Fn` operator serially; block products can still run in parallel.
+    workspace: RefCell<(Vec<f64>, Vec<f64>)>,
+}
+
+impl<'a> BoundaryMatvec<'a> {
+    fn new(
+        single_layer: &'a HMatrix,
+        double_layer: &'a HMatrix,
+        is_potential: &'a [bool],
+        diagonal: Option<&'a [f64]>,
+        areas: Option<&'a [f64]>,
+    ) -> Self {
+        let n = is_potential.len();
+        Self {
+            single_layer,
+            double_layer,
+            is_potential,
+            diagonal,
+            areas,
+            workspace: RefCell::new((vec![0.0; n], vec![0.0; n])),
+        }
+    }
+
+    fn apply(
+        &self,
+        x: &[f64],
+        y: &mut [f64],
+    ) {
+        let (masked, gx) = &mut *self.workspace.borrow_mut();
+        let n = self.is_potential.len();
+        for i in 0..n {
+            masked[i] = if self.is_potential[i] {
+                x[i]
+            } else {
+                0.0
+            };
+        }
+        self.single_layer.matvec_into(masked, gx);
+        for i in 0..n {
+            masked[i] = if self.is_potential[i] {
+                0.0
+            } else {
+                x[i]
+            };
+        }
+        self.double_layer.matvec_into(masked, &mut y[..n]);
+        if let Some(diagonal) = self.diagonal {
+            add_diagonal(&mut y[..n], masked, diagonal);
+        }
+        for (value, g) in y[..n].iter_mut().zip(gx) {
+            *value -= *g;
+        }
+        if let Some(areas) = self.areas {
+            for value in &mut y[..n] {
+                *value += x[n];
+            }
+            y[n] = areas.iter().zip(x).map(|(area, u)| area * u).sum();
+        }
+    }
+}
+
+fn add_diagonal(
+    y: &mut [f64],
+    x: &[f64],
+    diagonal: &[f64],
+) {
+    for ((value, x), diagonal) in y.iter_mut().zip(x).zip(diagonal) {
+        *value += diagonal * x;
+    }
+}
+
+#[cfg(test)]
+mod product_tests {
+    use super::*;
+
+    #[test]
+    fn mixed_rank_products_overwrite_the_output_across_chunks() {
+        let n = 28;
+        let mut expected = vec![vec![0.0; n]; n];
+        let mut blocks = Vec::new();
+        for j in 0..(17 * PRODUCT_CHUNK + 3) {
+            let (r0, c0) = (3 + j % 17, j % 23);
+            match j % 3 {
+                | 0 => {
+                    blocks.push(Block::Dense {
+                        r0,
+                        c0,
+                        m: 2,
+                        n: 3,
+                        data: vec![1.0, -2.0, 3.0, 4.0, 5.0, -6.0],
+                    });
+                    for (row, values) in expected[r0..r0 + 2]
+                        .iter_mut()
+                        .zip([[1.0, -2.0, 3.0], [4.0, 5.0, -6.0]])
+                    {
+                        for (entry, value) in row[c0..c0 + 3].iter_mut().zip(values) {
+                            *entry += value;
+                        }
+                    }
+                },
+                | 1 => {
+                    blocks.push(Block::LowRank {
+                        r0,
+                        c0,
+                        m: 2,
+                        n: 3,
+                        k: 2,
+                        u: vec![2.0, -1.0, 0.5, 3.0],
+                        v: vec![1.0, 3.0, -1.0, 2.0, -2.0, 4.0],
+                    });
+                    for (row, values) in expected[r0..r0 + 2]
+                        .iter_mut()
+                        .zip([[0.0, 8.0, -6.0], [6.5, -4.5, 11.5]])
+                    {
+                        for (entry, value) in row[c0..c0 + 3].iter_mut().zip(values) {
+                            *entry += value;
+                        }
+                    }
+                },
+                | _ => {
+                    blocks.push(Block::LowRank {
+                        r0,
+                        c0,
+                        m: 2,
+                        n: 3,
+                        k: 0,
+                        u: Vec::new(),
+                        v: Vec::new(),
+                    })
+                },
+            }
+        }
+        let matrix = HMatrix::new(blocks);
+        for threads in [1, 4] {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap();
+            pool.install(|| {
+                let mut actual = vec![f64::NAN; n];
+                for sign in [1.0, 0.0, -1.0] {
+                    let x: Vec<_> = (0..n).map(|i| sign * (i as f64 - 7.0)).collect();
+                    matrix.matvec_into(&x, &mut actual);
+                    for (value, row) in actual.iter().zip(&expected) {
+                        let dense = row.iter().zip(&x).map(|(a, b)| a * b).sum::<f64>();
+                        assert_eq!(value.to_bits(), dense.to_bits());
+                    }
+                }
+            });
+        }
+    }
+
+    #[test]
+    fn chunk_fold_order_is_worker_independent_under_cancellation() {
+        let matrix = HMatrix::new(
+            (0..16 * PRODUCT_CHUNK + 1)
+                .map(|index| {
+                    let value = if index % PRODUCT_CHUNK == 0 {
+                        [1e16, -1e16, 1.0, 2.0, -1.5]
+                            .get(index / PRODUCT_CHUNK)
+                            .copied()
+                            .unwrap_or(0.0)
+                    } else {
+                        0.0
+                    };
+                    Block::Dense {
+                        r0: 1,
+                        c0: 0,
+                        m: 1,
+                        n: 1,
+                        data: vec![value],
+                    }
+                })
+                .collect(),
+        );
+        for threads in [1, 2, 4] {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap();
+            assert_eq!(
+                pool.install(|| matrix.matvec(&[1.0, 0.0, 0.0])),
+                [0.0, 1.5, 0.0]
+            );
+        }
     }
 }
 
@@ -430,7 +776,7 @@ fn build_hmatrix(
             }
         })
         .collect();
-    HMatrix { blocks }
+    HMatrix::new(blocks)
 }
 
 /// Solves the interior Laplace BEM problem with ACA-compressed operators and GMRES.
@@ -637,26 +983,11 @@ fn solve_impl(
     let gq = gm.matvec(&q_known);
     let mut rhs: Vec<f64> = (0..n).map(|i| gq[i] - hu[i]).collect();
     let dim = if augmented { n + 1 } else { n };
-    let area_p: Vec<f64> = perm.iter().map(|&o| areas[o]).collect();
+    let area_p = augmented.then(|| perm.iter().map(|&o| areas[o]).collect::<Vec<_>>());
     if augmented {
         rhs.push(0.0);
     }
-    let apply = |x: &[f64], y: &mut [f64]| {
-        let xd: Vec<f64> = (0..n).map(|i| if is_dir[i] { x[i] } else { 0.0 }).collect();
-        let xn: Vec<f64> = (0..n).map(|i| if is_dir[i] { 0.0 } else { x[i] }).collect();
-        let gx = gm.matvec(&xd);
-        let hx = hm.matvec(&xn);
-        for i in 0..n {
-            y[i] = hx[i] - gx[i];
-        }
-        if augmented {
-            let lam = x[n];
-            for i in 0..n {
-                y[i] += lam;
-            }
-            y[n] = (0..n).map(|i| area_p[i] * x[i]).sum();
-        }
-    };
+    let operator = BoundaryMatvec::new(&gm, &hm, &is_dir, None, area_p.as_deref());
     let mut diag: Vec<f64> = (0..n)
         .map(|i| {
             let o = perm[i];
@@ -676,7 +1007,7 @@ fn solve_impl(
         }
     };
     let res = gmres(
-        apply,
+        |x, y| operator.apply(x, y),
         precond,
         &rhs,
         None,
@@ -1192,29 +1523,11 @@ pub fn solve_laplace_bem_3d_p1_aca(
             }
         })
         .collect();
-    let hfull = |x: &[f64]| -> Vec<f64> {
-        let mut y = hm.matvec(x);
-        for i in 0..nv {
-            y[i] += hdiag[i] * x[i];
-        }
-        y
-    };
-    let hu = hfull(&u_known);
+    let mut hu = hm.matvec(&u_known);
+    add_diagonal(&mut hu, &u_known, &hdiag);
     let gq = gm.matvec(&q_known);
     let rhs: Vec<f64> = (0..nv).map(|i| gq[i] - hu[i]).collect();
-    let apply = |x: &[f64], y: &mut [f64]| {
-        let xp: Vec<f64> = (0..nv)
-            .map(|i| if is_pot[i] { x[i] } else { 0.0 })
-            .collect();
-        let xf: Vec<f64> = (0..nv)
-            .map(|i| if is_pot[i] { 0.0 } else { x[i] })
-            .collect();
-        let gx = gm.matvec(&xp);
-        let hx = hfull(&xf);
-        for i in 0..nv {
-            y[i] = hx[i] - gx[i];
-        }
-    };
+    let operator = BoundaryMatvec::new(&gm, &hm, &is_pot, Some(&hdiag), None);
     let diag: Vec<f64> = (0..nv)
         .map(|i| {
             if is_pot[i] {
@@ -1235,7 +1548,7 @@ pub fn solve_laplace_bem_3d_p1_aca(
         }
     };
     let res = gmres(
-        apply,
+        |x, y| operator.apply(x, y),
         precond,
         &rhs,
         None,

@@ -1,3 +1,5 @@
+//! P1/P2 finite elements on interval, triangle and tetrahedron meshes.
+//!
 //! # Finite elements on simplex meshes in 1D, 2D and 3D (P1 and P2)
 //!
 //! Lagrange elements of degree 1 and 2 on intervals, triangles and
@@ -30,7 +32,8 @@
 //! quadrature points of the cells (and of Neumann / Robin facets), bit-identical to the constant
 //! case when the closures are constant. The residual estimator
 //! ([`error_indicators_var`], [`solve_adaptive_var`]) includes `∇k · ∇u_h` in the element
-//! residual and `k(x)` in the facet jump.
+//! residual and `k(x)` in the facet jump. [`SimplexResidualEstimator`] reuses
+//! the geometry and quadrature when estimating several solutions on one space.
 //!
 //! Limitations: no curved boundaries or higher-order
 //! geometry; only refinement, no coarsening; no goal-oriented adaptivity and
@@ -51,6 +54,7 @@ use crate::sim::boundary::BoundaryCondition;
 use crate::sim::boundary::MarkerBcs;
 use crate::sim::structured::LinearSolver;
 use crate::sim::structured::LinearSystem;
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 
 fn compositions(
@@ -849,9 +853,6 @@ impl<'a> From<&FemProblemVar<'a>> for Data<'a> {
     }
 }
 
-/// A facet key with the (cell, local facet) pairs sharing it.
-type FacetEntry<'a> = (&'a Vec<usize>, &'a Vec<(usize, usize)>);
-
 /// Cells from which the element matrices are assembled in parallel.
 const ASSEMBLY_PAR_CELLS: usize = 64;
 
@@ -1155,120 +1156,6 @@ fn solve_heat_data(
     Ok(u)
 }
 
-/// Barycentric coordinates of `x` in `cell` (the inverse of the gradient map).
-fn barycentric(
-    space: &FemSpace,
-    cell: usize,
-    x: [f64; 3],
-) -> Vec<f64> {
-    let dim = space.mesh.dim;
-    let g = space.mesh.bary_gradients(cell);
-    let x0 = space.mesh.nodes[space.mesh.cells[cell][0]];
-    (0..=dim)
-        .map(|m| {
-            let s: f64 = (0..3).map(|a| g[m][a] * (x[a] - x0[a])).sum();
-            s + if m == 0 { 1.0 } else { 0.0 }
-        })
-        .collect()
-}
-
-/// Gradient of the finite-element function at barycentric point `lam` of `cell`.
-fn gradient_at(
-    space: &FemSpace,
-    u: &[f64],
-    cell: usize,
-    lam: &[f64],
-) -> [f64; 3] {
-    let g = space.mesh.bary_gradients(cell);
-    let (_, dl) = space.basis(lam);
-    let cd = &space.cell_dofs[cell];
-    let mut grad = [0.0; 3];
-    for (j, d) in dl.iter().enumerate() {
-        let cj = u[cd[j]];
-        for (m, dm) in d.iter().enumerate() {
-            for a in 0..3 {
-                grad[a] += cj * dm * g[m][a];
-            }
-        }
-    }
-    grad
-}
-
-/// Constant Laplacian of a P1 (zero) or P2 solution on one cell.
-fn cell_laplacian(
-    space: &FemSpace,
-    u: &[f64],
-    cell: usize,
-) -> f64 {
-    if space.degree == 1 {
-        return 0.0;
-    }
-    let dim = space.mesh.dim;
-    let g = space.mesh.bary_gradients(cell);
-    let cd = &space.cell_dofs[cell];
-    let dot = |i: usize, j: usize| (0..3).map(|a| g[i][a] * g[j][a]).sum::<f64>();
-    // `Δφ_i = 4 G_ii` for the vertex bubbles and `Δφ_ij = 8 G_ij` for the edge bubbles.
-    let mut lap = 0.0;
-    for i in 0..=dim {
-        lap += 4.0 * u[cd[i]] * dot(i, i);
-    }
-    let mut k = dim + 1;
-    for i in 0..=dim {
-        for j in (i + 1)..=dim {
-            lap += 8.0 * u[cd[k]] * dot(i, j);
-            k += 1;
-        }
-    }
-    lap
-}
-
-/// Squared diameter (longest edge squared) of a cell.
-fn diameter2(
-    mesh: &SimplexMesh,
-    cell: usize,
-) -> f64 {
-    let c = &mesh.cells[cell];
-    let mut d2: f64 = 0.0;
-    for i in 0..c.len() {
-        for j in (i + 1)..c.len() {
-            let (p, q) = (mesh.nodes[c[i]], mesh.nodes[c[j]]);
-            d2 = d2.max((p[0] - q[0]).powi(2) + (p[1] - q[1]).powi(2) + (p[2] - q[2]).powi(2));
-        }
-    }
-    d2
-}
-
-/// Unit normal of the local face `face` of `cell` (2D: in-plane, 3D: the face normal).
-fn face_normal(
-    mesh: &SimplexMesh,
-    cell: usize,
-    face: usize,
-) -> [f64; 3] {
-    let dim = mesh.dim;
-    let c = &mesh.cells[cell];
-    let v: Vec<[f64; 3]> = (0..=dim)
-        .filter(|&j| j != face)
-        .map(|j| mesh.nodes[c[j]])
-        .collect();
-    if dim == 2 {
-        let d = [v[1][0] - v[0][0], v[1][1] - v[0][1]];
-        let len = d[0].hypot(d[1]);
-        return [-d[1] / len, d[0] / len, 0.0];
-    }
-    if dim == 3 {
-        let a = [v[1][0] - v[0][0], v[1][1] - v[0][1], v[1][2] - v[0][2]];
-        let b = [v[2][0] - v[0][0], v[2][1] - v[0][1], v[2][2] - v[0][2]];
-        let n = [
-            a[1] * b[2] - a[2] * b[1],
-            a[2] * b[0] - a[0] * b[2],
-            a[0] * b[1] - a[1] * b[0],
-        ];
-        let len = (n[0] * n[0] + n[1] * n[1] + n[2] * n[2]).sqrt();
-        return [n[0] / len, n[1] / len, n[2] / len];
-    }
-    [0.0; 3]
-}
-
 /// Residual error indicators `η_T`, one per cell, of a P1 or P2 solution.
 ///
 /// `η_T² = h_T² ∫_T (f(t,·) - c u_h + ∇·(k ∇u_h))² dx
@@ -1295,8 +1182,10 @@ pub fn error_indicators(
 /// `η_T² = h_T² ∫_T (f - c(x) u_h + ∇·(k ∇u_h))² + Σ_e ½ h_e ∫_e [k(x) ∂_n u_h]²`,
 ///
 /// with `∇·(k ∇u_h) = k Δu_h + ∇k · ∇u_h` (the gradient of `k` by central differences of
-/// the closure at the quadrature points, step `10⁻⁶ h_T`) and `k` evaluated at the quadrature
-/// points of the face in the jump.
+/// the closure at the quadrature points, nominal step `10⁻⁶ h_T`) and `k`
+/// evaluated at the quadrature points of the face in the jump. At floating-
+/// point limits the difference uses distinct finite representable coordinates
+/// and their actual spacing.
 #[must_use]
 pub fn error_indicators_var(
     space: &FemSpace,
@@ -1307,105 +1196,724 @@ pub fn error_indicators_var(
     error_indicators_data(space, u, &prob.into(), t)
 }
 
+/// A signed squared-indicator contribution with an independent binary exponent.
+/// Keeping the contribution squared permits the signed quadrature weights used
+/// by the simplex rule and preserves cancellation before the final square root.
+#[derive(Clone, Copy, Debug)]
+struct ResidualSquare {
+    value: f64,
+    exponent: i32,
+}
+
+impl ResidualSquare {
+    const fn direct(value: f64) -> Self {
+        Self { value, exponent: 0 }
+    }
+
+    fn times(
+        self,
+        factor: f64,
+    ) -> Self {
+        let value = self.value * factor;
+        if self.value == 0.0 || factor == 0.0 || !self.value.is_finite() || !factor.is_finite() {
+            return Self::direct(value);
+        }
+        if self.exponent == 0 && value.is_normal() {
+            return Self::direct(value);
+        }
+        let (left, left_exponent) = split_residual_scale(self.value);
+        let (right, right_exponent) = split_residual_scale(factor);
+        Self {
+            value: left * right,
+            exponent: self.exponent + left_exponent + right_exponent,
+        }
+    }
+
+    fn product(
+        self,
+        other: Self,
+    ) -> Self {
+        let mut product = self.times(other.value);
+        product.exponent += other.exponent;
+        product
+    }
+
+    fn plus(
+        self,
+        other: Self,
+    ) -> Self {
+        if self.value == 0.0 {
+            return other;
+        }
+        if other.value == 0.0 {
+            return self;
+        }
+        let sum = self.value + other.value;
+        if !self.value.is_finite()
+            || !other.value.is_finite()
+            || (self.exponent == 0 && other.exponent == 0 && sum.is_finite())
+        {
+            return Self::direct(sum);
+        }
+        let (left, left_exponent) = split_residual_scale(self.value);
+        let (right, right_exponent) = split_residual_scale(other.value);
+        let left_exponent = self.exponent + left_exponent;
+        let right_exponent = other.exponent + right_exponent;
+        let exponent = left_exponent.max(right_exponent);
+        let rescale = |value, delta| {
+            if delta < -1022 {
+                0.0
+            } else {
+                value * residual_power_of_two(delta)
+            }
+        };
+        Self {
+            value: rescale(left, left_exponent - exponent)
+                + rescale(right, right_exponent - exponent),
+            exponent,
+        }
+    }
+
+    fn sqrt(self) -> f64 {
+        if self.exponent == 0 || !(self.value > 0.0 && self.value.is_finite()) {
+            return self.value.sqrt();
+        }
+        let remainder = self.exponent.rem_euclid(2);
+        let root = (self.value * f64::from(remainder + 1)).sqrt();
+        let (significand, shift) = split_residual_scale(root);
+        match self.exponent.div_euclid(2) + shift {
+            | 1024.. => f64::INFINITY,
+            | exponent @ -1022..=1023 => significand * residual_power_of_two(exponent),
+            | exponent @ -1074..=-1023 => significand * f64::from_bits(1_u64 << (exponent + 1074)),
+            | -1075 => (significand * 0.5) * f64::from_bits(1),
+            | _ => 0.0,
+        }
+    }
+}
+
+const fn residual_power_of_two(exponent: i32) -> f64 {
+    f64::from_bits(((exponent + 1023) as u64) << 52)
+}
+
+/// Write a finite nonzero value as a signed significand and binary exponent.
+fn split_residual_scale(value: f64) -> (f64, i32) {
+    let (normal, offset) = if value.is_subnormal() {
+        (value * 18_014_398_509_481_984.0, -54)
+    } else {
+        (value, 0)
+    };
+    let bits = normal.to_bits();
+    (
+        f64::from_bits((bits & 0x800f_ffff_ffff_ffff) | 0x3ff0_0000_0000_0000),
+        ((bits >> 52) & 0x7ff) as i32 - 1023 + offset,
+    )
+}
+
+/// The degree-five rule uses at most 15 nodes on a simplex of dimension 3.
+const RESIDUAL_RULE_CAPACITY: usize = 15;
+const MAX_RESIDUAL_DOFS: usize = 10;
+
+fn integrate_residual_square(
+    weights: &[f64],
+    mut sample: impl FnMut(usize) -> f64,
+) -> ResidualSquare {
+    let mut values = [0.0; RESIDUAL_RULE_CAPACITY];
+    let mut integral = 0.0;
+    let mut maximum = 0.0_f64;
+    for (index, &weight) in weights.iter().enumerate() {
+        let value = sample(index);
+        values[index] = value;
+        integral += weight * value * value;
+        maximum = maximum.max(value.abs());
+    }
+    let moderate = (residual_power_of_two(-500)..=residual_power_of_two(500)).contains(&maximum);
+    if maximum == 0.0 || !maximum.is_finite() || (moderate && integral.is_finite()) {
+        return ResidualSquare::direct(integral);
+    }
+    let normalized = weights
+        .iter()
+        .zip(values)
+        .map(|(weight, value)| {
+            let r = value / maximum;
+            weight * r * r
+        })
+        .sum();
+    ResidualSquare::direct(normalized)
+        .times(maximum)
+        .times(maximum)
+}
+
+#[derive(Clone, Debug)]
+struct ResidualMap {
+    origin: [f64; 3],
+    edges: [[f64; 3]; 3],
+}
+
+impl ResidualMap {
+    fn new(vertices: &[[f64; 3]]) -> Result<Self, String> {
+        let origin = vertices[0];
+        let mut edges = [[0.0; 3]; 3];
+        for (edge, node) in edges.iter_mut().zip(&vertices[1..]) {
+            for a in 0..3 {
+                edge[a] = node[a] - origin[a];
+            }
+            if edge.iter().any(|value| !value.is_finite()) {
+                return Err("residual estimator requires finite simplex edge differences".into());
+            }
+        }
+        Ok(Self { origin, edges })
+    }
+
+    fn point(
+        &self,
+        barycentric: &[f64],
+    ) -> [f64; 3] {
+        // Form the local offset before adding the origin. This retains the
+        // affine coordinates when the physical mesh is far from zero.
+        let mut offset = [0.0; 3];
+        for (edge, &weight) in self.edges.iter().zip(&barycentric[1..]) {
+            for a in 0..3 {
+                offset[a] += weight * edge[a];
+            }
+        }
+        [
+            self.origin[0] + offset[0],
+            self.origin[1] + offset[1],
+            self.origin[2] + offset[2],
+        ]
+    }
+}
+
+fn residual_diameter(vertices: &[[f64; 3]]) -> f64 {
+    let mut diameter = 0.0_f64;
+    for (i, a) in vertices.iter().enumerate() {
+        for b in &vertices[i + 1..] {
+            let distance = (a[0] - b[0]).hypot(a[1] - b[1]).hypot(a[2] - b[2]);
+            diameter = diameter.max(distance);
+        }
+    }
+    diameter
+}
+
+#[derive(Clone, Debug)]
+struct ResidualCell {
+    dofs: [usize; MAX_RESIDUAL_DOFS],
+    map: ResidualMap,
+    gradients: [[f64; 3]; 4],
+    volume_weight: ResidualSquare,
+    difference_step: f64,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct FaceSide {
+    cell: usize,
+    slots: [usize; 3],
+}
+
+impl FaceSide {
+    fn barycentric(
+        &self,
+        weights: &[f64],
+    ) -> [f64; 4] {
+        let mut lambda = [0.0; 4];
+        for (&slot, &weight) in self.slots.iter().zip(weights) {
+            lambda[slot] = weight;
+        }
+        lambda
+    }
+}
+
+#[derive(Clone, Debug)]
+struct ResidualFace {
+    left: FaceSide,
+    right: FaceSide,
+    map: ResidualMap,
+    normal: [f64; 3],
+    weight: ResidualSquare,
+}
+
+#[allow(clippy::single_call_fn)]
+fn residual_cell_gradients(
+    dim: usize,
+    map: &ResidualMap,
+) -> Result<([[f64; 3]; 4], ResidualSquare), String> {
+    let mut jac = [[0.0; 3]; 3];
+    for (a, row) in jac.iter_mut().enumerate() {
+        if a < dim {
+            for (k, value) in row.iter_mut().enumerate().take(dim) {
+                *value = map.edges[k][a];
+            }
+        } else {
+            row[a] = 1.0;
+        }
+    }
+    let (mut inverse, mut determinant) = inv3(jac);
+    let mut scale = 1.0;
+    if !determinant.is_normal() || inverse.iter().flatten().any(|v| !v.is_finite()) {
+        scale = jac[..dim]
+            .iter()
+            .flat_map(|row| row[..dim].iter())
+            .fold(0.0_f64, |max, value| max.max(value.abs()));
+        if scale == 0.0 {
+            return Err("degenerate cell in residual estimator".into());
+        }
+        for row in &mut jac[..dim] {
+            for value in &mut row[..dim] {
+                *value /= scale;
+            }
+        }
+        (inverse, determinant) = inv3(jac);
+    }
+    if determinant == 0.0 || !determinant.is_finite() {
+        return Err("degenerate cell in residual estimator".into());
+    }
+    let mut gradients = [[0.0; 3]; 4];
+    for k in 0..dim {
+        for a in 0..dim {
+            gradients[k + 1][a] = inverse[k][a] / scale;
+            gradients[0][a] -= gradients[k + 1][a];
+        }
+    }
+    if gradients.iter().flatten().any(|value| !value.is_finite()) {
+        return Err("cell gradients exceed the residual estimator's numeric range".into());
+    }
+    let factorial: f64 = (1..=dim).map(|n| n as f64).product();
+    let measure = (0..dim).fold(
+        ResidualSquare::direct(determinant.abs()).times(factorial.recip()),
+        |volume, _| volume.times(scale),
+    );
+    Ok((gradients, measure))
+}
+
+#[allow(clippy::single_call_fn)]
+fn residual_face_geometry(
+    dim: usize,
+    map: &ResidualMap,
+) -> Result<([f64; 3], ResidualSquare), String> {
+    let a = map.edges[0];
+    if dim == 2 {
+        let length = a[0].hypot(a[1]);
+        if length == 0.0 || !length.is_finite() {
+            return Err("degenerate edge in residual estimator".into());
+        }
+        return Ok((
+            [-a[1] / length, a[0] / length, 0.0],
+            ResidualSquare::direct(length),
+        ));
+    }
+
+    let cross = |a: [f64; 3], b: [f64; 3]| {
+        [
+            a[1] * b[2] - a[2] * b[1],
+            a[2] * b[0] - a[0] * b[2],
+            a[0] * b[1] - a[1] * b[0],
+        ]
+    };
+    let maximum = |v: [f64; 3]| v.iter().fold(0.0_f64, |max, x| max.max(x.abs()));
+    let b = map.edges[1];
+    let mut direction = cross(a, b);
+    let mut edge_scale = 1.0;
+    if !maximum(direction).is_normal() || direction.iter().any(|value| !value.is_finite()) {
+        edge_scale = maximum(a).max(maximum(b));
+        if edge_scale == 0.0 {
+            return Err("degenerate face in residual estimator".into());
+        }
+        direction = cross(a.map(|x| x / edge_scale), b.map(|x| x / edge_scale));
+    }
+    let normal_scale = maximum(direction);
+    if normal_scale == 0.0 || !normal_scale.is_finite() {
+        return Err("degenerate face in residual estimator".into());
+    }
+    let direction = direction.map(|x| x / normal_scale);
+    let length = direction[0].hypot(direction[1]).hypot(direction[2]);
+    let measure = ResidualSquare::direct(0.5 * length)
+        .times(normal_scale)
+        .times(edge_scale)
+        .times(edge_scale);
+    Ok((direction.map(|x| x / length), measure))
+}
+
+impl ResidualCell {
+    fn local_values(
+        &self,
+        u: &[f64],
+        count: usize,
+    ) -> [f64; MAX_RESIDUAL_DOFS] {
+        let mut values = [0.0; MAX_RESIDUAL_DOFS];
+        for (value, &dof) in values[..count].iter_mut().zip(&self.dofs) {
+            *value = u[dof];
+        }
+        values
+    }
+
+    fn gradient(
+        &self,
+        degree: usize,
+        dim: usize,
+        values: &[f64; MAX_RESIDUAL_DOFS],
+        lambda: &[f64],
+    ) -> [f64; 3] {
+        let mut coefficients = [0.0; 4];
+        if degree == 1 {
+            coefficients[..=dim].copy_from_slice(&values[..=dim]);
+        } else {
+            for i in 0..=dim {
+                coefficients[i] = values[i] * (4.0 * lambda[i] - 1.0);
+            }
+            let mut edge = dim + 1;
+            for i in 0..=dim {
+                for j in i + 1..=dim {
+                    coefficients[i] += values[edge] * (4.0 * lambda[j]);
+                    coefficients[j] += values[edge] * (4.0 * lambda[i]);
+                    edge += 1;
+                }
+            }
+        }
+        let mut gradient = [0.0; 3];
+        for (coefficient, basis_gradient) in coefficients[..=dim].iter().zip(&self.gradients) {
+            for a in 0..dim {
+                gradient[a] += coefficient * basis_gradient[a];
+            }
+        }
+        gradient
+    }
+
+    fn laplacian(
+        &self,
+        degree: usize,
+        dim: usize,
+        values: &[f64; MAX_RESIDUAL_DOFS],
+    ) -> f64 {
+        if degree == 1 {
+            return 0.0;
+        }
+        let dot = |i: usize, j: usize| {
+            (0..dim)
+                .map(|a| self.gradients[i][a] * self.gradients[j][a])
+                .sum::<f64>()
+        };
+        let mut laplacian = 0.0;
+        for (i, &value) in values.iter().enumerate().take(dim + 1) {
+            laplacian += 4.0 * value * dot(i, i);
+        }
+        let mut edge = dim + 1;
+        for i in 0..=dim {
+            for j in i + 1..=dim {
+                laplacian += 8.0 * values[edge] * dot(i, j);
+                edge += 1;
+            }
+        }
+        laplacian
+    }
+}
+
+fn perturb_coordinate(
+    value: f64,
+    delta: f64,
+) -> f64 {
+    let candidate = value + delta;
+    let distinct = if crate::kernels::exact_eq(candidate, value) {
+        if delta.is_sign_negative() {
+            value.next_down()
+        } else {
+            value.next_up()
+        }
+    } else {
+        candidate
+    };
+    if distinct.is_finite() {
+        distinct
+    } else {
+        value
+    }
+}
+
+/// Prepared residual indicators for repeated estimates on a fixed P1 or P2 mesh.
+///
+/// Owns the required geometry, quadrature and degree-of-freedom mapping from
+/// the supplied space. Solution values are supplied in the original order.
+/// Construct a new estimator after changing or refining the space.
+#[derive(Clone, Debug)]
+pub struct SimplexResidualEstimator {
+    dim: usize,
+    degree: usize,
+    size: usize,
+    local_dofs: usize,
+    cells: Vec<ResidualCell>,
+    faces: Vec<ResidualFace>,
+    cell_points: Vec<Vec<f64>>,
+    cell_weights: Vec<f64>,
+    basis_values: Vec<Vec<f64>>,
+    face_points: Vec<Vec<f64>>,
+    face_weights: Vec<f64>,
+}
+
+impl SimplexResidualEstimator {
+    /// Prepares cell geometry and interior face adjacency.
+    ///
+    /// # Errors
+    /// Returns an error for an invalid space, degenerate cells, or geometry
+    /// whose edge differences, diameters or barycentric gradients cannot be
+    /// represented in f64.
+    pub fn new(space: &FemSpace) -> Result<Self, String> {
+        let dim = space.mesh.dim;
+        if !(1..=3).contains(&dim) || !(1..=2).contains(&space.degree) {
+            return Err(
+                "residual estimator requires a P1 or P2 simplex space in dimensions 1 to 3".into(),
+            );
+        }
+        if space.cell_dofs.len() != space.mesh.cells.len() {
+            return Err("cell degree-of-freedom map does not match the mesh".into());
+        }
+        let local_dofs = if space.degree == 1 {
+            dim + 1
+        } else {
+            (dim + 1) * (dim + 2) / 2
+        };
+        let mut cells = Vec::with_capacity(space.mesh.cells.len());
+        for (cell, mapping) in space.mesh.cells.iter().zip(&space.cell_dofs) {
+            if cell.len() != dim + 1
+                || mapping.len() != local_dofs
+                || mapping.iter().any(|&dof| dof >= space.size())
+            {
+                return Err("invalid residual-estimator cell or degree-of-freedom map".into());
+            }
+            let mut vertices = [[0.0; 3]; 4];
+            for (i, &vertex) in cell.iter().enumerate() {
+                vertices[i] = *space
+                    .mesh
+                    .nodes
+                    .get(vertex)
+                    .ok_or_else(|| "invalid cell vertex in residual estimator".to_string())?;
+                if vertices[i].iter().any(|value| !value.is_finite()) {
+                    return Err("nonfinite cell vertex in residual estimator".into());
+                }
+            }
+            let vertices = &vertices[..=dim];
+            let map = ResidualMap::new(vertices)?;
+            let diameter = residual_diameter(vertices);
+            if diameter == 0.0 || !diameter.is_finite() {
+                return Err("invalid cell diameter in residual estimator".into());
+            }
+            let (gradients, measure) = residual_cell_gradients(dim, &map)?;
+            let mut dofs = [0; MAX_RESIDUAL_DOFS];
+            dofs[..local_dofs].copy_from_slice(mapping);
+            cells.push(ResidualCell {
+                dofs,
+                map,
+                gradients,
+                volume_weight: measure.times(diameter).times(diameter),
+                difference_step: 1e-6 * diameter,
+            });
+        }
+        let faces = residual_faces(&space.mesh)?;
+        let (cell_points, cell_weights) = simplex_rule(dim, 2);
+        let basis_values = cell_points
+            .iter()
+            .map(|lambda| space.basis(lambda).0)
+            .collect();
+        let (face_points, face_weights) = if dim > 1 {
+            simplex_rule(dim - 1, 2)
+        } else {
+            (Vec::new(), Vec::new())
+        };
+        Ok(Self {
+            dim,
+            degree: space.degree,
+            size: space.size(),
+            local_dofs,
+            cells,
+            faces,
+            cell_points,
+            cell_weights,
+            basis_values,
+            face_points,
+            face_weights,
+        })
+    }
+
+    pub(crate) fn heap_bytes(&self) -> usize {
+        let rules = [&self.cell_points, &self.basis_values, &self.face_points];
+        let nested: usize = rules
+            .into_iter()
+            .map(|rows| {
+                rows.capacity() * size_of::<Vec<f64>>()
+                    + rows
+                        .iter()
+                        .map(|row| row.capacity() * size_of::<f64>())
+                        .sum::<usize>()
+            })
+            .sum();
+        self.cells.capacity() * size_of::<ResidualCell>()
+            + self.faces.capacity() * size_of::<ResidualFace>()
+            + (self.cell_weights.capacity() + self.face_weights.capacity()) * size_of::<f64>()
+            + nested
+    }
+
+    /// Computes the cell indicators for constant coefficients.
+    ///
+    /// # Errors
+    /// Returns an error when the solution length differs from the space size.
+    pub fn indicators(
+        &self,
+        u: &[f64],
+        problem: &FemProblem<'_>,
+        time: f64,
+    ) -> Result<Vec<f64>, String> {
+        self.check_solution(u)?;
+        Ok(self.evaluate(u, &problem.into(), time))
+    }
+
+    /// Computes the cell indicators for spatially varying coefficients.
+    ///
+    /// # Errors
+    /// Returns an error when the solution length differs from the space size.
+    pub fn indicators_var(
+        &self,
+        u: &[f64],
+        problem: &FemProblemVar<'_>,
+        time: f64,
+    ) -> Result<Vec<f64>, String> {
+        self.check_solution(u)?;
+        Ok(self.evaluate(u, &problem.into(), time))
+    }
+
+    fn check_solution(
+        &self,
+        u: &[f64],
+    ) -> Result<(), String> {
+        if u.len() != self.size {
+            return Err("residual estimator solution length differs from the space size".into());
+        }
+        Ok(())
+    }
+
+    fn evaluate(
+        &self,
+        u: &[f64],
+        problem: &Data<'_>,
+        time: f64,
+    ) -> Vec<f64> {
+        let mut squares =
+            crate::kernels::par::map_indexed(self.cells.len(), ASSEMBLY_PAR_CELLS, |ci| {
+                let cell = &self.cells[ci];
+                let values = cell.local_values(u, self.local_dofs);
+                let laplacian = cell.laplacian(self.degree, self.dim, &values);
+                let residual = |q: usize| {
+                    let lambda: &[f64] = &self.cell_points[q];
+                    let x = cell.map.point(lambda);
+                    let value: f64 = self.basis_values[q]
+                        .iter()
+                        .zip(values)
+                        .map(|(b, u)| b * u)
+                        .sum();
+                    let mut residual = (problem.f)(time, x) - problem.coef.c(x) * value
+                        + problem.coef.k(x) * laplacian;
+                    if let Coefficients::Field { k, .. } = problem.coef {
+                        let gradient = cell.gradient(self.degree, self.dim, &values, lambda);
+                        for a in 0..self.dim {
+                            let (mut plus, mut minus) = (x, x);
+                            plus[a] = perturb_coordinate(x[a], cell.difference_step);
+                            minus[a] = perturb_coordinate(x[a], -cell.difference_step);
+                            residual += (k(plus) - k(minus)) / (plus[a] - minus[a]) * gradient[a];
+                        }
+                    }
+                    residual
+                };
+                cell.volume_weight
+                    .product(integrate_residual_square(&self.cell_weights, residual))
+            });
+        for face in &self.faces {
+            let left = &self.cells[face.left.cell];
+            let right = &self.cells[face.right.cell];
+            let left_values = left.local_values(u, self.local_dofs);
+            let right_values = right.local_values(u, self.local_dofs);
+            let jump = |q: usize| {
+                let lambda: &[f64] = &self.face_points[q];
+                let x = face.map.point(lambda);
+                let left_lambda = face.left.barycentric(lambda);
+                let right_lambda = face.right.barycentric(lambda);
+                let a = left.gradient(self.degree, self.dim, &left_values, &left_lambda);
+                let b = right.gradient(self.degree, self.dim, &right_values, &right_lambda);
+                problem.coef.k(x)
+                    * (0..self.dim)
+                        .map(|i| (b[i] - a[i]) * face.normal[i])
+                        .sum::<f64>()
+            };
+            let share = face
+                .weight
+                .product(integrate_residual_square(&self.face_weights, jump));
+            squares[face.left.cell] = squares[face.left.cell].plus(share);
+            squares[face.right.cell] = squares[face.right.cell].plus(share);
+        }
+        squares.into_iter().map(ResidualSquare::sqrt).collect()
+    }
+}
+
+#[allow(clippy::single_call_fn)]
+fn residual_faces(mesh: &SimplexMesh) -> Result<Vec<ResidualFace>, String> {
+    let dim = mesh.dim;
+    if dim == 1 {
+        return Ok(Vec::new());
+    }
+    let mut adjacency = BTreeMap::<[usize; 3], [Option<FaceSide>; 3]>::new();
+    for (cell, vertices) in mesh.cells.iter().enumerate() {
+        for face in 0..=dim {
+            let mut indexed = [(0, 0); 3];
+            for (entry, (local, &vertex)) in indexed.iter_mut().zip(
+                vertices
+                    .iter()
+                    .enumerate()
+                    .filter(|(local, _)| *local != face),
+            ) {
+                *entry = (vertex, local);
+            }
+            indexed[..dim].sort_unstable_by_key(|&(vertex, _)| vertex);
+            let key = indexed.map(|(vertex, _)| vertex);
+            let side = FaceSide {
+                cell,
+                slots: indexed.map(|(_, local)| local),
+            };
+            let incident = adjacency.entry(key).or_default();
+            if let Some(next) = incident.iter_mut().find(|entry| entry.is_none()) {
+                *next = Some(side);
+            }
+        }
+    }
+
+    let mut faces = Vec::new();
+    for (key, incident) in adjacency {
+        let [Some(left), Some(right), None] = incident else {
+            continue;
+        };
+        let mut vertices = [[0.0; 3]; 3];
+        for (position, &vertex) in vertices.iter_mut().zip(&key[..dim]) {
+            *position = mesh.nodes[vertex];
+        }
+        let map = ResidualMap::new(&vertices[..dim])?;
+        let diameter = residual_diameter(&vertices[..dim]);
+        let (normal, measure) = residual_face_geometry(dim, &map)?;
+        faces.push(ResidualFace {
+            left,
+            right,
+            map,
+            normal,
+            weight: measure.times(diameter).times(0.5),
+        });
+    }
+    Ok(faces)
+}
+
 fn error_indicators_data(
     space: &FemSpace,
     u: &[f64],
     prob: &Data<'_>,
     t: f64,
 ) -> Vec<f64> {
-    let dim = space.mesh.dim;
-    let n = space.mesh.cells.len();
-    let (pts, w) = simplex_rule(dim, 2);
-    // the cell residual indicators are independent: parallel, index order
-    let mut eta2: Vec<f64> = crate::kernels::par::map_indexed(n, ASSEMBLY_PAR_CELLS, |ci| {
-        let vol = space.mesh.measure(ci);
-        let h2 = diameter2(&space.mesh, ci);
-        let lap = cell_laplacian(space, u, ci);
-        let mut res2 = 0.0;
-        for (lam, wq) in pts.iter().zip(&w) {
-            let (b, _) = space.basis(lam);
-            let uh: f64 = b
-                .iter()
-                .zip(&space.cell_dofs[ci])
-                .map(|(bi, &d)| bi * u[d])
-                .sum();
-            let mut x = [0.0; 3];
-            for (m, &l) in lam.iter().enumerate() {
-                for a in 0..3 {
-                    x[a] += l * space.mesh.nodes[space.mesh.cells[ci][m]][a];
-                }
-            }
-            let mut r = (prob.f)(t, x) - prob.coef.c(x) * uh + prob.coef.k(x) * lap;
-            if let Coefficients::Field { k, .. } = prob.coef {
-                // div(k grad u_h) = k lap + grad k . grad u_h
-                let step = 1e-6 * h2.sqrt();
-                let gu = gradient_at(space, u, ci, lam);
-                for a in 0..dim {
-                    let (mut xp, mut xm) = (x, x);
-                    xp[a] += step;
-                    xm[a] -= step;
-                    r += (k(xp) - k(xm)) / (2.0 * step) * gu[a];
-                }
-            }
-            res2 += wq * r * r;
-        }
-        h2 * vol * res2
-    });
-    if dim < 2 {
-        return eta2.into_iter().map(f64::sqrt).collect();
+    match SimplexResidualEstimator::new(space) {
+        | Ok(estimator) if u.len() >= estimator.size => estimator.evaluate(u, prob, t),
+        | _ => vec![f64::NAN; space.mesh.cells.len()],
     }
-    let mut faces: HashMap<Vec<usize>, Vec<(usize, usize)>> = HashMap::new();
-    for (ci, c) in space.mesh.cells.iter().enumerate() {
-        for f in 0..=dim {
-            let mut key: Vec<usize> = c
-                .iter()
-                .enumerate()
-                .filter(|(j, _)| *j != f)
-                .map(|(_, &v)| v)
-                .collect();
-            key.sort_unstable();
-            faces.entry(key).or_default().push((ci, f));
-        }
-    }
-    let (fq, fw) = simplex_rule(dim - 1, 2);
-    // sorted by facet key: the sums into `eta2` must not depend on the
-    // (randomised) iteration order of the hash map
-    let mut ordered: Vec<FacetEntry<'_>> = faces.iter().collect();
-    ordered.sort_by(|a, b| a.0.cmp(b.0));
-    for (key, list) in ordered {
-        let [(c1, f1), (c2, _)] = list.as_slice() else {
-            continue;
-        };
-        let normal = face_normal(&space.mesh, *c1, *f1);
-        let meas = space.mesh.facet_measure(*c1, *f1);
-        let mut diam2: f64 = 0.0;
-        for i in 0..key.len() {
-            for j in (i + 1)..key.len() {
-                let (p, q) = (space.mesh.nodes[key[i]], space.mesh.nodes[key[j]]);
-                diam2 = diam2
-                    .max((p[0] - q[0]).powi(2) + (p[1] - q[1]).powi(2) + (p[2] - q[2]).powi(2));
-            }
-        }
-        let he = diam2.sqrt();
-        let mut jump2 = 0.0;
-        for (q, wq) in fq.iter().zip(&fw) {
-            let mut x = [0.0; 3];
-            for (i, &l) in q.iter().enumerate() {
-                for a in 0..3 {
-                    x[a] += l * space.mesh.nodes[key[i]][a];
-                }
-            }
-            let g1 = gradient_at(space, u, *c1, &barycentric(space, *c1, x));
-            let g2 = gradient_at(space, u, *c2, &barycentric(space, *c2, x));
-            let jn: f64 = prob.coef.k(x) * (0..3).map(|a| (g2[a] - g1[a]) * normal[a]).sum::<f64>();
-            jump2 += wq * jn * jn;
-        }
-        // the factor ½ is split over the two neighbouring cells
-        let share = 0.5 * he * meas * jump2;
-        eta2[*c1] += share;
-        eta2[*c2] += share;
-    }
-    eta2.into_iter().map(f64::sqrt).collect()
 }
 
 /// The final space, solution and history of [`solve_adaptive`].

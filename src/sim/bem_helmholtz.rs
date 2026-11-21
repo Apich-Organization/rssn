@@ -1,3 +1,5 @@
+//! Helmholtz BEM: exterior acoustic scattering with Burton-Miller.
+//!
 //! # Helmholtz boundary elements: exterior acoustic scattering (Burton–Miller)
 //!
 //! Scattering of a plane wave `p_inc = e^{i k d·x}` (time dependence `e^{-iωt}`)
@@ -39,9 +41,11 @@
 //! oscillatory kernel grow with `k·diam`, there is no directional/FMM-type compression);
 //! `solve_helmholtz_exterior` is dense `O(n²)`.
 
+use crate::kernels::complex_scalar::Complex;
 use crate::sim::physics_bem::SurfaceMesh3D;
 use num_complex::Complex64;
 use rayon::prelude::*;
+use std::alloc::Layout;
 use std::f64::consts::PI;
 
 type V3 = [f64; 3];
@@ -453,9 +457,9 @@ pub struct HelmholtzAcaOptions {
     pub eta: f64,
     /// Relative ACA tolerance of the low-rank blocks.
     pub aca_tol: f64,
-    /// GMRES relative tolerance.
+    /// Tolerance for the actual left-preconditioned relative residual.
     pub gmres_tol: f64,
-    /// GMRES restart length.
+    /// Positive GMRES restart length.
     pub restart: usize,
     /// Maximum number of GMRES iterations.
     pub max_iter: usize,
@@ -691,50 +695,129 @@ struct HMat {
     blocks: Vec<HBlock>,
 }
 
+impl HBlock {
+    fn rows(&self) -> &[usize] {
+        match self {
+            | Self::Dense { rows, .. } | Self::LowRank { rows, .. } => rows,
+        }
+    }
+
+    fn product(
+        &self,
+        x: &[Complex64],
+        out: &mut [Complex64],
+    ) {
+        match self {
+            | Self::Dense { cols, data, .. } => {
+                for (result, row) in out.iter_mut().zip(data.chunks_exact(cols.len())) {
+                    let mut acc = Complex64::ZERO;
+                    for (a, &j) in row.iter().zip(cols) {
+                        acc += a * x[j];
+                    }
+                    *result = acc;
+                }
+            },
+            | Self::LowRank { cols, u, v, .. } => {
+                out.fill(Complex64::ZERO);
+                for (ul, vl) in u.iter().zip(v) {
+                    let mut scale = Complex64::ZERO;
+                    for (a, &j) in vl.iter().zip(cols) {
+                        scale += a * x[j];
+                    }
+                    for (value, weight) in out.iter_mut().zip(ul) {
+                        *value += scale * weight;
+                    }
+                }
+            },
+        }
+    }
+}
+
+const H_PRODUCT_BLOCK_GRAIN: usize = 16;
+const H_PRODUCT_ROW_GRAIN: usize = 2048;
+
+enum HProductWorkspace {
+    Serial(Vec<Complex64>),
+    Parallel {
+        parts: Vec<Vec<Complex64>>,
+        contributions: Option<Vec<Vec<(usize, usize)>>>,
+    },
+}
+
+impl HProductWorkspace {
+    fn new(matrix: &HMat) -> Self {
+        if !crate::execution::should_split(matrix.blocks.len(), H_PRODUCT_BLOCK_GRAIN) {
+            let rows = matrix
+                .blocks
+                .iter()
+                .map(|block| block.rows().len())
+                .max()
+                .unwrap_or(0);
+            return Self::Serial(vec![Complex64::ZERO; rows]);
+        }
+        let contributions =
+            crate::execution::should_split(matrix.n, H_PRODUCT_ROW_GRAIN).then(|| {
+                let mut contributions = vec![Vec::new(); matrix.n];
+                for (block, data) in matrix.blocks.iter().enumerate() {
+                    for (local, &row) in data.rows().iter().enumerate() {
+                        contributions[row].push((block, local));
+                    }
+                }
+                contributions
+            });
+        let parts = matrix
+            .blocks
+            .iter()
+            .map(|block| vec![Complex64::ZERO; block.rows().len()])
+            .collect();
+        Self::Parallel { parts, contributions }
+    }
+}
+
 impl HMat {
     fn matvec(
         &self,
         x: &[Complex64],
-    ) -> Vec<Complex64> {
-        // each block adds into a private vector; the sum is taken in block order
-        let parts: Vec<Vec<(usize, Complex64)>> =
-            crate::kernels::par::map_slice(&self.blocks, 16, |b| {
-                match b {
-                    | HBlock::Dense { rows, cols, data } => {
-                        let nc = cols.len();
-                        rows.iter()
-                            .enumerate()
-                            .map(|(r, &gi)| {
-                                let mut acc = Complex64::new(0.0, 0.0);
-                                for (c, &gj) in cols.iter().enumerate() {
-                                    acc += data[r * nc + c] * x[gj];
-                                }
-                                (gi, acc)
-                            })
-                            .collect()
-                    },
-                    | HBlock::LowRank { rows, cols, u, v } => {
-                        let mut acc = vec![Complex64::new(0.0, 0.0); rows.len()];
-                        for (ul, vl) in u.iter().zip(v) {
-                            let mut c = Complex64::new(0.0, 0.0);
-                            for (a, &gj) in vl.iter().zip(cols) {
-                                c += a * x[gj];
-                            }
-                            for (t, w) in acc.iter_mut().zip(ul) {
-                                *t += c * w;
-                            }
-                        }
-                        rows.iter().copied().zip(acc).collect()
-                    },
+        y: &mut [Complex64],
+        scratch: &mut HProductWorkspace,
+    ) {
+        debug_assert_eq!(y.len(), self.n);
+        match scratch {
+            | HProductWorkspace::Serial(part) => {
+                y.fill(Complex64::ZERO);
+                for block in &self.blocks {
+                    let rows = block.rows();
+                    let part = &mut part[..rows.len()];
+                    block.product(x, part);
+                    for (&row, &value) in rows.iter().zip(part.iter()) {
+                        y[row] += value;
+                    }
                 }
-            });
-        let mut y = vec![Complex64::new(0.0, 0.0); self.n];
-        for part in parts {
-            for (i, v) in part {
-                y[i] += v;
-            }
+            },
+            | HProductWorkspace::Parallel { parts, contributions } => {
+                let blocks = &self.blocks;
+                crate::kernels::par::for_each_mut(parts, H_PRODUCT_BLOCK_GRAIN, |index, part| {
+                    blocks[index].product(x, part);
+                });
+                if let Some(contributions) = contributions {
+                    // Each row consumes contributions in the original block order.
+                    crate::kernels::par::for_each_mut(y, H_PRODUCT_ROW_GRAIN, |row, value| {
+                        *value = contributions[row]
+                            .iter()
+                            .fold(Complex64::ZERO, |sum, &(block, local)| {
+                                sum + parts[block][local]
+                            });
+                    });
+                } else {
+                    y.fill(Complex64::ZERO);
+                    for (block, part) in blocks.iter().zip(parts) {
+                        for (&row, &value) in block.rows().iter().zip(part.iter()) {
+                            y[row] += value;
+                        }
+                    }
+                }
+            },
         }
-        y
     }
 
     fn stored(&self) -> usize {
@@ -750,10 +833,51 @@ impl HMat {
     }
 }
 
-/// Restarted GMRES for a complex operator with a diagonal (Jacobi) left preconditioner.
-/// Returns the solution and the iteration count; `None` when it did not converge.
+const fn gmres_finite(z: Complex64) -> bool {
+    z.re.is_finite() && z.im.is_finite()
+}
+
+fn gmres_div(
+    numerator: Complex64,
+    denominator: Complex64,
+) -> Complex64 {
+    let q =
+        Complex::new(numerator.re, numerator.im).div(Complex::new(denominator.re, denominator.im));
+    Complex64::new(q.re, q.im)
+}
+
+fn gmres_peak(values: &[Complex64]) -> f64 {
+    values
+        .iter()
+        .fold(0.0_f64, |peak, z| peak.max(z.re.abs()).max(z.im.abs()))
+}
+
+fn gmres_norm(values: &[Complex64]) -> f64 {
+    let ordinary = vec_norm(values);
+    if ordinary.is_nan() || (1e-150..=1e150).contains(&ordinary) {
+        return ordinary;
+    }
+    let peak = gmres_peak(values);
+    if peak == 0.0 || !peak.is_finite() {
+        return peak;
+    }
+    peak * values
+        .iter()
+        .map(|z| (z / peak).norm_sqr())
+        .sum::<f64>()
+        .sqrt()
+}
+
+const fn gmres_controls_valid(
+    tol: f64,
+    restart: usize,
+) -> bool {
+    restart > 0 && tol.is_finite() && tol >= 0.0
+}
+
+/// Restarted complex GMRES using the actual left-preconditioned residual.
 fn gmres_complex(
-    apply: &dyn Fn(&[Complex64]) -> Vec<Complex64>,
+    apply: &mut dyn FnMut(&[Complex64], &mut [Complex64]),
     diag: &[Complex64],
     b: &[Complex64],
     tol: f64,
@@ -761,100 +885,206 @@ fn gmres_complex(
     max_iter: usize,
 ) -> Option<(Vec<Complex64>, usize)> {
     let n = b.len();
-    let prec = |v: &mut Vec<Complex64>| {
-        for (x, d) in v.iter_mut().zip(diag) {
-            if d.norm() > 0.0 {
-                *x /= d;
+    if !gmres_controls_valid(tol, restart)
+        || diag.len() != n
+        || b.iter().chain(diag).any(|&z| !gmres_finite(z))
+    {
+        return None;
+    }
+    let prec = |v: &mut [Complex64]| {
+        for (x, &d) in v.iter_mut().zip(diag) {
+            let value = if d == Complex64::ZERO {
+                *x
+            } else {
+                gmres_div(*x, d)
+            };
+            if !gmres_finite(value) || (value == Complex64::ZERO && *x != Complex64::ZERO) {
+                return false;
             }
+            *x = value;
         }
+        true
     };
     let mut pb = b.to_vec();
-    prec(&mut pb);
-    let bnorm = vec_norm(&pb).max(1e-300);
-    let mut x = vec![Complex64::new(0.0, 0.0); n];
-    let mut total = 0;
-    while total < max_iter {
-        let mut r = apply(&x);
-        for (ri, bi) in r.iter_mut().zip(b) {
-            *ri = bi - *ri;
+    if !prec(&mut pb) {
+        return None;
+    }
+    let mut x = vec![Complex64::ZERO; n];
+    let estimated_norm = vec_norm(&pb);
+    let scale = if (1e-100..=1e100).contains(&estimated_norm) {
+        None
+    } else {
+        let peak = gmres_peak(&pb);
+        if peak == 0.0 {
+            return b.iter().all(|&z| z == Complex64::ZERO).then_some((x, 0));
         }
-        prec(&mut r);
-        let beta = vec_norm(&r);
-        if beta <= tol * bnorm {
+        for value in &mut pb {
+            *value /= peak;
+        }
+        Some(peak)
+    };
+    let bnorm = if scale.is_some() {
+        gmres_norm(&pb)
+    } else {
+        estimated_norm
+    };
+    let mut apply_into = |input: &[Complex64], output: &mut [Complex64]| {
+        output.fill(Complex64::new(f64::NAN, f64::NAN));
+        apply(input, output);
+    };
+    let residual = |apply_into: &mut dyn FnMut(&[Complex64], &mut [Complex64]),
+                    input: &[Complex64],
+                    output: &mut [Complex64]| {
+        apply_into(input, output);
+        for (value, &rhs) in output.iter_mut().zip(b) {
+            *value = rhs - *value;
+        }
+        prec(output)
+    };
+    let m = restart.min(n).min(max_iter);
+    let stride = m.checked_add(1)?;
+    let small_len = m.checked_mul(stride)?;
+    Layout::array::<Complex64>(small_len).ok()?;
+    let mut basis = vec![vec![Complex64::ZERO; n]];
+    let mut w = vec![Complex64::ZERO; n];
+    let mut h = vec![Complex64::ZERO; small_len];
+    let mut cs = vec![0.0; m];
+    let mut sn = vec![Complex64::ZERO; m];
+    let mut g = vec![Complex64::ZERO; stride];
+    let mut total = 0;
+    loop {
+        if scale.is_some() {
+            // Iterate on the scaled preconditioned equation. Applying A to
+            // the scaled unknown avoids losing a uniformly tiny right side.
+            apply_into(&x, &mut w);
+            if !prec(&mut w) {
+                return None;
+            }
+            for (value, &rhs) in w.iter_mut().zip(&pb) {
+                *value = rhs - *value;
+            }
+        } else if !residual(&mut apply_into, &x, &mut w) {
+            return None;
+        }
+        let beta = gmres_norm(&w);
+        if !beta.is_finite() {
+            return None;
+        }
+        let exhausted = total >= max_iter;
+        let threshold = if exhausted {
+            10.0 * tol * bnorm
+        } else {
+            tol * bnorm
+        };
+        if beta <= threshold {
+            if let Some(scale) = scale {
+                for value in &mut x {
+                    *value *= scale;
+                }
+                if !x.iter().copied().all(gmres_finite) || !residual(&mut apply_into, &x, &mut w) {
+                    return None;
+                }
+                for value in &mut w {
+                    *value /= scale;
+                }
+                let restored = gmres_norm(&w);
+                if !restored.is_finite() || restored > threshold {
+                    return None;
+                }
+            }
             return Some((x, total));
         }
-        let m = restart.min(n);
-        let mut basis: Vec<Vec<Complex64>> = vec![r.iter().map(|v| v / beta).collect()];
-        let mut h = vec![vec![Complex64::new(0.0, 0.0); m]; m + 1];
-        let (mut cs, mut sn) = (vec![0.0_f64; m], vec![Complex64::new(0.0, 0.0); m]);
-        let mut g = vec![Complex64::new(0.0, 0.0); m + 1];
+        if exhausted {
+            return None;
+        }
+        for (value, direction) in w.iter().zip(&mut basis[0]) {
+            *direction = value / beta;
+        }
         g[0] = Complex64::new(beta, 0.0);
         let mut used = 0;
         for j in 0..m {
-            let mut w = apply(&basis[j]);
-            prec(&mut w);
-            for (i, q) in basis.iter().enumerate() {
+            apply_into(&basis[j], &mut w);
+            total += 1;
+            if !prec(&mut w) {
+                return None;
+            }
+            let col = &mut h[j * stride..(j + 1) * stride];
+            for (i, q) in basis[..=j].iter().enumerate() {
                 let hij = herm_dot(q, &w);
-                h[i][j] = hij;
+                col[i] = hij;
                 for (wk, qk) in w.iter_mut().zip(q) {
                     *wk -= hij * qk;
                 }
             }
-            let hn = vec_norm(&w);
-            h[j + 1][j] = Complex64::new(hn, 0.0);
+            let hn = gmres_norm(&w);
+            col[j + 1] = Complex64::new(hn, 0.0);
             // apply the previous rotations to the new column
             for i in 0..j {
-                let t = cs[i] * h[i][j] + sn[i] * h[i + 1][j];
-                h[i + 1][j] = -sn[i].conj() * h[i][j] + cs[i] * h[i + 1][j];
-                h[i][j] = t;
+                let t = cs[i] * col[i] + sn[i] * col[i + 1];
+                col[i + 1] = -sn[i].conj() * col[i] + cs[i] * col[i + 1];
+                col[i] = t;
             }
-            let (a, bb) = (h[j][j], h[j + 1][j]);
-            let denom = (a.norm_sqr() + bb.norm_sqr()).sqrt();
-            if denom > 0.0 {
-                cs[j] = a.norm() / denom;
-                sn[j] = if a.norm() > 0.0 {
-                    (a / a.norm()) * bb.conj() / denom
-                } else {
-                    bb.conj() / denom
-                };
+            let (a, bb) = (col[j], col[j + 1]);
+            let a_norm = a.norm();
+            let square = a.norm_sqr() + bb.norm_sqr();
+            let denom = if square.is_normal() {
+                square.sqrt()
             } else {
-                cs[j] = 1.0;
+                a_norm.hypot(bb.norm())
+            };
+            if !denom.is_finite() {
+                return None;
             }
-            h[j][j] = cs[j] * a + sn[j] * bb;
-            h[j + 1][j] = Complex64::new(0.0, 0.0);
+            if denom == 0.0 {
+                break;
+            }
+            cs[j] = a_norm / denom;
+            sn[j] = if a_norm > 0.0 {
+                (a / a_norm) * bb.conj() / denom
+            } else {
+                bb.conj() / denom
+            };
+            col[j] = cs[j] * a + sn[j] * bb;
+            col[j + 1] = Complex64::ZERO;
             let gj = g[j];
             g[j + 1] = -sn[j].conj() * gj;
             g[j] = cs[j] * gj;
             used = j + 1;
-            total += 1;
-            if hn > 1e-300 {
-                basis.push(w.iter().map(|v| v / hn).collect());
-            }
-            if g[j + 1].norm() <= tol * bnorm || hn <= 1e-300 || total >= max_iter {
+            if g[j + 1].norm() <= tol * bnorm || hn == 0.0 || total >= max_iter {
                 break;
             }
+            if used < m {
+                if used == basis.len() {
+                    basis.push(vec![Complex64::ZERO; n]);
+                }
+                for (value, direction) in w.iter().zip(&mut basis[used]) {
+                    *direction = value / hn;
+                }
+            }
         }
-        // back substitution
-        let mut y = vec![Complex64::new(0.0, 0.0); used];
+        if used == 0 {
+            return None;
+        }
+        // Back substitute in the Givens right-hand side, reusing its slots.
         for i in (0..used).rev() {
             let mut sum = g[i];
             for k in i + 1..used {
-                sum -= h[i][k] * y[k];
+                sum -= h[k * stride + i] * g[k];
             }
-            y[i] = sum / h[i][i];
+            g[i] = gmres_div(sum, h[i * stride + i]);
+            if !gmres_finite(g[i]) {
+                return None;
+            }
         }
-        for (i, yi) in y.iter().enumerate() {
+        for (i, yi) in g[..used].iter().enumerate() {
             for (xk, qk) in x.iter_mut().zip(&basis[i]) {
                 *xk += yi * qk;
             }
         }
+        if !x.iter().copied().all(gmres_finite) {
+            return None;
+        }
     }
-    let mut r = apply(&x);
-    for (ri, bi) in r.iter_mut().zip(b) {
-        *ri = bi - *ri;
-    }
-    prec(&mut r);
-    (vec_norm(&r) <= 10.0 * tol * bnorm).then_some((x, total))
 }
 
 /// [`solve_helmholtz_exterior`] with a hierarchical matrix: complex ACA for the admissible blocks
@@ -874,6 +1104,11 @@ pub fn solve_helmholtz_exterior_aca(
     mesh.validate()?;
     if !(k > 0.0 && k.is_finite()) {
         return Err("the wave number must be positive".into());
+    }
+    if !gmres_controls_valid(opts.gmres_tol, opts.restart) {
+        return Err(
+            "GMRES requires a positive restart length and finite nonnegative tolerance".into(),
+        );
     }
     let dn = norm(wave.direction);
     if dn == 0.0 {
@@ -937,8 +1172,9 @@ pub fn solve_helmholtz_exterior_aca(
     let h = HMat { n: nt, blocks };
     let diag: Vec<Complex64> = (0..nt).map(|i| entry(i, i)).collect();
     let rhs = setup.rhs(dir);
+    let mut scratch = HProductWorkspace::new(&h);
     let (density, iterations) = gmres_complex(
-        &|v| h.matvec(v),
+        &mut |v, out| h.matvec(v, out, &mut scratch),
         &diag,
         &rhs,
         opts.gmres_tol,
@@ -1064,5 +1300,167 @@ impl HelmholtzSolution {
         x: V3,
     ) -> Complex64 {
         plane_wave(self.k, self.dir, x)
+    }
+}
+
+#[cfg(test)]
+mod gmres_tests {
+    use super::gmres_complex;
+    use num_complex::Complex64 as C;
+
+    #[test]
+    fn hierarchical_product_reuses_buffers_and_preserves_block_order() {
+        use super::H_PRODUCT_ROW_GRAIN;
+        use super::HBlock;
+        use super::HMat;
+        use super::HProductWorkspace;
+
+        for n in [3, H_PRODUCT_ROW_GRAIN] {
+            let blocks = (0..18)
+                .map(|index| {
+                    let coefficient = match index % 3 {
+                        | 0 => (1e16, -1e16),
+                        | 1 => (1.0, 1.0),
+                        | _ => (-1e16, 1e16),
+                    };
+                    let value = C::new(coefficient.0, coefficient.1);
+                    if index % 2 == 0 {
+                        HBlock::Dense {
+                            rows: vec![n - 1, 0],
+                            cols: vec![0],
+                            data: vec![value, value],
+                        }
+                    } else {
+                        HBlock::LowRank {
+                            rows: vec![0, n - 1],
+                            cols: vec![0],
+                            u: vec![vec![C::ONE, C::ONE]],
+                            v: vec![vec![value]],
+                        }
+                    }
+                })
+                .collect();
+            let matrix = HMat { n, blocks };
+            for workers in [1, 2] {
+                let pool = rayon::ThreadPoolBuilder::new()
+                    .num_threads(workers)
+                    .build()
+                    .unwrap();
+                pool.install(|| {
+                    let mut scratch = HProductWorkspace::new(&matrix);
+                    let mut serial = HProductWorkspace::Serial(vec![C::ZERO; 2]);
+                    let mut actual = vec![C::I; n];
+                    let mut expected = vec![C::ZERO; n];
+                    for input in [C::ONE, C::ZERO, C::I, C::new(2.0, -3.0)] {
+                        matrix.matvec(&[input], &mut expected, &mut serial);
+                        matrix.matvec(&[input], &mut actual, &mut scratch);
+                        for (a, b) in actual.iter().zip(&expected) {
+                            assert_eq!(
+                                (a.re.to_bits(), a.im.to_bits()),
+                                (b.re.to_bits(), b.im.to_bits())
+                            );
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    fn identity(
+        x: &[C],
+        y: &mut [C],
+    ) {
+        y.copy_from_slice(x);
+    }
+
+    #[test]
+    fn complex_gmres_recovers_both_extreme_equation_scales() {
+        let expected = [C::new(1.0, 0.5), C::new(-1.0, -0.25)];
+        for scale in [2.0_f64.powi(-600), 2.0_f64.powi(600)] {
+            let rhs = expected.map(|z| z * scale);
+            let (x, steps) =
+                gmres_complex(&mut identity, &[C::ONE; 2], &rhs, 1e-12, 2, 12).unwrap();
+            assert!(steps > 0);
+            for (&actual, want) in x.iter().zip(expected) {
+                assert!((actual / scale - want).norm() < 1e-14);
+            }
+
+            let phase = C::new(0.75, 0.5);
+            let diagonal = phase * scale;
+            let mut apply = |x: &[C], y: &mut [C]| {
+                for (v, &z) in y.iter_mut().zip(x) {
+                    *v = diagonal * z;
+                }
+            };
+            let rhs = expected.map(|z| diagonal * z);
+            let (x, _) = gmres_complex(&mut apply, &[diagonal; 2], &rhs, 1e-12, 2, 12).unwrap();
+            for (&actual, want) in x.iter().zip(expected) {
+                assert!((actual - want).norm() < 1e-14);
+            }
+
+            let rhs = expected.map(|z| phase * z);
+            let (x, _) = gmres_complex(&mut apply, &[C::ZERO; 2], &rhs, 1e-12, 2, 12).unwrap();
+            for (&actual, want) in x.iter().zip(expected) {
+                assert!((actual * scale - want).norm() < 1e-14);
+            }
+        }
+    }
+
+    #[test]
+    fn complex_gmres_checks_controls_and_the_restored_iterate() {
+        assert!(gmres_complex(&mut identity, &[C::ONE], &[C::ONE], 1e-12, 0, 3).is_none());
+        assert!(gmres_complex(&mut identity, &[], &[C::ONE], 1e-12, 1, 3).is_none());
+        assert!(gmres_complex(&mut identity, &[C::ONE], &[C::ONE], f64::NAN, 1, 3).is_none());
+        assert!(gmres_complex(&mut identity, &[C::ONE], &[C::ONE], 1e-12, 1, 0).is_none());
+        assert!(
+            gmres_complex(
+                &mut |_, y| y.fill(C::ZERO),
+                &[C::ONE],
+                &[C::ONE],
+                1e-12,
+                1,
+                3
+            )
+            .is_none()
+        );
+        assert!(gmres_complex(&mut |_, _| (), &[C::ONE], &[C::ONE], 1e-12, 1, 3).is_none());
+
+        let tiny = C::new(f64::from_bits(1), 0.0);
+        assert!(
+            gmres_complex(
+                &mut |x, y| y[0] = 2.0 * x[0],
+                &[C::ONE],
+                &[tiny],
+                1e-12,
+                1,
+                3,
+            )
+            .is_none()
+        );
+        let (x, _) = gmres_complex(&mut identity, &[C::ONE], &[tiny], 1e-12, 1, 3).unwrap();
+        assert_eq!(x, [tiny]);
+    }
+
+    #[test]
+    fn reused_restart_storage_solves_a_nonnormal_complex_system() {
+        let diagonal = [C::new(2.0, 0.5), C::new(1.5, -0.25), C::new(3.0, 0.25)];
+        let mut apply = |x: &[C], y: &mut [C]| {
+            y.copy_from_slice(&[
+                diagonal[0] * x[0] + C::new(0.25, -0.125) * x[1],
+                diagonal[1] * x[1] + C::new(-0.375, 0.25) * x[2],
+                diagonal[2] * x[2] + C::new(0.25, 0.125) * x[0],
+            ]);
+        };
+        let expected = [C::new(0.75, 0.5), C::new(-1.0, -0.25), C::new(0.25, 1.5)];
+        let mut rhs = [C::ZERO; 3];
+        apply(&expected, &mut rhs);
+        for restart in [1, 2, 3] {
+            let (x, steps) =
+                gmres_complex(&mut apply, &diagonal, &rhs, 1e-12, restart, 100).unwrap();
+            assert!(steps > 1);
+            for (&actual, want) in x.iter().zip(expected) {
+                assert!((actual - want).norm() < 5e-12);
+            }
+        }
     }
 }

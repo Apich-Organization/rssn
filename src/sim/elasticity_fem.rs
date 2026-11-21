@@ -1,3 +1,5 @@
+//! Linear elasticity on triangle/tetrahedron meshes (P1/P2).
+//!
 //! # Linear elasticity on triangle and tetrahedron meshes (P1 and P2)
 //!
 //! Small-strain isotropic elasticity `-∇·σ(u) = f`, `σ = C ε(u)`, solved with
@@ -331,6 +333,91 @@ fn checked_material(
     Ok(constitutive_matrix(model, &material))
 }
 
+fn stiffness_pattern(space: &FemSpace) -> Csr {
+    let dim = space.mesh.dim;
+    let rows = space.size() * dim;
+    let mut neighbours = vec![Vec::new(); space.size()];
+    for nodes in space.cell_dofs.iter().take(space.mesh.cells.len()) {
+        for &node in nodes {
+            neighbours[node].extend_from_slice(nodes);
+        }
+    }
+    for columns in &mut neighbours {
+        columns.sort_unstable();
+        columns.dedup();
+    }
+    let entries = neighbours.iter().map(Vec::len).sum::<usize>() * dim * dim;
+    let mut indices = Vec::with_capacity(entries);
+    let mut indptr = Vec::with_capacity(rows + 1);
+    indptr.push(0);
+    for columns in &neighbours {
+        for _ in 0..dim {
+            for &column in columns {
+                indices.extend(column * dim..(column + 1) * dim);
+            }
+            indptr.push(indices.len());
+        }
+    }
+    // The first addition to -0.0 retains either sign of a zero contribution,
+    // just as inserting the first triplet did.
+    Csr {
+        rows,
+        cols: rows,
+        indptr,
+        indices,
+        values: vec![-0.0; entries],
+    }
+}
+
+fn cell_column_offsets(
+    stiffness: &Csr,
+    nodes: &[usize],
+    dim: usize,
+    offsets: &mut Vec<usize>,
+) -> Result<(), String> {
+    offsets.clear();
+    for &node in nodes {
+        let row = node * dim;
+        let columns = &stiffness.indices[stiffness.indptr[row]..stiffness.indptr[row + 1]];
+        for &other in nodes {
+            let offset = columns
+                .binary_search(&(other * dim))
+                .map_err(|_| "elastic element connectivity does not match the stiffness pattern")?;
+            offsets.push(offset);
+        }
+    }
+    Ok(())
+}
+
+fn replace_displacement_rows(
+    stiffness: &mut Csr,
+    prescribed: &[Option<f64>],
+    load: &mut [f64],
+) {
+    let mut next = 0;
+    for (row, value) in prescribed.iter().enumerate() {
+        let (start, end) = (stiffness.indptr[row], stiffness.indptr[row + 1]);
+        stiffness.indptr[row] = next;
+        if let Some(value) = value {
+            // Every prescribed degree of freedom belongs to a cell, so this row
+            // has at least its diagonal entry and compaction never grows it.
+            stiffness.indices[next] = row;
+            stiffness.values[next] = 1.0;
+            load[row] = *value;
+            next += 1;
+        } else {
+            if next != start {
+                stiffness.indices.copy_within(start..end, next);
+                stiffness.values.copy_within(start..end, next);
+            }
+            next += end - start;
+        }
+    }
+    stiffness.indptr[stiffness.rows] = next;
+    stiffness.indices.truncate(next);
+    stiffness.values.truncate(next);
+}
+
 /// Assembly and solve shared by [`solve`] and [`solve_heterogeneous`]:
 /// `mat_at` is sampled at every quadrature point; when `per_cell_c` is set the
 /// constitutive matrix at each cell centroid is stored for stress recovery.
@@ -350,10 +437,10 @@ fn solve_with_material<'a>(
         return Err("elastic thickness must be finite positive".into());
     }
     let scale = if dim == 2 { thickness } else { 1.0 };
-    let nd = space.size();
-    let ndof = nd * dim;
+    let mut stiffness = stiffness_pattern(space);
+    let ndof = stiffness.rows;
     let (pts, w) = simplex_rule(dim, space.degree + 1);
-    let mut trip: Vec<(usize, usize, f64)> = Vec::new();
+    let mut offsets = Vec::new();
     let mut load = vec![0.0; ndof];
     let mut cell_c: Vec<Vec<Vec<f64>>> = if per_cell_c {
         Vec::with_capacity(space.mesh.cells.len())
@@ -365,6 +452,7 @@ fn solve_with_material<'a>(
         let g = space.mesh.bary_gradients(ci);
         let cd = &space.cell_dofs[ci];
         let nl = cd.len();
+        cell_column_offsets(&stiffness, cd, dim, &mut offsets)?;
         for (p, wq) in pts.iter().zip(&w) {
             let (b, dl) = space.basis(p);
             let grads: Vec<[f64; 3]> = dl
@@ -397,7 +485,9 @@ fn solve_with_material<'a>(
             }
             for i in 0..nl {
                 for a in 0..dim {
-                    load[cd[i] * dim + a] += scale * vol * wq * f[a] * b[i];
+                    let row = cd[i] * dim + a;
+                    let row_start = stiffness.indptr[row];
+                    load[row] += scale * vol * wq * f[a] * b[i];
                     // C * B_j,b
                     for j in 0..nl {
                         for bcomp in 0..dim {
@@ -406,7 +496,8 @@ fn solve_with_material<'a>(
                                 let cb: f64 = (0..nv).map(|k| c[r][k] * cols[j][bcomp][k]).sum();
                                 s += cols[i][a][r] * cb;
                             }
-                            trip.push((cd[i] * dim + a, cd[j] * dim + bcomp, scale * vol * wq * s));
+                            let offset = row_start + offsets[i * nl + j] + bcomp;
+                            stiffness.values[offset] += scale * vol * wq * s;
                         }
                     }
                 }
@@ -465,21 +556,13 @@ fn solve_with_material<'a>(
             },
         }
     }
-    let k = Csr::from_triplets(ndof, ndof, &trip);
-    let mut t2 = Vec::with_capacity(k.values.len());
-    for r in 0..ndof {
-        if dirichlet[r].is_some() {
-            t2.push((r, r, 1.0));
-            load[r] = dirichlet[r].unwrap_or(0.0);
-        } else {
-            for p in k.indptr[r]..k.indptr[r + 1] {
-                t2.push((r, k.indices[p], k.values[p]));
-            }
-        }
-    }
-    let a = Csr::from_triplets(ndof, ndof, &t2);
-    let u = LinearSystem::new(a, solver)?.solve(&load, None)?;
-    let c0 = checked_material(model, mat_at([0.0; 3]))?;
+    replace_displacement_rows(&mut stiffness, &dirichlet, &mut load);
+    let u = LinearSystem::new(stiffness, solver)?.solve(&load, None)?;
+    let c0 = if per_cell_c {
+        Vec::new()
+    } else {
+        checked_material(model, mat_at([0.0; 3]))?
+    };
     Ok(ElasticSolution {
         space,
         u,

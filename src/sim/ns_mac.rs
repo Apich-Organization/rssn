@@ -1,3 +1,5 @@
+//! Incompressible Navier-Stokes projection solver on a MAC grid (2D/3D).
+//!
 //! # Incompressible Navier–Stokes on a staggered (MAC) grid in 2D and 3D
 //!
 //! Second-order incremental pressure-correction (projection) solver for
@@ -9,7 +11,8 @@
 //! * diffusion: Crank–Nicolson, solved implicitly for each component with a
 //!   sparse LU factorisation computed once;
 //! * pressure: incremental projection `Δφ = ∇·u*/Δt`, `u = u* - Δt ∇φ`,
-//!   `p += φ` (optionally the rotational correction `- ν/2 ∇·u*`);
+//!   `p += φ` (optionally the rotational correction `- ν/2 ∇·u*`), with
+//!   one reference for `φ` in each closed pressure component;
 //! * boundary faces from [`FluidFaceBcs`]: no-slip (fixed or moving wall),
 //!   slip / symmetry, prescribed inflow velocity (time dependent), outflow
 //!   with prescribed pressure, periodic;
@@ -19,7 +22,7 @@
 //!   weighted divergence and pressure Poisson on cut cells (second order for
 //!   diffusion-dominated flow, see the Taylor–Couette test);
 //! * **cut cells** ([`CutCellOptions`]): face apertures and cell volume
-//!   fractions come from [`cutcell`](crate::sim::cutcell) (exact clipping of
+//!   fractions come from [`cutcell`] (exact clipping of
 //!   the level set, also in 3D). The convective term near the body is
 //!   evaluated in conservative form on the face-centred dual cells with their
 //!   own apertures and volume fractions (face values interpolated at the true
@@ -103,6 +106,10 @@
 //! stratified fluid at rest, conserves mass to round-off and leaves `∇·u` at
 //! the solver tolerance.  See `tests/sim/ns_mac.rs`.
 
+use std::borrow::Cow;
+
+use crate::kernels::graph::Graph;
+use crate::kernels::graph::strongly_connected_components;
 use crate::kernels::krylov::Csr;
 use crate::sim::boundary::Face;
 use crate::sim::boundary::FluidBoundary;
@@ -372,6 +379,45 @@ struct Helm {
     terms: Vec<(usize, f64, Term)>,
 }
 
+const PRESSURE_OUTLET: u8 = 1 << 6;
+
+#[derive(Default)]
+struct PressureGauges {
+    /// Two neighbor bits per axis and an outlet bit for each pressure cell.
+    pattern: Vec<u8>,
+    rows: Vec<usize>,
+}
+
+struct PressureSystem {
+    matrix: LinearSystem,
+    gauges: PressureGauges,
+}
+
+impl PressureSystem {
+    fn replace(
+        &mut self,
+        (matrix, gauges): (LinearSystem, Option<PressureGauges>),
+    ) {
+        self.matrix = matrix;
+        if let Some(gauges) = gauges {
+            self.gauges = gauges;
+        }
+    }
+}
+
+/// Fluid-cell divergence statistics on the staggered MAC grid.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct DivergenceSummary {
+    /// Largest absolute divergence per unit fluid volume.
+    pub max_abs: f64,
+    /// Root mean square divergence weighted by fluid cell volume.
+    pub rms: f64,
+    /// Signed net outward volumetric flux through the open grid faces.
+    pub net_outflow: f64,
+    /// Total active fluid volume, or area in two dimensions.
+    pub fluid_volume: f64,
+}
+
 /// Incompressible flow solver state.
 pub struct NsSolver {
     cfg: NsConfig,
@@ -386,7 +432,7 @@ pub struct NsSolver {
     status: [Vec<Status>; 3],
     bvals: [Vec<f64>; 3],
     helm: Vec<Helm>,
-    pmat: LinearSystem,
+    pressure: PressureSystem,
     pfluid: Vec<bool>,
     ib: Option<Ib>,
     conv_prev: Option<[Vec<f64>; 3]>,
@@ -642,6 +688,7 @@ impl NsSolver {
             rho,
             adv_prev: None,
             adv_now: vec![0.0; ncell],
+            pressure_dirty: false,
         }))
     }
 
@@ -689,13 +736,14 @@ impl NsSolver {
     /// Density of the fluid between cell `i` and its neighbour `side` along
     /// `a`: the arithmetic mean of the two cells, or the density of the only
     /// adjacent cell on a wall. Periodic axes wrap.
-    fn face_density(
+    const fn face_density(
         &self,
+        rho: Option<&[f64]>,
         a: usize,
         i: [usize; 3],
         side: isize,
     ) -> f64 {
-        let Some(rho) = self.rho() else { return 1.0 };
+        let Some(rho) = rho else { return 1.0 };
         let n = self.cfg.n;
         let na = n[a] as isize;
         let here = Self::fidx(n, i);
@@ -860,10 +908,13 @@ impl NsSolver {
             status,
             bvals,
             helm: Vec::new(),
-            pmat: LinearSystem::new(
-                Csr::from_triplets(1, 1, &[(0, 0, 1.0)]),
-                LinearSolver::Direct,
-            )?,
+            pressure: PressureSystem {
+                matrix: LinearSystem::new(
+                    Csr::from_triplets(1, 1, &[(0, 0, 1.0)]),
+                    LinearSolver::Direct,
+                )?,
+                gauges: PressureGauges::default(),
+            },
             pfluid,
             ib,
             conv_prev: None,
@@ -1065,59 +1116,142 @@ impl NsSolver {
     }
 
     fn build_poisson(&mut self) -> Result<(), String> {
+        let pressure = self.prepare_poisson(self.rho())?;
+        self.pressure.replace(pressure);
+        if let Some(density) = &mut self.dens {
+            density.pressure_dirty = false;
+        }
+        Ok(())
+    }
+
+    fn prepare_poisson(
+        &self,
+        rho: Option<&[f64]>,
+    ) -> Result<(LinearSystem, Option<PressureGauges>), String> {
         let cfg = &self.cfg;
         let n = cfg.n;
-        let ncell: usize = n.iter().product();
+        let dim = self.spatial_dimension();
+        let ncell = self.pfluid.len();
+        let mut pattern = if self.pressure.gauges.pattern.len() == ncell {
+            Cow::Borrowed(self.pressure.gauges.pattern.as_slice())
+        } else {
+            Cow::Owned(vec![0; ncell])
+        };
+        let metric: [f64; 3] = std::array::from_fn(|a| 1.0 / (self.h(a) * self.h(a)));
         let mut trip: Vec<(usize, usize, f64)> = Vec::new();
-        let mut has_dirichlet = false;
         for p in 0..ncell {
             if !self.pfluid[p] {
                 trip.push((p, p, 1.0));
                 continue;
             }
             let i = Self::fijk(n, p);
-            for a in 0..cfg.dim {
-                let w = 1.0 / (self.h(a) * self.h(a));
-                for side in [-1_isize, 1] {
+            let mut flags = 0_u8;
+            let mut diagonal = 0.0;
+            for (a, &factor) in metric[..dim].iter().enumerate() {
+                for (s, side) in [-1_isize, 1].into_iter().enumerate() {
                     let ni = i[a] as isize + side;
-                    let mut q = i;
-                    let w = w / self.face_density(a, i, side) * self.aperture(a, i, side);
+                    let w = factor / self.face_density(rho, a, i, side) * self.aperture(a, i, side);
                     if w <= 1e-12 {
                         continue;
                     }
-                    if ni >= 0 && ni < n[a] as isize {
-                        q[a] = ni as usize;
+                    if self.periodic[a] || (ni >= 0 && ni < n[a] as isize) {
+                        let mut q = i;
+                        q[a] = if ni < 0 {
+                            n[a] - 1
+                        } else if ni == n[a] as isize {
+                            0
+                        } else {
+                            ni as usize
+                        };
                         let qp = Self::fidx(n, q);
                         if self.pfluid[qp] {
                             trip.push((p, qp, w));
-                            trip.push((p, p, -w));
-                        }
-                    } else if self.periodic[a] {
-                        q[a] = if ni < 0 { n[a] - 1 } else { 0 };
-                        let qp = Self::fidx(n, q);
-                        if self.pfluid[qp] {
-                            trip.push((p, qp, w));
-                            trip.push((p, p, -w));
+                            diagonal -= w;
+                            flags |= 1 << (2 * a + s);
                         }
                     } else if matches!(
                         cfg.bcs.get(Face::of_axis(a, ni > 0)),
                         FluidBoundary::Outflow(_)
                     ) {
-                        trip.push((p, p, -2.0 * w));
-                        has_dirichlet = true;
+                        diagonal -= 2.0 * w;
+                        flags |= PRESSURE_OUTLET;
                     }
                 }
             }
-        }
-        if !has_dirichlet {
-            // pin the first fluid cell
-            if let Some(p0) = (0..ncell).find(|&p| self.pfluid[p]) {
-                trip.retain(|&(r, _, _)| r != p0);
-                trip.push((p0, p0, 1.0));
+            if flags != 0 {
+                trip.push((p, p, diagonal));
+            }
+            if pattern[p] != flags {
+                pattern.to_mut()[p] = flags;
             }
         }
-        self.pmat = LinearSystem::new(Csr::from_triplets(ncell, ncell, &trip), cfg.solver)?;
-        Ok(())
+        let changed = match pattern {
+            | Cow::Borrowed(_) => None,
+            | Cow::Owned(pattern) => {
+                Some(PressureGauges {
+                    rows: self.find_pressure_gauges(&trip, &pattern)?,
+                    pattern,
+                })
+            },
+        };
+        let gauges = &changed.as_ref().unwrap_or(&self.pressure.gauges).rows;
+        if !gauges.is_empty() {
+            // The triplets and gauge rows both start in ascending row order.
+            let mut pins = gauges.iter().copied().peekable();
+            trip.retain(|&(row, _, _)| {
+                while pins.peek().is_some_and(|&pin| pin < row) {
+                    pins.next();
+                }
+                pins.peek() != Some(&row)
+            });
+            trip.extend(gauges.iter().map(|&p| (p, p, 1.0)));
+        }
+        let matrix = LinearSystem::new(Csr::from_triplets(ncell, ncell, &trip), cfg.solver)?;
+        Ok((matrix, changed))
+    }
+
+    fn find_pressure_gauges(
+        &self,
+        trip: &[(usize, usize, f64)],
+        pattern: &[u8],
+    ) -> Result<Vec<usize>, String> {
+        let n = self.cfg.n;
+        let ncell = pattern.len();
+        if ncell == 0 {
+            return Ok(Vec::new());
+        }
+        let full_arcs: usize = (0..self.spatial_dimension())
+            .map(|a| 2 * (ncell - usize::from(!self.periodic[a]) * (ncell / n[a])))
+            .sum();
+        if trip.iter().filter(|&&(p, q, _)| p != q).count() == full_arcs {
+            return Ok(if pattern.iter().any(|&bits| bits & PRESSURE_OUTLET != 0) {
+                Vec::new()
+            } else {
+                vec![0]
+            });
+        }
+        let graph = Graph::from_edges(ncell, trip).map_err(|error| error.to_string())?;
+        let components =
+            strongly_connected_components(&graph).map_err(|error| error.to_string())?;
+        let mut grounded = vec![false; ncell];
+        for (p, &bits) in pattern.iter().enumerate() {
+            grounded[components[p]] |= bits & PRESSURE_OUTLET != 0;
+        }
+        // A one-way connection can occur at a periodic cut face. An
+        // upstream component inherits its pressure reference downstream.
+        for &(p, q, _) in trip {
+            if components[p] != components[q] {
+                grounded[components[p]] = true;
+            }
+        }
+        let mut gauges = Vec::new();
+        for (p, &component) in components.iter().enumerate() {
+            if self.pfluid[p] && !grounded[component] {
+                gauges.push(p);
+                grounded[component] = true;
+            }
+        }
+        Ok(gauges)
     }
 
     /// Extended velocity component (one ghost layer on active axes) at time `t`.
@@ -1527,31 +1661,148 @@ impl NsSolver {
         (cell(i) - cell(q)) / h
     }
 
-    /// Divergence at every cell.
+    /// Returns the net face flux per full cell volume at every cell, x fastest.
+    ///
+    /// The face flux uses the aperture of each face in an immersed-body grid.
+    /// A cut cell's divergence per unit of fluid volume is obtained by
+    /// dividing its flux residual by the fluid volume fraction.
     #[must_use]
     pub fn divergence(&self) -> Vec<f64> {
-        let cfg = &self.cfg;
-        let ncell: usize = cfg.n.iter().product();
-        let mut d = vec![0.0; ncell];
-        for p in 0..ncell {
-            let i = Self::fijk(cfg.n, p);
-            let mut s = 0.0;
-            for c in 0..cfg.dim {
-                let e = Self::ext(cfg, c);
-                let mut j = i;
-                j[c] += 1;
-                let (ap_hi, ap_lo) = self.ib.as_ref().map_or((1.0, 1.0), |ib| {
-                    (
-                        ib.aperture[c][Self::fidx(e, j)],
-                        ib.aperture[c][Self::fidx(e, i)],
-                    )
-                });
-                s += (ap_hi * self.u[c][Self::fidx(e, j)] - ap_lo * self.u[c][Self::fidx(e, i)])
-                    / self.h(c);
-            }
-            d[p] = s;
-        }
+        let mut d = vec![0.0; self.pfluid.len()];
+        self.fill_divergence(&mut d);
         d
+    }
+
+    /// Writes the same cellwise flux residual as [`Self::divergence`].
+    ///
+    /// # Errors
+    ///
+    /// The output length or a staggered velocity length disagrees with the
+    /// grid extents.
+    pub fn divergence_into(
+        &self,
+        output: &mut [f64],
+    ) -> Result<(), String> {
+        if output.len() != self.pfluid.len()
+            || (0..self.cfg.dim)
+                .any(|c| self.u[c].len() != Self::ext(&self.cfg, c).iter().product::<usize>())
+        {
+            return Err("MAC divergence buffers do not match the grid shape".into());
+        }
+        self.fill_divergence(output);
+        Ok(())
+    }
+
+    /// Measures fluid volume, net flux and norms of the cellwise divergence.
+    ///
+    /// Uses active pressure cells with positive fluid volume. With immersed
+    /// geometry, the norms divide each aperture-weighted residual by that
+    /// cell's fluid fraction. The net flux integrates the represented open
+    /// grid faces. An all-solid grid returns zeros.
+    ///
+    /// # Errors
+    ///
+    /// The velocity buffers or cell spacings are invalid, or the
+    /// fluid-cell divergence or integrated diagnostics are unrepresentable.
+    pub fn divergence_summary(&self) -> Result<DivergenceSummary, String> {
+        let h: [f64; 3] = std::array::from_fn(|c| self.h(c));
+        let h = &h[..self.cfg.dim];
+        if h.iter().any(|&step| !step.is_finite() || step <= 0.0) {
+            return Err("MAC divergence requires finite positive cell spacings".into());
+        }
+        let mut values = crate::kernels::reuse::f64_scratch(self.pfluid.len());
+        values.resize(self.pfluid.len(), 0.0);
+        self.divergence_into(&mut values)?;
+        let cells =
+            values
+                .iter()
+                .zip(&self.pfluid)
+                .enumerate()
+                .filter_map(|(p, (&value, &fluid))| {
+                    let fraction = self.ib.as_ref().map_or(1.0, |ib| ib.vol_frac[p]);
+                    (fluid && fraction > 0.0).then_some((value, fraction))
+                });
+        let mut max_abs = 0.0_f64;
+        let mut fluid_fraction = 0.0;
+        for (value, fraction) in cells.clone() {
+            let divergence = value / fraction;
+            if !divergence.is_finite() {
+                return Err("MAC fluid-cell divergence is not representable".into());
+            }
+            max_abs = max_abs.max(divergence.abs());
+            fluid_fraction += fraction;
+        }
+        let scale = crate::kernels::numeric_common::scale_product;
+        let fluid_volume = scale(fluid_fraction, h, &[]).map_err(|error| error.to_string())?;
+        let mut summary = DivergenceSummary {
+            fluid_volume,
+            ..DivergenceSummary::default()
+        };
+        if max_abs == 0.0 {
+            return Ok(summary);
+        }
+        // Normalize before squaring or summing to keep large finite fields in range.
+        let mut weighted_square = 0.0;
+        let mut net = 0.0_f64;
+        let mut correction = 0.0;
+        for (value, fraction) in cells {
+            let normalized = (value / fraction) / max_abs;
+            weighted_square += fraction * normalized * normalized;
+            let flux = value / max_abs;
+            let next = net + flux;
+            correction += if net.abs() >= flux.abs() {
+                (net - next) + flux
+            } else {
+                (flux - next) + net
+            };
+            net = next;
+        }
+        summary.max_abs = max_abs;
+        summary.rms = max_abs * (weighted_square / fluid_fraction).min(1.0).sqrt();
+        let mut measures = [max_abs, 1.0, 1.0, 1.0];
+        measures[1..=h.len()].copy_from_slice(h);
+        summary.net_outflow =
+            scale(net + correction, &measures, &[]).map_err(|error| error.to_string())?;
+        Ok(summary)
+    }
+
+    fn fill_divergence(
+        &self,
+        output: &mut [f64],
+    ) {
+        if output.is_empty() {
+            return;
+        }
+        let [nx, ny, _] = self.cfg.n;
+        let h: [f64; 3] = std::array::from_fn(|c| self.h(c));
+        let strides = [1, nx, nx * ny];
+        let rows_per_chunk = (8192 / nx).max(1);
+        crate::kernels::par::for_chunks_mut(output, rows_per_chunk * nx, 4, |chunk, rows| {
+            for (local, row) in rows.chunks_exact_mut(nx).enumerate() {
+                let j = chunk * rows_per_chunk + local;
+                let cell = j * nx;
+                // The y-face field has one additional row per z plane.
+                let starts = [cell + j, cell + (j / ny) * nx, cell];
+                row.fill(0.0);
+                for (c, &spacing) in h[..self.cfg.dim].iter().enumerate() {
+                    let lo = starts[c];
+                    let hi = lo + strides[c];
+                    let below = &self.u[c][lo..lo + nx];
+                    let above = &self.u[c][hi..hi + nx];
+                    if let Some(ib) = &self.ib {
+                        let open_below = &ib.aperture[c][lo..lo + nx];
+                        let open_above = &ib.aperture[c][hi..hi + nx];
+                        for (i, d) in row.iter_mut().enumerate() {
+                            *d += (open_above[i] * above[i] - open_below[i] * below[i]) / spacing;
+                        }
+                    } else {
+                        for (i, d) in row.iter_mut().enumerate() {
+                            *d += (above[i] - below[i]) / spacing;
+                        }
+                    }
+                }
+            }
+        });
     }
 
     /// Advances one time step.
@@ -1639,39 +1890,27 @@ impl NsSolver {
                 ustar[c][p] = sol[r];
             }
         }
+        if self.dens.as_ref().is_some_and(|state| state.pressure_dirty) {
+            // The projection uses the density seen by the predictor.
+            self.build_poisson()?;
+        }
         let old = std::mem::replace(&mut self.u, ustar);
         self.apply_fixed();
         // projection
-        let div = self.divergence();
-        let ncell = div.len();
-        let rhs: Vec<f64> = (0..ncell)
-            .map(|p| {
-                if self.pfluid[p] {
-                    div[p] / dt
-                } else {
-                    0.0
-                }
-            })
-            .collect();
-        let mut rhs = rhs;
-        if !(0..self.cfg.dim).any(|a| {
-            !self.periodic[a]
-                && (matches!(
-                    self.cfg.bcs.get(Face::of_axis(a, false)),
-                    FluidBoundary::Outflow(_)
-                ) || matches!(
-                    self.cfg.bcs.get(Face::of_axis(a, true)),
-                    FluidBoundary::Outflow(_)
-                ))
-        }) && let Some(p0) = (0..ncell).find(|&p| self.pfluid[p])
-        {
-            rhs[p0] = 0.0;
+        let ncell = self.pfluid.len();
+        let mut div = crate::kernels::reuse::f64_scratch(ncell);
+        div.resize(ncell, 0.0);
+        self.fill_divergence(&mut div);
+        let mut rhs = crate::kernels::reuse::f64_scratch(ncell);
+        rhs.extend(
+            div.iter()
+                .zip(&self.pfluid)
+                .map(|(&value, &fluid)| if fluid { value / dt } else { 0.0 }),
+        );
+        for &p in &self.pressure.gauges.rows {
+            rhs[p] = 0.0;
         }
-        if self.transports_density() {
-            // the projection uses the density the predictor saw
-            self.build_poisson()?;
-        }
-        let phi = self.pmat.solve(&rhs, None)?;
+        let phi = self.pressure.matrix.solve(&rhs, None)?;
         for c in 0..self.cfg.dim {
             let e = Self::ext(&self.cfg, c);
             for p in 0..self.u[c].len() {
@@ -1727,6 +1966,12 @@ impl NsSolver {
     #[must_use]
     pub const fn n(&self) -> [usize; 3] {
         self.cfg.n
+    }
+
+    /// Number of active spatial axes.
+    #[must_use]
+    pub(crate) const fn spatial_dimension(&self) -> usize {
+        self.cfg.dim
     }
 
     /// Cell size.
@@ -1843,6 +2088,7 @@ struct DensState {
     rho: Vec<f64>,
     adv_prev: Option<Vec<f64>>,
     adv_now: Vec<f64>,
+    pressure_dirty: bool,
 }
 
 /// Temperature field state of the Boussinesq model.
@@ -2148,26 +2394,33 @@ impl NsSolver {
 
     /// Overwrites the density field and rebuilds the projection operator.
     ///
+    /// The two updates take effect together after the new operator is valid.
+    ///
     /// # Errors
-    /// Without a density field, for a wrong length, or for a non-positive or
-    /// non-finite value.
+    /// Without a density field, for a wrong length, for a non-positive or
+    /// non-finite value, or when the new pressure operator cannot be prepared.
     pub fn set_density(
         &mut self,
         rho: &[f64],
     ) -> Result<(), String> {
         let ncell: usize = self.cfg.n.iter().product();
-        let Some(st) = self.dens.as_mut() else {
+        if self.dens.is_none() {
             return Err("no density field configured".into());
-        };
+        }
         if rho.len() != ncell {
             return Err("density field has the wrong length".into());
         }
         if rho.iter().any(|&r| !r.is_finite() || r <= 0.0) {
             return Err("the density must be positive and finite".into());
         }
-        st.rho.copy_from_slice(rho);
-        st.adv_prev = None;
-        self.build_poisson()
+        let pressure = self.prepare_poisson(Some(rho))?;
+        if let Some(state) = &mut self.dens {
+            state.rho.copy_from_slice(rho);
+            state.adv_prev = None;
+            state.pressure_dirty = false;
+        }
+        self.pressure.replace(pressure);
+        Ok(())
     }
 
     /// Overwrites the temperature field.
@@ -2231,18 +2484,24 @@ impl NsSolver {
                     .collect()
             },
         );
+        let mut changed = false;
         let rho: Vec<f64> = st
             .rho
             .iter()
             .zip(&adv_ab)
-            .map(|(r, a)| r - dt * a)
+            .map(|(r, a)| {
+                let next = r - dt * a;
+                changed |= next.to_bits() != r.to_bits();
+                next
+            })
             .collect();
-        if rho.iter().any(|&r| r <= 0.0) {
+        if rho.iter().any(|&r| !r.is_finite() || r <= 0.0) {
             return Err("the density left the positive cone (under-resolved interface)".into());
         }
         if let Some(st) = &mut self.dens {
             st.rho = rho;
             st.adv_prev = Some(adv);
+            st.pressure_dirty |= changed;
         }
         Ok(())
     }

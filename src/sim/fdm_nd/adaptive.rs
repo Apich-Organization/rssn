@@ -189,6 +189,7 @@ fn checked_event(
 /// one positive entry per state coefficient. `stability` returns the maximum
 /// stable step for the current state, or positive infinity for an implicit
 /// scheme. Temporal control cannot certify spatial discretization error.
+/// An accepted endpoint on the event uses its existing validated state.
 ///
 /// # Errors
 /// Invalid controls or state shape, exhausted budgets, underflow, a failed step
@@ -231,9 +232,8 @@ where
         event_time: None,
     };
     let mut t = options.t0;
-    let mut y = initial.to_vec();
     let mut previous_event = match event.as_deref_mut() {
-        | Some(e) => Some(checked_event(e, t, &y)?),
+        | Some(e) => Some(checked_event(e, t, initial)?),
         | None => None,
     };
     if previous_event.is_some_and(|v| crate::kernels::exact_eq(v, 0.0)) {
@@ -251,7 +251,8 @@ where
         if solution.accepted >= options.max_steps {
             return Err(FdmError::NotConverged);
         }
-        let cap = stability(t, &y)?;
+        let y = &solution.states[solution.accepted];
+        let cap = stability(t, y)?;
         if cap.is_nan() || cap <= 0.0 {
             return Err(FdmError::Domain(
                 "PDE stability bound must be positive".into(),
@@ -266,7 +267,7 @@ where
         let coarse = take_step(
             &mut step,
             t,
-            &y,
+            y,
             trial,
             &mut solution.step_calls,
             options.max_step_calls,
@@ -276,7 +277,7 @@ where
                 let half = take_step(
                     &mut step,
                     t,
-                    &y,
+                    y,
                     0.5 * trial,
                     &mut solution.step_calls,
                     options.max_step_calls,
@@ -313,7 +314,7 @@ where
         let ratio = error_ratio(
             &coarse,
             &fine,
-            &y,
+            y,
             absolute_tolerances,
             options.rtol,
             divisor,
@@ -344,9 +345,15 @@ where
             if crossing {
                 let (mut lo, mut hi) = (0.0, trial);
                 let mut left = previous;
-                let mut found = fine.clone();
+                let mut found = fine;
                 let mut found_ratio = ratio;
-                for _ in 0..64 {
+                // A zero at the accepted endpoint already has a validated state.
+                let probes = if crate::kernels::exact_eq(next, 0.0) {
+                    0
+                } else {
+                    64
+                };
+                for _ in 0..probes {
                     let mid = f64::midpoint(lo, hi);
                     if t + mid <= t || hi - lo <= 8.0 * f64::EPSILON * endpoint.abs().max(1.0) {
                         break;
@@ -354,7 +361,7 @@ where
                     let coarse_probe = take_step(
                         &mut step,
                         t,
-                        &y,
+                        y,
                         mid,
                         &mut solution.step_calls,
                         options.max_step_calls,
@@ -362,7 +369,7 @@ where
                     let half = take_step(
                         &mut step,
                         t,
-                        &y,
+                        y,
                         0.5 * mid,
                         &mut solution.step_calls,
                         options.max_step_calls,
@@ -378,7 +385,7 @@ where
                     let probe_ratio = error_ratio(
                         &coarse_probe,
                         &state,
-                        &y,
+                        y,
                         absolute_tolerances,
                         options.rtol,
                         divisor,
@@ -404,19 +411,23 @@ where
                 }
                 solution.accepted += 1;
                 solution.error_ratio = found_ratio;
-                solution.event_time = Some(t + hi);
-                solution.times.push(t + hi);
+                let event_time = if crate::kernels::exact_eq(hi, trial) {
+                    endpoint
+                } else {
+                    t + hi
+                };
+                solution.event_time = Some(event_time);
+                solution.times.push(event_time);
                 solution.states.push(found);
                 return Ok(solution);
             }
             previous_event = Some(next);
         }
         t = endpoint;
-        y = fine;
         solution.accepted += 1;
         solution.error_ratio = ratio;
         solution.times.push(t);
-        solution.states.push(y.clone());
+        solution.states.push(fine);
         h = (trial * factor).min(options.h_max);
     }
     Ok(solution)
@@ -836,4 +847,73 @@ pub fn advection_adaptive(
         |_, _| Ok(cap),
         event,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::FdmError;
+    use super::PdeAdaptiveOptions;
+    use super::PdeAdaptiveSolution;
+    use super::PdeTerminalEvent;
+    use super::adaptive_evolve;
+
+    fn event_step(
+        root: f64,
+        sign: f64,
+        direction: i8,
+        max_step_calls: usize,
+    ) -> Result<PdeAdaptiveSolution, FdmError> {
+        let mut evaluate = |t: f64, _: &[f64]| Ok(sign * (t - root));
+        let mut event = PdeTerminalEvent {
+            direction,
+            evaluate: &mut evaluate,
+        };
+        let options = PdeAdaptiveOptions {
+            h0: 1.0,
+            max_step_calls,
+            ..Default::default()
+        };
+        adaptive_evolve(
+            &[0.0],
+            1,
+            &[1.0e-9],
+            &options,
+            |_, y, h| Ok(vec![y[0] + h]),
+            |_, _| Ok(f64::INFINITY),
+            Some(&mut event),
+        )
+    }
+
+    #[test]
+    fn exact_terminal_endpoint_reuses_accepted_step_for_each_direction() {
+        for (sign, direction, hit) in [
+            (1.0, 1, true),
+            (-1.0, -1, true),
+            (1.0, 0, true),
+            (-1.0, 0, true),
+            (-1.0, 1, false),
+            (1.0, -1, false),
+        ] {
+            let solution = event_step(1.0, sign, direction, 3).unwrap();
+            assert_eq!(solution.step_calls, 3);
+            assert_eq!(solution.accepted, 1);
+            assert_eq!(solution.rejected, 0);
+            assert_eq!(solution.event_time, hit.then_some(1.0));
+            assert_eq!(solution.times, [0.0, 1.0]);
+            assert_eq!(solution.states, [vec![0.0], vec![1.0]]);
+        }
+    }
+
+    #[test]
+    fn an_interior_terminal_crossing_charges_the_localization_budget() {
+        assert!(matches!(
+            event_step(0.5, 1.0, 1, 3),
+            Err(FdmError::Domain(_))
+        ));
+        let solution = event_step(0.5, 1.0, 1, 6).unwrap();
+        assert_eq!(solution.step_calls, 6);
+        assert_eq!(solution.event_time, Some(0.5));
+        assert_eq!(solution.times, [0.0, 0.5]);
+        assert_eq!(solution.states, [vec![0.0], vec![0.5]]);
+    }
 }

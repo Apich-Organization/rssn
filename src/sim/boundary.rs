@@ -1,3 +1,5 @@
+//! Common boundary-condition description shared by the continuum solvers.
+//!
 //! # Common boundary-condition description
 //!
 //! One vocabulary shared by every continuum solver of [`crate::sim`]:
@@ -272,11 +274,14 @@ impl FaceBcs {
     /// Whether `axis` is periodic (both faces must agree).
     ///
     /// # Errors
-    /// If only one face of the axis is periodic.
+    /// If `axis` is out of range or only one face of the axis is periodic.
     pub fn axis_periodic(
         &self,
         axis: usize,
     ) -> Result<bool, String> {
+        if axis >= 3 {
+            return Err(format!("axis {axis}: expected an axis from 0 through 2"));
+        }
         let a = self.get(Face::of_axis(axis, false)).is_periodic();
         let b = self.get(Face::of_axis(axis, true)).is_periodic();
         if a == b {

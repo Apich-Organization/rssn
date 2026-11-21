@@ -20,7 +20,7 @@
 //! | Equation | 1D | 2D | 3D | Boundary conditions | Initial data |
 //! |---|---|---|---|---|---|
 //! | heat, explicit | no | yes | no | boundary values frozen (Dirichlet) | grid |
-//! | wave, explicit | no | yes | yes | boundary values frozen (Dirichlet) | grid + velocity |
+//! | wave, explicit | no | yes | yes | homogeneous Dirichlet | displacement, optional sampled initial velocity |
 //! | Poisson | no | yes | no | Dirichlet | source grid |
 //! | Burgers, advection–diffusion | yes | no | no | boundary values frozen | grid |
 //!
@@ -367,7 +367,175 @@ where
     grid
 }
 
-/// Solves 2D Wave equation `u_tt = c^2 * ∇²u`.
+#[derive(Clone, Copy)]
+struct WaveBox<const VOLUME: bool> {
+    n: [usize; 3],
+    courant2: [f64; 3],
+}
+
+impl<const VOLUME: bool> WaveBox<VOLUME> {
+    const fn has_interior(self) -> bool {
+        self.n[0] > 2 && self.n[1] > 2 && (!VOLUME || self.n[2] > 2)
+    }
+
+    fn has_spatial_step(self) -> bool {
+        self.courant2.iter().any(|&coefficient| coefficient != 0.0)
+    }
+
+    fn sample(
+        self,
+        field: impl Fn(usize, usize, usize) -> f64 + Sync,
+    ) -> Vec<f64> {
+        let [nx, ny, nz] = self.n;
+        let mut values = vec![0.0; nx * ny * nz];
+        if values.is_empty() {
+            return values;
+        }
+        let rows_per_chunk = (8192 / nx).max(1);
+        crate::kernels::par::for_chunks_mut(
+            &mut values,
+            rows_per_chunk * nx,
+            4,
+            |chunk, values| {
+                for (local_row, row) in values.chunks_exact_mut(nx).enumerate() {
+                    let index = chunk * rows_per_chunk + local_row;
+                    let (y, z) = (index % ny, index / ny);
+                    for (x, value) in row.iter_mut().enumerate() {
+                        *value = field(x, y, z);
+                    }
+                }
+            },
+        );
+        values
+    }
+
+    fn project(
+        self,
+        values: &mut [f64],
+    ) {
+        if !self.has_interior() {
+            values.fill(0.0);
+            return;
+        }
+        let [nx, ny, nz] = self.n;
+        for (z, plane) in values.chunks_exact_mut(nx * ny).enumerate() {
+            if VOLUME && (z == 0 || z + 1 == nz) {
+                plane.fill(0.0);
+                continue;
+            }
+            for (y, row) in plane.chunks_exact_mut(nx).enumerate() {
+                if y == 0 || y + 1 == ny {
+                    row.fill(0.0);
+                } else {
+                    row[0] = 0.0;
+                    row[nx - 1] = 0.0;
+                }
+            }
+        }
+    }
+
+    fn update_interior(
+        self,
+        destination: &mut [f64],
+        value: impl Fn(usize, f64) -> f64 + Sync,
+    ) {
+        if !self.has_interior() {
+            return;
+        }
+        let [nx, ny, nz] = self.n;
+        let rows_per_chunk = (8192 / nx).max(1);
+        crate::kernels::par::for_chunks_mut(
+            &mut *destination,
+            rows_per_chunk * nx,
+            4,
+            |chunk, values| {
+                let rows = values.chunks_exact_mut(nx);
+                for (row_index, row) in (chunk * rows_per_chunk..).zip(rows) {
+                    let (y, z) = (row_index % ny, row_index / ny);
+                    if y > 0 && y + 1 < ny && (!VOLUME || (z > 0 && z + 1 < nz)) {
+                        let offset = row_index * nx;
+                        for x in 1..nx - 1 {
+                            row[x] = value(offset + x, row[x]);
+                        }
+                    }
+                }
+            },
+        );
+    }
+
+    fn terms(
+        self,
+        u: &[f64],
+        p: usize,
+    ) -> [f64; 3] {
+        let center = u[p];
+        let laplacian = |stride| 2.0_f64.mul_add(-center, u[p + stride]) + u[p - stride];
+        [
+            self.courant2[0] * laplacian(1),
+            self.courant2[1] * laplacian(self.n[0]),
+            if VOLUME {
+                self.courant2[2] * laplacian(self.n[0] * self.n[1])
+            } else {
+                0.0
+            },
+        ]
+    }
+}
+
+struct DirichletWave<const VOLUME: bool> {
+    grid: WaveBox<VOLUME>,
+    current: Vec<f64>,
+    previous: crate::kernels::reuse::Scratch<'static, f64>,
+}
+
+impl<const VOLUME: bool> DirichletWave<VOLUME> {
+    fn new(
+        grid: WaveBox<VOLUME>,
+        current: Vec<f64>,
+        velocity: Option<&[f64]>,
+        dt: f64,
+    ) -> Self {
+        let mut previous = crate::kernels::reuse::f64_scratch(current.len());
+        previous.resize(current.len(), 0.0);
+        // Center the time derivative at t=0 with a half-acceleration
+        // correction in the fictitious previous step.
+        grid.update_interior(&mut previous, |p, _| {
+            let [x, y, z] = grid.terms(&current, p);
+            let half = f64::midpoint(x, y);
+            let half = if VOLUME {
+                half + 0.5 * z
+            } else {
+                half
+            };
+            let position = current[p] + half;
+            velocity.map_or(position, |v| position - dt * v[p])
+        });
+        Self {
+            grid,
+            current,
+            previous,
+        }
+    }
+
+    fn advance(&mut self) {
+        let current = &self.current;
+        let grid = self.grid;
+        // Each update needs only its own previous value, so the older
+        // buffer is also the output. Boundary entries stay zero in both.
+        grid.update_interior(&mut self.previous, |p, previous| {
+            let [x, y, z] = grid.terms(current, p);
+            let next = 2.0_f64.mul_add(current[p], -previous) + x + y;
+            if VOLUME { next + z } else { next }
+        });
+        std::mem::swap(&mut self.current, &mut *self.previous);
+    }
+}
+
+/// Solves the two-dimensional wave equation with zero initial velocity.
+///
+/// Positive step counts impose homogeneous Dirichlet values from the
+/// initial time. With zero steps the function returns the raw initial samples.
+/// Use time steps satisfying `(c dt / dx)^2 + (c dt / dy)^2 <= 1`.
 pub fn solve_wave_equation_2d<F>(
     config: &FdmSolverConfig2D,
     c: f64,
@@ -376,101 +544,25 @@ pub fn solve_wave_equation_2d<F>(
 where
     F: Fn(usize, usize) -> f64 + Sync,
 {
-    let width = config.width;
-
-    let height = config.height;
-
-    let dx = config.dx;
-
-    let dy = config.dy;
-
-    let dt = config.dt;
-
-    let steps = config.steps;
-
-    let dims = Dimensions::D2(width, height);
-
-    let mut u_prev = FdmGrid::new(dims.clone());
-
-    let mut u_curr = FdmGrid::new(dims.clone());
-
-    let mut u_next = FdmGrid::new(dims);
-
-    u_curr
-        .as_mut_slice()
-        .par_iter_mut()
-        .enumerate()
-        .for_each(|(i, val)| {
-            let x = i % width;
-
-            let y = i / width;
-
-            *val = initial_u(x, y);
-        });
-
-    // Second-order start for zero initial velocity: the centred difference
-    // (u^1 - u^-1) / (2 dt) = 0 gives u^-1 = u^1, and the scheme at t = 0
-    // reads u^1 = 2 u^0 - u^-1 + s Lap u^0, hence u^-1 = u^0 + (s/2) Lap u^0.
-    let s_x = (c * dt / dx).powi(2);
-
-    let s_y = (c * dt / dy).powi(2);
-
-    u_prev
-        .as_mut_slice()
-        .par_iter_mut()
-        .enumerate()
-        .for_each(|(i, prev_val)| {
-            let x = i % width;
-
-            let y = i / width;
-
-            if x == 0 || x == width - 1 || y == 0 || y == height - 1 {
-                *prev_val = 0.0;
-
-                return;
-            }
-
-            let lap_x = 2.0f64.mul_add(-u_curr[(x, y)], u_curr[(x + 1, y)]) + u_curr[(x - 1, y)];
-
-            let lap_y = 2.0f64.mul_add(-u_curr[(x, y)], u_curr[(x, y + 1)]) + u_curr[(x, y - 1)];
-
-            *prev_val = u_curr[i] + f64::midpoint(s_x * lap_x, s_y * lap_y);
-        });
-
-    for _ in 0..steps {
-        u_next
-            .as_mut_slice()
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(i, next_val)| {
-                let x = i % width;
-
-                let y = i / width;
-
-                if x == 0 || x == width - 1 || y == 0 || y == height - 1 {
-                    *next_val = 0.0;
-
-                    return;
-                }
-
-                let lap_x =
-                    2.0f64.mul_add(-u_curr[(x, y)], u_curr[(x + 1, y)]) + u_curr[(x - 1, y)];
-
-                let lap_y =
-                    2.0f64.mul_add(-u_curr[(x, y)], u_curr[(x, y + 1)]) + u_curr[(x, y - 1)];
-
-                *next_val = 2.0f64.mul_add(u_curr[i], -u_prev[i]) + s_x * lap_x + s_y * lap_y;
-            });
-
-        std::mem::swap(&mut u_prev, &mut u_curr);
-
-        std::mem::swap(&mut u_curr, &mut u_next);
-    }
-
-    u_curr
+    let dims = Dimensions::D2(config.width, config.height);
+    let grid = WaveBox::<false> {
+        n: [config.width, config.height, 1],
+        courant2: [
+            (c * config.dt / config.dx).powi(2),
+            (c * config.dt / config.dy).powi(2),
+            0.0,
+        ],
+    };
+    let initial = grid.sample(|x, y, _| initial_u(x, y));
+    let data = evolve_dirichlet(grid, initial, config.dt, config.steps);
+    FdmGrid::from_data(data, dims)
 }
 
-/// Solves 3D Wave equation `u_tt = c^2 * ∇²u`.
+/// Solves the three-dimensional wave equation with zero initial velocity.
+///
+/// Uses a second-order start and homogeneous Dirichlet faces for positive
+/// step counts. With zero steps the function returns the raw initial samples.
+/// Use time steps satisfying `Σ_a (c dt / h_a)^2 <= 1`.
 pub fn solve_wave_equation_3d<F>(
     config: &FdmSolverConfig3D,
     c: f64,
@@ -479,90 +571,211 @@ pub fn solve_wave_equation_3d<F>(
 where
     F: Fn(usize, usize, usize) -> f64 + Sync,
 {
-    let width = config.width;
+    let dims = Dimensions::D3(config.width, config.height, config.depth);
+    let grid = WaveBox::<true> {
+        n: [config.width, config.height, config.depth],
+        courant2: [
+            (c * config.dt / config.dx).powi(2),
+            (c * config.dt / config.dy).powi(2),
+            (c * config.dt / config.dz).powi(2),
+        ],
+    };
+    let initial = grid.sample(initial_u);
+    let data = evolve_dirichlet(grid, initial, config.dt, config.steps);
+    FdmGrid::from_data(data, dims)
+}
 
-    let height = config.height;
-
-    let depth = config.depth;
-
-    let dx = config.dx;
-
-    let dy = config.dy;
-
-    let dz = config.dz;
-
-    let dt = config.dt;
-
-    let steps = config.steps;
-
-    let dims = Dimensions::D3(width, height, depth);
-
-    let mut u_prev = FdmGrid::new(dims.clone());
-
-    let mut u_curr = FdmGrid::new(dims.clone());
-
-    let mut u_next = FdmGrid::new(dims);
-
-    u_curr
-        .as_mut_slice()
-        .par_iter_mut()
-        .enumerate()
-        .for_each(|(i, val)| {
-            let x = i % width;
-
-            let y = (i / width) % height;
-
-            let z = i / (width * height);
-
-            *val = initial_u(x, y, z);
-        });
-
-    let s_x = (c * dt / dx).powi(2);
-
-    let s_y = (c * dt / dy).powi(2);
-
-    let s_z = (c * dt / dz).powi(2);
-
-    u_prev.data.copy_from_slice(&u_curr.data);
-
-    for _ in 0..steps {
-        u_next
-            .as_mut_slice()
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(i, next_val)| {
-                let x = i % width;
-
-                let y = (i / width) % height;
-
-                let z = i / (width * height);
-
-                if x == 0 || x == width - 1 || y == 0 || y == height - 1 || z == 0 || z == depth - 1
-                {
-                    *next_val = 0.0;
-
-                    return;
-                }
-
-                let lap_x = 2.0f64.mul_add(-u_curr[(x, y, z)], u_curr[(x + 1, y, z)])
-                    + u_curr[(x - 1, y, z)];
-
-                let lap_y = 2.0f64.mul_add(-u_curr[(x, y, z)], u_curr[(x, y + 1, z)])
-                    + u_curr[(x, y - 1, z)];
-
-                let lap_z = 2.0f64.mul_add(-u_curr[(x, y, z)], u_curr[(x, y, z + 1)])
-                    + u_curr[(x, y, z - 1)];
-
-                *next_val =
-                    2.0f64.mul_add(u_curr[i], -u_prev[i]) + s_x * lap_x + s_y * lap_y + s_z * lap_z;
-            });
-
-        std::mem::swap(&mut u_prev, &mut u_curr);
-
-        std::mem::swap(&mut u_curr, &mut u_next);
+fn evolve_dirichlet<const VOLUME: bool>(
+    grid: WaveBox<VOLUME>,
+    mut data: Vec<f64>,
+    dt: f64,
+    steps: usize,
+) -> Vec<f64> {
+    if steps == 0 {
+        return data;
     }
+    grid.project(&mut data);
+    if !grid.has_interior() || !grid.has_spatial_step() {
+        return data;
+    }
+    let mut solver = DirichletWave::new(grid, data, None, dt);
+    for _ in 0..steps {
+        solver.advance();
+    }
+    solver.current
+}
 
-    u_curr
+/// One retained displacement field from the homogeneous Dirichlet wave solver.
+#[derive(Clone, Debug)]
+pub struct DirichletWaveSample {
+    /// Number of completed steps since the initial time.
+    pub step: usize,
+    /// Displacement values at the grid nodes, x fastest.
+    pub displacement: FdmGrid<f64>,
+}
+
+/// Evolves a two- or three-dimensional Dirichlet wave and retains step samples.
+///
+/// Initial displacement and velocity share a grid. Faces are zero from the
+/// initial sample onward. Retains step zero, every multiple of `save_every`,
+/// and the last step. Time advances by the signed step `dt`.
+///
+/// # Errors
+/// Invalid shapes, spacing, speed, time step or cadence, a violated leapfrog
+/// CFL bound, non-finite data or states, allocation limits, or cancellation.
+pub fn solve_wave_dirichlet_sampled(
+    u0: &FdmGrid<f64>,
+    v0: &FdmGrid<f64>,
+    spacing: &[f64],
+    c: f64,
+    dt: f64,
+    steps: usize,
+    save_every: usize,
+) -> Result<Vec<DirichletWaveSample>, String> {
+    let (n, dim) = match *u0.dimensions() {
+        | Dimensions::D2(x, y) => ([x, y, 1], 2),
+        | Dimensions::D3(x, y, z) => ([x, y, z], 3),
+        | Dimensions::D1(_) => {
+            return Err("sampled Dirichlet waves require two or three axes".into());
+        },
+    };
+    let point_count = n
+        .iter()
+        .try_fold(1usize, |size, extent| size.checked_mul(*extent));
+    if n.contains(&0)
+        || point_count != Some(u0.len())
+        || v0.dimensions() != u0.dimensions()
+        || v0.len() != u0.len()
+        || spacing.len() != dim
+        || spacing.iter().any(|&dx| !dx.is_finite() || dx <= 0.0)
+        || !c.is_finite()
+        || c < 0.0
+        || !dt.is_finite()
+        || u0
+            .as_slice()
+            .iter()
+            .chain(v0.as_slice())
+            .any(|value| !value.is_finite())
+    {
+        return Err("invalid sampled Dirichlet wave data or mesh".into());
+    }
+    let stride =
+        std::num::NonZeroUsize::new(save_every).ok_or("wave sample cadence must be positive")?;
+    let count = crate::kernels::numeric_common::trajectory_sample_count(steps, stride)
+        .ok_or("too many sampled wave states")?;
+    let mut samples = Vec::new();
+    samples
+        .try_reserve_exact(count)
+        .map_err(|_| "too many sampled wave states")?;
+    let mut courant2 = [0.0; 3];
+    if c > 0.0 && dt != 0.0 {
+        let travel = c * dt.abs();
+        for (ratio2, &dx) in courant2.iter_mut().zip(spacing) {
+            let ratio = if travel.is_normal() {
+                travel / dx
+            } else {
+                crate::kernels::numeric_common::scale_product(c, &[dt.abs()], &[dx])
+                    .map_err(|error| error.to_string())?
+            };
+            *ratio2 = ratio * ratio;
+        }
+    }
+    if courant2.iter().sum::<f64>() > 1.0 {
+        return Err("sampled Dirichlet wave CFL bound exceeded".into());
+    }
+    let mut retain = |step, values: &[f64]| {
+        samples.push(DirichletWaveSample {
+            step,
+            displacement: FdmGrid::from_data(values.to_vec(), u0.dimensions().clone()),
+        });
+    };
+    if dim == 2 {
+        sample_dirichlet(
+            WaveBox::<false> { n, courant2 },
+            u0,
+            v0,
+            dt,
+            steps,
+            stride,
+            &mut retain,
+        )?;
+    } else {
+        sample_dirichlet(
+            WaveBox::<true> { n, courant2 },
+            u0,
+            v0,
+            dt,
+            steps,
+            stride,
+            &mut retain,
+        )?;
+    }
+    Ok(samples)
+}
+
+fn sample_dirichlet<const VOLUME: bool>(
+    grid: WaveBox<VOLUME>,
+    u0: &FdmGrid<f64>,
+    v0: &FdmGrid<f64>,
+    dt: f64,
+    steps: usize,
+    stride: std::num::NonZeroUsize,
+    retain: &mut impl FnMut(usize, &[f64]),
+) -> Result<(), String> {
+    crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
+    let mut initial = u0.as_slice().to_vec();
+    grid.project(&mut initial);
+    retain(0, &initial);
+    if steps == 0 {
+        return Ok(());
+    }
+    let moving = dt != 0.0 && grid.has_interior();
+    if !moving || !grid.has_spatial_step() {
+        let mut completed = 0;
+        while completed < steps {
+            crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
+            completed = completed.saturating_add(stride.get()).min(steps);
+            if moving {
+                let time = completed as f64 * dt;
+                grid.update_interior(&mut initial, |p, _| {
+                    let rate = v0[p];
+                    if time.is_finite() {
+                        time.mul_add(rate, u0[p])
+                    } else if rate == 0.0 {
+                        u0[p]
+                    } else {
+                        let displacement = crate::kernels::numeric_common::scale_product(
+                            rate,
+                            &[completed as f64, dt.abs()],
+                            &[],
+                        )
+                        .unwrap_or(f64::NAN);
+                        u0[p] + f64::copysign(1.0, dt) * displacement
+                    }
+                });
+                if initial.iter().any(|value| !value.is_finite()) {
+                    return Err("sampled Dirichlet wave state is not representable".into());
+                }
+            }
+            retain(completed, &initial);
+        }
+        return crate::cancellation::checkpoint().map_err(|error| error.to_string());
+    }
+    let mut solver = DirichletWave::new(grid, initial, Some(v0.as_slice()), dt);
+    let mut completed = 0;
+    while completed < steps {
+        let next = completed.saturating_add(stride.get()).min(steps);
+        for _ in completed..next {
+            crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
+            solver.advance();
+        }
+        if solver.current.iter().any(|value| !value.is_finite()) {
+            return Err("sampled Dirichlet wave state is not representable".into());
+        }
+        completed = next;
+        retain(completed, &solver.current);
+    }
+    crate::cancellation::checkpoint().map_err(|error| error.to_string())
 }
 
 /// Solves Poisson equation `∇²u = f` using Successive Over-Relaxation (SOR).

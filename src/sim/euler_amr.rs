@@ -1,3 +1,5 @@
+//! Block-structured AMR (Berger-Colella) for Euler / shallow water in 1D-3D.
+//!
 //! # Block-structured adaptive mesh refinement for Euler and shallow water (1D–3D)
 //!
 //! Berger–Colella style AMR on top of the finite-volume kernels of
@@ -43,9 +45,12 @@
 //! level and the data are copied where the old patches overlap the new ones —
 //! so a regrid costs the whole hierarchy, not the tagged region.
 
+use crate::execution::should_split;
+use crate::kernels::par::for_chunks_mut;
 use crate::sim::euler_nd::FvConfig;
 use crate::sim::euler_nd::FvGrid;
 use crate::sim::euler_nd::GasBc;
+use crate::sim::euler_nd::LINE_STORAGE;
 use crate::sim::euler_nd::Law;
 use crate::sim::euler_nd::State;
 use crate::sim::euler_nd::admissible;
@@ -57,6 +62,8 @@ use crate::sim::euler_nd::to_cons;
 use crate::sim::euler_nd::to_prim;
 
 const GH: usize = 3;
+const FLUX_PARALLEL_MIN: usize = 8192;
+const FLUX_BLOCK_FACES: usize = 512;
 
 /// The two axes transverse to `a`, in increasing order.
 ///
@@ -368,8 +375,8 @@ impl Amr {
         out
     }
 
-    /// Padded copy (with ghost cells) of a patch's stage array.
-    fn padded(
+    /// Padded primitive states (including ghost cells) for a patch's stage.
+    fn padded_primitive(
         &self,
         l: usize,
         k: usize,
@@ -394,18 +401,19 @@ impl Amr {
                         && j < g[1] + p.n[1]
                         && kk >= g[2]
                         && kk < g[2] + p.n[2];
-                    out[i + np[0] * (j + np[1] * kk)] = if interior {
+                    let conserved = if interior {
                         stage[k][(i - g[0]) + p.n[0] * ((j - g[1]) + p.n[1] * (kk - g[2]))]
                     } else {
                         self.sample(l, gi, tau, Some((l, stage)))
                     };
+                    out[i + np[0] * (j + np[1] * kk)] = to_prim(self.cfg.fv.law, conserved);
                 }
             }
         }
         out
     }
 
-    /// Numerical fluxes of a patch from its padded state.
+    /// Numerical fluxes of a patch from its padded primitive state.
     fn fluxes(
         &self,
         padded: &[State],
@@ -415,38 +423,52 @@ impl Amr {
         let law = cfg.law;
         let g = [self.ghost(0), self.ghost(1), self.ghost(2)];
         let np = [n[0] + 2 * g[0], n[1] + 2 * g[1], n[2] + 2 * g[2]];
-        let wp: Vec<State> = padded.iter().map(|&c| to_prim(law, c)).collect();
         let mut out: [Vec<State>; 3] = [Vec::new(), Vec::new(), Vec::new()];
-        for d in 0..self.dim {
+        let strides = [1, np[0], np[0] * np[1]];
+        for (d, flux) in out.iter_mut().enumerate().take(self.dim) {
             let o = transverse(d);
             let (na, nb) = (n[o[0]], n[o[1]]);
             let nlines = na * nb;
             let nf = n[d] + 1;
-            let mut flux = vec![[0.0; 5]; nf * nlines];
-            let mut line = vec![[0.0; 5]; np[d]];
-            for li in 0..nlines {
-                let (ia, ib) = (li % na, li / na);
-                for k in 0..np[d] {
-                    let mut ij = [0usize; 3];
-                    ij[d] = k;
-                    ij[o[0]] = ia + g[o[0]];
-                    ij[o[1]] = ib + g[o[1]];
-                    line[k] = wp[ij[0] + np[0] * (ij[1] + np[1] * ij[2])];
-                }
-                for f in 0..nf {
-                    let (mut l, mut r) = face_states(cfg.recon, &line, GH + f, self.nv);
-                    if !admissible(law, &l) || !admissible(law, &r) {
-                        l = line[GH + f - 1];
-                        r = line[GH + f];
+            let faces = nf * nlines;
+            flux.resize(faces, [0.0; 5]);
+            let block_lines = if should_split(faces, FLUX_PARALLEL_MIN) {
+                FLUX_BLOCK_FACES.div_ceil(nf).max(2)
+            } else {
+                nlines
+            };
+            for_chunks_mut(flux, block_lines * nf, 2, |block, lines| {
+                let mut packed = (d != 0).then(|| {
+                    let mut row = LINE_STORAGE.checkout_for(np[d]);
+                    row.resize(np[d], [0.0; 5]);
+                    row
+                });
+                for (local, output) in lines.chunks_exact_mut(nf).enumerate() {
+                    let li = block * block_lines + local;
+                    let start =
+                        (li % na + g[o[0]]) * strides[o[0]] + (li / na + g[o[1]]) * strides[o[1]];
+                    let line = packed.as_mut().map_or_else(
+                        || &padded[start..start + np[d]],
+                        |row| {
+                            for (k, value) in row.iter_mut().enumerate() {
+                                *value = padded[start + k * strides[d]];
+                            }
+                            row.as_slice()
+                        },
+                    );
+                    for (f, face) in output.iter_mut().enumerate() {
+                        let (mut l, mut r) = face_states(cfg.recon, line, GH + f, self.nv);
+                        if !admissible(law, &l) || !admissible(law, &r) {
+                            l = line[GH + f - 1];
+                            r = line[GH + f];
+                        }
+                        swap_dir(&mut l, d);
+                        swap_dir(&mut r, d);
+                        *face = riemann_flux(law, cfg.riemann, &l, &r);
+                        swap_dir(face, d);
                     }
-                    swap_dir(&mut l, d);
-                    swap_dir(&mut r, d);
-                    let mut fl = riemann_flux(law, cfg.riemann, &l, &r);
-                    swap_dir(&mut fl, d);
-                    flux[f + nf * li] = fl;
                 }
-            }
-            out[d] = flux;
+            });
         }
         out
     }
@@ -505,7 +527,7 @@ impl Amr {
             let mut resid = Vec::with_capacity(np);
             let mut fl_all = Vec::with_capacity(np);
             for k in 0..np {
-                let pad = self.padded(l, k, &qcur, times[s]);
+                let pad = self.padded_primitive(l, k, &qcur, times[s]);
                 let n = self.levels[l].patches[k].n;
                 let fl = self.fluxes(&pad, n);
                 resid.push(self.residual(n, &fl, l));
@@ -1257,15 +1279,30 @@ impl AmrSolution {
 /// Runs the AMR solver from primitive initial data (evaluated at the cell centres of every level) to `t_end`.
 ///
 /// # Errors
-/// For unsupported boundary conditions, a CFL number
-/// outside `(0, 1)`, a base grid with an odd number of cells, non-admissible
-/// initial data or a blown-up solution.
+/// For unsupported boundary conditions, a CFL number outside `(0, 1)`, an
+/// invalid grid or refinement extent, a non-finite or negative final time,
+/// non-admissible base initial data, or a step that cannot advance.
 pub fn solve_amr(
     grid: &FvGrid,
     cfg: &AmrConfig,
     init: &dyn Fn([f64; 3]) -> State,
     t_end: f64,
 ) -> Result<AmrSolution, String> {
+    grid.check()?;
+    if !t_end.is_finite() || t_end < 0.0 {
+        return Err("AMR final time must be finite and nonnegative".into());
+    }
+    let finest = u32::try_from(cfg.max_level)
+        .ok()
+        .and_then(|level| 1usize.checked_shl(level));
+    let padded_cells = finest.and_then(|factor| {
+        grid.n[..grid.dim].iter().try_fold(1usize, |volume, n| {
+            volume.checked_mul(n.checked_mul(factor)?.checked_add(2 * GH)?)
+        })
+    });
+    if padded_cells.is_none_or(|n| n > isize::MAX as usize / size_of::<State>()) {
+        return Err("AMR refinement exceeds addressable grid storage".into());
+    }
     if !(cfg.fv.cfl > 0.0 && cfg.fv.cfl < 1.0) {
         return Err("cfl must be in (0, 1)".into());
     }
@@ -1358,7 +1395,7 @@ pub fn solve_amr(
         amr.init_fine(init, grid);
     }
     let (mut t, mut steps) = (0.0, 0usize);
-    while t < t_end * (1.0 - 1e-14) {
+    while t < t_end {
         crate::sim::models_geodesic_relativity::native_charge();
         if steps > 0 && steps % cfg.regrid_interval.max(1) == 0 {
             amr.regrid();
@@ -1374,9 +1411,18 @@ pub fn solve_amr(
             }
             dt = dt.min(cfg.fv.cfl / rate * (1u64 << l) as f64);
         }
-        let dt = dt.min(t_end - t);
+        let remaining = t_end - t;
+        let dt = dt.min(remaining);
+        let next = if dt >= remaining {
+            t_end
+        } else {
+            t + dt
+        };
+        if next <= t {
+            return Err("AMR time step cannot advance".into());
+        }
         amr.advance(0, t, dt)?;
-        t += dt;
+        t = next;
         steps += 1;
         if steps > 2_000_000 {
             return Err("too many steps".into());

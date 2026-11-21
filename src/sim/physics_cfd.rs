@@ -48,7 +48,7 @@
 //! |---|---|---|---|---|
 //! | advection, diffusion, advection–diffusion, Burgers | yes | no | no | fixed end values |
 //! | Poisson (Jacobi, Gauss–Seidel, SOR) | no | yes | no | Dirichlet |
-//! | vorticity, stream function, divergence, gradient, Laplacian | no | yes | no | one-sided at the edge |
+//! | vorticity, stream function, divergence, gradient, Laplacian | no | yes | no | zero outer layer |
 //! | lid-driven cavity (simplified) | no | yes | no | moving lid |
 //!
 //! Second-order incompressible Navier–Stokes with no-slip, slip, inflow, outflow
@@ -777,38 +777,169 @@ pub fn compute_gradient(
     (dp_dx, dp_dy)
 }
 
-/// Computes the Laplacian of a scalar field.
+/// Computes the Laplacian of a scalar field with centered second differences.
 ///
-/// ∇²f = ∂²f/∂x² + ∂²f/∂y²
+/// The row axis uses `dx`, the column axis uses `dy`, and the outer layer is
+/// zero. Grids without interior cells therefore return an all-zero result.
+/// Spacing signs have no effect. Zero or non-finite spacing uses IEEE division.
 #[must_use]
 pub fn compute_laplacian(
     f: &Matrix<f64>,
     dx: f64,
     dy: f64,
 ) -> Matrix<f64> {
-    let nx = f.rows();
+    let mut output = vec![0.0; f.data().len()];
+    fill_laplacian(f, [dx, dy], &mut output);
+    Matrix::new(f.rows(), f.cols(), output)
+}
 
-    let ny = f.cols();
+/// Writes the centered Laplacian into a preallocated row-major buffer.
+///
+/// Spacing and boundary conventions are the same as in [`compute_laplacian`].
+///
+/// # Errors
+/// The buffer length must equal the number of matrix entries. A mismatched
+/// buffer is left untouched.
+pub fn compute_laplacian_into(
+    f: &Matrix<f64>,
+    dx: f64,
+    dy: f64,
+    output: &mut [f64],
+) -> Result<(), String> {
+    if output.len() != f.data().len() {
+        return Err("Laplacian buffer length must match the matrix shape".into());
+    }
+    fill_laplacian(f, [dx, dy], output);
+    Ok(())
+}
 
-    let mut lap = Matrix::zeros(nx, ny);
+fn fill_laplacian(
+    matrix: &Matrix<f64>,
+    step: [f64; 2],
+    output: &mut [f64],
+) {
+    let (rows, cols) = (matrix.rows(), matrix.cols());
+    if rows < 3 || cols < 3 {
+        output.fill(0.0);
+        return;
+    }
+    let input = matrix.data();
+    let squared = step.map(|h| h * h);
+    let normal_spacing = squared.into_iter().all(f64::is_normal);
+    let rows_per_chunk = (8192 / cols).max(1);
+    let (first, remainder) = output.split_at_mut(cols);
+    let (interior, last) = remainder.split_at_mut((rows - 2) * cols);
+    first.fill(0.0);
+    last.fill(0.0);
+    let fill = |chunk, destination: &mut [f64]| {
+        for (index, row) in destination.chunks_exact_mut(cols).enumerate() {
+            let i = chunk * rows_per_chunk + index;
+            let before = &input[i * cols..(i + 1) * cols];
+            let center = &input[(i + 1) * cols..(i + 2) * cols];
+            let after = &input[(i + 2) * cols..(i + 3) * cols];
+            row[0] = 0.0;
+            row[cols - 1] = 0.0;
+            laplacian_row(
+                [before, center, after],
+                &mut row[1..cols - 1],
+                step,
+                squared,
+                normal_spacing,
+            );
+        }
+    };
+    let cells_per_chunk = rows_per_chunk * cols;
+    if interior.len() <= cells_per_chunk {
+        fill(0, interior);
+    } else {
+        crate::kernels::par::for_chunks_mut(interior, cells_per_chunk, 4, fill);
+    }
+}
 
-    let dx2 = dx * dx;
+fn second_difference(
+    minus: f64,
+    center: f64,
+    plus: f64,
+) -> f64 {
+    2.0_f64.mul_add(-center, plus) + minus
+}
 
-    let dy2 = dy * dy;
-
-    for i in 1..(nx - 1) {
-        for j in 1..(ny - 1) {
-            let d2f_dx2 =
-                (2.0f64.mul_add(-*f.get(i, j), *f.get(i + 1, j)) + *f.get(i - 1, j)) / dx2;
-
-            let d2f_dy2 =
-                (2.0f64.mul_add(-*f.get(i, j), *f.get(i, j + 1)) + *f.get(i, j - 1)) / dy2;
-
-            *lap.get_mut(i, j) = d2f_dx2 + d2f_dy2;
+#[inline]
+fn laplacian_row(
+    [before, center, after]: [&[f64]; 3],
+    output: &mut [f64],
+    step: [f64; 2],
+    squared: [f64; 2],
+    normal_spacing: bool,
+) {
+    let n = output.len();
+    if normal_spacing {
+        let x_neighbors = before[1..=n].iter().zip(&after[1..=n]);
+        let y_neighbors = center[..n].iter().zip(&center[2..]);
+        let mut finite = true;
+        for (((out, &sample), (&up, &down)), (&left, &right)) in output
+            .iter_mut()
+            .zip(&center[1..=n])
+            .zip(x_neighbors)
+            .zip(y_neighbors)
+        {
+            let value = second_difference(up, sample, down) / squared[0]
+                + second_difference(left, sample, right) / squared[1];
+            *out = value;
+            finite &= value.is_finite();
+        }
+        if finite {
+            return;
         }
     }
+    for (i, out) in output.iter_mut().enumerate() {
+        if !normal_spacing || !out.is_finite() {
+            let j = i + 1;
+            *out = scaled_second_difference(before[j], center[j], after[j], step[0], squared[0])
+                + scaled_second_difference(
+                    center[j - 1],
+                    center[j],
+                    center[j + 1],
+                    step[1],
+                    squared[1],
+                );
+        }
+    }
+}
 
-    lap
+#[cold]
+fn scaled_second_difference(
+    minus: f64,
+    center: f64,
+    plus: f64,
+    step: f64,
+    squared: f64,
+) -> f64 {
+    use crate::kernels::numeric_common::scale_product;
+
+    let difference = second_difference(minus, center, plus);
+    if squared.is_normal() && difference.is_finite() {
+        return difference / squared;
+    }
+    let step = step.abs();
+    if step == 0.0
+        || !step.is_finite()
+        || !minus.is_finite()
+        || !center.is_finite()
+        || !plus.is_finite()
+    {
+        return difference / squared;
+    }
+    let (numerator, scale) = if difference.is_finite() {
+        (difference, 1.0)
+    } else {
+        (
+            second_difference(0.25 * minus, 0.25 * center, 0.25 * plus),
+            4.0,
+        )
+    };
+    scale_product(numerator, &[scale], &[step, step])
+        .unwrap_or_else(|_| f64::INFINITY.copysign(numerator))
 }
 
 // ============================================================================

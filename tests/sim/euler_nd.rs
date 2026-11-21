@@ -17,6 +17,59 @@ use std::f64::consts::PI;
 
 const GAMMA: f64 = 1.4;
 
+#[test]
+fn grid_geometry_and_final_time_are_validated_before_sampling() {
+    assert!(FvGrid::new(&[2], &[1.0], &[0.0]).is_err());
+    assert!(FvGrid::new(&[2], &[0.0], &[f64::INFINITY]).is_err());
+    assert!(FvGrid::new(&[2], &[0.0], &[f64::from_bits(1)]).is_err());
+    assert!(FvGrid::new(&[usize::MAX / 2, 2], &[0.0; 2], &[1.0; 2]).is_err());
+    let cfg = FvConfig::euler(GAMMA);
+    let mut grid = FvGrid::new(&[6], &[0.0], &[1.0]).unwrap();
+    let never = |_| panic!("invalid requests cannot sample their initial state");
+    for time in [f64::NAN, f64::INFINITY, -0.01] {
+        assert!(solve(&grid, &cfg, &never, time).is_err());
+    }
+    for invalid in [
+        FvConfig::euler(1.0),
+        cfg.with_face(0, GasBc::Fixed([1.0, f64::NAN, 0.0, 0.0, 1.0])),
+    ] {
+        assert!(solve(&grid, &invalid, &never, 0.0).is_err());
+    }
+    assert!(solve(&grid, &cfg, &|_| [1.0, f64::INFINITY, 0.0, 0.0, 1.0], 0.0).is_err());
+    let shallow = FvConfig::shallow_water(9.8);
+    let bad_bed = Sources {
+        bed: Some(&|_| f64::NAN),
+        ..Sources::default()
+    };
+    assert!(
+        solve_with_sources(
+            &grid,
+            &shallow,
+            &|_| [1.0, 0.0, 0.0, 0.0, 0.0],
+            &bad_bed,
+            0.0
+        )
+        .is_err()
+    );
+    grid.n[1] = 0;
+    assert!(solve(&grid, &cfg, &never, 0.01).is_err());
+}
+
+#[test]
+fn underflowed_cfl_step_fails_and_zero_time_keeps_the_initial_state() {
+    let grid = FvGrid::new(&[2], &[0.0], &[f64::MIN_POSITIVE]).unwrap();
+    let mut cfg = FvConfig::euler(GAMMA);
+    cfg.cfl = f64::from_bits(1);
+    let initial = |_| [1.0, 0.0, 0.0, 0.0, 1.0];
+    let message = solve(&grid, &cfg, &initial, 0.5).unwrap_err();
+    assert_eq!(message, "finite-volume time step cannot advance time");
+    let unchanged = solve(&grid, &cfg, &initial, 0.0).unwrap();
+    assert_eq!(unchanged.steps, 0);
+    assert_eq!(unchanged.t, 0.0);
+    assert_eq!(unchanged.q.len(), 2);
+    assert_eq!(unchanged.q[0], unchanged.q[1]);
+}
+
 fn sod_state(s: f64) -> State {
     if s < 0.5 {
         [1.0, 0.0, 0.0, 0.0, 1.0]
@@ -68,6 +121,7 @@ fn sod_shock_tube_all_schemes_converge_to_exact_solution() {
     for (recon, bound) in schemes {
         for solver in [
             RiemannSolver::Hllc,
+            RiemannSolver::Hlle,
             RiemannSolver::Roe,
             RiemannSolver::Rusanov,
         ] {
@@ -443,6 +497,7 @@ fn the_lake_at_rest_is_preserved_to_round_off_by_every_scheme() {
     for recon in reconstructions {
         for riemann in [
             RiemannSolver::Hllc,
+            RiemannSolver::Hlle,
             RiemannSolver::Roe,
             RiemannSolver::Rusanov,
         ] {

@@ -600,100 +600,97 @@ impl BeamElement2D {
     /// DOFs: [u1, v1, θ1, u2, v2, θ2]
     #[must_use]
     pub fn local_stiffness_matrix(&self) -> Matrix<f64> {
-        let e = self.youngs_modulus;
-
-        let a = self.area;
-
-        let i = self.moment_of_inertia;
-
-        let l = self.length;
-
-        let l2 = l * l;
-
-        let l3 = l * l * l;
-
-        let ea_l = e * a / l;
-
-        let ei_l3 = e * i / l3;
-
-        let ei_l2 = e * i / l2;
-
-        let ei_l = e * i / l;
-
-        // Local stiffness matrix
-        Matrix::new(
-            6,
-            6,
-            vec![
-                ea_l,
-                0.0,
-                0.0,
-                -ea_l,
-                0.0,
-                0.0,
-                0.0,
-                12.0 * ei_l3,
-                6.0 * ei_l2,
-                0.0,
-                -12.0 * ei_l3,
-                6.0 * ei_l2,
-                0.0,
-                6.0 * ei_l2,
-                4.0 * ei_l,
-                0.0,
-                -6.0 * ei_l2,
-                2.0 * ei_l,
-                -ea_l,
-                0.0,
-                0.0,
-                ea_l,
-                0.0,
-                0.0,
-                0.0,
-                -12.0 * ei_l3,
-                -6.0 * ei_l2,
-                0.0,
-                12.0 * ei_l3,
-                -6.0 * ei_l2,
-                0.0,
-                6.0 * ei_l2,
-                2.0 * ei_l,
-                0.0,
-                -6.0 * ei_l2,
-                4.0 * ei_l,
-            ],
-        )
+        Matrix::new(6, 6, self.local_stiffness_entries().as_flattened().to_vec())
     }
 
-    /// Computes the transformation matrix from local to global coordinates.
+    #[inline]
+    fn local_stiffness_entries(&self) -> [[f64; 6]; 6] {
+        let l = self.length;
+        let e = self.youngs_modulus;
+        let area = self.area;
+        let inertia = self.moment_of_inertia;
+        let l2 = l * l;
+        let l3 = l2 * l;
+        let ea = e * area;
+        let ei = e * inertia;
+        // These ranges keep the intermediate powers, products and quotients
+        // normal. Common elements can keep the original arithmetic directly.
+        let ordinary_product = |value: f64| (1e-120..=1e120).contains(&value.abs());
+        let (axial, bending, coupling, rotation, end_rotation) =
+            if (1e-60..=1e60).contains(&l.abs()) && ordinary_product(ea) && ordinary_product(ei) {
+                let ei_l = ei / l;
+                (
+                    ea / l,
+                    12.0 * (ei / l3),
+                    6.0 * (ei / l2),
+                    4.0 * ei_l,
+                    2.0 * ei_l,
+                )
+            } else {
+                (
+                    scaled_beam_stiffness(e, area, ea, l, &[l], 1.0),
+                    scaled_beam_stiffness(e, inertia, ei, l3, &[l, l, l], 12.0),
+                    scaled_beam_stiffness(e, inertia, ei, l2, &[l, l], 6.0),
+                    scaled_beam_stiffness(e, inertia, ei, l, &[l], 4.0),
+                    scaled_beam_stiffness(e, inertia, ei, l, &[l], 2.0),
+                )
+            };
+
+        [
+            [axial, 0.0, 0.0, -axial, 0.0, 0.0],
+            [0.0, bending, coupling, 0.0, -bending, coupling],
+            [0.0, coupling, rotation, 0.0, -coupling, end_rotation],
+            [-axial, 0.0, 0.0, axial, 0.0, 0.0],
+            [0.0, -bending, -coupling, 0.0, bending, -coupling],
+            [0.0, coupling, end_rotation, 0.0, -coupling, rotation],
+        ]
+    }
+
+    /// Computes the transformation matrix from global to local coordinates.
     #[must_use]
     pub fn transformation_matrix(&self) -> Matrix<f64> {
         let c = self.angle.cos();
-
         let s = self.angle.sin();
-
-        Matrix::new(
-            6,
-            6,
-            vec![
-                c, s, 0.0, 0.0, 0.0, 0.0, -s, c, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0,
-                0.0, 0.0, 0.0, c, s, 0.0, 0.0, 0.0, 0.0, -s, c, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,
-            ],
-        )
+        Matrix::new(6, 6, beam_transformation(c, s).as_flattened().to_vec())
     }
 
     /// Computes the global stiffness matrix.
     #[must_use]
     pub fn global_stiffness_matrix(&self) -> Matrix<f64> {
-        let k_local = self.local_stiffness_matrix();
+        Matrix::new(
+            6,
+            6,
+            self.global_stiffness_entries().as_flattened().to_vec(),
+        )
+    }
 
-        let t = self.transformation_matrix();
+    /// Computes the global stiffness as a fixed-size row-major array on the stack.
+    ///
+    /// Each node contributes its global x displacement, global y displacement,
+    /// and rotation, in that order.
+    #[must_use]
+    pub fn global_stiffness_entries(&self) -> [[f64; 6]; 6] {
+        let mut stiffness = self.local_stiffness_entries();
+        let c = self.angle.cos();
+        let s = self.angle.sin();
+        if !c.is_finite() || !s.is_finite() || stiffness.iter().flatten().any(|x| !x.is_finite()) {
+            return dense_beam_rotation(&stiffness, &beam_transformation(c, s));
+        }
+        let pair = |x: f64, y: f64| [0.0 + x * c + y * (-s), 0.0 + x * s + y * c];
 
-        let tt = t.transpose();
-
-        let kt = k_local * t;
-
-        tt * kt
+        // T only mixes translations at the same node. Apply K T, then Tᵀ (K T).
+        for row in &mut stiffness {
+            for j in [0, 3] {
+                [row[j], row[j + 1]] = pair(row[j], row[j + 1]);
+                row[j + 2] += 0.0;
+            }
+        }
+        for i in [0, 3] {
+            for j in 0..6 {
+                [stiffness[i][j], stiffness[i + 1][j]] = pair(stiffness[i][j], stiffness[i + 1][j]);
+            }
+        }
+        stiffness
     }
 
     /// Computes the consistent mass matrix.
@@ -754,6 +751,64 @@ impl BeamElement2D {
             ],
         )
     }
+}
+
+#[cold]
+fn scaled_beam_stiffness(
+    young: f64,
+    section: f64,
+    product: f64,
+    denominator: f64,
+    lengths: &[f64],
+    multiplier: f64,
+) -> f64 {
+    use crate::kernels::numeric_common::scale_product;
+
+    let ratio = product / denominator;
+    let ordinary = multiplier * ratio;
+    let l = lengths[0];
+    if (product.is_normal() && denominator.is_normal() && ratio.is_normal())
+        || !(young.is_finite() && section.is_finite() && l.is_finite())
+        || section < 0.0
+        || l <= 0.0
+    {
+        return ordinary;
+    }
+    if young == 0.0 || section == 0.0 {
+        return product;
+    }
+    // Evaluate the final entry, including its coefficient, before rounding.
+    // Both EI and the power of L can be outside the float range independently.
+    scale_product(young, &[section, multiplier], lengths)
+        .unwrap_or_else(|_| f64::INFINITY.copysign(young))
+}
+
+const fn beam_transformation(
+    c: f64,
+    s: f64,
+) -> [[f64; 6]; 6] {
+    [
+        [c, s, 0.0, 0.0, 0.0, 0.0],
+        [-s, c, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, c, s, 0.0],
+        [0.0, 0.0, 0.0, -s, c, 0.0],
+        [0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+    ]
+}
+
+#[cold]
+fn dense_beam_rotation(
+    stiffness: &[[f64; 6]; 6],
+    transform: &[[f64; 6]; 6],
+) -> [[f64; 6]; 6] {
+    // Keep the generic product's IEEE behavior for invalid geometry or material.
+    let right: [[f64; 6]; 6] = std::array::from_fn(|i| {
+        std::array::from_fn(|j| (0..6).fold(0.0, |sum, k| sum + stiffness[i][k] * transform[k][j]))
+    });
+    std::array::from_fn(|i| {
+        std::array::from_fn(|j| (0..6).fold(0.0, |sum, k| sum + transform[k][i] * right[k][j]))
+    })
 }
 
 // ============================================================================

@@ -1,3 +1,5 @@
+//! Dimension-generic structured-grid finite differences (1D/2D/3D).
+//!
 //! # Structured-grid finite differences in 1D, 2D and 3D
 //!
 //! A dimension-generic vertex-centred finite-difference layer shared by the
@@ -71,7 +73,8 @@ impl Grid {
     /// Builds a grid; periodicity is read from `bcs`.
     ///
     /// # Errors
-    /// For a bad dimension, too few nodes, `lo >= hi`, or one-sided periodicity.
+    /// For an invalid axis count or spacing, too few nodes, an unrepresentable
+    /// grid size, or one-sided periodicity.
     pub fn new(
         n: &[usize],
         lo: &[f64],
@@ -91,13 +94,21 @@ impl Grid {
         };
         for a in 0..dim {
             let per = bcs.axis_periodic(a)?;
-            if n[a] < if per { 3 } else { 2 } || lo[a] >= hi[a] {
-                return Err(format!("axis {a}: invalid node count or bounds"));
+            if n[a] < if per { 3 } else { 2 } {
+                return Err(format!("axis {a}: too few nodes"));
             }
             g.n[a] = n[a];
             g.lo[a] = lo[a];
             g.hi[a] = hi[a];
             g.periodic[a] = per;
+            let h = g.h(a);
+            if !(h.is_finite() && h > 0.0) {
+                return Err(format!("axis {a}: the spacing must be finite and positive"));
+            }
+        }
+        let len = g.n.iter().try_fold(1_usize, |len, n| len.checked_mul(*n));
+        if len.is_none_or(|len| std::alloc::Layout::array::<f64>(len).is_err()) {
+            return Err("grid size is too large".into());
         }
         Ok(g)
     }
@@ -111,7 +122,9 @@ impl Grid {
         n: usize,
         bcs: &FaceBcs,
     ) -> Result<Self, String> {
-        Self::new(&vec![n; dim], &vec![0.0; dim], &vec![1.0; dim], bcs)
+        let counts = [n; 3];
+        let counts = counts.get(..dim).ok_or("grid needs 1 to 3 axes")?;
+        Self::new(counts, &[0.0; 3][..dim], &[1.0; 3][..dim], bcs)
     }
 
     /// Spacing along `axis`.
@@ -221,72 +234,111 @@ impl Grid {
 /// Dirichlet node data.
 #[derive(Clone, Debug)]
 struct DirNode {
+    index: usize,
     value: BcValue,
     x: [f64; 3],
 }
 
-/// Dirichlet nodes of a grid: the datum and position at every node that
-/// carries a Dirichlet condition (a Robin condition with `β = 0` fixes `u`
-/// as well).
-fn dirichlet_nodes(
-    grid: &Grid,
-    bcs: &FaceBcs,
-) -> Result<Vec<Option<DirNode>>, String> {
-    let nn = grid.len();
-    let mut dirichlet: Vec<Option<DirNode>> = vec![None; nn];
-    for p in 0..nn {
-        let ijk = grid.ijk(p);
+/// Constant-time membership for stencil assembly and a sparse update list
+/// for time-dependent data. At a corner the first Dirichlet face wins.
+#[derive(Clone, Debug)]
+struct DirichletNodes {
+    mask: Vec<bool>,
+    nodes: Vec<DirNode>,
+}
+
+impl DirichletNodes {
+    fn new(
+        grid: &Grid,
+        bcs: &FaceBcs,
+    ) -> Result<Self, String> {
+        let nn = grid.len();
+        let mut mask = vec![false; nn];
+        let mut nodes = Vec::new();
+        let strides = [1, grid.n[0], grid.n[0] * grid.n[1]];
         for a in 0..grid.dim {
+            if bcs.axis_periodic(a)? != grid.periodic[a] {
+                return Err(format!(
+                    "axis {a}: boundary periodicity differs from the grid"
+                ));
+            }
             if grid.periodic[a] {
                 continue;
             }
             for max in [false, true] {
-                let on = if max {
-                    ijk[a] == grid.n[a] - 1
-                } else {
-                    ijk[a] == 0
-                };
-                if !on || dirichlet[p].is_some() {
-                    continue;
-                }
                 let face = Face::of_axis(a, max);
-                match bcs.get(face) {
-                    | BoundaryCondition::Dirichlet(g) => {
-                        dirichlet[p] = Some(DirNode {
-                            value: g.clone(),
-                            x: grid.coord(p),
-                        });
+                let value = match bcs.get(face) {
+                    | BoundaryCondition::Dirichlet(value) => value.clone(),
+                    | BoundaryCondition::Robin { alpha, beta, .. }
+                        if !(alpha.is_finite() && beta.is_finite()) =>
+                    {
+                        return Err("Robin coefficients must be finite".into());
                     },
                     | BoundaryCondition::Robin { alpha, beta, g } if *beta == 0.0 => {
                         if *alpha == 0.0 {
                             return Err("degenerate Robin condition".into());
                         }
                         let (al, g) = (*alpha, g.clone());
-                        dirichlet[p] = Some(DirNode {
-                            value: BcValue::spacetime(move |t, x| g.eval(t, x) / al),
-                            x: grid.coord(p),
-                        });
+                        BcValue::spacetime(move |t, x| g.eval(t, x) / al)
                     },
-                    | _ => {},
+                    | _ => continue,
+                };
+                let stride = strides[a];
+                let first = if max {
+                    stride * (grid.n[a] - 1)
+                } else {
+                    0
+                };
+                for start in (first..nn).step_by(stride * grid.n[a]) {
+                    for (offset, assigned) in mask[start..start + stride].iter_mut().enumerate() {
+                        if !*assigned {
+                            *assigned = true;
+                            let p = start + offset;
+                            nodes.push(DirNode {
+                                index: p,
+                                value: value.clone(),
+                                x: grid.coord(p),
+                            });
+                        }
+                    }
                 }
             }
         }
+        // Keep the original x-fastest order of time-dependent callbacks.
+        nodes.sort_unstable_by_key(|node| node.index);
+        Ok(Self { mask, nodes })
     }
-    Ok(dirichlet)
+
+    fn contains(
+        &self,
+        p: usize,
+    ) -> bool {
+        self.mask.get(p).copied().unwrap_or(false)
+    }
+
+    fn apply(
+        &self,
+        u: &mut [f64],
+        t: f64,
+    ) {
+        for node in &self.nodes {
+            u[node.index] = node.value.eval(t, node.x);
+        }
+    }
 }
 
 /// Matrix `shift I + scale L` with identity rows at Dirichlet nodes.
 fn boundary_system(
     grid: &Grid,
     l: &Csr,
-    dirichlet: &[Option<DirNode>],
+    dirichlet: &DirichletNodes,
     shift: f64,
     scale: f64,
 ) -> Csr {
     let nn = grid.len();
     let mut trip = Vec::with_capacity(l.values.len() + nn);
     for p in 0..nn {
-        if dirichlet.get(p).is_some_and(Option::is_some) {
+        if dirichlet.contains(p) {
             trip.push((p, p, 1.0));
             continue;
         }
@@ -308,7 +360,7 @@ pub struct LaplacianOp {
     pub grid: Grid,
     /// Matrix of `L` without Dirichlet rows (those are empty).
     pub l: Csr,
-    dirichlet: Vec<Option<DirNode>>,
+    dirichlet: DirichletNodes,
     forcing: Vec<(usize, f64, BcValue, [f64; 3])>,
     absorbing: Vec<(usize, usize, bool)>,
 }
@@ -317,18 +369,19 @@ impl LaplacianOp {
     /// Assembles the operator for the given boundary conditions.
     ///
     /// # Errors
-    /// If a Robin condition is degenerate (`alpha = beta = 0`).
+    /// If a Robin condition is nonfinite or degenerate (`alpha = beta = 0`),
+    /// or the boundary periodicity differs from the grid's.
     pub fn new(
         grid: &Grid,
         bcs: &FaceBcs,
     ) -> Result<Self, String> {
         let nn = grid.len();
-        let dirichlet = dirichlet_nodes(grid, bcs)?;
+        let dirichlet = DirichletNodes::new(grid, bcs)?;
         let mut trip: Vec<(usize, usize, f64)> = Vec::new();
         let mut forcing = Vec::new();
         let mut absorbing = Vec::new();
         for p in 0..nn {
-            if dirichlet[p].is_some() {
+            if dirichlet.contains(p) {
                 continue;
             }
             let ijk = grid.ijk(p);
@@ -397,13 +450,13 @@ impl LaplacianOp {
         &self,
         p: usize,
     ) -> bool {
-        self.dirichlet.get(p).is_some_and(Option::is_some)
+        self.dirichlet.contains(p)
     }
 
     /// Number of Dirichlet nodes.
     #[must_use]
-    pub fn dirichlet_count(&self) -> usize {
-        self.dirichlet.iter().filter(|d| d.is_some()).count()
+    pub const fn dirichlet_count(&self) -> usize {
+        self.dirichlet.nodes.len()
     }
 
     /// `out = L u` at free nodes, `0` at Dirichlet nodes.
@@ -434,11 +487,7 @@ impl LaplacianOp {
         u: &mut [f64],
         t: f64,
     ) {
-        for (p, d) in self.dirichlet.iter().enumerate() {
-            if let Some(d) = d {
-                u[p] = d.value.eval(t, d.x);
-            }
-        }
+        self.dirichlet.apply(u, t);
     }
 
     /// Matrix `shift I + scale L` with identity rows at Dirichlet nodes.
@@ -519,7 +568,7 @@ pub struct VariableDiffusionOp {
     pub averaging: FaceAverage,
     /// Matrix of `L_α` without Dirichlet rows (those are empty).
     pub l: Csr,
-    dirichlet: Vec<Option<DirNode>>,
+    dirichlet: DirichletNodes,
     forcing: Vec<(usize, f64, BcValue, [f64; 3])>,
     absorbing: Vec<(usize, usize, bool)>,
 }
@@ -529,7 +578,8 @@ impl VariableDiffusionOp {
     ///
     /// # Errors
     /// If `alpha` does not have one value per node, is negative or not
-    /// finite, or if a Robin condition is degenerate.
+    /// finite, if a Robin condition is nonfinite or degenerate, or if the
+    /// boundary periodicity differs from the grid's.
     pub fn new(
         grid: &Grid,
         bcs: &FaceBcs,
@@ -546,12 +596,12 @@ impl VariableDiffusionOp {
         if alpha.iter().any(|&a| !(a.is_finite() && a >= 0.0)) {
             return Err("alpha must be finite and non-negative".into());
         }
-        let dirichlet = dirichlet_nodes(grid, bcs)?;
+        let dirichlet = DirichletNodes::new(grid, bcs)?;
         let mut trip: Vec<(usize, usize, f64)> = Vec::new();
         let mut forcing = Vec::new();
         let mut absorbing = Vec::new();
         for p in 0..nn {
-            if dirichlet[p].is_some() {
+            if dirichlet.contains(p) {
                 continue;
             }
             let ijk = grid.ijk(p);
@@ -626,13 +676,13 @@ impl VariableDiffusionOp {
         &self,
         p: usize,
     ) -> bool {
-        self.dirichlet.get(p).is_some_and(Option::is_some)
+        self.dirichlet.contains(p)
     }
 
     /// Number of Dirichlet nodes.
     #[must_use]
-    pub fn dirichlet_count(&self) -> usize {
-        self.dirichlet.iter().filter(|d| d.is_some()).count()
+    pub const fn dirichlet_count(&self) -> usize {
+        self.dirichlet.nodes.len()
     }
 
     /// `out = L_α u` at free nodes, `0` at Dirichlet nodes.
@@ -664,11 +714,7 @@ impl VariableDiffusionOp {
         u: &mut [f64],
         t: f64,
     ) {
-        for (p, d) in self.dirichlet.iter().enumerate() {
-            if let Some(d) = d {
-                u[p] = d.value.eval(t, d.x);
-            }
-        }
+        self.dirichlet.apply(u, t);
     }
 
     /// Matrix `shift I + scale L_α` with identity rows at Dirichlet nodes.
