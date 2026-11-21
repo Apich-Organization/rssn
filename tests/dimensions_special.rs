@@ -9,6 +9,10 @@
 use rssn::graph::DimensionMode;
 use rssn::graph::Engine;
 use rssn::graph::Graph;
+use rssn::kernel::CallCtx;
+use rssn::kernel::Value;
+use rssn::kernel::signature::DimExpr;
+use rssn::kernel::value::DynValue;
 use rssn::prelude::*;
 
 fn config(assumptions: &[(&str, &str)]) -> Config {
@@ -88,6 +92,93 @@ fn special_function_rejects_a_dimensionful_argument() {
     assert!(
         matches!(error, ComputeError::Dimension(_)),
         "unexpected error: {error}"
+    );
+}
+
+#[test]
+fn logarithmic_bessel_k_remains_finite_when_the_value_underflows() {
+    let session = Session::new();
+    let ctx = CallCtx::new();
+    let arguments = [Value::Float(0.5), Value::Float(1000.0)];
+    let raw = session
+        .call_value("num_special_bessel_k", &arguments, &ctx)
+        .unwrap();
+    assert_eq!(raw.as_f64(), Some(0.0));
+    let logarithm = session
+        .call_value("num_special_ln_bessel_k", &arguments, &ctx)
+        .unwrap();
+    assert!((logarithm.as_f64().unwrap() - (-1003.228_086_286_846_3)).abs() < 1e-12);
+    let measured = Value::Dyn(DynValue {
+        value: Box::new(Value::Float(1000.0)),
+        dim: DimExpr::base("Length"),
+    });
+    assert!(
+        session
+            .call_value(
+                "num_special_ln_bessel_k",
+                &[Value::Float(0.5), measured],
+                &ctx
+            )
+            .is_err()
+    );
+}
+
+#[test]
+fn modular_chebyshev_keeps_full_unsigned_residues_in_the_result() {
+    let session = Session::new();
+    let ctx = CallCtx::new();
+    let name = "num_special_exact_chebyshev_tu_mod";
+    let call = |modulus| {
+        session
+            .call_value(
+                name,
+                &[
+                    Value::int(u64::MAX),
+                    Value::int(i64::MIN + 17),
+                    Value::int(modulus),
+                ],
+                &ctx,
+            )
+            .unwrap()
+    };
+    let Value::Variant(result) = call(u64::MAX) else {
+        panic!("expected Some residue pair");
+    };
+    assert_eq!(result.tag, "Some");
+    let [Value::Record(residues)] = result.payload.as_slice() else {
+        panic!("expected named residue fields");
+    };
+    // Independent recurrence-matrix exponentiation over arbitrary precision integers.
+    assert_eq!(
+        residues.get("item0"),
+        Some(&Value::int(8_084_515_612_503_228_864_u64))
+    );
+    assert_eq!(
+        residues.get("item1"),
+        Some(&Value::int(9_910_403_022_203_829_924_u64))
+    );
+    let Value::Variant(missing) = call(0) else {
+        panic!("expected None at modulus zero");
+    };
+    assert_eq!(missing.tag, "None");
+    assert!(missing.payload.is_empty());
+    assert!(
+        session
+            .call_value(name, &[Value::int(1), Value::int(1), Value::int(-1)], &ctx)
+            .is_err()
+    );
+    assert!(
+        session
+            .call_value(
+                name,
+                &[
+                    Value::int(u128::from(u64::MAX) + 1),
+                    Value::int(1),
+                    Value::int(7)
+                ],
+                &ctx
+            )
+            .is_err()
     );
 }
 

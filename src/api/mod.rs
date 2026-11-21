@@ -1,9 +1,11 @@
+//! Unified mathematical compute engine.
+//!
 //! # The user-facing API
 //!
 //! One entry point, [`Session::compute`], for everything that is an identity
 //! transformation. What differs between "simplify", "differentiate",
 //! "evaluate" and "solve" is only the term that is handed in and the
-//! [`Target`](crate::kernel::call::Target) phase of the answer.
+//! [`Target`] phase of the answer.
 //!
 //! ```
 //! use rssn::api::*;
@@ -33,12 +35,12 @@
 //!   in [`crate::sim`], the standalone numeric routines in [`crate::kernels`].
 //!   "Solve" and "integrate" are ordinary operators handed through the same
 //!   compute path, so what they do is whatever the installed rule sets derive.
-//! * **One session per thread.** A [`Session`](crate::api::Session) is
+//! * **One session per thread.** A [`Session`] is
 //!   single-threaded (its store is a `RefCell`). Use
 //!   [`Session::fork`](crate::api::Session::fork) to move work to another
 //!   thread and [`Session::merge`](crate::api::Session::merge) to bring the
 //!   result back; terms never leave the session that minted them. A
-//!   [`Term`](crate::api::Term) borrows its session and cannot outlive it; for
+//!   [`Term`] borrows its session and cannot outlive it; for
 //!   language bindings there is
 //!   [`TermRef`](crate::kernel::value::TermRef) (a session id plus a node id),
 //!   which [`Session::term_ref`](crate::api::Session::term_ref) checks before
@@ -46,7 +48,7 @@
 //! * **Cooperative cancellation and run budgets.** Embedding hosts can install
 //!   [`crate::cancellation`] scopes; graph and supported numeric kernels stop
 //!   at checkpoints with [`ComputeError::Cancelled`]. The limits are
-//!   the [`Budget`](crate::graph::Budget) (`max_iterations`, `max_nodes`, and
+//!   the [`Budget`] (`max_iterations`, `max_nodes`, and
 //!   the optional `time_limit`, which ends a run with
 //!   [`Stop::Time`](crate::graph::Stop)); a pathological rule set runs until
 //!   one of them is exhausted or its scope is cancelled. There is no streaming
@@ -54,10 +56,10 @@
 //! * **Answers are cached; lemmas can be.** A session memoises whole answers
 //!   by request node and configuration fingerprint (exact: a hit equals a
 //!   fresh run), and can reuse the closed forms of heavy sub-requests across
-//!   requests; see [`CachePolicy`](crate::api::CachePolicy) and
+//!   requests; see [`CachePolicy`] and
 //!   [`Session::cache_stats`](crate::api::Session::cache_stats).
 //! * **Configurations are per request; rule-set combinations are cached.**
-//!   Every distinct set of rule sets used by a [`Config`](crate::api::Config)
+//!   Every distinct set of rule sets used by a [`Config`]
 //!   installs a template (a copy of the graph plus an engine) the first time it
 //!   is seen, and the session keeps it for reuse. Cloning a `Config` per call
 //!   is cheap, but a host that creates unboundedly many distinct configurations
@@ -74,20 +76,20 @@
 //!   becomes a diagnostic, and only
 //!   [`DimensionMode::Strict`](crate::graph::DimensionMode) turns a *blocking*
 //!   finding into
-//!   [`ComputeError::Dimension`](crate::api::ComputeError::Dimension). The
+//!   [`ComputeError::Dimension`]. The
 //!   findings are carried as
 //!   [`Answer::diagnostics`](crate::api::Answer::diagnostics); no individual
 //!   `DimError` code is part of the C ABI. Structured assumptions
 //!   ([`Config::dimension_term`](crate::api::Config::dimension_term)) never
 //!   parse text and are what a generated typed front end should use.
 //! * **`Value` conversions are total in one direction only.** Every term has
-//!   a [`Value`](crate::kernel::value::Value)
+//!   a [`Value`]
 //!   ([`Term::to_value`](crate::api::Term::to_value),
 //!   [`Session::value_of`](crate::api::Session::value_of)); a value without a
 //!   handle has a term
 //!   ([`Session::term_of`](crate::api::Session::term_of)) *except* the
 //!   boundary kinds: a bare
-//!   [`Value::Unit`](crate::kernel::value::Value::Unit), a complex literal
+//!   [`Value::Unit`], a complex literal
 //!   with a nonzero imaginary part, and sparse, record, variant, function and
 //!   opaque values.
 //!   [`ValueKindInfo::all`](crate::kernel::value::ValueKindInfo::all) is the
@@ -113,7 +115,7 @@
 //! * **Known edges.** [`Session::rational`](crate::api::Session::rational)
 //!   returns `None` for a zero denominator; a numeric target without enough
 //!   bindings is
-//!   [`ComputeError::NotNumeric`](crate::api::ComputeError::NotNumeric) and
+//!   [`ComputeError::NotNumeric`] and
 //!   carries the best symbolic form in its message;
 //!   [`Session::merge`](crate::api::Session::merge) fails when the two sessions
 //!   declared different dimensions for one symbol rather than silently
@@ -179,7 +181,7 @@ pub use value::MergeError;
 /// What to compute with and what to aim for.
 #[derive(Clone, Debug)]
 pub struct Config {
-    sets: Vec<RuleSet>,
+    sets: Arc<Vec<RuleSet>>,
     target: Target,
     bindings: Vec<(String, f64)>,
     assumptions: Vec<(String, Facts)>,
@@ -192,6 +194,11 @@ pub struct Config {
     bypass_dimensions: bool,
 }
 
+fn standard_rule_sets() -> &'static Arc<Vec<RuleSet>> {
+    static SETS: std::sync::OnceLock<Arc<Vec<RuleSet>>> = std::sync::OnceLock::new();
+    SETS.get_or_init(|| Arc::new(rules::standard()))
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self::new()
@@ -202,25 +209,18 @@ impl Config {
     /// All standard rule sets, symbolic target, default budget.
     #[must_use]
     pub fn new() -> Self {
-        Self {
-            sets: rules::standard(),
-            target: Target::Symbolic,
-            bindings: Vec::new(),
-            assumptions: Vec::new(),
-            budget: Budget::default(),
-            dimension_mode: crate::graph::DimensionMode::Advisory,
-            dimension_assumptions: Vec::new(),
-            dimension_terms: Vec::new(),
-            base_dimensions: Vec::new(),
-            bypass_dimensions: false,
-        }
+        Self::with_rule_sets(Arc::clone(standard_rule_sets()))
     }
 
     /// No rule sets at all; add some with [`Config::with`].
     #[must_use]
     pub fn empty() -> Self {
+        Self::with_rule_sets(Arc::default())
+    }
+
+    fn with_rule_sets(sets: Arc<Vec<RuleSet>>) -> Self {
         Self {
-            sets: Vec::new(),
+            sets,
             target: Target::Symbolic,
             bindings: Vec::new(),
             assumptions: Vec::new(),
@@ -239,7 +239,7 @@ impl Config {
         mut self,
         set: RuleSet,
     ) -> Self {
-        self.sets.push(set);
+        Arc::make_mut(&mut self.sets).push(set);
         self
     }
 
@@ -621,11 +621,11 @@ impl UnitRegistry for SessionUnits {
 }
 
 /// A graph with a set of rule sets installed, and the engine bound to it.
+#[derive(Clone)]
 struct Template {
-    sets: Vec<Arc<str>>,
     /// The rule sets themselves, so that a dynamic call can build a
     /// [`Config`] that selects this template.
-    rule_sets: Vec<RuleSet>,
+    rule_sets: Arc<Vec<RuleSet>>,
     graph: Graph,
     engine: Engine,
 }
@@ -634,7 +634,7 @@ struct Inner {
     /// The term store: every [`Term`] is a node of this graph. It is a
     /// plain hash-consed DAG; no equalities are ever asserted in it.
     graph: Graph,
-    templates: Vec<Template>,
+    templates: Vec<Arc<Template>>,
     /// Plugins registered into this session. They are part of the
     /// configuration, so a template that is built later installs them too.
     plugins: Vec<Arc<dyn crate::kernel::plugin::Plugin>>,
@@ -711,18 +711,35 @@ pub struct Answer<'s> {
     pub report: Report,
 }
 
+fn standard_template() -> Result<Arc<Template>, RuleError> {
+    static STANDARD: crate::kernels::reuse::PlanCache<u64, Template> =
+        crate::kernels::reuse::PlanCache::new(1);
+    let revision = crate::dim::units::registry_revision();
+    STANDARD.try_get_or_insert_with(revision, || {
+        Template::new(Arc::clone(standard_rule_sets())).map(Arc::new)
+    })
+}
+
+/// Reads the shared baseline manifest without creating a session.
+pub(crate) fn standard_manifest() -> Arc<KernelManifest> {
+    standard_template().map_or_else(
+        |_| Arc::new(KernelManifest::default()),
+        |template| template.engine.manifest_arc(),
+    )
+}
+
 impl Session {
     /// A session with the operators of every standard rule set registered.
+    /// The installed rules and manifest are shared between standard sessions
+    /// created with the same process-wide unit registry revision.
     ///
     /// # Panics
     /// Panics if the built-in rule sets fail to install, which would be a
     /// bug in rssn itself.
     #[must_use]
     pub fn new() -> Self {
-        match Self::with_rules(&rules::standard()) {
-            | Ok(session) => session,
-            | Err(e) => broken_builtin(&e),
-        }
+        let template = standard_template().unwrap_or_else(|error| broken_builtin(&error));
+        Self::from_template(template)
     }
 
     /// A session with exactly the given rule sets pre-installed.
@@ -730,9 +747,13 @@ impl Session {
     /// # Errors
     /// Fails when a rule set does not install.
     pub fn with_rules(sets: &[RuleSet]) -> Result<Self, RuleError> {
-        let template = Template::new(sets, &[])?;
+        let template = Template::new(Arc::new(sets.to_vec()))?;
+        Ok(Self::from_template(Arc::new(template)))
+    }
+
+    fn from_template(template: Arc<Template>) -> Self {
         let graph = template.graph.clone();
-        Ok(Self {
+        Self {
             id: next_session_id(),
             native_objects: crate::kernel::native_objects::NativeObjects::new(),
             inner: RefCell::new(Inner {
@@ -742,7 +763,7 @@ impl Session {
                 plugin_count: 0,
                 cache: cache::ComputeCache::default(),
             }),
-        })
+        }
     }
 
     const fn term(
@@ -757,7 +778,8 @@ impl Session {
     /// The unit is described by this session's [manifest](Session::manifest)
     /// and by no other session's: it goes into the session's own
     /// [`UnitRegistry`], not into the table every session shares. The built-in
-    /// units stay available.
+    /// units stay available. Every installed rule configuration must accept
+    /// the unit before the session publishes it.
     ///
     /// # Errors
     /// Fails when the name or an alias already belongs to a unit with a
@@ -767,23 +789,25 @@ impl Session {
         unit: UnitDef,
     ) -> Result<(), DimError> {
         let mut inner = self.inner.borrow_mut();
-        // A unit changes how every template resolves quantities.
-        inner.cache.invalidate();
-        // The clone in the loop is only for the templates that come after;
-        // the final template takes ownership so the unit is consumed once.
-        let Some((last, earlier)) = inner.templates.split_last_mut() else {
+        let Some((last, earlier)) = inner.templates.split_last() else {
             return Ok(());
         };
-        for template in earlier {
+        let prepare = |template: &Template, unit| {
             let mut units = SessionUnits::from_manifest(template.engine.manifest());
-            units.register(unit.clone())?;
+            units.register(unit)?;
+            Ok::<_, DimError>(units)
+        };
+        let mut replacements = Vec::with_capacity(inner.templates.len());
+        for template in earlier {
+            replacements.push(prepare(template, unit.clone())?);
+        }
+        replacements.push(prepare(last, unit)?);
+        for (template, units) in inner.templates.iter_mut().zip(replacements) {
+            let template = Arc::make_mut(template);
             template.engine.set_unit_registry(units);
             template.engine.refresh_manifest(&template.graph);
         }
-        let mut units = SessionUnits::from_manifest(last.engine.manifest());
-        units.register(unit)?;
-        last.engine.set_unit_registry(units);
-        last.engine.refresh_manifest(&last.graph);
+        inner.cache.invalidate();
         Ok(())
     }
 
@@ -880,20 +904,25 @@ impl Session {
         let mut guard = self.inner.borrow_mut();
         let inner = &mut *guard;
         let index = template_index(inner, config)?;
-        let key = cache::fingerprint(config, true);
-        if let Some(hit) = inner.cache.answer(index, term.node, &key) {
+        let key = inner
+            .cache
+            .policy
+            .answers
+            .then(|| cache::fingerprint(config, true));
+        if let Some(hit) = key
+            .as_ref()
+            .and_then(|key| inner.cache.answer(index, term.node, key))
+        {
             return hit.map(|stored| self.answer(stored));
         }
         let Some(template) = inner.templates.get(index) else {
             return Err(ComputeError::UnknownOperator("engine".to_owned()));
         };
         let capture_lemmas = inner.cache.policy.lemmas;
-        let seeds = if capture_lemmas {
-            let context = cache::fingerprint(config, false);
-            lemma_seeds(inner, index, term.node, &context)
-        } else {
-            Vec::new()
-        };
+        let context = capture_lemmas.then(|| cache::fingerprint(config, false));
+        let seeds = context.as_ref().map_or_else(Vec::new, |context| {
+            lemma_seeds(inner, index, term.node, context)
+        });
         let (job, seeded) = prepare(
             template,
             &inner.graph,
@@ -904,10 +933,12 @@ impl Session {
         );
         inner.cache.note_lemma_hits(seeded);
         let done = run_job(&template.engine, job, config);
-        let stored = finish(inner, index, config, done);
-        inner
-            .cache
-            .store_answer(index, term.node, key, stored.clone());
+        let stored = finish(inner, index, config, context.as_ref(), done);
+        if let Some(key) = key {
+            inner
+                .cache
+                .store_answer(index, term.node, key, stored.clone());
+        }
         stored.map(|stored| self.answer(stored))
     }
 
@@ -940,10 +971,17 @@ impl Session {
             | Ok(i) => i,
             | Err(e) => return terms.iter().map(|_| Err(e.clone())).collect(),
         };
-        let key = cache::fingerprint(config, true);
+        let key = inner
+            .cache
+            .policy
+            .answers
+            .then(|| cache::fingerprint(config, true));
         let mut slots: Vec<Option<Result<cache::StoredAnswer, ComputeError>>> = terms
             .iter()
-            .map(|t| inner.cache.answer(index, t.node, &key))
+            .map(|t| {
+                key.as_ref()
+                    .and_then(|key| inner.cache.answer(index, t.node, key))
+            })
             .collect();
         let capture_lemmas = inner.cache.policy.lemmas;
         let context = capture_lemmas.then(|| cache::fingerprint(config, false));
@@ -953,7 +991,7 @@ impl Session {
             .enumerate()
             .filter(|(_, (slot, _))| slot.is_none())
             .map(|(i, (_, term))| {
-                let seeds = context.as_deref().map_or_else(Vec::new, |context| {
+                let seeds = context.as_ref().map_or_else(Vec::new, |context| {
                     lemma_seeds(inner, index, term.node, context)
                 });
                 BatchRequest {
@@ -1000,11 +1038,13 @@ impl Session {
             for (request, result) in batch.iter().zip(done) {
                 let stored = result.and_then(|(done, seeded)| {
                     inner.cache.note_lemma_hits(seeded);
-                    finish(inner, index, config, done)
+                    finish(inner, index, config, context.as_ref(), done)
                 });
-                inner
-                    .cache
-                    .store_answer(index, request.node, key.clone(), stored.clone());
+                if let Some(key) = &key {
+                    inner
+                        .cache
+                        .store_answer(index, request.node, key.clone(), stored.clone());
+                }
                 if let Some(slot) = slots.get_mut(request.slot) {
                     *slot = Some(stored);
                 }
@@ -1158,8 +1198,15 @@ fn template_index(
     inner: &mut Inner,
     config: &Config,
 ) -> Result<usize, ComputeError> {
-    let key: Vec<Arc<str>> = config.sets.iter().map(|s| Arc::from(s.name())).collect();
-    match inner.templates.iter().position(|t| t.sets == key) {
+    match inner.templates.iter().position(|template| {
+        let sets = &template.rule_sets;
+        Arc::ptr_eq(sets, &config.sets)
+            || (sets.len() == config.sets.len()
+                && sets
+                    .iter()
+                    .zip(config.sets.iter())
+                    .all(|(left, right)| left.same_recipe(right)))
+    }) {
         | Some(i) => Ok(i),
         | None => {
             // A template built for another set of rule sets describes the
@@ -1170,9 +1217,11 @@ fn template_index(
                 .map_or_else(SessionUnits::default, |t| {
                     SessionUnits::from_manifest(t.engine.manifest())
                 });
-            inner
-                .templates
-                .push(Template::with_units(&config.sets, &[], units)?);
+            inner.templates.push(Arc::new(Template::with_units(
+                Arc::clone(&config.sets),
+                &inner.plugins,
+                units,
+            )?));
             Ok(inner.templates.len().saturating_sub(1))
         },
     }
@@ -1183,7 +1232,7 @@ fn lemma_seeds(
     inner: &Inner,
     index: usize,
     node: NodeId,
-    context: &str,
+    context: &cache::Fingerprint,
 ) -> Vec<(NodeId, NodeId)> {
     heavy_subterms(&inner.graph, node)
         .into_iter()
@@ -1405,16 +1454,16 @@ fn finish(
     inner: &mut Inner,
     index: usize,
     config: &Config,
+    context: Option<&cache::Fingerprint>,
     done: Done,
 ) -> Result<cache::StoredAnswer, ComputeError> {
     crate::cancellation::checkpoint().map_err(|_| ComputeError::Cancelled)?;
     let store = &mut inner.graph;
-    if !done.lemmas.is_empty() {
-        let context = cache::fingerprint(config, false);
+    if let Some(context) = context {
         for &(heavy, closed) in &done.lemmas {
             let heavy = store.import(&done.graph, heavy);
             let closed = store.import(&done.graph, closed);
-            inner.cache.store_lemma(index, &context, heavy, closed);
+            inner.cache.store_lemma(index, context, heavy, closed);
         }
     }
     let Done {
@@ -1464,22 +1513,19 @@ fn finish(
 }
 
 impl Template {
-    fn new(
-        sets: &[RuleSet],
-        plugins: &[Arc<dyn crate::kernel::plugin::Plugin>],
-    ) -> Result<Self, RuleError> {
-        Self::with_units(sets, plugins, SessionUnits::default())
+    fn new(sets: Arc<Vec<RuleSet>>) -> Result<Self, RuleError> {
+        Self::with_units(sets, &[], SessionUnits::default())
     }
 
     /// Builds a template whose engine describes `units` rather than the
     /// process-wide table.
     pub(super) fn with_units(
-        sets: &[RuleSet],
+        sets: Arc<Vec<RuleSet>>,
         plugins: &[Arc<dyn crate::kernel::plugin::Plugin>],
         units: SessionUnits,
     ) -> Result<Self, RuleError> {
         let mut graph = Graph::new();
-        let mut engine = Engine::install_rules(&mut graph, sets)?;
+        let mut engine = Engine::install_rules(&mut graph, &sets)?;
         let mut units = units;
         for plugin in plugins {
             let manifest = plugin.manifest();
@@ -1507,8 +1553,7 @@ impl Template {
         engine.set_unit_registry(units);
         engine.refresh_manifest(&graph);
         Ok(Self {
-            sets: sets.iter().map(|s| Arc::from(s.name())).collect(),
-            rule_sets: sets.to_vec(),
+            rule_sets: sets,
             graph,
             engine,
         })

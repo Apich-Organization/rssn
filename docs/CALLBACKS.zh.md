@@ -3,6 +3,7 @@
 [English](CALLBACKS.md) · [数值回调算子](NUMERICAL_CALLBACKS.zh.md)
 
 RSSN 动态 ABI 支持串行同步宿主回调。将 `HostCallback` 注册到 `CallCtx`，再把返回的句柄传给 `Session::call_ho`。这些句柄按所给顺序附在普通参数之后，对应算子签名末尾的函数参数。
+如果回调在普通参数之前或之间，按清单声明的位置放置 `Value::Function(handle)`，再用同一个调用上下文调用 `Session::call_value` 或 `Session::call_key`。
 
 ```rust
 use std::sync::Arc;

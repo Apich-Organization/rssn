@@ -6,6 +6,9 @@ RSSN's dynamic ABI supports serial, synchronous host callbacks. Register a
 `HostCallback` in a `CallCtx`, then pass its returned handle to `Session::call_ho`.
 The handles are appended after the ordinary arguments in their supplied order;
 they are ordinary function parameters in the operator's declared signature.
+For callback slots before or between ordinary arguments, put
+`Value::Function(handle)` at each position declared in the manifest and use
+`Session::call_value` or `Session::call_key` with the same context.
 
 ```rust
 use std::sync::Arc;

@@ -42,6 +42,8 @@
 //! nonetheless *sound*: it states what the operator's own registration implies,
 //! never what its name suggests.
 
+use std::borrow::Cow;
+
 use crate::graph::Arity;
 use crate::graph::OpDescriptor;
 use crate::graph::OpFlags;
@@ -61,27 +63,33 @@ use crate::kernel::signature::Variadic;
 /// audit binary.
 #[must_use]
 pub fn signatures(desc: &OpDescriptor) -> (Vec<Signature>, SignatureSource) {
+    let (signatures, source) = signature_view(desc);
+    (signatures.into_owned(), source)
+}
+
+/// Borrows published overloads and derives symbolic overloads on demand.
+pub(crate) fn signature_view(desc: &OpDescriptor) -> (Cow<'_, [Signature]>, SignatureSource) {
     if !desc.overloads.is_empty() {
-        return (desc.overloads.clone(), SignatureSource::Declared);
+        return (Cow::Borrowed(&desc.overloads), SignatureSource::Declared);
     }
     if let Some(declared) = overlay().get(&*desc.name)
         && !declared.is_empty()
     {
-        return (declared.clone(), SignatureSource::Overlay);
+        return (Cow::Borrowed(declared), SignatureSource::Overlay);
     }
     match derive(desc) {
         | Some(mut signatures) => {
             let witnessed = witnessed(desc, &signatures);
             if witnessed.is_empty() {
-                (signatures, SignatureSource::Derived)
+                (Cow::Owned(signatures), SignatureSource::Derived)
             } else {
                 // Derived overloads keep their positions (index 0 stays the
                 // primary overload); the witnessed ones follow.
                 signatures.extend(witnessed);
-                (signatures, SignatureSource::Witnessed)
+                (Cow::Owned(signatures), SignatureSource::Witnessed)
             }
         },
-        | None => (Vec::new(), SignatureSource::None),
+        | None => (Cow::Borrowed(&[]), SignatureSource::None),
     }
 }
 
@@ -93,7 +101,7 @@ pub fn signatures(desc: &OpDescriptor) -> (Vec<Signature>, SignatureSource) {
 /// symbolic contract from an overload that was seen to hold.
 #[must_use]
 pub fn overload_sources(desc: &OpDescriptor) -> Vec<SignatureSource> {
-    let (all, source) = signatures(desc);
+    let (all, source) = signature_view(desc);
     if source != SignatureSource::Witnessed {
         return vec![source; all.len()];
     }

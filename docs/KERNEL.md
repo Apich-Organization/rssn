@@ -378,6 +378,11 @@ between the two arenas, failing on a disagreement rather than picking a winner.
 `Session::compute_all` is the supported way to compute several requests in
 parallel inside one session.
 
+`Session::with_native_object_scope` lets a Rust host run a temporary action in
+the current session. The scope releases native objects created by the action
+on return or unwind. Earlier objects are still available, and local handles
+must stay inside the action.
+
 ## The C ABI
 
 ```c
@@ -385,8 +390,10 @@ char       *json = rssn_manifest_json();   /* rssn_string_free(json) */
 uint64_t    hash = rssn_manifest_hash();
 ```
 
-Both describe the *standard* build. A host that installed plugins reads the
-richer per-session manifest through the Rust API. The rest of the C interface is
+Both describe the same *standard* manifest snapshot, including the process-wide
+units visible at the first manifest call. The JSON encoding is reused and each
+call returns its own string. A host that installed plugins reads the richer
+per-session manifest through the Rust API. The rest of the C interface is
 summarised in [ARCHITECTURE.md](../ARCHITECTURE.md#c-interface).
 
 ## What the JIT can do
@@ -414,6 +421,11 @@ overload through the same manifest and value-call APIs.
 
 For operators registered directly, including symbolic rules and callback or
 native object adapters, follow the registration steps below.
+
+Typed native object adapters derive the signature and arity from the same
+argument list. At runtime the adapter checks arity before decoding. Values
+are validated in depth-first order, with limits on depth, element count,
+and tensor shape before the native method runs.
 
 1. Register it with `Installer::op` or `Registry::register_op`.
 2. Declare a `Signature` (`.signature(..)`), or a `DynamicReason`

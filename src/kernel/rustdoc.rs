@@ -4,7 +4,7 @@
 //! every documented `pub fn` into one text table that this module embeds. The
 //! manifest then fills an operator's `doc` from it when the registration did
 //! not say enough, and records *where* the text came from
-//! ([`DocSource`](crate::kernel::manifest::DocSource)), so a host can tell a
+//! ([`DocSource`]), so a host can tell a
 //! description the rule set wrote from one it borrowed.
 //!
 //! # How an operator finds its function

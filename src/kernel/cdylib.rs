@@ -3,8 +3,8 @@
 //! # The ABI, and why it is bytes
 //!
 //! Everything crosses the boundary as one `bincode-next` buffer in and one out.
-//! A `#[repr(C)]` mirror of [`Value`] would have to track every variant, every
-//! field and every enum discriminant across two independently compiled
+//! A `#[repr(C)]` mirror of [a runtime value](super::value::Value) would track
+//! every variant, field and enum discriminant across two independently compiled
 //! artifacts, and would break silently the day a variant is added. The
 //! deterministic encoding is already the stable description of a value — it is
 //! what the manifest is hashed with — so the ABI is a byte buffer, and the

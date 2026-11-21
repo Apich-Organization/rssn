@@ -718,11 +718,14 @@ const MAX_WITNESS: usize = 240;
 pub fn facts_of(graph: &Graph) -> Vec<Fact> {
     let mut memo: HashMap<ClassId, Option<Sort>> = HashMap::new();
     let mut out = Vec::new();
-    for (op, desc) in graph.ops().iter() {
+    for (op, nodes) in graph.operator_nodes() {
+        let Some(desc) = graph.ops().try_get(op) else {
+            continue;
+        };
         if is_core(op) || desc.flags.has(OpFlags::LEAF) || matches!(desc.arity, Arity::Fixed(0)) {
             continue;
         }
-        for &node in graph.nodes_with_op(op) {
+        for &node in nodes {
             if let Some(fact) = fact_of(graph, node, desc, &mut memo) {
                 out.push(fact);
             }

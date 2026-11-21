@@ -4,10 +4,10 @@
 //! contains: which operators exist, what they accept, which rule sets are
 //! installed, and a hash it can cache against. Two calls cover that.
 //!
-//! The manifest is built once per process from the *standard* rule sets and
-//! cached: it is a property of the build, not of a session, so there is
-//! nothing session-specific to report. A host that installed extra plugins
-//! reads the richer, per-session manifest through the Rust API
+//! The first C manifest request captures the shared standard manifest at
+//! the current process-wide unit table revision. The hash and the JSON use
+//! that same immutable snapshot. A host that installed extra plugins reads
+//! the richer, per-session manifest through the Rust API
 //! ([`Session::manifest`](crate::api::Session::manifest)).
 //!
 //! ```c
@@ -17,25 +17,16 @@
 //! rssn_string_free(json);
 //! ```
 
+use std::ffi::CString;
+use std::sync::Arc;
 use std::sync::OnceLock;
 
-use super::to_c;
 use crate::kernel::manifest::KernelManifest;
 
 /// The process-wide manifest of the standard build.
 fn standard() -> &'static KernelManifest {
-    static MANIFEST: OnceLock<KernelManifest> = OnceLock::new();
-    MANIFEST.get_or_init(|| {
-        let sets = crate::rules::standard();
-        let mut graph = crate::graph::Graph::new();
-        // A build whose own rule sets do not install is broken, not
-        // recoverable; the manifest is then the empty one, which hashes
-        // consistently and says so.
-        if crate::graph::Engine::install(&mut graph, &sets).is_err() {
-            return KernelManifest::default();
-        }
-        KernelManifest::build(&graph, &sets, &[])
-    })
+    static MANIFEST: OnceLock<Arc<KernelManifest>> = OnceLock::new();
+    MANIFEST.get_or_init(crate::api::standard_manifest)
 }
 
 /// The manifest as JSON, for a host that wants to read it.
@@ -47,7 +38,11 @@ fn standard() -> &'static KernelManifest {
 /// [`KernelManifest::to_cbor`] for deterministic, self-describing exchange.
 #[unsafe(no_mangle)]
 pub extern "C" fn rssn_manifest_json() -> *mut std::os::raw::c_char {
-    to_c(standard().to_json())
+    static JSON: OnceLock<CString> = OnceLock::new();
+    // JSON escapes interior NULs. Each caller owns its copy of the encoding.
+    JSON.get_or_init(|| CString::new(standard().to_json()).unwrap_or_default())
+        .clone()
+        .into_raw()
 }
 
 /// The first 64 bits of the manifest hash, as a cache key.

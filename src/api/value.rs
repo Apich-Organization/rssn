@@ -88,6 +88,22 @@ impl fmt::Display for MergeError {
 impl std::error::Error for MergeError {}
 
 impl Session {
+    /// Runs a bounded host action with temporary native objects.
+    ///
+    /// Native handles created during the action are released when it returns.
+    /// Previously created handles remain available. A returned value must not
+    /// contain a handle that was created inside the scope.
+    ///
+    /// # Errors
+    /// Returns an error if the native object store is currently borrowed mutably.
+    pub fn with_native_object_scope<T>(
+        &self,
+        action: impl FnOnce() -> T,
+    ) -> Result<T, OpError> {
+        let _scope = self.native_objects.scoped()?;
+        Ok(action())
+    }
+
     /// The manifest of this session's configuration.
     ///
     /// Returned as a shared handle rather than a reference because a session
@@ -250,7 +266,7 @@ impl Session {
     /// * the operator is a table-driven numeric one (`poisson_fd_bc`,
     ///   `tensordot`, `hosvd`, `sparse_solve`, ...) and the call stays
     ///   unreduced: the [`Diag`] carries the operator, the zero-based argument
-    ///   at fault when one is, a [`DiagKind`](crate::kernel::DiagKind) to branch
+    ///   at fault when one is, a [`DiagKind`] to branch
     ///   on and the evaluator's message ("the paired axes 0 (extent 3) and 1
     ///   (extent 2) must have equal extents");
     /// * the call fails before evaluation (unknown operator, wrong argument
@@ -494,15 +510,12 @@ impl Session {
             .flat_map(|&id| {
                 let descriptor = graph.ops().get(id);
                 let (signatures, _) = crate::kernel::infer::signatures(descriptor);
-                signatures
-                    .iter()
-                    .map(|signature| {
-                        (
-                            OpKey::new(&descriptor.rule_set, &descriptor.name, Some(signature)),
-                            signature.clone(),
-                        )
-                    })
-                    .collect::<Vec<_>>()
+                signatures.into_iter().map(move |signature| {
+                    (
+                        OpKey::new(&descriptor.rule_set, &descriptor.name, Some(&signature)),
+                        signature,
+                    )
+                })
             })
             .collect()
     }
@@ -542,9 +555,9 @@ impl Session {
         let graph = &inner.graph;
         let op = resolve_op_types(graph, name, &types)?;
         let descriptor = graph.ops().get(op);
-        let (signatures, _) = crate::kernel::infer::signatures(descriptor);
+        let (signatures, _) = crate::kernel::infer::signature_view(descriptor);
         let chosen = match crate::kernel::overload::best_types(&signatures, &types) {
-            | crate::kernel::overload::Best::Unique(index) => signatures.get(index),
+            | crate::kernel::overload::Best::Unique(index) => Some(index),
             // An operator with no signature has exactly one key, the
             // all-zero one, and `call_key` accepts it.
             | _ if signatures.is_empty() => None,
@@ -570,7 +583,14 @@ impl Session {
                 });
             },
         };
-        Ok(OpKey::new(&descriptor.rule_set, &descriptor.name, chosen))
+        let signature_hash = chosen
+            .and_then(|index| graph.ops().signature_hashes(op).get(index).copied())
+            .unwrap_or_default();
+        Ok(OpKey {
+            rule_set: descriptor.rule_set.to_string(),
+            name: descriptor.name.to_string(),
+            signature_hash,
+        })
     }
 
     /// Calls exactly the overload `key` names.
@@ -618,18 +638,18 @@ impl Session {
             if !key.rule_set.is_empty() && *descriptor.rule_set != *key.rule_set {
                 continue;
             }
-            let (signatures, _) = crate::kernel::infer::signatures(descriptor);
+            let hashes = graph.ops().signature_hashes(id);
             if key.signature_hash == [0_u8; 16] {
-                if signatures.is_empty() {
+                if hashes.is_empty() {
                     return Ok(id);
                 }
-            } else if let Some(pinned) = signatures
-                .iter()
-                .find(|signature| signature.hash() == key.signature_hash)
-            {
+            } else if let Some(index) = hashes.iter().position(|hash| *hash == key.signature_hash) {
                 // The pinned overload must be one these arguments can reach,
                 // or the executed overload is not the chosen one.
-                if crate::kernel::overload::score_types(pinned, &types).is_some() {
+                let (signatures, _) = crate::kernel::infer::signature_view(descriptor);
+                if signatures.get(index).is_some_and(|pinned| {
+                    crate::kernel::overload::score_types(pinned, &types).is_some()
+                }) {
                     return Ok(id);
                 }
             }
@@ -667,31 +687,28 @@ impl Session {
         let mut scoped_context = clone_ctx(ctx);
         scoped_context.native_objects = Some(self.native_objects.clone());
         let ctx = &scoped_context;
-        let sets = {
+        let evaluator = {
             let inner = self.inner.borrow();
-            inner
-                .templates
-                .first()
-                .map_or_default(|template| template.rule_sets.clone())
+            inner.graph.ops().get(op).eval_dyn.clone()
         };
-        let descriptor = {
-            let inner = self.inner.borrow();
-            inner.graph.ops().get(op).clone()
-        };
-        ctx.trace(
-            "resolve",
-            format!("{name}/{} -> {}", args.len(), op.index()),
-        );
-        if let Some(evaluator) = descriptor.eval_dyn.clone() {
+        if ctx.trace.is_some() {
+            ctx.trace(
+                "resolve",
+                format!("{name}/{} -> {}", args.len(), op.index()),
+            );
+        }
+        if let Some(evaluator) = evaluator {
             ctx.trace("dispatch", "native evaluator");
             let result = evaluator.eval(args, ctx);
             crate::cancellation::checkpoint()?;
             return result;
         }
         let manifest = self.manifest();
-        let unit_positions = unit_parameters(&descriptor, args.len());
-        let term = {
+        let (term, sets) = {
             let mut inner = self.inner.borrow_mut();
+            let descriptor = inner.graph.ops().get(op);
+            let arity = descriptor.arity;
+            let unit_positions = unit_parameters(descriptor, args.len());
             let mut nodes = args
                 .iter()
                 .enumerate()
@@ -730,15 +747,21 @@ impl Session {
             }
             let node = inner.graph.try_node(op, &nodes).ok_or_else(|| {
                 OpError::Arity {
-                    expected: ArityInfo::from_arity(descriptor.arity),
+                    expected: ArityInfo::from_arity(arity),
                     got: args.len(),
                 }
             })?;
-            self.term(node)
+            let sets = inner
+                .templates
+                .first()
+                .map_or_default(|template| Arc::clone(&template.rule_sets));
+            (self.term(node), sets)
         };
-        let config = config_for(&sets, ctx);
+        let config = config_for(sets, ctx);
         let answer = self.compute(term, &config).map_err(op_error)?;
-        ctx.trace("compute", format!("reduced={}", answer.reduced));
+        if ctx.trace.is_some() {
+            ctx.trace("compute", format!("reduced={}", answer.reduced));
+        }
         self.value_of(answer.term)
     }
 
@@ -766,6 +789,8 @@ impl Session {
     /// template — including one built later for a different set of rule
     /// sets — installs it, and its operators appear in the
     /// [manifest](Session::manifest).
+    /// Registration updates the session only after all of its templates
+    /// accept the plugin.
     ///
     /// # Errors
     /// Fails when the plugin's ABI does not match, when its name is already
@@ -805,30 +830,33 @@ impl Session {
         {
             return Err(PluginError::Duplicate { name: manifest.name });
         }
-        // Register into the store graph so that names resolve for terms the
-        // user builds directly.
+        // Stage the store registrations and all replacement templates before
+        // publishing any change to the session.
+        let mut graph = inner.graph.clone();
         {
             let mut scratch = crate::graph::Program::default();
-            let mut registry = Registry::new(&mut inner.graph, &mut scratch, &manifest.name);
+            let mut registry = Registry::new(&mut graph, &mut scratch, &manifest.name);
             plugin.register(&mut registry)?;
         }
-        inner.plugins.push(Arc::clone(&plugin));
-        inner.plugin_count = inner.plugin_count.saturating_add(1);
         // Rebuild every template so that the plugin's rules take part in the
         // search, not only its operators.
-        let plugins = inner.plugins.clone();
+        let mut plugins = inner.plugins.clone();
+        plugins.push(plugin);
         let mut rebuilt = Vec::with_capacity(inner.templates.len());
         for template in &inner.templates {
             // Carry the session's units forward. `Template::new` starts from
             // the process-wide table, so a host unit registered before the
             // plugin would silently drop out of the manifest.
             let units = crate::api::SessionUnits::from_manifest(template.engine.manifest());
-            rebuilt.push(crate::api::Template::with_units(
-                &template.rule_sets,
+            rebuilt.push(Arc::new(crate::api::Template::with_units(
+                Arc::clone(&template.rule_sets),
                 &plugins,
                 units,
-            )?);
+            )?));
         }
+        inner.graph = graph;
+        inner.plugins = plugins;
+        inner.plugin_count = inner.plugin_count.saturating_add(1);
         inner.templates = rebuilt;
         // The plugin's rules can reach answers the old templates could not.
         inner.cache.invalidate();
@@ -843,24 +871,12 @@ impl Session {
     #[must_use]
     pub fn fork(&self) -> Self {
         let inner = self.inner.borrow();
-        let templates: Vec<crate::api::Template> = inner
-            .templates
-            .iter()
-            .map(|template| {
-                crate::api::Template {
-                    sets: template.sets.clone(),
-                    rule_sets: template.rule_sets.clone(),
-                    graph: template.graph.clone(),
-                    engine: template.engine.clone(),
-                }
-            })
-            .collect();
         Self {
             id: crate::api::next_session_id(),
             native_objects: crate::kernel::native_objects::NativeObjects::new(),
             inner: std::cell::RefCell::new(crate::api::Inner {
                 graph: inner.graph.clone(),
-                templates,
+                templates: inner.templates.clone(),
                 plugins: inner.plugins.clone(),
                 plugin_count: inner.plugin_count,
                 // The fork's store is a copy, so every cached node id is valid
@@ -1023,13 +1039,10 @@ fn clone_ctx<'a>(ctx: &CallCtx<'a>) -> CallCtx<'a> {
 
 /// The configuration a dynamic call runs with.
 fn config_for(
-    sets: &[crate::graph::RuleSet],
+    sets: Arc<Vec<crate::graph::RuleSet>>,
     ctx: &CallCtx<'_>,
 ) -> Config {
-    let mut config = Config::empty();
-    for set in sets {
-        config = config.with(set.clone());
-    }
+    let mut config = Config::with_rule_sets(sets);
     config = match ctx.target {
         | Target::Symbolic => config.symbolic(),
         | Target::Numeric { tolerance } => config.numeric(tolerance),
@@ -1140,11 +1153,11 @@ fn check_arg_types(
     descriptor: &crate::graph::OpDescriptor,
     args: &[crate::kernel::signature::TypeExpr],
 ) -> Result<(), OpError> {
-    let (signatures, _) = crate::kernel::infer::signatures(descriptor);
-    if signatures.is_empty() {
-        return Ok(());
-    }
-    if crate::kernel::overload::best_types(&signatures, args) != crate::kernel::overload::Best::None
+    let (signatures, _) = crate::kernel::infer::signature_view(descriptor);
+    if signatures.is_empty()
+        || signatures
+            .iter()
+            .any(|signature| crate::kernel::overload::score_types(signature, args).is_some())
     {
         return Ok(());
     }
@@ -1201,63 +1214,52 @@ fn resolve_op_types(
     let Some(&first) = candidates.first() else {
         return Err(OpError::UnknownOp(OpKey::new("", name, None)));
     };
-    let fitting: Vec<OpId> = candidates
+    let mut fitting = candidates
         .iter()
         .copied()
         .filter(|&id| graph.ops().get(id).arity.accepts(args.len()))
-        .collect();
-    let Some(&only) = fitting.first() else {
+        .peekable();
+    let Some(only) = fitting.next() else {
         return Err(OpError::Arity {
             expected: ArityInfo::from_arity(graph.ops().get(first).arity),
             got: args.len(),
         });
     };
-    if fitting.len() == 1 {
+    if fitting.peek().is_none() {
         check_arg_types(graph.ops().get(only), args)?;
         return Ok(only);
     }
-    let mut scored: Vec<(OpId, u32)> = Vec::new();
-    for &id in &fitting {
+    let mut best = None;
+    for id in std::iter::once(only).chain(fitting) {
         let descriptor = graph.ops().get(id);
-        let (signatures, _) = crate::kernel::infer::signatures(descriptor);
-        let best = signatures
+        let (signatures, _) = crate::kernel::infer::signature_view(descriptor);
+        let Some(score) = signatures
             .iter()
             .filter_map(|signature| crate::kernel::overload::score_types(signature, args))
-            .max();
-        if let Some(score) = best {
-            scored.push((id, score));
+            .max()
+        else {
+            continue;
+        };
+        match &mut best {
+            | Some((_, top, count)) if score == *top => {
+                *count = usize::saturating_add(*count, 1);
+            },
+            | Some((_, top, _)) if score < *top => {},
+            | _ => best = Some((id, score, 1)),
         }
     }
-    if scored.is_empty() {
-        // No candidate's signature fits. That is an error unless none of them
-        // declares one at all, in which case arity is all there is to go on.
-        if fitting.iter().all(|&id| {
-            crate::kernel::infer::signatures(graph.ops().get(id))
-                .0
-                .is_empty()
-        }) {
-            return Ok(only);
-        }
-        check_arg_types(graph.ops().get(only), args)?;
-        return Ok(only);
-    }
-    let top = scored.iter().map(|(_, score)| *score).max().unwrap_or(0);
-    let mut tied = scored
-        .iter()
-        .filter(|(_, score)| *score == top)
-        .map(|(id, _)| *id);
-    let Some(winner) = tied.next() else {
-        return Ok(only);
-    };
-    let count = 1 + tied.count();
-    if count == 1 {
-        check_arg_types(graph.ops().get(winner), args)?;
-        Ok(winner)
-    } else {
-        Err(OpError::Ambiguous {
-            name: name.to_owned(),
-            count,
-        })
+    match best {
+        | Some((winner, _, 1)) => Ok(winner),
+        | Some((_, _, count)) => {
+            Err(OpError::Ambiguous {
+                name: name.to_owned(),
+                count,
+            })
+        },
+        | None => {
+            check_arg_types(graph.ops().get(only), args)?;
+            Ok(only)
+        },
     }
 }
 
@@ -1825,7 +1827,7 @@ fn unit_parameters(
 ) -> Vec<bool> {
     use crate::kernel::signature::TypeExpr;
 
-    let (signatures, _) = crate::kernel::infer::signatures(descriptor);
+    let (signatures, _) = crate::kernel::infer::signature_view(descriptor);
     (0..count)
         .map(|index| {
             signatures.iter().any(|signature| {

@@ -1,3 +1,9 @@
+//! The embedding kernel: dynamic call ABI, signatures, plugins, manifest.
+//!
+//! This is the module a `rssn-api` crate would be. Everything a host needs is
+//! reachable from here without touching crate internals, so the split remains
+//! a packaging decision rather than an architectural one.
+//!
 //! The embedding kernel: everything a host needs to drive RSSN from outside
 //! the crate.
 //!

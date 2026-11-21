@@ -17,7 +17,7 @@
 //! * nothing carries a timestamp, a pointer, an arena-local id or a hash-map
 //!   iteration order;
 //! * the hash is BLAKE3 over the deterministic binary encoding
-//!   ([`codec`](crate::kernel::codec)), with the hash field itself zeroed.
+//!   ([`codec`]), with the hash field itself zeroed.
 //!
 //! # Size
 //!

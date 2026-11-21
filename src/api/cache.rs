@@ -36,17 +36,22 @@
 
 use std::collections::HashMap;
 use std::collections::VecDeque;
+use std::collections::hash_map::DefaultHasher;
 use std::fmt::Write as _;
+use std::hash::Hash;
+use std::hash::Hasher;
+use std::sync::Arc;
 
 use crate::api::ComputeError;
 use crate::api::Config;
+use crate::api::Target;
 use crate::graph::DimError;
 use crate::graph::Dimension;
 use crate::graph::NodeId;
 use crate::graph::Report;
 use crate::graph::Stop;
 
-/// What a session caches; see the [module documentation](self).
+/// Which results a [session](crate::api) caches.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct CachePolicy {
     /// Memoise whole answers (exact: a hit equals a fresh run).
@@ -124,13 +129,13 @@ pub struct StoredAnswer {
 struct AnswerKey {
     template: usize,
     root: NodeId,
-    config: String,
+    config: Fingerprint,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct LemmaKey {
     template: usize,
-    context: String,
+    context: Fingerprint,
     heavy: NodeId,
 }
 
@@ -145,40 +150,74 @@ pub struct ComputeCache {
     stats: CacheStats,
 }
 
-/// The canonical text of every field of `config` that can change an answer,
-/// except the rule sets (they select the template, which is keyed apart).
-///
-/// `Debug` of an `f64` is the shortest text that reads back to the same
-/// bits, so two configurations with equal fingerprints are equal.
-pub fn fingerprint(
+/// Shared by all cache entries and lookups for one batch configuration.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct Fingerprint {
+    digest: u64,
+    text: Arc<str>,
+}
+
+impl Hash for Fingerprint {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+    ) {
+        self.digest.hash(state);
+    }
+}
+
+/// Encodes every field that can change an answer. Rule sets select the
+/// template, which is keyed separately. Lemmas only depend on the context.
+pub(super) fn fingerprint(
     config: &Config,
     with_budget: bool,
-) -> String {
+) -> Fingerprint {
+    let Config {
+        sets: _,
+        target,
+        bindings,
+        assumptions,
+        budget,
+        dimension_mode,
+        dimension_assumptions,
+        dimension_terms,
+        base_dimensions,
+        bypass_dimensions,
+    } = config;
     let mut text = String::new();
-    let _ = write!(
-        text,
-        "t={:?};m={:?};by={};",
-        config.target, config.dimension_mode, config.bypass_dimensions
-    );
-    for (name, value) in &config.bindings {
-        let _ = write!(text, "b:{name}={:?};", value.to_bits());
+    match target {
+        | Target::Symbolic => text.push_str("symbolic;"),
+        | Target::Numeric { tolerance } => {
+            let _ = write!(text, "numeric={};", tolerance.to_bits());
+        },
     }
-    for (name, facts) in &config.assumptions {
-        let _ = write!(text, "a:{name}={facts:?};");
+    let _ = write!(text, "m={dimension_mode:?};by={bypass_dimensions};");
+    // User-supplied names and dimensions can contain the separators.
+    // Prefix each raw string with its byte length to retain its boundaries.
+    for (name, value) in bindings {
+        let _ = write!(text, "b:{}:{name}={};", name.len(), value.to_bits());
     }
-    for (name, dim) in &config.dimension_assumptions {
-        let _ = write!(text, "d:{name}={dim};");
+    for (name, facts) in assumptions {
+        let _ = write!(text, "a:{}:{name}={facts:?};", name.len());
     }
-    for (name, dim) in &config.dimension_terms {
-        let _ = write!(text, "D:{name}={dim:?};");
+    for (name, dim) in dimension_assumptions {
+        let _ = write!(text, "d:{}:{name}={}:{dim};", name.len(), dim.len());
     }
-    for name in &config.base_dimensions {
-        let _ = write!(text, "B:{name};");
+    for (name, dim) in dimension_terms {
+        let _ = write!(text, "D:{}:{name}={dim:?};", name.len());
+    }
+    for name in base_dimensions {
+        let _ = write!(text, "B:{}:{name};", name.len());
     }
     if with_budget {
-        let _ = write!(text, "u={:?};", config.budget);
+        let _ = write!(text, "u={budget:?};");
     }
-    text
+    let mut hasher = DefaultHasher::new();
+    text.hash(&mut hasher);
+    Fingerprint {
+        digest: hasher.finish(),
+        text: text.into(),
+    }
 }
 
 impl ComputeCache {
@@ -202,11 +241,11 @@ impl ComputeCache {
     }
 
     /// The stored answer for a request, counting a hit or a miss.
-    pub fn answer(
+    pub(super) fn answer(
         &mut self,
         template: usize,
         root: NodeId,
-        config: &str,
+        config: &Fingerprint,
     ) -> Option<Result<StoredAnswer, ComputeError>> {
         if !self.policy.answers {
             return None;
@@ -214,7 +253,7 @@ impl ComputeCache {
         let key = AnswerKey {
             template,
             root,
-            config: config.to_owned(),
+            config: config.clone(),
         };
         let found = self.answers.get(&key).cloned();
         if found.is_some() {
@@ -226,11 +265,11 @@ impl ComputeCache {
     }
 
     /// Stores an answer unless the run's outcome depended on the clock.
-    pub fn store_answer(
+    pub(super) fn store_answer(
         &mut self,
         template: usize,
         root: NodeId,
-        config: String,
+        config: Fingerprint,
         answer: Result<StoredAnswer, ComputeError>,
     ) {
         if !self.policy.answers
@@ -263,10 +302,10 @@ impl ComputeCache {
     }
 
     /// The closed form recorded for the heavy store node `heavy`.
-    pub fn lemma(
+    pub(super) fn lemma(
         &self,
         template: usize,
-        context: &str,
+        context: &Fingerprint,
         heavy: NodeId,
     ) -> Option<NodeId> {
         if !self.policy.lemmas {
@@ -275,7 +314,7 @@ impl ComputeCache {
         self.lemmas
             .get(&LemmaKey {
                 template,
-                context: context.to_owned(),
+                context: context.clone(),
                 heavy,
             })
             .copied()
@@ -289,10 +328,10 @@ impl ComputeCache {
     }
 
     /// Records `heavy = closed` (both store nodes).
-    pub fn store_lemma(
+    pub(super) fn store_lemma(
         &mut self,
         template: usize,
-        context: &str,
+        context: &Fingerprint,
         heavy: NodeId,
         closed: NodeId,
     ) {
@@ -301,7 +340,7 @@ impl ComputeCache {
         }
         let key = LemmaKey {
             template,
-            context: context.to_owned(),
+            context: context.clone(),
             heavy,
         };
         if self.lemmas.insert(key.clone(), closed).is_none() {
@@ -322,6 +361,7 @@ impl ComputeCache {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use crate::api::CachePolicy;
+    use crate::api::ComputeError;
     use crate::api::Config;
     use crate::api::Session;
 
@@ -359,6 +399,67 @@ mod tests {
         assert_eq!(at_three.value, Some(27.0));
         assert_eq!(s.cache_stats().answer_hits, 0);
         assert_eq!(s.cache_stats().answers, 3);
+    }
+
+    #[test]
+    fn binding_names_with_separators_cannot_alias_a_cached_answer() {
+        let session = Session::new();
+        let x = session.sym("x");
+        let bound = Config::new().numeric(1e-12).bind("x", 1.0).bind("y", 2.0);
+        let combined_name = format!("x={};b:y", 1.0f64.to_bits());
+        let unbound = Config::new().numeric(1e-12).bind(&combined_name, 2.0);
+        assert_eq!(session.compute(x, &bound).unwrap().value, Some(1.0));
+        assert!(matches!(
+            session.compute(x, &unbound),
+            Err(ComputeError::NotNumeric(_))
+        ));
+        let results = session.compute_all(&[x, x], &bound);
+        assert!(
+            results
+                .into_iter()
+                .all(|result| result.unwrap().value == Some(1.0))
+        );
+        assert_eq!(session.cache_stats().answer_hits, 2);
+    }
+
+    #[test]
+    fn independently_defined_recipes_with_the_same_name_do_not_share_templates() {
+        use crate::graph::Arity;
+        use crate::graph::OpDescriptor;
+        use crate::graph::RuleSet;
+
+        let recipe = |eval: fn(&[f64]) -> f64| {
+            RuleSet::new("cache_recipe", move |installer| {
+                installer
+                    .op(OpDescriptor::new("cache_gain", Arity::Fixed(1)).eval(eval))
+                    .map(|_| ())
+            })
+        };
+        let first = recipe(|args| args.first().map_or(f64::NAN, |value| 3.0 * value));
+        let session = Session::with_rules(std::slice::from_ref(&first)).unwrap();
+        let term = session.parse("cache_gain(2)").unwrap();
+        let config = |recipe| Config::empty().with(recipe).numeric(1e-12);
+        assert_eq!(
+            session.compute(term, &config(first.clone())).unwrap().value,
+            Some(6.0)
+        );
+        assert_eq!(
+            session
+                .compute(
+                    term,
+                    &config(recipe(|args| {
+                        args.first().map_or(f64::NAN, |value| 5.0 * value)
+                    }))
+                )
+                .unwrap()
+                .value,
+            Some(10.0)
+        );
+        assert_eq!(
+            session.compute(term, &config(first)).unwrap().value,
+            Some(6.0)
+        );
+        assert_eq!(session.cache_stats().answer_hits, 1);
     }
 
     #[test]

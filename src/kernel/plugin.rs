@@ -8,7 +8,7 @@
 //!
 //! A [`HostCallback`] is the smaller thing: one function from values to a
 //! value, handed to a higher-order operator for the duration of a call
-//! ([`Value::Function`](crate::kernel::value::Value::Function)). That is how
+//! ([`Value::Function`]). That is how
 //! a host passes its own closure into `map`, `fold` or a root finder.
 //!
 //! Neither needs to be `unsafe`, and neither can corrupt a session: a plugin
@@ -77,9 +77,11 @@ pub enum PluginKind {
     /// [`Session::register`]: crate::api::Session::register
     #[default]
     InProcess,
-    /// Loaded from a shared library at run time
-    /// ([`cdylib::load`](crate::kernel::cdylib::load)); needs the
-    /// `plugin-cdylib` feature.
+    /// Loaded from a shared library at run time with the `plugin-cdylib` feature.
+    #[cfg_attr(
+        feature = "plugin-cdylib",
+        doc = "The shared-library loader is [`cdylib::load`](crate::kernel::cdylib::load)."
+    )]
     Cdylib,
 }
 

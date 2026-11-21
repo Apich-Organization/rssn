@@ -1402,6 +1402,9 @@ pub enum DimRuleInfo {
     Quantity,
     /// A domain-specific rule, by the name of the rule set that installed it.
     Custom(String),
+    /// The first two arguments must have compatible known metric dimensions.
+    /// The result is dimensionless.
+    CompatibleDimensionless,
 }
 
 /// Where a [`DimRuleInfo::Family`] value's dimension comes from.
@@ -1455,6 +1458,7 @@ impl From<DimRule> for DimRuleInfo {
                 }
             },
             | DimRule::Dimensionless => Self::Dimensionless,
+            | DimRule::CompatibleDimensionless => Self::CompatibleDimensionless,
             | DimRule::Inverse => Self::Inverse,
             | DimRule::Square => Self::Square,
             | DimRule::List => Self::List,
@@ -1558,6 +1562,7 @@ impl DimRuleInfo {
                 }
             },
             | Self::Dimensionless => DimRule::Dimensionless,
+            | Self::CompatibleDimensionless => DimRule::CompatibleDimensionless,
             | Self::Inverse => DimRule::Inverse,
             | Self::Square => DimRule::Square,
             | Self::List => DimRule::List,

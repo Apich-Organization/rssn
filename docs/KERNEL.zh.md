@@ -150,6 +150,8 @@ let config = Config::new().dimension_term("x", DimExpr::base("Currency"));
 
 每个 `Session` 限于一个线程。`Term<'s>` 借用会话。`TermRef` 是 `Copy + Send + Sync` 的会话 ID 与节点引用，只能由生成它的会话解析。`fork` 产生可移交给另一线程的独立图。`merge` 导入对方节点并转换量纲假设，遇到冲突返回错误。一个会话内的并行批量接口是 `Session::compute_all`。
 
+Rust 宿主可用 `Session::with_native_object_scope` 在当前会话运行临时操作。该操作返回或发生栈展开时，作用域释放本次创建的原生对象。已有对象仍可使用，作用域内创建的句柄须在该操作内使用。
+
 ## C ABI
 
 ```c
@@ -157,7 +159,7 @@ char *json = rssn_manifest_json();
 uint64_t hash = rssn_manifest_hash();
 ```
 
-两个函数查询标准构建。宿主负责用同一 ABI 的 `rssn_string_free` 释放返回字符串。注册了插件的会话可用 Rust API 查询该会话的完整清单。[C 接口概览](../ARCHITECTURE.md#c-interface)
+两个函数查询同一份标准清单快照，其中包含首次调用时可见的进程级单位。JSON 编码可以复用，每次调用分别返回一份字符串，宿主用同一 ABI 的 `rssn_string_free` 释放。注册了插件的会话可用 Rust API 查询该会话的完整清单。[C 接口概览](../ARCHITECTURE.md#c-interface)
 
 ## JIT
 
@@ -168,6 +170,8 @@ uint64_t hash = rssn_manifest_hash();
 对于可组合编解码器支持的数值函数，在 `codec-policy.tsv` 中登记 Rust 路径、ABI 名称、命名空间及量纲策略。运行 `cargo run --locked -p rssn-api-gen -- --codecs-write` 生成重载，宿主仍通过内核清单与值调用接口访问它。 [绑定生成与支持的契约结构](../tools/rssn-api-gen/README.md)
 
 符号规则、回调与原生对象适配器按下列步骤直接注册。
+
+带类型的原生对象适配器从同一参数列表生成签名与参数个数。运行时先检查参数个数，再按深度优先顺序检查各参数的深度、元素数量与张量形状，最后调用原生方法。
 
 1. 用 `Installer::op` 或 `Registry::register_op` 注册。
 2. 给出 `Signature` 或 `DynamicReason`，并声明量纲规则。

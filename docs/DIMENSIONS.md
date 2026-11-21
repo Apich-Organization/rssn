@@ -22,6 +22,8 @@ Dimension variables record undeclared symbols and function results. For unificat
 
 A unit carries a dimension, scale and optional affine offset. Coherent SI values are `value × scale + offset`. Exact rational or π-valued scales preserve computations such as `sin(quantity(30, deg)) = sin(π/6)`. Named derived units such as `N` and `Pa` are presentations of products of the same bases.
 
+Native numerical reference scaling applies a single Float factor or divisor directly, preserving signed zero and correctly rounded subnormal results. For compound scale products, the kernel keeps the binary exponent separate until it constructs the output.
+
 Angles, ratios and information units have dimension `1`. The unit metadata still identifies angles and ratios. `bit`, `B` and `KiB` have scale factors `1`, `8` and `8192` relative to bits. Unit names are resolved before base names in a dimension declaration. `base:T` names a registered base called `T`, while bare `T` is tesla. `base:Length` uses the same explicit form for an SI base.
 
 The `units` rules provide the resolver used by the symbolic graph. A host may supply a full `UnitValue` without registering it. Materialization retains its dimensions, exact scale, offset and display metadata. A registered name is reused only when the entire supplied definition matches. Unit products can combine registered and anonymous atoms. Custom bases survive coherent conversion and rational powers. Materialization rejects invalid scale denominators, incompatible affine metadata, symbolic dimensions on unit definitions and π-valued offsets.

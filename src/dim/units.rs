@@ -12,17 +12,15 @@
 //! This module owns the only unit table in rssn. The `units` rule set
 //! (which evaluates `quantity`, `convert`, `dimension`, `unify_expression`)
 //! reads it, the dimension layer reads it to turn unit text into a
-//! [`DimTerm`](crate::graph::dim::DimTerm), and the
+//! [`DimTerm`], and the
 //! [manifest](crate::kernel::manifest) lists it so that a host can generate
 //! its own `Units.SI` instead of maintaining a second table.
 //!
 //! # Extending it
 //!
-//! [`register`] adds a unit to a process-wide overlay, which
-//! [`UnitRegistry::register`] does through a [`Registry`] when a plugin
-//! declares one. Registration is additive and checked: a name or alias that
-//! already belongs to a different unit is refused, so a plugin cannot
-//! silently redefine the metre.
+//! [`register`] adds a unit to the process-wide overlay. A host that loads a
+//! plugin into a [`Session`](crate::api::Session) uses that session's registry
+//! for the plugin's units. A session can also register its own units directly.
 //!
 //! # Limitations
 //!
@@ -42,6 +40,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::OnceLock;
 use std::sync::RwLock;
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::Ordering;
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -1062,6 +1062,13 @@ fn user_units() -> &'static RwLock<BTreeMap<String, UnitDef>> {
     USER.get_or_init(|| RwLock::new(BTreeMap::new()))
 }
 
+static REGISTRY_REVISION: AtomicU64 = AtomicU64::new(0);
+
+/// Revision of the process-wide user unit overlay.
+pub(crate) fn registry_revision() -> u64 {
+    REGISTRY_REVISION.load(Ordering::Acquire)
+}
+
 /// Every known unit, sorted by name.
 #[must_use]
 pub fn all() -> Vec<UnitDef> {
@@ -1165,7 +1172,10 @@ pub fn register(unit: UnitDef) -> Result<(), DimError> {
             });
         }
     }
-    extra.insert(unit.name.clone(), unit);
+    if extra.get(&unit.name) != Some(&unit) {
+        extra.insert(unit.name.clone(), unit);
+        REGISTRY_REVISION.fetch_add(1, Ordering::Release);
+    }
     Ok(())
 }
 

@@ -1,5 +1,8 @@
 //! # The dimensional layer
 //!
+//! The dimension arena and operator table are shared with the rest of RSSN.
+//! See [the embedding kernel](crate::kernel) for the same packaging tradeoff.
+//!
 //! This module is rssn's canonical view of dimensions and units, shared by
 //! the run time and by anything that mirrors it statically.
 //!
@@ -40,6 +43,7 @@ pub mod systems;
 pub mod units;
 
 use num_rational::BigRational;
+use num_traits::ToPrimitive;
 
 pub use crate::graph::dim::BaseId;
 pub use crate::graph::dim::DimArena;
@@ -64,7 +68,10 @@ pub use units::UnitRegistrySnapshot;
 
 pub use crate::kernel::signature::DimExpr;
 
+use crate::graph::dim::DimRepr;
+use crate::graph::dim::Expo;
 use crate::kernel::signature::Exp as TypeExp;
+use crate::kernel::signature::Rational;
 
 impl DimExpr {
     /// This dimension as a term of `arena`.
@@ -131,10 +138,10 @@ impl DimExpr {
     /// # Errors
     /// Fails for an exponent the type-level language cannot write — a
     /// compound symbolic exponent such as `Length^(2n)`, or a rational
-    /// outside `i64` — instead of dropping the factor. The answer is checked
-    /// by converting it back with [`DimExpr::to_term`] against a copy of
-    /// `arena` and comparing terms, so this never returns a value that would
-    /// rebuild a *different* term.
+    /// outside `i64` — instead of dropping the factor. Canonical rational
+    /// products are checked directly against `arena`. Other terms are
+    /// checked by converting them back with [`DimExpr::to_term`] against a
+    /// copy of `arena` and comparing terms.
     ///
     /// The result is canonical rather than literally the input: factors are
     /// sorted by name with bases before variables, `Mul` is flat, and an
@@ -153,6 +160,9 @@ impl DimExpr {
         if term.is_non_metric() {
             return Ok(Self::NonMetric);
         }
+        if let Some(candidate) = Self::rational_product(term, arena) {
+            return Ok(candidate);
+        }
         let view = term.to_dimension(arena);
         let mut factors: Vec<Self> =
             Vec::with_capacity(view.factors.len().saturating_add(view.unknown.len()));
@@ -168,14 +178,9 @@ impl DimExpr {
                 exponent_from_text(&exponent),
             ));
         }
-        let candidate = match factors.len() {
-            | 0 => Self::Dimless,
-            | 1 => factors.into_iter().next().unwrap_or(Self::Dimless),
-            | _ => Self::Mul(factors),
-        };
-        // The printed exponent is the only window `DimTerm` offers onto an
-        // exponent, and a compound one (`2n`) prints the same shape as a
-        // symbol named `2*n`. Rebuilding the term is what tells them apart.
+        let candidate = factor_product(factors);
+        // A compound exponent (`2n`) can print the same as a symbol named
+        // `2*n`. Rebuilding the term is what tells them apart.
         let rebuilt = candidate.to_term(&mut arena.clone())?;
         if rebuilt == *term {
             return Ok(candidate);
@@ -192,6 +197,48 @@ impl DimExpr {
             text: term.describe(arena),
             reason,
         })
+    }
+
+    /// Converts canonical rational terms whose names resolve to the same IDs.
+    fn rational_product(
+        term: &DimTerm,
+        arena: &DimArena,
+    ) -> Option<Self> {
+        let DimRepr::Scalar { bases, vars } = &term.repr else {
+            return None;
+        };
+        // The reverse conversion merges repeated IDs and orders by ID.
+        if bases.windows(2).any(|w| w[0].0 >= w[1].0) || vars.windows(2).any(|w| w[0].0 >= w[1].0) {
+            return None;
+        }
+        let mut powers = Vec::with_capacity(bases.len().saturating_add(vars.len()));
+        for &(id, ref exponent) in bases {
+            let name = arena.base_name(id);
+            if arena.base_id(name) != Some(id) {
+                return None;
+            }
+            powers.push((false, name, writable_rational(exponent)?));
+        }
+        for &(id, ref exponent) in vars {
+            let name = arena.var_name(id);
+            if arena.var_id(name) != Some(id) {
+                return None;
+            }
+            powers.push((true, name, writable_rational(exponent)?));
+        }
+        powers.sort_unstable_by_key(|&(var, name, _)| (var, name));
+        let factors = powers
+            .into_iter()
+            .map(|(var, name, exponent)| {
+                let factor = if var {
+                    Self::Var(name.to_owned())
+                } else {
+                    Self::base(name)
+                };
+                factor_with_exponent(factor, exponent)
+            })
+            .collect();
+        Some(factor_product(factors))
     }
 
     /// The dimension of `term` as a type-level expression, or [`DimExpr::Any`].
@@ -320,6 +367,27 @@ fn factor_with_exponent(
         | TypeExp::Rat(r) if r.numer == -1 && r.denom == 1 => DimExpr::Inverse(Box::new(factor)),
         | exp => factor.pow(exp),
     }
+}
+
+fn factor_product(factors: Vec<DimExpr>) -> DimExpr {
+    match factors.len() {
+        | 0 => DimExpr::Dimless,
+        | 1 => factors.into_iter().next().unwrap_or(DimExpr::Dimless),
+        | _ => DimExpr::Mul(factors),
+    }
+}
+
+/// A nonzero, canonical rational exponent that fits the type-level format.
+fn writable_rational(exponent: &Expo) -> Option<TypeExp> {
+    let exponent = exponent.is_constant()?;
+    let numer = exponent.numer().to_i64()?;
+    let denom = exponent.denom().to_i64()?;
+    if numer == 0 || denom <= 0 {
+        return None;
+    }
+    let rational = Rational::new(numer, denom);
+    // A raw BigRational may not have been reduced by its constructor.
+    (rational.numer == numer && rational.denom == denom).then_some(TypeExp::Rat(rational))
 }
 
 /// A printed exponent as a type-level exponent.
