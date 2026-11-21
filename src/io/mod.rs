@@ -13,7 +13,7 @@
 //!
 //! - **Data formats.** CSV, JSON and `.npy` store dense `f64` 2-D arrays only:
 //!   no integer/complex/string/structured dtypes, no headers or metadata, no
-//!   compression, and no streaming (whole files are built in memory). CSV is
+//!   compression, or incremental array results. CSV is
 //!   unquoted (a value must not contain a comma) and strict on input; JSON
 //!   uses `serde_json`'s default float formatting, which is not guaranteed
 //!   bit-exact for every `f64` on re-read (`float_roundtrip` is not enabled).
@@ -27,11 +27,11 @@
 //!   fixed oblique projection. Missing: log axes, subplots, histograms/box
 //!   plots, error bars, chart-like band/area plots, contour labels and any
 //!   interactive output.
-//! - **Raster export is 8-bit netpbm only** ([`raster`]: binary PGM P5,
-//!   8/16-bit, and PPM P6): [`plot::plot_scalar_field_pgm`] and
+//! - **Raster export** ([`raster`]) supports binary PGM P5,
+//!   8/16-bit, and PPM P6: [`plot::plot_scalar_field_pgm`] and
 //!   [`plot::plot_scalar_field_ppm`] rasterise a sampled field, but there is no
 //!   PNG/JPEG/other compressed format (that needs an encoder dependency), no
-//!   alpha/16-bit PPM, and no resampling, text or annotation in the raster
+//!   alpha or 16-bit PPM, and no resampling, text or annotation in the raster
 //!   path.
 //! - **LaTeX and Typst** emit math fragments, not documents: no delimiters,
 //!   preamble or styling commands, a fixed function/Greek/operator table, and
@@ -74,6 +74,7 @@ pub use svg::write_svg_file;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
+use std::io::BufWriter;
 use std::io::Write;
 use std::path::Path;
 
@@ -157,19 +158,20 @@ pub fn write_csv_file<P: AsRef<Path>>(
     filename: P,
     arr: &Array2<f64>,
 ) -> Result<(), String> {
-    let mut file = File::create(filename).map_err(|e| e.to_string())?;
+    let mut file = BufWriter::new(File::create(filename).map_err(|e| e.to_string())?);
 
     for row in arr.outer_iter() {
-        let line = row
-            .iter()
-            .map(|&v| v.to_string())
-            .collect::<Vec<_>>()
-            .join(",");
-
-        writeln!(file, "{line}").map_err(|e| e.to_string())?;
+        let mut values = row.iter();
+        if let Some(first) = values.next() {
+            write!(file, "{first}").map_err(|e| e.to_string())?;
+            for value in values {
+                write!(file, ",{value}").map_err(|e| e.to_string())?;
+            }
+        }
+        file.write_all(b"\n").map_err(|e| e.to_string())?;
     }
 
-    Ok(())
+    file.flush().map_err(|e| e.to_string())
 }
 
 /// Reads a 2D `ndarray::Array` from a CSV file.
@@ -180,39 +182,28 @@ pub fn write_csv_file<P: AsRef<Path>>(
 pub fn read_csv_file<P: AsRef<Path>>(filename: P) -> Result<Array2<f64>, String> {
     let file = File::open(filename).map_err(|e| e.to_string())?;
 
-    let reader = BufReader::new(file);
-
+    let mut reader = BufReader::new(file);
+    let mut line = String::new();
     let mut data = Vec::new();
-
     let mut rows = 0;
-
     let mut cols = 0;
 
-    for line_res in reader.lines() {
-        let line = line_res.map_err(|e| e.to_string())?;
-
-        let line = line.trim();
-
-        if line.is_empty() {
-            continue;
+    while reader.read_line(&mut line).map_err(|e| e.to_string())? != 0 {
+        let fields = line.trim();
+        if !fields.is_empty() {
+            let row_start = data.len();
+            for s in fields.split(',') {
+                data.push(s.trim().parse::<f64>().map_err(|e| e.to_string())?);
+            }
+            let row_len = data.len().saturating_sub(row_start);
+            if rows == 0 {
+                cols = row_len;
+            } else if row_len != cols {
+                return Err("Inconsistent column count in CSV".to_string());
+            }
+            rows += 1;
         }
-
-        let row_data: Vec<f64> = line
-            .split(',')
-            .map(|s| s.trim().parse::<f64>().map_err(|e| e.to_string()))
-            .collect::<Result<Vec<_>, String>>()?;
-
-        if rows == 0 {
-            cols = row_data.len();
-        } else if row_data.len() != cols {
-            return Err("Inconsistent column \
-                 count in CSV"
-                .to_string());
-        }
-
-        data.extend(row_data);
-
-        rows += 1;
+        line.clear();
     }
 
     if rows == 0 {
@@ -231,9 +222,9 @@ pub fn write_json_file<P: AsRef<Path>>(
     filename: P,
     arr: &Array2<f64>,
 ) -> Result<(), String> {
-    let file = File::create(filename).map_err(|e| e.to_string())?;
-
-    serde_json::to_writer_pretty(file, arr).map_err(|e| e.to_string())
+    let mut file = BufWriter::new(File::create(filename).map_err(|e| e.to_string())?);
+    serde_json::to_writer_pretty(&mut file, arr).map_err(|e| e.to_string())?;
+    file.flush().map_err(|e| e.to_string())
 }
 
 /// Reads a 2D `ndarray::Array` from a JSON file.

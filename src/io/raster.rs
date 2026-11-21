@@ -15,9 +15,14 @@
 //!   output and [`super::plot::plot_scalar_field_pgm`] /
 //!   [`super::plot::plot_scalar_field_ppm`] to rasterise a sampled scalar
 //!   field.
-//! - Invalid dimensions or sample counts are rejected before anything is
-//!   written, so a failed call leaves no partial file behind.
+//! - Invalid dimensions or sample counts are rejected before opening the
+//!   destination. Errors from opening, writing and flushing are reported.
 
+use std::fmt;
+use std::fs::File;
+use std::io;
+use std::io::BufWriter;
+use std::io::Write;
 use std::path::Path;
 
 pub use super::gif::GifAnimation;
@@ -52,12 +57,23 @@ fn check_image(
     Ok(())
 }
 
-/// Writes `bytes` to `path`, mapping I/O errors to a message naming the file.
-fn write_bytes(
+fn write_image(
     path: &Path,
-    bytes: &[u8],
+    header: fmt::Arguments<'_>,
+    sample_bytes: usize,
+    write_samples: impl FnOnce(&mut BufWriter<File>) -> io::Result<()>,
 ) -> Result<(), String> {
-    std::fs::write(path, bytes).map_err(|e| format!("cannot write {}: {e}", path.display()))
+    File::create(path)
+        .and_then(|file| {
+            // Keep small images in one write while limiting the extra memory
+            // for larger inputs. A long byte slice bypasses the buffer.
+            let mut output =
+                BufWriter::with_capacity(sample_bytes.min(8192).saturating_add(64), file);
+            output.write_fmt(header)?;
+            write_samples(&mut output)?;
+            output.flush()
+        })
+        .map_err(|e| format!("cannot write {}: {e}", path.display()))
 }
 
 /// Writes an 8-bit grayscale PGM (P5) file.
@@ -75,10 +91,12 @@ pub fn write_pgm_file<P: AsRef<Path>>(
     samples: &[u8],
 ) -> Result<(), String> {
     check_image(width, height, samples.len(), 1)?;
-    let mut out = Vec::with_capacity(samples.len() + 32);
-    out.extend_from_slice(format!("P5\n{width} {height}\n255\n").as_bytes());
-    out.extend_from_slice(samples);
-    write_bytes(path.as_ref(), &out)
+    write_image(
+        path.as_ref(),
+        format_args!("P5\n{width} {height}\n255\n"),
+        samples.len(),
+        |output| output.write_all(samples),
+    )
 }
 
 /// Writes a 16-bit grayscale PGM (P5) file.
@@ -95,12 +113,29 @@ pub fn write_pgm16_file<P: AsRef<Path>>(
     samples: &[u16],
 ) -> Result<(), String> {
     check_image(width, height, samples.len(), 1)?;
-    let mut out = Vec::with_capacity(samples.len() * 2 + 32);
-    out.extend_from_slice(format!("P5\n{width} {height}\n65535\n").as_bytes());
-    for &sample in samples {
-        out.extend_from_slice(&sample.to_be_bytes());
-    }
-    write_bytes(path.as_ref(), &out)
+    write_image(
+        path.as_ref(),
+        format_args!("P5\n{width} {height}\n65535\n"),
+        samples.len().saturating_mul(2),
+        |output| {
+            use crate::kernels::reuse::ScratchPool;
+
+            const CHUNK_SAMPLES: usize = 524_288;
+            static WORK: ScratchPool<[u8; 2]> = ScratchPool::new(2, CHUNK_SAMPLES * 2);
+            let count = samples.len().min(CHUNK_SAMPLES);
+            let mut buffer = WORK.checkout_for(count);
+            buffer.resize(count, [0; 2]);
+            for chunk in samples.chunks(buffer.len()) {
+                #[allow(clippy::indexing_slicing, reason = "each chunk fits the buffer")]
+                let converted = &mut buffer[..chunk.len()];
+                for (bytes, sample) in converted.iter_mut().zip(chunk) {
+                    *bytes = sample.to_be_bytes();
+                }
+                output.write_all(converted.as_flattened())?;
+            }
+            Ok(())
+        },
+    )
 }
 
 /// Writes an 8-bit RGB PPM (P6) file.
@@ -118,10 +153,12 @@ pub fn write_ppm_file<P: AsRef<Path>>(
     samples: &[u8],
 ) -> Result<(), String> {
     check_image(width, height, samples.len(), 3)?;
-    let mut out = Vec::with_capacity(samples.len() + 32);
-    out.extend_from_slice(format!("P6\n{width} {height}\n255\n").as_bytes());
-    out.extend_from_slice(samples);
-    write_bytes(path.as_ref(), &out)
+    write_image(
+        path.as_ref(),
+        format_args!("P6\n{width} {height}\n255\n"),
+        samples.len(),
+        |output| output.write_all(samples),
+    )
 }
 
 #[cfg(test)]

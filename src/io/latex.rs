@@ -10,7 +10,7 @@
 //!   forms (`varepsilon`, `varphi`, `vartheta`, ...) are not distinguished;
 //!   other multi-letter symbol names become `\mathrm{...}` without escaping,
 //!   so symbol names are assumed identifier-like.
-//! - Literal strings are escaped for `\text{...}` (see [`Latex::text`]), but
+//! - Literal strings are escaped for `\text{...}` by `Latex::text`, but
 //!   there is no math-mode escaping of user text, no `cases`/`aligned`
 //!   environments, no line breaking and no automatic sizing of delimiters
 //!   beyond `\left`/`\right`.

@@ -75,6 +75,47 @@ fn csv_reader_skips_blank_lines_and_trims_whitespace() {
 }
 
 #[test]
+fn csv_reads_long_crlf_rows_with_an_unterminated_final_row() {
+    let f = Tmp::new("large_rows", "csv");
+    let wide = vec![" \u{2003}-0 "; 4096].join(",");
+    let text = format!("{wide}\r\n\u{2003}\r\n{wide}");
+    std::fs::write(&f.0, text).unwrap_or_else(|e| panic!("{e}"));
+    let actual = read_csv_file(&f.0).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(actual.shape(), &[2, 4096]);
+    assert!(
+        actual
+            .iter()
+            .all(|value| value.to_bits() == (-0.0_f64).to_bits())
+    );
+
+    std::fs::write(&f.0, b"1,2\r\n3,\xff").unwrap_or_else(|e| panic!("{e}"));
+    assert!(read_csv_file(&f.0).is_err());
+}
+
+#[test]
+fn buffered_csv_and_json_write_the_logical_rows_of_a_view() {
+    let array = arr2(&[[0.0, -0.0, 1.5], [2.0, 3.25, -4.0]]).reversed_axes();
+    let csv = Tmp::new("transposed", "csv");
+    write_csv_file(&csv.0, &array).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(std::fs::read(&csv.0).unwrap(), b"0,2\n-0,3.25\n1.5,-4\n");
+
+    let json = Tmp::new("transposed", "json");
+    write_json_file(&json.0, &array).unwrap_or_else(|e| panic!("{e}"));
+    let expected = serde_json::to_vec_pretty(&array.as_standard_layout()).unwrap();
+    assert_eq!(std::fs::read(&json.0).unwrap(), expected);
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn errors_from_the_final_buffer_flush_are_reported() {
+    let full = std::path::Path::new("/dev/full");
+    if full.exists() {
+        assert!(write_csv_file(full, &sample()).is_err());
+        assert!(write_json_file(full, &sample()).is_err());
+    }
+}
+
+#[test]
 fn csv_reader_rejects_ragged_rows_and_garbage() {
     let f = Tmp::new("ragged", "csv");
     std::fs::write(&f.0, "1,2,3\n4,5\n").unwrap_or_else(|e| panic!("{e}"));
@@ -724,6 +765,35 @@ fn raster_writers_encode_headers_and_validate_shapes() {
     assert!(plot::plot_scalar_field_pgm(&empty, &bad.0).is_err());
     let no_finite = Array2::from_elem((2, 2), f64::NAN);
     assert!(plot::plot_scalar_field_ppm(&no_finite, &bad.0).is_err());
+}
+
+#[test]
+fn large_rasters_preserve_bytes_through_chunk_and_row_boundaries() {
+    let pgm = Tmp::new("pgm16_stream", "pgm");
+    let samples: Vec<u16> = (0_u32..525_000)
+        .map(|sample| (sample as u16).rotate_left(7))
+        .collect();
+    raster::write_pgm16_file(&pgm.0, 175_000, 3, &samples).unwrap_or_else(|e| panic!("{e}"));
+    let encoded = read_bytes(&pgm);
+    let header = b"P5\n175000 3\n65535\n";
+    let body = encoded.strip_prefix(header).expect("PGM header");
+    assert_eq!(body.len(), samples.len() * 2);
+    assert!(
+        body.chunks_exact(2)
+            .zip(samples)
+            .all(|(bytes, value)| bytes == value.to_be_bytes())
+    );
+
+    let ppm = Tmp::new("ppm_stream", "ppm");
+    let bytes: Vec<u8> = (0..9000).map(|index| (index % 251) as u8).collect();
+    raster::write_ppm_file(&ppm.0, 1000, 3, &bytes).unwrap_or_else(|e| panic!("{e}"));
+    let encoded = read_bytes(&ppm);
+    assert_eq!(
+        encoded.strip_prefix(b"P6\n1000 3\n255\n"),
+        Some(bytes.as_slice())
+    );
+    assert!(raster::write_ppm_file(&ppm.0, usize::MAX, 3, &bytes).is_err());
+    assert_eq!(read_bytes(&ppm), encoded);
 }
 
 // ---- Quiver plot (IO-2) ----
