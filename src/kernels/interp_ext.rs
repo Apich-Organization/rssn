@@ -4,12 +4,16 @@
 //! not-a-knot, PCHIP, Akima), B-splines, bicubic / N-D grid interpolation,
 //! scattered-data interpolation (RBF, Shepard IDW, Delaunay), and Pade / rational.
 
+use crate::kernels::approx;
 use crate::kernels::dense::DenseError;
 use crate::kernels::dense::Mat;
 use crate::kernels::dense::{
     self,
 };
 use crate::kernels::geometry;
+use crate::kernels::interpolate::scaled_grid_interval_distances;
+
+pub(super) mod shape_preserving;
 
 /// Error returned by extended interpolation kernels.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -50,7 +54,14 @@ fn solve_flat(
         cols: n,
         data: a.to_vec(),
     };
-    dense::solve(&mat, b).map_err(|e| {
+    solve_matrix(&mat, b)
+}
+
+fn solve_matrix(
+    mat: &Mat,
+    rhs: &[f64],
+) -> Result<Vec<f64>, InterpError> {
+    dense::solve(mat, rhs).map_err(|e| {
         match e {
             | DenseError::Singular => InterpError::Singular,
             | _ => InterpError::Domain(format!("dense solve failed: {e:?}")),
@@ -299,127 +310,82 @@ pub fn cubic_spline(
 
 /// Piecewise Cubic Hermite Interpolating Polynomial (PCHIP, Fritsch–Carlson).
 ///
-/// Preserves monotonicity of the data without overshoot.
+/// Preserves monotonicity of the data without overshoot between knots. Uses
+/// [Fritsch–Butland's weighted harmonic mean](https://doi.org/10.1137/0905021)
+/// for interior tangents and clipped one-sided formulas at the endpoints.
+/// Queries outside the sampled interval extend the nearest segment's polynomial.
+/// One sample defines a constant and two samples define a line.
 ///
 /// # Errors
-/// [`InterpError::ShapeMismatch`], [`InterpError::Empty`], or [`InterpError::Domain`].
+/// Unequal sample lengths, empty samples, non-finite inputs, non-increasing
+/// knots, or local arithmetic outside the `f64` range.
 pub fn pchip(
     xs: &[f64],
     ys: &[f64],
     x: f64,
 ) -> Result<f64, InterpError> {
-    if !x.is_finite() {
-        return Err(InterpError::Domain("query must be finite".into()));
-    }
-    validate_1d(xs, ys)?;
-    let n = xs.len();
-    if n == 1 {
-        return Ok(ys[0]);
-    }
-    if n == 2 {
-        return interp1(xs, ys, x);
-    }
-
-    let mut h = vec![0.0; n - 1];
-    let mut delta = vec![0.0; n - 1];
-    for i in 0..n - 1 {
-        h[i] = xs[i + 1] - xs[i];
-        delta[i] = (ys[i + 1] - ys[i]) / h[i];
-    }
-
-    let mut d = vec![0.0; n];
-    for i in 1..n - 1 {
-        if delta[i - 1] * delta[i] > 0.0 {
-            let w1 = 2.0 * h[i] + h[i - 1];
-            let w2 = h[i] + 2.0 * h[i - 1];
-            d[i] = (w1 + w2) / (w1 / delta[i - 1] + w2 / delta[i]);
-        } else {
-            d[i] = 0.0;
-        }
-    }
-
-    // Endpoint slopes (one-sided three-point formula with shape preservation).
-    let endpoint_slope = |h0: f64, h1: f64, del0: f64, del1: f64| -> f64 {
-        let mut slope = ((2.0 * h0 + h1) * del0 - h0 * del1) / (h0 + h1);
-        if slope.signum() != del0.signum() {
-            slope = 0.0;
-        } else if del0.signum() != del1.signum() && slope.abs() > 3.0 * del0.abs() {
-            slope = 3.0 * del0;
-        }
-        slope
-    };
-    d[0] = endpoint_slope(h[0], h[1], delta[0], delta[1]);
-    d[n - 1] = endpoint_slope(h[n - 2], h[n - 3], delta[n - 2], delta[n - 3]);
-
-    let idx = find_segment(xs, x);
-    Ok(eval_hermite(
-        xs[idx],
-        xs[idx + 1],
-        ys[idx],
-        ys[idx + 1],
-        d[idx],
-        d[idx + 1],
-        x,
-    ))
+    shape_preserving::evaluate(xs, ys, x, shape_preserving::Method::Pchip)
 }
 
 /// Akima 1D cubic spline interpolation.
 ///
-/// Reduces oscillation near sharp corners compared to global cubic splines.
+/// [Akima's local slope weights](https://doi.org/10.1145/321607.321609)
+/// reduce oscillation near sharp corners. Queries outside the sampled interval
+/// extend the nearest segment's polynomial. One sample defines a constant and
+/// two samples define a line.
 ///
 /// # Errors
-/// [`InterpError::ShapeMismatch`], [`InterpError::Empty`], or [`InterpError::Domain`].
+/// Unequal sample lengths, empty samples, non-finite inputs, non-increasing
+/// knots, or local arithmetic outside the `f64` range.
 pub fn akima(
     xs: &[f64],
     ys: &[f64],
     x: f64,
 ) -> Result<f64, InterpError> {
-    if !x.is_finite() {
-        return Err(InterpError::Domain("query must be finite".into()));
-    }
-    validate_1d(xs, ys)?;
-    let n = xs.len();
-    if n < 3 {
-        return interp1(xs, ys, x);
-    }
-
-    // Secant slopes m[2..n+1] correspond to segments 0..n-1, padded by 2 on each side.
-    let mut m = vec![0.0; n + 3];
-    for i in 0..n - 1 {
-        m[i + 2] = (ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]);
-    }
-    m[1] = 2.0 * m[2] - m[3];
-    m[0] = 2.0 * m[1] - m[2];
-    m[n + 1] = 2.0 * m[n] - m[n - 1];
-    m[n + 2] = 2.0 * m[n + 1] - m[n];
-
-    let mut d = vec![0.0; n];
-    for i in 0..n {
-        let w1 = (m[i + 3] - m[i + 2]).abs();
-        let w2 = (m[i + 1] - m[i]).abs();
-        let denom = w1 + w2;
-        d[i] = if denom == 0.0 {
-            f64::midpoint(m[i + 1], m[i + 2])
-        } else {
-            (w1 * m[i + 1] + w2 * m[i + 2]) / denom
-        };
-    }
-
-    let idx = find_segment(xs, x);
-    Ok(eval_hermite(
-        xs[idx],
-        xs[idx + 1],
-        ys[idx],
-        ys[idx + 1],
-        d[idx],
-        d[idx + 1],
-        x,
-    ))
+    shape_preserving::evaluate(xs, ys, x, shape_preserving::Method::Akima)
 }
 
-/// Evaluates a B-spline of given `degree` at `x` using the Cox–de Boor recursion.
+/// Evaluates a PCHIP interpolant at multiple coordinates, preserving query order.
 ///
-/// Requires `knots.len() == coeffs.len() + degree + 1` and non-decreasing `knots`.
+/// Uses the same knot and extrapolation rules as [`pchip`]. Successive queries
+/// in the same segment reuse its coefficients. Duplicate queries are allowed.
+/// An empty query list returns an empty vector after validating the samples.
+///
+/// # Errors
+/// Unequal sample lengths, empty samples, non-finite inputs, non-increasing
+/// knots, local arithmetic outside the `f64` range, or an unavailable output
+/// allocation.
+pub fn pchip_many(
+    xs: &[f64],
+    ys: &[f64],
+    queries: &[f64],
+) -> Result<Vec<f64>, InterpError> {
+    shape_preserving::evaluate_many(xs, ys, queries, shape_preserving::Method::Pchip)
+}
+
+/// Evaluates an Akima interpolant at multiple coordinates, preserving query order.
+///
+/// Uses the same knot and extrapolation rules as [`akima`]. Successive queries
+/// in the same segment reuse its coefficients. Duplicate queries are allowed.
+/// An empty query list returns an empty vector after validating the samples.
+///
+/// # Errors
+/// Unequal sample lengths, empty samples, non-finite inputs, non-increasing
+/// knots, local arithmetic outside the `f64` range, or an unavailable output
+/// allocation.
+pub fn akima_many(
+    xs: &[f64],
+    ys: &[f64],
+    queries: &[f64],
+) -> Result<Vec<f64>, InterpError> {
+    shape_preserving::evaluate_many(xs, ys, queries, shape_preserving::Method::Akima)
+}
+
+/// Evaluates a B-spline of given `degree` at `x` using de Boor's algorithm.
+///
+/// Requires `knots.len() == coeffs.len() + degree + 1`, non-decreasing `knots`,
+/// and positive-width support. Queries outside the support are clamped to
+/// its endpoints.
 ///
 /// # Errors
 /// [`InterpError::ShapeMismatch`] or [`InterpError::Domain`].
@@ -428,6 +394,16 @@ pub fn bspline_eval(
     coeffs: &[f64],
     degree: usize,
     x: f64,
+) -> Result<f64, InterpError> {
+    bspline_eval_on_support(knots, coeffs, degree, x, false)
+}
+
+fn bspline_eval_on_support(
+    knots: &[f64],
+    coeffs: &[f64],
+    degree: usize,
+    x: f64,
+    allow_fitted_singleton: bool,
 ) -> Result<f64, InterpError> {
     if !x.is_finite() {
         return Err(InterpError::Domain("query must be finite".into()));
@@ -444,7 +420,7 @@ pub fn bspline_eval(
             "B-spline requires degree < coefficient count and knots.len() == coeffs.len() + degree + 1".into(),
         ));
     }
-    if !x.is_finite() || knots.iter().chain(coeffs).any(|value| !value.is_finite()) {
+    if knots.iter().chain(coeffs).any(|value| !value.is_finite()) {
         return Err(InterpError::Domain(
             "B-spline knots, coefficients and query must be finite".into(),
         ));
@@ -456,50 +432,13 @@ pub fn bspline_eval(
             ));
         }
     }
-    let n = coeffs.len() - 1;
-    if knots[degree] >= knots[n + 1] {
+    let fitted_singleton = allow_fitted_singleton && degree == 0 && coeffs.len() == 1;
+    if !fitted_singleton && knots[degree] >= knots[coeffs.len()] {
         return Err(InterpError::Domain(
             "B-spline support must have positive width".into(),
         ));
     }
-    let x_clamped = x.clamp(knots[degree], knots[n + 1]);
-
-    // Find knot span k such that knots[k] <= x_clamped < knots[k+1]
-    let k = if x_clamped >= knots[n + 1] {
-        let mut idx = n;
-        while idx > degree && crate::kernels::exact_eq(knots[idx], knots[n + 1]) {
-            idx -= 1;
-        }
-        idx
-    } else {
-        let mut lo = degree;
-        let mut hi = n + 1;
-        while hi - lo > 1 {
-            let mid = usize::midpoint(lo, hi);
-            if x_clamped < knots[mid] {
-                hi = mid;
-            } else {
-                lo = mid;
-            }
-        }
-        lo
-    };
-
-    // de Boor's algorithm
-    let mut d: Vec<f64> = (0..=degree).map(|j| coeffs[k - degree + j]).collect();
-    for r in 1..=degree {
-        for j in (r..=degree).rev() {
-            let i = k - degree + j;
-            let denom = knots[i + degree + 1 - r] - knots[i];
-            let alpha = if denom == 0.0 {
-                0.0
-            } else {
-                (x_clamped - knots[i]) / denom
-            };
-            d[j] = (1.0 - alpha) * d[j - 1] + alpha * d[j];
-        }
-    }
-    Ok(d[degree])
+    Ok(approx::bspline_eval_validated(knots, coeffs, degree, x))
 }
 
 /// Fitted B-spline interpolant.
@@ -530,32 +469,12 @@ impl BSpline {
                 "B-spline degree ({degree}) must be < number of points ({n})"
             )));
         }
-        // Clamped knot vector with averaging of interior data points.
-        let m = n + degree + 1;
-        let mut knots = vec![0.0; m];
-        for i in 0..=degree {
-            knots[i] = xs[0];
-            knots[m - 1 - i] = xs[n - 1];
-        }
-        for j in 1..(n - degree) {
-            let mut sum = 0.0;
-            for i in j..(j + degree) {
-                sum += xs[i];
+        let (knots, coeffs) = approx::bspline_interpolate(xs, ys, degree).map_err(|error| {
+            match error {
+                | approx::ApproxError::Invalid => InterpError::Domain(error.to_string()),
+                | approx::ApproxError::Singular => InterpError::Singular,
             }
-            knots[j + degree] = sum / degree as f64;
-        }
-
-        // Assemble collocation matrix N_{j,p}(xs[i])
-        let mut mat = vec![0.0; n * n];
-        for i in 0..n {
-            for j in 0..n {
-                // Evaluate j-th basis function at xs[i]
-                let mut basis = vec![0.0; n];
-                basis[j] = 1.0;
-                mat[i * n + j] = bspline_eval(&knots, &basis, degree, xs[i])?;
-            }
-        }
-        let coeffs = solve_flat(n, &mat, ys)?;
+        })?;
         Ok(Self {
             knots,
             coeffs,
@@ -565,6 +484,8 @@ impl BSpline {
 
     /// Evaluates the B-spline at `x`.
     ///
+    /// A degree-zero fit to one sample gives a constant at every finite query.
+    ///
     /// # Errors
     /// [`InterpError::Domain`] when the query is nonfinite, or an error from
     /// [`bspline_eval`] if the stored spline representation is invalid.
@@ -572,7 +493,7 @@ impl BSpline {
         &self,
         x: f64,
     ) -> Result<f64, InterpError> {
-        bspline_eval(&self.knots, &self.coeffs, self.degree, x)
+        bspline_eval_on_support(&self.knots, &self.coeffs, self.degree, x, true)
     }
 }
 
@@ -730,49 +651,65 @@ pub enum RbfKernel {
 impl RbfKernel {
     fn eval(
         self,
-        r: f64,
+        distance: EuclideanDistance,
     ) -> f64 {
         match self {
             | Self::Gaussian(eps) => {
-                let s = r / eps;
+                let s = distance.ratio(EuclideanDistance::scalar(eps));
                 (-s * s).exp()
             },
             | Self::Multiquadric(eps) => {
-                let s = r / eps;
-                (1.0 + s * s).sqrt()
+                multiquadric(distance.ratio(EuclideanDistance::scalar(eps)))
             },
             | Self::InverseMultiquadric(eps) => {
-                let s = r / eps;
-                1.0 / (1.0 + s * s).sqrt()
+                let radius = EuclideanDistance::scalar(eps);
+                let s = distance.ratio(radius);
+                if s.is_finite() {
+                    1.0 / multiquadric(s)
+                } else {
+                    radius.ratio(distance)
+                }
             },
             | Self::ThinPlateSpline => {
+                let r = distance.value();
                 if r == 0.0 {
                     0.0
                 } else {
                     r * r * r.ln()
                 }
             },
-            | Self::Cubic => r * r * r,
-            | Self::Linear => r,
+            | Self::Cubic => {
+                let r = distance.value();
+                r * r * r
+            },
+            | Self::Linear => distance.value(),
         }
     }
 }
 
-fn euclid_dist(
+fn multiquadric(radius: f64) -> f64 {
+    let square = radius * radius;
+    if square.is_finite() {
+        (1.0 + square).sqrt()
+    } else {
+        radius.hypot(1.0)
+    }
+}
+
+fn squared_distance(
     a: &[f64],
     b: &[f64],
 ) -> f64 {
-    a.iter()
-        .zip(b.iter())
-        .map(|(x, y)| (x - y) * (x - y))
-        .sum::<f64>()
-        .sqrt()
+    a.iter().zip(b.iter()).map(|(x, y)| (x - y) * (x - y)).sum()
 }
 
 /// Radial basis function (RBF) scattered-data interpolation in `R^d`.
 ///
 /// # Errors
-/// [`InterpError::Empty`], [`InterpError::ShapeMismatch`], or [`InterpError::Singular`].
+/// [`InterpError::Empty`] for no samples, [`InterpError::ShapeMismatch`] for
+/// inconsistent dimensions, [`InterpError::Domain`] for non-finite data,
+/// an invalid kernel scale, or an unrepresentable result, and
+/// [`InterpError::Singular`] for a singular interpolation matrix.
 pub fn rbf_interp(
     points: &[&[f64]],
     values: &[f64],
@@ -781,6 +718,15 @@ pub fn rbf_interp(
 ) -> Result<f64, InterpError> {
     if points.is_empty() {
         return Err(InterpError::Empty);
+    }
+    if let RbfKernel::Gaussian(scale)
+    | RbfKernel::Multiquadric(scale)
+    | RbfKernel::InverseMultiquadric(scale) = kernel
+        && (!scale.is_finite() || scale <= 0.0)
+    {
+        return Err(InterpError::Domain(
+            "RBF kernel scale must be positive and finite".into(),
+        ));
     }
     if points.len() != values.len() {
         return Err(InterpError::ShapeMismatch(format!(
@@ -798,32 +744,273 @@ pub fn rbf_interp(
             )));
         }
     }
-    let n = points.len();
-    let mut phi = vec![0.0; n * n];
-    for i in 0..n {
-        for j in 0..n {
-            phi[i * n + j] = kernel.eval(euclid_dist(points[i], points[j]));
-        }
+    if query.iter().chain(values).any(|value| !value.is_finite())
+        || points
+            .iter()
+            .any(|point| point.iter().any(|value| !value.is_finite()))
+    {
+        return Err(InterpError::Domain(
+            "RBF coordinates and values must be finite".into(),
+        ));
     }
-    let weights = solve_flat(n, &phi, values)?;
+    let weights = solve_matrix(&rbf_matrix(points, kernel)?, values)?;
     let mut sum = 0.0;
-    for i in 0..n {
-        sum += weights[i] * kernel.eval(euclid_dist(query, points[i]));
+    for (&weight, &point) in weights.iter().zip(points) {
+        sum += weight * kernel.eval(EuclideanDistance::between(query, point));
     }
-    Ok(sum)
+    if sum.is_finite() {
+        Ok(sum)
+    } else {
+        Err(InterpError::Domain(
+            "RBF result is not representable as Float".into(),
+        ))
+    }
 }
 
-/// Shepard inverse-distance weighting (IDW) scattered-data interpolation in `R^d`.
+#[allow(
+    clippy::single_call_fn,
+    reason = "keeps symmetric matrix assembly separate from the fit solve"
+)]
+fn rbf_matrix(
+    points: &[&[f64]],
+    kernel: RbfKernel,
+) -> Result<Mat, InterpError> {
+    const ROWS: usize = 16;
+    let n = points.len();
+    let entries = n
+        .checked_mul(n)
+        .ok_or_else(|| InterpError::Domain("RBF matrix size overflows".into()))?;
+    let mut phi = Vec::new();
+    phi.try_reserve_exact(entries)
+        .map_err(|_| InterpError::Domain("RBF matrix cannot be allocated".into()))?;
+    phi.resize(entries, 0.0);
+    let diagonal = kernel.eval(EuclideanDistance::scalar(0.0));
+    crate::kernels::par::for_chunks_mut(&mut phi, n.saturating_mul(ROWS), 4, |block, rows| {
+        for (offset, row) in rows.chunks_exact_mut(n).enumerate() {
+            let i = block * ROWS + offset;
+            for (entry, &point) in row[..i].iter_mut().zip(&points[..i]) {
+                *entry = kernel.eval(EuclideanDistance::between(points[i], point));
+            }
+            row[i] = diagonal;
+        }
+    });
+    // Mirroring the lower triangle leaves each kernel value in exactly the
+    // row and column used by the full system while avoiding repeated norms.
+    for i in 0..n {
+        for j in i + 1..n {
+            phi[i * n + j] = phi[j * n + i];
+        }
+    }
+    Ok(Mat {
+        rows: n,
+        cols: n,
+        data: phi,
+    })
+}
+
+#[derive(Clone, Copy)]
+struct EuclideanDistance {
+    scale: f64,
+    norm: f64,
+    halved: bool,
+}
+
+impl EuclideanDistance {
+    const fn scalar(scale: f64) -> Self {
+        Self {
+            scale,
+            norm: 1.0,
+            halved: false,
+        }
+    }
+
+    const fn value(self) -> f64 {
+        self.scale * self.norm * if self.halved { 2.0 } else { 1.0 }
+    }
+
+    fn between(
+        point: &[f64],
+        query: &[f64],
+    ) -> Self {
+        let square = squared_distance(point, query);
+        if square.is_normal() {
+            return Self {
+                scale: square.sqrt(),
+                norm: 1.0,
+                halved: false,
+            };
+        }
+        let pairs = || point.iter().zip(query);
+        let halved = pairs().any(|(a, b)| !(a - b).is_finite());
+        let delta = |(a, b): (&f64, &f64)| {
+            if halved {
+                (0.5 * a - 0.5 * b).abs()
+            } else {
+                (a - b).abs()
+            }
+        };
+        let scale = pairs().map(delta).fold(0.0_f64, f64::max);
+        if scale == 0.0 {
+            return Self {
+                scale,
+                norm: 1.0,
+                halved,
+            };
+        }
+        let norm = pairs()
+            .map(|pair| (delta(pair) / scale).powi(2))
+            .sum::<f64>()
+            .sqrt();
+        Self { scale, norm, halved }
+    }
+
+    const fn is_zero(self) -> bool {
+        self.scale == 0.0
+    }
+
+    const fn scale_ratio(
+        self,
+        other: Self,
+    ) -> f64 {
+        match (self.halved, other.halved) {
+            | (true, false) => 2.0,
+            | (false, true) => 0.5,
+            | _ => 1.0,
+        }
+    }
+
+    const fn ratio(
+        self,
+        other: Self,
+    ) -> f64 {
+        (self.scale / other.scale) * (self.norm / other.norm) * self.scale_ratio(other)
+    }
+
+    fn weight(
+        self,
+        other: Self,
+        power: f64,
+    ) -> f64 {
+        let ratio = self.ratio(other);
+        if ratio > 0.0 {
+            return ratio.min(1.0).powf(power);
+        }
+        // A tiny ratio can underflow even when raising it to a small power
+        // produces a weight near one.
+        let log_ratio = self.scale.ln() - other.scale.ln()
+            + (self.norm / other.norm).ln()
+            + self.scale_ratio(other).ln();
+        (power * log_ratio).exp()
+    }
+}
+
+struct ShepardAverage {
+    nearest: EuclideanDistance,
+    weight: f64,
+    value: f64,
+}
+
+fn direct_shepard_sum(
+    points: &[&[f64]],
+    values: &[f64],
+    query: &[f64],
+    power: f64,
+) -> Option<(f64, f64)> {
+    let (mut numerator, mut denominator) = (0.0, 0.0);
+    let inverse_square = crate::kernels::exact_eq(power, 2.0);
+    for (&point, &value) in points.iter().zip(values) {
+        let square = squared_distance(point, query);
+        if !square.is_normal() {
+            return None;
+        }
+        let weight = if inverse_square {
+            square.recip()
+        } else {
+            square.powf(-0.5 * power)
+        };
+        let weighted = weight * value;
+        if !weight.is_normal() || (value != 0.0 && !weighted.is_normal()) {
+            return None;
+        }
+        numerator += weighted;
+        denominator += weight;
+    }
+    Some((numerator, denominator))
+}
+
+impl ShepardAverage {
+    fn sample(
+        point: &[f64],
+        query: &[f64],
+        value: f64,
+    ) -> Self {
+        Self {
+            nearest: EuclideanDistance::between(point, query),
+            weight: 1.0,
+            value,
+        }
+    }
+
+    fn combine(
+        self,
+        other: Self,
+        power: f64,
+    ) -> Self {
+        if self.nearest.is_zero() {
+            return self;
+        }
+        if other.nearest.is_zero() {
+            return other;
+        }
+        let (near, far) = if self.nearest.ratio(other.nearest) <= 1.0 {
+            (self, other)
+        } else {
+            (other, self)
+        };
+        let far_weight = far.weight * near.nearest.weight(far.nearest, power);
+        let weight = near.weight + far_weight;
+        let difference = far.value - near.value;
+        let value = if difference.is_finite() {
+            let numerator = far_weight * difference;
+            let adjustment = if numerator.is_finite() {
+                numerator / weight
+            } else {
+                (far_weight / weight) * difference
+            };
+            near.value + adjustment
+        } else {
+            let far_part = if far_weight <= 1.0 {
+                (far_weight * far.value) / weight
+            } else {
+                (far_weight / weight) * far.value
+            };
+            near.value * (near.weight / weight) + far_part
+        };
+        let value = value.clamp(near.value.min(far.value), near.value.max(far.value));
+        Self {
+            nearest: near.nearest,
+            weight,
+            value,
+        }
+    }
+}
+
+/// Shepard inverse-distance weighting (IDW) scattered-data interpolation.
+///
+/// Scales weights by the nearest distance when direct weights exceed the
+/// Float range. An exact match uses the first sample at that coordinate.
 ///
 /// # Errors
-/// [`InterpError::Empty`], [`InterpError::ShapeMismatch`], or [`InterpError::Domain`]
-/// when `power <= 0`.
+/// [`InterpError::Empty`] for no samples, [`InterpError::ShapeMismatch`] for
+/// inconsistent lengths, or [`InterpError::Domain`] for nonfinite data or
+/// an invalid power.
 pub fn shepard_idw(
     points: &[&[f64]],
     values: &[f64],
     query: &[f64],
     power: f64,
 ) -> Result<f64, InterpError> {
+    const BLOCK: usize = 1024;
     if points.is_empty() {
         return Err(InterpError::Empty);
     }
@@ -840,24 +1027,70 @@ pub fn shepard_idw(
         ));
     }
     let dim = query.len();
-    let mut num = 0.0;
-    let mut den = 0.0;
-    for (p, &v) in points.iter().zip(values.iter()) {
+    for p in points {
         if p.len() != dim {
             return Err(InterpError::ShapeMismatch(format!(
                 "point dimension {} does not match query dimension {dim}",
                 p.len()
             )));
         }
-        let d = euclid_dist(p, query);
-        if d == 0.0 {
-            return Ok(v);
-        }
-        let w = d.powf(-power);
-        num += w * v;
-        den += w;
     }
-    Ok(num / den)
+    if query.iter().chain(values).any(|value| !value.is_finite()) {
+        return Err(InterpError::Domain(
+            "IDW coordinates and values must be finite".into(),
+        ));
+    }
+    let count = points.len();
+    let block_count = count.div_ceil(BLOCK);
+    let direct = if block_count == 1 {
+        direct_shepard_sum(points, values, query, power)
+    } else {
+        crate::kernels::par::try_map_indexed(block_count, 4, |block| {
+            let start = block * BLOCK;
+            let end = (start + BLOCK).min(count);
+            direct_shepard_sum(&points[start..end], &values[start..end], query, power).ok_or(())
+        })
+        .ok()
+        .map(|blocks| {
+            blocks
+                .into_iter()
+                .fold((0.0, 0.0), |(num, den), (n, d)| (num + n, den + d))
+        })
+    };
+    if let Some((num, den)) = direct
+        && num.is_finite()
+        && den.is_finite()
+    {
+        let value = num / den;
+        if value.is_finite() {
+            return Ok(value);
+        }
+    }
+    if points
+        .iter()
+        .any(|point| point.iter().any(|value| !value.is_finite()))
+    {
+        return Err(InterpError::Domain(
+            "IDW coordinates and values must be finite".into(),
+        ));
+    }
+    let blocks = crate::kernels::par::map_indexed(block_count, 4, |block| {
+        let start = block * BLOCK;
+        let end = (start + BLOCK).min(count);
+        let mut average = ShepardAverage::sample(points[start], query, values[start]);
+        for (&point, &value) in points[start + 1..end].iter().zip(&values[start + 1..end]) {
+            if average.nearest.is_zero() {
+                break;
+            }
+            average = average.combine(ShepardAverage::sample(point, query, value), power);
+        }
+        average
+    });
+    blocks
+        .into_iter()
+        .reduce(|a, b| a.combine(b, power))
+        .map(|average| average.value)
+        .ok_or(InterpError::Empty)
 }
 
 /// 2D scattered-data linear interpolation over the Delaunay triangulation of `points`.
@@ -1047,13 +1280,15 @@ pub fn spline(
     cubic_spline(xs, ys, x, SplineBc::Natural)
 }
 
-/// Bilinear interpolation on a regular grid.
+/// Bilinear interpolation on a rectilinear grid.
 ///
-/// `grid` is `ny × nx` in row-major order, covering `xs × ys`.
+/// `grid` is `ny × nx` in row-major order, with `xs` varying fastest.
+/// Finite coordinates outside the grid are clamped to its edges.
 ///
 /// # Errors
 ///
-/// [`InterpError::ShapeMismatch`] when the grid does not match the axes.
+/// Rejects empty or invalid axes, mismatched grid storage, and non-finite
+/// grid values or queries.
 pub fn interp2(
     xs: &[f64],
     ys: &[f64],
@@ -1090,12 +1325,16 @@ pub fn interp2(
             return (last - 1, 1.0);
         }
         for index in 0..last {
-            if value >= axis[index] && value <= axis[index + 1] {
-                let width = axis[index + 1] - axis[index];
-                let fraction = if width == 0.0 {
-                    0.0
+            let lower = axis[index];
+            let upper = axis[index + 1];
+            if value >= lower && value <= upper {
+                let width = upper - lower;
+                let fraction = if width.is_finite() {
+                    (value - lower) / width
                 } else {
-                    (value - axis[index]) / width
+                    let (from_lower, _, width) =
+                        scaled_grid_interval_distances(lower, upper, value);
+                    from_lower / width
                 };
                 return (index, fraction);
             }

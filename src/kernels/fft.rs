@@ -1,10 +1,12 @@
+//! One- and N-dimensional Fourier transforms and frequency indexing.
+//!
 //! The discrete Fourier transform (§8.8).
 //!
 //! `fft` does not normalise and `ifft` divides by `N`, so `ifft(fft(x)) == x`
 //! (§8.8). The other conventions are reachable through [`fft_norm`], which is
 //! what `fft_norm(x, Norm.Unitary)` needs.
 //!
-//! RustFFT chooses a plan for the transform length and the available CPU
+//! `RustFFT` chooses a plan for the transform length and the available CPU
 //! instructions. Calls of matching lengths can reuse plans and scratch.
 
 use num_complex::Complex64 as Complex;
@@ -185,8 +187,20 @@ fn transform_axes(
     inverse: bool,
     norm: Norm,
 ) -> Vec<Complex> {
+    transform_axes_in_place(&mut data, shape, axes, inverse, norm);
+    data
+}
+
+/// Applies an axis transform to a buffer whose shape and axes are validated.
+pub(crate) fn transform_axes_in_place(
+    data: &mut [Complex],
+    shape: &[usize],
+    axes: &[usize],
+    inverse: bool,
+    norm: Norm,
+) {
     if data.is_empty() || axes.is_empty() {
-        return data;
+        return;
     }
     for axis in axes {
         let extent = shape[*axis];
@@ -194,11 +208,10 @@ fn transform_axes(
             continue;
         }
         let inner: usize = shape[axis + 1..].iter().product();
-        transform_axis(&mut data, extent, inner, inverse);
+        transform_axis(data, extent, inner, inverse);
     }
     let count: usize = axes.iter().map(|axis| shape[*axis]).product();
-    scale_transform(&mut data, norm, inverse, count);
-    data
+    scale_transform(data, norm, inverse, count);
 }
 
 /// Independent lanes are batched into disjoint blocks of the tensor.

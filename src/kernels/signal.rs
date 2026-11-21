@@ -1,3 +1,5 @@
+//! Signal processing: filters, windows and spectra.
+//!
 //! # Signal processing kernels
 //!
 //! Complex Fourier transforms, time-frequency analysis, windows and digital
@@ -25,11 +27,13 @@ use super::reuse::fft_scratch_for;
 mod filters;
 mod framed;
 mod spectral;
+mod time_series;
 
 pub use filters::FilterError;
 pub use framed::CrossSpectrum;
 pub use framed::PowerSpectrum;
 pub use framed::SignalError;
+
 /// Estimates the one-sided power spectral density of real samples by Welch's method.
 ///
 /// Averages the periodograms of complete windowed frames, whose starts are
@@ -39,6 +43,8 @@ pub use framed::SignalError;
 /// Only bins with a negative-frequency partner are doubled. Multiplying each
 /// bin by the frequency spacing and summing gives the mean window-weighted
 /// frame power. Trailing samples that do not complete a frame are ignored.
+/// Large batches average fixed blocks in order so the result is independent
+/// of the worker count.
 ///
 /// # Errors
 ///
@@ -72,6 +78,62 @@ pub fn welch_cross_spectrum(
     sample_rate: f64,
 ) -> Result<CrossSpectrum, SignalError> {
     framed::welch_cross_spectrum(x, y, window, hop, sample_rate)
+}
+
+/// Computes biased sample autocovariances at lags from zero through `max_lag`.
+///
+/// For lag `k`, divides the sum of
+/// `(samples[t] - mean) * (samples[t + k] - mean)` by the full sample count.
+/// Lag zero is the population variance of the input. A constant series gives
+/// zero at all lags. Computes short lag ranges directly and uses a zero-padded
+/// FFT for sufficiently long ranges.
+///
+/// # Errors
+///
+/// Returns an error for empty or non-finite samples, a lag at least as large as
+/// the sample count, or an unrepresentable autocovariance or work extent.
+pub fn autocovariance(
+    samples: &[f64],
+    max_lag: usize,
+) -> Result<Vec<f64>, SignalError> {
+    time_series::autocovariance(samples, max_lag)
+}
+
+/// Computes sample autocorrelations at lags from zero through `max_lag`.
+///
+/// Divides each biased sample autocovariance by the lag-zero
+/// autocovariance. The lag-zero result is one. Input scaling cancels before
+/// the division, so the correlation remains computable when the variance
+/// itself would overflow or underflow.
+///
+/// # Errors
+///
+/// Returns an error for empty or non-finite samples, a lag at least as large as
+/// the sample count, a constant series, or an unrepresentable work extent.
+pub fn autocorrelation(
+    samples: &[f64],
+    max_lag: usize,
+) -> Result<Vec<f64>, SignalError> {
+    time_series::autocorrelation(samples, max_lag)
+}
+
+/// Computes Yule–Walker partial autocorrelations at lags zero through `max_lag`.
+///
+/// Uses the Durbin–Levinson recursion on the biased sample autocorrelations.
+/// For lag `k > 0`, the result is the final coefficient of the order-`k`
+/// autoregression. The lag-zero result is one. After calculating the
+/// autocorrelations, the recursion takes `O(max_lag²)` time and `O(max_lag)`
+/// space.
+///
+/// # Errors
+///
+/// Returns the same input errors as [autocorrelation] and also rejects an
+/// autoregression with numerically singular prediction-error variance.
+pub fn partial_autocorrelation(
+    samples: &[f64],
+    max_lag: usize,
+) -> Result<Vec<f64>, SignalError> {
+    time_series::partial_autocorrelation(samples, max_lag)
 }
 
 /// Reconstructs a real signal from full [`stft`] spectra.
@@ -160,6 +222,8 @@ pub fn analytic_envelope(samples: &[f64]) -> Result<Vec<f64>, SignalError> {
 /// one frequency. Zero bins give an empty result and an empty input gives
 /// `bins` zeros. Time and storage scale with the input and output extents,
 /// using an FFT of length `next_power_of_two(x.len() + bins - 1)`.
+/// Repeated moderate transforms with the same input length, bin count, and
+/// step can share the transformed chirp, even when the start varies.
 ///
 /// # Errors
 /// Returns an error for non-finite frequencies or input, unrepresentable

@@ -66,7 +66,7 @@ fn map_fit_error(error: DenseError) -> StatsExtError {
 /// The outcome of a statistical hypothesis test.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TestResult {
-    /// The test statistic (e.g. `t`, `chi2`, `F`, `D`, or `U`).
+    /// The test statistic (e.g. `t`, `chi2`, `F`, `D`, `U`, or `H`).
     pub statistic: f64,
     /// The p-value under the null hypothesis.
     pub p_value: f64,
@@ -745,7 +745,8 @@ pub fn ks_test_two_sample(
 /// # Errors
 ///
 /// [`StatsExtError::Empty`] when either sample is empty, or [`StatsExtError::Domain`]
-/// when all combined values are identical.
+/// when any observation is non-finite, all observations are tied, or pooled
+/// data cannot be allocated.
 pub fn mann_whitney_u(
     left: &[f64],
     right: &[f64],
@@ -755,33 +756,255 @@ pub fn mann_whitney_u(
     if left.is_empty() || right.is_empty() {
         return Err(StatsExtError::Empty);
     }
-    let n1 = left.len() as f64;
-    let n2 = right.len() as f64;
-    let n = n1 + n2;
-    let mut combined = Vec::with_capacity(left.len() + right.len());
-    combined.extend_from_slice(left);
-    combined.extend_from_slice(right);
-
-    let (ranks, tie_sum) = average_ranks_and_tie_sum(&combined);
-    let r1: f64 = ranks[..left.len()].iter().sum();
-    let u1 = r1 - n1 * (n1 + 1.0) / 2.0;
-    let u2 = n1 * n2 - u1;
-    let u_stat = u1.min(u2);
-
-    let mean_u = n1 * n2 / 2.0;
-    let var_u = (n1 * n2 / 12.0) * ((n + 1.0) - tie_sum / (n * (n - 1.0)));
-    if var_u <= 0.0 {
+    let mut rank_sums = [0; 2];
+    let (total, tie_complement) = pooled_rank_sums(&[left, right], &mut rank_sums)?;
+    if tie_complement <= 0.0 {
         return Err(StatsExtError::Domain(
             "mann_whitney_u is undefined when all observations are tied".to_string(),
         ));
     }
-    let z = (u1 - mean_u).abs() / var_u.sqrt();
+    let n1 = left.len() as u128;
+    let pairs = n1 * right.len() as u128;
+    let u1_twice = rank_sums[0] - n1 * (n1 + 1);
+    let u2_twice = 2 * pairs - u1_twice;
+    let total = total as f64;
+    let variance = (pairs as f64 / 12.0) * (tie_complement / (total * (total - 1.0)));
+    let z = (0.5 * u1_twice.abs_diff(pairs) as f64) / variance.sqrt();
     let p_value = (2.0 * Distribution::Normal { mu: 0.0, sigma: 1.0 }.cdf(-z)).clamp(0.0, 1.0);
     Ok(TestResult {
-        statistic: u_stat,
+        statistic: 0.5 * u1_twice.min(u2_twice) as f64,
         p_value,
         df: None,
     })
+}
+
+/// Kruskal–Wallis rank test across independent groups.
+///
+/// Pools all observations, assigns average ranks to ties, and returns the
+/// tie-corrected H statistic and its upper-tail chi-squared approximation
+/// with `df = groups.len() - 1`.
+///
+/// # Errors
+///
+/// Returns [`StatsExtError::Empty`] for no groups or an empty group.
+/// Returns [`StatsExtError::Domain`] for one group, non-finite observations,
+/// all observations tied, or pooled data that cannot be allocated.
+pub fn kruskal_wallis(groups: &[&[f64]]) -> Result<TestResult, StatsExtError> {
+    if groups.is_empty() || groups.iter().any(|group| group.is_empty()) {
+        return Err(StatsExtError::Empty);
+    }
+    if groups.len() < 2 {
+        return Err(StatsExtError::Domain(
+            "kruskal_wallis requires at least 2 groups".into(),
+        ));
+    }
+    for group in groups {
+        finite(group)?;
+    }
+    let mut rank_sums = Vec::new();
+    rank_sums.try_reserve_exact(groups.len()).map_err(|_| {
+        StatsExtError::Domain("unable to allocate rank sums for kruskal_wallis".into())
+    })?;
+    rank_sums.resize(groups.len(), 0);
+    let (total, tie_complement) = pooled_rank_sums(groups, &mut rank_sums)?;
+    if tie_complement <= 0.0 {
+        return Err(StatsExtError::Domain(
+            "kruskal_wallis is undefined when all observations are tied".into(),
+        ));
+    }
+    // Center the doubled sums as integers before forming the squared deviations.
+    let center_twice = (total as u128) + 1;
+    let between: f64 = groups
+        .iter()
+        .zip(rank_sums)
+        .map(|(group, rank_sum)| {
+            let deviation = rank_sum.abs_diff(group.len() as u128 * center_twice) as f64 * 0.5;
+            deviation.powi(2) / group.len() as f64
+        })
+        .sum();
+    let statistic = 12.0 * (total - 1) as f64 * between / tie_complement;
+    let df = (groups.len() - 1) as f64;
+    let p_value =
+        crate::kernels::special::regularized_upper_gamma(df * 0.5, statistic * 0.5).clamp(0.0, 1.0);
+    Ok(TestResult {
+        statistic,
+        p_value,
+        df: Some(df),
+    })
+}
+
+// Input is already finite. The initialized rank sums have one slot per group.
+fn pooled_rank_sums(
+    groups: &[&[f64]],
+    rank_sums: &mut [u128],
+) -> Result<(usize, f64), StatsExtError> {
+    let total = groups
+        .iter()
+        .try_fold(0usize, |count, group| count.checked_add(group.len()))
+        .ok_or_else(|| StatsExtError::Domain("pooled rank observation count overflows".into()))?;
+    let mut pooled = Vec::new();
+    pooled
+        .try_reserve_exact(total)
+        .map_err(|_| StatsExtError::Domain("unable to allocate pooled rank observations".into()))?;
+    for (group, values) in groups.iter().enumerate() {
+        pooled.extend(values.iter().copied().map(|value| (value, group)));
+    }
+    pooled.sort_unstable_by(|(left, _), (right, _)| left.total_cmp(right));
+
+    let mut begin = 0usize;
+    let mut tie_complement = 0.0;
+    for run in pooled.chunk_by(|left, right| crate::kernels::exact_eq(left.0, right.0)) {
+        let end = begin + run.len();
+        let rank_twice = begin as u128 + end as u128 + 1;
+        for &(_, group) in run {
+            rank_sums[group] += rank_twice;
+        }
+        // The increment of n³ - sum(t³) from extending a prefix by one tie run
+        // is 3 * begin * run.len() * end. This avoids subtracting near-equal
+        // cubes for almost-constant samples and keeps a single tie exactly zero.
+        tie_complement += 3.0 * begin as f64 * run.len() as f64 * end as f64;
+        begin = end;
+    }
+    Ok((total, tie_complement))
+}
+
+#[cfg(test)]
+mod pooled_rank_tests {
+    use super::StatsExtError;
+    use super::kruskal_wallis;
+    use super::mann_whitney_u;
+
+    fn close(
+        actual: f64,
+        expected: f64,
+    ) {
+        assert!(
+            (actual - expected).abs() <= 5e-12 * expected.abs().max(1.0),
+            "{actual} != {expected}"
+        );
+    }
+
+    fn reference_ranks(groups: &[&[f64]]) -> Vec<f64> {
+        let values: Vec<_> = groups
+            .iter()
+            .flat_map(|group| group.iter().copied())
+            .collect();
+        values
+            .iter()
+            .map(|&value| {
+                let below = values.iter().filter(|&&other| other < value).count();
+                let tied = values
+                    .iter()
+                    .filter(|&&other| crate::kernels::exact_eq(value, other))
+                    .count();
+                1.0 + below as f64 + 0.5 * (tied - 1) as f64
+            })
+            .collect()
+    }
+
+    #[test]
+    fn mann_whitney_matches_pairwise_comparisons_and_permutation_variance()
+    -> Result<(), StatsExtError> {
+        let left = [-f64::MAX, -0.0, 7.0, 7.0, 2.0, f64::MAX];
+        let right = [3.0, 0.0, 9.0, 7.0, f64::MIN_POSITIVE];
+        let u_left: f64 = left
+            .iter()
+            .flat_map(|a| right.iter().map(move |b| a.partial_cmp(b)))
+            .map(|comparison| {
+                match comparison {
+                    | Some(std::cmp::Ordering::Greater) => 1.0,
+                    | Some(std::cmp::Ordering::Less) => 0.0,
+                    | _ => 0.5,
+                }
+            })
+            .sum();
+        let ranks = reference_ranks(&[&left, &right]);
+        let n = ranks.len() as f64;
+        let mean_rank = (n + 1.0) * 0.5;
+        let centered_squares: f64 = ranks.iter().map(|rank| (rank - mean_rank).powi(2)).sum();
+        let pairs = (left.len() * right.len()) as f64;
+        let variance = pairs * centered_squares / (n * (n - 1.0));
+        let z = (u_left - pairs * 0.5).abs() / variance.sqrt();
+        let expected_p = crate::kernels::special::erfc_numerical(z / std::f64::consts::SQRT_2);
+        let result = mann_whitney_u(&left, &right)?;
+        close(result.statistic, u_left.min(pairs - u_left));
+        close(result.p_value, expected_p);
+        assert_eq!(result, mann_whitney_u(&right, &left)?);
+        assert_eq!(mann_whitney_u(&[], &right), Err(StatsExtError::Empty));
+        assert!(matches!(
+            mann_whitney_u(&[f64::NAN], &[]),
+            Err(StatsExtError::Domain(_))
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn large_constant_and_nearly_constant_samples_do_not_lose_the_tie_correction()
+    -> Result<(), StatsExtError> {
+        let left = vec![0.0; 165_142];
+        let mut right = vec![-0.0; left.len()];
+        assert!(matches!(
+            mann_whitney_u(&left, &right),
+            Err(StatsExtError::Domain(_))
+        ));
+        assert!(matches!(
+            kruskal_wallis(&[&left, &right]),
+            Err(StatsExtError::Domain(_))
+        ));
+        if let Some(last) = right.last_mut() {
+            *last = 1.0;
+        }
+        let result = mann_whitney_u(&left, &right)?;
+        close(result.statistic, 165_142.0 * 165_141.0 * 0.5);
+        close(result.p_value, 0.317_310_507_862_914_15);
+        Ok(())
+    }
+
+    #[test]
+    fn kruskal_wallis_matches_rank_variance_and_closed_form_tails() -> Result<(), StatsExtError> {
+        let ordered = kruskal_wallis(&[&[1.0, 2.0, 3.0], &[4.0, 5.0, 6.0], &[7.0, 8.0, 9.0]])?;
+        close(ordered.statistic, 7.2);
+        close(ordered.p_value, (-3.6_f64).exp());
+        assert_eq!(ordered.df, Some(2.0));
+
+        let groups: [&[f64]; 3] = [
+            &[-0.0, 1.0, 5.0, 5.0],
+            &[0.0, 2.0, 5.0],
+            &[1.0, 1.0, 8.0, 9.0],
+        ];
+        let ranks = reference_ranks(&groups);
+        let n = ranks.len() as f64;
+        let mean = (n + 1.0) * 0.5;
+        let spread: f64 = ranks.iter().map(|rank| (rank - mean).powi(2)).sum();
+        let mut start = 0usize;
+        let mut between = 0.0;
+        for group in groups {
+            let end = start + group.len();
+            let centered: f64 = ranks[start..end].iter().map(|rank| rank - mean).sum();
+            between += centered.powi(2) / group.len() as f64;
+            start = end;
+        }
+        let result = kruskal_wallis(&groups)?;
+        close(result.statistic, (n - 1.0) * between / spread);
+        close(result.p_value, (-result.statistic / 2.0).exp());
+        let permuted = kruskal_wallis(&[groups[2], groups[0], groups[1]])?;
+        close(result.statistic, permuted.statistic);
+        close(result.p_value, permuted.p_value);
+        let tied_balanced = kruskal_wallis(&[&[-0.0, 1.0], &[0.0, 1.0], &[0.0, 1.0]])?;
+        close(tied_balanced.statistic, 0.0);
+        close(tied_balanced.p_value, 1.0);
+        assert_eq!(kruskal_wallis(&[]), Err(StatsExtError::Empty));
+        assert_eq!(kruskal_wallis(&[&[1.0], &[]]), Err(StatsExtError::Empty));
+        assert!(matches!(
+            kruskal_wallis(&[&[1.0, 2.0]]),
+            Err(StatsExtError::Domain(_))
+        ));
+        assert!(matches!(
+            kruskal_wallis(&[&[1.0], &[f64::INFINITY]]),
+            Err(StatsExtError::Domain(_))
+        ));
+        Ok(())
+    }
 }
 
 // ----- regression -----------------------------------------------------------

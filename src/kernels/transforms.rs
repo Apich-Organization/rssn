@@ -12,6 +12,7 @@
 //! bins. Even lengths pack two real samples into each complex sample and
 //! use a half-length transform. Odd lengths use one full complex transform.
 
+use std::alloc::Layout;
 use std::f64::consts::PI;
 use std::sync::Arc;
 
@@ -276,7 +277,10 @@ pub fn rfft(x: &[f64]) -> Vec<Complex64> {
 /// takes one `n`-point inverse transform.
 ///
 /// Returns an empty vector when `n` is zero or when `spectrum.len()` is not
-/// `n/2 + 1`.
+/// `n/2 + 1`. Extreme finite magnitudes are rescaled in the FFT workspace
+/// to protect the intermediate sums and the final normalisation.
+///
+/// For repeated transforms of the same length, see [`IrfftPlan`].
 ///
 /// # Arguments
 /// * `spectrum` - The half spectrum produced by [`rfft`] (or any conjugate-
@@ -303,42 +307,225 @@ pub fn irfft(
     if n == 0 || spectrum.len() != n / 2 + 1 {
         return Vec::new();
     }
+    let Ok(plan) = IrfftPlan::new(n) else {
+        return Vec::new();
+    };
+    let mut output = vec![0.0; n];
+    plan.write_samples(spectrum, &mut output);
+    output
+}
 
-    if n == 1 {
-        return vec![spectrum[0].re];
+/// An invalid length or slice shape for a real inverse FFT.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IrfftError {
+    /// The length cannot be represented by the required buffers.
+    Length,
+    /// The input bins or output samples disagree with the plan's length.
+    Shape,
+}
+
+/// Plans repeated inverse real FFTs of a fixed sample length.
+///
+/// Retains the even-length unpacking factors and uses the shared FFT and
+/// scratch pools. Each call to [`Self::apply_into`] writes to a caller-supplied
+/// output slice with the normalisation and bin conventions of [`irfft`].
+#[derive(Debug, Clone)]
+pub struct IrfftPlan {
+    n: usize,
+    twiddles: Option<Arc<[Complex64]>>,
+}
+
+impl IrfftPlan {
+    /// Prepares an inverse transform whose output has `n` real samples.
+    ///
+    /// # Errors
+    /// Returns [`IrfftError::Length`] if the output or FFT workspace size
+    /// exceeds the maximum size of a slice.
+    pub fn new(n: usize) -> Result<Self, IrfftError> {
+        let even = n.is_multiple_of(2);
+        let fft_len = if even { n / 2 } else { n };
+        if Layout::array::<f64>(n).is_err() || Layout::array::<Complex64>(fft_len).is_err() {
+            return Err(IrfftError::Length);
+        }
+        let twiddles = (even && n >= 4).then(|| real_twiddles(fft_len));
+        Ok(Self { n, twiddles })
     }
 
-    if n.is_multiple_of(2) {
-        let m = n / 2;
-        let twiddles = real_twiddles(m);
-        let mut packed = fft_scratch_for(m);
-        let dc = spectrum[0].re * 0.5;
-        let nyquist = spectrum[m].re * 0.5;
-        packed.push(Complex64::new(dc + nyquist, dc - nyquist));
-        for (k, twiddle) in (1..m).zip(twiddles.iter()) {
-            let a = spectrum[k] * 0.5;
-            let b = spectrum[m - k].conj() * 0.5;
-            let even = a + b;
-            let odd = (a - b) * twiddle.conj();
-            packed.push(even + Complex64::new(0.0, 1.0) * odd);
-        }
+    /// Real sample count of the inverse transform.
+    #[must_use]
+    pub const fn output_len(&self) -> usize {
+        self.n
+    }
 
-        transform_in_place(&mut packed, true, Norm::Backward);
-        packed
-            .iter()
-            .flat_map(|value| [value.re, value.im])
-            .collect()
-    } else {
-        let half = n / 2;
-        let mut full = fft_scratch_for(n);
-        full.resize(n, Complex64::ZERO);
-        full[0] = Complex64::new(spectrum[0].re, 0.0);
-        for k in 1..=half {
-            full[k] = spectrum[k];
-            full[n - k] = spectrum[k].conj();
+    /// Number of nonredundant bins, or zero for an empty transform.
+    #[must_use]
+    pub const fn spectrum_len(&self) -> usize {
+        if self.n == 0 {
+            0
+        } else {
+            self.n / 2 + 1
         }
-        transform_in_place(&mut full, true, Norm::Backward);
-        full.iter().map(|value| value.re).collect()
+    }
+
+    /// Writes one inverse real FFT to the supplied sample slice.
+    ///
+    /// # Errors
+    /// Returns [`IrfftError::Shape`] and leaves the output untouched unless
+    /// both slices match the plan.
+    pub fn apply_into(
+        &self,
+        spectrum: &[Complex64],
+        output: &mut [f64],
+    ) -> Result<(), IrfftError> {
+        if spectrum.len() != self.spectrum_len() || output.len() != self.n {
+            return Err(IrfftError::Shape);
+        }
+        self.write_samples(spectrum, output);
+        Ok(())
+    }
+
+    fn write_samples(
+        &self,
+        spectrum: &[Complex64],
+        output: &mut [f64],
+    ) {
+        let n = self.n;
+        match n {
+            | 0 => return,
+            | 1 => {
+                output[0] = spectrum[0].re;
+                return;
+            },
+            | 2 => {
+                let (dc, nyquist) = (spectrum[0].re, spectrum[1].re);
+                output[0] = f64::midpoint(dc, nyquist);
+                output[1] = f64::midpoint(dc, -nyquist);
+                return;
+            },
+            | _ => {},
+        }
+        if let Some(input_scale) = inverse_real_scale(spectrum, n) {
+            let (dc, nyquist, interior) = split_real_spectrum(spectrum, n);
+            // A constant real spectrum is an exact impulse. Avoid rounding
+            // its leading sample past f64::MAX when restoring the scale.
+            if dc.to_bits() == nyquist.unwrap_or(dc).to_bits()
+                && interior
+                    .iter()
+                    .all(|z| z.re.to_bits() == dc.to_bits() && z.im == 0.0)
+            {
+                output.fill(0.0);
+                output[0] = dc;
+                return;
+            }
+            self.write_transform::<true>(spectrum, output, input_scale);
+        } else {
+            self.write_transform::<false>(spectrum, output, 1.0);
+        }
+    }
+
+    fn write_transform<const RESCALE: bool>(
+        &self,
+        spectrum: &[Complex64],
+        output: &mut [f64],
+        input_scale: f64,
+    ) {
+        let n = self.n;
+        let (input_scale, output_scale) = if RESCALE {
+            (input_scale, input_scale.recip())
+        } else {
+            (1.0, 1.0)
+        };
+        if let Some(twiddles) = &self.twiddles {
+            let m = n / 2;
+            let mut packed = fft_scratch_for(m);
+            let half_scale = 0.5 * input_scale;
+            let dc = spectrum[0].re * half_scale;
+            let nyquist = spectrum[m].re * half_scale;
+            packed.push(Complex64::new(dc + nyquist, dc - nyquist));
+            for (k, twiddle) in (1..m).zip(twiddles.iter()) {
+                let a = spectrum[k] * half_scale;
+                let b = spectrum[m - k].conj() * half_scale;
+                let even = a + b;
+                let odd = (a - b) * twiddle.conj();
+                packed.push(even + Complex64::new(0.0, 1.0) * odd);
+            }
+            transform_in_place(&mut packed, true, Norm::Backward);
+            for (pair, value) in output.as_chunks_mut::<2>().0.iter_mut().zip(packed.iter()) {
+                *pair = [value.re * output_scale, value.im * output_scale];
+            }
+        } else {
+            let half = n / 2;
+            let mut full = fft_scratch_for(n);
+            full.resize(n, Complex64::ZERO);
+            full[0] = Complex64::new(spectrum[0].re * input_scale, 0.0);
+            for k in 1..=half {
+                let value = spectrum[k] * input_scale;
+                full[k] = value;
+                full[n - k] = value.conj();
+            }
+            transform_in_place(&mut full, true, Norm::Backward);
+            for (sample, value) in output.iter_mut().zip(full.iter()) {
+                *sample = value.re * output_scale;
+            }
+        }
+    }
+}
+
+fn split_real_spectrum(
+    spectrum: &[Complex64],
+    n: usize,
+) -> (f64, Option<f64>, &[Complex64]) {
+    let dc = spectrum[0].re;
+    if n.is_multiple_of(2) {
+        let end = spectrum.len() - 1;
+        (dc, Some(spectrum[end].re), &spectrum[1..end])
+    } else {
+        (dc, None, &spectrum[1..])
+    }
+}
+
+#[allow(clippy::needless_bitwise_bool)] // Eager boolean reductions allow vectorisation.
+fn inverse_real_scale(
+    spectrum: &[Complex64],
+    n: usize,
+) -> Option<f64> {
+    // The imaginary parts of self-conjugate bins never enter the real FFT.
+    let (dc, nyquist, interior) = split_real_spectrum(spectrum, n);
+    let edge_a = dc.abs();
+    let edge_b = nyquist.unwrap_or(0.0).abs();
+    let length = n as f64;
+    // Leave headroom for packing and for FFT algorithms that use an
+    // unnormalised convolution internally.
+    let upper = f64::MAX / (16.0 * length * length);
+    let lower = 4.0 * length * f64::MIN_POSITIVE;
+    let mut large = (edge_a > upper) | (edge_b > upper);
+    let mut small = (edge_a < lower) & (edge_b < lower);
+    // Independent boolean reductions keep this screening pass vectorisable.
+    for bin in interior {
+        let re = bin.re.abs();
+        let im = bin.im.abs();
+        large |= (re > upper) | (im > upper);
+        small &= (re < lower) & (im < lower);
+    }
+    if large {
+        // Absolute float bit patterns are ordered by magnitude. Non-finite
+        // bins retain the ordinary FFT's propagation behavior.
+        let mut peak = edge_a.to_bits().max(edge_b.to_bits());
+        for bin in interior {
+            peak = peak.max(bin.re.abs().to_bits()).max(bin.im.abs().to_bits());
+        }
+        if !f64::from_bits(peak).is_finite() {
+            return None;
+        }
+        let shift = (peak >> 52) - (upper.to_bits() >> 52) + 1;
+        Some(f64::from_bits((1023 - shift) << 52))
+    } else if small
+        && (edge_a > 0.0 || edge_b > 0.0 || interior.iter().any(|z| z.re != 0.0 || z.im != 0.0))
+    {
+        // Even the smallest subnormal becomes normal at this working scale.
+        Some(f64::from_bits((1023 + 256) << 52))
+    } else {
+        None
     }
 }
 

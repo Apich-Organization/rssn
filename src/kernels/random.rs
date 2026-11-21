@@ -1,3 +1,5 @@
+//! Seeded deterministic random number generation.
+//!
 //! # Seeded random number generation
 //!
 //! A small, fully deterministic xoshiro256++ generator (seeded through
@@ -347,6 +349,318 @@ impl Rng {
     ) {
         for o in out {
             *o = self.normal();
+        }
+    }
+}
+
+/// Failure to prepare a weighted categorical sampler.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CategoricalError {
+    /// The input contains no categories.
+    Empty,
+    /// A weight is negative or nonfinite.
+    InvalidWeight {
+        /// Zero-based index of the invalid weight.
+        index: usize,
+    },
+    /// Every weight is zero.
+    ZeroTotal,
+    /// The work buffers or sampling table could not be allocated.
+    Allocation,
+}
+
+impl std::fmt::Display for CategoricalError {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        match self {
+            | Self::Empty => f.write_str("categorical sampling needs at least one category"),
+            | Self::InvalidWeight { index } => {
+                write!(
+                    f,
+                    "categorical weight at index {index} must be finite and nonnegative"
+                )
+            },
+            | Self::ZeroTotal => f.write_str("categorical sampling needs a positive weight"),
+            | Self::Allocation => f.write_str("cannot allocate the categorical sampling table"),
+        }
+    }
+}
+
+impl std::error::Error for CategoricalError {}
+
+/// An immutable categorical sampler for repeated draws from fixed relative weights.
+///
+/// Construction takes linear time and space. The alias table makes draws
+/// constant time on average and allocates only during construction. A single
+/// possible category and a uniform distribution need no table.
+#[derive(Debug)]
+pub struct Categorical {
+    categories: usize,
+    distribution: CategoricalDistribution,
+}
+
+#[derive(Debug)]
+enum CategoricalDistribution {
+    Constant(usize),
+    Uniform(UniformColumn),
+    Weighted(AliasTable),
+}
+
+/// Precomputed rejection threshold for multiplication-based uniform sampling.
+#[derive(Debug)]
+struct UniformColumn {
+    columns: u64,
+    reject_below: u64,
+}
+
+impl UniformColumn {
+    const fn new(columns: usize) -> Self {
+        let columns = columns as u64;
+        Self {
+            columns,
+            reject_below: columns.wrapping_neg() % columns,
+        }
+    }
+
+    #[inline]
+    fn sample(
+        &self,
+        rng: &mut Rng,
+    ) -> usize {
+        loop {
+            let product = u128::from(rng.next_u64()) * u128::from(self.columns);
+            if product as u64 >= self.reject_below {
+                return (product >> 64) as usize;
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct AliasEntry {
+    cutoff: u64,
+    alternate: usize,
+}
+
+#[derive(Debug)]
+struct AliasTable {
+    columns: UniformColumn,
+    entries: Vec<AliasEntry>,
+}
+
+impl AliasTable {
+    fn new(
+        weights: &[f64],
+        maximum: f64,
+        largest_index: usize,
+    ) -> Result<Self, CategoricalError> {
+        let count = weights.len();
+        let mut mass = categorical_storage(count)?;
+        let mut total = 0.0;
+        let mut compensation = 0.0;
+        for &weight in weights {
+            let normalized = weight / maximum;
+            let term = normalized - compensation;
+            let updated = total + term;
+            compensation = (updated - total) - term;
+            total = updated;
+            mass.push(normalized);
+        }
+        let scale = count as f64 / total;
+
+        // The small and large column stacks share a buffer. They grow from
+        // opposite ends, and every pairing removes two entries and adds one.
+        let mut pending = categorical_storage(count)?;
+        pending.resize(count, 0);
+        let mut small_end = 0;
+        let mut large_start = count;
+        for (index, value) in mass.iter_mut().enumerate() {
+            *value *= scale;
+            if *value < 1.0 {
+                pending[small_end] = index;
+                small_end += 1;
+            } else {
+                large_start -= 1;
+                pending[large_start] = index;
+            }
+        }
+
+        let mut entries = categorical_storage(count)?;
+        entries.resize(
+            count,
+            AliasEntry {
+                cutoff: 0,
+                alternate: largest_index,
+            },
+        );
+        while small_end != 0 && large_start != count {
+            small_end -= 1;
+            let small = pending[small_end];
+            let large = pending[large_start];
+            large_start += 1;
+            entries[small] = AliasEntry {
+                cutoff: alias_cutoff(mass[small]),
+                alternate: large,
+            };
+            mass[large] = (mass[large] - 1.0) + mass[small];
+            if mass[large] < 1.0 {
+                pending[small_end] = large;
+                small_end += 1;
+            } else {
+                large_start -= 1;
+                pending[large_start] = large;
+            }
+        }
+
+        for &index in &pending[large_start..] {
+            entries[index] = AliasEntry {
+                cutoff: u64::MAX,
+                alternate: index,
+            };
+        }
+        // Rounding may leave a column below one. Assign its remaining
+        // probability to a positive category so even a zero column can
+        // never become selectable.
+        for &index in &pending[..small_end] {
+            entries[index].cutoff = alias_cutoff(mass[index]);
+        }
+        Ok(Self {
+            columns: UniformColumn::new(count),
+            entries,
+        })
+    }
+
+    #[inline]
+    fn sample(
+        &self,
+        rng: &mut Rng,
+    ) -> usize {
+        let column = self.columns.sample(rng);
+        let entry = self.entries[column];
+        if rng.next_u64() < entry.cutoff {
+            column
+        } else {
+            entry.alternate
+        }
+    }
+}
+
+fn categorical_storage<T>(count: usize) -> Result<Vec<T>, CategoricalError> {
+    let mut result = Vec::new();
+    result
+        .try_reserve_exact(count)
+        .map_err(|_| CategoricalError::Allocation)?;
+    Ok(result)
+}
+
+fn alias_cutoff(probability: f64) -> u64 {
+    (probability * 18_446_744_073_709_551_616.0) as u64
+}
+
+impl Categorical {
+    /// Prepares a sampler from finite, nonnegative relative weights.
+    ///
+    /// Returns indices in the original weight order and never selects a
+    /// zero-weight entry. At least one weight must be positive. The total
+    /// need not be finite before scaling. Conditional alias probabilities
+    /// are rounded down to multiples of `2^-64`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for an empty slice, an invalid weight, an all-zero
+    /// slice or an allocation failure.
+    pub fn new(weights: &[f64]) -> Result<Self, CategoricalError> {
+        let categories = weights.len();
+        if categories == 0 {
+            return Err(CategoricalError::Empty);
+        }
+        let mut largest = 0.0_f64;
+        let mut largest_index = 0;
+        let mut smallest_positive = f64::INFINITY;
+        let mut positive_count = 0;
+        for (index, &weight) in weights.iter().enumerate() {
+            if !weight.is_finite() || weight < 0.0 {
+                return Err(CategoricalError::InvalidWeight { index });
+            }
+            if weight > 0.0 {
+                positive_count += 1;
+                smallest_positive = smallest_positive.min(weight);
+                if weight > largest {
+                    largest = weight;
+                    largest_index = index;
+                }
+            }
+        }
+        let distribution = if positive_count == 0 {
+            return Err(CategoricalError::ZeroTotal);
+        } else if positive_count == 1 {
+            CategoricalDistribution::Constant(largest_index)
+        } else if positive_count == categories && smallest_positive.to_bits() == largest.to_bits() {
+            CategoricalDistribution::Uniform(UniformColumn::new(categories))
+        } else {
+            CategoricalDistribution::Weighted(AliasTable::new(weights, largest, largest_index)?)
+        };
+        Ok(Self {
+            categories,
+            distribution,
+        })
+    }
+
+    /// Returns the length of the original weight slice.
+    #[must_use]
+    pub const fn categories(&self) -> usize {
+        self.categories
+    }
+
+    /// Returns the number of bytes retained by the sampling table.
+    #[must_use]
+    pub const fn heap_bytes(&self) -> usize {
+        match &self.distribution {
+            | CategoricalDistribution::Weighted(table) => {
+                table.entries.capacity() * size_of::<AliasEntry>()
+            },
+            | CategoricalDistribution::Constant(_) | CategoricalDistribution::Uniform(_) => 0,
+        }
+    }
+
+    /// Draws one zero-based category index from the supplied random stream.
+    ///
+    /// A single possible category consumes no random values. A uniform
+    /// distribution chooses an unbiased column. A weighted distribution
+    /// also draws an independent raw value for that column's cutoff.
+    #[inline]
+    pub fn sample(
+        &self,
+        rng: &mut Rng,
+    ) -> usize {
+        match &self.distribution {
+            | CategoricalDistribution::Constant(index) => *index,
+            | CategoricalDistribution::Uniform(columns) => columns.sample(rng),
+            | CategoricalDistribution::Weighted(table) => table.sample(rng),
+        }
+    }
+
+    /// Fills an existing slice with the same draws as repeated calls to
+    /// [`Self::sample`], including the advancement of the random stream.
+    pub fn fill(
+        &self,
+        rng: &mut Rng,
+        output: &mut [usize],
+    ) {
+        match &self.distribution {
+            | CategoricalDistribution::Constant(index) => output.fill(*index),
+            | CategoricalDistribution::Uniform(columns) => {
+                for index in output {
+                    *index = columns.sample(rng);
+                }
+            },
+            | CategoricalDistribution::Weighted(table) => {
+                for index in output {
+                    *index = table.sample(rng);
+                }
+            },
         }
     }
 }

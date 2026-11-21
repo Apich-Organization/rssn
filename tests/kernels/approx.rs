@@ -150,6 +150,137 @@ fn chebyshev_approximation() {
 }
 
 #[test]
+fn chebyshev_samples_reconstruct_known_chebyshev_modes() {
+    for degree in [7_usize, 9, 17, 64, 257] {
+        let samples: Vec<_> = (0..=degree)
+            .map(|k| {
+                let angle = std::f64::consts::PI * (k as f64 / degree as f64);
+                let nyquist = if k.is_multiple_of(2) {
+                    0.125
+                } else {
+                    -0.125
+                };
+                0.75 - 0.2 * angle.cos() + 0.18 * (3.0 * angle).cos() + nyquist
+            })
+            .collect();
+        let series = ChebSeries::from_values(&samples, 1.0, 4.0);
+        assert_eq!(series.degree(), degree);
+        for (j, &c) in series.coeffs.iter().enumerate() {
+            let expected = match j {
+                | 0 => 0.75,
+                | 1 => -0.2,
+                | 3 => 0.18,
+                | _ if j == degree => 0.125,
+                | _ => 0.0,
+            };
+            assert!(
+                (c - expected).abs() < 3e-15,
+                "degree {degree}, mode {j}: {c}"
+            );
+        }
+    }
+}
+
+#[test]
+fn adaptive_chebyshev_reuses_nested_and_shared_values_within_degree_cap() {
+    use std::cell::Cell;
+    for (cap, expected_calls) in [(2, 3), (18, 33), (64, 65)] {
+        let calls = Cell::new(0);
+        let target = |x: f64| (101.0 * x).sin() + (4.27 * x).cos();
+        let adaptive = ChebSeries::adaptive(
+            |x| {
+                calls.set(calls.get() + 1);
+                target(x)
+            },
+            -1.0,
+            1.0,
+            0.0,
+            cap,
+        );
+        assert_eq!(adaptive.degree(), cap);
+        assert_eq!(calls.get(), expected_calls);
+        assert_eq!(adaptive, ChebSeries::from_fn(target, -1.0, 1.0, cap));
+    }
+}
+
+#[test]
+fn chebyshev_points_and_evaluation_handle_degenerate_and_extreme_intervals() {
+    assert_eq!(chebyshev_points(0, 2.0, 4.0), vec![3.0]);
+    assert_eq!(chebyshev_points(4, 2.0, 2.0), vec![2.0; 5]);
+    assert_eq!(ChebSeries::from_fn(|x| x, 2.0, 4.0, 0).eval(2.0), 3.0);
+    assert_eq!(ChebSeries::adaptive(|x| x, 2.0, 4.0, 0.0, 0).eval(4.0), 3.0);
+    assert_eq!(ChebSeries::from_values(&[], 1.0, 2.0).eval(1.5), 0.0);
+    assert_eq!(
+        ChebSeries::from_values(&[4.0, 9.0], 3.0, 3.0).eval(3.0),
+        4.0
+    );
+    let calls = std::cell::Cell::new(0);
+    let degenerate = ChebSeries::from_fn(
+        |x| {
+            calls.set(calls.get() + 1);
+            x * x
+        },
+        3.0,
+        3.0,
+        64,
+    );
+    assert_eq!(calls.get(), 1);
+    assert_eq!(degenerate.eval(3.0), 9.0);
+
+    let max = f64::MAX;
+    let large_constant = ChebSeries::from_values(&[max], 3.0, 3.0);
+    assert_eq!(large_constant.derivative().eval(3.0), 0.0);
+    assert_eq!(large_constant.integral().eval(3.0), 0.0);
+    assert_eq!(large_constant.definite_integral(), 0.0);
+    let points = chebyshev_points(4, -max, max);
+    assert!(points.iter().all(|x| x.is_finite()));
+    assert_eq!((points[0], points[2], points[4]), (max, 0.0, -max));
+    let linear = ChebSeries {
+        coeffs: vec![0.0, 1.0],
+        a: -max,
+        b: max,
+    };
+    assert_eq!(
+        [linear.eval(-max), linear.eval(0.0), linear.eval(max)],
+        [-1.0, 0.0, 1.0]
+    );
+    assert_eq!(linear.eval(0.5 * max), 0.5);
+
+    let a = max.next_down().next_down().next_down();
+    let narrow = ChebSeries { a, b: max, ..linear };
+    assert_eq!(narrow.eval(a.next_up()), -1.0 / 3.0);
+    let least = f64::from_bits(1);
+    let tiny = ChebSeries {
+        a: -2.0 * least,
+        b: least,
+        ..narrow
+    };
+    assert_eq!(tiny.eval(0.0), 1.0 / 3.0);
+}
+
+#[test]
+fn chebyshev_transform_and_clenshaw_keep_extreme_finite_samples() {
+    let max = f64::MAX;
+    let large = ChebSeries::from_fn(|x| x, -0.5 * max, 0.5 * max, 64);
+    assert!((large.eval(-0.5 * max) / max + 0.5).abs() < 2e-15);
+    assert!((large.eval(0.5 * max) / max - 0.5).abs() < 2e-15);
+    assert_eq!(
+        ChebSeries::from_values(&[max; 20], -1.0, 1.0).eval(1.0),
+        max
+    );
+    assert_eq!(clenshaw(&[0.0, 0.0, max], 1.0), max);
+
+    let tiny = 2.0 * f64::from_bits(1);
+    let samples: Vec<_> = (0..=17)
+        .map(|k| if k % 2 == 0 { tiny } else { -tiny })
+        .collect();
+    let series = ChebSeries::from_values(&samples, -1.0, 1.0);
+    assert_eq!(series.coeffs[17], tiny);
+    assert_eq!(series.eval(-1.0), -tiny);
+    assert_eq!(series.eval(1.0), tiny);
+}
+
+#[test]
 fn aaa_rational_approximation() {
     // recovers a rational function essentially exactly
     let z: Vec<f64> = (0..200)

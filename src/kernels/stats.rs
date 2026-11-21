@@ -13,8 +13,8 @@
 //!   parameter fitting and no sampling (the samplers live in
 //!   [`crate::kernels::random`]).
 //! * The inference helpers (`one_way_anova`, `two_sample_t_test`,
-//!   `welch_t_test`, `chi_squared_test`, `simple_linear_regression`) report the
-//!   statistic and the asymptotic p-value only: no confidence intervals,
+//!   `welch_t_test`, `chi_squared_test`) report the statistic and the
+//!   asymptotic p-value only: no confidence intervals,
 //!   effect sizes, multiple-comparison correction, paired or repeated-measures
 //!   designs, and no non-parametric alternative.
 //! * `mean` returns `0` for an empty slice and `std_dev` follows the sample
@@ -28,6 +28,9 @@
 //!   the full sample; streaming means and covariances are available through
 //!   [`crate::kernels::online_stats::OnlineCovariance`].
 
+use num_bigint::BigInt;
+use num_rational::BigRational;
+use num_traits::ToPrimitive;
 use statrs::distribution::Binomial;
 use statrs::distribution::Continuous;
 use statrs::distribution::ContinuousCDF;
@@ -41,6 +44,9 @@ use statrs::statistics::Min;
 use statrs::statistics::OrderStatistics;
 use statrs::statistics::Statistics;
 
+use crate::kernels::krylov::exact_product_sum_integer;
+use crate::kernels::numeric_common::scale_product;
+use crate::kernels::numeric_common::scaled_difference;
 pub use crate::kernels::online_stats::OnlineCovariance;
 pub use crate::kernels::online_stats::OnlineStatsError;
 
@@ -393,38 +399,147 @@ impl BinomialDist {
     }
 }
 
-/// Performs a simple linear regression on a set of 2D points.
-/// Returns the slope (b1) and intercept (b0) of the best-fit line y = b0 + b1*x.
+/// Fits the least-squares line `y = intercept + slope * x` to paired samples.
+///
+/// Returns `(slope, intercept)`. Empty and nonfinite samples return two
+/// NaNs. A constant predictor returns a NaN slope and the response mean.
+/// The calculation borrows the observations and rescales centered moments
+/// when the unscaled moments exceed the Float range.
 #[must_use]
 pub fn simple_linear_regression(data: &[(f64, f64)]) -> (f64, f64) {
-    if data.is_empty() {
+    linear_fit(data.iter().copied())
+}
+
+pub(crate) fn simple_linear_regression_columns(
+    x: &[f64],
+    y: &[f64],
+) -> (f64, f64) {
+    debug_assert_eq!(x.len(), y.len());
+    linear_fit(x.iter().copied().zip(y.iter().copied()))
+}
+
+fn linear_fit(data: impl ExactSizeIterator<Item = (f64, f64)> + Clone) -> (f64, f64) {
+    let n = data.len() as f64;
+    if data.len() == 0 {
         return (f64::NAN, f64::NAN);
     }
 
-    let (xs, ys): (Vec<_>, Vec<_>) = data.iter().copied().unzip();
+    let (sum_x, sum_y) = data
+        .clone()
+        .fold((-0.0, -0.0), |(sx, sy), (x, y)| (sx + x, sy + y));
+    let (mean_x, mean_y) = (sum_x / n, sum_y / n);
+    let (xx, xy) = fit_moments(data.clone().map(|(x, y)| (x - mean_x, y - mean_y)));
+    let slope = xy / xx;
+    let intercept = slope.mul_add(-mean_x, mean_y);
+    // A rounded mean can distort the slope of nearly coincident predictors.
+    let origin_resolution = mean_x * (1.0 / 16_777_216.0);
+    if xx.is_normal()
+        && xy.is_normal()
+        && slope.is_normal()
+        && intercept.is_finite()
+        && xx >= origin_resolution * origin_resolution * n
+    {
+        return (slope, intercept);
+    }
+    scaled_linear_fit(data, n)
+}
 
-    let mean_x = mean(&xs);
+fn fit_moments(centered: impl Iterator<Item = (f64, f64)>) -> (f64, f64) {
+    centered.fold((-0.0, -0.0), |(xx, xy), (x, y)| (xx + x * x, xy + x * y))
+}
 
-    let mean_y = mean(&ys);
-
-    // Compute slope using consistent formula: b1 = Σ(xi - x̄)(yi - ȳ) / Σ(xi - x̄)²
-    let numerator: f64 = xs
-        .iter()
-        .zip(ys.iter())
-        .map(|(&x, &y)| (x - mean_x) * (y - mean_y))
-        .sum();
-
-    let denominator: f64 = xs.iter().map(|&x| (x - mean_x).powi(2)).sum();
-
-    if denominator == 0.0 {
-        return (f64::NAN, mean_y);
+#[cold]
+fn scaled_linear_fit(
+    data: impl ExactSizeIterator<Item = (f64, f64)> + Clone,
+    n: f64,
+) -> (f64, f64) {
+    let Some((first_x, first_y)) = data.clone().next() else {
+        return (f64::NAN, f64::NAN);
+    };
+    let mut max_x = 0.0_f64;
+    let mut max_y = 0.0_f64;
+    let mut min_x = f64::INFINITY;
+    let mut min_y = f64::INFINITY;
+    for (x, y) in data.clone() {
+        if !x.is_finite() || !y.is_finite() {
+            return (f64::NAN, f64::NAN);
+        }
+        max_x = max_x.max(x.abs());
+        max_y = max_y.max(y.abs());
+        if x != 0.0 {
+            min_x = min_x.min(x.abs());
+        }
+        if y != 0.0 {
+            min_y = min_y.min(y.abs());
+        }
+    }
+    // Scaling to a single Float per axis can discard small observations
+    // before their products are formed when an axis spans many exponents.
+    let wide =
+        |smallest: f64, largest: f64| (largest.to_bits() >> 52) > (smallest.to_bits() >> 52) + 400;
+    if wide(min_x, max_x) || wide(min_y, max_y) {
+        return exact_linear_fit(data);
     }
 
-    let b1 = numerator / denominator;
+    let binary_scale = |largest: f64| {
+        let exponent = largest.to_bits() & (0x7ff0_u64 << 48);
+        if largest == 0.0 {
+            1.0
+        } else {
+            f64::from_bits(exponent.max(f64::MIN_POSITIVE.to_bits()))
+        }
+    };
+    let sx = binary_scale(max_x);
+    let sy = binary_scale(max_y);
+    let shifted = data.map(|(x, y)| {
+        (
+            scaled_difference(x, first_x, sx),
+            scaled_difference(y, first_y, sy),
+        )
+    });
+    // Center near the first sampled point before taking the means. Closely
+    // spaced observations remain distinct even if their mean rounds to a sample.
+    let (sum_dx, sum_dy) = shifted
+        .clone()
+        .fold((0.0, 0.0), |(dx, dy), (x, y)| (dx + x, dy + y));
+    let (dx, dy) = (sum_dx / n, sum_dy / n);
+    let (xx, xy) = fit_moments(shifted.map(|(x, y)| (x - dx, y - dy)));
+    let normalized_y = first_y / sy + dy;
+    if xx == 0.0 {
+        return (f64::NAN, normalized_y * sy);
+    }
 
-    let b0 = b1.mul_add(-mean_x, mean_y);
+    let normalized_slope = xy / xx;
+    let slope = scale_product(normalized_slope, &[sy], &[sx])
+        .unwrap_or_else(|_| f64::INFINITY.copysign(normalized_slope));
+    let fitted_at_anchor = normalized_slope.mul_add(-dx, dy) + first_y / sy;
+    let normalized_intercept = normalized_slope.mul_add(-(first_x / sx), fitted_at_anchor);
+    (slope, normalized_intercept * sy)
+}
 
-    (b1, b0)
+fn exact_linear_fit(data: impl ExactSizeIterator<Item = (f64, f64)> + Clone) -> (f64, f64) {
+    const SAMPLE_SHIFT: usize = 1074;
+    let n = BigInt::from(data.len());
+    // Product bins use 2^-2148. For sums of individual samples the
+    // coefficient is divisible by 2^1074, so x and y use 2^-1074.
+    let x = exact_product_sum_integer(data.clone().map(|(x, _)| (x, 1.0))) >> SAMPLE_SHIFT;
+    let y = exact_product_sum_integer(data.clone().map(|(_, y)| (y, 1.0))) >> SAMPLE_SHIFT;
+    let xx = &n * exact_product_sum_integer(data.clone().map(|(x, _)| (x, x))) - &x * &x;
+    let xy = &n * exact_product_sum_integer(data) - &x * &y;
+    let response_scale = n << SAMPLE_SHIFT;
+    if xx.sign() == num_bigint::Sign::NoSign {
+        let mean_y = BigRational::new_raw(y, response_scale)
+            .to_f64()
+            .unwrap_or(f64::NAN);
+        return (f64::NAN, mean_y);
+    }
+    let numerator = y * &xx - &xy * x;
+    let denominator = response_scale * &xx;
+    let intercept = BigRational::new_raw(numerator, denominator)
+        .to_f64()
+        .unwrap_or(f64::NAN);
+    let slope = BigRational::new_raw(xy, xx).to_f64().unwrap_or(f64::NAN);
+    (slope, intercept)
 }
 
 /// Computes the minimum value of a slice of data.

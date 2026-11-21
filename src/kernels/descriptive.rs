@@ -554,6 +554,9 @@ pub fn kurtosis(values: &[f64]) -> Result<f64, NumericError> {
 /// use unit-width buckets starting at the value minus 0.5, with all observations
 /// in the first bucket.
 ///
+/// Large samples with a bounded number of buckets can be counted in parallel.
+/// The counts and edges are independent of the active Rayon pool size.
+///
 /// # Errors
 ///
 /// [`NumericError::Empty`] for an empty sample and [`NumericError::Domain`]
@@ -575,12 +578,10 @@ pub fn histogram(
         .checked_add(1)
         .ok_or_else(|| NumericError::Domain("histogram has too many buckets".into()))?;
     let mut edges = Vec::new();
-    let mut counts = Vec::new();
     edges
         .try_reserve_exact(edge_capacity)
-        .and_then(|()| counts.try_reserve_exact(bins))
         .map_err(|_| NumericError::Domain("histogram has too many buckets".into()))?;
-    counts.resize(bins, 0i64);
+    let mut counts = empty_histogram_counts(bins)?;
     if exact_eq(low, high) {
         edges.extend((0..edge_capacity).map(|index| (low - 0.5) + index as f64));
         counts[0] = i64::try_from(values.len())
@@ -600,19 +601,112 @@ pub fn histogram(
     let start = low * scale;
     let range = high * scale - start;
     let last = bins - 1;
-    for &value in values {
-        let estimate = ((value * scale - start) / range * bins_as_float).floor();
+    count_histogram(values, &mut counts, |value| {
+        // Converting the nonnegative estimate to an index already truncates it.
+        let estimate = (value * scale - start) / range * bins_as_float;
         let index = estimate.to_usize().unwrap_or(last).min(last);
         // The direct estimate is generally enough. Consult the reported edges
         // if rounding moves it across a boundary or yields duplicate edges.
-        let index = if value >= edges[index] && (index == last || value < edges[index + 1]) {
+        if value >= edges[index] && (index == last || value < edges[index + 1]) {
             index
         } else {
             edges[1..bins].partition_point(|&edge| edge <= value)
-        };
-        counts[index] += 1;
-    }
+        }
+    });
     Ok((counts, edges))
+}
+
+/// Histogram counts for caller-supplied, possibly nonuniform bucket edges.
+///
+/// Returns one count per adjacent pair of edges. Every bucket includes its
+/// lower edge, and the last bucket also includes its upper edge. Every sample
+/// appears in one bucket, including observations exactly on the outer edges.
+///
+/// # Errors
+///
+/// [`NumericError::Empty`] for an empty sample. [`NumericError::Domain`] if
+/// the edges contain fewer than two values, fail to increase strictly, or
+/// would require unallocatable counter storage. Non-finite observations or
+/// edges and observations outside the supplied range also give a domain error.
+pub fn histogram_edges(
+    values: &[f64],
+    edges: &[f64],
+) -> Result<Vec<i64>, NumericError> {
+    let (minimum, maximum) = finite_range(values)?;
+    let [first, interior @ .., last] = edges else {
+        return Err(NumericError::Domain(
+            "a histogram needs at least two edges".into(),
+        ));
+    };
+    if !first.is_finite() || !last.is_finite() || !edges.windows(2).all(|pair| pair[0] < pair[1]) {
+        return Err(NumericError::Domain(
+            "histogram edges must be finite and strictly increasing".into(),
+        ));
+    }
+    if minimum < *first || maximum > *last {
+        return Err(NumericError::Domain(
+            "histogram edges must enclose every observation".into(),
+        ));
+    }
+    let mut counts = empty_histogram_counts(edges.len() - 1)?;
+    count_histogram(values, &mut counts, |value| {
+        interior.partition_point(|&edge| edge <= value)
+    });
+    Ok(counts)
+}
+
+fn empty_histogram_counts(bins: usize) -> Result<Vec<i64>, NumericError> {
+    let mut counts = Vec::new();
+    counts
+        .try_reserve_exact(bins)
+        .map_err(|_| NumericError::Domain("histogram has too many buckets".into()))?;
+    counts.resize(bins, 0);
+    Ok(counts)
+}
+
+fn count_histogram(
+    values: &[f64],
+    counts: &mut [i64],
+    bucket: impl Fn(f64) -> usize + Sync,
+) {
+    const MIN_SHARD_VALUES: usize = 64 * 1024;
+    // Limit private counter storage and final merge traffic for wide histograms.
+    const MAX_PRIVATE_BUCKETS: usize = 32 * 1024;
+    let bins = counts.len();
+    let shard_limit = (values.len() / MIN_SHARD_VALUES).min(MAX_PRIVATE_BUCKETS / bins);
+    // A slice of f64 has fewer than i64::MAX elements on supported platforms.
+    let count = |input: &[f64], output: &mut [i64]| {
+        for &value in input {
+            output[bucket(value)] += 1;
+        }
+    };
+    if shard_limit < 2 {
+        count(values, counts);
+        return;
+    }
+    let shards = shard_limit.min(crate::execution::cpu_threads());
+    if shards < 2 {
+        count(values, counts);
+        return;
+    }
+    let shard_len = values.len().div_ceil(shards);
+    let Ok(mut private_counts) = empty_histogram_counts(values.len().div_ceil(shard_len) * bins)
+    else {
+        count(values, counts);
+        return;
+    };
+    super::par::for_chunks_mut(&mut private_counts, bins, 2, |index, row| {
+        let start = index * shard_len;
+        count(
+            &values[start..start.saturating_add(shard_len).min(values.len())],
+            row,
+        );
+    });
+    for row in private_counts.chunks_exact(bins) {
+        for (total, subtotal) in counts.iter_mut().zip(row) {
+            *total += subtotal;
+        }
+    }
 }
 
 /// The most frequent value of an exact sample.

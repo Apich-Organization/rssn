@@ -177,6 +177,214 @@ fn normal_log_pdf(
     Ok(density.solve_log_pdf(point, &mut vec![0.0; dim]))
 }
 
+fn weibull_log_ratio(
+    x: f64,
+    scale: f64,
+    ratio: f64,
+) -> f64 {
+    if (0.5..=2.0).contains(&ratio) {
+        // Near the scale, subtraction is exact and a large shape can
+        // amplify the error that division would introduce around one.
+        ((x - scale) / scale).ln_1p()
+    } else if ratio.is_normal() {
+        ratio.ln()
+    } else {
+        x.ln() - scale.ln()
+    }
+}
+
+const WEIBULL_SHAPE_ONE: u64 = 1.0_f64.to_bits();
+const WEIBULL_SHAPE_TWO: u64 = 2.0_f64.to_bits();
+
+#[inline]
+fn weibull_hazard(
+    x: f64,
+    shape: f64,
+    scale: f64,
+) -> f64 {
+    let ratio = x / scale;
+    match shape.to_bits() {
+        | WEIBULL_SHAPE_ONE => ratio,
+        | WEIBULL_SHAPE_TWO => ratio * ratio,
+        | _ if !ratio.is_normal() || (shape > 512.0 && (0.5..=2.0).contains(&ratio)) => {
+            (shape * weibull_log_ratio(x, scale, ratio)).exp()
+        },
+        | _ => ratio.powf(shape),
+    }
+}
+
+#[allow(
+    clippy::single_call_fn,
+    reason = "shares the Weibull cumulative hazard with the CDF"
+)]
+fn weibull_density(
+    x: f64,
+    shape: f64,
+    scale: f64,
+) -> f64 {
+    let hazard = weibull_hazard(x, shape, scale);
+    if hazard.is_infinite() {
+        return 0.0;
+    }
+    let rate = shape / x;
+    let coefficient = rate * hazard;
+    let attenuation = (-hazard).exp();
+    if rate.is_normal() && hazard.is_normal() && coefficient.is_normal() {
+        return if attenuation.is_normal() {
+            coefficient * attenuation
+        } else {
+            weibull_scale_exp(coefficient, -hazard)
+        };
+    }
+    let log_hazard = if hazard.is_normal() {
+        hazard.ln()
+    } else {
+        shape * weibull_log_ratio(x, scale, x / scale)
+    };
+    (shape.ln() - x.ln() + log_hazard - hazard).exp()
+}
+
+#[derive(Clone, Copy)]
+struct WeibullQuantile {
+    shape: f64,
+    inverse_shape: f64,
+    scale: f64,
+}
+
+impl WeibullQuantile {
+    const fn new(
+        shape: f64,
+        scale: f64,
+    ) -> Self {
+        Self {
+            shape,
+            inverse_shape: 1.0 / shape,
+            scale,
+        }
+    }
+
+    fn lower(
+        self,
+        probability: f64,
+    ) -> f64 {
+        self.solve_hazard(-(-probability).ln_1p(), 1.0 - probability)
+    }
+
+    fn upper(
+        self,
+        survival: f64,
+    ) -> f64 {
+        self.solve_hazard(-survival.ln(), survival)
+    }
+
+    fn solve_hazard(
+        self,
+        hazard: f64,
+        survival: f64,
+    ) -> f64 {
+        if hazard == 0.0 {
+            return 0.0;
+        }
+        if !hazard.is_finite() {
+            return hazard;
+        }
+        match self.shape.to_bits() {
+            | WEIBULL_SHAPE_ONE => return self.scale * hazard,
+            | WEIBULL_SHAPE_TWO => return self.scale * hazard.sqrt(),
+            | _ => {},
+        }
+        let near_unit_hazard = self.inverse_shape > 64.0 && (0.25..=0.5).contains(&survival);
+        if !near_unit_hazard && self.inverse_shape.is_finite() {
+            let root = hazard.powf(self.inverse_shape);
+            if root.is_normal() {
+                return self.scale * root;
+            }
+        }
+        let log_hazard = if near_unit_hazard {
+            // Split exp(-1) into its nearest binary64 value and residual.
+            // Around this pivot the rounded hazard can lose its deviation
+            // from one, which a small shape would amplify dramatically.
+            const E_INV: f64 = 0.367_879_441_171_442_33;
+            const E_INV_RESIDUAL: f64 = -1.242_875_367_278_836_3e-17;
+            let relative = ((survival - E_INV) - E_INV_RESIDUAL) / E_INV;
+            (-relative.ln_1p()).ln_1p()
+        } else {
+            hazard.ln()
+        };
+        weibull_scale_exp(self.scale, log_hazard / self.shape)
+    }
+}
+
+fn weibull_scale_exp(
+    scale: f64,
+    exponent: f64,
+) -> f64 {
+    if (-700.0..=700.0).contains(&exponent) {
+        return scale * exponent.exp();
+    }
+    if exponent.abs() > 1500.0 {
+        return if exponent.is_sign_negative() {
+            0.0
+        } else {
+            f64::INFINITY
+        };
+    }
+    // Each factor remains normal and the products move monotonically from
+    // the scale towards the quantile, even when exp(exponent) saturates.
+    let factor = (0.25 * exponent).exp();
+    (((scale * factor) * factor) * factor) * factor
+}
+
+/// Evaluates Weibull lower-tail quantiles using one validated shape and scale.
+///
+/// Probabilities are in `[0, 1]`. Order and repetitions are preserved, and an
+/// empty probability slice yields an empty vector. The endpoints are `0` and
+/// positive infinity, as in [`Distribution::quantile`].
+///
+/// # Errors
+/// Returns [`DistError::Domain`] for invalid parameters or probabilities.
+pub fn weibull_quantiles(
+    shape: f64,
+    scale: f64,
+    probabilities: &[f64],
+) -> Result<Vec<f64>, DistError> {
+    Distribution::Weibull { shape, scale }.validate()?;
+    let quantile = WeibullQuantile::new(shape, scale);
+    probabilities
+        .iter()
+        .map(|&probability| {
+            if (0.0..=1.0).contains(&probability) {
+                Ok(quantile.lower(probability))
+            } else {
+                Err(DistError::Domain(
+                    "a quantile needs `0 <= u <= 1`".to_string(),
+                ))
+            }
+        })
+        .collect()
+}
+
+/// Inverts the Weibull survival probability `P(X > x)` directly.
+///
+/// A survival probability of zero gives positive infinity, and a probability
+/// of one gives zero. Tiny positive probabilities retain the upper tail.
+///
+/// # Errors
+/// Returns [`DistError::Domain`] for invalid parameters or survival probability.
+pub fn weibull_inverse_survival(
+    shape: f64,
+    scale: f64,
+    survival: f64,
+) -> Result<f64, DistError> {
+    Distribution::Weibull { shape, scale }.validate()?;
+    if !(0.0..=1.0).contains(&survival) {
+        return Err(DistError::Domain(
+            "a survival probability needs `0 <= q <= 1`".to_string(),
+        ));
+    }
+    Ok(WeibullQuantile::new(shape, scale).upper(survival))
+}
+
 // Bounded integer bisection avoids unbounded mass summation and overflow in
 // a doubling search for quantiles outside the u64 count range.
 fn discrete_quantile(
@@ -373,6 +581,26 @@ pub enum Distribution {
     },
 }
 
+/// The quantile of a normal distribution whose parameters have been validated.
+fn normal_quantile(
+    mu: f64,
+    sigma: f64,
+    probability: f64,
+) -> f64 {
+    if crate::kernels::exact_eq(probability, 0.5) {
+        return mu;
+    }
+    let inverse = crate::kernels::special::inverse_erfc(2.0 * probability);
+    let quantile = mu - sigma * std::f64::consts::SQRT_2 * inverse;
+    if sigma.is_normal() && quantile.is_finite() {
+        return quantile;
+    }
+    // Form the standard-normal quantile first. A fused affine transform
+    // handles cancellation after a product above MAX and rounds a tiny scale
+    // only once. At the support endpoints, the infinite result is preserved.
+    (-std::f64::consts::SQRT_2 * inverse).mul_add(sigma, mu)
+}
+
 impl Distribution {
     pub(crate) fn validate(&self) -> Result<(), DistError> {
         let positive = |x: f64| x.is_finite() && x > 0.0;
@@ -553,9 +781,6 @@ impl Distribution {
                 (-0.5 * z * z - log_x - sigma.ln() - 0.5 * (2.0 * PI).ln()).exp()
             },
             | Self::Weibull { shape, scale } => {
-                if shape <= 0.0 || scale <= 0.0 {
-                    return f64::NAN;
-                }
                 if x < 0.0 {
                     return 0.0;
                 }
@@ -568,8 +793,7 @@ impl Distribution {
                         0.0
                     };
                 }
-                let ratio = x / scale;
-                (shape / scale) * ratio.powf(shape - 1.0) * (-ratio.powf(shape)).exp()
+                weibull_density(x, shape, scale)
             },
             | Self::Cauchy { loc, scale } => {
                 if scale <= 0.0 {
@@ -740,13 +964,10 @@ impl Distribution {
                 Self::Normal { mu, sigma }.cdf(x.ln())
             },
             | Self::Weibull { shape, scale } => {
-                if shape <= 0.0 || scale <= 0.0 {
-                    return f64::NAN;
-                }
                 if x <= 0.0 {
                     0.0
                 } else {
-                    -(-(x / scale).powf(shape)).exp_m1()
+                    -(-weibull_hazard(x, shape, scale)).exp_m1()
                 }
             },
             | Self::Cauchy { loc, scale } => {
@@ -920,13 +1141,8 @@ impl Distribution {
             ));
         }
         match *self {
-            | Self::Normal { mu, sigma } => {
-                Ok(mu
-                    - sigma
-                        * std::f64::consts::SQRT_2
-                        * crate::kernels::special::inverse_erfc(2.0 * u))
-            },
-            | Self::LogNormal { mu, sigma } => Ok(Self::Normal { mu, sigma }.quantile(u)?.exp()),
+            | Self::Normal { mu, sigma } => Ok(normal_quantile(mu, sigma, u)),
+            | Self::LogNormal { mu, sigma } => Ok(normal_quantile(mu, sigma, u).exp()),
             | Self::Uniform { lo, hi } => Ok(lo * (1.0 - u) + hi * u),
             | Self::Exponential { rate } => Ok(-(-u).ln_1p() / rate),
 
@@ -981,20 +1197,7 @@ impl Distribution {
                 }
                 Ok(q)
             },
-            | Self::Weibull { shape, scale } => {
-                if shape <= 0.0 || scale <= 0.0 {
-                    return Err(DistError::Domain(
-                        "Weibull requires positive shape and scale".to_string(),
-                    ));
-                }
-                if u == 0.0 {
-                    return Ok(0.0);
-                }
-                if crate::kernels::exact_eq(u, 1.0) {
-                    return Ok(f64::INFINITY);
-                }
-                Ok(scale * (-(1.0 - u).ln()).powf(1.0 / shape))
-            },
+            | Self::Weibull { shape, scale } => Ok(WeibullQuantile::new(shape, scale).lower(u)),
             | Self::Cauchy { loc, scale } => {
                 if scale <= 0.0 {
                     return Err(DistError::Domain(
@@ -1158,12 +1361,7 @@ impl Distribution {
             },
             | Self::LogNormal { mu, sigma } => (Self::Normal { mu, sigma }.sample(uniform)?).exp(),
             | Self::Weibull { shape, scale } => {
-                if shape <= 0.0 || scale <= 0.0 {
-                    return Err(DistError::Domain(
-                        "Weibull requires positive shape and scale".to_string(),
-                    ));
-                }
-                scale * (-one(uniform()).ln()).powf(1.0 / shape)
+                WeibullQuantile::new(shape, scale).upper(one(uniform()))
             },
             | Self::Cauchy { loc, scale } => {
                 if scale <= 0.0 {

@@ -1,9 +1,12 @@
 use std::f64::consts::TAU;
+use std::sync::Arc;
 
 use num_complex::Complex64;
+use rustfft::Fft;
 use rustfft::FftDirection;
 
 use super::SignalError;
+use crate::kernels::reuse::PlanCache;
 use crate::kernels::reuse::fft_plan;
 use crate::kernels::reuse::fft_scratch_for;
 
@@ -139,42 +142,32 @@ pub(super) fn zoom_fft(
         .checked_add(bins - 1)
         .and_then(usize::checked_next_power_of_two)
         .ok_or(SignalError::OutputSize)?;
-    let mut input = complex_zeros(size)?;
-    let mut kernel = complex_zeros(size)?;
-
     let half_step = step * 0.5;
-    let chirp_cycles = |index: usize| product_cycles(half_step, (index as f64).powi(2));
+    let kernel = zoom_kernel(samples.len(), bins, size, half_step)?;
+    let mut input = complex_zeros(size)?;
     for (index, (value, &sample)) in input.iter_mut().zip(samples).enumerate() {
-        let cycles = product_cycles(start, index as f64) + chirp_cycles(index);
+        let cycles = product_cycles(start, index as f64) + chirp_cycles(half_step, index);
         *value = sample * Complex64::from_polar(1.0, -TAU * cycles);
     }
-    for (bin, value) in kernel.iter_mut().take(bins).enumerate() {
-        *value = Complex64::from_polar(1.0, TAU * chirp_cycles(bin));
-    }
-    for (offset, value) in kernel.iter_mut().rev().take(samples.len() - 1).enumerate() {
-        *value = Complex64::from_polar(1.0, TAU * chirp_cycles(offset + 1));
-    }
-
-    let forward = fft_plan(size, FftDirection::Forward);
-    let inverse = fft_plan(size, FftDirection::Inverse);
-    let scratch_len = forward
-        .get_inplace_scratch_len()
-        .max(inverse.get_inplace_scratch_len());
-    let mut scratch = fft_scratch_for(scratch_len);
-    scratch.resize(scratch_len, Complex64::ZERO);
-    forward.process_with_scratch(&mut input, &mut scratch);
-    forward.process_with_scratch(&mut kernel, &mut scratch);
+    let mut scratch = fft_scratch_for(kernel.scratch_len);
+    scratch.resize(kernel.scratch_len, Complex64::ZERO);
+    kernel
+        .forward
+        .process_with_scratch(&mut input, &mut scratch);
     let reciprocal_size = 1.0 / size as f64;
-    for (data, response) in input.iter_mut().zip(kernel) {
+    for (data, response) in input.iter_mut().zip(&kernel.response) {
         *data *= response * reciprocal_size;
     }
+    let inverse = Arc::clone(&kernel.inverse);
+    drop(kernel);
     inverse.process_with_scratch(&mut input, &mut scratch);
+    drop(scratch);
     input
         .iter()
         .take(bins)
         .enumerate()
         .map(|(bin, value)| {
-            let output = value * Complex64::from_polar(1.0, -TAU * chirp_cycles(bin));
+            let output = value * Complex64::from_polar(1.0, -TAU * chirp_cycles(half_step, bin));
             if output.re.is_finite() && output.im.is_finite() {
                 Ok(output)
             } else {
@@ -182,6 +175,76 @@ pub(super) fn zoom_fft(
             }
         })
         .collect()
+}
+
+#[derive(PartialEq, Eq)]
+struct ZoomKey {
+    sample_count: usize,
+    bins: usize,
+    half_step: u64,
+}
+
+struct ZoomKernel {
+    response: Vec<Complex64>,
+    forward: Arc<dyn Fft<f64>>,
+    inverse: Arc<dyn Fft<f64>>,
+    scratch_len: usize,
+}
+
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "the caller checks the convolution length and handles degenerate grids early"
+)]
+fn zoom_kernel(
+    sample_count: usize,
+    bins: usize,
+    size: usize,
+    half_step: f64,
+) -> Result<Arc<ZoomKernel>, SignalError> {
+    static KERNELS: PlanCache<ZoomKey, ZoomKernel> = PlanCache::new(8);
+    let build = || {
+        let mut response = complex_zeros(size)?;
+        for (bin, value) in response.iter_mut().take(bins).enumerate() {
+            *value = Complex64::from_polar(1.0, TAU * chirp_cycles(half_step, bin));
+        }
+        for (offset, value) in response.iter_mut().rev().take(sample_count - 1).enumerate() {
+            *value = Complex64::from_polar(1.0, TAU * chirp_cycles(half_step, offset + 1));
+        }
+
+        let forward = fft_plan(size, FftDirection::Forward);
+        let inverse = fft_plan(size, FftDirection::Inverse);
+        let scratch_len = forward
+            .get_inplace_scratch_len()
+            .max(inverse.get_inplace_scratch_len());
+        let mut scratch = fft_scratch_for(scratch_len);
+        scratch.resize(scratch_len, Complex64::ZERO);
+        forward.process_with_scratch(&mut response, &mut scratch);
+        Ok(Arc::new(ZoomKernel {
+            response,
+            forward,
+            inverse,
+            scratch_len,
+        }))
+    };
+    if size <= 65_536 {
+        KERNELS.try_get_or_insert_with(
+            ZoomKey {
+                sample_count,
+                bins,
+                half_step: half_step.to_bits(),
+            },
+            build,
+        )
+    } else {
+        build()
+    }
+}
+
+fn chirp_cycles(
+    half_step: f64,
+    index: usize,
+) -> f64 {
+    product_cycles(half_step, (index as f64).powi(2))
 }
 
 fn complex_zeros(len: usize) -> Result<Vec<Complex64>, SignalError> {

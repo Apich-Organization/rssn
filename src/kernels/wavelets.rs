@@ -10,7 +10,7 @@
 //! * [`dwt`] / [`idwt`]: one level of the periodised transform — an even-length signal of `n`
 //!   samples maps to `n/2` approximation and `n/2` detail coefficients, and back, exactly.
 //! * [`dwt_with`] / [`idwt_with`]: one level with an explicit [`Boundary`] extension mode, for
-//!   odd as well as even lengths.
+//!   odd as well as even lengths. Use [`DwtPlan`] to reuse filter banks and output storage.
 //! * [`wavedec`] / [`waverec`] and [`wavedec_with`] / [`waverec_with`]: the multilevel
 //!   decomposition and its inverse.
 //! * [`wavelet_packet`] / [`inverse_wavelet_packet`]: the complete periodic binary tree,
@@ -356,8 +356,7 @@ impl Wavelet {
             | Boundary::Periodic => n.div_ceil(2),
             | _ => {
                 let h = self.synthesis_low_taps();
-                let g = self.synthesis_high();
-                let (_, count) = ext_layout(h, &g, n);
+                let (_, count) = ext_layout(h, self.analysis_low_taps(), n);
                 count
             },
         }
@@ -366,13 +365,14 @@ impl Wavelet {
 
 /// `g[k] = (-1)^k h[L-1-k]`, the high-pass bank that pairs with the low-pass `h`.
 fn alternating_mirror(h: &[f64]) -> Vec<f64> {
-    let l = h.len();
-    (0..l)
-        .map(|k| {
-            let v = h.get(l - 1 - k).copied().unwrap_or(0.0);
-            if k % 2 == 0 { v } else { -v }
-        })
-        .collect()
+    mirrored_taps(h).collect()
+}
+
+fn mirrored_taps(h: &[f64]) -> impl Iterator<Item = f64> + '_ {
+    h.iter()
+        .rev()
+        .enumerate()
+        .map(|(k, &v)| if k.is_multiple_of(2) { v } else { -v })
 }
 
 // `PyWavelets` `Wavelet(family).filter_bank`: `*_LOW` is `dec_lo` reversed (the analysis low-pass),
@@ -704,17 +704,25 @@ pub fn extend(
     i: isize,
     b: Boundary,
 ) -> f64 {
-    let n = x.len();
-    let Ok(len) = isize::try_from(n) else {
-        return 0.0;
-    };
+    extension_index(x.len(), i, b)
+        .and_then(|index| x.get(index))
+        .copied()
+        .unwrap_or(0.0)
+}
+
+fn extension_index(
+    n: usize,
+    i: isize,
+    b: Boundary,
+) -> Option<usize> {
+    let len = isize::try_from(n).ok()?;
     if len == 0 {
-        return 0.0;
+        return None;
     }
     let idx = match b {
         | Boundary::Zero => {
             if i < 0 || i >= len {
-                return 0.0;
+                return None;
             }
             i
         },
@@ -737,11 +745,7 @@ pub fn extend(
             }
         },
     };
-    usize::try_from(idx)
-        .ok()
-        .and_then(|k| x.get(k))
-        .copied()
-        .unwrap_or(0.0)
+    usize::try_from(idx).ok()
 }
 
 /// The first coefficient index `j_lo` and the coefficient count of an extension-mode transform.
@@ -750,13 +754,19 @@ pub fn extend(
 /// the two synthesis banks: those are exactly the `j` whose synthesis window `2j + m` reaches a
 /// sample of `x`.
 fn ext_layout(
-    low: &[f64],
-    high: &[f64],
+    synthesis_low: &[f64],
+    analysis_low: &[f64],
     n: usize,
 ) -> (isize, usize) {
     let mut lo = usize::MAX;
     let mut hi = 0;
-    for (m, v) in low.iter().enumerate().chain(high.iter().enumerate()) {
+    // The synthesis high-pass bank mirrors the analysis low-pass bank. Its
+    // alternating signs do not affect the nonzero support.
+    for (m, v) in synthesis_low
+        .iter()
+        .enumerate()
+        .chain(analysis_low.iter().rev().enumerate())
+    {
         if *v != 0.0 {
             lo = lo.min(m);
             hi = hi.max(m);
@@ -836,73 +846,263 @@ pub fn idwt(
     if a.len() != d.len() || a.is_empty() {
         return Err(WaveletError::Shape);
     }
-    idwt_with(a, d, w, Boundary::Periodic, 2 * a.len())
+    let n = a.len().checked_mul(2).ok_or(WaveletError::Shape)?;
+    idwt_with(a, d, w, Boundary::Periodic, n)
 }
 
-/// One level of the discrete wavelet transform with an explicit [`Boundary`] mode.
-///
-/// Returns `(approximation, detail)`, each of the length that [`Wavelet::coeff_len`] reports for
-/// `x.len()` and `b`. In [`Boundary::Periodic`] mode this is the circular transform of [`dwt`],
-/// extended by one sample for an odd length; in the other modes the analysis is evaluated on the
-/// boundary extension of the signal (see the module documentation for the exact index rule).
-///
-/// # Errors
-/// [`WaveletError::OddLength`] for an empty signal.
-pub fn dwt_with(
-    x: &[f64],
-    w: Wavelet,
-    b: Boundary,
-) -> Result<(Vec<f64>, Vec<f64>), WaveletError> {
-    let n = x.len();
-    if n == 0 {
-        return Err(WaveletError::OddLength);
+#[expect(
+    clippy::indexing_slicing,
+    reason = "the loop index is bounded by the catalogue length"
+)]
+const MAX_DWT_TAPS: usize = {
+    let mut max = 0;
+    let mut i = 0;
+    while i < Wavelet::ALL.len() {
+        let taps = Wavelet::ALL[i].taps();
+        if taps > max {
+            max = taps;
+        }
+        i += 1;
     }
-    let ha = w.analysis_low_taps();
-    let ga = w.analysis_high();
-    match b {
-        | Boundary::Periodic => {
-            // an odd signal is extended by one sample so that the circular transform acts on an
-            // even length; the inverse truncates the extra sample away again
-            let len = n + usize::from(!n.is_multiple_of(2));
-            let half = len / 2;
-            Ok((0..half)
-                .map(|k| {
+    max
+};
+
+#[derive(Clone, Copy, Debug)]
+enum DwtLayout {
+    Circular(usize),
+    Extension(isize),
+}
+
+/// The banks and boundary layout for repeated one-level transforms of a fixed length.
+///
+/// [`Self::analyze_into`] and [`Self::synthesize_into`] operate on caller-provided output
+/// slices. The plan can be shared across independent signals of the same length.
+#[derive(Clone, Debug)]
+pub struct DwtPlan {
+    signal_len: usize,
+    coeff_len: usize,
+    boundary: Boundary,
+    layout: DwtLayout,
+    analysis_low: &'static [f64],
+    analysis_high: [f64; MAX_DWT_TAPS],
+    synthesis_low: &'static [f64],
+    synthesis_high: [f64; MAX_DWT_TAPS],
+}
+
+impl DwtPlan {
+    /// Prepares one level for the given length, wavelet and boundary.
+    ///
+    /// # Errors
+    /// [`WaveletError::OddLength`] for an empty signal and [`WaveletError::Shape`]
+    /// for a length that cannot fit in a slice of `f64` values.
+    pub fn new(
+        w: Wavelet,
+        boundary: Boundary,
+        signal_len: usize,
+    ) -> Result<Self, WaveletError> {
+        if signal_len == 0 {
+            return Err(WaveletError::OddLength);
+        }
+        if signal_len
+            .checked_mul(size_of::<f64>())
+            .is_none_or(|bytes| bytes > isize::MAX as usize)
+        {
+            return Err(WaveletError::Shape);
+        }
+        let analysis_low = w.analysis_low_taps();
+        let synthesis_low = w.synthesis_low_taps();
+        let mut analysis_high = [0.0; MAX_DWT_TAPS];
+        let mut synthesis_high = [0.0; MAX_DWT_TAPS];
+        for (slot, tap) in analysis_high.iter_mut().zip(mirrored_taps(synthesis_low)) {
+            *slot = tap;
+        }
+        for (slot, tap) in synthesis_high.iter_mut().zip(mirrored_taps(analysis_low)) {
+            *slot = tap;
+        }
+        let (layout, coeff_len) = if boundary == Boundary::Periodic {
+            let coeff_len = signal_len.div_ceil(2);
+            let period = coeff_len.checked_mul(2).ok_or(WaveletError::Shape)?;
+            (DwtLayout::Circular(period), coeff_len)
+        } else {
+            let (first, coeff_len) = ext_layout(synthesis_low, analysis_low, signal_len);
+            (DwtLayout::Extension(first), coeff_len)
+        };
+        Ok(Self {
+            signal_len,
+            coeff_len,
+            boundary,
+            layout,
+            analysis_low,
+            analysis_high,
+            synthesis_low,
+            synthesis_high,
+        })
+    }
+
+    /// Number of samples in the input or reconstructed signal.
+    #[must_use]
+    pub const fn signal_len(&self) -> usize {
+        self.signal_len
+    }
+
+    /// Number of entries in each approximation or detail band.
+    #[must_use]
+    pub const fn coeff_len(&self) -> usize {
+        self.coeff_len
+    }
+
+    /// Writes one level of approximation and detail coefficients in the plan's layout.
+    ///
+    /// # Errors
+    /// Returns [`WaveletError::Shape`] for a length mismatch, without changing the output slices.
+    pub fn analyze_into(
+        &self,
+        x: &[f64],
+        a: &mut [f64],
+        d: &mut [f64],
+    ) -> Result<(), WaveletError> {
+        if x.len() != self.signal_len || a.len() != self.coeff_len || d.len() != self.coeff_len {
+            return Err(WaveletError::Shape);
+        }
+        self.analyze(x, a, d);
+        Ok(())
+    }
+
+    #[expect(
+        clippy::arithmetic_side_effects,
+        clippy::indexing_slicing,
+        clippy::option_if_let_else,
+        reason = "the plan bounds the windows and makes the interior and boundary branches explicit"
+    )]
+    fn analyze(
+        &self,
+        x: &[f64],
+        a: &mut [f64],
+        d: &mut [f64],
+    ) {
+        let mut slots = a.iter_mut().zip(d);
+        let mut output = |approximation, detail| {
+            if let Some((a, d)) = slots.next() {
+                *a = approximation;
+                *d = detail;
+            }
+        };
+        let ha = self.analysis_low;
+        let ga = &self.analysis_high[..ha.len()];
+        match self.layout {
+            | DwtLayout::Circular(period) => {
+                for k in 0..self.coeff_len {
                     let start = 2 * k;
-                    if let Some(samples) = x.get(start..start + ha.len()) {
-                        return apply_analysis(ha, &ga, samples.iter().copied());
+                    let (a, d) = if let Some(samples) = x.get(start..start + ha.len()) {
+                        apply_analysis(ha, ga, samples.iter().copied())
+                    } else {
+                        apply_analysis(
+                            ha,
+                            ga,
+                            (0..ha.len()).map(|m| {
+                                let index = (start + m) % period;
+                                // In the odd-length case only the final slot is artificial.
+                                x.get(index)
+                                    .or_else(|| x.first())
+                                    .copied()
+                                    .unwrap_or_default()
+                            }),
+                        )
+                    };
+                    output(a, d);
+                }
+            },
+            | DwtLayout::Extension(j_lo) => {
+                for k in 0..self.coeff_len {
+                    let first = 2 * (j_lo + isize::try_from(k).unwrap_or_default());
+                    let (a, d) = if let Ok(start) = usize::try_from(first)
+                        && let Some(samples) = x.get(start..start + ha.len())
+                    {
+                        apply_analysis(ha, ga, samples.iter().copied())
+                    } else {
+                        apply_analysis(
+                            ha,
+                            ga,
+                            (0..ha.len()).map(|m| {
+                                extend(
+                                    x,
+                                    first + isize::try_from(m).unwrap_or_default(),
+                                    self.boundary,
+                                )
+                            }),
+                        )
+                    };
+                    output(a, d);
+                }
+            },
+        }
+    }
+
+    /// Reconstructs one level into the given output slice.
+    ///
+    /// # Errors
+    /// Returns [`WaveletError::Shape`] for a length mismatch, without changing the output slice.
+    pub fn synthesize_into(
+        &self,
+        a: &[f64],
+        d: &[f64],
+        x: &mut [f64],
+    ) -> Result<(), WaveletError> {
+        if x.len() != self.signal_len || a.len() != self.coeff_len || d.len() != self.coeff_len {
+            return Err(WaveletError::Shape);
+        }
+        x.fill(0.0);
+        self.synthesize(a, d, x);
+        Ok(())
+    }
+
+    #[expect(
+        clippy::arithmetic_side_effects,
+        clippy::indexing_slicing,
+        reason = "the checked plan bounds the synthesis window and filter bank lengths"
+    )]
+    fn synthesize(
+        &self,
+        a: &[f64],
+        d: &[f64],
+        x: &mut [f64],
+    ) {
+        let hs = self.synthesis_low;
+        let gs = &self.synthesis_high[..hs.len()];
+        match self.layout {
+            | DwtLayout::Circular(period) => {
+                for (k, (&ak, &dk)) in a.iter().zip(d).enumerate() {
+                    let start = 2 * k;
+                    if let Some(window) = x.get_mut(start..start + hs.len()) {
+                        apply_synthesis(window, hs, gs, ak, dk);
+                    } else {
+                        for (m, (&hm, &gm)) in hs.iter().zip(gs).enumerate() {
+                            // An odd signal's artificial sample is outside the returned slice.
+                            if let Some(slot) = x.get_mut((start + m) % period) {
+                                *slot += hm * ak + gm * dk;
+                            }
+                        }
                     }
-                    apply_analysis(
-                        ha,
-                        &ga,
-                        (0..ha.len()).map(|m| {
-                            // The only slot not in x is the duplicate x[0] at
-                            // the end of an odd-length periodic extension.
-                            let index = (start + m) % len;
-                            x.get(index)
-                                .or_else(|| x.first())
-                                .copied()
-                                .unwrap_or_default()
-                        }),
-                    )
-                })
-                .unzip())
-        },
-        | _ => {
-            let hs = w.synthesis_low_taps();
-            let gs = w.synthesis_high();
-            let (j_lo, count) = ext_layout(hs, &gs, n);
-            Ok((0..count)
-                .map(|q| {
-                    let j = j_lo + isize::try_from(q).unwrap_or(0);
-                    apply_analysis(
-                        ha,
-                        &ga,
-                        (0..ha.len())
-                            .map(|m| extend(x, 2 * j + isize::try_from(m).unwrap_or(0), b)),
-                    )
-                })
-                .unzip())
-        },
+                }
+            },
+            | DwtLayout::Extension(j_lo) => {
+                for (k, (&ak, &dk)) in a.iter().zip(d).enumerate() {
+                    let first = 2 * (j_lo + isize::try_from(k).unwrap_or_default());
+                    if let Ok(start) = usize::try_from(first)
+                        && let Some(window) = x.get_mut(start..start + hs.len())
+                    {
+                        apply_synthesis(window, hs, gs, ak, dk);
+                    } else {
+                        for (m, (&hm, &gm)) in hs.iter().zip(gs).enumerate() {
+                            let i = first + isize::try_from(m).unwrap_or_default();
+                            if let Some(slot) = usize::try_from(i).ok().and_then(|j| x.get_mut(j)) {
+                                *slot += hm * ak + gm * dk;
+                            }
+                        }
+                    }
+                }
+            },
+        }
     }
 }
 
@@ -920,7 +1120,40 @@ fn apply_analysis(
     (approximation, detail)
 }
 
-/// Inverse of [`dwt_with`]; `n` is the length of the signal that produced the coefficients.
+fn apply_synthesis(
+    x: &mut [f64],
+    low: &[f64],
+    high: &[f64],
+    a: f64,
+    d: f64,
+) {
+    for (slot, (&h, &g)) in x.iter_mut().zip(low.iter().zip(high)) {
+        *slot += h * a + g * d;
+    }
+}
+
+/// One level of the discrete wavelet transform with an explicit [`Boundary`] mode.
+///
+/// Returns `(approximation, detail)`, each of the length that [`Wavelet::coeff_len`] reports for
+/// `x.len()` and `b`. In [`Boundary::Periodic`] mode this is the circular transform of [`dwt`],
+/// extended by one sample for an odd length. Other modes use the documented boundary extension.
+/// Use [`DwtPlan`] to reuse the banks and output storage.
+///
+/// # Errors
+/// [`WaveletError::OddLength`] for an empty signal.
+pub fn dwt_with(
+    x: &[f64],
+    w: Wavelet,
+    b: Boundary,
+) -> Result<(Vec<f64>, Vec<f64>), WaveletError> {
+    let plan = DwtPlan::new(w, b, x.len())?;
+    let mut a = vec![0.0; plan.coeff_len()];
+    let mut d = vec![0.0; plan.coeff_len()];
+    plan.analyze_into(x, &mut a, &mut d)?;
+    Ok((a, d))
+}
+
+/// Inverse of [`dwt_with`]. `n` is the length of the signal that produced the coefficients.
 ///
 /// # Errors
 /// [`WaveletError::Shape`] when the lists differ in length, are empty, or do not match
@@ -932,46 +1165,16 @@ pub fn idwt_with(
     b: Boundary,
     n: usize,
 ) -> Result<Vec<f64>, WaveletError> {
-    if a.len() != d.len() || a.is_empty() || a.len() != w.coeff_len(n, b) {
+    if a.len() != d.len() || a.is_empty() {
         return Err(WaveletError::Shape);
     }
-    let hs = w.synthesis_low_taps();
-    let gs = w.synthesis_high();
-    match b {
-        | Boundary::Periodic => {
-            // the odd case reconstructs the padded even signal and drops the extra sample
-            let len = if n.is_multiple_of(2) {
-                n
-            } else {
-                n + 1
-            };
-            let mut x = vec![0.0; len];
-            for (k, (ak, dk)) in a.iter().zip(d).enumerate() {
-                for (m, (hm, gm)) in hs.iter().zip(&gs).enumerate() {
-                    if let Some(slot) = x.get_mut((2 * k + m) % len) {
-                        *slot += hm * ak + gm * dk;
-                    }
-                }
-            }
-            x.truncate(n);
-            Ok(x)
-        },
-        | _ => {
-            let (j_lo, _) = ext_layout(hs, &gs, n);
-            let mut x = vec![0.0; n];
-            for (q, (aq, dq)) in a.iter().zip(d).enumerate() {
-                let j = j_lo + isize::try_from(q).unwrap_or(0);
-                for (m, (hm, gm)) in hs.iter().zip(&gs).enumerate() {
-                    let i = 2 * j + isize::try_from(m).unwrap_or(0);
-                    let slot = usize::try_from(i).ok().and_then(|k| x.get_mut(k));
-                    if let Some(slot) = slot {
-                        *slot += hm * aq + gm * dq;
-                    }
-                }
-            }
-            Ok(x)
-        },
+    let plan = DwtPlan::new(w, b, n).map_err(|_| WaveletError::Shape)?;
+    if a.len() != plan.coeff_len() {
+        return Err(WaveletError::Shape);
     }
+    let mut x = vec![0.0; n];
+    plan.synthesize(a, d, &mut x);
+    Ok(x)
 }
 
 /// Errors from stationary wavelet transforms and thresholding.
@@ -1033,11 +1236,12 @@ pub fn swt(
     let high = wavelet.analysis_high();
     let n = samples.len();
     let mut approximation = samples.to_vec();
+    let mut next = Vec::new();
     let mut bands = Vec::with_capacity(levels + 1);
     for level in 0..levels {
         let offsets = stationary_offsets(n, 1 << level, low.len());
-        let mut next = vec![0.0; n];
-        let detail = par::map_indexed(n, 4_096, |index| {
+        let mut high_band = Vec::new();
+        par::unzip_indexed_into(n, 4_096, &mut next, &mut high_band, |index| {
             let values = offsets.iter().map(|&offset| {
                 let wrapped = if offset >= n - index {
                     offset - (n - index)
@@ -1048,16 +1252,15 @@ pub fn swt(
             });
             apply_analysis(low, &high, values)
         });
-        let mut high_band = Vec::with_capacity(n);
-        for ((a, d), output) in detail.into_iter().zip(&mut next) {
-            if !a.is_finite() || !d.is_finite() {
-                return Err(WaveletProcessingError::NonFiniteResult);
-            }
-            *output = a;
-            high_band.push(d);
+        if next
+            .iter()
+            .zip(&high_band)
+            .any(|(a, d)| !a.is_finite() || !d.is_finite())
+        {
+            return Err(WaveletProcessingError::NonFiniteResult);
         }
         bands.push(high_band);
-        approximation = next;
+        std::mem::swap(&mut approximation, &mut next);
     }
     bands.push(approximation);
     bands.reverse();
@@ -1091,9 +1294,10 @@ pub fn iswt(
     let low = wavelet.synthesis_low_taps();
     let high = wavelet.synthesis_high();
     let mut approximation = approximation.clone();
+    let mut next = Vec::new();
     for (level, detail) in (0..details.len()).rev().zip(details) {
         let offsets = stationary_offsets(n, 1 << level, low.len());
-        approximation = par::map_indexed(n, 4_096, |index| {
+        par::map_indexed_into(n, 4_096, &mut next, |index| {
             low.iter()
                 .zip(&high)
                 .zip(&offsets)
@@ -1107,9 +1311,10 @@ pub fn iswt(
                 })
                 .sum::<f64>()
         });
-        if approximation.iter().any(|value| !value.is_finite()) {
+        if next.iter().any(|value| !value.is_finite()) {
             return Err(WaveletProcessingError::NonFiniteResult);
         }
+        std::mem::swap(&mut approximation, &mut next);
     }
     Ok(approximation)
 }
@@ -1241,22 +1446,24 @@ pub fn wavedec(
     w: Wavelet,
     levels: usize,
 ) -> Result<Vec<Vec<f64>>, WaveletError> {
-    if x.is_empty() || levels == 0 || levels > x.len().trailing_zeros() as usize {
+    if x.is_empty()
+        || levels == 0
+        || levels > x.len().trailing_zeros() as usize
+        || (x.len() >> levels.saturating_sub(1)) < w.taps()
+    {
         return Err(WaveletError::TooManyLevels);
     }
-    let mut details = Vec::new();
-    let mut current = x.to_vec();
-    for _ in 0..levels {
-        if current.len() < w.taps() {
-            return Err(WaveletError::TooManyLevels);
-        }
+    let (mut current, first_detail) = dwt(x, w)?;
+    let mut details = Vec::with_capacity(levels.saturating_add(1));
+    details.push(first_detail);
+    for _ in 1..levels {
         let (a, d) = dwt(&current, w)?;
         details.push(d);
         current = a;
     }
-    let mut out = vec![current];
-    out.extend(details.into_iter().rev());
-    Ok(out)
+    details.push(current);
+    details.reverse();
+    Ok(details)
 }
 
 /// Inverse of [`wavedec`].
@@ -1411,7 +1618,8 @@ pub fn waverec_with(
 /// `(2*ra) x (2*ca)` row-major array with `ra = w.coeff_len(rows, b)` and
 /// `ca = w.coeff_len(cols, b)`: `LL` at rows `0..ra`, columns `0..ca`; `LH` at rows `0..ra`,
 /// columns `ca..2ca`; `HL` at rows `ra..2ra`, columns `0..ca`; `HH` at rows `ra..2ra`, columns
-/// `ca..2ca`. `LH` is the low band along the row index and the high band along the column index.
+/// `ca..2ca`. In each label, the first letter gives the filter within each row (horizontal)
+/// and the second the filter within each column (vertical).
 ///
 /// # Errors
 /// [`WaveletError::Shape`] when `rows * cols` does not match `x.len()`, or when a row or column
@@ -1427,38 +1635,57 @@ pub fn dwt2(
     if rows == 0 || cols == 0 || x.len() != total {
         return Err(WaveletError::Shape);
     }
-    let ca = w.coeff_len(cols, b);
-    let ra = w.coeff_len(rows, b);
-    let band = rows.checked_mul(ca).ok_or(WaveletError::Shape)?;
-    let mut low = vec![0.0; band];
-    let mut high = vec![0.0; band];
-    for r in 0..rows {
-        let start = r * cols;
-        let (a, d) = dwt_with(&x[start..start + cols], w, b)?;
-        low[r * ca..][..ca].copy_from_slice(&a);
-        high[r * ca..][..ca].copy_from_slice(&d);
-    }
-    let out_rows = ra.checked_mul(2).ok_or(WaveletError::Shape)?;
+    let horizontal = DwtPlan::new(w, b, cols)?;
+    let vertical = DwtPlan::new(w, b, rows)?;
+    let (ra, ca) = (vertical.coeff_len(), horizontal.coeff_len());
     let out_cols = ca.checked_mul(2).ok_or(WaveletError::Shape)?;
-    let mut out = vec![0.0; out_rows.checked_mul(out_cols).ok_or(WaveletError::Shape)?];
-    let mut column = f64_scratch(rows);
-    for c in 0..ca {
-        for (src, offset) in [(&low, 0_usize), (&high, ra)] {
-            column.clear();
-            column.extend(src.chunks_exact(ca).map(|row| row[c]));
-            let (a, d) = dwt_with(&column, w, b)?;
-            for (i, v) in a.iter().enumerate() {
-                if let Some(slot) = out.get_mut((offset + i) * out_cols + c) {
-                    *slot = *v;
-                }
-            }
-            for (i, v) in d.iter().enumerate() {
-                if let Some(slot) = out.get_mut((offset + i) * out_cols + ca + c) {
-                    *slot = *v;
-                }
+    let half = ra.checked_mul(out_cols).ok_or(WaveletError::Shape)?;
+    let out_len = half.checked_mul(2).ok_or(WaveletError::Shape)?;
+    if out_len == 0 {
+        return Ok(Vec::new());
+    }
+    let workspace_len = rows.checked_mul(out_cols).ok_or(WaveletError::Shape)?;
+    let mut workspace = f64_scratch(workspace_len);
+    workspace.resize(workspace_len, 0.0);
+    let row_grain = transform2_row_grain(ca, w);
+    par::for_chunks_mut(&mut workspace, out_cols, row_grain, |index, band| {
+        let (a, d) = band.split_at_mut(ca);
+        horizontal.analyze(&x[index * cols..][..cols], a, d);
+    });
+
+    let mut out = vec![0.0; out_len];
+    let mut zero_row = f64_scratch(ca);
+    zero_row.resize(ca, 0.0);
+    let column_grain = transform2_row_grain(ca, w);
+    par::for_chunks_mut(&mut out, out_cols, column_grain, |index, row| {
+        let coefficient = index % ra;
+        let offset = (index / ra) * ca;
+        let (approximation, detail) = row.split_at_mut(ca);
+        for (tap, (&h, &g)) in vertical
+            .analysis_low
+            .iter()
+            .zip(&vertical.analysis_high)
+            .enumerate()
+        {
+            let input = match vertical.layout {
+                | DwtLayout::Circular(period) => {
+                    let row = (2 * coefficient + tap) % period;
+                    Some(if row == rows { 0 } else { row })
+                },
+                | DwtLayout::Extension(first) => {
+                    let start = 2 * (first + isize::try_from(coefficient).unwrap_or_default());
+                    extension_index(rows, start + isize::try_from(tap).unwrap_or_default(), b)
+                },
+            };
+            let samples = input.map_or(&zero_row[..], |sample_row| {
+                &workspace[sample_row * out_cols + offset..][..ca]
+            });
+            for ((a, d), &sample) in approximation.iter_mut().zip(detail.iter_mut()).zip(samples) {
+                *a += h * sample;
+                *d += g * sample;
             }
         }
-    }
+    });
     Ok(out)
 }
 
@@ -1475,39 +1702,76 @@ pub fn idwt2(
     b: Boundary,
 ) -> Result<Vec<f64>, WaveletError> {
     let total = rows.checked_mul(cols).ok_or(WaveletError::Shape)?;
-    let ca = w.coeff_len(cols, b);
-    let ra = w.coeff_len(rows, b);
-    if total == 0 || ca == 0 || ra == 0 {
+    if total == 0 {
         return Err(WaveletError::Shape);
     }
-    let out_rows = ra.checked_mul(2).ok_or(WaveletError::Shape)?;
+    let horizontal = DwtPlan::new(w, b, cols).map_err(|_| WaveletError::Shape)?;
+    let vertical = DwtPlan::new(w, b, rows).map_err(|_| WaveletError::Shape)?;
+    let (ra, ca) = (vertical.coeff_len(), horizontal.coeff_len());
+    if ca == 0 || ra == 0 {
+        return Err(WaveletError::Shape);
+    }
     let out_cols = ca.checked_mul(2).ok_or(WaveletError::Shape)?;
-    if c.len() != out_rows.checked_mul(out_cols).ok_or(WaveletError::Shape)? {
+    let half = ra.checked_mul(out_cols).ok_or(WaveletError::Shape)?;
+    if c.len() != half.checked_mul(2).ok_or(WaveletError::Shape)? {
         return Err(WaveletError::Shape);
     }
-    let band = rows.checked_mul(ca).ok_or(WaveletError::Shape)?;
-    let mut low = vec![0.0; band];
-    let mut high = vec![0.0; band];
-    let mut ll = f64_scratch(ra);
-    let mut hh = f64_scratch(ra);
-    for col in 0..ca {
-        for (dst, offset) in [(&mut low, 0_usize), (&mut high, ra)] {
-            ll.clear();
-            hh.clear();
-            let source = c[offset * out_cols..].chunks_exact(out_cols).take(ra);
-            ll.extend(source.clone().map(|row| row[col]));
-            hh.extend(source.map(|row| row[ca + col]));
-            let column = idwt_with(&ll, &hh, w, b, rows)?;
-            for (row, value) in dst.chunks_exact_mut(ca).zip(column) {
+    let band_len = rows.checked_mul(ca).ok_or(WaveletError::Shape)?;
+    let workspace_len = band_len.checked_mul(2).ok_or(WaveletError::Shape)?;
+    let mut workspace = f64_scratch(workspace_len);
+    workspace.resize(workspace_len, 0.0);
+    let band_grain = transform2_band_grain(ca, ra, w);
+    par::for_chunks_mut(&mut workspace, band_len, band_grain, |band, dst| {
+        let source = &c[band * half..][..half];
+        let mut approximation = f64_scratch(ra);
+        let mut detail = f64_scratch(ra);
+        let mut column = f64_scratch(rows);
+        column.resize(rows, 0.0);
+        for col in 0..ca {
+            approximation.clear();
+            detail.clear();
+            approximation.extend(source.chunks_exact(out_cols).map(|row| row[col]));
+            detail.extend(source.chunks_exact(out_cols).map(|row| row[ca + col]));
+            column.fill(0.0);
+            vertical.synthesize(&approximation, &detail, &mut column);
+            for (row, &value) in dst.chunks_exact_mut(ca).zip(column.iter()) {
                 row[col] = value;
             }
         }
-    }
-    let mut out = Vec::with_capacity(total);
-    for (a, d) in low.chunks_exact(ca).zip(high.chunks_exact(ca)) {
-        out.extend(idwt_with(a, d, w, b, cols)?);
-    }
+    });
+    let (low, high) = workspace.split_at(band_len);
+    let mut out = vec![0.0; total];
+    let row_grain = transform2_row_grain(ca, w);
+    par::for_chunks_mut(&mut out, cols, row_grain, |index, row| {
+        horizontal.synthesize(&low[index * ca..][..ca], &high[index * ca..][..ca], row);
+    });
     Ok(out)
+}
+
+// Both passes use checked shapes and the same per-coefficient operation order.
+// Base the worker cutoff on the estimated number of filter taps, so short
+// filters and narrow rows do not start a parallel job for a small matrix.
+const TRANSFORM2_MIN_TAPS: usize = 65_536;
+
+fn transform2_row_grain(
+    coefficients: usize,
+    wavelet: Wavelet,
+) -> usize {
+    TRANSFORM2_MIN_TAPS
+        .div_ceil(coefficients.saturating_mul(wavelet.taps()).max(1))
+        .max(2)
+}
+
+const fn transform2_band_grain(
+    width: usize,
+    height: usize,
+    wavelet: Wavelet,
+) -> usize {
+    if width.saturating_mul(height).saturating_mul(wavelet.taps()) >= TRANSFORM2_MIN_TAPS {
+        2
+    } else {
+        3
+    }
 }
 
 /// Multilevel separable two-dimensional decomposition: `[LL_L, packed_L, ..., packed_1]`.
@@ -1983,16 +2247,12 @@ mod tests {
     fn the_extension_layout_covers_the_synthesis_support() {
         // bior1.3: the synthesis banks span [0, 5], so the first coefficient of a length-7 signal
         // sits at j = -2 and six coefficients reach every sample of the signal
-        let high = alternating_mirror(&Wavelet::Bior1_3.analysis_low());
-        let (j_lo, count) = ext_layout(&Wavelet::Bior1_3.synthesis_low(), &high, 7);
+        let w = Wavelet::Bior1_3;
+        let (j_lo, count) = ext_layout(w.synthesis_low_taps(), w.analysis_low_taps(), 7);
         assert_eq!((j_lo, count), (-2, 6));
         // Haar: support [0, 1], so the layout is the plain ceil(n/2) of the periodised transform
         let haar = Wavelet::Haar;
-        let (j_lo, count) = ext_layout(
-            &haar.synthesis_low(),
-            &alternating_mirror(&haar.analysis_low()),
-            9,
-        );
+        let (j_lo, count) = ext_layout(haar.synthesis_low_taps(), haar.analysis_low_taps(), 9);
         assert_eq!((j_lo, count), (0, 5));
     }
 

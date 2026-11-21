@@ -13,10 +13,23 @@
 
 use std::f64::consts::PI;
 
+use num_integer::gcd;
+
 use crate::kernels::dense::Mat;
 use crate::kernels::dense::{
     self,
 };
+use crate::kernels::fft::Complex64;
+use crate::kernels::fft::Norm;
+use crate::kernels::fft::transform_in_place;
+use crate::kernels::interp_ext::shape_preserving::Segment;
+use crate::kernels::interp_ext::shape_preserving::pchip_polynomials;
+use crate::kernels::interpolate::scaled_grid_interval_distances;
+use crate::kernels::jacobian::BandLu;
+use crate::kernels::par::map_indexed;
+use crate::kernels::par::try_map_indexed;
+use crate::kernels::reuse::f64_scratch;
+use crate::kernels::reuse::fft_scratch_for;
 
 /// Errors of the approximation routines.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -278,52 +291,132 @@ impl CubicSpline {
 /// Preserves the monotonicity of the data: no overshoot between knots.
 #[derive(Debug, Clone)]
 pub struct Pchip {
-    x: Vec<f64>,
-    y: Vec<f64>,
-    d: Vec<f64>,
+    data: PchipData,
+}
+
+#[derive(Debug, Clone)]
+enum PchipData {
+    Ordinary {
+        x: Vec<f64>,
+        y: Vec<f64>,
+        polynomial: Vec<[f64; 3]>,
+        last_tangent: f64,
+    },
+    Scaled(Vec<Segment>),
 }
 
 impl Pchip {
     /// Builds the interpolant.
     ///
     /// # Errors
-    /// [`ApproxError::Invalid`] for fewer than 2 points or non-increasing `x`.
+    /// [`ApproxError::Invalid`] for non-finite data, mismatched lengths,
+    /// fewer than two samples, or non-increasing coordinates.
     pub fn new(
         x: &[f64],
         y: &[f64],
     ) -> Result<Self, ApproxError> {
-        check_grid(x, y, 2)?;
-        let n = x.len();
-        let h: Vec<f64> = x.windows(2).map(|w| w[1] - w[0]).collect();
-        let del: Vec<f64> = (0..n - 1).map(|i| (y[i + 1] - y[i]) / h[i]).collect();
-        let mut d = vec![0.0; n];
-        if n == 2 {
-            d.fill(del[0]);
-        } else {
-            for i in 1..n - 1 {
-                if del[i - 1] * del[i] > 0.0 {
-                    let w1 = 2.0 * h[i] + h[i - 1];
-                    let w2 = h[i] + 2.0 * h[i - 1];
-                    d[i] = (w1 + w2) / (w1 / del[i - 1] + w2 / del[i]);
-                }
+        let data = if let Some((polynomial, last_tangent)) = pchip_polynomials(x, y) {
+            PchipData::Ordinary {
+                x: x.to_vec(),
+                y: y.to_vec(),
+                polynomial,
+                last_tangent,
             }
-            let end = |h0: f64, h1: f64, d0: f64, d1: f64| {
-                let mut v = ((2.0 * h0 + h1) * d0 - h0 * d1) / (h0 + h1);
-                if v.signum() != d0.signum() {
-                    v = 0.0;
-                } else if d0.signum() != d1.signum() && v.abs() > 3.0 * d0.abs() {
-                    v = 3.0 * d0;
-                }
-                v
-            };
-            d[0] = end(h[0], h[1], del[0], del[1]);
-            d[n - 1] = end(h[n - 2], h[n - 3], del[n - 2], del[n - 3]);
+        } else {
+            Self::validate_samples(x, y)?;
+            PchipData::Scaled(map_indexed(x.len() - 1, 4096, |i| Segment::pchip(x, y, i)))
+        };
+        Ok(Self { data })
+    }
+
+    pub(crate) fn validate_samples(
+        x: &[f64],
+        y: &[f64],
+    ) -> Result<(), ApproxError> {
+        check_grid(x, y, 2)?;
+        if x.iter().chain(y).any(|v| !v.is_finite()) {
+            return Err(ApproxError::Invalid);
         }
-        Ok(Self {
-            x: x.to_vec(),
-            y: y.to_vec(),
-            d,
-        })
+        Ok(())
+    }
+
+    /// A one-off query over checked samples, as in a portable model payload.
+    #[allow(
+        clippy::single_call_fn,
+        reason = "lets the portable value adapter reuse the same segment arithmetic"
+    )]
+    pub(crate) fn query_checked_samples(
+        x: &[f64],
+        y: &[f64],
+        query: f64,
+        derivative: bool,
+    ) -> f64 {
+        if !query.is_finite() {
+            return f64::NAN;
+        }
+        let i = pchip_segment_index(x, query);
+        let segment = Segment::pchip(x, y, i);
+        if derivative {
+            segment.derivative(query)
+        } else {
+            segment.value(query)
+        }
+    }
+
+    #[inline]
+    fn evaluate(
+        &self,
+        query: f64,
+        derivative: bool,
+    ) -> f64 {
+        if !query.is_finite() {
+            return f64::NAN;
+        }
+        let eval = |segment: &Segment| {
+            if derivative {
+                segment.derivative(query)
+            } else {
+                segment.value(query)
+            }
+        };
+        match &self.data {
+            | PchipData::Ordinary {
+                x,
+                y,
+                polynomial,
+                last_tangent,
+            } => {
+                let i = pchip_segment_index(x, query);
+                let width = x[i + 1] - x[i];
+                let t = (query - x[i]) / width;
+                let [left, quadratic, cubic] = polynomial[i];
+                let right = crate::kernels::exact_eq(query, x[i + 1]);
+                let direct = if derivative {
+                    if right {
+                        last_tangent / width
+                    } else {
+                        ((3.0 * cubic * t + 2.0 * quadratic) * t + left) / width
+                    }
+                } else if right {
+                    y[i + 1]
+                } else if t == 0.0 && crate::kernels::exact_eq(query, x[i]) {
+                    y[i]
+                } else {
+                    ((cubic * t + quadratic) * t + left) * t + y[i]
+                };
+                if direct.is_finite() && (t != 0.0 || crate::kernels::exact_eq(query, x[i])) {
+                    direct
+                } else {
+                    eval(&Segment::pchip(x, y, i))
+                }
+            },
+            | PchipData::Scaled(segments) => {
+                let i = segments
+                    .partition_point(|segment| segment.left_coordinate() <= query)
+                    .saturating_sub(1);
+                eval(&segments[i])
+            },
+        }
     }
 
     /// Value at `x`.
@@ -332,20 +425,7 @@ impl Pchip {
         &self,
         x: f64,
     ) -> f64 {
-        let i = self
-            .x
-            .partition_point(|&v| v <= x)
-            .saturating_sub(1)
-            .min(self.x.len() - 2);
-        let h = self.x[i + 1] - self.x[i];
-        let s = (x - self.x[i]) / h;
-        let (h00, h10, h01, h11) = (
-            (1.0 + 2.0 * s) * (1.0 - s) * (1.0 - s),
-            s * (1.0 - s) * (1.0 - s),
-            s * s * (3.0 - 2.0 * s),
-            s * s * (s - 1.0),
-        );
-        h00 * self.y[i] + h10 * h * self.d[i] + h01 * self.y[i + 1] + h11 * h * self.d[i + 1]
+        self.evaluate(x, false)
     }
 
     /// Derivative at `x`.
@@ -354,26 +434,25 @@ impl Pchip {
         &self,
         x: f64,
     ) -> f64 {
-        let i = self
-            .x
-            .partition_point(|&v| v <= x)
-            .saturating_sub(1)
-            .min(self.x.len() - 2);
-        let h = self.x[i + 1] - self.x[i];
-        let s = (x - self.x[i]) / h;
-        let (d00, d10, d01, d11) = (
-            6.0 * s * (s - 1.0),
-            (1.0 - s) * (1.0 - 3.0 * s),
-            6.0 * s * (1.0 - s),
-            s * (3.0 * s - 2.0),
-        );
-        (d00 * self.y[i] + d01 * self.y[i + 1]) / h + d10 * self.d[i] + d11 * self.d[i + 1]
+        self.evaluate(x, true)
     }
 }
 
-/// Value of the `i`-th B-spline basis function of the given `degree` on
-/// `knots` at `x` (Cox-de Boor recursion; right-continuous, closed at the
-/// last knot).
+fn pchip_segment_index(
+    samples: &[f64],
+    query: f64,
+) -> usize {
+    samples
+        .partition_point(|&point| point <= query)
+        .saturating_sub(1)
+        .min(samples.len() - 2)
+}
+
+/// Value of the `i`-th B-spline basis function at `x`.
+///
+/// Uses the Cox–de Boor recurrence on non-decreasing knots, with
+/// right-continuous spans and a closed last span. An invalid index or a
+/// non-finite local knot gives NaN.
 #[must_use]
 pub fn bspline_basis(
     knots: &[f64],
@@ -381,30 +460,92 @@ pub fn bspline_basis(
     i: usize,
     x: f64,
 ) -> f64 {
-    if degree == 0 {
-        let last = knots.len() - 1;
-        let inside = knots[i] <= x && x < knots[i + 1];
-        let at_end = crate::kernels::exact_eq(x, knots[last])
-            && knots[i] < knots[i + 1]
-            && crate::kernels::exact_eq(knots[i + 1], knots[last]);
-        return if inside || at_end { 1.0 } else { 0.0 };
+    let Some(local) = degree
+        .checked_add(2)
+        .and_then(|len| i.checked_add(len))
+        .and_then(|end| knots.get(i..end))
+    else {
+        return f64::NAN;
+    };
+    if x.is_nan() || local.iter().any(|knot| !knot.is_finite()) {
+        return f64::NAN;
     }
-    let mut v = 0.0;
-    let d1 = knots[i + degree] - knots[i];
-    if d1 > 0.0 {
-        v += (x - knots[i]) / d1 * bspline_basis(knots, degree - 1, i, x);
+    let closed_end = crate::kernels::exact_eq(x, knots[knots.len() - 1]);
+    if x < local[0] || x > local[degree + 1] || (!closed_end && x >= local[degree + 1]) {
+        return 0.0;
     }
-    let d2 = knots[i + degree + 1] - knots[i + 1];
-    if d2 > 0.0 {
-        v += (knots[i + degree + 1] - x) / d2 * bspline_basis(knots, degree - 1, i + 1, x);
+    with_spline_scratch(degree + 1, |values| {
+        for (value, endpoints) in values.iter_mut().zip(local.windows(2)) {
+            let (lo, hi) = (endpoints[0], endpoints[1]);
+            let inside = lo <= x && x < hi;
+            let at_end = closed_end && lo < hi && crate::kernels::exact_eq(x, hi);
+            *value = f64::from(u8::from(inside || at_end));
+        }
+        for order in 1..=degree {
+            for j in 0..=degree - order {
+                let mut weight = 0.0;
+                if values[j] != 0.0 && local[j] < local[j + order] {
+                    weight += spline_fraction(local[j], local[j + order], x, false) * values[j];
+                }
+                if values[j + 1] != 0.0 && local[j + 1] < local[j + order + 1] {
+                    weight += spline_fraction(local[j + 1], local[j + order + 1], x, true)
+                        * values[j + 1];
+                }
+                values[j] = weight;
+            }
+        }
+        values[0]
+    })
+}
+
+fn with_spline_scratch<T>(
+    size: usize,
+    compute: impl FnOnce(&mut [f64]) -> T,
+) -> T {
+    let mut small = [0.0; 16];
+    if size <= small.len() {
+        return compute(&mut small[..size]);
     }
-    v
+    let mut scratch = f64_scratch(size);
+    scratch.resize(size, 0.0);
+    compute(&mut scratch)
+}
+
+fn spline_fraction(
+    lo: f64,
+    hi: f64,
+    x: f64,
+    from_right: bool,
+) -> f64 {
+    let width = hi - lo;
+    let (left, right, width) = if width.is_finite() {
+        (x - lo, hi - x, width)
+    } else {
+        scaled_grid_interval_distances(lo, hi, x)
+    };
+    (if from_right { right } else { left }) / width
+}
+
+fn spline_span(
+    knots: &[f64],
+    degree: usize,
+    count: usize,
+    x: f64,
+) -> usize {
+    let support = &knots[degree..=count];
+    let offset = if x >= knots[count] {
+        support.partition_point(|&knot| knot < x)
+    } else {
+        support.partition_point(|&knot| knot <= x)
+    };
+    degree + offset.saturating_sub(1).min(count - degree - 1)
 }
 
 /// Evaluates a B-spline curve `sum c_i B_{i,p}(x)` by de Boor's algorithm.
 ///
-/// Requires `knots.len() == coeffs.len() + degree + 1`; `x` is clamped to
-/// the valid range.
+/// Requires finite, non-decreasing `knots`, `degree < coeffs.len()` and
+/// `knots.len() == coeffs.len() + degree + 1`. The coordinate is clamped to
+/// the valid range. Returns NaN for an invalid shape or endpoint.
 #[must_use]
 pub fn bspline_eval(
     knots: &[f64],
@@ -412,70 +553,308 @@ pub fn bspline_eval(
     degree: usize,
     x: f64,
 ) -> f64 {
-    let n = coeffs.len();
-    let lo = knots[degree];
-    let hi = knots[n];
-    let x = x.clamp(lo, hi);
-    let mut k = degree;
-    while k < n - 1 && knots[k + 1] <= x {
-        k += 1;
+    let count = coeffs.len();
+    let expected = count.checked_add(degree).and_then(|n| n.checked_add(1));
+    if degree >= count || expected != Some(knots.len()) || x.is_nan() {
+        return f64::NAN;
     }
-    let mut d: Vec<f64> = (0..=degree).map(|j| coeffs[j + k - degree]).collect();
-    for r in 1..=degree {
-        for j in (r..=degree).rev() {
-            let i = j + k - degree;
-            let den = knots[i + degree + 1 - r] - knots[i];
-            let alpha = if den == 0.0 {
-                0.0
-            } else {
-                (x - knots[i]) / den
-            };
-            d[j] = (1.0 - alpha) * d[j - 1] + alpha * d[j];
-        }
+    let (lo, hi) = (knots[degree], knots[count]);
+    if !lo.is_finite() || !hi.is_finite() || lo > hi {
+        return f64::NAN;
     }
-    d[degree]
+    bspline_eval_validated(knots, coeffs, degree, x)
 }
 
-/// Interpolates `(x, y)` with a B-spline of the given degree on a clamped
-/// knot vector (knot averaging). Returns `(knots, coefficients)`.
+/// Evaluates a shape-checked spline with a non-decreasing knot vector.
+pub(super) fn bspline_eval_validated(
+    knots: &[f64],
+    coeffs: &[f64],
+    degree: usize,
+    x: f64,
+) -> f64 {
+    let count = coeffs.len();
+    let x = x.clamp(knots[degree], knots[count]);
+    let k = spline_span(knots, degree, count, x);
+    if degree == 0 {
+        return coeffs[k];
+    }
+    with_spline_scratch(degree + 1, |d| {
+        d.copy_from_slice(&coeffs[k - degree..=k]);
+        for r in 1..=degree {
+            for j in (r..=degree).rev() {
+                let i = j + k - degree;
+                let (lo, hi) = (knots[i], knots[i + degree + 1 - r]);
+                let alpha = if crate::kernels::exact_eq(lo, hi) {
+                    0.0
+                } else {
+                    spline_fraction(lo, hi, x, false)
+                };
+                d[j] = (1.0 - alpha) * d[j - 1] + alpha * d[j];
+            }
+        }
+        d[degree]
+    })
+}
+
+#[allow(
+    clippy::single_call_fn,
+    reason = "keeps the basis recurrence separate from collocation row scheduling"
+)]
+fn spline_basis_on_span(
+    knots: &[f64],
+    span: usize,
+    x: f64,
+    values: &mut [f64],
+) {
+    values[0] = 1.0;
+    for degree in 1..values.len() {
+        let mut saved = 0.0;
+        for (i, value) in values[..degree].iter_mut().enumerate() {
+            let lo = knots[span + i + 1 - degree];
+            let hi = knots[span + i + 1];
+            let previous = *value;
+            if previous == 0.0 || lo >= hi {
+                *value = saved;
+                saved = 0.0;
+            } else {
+                *value = saved + spline_fraction(lo, hi, x, true) * previous;
+                saved = spline_fraction(lo, hi, x, false) * previous;
+            }
+        }
+        values[degree] = saved;
+    }
+}
+
+type SplineEntry = (usize, usize, f64);
+
+#[allow(
+    clippy::single_call_fn,
+    reason = "builds the collocation matrix independently of the linear solver"
+)]
+fn spline_collocation(
+    knots: &[f64],
+    x: &[f64],
+    degree: usize,
+) -> Result<Vec<SplineEntry>, ApproxError> {
+    const ROWS: usize = 64;
+    let row_len = degree + 1;
+    let work = ROWS.saturating_mul(row_len.saturating_mul(row_len));
+    let grain = 16_384_usize.div_ceil(work);
+    let count = x.len();
+    let total = count.checked_mul(row_len).ok_or(ApproxError::Invalid)?;
+    let blocks = try_map_indexed(count.div_ceil(ROWS), grain, |block| {
+        let start = block * ROWS;
+        let xs = &x[start..(start + ROWS).min(count)];
+        let mut entries = Vec::new();
+        entries
+            .try_reserve_exact(xs.len() * row_len)
+            .map_err(|_| ApproxError::Invalid)?;
+        with_spline_scratch(row_len, |values| {
+            for (offset, &coordinate) in xs.iter().enumerate() {
+                let span = spline_span(knots, degree, count, coordinate);
+                spline_basis_on_span(knots, span, coordinate, values);
+                let row = start + offset;
+                let first = span - degree;
+                for (column, &value) in (first..).zip(values.iter()) {
+                    if value != 0.0 {
+                        entries.push((row, column, value));
+                    }
+                }
+            }
+        });
+        Ok(entries)
+    })?;
+    let mut entries = Vec::new();
+    entries
+        .try_reserve_exact(total)
+        .map_err(|_| ApproxError::Invalid)?;
+    entries.extend(blocks.into_iter().flatten());
+    Ok(entries)
+}
+
+#[allow(
+    clippy::single_call_fn,
+    reason = "keeps the overflow-safe average separate from knot assembly"
+)]
+fn spline_knot_average(values: &[f64]) -> f64 {
+    let sum: f64 = values.iter().sum();
+    if sum.is_finite() {
+        return sum / values.len() as f64;
+    }
+    let (lo, hi) = (values[0], values[values.len() - 1]);
+    let scale = lo.abs().max(hi.abs());
+    let scaled: f64 = values.iter().map(|v| v / scale).sum();
+    ((scaled / values.len() as f64) * scale).clamp(lo, hi)
+}
+
+/// Fits an interpolating B-spline and returns `(knots, coefficients)`.
+///
+/// Degree zero places boundaries at the midpoints between consecutive sites.
+/// Higher degrees use a clamped knot vector with averaged interior knots.
 ///
 /// # Errors
-/// [`ApproxError::Invalid`] if `degree >= x.len()` or `x` not increasing,
-/// [`ApproxError::Singular`] if the collocation matrix is singular.
+/// [`ApproxError::Invalid`] for inconsistent or non-finite samples, an
+/// invalid degree, unordered sites, or an unrepresentable final degree-zero
+/// interval. [`ApproxError::Singular`] if the collocation system is singular
+/// or overflows.
 pub fn bspline_interpolate(
     x: &[f64],
     y: &[f64],
     degree: usize,
 ) -> Result<(Vec<f64>, Vec<f64>), ApproxError> {
-    check_grid(x, y, degree + 1)?;
     let n = x.len();
+    if degree >= n || x.iter().chain(y).any(|v| !v.is_finite()) {
+        return Err(ApproxError::Invalid);
+    }
+    check_grid(x, y, degree + 1)?;
+    if degree == 0 {
+        let mut knots = Vec::with_capacity(n + 1);
+        knots.push(x[0]);
+        for pair in x.windows(2) {
+            let midpoint = f64::midpoint(pair[0], pair[1]);
+            knots.push(if midpoint > pair[0] {
+                midpoint
+            } else {
+                pair[1]
+            });
+        }
+        let upper = x[n - 1];
+        let upper = if n > 1 && knots.last().is_some_and(|&knot| knot >= upper) {
+            upper.next_up()
+        } else {
+            upper
+        };
+        if !upper.is_finite() {
+            return Err(ApproxError::Invalid);
+        }
+        knots.push(upper);
+        return Ok((knots, y.to_vec()));
+    }
     let mut knots = vec![x[0]; degree + 1];
     for j in 1..n - degree {
-        let s: f64 = x[j..j + degree].iter().sum();
-        knots.push(s / degree as f64);
+        knots.push(spline_knot_average(&x[j..j + degree]));
     }
     knots.extend(std::iter::repeat_n(x[n - 1], degree + 1));
-    let mut a = Mat::zeros(n, n);
-    for i in 0..n {
-        for j in 0..n {
-            a.set(i, j, bspline_basis(&knots, degree, j, x[i]));
-        }
+    if degree == 1 {
+        return Ok((knots, y.to_vec()));
     }
-    let c = dense::solve(&a, y).map_err(|_| ApproxError::Singular)?;
-    Ok((knots, c))
+    let entries = spline_collocation(&knots, x, degree)?;
+    let coefficients = if degree.saturating_mul(3) < n {
+        BandLu::factor(n, degree, degree, &entries)
+            .ok_or(ApproxError::Singular)?
+            .solve(y)
+    } else {
+        let mut a = Mat::zeros(n, n);
+        for (i, j, value) in entries {
+            a.set(i, j, value);
+        }
+        dense::solve(&a, y).map_err(|_| ApproxError::Singular)?
+    };
+    if coefficients.iter().any(|v| !v.is_finite()) {
+        return Err(ApproxError::Singular);
+    }
+    Ok((knots, coefficients))
 }
 
 /// Chebyshev points of the second kind (extrema)
 /// `cos(pi k / n)` mapped to `[a, b]`, `k = 0..=n`.
+///
+/// Degree zero gives the midpoint. For positive degree, the first and last
+/// points are exactly `b` and `a`.
 #[must_use]
 pub fn chebyshev_points(
     n: usize,
     a: f64,
     b: f64,
 ) -> Vec<f64> {
-    (0..=n)
-        .map(|k| f64::midpoint(a, b) + 0.5 * (b - a) * (PI * k as f64 / n as f64).cos())
-        .collect()
+    let interval = ChebInterval::new(a, b);
+    (0..=n).map(|k| interval.node(k, n)).collect()
+}
+
+/// A shared affine map between the physical interval and `[-1, 1]`.
+struct ChebInterval {
+    a: f64,
+    b: f64,
+    midpoint: f64,
+    width: f64,
+    half_width: f64,
+    use_endpoint_distances: bool,
+}
+
+impl ChebInterval {
+    fn new(
+        a: f64,
+        b: f64,
+    ) -> Self {
+        let midpoint = f64::midpoint(a, b);
+        let width = b - a;
+        let half_width = if width.is_finite() {
+            0.5 * width
+        } else {
+            0.5 * b - 0.5 * a
+        };
+        Self {
+            a,
+            b,
+            midpoint,
+            width,
+            half_width,
+            use_endpoint_distances: width.is_subnormal() || width.abs() < midpoint.abs(),
+        }
+    }
+
+    fn node(
+        &self,
+        k: usize,
+        degree: usize,
+    ) -> f64 {
+        if degree == 0 || degree.is_multiple_of(2) && k == degree / 2 {
+            return self.midpoint;
+        }
+        if k == 0 {
+            return self.b;
+        }
+        if k == degree {
+            return self.a;
+        }
+        let t = (PI * (k as f64 / degree as f64)).cos();
+        let x = if self.use_endpoint_distances {
+            // Anchor at a real endpoint when the midpoint has been rounded
+            // by much of a step in the physical coordinates.
+            f64::midpoint(t, 1.0).mul_add(self.width, self.a)
+        } else {
+            self.midpoint + self.half_width * t
+        };
+        let lo = self.a.min(self.b);
+        let hi = self.a.max(self.b);
+        if x < lo {
+            lo
+        } else if x > hi {
+            hi
+        } else {
+            x
+        }
+    }
+
+    fn normalize(
+        &self,
+        x: f64,
+    ) -> f64 {
+        if self.width == 0.0 {
+            return 0.0;
+        }
+        if crate::kernels::exact_eq(x, self.a) {
+            return -1.0;
+        }
+        if crate::kernels::exact_eq(x, self.b) {
+            return 1.0;
+        }
+        if self.use_endpoint_distances {
+            ((x - self.a) - (self.b - x)) / self.width
+        } else {
+            (x - self.midpoint) / self.half_width
+        }
+    }
 }
 
 /// A function on `[a, b]` represented by Chebyshev coefficients.
@@ -495,42 +874,175 @@ pub fn clenshaw(
     c: &[f64],
     t: f64,
 ) -> f64 {
+    if c.len() <= 1 {
+        return c.first().copied().unwrap_or(0.0);
+    }
+    let value = clenshaw_scaled(c, t, 1.0);
+    if !value.is_normal() && t.abs() <= 1.0 {
+        return clenshaw_rescaled(c, t, value);
+    }
+    value
+}
+
+#[cold]
+#[allow(clippy::single_call_fn)]
+fn clenshaw_rescaled(
+    c: &[f64],
+    t: f64,
+    direct_value: f64,
+) -> f64 {
+    let scale = chebyshev_scale(c.iter().fold(0.0_f64, |max, v| max.max(v.abs())));
+    if crate::kernels::exact_eq(scale, 1.0) {
+        direct_value
+    } else {
+        clenshaw_scaled(c, t, scale) / scale
+    }
+}
+
+#[inline]
+fn clenshaw_scaled(
+    c: &[f64],
+    t: f64,
+    scale: f64,
+) -> f64 {
     let (mut b1, mut b2) = (0.0, 0.0);
     for &ck in c.iter().skip(1).rev() {
-        let b0 = ck + 2.0 * t * b1 - b2;
+        let b0 = ck * scale + 2.0 * t * b1 - b2;
         b2 = b1;
         b1 = b0;
     }
-    c.first().copied().unwrap_or(0.0) + t * b1 - b2
+    c.first().copied().unwrap_or(0.0) * scale + t * b1 - b2
+}
+
+/// Keep linear transforms of very large or small finite values away from
+/// range limits. Powers of two leave normal significands unchanged.
+fn chebyshev_scale(maximum: f64) -> f64 {
+    const LARGE: f64 = f64::from_bits(1535_u64 << 52); // 2^512
+    const SMALL: f64 = f64::from_bits(511_u64 << 52); // 2^-512
+    if maximum.is_finite() && maximum > LARGE {
+        SMALL
+    } else if maximum > 0.0 && maximum < SMALL {
+        LARGE
+    } else {
+        1.0
+    }
+}
+
+#[allow(clippy::single_call_fn)]
+fn cheb_coefficients(values: &[f64]) -> Vec<f64> {
+    let degree = values.len() - 1;
+    let first = values[0];
+    if first.is_finite() && values.iter().all(|&v| crate::kernels::exact_eq(v, first)) {
+        let mut coefficients = vec![0.0; values.len()];
+        coefficients[0] = first;
+        return coefficients;
+    }
+
+    let scale = chebyshev_scale(values.iter().fold(0.0_f64, |max, v| max.max(v.abs())));
+    let n = degree as f64;
+    let normalize = |j: usize, dct: f64| {
+        let endpoint_weight = if j == 0 || j == degree {
+            0.5
+        } else {
+            1.0
+        };
+        (dct * endpoint_weight / n) / scale
+    };
+    if degree <= 8 {
+        // Tiny transforms avoid the FFT plan lookup. A small table covers all
+        // cosine factors once their index is reduced by periodicity.
+        let period = 2 * degree;
+        let mut cosine = [0.0; 9];
+        cosine[0] = 1.0;
+        cosine[degree] = -1.0;
+        for (k, value) in cosine.iter_mut().enumerate().take(degree).skip(1) {
+            if k != degree / 2 || !degree.is_multiple_of(2) {
+                *value = (PI * (k as f64 / n)).cos();
+            }
+        }
+        let mut weighted = [0.0; 9];
+        for (k, (&value, weight)) in values.iter().zip(&mut weighted).enumerate() {
+            *weight = if k == 0 || k == degree {
+                value * scale
+            } else {
+                2.0 * (value * scale)
+            };
+        }
+        return (0..=degree)
+            .map(|j| {
+                let (mut sum, mut phase) = (0.0, 0);
+                for &value in &weighted[..=degree] {
+                    sum += value * cosine[phase.min(period - phase)];
+                    phase += j;
+                    if phase >= period {
+                        phase -= period;
+                    }
+                }
+                normalize(j, sum)
+            })
+            .collect();
+    }
+
+    // DCT-I is the real part of the DFT of the even extension. The RSSN
+    // FFT implementation shares the plan and borrows its own scratch space.
+    let mut reflected = fft_scratch_for(2 * degree);
+    reflected.extend(
+        values
+            .iter()
+            .chain(values[1..degree].iter().rev())
+            .map(|&value| Complex64::new(value * scale, 0.0)),
+    );
+    transform_in_place(&mut reflected, false, Norm::Backward);
+    reflected
+        .iter()
+        .take(values.len())
+        .enumerate()
+        .map(|(j, value)| normalize(j, value.re))
+        .collect()
 }
 
 impl ChebSeries {
-    /// Interpolates `f` at the `n + 1` Chebyshev extrema.
+    /// Interpolates `f` at the Chebyshev extrema in [`chebyshev_points`] order.
+    ///
+    /// Degree zero and equal endpoints use one function evaluation.
     pub fn from_fn<F: Fn(f64) -> f64>(
         f: F,
         a: f64,
         b: f64,
         n: usize,
     ) -> Self {
-        let pts = chebyshev_points(n, a, b);
-        let v: Vec<f64> = pts.iter().map(|&x| f(x)).collect();
-        let mut c = vec![0.0; n + 1];
-        for j in 0..=n {
-            let mut s = 0.0;
-            for k in 0..=n {
-                let w = if k == 0 || k == n { 0.5 } else { 1.0 };
-                s += w * v[k] * (PI * (j * k) as f64 / n as f64).cos();
-            }
-            c[j] = 2.0 * s / n as f64;
+        let interval = ChebInterval::new(a, b);
+        if interval.width == 0.0 || n == 0 {
+            return Self::from_values(&[f(interval.midpoint)], a, b);
         }
-        c[0] *= 0.5;
-        c[n] *= 0.5;
-        Self { coeffs: c, a, b }
+        let values: Vec<_> = (0..=n).map(|k| f(interval.node(k, n))).collect();
+        Self::from_values(&values, a, b)
+    }
+
+    /// Interpolates already sampled values in [`chebyshev_points`] order.
+    ///
+    /// `values[0]` is the sample at `b` for two or more values. One value
+    /// represents a constant on the whole interval. An empty slice
+    /// represents zero. With equal endpoints the first value is used.
+    #[must_use]
+    pub fn from_values(
+        values: &[f64],
+        a: f64,
+        b: f64,
+    ) -> Self {
+        let coeffs = if values.len() <= 1 || crate::kernels::exact_eq(a, b) {
+            vec![values.first().copied().unwrap_or(0.0)]
+        } else {
+            cheb_coefficients(values)
+        };
+        Self { coeffs, a, b }
     }
 
     /// Adaptive construction: doubles the degree (up to `max_degree`)
     /// until the trailing coefficients fall below `tol * max|c|`, then
-    /// chops the negligible tail.
+    /// chops the negligible tail. Values at shared nodes are reused when
+    /// refining the grid. The same coordinate should always give the same
+    /// value when supplied to `f`.
     pub fn adaptive<F: Fn(f64) -> f64>(
         f: F,
         a: f64,
@@ -538,9 +1050,14 @@ impl ChebSeries {
         tol: f64,
         max_degree: usize,
     ) -> Self {
-        let mut n = 8;
+        let interval = ChebInterval::new(a, b);
+        if interval.width == 0.0 || max_degree == 0 {
+            return Self::from_values(&[f(interval.midpoint)], a, b);
+        }
+        let mut n = 8.min(max_degree);
+        let mut values: Vec<_> = (0..=n).map(|k| f(interval.node(k, n))).collect();
         loop {
-            let mut s = Self::from_fn(&f, a, b, n);
+            let mut s = Self::from_values(&values, a, b);
             let big = s.coeffs.iter().fold(0.0_f64, |m, v| m.max(v.abs()));
             let cut = tol * big.max(f64::MIN_POSITIVE);
             let tail_ok = s
@@ -555,7 +1072,20 @@ impl ChebSeries {
                 }
                 return s;
             }
-            n *= 2;
+            let next = n.saturating_mul(2).min(max_degree);
+            let shared = gcd(n, next);
+            let (old_step, new_step) = (n / shared, next / shared);
+            values.resize(next + 1, 0.0);
+            // Move shared samples from the back so no source is overwritten.
+            for k in (1..=shared).rev() {
+                values[k * new_step] = values[k * old_step];
+            }
+            for (k, value) in values.iter_mut().enumerate().skip(1) {
+                if !k.is_multiple_of(new_step) {
+                    *value = f(interval.node(k, next));
+                }
+            }
+            n = next;
         }
     }
 
@@ -571,16 +1101,22 @@ impl ChebSeries {
         &self,
         x: f64,
     ) -> f64 {
-        clenshaw(
-            &self.coeffs,
-            (2.0 * x - self.a - self.b) / (self.b - self.a),
-        )
+        let t = if crate::kernels::exact_eq(self.a, -self.b) && self.b != 0.0 && self.b.is_finite()
+        {
+            x / self.b
+        } else {
+            ChebInterval::new(self.a, self.b).normalize(x)
+        };
+        clenshaw(&self.coeffs, t)
     }
 
     /// Derivative series.
     #[must_use]
     pub fn derivative(&self) -> Self {
         let n = self.coeffs.len();
+        if n <= 1 {
+            return Self::from_values(&[], self.a, self.b);
+        }
         let mut d = vec![0.0; n.max(2) + 1];
         for k in (1..n).rev() {
             d[k - 1] = d[k + 1] + 2.0 * k as f64 * self.coeffs[k];
@@ -598,6 +1134,9 @@ impl ChebSeries {
     /// Antiderivative series vanishing at `a`.
     #[must_use]
     pub fn integral(&self) -> Self {
+        if crate::kernels::exact_eq(self.a, self.b) {
+            return Self::from_values(&[], self.a, self.b);
+        }
         let n = self.coeffs.len();
         let scale = 0.5 * (self.b - self.a);
         let mut c = vec![0.0; n + 1];
@@ -628,6 +1167,9 @@ impl ChebSeries {
     /// Definite integral over `[a, b]`.
     #[must_use]
     pub fn definite_integral(&self) -> f64 {
+        if crate::kernels::exact_eq(self.a, self.b) {
+            return 0.0;
+        }
         let s = 0.5 * (self.b - self.a);
         let mut sum = 0.0;
         for (k, &c) in self.coeffs.iter().enumerate().step_by(2) {

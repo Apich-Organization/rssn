@@ -2,6 +2,7 @@
 
 use num_complex::Complex64;
 use rssn::kernels::wavelets::Boundary;
+use rssn::kernels::wavelets::DwtPlan;
 use rssn::kernels::wavelets::Wavelet;
 use rssn::kernels::wavelets::WaveletError;
 use rssn::kernels::wavelets::dwt;
@@ -326,6 +327,157 @@ fn every_family_and_boundary_mode_reconstructs_one_level() {
     }
 }
 
+fn reference_sample(
+    x: &[f64],
+    mut i: isize,
+    boundary: Boundary,
+) -> f64 {
+    let n = x.len() as isize;
+    if boundary == Boundary::Periodic {
+        let padded = n + n.rem_euclid(2);
+        return x
+            .get(i.rem_euclid(padded) as usize)
+            .map_or(x[0], |value| *value);
+    }
+    if boundary == Boundary::Zero {
+        return usize::try_from(i)
+            .ok()
+            .and_then(|index| x.get(index))
+            .copied()
+            .unwrap_or(0.0);
+    }
+    if n == 1 {
+        return x[0];
+    }
+    let repeat = isize::from(boundary == Boundary::Symmetric);
+    while i < 0 || i >= n {
+        i = if i < 0 {
+            -i - repeat
+        } else {
+            2 * (n - 1) - i + repeat
+        };
+    }
+    x[i as usize]
+}
+
+#[test]
+fn prepared_level_matches_direct_filter_sums_and_reconstructs_all_modes() {
+    for w in FAMILIES {
+        let low = w.analysis_low();
+        let high = w.analysis_high();
+        let synthesis = w
+            .synthesis_low()
+            .into_iter()
+            .zip(w.synthesis_high())
+            .collect::<Vec<_>>();
+        let high_support = synthesis
+            .iter()
+            .rposition(|&(a, d)| a != 0.0 || d != 0.0)
+            .unwrap();
+        let low_support = synthesis
+            .iter()
+            .position(|&(a, d)| a != 0.0 || d != 0.0)
+            .unwrap();
+        for b in MODES {
+            for n in [1_usize, 2, 3, 21, 64, 67] {
+                let (first, count) = if b == Boundary::Periodic {
+                    (0, n.div_ceil(2))
+                } else {
+                    let first = -((high_support / 2) as isize);
+                    let last = (n as isize - 1 - low_support as isize).div_euclid(2);
+                    (first, (last - first + 1) as usize)
+                };
+                let plan = DwtPlan::new(w, b, n).unwrap();
+                assert_eq!((plan.signal_len(), plan.coeff_len()), (n, count));
+                let mut x = signal(n);
+                let mut a = vec![f64::NAN; count];
+                let mut d = vec![f64::NAN; count];
+                let mut y = vec![f64::NAN; n];
+                for _ in 0..2 {
+                    plan.analyze_into(&x, &mut a, &mut d).unwrap();
+                    for (k, (&a, &d)) in a.iter().zip(&d).enumerate() {
+                        let start = 2 * (first + k as isize);
+                        let direct = |bank: &[f64]| {
+                            bank.iter()
+                                .enumerate()
+                                .map(|(m, &tap)| tap * reference_sample(&x, start + m as isize, b))
+                                .sum::<f64>()
+                        };
+                        assert!(
+                            (a - direct(&low)).abs() < 1e-15,
+                            "{w:?} {b:?} n={n} low k={k}"
+                        );
+                        assert!(
+                            (d - direct(&high)).abs() < 1e-15,
+                            "{w:?} {b:?} n={n} high k={k}"
+                        );
+                    }
+                    plan.synthesize_into(&a, &d, &mut y).unwrap();
+                    assert!(
+                        max_diff(&x, &y) < round_trip_tolerance(w),
+                        "{w:?} {b:?} n={n}"
+                    );
+                    if w.is_orthogonal() && b == Boundary::Periodic && n % 2 == 0 {
+                        let energy: f64 = x.iter().map(|v| v * v).sum();
+                        let bands: f64 = a.iter().chain(&d).map(|v| v * v).sum();
+                        assert!((energy - bands).abs() <= 1e-10 * energy);
+                    }
+                    x.iter_mut()
+                        .for_each(|sample| *sample = 1.0 - 2.0 * *sample);
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn prepared_level_checks_output_shapes_before_writing() {
+    assert!(matches!(
+        DwtPlan::new(Wavelet::Haar, Boundary::Periodic, 0),
+        Err(WaveletError::OddLength)
+    ));
+    assert!(matches!(
+        DwtPlan::new(Wavelet::Haar, Boundary::Reflect, usize::MAX),
+        Err(WaveletError::Shape)
+    ));
+    let x = signal(35);
+    let plan = DwtPlan::new(Wavelet::Db10, Boundary::Symmetric, x.len()).unwrap();
+    let count = plan.coeff_len();
+    let mut a = vec![17.0; count];
+    let mut d = vec![18.0; count];
+    let mut y = vec![19.0; x.len()];
+    assert_eq!(
+        plan.analyze_into(&x, &mut a, &mut d[..count - 1]),
+        Err(WaveletError::Shape)
+    );
+    assert_eq!(
+        plan.analyze_into(&x[..x.len() - 1], &mut a, &mut d),
+        Err(WaveletError::Shape)
+    );
+    assert_eq!(
+        plan.synthesize_into(&a[..count - 1], &d, &mut y),
+        Err(WaveletError::Shape)
+    );
+    assert!(a.iter().all(|&v| v == 17.0));
+    assert!(d.iter().all(|&v| v == 18.0));
+    assert!(y.iter().all(|&v| v == 19.0));
+}
+
+#[test]
+fn periodic_multilevel_support_bound_is_checked_at_the_deepest_input() {
+    let x = signal(4096);
+    assert_eq!(
+        wavedec(&x, Wavelet::Db10, 9),
+        Err(WaveletError::TooManyLevels)
+    );
+    let bands = wavedec(&x, Wavelet::Db10, 8).unwrap();
+    assert_eq!(
+        bands.iter().map(Vec::len).collect::<Vec<_>>(),
+        [16, 16, 32, 64, 128, 256, 512, 1024, 2048]
+    );
+    assert!(max_diff(&x, &waverec(&bands, Wavelet::Db10).unwrap()) < 1e-11);
+}
+
 #[test]
 fn every_family_and_boundary_mode_reconstructs_multilevel() {
     for w in FAMILIES {
@@ -483,6 +635,34 @@ fn the_two_dimensional_transform_reconstructs_and_matches_the_separable_referenc
             }
         }
     }
+}
+
+#[test]
+fn the_two_dimensional_detail_labels_distinguish_the_axes() {
+    let (rows, cols) = (4, 6);
+    let w = Wavelet::Haar;
+    let b = Boundary::Periodic;
+    let vertical_ramp: Vec<f64> = (0..rows * cols)
+        .map(|index| (index / cols) as f64)
+        .collect();
+    let horizontal_ramp: Vec<f64> = (0..rows * cols)
+        .map(|index| (index % cols) as f64)
+        .collect();
+    for (signal, active_quadrant) in [(&vertical_ramp, (0, 1)), (&horizontal_ramp, (1, 0))] {
+        let packed = dwt2(signal, rows, cols, w, b).unwrap();
+        for row in 0..rows {
+            for col in 0..cols {
+                let quadrant = (row / (rows / 2), col / (cols / 2));
+                let magnitude = packed[row * cols + col].abs();
+                if quadrant == active_quadrant {
+                    assert!((magnitude - 1.0).abs() < 1e-14, "{quadrant:?}");
+                } else if quadrant != (0, 0) {
+                    assert!(magnitude < 1e-14, "{quadrant:?}");
+                }
+            }
+        }
+    }
+    assert_eq!(idwt2(&[], usize::MAX, 1, w, b), Err(WaveletError::Shape));
 }
 
 #[test]

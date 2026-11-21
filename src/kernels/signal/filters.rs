@@ -112,7 +112,11 @@ pub(super) fn frequency_response(
     {
         return Err(SignalError::NonFiniteInput.into());
     }
-    let result = par::map_slice(frequencies, 1_024, |&frequency| {
+    // The Horner cost scales with the number of coefficients. A short
+    // frequency grid can still supply enough work for the active pool.
+    let coefficient_count = a.len().saturating_add(b.len());
+    let minimum_points = 65_536_usize.div_ceil(coefficient_count).clamp(8, 1_024);
+    let result = par::map_slice(frequencies, minimum_points, |&frequency| {
         let delay = Complex64::from_polar(1.0, -TAU * (frequency % 1.0));
         let horner = |coefficients: &[f64]| {
             coefficients

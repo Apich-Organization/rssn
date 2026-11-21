@@ -19,9 +19,8 @@
 //!
 //! # Extrapolation
 //!
-//! Every interpolant here **extrapolates**: a query outside `[x_0, x_n]` continues the
-//! first or the last segment polynomial. Nothing is clamped, refused or reported, and no
-//! error estimate is returned, so a caller that needs a defined range must check it.
+//! The one-dimensional function interpolants extrapolate beyond their nodes. The
+//! rectilinear-grid routines require each query coordinate to lie inside its axis.
 //!
 //! ## Limitations
 //!
@@ -617,50 +616,275 @@ pub(crate) fn basis_functions(
 // Tensor-product interpolation on rectilinear grids (1D, 2D, 3D, ...)
 // ============================================================================
 
-/// Checks the axes and the value array of a rectilinear grid and returns the
-/// node count per axis.
-fn check_rectilinear(
-    axes: &[Vec<f64>],
+/// Checks the axes and the value array of a rectilinear grid.
+/// When supplied, the query must lie inside the grid.
+fn check_rectilinear<'grid>(
+    axes: impl ExactSizeIterator<Item = &'grid [f64]> + Clone,
     values: &[f64],
-    point: &[f64],
-) -> Result<Vec<usize>, String> {
-    if axes.is_empty() {
+    point: Option<&[f64]>,
+) -> Result<(), String> {
+    if axes.len() == 0 {
         return Err("at least one axis is required".to_string());
     }
 
-    if point.len() != axes.len() {
+    if point.is_some_and(|point| point.len() != axes.len()) {
         return Err("the query point needs one coordinate per axis".to_string());
     }
 
-    let dims: Vec<usize> = axes.iter().map(Vec::len).collect();
-
-    if dims.iter().any(|&n| n < 2) {
+    if axes.clone().any(|axis| axis.len() < 2) {
         return Err("every axis needs at least two nodes".to_string());
     }
 
-    if values.len() != dims.iter().product::<usize>() {
+    let size = axes
+        .clone()
+        .try_fold(1usize, |size, axis| size.checked_mul(axis.len()))
+        .ok_or_else(|| "the grid size overflows usize".to_string())?;
+    if values.len() != size {
         return Err("the number of values must equal the product of the axis lengths".to_string());
     }
 
-    for (axis, &q) in axes.iter().zip(point) {
-        if axis
-            .windows(2)
-            .any(|w| w[0].partial_cmp(&w[1]) != Some(std::cmp::Ordering::Less))
-            || axis.iter().any(|v| !v.is_finite())
+    for (index, axis) in axes.enumerate() {
+        if !axis.is_sorted_by(|left, right| left < right)
+            || axis.iter().any(|node| !node.is_finite())
         {
             return Err("axes must be finite and strictly increasing".to_string());
         }
 
-        if !q.is_finite() || q < axis[0] || q > axis[axis.len() - 1] {
-            return Err("the query point lies outside the grid".to_string());
+        if let Some(&coordinate) = point.and_then(|point| point.get(index)) {
+            check_grid_coordinate(axis, coordinate)?;
         }
     }
 
-    if values.iter().any(|v| !v.is_finite()) {
+    // Scan whole blocks so the finite checks can vectorize while an invalid
+    // value still short-circuits the rest of the grid.
+    if values.chunks(256).any(|block| {
+        block
+            .iter()
+            .fold(false, |invalid, &value| invalid | !value.is_finite())
+    }) {
         return Err("the values must be finite".to_string());
     }
 
-    Ok(dims)
+    Ok(())
+}
+
+fn check_grid_coordinate(
+    axis: &[f64],
+    coordinate: f64,
+) -> Result<(), String> {
+    if coordinate.is_finite()
+        && axis
+            .first()
+            .zip(axis.last())
+            .is_some_and(|(&first, &last)| first <= coordinate && coordinate <= last)
+    {
+        Ok(())
+    } else {
+        Err("the query point lies outside the grid".to_string())
+    }
+}
+
+#[derive(Clone, Copy)]
+struct MultilinearCell {
+    stride: usize,
+    fraction: f64,
+    starts_at_upper: bool,
+}
+
+/// A validated rectilinear grid for repeated multilinear interpolation.
+///
+/// The axes and the array of values are borrowed. Only per-axis metadata is
+/// allocated on construction. Each query locates an interval on each axis
+/// and interpolates its corners, using fixed-size stack storage.
+/// Values are arranged with the first axis varying fastest.
+#[derive(Debug)]
+pub struct MultilinearGrid<'grid> {
+    axes: Vec<&'grid [f64]>,
+    values: &'grid [f64],
+}
+
+impl<'grid> MultilinearGrid<'grid> {
+    /// Prepares a shared grid for calls to [`Self::evaluate`].
+    ///
+    /// # Errors
+    /// Returns an error if there are no axes, any axis has fewer than two
+    /// finite strictly increasing nodes, the size overflows, or the values
+    /// are non-finite or have the wrong length.
+    pub fn new(
+        axes: impl IntoIterator<Item = &'grid [f64]>,
+        values: &'grid [f64],
+    ) -> Result<Self, String> {
+        // At least two nodes on every axis makes this many axes impossible
+        // for a grid addressable by usize, even before considering its values.
+        let axes: Vec<_> = axes.into_iter().take(usize::BITS as usize).collect();
+        check_rectilinear(axes.iter().copied(), values, None)?;
+        Ok(Self { axes, values })
+    }
+
+    /// Interpolates an in-bounds point without allocating or rescanning the grid.
+    ///
+    /// # Errors
+    /// Returns an error if the point has the wrong dimension or any coordinate
+    /// is non-finite or outside its axis.
+    pub fn evaluate(
+        &self,
+        point: &[f64],
+    ) -> Result<f64, String> {
+        evaluate_multilinear::<true>(self.axes.iter().copied(), self.values, point)
+    }
+}
+
+/// Owned grid data for a session-local prepared interpolation handle.
+#[derive(Debug)]
+pub(crate) struct OwnedMultilinearGrid {
+    axes: Vec<Vec<f64>>,
+    values: Vec<f64>,
+}
+
+impl OwnedMultilinearGrid {
+    pub(crate) fn new(
+        axes: Vec<Vec<f64>>,
+        values: Vec<f64>,
+    ) -> Result<Self, String> {
+        check_rectilinear(axes.iter().map(Vec::as_slice), &values, None)?;
+        Ok(Self { axes, values })
+    }
+
+    pub(crate) fn evaluate(
+        &self,
+        point: &[f64],
+    ) -> Result<f64, String> {
+        evaluate_multilinear::<true>(self.axes.iter().map(Vec::as_slice), &self.values, point)
+    }
+
+    pub(crate) fn allocated_bytes(&self) -> usize {
+        let entries = self
+            .axes
+            .iter()
+            .map(Vec::capacity)
+            .fold(self.values.capacity(), usize::saturating_add);
+        size_of::<Self>()
+            .saturating_add(self.axes.capacity().saturating_mul(size_of::<Vec<f64>>()))
+            .saturating_add(entries.saturating_mul(size_of::<f64>()))
+    }
+}
+
+/// Returns the scaled distances from each endpoint and the scaled width of
+/// a finite interval whose width would otherwise overflow.
+#[cold]
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "halving before subtraction keeps the distances representable"
+)]
+pub(super) fn scaled_grid_interval_distances(
+    lower: f64,
+    upper: f64,
+    coordinate: f64,
+) -> (f64, f64, f64) {
+    let lower = lower * 0.5;
+    let upper = upper * 0.5;
+    let coordinate = coordinate * 0.5;
+    (coordinate - lower, upper - coordinate, upper - lower)
+}
+
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "validated dimensions bound flat cell offsets and the local coordinates are finite"
+)]
+fn evaluate_multilinear<'grid, const CHECK_QUERY: bool>(
+    axes: impl ExactSizeIterator<Item = &'grid [f64]>,
+    values: &[f64],
+    point: &[f64],
+) -> Result<f64, String> {
+    const EMPTY_CELL: MultilinearCell = MultilinearCell {
+        stride: 0,
+        fraction: 0.0,
+        starts_at_upper: false,
+    };
+    let dimension = axes.len();
+    if CHECK_QUERY && point.len() != dimension {
+        return Err("the query point needs one coordinate per axis".to_string());
+    }
+    let mut small_cells = [EMPTY_CELL; 3];
+    let mut large_cells;
+    let storage: &mut [MultilinearCell] = if dimension <= small_cells.len() {
+        &mut small_cells
+    } else {
+        large_cells = [EMPTY_CELL; usize::BITS as usize];
+        &mut large_cells
+    };
+    let cells = storage
+        .get_mut(..dimension)
+        .ok_or_else(|| "the grid size overflows usize".to_string())?;
+    let mut base = 0usize;
+    let mut stride = 1usize;
+    for ((axis, &coordinate), cell) in axes.zip(point).zip(&mut *cells) {
+        if CHECK_QUERY {
+            check_grid_coordinate(axis, coordinate)?;
+        }
+        let interval = axis
+            .partition_point(|&node| node <= coordinate)
+            .saturating_sub(1)
+            .min(axis.len() - 2);
+        let &[lower, upper] = axis
+            .get(interval..)
+            .and_then(|tail| tail.first_chunk::<2>())
+            .ok_or_else(|| "the query point lies outside the grid".to_string())?;
+        let width = upper - lower;
+        let (from_lower, from_upper, width) = if width.is_finite() {
+            (coordinate - lower, upper - coordinate, width)
+        } else {
+            scaled_grid_interval_distances(lower, upper, coordinate)
+        };
+        *cell = MultilinearCell {
+            stride,
+            fraction: from_lower.min(from_upper) / width,
+            starts_at_upper: from_upper < from_lower,
+        };
+        base += interval * stride;
+        stride *= axis.len();
+    }
+    Ok(interpolate_cell(cells, values, base))
+}
+
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "the checked grid shape bounds corner offsets and interpolation uses a convex combination"
+)]
+fn interpolate_cell(
+    cells: &[MultilinearCell],
+    values: &[f64],
+    base: usize,
+) -> f64 {
+    let Some((cell, lower_axes)) = cells.split_last() else {
+        return values.get(base).copied().unwrap_or(f64::NAN);
+    };
+    let upper_index = base + cell.stride;
+    let (near, far) = if cell.starts_at_upper {
+        (upper_index, base)
+    } else {
+        (base, upper_index)
+    };
+    let anchor = interpolate_cell(lower_axes, values, near);
+    if cell.fraction <= 0.0 {
+        return anchor;
+    }
+    let other = interpolate_cell(lower_axes, values, far);
+    let difference = other - anchor;
+    if difference.is_finite() {
+        cell.fraction.mul_add(difference, anchor)
+    } else {
+        (1.0 - cell.fraction).mul_add(anchor, cell.fraction * other)
+    }
+}
+
+fn multilinear_at<'grid>(
+    axes: impl ExactSizeIterator<Item = &'grid [f64]> + Clone,
+    values: &[f64],
+    point: &[f64],
+) -> Result<f64, String> {
+    check_rectilinear(axes.clone(), values, Some(point))?;
+    evaluate_multilinear::<false>(axes, values, point)
 }
 
 /// Multilinear (linear / bilinear / trilinear / ...) interpolation on a
@@ -671,7 +895,8 @@ fn check_rectilinear(
 /// (unlike the 1D interpolants of this module, nothing is extrapolated). The result
 /// is exact for functions that are affine in every coordinate separately.
 /// [`bilinear_interpolation`] and [`trilinear_interpolation`] are the 2D and 3D
-/// names of this routine.
+/// names of this routine. Use [`MultilinearGrid`] to evaluate repeated queries
+/// on the same validated grid.
 ///
 /// # Errors
 /// Returns an error for inconsistent sizes, non-increasing or non-finite axes, or a
@@ -681,54 +906,7 @@ pub fn multilinear_interpolation(
     values: &[f64],
     point: &[f64],
 ) -> Result<f64, String> {
-    let dims = check_rectilinear(axes, values, point)?;
-
-    let d = axes.len();
-
-    let mut cell = vec![0usize; d];
-
-    let mut frac = vec![0.0; d];
-
-    for a in 0..d {
-        let i = axes[a]
-            .partition_point(|&v| v <= point[a])
-            .saturating_sub(1)
-            .min(dims[a] - 2);
-
-        cell[a] = i;
-
-        frac[a] = (point[a] - axes[a][i]) / (axes[a][i + 1] - axes[a][i]);
-    }
-
-    let mut total = 0.0;
-
-    for corner in 0..(1usize << d) {
-        let mut weight = 1.0;
-
-        let mut index = 0usize;
-
-        let mut stride = 1usize;
-
-        for a in 0..d {
-            let upper = (corner >> a) & 1 == 1;
-
-            weight *= if upper {
-                frac[a]
-            } else {
-                1.0 - frac[a]
-            };
-
-            index += (cell[a] + usize::from(upper)) * stride;
-
-            stride *= dims[a];
-        }
-
-        if weight > 0.0 {
-            total += weight * values[index];
-        }
-    }
-
-    Ok(total)
+    multilinear_at(axes.iter().map(Vec::as_slice), values, point)
 }
 
 /// Bilinear interpolation on the grid `xs x ys` (`values[i + nx * j]`); the 2D case
@@ -743,7 +921,7 @@ pub fn bilinear_interpolation(
     x: f64,
     y: f64,
 ) -> Result<f64, String> {
-    multilinear_interpolation(&[xs.to_vec(), ys.to_vec()], values, &[x, y])
+    multilinear_at([xs, ys].into_iter(), values, &[x, y])
 }
 
 /// Trilinear interpolation on the grid `xs x ys x zs` (`values[i + nx * (j + ny * k)]`);
@@ -760,7 +938,143 @@ pub fn trilinear_interpolation(
     y: f64,
     z: f64,
 ) -> Result<f64, String> {
-    multilinear_interpolation(&[xs.to_vec(), ys.to_vec(), zs.to_vec()], values, &[x, y, z])
+    multilinear_at([xs, ys, zs].into_iter(), values, &[x, y, z])
+}
+
+#[cfg(test)]
+mod multilinear_grid_tests {
+    #![allow(clippy::arithmetic_side_effects, clippy::indexing_slicing)]
+
+    use super::MultilinearGrid;
+    use super::OwnedMultilinearGrid;
+    use super::bilinear_interpolation;
+    use super::multilinear_interpolation;
+
+    fn close(
+        actual: f64,
+        expected: f64,
+    ) {
+        assert!(
+            (actual - expected).abs() <= 5e-13 * expected.abs().max(1.0),
+            "{actual} != {expected}"
+        );
+    }
+
+    #[test]
+    fn owned_grid_counts_spare_capacity_and_uses_the_same_lookup() -> Result<(), String> {
+        let mut x = Vec::with_capacity(12);
+        x.extend([0.0, 1.0]);
+        let mut y = Vec::with_capacity(6);
+        y.extend([0.0, 1.0]);
+        let mut values = Vec::with_capacity(20);
+        values.extend([1.0, 2.0, 3.0, 4.0]);
+        let entries = x.capacity() + y.capacity() + values.capacity();
+        let mut axes = Vec::with_capacity(5);
+        axes.extend([x, y]);
+        let expected = size_of::<OwnedMultilinearGrid>()
+            + axes.capacity() * size_of::<Vec<f64>>()
+            + entries * size_of::<f64>();
+        let grid = OwnedMultilinearGrid::new(axes, values)?;
+        assert_eq!(grid.allocated_bytes(), expected);
+        close(grid.evaluate(&[0.5, 0.5])?, 2.5);
+        Ok(())
+    }
+
+    #[test]
+    fn prepared_grid_reproduces_a_multiaffine_function_on_a_nonuniform_four_axis_grid()
+    -> Result<(), String> {
+        let axes = [
+            &[-2.0, 1.0, 5.0][..],
+            &[-3.0, 4.0][..],
+            &[0.0, 0.5, 3.0, 7.5][..],
+            &[1.0, 5.0][..],
+        ];
+        let reference = |x, y, z, w| 3.0 + x * (1.0 + y) - 2.0 * z * w + 0.2 * x * y * z * w;
+        let mut values = Vec::new();
+        for &w in axes[3] {
+            for &z in axes[2] {
+                for &y in axes[1] {
+                    for &x in axes[0] {
+                        values.push(reference(x, y, z, w));
+                    }
+                }
+            }
+        }
+        let grid = MultilinearGrid::new(axes, &values)?;
+        for [x, y, z, w] in [
+            [-2.0, 4.0, 7.5, 1.0],
+            [5.0, -3.0, 0.0, 5.0],
+            [-0.25, 1.5, 0.125, 2.5],
+            [3.25, -1.75, 5.5, 4.0],
+        ] {
+            close(grid.evaluate(&[x, y, z, w])?, reference(x, y, z, w));
+        }
+        close(
+            bilinear_interpolation(
+                &[0.0, 2.0, 4.0],
+                &[1.0, 3.0],
+                &[1.0, 3.0, 5.0, 3.0, 9.0, 15.0],
+                3.0,
+                2.0,
+            )?,
+            8.0,
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn wide_cells_subnormals_and_near_endpoints_stay_finite_and_accurate() -> Result<(), String> {
+        let wide = [-f64::MAX, f64::MAX];
+        let grid = MultilinearGrid::new([wide.as_slice()], &[1.0, 3.0])?;
+        close(grid.evaluate(&[0.0])?, 2.0);
+        close(grid.evaluate(&[-f64::MAX])?, 1.0);
+        close(grid.evaluate(&[f64::MAX])?, 3.0);
+
+        let extremes = MultilinearGrid::new([wide.as_slice()], &wide)?;
+        close(extremes.evaluate(&[0.0])?, 0.0);
+        close(extremes.evaluate(&[f64::MAX * 0.5])?, f64::MAX * 0.5);
+
+        let adjacent = [0.0, f64::from_bits(4)];
+        let tiny = MultilinearGrid::new([adjacent.as_slice()], &[-0.0, 8.0])?;
+        close(tiny.evaluate(&[f64::from_bits(2)])?, 4.0);
+        assert_eq!(tiny.evaluate(&[0.0])?.to_bits(), (-0.0_f64).to_bits());
+
+        let near_endpoint = [-1e16, 1.0];
+        let near = MultilinearGrid::new([near_endpoint.as_slice()], &[1e16, 0.0])?;
+        close(near.evaluate(&[0.0])?, 1.0);
+        Ok(())
+    }
+
+    #[test]
+    fn grid_validation_rejects_overflow_and_invalid_nodes_values_or_queries() -> Result<(), String>
+    {
+        let axis = [0.0, 1.0];
+        let count = usize::BITS as usize;
+        let too_many = vec![axis.to_vec(); count];
+        let point = vec![0.5; count];
+        let overflow = "the grid size overflows usize";
+        assert_eq!(
+            multilinear_interpolation(&too_many, &[], &point),
+            Err(overflow.to_string())
+        );
+        assert_eq!(
+            MultilinearGrid::new(std::iter::repeat(axis.as_slice()), &[])
+                .err()
+                .as_deref(),
+            Some(overflow)
+        );
+        assert!(MultilinearGrid::new(std::iter::empty::<&[f64]>(), &[]).is_err());
+        assert!(MultilinearGrid::new([&[0.0][..]], &[0.0]).is_err());
+        assert!(MultilinearGrid::new([&[0.0, -0.0][..]], &[0.0, 1.0]).is_err());
+        assert!(MultilinearGrid::new([&[0.0, f64::INFINITY][..]], &[0.0, 1.0]).is_err());
+        assert!(MultilinearGrid::new([axis.as_slice()], &[f64::NAN, 1.0]).is_err());
+        assert!(MultilinearGrid::new([axis.as_slice()], &[1.0]).is_err());
+        let grid = MultilinearGrid::new([axis.as_slice()], &[1.0, 2.0])?;
+        for invalid in [&[][..], &[f64::NAN][..], &[-0.1][..], &[1.1][..]] {
+            assert!(grid.evaluate(invalid).is_err());
+        }
+        Ok(())
+    }
 }
 
 /// Tensor-product cubic spline interpolation on a rectilinear grid (1D, 2D, 3D,
@@ -778,7 +1092,8 @@ pub fn tensor_cubic_spline_interpolation(
     values: &[f64],
     point: &[f64],
 ) -> Result<f64, String> {
-    let dims = check_rectilinear(axes, values, point)?;
+    check_rectilinear(axes.iter().map(Vec::as_slice), values, Some(point))?;
+    let dims: Vec<_> = axes.iter().map(Vec::len).collect();
 
     if dims.iter().any(|&n| n < 4) {
         return Err("the not-a-knot cubic spline needs at least four nodes per axis".to_string());

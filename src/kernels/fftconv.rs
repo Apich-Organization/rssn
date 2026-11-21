@@ -10,6 +10,8 @@ use num_complex::Complex64;
 use rustfft::Fft;
 use rustfft::FftDirection;
 
+use super::exact_eq;
+use super::numeric_common::scale_product;
 use super::par;
 use super::reuse::fft_plan;
 use super::reuse::fft_scratch_for;
@@ -221,14 +223,32 @@ pub fn convolve_overlap_save(
     OverlapSavePlan::new(taps)?.apply(a)
 }
 
+fn needs_fft_amplitude_scaling(magnitude: f64) -> bool {
+    // This range leaves headroom for intermediate FFT sums and the spectral
+    // product without scaling ordinary recordings and filters.
+    magnitude > 0.0 && !(1e-130..=1e130).contains(&magnitude)
+}
+
+fn fft_amplitude_scale(peak: f64) -> f64 {
+    if needs_fft_amplitude_scaling(peak) {
+        // A power of two preserves the significand when scaling. Use the
+        // smallest normal scale for subnormal peaks so division is safe.
+        f64::from_bits(peak.to_bits() & 0x7ff0_0000_0000_0000).max(f64::MIN_POSITIVE)
+    } else {
+        1.0
+    }
+}
+
 /// Reusable FFT filter for full linear convolution by overlap-save.
 ///
 /// The immutable plan can be shared across recordings or embedding threads.
 /// The FFT length is the next power of two at or above four times the number
-/// of taps. Padding is local to each block and does not change the output.
+/// of taps. Each block uses zero padding where it extends beyond the recording.
+/// Extreme filter and block amplitudes are rescaled before transformation.
 pub struct OverlapSavePlan {
     overlap: usize,
     spectrum: Vec<Complex64>,
+    tap_scale: f64,
     forward: Arc<dyn Fft<f64>>,
     inverse: Arc<dyn Fft<f64>>,
     scratch_len: usize,
@@ -245,8 +265,12 @@ impl OverlapSavePlan {
         if taps.is_empty() {
             return Err(FilterError::InvalidParameters);
         }
-        if taps.iter().any(|tap| !tap.is_finite()) {
-            return Err(SignalError::NonFiniteInput.into());
+        let mut peak: f64 = 0.0;
+        for &tap in taps {
+            if !tap.is_finite() {
+                return Err(SignalError::NonFiniteInput.into());
+            }
+            peak = peak.max(tap.abs());
         }
         let length = taps
             .len()
@@ -258,9 +282,11 @@ impl OverlapSavePlan {
             .try_reserve_exact(length)
             .map_err(|_| SignalError::OutputSize)?;
         let normalization = 1.0 / length as f64;
+        let tap_scale = fft_amplitude_scale(peak);
+        let gain = tap_scale.recip();
         spectrum.extend(
             taps.iter()
-                .map(|&tap| Complex64::new(tap * normalization, 0.0)),
+                .map(|&tap| Complex64::new((tap * gain) * normalization, 0.0)),
         );
         spectrum.resize(length, Complex64::ZERO);
         let forward = fft_plan(length, FftDirection::Forward);
@@ -280,6 +306,7 @@ impl OverlapSavePlan {
         Ok(Self {
             overlap: taps.len() - 1,
             spectrum,
+            tap_scale,
             forward,
             inverse,
             scratch_len,
@@ -298,13 +325,16 @@ impl OverlapSavePlan {
         if samples.is_empty() {
             return Ok(Vec::new());
         }
-        if samples.iter().any(|value| !value.is_finite()) {
+        let mut non_finite = false;
+        let mut scale_samples = false;
+        for &sample in samples {
+            non_finite |= !sample.is_finite();
+            scale_samples |= needs_fft_amplitude_scaling(sample.abs());
+        }
+        if non_finite {
             return Err(SignalError::NonFiniteInput.into());
         }
-        let len = samples
-            .len()
-            .checked_add(self.overlap)
-            .ok_or(SignalError::OutputSize)?;
+        let len = self.output_len(samples.len())?;
         let mut output = Vec::new();
         output
             .try_reserve_exact(len)
@@ -324,22 +354,49 @@ impl OverlapSavePlan {
                 let start = index * batch + offset * valid;
                 let first = start.saturating_sub(self.overlap);
                 let left_pad = self.overlap.saturating_sub(start);
-                buffer.fill(Complex64::ZERO);
-                for (value, &sample) in buffer
-                    .iter_mut()
-                    .skip(left_pad)
-                    .zip(samples.iter().skip(first))
-                {
-                    value.re = sample;
+                let count = (n - left_pad).min(samples.len() - first);
+                let input = &samples[first..first + count];
+                let sample_scale = if scale_samples {
+                    let peak = input.iter().fold(0.0_f64, |peak, val| peak.max(val.abs()));
+                    fft_amplitude_scale(peak)
+                } else {
+                    1.0
+                };
+                let (left, block) = buffer.split_at_mut(left_pad);
+                let (block, right) = block.split_at_mut(count);
+                left.fill(Complex64::ZERO);
+                right.fill(Complex64::ZERO);
+                if exact_eq(sample_scale, 1.0) {
+                    for (value, &sample) in block.iter_mut().zip(input) {
+                        *value = Complex64::new(sample, 0.0);
+                    }
+                } else {
+                    let gain = sample_scale.recip();
+                    for (value, &sample) in block.iter_mut().zip(input) {
+                        *value = Complex64::new(sample * gain, 0.0);
+                    }
                 }
                 self.forward.process_with_scratch(&mut buffer, &mut scratch);
                 for (value, response) in buffer.iter_mut().zip(&self.spectrum) {
                     *value *= response;
                 }
                 self.inverse.process_with_scratch(&mut buffer, &mut scratch);
-                for (value, transformed) in segment.iter_mut().zip(buffer.iter().skip(self.overlap))
-                {
-                    *value = transformed.re;
+                let factor = self.tap_scale * sample_scale;
+                let values = segment.iter_mut().zip(&buffer[self.overlap..]);
+                if exact_eq(factor, 1.0) {
+                    for (value, transformed) in values {
+                        *value = transformed.re;
+                    }
+                } else if factor.is_normal() {
+                    for (value, transformed) in values {
+                        *value = transformed.re * factor;
+                    }
+                } else {
+                    for (value, transformed) in values {
+                        *value =
+                            scale_product(transformed.re, &[self.tap_scale, sample_scale], &[])
+                                .unwrap_or_else(|_| f64::INFINITY.copysign(transformed.re));
+                    }
                 }
             }
         });
@@ -347,6 +404,46 @@ impl OverlapSavePlan {
             return Err(SignalError::NonFiniteResult.into());
         }
         Ok(output)
+    }
+
+    /// Applies this prepared filter to several recordings in input order.
+    ///
+    /// Each result has the same length and zero extension as [`Self::apply`].
+    /// Empty recordings give empty results. Independent recordings can run in
+    /// parallel under the active execution policy.
+    ///
+    /// # Errors
+    ///
+    /// Returns the error for the first recording that fails [`Self::apply`].
+    pub fn apply_batch(
+        &self,
+        recordings: &[&[f64]],
+    ) -> Result<Vec<Vec<f64>>, FilterError> {
+        par::map_slice(recordings, 4, |samples| self.apply(samples))
+            .into_iter()
+            .collect()
+    }
+
+    pub(crate) fn output_len(
+        &self,
+        input_len: usize,
+    ) -> Result<usize, SignalError> {
+        if input_len == 0 {
+            return Ok(0);
+        }
+        input_len
+            .checked_add(self.overlap)
+            .ok_or(SignalError::OutputSize)
+    }
+
+    pub(crate) const fn retained_budget(&self) -> usize {
+        // Charge separately for the owned spectrum and the retained pair of
+        // power-of-two FFT plans, which can outlive their cache entries.
+        let entries = self
+            .spectrum
+            .capacity()
+            .saturating_add(self.spectrum.len().saturating_mul(4));
+        size_of::<Self>().saturating_add(entries.saturating_mul(size_of::<Complex64>()))
     }
 }
 
@@ -357,10 +454,23 @@ impl OverlapSavePlan {
 /// is the sum of squares. An empty input gives an empty output.
 #[must_use]
 pub fn autocorrelate(samples: &[f64]) -> Vec<f64> {
-    if samples.is_empty() {
+    let Some(max_lag) = samples.len().checked_sub(1) else {
         return Vec::new();
-    }
-    let length = (2 * samples.len() - 1).next_power_of_two();
+    };
+    autocorrelate_prefix(samples, max_lag).unwrap_or_default()
+}
+
+pub(super) fn autocorrelate_prefix(
+    samples: &[f64],
+    max_lag: usize,
+) -> Option<Vec<f64>> {
+    // The requested lags cannot see values wrapped around by the inverse FFT.
+    let count = max_lag.checked_add(1)?;
+    let length = samples
+        .len()
+        .checked_add(max_lag)?
+        .checked_next_power_of_two()?;
+    std::alloc::Layout::array::<Complex64>(length).ok()?;
     let mut spectrum = fft_scratch_for(length);
     spectrum.extend(samples.iter().map(|&sample| Complex64::new(sample, 0.0)));
     spectrum.resize(length, Complex64::ZERO);
@@ -382,11 +492,7 @@ pub fn autocorrelate(samples: &[f64]) -> Vec<f64> {
         );
     }
     inverse.process_with_scratch(&mut spectrum, &mut scratch);
-    spectrum
-        .iter()
-        .take(samples.len())
-        .map(|value| value.re)
-        .collect()
+    Some(spectrum.iter().take(count).map(|value| value.re).collect())
 }
 
 /// Multiplies two integer polynomials (ascending coefficients) exactly.

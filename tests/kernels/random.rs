@@ -3,7 +3,142 @@
 //! moments and distribution functions of the laws they draw from. Every
 //! seed is fixed, so the statistical checks are deterministic.
 
+use rssn::kernels::random::Categorical;
+use rssn::kernels::random::CategoricalError;
 use rssn::kernels::random::Rng;
+
+#[test]
+fn categorical_validates_weights_before_building_a_table() {
+    assert_eq!(Categorical::new(&[]).unwrap_err(), CategoricalError::Empty);
+    assert_eq!(
+        Categorical::new(&[-0.0, 0.0]).unwrap_err(),
+        CategoricalError::ZeroTotal
+    );
+    for invalid in [
+        -1.0,
+        -f64::from_bits(1),
+        f64::NAN,
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+    ] {
+        assert_eq!(
+            Categorical::new(&[5.0, invalid, 0.0]).unwrap_err(),
+            CategoricalError::InvalidWeight { index: 1 }
+        );
+    }
+}
+
+#[test]
+fn categorical_preserves_the_seeded_stream_when_filling_existing_storage() {
+    for weights in [[0.0, 4.0, 0.0], [5.0; 3], [0.3, 1.0, 2.0]] {
+        let plan = Categorical::new(&weights).unwrap();
+        let mut batch = Rng::new(43);
+        let _ = batch.normal();
+        let mut scalar = batch.clone();
+        plan.fill(&mut batch, &mut []);
+        let mut output = [usize::MAX; 73];
+        plan.fill(&mut batch, &mut output);
+        for index in output {
+            assert_eq!(index, plan.sample(&mut scalar));
+        }
+        assert_eq!(batch.normal().to_bits(), scalar.normal().to_bits());
+        assert_eq!(batch.next_u64(), scalar.next_u64());
+    }
+
+    let plan = Categorical::new(&[0.0, f64::from_bits(1), -0.0]).unwrap();
+    assert_eq!(plan.categories(), 3);
+    assert_eq!(plan.heap_bytes(), 0);
+    let mut rng = Rng::new(123);
+    let mut control = rng.clone();
+    assert_eq!(plan.sample(&mut rng), 1);
+    let mut output = [usize::MAX; 9];
+    plan.fill(&mut rng, &mut output);
+    assert_eq!(output, [1; 9]);
+    assert_eq!(rng.next_u64(), control.next_u64());
+}
+
+#[test]
+fn categorical_extreme_weights_match_rescaled_weights() {
+    let smallest = f64::from_bits(1);
+    for (weights, rescaled) in [
+        (
+            [f64::MAX, f64::MAX / 2.0, 0.0, f64::MAX / 4.0],
+            [4.0, 2.0, 0.0, 1.0],
+        ),
+        (
+            [7.0 * smallest, 0.0, 2.0 * smallest, smallest],
+            [7.0, 0.0, 2.0, 1.0],
+        ),
+    ] {
+        let plan = Categorical::new(&weights).unwrap();
+        let reference = Categorical::new(&rescaled).unwrap();
+        let mut rng = Rng::new(59);
+        let mut control = rng.clone();
+        for _ in 0..10_000 {
+            let index = plan.sample(&mut rng);
+            assert!(rescaled[index] > 0.0);
+            assert_eq!(index, reference.sample(&mut control));
+        }
+        assert_eq!(rng.next_u64(), control.next_u64());
+    }
+
+    let plan = Categorical::new(&[0.0, smallest, f64::MAX, -0.0]).unwrap();
+    let mut rng = Rng::new(0);
+    assert!((0..1000).all(|_| plan.sample(&mut rng) == 2));
+}
+
+#[test]
+fn categorical_matches_independent_rational_probabilities() {
+    let weights = [0.0, 1.0, 3.0, 7.0, 0.0, 9.0];
+    let plan = Categorical::new(&weights).unwrap();
+    assert_eq!(plan.categories(), weights.len());
+    assert!(plan.heap_bytes() >= weights.len() * (size_of::<u64>() + size_of::<usize>()));
+    let mut rng = Rng::new(37);
+    let mut counts = [0; 6];
+    let draws = 160_000;
+    for _ in 0..draws {
+        counts[plan.sample(&mut rng)] += 1;
+    }
+    assert_eq!(counts[0], 0);
+    assert_eq!(counts[4], 0);
+    for ((&count, numerator), index) in counts.iter().zip([0, 1, 3, 7, 0, 9]).zip(0..) {
+        let p = f64::from(numerator) / 20.0;
+        let expected = f64::from(draws) * p;
+        let sd = (expected * (1.0 - p)).sqrt();
+        assert!(
+            (f64::from(count) - expected).abs() <= 6.0 * sd,
+            "category {index}: {count} vs {expected}"
+        );
+    }
+
+    let uniform = Categorical::new(&[f64::MAX; 17]).unwrap();
+    assert_eq!(uniform.heap_bytes(), 0);
+    let mut counts = [0; 17];
+    for _ in 0..draws {
+        counts[uniform.sample(&mut rng)] += 1;
+    }
+    let expected = f64::from(draws) / 17.0;
+    let chi_squared = counts
+        .into_iter()
+        .map(|count| (f64::from(count) - expected).powi(2) / expected)
+        .sum::<f64>();
+    assert!(chi_squared < 45.0, "uniform chi-square {chi_squared}");
+}
+
+#[test]
+fn categorical_two_column_draw_matches_the_raw_half_cutoff() {
+    // Weight 1 of 4 owns half of one of the two equiprobable columns.
+    let plan = Categorical::new(&[1.0, 3.0]).unwrap();
+    let mut rng = Rng::new(0);
+    let mut raw = rng.clone();
+    for _ in 0..1_000 {
+        let first_column = raw.next_u64() >> 63 == 0;
+        let first_half = raw.next_u64() >> 63 == 0;
+        let expected = usize::from(!(first_column && first_half));
+        assert_eq!(plan.sample(&mut rng), expected);
+    }
+    assert_eq!(rng.next_u64(), raw.next_u64());
+}
 
 /// The first four SplitMix64 outputs for the seed 0 (the reference values
 /// published with the algorithm).

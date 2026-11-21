@@ -165,6 +165,39 @@ fn zoom_fft_matches_direct_complex_sums_at_arbitrary_frequencies() {
 }
 
 #[test]
+fn concurrent_zoom_grids_with_the_same_fft_extent_keep_separate_kernels() {
+    let samples: Vec<_> = (0..11)
+        .map(|n| Complex64::new(f64::from(n).sin(), f64::from(n).cos()))
+        .collect();
+    std::thread::scope(|scope| {
+        for (len, start, step, bins) in [
+            (11, 0.07, 0.003, 5),
+            (11, 0.11, 0.003, 5),
+            (10, 0.07, 0.003, 5),
+            (11, 0.07, -0.003, 5),
+            (11, 0.07, 0.003, 6),
+        ] {
+            let input = &samples[..len];
+            scope.spawn(move || {
+                let result = signal::zoom_fft(input, start, step, bins).unwrap();
+                assert_eq!(result.len(), bins);
+                for (bin, actual) in result.into_iter().enumerate() {
+                    let cycles = start + bin as f64 * step;
+                    let expected = input
+                        .iter()
+                        .enumerate()
+                        .map(|(i, sample)| {
+                            sample * Complex64::from_polar(1.0, -TAU * cycles * i as f64)
+                        })
+                        .sum();
+                    close_complex(actual, expected);
+                }
+            });
+        }
+    });
+}
+
+#[test]
 fn paired_welch_spectra_keep_phase_and_cancel_incoherent_frames() {
     let x = [1.0, 0.0, -1.0, 0.0, 1.0, 0.0, -1.0, 0.0];
     let sin = [0.0, 1.0, 0.0, -1.0, 0.0, 1.0, 0.0, -1.0];
@@ -194,6 +227,178 @@ fn paired_welch_spectra_keep_phase_and_cancel_incoherent_frames() {
         signal::welch_cross_spectrum(&[f64::NAN, 0.0], &[0.0; 2], &[1.0], 1, 1.0),
         Err(SignalError::NonFiniteInput)
     );
+}
+
+#[test]
+fn welch_retains_combined_subnormal_power() {
+    let tiny = f64::from_bits(1);
+    let sample = 1.28 * tiny.sqrt();
+    let spectrum = signal::welch_psd(&[sample, sample, 0.0, 0.0], &[1.0; 4], 4, 2.0).unwrap();
+    assert_eq!(spectrum.density[1], tiny);
+}
+
+#[test]
+fn welch_parallel_blocks_match_weighted_frames_and_each_other() {
+    for frame_len in [128, 129] {
+        let count = 2051;
+        let bin = 7;
+        let window = vec![1.0; frame_len];
+        let rate = frame_len as f64;
+        let basis: Vec<_> = (0..frame_len)
+            .map(|index| (TAU * bin as f64 * index as f64 / rate).sin_cos())
+            .collect();
+        let mut x = Vec::new();
+        let mut y = Vec::new();
+        let mut sum_xx = 0.0;
+        let mut sum_yy = 0.0;
+        let mut sum_xy = 0.0;
+        for frame in 0..count {
+            let ax = f64::from(frame % 7 + 1) / 7.0;
+            let ay = if frame % 5 < 3 { 0.75 } else { -0.25 };
+            x.extend(basis.iter().map(|&(_, cosine)| ax * cosine));
+            y.extend(basis.iter().map(|&(sine, _)| ay * sine));
+            sum_xx += ax * ax;
+            sum_yy += ay * ay;
+            sum_xy += ax * ay;
+        }
+        // Trailing samples are outside every complete frame.
+        x.push(f64::NAN);
+        y.push(f64::NAN);
+        let compute = |threads| {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap()
+                .install(|| {
+                    (
+                        signal::welch_psd(&x, &window, frame_len, rate).unwrap(),
+                        signal::welch_cross_spectrum(&x, &y, &window, frame_len, rate).unwrap(),
+                    )
+                })
+        };
+        let (power, cross) = compute(1);
+        assert_eq!((power.clone(), cross.clone()), compute(4));
+        close(power.density[bin], sum_xx / (2.0 * f64::from(count)));
+        close_complex(
+            cross.density[bin],
+            Complex64::new(0.0, -sum_xy / (2.0 * f64::from(count))),
+        );
+        close(cross.coherence[bin], sum_xy * sum_xy / (sum_xx * sum_yy));
+        close(power.density.iter().sum(), power.density[bin]);
+        x[(count as usize - 1) * frame_len] = f64::NAN;
+        assert_eq!(
+            signal::welch_psd(&x, &window, frame_len, rate),
+            Err(SignalError::NonFiniteInput)
+        );
+    }
+}
+
+#[test]
+fn time_series_lags_match_direct_moments_and_yule_walker_solutions() {
+    let samples = [2.0, -1.0, 4.0, 0.0, 3.0, -2.0];
+    let expected_covariance = [
+        14.0 / 3.0,
+        -19.0 / 6.0,
+        7.0 / 3.0,
+        -7.0 / 3.0,
+        4.0 / 3.0,
+        -0.5,
+    ];
+    let covariances = signal::autocovariance(&samples, samples.len() - 1).unwrap();
+    let autocorrelations = signal::autocorrelation(&samples, samples.len() - 1).unwrap();
+    for ((covariance, correlation), expected) in covariances
+        .into_iter()
+        .zip(autocorrelations)
+        .zip(expected_covariance)
+    {
+        close(covariance, expected);
+        close(correlation, expected / expected_covariance[0]);
+    }
+
+    // Rational last coefficients of the independent Toeplitz linear systems.
+    let expected_partial = [
+        1.0,
+        -19.0 / 28.0,
+        31.0 / 423.0,
+        -1609.0 / 6356.0,
+        -1759.0 / 5959.0,
+        2056.0 / 19125.0,
+    ];
+    let partial = signal::partial_autocorrelation(&samples, samples.len() - 1).unwrap();
+    for (actual, expected) in partial.into_iter().zip(expected_partial) {
+        close(actual, expected);
+    }
+    assert_eq!(signal::partial_autocorrelation(&samples, 0).unwrap(), [1.0]);
+
+    // Exercise the FFT crossover and its prefix zero-padding bound.
+    let samples: Vec<_> = (0..1800)
+        .map(|index| (f64::from(index) * 0.31).sin() + f64::from(index % 3))
+        .collect();
+    let mean = samples.iter().sum::<f64>() / samples.len() as f64;
+    for (lag, covariance) in signal::autocovariance(&samples, 200)
+        .unwrap()
+        .into_iter()
+        .enumerate()
+    {
+        let direct = samples
+            .iter()
+            .zip(&samples[lag..])
+            .map(|(a, b)| (a - mean) * (b - mean))
+            .sum::<f64>()
+            / samples.len() as f64;
+        close(covariance, direct);
+    }
+}
+
+#[test]
+fn time_series_lags_validate_domain_and_scale_before_squaring() {
+    assert_eq!(signal::autocovariance(&[f64::MAX; 3], 2).unwrap(), [0.0; 3]);
+    assert_eq!(signal::autocovariance(&[5.0], 0).unwrap(), [0.0]);
+    assert_eq!(
+        signal::autocorrelation(&[5.0; 3], 2),
+        Err(SignalError::DegenerateVariance)
+    );
+    assert_eq!(
+        signal::partial_autocorrelation(&[0.0; 2], 1),
+        Err(SignalError::DegenerateVariance)
+    );
+    assert_eq!(
+        signal::autocovariance(&[], 0),
+        Err(SignalError::InsufficientSamples)
+    );
+    assert_eq!(
+        signal::autocorrelation(&[1.0], usize::MAX),
+        Err(SignalError::InvalidLag)
+    );
+    assert_eq!(
+        signal::partial_autocorrelation(&[1.0, f64::INFINITY], 1),
+        Err(SignalError::NonFiniteInput)
+    );
+    assert_eq!(
+        signal::autocovariance(&[f64::MAX, -f64::MAX], 1),
+        Err(SignalError::NonFiniteResult)
+    );
+    for amplitude in [f64::MAX, f64::MIN_POSITIVE, f64::from_bits(1)] {
+        let samples = [amplitude, -amplitude];
+        assert_eq!(signal::autocorrelation(&samples, 1).unwrap(), [1.0, -0.5]);
+        assert_eq!(
+            signal::partial_autocorrelation(&samples, 1).unwrap(),
+            [1.0, -0.5]
+        );
+    }
+
+    let offset = 2.0_f64.powi(450);
+    let unit = 2.0_f64.powi(398);
+    let centered = [0.0, 1.0, 3.0, -1.0];
+    let shifted = centered.map(|sample| offset + unit * sample);
+    let want = signal::autocovariance(&centered, 2).unwrap();
+    for (covariance, expected) in signal::autocovariance(&shifted, 2)
+        .unwrap()
+        .into_iter()
+        .zip(want)
+    {
+        close(covariance / unit / unit, expected);
+    }
 }
 
 #[test]
@@ -605,6 +810,38 @@ fn stationary_wavelets_reconstruct_and_commute_with_periodic_shifts() {
 }
 
 #[test]
+fn stationary_wavelet_parallel_buffers_preserve_order_and_overflow_checks() {
+    let signal: Vec<_> = (0..4099)
+        .map(|i| (f64::from(i) * 0.079).sin() - (f64::from(i) * 0.173).cos())
+        .collect();
+    let run = |workers| {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(workers)
+            .build()
+            .unwrap()
+            .install(|| {
+                let bands = wavelets::swt(&signal, Wavelet::Db6, 5).unwrap();
+                let restored = wavelets::iswt(&bands, Wavelet::Db6).unwrap();
+                let overflow = vec![f64::MAX; signal.len()];
+                assert_eq!(
+                    wavelets::swt(&overflow, Wavelet::Haar, 1),
+                    Err(WaveletProcessingError::NonFiniteResult)
+                );
+                let bits: Vec<_> = bands.into_iter().flatten().map(f64::to_bits).collect();
+                (bits, restored)
+            })
+    };
+    let (serial, signal_serial) = run(1);
+    let (parallel, signal_parallel) = run(4);
+    assert_eq!(serial, parallel);
+    assert_eq!(serial.len(), 6 * signal.len());
+    for ((a, b), expected) in signal_serial.into_iter().zip(signal_parallel).zip(signal) {
+        assert_eq!(a.to_bits(), b.to_bits());
+        close(a, expected);
+    }
+}
+
+#[test]
 fn wavelet_denoising_treats_approximation_and_details_separately() {
     use wavelets::Boundary;
 
@@ -631,4 +868,116 @@ fn wavelet_denoising_treats_approximation_and_details_separately() {
         wavelets::idwt2(&[], usize::MAX, 1, Wavelet::Haar, Boundary::Periodic),
         Err(WaveletError::Shape)
     );
+}
+
+#[test]
+fn frequency_response_keeps_exact_sweep_order_across_worker_counts() {
+    let numerator: Vec<_> = (0..4096)
+        .map(|index| f64::from(index % 11 - 5) / 4096.0)
+        .collect();
+    let frequencies: Vec<_> = (0..64).map(|index| f64::from(index) / 64.0).collect();
+    let compute = |workers| {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(workers)
+            .build()
+            .unwrap()
+            .install(|| {
+                signal::frequency_response(&numerator, &[1.0, -0.25], &frequencies).unwrap()
+            })
+    };
+    assert_eq!(compute(1), compute(4));
+}
+
+#[test]
+fn savgol_reproduces_quadratics_in_the_interior_and_constants_at_edges() {
+    let expected = [-3.0, 12.0, 17.0, 12.0, -3.0];
+    let coefficients = signal::savgol_coeffs(5, 2);
+    assert_eq!(coefficients.len(), expected.len());
+    for (actual, expected) in coefficients.into_iter().zip(expected) {
+        assert!((actual - expected / 35.0).abs() < 1e-12);
+    }
+    let pulse: Vec<_> = (0_i32..13).map(|x| f64::from(x * x - 3 * x + 2)).collect();
+    let smooth = signal::savgol_filter(&pulse, 5, 2);
+    assert_eq!(smooth.len(), pulse.len());
+    for (&actual, &expected) in smooth[2..11].iter().zip(&pulse[2..11]) {
+        assert!((actual - expected).abs() < 1e-10);
+    }
+    let flat = signal::savgol_filter(&[7.0; 8], 5, 2);
+    assert_eq!(flat.len(), 8);
+    assert!(flat.iter().all(|&value| (value - 7.0).abs() < 1e-12));
+    assert!(signal::savgol_coeffs(4, 2).is_empty());
+    assert!(signal::savgol_coeffs(5, 5).is_empty());
+    assert!(signal::savgol_filter(&[], 5, 2).is_empty());
+}
+
+#[test]
+fn inverse_stft_retains_representable_subnormal_inverse() {
+    let tiny = f64::from_bits(1);
+    let frame = [vec![Complex64::new(tiny, 0.0); 2]];
+    let output = signal::inverse_stft(&frame, &[1.0, 1.0], 2).unwrap();
+    assert_eq!(output, [tiny, 0.0]);
+}
+
+#[test]
+fn cross_welch_retains_subnormal_self_density_and_coherence() {
+    let tiny = f64::from_bits(1);
+    let sample = 1.28 * tiny.sqrt();
+    let inputs = [sample, sample, 0.0, 0.0];
+    let spectrum = signal::welch_cross_spectrum(&inputs, &inputs, &[1.0; 4], 4, 2.0).unwrap();
+    assert_eq!(spectrum.density[1], Complex64::new(tiny, 0.0));
+    assert!((spectrum.coherence[1] - 1.0).abs() < 1e-15);
+}
+
+#[test]
+fn cross_welch_normalizes_independent_signal_amplitudes() {
+    let x = [1e-200, 0.0, -1e-200, 0.0];
+    let y = [0.0, 1e200, 0.0, -1e200];
+    let spectrum = signal::welch_cross_spectrum(&x, &y, &[1.0; 4], 4, 4.0).unwrap();
+    assert!((spectrum.density[1] - Complex64::new(0.0, -0.5)).norm() < 1e-15);
+    assert!((spectrum.coherence[1] - 1.0).abs() < 1e-15);
+}
+
+#[test]
+fn cross_welch_uses_only_covered_samples_when_finding_scales() {
+    let x = [1.0, f64::NAN, 2.0, f64::INFINITY];
+    let result = signal::welch_cross_spectrum(&x, &x, &[1.0], 2, 1.0).unwrap();
+    assert_eq!(result.density, [Complex64::new(2.5, 0.0)]);
+    assert!((result.coherence[0] - 1.0).abs() < 1e-15);
+}
+
+#[test]
+fn cross_welch_keeps_coherence_when_density_is_too_small_to_represent() {
+    let x = [1e-200, 0.0, -1e-200, 0.0];
+    let result = signal::welch_cross_spectrum(&x, &x, &[1.0; 4], 4, 4.0).unwrap();
+    assert_eq!(result.density[1], Complex64::ZERO);
+    assert!((result.coherence[1] - 1.0).abs() < 1e-15);
+}
+
+#[test]
+fn cross_welch_refuses_true_density_overflow() {
+    let x = [1e200, 0.0, -1e200, 0.0];
+    assert_eq!(
+        signal::welch_cross_spectrum(&x, &x, &[1.0; 4], 4, 4.0),
+        Err(signal::SignalError::NonFiniteResult)
+    );
+}
+
+#[test]
+fn cross_welch_recovers_when_window_products_round_to_zero() {
+    let tiny = f64::from_bits(1);
+    let x = [tiny, tiny, 0.0, 0.0];
+    let y = [1e150, 1e150, 0.0, 0.0];
+    let spectrum = signal::welch_cross_spectrum(&x, &y, &[1.0; 4], 4, 2.0).unwrap();
+    let want = tiny * 5e149;
+    assert!((spectrum.density[0].re / want - 1.0).abs() < 1e-14);
+    assert!((spectrum.coherence[0] - 1.0).abs() < 1e-15);
+}
+
+#[test]
+fn cross_welch_combines_subnormal_samples_and_a_subnormal_rate() {
+    let tiny = f64::from_bits(1);
+    let x = [tiny; 4];
+    let spectrum = signal::welch_cross_spectrum(&x, &x, &[1.0; 4], 4, tiny).unwrap();
+    assert_eq!(spectrum.density[0], Complex64::new(f64::from_bits(4), 0.0));
+    assert!((spectrum.coherence[0] - 1.0).abs() < 1e-15);
 }
