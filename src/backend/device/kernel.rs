@@ -632,6 +632,25 @@ impl KernelIr {
         })
     }
 
+    /// Exact program identity for validating a device cache hit. Constant
+    /// bits match the structural hash, including NaN payloads and signed zero.
+    pub(super) fn same_program(
+        &self,
+        other: &Self,
+    ) -> bool {
+        self.inputs == other.inputs
+            && self.params == other.params
+            && self.outputs == other.outputs
+            && self.fold == other.fold
+            && self.ops.len() == other.ops.len()
+            && self.ops.iter().zip(&other.ops).all(|(left, right)| {
+                match (left, right) {
+                    | (KernelOp::Const(a), KernelOp::Const(b)) => a.to_bits() == b.to_bits(),
+                    | _ => left == right,
+                }
+            })
+    }
+
     /// A structural hash (constants by bit pattern): the key under which a
     /// device caches its compiled form.
     #[must_use]

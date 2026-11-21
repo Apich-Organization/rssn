@@ -137,10 +137,10 @@ impl WgpuDevice {
         ordinal: usize,
     ) -> Result<Self, DeviceError> {
         let ainfo = adapter.get_info();
-        let limits = adapter.limits();
         let (device, queue) =
             pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default()))
                 .map_err(|e| DeviceError::Backend(e.to_string()))?;
+        let limits = device.limits();
         let late_error = Arc::new(Mutex::new(None));
         {
             let sink = late_error.clone();
@@ -199,9 +199,14 @@ impl WgpuDevice {
                 structured: true,
             },
             parallelism: limits.max_compute_invocations_per_workgroup as usize,
-            // Counted in the widest element (a double-single pair is 8 bytes).
-            max_buffer_elems: usize::try_from(limits.max_storage_buffer_binding_size / 8)
-                .unwrap_or(usize::MAX),
+            // Kernel buffers must fit both device limits, including for double-single pairs.
+            max_buffer_elems: usize::try_from(
+                limits
+                    .max_buffer_size
+                    .min(u64::from(limits.max_storage_buffer_binding_size))
+                    / element_bytes(Dtype::F64),
+            )
+            .unwrap_or(usize::MAX),
             unified_memory: matches!(ainfo.device_type, wgpu::DeviceType::Cpu),
             deterministic: true,
             emulated_f64: true,
@@ -495,7 +500,7 @@ impl Device for WgpuDevice {
                 .cache
                 .lock()
                 .map_err(|_| DeviceError::Backend("kernel cache poisoned".into()))?;
-            if let Some(k) = cache.get(&key).filter(|k| k.ir == *ir) {
+            if let Some(k) = cache.get(&key).filter(|k| k.ir.same_program(ir)) {
                 return Ok(k.clone());
             }
         }

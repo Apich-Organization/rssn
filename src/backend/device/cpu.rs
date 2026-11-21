@@ -60,6 +60,10 @@ pub const GRAIN: usize = 2048;
 /// Elements per reduction chunk (fixed, so results do not depend on threads).
 pub const REDUCE_CHUNK: usize = 4096;
 
+/// Limit task overhead while keeping each wide output row divisible.
+const MATMUL_TILE_COLUMNS: usize = 2_048;
+const MATMUL_MIN_TILE_PRODUCTS: usize = 262_144;
+
 struct HostStorage(Vec<f64>);
 
 impl Storage for HostStorage {
@@ -311,13 +315,23 @@ impl Device for CpuDevice {
         &self,
         ir: &KernelIr,
     ) -> Result<Arc<dyn CompiledKernel>, DeviceError> {
-        let analysis = ir.analyse()?;
         let key = ir.structural_hash();
+        {
+            let cache = self
+                .cache
+                .lock()
+                .map_err(|_| DeviceError::Backend("kernel cache poisoned".into()))?;
+            if let Some(kernel) = cache.get(&key).filter(|kernel| kernel.ir.same_program(ir)) {
+                return Ok(kernel.clone());
+            }
+        }
+        let analysis = ir.analyse()?;
         let mut cache = self
             .cache
             .lock()
             .map_err(|_| DeviceError::Backend("kernel cache poisoned".into()))?;
-        if let Some(k) = cache.get(&key).filter(|k| k.ir == *ir) {
+        // Another caller can publish a validated kernel while we analyse.
+        if let Some(k) = cache.get(&key).filter(|k| k.ir.same_program(ir)) {
             return Ok(k.clone());
         }
         let k = Arc::new(CpuKernel {
@@ -463,6 +477,21 @@ impl Device for CpuDevice {
         if c.is_empty() {
             return Ok(());
         }
+        // A wide output can have substantial work even when there is only
+        // one row. Tile by columns in that case without changing the order
+        // of the products contributing to any individual output.
+        if self.parallel
+            && m == 1
+            && n > MATMUL_TILE_COLUMNS
+            && k.saturating_mul(n) >= MATMUL_MIN_TILE_PRODUCTS
+            && crate::execution::should_split(n.div_ceil(MATMUL_TILE_COLUMNS), 2)
+        {
+            crate::kernels::par::for_chunks_mut(c, MATMUL_TILE_COLUMNS, 2, |tile, output| {
+                let column = tile.saturating_mul(MATMUL_TILE_COLUMNS);
+                matmul_tile(a, b, n, column, output);
+            });
+            return Ok(());
+        }
         let row = |(i, ci): (usize, &mut [f64])| {
             ci.fill(0.0);
             for p in 0..k {
@@ -480,6 +509,21 @@ impl Device for CpuDevice {
             c.chunks_mut(n).enumerate().for_each(row);
         }
         Ok(())
+    }
+}
+
+fn matmul_tile(
+    a_row: &[f64],
+    b: &[f64],
+    width: usize,
+    first_column: usize,
+    output: &mut [f64],
+) {
+    output.fill(0.0);
+    for (&a, b_row) in a_row.iter().zip(b.chunks_exact(width)) {
+        for (value, &b) in output.iter_mut().zip(b_row.iter().skip(first_column)) {
+            *value += a * b;
+        }
     }
 }
 

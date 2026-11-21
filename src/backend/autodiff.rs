@@ -22,6 +22,7 @@ fn checked_tape(
     expressions: &[&str],
     variables: &[String],
     point: &[f64],
+    registers: Option<&mut Vec<f64>>,
 ) -> Result<Tape, String> {
     if expressions.is_empty() || variables.is_empty() || point.len() != variables.len() {
         return Err(
@@ -74,7 +75,12 @@ fn checked_tape(
     }
     let lowered = lowered.optimise();
     let mut values = vec![0.0; expressions.len()];
-    lowered.eval(point, &[], &mut values);
+    if let Some(registers) = registers {
+        registers.reserve(lowered.insts.len());
+        lowered.run(point, &[], registers, &mut values);
+    } else {
+        lowered.eval(point, &[], &mut values);
+    }
     finite(&values)?;
     Ok(lowered)
 }
@@ -98,7 +104,7 @@ pub fn forward_gradient(
     variables: &[String],
     point: &[f64],
 ) -> Result<Vec<f64>, String> {
-    let tape = checked_tape(&[expression], variables, point)?;
+    let tape = checked_tape(&[expression], variables, point, None)?;
     let gradient = tape.gradient(0, point, &[]);
     finite(&gradient)?;
     Ok(gradient)
@@ -113,7 +119,7 @@ pub fn reverse_gradient(
     variables: &[String],
     point: &[f64],
 ) -> Result<Vec<f64>, String> {
-    let tape = checked_tape(&[expression], variables, point)?;
+    let tape = checked_tape(&[expression], variables, point, None)?;
     let gradient = tape.gradient_reverse(0, point, &[]);
     finite(&gradient)?;
     Ok(gradient)
@@ -129,7 +135,7 @@ pub fn hessian(
     variables: &[String],
     point: &[f64],
 ) -> Result<Mat, String> {
-    let tape = checked_tape(&[expression], variables, point)?;
+    let tape = checked_tape(&[expression], variables, point, None)?;
     let data = tape.hessian(0, point, &[]);
     finite(&data)?;
     Ok(Mat {
@@ -142,6 +148,9 @@ pub fn hessian(
 /// Jacobian of elementary expressions, with one row per expression and one
 /// column per independent variable, using reverse accumulation per output.
 ///
+/// All rows share one primal evaluation. Large Jacobians use independent rows
+/// on the active CPU pool and preserve the supplied expression order.
+///
 /// # Errors
 /// As [`forward_gradient`], including empty output lists.
 pub fn jacobian(
@@ -150,10 +159,13 @@ pub fn jacobian(
     point: &[f64],
 ) -> Result<Mat, String> {
     let sources: Vec<_> = expressions.iter().map(String::as_str).collect();
-    let tape = checked_tape(&sources, variables, point)?;
-    let data: Vec<_> = (0..expressions.len())
-        .flat_map(|output| tape.gradient_reverse(output, point, &[]))
-        .collect();
+    let cells = expressions
+        .len()
+        .checked_mul(point.len())
+        .ok_or("Jacobian result dimensions overflow")?;
+    let mut registers = Vec::new();
+    let tape = checked_tape(&sources, variables, point, Some(&mut registers))?;
+    let data = tape.jacobian_reverse_checked(registers, point.len(), cells);
     finite(&data)?;
     Ok(Mat {
         rows: expressions.len(),
@@ -176,7 +188,7 @@ pub fn vjp(
         return Err("VJP requires one finite weight per expression".into());
     }
     let sources: Vec<_> = expressions.iter().map(String::as_str).collect();
-    let tape = checked_tape(&sources, variables, point)?;
+    let tape = checked_tape(&sources, variables, point, None)?;
     let product = tape.vjp(point, &[], weights);
     finite(&product)?;
     Ok(product)

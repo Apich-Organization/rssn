@@ -13,14 +13,14 @@
 //!   [`EvalFn`](crate::graph::op::EvalFn) are called through a shim with
 //!   their arguments in a stack slot.
 //! * A compiled function owns its code through an [`Arc`]: the machine
-//!   code is freed when the last handle is dropped. There is no global
-//!   state; [`CraneliftBackend`] keeps a cache keyed by the structural
+//!   code is freed when the last handle is dropped.
+//!   [`CraneliftBackend`] keeps a cache keyed by the structural
 //!   full identity of the optimised tape, with bitwise constants and ordered
 //!   operands. Hash collisions cannot alias programs; concurrent requests
 //!   for one program share a single compilation, even across graphs.
 //! * [`TieredBackend`] starts with the tape interpreter (no compile
-//!   latency) and switches to JIT code compiled on a background thread
-//!   once a function has been called often enough.
+//!   latency) and switches to JIT code once a shared background worker
+//!   compiles a function that has been called often enough.
 //!
 //! All `unsafe` code lives in the private `abi` module: the calling
 //! convention of the generated code and the shims it calls.
@@ -392,15 +392,27 @@ pub struct JitFunction {
     outputs: usize,
     /// The program, kept for the batch kernel.
     tape: Option<Arc<Tape>>,
-    /// The batch kernel: the tape inside a native row loop
-    /// ([`super::lir::batch_from_tape`]), compiled on the first batch of at
-    /// least [`NATIVE_BATCH_ROWS`] rows; `None` inside when it cannot be built.
-    batch: OnceLock<Option<super::lir_jit::LirModule>>,
+    batch: Arc<NativeBatch>,
+    parallel_rows: bool,
 }
 
-/// Rows from which a batch call compiles and uses the native row loop. Below
-/// it the per-row entry is cheaper than compiling a second function.
+#[derive(Default)]
+struct NativeBatch {
+    submitted: AtomicBool,
+    result: OnceLock<Option<super::lir_jit::LirModule>>,
+}
+
+/// Rows from which a batch call requests a native row loop. Smaller batches
+/// use the per-row entry.
 pub const NATIVE_BATCH_ROWS: usize = 64;
+
+const MIN_PAR_BATCH_ROWS: usize = 32_768;
+
+fn has_ordered_callbacks(tape: &Tape) -> bool {
+    tape.insts
+        .iter()
+        .any(|inst| matches!(inst, Inst::Call(..) | Inst::Extern1(..) | Inst::Extern2(..)))
+}
 
 impl JitFunction {
     /// Compiles `tape` (which should already be optimised).
@@ -726,40 +738,48 @@ impl JitFunction {
             params: if tail_loop { 1 } else { tape.params },
             outputs: tape.outputs.len() + usize::from(tail_loop),
             tape: (!tail_loop).then(|| Arc::new(tape.clone())),
-            batch: OnceLock::new(),
+            batch: Arc::new(NativeBatch::default()),
+            parallel_rows: !has_ordered_callbacks(tape),
         })
     }
 
-    /// The native batch kernel, compiled on first use.
+    /// Request the native row loop once and keep using the scalar entry
+    /// while the background worker prepares it.
     fn batch_kernel(&self) -> Option<&super::lir_jit::LirModule> {
-        self.batch
-            .get_or_init(|| {
-                let tape = self.tape.as_ref()?;
-                let function = super::lir::batch_from_tape(tape)?;
-                super::lir_jit::LirModule::compile(&super::lir::Module {
-                    functions: vec![function],
-                })
-                .ok()
-            })
-            .as_ref()
+        if let Some(result) = self.batch.result.get() {
+            return result.as_ref();
+        }
+        let tape = self.tape.as_ref()?;
+        if self.batch.submitted.load(Ordering::Acquire)
+            || self.batch.submitted.swap(true, Ordering::AcqRel)
+        {
+            return None;
+        }
+        let pool = background_compilers()?;
+        let (tape, batch) = (Arc::downgrade(tape), Arc::downgrade(&self.batch));
+        pool.spawn_fifo(move || {
+            if let (Some(tape), Some(batch)) = (tape.upgrade(), batch.upgrade()) {
+                let result = super::lir::batch_from_tape(&tape).and_then(|function| {
+                    super::lir_jit::LirModule::compile(&super::lir::Module {
+                        functions: vec![function],
+                    })
+                    .ok()
+                });
+                let _ = batch.result.set(result);
+            }
+        });
+        None
     }
 
-    /// Runs the batch kernel over `rows` rows; `false` when there is none
-    /// (the caller then loops over rows itself).
     fn run_batch(
         &self,
+        kernel: &super::lir_jit::LirModule,
         columns: &[&[f64]],
         params: &[f64],
         out: &mut [&mut [f64]],
         rows: usize,
     ) -> bool {
         use super::lir::Value;
-        if rows < NATIVE_BATCH_ROWS || out.len() != self.outputs {
-            return false;
-        }
-        let Some(kernel) = self.batch_kernel() else {
-            return false;
-        };
         let Ok(rows) = i64::try_from(rows) else {
             return false;
         };
@@ -778,6 +798,31 @@ impl JitFunction {
         )
     }
 
+    fn call_rows(
+        &self,
+        kernel: Option<&super::lir_jit::LirModule>,
+        columns: &[&[f64]],
+        out: &mut [f64],
+    ) {
+        let rows = out.len();
+        if rows >= NATIVE_BATCH_ROWS
+            && let Some(kernel) = kernel
+            && self.run_batch(kernel, columns, &[], &mut [out], rows)
+        {
+            return;
+        }
+        let mut point = crate::kernels::reuse::f64_scratch(self.inputs.max(1));
+        point.resize(self.inputs.max(1), f64::NAN);
+        let mut value = [f64::NAN];
+        for (row, slot) in out.iter_mut().enumerate() {
+            for (arg, column) in point.iter_mut().zip(columns) {
+                *arg = column.get(row).copied().unwrap_or(f64::NAN);
+            }
+            self.run(&point, &[], &mut value);
+            *slot = value[0];
+        }
+    }
+
     fn run(
         &self,
         inputs: &[f64],
@@ -792,12 +837,21 @@ impl JitFunction {
                 v
             })
         };
-        let (padded_in, padded_par) = (
-            pad(inputs, self.inputs.max(1)),
-            pad(params, self.params.max(1)),
-        );
+        let (padded_in, padded_par) = (pad(inputs, self.inputs), pad(params, self.params));
         let inputs = padded_in.as_deref().unwrap_or(inputs);
         let params = padded_par.as_deref().unwrap_or(params);
+        // Keep a live ABI address for empty frames without allocating on each row.
+        let empty_frame = [f64::NAN];
+        let inputs = if inputs.is_empty() {
+            &empty_frame
+        } else {
+            inputs
+        };
+        let params = if params.is_empty() {
+            &empty_frame
+        } else {
+            params
+        };
         let mut scratch = Vec::new();
         let output_buffer: &mut [f64] = if out.len() < self.outputs {
             scratch.resize(self.outputs, f64::NAN);
@@ -924,7 +978,11 @@ impl CompiledMulti for JitFunction {
         out: &mut [&mut [f64]],
     ) {
         let rows = out.iter().map(|o| o.len()).min().unwrap_or(0);
-        if self.run_batch(columns, params, out, rows) {
+        if rows >= NATIVE_BATCH_ROWS
+            && out.len() == self.outputs
+            && let Some(kernel) = self.batch_kernel()
+            && self.run_batch(kernel, columns, params, out, rows)
+        {
             return;
         }
         let mut point = vec![f64::NAN; self.inputs];
@@ -962,21 +1020,17 @@ impl Compiled for JitFunction {
         columns: &[&[f64]],
         out: &mut [f64],
     ) {
-        let rows = out.len();
-        if self.outputs == 1
-            && self.params == 0
-            && self.run_batch(columns, &[], &mut [&mut *out], rows)
-        {
-            return;
-        }
-        let mut point = vec![f64::NAN; self.inputs.max(1)];
-        let mut value = [f64::NAN];
-        for (row, slot) in out.iter_mut().enumerate() {
-            for (arg, column) in point.iter_mut().zip(columns) {
-                *arg = column.get(row).copied().unwrap_or(f64::NAN);
-            }
-            self.run(&point, &[], &mut value);
-            *slot = value[0];
+        let kernel = (out.len() >= NATIVE_BATCH_ROWS && self.outputs == 1 && self.params == 0)
+            .then(|| self.batch_kernel())
+            .flatten();
+        if self.parallel_rows && crate::execution::should_split(out.len(), MIN_PAR_BATCH_ROWS) {
+            let rows_per_block = super::BATCH_PAR_ROWS;
+            crate::kernels::par::for_chunks_mut(out, rows_per_block, 2, |block, rows| {
+                let columns = super::batch_columns(columns, block * rows_per_block, rows.len());
+                self.call_rows(kernel, &columns, rows);
+            });
+        } else {
+            self.call_rows(kernel, columns, out);
         }
     }
 }
@@ -1252,7 +1306,8 @@ impl Backend for CraneliftBackend {
 }
 
 /// Tiered execution: interpret the tape at first, compile to machine code
-/// on a background thread after `threshold` calls, then switch.
+/// on a shared pool of at most four background workers after `threshold`
+/// calls, then switch. A function stays interpreted if compilation fails.
 #[derive(Clone, Copy, Debug)]
 pub struct TieredBackend {
     /// Calls (or batch rows) before compilation starts.
@@ -1267,27 +1322,66 @@ impl Default for TieredBackend {
 
 struct Tiered {
     tape: Arc<Tape>,
+    use_columnar_batches: bool,
     calls: AtomicUsize,
     started: AtomicBool,
     threshold: usize,
     jit: Arc<OnceLock<JitFunction>>,
 }
 
+fn background_compilers() -> Option<&'static rayon::ThreadPool> {
+    static POOL: OnceLock<Option<rayon::ThreadPool>> = OnceLock::new();
+    POOL.get_or_init(|| {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(crate::execution::default_cpu_threads().min(4))
+            .thread_name(|index| format!("rssn-jit-{index}"))
+            // A panicking background compilation leaves its function interpreted.
+            .panic_handler(drop)
+            .build()
+            .ok()
+    })
+    .as_ref()
+}
+
 impl Tiered {
+    fn new(
+        tape: Tape,
+        threshold: usize,
+    ) -> Self {
+        let use_columnar_batches = !has_ordered_callbacks(&tape);
+        Self {
+            tape: Arc::new(tape),
+            use_columnar_batches,
+            calls: AtomicUsize::new(0),
+            started: AtomicBool::new(false),
+            threshold,
+            jit: Arc::new(OnceLock::new()),
+        }
+    }
+
     fn count(
         &self,
         n: usize,
     ) {
-        let before = self.calls.fetch_add(n, Ordering::Relaxed);
-        if before.saturating_add(n) >= self.threshold && !self.started.swap(true, Ordering::AcqRel)
-        {
-            let (tape, slot) = (Arc::clone(&self.tape), Arc::clone(&self.jit));
-            std::thread::spawn(move || {
-                if let Ok(f) = JitFunction::compile(&tape) {
-                    let _ = slot.set(f);
-                }
-            });
+        if self.started.load(Ordering::Acquire) {
+            return;
         }
+        let before = self.calls.fetch_add(n, Ordering::Relaxed);
+        if before.saturating_add(n) < self.threshold || self.started.swap(true, Ordering::AcqRel) {
+            return;
+        }
+        let Some(pool) = background_compilers() else {
+            return;
+        };
+        // Pending jobs need not retain tapes for functions already dropped.
+        let (tape, slot) = (Arc::downgrade(&self.tape), Arc::downgrade(&self.jit));
+        pool.spawn_fifo(move || {
+            if let (Some(tape), Some(slot)) = (tape.upgrade(), slot.upgrade())
+                && let Ok(function) = JitFunction::compile(&tape)
+            {
+                let _ = slot.set(function);
+            }
+        });
     }
 
     /// Whether the compiled tier is active.
@@ -1323,8 +1417,21 @@ impl Compiled for Tiered {
             return f.call_batch(columns, out);
         }
         self.count(out.len());
-        let mut point = vec![f64::NAN; self.tape.inputs];
-        let mut values = Vec::with_capacity(self.tape.insts.len());
+        if self.use_columnar_batches {
+            let rows_per_block = super::BATCH_PAR_ROWS;
+            if crate::execution::should_split(out.len(), MIN_PAR_BATCH_ROWS) {
+                crate::kernels::par::for_chunks_mut(out, rows_per_block, 2, |block, rows| {
+                    let columns = super::batch_columns(columns, block * rows_per_block, rows.len());
+                    self.tape.eval_columns(&columns, &[], &mut [rows]);
+                });
+            } else {
+                self.tape.eval_columns(columns, &[], &mut [out]);
+            }
+            return;
+        }
+        let mut point = crate::kernels::reuse::f64_scratch(self.tape.inputs);
+        point.resize(self.tape.inputs, f64::NAN);
+        let mut values = crate::kernels::reuse::f64_scratch(self.tape.insts.len());
         let mut value = [f64::NAN];
         for (row, slot) in out.iter_mut().enumerate() {
             for (arg, column) in point.iter_mut().zip(columns) {
@@ -1348,13 +1455,7 @@ impl Backend for TieredBackend {
         inputs: &[SymbolId],
     ) -> Result<Box<dyn Compiled>, BackendError> {
         let tape = super::tape::lower(graph, &[root], inputs, &[])?.optimise();
-        Ok(Box::new(Tiered {
-            tape: Arc::new(tape),
-            calls: AtomicUsize::new(0),
-            started: AtomicBool::new(false),
-            threshold: self.threshold,
-            jit: Arc::new(OnceLock::new()),
-        }))
+        Ok(Box::new(Tiered::new(tape, self.threshold)))
     }
 }
 
@@ -1524,18 +1625,226 @@ mod tests {
 
     #[test]
     fn tiered_execution_switches_to_machine_code() {
-        let (g, root, inputs) = setup("x^3 - y");
-        let tiered = TieredBackend { threshold: 10 };
-        let f = tiered
-            .compile(&g, root, &inputs)
-            .unwrap_or_else(|e| panic!("{e}"));
-        for _ in 0..50 {
-            assert!((f.call(&[2.0, 1.0]) - 7.0).abs() < 1e-15);
+        let (graph, root, inputs) = setup("x^3 - y");
+        let tape = super::super::tape::lower(&graph, &[root], &inputs, &[])
+            .unwrap_or_else(|e| panic!("{e}"))
+            .optimise();
+        let functions: Vec<_> = (0..8).map(|_| Tiered::new(tape.clone(), 4)).collect();
+        for f in &functions {
+            assert_eq!(f.call(&[2.0, 1.0]).to_bits(), 7.0_f64.to_bits());
+            assert!(!f.started.load(Ordering::Acquire));
+            let mut out = [0.0; 3];
+            f.call_batch(&[&[2.0; 3], &[1.0; 3]], &mut out);
+            assert_eq!(out.map(f64::to_bits), [7.0_f64.to_bits(); 3]);
+            assert!(f.started.load(Ordering::Acquire));
         }
-        // Give the background compilation time to finish; results are the
-        // same either way.
-        std::thread::sleep(std::time::Duration::from_millis(200));
-        assert!((f.call(&[3.0, 0.0]) - 27.0).abs() < 1e-15);
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        while !functions.iter().all(|f| is_compiled(f)) {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "JIT jobs did not finish"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        for f in &functions {
+            assert_eq!(f.call(&[3.0, 0.0]).to_bits(), 27.0_f64.to_bits());
+        }
+        let pool = background_compilers().expect("compiler pool");
+        assert_eq!(
+            pool.current_num_threads(),
+            crate::execution::default_cpu_threads().min(4)
+        );
+    }
+
+    fn wait_for_batch_kernel(f: &JitFunction) {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        while f.batch.result.get().is_none() {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "native batch did not compile"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+        assert!(f.batch_kernel().is_some());
+    }
+
+    #[test]
+    fn cold_and_hot_native_batches_match_across_workers() {
+        let (graph, root, inputs) = setup("x^3 - sin(y) * (1 + x*x)");
+        let tape = super::super::tape::lower(&graph, &[root], &inputs, &[]).unwrap();
+        let f = JitFunction::compile(&tape).unwrap();
+        let rows = MIN_PAR_BATCH_ROWS + 1;
+        let left: Vec<_> = (0..rows).map(|i| f64::from(i as u32) / 5.0).collect();
+        let right: Vec<_> = (0..rows).map(|i| f64::from((i % 9) as u32) - 4.0).collect();
+        let reference: Vec<_> = left
+            .iter()
+            .zip(&right)
+            .map(|(&x, &y)| f.call(&[x, y]))
+            .collect();
+        let mut actual = vec![0.0; rows];
+        f.call_batch(&[&left, &right], &mut actual);
+        assert!(f.batch.submitted.load(Ordering::Acquire));
+        assert!(
+            reference
+                .iter()
+                .zip(&actual)
+                .all(|(a, b)| a.to_bits() == b.to_bits())
+        );
+        wait_for_batch_kernel(&f);
+        for workers in [1, 2] {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(workers)
+                .build()
+                .unwrap();
+            actual.fill(f64::NAN);
+            pool.install(|| f.call_batch(&[&left, &right], &mut actual));
+            assert!(
+                reference
+                    .iter()
+                    .zip(&actual)
+                    .all(|(a, b)| a.to_bits() == b.to_bits())
+            );
+            pool.install(|| f.call_batch(&[&left, &right[..rows - 2]], &mut actual));
+            assert!(
+                reference[..rows - 2]
+                    .iter()
+                    .zip(&actual)
+                    .all(|(a, b)| a.to_bits() == b.to_bits())
+            );
+            assert!(actual[rows - 2..].iter().all(|value| value.is_nan()));
+        }
+    }
+
+    #[test]
+    fn ragged_native_batch_calls_each_callback_once() {
+        thread_local! {
+            static SEEN: std::cell::RefCell<Vec<f64>> = const { std::cell::RefCell::new(Vec::new()) };
+        }
+        fn record(args: &[f64]) -> f64 {
+            SEEN.with_borrow_mut(|values| values.push(args[0]));
+            args[0]
+        }
+        let tape = Tape {
+            insts: vec![Inst::Input(0), Inst::Call(record, 0, 1)],
+            args: vec![0],
+            outputs: vec![1],
+            inputs: 1,
+            ..Tape::default()
+        };
+        let f = JitFunction::compile(&tape).unwrap();
+        let input = [2.0; 80];
+        let mut output = [0.0; 80];
+        f.call_batch(&[&input], &mut output);
+        wait_for_batch_kernel(&f);
+        for column in [&input[..], &input[..77]] {
+            SEEN.with_borrow_mut(Vec::clear);
+            f.call_batch(&[column], &mut output);
+            let expected = (0..output.len()).map(|i| column.get(i).copied().unwrap_or(f64::NAN));
+            SEEN.with_borrow(|events| {
+                assert_eq!(events.len(), output.len());
+                for ((seen, written), expected) in events.iter().zip(output).zip(expected) {
+                    assert_eq!(seen.to_bits(), expected.to_bits());
+                    assert_eq!(written.to_bits(), expected.to_bits());
+                }
+            });
+        }
+    }
+
+    #[test]
+    fn tiered_cold_batches_match_scalar_for_ragged_columns() {
+        let tape = Tape {
+            insts: vec![
+                Inst::Input(0),
+                Inst::Input(1),
+                Inst::Gather(1, 0),
+                Inst::Sub(1, 2),
+            ],
+            outputs: vec![3],
+            inputs: 3,
+            ..Tape::default()
+        };
+        let f = Tiered::new(tape, usize::MAX);
+        assert!(f.use_columnar_batches);
+        let rows = 32_773;
+        let indexes: Vec<_> = [1.0, 0.0, -1.0, f64::NAN]
+            .into_iter()
+            .cycle()
+            .take(rows)
+            .collect();
+        let left = vec![-0.0_f64; rows - 2];
+        let right = vec![0.0; rows - 4];
+        let mut out = vec![0.0; rows];
+        for workers in [1, 2] {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(workers)
+                .build()
+                .expect("interpreter pool");
+            pool.install(|| f.call_batch(&[&indexes, &left, &right], &mut out));
+            for (row, &value) in out.iter().enumerate() {
+                let args = [
+                    indexes[row],
+                    left.get(row).copied().unwrap_or(f64::NAN),
+                    right.get(row).copied().unwrap_or(f64::NAN),
+                ];
+                let scalar = f.call(&args);
+                if scalar.is_nan() {
+                    assert!(value.is_nan(), "row {row}");
+                } else {
+                    assert_eq!(value.to_bits(), scalar.to_bits(), "row {row}");
+                }
+            }
+        }
+        assert!(!f.started.load(Ordering::Acquire));
+    }
+
+    #[test]
+    fn tiered_cold_callbacks_run_in_row_order() {
+        thread_local! {
+            static SEEN: std::cell::RefCell<Vec<(u8, f64)>> = const {
+                std::cell::RefCell::new(Vec::new())
+            };
+        }
+        fn record(args: &[f64]) -> f64 {
+            SEEN.with_borrow_mut(|seen| seen.push((1, args[0])));
+            args[0]
+        }
+        extern "C" fn record_extern(x: f64) -> f64 {
+            SEEN.with_borrow_mut(|seen| seen.push((2, x)));
+            x
+        }
+        let tape = Tape {
+            insts: vec![
+                Inst::Input(0),
+                Inst::Call(record, 0, 1),
+                Inst::Extern1(record_extern, 1),
+            ],
+            args: vec![0],
+            outputs: vec![2],
+            inputs: 1,
+            params: 0,
+        };
+        let f = Tiered::new(tape, usize::MAX);
+        assert!(!f.use_columnar_batches);
+        let mut out = [0.0; 3];
+        f.call_batch(&[&[3.0, 5.0, 8.0]], &mut out);
+        assert_eq!(
+            out.map(f64::to_bits),
+            [3.0_f64.to_bits(), 5.0_f64.to_bits(), 8.0_f64.to_bits()]
+        );
+        assert_eq!(
+            SEEN.take()
+                .iter()
+                .map(|(phase, x)| (*phase, x.to_bits()))
+                .collect::<Vec<_>>(),
+            [
+                (1, 3.0_f64.to_bits()),
+                (2, 3.0_f64.to_bits()),
+                (1, 5.0_f64.to_bits()),
+                (2, 5.0_f64.to_bits()),
+                (1, 8.0_f64.to_bits()),
+                (2, 8.0_f64.to_bits())
+            ]
+        );
     }
 
     #[test]

@@ -5,10 +5,71 @@ use super::Dual;
 use super::HyperDual;
 use super::Inst;
 use super::Reg;
+use super::Scalar;
 use super::Tape;
 use super::apply;
 use super::int_pow;
-use super::operands;
+use super::with_operands;
+
+struct ReverseWork {
+    adjoints: Vec<Dual>,
+    product: Vec<f64>,
+    local: Vec<Dual>,
+}
+
+impl ReverseWork {
+    fn new(
+        registers: usize,
+        inputs: usize,
+    ) -> Self {
+        Self {
+            adjoints: vec![Dual(0.0, 0.0); registers],
+            product: vec![0.0; inputs],
+            local: Vec::new(),
+        }
+    }
+}
+
+struct OutputDependencies {
+    seen: Vec<usize>,
+    pending: Vec<usize>,
+    descending: Vec<usize>,
+}
+
+impl OutputDependencies {
+    fn collect(
+        &mut self,
+        tape: &Tape,
+        output: usize,
+        row: usize,
+    ) -> bool {
+        let limit = tape.insts.len() / 4;
+        if limit < 16 {
+            return false;
+        }
+        self.pending.clear();
+        self.descending.clear();
+        self.seen[output] = row;
+        self.pending.push(output);
+        while let Some(index) = self.pending.pop() {
+            if self.descending.len() == limit {
+                return false;
+            }
+            self.descending.push(index);
+            with_operands(&tape.insts[index], &tape.args, |operands| {
+                for &operand in operands {
+                    let operand = operand as usize;
+                    if self.seen[operand] != row {
+                        self.seen[operand] = row;
+                        self.pending.push(operand);
+                    }
+                }
+            });
+        }
+        self.descending.sort_unstable_by(|a, b| b.cmp(a));
+        true
+    }
+}
 
 impl Tape {
     /// Vector-Jacobian product `weightsᵀ J`, with respect to inputs.
@@ -105,7 +166,7 @@ impl Tape {
                 dst.0 = x;
             }
         }
-        let mut adjoints = vec![Dual(0.0, 0.0); self.insts.len()];
+        let mut work = ReverseWork::new(self.insts.len(), inputs.len());
         for ((&reg, &weight), value) in self.outputs.iter().zip(weights).zip(&out) {
             if weight == 0.0 {
                 continue;
@@ -113,21 +174,119 @@ impl Tape {
             if value.0.is_nan() || weight.is_nan() {
                 return invalid();
             }
-            let Some(adjoint) = adjoints.get_mut(reg as usize) else {
+            let Some(adjoint) = work.adjoints.get_mut(reg as usize) else {
                 return invalid();
             };
             adjoint.0 += weight;
         }
         let mut gradient = vec![0.0; inputs.len()];
-        let mut product = vec![0.0; inputs.len()];
-        let mut local = Vec::new();
-        for (index, inst) in self.insts.iter().enumerate().rev() {
+        self.reverse_sweep(
+            &values,
+            &mut work,
+            &mut gradient,
+            direction.is_some(),
+            (0..self.insts.len()).rev(),
+        );
+        (gradient, work.product)
+    }
+
+    /// Reuses the checked elementary tape's finite-point value pass for every Jacobian row.
+    pub(in crate::backend) fn jacobian_reverse_checked(
+        &self,
+        registers: Vec<f64>,
+        columns: usize,
+        cells: usize,
+    ) -> Vec<f64> {
+        const MIN_ROWS_PER_BLOCK: usize = 8;
+        let values: Vec<_> = registers
+            .into_iter()
+            .map(|value| Dual(value, 0.0))
+            .collect();
+        let mut data = vec![0.0; cells];
+        let fill = |start: usize, rows: &mut [f64]| {
+            let mut work = ReverseWork::new(self.insts.len(), columns);
+            let mut dependencies = OutputDependencies {
+                seen: if self.insts.len() >= 64 {
+                    vec![0; self.insts.len()]
+                } else {
+                    Vec::new()
+                },
+                pending: Vec::new(),
+                descending: Vec::new(),
+            };
+            for (offset, (row, &output)) in rows
+                .chunks_exact_mut(columns)
+                .zip(&self.outputs[start..])
+                .enumerate()
+            {
+                let register = output as usize;
+                if values.get(register).is_none_or(|value| value.0.is_nan()) {
+                    row.fill(f64::NAN);
+                    continue;
+                }
+                work.product.fill(0.0);
+                work.adjoints[register].0 = 1.0;
+                if dependencies.collect(self, register, offset + 1) {
+                    self.reverse_sweep(
+                        &values,
+                        &mut work,
+                        row,
+                        false,
+                        dependencies.descending.iter().copied(),
+                    );
+                } else {
+                    self.reverse_sweep(&values, &mut work, row, false, (0..self.insts.len()).rev());
+                }
+            }
+        };
+        let work = self.outputs.len().saturating_mul(self.insts.len());
+        let workers = if work >= 16_384 {
+            crate::execution::cpu_threads()
+        } else {
+            1
+        };
+        if workers > 1 && self.outputs.len() > MIN_ROWS_PER_BLOCK {
+            let rows_per_block = self
+                .outputs
+                .len()
+                .div_ceil(workers.saturating_mul(2))
+                .max(MIN_ROWS_PER_BLOCK);
+            crate::kernels::par::for_chunks_mut(
+                &mut data,
+                columns * rows_per_block,
+                2,
+                |block, rows| {
+                    fill(block * rows_per_block, rows);
+                },
+            );
+        } else {
+            fill(0, &mut data);
+        }
+        data
+    }
+
+    fn reverse_sweep(
+        &self,
+        values: &[Dual],
+        work: &mut ReverseWork,
+        gradient: &mut [f64],
+        second_order: bool,
+        indices: impl Iterator<Item = usize>,
+    ) {
+        let ReverseWork {
+            adjoints,
+            product,
+            local,
+        } = work;
+        for index in indices {
+            let inst = &self.insts[index];
             let bar = adjoints[index];
             if bar.0 == 0.0 && bar.1 == 0.0 {
                 continue;
             }
+            adjoints[index] = Dual(0.0, 0.0);
             match *inst {
-                | Inst::Input(i) => accumulate_input(&mut gradient, &mut product, i as usize, bar),
+                | Inst::Input(i) => accumulate_input(gradient, product, i as usize, bar),
                 | Inst::Gather(base, reg) => {
                     let offset = values.get(reg as usize).map_or(f64::NAN, |x| x.0).trunc();
                     if offset.is_finite() && (0.0..=1e18).contains(&offset) {
@@ -135,7 +294,7 @@ impl Tape {
                         if let Some(i) = (base as usize).checked_add(offset as usize)
                             && i < self.inputs
                         {
-                            accumulate_input(&mut gradient, &mut product, i, bar);
+                            accumulate_input(gradient, product, i, bar);
                         }
                     }
                 },
@@ -143,30 +302,29 @@ impl Tape {
                 | Inst::Select(c, a, b) => {
                     let condition = values.get(c as usize).map_or(f64::NAN, |x| x.0);
                     let selected = if condition == 0.0 { b } else { a };
-                    accumulate_register(&mut adjoints, selected, bar);
+                    accumulate_register(adjoints, selected, bar);
                 },
                 | _ => {
-                    let registers = operands(inst, &self.args);
-                    local.clear();
-                    local.extend(registers.iter().map(|&r| {
-                        values
-                            .get(r as usize)
-                            .copied()
-                            .unwrap_or(Dual(f64::NAN, f64::NAN))
-                    }));
-                    for (operand, &reg) in registers.iter().enumerate() {
-                        let partial = local_partial(inst, &local, operand, direction.is_some());
-                        let contribution = Dual(
-                            product_unless_zero(bar.0, partial.0),
-                            product_unless_zero(bar.1, partial.0)
-                                + product_unless_zero(bar.0, partial.1),
+                    with_operands(inst, &self.args, |registers| {
+                        local.clear();
+                        local.extend(
+                            registers.iter().map(|&r| {
+                                values.get(r as usize).copied().unwrap_or_else(Dual::nan)
+                            }),
                         );
-                        accumulate_register(&mut adjoints, reg, contribution);
-                    }
+                        for (operand, &reg) in registers.iter().enumerate() {
+                            let partial = local_partial(inst, local, operand, second_order);
+                            let contribution = Dual(
+                                product_unless_zero(bar.0, partial.0),
+                                product_unless_zero(bar.1, partial.0)
+                                    + product_unless_zero(bar.0, partial.1),
+                            );
+                            accumulate_register(adjoints, reg, contribution);
+                        }
+                    });
                 },
             }
         }
-        (gradient, product)
     }
 }
 
@@ -245,20 +403,33 @@ fn local_partial(
         | _ => {},
     }
     if second_order {
-        let seeded: Vec<_> = values
-            .iter()
-            .enumerate()
-            .map(|(i, x)| HyperDual::new(x.0, if i == operand { 1.0 } else { 0.0 }, x.1, 0.0))
-            .collect();
-        let result = apply(inst, &seeded);
+        let result = apply_seeded(inst, values, |i, x| {
+            HyperDual::new(x.0, if i == operand { 1.0 } else { 0.0 }, x.1, 0.0)
+        });
         Dual(result.first(), result.mixed())
     } else {
-        let seeded: Vec<_> = values
-            .iter()
-            .enumerate()
-            .map(|(i, x)| Dual(x.0, if i == operand { 1.0 } else { 0.0 }))
-            .collect();
-        Dual(apply(inst, &seeded).1, 0.0)
+        let result = apply_seeded(inst, values, |i, x| {
+            Dual(x.0, if i == operand { 1.0 } else { 0.0 })
+        });
+        Dual(result.1, 0.0)
+    }
+}
+
+fn apply_seeded<T: Scalar>(
+    inst: &Inst,
+    values: &[Dual],
+    mut seed: impl FnMut(usize, Dual) -> T,
+) -> T {
+    let mut inline = [T::nan(); 3];
+    let seeded = values.iter().copied().enumerate();
+    if let Some(inline) = inline.get_mut(..values.len()) {
+        for (slot, (index, value)) in inline.iter_mut().zip(seeded) {
+            *slot = seed(index, value);
+        }
+        apply(inst, inline)
+    } else {
+        let heap: Vec<_> = seeded.map(|(index, value)| seed(index, value)).collect();
+        apply(inst, &heap)
     }
 }
 

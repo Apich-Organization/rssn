@@ -1,6 +1,6 @@
 //! # Devices: data-parallel execution
 //!
-//! [`Backend`](super::Backend) compiles one closed-form term to a *scalar*
+//! [`Backend`] compiles one closed-form term to a *scalar*
 //! function. A [`Device`] is the other axis: it runs one program over *many
 //! rows* (the rows of a data set, the cells of a grid, the initial conditions
 //! of an ensemble), on whatever hardware it represents. The two compose:
@@ -36,7 +36,7 @@
 //! |---|---|---|
 //! | `cpu` | [`DeviceKind::Cpu`] | single thread, lane blocks the compiler vectorises; always available; the reference |
 //! | `cpu-parallel` | [`DeviceKind::CpuParallel`] | same loops, rows split over the rayon pool; bit-identical to `cpu` |
-//! | `gpu:wgpu:N` | [`DeviceKind::Gpu`] | feature `gpu-wgpu`; WGSL, `f32` |
+//! | `gpu:wgpu:N` | [`DeviceKind::Gpu`] | feature `gpu-wgpu`; WGSL with `F32` and double-single `F64` |
 //!
 //! New devices: [`DeviceRegistry::register`]; see `docs/BACKENDS.md`.
 //!
@@ -208,7 +208,7 @@ pub struct DeviceOps {
     pub matmul: bool,
     /// [`Device::launch_cols`] of structured kernels: index arithmetic,
     /// addressed loads, columns of independent lengths and a fold. A device
-    /// with this flag runs everything in [`array`].
+    /// with this flag runs everything in [`array`](mod@array).
     #[serde(default)]
     pub structured: bool,
 }
@@ -226,10 +226,11 @@ pub struct DeviceInfo {
     pub dtypes: Vec<Dtype>,
     /// Operations it implements.
     pub ops: DeviceOps,
-    /// Independent execution units (threads, or a GPU's reported maximum
-    /// workgroup invocations; informational).
+    /// Informational parallelism at construction: CPU workers or the enabled
+    /// GPU device's maximum workgroup invocations.
     pub parallelism: usize,
-    /// Largest buffer, in elements of the narrowest supported type.
+    /// Size limit for a kernel buffer, in elements of the widest supported
+    /// type. Available memory and launch shape can impose smaller limits.
     pub max_buffer_elems: usize,
     /// Device memory is host memory (transfers are copies within RAM).
     pub unified_memory: bool,
@@ -859,8 +860,8 @@ pub fn map_columns(
     })
 }
 
-/// The relative rounding error of `dtype` on the device: `2^-24` for `F32`,
-/// `2^-52` for a native `F64`, `2^-44` for the double-single emulation.
+/// Epsilon used for tolerances on the device: `2^-23` for `F32`,
+/// `2^-52` for native `F64` and `2^-44` for double-single emulation.
 #[must_use]
 pub fn dtype_epsilon(
     info: &DeviceInfo,

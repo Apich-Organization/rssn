@@ -165,18 +165,32 @@ fn library() -> String {
         ln2 = lit(ln2),
         poly = horner("r", &exp_coefficients),
     );
+    // Reduce the pair around 1 using the f32 mantissa bits of sqrt(2).
+    // Two normal powers of two can scale the full f32 exponent range.
     let _ = write!(
         s,
         "fn ds_ln(x: vec2<f32>) -> vec2<f32> {{\n    if (x.x != x.x || x.x < 0.0) {{ return \
          vec2<f32>(bitcast<f32>(0x7fc00000u), bitcast<f32>(0x7fc00000u)); }}\n    if (x.x == 0.0) {{ \
          return vec2<f32>(bitcast<f32>(0xff800000u), 0.0); }}\n    if (x.x > 1.0e38) {{ return \
-         vec2<f32>(log(x.x), 0.0); }}\n    var xs = x;\n    var shift = 0.0;\n    if (x.x < 1.0e-30) \
-         {{ xs = vec2<f32>(x.x * 1.8446744073709552e19, x.y * 1.8446744073709552e19); shift = \
-         64.0; }}\n    if (x.x > 1.0e30) {{ xs = vec2<f32>(x.x * 5.421010862427522e-20, x.y * \
-         5.421010862427522e-20); shift = -64.0; }}\n    let y0 = log(xs.x);\n    let e = \
+         vec2<f32>(log(x.x), 0.0); }}\n    \
+         // Normalize both parts before evaluating the residual and division.\n    \
+         var xs = x;\n    \
+         var subnormal_shift = 0;\n    \
+         if ((bitcast<u32>(xs.x) & 0x7f800000u) == 0u) {{\n    \
+             xs = xs * 16777216.0;\n    \
+             subnormal_shift = 24;\n    \
+         }}\n    \
+         let bits = bitcast<u32>(xs.x);\n    \
+         let exponent = i32((bits >> 23u) & 0xffu) - 127;\n    \
+         let k = exponent + select(0, 1, (bits & 0x007fffffu) >= 0x003504f3u);\n    \
+         let first = clamp(k, -64, 64);\n    \
+         xs = xs * ds_pow2(f32(-first));\n    \
+         xs = xs * ds_pow2(f32(first - k));\n    \
+         let y0 = log(xs.x);\n    \
+         let e = \
          ds_exp(vec2<f32>(y0, 0.0));\n    let d = ds_div(ds_sub(xs, e), ds_add(xs, e));\n    let y = \
          ds_add(vec2<f32>(y0, 0.0), ds_mulf(d, 2.0));\n    return ds_add(y, ds_mulf({ln2}, \
-         shift));\n}}\n",
+         f32(k - subnormal_shift)));\n}}\n",
         ln2 = lit(ln2),
     );
     // sin and cos on |r| <= pi / 4.

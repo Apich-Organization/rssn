@@ -21,6 +21,15 @@ use crate::graph::Engine;
 use crate::rules;
 
 #[test]
+fn dtype_epsilon_distinguishes_native_and_emulated_precision() {
+    let mut info = CpuDevice::sequential().info().clone();
+    assert_eq!(dtype_epsilon(&info, Dtype::F32), 2.0_f64.powi(-23));
+    assert_eq!(dtype_epsilon(&info, Dtype::F64), 2.0_f64.powi(-52));
+    info.emulated_f64 = true;
+    assert_eq!(dtype_epsilon(&info, Dtype::F64), 2.0_f64.powi(-44));
+}
+
+#[test]
 fn default_cpu_device_follows_the_active_pool() {
     let devices = DeviceRegistry::empty();
     devices.register(Arc::new(CpuDevice::sequential())).unwrap();
@@ -32,6 +41,33 @@ fn default_cpu_device_follows_the_active_pool() {
             .unwrap();
         pool.install(|| assert_eq!(devices.default_device().unwrap().info().kind, kind));
     }
+}
+
+fn check_compile_cache_constants(device: &dyn Device) {
+    let compile = |bits| {
+        device
+            .compile(&KernelIr {
+                ops: vec![KernelOp::Const(f64::from_bits(bits))],
+                inputs: 0,
+                params: 0,
+                outputs: vec![0],
+                fold: None,
+            })
+            .unwrap()
+    };
+    for [first, second] in [
+        [0x7ff8_0000_0000_0001, 0x7ff8_0000_0000_0002],
+        [0.0_f64.to_bits(), (-0.0_f64).to_bits()],
+    ] {
+        let original = compile(first);
+        assert!(Arc::ptr_eq(&original, &compile(first)));
+        assert!(!Arc::ptr_eq(&original, &compile(second)));
+    }
+}
+
+#[test]
+fn cpu_compile_cache_compares_constant_bits() {
+    check_compile_cache_constants(&CpuDevice::sequential());
 }
 
 fn same(
@@ -296,6 +332,34 @@ fn matmul_matches_the_naive_product() {
             dev.matmul(&ba, &bb, &mut bad, usize::MAX, 2, 1),
             Err(DeviceError::Mismatch(_))
         ));
+    }
+}
+
+#[test]
+fn single_wide_matmul_is_bit_identical_across_pool_widths() {
+    let (m, k, n) = (1, 73, 6_147);
+    let a: Vec<_> = (0..k)
+        .map(|i| f64::from((i % 11) as u32) / 7.0 - 0.5)
+        .collect();
+    let b: Vec<_> = (0..k * n)
+        .map(|i| f64::from((i % 71) as u32) / 17.0 - 2.0)
+        .collect();
+    let run = |device: &CpuDevice| {
+        let a = device.upload(&a, Dtype::F64).unwrap();
+        let b = device.upload(&b, Dtype::F64).unwrap();
+        let mut c = device.alloc(n, Dtype::F64).unwrap();
+        device.matmul(&a, &b, &mut c, m, k, n).unwrap();
+        let mut values = vec![0.0; n];
+        device.download(&c, &mut values).unwrap();
+        values.into_iter().map(f64::to_bits).collect::<Vec<_>>()
+    };
+    let reference = run(&CpuDevice::sequential());
+    for workers in [1, 2, 4] {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(workers)
+            .build()
+            .unwrap();
+        assert_eq!(pool.install(|| run(&CpuDevice::parallel())), reference);
     }
 }
 
@@ -1316,6 +1380,19 @@ mod gpu_tests {
             eprintln!("no wgpu adapter; skipping");
             return;
         };
+        // WgpuDevice requests default limits, even on a more capable adapter.
+        let limits = wgpu::Limits::default();
+        assert_eq!(
+            dev.info().parallelism,
+            limits.max_compute_invocations_per_workgroup as usize
+        );
+        assert_eq!(
+            dev.info().max_buffer_elems,
+            (limits
+                .max_buffer_size
+                .min(u64::from(limits.max_storage_buffer_binding_size))
+                / 8) as usize
+        );
         assert!(dev.info().emulated_f64 && dev.info().dtypes.contains(&Dtype::F64));
         let cpu = CpuDevice::sequential();
         let run = |d: &dyn Device, ir: &KernelIr, x: &[f64], dtype| {
@@ -1376,7 +1453,20 @@ mod gpu_tests {
             (Intrinsic::Exp, vec![-20.0, -3.3, -0.4, 0.0, 0.7, 5.5, 40.0]),
             (
                 Intrinsic::Ln,
-                vec![1.0e-20, 0.013, 0.5, 1.0, 2.0, 77.7, 1.0e20],
+                vec![
+                    3.569_976_931_166_309_4e-29,
+                    1.0e-20,
+                    0.013,
+                    0.5,
+                    1.0 - 2.0_f64.powi(-24),
+                    1.0,
+                    1.0 + 2.0_f64.powi(-24),
+                    2.0,
+                    5.656_853_675_842_285,
+                    77.7,
+                    1.0e20,
+                    1.0e30,
+                ],
             ),
             (
                 Intrinsic::Sin,
@@ -1440,6 +1530,7 @@ mod gpu_tests {
             return;
         };
         eprintln!("gpu test device: {}", dev.info().name);
+        check_compile_cache_constants(&**dev);
         let ir = decay();
         let y0: Vec<f64> = (0..3000).map(|i| 0.5 + f64::from(i) * 1e-3).collect();
         let r = ensemble_rk4(&**dev, &ir, &[2.0], &[&y0], 0.0, 1.0, 100).unwrap();

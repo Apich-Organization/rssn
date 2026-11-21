@@ -18,7 +18,7 @@
 //! | `pow(x, k/2)`, `pow(x, k/3)` | `Sqrt` / `Cbrt` then `PowI` |
 //! | n-ary `add`/`mul` | balanced pairwise trees (bounded rounding error) |
 //!
-//! Operators are matched first through the [`Lowering`](super::Lowering)
+//! Operators are matched first through the [`Lowering`]
 //! attribute, then by name for the elementary functions, and otherwise
 //! fall back to calling their [`EvalFn`] through a shim, so every
 //! operator with scalar semantics compiles.
@@ -722,6 +722,25 @@ impl Tape {
         h.finish()
     }
 
+    /// Builds a tape that selects one of `sources` input columns.
+    ///
+    /// Input zero supplies a zero-based offset and the remaining inputs hold
+    /// the sources. [`Inst::Gather`] defines the offset and missing-value rules.
+    /// Returns `None` if there are no sources or the input count cannot be represented.
+    #[must_use]
+    pub fn column_gather(sources: usize) -> Option<Self> {
+        if sources == 0 || u32::try_from(sources).is_err() {
+            return None;
+        }
+        Some(Self {
+            insts: vec![Inst::Input(0), Inst::Gather(1, 0)],
+            args: Vec::new(),
+            inputs: sources.checked_add(1)?,
+            params: 0,
+            outputs: vec![1],
+        })
+    }
+
     /// Evaluates every output over an arbitrary number type.
     pub fn run<T: Scalar>(
         &self,
@@ -762,7 +781,8 @@ impl Tape {
     /// [`COLUMN_BLOCK`]: each instruction runs over a whole block before
     /// the next one, which turns the per-instruction dispatch of the scalar
     /// interpreter into one dispatch per block and lets the arithmetic
-    /// vectorise. Every row gets exactly the bits [`Tape::eval`] gives it.
+    /// vectorise. A gather reads the selected input column directly for each
+    /// row. Every row gets exactly the bits [`Tape::eval`] gives it.
     pub fn eval_columns(
         &self,
         columns: &[&[f64]],
@@ -775,17 +795,28 @@ impl Tape {
         if rows == 0 || self.outputs.is_empty() {
             return;
         }
-        let mut regs = vec![0.0_f64; self.insts.len().saturating_mul(B)];
-        let mut point: Vec<f64> = Vec::new();
+        let stride = rows.min(B);
+        let register_slots = self.insts.len().saturating_mul(stride);
+        // Reuse compact register files. Larger files benefit from zero-filled allocation.
+        let mut pooled;
+        let mut allocated;
+        let regs = if register_slots <= 4_096 {
+            pooled = crate::kernels::reuse::f64_scratch(register_slots);
+            pooled.resize(register_slots, 0.0);
+            pooled.as_mut_slice()
+        } else {
+            allocated = vec![0.0_f64; register_slots];
+            allocated.as_mut_slice()
+        };
         let mut v: Vec<f64> = Vec::new();
         let mut row0 = 0;
         while row0 < rows {
-            let n = B.min(rows - row0);
+            let n = stride.min(rows - row0);
             for (r, inst) in self.insts.iter().enumerate() {
-                let (before, after) = regs.split_at_mut(r * B);
+                let (before, after) = regs.split_at_mut(r * stride);
                 let dst = &mut after[..n];
                 let src = |reg: Reg| -> &[f64] {
-                    let start = reg as usize * B;
+                    let start = reg as usize * stride;
                     // An out-of-range register reads as NaN, as in the generic
                     // arm: an empty slice would end the `zip` early and leave
                     // `dst` holding the previous block's values.
@@ -868,22 +899,11 @@ impl Tape {
                         }
                     },
                     | Inst::Gather(base, index) => {
-                        // Row by row through the scalar rule: the offset
-                        // selects a different input column per row.
-                        for (k, d) in dst.iter_mut().enumerate() {
-                            point.clear();
-                            point.extend((0..self.inputs).map(|i| {
-                                columns
-                                    .get(i)
-                                    .and_then(|c| c.get(row0 + k))
-                                    .copied()
-                                    .unwrap_or(f64::NAN)
-                            }));
-                            let offset = before
-                                .get(index as usize * B + k)
+                        for (k, (d, &offset)) in dst.iter_mut().zip(src(index)).enumerate() {
+                            *d = gather_slot(base, offset, self.inputs)
+                                .and_then(|slot| columns.get(slot)?.get(row0 + k))
                                 .copied()
                                 .unwrap_or(f64::NAN);
-                            *d = gather_one(base, offset, self.inputs, &point);
                         }
                     },
                     | _ => {
@@ -891,7 +911,10 @@ impl Tape {
                         for (k, d) in dst.iter_mut().enumerate() {
                             v.clear();
                             v.extend(ops.iter().map(|&o| {
-                                before.get(o as usize * B + k).copied().unwrap_or(f64::NAN)
+                                before
+                                    .get(o as usize * stride + k)
+                                    .copied()
+                                    .unwrap_or(f64::NAN)
                             }));
                             *d = apply(inst, &v);
                         }
@@ -899,7 +922,7 @@ impl Tape {
                 }
             }
             for (column, &r) in out.iter_mut().zip(&self.outputs) {
-                let start = r as usize * B;
+                let start = r as usize * stride;
                 if let (Some(dst), Some(src)) =
                     (column.get_mut(row0..row0 + n), regs.get(start..start + n))
                 {
@@ -977,7 +1000,8 @@ impl Tape {
     ///
     /// Entries are NaN when the tape reaches an opaque operator
     /// (`Call`, `Extern1`, `Extern2`) or a domain error; see the module
-    /// limitations.
+    /// limitations. Large tapes with independent built-in instructions can
+    /// evaluate rows concurrently in the active CPU pool.
     #[must_use]
     pub fn hessian(
         &self,
@@ -985,34 +1009,42 @@ impl Tape {
         inputs: &[f64],
         params: &[f64],
     ) -> Vec<f64> {
+        const BLOCK_ROWS: usize = 4;
         let n = inputs.len();
-        let params: Vec<HyperDual> = params.iter().map(|&p| HyperDual::constant(p)).collect();
-        let mut values = Vec::with_capacity(self.insts.len());
-        let mut out = vec![HyperDual::nan(); self.outputs.len()];
-        let mut hessian = vec![0.0; n.saturating_mul(n)];
-        for i in 0..n {
-            for j in 0..n {
-                let seeded: Vec<HyperDual> = inputs
-                    .iter()
-                    .enumerate()
-                    .map(|(l, &x)| {
-                        HyperDual::new(
-                            x,
-                            if l == i { 1.0 } else { 0.0 },
-                            if l == j { 1.0 } else { 0.0 },
-                            0.0,
-                        )
-                    })
-                    .collect();
-                self.run(&seeded, &params, &mut values, &mut out);
-                let value = out.get(k).map_or(f64::NAN, |d| d.mixed());
-                let slot = i.checked_mul(n).and_then(|row| row.checked_add(j));
-                if let Some(slot) = slot
-                    && let Some(cell) = hessian.get_mut(slot)
-                {
-                    *cell = value;
+        if n == 0 {
+            return Vec::new();
+        }
+        let params: Vec<_> = params.iter().copied().map(HyperDual::constant).collect();
+        let cells = n.saturating_mul(n);
+        let mut hessian = vec![0.0; cells];
+        let fill_rows = |start: usize, rows: &mut [f64]| {
+            let mut seeded: Vec<_> = inputs.iter().copied().map(HyperDual::constant).collect();
+            let mut values = Vec::with_capacity(self.insts.len());
+            let mut out = vec![HyperDual::nan(); self.outputs.len()];
+            for (offset, row) in rows.chunks_exact_mut(n).enumerate() {
+                let i = start + offset;
+                seeded[i].d1 = 1.0;
+                for (j, cell) in row.iter_mut().enumerate() {
+                    seeded[j].d2 = 1.0;
+                    self.run(&seeded, &params, &mut values, &mut out);
+                    *cell = out.get(k).map_or(f64::NAN, |value| value.mixed());
+                    seeded[j].d2 = 0.0;
                 }
+                seeded[i].d1 = 0.0;
             }
+        };
+        if cells.saturating_mul(self.insts.len()) >= 65_536
+            && crate::execution::should_split(n.div_ceil(BLOCK_ROWS), 3)
+            && !self
+                .insts
+                .iter()
+                .any(|inst| matches!(inst, Inst::Call(..) | Inst::Extern1(..) | Inst::Extern2(..)))
+        {
+            crate::kernels::par::for_chunks_mut(&mut hessian, n * BLOCK_ROWS, 3, |block, rows| {
+                fill_rows(block * BLOCK_ROWS, rows);
+            });
+        } else {
+            fill_rows(0, &mut hessian);
         }
         hessian
     }
@@ -1037,9 +1069,19 @@ fn operands(
     inst: &Inst,
     args: &[Reg],
 ) -> Vec<Reg> {
+    with_operands(inst, args, <[Reg]>::to_vec)
+}
+
+fn with_operands<R>(
+    inst: &Inst,
+    args: &[Reg],
+    use_regs: impl FnOnce(&[Reg]) -> R,
+) -> R {
     match *inst {
-        | Inst::Const(_) | Inst::Input(_) | Inst::Param(_) => Vec::new(),
-        | Inst::Neg(a) | Inst::PowI(a, _) | Inst::Unary(_, a) | Inst::Extern1(_, a) => vec![a],
+        | Inst::Const(_) | Inst::Input(_) | Inst::Param(_) => use_regs(&[]),
+        | Inst::Neg(a) | Inst::PowI(a, _) | Inst::Unary(_, a) | Inst::Extern1(_, a) => {
+            use_regs(&[a])
+        },
         | Inst::Add(a, b)
         | Inst::Sub(a, b)
         | Inst::Mul(a, b)
@@ -1047,13 +1089,14 @@ fn operands(
         | Inst::PowF(a, b)
         | Inst::Atan2(a, b)
         | Inst::Cmp(_, a, b)
-        | Inst::Extern2(_, a, b) => vec![a, b],
-        | Inst::Select(c, a, b) => vec![c, a, b],
-        | Inst::Gather(_, index) => vec![index],
+        | Inst::Extern2(_, a, b) => use_regs(&[a, b]),
+        | Inst::Select(c, a, b) => use_regs(&[c, a, b]),
+        | Inst::Gather(_, index) => use_regs(&[index]),
         | Inst::Call(_, start, len) => {
-            args.get(start as usize..(start as usize).saturating_add(len as usize))
-                .unwrap_or(&[])
-                .to_vec()
+            use_regs(
+                args.get(start as usize..(start as usize).saturating_add(len as usize))
+                    .unwrap_or(&[]),
+            )
         },
     }
 }
@@ -1171,17 +1214,6 @@ fn gather_slot(
         .ok()
         .and_then(|base| base.checked_add(offset))
         .filter(|&slot| slot < inputs)
-}
-
-fn gather_one(
-    base: u32,
-    offset: f64,
-    inputs: usize,
-    point: &[f64],
-) -> f64 {
-    gather_slot(base, offset, inputs)
-        .and_then(|slot| point.get(slot).copied())
-        .unwrap_or(f64::NAN)
 }
 
 /// [`apply`] reading the operands straight from the register file: no

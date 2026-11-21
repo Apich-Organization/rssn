@@ -1,7 +1,7 @@
 //! Array programs: everything beyond an elementwise map, as kernels.
 //!
 //! A device implements one entry point,
-//! [`Device::launch_cols`](super::Device::launch_cols). This module shows
+//! [`Device::launch_cols`]. This module shows
 //! why that is enough: each classic data-parallel pattern is a function that
 //! *builds a [`KernelIr`]*, and the drivers below launch those kernels through
 //! the trait and nothing else. A device that runs structured kernels
@@ -26,7 +26,7 @@
 //! [`reduce`] always combines in the same order: blocks of [`FAN_IN`]
 //! consecutive elements, level by level. Two devices with the same float
 //! type therefore agree bit for bit. (A device's own
-//! [`Device::reduce`](super::Device::reduce) may use another order; it only
+//! [`Device::reduce`] may use another order; it only
 //! promises to be deterministic for that device.)
 
 use super::Buffer;

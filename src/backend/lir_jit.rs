@@ -38,6 +38,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::OnceLock;
 
 use cranelift_codegen::ir::AbiParam;
 use cranelift_codegen::ir::Block as ClBlock;
@@ -132,6 +133,7 @@ pub struct LirModule {
     _owner: Arc<abi::Owner>,
     entries: Vec<abi::LirEntry>,
     module: Module,
+    written: OnceLock<Vec<Vec<bool>>>,
 }
 
 impl std::fmt::Debug for LirModule {
@@ -269,6 +271,7 @@ impl LirModule {
             _owner: Arc::new(abi::Owner(Some(jit))),
             entries,
             module: module.clone(),
+            written: OnceLock::new(),
         })
     }
 
@@ -288,7 +291,12 @@ impl LirModule {
         func: FuncId,
         args: &mut [Value<'_>],
     ) -> Result<Outcome, LirError> {
-        let f = self.module.check_args(func, args)?;
+        let f = self.module.check_args_with(func, args, || {
+            self.written
+                .get_or_init(|| self.module.written_all())
+                .get(func.0 as usize)
+                .map_or(&[][..], Vec::as_slice)
+        })?;
         let entry = *self
             .entries
             .get(func.0 as usize)

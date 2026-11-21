@@ -28,8 +28,8 @@
 //! pointer to `f64`s (address and length) passed in by the host; [`Inst::Load`]
 //! and [`Inst::Store`] are bounds-checked (an out-of-range load reads NaN, an
 //! out-of-range store does nothing), so no LIR program can touch memory it was
-//! not given. Slices cannot be created, offset or stored in LIR — only passed
-//! along — which keeps the host-facing API safe.
+//! not given. Slices can pass through jumps and function arguments. They cannot
+//! be created, offset, stored as values or returned by a function.
 //!
 //! ## Semantics worth stating
 //!
@@ -58,11 +58,15 @@
 //! programs keep their own structured IR; LIR is the CPU-side common
 //! denominator.
 
+use std::collections::HashMap;
 use std::fmt;
+
+use rayon::prelude::*;
 
 use super::Intrinsic;
 use super::tape::Cmp;
 use crate::graph::op::EvalFn;
+use crate::kernels::reuse::ScratchPool;
 
 /// A register of a function.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -558,17 +562,35 @@ impl Module {
     /// # Errors
     /// The first problem found.
     pub fn verify(&self) -> Result<(), LirError> {
-        for (index, f) in self.functions.iter().enumerate() {
+        let verify = |(index, f): (usize, &Function)| {
             self.verify_function(f)
-                .map_err(|e| LirError(format!("function {index} `{}`: {}", f.name, e.0)))?;
+                .map_err(|e| LirError(format!("function {index} `{}`: {}", f.name, e.0)))
+        };
+        if self.split_function_analysis() {
+            self.functions
+                .par_iter()
+                .enumerate()
+                .filter_map(|entry| verify(entry).err())
+                .find_first(|_| true)
+                .map_or(Ok(()), Err)
+        } else {
+            self.functions.iter().enumerate().try_for_each(verify)
         }
-        Ok(())
+    }
+
+    fn split_function_analysis(&self) -> bool {
+        let functions = &self.functions;
+        crate::execution::should_split(functions.len(), 8)
+            && functions.iter().map(|f| f.regs.len()).sum::<usize>() >= 4_096
     }
 
     fn verify_function(
         &self,
         f: &Function,
     ) -> Result<(), LirError> {
+        if f.results.contains(&Ty::Slice) {
+            return bad("slice results are unsupported");
+        }
         let ty = |r: Reg| -> Result<Ty, LirError> {
             f.regs
                 .get(r.0 as usize)
@@ -770,108 +792,134 @@ impl Module {
         &self,
         func: FuncId,
     ) -> Vec<bool> {
-        let all = self.written_all();
-        all.get(func.0 as usize).cloned().unwrap_or_default()
+        let mut all = self.written_all();
+        all.get_mut(func.0 as usize)
+            .map_or_else(Vec::new, std::mem::take)
     }
 
-    fn written_all(&self) -> Vec<Vec<bool>> {
-        // Per function: which entry parameters each register may alias.
-        let provenance: Vec<Vec<Vec<usize>>> = self
-            .functions
-            .iter()
-            .map(|f| {
-                let mut from: Vec<Vec<usize>> = vec![Vec::new(); f.regs.len()];
-                for (k, p) in f
-                    .blocks
-                    .first()
-                    .map_or(&[][..], |e| &e.params[..])
-                    .iter()
-                    .enumerate()
-                {
-                    if let Some(slot) = from.get_mut(p.0 as usize) {
-                        slot.push(k);
-                    }
+    pub(super) fn written_all(&self) -> Vec<Vec<bool>> {
+        // Local alias analysis is independent for every function. Only split
+        // sizable modules so native single-function batches stay on the caller.
+        let functions = &self.functions;
+        let effects: Vec<_> = if self.split_function_analysis() {
+            functions.par_iter().map(slice_effects).collect()
+        } else {
+            functions.iter().map(slice_effects).collect()
+        };
+
+        // A callee's writable parameter marks every caller argument it may
+        // alias. Walk reverse call edges once for each newly writable slot,
+        // including mutually recursive functions.
+        let mut callers: HashMap<_, Vec<_>> = HashMap::new();
+        let mut pending = Vec::new();
+        let mut written = Vec::with_capacity(effects.len());
+        for (func, effect) in effects.into_iter().enumerate() {
+            for (param, writes) in effect.written.iter().enumerate() {
+                if *writes {
+                    pending.push((func, param));
                 }
-                let mut changed = true;
-                while changed {
-                    changed = false;
-                    let mut flow = |dst: Reg, src: Reg, from: &mut Vec<Vec<usize>>| {
-                        let add = from.get(src.0 as usize).cloned().unwrap_or_default();
-                        if let Some(slot) = from.get_mut(dst.0 as usize) {
-                            for k in add {
-                                if !slot.contains(&k) {
-                                    slot.push(k);
-                                    changed = true;
-                                }
-                            }
-                        }
-                    };
-                    for block in &f.blocks {
-                        for (dst, inst) in &block.insts {
-                            if let Inst::Copy(src) = inst {
-                                flow(*dst, *src, &mut from);
-                            }
-                        }
-                        let jumps: Vec<(&BlockId, &Vec<Reg>)> = match &block.term {
-                            | Term::Jump(t, args) => vec![(t, args)],
-                            | Term::Branch(_, (t, ta), (e, ea)) => vec![(t, ta), (e, ea)],
-                            | Term::Return(_) | Term::Bail(_) => Vec::new(),
-                        };
-                        for (target, args) in jumps {
-                            if let Some(tb) = f.blocks.get(target.0 as usize) {
-                                for (&p, &a) in tb.params.iter().zip(args) {
-                                    flow(p, a, &mut from);
-                                }
-                            }
-                        }
-                    }
-                }
-                from
-            })
-            .collect();
-        let mut written: Vec<Vec<bool>> = self
-            .functions
-            .iter()
-            .map(|f| vec![false; f.blocks.first().map_or(0, |e| e.params.len())])
-            .collect();
-        let mut changed = true;
-        while changed {
-            changed = false;
-            for (i, f) in self.functions.iter().enumerate() {
-                let Some(from) = provenance.get(i) else {
-                    continue;
-                };
-                let mut mark: Vec<usize> = Vec::new();
-                for (_, inst) in f.blocks.iter().flat_map(|b| &b.insts) {
-                    match inst {
-                        | Inst::Store(slice, ..) => {
-                            mark.extend(from.get(slice.0 as usize).into_iter().flatten());
-                        },
-                        | Inst::Call(g, args) => {
-                            let callee = written.get(g.0 as usize).cloned().unwrap_or_default();
-                            for (j, a) in args.iter().enumerate() {
-                                if callee.get(j).copied().unwrap_or(false) {
-                                    mark.extend(from.get(a.0 as usize).into_iter().flatten());
-                                }
-                            }
-                        },
-                        | _ => {},
-                    }
-                }
-                if let Some(w) = written.get_mut(i) {
-                    for k in mark {
-                        if let Some(flag) = w.get_mut(k)
-                            && !*flag
-                        {
-                            *flag = true;
-                            changed = true;
-                        }
-                    }
+            }
+            for (callee, argument, origin) in effect.calls {
+                callers
+                    .entry((callee.0 as usize, argument))
+                    .or_default()
+                    .push((func, origin));
+            }
+            written.push(effect.written);
+        }
+        while let Some(parameter) = pending.pop() {
+            for caller in callers.remove(&parameter).into_iter().flatten() {
+                let flag = &mut written[caller.0][caller.1];
+                if !*flag {
+                    *flag = true;
+                    pending.push(caller);
                 }
             }
         }
         written
     }
+}
+
+struct SliceEffects {
+    written: Vec<bool>,
+    calls: Vec<(FuncId, usize, usize)>,
+}
+
+fn slice_effects(f: &Function) -> SliceEffects {
+    let params = f.blocks.first().map_or(&[][..], |e| &e.params[..]);
+    let is_slice = |r: Reg| f.regs.get(r.0 as usize) == Some(&Ty::Slice);
+    let mut written = vec![false; params.len()];
+    let mut calls = Vec::new();
+    if !params.iter().copied().any(is_slice) {
+        return SliceEffects { written, calls };
+    }
+
+    let mut successors: HashMap<_, Vec<_>> = HashMap::new();
+    let mut stores = Vec::new();
+    let mut call_sites = Vec::new();
+    let mut edge = |source, dest| {
+        if is_slice(source) && is_slice(dest) && source != dest {
+            successors.entry(source).or_default().push(dest);
+        }
+    };
+    for block in &f.blocks {
+        for (dest, inst) in &block.insts {
+            match inst {
+                | Inst::Copy(source) => edge(*source, *dest),
+                | Inst::Store(slice, ..) => stores.push(*slice),
+                | Inst::Call(callee, args) => call_sites.push((*callee, args)),
+                | _ => {},
+            }
+        }
+        let mut jump = |target: BlockId, args: &[Reg]| {
+            if let Some(next) = f.blocks.get(target.0 as usize) {
+                for (&source, &dest) in args.iter().zip(&next.params) {
+                    edge(source, dest);
+                }
+            }
+        };
+        match &block.term {
+            | Term::Jump(target, args) => jump(*target, args),
+            | Term::Branch(_, (yes, a), (no, b)) => {
+                jump(*yes, a);
+                jump(*no, b);
+            },
+            | Term::Return(_) | Term::Bail(_) => {},
+        }
+    }
+
+    // Visit each (register, entry parameter) pair once. Origins are visited
+    // in entry order, so the last element suffices to detect a cycle.
+    let mut origins: HashMap<_, Vec<_>> = HashMap::new();
+    let mut pending = Vec::new();
+    for (parameter, reg) in params
+        .iter()
+        .copied()
+        .enumerate()
+        .filter(|(_, r)| is_slice(*r))
+    {
+        pending.push(reg);
+        while let Some(reg) = pending.pop() {
+            let known = origins.entry(reg).or_default();
+            if known.last() != Some(&parameter) {
+                known.push(parameter);
+                pending.extend(successors.get(&reg).into_iter().flatten());
+            }
+        }
+    }
+    for slice in stores {
+        for &parameter in origins.get(&slice).into_iter().flatten() {
+            written[parameter] = true;
+        }
+    }
+    for (callee, args) in call_sites {
+        for (argument, arg) in args.iter().enumerate() {
+            for &origin in origins.get(arg).into_iter().flatten() {
+                calls.push((callee, argument, origin));
+            }
+        }
+    }
+    SliceEffects { written, calls }
 }
 
 // ---------------------------------------------------------------------------
@@ -1167,6 +1215,15 @@ impl Module {
         func: FuncId,
         args: &[Value<'_>],
     ) -> Result<&Function, LirError> {
+        self.check_args_with(func, args, || self.written_params(func))
+    }
+
+    pub(super) fn check_args_with<W: AsRef<[bool]>>(
+        &self,
+        func: FuncId,
+        args: &[Value<'_>],
+        written_params: impl FnOnce() -> W,
+    ) -> Result<&Function, LirError> {
         let f = self
             .functions
             .get(func.0 as usize)
@@ -1175,7 +1232,11 @@ impl Module {
         if params.len() != args.len() {
             return bad(format!("`{}` takes {} arguments", f.name, params.len()));
         }
-        let written = self.written_params(func);
+        let written = args
+            .iter()
+            .any(|a| matches!(a, Value::Read(_)))
+            .then(written_params);
+        let written = written.as_ref().map_or(&[][..], AsRef::as_ref);
         for (k, (&p, a)) in params.iter().zip(args).enumerate() {
             let t = f.regs.get(p.0 as usize).copied().unwrap_or(Ty::F64);
             if t != a.ty() {
@@ -1195,6 +1256,10 @@ impl Module {
     }
 }
 
+// A large interpreter frame can reuse register storage across calls. Small
+// frames stay local to avoid contending for a shared scratch lease.
+static INTERPRETER_REGISTERS: ScratchPool<Slot> = ScratchPool::new(8, 1024 * 1024);
+
 impl Interp<'_> {
     #[allow(clippy::too_many_lines)]
     fn run(
@@ -1210,9 +1275,18 @@ impl Interp<'_> {
         let Some(f) = self.module.functions.get(func.0 as usize) else {
             return Flow::Bail(0);
         };
-        let mut r: Vec<Slot> = f.regs.iter().map(|&t| Slot::zero(t)).collect();
+        let mut local = Vec::new();
+        let mut scratch;
+        let r = if f.regs.len() >= 512 {
+            scratch = INTERPRETER_REGISTERS.checkout_for(f.regs.len());
+            &mut *scratch
+        } else {
+            &mut local
+        };
+        r.extend(f.regs.iter().map(|&t| Slot::zero(t)));
         let mut block = 0_usize;
         let mut incoming: Vec<Slot> = args.to_vec();
+        let mut eval_args = Vec::new();
         loop {
             let Some(b) = f.blocks.get(block) else {
                 return Flow::Bail(0);
@@ -1321,15 +1395,17 @@ impl Interp<'_> {
                         Slot::F(0.0)
                     },
                     | Inst::Call(callee, call_args) => {
-                        let values: Vec<Slot> = call_args.iter().map(g).collect();
-                        match self.run(*callee, &values, slices, depth.saturating_add(1)) {
+                        incoming.clear();
+                        incoming.extend(call_args.iter().map(g));
+                        match self.run(*callee, &incoming, slices, depth.saturating_add(1)) {
                             | Flow::Return(v) => v.first().copied().unwrap_or(Slot::F(f64::NAN)),
                             | Flow::Bail(code) => return Flow::Bail(code),
                         }
                     },
                     | Inst::Eval(function, call_args) => {
-                        let values: Vec<f64> = call_args.iter().map(|a| g(a).f()).collect();
-                        Slot::F(function(&values))
+                        eval_args.clear();
+                        eval_args.extend(call_args.iter().map(|a| g(a).f()));
+                        Slot::F(function(&eval_args))
                     },
                     | Inst::Extern1(function, a) => Slot::F(function(g(a).f())),
                     | Inst::Extern2(function, a, c) => Slot::F(function(g(a).f(), g(c).f())),
@@ -1338,23 +1414,21 @@ impl Interp<'_> {
                     *slot = value;
                 }
             }
-            let read = |regs: &[Reg]| -> Vec<Slot> {
-                regs.iter()
-                    .map(|x| r.get(x.0 as usize).copied().unwrap_or(Slot::F(f64::NAN)))
-                    .collect()
-            };
+            let read = |x: &Reg| r.get(x.0 as usize).copied().unwrap_or(Slot::F(f64::NAN));
             match &b.term {
                 | Term::Jump(t, a) => {
-                    incoming = read(a);
+                    incoming.clear();
+                    incoming.extend(a.iter().map(read));
                     block = t.0 as usize;
                 },
                 | Term::Branch(c, (t, ta), (e, ea)) => {
                     let cond = r.get(c.0 as usize).is_some_and(|s| s.b());
                     let (target, a) = if cond { (t, ta) } else { (e, ea) };
-                    incoming = read(a);
+                    incoming.clear();
+                    incoming.extend(a.iter().map(read));
                     block = target.0 as usize;
                 },
-                | Term::Return(values) => return Flow::Return(read(values)),
+                | Term::Return(values) => return Flow::Return(values.iter().map(read).collect()),
                 | Term::Bail(code) => return Flow::Bail(*code),
             }
             if self.steps == 0 {
@@ -1553,6 +1627,210 @@ mod tests {
             1000,
         );
         assert!(ok.is_ok());
+    }
+
+    #[test]
+    fn slice_effects_follow_loop_aliases_and_mutual_calls() {
+        let mut forward = FunctionBuilder::new(
+            "forward",
+            &[Ty::Slice, Ty::Slice, Ty::Slice, Ty::Bool],
+            &[Ty::I64],
+        );
+        let loop_head = forward.new_block();
+        let slice = forward.block_param(loop_head, Ty::Slice);
+        let done = forward.block_param(loop_head, Ty::Bool);
+        let call = forward.new_block();
+        let no = forward.ins(Inst::B(false));
+        let yes = forward.ins(Inst::B(true));
+        forward.branch(
+            forward.param(3),
+            loop_head,
+            &[forward.param(0), no],
+            loop_head,
+            &[forward.param(1), no],
+        );
+        forward.switch_to(loop_head);
+        let copied = forward.ins_typed(Inst::Copy(slice), Ty::Slice);
+        forward.branch(done, call, &[], loop_head, &[copied, yes]);
+        forward.switch_to(call);
+        let result = forward.ins_typed(
+            Inst::Call(FuncId(1), vec![copied, forward.param(2), no]),
+            Ty::I64,
+        );
+        forward.ret(&[result]);
+
+        let mut writer =
+            FunctionBuilder::new("writer", &[Ty::Slice, Ty::Slice, Ty::Bool], &[Ty::I64]);
+        let recurse = writer.new_block();
+        let write = writer.new_block();
+        writer.branch(writer.param(2), recurse, &[], write, &[]);
+        writer.switch_to(recurse);
+        let result = writer.ins_typed(
+            Inst::Call(
+                FuncId(0),
+                vec![
+                    writer.param(0),
+                    writer.param(0),
+                    writer.param(1),
+                    writer.param(2),
+                ],
+            ),
+            Ty::I64,
+        );
+        writer.ret(&[result]);
+        writer.switch_to(write);
+        let index = writer.ins(Inst::I(0));
+        let value = writer.ins(Inst::F(13.0));
+        writer.ins(Inst::Store(writer.param(0), index, value));
+        writer.ret(&[index]);
+
+        let module = Module {
+            functions: vec![
+                forward.finish().unwrap_or_else(|error| panic!("{error}")),
+                writer.finish().unwrap_or_else(|error| panic!("{error}")),
+            ],
+        };
+        assert_eq!(module.verify(), Ok(()));
+        assert_eq!(
+            module.written_params(FuncId(0)),
+            vec![true, true, false, false]
+        );
+        assert_eq!(module.written_params(FuncId(1)), vec![true, false, false]);
+        let mut a = [1.0];
+        let mut b = [2.0];
+        let other = [3.0];
+        assert_eq!(
+            module.interpret(
+                FuncId(0),
+                &mut [
+                    Value::Write(&mut a),
+                    Value::Write(&mut b),
+                    Value::Read(&other),
+                    Value::B(false)
+                ],
+                1000
+            ),
+            Ok(Outcome::Returned(vec![Value::I(0)])),
+        );
+        assert_eq!((a, b, other), ([1.0], [13.0], [3.0]));
+        assert!(
+            module
+                .check_args(
+                    FuncId(0),
+                    &[
+                        Value::Read(&a),
+                        Value::Write(&mut b),
+                        Value::Read(&other),
+                        Value::B(false)
+                    ]
+                )
+                .is_err()
+        );
+        #[cfg(feature = "jit")]
+        {
+            let native = super::super::lir_jit::LirModule::compile(&module)
+                .unwrap_or_else(|error| panic!("{error}"));
+            for _ in 0..2 {
+                assert!(
+                    native
+                        .call(
+                            FuncId(0),
+                            &mut [
+                                Value::Read(&a),
+                                Value::Write(&mut b),
+                                Value::Read(&other),
+                                Value::B(false)
+                            ]
+                        )
+                        .is_err()
+                );
+                assert_eq!(
+                    native.call(
+                        FuncId(0),
+                        &mut [
+                            Value::Write(&mut a),
+                            Value::Write(&mut b),
+                            Value::Read(&other),
+                            Value::B(true)
+                        ]
+                    ),
+                    Ok(Outcome::Returned(vec![Value::I(0)]))
+                );
+            }
+            assert_eq!(a, [13.0]);
+        }
+    }
+
+    #[test]
+    fn slice_results_are_rejected_before_execution() {
+        let mut builder = FunctionBuilder::new("slice_result", &[Ty::Slice], &[Ty::Slice]);
+        builder.ret(&[builder.param(0)]);
+        let module = Module {
+            functions: vec![builder.finish().unwrap_or_else(|error| panic!("{error}"))],
+        };
+        assert_eq!(
+            module.verify(),
+            Err(LirError(
+                "function 0 `slice_result`: slice results are unsupported".into()
+            ))
+        );
+        assert!(
+            module
+                .interpret(FuncId(0), &mut [Value::Read(&[1.0])], 1)
+                .is_err()
+        );
+        #[cfg(feature = "jit")]
+        assert!(super::super::lir_jit::LirModule::compile(&module).is_err());
+    }
+
+    #[test]
+    fn function_analysis_keeps_write_flags_and_first_error_across_worker_counts() {
+        let mut module = Module::default();
+        for index in 0..64 {
+            let mut builder = FunctionBuilder::new("relay", &[Ty::Slice], &[Ty::I64]);
+            for _ in 0..64 {
+                builder.ins(Inst::I(0));
+            }
+            let result = if index == 63 {
+                let offset = builder.ins(Inst::I(0));
+                let value = builder.ins(Inst::F(11.0));
+                builder.ins(Inst::Store(builder.param(0), offset, value));
+                offset
+            } else {
+                builder.ins_typed(
+                    Inst::Call(FuncId(index + 1), vec![builder.param(0)]),
+                    Ty::I64,
+                )
+            };
+            builder.ret(&[result]);
+            module
+                .functions
+                .push(builder.finish().unwrap_or_else(|error| panic!("{error}")));
+        }
+        for workers in [1, 4] {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(workers)
+                .build()
+                .unwrap_or_else(|error| panic!("{error}"))
+                .install(|| {
+                    assert_eq!(module.verify(), Ok(()));
+                    assert_eq!(module.written_all(), vec![vec![true]; 64]);
+                });
+        }
+        module.functions[17].blocks[0].term = Term::Return(vec![Reg(u32::MAX)]);
+        module.functions[43].blocks[0].term = Term::Return(Vec::new());
+        for workers in [1, 4] {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(workers)
+                .build()
+                .unwrap_or_else(|error| panic!("{error}"))
+                .install(|| {
+                    let error = module
+                        .verify()
+                        .expect_err("invalid registers should fail verification");
+                    assert_eq!(error.0, "function 17 `relay`: unknown register r4294967295");
+                });
+        }
     }
 
     #[test]

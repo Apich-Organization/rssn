@@ -16,7 +16,7 @@
 //! * `C` reads the columns that come from `P` only with `Input` (an addressed
 //!   `Load`, a `Len` or a `Gather` needs the whole column in memory, so the
 //!   edge stays a launch boundary);
-//! * at most one of the two has a [`Fold`](super::kernel::Fold) (a kernel has
+//! * at most one of the two has a [`Fold`] (a kernel has
 //!   one loop);
 //! * every other live reader of `P` runs after `C`'s execution slot;
 //! * the merged program validates ([`KernelIr::analyse`]).

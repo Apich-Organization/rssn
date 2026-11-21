@@ -12,7 +12,7 @@
 //! * [`Interpreter`] (this module) flattens the term's DAG into a tape and
 //!   walks it; always available, no code generation;
 //! * a JIT backend lowers the same DAG to machine code. Each operator's
-//!   [`EvalFn`](crate::graph::op::EvalFn) is a plain `fn` pointer it can
+//!   [`EvalFn`] is a plain `fn` pointer it can
 //!   emit a direct call to, and richer lowerings can be attached to
 //!   operators as typed attributes
 //!   ([`OpTable::set_attr`](crate::graph::OpTable::set_attr)) without the
@@ -129,13 +129,51 @@ pub fn call_batch_par(
         return;
     }
     crate::kernels::par::for_chunks_mut(out, BATCH_PAR_ROWS, 3, |k, chunk| {
-        let lo = k * BATCH_PAR_ROWS;
-        let cols: Vec<&[f64]> = columns
-            .iter()
-            .map(|c| &c[lo.min(c.len())..(lo + chunk.len()).min(c.len())])
-            .collect();
-        f.call_batch(&cols, chunk);
+        call_batch_chunk(f, columns, k * BATCH_PAR_ROWS, chunk);
     });
+}
+
+fn call_batch_chunk(
+    f: &dyn Compiled,
+    columns: &[&[f64]],
+    start: usize,
+    out: &mut [f64],
+) {
+    let cols = batch_columns(columns, start, out.len());
+    f.call_batch(&cols, out);
+}
+
+fn batch_columns<'a>(
+    columns: &[&'a [f64]],
+    start: usize,
+    rows: usize,
+) -> Vec<&'a [f64]> {
+    let end = start + rows;
+    columns
+        .iter()
+        .map(|c| &c[start.min(c.len())..end.min(c.len())])
+        .collect()
+}
+
+/// Run a checked batch in fixed blocks sized by estimated executable work.
+pub(crate) fn call_batch_checked(
+    f: &dyn Compiled,
+    columns: &[&[f64]],
+    out: &mut [f64],
+    work_per_row: usize,
+) -> Result<(), crate::cancellation::Cancelled> {
+    crate::cancellation::checkpoint()?;
+    let rows_per_block = (65_536 / work_per_row.max(1)).clamp(256, BATCH_PAR_ROWS);
+    if out.len() <= rows_per_block {
+        f.call_batch(columns, out);
+    } else {
+        crate::kernels::par::for_chunks_mut(out, rows_per_block, 2, |k, chunk| {
+            if !crate::cancellation::is_cancelled() {
+                call_batch_chunk(f, columns, k * rows_per_block, chunk);
+            }
+        });
+    }
+    crate::cancellation::checkpoint()
 }
 
 /// A compiled program with several inputs, parameters and outputs (an ODE
@@ -625,6 +663,104 @@ mod tests {
         for (got, want) in out.iter().zip([11.0, 24.0, 39.0]) {
             assert!((got - want).abs() < 1e-9);
         }
+    }
+
+    #[test]
+    fn checked_batch_sizes_blocks_by_work_without_reordering_rows() {
+        use std::sync::atomic::AtomicUsize;
+        use std::sync::atomic::Ordering;
+
+        #[derive(Default)]
+        struct CountingBatch(AtomicUsize);
+
+        impl Compiled for CountingBatch {
+            fn arity(&self) -> usize {
+                1
+            }
+
+            fn call(
+                &self,
+                args: &[f64],
+            ) -> f64 {
+                args[0] * 2.0
+            }
+
+            fn call_batch(
+                &self,
+                columns: &[&[f64]],
+                out: &mut [f64],
+            ) {
+                self.0.fetch_add(1, Ordering::Relaxed);
+                for (slot, &value) in out.iter_mut().zip(columns[0]) {
+                    *slot = self.call(&[value]);
+                }
+            }
+        }
+
+        let executor = CountingBatch::default();
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(4)
+            .build()
+            .unwrap_or_else(|error| panic!("{error}"));
+        let input = (0..4096).map(f64::from).collect::<Vec<_>>();
+        let mut out = vec![0.0; input.len()];
+        pool.install(|| {
+            for (work_per_row, expected_batches) in [(1, 1), (64, 4)] {
+                out.fill(f64::NAN);
+                executor.0.store(0, Ordering::Relaxed);
+                call_batch_checked(&executor, &[&input], &mut out, work_per_row).unwrap();
+                assert_eq!(executor.0.load(Ordering::Relaxed), expected_batches);
+                for (&value, &actual) in input.iter().zip(&out) {
+                    assert_eq!(actual.to_bits(), executor.call(&[value]).to_bits());
+                }
+            }
+        });
+    }
+
+    #[test]
+    fn checked_batch_stops_between_blocks_in_a_single_worker_pool() {
+        use std::sync::atomic::AtomicBool;
+        use std::sync::atomic::Ordering;
+
+        struct CancelAfterBlock(Arc<AtomicBool>);
+
+        impl Compiled for CancelAfterBlock {
+            fn arity(&self) -> usize {
+                0
+            }
+
+            fn call(
+                &self,
+                _: &[f64],
+            ) -> f64 {
+                1.0
+            }
+
+            fn call_batch(
+                &self,
+                _: &[&[f64]],
+                out: &mut [f64],
+            ) {
+                out.fill(1.0);
+                self.0.store(true, Ordering::Relaxed);
+            }
+        }
+
+        let token = Arc::new(AtomicBool::new(false));
+        let executor = CancelAfterBlock(Arc::clone(&token));
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(1)
+            .build()
+            .unwrap_or_else(|error| panic!("{error}"));
+        let mut out = [0.0; 1024];
+        let result = pool.install(|| {
+            let _scope = crate::cancellation::install(Arc::clone(&token));
+            call_batch_checked(&executor, &[], &mut out, 512)
+        });
+        assert_eq!(result, Err(crate::cancellation::Cancelled));
+        let (first, rest) = out.split_at(256);
+        assert!(first.iter().all(|v| f64::to_bits(*v) == 1.0f64.to_bits()));
+        assert!(rest.iter().all(|v| f64::to_bits(*v) == 0.0f64.to_bits()));
     }
 
     #[test]

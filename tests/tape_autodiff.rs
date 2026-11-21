@@ -1,9 +1,115 @@
 //! Reverse AD uses independently seeded forward and hyper-dual runs as oracles.
 use rssn::backend::Intrinsic;
+use rssn::backend::tape::COLUMN_BLOCK;
 use rssn::backend::tape::Cmp;
 use rssn::backend::tape::Dual;
+use rssn::backend::tape::HyperDual;
 use rssn::backend::tape::Inst;
 use rssn::backend::tape::Tape;
+
+#[test]
+fn hessian_reuses_seeds_and_preserves_every_ordered_pair_across_pools() {
+    let n = 17;
+    let mut insts: Vec<_> = (0..n as u32).map(Inst::Input).collect();
+    let parameter = insts.len() as u32;
+    insts.push(Inst::Param(0));
+    let mut sum = parameter;
+    for i in 0..240_u32 {
+        let left = i % n as u32;
+        let right = (i / n as u32 + left + 1) % n as u32;
+        let product = insts.len() as u32;
+        insts.push(Inst::Mul(left, right));
+        let next = insts.len() as u32;
+        insts.push(Inst::Add(sum, product));
+        sum = next;
+    }
+    let tape = Tape {
+        insts,
+        args: vec![],
+        inputs: n,
+        params: 1,
+        outputs: vec![parameter, sum],
+    };
+    let point: Vec<_> = (0..n).map(|i| (i as f64 - 8.0) * 0.125).collect();
+    let bases = [HyperDual::new(-0.0, 0.0, 0.0, 0.0)];
+    let mut registers = Vec::new();
+    let mut output = [HyperDual::new(0.0, 0.0, 0.0, 0.0); 2];
+    let mut expected = Vec::new();
+    for row in 0..n {
+        for column in 0..n {
+            let seeds: Vec<_> = point
+                .iter()
+                .enumerate()
+                .map(|(i, &x)| {
+                    HyperDual::new(x, (i == row) as u8 as f64, (i == column) as u8 as f64, 0.0)
+                })
+                .collect();
+            tape.run(&seeds, &bases, &mut registers, &mut output);
+            expected.push(output[1].mixed().to_bits());
+        }
+    }
+    for threads in [1, 2, 4] {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap();
+        let actual = pool.install(|| tape.hessian(1, &point, &[-0.0]));
+        assert_eq!(
+            actual.into_iter().map(f64::to_bits).collect::<Vec<_>>(),
+            expected
+        );
+    }
+    assert!(
+        tape.hessian(2, &point, &[1.0])
+            .iter()
+            .all(|value| value.is_nan())
+    );
+    assert!(tape.hessian(1, &[], &[1.0]).is_empty());
+}
+
+#[test]
+fn column_gather_matches_scalar_across_ragged_columns_and_blocks() {
+    let tape = Tape {
+        insts: vec![
+            Inst::Input(0),
+            Inst::Gather(1, 0),
+            Inst::Gather(1, 100),
+            Inst::Gather(u32::MAX, 0),
+        ],
+        args: Vec::new(),
+        inputs: 5,
+        params: 0,
+        outputs: vec![1, 2, 3],
+    };
+    let rows = 2 * COLUMN_BLOCK + 5;
+    let offsets: Vec<_> = (0..rows)
+        .map(|row| [-0.0, 1.75, 2.0, 3.0, -3.0, f64::NAN, f64::INFINITY][row % 7])
+        .collect();
+    let mut first = vec![-0.0; rows];
+    first[7] = f64::from_bits(0x7ff8_0000_0000_0042);
+    let second: Vec<_> = (0..COLUMN_BLOCK + 4).map(|row| row as f64).collect();
+    let columns: [&[f64]; 4] = [&offsets, &first, &second, &[]];
+    for length in [13, rows, 13, rows] {
+        let mut outputs = [vec![7.0; length], vec![7.0; length + 3], vec![7.0; length]];
+        tape.eval_columns(
+            &columns,
+            &[],
+            &mut outputs.each_mut().map(Vec::as_mut_slice),
+        );
+
+        for row in 0..length {
+            let input = columns.map(|column| column.get(row).copied().unwrap_or(f64::NAN));
+            let mut scalar = [0.0; 3];
+            tape.eval(&input, &[], &mut scalar);
+            for (column, expected) in outputs.iter().zip(scalar) {
+                assert_eq!(column[row].to_bits(), expected.to_bits(), "row {row}");
+            }
+        }
+        assert_eq!(outputs[1][length..], [7.0; 3]);
+        assert_eq!(outputs[0][0].to_bits(), (-0.0_f64).to_bits());
+        assert_eq!(outputs[0][7].to_bits(), 0x7ff8_0000_0000_0042);
+    }
+}
 
 fn near(
     a: f64,
@@ -237,6 +343,39 @@ fn opaque_calls_keep_first_derivatives_but_do_not_invent_second_order_rules() {
 }
 
 #[test]
+fn reverse_tape_keeps_operand_order_for_opaque_calls_above_inline_arity() {
+    fn weighted(args: &[f64]) -> f64 {
+        assert_eq!(args.len(), 5);
+        args.iter()
+            .zip([1.0, 2.0, 4.0, 8.0, 16.0])
+            .map(|(&x, weight)| x * weight)
+            .sum()
+    }
+    let tape = Tape {
+        insts: (0..5)
+            .map(Inst::Input)
+            .chain([Inst::Call(weighted, 1, 5)])
+            .collect(),
+        args: vec![100, 3, 0, 4, 1, 2],
+        inputs: 5,
+        outputs: vec![5],
+        ..Tape::default()
+    };
+    let point = [0.125, 0.25, 0.5, 1.0, 2.0];
+    let expected = [2.0, 8.0, 16.0, 1.0, 4.0];
+    let gradient = tape.gradient_reverse(0, &point, &[]);
+    for (actual, wanted) in gradient.iter().zip(expected) {
+        assert!((actual - wanted).abs() < 1e-6);
+    }
+    assert_eq!(tape.vjp(&point, &[], &[1.0]), gradient);
+    assert!(
+        tape.hessian_vector_product(0, &point, &[], &[1.0; 5])
+            .iter()
+            .all(|x| x.is_nan())
+    );
+}
+
+#[test]
 fn invalid_seeds_and_active_domains_are_reported_without_poisoning_unused_outputs() {
     let tape = Tape {
         insts: vec![
@@ -372,6 +511,71 @@ fn checked_expression_ad_exposes_forward_reverse_hessian_and_vjp_without_differe
         autodiff::reverse_gradient("10000000000000000+x", &scalar, &[1.0]).unwrap(),
         vec![1.0]
     );
+}
+
+#[test]
+fn checked_jacobian_reuses_primal_registers_without_changing_row_bits() {
+    use rssn::backend::autodiff;
+    use rssn::backend::tape::lower;
+    use rssn::graph::Engine;
+    use rssn::graph::Graph;
+
+    let names: Vec<_> = ["x", "y", "z", "p", "q"].map(str::to_owned).into();
+    let point = [0.125, -0.25, 0.5, -1.25, 2.0];
+    let mut expressions: Vec<_> = (1..=83)
+        .map(|k| format!("{k}*exp(x) + sin({k}*y) + z^2 + p*q"))
+        .collect();
+    expressions.push(expressions[0].clone());
+    let mut graph = Graph::new();
+    Engine::install(&mut graph, &[rssn::rules::elementary()]).unwrap();
+    let inputs: Vec<_> = names
+        .iter()
+        .map(|name| graph.interner_mut().symbol(name))
+        .collect();
+    let roots: Vec<_> = expressions
+        .iter()
+        .map(|s| graph.parse(s).unwrap())
+        .collect();
+    let tape = lower(&graph, &roots, &inputs, &[]).unwrap().optimise();
+    assert!(tape.outputs.len() * tape.insts.len() >= 16_384);
+    let expected: Vec<_> = (0..expressions.len())
+        .flat_map(|i| tape.gradient_reverse(i, &point, &[]))
+        .map(f64::to_bits)
+        .collect();
+    for workers in [1, 2, 4] {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(workers)
+            .build()
+            .unwrap();
+        let jac = pool
+            .install(|| autodiff::jacobian(&expressions, &names, &point))
+            .unwrap();
+        assert_eq!((jac.rows, jac.cols), (expressions.len(), names.len()));
+        assert_eq!(
+            jac.data.into_iter().map(f64::to_bits).collect::<Vec<_>>(),
+            expected
+        );
+    }
+    assert!(autodiff::jacobian(&["sqrt(x)".into(), "x".into()], &["x".into()], &[0.0]).is_err());
+}
+
+#[test]
+fn checked_jacobian_also_handles_outputs_that_use_most_of_the_tape() {
+    use rssn::backend::autodiff;
+
+    let expression = (1..=100)
+        .map(|i| format!("sin(x+{i})"))
+        .collect::<Vec<_>>()
+        .join("+");
+    let expressions = [expression.clone(), format!("({expression})+x^2")];
+    let point = [0.125];
+    let jac = autodiff::jacobian(&expressions, &["x".into()], &point).unwrap();
+    let sum = (1..=100)
+        .map(|i| (point[0] + f64::from(i)).cos())
+        .sum::<f64>();
+    assert_eq!((jac.rows, jac.cols), (2, 1));
+    assert!((jac.data[0] - sum).abs() < 1e-12);
+    assert!((jac.data[1] - (sum + 2.0 * point[0])).abs() < 1e-12);
 }
 
 #[test]

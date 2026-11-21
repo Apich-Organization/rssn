@@ -21,6 +21,10 @@ subexpressions, parameters constant across a batch, and multiple outputs.
 the process default set by `set_default`, then the interpreter.
 [Backend API](../src/backend/mod.rs) · [Cranelift and tiering](../src/backend/jit.rs)
 
+`TieredBackend` uses the shared column interpreter for batches of built-in tape instructions before native code is ready. From 32,768 rows it evaluates fixed blocks on the active CPU pool when multiple workers are available. Tapes with host callbacks keep their row-wise execution order. Reaching the compilation threshold queues native code generation in a separate, lazily initialized pool of up to four workers, sized by `execution::default_cpu_threads()`. A function stays interpreted if native compilation fails.
+
+A Cranelift batch of at least 64 rows queues compilation of its native row loop on the same background pool and keeps using the existing scalar entry while compilation runs. Single-output batches with no host callbacks also split native execution across the active CPU pool from 32,768 rows.
+
 A term lowers to a straight-line tape with shared subexpressions and
 constant folding. The tape supports host operator calls, differentiation
 and interval evaluation. `KernelIr::from_tape` translates portable arithmetic,
@@ -32,6 +36,11 @@ In that case the backend uses `TapeFunction`. During device execution, the
 infallible `Compiled` interfaces represent device errors as NaNs. Use the
 explicit `Device` API for structured error handling.
 [Tape](../src/backend/tape.rs) · [Kernel translation](../src/backend/device/kernel.rs) · [Device adapter](../src/backend/device/mod.rs)
+
+`Tape::column_gather` builds a tape with an offset in the first input and
+source columns in the remaining inputs. `Tape::eval_columns` reads one
+selected source column per row. The measured manifest adapter uses a common
+positive physical reference for the sources and the result.
 
 ## Device selection and buffers
 
@@ -51,12 +60,43 @@ or with one worker. Embedders with their own pools can query
 `execution::default_cpu_threads()` to apply the host default without starting
 the global pool. [CPU execution policy](../src/execution.rs)
 
+Large optimized `f64` matrix products pass row-major slices directly to
+`faer` and use the active Rayon pool. Small products run on the calling thread.
+[Optimized dense kernels](../src/kernels/dense/optimized.rs)
+
 Compiled CPU batches lease exclusive temporary `f64` buffers. Numerical
 kernels can use the same reuse module for typed scratch and shared immutable
 plans. Sized scratch requests can reuse an idle allocation that already fits.
 Concurrent requests for the same cached plan share its construction. Returned
 results and active scratch leases remain owned by their callers.
+The FFT caches evict the least recently used available plan. FFT plans with
+larger bounded workspaces have their own two-entry cache.
+Large complex scratch allocations have a separate retention pool.
 [Scratch and plan APIs](../src/kernels/reuse.rs)
+
+`num_backend_call_batch_columns` takes a retained scalar program, explicit row
+count and one measured rank-one tensor per input. The tensors follow the
+program's symbol order and each retains its own physical dimension. The
+executor sizes work blocks from the compiled program and uses the active CPU
+pool for independent blocks. Cancellation is checked between blocks and the
+result is returned as one ordered tensor in the program's output dimension.
+
+`num_backend_call_batch_par` uses the same work estimate and active pool for
+`[arity, rows]` input handles. The direct Rust `call_batch_par` helper uses
+fixed row blocks when given a generic `Compiled` callable.
+
+`Tape::hessian` reuses input seeds and tape storage across entries. Large
+programs with built-in instructions can evaluate independent rows on the
+active CPU pool. Each entry still uses its own hyper-dual run, in the output's
+declared variable order. Calls to opaque instructions execute serially.
+
+`autodiff::jacobian` shares one primal evaluation across the reverse sweeps.
+Large Jacobians evaluate independent rows on the active CPU pool. The rows
+follow expression order, and the columns follow variable order.
+
+CPU devices retain validated compiled kernels by structural identity. Repeat
+requests for the same program reuse its analysis. The equality check on the
+program protects against structural hash collisions.
 
 `DeviceInfo` describes device kind, supported `Dtype` values and operations,
 parallelism, buffer capacity, unified memory and determinism. Use `ops.structured`
@@ -168,6 +208,10 @@ the reference evaluator. The parallel device splits disjoint output ranges
 with Rayon. The grain is 2,048 rows for the elementwise interpreter and
 native path and 128 rows for the structured interpreter.
 
+The parallel CPU device can divide a sufficiently wide one-row matrix
+product into disjoint output column ranges. Every output element accumulates
+products in the original inner-axis order.
+
 With `jit`, CPU device launches from 256 rows try to compile a row loop on
 first use and cache the result. `Gather` uses the interpreter. A native
 bail, such as index overflow, reruns the launch with the interpreter.
@@ -180,9 +224,14 @@ and language front ends. It has basic blocks, jumps, branches and direct
 module-local calls. Registers of type `F64`, `I64`, `Bool` and `Slice` are
 mutable and zero-initialized. A jump assigns the target block parameters in
 parallel. Host slices have bounded loads and stores. An out-of-range load
-produces NaN and an out-of-range store has no effect. Validation traces
-transitive writes so execution can reject read-only slice arguments before
-entering a function that writes to them.
+produces NaN and an out-of-range store has no effect. Host slices can pass
+through jumps and function arguments. Function results are scalars.
+Validation traces transitive writes before entering a function that receives a
+read-only slice. Large modules verify types and analyze local slice aliases
+across available CPU workers, keeping validation errors in function order.
+Compiled modules keep the write analysis for subsequent calls with read-only
+slices. The interpreter reuses argument buffers within each call and leases
+storage for large register frames from a bounded scratch pool.
 
 Checked integer arithmetic and float-to-integer conversion can return
 `Outcome::Bailed`, as can a `Term::Bail` or a module call exceeding
@@ -193,7 +242,7 @@ remain valid. `Module::interpret` provides a reference implementation and
 
 | Front end | LIR use |
 |---|---|
-| Tape | `lir::batch_from_tape` places eligible instructions in a loop over column slices. The Cranelift batch path attempts this from 64 rows. |
+| Tape | `lir::batch_from_tape` places eligible instructions in a loop over column slices. The Cranelift batch path requests background compilation from 64 rows. |
 | `KernelIr` | `device::native::lower` lowers the row loop, fold and kernel index semantics to LIR for the CPU devices. |
 | Aevia Core IR | Eligible pure scalar `@jit` functions use LIR for branches, checked `Int` arithmetic, recursion and self tail calls with fuel accounting. |
 
