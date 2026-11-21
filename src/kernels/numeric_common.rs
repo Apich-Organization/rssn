@@ -1,4 +1,14 @@
-//! Shared failures for numerical routines.
+//! Shared failures and domain checks for numerical routines.
+use std::num::NonZeroUsize;
+
+/// Number of snapshots including the initial state and the final step.
+pub(crate) const fn trajectory_sample_count(
+    steps: usize,
+    stride: NonZeroUsize,
+) -> Option<usize> {
+    steps.div_ceil(stride.get()).checked_add(1)
+}
+
 /// Why a numeric kernel refused.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NumericError {
@@ -54,7 +64,7 @@ pub(super) fn scaled_difference(
 
 // Positive reference scales may individually be extreme while their product
 // or quotient is representable. Keep mantissas normalized and accumulate the
-// binary exponent separately, including correctly rounded subnormal results.
+// binary exponent separately. The final output is rounded from that accumulator.
 fn parts(mut x: f64) -> (f64, i32) {
     let shift = if x < f64::MIN_POSITIVE {
         x *= 18_014_398_509_481_984.0;
@@ -73,6 +83,7 @@ pub(crate) fn scale_product(
     numerator: &[f64],
     denominator: &[f64],
 ) -> Result<f64, NumericError> {
+    const OVERFLOW: &str = "reference-scaled result overflows Float";
     if !value.is_finite()
         || numerator.len() + denominator.len() > 256
         || numerator
@@ -86,6 +97,21 @@ pub(crate) fn scale_product(
     }
     if value == 0.0 {
         return Ok(value);
+    }
+    // A single hardware operation can round directly to a subnormal. The
+    // normalized accumulator would round first at a larger exponent.
+    let single = match (numerator, denominator) {
+        | ([], []) => return Ok(value),
+        | ([factor], []) => Some(value * factor),
+        | ([], [factor]) => Some(value / factor),
+        | _ => None,
+    };
+    if let Some(out) = single {
+        return if out.is_finite() {
+            Ok(out)
+        } else {
+            Err(NumericError::Domain(OVERFLOW.into()))
+        };
     }
     let (mut m, mut e) = parts(value.abs());
     for factor in numerator {
@@ -107,9 +133,7 @@ pub(crate) fn scale_product(
         }
     }
     if e > 1023 {
-        return Err(NumericError::Domain(
-            "reference-scaled result overflows Float".into(),
-        ));
+        return Err(NumericError::Domain(OVERFLOW.into()));
     }
     let sign = value.to_bits() & (1_u64 << 63);
     let fraction = m.to_bits() & 0x000f_ffff_ffff_ffff;
@@ -128,4 +152,49 @@ pub(crate) fn scale_product(
         }
     };
     Ok(f64::from_bits(sign | bits))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_single_scale_rounds_directly_at_the_subnormal_boundary() {
+        let magnitude = f64::from_bits(0x0019_6791_79ab_83a0);
+        let factor = f64::from_bits(0x3fc7_2982_a0f5_f2ab);
+        for sign in [0, 1_u64 << 63] {
+            let value = f64::from_bits(magnitude.to_bits() | sign);
+            assert_eq!(
+                scale_product(value, &[factor], &[]).map(f64::to_bits),
+                Ok(0x0004_98d9_3d97_d067 | sign),
+            );
+        }
+        let dividend = f64::from_bits(0x001c_4ac2_72ec_b6e0);
+        let divisor = f64::from_bits(0x4014_df2c_80e4_b612);
+        assert_eq!(
+            scale_product(dividend, &[], &[divisor]).map(f64::to_bits),
+            Ok(0x0005_6c0c_7b2b_6d33),
+        );
+    }
+
+    #[test]
+    fn scale_ranges_and_signed_zero_are_preserved() {
+        let huge = f64::from_bits(1773_u64 << 52);
+        let tiny = f64::from_bits(273_u64 << 52);
+        assert_eq!(
+            scale_product(huge, &[huge, tiny], &[]).map(f64::to_bits),
+            Ok(huge.to_bits()),
+        );
+        assert_eq!(
+            scale_product(-f64::from_bits(1), &[tiny], &[]).map(f64::to_bits),
+            Ok((-0.0_f64).to_bits()),
+        );
+        assert_eq!(
+            scale_product(-0.0, &[], &[tiny]).map(f64::to_bits),
+            Ok((-0.0_f64).to_bits()),
+        );
+        assert!(scale_product(huge, &[huge], &[]).is_err());
+        assert!(scale_product(-0.0, &[], &[0.0]).is_err());
+        assert!(scale_product(1.0, &[f64::INFINITY], &[]).is_err());
+    }
 }
