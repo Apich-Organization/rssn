@@ -1,0 +1,1092 @@
+//! Fresnel integrals, their auxiliary functions and the complex error function.
+//!
+//! # Fresnel integrals
+//!
+//! The normalised Fresnel integrals (DLMF 7.2.7)
+//!
+//! ```text
+//! S(x) = ∫_0^x sin(π t² / 2) dt,      C(x) = ∫_0^x cos(π t² / 2) dt,
+//! ```
+//!
+//! odd, entire, with `S(±∞) = C(±∞) = ±1/2`, plus the auxiliary functions
+//! `f` and `g` of DLMF 7.2.10, and the complex-argument versions through the
+//! error function of a complex argument ([`erf_complex`], [`faddeeva_w`]).
+//!
+//! ## Real argument
+//!
+//! * `|x| <= 1.5`: the Maclaurin series in `t = π x² / 2`, which has no
+//!   serious cancellation on that range;
+//! * `|x| > 1.5`: the auxiliary functions from the Laplace-type continued
+//!   fraction (modified Lentz, no cancellation), then
+//!   `C = 1/2 + f sin θ - g cos θ`, `S = 1/2 - f cos θ - g sin θ` with
+//!   `θ = π x² / 2` reduced *exactly*: `x²` is split into a double with its
+//!   `fma` rounding residual, reduced modulo 4, and the remainder rotated
+//!   by whole quadrants, so the phase is accurate for any `|x| <= 1e17`.
+//!
+//! Both are accurate to a few units in the last place away from the zeros of
+//! the function (where only absolute accuracy of about `1e-16` is possible).
+//! Use [`fresnel_sc_interval`] to integrate directly between two limits.
+//!
+//! ## Complex argument
+//!
+//! The sine and cosine integrals are recovered separately from
+//! `erf(√π/2 (1 ± i) z)` as given at [`fresnel_sc_complex`]. The error
+//! function uses a Maclaurin series for `|z| < 1.5`, then Weideman's rational
+//! approximation of the Faddeeva function or its large-argument expansion.
+//! For large complex Fresnel arguments the tails use the expansion directly,
+//! computing their exponential phases before rotating the argument.
+
+use std::f64::consts::FRAC_1_PI;
+use std::f64::consts::FRAC_PI_2;
+use std::f64::consts::PI;
+use std::sync::OnceLock;
+
+use num_complex::Complex64;
+
+/// Below this the Maclaurin series is used, above it the continued fraction.
+const SERIES_LIMIT: f64 = 1.5;
+/// Beyond this `|x|` the correction to `±1/2` is below half an ulp.
+const SATURATION: f64 = 1.0e17;
+/// At and above 2⁵³ every finite f64 is an even integer.
+const ZERO_PHASE_LIMIT: f64 = 9_007_199_254_740_992.0;
+/// Beyond this the first neglected relative terms of f and g are below f64 epsilon.
+const INTERVAL_ASYMPTOTIC_LIMIT: f64 = 16_384.0;
+
+/// Sine and cosine of π(high + low)/2, for a reduced argument.
+fn quarter_turns(
+    high: f64,
+    low: f64,
+) -> (f64, f64) {
+    let k = (high + low).round();
+    let phi = FRAC_PI_2 * ((high - k) + low);
+    let (sp, cp) = phi.sin_cos();
+    let q = (k as i32).rem_euclid(4);
+    match q {
+        | 0 => (sp, cp),
+        | 1 => (cp, -sp),
+        | 2 => (-sp, -cp),
+        | _ => (-cp, sp),
+    }
+}
+
+/// Reduce the two parts of x² modulo 4 without rounding their sum.
+fn square_phase_parts(x: f64) -> (f64, f64) {
+    if x.abs() >= ZERO_PHASE_LIMIT {
+        return (0.0, 0.0);
+    }
+    let square = x * x;
+    (square % 4.0, x.mul_add(x, -square) % 4.0)
+}
+
+/// `(sin(π x² / 2), cos(π x² / 2))` with the phase reduced exactly.
+#[must_use]
+pub fn sin_cos_half_pi_square(x: f64) -> (f64, f64) {
+    if !x.is_finite() {
+        return (f64::NAN, f64::NAN);
+    }
+    if x.abs() >= ZERO_PHASE_LIMIT {
+        return (0.0, 1.0);
+    }
+    let (high, low) = square_phase_parts(x);
+    quarter_turns(high, low)
+}
+
+/// Maclaurin series; returns `(S, C)` for `x >= 0` small.
+fn series(x: f64) -> (f64, f64) {
+    let t = FRAC_PI_2 * x * x;
+    let t2 = t * t;
+    // S = x Σ (-1)^n t^(2n+1) / ((2n+1)! (4n+3))
+    // C = x Σ (-1)^n t^(2n)   / ((2n)!   (4n+1))
+    let mut sine_term = t;
+    let mut cosine_term = 1.0;
+    let mut s = t / 3.0;
+    let mut c = 1.0;
+    let mut n = 1.0_f64;
+    for _ in 0..60 {
+        sine_term *= -t2 / ((2.0 * n) * (2.0 * n + 1.0));
+        cosine_term *= -t2 / ((2.0 * n - 1.0) * (2.0 * n));
+        let ds = sine_term / (4.0 * n + 3.0);
+        let dc = cosine_term / (4.0 * n + 1.0);
+        s += ds;
+        c += dc;
+        if ds.abs() < 1e-18 * s.abs() && dc.abs() < 1e-18 * c.abs() {
+            break;
+        }
+        n += 1.0;
+    }
+    (x * s, x * c)
+}
+
+/// `g(x) + i f(x) = x · h` with `h` the Lentz-evaluated continued fraction, `x > 0`.
+fn aux_continued_fraction(x: f64) -> (f64, f64) {
+    let pix2 = PI * x * x;
+    let tiny = 1.0e-300;
+    let mut b = Complex64::new(1.0, -pix2);
+    let mut c = Complex64::new(1.0 / tiny, 0.0);
+    let mut d = Complex64::new(1.0, 0.0) / b;
+    let mut h = d;
+    let mut n = -1.0_f64;
+    for _ in 2..5000 {
+        n += 2.0;
+        let a = -n * (n + 1.0);
+        b += 4.0;
+        d = Complex64::new(1.0, 0.0) / (a * d + b);
+        c = b + a / c;
+        let delta = c * d;
+        h *= delta;
+        if (delta.re - 1.0).abs() + delta.im.abs() < 1.0e-16 {
+            break;
+        }
+    }
+    (x * h.im, x * h.re)
+}
+
+/// `(f, g)` for `x > 0` large enough for the continued fraction.
+fn aux_positive(x: f64) -> (f64, f64) {
+    aux_continued_fraction(x)
+}
+
+/// Fresnel integrals `(S(x), C(x))` together.
+#[must_use]
+pub fn fresnel_sc(x: f64) -> (f64, f64) {
+    if x.is_nan() {
+        return (f64::NAN, f64::NAN);
+    }
+    let ax = x.abs();
+    let (s, c) = if ax <= SERIES_LIMIT {
+        series(ax)
+    } else if ax >= SATURATION {
+        (0.5, 0.5)
+    } else {
+        let (f, g) = aux_positive(ax);
+        let (sin_t, cos_t) = sin_cos_half_pi_square(ax);
+        (
+            0.5 - f.mul_add(cos_t, g * sin_t),
+            0.5 + f.mul_add(sin_t, -(g * cos_t)),
+        )
+    };
+    if x.is_sign_negative() {
+        (-s, -c)
+    } else {
+        (s, c)
+    }
+}
+
+/// Normalised Fresnel sine and cosine integrals `(S, C)` over `[a, b]`.
+///
+/// Both integrands use the phase `π t² / 2`. Narrow intervals are integrated
+/// directly, and far from the origin the common endpoint limit cancels before
+/// rounding, so differences can survive even when the values from
+/// [`fresnel_sc`] round to the same number.
+///
+/// Reversing the limits negates both results. Infinite limits are interpreted
+/// as improper integrals. Equal limits give zero, including equal infinities.
+/// A NaN limit gives two NaNs.
+///
+/// ```
+/// use rssn::kernels::fresnel::fresnel_sc_interval;
+///
+/// let (s, c) = fresnel_sc_interval(1.0, 1.0_f64.next_up());
+/// assert_eq!(s, f64::EPSILON);
+/// assert!(c < 0.0);
+/// ```
+#[must_use]
+pub fn fresnel_sc_interval(
+    a: f64,
+    b: f64,
+) -> (f64, f64) {
+    if a.is_nan() || b.is_nan() {
+        return (f64::NAN, f64::NAN);
+    }
+    if matches!(a.partial_cmp(&b), Some(std::cmp::Ordering::Equal)) {
+        return (0.0, 0.0);
+    }
+    if a < b {
+        fresnel_increasing(a, b)
+    } else {
+        let (s, c) = fresnel_increasing(b, a);
+        (-s, -c)
+    }
+}
+
+/// Integrate over ordered, distinct limits. Both integrands are even.
+fn fresnel_increasing(
+    a: f64,
+    b: f64,
+) -> (f64, f64) {
+    let (a, b) = if b <= 0.0 { (-b, -a) } else { (a, b) };
+    if a >= 0.0 {
+        let width = b - a;
+        let linear = PI * (a * width);
+        let quadratic = FRAC_PI_2 * (width * width);
+        if linear + quadratic <= 0.5 {
+            return fresnel_short_interval(a, width, linear, quadratic);
+        }
+        if a >= INTERVAL_ASYMPTOTIC_LIMIT {
+            return fresnel_far_interval(a, b, width);
+        }
+        if a > SERIES_LIMIT {
+            let (sa, ca) = fresnel_tail(a);
+            let (sb, cb) = fresnel_tail(b);
+            return (sa - sb, ca - cb);
+        }
+    }
+    let (sa, ca) = fresnel_sc(a);
+    let (sb, cb) = fresnel_sc(b);
+    (sb - sa, cb - ca)
+}
+
+fn fresnel_short_interval(
+    a: f64,
+    width: f64,
+    linear: f64,
+    quadratic: f64,
+) -> (f64, f64) {
+    let (sin_a, cos_a) = sin_cos_half_pi_square(a);
+    // Integrate the phase increment u(linear + u * quadratic) for u in [0, 1].
+    // Forming a + u * width can round to an endpoint before evaluating the phase.
+    let (sin_increment, cos_increment) = if linear + quadratic <= 1.0e-8 {
+        // The mean phase is exact to first order; omitted cosine terms are < 0.5 ulp.
+        (0.5 * linear + quadratic / 3.0, 1.0)
+    } else {
+        // Positive nodes and weights of 8-point Gauss–Legendre on [-1, 1].
+        const NODES: [(f64, f64); 4] = [
+            (0.183_434_642_495_649_8, 0.362_683_783_378_362),
+            (0.525_532_409_916_329, 0.313_706_645_877_887_3),
+            (0.796_666_477_413_626_7, 0.222_381_034_453_374_5),
+            (0.960_289_856_497_536_3, 0.101_228_536_290_376_26),
+        ];
+        let mut sine = 0.0;
+        let mut cosine = 0.0;
+        for (node, weight) in NODES {
+            let left = 0.5 * (1.0 - node);
+            let right = 1.0_f64.midpoint(node);
+            let (s_left, c_left) = (left * quadratic.mul_add(left, linear)).sin_cos();
+            let (s_right, c_right) = (right * quadratic.mul_add(right, linear)).sin_cos();
+            sine = (0.5 * weight).mul_add(s_left + s_right, sine);
+            cosine = (0.5 * weight).mul_add(c_left + c_right, cosine);
+        }
+        (sine, cosine)
+    };
+    (
+        width * cos_a.mul_add(sin_increment, sin_a * cos_increment),
+        width * (-sin_a).mul_add(sin_increment, cos_a * cos_increment),
+    )
+}
+
+/// The pair of integrals from x to +∞, for `x > SERIES_LIMIT`.
+fn fresnel_tail(x: f64) -> (f64, f64) {
+    if x == f64::INFINITY {
+        return (0.0, 0.0);
+    }
+    let (f, g) = if x >= INTERVAL_ASYMPTOTIC_LIMIT {
+        let f = FRAC_1_PI / x;
+        (f, f * f / x)
+    } else {
+        aux_positive(x)
+    };
+    let (sin, cos) = sin_cos_half_pi_square(x);
+    (f.mul_add(cos, g * sin), (-f).mul_add(sin, g * cos))
+}
+
+fn fresnel_far_interval(
+    a: f64,
+    b: f64,
+    width: f64,
+) -> (f64, f64) {
+    if b == f64::INFINITY {
+        return fresnel_tail(a);
+    }
+
+    // Factor differences of 1/x and 1/x³. Subtracting them directly loses the
+    // envelope increment when the phases coincide and the limits are close.
+    let fraction = width / b;
+    let ratio = a / b;
+    let f_a = FRAC_1_PI / a;
+    let df = (FRAC_1_PI * fraction) / a;
+    let dg = (f_a * f_a) * (fraction * (1.0 + ratio + ratio * ratio)) / a;
+
+    if a >= ZERO_PHASE_LIMIT {
+        return (df, dg);
+    }
+    let f_b = FRAC_1_PI / b;
+    let g_b = f_b * f_b / b;
+    let (a_high, a_low) = square_phase_parts(a);
+    let (b_high, b_low) = square_phase_parts(b);
+    let (sin_a, cos_a) = quarter_turns(a_high, a_low);
+    // Trig differences via the half-sum and half-difference of the phases.
+    let (sin_mid, cos_mid) = quarter_turns(b_high.midpoint(a_high), b_low.midpoint(a_low));
+    let (sin_half_delta, _) = quarter_turns(0.5 * (b_high - a_high), 0.5 * (b_low - a_low));
+    let dcos = 2.0 * sin_mid * sin_half_delta;
+    let dsin = -2.0 * cos_mid * sin_half_delta;
+    (
+        df.mul_add(cos_a, dg * sin_a) + f_b.mul_add(dcos, g_b * dsin),
+        dg.mul_add(cos_a, -df * sin_a) + (-f_b).mul_add(dsin, g_b * dcos),
+    )
+}
+
+/// Fresnel sine integral `S(x) = ∫_0^x sin(π t² / 2) dt`.
+#[must_use]
+pub fn fresnel_s(x: f64) -> f64 {
+    fresnel_sc(x).0
+}
+
+/// Fresnel cosine integral `C(x) = ∫_0^x cos(π t² / 2) dt`.
+#[must_use]
+pub fn fresnel_c(x: f64) -> f64 {
+    fresnel_sc(x).1
+}
+
+/// Auxiliary functions `(f(x), g(x))` of DLMF 7.2.10:
+/// `f = (1/2 - S) cos θ - (1/2 - C) sin θ`, `g = (1/2 - C) cos θ + (1/2 - S) sin θ`,
+/// `θ = π x² / 2`.
+#[must_use]
+pub fn fresnel_fg(x: f64) -> (f64, f64) {
+    if x.is_nan() {
+        return (f64::NAN, f64::NAN);
+    }
+    if x.is_infinite() {
+        return if x > 0.0 {
+            (0.0, 0.0)
+        } else {
+            (f64::INFINITY, f64::INFINITY)
+        };
+    }
+    if x > SERIES_LIMIT {
+        if x >= SATURATION {
+            return (1.0 / (PI * x), 1.0 / (PI * PI * x * x * x));
+        }
+        return aux_positive(x);
+    }
+    let (s, c) = fresnel_sc(x);
+    let (sin_t, cos_t) = sin_cos_half_pi_square(x);
+    let (hs, hc) = (0.5 - s, 0.5 - c);
+    (
+        hs.mul_add(cos_t, -(hc * sin_t)),
+        hc.mul_add(cos_t, hs * sin_t),
+    )
+}
+
+/// Auxiliary function `f(x)` of DLMF 7.2.10 (`≈ 1/(π x)` for large `x`).
+#[must_use]
+pub fn fresnel_f(x: f64) -> f64 {
+    fresnel_fg(x).0
+}
+
+/// Auxiliary function `g(x)` of DLMF 7.2.10 (`≈ 1/(π² x³)` for large `x`).
+#[must_use]
+pub fn fresnel_g(x: f64) -> f64 {
+    fresnel_fg(x).1
+}
+
+// ----------------------------------------------------------------------
+// Complex error function
+// ----------------------------------------------------------------------
+
+const WEIDEMAN_N: usize = 48;
+
+/// Weideman's expansion coefficients (highest degree first) and scale `L`.
+fn weideman() -> &'static (Vec<f64>, f64) {
+    static TABLE: OnceLock<(Vec<f64>, f64)> = OnceLock::new();
+    TABLE.get_or_init(|| {
+        let n = WEIDEMAN_N;
+        let m = 2 * n;
+        let two_m = 2 * m;
+        let l = (n as f64 / 2.0_f64.sqrt()).sqrt();
+        // shifted[j] = F(k) with k = j for j < M, k = j - 2M for j >= M, F(-M) = 0.
+        let mut shifted = vec![0.0_f64; two_m];
+        for (j, slot) in shifted.iter_mut().enumerate() {
+            let k = if j < m {
+                j as i64
+            } else {
+                j as i64 - two_m as i64
+            };
+            if k == -(m as i64) {
+                continue;
+            }
+            let theta = k as f64 * PI / m as f64;
+            let t = l * (theta / 2.0).tan();
+            *slot = (-t * t).exp() * (l * l + t * t);
+        }
+        let mut coefficients = Vec::with_capacity(n);
+        for index in (1..=n).rev() {
+            let mut sum = 0.0;
+            for (j, value) in shifted.iter().enumerate() {
+                let angle = PI * ((index * j) % two_m) as f64 / m as f64;
+                sum += value * angle.cos();
+            }
+            coefficients.push(sum / two_m as f64);
+        }
+        (coefficients, l)
+    })
+}
+
+/// Reciprocal with scale chosen before squaring to preserve large-argument tails.
+fn scaled_reciprocal(z: Complex64) -> Complex64 {
+    let scale = z.re.abs().max(z.im.abs());
+    let normalized = z / scale;
+    normalized.conj() / normalized.norm_sqr() / scale
+}
+
+/// The asymptotic factor in `w(z) ~ i/(sqrt(π) z) Σ (2n-1)!! / (2z²)^n`.
+fn faddeeva_asymptotic_factor(inverse_squared: Complex64) -> Complex64 {
+    let mut term = Complex64::new(1.0, 0.0);
+    let mut sum = term;
+    for n in 1..=16 {
+        term *= (f64::from(n) - 0.5) * inverse_squared;
+        sum += term;
+        if term.norm_sqr() < 1e-36 {
+            break;
+        }
+    }
+    sum
+}
+
+/// Faddeeva function `w(z) = exp(-z²) erfc(-i z)` for `Im z >= 0`.
+fn faddeeva_upper(z: Complex64) -> Complex64 {
+    let i = Complex64::new(0.0, 1.0);
+    if z.re.is_finite() && z.im.is_finite() && z.re.abs().max(z.im) >= 32.0 {
+        let inverse = scaled_reciprocal(z);
+        return i * inverse * faddeeva_asymptotic_factor(inverse * inverse) / PI.sqrt();
+    }
+    let (coefficients, l) = weideman();
+    let denominator = Complex64::new(*l, 0.0) - i * z;
+    let zz = (Complex64::new(*l, 0.0) + i * z) / denominator;
+    let mut p = Complex64::new(0.0, 0.0);
+    for &a in coefficients {
+        p = p * zz + a;
+    }
+    2.0 * p / (denominator * denominator) + (1.0 / PI.sqrt()) / denominator
+}
+
+/// Multiply by an exponential after rotating the prefactor, allowing either
+/// result component to stay finite when the exponential alone would overflow.
+fn scale_exponential(
+    factor: Complex64,
+    exponent: f64,
+    (sin_phase, cos_phase): (f64, f64),
+) -> Complex64 {
+    let rotated = factor * Complex64::new(cos_phase, sin_phase);
+    if exponent.abs() < 700.0 {
+        return rotated * exponent.exp();
+    }
+    let half_scale = (0.5 * exponent).exp();
+    let scale_component = |component: f64| {
+        if component == 0.0 {
+            component
+        } else if half_scale.is_infinite() {
+            // A subnormal prefactor may still bring the result into range.
+            (exponent + component.abs().ln()).exp().copysign(component)
+        } else {
+            component * half_scale * half_scale
+        }
+    };
+    Complex64::new(scale_component(rotated.re), scale_component(rotated.im))
+}
+
+/// `factor * exp(-z²)` while avoiding cancellation in the real exponent.
+fn scale_exp_neg_square(
+    factor: Complex64,
+    z: Complex64,
+) -> Complex64 {
+    if !z.re.is_finite() || !z.im.is_finite() {
+        return factor * (-(z * z)).exp();
+    }
+    let x = z.re.abs();
+    let y = z.im.abs();
+    let difference = y - x;
+    let exponent = if difference == 0.0 {
+        0.0
+    } else {
+        difference * (y + x)
+    };
+    // All callers use prefactors of magnitude at most two.
+    if exponent < -746.0 {
+        return Complex64::new(0.0, 0.0);
+    }
+    let product = z.re * z.im;
+    let angle = -2.0 * product;
+    let remainder = -2.0 * z.re.mul_add(z.im, -product);
+    let (sin_hi, cos_hi) = if angle.is_finite() {
+        angle.sin_cos()
+    } else {
+        // Reduce the product before doubling if the angle itself overflows.
+        let (s, c) = product.sin_cos();
+        (-2.0 * s * c, (c + s) * (c - s))
+    };
+    if remainder == 0.0 {
+        return scale_exponential(factor, exponent, (sin_hi, cos_hi));
+    }
+    let (sin_lo, cos_lo) = remainder.sin_cos();
+    scale_exponential(
+        factor,
+        exponent,
+        (
+            sin_hi * cos_lo + cos_hi * sin_lo,
+            cos_hi * cos_lo - sin_hi * sin_lo,
+        ),
+    )
+}
+
+/// The Faddeeva function `w(z) = exp(-z²) erfc(-i z)`.
+#[must_use]
+pub fn faddeeva_w(z: Complex64) -> Complex64 {
+    if z.re.is_nan() || z.im.is_nan() {
+        return Complex64::new(f64::NAN, f64::NAN);
+    }
+    if z.im >= 0.0 {
+        let mut value = faddeeva_upper(z);
+        if z.im == 0.0 && z.re.is_finite() {
+            // The real component is exactly exp(-x²) on the real axis.
+            value.re = (-z.re * z.re).exp();
+        }
+        value
+    } else {
+        // w(z) = 2 exp(-z²) - w(-z)
+        scale_exp_neg_square(Complex64::new(2.0, 0.0), z) - faddeeva_upper(-z)
+    }
+}
+
+/// Error function of a complex argument.
+///
+/// Maclaurin series for `|z| < 1.5`, otherwise `1 - exp(-z²) w(i z)` after
+/// folding to `Re z >= 0` with `erf(-z) = -erf(z)`. The exponential is
+/// scaled with the Faddeeva factor near the floating-point range limits.
+#[must_use]
+pub fn erf_complex(z: Complex64) -> Complex64 {
+    if z.re.is_nan() || z.im.is_nan() {
+        return Complex64::new(f64::NAN, f64::NAN);
+    }
+    if z.im == 0.0 {
+        return Complex64::new(crate::kernels::special::erf_numerical(z.re), z.im);
+    }
+    if z.re == 0.0 {
+        // erf(i y) = i erfi(y)
+        let value = if z.im.abs() >= 26.0 && z.im.is_finite() {
+            let tail = -faddeeva_upper(Complex64::new(-z.im, 0.0)).im;
+            scale_exp_neg_square(Complex64::new(0.0, tail), z).im
+        } else {
+            crate::kernels::special::erfi(z.im)
+        };
+        return Complex64::new(0.0, value);
+    }
+    if z.norm() < 1.5 {
+        let z2 = z * z;
+        let mut term = z;
+        let mut sum = z;
+        for n in 1..80 {
+            let nf = f64::from(n);
+            term = -term * z2 / nf;
+            let delta = term / (2.0 * nf + 1.0);
+            sum += delta;
+            if delta.norm() < 1e-18 * sum.norm() {
+                break;
+            }
+        }
+        return sum * (2.0 / PI.sqrt());
+    }
+    if z.re < 0.0 {
+        return -erf_complex(-z);
+    }
+    let tail = faddeeva_upper(Complex64::new(-z.im, z.re));
+    Complex64::new(1.0, 0.0) - scale_exp_neg_square(tail, z)
+}
+
+/// Large-argument Fresnel tails using the Faddeeva asymptotic factor after
+/// canceling the constant factors introduced by the two erf rotations.
+fn fresnel_complex_asymptotic(
+    re: f64,
+    im: f64,
+) -> (Complex64, Complex64) {
+    let (x, y) = (re.abs(), im.abs());
+    let inverse = scaled_reciprocal(Complex64::new(x, y));
+    let i = Complex64::new(0.0, 1.0);
+    let leading = (i * inverse) / (2.0 * PI);
+    let inverse_squared = (i * (inverse * inverse)) * (2.0 / PI);
+    let (sin_x, cos_x) = sin_cos_half_pi_square(x);
+    let (sin_y, cos_y) = sin_cos_half_pi_square(y);
+    let sin_phase = sin_x * cos_y - cos_x * sin_y;
+    let cos_phase = cos_x * cos_y + sin_x * sin_y;
+    let exponent = PI * (x * y);
+    let decay = scale_exponential(
+        leading * faddeeva_asymptotic_factor(-inverse_squared),
+        -exponent,
+        (sin_phase, cos_phase),
+    );
+    let growth = scale_exponential(
+        -leading * faddeeva_asymptotic_factor(inverse_squared),
+        exponent,
+        (-sin_phase, cos_phase),
+    );
+    // C and S tend to (1/2, 1/2) on the real axis and (i/2, -i/2) on the
+    // imaginary axis. The corresponding constants follow from erf's folding.
+    let (sr, si, cr, ci) = if x >= y {
+        (0.5, 0.0, 0.5, 0.0)
+    } else {
+        (0.0, -0.5, 0.0, 0.5)
+    };
+    let (re_sign, im_sign) = (re.signum(), im.signum());
+    (
+        Complex64::new(
+            re_sign * (sr - decay.im + growth.im),
+            im_sign * (si + decay.re - growth.re),
+        ),
+        Complex64::new(
+            re_sign * (cr - decay.re - growth.re),
+            im_sign * (ci - decay.im - growth.im),
+        ),
+    )
+}
+
+/// `(S(z), C(z))` for a complex argument `z = re + i·im`, returned as
+/// `((S.re, S.im), (C.re, C.im))`.
+///
+/// With `a = √π/2`, `E₁ = erf(a (1-i) z)`, `E₂ = erf(a (1+i) z)`:
+/// `C(z) = (1+i)/4 · E₁ + (1-i)/4 · E₂`,
+/// `S(z) = (1-i)/4 · E₁ + (1+i)/4 · E₂`.
+/// Real arguments take the real kernels, so they keep full accuracy.
+#[must_use]
+pub fn fresnel_sc_complex(
+    re: f64,
+    im: f64,
+) -> ((f64, f64), (f64, f64)) {
+    if im == 0.0 {
+        let (s, c) = fresnel_sc(re);
+        return ((s, 0.0), (c, 0.0));
+    }
+    if re == 0.0 {
+        // The Fresnel series give S(i y) = -i S(y) and C(i y) = i C(y).
+        let (s, c) = fresnel_sc(im);
+        return ((0.0, -s), (0.0, c));
+    }
+    // Both rotated arguments have magnitude at least 10 sqrt(π / 2)
+    // here, which keeps the truncated asymptotic terms below roundoff.
+    if re.is_finite() && im.is_finite() && re.abs().max(im.abs()) >= 10.0 {
+        let (s, c) = fresnel_complex_asymptotic(re, im);
+        return ((s.re, s.im), (c.re, c.im));
+    }
+    let z = Complex64::new(re, im);
+    let a = PI.sqrt() / 2.0;
+    let e1 = erf_complex(Complex64::new(a, -a) * z);
+    let e2 = erf_complex(Complex64::new(a, a) * z);
+    let quarter = Complex64::new(0.25, 0.25);
+    let quarter_conj = Complex64::new(0.25, -0.25);
+    let c = quarter * e1 + quarter_conj * e2;
+    let s = quarter_conj * e1 + quarter * e2;
+    ((s.re, s.im), (c.re, c.im))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[track_caller]
+    fn rel(
+        got: f64,
+        want: f64,
+        tolerance: f64,
+    ) {
+        assert!(
+            (got - want).abs() <= tolerance * want.abs().max(1e-300),
+            "got {got:e}, want {want:e}"
+        );
+    }
+
+    const REAL: [(f64, f64, f64); 16] = [
+        (0.1, 0.00052358954761221068668, 0.099997532627085073601),
+        (0.5, 0.064732432859999277611, 0.49234422587144639288),
+        (1.0, 0.43825914739035476608, 0.77989340037682282947),
+        (1.5, 0.69750496008209301308, 0.44526117603982153506),
+        (1.6, 0.63888768350938083462, 0.36546168344048765296),
+        (2.0, 0.3434156783636982422, 0.4882534060753407545),
+        (2.5, 0.61918175581959293611, 0.45741300964177704525),
+        (3.5, 0.4152480119724375239, 0.53257243502800084533),
+        (5.0, 0.49919138191711688675, 0.5636311887040122311),
+        (7.25, 0.47194472715389316354, 0.53376656924787114232),
+        (10.0, 0.4681699785848822404, 0.49989869420551572361),
+        (37.3, 0.49624741109995594099, 0.4923355750873330416),
+        (100.0, 0.49681690114783755327, 0.49999989867881789756),
+        (1e5, 0.49999681690113816209, 0.49999999999999989868),
+        (123456.789, 0.50000246370825017869, 0.49999923985222636448),
+        (1e8, 0.49999999681690113816, 0.5),
+    ];
+    const CPLX: [(f64, f64, f64, f64, f64, f64); 8] = [
+        (
+            1.0,
+            1.0,
+            -2.06188821919484047,
+            2.06188821919484047,
+            2.55579377810243902,
+            2.55579377810243902,
+        ),
+        (
+            0.3,
+            0.4,
+            -0.0619690054654396111,
+            0.0228870671898499883,
+            0.300558613614952577,
+            0.407737046485807309,
+        ),
+        (
+            2.0,
+            -1.0,
+            -15.5877511044045873,
+            36.7254648839914384,
+            -36.2256879928816502,
+            -16.0878713741254804,
+        ),
+        (
+            -1.5,
+            0.5,
+            -1.59589959661936143,
+            -0.216460933721620534,
+            -0.290344529899153447,
+            -1.07958259611780916,
+        ),
+        (
+            3.0,
+            3.0,
+            -51417357578.0630208,
+            51417357578.0630208,
+            51417357578.5630208,
+            51417357578.5630208,
+        ),
+        (
+            0.5,
+            2.0,
+            0.400910040561988269,
+            1.28573215843460146,
+            1.78079635294636956,
+            0.0949915944867347364,
+        ),
+        (
+            5.0,
+            0.1,
+            0.498389031514127687,
+            0.146500224666963458,
+            0.659704145460982847,
+            0.000971856588047086373,
+        ),
+        (
+            0.001,
+            0.002,
+            -5.7595865315839641e-9,
+            -1.04719755122225181e-9,
+            0.000999999999989883676,
+            0.00200000000000937617,
+        ),
+    ];
+
+    const AUX: [(f64, f64, f64); 6] = [
+        (0.5, 0.39920505852570224, 0.173642699613237748),
+        (1.0, 0.279893400376822829, 0.0617408526096452339),
+        (2.0, 0.156584321636301758, 0.0117465939246592455),
+        (3.5, 0.090765558315310835, 0.00234017563172892039),
+        (10.0, 0.0318300214151177596, 0.000101305794484276386),
+        (100.0, 0.00318309885216244673, 1.01321182102440532e-7),
+    ];
+
+    #[test]
+    fn fresnel_real_reference_values() {
+        for &(x, s, c) in &REAL {
+            rel(fresnel_s(x), s, 2e-15);
+            rel(fresnel_c(x), c, 2e-15);
+            rel(fresnel_s(-x), -s, 2e-15);
+            rel(fresnel_c(-x), -c, 2e-15);
+        }
+    }
+
+    #[test]
+    fn fresnel_interval_resolves_adjacent_endpoints_and_integrand_zeros() {
+        // Reference integrals evaluated in high precision at the exact f64 limits.
+        for (a, b, s, c) in [
+            (0.0, 1e-80, 5.235_987_755_982_988e-241, 1e-80),
+            (
+                1.0,
+                1.0_f64.next_up(),
+                f64::EPSILON,
+                -7.744_623_826_707_891e-32,
+            ),
+            (
+                2.0,
+                2.0_f64.next_up(),
+                6.195_699_061_366_313e-31,
+                4.440_892_098_500_626e-16,
+            ),
+            (
+                0.003,
+                0.55,
+                0.085_718_873_195_190_34,
+                0.534_711_086_109_143_1,
+            ),
+            (
+                2.47,
+                2.481,
+                -0.002_198_007_348_306_918,
+                -0.010_774_738_450_774_67,
+            ),
+        ] {
+            let (s_actual, c_actual) = fresnel_sc_interval(a, b);
+            rel(s_actual, s, 2e-15);
+            rel(c_actual, c, 2e-15);
+        }
+    }
+
+    #[test]
+    fn fresnel_interval_retains_far_tail_differences() {
+        for (a, b, s, c) in [
+            (
+                16_384.0,
+                16_384.5,
+                1.479_423_311_359_728e-6,
+                7.434_582_674_437_342e-6,
+            ),
+            (
+                1e6,
+                1e6 + 2.0,
+                6.366_184_991_305_831e-13,
+                6.079_246_701_537_249e-25,
+            ),
+            (
+                1e17,
+                1e17_f64.next_up(),
+                5.092_958_178_940_65e-34,
+                4.863_416_814_832_211e-68,
+            ),
+        ] {
+            let (s_actual, c_actual) = fresnel_sc_interval(a, b);
+            rel(s_actual, s, 2e-15);
+            rel(c_actual, c, 2e-15);
+        }
+
+        let (s, c) = fresnel_sc_interval(1e308, f64::INFINITY);
+        assert!(
+            s.to_bits()
+                .abs_diff(3.183_098_861_837_907e-309_f64.to_bits())
+                <= 1
+        );
+        assert_eq!(c, 0.0);
+    }
+
+    #[test]
+    fn fresnel_interval_additivity_orientation_and_infinite_limits() {
+        let (s, c) = fresnel_sc_interval(0.2, 3.1);
+        rel(s, 0.577_628_258_924_217_8, 2e-15);
+        rel(c, 0.361_672_844_916_903_2, 2e-15);
+        assert_eq!(fresnel_sc_interval(-3.1, -0.2), (s, c));
+        assert_eq!(fresnel_sc_interval(3.1, 0.2), (-s, -c));
+        let (s_left, c_left) = fresnel_sc_interval(0.2, 1.5);
+        let (s_right, c_right) = fresnel_sc_interval(1.5, 3.1);
+        rel(s_left + s_right, s, 2e-15);
+        rel(c_left + c_right, c, 2e-15);
+
+        let (s_tail, c_tail) = fresnel_sc_interval(2.0, f64::INFINITY);
+        rel(s_tail, 0.156_584_321_636_301_76, 2e-15);
+        rel(c_tail, 0.011_746_593_924_659_246, 2e-15);
+        assert_eq!(
+            fresnel_sc_interval(f64::NEG_INFINITY, -2.0),
+            (s_tail, c_tail)
+        );
+        assert_eq!(
+            fresnel_sc_interval(f64::NEG_INFINITY, f64::INFINITY),
+            (1.0, 1.0)
+        );
+        for limit in [0.0, f64::INFINITY, f64::NEG_INFINITY] {
+            assert_eq!(fresnel_sc_interval(limit, limit), (0.0, 0.0));
+        }
+        for (a, b) in [(f64::NAN, 0.0), (1.0, f64::NAN)] {
+            let (s, c) = fresnel_sc_interval(a, b);
+            assert!(s.is_nan() && c.is_nan());
+        }
+    }
+
+    #[test]
+    fn fresnel_limits_and_specials() {
+        assert_eq!(fresnel_sc(0.0), (0.0, 0.0));
+        assert_eq!(fresnel_s(f64::INFINITY), 0.5);
+        assert_eq!(fresnel_c(f64::NEG_INFINITY), -0.5);
+        assert!(fresnel_s(f64::NAN).is_nan() && fresnel_c(f64::NAN).is_nan());
+        assert_eq!(fresnel_c(1e300), 0.5);
+        assert_eq!(fresnel_s(-1e20), -0.5);
+        assert!(fresnel_s(-0.0).is_sign_negative());
+        // Continuity across the series / continued-fraction switch.
+        for x in [1.4999999, 1.5000001] {
+            let (s, c) = fresnel_sc(x);
+            let (s0, c0) = fresnel_sc(1.5);
+            assert!((s - s0).abs() < 1e-6 && (c - c0).abs() < 1e-6);
+        }
+    }
+
+    #[test]
+    fn fresnel_auxiliary_functions() {
+        for &(x, f, g) in &AUX {
+            rel(fresnel_f(x), f, 1e-13);
+            rel(fresnel_g(x), g, 1e-13);
+        }
+        // Large x: f ~ 1/(pi x).
+        rel(fresnel_f(1e6), 1.0 / (PI * 1e6), 1e-10);
+    }
+
+    #[test]
+    fn fresnel_matches_derivative_by_quadrature() {
+        // S(b) - S(a) by composite Gauss-Legendre of sin(pi t^2 / 2).
+        let nodes = [
+            -0.906_179_845_938_664,
+            -0.538_469_310_105_683,
+            0.0,
+            0.538_469_310_105_683,
+            0.906_179_845_938_664,
+        ];
+        let weights = [
+            0.236_926_885_056_189,
+            0.478_628_670_499_366,
+            0.568_888_888_888_889,
+            0.478_628_670_499_366,
+            0.236_926_885_056_189,
+        ];
+        let (a, b, steps) = (0.3_f64, 4.1_f64, 400);
+        let h = (b - a) / f64::from(steps);
+        let mut sum = 0.0;
+        for k in 0..steps {
+            let mid = a + h * (f64::from(k) + 0.5);
+            for (n, w) in nodes.iter().zip(weights) {
+                let t = mid + 0.5 * h * n;
+                sum += 0.5 * h * w * (FRAC_PI_2 * t * t).sin();
+            }
+        }
+        assert!((fresnel_s(b) - fresnel_s(a) - sum).abs() < 1e-11);
+    }
+
+    #[test]
+    fn complex_erf_reference() {
+        let v = erf_complex(Complex64::new(1.0, 1.0));
+        assert!((v.re - 1.316_151_281_697_947_6).abs() < 1e-13);
+        assert!((v.im - 0.190_453_469_237_834_7).abs() < 1e-13);
+        let w = faddeeva_w(Complex64::new(0.0, 0.0));
+        assert!((w.re - 1.0).abs() < 1e-14 && w.im.abs() < 1e-14);
+        // erf(-z) = -erf(z), erf(conj z) = conj erf(z)
+        let z = Complex64::new(0.7, -2.2);
+        let (p, q) = (erf_complex(z), erf_complex(-z));
+        assert!((p + q).norm() < 1e-13);
+        assert!((erf_complex(z.conj()) - p.conj()).norm() < 1e-13);
+    }
+
+    #[test]
+    fn fresnel_complex_reference_values() {
+        for &(re, im, sr, si, cr, ci) in &CPLX {
+            let ((a, b), (c, d)) = fresnel_sc_complex(re, im);
+            let scale = |x: f64, y: f64| x.hypot(y);
+            let (s_want, c_want) = (scale(sr, si), scale(cr, ci));
+            assert!(
+                (a - sr).hypot(b - si) <= 1e-12 * s_want.max(1e-3),
+                "S({re},{im}) = {a}+{b}i vs {sr}+{si}i"
+            );
+            assert!(
+                (c - cr).hypot(d - ci) <= 1e-12 * c_want.max(1e-3),
+                "C({re},{im}) = {c}+{d}i vs {cr}+{ci}i"
+            );
+        }
+    }
+
+    #[test]
+    fn faddeeva_preserves_large_argument_tails() {
+        // References rounded from mpmath's exp(-z*z) * erfc(-i*z).
+        let w = faddeeva_w(Complex64::new(1e200, 2e200));
+        rel(w.re, 2.256_758_334_191_025_2e-201, 8e-15);
+        rel(w.im, 1.128_379_167_095_512_6e-201, 8e-15);
+        let subnormal = faddeeva_w(Complex64::new(1e308, 2e307));
+        assert!(
+            subnormal
+                .re
+                .to_bits()
+                .abs_diff(1.084_979_968_361_07e-309_f64.to_bits())
+                <= 4
+        );
+        assert!(
+            subnormal
+                .im
+                .to_bits()
+                .abs_diff(5.424_899_841_805_35e-309_f64.to_bits())
+                <= 4
+        );
+        let overflow = faddeeva_w(Complex64::new(0.0, -26.7));
+        assert_eq!(overflow, Complex64::new(f64::INFINITY, 0.0));
+        let on_axis = faddeeva_w(Complex64::new(26.7, 0.0));
+        assert!((on_axis.re / 2.487_750_349_879_84e-310 - 1.0).abs() < 1e-13);
+    }
+
+    #[test]
+    fn complex_erf_scales_the_exponential_with_its_tail() {
+        // Both components fit in f64 even though exp(-z*z) alone overflows.
+        let value = erf_complex(Complex64::new(1.0, 26.7));
+        rel(value.re, 1.392_022_541_981_101e306, 2e-13);
+        rel(value.im, -3.121_624_159_369_983e307, 2e-13);
+        let imaginary = erf_complex(Complex64::new(0.0, -26.71));
+        assert_eq!(imaginary.re, 0.0);
+        rel(imaginary.im, -1.449_459_118_932_731e308, 2e-13);
+        // The phase remains usable when doubling the product would overflow.
+        let diagonal = erf_complex(Complex64::new(1e154, 1e154));
+        assert_eq!(diagonal.re, 1.0);
+        rel(diagonal.im, 3.382_541_622_759_758e-155, 2e-13);
+    }
+
+    #[test]
+    fn complex_fresnel_large_argument_reference_values() {
+        // mpmath references for the exact binary64 inputs.
+        for (re, im, expected) in [
+            (
+                121.1,
+                1.87001,
+                [
+                    1.122_889_345_238_742_8e306,
+                    5.222_030_795_549_502e305,
+                    5.222_030_795_549_502e305,
+                    -1.122_889_345_238_742_8e306,
+                ],
+            ),
+            (
+                10.0,
+                22.75,
+                [
+                    -4.302_217_351_434_045e307,
+                    -1.533_993_149_635_644_5e308,
+                    -1.533_993_149_635_644_5e308,
+                    4.302_217_351_434_045e307,
+                ],
+            ),
+            (
+                1e20,
+                1e-18,
+                [
+                    -4.359_689_060_304_287e115,
+                    -6.804_725_444_503_684e79,
+                    -6.804_725_444_503_684e79,
+                    4.359_689_060_304_287e115,
+                ],
+            ),
+        ] {
+            for (sign_re, sign_im) in [(1.0, 1.0), (-1.0, 1.0), (1.0, -1.0), (-1.0, -1.0)] {
+                let ((sr, si), (cr, ci)) = fresnel_sc_complex(sign_re * re, sign_im * im);
+                for (got, want) in [sign_re * sr, sign_im * si, sign_re * cr, sign_im * ci]
+                    .into_iter()
+                    .zip(expected)
+                {
+                    rel(got, want, 3e-13);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn fresnel_imaginary_axis_symmetry() {
+        for y in [0.2, 1.0, 2.5] {
+            let ((sr, si), (cr, ci)) = fresnel_sc_complex(0.0, y);
+            assert_eq!((sr, si), (0.0, -fresnel_s(y)));
+            assert_eq!((cr, ci), (0.0, fresnel_c(y)));
+            // The generic complex path agrees up to a tiny real part.
+            let ((sr2, si2), (cr2, ci2)) = fresnel_sc_complex(1e-300, y);
+            assert!(sr2.abs() < 1e-12 && (si2 + fresnel_s(y)).abs() < 1e-12);
+            assert!(cr2.abs() < 1e-12 && (ci2 - fresnel_c(y)).abs() < 1e-12);
+        }
+    }
+}

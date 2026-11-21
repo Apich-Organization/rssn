@@ -1,0 +1,19 @@
+[
+  {
+    "label": "rssn-full",
+    "directory": "rssn",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--offline",
+      "--workspace",
+      "--all-features",
+      "--no-fail-fast",
+      "-j",
+      "2",
+      "--",
+      "--test-threads=2"
+    ]
+  }
+]

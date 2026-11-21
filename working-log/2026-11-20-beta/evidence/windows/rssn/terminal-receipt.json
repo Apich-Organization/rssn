@@ -1,0 +1,46 @@
+{
+  "launch": {
+    "pid": 8676,
+    "return_value": 0,
+    "utc": "2026-11-20T23:01:17.4485008+00:00",
+    "host": "owen",
+    "path": "D:/codex-rssn-beta-full-20261120/close-round-worktree-20261120-final",
+    "source": "D:/codex-rssn-beta-full-20261120/candidate-1/sources",
+    "target": "D:/codex-rssn-beta-full-20261120/target",
+    "archive_sha256": "1b390e200c8d3de37c2f33e9f5c4914acc1bd315a7f06b9621c1ed5dea473597",
+    "catalog_sha256": "3a8963bad36032beb2f59833e1b8287022395c5cf0433733fe7088f9d2c5c53c"
+  },
+  "final_exit": 0,
+  "artifacts": {
+    "full-test.exit": {
+      "bytes": 3,
+      "sha256": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354"
+    },
+    "full-test.log": {
+      "bytes": 526129,
+      "sha256": "4064fe468ac9321cd05def4750b9752c9feeb99175f4e1c39d8a32d10bd97216"
+    },
+    "full-test-cases.json": {
+      "bytes": 474,
+      "sha256": "e0cde938f1baab768ccf3593e607dbf2353b3e3cd0441b86858a9155bfac1a93"
+    }
+  },
+  "computed_catalog_sha256": "9defb39dca0cabca5c5dd5fbf98b400ec5d5148bb8fb907ee84ec977b80ea4a9",
+  "source_verified_after": true,
+  "fixtures": {
+    "AEVIA_TEST_DATABASE_URL": false,
+    "GNUPGHOME": false,
+    "AEVIA_REQUIRE_TEST_FIXTURES": false
+  },
+  "cases": {
+    "rssn-full": {
+      "exit": 0,
+      "targets_with_results": 293,
+      "passed": 6115,
+      "failed": 0,
+      "ignored": 3,
+      "measured": 0,
+      "filtered": 0
+    }
+  }
+}

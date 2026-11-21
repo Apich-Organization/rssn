@@ -1,0 +1,54 @@
+[
+  {
+    "label": "aevia-language-full",
+    "directory": "aevia",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--offline",
+      "--workspace",
+      "--all-features",
+      "--no-fail-fast",
+      "-j",
+      "4",
+      "--",
+      "--test-threads=3"
+    ]
+  },
+  {
+    "label": "aevia-platform-full",
+    "directory": "aevia/platform",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--offline",
+      "--workspace",
+      "--all-features",
+      "--no-fail-fast",
+      "-j",
+      "4",
+      "--",
+      "--test-threads=3"
+    ]
+  },
+  {
+    "label": "aevia-platform-docs-no-default",
+    "directory": "aevia/platform",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--offline",
+      "-p",
+      "aevia-registry-docs",
+      "--no-default-features",
+      "--no-fail-fast",
+      "-j",
+      "4",
+      "--",
+      "--test-threads=3"
+    ]
+  }
+]

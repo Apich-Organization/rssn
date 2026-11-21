@@ -1,77 +1,216 @@
-name: CI/CD workflow for branch main & pull requests
+# Continuous integration. The same structure is used by the aevia repository:
+# fmt -> clippy -> test (matrix) -> contracts -> docs, summarised by one
+# `ci-success` job so branch protection needs a single required check.
+
+name: CI
+
+"on":
+  push:
+    branches: [main, v0.3]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+  schedule:
+    - cron: '17 7 * * 1'
 
 permissions:
   contents: read
 
-on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-  push:
-    branches:
-      - main
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  CARGO_PROFILE_DEV_DEBUG: "0"
+  # Workspace `rust-version`; the toolchain every gate below uses.
+  RUST_TOOLCHAIN: "1.100.0"
 
 jobs:
-  build-test-bench-fmt-doc:
-    runs-on: self-hosted
-    strategy:
-      matrix:
-        toolchain: [stable, beta, nightly, 1.89.0]
+  fmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable action, nightly toolchain
         with:
-          egress-policy: audit
+          toolchain: nightly
+          components: rustfmt
+      - run: cargo +nightly fmt --all --check
 
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Install Rust ${{ matrix.toolchain }}
-        uses: step-security/actions-rs-toolchain@40a2f87e50bed6faa2d050e99810b226b75d8c8a # v1.0.7
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
-          toolchain: ${{ matrix.toolchain }}
-          override: true
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: clippy
+      - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
+      - name: System dependencies
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
+      - run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 
-      - name: Install System Dependencies for fontconfig & bench testing
-        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev linux-tools-common linux-tools-generic linux-tools-`uname -r`
-
-      - name: Install Cargo flamegraph
-        run: cargo install flamegraph
-
-      - name: Install Clippy & Rustfmt if using nightly
+  test:
+    name: test (${{ matrix.os }}, ${{ matrix.features }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 150
+    env:
+      CARGO_PROFILE_TEST_DEBUG: "0"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, features: full, args: "--all-features" }
+          - { os: windows-latest, features: full, args: "--all-features" }
+          - { os: macos-latest, features: default, args: "--no-default-features" }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
+      - name: System dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev libvulkan1 mesa-vulkan-drivers
+      - name: Run the workspace tests
+        env:
+          # MSVC otherwise writes a large PDB for every linked test.
+          _LINK_: ${{ runner.os == 'Windows' && '/DEBUG:NONE' || '' }}
+        run: cargo test --locked --workspace ${{ matrix.args }}
+      - name: Require wgpu compute execution on software Vulkan
+        if: runner.os == 'Linux'
+        shell: bash
         run: |
-             if [[ "${{ matrix.toolchain }}" == "nightly" ]]; then
-                rustup component add --toolchain nightly clippy
-                rustup component add --toolchain nightly rustfmt
-             fi
-      
-      - name: Install Clippy & Rustfmt if using beta
+          export VK_DRIVER_FILES
+          VK_DRIVER_FILES="$(find /usr/share/vulkan/icd.d -maxdepth 1 -name 'lvp_icd*.json' -print -quit)"
+          test -s "$VK_DRIVER_FILES"
+          export XDG_RUNTIME_DIR="$RUNNER_TEMP/rssn-vulkan"
+          install -d -m 700 "$XDG_RUNTIME_DIR"
+          cargo test --locked --workspace --all-features --lib gpu_ -- --nocapture 2>&1 |
+            tee "$RUNNER_TEMP/rssn-vulkan.log"
+          if grep -Fq 'no wgpu adapter; skipping' "$RUNNER_TEMP/rssn-vulkan.log"; then
+            echo 'A wgpu runtime test skipped despite the installed software adapter'
+            exit 1
+          fi
+          grep -F 'gpu test device:' "$RUNNER_TEMP/rssn-vulkan.log"
+      - name: Run long numerical regressions
+        if: runner.os == 'Linux' && github.event_name == 'schedule' && github.event.schedule == '17 7 * * 1'
+        run: cargo test --locked --workspace --all-features -- --ignored --test-threads=1
+
+  contracts:
+    name: contracts (signature audit, generated bindings)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
+      - name: System dependencies
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
+      - name: Every operator is typed or explained
+        run: cargo run --locked --bin signature-audit
+      - name: Every operator has documentation
+        run: cargo run --locked --bin doc_gen_check
+      - name: Generated numerical bindings are current
         run: |
-             if [[ "${{ matrix.toolchain }}" == "beta" ]]; then
-                rustup component add --toolchain beta clippy
-                rustup component add --toolchain beta rustfmt
-             fi
-      
-      - name: Install Clippy & Rustfmt if using v1.89
+          cargo run --locked -p rssn-api-gen -- --bindings-check
+          cargo run --locked -p rssn-api-gen -- --structured-check
+          cargo run --locked -p rssn-api-gen -- --codecs-check
+          cargo run --locked -p rssn-api-gen -- --contracts-check
+
+  ffi:
+    name: C and C++ API (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
+      - name: Regenerate headers, link both C interfaces and run them on Linux
+        if: runner.os == 'Linux'
         run: |
-             if [[ "${{ matrix.toolchain }}" == "1.89.0" ]]; then
-                rustup component add --toolchain 1.89.0 clippy
-                rustup component add --toolchain 1.89.0 rustfmt
-             fi
-      
-      - name: Build with full features
-        run: cargo clippy --all-features --verbose
-        continue-on-error: true
+          DEV=1 bash scripts/build_ffi.sh --profile dev --locked --features dev-headers
+          git diff --exit-code -- rssn.h rssn.hpp
+          cc -I. examples/c/smoke.c target/debug/librssn.a -lm -lpthread -ldl -o target/debug/ffi-smoke
+          c++ -std=c++17 -I. tests/ffi/headers.cpp target/debug/librssn.a -lm -lpthread -ldl -o target/debug/ffi-headers
+          target/debug/ffi-smoke
+          target/debug/ffi-headers
+      - name: Link and run C and C++ clients on macOS
+        if: runner.os == 'macOS'
+        run: |
+          bash scripts/build_ffi.sh --profile dev --locked
+          cc -I. examples/c/smoke.c target/debug/librssn.dylib -Wl,-rpath,@loader_path -o target/debug/ffi-smoke
+          c++ -std=c++17 -I. tests/ffi/headers.cpp target/debug/librssn.dylib -Wl,-rpath,@loader_path -o target/debug/ffi-headers
+          target/debug/ffi-smoke
+          target/debug/ffi-headers
+      - name: Link and run C and C++ clients on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
+          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if ($LASTEXITCODE -ne 0 -or !$vs) { throw 'Visual Studio C++ tools were not found' }
+          & "$vs/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
+          & scripts/build_ffi.ps1 -Profile dev -CargoArgs @('--locked')
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cl /nologo /utf-8 /I. examples/c/smoke.c /link target/debug/rssn.dll.lib /OUT:target/debug/ffi-smoke.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cl /nologo /utf-8 /std:c++17 /I. tests/ffi/headers.cpp /link target/debug/rssn.dll.lib /OUT:target/debug/ffi-headers.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & target/debug/ffi-smoke.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & target/debug/ffi-headers.exe
 
-      - name: Test with full features
-        run: cargo test --all-features --verbose
+  docs:
+    name: documentation and examples
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
+      - name: System dependencies
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
+      - run: python3 scripts/check_doc_editions.py
+      - run: cargo doc --locked --workspace --no-deps --all-features
+      - name: Build every Rust example and run the functional examples
+        run: |
+          cargo build --locked --examples
+          for path in examples/*.rs; do
+            example="${path##*/}"
+            example="${example%.rs}"
+            case "$example" in
+              backend_timing|engine_timing) continue ;;
+            esac
+            "target/debug/examples/$example"
+          done
 
-      - name: Flamegraph with full features
-        run: cargo flamegraph --examples matrix_demo.rs
-        continue-on-error: true
-
-      - name: Check formatting
-        run: cargo fmt --all --check
-        continue-on-error: true
-
-      - name: Check docing
-        run: cargo doc --all
+  ci-success:
+    name: CI success
+    if: always()
+    needs: [fmt, clippy, test, contracts, ffi, docs]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every job to have succeeded
+        env:
+          JOB_RESULTS: ${{ toJSON(needs) }}
+        run: |
+          jq -e 'all(.[]; .result == "success")' <<< "$JOB_RESULTS"

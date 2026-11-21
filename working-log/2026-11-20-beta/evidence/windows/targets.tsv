@@ -1,0 +1,549 @@
+lane	case	package	cargo_test_target	mapped_direct_root	root_sha256	status	passed	failed	ignored	measured	filtered	target_line	result_line
+close-native-it	aevia-language-full	aevia-analysis				ok	40	0	0	0	0	105	149
+close-native-it	aevia-language-full	aevia-analysis	boundary	crates/aevia-analysis/tests/boundary.rs	ac8df2be14576303c6ca4db38202fe6b4c220725b44867c9b1edf3f13c07108f	ok	2	0	0	0	0	151	157
+close-native-it	aevia-language-full	aevia-analysis	cache	crates/aevia-analysis/tests/cache.rs	c9569f8b64cee8ef2217bae5b67bbf52c4dcd3f9e8990b5d0fdccf747859bd85	ok	21	0	0	0	0	159	184
+close-native-it	aevia-language-full	aevia-analysis	editor_identity	crates/aevia-analysis/tests/editor_identity.rs	53b1420cea2cbaadf93a62a45a549666d8f6c274b5deb4192fe4f4c74b8d6f93	ok	4	0	0	0	0	186	194
+close-native-it	aevia-language-full	aevia-analysis	multimodule	crates/aevia-analysis/tests/multimodule.rs	0c12aec863f75e278589eb584d956755529c5a9461d10d65fe6f193dc458e1c1	ok	14	0	0	0	0	196	214
+close-native-it	aevia-language-full	aevia-analysis	queries	crates/aevia-analysis/tests/queries.rs	8b8d9dba45771dc08a99e327e711de7ab4850be127f3376ec1c72d6477128cc3	ok	34	0	0	0	0	216	254
+close-native-it	aevia-language-full	aevia-analysis	rename	crates/aevia-analysis/tests/rename.rs	3b060897a2555beb44b3ab65a8e4547e552235b4079bbeaf65e42f815557e6d1	ok	14	0	0	0	0	256	274
+close-native-it	aevia-language-full	aevia-analysis	signature	crates/aevia-analysis/tests/signature.rs	38408919fba7d240c7bed8c3fb0fd6ac7a02eac293d7943c452d10aec719f0f6	ok	13	0	0	0	0	276	293
+close-native-it	aevia-language-full	aevia-analysis	tools	crates/aevia-analysis/tests/tools.rs	04e6adaabcd9808fbce59cde47f5d1dbd269fa4853970afa26fd52712a7f2cc4	ok	15	0	0	0	0	295	314
+close-native-it	aevia-language-full	aevia-cli				ok	68	0	0	0	0	316	406
+close-native-it	aevia-language-full	aevia-cli	cli	crates/aevia-cli/tests/cli.rs	03f44a34ddd90ac8cc8d61604d3d7ca6622d70732124d799c9fc4e579b49f7af	ok	49	0	0	0	0	408	461
+close-native-it	aevia-language-full	aevia-cli	decimal_exponents	crates/aevia-cli/tests/decimal_exponents.rs	b2b01a76076c38d75f5e2070dc4d046e2ad042245c426515bace8a1059129129	ok	1	0	0	0	0	463	468
+close-native-it	aevia-language-full	aevia-cli	help_and_color	crates/aevia-cli/tests/help_and_color.rs	b607ef6db821c796e2e102346a4f5913be56b455f8b52acc7eb2c03f5db6d31c	ok	6	0	0	0	0	470	480
+close-native-it	aevia-language-full	aevia-cli	item_help	crates/aevia-cli/tests/item_help.rs	dbb9390174d94ab2bfed75d70f861b9489b7147ab90ec5f226586713cfb9c5dc	ok	6	0	0	0	0	482	492
+close-native-it	aevia-language-full	aevia-cli	module_cache	crates/aevia-cli/tests/module_cache.rs	c47ea42334c85c2b4abf01ab6ebcf95a21814948d926f8ce314690f2acde6d86	ok	4	0	0	0	0	494	502
+close-native-it	aevia-language-full	aevia-cli	registry_deps	crates/aevia-cli/tests/registry_deps.rs	fe2cb39aad48e276e1400f7d21c3251d1e36b830301c365eb63154f03b3811eb	ok	7	0	0	0	0	504	515
+close-native-it	aevia-language-full	aevia-cli	repl_diagnostics	crates/aevia-cli/tests/repl_diagnostics.rs	3f89dc53cc1b43cffc502ea10f0facbe50d03b581dc166c9e4392150d2fa0756	ok	19	0	0	0	0	517	540
+close-native-it	aevia-language-full	aevia-cli	repl_experience	crates/aevia-cli/tests/repl_experience.rs	5519415a0616ec7ca9c5937d7818e037afc3fb3e83d62133ad8741c40076b9e4	ok	17	0	0	0	0	542	563
+close-native-it	aevia-language-full	aevia-cli	repl_interrupt	crates/aevia-cli/tests/repl_interrupt.rs	322245542daefa182fbcc942d5da47ca7e031d97bc71c1ecf3ffd476bd1aa51c	ok	0	0	0	0	0	565	569
+close-native-it	aevia-language-full	aevia-cli	repl_output	crates/aevia-cli/tests/repl_output.rs	c0efcae610297bcc724994495e7855f0db90e1af33f7eb86784b44ff3f726d1f	ok	5	0	0	0	0	571	580
+close-native-it	aevia-language-full	aevia-cli	repl_packages	crates/aevia-cli/tests/repl_packages.rs	9f27cfb6b5011028e624798648dffba982d113abce573adb56964004d9be6fec	ok	5	0	0	0	0	582	591
+close-native-it	aevia-language-full	aevia-core				ok	220	0	0	0	0	593	817
+close-native-it	aevia-language-full	aevia-core	allocations	crates/aevia-core/tests/allocations.rs	e4429e89e2b25b04c58b8ca4de57f73e16234f068b26626cbf4c4ad03058c1a9	ok	1	0	0	0	0	819	824
+close-native-it	aevia-language-full	aevia-core	callback_bridge	crates/aevia-core/tests/callback_bridge.rs	2d392b892bb3514935b7a7dc0c9998b890766eaf7013d715b5d9873e8794fd55	ok	9	0	0	0	0	826	839
+close-native-it	aevia-language-full	aevia-core	cancellation	crates/aevia-core/tests/cancellation.rs	88f1648a5fcf519d51f62f0b11737fdd30132f3158c3207b2fd386c62935d152	ok	6	0	0	0	0	841	851
+close-native-it	aevia-language-full	aevia-core	capability	crates/aevia-core/tests/capability.rs	ec9af7dfcd732a1293fd59b1e14d056143834579614bcea76d4b430a0ad42504	ok	3	0	0	0	0	853	860
+close-native-it	aevia-language-full	aevia-core	chapter6	crates/aevia-core/tests/chapter6.rs	fdb795bba0e999d4318353414e945af27545eea37c7aaa57d0552f346526c666	ok	43	0	0	0	0	862	909
+close-native-it	aevia-language-full	aevia-core	check_all	crates/aevia-core/tests/check_all.rs	34fcfc10825241c811747eb1f8139bfef1114049c321742e8b21be4e90460aa9	ok	5	0	0	0	0	911	920
+close-native-it	aevia-language-full	aevia-core	classes	crates/aevia-core/tests/classes.rs	3bdf9ed026a576ce108c8884200695273d009918f8b41c0cf4a045ad0aa7b49a	ok	16	0	0	0	0	922	942
+close-native-it	aevia-language-full	aevia-core	complex_sqrt	crates/aevia-core/tests/complex_sqrt.rs	d0aa2403cc8f7604cb638d5cc5c4dd02da6b060f0f66f1fa26582ab5399ee91a	ok	2	0	0	0	0	944	950
+close-native-it	aevia-language-full	aevia-core	constructor_identity	crates/aevia-core/tests/constructor_identity.rs	950ee39964c8f4be9e6b7f8d40bb8ae8aa224c374f4bbb3fc5f805aea4cf7a97	ok	3	0	0	0	0	952	959
+close-native-it	aevia-language-full	aevia-core	decimal_exponents	crates/aevia-core/tests/decimal_exponents.rs	6541080a2e0a5cb010bba9d87cabab99ec6e731fa2fdf9a73e6e9efb39e70cb3	ok	1	0	0	0	0	961	966
+close-native-it	aevia-language-full	aevia-core	disk_cache	crates/aevia-core/tests/disk_cache.rs	8cab0918e1a82084725dbbb20b2871918a6930524e0480666a52923cf89ac1fb	ok	10	0	0	0	0	968	982
+close-native-it	aevia-language-full	aevia-core	display_dim	crates/aevia-core/tests/display_dim.rs	2d6a71fed19bf039a10caf0786c1e912b5486261e84bc03f48a3fc3be1b69301	ok	2	0	0	0	0	984	990
+close-native-it	aevia-language-full	aevia-core	distribution_quantile	crates/aevia-core/tests/distribution_quantile.rs	85864b43175422403a82912da7f5750c87868c0d52788edc14bd0bd6153b3215	ok	2	0	0	0	0	992	998
+close-native-it	aevia-language-full	aevia-core	dsolve	crates/aevia-core/tests/dsolve.rs	3fa9cd2efb592f5733ac2372c3583c04ffc0cada67ee58f46253d7e6ac139235	ok	4	0	0	0	0	1000	1008
+close-native-it	aevia-language-full	aevia-core	dyn	crates/aevia-core/tests/dyn.rs	af471211bad6431f21195349e8e8fae1acb7515e68267af45e60973216f907e1	ok	10	0	0	0	0	1010	1024
+close-native-it	aevia-language-full	aevia-core	exact_prelude	crates/aevia-core/tests/exact_prelude.rs	f3d30d9a1c796b25701a7eaf2022be7621d4ba18ea28662888ec3f75dd3c546c	ok	4	0	0	0	0	1026	1034
+close-native-it	aevia-language-full	aevia-core	fresnel	crates/aevia-core/tests/fresnel.rs	4dab0ca6bd926dbc72569729eb3c1cb8c4ac07bc80f07b07ce1371d3607dddc6	ok	2	0	0	0	0	1036	1042
+close-native-it	aevia-language-full	aevia-core	generated_constants	crates/aevia-core/tests/generated_constants.rs	076bc971f7937c64c75aba58cfb0d5cc014fd7e63496fde83c1736e7cf29f2ed	ok	1	0	0	0	0	1044	1049
+close-native-it	aevia-language-full	aevia-core	generated_csr_abi	crates/aevia-core/tests/generated_csr_abi.rs	213ba41a5a742227c0c0c8f2e67f9bf7243583c9902c9ca5392795ee2a7e7d0d	ok	1	0	0	0	0	1051	1056
+close-native-it	aevia-language-full	aevia-core	generated_numerical_abi	crates/aevia-core/tests/generated_numerical_abi.rs	b90fc458d19566ebba3085236616045e24dc1a22469449c94655317bdcb067a6	ok	1	0	0	0	0	1058	1063
+close-native-it	aevia-language-full	aevia-core	generated_typed_callbacks	crates/aevia-core/tests/generated_typed_callbacks.rs	7ac5664310fdf56e6e50a9eb9a7e5450c6a510ba3b7e3bc7877ccf7fe8ce64b8	ok	7	0	0	0	0	1065	1076
+close-native-it	aevia-language-full	aevia-core	generic_binder_identity	crates/aevia-core/tests/generic_binder_identity.rs	8a2870fb285fe8463b14fed1d93750eb8e8070a94793334324e64998ac1e4898	ok	6	0	0	0	0	1078	1088
+close-native-it	aevia-language-full	aevia-core	generic_reification	crates/aevia-core/tests/generic_reification.rs	890ca8e8f9db57ecb61403cc73b44661cda35221f8a46b0bd0ddfa68ff36caf0	ok	27	0	0	0	0	1090	1121
+close-native-it	aevia-language-full	aevia-core	heat_adi	crates/aevia-core/tests/heat_adi.rs	2a7ac0540728c3bdfd70615f5eacf1481ff87067eb2ed49c28237d64d2ed96b5	ok	2	0	0	0	0	1123	1129
+close-native-it	aevia-language-full	aevia-core	incremental	crates/aevia-core/tests/incremental.rs	8bff135c69d320576acfda485e968eda769e07783995c958cf096d0f67ba4b24	ok	3	0	0	0	0	1131	1138
+close-native-it	aevia-language-full	aevia-core	incremental_batch	crates/aevia-core/tests/incremental_batch.rs	9abc57fbf6437b1f70acd58f6a8b81e121a50cda757684f9bed2ac792fefb446	ok	3	0	0	0	0	1140	1147
+close-native-it	aevia-language-full	aevia-core	instance_evidence_index	crates/aevia-core/tests/instance_evidence_index.rs	f5787ca189fb7d0d09a8d737e0a65092bdd8d2d813ae70ba398231181a25f9c3	ok	1	0	0	0	0	1149	1154
+close-native-it	aevia-language-full	aevia-core	instances	crates/aevia-core/tests/instances.rs	aaf5551c021e7994f079714f72e45defcaafabf01018cf1c38091d34851b3c0c	ok	7	0	0	0	0	1156	1167
+close-native-it	aevia-language-full	aevia-core	interpolation_units	crates/aevia-core/tests/interpolation_units.rs	6d4fba1a41ebeaced74f41244b0371fa235a83c073a9dbe8e245eb6af520f6d7	ok	5	0	0	0	0	1169	1178
+close-native-it	aevia-language-full	aevia-core	io_control	crates/aevia-core/tests/io_control.rs	9279787459c8cb53fb948f4829bedb2f50f5b0fe572d0c6f07d0f61f82df427d	ok	14	0	0	0	0	1180	1198
+close-native-it	aevia-language-full	aevia-core	io_cursor	crates/aevia-core/tests/io_cursor.rs	6957080e24dc7f5acf2eba98f0adddd83f31395be8cb799d78becd9b29cd44ba	ok	1	0	0	0	0	1200	1205
+close-native-it	aevia-language-full	aevia-core	io_taxonomy	crates/aevia-core/tests/io_taxonomy.rs	5f47998b32c8184f78085164b46b904bf2034af2ce4a03d860f6f0dbf1f76801	ok	8	0	0	0	0	1207	1219
+close-native-it	aevia-language-full	aevia-core	ir_parity	crates/aevia-core/tests/ir_parity.rs	d5898ae754130243846d8a614ba345d863c40a93520e973f3ee2ce0b27a1ceee	ok	2	0	0	0	0	1221	1228
+close-native-it	aevia-language-full	aevia-core	ir_tail	crates/aevia-core/tests/ir_tail.rs	c348412ec1cbdebef42a55e663a8caff8e2e32508b005498765e3631282327a0	ok	5	0	1	0	0	1230	1240
+close-native-it	aevia-language-full	aevia-core	jit	crates/aevia-core/tests/jit.rs	9df1a81baea6c1904d5658081909a177f32b08dbb5f87ea2a8d2cff1e198adab	ok	6	0	0	0	0	1242	1252
+close-native-it	aevia-language-full	aevia-core	jit_eligibility	crates/aevia-core/tests/jit_eligibility.rs	a32669cc1c7252f4ebde820dee996296b64599441c1837b5cfb2f5e0e622507d	ok	2	0	0	0	0	1254	1260
+close-native-it	aevia-language-full	aevia-core	kernel	crates/aevia-core/tests/kernel.rs	fd20a87eb2cd2f8f639528e224227e31d7ef5525245cda41dc0decfc68c067a6	ok	24	0	0	0	0	1262	1290
+close-native-it	aevia-language-full	aevia-core	kernel_namespace_imports	crates/aevia-core/tests/kernel_namespace_imports.rs	6d206e98a253a073ca683b900ff76a4394c010a4c153f59e25d555a86c13effd	ok	2	0	0	0	0	1292	1298
+close-native-it	aevia-language-full	aevia-core	kernel_tensor_marshaling	crates/aevia-core/tests/kernel_tensor_marshaling.rs	01d7f685633c27655e598f87e41915b0e925148d299240203daf55573d482737	ok	7	0	0	0	0	1300	1311
+close-native-it	aevia-language-full	aevia-core	large_literals	crates/aevia-core/tests/large_literals.rs	33e488383f52b861bdc1cd4a96b7e82de4465604e679ce58f8252d4e9a4c8b57	ok	3	0	0	0	0	1313	1320
+close-native-it	aevia-language-full	aevia-core	linalg_parity	crates/aevia-core/tests/linalg_parity.rs	37dabb85cbcd6ddef3ebc272b0220ab9ea0de27046f64370c6a4607ee3cd89af	ok	8	0	0	0	0	1322	1334
+close-native-it	aevia-language-full	aevia-core	map2_stream	crates/aevia-core/tests/map2_stream.rs	4970970aeeb2a77a45c3cb276eb6ad82e711935e7976d9848f5d7841fd39df57	ok	3	0	0	0	0	1336	1343
+close-native-it	aevia-language-full	aevia-core	measurement	crates/aevia-core/tests/measurement.rs	c808873c9900daa364668abfb3ebfc07e0af48e6d91d66a2dff04b81efbd0487	ok	5	0	0	0	0	1345	1354
+close-native-it	aevia-language-full	aevia-core	modular_power	crates/aevia-core/tests/modular_power.rs	c1f6e06be885b3096385fc805c9f63bfbff101e75e873fa8205ac89c81648ac9	ok	3	0	0	0	0	1356	1363
+close-native-it	aevia-language-full	aevia-core	module_evidence	crates/aevia-core/tests/module_evidence.rs	31a442aa687b1eee079beda495cd3f83c5db440245c85e49f230f8c9e1e3db9f	ok	5	0	0	0	0	1365	1374
+close-native-it	aevia-language-full	aevia-core	modules	crates/aevia-core/tests/modules.rs	fb7137a6a42d74f8a15489d2eeae8e763e3c4b4df9e22be651ce528bbc78c43b	ok	16	0	0	0	0	1376	1396
+close-native-it	aevia-language-full	aevia-core	native_algebra_models	crates/aevia-core/tests/native_algebra_models.rs	75002d2ac9af028f5c38e9e8f4a7833de78098449dea14807a152612eb6e0152	ok	1	0	0	0	0	1398	1403
+close-native-it	aevia-language-full	aevia-core	native_backend	crates/aevia-core/tests/native_backend.rs	48e387188bf1d0ec8bd3d09984f51efa0b6f46e5857b1c7360229a5a4f09b0e4	ok	1	0	0	0	0	1405	1410
+close-native-it	aevia-language-full	aevia-core	native_linear_models	crates/aevia-core/tests/native_linear_models.rs	bae65069db5522e51469986211fdb4ff38342e83cd9d4e34d66794817c4e558a	ok	1	0	0	0	0	1412	1417
+close-native-it	aevia-language-full	aevia-core	native_nullary	crates/aevia-core/tests/native_nullary.rs	2de64601f3040c00be6b49256cd9a9b93cc91c72f1bb3f9b511fef3d24dde5a4	ok	1	0	0	0	0	1419	1424
+close-native-it	aevia-language-full	aevia-core	native_source_examples	crates/aevia-core/tests/native_source_examples.rs	6820b79557178ec8faa098afd395473a58d7e9744815585bab5d6fb3dbe6a44f	ok	6	0	0	0	0	1426	1436
+close-native-it	aevia-language-full	aevia-core	nominal_dimensions	crates/aevia-core/tests/nominal_dimensions.rs	6492178134994a07a707a53cb26518683232f985a55e87649cd4f94a2bf6c7aa	ok	3	0	0	0	0	1438	1445
+close-native-it	aevia-language-full	aevia-core	nominal_value_roundtrip	crates/aevia-core/tests/nominal_value_roundtrip.rs	13e28b79172cac80792f45e050259a55f2b4252fc30198a3a00293c6e0e9d721	ok	9	0	0	0	0	1447	1460
+close-native-it	aevia-language-full	aevia-core	npy	crates/aevia-core/tests/npy.rs	0cd30b45ba6a856a832ad78f7413de473786b64530575947f966196965edd257	ok	12	0	0	0	0	1462	1478
+close-native-it	aevia-language-full	aevia-core	npy_interop	crates/aevia-core/tests/npy_interop.rs	0c09c88c4b7e80fdfb653a616b28b3906527b51599a5a6343d5ede76e6eaf8a4	ok	5	0	0	0	0	1480	1489
+close-native-it	aevia-language-full	aevia-core	npy_workflow	crates/aevia-core/tests/npy_workflow.rs	9256bc557a6d2b68db77ccc553c47d408818489615c34f5c703377e2f6c55d30	ok	5	0	0	0	0	1491	1500
+close-native-it	aevia-language-full	aevia-core	numeric_edges	crates/aevia-core/tests/numeric_edges.rs	40ee8b8bdfdaa9be632d6e2f964accbd5b3fddbf7438f67986fe67ff78e7e1bf	ok	7	0	0	0	0	1502	1513
+close-native-it	aevia-language-full	aevia-core	numeric_runtime	crates/aevia-core/tests/numeric_runtime.rs	8f4f77133b839c397d5a79a9a71d94a8738b9db29bc346c494edf13230aedc29	ok	9	0	0	0	0	1515	1528
+close-native-it	aevia-language-full	aevia-core	numerical_examples	crates/aevia-core/tests/numerical_examples.rs	2255c237eda6cfa8f6a12191b8fd907dba4a32bc325bfc7adc65ec12e7c4c4ee	ok	2	0	0	0	0	1530	1537
+close-native-it	aevia-language-full	aevia-core	numerics_track3	crates/aevia-core/tests/numerics_track3.rs	e79a021390e9440b2939f3422856bf09482358d819ada49f8a774016eb6c178b	ok	11	0	0	0	0	1539	1554
+close-native-it	aevia-language-full	aevia-core	ode_adaptive_examples	crates/aevia-core/tests/ode_adaptive_examples.rs	c347fe846dca486ae8b652780d4a6205d6797112a5265cb41703e1e06c9cf3db	ok	2	0	0	0	0	1556	1562
+close-native-it	aevia-language-full	aevia-core	output_formats	crates/aevia-core/tests/output_formats.rs	8f78f19df4b965998c91ba21d8eb9921de343d5c86f6e55a163d0926b7cdce43	ok	10	0	0	0	0	1564	1578
+close-native-it	aevia-language-full	aevia-core	package_owners	crates/aevia-core/tests/package_owners.rs	fb4dc771ec119a4b9f7b8e6717cb1d339fb9ba43f4cd9b01f4c338449996afd2	ok	0	0	0	0	0	1580	1584
+close-native-it	aevia-language-full	aevia-core	packages	crates/aevia-core/tests/packages.rs	5dc4ae7b4f1b93e68418f9700426de8c235e921303afd08d215a1026cc77790c	ok	26	0	0	0	0	1586	1616
+close-native-it	aevia-language-full	aevia-core	par_map_dense	crates/aevia-core/tests/par_map_dense.rs	b4434ecc8577da9a8a7fd965fbd11b0ecf3f141e41f4633d7937b54055625041	ok	7	0	0	0	0	1618	1629
+close-native-it	aevia-language-full	aevia-core	parallel	crates/aevia-core/tests/parallel.rs	6d27f2dd6ed034d1fe2c11858ac2aef0bbeac264fae3b071bf55c5d38bbb259b	ok	12	0	0	0	0	1631	1647
+close-native-it	aevia-language-full	aevia-core	pattern_execution	crates/aevia-core/tests/pattern_execution.rs	816db7d53c2318c61a782397ceed20b3b0e0f32fd1e95df6117584b0cddbbe3d	ok	16	0	0	0	0	1649	1669
+close-native-it	aevia-language-full	aevia-core	pde_adaptive_examples	crates/aevia-core/tests/pde_adaptive_examples.rs	079aa083cd320f0a19afc3dd6d34e58a067d3f69343360cfc49c4d52d9f6a93b	ok	1	0	0	0	0	1671	1676
+close-native-it	aevia-language-full	aevia-core	plot_dispatch	crates/aevia-core/tests/plot_dispatch.rs	33614bb0fba435dce6e19d72613ebb05e36a980b360d9f41ef27564e795e57eb	ok	3	0	0	0	0	1678	1685
+close-native-it	aevia-language-full	aevia-core	polygon_area	crates/aevia-core/tests/polygon_area.rs	d22bf9db64473456e25398b947f972befa62f9d3615e32af7acce8be4178a638	ok	2	0	0	0	0	1687	1693
+close-native-it	aevia-language-full	aevia-core	quadrature_gk_units	crates/aevia-core/tests/quadrature_gk_units.rs	1f2b4f896574d698d9b4fd3b945752fdc7ad4e7a1d3f36c3b311eba6b48d1296	ok	3	0	0	0	0	1695	1702
+close-native-it	aevia-language-full	aevia-core	rebinding	crates/aevia-core/tests/rebinding.rs	9fd683df3fdbdb838c20afb404656febcc7a9bd83a5166fe25014db79edea6d7	ok	4	0	0	0	0	1704	1712
+close-native-it	aevia-language-full	aevia-core	reductions_axis	crates/aevia-core/tests/reductions_axis.rs	6668aaddffe1809c6cc7b6d434189762be34c90a46bf8a2ef037d2751e974c42	ok	8	0	0	0	0	1714	1726
+close-native-it	aevia-language-full	aevia-core	reductions_minmax	crates/aevia-core/tests/reductions_minmax.rs	042c8a1087fa370c21ec91f0bf7f34d4783d19dc7b258fd683b87c422ba0a370	ok	8	0	0	0	0	1728	1740
+close-native-it	aevia-language-full	aevia-core	release	crates/aevia-core/tests/release.rs	52f977d47a7da3814fd3a9442d149433e264024ccc4a8f7891a604bf48341015	ok	2	0	0	0	0	1742	1748
+close-native-it	aevia-language-full	aevia-core	repl_imports	crates/aevia-core/tests/repl_imports.rs	580bfa5775267ff70181f26c2ad33264c615666ea1712e606c475a9f93e308f9	ok	8	0	0	0	0	1750	1762
+close-native-it	aevia-language-full	aevia-core	repl_parse_stages	crates/aevia-core/tests/repl_parse_stages.rs	3eacba15221495a9494c37a541ea549883f7e45db3475581d01c937d9c0a558a	ok	5	0	0	0	0	1764	1773
+close-native-it	aevia-language-full	aevia-core	resampling_examples	crates/aevia-core/tests/resampling_examples.rs	3fe971a5f24a598a98ccd8fed545a21a81fdfecffa7264b3c9fe7464e7f4995b	ok	1	0	0	0	0	1775	1780
+close-native-it	aevia-language-full	aevia-core	revision13	crates/aevia-core/tests/revision13.rs	d04e9f519acb91caa880034dd9801c726a8c9697c0d76370eb91ce25e0a1a8f6	ok	19	0	0	0	0	1782	1805
+close-native-it	aevia-language-full	aevia-core	rfft_inputs	crates/aevia-core/tests/rfft_inputs.rs	cfc492ac3dec9ad6392237a23a3cd673088f110d1f131c2c7ec4f14c116b9f03	ok	2	0	0	0	0	1807	1813
+close-native-it	aevia-language-full	aevia-core	round12_runtime	crates/aevia-core/tests/round12_runtime.rs	2332da86e12a2d99c2055f09077208e975419cb497df4104f08d44ed13584fc0	ok	12	0	0	0	0	1815	1831
+close-native-it	aevia-language-full	aevia-core	round13	crates/aevia-core/tests/round13.rs	a24bfd3aba7dfb521e1c035ab0be9f0e40a24d301821ad6f1e79905ea7fa810d	ok	22	0	0	0	0	1833	1859
+close-native-it	aevia-language-full	aevia-core	rssn_dimension_contract	crates/aevia-core/tests/rssn_dimension_contract.rs	e919cccb1e186cc7661d1490d4a22f0434fb07f1daf630f6200b6bc4e6be7fff	ok	4	0	0	0	0	1861	1869
+close-native-it	aevia-language-full	aevia-core	rssn_entries	crates/aevia-core/tests/rssn_entries.rs	a7b9882c63df3dcc5a69f78178fbdc98f91750d2748fe11bfa8e24d4da0afc15	ok	12	0	0	0	0	1871	1887
+close-native-it	aevia-language-full	aevia-core	rssn_option_facade	crates/aevia-core/tests/rssn_option_facade.rs	fb92168cb3be62ebf6426fab54b271b8b61d80169538181a086042e39f104c51	ok	1	0	0	0	0	1889	1894
+close-native-it	aevia-language-full	aevia-core	rssn_square_free_factors	crates/aevia-core/tests/rssn_square_free_factors.rs	7bc047317e8fda58ea1a1339954e046f1ff0b8ec8ec07bb44f972a804701d622	ok	1	0	0	0	0	1896	1901
+close-native-it	aevia-language-full	aevia-core	rssn_verification	crates/aevia-core/tests/rssn_verification.rs	c2e2fecc3fc85fc1a2473f9f27987ed75a46e4bb1d700de0c65369d060189eca	ok	1	0	0	0	0	1903	1908
+close-native-it	aevia-language-full	aevia-core	run	crates/aevia-core/tests/run.rs	4ce983ddccd7dfeb7715280be778a65e5caf4be18fba66d2515b10c165f2537a	ok	56	0	0	0	0	1910	1970
+close-native-it	aevia-language-full	aevia-core	runtime_diagnostics	crates/aevia-core/tests/runtime_diagnostics.rs	55be373d671b8cb6807aeb62ff2da795521b6e53f59a33b9b26359e41cf528df	ok	2	0	0	0	0	1972	1978
+close-native-it	aevia-language-full	aevia-core	runtime_dim	crates/aevia-core/tests/runtime_dim.rs	5202757023c572106b6bec706ffc7dae374fc7ad1f6974a20c210e6874f4197d	ok	15	0	0	0	0	1980	1999
+close-native-it	aevia-language-full	aevia-core	runtime_interfaces	crates/aevia-core/tests/runtime_interfaces.rs	2e3ae267e19d3c927220b4a36423d837b0ffb385c1ae6e81e9adf2a40f3cae35	ok	6	0	0	0	0	2001	2011
+close-native-it	aevia-language-full	aevia-core	runtime_type_dispatch	crates/aevia-core/tests/runtime_type_dispatch.rs	f330fa17600a6c12bebd47d307d4581089437f3c68a97d4dade7c63c1c921d4d	ok	4	0	0	0	0	2013	2021
+close-native-it	aevia-language-full	aevia-core	sde_adaptive_examples	crates/aevia-core/tests/sde_adaptive_examples.rs	32fa94ba921b970fa517b52782f1f6f7d62fbfbac345ab8162d9c0b8260e85cd	ok	1	0	0	0	0	2023	2028
+close-native-it	aevia-language-full	aevia-core	sde_language	crates/aevia-core/tests/sde_language.rs	3ab8404af13d4ddee7caccc922063d05991ccc8283536222cc0d5db43df95987	ok	10	0	0	0	0	2030	2044
+close-native-it	aevia-language-full	aevia-core	sde_runtime	crates/aevia-core/tests/sde_runtime.rs	1165250d736ea399d2955a874ec03f1e4ac237939d9d3f6402e594b05387c146	ok	11	0	0	0	0	2046	2061
+close-native-it	aevia-language-full	aevia-core	shapes	crates/aevia-core/tests/shapes.rs	3402f0c1b02bd08f016e92b1736c565902f107674d11c21c918b8a2a11096368	ok	8	0	0	0	0	2063	2075
+close-native-it	aevia-language-full	aevia-core	slice_step	crates/aevia-core/tests/slice_step.rs	ded9290092388fd4a90c422f4c110fe593479339645564b6853619190c8e3471	ok	12	0	0	0	0	2077	2093
+close-native-it	aevia-language-full	aevia-core	solve_root_scale	crates/aevia-core/tests/solve_root_scale.rs	fef70c3b1528046c8545199c0c44053843bc3c736f0341f525c13586c0f97af3	ok	1	0	0	0	0	2095	2100
+close-native-it	aevia-language-full	aevia-core	solve_touching_root	crates/aevia-core/tests/solve_touching_root.rs	6e13800f0403584a51b63d67b97717da9e2ef320be9409ee613ac6958dae1915	ok	1	0	0	0	0	2102	2107
+close-native-it	aevia-language-full	aevia-core	source_identity	crates/aevia-core/tests/source_identity.rs	836bdfb47146e411e5428205f57f5f8355f9f108ce40fac31de99c74b683d31d	ok	8	0	0	0	0	2109	2121
+close-native-it	aevia-language-full	aevia-core	source_plugins	crates/aevia-core/tests/source_plugins.rs	53f472ad7ac82191390856d7b84c66ab52e030bd09131151642c9da9fdcd0431	ok	11	0	0	0	0	2123	2138
+close-native-it	aevia-language-full	aevia-core	source_stamps	crates/aevia-core/tests/source_stamps.rs	6da7946753a234896e8828f56955ebd33abbb16eb853d21e31b498bad6324705	ok	2	0	0	0	0	2140	2146
+close-native-it	aevia-language-full	aevia-core	sparse	crates/aevia-core/tests/sparse.rs	d788e4467f47dd6a458f06e93bd4ae1c5a276824a755811cb2824f2a1fe0ded5	ok	35	0	0	0	0	2148	2187
+close-native-it	aevia-language-full	aevia-core	sparse_block	crates/aevia-core/tests/sparse_block.rs	d4b4eaa1ba7ff199b986f1d5404113198ee75f77d44f9378006654bb8f3cb3f6	ok	12	0	0	0	0	2189	2205
+close-native-it	aevia-language-full	aevia-core	sparse_followup	crates/aevia-core/tests/sparse_followup.rs	cafe43fe8d907ac54f2f2f7ac2489589b9e2c764052c26c3965980798ab58bbd	ok	7	0	0	0	0	2207	2218
+close-native-it	aevia-language-full	aevia-core	startup	crates/aevia-core/tests/startup.rs	d123fdaa393d5e6477f6df5e6b5744e33746d54523203822570d768cef9ae9c1	ok	1	0	0	0	0	2220	2225
+close-native-it	aevia-language-full	aevia-core	stdlib	crates/aevia-core/tests/stdlib.rs	f98d80ed11338b8366613039fd42e0903093fd9797308e62d4457976ae248b29	ok	42	0	0	0	0	2227	2273
+close-native-it	aevia-language-full	aevia-core	stdlib_coverage	crates/aevia-core/tests/stdlib_coverage.rs	9031eb8b28c54b96ab41f08bcacd55b6cccfbd0d987313d4c47b8e44067207d7	ok	7	0	0	0	0	2275	2286
+close-native-it	aevia-language-full	aevia-core	stdlib_loader	crates/aevia-core/tests/stdlib_loader.rs	e8dd614a307e15224f4145cc4ce7f51aa6863e7eddc03c5e68add7238101f5b2	ok	2	0	0	0	0	2288	2294
+close-native-it	aevia-language-full	aevia-core	stdlib_modules	crates/aevia-core/tests/stdlib_modules.rs	d59f7a9e9b0513d607dfb9d633eee201a5d8e982d1aa7a1bc613ca73dd6fc1c5	ok	6	0	0	0	0	2296	2306
+close-native-it	aevia-language-full	aevia-core	symbolic_simplify	crates/aevia-core/tests/symbolic_simplify.rs	c7a5ba8630af32ef61b7a358e9acff92c3f8bb0d4eb37e2c198e2f90a95cce9c	ok	7	0	0	0	0	2308	2319
+close-native-it	aevia-language-full	aevia-core	tensor_views	crates/aevia-core/tests/tensor_views.rs	41cc6061f7570aa2d8b7faf430a9c82bdb5bc34484db29f8c907a16bf2e4235b	ok	22	0	0	0	0	2321	2347
+close-native-it	aevia-language-full	aevia-core	tensors_dense	crates/aevia-core/tests/tensors_dense.rs	d95fff2dfd13bffbf0332fc65fa04cbc749708e2f674cbd8f467435723178359	ok	19	0	2	0	0	2349	2374
+close-native-it	aevia-language-full	aevia-core	top_level_rebinding	crates/aevia-core/tests/top_level_rebinding.rs	e04de123c09f2312c2271092cba863d814ded8792fde075d766b0d48dd7c8ac8	ok	12	0	0	0	0	2376	2392
+close-native-it	aevia-language-full	aevia-core	try_owned	crates/aevia-core/tests/try_owned.rs	975ccef26fff8f5bf02edf28f79ec64f9be3aa954d94631f3e3dd31980d81808	ok	2	0	0	0	0	2394	2400
+close-native-it	aevia-language-full	aevia-core	type_rep_reflection	crates/aevia-core/tests/type_rep_reflection.rs	604f9e8f474a79be1147f54653f8917d4570f150a32a3d2fff2bb491b2a7d106	ok	5	0	0	0	0	2402	2411
+close-native-it	aevia-language-full	aevia-core	unit_systems	crates/aevia-core/tests/unit_systems.rs	62f8fe347d8fa6e3ab9cea85dee07e13d9b872fbdfde64511d17e4d5f4e67b7c	ok	7	0	0	0	0	2413	2424
+close-native-it	aevia-language-full	aevia-core	virtual_bindings	crates/aevia-core/tests/virtual_bindings.rs	1740ac961acaff1260a3e89c62e2452bcecae01198b63e4d183a3ef04f456fbb	ok	1	0	0	0	0	2426	2431
+close-native-it	aevia-language-full	aevia-dim				ok	33	0	0	0	0	2433	2470
+close-native-it	aevia-language-full	aevia-dim	nominal	crates/aevia-dim/tests/nominal.rs	d5e1aab2cce4c23722191d5e897c7e7fce6af91e0bdc26bcc6deac6c2fb75f71	ok	3	0	0	0	0	2472	2479
+close-native-it	aevia-language-full	aevia-doc				ok	30	0	0	0	0	2481	2515
+close-native-it	aevia-language-full	aevia-fmt				ok	11	0	0	0	0	2517	2532
+close-native-it	aevia-language-full	aevia-fmt	constructs	crates/aevia-fmt/tests/constructs.rs	417a635eb3d91d2506a89add2f865f1050c842b09b4db05ad45c81513eab4886	ok	21	0	0	0	0	2534	2559
+close-native-it	aevia-language-full	aevia-fmt	corpus	crates/aevia-fmt/tests/corpus.rs	81a1d8e48e33196ad8d3cd53d3a9852ed4577dc886a01087d8b143519400a647	ok	3	0	0	0	0	2561	2568
+close-native-it	aevia-language-full	aevia-ir				ok	8	0	0	0	0	2570	2582
+close-native-it	aevia-language-full	aevia-ir	boolean_folding	crates/aevia-ir/tests/boolean_folding.rs	fc973514b5971ea4f1fd6a24b30d833f122bbbeb66fabe7a08b69a46186de989	ok	1	0	0	0	0	2584	2589
+close-native-it	aevia-language-full	aevia-ir	lowering	crates/aevia-ir/tests/lowering.rs	c051d15d8aed158b71ccd98f1a292bb37ad4344376fdf674e1ded4e27d40e36d	ok	12	0	0	0	0	2591	2607
+close-native-it	aevia-language-full	aevia-lint				ok	1	0	0	0	0	2609	2614
+close-native-it	aevia-language-full	aevia-lint	lint	crates/aevia-lint/tests/lint.rs	c7ac9436e48565a617177a84482264ca9a3bdb7e84fea43fcb97a8e1d9b8d780	ok	11	0	0	0	0	2616	2631
+close-native-it	aevia-language-full	aevia-lint	linting	crates/aevia-lint/tests/linting.rs	4cf523705fabbb8499a2be3d41f59eec82ad2e1b43df383c4b6059cc0553b6d9	ok	13	0	0	0	0	2633	2650
+close-native-it	aevia-language-full	aevia-lsp				ok	29	0	1	0	0	2652	2686
+close-native-it	aevia-language-full	aevia-lsp				ok	0	0	0	0	0	2688	2692
+close-native-it	aevia-language-full	aevia-lsp	protocol	crates/aevia-lsp/tests/protocol.rs	4e6cb6b2c4e2b2c8de8d1b8c335fd9e685450937f03e4f706c5890d6dc58419a	ok	30	0	0	0	0	2694	2728
+close-native-it	aevia-language-full	aevia-prof				ok	3	0	0	0	0	2730	2737
+close-native-it	aevia-language-full	aevia-prof	profiler	tools/aevia-prof/tests/profiler.rs	d9e5fa8dcfc45c0ceb5aa3ff6ecfd3f740ae735aa5874075024676fdae580641	ok	5	0	0	0	0	2739	2748
+close-native-it	aevia-language-full	aevia-resolve				ok	75	0	0	0	0	2750	2829
+close-native-it	aevia-language-full	aevia-rssn				ok	50	0	0	0	0	2831	2885
+close-native-it	aevia-language-full	aevia-rssn	aev_suites	crates/aevia-rssn/tests/aev_suites.rs	e6b7dfedbd429465f9b99cf4d09b6bed93ffa18cb712ef8a1de94272837510b0	ok	1	0	0	0	0	2887	2892
+close-native-it	aevia-language-full	aevia-rssn	bindings	crates/aevia-rssn/tests/bindings.rs	05c9d5e03ff4e6416226890984fa4a66d68ec5214976f12db394e79cb8e2fee4	ok	7	0	0	0	0	2894	2905
+close-native-it	aevia-language-full	aevia-rssn	bridge	crates/aevia-rssn/tests/bridge.rs	99ac602466e8c97ac63983d86adca2459a964e3ae45f2bd9e9368287b618318d	ok	50	0	0	0	0	2907	2961
+close-native-it	aevia-language-full	aevia-rssn	callback_bridge	crates/aevia-rssn/tests/callback_bridge.rs	6d55fd152fdd36d83ec361724442cc43055bc1aff782715ce2a4a55e699dc158	ok	2	0	0	0	0	2963	2969
+close-native-it	aevia-language-full	aevia-rssn	cdf_probability	crates/aevia-rssn/tests/cdf_probability.rs	84a455bc0c5ec391408253fc3e31aa1e970e37bffd4637a31283c005c75102df	ok	1	0	0	0	0	2971	2976
+close-native-it	aevia-language-full	aevia-rssn	diagnostics	crates/aevia-rssn/tests/diagnostics.rs	97d1fc688c378820f473005428f11a8c5c7199013f1bf423e56815addbbfd0e2	ok	5	0	0	0	0	2978	2987
+close-native-it	aevia-language-full	aevia-rssn	domains	crates/aevia-rssn/tests/domains.rs	dc396360d77ce074e5feb1179e3671a24fbb9db8a6c3fcc4c7ac1d7307d08f60	ok	5	0	0	0	0	2989	2998
+close-native-it	aevia-language-full	aevia-rssn	emit_typecheck	crates/aevia-rssn/tests/emit_typecheck.rs	c69bd914533b6ad36bd4a4af1c5227c6262a7e4078438667f7872733886010a4	ok	1	0	0	0	0	3000	3005
+close-native-it	aevia-language-full	aevia-rssn	generated	crates/aevia-rssn/tests/generated.rs	fa2202a7b5e35389cfa4481d465e428492adfd7aa88992425c43e7bb5a63f0a0	ok	15	0	0	0	0	3007	3026
+close-native-it	aevia-language-full	aevia-rssn	kernel_contracts	crates/aevia-rssn/tests/kernel_contracts.rs	40650d0433a3c7f56fc677edb13d4c480d95d937dc35743de54a03bf1e25fbd6	ok	313	0	0	0	0	3028	3345
+close-native-it	aevia-language-full	aevia-rssn	manifest	crates/aevia-rssn/tests/manifest.rs	66fde2dbc0ba1a3f04a0235b421c7ffa37f5b089a501129336d128bc5e636136	ok	14	0	0	0	0	3347	3365
+close-native-it	aevia-language-full	aevia-rssn	namespace_coverage	crates/aevia-rssn/tests/namespace_coverage.rs	f9f78761d6c2ad3a2c6b8641f080829e2a972fe7d0c129820f74b2a87ec87bf6	ok	2	0	0	0	0	3367	3373
+close-native-it	aevia-language-full	aevia-rssn	nominal_dimensions	crates/aevia-rssn/tests/nominal_dimensions.rs	f121b90f4c6046fcb77439e48bf81b6fb62192d7405987b29256345f2aee5ce5	ok	4	0	0	0	0	3375	3383
+close-native-it	aevia-language-full	aevia-rssn	reachability	crates/aevia-rssn/tests/reachability.rs	11bf73a62827ee1e68f93c96a6cafd36cb69decb318b0b28226b9320105e70d8	ok	2	0	0	0	0	3385	3391
+close-native-it	aevia-language-full	aevia-rssn	refined_callback_shapes	crates/aevia-rssn/tests/refined_callback_shapes.rs	69364beaeee5f9dc1314ff8caca66667297931fbdeeb240228bbede1198a0017	ok	2	0	0	0	0	3393	3399
+close-native-it	aevia-language-full	aevia-rssn	source_generated	crates/aevia-rssn/tests/source_generated.rs	98faa57e31f43fa1d933f2593edf5de2e91cf7e08751aad726dbddd0b7db230c	ok	10	0	0	0	0	3401	3415
+close-native-it	aevia-language-full	aevia-rssn	unknown_signature	crates/aevia-rssn/tests/unknown_signature.rs	5d7a7da3759e53111b9c06616d687830828017ca7843d986abf6a9eb499e8795	ok	4	0	0	0	0	3417	3425
+close-native-it	aevia-language-full	aevia-std				ok	330	0	0	0	0	3427	3761
+close-native-it	aevia-language-full	aevia-std	exactness	crates/aevia-std/tests/exactness.rs	36d7d4b7b0ff4ca60ed81cb2cbc00796c5bff6134f80e0a32a716ea4a18555a9	ok	2	0	0	0	0	3763	3769
+close-native-it	aevia-language-full	aevia-std	kernel_boundary	crates/aevia-std/tests/kernel_boundary.rs	44bf0c3036bb8fd9d157616e8bddc1ee57098c53fef15516907ea27465a1ed22	ok	1	0	0	0	0	3771	3776
+close-native-it	aevia-language-full	aevia-std	spec_programs	crates/aevia-std/tests/spec_programs.rs	88f15fc66cc78f496669828b318b4c21fec2928135320d2d50cc2060bd4ef3b7	ok	2	0	0	0	0	3778	3784
+close-native-it	aevia-language-full	aevia-std	spec_signatures	crates/aevia-std/tests/spec_signatures.rs	c630685cfde12e26057598c786675b3a2870981d06effb2814009ba91d1dbe03	ok	2	0	1	0	0	3786	3793
+close-native-it	aevia-language-full	aevia-std	stdlib_modules	crates/aevia-std/tests/stdlib_modules.rs	99ab3158a50c1d248a48f744d10a37cbaea31d3f678710c777d012b53c7bd7a1	ok	12	0	0	0	0	3795	3811
+close-native-it	aevia-language-full	aevia-std	tensor_intrinsics	crates/aevia-std/tests/tensor_intrinsics.rs	446d6aa92493fd1af2a53f9ae589ae7e9d5a512029dc8c3f57a1a00fa73871b4	ok	3	0	0	0	0	3813	3820
+close-native-it	aevia-language-full	aevia-stdlib-gen				ok	1	0	0	0	0	3822	3827
+close-native-it	aevia-language-full	aevia-stdlib-gen	bootstrap	tools/aevia-stdlib-gen/tests/bootstrap.rs	de609caa88d4a17df1c4a45df5958d0c00211052d3a5b6bf570743f828e88a05	ok	3	0	0	0	0	3829	3836
+close-native-it	aevia-language-full	aevia-stdlib-gen	docs	tools/aevia-stdlib-gen/tests/docs.rs	b02fe073c792167560d1bbf6ce6200d8bfbcce09f115bc05068f9d3af80e56a2	ok	6	0	0	0	0	3838	3848
+close-native-it	aevia-language-full	aevia-stdlib-model				ok	18	0	0	0	0	3850	3872
+close-native-it	aevia-language-full	aevia-syntax				ok	67	0	0	0	0	3874	3945
+close-native-it	aevia-language-full	aevia-syntax	attributes	crates/aevia-syntax/tests/attributes.rs	fc9c0c7098790a5c760e44d95dad1078b6b797cc5ae48e507fa32cdadcedccee	ok	8	0	0	0	0	3947	3959
+close-native-it	aevia-language-full	aevia-syntax	block_comments	crates/aevia-syntax/tests/block_comments.rs	56ca2d7153220407511f8a71da61054b95bc62a40264c82e9366506ef367a8d5	ok	4	0	0	0	0	3961	3969
+close-native-it	aevia-language-full	aevia-syntax	declarations	crates/aevia-syntax/tests/declarations.rs	dd38753a9a00160495d81bce52b769c4a8b0b52236de6d0274431c2492bf3f6c	ok	24	0	0	0	0	3971	3999
+close-native-it	aevia-language-full	aevia-syntax	layout	crates/aevia-syntax/tests/layout.rs	1d0e8f8da238ed750794cf96ab5fe5de54e3bd41429b813383748a0312899e91	ok	12	0	0	0	0	4001	4017
+close-native-it	aevia-language-full	aevia-syntax	private_dimensions	crates/aevia-syntax/tests/private_dimensions.rs	421a97fe8cb961610e5db311dbe9dcd7b568d90a709b2d4b536a708f28f652ab	ok	2	0	0	0	0	4019	4025
+close-native-it	aevia-language-full	aevia-syntax	records	crates/aevia-syntax/tests/records.rs	b91248f3af45a5cf19a1988456f805fa335bfbd84102c8c34b4fe749ff460a79	ok	6	0	0	0	0	4027	4037
+close-native-it	aevia-language-full	aevia-syntax	recovery	crates/aevia-syntax/tests/recovery.rs	37771045e44c3a7a589dc0667f6045971ff8a8d24c9477cf264c889a37a8f488	ok	12	0	0	0	0	4039	4055
+close-native-it	aevia-language-full	aevia-syntax	strings	crates/aevia-syntax/tests/strings.rs	ad503842796ec4efce01b8e02993cc7d8a7623faa07702813324caaf3d13e73b	ok	22	0	0	0	0	4057	4083
+close-native-it	aevia-language-full	aevia-syntax	structural_identity	crates/aevia-syntax/tests/structural_identity.rs	c1dfc9de19537cc6540adfac895ee98aa2438d065d0fa815362a1a8a07e5c565	ok	2	0	0	0	0	4085	4091
+close-native-it	aevia-language-full	aevia-syntax	type_application_paths	crates/aevia-syntax/tests/type_application_paths.rs	7f3da1edb82da3ef3a867be87b4c4c9f0da6561c87f604014998578ba873f7d1	ok	2	0	0	0	0	4093	4099
+close-native-it	aevia-language-full	aevia-syntax	types	crates/aevia-syntax/tests/types.rs	028ba266bf692eda68e9ef6d5dceb734d5b697069b4bef95dbd7d09b1e6314a4	ok	17	0	0	0	0	4101	4122
+close-native-it	aevia-language-full	aevia-types				ok	125	0	0	0	0	4124	4253
+close-native-it	aevia-language-full	aevia-types	adt_index	crates/aevia-types/tests/adt_index.rs	1f94d385e30e50dcc2ff01f405be169a012e3c7aeda41fdc2fd170aa4582d904	ok	6	0	0	0	0	4255	4265
+close-native-it	aevia-language-full	aevia-types	callable_identity	crates/aevia-types/tests/callable_identity.rs	40a138da4faf708c2153355e3920b656099500b55a677d5995b67c766cbaff7a	ok	2	0	0	0	0	4267	4273
+close-native-it	aevia-language-full	aevia-types	callback_types	crates/aevia-types/tests/callback_types.rs	a62b67ed300ea2f907fc9b8e860d4fb87ca498514f7cb348e5b92b01032e0e95	ok	5	0	0	0	0	4275	4284
+close-native-it	aevia-language-full	aevia-types	checking	crates/aevia-types/tests/checking.rs	59ba327b0f126365dc576980651f1a801bc44a5add76af6928b1391a1bfdae5e	ok	153	0	0	0	0	4286	4443
+close-native-it	aevia-language-full	aevia-types	declaration_schemas	crates/aevia-types/tests/declaration_schemas.rs	bc7474973a8216e4105789487cdddf43b2445f8d07d38cbe8a5c62448be0c5b3	ok	6	0	0	0	0	4445	4455
+close-native-it	aevia-language-full	aevia-types	diagnostics_coverage	crates/aevia-types/tests/diagnostics_coverage.rs	b63cc118a4d98411725c4d576f33e5ec4cbd3e2891dfbfa007b42f1cacb40fdb	ok	3	0	0	0	0	4457	4464
+close-native-it	aevia-language-full	aevia-types	interface	crates/aevia-types/tests/interface.rs	05861ed8ce5ed201e480e5f119bba014c6169032b800cc632dd1c27dc7090a78	ok	26	0	0	0	0	4466	4496
+close-native-it	aevia-language-full	aevia-types	jit_target	crates/aevia-types/tests/jit_target.rs	2bcc4bb59262fd06c748ebfb6c42496d10b250bec66047ba85a9d7fec13411c8	ok	3	0	0	0	0	4498	4505
+close-native-it	aevia-language-full	aevia-types	name_suggestions	crates/aevia-types/tests/name_suggestions.rs	5f423a41ca78fd82057d6a055d6ffc86d85c102ca4d91b218a08d8df3f783f93	ok	1	0	0	0	0	4507	4512
+close-native-it	aevia-language-full	aevia-types	nominal_dimensions	crates/aevia-types/tests/nominal_dimensions.rs	79aecb1fae993cea0dc41d4701fdc71611f28672868250912c48468e1fd2f733	ok	4	0	0	0	0	4514	4522
+close-native-it	aevia-language-full	aevia-types	pattern_coverage	crates/aevia-types/tests/pattern_coverage.rs	7c43a5ec6194caa2e79548f83c687c099371d425c368766b3ee34eddcb583e14	ok	9	0	0	0	0	4524	4537
+close-native-it	aevia-language-full	aevia-types	rank_generic	crates/aevia-types/tests/rank_generic.rs	95fcfdd1852df87f987de806e273f10b39a66ceeacb26abecdd7cbfbf6c64359	ok	8	0	0	0	0	4539	4551
+close-native-it	aevia-language-full	aevia-types	rebinding	crates/aevia-types/tests/rebinding.rs	722f5fcc9f5ad08d7f2518afc19c0dd45cbf85ffde62722e7362f37a4ab8924c	ok	12	0	0	0	0	4553	4569
+close-native-it	aevia-language-full	aevia-types	record_updates	crates/aevia-types/tests/record_updates.rs	d61a090bb2319ecad7693b8206329dcbb097fc14cc1417fd56c3121963c0d51a	ok	3	0	0	0	0	4571	4578
+close-native-it	aevia-language-full	aevia-types	rssn_dimensions	crates/aevia-types/tests/rssn_dimensions.rs	1e73fd5ca17113cf44a3d5c60d5c97480a1391675825e736739d38051dccb2d9	ok	3	0	0	0	0	4580	4587
+close-native-it	aevia-language-full	aevia-types	rssn_nullary	crates/aevia-types/tests/rssn_nullary.rs	f84fc3fee53171bd88ab6d296f82de6a1c7e073044b2f721a2d35f9bc20be849	ok	5	0	0	0	0	4589	4598
+close-native-it	aevia-language-full	aevia-types	rssn_refined_shapes	crates/aevia-types/tests/rssn_refined_shapes.rs	095a92df76c92dffd18c258af9a45fa706108ec0bc6a602a67892b5ec6f77614	ok	2	0	0	0	0	4600	4606
+close-native-it	aevia-language-full	aevia-types	rssn_symbol_hint	crates/aevia-types/tests/rssn_symbol_hint.rs	fd77e7a3b13dbda0c1cf5b84f5533b13d2102d066a8510a3fb6f647797ecc2eb	ok	2	0	0	0	0	4608	4614
+close-native-it	aevia-language-full	aevia-types	shape_refinement	crates/aevia-types/tests/shape_refinement.rs	4288d4a063d50ff6f42beaf1d61aeacd1211c3d4f7260e3131e3f2f372e2dace	ok	13	0	0	0	0	4616	4633
+close-native-it	aevia-language-full	aevia-types	type_prefix	crates/aevia-types/tests/type_prefix.rs	df89be37b82bda6965ce6f6714e710dcb4bdc10301d7e92d439e49242abd0fc9	ok	3	0	0	0	0	4635	4642
+close-native-it	aevia-language-full	aevia-types	unit_suggestions	crates/aevia-types/tests/unit_suggestions.rs	e12294f858f9bf3c32f01c05ba7ea21ab07ff15cb5eeb8f9ff83ff96f69e91da	ok	3	0	0	0	0	4644	4651
+close-native-it	aevia-language-full	rssn-api-audit				ok	12	0	0	0	0	4653	4669
+close-native-it	aevia-language-full					ok	1	0	0	0	0	4671	4676
+close-native-it	aevia-language-full					ok	1	0	0	0	0	4679	4684
+close-native-it	aevia-language-full					ok	0	0	0	0	0	4687	4691
+close-native-it	aevia-language-full					ok	0	0	0	0	0	4693	4697
+close-native-it	aevia-language-full					ok	1	0	0	0	0	4699	4704
+close-native-it	aevia-language-full					ok	0	0	0	0	0	4707	4711
+close-native-it	aevia-language-full					ok	0	0	0	0	0	4713	4717
+close-native-it	aevia-language-full					ok	1	0	0	0	0	4719	4724
+close-native-it	aevia-language-full					ok	0	0	0	0	0	4727	4731
+close-native-it	aevia-language-full					ok	1	0	0	0	0	4733	4738
+close-native-it	aevia-language-full					ok	0	0	0	0	0	4741	4745
+close-native-it	aevia-language-full					ok	0	0	0	0	0	4747	4751
+close-native-it	aevia-language-full					ok	1	0	0	0	0	4753	4758
+close-native-it	aevia-language-full					ok	1	0	0	0	0	4761	4766
+close-native-it	aevia-platform-full	aevia-pkg				ok	70	0	0	0	0	4779	4853
+close-native-it	aevia-platform-full	aevia-pkg	device_login	platform/crates/aevia-pkg/tests/device_login.rs	fa25b7487eb759b646eed461373dd58c02ccc642b97e4c6c3453e5c5ca4c8cf3	ok	4	0	0	0	0	4855	4863
+close-native-it	aevia-platform-full	aevia-pkg	gpg_publish	platform/crates/aevia-pkg/tests/gpg_publish.rs	d72d564f9f39b5291a932351279ea5e9427bd907e91fa6991808866660c35418	ok	2	0	0	0	0	4865	4871
+close-native-it	aevia-platform-full	aevia-registry-core				ok	63	0	0	0	0	4873	4940
+close-native-it	aevia-platform-full	aevia-registry-db				ok	1	0	0	0	0	4942	4947
+close-native-it	aevia-platform-full	aevia-registry-db	migration	platform/crates/aevia-registry-db/tests/migration.rs	68e0ad29f20a7f8f0d535b0f555593df3ee8ddf4c319104feaa3c995a00ce1c4	ok	3	0	0	0	0	4949	4956
+close-native-it	aevia-platform-full	aevia-registry-docs				ok	29	0	0	0	0	4958	4991
+close-native-it	aevia-platform-full	aevia-registry-server				ok	58	0	0	0	0	4993	5055
+close-native-it	aevia-platform-full	aevia-registry-server				ok	0	0	0	0	0	5057	5061
+close-native-it	aevia-platform-full	aevia-registry-server				ok	0	0	0	0	0	5063	5067
+close-native-it	aevia-platform-full	aevia-registry-server	api	platform/crates/aevia-registry-server/tests/api.rs	2e0dd97888c7b28a99d5b69e02f32cc4864b9f95ce9447a2eb01bfc987a0cefa	ok	21	0	0	0	0	5069	5094
+close-native-it	aevia-platform-full	aevia-registry-web				ok	29	0	0	0	0	5096	5129
+close-native-it	aevia-platform-full					ok	0	0	0	0	0	5131	5135
+close-native-it	aevia-platform-full					ok	0	0	0	0	0	5137	5141
+close-native-it	aevia-platform-full					ok	2	0	0	0	0	5143	5149
+close-native-it	aevia-platform-full					ok	0	0	0	0	0	5152	5156
+close-native-it	aevia-platform-full					ok	0	0	0	0	0	5158	5162
+close-native-it	aevia-platform-docs-no-default	aevia-registry-docs				ok	30	0	0	0	0	5169	5203
+close-native-it	aevia-platform-docs-no-default					ok	2	0	0	0	0	5205	5211
+close-native-owen	rssn-full	rssn				ok	1927	0	1	0	0	65	2011
+close-native-owen	rssn-full	rssn				ok	0	0	0	0	0	2013	2017
+close-native-owen	rssn-full	rssn	abi_fuzz	tests/abi_fuzz.rs	29f82896b71248ae11a5b55e97c22d4d96fd4174dfff64ed17aafb0acb9f2b53	ok	1	0	0	0	0	2019	2025
+close-native-owen	rssn-full	rssn	algebraic_integration	tests/algebraic_integration.rs	5a51b07ee78acddd59bc6ec45512250036bf1bac47df950d8a83300d8212b037	ok	12	0	0	0	0	2027	2043
+close-native-owen	rssn-full	rssn	analysis_native	tests/analysis_native.rs	4078048d67ee1b7ed3e641612cb62014936afb884f9131c2d2dbfa45de5490ac	ok	22	0	0	0	0	2045	2071
+close-native-owen	rssn-full	rssn	arnoldi_scaling	tests/arnoldi_scaling.rs	5a18a4b00fbd5b3b5dabadd9d5223894fbd3d659221128b5e45f710b5057803e	ok	6	0	0	0	0	2073	2083
+close-native-owen	rssn-full	rssn	bem3d_prepared	tests/bem3d_prepared.rs	96b15a13f528120d73d6e0f890780ce1f1098e7826f8af0058e1892519e4ac74	ok	4	0	0	0	0	2085	2093
+close-native-owen	rssn-full	rssn	bem_aca_workspace	tests/bem_aca_workspace.rs	c90c0d130308f32b35c5b081ad5507a54a17ccdfd99d210a3a7920e73a5e61f2	ok	3	0	0	0	0	2095	2102
+close-native-owen	rssn-full	rssn	bem_gmres	tests/bem_gmres.rs	25f87cfb0cf9ca3bb86d148a3441a69da06a270086928437ed14385e628a2978	ok	2	0	0	0	0	2104	2110
+close-native-owen	rssn-full	rssn	bessel_k_log	tests/bessel_k_log.rs	4853c76639c2f6217b969905e8abd684ae8218af5c60931d92415f6f205ff0f0	ok	3	0	0	0	0	2112	2119
+close-native-owen	rssn-full	rssn	bicgstab_l_workspace	tests/bicgstab_l_workspace.rs	9776b5626e29095b036bd9ba13f2cec3f83d1ecb5000742921d2d747d08fcd72	ok	5	0	0	0	0	2121	2130
+close-native-owen	rssn-full	rssn	bootstrap_parallel	tests/bootstrap_parallel.rs	9e0286b2061e27a60b41d01ec9d8c7d9ec4d9e8249897adcd8ce20456dd40ae4	ok	4	0	0	0	0	2132	2140
+close-native-owen	rssn-full	rssn	brent_bracket	tests/brent_bracket.rs	688b128c88dfc87b3c28bf5eafcad76b50d27c991ed613701e983351eb9ab2ce	ok	5	0	0	0	0	2142	2151
+close-native-owen	rssn-full	rssn	bspline_collocation	tests/bspline_collocation.rs	9ee8e9693312f3143f12a23a941f3bb17dfe8accf1cfbdef0b348520c2bc831a	ok	6	0	0	0	0	2153	2163
+close-native-owen	rssn-full	rssn	build_script	tests/build_script.rs	0a0f61345c9ed659ccc41154e5c8bd5470b6d8d15b27e29d402ea69622245363	ok	1	0	0	0	0	2165	2170
+close-native-owen	rssn-full	rssn	burgers_fvm_boundaries	tests/burgers_fvm_boundaries.rs	1182b0ccdb86bfe41fe9243b227e04045ae2c6eab55748d091e6f9e63f75bb51	ok	5	0	0	0	0	2172	2181
+close-native-owen	rssn-full	rssn	calculus_second_order	tests/calculus_second_order.rs	f103fdee40218a325997640183f273cd3ed5c0e2bb2819389d195c17719cde51	ok	6	0	0	0	0	2183	2193
+close-native-owen	rssn-full	rssn	callbacks	tests/callbacks.rs	325b5ac79839713230c54736f986e8675ed5fabc1f82625a6b487b1ead851c7f	ok	18	0	0	0	0	2195	2217
+close-native-owen	rssn-full	rssn	callbacks_ffi	tests/callbacks_ffi.rs	171072261d1b021518e79c1aa4fea4d541b6426d8da976a904826ddae0c7d06e	ok	1	0	0	0	0	2219	2224
+close-native-owen	rssn-full	rssn	cancellation	tests/cancellation.rs	8312221b11e866f6bd16e1614dee14961949fe44aec3e8556f4cdf9c98729a70	ok	5	0	0	0	0	2226	2235
+close-native-owen	rssn-full	rssn	cartesian_poisson_prepared	tests/cartesian_poisson_prepared.rs	8e2da340ebdc27267711ec23ab875176aee0a90bebb8caa9a4fa773a09eb8836	ok	6	0	0	0	0	2237	2247
+close-native-owen	rssn-full	rssn	cdylib_plugin	tests/cdylib_plugin.rs	32e0a1af4d29a2194e31154d9fa53701dd1a1dac7111f2aee70b5494a0b48acb	ok	2	0	0	0	0	2249	2255
+close-native-owen	rssn-full	rssn	cfd_laplacian	tests/cfd_laplacian.rs	b7c0387766c07e7b01e3c391f104e4ace78c29af6b235c6f44707a5f3025de53	ok	4	0	0	0	0	2257	2265
+close-native-owen	rssn-full	rssn	chain_pair_scales	tests/chain_pair_scales.rs	e360795d47e5dcabdc76dd92d6fb2bb8c96d86bed14e896994597baa9d41c685	ok	6	0	0	0	0	2267	2277
+close-native-owen	rssn-full	rssn	channel_pressure	tests/channel_pressure.rs	187024ede469f51c7bb07e1c495c577daf5b4d26b80b59dc68b4d3d71ebd488b	ok	7	0	0	0	0	2279	2290
+close-native-owen	rssn-full	rssn	chebyshev_exact_mod	tests/chebyshev_exact_mod.rs	d7ec9352f4a6349df772d2a1b1611900f64a7ccc4073936dae86ad7d7c1d050c	ok	3	0	0	0	0	2292	2299
+close-native-owen	rssn-full	rssn	cnm_heat_adi	tests/cnm_heat_adi.rs	73689cbf67dd811efadba4305559ccd14015ce13fc107a87fc2123f2285ed122	ok	7	0	0	0	0	2301	2312
+close-native-owen	rssn-full	rssn	colored_fd_workspace	tests/colored_fd_workspace.rs	adcb117fbecc12c7194cf493bef1ed8d2c255a378f7004f7cf458cf4d7b151f1	ok	2	0	0	0	0	2314	2320
+close-native-owen	rssn-full	rssn	combinatorics_inversions	tests/combinatorics_inversions.rs	6ad02f0b482647e82b61cf8fc0b1e6398d56a69fad42af4bad2ff7888164a0d7	ok	3	0	0	0	0	2322	2329
+close-native-owen	rssn-full	rssn	combinatorics_set_partitions	tests/combinatorics_set_partitions.rs	649d99ca740880489dd77f3cabaf933d8af94f6352308fc3b629cf5d269422e6	ok	4	0	0	0	0	2331	2339
+close-native-owen	rssn-full	rssn	complex_interval_ball	tests/complex_interval_ball.rs	5ccb0ae87e83a0a2a88cc54b54546984aa2b7ef446cb92b2c1cb29dec6e06491	ok	4	0	0	0	0	2341	2349
+close-native-owen	rssn-full	rssn	complex_sqrt_boundary	tests/complex_sqrt_boundary.rs	14e64ed23c1c5eb29ac9c4c038bd27a4ff5ab3cf1fc8bae8d9a3e0091ce13cb4	ok	1	0	0	0	0	2351	2356
+close-native-owen	rssn-full	rssn	complex_winding	tests/complex_winding.rs	2b00168c6b8b7a1adef1b76be4149b8e969547e8bf568dd4b872f0afad927a92	ok	5	0	0	0	0	2358	2367
+close-native-owen	rssn-full	rssn	continuum_multigrid_workspace	tests/continuum_multigrid_workspace.rs	5fb25f1ac3b2ba61f0698d105c20bfb316317de0898dbad662979b8f36d32804	ok	6	0	0	0	0	2369	2379
+close-native-owen	rssn-full	rssn	contraction_contract	tests/contraction_contract.rs	c310e7bf358430be3ded2dd7d268dbff13fa1057b4b7cef76e9e88fa3c06d901	ok	9	0	0	0	0	2381	2394
+close-native-owen	rssn-full	rssn	coverage_algebra	tests/coverage_algebra.rs	ad3d4727a0e1dc873922aec78a64a949c8485e03417b068d12bf316362fa7974	ok	19	0	0	0	0	2396	2419
+close-native-owen	rssn-full	rssn	coverage_api_complex	tests/coverage_api_complex.rs	bb28399c796ed38c1b08af3270d6b55e9dab780d28c1aa3f4d4a19a27fa3d005	ok	12	0	0	0	0	2421	2437
+close-native-owen	rssn-full	rssn	coverage_numeric_a	tests/coverage_numeric_a.rs	0c5aaa4b480d13d963a9de123626fd36698de5ac03e84114fe52a9fba8ded26c	ok	26	0	0	0	0	2439	2469
+close-native-owen	rssn-full	rssn	coverage_numeric_b	tests/coverage_numeric_b.rs	b9e7c362379c8916d03ae343dc0f37f1a5b803d527f7b997a1f1798f3de83a4c	ok	16	0	0	0	0	2471	2491
+close-native-owen	rssn-full	rssn	coverage_r2_analysis	tests/coverage_r2_analysis.rs	a6373f0e2ab6b158eee721a08072c3fcf14885b0ac56aabb7b72768826c52dea	ok	15	0	0	0	0	2493	2512
+close-native-owen	rssn-full	rssn	coverage_r2_api	tests/coverage_r2_api.rs	2cd7a942463ff4132196f28b5c57e00ba0a1d02a2d72ecec0593b8d9717446ad	ok	15	0	0	0	0	2514	2533
+close-native-owen	rssn-full	rssn	coverage_r2_certified	tests/coverage_r2_certified.rs	5a033823d1fb92f540ae78915bb34650bb59f553d8e9594531b0d299ce3e9971	ok	22	0	0	0	0	2535	2561
+close-native-owen	rssn-full	rssn	coverage_r2_ffi	tests/coverage_r2_ffi.rs	4b0226b302dd443d422cd795801a5ba8f3da30b1ef6582ca6c441bfe304f3eb1	ok	26	0	0	0	0	2563	2593
+close-native-owen	rssn-full	rssn	coverage_r2_linalg	tests/coverage_r2_linalg.rs	4a2336292dbf7571a9227ee34482ef7ae907d8586a75446795338ae84252d1c6	ok	21	0	0	0	0	2595	2620
+close-native-owen	rssn-full	rssn	cpu_device_cache	tests/cpu_device_cache.rs	10cce93e66650c62d610c868ac4c1ee6333587ff86b354708ba0290342e2d026	ok	2	0	0	0	0	2622	2628
+close-native-owen	rssn-full	rssn	cse_binder_scopes	tests/cse_binder_scopes.rs	915eca04e5a99911694c983c12206a816eaeb13b154f744354640b560db8b594	ok	7	0	0	0	0	2630	2641
+close-native-owen	rssn-full	rssn	cse_shared_pairs	tests/cse_shared_pairs.rs	1730adc1453012b4fb8b582dffd057b39d3e301e65662e4c9016c43b873c350e	ok	3	0	0	0	0	2643	2650
+close-native-owen	rssn-full	rssn	dd_complex_division	tests/dd_complex_division.rs	e738471fe35a1b8f2ed09a0b0b558185dbf913c72927094937264aef0281bad1	ok	5	0	0	0	0	2652	2661
+close-native-owen	rssn-full	rssn	dense_fd_workspace	tests/dense_fd_workspace.rs	a9629448a797c5f5174e30c63219b0df3e446247e68ba27838bcce16cd9d382b	ok	1	0	0	0	0	2663	2668
+close-native-owen	rssn-full	rssn	descriptive_histograms	tests/descriptive_histograms.rs	8a72a204e273eeed0bb621e4883b59e8215e88f8474e718298313a0fb2e081d4	ok	4	0	0	0	0	2670	2678
+close-native-owen	rssn-full	rssn	dg1d_advection_plan	tests/dg1d_advection_plan.rs	c015ed6c70d2a42120613c8055bad69a0b144aa54b9d36dc1bef6b08885f4b3e	ok	3	0	0	0	0	2680	2687
+close-native-owen	rssn-full	rssn	dg3d_rhs_workspace	tests/dg3d_rhs_workspace.rs	80422af7c5fca425bdb6d09f1cb77c1aeb5b3b2c0fde5879c3c6677fc1292bba	ok	5	0	0	0	0	2689	2698
+close-native-owen	rssn-full	rssn	dim_rational_boundary	tests/dim_rational_boundary.rs	8a1c804b564b2fd4eb737bda1e6599aa21650dc573b76fa5a6cbf683446ac259	ok	4	0	0	0	0	2700	2708
+close-native-owen	rssn-full	rssn	dimensioned_coverage	tests/dimensioned_coverage.rs	aabf0bcd1dde67ee40c1b59267d3fb201e70246726de2751fa2d7c4e57a77ae5	ok	4	0	0	0	0	2710	2718
+close-native-owen	rssn-full	rssn	dimensions	tests/dimensions.rs	12136367fe5293bb18fea0f735ef18849fa6e676c35dceb8a2e6dffebe1c153b	ok	20	0	0	0	0	2720	2744
+close-native-owen	rssn-full	rssn	dimensions_core	tests/dimensions_core.rs	5bcc437c2eab1b1d34adb3da3f32dd7c31775a9772a15b6bf1708a29f2142fa9	ok	24	0	0	0	0	2746	2774
+close-native-owen	rssn-full	rssn	dimensions_ode_pde	tests/dimensions_ode_pde.rs	c10303b71916149ebf7a324c4c0723797c934b7c143fc2994067bc79c1872dff	ok	4	0	0	0	0	2776	2784
+close-native-owen	rssn-full	rssn	dimensions_physics	tests/dimensions_physics.rs	20cc9560dd6fcd519e873aaa03060bb5b648686ee734cc2871363396d1001669	ok	9	0	0	0	0	2786	2799
+close-native-owen	rssn-full	rssn	dimensions_special	tests/dimensions_special.rs	844ec16a17bb2b5dd1cfc303144398fac3bff4a7581cd6d364496038818ceede	ok	24	0	0	0	0	2801	2829
+close-native-owen	rssn-full	rssn	distributions_weibull	tests/distributions_weibull.rs	786a154811c925b1cf81310847d723a171e306e8cbf92e07cf00602b32580245	ok	8	0	0	0	0	2831	2843
+close-native-owen	rssn-full	rssn	dormand_prince_physics	tests/dormand_prince_physics.rs	512b15ab4acd46fe5a03c9f8b40461d2209bb993c0c136e61ec80cf7892717e0	ok	6	0	0	0	0	2845	2855
+close-native-owen	rssn-full	rssn	dual_integer_power	tests/dual_integer_power.rs	56ae6653c9674228266cec791c3c7e301c675739532e18c3155e845732c63def	ok	5	0	0	0	0	2857	2866
+close-native-owen	rssn-full	rssn	elliptic_carlson_scales	tests/elliptic_carlson_scales.rs	a01fd2d78f0fa972c004ff016fe87125035685c793731151430b0f3835fddc61	ok	7	0	0	0	0	2868	2879
+close-native-owen	rssn-full	rssn	engine_rdf	tests/engine_rdf.rs	76ed523bff0a105b67a2756831976049af64c6cfee4df0e19af2392377a2d123	ok	6	0	0	0	0	2881	2891
+close-native-owen	rssn-full	rssn	epd_goursat_samples	tests/epd_goursat_samples.rs	cb1772b0ad8664276159ec96f9ce2e805ea516ec9fb16cab82e838684cd0fe53	ok	4	0	0	0	0	2893	2901
+close-native-owen	rssn-full	rssn	etdrk4_diag_scale	tests/etdrk4_diag_scale.rs	3fc126264e782c70eba1219e7cd5f3da7f7ece5b3ebdf42b2ed29ac6076cdd2f	ok	5	0	0	0	0	2903	2912
+close-native-owen	rssn-full	rssn	euler_amr_parallel	tests/euler_amr_parallel.rs	3a5dc0799ef104f3d1cf8f09eb7aa4b9f2389ed13b00edc6f55696dece300e7a	ok	2	0	0	0	0	2914	2920
+close-native-owen	rssn-full	rssn	ewald_reciprocal_plan	tests/ewald_reciprocal_plan.rs	23885eb7bd892284ea1ddc491fdaa096fc8de0d5c6c59e67cc9e60c4b035b391	ok	7	0	0	0	0	2922	2933
+close-native-owen	rssn-full	rssn	exact_determinant	tests/exact_determinant.rs	7fecdaffa18eb497b88c5aaa6f76a24562dc2d953a54e9202f346f01b866e7b6	ok	2	0	0	0	0	2935	2941
+close-native-owen	rssn-full	rssn	f4_f5	tests/f4_f5.rs	00a08e420b0efb4c13a1784356bff8964b7d4e534b4226ad3b927220e5a1941b	ok	17	0	0	0	0	2943	2965
+close-native-owen	rssn-full	rssn	fdm_wave_dirichlet	tests/fdm_wave_dirichlet.rs	4b0cf3c597b972a4d92bdf1c5ee00d3649325ba78691f1a70fd1c71529b15a48	ok	7	0	0	0	0	2967	2978
+close-native-owen	rssn-full	rssn	fdtd_tm_model	tests/fdtd_tm_model.rs	96bffdad2b1adebbf2a747f775e8b4a6e9f455d115d9dd6ea393ed1e57554681	ok	6	0	0	0	0	2980	2990
+close-native-owen	rssn-full	rssn	fea_beam_stiffness	tests/fea_beam_stiffness.rs	6cacb969a6f3f6edd04fc28a8fd00636ffc68cd005caa5baa1b562c29ce85cc4	ok	4	0	0	0	0	2992	3000
+close-native-owen	rssn-full	rssn	fem_simplex_estimates	tests/fem_simplex_estimates.rs	a28dcf17966b8f67bad690f2a6ee43ec5f87fc283dbeb816b8aeac1804879b07	ok	5	0	0	0	0	3002	3011
+close-native-owen	rssn-full	rssn	fem_triangles_prepared	tests/fem_triangles_prepared.rs	5276820931bde50ef7b94c97d4c877c9707b6e2d46bce249c14a4c7735ff2338	ok	6	0	0	0	0	3013	3023
+close-native-owen	rssn-full	rssn	ffi_manifest_cache	tests/ffi_manifest_cache.rs	b2af7e81385a0d48447caf6909a0b79d2f6b11f3674a43ed5b2d6052a7d517a6	ok	1	0	0	0	0	3025	3030
+close-native-owen	rssn-full	rssn	fmm2d_prepared	tests/fmm2d_prepared.rs	7b63a2c1ebdcec167d5cee100c7fa340028ecbc93206ce0996aaf10017028368	ok	4	0	0	0	0	3032	3040
+close-native-owen	rssn-full	rssn	fvm_facade_reuse	tests/fvm_facade_reuse.rs	8afaccb8f2748469119e97f692ee5da95e59300a7eeef5410d1b1fa0c93640a4	ok	2	0	0	0	0	3042	3048
+close-native-owen	rssn-full	rssn	gas_riemann	tests/gas_riemann.rs	2fa4ffdf20bfdcc41d63127edaeb29c806b5665da870fd08046942647694f970	ok	8	0	0	0	0	3050	3062
+close-native-owen	rssn-full	rssn	gauss_adaptive_workspace	tests/gauss_adaptive_workspace.rs	ba0bc18bbb520dc63a7a1d071ac9922d6784b93d7eada04cdd777d76afa5b852	ok	5	0	0	0	0	3064	3073
+close-native-owen	rssn-full	rssn	gauss_legendre_stages	tests/gauss_legendre_stages.rs	15fbe354f425abe3de2320eaf3f6bb279e39a96c6ec6995e67e8c9bd7c2876c0	ok	5	0	0	0	0	3075	3084
+close-native-owen	rssn-full	rssn	gauss_unity_real	tests/gauss_unity_real.rs	c23898d83cd0e5035621eacea6b4a2068904a1bc1be55cc02eabbd9974813512	ok	3	0	0	0	0	3086	3093
+close-native-owen	rssn-full	rssn	generalized_eig_residuals	tests/generalized_eig_residuals.rs	43de8614a1089633edcae53e32721e9c401df7e83ebb8f121b85adcd014ea748	ok	2	0	0	0	0	3095	3101
+close-native-owen	rssn-full	rssn	geometric_algebra_inverse	tests/geometric_algebra_inverse.rs	778a19efcc9dc405467d0f402a61945283f64db53de8f17702bcda213bce54f6	ok	4	0	0	0	0	3103	3111
+close-native-owen	rssn-full	rssn	geometric_multigrid_red_black	tests/geometric_multigrid_red_black.rs	e2930e5e1124fc7ef05032312c5a4ff2a9df6bb07475a0fa27b7c6ae852bc4f7	ok	2	0	0	0	0	3113	3119
+close-native-owen	rssn-full	rssn	geometric_multigrid_residual_scaling	tests/geometric_multigrid_residual_scaling.rs	e7f51942b9805fa57a6e837006a32ea156dff7ffb8b5681c8432aea3756ccc9d	ok	5	0	0	0	0	3121	3130
+close-native-owen	rssn-full	rssn	geometric_multigrid_transfer	tests/geometric_multigrid_transfer.rs	ba22ba1ebd7cf1838810e6d750e90654407d524e851e6b54f93c3f7f8835cea9	ok	5	0	0	0	0	3132	3141
+close-native-owen	rssn-full	rssn	geometry_kd_tree	tests/geometry_kd_tree.rs	2a2f216b4963ec03a498da30a90d85b47bf40792acee3884781067eb73ae3b02	ok	4	0	0	0	0	3143	3151
+close-native-owen	rssn-full	rssn	gpe_ground_state	tests/gpe_ground_state.rs	328b38b115c28b186726ecdb6e2db4e7c6da086c1f14f26d64292fd905606577	ok	6	0	0	0	0	3153	3163
+close-native-owen	rssn-full	rssn	graph_value_units	tests/graph_value_units.rs	1d425b224927541c2fa64a34f7b8f735bf2432738d9cbe016574365cbe0b895c	ok	16	0	0	0	0	3165	3185
+close-native-owen	rssn-full	rssn	graphics_triangle_ray	tests/graphics_triangle_ray.rs	6bb8fa16aa74f4874ca4aff911692d021fdf04ffbcd1043a6be38349df38d2ee	ok	6	0	0	0	0	3187	3197
+close-native-owen	rssn-full	rssn	hermite_time_steps	tests/hermite_time_steps.rs	e496fb42975220c2723ad8705eb97135ddd7792de0c30f58a1c53d7b9866ea7d	ok	6	0	0	0	0	3199	3209
+close-native-owen	rssn-full	rssn	holonomic_deciding_terms	tests/holonomic_deciding_terms.rs	aa4214b65c1c1dadf92179817bd52284c8b15764ae9a110bb04c42d22de582e0	ok	4	0	0	0	0	3211	3219
+close-native-owen	rssn-full	rssn	holonomic_series_power	tests/holonomic_series_power.rs	e48865b071956cf990e9287ee001c35aa57ce8db4c656d97e790212db0843d7f	ok	4	0	0	0	0	3221	3229
+close-native-owen	rssn-full	rssn	holonomic_series_rules	tests/holonomic_series_rules.rs	dadf24dce3921ed67c287a32deef8946634ba6c9512ec16290cdb35b36b75667	ok	3	0	0	0	0	3231	3238
+close-native-owen	rssn-full	rssn	homology_finite_field	tests/homology_finite_field.rs	73e4096da1e742cdb4116e78d1ee94bc6750b32b57a4437cac998c8993aa757f	ok	4	0	0	0	0	3240	3248
+close-native-owen	rssn-full	rssn	homotopy_evaluation	tests/homotopy_evaluation.rs	32106625cef0e4476625c18bb17889696f37e135856db99508f8032bbc19c99b	ok	2	0	0	0	0	3250	3256
+close-native-owen	rssn-full	rssn	homotopy_input_limits	tests/homotopy_input_limits.rs	44410418cad5fccfd109d9dabe1e784b5eb9eb7a957b6e2ca05649fa2f66bb21	ok	7	0	0	0	0	3258	3269
+close-native-owen	rssn-full	rssn	huber_location_scale	tests/huber_location_scale.rs	436597cc72fadc3b683cc793a47c97d3269f9373951abe466c9f7e7373cc11ec	ok	6	0	0	0	0	3271	3281
+close-native-owen	rssn-full	rssn	hyperelastic_constitutive_point	tests/hyperelastic_constitutive_point.rs	97c3daa9831afc614131244368059aee39fc9017a2ab3356b4d5b2b9f7239b75	ok	7	0	0	0	0	3283	3294
+close-native-owen	rssn-full	rssn	ic0_scale	tests/ic0_scale.rs	4e656f868f2156c4a41f918e1b3ab08b75a65a972e6ff37487c8ddeeee71a376	ok	4	0	0	0	0	3296	3304
+close-native-owen	rssn-full	rssn	ilut	tests/ilut.rs	67041c8f738489f1ecb3ce5cd1fbba496c0ac3fb87a4a6c9cf284301f25716e4	ok	7	0	0	0	0	3306	3317
+close-native-owen	rssn-full	rssn	indefinite_sum_budget	tests/indefinite_sum_budget.rs	c098b8cdb26dfac127ef771564f38943c255a7e4d3c1bdccedea1992644649d3	ok	6	0	0	0	0	3319	3329
+close-native-owen	rssn-full	rssn	indefinite_sum_polynomial	tests/indefinite_sum_polynomial.rs	eee6d0781b3ebf17569ae9306fe50dec96f5e62f153ccb150b3686674a045d8c	ok	5	0	0	0	0	3331	3340
+close-native-owen	rssn-full	rssn	interp_ext_bilinear	tests/interp_ext_bilinear.rs	73da6b1d40a1c7f3793a5d5efffb225b5a907a1f0b25e58be45598c220db9706	ok	1	0	0	0	0	3342	3347
+close-native-owen	rssn-full	rssn	interp_shape_preserving	tests/interp_shape_preserving.rs	29cd40298e1a252bd8449994fc3bb3c0034543d69f83dd4683eb21bac1837ab3	ok	10	0	0	0	0	3349	3363
+close-native-owen	rssn-full	rssn	inverse_erfc_tail	tests/inverse_erfc_tail.rs	429bc9f77d4d80693cd108ae1b94c4d227dac2bacd6b769abd06d18544c96fa3	ok	2	0	0	0	0	3365	3371
+close-native-owen	rssn-full	rssn	io	tests/io.rs	fd6494ccbbf12bf3f0a66a76bf92911f1500e546b740e77df8bb12fd91559562	ok	42	0	0	0	0	3373	3419
+close-native-owen	rssn-full	rssn	irfft_scaling	tests/irfft_scaling.rs	e4c6ec2de6d4585af6157c0012e7fb2a9b8eac0103923e66a8903b6674d1dd76	ok	5	0	0	0	0	3421	3430
+close-native-owen	rssn-full	rssn	jit_contracts	tests/jit_contracts.rs	03134fd698805fabe64e3bdeea4ccc09b2829359b95d1fb4ca7259902fb264ad	ok	7	0	0	0	0	3432	3443
+close-native-owen	rssn-full	rssn	kernels	tests/kernels.rs	5791750c5e80a254ac6e5a533f17538d79bd95ed63726ad5397936add5d2647b	ok	1297	0	0	0	0	3445	4747
+close-native-owen	rssn-full	rssn	kerr_newman_photon_radii	tests/kerr_newman_photon_radii.rs	724b327fc397e4caa685bee5438454dde21cd64888d75879c64777d4f2cf3d13	ok	4	0	0	0	0	4749	4757
+close-native-owen	rssn-full	rssn	kerr_shadow_parallel	tests/kerr_shadow_parallel.rs	01cd786734816c22a5978229b68747ed4c73825bd56f4d22c9e018b702ba4701	ok	3	0	0	0	0	4759	4766
+close-native-owen	rssn-full	rssn	krylov_accurate_matvec	tests/krylov_accurate_matvec.rs	48ee98762da615d62eb8f54e04f663a173001eaedf01d7c10ef1252d95f51353	ok	3	0	0	0	0	4768	4775
+close-native-owen	rssn-full	rssn	lambert_w_complex_limits	tests/lambert_w_complex_limits.rs	0eaa5adb4d74a8e17209cf3b24986a35cd8282fb1e7d623753514342b38b1927	ok	3	0	0	0	0	4777	4784
+close-native-owen	rssn-full	rssn	least_squares	tests/least_squares.rs	14ee2bec684acb8c92c0cd8deb97b0d537daa5f11331301c2ef097250d813de6	ok	10	0	0	0	0	4786	4800
+close-native-owen	rssn-full	rssn	legacy_sph_neighbors	tests/legacy_sph_neighbors.rs	4de82429c541b914b541d75eeac45dd268dc43f94c6e48b8e25fe18b8da2b13f	ok	4	0	0	0	0	4802	4810
+close-native-owen	rssn-full	rssn	levin_plan	tests/levin_plan.rs	4083f9ab1a6d01779e4f39d2f4e7a2ac4523fc72f552d1a6205952bc8eb6c574	ok	5	0	0	0	0	4812	4821
+close-native-owen	rssn-full	rssn	lie_matrix_basis	tests/lie_matrix_basis.rs	f1769cbe44fc8b843862b6a8afd6205d6c3296372b73935b47a53899a06d104b	ok	3	0	0	0	0	4823	4830
+close-native-owen	rssn-full	rssn	linear_fit_scaling	tests/linear_fit_scaling.rs	3e5deedbac3b9e52f80f518e14eb873b48bcac43d0551e7dc2f593c3b25a2da3	ok	3	0	0	0	0	4832	4839
+close-native-owen	rssn-full	rssn	linear_regression_workspace	tests/linear_regression_workspace.rs	685bb85c4abd06824aeda436e6e4967a78e7382f546dffed783cafde63d6251a	ok	6	0	0	0	0	4841	4851
+close-native-owen	rssn-full	rssn	math_linear_algebra	tests/math_linear_algebra.rs	6ec2502d659e5b05ede6a15519a915a4f53fd02d0f0f074e00d5eaace55113d9	ok	12	0	0	0	0	4853	4869
+close-native-owen	rssn-full	rssn	math_number_theory	tests/math_number_theory.rs	be58e110bdb0edcd914060ff96a9070275e49c01149618f84b9a7f5375f26d68	ok	14	0	0	0	0	4871	4889
+close-native-owen	rssn-full	rssn	math_numeric_edges	tests/math_numeric_edges.rs	39e4d3e7bbcdd56cb53f0343e55e6ebedcca6acf89f0c824626be24ec11d3428	ok	10	0	0	0	0	4891	4905
+close-native-owen	rssn-full	rssn	math_robustness	tests/math_robustness.rs	87393f631518a0fa977d9e7340ccc9f9a08b0edb48692a9709e645acbe763ee0	ok	6	0	0	0	0	4907	4917
+close-native-owen	rssn-full	rssn	math_special_complex	tests/math_special_complex.rs	8d90ca0608d623adafdb8687a47fec11ece3d671cef66109b1250ae76700b93b	ok	11	0	0	0	0	4919	4934
+close-native-owen	rssn-full	rssn	math_special_edges	tests/math_special_edges.rs	7203066377a544ca057c643a7482ed277c293693d7d71534d1760d915898cf86	ok	9	0	0	0	0	4936	4949
+close-native-owen	rssn-full	rssn	math_symbolic_classics	tests/math_symbolic_classics.rs	12756d2c90ba0ad7e173f468d0c796fb14218f047cb225d8e3315e8ab07bb6b4	ok	1	0	0	0	0	4951	4956
+close-native-owen	rssn-full	rssn	md_cell_exp_phi1	tests/md_cell_exp_phi1.rs	3a7bc56d15b39f05f7b66ab161b987e817d698878f74d4d26eb715911e9e6baa	ok	3	0	0	0	0	4958	4965
+close-native-owen	rssn-full	rssn	md_neighbour_grid	tests/md_neighbour_grid.rs	d663016fbb6b5413aef1c49446af0c6f3b385b5ebd087fe06146de902d80036f	ok	6	0	0	0	0	4967	4977
+close-native-owen	rssn-full	rssn	meijer_exponential	tests/meijer_exponential.rs	90ed025c63d636b9c08732dcfb7c0a4e34af29572cb25117b50fc6bcba4c1fc0	ok	5	0	0	0	0	4979	4988
+close-native-owen	rssn-full	rssn	meijer_g	tests/meijer_g.rs	ecd76ef8a96c6f6e673e49232dda2fd47f9ee2a007e209c1805081b5d94296ba	ok	10	0	0	0	0	4990	5004
+close-native-owen	rssn-full	rssn	method_of_lines_stencil	tests/method_of_lines_stencil.rs	235dff02dcf1a4a981b3a2665b93a7c0eee7efbe9db2962484db0e1bec5e40ba	ok	4	0	0	0	0	5006	5014
+close-native-owen	rssn-full	rssn	mlmc_limits	tests/mlmc_limits.rs	30c1c3c0a9ee5c21abad7cc91216eeb2dc0492d69abd1a2b728dfd43cc2592a4	ok	3	0	0	0	0	5016	5023
+close-native-owen	rssn-full	rssn	mlmc_moments	tests/mlmc_moments.rs	d3c77c31ef243b58596392db6e6c28abde990a082d7e6454bcf00c3d52b7c15a	ok	2	0	0	0	0	5025	5031
+close-native-owen	rssn-full	rssn	mlmc_streams	tests/mlmc_streams.rs	ab2e6440938e99de08b29ee8cf33eb8d63d99cccd1e5927f5ddc65b40e648149	ok	4	0	0	0	0	5033	5041
+close-native-owen	rssn-full	rssn	morse_radial	tests/morse_radial.rs	b4d7a61b16d07bfbfe2be59d1f7bef2c270f64596e3dad23d620573066d95362	ok	5	0	0	0	0	5043	5052
+close-native-owen	rssn-full	rssn	multivariate_series	tests/multivariate_series.rs	f7c8c77a2719b8b098bb1515b251cffdd156144cb682c57b53e1f294555c6ca1	ok	17	0	0	0	0	5054	5075
+close-native-owen	rssn-full	rssn	native_backend	tests/native_backend.rs	facbb9ee699699f6fb97f326aa5fa920db580a11813d0d8823f1cfa2e0ef2228	ok	5	0	0	0	0	5077	5086
+close-native-owen	rssn-full	rssn	native_callbacks	tests/native_callbacks.rs	af914f9b0eeea5f89d76c2daa9a51ed42b419844cf641b6cd355df6ff0ead7ab	ok	6	0	0	0	0	5088	5098
+close-native-owen	rssn-full	rssn	native_categorical	tests/native_categorical.rs	95c0cf8b8a9bbce845aa42a4946d86c3fdf39545c26df070951873371b625376	ok	2	0	0	0	0	5100	5106
+close-native-owen	rssn-full	rssn	native_continuum	tests/native_continuum.rs	5f721354ec4d0cecde551a72bf965efc6ae7a0d78b05a15e0cfcef5e420a339b	ok	13	0	0	0	0	5108	5125
+close-native-owen	rssn-full	rssn	native_discrete	tests/native_discrete.rs	76a7a9319185dbcea16d75d6cb7dc2c58f76622486dbb1c8b1d3a152df80be38	ok	25	0	0	0	0	5127	5156
+close-native-owen	rssn-full	rssn	native_execution	tests/native_execution.rs	846273d2437489ce8c5546d7ab1997ad8c37e26f706cae9c6983a0acc5f93d18	ok	11	0	0	0	0	5158	5173
+close-native-owen	rssn-full	rssn	native_fdm_callbacks	tests/native_fdm_callbacks.rs	f5ba6531f72be73770be6ba0153dd170a7499dc7f7f05abda78bbc19513108f2	ok	1	0	0	0	0	5175	5180
+close-native-owen	rssn-full	rssn	native_fem	tests/native_fem.rs	aa3d01506ab7b7f275cb970cbd38293112438781ba1bc577f0d3ff8836c92c7a	ok	1	0	0	0	0	5182	5187
+close-native-owen	rssn-full	rssn	native_fem_residual_estimator	tests/native_fem_residual_estimator.rs	7443a046fc751a0c33a036211e7108997b746b6efcd87b0ebb23d80b537e2520	ok	3	0	0	0	0	5189	5196
+close-native-owen	rssn-full	rssn	native_flow_conservation	tests/native_flow_conservation.rs	66bd6284dd11c87c07097132fddd8601ffc0120f2bb9fdf8603724e9e8476109	ok	6	0	0	0	0	5198	5208
+close-native-owen	rssn-full	rssn	native_geometric_transfer	tests/native_geometric_transfer.rs	2fa43c7d4d4ce876c26b4e409109b0798de5bf7804d471695ba8e0900349497f	ok	3	0	0	0	0	5210	5217
+close-native-owen	rssn-full	rssn	native_graphics_triangle	tests/native_graphics_triangle.rs	ad86dfd727f98c6c738aec6d2f47f62ff66f0fef0dc0ef87bf42b7233c89f3df	ok	5	0	0	0	0	5219	5228
+close-native-owen	rssn-full	rssn	native_grids	tests/native_grids.rs	e9c8e261de3fbac4025859d1ade764442b0a4e9e495fb0b138532c7388f903e5	ok	19	0	0	0	0	5230	5253
+close-native-owen	rssn-full	rssn	native_homology	tests/native_homology.rs	0aca82691d7396b168398adca1e1a846b609e0de725e2ec89fd77bc83a4288d0	ok	3	0	0	0	0	5255	5262
+close-native-owen	rssn-full	rssn	native_irfft_plan	tests/native_irfft_plan.rs	5cd32b8ed5e28d8abfb1becef14e631b8af65cfce85f84a845ac555fcc65b4cb	ok	6	0	0	0	0	5264	5274
+close-native-owen	rssn-full	rssn	native_legacy_physics	tests/native_legacy_physics.rs	6d958f2c423d64b656d996a410586fa7a85341280fa7010ba3d2b90d1a831825	ok	12	0	0	0	0	5276	5292
+close-native-owen	rssn-full	rssn	native_linear	tests/native_linear.rs	02fc453770ecaa25b4bf11bc8efab2553f8646c86bca41a4f72908f28e6efadb	ok	17	0	0	0	0	5294	5315
+close-native-owen	rssn-full	rssn	native_mechanics	tests/native_mechanics.rs	2228b79b6eab86e44530f404edb8664395dda42a119a83ec01a050ec61f9ebc2	ok	2	0	0	0	0	5317	5323
+close-native-owen	rssn-full	rssn	native_models	tests/native_models.rs	8e7c540e945441d5c2be0eea58db5059f5f0827398c5b2cdc85f97b600cf4071	ok	5	0	0	0	0	5325	5334
+close-native-owen	rssn-full	rssn	native_multilinear	tests/native_multilinear.rs	3db07db71505c02e8e945f62c4e988c5eac50f76bd5fa9463086a617c2753450	ok	3	0	0	0	0	5336	5343
+close-native-owen	rssn-full	rssn	native_objects	tests/native_objects.rs	a2b2e72b0d27a6af1d11a100c3f0cff73bb7c5055e40f472d59aa3e3adafb4b0	ok	8	0	0	0	0	5345	5357
+close-native-owen	rssn-full	rssn	native_overlap_save	tests/native_overlap_save.rs	a73a0f8a9a6e13c60d39121886cd68e9c45916dd9abbe39bfe26d6be500fc2b9	ok	2	0	0	0	0	5359	5365
+close-native-owen	rssn-full	rssn	native_particles	tests/native_particles.rs	7622c2946e03f1e3d5dde67d63bc9f5f61fb073a0c98f0fb5e2f65488806f06a	ok	25	0	0	0	0	5367	5396
+close-native-owen	rssn-full	rssn	native_reverse_ad	tests/native_reverse_ad.rs	d7d3547be2dd2f11673fb40b40a52358d8a2d28d65caf1686de86a32abea203f	ok	4	0	0	0	0	5398	5406
+close-native-owen	rssn-full	rssn	native_source_families	tests/native_source_families.rs	00fdf3cb242d6ab4ef93f5fc3a9ed7a69e5aa685fce3e87affbd0dba8b3cfff4	ok	4	0	0	0	0	5408	5416
+close-native-owen	rssn-full	rssn	nelder_mead_workspace	tests/nelder_mead_workspace.rs	057922169adac3dd7eb197f102f4b9e8c6290ffa163172b354cc5be76487ebdb	ok	5	0	0	0	0	5418	5427
+close-native-owen	rssn-full	rssn	newton_cg	tests/newton_cg.rs	be807c95a67c00046e79db70a35cc9770151d2d1a409239581badf470924f14d	ok	7	0	0	0	0	5429	5440
+close-native-owen	rssn-full	rssn	newton_cg_workspace	tests/newton_cg_workspace.rs	b2a7ecbc4ae448177278767a98dfbf6008fd071e50cf8acf7e96bd6c791ab540	ok	3	0	0	0	0	5442	5449
+close-native-owen	rssn-full	rssn	normal_quantile_extremes	tests/normal_quantile_extremes.rs	cbe768ecf72387be34a6c9e5bc4261eee21c4a74cff99ccdb8192c45659e48b1	ok	3	0	0	0	0	5451	5458
+close-native-owen	rssn-full	rssn	ns_mac_divergence	tests/ns_mac_divergence.rs	d80509b92d7d0ad83ebf968231f2ee0edc31f3c375ee0de3c0c2b2ac4bc43b51	ok	6	0	0	0	0	5460	5470
+close-native-owen	rssn-full	rssn	ns_mac_pressure_gauges	tests/ns_mac_pressure_gauges.rs	8b5083befc93a652e292fcaf981fba15fa1c34cbbf6479519e2eadf7cefc4339	ok	7	0	0	0	0	5472	5483
+close-native-owen	rssn-full	rssn	number_exact_products	tests/number_exact_products.rs	23bb0cfc97c64c8dda69e908cf875387ef495746aad21a7a181c7f7410ce81f2	ok	2	0	0	0	0	5485	5491
+close-native-owen	rssn-full	rssn	numerical_abi	tests/numerical_abi.rs	0f726a4fe62fdbc0325d4e346478fb6f59607a42e9ef54b0a451bee5054f343a	ok	40	0	0	0	0	5493	5537
+close-native-owen	rssn-full	rssn	numerical_evolution	tests/numerical_evolution.rs	b9f0b472e977a6237fa0acd550cd75d3d8c3087d0d8cfe94b31afc34efe8172b	ok	11	0	0	0	0	5539	5554
+close-native-owen	rssn-full	rssn	numerical_signal_graph	tests/numerical_signal_graph.rs	a8db9d93af7cac8cd0c5a19cbc8b1419b634715b3a99a5516ebd95b412f501c0	ok	23	0	0	0	0	5556	5583
+close-native-owen	rssn-full	rssn	ode_adaptive_geometry	tests/ode_adaptive_geometry.rs	578f38aaceac91dbda79edfcbc7a1f2a14acebeee1f35a36e2aab401c1643cee	ok	15	0	0	0	0	5585	5604
+close-native-owen	rssn-full	rssn	ode_contracts	tests/ode_contracts.rs	d66e2e207a876a43d74ab615ccf4da44e3ca8a8fe0f43bf35e228385143a7824	ok	13	0	0	0	0	5606	5623
+close-native-owen	rssn-full	rssn	ode_startup_progress	tests/ode_startup_progress.rs	89fe33180c61ddf42a8a68be31d5d6068f1a258b7478e5f98ba6b01f293e5512	ok	4	0	0	0	0	5625	5633
+close-native-owen	rssn-full	rssn	ordering_metrics	tests/ordering_metrics.rs	69f5f9b4f53f66227411193236f1d327953b34d0430403cfcb9eaac812bf9ab6	ok	4	0	0	0	0	5635	5643
+close-native-owen	rssn-full	rssn	ordering_ml_components	tests/ordering_ml_components.rs	3c0bdd34c1fcc4f010d2169036e71a8cbd9b97f0ec2388f520df98db6b85a985	ok	3	0	0	0	0	5645	5652
+close-native-owen	rssn-full	rssn	ordering_rcm	tests/ordering_rcm.rs	924b41dde1a77dd7e275c47fe5d0854fdd4e6470d60f3b942affeec967018a04	ok	3	0	0	0	0	5654	5661
+close-native-owen	rssn-full	rssn	overlap_save_scaled	tests/overlap_save_scaled.rs	2761b142e4a7ff04b8277200c3b973f85406d0e2f6d742a8ff53693dd49ef847	ok	5	0	0	0	0	5663	5672
+close-native-owen	rssn-full	rssn	pchip_segments	tests/pchip_segments.rs	eda6052e54481bc8d6b115a295e18a28c7bd031c086d36ff3c572a2ee2027ed1	ok	5	0	0	0	0	5674	5683
+close-native-owen	rssn-full	rssn	pde_adaptive	tests/pde_adaptive.rs	bd2c7342a85d476b6e16125930035d2cc2f29f151ba76702dceda9d9dcaa2453	ok	6	0	0	0	0	5685	5695
+close-native-owen	rssn-full	rssn	periodic_helmholtz	tests/periodic_helmholtz.rs	36a9f72150dd1bbf3d9f2fb1bf3a497852bc603d31fa76eccb62d7cbad3474c2	ok	7	0	0	0	0	5697	5708
+close-native-owen	rssn-full	rssn	permutation_powers	tests/permutation_powers.rs	01fb6d43cc815342d3079f190f83ae6a7f7bff5222aac35ee6206979a7b14204	ok	3	0	0	0	0	5710	5717
+close-native-owen	rssn-full	rssn	persistence_workspace	tests/persistence_workspace.rs	921d5a7ebd5b337e4533b14d467a550ff0465960b0de23865faf0bcd549021eb	ok	4	0	0	0	0	5719	5727
+close-native-owen	rssn-full	rssn	physics_explicit_euler	tests/physics_explicit_euler.rs	53ac3d44c9477d75282a94ac4254d34c4abe427bdad59aba2b382e2b9aeb1a2b	ok	8	0	0	0	0	5729	5741
+close-native-owen	rssn-full	rssn	physics_fvm_advection3	tests/physics_fvm_advection3.rs	c182faec2abe69561fe835de4ffca3c092a65313e735d10b98418540c4dd4e27	ok	4	0	0	0	0	5743	5751
+close-native-owen	rssn-full	rssn	physics_mtm_2d	tests/physics_mtm_2d.rs	583db234f14cb165a919c539fa24b6cc8f650c5e52a78e5c94ebefe82901d462	ok	5	0	0	0	0	5753	5762
+close-native-owen	rssn-full	rssn	pic_assignment_plan	tests/pic_assignment_plan.rs	89788014102f85c4e8480b9d981064e7987054aaa2493ab3800fc03f0565e29c	ok	5	0	0	0	0	5764	5773
+close-native-owen	rssn-full	rssn	pivoted_qr_packed	tests/pivoted_qr_packed.rs	56bd5d7a39c11caf544898a88d3a2afdadb9bb516318f7fc16ce79f686971238	ok	3	0	0	0	0	5775	5782
+close-native-owen	rssn-full	rssn	polygon_area_scale	tests/polygon_area_scale.rs	3a2a9c01e78f3b5ada08314f2cbf0f5ff9d071f2996620e6def323bd5d191da7	ok	2	0	0	0	0	5784	5790
+close-native-owen	rssn-full	rssn	portable_model_validation	tests/portable_model_validation.rs	eb8f477c795d80e77b9d4e781bfe9029e267d07762acf13b58f507dce23b6f1d	ok	4	0	0	0	0	5792	5800
+close-native-owen	rssn-full	rssn	potts_heat_bath	tests/potts_heat_bath.rs	c31d0fd470068473a54541125920d240c404488ef2b291427af2f38334a1c7a4	ok	5	0	0	0	0	5802	5811
+close-native-owen	rssn-full	rssn	prepared_physical_analysis	tests/prepared_physical_analysis.rs	eba75157cbc9b613639a048813514f91be05a25dbdc880d00dd88dfb5e367d30	ok	4	0	0	0	0	5813	5821
+close-native-owen	rssn-full	rssn	prime_sqrt_plan	tests/prime_sqrt_plan.rs	4e7f475590a8b4b8e504625e251b302a20642724969cf276c935025fc6066864	ok	3	0	0	0	0	5823	5830
+close-native-owen	rssn-full	rssn	qlinalg_solve	tests/qlinalg_solve.rs	73a0a99a14604c58080e950dfc01b0bc467996c55fdc0636e2b2908ffb1c08ce	ok	5	0	0	0	0	5832	5841
+close-native-owen	rssn-full	rssn	quadratic_sieve	tests/quadratic_sieve.rs	1ca25dc302523a292907c62029f657a1a8dcd8f6faeca78aa0a9b57192303562	ok	14	0	0	0	0	5843	5866
+close-native-owen	rssn-full	rssn	quasi_monte_carlo_sequences	tests/quasi_monte_carlo_sequences.rs	540b946e13aec27636b8214a81a405e3126958337d8d2bbe151b0b499fcbbe10	ok	5	0	0	0	0	5868	5877
+close-native-owen	rssn-full	rssn	radicals_shared_dag	tests/radicals_shared_dag.rs	dcbfab5303cdddbfb3ec83d26940125a1583fa1ae215d99a456e4e92276ed3e1	ok	3	0	0	0	0	5879	5886
+close-native-owen	rssn-full	rssn	randomized_svd_scaling	tests/randomized_svd_scaling.rs	cfe7fc465beec2d58c10f600ec81fbbcb600bd0756a8cb555d2ac50de9a01cef	ok	3	0	0	0	0	5888	5895
+close-native-owen	rssn-full	rssn	rbf_symmetric	tests/rbf_symmetric.rs	7b8fc1b8f2e43f38234d7d3e75f62cdbcb0dcf0b8f85f2c69449f6e182e8edea	ok	5	0	0	0	0	5897	5906
+close-native-owen	rssn-full	rssn	real_qe	tests/real_qe.rs	4079aa1b12c522cc48209dc4d1c74fe42e18e51b4735ea0b86391e9940af64de	ok	15	0	0	0	0	5908	5927
+close-native-owen	rssn-full	rssn	real_roots_endpoints	tests/real_roots_endpoints.rs	98db584814e8ba4874a05ef73a36ffd0253b2289dcb260d2dd3f962ab1e7d2ee	ok	8	0	0	0	0	5929	5941
+close-native-owen	rssn-full	rssn	relativistic_kinetic_energy	tests/relativistic_kinetic_energy.rs	dd35246a137687dcd8f8bf6e923fb2a9c0ad28037c018b26c33ef52cb5d8dea4	ok	4	0	0	0	0	5943	5951
+close-native-owen	rssn-full	rssn	richardson_rolling	tests/richardson_rolling.rs	c0d174be9100c7315850d8a6c58c3478880e6bfe6da7915367e7826e5dcbd196	ok	4	0	0	0	0	5953	5961
+close-native-owen	rssn-full	rssn	riemann_contractions	tests/riemann_contractions.rs	825aa3d373d59e1ad6bf4cdfd6e873d46673ff61287fe4c1b1143dbf2e1cde39	ok	4	0	0	0	0	5963	5971
+close-native-owen	rssn-full	rssn	rigid_rotor_schedule	tests/rigid_rotor_schedule.rs	e8f5aadb8c4d0fd9f4f3564245b44a2f484ca35ce7ff5b5895544c7280810952	ok	3	0	0	0	0	5973	5980
+close-native-owen	rssn-full	rssn	root_touching	tests/root_touching.rs	9071f37117d1327bb023bc5eec928563c32dfe7b07af500aca20d222f8476000	ok	5	0	0	0	0	5982	5991
+close-native-owen	rssn-full	rssn	rosenbrock_adjacent	tests/rosenbrock_adjacent.rs	911457d6bd90aafb92fb7c990a5a3f34dd41083caaa81ad505c5e29cbc471f8c	ok	7	0	0	0	0	5993	6004
+close-native-owen	rssn-full	rssn	scenario_catalog	tests/scenario_catalog.rs	668af8271c06d983c78a15e13a15562885ffc8c916e4b0f1f383cb850f104d2c	ok	2	0	0	0	0	6006	6012
+close-native-owen	rssn-full	rssn	schrodinger_prepared	tests/schrodinger_prepared.rs	24c5ce20f975aaa55cb5a103947daf1a70c4608f59234748995b14046adcf52f	ok	10	0	0	0	0	6014	6028
+close-native-owen	rssn-full	rssn	schur_sylvester	tests/schur_sylvester.rs	89428f4a3245fe11a6f0e24d24b6b8db6c6ede583684491606a7b46383753a44	ok	6	0	0	0	0	6030	6040
+close-native-owen	rssn-full	rssn	sde_noncommutative	tests/sde_noncommutative.rs	2c98bc03f01c2380e274551fdc4b396e83210a1b29a0c63c783bb29fc7390829	ok	13	0	0	0	0	6042	6059
+close-native-owen	rssn-full	rssn	sde_platen_scale	tests/sde_platen_scale.rs	0df3c19fcc372ff4eb33c3d21060e7e9c20d6247dd6febd2fc82c319e4cde2a8	ok	5	0	0	0	0	6061	6070
+close-native-owen	rssn-full	rssn	sdirk_newton_reuse	tests/sdirk_newton_reuse.rs	c12aaf8dd5f08636861335972ef823cb494e90dc55d3a5c58473890d131e307c	ok	4	0	0	0	0	6072	6080
+close-native-owen	rssn-full	rssn	separable_hamiltonian_steps	tests/separable_hamiltonian_steps.rs	a39c5286b6c4b1f63d96d40c32ae11cbe8e49e5e6813d07d4e12a63a96bcdc9a	ok	6	0	0	0	0	6082	6092
+close-native-owen	rssn-full	rssn	series_finite_range	tests/series_finite_range.rs	8b2ed954c1f81effa9fc2be3a569380ab55bbca8e27aaef8f0e460f696325c57	ok	5	0	0	0	0	6094	6103
+close-native-owen	rssn-full	rssn	series_stream	tests/series_stream.rs	12ec398f4acec1f836c93b6b7172d32fe4b13164a8087f5c33443a82a7ff93a3	ok	5	0	0	0	0	6105	6114
+close-native-owen	rssn-full	rssn	session_reuse	tests/session_reuse.rs	2614f5da81ef28bca1590d13620d9649a917bc23559438bd298d80076ec7a16f	ok	1	0	0	0	0	6116	6121
+close-native-owen	rssn-full	rssn	shepard_idw	tests/shepard_idw.rs	44dbf752c2ed27f78bfa362d654f73e181798b82b86c07a5b59d9195ca971440	ok	4	0	0	0	0	6123	6131
+close-native-owen	rssn-full	rssn	signal_transforms	tests/signal_transforms.rs	e355bba7c83d7383a9bbaee393d2940d134c4f63914391bed16cf4350a2cd40f	ok	34	0	0	0	0	6133	6171
+close-native-owen	rssn-full	rssn	signature_overlay	tests/signature_overlay.rs	85637fabd4c78b005757803f984b76e4c0c996c55446b3cc3ad9171b2712917d	ok	1	0	0	0	0	6173	6178
+close-native-owen	rssn-full	rssn	sim	tests/sim.rs	15fba27073b38e68be7c8f5024ea700dd1583922d9431e0dda8436697a6e07a8	ok	1042	0	2	0	0	6180	7236
+close-native-owen	rssn-full	rssn	simplex_elasticity_assembly	tests/simplex_elasticity_assembly.rs	301af5ade510e81c0bfef058600f6980e47f88a246a83c6803214a15d1d7f5b5	ok	1	0	0	0	0	7238	7243
+close-native-owen	rssn-full	rssn	smale_alpha_regressions	tests/smale_alpha_regressions.rs	5e58c289f6019b4724709bc1d49a64da6584c936a37fdb2c9e0d5de6833d797f	ok	4	0	0	0	0	7245	7253
+close-native-owen	rssn-full	rssn	solve_brackets	tests/solve_brackets.rs	c0ce3ccdc8f5b3187d3fd6dcee4a6b4913ffeb6584467c41072e3f3e1b079a6e	ok	8	0	0	0	0	7255	7267
+close-native-owen	rssn-full	rssn	source_policy_math	tests/source_policy_math.rs	4babbc7124afdb584e76045045d0fe113a8b2a444435bca3bb0142631a40c790	ok	8	0	0	0	0	7269	7281
+close-native-owen	rssn-full	rssn	sparse_csc_norms	tests/sparse_csc_norms.rs	970703e2521c33da3a5562c4f8d7a24c4b0031885e63b2988dc7475dbef50ab9	ok	7	0	0	0	0	7283	7294
+close-native-owen	rssn-full	rssn	sparse_csc_products	tests/sparse_csc_products.rs	dde2a8ea8af664e66d3f5ea8708e0f47d82f5d430d70d6affd81d3475754c850	ok	5	0	0	0	0	7296	7305
+close-native-owen	rssn-full	rssn	sparse_exact_elimination	tests/sparse_exact_elimination.rs	d2662a5d33322a4e0081aa6733005f284eadc6241cbc10fcf32ff27a326dd704	ok	4	0	0	0	0	7307	7315
+close-native-owen	rssn-full	rssn	sparse_native_borrowed	tests/sparse_native_borrowed.rs	d856d946fab2282740dfe67f6c3c19b0feff294728346b841bebf0e4e92fec27	ok	3	0	0	0	0	7317	7324
+close-native-owen	rssn-full	rssn	sparse_symbolic_rows	tests/sparse_symbolic_rows.rs	e0052b8b78a5ac19860518f493a038ab4347b616ea7c7752cbb03c1f5b373c30	ok	4	0	0	0	0	7326	7334
+close-native-owen	rssn-full	rssn	spectral_advection_modes	tests/spectral_advection_modes.rs	37489cc8dd2addc4b0ed77b16b06f152476877350199d27b210704bdb7e6b493	ok	4	0	0	0	0	7336	7344
+close-native-owen	rssn-full	rssn	spectral_fft_z_columns	tests/spectral_fft_z_columns.rs	6b94512f79895e0f4dbf7ec897bd4a10e68b334dddeaf030ff5c30d05bf5f31f	ok	3	0	0	0	0	7346	7353
+close-native-owen	rssn-full	rssn	spectral_odd_grid	tests/spectral_odd_grid.rs	10dfb8ea01f60f76a752e01e08be03865f88f114f38459890f5642d8a4e62cef	ok	2	0	0	0	0	7355	7361
+close-native-owen	rssn-full	rssn	sph_density_plan	tests/sph_density_plan.rs	a10bd952663941c8dcf77841214cfb0ee5a642f60a115031212a0f94a01a1594	ok	6	0	0	0	0	7363	7373
+close-native-owen	rssn-full	rssn	spline_descriptor_validation	tests/spline_descriptor_validation.rs	86db0125bc92cc4f951e5e3a226dc12aba4e74e475c4de35ef4b41aae18c924d	ok	1	0	0	0	0	7375	7380
+close-native-owen	rssn-full	rssn	split_step_linear_plan	tests/split_step_linear_plan.rs	1638f341c7ec61856a9d44bfc83c0abac69b8025a30fb160859f0cf4038f178c	ok	4	0	0	0	0	7382	7390
+close-native-owen	rssn-full	rssn	sse_loop_reuse	tests/sse_loop_reuse.rs	5ebdd2af902ae0645dd54798503c8ae3c4d637c2dcc9434b90c93e8c70ad0b62	ok	4	0	0	0	0	7392	7400
+close-native-owen	rssn-full	rssn	sse_sampling_law	tests/sse_sampling_law.rs	6abe8b916b7168994c5451fdcda0372fd9f5341ceee8c28e4a2b730a01edf494	ok	4	0	0	0	0	7402	7410
+close-native-owen	rssn-full	rssn	statistics_batch	tests/statistics_batch.rs	96c44ef02042327c919bb3349faf6be231fbeb2d77f42ee572b7f9b312fb4462	ok	8	0	0	0	0	7412	7424
+close-native-owen	rssn-full	rssn	stochastic_fixed_jump_budget	tests/stochastic_fixed_jump_budget.rs	f4a53474f651a6fb31cc358fc8ad556627756e6b51fd0787807409cb4e01fb5f	ok	4	0	0	0	0	7426	7434
+close-native-owen	rssn-full	rssn	stochastic_jump_marks	tests/stochastic_jump_marks.rs	4d3d32b3f8a646405088178e3c2f037eb81083384093b21b0a5a24a58fa95346	ok	5	0	0	0	0	7436	7445
+close-native-owen	rssn-full	rssn	structured_linear_validation	tests/structured_linear_validation.rs	a68057ec6df0252b0dea7bd351b3aea8872b42d7a120b311692ce77e4931b888	ok	1	0	0	0	0	7447	7452
+close-native-owen	rssn-full	rssn	symbolic_battery	tests/symbolic_battery.rs	6c9b5488b6a14813be721019d31c3f779fc8c182469e91c681789dca0481d603	ok	1	0	0	0	0	7454	7459
+close-native-owen	rssn-full	rssn	symbolic_bdd_count	tests/symbolic_bdd_count.rs	26fa9752ac5379e15c75ad9a8c44d1717c8048bc3a23081dcc038f82c26e9501	ok	3	0	0	0	0	7461	7468
+close-native-owen	rssn-full	rssn	symbolic_blades	tests/symbolic_blades.rs	e5339b6cead67d19370d87ee33ba95d582cdc95eeacd7519d78663309d99ca24	ok	4	0	0	0	0	7470	7478
+close-native-owen	rssn-full	rssn	symbolic_bootstrap	tests/symbolic_bootstrap.rs	0eeadab07f25568ffcc3b62ab0f5fce6b44c080420439caf8cf90908e50e3a8b	ok	3	0	0	0	0	7480	7487
+close-native-owen	rssn-full	rssn	symbolic_borel_stokes	tests/symbolic_borel_stokes.rs	f7c3a830ef71dcbed53f78bb479a965fa18611750b8e6692ed1125bdfd95e7cf	ok	1	0	0	0	0	7489	7494
+close-native-owen	rssn-full	rssn	symbolic_cayley_tables	tests/symbolic_cayley_tables.rs	24b2ac81d2ee17dfcae8de54c57f406ddf5ae2bc09b2ab1815bfc3c742f34880	ok	1	0	0	0	0	7496	7501
+close-native-owen	rssn-full	rssn	symbolic_cdf_dimensions	tests/symbolic_cdf_dimensions.rs	d98b5b3b4de853276018cf8d8138a5394127775a290c30650d768d53cd8a1a94	ok	2	0	0	0	0	7503	7509
+close-native-owen	rssn-full	rssn	symbolic_chain_weights	tests/symbolic_chain_weights.rs	30bc318b74d27de370261393cd0202a030b183417b8ce42d534df1c318c3dc57	ok	4	0	0	0	0	7511	7519
+close-native-owen	rssn-full	rssn	symbolic_complex_branches	tests/symbolic_complex_branches.rs	830a830981d42f2160fb66c8aa42a1e654a85ceb16a3ddb9cd4d5875906e42e7	ok	1	0	0	0	0	7521	7526
+close-native-owen	rssn-full	rssn	symbolic_convexity	tests/symbolic_convexity.rs	b1b6566a7281bf3b4c49a355de52a35c430ac23a68f61f45119ce88d673fc09c	ok	4	0	0	0	0	7528	7536
+close-native-owen	rssn-full	rssn	symbolic_distribution_tails	tests/symbolic_distribution_tails.rs	fc522653ffdbe5b84e7c63facf69d7759df8bc35750b6cd6d19ad80c647c652b	ok	3	0	0	0	0	7538	7545
+close-native-owen	rssn-full	rssn	symbolic_exactness	tests/symbolic_exactness.rs	f37edf2bbe1972553ee45f046e5f976d248301fa0877d1227f60dfb9c7347031	ok	17	0	0	0	0	7547	7568
+close-native-owen	rssn-full	rssn	symbolic_formal_ode	tests/symbolic_formal_ode.rs	554bf689004172dd28d8020638fca81531484024a36106bae56cd6d786d23645	ok	2	0	0	0	0	7570	7576
+close-native-owen	rssn-full	rssn	symbolic_frobenius_embeddings	tests/symbolic_frobenius_embeddings.rs	27cbe696bc76b09fe977a510c54272e394662094795d08ab6178b691da69a779	ok	1	0	0	0	0	7578	7583
+close-native-owen	rssn-full	rssn	symbolic_gosper	tests/symbolic_gosper.rs	9b32345df0eff97d20af52b5fb7acfa16fd25d67f1aa624affa868d8fdab04f8	ok	2	0	0	0	0	7585	7591
+close-native-owen	rssn-full	rssn	symbolic_groebner_f4	tests/symbolic_groebner_f4.rs	e701f68ed58862f0739d287c5c241b219ec2f6f16713fc0c9c736fe3f3ca6a0f	ok	1	0	0	0	0	7593	7598
+close-native-owen	rssn-full	rssn	symbolic_group_isomorphisms	tests/symbolic_group_isomorphisms.rs	8f8798ee5ac4e7dbcaebaa14fa88a479aadd531296910abb3a65ec0a383dc4d2	ok	1	0	0	0	0	7600	7605
+close-native-owen	rssn-full	rssn	symbolic_modular_exact	tests/symbolic_modular_exact.rs	faa7fe3d19e5599580a27121b036b6903a971a39496b6d76a9efe9324ca2dd71	ok	4	0	0	0	0	7607	7615
+close-native-owen	rssn-full	rssn	symbolic_ode_ore	tests/symbolic_ode_ore.rs	a4ccd6fdbc316348084ad335e9fc4c428a897e853c3588091c372f6501b4a614	ok	1	0	0	0	0	7617	7622
+close-native-owen	rssn-full	rssn	symbolic_pde_bessel_roots	tests/symbolic_pde_bessel_roots.rs	5ba182a389c1375bcc9a32bdc8271305db90df9e70d919c8a2457169a265f13d	ok	3	0	0	0	0	7624	7631
+close-native-owen	rssn-full	rssn	symbolic_pde_hill	tests/symbolic_pde_hill.rs	544a50b4c93549215f81184f03d1c8c73b0c4af80f9e34246acd0f334e4d95af	ok	3	0	0	0	0	7633	7640
+close-native-owen	rssn-full	rssn	symbolic_pde_modal	tests/symbolic_pde_modal.rs	f2be1968aefda4baf9115b939ca5be5d325942c03de40848431b97777229183e	ok	2	0	0	0	0	7642	7648
+close-native-owen	rssn-full	rssn	symbolic_pde_spheroidal	tests/symbolic_pde_spheroidal.rs	3af766e9eccd11b67eca8ed4f7ceb58db61525890ce68050e75fd10d839266eb	ok	2	0	0	0	0	7650	7656
+close-native-owen	rssn-full	rssn	symbolic_poly_repr	tests/symbolic_poly_repr.rs	8e0e5860ce5904ad51ec0973c362c3029ebdc8c1db6662b4b7fa28d9e58a374d	ok	4	0	0	0	0	7658	7666
+close-native-owen	rssn-full	rssn	symbolic_power_series	tests/symbolic_power_series.rs	562697214e6391d8b9d4013836a360b2a095ddd98c33a46994739f4a96ec5f4a	ok	1	0	0	0	0	7668	7673
+close-native-owen	rssn-full	rssn	symbolic_presented_groups	tests/symbolic_presented_groups.rs	b6b17670c292f3d6da470f8ad62c41916abcafa9e56e3a9468a6731ba6eb354d	ok	2	0	0	0	0	7675	7681
+close-native-owen	rssn-full	rssn	symbolic_rational_approximation	tests/symbolic_rational_approximation.rs	c0b89fc55d699c951bd5c21b90d2b67bc2471f344b325583fc107a744ed72ebe	ok	4	0	0	0	0	7683	7691
+close-native-owen	rssn-full	rssn	symbolic_resultant	tests/symbolic_resultant.rs	55a0f19bd7cbb05ea72ba6ef82131acd489d1cc20e49ed1d07d733acc5e175ed	ok	2	0	0	0	0	7693	7699
+close-native-owen	rssn-full	rssn	symbolic_ricci	tests/symbolic_ricci.rs	bacc3a87491c84993b3a1a21756519021f83b6ed9c2a8db26c4a43358b8440e4	ok	4	0	0	0	0	7701	7709
+close-native-owen	rssn-full	rssn	symbolic_rootof_order	tests/symbolic_rootof_order.rs	47517bff6e2646051165aa1d2ab7c29b256f510d90d2cfa9e7d0c8d401e3b56e	ok	1	0	0	0	0	7711	7716
+close-native-owen	rssn-full	rssn	symbolic_sde_noise	tests/symbolic_sde_noise.rs	3992917b5842357c1b78c48a2db51282fe556932fa4cf73baa8f2b7d09da0785	ok	3	0	0	0	0	7718	7725
+close-native-owen	rssn-full	rssn	symbolic_square_free_factors	tests/symbolic_square_free_factors.rs	03fb8860fe782f5945d3c04a77ba076d257fa1133bf673fa5fdcac7b247e01a6	ok	3	0	0	0	0	7727	7734
+close-native-owen	rssn-full	rssn	symbolic_sturm_shifted	tests/symbolic_sturm_shifted.rs	9c3fb78e2d824df675dc08c02751d4385e90653e78a90ae8d1291f8f9eecdfcf	ok	2	0	0	0	0	7736	7742
+close-native-owen	rssn-full	rssn	symbolic_transform_heavy	tests/symbolic_transform_heavy.rs	627fee1904d495b2f85eac8c84f2eda93a216800a211a6791ace4564f31fa92f	ok	3	0	0	0	0	7744	7751
+close-native-owen	rssn-full	rssn	symbolic_units_shared	tests/symbolic_units_shared.rs	23fcb48b886158ec65aee3090ac3b569e97df1783ce83395c2a71dde0d0c3908	ok	2	0	0	0	0	7753	7759
+close-native-owen	rssn-full	rssn	symbolic_verify_limit	tests/symbolic_verify_limit.rs	db7c9979b197498fbcdc1fbdff269aa389461163cd292c82a4672c5f1997f908	ok	4	0	0	0	0	7761	7769
+close-native-owen	rssn-full	rssn	symbolic_verify_residual	tests/symbolic_verify_residual.rs	11f7633cd6a49214a3a1b99dc866cd42fe84bc5e2ecbfbfbe8a81bf11e2dd434	ok	5	0	0	0	0	7771	7780
+close-native-owen	rssn-full	rssn	symbolic_wedge	tests/symbolic_wedge.rs	e165b5a72dfe3f18ad6898e737b38a7c28ee11a876f20058b2407012970a82fc	ok	4	0	0	0	0	7782	7790
+close-native-owen	rssn-full	rssn	symplectic_sampling	tests/symplectic_sampling.rs	9a3a5ad25d70f11778e03316a99e9ae3c81fc553d7cc45557b53e1cf2245293c	ok	5	0	0	0	0	7792	7801
+close-native-owen	rssn-full	rssn	tape_autodiff	tests/tape_autodiff.rs	ea4c17dc292654918866ec38c42b9d71043c18e65cb1507513ceb22f55f78e13	ok	16	0	0	0	0	7803	7823
+close-native-owen	rssn-full	rssn	tensordot_views	tests/tensordot_views.rs	55e3be8a05e61702522852f2fc09580f2bea3db658c60da081a9253160c8d562	ok	4	0	0	0	0	7825	7833
+close-native-owen	rssn-full	rssn	vector_norm_scale	tests/vector_norm_scale.rs	b4f2373a8fadc74c8447e81f6feacf87b59ec416a6b404185e8e7c49d4f7d0f2	ok	4	0	0	0	0	7835	7843
+close-native-owen	rssn-full	rssn	vector_reflection_scale	tests/vector_reflection_scale.rs	df2dcaacf228cebf0aac597127502f0b7a1e8a75de924c79ac30afff00e96421	ok	3	0	0	0	0	7845	7852
+close-native-owen	rssn-full	rssn	weyl_large_labels	tests/weyl_large_labels.rs	264f599b53c23bcbbacf377d4c799eef1928dac8a7736781407cc5a649d8fdb2	ok	4	0	0	0	0	7854	7862
+close-native-owen	rssn-full	rssn	yee_tfsf_auxiliary	tests/yee_tfsf_auxiliary.rs	54e31ebc9828c2c7e49ef48ee5e7100b0645597f5939e399ef03f7a80941f676	ok	3	0	0	0	0	7864	7871
+close-native-owen	rssn-full	rssn-api-gen				ok	1	0	0	0	0	7873	7878
+close-native-owen	rssn-full	rssn-api-model				ok	11	0	0	0	0	7880	7895
+close-native-owen	rssn-full					ok	62	0	0	0	0	7897	7963
+close-native-owen	rssn-full					ok	0	0	0	0	0	7966	7970

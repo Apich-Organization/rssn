@@ -1,0 +1,756 @@
+{
+  "acoustics_pml": [
+    {
+      "name": "energy_ratio",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "line",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 1
+      }
+    },
+    {
+      "name": "time",
+      "type": {
+        "kind": "float"
+      }
+    }
+  ],
+  "bem_laplace": [
+    {
+      "name": "compression",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "gmres_iterations",
+      "type": {
+        "kind": "int"
+      }
+    },
+    {
+      "name": "max_flux_error",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "unknowns",
+      "type": {
+        "kind": "int"
+      }
+    }
+  ],
+  "channel_flow": [
+    {
+      "name": "p",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 2
+      }
+    },
+    {
+      "name": "u",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 2
+      }
+    },
+    {
+      "name": "v",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 2
+      }
+    }
+  ],
+  "dg_conservation": [
+    {
+      "name": "integral",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "l2_error",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "steps",
+      "type": {
+        "kind": "int"
+      }
+    },
+    {
+      "name": "u",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 1
+      }
+    },
+    {
+      "name": "x",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 1
+      }
+    }
+  ],
+  "dpd": [
+    {
+      "name": "momentum",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 1
+      }
+    },
+    {
+      "name": "particles",
+      "type": {
+        "kind": "int"
+      }
+    },
+    {
+      "name": "pressure",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "temperature",
+      "type": {
+        "kind": "float"
+      }
+    }
+  ],
+  "elasticity": [
+    {
+      "name": "displacements",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 1
+      }
+    }
+  ],
+  "elasticity_fem": [
+    {
+      "name": "dofs",
+      "type": {
+        "kind": "int"
+      }
+    },
+    {
+      "name": "euler_bernoulli_deflection",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "tip_displacement",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 1
+      }
+    }
+  ],
+  "euler_fv": [
+    {
+      "name": "density",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 1
+      }
+    },
+    {
+      "name": "exact",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 1
+      }
+    },
+    {
+      "name": "l1_error",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "steps",
+      "type": {
+        "kind": "int"
+      }
+    },
+    {
+      "name": "x",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 1
+      }
+    }
+  ],
+  "fdtd": [
+    {
+      "name": "frames",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 3
+      }
+    }
+  ],
+  "fem_simplex": [
+    {
+      "name": "dofs",
+      "type": {
+        "kind": "int"
+      }
+    },
+    {
+      "name": "l2_error",
+      "type": {
+        "kind": "float"
+      }
+    }
+  ],
+  "geodesic": [
+    {
+      "name": "orbit",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 2
+      }
+    }
+  ],
+  "gpe": [
+    {
+      "name": "density",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 2
+      }
+    }
+  ],
+  "heat_nd": [
+    {
+      "name": "line",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 1
+      }
+    },
+    {
+      "name": "max_error",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "stats",
+      "type": {
+        "fields": [
+          {
+            "name": "steps",
+            "type": {
+              "kind": "int"
+            }
+          }
+        ],
+        "kind": "record"
+      }
+    }
+  ],
+  "ising": [
+    {
+      "name": "magnetization",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "spins",
+      "type": {
+        "elem": {
+          "kind": "int"
+        },
+        "kind": "tensor",
+        "rank": 1
+      }
+    }
+  ],
+  "ising_wolff": [
+    {
+      "name": "binder",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "energy",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "magnetization",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "mean_cluster",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "specific_heat",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "susceptibility",
+      "type": {
+        "kind": "float"
+      }
+    }
+  ],
+  "kepler_symplectic": [
+    {
+      "name": "trajectory",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 3
+      }
+    }
+  ],
+  "kerr_geodesic": [
+    {
+      "name": "angular_momentum",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "constraint",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "energy",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "phi",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "r",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "t",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "termination",
+      "type": {
+        "kind": "str"
+      }
+    }
+  ],
+  "lid_driven_cavity": [
+    {
+      "name": "p",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 2
+      }
+    },
+    {
+      "name": "u",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 2
+      }
+    },
+    {
+      "name": "v",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 2
+      }
+    }
+  ],
+  "md_lj": [
+    {
+      "name": "energy_drift",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "particles",
+      "type": {
+        "kind": "int"
+      }
+    },
+    {
+      "name": "pressure",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "temperature",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "total_energy",
+      "type": {
+        "kind": "float"
+      }
+    }
+  ],
+  "navier_stokes_mac": [
+    {
+      "name": "kinetic_energy",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "max_divergence",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "steps",
+      "type": {
+        "kind": "int"
+      }
+    },
+    {
+      "doc": "measured decay rate (Taylor-Green case only)",
+      "name": "taylor_green_decay",
+      "type": {
+        "inner": {
+          "kind": "float"
+        },
+        "kind": "optional"
+      }
+    },
+    {
+      "name": "u_line",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 1
+      }
+    }
+  ],
+  "nbody_gravity": [
+    {
+      "name": "accelerations",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 2
+      }
+    }
+  ],
+  "poisson_multigrid": [
+    {
+      "name": "converged",
+      "type": {
+        "kind": "bool"
+      }
+    },
+    {
+      "name": "convergence_factor",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "levels",
+      "type": {
+        "kind": "int"
+      }
+    },
+    {
+      "name": "max_error",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "residuals",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 1
+      }
+    }
+  ],
+  "schrodinger": [
+    {
+      "name": "frames",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 3
+      }
+    }
+  ],
+  "sod_shock_tube": [
+    {
+      "name": "density",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 1
+      }
+    },
+    {
+      "name": "exact",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 1
+      }
+    },
+    {
+      "name": "x",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 1
+      }
+    }
+  ],
+  "sph": [
+    {
+      "name": "energy_drift",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "pressure",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 1
+      }
+    },
+    {
+      "name": "rho",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 1
+      }
+    },
+    {
+      "name": "x",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 1
+      }
+    }
+  ],
+  "spin_model": [
+    {
+      "name": "abs_magnetisation_per_site",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "energy_per_site",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "sites",
+      "type": {
+        "kind": "int"
+      }
+    }
+  ],
+  "split_step": [
+    {
+      "name": "density_line",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 1
+      }
+    },
+    {
+      "name": "energy",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "mu",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "norm",
+      "type": {
+        "kind": "float"
+      }
+    }
+  ],
+  "wave_nd": [
+    {
+      "name": "max_error",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "steps",
+      "type": {
+        "kind": "int"
+      }
+    }
+  ],
+  "yee_fdtd": [
+    {
+      "name": "dt",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "energy",
+      "type": {
+        "kind": "float"
+      }
+    },
+    {
+      "name": "ez_line",
+      "type": {
+        "elem": {
+          "kind": "float"
+        },
+        "kind": "tensor",
+        "rank": 1
+      }
+    },
+    {
+      "name": "peak_energy",
+      "type": {
+        "kind": "float"
+      }
+    }
+  ]
+}

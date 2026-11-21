@@ -1,0 +1,16 @@
+workers=1
+F 512x512x4 LE f64 1048576 points: 16191.027 -> 16490.169 us wall (0.990x paired); 16190.767 -> 16489.333 us CPU (0.990x paired); allocs/bytes (3, 8388704) -> (3, 8388704)
+workers=2
+F 512x512x4 LE f64 1048576 points: 16144.837 -> 6753.394 us wall (2.380x paired); 16148.067 -> 12978.700 us CPU (1.238x paired); allocs/bytes (3, 8388704) -> (3, 8388704)
+workers=1
+F 31x67x131 LE f64 272087 points: 725.011 -> 685.039 us wall (1.032x paired); 724.950 -> 685.058 us CPU (1.032x paired); allocs/bytes (3, 2176792) -> (3, 2176792)
+workers=2
+F 31x67x131 LE f64 272087 points: 948.239 -> 726.225 us wall (1.234x paired); 948.175 -> 726.233 us CPU (1.233x paired); allocs/bytes (3, 2176792) -> (3, 2176792)
+workers=1
+F 1024x512x2 LE f64 1048576 points: 17937.142 -> 18265.591 us wall (0.982x paired); 17936.150 -> 18264.250 us CPU (0.982x paired); allocs/bytes (3, 8388704) -> (3, 8388704)
+workers=2
+F 1024x512x2 LE f64 1048576 points: 17930.838 -> 6068.639 us wall (2.958x paired); 17930.650 -> 11552.650 us CPU (1.550x paired); allocs/bytes (3, 8388704) -> (3, 8388704)
+workers=1
+F 512x1024 LE f64 524288 points: 3395.299 -> 3493.608 us wall (0.975x paired); 3395.450 -> 3493.700 us CPU (0.975x paired); allocs/bytes (3, 4194368) -> (3, 4194368)
+workers=2
+F 512x1024 LE f64 524288 points: 2503.258 -> 2375.092 us wall (1.023x paired); 4783.000 -> 4602.600 us CPU (1.014x paired); allocs/bytes (3, 4194368) -> (3, 4194368)

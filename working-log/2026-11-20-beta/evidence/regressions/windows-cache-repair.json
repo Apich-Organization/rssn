@@ -1,0 +1,160 @@
+{
+  "binary": "F:\\codex-aevia-beta-full-20261120\\target\\debug\\build\\aevia-pkg\\a4a301aff59fc476\\out\\aevia_pkg-a4a301aff59fc476.exe",
+  "binary_sha256": "ca7b3d83edee221b51b1f06577e28719e6819e1db2f959cf3c4f431dba6f40e5",
+  "registry_sha256": "fbd386fb011d99b34544b4b016350aac3e5d51e852872187c9775c5f990ec101",
+  "archive_sha256": "7c6b0f145a20949666cccfdd4b9001a488492b58acf7e0572cdcdca377a49061",
+  "frozen_exe_sha256": "4deedfb04a95f4ed848aee3a404c374a3740bda2b39cd5dd72273e40a6b8c7ce",
+  "test_summary": "test result: ok. 70 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.04s",
+  "repeats": [
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 1,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 2,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 3,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 4,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 5,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 6,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 7,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 8,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 9,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 10,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 11,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 12,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 13,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 14,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 15,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 16,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 17,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 18,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 19,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 20,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 21,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 22,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 23,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::concurrent_cache_writers_leave_one_complete_index",
+      "run": 24,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::index_replacement_retries_without_removing_the_previous_destination",
+      "run": 1,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::index_replacement_retries_without_removing_the_previous_destination",
+      "run": 2,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::index_replacement_retries_without_removing_the_previous_destination",
+      "run": 3,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::index_replacement_retries_without_removing_the_previous_destination",
+      "run": 4,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::index_replacement_retries_without_removing_the_previous_destination",
+      "run": 5,
+      "exit": 0
+    },
+    {
+      "name": "registry::tests::index_replacement_retries_without_removing_the_previous_destination",
+      "run": 6,
+      "exit": 0
+    }
+  ]
+}

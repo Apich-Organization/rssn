@@ -1,0 +1,3 @@
+# Preserve the bytes and hashes of recorded verification artifacts.
+**/evidence/** -text -whitespace
+**/coverage/*.tsv -text -whitespace

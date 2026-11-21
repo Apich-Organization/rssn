@@ -1,0 +1,5 @@
+scope	passed	failed	ignored	reported_targets	terminal_receipt
+Aevia 语言工作区全特性	3216	0	5	236	aevia/terminal-receipt.json
+Aevia 平台工作区全特性	282	0	0	17	aevia/terminal-receipt.json
+Aevia 注册表文档无默认特性	32	0	0	2	aevia/terminal-receipt.json
+RSSN 工作区全特性	6115	0	3	293	rssn/terminal-receipt.json
