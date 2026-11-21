@@ -83,6 +83,38 @@ impl NativeType for Mesh {
         Ok(())
     }
 }
+
+struct PreparedAdvection {
+    plan: dg::DgAdvection1dPlan,
+    frame: Frame,
+}
+
+impl NativeType for PreparedAdvection {
+    const KIND: &'static str = "rssn/native/dg-periodic-advection-1d/v1";
+    const MAX_BYTES: usize = 4096;
+
+    fn validate(&self) -> Result<(), OpError> {
+        self.frame.validate()
+    }
+}
+
+type AdvectionState = api::MeasuredVector<8192>;
+
+struct AdvectionValues(TensorValue);
+
+impl api::NativeOutput for AdvectionValues {
+    fn ty() -> TypeExpr {
+        <AdvectionState as api::NativeArg>::ty()
+    }
+
+    fn encode(
+        self,
+        _: &CallCtx<'_>,
+    ) -> Result<Value, OpError> {
+        Ok(Value::Tensor(self.0))
+    }
+}
+
 #[derive(Clone)]
 struct Mesh3 {
     data: dg3d::Dg3Mesh,
@@ -551,6 +583,43 @@ object_binding!(dg_solve_dg_with,"num_solve_dg_with","crate::sim::dg::solve_dg_w
 object_binding!(dg_solve_dg3d,"num_solve_dg3d","crate::sim::dg3d::solve_dg3d","Actual native DG method with explicit geometry/time and per-component physical references; normalized states, separate flux units and coherent compiled callbacks preserve mixed Euler dimensions. Native algorithm and limiter identity are retained; shapes, work and parent lifetimes are checked.",false,(mesh:Handle<Mesh3>,bcs:Handle<Bcs3>,initial:Input,t_end:f64,cfl:f64,options:Input,callback_budget:usize,work_budget:usize)->NewObject<Solution3>,|ctx,mesh,bcs,initial,t_end,cfl,options,callback_budget,work_budget|{mesh.with(ctx,|m|bcs.with(ctx,|b|{geometry(&m.frame,&b.law.frame)?;if b.law.dim!=3||t_end<0.0||cfl<=0.0||cfl>1.0||work_budget==0||work_budget>8_388_608{return Err(err("DG dimension/time/CFL/work budget invalid"));}let init=programs(ctx,&initial,&b.law,3,false,false,callback_budget)?;let meter=Meter{law:b.law.data.as_ref(),left:AtomicUsize::new(work_budget),exhausted:std::sync::atomic::AtomicBool::new(false)};let limiter=match read::<String>(&options.0,"limiter")?.as_str(){"None"=>dg3d::Dg3Limiter::None,"Minmax"=>dg3d::Dg3Limiter::Minmax,"Characteristic"=>dg3d::Dg3Limiter::Characteristic,"Hierarchical"=>dg3d::Dg3Limiter::Hierarchical,"Weno"=>dg3d::Dg3Limiter::Weno,_=>return Err(err("unknown DG3 limiter"))};let tvd:f64=read(&options.0,"tvb_m")?;let eps:f64=read(&options.0,"weno_epsilon")?;if tvd<0.0||eps<=0.0{return Err(err("DG3 limiter parameters invalid"));}let opt=dg3d::Dg3Options{entropy_stable:read(&options.0,"entropy_stable")?,positivity:read(&options.0,"positivity")?,limiter,limiter_tvd:tvd,limiter_weno_eps:eps};let out=dg3d::solve_dg3d(&m.data,&meter,&b.data,&|x|eval(&init,&b.law,None,&x,None),t_end,cfl,&opt).map_err(err);finish(&init)?;finish(&b.callbacks)?;meter.finish()?;let data=out?;Ok(NewObject::new(Solution3{data,law:b.law.clone()},b.law.refs.iter().map(|r|r.1.clone()).collect()))}))});
 object_binding!(dg_advection_step,"num_dg_advection_step","crate::sim::dg::advection_step","Actual native DG method with explicit geometry/time and per-component physical references; normalized states, separate flux units and coherent compiled callbacks preserve mixed Euler dimensions. Native algorithm and limiter identity are retained; shapes, work and parent lifetimes are checked.",true,(mesh:Handle<Mesh>,velocity:f64,state:Vec<f64>,time:f64,dt:f64)->Dynamic,|ctx,mesh,velocity,state,time,dt|{mesh.with(ctx,|m|{let out=dg::advection_step(&m.data,velocity,&state,time,dt).map_err(err)?;payload(&m.frame,out,vec![state.len()])})});
 object_binding!(dg_advection_step_nd,"num_dg_advection_step_nd","crate::sim::dg::advection_step_nd","Actual native DG method with explicit geometry/time and per-component physical references; normalized states, separate flux units and coherent compiled callbacks preserve mixed Euler dimensions. Native algorithm and limiter identity are retained; shapes, work and parent lifetimes are checked.",true,(mesh:Handle<Mesh>,velocity:Vec<f64>,state:Vec<f64>,time:f64,dt:f64)->Dynamic,|ctx,mesh,velocity,state,time,dt|{mesh.with(ctx,|m|{let out=dg::advection_step_nd(&m.data,velocity.try_into().map_err(|_|err("two advection velocity components required"))?,&state,time,dt).map_err(err)?;payload(&m.frame,out,vec![state.len()])})});
+object_binding!(
+    dg_advection_prepare, "num_dg_advection_prepare1d", "crate::sim::dg::DgAdvection1dPlan::new",
+    "Prepares periodic scalar DG advection on a one-dimensional mesh at a fixed measured velocity. The plan retains the nodal differentiation and surface weights.",
+    false,
+    (mesh: Handle<Mesh>, velocity: Input) -> NewObject<PreparedAdvection>,
+    |ctx, mesh, velocity| mesh.with(ctx, |mesh| {
+        let frame = &mesh.frame;
+        let dimension = DimExpr::Mul(vec![frame.dims[0].clone(), frame.dims[1].clone().pow(-1)]);
+        api::same_dimension(&api::dimension(&velocity.0)?, &dimension)?;
+        let magnitude = crate::rules::numerical_abi::numeric(&velocity.0, 1)?;
+        let normalized = api::scale_product(magnitude, &[frame.time], &[frame.length])?;
+        let plan = dg::DgAdvection1dPlan::new(&mesh.data, normalized).map_err(err)?;
+        Ok(NewObject::new(PreparedAdvection { plan, frame: frame.clone() }, frame.dims.to_vec()))
+    })
+);
+object_binding!(
+    dg_advection_step_prepared, "num_dg_advection_step_prepared1d", "crate::sim::dg::DgAdvection1dPlan::step",
+    "Advances the prepared periodic DG plan by one positive measured time interval within its CFL bound. The input and output are element-major nodal vectors with the mesh field dimension.",
+    false,
+    (plan: Handle<PreparedAdvection>, state: AdvectionState, dt: Input) -> AdvectionValues,
+    |ctx, plan, state, dt| plan.with(ctx, |prepared| {
+        let frame = &prepared.frame;
+        api::same_dimension(&state.dimension, &frame.dims[2])?;
+        api::same_dimension(&api::dimension(&dt.0)?, &frame.dims[1])?;
+        let dt = api::scale_product(crate::rules::numerical_abi::numeric(&dt.0, 2)?, &[], &[frame.time])?;
+        let mut values = state.values;
+        for value in &mut values {
+            *value = api::scale_product(*value, &[], &[frame.value])?;
+        }
+        let output = prepared.plan.step(&values, dt).map_err(err)?;
+        let shape = vec![output.len()];
+        let data = output.into_iter().map(|value| {
+            api::scale_product(value, &[frame.value], &[]).map(Value::Float)
+        }).collect::<Result<_, _>>()?;
+        Ok(AdvectionValues(TensorValue { shape, elem: TypeExpr::Float.with_dim(frame.dims[2].clone()), data }))
+    })
+);
 object_binding!(dg_value,"num_dg_value","crate::sim::dg::DgSolution::value","Actual native DG method with explicit geometry/time and per-component physical references; normalized states, separate flux units and coherent compiled callbacks preserve mixed Euler dimensions. Native algorithm and limiter identity are retained; shapes, work and parent lifetimes are checked.",true,(solution:Handle<Solution>,element:usize,node:usize,variable:usize)->Dynamic,|ctx,solution,element,node,variable|{solution.with(ctx,|s|{if element>=s.data.mesh.elements()||node>=s.data.mesh.nodes_per_element()||variable>=s.law.refs.len(){return Err(err("DG solution index outside shape"));}measured(s.data.value(element,node,variable),s.law.refs[variable].0,s.law.refs[variable].1.clone())})});
 object_binding!(dg_coord,"num_dg_coord","crate::sim::dg::DgSolution::coord","Actual native DG method with explicit geometry/time and per-component physical references; normalized states, separate flux units and coherent compiled callbacks preserve mixed Euler dimensions. Native algorithm and limiter identity are retained; shapes, work and parent lifetimes are checked.",true,(solution:Handle<Solution>,element:usize,node:usize)->Dynamic,|ctx,solution,element,node|{solution.with(ctx,|s|{if element>=s.data.mesh.elements()||node>=s.data.mesh.nodes_per_element(){return Err(err("DG solution node index outside shape"));}let x=s.data.coord(element,node);Ok(Dynamic(Value::Tensor(TensorValue{shape:vec![x.len()],elem:TypeExpr::Dim(Box::new(TypeExpr::Float),s.law.frame.dims[0].clone()),data:x.into_iter().map(|v|api::quantity(v*s.law.frame.length,s.law.frame.dims[0].clone())).collect::<Result<_,_>>()?})))})});
 object_binding!(dg_l2_error,"num_dg_l2_error","crate::sim::dg::DgSolution::l2_error","Actual native DG method with explicit geometry/time and per-component physical references; normalized states, separate flux units and coherent compiled callbacks preserve mixed Euler dimensions. Native algorithm and limiter identity are retained; shapes, work and parent lifetimes are checked.",false,(solution:Handle<Solution>,variable:usize,exact:Input,budget:usize)->Dynamic,|ctx,solution,variable,exact,budget|{solution.with(ctx,|s|{if variable>=s.law.refs.len(){return Err(err("DG component out of range"));}let c=crate::rules::numerical_abi::native_grids::structured_ops::checked_snapshot(ctx,&exact,budget,&vec![s.law.frame.dims[0].clone();2],&s.law.refs[variable].1)?;let value=s.data.l2_error(variable,|x|c.sample(&x.map(|v|v*s.law.frame.length))/s.law.refs[variable].0);c.finish()?;let exponent=s.data.mesh.dim as i64;measured(value,s.law.refs[variable].0*s.law.frame.length.powf(exponent as f64/2.0),canonical(DimExpr::Mul(vec![s.law.refs[variable].1.clone(),power(&s.law.frame.dims[0],exponent,2)]))?)})});
@@ -601,6 +670,8 @@ static BINDINGS: &[&api::Binding] = &[
     &dg_solve_dg3d::BINDING,
     &dg_advection_step::BINDING,
     &dg_advection_step_nd::BINDING,
+    &dg_advection_prepare::BINDING,
+    &dg_advection_step_prepared::BINDING,
     &dg_value::BINDING,
     &dg_coord::BINDING,
     &dg_l2_error::BINDING,

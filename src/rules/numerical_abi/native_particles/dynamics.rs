@@ -95,20 +95,27 @@ fn source_check<const D: usize>(
     s: &[f64],
     eps: f64,
 ) -> Result<(), OpError> {
-    if p.is_empty() || p.len() != s.len() || p.len() > 512 || eps < 0.0 {
+    if p.len() != s.len() {
+        return Err(api::error("long-range sources need one value per position"));
+    }
+    source_geometry(p, eps)?;
+    engine::finite(s.iter().copied())
+}
+
+fn source_geometry<const D: usize>(
+    p: &[[f64; D]],
+    eps: f64,
+) -> Result<(), OpError> {
+    if p.is_empty() || p.len() > 512 || eps < 0.0 {
         return Err(api::error(
-            "long-range sources require equal nonempty<=512data and nonnegative softening",
+            "long-range source geometry needs 1 to 512 positions and nonnegative softening",
         ));
     }
     engine::finite(p.iter().flatten().copied())?;
-    engine::finite(s.iter().copied())?;
     if eps == 0.0 {
         let mut seen = std::collections::BTreeSet::new();
         for point in p {
-            let key = point
-                .iter()
-                .map(|v| if *v == 0.0 { 0 } else { v.to_bits() })
-                .collect::<Vec<_>>();
+            let key = point.map(|v| if v == 0.0 { 0 } else { v.to_bits() });
             if !seen.insert(key) {
                 return Err(api::error("unsoftened source positions must be distinct"));
             }
@@ -116,6 +123,60 @@ fn source_check<const D: usize>(
     }
     Ok(())
 }
+
+struct PreparedFmm {
+    data: fmm::PreparedFmm2d,
+    frame: Frame,
+}
+
+impl NativeType for PreparedFmm {
+    const KIND: &'static str = "rssn/native/sim/fmm-2d-plan/v1";
+    const MAX_BYTES: usize = 2 * 1024 * 1024;
+
+    fn validate(&self) -> Result<(), OpError> {
+        self.frame.validate()
+    }
+
+    fn retained_bytes(&self) -> usize {
+        self.data.retained_bytes() + size_of::<Self>() - size_of::<fmm::PreparedFmm2d>()
+            + Frame::MAX_BYTES
+    }
+}
+
+object_binding!(
+    fmm_prepare2d, "num_native_fmm_prepare2d", "crate::sim::fmm::PreparedFmm2d::new",
+    "Prepares an open-boundary two-dimensional FMM on fixed measured positions. The options set expansion order, leaf size, opening angle and measured softening. The retained interaction list has a bounded capacity.",
+    false,
+    (frame_handle: Handle<Frame>, positions: Input, options: Input) -> NewObject<PreparedFmm>,
+    |ctx, frame_handle, positions, options| {
+        let frame = frame(ctx, &frame_handle)?;
+        let positions = engine::rows::<2>(&frame, &positions.0, LENGTH)?;
+        let options = fmm_options(&frame, &options)?;
+        source_geometry(&positions, options.eps)?;
+        let data = fmm::PreparedFmm2d::new(&positions, &options).map_err(api::error)?;
+        let dims = frame.dims.to_vec();
+        Ok(NewObject::new(PreparedFmm { data, frame }, dims))
+    }
+);
+object_binding!(
+    fmm_plan_count, "num_native_fmm_plan_count2d", "crate::sim::fmm::PreparedFmm2d::particle_count",
+    "Returns the number of source values accepted by a prepared open-boundary two-dimensional FMM.",
+    true,
+    (plan: Handle<PreparedFmm>) -> usize,
+    |ctx, plan| plan.with(ctx, |prepared| Ok(prepared.data.particle_count()))
+);
+object_binding!(
+    fmm_evaluate2d, "num_native_fmm_evaluate2d", "crate::sim::fmm::PreparedFmm2d::evaluate",
+    "Evaluates a prepared open-boundary two-dimensional FMM with new source strengths. The positive source reference has the same dimension as the strengths. The field has one two-component row per original position, with units of source strength divided by length.",
+    false,
+    (plan: Handle<PreparedFmm>, sources: Input, source_reference: Input) -> Dynamic,
+    |ctx, plan, sources, source_reference| plan.with(ctx, |prepared| {
+        let frame = &prepared.frame;
+        let (values, scale, dim) = source_values(frame, &sources, &source_reference)?;
+        let field = prepared.data.evaluate(&values).map_err(api::error)?;
+        Ok(Dynamic(source_field(frame, field, scale, dim, 1)?))
+    })
+);
 fn fmm_options(
     f: &Frame,
     v: &Input,
@@ -167,6 +228,65 @@ fn wave_budget(
     }
     Ok(work)
 }
+
+struct PreparedEwald {
+    plan: ewald::EwaldReciprocalPlan,
+    frame: Frame,
+    cell: [[f64; 3]; 3],
+    cutoff: i32,
+}
+
+impl NativeType for PreparedEwald {
+    const KIND: &'static str = "rssn/native/sim/ewald-reciprocal-plan/v1";
+    const MAX_BYTES: usize = 2 * 1024 * 1024;
+
+    fn validate(&self) -> Result<(), OpError> {
+        self.frame.validate()
+    }
+
+    fn retained_bytes(&self) -> usize {
+        self.plan.heap_bytes() + size_of::<Self>() + 16_384
+    }
+}
+
+object_binding!(
+    ewald_reciprocal_plan_new,
+    "num_native_ewald_reciprocal_plan_new",
+    "crate::sim::ewald::EwaldReciprocalPlan::new",
+    "Prepares the direct reciprocal Ewald sum in the periodic cell and physical reference frame of a 3D particle system. The measured screening parameter has inverse length units. Retains reciprocal wave pairs for the integer cutoff, which must be from 0 to 16.",
+    false,
+    (system: Handle<System<3>>, alpha: Input, kmax: i32) -> NewObject<PreparedEwald>,
+    |ctx, system, alpha, kmax| system.with(ctx, |system| {
+        wave_budget(system.native.n(), kmax)?;
+        let frame = system.frame.clone();
+        let alpha = frame.scalar(&alpha.0, [0, -1, 0, 0], false)?;
+        let cell = system.native.bx.matrix();
+        let plan = ewald::EwaldReciprocalPlan::new(&cell, alpha, kmax).map_err(api::error)?;
+        let dimensions = frame.dims.to_vec();
+        Ok(NewObject::new(PreparedEwald { plan, frame, cell, cutoff: kmax }, dimensions))
+    })
+);
+
+object_binding!(
+    ewald_reciprocal_plan_evaluate,
+    "num_native_ewald_reciprocal_plan_evaluate",
+    "crate::sim::ewald::EwaldReciprocalPlan::evaluate",
+    "Computes reciprocal Ewald energy, force on each particle and the virial. Includes self and background energy. Reuse the plan across systems with the same cell and reference frame. The measured coupling constant has energy times length divided by charge squared units.",
+    false,
+    (plan: Handle<PreparedEwald>, system: Handle<System<3>>, constant: Input) -> Dynamic,
+    |ctx, plan, system, constant| plan.with(ctx, |prepared| system.with(ctx, |system| {
+        prepared.frame.same(&system.frame)?;
+        if prepared.cell != system.native.bx.matrix() {
+            return Err(api::error("the particle cell differs from the prepared reciprocal Ewald cell"));
+        }
+        wave_budget(system.native.n(), prepared.cutoff)?;
+        let coupling = prepared.frame.scalar(&constant.0, [1, 3, -2, -2], false)?;
+        let result = prepared.plan.evaluate(&system.native.pos, &system.native.charge, coupling)
+            .map_err(api::error)?;
+        recip(&prepared.frame, result)
+    }))
+);
+
 fn mesh_budget(
     grid: [usize; 3],
     order: usize,
@@ -273,11 +393,16 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &nbody_fmm2d_field::BINDING,
             &nbody_fmm3d_field::BINDING,
             &fmm_fmm2d::BINDING,
+            &fmm_prepare2d::BINDING,
+            &fmm_plan_count::BINDING,
+            &fmm_evaluate2d::BINDING,
             &fmm_fmm3d::BINDING,
             &fmm_periodic_fmm3d::BINDING,
             &ewald_bspline::BINDING,
             &ewald_reciprocal_basis::BINDING,
             &ewald_real_space_pair::BINDING,
+            &ewald_reciprocal_plan_new::BINDING,
+            &ewald_reciprocal_plan_evaluate::BINDING,
             &ewald_ewald_reciprocal::BINDING,
             &ewald_ewald_reciprocal_cell::BINDING,
             &ewald_ewald_energy_forces::BINDING,

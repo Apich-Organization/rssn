@@ -157,6 +157,46 @@ fn linear_chebyshev_roots_and_constant_polynomial_remainders_are_valid_models() 
 }
 
 #[test]
+fn checked_polynomial_division_binds_the_new_method_and_keeps_finite_remainders() {
+    let session = Session::new();
+    let polynomial = |coefficients: &[f64]| {
+        let coefficients = Value::Tensor(TensorValue {
+            shape: vec![coefficients.len()],
+            elem: TypeExpr::Float,
+            data: coefficients.iter().copied().map(Value::Float).collect(),
+        });
+        call(
+            &session,
+            "num_polynomial_model_new",
+            &[coefficients, Value::Float(1.0)],
+        )
+        .unwrap()
+    };
+    let dividend = polynomial(&[2.0, f64::MAX]);
+    let divisor = polynomial(&[0.0, 1.0, f64::MAX]);
+    let name = "num_polynomial_model_try_long_division";
+    let Value::Record(result) = call(&session, name, &[dividend.clone(), divisor]).unwrap() else {
+        panic!("expected the quotient and remainder");
+    };
+    for (field, coefficient) in [("quotient", 2.0), ("remainder", -f64::MAX)] {
+        let model = result.get(field).unwrap();
+        let value = call(
+            &session,
+            "num_polynomial_model_eval",
+            &[model.clone(), Value::Float(0.0)],
+        )
+        .unwrap();
+        assert_eq!(value, Value::Float(coefficient));
+    }
+    assert!(call(&session, name, &[dividend, polynomial(&[0.0])]).is_err());
+    let manifest = session.manifest();
+    assert_eq!(
+        manifest.op(name).unwrap().rust_path.as_deref(),
+        Some("crate::kernels::polynomial::Polynomial::try_long_division")
+    );
+}
+
+#[test]
 fn portable_factors_reconstruct_native_solvers_and_reject_kind_permutation_forgery() {
     use rssn::kernel::value::RecordValue;
     let session = Session::new();

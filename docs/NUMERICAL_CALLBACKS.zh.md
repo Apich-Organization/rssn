@@ -8,6 +8,7 @@
 |---|---|---|---|
 | `num_integrate` | `a`、`b`、绝对容差、相对容差、子区间预算 | `Float[D] -> Float[E]` | `value: Float[D*E]`、`error: Float[D*E]`、`evaluations`、`converged` |
 | `num_brent` | `a`、`b`、正的自变量容差、正的迭代预算 | `Float[D] -> Float[E]` | `root: Float[D]`、`evaluations` |
+| `num_brent_with_bracket` | 同一夹逼区间实参 | 同一标量残差 | `root: Float[D]`、`evaluations`、`bracket: Tensor<[2], Float[D]>` |
 | `num_least_squares` | 初始参数向量、残差容差、梯度容差、步长容差、初始阻尼、迭代预算、求值预算 | `Tensor<1, Float[D]> -> Tensor<1, Float[E]>` | `x: Tensor<1, Float[D]>`、`residual_norm: Float[E]`、`iterations`、`evaluations`、`jacobian_evaluations`、`accepted_steps`、`rejected_steps`、`converged`、`status` |
 | `num_ode_dopri5` | 初始时间、终止时间、状态向量、状态绝对容差、相对容差、最大时间步长、尝试预算 | `(Float[D], Tensor<1, Float[E]>) -> Tensor<1, Float[E/D]>` | `times: Tensor<1, Float[D]>`、`states: Tensor<2, Float[E]>`、`evaluations`、`rejected` |
 | `num_ode_rosenbrock23`、`num_ode_radau5`、`num_ode_bdf` | 同一初值问题实参 | 同一向量右端项 | 同一初值问题结果 |
@@ -21,6 +22,9 @@ ODE 状态向量必须非空。每次导数的宽度与状态一致。调取宿�
 首个宿主错误或回调结果转换错误原样传递，包括 `OpError::HostDiagnostic` 的错误码。之后求解器停止调用宿主。ODE 适配器借助内部取消检查停止自适应重试。`evaluations` 记录实际调用次数。Brent 不会为报告额外求一次根的残差，其预算统计两端采样后的迭代。ODE 的预算统计所有接受及拒绝的步长尝试。预算耗尽产生显式 `NotReduced`。数值积分保留自己的 `converged` 字段。
 
 数值积分与 ODE 的估计均为启发式浮点误差估计。Brent 需要两端异号或某端点恰为根，自变量容差使用定义域单位。
+`num_brent_with_bracket` 按升序返回最终区间的端点。找到精确零点时，两端点均为该坐标。
+
+`num_native_hessian_diagonal_scaled` 接收带量纲的坐标点、正的坐标与输出参考量、求值预算和标量回调。`num_native_hessian_diagonal_with_steps_scaled` 在回调之前接收每个坐标方向的正步长。回调输入量纲为 `D`、输出量纲为 `E` 时，对角项的量纲为 `E/D²`。拉普拉斯使用同一组采样对并对相关对角项求和。
 
 ## 共用契约
 

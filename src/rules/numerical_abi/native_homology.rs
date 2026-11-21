@@ -269,12 +269,6 @@ fn store_chains(
     }
     bank(ctx)?.insert(CHAINS, vec![], chains, entries * 8 + 4096)
 }
-fn read_chains(
-    ctx: &CallCtx<'_>,
-    value: &Value,
-) -> Result<ChainComplex, OpError> {
-    bank(ctx)?.with::<ChainComplex, _>(value, CHAINS, |chains| Ok(chains.clone()))
-}
 #[allow(clippy::indexing_slicing, clippy::arithmetic_side_effects)] // Validated finite simplex/count bounds make these storage calculations safe.
 fn store_presentation(
     ctx: &CallCtx<'_>,
@@ -409,6 +403,7 @@ enum Method {
     Homology,
     Cohomology,
     ModP,
+    BettiModP,
     TopDegree,
     Full,
     Sphere,
@@ -445,6 +440,7 @@ struct Adapter(Method);
 use Method::Abelianization;
 use Method::Bars;
 use Method::Betti;
+use Method::BettiModP;
 use Method::Bottleneck;
 use Method::Build;
 use Method::Chain;
@@ -500,6 +496,7 @@ impl EvalDyn for Adapter {
             | Relative => (vec![complex(), complex()], chains()),
             | Reduced | Homology | Cohomology => (vec![chains(), int()], group_type()),
             | ModP => (vec![chains(), int(), int()], int()),
+            | BettiModP => (vec![chains(), int()], tensor_type(1, int())),
             | TopDegree => (vec![chains()], option_type(int())),
             | Full | Sphere | Dunce | Projective => (vec![int()], complex()),
             | Klein => (vec![int(), int()], complex()),
@@ -784,24 +781,26 @@ impl EvalDyn for Adapter {
                 chain_budget(&complex)?;
                 store_chains(ctx, homology::relative_chains(&complex, &sub))
             },
-            | Reduced | Homology | Cohomology | ModP | TopDegree => {
-                let chains = read_chains(ctx, &args[0])?;
-                if matches!(self.0, TopDegree) {
-                    return Ok(option(chains.top_degree().map(Value::int)));
-                }
-                let k = count(&args[1], 64)?;
-                match self.0 {
-                    | Reduced => group(homology::reduced_homology(&chains, k)),
-                    | Homology => group(chains.homology(k)),
-                    | Cohomology => group(chains.cohomology(k)),
-                    | _ => {
-                        let prime = u64::decode(&args[2], 2)?;
-                        if !homology::is_prime(prime) {
-                            return Err(error("homology coefficient modulus must be prime"));
-                        }
-                        Ok(Value::int(chains.homology_mod_p(k, prime)))
-                    },
-                }
+            | Reduced | Homology | Cohomology | ModP | BettiModP | TopDegree => {
+                bank(ctx)?.with::<ChainComplex, _>(&args[0], CHAINS, |chains| {
+                    match self.0 {
+                        | TopDegree => Ok(option(chains.top_degree().map(Value::int))),
+                        | BettiModP => chains.betti_mod_p(field_prime(&args[1], 1)?).encode(),
+                        | _ => {
+                            let k = count(&args[1], 64)?;
+                            match self.0 {
+                                | Reduced => group(homology::reduced_homology(chains, k)),
+                                | Homology => group(chains.homology(k)),
+                                | Cohomology => group(chains.cohomology(k)),
+                                | _ => {
+                                    Ok(Value::int(
+                                        chains.homology_mod_p(k, field_prime(&args[2], 2)?),
+                                    ))
+                                },
+                            }
+                        },
+                    }
+                })
             },
             | Simplify | Abelianization | PresentationExport => {
                 let presentation = bank(ctx)?.with::<Presentation, _>(
@@ -873,10 +872,7 @@ impl EvalDyn for Adapter {
                 if matches!(self.0, Smith) {
                     homology::smith_invariants(&data).encode()
                 } else {
-                    let prime = u64::decode(&args[1], 1)?;
-                    if !homology::is_prime(prime) {
-                        return Err(error("matrix rank modulus must be prime"));
-                    }
+                    let prime = field_prime(&args[1], 1)?;
                     Ok(Value::int(homology::rank_mod_p(&data, prime)))
                 }
             },
@@ -1015,6 +1011,19 @@ fn measured_matrix(
     }
     Ok(value)
 }
+fn field_prime(
+    value: &Value,
+    argument: usize,
+) -> Result<u64, OpError> {
+    let prime = u64::decode(value, argument)?;
+    if !homology::is_prime(prime) {
+        return Err(error(
+            "the coefficient modulus must be a prime unsigned 64-bit integer",
+        ));
+    }
+    Ok(prime)
+}
+
 fn matrix_budget(
     rows: usize,
     cols: usize,
@@ -1123,6 +1132,11 @@ pub(super) fn install(installer: &mut Installer<'_>) -> Result<(), RuleError> {
             "num_homology_chain_homology_mod_p",
             "crate::kernels::homology::ChainComplex::homology_mod_p",
             ModP,
+        ),
+        (
+            "num_homology_chain_betti_mod_p",
+            "crate::kernels::homology::ChainComplex::betti_mod_p",
+            BettiModP,
         ),
         (
             "num_homology_chain_top_degree",
@@ -1271,6 +1285,32 @@ pub(super) fn install(installer: &mut Installer<'_>) -> Result<(), RuleError> {
  .stability(Stability::Experimental).purity(if matches!(method,Build|Chain|ComplexChains|Relative|Full|Sphere|Cone|Suspension|Join|Wedge|Product|Klein|Dunce|Projective|Union|Intersection|Pi1|Simplify|CubicalChains|Rips|Filtration){Purity::Effectful}else{Purity::ReadOnly}).determinism(Determinism::EnvDependent).thread_safety(ThreadSafety::SessionBound)
  .backend(crate::kernel::signature::BackendSupport{interpreter:true,jit:false,ffi:false,gpu:false})
  .signature(signature).eval_dyn(Arc::new(adapter));
+        let documentation = match method {
+            | BettiModP => {
+                Some(
+                    "Return the Betti numbers of a session-owned chain complex in ascending degree order over a prime field. The second argument is an exact prime in the unsigned 64-bit range. Each boundary matrix is reduced once, with packed binary elimination for characteristic two.",
+                )
+            },
+            | ModP => {
+                Some(
+                    "Return the dimension of one homology group over a prime field. Pass a session-owned chain complex, a nonnegative degree and a prime in the unsigned 64-bit range.",
+                )
+            },
+            | RankModP => {
+                Some(
+                    "Return the rank of a rectangular integer matrix of at most 128 by 128 over a prime field. The modulus is an exact prime in the unsigned 64-bit range. Negative entries and characteristic two are supported.",
+                )
+            },
+            | IsPrime => {
+                Some(
+                    "Determine whether an exact unsigned 64-bit integer is prime, using deterministic Miller–Rabin witnesses.",
+                )
+            },
+            | _ => None,
+        };
+        if let Some(documentation) = documentation {
+            descriptor = descriptor.doc(documentation);
+        }
         if !path.is_empty() {
             descriptor = descriptor.rust_path(path);
         }

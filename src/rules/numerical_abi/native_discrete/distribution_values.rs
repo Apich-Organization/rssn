@@ -147,7 +147,7 @@ fn query(
 ) -> Result<(f64, DimExpr), OpError> {
     let d = object_dimension(a, ctx)?;
     api::same_dimension(&d, &api::dimension(&x.0)?)?;
-    Ok((extended_numeric(&x.0)?, d))
+    Ok((api::extended_numeric(&x.0)?, d))
 }
 fn multi_query(
     a: &Handle<Multivariate>,

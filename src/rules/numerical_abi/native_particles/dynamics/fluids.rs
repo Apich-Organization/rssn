@@ -1,5 +1,6 @@
 #![allow(clippy::wildcard_imports)] // Native dissipative/SPH fluid states retain mixed physical dimensions.
 use super::*;
+use crate::rules::numerical_abi::codecs::Output;
 use crate::sim::dpd;
 use crate::sim::physics_mm as mm;
 use crate::sim::sph;
@@ -11,6 +12,92 @@ struct Gas<const D: usize> {
     native: sph::Sph<D>,
     frame: Frame,
 }
+
+struct PreparedSphDensity<const D: usize> {
+    plan: sph::SphDensityPlan<D>,
+    frame: Frame,
+}
+
+impl<const D: usize> NativeType for PreparedSphDensity<D> {
+    const KIND: &'static str = match D {
+        | 1 => "rssn/native/sim/sph-density-plan/d1/v1",
+        | 2 => "rssn/native/sim/sph-density-plan/d2/v1",
+        | _ => "rssn/native/sim/sph-density-plan/d3/v1",
+    };
+    const MAX_BYTES: usize = 16 * 1024 * 1024;
+
+    fn validate(&self) -> Result<(), OpError> {
+        if self.plan.cached_heap_bytes().is_none() {
+            return Err(api::error(
+                "SPH density plan exceeds the retained-neighbor budget",
+            ));
+        }
+        self.frame.validate()
+    }
+
+    fn retained_bytes(&self) -> usize {
+        // Frame metadata fits this margin; the neighbor and offset buffers report capacity.
+        self.plan.cached_heap_bytes().unwrap_or(Self::MAX_BYTES) + size_of::<Self>() + 16_384
+    }
+}
+
+macro_rules! density_plan {
+    ($new:ident, $new_name:literal, $eval:ident, $eval_name:literal, $d:literal) => {
+        object_binding!(
+            $new,
+            $new_name,
+            "crate::sim::sph::SphDensityPlan<D>::new",
+            "Prepares SPH mass-density neighborhoods at the current positions and boundaries of a native gas. Supply a positive measured maximum smoothing length. The plan can evaluate new mass and smoothing fields at those same positions after creation.",
+            false,
+            (fluid: Handle<Gas<$d>>, maximum_smoothing_length: Input) -> NewObject<PreparedSphDensity<$d>>,
+            |ctx, fluid, maximum_smoothing_length| fluid.with(ctx, |fluid| {
+                let frame = fluid.frame.clone();
+                let h = frame.scalar(&maximum_smoothing_length.0, LENGTH, false)?;
+                let g = &fluid.native;
+                let plan = sph::SphDensityPlan::new(&g.pos, g.lo, g.hi, g.bc, h).map_err(api::error)?;
+                let dimensions = frame.dims.to_vec();
+                Ok(NewObject::new(PreparedSphDensity { plan, frame }, dimensions))
+            })
+        );
+        object_binding!(
+            $eval,
+            $eval_name,
+            "crate::sim::sph::SphDensityPlan<D>::evaluate",
+            "Evaluates prepared SPH mass density for one measured mass and smoothing length per original particle. Use CubicSpline or WendlandC2. Results keep particle order and have mass divided by length to the spatial dimension units.",
+            false,
+            (plan: Handle<PreparedSphDensity<$d>>, masses: Input, smoothing_lengths: Input, kernel_name: String) -> Dynamic,
+            |ctx, plan, masses, smoothing_lengths, kernel_name| plan.with(ctx, |prepared| {
+                let frame = &prepared.frame;
+                let masses = frame.vector(&masses.0, MASS)?;
+                let lengths = frame.vector(&smoothing_lengths.0, LENGTH)?;
+                let density = prepared.plan.evaluate(&masses, &lengths, kernel(&kernel_name)?).map_err(api::error)?;
+                Ok(Dynamic(frame.array(density, [1, -$d, 0, 0])?))
+            })
+        );
+    };
+}
+
+density_plan!(
+    sph_density_new_d1,
+    "num_native_sph_density_plan_new_d1",
+    sph_density_evaluate_d1,
+    "num_native_sph_density_plan_evaluate_d1",
+    1
+);
+density_plan!(
+    sph_density_new_d2,
+    "num_native_sph_density_plan_new_d2",
+    sph_density_evaluate_d2,
+    "num_native_sph_density_plan_evaluate_d2",
+    2
+);
+density_plan!(
+    sph_density_new_d3,
+    "num_native_sph_density_plan_new_d3",
+    sph_density_evaluate_d3,
+    "num_native_sph_density_plan_evaluate_d3",
+    3
+);
 impl NativeType for Dpd {
     const KIND: &'static str = "rssn/native/sim/dpd/v1";
     const MAX_BYTES: usize = 1_048_576;
@@ -224,6 +311,39 @@ object_binding!(mm_poly6_new,"num_native_mm_poly6_new","crate::sim::physics_mm::
 object_binding!(mm_spiky_new,"num_native_mm_spiky_new","crate::sim::physics_mm::SpikyKernel::new","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(smoothing_length:f64)->NewObject<mm::SpikyKernel>,|_ctx:&CallCtx<'_>,smoothing_length:f64|{if smoothing_length<=0.0{return Err(api::error("normalized smoothing length must bepositive"));}Ok(NewObject::normalized(mm::SpikyKernel::new(smoothing_length)))});
 object_binding!(mm_system_new,"num_native_mm_system_new","","Legacy native educational SPH uses explicitly normalized unit-mass coefficients and3D smoothing kernels on2D sites. This adapter rejects physical quantities rather than assigning inconsistent SI force dimensions; use the general Sph<D> adapters for coherent physical models.",true,(positions:Vec<[f64;2]>,smoothing_length:f64,mass:f64,gravity:[f64;2],viscosity:f64,gas_constant:f64,rest_density:f64,bounds:[f64;2])->NewObject<Mm>,|_ctx:&CallCtx<'_>,positions:Vec<[f64;2]>,smoothing_length:f64,mass:f64,gravity:[f64;2],viscosity:f64,gas_constant:f64,rest_density:f64,bounds:[f64;2]|{if positions.is_empty()||positions.len()>128||smoothing_length<=0.0||mass<=0.0||viscosity<0.0||gas_constant<=0.0||rest_density<=0.0||bounds.iter().any(|x|*x<=0.0){return Err(api::error("legacy reduced-unit SPH controls invalid"));}let particles=positions.into_iter().map(|[x,y]|mm::Particle{pos:mm::Vector2D::new(x,y),vel:mm::Vector2D::new(0.0,0.0),force:mm::Vector2D::new(0.0,0.0),density:0.0,pressure:0.0,mass}).collect();let mut native=mm::SPHSystem{particles,poly6:mm::Poly6Kernel::new(smoothing_length),spiky:mm::SpikyKernel::new(smoothing_length),gravity:mm::Vector2D::new(gravity[0],gravity[1]),viscosity,gas_const:gas_constant,rest_density,bounds:mm::Vector2D::new(bounds[0],bounds[1])};native.compute_density_pressure();Ok(NewObject::normalized(Mm{native}))});
 object_binding!(mm_compute_density_pressure,"num_native_mm_compute_density_pressure","crate::sim::physics_mm::SPHSystem::compute_density_pressure","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(fluid:Handle<Mm>)->bool,|ctx:&CallCtx<'_>,fluid:Handle<Mm>|{fluid.with_mut(ctx,|s|{s.native.compute_density_pressure();s.validate()?;Ok(true)})});
+object_binding!(
+    mm_compute_density_and_forces, "num_native_mm_compute_density_and_forces",
+    "crate::sim::physics_mm::SPHSystem::compute_density_and_forces",
+    "Recompute density, pressure and forces at the current positions of a reduced-unit legacy SPH system. Call the integration operator separately to advance the particles.",
+    true,
+    (fluid: Handle<Mm>) -> bool,
+    |ctx, fluid| fluid.with_mut(ctx, |state| {
+        state.native.compute_density_and_forces();
+        state.validate()?;
+        Ok(true)
+    })
+);
+object_binding!(
+    mm_state, "num_native_mm_state", "",
+    "Read particle positions, velocities, forces, density and pressure from the legacy SPH system in reduced units. Rows follow the original particle order. The vector fields have shape [particles,2].",
+    true,
+    (fluid: Handle<Mm>) -> Dynamic,
+    |ctx, fluid| fluid.with(ctx, |state| {
+        let particles = &state.native.particles;
+        let positions: Vec<_> = particles.iter().map(|p| [p.pos.x, p.pos.y]).collect();
+        let velocities: Vec<_> = particles.iter().map(|p| [p.vel.x, p.vel.y]).collect();
+        let forces: Vec<_> = particles.iter().map(|p| [p.force.x, p.force.y]).collect();
+        let density: Vec<_> = particles.iter().map(|p| p.density).collect();
+        let pressure: Vec<_> = particles.iter().map(|p| p.pressure).collect();
+        Ok(Dynamic(api::record(vec![
+            ("positions", Output::encode(positions)?),
+            ("velocities", Output::encode(velocities)?),
+            ("forces", Output::encode(forces)?),
+            ("density", Output::encode(density)?),
+            ("pressure", Output::encode(pressure)?),
+        ])))
+    })
+);
 object_binding!(mm_compute_forces,"num_native_mm_compute_forces","crate::sim::physics_mm::SPHSystem::compute_forces","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(fluid:Handle<Mm>)->bool,|ctx:&CallCtx<'_>,fluid:Handle<Mm>|{fluid.with_mut(ctx,|s|{if s.native.particles.iter().any(|p|p.density<=0.0){return Err(api::error("legacy SPH density must becomputed andpositive"));}s.native.compute_forces();s.validate()?;Ok(true)})});
 object_binding!(mm_integrate,"num_native_mm_integrate","crate::sim::physics_mm::SPHSystem::integrate","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(fluid:Handle<Mm>,dt:f64)->bool,|ctx:&CallCtx<'_>,fluid:Handle<Mm>,dt:f64|{if dt<=0.0{return Err(api::error("legacy reducedtime step must bepositive"));}fluid.with_mut(ctx,|s|{if s.native.particles.iter().any(|p|p.density<=0.0){return Err(api::error("legacy SPH density must becomputed andpositive"));}s.native.integrate(dt);s.validate()?;Ok(true)})});
 object_binding!(mm_update,"num_native_mm_update","crate::sim::physics_mm::SPHSystem::update","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(fluid:Handle<Mm>,dt:f64)->bool,|ctx:&CallCtx<'_>,fluid:Handle<Mm>,dt:f64|{if dt<=0.0{return Err(api::error("legacy reducedtime step must bepositive"));}fluid.with_mut(ctx,|s|{if s.native.particles.iter().any(|p|p.density<=0.0){return Err(api::error("legacy SPH density must becomputed andpositive"));}s.native.update(dt);s.validate()?;Ok(true)})});
@@ -246,6 +366,12 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &dpd_state::BINDING,
             &sph_kernel_w::BINDING,
             &sph_kernel_dw::BINDING,
+            &sph_density_new_d1::BINDING,
+            &sph_density_evaluate_d1::BINDING,
+            &sph_density_new_d2::BINDING,
+            &sph_density_evaluate_d2::BINDING,
+            &sph_density_new_d3::BINDING,
+            &sph_density_evaluate_d3::BINDING,
             &sph_new_d1::BINDING,
             &sph_update_density_d1::BINDING,
             &sph_derivatives_d1::BINDING,
@@ -290,6 +416,8 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &mm_spiky_new::BINDING,
             &mm_system_new::BINDING,
             &mm_compute_density_pressure::BINDING,
+            &mm_compute_density_and_forces::BINDING,
+            &mm_state::BINDING,
             &mm_compute_forces::BINDING,
             &mm_integrate::BINDING,
             &mm_update::BINDING,

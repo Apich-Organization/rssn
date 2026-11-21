@@ -10,6 +10,8 @@ pub mod dimensions;
 mod iterative;
 #[path = "numerical_abi/native_analysis/argmin.rs"]
 mod native_analysis_argmin;
+#[path = "numerical_abi/native_analysis/functional.rs"]
+mod native_analysis_functional;
 #[path = "numerical_abi/native_analysis/holonomic.rs"]
 mod native_analysis_holonomic;
 #[path = "numerical_abi/native_analysis/jacobian.rs"]
@@ -26,6 +28,8 @@ mod native_analysis_ode;
 pub(in crate::rules) mod native_analysis_ode_common;
 #[path = "numerical_abi/native_analysis/oscillatory.rs"]
 mod native_analysis_oscillatory;
+#[path = "numerical_abi/native_analysis/overlap_save.rs"]
+mod native_analysis_overlap_save;
 #[path = "numerical_abi/native_analysis/parallel.rs"]
 mod native_analysis_parallel;
 #[path = "numerical_abi/native_analysis/pde.rs"]
@@ -36,6 +40,10 @@ mod native_analysis_physics_ode;
 mod native_analysis_pic;
 #[path = "numerical_abi/native_analysis/sde.rs"]
 mod native_analysis_sde;
+#[path = "numerical_abi/native_analysis/series.rs"]
+mod native_analysis_series;
+#[path = "numerical_abi/native_analysis/wavelets.rs"]
+mod native_analysis_wavelets;
 #[path = "numerical_abi/native_analysis/yee.rs"]
 mod native_analysis_yee;
 pub(in crate::rules) mod native_backend;
@@ -56,6 +64,7 @@ mod native_particles;
 mod native_relativity;
 pub(in crate::rules) mod native_runtime;
 mod native_scenario;
+mod native_special;
 pub(super) mod runtime_dimensions;
 mod spectral_sparse;
 use dimensions::DimensionPolicy;
@@ -383,29 +392,10 @@ pub(super) fn numeric(
     v: &Value,
     arg: usize,
 ) -> Result<f64, OpError> {
-    use num_traits::ToPrimitive;
-    use num_traits::Zero;
     let value = match v {
         | Value::Dyn(dynamic) => numeric(&dynamic.value, arg)?,
         | Value::Quantity(quantity) => {
-            if quantity.unit.affine || quantity.unit.offset.is_some() {
-                return Err(OpError::Domain(format!(
-                    "argument {arg} is an affine point, not a linear quantity"
-                )));
-            }
-            if quantity.unit.scale.denom.is_zero() {
-                return Err(OpError::Domain(format!(
-                    "argument {arg} has an invalid unit scale"
-                )));
-            }
-            let scale = quantity.unit.scale.rational().to_f64().ok_or_else(|| {
-                OpError::Domain(format!("argument {arg} unit scale does not fit Float"))
-            })? * std::f64::consts::PI.powi(quantity.unit.scale.pi);
-            if !scale.is_finite() || scale == 0.0 {
-                return Err(OpError::Domain(format!(
-                    "argument {arg} unit scale is not representable as a finite nonzero Float"
-                )));
-            }
+            let scale = linear_unit_scale(&quantity.unit, arg)?;
             numeric(&quantity.value, arg)? * scale
         },
         | _ => {
@@ -424,6 +414,35 @@ pub(super) fn numeric(
         )));
     }
     Ok(value)
+}
+
+fn linear_unit_scale(
+    unit: &crate::kernel::value::UnitValue,
+    arg: usize,
+) -> Result<f64, OpError> {
+    use num_traits::ToPrimitive;
+    use num_traits::Zero;
+
+    if unit.affine || unit.offset.is_some() {
+        return Err(OpError::Domain(format!(
+            "argument {arg} is an affine point, not a linear quantity"
+        )));
+    }
+    if unit.scale.denom.is_zero() {
+        return Err(OpError::Domain(format!(
+            "argument {arg} has an invalid unit scale"
+        )));
+    }
+    let scale =
+        unit.scale.rational().to_f64().ok_or_else(|| {
+            OpError::Domain(format!("argument {arg} unit scale does not fit Float"))
+        })? * std::f64::consts::PI.powi(unit.scale.pi);
+    if !scale.is_finite() || scale == 0.0 {
+        return Err(OpError::Domain(format!(
+            "argument {arg} unit scale is not representable as a finite nonzero Float"
+        )));
+    }
+    Ok(scale)
 }
 
 fn tensor(
@@ -605,6 +624,9 @@ fn install(
 ) -> Result<(), RuleError> {
     native_models::install(i, namespace)?;
     native_discrete::install(i, namespace)?;
+    if namespace == "numerical_special" {
+        native_special::install(i)?;
+    }
     if namespace == "numerical_vector" {
         native_backend_extended::install(i)?;
         native_backend_scalar::install(i)?;
@@ -634,6 +656,10 @@ fn install(
         native_analysis_argmin::install(i)?;
         native_analysis_ode_common::install(i)?;
         native_analysis_jacobian::install(i)?;
+        native_analysis_functional::install(i)?;
+        native_analysis_series::install(i)?;
+        native_analysis_wavelets::install(i)?;
+        native_analysis_overlap_save::install(i)?;
     }
     if namespace == "numerical_matrix" {
         native_linear::install(i)?;

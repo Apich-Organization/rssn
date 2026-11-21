@@ -215,6 +215,20 @@ pub(in crate::rules) fn event_value(
         },
     }
 }
+
+fn fixed_method(tag: usize) -> Result<ode::OdeSolverMethod, OpError> {
+    match tag {
+        | 0 => Ok(ode::OdeSolverMethod::Euler),
+        | 1 => Ok(ode::OdeSolverMethod::Heun),
+        | 2 => Ok(ode::OdeSolverMethod::RungeKutta4),
+        | _ => {
+            Err(api::error(
+                "fixed ODE method must be 0 (Euler), 1 (Heun), or 2 (RK4)",
+            ))
+        },
+    }
+}
+
 #[allow(deprecated)] // The legacy native entry remains intentionally callable.
 #[allow(
     clippy::needless_pass_by_value,
@@ -288,16 +302,7 @@ fn run(
                         &y,
                         (t0, t1),
                         steps,
-                        match controls.get(1).copied().unwrap_or(2) {
-                            | 0 => ode::OdeSolverMethod::Euler,
-                            | 1 => ode::OdeSolverMethod::Heun,
-                            | 2 => ode::OdeSolverMethod::RungeKutta4,
-                            | _ => {
-                                return Err(api::error(
-                                    "fixed ODE method must be0Euler/1Heun/2RK4",
-                                ));
-                            },
-                        },
+                        fixed_method(controls.get(1).copied().unwrap_or(2))?,
                     )
                     .map_err(api::error)?,
                 )
@@ -314,12 +319,7 @@ fn run(
                     &y,
                     (t0, t1),
                     steps,
-                    match controls.get(1).copied().unwrap_or(2) {
-                        | 0 => ode::OdeSolverMethod::Euler,
-                        | 1 => ode::OdeSolverMethod::Heun,
-                        | 2 => ode::OdeSolverMethod::RungeKutta4,
-                        | _ => return Err(api::error("fixed ODE method must be0Euler/1Heun/2RK4")),
-                    },
+                    fixed_method(controls.get(1).copied().unwrap_or(2))?,
                     &es,
                 )
                 .map_err(api::error)?;
@@ -477,19 +477,40 @@ fn run(
 
 object_binding!(fixed,"num_analysis_ode_fixed","crate::kernels::ode::solve_fixed","Native ode::solve_fixed; independently measured initial components and physical times are normalized by the retained RHS tape references. Config rtol/atol are explicit normalized-state tolerances; h0/hmin/hmax are physical times and max_steps is mandatory. Controls contain steps/order/stages as documented by the native function; events contain program/terminal/direction. Real native evaluation and retained sample budgets are enforced.",false,(rhs:Handle<OdeTape>,initial:Input,start:Input,end:Input,config:Input,controls:Vec<usize>,events:Many<Input>,maxeval:usize)->NewObject<Solution>,|ctx,rhs,initial,start,end,config,controls,events,maxeval|run(ctx,rhs,initial,start,end,config,controls,events,maxeval,0));
 
+object_binding!(
+    fixed_final, "num_analysis_ode_fixed_final", "crate::kernels::ode::solve_fixed_final",
+    "Returns only the final measured state of a retained RHS tape, preserving each component's dimension. Steps are equal; method 0 is Euler, 1 is Heun and 2 is classical Runge–Kutta. maxeval bounds RHS evaluations before integration. Intermediate samples are not retained.",
+    false,
+    (rhs: Handle<OdeTape>, initial: Input, start: Input, end: Input, steps: usize, method: usize, maxeval: usize) -> Dynamic,
+    |ctx, rhs, initial, start, end, steps, method, maxeval| {
+        let method = fixed_method(method)?;
+        let budget = Budget::new(maxeval)?;
+        if steps > maxeval / method.stages() {
+            return Err(OpError::BudgetExceeded);
+        }
+        let model = rhs.with(ctx, |model| Ok(model.clone()))?;
+        let y = model.frame.state(&initial)?;
+        let span = (model.frame.time(&start)?, model.frame.time(&end)?);
+        let rate = |t, y: &[f64], out: &mut [f64]| model.rate(&budget, t, y, out);
+        let result = ode::solve_fixed_final(rate, &y, span, steps, method);
+        budget.finish()?;
+        Ok(Dynamic(model.frame.restore(&result.map_err(api::error)?)?))
+    }
+);
+
 object_binding!(adaptive,"num_analysis_ode_adaptive","crate::kernels::ode::solve_adaptive","Native ode::solve_adaptive: this legacy driver supports rtol/atol/max_steps; h0/hmin must be zero and hmax must cover the whole span, with unsupported requests rejected. independently measured initial components and physical times are normalized by the retained RHS tape references. Config rtol/atol are explicit normalized-state tolerances; h0/hmin/hmax are physical times and max_steps is mandatory. Controls contain steps/order/stages as documented by the native function; events contain program/terminal/direction. Real native evaluation and retained sample budgets are enforced.",false,(rhs:Handle<OdeTape>,initial:Input,start:Input,end:Input,config:Input,controls:Vec<usize>,events:Many<Input>,maxeval:usize)->NewObject<Solution>,|ctx,rhs,initial,start,end,config,controls,events,maxeval|run(ctx,rhs,initial,start,end,config,controls,events,maxeval,1));
 
 object_binding!(fixed_events,"num_analysis_ode_fixed_events","crate::kernels::ode::solve_fixed_events","Native ode::solve_fixed_events; independently measured initial components and physical times are normalized by the retained RHS tape references. Config rtol/atol are explicit normalized-state tolerances; h0/hmin/hmax are physical times and max_steps is mandatory. Controls contain steps/order/stages as documented by the native function; events contain program/terminal/direction. Real native evaluation and retained sample budgets are enforced.",false,(rhs:Handle<OdeTape>,initial:Input,start:Input,end:Input,config:Input,controls:Vec<usize>,events:Many<Input>,maxeval:usize)->NewObject<Solution>,|ctx,rhs,initial,start,end,config,controls,events,maxeval|run(ctx,rhs,initial,start,end,config,controls,events,maxeval,2));
 
-object_binding!(bdf_events,"num_analysis_ode_bdf_events","crate::kernels::ode_stiff::bdf_events","Native ode_stiff::bdf_events; independently measured initial components and physical times are normalized by the retained RHS tape references. Config rtol/atol are explicit normalized-state tolerances; h0/hmin/hmax are physical times and max_steps is mandatory. Controls contain steps/order/stages as documented by the native function; events contain program/terminal/direction. Real native evaluation and retained sample budgets are enforced.",false,(rhs:Handle<OdeTape>,initial:Input,start:Input,end:Input,config:Input,controls:Vec<usize>,events:Many<Input>,maxeval:usize)->NewObject<Solution>,|ctx,rhs,initial,start,end,config,controls,events,maxeval|run(ctx,rhs,initial,start,end,config,controls,events,maxeval,3));
+object_binding!(bdf_events,"num_analysis_ode_bdf_events","crate::kernels::ode_stiff::bdf_events","Adaptive BDF with finite-difference Jacobians and event detection. The positive maximum order controls[0] defaults to one and is capped at five. Config rtol and atol apply to the normalized state. Config h0, hmin and hmax are physical step magnitudes, and zero h0 selects the initial step automatically. The required config max_steps bounds attempts, including rejected steps. Each event supplies program, terminal and direction (-1, 0 or 1). The maxeval argument bounds tape evaluations.",false,(rhs:Handle<OdeTape>,initial:Input,start:Input,end:Input,config:Input,controls:Vec<usize>,events:Many<Input>,maxeval:usize)->NewObject<Solution>,|ctx,rhs,initial,start,end,config,controls,events,maxeval|run(ctx,rhs,initial,start,end,config,controls,events,maxeval,3));
 
-object_binding!(bdf_jac,"num_analysis_ode_bdf_jac","crate::kernels::ode_stiff::bdf_jac","Native ode_stiff::bdf_jac; independently measured initial components and physical times are normalized by the retained RHS tape references. Config rtol/atol are explicit normalized-state tolerances; h0/hmin/hmax are physical times and max_steps is mandatory. Controls contain steps/order/stages as documented by the native function; events contain program/terminal/direction. Real native evaluation and retained sample budgets are enforced.",false,(rhs:Handle<OdeTape>,initial:Input,start:Input,end:Input,config:Input,controls:Vec<usize>,events:Many<Input>,maxeval:usize)->NewObject<Solution>,|ctx,rhs,initial,start,end,config,controls,events,maxeval|run(ctx,rhs,initial,start,end,config,controls,events,maxeval,4));
+object_binding!(bdf_jac,"num_analysis_ode_bdf_jac","crate::kernels::ode_stiff::bdf_jac","Adaptive BDF with the Jacobian of the retained RHS tape. Pass an empty events list. The positive maximum order controls[0] defaults to one and is capped at five. Config rtol and atol apply to the normalized state. Config h0, hmin and hmax are physical step magnitudes, and zero h0 selects the initial step automatically. The required config max_steps bounds attempts, including rejected steps. The maxeval argument bounds tape evaluations.",false,(rhs:Handle<OdeTape>,initial:Input,start:Input,end:Input,config:Input,controls:Vec<usize>,events:Many<Input>,maxeval:usize)->NewObject<Solution>,|ctx,rhs,initial,start,end,config,controls,events,maxeval|run(ctx,rhs,initial,start,end,config,controls,events,maxeval,4));
 
-object_binding!(bdf_ex,"num_analysis_ode_bdf_ex","crate::kernels::ode_stiff::bdf_ex","Native ode_stiff::bdf_ex; independently measured initial components and physical times are normalized by the retained RHS tape references. Config rtol/atol are explicit normalized-state tolerances; h0/hmin/hmax are physical times and max_steps is mandatory. Controls contain steps/order/stages as documented by the native function; events contain program/terminal/direction. Real native evaluation and retained sample budgets are enforced.",false,(rhs:Handle<OdeTape>,initial:Input,start:Input,end:Input,config:Input,controls:Vec<usize>,events:Many<Input>,maxeval:usize)->NewObject<Solution>,|ctx,rhs,initial,start,end,config,controls,events,maxeval|run(ctx,rhs,initial,start,end,config,controls,events,maxeval,5));
+object_binding!(bdf_ex,"num_analysis_ode_bdf_ex","crate::kernels::ode_stiff::bdf_ex","Legacy adaptive BDF with the Jacobian of the retained RHS tape and event detection. The positive maximum order controls[0] defaults to one and is capped at five. Config rtol and atol apply to the normalized state. Config h0, hmin and hmax are physical step magnitudes, and zero h0 selects the initial step automatically. The required config max_steps bounds attempts, including rejected steps. Each event supplies program, terminal and direction (-1, 0 or 1). The maxeval argument bounds tape evaluations.",false,(rhs:Handle<OdeTape>,initial:Input,start:Input,end:Input,config:Input,controls:Vec<usize>,events:Many<Input>,maxeval:usize)->NewObject<Solution>,|ctx,rhs,initial,start,end,config,controls,events,maxeval|run(ctx,rhs,initial,start,end,config,controls,events,maxeval,5));
 
-object_binding!(bdf_with,"num_analysis_ode_bdf_with","crate::kernels::ode_stiff::bdf_with","Native ode_stiff::bdf_with; independently measured initial components and physical times are normalized by the retained RHS tape references. Config rtol/atol are explicit normalized-state tolerances; h0/hmin/hmax are physical times and max_steps is mandatory. Controls contain steps/order/stages as documented by the native function; events contain program/terminal/direction. Real native evaluation and retained sample budgets are enforced.",false,(rhs:Handle<OdeTape>,initial:Input,start:Input,end:Input,config:Input,controls:Vec<usize>,events:Many<Input>,maxeval:usize)->NewObject<Solution>,|ctx,rhs,initial,start,end,config,controls,events,maxeval|run(ctx,rhs,initial,start,end,config,controls,events,maxeval,6));
+object_binding!(bdf_with,"num_analysis_ode_bdf_with","crate::kernels::ode_stiff::bdf_with","Adaptive BDF with dense output and event detection. Set controls[1] to 1 to use the Jacobian of the retained RHS tape. An omitted or other value uses finite differences. The positive maximum order controls[0] defaults to one and is capped at five. Config rtol and atol apply to the normalized state. Config h0, hmin and hmax are physical step magnitudes, and zero h0 selects the initial step automatically. The required config max_steps bounds attempts, including rejected steps. Each event supplies program, terminal and direction (-1, 0 or 1). The maxeval argument bounds tape evaluations.",false,(rhs:Handle<OdeTape>,initial:Input,start:Input,end:Input,config:Input,controls:Vec<usize>,events:Many<Input>,maxeval:usize)->NewObject<Solution>,|ctx,rhs,initial,start,end,config,controls,events,maxeval|run(ctx,rhs,initial,start,end,config,controls,events,maxeval,6));
 
-object_binding!(bdf_parallel,"num_analysis_ode_bdf_parallel","crate::kernels::ode_stiff::bdf_with_par","Native ode_stiff::bdf_with_par; independently measured initial components and physical times are normalized by the retained RHS tape references. Config rtol/atol are explicit normalized-state tolerances; h0/hmin/hmax are physical times and max_steps is mandatory. Controls contain steps/order/stages as documented by the native function; events contain program/terminal/direction. Real native evaluation and retained sample budgets are enforced.",false,(rhs:Handle<OdeTape>,initial:Input,start:Input,end:Input,config:Input,controls:Vec<usize>,events:Many<Input>,maxeval:usize)->NewObject<Solution>,|ctx,rhs,initial,start,end,config,controls,events,maxeval|run(ctx,rhs,initial,start,end,config,controls,events,maxeval,7));
+object_binding!(bdf_parallel,"num_analysis_ode_bdf_parallel","crate::kernels::ode_stiff::bdf_with_par","Adaptive BDF with dense output and event detection. Set controls[1] to 1 to use the Jacobian of the retained RHS tape. An omitted or other value uses finite differences, evaluated concurrently for systems with at least 64 state components. The positive maximum order controls[0] defaults to one and is capped at five. Config rtol and atol apply to the normalized state. Config h0, hmin and hmax are physical step magnitudes, and zero h0 selects the initial step automatically. The required config max_steps bounds attempts, including rejected steps. Each event supplies program, terminal and direction (-1, 0 or 1). The maxeval argument bounds tape evaluations.",false,(rhs:Handle<OdeTape>,initial:Input,start:Input,end:Input,config:Input,controls:Vec<usize>,events:Many<Input>,maxeval:usize)->NewObject<Solution>,|ctx,rhs,initial,start,end,config,controls,events,maxeval|run(ctx,rhs,initial,start,end,config,controls,events,maxeval,7));
 
 object_binding!(radau_events,"num_analysis_ode_radau_events","crate::kernels::ode_stiff::radau5_events","Native ode_stiff::radau5_events; independently measured initial components and physical times are normalized by the retained RHS tape references. Config rtol/atol are explicit normalized-state tolerances; h0/hmin/hmax are physical times and max_steps is mandatory. Controls contain steps/order/stages as documented by the native function; events contain program/terminal/direction. Real native evaluation and retained sample budgets are enforced.",false,(rhs:Handle<OdeTape>,initial:Input,start:Input,end:Input,config:Input,controls:Vec<usize>,events:Many<Input>,maxeval:usize)->NewObject<Solution>,|ctx,rhs,initial,start,end,config,controls,events,maxeval|run(ctx,rhs,initial,start,end,config,controls,events,maxeval,8));
 
@@ -574,6 +595,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &rosenbrock_events::BINDING,
             &view::BINDING,
             &fixed::BINDING,
+            &fixed_final::BINDING,
             &adaptive::BINDING,
             &fixed_events::BINDING,
             &bdf_events::BINDING,

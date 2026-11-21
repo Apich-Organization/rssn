@@ -60,6 +60,10 @@ fn retained_projective_plane_chains_have_exact_torsion_and_checked_session_ident
             "num_homology_chain_homology",
             rssn::kernel::signature::Purity::ReadOnly,
         ),
+        (
+            "num_homology_chain_betti_mod_p",
+            rssn::kernel::signature::Purity::ReadOnly,
+        ),
     ] {
         let info = manifest.op(name).unwrap();
         assert_eq!(info.purity, purity);
@@ -120,6 +124,27 @@ fn retained_projective_plane_chains_have_exact_torsion_and_checked_session_ident
             &[chains.clone(), Value::int(1), Value::int(4)]
         )
         .is_err()
+    );
+    let wide_prime = Value::int(18_446_744_073_709_551_557_u64);
+    let betti = |session, modulus| {
+        call(
+            session,
+            "num_homology_chain_betti_mod_p",
+            &[chains.clone(), modulus],
+        )
+    };
+    assert_eq!(betti(&s, Value::int(2)).unwrap(), ints(&[1, 1, 1]));
+    assert_eq!(betti(&s, wide_prime.clone()).unwrap(), ints(&[1, 0, 0]));
+    assert!(betti(&s, Value::int(4)).is_err());
+    assert!(betti(&foreign, Value::int(2)).is_err());
+    let matrix = Value::Tensor(TensorValue {
+        shape: vec![2, 2],
+        data: [-1, -1, -1, 1].into_iter().map(Value::int).collect(),
+        elem: TypeExpr::Int,
+    });
+    assert_eq!(
+        call(&s, "num_homology_rank_mod_p", &[matrix, wide_prime]).unwrap(),
+        Value::int(2)
     );
     assert!(
         call(

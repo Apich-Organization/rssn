@@ -35,6 +35,44 @@ struct Radial<const D: usize> {
     frame: Frame,
     frames: usize,
 }
+
+impl<const D: usize> Radial<D> {
+    const MAX_FRAMES: usize = 1_000_000;
+
+    fn merge(
+        &mut self,
+        source: &e::Rdf<D>,
+        frames: usize,
+    ) -> Result<bool, OpError> {
+        let frames = self
+            .frames
+            .checked_add(frames)
+            .filter(|&frames| frames <= Self::MAX_FRAMES)
+            .ok_or_else(|| api::error("RDF frame-count budget exhausted"))?;
+        self.native.merge(source).map_err(api::error)?;
+        self.frames = frames;
+        Ok(true)
+    }
+}
+
+fn merge_radial<const D: usize>(
+    ctx: &CallCtx<'_>,
+    destination: &Handle<Radial<D>>,
+    source: &Handle<Radial<D>>,
+) -> Result<bool, OpError> {
+    if destination.value == source.value {
+        return destination.with_mut(ctx, |rdf| rdf.merge(&rdf.native.clone(), rdf.frames));
+    }
+    // Take a consistent snapshot before locking the destination.
+    let (native, frame, frames) = source.with(ctx, |rdf| {
+        Ok((rdf.native.clone(), rdf.frame.clone(), rdf.frames))
+    })?;
+    destination.with_mut(ctx, |rdf| {
+        rdf.frame.same(&frame)?;
+        rdf.merge(&native, frames)
+    })
+}
+
 pub(super) struct Pair {
     pub(super) native: e::PairTerm,
     pub(super) frame: Frame,
@@ -132,8 +170,11 @@ pub(super) fn check_box<const D: usize>(b: &e::SimBox<D>) -> Result<(), OpError>
     }
     finite(b.matrix().into_iter().flatten())
 }
+const PARTICLE_LIMIT: usize = 512;
+const NEIGHBOUR_PAIR_LIMIT: usize = PARTICLE_LIMIT * (PARTICLE_LIMIT - 1) / 2;
+
 pub(super) fn check_system<const D: usize>(s: &e::MdSystem<D>) -> Result<(), OpError> {
-    bound(s.n(), 512)?;
+    bound(s.n(), PARTICLE_LIMIT)?;
     check_box(&s.bx)?;
     if s.n() == 0
         || s.vel.len() != s.n()
@@ -196,7 +237,7 @@ object_type!(Field, "rssn/native/sim/engine-force-field", 2_097_152, v, {
     ff.validate().map_err(api::error)
 });
 object_type!(List, "rssn/native/sim/engine-neighbours", 4_194_304, v, {
-    bound(v.native.pairs.len(), 130816)?;
+    bound(v.native.pairs.len(), NEIGHBOUR_PAIR_LIMIT)?;
     if v.native.rcut <= 0.0 || v.native.skin < 0.0 {
         return Err(api::error("neighbour cutoff/skin invalid"));
     }
@@ -313,21 +354,13 @@ pub(super) fn safe_grid<const D: usize>(
     s: &e::MdSystem<D>,
     list: &e::NeighbourList<D>,
 ) -> Result<(), OpError> {
+    // Dense neighbour storage is limited to eight bins per particle. Sparse
+    // storage contains at most one bin per occupied cell, so box volume no
+    // longer determines allocation. The possible pair count is bounded by n.
+    bound(s.n(), PARTICLE_LIMIT)?;
     let r = list.rcut + list.skin;
     if r <= 0.0 || !r.is_finite() {
         return Err(api::error("cutoff+skin must be positive finite"));
-    }
-    let cells = s.bx.len.iter().try_fold(1usize, |n, l| {
-        let x = (l / r).floor().max(1.0);
-        if !x.is_finite() || x > 1_048_576.0 {
-            return None;
-        }
-        n.checked_mul(x as usize).filter(|n| *n <= 1_048_576)
-    });
-    if cells.is_none() {
-        return Err(api::error(
-            "native neighbour cell allocation budget exceeded",
-        ));
     }
     Ok(())
 }
@@ -378,7 +411,7 @@ object_binding!(engine_simulation_run_d1,"num_native_engine_simulation_run_d1","
 object_binding!(engine_simulation_state_d1,"num_native_engine_simulation_state_d1","","Actual native MD method with checked physical or explicitly reduced reference frames. Shapes, finite state, object identity and allocation/work limits precede native work.",false,(simulation:Handle<Simulation<1>>)->Dynamic,|ctx:&CallCtx<'_>,simulation:Handle<Simulation<1>>|{simulation.with(ctx,|s|Ok(Dynamic(system_data(&s.native.sys,&s.frame)?)))});
 object_binding!(engine_rdf_new_d1,"num_native_engine_rdf_new_d1","crate::sim::md_engine::Rdf<D>::new","Actual native MD method with checked physical or explicitly reduced reference frames. Shapes, finite state, object identity and allocation/work limits precede native work.",false,(f:Handle<Frame>,bins:usize,radius:Input)->NewObject<Radial<1>>,|ctx:&CallCtx<'_>,f:Handle<Frame>,bins:usize,radius:Input|{bound(bins,4096)?;if bins==0{return Err(api::error("RDF needs nonzero bins"));}let f=frame(ctx,&f)?;let rmax=f.scalar(&radius.0,LENGTH,false)?;if rmax<=0.0{return Err(api::error("RDF radius must be positive"));}let dims=f.dims.to_vec();Ok(NewObject::new(Radial{native:e::Rdf::<1>::new(bins,rmax),frame:f,frames:0},dims))});
 object_binding!(engine_rdf_add_frame_d1,"num_native_engine_rdf_add_frame_d1","crate::sim::md_engine::Rdf<D>::add_frame","Actual native MD method with checked physical or explicitly reduced reference frames. Shapes, finite state, object identity and allocation/work limits precede native work.",false,(rdf:Handle<Radial<1>>,system:Handle<System<1>>)->bool,|ctx:&CallCtx<'_>,rdf:Handle<Radial<1>>,system:Handle<System<1>>|{rdf.with_mut(ctx,|r|system.with(ctx,|s|{r.frame.same(&s.frame)?;if s.native.n()<2||s.native.bx.len.iter().any(|l|2.0*r.native.rmax>*l){return Err(api::error("RDF needs>=2particles and radius<=halfbox"));}
-if r.frames>=1_000_000{return Err(api::error("RDF frame-count budget exhausted"));}r.native.add_frame(&s.native);r.frames+=1;Ok(true)}))});
+if r.frames>=Radial::<1>::MAX_FRAMES{return Err(api::error("RDF frame-count budget exhausted"));}r.native.add_frame(&s.native);r.frames+=1;Ok(true)}))});
 object_binding!(engine_rdf_result_d1,"num_native_engine_rdf_result_d1","crate::sim::md_engine::Rdf<D>::result","Actual native MD method with checked physical or explicitly reduced reference frames. Shapes, finite state, object identity and allocation/work limits precede native work.",false,(rdf:Handle<Radial<1>>)->Dynamic,|ctx:&CallCtx<'_>,rdf:Handle<Radial<1>>|{rdf.with(ctx,|r|{if r.frames==0{return Err(api::error("RDF needs accumulated frames"));}let(x,y):(Vec<_>,Vec<_>)=r.native.result().into_iter().unzip();Ok(Dynamic(api::record(vec![("radius",r.frame.array(x,LENGTH)?),("density_ratio",Output::encode(y)?)])))})});
 object_binding!(engine_msd_d1,"num_native_engine_msd_d1","crate::sim::md_engine::msd","Actual native MD method with checked physical or explicitly reduced reference frames. Shapes, finite state, object identity and allocation/work limits precede native work.",false,(system:Handle<System<1>>,reference:Input)->Dynamic,|ctx:&CallCtx<'_>,system:Handle<System<1>>,reference:Input|{system.with(ctx,|s|{let r=rows::<1>(&s.frame,&reference.0,LENGTH)?;if r.len()!=s.native.n(){return Err(api::error("MSD reference size differs from system"));}Ok(Dynamic(s.frame.output(e::msd(&s.native,&r),[0,2,0,0],false)?))})});
 object_binding!(engine_vacf_d1,"num_native_engine_vacf_d1","crate::sim::md_engine::vacf","Actual native MD method with checked physical or explicitly reduced reference frames. Shapes, finite state, object identity and allocation/work limits precede native work.",false,(f:Handle<Frame>,frames:Input,lags:usize)->Dynamic,|ctx:&CallCtx<'_>,f:Handle<Frame>,frames:Input,lags:usize|{let f=frame(ctx,&f)?;let Value::Tensor(t)=&frames.0 else{return Err(api::error("VACF frame tensor expected"));};
@@ -428,7 +461,7 @@ object_binding!(engine_simulation_run_d2,"num_native_engine_simulation_run_d2","
 object_binding!(engine_simulation_state_d2,"num_native_engine_simulation_state_d2","","Actual native MD method with checked physical or explicitly reduced reference frames. Shapes, finite state, object identity and allocation/work limits precede native work.",false,(simulation:Handle<Simulation<2>>)->Dynamic,|ctx:&CallCtx<'_>,simulation:Handle<Simulation<2>>|{simulation.with(ctx,|s|Ok(Dynamic(system_data(&s.native.sys,&s.frame)?)))});
 object_binding!(engine_rdf_new_d2,"num_native_engine_rdf_new_d2","crate::sim::md_engine::Rdf<D>::new","Actual native MD method with checked physical or explicitly reduced reference frames. Shapes, finite state, object identity and allocation/work limits precede native work.",false,(f:Handle<Frame>,bins:usize,radius:Input)->NewObject<Radial<2>>,|ctx:&CallCtx<'_>,f:Handle<Frame>,bins:usize,radius:Input|{bound(bins,4096)?;if bins==0{return Err(api::error("RDF needs nonzero bins"));}let f=frame(ctx,&f)?;let rmax=f.scalar(&radius.0,LENGTH,false)?;if rmax<=0.0{return Err(api::error("RDF radius must be positive"));}let dims=f.dims.to_vec();Ok(NewObject::new(Radial{native:e::Rdf::<2>::new(bins,rmax),frame:f,frames:0},dims))});
 object_binding!(engine_rdf_add_frame_d2,"num_native_engine_rdf_add_frame_d2","crate::sim::md_engine::Rdf<D>::add_frame","Actual native MD method with checked physical or explicitly reduced reference frames. Shapes, finite state, object identity and allocation/work limits precede native work.",false,(rdf:Handle<Radial<2>>,system:Handle<System<2>>)->bool,|ctx:&CallCtx<'_>,rdf:Handle<Radial<2>>,system:Handle<System<2>>|{rdf.with_mut(ctx,|r|system.with(ctx,|s|{r.frame.same(&s.frame)?;if s.native.n()<2||s.native.bx.len.iter().any(|l|2.0*r.native.rmax>*l){return Err(api::error("RDF needs>=2particles and radius<=halfbox"));}
-if r.frames>=1_000_000{return Err(api::error("RDF frame-count budget exhausted"));}r.native.add_frame(&s.native);r.frames+=1;Ok(true)}))});
+if r.frames>=Radial::<2>::MAX_FRAMES{return Err(api::error("RDF frame-count budget exhausted"));}r.native.add_frame(&s.native);r.frames+=1;Ok(true)}))});
 object_binding!(engine_rdf_result_d2,"num_native_engine_rdf_result_d2","crate::sim::md_engine::Rdf<D>::result","Actual native MD method with checked physical or explicitly reduced reference frames. Shapes, finite state, object identity and allocation/work limits precede native work.",false,(rdf:Handle<Radial<2>>)->Dynamic,|ctx:&CallCtx<'_>,rdf:Handle<Radial<2>>|{rdf.with(ctx,|r|{if r.frames==0{return Err(api::error("RDF needs accumulated frames"));}let(x,y):(Vec<_>,Vec<_>)=r.native.result().into_iter().unzip();Ok(Dynamic(api::record(vec![("radius",r.frame.array(x,LENGTH)?),("density_ratio",Output::encode(y)?)])))})});
 object_binding!(engine_msd_d2,"num_native_engine_msd_d2","crate::sim::md_engine::msd","Actual native MD method with checked physical or explicitly reduced reference frames. Shapes, finite state, object identity and allocation/work limits precede native work.",false,(system:Handle<System<2>>,reference:Input)->Dynamic,|ctx:&CallCtx<'_>,system:Handle<System<2>>,reference:Input|{system.with(ctx,|s|{let r=rows::<2>(&s.frame,&reference.0,LENGTH)?;if r.len()!=s.native.n(){return Err(api::error("MSD reference size differs from system"));}Ok(Dynamic(s.frame.output(e::msd(&s.native,&r),[0,2,0,0],false)?))})});
 object_binding!(engine_vacf_d2,"num_native_engine_vacf_d2","crate::sim::md_engine::vacf","Actual native MD method with checked physical or explicitly reduced reference frames. Shapes, finite state, object identity and allocation/work limits precede native work.",false,(f:Handle<Frame>,frames:Input,lags:usize)->Dynamic,|ctx:&CallCtx<'_>,f:Handle<Frame>,frames:Input,lags:usize|{let f=frame(ctx,&f)?;let Value::Tensor(t)=&frames.0 else{return Err(api::error("VACF frame tensor expected"));};
@@ -478,7 +511,7 @@ object_binding!(engine_simulation_run_d3,"num_native_engine_simulation_run_d3","
 object_binding!(engine_simulation_state_d3,"num_native_engine_simulation_state_d3","","Actual native MD method with checked physical or explicitly reduced reference frames. Shapes, finite state, object identity and allocation/work limits precede native work.",false,(simulation:Handle<Simulation<3>>)->Dynamic,|ctx:&CallCtx<'_>,simulation:Handle<Simulation<3>>|{simulation.with(ctx,|s|Ok(Dynamic(system_data(&s.native.sys,&s.frame)?)))});
 object_binding!(engine_rdf_new_d3,"num_native_engine_rdf_new_d3","crate::sim::md_engine::Rdf<D>::new","Actual native MD method with checked physical or explicitly reduced reference frames. Shapes, finite state, object identity and allocation/work limits precede native work.",false,(f:Handle<Frame>,bins:usize,radius:Input)->NewObject<Radial<3>>,|ctx:&CallCtx<'_>,f:Handle<Frame>,bins:usize,radius:Input|{bound(bins,4096)?;if bins==0{return Err(api::error("RDF needs nonzero bins"));}let f=frame(ctx,&f)?;let rmax=f.scalar(&radius.0,LENGTH,false)?;if rmax<=0.0{return Err(api::error("RDF radius must be positive"));}let dims=f.dims.to_vec();Ok(NewObject::new(Radial{native:e::Rdf::<3>::new(bins,rmax),frame:f,frames:0},dims))});
 object_binding!(engine_rdf_add_frame_d3,"num_native_engine_rdf_add_frame_d3","crate::sim::md_engine::Rdf<D>::add_frame","Actual native MD method with checked physical or explicitly reduced reference frames. Shapes, finite state, object identity and allocation/work limits precede native work.",false,(rdf:Handle<Radial<3>>,system:Handle<System<3>>)->bool,|ctx:&CallCtx<'_>,rdf:Handle<Radial<3>>,system:Handle<System<3>>|{rdf.with_mut(ctx,|r|system.with(ctx,|s|{r.frame.same(&s.frame)?;if s.native.n()<2||s.native.bx.len.iter().any(|l|2.0*r.native.rmax>*l){return Err(api::error("RDF needs>=2particles and radius<=halfbox"));}
-if r.frames>=1_000_000{return Err(api::error("RDF frame-count budget exhausted"));}r.native.add_frame(&s.native);r.frames+=1;Ok(true)}))});
+if r.frames>=Radial::<3>::MAX_FRAMES{return Err(api::error("RDF frame-count budget exhausted"));}r.native.add_frame(&s.native);r.frames+=1;Ok(true)}))});
 object_binding!(engine_rdf_result_d3,"num_native_engine_rdf_result_d3","crate::sim::md_engine::Rdf<D>::result","Actual native MD method with checked physical or explicitly reduced reference frames. Shapes, finite state, object identity and allocation/work limits precede native work.",false,(rdf:Handle<Radial<3>>)->Dynamic,|ctx:&CallCtx<'_>,rdf:Handle<Radial<3>>|{rdf.with(ctx,|r|{if r.frames==0{return Err(api::error("RDF needs accumulated frames"));}let(x,y):(Vec<_>,Vec<_>)=r.native.result().into_iter().unzip();Ok(Dynamic(api::record(vec![("radius",r.frame.array(x,LENGTH)?),("density_ratio",Output::encode(y)?)])))})});
 object_binding!(engine_msd_d3,"num_native_engine_msd_d3","crate::sim::md_engine::msd","Actual native MD method with checked physical or explicitly reduced reference frames. Shapes, finite state, object identity and allocation/work limits precede native work.",false,(system:Handle<System<3>>,reference:Input)->Dynamic,|ctx:&CallCtx<'_>,system:Handle<System<3>>,reference:Input|{system.with(ctx,|s|{let r=rows::<3>(&s.frame,&reference.0,LENGTH)?;if r.len()!=s.native.n(){return Err(api::error("MSD reference size differs from system"));}Ok(Dynamic(s.frame.output(e::msd(&s.native,&r),[0,2,0,0],false)?))})});
 object_binding!(engine_vacf_d3,"num_native_engine_vacf_d3","crate::sim::md_engine::vacf","Actual native MD method with checked physical or explicitly reduced reference frames. Shapes, finite state, object identity and allocation/work limits precede native work.",false,(f:Handle<Frame>,frames:Input,lags:usize)->Dynamic,|ctx:&CallCtx<'_>,f:Handle<Frame>,frames:Input,lags:usize|{let f=frame(ctx,&f)?;let Value::Tensor(t)=&frames.0 else{return Err(api::error("VACF frame tensor expected"));};
@@ -744,6 +777,23 @@ pub(super) fn field_indices<const D: usize>(
     }
     Ok(())
 }
+macro_rules! radial_merge_binding {
+    ($module:ident, $name:literal, $dim:literal) => {
+        object_binding!(
+            $module,
+            $name,
+            "crate::sim::md_engine::Rdf<D>::merge",
+            "Combine radial distribution frame counts and per-frame ideal-gas references in the destination. Both accumulators must use the same bins, radius and physical reference frame. The source can be an independent accumulator.",
+            false,
+            (destination: Handle<Radial<$dim>>, source: Handle<Radial<$dim>>) -> bool,
+            |ctx, destination, source| merge_radial(ctx, &destination, &source)
+        );
+    };
+}
+radial_merge_binding!(engine_rdf_merge_d1, "num_native_engine_rdf_merge_d1", 1);
+radial_merge_binding!(engine_rdf_merge_d2, "num_native_engine_rdf_merge_d2", 2);
+radial_merge_binding!(engine_rdf_merge_d3, "num_native_engine_rdf_merge_d3", 3);
+
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     api::install(
         i,
@@ -830,6 +880,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &engine_simulation_state_d1::BINDING,
             &engine_rdf_new_d1::BINDING,
             &engine_rdf_add_frame_d1::BINDING,
+            &engine_rdf_merge_d1::BINDING,
             &engine_rdf_result_d1::BINDING,
             &engine_msd_d1::BINDING,
             &engine_vacf_d1::BINDING,
@@ -876,6 +927,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &engine_simulation_state_d2::BINDING,
             &engine_rdf_new_d2::BINDING,
             &engine_rdf_add_frame_d2::BINDING,
+            &engine_rdf_merge_d2::BINDING,
             &engine_rdf_result_d2::BINDING,
             &engine_msd_d2::BINDING,
             &engine_vacf_d2::BINDING,
@@ -922,6 +974,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &engine_simulation_state_d3::BINDING,
             &engine_rdf_new_d3::BINDING,
             &engine_rdf_add_frame_d3::BINDING,
+            &engine_rdf_merge_d3::BINDING,
             &engine_rdf_result_d3::BINDING,
             &engine_msd_d3::BINDING,
             &engine_vacf_d3::BINDING,

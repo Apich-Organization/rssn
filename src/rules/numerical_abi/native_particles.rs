@@ -31,6 +31,7 @@ const KB: f64 = 1.380_649e-23;
 const MASS: [i32; 4] = [1, 0, 0, 0];
 const LENGTH: [i32; 4] = [0, 1, 0, 0];
 const TIME: [i32; 4] = [0, 0, 1, 0];
+const INVERSE_LENGTH: [i32; 4] = [0, -1, 0, 0];
 const CHARGE: [i32; 4] = [0, 0, 0, 1];
 const VELOCITY: [i32; 4] = [0, 1, -1, 0];
 const FORCE: [i32; 4] = [1, 1, -2, 0];
@@ -510,6 +511,28 @@ fn thermostat(
     }
 }
 object_binding!(run_engine_md,"num_native_md_run_engine_md","crate::sim::physics_md::run_engine_md","Run the real native MD engine. Physical thermal targets are Kelvin in SI frames and reduced kBT in normalized frames; LJ energy/length, time, box, count and work bounds are validated.",false,(cloud:Handle<Cloud>,box_size:Input,epsilon:Input,sigma:Input,cutoff:Input,dt:Input,steps:usize,control:Input)->Dynamic,|ctx,cloud,box_size,epsilon,sigma,cutoff,dt,steps,control|cloud.with_mut(ctx,|c|{if c.dimension>3||steps>65536||c.native.len().checked_mul(c.native.len()).and_then(|n|n.checked_mul(steps)).is_none_or(|n|n>100000000){return Err(api::error("MD engine dimension/pair-step work budget exceeded"));}let size=c.frame.vector(&box_size.0,LENGTH)?;let epsilon=c.frame.scalar(&epsilon.0,ENERGY,false)?;let sigma=c.frame.scalar(&sigma.0,LENGTH,false)?;let cutoff=c.frame.scalar(&cutoff.0,LENGTH,false)?;let dt=c.frame.scalar(&dt.0,TIME,false)?;if size.len()!=c.dimension||size.iter().any(|v|*v<=0.0)||epsilon<0.0||sigma<=0.0||cutoff<=0.0||dt<=0.0{return Err(api::error("MD engine physical controls invalid"));}let t=thermostat(&c.frame,&control.0)?;let energy=md::run_engine_md(&mut c.native,&size,(epsilon,sigma,cutoff),dt,steps,t).map_err(api::error)?;c.validate()?;Ok(Dynamic(c.frame.output(energy,ENERGY,false)?))}));
+object_binding!(
+    morse_radial,
+    "num_native_md_morse_radial",
+    "crate::sim::physics_md::morse_radial",
+    "Evaluate the Morse energy and signed radial force in a checked reference frame. Energy is zero at the equilibrium distance. Positive force points toward increasing separation. A zero separation returns the one-sided radial force.",
+    false,
+    (f: Handle<Frame>, distance: Input, energy: Input, inverse_length: Input, equilibrium: Input) -> Dynamic,
+    |ctx, f, distance, energy, inverse_length, equilibrium| {
+        let f = frame(ctx, &f)?;
+        let distance = f.scalar(&distance.0, LENGTH, false)?;
+        let energy = f.scalar(&energy.0, ENERGY, false)?;
+        let inverse_length = f.scalar(&inverse_length.0, INVERSE_LENGTH, false)?;
+        let equilibrium = f.scalar(&equilibrium.0, LENGTH, false)?;
+        let (energy, force) =
+            md::morse_radial(distance, energy, inverse_length, equilibrium).map_err(api::error)?;
+        Ok(Dynamic(api::record(vec![
+            ("energy", f.output(energy, ENERGY, false)?),
+            ("radial_force", f.output(force, FORCE, false)?),
+        ])))
+    }
+);
+
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     engine::install(i)?;
     dynamics::install(i)?;
@@ -545,6 +568,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &neighbour_pairs::BINDING,
             &lennard_jones_interaction::BINDING,
             &morse_interaction::BINDING,
+            &morse_radial::BINDING,
             &harmonic_interaction::BINDING,
             &coulomb_interaction::BINDING,
             &soft_sphere_interaction::BINDING,

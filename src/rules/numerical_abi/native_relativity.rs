@@ -29,6 +29,22 @@ struct Frame {
     physical: bool,
 }
 impl Frame {
+    fn scale_length(
+        &self,
+        value: f64,
+        power: i32,
+    ) -> Result<f64, OpError> {
+        let references = [self.length; 2];
+        let factors = references
+            .get(..power.unsigned_abs() as usize)
+            .ok_or_else(|| api::error("unsupported relativity length power"))?;
+        if power < 0 {
+            api::scale_product(value, &[], factors)
+        } else {
+            api::scale_product(value, factors, &[])
+        }
+    }
+
     fn dim(
         &self,
         p: i32,
@@ -46,12 +62,7 @@ impl Frame {
         p: i32,
     ) -> Result<f64, OpError> {
         api::same_dimension(&api::dimension(v)?, &self.dim(p))?;
-        let refs = vec![self.length; p.unsigned_abs() as usize];
-        api::scale_product(
-            super::numeric(v, 0)?,
-            if p < 0 { &refs } else { &[] },
-            if p > 0 { &refs } else { &[] },
-        )
+        self.scale_length(super::numeric(v, 0)?, -p)
     }
 
     fn out(
@@ -59,15 +70,7 @@ impl Frame {
         x: f64,
         p: i32,
     ) -> Result<Value, OpError> {
-        let refs = vec![self.length; p.unsigned_abs() as usize];
-        api::quantity(
-            api::scale_product(
-                x,
-                if p > 0 { &refs } else { &[] },
-                if p < 0 { &refs } else { &[] },
-            )?,
-            self.dim(p),
-        )
+        api::quantity(self.scale_length(x, p)?, self.dim(p))
     }
 
     fn time(
@@ -119,9 +122,55 @@ struct Metric {
     native: r::KerrNewman,
     frame: Frame,
 }
+impl Metric {
+    fn horizon(&self) -> Result<Option<Dynamic>, OpError> {
+        if let Some(radius) = self.native.horizon() {
+            return self.frame.out(radius, 1).map(Dynamic).map(Some);
+        }
+        let r::KerrNewman { m, a, q } = self.native;
+        if !self.frame.physical || self.frame.length >= 1.0 || m <= f64::MAX / 2.0 {
+            return Ok(None);
+        }
+        // Preserve the superextremal classification if halving a tiny second
+        // parameter would erase it at the extremal boundary.
+        let leading = a.abs().max(q.abs());
+        let trailing = a.abs().min(q.abs());
+        if leading.partial_cmp(&m) == Some(std::cmp::Ordering::Equal) && trailing > 0.0 {
+            return Ok(None);
+        }
+        let scaled = r::KerrNewman {
+            m: m * 0.5,
+            a: a * 0.5,
+            q: q * 0.5,
+        };
+        scaled
+            .horizon()
+            .map(|radius| {
+                let length = api::scale_product(radius, &[2.0, self.frame.length], &[])?;
+                api::quantity(length, self.frame.dim(1)).map(Dynamic)
+            })
+            .transpose()
+    }
+}
 struct Geodesic {
     native: r::Geodesic,
     frame: Frame,
+}
+impl Geodesic {
+    fn try_advance<T>(
+        &mut self,
+        integrate: impl FnOnce(&mut r::Geodesic) -> Result<T, String>,
+    ) -> Result<(T, Dynamic), OpError> {
+        let mut next = Self {
+            native: self.native,
+            frame: self.frame.clone(),
+        };
+        let outcome = integrate(&mut next.native).map_err(api::error)?;
+        next.validate()?;
+        let state = geo(&next)?;
+        self.native = next.native;
+        Ok((outcome, state))
+    }
 }
 struct Orbit {
     native: kerr::KerrOrbit,
@@ -212,7 +261,10 @@ fn geo(g: &Geodesic) -> Result<Dynamic, OpError> {
         ("energy_per_rest_mass", Value::Float(n.energy)),
         ("angular_momentum_per_rest_mass", f.out(n.lz, 1)?),
         ("proper_time", f.time(n.lambda)?),
-        ("constraint", Value::Float(n.constraint())),
+        (
+            "constraint",
+            api::quantity(n.constraint(), DimExpr::Dimless)?,
+        ),
     ])))
 }
 fn field(
@@ -276,7 +328,12 @@ object_binding!(frame,"num_native_relativity_frame","","Native geometrized relat
 object_binding!(frame_normalized,"num_native_relativity_frame_normalized","","Native geometrized relativity with positive length reference. Mass, spin and charge metric parameters use geometric lengths; coordinate/proper time restore seconds, Mino time uses inverse length, specific energy and angles are dimensionless.",false,()->NewObject<Frame>,|ctx,|{let _=ctx;Ok(NewObject::normalized(Frame{length:1.,physical:false}))});
 object_binding!(metric,"num_native_relativity_metric","","Native geometrized relativity with positive length reference. Mass, spin and charge metric parameters use geometric lengths; coordinate/proper time restore seconds, Mino time uses inverse length, specific energy and angles are dimensionless.",false,(f:Handle<Frame>,mass_geometric:Input,spin:Input,charge_geometric:Input)->NewObject<Metric>,|ctx,f,mass_geometric,spin,charge_geometric|{let _=ctx;let f=frame(ctx,&f)?;let native=r::KerrNewman{m:f.read(&mass_geometric.0,1)?,a:f.read(&spin.0,1)?,q:f.read(&charge_geometric.0,1)?};let d=dims(&f);Ok(NewObject::new(Metric{native,frame:f},d))});
 object_binding!(schwarzschild,"num_native_relativity_schwarzschild","crate::sim::relativity::KerrNewman::schwarzschild","Native geometrized relativity with positive length reference. Mass, spin and charge metric parameters use geometric lengths; coordinate/proper time restore seconds, Mino time uses inverse length, specific energy and angles are dimensionless.",false,(f:Handle<Frame>,mass_geometric:Input)->NewObject<Metric>,|ctx,f,mass_geometric|{let _=ctx;let f=frame(ctx,&f)?;let native=r::KerrNewman::schwarzschild(f.read(&mass_geometric.0,1)?);let d=dims(&f);Ok(NewObject::new(Metric{native,frame:f},d))});
-object_binding!(horizon,"num_native_relativity_horizon","crate::sim::relativity::KerrNewman::horizon","Native geometrized relativity with positive length reference. Mass, spin and charge metric parameters use geometric lengths; coordinate/proper time restore seconds, Mino time uses inverse length, specific energy and angles are dimensionless.",false,(a:Handle<Metric>)->Maybe<Dynamic>,|ctx,a|{let _=ctx;a.with(ctx,|a|Ok(Maybe(a.native.horizon().map(|x|a.frame.out(x,1).map(Dynamic)).transpose()?)))});
+object_binding!(
+    horizon, "num_native_relativity_horizon", "crate::sim::relativity::KerrNewman::horizon",
+    "Returns the optional outer Kerr–Newman horizon radius. The result is a measured Length in a physical frame and a Float in a normalized frame.\n\nA superextremal metric has no horizon and returns None.\n\nThe adapter restores the radius without requiring an intermediate normalized radius to fit in Float when the physical result is representable.",
+    false, (a:Handle<Metric>) -> Maybe<Dynamic>,
+    |ctx,a| a.with(ctx, |a| a.horizon().map(Maybe))
+);
 object_binding!(isco,"num_native_relativity_isco","crate::sim::relativity::KerrNewman::isco","Native geometrized relativity with positive length reference. Mass, spin and charge metric parameters use geometric lengths; coordinate/proper time restore seconds, Mino time uses inverse length, specific energy and angles are dimensionless.",false,(a:Handle<Metric>,prograde:bool)->Maybe<Dynamic>,|ctx,a,prograde|{let _=ctx;a.with(ctx,|a|Ok(Maybe(a.native.isco(prograde).map(|x|a.frame.out(x,1).map(Dynamic)).transpose()?)))});
 object_binding!(photon_orbit,"num_native_relativity_photon_orbit","crate::sim::relativity::KerrNewman::photon_orbit","Native geometrized relativity with positive length reference. Mass, spin and charge metric parameters use geometric lengths; coordinate/proper time restore seconds, Mino time uses inverse length, specific energy and angles are dimensionless.",false,(a:Handle<Metric>,prograde:bool)->Maybe<Dynamic>,|ctx,a,prograde|{let _=ctx;a.with(ctx,|a|Ok(Maybe(a.native.photon_orbit(prograde).map(|x|a.frame.out(x,1).map(Dynamic)).transpose()?)))});
 object_binding!(circular_orbit,"num_native_relativity_circular_orbit","crate::sim::relativity::KerrNewman::circular_orbit","Native geometrized relativity with positive length reference. Mass, spin and charge metric parameters use geometric lengths; coordinate/proper time restore seconds, Mino time uses inverse length, specific energy and angles are dimensionless.",false,(a:Handle<Metric>,radius:Input,prograde:bool)->Maybe<Dynamic>,|ctx,a,radius,prograde|{let _=ctx;a.with(ctx,|a|{let r=a.frame.read(&radius.0,1)?;Ok(Maybe(a.native.circular_orbit(r,prograde).map(|(energy,angular,frequency)|Ok::<_,OpError>(Dynamic(api::record(vec![("energy_per_rest_mass",Value::Float(energy)),("angular_momentum_per_rest_mass",a.frame.out(angular,1)?),("angular_frequency",if a.frame.physical{api::quantity(api::scale_product(frequency,&[C],&[a.frame.length])?,DimExpr::base("Time").pow(-1))?}else{Value::Float(frequency)})])))).transpose()?))})});
@@ -286,8 +343,32 @@ object_binding!(geodesic_from_init,"num_native_relativity_geodesic_from_init","c
 object_binding!(geodesic_circular,"num_native_relativity_geodesic_circular","crate::sim::relativity::Geodesic::circular","Native geometrized relativity with positive length reference. Mass, spin and charge metric parameters use geometric lengths; coordinate/proper time restore seconds, Mino time uses inverse length, specific energy and angles are dimensionless.",false,(a:Handle<Metric>,radius:Input,prograde:bool)->NewObject<Geodesic>,|ctx,a,radius,prograde|{let _=ctx;a.with(ctx,|a|Ok(NewObject::new(Geodesic{native:r::Geodesic::circular(a.native,a.frame.read(&radius.0,1)?,prograde).map_err(api::error)?,frame:a.frame.clone()},dims(&a.frame))))});
 object_binding!(geodesic_state,"num_native_relativity_geodesic_state","","Native geometrized relativity with positive length reference. Mass, spin and charge metric parameters use geometric lengths; coordinate/proper time restore seconds, Mino time uses inverse length, specific energy and angles are dimensionless.",false,(a:Handle<Geodesic>)->Dynamic,|ctx,a|{let _=ctx;a.with(ctx,geo)});
 object_binding!(geodesic_constraint,"num_native_relativity_geodesic_constraint","crate::sim::relativity::Geodesic::constraint","Native geometrized relativity with positive length reference. Mass, spin and charge metric parameters use geometric lengths; coordinate/proper time restore seconds, Mino time uses inverse length, specific energy and angles are dimensionless.",false,(a:Handle<Geodesic>)->f64,|ctx,a|{let _=ctx;a.with(ctx,|a|Ok(a.native.constraint()))});
-object_binding!(geodesic_step,"num_native_relativity_geodesic_step","crate::sim::relativity::Geodesic::step","Native geometrized relativity with positive length reference. Mass, spin and charge metric parameters use geometric lengths; coordinate/proper time restore seconds, Mino time uses inverse length, specific energy and angles are dimensionless.",false,(a:Handle<Geodesic>,h:Input,project:bool)->Dynamic,|ctx,a,h,project|{let _=ctx;a.with_mut(ctx,|a|{let h=a.frame.time_in(&h.0)?;if h==0.0{return Err(api::error("zero proper-time step"));}a.native.step(h,project).map_err(api::error)?;a.validate()?;geo(a)})});
-object_binding!(geodesic_integrate,"num_native_relativity_geodesic_integrate","crate::sim::relativity::Geodesic::integrate","Native geometrized relativity with positive length reference. Mass, spin and charge metric parameters use geometric lengths; coordinate/proper time restore seconds, Mino time uses inverse length, specific energy and angles are dimensionless.",false,(a:Handle<Geodesic>,h:Input,steps:usize,project:bool,r_stop:Input,r_max:Input)->Dynamic,|ctx,a,h,steps,project,r_stop,r_max|{let _=ctx;a.with_mut(ctx,|a|{if steps>65536{return Err(api::error("geodesic step budget exceeded"));}let h=a.frame.time_in(&h.0)?;let lo=a.frame.read(&r_stop.0,1)?;let hi=a.frame.read(&r_max.0,1)?;if h==0.0||lo<=0.0||hi<=lo{return Err(api::error("geodesic controls invalid"));}let status=a.native.integrate(h,steps,project,lo,hi).map_err(api::error)?;a.validate()?;let data=geo(a)?.0;Ok(Dynamic(api::record(vec![("termination",Value::String(format!("{status:?}"))),("state",data)])))})});
+object_binding!(
+    geodesic_step, "num_native_relativity_geodesic_step", "crate::sim::relativity::Geodesic::step",
+    "Advances a retained geodesic by one nonzero signed implicit-midpoint step. Supply Time in a physical frame or an affine step in a normalized frame. The project flag projects the new momentum onto the mass shell.\n\nReturns the new state in frame units. The proper_time field carries the affine parameter, which is proper time for a unit timelike mass shell.\n\nIntegration and unit conversion must succeed before the retained handle is updated.",
+    false, (a:Handle<Geodesic>,h:Input,project:bool) -> Dynamic,
+    |ctx,a,h,project| a.with_mut(ctx, |a| {
+        let h = a.frame.time_in(&h.0)?;
+        if h == 0.0 { return Err(api::error("zero affine step")); }
+        a.try_advance(|native| native.step(h, project)).map(|((), state)| state)
+    })
+);
+object_binding!(
+    geodesic_integrate, "num_native_relativity_geodesic_integrate", "crate::sim::relativity::Geodesic::integrate",
+    "Advances a retained geodesic by up to 65,536 nonzero signed implicit-midpoint steps. Supply Time and ordered positive stopping radii in a physical frame or numerical values in a normalized frame.\n\nReturns a record with termination (Steps, Horizon or Escaped) and the final state in frame units. The project flag requests mass-shell projection.\n\nIntegration and unit conversion must succeed before the retained handle is updated.",
+    false, (a:Handle<Geodesic>,h:Input,steps:usize,project:bool,r_stop:Input,r_max:Input) -> Dynamic,
+    |ctx,a,h,steps,project,r_stop,r_max| a.with_mut(ctx, |a| {
+        if steps > 65_536 { return Err(api::error("geodesic step budget exceeded")); }
+        let h = a.frame.time_in(&h.0)?;
+        let lo = a.frame.read(&r_stop.0, 1)?;
+        let hi = a.frame.read(&r_max.0, 1)?;
+        if h == 0.0 || lo <= 0.0 || hi <= lo { return Err(api::error("geodesic controls invalid")); }
+        let (status, state) = a.try_advance(|native| native.integrate(h, steps, project, lo, hi))?;
+        Ok(Dynamic(api::record(vec![
+            ("termination", Value::String(format!("{status:?}"))), ("state", state.0),
+        ])))
+    })
+);
 object_binding!(orbit_new,"num_native_relativity_orbit_new","crate::sim::kerr::KerrOrbit::new","Native geometrized relativity with positive length reference. Mass, spin and charge metric parameters use geometric lengths; coordinate/proper time restore seconds, Mino time uses inverse length, specific energy and angles are dimensionless.",false,(f:Handle<Frame>,mass:Input,spin:Input,energy:f64,angular:Input,carter:Input,radius:Input,theta:f64,phi:f64,radial_out:bool,polar_down:bool)->NewObject<Orbit>,|ctx,f,mass,spin,energy,angular,carter,radius,theta,phi,radial_out,polar_down|{let _=ctx;let f=frame(ctx,&f)?;let native=kerr::KerrOrbit::new(f.read(&mass.0,1)?,f.read(&spin.0,1)?,(energy,f.read(&angular.0,1)?,f.read(&carter.0,2)?),(f.read(&radius.0,1)?,theta,phi),(radial_out,polar_down)).map_err(api::error)?;let d=dims(&f);Ok(NewObject::new(Orbit{native,frame:f},d))});
 object_binding!(orbit_from_apsides,"num_native_relativity_orbit_from_apsides","crate::sim::kerr::KerrOrbit::from_apsides","Native geometrized relativity with positive length reference. Mass, spin and charge metric parameters use geometric lengths; coordinate/proper time restore seconds, Mino time uses inverse length, specific energy and angles are dimensionless.",false,(f:Handle<Frame>,mass:Input,spin:Input,r_peri:Input,r_apo:Input,z_minus:f64,prograde:bool)->NewObject<Orbit>,|ctx,f,mass,spin,r_peri,r_apo,z_minus,prograde|{let _=ctx;let f=frame(ctx,&f)?;let native=kerr::KerrOrbit::from_apsides(f.read(&mass.0,1)?,f.read(&spin.0,1)?,(f.read(&r_peri.0,1)?,f.read(&r_apo.0,1)?),z_minus,prograde).map_err(api::error)?;let d=dims(&f);Ok(NewObject::new(Orbit{native,frame:f},d))});
 object_binding!(orbit_radius,"num_native_relativity_orbit_radius","crate::sim::kerr::KerrOrbit::radius","Native geometrized relativity with positive length reference. Mass, spin and charge metric parameters use geometric lengths; coordinate/proper time restore seconds, Mino time uses inverse length, specific energy and angles are dimensionless.",false,(a:Handle<Orbit>,mino_time:Input)->Dynamic,|ctx,a,mino_time|{let _=ctx;a.with(ctx,|a|Ok(Dynamic(a.frame.out(a.native.radius(a.frame.read(&mino_time.0,-1)?),1)?)))});
@@ -312,9 +393,9 @@ object_binding!(schild_hamiltonian,"num_native_relativity_schild_hamiltonian","c
 object_binding!(schild_energy,"num_native_relativity_schild_energy","crate::sim::kerr::KerrSchildGeodesic::energy","Native geometrized relativity with positive length reference. Mass, spin and charge metric parameters use geometric lengths; coordinate/proper time restore seconds, Mino time uses inverse length, specific energy and angles are dimensionless.",false,(a:Handle<Schild>)->f64,|ctx,a|{let _=ctx;a.with(ctx,|a|Ok(a.native.energy()))});
 object_binding!(schild_boyer_lindquist,"num_native_relativity_schild_boyer_lindquist","crate::sim::kerr::KerrSchildGeodesic::boyer_lindquist","Native geometrized relativity with positive length reference. Mass, spin and charge metric parameters use geometric lengths; coordinate/proper time restore seconds, Mino time uses inverse length, specific energy and angles are dimensionless.",false,(a:Handle<Schild>)->Dynamic,|ctx,a|{let _=ctx;a.with(ctx,|a|{let(r,theta,phi)=a.native.boyer_lindquist();Ok(Dynamic(api::record(vec![("radius",a.frame.out(r,1)?),("theta",Value::Float(theta)),("phi",Value::Float(phi))])))})});
 object_binding!(photon_radius,"num_native_relativity_photon_radius","crate::sim::kerr::kerr_photon_orbit_radius","Native geometrized relativity with positive length reference. Mass, spin and charge metric parameters use geometric lengths; coordinate/proper time restore seconds, Mino time uses inverse length, specific energy and angles are dimensionless.",false,(f:Handle<Frame>,mass:Input,spin:Input,prograde:bool)->Dynamic,|ctx,f,mass,spin,prograde|{let _=ctx;let f=frame(ctx,&f)?;Ok(Dynamic(f.out(kerr::kerr_photon_orbit_radius(f.read(&mass.0,1)?,f.read(&spin.0,1)?,prograde),1)?))});
-object_binding!(shadow_analytic,"num_native_relativity_shadow_analytic","crate::sim::kerr::shadow_boundary_analytic","Native geometrized relativity with positive length reference. Mass, spin and charge metric parameters use geometric lengths; coordinate/proper time restore seconds, Mino time uses inverse length, specific energy and angles are dimensionless.",false,(f:Handle<Frame>,mass:Input,spin:Input,theta:f64,points:usize)->Dynamic,|ctx,f,mass,spin,theta,points|{let _=ctx;if points>2048{return Err(api::error("shadow curve point budget exceeded"));}let f=frame(ctx,&f)?;curve(kerr::shadow_boundary_analytic(f.read(&mass.0,1)?,f.read(&spin.0,1)?,theta,points).map_err(api::error)?,&f)});
-object_binding!(trace_ray,"num_native_relativity_trace_ray","crate::sim::kerr::trace_ray","Native geometrized relativity with positive length reference. Mass, spin and charge metric parameters use geometric lengths; coordinate/proper time restore seconds, Mino time uses inverse length, specific energy and angles are dimensionless.",false,(f:Handle<Frame>,mass:Input,spin:Input,theta:f64,radius:Input,xi:Input,eta:Input,polar_down:bool)->Dynamic,|ctx,f,mass,spin,theta,radius,xi,eta,polar_down|{let _=ctx;let f=frame(ctx,&f)?;Ok(ray(kerr::trace_ray(f.read(&mass.0,1)?,f.read(&spin.0,1)?,theta,f.read(&radius.0,1)?,(f.read(&xi.0,1)?,f.read(&eta.0,2)?),polar_down).map_err(api::error)?))});
-object_binding!(trace_shadow,"num_native_relativity_trace_shadow","crate::sim::kerr::trace_shadow","Native geometrized relativity with positive length reference. Mass, spin and charge metric parameters use geometric lengths; coordinate/proper time restore seconds, Mino time uses inverse length, specific energy and angles are dimensionless.",false,(f:Handle<Frame>,mass:Input,spin:Input,theta:f64,radius:Input,points:usize)->Dynamic,|ctx,f,mass,spin,theta,radius,points|{let _=ctx;if points>64{return Err(api::error("numerical shadow ray work budget exceeded"));}let f=frame(ctx,&f)?;curve(kerr::trace_shadow(f.read(&mass.0,1)?,f.read(&spin.0,1)?,theta,f.read(&radius.0,1)?,points).map_err(api::error)?,&f)});
+object_binding!(shadow_analytic,"num_native_relativity_shadow_analytic","crate::sim::kerr::shadow_boundary_analytic","Kerr shadow for a distant off-axis observer. Mass and spin use geometrized lengths, theta is in radians, and points is the sample count per half (2 through 2048). Returns a [2*points, 2] tensor of alpha and beta in the frame length units.",false,(f:Handle<Frame>,mass:Input,spin:Input,theta:f64,points:usize)->Dynamic,|ctx,f,mass,spin,theta,points|{let _=ctx;if points>2048{return Err(api::error("shadow curve point budget exceeded"));}let f=frame(ctx,&f)?;curve(kerr::shadow_boundary_analytic(f.read(&mass.0,1)?,f.read(&spin.0,1)?,theta,points).map_err(api::error)?,&f)});
+object_binding!(trace_ray,"num_native_relativity_trace_ray","crate::sim::kerr::trace_ray","Trace one Kerr null geodesic from the given observer radius and inclination in radians. Mass, spin, radius and xi use frame lengths and eta uses squared lengths. Returns Captured or Escaped with dimensionless arrival angles.",false,(f:Handle<Frame>,mass:Input,spin:Input,theta:f64,radius:Input,xi:Input,eta:Input,polar_down:bool)->Dynamic,|ctx,f,mass,spin,theta,radius,xi,eta,polar_down|{let _=ctx;let f=frame(ctx,&f)?;Ok(ray(kerr::trace_ray(f.read(&mass.0,1)?,f.read(&spin.0,1)?,theta,f.read(&radius.0,1)?,(f.read(&xi.0,1)?,f.read(&eta.0,2)?),polar_down).map_err(api::error)?))});
+object_binding!(trace_shadow,"num_native_relativity_trace_shadow","crate::sim::kerr::trace_shadow","Find the Kerr shadow by tracing up to 64 regularly spaced image-plane directions. Mass, spin and observer radius use frame lengths and inclination is in radians. Returns a [points, 2] tensor in frame length units in increasing image angle.",false,(f:Handle<Frame>,mass:Input,spin:Input,theta:f64,radius:Input,points:usize)->Dynamic,|ctx,f,mass,spin,theta,radius,points|{let _=ctx;if points>64{return Err(api::error("numerical shadow ray work budget exceeded"));}let f=frame(ctx,&f)?;curve(kerr::trace_shadow(f.read(&mass.0,1)?,f.read(&spin.0,1)?,theta,f.read(&radius.0,1)?,points).map_err(api::error)?,&f)});
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     models::install(i)?;
     api::install(

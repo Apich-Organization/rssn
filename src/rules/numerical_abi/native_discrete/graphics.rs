@@ -6,6 +6,7 @@ use crate::kernels::computer_graphics::Intersection;
 use crate::kernels::computer_graphics::Plane;
 use crate::kernels::computer_graphics::Point2D;
 use crate::kernels::computer_graphics::Point3D;
+use crate::kernels::computer_graphics::PreparedTriangle;
 use crate::kernels::computer_graphics::Quaternion;
 use crate::kernels::computer_graphics::Ray;
 use crate::kernels::computer_graphics::Sphere;
@@ -97,6 +98,55 @@ struct Frame {
 struct GfxRay {
     ray: Ray,
     reference: f64,
+}
+struct GfxPreparedTriangle {
+    triangle: PreparedTriangle,
+    reference: f64,
+}
+
+const MAX_TRIANGLE_RAYS: usize = 4096;
+
+struct TriangleOrigins(Vec<Handle<Point3D>>);
+
+impl NativeArg for TriangleOrigins {
+    fn ty() -> TypeExpr {
+        api::tensor_type(1, TypeExpr::Opaque(Point3D::KIND.into()))
+    }
+
+    fn decode(
+        value: &Value,
+        index: usize,
+        ctx: &CallCtx<'_>,
+    ) -> Result<Self, OpError> {
+        let Value::Tensor(tensor) = value else {
+            return Err(error("expected a rank-one tensor of ray origins"));
+        };
+        if tensor.shape != [tensor.data.len()] || tensor.data.len() > MAX_TRIANGLE_RAYS {
+            return Err(error(
+                "ray origins must be rank one with at most 4096 points",
+            ));
+        }
+        let origins = tensor
+            .data
+            .iter()
+            .map(|v| Handle::<Point3D>::decode(v, index, ctx))
+            .collect::<Result<_, _>>()?;
+        Ok(Self(origins))
+    }
+}
+
+impl NativeType for GfxPreparedTriangle {
+    const KIND: &'static str = "rssn/native/discrete/graphics-prepared-triangle/v1";
+    const MAX_BYTES: usize = 512;
+
+    fn validate(&self) -> Result<(), OpError> {
+        if self.reference <= 0.0 || !self.reference.is_finite() {
+            return Err(error(
+                "triangle coordinate reference must be positive and finite",
+            ));
+        }
+        Ok(())
+    }
 }
 impl NativeType for Frame {
     const KIND: &'static str = "rssn/native/discrete/graphics-frame/v1";
@@ -225,6 +275,156 @@ fn hit(
         .transpose()?,
     ))
 }
+
+fn rescale_triangle_point(
+    p: Point3D,
+    numerator: &[f64],
+    denominator: &[f64],
+) -> Result<Point3D, OpError> {
+    let scale = |value| api::scale_without_underflow(value, numerator, denominator);
+    Ok(Point3D::new(scale(p.x)?, scale(p.y)?, scale(p.z)?))
+}
+
+fn triangle_point(
+    point: &Handle<Point3D>,
+    dimension: &DimExpr,
+    reference: f64,
+    ctx: &CallCtx<'_>,
+) -> Result<Point3D, OpError> {
+    api::same_dimension(dimension, &object_dimension(point, ctx)?)?;
+    point.with(ctx, |p| rescale_triangle_point(*p, &[], &[reference]))
+}
+
+fn prepared_triangle(
+    vertices: [&Handle<Point3D>; 3],
+    coordinate_reference: &Input,
+    ctx: &CallCtx<'_>,
+) -> Result<Maybe<NewObject<GfxPreparedTriangle>>, OpError> {
+    let (reference, dimension) = api::reference(&coordinate_reference.0)?;
+    let [a, b, c] = vertices;
+    let a = triangle_point(a, &dimension, reference, ctx)?;
+    let b = triangle_point(b, &dimension, reference, ctx)?;
+    let c = triangle_point(c, &dimension, reference, ctx)?;
+    Ok(Maybe(PreparedTriangle::new(&a, &b, &c).map(|triangle| {
+        NewObject::new(GfxPreparedTriangle { triangle, reference }, vec![dimension])
+    })))
+}
+
+fn triangle_ray_bounds(
+    min_t: &Input,
+    max_t: Option<&api::Input>,
+    dimension: &DimExpr,
+    reference: f64,
+) -> Result<(f64, f64), OpError> {
+    let read = |value: &Value| {
+        api::same_dimension(dimension, &api::dimension(value)?)?;
+        numeric(value, 0)
+    };
+    let min = read(&min_t.0)?;
+    let max = max_t.map(|input| read(&input.0)).transpose()?;
+    if min < 0.0 || max.is_some_and(|max| max < min) {
+        return Err(error("ray bounds require 0 <= min_t <= max_t"));
+    }
+    let scale = |value| api::scale_without_underflow(value, &[], &[reference]);
+    Ok((
+        scale(min)?,
+        max.map(scale).transpose()?.unwrap_or(f64::INFINITY),
+    ))
+}
+
+fn physical_triangle_hit(
+    h: Intersection,
+    reference: f64,
+) -> Result<Intersection, OpError> {
+    unit(&h.normal)?;
+    Ok(Intersection {
+        t: api::scale_without_underflow(h.t, &[reference], &[])?,
+        point: rescale_triangle_point(h.point, &[reference], &[])?,
+        normal: h.normal,
+    })
+}
+
+fn prepared_triangle_hit(
+    triangle: &Handle<GfxPreparedTriangle>,
+    ray: &Handle<GfxRay>,
+    min_t: &Input,
+    max_t: Option<&api::Input>,
+    ctx: &CallCtx<'_>,
+) -> Result<Maybe<Dynamic>, OpError> {
+    let dimension = same(triangle, ray, ctx)?;
+    let physical = triangle.with(ctx, |t| {
+        ray.with(ctx, |r| {
+            let (min, max) = triangle_ray_bounds(min_t, max_t, &dimension, t.reference)?;
+            let origin = rescale_triangle_point(r.ray.origin, &[r.reference], &[t.reference])?;
+            let ray = Ray::new(origin, r.ray.direction);
+            t.triangle
+                .intersect(&ray, min, max)
+                .map(|h| physical_triangle_hit(h, t.reference))
+                .transpose()
+        })
+    })?;
+    hit(physical, 1.0, dimension, ctx)
+}
+
+fn batched_triangle_record(
+    hits: Vec<Option<Intersection>>,
+    reference: f64,
+    dimension: &DimExpr,
+) -> Result<Dynamic, OpError> {
+    let count = hits.len();
+    let mut mask = Vec::with_capacity(count);
+    let mut parameters = Vec::with_capacity(count);
+    let mut points = Vec::with_capacity(3 * count);
+    let mut normals = Vec::with_capacity(3 * count);
+    let zero_hit = Intersection {
+        t: 0.0,
+        point: Point3D::new(0.0, 0.0, 0.0),
+        normal: Vector3D::new(0.0, 0.0, 0.0),
+    };
+    for hit in hits {
+        mask.push(Value::Bool(hit.is_some()));
+        let hit = hit
+            .map(|h| physical_triangle_hit(h, reference))
+            .transpose()?
+            .unwrap_or(zero_hit);
+        parameters.push(api::quantity(hit.t, dimension.clone())?);
+        for coordinate in [hit.point.x, hit.point.y, hit.point.z] {
+            points.push(api::quantity(coordinate, dimension.clone())?);
+        }
+        normals.extend([hit.normal.x, hit.normal.y, hit.normal.z].map(Value::Float));
+    }
+    let measured = TypeExpr::Float.with_dim(dimension.clone());
+    let tensor = |shape, elem, data| Value::Tensor(TensorValue { shape, data, elem });
+    Ok(Dynamic(api::record(vec![
+        ("hit_mask", tensor(vec![count], TypeExpr::Bool, mask)),
+        ("t", tensor(vec![count], measured.clone(), parameters)),
+        ("points", tensor(vec![count, 3], measured, points)),
+        ("normals", tensor(vec![count, 3], TypeExpr::Float, normals)),
+    ])))
+}
+
+fn prepared_triangle_parallel_hits(
+    triangle: &Handle<GfxPreparedTriangle>,
+    origins: &TriangleOrigins,
+    direction: &Handle<Vector3D>,
+    min_t: &Input,
+    max_t: Option<&api::Input>,
+    ctx: &CallCtx<'_>,
+) -> Result<Dynamic, OpError> {
+    normalized_direction(direction, ctx)?;
+    let direction = direction.with(ctx, |v| Ok(*v))?;
+    let dimension = object_dimension(triangle, ctx)?;
+    triangle.with(ctx, |t| {
+        let (min, max) = triangle_ray_bounds(min_t, max_t, &dimension, t.reference)?;
+        let inputs = origins
+            .0
+            .iter()
+            .map(|p| triangle_point(p, &dimension, t.reference, ctx))
+            .collect::<Result<Vec<_>, _>>()?;
+        let hits = t.triangle.intersect_parallel(&inputs, direction, min, max);
+        batched_triangle_record(hits, t.reference, &dimension)
+    })
+}
 object_binding!(graphics_point2_new,"num_native_graphics_point2_new","crate::kernels::computer_graphics::Point2D::new","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(x:Input,y:Input)->NewObject<Point2D>,|_ctx:&CallCtx<'_>,x:Input,y:Input|{let(x,d)=scalar(&x)?;let(y,e)=scalar(&y)?;api::same_dimension(&d,&e)?;Ok(NewObject::new(Point2D::new(x,y),vec![d]))});
 object_binding!(graphics_point2_components,"num_native_graphics_point2_components","","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(a:Handle<Point2D>)->Dynamic,|ctx:&CallCtx<'_>,a:Handle<Point2D>|{let d=object_dimension(&a,ctx)?;a.with(ctx,|v|quantities(vec![v.x,v.y],&(d)))});
 object_binding!(graphics_point3_new,"num_native_graphics_point3_new","crate::kernels::computer_graphics::Point3D::new","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(x:Input,y:Input,z:Input)->NewObject<Point3D>,|_ctx:&CallCtx<'_>,x:Input,y:Input,z:Input|{let(x,d)=scalar(&x)?;let(y,e)=scalar(&y)?;api::same_dimension(&d,&e)?;let(z,e)=scalar(&z)?;api::same_dimension(&d,&e)?;Ok(NewObject::new(Point3D::new(x,y,z),vec![d]))});
@@ -294,6 +494,9 @@ object_binding!(graphics_plane_new,"num_native_graphics_plane_new","crate::kerne
 object_binding!(graphics_ray_sphere_intersection,"num_native_graphics_ray_sphere_intersection","crate::kernels::computer_graphics::ray_sphere_intersection","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(ray:Handle<GfxRay>,sphere:Handle<Sphere>)->Maybe<Dynamic>,|ctx:&CallCtx<'_>,ray:Handle<GfxRay>,sphere:Handle<Sphere>|{let d=same(&ray,&sphere,ctx)?;ray.with(ctx,|r|sphere.with(ctx,|s|{let s=Sphere::new(scaled_point(s.center,1.0/r.reference),s.radius/r.reference);hit(g::ray_sphere_intersection(&r.ray,&s),r.reference,d,ctx)}))});
 object_binding!(graphics_ray_plane_intersection,"num_native_graphics_ray_plane_intersection","crate::kernels::computer_graphics::ray_plane_intersection","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(ray:Handle<GfxRay>,plane:Handle<Plane>)->Maybe<Dynamic>,|ctx:&CallCtx<'_>,ray:Handle<GfxRay>,plane:Handle<Plane>|{let d=same(&ray,&plane,ctx)?;ray.with(ctx,|r|plane.with(ctx,|s|{let s=Plane::new(scaled_point(s.point,1.0/r.reference),s.normal);hit(g::ray_plane_intersection(&r.ray,&s),r.reference,d,ctx)}))});
 object_binding!(graphics_ray_triangle_intersection,"num_native_graphics_ray_triangle_intersection","crate::kernels::computer_graphics::ray_triangle_intersection","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(ray:Handle<GfxRay>,v0:Handle<Point3D>,v1:Handle<Point3D>,v2:Handle<Point3D>)->Maybe<Dynamic>,|ctx:&CallCtx<'_>,ray:Handle<GfxRay>,v0:Handle<Point3D>,v1:Handle<Point3D>,v2:Handle<Point3D>|{let d=object_dimension(&ray,ctx)?;for h in [&v0,&v1,&v2]{api::same_dimension(&d,&object_dimension(h,ctx)?)?;}ray.with(ctx,|r|v0.with(ctx,|a|v1.with(ctx,|b|v2.with(ctx,|c|hit(g::ray_triangle_intersection(&r.ray,&scaled_point(*a,1.0/r.reference),&scaled_point(*b,1.0/r.reference),&scaled_point(*c,1.0/r.reference)),r.reference,d,ctx)))))});
+object_binding!(graphics_prepared_triangle_new,"num_native_graphics_prepared_triangle_new","crate::kernels::computer_graphics::PreparedTriangle::new","Prepare three point handles with one coordinate dimension and a positive finite reference in that dimension. Degenerate triangles return None. The resulting handle owns its geometry.",false,(v0:Handle<Point3D>,v1:Handle<Point3D>,v2:Handle<Point3D>,coordinate_reference:Input)->Maybe<NewObject<GfxPreparedTriangle>>,|ctx:&CallCtx<'_>,v0:Handle<Point3D>,v1:Handle<Point3D>,v2:Handle<Point3D>,coordinate_reference:Input|{prepared_triangle([&v0,&v1,&v2],&coordinate_reference,ctx)});
+object_binding!(graphics_prepared_triangle_intersect,"num_native_graphics_prepared_triangle_intersect","crate::kernels::computer_graphics::PreparedTriangle::intersect","Intersect a prepared triangle and a ray with matching coordinate dimensions. Inclusive bounds use the same dimension as the coordinates. The minimum is finite and nonnegative. A Some upper bound is finite and None is unbounded. The hit record contains physical t and point plus a dimensionless unit normal.",false,(triangle:Handle<GfxPreparedTriangle>,ray:Handle<GfxRay>,min_t:Input,max_t:api::Maybe<api::Input>)->Maybe<Dynamic>,|ctx:&CallCtx<'_>,triangle:Handle<GfxPreparedTriangle>,ray:Handle<GfxRay>,min_t:Input,max_t:api::Maybe<api::Input>|{prepared_triangle_hit(&triangle,&ray,&min_t,max_t.0.as_ref(),ctx)});
+object_binding!(graphics_prepared_triangle_intersect_parallel,"num_native_graphics_prepared_triangle_intersect_parallel","crate::kernels::computer_graphics::PreparedTriangle::intersect_parallel","Intersect at most 4096 origin handles with a common dimensionless unit direction. Origins and inclusive bounds share the triangle coordinate dimension. The minimum is finite and nonnegative. A Some upper bound is finite and None is unbounded. The record has hit_mask and physical t of shape [n], physical points and dimensionless normals of shape [n,3]. Misses have zero placeholders and no result handles are retained.",false,(triangle:Handle<GfxPreparedTriangle>,origins:TriangleOrigins,direction:Handle<Vector3D>,min_t:Input,max_t:api::Maybe<api::Input>)->Dynamic,|ctx:&CallCtx<'_>,triangle:Handle<GfxPreparedTriangle>,origins:TriangleOrigins,direction:Handle<Vector3D>,min_t:Input,max_t:api::Maybe<api::Input>|{prepared_triangle_parallel_hits(&triangle,&origins,&direction,&min_t,max_t.0.as_ref(),ctx)});
 object_binding!(graphics_bezier_quadratic,"num_native_graphics_bezier_quadratic","crate::kernels::computer_graphics::bezier_quadratic","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(p0:Handle<Point3D>,p1:Handle<Point3D>,p2:Handle<Point3D>,t:f64)->NewObject<Point3D>,|ctx:&CallCtx<'_>,p0:Handle<Point3D>,p1:Handle<Point3D>,p2:Handle<Point3D>,t:f64|{let d=object_dimension(&p0,ctx)?;api::same_dimension(&d,&object_dimension(&p1,ctx)?)?;api::same_dimension(&d,&object_dimension(&p2,ctx)?)?;p0.with(ctx,|a0|p1.with(ctx,|a1|p2.with(ctx,|a2|Ok(NewObject::new(g::bezier_quadratic(a0,a1,a2,t),vec![d])))))});
 object_binding!(graphics_bezier_cubic,"num_native_graphics_bezier_cubic","crate::kernels::computer_graphics::bezier_cubic","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(p0:Handle<Point3D>,p1:Handle<Point3D>,p2:Handle<Point3D>,p3:Handle<Point3D>,t:f64)->NewObject<Point3D>,|ctx:&CallCtx<'_>,p0:Handle<Point3D>,p1:Handle<Point3D>,p2:Handle<Point3D>,p3:Handle<Point3D>,t:f64|{let d=object_dimension(&p0,ctx)?;api::same_dimension(&d,&object_dimension(&p1,ctx)?)?;api::same_dimension(&d,&object_dimension(&p2,ctx)?)?;api::same_dimension(&d,&object_dimension(&p3,ctx)?)?;p0.with(ctx,|a0|p1.with(ctx,|a1|p2.with(ctx,|a2|p3.with(ctx,|a3|Ok(NewObject::new(g::bezier_cubic(a0,a1,a2,a3,t),vec![d]))))))});
 object_binding!(graphics_catmull_rom,"num_native_graphics_catmull_rom","crate::kernels::computer_graphics::catmull_rom","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(p0:Handle<Point3D>,p1:Handle<Point3D>,p2:Handle<Point3D>,p3:Handle<Point3D>,t:f64)->NewObject<Point3D>,|ctx:&CallCtx<'_>,p0:Handle<Point3D>,p1:Handle<Point3D>,p2:Handle<Point3D>,p3:Handle<Point3D>,t:f64|{let d=object_dimension(&p0,ctx)?;api::same_dimension(&d,&object_dimension(&p1,ctx)?)?;api::same_dimension(&d,&object_dimension(&p2,ctx)?)?;api::same_dimension(&d,&object_dimension(&p3,ctx)?)?;p0.with(ctx,|a0|p1.with(ctx,|a1|p2.with(ctx,|a2|p3.with(ctx,|a3|Ok(NewObject::new(g::catmull_rom(a0,a1,a2,a3,t),vec![d]))))))});
@@ -371,6 +574,9 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &graphics_ray_sphere_intersection::BINDING,
             &graphics_ray_plane_intersection::BINDING,
             &graphics_ray_triangle_intersection::BINDING,
+            &graphics_prepared_triangle_new::BINDING,
+            &graphics_prepared_triangle_intersect::BINDING,
+            &graphics_prepared_triangle_intersect_parallel::BINDING,
             &graphics_bezier_quadratic::BINDING,
             &graphics_bezier_cubic::BINDING,
             &graphics_catmull_rom::BINDING,

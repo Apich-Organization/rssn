@@ -54,6 +54,7 @@ const MAX_WORK: usize = 100_000_000;
 #[derive(Clone)]
 struct Scalar {
     value: f64,
+    // Stored in canonical base order when the scalar handle is created.
     dimension: DimExpr,
 }
 struct Program {
@@ -68,6 +69,43 @@ struct Program {
     work_per_row: usize,
     work_budget: usize,
 }
+
+impl Program {
+    fn check_batch(
+        &self,
+        columns: usize,
+        rows: usize,
+    ) -> Result<(), OpError> {
+        if columns != self.compiled.arity()
+            || rows > MAX_ROWS
+            || self
+                .work_per_row
+                .checked_mul(rows)
+                .is_none_or(|n| n > self.work_budget)
+        {
+            Err(error("compiled column shape, row or work budget exceeded"))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn batch_result(
+        &self,
+        out: Vec<f64>,
+    ) -> Result<Value, OpError> {
+        let rows = out.len();
+        let data = out
+            .into_iter()
+            .map(|value| output_scalar(value * self.output.value))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Value::Tensor(TensorValue {
+            shape: vec![rows],
+            elem: TypeExpr::Float.with_dim(self.output.dimension.clone()),
+            data,
+        }))
+    }
+}
+
 struct CurrentCompile(Arc<dyn Backend>);
 impl Backend for CurrentCompile {
     fn name(&self) -> &'static str {
@@ -157,17 +195,25 @@ fn scalar(
 ) -> Result<Scalar, OpError> {
     bank.with::<Scalar, _>(value, SCALAR, |v| Ok(v.clone()))
 }
-fn same(
-    a: &DimExpr,
-    b: &DimExpr,
-) -> Result<(), OpError> {
-    if canonical(a)? == canonical(b)? {
-        Ok(())
-    } else {
-        Err(error(
-            "compiled input dimension does not match its declared reference",
-        ))
-    }
+fn normalized_scalar(
+    bank: &NativeObjects,
+    handle: &Value,
+    reference: &Scalar,
+    nonfinite: &'static str,
+) -> Result<f64, OpError> {
+    bank.with::<Scalar, _>(handle, SCALAR, |value| {
+        if value.dimension != reference.dimension {
+            return Err(error(
+                "compiled input dimension does not match its declared reference",
+            ));
+        }
+        let normalized = value.value / reference.value;
+        if normalized.is_finite() {
+            Ok(normalized)
+        } else {
+            Err(error(nonfinite))
+        }
+    })
 }
 fn measured(
     value: f64,
@@ -195,13 +241,12 @@ fn normalized_point(
         .iter()
         .zip(&program.references)
         .map(|(handle, reference)| {
-            let value = scalar(bank, handle)?;
-            same(&value.dimension, &reference.dimension)?;
-            let normalized = value.value / reference.value;
-            if !normalized.is_finite() {
-                return Err(error("normalized compiled input is not finite"));
-            }
-            Ok(normalized)
+            normalized_scalar(
+                bank,
+                handle,
+                reference,
+                "normalized compiled input is not finite",
+            )
         })
         .collect()
 }
@@ -268,6 +313,7 @@ enum Method {
     Call,
     Batch,
     ParallelBatch,
+    PhysicalBatch,
     SetDefault,
     Release,
 }
@@ -316,6 +362,12 @@ impl EvalDyn for Adapter {
             | M::Call => (vec![program(), tensor_type(1, scalar())], dyn_type()),
             | M::Batch | M::ParallelBatch => {
                 (vec![program(), tensor_type(2, scalar())], dyn_type())
+            },
+            | M::PhysicalBatch => {
+                (
+                    vec![program(), TypeExpr::Int, tensor_type(1, dyn_type())],
+                    dyn_type(),
+                )
             },
             | M::SetDefault => (vec![selected(), TypeExpr::String], TypeExpr::String),
             | M::Release => (vec![dyn_type()], TypeExpr::Bool),
@@ -484,47 +536,54 @@ impl EvalDyn for Adapter {
                 let values = handles(&args[1], 2)?;
                 bank.with::<Program, _>(&args[0], PROGRAM, |p| {
                     let rows = values.shape[1];
-                    if values.shape[0] != p.compiled.arity()
-                        || rows > MAX_ROWS
-                        || p.work_per_row
-                            .checked_mul(rows)
-                            .is_none_or(|n| n > p.work_budget)
-                    {
-                        return Err(error("compiled column shape, row or work budget exceeded"));
+                    p.check_batch(values.shape[0], rows)?;
+                    let parallel = matches!(self.0, M::ParallelBatch);
+                    if parallel {
+                        crate::cancellation::checkpoint()?;
                     }
                     let mut columns = Vec::with_capacity(values.shape[0]);
                     for (i, reference) in p.references.iter().enumerate() {
                         let column = values.data[i * rows..(i + 1) * rows]
                             .iter()
                             .map(|handle| {
-                                let value = scalar(bank, handle)?;
-                                same(&value.dimension, &reference.dimension)?;
-                                let value = value.value / reference.value;
-                                if value.is_finite() {
-                                    Ok(value)
-                                } else {
-                                    Err(error("normalized batch input is not finite"))
-                                }
+                                normalized_scalar(
+                                    bank,
+                                    handle,
+                                    reference,
+                                    "normalized batch input is not finite",
+                                )
                             })
                             .collect::<Result<Vec<_>, _>>()?;
                         columns.push(column);
                     }
                     let columns = columns.iter().map(Vec::as_slice).collect::<Vec<_>>();
                     let mut out = vec![0.0; rows];
-                    if matches!(self.0, M::ParallelBatch) {
-                        backend::call_batch_par(&*p.compiled, &columns, &mut out);
+                    if parallel {
+                        backend::call_batch_checked(
+                            &*p.compiled,
+                            &columns,
+                            &mut out,
+                            p.work_per_row,
+                        )?;
                     } else {
                         p.compiled.call_batch(&columns, &mut out);
                     }
-                    let data = out
-                        .into_iter()
-                        .map(|value| output_scalar(value * p.output.value))
-                        .collect::<Result<Vec<_>, _>>()?;
-                    Ok(Value::Tensor(TensorValue {
-                        shape: vec![rows],
-                        elem: TypeExpr::Float.with_dim(p.output.dimension.clone()),
-                        data,
-                    }))
+                    p.batch_result(out)
+                })
+            },
+            | M::PhysicalBatch => {
+                let rows = integer(&args[1])?;
+                bank.with::<Program, _>(&args[0], PROGRAM, |p| {
+                    p.check_batch(p.references.len(), rows)?;
+                    crate::cancellation::checkpoint()?;
+                    let scales = p.references.iter().map(|s| (s.value, &s.dimension));
+                    let columns = super::native_backend_extended::physical_columns(
+                        ctx, &args[2], rows, scales,
+                    )?;
+                    let slices = columns.iter().map(Vec::as_slice).collect::<Vec<_>>();
+                    let mut out = vec![0.0; rows];
+                    backend::call_batch_checked(&*p.compiled, &slices, &mut out, p.work_per_row)?;
+                    p.batch_result(out)
                 })
             },
             | M::SetDefault => {
@@ -558,9 +617,28 @@ pub(super) fn install(installer: &mut Installer<'_>) -> Result<(), RuleError> {
     for (name, path, method) in METHODS {
         let adapter = Adapter(*method);
         let signature = adapter.signature();
-        let mut descriptor=OpDescriptor::new(name,Arity::Fixed(signature.params.len()as u8)).category("numerical_matrix")
-            .doc("Session-owned native backend/compiled/scalar handles. Compile an elementary ASCII expression in declared symbol order, normalized by positive physical coordinate references and a positive output reference. Scalar-value handles preserve mixed dimensions individually; call columns are [arity,rows] handles, not mixed-unit numeric tensors. The compiled object retains its private elementary RSSN Session and actual backend. Interpreter compilation has explicit source/node/allocation and per-call work bounds; an unsupported selected backend errors without substitution. Current snapshots environment; scoped compile selects its backend explicitly. Process-default changes require an explicit action string. Kind/session/lifetime and units are checked; release invalidates every handle copy.")
-            .stability(Stability::Experimental).purity(Purity::Effectful).determinism(Determinism::EnvDependent).thread_safety(ThreadSafety::SessionBound).backend(BackendSupport{interpreter:true,jit:false,ffi:false,gpu:false}).signature(signature).eval_dyn(Arc::new(adapter));
+        let documentation = if matches!(method, Method::PhysicalBatch) {
+            "Evaluate a retained scalar program over measured rank-one columns in declared symbol order. Each column has its own physical unit and matches the explicit row count. Returns a single measured vector in input order. The active CPU pool splits sufficiently large work into fixed independent blocks. Cancellation and the program's row and work limits apply."
+        } else if matches!(method, Method::ParallelBatch) {
+            "Evaluate a retained scalar program over a tensor of session-owned input handles with shape `[arity, rows]`. Columns follow declared symbol order and retain their individual physical dimensions.\n\nThe executor estimates the work per row from the compiled program and uses the active CPU pool for independent blocks when there is enough work.\n\nThe measured result preserves row order. Cancellation is checked between blocks, and shape, units, and the program’s row and work limits apply."
+        } else {
+            "Session-owned native backend/compiled/scalar handles. Compile an elementary ASCII expression in declared symbol order, normalized by positive physical coordinate references and a positive output reference. Scalar-value handles preserve mixed dimensions individually; call columns are [arity,rows] handles, not mixed-unit numeric tensors. The compiled object retains its private elementary RSSN Session and actual backend. Interpreter compilation has explicit source/node/allocation and per-call work bounds; an unsupported selected backend errors without substitution. Current snapshots environment; scoped compile selects its backend explicitly. Process-default changes require an explicit action string. Kind/session/lifetime and units are checked; release invalidates every handle copy."
+        };
+        let mut descriptor = OpDescriptor::new(name, Arity::Fixed(signature.params.len() as u8))
+            .category("numerical_matrix")
+            .doc(documentation)
+            .stability(Stability::Experimental)
+            .purity(Purity::Effectful)
+            .determinism(Determinism::EnvDependent)
+            .thread_safety(ThreadSafety::SessionBound)
+            .backend(BackendSupport {
+                interpreter: true,
+                jit: false,
+                ffi: false,
+                gpu: false,
+            })
+            .signature(signature)
+            .eval_dyn(Arc::new(adapter));
         if !path.is_empty() {
             descriptor = descriptor.rust_path(path);
         }
@@ -618,6 +696,7 @@ const METHODS: &[(&str, &str, Method)] = &[
         "crate::backend::call_batch_par",
         Method::ParallelBatch,
     ),
+    ("num_backend_call_batch_columns", "", Method::PhysicalBatch),
     (
         "num_backend_set_default",
         "crate::backend::set_default",
@@ -684,12 +763,19 @@ impl CompiledSnapshot {
         if x.len() != self.input_scales.len() {
             return Err(error("compiled function arity mismatch"));
         }
-        let normalized = x
-            .iter()
-            .zip(&self.input_scales)
-            .map(|(x, s)| x / s)
-            .collect::<Vec<_>>();
-        let y = self.evaluate_normalized(&normalized)? * self.output_scale;
+        let evaluate = |args: &mut [f64]| {
+            for ((arg, &value), &scale) in args.iter_mut().zip(x).zip(&self.input_scales) {
+                *arg = value / scale;
+            }
+            self.evaluate_normalized(args)
+        };
+        // Avoid global scratch-pool traffic for short, independently invoked callbacks.
+        let y = match x.len() {
+            | 0 => self.evaluate_normalized(x),
+            | 1..=8 => evaluate(&mut [0.0; 8][..x.len()]),
+            | 9..=MAX_INPUTS => evaluate(&mut [0.0; MAX_INPUTS][..x.len()]),
+            | _ => return Err(error("compiled function arity exceeds the snapshot bound")),
+        }? * self.output_scale;
         if !y.is_finite() {
             return Err(error("scaled compiled function result is not finite"));
         }
@@ -763,4 +849,53 @@ pub(in crate::rules) fn scalar_reference(
         return Err(error("reference scalar must be positive"));
     }
     Ok((value, dim))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct Sum(usize);
+
+    impl Compiled for Sum {
+        fn arity(&self) -> usize {
+            self.0
+        }
+
+        fn call(
+            &self,
+            args: &[f64],
+        ) -> f64 {
+            assert_eq!(self.0, args.len());
+            args.iter().sum()
+        }
+    }
+
+    #[test]
+    fn coherent_callbacks_share_normalization_and_budget_across_arities() {
+        for arity in [0, 2, 8, 9, MAX_INPUTS] {
+            let scales: Vec<_> = (0..arity).map(|i| (i + 1) as f64).collect();
+            let values: Vec<_> = scales.iter().map(|scale| 0.5 * scale).collect();
+            let snapshot = CompiledSnapshot {
+                retained_bytes: 0,
+                compiled: Arc::new(Sum(arity)),
+                _backend: Arc::new(Interpreter),
+                input_dimensions: vec![DimExpr::Dimless; arity],
+                output_dimension: DimExpr::Dimless,
+                input_scales: scales,
+                output_scale: 4.0,
+                remaining: Arc::new(std::sync::atomic::AtomicUsize::new(2)),
+                failure: Arc::new(std::sync::Mutex::new(None)),
+            };
+            assert!(snapshot.evaluate_coherent(&vec![0.0; arity + 1]).is_err());
+            let expected = 4.0 * std::iter::repeat_n(0.5, arity).sum::<f64>();
+            for _ in 0..2 {
+                assert_eq!(
+                    snapshot.evaluate_coherent(&values).unwrap().to_bits(),
+                    expected.to_bits()
+                );
+            }
+            assert!(snapshot.evaluate_coherent(&values).is_err());
+        }
+    }
 }

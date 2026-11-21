@@ -28,6 +28,10 @@ pub(in crate::rules) struct Budget {
     failure: Mutex<Option<OpError>>,
 }
 impl Budget {
+    // Evaluation limits leave the high bit free. Using the same atomic for
+    // failure and charging makes the hot path independent of the error lock.
+    const FAILED: usize = 1usize << (usize::BITS - 1);
+
     pub fn new(n: usize) -> Result<Arc<Self>, OpError> {
         if n == 0 || n > 1_000_000 {
             return Err(api::error(
@@ -49,15 +53,16 @@ impl Budget {
             && first.is_none()
         {
             *first = Some(error);
+            self.remaining.fetch_or(Self::FAILED, Ordering::Relaxed);
         }
     }
 
     pub fn charge(&self) -> bool {
-        if self.failure.lock().map_or(true, |first| first.is_some()) {
-            return false;
-        }
         let mut n = self.remaining.load(Ordering::Relaxed);
         loop {
+            if n & Self::FAILED != 0 {
+                return false;
+            }
             let Some(next) = n.checked_sub(1) else {
                 self.fail(OpError::BudgetExceeded);
                 return false;
@@ -76,7 +81,7 @@ impl Budget {
 
     pub fn used(&self) -> usize {
         self.initial
-            .saturating_sub(self.remaining.load(Ordering::Relaxed))
+            .saturating_sub(self.remaining.load(Ordering::Relaxed) & !Self::FAILED)
     }
 
     pub fn finish(&self) -> Result<(), OpError> {

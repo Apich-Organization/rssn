@@ -77,6 +77,43 @@ impl NativeType for Space {
         Ok(())
     }
 }
+
+struct ResidualEstimator {
+    data: fe::SimplexResidualEstimator,
+    dim: usize,
+    scales: [f64; 3],
+}
+
+impl NativeType for ResidualEstimator {
+    const KIND: &'static str = "rssn/native/fem-residual-estimator/v1";
+    const MAX_BYTES: usize = 8 * 1024 * 1024;
+
+    fn validate(&self) -> Result<(), OpError> {
+        Ok(())
+    }
+
+    fn retained_bytes(&self) -> usize {
+        size_of::<Self>() + self.data.heap_bytes()
+    }
+}
+
+impl ResidualEstimator {
+    fn frame(
+        &self,
+        dims: Vec<DimExpr>,
+    ) -> Result<Frame, OpError> {
+        let [length, time, value] = self.scales;
+        Ok(Frame {
+            length,
+            time,
+            value,
+            dims: dims
+                .try_into()
+                .map_err(|_| err("invalid FEM residual estimator frame dimensions"))?,
+        })
+    }
+}
+
 fn size(
     mesh: &fe::SimplexMesh,
     degree: usize,
@@ -163,6 +200,13 @@ fn run<R>(
     mesh: &fe::SimplexMesh,
     f: impl FnOnce(&fe::FemProblem<'_>) -> Result<R, OpError>,
 ) -> Result<R, OpError> {
+    run_constant(p, Some(mesh), f)
+}
+fn run_constant<R>(
+    p: &Constant,
+    mesh: Option<&fe::SimplexMesh>,
+    f: impl FnOnce(&fe::FemProblem<'_>) -> Result<R, OpError>,
+) -> Result<R, OpError> {
     let source_reference = p.frame.reference([0, -1, 1])?;
     let source = |t, x| st(&p.source, &p.frame, t, x, source_reference);
     let native = fe::FemProblem {
@@ -173,12 +217,21 @@ fn run<R>(
     };
     let out = f(&native);
     p.source.finish()?;
-    boundary_finish(&p.bcs, mesh)?;
+    if let Some(mesh) = mesh {
+        boundary_finish(&p.bcs, mesh)?;
+    }
     out
 }
 fn run_var<R>(
     p: &Variable,
     mesh: &fe::SimplexMesh,
+    f: impl FnOnce(&fe::FemProblemVar<'_>) -> Result<R, OpError>,
+) -> Result<R, OpError> {
+    run_variable(p, Some(mesh), f)
+}
+fn run_variable<R>(
+    p: &Variable,
+    mesh: Option<&fe::SimplexMesh>,
     f: impl FnOnce(&fe::FemProblemVar<'_>) -> Result<R, OpError>,
 ) -> Result<R, OpError> {
     let diffusion_reference = p.frame.reference([2, -1, 0])?;
@@ -204,7 +257,9 @@ fn run_var<R>(
     p.source.finish()?;
     p.k.finish()?;
     p.c.finish()?;
-    boundary_finish(&p.bcs, mesh)?;
+    if let Some(mesh) = mesh {
+        boundary_finish(&p.bcs, mesh)?;
+    }
     if invalid_k.load(std::sync::atomic::Ordering::Relaxed) {
         return Err(err(
             "variable diffusivity must be positive at every evaluated quadrature point",
@@ -223,24 +278,84 @@ fn field(
 }
 fn indicator_result(
     values: Vec<f64>,
-    s: &Space,
+    frame: &Frame,
+    dim: usize,
 ) -> Result<Dynamic, OpError> {
-    let power = Rational::new(s.data.mesh.dim as i64 + 2, 2);
+    let power = Rational::new(dim as i64 + 2, 2);
     let d = canonical(DimExpr::Mul(vec![
-        s.frame.dims[2].clone(),
-        DimExpr::Pow(Box::new(s.frame.dims[0].clone()), Exp::Rat(power)),
-        DimExpr::Inverse(Box::new(s.frame.dims[1].clone())),
+        frame.dims[2].clone(),
+        DimExpr::Pow(Box::new(frame.dims[0].clone()), Exp::Rat(power)),
+        DimExpr::Inverse(Box::new(frame.dims[1].clone())),
     ]))?;
-    let scale = s.frame.value
-        * s.frame
-            .length
-            .powf(f64::midpoint(s.data.mesh.dim as f64, 2.0))
-        / s.frame.time;
+    let length = frame.length;
+    let root = length.sqrt();
+    let factors = match dim {
+        | 1 => [frame.value, length, root, 1.0],
+        | 2 => [frame.value, length, length, 1.0],
+        | 3 => [frame.value, length, length, root],
+        | _ => return Err(err("invalid FEM residual indicator dimension")),
+    };
+    let scale = api::scale_without_underflow(1.0, &factors, &[frame.time])?;
     Ok(Dynamic(api::record(vec![
         ("indicators", values.encode()?),
         ("reference", api::quantity(scale, d)?),
     ])))
 }
+
+object_binding!(
+    fem_residual_estimator_new,
+    "num_grid_fem_residual_estimator_new",
+    "crate::sim::fem_simplex::SimplexResidualEstimator::new",
+    "Prepares residual error estimation on a fixed P1 or P2 simplex space. The immutable estimator retains its own cell geometry, interior face adjacency and reference quadrature. The source space can be released after preparation.",
+    true,
+    (space: Handle<Space>) -> NewObject<ResidualEstimator>,
+    |ctx, space| space.with(ctx, |s| {
+        let data = fe::SimplexResidualEstimator::new(&s.data).map_err(err)?;
+        let scales = [s.frame.length, s.frame.time, s.frame.value];
+        Ok(NewObject::new(
+            ResidualEstimator { data, dim: s.data.mesh.dim, scales },
+            s.frame.dims.to_vec(),
+        ))
+    })
+);
+
+object_binding!(
+    fem_residual_estimator_indicators,
+    "num_grid_fem_residual_estimator_indicators",
+    "crate::sim::fem_simplex::SimplexResidualEstimator::indicators",
+    "Evaluates normalized cell residual indicators using prepared geometry and a constant-coefficient FEM problem in the same reference frame. Time and solution values are normalized; the indicator reference is U L^((d+2)/2) / T for mesh dimension d. Values follow the source space DOF order.",
+    true,
+    (estimator: Handle<ResidualEstimator>, problem: Handle<Constant>, time: f64, values: Vec<f64>) -> Dynamic,
+    |ctx, estimator, problem, time, values| {
+        let dims = estimator.dimensions(ctx)?;
+        estimator.with(ctx, |e| problem.with(ctx, |p| {
+            e.frame(dims)?.same(&p.frame)?;
+            let indicators = run_constant(p, None, |native| {
+                e.data.indicators(&values, native, time).map_err(err)
+            })?;
+            indicator_result(indicators, &p.frame, e.dim)
+        }))
+    }
+);
+
+object_binding!(
+    fem_residual_estimator_indicators_var,
+    "num_grid_fem_residual_estimator_indicators_var",
+    "crate::sim::fem_simplex::SimplexResidualEstimator::indicators_var",
+    "Evaluates normalized cell residual indicators using prepared geometry and a variable-coefficient FEM problem in the same reference frame. Diffusivity must be positive at every sampled coordinate. The indicator reference is U L^((d+2)/2) / T for mesh dimension d.",
+    true,
+    (estimator: Handle<ResidualEstimator>, problem: Handle<Variable>, time: f64, values: Vec<f64>) -> Dynamic,
+    |ctx, estimator, problem, time, values| {
+        let dims = estimator.dimensions(ctx)?;
+        estimator.with(ctx, |e| problem.with(ctx, |p| {
+            e.frame(dims)?.same(&p.frame)?;
+            let indicators = run_variable(p, None, |native| {
+                e.data.indicators_var(&values, native, time).map_err(err)
+            })?;
+            indicator_result(indicators, &p.frame, e.dim)
+        }))
+    }
+);
 object_binding!(fem_simplex_interval,"num_grid_simplex_interval","crate::sim::fem_simplex::SimplexMesh::interval","Native simplex finite-element method with explicit geometry/time/field references. Diffusivity is normalized by L²/T, reaction by1/T, source by U/T; compiled callbacks use coherent coordinates and retained physical output domains. Mesh/DOF/refinement/callback work bounds are checked.",true,(frame:Handle<Frame>,n:usize,lo:f64,hi:f64)->NewObject<Mesh>,|ctx,frame,n,lo,hi|{let _=ctx;frame.with(ctx,|f|{if n==0||n>511||lo>=hi{return Err(err("interval mesh geometry/allocation budget invalid"));}Ok(NewObject::new(Mesh{data:fe::SimplexMesh::interval(n,lo,hi),frame:f.clone()},f.dims.to_vec()))})});
 object_binding!(fem_simplex_rectangle,"num_grid_simplex_rectangle","crate::sim::fem_simplex::SimplexMesh::rectangle","Native simplex finite-element method with explicit geometry/time/field references. Diffusivity is normalized by L²/T, reaction by1/T, source by U/T; compiled callbacks use coherent coordinates and retained physical output domains. Mesh/DOF/refinement/callback work bounds are checked.",true,(frame:Handle<Frame>,nx:usize,ny:usize,lo:Vec<f64>,hi:Vec<f64>)->NewObject<Mesh>,|ctx,frame,nx,ny,lo,hi|{let _=ctx;frame.with(ctx,|f|{if nx==0||ny==0||nx>64||ny>64||(nx+1).checked_mul(ny+1).is_none_or(|n|n>4096){return Err(err("rectangle mesh allocation budget exceeded"));}let l:[f64;2]=lo.try_into().map_err(|_|err("rectangle needs two lower bounds"))?;let h:[f64;2]=hi.try_into().map_err(|_|err("rectangle needs two upper bounds"))?;if l.iter().zip(h).any(|(l,h)|*l>=h){return Err(err("mesh bounds must increase"));}Ok(NewObject::new(Mesh{data:fe::SimplexMesh::rectangle(nx,ny,l,h),frame:f.clone()},f.dims.to_vec()))})});
 object_binding!(fem_simplex_boxed,"num_grid_simplex_boxed","crate::sim::fem_simplex::SimplexMesh::boxed","Native simplex finite-element method with explicit geometry/time/field references. Diffusivity is normalized by L²/T, reaction by1/T, source by U/T; compiled callbacks use coherent coordinates and retained physical output domains. Mesh/DOF/refinement/callback work bounds are checked.",true,(frame:Handle<Frame>,cells:Vec<usize>,lo:Vec<f64>,hi:Vec<f64>)->NewObject<Mesh>,|ctx,frame,cells,lo,hi|{let _=ctx;frame.with(ctx,|f|{let n:[usize;3]=cells.try_into().map_err(|_|err("box needs three cell counts"))?;if n.iter().any(|n|*n==0||*n>16)||n.iter().try_fold(1usize,|a,n|a.checked_mul(n+1)).is_none_or(|n|n>4096)||n.iter().product::<usize>()>1365{return Err(err("box mesh allocation budget exceeded"));}let l:[f64;3]=lo.try_into().map_err(|_|err("box needs three lower bounds"))?;let h:[f64;3]=hi.try_into().map_err(|_|err("box needs three upper bounds"))?;if l.iter().zip(h).any(|(l,h)|*l>=h){return Err(err("mesh bounds must increase"));}Ok(NewObject::new(Mesh{data:fe::SimplexMesh::boxed(n,l,h),frame:f.clone()},f.dims.to_vec()))})});
@@ -256,10 +371,10 @@ object_binding!(fem_fem_l2_error,"num_grid_fem_l2_error","crate::sim::fem_simple
 object_binding!(fem_fem_constant_problem,"num_grid_fem_constant_problem","","Native simplex finite-element method with explicit geometry/time/field references. Diffusivity is normalized by L²/T, reaction by1/T, source by U/T; compiled callbacks use coherent coordinates and retained physical output domains. Mesh/DOF/refinement/callback work bounds are checked.",true,(bcs:Handle<Markers>,diffusivity:f64,reaction:f64,source:Input,budget:usize)->NewObject<Constant>,|ctx,bcs,diffusivity,reaction,source,budget|{let _=ctx;bcs.with(ctx,|b|{let f=&b.frame;let callback=checked_snapshot(ctx,&source,budget,&[f.dims[1].clone(),f.dims[0].clone(),f.dims[0].clone(),f.dims[0].clone()],&dims_forcing(f,1)?)?;Ok(NewObject::dependent(Constant{frame:f.clone(),k:diffusivity,c:reaction,source:callback,bcs:b.clone()},f.dims.to_vec(),vec![bcs.value.clone(),source.0.clone()]))})});
 object_binding!(fem_fem_variable_problem,"num_grid_fem_variable_problem","","Native simplex finite-element method with explicit geometry/time/field references. Diffusivity is normalized by L²/T, reaction by1/T, source by U/T; compiled callbacks use coherent coordinates and retained physical output domains. Mesh/DOF/refinement/callback work bounds are checked.",true,(bcs:Handle<Markers>,diffusivity:Input,reaction:Input,source:Input,budget:usize)->NewObject<Variable>,|ctx,bcs,diffusivity,reaction,source,budget|{let _=ctx;bcs.with(ctx,|b|{let f=&b.frame;let kdim=canonical(DimExpr::Mul(vec![DimExpr::Pow(Box::new(f.dims[0].clone()),Exp::Rat(Rational::new(2,1))),DimExpr::Inverse(Box::new(f.dims[1].clone()))]))?;let cdim=canonical(DimExpr::Inverse(Box::new(f.dims[1].clone())))?;let domain=vec![f.dims[0].clone();3];let k=checked_snapshot(ctx,&diffusivity,budget,&domain,&kdim)?;let c=checked_snapshot(ctx,&reaction,budget,&domain,&cdim)?;let src=checked_snapshot(ctx,&source,budget,&[f.dims[1].clone(),f.dims[0].clone(),f.dims[0].clone(),f.dims[0].clone()],&dims_forcing(f,1)?)?;Ok(NewObject::dependent(Variable{frame:f.clone(),k,c,source:src,bcs:b.clone()},f.dims.to_vec(),vec![bcs.value.clone(),source.0.clone(),diffusivity.0.clone(),reaction.0.clone()]))})});
 object_binding!(fem_fem_solve_static,"num_grid_fem_solve_static","crate::sim::fem_simplex::solve_static","Native simplex finite-element method with explicit geometry/time/field references. Diffusivity is normalized by L²/T, reaction by1/T, source by U/T; compiled callbacks use coherent coordinates and retained physical output domains. Mesh/DOF/refinement/callback work bounds are checked.",true,(space:Handle<Space>,problem:Handle<Constant>,time:f64,solver_name:String,solver_tolerance:f64)->Dynamic,|ctx,space,problem,time,solver_name,solver_tolerance|{let _=ctx;space.with(ctx,|s|problem.with(ctx,|p|{s.frame.same(&p.frame)?;let out=run(p,&s.data.mesh,|native|fe::solve_static(&s.data,native,time,crate::rules::numerical_abi::native_grids::structured_ops::solver(&solver_name,solver_tolerance)?).map_err(err))?;payload(&s.frame,out,vec![s.data.size()])}))});
-object_binding!(fem_fem_error_indicators,"num_grid_fem_error_indicators","crate::sim::fem_simplex::error_indicators","Native simplex finite-element method with explicit geometry/time/field references. Diffusivity is normalized by L²/T, reaction by1/T, source by U/T; compiled callbacks use coherent coordinates and retained physical output domains. Mesh/DOF/refinement/callback work bounds are checked.",true,(space:Handle<Space>,problem:Handle<Constant>,time:f64,values:Vec<f64>)->Dynamic,|ctx,space,problem,time,values|{let _=ctx;space.with(ctx,|s|problem.with(ctx,|p|{s.frame.same(&p.frame)?;field(s,&values)?;let out=run(p,&s.data.mesh,|native|Ok(fe::error_indicators(&s.data,&values,native,time)))?;indicator_result(out,s)}))});
+object_binding!(fem_fem_error_indicators,"num_grid_fem_error_indicators","crate::sim::fem_simplex::error_indicators","Native simplex finite-element method with explicit geometry/time/field references. Diffusivity is normalized by L²/T, reaction by1/T, source by U/T; compiled callbacks use coherent coordinates and retained physical output domains. Mesh/DOF/refinement/callback work bounds are checked.",true,(space:Handle<Space>,problem:Handle<Constant>,time:f64,values:Vec<f64>)->Dynamic,|ctx,space,problem,time,values|{let _=ctx;space.with(ctx,|s|problem.with(ctx,|p|{s.frame.same(&p.frame)?;field(s,&values)?;let out=run(p,&s.data.mesh,|native|Ok(fe::error_indicators(&s.data,&values,native,time)))?;indicator_result(out,&s.frame,s.data.mesh.dim)}))});
 object_binding!(fem_fem_solve_heat,"num_grid_fem_solve_heat","crate::sim::fem_simplex::solve_heat","Native simplex finite-element method with explicit geometry/time/field references. Diffusivity is normalized by L²/T, reaction by1/T, source by U/T; compiled callbacks use coherent coordinates and retained physical output domains. Mesh/DOF/refinement/callback work bounds are checked.",true,(space:Handle<Space>,problem:Handle<Constant>,time:f64,initial:Input,budget:usize,steps:usize,theta:f64,solver_name:String,solver_tolerance:f64)->Dynamic,|ctx,space,problem,time,initial,budget,steps,theta,solver_name,solver_tolerance|{let _=ctx;space.with(ctx,|s|problem.with(ctx,|p|{s.frame.same(&p.frame)?;if time<=0.0||steps==0||steps>8192||s.data.size().checked_mul(steps).is_none_or(|n|n>1_048_576)||!(0.0..=1.0).contains(&theta){return Err(err("FEM heat control/work budget invalid"));}let init=checked_snapshot(ctx,&initial,budget,&vec![s.frame.dims[0].clone();3],&s.frame.dims[2])?;let initial=|x|crate::rules::numerical_abi::native_grids::structured_ops::space(&init,&s.frame,x,s.frame.value);let out=run(p,&s.data.mesh,|native|fe::solve_heat(&s.data,native,initial,time,steps,theta,crate::rules::numerical_abi::native_grids::structured_ops::solver(&solver_name,solver_tolerance)?).map_err(err))?;init.finish()?;payload(&s.frame,out,vec![s.data.size()])}))});
 object_binding!(fem_fem_solve_static_var,"num_grid_fem_solve_static_var","crate::sim::fem_simplex::solve_static_var","Native simplex finite-element method with explicit geometry/time/field references. Diffusivity is normalized by L²/T, reaction by1/T, source by U/T; compiled callbacks use coherent coordinates and retained physical output domains. Mesh/DOF/refinement/callback work bounds are checked.",true,(space:Handle<Space>,problem:Handle<Variable>,time:f64,solver_name:String,solver_tolerance:f64)->Dynamic,|ctx,space,problem,time,solver_name,solver_tolerance|{let _=ctx;space.with(ctx,|s|problem.with(ctx,|p|{s.frame.same(&p.frame)?;let out=run_var(p,&s.data.mesh,|native|fe::solve_static_var(&s.data,native,time,crate::rules::numerical_abi::native_grids::structured_ops::solver(&solver_name,solver_tolerance)?).map_err(err))?;payload(&s.frame,out,vec![s.data.size()])}))});
-object_binding!(fem_fem_error_indicators_var,"num_grid_fem_error_indicators_var","crate::sim::fem_simplex::error_indicators_var","Native simplex finite-element method with explicit geometry/time/field references. Diffusivity is normalized by L²/T, reaction by1/T, source by U/T; compiled callbacks use coherent coordinates and retained physical output domains. Mesh/DOF/refinement/callback work bounds are checked.",true,(space:Handle<Space>,problem:Handle<Variable>,time:f64,values:Vec<f64>)->Dynamic,|ctx,space,problem,time,values|{let _=ctx;space.with(ctx,|s|problem.with(ctx,|p|{s.frame.same(&p.frame)?;field(s,&values)?;let out=run_var(p,&s.data.mesh,|native|Ok(fe::error_indicators_var(&s.data,&values,native,time)))?;indicator_result(out,s)}))});
+object_binding!(fem_fem_error_indicators_var,"num_grid_fem_error_indicators_var","crate::sim::fem_simplex::error_indicators_var","Native simplex finite-element method with explicit geometry/time/field references. Diffusivity is normalized by L²/T, reaction by1/T, source by U/T; compiled callbacks use coherent coordinates and retained physical output domains. Mesh/DOF/refinement/callback work bounds are checked.",true,(space:Handle<Space>,problem:Handle<Variable>,time:f64,values:Vec<f64>)->Dynamic,|ctx,space,problem,time,values|{let _=ctx;space.with(ctx,|s|problem.with(ctx,|p|{s.frame.same(&p.frame)?;field(s,&values)?;let out=run_var(p,&s.data.mesh,|native|Ok(fe::error_indicators_var(&s.data,&values,native,time)))?;indicator_result(out,&s.frame,s.data.mesh.dim)}))});
 object_binding!(fem_fem_solve_heat_var,"num_grid_fem_solve_heat_var","crate::sim::fem_simplex::solve_heat_var","Native simplex finite-element method with explicit geometry/time/field references. Diffusivity is normalized by L²/T, reaction by1/T, source by U/T; compiled callbacks use coherent coordinates and retained physical output domains. Mesh/DOF/refinement/callback work bounds are checked.",true,(space:Handle<Space>,problem:Handle<Variable>,time:f64,initial:Input,budget:usize,steps:usize,theta:f64,solver_name:String,solver_tolerance:f64)->Dynamic,|ctx,space,problem,time,initial,budget,steps,theta,solver_name,solver_tolerance|{let _=ctx;space.with(ctx,|s|problem.with(ctx,|p|{s.frame.same(&p.frame)?;if time<=0.0||steps==0||steps>8192||s.data.size().checked_mul(steps).is_none_or(|n|n>1_048_576)||!(0.0..=1.0).contains(&theta){return Err(err("FEM heat control/work budget invalid"));}let init=checked_snapshot(ctx,&initial,budget,&vec![s.frame.dims[0].clone();3],&s.frame.dims[2])?;let initial=|x|crate::rules::numerical_abi::native_grids::structured_ops::space(&init,&s.frame,x,s.frame.value);let out=run_var(p,&s.data.mesh,|native|fe::solve_heat_var(&s.data,native,initial,time,steps,theta,crate::rules::numerical_abi::native_grids::structured_ops::solver(&solver_name,solver_tolerance)?).map_err(err))?;init.finish()?;payload(&s.frame,out,vec![s.data.size()])}))});
 object_binding!(fem_fem_heat_step,"num_grid_fem_heat_step","crate::sim::fem_simplex::heat_step","Native simplex finite-element method with explicit geometry/time/field references. Diffusivity is normalized by L²/T, reaction by1/T, source by U/T; compiled callbacks use coherent coordinates and retained physical output domains. Mesh/DOF/refinement/callback work bounds are checked.",true,(space:Handle<Space>,problem:Handle<Constant>,state:Vec<f64>,time:f64,dt:f64,theta:f64,solver_name:String,solver_tolerance:f64)->Dynamic,|ctx,space,problem,state,time,dt,theta,solver_name,solver_tolerance|{let _=ctx;space.with(ctx,|s|problem.with(ctx,|p|{s.frame.same(&p.frame)?;field(s,&state)?;if dt<=0.0||!(0.0..=1.0).contains(&theta){return Err(err("FEM step controls invalid"));}let out=run(p,&s.data.mesh,|native|fe::heat_step(&s.data,native,&state,time,dt,theta,crate::rules::numerical_abi::native_grids::structured_ops::solver(&solver_name,solver_tolerance)?).map_err(err))?;payload(&s.frame,out,vec![s.data.size()])}))});
 object_binding!(fem_fem_heat_step_nodal_source,"num_grid_fem_heat_step_nodal_source","crate::sim::fem_simplex::heat_step_nodal_source","Native simplex finite-element method with explicit geometry/time/field references. Diffusivity is normalized by L²/T, reaction by1/T, source by U/T; compiled callbacks use coherent coordinates and retained physical output domains. Mesh/DOF/refinement/callback work bounds are checked.",true,(space:Handle<Space>,problem:Handle<Constant>,state:Vec<f64>,time:f64,dt:f64,theta:f64,before:Vec<f64>,after:Vec<f64>,solver_name:String,solver_tolerance:f64)->Dynamic,|ctx,space,problem,state,time,dt,theta,before,after,solver_name,solver_tolerance|{let _=ctx;space.with(ctx,|s|problem.with(ctx,|p|{s.frame.same(&p.frame)?;field(s,&state)?;if dt<=0.0||!(0.0..=1.0).contains(&theta){return Err(err("FEM step controls invalid"));}field(s,&before)?;field(s,&after)?;let out=run(p,&s.data.mesh,|native|fe::heat_step_nodal_source(&s.data,native,&state,time,dt,theta,crate::rules::numerical_abi::native_grids::structured_ops::solver(&solver_name,solver_tolerance)?,&before,&after).map_err(err))?;payload(&s.frame,out,vec![s.data.size()])}))});
@@ -268,6 +383,9 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     api::install(i, BINDINGS, "numerical_vector")
 }
 static BINDINGS: &[&api::Binding] = &[
+    &fem_residual_estimator_new::BINDING,
+    &fem_residual_estimator_indicators::BINDING,
+    &fem_residual_estimator_indicators_var::BINDING,
     &fem_solve_adaptive::BINDING,
     &fem_solve_adaptive_var::BINDING,
     &fem_simplex_interval::BINDING,
@@ -294,5 +412,5 @@ static BINDINGS: &[&api::Binding] = &[
     &fem_fem_heat_step_nodal_source::BINDING,
     &fem_simplex_rule::BINDING,
 ];
-object_binding!(fem_solve_adaptive,"num_grid_fem_solve_adaptive","crate::sim::fem_simplex::solve_adaptive","Actual native spatial Dörfler refinement, independently from temporal adaptivity. Positive Length/Time/field references determine coefficient/source units and residual-indicator reference. A conservative worst-case refinement/DOF bound is checked before native allocation; actual returned space, field and estimator history are retained.",true,(mesh:Handle<Mesh>,problem:Handle<Constant>,degree:usize,time:f64,theta:f64,tolerance:f64,max_refinements:usize,solver_name:String,solver_tolerance:f64)->Dynamic,|ctx,mesh,problem,degree,time,theta,tolerance,max_refinements,solver_name,solver_tolerance|{mesh.with(ctx,|m|problem.with(ctx,|p|{m.frame.same(&p.frame)?;if max_refinements==0||max_refinements>4||theta<=0.0||theta>1.0||tolerance<=0.0{return Err(err("spatial adaptivity controls/refinement budget invalid"));}size(&m.data,degree)?;let growth=(1usize<<m.data.dim).checked_pow(max_refinements as u32).ok_or_else(||err("refinement size overflow"))?;let cells=m.data.cells.len().checked_mul(growth).ok_or_else(||err("refinement size overflow"))?;let nodes=m.data.nodes.len().checked_add(cells.checked_mul(if degree==2{12}else{6}).ok_or_else(||err("refinement size overflow"))?).ok_or_else(||err("refinement size overflow"))?;if cells>8192||nodes>1024{return Err(err("worst-case spatial refinement/DOF allocation budget exceeded"));}let out=run(p,&m.data,|native|fe::solve_adaptive(&m.data,native,degree,time,theta,tolerance,max_refinements,crate::rules::numerical_abi::native_grids::structured_ops::solver(&solver_name,solver_tolerance)?).map_err(err))?;let dofs=out.0.size();let space=Space{data:out.0,frame:m.frame.clone()};let indicator=indicator_result(out.2.iter().map(|(_,e)|*e).collect(),&space)?.0;let retained=crate::rules::numerical_abi::native_object_api::NativeOutput::encode(NewObject::new(space,m.frame.dims.to_vec()),ctx)?;Ok(Dynamic(api::record(vec![("space",retained),("solution",payload(&m.frame,out.1,vec![dofs])?.0),("history_dofs",out.2.into_iter().map(|(n,_)|n).collect::<Vec<_>>().encode()?),("history_indicator",indicator)]))) }))});
-object_binding!(fem_solve_adaptive_var,"num_grid_fem_solve_adaptive_var","crate::sim::fem_simplex::solve_adaptive_var","Actual native spatial Dörfler refinement, independently from temporal adaptivity. Positive Length/Time/field references determine coefficient/source units and residual-indicator reference. A conservative worst-case refinement/DOF bound is checked before native allocation; actual returned space, field and estimator history are retained.",true,(mesh:Handle<Mesh>,problem:Handle<Variable>,degree:usize,time:f64,theta:f64,tolerance:f64,max_refinements:usize,solver_name:String,solver_tolerance:f64)->Dynamic,|ctx,mesh,problem,degree,time,theta,tolerance,max_refinements,solver_name,solver_tolerance|{mesh.with(ctx,|m|problem.with(ctx,|p|{m.frame.same(&p.frame)?;if max_refinements==0||max_refinements>4||theta<=0.0||theta>1.0||tolerance<=0.0{return Err(err("spatial adaptivity controls/refinement budget invalid"));}size(&m.data,degree)?;let growth=(1usize<<m.data.dim).checked_pow(max_refinements as u32).ok_or_else(||err("refinement size overflow"))?;let cells=m.data.cells.len().checked_mul(growth).ok_or_else(||err("refinement size overflow"))?;let nodes=m.data.nodes.len().checked_add(cells.checked_mul(if degree==2{12}else{6}).ok_or_else(||err("refinement size overflow"))?).ok_or_else(||err("refinement size overflow"))?;if cells>8192||nodes>1024{return Err(err("worst-case spatial refinement/DOF allocation budget exceeded"));}let out=run_var(p,&m.data,|native|fe::solve_adaptive_var(&m.data,native,degree,time,theta,tolerance,max_refinements,crate::rules::numerical_abi::native_grids::structured_ops::solver(&solver_name,solver_tolerance)?).map_err(err))?;let dofs=out.0.size();let space=Space{data:out.0,frame:m.frame.clone()};let indicator=indicator_result(out.2.iter().map(|(_,e)|*e).collect(),&space)?.0;let retained=crate::rules::numerical_abi::native_object_api::NativeOutput::encode(NewObject::new(space,m.frame.dims.to_vec()),ctx)?;Ok(Dynamic(api::record(vec![("space",retained),("solution",payload(&m.frame,out.1,vec![dofs])?.0),("history_dofs",out.2.into_iter().map(|(n,_)|n).collect::<Vec<_>>().encode()?),("history_indicator",indicator)]))) }))});
+object_binding!(fem_solve_adaptive,"num_grid_fem_solve_adaptive","crate::sim::fem_simplex::solve_adaptive","Actual native spatial Dörfler refinement, independently from temporal adaptivity. Positive Length/Time/field references determine coefficient/source units and residual-indicator reference. A conservative worst-case refinement/DOF bound is checked before native allocation; actual returned space, field and estimator history are retained.",true,(mesh:Handle<Mesh>,problem:Handle<Constant>,degree:usize,time:f64,theta:f64,tolerance:f64,max_refinements:usize,solver_name:String,solver_tolerance:f64)->Dynamic,|ctx,mesh,problem,degree,time,theta,tolerance,max_refinements,solver_name,solver_tolerance|{mesh.with(ctx,|m|problem.with(ctx,|p|{m.frame.same(&p.frame)?;if max_refinements==0||max_refinements>4||theta<=0.0||theta>1.0||tolerance<=0.0{return Err(err("spatial adaptivity controls/refinement budget invalid"));}size(&m.data,degree)?;let growth=(1usize<<m.data.dim).checked_pow(max_refinements as u32).ok_or_else(||err("refinement size overflow"))?;let cells=m.data.cells.len().checked_mul(growth).ok_or_else(||err("refinement size overflow"))?;let nodes=m.data.nodes.len().checked_add(cells.checked_mul(if degree==2{12}else{6}).ok_or_else(||err("refinement size overflow"))?).ok_or_else(||err("refinement size overflow"))?;if cells>8192||nodes>1024{return Err(err("worst-case spatial refinement/DOF allocation budget exceeded"));}let out=run(p,&m.data,|native|fe::solve_adaptive(&m.data,native,degree,time,theta,tolerance,max_refinements,crate::rules::numerical_abi::native_grids::structured_ops::solver(&solver_name,solver_tolerance)?).map_err(err))?;let dofs=out.0.size();let space=Space{data:out.0,frame:m.frame.clone()};let indicator=indicator_result(out.2.iter().map(|(_,e)|*e).collect(),&space.frame,space.data.mesh.dim)?.0;let retained=crate::rules::numerical_abi::native_object_api::NativeOutput::encode(NewObject::new(space,m.frame.dims.to_vec()),ctx)?;Ok(Dynamic(api::record(vec![("space",retained),("solution",payload(&m.frame,out.1,vec![dofs])?.0),("history_dofs",out.2.into_iter().map(|(n,_)|n).collect::<Vec<_>>().encode()?),("history_indicator",indicator)]))) }))});
+object_binding!(fem_solve_adaptive_var,"num_grid_fem_solve_adaptive_var","crate::sim::fem_simplex::solve_adaptive_var","Actual native spatial Dörfler refinement, independently from temporal adaptivity. Positive Length/Time/field references determine coefficient/source units and residual-indicator reference. A conservative worst-case refinement/DOF bound is checked before native allocation; actual returned space, field and estimator history are retained.",true,(mesh:Handle<Mesh>,problem:Handle<Variable>,degree:usize,time:f64,theta:f64,tolerance:f64,max_refinements:usize,solver_name:String,solver_tolerance:f64)->Dynamic,|ctx,mesh,problem,degree,time,theta,tolerance,max_refinements,solver_name,solver_tolerance|{mesh.with(ctx,|m|problem.with(ctx,|p|{m.frame.same(&p.frame)?;if max_refinements==0||max_refinements>4||theta<=0.0||theta>1.0||tolerance<=0.0{return Err(err("spatial adaptivity controls/refinement budget invalid"));}size(&m.data,degree)?;let growth=(1usize<<m.data.dim).checked_pow(max_refinements as u32).ok_or_else(||err("refinement size overflow"))?;let cells=m.data.cells.len().checked_mul(growth).ok_or_else(||err("refinement size overflow"))?;let nodes=m.data.nodes.len().checked_add(cells.checked_mul(if degree==2{12}else{6}).ok_or_else(||err("refinement size overflow"))?).ok_or_else(||err("refinement size overflow"))?;if cells>8192||nodes>1024{return Err(err("worst-case spatial refinement/DOF allocation budget exceeded"));}let out=run_var(p,&m.data,|native|fe::solve_adaptive_var(&m.data,native,degree,time,theta,tolerance,max_refinements,crate::rules::numerical_abi::native_grids::structured_ops::solver(&solver_name,solver_tolerance)?).map_err(err))?;let dofs=out.0.size();let space=Space{data:out.0,frame:m.frame.clone()};let indicator=indicator_result(out.2.iter().map(|(_,e)|*e).collect(),&space.frame,space.data.mesh.dim)?.0;let retained=crate::rules::numerical_abi::native_object_api::NativeOutput::encode(NewObject::new(space,m.frame.dims.to_vec()),ctx)?;Ok(Dynamic(api::record(vec![("space",retained),("solution",payload(&m.frame,out.1,vec![dofs])?.0),("history_dofs",out.2.into_iter().map(|(n,_)|n).collect::<Vec<_>>().encode()?),("history_indicator",indicator)]))) }))});

@@ -227,7 +227,16 @@ if a.scale.to_bits()!=b.scale.to_bits(){return Err(err("addition needs equal num
 object_binding!(linear_train_hadamard,"num_linear_train_hadamard","crate::kernels::tensor_train::TensorTrain::hadamard","Native numerical method. Normalized coordinates and positive physical reference scales are checked; native object kind/session/lifetime and allocation/work budgets are enforced.",true,(a:Handle<Train>,b:Handle<Train>)->NewObject<Train>,|ctx,a,b|{let _=ctx;let da=dim(ctx,&a.value)?;let db=dim(ctx,&b.value)?;a.with(ctx,|a|b.with(ctx,|b|{if a.data.shape()!=b.data.shape(){return Err(err("tensor train shapes differ"));}
 if a.data.storage_len().checked_mul(b.data.storage_len()).is_none_or(|n|n>WORK){return Err(err("tensor train operation work budget exceeded"));}Ok(train_result(a.data.hadamard(&b.data).map_err(err)?,scale(a.scale,b.scale)?,product(da,db)?))}))});
 object_binding!(linear_train_inner,"num_linear_train_inner","crate::kernels::tensor_train::TensorTrain::inner","Native numerical method. Normalized coordinates and positive physical reference scales are checked; native object kind/session/lifetime and allocation/work budgets are enforced.",true,(a:Handle<Train>,b:Handle<Train>)->Dynamic,|ctx,a,b|{let _=ctx;let da=dim(ctx,&a.value)?;let db=dim(ctx,&b.value)?;a.with(ctx,|a|b.with(ctx,|b|{if a.data.shape()!=b.data.shape(){return Err(err("tensor train shapes differ"));}
-if a.data.storage_len().checked_mul(b.data.storage_len()).is_none_or(|n|n>WORK){return Err(err("tensor train operation work budget exceeded"));}Ok(Dynamic(api::quantity(a.data.inner(&b.data).map_err(err)?*scale(a.scale,b.scale)?,product(da,db)?)?))}))});
+if a.data.storage_len().checked_mul(b.data.storage_len()).is_none_or(|n|n>WORK){return Err(err("tensor train operation work budget exceeded"));}let value=a.data.inner(&b.data).map_err(err)?;Ok(Dynamic(api::quantity(api::scale_product(value,&[a.scale,b.scale],&[])?,product(da,db)?)?))}))});
+object_binding!(
+    linear_train_inner_workspace_len,
+    "num_linear_train_inner_workspace_len",
+    "crate::kernels::tensor_train::TensorTrain::inner_workspace_len",
+    "Reports the number of Float work slots for contracting two equal-shape tensor trains. Counts depend on bond ranks. A single core or two rank-one trains require no work slots.",
+    true,
+    (a: Handle<Train>, b: Handle<Train>) -> usize,
+    |ctx, a, b| a.with(ctx, |a| b.with(ctx, |b| a.data.inner_workspace_len(&b.data).map_err(err)))
+);
 object_binding!(linear_train_round,"num_linear_train_round","crate::kernels::tensor_train::TensorTrain::round","Native numerical method. Normalized coordinates and positive physical reference scales are checked; native object kind/session/lifetime and allocation/work budgets are enforced.",true,(a:Handle<Train>,tolerance:f64,max_rank:usize)->NewObject<Train>,|ctx,a,tolerance,max_rank|{let _=ctx;let d=dim(ctx,&a.value)?;a.with(ctx,|a|{if max_rank==0||max_rank>64{return Err(err("tensor train rank budget exceeded"));}Ok(train_result(a.data.round(tolerance,Some(max_rank)).map_err(err)?,a.scale,d))})});
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     api::install(i, BINDINGS, "numerical_matrix")?;
@@ -237,6 +246,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     lowrank::install(i)?;
     interpolation::install(i)?;
     contractions::install(i)?;
+    schur::install(i)?;
     multigrid::install(i)?;
     eigen::install(i)?;
     csc::install(i)?;
@@ -270,6 +280,7 @@ static BINDINGS: &[&api::Binding] = &[
     &linear_train_add::BINDING,
     &linear_train_hadamard::BINDING,
     &linear_train_inner::BINDING,
+    &linear_train_inner_workspace_len::BINDING,
     &linear_train_round::BINDING,
 ];
 
@@ -289,6 +300,8 @@ mod lowrank;
 mod interpolation;
 
 mod contractions;
+
+mod schur;
 
 mod multigrid;
 

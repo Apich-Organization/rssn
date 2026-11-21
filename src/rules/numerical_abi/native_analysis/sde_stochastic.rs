@@ -268,12 +268,21 @@ fn marks(
     d: &Distribution,
     values: Vec<f64>,
 ) -> Result<Dynamic, OpError> {
+    let shape = vec![values.len()];
+    mark_tensor(d, values, shape)
+}
+
+fn mark_tensor(
+    d: &Distribution,
+    values: Vec<f64>,
+    shape: Vec<usize>,
+) -> Result<Dynamic, OpError> {
     let data = values
         .into_iter()
         .map(|v| api::scale_product(v, &[d.scale], &[]).map(Value::Float))
         .collect::<Result<Vec<_>, _>>()?;
     Ok(Dynamic(Value::Tensor(crate::kernel::value::TensorValue {
-        shape: vec![data.len()],
+        shape,
         elem: crate::kernel::signature::TypeExpr::Dim(
             Box::new(crate::kernel::signature::TypeExpr::Float),
             d.dimension.clone(),
@@ -282,6 +291,27 @@ fn marks(
     })))
 }
 object_binding!(jump_sample,"num_analysis_stochastic_jump_sample","crate::sim::stochastic::JumpDistribution::sample","Actual native jump mark sampling on the retained native stream, returning physical mark units.",false,(distribution:Handle<Distribution>,stream:Handle<Stream>)->Dynamic,|ctx,distribution,stream|distribution.with(ctx,|d|{let v=stream.with_mut(ctx,|s|d.data.sample(&mut s.0).map_err(api::error))?;marks(d,v)}));
+object_binding!(
+    jump_sample_batch,
+    "num_analysis_stochastic_jump_sample_batch",
+    "crate::sim::stochastic::JumpDistribution::fill_marks",
+    "Draws consecutive marks into a rank-two tensor with one row per sample. Columns use the physical mark reference. Successful calls advance the stream in the same order as single draws. Zero samples and rejected batches keep the stream state.",
+    false,
+    (distribution: Handle<Distribution>, stream: Handle<Stream>, count: usize) -> Dynamic,
+    |ctx, distribution, stream, count| distribution.with(ctx, |d| {
+        let cells = count.checked_mul(d.n).filter(|cells| {
+            *cells < api::VALUE_LIMIT && cells.checked_add(count).is_some_and(|total| total <= api::VALUE_LIMIT)
+        }).ok_or_else(|| api::error("jump mark batch exceeds the shape or work budget"))?;
+        stream.with_mut(ctx, |stream| {
+            let mut next = stream.0.clone();
+            let mut values = vec![0.0; cells];
+            d.data.fill_marks(&mut next, &mut values).map_err(api::error)?;
+            let output = mark_tensor(d, values, vec![count, d.n])?;
+            stream.0 = next;
+            Ok(output)
+        })
+    })
+);
 object_binding!(jump_mean,"num_analysis_stochastic_jump_mean","crate::sim::stochastic::JumpDistribution::mean_mark","Actual native optional analytical mean mark; infinite or undefined stable means remain None.",false,(distribution:Handle<Distribution>)->Maybe<Dynamic>,|ctx,distribution|distribution.with(ctx,|d|Ok(Maybe(d.data.mean_mark().map(|v|marks(d,v)).transpose()?))));
 object_binding!(mlmc,"num_analysis_stochastic_mlmc","crate::sim::stochastic::mlmc","Actual native MLMC with coupled fine/coarse Brownian paths. Payoff compiled program receives physical state components; target RMSE and estimate/standard-error have payoff units and variance has their square. Explicit hierarchy/sample/work caps bound all native levels.",false,(model:Handle<Model>,options:Handle<Options>,initial:Input,end:Input,payoff:Input,target_rmse:Input,hierarchy:Vec<usize>,maxeval:usize)->Dynamic,|ctx,model,options,initial,end,payoff,target_rmse,hierarchy,maxeval|{let model=model.with(ctx,|m|Ok(m.clone()))?;let options=options.with(ctx,|o|Ok(o.clone()))?;same_frame(&model.drift.frame,&options.frame)?;let frame=&options.frame;let initial=frame.state(&initial)?;if hierarchy.len()!=5{return Err(api::error("MLMC hierarchy requires base_steps,min_level,max_level,warmup,max_samples"));}let(base_steps,min_level,max_level,warmup_samples,max_samples_per_level)=(hierarchy[0],hierarchy[1],hierarchy[2],hierarchy[3],hierarchy[4]);if base_steps==0||max_level>8||min_level>max_level||warmup_samples<2||max_samples_per_level<warmup_samples||max_samples_per_level>4096||base_steps.checked_mul(1usize<<max_level).and_then(|n|n.checked_mul(max_samples_per_level)).and_then(|n|n.checked_mul(max_level+1)).and_then(|n|n.checked_mul(initial.len().max(model.m*model.m))).is_none_or(|n|n>2000000){return Err(api::error("MLMC hierarchy worst-case work budget exceeded"));}let payoff=crate::rules::numerical_abi::native_backend::compiled_snapshot(ctx,&payoff.0,maxeval)?;if payoff.input_dimensions.len()!=initial.len(){return Err(api::error("MLMC payoff input shape mismatch"));}for(a,b)in payoff.input_dimensions.iter().zip(&frame.state_dimensions){api::same_dimension(a,b)?;}api::same_dimension(&payoff.output_dimension,&api::dimension(&target_rmse.0)?)?;let target_rmse=crate::rules::numerical_abi::numeric(&target_rmse.0,0)?;let cfg=st::MlmcOptions{method:options.data.method,structure:options.data.structure,seed:options.data.seed,t0:options.data.t0,t1:frame.time(&end)?,base_steps,min_level,max_level,warmup_samples,max_samples_per_level,target_rmse};let budget=Budget::new(maxeval)?;let drift=|t,y:&[f64]|rates(&model,&budget,t,y,false,options.data.structure);let diff=|t,y:&[f64]|rates(&model,&budget,t,y,true,options.data.structure);let mut value=|y:&[f64]|{if !budget.charge(){return Err(st::SdeError::StepLimit("MLMC evaluation budget exhausted".into()));}let physical=y.iter().zip(&frame.state_scales).map(|(v,s)|api::scale_product(*v,&[*s],&[])).collect::<Result<Vec<_>,_>>();match physical.and_then(|x|payoff.evaluate_coherent(&x)){Ok(v)=>Ok(v),Err(e)=>{budget.fail(e);Err(st::SdeError::NonFinite("MLMC payoff failed".into()))}}};let result=st::mlmc(drift,diff,&mut value,&initial,&cfg);budget.finish()?;payoff.finish()?;let r=result.map_err(api::error)?;let dim=payoff.output_dimension.clone();let squared=DimExpr::Mul(vec![dim.clone(),dim.clone()]);let levels=Value::Tensor(crate::kernel::value::TensorValue{shape:vec![r.levels.len()],elem:api::dynamic_type(),data:r.levels.into_iter().map(|l|Ok(api::record(vec![("level",Output::encode(l.level)?),("steps",Output::encode(l.steps)?),("samples",Output::encode(l.samples)?),("mean_difference",api::quantity(l.mean_diff,dim.clone())?),("variance",api::quantity(l.variance,squared.clone())?)]))).collect::<Result<_,OpError>>()?});Ok(Dynamic(api::record(vec![("estimate",api::quantity(r.estimate,dim.clone())?),("variance",api::quantity(r.variance,squared)?),("standard_error",api::quantity(r.std_error,dim)?),("levels",levels),("total_cost",Output::encode(r.total_cost)?)])))});
 
@@ -428,6 +458,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &events::BINDING,
             &jump_distribution::BINDING,
             &jump_sample::BINDING,
+            &jump_sample_batch::BINDING,
             &jump_mean::BINDING,
             &mlmc::BINDING,
             &stream_new::BINDING,

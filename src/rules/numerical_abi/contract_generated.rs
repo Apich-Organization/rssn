@@ -34,6 +34,8 @@ Cube,
 DeterminantUnits,
 #[doc = "Every numeric argument/result is dimensionless."]
 Dimensionless,
+#[doc = "Distribution quantiles use the scale dimension; shape and probabilities are dimensionless."]
+DistributionScale,
 #[doc = "Intersection coordinates all share a dimension."]
 EqualFive,
 #[doc = "Intersection coordinates all share a dimension."]
@@ -66,6 +68,8 @@ Kde,
 LassoUnits,
 #[doc = "Matrix A and vector b have independent dimensions; x has b/A."]
 LeastSquares,
+#[doc = "Location and scale use the sample dimension; the tuning constant is dimensionless."]
+LocationWithScale,
 #[doc = "Logistic labels are dimensionless and coefficients have inverse predictor units."]
 LogisticUnits,
 #[doc = "AX+XA^T=Q gives X dimension Q/A."]
@@ -265,6 +269,7 @@ static CONTRACT_CLAMPEDSPLINE: DimContract = DimContract { inputs: &[InputBindin
 static CONTRACT_CUBE: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), 3, 1)), other_args_dimensionless: true };
 static CONTRACT_DETERMINANTUNITS: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::ShapePower(&super::dimensions::DimFormula::Var("D"), 0, 0, 1)), other_args_dimensionless: true };
 static CONTRACT_DIMENSIONLESS: DimContract = DimContract { inputs: &[], constraints: &[], outputs: &[], output_paths: &[], result: None, other_args_dimensionless: true };
+static CONTRACT_DISTRIBUTIONSCALE: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 1, path: &[] }], constraints: &[], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Var("D")), other_args_dimensionless: true };
 static CONTRACT_EQUALFIVE: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[InputConstraint { argument: 1, path: &[], formula: &super::dimensions::DimFormula::Var("D") }, InputConstraint { argument: 2, path: &[], formula: &super::dimensions::DimFormula::Var("D") }, InputConstraint { argument: 3, path: &[], formula: &super::dimensions::DimFormula::Var("D") }, InputConstraint { argument: 4, path: &[], formula: &super::dimensions::DimFormula::Var("D") }], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Var("D")), other_args_dimensionless: true };
 static CONTRACT_EQUALFOUR: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[InputConstraint { argument: 1, path: &[], formula: &super::dimensions::DimFormula::Var("D") }, InputConstraint { argument: 2, path: &[], formula: &super::dimensions::DimFormula::Var("D") }, InputConstraint { argument: 3, path: &[], formula: &super::dimensions::DimFormula::Var("D") }], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Var("D")), other_args_dimensionless: true };
 static CONTRACT_EQUALINPUTS: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[InputConstraint { argument: 1, path: &[], formula: &super::dimensions::DimFormula::Var("D") }], outputs: &[], output_paths: &[], result: None, other_args_dimensionless: true };
@@ -281,6 +286,7 @@ static CONTRACT_INVERSESECOND: DimContract = DimContract { inputs: &[InputBindin
 static CONTRACT_KDE: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[InputConstraint { argument: 1, path: &[], formula: &super::dimensions::DimFormula::Var("D") }, InputConstraint { argument: 2, path: &[], formula: &super::dimensions::DimFormula::Var("D") }], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::One, super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), -1, 1)])), other_args_dimensionless: true };
 static CONTRACT_LASSOUNITS: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 2, path: &[] }, InputBinding { name: "E", argument: 3, path: &[] }], constraints: &[InputConstraint { argument: 4, path: &[], formula: &super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("D"), super::dimensions::DimFormula::Var("E")]) }, InputConstraint { argument: 7, path: &[], formula: &super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("E"), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), -1, 1)]) }], outputs: &[("coefficients", FieldDimension::Formula(&super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("E"), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), -1, 1)]))), ("intercept", FieldDimension::Formula(&super::dimensions::DimFormula::Var("E"))), ("r_squared", FieldDimension::Formula(&super::dimensions::DimFormula::One)), ("residuals", FieldDimension::Formula(&super::dimensions::DimFormula::Var("E")))], output_paths: &[], result: None, other_args_dimensionless: true };
 static CONTRACT_LEASTSQUARES: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }, InputBinding { name: "E", argument: 1, path: &[] }], constraints: &[], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("E"), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), -1, 1)])), other_args_dimensionless: true };
+static CONTRACT_LOCATIONWITHSCALE: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[InputConstraint { argument: 1, path: &[], formula: &super::dimensions::DimFormula::One }, InputConstraint { argument: 2, path: &[], formula: &super::dimensions::DimFormula::Var("D") }], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Var("D")), other_args_dimensionless: true };
 static CONTRACT_LOGISTICUNITS: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 2, path: &[] }], constraints: &[], outputs: &[("coefficients", FieldDimension::Formula(&super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::One, super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), -1, 1)]))), ("intercept", FieldDimension::Formula(&super::dimensions::DimFormula::One)), ("log_likelihood", FieldDimension::Formula(&super::dimensions::DimFormula::One)), ("iterations", FieldDimension::NonNumeric)], output_paths: &[], result: None, other_args_dimensionless: true };
 static CONTRACT_LYAPUNOV: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }, InputBinding { name: "E", argument: 1, path: &[] }], constraints: &[], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("E"), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), -1, 1)])), other_args_dimensionless: true };
 static CONTRACT_MULTIVARIATEDENSITY: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[InputConstraint { argument: 1, path: &[], formula: &super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), 2, 1) }, InputConstraint { argument: 2, path: &[], formula: &super::dimensions::DimFormula::Var("D") }], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::ShapePower(&super::dimensions::DimFormula::Var("D"), 0, 0, -1)), other_args_dimensionless: true };
@@ -389,6 +395,7 @@ DimensionPolicy::ClampedSpline => &CONTRACT_CLAMPEDSPLINE,
 DimensionPolicy::Cube => &CONTRACT_CUBE,
 DimensionPolicy::DeterminantUnits => &CONTRACT_DETERMINANTUNITS,
 DimensionPolicy::Dimensionless => &CONTRACT_DIMENSIONLESS,
+DimensionPolicy::DistributionScale => &CONTRACT_DISTRIBUTIONSCALE,
 DimensionPolicy::EqualFive => &CONTRACT_EQUALFIVE,
 DimensionPolicy::EqualFour => &CONTRACT_EQUALFOUR,
 DimensionPolicy::EqualInputs => &CONTRACT_EQUALINPUTS,
@@ -405,6 +412,7 @@ DimensionPolicy::InverseSecond => &CONTRACT_INVERSESECOND,
 DimensionPolicy::Kde => &CONTRACT_KDE,
 DimensionPolicy::LassoUnits => &CONTRACT_LASSOUNITS,
 DimensionPolicy::LeastSquares => &CONTRACT_LEASTSQUARES,
+DimensionPolicy::LocationWithScale => &CONTRACT_LOCATIONWITHSCALE,
 DimensionPolicy::LogisticUnits => &CONTRACT_LOGISTICUNITS,
 DimensionPolicy::Lyapunov => &CONTRACT_LYAPUNOV,
 DimensionPolicy::MultivariateDensity => &CONTRACT_MULTIVARIATEDENSITY,

@@ -7,8 +7,11 @@ use rssn::kernel::signature::Signature;
 use rssn::kernel::signature::TypeExpr;
 use rssn::kernel::value::ComplexValue;
 use rssn::kernel::value::DynValue;
+use rssn::kernel::value::RecordValue;
 use rssn::kernel::value::TensorValue;
 use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering::Relaxed;
 fn scalar(
     v: f64,
     d: DimExpr,
@@ -48,6 +51,65 @@ fn field<'a>(
 fn session() -> rssn::Session {
     rssn::Session::new()
 }
+
+#[test]
+fn indefinite_recurrences_validate_callback_work_before_sampling() {
+    let session = session();
+    let length = dim("Length");
+    let time = dim("Time");
+    let sampled = Arc::new(AtomicUsize::new(0));
+    let callback_counter = Arc::clone(&sampled);
+    let mut ctx = CallCtx::new();
+    let measured_callback = ctx
+        .add_callback(Arc::new(NativeCallback::new(
+            move |a: &[Value]| {
+                let sample = callback_counter.fetch_add(1, Relaxed) % 3;
+                assert_eq!(number(&a[0]), [2.0, 4.0, 6.0][sample]);
+                Ok(scalar(2.0, dim("Time")))
+            },
+            Signature::new(vec![ty(length.clone())], ty(time.clone())),
+        )))
+        .unwrap();
+    let config = Value::Record(RecordValue {
+        fields: vec![
+            ("h".into(), scalar(2.0, length.clone())),
+            ("step".into(), scalar(2.0, length.clone())),
+            ("tolerance".into(), Value::Float(1e-10)),
+            ("shift".into(), Value::int(20)),
+            ("taylor_terms".into(), Value::int(8)),
+        ],
+    });
+    let call = |op, budget| {
+        session.call_value(
+            op,
+            &[
+                Value::Function(measured_callback),
+                scalar(8.0, length.clone()),
+                config.clone(),
+                scalar(2.0, length.clone()),
+                scalar(1.0, time.clone()),
+                Value::int(budget),
+            ],
+            &ctx,
+        )
+    };
+    for (op, expected, expected_dim) in [
+        ("num_native_sum_indefinite_sum", 6.0, time.clone()),
+        ("num_native_sum_indefinite_product", 8.0, DimExpr::Dimless),
+    ] {
+        let before = sampled.load(Relaxed);
+        let err = call(op, 2).unwrap_err();
+        assert!(err.to_string().contains("evaluation budget"), "{err}");
+        assert_eq!(sampled.load(Relaxed), before);
+        let result = call(op, 3).unwrap();
+        assert_eq!(sampled.load(Relaxed), before + 3);
+        assert!(
+            rssn::kernel::overload::matches_type(&ty(expected_dim), &result.type_expr()).accepted()
+        );
+        assert!((number(&result) - expected).abs() < 1e-12);
+    }
+}
+
 #[test]
 fn scaled_derivative_and_source_failure() {
     let s = session();

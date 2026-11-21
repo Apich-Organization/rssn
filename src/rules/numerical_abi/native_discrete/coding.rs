@@ -2,6 +2,7 @@
 use super::*;
 use crate::kernels::error_correction::Bch;
 use crate::kernels::error_correction::PolyGF256;
+use crate::kernels::error_correction::ReedSolomonEncoder;
 use crate::kernels::finite_field::PrimeFieldElement;
 impl NativeType for Bch {
     const KIND: &'static str = "rssn/native/discrete/bch/v1";
@@ -14,6 +15,47 @@ impl NativeType for Bch {
         Ok(())
     }
 }
+
+impl NativeType for ReedSolomonEncoder {
+    const KIND: &'static str = "rssn/native/discrete/reed-solomon-encoder/v1";
+    const MAX_BYTES: usize = 65_536;
+
+    fn validate(&self) -> Result<(), OpError> {
+        Ok(())
+    }
+
+    fn retained_bytes(&self) -> usize {
+        std::mem::size_of::<Self>().saturating_add(256_usize.saturating_mul(self.parity_symbols()))
+    }
+}
+
+object_binding!(
+    rs_encoder_new,
+    "num_native_rs_encoder_new",
+    "crate::kernels::error_correction::ReedSolomonEncoder::new",
+    "Prepares a Reed–Solomon encoder for the supplied number of parity bytes. The session-owned encoder retains the generator's feedback table and accepts blocks of at most 255 bytes including parity.",
+    true,
+    (parity: usize) -> NewObject<ReedSolomonEncoder>,
+    |_, parity| Ok(NewObject::normalized(ReedSolomonEncoder::new(parity).map_err(error)?))
+);
+object_binding!(
+    rs_encoder_encode,
+    "num_native_rs_encoder_encode",
+    "crate::kernels::error_correction::ReedSolomonEncoder::encode",
+    "Encodes a tensor of exact bytes using a retained Reed–Solomon encoder. The result begins with the original bytes and ends with the prepared parity count. Input and output have no physical units.",
+    true,
+    (encoder: Handle<ReedSolomonEncoder>, message: Vec<u8>) -> Vec<u8>,
+    |ctx, encoder, message| encoder.with(ctx, |encoder| encoder.encode(&message).map_err(error))
+);
+object_binding!(
+    rs_encoder_parity_symbols,
+    "num_native_rs_encoder_parity_symbols",
+    "crate::kernels::error_correction::ReedSolomonEncoder::parity_symbols",
+    "Returns the exact parity-byte count of a retained Reed–Solomon encoder.",
+    true,
+    (encoder: Handle<ReedSolomonEncoder>) -> usize,
+    |ctx, encoder| encoder.with(ctx, |encoder| Ok(encoder.parity_symbols()))
+);
 impl NativeType for PolyGF256 {
     const KIND: &'static str = "rssn/native/discrete/gf256-polynomial/v1";
     const MAX_BYTES: usize = 65536;
@@ -78,6 +120,9 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &bch_decode::BINDING,
             &bch_correct::BINDING,
             &bch_is_codeword::BINDING,
+            &rs_encoder_new::BINDING,
+            &rs_encoder_encode::BINDING,
+            &rs_encoder_parity_symbols::BINDING,
             &poly_gf256_new::BINDING,
             &poly_gf256_degree::BINDING,
             &poly_gf256_derivative::BINDING,

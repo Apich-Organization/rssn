@@ -7,19 +7,25 @@ use crate::kernel::Value;
 use crate::kernel::signature::DimExpr;
 use crate::kernel::signature::Exp;
 use crate::kernel::signature::Rational;
+use crate::kernel::signature::TypeExpr;
 use crate::kernel::value::ComplexValue;
 use crate::kernel::value::DynValue;
+use crate::kernel::value::TensorValue;
 use crate::kernel::value::VariantValue;
+use crate::kernels::oscillatory::LevinPlan;
 use crate::kernels::quadrature as q;
 use crate::rules::numerical_abi::codecs::Arg;
 use crate::rules::numerical_abi::codecs::Output;
 use crate::rules::numerical_abi::native_analysis_parallel::bounds;
 use crate::rules::numerical_abi::native_analysis_parallel::limit;
 use crate::rules::numerical_abi::native_analysis_parallel::output;
+use crate::rules::numerical_abi::native_backend::CompiledSnapshot;
 use crate::rules::numerical_abi::native_backend::compiled_snapshot;
 use crate::rules::numerical_abi::native_object_api::Dynamic;
 use crate::rules::numerical_abi::native_object_api::Handle;
 use crate::rules::numerical_abi::native_object_api::Input;
+use crate::rules::numerical_abi::native_object_api::NativeType;
+use crate::rules::numerical_abi::native_object_api::NewObject;
 use crate::rules::numerical_abi::native_object_api::object_binding;
 use crate::rules::numerical_abi::native_object_api::{
     self as object,
@@ -100,6 +106,55 @@ object_binding!(oscillatory,"num_analysis_oscillatory2d_compiled","crate::kernel
  object::same_dimension(&DimExpr::Inverse(Box::new(phase.output_dimension.clone())),&object::dimension(&omega.0)?)?;object::same_dimension(&d,&object::dimension(&tolerance.0)?)?;let w=super::super::numeric(&omega.0,2)?;let tol=super::super::numeric(&tolerance.0,3)?;if tol<=0.0{return Err(object::error("oscillatory absolute tolerance must be positive"));}
  let r=q::oscillatory2d(|x,y|f.sample(&[x,y]),|x,y|phase.sample(&[x,y]),&lo,&hi,w,tol);f.finish()?;phase.finish()?;complex_result(r,d)
 });
+const MAX_LEVIN_POINTS: usize = 512;
+
+fn levin_node_budget(points: usize) -> Result<(), OpError> {
+    if !(2..=MAX_LEVIN_POINTS).contains(&points) {
+        return Err(object::error("Levin collocation points must be in 2..=512"));
+    }
+    Ok(())
+}
+
+fn levin_program(
+    program: &CompiledSnapshot,
+    coordinate: &DimExpr,
+) -> Result<(), OpError> {
+    let [input] = program.input_dimensions.as_slice() else {
+        return Err(object::error("Levin programs must have one input"));
+    };
+    object::same_dimension(coordinate, input)
+}
+
+fn levin_phase_units(
+    phase: &CompiledSnapshot,
+    derivative: &CompiledSnapshot,
+    coordinate: &DimExpr,
+    frequency: &Value,
+) -> Result<(), OpError> {
+    levin_program(phase, coordinate)?;
+    levin_program(derivative, coordinate)?;
+    object::same_dimension(
+        &DimExpr::Mul(vec![
+            phase.output_dimension.clone(),
+            coordinate.clone().pow(-1),
+        ]),
+        &derivative.output_dimension,
+    )?;
+    object::same_dimension(
+        &phase.output_dimension.clone().pow(-1),
+        &object::dimension(frequency)?,
+    )
+}
+
+fn levin_coordinate(
+    lo: &Value,
+    hi: &Value,
+) -> Result<DimExpr, OpError> {
+    let coordinate = object::dimension(lo)?;
+    object::same_dimension(&coordinate, &object::dimension(hi)?)?;
+    Ok(coordinate)
+}
+
 #[allow(
     clippy::needless_pass_by_value,
     clippy::too_many_arguments,
@@ -118,31 +173,13 @@ fn levin(
     derivative: Input,
     adaptive: bool,
 ) -> Result<Dynamic, OpError> {
-    if !(2..=512).contains(&points) {
-        return Err(object::error("Levin collocation points must be2..512"));
-    }
-    let coordinate = object::dimension(&lo.0)?;
-    object::same_dimension(&coordinate, &object::dimension(&hi.0)?)?;
+    levin_node_budget(points)?;
+    let coordinate = levin_coordinate(&lo.0, &hi.0)?;
     let f = compiled_snapshot(ctx, &function.0, budget)?;
     let phase = compiled_snapshot(ctx, &phase.0, budget)?;
     let derivative = compiled_snapshot(ctx, &derivative.0, budget)?;
-    for p in [&f, &phase, &derivative] {
-        if p.input_dimensions.len() != 1 {
-            return Err(object::error("Levin programs must have one input"));
-        }
-        object::same_dimension(&coordinate, &p.input_dimensions[0])?;
-    }
-    object::same_dimension(
-        &DimExpr::Mul(vec![
-            phase.output_dimension.clone(),
-            DimExpr::Inverse(Box::new(coordinate.clone())),
-        ]),
-        &derivative.output_dimension,
-    )?;
-    object::same_dimension(
-        &DimExpr::Inverse(Box::new(phase.output_dimension.clone())),
-        &object::dimension(&omega.0)?,
-    )?;
+    levin_program(&f, &coordinate)?;
+    levin_phase_units(&phase, &derivative, &coordinate, &omega.0)?;
     let d = DimExpr::Mul(vec![coordinate, f.output_dimension.clone()]);
     object::same_dimension(&d, &object::dimension(&tolerance.0)?)?;
     let a = super::numeric(&lo.0, 0)?;
@@ -174,6 +211,107 @@ fn levin(
 }
 object_binding!(levin_fixed,"num_analysis_levin_compiled","crate::kernels::oscillatory::levin","Actual native Levin collocation with independent physical amplitude,phase,and derivative programs. Absolute reference tolerance is checked for interface consistency; fixed collocation supplies no error estimate.",false,(lo:Input,hi:Input,omega:Input,tolerance:Input,points:usize,budget:usize,function:Input,phase:Input,derivative:Input)->Dynamic,|ctx:&CallCtx<'_>,lo:Input,hi:Input,omega:Input,tolerance:Input,points:usize,budget:usize,function:Input,phase:Input,derivative:Input|levin(ctx,lo,hi,omega,tolerance,points,budget,function,phase,derivative,false));
 object_binding!(levin_adaptive,"num_analysis_levin_adaptive_compiled","crate::kernels::oscillatory::levin_adaptive","Actual native adaptive Levin collocation with positive absolute physical tolerance and bounded collocation/evaluation work.",false,(lo:Input,hi:Input,omega:Input,tolerance:Input,points:usize,budget:usize,function:Input,phase:Input,derivative:Input)->Dynamic,|ctx:&CallCtx<'_>,lo:Input,hi:Input,omega:Input,tolerance:Input,points:usize,budget:usize,function:Input,phase:Input,derivative:Input|levin(ctx,lo,hi,omega,tolerance,points,budget,function,phase,derivative,true));
+impl NativeType for LevinPlan {
+    const KIND: &'static str = "rssn/native/analysis/levin-plan/v1";
+    const MAX_BYTES: usize =
+        MAX_LEVIN_POINTS * (size_of::<f64>() + size_of::<num_complex::Complex64>()) + 8192;
+
+    fn validate(&self) -> Result<(), OpError> {
+        Ok(())
+    }
+
+    fn retained_bytes(&self) -> usize {
+        size_of::<Self>() + self.heap_bytes()
+    }
+}
+
+fn levin_axis(
+    plan: &Handle<LevinPlan>,
+    ctx: &CallCtx<'_>,
+) -> Result<DimExpr, OpError> {
+    plan.dimensions(ctx)?
+        .into_iter()
+        .next()
+        .ok_or_else(|| object::error("Levin plan lacks its coordinate dimension"))
+}
+
+object_binding!(
+    levin_plan_new,
+    "num_analysis_levin_plan_new",
+    "crate::kernels::oscillatory::LevinPlan::new",
+    "Prepares repeated integration on one interval at fixed frequency. Supply compiled scalar phase and phase derivative, with derivative units equal to phase units divided by the coordinate dimension. Frequency is inverse phase. The handle retains only the prepared nodes and weights.",
+    false,
+    (lo: Input, hi: Input, frequency: Input, points: usize, budget: usize, phase: Input, derivative: Input) -> NewObject<LevinPlan>,
+    |ctx, lo, hi, frequency, points, budget, phase, derivative| {
+        levin_node_budget(points)?;
+        let coordinate = levin_coordinate(&lo.0, &hi.0)?;
+        let phase = compiled_snapshot(ctx, &phase.0, budget)?;
+        let derivative = compiled_snapshot(ctx, &derivative.0, budget)?;
+        levin_phase_units(&phase, &derivative, &coordinate, &frequency.0)?;
+        let a = crate::rules::numerical_abi::numeric(&lo.0, 0)?;
+        let b = crate::rules::numerical_abi::numeric(&hi.0, 1)?;
+        let w = crate::rules::numerical_abi::numeric(&frequency.0, 2)?;
+        let plan = LevinPlan::new(&|x| phase.sample(&[x]), &|x| derivative.sample(&[x]), a, b, w, points);
+        phase.finish()?;
+        derivative.finish()?;
+        Ok(NewObject::new(plan.map_err(object::error)?, vec![coordinate]))
+    }
+);
+
+object_binding!(
+    levin_plan_nodes,
+    "num_analysis_levin_plan_nodes",
+    "crate::kernels::oscillatory::LevinPlan::nodes",
+    "Returns the measured quadrature nodes in the order required by the sampled amplitude operator. An empty interval has no nodes.",
+    false,
+    (plan: Handle<LevinPlan>) -> Dynamic,
+    |ctx, plan| {
+        let coordinate = levin_axis(&plan, ctx)?;
+        plan.with(ctx, |plan| {
+            let nodes = plan.nodes();
+            Ok(Dynamic(Value::Tensor(TensorValue {
+                shape: vec![nodes.len()],
+                data: nodes.iter().copied().map(Value::Float).collect(),
+                elem: TypeExpr::Float.with_dim(coordinate),
+            })))
+        })
+    }
+);
+
+object_binding!(
+    levin_plan_integrate,
+    "num_analysis_levin_plan_integrate",
+    "crate::kernels::oscillatory::LevinPlan::integrate",
+    "Integrates a compiled real amplitude with the prepared weights. The complex result has amplitude units times coordinate units. Each call evaluates only the amplitude program.",
+    false,
+    (plan: Handle<LevinPlan>, amplitude: Input, budget: usize) -> Dynamic,
+    |ctx, plan, amplitude, budget| {
+        let coordinate = levin_axis(&plan, ctx)?;
+        let amplitude = compiled_snapshot(ctx, &amplitude.0, budget)?;
+        levin_program(&amplitude, &coordinate)?;
+        let result = plan.with(ctx, |plan| plan.integrate(&|x| amplitude.sample(&[x])).map_err(object::error));
+        amplitude.finish()?;
+        let result = result?;
+        let dimension = DimExpr::Mul(vec![coordinate, amplitude.output_dimension]);
+        Ok(Dynamic(complex(num_complex::Complex64::new(result.re, result.im), dimension)?))
+    }
+);
+
+object_binding!(
+    levin_plan_integrate_samples,
+    "num_analysis_levin_plan_integrate_samples",
+    "crate::kernels::oscillatory::LevinPlan::integrate_samples",
+    "Integrates one real amplitude sample per ordered plan node. The result has amplitude units times coordinate units. No compiled function is required for this call.",
+    false,
+    (plan: Handle<LevinPlan>, samples: Input) -> Dynamic,
+    |ctx, plan, samples| {
+        let dimension = DimExpr::Mul(vec![levin_axis(&plan, ctx)?, object::dimension(&samples.0)?]);
+        let samples = <Vec<f64> as Arg>::decode(&samples.0, 1)?;
+        let r = plan.with(ctx, |plan| plan.integrate_samples(&samples).map_err(object::error))?;
+        Ok(Dynamic(complex(num_complex::Complex64::new(r.re, r.im), dimension)?))
+    }
+);
+
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     object::install(
         i,
@@ -185,6 +323,10 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &oscillatory::BINDING,
             &levin_fixed::BINDING,
             &levin_adaptive::BINDING,
+            &levin_plan_new::BINDING,
+            &levin_plan_nodes::BINDING,
+            &levin_plan_integrate::BINDING,
+            &levin_plan_integrate_samples::BINDING,
         ],
         "numerical_vector",
     )

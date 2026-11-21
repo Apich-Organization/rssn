@@ -222,10 +222,23 @@ pub(super) fn vec_value(
     v: &[f64],
     d: &DimExpr,
 ) -> Value {
+    vector_from_iter(v.iter().copied(), d)
+}
+pub(super) fn scaled_vec_value(
+    coordinates: &[f64],
+    reference: f64,
+    dimension: &DimExpr,
+) -> Value {
+    vector_from_iter(coordinates.iter().map(|x| x * reference), dimension)
+}
+fn vector_from_iter(
+    coordinates: impl ExactSizeIterator<Item = f64>,
+    dimension: &DimExpr,
+) -> Value {
     Value::Tensor(TensorValue {
-        shape: vec![v.len()],
-        data: v.iter().copied().map(Value::Float).collect(),
-        elem: real(d.clone()),
+        shape: vec![coordinates.len()],
+        data: coordinates.map(Value::Float).collect(),
+        elem: real(dimension.clone()),
     })
 }
 pub(super) fn record(fields: Vec<(&str, Value)>) -> Value {

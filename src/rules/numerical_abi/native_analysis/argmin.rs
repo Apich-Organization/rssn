@@ -381,7 +381,49 @@ fn regression_parameters(
     scales[0] = r.yscale;
     Ok(Array1::from(parameters(v, &scales, &dimensions)?))
 }
-object_binding!(regression_cost,"num_analysis_regression_cost","","Evaluate the retained native regression CostFunction with measured intercept/slope coefficients; returns physical half mean-squared residual units.",false,(model:Handle<RegressionObject>,coefficients:Input)->Dynamic,|ctx:&CallCtx<'_>,model:Handle<RegressionObject>,coefficients:Input|model.with(ctx,|r|{let beta=regression_parameters(&coefficients,r)?;let value=r.native.cost(&beta).map_err(api::error)?;let d=crate::kernel::signature::DimExpr::Mul(vec![r.dimensions[1].clone(),r.dimensions[1].clone()]);Ok(Dynamic(api::quantity(api::scale_product(value,&[r.yscale,r.yscale],&[])?,d)?))}));
+fn regression_loss_value(
+    value: f64,
+    model: &RegressionObject,
+) -> Result<Value, OpError> {
+    let result_dimension = crate::kernel::signature::DimExpr::Mul(vec![
+        model.dimensions[1].clone(),
+        model.dimensions[1].clone(),
+    ]);
+    api::quantity(
+        api::scale_product(value, &[model.yscale, model.yscale], &[])?,
+        result_dimension,
+    )
+}
+
+object_binding!(regression_cost,"num_analysis_regression_cost","","Evaluate the retained native regression CostFunction with measured intercept/slope coefficients; returns physical half mean-squared residual units.",false,(model:Handle<RegressionObject>,coefficients:Input)->Dynamic,|ctx:&CallCtx<'_>,model:Handle<RegressionObject>,coefficients:Input|model.with(ctx,|r|{let beta=regression_parameters(&coefficients,r)?;let value=r.native.cost(&beta).map_err(api::error)?;Ok(Dynamic(regression_loss_value(value,r)?))}));
+
+object_binding!(
+    regression_value_and_gradient, "num_analysis_regression_value_and_gradient",
+    "crate::kernels::optimize::LinearRegression::value_and_gradient",
+    "Return the half mean-squared residual and its coefficient gradient using the same residual pass. If predictor units are D and response units are E, coefficients use E then E/D, value uses E squared, and the gradient uses E then E times D. The gradient preserves the intercept-first coefficient order.",
+    false,
+    (model: Handle<RegressionObject>, coefficients: Input) -> Dynamic,
+    |ctx, model, coefficients| model.with(ctx, |model| {
+        let beta = regression_parameters(&coefficients, model)?;
+        let (value, gradient) = model.native.value_and_gradient(&beta).map_err(api::error)?;
+        let predicted_gradient_dimension = crate::kernel::signature::DimExpr::Mul(vec![
+            model.dimensions[1].clone(), model.dimensions[0].clone(),
+        ]);
+        let data = gradient.iter().enumerate().map(|(i, &entry)| {
+            if i == 0 {
+                api::quantity(api::scale_product(entry, &[model.yscale], &[])?, model.dimensions[1].clone())
+            } else {
+                api::quantity(api::scale_product(entry, &[model.yscale, model.xscale], &[])?, predicted_gradient_dimension.clone())
+            }
+        }).collect::<Result<Vec<_>, _>>()?;
+        Ok(Dynamic(api::record(vec![
+            ("value", regression_loss_value(value, model)?),
+            ("gradient", Value::Tensor(TensorValue {
+                shape: vec![data.len()], elem: api::dynamic_type(), data,
+            })),
+        ])))
+    })
+);
 
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     api::install(
@@ -397,6 +439,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &result_data::BINDING,
             &regression_new::BINDING,
             &regression_cost::BINDING,
+            &regression_value_and_gradient::BINDING,
         ],
         "numerical_vector",
     )

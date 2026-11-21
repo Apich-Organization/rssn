@@ -21,7 +21,12 @@ use super::err;
 use super::object_binding;
 use super::quantity;
 use super::vector;
+use crate::kernel::CallCtx;
+use crate::kernel::signature::TypeExpr;
+use crate::kernels::numeric_common::trajectory_sample_count;
+use crate::rules::numerical_abi::codecs::Output;
 use crate::sim::physics_fdm as fdm;
+use std::num::NonZeroUsize;
 struct Fdm {
     data: fdm::FdmGrid<f64>,
     frame: Frame,
@@ -99,6 +104,15 @@ fn normalized_values(
         .map(|v| api::scale_product(v, &[], &[f.value]))
         .collect()
 }
+fn normalized_spacing(
+    frame: &Frame,
+    spacing: &Value,
+) -> Result<Vec<f64>, OpError> {
+    vector(spacing, &frame.dims[0])?
+        .into_iter()
+        .map(|value| api::scale_product(value, &[], &[frame.length]))
+        .collect()
+}
 fn controls(
     a: &Fdm,
     h: &Value,
@@ -114,10 +128,7 @@ fn controls(
     {
         return Err(err("FDM node/step work budget exceeded"));
     }
-    let h = vector(h, &a.frame.dims[0])?
-        .into_iter()
-        .map(|v| api::scale_product(v, &[], &[a.frame.length]))
-        .collect::<Result<Vec<_>, _>>()?;
+    let h = normalized_spacing(&a.frame, h)?;
     let dt = quantity(dt, &a.frame.dims[1])? / a.frame.time;
     if h.len() != n.len() || h.iter().any(|v| *v <= 0.0) || !dt.is_finite() || dt <= 0.0 {
         return Err(err("FDM spacing/step controls invalid"));
@@ -162,6 +173,90 @@ fn poisson_source(
         source.data.dimensions().clone(),
     ))
 }
+
+struct WaveSamples {
+    steps: Vec<usize>,
+    grid_shape: Vec<usize>,
+    data: Value,
+}
+
+impl api::NativeOutput for WaveSamples {
+    fn ty() -> TypeExpr {
+        TypeExpr::Record(vec![
+            ("steps".into(), api::tensor_type(1, TypeExpr::Int)),
+            ("grid_shape".into(), api::tensor_type(1, TypeExpr::Int)),
+            ("data".into(), api::dynamic_type()),
+        ])
+    }
+
+    fn encode(
+        self,
+        _: &CallCtx<'_>,
+    ) -> Result<Value, OpError> {
+        Ok(api::record(vec![
+            ("steps", Output::encode(self.steps)?),
+            ("grid_shape", Output::encode(self.grid_shape)?),
+            ("data", self.data),
+        ]))
+    }
+}
+
+object_binding!(
+    solve_wave_dirichlet_sampled,
+    "num_grid_legacy_fdm_solve_wave_dirichlet_sampled",
+    "crate::sim::physics_fdm::solve_wave_dirichlet_sampled",
+    "Advances a 2D or 3D homogeneous Dirichlet wave from a measured displacement grid and a flat rate tensor in displacement/time. Give measured length spacings, a speed, a signed time step, a step count and a positive save cadence. Samples contain step zero, cadence multiples and the final step. Each row of data is a measured displacement field with x fastest. grid_shape gives the field extents and steps gives the completed step indices.",
+    false,
+    (
+        initial: Handle<Fdm>,
+        initial_rate: Input,
+        spacing: Input,
+        speed_value: Input,
+        dt: Input,
+        steps: usize,
+        save_every: usize,
+    ) -> WaveSamples,
+    |ctx, initial, initial_rate, spacing, speed_value, dt, steps, save_every| initial.with(ctx, |u| {
+        let nodes = u.data.len();
+        let grid_shape = sizes(u.data.dimensions());
+        let cadence = NonZeroUsize::new(save_every).ok_or_else(|| err("wave sample cadence must be positive"))?;
+        let sample_count = trajectory_sample_count(steps, cadence)
+            .filter(|count| count.checked_mul(nodes).is_some_and(|size| size <= LIMIT))
+            .ok_or_else(|| err("FDM wave sample storage budget exceeded"))?;
+        if !(2..=3).contains(&grid_shape.len())
+            || nodes == 0
+            || steps > 65_536
+            || steps.checked_mul(nodes).is_none_or(|work| work > 20_000_000)
+        {
+            return Err(err("FDM wave rank, node or step work budget exceeded"));
+        }
+        let frame = &u.frame;
+        let rate_dimension = canonical(DimExpr::Mul(vec![
+            frame.dims[2].clone(),
+            DimExpr::Inverse(Box::new(frame.dims[1].clone())),
+        ]))?;
+        let rate = vector(&initial_rate.0, &rate_dimension)?
+            .into_iter()
+            .map(|rate| api::scale_without_underflow(rate, &[frame.time], &[frame.value]))
+            .collect::<Result<Vec<_>, _>>()?;
+        let initial_rate = fdm::FdmGrid::from_data(rate, u.data.dimensions().clone());
+        let spacing = normalized_spacing(frame, &spacing.0)?;
+        let c = speed(frame, &speed_value.0)?;
+        let dt = api::scale_without_underflow(
+            quantity(&dt.0, &frame.dims[1])?, &[], &[frame.time],
+        )?;
+        let samples = fdm::solve_wave_dirichlet_sampled(
+            &u.data, &initial_rate, &spacing, c, dt, steps, save_every,
+        ).map_err(err)?;
+        let mut steps = Vec::with_capacity(sample_count);
+        let data = samples.into_iter().flat_map(|sample| {
+            steps.push(sample.step);
+            sample.displacement.data.into_iter().map(move |v| api::scale_product(v, &[frame.value], &[]))
+        }).collect::<Result<Vec<_>, _>>()?;
+        let data = array(data, vec![steps.len(), nodes], frame.dims[2].clone())?;
+        Ok(WaveSamples { steps, grid_shape, data })
+    })
+);
 object_binding!(new,"num_grid_legacy_fdm_new","crate::sim::physics_fdm::FdmGrid<T>::new","Explicit native Float FDM-grid and sampled-initializer specialization. Measured field/coefficient/time/spacing inputs are normalized by retained physical references. Grid, CFL, work and data bounds precede native work; BC callbacks retain native errors.",false,(frame:Handle<Frame>,shape:Vec<usize>)->NewObject<Fdm>,|ctx,frame,shape|{let _=ctx;frame.with(ctx,|f|Ok(result(fdm::FdmGrid::<f64>::new(axes(&shape)?),f)))});
 object_binding!(with_value,"num_grid_legacy_fdm_with_value","crate::sim::physics_fdm::FdmGrid<T>::with_value","Explicit native Float FDM-grid and sampled-initializer specialization. Measured field/coefficient/time/spacing inputs are normalized by retained physical references. Grid, CFL, work and data bounds precede native work; BC callbacks retain native errors.",false,(frame:Handle<Frame>,shape:Vec<usize>,value:Input)->NewObject<Fdm>,|ctx,frame,shape,value|{let _=ctx;frame.with(ctx,|f|{let value=quantity(&value.0,&f.dims[2])?/f.value;Ok(result(fdm::FdmGrid::<f64>::with_value(axes(&shape)?,value),f))})});
 object_binding!(from_data,"num_grid_legacy_fdm_from_data","crate::sim::physics_fdm::FdmGrid<T>::from_data","Explicit native Float FDM-grid and sampled-initializer specialization. Measured field/coefficient/time/spacing inputs are normalized by retained physical references. Grid, CFL, work and data bounds precede native work; BC callbacks retain native errors.",false,(frame:Handle<Frame>,shape:Vec<usize>,values:Input)->NewObject<Fdm>,|ctx,frame,shape,values|{let _=ctx;frame.with(ctx,|f|{let n=extent(&shape)?;let values=normalized_values(f,&values.0)?;if n!=values.len(){return Err(err("FDM shape/data length mismatch"));}Ok(result(fdm::FdmGrid::<f64>::from_data(values,axes(&shape)?),f))})});
@@ -195,6 +290,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &solve_heat_equation_2d::BINDING,
             &solve_wave_equation_2d::BINDING,
             &solve_wave_equation_3d::BINDING,
+            &solve_wave_dirichlet_sampled::BINDING,
             &heat_bc::BINDING,
             &wave_bc::BINDING,
             &poisson_bc::BINDING,

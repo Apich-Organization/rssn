@@ -1,4 +1,5 @@
 #![allow(clippy::wildcard_imports)] // Native split-step wave solvers with hbar and independent physical coordinate/time references.
+mod linear;
 mod models;
 use super::*;
 use crate::rules::numerical_abi::codecs::Arg;
@@ -43,17 +44,8 @@ impl Wave {
         match kind {
             | "length" => DimExpr::base("Length"),
             | "time" => DimExpr::base("Time"),
-            | "energy" => {
-                DimExpr::Mul(vec![
-                    DimExpr::base("Mass"),
-                    DimExpr::base("Length").pow(2),
-                    DimExpr::base("Time").pow(-2),
-                ])
-            },
-            | "psi" => {
-                DimExpr::base("Length")
-                    .pow(Exp::Rat(Rational::new(-(self.native.grid.dim as i64), 2)))
-            },
+            | "energy" => energy_dimension(),
+            | "psi" => self.samples().dimension(),
             | _ => DimExpr::Dimless,
         }
     }
@@ -77,64 +69,34 @@ impl Wave {
         api::quantity(api::scale_product(v, &[scale], &[])?, self.dim(kind))
     }
 
-    fn psi_factor(&self) -> Result<f64, OpError> {
-        let f = if self.physical {
-            self.length.powf(self.native.grid.dim as f64 / 2.0)
-        } else {
-            1.0
-        };
-        if f <= 0.0 || !f.is_finite() {
-            return Err(api::error(
-                "wavefunction reference amplitude not representable",
-            ));
+    fn samples(&self) -> WaveSamples {
+        WaveSamples {
+            dimensions: self.native.grid.dim,
+            size: self.native.grid.size(),
+            reference: if self.physical {
+                Some(self.length)
+            } else {
+                None
+            },
         }
-        Ok(f)
+    }
+
+    fn psi_factor(&self) -> Result<f64, OpError> {
+        self.samples().factor()
     }
 
     fn psi(
         &self,
-        v: &Input,
+        value: &Input,
     ) -> Result<Vec<Complex64>, OpError> {
-        api::same_dimension(&api::dimension(&v.0)?, &self.dim("psi"))?;
-        let Value::Tensor(t) = &v.0 else {
-            return Err(api::error("wavefunction tensor expected"));
-        };
-        if t.shape != [self.native.grid.size()] {
-            return Err(api::error("wavefunction mustbeexactlyflattengrid-size"));
-        }
-        let factor = self.psi_factor()?;
-        t.data
-            .iter()
-            .map(|v| {
-                let c = complex(v)? * factor;
-                if !c.re.is_finite() || !c.im.is_finite() {
-                    return Err(api::error("wavefunction data notfinite"));
-                }
-                Ok(c)
-            })
-            .collect()
+        self.samples().decode(value)
     }
 
     fn psi_output(
         &self,
-        v: Vec<Complex64>,
+        values: Vec<Complex64>,
     ) -> Result<Dynamic, OpError> {
-        let factor = self.psi_factor()?;
-        let data = v
-            .into_iter()
-            .map(|z| {
-                let z = z / factor;
-                if !z.re.is_finite() || !z.im.is_finite() {
-                    return Err(api::error("native wavefunction result nonfinite"));
-                }
-                Output::encode(z)
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok(Dynamic(Value::Tensor(TensorValue {
-            shape: vec![data.len()],
-            data,
-            elem: TypeExpr::Complex.with_dim(self.dim("psi")),
-        })))
+        self.samples().encode(values)
     }
 
     fn coupling(
@@ -168,6 +130,97 @@ impl Wave {
         }))
     }
 }
+fn energy_dimension() -> DimExpr {
+    DimExpr::Mul(vec![
+        DimExpr::base("Mass"),
+        DimExpr::base("Length").pow(2),
+        DimExpr::base("Time").pow(-2),
+    ])
+}
+
+struct WaveSamples {
+    dimensions: usize,
+    size: usize,
+    reference: Option<f64>,
+}
+
+impl WaveSamples {
+    fn dimension(&self) -> DimExpr {
+        if self.reference.is_some() {
+            DimExpr::base("Length").pow(Exp::Rat(Rational::new(-(self.dimensions as i64), 2)))
+        } else {
+            DimExpr::Dimless
+        }
+    }
+
+    fn factor(&self) -> Result<f64, OpError> {
+        let f = self
+            .reference
+            .map_or(1.0, |length| length.powf(self.dimensions as f64 / 2.0));
+        if f <= 0.0 || !f.is_finite() {
+            return Err(api::error(
+                "wavefunction reference amplitude not representable",
+            ));
+        }
+        Ok(f)
+    }
+
+    fn decode(
+        &self,
+        v: &Input,
+    ) -> Result<Vec<Complex64>, OpError> {
+        self.decode_value(&v.0)
+    }
+
+    fn decode_value(
+        &self,
+        value: &Value,
+    ) -> Result<Vec<Complex64>, OpError> {
+        api::same_dimension(&api::dimension(value)?, &self.dimension())?;
+        let Value::Tensor(t) = value else {
+            return Err(api::error("wavefunction tensor expected"));
+        };
+        if t.shape != [self.size] || t.data.len() != self.size {
+            return Err(api::error(
+                "wavefunction must be a flat tensor matching the grid",
+            ));
+        }
+        let factor = self.factor()?;
+        t.data
+            .iter()
+            .map(|v| {
+                let c = complex(v)? * factor;
+                if !c.re.is_finite() || !c.im.is_finite() {
+                    return Err(api::error("wavefunction data must be finite"));
+                }
+                Ok(c)
+            })
+            .collect()
+    }
+
+    fn encode(
+        &self,
+        v: Vec<Complex64>,
+    ) -> Result<Dynamic, OpError> {
+        let factor = self.factor()?;
+        let data = v
+            .into_iter()
+            .map(|z| {
+                let z = z / factor;
+                if !z.re.is_finite() || !z.im.is_finite() {
+                    return Err(api::error("native wavefunction result is nonfinite"));
+                }
+                Output::encode(z)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Dynamic(Value::Tensor(TensorValue {
+            shape: vec![data.len()],
+            data,
+            elem: TypeExpr::Complex.with_dim(self.dimension()),
+        })))
+    }
+}
+
 fn complex(v: &Value) -> Result<Complex64, OpError> {
     match v {
         | Value::Dyn(d) => complex(&d.value),
@@ -351,19 +404,68 @@ impl<'a, 'b> Gate<'a, 'b> {
     }
 }
 fn evolution(
-    w: &Wave,
+    size: usize,
     steps: usize,
 ) -> Result<(), OpError> {
-    if steps > 100000
-        || steps
-            .checked_mul(w.native.grid.size())
-            .is_none_or(|n| n > 50_000_000)
-    {
+    if steps > 100000 || steps.checked_mul(size).is_none_or(|n| n > 50_000_000) {
         return Err(api::error("splitstep grid-step work limit exceeded"));
     }
     Ok(())
 }
-object_binding!(split_centered,"num_native_split_centered","crate::sim::split_step::SplitStep::centered","Actual native split-step solver in1D/2D/3D with independent physical coordinate/time references, SI mass and hbar. Potential/energy scale=hbar/time_reference; normalizedmass=mL²/(hbarT). Wavefunctions carry Length^(-dimension/2), preserving dimensionless norm; contact coupling has Energy*Length^dimension units.",false,(nodes:Vec<usize>,lengths:Input,mass:Input,coordinate_reference:Input,time_reference:Input)->NewObject<Wave>,|_ctx:&CallCtx<'_>,nodes:Vec<usize>,lengths:Input,mass:Input,coordinate_reference:Input,time_reference:Input|{let(l,ld)=api::reference(&coordinate_reference.0)?;let(t,td)=api::reference(&time_reference.0)?;api::same_dimension(&ld,&DimExpr::base("Length"))?;api::same_dimension(&td,&DimExpr::base("Time"))?;api::same_dimension(&api::dimension(&lengths.0)?,&ld)?;api::same_dimension(&api::dimension(&mass.0)?,&DimExpr::base("Mass"))?;let lengths=<Vec<f64> as Arg>::decode(&lengths.0,0)?.into_iter().map(|x|x/l).collect::<Vec<_>>();sizes(&nodes,&lengths)?;let mass=crate::rules::numerical_abi::numeric(&mass.0,0)?;let m=api::scale_product(mass,&[l,l],&[HBAR,t])?;let energy=api::scale_product(HBAR,&[],&[t])?;if m<=0.0||energy<=0.0{return Err(api::error("quantum mass/reference scales mustbepositiveandrepresentable"));}let native=SplitStep::centered(&nodes,&lengths,m).map_err(api::error)?;Ok(NewObject::new(Wave{native,length:l,time:t,energy,physical:true},vec![ld,td]))});
+struct PhysicalWaveReferences {
+    length: f64,
+    time: f64,
+    mass: f64,
+    energy: f64,
+}
+
+impl PhysicalWaveReferences {
+    fn new(
+        length: &Value,
+        time: &Value,
+        mass: &Value,
+    ) -> Result<Self, OpError> {
+        let (length, length_dimension) = api::reference(length)?;
+        let (time, time_dimension) = api::reference(time)?;
+        api::same_dimension(&length_dimension, &DimExpr::base("Length"))?;
+        api::same_dimension(&time_dimension, &DimExpr::base("Time"))?;
+        api::same_dimension(&api::dimension(mass)?, &DimExpr::base("Mass"))?;
+        let mass = crate::rules::numerical_abi::numeric(mass, 0)?;
+        let mass = api::scale_product(mass, &[length, length], &[HBAR, time])?;
+        let energy = api::scale_product(HBAR, &[], &[time])?;
+        if mass <= 0.0 || energy <= 0.0 {
+            return Err(api::error(
+                "quantum mass and reference scales must be positive and representable",
+            ));
+        }
+        Ok(Self {
+            length,
+            time,
+            mass,
+            energy,
+        })
+    }
+
+    fn lengths(
+        &self,
+        lengths: &Value,
+    ) -> Result<Vec<f64>, OpError> {
+        api::same_dimension(&api::dimension(lengths)?, &DimExpr::base("Length"))?;
+        let mut lengths = <Vec<f64> as Arg>::decode(lengths, 0)?;
+        for length in &mut lengths {
+            *length /= self.length;
+        }
+        Ok(lengths)
+    }
+}
+
+object_binding!(split_centered,"num_native_split_centered","crate::sim::split_step::SplitStep::centered","Actual native split-step solver in1D/2D/3D with independent physical coordinate/time references, SI mass and hbar. Potential/energy scale=hbar/time_reference; normalizedmass=mL²/(hbarT). Wavefunctions carry Length^(-dimension/2), preserving dimensionless norm; contact coupling has Energy*Length^dimension units.",false,(nodes:Vec<usize>,lengths:Input,mass:Input,coordinate_reference:Input,time_reference:Input)->NewObject<Wave>,|_ctx:&CallCtx<'_>,nodes:Vec<usize>,lengths:Input,mass:Input,coordinate_reference:Input,time_reference:Input|{
+    let refs = PhysicalWaveReferences::new(&coordinate_reference.0, &time_reference.0, &mass.0)?;
+    let lengths = refs.lengths(&lengths.0)?;
+    sizes(&nodes, &lengths)?;
+    let native = SplitStep::centered(&nodes, &lengths, refs.mass).map_err(api::error)?;
+    Ok(NewObject::new(Wave {native, length: refs.length, time: refs.time, energy: refs.energy, physical: true}, vec![DimExpr::base("Length"), DimExpr::base("Time")]))
+});
 object_binding!(split_centered_normalized,"num_native_split_centered_normalized","","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(nodes:Vec<usize>,lengths:Vec<f64>,mass:f64)->NewObject<Wave>,|_ctx:&CallCtx<'_>,nodes:Vec<usize>,lengths:Vec<f64>,mass:f64|{sizes(&nodes,&lengths)?;if mass<=0.0{return Err(api::error("normalized mass mustbepositive"));}Ok(NewObject::normalized(Wave{native:SplitStep::centered(&nodes,&lengths,mass).map_err(api::error)?,length:1.0,time:1.0,energy:1.0,physical:false}))});
 object_binding!(split_x,"num_native_split_x","crate::sim::split_step::SplitStep::x","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(solver:Handle<Wave>,index:usize)->Dynamic,|ctx:&CallCtx<'_>,solver:Handle<Wave>,index:usize|{solver.with(ctx,|w|{if index>=w.native.grid.size(){return Err(api::error("spectral point index outsidegrid"));}Ok(Dynamic(w.point(w.native.x(index))?))})});
 object_binding!(split_norm2,"num_native_split_norm2","crate::sim::split_step::SplitStep::norm2","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(solver:Handle<Wave>,psi:Input)->f64,|ctx:&CallCtx<'_>,solver:Handle<Wave>,psi:Input|{solver.with(ctx,|w|Ok(w.native.norm2(&w.psi(&psi)?)))});
@@ -372,11 +474,12 @@ object_binding!(split_sample,"num_native_split_sample","crate::sim::split_step::
 object_binding!(split_energy,"num_native_split_energy","crate::sim::split_step::SplitStep::energy","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(solver:Handle<Wave>,psi:Input,potential:PotentialFn,time:Input,coupling:Input,callback_budget:usize)->Dynamic,|ctx:&CallCtx<'_>,solver:Handle<Wave>,psi:Input,potential:PotentialFn,time:Input,coupling:Input,callback_budget:usize|{solver.with(ctx,|w|{let psi=w.psi(&psi)?;let t=w.read(&time.0,"time",w.time)?;let g=w.coupling(&coupling.0)?;let gate=Gate::new(ctx,callback_budget)?;let out=gate.run(||w.native.energy(&psi,&|t,x|gate.potential(w,potential.0,t,x),t,g))?;Ok(Dynamic(w.out(out,"energy",w.energy)?))})});
 object_binding!(split_chemical_potential,"num_native_split_chemical_potential","crate::sim::split_step::SplitStep::chemical_potential","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(solver:Handle<Wave>,psi:Input,potential:PotentialFn,time:Input,coupling:Input,callback_budget:usize)->Dynamic,|ctx:&CallCtx<'_>,solver:Handle<Wave>,psi:Input,potential:PotentialFn,time:Input,coupling:Input,callback_budget:usize|{solver.with(ctx,|w|{let psi=w.psi(&psi)?;let t=w.read(&time.0,"time",w.time)?;let g=w.coupling(&coupling.0)?;let gate=Gate::new(ctx,callback_budget)?;let out=gate.run(||w.native.chemical_potential(&psi,&|t,x|gate.potential(w,potential.0,t,x),t,g))?;Ok(Dynamic(w.out(out,"energy",w.energy)?))})});
 object_binding!(split_rotate,"num_native_split_rotate","crate::sim::split_step::SplitStep::rotate","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(solver:Handle<Wave>,psi:Input,angle:f64)->Dynamic,|ctx:&CallCtx<'_>,solver:Handle<Wave>,psi:Input,angle:f64|{solver.with(ctx,|w|{if w.native.grid.dim<2||angle.abs()>=std::f64::consts::FRAC_PI_2{return Err(api::error("native shear rotation needs>=2D and |angle|<pi/2"));}let mut psi=w.psi(&psi)?;w.native.rotate(&mut psi,angle);w.psi_output(psi)})});
-object_binding!(split_evolve,"num_native_split_evolve","crate::sim::split_step::SplitStep::evolve","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(solver:Handle<Wave>,psi:Input,potential:PotentialFn,coupling:Input,initial_time:Input,dt:Input,steps:usize,scheme:String,callback_budget:usize)->Dynamic,|ctx:&CallCtx<'_>,solver:Handle<Wave>,psi:Input,potential:PotentialFn,coupling:Input,initial_time:Input,dt:Input,steps:usize,scheme:String,callback_budget:usize|{solver.with(ctx,|w|{evolution(w,steps)?;let psi=w.psi(&psi)?;let g=w.coupling(&coupling.0)?;let dt=w.read(&dt.0,"time",w.time)?;if dt<=0.0{return Err(api::error("wave timestep must bepositive"));}let gate=Gate::new(ctx,callback_budget)?;let t=w.read(&initial_time.0,"time",w.time)?;let order=order(&scheme)?;let out=gate.run(||w.native.evolve(&psi,&|t,x|gate.potential(w,potential.0,t,x),g,t,dt,steps,order))?;w.psi_output(out)})});
-object_binding!(split_evolve_rotating,"num_native_split_evolve_rotating","crate::sim::split_step::SplitStep::evolve_rotating","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(solver:Handle<Wave>,psi:Input,potential:PotentialFn,coupling:Input,angular_velocity:Input,initial_time:Input,dt:Input,steps:usize,scheme:String,callback_budget:usize)->Dynamic,|ctx:&CallCtx<'_>,solver:Handle<Wave>,psi:Input,potential:PotentialFn,coupling:Input,angular_velocity:Input,initial_time:Input,dt:Input,steps:usize,scheme:String,callback_budget:usize|{solver.with(ctx,|w|{evolution(w,steps)?;let psi=w.psi(&psi)?;let g=w.coupling(&coupling.0)?;let dt=w.read(&dt.0,"time",w.time)?;if dt<=0.0{return Err(api::error("wave timestep must bepositive"));}let gate=Gate::new(ctx,callback_budget)?;let t=w.read(&initial_time.0,"time",w.time)?;let order=order(&scheme)?;api::same_dimension(&api::dimension(&angular_velocity.0)?,&w.dim("time").pow(-1))?;let omega=crate::rules::numerical_abi::numeric(&angular_velocity.0,0)?*w.time;if w.native.grid.dim<2||omega*dt!=0.0&&omega.abs()*dt>=1.0{return Err(api::error("rotating splitstep needs>=2D and bounded rotationpersubstep"));}let out=gate.run(||w.native.evolve_rotating(&psi,&|t,x|gate.potential(w,potential.0,t,x),g,omega,t,dt,steps,order))?;w.psi_output(out)})});
-object_binding!(split_evolve_absorbing,"num_native_split_evolve_absorbing","crate::sim::split_step::SplitStep::evolve_absorbing","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(solver:Handle<Wave>,psi:Input,potential:PotentialFn,absorber:AbsorberFn,coupling:Input,initial_time:Input,dt:Input,steps:usize,scheme:String,callback_budget:usize)->Dynamic,|ctx:&CallCtx<'_>,solver:Handle<Wave>,psi:Input,potential:PotentialFn,absorber:AbsorberFn,coupling:Input,initial_time:Input,dt:Input,steps:usize,scheme:String,callback_budget:usize|{solver.with(ctx,|w|{evolution(w,steps)?;let psi=w.psi(&psi)?;let g=w.coupling(&coupling.0)?;let dt=w.read(&dt.0,"time",w.time)?;if dt<=0.0{return Err(api::error("wave timestep must bepositive"));}let gate=Gate::new(ctx,callback_budget)?;let t=w.read(&initial_time.0,"time",w.time)?;let order=order(&scheme)?;let absorption=|x|gate.invoke(||{let out=ctx.invoke_callback(absorber.0,&[w.point(x)?])?;let value=w.read(&out,"energy",w.energy)?;if value<0.0{return Err(api::error("absorbing potential must benonnegative"));}Ok(value)});let out=gate.run(||w.native.evolve_absorbing(&psi,&|t,x|gate.potential(w,potential.0,t,x),&absorption,g,t,dt,steps,order))?;w.psi_output(out)})});
-object_binding!(split_ground_state,"num_native_split_ground_state","crate::sim::split_step::SplitStep::ground_state","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(solver:Handle<Wave>,psi:Input,potential:PotentialFn,coupling:Input,dt:Input,steps:usize,tolerance:Input,callback_budget:usize)->Dynamic,|ctx:&CallCtx<'_>,solver:Handle<Wave>,psi:Input,potential:PotentialFn,coupling:Input,dt:Input,steps:usize,tolerance:Input,callback_budget:usize|{solver.with(ctx,|w|{evolution(w,steps)?;let psi=w.psi(&psi)?;let g=w.coupling(&coupling.0)?;let dt=w.read(&dt.0,"time",w.time)?;if dt<=0.0{return Err(api::error("wave timestep must bepositive"));}let gate=Gate::new(ctx,callback_budget)?;let tolerance=w.read(&tolerance.0,"energy",w.energy)?;if tolerance<=0.0||steps==0||w.native.norm2(&psi)<=0.0{return Err(api::error("groundstate needspositive tolerance,stepbudget,andnonzero guess"));}let out=gate.run(||w.native.ground_state(&psi,&|t,x|gate.potential(w,potential.0,t,x),g,dt,steps,tolerance))?;let psi=w.psi_output(out.psi)?.0;Ok(Dynamic(api::record(vec![("psi",psi),("energy",w.out(out.energy,"energy",w.energy)?),("chemical_potential",w.out(out.mu,"energy",w.energy)?),("steps",Value::int(out.steps)),("converged",Value::Bool(out.converged))])))})});
+object_binding!(split_evolve,"num_native_split_evolve","crate::sim::split_step::SplitStep::evolve","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(solver:Handle<Wave>,psi:Input,potential:PotentialFn,coupling:Input,initial_time:Input,dt:Input,steps:usize,scheme:String,callback_budget:usize)->Dynamic,|ctx:&CallCtx<'_>,solver:Handle<Wave>,psi:Input,potential:PotentialFn,coupling:Input,initial_time:Input,dt:Input,steps:usize,scheme:String,callback_budget:usize|{solver.with(ctx,|w|{evolution(w.native.grid.size(),steps)?;let psi=w.psi(&psi)?;let g=w.coupling(&coupling.0)?;let dt=w.read(&dt.0,"time",w.time)?;if dt<=0.0{return Err(api::error("wave timestep must bepositive"));}let gate=Gate::new(ctx,callback_budget)?;let t=w.read(&initial_time.0,"time",w.time)?;let order=order(&scheme)?;let out=gate.run(||w.native.evolve(&psi,&|t,x|gate.potential(w,potential.0,t,x),g,t,dt,steps,order))?;w.psi_output(out)})});
+object_binding!(split_evolve_rotating,"num_native_split_evolve_rotating","crate::sim::split_step::SplitStep::evolve_rotating","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(solver:Handle<Wave>,psi:Input,potential:PotentialFn,coupling:Input,angular_velocity:Input,initial_time:Input,dt:Input,steps:usize,scheme:String,callback_budget:usize)->Dynamic,|ctx:&CallCtx<'_>,solver:Handle<Wave>,psi:Input,potential:PotentialFn,coupling:Input,angular_velocity:Input,initial_time:Input,dt:Input,steps:usize,scheme:String,callback_budget:usize|{solver.with(ctx,|w|{evolution(w.native.grid.size(),steps)?;let psi=w.psi(&psi)?;let g=w.coupling(&coupling.0)?;let dt=w.read(&dt.0,"time",w.time)?;if dt<=0.0{return Err(api::error("wave timestep must bepositive"));}let gate=Gate::new(ctx,callback_budget)?;let t=w.read(&initial_time.0,"time",w.time)?;let order=order(&scheme)?;api::same_dimension(&api::dimension(&angular_velocity.0)?,&w.dim("time").pow(-1))?;let omega=crate::rules::numerical_abi::numeric(&angular_velocity.0,0)?*w.time;if w.native.grid.dim<2||omega*dt!=0.0&&omega.abs()*dt>=1.0{return Err(api::error("rotating splitstep needs>=2D and bounded rotationpersubstep"));}let out=gate.run(||w.native.evolve_rotating(&psi,&|t,x|gate.potential(w,potential.0,t,x),g,omega,t,dt,steps,order))?;w.psi_output(out)})});
+object_binding!(split_evolve_absorbing,"num_native_split_evolve_absorbing","crate::sim::split_step::SplitStep::evolve_absorbing","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(solver:Handle<Wave>,psi:Input,potential:PotentialFn,absorber:AbsorberFn,coupling:Input,initial_time:Input,dt:Input,steps:usize,scheme:String,callback_budget:usize)->Dynamic,|ctx:&CallCtx<'_>,solver:Handle<Wave>,psi:Input,potential:PotentialFn,absorber:AbsorberFn,coupling:Input,initial_time:Input,dt:Input,steps:usize,scheme:String,callback_budget:usize|{solver.with(ctx,|w|{evolution(w.native.grid.size(),steps)?;let psi=w.psi(&psi)?;let g=w.coupling(&coupling.0)?;let dt=w.read(&dt.0,"time",w.time)?;if dt<=0.0{return Err(api::error("wave timestep must bepositive"));}let gate=Gate::new(ctx,callback_budget)?;let t=w.read(&initial_time.0,"time",w.time)?;let order=order(&scheme)?;let absorption=|x|gate.invoke(||{let out=ctx.invoke_callback(absorber.0,&[w.point(x)?])?;let value=w.read(&out,"energy",w.energy)?;if value<0.0{return Err(api::error("absorbing potential must benonnegative"));}Ok(value)});let out=gate.run(||w.native.evolve_absorbing(&psi,&|t,x|gate.potential(w,potential.0,t,x),&absorption,g,t,dt,steps,order))?;w.psi_output(out)})});
+object_binding!(split_ground_state,"num_native_split_ground_state","crate::sim::split_step::SplitStep::ground_state","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(solver:Handle<Wave>,psi:Input,potential:PotentialFn,coupling:Input,dt:Input,steps:usize,tolerance:Input,callback_budget:usize)->Dynamic,|ctx:&CallCtx<'_>,solver:Handle<Wave>,psi:Input,potential:PotentialFn,coupling:Input,dt:Input,steps:usize,tolerance:Input,callback_budget:usize|{solver.with(ctx,|w|{evolution(w.native.grid.size(),steps)?;let psi=w.psi(&psi)?;let g=w.coupling(&coupling.0)?;let dt=w.read(&dt.0,"time",w.time)?;if dt<=0.0{return Err(api::error("wave timestep must bepositive"));}let gate=Gate::new(ctx,callback_budget)?;let tolerance=w.read(&tolerance.0,"energy",w.energy)?;if tolerance<=0.0||steps==0||w.native.norm2(&psi)<=0.0{return Err(api::error("groundstate needspositive tolerance,stepbudget,andnonzero guess"));}let out=gate.run(||w.native.ground_state(&psi,&|t,x|gate.potential(w,potential.0,t,x),g,dt,steps,tolerance))?;let psi=w.psi_output(out.psi)?.0;Ok(Dynamic(api::record(vec![("psi",psi),("energy",w.out(out.energy,"energy",w.energy)?),("chemical_potential",w.out(out.mu,"energy",w.energy)?),("steps",Value::int(out.steps)),("converged",Value::Bool(out.converged))])))})});
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
+    linear::install(i)?;
     models::install(i)?;
     api::install(
         i,

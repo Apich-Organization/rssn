@@ -189,23 +189,50 @@ struct Neighbors {
     distances: Vec<f64>,
 }
 record!(Neighbors {indices:Vec<usize>,distances:Vec<f64>});
-fn neighbors(items: Vec<(usize, f64)>) -> Neighbors {
+fn neighbors(items: impl IntoIterator<Item = (usize, f64)>) -> Neighbors {
     let (indices, distances) = items.into_iter().unzip();
     Neighbors { indices, distances }
 }
-binding!(kd_build,"num_kdtree_build","numerical_vector","Build a portable k-d-tree descriptor from a rectangular point tensor. Coordinates retain units. Queries reconstruct the native tree from validated defining data; descriptors contain no process-local pointers.","crate::kernels::geometry::KdTree::build",DimensionPolicy::SpatialBuild,
-(points:Vec<Vec<f64>>)->Result<crate::rules::numerical_abi::codecs::KdModel,OpError>,|points:Vec<Vec<f64>>|{super::model_entries(&points)?;crate::kernels::geometry::KdTree::build(points.clone()).map_err(super::model_error)?;Ok(super::KdModel{payload:super::KdPayload(points),coordinate_unit:1.0})});
+binding!(kd_build,"num_kdtree_build","numerical_vector","Validate a rectangular point tensor and store it as a portable k-d-tree descriptor. Coordinates retain units. Query operators construct the native tree from the defining points.","crate::kernels::geometry::KdTree::build",DimensionPolicy::SpatialBuild,
+(points:Vec<Vec<f64>>)->Result<crate::rules::numerical_abi::codecs::KdModel,OpError>,|points:Vec<Vec<f64>>|{super::model_entries(&points)?;crate::kernels::geometry::KdTree::validate_defining_points(&points).map_err(super::model_error)?;Ok(super::KdModel{payload:super::KdPayload(points),coordinate_unit:1.0})});
 binding!(kd_nearest,"num_kdtree_nearest","numerical_vector","Exact k-nearest queries on a portable k-d-tree descriptor. Returns index and distance tensors; query coordinates share descriptor units.","crate::kernels::geometry::KdTree::k_nearest",DimensionPolicy::SpatialQuery,
 (model:crate::rules::numerical_abi::codecs::KdModel,query:Vec<f64>,k:usize)->Result<crate::rules::numerical_abi::codecs::Neighbors,OpError>,|model:super::KdModel,query:Vec<f64>,k:usize|{if k>super::MODEL_LIMIT{return Err(super::model_error("neighbor count exceeds allocation limit"));} let tree=crate::kernels::geometry::KdTree::build(model.payload.0).map_err(super::model_error)?;Ok(super::neighbors(tree.k_nearest(&query,k).map_err(super::model_error)?))});
-binding!(kd_single,"num_kdtree_single_nearest","numerical_vector","Nearest query on the portable native k-d tree, preserving coordinate units. Empty trees return empty index/distance tensors.","crate::kernels::geometry::KdTree::nearest",DimensionPolicy::SpatialQuery,
-(model:crate::rules::numerical_abi::codecs::KdModel,query:Vec<f64>)->Result<crate::rules::numerical_abi::codecs::Neighbors,OpError>,|model:super::KdModel,query:Vec<f64>|{let tree=crate::kernels::geometry::KdTree::build(model.payload.0).map_err(super::model_error)?;Ok(super::neighbors(tree.nearest(&query).map_err(super::model_error)?.into_iter().collect()))});
+binding!(kd_single,"num_kdtree_single_nearest","numerical_vector","Nearest query on the portable native k-d tree, preserving coordinate units. A portable tree requires at least one point.","crate::kernels::geometry::KdTree::nearest",DimensionPolicy::SpatialQuery,
+(model:crate::rules::numerical_abi::codecs::KdModel,query:Vec<f64>)->Result<crate::rules::numerical_abi::codecs::Neighbors,OpError>,|model:super::KdModel,query:Vec<f64>|{let tree=crate::kernels::geometry::KdTree::build(model.payload.0).map_err(super::model_error)?;Ok(super::neighbors(tree.nearest(&query).map_err(super::model_error)?))});
+binding!(
+    kd_nearest_batch,
+    "num_kdtree_nearest_batch",
+    "numerical_vector",
+    "Finds one nearest point per query row in a portable k-d tree, reconstructing the tree once. Indices follow query order and distances retain the descriptor's coordinate dimension. An empty query matrix returns empty index and distance vectors.",
+    "crate::kernels::geometry::KdTree::nearest_batch",
+    DimensionPolicy::SpatialQuery,
+    (model: crate::rules::numerical_abi::codecs::KdModel, queries: Vec<Vec<f64>>) -> Result<crate::rules::numerical_abi::codecs::Neighbors, OpError>,
+    |model: super::KdModel, queries: Vec<Vec<f64>>| {
+        super::model_entries(&queries)?;
+        let tree = crate::kernels::geometry::KdTree::build(model.payload.0)
+            .map_err(super::model_error)?;
+        let matches = tree.nearest_batch(&queries).map_err(super::model_error)?;
+        Ok(super::neighbors(matches.into_iter().flatten()))
+    }
+);
 binding!(kd_radius,"num_kdtree_radius","numerical_vector","Radius queries with coordinate and radius units checked against the descriptor. Returns indices and measured distances.","crate::kernels::geometry::KdTree::radius_search",DimensionPolicy::SpatialRadius,
 (model:crate::rules::numerical_abi::codecs::KdModel,query:Vec<f64>,radius:f64)->Result<crate::rules::numerical_abi::codecs::Neighbors,OpError>,|model:super::KdModel,query:Vec<f64>,radius:f64|{if radius<0.0{return Err(super::model_error("radius must be nonnegative"));} let tree=crate::kernels::geometry::KdTree::build(model.payload.0).map_err(super::model_error)?;Ok(super::neighbors(tree.radius_search(&query,radius).map_err(super::model_error)?))});
 binding!(bspline_build,"num_bspline_build","numerical_vector","Fit a portable B-spline model. Axis and ordinate units are carried independently by canonical witnesses.","crate::kernels::interp_ext::BSpline::interpolate",DimensionPolicy::SplineBuild,
 (xs:Vec<f64>,ys:Vec<f64>,degree:usize)->Result<crate::rules::numerical_abi::codecs::SplineModel,OpError>,|xs:Vec<f64>,ys:Vec<f64>,degree:usize|{if degree>64{return Err(super::model_error("portable spline degree must be at most 64"));}
 if xs.len().checked_mul(xs.len()).is_none_or(|n|n>super::MODEL_LIMIT){return Err(super::model_error("portable spline fit exceeds its dense allocation budget"));}let model=crate::kernels::interp_ext::BSpline::interpolate(&xs,&ys,degree).map_err(super::model_error)?;Ok(super::SplineModel{payload:super::SplinePayload(vec![model.knots,model.coeffs,vec![degree as f64]]),coordinate_unit:1.0,value_unit:1.0})});
 binding!(bspline_query,"num_bspline_query","numerical_vector","Evaluate a fitted portable B-spline. Validates opaque kind/version, payload bounds and knot structure; query and returned values retain their independent physical units.","crate::kernels::interp_ext::BSpline::eval",DimensionPolicy::SplineQuery,
-(model:crate::rules::numerical_abi::codecs::SplineModel,x:f64)->Result<f64,OpError>,|model:super::SplineModel,x:f64|{let rows=model.payload.0;if rows.len()!=3 || rows[2].len()!=1 || rows[2][0]<0.0 || rows[2][0]>64.0 || rows[2][0].fract()!=0.0{return Err(super::model_error("invalid portable spline degree"));}crate::kernels::interp_ext::bspline_eval(&rows[0],&rows[1],rows[2][0] as usize,x).map_err(super::model_error)});
+(model:crate::rules::numerical_abi::codecs::SplineModel,x:f64)->Result<f64,OpError>,|model: super::SplineModel, x: f64| {
+    let [knots, coeffs, degree]: [Vec<f64>; 3] = model.payload.0.try_into()
+        .map_err(|_| super::model_error("invalid portable spline degree"))?;
+    let [degree] = degree.as_slice() else {
+        return Err(super::model_error("invalid portable spline degree"));
+    };
+    if !(0.0..=64.0).contains(degree) || degree.fract() != 0.0 {
+        return Err(super::model_error("invalid portable spline degree"));
+    }
+    crate::kernels::interp_ext::BSpline { knots, coeffs, degree: *degree as usize }
+        .eval(x).map_err(super::model_error)
+});
 binding!(spline_clamped,"num_spline_clamped","numerical_vector","Clamped cubic spline with explicit endpoint derivatives, each in ordinate per abscissa units.","crate::kernels::interp_ext::cubic_spline",DimensionPolicy::ClampedSpline,
 (xs:Vec<f64>,ys:Vec<f64>,x:f64,left:f64,right:f64)->Result<f64,OpError>,|xs:Vec<f64>,ys:Vec<f64>,x:f64,left:f64,right:f64|crate::kernels::interp_ext::cubic_spline(&xs,&ys,x,crate::kernels::interp_ext::SplineBc::Clamped(left,right)).map_err(super::model_error));
 binding!(spline_notaknot,"num_spline_not_a_knot","numerical_vector","Not-a-knot cubic spline with independent coordinate and ordinate dimensions.","crate::kernels::interp_ext::cubic_spline",DimensionPolicy::Interpolation,
@@ -216,6 +243,7 @@ binding!(rbf_scaled,"num_rbf_scaled","numerical_vector","RBF interpolation with 
 pub const OBJECT_EXPORTS: &[&CodecExport] = &[
     &kd_build::EXPORT,
     &kd_nearest::EXPORT,
+    &kd_nearest_batch::EXPORT,
     &kd_single::EXPORT,
     &kd_radius::EXPORT,
     &bspline_build::EXPORT,

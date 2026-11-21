@@ -164,6 +164,69 @@ impl NativeType for Grid {
         Ok(())
     }
 }
+
+struct Assignment {
+    data: p::AssignmentPlan,
+    frame: Frame,
+}
+
+impl NativeType for Assignment {
+    const KIND: &'static str = "rssn/native/analysis/pic-assignment/v1";
+    const MAX_BYTES: usize = 4 * 1024 * 1024;
+
+    fn validate(&self) -> Result<(), OpError> {
+        Ok(())
+    }
+
+    fn retained_bytes(&self) -> usize {
+        size_of::<Self>() + self.data.heap_bytes()
+    }
+}
+
+object_binding!(
+    assignment_new,
+    "num_analysis_pic_assignment_new",
+    "crate::sim::pic::Grid::prepare_assignment",
+    "Prepares the periodic grid stencils of fixed measured positions in particle order. Select Linear (or CIC) or Cubic to share the same interpolation weights between deposition and gathering.",
+    false,
+    (grid: Handle<Grid>, positions: Input, shape_name: String) -> NewObject<Assignment>,
+    |ctx, grid, positions, shape_name| grid.with(ctx, |grid| {
+        let positions = vector(&positions, grid.frame.length, length())?;
+        let data = grid.data.prepare_assignment(&positions, shape(&shape_name)?).map_err(api::error)?;
+        Ok(NewObject::new(Assignment { data, frame: grid.frame.clone() }, vec![length(), time(), charge(), mass()]))
+    })
+);
+
+object_binding!(
+    assignment_deposit,
+    "num_analysis_pic_assignment_deposit",
+    "crate::sim::pic::AssignmentPlan::deposit",
+    "Uses the prepared positions and weights with one measured charge per particle. Returns a periodic mesh density in charge per unit length.",
+    false,
+    (assignment: Handle<Assignment>, charges: Input) -> Dynamic,
+    |ctx, assignment, charges| assignment.with(ctx, |plan| {
+        let charges = vector(&charges, plan.frame.charge, charge())?;
+        let density = plan.data.deposit(&charges).map_err(api::error)?;
+        let scale = api::scale_product(plan.frame.charge, &[], &[plan.frame.length])?;
+        output(&density, scale, DimExpr::Mul(vec![charge(), inv(length())]))
+    })
+);
+
+object_binding!(
+    assignment_gather,
+    "num_analysis_pic_assignment_gather",
+    "crate::sim::pic::AssignmentPlan::gather",
+    "Interpolates one measured value per cell at the prepared particle positions. A positive field reference with the same dimension specifies the normalization. Results keep the field dimension and original particle order.",
+    false,
+    (assignment: Handle<Assignment>, field: Input, field_reference: Input) -> Dynamic,
+    |ctx, assignment, field, field_reference| assignment.with(ctx, |plan| {
+        let (scale, dimension) = api::reference(&field_reference.0)?;
+        let values = vector(&field, scale, dimension.clone())?;
+        let samples = plan.data.gather(&values).map_err(api::error)?;
+        output(&samples, scale, dimension)
+    })
+);
+
 #[derive(Clone)]
 struct Config {
     data: p::PicConfig,
@@ -224,6 +287,9 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &grid_cells::BINDING,
             &grid_length::BINDING,
             &grid_spacing::BINDING,
+            &assignment_new::BINDING,
+            &assignment_deposit::BINDING,
+            &assignment_gather::BINDING,
             &deposit::BINDING,
             &gather::BINDING,
             &solve::BINDING,

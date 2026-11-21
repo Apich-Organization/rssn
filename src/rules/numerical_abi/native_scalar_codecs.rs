@@ -1,5 +1,7 @@
 // Source-derived adapters for native coding, topology and normalized chaos.
 // These codecs only validate representations and encode native kernel output.
+use crate::kernels::fractal_geometry_and_chaos::AffineTransform2D;
+
 const NATIVE_VALUE_LIMIT: usize = 1_048_576;
 
 integer_codec!(u16);
@@ -291,7 +293,7 @@ impl Output for num_rational::BigRational {
 }
 native_vector_codec!(num_rational::BigRational);
 
-impl Arg for Vec<crate::kernels::fractal_geometry_and_chaos::AffineTransform2D> {
+impl Arg for Vec<AffineTransform2D> {
     fn ty() -> TypeExpr {
         <Vec<[f64; 6]> as Arg>::ty()
     }
@@ -302,13 +304,11 @@ impl Arg for Vec<crate::kernels::fractal_geometry_and_chaos::AffineTransform2D> 
     ) -> Result<Self, OpError> {
         Ok(<Vec<[f64; 6]> as Arg>::decode(value, index)?
             .into_iter()
-            .map(|[a, b, c, d, e, f]| {
-                crate::kernels::fractal_geometry_and_chaos::AffineTransform2D::new(a, b, c, d, e, f)
-            })
+            .map(|[a, b, c, d, e, f]| AffineTransform2D::new(a, b, c, d, e, f))
             .collect())
     }
 }
-impl Output for Vec<crate::kernels::fractal_geometry_and_chaos::AffineTransform2D> {
+impl Output for Vec<AffineTransform2D> {
     fn ty() -> TypeExpr {
         <Self as Arg>::ty()
     }
@@ -318,6 +318,28 @@ impl Output for Vec<crate::kernels::fractal_geometry_and_chaos::AffineTransform2
             .map(|t| [t.a, t.b, t.c, t.d, t.e, t.f])
             .collect::<Vec<_>>()
             .encode()
+    }
+}
+
+pub(super) struct IfsPoints(pub(super) Vec<(f64, f64)>);
+
+impl Output for IfsPoints {
+    fn ty() -> TypeExpr {
+        <Vec<[f64; 2]> as Output>::ty()
+    }
+
+    fn encode(self) -> Result<Value, OpError> {
+        let rows = self.0.len();
+        let cells = native_budget(&[rows, 2], NATIVE_VALUE_LIMIT)?;
+        let mut data = Vec::with_capacity(cells);
+        for (x, y) in self.0 {
+            data.extend([output_scalar(x)?, output_scalar(y)?]);
+        }
+        Ok(Value::Tensor(TensorValue {
+            shape: vec![rows, 2],
+            data,
+            elem: TypeExpr::Float,
+        }))
     }
 }
 // Simplicial boundaries preserve the signs separately from ragged vertex rows.
@@ -466,6 +488,19 @@ fn native_budget(
             })
     })
 }
+
+pub(super) fn ifs_work_budget(
+    points: usize,
+    skip: usize,
+) -> Result<(), OpError> {
+    let work = points
+        .checked_add(skip)
+        .ok_or_else(|| OpError::Domain("IFS work count overflows".into()))?;
+    native_budget(&[work], 50_000_000)?;
+    native_budget(&[points, 2], NATIVE_VALUE_LIMIT)?;
+    Ok(())
+}
+
 #[allow(clippy::indexing_slicing)] // The CodecExport arity check runs before family preflight.
 fn native_count(
     args: &[Value],
@@ -604,25 +639,8 @@ fn native_scalar_preflight(
                 NATIVE_VALUE_LIMIT,
             )?;
         } else if operation == "generate_ifs_fractal" {
-            let rows = native_tensor_shape(&args[0])?.first().copied().unwrap_or(0);
-            let probabilities = Vec::<f64>::decode(&args[1], 1)?;
-            let total: f64 = probabilities.iter().sum();
-            if rows == 0
-                || rows != probabilities.len()
-                || probabilities.iter().any(|p| *p < 0.0)
-                || !total.is_finite()
-                || total <= 0.0
-            {
-                return Err(OpError::Domain(
-                    "IFS requires matching nonnegative probabilities with a positive finite sum"
-                        .into(),
-                ));
-            }
-            let work = native_count(args, 3)?
-                .checked_add(native_count(args, 4)?)
-                .ok_or_else(|| OpError::Domain("IFS work count overflows".into()))?;
-            native_budget(&[work], 50_000_000)?;
-            native_budget(&[native_count(args, 3)?, 2], NATIVE_VALUE_LIMIT)?;
+            native_tensor_shape(&args[0])?;
+            ifs_work_budget(native_count(args, 3)?, native_count(args, 4)?)?;
         }
     }
     if let Some(operation) = name.strip_prefix("num_error_correction_") {
@@ -704,7 +722,8 @@ fn native_scalar_preflight(
                 .ok_or_else(|| OpError::Domain("orbit histogram total exceeds usize range".into()))
         })?;
     }
-    if name.starts_with("num_special_exact_") {
+    // The fixed-width modular recurrence uses at most 64 doubling steps.
+    if name.starts_with("num_special_exact_") && name != "num_special_exact_chebyshev_tu_mod" {
         native_budget(&[native_count(args, 0)?], 4096)?;
     }
     if let Some(operation) = name.strip_prefix("num_topology_") {
@@ -865,7 +884,10 @@ binding!(native_median,"num_descriptive_median","numerical_stats","Median with t
 (data:Vec<f64>)->Result<f64,OpError>,|mut data:Vec<f64>|crate::kernels::descriptive::median(&mut data).map_err(|e|OpError::Domain(e.to_string())));
 binding!(native_median_exact,"num_descriptive_median_exact","numerical_stats","Exact rational median; sorting occurs in local storage and no float conversion is performed.","crate::kernels::descriptive::median_exact",DimensionPolicy::Preserve,
 (data:Vec<num_rational::BigRational>)->Result<num_rational::BigRational,OpError>,|mut data:Vec<num_rational::BigRational>|crate::kernels::descriptive::median_exact(&mut data).map_err(|e|OpError::Domain(e.to_string())));
-struct NativeSampleGroups(Vec<Vec<f64>>);
+struct NativeSampleGroups {
+    offsets: Vec<usize>,
+    values: Vec<f64>,
+}
 impl Arg for NativeSampleGroups {
     fn ty() -> TypeExpr {
         TypeExpr::Record(vec![
@@ -890,21 +912,54 @@ impl Arg for NativeSampleGroups {
             || offsets.windows(2).any(|w| w[0] >= w[1])
         {
             return Err(OpError::Domain(
-                "ANOVA requires at least two nonempty groups with valid CSR offsets".into(),
+                "grouped samples require at least two nonempty groups with valid CSR offsets"
+                    .into(),
             ));
         }
-        Ok(Self(
-            offsets
-                .windows(2)
-                .map(|w| values[w[0]..w[1]].to_vec())
-                .collect(),
-        ))
+        Ok(Self { offsets, values })
     }
 }
+
+impl NativeSampleGroups {
+    #[allow(
+        clippy::single_call_fn,
+        clippy::indexing_slicing,
+        reason = "The codec validates ordered group offsets."
+    )]
+    fn slices(&self) -> Vec<&[f64]> {
+        self.offsets
+            .windows(2)
+            .map(|window| &self.values[window[0]..window[1]])
+            .collect()
+    }
+
+    #[allow(
+        clippy::single_call_fn,
+        clippy::indexing_slicing,
+        reason = "The ANOVA kernel accepts disjoint mutable sample groups."
+    )]
+    fn slices_mut(&mut self) -> Vec<&mut [f64]> {
+        let mut remaining = self.values.as_mut_slice();
+        self.offsets
+            .windows(2)
+            .map(|window| {
+                let (group, rest) =
+                    std::mem::take(&mut remaining).split_at_mut(window[1] - window[0]);
+                remaining = rest;
+                group
+            })
+            .collect()
+    }
+}
+
 binding!(native_anova,"num_stats_one_way_anova","numerical_stats","One-way ANOVA on independently sized groups encoded as CSR offsets/values. Input groups have one shared measurement unit; F statistic and p-value are dimensionless.","crate::kernels::stats::one_way_anova",DimensionPolicy::NativeGroupsAnova,
-(data:crate::rules::numerical_abi::codecs::NativeSampleGroups)->(f64,f64),|mut data:super::NativeSampleGroups|crate::kernels::stats::one_way_anova(&mut data.0.iter_mut().map(Vec::as_mut_slice).collect::<Vec<_>>()));
-binding!(native_line_fit,"num_stats_simple_linear_regression","numerical_stats","Simple native linear regression on separately measured equal-length predictor and response vectors; slope is response/predictor and intercept is response.","crate::kernels::stats::simple_linear_regression",DimensionPolicy::NativeLineFit,
-(x:Vec<f64>,y:Vec<f64>)->Result<(f64,f64),OpError>,|x:Vec<f64>,y:Vec<f64>|{if x.len()!=y.len()||x.len()<2{return Err(OpError::Domain("regression needs equal-length samples with at least two points".into()));}Ok(crate::kernels::stats::simple_linear_regression(&x.into_iter().zip(y).collect::<Vec<_>>()))});
+(data:crate::rules::numerical_abi::codecs::NativeSampleGroups)->(f64,f64),|mut data:super::NativeSampleGroups|crate::kernels::stats::one_way_anova(&mut data.slices_mut()));
+
+binding!(native_kruskal_wallis,"num_stats_kruskal_wallis","numerical_stats","Kruskal–Wallis rank test for independently sized groups encoded as CSR offsets/values. Samples share one measurement unit. The tie-adjusted statistic, chi-square right-tail probability and degrees of freedom are dimensionless. All pooled samples tied gives a domain error.","crate::kernels::stats_ext::kruskal_wallis",DimensionPolicy::NativeGroupsAnova,
+(data:crate::rules::numerical_abi::codecs::NativeSampleGroups)->Result<crate::kernels::stats_ext::TestResult,OpError>,|data:super::NativeSampleGroups|crate::kernels::stats_ext::kruskal_wallis(&data.slices()).map_err(|error|OpError::Domain(error.to_string())));
+
+binding!(native_line_fit,"num_stats_simple_linear_regression","numerical_stats","Least-squares regression on separately measured equal-length predictors and responses. The slope carries response divided by predictor units, and the intercept carries response units. Finite moments are recovered at extreme coordinate scales when possible.","crate::kernels::stats::simple_linear_regression",DimensionPolicy::NativeLineFit,
+(x:Vec<f64>,y:Vec<f64>)->Result<(f64,f64),OpError>,|x:Vec<f64>,y:Vec<f64>|{if x.len()!=y.len()||x.len()<2{return Err(OpError::Domain("regression needs equal-length samples with at least two points".into()));}Ok(crate::kernels::stats::simple_linear_regression_columns(&x,&y))});
 
 // Point clouds deliberately use homogeneous N x 2 tensors, distinct from the
 // sampled-function Vec<(x,y)> codec that requires monotonically increasing x.
@@ -920,8 +975,16 @@ binding!(native_fractal_tinkerbell,"num_fractal_geometry_and_chaos_generate_tink
 (start:(f64,f64),steps:usize,a:f64,b:f64,c:f64,d:f64)->Vec<[f64;2]>,|start:(f64,f64),steps:usize,a:f64,b:f64,c:f64,d:f64|crate::kernels::fractal_geometry_and_chaos::generate_tinkerbell_map(start,steps,a,b,c,d).into_iter().map(|(x,y)|[x,y]).collect());
 binding!(native_fractal_bifurcation,"num_fractal_geometry_and_chaos_logistic_bifurcation","numerical_vector","Logistic bifurcation samples in normalized coordinates; transient and retained iterations share a finite work budget. Returns columns r and x.","crate::kernels::fractal_geometry_and_chaos::logistic_bifurcation",DimensionPolicy::Dimensionless,
 (range:(f64,f64),parameters:usize,transient:usize,points:usize,x0:f64)->Vec<[f64;2]>,|range:(f64,f64),parameters:usize,transient:usize,points:usize,x0:f64|crate::kernels::fractal_geometry_and_chaos::logistic_bifurcation(range,parameters,transient,points,x0).into_iter().map(|(r,x)|[r,x]).collect());
-binding!(native_fractal_ifs,"num_fractal_geometry_and_chaos_generate_ifs_fractal","numerical_vector","Native deterministic seeded affine chaos game in normalized coordinates. Affine transforms are N x 6 tensors (a,b,c,d,e,f), probabilities must match and have positive finite sum. Returns an N x 2 point tensor.","crate::kernels::fractal_geometry_and_chaos::generate_ifs_fractal",DimensionPolicy::Dimensionless,
-(transforms:Vec<crate::kernels::fractal_geometry_and_chaos::AffineTransform2D>,probabilities:Vec<f64>,start:(f64,f64),points:usize,skip:usize)->Vec<[f64;2]>,|transforms:Vec<crate::kernels::fractal_geometry_and_chaos::AffineTransform2D>,probabilities:Vec<f64>,start:(f64,f64),points:usize,skip:usize|crate::kernels::fractal_geometry_and_chaos::generate_ifs_fractal(&transforms,&probabilities,start,points,skip).into_iter().map(|(x,y)|[x,y]).collect());
+binding!(native_fractal_ifs, "num_fractal_geometry_and_chaos_generate_ifs_fractal", "numerical_vector",
+    "Runs the affine chaos game in dimensionless coordinates with historical seed 12345. Provide N x 6 rows (a,b,c,d,e,f), N finite nonnegative weights including a positive weight, and the starting coordinates. Returns one two-coordinate row per retained step after burn-in.",
+    "crate::kernels::fractal_geometry_and_chaos::generate_ifs_fractal", DimensionPolicy::Dimensionless,
+    (transforms: Vec<super::AffineTransform2D>, weights: Vec<f64>, start: (f64, f64), points: usize, skip: usize) -> Result<super::IfsPoints, OpError>,
+    |transforms: Vec<super::AffineTransform2D>, weights: Vec<f64>, start: (f64, f64), points: usize, skip: usize| {
+        crate::kernels::fractal_geometry_and_chaos::generate_ifs_checked(&transforms, &weights, start, points, skip)
+            .map(super::IfsPoints)
+            .map_err(|error| OpError::Domain(error.to_string()))
+    }
+);
 binding!(native_fractal_density,"num_fractal_geometry_and_chaos_orbit_density","numerical_vector","Normalized phase-space point histogram. N x 2 input points and bounded bin counts produce CSR integer rows (offsets/indices); entries are counts, preserving empty rows without padding.","crate::kernels::fractal_geometry_and_chaos::orbit_density",DimensionPolicy::Dimensionless,
 (points:Vec<[f64;2]>,x_bins:usize,y_bins:usize,x_range:(f64,f64),y_range:(f64,f64))->Vec<Vec<usize>>,|points:Vec<[f64;2]>,x_bins:usize,y_bins:usize,x_range:(f64,f64),y_range:(f64,f64)|crate::kernels::fractal_geometry_and_chaos::orbit_density(&points.into_iter().map(|[x,y]|(x,y)).collect::<Vec<_>>(),x_bins,y_bins,x_range,y_range));
 
@@ -931,6 +994,7 @@ pub const NATIVE_SCALAR_EXPORTS: &[&CodecExport] = &[
     &native_median::EXPORT,
     &native_median_exact::EXPORT,
     &native_anova::EXPORT,
+    &native_kruskal_wallis::EXPORT,
     &native_line_fit::EXPORT,
     &native_fractal_box::EXPORT,
     &native_fractal_correlation::EXPORT,

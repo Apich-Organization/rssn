@@ -179,6 +179,102 @@ fn dynamic_calls_report_errors_instead_of_panicking() {
     assert_eq!(t, "1/2");
 }
 
+#[test]
+fn named_resolution_uses_only_the_tied_best_registrations() {
+    use rssn::graph::OpFlags;
+
+    let operation = "rssn_fixture_ranked_overload";
+    let register = |session: &Session, plugin: &str, argument: TypeExpr, flags: OpFlags| {
+        session
+            .register_shared(Box::new(SimplePlugin::new(
+                plugin,
+                "0.1.0",
+                move |registry| {
+                    registry.register_op(
+                        OpDescriptor::new(operation, Arity::Fixed(1))
+                            .flags(flags)
+                            .overload()
+                            .signature(Signature::new(vec![argument.clone()], TypeExpr::Bool)),
+                    )?;
+                    Ok(())
+                },
+            )))
+            .unwrap();
+    };
+    let session = Session::new();
+    register(
+        &session,
+        "acme/real_overload",
+        TypeExpr::Real,
+        OpFlags::TRANSPARENT,
+    );
+    register(&session, "acme/int_overload", TypeExpr::Int, OpFlags::HEAVY);
+    let args = [Value::int(5)];
+    let key = session.resolve_overload(operation, &args).unwrap();
+    let overloads = session.overloads(operation);
+    assert_eq!(overloads.len(), 2);
+    assert!(overloads.iter().any(|(candidate, signature)| {
+        *candidate == key && signature.params == [TypeExpr::Int]
+    }));
+
+    register(
+        &session,
+        "acme/another_int_overload",
+        TypeExpr::Int,
+        OpFlags::PREDICATE,
+    );
+    assert!(matches!(
+        session.resolve_overload(operation, &args),
+        Err(OpError::Ambiguous { count: 2, .. })
+    ));
+    assert!(matches!(
+        session.resolve_overload(operation, &[]),
+        Err(OpError::Arity { got: 0, .. })
+    ));
+    assert!(matches!(
+        session.resolve_overload(operation, &[Value::String("x".into())]),
+        Err(OpError::Type { arg: 0, .. })
+    ));
+}
+
+#[test]
+fn filling_signature_metadata_refreshes_a_previously_resolved_key() {
+    use rssn::kernel::signature::DynamicReason;
+
+    let session = Session::new();
+    let name = "rssn_fixture_signature_update";
+    let seed = SimplePlugin::new("acme/signature_seed", "0.1.0", move |registry| {
+        registry.register_op(
+            OpDescriptor::new(name, Arity::Fixed(1)).dynamic_reason(DynamicReason::Request),
+        )?;
+        Ok(())
+    });
+    session.register_shared(Box::new(seed)).unwrap();
+    let args = [Value::int(3)];
+    let old = session.resolve_overload(name, &args).unwrap();
+
+    let supplement = SimplePlugin::new("acme/signature_supplement", "0.1.0", move |registry| {
+        registry.register_op(
+            OpDescriptor::new(name, Arity::Fixed(1))
+                .signature(Signature::new(vec![TypeExpr::Int], TypeExpr::Bool)),
+        )?;
+        Ok(())
+    });
+    session.register_shared(Box::new(supplement)).unwrap();
+    let current = session.resolve_overload(name, &args).unwrap();
+    assert_ne!(current.signature_hash, old.signature_hash);
+    assert!(
+        session
+            .overloads(name)
+            .iter()
+            .any(|(key, _)| *key == current)
+    );
+    assert!(matches!(
+        session.call_key(&old, &args, &ctx()),
+        Err(OpError::UnknownOp(_))
+    ));
+}
+
 // ---------------------------------------------------------------- plugins
 
 #[test]
@@ -227,6 +323,10 @@ fn plugin_registration_errors_leave_the_session_usable() {
         before,
         "a failed plugin is not listed"
     );
+    assert!(matches!(
+        s.call_value("acme_half_installed", &[Value::int(0)], &ctx()),
+        Err(OpError::UnknownOp(_))
+    ));
     // an untyped operator is refused
     let untyped = SimplePlugin::new("acme/untyped", "0.1.0", |reg| {
         reg.register_op(OpDescriptor::new("acme_untyped", Arity::Fixed(1)))?;
@@ -259,6 +359,43 @@ fn plugin_registration_errors_leave_the_session_usable() {
 }
 
 #[test]
+fn plugin_registration_rolls_back_if_a_template_refuses_it() {
+    use std::sync::atomic::AtomicUsize;
+    use std::sync::atomic::Ordering;
+
+    let session = Session::new();
+    let manifest = session.manifest();
+    let installations = AtomicUsize::new(0);
+    let unstable = SimplePlugin::new("acme/retry", "0.1.0", move |registry| {
+        registry.register_op(
+            OpDescriptor::new("acme_retry", Arity::Fixed(1))
+                .signature(Signature::scalars(1, TypeExpr::Real)),
+        )?;
+        if installations.fetch_add(1, Ordering::Relaxed) == 0 {
+            Ok(())
+        } else {
+            Err(PluginError::Registration(
+                "test template refused registration".into(),
+            ))
+        }
+    });
+    assert!(session.register_shared(Box::new(unstable)).is_err());
+    assert!(std::sync::Arc::ptr_eq(&manifest, &session.manifest()));
+    assert!(matches!(
+        session.call_value("acme_retry", &[Value::int(0)], &ctx()),
+        Err(OpError::UnknownOp(_))
+    ));
+    let id = session
+        .register_shared(Box::new(plugin("acme/retry", "acme_retry")))
+        .unwrap();
+    assert_eq!(id.0, 0);
+    assert_eq!(
+        session.call_value("acme_retry", &[Value::int(0)], &ctx()),
+        Ok(Value::int(0))
+    );
+}
+
+#[test]
 fn plugin_rewrites_take_part_in_computation() {
     let mut s = Session::new();
     s.register(Box::new(plugin("acme/rw", "acme_rw"))).unwrap();
@@ -270,6 +407,9 @@ fn plugin_rewrites_take_part_in_computation() {
     let t = s.parse("acme_rw(0) + x").unwrap();
     let r = s.compute(t, &Config::new()).unwrap();
     assert_eq!(r.term.to_string(), "x");
+    let custom = Config::empty().with(rssn::rules::arith());
+    let r = s.compute(t, &custom).unwrap();
+    assert_eq!(r.term.to_string(), "x");
     // non-matching argument stays unevaluated
     let u = s.parse("acme_rw(y)").unwrap();
     let r = s.compute(u, &Config::new()).unwrap();
@@ -277,6 +417,48 @@ fn plugin_rewrites_take_part_in_computation() {
     // a plugin that did not implement `call` refuses calls with a domain error, not a panic
     let res = s.call_value("acme_rw", &[Value::Float(3.0)], &ctx());
     assert!(res.is_ok() || res.is_err());
+}
+
+#[test]
+fn unit_registration_is_atomic_across_rule_configurations() {
+    use std::sync::Arc;
+    use std::sync::atomic::AtomicUsize;
+    use std::sync::atomic::Ordering;
+
+    use rssn::dim::Scale;
+    use rssn::dim::UnitDef;
+    use rssn::kernel::signature::DimExpr;
+
+    let alias = "rssn_template_local_alias";
+    let installs = AtomicUsize::new(0);
+    let plugin = SimplePlugin::new("acme/configuration_units", "0.1.0", move |registry| {
+        if installs.fetch_add(1, Ordering::Relaxed) >= 2 {
+            registry.register_unit(
+                UnitDef::linear("clock", DimExpr::base("Time"), Scale::one()).alias(alias),
+            )?;
+        }
+        Ok(())
+    });
+    let mut session = Session::new();
+    session.register(Box::new(plugin)).unwrap();
+    let custom = Config::empty().with(rssn::rules::arith());
+    session.compute(session.int(1), &custom).unwrap();
+    let before = session.manifest();
+    let candidate = UnitDef::linear("span", DimExpr::base("Length"), Scale::one());
+    assert!(
+        session
+            .register_unit(candidate.clone().alias(alias))
+            .is_err()
+    );
+    assert!(Arc::ptr_eq(&before, &session.manifest()));
+    session.register_unit(candidate).unwrap();
+    assert!(
+        session
+            .manifest()
+            .units
+            .iter()
+            .any(|unit| unit.name == "span")
+    );
 }
 
 #[test]

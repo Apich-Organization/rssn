@@ -5,10 +5,14 @@ use rssn::kernel::NativeCallback;
 use rssn::kernel::OpError;
 use rssn::kernel::Value;
 use rssn::kernel::signature::DimExpr;
+use rssn::kernel::signature::Exp;
 use rssn::kernel::signature::NatExpr;
+use rssn::kernel::signature::Rational;
 use rssn::kernel::signature::Signature;
 use rssn::kernel::signature::TypeExpr;
+use rssn::kernel::value::ComplexValue;
 use rssn::kernel::value::DynValue;
+use rssn::kernel::value::RecordValue;
 use rssn::kernel::value::TensorValue;
 use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
@@ -43,6 +47,147 @@ fn number(x: &Value) -> f64 {
         | _ => x.as_f64().unwrap(),
     }
 }
+
+#[test]
+fn exact_matrix_lie_basis_reuses_a_single_coordinate_factorization() {
+    let session = Session::new();
+    let matrix = |coefficients: [i64; 4]| {
+        call(
+            &session,
+            "num_native_qmatrix_new",
+            &[
+                tensor(
+                    vec![2, 2],
+                    coefficients.into_iter().map(Value::int).collect(),
+                    TypeExpr::Int,
+                ),
+                Value::int(1),
+            ],
+        )
+    };
+    let h = matrix([1, 0, 0, -1]);
+    let e = matrix([0, 1, 0, 0]);
+    let f = matrix([0, 0, 1, 0]);
+    let kind = h.type_expr();
+    let basis = |left, right| tensor(vec![2], vec![left, right], kind.clone());
+    let result = call(
+        &session,
+        "num_native_lie_from_matrices",
+        &[basis(h, e.clone())],
+    );
+    let Value::Variant(lie) = result else {
+        panic!("expected an optional Lie algebra")
+    };
+    assert_eq!(lie.tag, "Some");
+    let coordinate = |entries: [i64; 2]| {
+        tensor(
+            vec![2],
+            entries.into_iter().map(Value::int).collect(),
+            TypeExpr::Int,
+        )
+    };
+    for (left, right, expected) in [([1, 0], [0, 1], 2.0), ([0, 1], [1, 0], -2.0)] {
+        let bracket = call(
+            &session,
+            "num_native_lie_bracket",
+            &[lie.payload[0].clone(), coordinate(left), coordinate(right)],
+        );
+        let Value::Tensor(bracket) = bracket else {
+            panic!("expected exact bracket coordinates")
+        };
+        assert_eq!(
+            bracket.data.iter().map(number).collect::<Vec<_>>(),
+            [0.0, expected]
+        );
+    }
+    let Value::Variant(not_closed) = call(&session, "num_native_lie_from_matrices", &[basis(e, f)])
+    else {
+        panic!("expected an optional Lie algebra for a non-closed basis")
+    };
+    assert_eq!(not_closed.tag, "None");
+}
+
+#[test]
+fn combined_ricci_restores_tensor_and_scalar_dimensions_and_propagates_budget_failure() {
+    let session = Session::new();
+    let mut ctx = CallCtx::new();
+    let length = dim("Length");
+    let metric_dimension = dim("Temperature");
+    let metric_element = TypeExpr::Float.with_dim(metric_dimension.clone());
+    let metric = ctx
+        .add_callback(Arc::new(NativeCallback::new(
+            {
+                let metric_element = metric_element.clone();
+                move |args: &[Value]| {
+                    let Value::Tensor(point) = &args[0] else {
+                        panic!("metric point");
+                    };
+                    let sine = (number(&point.data[0]) / 2.0).sin();
+                    Ok(tensor(
+                        vec![2, 2],
+                        [3.0, 0.0, 0.0, 3.0 * sine * sine]
+                            .map(Value::Float)
+                            .to_vec(),
+                        metric_element.clone(),
+                    ))
+                }
+            },
+            Signature::new(
+                vec![TypeExpr::Tensor {
+                    rank: NatExpr::Lit(1),
+                    shape: None,
+                    elem: Box::new(TypeExpr::Float.with_dim(length.clone())),
+                }],
+                TypeExpr::Tensor {
+                    rank: NatExpr::Lit(2),
+                    shape: None,
+                    elem: Box::new(metric_element),
+                },
+            ),
+        )))
+        .unwrap();
+    let run = |budget| {
+        session.call_value(
+            "num_native_geometry_ricci_curvature",
+            &[
+                Value::Function(metric),
+                floats(&[std::f64::consts::PI, 0.4], length.clone()),
+                scalar(2.0, length.clone()),
+                scalar(3.0, metric_dimension.clone()),
+                Value::int(budget),
+            ],
+            &ctx,
+        )
+    };
+    let Value::Record(out) = run(128).unwrap() else {
+        panic!("Ricci record");
+    };
+    assert!(run(1).unwrap_err().to_string().contains("budget"));
+    let get = |name| &out.fields.iter().find(|(key, _)| key == name).unwrap().1;
+    let Value::Tensor(tensor) = get("tensor") else {
+        panic!("covariant tensor");
+    };
+    let inverse_square = length.pow(Exp::Rat(Rational::int(-2)));
+    assert_eq!(tensor.shape, [2, 2]);
+    assert_eq!(
+        tensor.elem,
+        TypeExpr::Float.with_dim(inverse_square.clone())
+    );
+    for (entry, expected) in tensor.data.iter().zip([0.25, 0.0, 0.0, 0.25]) {
+        assert!((number(entry) - expected).abs() < 1e-7);
+    }
+    let Value::Dyn(value) = get("scalar") else {
+        panic!("measured scalar curvature");
+    };
+    assert_eq!(
+        value.dim,
+        DimExpr::Mul(vec![
+            inverse_square,
+            metric_dimension.pow(Exp::Rat(Rational::int(-1)))
+        ])
+    );
+    assert!((number(&value.value) - 1.0 / 6.0).abs() < 1e-7);
+}
 fn tensor(
     shape: Vec<usize>,
     data: Vec<Value>,
@@ -56,6 +201,137 @@ fn ints(data: &[i64]) -> Value {
         data.iter().copied().map(Value::int).collect(),
         TypeExpr::Int,
     )
+}
+
+#[test]
+fn fresnel_interval_accepts_improper_limits_and_resolves_adjacent_bounds() {
+    let session = Session::new();
+    let run = |a, b| {
+        let result = call(
+            &session,
+            "num_fresnel_sc_interval",
+            &[Value::Float(a), Value::Float(b)],
+        );
+        let Value::Record(result) = result else {
+            panic!("Fresnel result");
+        };
+        let get = |name| number(&result.fields.iter().find(|(key, _)| key == name).unwrap().1);
+        (get("item0"), get("item1"))
+    };
+    let near = run(1.0, 1.0_f64.next_up());
+    assert_eq!(near.0, f64::EPSILON);
+    assert!(near.1 < 0.0);
+    assert_eq!(run(1.0_f64.next_up(), 1.0), (-near.0, -near.1));
+    assert_eq!(run(f64::NEG_INFINITY, f64::INFINITY), (1.0, 1.0));
+    assert_eq!(run(f64::INFINITY, f64::INFINITY), (0.0, 0.0));
+    assert!(
+        session
+            .call_value(
+                "num_fresnel_sc_interval",
+                &[Value::Float(f64::NAN), Value::Float(1.0)],
+                &CallCtx::new(),
+            )
+            .is_err()
+    );
+}
+
+#[test]
+fn elliptic_pi_plan_reuses_periods_and_keeps_batch_order() {
+    let session = Session::new();
+    let plan = call(
+        &session,
+        "num_special_elliptic_pi_plan_new",
+        &[Value::Float(0.0), Value::Float(0.0)],
+    );
+    let complete = call(
+        &session,
+        "num_special_elliptic_pi_plan_complete",
+        std::slice::from_ref(&plan),
+    );
+    assert!((number(&complete) - std::f64::consts::FRAC_PI_2).abs() < 1e-14);
+    let amplitudes = [std::f64::consts::PI, 0.0, -std::f64::consts::PI, 0.25];
+    let batch = call(
+        &session,
+        "num_special_elliptic_pi_plan_eval_many",
+        &[plan.clone(), floats(&amplitudes, DimExpr::Dimless)],
+    );
+    let Value::Tensor(batch) = batch else {
+        panic!("elliptic integral tensor");
+    };
+    assert_eq!(batch.shape, [4]);
+    for (value, amplitude) in batch.data.iter().zip(amplitudes) {
+        assert!((number(value) - amplitude).abs() < 1e-14);
+        assert_eq!(
+            value,
+            &call(
+                &session,
+                "num_special_elliptic_pi_plan_eval",
+                &[plan.clone(), Value::Float(amplitude)],
+            )
+        );
+    }
+    assert_eq!(
+        call(
+            &session,
+            "num_special_elliptic_pi_plan_eval_many",
+            &[plan, floats(&[], DimExpr::Dimless)],
+        ),
+        Value::Tensor(TensorValue {
+            shape: vec![0],
+            elem: TypeExpr::Float,
+            data: vec![]
+        })
+    );
+    assert!(
+        session
+            .call_value(
+                "num_special_elliptic_pi_plan_new",
+                &[Value::Float(1.0), Value::Float(0.0)],
+                &CallCtx::new(),
+            )
+            .is_err()
+    );
+}
+
+#[test]
+fn gf256_batch_scale_and_mul_add_preserve_the_field_and_byte_contract() {
+    let session = Session::new();
+    let src = ints(&[0, 1, 128, 255]);
+    let dst = ints(&[1, 3, 0, 255]);
+    let scale = "num_finite_field_gf256_scale";
+    let add = "num_finite_field_gf256_mul_add";
+    assert_eq!(
+        call(&session, scale, &[Value::int(2), src.clone()]),
+        ints(&[0, 2, 29, 227]),
+    );
+    assert_eq!(
+        call(&session, add, &[Value::int(2), src.clone(), dst.clone()]),
+        ints(&[1, 1, 29, 28]),
+    );
+    assert_eq!(
+        call(&session, add, &[Value::int(0), src.clone(), dst.clone()]),
+        dst,
+    );
+    let ctx = CallCtx::new();
+    assert!(
+        session
+            .call_value(add, &[Value::int(1), src.clone(), ints(&[0])], &ctx)
+            .is_err()
+    );
+    assert!(
+        session
+            .call_value(scale, &[Value::int(256), src], &ctx)
+            .is_err()
+    );
+    assert!(
+        session
+            .call_value(scale, &[Value::int(1), ints(&[0, -1])], &ctx)
+            .is_err()
+    );
+    assert_eq!(
+        call(&session, scale, &[Value::int(255), ints(&[])]),
+        ints(&[])
+    );
 }
 fn floats(
     data: &[f64],
@@ -130,6 +406,9 @@ fn native_weighted_graph_operators_keep_dimensions_and_manifest_shapes() {
         "num_native_graph_topological_sort",
         "num_native_graph_strongly_connected_components",
         "num_native_graph_weakly_connected_components",
+        "num_native_graph_condensation",
+        "num_native_graph_undirected_cuts",
+        "num_native_graph_multi_source_bfs",
         "num_native_graph_bellman_ford",
         "num_native_graph_dag_shortest_paths",
         "num_native_graph_maximum_flow",
@@ -143,6 +422,77 @@ fn native_weighted_graph_operators_keep_dimensions_and_manifest_shapes() {
             rssn::kernel::manifest::SignatureSource::Declared
         );
     }
+
+    let Value::Record(condensation) = call(&s, "num_native_graph_condensation", handle) else {
+        panic!("expected a condensation record");
+    };
+    assert_eq!(condensation.fields[0].0, "component_of");
+    assert_eq!(condensation.fields[1].0, "arcs");
+    let Value::Tensor(arcs) = &condensation.fields[1].1 else {
+        panic!("expected a condensation arc matrix");
+    };
+    assert_eq!(arcs.shape, [4, 2]);
+    assert!(
+        arcs.data
+            .chunks_exact(2)
+            .all(|edge| number(&edge[0]) < number(&edge[1]))
+    );
+
+    let endpoints = tensor(
+        vec![5, 2],
+        [0, 1, 0, 1, 1, 2, 1, 3, 3, 3]
+            .into_iter()
+            .map(Value::int)
+            .collect(),
+        TypeExpr::Int,
+    );
+    let Value::Record(cuts) = call(
+        &s,
+        "num_native_graph_undirected_cuts",
+        &[Value::int(4), endpoints.clone()],
+    ) else {
+        panic!("expected a cut record");
+    };
+    assert_eq!(cuts.fields[0].0, "bridges");
+    assert_eq!(
+        cuts.fields[1],
+        ("articulation_points".to_owned(), ints(&[1]))
+    );
+    let Value::Tensor(bridges) = &cuts.fields[0].1 else {
+        panic!("expected a bridge matrix");
+    };
+    assert_eq!(bridges.shape, [2, 2]);
+    assert_eq!(bridges.data, [1, 2, 1, 3].map(Value::int));
+    assert!(
+        s.call_value(
+            "num_native_graph_undirected_cuts",
+            &[Value::int(3), endpoints],
+            &CallCtx::new()
+        )
+        .is_err()
+    );
+
+    let Value::Tensor(unweighted) = call(
+        &s,
+        "num_native_graph_multi_source_bfs",
+        &[graph.clone(), ints(&[2, 1, 2])],
+    ) else {
+        panic!("expected an option tensor of distances");
+    };
+    assert_eq!(unweighted.shape, [5]);
+    assert!(matches!(&unweighted.data[0], Value::Variant(v) if v.tag == "None"));
+    assert_eq!(some(&unweighted.data[1]), &Value::int(0));
+    assert_eq!(some(&unweighted.data[2]), &Value::int(0));
+    assert_eq!(some(&unweighted.data[3]), &Value::int(1));
+    assert!(matches!(&unweighted.data[4], Value::Variant(v) if v.tag == "None"));
+    assert!(
+        s.call_value(
+            "num_native_graph_multi_source_bfs",
+            &[graph.clone(), ints(&[5])],
+            &CallCtx::new()
+        )
+        .is_err()
+    );
 
     for name in [
         "num_native_graph_bellman_ford",
@@ -612,6 +962,124 @@ fn online_covariance_batch_preserves_units_and_returns_dimensionless_correlation
 }
 
 #[test]
+fn online_covariance_frequency_batch_retains_units_and_is_atomic() {
+    let s = Session::new();
+    let length = dim("Length");
+    let squared_length = length.clone().pow(Exp::Rat(Rational::int(2)));
+    let covariance = call(
+        &s,
+        "num_native_online_covariance_new",
+        &[Value::int(2), scalar(1., length.clone())],
+    );
+    let observations = tensor(
+        vec![2, 2],
+        [1., 3., 5., 11.].map(Value::Float).to_vec(),
+        TypeExpr::Float.with_dim(length),
+    );
+    let op = "num_native_online_covariance_push_frequency_batch";
+    assert_eq!(
+        call(
+            &s,
+            op,
+            &[covariance.clone(), observations.clone(), ints(&[3, 1])]
+        ),
+        Value::Bool(true)
+    );
+    for invalid in [
+        ints(&[1]),
+        tensor(vec![2], vec![Value::int(-1), Value::int(1)], TypeExpr::Int),
+        tensor(
+            vec![2],
+            vec![Value::int(1), Value::int(1)],
+            TypeExpr::Int.with_dim(dim("Time")),
+        ),
+        tensor(
+            vec![2],
+            vec![Value::int(1_u64 << 53), Value::int(0)],
+            TypeExpr::Int,
+        ),
+    ] {
+        assert!(
+            s.call_value(
+                op,
+                &[covariance.clone(), observations.clone(), invalid],
+                &CallCtx::new()
+            )
+            .is_err()
+        );
+    }
+    let handle = std::slice::from_ref(&covariance);
+    assert_eq!(
+        call(&s, "num_native_online_covariance_count", handle),
+        Value::int(4)
+    );
+    let result = call(&s, "num_native_online_covariance_sample_covariance", handle);
+    let Value::Tensor(result) = some(&result) else {
+        panic!("sample covariance matrix");
+    };
+    assert_eq!(result.shape, [2, 2]);
+    assert!(
+        rssn::kernel::overload::matches_type(
+            &TypeExpr::Float.with_dim(squared_length),
+            &result.elem,
+        )
+        .accepted()
+    );
+    assert_eq!(
+        result.data.iter().map(number).collect::<Vec<_>>(),
+        [4., 8., 8., 16.]
+    );
+}
+
+#[test]
+fn ordering_metrics_accept_ragged_offsets_and_checked_permutations() {
+    let session = Session::new();
+    let op = "num_native_ordering_metrics";
+    let offsets = ints(&[0, 2, 3, 3, 3]);
+    let neighbors = ints(&[3, 3, 3]);
+    for (order, bandwidth, profile) in [([0, 1, 2, 3], 3, 3), ([0, 3, 1, 2], 1, 2)] {
+        let Value::Record(result) = call(
+            &session,
+            op,
+            &[offsets.clone(), neighbors.clone(), ints(&order)],
+        ) else {
+            panic!("expected an ordering metrics record");
+        };
+        assert_eq!(
+            result.fields,
+            [
+                ("half_bandwidth".to_string(), Value::int(bandwidth)),
+                ("profile".to_string(), Value::int(profile)),
+            ]
+        );
+    }
+    let Value::Record(empty) = call(&session, op, &[ints(&[0]), ints(&[]), ints(&[])]) else {
+        panic!("expected an empty pattern's ordering metrics record");
+    };
+    assert!(
+        empty
+            .fields
+            .iter()
+            .all(|(_, value)| *value == Value::int(0))
+    );
+    for (offsets, neighbors, order) in [
+        (
+            ints(&[0, 3, 2, 3, 3]),
+            neighbors.clone(),
+            ints(&[0, 1, 2, 3]),
+        ),
+        (offsets.clone(), ints(&[3, 4, 3]), ints(&[0, 1, 2, 3])),
+        (offsets, neighbors, ints(&[0, 1, 2, 2])),
+    ] {
+        assert!(
+            session
+                .call_value(op, &[offsets, neighbors, order], &CallCtx::new())
+                .is_err()
+        );
+    }
+}
+
+#[test]
 fn general_multivector_inverse_covers_nonhomogeneous_and_tiny_elements() {
     use rssn::kernels::geometric_algebra::Multivector3D;
     let a = Multivector3D {
@@ -639,4 +1107,347 @@ fn general_multivector_inverse_covers_nonhomogeneous_and_tiny_elements() {
         .inv()
         .is_none()
     );
+}
+
+#[test]
+fn native_multivector_central_product_combines_both_physical_dimensions() {
+    let session = Session::new();
+    let length = dim("Length");
+    let time = dim("Time");
+    let coefficients =
+        [2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.0].map(|value| scalar(value, length.clone()));
+    let multivector = call(&session, "num_native_multivector_new", &coefficients);
+    let name = "num_native_multivector_mul_central";
+    let result = call(
+        &session,
+        name,
+        &[
+            multivector.clone(),
+            scalar(4.0, time.clone()),
+            scalar(5.0, time.clone()),
+        ],
+    );
+    let squared = call(&session, "num_native_multivector_norm_sq", &[result]);
+    let dimension = DimExpr::Mul(vec![length.clone().pow(2), time.clone().pow(2)]);
+    assert!(
+        rssn::kernel::overload::matches_type(
+            &TypeExpr::Float.with_dim(dimension),
+            &squared.type_expr()
+        )
+        .accepted()
+    );
+    assert_eq!(number(&squared), 533.0);
+    assert!(
+        session
+            .call_value(
+                name,
+                &[multivector, scalar(4.0, time), scalar(5.0, length)],
+                &CallCtx::new()
+            )
+            .is_err()
+    );
+}
+
+#[test]
+fn native_double_double_norms_preserve_the_low_component_and_dimension() {
+    let s = Session::new();
+    let length = dim("Length");
+    let measured = scalar(1.0, length.clone());
+    let x = call(
+        &s,
+        "num_native_dd_from_f64",
+        std::slice::from_ref(&measured),
+    );
+    let hypot = call(&s, "num_native_dd_hypot", &[x.clone(), x.clone()]);
+    let complex = call(&s, "num_native_cdd_new", &[measured.clone(), measured]);
+    let modulus = call(&s, "num_native_cdd_norm_dd", &[complex]);
+
+    let parts = call(&s, "num_native_dd_parts", &[hypot]);
+    assert_eq!(parts, call(&s, "num_native_dd_parts", &[modulus]));
+    let Value::Record(parts) = parts else {
+        panic!("expected double-double components")
+    };
+    let high = parts.get("item0").unwrap();
+    let low = parts.get("item1").unwrap();
+    let measured_float = TypeExpr::Float.with_dim(length);
+    for value in [high, low] {
+        assert!(
+            rssn::kernel::overload::matches_type(&measured_float, &value.type_expr()).accepted()
+        );
+    }
+    assert_eq!(number(high), std::f64::consts::SQRT_2);
+    assert!((number(low) + 9.667_293_313_452_913e-17).abs() <= 2e-31);
+
+    let wrong = call(&s, "num_native_dd_from_f64", &[scalar(1.0, dim("Time"))]);
+    let foreign = Session::new();
+    for other in [
+        wrong,
+        call(&foreign, "num_native_dd_from_f64", &[Value::Float(1.0)]),
+    ] {
+        assert!(
+            s.call_value("num_native_dd_hypot", &[x.clone(), other], &CallCtx::new())
+                .is_err()
+        );
+    }
+}
+
+#[test]
+fn native_complex_double_double_reciprocal_handles_extreme_scales_and_inverse_units() {
+    let s = Session::new();
+    let length = dim("Length");
+    for (a, b, expected) in [(3e200, 4e200, 2e-201), (3e-200, 4e-200, 2e199)] {
+        let z = call(
+            &s,
+            "num_native_cdd_new",
+            &[scalar(a, length.clone()), scalar(b, length.clone())],
+        );
+        let inverse = call(&s, "num_native_cdd_recip", &[z]);
+        let modulus = call(&s, "num_native_cdd_norm", &[inverse]);
+        let ty = TypeExpr::Float.with_dim(DimExpr::Inverse(Box::new(length.clone())));
+        assert!(rssn::kernel::overload::matches_type(&ty, &modulus.type_expr()).accepted());
+        assert!((number(&modulus) / expected - 1.0).abs() < 1e-14);
+    }
+    let zero = call(
+        &s,
+        "num_native_cdd_new",
+        &[scalar(0.0, length.clone()), scalar(0.0, length)],
+    );
+    assert!(
+        s.call_value("num_native_cdd_recip", &[zero], &CallCtx::new())
+            .is_err()
+    );
+}
+
+#[test]
+fn native_polygon_winding_has_a_measured_complex_input_and_integer_result() {
+    let s = Session::new();
+    let name = "num_complex_winding_number";
+    let length = dim("Length");
+    let elem = TypeExpr::Complex.with_dim(length);
+    let complex = |re, im| Value::Complex(ComplexValue::Float { re, im });
+    let r = 1e-200;
+    let vertices = vec![
+        complex(r, 0.0),
+        complex(0.0, r),
+        complex(-r, 0.0),
+        complex(0.0, -r),
+    ];
+    assert_eq!(
+        call(&s, name, &[tensor(vec![4], vertices.clone(), elem.clone())]),
+        Value::int(1)
+    );
+    let mut mixed = vertices;
+    mixed[1] = Value::Dyn(DynValue {
+        dim: dim("Time"),
+        value: Box::new(complex(0.0, r)),
+    });
+    for invalid in [
+        tensor(vec![4], mixed, elem.clone()),
+        tensor(
+            vec![2],
+            vec![complex(r, 0.0), complex(-r, 0.0)],
+            elem.clone(),
+        ),
+        tensor(vec![0], vec![], elem),
+    ] {
+        assert!(s.call_value(name, &[invalid], &CallCtx::new()).is_err());
+    }
+}
+
+#[test]
+fn native_quadratic_sieve_returns_a_sorted_exact_factor_pair() {
+    let s = Session::new();
+    let limits = call(&s, "num_native_qs_limits_for_digits", &[Value::int(2)]);
+    let name = "num_native_qs_factor_pair";
+    let Value::Variant(answer) = call(&s, name, &[Value::int(77), limits.clone()]) else {
+        panic!("expected an optional factor pair")
+    };
+    assert_eq!(answer.tag, "Some");
+    let Value::Record(pair) = &answer.payload[0] else {
+        panic!("expected two ordered factors")
+    };
+    assert_eq!(pair.get("item0"), Some(&Value::int(7)));
+    assert_eq!(pair.get("item1"), Some(&Value::int(11)));
+
+    let Value::Variant(missing) = call(&s, name, &[Value::int(79), limits]) else {
+        panic!("expected a missing factor pair for a prime")
+    };
+    assert_eq!(missing.tag, "None");
+}
+
+#[test]
+fn prepared_reed_solomon_encoders_keep_exact_bytes_and_check_block_extents() {
+    let s = Session::new();
+    let parity = Value::int(4);
+    let encoder = call(
+        &s,
+        "num_native_rs_encoder_new",
+        std::slice::from_ref(&parity),
+    );
+    assert_eq!(
+        call(
+            &s,
+            "num_native_rs_encoder_parity_symbols",
+            std::slice::from_ref(&encoder)
+        ),
+        parity
+    );
+    let message = ints(&[0, 127, 255, 37, 11]);
+    let expected = call(
+        &s,
+        "num_error_correction_reed_solomon_encode",
+        &[message.clone(), parity],
+    );
+    let encode = "num_native_rs_encoder_encode";
+    for _ in 0..3 {
+        assert_eq!(
+            call(&s, encode, &[encoder.clone(), message.clone()]),
+            expected
+        );
+    }
+    for invalid in [ints(&[256]), ints(&[0; 252])] {
+        assert!(
+            s.call_value(encode, &[encoder.clone(), invalid], &CallCtx::new())
+                .is_err()
+        );
+    }
+    assert!(
+        s.call_value(
+            "num_native_rs_encoder_new",
+            &[Value::int(256)],
+            &CallCtx::new()
+        )
+        .is_err()
+    );
+    assert!(
+        Session::new()
+            .call_value(encode, &[encoder, message], &CallCtx::new())
+            .is_err()
+    );
+
+    let max = call(&s, "num_native_rs_encoder_new", &[Value::int(255)]);
+    assert_eq!(call(&s, encode, &[max, ints(&[])]), ints(&[0; 255]));
+}
+
+#[test]
+fn symbolic_reed_solomon_error_count_checks_block_extents() {
+    let s = Session::new();
+    let config = rssn::api::Config::new();
+    for (length, parity) in [(256, 1), (4, 5)] {
+        let symbols = vec!["0"; length].join(", ");
+        let input = format!("rs_error_count(list({symbols}), {parity})");
+        let term = s.parse(&input).unwrap();
+        assert_eq!(s.compute(term, &config).unwrap().term.to_string(), input);
+    }
+    let valid = s.parse("rs_error_count(list(0, 0, 0, 0), 1)").unwrap();
+    assert_eq!(s.compute(valid, &config).unwrap().term.to_string(), "0");
+}
+
+#[test]
+fn native_ordered_selections_preserve_exact_word_boundaries() {
+    use num_bigint::BigInt;
+    let s = Session::new();
+    let name = "num_native_number_exact_falling_factorial";
+    let expected = BigInt::from(i64::MAX) * (i64::MAX - 1) * (i64::MAX - 2);
+    assert_eq!(
+        call(&s, name, &[Value::int(i64::MAX), Value::int(3)]),
+        Value::Int(expected)
+    );
+    assert_eq!(
+        call(&s, name, &[Value::int(2), Value::int(3)]),
+        Value::int(0)
+    );
+    assert!(
+        s.call_value(name, &[Value::int(5000), Value::int(4097)], &CallCtx::new())
+            .is_err()
+    );
+}
+
+#[test]
+fn affine_ifs_reuses_maps_and_checks_inputs_at_the_native_boundary() {
+    let s = Session::new();
+    let maps = tensor(
+        vec![2, 6],
+        [0.0, 0.0, 0.0, 0.0, 1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 7.0, -7.0]
+            .map(Value::Float)
+            .to_vec(),
+        TypeExpr::Float,
+    );
+    let weights = floats(&[f64::MAX, f64::MAX], DimExpr::Dimless);
+    let origin = Value::Record(RecordValue {
+        fields: vec![
+            ("item0".into(), Value::Float(0.0)),
+            ("item1".into(), Value::Float(0.0)),
+        ],
+    });
+    let point_tensor = |columns: &[f64]| {
+        tensor(
+            vec![columns.len() / 2, 2],
+            columns.iter().copied().map(Value::Float).collect(),
+            TypeExpr::Float,
+        )
+    };
+    let new = "num_native_affine_ifs_new";
+    let generate = "num_native_affine_ifs_generate";
+    let plan = call(&s, new, &[maps.clone(), weights.clone()]);
+    let args = |points: i64, skip: i64, seed: Value| {
+        [
+            plan.clone(),
+            origin.clone(),
+            Value::int(points),
+            Value::int(skip),
+            seed,
+        ]
+    };
+    let historical = point_tensor(&[7.0, -7.0, 1.0, -1.0, 1.0, -1.0]);
+    for _ in 0..2 {
+        assert_eq!(
+            call(&s, generate, &args(3, 1, Value::int(12345))),
+            historical
+        );
+    }
+    assert_eq!(
+        call(
+            &s,
+            "num_fractal_geometry_and_chaos_generate_ifs_fractal",
+            &[
+                maps.clone(),
+                weights,
+                origin.clone(),
+                Value::int(3),
+                Value::int(1)
+            ],
+        ),
+        historical
+    );
+    assert_eq!(
+        call(&s, generate, &args(2, 0, Value::int(u64::MAX))),
+        point_tensor(&[7.0, -7.0, 7.0, -7.0])
+    );
+    assert_eq!(
+        call(&s, generate, &args(0, 49_999_999, Value::int(0))),
+        point_tensor(&[])
+    );
+    for invalid in [
+        args(524_289, 0, Value::int(0)),
+        args(1, 50_000_000, Value::int(0)),
+        args(1, 0, Value::int(-1)),
+    ] {
+        assert!(s.call_value(generate, &invalid, &CallCtx::new()).is_err());
+    }
+    assert!(
+        Session::new()
+            .call_value(generate, &args(3, 0, Value::int(0)), &CallCtx::new())
+            .is_err()
+    );
+    for invalid in [
+        floats(&[0.0, 0.0], DimExpr::Dimless),
+        floats(&[1.0], DimExpr::Dimless),
+        floats(&[1.0, 1.0], dim("Length")),
+    ] {
+        assert!(
+            s.call_value(new, &[maps.clone(), invalid], &CallCtx::new())
+                .is_err()
+        );
+    }
 }

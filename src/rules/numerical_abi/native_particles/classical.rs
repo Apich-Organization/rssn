@@ -59,13 +59,55 @@ impl NativeArg for Particles {
         ))
     }
 }
-fn particle_data(p: &c::Particle3D) -> Result<Value, OpError> {
-    let f = si();
-    Ok(api::record(vec![
-        ("mass", f.output(p.mass, MASS, false)?),
-        ("position", f.array(vec![p.x, p.y, p.z], LENGTH)?),
-        ("velocity", f.array(vec![p.vx, p.vy, p.vz], VELOCITY)?),
-    ]))
+const PARTICLE_AXES: usize = 3;
+
+struct ParticleFields {
+    mass: DimExpr,
+    position: DimExpr,
+    velocity: DimExpr,
+}
+
+impl ParticleFields {
+    // One record contains a measured mass and two rank-one measured tensors.
+    // Each physical scalar contributes a Dyn wrapper and its Float child.
+    const VALUE_NODES: usize = 1 + 2 + 2 * (1 + PARTICLE_AXES * 2);
+
+    fn si() -> Result<Self, OpError> {
+        let frame = si();
+        Ok(Self {
+            mass: frame.dim(MASS)?,
+            position: frame.dim(LENGTH)?,
+            velocity: frame.dim(VELOCITY)?,
+        })
+    }
+
+    fn encode(
+        &self,
+        particle: &c::Particle3D,
+    ) -> Result<Value, OpError> {
+        let vector =
+            |values: [f64; PARTICLE_AXES], dimension: &DimExpr| -> Result<Value, OpError> {
+                Ok(Value::Tensor(TensorValue {
+                    shape: vec![PARTICLE_AXES],
+                    elem: TypeExpr::Float.with_dim(dimension.clone()),
+                    data: values
+                        .into_iter()
+                        .map(|value| api::quantity(value, dimension.clone()))
+                        .collect::<Result<Vec<_>, OpError>>()?,
+                }))
+            };
+        Ok(api::record(vec![
+            ("mass", api::quantity(particle.mass, self.mass.clone())?),
+            (
+                "position",
+                vector([particle.x, particle.y, particle.z], &self.position)?,
+            ),
+            (
+                "velocity",
+                vector([particle.vx, particle.vy, particle.vz], &self.velocity)?,
+            ),
+        ]))
+    }
 }
 fn history(
     data: &[Vec<f64>],
@@ -295,7 +337,12 @@ fn grid_work(
 object_binding!(classical_particle_new,"num_native_classical_particle_new","crate::sim::classical::Particle3D::new","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(mass:Input,position:Input,velocity:Input)->NewObject<c::Particle3D>,|_ctx:&CallCtx<'_>,mass:Input,position:Input,velocity:Input|{let f=si();let m=f.scalar(&mass.0,MASS,false)?;let p=engine::array::<3>(&f,&position.0,LENGTH)?;let v=engine::array::<3>(&f,&velocity.0,VELOCITY)?;Ok(NewObject::new(c::Particle3D::new(m,p[0],p[1],p[2],v[0],v[1],v[2]),f.dims.to_vec()))});
 object_binding!(classical_particle_kinetic_energy,"num_native_classical_particle_kinetic_energy","crate::sim::classical::Particle3D::kinetic_energy","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(particle:Handle<c::Particle3D>)->Dynamic,|ctx:&CallCtx<'_>,particle:Handle<c::Particle3D>|{particle.with(ctx,|p|Ok(Dynamic(si().output(p.kinetic_energy(),ENERGY,false)?)))});
 object_binding!(classical_particle_momentum,"num_native_classical_particle_momentum","crate::sim::classical::Particle3D::momentum","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(particle:Handle<c::Particle3D>)->Dynamic,|ctx:&CallCtx<'_>,particle:Handle<c::Particle3D>|{particle.with(ctx,|p|Ok(Dynamic(si().output(p.momentum(),MOMENTUM,false)?)))});
-object_binding!(classical_particle_data,"num_native_classical_particle_data","","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(particle:Handle<c::Particle3D>)->Dynamic,|ctx:&CallCtx<'_>,particle:Handle<c::Particle3D>|{particle.with(ctx,|p|Ok(Dynamic(particle_data(p)?)))});
+object_binding!(
+    classical_particle_data, "num_native_classical_particle_data", "",
+    "Returns the measured mass, position and velocity of a retained classical particle. The position and velocity vectors each have three components in x, y, z order.",
+    false, (particle:Handle<c::Particle3D>) -> Dynamic,
+    |ctx,particle| particle.with(ctx, |p| Ok(Dynamic(ParticleFields::si()?.encode(p)?)))
+);
 object_binding!(classical_simulate_particle_motion,"num_native_classical_simulate_particle_motion","crate::sim::classical::simulate_particle_motion","Actual native RK4 particle motion. Force receives seconds plus a record with separately measured position and velocity; force results are Newtons. Positive mass/ordered finite times and step/callback budgets are checked, and first callback failure aborts immediately.",false,(force:ForceFn,mass:Input,position:Input,velocity:Input,time_range:Input,steps:usize,callback_budget:usize)->Dynamic,|ctx:&CallCtx<'_>,force:ForceFn,mass:Input,position:Input,velocity:Input,time_range:Input,steps:usize,callback_budget:usize|{let f=si();let m=f.scalar(&mass.0,MASS,false)?;let p=engine::array::<3>(&f,&position.0,LENGTH)?;let v=engine::array::<3>(&f,&velocity.0,VELOCITY)?;let t=engine::array::<2>(&f,&time_range.0,TIME)?;if m<=0.0||steps==0||steps>100000||t[0]>=t[1]{return Err(api::error("particle mass/time/steps invalid"));}let gate=Gate::new(ctx,callback_budget)?;let out=gate.run(||c::simulate_particle_motion(|time,state|gate.call(||{let args=[f.output(time,TIME,false)?,api::record(vec![("position",f.array(state[..3].to_vec(),LENGTH)?),("velocity",f.array(state[3..].to_vec(),VELOCITY)?)])];let value=ctx.invoke_callback(force.0,&args)?;engine::array::<3>(&f,&value,FORCE)}),m,(p[0],p[1],p[2]),(v[0],v[1],v[2]),(t[0],t[1]),steps))?;history(&(out),&f)});
 object_binding!(classical_simulate_ising_model,"num_native_classical_simulate_ising_model","crate::sim::classical::simulate_ising_model","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(size:usize,temperature:Input,exchange_reference:Input,steps:usize)->Dynamic,|_ctx:&CallCtx<'_>,size:usize,temperature:Input,exchange_reference:Input,steps:usize|{if !(2..=128).contains(&size)||steps>50_000_000{return Err(api::error("Ising lattice/proposal bounds exceeded"));}let f=si();let kt=f.scalar(&temperature.0,ENERGY,true)?;let(j,d)=api::reference(&exchange_reference.0)?;api::same_dimension(&d,&f.dim(ENERGY)?)?;if kt<0.0{return Err(api::error("temperature must benonnegative"));}let out=c::simulate_ising_model(size,kt/j,steps);let data=out.into_iter().flatten().map(|s|Value::int(i64::from(s))).collect();Ok(Dynamic(Value::Tensor(TensorValue{shape:vec![size,size],data,elem:TypeExpr::Int})))});
 object_binding!(classical_solve_1d_schrodinger,"num_native_classical_solve_1d_schrodinger","crate::sim::classical::solve_1d_schrodinger","Native normalized Schrodinger operator -onehalfLaplacian+V, mapped to physical SI using positive mass and coordinate reference with energy=hbar^2/(mass*length^2). Potential callbacks receive physical coordinates and return energy. Eigenvectors are dimensionless discrete coefficients; no continuum wavefunction normalization is fabricated. Dense eigensystem limited256nodes.",false,(potential:Potential<1>,ranges:Input,nodes:[usize;1],mass:Input,coordinate_reference:Input,callback_budget:usize)->Dynamic,|ctx:&CallCtx<'_>,potential:Potential<1>,ranges:Input,nodes:[usize;1],mass:Input,coordinate_reference:Input,callback_budget:usize|{let f=si();let m=f.scalar(&mass.0,MASS,false)?;let(l,ld)=api::reference(&coordinate_reference.0)?;api::same_dimension(&ld,&f.dim(LENGTH)?)?;let n=nodes.iter().try_fold(1usize,|a,n|a.checked_mul(*n)).filter(|n|*n<=256).ok_or_else(||api::error("dense Schrodinger eigensystem budget256nodes"))?;if m<=0.0||nodes.iter().any(|n|*n<3){return Err(api::error("Schrodinger needspositive mass and>=3nodesperaxis"));}let Value::Tensor(t)=&ranges.0 else{return Err(api::error("coordinate range matrix required"));};
@@ -312,7 +359,40 @@ object_binding!(classical_solve_wave_equation_1d,"num_native_classical_solve_wav
 object_binding!(classical_solve_wave_equation_2d,"num_native_classical_solve_wave_equation_2d","crate::sim::classical::solve_wave_equation_2d","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(initial_u:Input,initial_ut:Input,nodes:[usize;2],spacing:Input,speed:Input,dt:Input,steps:usize)->Dynamic,|_ctx:&CallCtx<'_>,initial_u:Input,initial_ut:Input,nodes:[usize;2],spacing:Input,speed:Input,dt:Input,steps:usize|{let f=si();let d=api::dimension(&initial_u.0)?;let rate=DimExpr::Mul(vec![d.clone(),DimExpr::Inverse(Box::new(f.dim(TIME)?))]);api::same_dimension(&rate,&api::dimension(&initial_ut.0)?)?;let u=<Vec<f64> as Arg>::decode(&initial_u.0,0)?;let ut=<Vec<f64> as Arg>::decode(&initial_ut.0,0)?;let n=grid_work(&nodes,steps)?;if u.len()!=n||ut.len()!=n{return Err(api::error("wave initialvectors shape mismatch"));}let c=f.scalar(&speed.0,VELOCITY,false)?;let dt=f.scalar(&dt.0,TIME,false)?;if c<0.0||dt<=0.0{return Err(api::error("wave speed/time step invalid"));}let h=engine::array::<2>(&f,&spacing.0,LENGTH)?;if h.iter().any(|h|*h<=0.0){return Err(api::error("wave spacings mustbepositive"));}let out=c::solve_wave_equation_2d(&u,&ut,nodes,h,c,dt,steps).map_err(api::error)?;measured_history(out,d)});
 object_binding!(classical_solve_wave_equation_3d,"num_native_classical_solve_wave_equation_3d","crate::sim::classical::solve_wave_equation_3d","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(initial_u:Input,initial_ut:Input,nodes:[usize;3],spacing:Input,speed:Input,dt:Input,steps:usize)->Dynamic,|_ctx:&CallCtx<'_>,initial_u:Input,initial_ut:Input,nodes:[usize;3],spacing:Input,speed:Input,dt:Input,steps:usize|{let f=si();let d=api::dimension(&initial_u.0)?;let rate=DimExpr::Mul(vec![d.clone(),DimExpr::Inverse(Box::new(f.dim(TIME)?))]);api::same_dimension(&rate,&api::dimension(&initial_ut.0)?)?;let u=<Vec<f64> as Arg>::decode(&initial_u.0,0)?;let ut=<Vec<f64> as Arg>::decode(&initial_ut.0,0)?;let n=grid_work(&nodes,steps)?;if u.len()!=n||ut.len()!=n{return Err(api::error("wave initialvectors shape mismatch"));}let c=f.scalar(&speed.0,VELOCITY,false)?;let dt=f.scalar(&dt.0,TIME,false)?;if c<0.0||dt<=0.0{return Err(api::error("wave speed/time step invalid"));}let h=engine::array::<3>(&f,&spacing.0,LENGTH)?;if h.iter().any(|h|*h<=0.0){return Err(api::error("wave spacings mustbepositive"));}let out=c::solve_wave_equation_3d(&u,&ut,nodes,h,c,dt,steps).map_err(api::error)?;measured_history(out,d)});
 object_binding!(classical_projectile_motion_with_drag,"num_native_classical_projectile_motion_with_drag","crate::sim::classical::projectile_motion_with_drag","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(parameters:Input)->Dynamic,|_ctx:&CallCtx<'_>,parameters:Input|{let f=si();let read=|key,p|f.scalar(api::field(&parameters.0,key)?,p,false);let v0=read("speed",VELOCITY)?;let angle=crate::rules::numerical_abi::numeric(api::field(&parameters.0,"angle")?,0)?;api::normalized(api::field(&parameters.0,"angle")?)?;let mass=read("mass",MASS)?;let drag_coeff=crate::rules::numerical_abi::numeric(api::field(&parameters.0,"drag_coefficient")?,0)?;api::normalized(api::field(&parameters.0,"drag_coefficient")?)?;let area=read("area",[0,2,0,0])?;let air_density=read("air_density",[1,-3,0,0])?;let dt=read("dt",TIME)?;let max_time=read("max_time",TIME)?;if mass<=0.0||v0<0.0||drag_coeff<0.0||area<0.0||air_density<0.0||dt<=0.0||max_time<0.0||max_time/dt>100000.0{return Err(api::error("projectile physical controls/step budget invalid"));}let out=c::projectile_motion_with_drag(c::ProjectileParams{v0,angle,mass,drag_coeff,area,air_density,dt,max_time});let mut times=vec![];let mut pos=vec![];let mut vel=vec![];for(t,x,y,vx,vy)in out{times.push(t);pos.push([x,y]);vel.push([vx,vy]);}Ok(Dynamic(api::record(vec![("time",f.array(times,TIME)?),("positions",engine::packed(&f,pos,LENGTH)?),("velocities",engine::packed(&f,vel,VELOCITY)?)])))});
-object_binding!(classical_simulate_n_body,"num_native_classical_simulate_n_body","crate::sim::classical::simulate_n_body","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(particles:Particles,dt:Input,steps:usize,gravity_constant:Input)->Dynamic,|_ctx:&CallCtx<'_>,particles:Particles,dt:Input,steps:usize,gravity_constant:Input|{let f=si();let dt=f.scalar(&dt.0,TIME,false)?;let g=f.scalar(&gravity_constant.0,[-1,3,-2,0],false)?;if dt<=0.0||steps>100000||particles.0.len().checked_mul(particles.0.len()).and_then(|n|n.checked_mul(steps)).is_none_or(|n|n>50_000_000)||particles.0.len().checked_mul(steps+1).is_none_or(|n|n>131072){return Err(api::error("classical Nbody time/work/history bounds invalid"));}let history=c::simulate_n_body(particles.0,dt,steps,g);let mut data=vec![];for row in history{let values=row.iter().map(particle_data).collect::<Result<Vec<_>,_>>()?;data.push(Value::Tensor(TensorValue{shape:vec![values.len()],data:values,elem:api::dynamic_type()}));}Ok(Dynamic(Value::Tensor(TensorValue{shape:vec![data.len()],data,elem:api::dynamic_type()})))});
+object_binding!(
+    classical_simulate_n_body, "num_native_classical_simulate_n_body", "crate::sim::classical::simulate_n_body",
+    "Simulates classical gravitational motion from 1 to 512 retained particle handles. Supply a positive measured Time step, a nonnegative step count and a gravitational constant in Length cubed per Mass per Time squared. The integrator applies a gravitational velocity update followed by a position update.\n\nThe outer result contains the initial snapshot followed by one snapshot per step. Each snapshot preserves input particle order and contains records with measured mass and three-component position and velocity. The input handles are unchanged.\n\nThe adapter checks the pair-step work and encoded history budgets before integration. If evolution produces a nonfinite state, the call returns an error.",
+    false, (particles:Particles,dt:Input,steps:usize,gravity_constant:Input) -> Dynamic,
+    |_ctx,particles,dt,steps,gravity_constant| {
+        let frame = si();
+        let dt = frame.scalar(&dt.0, TIME, false)?;
+        let gravity = frame.scalar(&gravity_constant.0, [-1, 3, -2, 0], false)?;
+        let count = particles.0.len();
+        if dt <= 0.0 || steps > 100_000
+            || count.checked_mul(count).and_then(|pairs| pairs.checked_mul(steps)).is_none_or(|work| work > 50_000_000)
+        {
+            return Err(api::error("classical N-body time/work bounds invalid"));
+        }
+        // The outer tensor and every snapshot tensor each contribute one
+        // node in addition to their child records.
+        let nodes_per_snapshot = 1 + count * ParticleFields::VALUE_NODES;
+        if (steps + 1).checked_mul(nodes_per_snapshot).and_then(|nodes| nodes.checked_add(1))
+            .is_none_or(|nodes| nodes > api::VALUE_LIMIT)
+        {
+            return Err(api::error("classical N-body history exceeds the native value budget"));
+        }
+        let fields = ParticleFields::si()?;
+        let history = c::simulate_n_body(particles.0, dt, steps, gravity);
+        let mut data = Vec::with_capacity(history.len());
+        for snapshot in history {
+            let values = snapshot.iter().map(|particle| fields.encode(particle)).collect::<Result<Vec<_>, _>>()?;
+            data.push(Value::Tensor(TensorValue {
+                shape: vec![values.len()], data: values, elem: api::dynamic_type(),
+            }));
+        }
+        Ok(Dynamic(Value::Tensor(TensorValue { shape: vec![data.len()], data, elem: api::dynamic_type() })))
+    }
+);
 object_binding!(classical_gravitational_potential_energy,"num_native_classical_gravitational_potential_energy","crate::sim::classical::gravitational_potential_energy","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(particles:Particles,gravity_constant:Input)->Dynamic,|_ctx:&CallCtx<'_>,particles:Particles,gravity_constant:Input|{let f=si();Ok(Dynamic(f.output(c::gravitational_potential_energy(&particles.0,f.scalar(&gravity_constant.0,[-1,3,-2,0],false)?),ENERGY,false)?))});
 object_binding!(classical_total_kinetic_energy,"num_native_classical_total_kinetic_energy","crate::sim::classical::total_kinetic_energy","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(particles:Particles)->Dynamic,|_ctx:&CallCtx<'_>,particles:Particles|{let f=si();Ok(Dynamic(f.output(c::total_kinetic_energy(&particles.0),ENERGY,false)?))});
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {

@@ -181,14 +181,40 @@ pub(in crate::rules) fn field<'a>(
 }
 /// Bound shape, nested data, text and retained handle encodings before native decoding.
 pub(in crate::rules) fn bounded(value: &Value) -> Result<(), OpError> {
-    let mut stack = vec![(value, 0usize)];
-    let mut nodes = 0usize;
-    while let Some((v, depth)) = stack.pop() {
-        nodes += 1;
-        if nodes > VALUE_LIMIT || depth > 32 {
+    fn visit_children(
+        values: &[Value],
+        depth: usize,
+        nodes: &mut usize,
+    ) -> Result<(), OpError> {
+        if values.iter().all(|value| {
+            matches!(
+                value,
+                Value::Bool(_) | Value::Float(_) | Value::Int(_) | Value::Complex(_)
+            )
+        }) {
+            if !values.is_empty() && (depth > 32 || values.len() > VALUE_LIMIT - *nodes) {
+                return Err(error("native value exceeds element/depth budget"));
+            }
+            *nodes += values.len();
+        } else {
+            for child in values.iter().rev() {
+                visit(child, depth, nodes)?;
+            }
+        }
+        Ok(())
+    }
+
+    // Descend one child at a time so a wide tensor needs no traversal buffer.
+    fn visit(
+        value: &Value,
+        depth: usize,
+        nodes: &mut usize,
+    ) -> Result<(), OpError> {
+        *nodes += 1;
+        if *nodes > VALUE_LIMIT || depth > 32 {
             return Err(error("native value exceeds element/depth budget"));
         }
-        match v {
+        match value {
             | Value::Tensor(t) => {
                 if t.shape.len() > 8
                     || t.shape.iter().any(|d| *d > VALUE_LIMIT)
@@ -209,25 +235,28 @@ pub(in crate::rules) fn bounded(value: &Value) -> Result<(), OpError> {
                         .filter(|n| *n <= VALUE_LIMIT)
                         .ok_or_else(|| error("native nested tensor allocation budget exceeded"))?;
                 }
-                stack.extend(t.data.iter().map(|v| (v, depth + 1)));
+                return visit_children(&t.data, depth + 1, nodes);
             },
             | Value::Record(r) => {
                 if r.fields.len() > 256 {
                     return Err(error("native record field budget exceeded"));
                 }
                 let mut names = std::collections::BTreeSet::new();
-                for (k, v) in &r.fields {
+                for (k, _) in &r.fields {
                     if k.len() > 256 || !names.insert(k) {
                         return Err(error(
                             "native record has duplicate or excessive field names",
                         ));
                     }
-                    stack.push((v, depth + 1));
+                }
+                drop(names);
+                for (_, child) in r.fields.iter().rev() {
+                    visit(child, depth + 1, nodes)?;
                 }
             },
-            | Value::Variant(v) => stack.extend(v.payload.iter().map(|v| (v, depth + 1))),
-            | Value::Quantity(q) => stack.push((&q.value, depth + 1)),
-            | Value::Dyn(d) => stack.push((&d.value, depth + 1)),
+            | Value::Variant(v) => return visit_children(&v.payload, depth + 1, nodes),
+            | Value::Quantity(q) => return visit(&q.value, depth + 1, nodes),
+            | Value::Dyn(d) => return visit(&d.value, depth + 1, nodes),
             | Value::String(s) if s.len() > 1_048_576 => {
                 return Err(error("native text budget exceeded"));
             },
@@ -236,8 +265,10 @@ pub(in crate::rules) fn bounded(value: &Value) -> Result<(), OpError> {
             },
             | _ => {},
         }
+        Ok(())
     }
-    Ok(())
+    let mut nodes = 0;
+    visit(value, 0, &mut nodes)
 }
 pub(in crate::rules) fn normalized(value: &Value) -> Result<(), OpError> {
     fn ty(t: &TypeExpr) -> Result<(), OpError> {
@@ -299,12 +330,16 @@ pub(in crate::rules) fn normalized(value: &Value) -> Result<(), OpError> {
         | _ => Ok(()),
     }
 }
-/// Native object contract. Reserve the maximum retained allocation at construction;
-/// mutable methods must validate their size/work bounds before increasing storage.
+/// Native object contract. Mutable values reserve their maximum retained allocation
+/// at creation. Immutable values can report their allocated capacity once.
 pub(in crate::rules) trait NativeType: Any {
     const KIND: &'static str;
     const MAX_BYTES: usize;
     fn validate(&self) -> Result<(), OpError>;
+
+    fn retained_bytes(&self) -> usize {
+        Self::MAX_BYTES
+    }
 }
 /// A typed, authenticated capability, not a decoded native layout.
 pub(in crate::rules) struct Handle<T: NativeType> {
@@ -320,6 +355,13 @@ impl<T: NativeType> Clone for Handle<T> {
     }
 }
 impl<T: NativeType> Handle<T> {
+    pub const fn heap_bytes(&self) -> usize {
+        match &self.value {
+            | Value::Opaque(opaque) => opaque.kind.capacity() + opaque.bytes.capacity(),
+            | _ => 0,
+        }
+    }
+
     pub fn with<R>(
         &self,
         ctx: &CallCtx<'_>,
@@ -444,11 +486,15 @@ impl<T: NativeType> NativeOutput for NewObject<T> {
         ctx: &CallCtx<'_>,
     ) -> Result<Value, OpError> {
         self.value.validate()?;
+        let retained_bytes = self.value.retained_bytes();
+        if retained_bytes > T::MAX_BYTES {
+            return Err(error("native object exceeds its retained allocation bound"));
+        }
         bank(ctx)?.insert_dependent(
             T::KIND,
             self.dimensions,
             self.value,
-            T::MAX_BYTES,
+            retained_bytes,
             &self.parents,
         )
     }
@@ -486,6 +532,7 @@ pub(in crate::rules) struct Binding {
     pub source: &'static str,
     pub doc: &'static str,
     pub signature: fn() -> Signature,
+    pub arity: u8,
     pub call: fn(&[Value], &CallCtx<'_>) -> Result<Value, OpError>,
     pub normalized: bool,
 }
@@ -588,10 +635,9 @@ impl EvalDyn for &'static Binding {
         args: &[Value],
         ctx: &CallCtx<'_>,
     ) -> Result<Value, OpError> {
-        let n = self.signature().params.len();
-        if args.len() != n {
+        if args.len() != usize::from(self.arity) {
             return Err(OpError::Arity {
-                expected: ArityInfo::fixed(n as u8),
+                expected: ArityInfo::fixed(self.arity),
                 got: args.len(),
             });
         }
@@ -632,7 +678,7 @@ pub(in crate::rules) fn install(
     for b in bindings {
         let s = b.signature();
         let higher = s.params.iter().any(has_callback);
-        let mut d = OpDescriptor::new(b.name, Arity::Fixed(s.params.len() as u8))
+        let mut d = OpDescriptor::new(b.name, Arity::Fixed(b.arity))
             .category(namespace)
             .doc(b.doc)
             .stability(Stability::Experimental)
@@ -664,13 +710,44 @@ macro_rules! object_binding {
  pub(super) mod $module {
  #[allow(unused_imports)]
  use super::*;
+ const ARITY:u8={let arguments:&[&str]=&[$(stringify!($arg)),*];assert!(arguments.len() <= u8::MAX as usize);arguments.len()as u8};
  fn signature()->crate::kernel::signature::Signature {crate::kernel::signature::Signature::new(vec![$(<$ty as crate::rules::numerical_abi::native_object_api::NativeArg>::ty()),*],<$ret as crate::rules::numerical_abi::native_object_api::NativeOutput>::ty())}
  fn call(args:&[crate::kernel::Value],ctx:&crate::kernel::CallCtx<'_>)->Result<crate::kernel::Value,crate::kernel::OpError>{#[allow(unused_mut)]let mut index=0usize;let _=args;$(let $arg=<$ty as crate::rules::numerical_abi::native_object_api::NativeArg>::decode(&args[index],index,ctx)?;index+=1;)*let _=index;let body:fn(&crate::kernel::CallCtx<'_>,$($ty),*)->Result<$ret,crate::kernel::OpError>=$body;let result:$ret=body(ctx,$($arg),*)?;<$ret as crate::rules::numerical_abi::native_object_api::NativeOutput>::encode(result,ctx)}
- pub(super) static BINDING:crate::rules::numerical_abi::native_object_api::Binding=crate::rules::numerical_abi::native_object_api::Binding{name:$name,source:$source,doc:$doc,signature,call,normalized:$normalized};
+ pub(super) static BINDING:crate::rules::numerical_abi::native_object_api::Binding=crate::rules::numerical_abi::native_object_api::Binding{name:$name,source:$source,doc:$doc,signature,arity:ARITY,call,normalized:$normalized};
  }
  };
 }
 pub(in crate::rules) use object_binding;
+
+/// A real rank-one tensor with a checked uniform dimension and bounded length.
+/// `values` are decoded into coherent units before the numerical method runs.
+pub(in crate::rules) struct MeasuredVector<const MAX: usize> {
+    pub values: Vec<f64>,
+    pub dimension: DimExpr,
+}
+
+impl<const MAX: usize> NativeArg for MeasuredVector<MAX> {
+    fn ty() -> TypeExpr {
+        tensor_type(1, TypeExpr::Float.with_dim(DimExpr::Var("Samples".into())))
+    }
+
+    fn decode(
+        value: &Value,
+        index: usize,
+        _: &CallCtx<'_>,
+    ) -> Result<Self, OpError> {
+        let Value::Tensor(tensor) = value else {
+            return Err(error("expected a measured rank-one tensor"));
+        };
+        if tensor.shape != [tensor.data.len()] || tensor.data.len() > MAX {
+            return Err(error("measured samples exceed the shape or work budget"));
+        }
+        Ok(Self {
+            dimension: dimension(value)?,
+            values: <Vec<f64> as Arg>::decode(value, index)?,
+        })
+    }
+}
 
 /// Explicit dynamically typed argument, still bounded before use.
 pub(in crate::rules) struct Input(pub Value);
@@ -800,4 +877,121 @@ pub(in crate::rules) fn scale_product(
     denominator: &[f64],
 ) -> Result<f64, OpError> {
     crate::kernels::numeric_common::scale_product(value, numerator, denominator).map_err(error)
+}
+
+/// Scales an input whose nonzero value must survive normalization.
+pub(in crate::rules) fn scale_without_underflow(
+    value: f64,
+    numerator: &[f64],
+    denominator: &[f64],
+) -> Result<f64, OpError> {
+    let scaled = scale_product(value, numerator, denominator)?;
+    if value != 0.0 && scaled == 0.0 {
+        return Err(error(
+            "nonzero input underflows in the selected reference frame",
+        ));
+    }
+    Ok(scaled)
+}
+
+/// Reads a scalar while preserving infinite endpoints.
+pub(in crate::rules) fn extended_numeric(value: &Value) -> Result<f64, OpError> {
+    match value {
+        | Value::Float(v) if v.is_infinite() => Ok(*v),
+        | Value::Dyn(d) => extended_numeric(&d.value),
+        | Value::Quantity(q) => {
+            let unit = Value::Quantity(crate::kernel::value::QuantityValue {
+                value: Box::new(Value::Float(1.0)),
+                unit: q.unit.clone(),
+            });
+            Ok(extended_numeric(&q.value)? * numeric(&unit, 0)?)
+        },
+        | _ => numeric(value, 0),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::kernel::value::TensorValue;
+    use crate::kernel::value::VariantValue;
+
+    object_binding!(
+        zero_args, "test_zero_args", "", "Test only.", true,
+        () -> bool,
+        |_ctx| Ok(true)
+    );
+    object_binding!(
+        two_args, "test_two_args", "", "Test only.", true,
+        (a: bool, b: bool) -> bool,
+        |_ctx, a, b| Ok(a && b)
+    );
+
+    #[test]
+    fn declared_arity_is_shared_by_signature_and_dispatch() {
+        let ctx = CallCtx::new();
+        for (binding, n) in [(&zero_args::BINDING, 0), (&two_args::BINDING, 2)] {
+            assert_eq!(usize::from(binding.arity), n);
+            assert_eq!(binding.signature().params.len(), n);
+            assert!(matches!(
+                binding.eval(&vec![Value::Bool(true); n + 1], &ctx),
+                Err(OpError::Arity { got, .. }) if got == n + 1
+            ));
+        }
+    }
+
+    fn tensor(
+        shape: Vec<usize>,
+        data: Vec<Value>,
+    ) -> Value {
+        Value::Tensor(TensorValue {
+            shape,
+            elem: TypeExpr::Bool,
+            data,
+        })
+    }
+
+    #[test]
+    fn value_limits_are_checked_in_original_child_order() {
+        let wide = tensor(
+            vec![VALUE_LIMIT - 1],
+            vec![Value::Bool(true); VALUE_LIMIT - 1],
+        );
+        assert!(bounded(&wide).is_ok());
+        drop(wide);
+        let too_wide = tensor(vec![VALUE_LIMIT], vec![Value::Bool(true); VALUE_LIMIT]);
+        assert!(
+            matches!(bounded(&too_wide), Err(OpError::Domain(msg)) if msg.contains("element/depth"))
+        );
+
+        let never_allocates = tensor(vec![VALUE_LIMIT, 2, 0], Vec::new());
+        assert!(
+            matches!(bounded(&never_allocates), Err(OpError::Domain(msg)) if msg.contains("nested tensor"))
+        );
+        let bad_shape = tensor(vec![2], Vec::new());
+        let long = Value::String("a".repeat(1_048_577));
+        let first_error = Value::Variant(VariantValue {
+            tag: "Test".into(),
+            payload: vec![bad_shape, long],
+        });
+        assert!(
+            matches!(bounded(&first_error), Err(OpError::Domain(msg)) if msg.contains("text budget"))
+        );
+    }
+
+    #[test]
+    fn depth_is_bounded_even_for_wrappers() {
+        let nest = |levels| {
+            (0..levels).fold(Value::Bool(true), |value, _| {
+                Value::Dyn(DynValue {
+                    dim: DimExpr::Dimless,
+                    value: Box::new(value),
+                })
+            })
+        };
+        assert!(bounded(&nest(32)).is_ok());
+        assert!(
+            matches!(bounded(&nest(33)), Err(OpError::Domain(msg)) if msg.contains("element/depth"))
+        );
+    }
 }

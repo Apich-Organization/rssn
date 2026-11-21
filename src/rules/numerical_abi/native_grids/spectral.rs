@@ -27,6 +27,8 @@ use super::structured_ops::checked_snapshot;
 use super::structured_ops::dims_forcing;
 use super::structured_ops::space;
 use super::structured_ops::st;
+use crate::kernel::CallCtx;
+use crate::rules::numerical_abi::numeric;
 use crate::sim::spectral as sp;
 use num_complex::Complex64 as C;
 #[derive(Clone)]
@@ -122,6 +124,84 @@ fn reciprocal_length(
         Exp::Rat(Rational::new(-power, 1)),
     ))
 }
+
+struct FourierForcing(Input);
+
+impl api::NativeArg for FourierForcing {
+    fn ty() -> TypeExpr {
+        api::tensor_type(2, TypeExpr::Float.with_dim(DimExpr::Var("Forcing".into())))
+    }
+
+    fn decode(
+        value: &Value,
+        index: usize,
+        ctx: &CallCtx<'_>,
+    ) -> Result<Self, OpError> {
+        <Input as api::NativeArg>::decode(value, index, ctx).map(Self)
+    }
+}
+
+struct FourierShift(Input);
+
+impl api::NativeArg for FourierShift {
+    fn ty() -> TypeExpr {
+        TypeExpr::Float.with_dim(DimExpr::Base("Length".into()).pow(Exp::Rat(Rational::int(-2))))
+    }
+
+    fn decode(
+        value: &Value,
+        index: usize,
+        ctx: &CallCtx<'_>,
+    ) -> Result<Self, OpError> {
+        <Input as api::NativeArg>::decode(value, index, ctx).map(Self)
+    }
+}
+
+object_binding!(
+    spectral_fourier_helmholtz_batch,
+    "num_grid_fourier_helmholtz_batch",
+    "crate::sim::spectral::PeriodicHelmholtzPlan::solve_batch",
+    "Solves (-Laplace + sigma) u = f on a periodic Fourier grid for one or more forcing rows in input order. Give measured forcing values in field/length^2 and sigma in inverse length squared. Each row has exactly grid.size points with the x axis fastest. The result reports the batch size followed by the Fourier grid extents, flattened solutions divided by value_reference, and the grid length, time, and field references. Singular compatible Fourier modes use zero amplitude.",
+    false,
+    (grid: Handle<Fourier>, sources: FourierForcing, sigma: FourierShift) -> Dynamic,
+    |ctx, grid, sources, sigma| grid.with(ctx, |g| {
+        let frame = &g.frame;
+        let FourierForcing(Input(sources)) = sources;
+        let FourierShift(Input(sigma)) = sigma;
+        let shift_dimension = reciprocal_length(frame, 2)?;
+        let forcing_dimension = canonical(DimExpr::Mul(vec![
+            frame.dims[2].clone(),
+            shift_dimension.clone(),
+        ]))?;
+        api::same_dimension(&api::dimension(&sources)?, &forcing_dimension)?;
+        api::same_dimension(&api::dimension(&sigma)?, &shift_dimension)?;
+        let Value::Tensor(input) = &sources else {
+            return Err(err("expected a rank-two spectral forcing tensor"));
+        };
+        let [batch, points] = input.shape.as_slice() else {
+            return Err(err("expected a rank-two spectral forcing tensor"));
+        };
+        if *batch == 0 || *points != g.data.size()
+            || batch.checked_mul(*points).is_none_or(|n| n > LIMIT || n != input.data.len())
+        {
+            return Err(err("periodic Helmholtz forcing shape or batch budget exceeded"));
+        }
+        let sources = input.data.chunks_exact(*points).map(|row| {
+            row.iter().map(|value| {
+                api::scale_without_underflow(
+                    numeric(value, 1)?, &[frame.length, frame.length], &[frame.value],
+                )
+            }).collect::<Result<Vec<_>, _>>()
+        }).collect::<Result<Vec<_>, _>>()?;
+        let sigma = api::scale_without_underflow(
+            numeric(&sigma, 2)?, &[frame.length, frame.length], &[],
+        )?;
+        let solution = g.data.helmholtz_plan(sigma).map_err(err)?.solve_batch(&sources).map_err(err)?;
+        let mut shape = vec![*batch];
+        shape.extend_from_slice(&g.data.n[..g.data.dim]);
+        payload(frame, solution.into_iter().flatten().collect(), shape)
+    })
+);
 object_binding!(spectral_fourier_new,"num_grid_fourier_new","crate::sim::spectral::SpectralGrid::new","Native spectral discretization with explicit coordinate/time/field references. Transforms retain the field domain; wave numbers and derivatives retain inverse-length powers. Native sizes, callback domains and solve work are checked.",true,(frame:Handle<Frame>,extents:Vec<usize>,lengths:Vec<f64>)->NewObject<Fourier>,|ctx,frame,extents,lengths|{let _=ctx;grid_size(&extents)?;if lengths.len()!=extents.len()||lengths.iter().any(|x|*x<=0.0){return Err(err("Fourier lengths must match positive active axes"));}frame.with(ctx,|f|Ok(NewObject::new(Fourier{data:sp::SpectralGrid::new(&extents,&lengths).map_err(err)?,frame:f.clone()},f.dims.to_vec())))});
 object_binding!(spectral_fourier_size,"num_grid_fourier_size","crate::sim::spectral::SpectralGrid::size","Native spectral discretization with explicit coordinate/time/field references. Transforms retain the field domain; wave numbers and derivatives retain inverse-length powers. Native sizes, callback domains and solve work are checked.",true,(grid:Handle<Fourier>)->usize,|ctx,grid|{let _=ctx;grid.with(ctx,|g|Ok(g.data.size()))});
 object_binding!(spectral_fourier_h,"num_grid_fourier_h","crate::sim::spectral::SpectralGrid::h","Native spectral discretization with explicit coordinate/time/field references. Transforms retain the field domain; wave numbers and derivatives retain inverse-length powers. Native sizes, callback domains and solve work are checked.",true,(grid:Handle<Fourier>,axis:usize)->Dynamic,|ctx,grid,axis|{let _=ctx;grid.with(ctx,|g|{if axis>=g.data.dim{return Err(err("Fourier axis is inactive"));}Ok(Dynamic(api::quantity(g.data.h(axis)*g.frame.length,g.frame.dims[0].clone())?))})});
@@ -167,6 +247,7 @@ static BINDINGS: &[&api::Binding] = &[
     &spectral_fourier_to_phys_c::BINDING,
     &spectral_fourier_deriv::BINDING,
     &spectral_fourier_helmholtz::BINDING,
+    &spectral_fourier_helmholtz_batch::BINDING,
     &spectral_spectrum_data::BINDING,
     &spectral_fft_nd::BINDING,
     &spectral_chebyshev_new::BINDING,

@@ -4,7 +4,7 @@
 //! |---|---|
 //! | `wavedec(x, wavelet, levels)` | `list(a_L, d_L, ..., d_1)`: the final approximation, then the details from the coarsest level to the finest (periodised; `2^levels` must divide the length) |
 //! | `waverec(coeffs, wavelet)` | the signal from the list `wavedec` returns |
-//! | `dwt2(m, wavelet)` | `list(LL, LH, HL, HH)`, the four sub-bands of one level of the separable transform of a matrix with an even number of rows and columns; `LH` is low along the rows' index and high along the columns' |
+//! | `dwt2(m, wavelet)` | `list(LL, LH, HL, HH)`, the four sub-bands of one level of the separable transform of a matrix with an even number of rows and columns; `LH` applies the low filter within each row and the high filter within each column |
 //! | `idwt2(LL, LH, HL, HH, wavelet)` | the matrix the four sub-bands came from |
 //! | `frft_re(re, im, a)`, `frft_im(re, im, a)` | the real and imaginary parts of the discrete fractional Fourier transform of order `a` of the signal `re + i im` (`a = 1` is the unitary DFT; the signal has 2 to 128 samples) |
 //!
@@ -305,7 +305,7 @@ pub(super) const ENTRIES: &[Entry] = &[
         name: "dwt2",
         params: "nw",
         eval: dwt2,
-        doc: "`dwt2(matrix, wavelet)`: single-level 2D separable discrete wavelet transform returning `list(LL, LH, HL, HH)`.",
+        doc: "`dwt2(matrix, wavelet)`: single-level 2D separable discrete wavelet transform returning `list(LL, LH, HL, HH)`. The first letter gives the row-wise filter and the second gives the column-wise filter.",
     },
     Entry {
         name: "idwt2",

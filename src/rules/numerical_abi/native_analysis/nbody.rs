@@ -13,6 +13,7 @@ use crate::rules::numerical_abi::codecs::Output;
 use crate::rules::numerical_abi::native_object_api::Dynamic;
 use crate::rules::numerical_abi::native_object_api::Handle;
 use crate::rules::numerical_abi::native_object_api::Input;
+use crate::rules::numerical_abi::native_object_api::NativeOutput;
 use crate::rules::numerical_abi::native_object_api::NativeType;
 use crate::rules::numerical_abi::native_object_api::NewObject;
 use crate::rules::numerical_abi::native_object_api::object_binding;
@@ -49,6 +50,9 @@ fn power(
 }
 fn velocity() -> DimExpr {
     DimExpr::Mul(vec![l(), inv(t())])
+}
+fn acceleration() -> DimExpr {
+    DimExpr::Mul(vec![l(), power(t(), -2)])
 }
 fn energy() -> DimExpr {
     DimExpr::Mul(vec![m(), power(l(), 2), power(t(), -2)])
@@ -165,15 +169,39 @@ fn out(
     scale: f64,
     dim: DimExpr,
 ) -> Result<Value, OpError> {
+    out_scaled(v, &[scale], &[], dim)
+}
+
+fn out_scaled(
+    v: &[[f64; 3]],
+    numerator: &[f64],
+    denominator: &[f64],
+    dim: DimExpr,
+) -> Result<Value, OpError> {
     Ok(Value::Tensor(crate::kernel::value::TensorValue {
         shape: vec![v.len(), 3],
         elem: TypeExpr::Dim(Box::new(TypeExpr::Float), dim),
         data: v
             .iter()
             .flatten()
-            .map(|v| api::scale_product(*v, &[scale], &[]).map(Value::Float))
+            .map(|v| api::scale_product(*v, numerator, denominator).map(Value::Float))
             .collect::<Result<_, _>>()?,
     }))
+}
+
+struct ChainAccelerations(Value);
+
+impl NativeOutput for ChainAccelerations {
+    fn ty() -> TypeExpr {
+        api::tensor_type(2, TypeExpr::Float.with_dim(acceleration()))
+    }
+
+    fn encode(
+        self,
+        _: &CallCtx<'_>,
+    ) -> Result<Value, OpError> {
+        Ok(self.0)
+    }
 }
 #[allow(
     clippy::needless_pass_by_value,
@@ -241,6 +269,19 @@ object_binding!(chain_cartesian,"num_analysis_nbody_chain_cartesian","crate::sim
 object_binding!(chain_energy,"num_analysis_nbody_chain_energy","crate::sim::chain::ChainSystem::energy","Actual native N-body operation. Positive SI mass/length/time references preserve physical input/output domains. Particle, extrapolation and attempted-work bounds are checked before native computation.",false,(chain:Handle<Chain>)->Dynamic,|ctx,chain|chain.with(ctx,|c|Ok(Dynamic(api::quantity(api::scale_product(c.data.energy(),&[c.frame.energy()?],&[])?,energy())?))));
 object_binding!(chain_kinetic,"num_analysis_nbody_chain_kinetic","crate::sim::chain::ChainSystem::kinetic","Actual native N-body operation. Positive SI mass/length/time references preserve physical input/output domains. Particle, extrapolation and attempted-work bounds are checked before native computation.",false,(chain:Handle<Chain>)->Dynamic,|ctx,chain|chain.with(ctx,|c|Ok(Dynamic(api::quantity(api::scale_product(c.data.kinetic(),&[c.frame.energy()?],&[])?,energy())?))));
 object_binding!(chain_potential,"num_analysis_nbody_chain_potential","crate::sim::chain::ChainSystem::potential","Actual native N-body operation. Positive SI mass/length/time references preserve physical input/output domains. Particle, extrapolation and attempted-work bounds are checked before native computation.",false,(chain:Handle<Chain>)->Dynamic,|ctx,chain|chain.with(ctx,|c|Ok(Dynamic(api::quantity(api::scale_product(c.data.potential(),&[c.frame.energy()?],&[])?,energy())?))));
+object_binding!(
+    chain_accelerations, "num_analysis_nbody_chain_accelerations",
+    "crate::sim::chain::ChainSystem::accelerations",
+    "Returns a three-component gravitational acceleration per body in the original input order. The output carries length per time squared. Reading the accelerations leaves the chain state and time intact.",
+    false,
+    (chain: Handle<Chain>) -> ChainAccelerations,
+    |ctx, chain| chain.with(ctx, |c| {
+        let frame = &c.frame;
+        let data = c.data.accelerations();
+        let values = out_scaled(&data, &[frame.length], &[frame.time; 2], acceleration())?;
+        Ok(ChainAccelerations(values))
+    })
+);
 object_binding!(chain_angular_momentum,"num_analysis_nbody_chain_angular_momentum","crate::sim::chain::ChainSystem::angular_momentum","Actual native N-body operation. Positive SI mass/length/time references preserve physical input/output domains. Particle, extrapolation and attempted-work bounds are checked before native computation.",false,(chain:Handle<Chain>)->Dynamic,|ctx,chain|chain.with(ctx,|c|Ok(Dynamic(out(&[c.data.angular_momentum()],c.frame.angular()?,angular())?))));
 object_binding!(chain_rechain,"num_analysis_nbody_chain_rechain","crate::sim::chain::ChainSystem::rechain","Actual native N-body operation. Positive SI mass/length/time references preserve physical input/output domains. Particle, extrapolation and attempted-work bounds are checked before native computation.",false,(chain:Handle<Chain>)->(),|ctx,chain|chain.with_mut(ctx,|c|{c.data.rechain();Ok(())}));
 object_binding!(chain_leapfrog,"num_analysis_nbody_chain_leapfrog","crate::sim::chain::ChainSystem::leapfrog","Actual native N-body operation. Positive SI mass/length/time references preserve physical input/output domains. Particle, extrapolation and attempted-work bounds are checked before native computation.",false,(chain:Handle<Chain>,fictitious_step:Input)->(),|ctx,chain,fictitious_step|chain.with_mut(ctx,|c|{let step=number(&fictitious_step,api::scale_product(c.frame.energy()?,&[c.frame.time],&[])?,DimExpr::Mul(vec![energy(),t()]))?;c.data.leapfrog(step);c.validate()}));
@@ -266,6 +307,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &chain_energy::BINDING,
             &chain_kinetic::BINDING,
             &chain_potential::BINDING,
+            &chain_accelerations::BINDING,
             &chain_angular_momentum::BINDING,
             &chain_rechain::BINDING,
             &chain_leapfrog::BINDING,

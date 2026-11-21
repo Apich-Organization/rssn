@@ -62,6 +62,90 @@ impl NativeType for Material {
         Ok(())
     }
 }
+const PRESSURE_POWERS: [i64; 4] = [-1, -2, 1, 0];
+
+fn pressure_domain() -> DimExpr {
+    DimExpr::Mul(vec![
+        DimExpr::base("Length").pow(-1),
+        DimExpr::base("Time").pow(-2),
+        DimExpr::base("Mass"),
+    ])
+}
+
+struct HyperPoint {
+    point: hyp::HyperelasticPoint,
+    pressure_scale: f64,
+}
+
+impl NativeType for HyperPoint {
+    const KIND: &'static str = "rssn/native/hyperelastic-point/v1";
+    const MAX_BYTES: usize = size_of::<Self>();
+
+    fn validate(&self) -> Result<(), OpError> {
+        if self.pressure_scale.is_finite() && self.pressure_scale > 0.0 {
+            Ok(())
+        } else {
+            Err(err(
+                "hyperelastic pressure reference must be finite and positive",
+            ))
+        }
+    }
+}
+
+struct PointStress<const RANK: usize>(TensorValue);
+
+impl<const RANK: usize> api::NativeOutput for PointStress<RANK> {
+    fn ty() -> TypeExpr {
+        api::tensor_type(RANK as u64, TypeExpr::Float.with_dim(pressure_domain()))
+    }
+
+    fn encode(
+        self,
+        _: &CallCtx<'_>,
+    ) -> Result<Value, OpError> {
+        Ok(Value::Tensor(self.0))
+    }
+}
+
+struct PointEnergy(f64);
+
+impl api::NativeOutput for PointEnergy {
+    fn ty() -> TypeExpr {
+        TypeExpr::Float.with_dim(pressure_domain())
+    }
+
+    fn encode(
+        self,
+        _: &CallCtx<'_>,
+    ) -> Result<Value, OpError> {
+        api::quantity(self.0, pressure_domain())
+    }
+}
+
+impl HyperPoint {
+    fn restore(
+        &self,
+        value: f64,
+    ) -> Result<f64, OpError> {
+        api::scale_product(value, &[self.pressure_scale], &[])
+    }
+
+    fn stress<const RANK: usize>(
+        &self,
+        entries: impl IntoIterator<Item = f64>,
+    ) -> Result<PointStress<RANK>, OpError> {
+        let data = entries
+            .into_iter()
+            .map(|value| self.restore(value).map(Value::Float))
+            .collect::<Result<_, _>>()?;
+        Ok(PointStress(TensorValue {
+            shape: vec![3; RANK],
+            elem: TypeExpr::Float.with_dim(pressure_domain()),
+            data,
+        }))
+    }
+}
+
 struct Solution {
     data: el::OwnedElasticSolution,
     refs: References,
@@ -341,6 +425,61 @@ object_binding!(hyper_kinetic,"num_grid_hyper_kinetic","crate::sim::hyperelastic
 object_binding!(hyper_strain,"num_grid_hyper_strain","crate::sim::hyperelastic::strain_energy","Native elasticity call in an explicit mechanical reference frame. Numeric displacements/coordinates use Length, body forces use Mass/(Length^2 Time^2), stress/Young modulus use Mass/(Length Time^2), and density uses Mass/Length^3. Reduced 2D hyperelastic energies are per unit out-of-plane thickness. Outputs retain distinct dimensional reference witnesses. Native DOF, nonlinear work, callbacks and allocation budgets are checked.",true,(problem:Handle<Hyper>,displacement:Vec<f64>)->Dynamic,|ctx:&CallCtx<'_>,problem:Handle<Hyper>,displacement:Vec<f64>|{problem.with(ctx,|p|{if displacement.len()!=p.mesh.data.nodes.len()*p.mesh.data.dim{return Err(err("hyperelastic field length mismatch"));}p.with(|native|{let value=hyp::strain_energy(native,&displacement).map_err(err)?;let(s,d)=p.material.refs.derived([p.mesh.data.dim as i64-1,-2,1,0])?;Ok(Dynamic(api::quantity(value*s,d)?))})})});
 object_binding!(hyper_dynamic,"num_grid_hyper_dynamic","crate::sim::hyperelastic::solve_dynamic","Native elasticity call in an explicit mechanical reference frame. Numeric displacements/coordinates use Length, body forces use Mass/(Length^2 Time^2), stress/Young modulus use Mass/(Length Time^2), and density uses Mass/Length^3. Reduced 2D hyperelastic energies are per unit out-of-plane thickness. Outputs retain distinct dimensional reference witnesses. Native DOF, nonlinear work, callbacks and allocation budgets are checked.",true,(state:Handle<State>,scheme:String,beta:f64,gamma:f64,rho_infinity:f64,dt:f64,steps:usize,tolerance:f64,observer:Observer,observer_budget:usize)->NewObject<State>,|ctx:&CallCtx<'_>,state:Handle<State>,scheme:String,beta:f64,gamma:f64,rho_infinity:f64,dt:f64,steps:usize,tolerance:f64,observer:Observer,observer_budget:usize|{if observer_budget<steps||observer_budget>100000||dt<=0.0||steps==0||steps>1024||tolerance<=0.0||tolerance>1.0{return Err(err("hyperelastic dynamic time/work controls invalid"));}let scheme=match scheme.as_str(){"Newmark" if beta>0.0&&gamma>=0.5=>hyp::TimeScheme::Newmark{beta,gamma},"GeneralizedAlpha" if (0.0..=1.0).contains(&rho_infinity)=>hyp::TimeScheme::GeneralizedAlpha{rho_inf:rho_infinity},_=>return Err(err("invalid hyperelastic integration scheme/parameters"))};state.with(ctx,|s|{let n=s.data.u.len();if n.checked_mul(n).and_then(|n|n.checked_mul(steps)).and_then(|n|n.checked_mul(30)).is_none_or(|n|n>50000000){return Err(err("dynamic work budget exceeded"));}s.problem.with(|native|{let failure=std::cell::RefCell::new(None);let mut remaining=observer_budget;let mut notify=|state:&hyp::DynamicState|{let result=(||{if remaining==0{return Err(err("dynamic observer budget exhausted"));}remaining-=1;let value=state_value(&s.problem.material.refs,state)?;match ctx.invoke_callback(observer.0,&[value])?{Value::Bool(true)=>Ok(()),Value::Bool(false)=>Err(err("dynamic observer requested cancellation")),_=>Err(err("dynamic observer must return Bool acknowledgement"))}})();if let Err(error)=result{*failure.borrow_mut()=Some(error);std::panic::resume_unwind(Box::new(ObserverStop));}};let result=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||hyp::solve_dynamic(native,scheme,&s.data,dt,steps,tolerance,structured::LinearSolver::Auto,&mut notify)));if let Some(error)=failure.into_inner(){return Err(error);}let data=match result{Ok(result)=>result.map_err(err)?,Err(payload)=>std::panic::resume_unwind(payload)};Ok(NewObject::new(State{data,problem:s.problem.clone()},s.problem.material.refs.dims.to_vec()))})})});
 object_binding!(hyper_state_fields,"num_grid_hyper_state_fields","","Native elasticity call in an explicit mechanical reference frame. Numeric displacements/coordinates use Length, body forces use Mass/(Length^2 Time^2), stress/Young modulus use Mass/(Length Time^2), and density uses Mass/Length^3. Reduced 2D hyperelastic energies are per unit out-of-plane thickness. Outputs retain distinct dimensional reference witnesses. Native DOF, nonlinear work, callbacks and allocation budgets are checked.",true,(state:Handle<State>)->Dynamic,|ctx:&CallCtx<'_>,state:Handle<State>|{state.with(ctx,|s|{let f=&s.problem.material.refs;Ok(Dynamic(api::record(vec![("displacement",fields(f,s.data.u.clone(),[1,0,0,0])?.0),("velocity",fields(f,s.data.v.clone(),[1,-1,0,0])?.0),("acceleration",fields(f,s.data.a.clone(),[1,-2,0,0])?.0),("time",api::quantity(s.data.t*f.scales[1],f.dims[1].clone())?)])))})});
+object_binding!(
+    hyper_prepare_point, "num_grid_hyper_prepare_point", "crate::sim::hyperelastic::HyperelasticPoint::new",
+    "Prepares one hyperelastic material point at a dimensionless 3 by 3 deformation gradient. Stress, stiffness and energy density share its constitutive state and retain the material pressure units.",
+    true,
+    (material: Handle<Material>, gradient: Vec<Vec<f64>>) -> NewObject<HyperPoint>,
+    |ctx, material, gradient| {
+        let gradient = mat3(gradient)?;
+        material.with(ctx, |m| {
+            let (pressure_scale, dimension) = m.refs.derived(PRESSURE_POWERS)?;
+            let point = hyp::HyperelasticPoint::new(&m.data, &gradient).map_err(err)?;
+            Ok(NewObject::new(HyperPoint { point, pressure_scale }, vec![dimension]))
+        })
+    }
+);
+object_binding!(
+    hyper_point_piola, "num_grid_hyper_point_piola", "crate::sim::hyperelastic::HyperelasticPoint::first_piola",
+    "Returns the measured 3 by 3 first Piola stress of a prepared material point.",
+    true,
+    (point: Handle<HyperPoint>) -> PointStress<2>,
+    |ctx, point| point.with(ctx, |p| {
+        let stress = p.point.first_piola().map_err(err)?;
+        p.stress(stress.into_iter().flatten())
+    })
+);
+object_binding!(
+    hyper_point_tangent, "num_grid_hyper_point_tangent", "crate::sim::hyperelastic::HyperelasticPoint::tangent_moduli",
+    "Returns the measured 3 by 3 by 3 by 3 material tangent with indices (i, J, k, L) for the derivative of P[i, J] with respect to F[k, L].",
+    true,
+    (point: Handle<HyperPoint>) -> PointStress<4>,
+    |ctx, point| point.with(ctx, |p| {
+        let tangent = p.point.tangent_moduli().map_err(err)?;
+        p.stress(tangent.into_iter().flatten().flatten().flatten())
+    })
+);
+object_binding!(
+    hyper_point_tangent_action, "num_grid_hyper_point_tangent_action", "crate::sim::hyperelastic::HyperelasticPoint::tangent_action",
+    "Applies the prepared material tangent to a dimensionless gradient increment. Returns the 3 by 3 measured stress increment without constructing a rank-four tensor.",
+    true,
+    (point: Handle<HyperPoint>, direction: Vec<Vec<f64>>) -> PointStress<2>,
+    |ctx, point, direction| {
+        let direction = mat3(direction)?;
+        point.with(ctx, |p| {
+            let action = p.point.tangent_action(&direction).map_err(err)?;
+            p.stress(action.into_iter().flatten())
+        })
+    }
+);
+object_binding!(
+    hyper_point_energy, "num_grid_hyper_point_energy_density", "crate::sim::hyperelastic::HyperelasticPoint::energy_density",
+    "Returns the strain energy per reference volume of a prepared material point. The measured result has pressure units.",
+    true,
+    (point: Handle<HyperPoint>) -> PointEnergy,
+    |ctx, point| point.with(ctx, |p| Ok(PointEnergy(p.restore(p.point.energy_density().map_err(err)?)?)))
+);
+
 struct Observer(crate::kernel::value::CallbackRef);
 struct ObserverStop;
 impl NativeArg for Observer {
@@ -436,6 +575,11 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &hyper_lame::BINDING,
             &hyper_piola::BINDING,
             &hyper_tangent::BINDING,
+            &hyper_prepare_point::BINDING,
+            &hyper_point_piola::BINDING,
+            &hyper_point_tangent::BINDING,
+            &hyper_point_tangent_action::BINDING,
+            &hyper_point_energy::BINDING,
             &hyper_contact::BINDING,
             &hyper_problem::BINDING,
             &hyper_static::BINDING,

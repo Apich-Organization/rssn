@@ -12,6 +12,7 @@ The name-based and pinned `OpKey` entry points use the same evaluator.
 | --- | --- | --- | --- |
 | `num_integrate` | `a`, `b`, absolute tolerance, relative tolerance, panel budget | `Float[D] -> Float[E]` | `value: Float[D*E]`, `error: Float[D*E]`, `evaluations`, `converged` |
 | `num_brent` | `a`, `b`, positive argument tolerance, positive iteration budget | `Float[D] -> Float[E]` | `root: Float[D]`, `evaluations` |
+| `num_brent_with_bracket` | same bracket arguments | same scalar residual | `root: Float[D]`, `evaluations`, `bracket: Tensor<[2], Float[D]>` |
 | `num_least_squares` | initial parameter vector, residual tolerance, gradient tolerance, step tolerance, initial damping, iteration budget, evaluation budget | `Tensor<1, Float[D]> -> Tensor<1, Float[E]>` | `x: Tensor<1, Float[D]>`, `residual_norm: Float[E]`, `iterations`, `evaluations`, `jacobian_evaluations`, `accepted_steps`, `rejected_steps`, `converged`, `status` |
 | `num_ode_dopri5` | initial time, final time, state vector, absolute state tolerance, relative tolerance, maximal time step, attempt budget | `(Float[D], Tensor<1, Float[E]>) -> Tensor<1, Float[E/D]>` | `times: Tensor<1, Float[D]>`, `states: Tensor<2, Float[E]>`, `evaluations`, `rejected` |
 | `num_ode_rosenbrock23` | same IVP arguments | same vector RHS | same IVP result |
@@ -56,6 +57,15 @@ explicit `NotReduced` error. Quadrature retains its explicit `converged` result.
 The quadrature and ODE estimators are heuristic floating-point error estimates.
 Brent requires a bracketed sign change (or an endpoint root); its tolerance is in
 the domain's units and makes no promise about residual magnitude.
+`num_brent_with_bracket` returns the final endpoints in ascending order. An exact
+zero returns the same coordinate twice.
+
+`num_native_hessian_diagonal_scaled` takes a measured point, positive coordinate
+and output references, an evaluation budget and a scalar callback. The
+`num_native_hessian_diagonal_with_steps_scaled` variant takes one positive step
+per coordinate before the callback. For a callback from coordinate dimension
+`D` to scalar dimension `E`, each element of the diagonal has dimension `E/D²`.
+The Laplacian sums these diagonal values and uses the same sample pairs.
 
 ## Shared contracts
 

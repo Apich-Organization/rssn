@@ -30,6 +30,7 @@ use crate::kernel::signature::TypeExpr;
 use crate::kernel::value::TensorValue;
 use std::sync::Arc;
 const LIMIT: usize = 262_144;
+const MAX_FRAME_SCALES: usize = 64;
 #[derive(Clone)]
 struct Scale {
     value: f64,
@@ -121,7 +122,7 @@ fn frame(
         params: scales(ctx, p)?,
         outputs: scales(ctx, o)?,
     };
-    if frame.inputs.len() + frame.params.len() + frame.outputs.len() > 64
+    if frame.inputs.len() + frame.params.len() + frame.outputs.len() > MAX_FRAME_SCALES
         || frame.outputs.is_empty()
     {
         return Err(api::error(
@@ -150,20 +151,29 @@ fn points(
     values
         .iter()
         .zip(scales)
-        .map(|(v, s)| {
-            let (value, dim) = if matches!(v, Value::Opaque(_)) {
-                super::native_backend::scalar_value(ctx, v)?
-            } else {
-                (super::numeric(v, 0)?, api::dimension(v)?)
-            };
-            api::same_dimension(&dim, &s.dim)?;
-            let value = value / s.value;
-            if !value.is_finite() {
-                return Err(api::error("normalized coordinate is nonfinite"));
-            }
-            Ok(value)
-        })
+        .map(|(v, s)| normalized_value(ctx, v, s))
         .collect()
+}
+
+fn normalized_value(
+    ctx: &CallCtx<'_>,
+    v: &Value,
+    scale: &Scale,
+) -> Result<f64, OpError> {
+    let (value, dim) = coherent_value(ctx, v)?;
+    api::same_dimension(&dim, &scale.dim)?;
+    normalize_magnitude(value, scale.value)
+}
+
+fn normalize_magnitude(
+    value: f64,
+    scale: f64,
+) -> Result<f64, OpError> {
+    let value = value / scale;
+    if !value.is_finite() {
+        return Err(api::error("normalized coordinate is nonfinite"));
+    }
+    Ok(value)
 }
 fn quantity_any(
     value: f64,
@@ -249,14 +259,39 @@ fn derivative(
         data: result,
     })))
 }
+object_binding!(
+    new_column_gather,
+    "num_native_tape_column_gather",
+    "crate::backend::tape::Tape::column_gather",
+    "Prepare a tape that selects one of 1 to 62 measured source columns for each row. Input zero holds dimensionless offsets, truncated toward zero. Offsets select the subsequent source columns starting at zero. The sources and result use the same positive physical reference. An out-of-range offset is a measured evaluation error.",
+    false,
+    (sources: usize, reference: Input) -> NewObject<NativeTape>,
+    |ctx, sources, reference| {
+        if sources > MAX_FRAME_SCALES - 2 {
+            return Err(api::error("column gather supports at most 62 source columns"));
+        }
+        let tape = Tape::column_gather(sources)
+            .ok_or_else(|| api::error("column gather requires at least one source column"))?;
+        let reference = scale(ctx, &reference.0)?;
+        let offset_scale = Scale { value: 1.0, dim: DimExpr::Dimless };
+        let frame = Frame {
+            inputs: std::iter::once(offset_scale).chain(std::iter::repeat_n(reference.clone(), sources)).collect(),
+            params: Vec::new(),
+            outputs: vec![reference],
+        };
+        let dims = domains(&frame);
+        Ok(NewObject::new(NativeTape { tape, frame }, dims))
+    }
+);
+
 fn source(
     expressions: &[String],
     inputs: &[String],
     params: &[String],
 ) -> Result<(), OpError> {
     if expressions.is_empty()
-        || expressions.len() > 64
-        || inputs.len() + params.len() > 63
+        || expressions.len() > MAX_FRAME_SCALES
+        || inputs.len() + params.len() >= MAX_FRAME_SCALES
         || expressions
             .iter()
             .any(|s| s.is_empty() || s.len() > 16384 || !s.is_ascii())
@@ -296,31 +331,53 @@ object_binding!(multi_inputs,"num_native_compiled_multi_inputs","crate::backend:
 object_binding!(multi_params,"num_native_compiled_multi_params","crate::backend::CompiledMulti::params","Native program params count.",true,(a:Handle<Multi>)->usize,|ctx,a|a.with(ctx,|t|Ok(t.native.params())));
 object_binding!(multi_outputs,"num_native_compiled_multi_outputs","crate::backend::CompiledMulti::outputs","Native program outputs count.",true,(a:Handle<Multi>)->usize,|ctx,a|a.with(ctx,|t|Ok(t.native.outputs())));
 
-fn physical_columns(
+pub(super) fn physical_columns<'a>(
     ctx: &CallCtx<'_>,
     v: &Value,
-    scales: &[Scale],
+    rows: usize,
+    scales: impl ExactSizeIterator<Item = (f64, &'a DimExpr)>,
 ) -> Result<Vec<Vec<f64>>, OpError> {
     let columns = vector(v)?;
     if columns.len() != scales.len() {
         return Err(api::error("native column count mismatch"));
     }
-    let mut rows = None;
-    let mut cells = 0usize;
+    if rows
+        .checked_mul(columns.len())
+        .is_none_or(|cells| cells > LIMIT)
+    {
+        return Err(api::error("column data budget exceeded"));
+    }
     columns
         .iter()
         .zip(scales)
-        .map(|(column, s)| {
-            let n = vector(column)?.len();
-            if rows.is_some_and(|r| r != n) {
-                return Err(api::error("native columns have unequal lengths"));
+        .map(|(column, (scale, dim))| {
+            let samples = vector(column)?;
+            if samples.len() != rows {
+                return Err(api::error(
+                    "explicit batch row extent disagrees with columns",
+                ));
             }
-            rows = Some(n);
-            cells = cells
-                .checked_add(n)
-                .filter(|n| *n <= LIMIT)
-                .ok_or_else(|| api::error("column data budget exceeded"))?;
-            points(ctx, column, &vec![s.clone(); n])
+            // Canonical tensor payloads can store coherent numbers and carry
+            // their measurement once, in the tensor's scalar schema.
+            let measured =
+                matches!(column, Value::Tensor(t) if matches!(&t.elem, TypeExpr::Dim(_, _)));
+            if measured {
+                api::same_dimension(&api::dimension(column)?, dim)?;
+            }
+            samples
+                .iter()
+                .map(|v| {
+                    if measured
+                        && !matches!(v, Value::Opaque(_) | Value::Dyn(_) | Value::Quantity(_))
+                    {
+                        normalize_magnitude(super::numeric(v, 0)?, scale)
+                    } else {
+                        let (value, actual) = coherent_value(ctx, v)?;
+                        api::same_dimension(&actual, dim)?;
+                        normalize_magnitude(value, scale)
+                    }
+                })
+                .collect()
         })
         .collect()
 }
@@ -423,10 +480,10 @@ impl NativeType for FunctionObject {
         self.native.tape().validate().map_err(api::error)
     }
 }
-object_binding!(tape_eval_columns,"num_native_tape_eval_columns","crate::backend::tape::Tape::eval_columns","Native column tape evaluation; each coordinate/output column has independent retained physical references.",false,(a:Handle<NativeTape>,rows:usize,columns:Input,p:Input)->Dynamic,|ctx,a,rows,columns,p|{a.with(ctx,|t|{let cols=physical_columns(ctx,&columns.0,&t.frame.inputs)?;if cols.first().is_some_and(|c|c.len()!=rows){return Err(api::error("explicit batch row extent disagrees with columns"));}
-if rows.checked_mul(t.tape.insts.len()+t.tape.args.len()).is_none_or(|n|n>100_000_000)||rows.checked_mul(t.frame.outputs.len()).is_none_or(|n|n>LIMIT){return Err(api::error("native column work/allocation budget exceeded"));}let params=points(ctx,&p.0,&t.frame.params)?;let slices=cols.iter().map(Vec::as_slice).collect::<Vec<_>>();let mut output=vec![vec![0.0;rows];t.frame.outputs.len()];let mut out=output.iter_mut().map(Vec::as_mut_slice).collect::<Vec<_>>();t.tape.eval_columns(&slices,&params,&mut out);column_values(output,&t.frame.outputs)})});
-object_binding!(compiled_multi_eval_batch,"num_native_compiled_multi_eval_batch","crate::backend::CompiledMulti::eval_batch","Actual multiple-output batch executor with per-column physical domains and bounded rows.",false,(a:Handle<Multi>,rows:usize,columns:Input,p:Input)->Dynamic,|ctx,a,rows,columns,p|{a.with(ctx,|t|{let cols=physical_columns(ctx,&columns.0,&t.frame.inputs)?;if cols.first().is_some_and(|c|c.len()!=rows){return Err(api::error("explicit batch row extent disagrees with columns"));}
-if rows.checked_mul(t.frame.outputs.len()).is_none_or(|n|n>LIMIT)||rows>16384||rows.checked_mul(t.work_per_row).is_none_or(|n|n>100_000_000){return Err(api::error("native compiled batch budget exceeded"));}let params=points(ctx,&p.0,&t.frame.params)?;let slices=cols.iter().map(Vec::as_slice).collect::<Vec<_>>();let mut output=vec![vec![0.0;rows];t.frame.outputs.len()];let mut out=output.iter_mut().map(Vec::as_mut_slice).collect::<Vec<_>>();t.native.eval_batch(&slices,&params,&mut out);column_values(output,&t.frame.outputs)})});
+object_binding!(tape_eval_columns,"num_native_tape_eval_columns","crate::backend::tape::Tape::eval_columns","Native column tape evaluation; each coordinate/output column has independent retained physical references.",false,(a:Handle<NativeTape>,rows:usize,columns:Input,p:Input)->Dynamic,|ctx,a,rows,columns,p|{a.with(ctx,|t|{
+if rows.checked_mul(t.tape.insts.len()+t.tape.args.len()).is_none_or(|n|n>100_000_000)||rows.checked_mul(t.frame.outputs.len()).is_none_or(|n|n>LIMIT){return Err(api::error("native column work/allocation budget exceeded"));}let cols=physical_columns(ctx,&columns.0,rows,t.frame.inputs.iter().map(|s|(s.value,&s.dim)))?;let params=points(ctx,&p.0,&t.frame.params)?;let slices=cols.iter().map(Vec::as_slice).collect::<Vec<_>>();let mut output=vec![vec![0.0;rows];t.frame.outputs.len()];let mut out=output.iter_mut().map(Vec::as_mut_slice).collect::<Vec<_>>();t.tape.eval_columns(&slices,&params,&mut out);column_values(output,&t.frame.outputs)})});
+object_binding!(compiled_multi_eval_batch,"num_native_compiled_multi_eval_batch","crate::backend::CompiledMulti::eval_batch","Actual multiple-output batch executor with per-column physical domains and bounded rows.",false,(a:Handle<Multi>,rows:usize,columns:Input,p:Input)->Dynamic,|ctx,a,rows,columns,p|{a.with(ctx,|t|{
+if rows.checked_mul(t.frame.outputs.len()).is_none_or(|n|n>LIMIT)||rows>16384||rows.checked_mul(t.work_per_row).is_none_or(|n|n>100_000_000){return Err(api::error("native compiled batch budget exceeded"));}let cols=physical_columns(ctx,&columns.0,rows,t.frame.inputs.iter().map(|s|(s.value,&s.dim)))?;let params=points(ctx,&p.0,&t.frame.params)?;let slices=cols.iter().map(Vec::as_slice).collect::<Vec<_>>();let mut output=vec![vec![0.0;rows];t.frame.outputs.len()];let mut out=output.iter_mut().map(Vec::as_mut_slice).collect::<Vec<_>>();t.native.eval_batch(&slices,&params,&mut out);column_values(output,&t.frame.outputs)})});
 object_binding!(tape_vjp,"num_native_tape_vjp","crate::backend::tape::Tape::vjp","Native VJP; weights have functional/output units and each answer has functional/input units. Positive functional reference specifies the normalized objective measure.",false,(a:Handle<NativeTape>,x:Input,p:Input,weights:Input,functional_scale:Input)->Dynamic,|ctx,a,x,p,weights,functional_scale|{a.with(ctx,|t|{let x=points(ctx,&x.0,&t.frame.inputs)?;let p=points(ctx,&p.0,&t.frame.params)?;let functional=scale(ctx,&functional_scale.0)?;let w=vector(&weights.0)?;if w.len()!=t.frame.outputs.len(){return Err(api::error("VJP weight count mismatch"));}let weights=w.iter().zip(&t.frame.outputs).map(|(v,o)|{let(value,dim)=coherent_value(ctx,v)?;api::same_dimension(&dim,&ratio(&functional.dim,&o.dim,None)?)?;api::scale_product(value,&[o.value],&[functional.value])}).collect::<Result<Vec<_>,_>>()?;let mut frame=t.frame.clone();frame.outputs=vec![functional];derivative(t.tape.vjp(&x,&p,&weights),&frame,0,false)})});
 object_binding!(tape_enclose,"num_native_tape_enclose","crate::backend::tape::Tape::enclose","Native outward interval enclosure; measured bounds and coordinate references are checked. Infinite endpoints retain their sound interval meaning.",false,(a:Handle<NativeTape>,x:Input,p:Input)->Dynamic,|ctx,a,x,p|{a.with(ctx,|t|{let x=intervals(&x.0,&t.frame.inputs)?;let p=intervals(&p.0,&t.frame.params)?;let bounds=t.tape.enclose(&x,&p);let data=bounds.into_iter().zip(&t.frame.outputs).map(|(b,s)|{let b=<Interval as Scalar>::mul(b,Interval::point(s.value));Ok(api::record(vec![("lo",quantity_any(b.lo,s.dim.clone())?),("hi",quantity_any(b.hi,s.dim.clone())?)]))}).collect::<Result<Vec<_>,OpError>>()?;Ok(Dynamic(Value::Tensor(TensorValue{shape:vec![data.len()],elem:api::dynamic_type(),data})))})});
 object_binding!(tape_function_object,"num_native_tape_function_object","crate::backend::TapeFunction::from_tape","Retain the exact native TapeFunction type, including its physical frame.",false,(a:Handle<NativeTape>)->NewObject<FunctionObject>,|ctx,a|{a.with(ctx,|t|Ok(NewObject::new(FunctionObject{native:TapeFunction::from_tape(t.tape.clone()),frame:t.frame.clone()},domains(&t.frame))))});
@@ -436,6 +493,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         i,
         &[
             &new_tape::BINDING,
+            &new_column_gather::BINDING,
             &compile_multi::BINDING,
             &optimize::BINDING,
             &hash::BINDING,

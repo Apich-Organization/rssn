@@ -720,20 +720,8 @@ object_binding!(field_data,"num_analysis_pde_field_data","","Retrieve native fie
 object_binding!(field1_max_error,"num_analysis_pde_field1_max_error","crate::kernels::pde::Field1D::max_error","Native maximum nodal error against an owned physical exact-solution program; returns measured ordinate error.",false,(field:Handle<FieldObject>,exact:Input,budget:usize)->Dynamic,|ctx:&CallCtx<'_>,field:Handle<FieldObject>,exact:Input,budget:usize|field.with(ctx,|field|{let p::PdeSolution::D1(f)=&field.native else{return Err(api::error("field dimension mismatch"));};let exact=program(ctx,&exact,&field.frame,1,field.frame.dims[2].clone(),budget)?;let l=field.frame.length;let v=field.frame.value;let error=f.max_error(|x|exact.sample(&[x*l])/v);exact.finish()?;Ok(Dynamic(api::quantity(error*v,field.frame.dims[2].clone())?))}));
 
 object_binding!(field2_max_error,"num_analysis_pde_field2_max_error","crate::kernels::pde::Field2D::max_error","Native maximum nodal error against an owned physical exact-solution program; returns measured ordinate error.",false,(field:Handle<FieldObject>,exact:Input,budget:usize)->Dynamic,|ctx:&CallCtx<'_>,field:Handle<FieldObject>,exact:Input,budget:usize|field.with(ctx,|field|{let p::PdeSolution::D2(f)=&field.native else{return Err(api::error("field dimension mismatch"));};let exact=program(ctx,&exact,&field.frame,2,field.frame.dims[2].clone(),budget)?;let l=field.frame.length;let v=field.frame.value;let error=f.max_error(|x,y|exact.sample(&[x*l,y*l])/v);exact.finish()?;Ok(Dynamic(api::quantity(error*v,field.frame.dims[2].clone())?))}));
-object_binding!(mol,"num_analysis_pde_method_of_lines_1d","crate::kernels::pde::method_of_lines_1d","Native stiff1D method of lines. Compiled RHS inputs have domains(time,length,value,value/length,value/length^2),output value/time. Initial program is length->value. Method Radau5 or Bdf1..Bdf5; physical atol and all step bounds retain the grid time/value domains; explicit attempted-step and per-program evaluation budgets. field_data exposes native accepted steps/evaluations.",false,(grid:Handle<GridObject>,boundaries:Input,end:Input,method:String,rtol:f64,atol:Input,h0:Input,hmin:Input,hmax:Input,max_steps:usize,budget:usize,rhs:Input,initial:Input)->NewObject<FieldObject>,|ctx:&CallCtx<'_>,grid:Handle<GridObject>,boundaries:Input,end:Input,method:String,rtol:f64,atol:Input,h0:Input,hmin:Input,hmax:Input,max_steps:usize,budget:usize,rhs:Input,initial:Input|{
- let grid=grid.with(ctx,|g|Ok(g.clone()))?;let Grid::D1(native_grid)=grid.native else{return Err(api::error("method of lines requires rank1 grid"));};
- if max_steps==0||max_steps.checked_mul(grid.count()).is_none_or(|n|n>4_000_000){return Err(api::error("method-of-lines work budget exceeded"));}let frame=grid.frame.clone();
- let conditions=boundary_list(ctx,&boundaries,&grid)?;let b:[p::Boundary;2]=conditions.iter().map(|b|b.native.clone()).collect::<Vec<_>>().try_into().map_err(|_|api::error("method-of-lines boundary count"))?;
- let f=compiled_snapshot(ctx,&rhs.0,budget)?;let expected=[frame.unit(0,1,0),frame.unit(1,0,0),frame.unit(0,0,1),frame.unit(-1,0,1),frame.unit(-2,0,1)];if f.input_dimensions.len()!=5{return Err(api::error("method-of-lines RHS requires five physical inputs"));}for(a,b)in f.input_dimensions.iter().zip(&expected){api::same_dimension(a,b)?;}api::same_dimension(&f.output_dimension,&frame.unit(0,-1,1))?;
- let initial=program(ctx,&initial,&frame,1,frame.unit(0,0,1),budget)?;let end=frame.measured(&end,0,1,0)?;let atol=frame.measured(&atol,0,0,1)?;let h0=frame.measured(&h0,0,1,0)?;let hmin=frame.measured(&hmin,0,1,0)?;let hmax=frame.measured(&hmax,0,1,0)?;
- if rtol<0.0||atol<=0.0||h0<=0.0||hmin<0.0||hmax<=0.0||hmin>hmax{return Err(api::error("invalid method-of-lines tolerance or time bounds"));}
- let method=match method.as_str(){"Radau5"=>p::StiffMethod::Radau5,"Bdf1"=>p::StiffMethod::Bdf(1),"Bdf2"=>p::StiffMethod::Bdf(2),"Bdf3"=>p::StiffMethod::Bdf(3),"Bdf4"=>p::StiffMethod::Bdf(4),"Bdf5"=>p::StiffMethod::Bdf(5),_=>return Err(api::error("method must be Radau5 or Bdf1..Bdf5"))};
- let opts=crate::kernels::ode_adaptive::OdeOptions{rtol,atol,h0:Some(h0),hmin,hmax,max_steps};let l=frame.length;let t=frame.time;let v=frame.value;
- let sample=|tn:f64,xn:f64,un:f64,ux:f64,uxx:f64|f.sample(&[tn*t,xn*l,un*v,ux*v/l,uxx*v/l/l])/(v/t);let u0=|xn:f64|initial.sample(&[xn*l])/v;
- let out=p::method_of_lines_1d(&sample,&native_grid,&b,&u0,end,method,&opts);
- f.finish()?;initial.finish()?;for b in conditions{if let Some(f)=b.snapshot{f.finish()?;}}let out=out.map_err(api::error)?;
- Ok(NewObject::new(FieldObject{native:p::PdeSolution::D1(out.field),frame:frame.clone(),work:Some((out.steps,out.nfev))},frame.dims()))
-});
+#[path = "pde/mol.rs"]
+mod mol;
 
 object_binding!(grid3_dx,"num_analysis_pde_grid3_dx","crate::kernels::pde::Grid3D::dx","Actual native3D grid method; physical spacings retain the grid length reference.",false,(grid:Handle<GridObject>)->Dynamic,|ctx,grid|grid.with(ctx,|grid|{let Grid::D3(g)=grid.native else{return Err(api::error("grid needs rank3"));};Ok(Dynamic(api::quantity(api::scale_product(g.dx(),&[grid.frame.length],&[])?,grid.frame.dims[0].clone())?))}));
 object_binding!(grid3_dy,"num_analysis_pde_grid3_dy","crate::kernels::pde::Grid3D::dy","Actual native3D grid method; physical spacings retain the grid length reference.",false,(grid:Handle<GridObject>)->Dynamic,|ctx,grid|grid.with(ctx,|grid|{let Grid::D3(g)=grid.native else{return Err(api::error("grid needs rank3"));};Ok(Dynamic(api::quantity(api::scale_product(g.dy(),&[grid.frame.length],&[])?,grid.frame.dims[0].clone())?))}));
@@ -790,7 +778,8 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &field_data::BINDING,
             &field1_max_error::BINDING,
             &field2_max_error::BINDING,
-            &mol::BINDING,
+            mol::FIXED,
+            mol::TIMED,
         ],
         "numerical_vector",
     )

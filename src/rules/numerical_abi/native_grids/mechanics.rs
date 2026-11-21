@@ -18,6 +18,9 @@ use super::err;
 use super::object_binding;
 use crate::kernels::matrix::Matrix;
 use crate::sim::physics_fea as fea;
+
+pub(super) const REFERENCE_DOMAINS: [&str; 4] = ["Length", "Time", "Mass", "Temperature"];
+
 #[derive(Clone)]
 pub(super) struct References {
     pub(super) scales: [f64; 4],
@@ -28,8 +31,8 @@ impl NativeType for References {
     const MAX_BYTES: usize = 4096;
 
     fn validate(&self) -> Result<(), OpError> {
-        for (i, name) in ["Length", "Time", "Mass", "Temperature"].iter().enumerate() {
-            api::same_dimension(&self.dims[i], &DimExpr::Base((*name).into()))?;
+        for (i, name) in REFERENCE_DOMAINS.into_iter().enumerate() {
+            api::same_dimension(&self.dims[i], &DimExpr::base(name))?;
             if !self.scales[i].is_finite() || self.scales[i] <= 0.0 {
                 return Err(err("mechanical references must be finite positive"));
             }

@@ -40,6 +40,28 @@ impl NativeType for Mesh {
         self.data.validate().map_err(err)
     }
 }
+
+struct PreparedBem {
+    plan: be::PreparedLaplaceBem3d,
+    mesh: Handle<Mesh>,
+}
+
+impl NativeType for PreparedBem {
+    const KIND: &'static str = "rssn/native/bem-laplace-3d-plan/v1";
+    const MAX_BYTES: usize = 2 * 513 * 513 * size_of::<f64>() + 64 * 1024;
+
+    fn validate(&self) -> Result<(), OpError> {
+        if self.plan.panel_count() > 512 {
+            return Err(err("BEM plan exceeds the mesh panel cap"));
+        }
+        Ok(())
+    }
+
+    fn retained_bytes(&self) -> usize {
+        self.plan.retained_bytes() + size_of::<Self>() - size_of::<be::PreparedLaplaceBem3d>()
+            + self.mesh.heap_bytes()
+    }
+}
 #[derive(Clone)]
 struct Vector {
     data: Vec<f64>,
@@ -73,29 +95,83 @@ impl NativeType for Element {
         Ok(())
     }
 }
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum SolutionKind {
+    Interior,
+    Exterior,
+    Linear,
+}
+
 struct Solution {
     mesh: Mesh,
-    u: Vec<f64>,
-    q: Vec<f64>,
-    p1: bool,
+    data: be::Bem3dSolution,
+    kind: SolutionKind,
     stats: Option<aca::AcaStats>,
 }
+
+impl Solution {
+    fn retained(
+        mesh: &Mesh,
+        data: be::Bem3dSolution,
+        kind: SolutionKind,
+        stats: Option<aca::AcaStats>,
+    ) -> Result<NewObject<Self>, OpError> {
+        // A solution and its private mesh snapshot are immutable. Validate
+        // numeric data and mesh topology once, before creating a handle.
+        mesh.validate()?;
+        if data.u.iter().chain(&data.q).any(|x| !x.is_finite()) {
+            return Err(err("BEM solution contains nonfinite coefficients"));
+        }
+        Ok(NewObject::new(
+            Self {
+                mesh: mesh.clone(),
+                data,
+                kind,
+                stats,
+            },
+            mesh.frame.dims.to_vec(),
+        ))
+    }
+
+    fn evaluate(
+        &self,
+        point: [f64; 3],
+        kind: SolutionKind,
+    ) -> Result<Dynamic, OpError> {
+        let potential = match (self.kind, kind) {
+            | (SolutionKind::Interior, SolutionKind::Interior) => {
+                be::evaluate_potential_3d(point, &self.mesh.data, &self.data)
+            },
+            | (SolutionKind::Exterior, SolutionKind::Exterior) => {
+                aca::evaluate_potential_3d_exterior(point, &self.mesh.data, &self.data)
+            },
+            | (SolutionKind::Linear, _) => {
+                return Err(err(
+                    "constant-element evaluator cannot interpret P1 coefficients",
+                ));
+            },
+            | _ => return Err(err("BEM evaluation domain differs from the solved domain")),
+        }
+        .map_err(err)?;
+        Ok(Dynamic(api::quantity(
+            potential * self.mesh.frame.value,
+            self.mesh.frame.dims[2].clone(),
+        )?))
+    }
+}
+
 impl NativeType for Solution {
     const KIND: &'static str = "rssn/native/bem-solution/v1";
     const MAX_BYTES: usize = 524288;
 
     fn validate(&self) -> Result<(), OpError> {
-        self.mesh.validate()?;
-        let n = if self.p1 {
+        let n = if self.kind == SolutionKind::Linear {
             self.mesh.data.vertices.len()
         } else {
             self.mesh.data.triangles.len()
         };
-        if self.u.len() != n
-            || self.q.len() != n
-            || self.u.iter().chain(&self.q).any(|x| !x.is_finite())
-        {
-            return Err(err("BEM solution shape/finite invariant failed"));
+        if self.data.u.len() != n || self.data.q.len() != n {
+            return Err(err("BEM solution shape invariant failed"));
         }
         Ok(())
     }
@@ -127,6 +203,14 @@ fn xyz(v: Vec<f64>) -> Result<[f64; 3], OpError> {
     v.try_into()
         .map_err(|_| err("three normalized coordinates required"))
 }
+
+fn boundary_kind(name: &str) -> Result<be::BoundaryKind, OpError> {
+    match name {
+        | "Potential" => Ok(be::BoundaryKind::Potential),
+        | "Flux" => Ok(be::BoundaryKind::Flux),
+        | _ => Err(err("BEM kind must be Potential or Flux")),
+    }
+}
 fn bcs(
     kinds: &[String],
     values: &[f64],
@@ -141,11 +225,10 @@ fn bcs(
         .iter()
         .zip(values)
         .map(|(k, v)| {
-            match k.as_str() {
-                | "Potential" => Ok(be::BoundaryCondition::Potential(*v)),
-                | "Flux" => Ok(be::BoundaryCondition::Flux(*v)),
-                | _ => Err(err("BEM kind must be Potential or Flux")),
-            }
+            Ok(match boundary_kind(k)? {
+                | be::BoundaryKind::Potential => be::BoundaryCondition::Potential(*v),
+                | be::BoundaryKind::Flux => be::BoundaryCondition::Flux(*v),
+            })
         })
         .collect()
 }
@@ -233,15 +316,113 @@ object_binding!(bem_mesh_area,"num_grid_bem_mesh_area","crate::sim::physics_bem:
 object_binding!(bem_mesh_total_area,"num_grid_bem_mesh_total_area","crate::sim::physics_bem::SurfaceMesh3D::total_area","Native BEM call. Numeric coordinates are normalized by the supplied PDE frame length, potentials by its field reference, and fluxes by field/length. Outputs retain explicit physical reference witnesses.",true,(mesh:Handle<Mesh>)->Dynamic,|ctx:&CallCtx<'_> ,mesh:Handle<Mesh>|{mesh.with(ctx,|m|out(&m.frame,m.data.total_area(),2))});
 object_binding!(bem_mesh_volume,"num_grid_bem_mesh_volume","crate::sim::physics_bem::SurfaceMesh3D::volume","Native BEM call. Numeric coordinates are normalized by the supplied PDE frame length, potentials by its field reference, and fluxes by field/length. Outputs retain explicit physical reference witnesses.",true,(mesh:Handle<Mesh>)->Dynamic,|ctx:&CallCtx<'_> ,mesh:Handle<Mesh>|{mesh.with(ctx,|m|out(&m.frame,m.data.volume(),3))});
 object_binding!(bem_mesh_validate,"num_grid_bem_mesh_validate","crate::sim::physics_bem::SurfaceMesh3D::validate","Native BEM call. Numeric coordinates are normalized by the supplied PDE frame length, potentials by its field reference, and fluxes by field/length. Outputs retain explicit physical reference witnesses.",true,(mesh:Handle<Mesh>)->bool,|ctx:&CallCtx<'_> ,mesh:Handle<Mesh>|{mesh.with(ctx,|m|{m.data.validate().map_err(err)?;Ok(true)})});
-object_binding!(bem_solve3,"num_grid_bem_solve3","crate::sim::physics_bem::solve_laplace_bem_3d_mesh","Native BEM call. Numeric coordinates are normalized by the supplied PDE frame length, potentials by its field reference, and fluxes by field/length. Outputs retain explicit physical reference witnesses.",true,(mesh:Handle<Mesh>,kinds:Vec<String>,values:Vec<f64>)->NewObject<Solution>,|ctx:&CallCtx<'_> ,mesh:Handle<Mesh>, kinds:Vec<String>, values:Vec<f64>|{mesh.with(ctx,|m|{let bc=bcs(&kinds,&values,m.data.triangles.len())?;let s=be::solve_laplace_bem_3d_mesh(&m.data,&bc).map_err(err)?;Ok(NewObject::new(Solution{mesh:m.clone(),u:s.u,q:s.q,p1:false,stats:None},m.frame.dims.to_vec()))})});
-object_binding!(bem_aca,"num_grid_bem_aca","crate::sim::bem_aca::solve_laplace_bem_3d_aca","Native BEM call. Numeric coordinates are normalized by the supplied PDE frame length, potentials by its field reference, and fluxes by field/length. Outputs retain explicit physical reference witnesses.",true,(mesh:Handle<Mesh>,kinds:Vec<String>,values:Vec<f64>,leaf:usize,eta:f64,tolerance:f64,restart:usize,iterations:usize)->NewObject<Solution>,|ctx:&CallCtx<'_> ,mesh:Handle<Mesh>, kinds:Vec<String>, values:Vec<f64>, leaf:usize, eta:f64, tolerance:f64, restart:usize, iterations:usize|{mesh.with(ctx,|m|{let bc=bcs(&kinds,&values,m.data.triangles.len())?;let opts=options(leaf,eta,tolerance,restart,iterations)?;let (s,stats)=aca::solve_laplace_bem_3d_aca(&m.data,&bc,&opts).map_err(err)?;Ok(NewObject::new(Solution{mesh:m.clone(),u:s.u,q:s.q,p1:false,stats:Some(stats)},m.frame.dims.to_vec()))})});
-object_binding!(bem_exterior,"num_grid_bem_exterior","crate::sim::bem_aca::solve_laplace_bem_3d_exterior","Native BEM call. Numeric coordinates are normalized by the supplied PDE frame length, potentials by its field reference, and fluxes by field/length. Outputs retain explicit physical reference witnesses.",true,(mesh:Handle<Mesh>,kinds:Vec<String>,values:Vec<f64>,leaf:usize,eta:f64,tolerance:f64,restart:usize,iterations:usize)->NewObject<Solution>,|ctx:&CallCtx<'_> ,mesh:Handle<Mesh>, kinds:Vec<String>, values:Vec<f64>, leaf:usize, eta:f64, tolerance:f64, restart:usize, iterations:usize|{mesh.with(ctx,|m|{let bc=bcs(&kinds,&values,m.data.triangles.len())?;let opts=options(leaf,eta,tolerance,restart,iterations)?;let (s,stats)=aca::solve_laplace_bem_3d_exterior(&m.data,&bc,&opts).map_err(err)?;Ok(NewObject::new(Solution{mesh:m.clone(),u:s.u,q:s.q,p1:false,stats:Some(stats)},m.frame.dims.to_vec()))})});
-object_binding!(bem_p1,"num_grid_bem_p1","crate::sim::bem_aca::solve_laplace_bem_3d_p1","Native BEM call. Numeric coordinates are normalized by the supplied PDE frame length, potentials by its field reference, and fluxes by field/length. Outputs retain explicit physical reference witnesses.",true,(mesh:Handle<Mesh>,kinds:Vec<String>,values:Vec<f64>,exterior:bool)->NewObject<Solution>,|ctx:&CallCtx<'_> ,mesh:Handle<Mesh>, kinds:Vec<String>, values:Vec<f64>, exterior:bool|{mesh.with(ctx,|m|{let bc=bcs(&kinds,&values,m.data.vertices.len())?;let s=aca::solve_laplace_bem_3d_p1(&m.data,&bc,exterior).map_err(err)?;Ok(NewObject::new(Solution{mesh:m.clone(),u:s.u,q:s.q,p1:true,stats:None},m.frame.dims.to_vec()))})});
-object_binding!(bem_p1_aca,"num_grid_bem_p1_aca","crate::sim::bem_aca::solve_laplace_bem_3d_p1_aca","Native BEM call. Numeric coordinates are normalized by the supplied PDE frame length, potentials by its field reference, and fluxes by field/length. Outputs retain explicit physical reference witnesses.",true,(mesh:Handle<Mesh>,kinds:Vec<String>,values:Vec<f64>,exterior:bool,leaf:usize,eta:f64,tolerance:f64,restart:usize,iterations:usize)->NewObject<Solution>,|ctx:&CallCtx<'_> ,mesh:Handle<Mesh>, kinds:Vec<String>, values:Vec<f64>, exterior:bool, leaf:usize, eta:f64, tolerance:f64, restart:usize, iterations:usize|{mesh.with(ctx,|m|{let bc=bcs(&kinds,&values,m.data.vertices.len())?;let opts=options(leaf,eta,tolerance,restart,iterations)?;let (s,stats)=aca::solve_laplace_bem_3d_p1_aca(&m.data,&bc,exterior,&opts).map_err(err)?;Ok(NewObject::new(Solution{mesh:m.clone(),u:s.u,q:s.q,p1:true,stats:Some(stats)},m.frame.dims.to_vec()))})});
-object_binding!(bem_solution_fields,"num_grid_bem_solution_fields","","Native BEM call. Numeric coordinates are normalized by the supplied PDE frame length, potentials by its field reference, and fluxes by field/length. Outputs retain explicit physical reference witnesses.",true,(solution:Handle<Solution>)->Dynamic,|ctx:&CallCtx<'_> ,solution:Handle<Solution>|{solution.with(ctx,|s|fields(&s.mesh.frame,s.u.clone(),s.q.clone()))});
-object_binding!(bem_eval3,"num_grid_bem_eval3","crate::sim::physics_bem::evaluate_potential_3d","Native BEM call. Numeric coordinates are normalized by the supplied PDE frame length, potentials by its field reference, and fluxes by field/length. Outputs retain explicit physical reference witnesses.",true,(solution:Handle<Solution>,point:Vec<f64>)->Dynamic,|ctx:&CallCtx<'_> ,solution:Handle<Solution>, point:Vec<f64>|{solution.with(ctx,|s|{if s.p1{return Err(err("constant-element evaluator cannot interpret P1 coefficients"));}let solution=be::Bem3dSolution{u:s.u.clone(),q:s.q.clone()};let u=be::evaluate_potential_3d(xyz(point)?,&s.mesh.data,&solution).map_err(err)?;Ok(Dynamic(api::quantity(u*s.mesh.frame.value,s.mesh.frame.dims[2].clone())?))})});
-object_binding!(bem_eval3_exterior,"num_grid_bem_eval3_exterior","crate::sim::bem_aca::evaluate_potential_3d_exterior","Native BEM call. Numeric coordinates are normalized by the supplied PDE frame length, potentials by its field reference, and fluxes by field/length. Outputs retain explicit physical reference witnesses.",true,(solution:Handle<Solution>,point:Vec<f64>)->Dynamic,|ctx:&CallCtx<'_> ,solution:Handle<Solution>, point:Vec<f64>|{solution.with(ctx,|s|{if s.p1{return Err(err("constant-element evaluator cannot interpret P1 coefficients"));}let solution=be::Bem3dSolution{u:s.u.clone(),q:s.q.clone()};let u=aca::evaluate_potential_3d_exterior(xyz(point)?,&s.mesh.data,&solution).map_err(err)?;Ok(Dynamic(api::quantity(u*s.mesh.frame.value,s.mesh.frame.dims[2].clone())?))})});
-object_binding!(bem_compression,"num_grid_bem_compression","crate::sim::bem_aca::AcaStats::compression","Native BEM call. Numeric coordinates are normalized by the supplied PDE frame length, potentials by its field reference, and fluxes by field/length. Outputs retain explicit physical reference witnesses.",true,(solution:Handle<Solution>)->f64,|ctx:&CallCtx<'_> ,solution:Handle<Solution>|{solution.with(ctx,|s|s.stats.as_ref().map(aca::AcaStats::compression).ok_or_else(||err("solution was not computed by ACA")))});
+object_binding!(bem_solve3,"num_grid_bem_solve3","crate::sim::physics_bem::solve_laplace_bem_3d_mesh","Native BEM call. Numeric coordinates are normalized by the supplied PDE frame length, potentials by its field reference, and fluxes by field/length. Outputs retain explicit physical reference witnesses.",true,(mesh:Handle<Mesh>,kinds:Vec<String>,values:Vec<f64>)->NewObject<Solution>,|ctx:&CallCtx<'_> ,mesh:Handle<Mesh>, kinds:Vec<String>, values:Vec<f64>|{mesh.with(ctx,|m|{let bc=bcs(&kinds,&values,m.data.triangles.len())?;let s=be::solve_laplace_bem_3d_mesh(&m.data,&bc).map_err(err)?;Solution::retained(m, s, SolutionKind::Interior, None)})});
+object_binding!(
+    bem_prepare3, "num_grid_bem_prepare3", "crate::sim::physics_bem::PreparedLaplaceBem3d::new",
+    "Prepares an interior three-dimensional Laplace boundary-element solve and stores the constant-panel collocation operator and LU factors. Supply Potential or Flux for each triangle in mesh order. The plan retains the mesh's reference frame. Dense storage is quadratic in the panel count.",
+    true,
+    (mesh: Handle<Mesh>, kinds: Vec<String>) -> NewObject<PreparedBem>,
+    |ctx, mesh, kinds| {
+        let (plan, dims) = mesh.with(ctx, |m| {
+            if kinds.len() != m.data.triangles.len() {
+                return Err(err("one boundary kind per triangle is required"));
+            }
+            let kinds = kinds.iter().map(|k| boundary_kind(k)).collect::<Result<Vec<_>, _>>()?;
+            Ok((be::PreparedLaplaceBem3d::new(&m.data, &kinds).map_err(err)?, m.frame.dims.to_vec()))
+        })?;
+        let parent = mesh.value.clone();
+        Ok(NewObject::dependent(PreparedBem { plan, mesh }, dims, vec![parent]))
+    }
+);
+object_binding!(
+    bem_solve3_prepared, "num_grid_bem_solve3_prepared", "crate::sim::physics_bem::PreparedLaplaceBem3d::solve",
+    "Solves for new per-triangle boundary values using prepared Laplace operators. Potentials are expressed in the mesh's field reference and fluxes in field per length. A pure-flux solve requires zero net outward flux and uses a zero area-weighted mean boundary potential. The returned solution works with the ordinary field and interior evaluation operators.",
+    true,
+    (plan: Handle<PreparedBem>, values: Vec<f64>) -> NewObject<Solution>,
+    |ctx, plan, values| plan.with(ctx, |prepared| {
+        let solved = prepared.plan.solve(&values).map_err(err)?;
+        prepared.mesh.with(ctx, |mesh| {
+            Solution::retained(mesh, solved, SolutionKind::Interior, None)
+        })
+    })
+);
+object_binding!(
+    bem_plan_panel_count, "num_grid_bem_plan_panel_count",
+    "crate::sim::physics_bem::PreparedLaplaceBem3d::panel_count",
+    "Returns the number of boundary values required by a prepared three-dimensional Laplace BEM plan.",
+    true,
+    (plan: Handle<PreparedBem>) -> usize,
+    |ctx, plan| plan.with(ctx, |prepared| Ok(prepared.plan.panel_count()))
+);
+object_binding!(
+    bem_aca, "num_grid_bem_aca", "crate::sim::bem_aca::solve_laplace_bem_3d_aca",
+    "Solves the interior Laplace problem on a closed mesh using ACA-compressed constant panels and GMRES.\n\nSupply one Potential or Flux coefficient per triangle, normalized by the frame's field or field-per-length reference. A pure-flux interior problem requires zero net outward flux and returns a zero area-weighted mean boundary potential.\n\nThe mesh cap is 512 panels. Restart and iteration lengths are positive and capped at 128 and 4096. The positive tolerance, at most one, controls both ACA and GMRES. Invalid controls, incompatible fluxes and nonconvergence produce errors.",
+    true, (mesh:Handle<Mesh>,kinds:Vec<String>,values:Vec<f64>,leaf:usize,eta:f64,tolerance:f64,restart:usize,iterations:usize) -> NewObject<Solution>,
+    |ctx,mesh,kinds,values,leaf,eta,tolerance,restart,iterations| mesh.with(ctx, |m| {
+        let boundary = bcs(&kinds, &values, m.data.triangles.len())?;
+        let opts = options(leaf, eta, tolerance, restart, iterations)?;
+        let (data, stats) = aca::solve_laplace_bem_3d_aca(&m.data, &boundary, &opts).map_err(err)?;
+        Solution::retained(m, data, SolutionKind::Interior, Some(stats))
+    })
+);
+object_binding!(
+    bem_exterior, "num_grid_bem_exterior", "crate::sim::bem_aca::solve_laplace_bem_3d_exterior",
+    "Solves the exterior Laplace problem with decay at infinity using ACA-compressed constant panels and GMRES.\n\nSupply one Potential or Flux coefficient per triangle, normalized by the frame's field or field-per-length reference. Flux follows the body's outward normal into the exterior. Dirichlet, Neumann and mixed data are accepted.\n\nThe mesh cap is 512 panels. Restart and iteration lengths are positive and capped at 128 and 4096. The positive tolerance, at most one, controls both ACA and GMRES. Invalid controls and nonconvergence produce errors.",
+    true, (mesh:Handle<Mesh>,kinds:Vec<String>,values:Vec<f64>,leaf:usize,eta:f64,tolerance:f64,restart:usize,iterations:usize) -> NewObject<Solution>,
+    |ctx,mesh,kinds,values,leaf,eta,tolerance,restart,iterations| mesh.with(ctx, |m| {
+        let boundary = bcs(&kinds, &values, m.data.triangles.len())?;
+        let opts = options(leaf, eta, tolerance, restart, iterations)?;
+        let (data, stats) = aca::solve_laplace_bem_3d_exterior(&m.data, &boundary, &opts).map_err(err)?;
+        Solution::retained(m, data, SolutionKind::Exterior, Some(stats))
+    })
+);
+object_binding!(
+    bem_p1, "num_grid_bem_p1", "crate::sim::bem_aca::solve_laplace_bem_3d_p1",
+    "Solves the interior or exterior Laplace problem with linear elements. Each vertex has one Potential or Flux coefficient in the supplied frame's field or field-per-length reference. Use the boundary-field accessor for the resulting vertex coefficients.",
+    true, (mesh:Handle<Mesh>,kinds:Vec<String>,values:Vec<f64>,exterior:bool) -> NewObject<Solution>,
+    |ctx,mesh,kinds,values,exterior| mesh.with(ctx, |m| {
+        let boundary = bcs(&kinds, &values, m.data.vertices.len())?;
+        let result = aca::solve_laplace_bem_3d_p1(&m.data, &boundary, exterior).map_err(err)?;
+        Solution::retained(m, be::Bem3dSolution { u: result.u, q: result.q }, SolutionKind::Linear, None)
+    })
+);
+object_binding!(
+    bem_p1_aca, "num_grid_bem_p1_aca", "crate::sim::bem_aca::solve_laplace_bem_3d_p1_aca",
+    "Solves the interior or exterior Laplace problem with ACA-compressed linear elements and GMRES. Each vertex has one Potential or Flux coefficient in the supplied frame's field or field-per-length reference. The positive tolerance, at most one, controls both ACA and GMRES.",
+    true, (mesh:Handle<Mesh>,kinds:Vec<String>,values:Vec<f64>,exterior:bool,leaf:usize,eta:f64,tolerance:f64,restart:usize,iterations:usize) -> NewObject<Solution>,
+    |ctx,mesh,kinds,values,exterior,leaf,eta,tolerance,restart,iterations| mesh.with(ctx, |m| {
+        let boundary = bcs(&kinds, &values, m.data.vertices.len())?;
+        let opts = options(leaf, eta, tolerance, restart, iterations)?;
+        let (result, stats) = aca::solve_laplace_bem_3d_p1_aca(&m.data, &boundary, exterior, &opts).map_err(err)?;
+        Solution::retained(m, be::Bem3dSolution { u: result.u, q: result.q }, SolutionKind::Linear, Some(stats))
+    })
+);
+object_binding!(
+    bem_solution_fields, "num_grid_bem_solution_fields", "",
+    "Returns normalized potential and flux arrays in panel order for constant elements or vertex order for linear elements. The record carries a measured field reference for potential and a field-per-length reference for flux.",
+    true, (solution:Handle<Solution>) -> Dynamic,
+    |ctx,solution| solution.with(ctx, |s| fields(&s.mesh.frame, s.data.u.clone(), s.data.q.clone()))
+);
+object_binding!(
+    bem_eval3, "num_grid_bem_eval3", "crate::sim::physics_bem::evaluate_potential_3d",
+    "Evaluates a retained interior constant-panel Laplace solution.\n\nSupply an interior point as three coordinates normalized by the frame's Length reference. The result is a measured potential in the field dimension. Accuracy decreases near the boundary.\n\nExterior and vertex-coefficient solutions require different evaluators and are rejected.",
+    true, (solution:Handle<Solution>,point:Vec<f64>) -> Dynamic,
+    |ctx,solution,point| solution.with(ctx, |s| s.evaluate(xyz(point)?, SolutionKind::Interior))
+);
+object_binding!(
+    bem_eval3_exterior, "num_grid_bem_eval3_exterior", "crate::sim::bem_aca::evaluate_potential_3d_exterior",
+    "Evaluates a retained exterior constant-panel Laplace solution.\n\nSupply a point outside the closed body as three coordinates normalized by the frame's Length reference. The result is a measured potential in the field dimension. Accuracy decreases near the boundary.\n\nInterior and vertex-coefficient solutions require different evaluators and are rejected.",
+    true, (solution:Handle<Solution>,point:Vec<f64>) -> Dynamic,
+    |ctx,solution,point| solution.with(ctx, |s| s.evaluate(xyz(point)?, SolutionKind::Exterior))
+);
+object_binding!(
+    bem_compression, "num_grid_bem_compression", "crate::sim::bem_aca::AcaStats::compression",
+    "Returns the fraction of matrix entries stored by ACA relative to dense storage. One means that storing compressed blocks saved no entries. Requires a retained ACA solution.",
+    true, (solution:Handle<Solution>) -> f64,
+    |ctx,solution| solution.with(ctx, |s| {
+        s.stats.as_ref().map(aca::AcaStats::compression).ok_or_else(|| err("solution was not computed by ACA"))
+    })
+);
 object_binding!(bem_cylinder,"num_grid_bem_cylinder","crate::sim::physics_bem::simulate_2d_cylinder_scenario","Native BEM call. Numeric coordinates are normalized by the supplied PDE frame length, potentials by its field reference, and fluxes by field/length. Outputs retain explicit physical reference witnesses.",true,(frame:Handle<Frame>)->Dynamic,|ctx:&CallCtx<'_> ,frame:Handle<Frame>|{frame.with(ctx,|f|{let(u,q)=be::simulate_2d_cylinder_scenario().map_err(err)?;fields(f,u,q)})});
 object_binding!(bem_selfcheck3,"num_grid_bem_selfcheck3","crate::sim::physics_bem::solve_laplace_bem_3d","Native BEM call. Numeric coordinates are normalized by the supplied PDE frame length, potentials by its field reference, and fluxes by field/length. Outputs retain explicit physical reference witnesses.",true,()->bool,|ctx:&CallCtx<'_>|{let _=ctx;be::solve_laplace_bem_3d().map_err(err)?;Ok(true)});
 object_binding!(bem_solve2,"num_grid_bem_solve2","crate::sim::physics_bem::solve_laplace_bem_2d","Native BEM call. Numeric coordinates are normalized by the supplied PDE frame length, potentials by its field reference, and fluxes by field/length. Outputs retain explicit physical reference witnesses.",true,(frame:Handle<Frame>,points:Vec<Vec<f64>>,kinds:Vec<String>,values:Vec<f64>)->Dynamic,|ctx:&CallCtx<'_> ,frame:Handle<Frame>, points:Vec<Vec<f64>>, kinds:Vec<String>, values:Vec<f64>|{frame.with(ctx,|f|{if points.len()<3||points.len()>512||points.iter().any(|p|p.len()!=2){return Err(err("BEM polygon needs 3..512 two-dimensional points"));}let points=points.iter().map(|p|(p[0],p[1])).collect::<Vec<_>>();for i in 0..points.len(){if points[i]==points[(i+1)%points.len()]{return Err(err("polygon has a zero-length edge"));}}let(u,q)=be::solve_laplace_bem_2d(&points,&bcs(&kinds,&values,points.len())?).map_err(err)?;fields(f,u,q)})});
@@ -271,6 +452,9 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &bem_mesh_volume::BINDING,
             &bem_mesh_validate::BINDING,
             &bem_solve3::BINDING,
+            &bem_prepare3::BINDING,
+            &bem_solve3_prepared::BINDING,
+            &bem_plan_panel_count::BINDING,
             &bem_aca::BINDING,
             &bem_exterior::BINDING,
             &bem_p1::BINDING,

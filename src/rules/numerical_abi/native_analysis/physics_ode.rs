@@ -27,6 +27,10 @@ use std::sync::Arc;
 #[path = "physics_mechanics.rs"]
 mod mechanics;
 pub(in crate::rules) use mechanics::Acceleration;
+
+const HISTORY_ELEMENT_LIMIT: usize = 262_000;
+const ORACLE_ELEMENT_LIMIT: usize = 1_000_000;
+
 struct System {
     model: OdeTape,
     budget: Arc<Budget>,
@@ -60,7 +64,7 @@ fn output(
     if rows
         .len()
         .checked_mul(frame.state_scales.len() + 4)
-        .is_none_or(|n| n > 262000)
+        .is_none_or(|n| n > HISTORY_ELEMENT_LIMIT)
     {
         return Err(api::error("native ODE history element budget exceeded"));
     }
@@ -106,12 +110,14 @@ fn run(
     let h = frame.time(&h)?;
     if t1 <= t0
         || h <= 0.0
-        || ((t1 - t0) / h).ceil() * (y.len() + 4) as f64 > 262000.0
+        || ((t1 - t0) / h).ceil() * (y.len() + 4) as f64 > HISTORY_ELEMENT_LIMIT as f64
         || !rtol.is_finite()
         || rtol <= 0.0
         || !atol.is_finite()
         || atol <= 0.0
-        || maxeval.checked_mul(y.len() + 4).is_none_or(|n| n > 1000000)
+        || maxeval
+            .checked_mul(y.len() + 4)
+            .is_none_or(|n| n > ORACLE_ELEMENT_LIMIT)
     {
         return Err(api::error(
             "native ODE span/step/tolerance or worst-case output work budget invalid",
@@ -132,10 +138,15 @@ fn run(
         | _ => return Err(api::error("unknown native ODE solver")),
     };
     system.budget.finish()?;
-    if rows
-        .last()
-        .is_none_or(|(t, _)| (*t - t1).abs() > 1e-12 * (1.0 + t1.abs()))
-    {
+    if rows.last().is_none_or(|(t, _)| {
+        if kind == 1 {
+            // Dormand–Prince stores the requested end exactly on acceptance.
+            // An absolute tolerance can hide an incomplete short interval.
+            !crate::kernels::exact_eq(*t, t1)
+        } else {
+            (*t - t1).abs() > 1e-12 * (1.0 + t1.abs())
+        }
+    }) {
         return Err(api::error(
             "native adaptive solver stopped before requested endpoint",
         ));
@@ -150,6 +161,36 @@ object_binding!(bogacki,"num_analysis_physics_bogacki","crate::sim::physics_rkm:
 object_binding!(forward_euler,"num_analysis_physics_forward_euler","crate::sim::physics_em::solve_forward_euler","Actual native generic ODE solver instantiated on an immutable tape implementing the real OdeSystem trait. Independent physical state/time references, normalized rtol/atol and a shared explicit oracle budget are preserved; incomplete native paths are errors.",false,(rhs:Handle<OdeTape>,initial:Input,start:Input,end:Input,h:Input,rtol:f64,atol:f64,maxeval:usize)->Many<Dynamic>,|ctx,rhs,initial,start,end,h,rtol,atol,maxeval|run(ctx,rhs,initial,start,end,h,rtol,atol,maxeval,4));
 object_binding!(heun_euler,"num_analysis_physics_heun_euler","crate::sim::physics_em::solve_heun_euler","Actual native generic ODE solver instantiated on an immutable tape implementing the real OdeSystem trait. Independent physical state/time references, normalized rtol/atol and a shared explicit oracle budget are preserved; incomplete native paths are errors.",false,(rhs:Handle<OdeTape>,initial:Input,start:Input,end:Input,h:Input,rtol:f64,atol:f64,maxeval:usize)->Many<Dynamic>,|ctx,rhs,initial,start,end,h,rtol,atol,maxeval|run(ctx,rhs,initial,start,end,h,rtol,atol,maxeval,5));
 object_binding!(midpoint_euler,"num_analysis_physics_midpoint_euler","crate::sim::physics_em::solve_midpoint_euler","Actual native generic ODE solver instantiated on an immutable tape implementing the real OdeSystem trait. Independent physical state/time references, normalized rtol/atol and a shared explicit oracle budget are preserved; incomplete native paths are errors.",false,(rhs:Handle<OdeTape>,initial:Input,start:Input,end:Input,h:Input,rtol:f64,atol:f64,maxeval:usize)->Many<Dynamic>,|ctx,rhs,initial,start,end,h,rtol,atol,maxeval|run(ctx,rhs,initial,start,end,h,rtol,atol,maxeval,6));
+object_binding!(
+    explicit_euler, "num_analysis_physics_explicit_euler", "crate::sim::physics_em::solve_explicit_euler",
+    "Evolves a native measured ODE tape using Forward, Midpoint or Heun with a signed time step. The last interval is shortened to reach the requested endpoint. Returns time and mixed physical state for each accepted grid point. Forward needs one tape evaluation per step and Midpoint and Heun need two.",
+    false,
+    (rhs: Handle<OdeTape>, initial: Input, start: Input, end: Input, step: Input, method: String, maxeval: usize) -> Many<Dynamic>,
+    |ctx, rhs, initial, start, end, step, method, maxeval| {
+        let method = match method.as_str() {
+            | "Forward" => e::ExplicitEulerMethod::Forward,
+            | "Midpoint" => e::ExplicitEulerMethod::Midpoint,
+            | "Heun" => e::ExplicitEulerMethod::Heun,
+            | _ => return Err(api::error("explicit Euler method must be Forward, Midpoint or Heun")),
+        };
+        let model = rhs.with(ctx, |model| Ok(model.clone()))?;
+        let frame = model.frame.clone();
+        let state = frame.state(&initial)?;
+        let span = (frame.time(&start)?, frame.time(&end)?);
+        let dt = frame.time(&step)?;
+        let steps = e::explicit_euler_step_bound(span, dt).map_err(api::error)?;
+        let row_size = state.len() + 4;
+        if steps.checked_add(1).and_then(|n| n.checked_mul(row_size)).is_none_or(|n| n > HISTORY_ELEMENT_LIMIT)
+            || maxeval.checked_mul(row_size).is_none_or(|n| n > ORACLE_ELEMENT_LIMIT)
+        {
+            return Err(api::error("explicit Euler history or oracle work budget exceeded"));
+        }
+        let system = System { model, budget: Budget::new(maxeval)? };
+        let result = e::solve_explicit_euler(&system, &state, span, dt, method);
+        system.budget.finish()?;
+        output(&frame, result.map_err(api::error)?)
+    }
+);
 object_binding!(system_dim,"num_analysis_physics_system_dim","crate::sim::physics_rkm::OdeSystem::dim","Actual native generic ODE solver instantiated on an immutable tape implementing the real OdeSystem trait. Independent physical state/time references, normalized rtol/atol and a shared explicit oracle budget are preserved; incomplete native paths are errors.",false,(rhs:Handle<OdeTape>)->usize,|ctx,rhs|rhs.with(ctx,|m|{let system=System{model:m.clone(),budget:Budget::new(1)?};Ok(system.dim())}));
 object_binding!(system_eval,"num_analysis_physics_system_eval","crate::sim::physics_rkm::OdeSystem::eval","Actual native generic ODE solver instantiated on an immutable tape implementing the real OdeSystem trait. Independent physical state/time references, normalized rtol/atol and a shared explicit oracle budget are preserved; incomplete native paths are errors.",false,(rhs:Handle<OdeTape>,time:Input,state:Input,maxeval:usize)->Dynamic,|ctx,rhs,time,state,maxeval|rhs.with(ctx,|m|{let t=m.frame.time(&time)?;let y=m.frame.state(&state)?;let system=System{model:m.clone(),budget:Budget::new(maxeval)?};let mut out=vec![0.0;y.len()];system.eval(t,&y,&mut out);system.budget.finish()?;let frame=&m.frame;let data=out.iter().zip(&frame.state_scales).zip(&frame.state_dimensions).map(|((v,s),d)|api::quantity(api::scale_product(*v,&[*s],&[frame.time_scale])?,crate::kernel::signature::DimExpr::Mul(vec![d.clone(),crate::kernel::signature::DimExpr::Inverse(Box::new(frame.time_dimension.clone()))]))).collect::<Result<Vec<_>,_>>()?;Ok(Dynamic(Value::Tensor(crate::kernel::value::TensorValue{shape:vec![data.len()],elem:api::dynamic_type(),data})) )}));
 object_binding!(backward_euler_step,"num_analysis_physics_backward_euler_step","crate::sim::integrators::backward_euler_step","Actual native generic ODE solver instantiated on an immutable tape implementing the real OdeSystem trait. Independent physical state/time references, normalized rtol/atol and a shared explicit oracle budget are preserved; incomplete native paths are errors.",false,(rhs:Handle<OdeTape>,initial:Input,time:Input,h:Input,maxeval:usize)->Maybe<Dynamic>,|ctx,rhs,initial,time,h,maxeval|rhs.with(ctx,|m|{let t=m.frame.time(&time)?;let h=m.frame.time(&h)?;let y=m.frame.state(&initial)?;let budget=Budget::new(maxeval)?;let f=|t,y:&[f64]|{let mut out=vec![0.0;y.len()];m.rate(&budget,t,y,&mut out);out};let result=i::backward_euler_step(&f,t,&y,h);budget.finish()?;Ok(Maybe(result.map(|y|m.frame.restore(&y).map(Dynamic)).transpose()?))}));
@@ -175,6 +216,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &forward_euler::BINDING,
             &heun_euler::BINDING,
             &midpoint_euler::BINDING,
+            &explicit_euler::BINDING,
             &system_dim::BINDING,
             &system_eval::BINDING,
             &backward_euler_step::BINDING,

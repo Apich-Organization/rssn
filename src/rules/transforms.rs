@@ -105,6 +105,7 @@ use crate::graph::dim::DimCtx;
 use crate::graph::dim::DimError;
 use crate::graph::dim::DimRule;
 use crate::graph::dim::DimTerm;
+use crate::graph::extract::contains_heavy_operator;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 use crate::kernels::integrate::gauss_kronrod_any;
@@ -494,14 +495,7 @@ fn has_heavy(
     let Some(term) = best(graph, node) else {
         return true;
     };
-    let mut stack = vec![term];
-    while let Some(n) = stack.pop() {
-        if graph.ops().get(graph.op(n)).flags.has(OpFlags::HEAVY) {
-            return true;
-        }
-        stack.extend_from_slice(graph.children(n));
-    }
-    false
+    contains_heavy_operator(graph, term)
 }
 
 /// `convolve`, `convolution` and `discrete_convolution`: the defining

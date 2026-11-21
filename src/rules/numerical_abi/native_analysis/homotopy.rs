@@ -8,6 +8,7 @@ impl Output for AnalysisHomotopyResiduals {
             elem: Box::new(<Option<f64> as Output>::ty()),
         }
     }
+
     fn encode(self) -> Result<Value, OpError> {
         Ok(Value::Tensor(TensorValue {
             shape: vec![self.0.len()],
@@ -27,7 +28,10 @@ struct AnalysisHomotopyOutput {
     residuals: AnalysisHomotopyResiduals,
 }
 record!(AnalysisHomotopyOutput{roots:Vec<num_complex::Complex64>,offsets:Vec<usize>,finite:Vec<bool>,residuals:AnalysisHomotopyResiduals});
-#[allow(clippy::needless_pass_by_value, reason = "The typed native ABI transfers decoded arguments by value; this shared dispatcher mirrors its explicit source signature.")]
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "The typed native ABI transfers decoded arguments by value; this shared dispatcher mirrors its explicit source signature."
+)]
 fn analysis_polynomial_system(
     coefficients: Vec<f64>,
     exponents: Vec<Vec<u32>>,
@@ -44,40 +48,28 @@ fn analysis_polynomial_system(
         || offsets.first() != Some(&0)
         || offsets.last() != Some(&coefficients.len())
         || offsets.windows(2).any(|w| w[0] >= w[1])
-        || exponents.iter().any(|e| e.len() != variables)
     {
         return Err(OpError::Domain(
             "invalid square polynomial system descriptor or6variable/4096term budget".into(),
         ));
     }
-    let mut degree_product = 1usize;
-    for range in offsets.windows(2) {
-        let degree = exponents[range[0]..range[1]]
+    let equations = offsets.windows(2).map(|range| {
+        let (start, end) = (range[0], range[1]);
+        coefficients[start..end]
             .iter()
-            .map(|e| e.iter().try_fold(0usize, |a, &b| a.checked_add(b as usize)))
-            .collect::<Option<Vec<_>>>()
-            .and_then(|e| e.into_iter().max())
-            .ok_or_else(|| OpError::Domain("polynomial degree overflow".into()))?;
-        if degree == 0 || degree > 16 {
-            return Err(OpError::Domain(
-                "homotopy polynomial degree must be1..16".into(),
-            ));
-        }
-        degree_product = degree_product
-            .checked_mul(degree)
-            .filter(|n| *n <= 256)
-            .ok_or_else(|| {
-                OpError::Domain("homotopy total-degree path budget exceeds256".into())
-            })?;
-    }
-    let terms = coefficients
+            .copied()
+            .zip(exponents[start..end].iter().map(Vec::as_slice))
+    });
+    crate::kernels::rootfind::total_degree_plan(variables, equations, 16, 256).map_err(|_| {
+        OpError::Domain("invalid homotopy terms, degree above 16, or more than 256 paths".into())
+    })?;
+    let mut terms = coefficients
         .into_iter()
         .zip(exponents)
-        .map(|(coef, exps)| crate::kernels::rootfind::PolyTerm { coef, exps })
-        .collect::<Vec<_>>();
+        .map(|(coef, exps)| crate::kernels::rootfind::PolyTerm { coef, exps });
     Ok(offsets
         .windows(2)
-        .map(|w| terms[w[0]..w[1]].to_vec())
+        .map(|w| terms.by_ref().take(w[1] - w[0]).collect())
         .collect())
 }
 fn analysis_homotopy_output(

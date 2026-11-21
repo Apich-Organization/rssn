@@ -87,6 +87,28 @@ impl NativeType for Solution {
         Ok(())
     }
 }
+
+struct PreparedMesh {
+    plan: tri::PreparedTriangles,
+    mesh: Handle<Mesh>,
+}
+
+impl NativeType for PreparedMesh {
+    const KIND: &'static str = "rssn/native/triangle-prepared-mesh/v1";
+    const MAX_BYTES: usize = 1024 * 1024;
+
+    fn validate(&self) -> Result<(), OpError> {
+        if self.plan.degrees_of_freedom() > 1024 {
+            return Err(err("triangle DOF budget exceeded"));
+        }
+        Ok(())
+    }
+
+    fn retained_bytes(&self) -> usize {
+        self.plan.retained_bytes() + size_of::<Self>() - size_of::<tri::PreparedTriangles>()
+            + self.mesh.heap_bytes()
+    }
+}
 fn size(
     m: &tri::TriMesh,
     p: usize,
@@ -195,6 +217,47 @@ object_binding!(triangle_boundary,"num_triangle_boundary_vertices","crate::sim::
 object_binding!(triangle_refine,"num_triangle_refine","crate::sim::fem_triangles::TriMesh::refine","Actual triangular FEM with explicit Length/Time/field references, variable compiled diffusion/reaction/source/Dirichlet data, original CG/P1/P2/refinement algorithms and bounded native storage/work. Callback arguments and outputs are coherent physical quantities.",true,(mesh:Handle<Mesh>,marked:Vec<bool>)->NewObject<Mesh>,|ctx,mesh,marked|{mesh.with(ctx,|m|{if marked.len()!=m.data.triangles.len()||m.data.triangles.len()>256||m.data.nodes.len()+3*m.data.triangles.len()>1024{return Err(err("triangle refinement allocation/mark shape budget exceeded"));}Ok(NewObject::new(Mesh{data:m.data.refine(&marked),frame:m.frame.clone()},m.frame.dims.to_vec()))})});
 object_binding!(triangle_problem,"num_triangle_problem","","Actual triangular FEM with explicit Length/Time/field references, variable compiled diffusion/reaction/source/Dirichlet data, original CG/P1/P2/refinement algorithms and bounded native storage/work. Callback arguments and outputs are coherent physical quantities.",false,(frame:Handle<Frame>,diffusion:Input,reaction:Input,source:Input,dirichlet:Input,budget:usize)->NewObject<Problem>,|ctx,frame,diffusion,reaction,source,dirichlet,budget|{frame.with(ctx,|f|{if budget==0||budget>8_388_608{return Err(err("triangle callback budget invalid"));}let domain=vec![f.dims[0].clone();2];let kd=canonical(DimExpr::Mul(vec![DimExpr::Pow(Box::new(f.dims[0].clone()),Exp::Rat(Rational::new(2,1))),DimExpr::Inverse(Box::new(f.dims[1].clone()))]))?;let cd=canonical(DimExpr::Inverse(Box::new(f.dims[1].clone())))?;let fd=crate::rules::numerical_abi::native_grids::structured_ops::dims_forcing(f,1)?;let callbacks=[crate::rules::numerical_abi::native_grids::structured_ops::checked_snapshot(ctx,&diffusion,budget,&domain,&kd)?,crate::rules::numerical_abi::native_grids::structured_ops::checked_snapshot(ctx,&reaction,budget,&domain,&cd)?,crate::rules::numerical_abi::native_grids::structured_ops::checked_snapshot(ctx,&source,budget,&domain,&fd)?,crate::rules::numerical_abi::native_grids::structured_ops::checked_snapshot(ctx,&dirichlet,budget,&domain,&f.dims[2])?];Ok(NewObject::dependent(Problem{frame:f.clone(),callbacks},f.dims.to_vec(),vec![diffusion.0,reaction.0,source.0,dirichlet.0]))})});
 object_binding!(triangle_solve,"num_triangle_solve","crate::sim::fem_triangles::solve","Actual triangular FEM with explicit Length/Time/field references, variable compiled diffusion/reaction/source/Dirichlet data, original CG/P1/P2/refinement algorithms and bounded native storage/work. Callback arguments and outputs are coherent physical quantities.",true,(mesh:Handle<Mesh>,problem:Handle<Problem>,degree:usize)->NewObject<Solution>,|ctx,mesh,problem,degree|{mesh.with(ctx,|m|problem.with(ctx,|p|{m.frame.same(&p.frame)?;size(&m.data,degree)?;let data=run(p,|p|tri::solve(&m.data,if degree==1{tri::Degree::P1}else{tri::Degree::P2},p).map_err(err))?;Ok(NewObject::new(Solution{data,mesh:m.clone()},m.frame.dims.to_vec()))}))});
+object_binding!(
+    triangle_prepare, "num_triangle_prepare", "crate::sim::fem_triangles::PreparedTriangles::new",
+    "Prepares the geometry, boundary flags and reference quadrature of a triangular mesh for repeated P1 or P2 solves. Use degree 1 or 2. The plan retains the mesh's physical frame and admits at most 1024 degrees of freedom.",
+    true,
+    (mesh: Handle<Mesh>, degree: usize) -> NewObject<PreparedMesh>,
+    |ctx, mesh, degree| {
+        let degree = match degree {
+            | 1 => tri::Degree::P1,
+            | 2 => tri::Degree::P2,
+            | _ => return Err(err("triangle degree must be 1 or 2")),
+        };
+        let (plan, dims) = mesh.with(ctx, |m| {
+            Ok((tri::PreparedTriangles::new(&m.data, degree).map_err(err)?, m.frame.dims.to_vec()))
+        })?;
+        let parent = mesh.value.clone();
+        Ok(NewObject::dependent(PreparedMesh { plan, mesh }, dims, vec![parent]))
+    }
+);
+object_binding!(
+    triangle_solve_prepared,
+    "num_triangle_solve_prepared",
+    "crate::sim::fem_triangles::PreparedTriangles::solve",
+    "Solves a triangular diffusion–reaction problem using a prepared mesh. The problem must use the same physical references. Each solve evaluates its diffusion, reaction, source and Dirichlet data and returns the ordinary triangular solution handle.",
+    true,
+    (plan: Handle<PreparedMesh>, problem: Handle<Problem>) -> NewObject<Solution>,
+    |ctx, plan, problem| plan.with(ctx, |prepared| {
+        prepared.mesh.with(ctx, |mesh| problem.with(ctx, |problem| {
+            mesh.frame.same(&problem.frame)?;
+            let data = run(problem, |p| prepared.plan.solve(p).map_err(err))?;
+            Ok(NewObject::new(Solution { data, mesh: mesh.clone() }, mesh.frame.dims.to_vec()))
+        }))
+    })
+);
+object_binding!(
+    triangle_prepared_dofs, "num_triangle_prepared_dofs",
+    "crate::sim::fem_triangles::PreparedTriangles::degrees_of_freedom",
+    "Returns the number of nodal degrees of freedom, including prescribed boundary nodes, in a prepared triangular P1 or P2 mesh.",
+    true,
+    (plan: Handle<PreparedMesh>) -> usize,
+    |ctx, plan| plan.with(ctx, |prepared| Ok(prepared.plan.degrees_of_freedom()))
+);
 object_binding!(triangle_indicators,"num_triangle_error_indicators","crate::sim::fem_triangles::error_indicators","Actual triangular FEM with explicit Length/Time/field references, variable compiled diffusion/reaction/source/Dirichlet data, original CG/P1/P2/refinement algorithms and bounded native storage/work. Callback arguments and outputs are coherent physical quantities.",true,(solution:Handle<Solution>,problem:Handle<Problem>)->Dynamic,|ctx,solution,problem|{solution.with(ctx,|s|problem.with(ctx,|p|{s.mesh.frame.same(&p.frame)?;if s.data.degree!=tri::Degree::P1{return Err(err("residual indicators require a P1 solution"));}let v=run(p,|p|Ok(tri::error_indicators(&s.mesh.data,&s.data,p)))?;indicator(v,&s.mesh.frame)}))});
 object_binding!(triangle_adaptive,"num_triangle_solve_adaptive","crate::sim::fem_triangles::solve_adaptive","Actual triangular FEM with explicit Length/Time/field references, variable compiled diffusion/reaction/source/Dirichlet data, original CG/P1/P2/refinement algorithms and bounded native storage/work. Callback arguments and outputs are coherent physical quantities.",true,(mesh:Handle<Mesh>,problem:Handle<Problem>,refinements:usize,theta:f64)->Dynamic,|ctx,mesh,problem,refinements,theta|{mesh.with(ctx,|m|problem.with(ctx,|p|{m.frame.same(&p.frame)?;if refinements>4||theta<=0.0||theta>1.0||m.data.triangles.len().checked_mul(4usize.pow(refinements as u32)).is_none_or(|n|n>512)||m.data.nodes.len()+3*m.data.triangles.len()*4usize.pow(refinements as u32)>1024{return Err(err("spatial refinement worst-case allocation budget exceeded"));}let(mesh,data,history)=run(p,|p|tri::solve_adaptive(&m.data,p,refinements,theta).map_err(err))?;let mesh=Mesh{data:mesh,frame:m.frame.clone()};let sh=NativeOutput::encode(NewObject::new(Solution{data,mesh:mesh.clone()},m.frame.dims.to_vec()),ctx)?;let mh=NativeOutput::encode(NewObject::new(mesh,m.frame.dims.to_vec()),ctx)?;Ok(Dynamic(api::record(vec![("mesh",mh),("solution",sh),("history_dofs",Output::encode(history.iter().map(|v|v.0).collect::<Vec<_>>())?),("history_error",indicator(history.iter().map(|v|v.1).collect(),&m.frame)?.0)])))}))});
 object_binding!(triangle_max_nodal_error,"num_triangle_max_nodal_error","crate::sim::fem_triangles::Solution::max_nodal_error","Actual triangular FEM with explicit Length/Time/field references, variable compiled diffusion/reaction/source/Dirichlet data, original CG/P1/P2/refinement algorithms and bounded native storage/work. Callback arguments and outputs are coherent physical quantities.",false,(solution:Handle<Solution>,exact:Input,budget:usize)->Dynamic,|ctx,solution,exact,budget|{solution.with(ctx,|s|{let f=&s.mesh.frame;let c=crate::rules::numerical_abi::native_grids::structured_ops::checked_snapshot(ctx,&exact,budget,&vec![f.dims[0].clone();2],&f.dims[2])?;let exact=|x,y|evaluate(&c,f,x,y,f.value);let v=s.data.max_nodal_error(&exact);c.finish()?;measured(v,f,0)})});
@@ -211,6 +274,9 @@ static BINDINGS: &[&api::Binding] = &[
     &triangle_refine::BINDING,
     &triangle_problem::BINDING,
     &triangle_solve::BINDING,
+    &triangle_prepare::BINDING,
+    &triangle_solve_prepared::BINDING,
+    &triangle_prepared_dofs::BINDING,
     &triangle_indicators::BINDING,
     &triangle_adaptive::BINDING,
     &triangle_max_nodal_error::BINDING,

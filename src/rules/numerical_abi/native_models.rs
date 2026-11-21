@@ -39,6 +39,7 @@ use num_traits::Zero;
 use std::sync::Arc;
 
 mod factors;
+mod multilinear;
 
 const LIMIT: usize = 16_384;
 const SIDE: usize = 128;
@@ -823,6 +824,7 @@ pub(super) fn install(
     if namespace == "numerical_vector" {
         install_polynomials(installer)?;
         install_approximations(installer)?;
+        multilinear::install(installer)?;
         return Ok(());
     }
     if namespace != "numerical_matrix" {
@@ -1106,6 +1108,7 @@ enum PolynomialMethod {
     Degree,
     IsZero,
     LongDivision,
+    TryLongDivision,
     Add,
     Sub,
     Mul,
@@ -1163,7 +1166,7 @@ fn polynomial_adapter(method: PolynomialMethod) -> PolynomialAdapter {
             ret = TypeExpr::Bool;
             outputs.clear();
         },
-        | P::Add | P::Sub | P::Mul | P::Div | P::LongDivision => {
+        | P::Add | P::Sub | P::Mul | P::Div | P::LongDivision | P::TryLongDivision => {
             args.push(model.clone());
             checks.push(constraint(1, &["coordinate_scale"], &X));
             if matches!(method, P::Add | P::Sub) {
@@ -1177,7 +1180,7 @@ fn polynomial_adapter(method: PolynomialMethod) -> PolynomialAdapter {
             if matches!(method, P::Div) {
                 outputs[0] = output(&["coefficients"], &QUOTIENT);
             }
-            if matches!(method, P::LongDivision) {
+            if matches!(method, P::LongDivision | P::TryLongDivision) {
                 ret = TypeExpr::Record(vec![
                     ("quotient".into(), model.clone()),
                     ("remainder".into(), model),
@@ -1269,7 +1272,7 @@ impl EvalDyn for PolynomialAdapter {
                 | P::DivScalar => {
                     encode_polynomial(a.div_scalar(numeric(&args[1], 1)?).map_err(error)?, scale)?
                 },
-                | P::Add | P::Sub | P::Mul | P::Div | P::LongDivision => {
+                | P::Add | P::Sub | P::Mul | P::Div | P::LongDivision | P::TryLongDivision => {
                     let (b, other_scale) = decode_polynomial(&args[1])?;
                     if !crate::kernels::exact_eq(scale, other_scale) {
                         return Err(error(
@@ -1289,7 +1292,11 @@ impl EvalDyn for PolynomialAdapter {
                         | P::Mul => encode_polynomial(a * b, scale)?,
                         | P::Div => encode_polynomial(a / b, scale)?,
                         | _ => {
-                            let (q, r) = a.long_division(&b);
+                            let (q, r) = if matches!(self.method, P::TryLongDivision) {
+                                a.try_long_division(&b).map_err(error)?
+                            } else {
+                                a.long_division(&b)
+                            };
                             record(vec![
                                 ("quotient", encode_polynomial(q, scale)?),
                                 ("remainder", encode_polynomial(r, scale)?),
@@ -1308,9 +1315,17 @@ fn install_polynomials(installer: &mut Installer<'_>) -> Result<(), RuleError> {
         let name = format!("num_polynomial_model_{suffix}");
         let adapter = polynomial_adapter(*method);
         let signature = adapter.signature();
-        let mut descriptor=OpDescriptor::new(&name,Arity::Fixed(signature.params.len()as u8)).category("numerical_vector")
-            .doc("Portable descending-coefficient Polynomial of normalized x/coordinate_scale. Coefficients retain ordinate dimensions; derivative and integral restore physical scale powers. Arithmetic requires identical coordinate scales. Kind/version, positive scale, finite values and degree/allocation budgets are validated. Native polynomial algorithms are called directly; no pointer or process-local handle is exposed.")
-            .stability(Stability::Experimental).signature(signature).eval_dyn(Arc::new(adapter));
+        let doc = if matches!(method, PolynomialMethod::TryLongDivision) {
+            "Divide measured descending-coefficient polynomials with the same coordinate reference. Leading zeros in the divisor are skipped. Returns quotient coefficients in dividend units divided by divisor units and remainder coefficients in dividend units. Zero divisors and nonfinite results are errors."
+        } else {
+            "Portable descending-coefficient Polynomial of normalized x/coordinate_scale. Coefficients retain ordinate dimensions; derivative and integral restore physical scale powers. Arithmetic requires identical coordinate scales. Kind/version, positive scale, finite values and degree/allocation budgets are validated. Native polynomial algorithms are called directly; no pointer or process-local handle is exposed."
+        };
+        let mut descriptor = OpDescriptor::new(&name, Arity::Fixed(signature.params.len() as u8))
+            .category("numerical_vector")
+            .doc(doc)
+            .stability(Stability::Experimental)
+            .signature(signature)
+            .eval_dyn(Arc::new(adapter));
         if !path.is_empty() {
             descriptor = descriptor.rust_path(path);
         }
@@ -1359,6 +1374,11 @@ const POLYNOMIAL_METHODS: &[(&str, &str, PolynomialMethod)] = &[
         "long_division",
         "crate::kernels::polynomial::Polynomial::long_division",
         PolynomialMethod::LongDivision,
+    ),
+    (
+        "try_long_division",
+        "crate::kernels::polynomial::Polynomial::try_long_division",
+        PolynomialMethod::TryLongDivision,
     ),
     ("add", "", PolynomialMethod::Add),
     ("sub", "", PolynomialMethod::Sub),
@@ -1552,6 +1572,7 @@ enum ApproxMethod {
     PchipEval,
     PchipDerivative,
     ChebNew,
+    ChebFromValues,
     ChebEval,
     ChebDegree,
     ChebDerivative,
@@ -1655,7 +1676,7 @@ fn approximation_adapter(method: ApproxMethod) -> ApproxAdapter {
             inputs = vec![input("X", 0, &[]), input("D", 1, &[])];
             checks.clear();
         },
-        | A::ChebNew => {
+        | A::ChebNew | A::ChebFromValues => {
             args = vec![
                 tensor_type(1, TypeExpr::Float),
                 TypeExpr::Float,
@@ -1765,7 +1786,7 @@ impl EvalDyn for ApproxAdapter {
                     | _ => return Err(error("invalid spline boundary selector")),
                 };
                 if pchip {
-                    Pchip::new(&x, &y).map_err(error)?;
+                    Pchip::validate_samples(&x, &y).map_err(error)?;
                 } else {
                     CubicSpline::new(&x, &y, bc).map_err(error)?;
                 }
@@ -1803,22 +1824,33 @@ impl EvalDyn for ApproxAdapter {
             },
             | A::PchipEval | A::PchipDerivative => {
                 let data = curve_data(&args[0], true)?;
-                let model = Pchip::new(&data.x, &data.y).map_err(error)?;
                 let x = numeric(&args[1], 1)?;
-                super::output_scalar(if matches!(self.method, A::PchipEval) {
-                    model.eval(x)
-                } else {
-                    model.derivative(x)
-                })?
+                super::output_scalar(Pchip::query_checked_samples(
+                    &data.x,
+                    &data.y,
+                    x,
+                    matches!(self.method, A::PchipDerivative),
+                ))?
             },
-            | A::ChebNew => {
-                let (_, coeffs) = array::<f64>(&args[0], 1)?;
+            | A::ChebNew | A::ChebFromValues => {
+                let (_, samples) = array::<f64>(&args[0], 1)?;
                 let a = numeric(&args[1], 1)?;
                 let b = numeric(&args[2], 2)?;
-                if coeffs.is_empty() || coeffs.len() > 65 || a >= b {
-                    return Err(error("invalid Chebyshev coefficients/interval"));
+                if samples.is_empty() || samples.len() > 65 || a >= b {
+                    return Err(error(
+                        "Chebyshev model requires 1 to 65 values and increasing endpoints",
+                    ));
                 }
-                encode_cheb(ChebSeries { coeffs, a, b })?
+                let series = if matches!(self.method, A::ChebFromValues) {
+                    ChebSeries::from_values(&samples, a, b)
+                } else {
+                    ChebSeries {
+                        coeffs: samples,
+                        a,
+                        b,
+                    }
+                };
+                encode_cheb(series)?
             },
             | A::ChebEval
             | A::ChebDegree
@@ -1931,6 +1963,11 @@ const APPROX_METHODS: &[(&str, &str, ApproxMethod)] = &[
         ApproxMethod::PchipDerivative,
     ),
     ("num_native_cheb_coefficients", "", ApproxMethod::ChebNew),
+    (
+        "num_native_cheb_from_values",
+        "crate::kernels::approx::ChebSeries::from_values",
+        ApproxMethod::ChebFromValues,
+    ),
     (
         "num_native_cheb_eval",
         "crate::kernels::approx::ChebSeries::eval",

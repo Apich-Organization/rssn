@@ -49,6 +49,8 @@ struct Scalar {
     ni: usize,
     callbacks: usize,
 }
+const GK_BREAKPOINTS: usize = 20;
+
 fn rule(k: usize) -> Result<q::GkRule, OpError> {
     match k {
         | 0 => Ok(q::GkRule::G7K15),
@@ -114,7 +116,17 @@ impl EvalDyn for Scalar {
     ) -> Result<Value, OpError> {
         let signature = self.signature();
         let callbacks = Callbacks::new(ctx, args, &signature, 5, count(&args[4], 4)?)?;
-        let p = vector(&args[0], &DimExpr::Dimless, Some(self.np), 0, ctx)?;
+        let with_breakpoints = self.kind == GK_BREAKPOINTS;
+        if with_breakpoints && matches!(&args[0], Value::Tensor(t) if t.data.len() > 1_000_004) {
+            return Err(domain("too many Gauss–Kronrod parameters or breakpoints"));
+        }
+        let p = vector(
+            &args[0],
+            &DimExpr::Dimless,
+            (!with_breakpoints).then_some(self.np),
+            0,
+            ctx,
+        )?;
         let Value::Tensor(controls) = &args[1] else {
             return Err(domain("integer controls must be a tensor"));
         };
@@ -217,6 +229,28 @@ impl EvalDyn for Scalar {
                 let r = crate::kernels::series::sum_to_infinity(f, k[0] as i64, p[0], k[1]);
                 Ok((r.value, Some(r.error), Some(r.error <= p[0])))
             },
+            | GK_BREAKPOINTS => {
+                let [a, b, abs_tol, rel_tol, breakpoints @ ..] = p.as_slice() else {
+                    return Err(domain("expected [a, b, abs_tol, rel_tol, ...breakpoints]"));
+                };
+                q::integrate_gk_breakpoints(
+                    f,
+                    *a,
+                    *b,
+                    breakpoints,
+                    rule(k[0])?,
+                    *abs_tol,
+                    *rel_tol,
+                    k[1],
+                )
+                .map(integral)
+                .map_err(|error| {
+                    match error {
+                        | q::GkError::Cancelled => crate::cancellation::Cancelled.into(),
+                        | error => domain(error.to_string()),
+                    }
+                })
+            },
             | _ => return Err(domain("unknown analysis scalar method")),
         };
         let used = callbacks.used.get();
@@ -282,6 +316,20 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             mode: Mode::Integral,
             np: 3,
             ni: 0,
+            callbacks: 1,
+        },
+    )?;
+    register(
+        i,
+        "num_analysis_quadrature_gk_breakpoints_scaled",
+        "crate::kernels::quadrature::integrate_gk_breakpoints",
+        "Integrates a normalized callback with a shared tolerance and panel budget across known interior breakpoints. The Float parameters are `[a, b, abs_tol, rel_tol, ...breakpoints]` and the integer controls are `[rule, max_panels]` with rule 0 for G7K15 or 1 for G10K21. Pass positive coordinate and integrand reference scales and a callback evaluation budget. The result value and error have the product of the two reference dimensions.",
+        6,
+        Scalar {
+            kind: GK_BREAKPOINTS,
+            mode: Mode::Integral,
+            np: 4,
+            ni: 2,
             callbacks: 1,
         },
     )?;

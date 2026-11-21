@@ -355,6 +355,29 @@ object_binding!(half_step_h,"num_analysis_yee_half_step_h","crate::sim::yee_fdtd
 object_binding!(run,"num_analysis_yee_run","crate::sim::yee_fdtd::Yee::run","Actual native Yee FDTD operation. Explicit positive SI length, wave-speed, impedance and electric-field references define c=epsilon0=mu0=1native coordinates. H uses E/Z, time L/c, energy E²L³/(Zc), conductivity1/(ZL). Grid≤4096and source/work bounds precede execution.",false,(solver:Handle<Yee>,steps:usize)->(),|ctx,solver,steps|solver.with_mut(ctx,|s|{if steps.checked_mul(s.data.size()).is_none_or(|n|n>1000000){return Err(api::error("Yee step-times-cell work budget exceeds1000000"));}s.data.run(steps);s.finish()}));
 object_binding!(add_source,"num_analysis_yee_add_source","crate::sim::yee_fdtd::Yee::add_source","Actual native Yee FDTD operation. Explicit positive SI length, wave-speed, impedance and electric-field references define c=epsilon0=mu0=1native coordinates. H uses E/Z, time L/c, energy E²L³/(Zc), conductivity1/(ZL). Grid≤4096and source/work bounds precede execution.",false,(solver:Handle<Yee>,cell:[usize;3],component:String,program:Input,maxeval:usize)->(),|ctx,solver,cell,component,program,maxeval|solver.with_mut(ctx,|s|{let c=comp(&component)?;if !electric_comp(c)||cell.iter().zip(s.data.n()).any(|(i,n)|*i>=n){return Err(api::error("current source requires an electric component and valid cell"));}let p=waveform(ctx,&program,&s.frame,current(),maxeval)?;let scale=s.frame.current()?;let callback=wave(p.clone(),&s.frame,scale);s.retain(p)?;s.data.add_source(y::CurrentSource{cell,comp:c,waveform:callback});Ok(())}));
 object_binding!(set_plane_wave,"num_analysis_yee_set_plane_wave","crate::sim::yee_fdtd::Yee::set_plane_wave","Actual native Yee FDTD operation. Explicit positive SI length, wave-speed, impedance and electric-field references define c=epsilon0=mu0=1native coordinates. H uses E/Z, time L/c, energy E²L³/(Zc), conductivity1/(ZL). Grid≤4096and source/work bounds precede execution.",false,(solver:Handle<Yee>,first:usize,last:usize,psi:f64,program:Input,total_steps:usize,maxeval:usize)->(),|ctx,solver,first,last,psi,program,total_steps,maxeval|solver.with_mut(ctx,|s|{if total_steps>100000||first>=last||last>=s.data.n()[0]{return Err(api::error("TF/SF bounds/incident-history budget invalid"));}let p=waveform(ctx,&program,&s.frame,electric(),maxeval)?;if s.sources>=4||s.snapshot_bytes.checked_add(p.retained_bytes).is_none_or(|n|n>32*1024*1024){return Err(api::error("Yee source snapshot reservation exhausted"));}let waveform=wave(p.clone(),&s.frame,s.frame.electric);s.data.set_plane_wave(y::PlaneWave{ia:first,ib:last,psi,waveform},total_steps).map_err(api::error)?;s.retain(p)?;s.finish()}));
+object_binding!(
+    plane_wave_sample,
+    "num_analysis_yee_plane_wave_sample",
+    "crate::sim::yee_fdtd::Yee::plane_wave_sample",
+    "Reads electric and magnetic amplitudes in their separate physical units at an auxiliary normal-incidence TF/SF line index. The magnetic field is sampled one half-cell ahead of the electric field. Returns the actual electric and magnetic sample times. No installed source or an out-of-range index returns None.",
+    false,
+    (solver: Handle<Yee>, index: usize) -> Maybe<Dynamic>,
+    |ctx, solver, index| solver.with(ctx, |solver| {
+        let Some(sample) = solver.data.plane_wave_sample(index) else {
+            return Ok(Maybe(None));
+        };
+        let physical = |value, reference, dimension| {
+            api::quantity(api::scale_product(value, &[reference], &[])?, dimension)
+        };
+        let f = &solver.frame;
+        Ok(Maybe(Some(Dynamic(api::record(vec![
+            ("electric", physical(sample.electric, f.electric, electric())?),
+            ("magnetic", physical(sample.magnetic, f.magnetic, magnetic())?),
+            ("electric_time", physical(sample.electric_time, f.time, time())?),
+            ("magnetic_time", physical(sample.magnetic_time, f.time, time())?),
+        ])))))
+    })
+);
 #[allow(
     clippy::needless_pass_by_value,
     clippy::too_many_arguments,
@@ -440,6 +463,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &run::BINDING,
             &add_source::BINDING,
             &set_plane_wave::BINDING,
+            &plane_wave_sample::BINDING,
             &set_oblique_plane_wave::BINDING,
             &set_oblique_plane_wave_rotated::BINDING,
             &state::BINDING,

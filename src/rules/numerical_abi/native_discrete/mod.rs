@@ -173,6 +173,7 @@ mod callbacks;
 mod coding;
 mod distribution_values;
 mod distributions;
+mod epd;
 mod graph;
 mod graphics;
 mod homology_maps;
@@ -196,6 +197,7 @@ pub(super) fn install(
     lie::install(i)?;
     parallel::install(i)?;
     callbacks::install(i)?;
+    epd::install(i)?;
     homotopy::install(i)?;
     ball::install(i)?;
     permgroup::install(i)?;
@@ -224,18 +226,4 @@ fn extended_quantity(
             value: Box::new(Value::Float(value)),
         })
     }))
-}
-fn extended_numeric(value: &Value) -> Result<f64, OpError> {
-    match value {
-        | Value::Float(v) if v.is_infinite() => Ok(*v),
-        | Value::Dyn(d) => extended_numeric(&d.value),
-        | Value::Quantity(q) => {
-            let unit = Value::Quantity(crate::kernel::value::QuantityValue {
-                value: Box::new(Value::Float(1.0)),
-                unit: q.unit.clone(),
-            });
-            Ok(extended_numeric(&q.value)? * numeric(&unit, 0)?)
-        },
-        | _ => numeric(value, 0),
-    }
 }

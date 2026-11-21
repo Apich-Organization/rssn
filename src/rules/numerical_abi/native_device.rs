@@ -348,12 +348,10 @@ fn physical(
             values
                 .iter()
                 .map(|v| {
-                    let actual = if matches!(v, Value::Dyn(_) | Value::Quantity(_)) {
-                        api::dimension(v)?
-                    } else {
-                        inherited.clone().unwrap_or(api::dimension(v)?)
-                    };
-                    api::same_dimension(&actual, dim)?;
+                    // The typed column check also validates explicitly measured cells.
+                    if inherited.is_none() {
+                        api::same_dimension(&api::dimension(v)?, dim)?;
+                    }
                     api::scale_product(crate::rules::numerical_abi::numeric(v, 0)?, &[], &[*s])
                 })
                 .collect()

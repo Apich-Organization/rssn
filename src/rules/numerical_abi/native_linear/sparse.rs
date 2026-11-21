@@ -1,6 +1,7 @@
 //! Native sparse matrix methods retain an explicit entry reference scale.
 use super::Array;
 use super::ArrayD;
+use super::CallCtx;
 use super::DimExpr;
 use super::Dynamic;
 use super::Handle;
@@ -26,6 +27,8 @@ use super::product;
 use super::scale;
 use crate::kernels::bsr;
 use crate::kernels::krylov;
+use crate::kernels::numeric_common::NumericError;
+use crate::kernels::sparse_native;
 #[derive(Clone)]
 pub(super) struct Csr {
     pub data: krylov::Csr,
@@ -56,6 +59,10 @@ impl NativeType for Csr {
         }
         Ok(())
     }
+
+    fn retained_bytes(&self) -> usize {
+        size_of::<Self>() + self.data.heap_bytes()
+    }
 }
 #[derive(Clone)]
 struct Bsr {
@@ -78,6 +85,13 @@ impl NativeType for Bsr {
             return Err(err("block sparse allocation/rank budget exceeded"));
         }
         Ok(())
+    }
+
+    fn retained_bytes(&self) -> usize {
+        size_of::<Self>()
+            + self.data.indptr.capacity() * size_of::<usize>()
+            + self.data.indices.capacity() * size_of::<usize>()
+            + self.data.values.capacity() * size_of::<f64>()
     }
 }
 pub(super) fn triplets(
@@ -168,6 +182,37 @@ object_binding!(sparse_bsr_diagonal_blocks,"num_linear_bsr_diagonal_blocks","cra
 object_binding!(sparse_bsr_matvec,"num_linear_bsr_matvec","crate::kernels::bsr::Bsr::matvec","Native sparse matrix operation with retained entry reference and physical unit domain. Indices are zero based; normalized array storage, capability kind/session and size/work budgets are checked.",true,(a:Handle<Bsr>,x:Handle<Array>)->NewObject<Array>,|ctx,a,x|{let _=ctx;let d=product(dim(ctx,&a.value)?,dim(ctx,&x.value)?)?;a.with(ctx,|a|x.with(ctx,|x|{let input=vector(x,a.data.ncols)?;let mut y=vec![0.0;a.data.nrows];a.data.matvec(input,&mut y);result(y,scale(a.scale,x.scale)?,d)}))});
 object_binding!(sparse_bsr_matvec_transpose,"num_linear_bsr_matvec_transpose","crate::kernels::bsr::Bsr::matvec_transpose","Native sparse matrix operation with retained entry reference and physical unit domain. Indices are zero based; normalized array storage, capability kind/session and size/work budgets are checked.",true,(a:Handle<Bsr>,x:Handle<Array>)->NewObject<Array>,|ctx,a,x|{let _=ctx;let d=product(dim(ctx,&a.value)?,dim(ctx,&x.value)?)?;a.with(ctx,|a|x.with(ctx,|x|{let input=vector(x,a.data.nrows)?;let mut y=vec![0.0;a.data.ncols];a.data.matvec_transpose(input,&mut y);result(y,scale(a.scale,x.scale)?,d)}))});
 object_binding!(sparse_bsr_matmul,"num_linear_bsr_matmul","crate::kernels::bsr::Bsr::matmul","Native sparse matrix operation with retained entry reference and physical unit domain. Indices are zero based; normalized array storage, capability kind/session and size/work budgets are checked.",true,(a:Handle<Bsr>,b:Handle<Bsr>)->NewObject<Bsr>,|ctx,a,b|{let _=ctx;let d=product(dim(ctx,&a.value)?,dim(ctx,&b.value)?)?;a.with(ctx,|a|b.with(ctx,|b|{if a.data.nrows.checked_mul(b.data.ncols).is_none_or(|n|n>LIMIT)||a.data.stored_len().checked_mul(b.data.stored_len()).is_none_or(|n|n>WORK){return Err(err("sparse product allocation/work budget exceeded"));}Ok(NewObject::new(Bsr{data:a.data.matmul(&b.data).map_err(err)?,scale:scale(a.scale,b.scale)?},vec![d]))}))});
+object_binding!(
+    sparse_bsr_matmul_dense,
+    "num_linear_bsr_matmul_dense",
+    "crate::kernels::bsr::Bsr::matmul_dense",
+    "Multiplies a block sparse matrix by a rank-two array of right-hand sides. The result keeps the product of the operands' reference scales and physical dimensions.",
+    true,
+    (a: Handle<Bsr>, x: Handle<Array>) -> NewObject<Array>,
+    |ctx, a, x| {
+        let d = product(dim(ctx, &a.value)?, dim(ctx, &x.value)?)?;
+        a.with(ctx, |a| {
+            x.with(ctx, |x| {
+                let &[rows, cols] = x.data.shape() else {
+                    return Err(err("block sparse multiplication requires a rank-two array"));
+                };
+                if rows != a.data.ncols {
+                    return Err(err("block sparse product inner dimensions differ"));
+                }
+                let shape = [a.data.nrows, cols];
+                count(&shape)?;
+                if a.data.stored_len().checked_mul(cols).is_none_or(|n| n > WORK) {
+                    return Err(err("block sparse product work budget exceeded"));
+                }
+                let reference = scale(a.scale, x.scale)?;
+                let input = x.data.as_slice().ok_or_else(|| err("array not contiguous"))?;
+                let values = a.data.matmul_dense(input, cols).map_err(err)?;
+                let data = ArrayD::from_shape_vec(IxDyn(&shape), values).map_err(err)?;
+                Ok(array(data, reference, d))
+            })
+        })
+    }
+);
 object_binding!(sparse_choose_block_size,"num_linear_choose_block_size","crate::kernels::bsr::choose_block_size","Native sparse matrix operation with retained entry reference and physical unit domain. Indices are zero based; normalized array storage, capability kind/session and size/work budgets are checked.",true,(a:Handle<Csr>,candidates:Vec<[usize;2]>)->Vec<usize>,|ctx,a,candidates|{let _=ctx;if candidates.len()>64||candidates.iter().flatten().any(|n|*n==0||*n>32){return Err(err("block candidate budget exceeded"));}a.with(ctx,|a|{let candidates=candidates.iter().map(|x|(x[0],x[1])).collect::<Vec<_>>();let(r,c)=bsr::choose_block_size(&a.data,&candidates);Ok(vec![r,c])})});
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     api::install(i, BINDINGS, "numerical_matrix")
@@ -178,6 +223,9 @@ static BINDINGS: &[&api::Binding] = &[
     &sparse_sparse_native_lu_solve::BINDING,
     &sparse_sparse_native_cholesky_solve::BINDING,
     &sparse_sparse_native_solve_auto::BINDING,
+    &sparse_sparse_native_lu_solve_many::BINDING,
+    &sparse_sparse_native_cholesky_solve_many::BINDING,
+    &sparse_sparse_native_solve_auto_many::BINDING,
     &sparse_sparse_native_cg::BINDING,
     &sparse_sparse_native_cg_precond::BINDING,
     &sparse_sparse_native_krylov_precond::BINDING,
@@ -238,6 +286,7 @@ static BINDINGS: &[&api::Binding] = &[
     &sparse_bsr_matvec::BINDING,
     &sparse_bsr_matvec_transpose::BINDING,
     &sparse_bsr_matmul::BINDING,
+    &sparse_bsr_matmul_dense::BINDING,
     &sparse_choose_block_size::BINDING,
 ];
 
@@ -362,6 +411,115 @@ object_binding!(sparse_sparse_native_matvec,"num_linear_sparse_native_matvec","c
 object_binding!(sparse_sparse_native_lu_solve,"num_linear_sparse_native_lu_solve","crate::kernels::sparse_native::lu_solve","Native sparse solver with explicit matrix/RHS reference domains. Solutions retain RHS/matrix units; initial vectors use that normalized solution reference. Native method/preconditioner choices, residuals and convergence reports are preserved; shape and work budgets are checked.",true,(a:Handle<Csr>,rhs:Handle<Array>)->NewObject<Array>,|ctx,a,rhs|{let _=ctx;let d=product(dim(ctx,&rhs.value)?,inverse(dim(ctx,&a.value)?)?)?;a.with(ctx,|a|rhs.with(ctx,|b|{square(&a.data)?;let input=vector(b,a.data.rows)?;let out=crate::kernels::sparse_native::lu_solve(&borrowed(&a.data),input).map_err(err)?;result(out,scale(b.scale,1.0/a.scale)?,d)}))});
 object_binding!(sparse_sparse_native_cholesky_solve,"num_linear_sparse_native_cholesky_solve","crate::kernels::sparse_native::cholesky_solve","Native sparse solver with explicit matrix/RHS reference domains. Solutions retain RHS/matrix units; initial vectors use that normalized solution reference. Native method/preconditioner choices, residuals and convergence reports are preserved; shape and work budgets are checked.",true,(a:Handle<Csr>,rhs:Handle<Array>)->NewObject<Array>,|ctx,a,rhs|{let _=ctx;let d=product(dim(ctx,&rhs.value)?,inverse(dim(ctx,&a.value)?)?)?;a.with(ctx,|a|rhs.with(ctx,|b|{square(&a.data)?;let input=vector(b,a.data.rows)?;let out=crate::kernels::sparse_native::cholesky_solve(&borrowed(&a.data),input).map_err(err)?;result(out,scale(b.scale,1.0/a.scale)?,d)}))});
 object_binding!(sparse_sparse_native_solve_auto,"num_linear_sparse_native_solve_auto","crate::kernels::sparse_native::solve_auto","Native sparse solver with explicit matrix/RHS reference domains. Solutions retain RHS/matrix units; initial vectors use that normalized solution reference. Native method/preconditioner choices, residuals and convergence reports are preserved; shape and work budgets are checked.",true,(a:Handle<Csr>,rhs:Handle<Array>)->Dynamic,|ctx,a,rhs|{let _=ctx;let d=product(dim(ctx,&rhs.value)?,inverse(dim(ctx,&a.value)?)?)?;a.with(ctx,|a|rhs.with(ctx,|b|{square(&a.data)?;let input=vector(b,a.data.rows)?;let out=crate::kernels::sparse_native::solve_auto(&borrowed(&a.data),input).map_err(err)?;Ok(Dynamic(api::record(vec![("solution",out.0.encode()?),("reference",api::quantity(scale(b.scale,1.0/a.scale)?,d)?),("algorithm",Value::String(out.1.into()))])))}))});
+
+fn solve_sparse_batch<T>(
+    ctx: &CallCtx<'_>,
+    a: &Handle<Csr>,
+    rhs: &Handle<Array>,
+    solve: impl FnOnce(&sparse_native::Csr<'_>, &[f64], usize) -> Result<(Vec<f64>, T), NumericError>,
+) -> Result<(NewObject<Array>, T), OpError> {
+    let dimension = product(dim(ctx, &rhs.value)?, inverse(dim(ctx, &a.value)?)?)?;
+    a.with(ctx, |a| {
+        rhs.with(ctx, |rhs| {
+            square(&a.data)?;
+            let &[rows, columns] = rhs.data.shape() else {
+                return Err(err(
+                    "sparse batch solve requires a rank-two right-hand side",
+                ));
+            };
+            if rows != a.data.rows {
+                return Err(err(
+                    "sparse batch right-hand side row count differs from the matrix",
+                ));
+            }
+            let shape = [a.data.cols, columns];
+            count(&shape)?;
+            if a.data
+                .values
+                .len()
+                .checked_mul(columns)
+                .is_none_or(|n| n > WORK)
+            {
+                return Err(err("sparse batch solve work budget exceeded"));
+            }
+            let reference = api::scale_product(rhs.scale, &[], &[a.scale])?;
+            let input = rhs
+                .data
+                .as_slice()
+                .ok_or_else(|| err("array not contiguous"))?;
+            let (values, metadata) = solve(&borrowed(&a.data), input, columns).map_err(err)?;
+            let data = ArrayD::from_shape_vec(IxDyn(&shape), values).map_err(err)?;
+            Ok((array(data, reference, dimension), metadata))
+        })
+    })
+}
+
+struct SparseBatchResult {
+    solution: NewObject<Array>,
+    algorithm: &'static str,
+}
+
+impl api::NativeOutput for SparseBatchResult {
+    fn ty() -> super::TypeExpr {
+        super::TypeExpr::Record(vec![
+            (
+                "solution".into(),
+                <NewObject<Array> as api::NativeOutput>::ty(),
+            ),
+            ("algorithm".into(), super::TypeExpr::String),
+        ])
+    }
+
+    fn encode(
+        self,
+        ctx: &CallCtx<'_>,
+    ) -> Result<Value, OpError> {
+        Ok(api::record(vec![
+            ("solution", api::NativeOutput::encode(self.solution, ctx)?),
+            ("algorithm", Value::String(self.algorithm.into())),
+        ]))
+    }
+}
+
+object_binding!(
+    sparse_sparse_native_lu_solve_many,
+    "num_linear_sparse_native_lu_solve_many",
+    "crate::kernels::sparse_native::lu_solve_many",
+    "Uses one sparse LU factorization for the columns of a rank-two right-hand side. The solution reference and physical dimension are those of the right-hand side divided by the matrix.",
+    true,
+    (a: Handle<Csr>, rhs: Handle<Array>) -> NewObject<Array>,
+    |ctx, a, rhs| {
+        solve_sparse_batch(ctx, &a, &rhs, |a, input, columns| {
+            sparse_native::lu_solve_many(a, input, columns).map(|solution| (solution, ()))
+        }).map(|(solution, ())| solution)
+    }
+);
+object_binding!(
+    sparse_sparse_native_cholesky_solve_many,
+    "num_linear_sparse_native_cholesky_solve_many",
+    "crate::kernels::sparse_native::cholesky_solve_many",
+    "Uses one sparse Cholesky factorization for the columns of a rank-two right-hand side. The matrix must be symmetric positive definite. The solution retains the right-hand-side units divided by the matrix units.",
+    true,
+    (a: Handle<Csr>, rhs: Handle<Array>) -> NewObject<Array>,
+    |ctx, a, rhs| {
+        solve_sparse_batch(ctx, &a, &rhs, |a, input, columns| {
+            sparse_native::cholesky_solve_many(a, input, columns).map(|solution| (solution, ()))
+        }).map(|(solution, ())| solution)
+    }
+);
+object_binding!(
+    sparse_sparse_native_solve_auto_many,
+    "num_linear_sparse_native_solve_auto_many",
+    "crate::kernels::sparse_native::solve_auto_many",
+    "Solves a rank-two right-hand side with one sparse Cholesky or LU factorization. The result contains the normalized solution array with its quotient reference and the chosen algorithm name.",
+    true,
+    (a: Handle<Csr>, rhs: Handle<Array>) -> SparseBatchResult,
+    |ctx, a, rhs| {
+        let (solution, algorithm) = solve_sparse_batch(ctx, &a, &rhs, sparse_native::solve_auto_many)?;
+        Ok(SparseBatchResult { solution, algorithm })
+    }
+);
+
 object_binding!(sparse_sparse_native_cg,"num_linear_sparse_native_cg","crate::kernels::sparse_native::cg","Native sparse solver with explicit matrix/RHS reference domains. Solutions retain RHS/matrix units; initial vectors use that normalized solution reference. Native method/preconditioner choices, residuals and convergence reports are preserved; shape and work budgets are checked.",true,(a:Handle<Csr>,rhs:Handle<Array>,tolerance:f64,max_iterations:usize)->Dynamic,|ctx,a,rhs,tolerance,max_iterations|{let _=ctx;let d=product(dim(ctx,&rhs.value)?,inverse(dim(ctx,&a.value)?)?)?;a.with(ctx,|a|rhs.with(ctx,|b|{iterative_budget(&a.data,tolerance,max_iterations)?;let input=vector(b,a.data.rows)?;let out=crate::kernels::sparse_native::cg(&borrowed(&a.data),input,tolerance,max_iterations).map_err(err)?;Ok(Dynamic(api::record(vec![("solution",out.x.encode()?),("reference",api::quantity(scale(b.scale,1.0/a.scale)?,d)?),("iterations",out.iterations.encode()?),("residual",out.residual.encode()?),("converged",out.converged.encode()?)])))}))});
 object_binding!(sparse_sparse_native_cg_precond,"num_linear_sparse_native_cg_precond","crate::kernels::sparse_native::cg_precond","Native sparse solver with explicit matrix/RHS reference domains. Solutions retain RHS/matrix units; initial vectors use that normalized solution reference. Native method/preconditioner choices, residuals and convergence reports are preserved; shape and work budgets are checked.",true,(a:Handle<Csr>,rhs:Handle<Array>,tolerance:f64,max_iterations:usize,kind:String,block_rows:usize,block_cols:usize)->Dynamic,|ctx,a,rhs,tolerance,max_iterations,kind,block_rows,block_cols|{let _=ctx;let d=product(dim(ctx,&rhs.value)?,inverse(dim(ctx,&a.value)?)?)?;a.with(ctx,|a|rhs.with(ctx,|b|{iterative_budget(&a.data,tolerance,max_iterations)?;let input=vector(b,a.data.rows)?;let block=if block_rows==0&&block_cols==0{None}else{if block_rows==0||block_cols==0||block_rows>32||block_cols>32{return Err(err("block shape budget invalid"));}Some((block_rows,block_cols))};let out=crate::kernels::sparse_native::cg_precond(&borrowed(&a.data),input,tolerance,max_iterations,preconditioner(&kind)?,block).map_err(err)?;Ok(Dynamic(api::record(vec![("solution",out.x.encode()?),("reference",api::quantity(scale(b.scale,1.0/a.scale)?,d)?),("iterations",out.iterations.encode()?),("residual",out.residual.encode()?),("converged",out.converged.encode()?),("preconditioner",Value::String(out.precond.into()))])))}))});
 object_binding!(sparse_sparse_native_krylov_precond,"num_linear_sparse_native_krylov_precond","crate::kernels::sparse_native::krylov_precond","Native sparse solver with explicit matrix/RHS reference domains. Solutions retain RHS/matrix units; initial vectors use that normalized solution reference. Native method/preconditioner choices, residuals and convergence reports are preserved; shape and work budgets are checked.",true,(a:Handle<Csr>,rhs:Handle<Array>,tolerance:f64,max_iterations:usize,kind:String,block_rows:usize,block_cols:usize,method_name:String,restart:usize)->Dynamic,|ctx,a,rhs,tolerance,max_iterations,kind,block_rows,block_cols,method_name,restart|{let _=ctx;let d=product(dim(ctx,&rhs.value)?,inverse(dim(ctx,&a.value)?)?)?;a.with(ctx,|a|rhs.with(ctx,|b|{iterative_budget(&a.data,tolerance,max_iterations)?;let input=vector(b,a.data.rows)?;let block=if block_rows==0&&block_cols==0{None}else{if block_rows==0||block_cols==0||block_rows>32||block_cols>32{return Err(err("block shape budget invalid"));}Some((block_rows,block_cols))};let method=match method_name.as_str(){"Bicgstab"=>crate::kernels::sparse_native::Krylov::Bicgstab,"Gmres"=>{if restart==0||restart>64{return Err(err("GMRES restart budget exceeded"));}crate::kernels::sparse_native::Krylov::Gmres{restart}},_=>return Err(err("Krylov method must be Gmres or Bicgstab"))};let out=crate::kernels::sparse_native::krylov_precond(&borrowed(&a.data),input,tolerance,max_iterations,method,preconditioner(&kind)?,block).map_err(err)?;Ok(Dynamic(api::record(vec![("solution",out.x.encode()?),("reference",api::quantity(scale(b.scale,1.0/a.scale)?,d)?),("iterations",out.iterations.encode()?),("residual",out.residual.encode()?),("converged",out.converged.encode()?),("preconditioner",Value::String(out.precond.into()))])))}))});

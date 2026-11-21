@@ -67,6 +67,35 @@ object_binding!(sobol_new,"num_analysis_sobol_new","crate::kernels::quadrature::
 });
 object_binding!(sobol_next,"num_analysis_sobol_next","crate::kernels::quadrature::Sobol::next_point","Advance the retained native Sobol sequence, returning normalized unit-cube coordinates.",true,(sequence:Handle<SobolObject>)->Vec<f64>,|ctx:&CallCtx<'_>,sequence:Handle<SobolObject>|sequence.with_mut(ctx,|s|Ok(s.native.next_point())));
 
+object_binding!(
+    sobol_point_at,
+    "num_analysis_sobol_point_at",
+    "crate::kernels::quadrature::Sobol::point_at",
+    "Returns the indexed normalized unit-cube point without advancing the sequence. Index zero is the origin. The index must fit in an unsigned 32-bit integer.",
+    true,
+    (sequence: Handle<SobolObject>, index: u64) -> Vec<f64>,
+    |ctx, sequence, index| {
+        let index = u32::try_from(index).map_err(object::error)?;
+        sequence.with(ctx, |sequence| Ok(sequence.native.point_at(index)))
+    }
+);
+
+object_binding!(
+    sobol_seek,
+    "num_analysis_sobol_seek",
+    "crate::kernels::quadrature::Sobol::seek",
+    "Sets a retained sequence position by its unsigned 32-bit index. The next draw is at index plus one, wrapping the largest index to the origin.",
+    true,
+    (sequence: Handle<SobolObject>, index: u64) -> (),
+    |ctx, sequence, index| {
+        let index = u32::try_from(index).map_err(object::error)?;
+        sequence.with_mut(ctx, |sequence| {
+            sequence.native.seek(index);
+            Ok(())
+        })
+    }
+);
+
 object_binding!(gaussian_sample,"num_analysis_gaussian_sample","crate::kernels::quadrature::Gaussian::sample","Sample a measured Gaussian using the retained shared native RNG handle.",false,(model:Handle<Gaussian>,rng:Handle<crate::kernels::random::Rng>)->Dynamic,|ctx:&CallCtx<'_>,model:Handle<Gaussian>,rng:Handle<crate::kernels::random::Rng>|{
  let d=model.dimensions(ctx)?.into_iter().next().ok_or_else(||object::error("Gaussian model lacks unit domain"))?;
  let model=model.with(ctx,|m|Ok(*m))?;let value=rng.with_mut(ctx,|rng|Ok(model.sample(rng)))?;
@@ -83,6 +112,8 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &gaussian_sample::BINDING,
             &sobol_new::BINDING,
             &sobol_next::BINDING,
+            &sobol_point_at::BINDING,
+            &sobol_seek::BINDING,
         ],
         "numerical_vector",
     )

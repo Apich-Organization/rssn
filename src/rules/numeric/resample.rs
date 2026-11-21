@@ -5,7 +5,10 @@
 //! | `quantile_hf(data, p, kind)` | the sample quantile at probability `p` by Hyndman-Fan definition `kind` (1 to 9; 7 is the `NumPy` and R default) |
 //! | `bootstrap_ci(data, statistic, alpha, resamples, seed)` | `list(lo, hi)`, the percentile bootstrap interval of level `1 - alpha` for a statistic named by a symbol |
 //!
-//! The statistic of `bootstrap_ci` is one of `mean`, `median`, `std`
+//! `bootstrap_basic_ci` uses the same samples and reflects the percentile
+//! bounds about the statistic on the original sample.
+//!
+//! The bootstrap statistic is one of `mean`, `median`, `std`
 //! (sample standard deviation), `variance` (sample variance), `mad` or `iqr`.
 //! The resampling is seeded, so the interval is reproducible. The number of
 //! resamples and the sample size are capped so that one call stays bounded.
@@ -65,25 +68,38 @@ fn deviation(x: &[f64]) -> f64 {
     variance(x).sqrt()
 }
 
-fn median_abs_deviation(x: &[f64]) -> f64 {
-    robust::mad(x, false)
+enum Statistic {
+    Scan(fn(&[f64]) -> f64),
+    Order(robust::BootstrapOrderStatistic),
 }
 
-/// The statistic a symbol names, over a resample.
-fn statistic(name: &str) -> Option<fn(&[f64]) -> f64> {
-    let stat: fn(&[f64]) -> f64 = match name {
-        | "mean" => mean,
-        | "median" => robust::median,
-        | "std" => deviation,
-        | "variance" => variance,
-        | "mad" => median_abs_deviation,
-        | "iqr" => robust::iqr,
+fn statistic(name: &str) -> Option<Statistic> {
+    use robust::BootstrapOrderStatistic::Iqr;
+    use robust::BootstrapOrderStatistic::Mad;
+    use robust::BootstrapOrderStatistic::Median;
+    Some(match name {
+        | "mean" => Statistic::Scan(mean),
+        | "std" => Statistic::Scan(deviation),
+        | "variance" => Statistic::Scan(variance),
+        | "median" => Statistic::Order(Median),
+        | "mad" => Statistic::Order(Mad),
+        | "iqr" => Statistic::Order(Iqr),
         | _ => return None,
-    };
-    Some(stat)
+    })
 }
 
 fn bootstrap_ci(a: &[Data]) -> Option<Data> {
+    bootstrap(a, false)
+}
+
+fn bootstrap_basic_ci(a: &[Data]) -> Option<Data> {
+    bootstrap(a, true)
+}
+
+fn bootstrap(
+    a: &[Data],
+    basic: bool,
+) -> Option<Data> {
     let x = sample(a, 0)?;
     let label = name(a, 1)?;
     let Some(stat) = statistic(label) else {
@@ -125,9 +141,24 @@ fn bootstrap_ci(a: &[Data]) -> Option<Data> {
         seed >= 0.0 && seed.fract() == 0.0 && seed <= MAX_SEED,
         Some(4),
         DiagKind::Domain,
-        format_args!("the seed must be a non-negative integer below 2^53, got {seed}"),
+        format_args!("the seed must be a non-negative integer at most 2^53, got {seed}"),
     )?;
-    let (lo, hi) = robust::bootstrap_ci(x, stat, resamples, alpha, seed as u64);
+    let seed = seed as u64;
+    let (lo, hi) = match stat {
+        | Statistic::Order(order) => order.interval_finite(x, resamples, alpha, seed, basic),
+        | Statistic::Scan(stat) if basic => {
+            robust::bootstrap_basic_ci(x, stat, resamples, alpha, seed)
+        },
+        | Statistic::Scan(stat) => robust::bootstrap_ci(x, stat, resamples, alpha, seed),
+    };
+    if basic {
+        require(
+            lo.is_finite() && hi.is_finite(),
+            None,
+            DiagKind::Domain,
+            format_args!("the basic bootstrap interval lies outside the finite float range"),
+        )?;
+    }
     vec_out(vec![lo, hi])
 }
 
@@ -137,6 +168,12 @@ pub(super) const ENTRIES: &[Entry] = &[
         params: "vss",
         eval: quantile_hf,
         doc: "`quantile_hf(data, p, kind)`: sample quantile at probability `p` in `[0, 1]` using Hyndman-Fan definition `kind` (1 to 9).",
+    },
+    Entry {
+        name: "bootstrap_basic_ci",
+        params: "vwsss",
+        eval: bootstrap_basic_ci,
+        doc: "`bootstrap_basic_ci(data, statistic, alpha, resamples, seed)`: `list(lo, hi)` reverse percentile confidence interval of level `1 - alpha`, reflected about the statistic of the data. Pass finite normalized observations and a statistic symbol (`mean`, `median`, `std`, `variance`, `mad` or `iqr`).",
     },
     Entry {
         name: "bootstrap_ci",

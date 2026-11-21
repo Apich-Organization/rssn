@@ -1,4 +1,5 @@
 //! Native finite-difference/volume transport in an explicit reference frame.
+use super::DimExpr;
 use super::Dynamic;
 use super::Frame;
 use super::Handle;
@@ -7,10 +8,12 @@ use super::LIMIT;
 use super::OpError;
 use super::RuleError;
 use super::api;
+use super::canonical;
 use super::err;
 use super::grid_size;
 use super::object_binding;
 use super::payload;
+use crate::sim::physics_fvm::BurgersBoundary;
 fn valid(
     dims: &[usize],
     spacing: &[f64],
@@ -72,6 +75,54 @@ object_binding!(transport_physics_cfd_solve_poisson_3d_sor,"num_grid_physics_cfd
 object_binding!(transport_physics_fdm_solve_poisson_1d,"num_grid_physics_fdm_solve_poisson_1d","crate::sim::physics_fdm::solve_poisson_1d","Native transport calculation in the supplied reference frame. Coordinates, velocities, diffusivities and timesteps are explicitly normalized by Length, Time and field references; no measured numeric input is silently erased. Solver work and storage are bounded.",true,(frame:Handle<Frame>,source:Vec<f64>,initial:Vec<f64>,dims:Vec<usize>,spacing:Vec<f64>,iterations:usize,tolerance:f64,omega:f64)->Dynamic,|ctx,frame,source,initial,dims,spacing,iterations,tolerance,omega|{let _=ctx;frame.with(ctx,|f|{if dims.len()!=1{return Err(err("Poisson dimension mismatch"));}valid(&dims,&spacing,&source,1.0,iterations,false)?;if initial.len()!=source.len()||tolerance<=0.0||omega<=0.0||omega>=2.0{return Err(err("Poisson initial/tolerance/relaxation invalid"));}let out=crate::sim::physics_fdm::solve_poisson_1d(&source,spacing[0],omega,iterations,tolerance).map_err(err)?;finish(f,out,dims)})});
 object_binding!(transport_physics_fdm_solve_poisson_3d,"num_grid_physics_fdm_solve_poisson_3d","crate::sim::physics_fdm::solve_poisson_3d","Native transport calculation in the supplied reference frame. Coordinates, velocities, diffusivities and timesteps are explicitly normalized by Length, Time and field references; no measured numeric input is silently erased. Solver work and storage are bounded.",true,(frame:Handle<Frame>,source:Vec<f64>,initial:Vec<f64>,dims:Vec<usize>,spacing:Vec<f64>,iterations:usize,tolerance:f64,omega:f64)->Dynamic,|ctx,frame,source,initial,dims,spacing,iterations,tolerance,omega|{let _=ctx;frame.with(ctx,|f|{if dims.len()!=3{return Err(err("Poisson dimension mismatch"));}valid(&dims,&spacing,&source,1.0,iterations,false)?;if initial.len()!=source.len()||tolerance<=0.0||omega<=0.0||omega>=2.0{return Err(err("Poisson initial/tolerance/relaxation invalid"));}let n:[usize;3]=dims.clone().try_into().map_err(|_|err("dimension mismatch"))?;let h:[f64;3]=spacing.clone().try_into().map_err(|_|err("spacing mismatch"))?;let out=crate::sim::physics_fdm::solve_poisson_3d(&source,n,h,omega,iterations,tolerance).map_err(err)?;finish(f,out,dims)})});
 object_binding!(transport_physics_fvm_burgers_nd,"num_grid_physics_fvm_burgers_nd","crate::sim::physics_fvm::solve_burgers_nd","Native transport calculation in the supplied reference frame. Coordinates, velocities, diffusivities and timesteps are explicitly normalized by Length, Time and field references; no measured numeric input is silently erased. Solver work and storage are bounded.",true,(frame:Handle<Frame>,initial:Vec<f64>,dims:Vec<usize>,spacing:Vec<f64>,dt:f64,steps:usize)->Dynamic,|ctx,frame,initial,dims,spacing,dt,steps|{let _=ctx;frame.with(ctx,|f|{valid(&dims,&spacing,&initial,dt,steps,false)?;let speed=initial.iter().fold(0.0f64,|a,u|a.max(u.abs()));stable(&spacing,dt,&vec![speed;dims.len()],0.0)?;let out=crate::sim::physics_fvm::solve_burgers_nd(&initial,&dims,&spacing,dt,steps).map_err(err)?;finish(f,out,dims)})});
+object_binding!(
+    transport_physics_fvm_burgers_nd_with_boundaries,
+    "num_grid_physics_fvm_burgers_nd_with_boundaries",
+    "crate::sim::physics_fvm::solve_burgers_nd_with_boundaries",
+    "Solves the multidimensional Burgers equation by conservative Lax–Friedrichs fluxes. Use a velocity-valued frame. The flat initial field is in units of value_reference with x fastest, spacing in units of length_reference, and dt in units of time_reference. Supply Periodic or Outflow for both faces of each axis. The CFL bound holds separately on each axis. The returned field keeps all three references.",
+    true,
+    (
+        frame: Handle<Frame>,
+        initial: Vec<f64>,
+        dims: Vec<usize>,
+        spacing: Vec<f64>,
+        dt: f64,
+        steps: usize,
+        boundaries: Vec<String>,
+    ) -> Dynamic,
+    |ctx, frame, initial, dims, spacing, dt, steps, boundaries| frame.with(ctx, |f| {
+        valid(&dims, &spacing, &initial, dt, steps, false)?;
+        if boundaries.len() != dims.len() {
+            return Err(err("Burgers requires one boundary per axis"));
+        }
+        let boundaries = boundaries.iter().map(|kind| match kind.as_str() {
+            | "Periodic" => Ok(BurgersBoundary::Periodic),
+            | "Outflow" => Ok(BurgersBoundary::Outflow),
+            | _ => Err(err("Burgers boundary must be Periodic or Outflow")),
+        }).collect::<Result<Vec<_>, _>>()?;
+        let velocity = canonical(DimExpr::Mul(vec![
+            f.dims[0].clone(),
+            DimExpr::Inverse(Box::new(f.dims[1].clone())),
+        ]))?;
+        api::same_dimension(&f.dims[2], &velocity)?;
+        // u/u_ref and x/x_ref leave u_ref t_ref / x_ref in the flux coefficient.
+        let normalized_dt = api::scale_without_underflow(dt, &[f.time, f.value], &[f.length])?;
+        let max_speed = initial.iter().fold(0.0_f64, |speed, u| speed.max(u.abs()));
+        if max_speed > 0.0 {
+            for &h in &spacing {
+                let courant = api::scale_product(normalized_dt, &[dims.len() as f64, max_speed], &[h])?;
+                if courant > 1.0 {
+                    return Err(err("Burgers time step exceeds the per-axis CFL bound"));
+                }
+            }
+        }
+        let data = crate::sim::physics_fvm::solve_burgers_nd_with_boundaries(
+            &initial, &dims, &spacing, normalized_dt, steps, &boundaries,
+        ).map_err(err)?;
+        finish(f, data, dims)
+    })
+);
+
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     api::install(i, BINDINGS, "numerical_vector")
 }
@@ -104,6 +155,7 @@ static BINDINGS: &[&api::Binding] = &[
     &transport_physics_fdm_solve_poisson_1d::BINDING,
     &transport_physics_fdm_solve_poisson_3d::BINDING,
     &transport_physics_fvm_burgers_nd::BINDING,
+    &transport_physics_fvm_burgers_nd_with_boundaries::BINDING,
 ];
 
 fn stable(

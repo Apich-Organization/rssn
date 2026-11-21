@@ -21,6 +21,7 @@ use super::record;
 use super::register;
 use super::scalar;
 use super::scale;
+use super::scaled_vec_value;
 use super::tensor_type;
 use super::typed;
 use super::var;
@@ -237,9 +238,8 @@ impl EvalDyn for Method {
             *v /= xs;
         }
         let f = |x: &[f64]| {
-            let x: Vec<_> = x.iter().map(|v| v * xs).collect();
             callbacks
-                .call(0, &[vec_value(&x, &d)], |v| {
+                .call(0, &[scaled_vec_value(x, xs, &d)], |v| {
                     scalar(&v, &e, start, ctx).map(|v| v / ys)
                 })
                 .unwrap_or(f64::NAN)
@@ -316,14 +316,14 @@ impl EvalDyn for Method {
                 };
                 let cs = scale(&args[c_at], &c, c_at, ctx)?;
                 let hs = scale(&args[h_at], &h, h_at, ctx)?;
-                let physical: Vec<_> = initial.iter().map(|v| v * xs).collect();
+                let point = scaled_vec_value(&initial, xs, &d);
                 let eq0 = callbacks
-                    .call(1, &[vec_value(&physical, &d)], |v| {
+                    .call(1, std::slice::from_ref(&point), |v| {
                         vector(&v, &c, None, start + 1, ctx)
                     })
                     .unwrap_or_default();
                 let ineq0 = callbacks
-                    .call(2, &[vec_value(&physical, &d)], |v| {
+                    .call(2, std::slice::from_ref(&point), |v| {
                         vector(&v, &h, None, start + 2, ctx)
                     })
                     .unwrap_or_default();
@@ -354,9 +354,8 @@ impl EvalDyn for Method {
                                   dimension: &DimExpr,
                                   length: usize,
                                   reference: f64| {
-                    let x: Vec<_> = x.iter().map(|v| v * xs).collect();
                     callbacks
-                        .call(index, &[vec_value(&x, &d)], |v| {
+                        .call(index, &[scaled_vec_value(x, xs, &d)], |v| {
                             vector(&v, dimension, Some(length), start + index, ctx)
                                 .map(|v| v.into_iter().map(|v| v / reference).collect())
                         })

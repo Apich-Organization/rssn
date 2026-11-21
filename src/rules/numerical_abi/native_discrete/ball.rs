@@ -1,5 +1,7 @@
 #![allow(clippy::wildcard_imports)] // Enclosures retain physical dimensions; polynomial data has explicit normalized-coordinate references.
 use super::*;
+use crate::backend::tape::Interval;
+use crate::backend::tape::Scalar;
 use crate::kernels::ball::CTerm;
 use crate::kernels::ball::Cball;
 use crate::kernels::ball::{
@@ -7,6 +9,8 @@ use crate::kernels::ball::{
 };
 use crate::kernels::rootfind::PolyTerm;
 use num_complex::Complex64;
+use num_rational::BigRational;
+use num_traits::ToPrimitive;
 pub(super) struct PolynomialSystem {
     pub(super) real: Vec<Vec<PolyTerm>>,
     pub(super) complex: Vec<Vec<CTerm>>,
@@ -220,6 +224,169 @@ object_binding!(ball_values_at_terms,"num_native_ball_values_at_terms","crate::k
 object_binding!(ball_values_at,"num_native_ball_values_at","crate::kernels::ball::values_at","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(system:Handle<PolynomialSystem>,point:Input)->Dynamic,|ctx:&CallCtx<'_>,system:Handle<PolynomialSystem>,point:Input|{let(cd,rd)=system_dims(&system,ctx)?;system.with(ctx,|s|{let x=point_values(&point,s,&cd)?;let d=rd;let scale=s.residual;complex_output(ball::values_at(&s.real,&x),scale,d)})});
 object_binding!(ball_jacobian_at_terms,"num_native_ball_jacobian_at_terms","crate::kernels::ball::jacobian_at_terms","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(system:Handle<PolynomialSystem>,point:Input)->Many<Dynamic>,|ctx:&CallCtx<'_>,system:Handle<PolynomialSystem>,point:Input|{let(cd,rd)=system_dims(&system,ctx)?;system.with(ctx,|s|{let x=point_values(&point,s,&cd)?;let d=canonical(&(DimExpr::Mul(vec![rd,DimExpr::Inverse(Box::new(cd))])))?;let scale=s.residual/s.coordinate;Ok(Many(ball::jacobian_at_terms(&s.complex,&x).into_iter().map(|v|complex_output(v,scale,d.clone())).collect::<Result<_,_>>()?))})});
 object_binding!(ball_jacobian_at,"num_native_ball_jacobian_at","crate::kernels::ball::jacobian_at","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(system:Handle<PolynomialSystem>,point:Input)->Many<Dynamic>,|ctx:&CallCtx<'_>,system:Handle<PolynomialSystem>,point:Input|{let(cd,rd)=system_dims(&system,ctx)?;system.with(ctx,|s|{let x=point_values(&point,s,&cd)?;let d=canonical(&(DimExpr::Mul(vec![rd,DimExpr::Inverse(Box::new(cd))])))?;let scale=s.residual/s.coordinate;Ok(Many(ball::jacobian_at(&s.real,&x).into_iter().map(|v|complex_output(v,scale,d.clone())).collect::<Result<_,_>>()?))})});
+struct BallEvaluation {
+    values: Many<NewObject<Cball>>,
+    jacobian: Vec<NewObject<Cball>>,
+    size: usize,
+}
+
+impl NativeOutput for BallEvaluation {
+    fn ty() -> TypeExpr {
+        let ball = TypeExpr::Opaque(Cball::KIND.into());
+        TypeExpr::Record(vec![
+            ("values".into(), api::tensor_type(1, ball.clone())),
+            ("jacobian".into(), api::tensor_type(2, ball)),
+        ])
+    }
+
+    fn encode(
+        self,
+        ctx: &CallCtx<'_>,
+    ) -> Result<Value, OpError> {
+        let scope = api::bank(ctx)?.scoped()?;
+        let values = self.values.encode(ctx)?;
+        let jacobian = self
+            .jacobian
+            .into_iter()
+            .map(|cell| cell.encode(ctx))
+            .collect::<Result<Vec<_>, _>>()?;
+        let jacobian = Value::Tensor(TensorValue {
+            shape: vec![self.size, self.size],
+            data: jacobian,
+            elem: TypeExpr::Opaque(Cball::KIND.into()),
+        });
+        let output = api::record(vec![("values", values), ("jacobian", jacobian)]);
+        scope.commit();
+        Ok(output)
+    }
+}
+
+#[cold]
+fn exact_scaled_endpoint(
+    value: f64,
+    ratio: &BigRational,
+    upper: bool,
+) -> Result<f64, OpError> {
+    let exact = BigRational::from_float(value)
+        .ok_or_else(|| error("nonfinite polynomial enclosure"))?
+        * ratio;
+    let rounded = exact
+        .to_f64()
+        .ok_or_else(|| error("polynomial enclosure exceeds Float range"))?;
+    let encoded = BigRational::from_float(rounded)
+        .ok_or_else(|| error("polynomial enclosure exceeds Float range"))?;
+    Ok(if upper && encoded < exact {
+        rounded.next_up()
+    } else if !upper && encoded > exact {
+        rounded.next_down()
+    } else {
+        rounded
+    })
+}
+
+enum JacobianScale {
+    Outward(Interval),
+    Exact(BigRational),
+}
+
+impl JacobianScale {
+    fn new(
+        residual: f64,
+        coordinate: f64,
+    ) -> Result<Self, OpError> {
+        let scale = residual / coordinate;
+        let upper = scale.next_up();
+        if scale.is_normal() && upper.is_finite() {
+            return Ok(Self::Outward(Interval {
+                lo: scale.next_down(),
+                hi: upper,
+            }));
+        }
+        // A reference ratio outside the normal range can still give
+        // representable endpoints when applied to the normalized enclosure.
+        let residual = BigRational::from_float(residual)
+            .ok_or_else(|| error("invalid polynomial residual reference"))?;
+        let coordinate = BigRational::from_float(coordinate)
+            .ok_or_else(|| error("invalid polynomial coordinate reference"))?;
+        Ok(Self::Exact(residual / coordinate))
+    }
+
+    fn restore(
+        &self,
+        cell: Cball,
+        dimension: DimExpr,
+    ) -> Result<NewObject<Cball>, OpError> {
+        let interval = |part: Interval| -> Result<Interval, OpError> {
+            match self {
+                | Self::Outward(scale) => Ok(part.mul(*scale)),
+                | Self::Exact(scale) => {
+                    Ok(Interval {
+                        lo: exact_scaled_endpoint(part.lo, scale, false)?,
+                        hi: exact_scaled_endpoint(part.hi, scale, true)?,
+                    })
+                },
+            }
+        };
+        let value = Cball {
+            re: interval(cell.re)?,
+            im: interval(cell.im)?,
+        };
+        Ok(NewObject::new(value, vec![dimension]))
+    }
+}
+
+object_binding!(
+    ball_eval_value_and_jacobian_terms,
+    "num_native_ball_eval_value_and_jacobian_terms",
+    "crate::kernels::ball::eval_value_and_jacobian_terms",
+    "Evaluates a polynomial system and its Jacobian over one complex box, sharing term products. Returns {values, jacobian} as enclosure handles. Value units equal the residual unit. Jacobian units are residual divided by the coordinate unit.",
+    false,
+    (system: Handle<PolynomialSystem>, point: Balls) -> BallEvaluation,
+    |ctx, system, point| {
+        let (coordinate, residual) = system_dims(&system, ctx)?;
+        let derivative = canonical(&DimExpr::Mul(vec![residual.clone(), coordinate.clone().pow(-1)]))?;
+        system.with(ctx, |s| {
+            let point = box_values(&point, s, &coordinate, ctx)?;
+            let (values, jacobian) = ball::eval_value_and_jacobian_terms(&s.complex, &point);
+            let scale = JacobianScale::new(s.residual, s.coordinate)?;
+            Ok(BallEvaluation {
+                values: Many(values.into_iter().map(|cell| ball_output(cell, s.residual, residual.clone())).collect()),
+                jacobian: jacobian.into_iter().flatten().map(|cell| scale.restore(cell, derivative.clone())).collect::<Result<Vec<_>, _>>()?,
+                size: s.n,
+            })
+        })
+    }
+);
+
+object_binding!(
+    ball_values_and_jacobian_at_terms,
+    "num_native_ball_values_and_jacobian_at_terms",
+    "crate::kernels::ball::values_and_jacobian_at_terms",
+    "Evaluates a polynomial system and its Jacobian at one complex point. Returns {values, jacobian} with residual units and residual-per-coordinate units respectively. The Jacobian is a rank-two tensor with one row per equation.",
+    false,
+    (system: Handle<PolynomialSystem>, point: Input) -> Dynamic,
+    |ctx, system, point| {
+        let (coordinate, residual) = system_dims(&system, ctx)?;
+        let derivative = canonical(&DimExpr::Mul(vec![residual.clone(), coordinate.clone().pow(-1)]))?;
+        system.with(ctx, |s| {
+            let point = point_values(&point, s, &coordinate)?;
+            let (values, jacobian) = ball::values_and_jacobian_at_terms(&s.complex, &point);
+            let Dynamic(values) = complex_output(values, s.residual, residual)?;
+            let matrix = jacobian.into_iter().flatten().map(|value| {
+                Output::encode(Complex64::new(
+                    api::scale_product(value.re, &[s.residual], &[s.coordinate])?,
+                    api::scale_product(value.im, &[s.residual], &[s.coordinate])?,
+                ))
+            }).collect::<Result<Vec<_>, OpError>>()?;
+            let jacobian = Value::Tensor(TensorValue {
+                shape: vec![s.n, s.n], data: matrix,
+                elem: TypeExpr::Complex.with_dim(derivative),
+            });
+            Ok(Dynamic(api::record(vec![("values", values), ("jacobian", jacobian)])))
+        })
+    }
+);
+
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     api::install(
         i,
@@ -251,6 +418,8 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &ball_values_at::BINDING,
             &ball_jacobian_at_terms::BINDING,
             &ball_jacobian_at::BINDING,
+            &ball_eval_value_and_jacobian_terms::BINDING,
+            &ball_values_and_jacobian_at_terms::BINDING,
         ],
         "numerical_vector",
     )

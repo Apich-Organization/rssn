@@ -171,6 +171,68 @@ fn native_dg_constant_integral_and_flux_keep_units_and_small_budget_rejects() {
     assert!(format!("{err:?}").contains("work budget exhausted"));
 }
 #[test]
+fn prepared_periodic_advection_retains_measured_fields_and_its_own_geometry() {
+    let session = Session::new();
+    let length = base("Length");
+    let time = base("Time");
+    let temperature = base("Temperature");
+    let frame = call(
+        &session,
+        "num_grid_frame_new",
+        &[
+            measured(4.0, length.clone()),
+            measured(2.0, time.clone()),
+            measured(2.0, temperature.clone()),
+        ],
+    );
+    let mesh = call(
+        &session,
+        "num_dg_mesh_line",
+        &[frame, Value::int(1), num(0.0), num(1.0), Value::int(1)],
+    );
+    let velocity = DimExpr::Mul(vec![length, time.clone().pow(-1)]);
+    let plan = call(
+        &session,
+        "num_dg_advection_prepare1d",
+        &[mesh.clone(), measured(-4.0, velocity)],
+    );
+    call(&session, "num_native_release", &[mesh]);
+    let state = |n, dim| {
+        vector(
+            vec![num(0.5), num(3.5)][..n].to_vec(),
+            TypeExpr::Float.with_dim(dim),
+        )
+    };
+    let step = |state, dt| {
+        session.call_value(
+            "num_dg_advection_step_prepared1d",
+            &[plan.clone(), state, dt],
+            &CallCtx::new(),
+        )
+    };
+    let Value::Tensor(output) =
+        step(state(2, temperature.clone()), measured(0.125, time.clone())).unwrap()
+    else {
+        panic!("expected a measured nodal field");
+    };
+    assert_eq!(output.shape, [2]);
+    assert!(
+        rssn::kernel::overload::matches_type(
+            &TypeExpr::Float.with_dim(temperature.clone()),
+            &output.elem
+        )
+        .accepted()
+    );
+    let z = -0.25;
+    let gain = 1.0 + z + z * z / 2.0 + z * z * z / 6.0;
+    assert!((number(&output.data[0]) - (2.0 - 1.5 * gain)).abs() < 2e-14);
+    assert!((number(&output.data[1]) - (2.0 + 1.5 * gain)).abs() < 2e-14);
+    assert!(step(state(1, temperature.clone()), measured(0.125, time.clone())).is_err());
+    assert!(step(state(2, time.clone()), measured(0.125, time.clone())).is_err());
+    assert!(step(state(2, temperature), measured(2.0, time)).is_err());
+}
+
+#[test]
 fn native_fv_constant_state_and_amr_conserve_mass_per_omitted_area() {
     let s = Session::new();
     let r = call(
@@ -191,7 +253,7 @@ fn native_fv_constant_state_and_amr_conserve_mass_per_omitted_area() {
     let opts = record(vec![
         ("cfl", num(0.4)),
         ("reconstruction", Value::String("FirstOrder".into())),
-        ("riemann", Value::String("Hllc".into())),
+        ("riemann", Value::String("Hlle".into())),
     ]);
     let cfg = call(&s, "num_fv_config_euler", &[r, num(1.4), opts]);
     let density = DimExpr::Mul(vec![
@@ -268,6 +330,85 @@ fn native_fv_constant_state_and_amr_conserve_mass_per_omitted_area() {
     );
     let totals = call(&s, "num_fv_amr_totals", &[sol]);
     assert!((number(field(&totals, "component0")) - 2.0).abs() < 1e-11);
+}
+
+#[test]
+fn prepared_gas_riemann_keeps_measured_input_order_and_vacuum_state() {
+    let session = Session::new();
+    let frame = call(
+        &session,
+        "num_grid_mechanical_references",
+        &[
+            measured(2.0, base("Length")),
+            measured(0.5, base("Time")),
+            measured(8.0, base("Mass")),
+            measured(1.0, base("Temperature")),
+        ],
+    );
+    let plan = call(
+        &session,
+        "num_grid_gas_prepare_riemann",
+        &[
+            frame,
+            numbers(&[1.0, -10.0, 1.0]),
+            numbers(&[2.0, 10.0, 2.0]),
+            num(1.4),
+        ],
+    );
+    let velocity = DimExpr::Mul(vec![base("Length"), base("Time").pow(-1)]);
+    let input = |v: &[f64], d| {
+        vector(
+            v.iter().copied().map(num).collect(),
+            TypeExpr::Float.with_dim(d),
+        )
+    };
+    let batch = |query| {
+        session.call_value(
+            "num_grid_gas_sample_riemann_batch",
+            &[plan.clone(), query],
+            &CallCtx::new(),
+        )
+    };
+    let queries = [48.0, -48.0, 2.0, 0.0];
+    let result = batch(input(&queries, velocity.clone())).unwrap();
+    let domains = [
+        DimExpr::Mul(vec![base("Mass"), base("Length").pow(-3)]),
+        velocity.clone(),
+        DimExpr::Mul(vec![
+            base("Mass"),
+            base("Length").pow(-1),
+            base("Time").pow(-2),
+        ]),
+    ];
+    for ((name, domain), expected) in ["density", "velocity", "pressure"]
+        .into_iter()
+        .zip(domains)
+        .zip([
+            [2.0, 1.0, 0.0, 0.0],
+            [40.0, -40.0, 2.0, 0.0],
+            [32.0, 16.0, 0.0, 0.0],
+        ])
+    {
+        let Value::Tensor(values) = field(&result, name) else {
+            panic!("{name} vector")
+        };
+        assert_eq!(values.shape, [4]);
+        assert!(
+            rssn::kernel::overload::matches_type(&TypeExpr::Float.with_dim(domain), &values.elem)
+                .accepted()
+        );
+        assert_eq!(values.data.iter().map(number).collect::<Vec<_>>(), expected);
+    }
+    let scalar = call(
+        &session,
+        "num_grid_gas_sample_riemann",
+        &[plan.clone(), measured(2.0, velocity.clone())],
+    );
+    assert_eq!(number(field(&scalar, "velocity")), 2.0);
+    assert_eq!(number(field(&scalar, "density")), 0.0);
+    let empty = batch(input(&[], velocity)).unwrap();
+    assert!(matches!(field(&empty, "pressure"), Value::Tensor(t) if t.shape == [0]));
+    assert!(batch(input(&queries, base("Length"))).is_err());
 }
 
 #[test]
@@ -444,6 +585,28 @@ fn native_mac_state_is_callable_and_keeps_velocity_pressure_and_length_domains()
         call(&s, "num_ns_step", std::slice::from_ref(&state)),
         Value::Bool(true)
     ));
+    let summary = call(
+        &s,
+        "num_ns_divergence_summary",
+        std::slice::from_ref(&state),
+    );
+    let inverse_time = DimExpr::Inverse(Box::new(base("Time")));
+    let area = base("Length").pow(2_i64);
+    for (name, expected, dimension) in [
+        ("max_abs", 0.0, inverse_time.clone()),
+        ("rms", 0.0, inverse_time.clone()),
+        ("fluid_volume", 4.0, area.clone()),
+        ("net_outflow", 0.0, DimExpr::Mul(vec![area, inverse_time])),
+    ] {
+        let value = field(&summary, name);
+        assert!((number(value) - expected).abs() < 1e-12, "{name}");
+        let Value::Dyn(value) = value else {
+            panic!("measured {name}");
+        };
+        let expected = TypeExpr::Float.with_dim(dimension);
+        let actual = TypeExpr::Float.with_dim(value.dim.clone());
+        assert!(rssn::kernel::overload::matches_type(&expected, &actual).accepted());
+    }
     let cell_size = call(&s, "num_ns_cell_size", &[state.clone(), Value::int(0)]);
     assert!((number(&cell_size) - 2.0 / 3.0).abs() < 1e-12);
     assert!(matches!(cell_size, Value::Dyn(_)));

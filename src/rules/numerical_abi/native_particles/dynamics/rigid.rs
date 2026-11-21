@@ -34,12 +34,16 @@ fn molecules(
             "molecular CSR must partition every site into nonempty rows",
         ));
     }
-    let mut sorted = indices.clone();
-    sorted.sort_unstable();
-    if sorted != (0..n).collect::<Vec<_>>() {
-        return Err(api::error(
-            "molecular CSR must contain each site exactlyonce",
-        ));
+    let mut seen = vec![false; n];
+    for &site in &indices {
+        let Some(entry) = seen.get_mut(site) else {
+            return Err(api::error("molecular CSR site is out of range"));
+        };
+        if std::mem::replace(entry, true) {
+            return Err(api::error(
+                "molecular CSR must contain each site exactly once",
+            ));
+        }
     }
     Ok(offsets
         .windows(2)

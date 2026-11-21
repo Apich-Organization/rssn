@@ -1,7 +1,9 @@
 //! Native staggered Navier–Stokes state in a mechanical reference frame.
 use super::CallCtx;
 use super::CompiledSnapshot;
+use super::DimExpr;
 use super::Dynamic;
+use super::Exp;
 use super::Handle;
 use super::Input;
 use super::Installer;
@@ -9,7 +11,9 @@ use super::NativeType;
 use super::NewObject;
 use super::OpError;
 use super::Output;
+use super::Rational;
 use super::RuleError;
+use super::TypeExpr;
 use super::Value;
 use super::api;
 use super::err;
@@ -97,7 +101,7 @@ fn triple(v: Vec<usize>) -> Result<[usize; 3], OpError> {
     v.try_into().map_err(|_| err("three indices required"))
 }
 const fn dim(s: &Ns) -> usize {
-    if s.data.n()[2] == 1 { 2 } else { 3 }
+    s.data.spatial_dimension()
 }
 fn finish(s: &Ns) -> Result<(), OpError> {
     for c in &s.callbacks {
@@ -124,6 +128,50 @@ fn field_result(
         ("reference", api::quantity(scale, d)?),
     ])))
 }
+
+struct NsDivergenceSummary(Value);
+
+impl api::NativeOutput for NsDivergenceSummary {
+    fn ty() -> TypeExpr {
+        let inverse_time =
+            TypeExpr::Float.with_dim(DimExpr::Base("Time".into()).pow(Exp::Rat(Rational::int(-1))));
+        TypeExpr::Record(vec![
+            ("max_abs".into(), inverse_time.clone()),
+            ("rms".into(), inverse_time),
+            ("net_outflow".into(), api::dynamic_type()),
+            ("fluid_volume".into(), api::dynamic_type()),
+        ])
+    }
+
+    fn encode(
+        self,
+        _: &CallCtx<'_>,
+    ) -> Result<Value, OpError> {
+        Ok(self.0)
+    }
+}
+
+object_binding!(
+    ns_divergence_summary,
+    "num_ns_divergence_summary",
+    "crate::sim::ns_mac::NsSolver::divergence_summary",
+    "Reports maximum absolute divergence and a fluid-volume-weighted RMS, both in inverse time. Net outward flux has length^rank/time units, and fluid volume has length^rank units for a 2D or 3D grid. Cut-cell norms use actual fluid fractions. Fully solid domains return zero diagnostics.",
+    true,
+    (state: Handle<Ns>) -> NsDivergenceSummary,
+    |ctx, state| state.with(ctx, |s| {
+        let summary = s.data.divergence_summary().map_err(err)?;
+        let rank = dim(s) as i64;
+        let (rate_scale, rate_dimension) = s.frame.derived([0, -1, 0, 0])?;
+        let rate = |v| api::quantity(v * rate_scale, rate_dimension.clone());
+        Ok(NsDivergenceSummary(api::record(vec![
+            ("max_abs", rate(summary.max_abs)?),
+            ("rms", rate(summary.rms)?),
+            ("net_outflow", measured(s, summary.net_outflow, [rank, -1, 0, 0])?.0),
+            ("fluid_volume", measured(s, summary.fluid_volume, [rank, 0, 0, 0])?.0),
+        ])))
+    })
+);
+
 fn spatial(
     c: &CompiledSnapshot,
     f: &References,
@@ -244,6 +292,7 @@ static BINDINGS: &[&api::Binding] = &[
     &ns_steps::BINDING,
     &ns_n::BINDING,
     &ns_divergence::BINDING,
+    &ns_divergence_summary::BINDING,
     &ns_eddy_viscosity::BINDING,
     &ns_max_speed::BINDING,
     &ns_mass::BINDING,

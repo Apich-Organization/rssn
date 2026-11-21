@@ -31,6 +31,8 @@
 //! rule set adds. Bounded supports are handled with `heaviside`, so the
 //! density is zero (and the distribution function 0 or 1) outside the
 //! support; the discrete distribution functions are meant for integer `x`.
+//! Floating CDF calls for the normal, lognormal, exponential, Weibull and
+//! Cauchy distributions use the shared tail-stable numerical routines.
 //! Requests without a closed form (the moment generating function of the
 //! beta and Student distributions, the entropy of the binomial and Poisson
 //! distributions) stay requests.
@@ -95,6 +97,7 @@ use crate::graph::dim::DimTerm;
 use crate::graph::dim::FamilySource;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
+use crate::kernels::distributions::Distribution;
 use crate::kernels::stats as num;
 
 use super::calculus::calculus;
@@ -858,7 +861,7 @@ const FAMILIES: [Family; 10] = [
         doc: "`normal(mu, sigma)`: normal (Gaussian) distribution with mean `mu` and standard deviation `sigma`.",
         params: 2,
         pdf: "exp(-(?x - ?a)^2 / (2 * ?b^2)) / (?b * (2 * pi)^(1/2))",
-        cdf: "1/2 * (1 + erf((?x - ?a) / (?b * 2^(1/2))))",
+        cdf: "1/2 * erfc((?a - ?x) / (?b * 2^(1/2)))",
         mean: "?a",
         variance: "?b^2",
         mgf: Some("exp(?a * ?x + ?b^2 * ?x^2 / 2)"),
@@ -1129,6 +1132,59 @@ fn template(
     pat.instantiate(g, &args)
 }
 
+/// Reuses the native CDF on concrete floating requests. Exact and symbolic
+/// inputs use the formulas and retain their usual term structure.
+fn floating_cdf(
+    g: &Graph,
+    distribution: NodeId,
+    point: NodeId,
+) -> Option<f64> {
+    let name = g.ops().get(g.op(distribution)).name.as_ref();
+    let params = g.children(distribution);
+    if params.len() > 2
+        || !params
+            .iter()
+            .chain(std::iter::once(&point))
+            .any(|&node| matches!(g.number_of(node), Some(Number::Float(_))))
+    {
+        return None;
+    }
+    let cdf = match (name, params) {
+        | ("normal", &[mu, sigma]) => {
+            Distribution::Normal {
+                mu: f64_of(g, mu)?,
+                sigma: f64_of(g, sigma)?,
+            }
+        },
+        | ("lognormal", &[mu, sigma]) => {
+            Distribution::LogNormal {
+                mu: f64_of(g, mu)?,
+                sigma: f64_of(g, sigma)?,
+            }
+        },
+        | ("exponential", &[rate]) => {
+            Distribution::Exponential {
+                rate: f64_of(g, rate)?,
+            }
+        },
+        | ("weibull", &[shape, scale]) => {
+            Distribution::Weibull {
+                shape: f64_of(g, shape)?,
+                scale: f64_of(g, scale)?,
+            }
+        },
+        | ("cauchy", &[loc, scale]) => {
+            Distribution::Cauchy {
+                loc: f64_of(g, loc)?,
+                scale: f64_of(g, scale)?,
+            }
+        },
+        | _ => return None,
+    };
+    let probability = cdf.cdf(g.number_of(point)?.to_f64());
+    probability.is_finite().then_some(probability)
+}
+
 fn distribution_request(
     cx: &mut Cx<'_>,
     args: &[NodeId],
@@ -1145,9 +1201,23 @@ fn distribution_request(
     if extra.len() != expected {
         return Outcome::Pass;
     }
-    let Some(dist) = best(g, dist) else {
+    if matches!(request, Request::Cdf)
+        && let [point] = extra
+        && let Some(value) = floating_cdf(g, dist, *point)
+    {
+        return Outcome::Equal(g.float(value));
+    }
+    let Some(extracted) = best(g, dist) else {
         return Outcome::Pass;
     };
+    if extracted != dist
+        && matches!(request, Request::Cdf)
+        && let [point] = extra
+        && let Some(value) = floating_cdf(g, extracted, *point)
+    {
+        return Outcome::Equal(g.float(value));
+    }
+    let dist = extracted;
     let name = g.ops().get(g.op(dist)).name.clone();
     let Some(family) = FAMILIES
         .iter()
@@ -1158,6 +1228,13 @@ fn distribution_request(
     };
     let params = g.children(dist).to_vec();
     if params.len() != usize::from(family.params) {
+        return Outcome::Pass;
+    }
+    if matches!(request, Request::Cdf)
+        && (params.iter().any(|&parameter| {
+            matches!(g.number_of(parameter), Some(Number::Float(value)) if !value.is_finite())
+        }) || matches!(g.number_of(extra[0]), Some(Number::Float(value)) if value.is_nan()))
+    {
         return Outcome::Pass;
     }
     let numeric: Vec<Option<f64>> = params.iter().map(|&p| f64_of(g, p)).collect();
@@ -2159,46 +2236,8 @@ fn density_dimension(
 ) -> Result<DimTerm, DimError> {
     let distribution = args.first().cloned().unwrap_or_else(DimTerm::dimensionless);
     let point = args.get(1).cloned().unwrap_or_else(DimTerm::dimensionless);
-    check_distribution_point(ctx, &distribution, &point)?;
+    ctx.require_compatible(&distribution, &point)?;
     Ok(point.inverse())
-}
-
-/// A cumulative probability is dimensionless; the evaluation point must
-/// still have the distribution's dimension.
-#[allow(clippy::unnecessary_wraps)]
-fn distribution_point_dimension(
-    ctx: &DimCtx<'_>,
-    args: &[DimTerm],
-) -> Result<DimTerm, DimError> {
-    let distribution = args.first().cloned().unwrap_or_else(DimTerm::dimensionless);
-    let point = args.get(1).cloned().unwrap_or_else(DimTerm::dimensionless);
-    check_distribution_point(ctx, &distribution, &point)?;
-    Ok(DimTerm::dimensionless())
-}
-
-/// The point where a density or distribution function is evaluated must have
-/// the dimension of the random variable. Unknowns are left for later
-/// unification instead of being reported as conflicts.
-fn check_distribution_point(
-    ctx: &DimCtx<'_>,
-    distribution: &DimTerm,
-    point: &DimTerm,
-) -> Result<(), DimError> {
-    if distribution.is_any()
-        || point.is_any()
-        || distribution.is_non_metric()
-        || point.is_non_metric()
-        || distribution.has_unknown()
-        || point.has_unknown()
-        || distribution == point
-    {
-        return Ok(());
-    }
-    Err(DimError::Mismatch {
-        left: distribution.describe(ctx.arena),
-        right: point.describe(ctx.arena),
-        context: ctx.graph.display(ctx.node),
-    })
 }
 
 /// The raw or central moment of order `k` of data with dimension `d` is
@@ -2244,7 +2283,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         i,
         set,
         request(binary("cdf").doc(
-            "`cdf(d, x)`: cumulative distribution function `P(X <= x)` of distribution `d` at point `x`.",
+            "`cdf(d, x)`: cumulative distribution function `P(X <= x)` of distribution `d` at point `x`. \
+             The point shares the distribution's dimension and the probability is dimensionless. \
+             Floating normal, lognormal, exponential, Weibull, and Cauchy calls use tail-stable evaluation.",
         )),
         Tier::Reduce,
         |cx, a| distribution_request(cx, a, Request::Cdf),
@@ -2560,7 +2601,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             ("binomial_trials", DimRule::Dimensionless),
             ("normal_known_sd", DimRule::Same(0)),
             ("pdf", DimRule::Custom(density_dimension)),
-            ("cdf", DimRule::Custom(distribution_point_dimension)),
+            ("cdf", DimRule::CompatibleDimensionless),
             ("expectation", DimRule::Same(0)),
             ("variance_of", DimRule::Square),
             ("mgf", DimRule::Custom(dimensionless_result)),
@@ -4546,7 +4587,7 @@ const FAMILIES_EXT: [Family; 11] = [
         doc: "`cauchy(x0, gamma)`: Cauchy-Lorentz distribution with location `x0` and scale `gamma`.",
         params: 2,
         pdf: "1 / (pi * ?b * (1 + ((?x - ?a) / ?b)^2))",
-        cdf: "1/2 + atan((?x - ?a) / ?b) / pi",
+        cdf: "atan2(?b, ?a - ?x) / pi",
         mean: "",
         variance: "",
         mgf: None,
@@ -4568,7 +4609,7 @@ const FAMILIES_EXT: [Family; 11] = [
         doc: "`lognormal(mu, sigma)`: log-normal distribution with underlying normal mean `mu` and standard deviation `sigma`.",
         params: 2,
         pdf: "exp(-(ln(abs(?x)) - ?a)^2 / (2 * ?b^2)) / (abs(?x) * ?b * (2 * pi)^(1/2)) * heaviside(?x)",
-        cdf: "1/2 * (1 + erf((ln(abs(?x)) - ?a) / (?b * 2^(1/2)))) * heaviside(?x)",
+        cdf: "1/2 * erfc((?a - ln(abs(?x))) / (?b * 2^(1/2))) * heaviside(?x)",
         mean: "exp(?a + ?b^2 / 2)",
         variance: "(exp(?b^2) - 1) * exp(2 * ?a + ?b^2)",
         mgf: None,

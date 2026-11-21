@@ -20,10 +20,10 @@ use super::register;
 use super::scalar;
 use super::scalar_dimension;
 use super::scale;
+use super::scaled_vec_value;
 use super::tensor_type;
 use super::typed;
 use super::var;
-use super::vec_value;
 use super::vector;
 use super::vector_dimension;
 use crate::kernels::calculus;
@@ -36,6 +36,8 @@ enum Method {
     Partial,
     Gradient,
     Hessian,
+    HessianDiagonal,
+    HessianDiagonalWithSteps,
     Jacobian,
     Divergence,
     Curl,
@@ -51,11 +53,29 @@ impl Method {
     }
 
     const fn second(self) -> bool {
-        matches!(self, Self::Second | Self::Hessian | Self::Laplacian)
+        matches!(
+            self,
+            Self::Second
+                | Self::Hessian
+                | Self::HessianDiagonal
+                | Self::HessianDiagonalWithSteps
+                | Self::Laplacian
+        )
     }
 
     const fn extra(self) -> bool {
+        self.uses_index() || matches!(self, Self::HessianDiagonalWithSteps)
+    }
+
+    const fn uses_index(self) -> bool {
         matches!(self, Self::Partial | Self::Jacobian)
+    }
+
+    const fn only_second_diagonal(self) -> bool {
+        matches!(
+            self,
+            Self::HessianDiagonal | Self::HessianDiagonalWithSteps | Self::Laplacian
+        )
     }
 }
 impl EvalDyn for Method {
@@ -85,13 +105,18 @@ impl EvalDyn for Method {
         } else {
             real(e.clone())
         };
-        let mut args = vec![x.clone(), real(d), real(e), TypeExpr::Int];
-        if self.extra() {
+        let mut args = vec![x.clone(), real(d.clone()), real(e), TypeExpr::Int];
+        if self.uses_index() {
             args.push(TypeExpr::Int);
+        } else if matches!(self, Self::HessianDiagonalWithSteps) {
+            args.push(tensor_type(1, d));
         }
         args.push(function(vec![x], y));
         let ret = match self {
-            | Self::Gradient | Self::Curl => tensor_type(1, derivative),
+            | Self::Gradient
+            | Self::Curl
+            | Self::HessianDiagonal
+            | Self::HessianDiagonalWithSteps => tensor_type(1, derivative),
             | Self::Hessian | Self::Jacobian => tensor_type(2, derivative),
             | _ => real(derivative),
         };
@@ -133,22 +158,26 @@ impl EvalDyn for Method {
         if point.is_empty() {
             return Err(super::domain("calculus point must be nonempty"));
         }
-        bounded_size(point.len(), point.len())?;
+        let width = if self.only_second_diagonal() {
+            1
+        } else {
+            point.len()
+        };
+        bounded_size(point.len(), width)?;
         if !self.scalar_input() {
             equal(&vector_dimension(&sig.params[0], Some(point.len()))?, &d)?;
         }
         let scalar_callback = |x: &[f64]| {
-            let physical: Vec<_> = x.iter().map(|x| x * xs).collect();
             let input = if self.scalar_input() {
-                super::super::dimensional_float(physical[0], d.clone())
+                super::super::dimensional_float(x[0] * xs, d.clone())
             } else {
-                vec_value(&physical, &d)
+                scaled_vec_value(x, xs, &d)
             };
             callbacks
                 .call(0, &[input], |v| scalar(&v, &e, start, ctx).map(|v| v / ys))
                 .unwrap_or(f64::NAN)
         };
-        let requested = if self.extra() {
+        let requested = if self.uses_index() {
             let Value::Int(n) = &args[4] else {
                 return Err(super::domain("calculus index/count must be an integer"));
             };
@@ -158,9 +187,8 @@ impl EvalDyn for Method {
             0
         };
         let vector_callback = |x: &[f64], length: usize| {
-            let physical: Vec<_> = x.iter().map(|x| x * xs).collect();
             callbacks
-                .call(0, &[vec_value(&physical, &d)], |v| {
+                .call(0, &[scaled_vec_value(x, xs, &d)], |v| {
                     vector(&v, &e, Some(length), start, ctx)
                         .map(|v| v.into_iter().map(|v| v / ys).collect())
                 })
@@ -192,6 +220,15 @@ impl EvalDyn for Method {
             },
             | Self::Gradient => calculus::gradient(scalar_callback, &point),
             | Self::Hessian => calculus::hessian(scalar_callback, &point),
+            | Self::HessianDiagonal => calculus::hessian_diagonal(scalar_callback, &point),
+            | Self::HessianDiagonalWithSteps => {
+                let mut steps = vector(&args[4], &d, Some(point.len()), 4, ctx)?;
+                for step in &mut steps {
+                    *step /= xs;
+                }
+                calculus::hessian_diagonal_with_steps(scalar_callback, &point, &steps)
+                    .map_err(|error| super::domain(error.to_string()))?
+            },
             | Self::Laplacian => vec![calculus::laplacian(scalar_callback, &point)],
             | Self::Jacobian => {
                 if requested == 0 {
@@ -237,7 +274,10 @@ impl EvalDyn for Method {
             ratio(&e, &d)?
         };
         match self {
-            | Self::Gradient | Self::Curl => super::output_tensor(vec![data.len()], data, dim),
+            | Self::Gradient
+            | Self::Curl
+            | Self::HessianDiagonal
+            | Self::HessianDiagonalWithSteps => super::output_tensor(vec![data.len()], data, dim),
             | Self::Hessian => super::output_tensor(vec![point.len(), point.len()], data, dim),
             | Self::Jacobian => super::output_tensor(vec![requested, point.len()], data, dim),
             | _ => Ok(super::super::dimensional_float(data[0], dim)),
@@ -256,16 +296,34 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("partial_derivative", "partial_derivative", Method::Partial),
         ("gradient", "gradient", Method::Gradient),
         ("hessian", "hessian", Method::Hessian),
+        (
+            "hessian_diagonal",
+            "hessian_diagonal",
+            Method::HessianDiagonal,
+        ),
+        (
+            "hessian_diagonal_with_steps",
+            "hessian_diagonal_with_steps",
+            Method::HessianDiagonalWithSteps,
+        ),
         ("jacobian", "jacobian", Method::Jacobian),
         ("divergence", "divergence", Method::Divergence),
         ("curl", "curl", Method::Curl),
         ("laplacian", "laplacian", Method::Laplacian),
     ] {
+        let doc = match method {
+            | Method::HessianDiagonal | Method::HessianDiagonalWithSteps => {
+                "Evaluate the diagonal of the Hessian of a scalar callback at a measured point, returning one value per coordinate in output units divided by squared coordinate units. The common arguments are point, positive coordinate reference, positive output reference and evaluation budget. The with_steps variant takes a positive step per coordinate, in coordinate units, before the callback."
+            },
+            | _ => {
+                "Native finite-difference calculus with physical reference scales: point,coordinate_scale,value_scale,max_evaluations,[partial index or Jacobian output count],callback. Independent D/E units; derivative E/D, Hessian/Laplacian E/D^2. References are positive. Shared callback errors and finite evaluation budgets are preserved."
+            },
+        };
         register(
             i,
             &format!("num_native_{name}_scaled"),
             &format!("crate::kernels::calculus::{path}"),
-            "Native finite-difference calculus with physical reference scales: point,coordinate_scale,value_scale,max_evaluations,[partial index or Jacobian output count],callback. Independent D/E units; derivative E/D, Hessian/Laplacian E/D^2. References are positive. Shared callback errors and finite evaluation budgets are preserved.",
+            doc,
             if method.extra() { 6 } else { 5 },
             method,
         )?;

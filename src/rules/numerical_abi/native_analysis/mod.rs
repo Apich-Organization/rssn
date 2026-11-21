@@ -206,10 +206,20 @@ binding!(analysis_complex_scalar_method_abs,"num_analysis_complex_scalar_method_
 binding!(analysis_complex_scalar_method_arg,"num_analysis_complex_scalar_method_arg","numerical_vector","Native complex_scalar method_arg; normalized dimensionless arguments unless the declared contract preserves measured signal units. Enum arguments use exact Rust variant names.","crate::kernels::complex_scalar::Complex::arg",DimensionPolicy::UnitlessResult,(z:crate::kernels::complex_scalar::Complex)->f64,|z:crate::kernels::complex_scalar::Complex|z.arg());
 binding!(analysis_complex_scalar_method_conj,"num_analysis_complex_scalar_method_conj","numerical_vector","Native complex_scalar method_conj; normalized dimensionless arguments unless the declared contract preserves measured signal units. Enum arguments use exact Rust variant names.","crate::kernels::complex_scalar::Complex::conj",DimensionPolicy::Preserve,(z:crate::kernels::complex_scalar::Complex)->crate::kernels::complex_scalar::Complex,|z:crate::kernels::complex_scalar::Complex|z.conj());
 binding!(analysis_complex_scalar_method_div,"num_analysis_complex_scalar_method_div","numerical_vector","Native complex_scalar method_div; normalized dimensionless arguments unless the declared contract preserves measured signal units. Enum arguments use exact Rust variant names.","crate::kernels::complex_scalar::Complex::div",DimensionPolicy::Quotient,(z:crate::kernels::complex_scalar::Complex, other:crate::kernels::complex_scalar::Complex)->crate::kernels::complex_scalar::Complex,|z:crate::kernels::complex_scalar::Complex, other:crate::kernels::complex_scalar::Complex|z.div(other));
+binding!(
+    analysis_complex_scalar_method_recip,
+    "num_analysis_complex_scalar_method_recip",
+    "numerical_vector",
+    "Computes the complex reciprocal 1/z with a scaled evaluation when intermediate products leave the ordinary floating-point range. Returns the inverse physical dimension of the input. Zero or a nonfinite result produces a domain error.",
+    "crate::kernels::complex_scalar::Complex::recip",
+    DimensionPolicy::Inverse,
+    (z: crate::kernels::complex_scalar::Complex) -> crate::kernels::complex_scalar::Complex,
+    crate::kernels::complex_scalar::Complex::recip
+);
 binding!(analysis_complex_scalar_method_mul,"num_analysis_complex_scalar_method_mul","numerical_vector","Native complex_scalar method_mul; normalized dimensionless arguments unless the declared contract preserves measured signal units. Enum arguments use exact Rust variant names.","crate::kernels::complex_scalar::Complex::mul",DimensionPolicy::Product,(z:crate::kernels::complex_scalar::Complex, other:crate::kernels::complex_scalar::Complex)->crate::kernels::complex_scalar::Complex,|z:crate::kernels::complex_scalar::Complex, other:crate::kernels::complex_scalar::Complex|z.mul(other));
 binding!(analysis_complex_scalar_method_exp,"num_analysis_complex_scalar_method_exp","numerical_vector","Native complex_scalar method_exp; normalized dimensionless arguments unless the declared contract preserves measured signal units. Enum arguments use exact Rust variant names.","crate::kernels::complex_scalar::Complex::exp",DimensionPolicy::Dimensionless,(z:crate::kernels::complex_scalar::Complex)->crate::kernels::complex_scalar::Complex,|z:crate::kernels::complex_scalar::Complex|z.exp());
 binding!(analysis_complex_scalar_method_ln,"num_analysis_complex_scalar_method_ln","numerical_vector","Native complex_scalar method_ln; normalized dimensionless arguments unless the declared contract preserves measured signal units. Enum arguments use exact Rust variant names.","crate::kernels::complex_scalar::Complex::ln",DimensionPolicy::Dimensionless,(z:crate::kernels::complex_scalar::Complex)->crate::kernels::complex_scalar::Complex,|z:crate::kernels::complex_scalar::Complex|z.ln());
-binding!(analysis_complex_scalar_method_sqrt,"num_analysis_complex_scalar_method_sqrt","numerical_vector","Native complex_scalar method_sqrt; normalized dimensionless arguments unless the declared contract preserves measured signal units. Enum arguments use exact Rust variant names.","crate::kernels::complex_scalar::Complex::sqrt",DimensionPolicy::Root,(z:crate::kernels::complex_scalar::Complex)->crate::kernels::complex_scalar::Complex,|z:crate::kernels::complex_scalar::Complex|z.sqrt());
+binding!(analysis_complex_scalar_method_sqrt,"num_analysis_complex_scalar_method_sqrt","numerical_vector","Returns the principal complex square root, with the imaginary sign selecting the side of the negative real axis. Rescaling protects finite large inputs and the quotient preserves representable small components. The result carries the square root of the input dimension.","crate::kernels::complex_scalar::Complex::sqrt",DimensionPolicy::Root,(z:crate::kernels::complex_scalar::Complex)->crate::kernels::complex_scalar::Complex,|z:crate::kernels::complex_scalar::Complex|z.sqrt());
 binding!(analysis_complex_mobius_new,"num_analysis_complex_mobius_new","numerical_vector","Native complex mobius_new; normalized dimensionless arguments unless the declared contract preserves measured signal units. Enum arguments use exact Rust variant names.","crate::kernels::complex::Mobius::new",DimensionPolicy::Dimensionless,(a:num_complex::Complex64, b:num_complex::Complex64, c:num_complex::Complex64, d:num_complex::Complex64)->crate::kernels::complex::Mobius,|a:num_complex::Complex64, b:num_complex::Complex64, c:num_complex::Complex64, d:num_complex::Complex64|crate::kernels::complex::Mobius::new(a,b,c,d));
 binding!(analysis_complex_mobius_identity,"num_analysis_complex_mobius_identity","numerical_vector","Native complex mobius_identity; normalized dimensionless arguments unless the declared contract preserves measured signal units. Enum arguments use exact Rust variant names.","crate::kernels::complex::Mobius::identity",DimensionPolicy::Dimensionless,()->crate::kernels::complex::Mobius,crate::kernels::complex::Mobius::identity);
 binding!(analysis_complex_mobius_apply,"num_analysis_complex_mobius_apply","numerical_vector","Native complex mobius_apply; normalized dimensionless arguments unless the declared contract preserves measured signal units. Enum arguments use exact Rust variant names.","crate::kernels::complex::Mobius::apply",DimensionPolicy::Dimensionless,(map:crate::kernels::complex::Mobius, z:num_complex::Complex64)->num_complex::Complex64,|map:crate::kernels::complex::Mobius, z:num_complex::Complex64|map.apply(z));
@@ -240,15 +250,50 @@ binding!(analysis_special_complex_bessel_j_complex,"num_analysis_special_complex
 binding!(analysis_special_complex_digamma_complex,"num_analysis_special_complex_digamma_complex","numerical_vector","Native special_complex digamma_complex; normalized dimensionless arguments unless the declared contract preserves measured signal units. Enum arguments use exact Rust variant names.","crate::kernels::special_complex::digamma_complex",DimensionPolicy::Dimensionless,(z:num_complex::Complex64)->num_complex::Complex64,|z:num_complex::Complex64|crate::kernels::special_complex::digamma_complex(z));
 binding!(analysis_special_complex_gamma_complex,"num_analysis_special_complex_gamma_complex","numerical_vector","Native special_complex gamma_complex; normalized dimensionless arguments unless the declared contract preserves measured signal units. Enum arguments use exact Rust variant names.","crate::kernels::special_complex::gamma_complex",DimensionPolicy::Dimensionless,(z:num_complex::Complex64)->num_complex::Complex64,|z:num_complex::Complex64|crate::kernels::special_complex::gamma_complex(z));
 binding!(analysis_special_complex_ln_gamma_complex,"num_analysis_special_complex_ln_gamma_complex","numerical_vector","Native special_complex ln_gamma_complex; normalized dimensionless arguments unless the declared contract preserves measured signal units. Enum arguments use exact Rust variant names.","crate::kernels::special_complex::ln_gamma_complex",DimensionPolicy::Dimensionless,(z:num_complex::Complex64)->num_complex::Complex64,|z:num_complex::Complex64|crate::kernels::special_complex::ln_gamma_complex(z));
-binding!(analysis_special_complex_lambert_w_complex,"num_analysis_special_complex_lambert_w_complex","numerical_vector","Native special_complex lambert_w_complex; normalized dimensionless arguments unless the declared contract preserves measured signal units. Enum arguments use exact Rust variant names.","crate::kernels::special_complex::lambert_w_complex",DimensionPolicy::Dimensionless,(z:num_complex::Complex64, k:i32)->num_complex::Complex64,|z:num_complex::Complex64, k:i32|crate::kernels::special_complex::lambert_w_complex(z,k));
+binding!(analysis_special_complex_lambert_w_complex,"num_analysis_special_complex_lambert_w_complex","numerical_vector","Return the dimensionless complex solution to w exp(w) = z on integer branch k. When the imaginary component is signed zero on the negative real axis, its sign selects the side of the branch cut. The principal branch preserves small real and imaginary components near the origin.","crate::kernels::special_complex::lambert_w_complex",DimensionPolicy::Dimensionless,(z:num_complex::Complex64, k:i32)->num_complex::Complex64,|z:num_complex::Complex64, k:i32|crate::kernels::special_complex::lambert_w_complex(z,k));
 binding!(analysis_meijer_meijer_g,"num_analysis_meijer_meijer_g","numerical_vector","Native meijer meijer_g; normalized dimensionless arguments unless the declared contract preserves measured signal units. Enum arguments use exact Rust variant names.","crate::kernels::meijer::meijer_g",DimensionPolicy::Dimensionless,(m:usize, n:usize, a:Vec<num_complex::Complex64>, b:Vec<num_complex::Complex64>, z:num_complex::Complex64)->Result<Option<num_complex::Complex64>,OpError>,|m:usize, n:usize, a:Vec<num_complex::Complex64>, b:Vec<num_complex::Complex64>, z:num_complex::Complex64|{if m>1000000 {return Err(OpError::Domain("analysis count exceeds execution budget".into()));}
 if n>1000000 {return Err(OpError::Domain("analysis count exceeds execution budget".into()));}Ok(crate::kernels::meijer::meijer_g(m,n,&a,&b,z))});
 binding!(analysis_meijer_meijer_g_real,"num_analysis_meijer_meijer_g_real","numerical_vector","Native meijer meijer_g_real; normalized dimensionless arguments unless the declared contract preserves measured signal units. Enum arguments use exact Rust variant names.","crate::kernels::meijer::meijer_g_real",DimensionPolicy::Dimensionless,(m:usize, n:usize, a:Vec<f64>, b:Vec<f64>, z:f64)->Result<Option<f64>,OpError>,|m:usize, n:usize, a:Vec<f64>, b:Vec<f64>, z:f64|{if m>1000000 {return Err(OpError::Domain("analysis count exceeds execution budget".into()));}
 if n>1000000 {return Err(OpError::Domain("analysis count exceeds execution budget".into()));}Ok(crate::kernels::meijer::meijer_g_real(m,n,&a,&b,z))});
 binding!(analysis_convergence_levin_condition_number,"num_analysis_convergence_levin_condition_number","numerical_vector","Native convergence levin_condition_number; normalized dimensionless arguments unless the declared contract preserves measured signal units. Enum arguments use exact Rust variant names.","crate::kernels::convergence::levin_condition_number",DimensionPolicy::UnitlessResult,(terms:Vec<f64>, variant:crate::kernels::convergence::LevinVariant, beta:f64)->f64,|terms:Vec<f64>, variant:crate::kernels::convergence::LevinVariant, beta:f64|crate::kernels::convergence::levin_condition_number(&terms,variant,beta));
+binding!(
+    analysis_convergence_levin_condition_numbers,
+    "num_analysis_convergence_levin_condition_numbers",
+    "numerical_vector",
+    "Returns one dimensionless Levin condition number per available order, from order zero. Infinite values indicate an undefined or unbounded condition number. Measured terms may share any dimension, beta is dimensionless, and the input budget is 4096 terms.",
+    "crate::kernels::convergence::levin_condition_numbers",
+    DimensionPolicy::UnitlessResult,
+    (terms: Vec<f64>, variant: crate::kernels::convergence::LevinVariant, beta: f64) -> Result<Vec<f64>, OpError>,
+    |terms: Vec<f64>, variant: crate::kernels::convergence::LevinVariant, beta: f64| {
+        if terms.len() > 4096 {
+            return Err(OpError::Domain("Levin condition profile exceeds its term budget".into()));
+        }
+        Ok(crate::kernels::convergence::levin_condition_numbers(&terms, variant, beta))
+    }
+);
 binding!(analysis_convergence_levin_transform,"num_analysis_convergence_levin_transform","numerical_vector","Native convergence levin_transform; normalized dimensionless arguments unless the declared contract preserves measured signal units. Enum arguments use exact Rust variant names.","crate::kernels::convergence::levin_transform",DimensionPolicy::Preserve,(terms:Vec<f64>, variant:crate::kernels::convergence::LevinVariant, beta:f64)->Vec<f64>,|terms:Vec<f64>, variant:crate::kernels::convergence::LevinVariant, beta:f64|crate::kernels::convergence::levin_transform(&terms,variant,beta));
 binding!(analysis_convergence_levin_transform_terms,"num_analysis_convergence_levin_transform_terms","numerical_vector","Native convergence levin_transform_terms; normalized dimensionless arguments unless the declared contract preserves measured signal units. Enum arguments use exact Rust variant names.","crate::kernels::convergence::levin_transform_terms",DimensionPolicy::Preserve,(terms:Vec<f64>, variant:crate::kernels::convergence::LevinVariant, beta:f64)->Vec<f64>,|terms:Vec<f64>, variant:crate::kernels::convergence::LevinVariant, beta:f64|crate::kernels::convergence::levin_transform_terms(&terms,variant,beta));
 binding!(analysis_convergence_levin_sum_lazy,"num_analysis_convergence_levin_sum_lazy","numerical_vector","Native convergence levin_sum_lazy; normalized dimensionless arguments unless the declared contract preserves measured signal units. Enum arguments use exact Rust variant names.","crate::kernels::convergence::levin_sum_lazy",DimensionPolicy::WaveletSplit,(terms:Vec<f64>, max_terms:usize, variant:crate::kernels::convergence::LevinVariant, beta:f64)->Result<(f64,f64), OpError>,|terms:Vec<f64>, max_terms:usize, variant:crate::kernels::convergence::LevinVariant, beta:f64|{if max_terms>1000000 {return Err(OpError::Domain("analysis count exceeds execution budget".into()));}crate::kernels::convergence::levin_sum_lazy(terms.into_iter(),max_terms,variant,beta).map_err(OpError::Domain)});
+binding!(
+    analysis_coordinates_cartesian_to_spherical,
+    "num_analysis_coordinates_cartesian_to_spherical",
+    "numerical_vector",
+    "Converts the fixed shape [x, y, z] to [radius, polar angle from +z, azimuth from +x]. Express all lengths in one reference and use radians for both angles. The polar angle is zero at the origin.",
+    "crate::kernels::coordinates::cartesian_to_spherical",
+    DimensionPolicy::Dimensionless,
+    (point: [f64; 3]) -> [f64; 3],
+    crate::kernels::coordinates::cartesian_to_spherical
+);
+binding!(
+    analysis_coordinates_spherical_to_cartesian,
+    "num_analysis_coordinates_spherical_to_cartesian",
+    "numerical_vector",
+    "Converts [radius, polar angle from +z, azimuth from +x] to [x, y, z]. The incoming angles are radians and the result uses the same length reference as the radius. A negative radius reflects the point through the origin.",
+    "crate::kernels::coordinates::spherical_to_cartesian",
+    DimensionPolicy::Dimensionless,
+    (point: [f64; 3]) -> [f64; 3],
+    crate::kernels::coordinates::spherical_to_cartesian
+);
 binding!(analysis_coordinates_from_cartesian,"num_analysis_coordinates_from_cartesian","numerical_vector","Normalized coordinate conversion: radial/Cartesian coordinates are expressed in one chosen positive reference length, angles in radians. Result coordinates and Jacobians use the same normalization; mixed physical units are not erased silently.","crate::kernels::coordinates::from_cartesian",DimensionPolicy::Dimensionless,(point:Vec<f64>, to:crate::kernels::coordinates::CoordinateSystem)->Result<Vec<f64>, OpError>,|point:Vec<f64>, to:crate::kernels::coordinates::CoordinateSystem|crate::kernels::coordinates::from_cartesian(&point,to).map_err(OpError::Domain));
 binding!(analysis_coordinates_from_cartesian_pure,"num_analysis_coordinates_from_cartesian_pure","numerical_vector","Normalized coordinate conversion: radial/Cartesian coordinates are expressed in one chosen positive reference length, angles in radians. Result coordinates and Jacobians use the same normalization; mixed physical units are not erased silently.","crate::kernels::coordinates::from_cartesian_pure",DimensionPolicy::Dimensionless,(point:Vec<f64>, to:crate::kernels::coordinates::CoordinateSystem)->Vec<f64>,|point:Vec<f64>, to:crate::kernels::coordinates::CoordinateSystem|crate::kernels::coordinates::from_cartesian_pure(&point,to));
 binding!(analysis_coordinates_to_cartesian,"num_analysis_coordinates_to_cartesian","numerical_vector","Normalized coordinate conversion: radial/Cartesian coordinates are expressed in one chosen positive reference length, angles in radians. Result coordinates and Jacobians use the same normalization; mixed physical units are not erased silently.","crate::kernels::coordinates::to_cartesian",DimensionPolicy::Dimensionless,(point:Vec<f64>, from:crate::kernels::coordinates::CoordinateSystem)->Result<Vec<f64>, OpError>,|point:Vec<f64>, from:crate::kernels::coordinates::CoordinateSystem|crate::kernels::coordinates::to_cartesian(&point,from).map_err(OpError::Domain));
@@ -348,6 +393,7 @@ pub(super) static ANALYSIS_EXPORTS: &[&CodecExport] = &[
     &analysis_complex_scalar_method_arg::EXPORT,
     &analysis_complex_scalar_method_conj::EXPORT,
     &analysis_complex_scalar_method_div::EXPORT,
+    &analysis_complex_scalar_method_recip::EXPORT,
     &analysis_complex_scalar_method_mul::EXPORT,
     &analysis_complex_scalar_method_exp::EXPORT,
     &analysis_complex_scalar_method_ln::EXPORT,
@@ -386,9 +432,12 @@ pub(super) static ANALYSIS_EXPORTS: &[&CodecExport] = &[
     &analysis_meijer_meijer_g::EXPORT,
     &analysis_meijer_meijer_g_real::EXPORT,
     &analysis_convergence_levin_condition_number::EXPORT,
+    &analysis_convergence_levin_condition_numbers::EXPORT,
     &analysis_convergence_levin_transform::EXPORT,
     &analysis_convergence_levin_transform_terms::EXPORT,
     &analysis_convergence_levin_sum_lazy::EXPORT,
+    &analysis_coordinates_cartesian_to_spherical::EXPORT,
+    &analysis_coordinates_spherical_to_cartesian::EXPORT,
     &analysis_coordinates_from_cartesian::EXPORT,
     &analysis_coordinates_from_cartesian_pure::EXPORT,
     &analysis_coordinates_to_cartesian::EXPORT,

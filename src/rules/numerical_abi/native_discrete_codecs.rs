@@ -47,7 +47,7 @@ fn native_discrete_preflight(
     }
     let permutation = Vec::<u32>::decode(&args[0], 0)?;
     native_budget(&[permutation.len()], 4096)?;
-    if operation == "is_permutation" {
+    if matches!(operation, "is_permutation" | "power_exact") {
         return Ok(());
     }
     if !crate::kernels::permgroup::is_permutation(&permutation) {
@@ -93,6 +93,19 @@ binding!(native_perm_cycles,"num_permgroup_cycles","numerical_vector","Cycles of
 (p:Vec<u32>)->Vec<Vec<usize>>,|p:Vec<u32>|super::permutation_rows(crate::kernels::permgroup::cycles(&p)));
 binding!(native_perm_orbits,"num_permgroup_orbits","numerical_vector","Orbits of generators encoded as rows of a common-degree permutation matrix. Output uses CSR offsets/indices with finite degree and group-work budgets.","crate::kernels::permgroup::orbits",DimensionPolicy::Dimensionless,
 (n:usize,generators:Vec<Vec<u32>>)->Vec<Vec<usize>>,|n:usize,generators:Vec<Vec<u32>>|super::permutation_rows(crate::kernels::permgroup::orbits(n,&generators)));
+binding!(
+    native_perm_power_exact, "num_permgroup_power_exact", "numerical_vector",
+    "Raise a dimensionless permutation of degree up to 4096 to an exact signed integer power. A negative exponent rotates cycles in reverse, and the magnitude can have at most 65536 bits. Invalid images return an error.",
+    "crate::kernels::permgroup::power_exact", DimensionPolicy::Dimensionless,
+    (p: Vec<u32>, exponent: num_bigint::BigInt) -> Result<crate::kernels::permgroup::Perm, OpError>,
+    |p: Vec<u32>, exponent: num_bigint::BigInt| {
+        if exponent.bits() > 65_536 {
+            return Err(OpError::Domain("exact permutation exponent exceeds 65536 bits".into()));
+        }
+        crate::kernels::permgroup::power_exact(&p, &exponent)
+            .ok_or_else(|| OpError::Domain("native group operation requires a bijective permutation".into()))
+    }
+);
 binding!(native_perm_blocks,"num_permgroup_minimal_blocks","numerical_vector","Minimal block system identifying two checked points. Generators must be bijections of the declared degree, and seed points must be in range. Output uses CSR offsets/indices.","crate::kernels::permgroup::minimal_blocks",DimensionPolicy::Dimensionless,
 (n:usize,generators:Vec<Vec<u32>>,a:u32,b:u32)->Vec<Vec<usize>>,|n:usize,generators:Vec<Vec<u32>>,a:u32,b:u32|super::permutation_rows(crate::kernels::permgroup::minimal_blocks(n,&generators,a,b)));
 binding!(native_perm_systems,"num_permgroup_minimal_block_systems","numerical_vector","All native minimal block systems under a finite degree/work budget. Top-level offsets group CSR block rows into systems; no rectangular padding changes block membership.","crate::kernels::permgroup::minimal_block_systems",DimensionPolicy::Dimensionless,
@@ -102,6 +115,7 @@ binding!(native_perm_systems,"num_permgroup_minimal_block_systems","numerical_ve
 pub const NATIVE_DISCRETE_EXPORTS: &[&CodecExport] = &[
     &native_perm_cycles::EXPORT,
     &native_perm_orbits::EXPORT,
+    &native_perm_power_exact::EXPORT,
     &native_perm_blocks::EXPORT,
     &native_perm_systems::EXPORT,
 ];

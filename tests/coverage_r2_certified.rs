@@ -767,8 +767,11 @@ fn holonomic_recurrence_of_exp_and_sin_is_the_textbook_one() {
 #[test]
 fn holonomic_deciding_terms_counts_undetermined_coefficients() {
     let lim = Limits::default();
-    // empty operator: nothing to decide
-    assert_eq!(deciding_terms(&[], &lim), Some(0));
+    // The zero operator leaves every Taylor coefficient undetermined.
+    assert_eq!(deciding_terms(&[], &lim), None);
+    assert_eq!(deciding_terms(&[vec![qi(0)]], &lim), None);
+    // The equation f = 0 forces all coefficients without any initial data.
+    assert_eq!(deciding_terms(&[vec![qi(1)]], &lim), Some(0));
     // exp: a_0 determines everything
     assert_eq!(deciding_terms(&[vec![qi(-1)], vec![qi(1)]], &lim), Some(1));
     // sin / cos: two free initial values

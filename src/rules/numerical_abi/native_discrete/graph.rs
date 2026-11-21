@@ -3,6 +3,7 @@ use super::*;
 use crate::kernels::graph::CanonicalLabelling;
 use crate::kernels::graph::CellCertificate;
 use crate::kernels::graph::ColourGraph;
+use crate::kernels::graph::Condensation;
 use crate::kernels::graph::Graph;
 use crate::kernels::graph::MaxFlow;
 use crate::kernels::graph::Permutation;
@@ -10,6 +11,7 @@ use crate::kernels::graph::Refinement;
 use crate::kernels::graph::RefinementCertificate;
 use crate::kernels::graph::SearchBudget;
 use crate::kernels::graph::ShortestPaths;
+use crate::kernels::graph::UndirectedCuts;
 
 const MAX_VERTICES: usize = 256;
 const MAX_EDGES: usize = 65_536;
@@ -195,6 +197,53 @@ impl NativeOutput for FlowResult {
     }
 }
 
+impl NativeOutput for Condensation {
+    fn ty() -> TypeExpr {
+        TypeExpr::Record(vec![
+            ("component_of".into(), <Vec<usize> as NativeOutput>::ty()),
+            ("arcs".into(), <Vec<[usize; 2]> as NativeOutput>::ty()),
+        ])
+    }
+
+    fn encode(
+        self,
+        ctx: &CallCtx<'_>,
+    ) -> Result<Value, OpError> {
+        Ok(api::record(vec![
+            (
+                "component_of",
+                NativeOutput::encode(self.component_of, ctx)?,
+            ),
+            ("arcs", NativeOutput::encode(self.arcs, ctx)?),
+        ]))
+    }
+}
+
+impl NativeOutput for UndirectedCuts {
+    fn ty() -> TypeExpr {
+        TypeExpr::Record(vec![
+            ("bridges".into(), <Vec<[usize; 2]> as NativeOutput>::ty()),
+            (
+                "articulation_points".into(),
+                <Vec<usize> as NativeOutput>::ty(),
+            ),
+        ])
+    }
+
+    fn encode(
+        self,
+        ctx: &CallCtx<'_>,
+    ) -> Result<Value, OpError> {
+        Ok(api::record(vec![
+            ("bridges", NativeOutput::encode(self.bridges, ctx)?),
+            (
+                "articulation_points",
+                NativeOutput::encode(self.articulation_points, ctx)?,
+            ),
+        ]))
+    }
+}
+
 fn edge_weight(
     nodes: usize,
     weight: f64,
@@ -375,6 +424,44 @@ object_binding!(
     }
 );
 object_binding!(
+    graph_condensation,
+    "num_native_graph_condensation",
+    "crate::kernels::graph::condensation",
+    "Contracts strongly connected components into a DAG. Returns a topologically ordered component label for each input vertex and a two-column matrix of unique arcs between components. Weights are ignored.",
+    false,
+    (g: Handle<Graph>) -> Condensation,
+    |ctx: &CallCtx<'_>, g: Handle<Graph>| {
+        g.with(ctx, |g| crate::kernels::graph::condensation(g).map_err(error))
+    }
+);
+object_binding!(
+    graph_undirected_cuts,
+    "num_native_graph_undirected_cuts",
+    "crate::kernels::graph::undirected_cuts",
+    "Finds bridges and articulation points in an undirected multigraph. Each row of the two-column endpoint matrix represents one edge. Returns bridge endpoints in depth-first completion order and articulation vertices in vertex order.",
+    true,
+    (n: usize, endpoints: Vec<[usize; 2]>) -> UndirectedCuts,
+    |_ctx: &CallCtx<'_>, n: usize, endpoints: Vec<[usize; 2]>| {
+        limit(n, MAX_VERTICES)?;
+        limit(endpoints.len(), MAX_EDGES)?;
+        crate::kernels::graph::undirected_cuts(n, &endpoints).map_err(error)
+    }
+);
+object_binding!(
+    graph_multi_source_bfs,
+    "num_native_graph_multi_source_bfs",
+    "crate::kernels::graph::multi_source_bfs",
+    "Returns the unweighted distance of each vertex from its nearest source, following directed arcs. An unreachable vertex has no distance. Duplicate sources are allowed and weights are ignored.",
+    false,
+    (g: Handle<Graph>, sources: Vec<usize>) -> Many<Option<usize>>,
+    |ctx: &CallCtx<'_>, g: Handle<Graph>, sources: Vec<usize>| {
+        g.with(ctx, |g| {
+            let distances = crate::kernels::graph::multi_source_bfs(g, &sources).map_err(error)?;
+            Ok(Many(distances.into_iter().map(|d| (d != usize::MAX).then_some(d)).collect()))
+        })
+    }
+);
+object_binding!(
     graph_bellman_ford,
     "num_native_graph_bellman_ford",
     "crate::kernels::graph::bellman_ford",
@@ -433,9 +520,12 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &graph_add_edge::BINDING,
             &graph_adj::BINDING,
             &graph_bfs::BINDING,
+            &graph_multi_source_bfs::BINDING,
             &graph_connected_components::BINDING,
             &graph_weakly_connected_components::BINDING,
             &graph_strongly_connected_components::BINDING,
+            &graph_condensation::BINDING,
+            &graph_undirected_cuts::BINDING,
             &graph_topological_sort::BINDING,
             &graph_minimum_spanning_tree::BINDING,
             &graph_dijkstra::BINDING,

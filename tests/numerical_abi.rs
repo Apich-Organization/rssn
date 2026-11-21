@@ -33,6 +33,181 @@ fn call(
 ) -> Result<Value, OpError> {
     session.call_value(name, args, &CallCtx::new())
 }
+
+#[test]
+fn carlson_and_jacobi_cross_the_typed_value_abi() {
+    let session = Session::new();
+    let rg = call(
+        &session,
+        "num_special_ext_carlson_rg",
+        &[Value::Float(4.0), Value::Float(4.0), Value::Float(4.0)],
+    )
+    .unwrap();
+    assert_eq!(rg, Value::Float(2.0));
+
+    let u = 0.75_f64;
+    let amplitude = call(
+        &session,
+        "num_special_ext_jacobi_amplitude",
+        &[Value::Float(u), Value::Float(0.0)],
+    )
+    .unwrap();
+    assert_eq!(amplitude, Value::Float(u));
+
+    let Value::Tensor(samples) = call(
+        &session,
+        "num_special_ext_jacobi_elliptic_batch",
+        &[vector(&[0.0, u]), Value::Float(0.0)],
+    )
+    .unwrap() else {
+        panic!("expected a matrix of Jacobi samples")
+    };
+    assert_eq!(samples.shape, [2, 3]);
+    assert_eq!(samples.elem, TypeExpr::Float);
+    for (got, expected) in samples
+        .data
+        .iter()
+        .zip([0.0, 1.0, 1.0, u.sin(), u.cos(), 1.0])
+    {
+        assert!((got.as_f64().unwrap() - expected).abs() < 1e-15);
+    }
+}
+
+#[test]
+fn levin_condition_profile_preserves_term_dimensions_and_emits_unitless_orders() {
+    let session = Session::new();
+    let op = "num_analysis_convergence_levin_condition_numbers";
+    let args = [
+        measured_geometry(vec![4], &[1.0, -0.5, 1.0 / 3.0, -0.25], "Length"),
+        Value::String("U".into()),
+        Value::Float(1.0),
+    ];
+    let Value::Tensor(profile) = call(&session, op, &args).unwrap() else {
+        panic!("expected the Levin condition number by order");
+    };
+    assert_eq!(profile.shape, [4]);
+    assert_eq!(profile.elem, TypeExpr::Float);
+    assert_eq!(profile.data[0], Value::Float(1.0));
+    assert_eq!(
+        profile.data.last(),
+        Some(
+            &call(
+                &session,
+                "num_analysis_convergence_levin_condition_number",
+                &args
+            )
+            .unwrap()
+        ),
+    );
+    let mut invalid = args;
+    invalid[1] = Value::String("invalid".into());
+    assert!(call(&session, op, &invalid).is_err());
+}
+
+#[test]
+fn custom_histogram_checks_shared_dimensions_and_returns_exact_counts() {
+    let session = Session::new();
+    let op = "num_descriptive_histogram_edges";
+    let samples = measured_geometry(vec![4], &[0.0, 2.0, 5.0, 5.0], "Length");
+    let edges = measured_geometry(vec![3], &[-1.0, 2.0, 5.0], "Length");
+    let Value::Tensor(counts) = call(&session, op, &[samples.clone(), edges]).unwrap() else {
+        panic!("expected bin counts");
+    };
+    assert_eq!(counts.shape, [2]);
+    assert_eq!(counts.elem, TypeExpr::Int);
+    assert_eq!(counts.data, [Value::int(1), Value::int(3)]);
+    for invalid in [
+        measured_geometry(vec![3], &[-1.0, 2.0, 5.0], "Time"),
+        measured_geometry(vec![3], &[-1.0, 2.0, 2.0], "Length"),
+        measured_geometry(vec![3], &[-1.0, 2.0, 4.0], "Length"),
+    ] {
+        assert!(call(&session, op, &[samples.clone(), invalid]).is_err());
+    }
+}
+
+#[test]
+fn symmetric_matrix_powers_check_domain_and_preserve_zero_eigenvalues() {
+    let session = Session::new();
+    let op = "num_matfun_powm_psd";
+    let positive_semidefinite = matrix(2, 2, &[0.0, 0.0, 0.0, 16.0]);
+    let Value::Tensor(half_power) = call(
+        &session,
+        op,
+        &[positive_semidefinite.clone(), Value::Float(0.5)],
+    )
+    .unwrap() else {
+        panic!("expected a matrix power");
+    };
+    assert_eq!(half_power.shape, [2, 2]);
+    assert_eq!(half_power.data, [0.0, 0.0, 0.0, 4.0].map(Value::Float));
+    assert!(call(&session, op, &[positive_semidefinite, Value::Float(-1.0)]).is_err());
+    let measured = measured_geometry(vec![2, 2], &[4.0, 0.0, 0.0, 16.0], "Length");
+    assert!(call(&session, op, &[measured, Value::Float(0.5)]).is_err());
+}
+
+#[test]
+fn shape_preserving_interpolators_match_query_and_value_dimensions() {
+    use rssn::kernel::signature::DimExpr;
+
+    let s = Session::new();
+    let points = measured_geometry(vec![3], &[0.0, 1.0, 2.0], "Time");
+    let values = measured_geometry(vec![3], &[1.0, 3.0, 5.0], "Length");
+    let queries = measured_geometry(vec![3], &[1.5, 0.25, 2.0], "Time");
+    let wrong = measured_geometry(vec![3], &[1.5, 0.25, 2.0], "Length");
+    let expected = TypeExpr::Float.with_dim(DimExpr::base("Length"));
+    for name in ["num_interp_ext_akima_many", "num_interp_ext_pchip_many"] {
+        let Value::Tensor(out) =
+            call(&s, name, &[points.clone(), values.clone(), queries.clone()]).unwrap()
+        else {
+            panic!("expected interpolated samples");
+        };
+        assert_eq!(out.shape, [3]);
+        assert!(rssn::kernel::overload::matches_type(&expected, &out.elem).accepted());
+        for (actual, expected) in out.data.iter().map(geometry_scalar).zip([4.0, 1.5, 5.0]) {
+            assert!((actual - expected).abs() < 1e-14);
+        }
+        assert!(call(&s, name, &[points.clone(), values.clone(), wrong.clone()]).is_err());
+    }
+}
+
+#[test]
+fn consecutive_mobius_values_and_congruence_classes_are_exact() {
+    let s = Session::new();
+    let result = call(&s, "num_number_ext_mobius_sieve", &[Value::int(10)]).unwrap();
+    let Value::Tensor(result) = result else {
+        panic!("expected Möbius values")
+    };
+    assert_eq!(result.shape, [11]);
+    assert_eq!(result.elem, TypeExpr::Int);
+    assert_eq!(
+        result.data,
+        [0, 1, -1, -1, 0, -1, 1, -1, 0, 0, 1].map(Value::int)
+    );
+
+    let op = "num_number_ext_solve_linear_congruence";
+    let Value::Variant(solution) =
+        call(&s, op, &[Value::int(14), Value::int(30), Value::int(100)]).unwrap()
+    else {
+        panic!("expected an optional congruence class")
+    };
+    assert_eq!(solution.tag, "Some");
+    assert_eq!(
+        geometry_field(&solution.payload[0], "item0"),
+        &Value::int(45)
+    );
+    assert_eq!(
+        geometry_field(&solution.payload[0], "item1"),
+        &Value::int(50)
+    );
+    let Value::Variant(no_solution) =
+        call(&s, op, &[Value::int(6), Value::int(5), Value::int(15)]).unwrap()
+    else {
+        panic!("expected an optional congruence class")
+    };
+    assert_eq!(no_solution.tag, "None");
+    assert!(no_solution.payload.is_empty());
+    assert!(call(&s, op, &[Value::int(1), Value::int(0), Value::int(0)]).is_err());
+}
 #[test]
 fn descriptors_register_exact_manifest_overloads_and_unique_keys() {
     let session = Session::new();
@@ -243,6 +418,36 @@ fn welch_record_fields_preserve_their_independent_dimensions() {
     }
     assert!((geometry_scalar(&frequencies.data[1]) - 1.0).abs() < 1e-12);
     assert!((geometry_scalar(&density.data[0]) - 1.0).abs() < 1e-12);
+}
+
+#[test]
+fn time_series_lag_operators_keep_covariance_units_and_normalize_correlations() {
+    use rssn::kernel::signature::DimExpr;
+
+    let session = Session::new();
+    let samples = measured_geometry(vec![2], &[1.0, -1.0], "Length");
+    let args = [samples.clone(), Value::int(1)];
+    let Value::Tensor(covariance) = call(&session, "num_signal_autocovariance", &args).unwrap()
+    else {
+        panic!("expected a vector of covariances");
+    };
+    assert_eq!(covariance.shape, [2]);
+    let squared_length = TypeExpr::Float.with_dim(DimExpr::base("Length").pow(2));
+    assert!(rssn::kernel::overload::matches_type(&squared_length, &covariance.elem).accepted());
+    for (value, expected) in covariance.data.iter().zip([1.0, -0.5]) {
+        assert!((geometry_scalar(value) - expected).abs() < 1e-12);
+    }
+
+    for name in [
+        "num_signal_autocorrelation",
+        "num_signal_partial_autocorrelation",
+    ] {
+        assert_eq!(call(&session, name, &args).unwrap(), vector(&[1.0, -0.5]));
+        assert!(matches!(
+            call(&session, name, &[samples.clone(), Value::int(2)]),
+            Err(OpError::Domain(_))
+        ));
+    }
 }
 
 #[test]
@@ -1294,6 +1499,166 @@ fn measured_geometry(
     })
 }
 #[test]
+fn scaled_euclidean_operators_preserve_physical_results() {
+    use rssn::kernel::signature::DimExpr;
+    let s = Session::new();
+    let input = |values: &[f64], unit| measured_geometry(vec![values.len()], values, unit);
+    let tiny = input(&[3e-200, 4e-200], "Length");
+    let huge = input(&[3e200, 4e200], "Length");
+    let zero = input(&[0.0, 0.0], "Length");
+    let length = TypeExpr::Float.with_dim(DimExpr::Base("Length".into()));
+    for (name, args, expected) in [
+        ("num_norm", vec![tiny], 5e-200),
+        ("num_distance", vec![huge.clone(), zero], 5e200),
+    ] {
+        let result = call(&s, name, &args).unwrap();
+        assert!(rssn::kernel::overload::matches_type(&length, &result.type_expr()).accepted());
+        assert!((geometry_scalar(&result) / expected - 1.0).abs() <= 2e-15);
+    }
+    let right_angle = call(
+        &s,
+        "num_angle",
+        &[huge.clone(), input(&[-4e-200, 3e-200], "Time")],
+    )
+    .unwrap();
+    assert!((right_angle.as_f64().unwrap() - std::f64::consts::FRAC_PI_2).abs() <= 2e-15);
+    let Value::Tensor(direction) = call(&s, "num_normalize", &[huge]).unwrap() else {
+        panic!("expected a tensor of normalized coordinates")
+    };
+    assert_eq!(direction.elem, TypeExpr::Float);
+    for (value, expected) in direction.data.iter().zip([0.6, 0.8]) {
+        assert!((geometry_scalar(value) - expected).abs() <= 2e-15);
+    }
+}
+
+#[test]
+fn reflection_restores_dimensions_after_a_compensated_overflow() {
+    let s = Session::new();
+    let tiny = f64::from_bits(1);
+    let incoming = measured_geometry(vec![2], &[f64::MAX, tiny], "Length");
+    let Value::Tensor(output) = call(&s, "num_reflect", &[incoming, vector(&[1.0, 0.0])]).unwrap()
+    else {
+        panic!("expected a reflected vector");
+    };
+    assert_eq!(
+        output.elem,
+        TypeExpr::Float.with_dim(rssn::kernel::signature::DimExpr::Base("Length".into()))
+    );
+    assert_eq!(
+        geometry_scalar(&output.data[0]).to_bits(),
+        (-f64::MAX).to_bits()
+    );
+    assert_eq!(geometry_scalar(&output.data[1]).to_bits(), 1);
+}
+
+#[test]
+fn finite_interval_roots_share_measured_bounds_and_include_endpoints() {
+    use rssn::kernel::signature::DimExpr;
+    use rssn::kernel::value::DynValue;
+
+    let session = Session::new();
+    let polynomial = call(
+        &session,
+        "num_native_polynomial_normalized_new",
+        &[vector(&[1.0, -0.25, 0.0])],
+    )
+    .unwrap();
+    let measured = |coordinate, dim: &str| {
+        Value::Dyn(DynValue {
+            dim: DimExpr::base(dim),
+            value: Box::new(Value::Float(coordinate)),
+        })
+    };
+    let length = |coordinate| measured(coordinate, "Length");
+    let endpoint_roots = [
+        polynomial,
+        length(0.0),
+        length(1.0),
+        length(1e-10),
+        length(4.0),
+    ];
+    let op = "num_native_real_roots_find_roots_in";
+    let Value::Tensor(result) = call(&session, op, &endpoint_roots).unwrap() else {
+        panic!("expected a measured root vector");
+    };
+    assert_eq!(result.shape, [2]);
+    assert!(
+        rssn::kernel::overload::matches_type(
+            &TypeExpr::Float.with_dim(DimExpr::base("Length")),
+            &result.elem,
+        )
+        .accepted()
+    );
+    assert_eq!(
+        result.data.iter().map(geometry_scalar).collect::<Vec<_>>(),
+        [0.0, 1.0]
+    );
+    let mut invalid = endpoint_roots.clone();
+    invalid[2] = measured(1.0, "Time");
+    assert!(call(&session, op, &invalid).is_err());
+    let mut invalid = endpoint_roots;
+    invalid[1] = length(2.0);
+    assert!(call(&session, op, &invalid).is_err());
+}
+
+#[test]
+fn portable_kdtree_batch_preserves_query_order_and_coordinate_units() {
+    let session = Session::new();
+    let points = measured_geometry(vec![3, 2], &[0.0, 0.0, 2.0, 0.0, 0.0, 2.0], "Length");
+    let model = call(&session, "num_kdtree_build", &[points]).unwrap();
+    let queries = [1.75, 0.0, 0.0, 1.5, 0.25, 0.0];
+    let op = "num_kdtree_nearest_batch";
+    let result = call(
+        &session,
+        op,
+        &[
+            model.clone(),
+            measured_geometry(vec![3, 2], &queries, "Length"),
+        ],
+    )
+    .unwrap();
+    let Value::Tensor(indices) = geometry_field(&result, "indices") else {
+        panic!("expected indices");
+    };
+    assert_eq!(indices.elem, TypeExpr::Int);
+    assert_eq!(indices.data, [Value::int(1), Value::int(2), Value::int(0)]);
+    let Value::Tensor(distances) = geometry_field(&result, "distances") else {
+        panic!("expected distances");
+    };
+    assert!(
+        rssn::kernel::overload::matches_type(
+            &TypeExpr::Float.with_dim(rssn::kernel::signature::DimExpr::base("Length")),
+            &distances.elem,
+        )
+        .accepted()
+    );
+    assert_eq!(
+        distances
+            .data
+            .iter()
+            .map(geometry_scalar)
+            .collect::<Vec<_>>(),
+        [0.25, 0.5, 0.25],
+    );
+    for invalid in [
+        measured_geometry(vec![3, 2], &queries, "Time"),
+        measured_geometry(vec![2, 3], &queries, "Length"),
+    ] {
+        assert!(call(&session, op, &[model.clone(), invalid]).is_err());
+    }
+    let empty = call(
+        &session,
+        op,
+        &[model, measured_geometry(vec![0, 2], &[], "Length")],
+    )
+    .unwrap();
+    assert!(matches!(
+        geometry_field(&empty, "indices"),
+        Value::Tensor(t) if t.shape == [0] && t.data.is_empty()
+    ));
+}
+
+#[test]
 fn portable_bvh_roundtrips_dimensions_and_rejects_corrupt_or_inconsistent_definitions() {
     let session = Session::new();
     let lower = measured_geometry(vec![2, 3], &[0.0, 0.0, 0.0, 10.0, 0.0, 0.0], "Length");
@@ -1428,4 +1793,111 @@ fn voronoi_topology_is_flat_and_only_vertices_carry_coordinate_units() {
         )
         .is_err()
     );
+}
+
+#[test]
+fn kruskal_wallis_accepts_ragged_groups_with_common_units() {
+    use rssn::kernel::signature::DimExpr;
+    use rssn::kernel::value::RecordValue;
+    let session = Session::new();
+    let input = |offsets: &[usize], values: &[f64]| {
+        let offsets = Value::Tensor(TensorValue {
+            shape: vec![offsets.len()],
+            elem: TypeExpr::Int,
+            data: offsets.iter().copied().map(Value::int).collect(),
+        });
+        let values = Value::Tensor(TensorValue {
+            shape: vec![values.len()],
+            elem: TypeExpr::Float.with_dim(DimExpr::base("Length")),
+            data: values.iter().copied().map(Value::Float).collect(),
+        });
+        Value::Record(RecordValue {
+            fields: vec![("offsets".into(), offsets), ("values".into(), values)],
+        })
+    };
+    let call =
+        |argument| session.call_value("num_stats_kruskal_wallis", &[argument], &CallCtx::new());
+    let result = call(input(
+        &[0, 2, 5, 9],
+        &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
+    ))
+    .unwrap();
+    let Value::Record(result) = result else {
+        panic!("expected a rank test record")
+    };
+    assert!((result.get("statistic").unwrap().as_f64().unwrap() - 7.0).abs() < 2e-14);
+    assert!((result.get("p_value").unwrap().as_f64().unwrap() - (-3.5_f64).exp()).abs() < 2e-14);
+    let Some(Value::Variant(df)) = result.get("df") else {
+        panic!("expected degrees of freedom")
+    };
+    assert_eq!(df.tag, "Some");
+    assert_eq!(df.payload, [Value::Float(2.0)]);
+    assert!(call(input(&[0, 2, 2, 3], &[1.0, 2.0, 3.0])).is_err());
+    assert!(call(input(&[0, 2, 5, 9], &[1.0; 9])).is_err());
+}
+
+#[test]
+fn bell_batch_keeps_input_order_and_localizes_overflow() {
+    let session = Session::new();
+    let indices = Value::Tensor(TensorValue {
+        shape: vec![6],
+        data: [218, 219, 0, 5, 218, u64::MAX]
+            .into_iter()
+            .map(Value::int)
+            .collect(),
+        elem: TypeExpr::Int,
+    });
+    let value = call(&session, "num_combinatorics_bell_batch", &[indices]).unwrap();
+    let Value::Tensor(value) = value else {
+        panic!("expected a vector of optional counts")
+    };
+    assert_eq!(value.shape, [6]);
+    let count = |index| {
+        let Value::Variant(value) = &value.data[index] else {
+            panic!("expected an optional Bell number")
+        };
+        match (value.tag.as_str(), value.payload.as_slice()) {
+            | ("None", []) => None,
+            | ("Some", [Value::Float(count)]) => Some(*count),
+            | _ => panic!("invalid count option"),
+        }
+    };
+    assert!(count(0).is_some_and(|x| x.is_finite() && x > 1e300));
+    assert_eq!(count(1), None);
+    assert_eq!(count(2), Some(1.0));
+    assert_eq!(count(3), Some(52.0));
+    assert_eq!(count(4), count(0));
+    assert_eq!(count(5), None);
+}
+
+#[test]
+fn native_prime_sqrt_plan_checks_modulus_and_reuses_roots() {
+    let session = Session::new();
+    let new = "num_number_theory_prime_sqrt_plan_new";
+    let sqrt = "num_number_theory_prime_sqrt_plan_sqrt";
+    let modulus = "num_number_theory_prime_sqrt_plan_modulus";
+    let invalid = call(&session, new, &[Value::int(49)]).unwrap();
+    assert!(matches!(invalid, Value::Variant(value) if value.tag == "None"));
+    let prepared = call(&session, new, &[Value::int(17)]).unwrap();
+    let Value::Variant(prepared) = prepared else {
+        panic!("expected an optional plan")
+    };
+    assert_eq!(prepared.tag, "Some");
+    let plan = &prepared.payload[0];
+    assert_eq!(
+        call(&session, modulus, std::slice::from_ref(plan)).unwrap(),
+        Value::int(17)
+    );
+    for value in [0, 1, 2, 3, 4, 5, 16, 18, u64::MAX] {
+        let expected = call(
+            &session,
+            "num_number_theory_sqrt_mod_prime",
+            &[Value::int(value), Value::int(17)],
+        )
+        .unwrap();
+        let actual = call(&session, sqrt, &[plan.clone(), Value::int(value)]).unwrap();
+        assert_eq!(actual, expected);
+    }
+    let other_session = Session::new();
+    assert!(call(&other_session, modulus, std::slice::from_ref(plan)).is_err());
 }

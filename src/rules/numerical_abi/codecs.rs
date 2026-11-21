@@ -568,6 +568,11 @@ impl Arg for num_complex::Complex64 {
                 let (re, im) = c.to_f64();
                 Self::new(re, im)
             },
+            | Value::Dyn(dynamic) => return Self::decode(&dynamic.value, index),
+            | Value::Quantity(quantity) => {
+                let scale = super::linear_unit_scale(&quantity.unit, index)?;
+                Self::decode(&quantity.value, index)? * scale
+            },
             | _ => Self::new(numeric(value, index)?, 0.0),
         };
         if !result.re.is_finite() || !result.im.is_finite() {

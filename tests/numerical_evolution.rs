@@ -4,7 +4,9 @@ use rssn::kernel::CallCtx;
 use rssn::kernel::NativeCallback;
 use rssn::kernel::OpError;
 use rssn::kernel::signature::DimExpr;
+use rssn::kernel::signature::Exp;
 use rssn::kernel::signature::NatExpr;
+use rssn::kernel::signature::Rational;
 use rssn::kernel::signature::Signature;
 use rssn::kernel::signature::TypeExpr;
 use rssn::kernel::value::DynValue;
@@ -92,6 +94,63 @@ fn ode_signature() -> Signature {
         vec![scalar(time()), vector_type(length())],
         vector_type(rate()),
     )
+}
+
+#[test]
+fn second_diagonal_callbacks_keep_units_and_use_one_sample_pair_per_axis() {
+    let session = Session::new();
+    let evaluated = Arc::new(AtomicUsize::new(0));
+    let observed = Arc::clone(&evaluated);
+    let mut ctx = CallCtx::new();
+    let callback = ctx
+        .add_callback(Arc::new(NativeCallback::new(
+            move |arguments: &[Value]| {
+                observed.fetch_add(1, Ordering::Relaxed);
+                let Value::Tensor(point) = &arguments[0] else {
+                    panic!("expected the measured point");
+                };
+                let x = number(&point.data[0]);
+                let y = number(&point.data[1]);
+                Ok(dimensional(3.0 * x * x + 5.0 * y * y, time()))
+            },
+            Signature::new(vec![vector_type(length())], scalar(time())),
+        )))
+        .unwrap();
+    let dimensions = DimExpr::Mul(vec![length().pow(Exp::Rat(Rational::new(-2, 1))), time()]);
+    let arguments = vec![
+        vector(&[1.0, 2.0], length()),
+        dimensional(2.0, length()),
+        dimensional(4.0, time()),
+        Value::int(5),
+    ];
+    let default = "num_native_hessian_diagonal_scaled";
+    let custom = "num_native_hessian_diagonal_with_steps_scaled";
+    let mut explicit = arguments.clone();
+    explicit.push(vector(&[0.125, 0.25], length()));
+    for (name, inputs) in [(default, &arguments), (custom, &explicit)] {
+        evaluated.store(0, Ordering::Relaxed);
+        let output = session.call_ho(name, inputs, &[callback], &ctx).unwrap();
+        let Value::Tensor(result) = output else {
+            panic!("expected a Hessian diagonal");
+        };
+        assert_eq!(result.elem, scalar(dimensions.clone()));
+        assert_eq!(result.shape, [2]);
+        assert!((number(&result.data[0]) - 6.0).abs() < 1e-6);
+        assert!((number(&result.data[1]) - 10.0).abs() < 1e-6);
+        assert_eq!(evaluated.load(Ordering::Relaxed), 5);
+    }
+    evaluated.store(0, Ordering::Relaxed);
+    let output = session
+        .call_ho("num_native_laplacian_scaled", &arguments, &[callback], &ctx)
+        .unwrap();
+    assert!((number(&output) - 16.0).abs() < 1e-6);
+    assert_eq!(evaluated.load(Ordering::Relaxed), 5);
+
+    let mut wrong = arguments;
+    wrong.push(vector(&[0.125, 0.25], time()));
+    evaluated.store(0, Ordering::Relaxed);
+    assert!(session.call_ho(custom, &wrong, &[callback], &ctx).is_err());
+    assert_eq!(evaluated.load(Ordering::Relaxed), 0);
 }
 
 #[test]
@@ -475,5 +534,49 @@ fn least_squares_preserves_callback_error_and_rejects_residual_extent_mismatch()
         session
             .call_ho("num_least_squares", &args, &[bad], &ctx)
             .is_err()
+    );
+}
+
+#[test]
+fn brent_final_bracket_preserves_measured_coordinates_and_callback_count() {
+    let session = Session::new();
+    let mut ctx = CallCtx::new();
+    let observed = Arc::new(AtomicUsize::new(0));
+    let calls = Arc::clone(&observed);
+    let callback = ctx
+        .add_callback(Arc::new(NativeCallback::new(
+            move |arguments: &[Value]| {
+                calls.fetch_add(1, Ordering::Relaxed);
+                let x = number(&arguments[0]);
+                Ok(dimensional(
+                    (x * x - 2.0) * f64::from_bits(1923_u64 << 52),
+                    time(),
+                ))
+            },
+            Signature::new(vec![scalar(length())], scalar(time())),
+        )))
+        .unwrap();
+    let arguments = [
+        dimensional(3.0, length()),
+        dimensional(0.0, length()),
+        dimensional(1e-12, length()),
+        Value::int(32),
+    ];
+    let values = session
+        .call_ho("num_brent_with_bracket", &arguments, &[callback], &ctx)
+        .unwrap();
+    let root = number(field(&values, "root"));
+    let Value::Tensor(bracket) = field(&values, "bracket") else {
+        panic!("expected a typed final bracket")
+    };
+    assert_eq!(bracket.shape, [2]);
+    assert_eq!(bracket.elem, scalar(length()));
+    let lo = number(&bracket.data[0]);
+    let hi = number(&bracket.data[1]);
+    assert!(lo <= root && root <= hi && hi - lo <= 1e-12);
+    assert!((root - 2.0_f64.sqrt()).abs() < 1e-12);
+    assert_eq!(
+        number(field(&values, "evaluations")) as usize,
+        observed.load(Ordering::Relaxed)
     );
 }

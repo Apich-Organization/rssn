@@ -6,6 +6,7 @@ use crate::rules::numerical_abi::codecs::Output;
 use crate::sim::models_ising_statistical as ising;
 use crate::sim::spin_models as spin;
 use crate::sim::sse;
+use std::num::NonZeroUsize;
 struct Lattice<const D: usize>(spin::Lattice<D>);
 struct On<const D: usize, const N: usize> {
     native: spin::OnModel<D, N>,
@@ -14,7 +15,77 @@ struct On<const D: usize, const N: usize> {
 struct Potts<const D: usize> {
     native: spin::Potts<D>,
     frame: Frame,
+    heat_bath: spin::PottsHeatBathWorkspace,
 }
+impl<const D: usize> Potts<D> {
+    fn new(
+        native: spin::Potts<D>,
+        frame: Frame,
+    ) -> Self {
+        Self {
+            native,
+            frame,
+            heat_bath: spin::PottsHeatBathWorkspace::default(),
+        }
+    }
+
+    fn heat_bath_sweep(&mut self) {
+        self.native.heat_bath_sweep_with(&mut self.heat_bath);
+    }
+
+    fn update(
+        &mut self,
+        kind: spin::Update,
+    ) {
+        match kind {
+            | spin::Update::HeatBath => self.heat_bath_sweep(),
+            | other => self.native.update(other),
+        }
+    }
+}
+
+fn potts_heat_bath_probabilities<const D: usize>(
+    ctx: &CallCtx<'_>,
+    model: &Handle<Potts<D>>,
+    site: usize,
+) -> Result<Vec<f64>, OpError> {
+    model.with(ctx, |model| {
+        let mut probabilities = vec![0.0; model.native.q];
+        model
+            .native
+            .heat_bath_probabilities(site, &mut probabilities)
+            .map_err(api::error)?;
+        Ok(probabilities)
+    })
+}
+
+macro_rules! potts_heat_bath_binding {
+    ($module:ident, $name:literal, $dimension:literal) => {
+        object_binding!(
+            $module, $name, "crate::sim::spin_models::Potts<D>::heat_bath_probabilities",
+            "Return the dimensionless heat-bath conditional probabilities in Potts color order for one zero-based site. Read the current neighborhood without changing spins or the seed stream.",
+            false,
+            (model: Handle<Potts<$dimension>>, site: usize) -> Vec<f64>,
+            |ctx, model, site| potts_heat_bath_probabilities::<$dimension>(ctx, &model, site)
+        );
+    };
+}
+potts_heat_bath_binding!(
+    spin_potts_heat_bath_probabilities_d1,
+    "num_native_spin_potts_heat_bath_probabilities_d1",
+    1
+);
+potts_heat_bath_binding!(
+    spin_potts_heat_bath_probabilities_d2,
+    "num_native_spin_potts_heat_bath_probabilities_d2",
+    2
+);
+potts_heat_bath_binding!(
+    spin_potts_heat_bath_probabilities_d3,
+    "num_native_spin_potts_heat_bath_probabilities_d3",
+    3
+);
+
 struct Temper<const D: usize, const N: usize> {
     native: spin::ParallelTempering<D, N>,
     frame: Frame,
@@ -360,14 +431,14 @@ object_binding!(spin_lattice_bonds_d1,"num_native_spin_lattice_bonds_d1","crate:
 object_binding!(spin_lattice_diagonal_bonds_d1,"num_native_spin_lattice_diagonal_bonds_d1","crate::sim::spin_models::Lattice<D>::diagonal_bonds","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(lattice:Handle<Lattice<1>>)->usize,|ctx:&CallCtx<'_>,lattice:Handle<Lattice<1>>|{lattice.with(ctx,|s|Ok(s.0.diagonal_bonds()))});
 object_binding!(spin_lattice_neighbours_d1,"num_native_spin_lattice_neighbours_d1","crate::sim::spin_models::Lattice<D>::neighbours","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(lattice:Handle<Lattice<1>>,index:usize)->Neighbours,|ctx:&CallCtx<'_>,lattice:Handle<Lattice<1>>,index:usize|{lattice.with(ctx,|s|{if index>=s.0.sites(){return Err(api::error("spin lattice index outside lattice"));}Ok(Neighbours(s.0.neighbours(index).iter().map(|i|(*i!=usize::MAX).then_some(*i)).collect()))})});
 object_binding!(spin_lattice_second_neighbours_d1,"num_native_spin_lattice_second_neighbours_d1","crate::sim::spin_models::Lattice<D>::second_neighbours","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(lattice:Handle<Lattice<1>>,index:usize)->Neighbours,|ctx:&CallCtx<'_>,lattice:Handle<Lattice<1>>,index:usize|{lattice.with(ctx,|s|{if index>=s.0.sites(){return Err(api::error("spin lattice index outside lattice"));}Ok(Neighbours(s.0.second_neighbours(index).iter().map(|i|(*i!=usize::MAX).then_some(*i)).collect()))})});
-object_binding!(spin_potts_new_d1,"num_native_spin_potts_new_d1","crate::sim::spin_models::Potts<D>::new","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(f:Handle<Frame>,dims:[usize;1],periodic:bool,q:usize,inverse_temperature:Input,seed:u64)->NewObject<Potts<1>>,|ctx:&CallCtx<'_>,f:Handle<Frame>,dims:[usize;1],periodic:bool,q:usize,inverse_temperature:Input,seed:u64|{sites(dims,periodic)?;if !(2..=256).contains(&q){return Err(api::error("Potts q must be2..256"));}let f=frame(ctx,&f)?;let beta=beta(&f,&inverse_temperature.0)?;let native=spin::Potts::new(dims,periodic,q,beta,seed).map_err(api::error)?;let dim=f.dims.to_vec();Ok(NewObject::new(Potts{native,frame:f},dim))});
+object_binding!(spin_potts_new_d1,"num_native_spin_potts_new_d1","crate::sim::spin_models::Potts<D>::new","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(f:Handle<Frame>,dims:[usize;1],periodic:bool,q:usize,inverse_temperature:Input,seed:u64)->NewObject<Potts<1>>,|ctx:&CallCtx<'_>,f:Handle<Frame>,dims:[usize;1],periodic:bool,q:usize,inverse_temperature:Input,seed:u64|{sites(dims,periodic)?;if !(2..=256).contains(&q){return Err(api::error("Potts q must be2..256"));}let f=frame(ctx,&f)?;let beta=beta(&f,&inverse_temperature.0)?;let native=spin::Potts::new(dims,periodic,q,beta,seed).map_err(api::error)?;let dim=f.dims.to_vec();Ok(NewObject::new(Potts::new(native,f),dim))});
 object_binding!(spin_potts_energy_d1,"num_native_spin_potts_energy_d1","crate::sim::spin_models::Potts<D>::energy","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<1>>)->Dynamic,|ctx:&CallCtx<'_>,model:Handle<Potts<1>>|{model.with_mut(ctx,|s|{Ok(Dynamic(s.frame.output(s.native.energy(),ENERGY,false)?))})});
 object_binding!(spin_potts_order_parameter_d1,"num_native_spin_potts_order_parameter_d1","crate::sim::spin_models::Potts<D>::order_parameter","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<1>>)->f64,|ctx:&CallCtx<'_>,model:Handle<Potts<1>>|{model.with_mut(ctx,|s|{Ok(s.native.order_parameter())})});
 object_binding!(spin_potts_metropolis_sweep_d1,"num_native_spin_potts_metropolis_sweep_d1","crate::sim::spin_models::Potts<D>::metropolis_sweep","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<1>>)->f64,|ctx:&CallCtx<'_>,model:Handle<Potts<1>>|{model.with_mut(ctx,|s|{Ok(s.native.metropolis_sweep())})});
-object_binding!(spin_potts_heat_bath_sweep_d1,"num_native_spin_potts_heat_bath_sweep_d1","crate::sim::spin_models::Potts<D>::heat_bath_sweep","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<1>>)->bool,|ctx:&CallCtx<'_>,model:Handle<Potts<1>>|{model.with_mut(ctx,|s|{s.native.heat_bath_sweep();Ok(true)})});
+object_binding!(spin_potts_heat_bath_sweep_d1,"num_native_spin_potts_heat_bath_sweep_d1","crate::sim::spin_models::Potts<D>::heat_bath_sweep","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<1>>)->bool,|ctx:&CallCtx<'_>,model:Handle<Potts<1>>|{model.with_mut(ctx,|s|{s.heat_bath_sweep();Ok(true)})});
 object_binding!(spin_potts_wolff_step_d1,"num_native_spin_potts_wolff_step_d1","crate::sim::spin_models::Potts<D>::wolff_step","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<1>>)->usize,|ctx:&CallCtx<'_>,model:Handle<Potts<1>>|{model.with_mut(ctx,|s|{if s.native.j<0.0{return Err(api::error("Potts Wolff needsferromagnetic coupling"));}Ok(s.native.wolff_step())})});
 object_binding!(spin_potts_swendsen_wang_step_d1,"num_native_spin_potts_swendsen_wang_step_d1","crate::sim::spin_models::Potts<D>::swendsen_wang_step","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<1>>)->usize,|ctx:&CallCtx<'_>,model:Handle<Potts<1>>|{model.with_mut(ctx,|s|{if s.native.j<0.0{return Err(api::error("Potts cluster updatesneedferromagnetic coupling"));}Ok(s.native.swendsen_wang_step())})});
-object_binding!(spin_potts_update_d1,"num_native_spin_potts_update_d1","crate::sim::spin_models::Potts<D>::update","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<1>>,kind:String,proposal:f64)->bool,|ctx:&CallCtx<'_>,model:Handle<Potts<1>>,kind:String,proposal:f64|{let u=update(&kind,proposal)?;model.with_mut(ctx,|s|{if matches!(u,spin::Update::Wolff|spin::Update::SwendsenWang)&&s.native.j<0.0{return Err(api::error("cluster updatesneedferromagnetic coupling"));}s.native.update(u);s.validate()?;Ok(true)})});
+object_binding!(spin_potts_update_d1,"num_native_spin_potts_update_d1","crate::sim::spin_models::Potts<D>::update","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<1>>,kind:String,proposal:f64)->bool,|ctx:&CallCtx<'_>,model:Handle<Potts<1>>,kind:String,proposal:f64|{let u=update(&kind,proposal)?;model.with_mut(ctx,|s|{if matches!(u,spin::Update::Wolff|spin::Update::SwendsenWang)&&s.native.j<0.0{return Err(api::error("cluster updatesneedferromagnetic coupling"));}s.update(u);s.validate()?;Ok(true)})});
 object_binding!(spin_potts_tempering_new_d1,"num_native_spin_potts_tempering_new_d1","crate::sim::spin_models::PottsTempering<D>::new","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(f:Handle<Frame>,dims:[usize;1],periodic:bool,q:usize,inverse_temperatures:Input,seed:u64)->NewObject<PottsTemper<1>>,|ctx:&CallCtx<'_>,f:Handle<Frame>,dims:[usize;1],periodic:bool,q:usize,inverse_temperatures:Input,seed:u64|{let count=sites(dims,periodic)?;if !(2..=256).contains(&q){return Err(api::error("Potts q must be2..256"));}let f=frame(ctx,&f)?;let betas=betas(&f,&inverse_temperatures.0)?;work(count,betas.len(),1)?;let native=spin::PottsTempering::new(dims,periodic,q,&betas,seed).map_err(api::error)?;let dim=f.dims.to_vec();Ok(NewObject::new(PottsTemper{native,frame:f},dim))});
 object_binding!(spin_on_new_d1_n1,"num_native_spin_on_new_d1_n1","crate::sim::spin_models::OnModel<D,N>::new","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(f:Handle<Frame>,dims:[usize;1],periodic:bool,inverse_temperature:Input,seed:u64)->NewObject<On<1,1>>,|ctx:&CallCtx<'_>,f:Handle<Frame>,dims:[usize;1],periodic:bool,inverse_temperature:Input,seed:u64|{sites(dims,periodic)?;let f=frame(ctx,&f)?;let beta=beta(&f,&inverse_temperature.0)?;let native=spin::OnModel::new(dims,periodic,beta,seed).map_err(api::error)?;let dim=f.dims.to_vec();Ok(NewObject::new(On{native,frame:f},dim))});
 object_binding!(spin_on_cold_start_d1_n1,"num_native_spin_on_cold_start_d1_n1","crate::sim::spin_models::OnModel<D,N>::cold_start","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<On<1,1>>)->bool,|ctx:&CallCtx<'_>,model:Handle<On<1,1>>|{model.with_mut(ctx,|s|{s.native.cold_start();Ok(true)})});
@@ -447,14 +518,14 @@ object_binding!(spin_lattice_bonds_d2,"num_native_spin_lattice_bonds_d2","crate:
 object_binding!(spin_lattice_diagonal_bonds_d2,"num_native_spin_lattice_diagonal_bonds_d2","crate::sim::spin_models::Lattice<D>::diagonal_bonds","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(lattice:Handle<Lattice<2>>)->usize,|ctx:&CallCtx<'_>,lattice:Handle<Lattice<2>>|{lattice.with(ctx,|s|Ok(s.0.diagonal_bonds()))});
 object_binding!(spin_lattice_neighbours_d2,"num_native_spin_lattice_neighbours_d2","crate::sim::spin_models::Lattice<D>::neighbours","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(lattice:Handle<Lattice<2>>,index:usize)->Neighbours,|ctx:&CallCtx<'_>,lattice:Handle<Lattice<2>>,index:usize|{lattice.with(ctx,|s|{if index>=s.0.sites(){return Err(api::error("spin lattice index outside lattice"));}Ok(Neighbours(s.0.neighbours(index).iter().map(|i|(*i!=usize::MAX).then_some(*i)).collect()))})});
 object_binding!(spin_lattice_second_neighbours_d2,"num_native_spin_lattice_second_neighbours_d2","crate::sim::spin_models::Lattice<D>::second_neighbours","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(lattice:Handle<Lattice<2>>,index:usize)->Neighbours,|ctx:&CallCtx<'_>,lattice:Handle<Lattice<2>>,index:usize|{lattice.with(ctx,|s|{if index>=s.0.sites(){return Err(api::error("spin lattice index outside lattice"));}Ok(Neighbours(s.0.second_neighbours(index).iter().map(|i|(*i!=usize::MAX).then_some(*i)).collect()))})});
-object_binding!(spin_potts_new_d2,"num_native_spin_potts_new_d2","crate::sim::spin_models::Potts<D>::new","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(f:Handle<Frame>,dims:[usize;2],periodic:bool,q:usize,inverse_temperature:Input,seed:u64)->NewObject<Potts<2>>,|ctx:&CallCtx<'_>,f:Handle<Frame>,dims:[usize;2],periodic:bool,q:usize,inverse_temperature:Input,seed:u64|{sites(dims,periodic)?;if !(2..=256).contains(&q){return Err(api::error("Potts q must be2..256"));}let f=frame(ctx,&f)?;let beta=beta(&f,&inverse_temperature.0)?;let native=spin::Potts::new(dims,periodic,q,beta,seed).map_err(api::error)?;let dim=f.dims.to_vec();Ok(NewObject::new(Potts{native,frame:f},dim))});
+object_binding!(spin_potts_new_d2,"num_native_spin_potts_new_d2","crate::sim::spin_models::Potts<D>::new","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(f:Handle<Frame>,dims:[usize;2],periodic:bool,q:usize,inverse_temperature:Input,seed:u64)->NewObject<Potts<2>>,|ctx:&CallCtx<'_>,f:Handle<Frame>,dims:[usize;2],periodic:bool,q:usize,inverse_temperature:Input,seed:u64|{sites(dims,periodic)?;if !(2..=256).contains(&q){return Err(api::error("Potts q must be2..256"));}let f=frame(ctx,&f)?;let beta=beta(&f,&inverse_temperature.0)?;let native=spin::Potts::new(dims,periodic,q,beta,seed).map_err(api::error)?;let dim=f.dims.to_vec();Ok(NewObject::new(Potts::new(native,f),dim))});
 object_binding!(spin_potts_energy_d2,"num_native_spin_potts_energy_d2","crate::sim::spin_models::Potts<D>::energy","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<2>>)->Dynamic,|ctx:&CallCtx<'_>,model:Handle<Potts<2>>|{model.with_mut(ctx,|s|{Ok(Dynamic(s.frame.output(s.native.energy(),ENERGY,false)?))})});
 object_binding!(spin_potts_order_parameter_d2,"num_native_spin_potts_order_parameter_d2","crate::sim::spin_models::Potts<D>::order_parameter","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<2>>)->f64,|ctx:&CallCtx<'_>,model:Handle<Potts<2>>|{model.with_mut(ctx,|s|{Ok(s.native.order_parameter())})});
 object_binding!(spin_potts_metropolis_sweep_d2,"num_native_spin_potts_metropolis_sweep_d2","crate::sim::spin_models::Potts<D>::metropolis_sweep","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<2>>)->f64,|ctx:&CallCtx<'_>,model:Handle<Potts<2>>|{model.with_mut(ctx,|s|{Ok(s.native.metropolis_sweep())})});
-object_binding!(spin_potts_heat_bath_sweep_d2,"num_native_spin_potts_heat_bath_sweep_d2","crate::sim::spin_models::Potts<D>::heat_bath_sweep","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<2>>)->bool,|ctx:&CallCtx<'_>,model:Handle<Potts<2>>|{model.with_mut(ctx,|s|{s.native.heat_bath_sweep();Ok(true)})});
+object_binding!(spin_potts_heat_bath_sweep_d2,"num_native_spin_potts_heat_bath_sweep_d2","crate::sim::spin_models::Potts<D>::heat_bath_sweep","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<2>>)->bool,|ctx:&CallCtx<'_>,model:Handle<Potts<2>>|{model.with_mut(ctx,|s|{s.heat_bath_sweep();Ok(true)})});
 object_binding!(spin_potts_wolff_step_d2,"num_native_spin_potts_wolff_step_d2","crate::sim::spin_models::Potts<D>::wolff_step","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<2>>)->usize,|ctx:&CallCtx<'_>,model:Handle<Potts<2>>|{model.with_mut(ctx,|s|{if s.native.j<0.0{return Err(api::error("Potts Wolff needsferromagnetic coupling"));}Ok(s.native.wolff_step())})});
 object_binding!(spin_potts_swendsen_wang_step_d2,"num_native_spin_potts_swendsen_wang_step_d2","crate::sim::spin_models::Potts<D>::swendsen_wang_step","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<2>>)->usize,|ctx:&CallCtx<'_>,model:Handle<Potts<2>>|{model.with_mut(ctx,|s|{if s.native.j<0.0{return Err(api::error("Potts cluster updatesneedferromagnetic coupling"));}Ok(s.native.swendsen_wang_step())})});
-object_binding!(spin_potts_update_d2,"num_native_spin_potts_update_d2","crate::sim::spin_models::Potts<D>::update","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<2>>,kind:String,proposal:f64)->bool,|ctx:&CallCtx<'_>,model:Handle<Potts<2>>,kind:String,proposal:f64|{let u=update(&kind,proposal)?;model.with_mut(ctx,|s|{if matches!(u,spin::Update::Wolff|spin::Update::SwendsenWang)&&s.native.j<0.0{return Err(api::error("cluster updatesneedferromagnetic coupling"));}s.native.update(u);s.validate()?;Ok(true)})});
+object_binding!(spin_potts_update_d2,"num_native_spin_potts_update_d2","crate::sim::spin_models::Potts<D>::update","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<2>>,kind:String,proposal:f64)->bool,|ctx:&CallCtx<'_>,model:Handle<Potts<2>>,kind:String,proposal:f64|{let u=update(&kind,proposal)?;model.with_mut(ctx,|s|{if matches!(u,spin::Update::Wolff|spin::Update::SwendsenWang)&&s.native.j<0.0{return Err(api::error("cluster updatesneedferromagnetic coupling"));}s.update(u);s.validate()?;Ok(true)})});
 object_binding!(spin_potts_tempering_new_d2,"num_native_spin_potts_tempering_new_d2","crate::sim::spin_models::PottsTempering<D>::new","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(f:Handle<Frame>,dims:[usize;2],periodic:bool,q:usize,inverse_temperatures:Input,seed:u64)->NewObject<PottsTemper<2>>,|ctx:&CallCtx<'_>,f:Handle<Frame>,dims:[usize;2],periodic:bool,q:usize,inverse_temperatures:Input,seed:u64|{let count=sites(dims,periodic)?;if !(2..=256).contains(&q){return Err(api::error("Potts q must be2..256"));}let f=frame(ctx,&f)?;let betas=betas(&f,&inverse_temperatures.0)?;work(count,betas.len(),1)?;let native=spin::PottsTempering::new(dims,periodic,q,&betas,seed).map_err(api::error)?;let dim=f.dims.to_vec();Ok(NewObject::new(PottsTemper{native,frame:f},dim))});
 object_binding!(spin_on_new_d2_n1,"num_native_spin_on_new_d2_n1","crate::sim::spin_models::OnModel<D,N>::new","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(f:Handle<Frame>,dims:[usize;2],periodic:bool,inverse_temperature:Input,seed:u64)->NewObject<On<2,1>>,|ctx:&CallCtx<'_>,f:Handle<Frame>,dims:[usize;2],periodic:bool,inverse_temperature:Input,seed:u64|{sites(dims,periodic)?;let f=frame(ctx,&f)?;let beta=beta(&f,&inverse_temperature.0)?;let native=spin::OnModel::new(dims,periodic,beta,seed).map_err(api::error)?;let dim=f.dims.to_vec();Ok(NewObject::new(On{native,frame:f},dim))});
 object_binding!(spin_on_cold_start_d2_n1,"num_native_spin_on_cold_start_d2_n1","crate::sim::spin_models::OnModel<D,N>::cold_start","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<On<2,1>>)->bool,|ctx:&CallCtx<'_>,model:Handle<On<2,1>>|{model.with_mut(ctx,|s|{s.native.cold_start();Ok(true)})});
@@ -534,14 +605,14 @@ object_binding!(spin_lattice_bonds_d3,"num_native_spin_lattice_bonds_d3","crate:
 object_binding!(spin_lattice_diagonal_bonds_d3,"num_native_spin_lattice_diagonal_bonds_d3","crate::sim::spin_models::Lattice<D>::diagonal_bonds","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(lattice:Handle<Lattice<3>>)->usize,|ctx:&CallCtx<'_>,lattice:Handle<Lattice<3>>|{lattice.with(ctx,|s|Ok(s.0.diagonal_bonds()))});
 object_binding!(spin_lattice_neighbours_d3,"num_native_spin_lattice_neighbours_d3","crate::sim::spin_models::Lattice<D>::neighbours","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(lattice:Handle<Lattice<3>>,index:usize)->Neighbours,|ctx:&CallCtx<'_>,lattice:Handle<Lattice<3>>,index:usize|{lattice.with(ctx,|s|{if index>=s.0.sites(){return Err(api::error("spin lattice index outside lattice"));}Ok(Neighbours(s.0.neighbours(index).iter().map(|i|(*i!=usize::MAX).then_some(*i)).collect()))})});
 object_binding!(spin_lattice_second_neighbours_d3,"num_native_spin_lattice_second_neighbours_d3","crate::sim::spin_models::Lattice<D>::second_neighbours","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(lattice:Handle<Lattice<3>>,index:usize)->Neighbours,|ctx:&CallCtx<'_>,lattice:Handle<Lattice<3>>,index:usize|{lattice.with(ctx,|s|{if index>=s.0.sites(){return Err(api::error("spin lattice index outside lattice"));}Ok(Neighbours(s.0.second_neighbours(index).iter().map(|i|(*i!=usize::MAX).then_some(*i)).collect()))})});
-object_binding!(spin_potts_new_d3,"num_native_spin_potts_new_d3","crate::sim::spin_models::Potts<D>::new","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(f:Handle<Frame>,dims:[usize;3],periodic:bool,q:usize,inverse_temperature:Input,seed:u64)->NewObject<Potts<3>>,|ctx:&CallCtx<'_>,f:Handle<Frame>,dims:[usize;3],periodic:bool,q:usize,inverse_temperature:Input,seed:u64|{sites(dims,periodic)?;if !(2..=256).contains(&q){return Err(api::error("Potts q must be2..256"));}let f=frame(ctx,&f)?;let beta=beta(&f,&inverse_temperature.0)?;let native=spin::Potts::new(dims,periodic,q,beta,seed).map_err(api::error)?;let dim=f.dims.to_vec();Ok(NewObject::new(Potts{native,frame:f},dim))});
+object_binding!(spin_potts_new_d3,"num_native_spin_potts_new_d3","crate::sim::spin_models::Potts<D>::new","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(f:Handle<Frame>,dims:[usize;3],periodic:bool,q:usize,inverse_temperature:Input,seed:u64)->NewObject<Potts<3>>,|ctx:&CallCtx<'_>,f:Handle<Frame>,dims:[usize;3],periodic:bool,q:usize,inverse_temperature:Input,seed:u64|{sites(dims,periodic)?;if !(2..=256).contains(&q){return Err(api::error("Potts q must be2..256"));}let f=frame(ctx,&f)?;let beta=beta(&f,&inverse_temperature.0)?;let native=spin::Potts::new(dims,periodic,q,beta,seed).map_err(api::error)?;let dim=f.dims.to_vec();Ok(NewObject::new(Potts::new(native,f),dim))});
 object_binding!(spin_potts_energy_d3,"num_native_spin_potts_energy_d3","crate::sim::spin_models::Potts<D>::energy","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<3>>)->Dynamic,|ctx:&CallCtx<'_>,model:Handle<Potts<3>>|{model.with_mut(ctx,|s|{Ok(Dynamic(s.frame.output(s.native.energy(),ENERGY,false)?))})});
 object_binding!(spin_potts_order_parameter_d3,"num_native_spin_potts_order_parameter_d3","crate::sim::spin_models::Potts<D>::order_parameter","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<3>>)->f64,|ctx:&CallCtx<'_>,model:Handle<Potts<3>>|{model.with_mut(ctx,|s|{Ok(s.native.order_parameter())})});
 object_binding!(spin_potts_metropolis_sweep_d3,"num_native_spin_potts_metropolis_sweep_d3","crate::sim::spin_models::Potts<D>::metropolis_sweep","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<3>>)->f64,|ctx:&CallCtx<'_>,model:Handle<Potts<3>>|{model.with_mut(ctx,|s|{Ok(s.native.metropolis_sweep())})});
-object_binding!(spin_potts_heat_bath_sweep_d3,"num_native_spin_potts_heat_bath_sweep_d3","crate::sim::spin_models::Potts<D>::heat_bath_sweep","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<3>>)->bool,|ctx:&CallCtx<'_>,model:Handle<Potts<3>>|{model.with_mut(ctx,|s|{s.native.heat_bath_sweep();Ok(true)})});
+object_binding!(spin_potts_heat_bath_sweep_d3,"num_native_spin_potts_heat_bath_sweep_d3","crate::sim::spin_models::Potts<D>::heat_bath_sweep","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<3>>)->bool,|ctx:&CallCtx<'_>,model:Handle<Potts<3>>|{model.with_mut(ctx,|s|{s.heat_bath_sweep();Ok(true)})});
 object_binding!(spin_potts_wolff_step_d3,"num_native_spin_potts_wolff_step_d3","crate::sim::spin_models::Potts<D>::wolff_step","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<3>>)->usize,|ctx:&CallCtx<'_>,model:Handle<Potts<3>>|{model.with_mut(ctx,|s|{if s.native.j<0.0{return Err(api::error("Potts Wolff needsferromagnetic coupling"));}Ok(s.native.wolff_step())})});
 object_binding!(spin_potts_swendsen_wang_step_d3,"num_native_spin_potts_swendsen_wang_step_d3","crate::sim::spin_models::Potts<D>::swendsen_wang_step","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<3>>)->usize,|ctx:&CallCtx<'_>,model:Handle<Potts<3>>|{model.with_mut(ctx,|s|{if s.native.j<0.0{return Err(api::error("Potts cluster updatesneedferromagnetic coupling"));}Ok(s.native.swendsen_wang_step())})});
-object_binding!(spin_potts_update_d3,"num_native_spin_potts_update_d3","crate::sim::spin_models::Potts<D>::update","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<3>>,kind:String,proposal:f64)->bool,|ctx:&CallCtx<'_>,model:Handle<Potts<3>>,kind:String,proposal:f64|{let u=update(&kind,proposal)?;model.with_mut(ctx,|s|{if matches!(u,spin::Update::Wolff|spin::Update::SwendsenWang)&&s.native.j<0.0{return Err(api::error("cluster updatesneedferromagnetic coupling"));}s.native.update(u);s.validate()?;Ok(true)})});
+object_binding!(spin_potts_update_d3,"num_native_spin_potts_update_d3","crate::sim::spin_models::Potts<D>::update","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<Potts<3>>,kind:String,proposal:f64)->bool,|ctx:&CallCtx<'_>,model:Handle<Potts<3>>,kind:String,proposal:f64|{let u=update(&kind,proposal)?;model.with_mut(ctx,|s|{if matches!(u,spin::Update::Wolff|spin::Update::SwendsenWang)&&s.native.j<0.0{return Err(api::error("cluster updatesneedferromagnetic coupling"));}s.update(u);s.validate()?;Ok(true)})});
 object_binding!(spin_potts_tempering_new_d3,"num_native_spin_potts_tempering_new_d3","crate::sim::spin_models::PottsTempering<D>::new","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(f:Handle<Frame>,dims:[usize;3],periodic:bool,q:usize,inverse_temperatures:Input,seed:u64)->NewObject<PottsTemper<3>>,|ctx:&CallCtx<'_>,f:Handle<Frame>,dims:[usize;3],periodic:bool,q:usize,inverse_temperatures:Input,seed:u64|{let count=sites(dims,periodic)?;if !(2..=256).contains(&q){return Err(api::error("Potts q must be2..256"));}let f=frame(ctx,&f)?;let betas=betas(&f,&inverse_temperatures.0)?;work(count,betas.len(),1)?;let native=spin::PottsTempering::new(dims,periodic,q,&betas,seed).map_err(api::error)?;let dim=f.dims.to_vec();Ok(NewObject::new(PottsTemper{native,frame:f},dim))});
 object_binding!(spin_on_new_d3_n1,"num_native_spin_on_new_d3_n1","crate::sim::spin_models::OnModel<D,N>::new","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(f:Handle<Frame>,dims:[usize;3],periodic:bool,inverse_temperature:Input,seed:u64)->NewObject<On<3,1>>,|ctx:&CallCtx<'_>,f:Handle<Frame>,dims:[usize;3],periodic:bool,inverse_temperature:Input,seed:u64|{sites(dims,periodic)?;let f=frame(ctx,&f)?;let beta=beta(&f,&inverse_temperature.0)?;let native=spin::OnModel::new(dims,periodic,beta,seed).map_err(api::error)?;let dim=f.dims.to_vec();Ok(NewObject::new(On{native,frame:f},dim))});
 object_binding!(spin_on_cold_start_d3_n1,"num_native_spin_on_cold_start_d3_n1","crate::sim::spin_models::OnModel<D,N>::cold_start","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(model:Handle<On<3,1>>)->bool,|ctx:&CallCtx<'_>,model:Handle<On<3,1>>|{model.with_mut(ctx,|s|{s.native.cold_start();Ok(true)})});
@@ -770,7 +841,18 @@ fn lattice_observables(
     v: &ising::LatticeObservables,
     f: &Frame,
 ) -> Result<Dynamic, OpError> {
-    Ok(Dynamic(api::record(vec![
+    Ok(Dynamic(lattice_observables_value(
+        v,
+        f,
+        Output::encode(v.binder)?,
+    )?))
+}
+fn lattice_observables_value(
+    v: &ising::LatticeObservables,
+    f: &Frame,
+    binder: Value,
+) -> Result<Value, OpError> {
+    Ok(api::record(vec![
         ("energy", f.output(v.energy, ENERGY, false)?),
         ("magnetization", Output::encode(v.magnetization)?),
         ("heat_capacity_over_kB", Output::encode(v.specific_heat)?),
@@ -778,8 +860,8 @@ fn lattice_observables(
             "susceptibility",
             f.output(v.susceptibility, [-1, -2, 2, 0], false)?,
         ),
-        ("binder", Output::encode(v.binder)?),
-    ])))
+        ("binder", binder),
+    ]))
 }
 object_binding!(sse_chain_bonds,"num_native_sse_chain_bonds","crate::sim::sse::chain_bonds","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(n:usize,periodic:bool)->Vec<[usize;2]>,|_ctx:&CallCtx<'_>,n:usize,periodic:bool|{if !(2..=4096).contains(&n){return Err(api::error("SSE chain size mustbe2..4096"));}Ok(sse::chain_bonds(n,periodic).into_iter().map(|(a,b)|[a,b]).collect())});
 object_binding!(sse_square_bonds,"num_native_sse_square_bonds","crate::sim::sse::square_bonds","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(width:usize,height:usize,periodic:bool)->Vec<[usize;2]>,|_ctx:&CallCtx<'_>,width:usize,height:usize,periodic:bool|{if width<2||height<2||width.checked_mul(height).is_none_or(|n|n>4096){return Err(api::error("SSE square allocation bound4096"));}Ok(sse::square_bonds(width,height,periodic).into_iter().map(|(a,b)|[a,b]).collect())});
@@ -787,10 +869,40 @@ object_binding!(sse_new,"num_native_sse_new","crate::sim::sse::SseXxz::new","Act
 object_binding!(sse_n_bonds,"num_native_sse_n_bonds","crate::sim::sse::SseXxz::n_bonds","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(simulation:Handle<Sse>)->usize,|ctx:&CallCtx<'_>,simulation:Handle<Sse>|{simulation.with(ctx,|s|Ok(s.native.as_ref().ok_or_else(||api::error("SSE state invalidated"))?.n_bonds()))});
 object_binding!(sse_constant,"num_native_sse_constant","crate::sim::sse::SseXxz::constant","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(simulation:Handle<Sse>)->Dynamic,|ctx:&CallCtx<'_>,simulation:Handle<Sse>|{simulation.with(ctx,|s|Ok(Dynamic(s.frame.output(s.native.as_ref().ok_or_else(||api::error("SSE state invalidated"))?.constant(),ENERGY,false)?)))});
 object_binding!(sse_sample,"num_native_sse_sample","crate::sim::sse::SseXxz::sample","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(simulation:Handle<Sse>)->Dynamic,|ctx:&CallCtx<'_>,simulation:Handle<Sse>|{simulation.with(ctx,|s|Ok(Dynamic(sse_sample(s.native.as_ref().ok_or_else(||api::error("SSE state invalidated"))?.sample()))))});
-object_binding!(sse_sweep,"num_native_sse_sweep","crate::sim::sse::SseXxz::sweep","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(simulation:Handle<Sse>,operation_budget:usize)->bool,|ctx:&CallCtx<'_>,simulation:Handle<Sse>,operation_budget:usize|{if operation_budget==0||operation_budget>50_000_000{return Err(api::error("SSE operation budget mustbe1..50million"));}simulation.with_mut(ctx,|s|{let result=sse::with_native_budget(operation_budget,65536,||s.native.as_mut().expect("validated SSE handle").sweep());if let Err(e)=result{s.native=None;return Err(api::error(e));}Ok(true)})});
-object_binding!(sse_run,"num_native_sse_run","crate::sim::sse::SseXxz::run","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(simulation:Handle<Sse>,thermalization:usize,sweeps:usize,operation_budget:usize)->Dynamic,|ctx:&CallCtx<'_>,simulation:Handle<Sse>,thermalization:usize,sweeps:usize,operation_budget:usize|{if thermalization>100000||sweeps==0||sweeps>100000||operation_budget==0||operation_budget>50_000_000{return Err(api::error("SSE sweep/work budget invalid"));}simulation.with_mut(ctx,|s|{let result=sse::with_native_budget(operation_budget,65536,||s.native.as_mut().expect("validated SSE handle").run(thermalization,sweeps));match result{Ok(v)=>Ok(Dynamic(sse_result(v,&s.frame)?)),Err(e)=>{s.native=None;Err(api::error(e))}}})});
+object_binding!(sse_sweep,"num_native_sse_sweep","crate::sim::sse::SseXxz::sweep","Run one XXZ stochastic-series-expansion sweep. A nonempty operator string uses max(8, number of sites) closed-loop updates. An empty string resamples all free spins. The explicit budget counts operator and site passes, starting draws and traversed legs. Exhaustion during a sweep invalidates the state. A fixed seed reproduces this sampling law.",false,(simulation:Handle<Sse>,operation_budget:usize)->bool,|ctx:&CallCtx<'_>,simulation:Handle<Sse>,operation_budget:usize|{if operation_budget==0||operation_budget>50_000_000{return Err(api::error("SSE operation budget mustbe1..50million"));}simulation.with_mut(ctx,|s|{let result=sse::with_native_budget(operation_budget,65536,||s.native.as_mut().expect("validated SSE handle").sweep());if let Err(e)=result{s.native=None;return Err(api::error(e));}Ok(true)})});
+object_binding!(sse_run,"num_native_sse_run","crate::sim::sse::SseXxz::run","Discard the requested thermalization sweeps, then accumulate XXZ energy, heat capacity and spin moments over measured sweeps. One explicit budget covers the entire run. Exhaustion after starting invalidates the state. A fixed seed reproduces this sampling law.",false,(simulation:Handle<Sse>,thermalization:usize,sweeps:usize,operation_budget:usize)->Dynamic,|ctx:&CallCtx<'_>,simulation:Handle<Sse>,thermalization:usize,sweeps:usize,operation_budget:usize|{if thermalization>100000||sweeps==0||sweeps>100000||operation_budget==0||operation_budget>50_000_000{return Err(api::error("SSE sweep/work budget invalid"));}simulation.with_mut(ctx,|s|{let result=sse::with_native_budget(operation_budget,65536,||s.native.as_mut().expect("validated SSE handle").run(thermalization,sweeps));match result{Ok(v)=>Ok(Dynamic(sse_result(v,&s.frame)?)),Err(e)=>{s.native=None;Err(api::error(e))}}})});
 object_binding!(ising_run_ising_simulation,"num_native_ising_run_ising_simulation","crate::sim::models_ising_statistical::run_ising_simulation","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(f:Handle<Frame>,width:usize,height:usize,temperature:Input,steps:usize)->Dynamic,|ctx:&CallCtx<'_>,f:Handle<Frame>,width:usize,height:usize,temperature:Input,steps:usize|{let f=frame(ctx,&f)?;let params=ising_parameters(&f,width,height,&temperature,steps)?;let(spins,magnetization)=ising::run_ising_simulation(&params);Ok(Dynamic(api::record(vec![("spins",Output::encode(spins.into_iter().map(i64::from).collect::<Vec<_>>())?),("magnetization",Output::encode(magnetization)?)])))});
 object_binding!(ising_run_ising_simulation_seeded,"num_native_ising_run_ising_simulation_seeded","crate::sim::models_ising_statistical::run_ising_simulation_seeded","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(f:Handle<Frame>,width:usize,height:usize,temperature:Input,steps:usize,seed:u64)->Dynamic,|ctx:&CallCtx<'_>,f:Handle<Frame>,width:usize,height:usize,temperature:Input,steps:usize,seed:u64|{let f=frame(ctx,&f)?;let params=ising_parameters(&f,width,height,&temperature,steps)?;let(spins,magnetization)=ising::run_ising_simulation_seeded(&params,seed);Ok(Dynamic(api::record(vec![("spins",Output::encode(spins.into_iter().map(i64::from).collect::<Vec<_>>())?),("magnetization",Output::encode(magnetization)?)])))});
+object_binding!(
+    ising_measure_seeded, "num_native_ising_measure_seeded",
+    "crate::sim::models_ising_statistical::measure_ising_simulation_seeded",
+    "Measure a seeded periodic two-dimensional Ising lattice after thermalization, then sample after each positive stride within the requested sweeps. A physical frame accepts temperature in kelvin and converts it using Boltzmann's constant. Return final row-major spins, sample count and per-site observables. Energy uses the frame's energy units, susceptibility uses inverse energy and heat capacity is reported over Boltzmann's constant. Binder is None when all measured magnetizations are zero. Sweeps and measurements count toward the site-work budget.",
+    false,
+    (f: Handle<Frame>, width: usize, height: usize, temperature: Input, thermalization: usize, sweeps: usize, sample_every: usize, seed: u64) -> Dynamic,
+    |ctx, f, width, height, temperature, thermalization, sweeps, sample_every, seed| {
+        let stride = NonZeroUsize::new(sample_every)
+            .ok_or_else(|| api::error("Ising sampling stride must be positive"))?;
+        let samples = sweeps / stride;
+        if samples == 0 {
+            return Err(api::error("Ising measurements require a complete sampling interval"));
+        }
+        let work_rounds = thermalization.checked_add(sweeps)
+            .and_then(|total| total.checked_add(samples))
+            .ok_or_else(|| api::error("Ising sweep and measurement count overflow"))?;
+        let f = frame(ctx, &f)?;
+        let mut params = ising_parameters(&f, width, height, &temperature, work_rounds)?;
+        params.mc_steps = sweeps;
+        let (spins, measurements) = ising::measure_ising_simulation_seeded(
+            &params, seed, thermalization, stride,
+        ).map_err(api::error)?;
+        let binder = Output::encode((!measurements.binder.is_nan()).then_some(measurements.binder))?;
+        Ok(Dynamic(api::record(vec![
+            ("spins", Output::encode(spins.into_iter().map(i64::from).collect::<Vec<_>>())?),
+            ("samples", Value::int(samples)),
+            ("observables", lattice_observables_value(&measurements, &f, binder)?),
+        ])))
+    }
+);
 object_binding!(ising_run_wolff_simulation,"num_native_ising_run_wolff_simulation","crate::sim::models_ising_statistical::run_wolff_simulation","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(f:Handle<Frame>,width:usize,height:usize,temperature:Input,thermalization:usize,sweeps:usize,seed:u64)->Dynamic,|ctx:&CallCtx<'_>,f:Handle<Frame>,width:usize,height:usize,temperature:Input,thermalization:usize,sweeps:usize,seed:u64|{let f=frame(ctx,&f)?;let total=thermalization.checked_add(sweeps).ok_or_else(||api::error("sweep count overflow"))?;let p=ising_parameters(&f,width,height,&temperature,total)?;if width<3||height<3||p.temperature<=0.0||sweeps<2{return Err(api::error("Wolff needsperiodicsides>=3,positiveT,>=2samples"));}ising_observables(&(ising::run_wolff_simulation(width,height,p.temperature,thermalization,sweeps,seed)),&f)});
 object_binding!(ising_run_lattice_simulation_d1,"num_native_ising_run_lattice_simulation_d1","crate::sim::models_ising_statistical::run_lattice_simulation","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(f:Handle<Frame>,dims:[usize;1],periodic:bool,model:String,q:usize,algorithm:String,proposal:f64,temperature:Input,thermalization:usize,sweeps:usize,seed:u64)->Dynamic,|ctx:&CallCtx<'_>,f:Handle<Frame>,dims:[usize;1],periodic:bool,model:String,q:usize,algorithm:String,proposal:f64,temperature:Input,thermalization:usize,sweeps:usize,seed:u64|{let n=sites(dims,periodic)?;let f=frame(ctx,&f)?;let t=f.scalar(&temperature.0,ENERGY,true)?;if t<=0.0||sweeps<2{return Err(api::error("lattice simulation needspositiveT and>=2samples"));}work(n,1,thermalization.checked_add(sweeps).ok_or_else(||api::error("sweep count overflow"))?)?;let model=match model.as_str(){"Ising"=>ising::SpinModel::Ising,"Xy"=>ising::SpinModel::Xy,"Heisenberg"=>ising::SpinModel::Heisenberg,"Potts" if (2..=256).contains(&q)=>ising::SpinModel::Potts(q),_=>return Err(api::error("model mustbeIsing/Xy/Heisenberg/Potts(q2..256)"))};let algorithm=match update(&algorithm,proposal)?{spin::Update::Metropolis(x)=>ising::SpinAlgorithm::Metropolis(x),spin::Update::HeatBath=>ising::SpinAlgorithm::HeatBath,spin::Update::Wolff=>ising::SpinAlgorithm::Wolff,spin::Update::SwendsenWang=>ising::SpinAlgorithm::SwendsenWang};lattice_observables(&(ising::run_lattice_simulation(dims,periodic,model,algorithm,t,(thermalization,sweeps),seed).map_err(api::error)?),&f)});
 object_binding!(ising_run_lattice_simulation_d2,"num_native_ising_run_lattice_simulation_d2","crate::sim::models_ising_statistical::run_lattice_simulation","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(f:Handle<Frame>,dims:[usize;2],periodic:bool,model:String,q:usize,algorithm:String,proposal:f64,temperature:Input,thermalization:usize,sweeps:usize,seed:u64)->Dynamic,|ctx:&CallCtx<'_>,f:Handle<Frame>,dims:[usize;2],periodic:bool,model:String,q:usize,algorithm:String,proposal:f64,temperature:Input,thermalization:usize,sweeps:usize,seed:u64|{let n=sites(dims,periodic)?;let f=frame(ctx,&f)?;let t=f.scalar(&temperature.0,ENERGY,true)?;if t<=0.0||sweeps<2{return Err(api::error("lattice simulation needspositiveT and>=2samples"));}work(n,1,thermalization.checked_add(sweeps).ok_or_else(||api::error("sweep count overflow"))?)?;let model=match model.as_str(){"Ising"=>ising::SpinModel::Ising,"Xy"=>ising::SpinModel::Xy,"Heisenberg"=>ising::SpinModel::Heisenberg,"Potts" if (2..=256).contains(&q)=>ising::SpinModel::Potts(q),_=>return Err(api::error("model mustbeIsing/Xy/Heisenberg/Potts(q2..256)"))};let algorithm=match update(&algorithm,proposal)?{spin::Update::Metropolis(x)=>ising::SpinAlgorithm::Metropolis(x),spin::Update::HeatBath=>ising::SpinAlgorithm::HeatBath,spin::Update::Wolff=>ising::SpinAlgorithm::Wolff,spin::Update::SwendsenWang=>ising::SpinAlgorithm::SwendsenWang};lattice_observables(&(ising::run_lattice_simulation(dims,periodic,model,algorithm,t,(thermalization,sweeps),seed).map_err(api::error)?),&f)});
@@ -810,6 +922,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &sse_run::BINDING,
             &ising_run_ising_simulation::BINDING,
             &ising_run_ising_simulation_seeded::BINDING,
+            &ising_measure_seeded::BINDING,
             &ising_run_wolff_simulation::BINDING,
             &ising_run_lattice_simulation_d1::BINDING,
             &ising_run_lattice_simulation_d2::BINDING,
@@ -826,6 +939,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &spin_potts_order_parameter_d1::BINDING,
             &spin_potts_metropolis_sweep_d1::BINDING,
             &spin_potts_heat_bath_sweep_d1::BINDING,
+            &spin_potts_heat_bath_probabilities_d1::BINDING,
             &spin_potts_wolff_step_d1::BINDING,
             &spin_potts_swendsen_wang_step_d1::BINDING,
             &spin_potts_update_d1::BINDING,
@@ -912,6 +1026,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &spin_potts_order_parameter_d2::BINDING,
             &spin_potts_metropolis_sweep_d2::BINDING,
             &spin_potts_heat_bath_sweep_d2::BINDING,
+            &spin_potts_heat_bath_probabilities_d2::BINDING,
             &spin_potts_wolff_step_d2::BINDING,
             &spin_potts_swendsen_wang_step_d2::BINDING,
             &spin_potts_update_d2::BINDING,
@@ -998,6 +1113,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &spin_potts_order_parameter_d3::BINDING,
             &spin_potts_metropolis_sweep_d3::BINDING,
             &spin_potts_heat_bath_sweep_d3::BINDING,
+            &spin_potts_heat_bath_probabilities_d3::BINDING,
             &spin_potts_wolff_step_d3::BINDING,
             &spin_potts_swendsen_wang_step_d3::BINDING,
             &spin_potts_update_d3::BINDING,

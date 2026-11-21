@@ -108,12 +108,25 @@ dual_unary!(
     atan
 );
 binding!(dual_powi,"num_dual_powi","numerical_vector","Native normalized dual integer power.","crate::kernels::autodiff::Dual::powi",DimensionPolicy::Dimensionless,(x:crate::kernels::autodiff::Dual,p:i32)->crate::kernels::autodiff::Dual,|x:crate::kernels::autodiff::Dual,p:i32|x.powi(p));
+
+pub(super) struct DualIntegerPower {
+    val: f64,
+    deriv: f64,
+    second: f64,
+}
+record!(DualIntegerPower { val: f64, deriv: f64, second: f64 });
+binding!(dual_powi_with_second_derivative,"num_dual_powi_with_second_derivative","numerical_vector","Evaluate the normalized integer power along val + t * deriv at t = 0. Returns the primal, first derivative and second directional derivative. The exponent is an Int in the signed 32-bit range. Nonfinite results are rejected.","crate::kernels::autodiff::Dual::powi_with_second_derivative",DimensionPolicy::Dimensionless,(x:crate::kernels::autodiff::Dual,p:i32)->super::DualIntegerPower,|x:crate::kernels::autodiff::Dual,p:i32|{
+    let (power, second) = x.powi_with_second_derivative(p);
+    super::DualIntegerPower { val: power.val, deriv: power.deriv, second }
+});
+
 pub(super) static DUAL_EXPORTS: &[&CodecExport] = &[
     &dual_abs::EXPORT,
     &dual_acos::EXPORT,
     &dual_asin::EXPORT,
     &dual_atan::EXPORT,
     &dual_powi::EXPORT,
+    &dual_powi_with_second_derivative::EXPORT,
     &dual_constant::EXPORT,
     &dual_variable::EXPORT,
     &dual_new::EXPORT,

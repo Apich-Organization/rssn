@@ -10,6 +10,7 @@ use super::Installer;
 use super::NativeType;
 use super::NewObject;
 use super::OpError;
+use super::Output;
 use super::RuleError;
 use super::TypeExpr;
 use super::Value;
@@ -28,7 +29,10 @@ use super::t;
 use super::tape_snapshot;
 use super::vector;
 use super::velocity;
+use crate::kernels::numeric_common::trajectory_sample_count;
 use crate::rules::numerical_abi::native_analysis_physics_ode::Acceleration;
+use crate::rules::numerical_abi::native_object_api::Many;
+use std::num::NonZeroUsize;
 #[allow(
     clippy::needless_pass_by_value,
     clippy::too_many_arguments,
@@ -70,7 +74,87 @@ fn split(
     Ok(Dynamic(frame.restore(&q)?))
 }
 object_binding!(split_step,"num_analysis_symplectic_split_step","crate::sim::symplectic::step","Actual native custom-stage drift/kick step. State contains physical positions then velocities and stage coefficients are explicitly normalized; a pure-position acceleration tape preserves coordinate/time² units.",false,(acceleration:Handle<Acceleration>,initial:Input,h:Input,stages:Vec<[f64;2]>,maxeval:usize)->Dynamic,|ctx,acceleration,initial,h,stages,maxeval|split(ctx,acceleration,initial,h,1,"Verlet".into(),stages,maxeval,true));
-object_binding!(split_integrate,"num_analysis_symplectic_integrate","crate::sim::symplectic::integrate","Actual native Hamiltonian splitting integration with all6native schemes, physical coordinate/velocity/time references and a shared evaluation budget.",false,(acceleration:Handle<Acceleration>,initial:Input,h:Input,steps:usize,name:String,maxeval:usize)->Dynamic,|ctx,acceleration,initial,h,steps,name,maxeval|split(ctx,acceleration,initial,h,steps,name,Vec::new(),maxeval,false));
+object_binding!(split_integrate,"num_analysis_symplectic_integrate","crate::sim::symplectic::integrate","Native Hamiltonian splitting with six schemes, physical coordinate, velocity and time references, and a shared evaluation budget.",false,(acceleration:Handle<Acceleration>,initial:Input,h:Input,steps:usize,name:String,maxeval:usize)->Dynamic,|ctx,acceleration,initial,h,steps,name,maxeval|split(ctx,acceleration,initial,h,steps,name,Vec::new(),maxeval,false));
+
+struct SplitSamples {
+    steps: Vec<usize>,
+    states: Many<Dynamic>,
+}
+
+impl api::NativeOutput for SplitSamples {
+    fn ty() -> TypeExpr {
+        TypeExpr::Record(vec![
+            ("steps".into(), api::tensor_type(1, TypeExpr::Int)),
+            ("states".into(), <Many<Dynamic> as api::NativeOutput>::ty()),
+        ])
+    }
+
+    fn encode(
+        self,
+        ctx: &CallCtx<'_>,
+    ) -> Result<Value, OpError> {
+        Ok(api::record(vec![
+            ("steps", Output::encode(self.steps)?),
+            ("states", api::NativeOutput::encode(self.states, ctx)?),
+        ]))
+    }
+}
+
+object_binding!(
+    split_integrate_sampled,
+    "num_analysis_symplectic_integrate_sampled",
+    "crate::sim::symplectic::integrate_sampled",
+    "Integrates every step with a separable symplectic scheme. Retains step zero, each positive save_every multiple, and the final step. Each state preserves the physical positions followed by velocities. Step indices are exact and the signed step size uses the acceleration tape's time dimension.",
+    false,
+    (
+        acceleration: Handle<Acceleration>,
+        initial: Input,
+        h: Input,
+        steps: usize,
+        name: String,
+        save_every: usize,
+        maxeval: usize,
+    ) -> SplitSamples,
+    |ctx, acceleration, initial, h, steps, name, save_every, maxeval| {
+        if steps > 100_000 {
+            return Err(api::error("native split step budget exceeded"));
+        }
+        let cadence = NonZeroUsize::new(save_every)
+            .ok_or_else(|| api::error("native split sample cadence must be positive"))?;
+        let a = acceleration.with(ctx, |a| Ok(a.clone()))?;
+        let frame = a.frame()?;
+        let state = frame.state(&initial)?;
+        let h = frame.time(&h)?;
+        if trajectory_sample_count(steps, cadence)
+            .and_then(|count| count.checked_mul(state.len()))
+            .is_none_or(|n| n > 262_000)
+        {
+            return Err(api::error("native split sample storage exceeded"));
+        }
+        let (q, p) = state.split_at(state.len() / 2);
+        let budget = Budget::new(maxeval)?;
+        let samples = s::integrate_sampled(
+            scheme(&name)?,
+            q,
+            p,
+            h,
+            steps,
+            save_every,
+            &mut |q, out| a.evaluate(&budget, q, out),
+        );
+        budget.finish()?;
+        let samples = samples.map_err(api::error)?;
+        let mut steps = Vec::with_capacity(samples.len());
+        let states = samples.into_iter().map(|sample| {
+            steps.push(sample.step);
+            let mut state = sample.q;
+            state.extend(sample.p);
+            frame.restore(&state).map(Dynamic)
+        }).collect::<Result<Vec<_>, _>>()?;
+        Ok(SplitSamples { steps, states: Many(states) })
+    }
+);
+
 struct Ttl {
     data: s::TtlState,
     frame: Frame,
@@ -225,6 +309,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         &[
             &split_step::BINDING,
             &split_integrate::BINDING,
+            &split_integrate_sampled::BINDING,
             &ttl_new::BINDING,
             &ttl_step::BINDING,
             &ttl_step_composed::BINDING,
