@@ -2,12 +2,12 @@
 use super::EventSpec;
 use super::Events;
 use super::FixedGeomSolution;
+use super::GaussLegendreWorkspace;
 use super::GeometricMethod;
 use super::Hit;
 use super::OdeGeomError;
 use super::Rate;
 use super::evaluate;
-use super::gauss_legendre_step;
 use super::partitioned_ruth4_step;
 use super::partitioned_verlet_step;
 use std::cell::Cell;
@@ -73,34 +73,72 @@ pub(super) fn geometric_step(
     y: &[f64],
     h: f64,
 ) -> Result<Vec<f64>, OdeGeomError> {
-    match method {
-        | GeometricMethod::Rk4 => {
-            let n = y.len();
-            let k1 = evaluate(rhs, t, y, n)?;
-            let point = |k: &[f64], fraction: f64| {
-                y.iter()
-                    .zip(k)
-                    .map(|(a, b)| a + fraction * h * b)
-                    .collect::<Vec<_>>()
-            };
-            let k2 = evaluate(rhs, t + 0.5 * h, &point(&k1, 0.5), n)?;
-            let k3 = evaluate(rhs, t + 0.5 * h, &point(&k2, 0.5), n)?;
-            let k4 = evaluate(rhs, t + h, &point(&k3, 1.0), n)?;
-            let out: Vec<f64> = (0..n)
-                .map(|i| y[i] + h / 6.0 * (k1[i] + 2.0 * k2[i] + 2.0 * k3[i] + k4[i]))
-                .collect();
-            if out.iter().any(|x| !x.is_finite()) {
-                return Err(OdeGeomError::NotConverged);
-            }
-            Ok(out)
-        },
-        | GeometricMethod::StormerVerlet => partitioned_verlet_step(rhs, t, y, h).map(|x| x.0),
-        | GeometricMethod::Ruth4 => partitioned_ruth4_step(rhs, t, y, h).map(|x| x.0),
-        | GeometricMethod::ImplicitMidpoint => gauss_legendre_step(rhs, t, y, h, 1).map(|x| x.0),
-        | GeometricMethod::GaussLegendre4 => gauss_legendre_step(rhs, t, y, h, 2).map(|x| x.0),
-        | GeometricMethod::GaussLegendre6 => gauss_legendre_step(rhs, t, y, h, 3).map(|x| x.0),
+    GeometricStepper::new(method)
+        .step(rhs, t, y, h)
+        .map(|(state, _)| state)
+}
+
+pub(super) enum GeometricStepper {
+    Rk4,
+    StormerVerlet,
+    Ruth4,
+    Gauss {
+        stages: usize,
+        workspace: GaussLegendreWorkspace,
+    },
+}
+
+impl GeometricStepper {
+    pub(super) fn new(method: GeometricMethod) -> Self {
+        let stages = match method {
+            | GeometricMethod::Rk4 => return Self::Rk4,
+            | GeometricMethod::StormerVerlet => return Self::StormerVerlet,
+            | GeometricMethod::Ruth4 => return Self::Ruth4,
+            | GeometricMethod::ImplicitMidpoint => 1,
+            | GeometricMethod::GaussLegendre4 => 2,
+            | GeometricMethod::GaussLegendre6 => 3,
+        };
+        Self::Gauss {
+            stages,
+            workspace: GaussLegendreWorkspace::default(),
+        }
+    }
+
+    pub(super) fn step(
+        &mut self,
+        rhs: &mut Rate<'_>,
+        t: f64,
+        y: &[f64],
+        h: f64,
+    ) -> Result<(Vec<f64>, usize), OdeGeomError> {
+        match self {
+            | Self::Rk4 => {
+                let n = y.len();
+                let k1 = evaluate(rhs, t, y, n)?;
+                let point = |k: &[f64], fraction: f64| {
+                    y.iter()
+                        .zip(k)
+                        .map(|(a, b)| a + fraction * h * b)
+                        .collect::<Vec<_>>()
+                };
+                let k2 = evaluate(rhs, t + 0.5 * h, &point(&k1, 0.5), n)?;
+                let k3 = evaluate(rhs, t + 0.5 * h, &point(&k2, 0.5), n)?;
+                let k4 = evaluate(rhs, t + h, &point(&k3, 1.0), n)?;
+                let out: Vec<f64> = (0..n)
+                    .map(|i| y[i] + h / 6.0 * (k1[i] + 2.0 * k2[i] + 2.0 * k3[i] + k4[i]))
+                    .collect();
+                if out.iter().any(|x| !x.is_finite()) {
+                    return Err(OdeGeomError::NotConverged);
+                }
+                Ok((out, 4))
+            },
+            | Self::StormerVerlet => partitioned_verlet_step(rhs, t, y, h),
+            | Self::Ruth4 => partitioned_ruth4_step(rhs, t, y, h),
+            | Self::Gauss { stages, workspace } => workspace.step(rhs, t, y, h, *stages),
+        }
     }
 }
+
 const fn order(method: GeometricMethod) -> i32 {
     match method {
         | GeometricMethod::StormerVerlet | GeometricMethod::ImplicitMidpoint => 2,
@@ -165,34 +203,34 @@ fn append_segment(
         let rising = g0 < 0.0 && g1 >= 0.0;
         let falling = g0 > 0.0 && g1 <= 0.0;
         if (spec.direction >= 0 && rising) || (spec.direction <= 0 && falling) {
-            let (mut lo, mut hi) = (0.0, 1.0);
-            let mut gl = g0;
-            if super::super::exact_eq(g1, 0.0) {
-                lo = 1.0;
-            } else {
+            let (mut lo, mut hi) = (t0, t1);
+            let mut hit_state = None;
+            if !super::super::exact_eq(g1, 0.0) {
                 for _ in 0..60 {
                     let mid = f64::midpoint(lo, hi);
-                    let ym = hermite(y0, &y1, f0, &f1, h, mid);
-                    let gm = guard(events, index, t0 + mid * h, &ym, invalid)?;
-                    if super::super::exact_eq(gm, 0.0) {
-                        lo = mid;
-                        hi = mid;
+                    if mid <= lo || mid >= hi {
+                        // hi is the first representable time on the crossed side.
                         break;
                     }
-                    if gm.is_sign_positive() == gl.is_sign_positive() {
+                    let ym = hermite(y0, &y1, f0, &f1, h, (mid - t0) / h);
+                    let gm = guard(events, index, mid, &ym, invalid)?;
+                    if super::super::exact_eq(gm, 0.0) {
+                        hi = mid;
+                        hit_state = Some(ym);
+                        break;
+                    }
+                    if gm.is_sign_positive() == g0.is_sign_positive() {
                         lo = mid;
-                        gl = gm;
                     } else {
                         hi = mid;
+                        hit_state = Some(ym);
                     }
                 }
             }
-            let theta = f64::midpoint(lo, hi);
-            let t = t0 + theta * h;
             hits.push(Hit {
                 index,
-                t,
-                y: hermite(y0, &y1, f0, &f1, h, theta),
+                t: hi,
+                y: hit_state.unwrap_or_else(|| y1.clone()),
             });
         }
         previous[index] = g1;
@@ -203,15 +241,19 @@ fn append_segment(
         if terminal {
             // Differentiate the same continuous extension so terminal dense
             // output retains its endpoint derivatives without another RHS call.
-            let theta = (hit.t - t0) / h;
-            let t2 = theta * theta;
-            let derivative = (0..y0.len())
-                .map(|i| {
-                    ((6.0 * t2 - 6.0 * theta) * y0[i] + (-6.0 * t2 + 6.0 * theta) * y1[i]) / h
-                        + (3.0 * t2 - 4.0 * theta + 1.0) * f0[i]
-                        + (3.0 * t2 - 2.0 * theta) * f1[i]
-                })
-                .collect();
+            let derivative = if super::super::exact_eq(hit.t, t1) {
+                f1
+            } else {
+                let theta = (hit.t - t0) / h;
+                let t2 = theta * theta;
+                (0..y0.len())
+                    .map(|i| {
+                        ((6.0 * t2 - 6.0 * theta) * y0[i] + (-6.0 * t2 + 6.0 * theta) * y1[i]) / h
+                            + (3.0 * t2 - 4.0 * theta + 1.0) * f0[i]
+                            + (3.0 * t2 - 2.0 * theta) * f1[i]
+                    })
+                    .collect()
+            };
             solution.t.push(hit.t);
             solution.y.push(hit.y.clone());
             solution.rates.push(derivative);
@@ -226,16 +268,21 @@ fn append_segment(
     Ok(false)
 }
 
-/// Integrate the selected RK4 or geometric method using step doubling.
+/// Integrate the selected RK4 or geometric method forward using step doubling.
+/// The finite interval uses `start <= end`.
 ///
 /// The accepted state is two half steps of the requested method, without
 /// extrapolation or method substitution. Both the endpoint estimate and the
-/// midpoint defect of its cubic Hermite extension control acceptance. Adaptive
+/// midpoint defect of its cubic Hermite extension control acceptance. A trial
+/// needs a representable time strictly between its endpoints. A bracketed event
+/// between adjacent times is reported at the later timestamp. Adaptive
 /// state-dependent step selection does not retain fixed-step symplecticity.
+/// Gauss–Legendre trials reuse stage storage for the duration of the solve.
 ///
 /// # Errors
 /// Invalid inputs or callback outputs, exhausted attempts/evaluations, a
-/// tolerance requiring a smaller step than `h_min`, or failed implicit stages.
+/// tolerance requiring a smaller step than `h_min`, an unsplittable time grid,
+/// or failed implicit stages.
 #[allow(clippy::too_many_arguments)] // Stable problem/options/events boundary.
 pub fn solve_adaptive_geometric(
     rhs: &mut Rate<'_>,
@@ -316,6 +363,9 @@ pub fn solve_adaptive_geometric(
     .max(options.h_min);
     let exponent = 1.0 / f64::from((order(method) + 1).min(4));
     let divisor = 2.0_f64.powi(order(method)) - 1.0;
+    let mut stepper = GeometricStepper::new(method);
+    let before_end = end.next_down();
+    let mut tried_final = false;
     for _ in 0..options.max_steps {
         if t >= end {
             solution.nfev = used.get();
@@ -329,13 +379,33 @@ pub fn solve_adaptive_geometric(
         {
             return Err(OdeGeomError::NotConverged);
         }
-        let next = if h >= remaining { end } else { t + h };
+        let mut next = if h >= remaining { end } else { t + h };
+        if tried_final && super::super::exact_eq(next, end) {
+            // Decreasing h may round to the same rejected endpoint.
+            next = before_end;
+        }
+        if super::super::exact_eq(next, before_end) {
+            // Do not strand a final interval with no representable midpoint.
+            if remaining <= options.h_max && !tried_final {
+                next = end;
+            } else {
+                next = next.next_down();
+                if next - t < options.h_min {
+                    return Err(OdeGeomError::NotConverged);
+                }
+            }
+        }
         let mid = f64::midpoint(t, next);
+        if mid <= t || mid >= next {
+            return Err(OdeGeomError::NotConverged);
+        }
+        let width = next - t;
         let half = mid - t;
+        tried_final |= super::super::exact_eq(next, end);
         let trial = (|| {
-            let coarse = geometric_step(method, &mut counted, t, &y, next - t)?;
-            let middle = geometric_step(method, &mut counted, t, &y, half)?;
-            let fine = geometric_step(method, &mut counted, mid, &middle, next - mid)?;
+            let (coarse, _) = stepper.step(&mut counted, t, &y, width)?;
+            let (middle, _) = stepper.step(&mut counted, t, &y, half)?;
+            let (fine, _) = stepper.step(&mut counted, mid, &middle, next - mid)?;
             let fm = evaluate(&mut counted, mid, &middle, y.len())?;
             let ff = evaluate(&mut counted, next, &fine, y.len())?;
             Ok::<_, OdeGeomError>((coarse, middle, fine, fm, ff))
@@ -353,7 +423,7 @@ pub fn solve_adaptive_geometric(
             | Err(error) => return Err(error),
         };
         let f0 = solution.rates.last().ok_or(OdeGeomError::NotConverged)?;
-        let dense_mid = hermite(&y, &fine, f0, &ff, next - t, 0.5);
+        let dense_mid = hermite(&y, &fine, f0, &ff, width, half / width);
         let mut error = 0.0_f64;
         for i in 0..y.len() {
             let scale =
@@ -390,6 +460,7 @@ pub fn solve_adaptive_geometric(
             }
             t = next;
             y = fine;
+            tried_final = false;
             h *= if super::super::exact_eq(error, 0.0) {
                 3.0
             } else {
@@ -408,7 +479,7 @@ pub fn solve_adaptive_geometric(
     }
 }
 
-/// Unified geometric ODE solver supporting both fixed and adaptive step sizes
+/// Forward geometric ODE solver supporting both fixed and adaptive step sizes
 /// via [`OdeStepMode`](crate::kernels::ode::OdeStepMode).
 ///
 /// # Errors

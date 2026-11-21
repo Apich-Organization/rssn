@@ -1,6 +1,9 @@
 //! Numerical quadrature (ported from the old `numerical_integrate_test.rs`).
 //! The `Expr`-based `quadrature` front end no longer exists.
 
+use std::cell::RefCell;
+use std::collections::HashSet;
+
 use assert_approx_eq::assert_approx_eq;
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
@@ -96,6 +99,138 @@ fn adaptive_handles_sharp_peak() {
     let exact = 0.2 * 10f64.atan();
     let res = adaptive_quadrature(|x| 1.0 / (1.0 + 100.0 * x * x), (-1.0, 1.0), 1e-8);
     assert_approx_eq!(res, exact, 1e-6);
+}
+
+#[test]
+fn adaptive_evaluates_each_refined_coordinate_once() {
+    for (a, b, orientation) in [(0.0, 1.0, 1.0), (1.0, 0.0, -1.0)] {
+        let points = RefCell::new(HashSet::new());
+        let result = adaptive_quadrature(
+            |x| {
+                assert!(points.borrow_mut().insert(x.to_bits()), "repeated node {x}");
+                x.exp()
+            },
+            (a, b),
+            1e-12,
+        );
+        let count = points.borrow().len();
+        assert!(count > 5 && count % 2 == 1);
+        assert_approx_eq!(result, orientation * 1.0_f64.exp_m1(), 1e-12);
+    }
+}
+
+#[test]
+fn adaptive_handles_extreme_finite_widths_and_samples() {
+    for orientation in [1.0, -1.0] {
+        let q = adaptive_quadrature(
+            |x| (1.0 + 0.5 * (x / 1e308)) * 1e-308,
+            (-orientation * 1e308, orientation * 1e308),
+            1e-13,
+        );
+        assert_approx_eq!(q, orientation * 2.0, 5e-15);
+
+        let q = adaptive_quadrature(|_| f64::MAX, (0.0, orientation * 0.25), 1e-13);
+        assert_approx_eq!(q / f64::MAX, orientation * 0.25, 4e-16);
+
+        let width = f64::from_bits(16);
+        let q = adaptive_quadrature(|_| f64::MAX, (0.0, orientation * width), 0.0);
+        assert_approx_eq!(q / (f64::MAX * width), orientation, 4e-16);
+
+        // The original weighted sum can overflow even when the terms cancel.
+        let q = adaptive_quadrature(
+            |x| f64::MAX * (1.0 - 32.0 * x * x),
+            (-orientation * 0.25, orientation * 0.25),
+            0.0,
+        );
+        assert_approx_eq!(q / f64::MAX, orientation / 6.0, 5e-16);
+    }
+}
+
+#[test]
+fn adaptive_stops_on_consecutive_floating_point_bounds() {
+    let points = RefCell::new(Vec::new());
+    let width = f64::from_bits(1);
+    let q = adaptive_quadrature(
+        |x| {
+            points.borrow_mut().push(x.to_bits());
+            f64::MAX
+        },
+        (0.0, width),
+        0.0,
+    );
+    assert_eq!(q.to_bits(), (f64::MAX * width).to_bits());
+    assert_eq!(*points.borrow(), [0, 1]);
+
+    // Nonconstant endpoint data uses the trapezoid on both orientations.
+    let a = 1.0_f64;
+    let b = a.next_up();
+    let f = |x: f64| {
+        if x.to_bits() == a.to_bits() {
+            2.0
+        } else {
+            4.0
+        }
+    };
+    let expected = (b - a) * 3.0;
+    assert_eq!(
+        adaptive_quadrature(f, (a, b), 0.0).to_bits(),
+        expected.to_bits()
+    );
+    assert_eq!(
+        adaptive_quadrature(f, (b, a), 0.0).to_bits(),
+        (-expected).to_bits()
+    );
+    assert!(adaptive_quadrature(|_| f64::INFINITY, (a, b), 0.0).is_nan());
+}
+
+#[test]
+fn adaptive_preserves_quadratic_on_a_three_node_grid() {
+    for (a, b) in [
+        (1.0_f64, 1.0_f64.next_up().next_up()),
+        (1.0_f64.next_down(), 1.0_f64.next_up()),
+    ] {
+        let width = b - a;
+        let f = |x: f64| ((x - a) / width).powi(2) / width;
+        assert_approx_eq!(adaptive_quadrature(f, (a, b), 0.0), 1.0 / 3.0, 2e-16);
+        assert_approx_eq!(adaptive_quadrature(f, (b, a), 0.0), -1.0 / 3.0, 2e-16);
+    }
+}
+
+#[test]
+fn adaptive_keeps_orientation_when_only_one_child_has_an_interior_node() {
+    let a = 1.0_f64;
+    let b = a.next_up().next_up().next_up();
+    let width = b - a;
+    for (start, end, orientation) in [(a, b, 1.0), (b, a, -1.0)] {
+        let points = RefCell::new(HashSet::new());
+        let q = adaptive_quadrature(
+            |x| {
+                assert!(points.borrow_mut().insert(x.to_bits()), "repeated node {x}");
+                ((x - a) / width) / width
+            },
+            (start, end),
+            0.0,
+        );
+        assert_approx_eq!(q, orientation * 0.5, 2e-16);
+        assert_eq!(points.borrow().len(), 4);
+    }
+}
+
+#[test]
+fn adaptive_keeps_fallback_and_skips_invalid_or_empty_ranges() {
+    let never_called = |_| panic!("invalid or empty range sampled");
+    assert!(adaptive_quadrature(never_called, (0.0, f64::INFINITY), 1e-13).is_nan());
+    assert!(adaptive_quadrature(never_called, (0.0, 1.0), f64::NAN).is_nan());
+    assert_eq!(
+        adaptive_quadrature(never_called, (-0.0, 0.0), 0.0).to_bits(),
+        0
+    );
+    assert!(adaptive_quadrature(|_| f64::NAN, (0.0, 1.0), 1e-13).is_nan());
+    assert_approx_eq!(
+        adaptive_quadrature(|x| 1.0 / x.sqrt(), (1.0, 0.0), 1e-10),
+        -2.0,
+        1e-6
+    );
 }
 
 #[test]

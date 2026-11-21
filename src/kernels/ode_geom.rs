@@ -599,21 +599,20 @@ pub fn partitioned_ruth4_step(
     Ok((state, evals))
 }
 
-/// Advance one implicit Gauss-Legendre collocation step.
+/// Advance one implicit Gauss–Legendre collocation step.
 ///
-/// Performs one step of the `stages`-stage Gauss–Legendre implicit Runge–Kutta
-/// method (`stages = 1` for 2nd-order implicit midpoint, `stages = 2` for 4th-order
-/// `GaussLegendre4`, `stages = 3` for 6th-order `GaussLegendre6`).
+/// One, two and three stages give orders two, four and six, respectively.
+/// The method is symmetric, A-stable and B-stable. In exact arithmetic it
+/// is symplectic for canonical Hamiltonian systems and preserves quadratic
+/// invariants. The returned count is the number of right-hand-side evaluations.
 ///
-/// Gauss–Legendre collocation methods are symmetric, A-stable, B-stable, and
-/// symplectic for all canonical Hamiltonian systems, preserving arbitrary
-/// quadratic invariants `y^T S y` exactly.
+/// When fixed-point iteration stalls, Newton's method linearizes the
+/// right-hand side independently at each collocation node.
 ///
 /// # Errors
 ///
-/// [`OdeGeomError::Domain`] if `stages` is not in `1..=3` or `rhs` returns non-finite values,
-/// [`OdeGeomError::ShapeMismatch`] if `rhs` changes dimension, and
-/// [`OdeGeomError::NotConverged`] if the Newton solver fails to converge.
+/// Returns an error for invalid or non-finite data, a callback dimension
+/// mismatch, a singular stage Jacobian, or failure of the implicit iteration.
 pub fn gauss_legendre_step(
     rhs: &mut Rate<'_>,
     t: f64,
@@ -621,170 +620,278 @@ pub fn gauss_legendre_step(
     h: f64,
     stages: usize,
 ) -> Result<(Vec<f64>, usize), OdeGeomError> {
-    let n = y.len();
-    if n == 0 {
-        return Ok((Vec::new(), 0));
-    }
-    let (c, a, b): (Vec<f64>, Vec<Vec<f64>>, Vec<f64>) = match stages {
-        | 1 => (vec![0.5], vec![vec![0.5]], vec![1.0]),
-        | 2 => {
-            let s3_6 = 3.0f64.sqrt() / 6.0;
-            (
-                vec![0.5 - s3_6, 0.5 + s3_6],
-                vec![vec![0.25, 0.25 - s3_6], vec![0.25 + s3_6, 0.25]],
-                vec![0.5, 0.5],
-            )
-        },
-        | 3 => {
-            let s15 = 15.0f64.sqrt();
-            (
-                vec![0.5 - s15 / 10.0, 0.5, 0.5 + s15 / 10.0],
-                vec![
-                    vec![5.0 / 36.0, 2.0 / 9.0 - s15 / 15.0, 5.0 / 36.0 - s15 / 30.0],
-                    vec![5.0 / 36.0 + s15 / 24.0, 2.0 / 9.0, 5.0 / 36.0 - s15 / 24.0],
-                    vec![5.0 / 36.0 + s15 / 30.0, 2.0 / 9.0 + s15 / 15.0, 5.0 / 36.0],
-                ],
-                vec![5.0 / 18.0, 4.0 / 9.0, 5.0 / 18.0],
-            )
-        },
-        | _ => {
+    GaussLegendreWorkspace::default().step(rhs, t, y, h, stages)
+}
+
+/// Reusable stage storage for repeated Gauss–Legendre collocation steps.
+///
+/// The workspace can be reused at different step sizes, stage counts and
+/// state dimensions. Each returned state is independently owned.
+#[derive(Debug, Default)]
+pub struct GaussLegendreWorkspace {
+    rates: Vec<f64>,
+    fields: Vec<f64>,
+    states: Vec<f64>,
+}
+
+struct GaussLegendreTableau {
+    times: [f64; 3],
+    a: [[f64; 3]; 3],
+    b: [f64; 3],
+    stages: usize,
+}
+
+impl GaussLegendreTableau {
+    fn new(
+        t: f64,
+        h: f64,
+        stages: usize,
+    ) -> Result<Self, OdeGeomError> {
+        let (c, a, b) = match stages {
+            | 1 => {
+                (
+                    [0.5, 0.0, 0.0],
+                    [[0.5, 0.0, 0.0], [0.0; 3], [0.0; 3]],
+                    [1.0, 0.0, 0.0],
+                )
+            },
+            | 2 => {
+                let s3_6 = 3.0_f64.sqrt() / 6.0;
+                (
+                    [0.5 - s3_6, 0.5 + s3_6, 0.0],
+                    [[0.25, 0.25 - s3_6, 0.0], [0.25 + s3_6, 0.25, 0.0], [0.0; 3]],
+                    [0.5, 0.5, 0.0],
+                )
+            },
+            | 3 => {
+                let s15 = 15.0_f64.sqrt();
+                (
+                    [0.5 - s15 / 10.0, 0.5, 0.5 + s15 / 10.0],
+                    [
+                        [5.0 / 36.0, 2.0 / 9.0 - s15 / 15.0, 5.0 / 36.0 - s15 / 30.0],
+                        [5.0 / 36.0 + s15 / 24.0, 2.0 / 9.0, 5.0 / 36.0 - s15 / 24.0],
+                        [5.0 / 36.0 + s15 / 30.0, 2.0 / 9.0 + s15 / 15.0, 5.0 / 36.0],
+                    ],
+                    [5.0 / 18.0, 4.0 / 9.0, 5.0 / 18.0],
+                )
+            },
+            | _ => {
+                return Err(OdeGeomError::Domain(
+                    "Gauss–Legendre stages must be 1, 2, or 3".into(),
+                ));
+            },
+        };
+        let times = c.map(|c| t + c * h);
+        if !times[..stages].iter().all(|time| time.is_finite()) {
             return Err(OdeGeomError::Domain(
-                "Gauss-Legendre stages must be 1 (order 2), 2 (order 4), or 3 (order 6)".into(),
+                "non-finite Gauss–Legendre stage time".into(),
             ));
-        },
-    };
-
-    let mut nfev = 0usize;
-    let k0 = evaluate(rhs, t, y, n)?;
-    nfev += 1;
-
-    // Unknown vector `k` has length `stages * n`, stacked as `[K_1, ..., K_s]`.
-    let total_dim = stages * n;
-    let mut k = vec![0.0; total_dim];
-    for s in 0..stages {
-        k[s * n..(s + 1) * n].copy_from_slice(&k0);
-    }
-
-    // First try a few fixed-point iterations (cheap for small h / non-stiff steps),
-    // then switch to full Newton-Raphson if needed.
-    let tol = 1e-14 * (1.0 + y.iter().fold(0.0f64, |acc, x| acc.max(x.abs())));
-    let mut converged = false;
-    for _ in 0..12 {
-        let mut max_diff = 0.0f64;
-        let mut k_new = vec![0.0; total_dim];
-        for i in 0..stages {
-            let mut yi = y.to_vec();
-            for j in 0..stages {
-                let a_ij = a[i][j] * h;
-                for m in 0..n {
-                    yi[m] += a_ij * k[j * n + m];
-                }
-            }
-            let f_val = evaluate(rhs, t + c[i] * h, &yi, n)?;
-            nfev += 1;
-            for m in 0..n {
-                let diff = (f_val[m] - k[i * n + m]).abs();
-                max_diff = max_diff.max(diff);
-                k_new[i * n + m] = f_val[m];
-            }
         }
-        k = k_new;
-        if max_diff * h.abs().max(1.0) <= tol {
-            converged = true;
-            break;
-        }
+        Ok(Self {
+            times,
+            a: a.map(|row| row.map(|a| a * h)),
+            b: b.map(|b| b * h),
+            stages,
+        })
     }
+}
 
-    if !converged {
-        let eval_residual = |rhs: &mut Rate<'_>,
-                             k_vec: &[f64],
-                             nfev: &mut usize|
-         -> Result<Vec<f64>, OdeGeomError> {
-            let mut res = vec![0.0; total_dim];
-            for i in 0..stages {
-                let mut yi = y.to_vec();
-                for j in 0..stages {
-                    let a_ij = a[i][j] * h;
-                    for m in 0..n {
-                        yi[m] += a_ij * k_vec[j * n + m];
-                    }
-                }
-                let f_val = evaluate(rhs, t + c[i] * h, &yi, n)?;
-                *nfev += 1;
-                for m in 0..n {
-                    res[i * n + m] = k_vec[i * n + m] - f_val[m];
-                }
+impl GaussLegendreWorkspace {
+    /// Advance a step using reusable stage storage.
+    ///
+    /// # Errors
+    ///
+    /// Returns the errors of [`gauss_legendre_step`].
+    pub fn step(
+        &mut self,
+        rhs: &mut Rate<'_>,
+        t: f64,
+        y: &[f64],
+        h: f64,
+        stages: usize,
+    ) -> Result<(Vec<f64>, usize), OdeGeomError> {
+        let n = y.len();
+        if n == 0 {
+            return Ok((Vec::new(), 0));
+        }
+        if !t.is_finite() || !h.is_finite() || y.iter().any(|v| !v.is_finite()) {
+            return Err(OdeGeomError::Domain(
+                "non-finite Gauss–Legendre input".into(),
+            ));
+        }
+        let tableau = GaussLegendreTableau::new(t, h, stages)?;
+        let dimension = n.checked_mul(stages).ok_or_else(|| {
+            OdeGeomError::Domain("Gauss–Legendre stage dimension overflows".into())
+        })?;
+        let initial = evaluate(rhs, t, y, n)?;
+        self.rates.resize(dimension, 0.0);
+        self.fields.resize(dimension, 0.0);
+        self.states.resize(dimension, 0.0);
+        for rate in self.rates.chunks_exact_mut(n) {
+            rate.copy_from_slice(&initial);
+        }
+
+        let state_scale = y.iter().map(|v| v.abs()).fold(0.0_f64, f64::max);
+        let initial_scale = initial.iter().map(|v| v.abs()).fold(state_scale, f64::max);
+        let tiny = initial_scale < f64::EPSILON.sqrt();
+        let converged = |rates: &[f64], fields: &[f64]| {
+            let error = rates
+                .iter()
+                .zip(fields)
+                .map(|(a, b)| (a - b).abs())
+                .fold(0.0_f64, f64::max);
+            if tiny {
+                // Use the actual derivative scale for very small systems,
+                // whose entire solution can be below the usual absolute floor.
+                let scale = rates
+                    .iter()
+                    .chain(fields)
+                    .map(|v| v.abs())
+                    .fold(0.0_f64, f64::max);
+                error <= 1e-14 * scale
+            } else {
+                error * h.abs().max(1.0) <= 1e-14 * (1.0 + state_scale)
             }
-            Ok(res)
         };
 
-        let mut res = eval_residual(rhs, &k, &mut nfev)?;
-        for _ in 0..20 {
-            let norm = res.iter().fold(0.0f64, |acc, x| acc.max(x.abs()));
-            if norm * h.abs().max(1.0) <= tol {
-                converged = true;
+        let mut nfev = 1;
+        for _ in 0..12 {
+            self.evaluate_stages(rhs, y, &tableau)?;
+            nfev += stages;
+            let done = converged(&self.rates, &self.fields);
+            std::mem::swap(&mut self.rates, &mut self.fields);
+            if done {
+                return self.finish_step(y, &tableau, nfev);
+            }
+        }
+
+        self.evaluate_stages(rhs, y, &tableau)?;
+        nfev += stages;
+        for iteration in 0..=20 {
+            if converged(&self.rates, &self.fields) {
+                return self.finish_step(y, &tableau, nfev);
+            }
+            if iteration == 20 {
                 break;
             }
-            // Compute Jacobian of f(t, y) at t + c_2*h to build the stage Jacobian efficiently.
-            let mut y_mid = y.to_vec();
-            for j in 0..stages {
-                let w = b[j] * h;
-                for m in 0..n {
-                    y_mid[m] += w * k[j * n + m];
-                }
+            let jac = self.stage_jacobian(rhs, n, &tableau, tiny)?;
+            nfev += dimension;
+            let correction = solve_dense(
+                jac,
+                self.fields
+                    .iter()
+                    .zip(&self.rates)
+                    .map(|(f, k)| f - k)
+                    .collect(),
+            )?;
+            for (k, delta) in self.rates.iter_mut().zip(correction) {
+                *k += delta;
             }
-            let f_mid = evaluate(rhs, t + 0.5 * h, &y_mid, n)?;
-            nfev += 1;
-            let mut df_dy = vec![vec![0.0; n]; n];
-            for col in 0..n {
-                let eps = f64::EPSILON.sqrt() * y_mid[col].abs().max(1.0);
-                let mut y_pert = y_mid.clone();
-                y_pert[col] += eps;
-                let f_pert = evaluate(rhs, t + 0.5 * h, &y_pert, n)?;
-                nfev += 1;
-                for row in 0..n {
-                    df_dy[row][col] = (f_pert[row] - f_mid[row]) / eps;
-                }
-            }
-            // Assemble J_stage = I - (h A \otimes df_dy)
-            let mut jac = vec![vec![0.0; total_dim]; total_dim];
-            for i in 0..stages {
-                for j in 0..stages {
-                    let factor = -h * a[i][j];
-                    for r in 0..n {
-                        for col in 0..n {
-                            jac[i * n + r][j * n + col] = factor * df_dy[r][col];
-                        }
-                    }
-                }
-                for r in 0..n {
-                    jac[i * n + r][i * n + r] += 1.0;
-                }
-            }
-            let rhs_vec: Vec<f64> = res.iter().map(|x| -x).collect();
-            let delta = solve_dense(jac, rhs_vec)?;
-            for idx in 0..total_dim {
-                k[idx] += delta[idx];
-            }
-            res = eval_residual(rhs, &k, &mut nfev)?;
+            self.evaluate_stages(rhs, y, &tableau)?;
+            nfev += stages;
         }
-        let norm = res.iter().fold(0.0f64, |acc, x| acc.max(x.abs()));
-        if !converged && norm * h.abs().max(1.0) > tol {
-            return Err(OdeGeomError::NotConverged);
-        }
+        Err(OdeGeomError::NotConverged)
     }
 
-    let mut y_next = y.to_vec();
-    for j in 0..stages {
-        let bj = b[j] * h;
-        for m in 0..n {
-            y_next[m] += bj * k[j * n + m];
+    fn evaluate_stages(
+        &mut self,
+        rhs: &mut Rate<'_>,
+        y: &[f64],
+        tableau: &GaussLegendreTableau,
+    ) -> Result<(), OdeGeomError> {
+        let n = y.len();
+        for (i, (stage, field)) in self
+            .states
+            .chunks_exact_mut(n)
+            .zip(self.fields.chunks_exact_mut(n))
+            .enumerate()
+        {
+            stage.copy_from_slice(y);
+            for (j, k) in self.rates.chunks_exact(n).enumerate() {
+                let a = tableau.a[i][j];
+                for (value, rate) in stage.iter_mut().zip(k) {
+                    *value += a * rate;
+                }
+            }
+            if stage.iter().any(|v| !v.is_finite()) {
+                return Err(OdeGeomError::NotConverged);
+            }
+            field.copy_from_slice(&evaluate(rhs, tableau.times[i], stage, n)?);
         }
+        Ok(())
     }
-    if !y_next.iter().all(|x| x.is_finite()) {
-        return Err(OdeGeomError::NotConverged);
+
+    fn stage_jacobian(
+        &mut self,
+        rhs: &mut Rate<'_>,
+        n: usize,
+        tableau: &GaussLegendreTableau,
+        tiny: bool,
+    ) -> Result<Vec<Vec<f64>>, OdeGeomError> {
+        let dimension = self.rates.len();
+        let mut jac = vec![vec![0.0; dimension]; dimension];
+        for (i, (stage, base)) in self
+            .states
+            .chunks_exact_mut(n)
+            .zip(self.fields.chunks_exact(n))
+            .enumerate()
+        {
+            let floor = if tiny {
+                stage
+                    .iter()
+                    .map(|v| v.abs())
+                    .fold(f64::MIN_POSITIVE, f64::max)
+            } else {
+                1.0
+            };
+            for col in 0..n {
+                let original = stage[col];
+                let epsilon = f64::EPSILON.sqrt() * original.abs().max(floor);
+                let mut perturbed = original + epsilon;
+                if !perturbed.is_finite() {
+                    perturbed = original - epsilon;
+                }
+                if super::exact_eq(original, perturbed) {
+                    perturbed = original.next_up();
+                }
+                stage[col] = perturbed;
+                let value = evaluate(rhs, tableau.times[i], stage, n);
+                stage[col] = original;
+                let shifted = value?;
+                let delta = perturbed - original;
+                for (r, (shifted, base)) in shifted.into_iter().zip(base).enumerate() {
+                    let derivative =
+                        super::numeric_common::scaled_difference(shifted, *base, delta);
+                    for j in 0..tableau.stages {
+                        jac[i * n + r][j * n + col] = -tableau.a[i][j] * derivative;
+                    }
+                }
+            }
+        }
+        for (i, row) in jac.iter_mut().enumerate() {
+            row[i] += 1.0;
+        }
+        Ok(jac)
     }
-    Ok((y_next, nfev))
+
+    fn finish_step(
+        &self,
+        y: &[f64],
+        tableau: &GaussLegendreTableau,
+        nfev: usize,
+    ) -> Result<(Vec<f64>, usize), OdeGeomError> {
+        let mut next = y.to_vec();
+        for (j, k) in self.rates.chunks_exact(y.len()).enumerate() {
+            let weight = tableau.b[j];
+            for (value, rate) in next.iter_mut().zip(k) {
+                *value += weight * rate;
+            }
+        }
+        if next.iter().any(|v| !v.is_finite()) {
+            return Err(OdeGeomError::NotConverged);
+        }
+        Ok((next, nfev))
+    }
 }
 
 /// Integrate the differential equation with the selected numerical method.
@@ -2538,24 +2645,14 @@ pub fn solve_fixed_geometric(
     let nsteps = steps.max(1);
     let h = (end - start) / nsteps as f64;
 
-    let step_fn = |rhs: &mut Rate<'_>,
-                   t: f64,
-                   y: &[f64],
-                   dt: f64|
-     -> Result<(Vec<f64>, usize), OdeGeomError> {
-        if let Some(s) = explicit_stages {
-            return gauss_legendre_step(rhs, t, y, dt, s);
-        }
-        match method {
-            | GeometricMethod::Rk4 => {
-                adaptive::geometric_step(method, rhs, t, y, dt).map(|y| (y, 4))
-            },
-            | GeometricMethod::ImplicitMidpoint => gauss_legendre_step(rhs, t, y, dt, 1),
-            | GeometricMethod::StormerVerlet => partitioned_verlet_step(rhs, t, y, dt),
-            | GeometricMethod::Ruth4 => partitioned_ruth4_step(rhs, t, y, dt),
-            | GeometricMethod::GaussLegendre4 => gauss_legendre_step(rhs, t, y, dt, 2),
-            | GeometricMethod::GaussLegendre6 => gauss_legendre_step(rhs, t, y, dt, 3),
-        }
+    let mut stepper = match explicit_stages {
+        | Some(stages) => {
+            adaptive::GeometricStepper::Gauss {
+                stages,
+                workspace: GaussLegendreWorkspace::default(),
+            }
+        },
+        | None => adaptive::GeometricStepper::new(method),
     };
 
     let mut ts = Vec::with_capacity(nsteps + 1);
@@ -2589,7 +2686,7 @@ pub fn solve_fixed_geometric(
             start + (step_idx + 1) as f64 * h
         };
         let dt = t_next - t_curr;
-        let (y_next, c_evals) = step_fn(rhs, t_curr, &y, dt)?;
+        let (y_next, c_evals) = stepper.step(rhs, t_curr, &y, dt)?;
         nfev += c_evals;
         let r_next = evaluate(rhs, t_next, &y_next, n)?;
         nfev += 1;

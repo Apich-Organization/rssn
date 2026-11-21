@@ -125,7 +125,9 @@ pub(super) struct StepEstimate {
 }
 
 /// Startup probes remain inside the requested interval and maximal step.
-/// The estimate is a heuristic: the integrator still validates every step.
+/// The estimate respects the smallest representable advance in the requested
+/// direction. If that advance is unavailable, the estimate is zero and no
+/// probe is evaluated. The integrator still validates every step.
 pub(super) fn initial_step<F: Fn(f64, &[f64], &mut [f64])>(
     function: &F,
     time: f64,
@@ -140,24 +142,39 @@ pub(super) fn initial_step<F: Fn(f64, &[f64], &mut [f64])>(
         max_step,
         order,
     } = options;
-    let direction = if bound > time { 1.0 } else { -1.0 };
-    let scales: Vec<f64> = state
-        .iter()
-        .map(|value| atol + rtol * value.abs())
-        .collect();
+    let forward = bound > time;
+    let direction = if forward { 1.0 } else { -1.0 };
+    let closest = if forward {
+        time.next_up()
+    } else {
+        time.next_down()
+    };
+    let minimum_step = (closest - time).abs();
+    let limit = max_step.min((bound - time).abs());
+    if minimum_step > limit || !minimum_step.is_finite() {
+        return StepEstimate {
+            step: 0.0,
+            evaluations: 0,
+        };
+    }
+    // Keep the error scales, trial state, and trial derivative together.
+    let n = state.len();
+    let mut scratch = super::reuse::f64_scratch(3 * n);
+    scratch.extend(state.iter().map(|value| atol + rtol * value.abs()));
+    let scales = scratch.as_slice();
     let d0 = rms(
         state
             .iter()
-            .zip(&scales)
+            .zip(scales)
             .map(|(&value, &scale)| scaled_ratio(value, scale)),
-        state.len(),
+        n,
     );
     let d1 = rms(
         derivative
             .iter()
-            .zip(&scales)
+            .zip(scales)
             .map(|(&value, &scale)| scaled_ratio(value, scale)),
-        state.len(),
+        n,
     );
     let estimate = if d0 < 1e-5 || d1 < 1e-5 || !d0.is_finite() || !d1.is_finite() {
         1e-6
@@ -168,37 +185,55 @@ pub(super) fn initial_step<F: Fn(f64, &[f64], &mut [f64])>(
     // spacing of representable times can exceed the heuristic estimate, and a
     // step that cannot advance `time` would be reported as a step-limit failure
     // before the first step is taken.
-    let resolution = 8.0 * (time.abs().next_up() - time.abs());
-    let step = estimate
-        .max(resolution)
-        .min(max_step)
-        .min((bound - time).abs());
+    let spacing = time.abs().next_up() - time.abs();
+    let resolution = 8.0
+        * if spacing.is_finite() {
+            spacing
+        } else {
+            minimum_step
+        };
+    let step = estimate.max(resolution).min(limit);
     if !step.is_finite() || step <= 0.0 {
         return StepEstimate { step, evaluations: 0 };
     }
-    let trial_time = if direction > 0.0 {
+    let mut trial_time = if forward {
         (time + step).min(bound)
     } else {
         (time - step).max(bound)
     };
-    if super::exact_eq(trial_time, time) {
-        return StepEstimate { step, evaluations: 0 };
+    // Addition may round a nominally bounded step above its physical cap.
+    if (trial_time - time).abs() > limit {
+        trial_time = if forward {
+            trial_time.next_down()
+        } else {
+            trial_time.next_up()
+        };
     }
     let step = (trial_time - time).abs();
-    let trial: Vec<f64> = state
-        .iter()
-        .zip(derivative)
-        .map(|(&value, &slope)| value + direction * step * slope)
-        .collect();
-    let mut trial_derivative = vec![f64::NAN; state.len()];
-    function(trial_time, &trial, &mut trial_derivative);
+    if !step.is_finite() || step < minimum_step || step > limit {
+        return StepEstimate {
+            step: 0.0,
+            evaluations: 0,
+        };
+    }
+    scratch.extend(
+        state
+            .iter()
+            .zip(derivative)
+            .map(|(&value, &slope)| value + direction * step * slope),
+    );
+    let split = scratch.len();
+    scratch.resize(split + n, f64::NAN);
+    let (input, trial_derivative) = scratch.split_at_mut(split);
+    let (scales, trial) = input.split_at(n);
+    function(trial_time, trial, trial_derivative);
     let d2 = rms(
         trial_derivative
             .iter()
             .zip(derivative)
-            .zip(&scales)
+            .zip(scales)
             .map(|((&a, &b), &scale)| scaled_ratio(a - b, scale)),
-        state.len(),
+        n,
     ) / step;
     let curvature = if d2.is_finite() {
         d1.max(d2)
@@ -218,10 +253,8 @@ pub(super) fn initial_step<F: Fn(f64, &[f64], &mut [f64])>(
         (0.01 / curvature).powf(1.0 / (order + 1.0))
     };
     StepEstimate {
-        step: (100.0 * step)
-            .min(adjusted)
-            .min(max_step)
-            .min((bound - time).abs()),
+        // The curvature heuristic can shrink below the time grid spacing.
+        step: (100.0 * step).min(adjusted).min(limit).max(minimum_step),
         evaluations: 1,
     }
 }

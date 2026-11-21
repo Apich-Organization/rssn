@@ -11,6 +11,16 @@ fn checked<R: FnMut(f64, &[f64], &[f64]) -> Vec<f64> + ?Sized>(
     y: &[f64],
     yp: &[f64],
 ) -> Result<Vec<f64>, OdeGeomError> {
+    // The initial state is checked before Newton iteration. Each BDF trial
+    // state has a nonzero derivative coefficient, so a nonfinite trial state
+    // necessarily produces a nonfinite derivative.
+    let mut finite = true;
+    for rate in yp {
+        finite &= rate.is_finite();
+    }
+    if !finite {
+        return Err(OdeGeomError::NotConverged);
+    }
     let r = f(t, y, yp);
     if r.len() != y.len() {
         return Err(OdeGeomError::ShapeMismatch(
@@ -37,38 +47,45 @@ fn step<R: FnMut(f64, &[f64], &[f64]) -> Vec<f64> + ?Sized>(
     h: f64,
     options: DaeOptions,
 ) -> Result<(Vec<f64>, Vec<f64>), OdeGeomError> {
+    if h <= 0.0 {
+        return Err(OdeGeomError::NotConverged);
+    }
     let n = y.len();
     let mut next: Vec<f64> = y.iter().zip(yp).map(|(a, b)| a + h * b).collect();
-    let derivative = |next: &[f64]| -> Vec<f64> {
+    let derivative = |next: &[f64], out: &mut Vec<f64>| {
+        out.clear();
         if let Some((tp, yprev)) = previous {
             let ratio = h / (t - tp);
             let a0 = (1.0 + 2.0 * ratio) / (1.0 + ratio);
             let a1 = -(1.0 + ratio);
             let a2 = ratio * ratio / (1.0 + ratio);
-            (0..n)
-                .map(|i| (a0 * next[i] + a1 * y[i] + a2 * yprev[i]) / h)
-                .collect()
+            out.extend((0..n).map(|i| (a0 * next[i] + a1 * y[i] + a2 * yprev[i]) / h));
         } else {
-            (0..n).map(|i| (next[i] - y[i]) / h).collect()
+            out.extend((0..n).map(|i| (next[i] - y[i]) / h));
         }
     };
     let time = t + h;
+    let mut dy = Vec::with_capacity(n);
+    let mut shifted = Vec::new();
     for _ in 0..options.max_newton_iter {
-        let dy = derivative(&next);
+        derivative(&next, &mut dy);
         let residual = checked(f, time, &next, &dy)?;
         if norm(&residual) <= options.newton_tol {
             return Ok((next, dy));
         }
         let mut jac = vec![vec![0.0; n]; n];
+        shifted.clear();
+        shifted.extend_from_slice(&next);
         for j in 0..n {
             let epsilon = f64::EPSILON.sqrt() * next[j].abs().max(1.0);
-            let mut shifted = next.clone();
             shifted[j] += epsilon;
             let actual = shifted[j] - next[j];
             if actual == 0.0 {
                 return Err(OdeGeomError::NotConverged);
             }
-            let r = checked(f, time, &shifted, &derivative(&shifted))?;
+            derivative(&shifted, &mut dy);
+            let r = checked(f, time, &shifted, &dy)?;
+            shifted[j] = next[j];
             for i in 0..n {
                 jac[i][j] = (r[i] - residual[i]) / actual;
             }
@@ -82,13 +99,15 @@ fn step<R: FnMut(f64, &[f64], &[f64]) -> Vec<f64> + ?Sized>(
                 .zip(&delta)
                 .map(|(x, d)| x + damping * d)
                 .collect();
-            if candidate.iter().all(|x| x.is_finite()) {
-                let r = checked(f, time, &candidate, &derivative(&candidate))?;
-                if norm(&r) < norm(&residual) {
+            derivative(&candidate, &mut dy);
+            match checked(f, time, &candidate, &dy) {
+                | Ok(r) if norm(&r) < norm(&residual) => {
                     next = candidate;
                     accepted = true;
                     break;
-                }
+                },
+                | Ok(_) | Err(OdeGeomError::NotConverged) => {},
+                | Err(error) => return Err(error),
             }
             damping *= 0.5;
         }

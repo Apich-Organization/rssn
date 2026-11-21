@@ -4,6 +4,7 @@ use std::f64::consts::PI;
 use std::time::Instant;
 
 use num_complex::Complex64;
+use rssn::kernels::quadrature::GkError;
 use rssn::kernels::quadrature::GkRule;
 use rssn::kernels::quadrature::LowDiscrepancy;
 use rssn::kernels::quadrature::Sobol;
@@ -15,9 +16,12 @@ use rssn::kernels::quadrature::exp_sinh;
 use rssn::kernels::quadrature::filon;
 use rssn::kernels::quadrature::filon2d;
 use rssn::kernels::quadrature::filon2d_complex;
+use rssn::kernels::quadrature::gk_panel;
 use rssn::kernels::quadrature::halton_point;
 use rssn::kernels::quadrature::integrate;
 use rssn::kernels::quadrature::integrate_gk;
+use rssn::kernels::quadrature::integrate_gk_breakpoints;
+use rssn::kernels::quadrature::integrate_gk_par;
 use rssn::kernels::quadrature::integrate_infinite;
 use rssn::kernels::quadrature::integrate_semi_infinite;
 use rssn::kernels::quadrature::monte_carlo;
@@ -41,6 +45,128 @@ fn gk_smooth_both_rules() {
 fn gk_polynomial_exact() {
     let r = integrate(|x| x.powi(13), 0.0, 1.0, 1e-12);
     assert!((r.value - 1.0 / 14.0).abs() < 1e-14);
+}
+
+#[test]
+fn breakpoints_resolve_a_small_discontinuous_region_with_a_shared_budget() {
+    let (lo, hi) = (0.201, 0.201_01);
+    let small_region = |x| f64::from(u8::from(lo < x && x < hi));
+    let exact = hi - lo;
+    for (a, b, expected) in [(0.0, 1.0, exact), (1.0, 0.0, -exact)] {
+        let result = integrate_gk_breakpoints(
+            small_region,
+            a,
+            b,
+            &[lo, hi],
+            GkRule::G7K15,
+            1e-15,
+            1e-11,
+            3,
+        )
+        .unwrap();
+        assert!(result.converged, "{result:?}");
+        assert_eq!(result.evaluations, 45);
+        assert!((result.value - expected).abs() < 1e-15, "{result:?}");
+    }
+}
+
+#[test]
+fn breakpoints_validate_before_callbacks_and_preserve_empty_intervals() {
+    let never = |_| panic!("a callback must not run");
+    let rule = GkRule::G7K15;
+    for invalid in [&[0.2, 0.2][..], &[0.8, 0.2], &[0.0], &[1.0], &[f64::NAN]] {
+        assert_eq!(
+            integrate_gk_breakpoints(never, 0.0, 1.0, invalid, rule, 1e-12, 1e-12, 4),
+            Err(GkError::InvalidBreakpoints),
+        );
+    }
+    assert_eq!(
+        integrate_gk_breakpoints(never, 0.0, 1.0, &[0.5], rule, 1e-12, 1e-12, 1),
+        Err(GkError::PanelBudget),
+    );
+    assert_eq!(
+        integrate_gk_breakpoints(never, f64::NAN, 1.0, &[], rule, 1e-12, 1e-12, 1),
+        Err(GkError::InvalidInterval),
+    );
+    assert_eq!(
+        integrate_gk_breakpoints(never, 0.0, 1.0, &[], rule, -1.0, 1e-12, 1),
+        Err(GkError::InvalidTolerance),
+    );
+    let empty = integrate_gk_breakpoints(never, 2.0, 2.0, &[], rule, 1e-12, 1e-12, 0).unwrap();
+    assert!(empty.converged);
+    assert_eq!(empty.evaluations, 0);
+    assert_eq!(empty.value, 0.0);
+    assert_eq!(
+        integrate_gk_breakpoints(|_| f64::NAN, 0.0, 1.0, &[], rule, 1e-12, 1e-12, 1),
+        Err(GkError::NonFiniteEstimate),
+    );
+}
+
+#[test]
+fn gauss_kronrod_uses_finite_nodes_on_an_extremely_wide_interval() {
+    let bound = f64::MAX;
+    let constant = |x: f64| {
+        assert!(x.is_finite());
+        bound.recip()
+    };
+    let (value, error, count) = gk_panel(&constant, -bound, bound, GkRule::G10K21);
+    assert_eq!(count, 21);
+    assert!((value - 2.0).abs() < 1e-12);
+    assert!(error.is_finite());
+}
+
+#[test]
+fn gauss_kronrod_preserves_a_subnormal_interval_width() {
+    let width = f64::from_bits(1);
+    for rule in [GkRule::G7K15, GkRule::G10K21] {
+        let r = integrate_gk(|_| 1.0, 0.0, width, rule, 0.0, 0.0, 1);
+        assert_eq!(r.value.to_bits(), width.to_bits());
+        assert!(r.converged);
+    }
+}
+
+#[test]
+fn gauss_kronrod_panels_and_refinement_are_bit_identical_across_worker_counts() {
+    let f = |x: f64| (800.0 * x).cos().abs();
+    let rule = GkRule::G10K21;
+    let serial = integrate_gk(f, 0.0, 1.0, rule, 1e-10, 1e-10, 257);
+    assert!(serial.evaluations > 1000);
+    for workers in [1, 4] {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(workers)
+            .build()
+            .unwrap();
+        let parallel = pool.install(|| integrate_gk_par(f, 0.0, 1.0, rule, 1e-10, 1e-10, 257));
+        assert_eq!(serial.value.to_bits(), parallel.value.to_bits());
+        assert_eq!(serial.error.to_bits(), parallel.error.to_bits());
+        assert_eq!(serial.evaluations, parallel.evaluations);
+        assert_eq!(serial.converged, parallel.converged);
+    }
+}
+
+#[test]
+fn gauss_kronrod_halts_between_panels_on_cancellation() {
+    use std::cell::Cell;
+    use std::sync::Arc;
+    use std::sync::atomic::AtomicBool;
+    use std::sync::atomic::Ordering;
+
+    let flag = Arc::new(AtomicBool::new(false));
+    let _scope = rssn::cancellation::install(Arc::clone(&flag));
+    let calls = Cell::new(0);
+    let cancel = |x: f64| {
+        calls.set(calls.get() + 1);
+        flag.store(true, Ordering::Relaxed);
+        x
+    };
+    let result =
+        integrate_gk_breakpoints(cancel, 0.0, 1.0, &[0.5], GkRule::G7K15, 1e-13, 1e-13, 500);
+    assert_eq!(result, Err(GkError::Cancelled));
+    assert_eq!(calls.get(), 15);
+    let result = integrate_gk(cancel, 0.0, 1.0, GkRule::G7K15, 1e-13, 1e-13, 500);
+    assert!(!result.converged);
+    assert_eq!(result.evaluations, 0);
+    assert_eq!(calls.get(), 15);
 }
 
 #[test]

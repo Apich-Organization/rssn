@@ -1,3 +1,5 @@
+//! Adaptive, stiff, symplectic, BVP, DAE and DDE integrators.
+//!
 //! # Adaptive, stiff, symplectic and boundary-value ODE kernels
 //!
 //! * [`dopri5`]: Dormand-Prince 5(4) with step-size control, a fourth-order
@@ -602,6 +604,8 @@ pub(crate) fn dopri5_controlled<F: Fn(f64, &[f64], &mut [f64])>(
     let mut gprev = initial_events(events, t0, y0)?;
     let mut steps = 0;
     let mut tmp = vec![0.0; n];
+    let mut err = super::reuse::f64_scratch(n);
+    err.resize(n, 0.0);
     while (t1 - t) * dir > 0.0 {
         super::ode_contract::abort_if_requested(stop)?;
         if steps >= opts.max_steps {
@@ -625,23 +629,12 @@ pub(crate) fn dopri5_controlled<F: Fn(f64, &[f64], &mut [f64])>(
                 }
                 tmp[i] = y[i] + h * acc;
             }
-            let (head, tail) = k.split_at_mut(s + 1);
-            let _ = head;
-            f(t + DP_C[s] * h, &tmp, &mut tail[0]);
+            f(t + DP_C[s] * h, &tmp, &mut k[s + 1]);
             nfev += 1;
             super::ode_contract::abort_if_requested(stop)?;
         }
-        let ynew = tmp.clone();
-        // after stage s=5 tmp holds y + h*sum(b k) = y_new (row 6 of A is b)
-        let mut err = vec![0.0; n];
-        for i in 0..n {
-            let mut e = 0.0;
-            for j in 0..7 {
-                e += DP_E[j] * k[j][i];
-            }
-            err[i] = h * e;
-        }
-        if ynew.iter().any(|v| !v.is_finite()) {
+        // Row 6 of A is b, so the final stage has already produced y_new.
+        if tmp.iter().any(|v| !v.is_finite()) {
             h *= 0.25;
             sol.rejected += 1;
             if !h.is_finite() || crate::kernels::exact_eq(t + h, t) {
@@ -649,7 +642,14 @@ pub(crate) fn dopri5_controlled<F: Fn(f64, &[f64], &mut [f64])>(
             }
             continue;
         }
-        let en = err_norm(&err, &y, &ynew, opts.rtol, opts.atol);
+        for (i, component) in err.iter_mut().enumerate() {
+            let mut error = 0.0;
+            for j in 0..7 {
+                error += DP_E[j] * k[j][i];
+            }
+            *component = h * error;
+        }
+        let en = err_norm(&err, &y, &tmp, opts.rtol, opts.atol);
         if en.is_nan() {
             return Err(OdeError::NonFinite);
         }
@@ -664,7 +664,7 @@ pub(crate) fn dopri5_controlled<F: Fn(f64, &[f64], &mut [f64])>(
                 t0: t,
                 h,
                 y0: y.clone(),
-                kind: DenseKind::Poly(d.to_vec()),
+                kind: DenseKind::Poly(Vec::from(d)),
             };
             let tn = t + h;
             if process_events(
@@ -675,7 +675,7 @@ pub(crate) fn dopri5_controlled<F: Fn(f64, &[f64], &mut [f64])>(
                 &StepWindow {
                     t_old: t,
                     tn,
-                    ynew: &ynew,
+                    ynew: &tmp,
                     dir,
                 },
             )? {
@@ -683,12 +683,11 @@ pub(crate) fn dopri5_controlled<F: Fn(f64, &[f64], &mut [f64])>(
                 return Ok(sol);
             }
             t = tn;
-            y = ynew;
+            std::mem::swap(&mut y, &mut tmp);
             sol.t.push(t);
             sol.y.push(y.clone());
-            // FSAL
-            let last = k[6].clone();
-            k[0] = last;
+            // The endpoint derivative is the next step's first stage (FSAL).
+            k.swap(0, 6);
             let fac = if en == 0.0 {
                 5.0
             } else {
@@ -1327,7 +1326,7 @@ pub fn dopri5_fixed<F: Fn(f64, &[f64], &mut [f64])>(
             t0: t,
             h,
             y0: y.clone(),
-            kind: DenseKind::Poly(d.to_vec()),
+            kind: DenseKind::Poly(Vec::from(d)),
         };
         if process_events(
             events,

@@ -1,3 +1,5 @@
+//! Scalar and system root finding, polynomial roots, homotopy continuation.
+//!
 //! # Root finding and nonlinear systems
 //!
 //! * scalar: Brent's method, Halley's method, damped Newton with
@@ -47,14 +49,23 @@ pub enum RootError {
     Invalid,
 }
 
+/// A root estimate and its final interval from [`brent_with_bracket`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BrentRoot {
+    /// Best evaluated estimate.
+    pub root: f64,
+    /// Final endpoints in increasing order, or a single exact root repeated.
+    pub bracket: [f64; 2],
+    /// Number of calls to the function, including the initial endpoints.
+    pub evaluations: usize,
+}
+
 /// Brent's method on a bracketing interval `[a, b]`.
 ///
 /// # Errors
-/// [`RootError::NotBracketed`] if `f(a)` and `f(b)` have the same sign.
-/// [`RootError::Invalid`] if the endpoints, tolerance, or an evaluated
-/// function value are non-finite, or if the tolerance is not positive.
-// Equality detects an unrepresentable step/interval endpoint, not approximate convergence.
-#[allow(clippy::float_cmp)]
+/// [`RootError::NotBracketed`] if the endpoints have the same nonzero sign,
+/// [`RootError::Invalid`] for non-finite inputs, non-positive tolerance, or
+/// non-finite callback values, and [`RootError::NoConvergence`] at the limit.
 pub fn brent<F: Fn(f64) -> f64>(
     f: F,
     a: f64,
@@ -62,6 +73,29 @@ pub fn brent<F: Fn(f64) -> f64>(
     tol: f64,
     max_iter: usize,
 ) -> Result<f64, RootError> {
+    brent_with_bracket(f, a, b, tol, max_iter).map(|result| result.root)
+}
+
+/// Brent's method with the final interval and function evaluation count.
+///
+/// The endpoints can be in either order. On a successful non-exact solve,
+/// their values still have opposite signs. Convergence occurs when the
+/// absolute interval width is less than `tol` or no representable point
+/// remains inside the bracket.
+///
+/// # Errors
+/// See [`brent`].
+#[allow(
+    clippy::float_cmp,
+    reason = "Detect exact zeros and intervals without a representable interior point."
+)]
+pub fn brent_with_bracket<F: Fn(f64) -> f64>(
+    f: F,
+    a: f64,
+    b: f64,
+    tol: f64,
+    max_iter: usize,
+) -> Result<BrentRoot, RootError> {
     if !a.is_finite() || !b.is_finite() || !tol.is_finite() || tol <= 0.0 {
         return Err(RootError::Invalid);
     }
@@ -70,11 +104,18 @@ pub fn brent<F: Fn(f64) -> f64>(
     if !fa.is_finite() || !fb.is_finite() {
         return Err(RootError::Invalid);
     }
+    let found = |root, left: f64, right: f64, evaluations| {
+        BrentRoot {
+            root,
+            bracket: [left.min(right), left.max(right)],
+            evaluations,
+        }
+    };
     if fa == 0.0 {
-        return Ok(a);
+        return Ok(found(a, a, a, 2));
     }
     if fb == 0.0 {
-        return Ok(b);
+        return Ok(found(b, b, b, 2));
     }
     if fa.is_sign_positive() == fb.is_sign_positive() {
         return Err(RootError::NotBracketed);
@@ -85,41 +126,42 @@ pub fn brent<F: Fn(f64) -> f64>(
     }
     let (mut c, mut fc) = (a, fa);
     let mut d = c;
-    let mut mflag = true;
-    for _ in 0..max_iter {
-        if fb == 0.0 || (b - a).abs() < tol {
-            return Ok(b);
+    let mut bisected = true;
+    for step in 0..max_iter {
+        if (b - a).abs() < tol {
+            return Ok(found(b, a, b, step.saturating_add(2)));
         }
         let mut s = if !crate::kernels::exact_eq(fa, fc) && !crate::kernels::exact_eq(fb, fc) {
-            a * fb * fc / ((fa - fb) * (fa - fc))
-                + b * fa * fc / ((fb - fa) * (fb - fc))
-                + c * fa * fb / ((fc - fa) * (fc - fb))
+            brent_interpolate((a, fa), (b, fb), (c, fc))
         } else {
-            b - fb * (b - a) / (fb - fa)
+            brent_secant(a, b, fa, fb)
         };
-        let lo = 0.75 * a + 0.25 * b;
-        let (lo, hi) = if lo < b { (lo, b) } else { (b, lo) };
-        let cond = !(s > lo && s < hi)
-            || (mflag && (s - b).abs() >= (b - c).abs() / 2.0)
-            || (!mflag && (s - b).abs() >= (c - d).abs() / 2.0)
-            || (mflag && (b - c).abs() < tol)
-            || (!mflag && (c - d).abs() < tol);
-        if cond {
-            s = f64::midpoint(a, b);
-            mflag = true;
+        let offset = 0.75 * a + 0.25 * b;
+        let (lo, hi) = if offset < b {
+            (offset, b)
         } else {
-            mflag = false;
+            (b, offset)
+        };
+        let (recent, earlier) = if bisected { (b, c) } else { (c, d) };
+        let distance = (recent - earlier).abs();
+        let limit = if distance.is_finite() {
+            0.5 * distance
+        } else {
+            (0.5 * recent - 0.5 * earlier).abs()
+        };
+        bisected = !(s > lo && s < hi) || (s - b).abs() >= limit || distance < tol;
+        if bisected {
+            s = f64::midpoint(a, b);
         }
         if s == a || s == b {
-            // No representable point remains between the bracket endpoints.
-            return Ok(b);
+            return Ok(found(b, a, b, step.saturating_add(2)));
         }
         let fs = f(s);
         if !fs.is_finite() {
             return Err(RootError::Invalid);
         }
         if fs == 0.0 {
-            return Ok(s);
+            return Ok(found(s, s, s, step.saturating_add(3)));
         }
         d = c;
         c = b;
@@ -137,6 +179,65 @@ pub fn brent<F: Fn(f64) -> f64>(
         }
     }
     Err(RootError::NoConvergence)
+}
+
+fn ratio_of_difference(
+    value: f64,
+    lhs: f64,
+    rhs: f64,
+) -> f64 {
+    let difference = lhs - rhs;
+    if difference.is_finite() {
+        value / difference
+    } else {
+        (0.5 * value) / (0.5 * lhs - 0.5 * rhs)
+    }
+}
+
+fn brent_secant(
+    a: f64,
+    b: f64,
+    fa: f64,
+    fb: f64,
+) -> f64 {
+    let weight = ratio_of_difference(fb, fb, fa);
+    let span = a - b;
+    if weight.is_normal() {
+        if span.is_finite() {
+            return b + weight * span;
+        }
+        return (1.0 - weight) * b + weight * a;
+    }
+    // When the weight underflows, its product with a large span can still
+    // be representable. The omitted correction to 1 + |fb/fa| rounds to 1.
+    let (distance, scale) = if span.is_finite() {
+        (span.abs(), 1.0)
+    } else {
+        ((0.5 * a - 0.5 * b).abs(), 2.0)
+    };
+    let step =
+        crate::kernels::numeric_common::scale_product(distance, &[fb.abs(), scale], &[fa.abs()])
+            .unwrap_or(f64::NAN);
+    b + step.copysign(span)
+}
+
+fn brent_interpolate(
+    (a, fa): (f64, f64),
+    (b, fb): (f64, f64),
+    (c, fc): (f64, f64),
+) -> f64 {
+    // Factor out the weight common to the two displacements from b.
+    // Forming the remaining factors as ratios avoids residual products.
+    let common = ratio_of_difference(fb, fa, fc);
+    let left = ratio_of_difference(fc, fa, fb);
+    let right = ratio_of_difference(fa, fc, fb);
+    let candidate = b + common * ((a - b) * left - (c - b) * right);
+    if candidate.is_finite() {
+        return candidate;
+    }
+    let scale = a.abs().max(b.abs()).max(c.abs());
+    let b_scaled = b / scale;
+    scale * (b_scaled + common * ((a / scale - b_scaled) * left - (c / scale - b_scaled) * right))
 }
 
 /// Halley's method (cubic convergence) using `f`, `f'` and `f''`.
@@ -1312,6 +1413,61 @@ pub struct PathResult {
     pub finite: bool,
 }
 
+/// Checks the shared shape and total-degree limits before allocating any
+/// start points. Nonnegative exponents and positive degrees can only add work.
+pub(crate) fn total_degree_plan<'a>(
+    variables: usize,
+    equations: impl IntoIterator<Item = impl IntoIterator<Item = (f64, &'a [u32])>>,
+    max_degree: u32,
+    max_paths: u32,
+) -> Result<(Vec<u32>, usize), RootError> {
+    if variables == 0 || max_paths == 0 {
+        return Err(RootError::Invalid);
+    }
+    let mut degrees = Vec::new();
+    let mut paths = 1;
+    for equation in equations {
+        let limit = max_degree.min(max_paths / paths);
+        let mut degree = 0;
+        for (coefficient, exponents) in equation {
+            if !coefficient.is_finite() || exponents.len() != variables {
+                return Err(RootError::Invalid);
+            }
+            let order = exponents
+                .iter()
+                .try_fold(0_u32, |sum, &exponent| {
+                    sum.checked_add(exponent).filter(|&next| next <= limit)
+                })
+                .ok_or(RootError::Invalid)?;
+            degree = degree.max(order);
+        }
+        if degree == 0 {
+            return Err(RootError::Invalid);
+        }
+        paths *= degree;
+        degrees.push(degree);
+    }
+    if degrees.len() != variables {
+        return Err(RootError::Invalid);
+    }
+    let paths = usize::try_from(paths).map_err(|_| RootError::Invalid)?;
+    Ok((degrees, paths))
+}
+
+pub(super) fn total_degree_start(
+    mut index: usize,
+    degrees: &[u32],
+) -> impl ExactSizeIterator<Item = Cx> + '_ {
+    degrees.iter().map(move |&degree| {
+        let digit = index % degree as usize;
+        index /= degree as usize;
+        Cx::from_polar(
+            1.0,
+            2.0 * std::f64::consts::PI * digit as f64 / f64::from(degree),
+        )
+    })
+}
+
 fn cpow(
     z: Cx,
     e: u32,
@@ -1584,58 +1740,41 @@ pub fn homotopy_system(system: &[Vec<PolyTerm>]) -> Result<Vec<PathResult>, Root
 /// `finite == false`.
 ///
 /// # Errors
-/// [`RootError::Invalid`] for a non-square or malformed system.
+/// [`RootError::Invalid`] for a non-square or malformed system, a zero
+/// or nonfinite gamma, or more than 200 000 total-degree paths.
 pub fn homotopy_system_with_gamma(
     system: &[Vec<PolyTerm>],
     gamma: (f64, f64),
 ) -> Result<Vec<PathResult>, RootError> {
-    let n = system.len();
-    if n == 0
-        || system
-            .iter()
-            .any(|eq| eq.is_empty() || eq.iter().any(|t| t.exps.len() != n))
-    {
+    const MAX_PATHS: u32 = 200_000;
+    let (re, im) = gamma;
+    if !re.is_finite() || !im.is_finite() || re == 0.0 && im == 0.0 {
         return Err(RootError::Invalid);
     }
-    let deg: Vec<u32> = system
+    let equations = system
         .iter()
-        .map(|eq| {
-            eq.iter()
-                .map(|t| t.exps.iter().sum::<u32>())
-                .max()
-                .unwrap_or(0)
-        })
-        .collect();
-    if deg.contains(&0) {
-        return Err(RootError::Invalid);
-    }
-    let total: usize = deg.iter().map(|&d| d as usize).product();
-    if total > 200_000 {
-        return Err(RootError::Invalid);
-    }
-    let g = Cx::new(gamma.0, gamma.1);
-    let mut out = Vec::with_capacity(total);
-    for mut idx in 0..total {
-        let mut start = Vec::with_capacity(n);
-        for &d in &deg {
-            let k = idx % d as usize;
-            idx /= d as usize;
-            start.push(Cx::from_polar(
-                1.0,
-                2.0 * std::f64::consts::PI * k as f64 / f64::from(d),
-            ));
-        }
-        out.push(track_path(system, &deg, g, &start));
-    }
-    Ok(out)
+        .map(|eq| eq.iter().map(|t| (t.coef, t.exps.as_slice())));
+    let (degrees, total) = total_degree_plan(system.len(), equations, MAX_PATHS, MAX_PATHS)?;
+    let gamma = Cx::new(re, im);
+    // Each path has independent work. The indexed map preserves start order.
+    Ok(super::par::map_indexed(total, 4, |index| {
+        let start: Vec<_> = total_degree_start(index, &degrees).collect();
+        track_path(system, &degrees, gamma, &start)
+    }))
 }
 
 /// A root of `f` near `guess`, by Newton's method with a bisection fallback.
 ///
+/// If no sign change is found, a local minimum of the residual magnitude can
+/// identify a touching root. A callback that rounds residuals to zero limits
+/// positional accuracy. Positive offsets below the local resolution can be
+/// indistinguishable from a touching root.
+///
 /// # Errors
 ///
-/// [`RootError::NoConvergence`] when neither method finds a sign change or a
-/// stationary point.
+/// [`RootError::Invalid`] for a non-finite guess or a non-finite value inside a bracket.
+/// [`RootError::NoConvergence`] when no sign change or resolved touching
+/// root is found.
 pub fn root_near<F>(
     f: &mut F,
     guess: f64,
@@ -1655,8 +1794,15 @@ where
         if value == 0.0 {
             return Ok(x);
         }
-        let slope = crate::kernels::calculus::richardson_derivative(f, x);
-        if slope.abs() < 1e-14 {
+        let finite_sample = &mut |point: f64| {
+            if point.is_finite() {
+                f(point)
+            } else {
+                f64::NAN
+            }
+        };
+        let slope = crate::kernels::calculus::richardson_derivative(finite_sample, x);
+        if !slope.is_finite() || slope.abs() < 1e-14 {
             break;
         }
         let next = x - value / slope;
@@ -1674,43 +1820,88 @@ where
         let (low, high) = (guess - width, guess + width);
         let low_value = f(low);
         let high_value = f(high);
-        if low_value.is_finite() && high_value.is_finite() && low_value * high_value < 0.0 {
-            let mut low = low;
-            let mut high = high;
-            let mut low_value = low_value;
-            for _ in 0..200 {
-                let middle = f64::midpoint(low, high);
-                let value = f(middle);
-                if value == 0.0 || (high - low) <= 1e-15 * middle.abs().max(1.0) {
-                    return Ok(middle);
-                }
-                if low_value * value < 0.0 {
-                    high = middle;
-                } else {
-                    low = middle;
-                    low_value = value;
-                }
+        if low_value.is_finite() && high_value.is_finite() {
+            if low_value == 0.0 {
+                return Ok(low);
             }
-            return Ok(f64::midpoint(low, high));
+            if high_value == 0.0 {
+                return Ok(high);
+            }
+            if low_value.is_sign_negative() != high_value.is_sign_negative() {
+                return crate::kernels::solve::bisect_sampled(
+                    f,
+                    (low, high),
+                    low_value.is_sign_negative(),
+                    200,
+                    |value, width, middle| value == 0.0 || width <= 1e-15 * middle.abs().max(1.0),
+                )
+                .ok_or(RootError::Invalid);
+            }
         }
         width *= 2.0;
         if width > 1e9 {
             break;
         }
     }
-    // No sign change: the root may be a touching one, where `f` never crosses
-    // zero. Minimise `f^2` instead — `(x - 1)^2` is the standard example.
+    // No sign change: look for a touching root, where f never crosses zero.
     for scale in [1.0, 10.0, 100.0, 1_000.0, 10_000.0] {
-        let mut squared = |value: f64| {
-            let evaluated = f(value);
-            evaluated * evaluated
-        };
-        let candidate = golden_minimum(&mut squared, guess - scale, guess + scale);
-        if f(candidate).abs() <= 1e-9 * (1.0 + candidate.abs()) {
+        if let Some(candidate) = touching_root(f, guess - scale, guess + scale) {
             return Ok(candidate);
         }
     }
     Err(RootError::NoConvergence)
+}
+
+const GOLDEN_POSITION_TOLERANCE: f64 = 1e-15;
+
+fn touching_root(
+    f: &mut impl FnMut(f64) -> f64,
+    low: f64,
+    high: f64,
+) -> Option<f64> {
+    if low >= high {
+        return None;
+    }
+    // Magnitudes give the same minimiser as squares without the scale limits
+    // of a squared residual.
+    let candidate = golden_minimum(
+        &mut |x| {
+            let value = f(x).abs();
+            if value.is_finite() {
+                value
+            } else {
+                f64::INFINITY
+            }
+        },
+        low,
+        high,
+    );
+    let residual = f(candidate).abs();
+    if residual == 0.0 {
+        return Some(candidate);
+    }
+    if !residual.is_finite() {
+        return None;
+    }
+    let position_scale = candidate.abs().max(1.0);
+    let resolution = GOLDEN_POSITION_TOLERANCE * position_scale;
+    let room = (candidate - low).min(high - candidate);
+    let probe = (f64::EPSILON.sqrt() * position_scale).min(0.5 * room);
+    if probe < 32.0 * resolution {
+        return None;
+    }
+    let left = candidate - probe;
+    let right = candidate + probe;
+    let left_value = f(left).abs();
+    let right_value = f(right).abs();
+    if !left_value.is_finite() || !right_value.is_finite() {
+        return None;
+    }
+    // A double root's residual grows quadratically with distance. Compare
+    // with both flanks at a scale that resolves the remaining position error.
+    let ratio = residual / left_value.min(right_value);
+    let radius = (candidate - left).min(right - candidate);
+    (ratio <= (4.0 * resolution / radius).powi(2)).then_some(candidate)
 }
 
 /// The minimum of a unimodal function on `[low, high]`, by golden-section
@@ -1730,8 +1921,9 @@ where
     let mut right = low + RATIO * (high - low);
     let mut left_value = f(left);
     let mut right_value = f(right);
-    for _ in 0..200 {
-        if (high - low).abs() <= 1e-15 * high.abs().max(1.0) {
+    // Reserve two evaluations for validating a nonzero minimum's flanks.
+    for _ in 0..198 {
+        if (high - low).abs() <= GOLDEN_POSITION_TOLERANCE * high.abs().max(1.0) {
             break;
         }
         if left_value < right_value {

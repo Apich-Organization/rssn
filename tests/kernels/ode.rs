@@ -8,7 +8,12 @@ use rssn::kernels::ode::OdeSolverMethod;
 use rssn::kernels::ode::solve_adaptive;
 use rssn::kernels::ode::solve_fixed;
 use rssn::kernels::ode::solve_fixed_events;
+use rssn::kernels::ode::solve_fixed_final;
 use rssn::kernels::ode_adaptive::Event;
+use std::cell::RefCell;
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
 
 fn cfg() -> ProptestConfig {
     ProptestConfig {
@@ -140,6 +145,54 @@ fn fixed_grid_rejects_unrepresentable_requests_before_calling_rhs() {
     }
     assert!(solve_fixed(rhs, &[1.0], (0.0, f64::INFINITY), 1, method).is_err());
     assert!(solve_fixed_events(rhs, &[f64::NAN], (0.0, 1.0), 1, method, &[]).is_err());
+}
+
+#[test]
+fn fixed_final_matches_the_full_grid_and_stage_trace() {
+    let trace = RefCell::new(Vec::new());
+    let rhs = |t: f64, y: &[f64], dy: &mut [f64]| {
+        trace.borrow_mut().push(t.to_bits());
+        oscillator(t, y, dy);
+        dy[0] += t;
+    };
+    for method in [
+        OdeSolverMethod::Euler,
+        OdeSolverMethod::Heun,
+        OdeSolverMethod::RungeKutta4,
+    ] {
+        for span in [(0.0, 1.0), (1.0, -1.0), (-0.0, 0.0)] {
+            let initial = [-0.0_f64, 1.5];
+            let full = solve_fixed(rhs, &initial, span, 19, method).unwrap();
+            let expected_trace = trace.take();
+            let last = solve_fixed_final(rhs, &initial, span, 19, method).unwrap();
+            assert_eq!(trace.take(), expected_trace);
+            assert_eq!(
+                last.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
+                full.last().iter().map(|x| x.to_bits()).collect::<Vec<_>>()
+            );
+        }
+    }
+}
+
+#[test]
+fn fixed_final_reports_validation_and_cancellation() {
+    let rhs = |_, _: &[f64], _: &mut [f64]| panic!("unrepresentable grid reached the RHS");
+    let method = OdeSolverMethod::Euler;
+    let next = f64::from_bits(1.0_f64.to_bits() + 1);
+    assert!(solve_fixed_final(rhs, &[1.0], (1.0, next), 2, method).is_err());
+    assert!(solve_fixed_final(rhs, &[f64::NAN], (0.0, 1.0), 1, method).is_err());
+    assert!(solve_fixed_final(rhs, &[1.0], (0.0, 1.0), 0, method).is_err());
+    let bad = |_, _: &[f64], dy: &mut [f64]| dy[0] = f64::INFINITY;
+    assert!(solve_fixed_final(bad, &[1.0], (0.0, 1.0), 1, method).is_err());
+
+    let token = Arc::new(AtomicBool::new(false));
+    let _guard = rssn::cancellation::install(Arc::clone(&token));
+    let cancel = |t, y: &[f64], dy: &mut [f64]| {
+        grow(t, y, dy);
+        token.store(true, Ordering::Relaxed);
+    };
+    let error = solve_fixed_final(cancel, &[1.0], (0.0, 1.0), 1, method).unwrap_err();
+    assert_eq!(error, "computation cancelled");
 }
 
 #[test]

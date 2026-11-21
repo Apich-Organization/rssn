@@ -20,6 +20,9 @@ use rssn::kernels::sde::sde_adaptive_with;
 use rssn::kernels::sde::sde_ensemble;
 use rssn::kernels::sde::srk_platen;
 
+#[path = "sde/extended.rs"]
+mod extended;
+
 const MU: f64 = 0.8;
 const SIGMA: f64 = 0.6;
 

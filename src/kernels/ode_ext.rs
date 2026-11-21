@@ -1,10 +1,12 @@
+//! Exponential (ETDRK4, exp-Rosenbrock), IMEX, symplectic and variational integrators.
+//!
 //! # Exponential, IMEX, symplectic and variational integrators
 //!
 //! * [`etdrk4`] / [`etdrk4_diag`]: the exponential time differencing
 //!   Runge-Kutta scheme of Cox and Matthews (fourth order) for
 //!   `u' = L u + N(t, u)` with a stiff linear part; dense `L` uses the
-//!   `phi` functions of [`crate::kernels::matfun`], diagonal `L` evaluates
-//!   them by the contour-integral trick of Kassam and Trefethen;
+//!   `phi` functions of [`crate::kernels::matfun`], and diagonal `L` uses
+//!   real scalar weights with a cancellation-free expansion near zero;
 //! * [`exprb32`]: adaptive exponential Rosenbrock method of order 3(2)
 //!   (Hochbruck and Ostermann) for `y' = f(t, y)` with Jacobian
 //!   linearisation;
@@ -19,8 +21,6 @@
 //!   `2 s - 2` (`s >= 2` Gauss-Lobatto nodes) for mechanical Lagrangians
 //!   `L = q'^T M q' / 2 - V(q)`; they preserve the symplectic form and
 //!   momentum maps exactly.
-
-use num_complex::Complex64;
 
 use crate::kernels::dense::Mat;
 use crate::kernels::dense::{
@@ -119,15 +119,171 @@ pub fn etdrk4<N: Fn(f64, &[f64], &mut [f64])>(
     Ok(out)
 }
 
-/// ETDRK4 for a diagonal linear part with Cauchy-integral `phi` functions.
+const ETD_SERIES_LEN: usize = 25;
+
+// Taylor coefficients of phi_1 - 3 phi_2 + 4 phi_3,
+// phi_2 - 2 phi_3, and -phi_2 + 4 phi_3, respectively.
+const ETD_WEIGHT_SERIES: [[f64; 3]; ETD_SERIES_LEN] = {
+    let mut weights = [[0.0; 3]; ETD_SERIES_LEN];
+    let mut factorial = 6.0;
+    let mut m = 0;
+    while m < ETD_SERIES_LEN {
+        let order = m as f64;
+        weights[m] = [
+            (order + 1.0) * (order + 1.0) / factorial,
+            (order + 1.0) / factorial,
+            (1.0 - order) / factorial,
+        ];
+        factorial *= order + 4.0;
+        m += 1;
+    }
+    weights
+};
+
+struct DiagEtdCoefficients {
+    e: f64,
+    e2: f64,
+    q: f64,
+    f1: f64,
+    twice_f2: f64,
+    f3: f64,
+}
+
+impl DiagEtdCoefficients {
+    fn new(
+        h: f64,
+        lambda: f64,
+    ) -> Self {
+        let z = h * lambda;
+        let e = z.exp();
+        let e2 = (0.5 * z).exp();
+        if crate::kernels::exact_eq(z, 0.0) {
+            let weight = h / 6.0;
+            return Self {
+                e,
+                e2,
+                q: 0.5 * h,
+                f1: weight,
+                twice_f2: h / 3.0,
+                f3: weight,
+            };
+        }
+        if z.abs() <= 2.0 {
+            let [a, b, c] = ETD_WEIGHT_SERIES
+                .iter()
+                .rev()
+                .fold([0.0; 3], |[a, b, c], [wa, wb, wc]| {
+                    [a * z + wa, b * z + wb, c * z + wc]
+                });
+            let q = if z.abs() < f64::EPSILON {
+                0.5
+            } else {
+                (0.5 * z).exp_m1() / z
+            };
+            return Self {
+                e,
+                e2,
+                q: h * q,
+                f1: h * a,
+                twice_f2: h * (2.0 * b),
+                f3: h * c,
+            };
+        }
+
+        // Use reciprocal powers to avoid forming z^2 or z^3. If the finite
+        // inputs overflow in h*lambda, h/z is still 1/lambda and 1/z can
+        // be a representable subnormal.
+        let (h_over_z, r) = if z.is_finite() {
+            (h / z, z.recip())
+        } else {
+            let h_over_z = lambda.recip();
+            (h_over_z, h_over_z / h)
+        };
+        let r2 = r * r;
+        let e_r = e * r;
+        Self {
+            e,
+            e2,
+            q: h_over_z * (e2 - 1.0),
+            f1: h_over_z * (e * (1.0 - 3.0 * r + 4.0 * r2) - r * (1.0 + 4.0 * r)),
+            twice_f2: h_over_z * (2.0 * (e_r * (1.0 - 2.0 * r) + r * (1.0 + 2.0 * r))),
+            f3: h_over_z * (e_r * (4.0 * r - 1.0) - (1.0 + 3.0 * r + 4.0 * r2)),
+        }
+    }
+}
+
+struct DiagEtdWork {
+    first_stage: Vec<f64>,
+    stage: Vec<f64>,
+    rates: [Vec<f64>; 4],
+}
+
+impl DiagEtdWork {
+    fn new(n: usize) -> Self {
+        Self {
+            first_stage: vec![0.0; n],
+            stage: vec![0.0; n],
+            rates: std::array::from_fn(|_| vec![0.0; n]),
+        }
+    }
+
+    fn step<N: Fn(f64, &[f64], &mut [f64])>(
+        &mut self,
+        nl: &N,
+        t: f64,
+        h: f64,
+        coeffs: &[DiagEtdCoefficients],
+        u: &[f64],
+        next: &mut [f64],
+    ) -> Result<(), OdeError> {
+        let [nu, na, nb, nc] = &mut self.rates;
+        let midpoint = t + 0.5 * h;
+        nl(t, u, nu);
+        for (i, coeff) in coeffs.iter().enumerate() {
+            self.first_stage[i] = coeff.e2 * u[i] + coeff.q * nu[i];
+        }
+        nl(midpoint, &self.first_stage, na);
+        for (i, coeff) in coeffs.iter().enumerate() {
+            self.stage[i] = coeff.e2 * u[i] + coeff.q * na[i];
+        }
+        nl(midpoint, &self.stage, nb);
+        for (i, coeff) in coeffs.iter().enumerate() {
+            let combined = 2.0 * nb[i] - nu[i];
+            let rate = if combined.is_finite() {
+                coeff.q * combined
+            } else {
+                2.0 * (coeff.q * nb[i]) - coeff.q * nu[i]
+            };
+            self.stage[i] = coeff.e2 * self.first_stage[i] + rate;
+        }
+        nl(t + h, &self.stage, nc);
+        for (i, coeff) in coeffs.iter().enumerate() {
+            let combined = na[i] + nb[i];
+            let rate = if combined.is_finite() {
+                coeff.twice_f2 * combined
+            } else {
+                coeff.twice_f2 * na[i] + coeff.twice_f2 * nb[i]
+            };
+            next[i] = coeff.e * u[i] + coeff.f1 * nu[i] + rate + coeff.f3 * nc[i];
+        }
+        if next.iter().any(|v| !v.is_finite()) {
+            return Err(OdeError::NonFinite);
+        }
+        Ok(())
+    }
+}
+
+/// Integrates `u_i' = lambda_i u_i + N_i(t, u)` by diagonal ETDRK4.
 ///
-/// ETDRK4 for a diagonal linear part `u_i' = lambda_i u_i + N_i(t, u)`,
-/// with the `phi` functions evaluated by Cauchy contour integrals
-/// (Kassam and Trefethen), which avoids the cancellation of the closed
-/// forms for `|h lambda| << 1`. Suited to spectral discretisations.
+/// Returns the states at the `steps + 1` equally spaced grid points, including
+/// the initial state. Real scalar weights use a Taylor expansion near zero
+/// and reciprocal-power formulas for large linear rates. The nonlinear
+/// callback writes the rate vector and may couple the state components.
 ///
 /// # Errors
-/// [`OdeError::Invalid`] for mismatched dimensions or `steps == 0`.
+/// [`OdeError::Invalid`] for an empty state, mismatched dimensions, zero steps
+/// or non-finite inputs. [`OdeError::NonFinite`] if the step or an updated state
+/// is non-finite. [`OdeError::StepLimit`] if the trajectory cannot be reserved.
 pub fn etdrk4_diag<N: Fn(f64, &[f64], &mut [f64])>(
     lambda: &[f64],
     nl: N,
@@ -137,62 +293,35 @@ pub fn etdrk4_diag<N: Fn(f64, &[f64], &mut [f64])>(
     steps: usize,
 ) -> Result<Vec<Vec<f64>>, OdeError> {
     let n = u0.len();
-    if lambda.len() != n || steps == 0 || n == 0 {
+    if lambda.len() != n
+        || steps == 0
+        || n == 0
+        || !t0.is_finite()
+        || !t1.is_finite()
+        || lambda.iter().chain(u0).any(|value| !value.is_finite())
+    {
         return Err(OdeError::Invalid);
     }
     let h = (t1 - t0) / steps as f64;
-    let m = 64usize;
-    let (mut e, mut e2, mut q, mut f1, mut f2, mut f3) = (
-        vec![0.0; n],
-        vec![0.0; n],
-        vec![0.0; n],
-        vec![0.0; n],
-        vec![0.0; n],
-        vec![0.0; n],
-    );
-    for i in 0..n {
-        let z = h * lambda[i];
-        e[i] = z.exp();
-        e2[i] = (z / 2.0).exp();
-        let (mut sq, mut s1, mut s2, mut s3) = (0.0, 0.0, 0.0, 0.0);
-        for j in 0..m {
-            let th = std::f64::consts::PI * (j as f64 + 0.5) / m as f64;
-            let r = Complex64::new(z, 0.0) + Complex64::new(th.cos(), th.sin());
-            let er = r.exp();
-            let r3 = r * r * r;
-            sq += (((r / 2.0).exp() - 1.0) / r).re;
-            s1 += ((-4.0 - r + er * (4.0 - 3.0 * r + r * r)) / r3).re;
-            s2 += ((2.0 + r + er * (-2.0 + r)) / r3).re;
-            s3 += ((-4.0 - 3.0 * r - r * r + er * (4.0 - r)) / r3).re;
-        }
-        let mf = m as f64;
-        q[i] = h * sq / mf;
-        f1[i] = h * s1 / mf;
-        f2[i] = h * s2 / mf;
-        f3[i] = h * s3 / mf;
+    if !h.is_finite() {
+        return Err(OdeError::NonFinite);
     }
-    let mut u = u0.to_vec();
-    let mut out = vec![u.clone()];
-    let (mut nu, mut na, mut nb, mut nc) = (vec![0.0; n], vec![0.0; n], vec![0.0; n], vec![0.0; n]);
+    let count = steps.checked_add(1).ok_or(OdeError::StepLimit)?;
+    let mut out = Vec::new();
+    out.try_reserve_exact(count)
+        .map_err(|_| OdeError::StepLimit)?;
+    out.push(u0.to_vec());
+
+    let coeffs: Vec<_> = lambda
+        .iter()
+        .map(|&rate| DiagEtdCoefficients::new(h, rate))
+        .collect();
+    let mut work = DiagEtdWork::new(n);
     for s in 0..steps {
         let t = t0 + s as f64 * h;
-        nl(t, &u, &mut nu);
-        let a: Vec<f64> = (0..n).map(|i| e2[i] * u[i] + q[i] * nu[i]).collect();
-        nl(t + 0.5 * h, &a, &mut na);
-        let b: Vec<f64> = (0..n).map(|i| e2[i] * u[i] + q[i] * na[i]).collect();
-        nl(t + 0.5 * h, &b, &mut nb);
-        let c: Vec<f64> = (0..n)
-            .map(|i| e2[i] * a[i] + q[i] * (2.0 * nb[i] - nu[i]))
-            .collect();
-        nl(t + h, &c, &mut nc);
-        let un: Vec<f64> = (0..n)
-            .map(|i| e[i] * u[i] + f1[i] * nu[i] + 2.0 * f2[i] * (na[i] + nb[i]) + f3[i] * nc[i])
-            .collect();
-        if un.iter().any(|v| !v.is_finite()) {
-            return Err(OdeError::NonFinite);
-        }
-        u = un;
-        out.push(u.clone());
+        let mut next = vec![0.0; n];
+        work.step(&nl, t, h, &coeffs, &out[s], &mut next)?;
+        out.push(next);
     }
     Ok(out)
 }
@@ -395,13 +524,38 @@ pub fn etdrk4_diag_adaptive<N: Fn(f64, &[f64], &mut [f64])>(
     u0: &[f64],
     opts: &OdeOptions,
 ) -> Result<OdeSolution, OdeError> {
-    if lambda.len() != u0.len() {
+    if lambda.len() != u0.len() || lambda.iter().any(|value| !value.is_finite()) {
         return Err(OdeError::Invalid);
     }
+    let mut work = DiagEtdWork::new(u0.len());
+    let mut cache: [(Option<u64>, Vec<DiagEtdCoefficients>); 2] =
+        [(None, Vec::new()), (None, Vec::new())];
+    let mut replacement = 0;
     ext_doubling_adaptive(
         |t, u, dt| {
-            let states = etdrk4_diag(lambda, &nl, t, t + dt, u, 1)?;
-            states.last().cloned().ok_or(OdeError::SolveFailed)
+            // Preserve the representable one-step interval of the fixed-step entry.
+            let h = (t + dt) - t;
+            if !h.is_finite() {
+                return Err(OdeError::NonFinite);
+            }
+            let key = Some(h.to_bits());
+            let slot = cache
+                .iter()
+                .position(|(stored, _)| *stored == key)
+                .unwrap_or_else(|| {
+                    let slot = replacement;
+                    replacement = 1 - replacement;
+                    let (stored, weights) = &mut cache[slot];
+                    *stored = key;
+                    weights.clear();
+                    weights.extend(lambda.iter().map(|&rate| DiagEtdCoefficients::new(h, rate)));
+                    slot
+                });
+            // The previous one-step calls supplied fresh rate buffers.
+            work.rates.iter_mut().for_each(|rate| rate.fill(0.0));
+            let mut next = vec![0.0; u.len()];
+            work.step(&nl, t, h, &cache[slot].1, u, &mut next)?;
+            Ok(next)
         },
         4.0,
         t0,

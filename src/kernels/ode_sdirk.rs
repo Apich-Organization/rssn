@@ -45,9 +45,9 @@
 //! # Limitations
 //!
 //! The method is order 3 only, with no mass matrix (DAE) support and no banded
-//! or sparse Jacobian: the Newton matrix `I − hγJ` is factored by a dense
-//! `O(n³)` LU at every iteration of every stage, and no factorisation is
-//! reused across steps, so cost grows cubically with the state dimension (use
+//! or sparse Jacobian: a changed Newton matrix `I − hγJ` requires a dense
+//! `O(n³)` LU. An unchanged matrix can reuse its factorization within a
+//! step, and the factors are released at the end of the step (use
 //! [`crate::kernels::ode_stiff`] for large, structured or higher-index
 //! problems). The continuous extension is the cubic Hermite interpolant through
 //! the endpoint states and slopes, locally `O(h⁴)` and hence `O(h³)` at a fixed
@@ -67,6 +67,8 @@ use super::ode_contract::checked_rhs;
 use super::ode_contract::initial_events;
 use super::ode_contract::initial_step;
 use super::ode_contract::validate_problem;
+use crate::kernels::dense::DenseError;
+use crate::kernels::dense::Lu;
 use crate::kernels::dense::Mat;
 use crate::kernels::dense::lu_factor;
 use crate::kernels::jacobian::fd_jacobian_dense;
@@ -216,6 +218,65 @@ struct StepStats {
     njev: usize,
 }
 
+/// One previous Newton matrix and its factors within the current step.
+#[derive(Default)]
+struct NewtonFactors {
+    last: Option<(Mat, Lu)>,
+}
+
+impl NewtonFactors {
+    #[allow(
+        clippy::single_call_fn,
+        reason = "keeps matrix validation and exact factor reuse together"
+    )]
+    fn for_jacobian(
+        &mut self,
+        mut matrix: Mat,
+        n: usize,
+        diagonal_step: f64,
+    ) -> Result<&Lu, OdeError> {
+        if n == 0
+            || matrix.rows != n
+            || matrix.cols != n
+            || n.checked_mul(n) != Some(matrix.data.len())
+        {
+            return Err(OdeError::Invalid);
+        }
+        // The Jacobian belongs to this iteration. Convert it in place and
+        // compare the actual system matrix, including any rounded entries.
+        for (row, values) in matrix.data.chunks_exact_mut(n).enumerate() {
+            for (col, value) in values.iter_mut().enumerate() {
+                *value = f64::from(row == col) - diagonal_step * *value;
+            }
+        }
+        let unchanged = self.last.as_ref().is_some_and(|(previous, _)| {
+            previous.rows == n
+                && previous
+                    .data
+                    .iter()
+                    .zip(&matrix.data)
+                    .all(|(left, right)| left.to_bits() == right.to_bits())
+        });
+        if unchanged {
+            // lu_factor checkpoints on a miss. A hit still observes a
+            // cancellation before substitution.
+            crate::cancellation::checkpoint()?;
+        } else {
+            let lu = lu_factor(&matrix).map_err(|error| {
+                match error {
+                    | DenseError::Cancelled => OdeError::Cancelled,
+                    | _ => OdeError::SolveFailed,
+                }
+            })?;
+            self.last = Some((matrix, lu));
+        }
+        self.last
+            .as_ref()
+            .map(|(_, lu)| lu)
+            .ok_or(OdeError::SolveFailed)
+    }
+}
+
 /// Largest absolute entry of a slice (`0` for an empty slice).
 fn max_abs(v: &[f64]) -> f64 {
     v.iter().fold(0.0_f64, |acc, x| acc.max(x.abs()))
@@ -244,6 +305,11 @@ where
         return Err(OdeError::Invalid);
     }
     let mut k: Vec<Vec<f64>> = Vec::with_capacity(STAGES);
+    let mut factors = NewtonFactors::default();
+    let mut fval = vec![0.0; n];
+    let mut residual = vec![0.0; n];
+    let mut delta = vec![0.0; n];
+    let diagonal_step = h * GAMMA;
     for stage in 0..STAGES {
         let row = A_EXPLICIT.get(stage).ok_or(OdeError::Invalid)?;
         let c = C.get(stage).ok_or(OdeError::Invalid)?;
@@ -255,31 +321,23 @@ where
         }
         let ypred = ystage.clone();
         let tstage = t + h * c;
-        let mut fval = vec![0.0; n];
         let mut converged = false;
         for _ in 0..opts.newton_max_iter {
             f(tstage, &ystage, &mut fval);
             stats.nfev = stats.nfev.saturating_add(1);
             stats.newton = stats.newton.saturating_add(1);
-            let residual: Vec<f64> = fval
-                .iter()
-                .zip(ystage.iter())
-                .zip(ypred.iter())
-                .map(|((fv, ys), yp)| h * GAMMA * fv - (ys - yp))
-                .collect();
+            for (((res, fv), ys), yp) in residual.iter_mut().zip(&fval).zip(&ystage).zip(&ypred) {
+                *res = diagonal_step * fv - (ys - yp);
+            }
             let j = jac(tstage, &ystage);
             stats.njev = stats.njev.saturating_add(1);
-            if j.rows != n || j.cols != n {
-                return Err(OdeError::Invalid);
-            }
-            let mut matrix = Mat::identity(n);
-            for (r, jrow) in j.data.chunks(n).enumerate() {
-                for (col, value) in jrow.iter().enumerate() {
-                    matrix.set(r, col, matrix.at(r, col) - h * GAMMA * value);
+            let lu = factors.for_jacobian(j, n, diagonal_step)?;
+            lu.solve_into(&residual, &mut delta).map_err(|error| {
+                match error {
+                    | DenseError::NonFinite => OdeError::NonFinite,
+                    | _ => OdeError::SolveFailed,
                 }
-            }
-            let lu = lu_factor(&matrix).map_err(|_| OdeError::SolveFailed)?;
-            let delta = lu.solve(&residual);
+            })?;
             if delta.iter().any(|d| !d.is_finite()) {
                 return Err(OdeError::NonFinite);
             }
@@ -784,6 +842,28 @@ mod tests {
     use crate::kernels::ode::solve_fixed;
     use crate::kernels::ode_adaptive::OdeOptions;
     use crate::kernels::ode_adaptive::dopri5;
+
+    #[test]
+    fn newton_factor_cache_reuses_only_the_same_matrix() {
+        let mut factors = NewtonFactors::default();
+        let first = Mat::from_rows(&[vec![-2.0, 1.0], vec![1.0, -2.0]]).unwrap();
+        let repeated = first.clone();
+        let data = first.data.as_ptr();
+        factors.for_jacobian(first, 2, 0.25).unwrap();
+        let initial_key = factors.last.as_ref().unwrap().0.data.as_ptr();
+        assert_eq!(initial_key, data);
+
+        factors.for_jacobian(repeated.clone(), 2, 0.25).unwrap();
+        assert_eq!(factors.last.as_ref().unwrap().0.data.as_ptr(), initial_key);
+
+        let new_data = repeated.data.as_ptr();
+        let lu = factors.for_jacobian(repeated, 2, 0.5).unwrap();
+        let mut output = [0.0; 2];
+        lu.solve_into(&[1.5, 1.5], &mut output).unwrap();
+        assert_eq!(output, [1.0, 1.0]);
+        assert_eq!(factors.last.as_ref().unwrap().0.data.as_ptr(), new_data);
+        assert_ne!(new_data, initial_key);
+    }
 
     /// Robertson chemical kinetics.
     fn robertson(

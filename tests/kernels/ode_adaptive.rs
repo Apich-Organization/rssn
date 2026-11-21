@@ -66,6 +66,33 @@ fn dopri5_backward_integration() {
 }
 
 #[test]
+fn dopri5_reuses_the_last_accepted_derivative_after_rejections() {
+    let count = std::cell::Cell::new(0);
+    let rhs = |t: f64, y: &[f64], dy: &mut [f64]| {
+        count.set(count.get() + 1);
+        dy[0] = (1.0 + t) * y[0];
+    };
+    let options = OdeOptions {
+        h0: Some(1.0),
+        rtol: 1e-11,
+        atol: 1e-13,
+        ..OdeOptions::default()
+    };
+    let solution = dopri5(rhs, 0.0, 1.0, &[1.0], &options, &[]).unwrap();
+    assert!(solution.rejected > 0);
+    assert_eq!(solution.nfev, count.get());
+    assert_eq!(
+        solution.nfev,
+        1 + 6 * (solution.t.len() - 1 + solution.rejected)
+    );
+    for t in [0.05, 0.51, 0.83, 1.0] {
+        let expected = f64::exp(t + 0.5 * t * t);
+        let actual = solution.eval(t).unwrap()[0];
+        assert!((actual - expected).abs() < 1e-9, "t={t}, y={actual}");
+    }
+}
+
+#[test]
 fn dopri5_events() {
     // ball dropped from h=10 with g=9.81: hits ground at sqrt(2*10/9.81)
     let fall = |_t: f64, y: &[f64], dy: &mut [f64]| {

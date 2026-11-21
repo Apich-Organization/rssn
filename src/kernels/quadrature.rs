@@ -1,7 +1,9 @@
+//! Adaptive Gauss-Kronrod, double-exponential, Clenshaw-Curtis, Filon and multi-dimensional quadrature.
+//!
 //! # Advanced quadrature
 //!
 //! * adaptive Gauss-Kronrod (G7K15 and G10K21) with error control,
-//!   semi-infinite and infinite ranges via variable transformations;
+//!   user-specified interior breakpoints, and infinite ranges via variable transformations;
 //! * double-exponential rules (tanh-sinh, exp-sinh, sinh-sinh) for endpoint
 //!   singularities and infinite ranges;
 //! * Clenshaw-Curtis rules;
@@ -83,9 +85,7 @@
 //!   here is univariate Gaussian only, with no multivariate or adaptive
 //!   proposal, and no variance-reduced rule has a parallel variant.
 //!
-//! The one-dimensional rules are unaffected by the cubature: they share no
-//! state, and [`integrate`] / [`integrate_gk`] return the same values as
-//! before.
+//! The one-dimensional rules and cubature work on independent partitions.
 
 use std::cell::RefCell;
 use std::f64::consts::PI;
@@ -110,6 +110,9 @@ pub struct Integral {
     pub converged: bool,
 }
 
+#[path = "quadrature/gk.rs"]
+mod gk;
+
 /// Gauss-Kronrod rule family.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GkRule {
@@ -119,68 +122,44 @@ pub enum GkRule {
     G10K21,
 }
 
-const XGK15: [f64; 8] = [
-    0.991455371120812639206854697526329,
-    0.949107912342758524526189684047851,
-    0.864864423359769072789712788640926,
-    0.741531185599394439863864773280788,
-    0.586087235467691130294144838258730,
-    0.405845151377397166906606412076961,
-    0.207784955007898467600689403773245,
-    0.0,
-];
-const WGK15: [f64; 8] = [
-    0.022935322010529224963732008058970,
-    0.063092092629978553290700663189204,
-    0.104790010322250183839876322541518,
-    0.140653259715525918745189590510238,
-    0.169004726639267902826583426598550,
-    0.190350578064785409913256402421014,
-    0.204432940075298892414161999234649,
-    0.209482141084727828012999174891714,
-];
-const WG7: [f64; 4] = [
-    0.129484966168869693270611432679082,
-    0.279705391489276667901467771423780,
-    0.381830050505118944950369775488975,
-    0.417959183673469387755102040816327,
-];
+/// Failure to start or continue a Gauss–Kronrod partition.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GkError {
+    /// Either interval endpoint is nonfinite.
+    InvalidInterval,
+    /// An absolute or relative tolerance is negative or nonfinite.
+    InvalidTolerance,
+    /// Breakpoints are not strictly increasing and strictly inside the interval.
+    InvalidBreakpoints,
+    /// The initial partition requires more panels than the budget allows.
+    PanelBudget,
+    /// A panel or aggregate estimate is nonfinite.
+    NonFiniteEstimate,
+    /// The embedding host cancelled the integration.
+    Cancelled,
+}
 
-const XGK21: [f64; 11] = [
-    0.995657163025808080735527280689003,
-    0.973906528517171720077964012084452,
-    0.930157491355708226001207180059508,
-    0.865063366688984510732096688423493,
-    0.780817726586416897063717578345042,
-    0.679409568299024406234327365114874,
-    0.562757134668604683339000099272694,
-    0.433395394129247190799265943165784,
-    0.294392862701460198131126603103866,
-    0.148874338981631210884826001129720,
-    0.0,
-];
-const WGK21: [f64; 11] = [
-    0.011694638867371874278064396062192,
-    0.032558162307964727478818972459390,
-    0.054755896574351996031381300244580,
-    0.075039674810919952767043140916190,
-    0.093125454583697605535065465083366,
-    0.109387158802297641899210590325805,
-    0.123491976262065851077958109831074,
-    0.134709217311473325928054001771707,
-    0.142775938577060080797094273138717,
-    0.147739104901338491374841515972068,
-    0.149445554002916905664936468389821,
-];
-const WG10: [f64; 5] = [
-    0.066671344308688137593568809893332,
-    0.149451349150580593145776339657697,
-    0.219086362515982043995534934228163,
-    0.269266719309996355091226921569469,
-    0.295524224714752870173892994651338,
-];
+impl std::fmt::Display for GkError {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        f.write_str(match self {
+            | Self::InvalidInterval => "Gauss–Kronrod endpoints must be finite",
+            | Self::InvalidTolerance => "Gauss–Kronrod tolerances must be finite and nonnegative",
+            | Self::InvalidBreakpoints => {
+                "Gauss–Kronrod breakpoints must be strictly increasing and interior"
+            },
+            | Self::PanelBudget => "the initial Gauss–Kronrod partition exceeds the panel budget",
+            | Self::NonFiniteEstimate => "the Gauss–Kronrod estimate is nonfinite",
+            | Self::Cancelled => "Gauss–Kronrod integration was cancelled",
+        })
+    }
+}
 
-/// One Gauss-Kronrod panel on `[a, b]`: returns `(kronrod, error, evals)`.
+impl std::error::Error for GkError {}
+
+/// One Gauss-Kronrod panel on `[a, b]` returning `(kronrod, error, evals)`.
 ///
 /// The error is the QUADPACK heuristic built from the Gauss/Kronrod
 /// difference and the integral of `|f - mean|`.
@@ -190,93 +169,35 @@ pub fn gk_panel<F: Fn(f64) -> f64>(
     b: f64,
     rule: GkRule,
 ) -> (f64, f64, usize) {
-    gk_panel_with(a, b, rule, |xs| xs.iter().map(|&x| f(x)).collect())
+    gk::panel_with(a, b, rule, |nodes, values| {
+        for (value, &node) in values.iter_mut().zip(nodes) {
+            *value = f(node);
+        }
+    })
 }
 
 /// [`gk_panel`] with the `2n - 1` node evaluations done in parallel.
 ///
-/// The values (and therefore the panel) are bit-identical to the serial ones; worthwhile when one
-/// evaluation of `f` is expensive (nested integrals, PDE solves) and `f` is `Sync`.
+/// The panel's arithmetic is identical to the serial rule. Parallel evaluation
+/// is most useful when one evaluation of `f` is expensive and the callback is `Sync`.
 pub fn gk_panel_par<F: Fn(f64) -> f64 + Sync>(
     f: &F,
     a: f64,
     b: f64,
     rule: GkRule,
 ) -> (f64, f64, usize) {
-    gk_panel_with(a, b, rule, |xs| super::par::map_slice(xs, 2, |&x| f(x)))
-}
-
-/// The panel arithmetic; `eval` maps the nodes (centre first, then the pairs
-/// `c - dx_j`, `c + dx_j`) to the integrand values, in that order.
-fn gk_panel_with(
-    a: f64,
-    b: f64,
-    rule: GkRule,
-    eval: impl Fn(&[f64]) -> Vec<f64>,
-) -> (f64, f64, usize) {
-    let (xgk, wgk): (&[f64], &[f64]) = match rule {
-        | GkRule::G7K15 => (&XGK15, &WGK15),
-        | GkRule::G10K21 => (&XGK21, &WGK21),
-    };
-    let n = xgk.len();
-    let c = f64::midpoint(a, b);
-    let h = 0.5 * (b - a);
-    let mut nodes = Vec::with_capacity(2 * n - 1);
-    nodes.push(c);
-    for j in 0..n - 1 {
-        let dx = h * xgk[j];
-        nodes.push(c - dx);
-        nodes.push(c + dx);
-    }
-    let values = eval(&nodes);
-    let fc = values[0];
-    let mut resk = wgk[n - 1] * fc;
-    let mut resg = match rule {
-        | GkRule::G7K15 => WG7[3] * fc,
-        | GkRule::G10K21 => 0.0,
-    };
-    let mut resabs = wgk[n - 1] * fc.abs();
-    let mut fv = vec![(0.0, 0.0); n - 1];
-    for j in 0..n - 1 {
-        let f1 = values[1 + 2 * j];
-        let f2 = values[2 + 2 * j];
-        fv[j] = (f1, f2);
-        resk += wgk[j] * (f1 + f2);
-        resabs += wgk[j] * (f1.abs() + f2.abs());
-        if j % 2 == 1 {
-            let wg = match rule {
-                | GkRule::G7K15 => WG7[j / 2],
-                | GkRule::G10K21 => WG10[j / 2],
-            };
-            resg += wg * (f1 + f2);
-        }
-    }
-    let reskh = resk * 0.5;
-    let mut resasc = wgk[n - 1] * (fc - reskh).abs();
-    for j in 0..n - 1 {
-        resasc += wgk[j] * ((fv[j].0 - reskh).abs() + (fv[j].1 - reskh).abs());
-    }
-    let result = resk * h;
-    resabs *= h.abs();
-    resasc *= h.abs();
-    let mut err = ((resk - resg) * h).abs();
-    if resasc != 0.0 && err != 0.0 {
-        err = resasc * (1.0_f64).min((200.0 * err / resasc).powf(1.5));
-    }
-    if resabs > f64::MIN_POSITIVE / (50.0 * f64::EPSILON) {
-        err = err.max(50.0 * f64::EPSILON * resabs);
-    }
-    (result, err, 2 * n - 1)
+    gk::panel_with(a, b, rule, |nodes, values| {
+        crate::kernels::par::for_each_mut(values, 2, |index, value| *value = f(nodes[index]));
+    })
 }
 
 /// Adaptive Gauss-Kronrod integration of `f` over `[a, b]`.
 ///
 /// The interval with the largest error estimate is bisected until the total
 /// error is below `max(abs_tol, rel_tol * |value|)` or `max_panels` panels
-/// exist. When plain bisection stagnates (typical of endpoint
-/// singularities) the sequence of partial results is accelerated with
-/// Wynn's epsilon algorithm (as in QUADPACK's QAGS) and the extrapolated
-/// value is returned if its error estimate is smaller.
+/// exist. An unconverged refinement may use Wynn extrapolation of recent
+/// totals. Cancellation is checked between panels and stops refinement with
+/// `converged = false`. The first panel is evaluated even if `max_panels` is zero.
 pub fn integrate_gk<F: Fn(f64) -> f64>(
     f: F,
     a: f64,
@@ -286,20 +207,20 @@ pub fn integrate_gk<F: Fn(f64) -> f64>(
     rel_tol: f64,
     max_panels: usize,
 ) -> Integral {
-    integrate_gk_impl(
-        &|pa, pb| gk_panel(&f, pa, pb, rule),
-        a,
-        b,
+    gk::integrate(
+        |pa, pb| gk_panel(&f, pa, pb, rule),
+        (!crate::kernels::exact_eq(a, b)).then_some((a, b)),
         abs_tol,
         rel_tol,
         max_panels,
     )
+    .unwrap_or_else(|(_, estimate)| estimate)
 }
 
-/// [`integrate_gk`] with the node evaluations of every panel done in parallel ([`gk_panel_par`]);
-/// the panels, the bisection order and the result are bit-identical to the serial function.
+/// [`integrate_gk`] with the nodes of each panel evaluated by [`gk_panel_par`].
 ///
-/// For expensive `Sync` integrands.
+/// For a pure callback the partition, arithmetic and result are bit-identical
+/// to the serial driver, regardless of the number of Rayon workers.
 pub fn integrate_gk_par<F: Fn(f64) -> f64 + Sync>(
     f: F,
     a: f64,
@@ -309,79 +230,81 @@ pub fn integrate_gk_par<F: Fn(f64) -> f64 + Sync>(
     rel_tol: f64,
     max_panels: usize,
 ) -> Integral {
-    integrate_gk_impl(
-        &|pa, pb| gk_panel_par(&f, pa, pb, rule),
-        a,
-        b,
+    gk::integrate(
+        |pa, pb| gk_panel_par(&f, pa, pb, rule),
+        (!crate::kernels::exact_eq(a, b)).then_some((a, b)),
         abs_tol,
         rel_tol,
         max_panels,
     )
+    .unwrap_or_else(|(_, estimate)| estimate)
 }
 
-fn integrate_gk_impl(
-    gk: &dyn Fn(f64, f64) -> (f64, f64, usize),
+/// Adaptive Gauss–Kronrod integration split at known interior breakpoints.
+///
+/// Supply breakpoints in increasing coordinate order even for reversed limits.
+/// Kronrod samples each subinterval's interior, avoiding the breakpoints for
+/// ordinary representable intervals. The panel budget and the tolerance
+/// `max(abs_tol, rel_tol * |value|)` apply to the entire partition. Exhausting
+/// the refinement budget returns an estimate with `converged = false` if the
+/// error is still above tolerance.
+///
+/// # Errors
+/// Returns an error for invalid endpoints, tolerances or breakpoints, an
+/// insufficient initial panel budget, a nonfinite estimate, or cancellation.
+#[allow(clippy::too_many_arguments)] // same explicit controls as [`integrate_gk`] plus breakpoints
+pub fn integrate_gk_breakpoints<F: Fn(f64) -> f64>(
+    f: F,
     a: f64,
     b: f64,
+    breakpoints: &[f64],
+    rule: GkRule,
     abs_tol: f64,
     rel_tol: f64,
     max_panels: usize,
-) -> Integral {
-    if crate::kernels::exact_eq(a, b) {
-        return Integral {
-            value: 0.0,
-            error: 0.0,
-            evaluations: 0,
-            converged: true,
-        };
+) -> Result<Integral, GkError> {
+    if !(a.is_finite() && b.is_finite()) {
+        return Err(GkError::InvalidInterval);
     }
-    let (r0, e0, n0) = gk(a, b);
-    let mut panels = vec![(a, b, r0, e0)];
-    let mut evals = n0;
-    let mut total = r0;
-    let mut total_err = e0;
-    let mut partials = vec![r0];
-    let tol = |v: f64| abs_tol.max(rel_tol * v.abs());
-    while total_err > tol(total) && panels.len() < max_panels {
-        let mut wi = 0;
-        for (i, p) in panels.iter().enumerate() {
-            if p.3 > panels[wi].3 {
-                wi = i;
-            }
-        }
-        let (pa, pb, _, _) = panels[wi];
-        let mid = f64::midpoint(pa, pb);
-        if mid <= pa.min(pb) || mid >= pa.max(pb) {
-            break;
-        }
-        let (r1, e1, n1) = gk(pa, mid);
-        let (r2, e2, n2) = gk(mid, pb);
-        evals += n1 + n2;
-        panels[wi] = (pa, mid, r1, e1);
-        panels.push((mid, pb, r2, e2));
-        total = panels.iter().map(|p| p.2).sum();
-        total_err = panels.iter().map(|p| p.3).sum();
-        partials.push(total);
+    if !abs_tol.is_finite() || !rel_tol.is_finite() || abs_tol < 0.0 || rel_tol < 0.0 {
+        return Err(GkError::InvalidTolerance);
     }
-    let converged = total_err <= tol(total);
-    let mut out = Integral {
-        value: total,
-        error: total_err,
-        evaluations: evals,
-        converged,
+    let lo = a.min(b);
+    let hi = a.max(b);
+    if breakpoints.iter().any(|&x| !(lo < x && x < hi))
+        || breakpoints.windows(2).any(|pair| pair[0] >= pair[1])
+    {
+        return Err(GkError::InvalidBreakpoints);
+    }
+    let reversed = a > b;
+    let count = if crate::kernels::exact_eq(a, b) {
+        0
+    } else {
+        breakpoints.len() + 1
     };
-    if !converged && partials.len() > 8 {
-        let eps = crate::kernels::convergence::wynn_epsilon(&partials);
-        if let Some(&last) = eps.last() {
-            let est = (last - total).abs();
-            if last.is_finite() && est < total_err {
-                out.value = last;
-                out.error = est.max(f64::EPSILON * last.abs());
-                out.converged = out.error <= tol(last);
-            }
-        }
+    if count > max_panels {
+        return Err(GkError::PanelBudget);
     }
-    out
+    let panels = (0..count).scan(a, |left, index| {
+        let right = if index == breakpoints.len() {
+            b
+        } else if reversed {
+            breakpoints[breakpoints.len() - 1 - index]
+        } else {
+            breakpoints[index]
+        };
+        let panel = (*left, right);
+        *left = right;
+        Some(panel)
+    });
+    gk::integrate(
+        |pa, pb| gk_panel(&f, pa, pb, rule),
+        panels,
+        abs_tol,
+        rel_tol,
+        max_panels,
+    )
+    .map_err(|(error, _)| error)
 }
 
 /// Adaptive G7K15 integration with a default panel budget (2000).
@@ -1102,7 +1025,7 @@ pub fn filon2d_complex<F: Fn(f64, f64) -> f64>(
 /// cost grows with `|omega|` (there is no frequency-independent 2-D Levin
 /// collocation). The tolerance is used as both absolute and relative
 /// tolerance of the two cubatures, with an integrand budget of
-/// [`OSC2D_MAX_EVALS`] evaluations per component.
+/// `OSC2D_MAX_EVALS` evaluations per component.
 ///
 /// A non-finite phase at the box corners, edge midpoints or centre, or any
 /// other invalid argument, returns `NaN` with `converged == false`.
@@ -1176,22 +1099,36 @@ where
 }
 
 /// Radical inverse of `i` in base `base`.
-fn radical_inverse(
-    mut i: u64,
-    base: u64,
-) -> f64 {
-    let inv = 1.0 / base as f64;
+fn radical_inverse<const BASE: u64>(mut i: u64) -> f64 {
+    let inv = 1.0 / BASE as f64;
     let mut f = inv;
     let mut r = 0.0;
     while i > 0 {
-        r += (i % base) as f64 * f;
-        i /= base;
+        r += (i % BASE) as f64 * f;
+        i /= BASE;
         f *= inv;
     }
     r
 }
 
-const PRIMES: [u64; 16] = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53];
+const HALTON_AXES: [fn(u64) -> f64; 16] = [
+    radical_inverse::<2>,
+    radical_inverse::<3>,
+    radical_inverse::<5>,
+    radical_inverse::<7>,
+    radical_inverse::<11>,
+    radical_inverse::<13>,
+    radical_inverse::<17>,
+    radical_inverse::<19>,
+    radical_inverse::<23>,
+    radical_inverse::<29>,
+    radical_inverse::<31>,
+    radical_inverse::<37>,
+    radical_inverse::<41>,
+    radical_inverse::<43>,
+    radical_inverse::<47>,
+    radical_inverse::<53>,
+];
 
 /// The `index`-th point (`index >= 1`) of the Halton sequence in `dim <= 16` dimensions.
 #[must_use]
@@ -1199,82 +1136,153 @@ pub fn halton_point(
     index: u64,
     dim: usize,
 ) -> Vec<f64> {
-    (0..dim.min(16))
-        .map(|d| radical_inverse(index, PRIMES[d]))
+    HALTON_AXES
+        .iter()
+        .take(dim)
+        .map(|coordinate| coordinate(index))
         .collect()
 }
 
-/// Generator of the Sobol sequence (up to 8 dimensions, Joe-Kuo directions).
+const SOBOL_DIMENSIONS: usize = 8;
+const SOBOL_SCALE: f64 = 1.0 / 4_294_967_296.0;
+static SOBOL_DIRECTIONS: [[u32; SOBOL_DIMENSIONS]; u32::BITS as usize] = sobol_directions();
+
+#[allow(
+    clippy::single_call_fn,
+    reason = "Computes the static direction table at compile time."
+)]
+const fn sobol_directions() -> [[u32; SOBOL_DIMENSIONS]; u32::BITS as usize] {
+    // Degree, coefficients of the primitive polynomial, and initial numerators.
+    const PARAMS: [(usize, u32, [u32; 5]); SOBOL_DIMENSIONS - 1] = [
+        (1, 0, [1, 0, 0, 0, 0]),
+        (2, 1, [1, 3, 0, 0, 0]),
+        (3, 1, [1, 3, 1, 0, 0]),
+        (3, 2, [1, 1, 1, 0, 0]),
+        (4, 1, [1, 1, 3, 3, 0]),
+        (4, 4, [1, 3, 5, 13, 0]),
+        (5, 2, [1, 1, 5, 5, 17]),
+    ];
+    let mut directions = [[0; SOBOL_DIMENSIONS]; u32::BITS as usize];
+    let mut bit = 0;
+    while bit < directions.len() {
+        directions[bit][0] = 1 << (31 - bit);
+        bit += 1;
+    }
+    let mut axis = 1;
+    while axis < SOBOL_DIMENSIONS {
+        let (degree, coefficients, initial) = PARAMS[axis - 1];
+        let mut numerators = [0; u32::BITS as usize];
+        let mut bit = 0;
+        while bit < directions.len() {
+            let numerator = if bit < degree {
+                initial[bit]
+            } else {
+                let mut value = numerators[bit - degree] ^ (numerators[bit - degree] << degree);
+                let mut k = 1;
+                while k < degree {
+                    if (coefficients >> (degree - 1 - k)) & 1 == 1 {
+                        value ^= numerators[bit - k] << k;
+                    }
+                    k += 1;
+                }
+                value
+            };
+            numerators[bit] = numerator;
+            directions[bit][axis] = numerator << (31 - bit);
+            bit += 1;
+        }
+        axis += 1;
+    }
+    directions
+}
+
+/// Generator of the Sobol sequence (up to 8 dimensions, Joe–Kuo directions).
 #[derive(Debug, Clone)]
 pub struct Sobol {
     dim: usize,
-    dirs: Vec<[u32; 32]>,
-    state: Vec<u32>,
+    state: [u32; SOBOL_DIMENSIONS],
     index: u32,
 }
 
 impl Sobol {
     /// Creates a generator for `dim` (clamped to 1..=8) dimensions.
     #[must_use]
-    pub fn new(dim: usize) -> Self {
-        // (degree s, polynomial coefficients a, initial m)
-        const PARAMS: [(usize, u32, [u32; 5]); 7] = [
-            (1, 0, [1, 0, 0, 0, 0]),
-            (2, 1, [1, 3, 0, 0, 0]),
-            (3, 1, [1, 3, 1, 0, 0]),
-            (3, 2, [1, 1, 1, 0, 0]),
-            (4, 1, [1, 1, 3, 3, 0]),
-            (4, 4, [1, 3, 5, 13, 0]),
-            (5, 2, [1, 1, 5, 5, 17]),
-        ];
-        let dim = dim.clamp(1, 8);
-        let mut dirs = Vec::with_capacity(dim);
-        let mut d0 = [0u32; 32];
-        for (i, v) in d0.iter_mut().enumerate() {
-            *v = 1u32 << (31 - i);
-        }
-        dirs.push(d0);
-        for d in 1..dim {
-            let (s, a, m0) = PARAMS[d - 1];
-            let mut m = [0u32; 32];
-            for i in 0..32 {
-                if i < s {
-                    m[i] = m0[i];
-                } else {
-                    let mut v = m[i - s] ^ (m[i - s] << s);
-                    for k in 1..s {
-                        if (a >> (s - 1 - k)) & 1 == 1 {
-                            v ^= m[i - k] << k;
-                        }
-                    }
-                    m[i] = v;
-                }
-            }
-            let mut dv = [0u32; 32];
-            for i in 0..32 {
-                dv[i] = m[i] << (31 - i);
-            }
-            dirs.push(dv);
-        }
+    pub const fn new(dim: usize) -> Self {
+        let dim = if dim == 0 {
+            1
+        } else if dim > SOBOL_DIMENSIONS {
+            SOBOL_DIMENSIONS
+        } else {
+            dim
+        };
         Self {
             dim,
-            dirs,
-            state: vec![0; dim],
+            state: [0; SOBOL_DIMENSIONS],
             index: 0,
         }
     }
 
-    /// Next point in `[0, 1)^dim` (the origin is skipped).
+    /// Next point in `[0, 1)^dim`, starting at index one. After the last
+    /// `u32` index the sequence continues from index zero, the origin.
     pub fn next_point(&mut self) -> Vec<f64> {
-        let c = (!self.index).trailing_zeros() as usize;
-        self.index = self.index.wrapping_add(1);
-        for d in 0..self.dim {
-            self.state[d] ^= self.dirs[d][c.min(31)];
-        }
-        self.state
+        self.advance();
+        self.coordinates(&self.state)
+    }
+
+    /// Returns the indexed point without changing the sequence's position.
+    /// Index zero returns the origin.
+    #[must_use]
+    pub fn point_at(
+        &self,
+        index: u32,
+    ) -> Vec<f64> {
+        self.coordinates(&Self::state_at(index))
+    }
+
+    /// Sets the position so that [`Self::next_point`] returns index `index + 1`,
+    /// modulo `2^32`. Seeking to zero restarts generation from the first nonzero point.
+    pub fn seek(
+        &mut self,
+        index: u32,
+    ) {
+        self.state = Self::state_at(index);
+        self.index = index;
+    }
+
+    fn coordinates(
+        &self,
+        state: &[u32; SOBOL_DIMENSIONS],
+    ) -> Vec<f64> {
+        state
             .iter()
-            .map(|&s| f64::from(s) / 4_294_967_296.0)
+            .take(self.dim)
+            .map(|&x| f64::from(x) * SOBOL_SCALE)
             .collect()
+    }
+
+    fn state_at(index: u32) -> [u32; SOBOL_DIMENSIONS] {
+        let mut gray = index ^ (index >> 1);
+        let mut state = [0; SOBOL_DIMENSIONS];
+        while gray != 0 {
+            let direction = &SOBOL_DIRECTIONS[gray.trailing_zeros() as usize];
+            for (value, &bit) in state.iter_mut().zip(direction) {
+                *value ^= bit;
+            }
+            gray &= gray - 1;
+        }
+        state
+    }
+
+    fn advance(&mut self) {
+        let changed = self.index.trailing_ones() as usize;
+        self.index = self.index.wrapping_add(1);
+        if let Some(direction) = SOBOL_DIRECTIONS.get(changed) {
+            for (value, &bit) in self.state.iter_mut().zip(direction) {
+                *value ^= bit;
+            }
+        } else {
+            self.state = [0; SOBOL_DIMENSIONS];
+        }
     }
 }
 
@@ -1287,10 +1295,87 @@ pub enum LowDiscrepancy {
     Sobol,
 }
 
+#[derive(Clone, Copy)]
+struct SampleAxis {
+    low: f64,
+    width: f64,
+}
+
+struct QmcBox {
+    axes: [SampleAxis; HALTON_AXES.len()],
+    dimension: usize,
+    volume: f64,
+}
+
+impl QmcBox {
+    fn new(
+        lo: &[f64],
+        hi: &[f64],
+        n: usize,
+        sequence: LowDiscrepancy,
+    ) -> Option<Self> {
+        let max_dimension = match sequence {
+            | LowDiscrepancy::Halton => HALTON_AXES.len(),
+            | LowDiscrepancy::Sobol => SOBOL_DIMENSIONS,
+        };
+        if n == 0 || lo.len() != hi.len() || lo.len() > max_dimension {
+            return None;
+        }
+        let mut axes = [SampleAxis { low: 0.0, width: 0.0 }; HALTON_AXES.len()];
+        let mut volume = 1.0;
+        for ((&low, &high), axis) in lo.iter().zip(hi).zip(&mut axes) {
+            let width = high - low;
+            if !width.is_finite() {
+                return None;
+            }
+            *axis = SampleAxis { low, width };
+            volume *= width;
+        }
+        Some(Self {
+            axes,
+            dimension: lo.len(),
+            volume,
+        })
+    }
+
+    #[inline]
+    fn sample(
+        &self,
+        sequence: LowDiscrepancy,
+        index: usize,
+        sobol: &mut Sobol,
+        point: &mut [f64],
+    ) {
+        let samples = point.iter_mut().zip(&self.axes);
+        match sequence {
+            | LowDiscrepancy::Halton => {
+                for ((sample, axis), coordinate) in samples.zip(HALTON_AXES) {
+                    *sample = axis.low + axis.width * coordinate(index as u64);
+                }
+            },
+            | LowDiscrepancy::Sobol => {
+                sobol.advance();
+                for ((sample, axis), state) in samples.zip(sobol.state) {
+                    *sample = axis.low + axis.width * (f64::from(state) * SOBOL_SCALE);
+                }
+            },
+        }
+    }
+}
+
+const UNDEFINED_QMC: Integral = Integral {
+    value: f64::NAN,
+    error: f64::NAN,
+    evaluations: 0,
+    converged: false,
+};
+
 /// Quasi-Monte Carlo integral of `f` over the box `[lo, hi]`.
 ///
 /// The error estimate is the difference to the estimate that uses only the
-/// first half of the points.
+/// first half of the points. Matching bounds may describe a reversed axis.
+/// Returns an undefined integral without evaluating `f` for mismatched bounds,
+/// non-finite axis widths, unsupported dimensions, or a zero sample count.
 pub fn quasi_monte_carlo<F: Fn(&[f64]) -> f64>(
     f: F,
     lo: &[f64],
@@ -1298,30 +1383,35 @@ pub fn quasi_monte_carlo<F: Fn(&[f64]) -> f64>(
     n: usize,
     seq: LowDiscrepancy,
 ) -> Integral {
-    let dim = lo.len();
-    let vol: f64 = lo.iter().zip(hi).map(|(a, b)| b - a).product();
-    let mut sob = Sobol::new(dim);
+    let Some(domain) = QmcBox::new(lo, hi, n, seq) else {
+        return UNDEFINED_QMC;
+    };
+    let mut sobol = Sobol::new(domain.dimension);
     let mut sum = 0.0;
     let mut half = 0.0;
-    let mut x = vec![0.0; dim];
+    let mut samples = [0.0; HALTON_AXES.len()];
+    let point = &mut samples[..domain.dimension];
     for i in 1..=n {
-        let p = match seq {
-            | LowDiscrepancy::Halton => halton_point(i as u64, dim),
-            | LowDiscrepancy::Sobol => sob.next_point(),
-        };
-        for d in 0..dim {
-            x[d] = lo[d] + (hi[d] - lo[d]) * p[d];
-        }
-        sum += f(&x);
+        domain.sample(seq, i, &mut sobol, point);
+        sum += f(point);
         if i == n / 2 {
             half = sum;
         }
     }
-    let value = vol * sum / n as f64;
-    let vh = vol * half / (n / 2).max(1) as f64;
+    qmc_result(domain.volume, n, sum, half)
+}
+
+fn qmc_result(
+    volume: f64,
+    n: usize,
+    sum: f64,
+    half: f64,
+) -> Integral {
+    let value = volume * sum / n as f64;
+    let first_half = volume * half / (n / 2).max(1) as f64;
     Integral {
         value,
-        error: (value - vh).abs(),
+        error: (value - first_half).abs(),
         evaluations: n,
         converged: true,
     }
@@ -1656,34 +1746,12 @@ pub fn cubature_nested<F: Fn(&[f64]) -> f64>(
 /// Number of points per block of the parallel Monte Carlo integrators.
 const MC_BLOCK: usize = 4096;
 
-/// The `index`-th point (`index >= 1`) of the Sobol sequence by the Gray-code
-/// formula (the same point the stateful generator returns on its `index`-th
-/// call).
-fn sobol_point(
-    sob: &Sobol,
-    index: u32,
-) -> Vec<f64> {
-    let gray = index ^ (index >> 1);
-    (0..sob.dim)
-        .map(|d| {
-            let mut state = 0_u32;
-            for k in 0..32 {
-                if (gray >> k) & 1 == 1 {
-                    state ^= sob.dirs[d][k];
-                }
-            }
-            f64::from(state) / 4_294_967_296.0
-        })
-        .collect()
-}
-
 /// Parallel [`quasi_monte_carlo`] with a fixed summation order.
 ///
-/// The points are independent functions of
-/// their index, so blocks of 4096 points are summed in parallel and the
-/// block sums are added in block order: the result depends only on `n`, not
-/// on the thread count (it differs from the single running sum of the serial
-/// function by summation order only).
+/// Each block starts at its exact sequence index and then advances locally.
+/// Blocks of 4096 points are summed concurrently, and their sums are added
+/// in block order. Different thread counts give the same result. The serial
+/// implementation adds the same samples with a different association.
 pub fn quasi_monte_carlo_par<F: Fn(&[f64]) -> f64 + Sync>(
     f: F,
     lo: &[f64],
@@ -1691,45 +1759,38 @@ pub fn quasi_monte_carlo_par<F: Fn(&[f64]) -> f64 + Sync>(
     n: usize,
     seq: LowDiscrepancy,
 ) -> Integral {
-    let dim = lo.len();
-    let vol: f64 = lo.iter().zip(hi).map(|(a, b)| b - a).product();
-    let sob = Sobol::new(dim);
+    let Some(domain) = QmcBox::new(lo, hi, n, seq) else {
+        return UNDEFINED_QMC;
+    };
     let blocks = n.div_ceil(MC_BLOCK);
     let half_n = n / 2;
-    // per block: (sum of all points, sum of the points with index <= n/2)
-    let parts: Vec<(f64, f64)> = super::par::map_indexed(blocks, 2, |b| {
-        let (first, last) = (b * MC_BLOCK + 1, ((b + 1) * MC_BLOCK).min(n));
+    // Per block: sum of all points and sum of the points through `half_n`.
+    let parts = super::par::map_indexed(blocks, 2, |block| {
+        let start = block * MC_BLOCK;
+        let end = start.saturating_add(MC_BLOCK).min(n);
+        let mut sobol = Sobol::new(domain.dimension);
+        if seq == LowDiscrepancy::Sobol {
+            sobol.seek(start as u32);
+        }
+        let mut samples = [0.0; HALTON_AXES.len()];
+        let point = &mut samples[..domain.dimension];
         let (mut sum, mut half) = (0.0, 0.0);
-        let mut x = vec![0.0; dim];
-        for i in first..=last {
-            let p = match seq {
-                | LowDiscrepancy::Halton => halton_point(i as u64, dim),
-                | LowDiscrepancy::Sobol => sobol_point(&sob, i as u32),
-            };
-            for d in 0..dim {
-                x[d] = lo[d] + (hi[d] - lo[d]) * p[d];
-            }
-            let v = f(&x);
-            sum += v;
-            if i <= half_n {
-                half += v;
+        for index in start..end {
+            domain.sample(seq, index + 1, &mut sobol, point);
+            let value = f(point);
+            sum += value;
+            if index < half_n {
+                half += value;
             }
         }
         (sum, half)
     });
     let (mut sum, mut half) = (0.0, 0.0);
-    for (s, h) in parts {
-        sum += s;
-        half += h;
+    for (block_sum, block_half) in parts {
+        sum += block_sum;
+        half += block_half;
     }
-    let value = vol * sum / n as f64;
-    let vh = vol * half / (n / 2).max(1) as f64;
-    Integral {
-        value,
-        error: (value - vh).abs(),
-        evaluations: n,
-        converged: true,
-    }
+    qmc_result(domain.volume, n, sum, half)
 }
 
 /// Parallel [`monte_carlo`]: every block of 4096 samples has its own generator stream (seeded from

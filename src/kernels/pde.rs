@@ -13,7 +13,8 @@
 //!   upwind or second-order Lax-Wendroff;
 //! * [`method_of_lines_1d`]: semi-discretises `u_t = F(t, x, u, u_x, u_xx)`
 //!   and integrates the resulting ODE system with the stiff solvers of
-//!   [`crate::kernels::ode_stiff`].
+//!   [`crate::kernels::ode_stiff`]. [`method_of_lines_1d_timed`] also accepts
+//!   time-dependent endpoint values or outward gradients.
 //!
 //! Boundary conditions are described by [`Boundary`]: Dirichlet (`u = g`) or
 //! Neumann (`du/dn = g` with `n` the outward normal, imposed with a ghost
@@ -37,7 +38,8 @@
 //!
 //! Not covered here (use [`crate::sim::structured`], [`crate::sim::multigrid`],
 //! [`crate::sim::spectral`]): Robin and periodic faces for heat/wave/Poisson,
-//! time-dependent boundary data, absorbing boundaries, adaptive time stepping,
+//! time-dependent faces for heat/wave/Poisson, absorbing boundaries,
+//! adaptive PDE time stepping outside the method of lines,
 //! Newton–Krylov nonlinear diffusion, multigrid and spectral solves.
 
 mod three;
@@ -1234,11 +1236,36 @@ pub struct MolSolution {
     pub nfev: usize,
 }
 
+/// Boundary data on one endpoint of a time-dependent method-of-lines problem.
+#[derive(Clone, Copy)]
+pub enum TimedBoundary1D<'a> {
+    /// A prescribed field value at the supplied time.
+    Dirichlet(&'a dyn Fn(f64) -> f64),
+    /// A prescribed outward normal derivative at the supplied time.
+    Neumann(&'a dyn Fn(f64) -> f64),
+}
+
+impl TimedBoundary1D<'_> {
+    const fn is_dirichlet(self) -> bool {
+        matches!(self, Self::Dirichlet(_))
+    }
+
+    fn at(
+        self,
+        time: f64,
+    ) -> f64 {
+        match self {
+            | Self::Dirichlet(f) | Self::Neumann(f) => f(time),
+        }
+    }
+}
+
 /// Method of lines for `u_t = F(t, x, u, u_x, u_xx)` on a 1D grid with a stiff ODE solver.
 ///
 /// Semi-discretises with second-order central differences (ghost nodes for
 /// Neumann ends, Dirichlet nodes held fixed) and integrates the ODE system to
-/// `t_end`.
+/// `t_end`. Each boundary callback is evaluated once at `(endpoint, 0)` and
+/// its spatial value is used throughout the solve.
 ///
 /// # Errors
 /// [`PdeError::InvalidInput`] for a bad grid or `t_end`, [`PdeError::Ode`] if
@@ -1252,13 +1279,9 @@ pub fn method_of_lines_1d(
     method: StiffMethod,
     opts: &OdeOptions,
 ) -> Result<MolSolution, PdeError> {
-    grid.validate(3)?;
-    if (t_end.is_nan() || t_end <= 0.0) || !t_end.is_finite() {
-        return Err(PdeError::InvalidInput("t_end must be positive"));
-    }
+    let stencil = MolStencil::new(grid, bc.each_ref().map(Boundary::is_dirichlet), t_end)?;
     let n = grid.n;
-    let h = grid.dx();
-    let x = grid.nodes();
+    let x = &stencil.nodes;
     let dl = match &bc[0] {
         | Boundary::Dirichlet(g) => Some(g(x[0], 0.0)),
         | Boundary::Neumann(_) => None,
@@ -1277,54 +1300,141 @@ pub fn method_of_lines_1d(
     } else {
         0.0
     };
-    let first = usize::from(dl.is_some());
-    let last = if dr.is_some() { n - 1 } else { n };
-    let m = last - first;
-    let expand = |y: &[f64]| -> Vec<f64> {
-        let mut u = vec![0.0; n];
-        if let Some(v) = dl {
-            u[0] = v;
-        }
-        if let Some(v) = dr {
-            u[n - 1] = v;
-        }
-        u[first..last].copy_from_slice(y);
-        u
+    let values = [dl.unwrap_or(gl), dr.unwrap_or(gr)];
+    stencil.solve(f, |_| Some(values), u0, t_end, method, opts)
+}
+
+/// Integrates a 1D method-of-lines problem with time-dependent endpoint data.
+///
+/// The endpoint callbacks receive each RHS evaluation time, including internal
+/// integrator stages. Dirichlet endpoints are excluded from the ODE unknowns.
+/// Neumann data are outward normal derivatives. The returned field includes
+/// the prescribed Dirichlet values at `t_end`.
+///
+/// # Errors
+/// Returns [`PdeError::InvalidInput`] for an invalid grid or final time,
+/// [`PdeError::NonFinite`] for non-finite boundary data, or [`PdeError::Ode`]
+/// when the integrator fails.
+pub fn method_of_lines_1d_timed(
+    f: &dyn Fn(f64, f64, f64, f64, f64) -> f64,
+    grid: &Grid1D,
+    bc: &[TimedBoundary1D<'_>; 2],
+    u0: &dyn Fn(f64) -> f64,
+    t_end: f64,
+    method: StiffMethod,
+    opts: &OdeOptions,
+) -> Result<MolSolution, PdeError> {
+    let stencil = MolStencil::new(grid, bc.map(TimedBoundary1D::is_dirichlet), t_end)?;
+    let values = |t| {
+        let values = bc.map(|boundary| boundary.at(t));
+        values
+            .iter()
+            .all(|value| value.is_finite())
+            .then_some(values)
     };
-    let rhs = |t: f64, y: &[f64], dy: &mut [f64]| {
-        let u = expand(y);
-        for i in first..last {
-            let um = if i == 0 {
-                u[1] + 2.0 * h * gl
-            } else {
-                u[i - 1]
-            };
-            let up = if i == n - 1 {
-                u[n - 2] + 2.0 * h * gr
-            } else {
-                u[i + 1]
-            };
-            let ux = (up - um) / (2.0 * h);
-            let uxx = (up - 2.0 * u[i] + um) / (h * h);
-            dy[i - first] = f(t, x[i], u[i], ux, uxx);
+    stencil.solve(f, values, u0, t_end, method, opts)
+}
+
+struct MolStencil {
+    nodes: Vec<f64>,
+    spacing: f64,
+    fixed: [bool; 2],
+}
+
+impl MolStencil {
+    fn new(
+        grid: &Grid1D,
+        fixed: [bool; 2],
+        t_end: f64,
+    ) -> Result<Self, PdeError> {
+        grid.validate(3)?;
+        let spacing = grid.dx();
+        if !t_end.is_finite() || t_end <= 0.0 {
+            return Err(PdeError::InvalidInput("t_end must be positive"));
         }
-    };
-    let y0: Vec<f64> = (first..last).map(|i| u0(x[i])).collect();
-    let sol = match method {
-        | StiffMethod::Radau5 => radau5(rhs, 0.0, t_end, &y0, opts)?,
-        | StiffMethod::Bdf(order) => bdf(rhs, 0.0, t_end, &y0, opts, order.clamp(1, 5))?,
-    };
-    let yl = sol.y.last().ok_or(PdeError::SolveFailed)?;
-    if yl.len() != m {
-        return Err(PdeError::SolveFailed);
+        if !spacing.is_finite() || spacing == 0.0 {
+            return Err(PdeError::InvalidInput(
+                "grid spacing must be positive finite",
+            ));
+        }
+        Ok(Self {
+            nodes: grid.nodes(),
+            spacing,
+            fixed,
+        })
     }
-    let u = expand(yl);
-    check_finite(&u)?;
-    Ok(MolSolution {
-        field: Field1D { x, u, t: t_end },
-        steps: sol.t.len().saturating_sub(1),
-        nfev: sol.nfev,
-    })
+
+    fn solve(
+        self,
+        f: &dyn Fn(f64, f64, f64, f64, f64) -> f64,
+        boundary: impl Fn(f64) -> Option<[f64; 2]>,
+        u0: &dyn Fn(f64) -> f64,
+        t_end: f64,
+        method: StiffMethod,
+        opts: &OdeOptions,
+    ) -> Result<MolSolution, PdeError> {
+        let Self {
+            nodes: x,
+            spacing: h,
+            fixed,
+        } = self;
+        let n = x.len();
+        let first = usize::from(fixed[0]);
+        let last = n - usize::from(fixed[1]);
+        let m = last - first;
+        let two_h = 2.0 * h;
+        let h_squared = h * h;
+        let invalid_boundary = std::cell::Cell::new(false);
+        let rhs = |t: f64, y: &[f64], dy: &mut [f64]| {
+            let Some([left, right]) = boundary(t) else {
+                invalid_boundary.set(true);
+                dy.fill(f64::NAN);
+                return;
+            };
+            let dl = fixed[0].then_some(left);
+            let dr = fixed[1].then_some(right);
+            for (j, dst) in dy.iter_mut().enumerate() {
+                let u = y[j];
+                let um = if j == 0 {
+                    dl.unwrap_or_else(|| y[1] + two_h * left)
+                } else {
+                    y[j - 1]
+                };
+                let up = if j + 1 == m {
+                    dr.unwrap_or_else(|| y[j - 1] + two_h * right)
+                } else {
+                    y[j + 1]
+                };
+                let ux = (up - um) / two_h;
+                let uxx = (up - 2.0 * u + um) / h_squared;
+                *dst = f(t, x[first + j], u, ux, uxx);
+            }
+        };
+        let y0: Vec<f64> = (first..last).map(|i| u0(x[i])).collect();
+        let solution = match method {
+            | StiffMethod::Radau5 => radau5(rhs, 0.0, t_end, &y0, opts),
+            | StiffMethod::Bdf(order) => bdf(rhs, 0.0, t_end, &y0, opts, order.clamp(1, 5)),
+        };
+        if invalid_boundary.get() {
+            return Err(PdeError::NonFinite);
+        }
+        let sol = solution?;
+        let yl = sol.y.last().ok_or(PdeError::SolveFailed)?;
+        if yl.len() != m {
+            return Err(PdeError::SolveFailed);
+        }
+        let [left, right] = boundary(t_end).ok_or(PdeError::NonFinite)?;
+        let mut u = Vec::with_capacity(n);
+        u.extend(fixed[0].then_some(left));
+        u.extend_from_slice(yl);
+        u.extend(fixed[1].then_some(right));
+        check_finite(&u)?;
+        Ok(MolSolution {
+            field: Field1D { x, u, t: t_end },
+            steps: sol.t.len().saturating_sub(1),
+            nfev: sol.nfev,
+        })
+    }
 }
 
 // ---------------------------------------------------------------------------

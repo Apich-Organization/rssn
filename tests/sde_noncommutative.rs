@@ -8,8 +8,11 @@ use rssn::kernels::sde::SdeAdaptiveOptions;
 use rssn::kernels::sde::SdeNoncommutativeOptions;
 use rssn::kernels::sde::aggregate_noise;
 use rssn::kernels::sde::euler_maruyama;
+use rssn::kernels::sde::levy_areas;
+use rssn::kernels::sde::milstein;
 use rssn::kernels::sde::milstein_noncommutative;
 use rssn::kernels::sde::milstein_noncommutative_stratonovich;
+use rssn::kernels::sde::milstein_stratonovich;
 use rssn::kernels::sde::noncommutative_noise_grid;
 use rssn::kernels::sde::sample_noise;
 use rssn::kernels::sde::sde_adaptive_noncommutative_stratonovich_with;
@@ -80,6 +83,88 @@ type Scheme = fn(
 ) -> Result<Vec<Vec<f64>>, rssn::kernels::sde::SdeError>;
 
 type Cb = fn(f64, &[f64], &mut [f64]);
+
+fn zero_drift(
+    _: f64,
+    _: &[f64],
+    out: &mut [f64],
+) {
+    out.fill(0.0);
+}
+
+#[test]
+fn milstein_keeps_a_huge_constant_diffusion_finite() {
+    let diff = |_: f64, y: &[f64], out: &mut [f64]| {
+        assert!(y[0].is_finite());
+        out[0] = 1e300;
+    };
+    let sample = NoiseSample {
+        dws: vec![vec![1e-300]],
+        areas: vec![vec![-0.5]],
+    };
+    let ito = milstein(zero_drift, diff, 1, 0.0, 1.0, &[0.0], &sample.dws).unwrap();
+    let strato = milstein_stratonovich(zero_drift, diff, 1, 0.0, 1.0, &[0.0], &sample.dws).unwrap();
+    let ito_areas =
+        milstein_noncommutative(zero_drift, diff, 1, 0.0, 1.0, &[0.0], &sample).unwrap();
+    let strato_areas =
+        milstein_noncommutative_stratonovich(zero_drift, diff, 1, 0.0, 1.0, &[0.0], &sample)
+            .unwrap();
+    for path in [ito, strato, ito_areas, strato_areas] {
+        assert_eq!(path[1], [1.0]);
+    }
+}
+
+#[test]
+fn a_brownian_weight_recovers_overflowing_and_underflowing_directional_slopes() {
+    let dws = [vec![0.0]];
+    for (diffusion, h, answer) in [(1e300, 2e-300, -1e300), (1e-170, 2e300, -1e-40)] {
+        let diff = |_: f64, y: &[f64], out: &mut [f64]| out[0] = diffusion * (1.0 + y[0]);
+        let sample = NoiseSample {
+            dws: dws.to_vec(),
+            areas: vec![vec![-0.5 * h]],
+        };
+        let path = milstein(zero_drift, diff, 1, 0.0, h, &[0.0], &dws).unwrap();
+        let explicit =
+            milstein_noncommutative(zero_drift, diff, 1, 0.0, h, &[0.0], &sample).unwrap();
+        assert!((path[1][0] / answer - 1.0).abs() < 3e-10, "{}", path[1][0]);
+        assert_eq!(path, explicit);
+    }
+}
+
+#[test]
+fn stratonovich_drift_uses_a_weighted_difference_of_extreme_probe_values() {
+    let diff = |_: f64, y: &[f64], out: &mut [f64]| out[0] = 1e-300 + (y[0] / 1e-6) * 1.7e308;
+    let ito = stratonovich_to_ito_drift(&zero_drift, &diff, 1);
+    let mut out = [0.0];
+    ito(0.0, &[0.0], &mut out);
+    assert!((out[0] / 8.5e13 - 1.0).abs() < 1e-14, "{}", out[0]);
+}
+
+#[test]
+fn a_finite_state_at_the_range_boundary_uses_one_sided_probes() {
+    let diff = |_: f64, y: &[f64], out: &mut [f64]| {
+        assert!(y[0].is_finite());
+        out[0] = 1.0;
+    };
+    let path = milstein(zero_drift, diff, 1, 0.0, 1.0, &[f64::MAX], &[vec![0.0]]).unwrap();
+    assert_eq!(path[1], [f64::MAX]);
+}
+
+#[test]
+fn levy_integrals_rescale_only_unrepresentable_intermediates() {
+    let mut rng = Rng::new(42);
+    let mut ordinary = Rng::new(42);
+    for (h, dw) in [(1e-300, 1e150), (1.0, 1.4e154)] {
+        let areas = levy_areas(&mut rng, 2, h, &[dw, dw], 4);
+        let symmetric = (0.5 * dw) * dw;
+        assert!(areas.iter().all(|v| v.is_finite()), "{areas:?}");
+        for area in areas {
+            assert!((area / symmetric - 1.0).abs() < 1e-14, "{area}");
+        }
+        let _ = levy_areas(&mut ordinary, 2, 1.0, &[0.2, -0.5], 4);
+        assert_eq!(rng.next_u64(), ordinary.next_u64());
+    }
+}
 
 /// RMS strong errors (levels `groups`) of `scheme` against `reference` on one fine Brownian path
 /// with Levy areas, the coarse schemes seeing the aggregated path.

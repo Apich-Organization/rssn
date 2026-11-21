@@ -1,3 +1,5 @@
+//! Radau IIA(5/9/13) and variable-order BDF stiff integrators with dense output, events and DAEs.
+//!
 //! # Stiff ODE integrators: Radau IIA(5/9/13) and variable-order BDF
 //!
 //! * [`radau5`] / [`radau5_jac`]: the three-stage, order-5, L-stable Radau IIA
@@ -48,16 +50,16 @@
 //! Newton iteration with the matrix `M - (h / alpha) J`, the error estimate
 //! covers the algebraic components as well (as in `ode15s`), and the initial
 //! derivative needed to start the backward-difference array is
-//! `M^-1 f(t0, y0)` when `M` is invertible and `f_q / M_qq` for the
-//! differential variables with a diagonal row otherwise (zero for the
-//! algebraic ones); the first step is `1e-5 (t1 - t0)` unless
+//! `M^-1 f(t0, y0)` for an invertible dense `M` and `f_q / M_qq` for
+//! variables with a single nonzero diagonal row entry otherwise (zero for
+//! the remaining variables). The initial step estimate is `1e-5 |t1 - t0|` unless
 //! [`OdeOptions::h0`] is given. The initial values must be consistent.
 //!
 //! Limitations: BDF handles index 1 only (use Radau for higher-index
 //! Hessenberg systems, whose error estimate needs the `h` and `h^2`
 //! weights); the mass matrix may be constant ([`BdfOptions::mass`]) or a
-//! function of time ([`BdfOptions::mass_fn`], which costs one factorisation per
-//! step); Radau's
+//! function of time ([`BdfOptions::mass_fn`], which requires factoring the
+//! corrector matrix on each attempted step). Radau's
 //! algebraic-variable error estimate is the plain collocation estimate for
 //! index 1 (no extra scaling needed there).
 //!
@@ -1150,6 +1152,7 @@ pub fn radau5_fixed_events<F: Fn(f64, &[f64], &mut [f64])>(
 // ------------------------------------------------------------------ BDF
 
 const BDF_MAX_ORDER: usize = 5;
+const BDF_HISTORY_WIDTH: usize = BDF_MAX_ORDER + 1;
 const MAXIT: usize = 4;
 const BDF_KAPPA: [f64; 6] = [0.0, -0.1850, -1.0 / 9.0, -0.0823, -0.0415, 0.0];
 
@@ -1174,12 +1177,10 @@ fn bdf_consts() -> ([f64; 6], [f64; 6], [f64; 7]) {
 fn bdf_r(
     order: usize,
     factor: f64,
-) -> Vec<Vec<f64>> {
+) -> [[f64; BDF_HISTORY_WIDTH]; BDF_HISTORY_WIDTH] {
     let m = order + 1;
-    let mut r = vec![vec![0.0; m]; m];
-    for j in 0..m {
-        r[0][j] = 1.0;
-    }
+    let mut r = [[0.0; BDF_HISTORY_WIDTH]; BDF_HISTORY_WIDTH];
+    r[0][..m].fill(1.0);
     for i in 1..m {
         for j in 1..m {
             r[i][j] = (i as f64 - 1.0 - factor * j as f64) / i as f64;
@@ -1201,19 +1202,35 @@ fn bdf_change_d(
     let m = order + 1;
     let r = bdf_r(order, factor);
     let u = bdf_r(order, 1.0);
-    let mut ru = vec![vec![0.0; m]; m];
+    let mut ru = [[0.0; BDF_HISTORY_WIDTH]; BDF_HISTORY_WIDTH];
     for i in 0..m {
         for j in 0..m {
             ru[i][j] = (0..m).map(|k| r[i][k] * u[k][j]).sum();
         }
     }
-    let n = d[0].len();
-    let old: Vec<Vec<f64>> = d[..m].to_vec();
-    for i in 0..m {
-        for q in 0..n {
-            d[i][q] = (0..m).map(|k| ru[k][i] * old[k][q]).sum();
+    for q in 0..d[0].len() {
+        // Each state component has an independent history polynomial.
+        let mut old = [0.0; BDF_HISTORY_WIDTH];
+        for k in 0..m {
+            old[k] = d[k][q];
+        }
+        for i in 0..m {
+            d[i][q] = (0..m).map(|k| ru[k][i] * old[k]).sum();
         }
     }
+}
+
+fn bdf_error_rms(
+    difference: &[f64],
+    scale: &[f64],
+    coefficient: f64,
+) -> f64 {
+    super::ode_contract::rms(
+        difference.iter().zip(scale).map(|(&value, &weight)| {
+            super::ode_contract::scaled_ratio(coefficient * value, weight)
+        }),
+        difference.len(),
+    )
 }
 
 /// Variable-order BDF (orders 1 to 5, NDF coefficients) with a
@@ -1315,7 +1332,8 @@ pub struct BdfOptions<'a> {
     pub sparse_jac: Option<&'a SparseJacobianFn<'a>>,
     /// Declared Jacobian structure (dense, banded or sparse pattern).
     pub structure: JacStructure<'a>,
-    /// Highest order used (`1..=5`).
+    /// Highest order used. Values greater than five are capped at five.
+    /// Zero returns [`OdeError::Invalid`].
     pub max_order: usize,
     /// Event functions.
     pub events: &'a [Event<'a>],
@@ -1327,16 +1345,17 @@ pub struct BdfOptions<'a> {
     pub sparse_mass: Option<&'a Csr>,
     /// A mass matrix that depends on time, `M(t)`.
     ///
-    /// The BDF corrector is `M(t_{n+1}) (y_{n+1} - y_pred) = h gamma0 f(t_{n+1},
-    /// y_{n+1})`, so a time-dependent mass needs no `dM/dt`: it only has to be
-    /// evaluated at the new time of each step. The one real consequence is that
-    /// the Newton factorisation can no longer be reused across steps, so this
-    /// costs one factorisation per step — exactly as a time-dependent Jacobian
-    /// does.
+    /// The BDF corrector uses `M(t_{n+1})(d + psi) = (h / alpha) f(t_{n+1},
+    /// y_pred + d)`, with the history term `psi`. The callback is evaluated at
+    /// the initial time and at the new time of each attempted step. Newton
+    /// iterations share the factorisation within an attempt.
     ///
-    /// The sparsity must be the same at every time; the band used for the
-    /// factorisation is taken from `M(t0)`. `mass` and `sparse_mass` are
-    /// ignored when this is set.
+    /// Every result must be a square matrix with one row per state component
+    /// and finite entries. A bad shape returns [`OdeError::Invalid`] and a
+    /// non-finite entry returns [`OdeError::NonFinite`]. For banded solves the
+    /// effective band contains the Jacobian band and the current mass
+    /// matrix's nonzero entries. This callback takes precedence over
+    /// [`BdfOptions::mass`] and [`BdfOptions::sparse_mass`].
     pub mass_fn: Option<&'a dyn Fn(f64) -> Mat>,
 }
 
@@ -1389,6 +1408,83 @@ fn initial_derivative(
             }
         })
         .collect()
+}
+
+/// Validates the matrix before band inspection, factorisation or a product.
+fn validate_bdf_mass(
+    mass: Mass<'_>,
+    n: usize,
+) -> Result<(), OdeError> {
+    if mass.rows() != n || mass.cols() != n {
+        return Err(OdeError::Invalid);
+    }
+    let values = match mass {
+        | Mass::Dense(matrix) => {
+            if n.checked_mul(n) != Some(matrix.data.len()) {
+                return Err(OdeError::Invalid);
+            }
+            &matrix.data
+        },
+        | Mass::Sparse(matrix) => {
+            if n.checked_add(1) != Some(matrix.indptr.len())
+                || matrix.indptr.first() != Some(&0)
+                || matrix.indptr.last() != Some(&matrix.indices.len())
+                || matrix.values.len() != matrix.indices.len()
+                || !matrix.indptr.is_sorted()
+                || matrix.indices.iter().any(|&column| column >= n)
+            {
+                return Err(OdeError::Invalid);
+            }
+            &matrix.values
+        },
+    };
+    if values.iter().any(|entry| !entry.is_finite()) {
+        return Err(OdeError::NonFinite);
+    }
+    Ok(())
+}
+
+/// Extends the Jacobian band to accommodate all stored mass entries.
+fn bdf_mass_band(
+    (kl, ku): (usize, usize),
+    mass: Mass<'_>,
+) -> (usize, usize) {
+    let (ml, mu) = mass.band();
+    (kl.max(ml), ku.max(mu))
+}
+
+/// Builds the BDF corrector matrix `M - c J` in its solver's representation.
+#[allow(
+    clippy::single_call_fn,
+    reason = "Keep matrix assembly outside the step loop."
+)]
+fn bdf_factor(
+    n: usize,
+    c: f64,
+    mass: Option<Mass<'_>>,
+    jac: &Jac,
+    kind: SolverKind,
+    band: (usize, usize),
+) -> Option<Factor> {
+    if kind != SolverKind::Dense {
+        let triplets = block_triplets(n, 1, &|_, _| 1.0, &|_, _| -c, mass, jac);
+        return Factor::from_triplets(n, 1, &triplets, kind, band);
+    }
+
+    // Dense LU consumes a row-major matrix. Accumulate directly, keeping the
+    // Jacobian contribution before the mass contribution at each entry.
+    let mut matrix = Mat::zeros(n, n);
+    if !crate::kernels::exact_eq(c, 0.0) {
+        jac.for_each(|i, j, value| matrix.data[i * n + j] += -c * value);
+    }
+    if let Some(mass) = mass {
+        mass.for_each(|i, j, value| matrix.data[i * n + j] += value);
+    } else {
+        for i in 0..n {
+            matrix.data[i * n + i] += 1.0;
+        }
+    }
+    dense::lu_factor(&matrix).ok().map(Factor::Dense)
 }
 
 /// Variable-order BDF with dense output, event detection and structured
@@ -1708,24 +1804,20 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
         .mass
         .map(Mass::Dense)
         .or_else(|| bo.sparse_mass.map(Mass::Sparse));
-    // A time-dependent mass is evaluated at the start of each step; this first
-    // evaluation is what the band, the dimension check and the starting
-    // derivative use.
+    // The initial mass is only needed to start the history array.
     let mass_fn = bo.mass_fn;
     let initial_mass: Option<Mat> = mass_fn.map(|f| f(t0));
     let mass_start: Option<Mass<'_>> = initial_mass.as_ref().map(Mass::Dense).or(mass);
-    if let Some(m) = mass_start
-        && (m.rows() != n || m.cols() != n)
-    {
-        return Err(OdeError::Invalid);
+    if let Some(matrix) = mass_start {
+        validate_bdf_mass(matrix, n)?;
     }
     let provider =
         JacobianProvider::new(n, bo.structure, bo.jac, bo.sparse_jac).ok_or(OdeError::Invalid)?;
-    let mut band = provider.band;
-    if let Some(m) = mass_start {
-        let (ml, mu) = m.band();
-        band = (band.0.max(ml), band.1.max(mu));
-    }
+    let band = if provider.kind == SolverKind::Banded && mass_fn.is_none() {
+        mass.map_or(provider.band, |matrix| bdf_mass_band(provider.band, matrix))
+    } else {
+        provider.band
+    };
     let dir = if t1 > t0 { 1.0 } else { -1.0 };
     let (gamma, alpha, errc) = bdf_consts();
     let rtol = opts.rtol.max(100.0 * f64::EPSILON);
@@ -1776,6 +1868,15 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
     let mut sol = OdeSolution::start(t0, y0);
     let mut gprev = initial_events(events, t0, y0)?;
     let mut steps = 0;
+    let mut d_inc = vec![0.0; n];
+    let mut y_new = vec![0.0; n];
+    let mut scale = vec![0.0; n];
+    let mut y_pred = vec![0.0; n];
+    let mut psi = vec![0.0; n];
+    let mut fv = vec![0.0; n];
+    let mut shifted = vec![0.0; n];
+    let mut rhs = vec![0.0; n];
+    let mut correction = vec![0.0; n];
     while (t1 - t) * dir > 0.0 {
         if h_abs > opts.hmax {
             bdf_change_d(&mut d, order, opts.hmax / h_abs);
@@ -1784,12 +1885,9 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
         }
         let mut current_jac = false;
         let mut accepted = false;
-        let mut d_inc = vec![0.0; n];
-        let mut y_new = vec![0.0; n];
         let mut t_new = t;
         let mut err_norm_v = 0.0;
         let mut safety = 0.9;
-        let mut scale = vec![1.0; n];
         while !accepted {
             super::ode_contract::abort_if_requested(stop)?;
             if steps >= opts.max_steps {
@@ -1812,50 +1910,70 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
             }
             h = t_new - t;
             h_abs = h.abs();
-            let y_pred: Vec<f64> = (0..n).map(|q| (0..=order).map(|k| d[k][q]).sum()).collect();
-            let sc: Vec<f64> = y_pred.iter().map(|v| atol + rtol * v.abs()).collect();
-            let psi: Vec<f64> = (0..n)
-                .map(|q| (1..=order).map(|k| d[k][q] * gamma[k]).sum::<f64>() / alpha[order])
-                .collect();
+            for q in 0..n {
+                y_pred[q] = (0..=order).map(|k| d[k][q]).sum::<f64>();
+                scale[q] = atol + rtol * y_pred[q].abs();
+                psi[q] = (1..=order).map(|k| d[k][q] * gamma[k]).sum::<f64>() / alpha[order];
+            }
             let cc = h / alpha[order];
             let mut converged = false;
             let mut n_iter = 0;
             // The mass matrix of *this* step. A time-dependent `M` also means
             // the factorisation cannot be carried over: it depends on `M(t)`.
-            let step_mass: Option<Mat> = mass_fn.map(|f| f(t_new));
-            let mass_now: Option<Mass<'_>> = step_mass.as_ref().map(Mass::Dense).or(mass);
-            if mass_fn.is_some() {
+            let step_mass = mass_fn.map(|f| f(t_new));
+            let step_mass = step_mass.as_ref().map(Mass::Dense);
+            let mass_now = step_mass.or(mass);
+            let mut step_band = band;
+            if let Some(matrix) = step_mass {
+                validate_bdf_mass(matrix, n)?;
+                if provider.kind == SolverKind::Banded {
+                    step_band = bdf_mass_band(band, matrix);
+                }
                 lu = None;
             }
             while !converged {
                 if lu.is_none() {
-                    let trip = block_triplets(n, 1, &|_, _| 1.0, &|_, _| -cc, mass_now, &jac);
-                    match Factor::from_triplets(n, 1, &trip, provider.kind, band) {
-                        | Some(l) => lu = Some(l),
-                        | None => break,
-                    }
+                    lu = bdf_factor(n, cc, mass_now, &jac, provider.kind, step_band);
                 }
                 let Some(l) = lu.as_ref() else { break };
                 // Newton iteration
-                let mut yy = y_pred.clone();
-                let mut dd = vec![0.0; n];
+                y_new.copy_from_slice(&y_pred);
+                d_inc.fill(0.0);
                 let mut dn_old: Option<f64> = None;
-                let mut fv = vec![0.0; n];
                 converged = false;
                 for k in 0..MAXIT {
-                    f(t_new, &yy, &mut fv);
+                    f(t_new, &y_new, &mut fv);
                     nfev += 1;
                     n_iter = k + 1;
                     if fv.iter().any(|v| !v.is_finite()) {
                         break;
                     }
                     // `c f - M (psi + d)`.
-                    let shifted: Vec<f64> = (0..n).map(|q| psi[q] + dd[q]).collect();
-                    let m_shifted =
-                        mass_now.map_or_else(|| shifted.clone(), |m| m.matvec(&shifted));
-                    let rhs: Vec<f64> = (0..n).map(|q| cc * fv[q] - m_shifted[q]).collect();
-                    let dy = l.solve(&rhs);
-                    let dn = rms(&dy, &sc);
+                    if let Some(matrix) = mass_now {
+                        for q in 0..n {
+                            shifted[q] = psi[q] + d_inc[q];
+                        }
+                        match matrix {
+                            | Mass::Dense(m) => rhs = m.matvec(&shifted),
+                            | Mass::Sparse(m) => m.matvec(&shifted, &mut rhs),
+                        }
+                        for q in 0..n {
+                            rhs[q] = cc * fv[q] - rhs[q];
+                        }
+                    } else {
+                        for q in 0..n {
+                            rhs[q] = cc * fv[q] - (psi[q] + d_inc[q]);
+                        }
+                    }
+                    match l {
+                        | Factor::Dense(lu) => {
+                            if lu.solve_into(&rhs, &mut correction).is_err() {
+                                break;
+                            }
+                        },
+                        | _ => correction = l.solve(&rhs),
+                    }
+                    let dn = rms(&correction, &scale);
                     let rate = dn_old.map(|o| dn / o);
                     if let Some(r) = rate
                         && (r >= 1.0 || r.powi((MAXIT - k) as i32) / (1.0 - r) * dn > newton_tol)
@@ -1863,8 +1981,8 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
                         break;
                     }
                     for q in 0..n {
-                        yy[q] += dy[q];
-                        dd[q] += dy[q];
+                        y_new[q] += correction[q];
+                        d_inc[q] += correction[q];
                     }
                     if dn == 0.0 || rate.is_some_and(|r| r / (1.0 - r) * dn < newton_tol) {
                         converged = true;
@@ -1872,17 +1990,13 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
                     }
                     dn_old = Some(dn);
                 }
-                if converged {
-                    y_new = yy;
-                    d_inc = dd;
-                } else {
+                if !converged {
                     if current_jac || lu.is_none() {
                         break;
                     }
-                    let mut fp = vec![0.0; n];
-                    f(t_new, &y_pred, &mut fp);
+                    f(t_new, &y_pred, &mut fv);
                     nfev += 1;
-                    jac = provider.eval_with(f, t_new, &y_pred, &fp, &mut nfev, fd);
+                    jac = provider.eval_with(f, t_new, &y_pred, &fv, &mut nfev, fd);
                     lu = None;
                     current_jac = true;
                 }
@@ -1896,9 +2010,10 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
                 continue;
             }
             safety = 0.9 * (2.0 * MAXIT as f64 + 1.0) / (2.0 * MAXIT as f64 + n_iter as f64);
-            scale = y_new.iter().map(|v| atol + rtol * v.abs()).collect();
-            let err: Vec<f64> = d_inc.iter().map(|v| errc[order] * v).collect();
-            err_norm_v = rms(&err, &scale);
+            for q in 0..n {
+                scale[q] = atol + rtol * y_new[q].abs();
+            }
+            err_norm_v = bdf_error_rms(&d_inc, &scale, errc[order]);
             if err_norm_v.is_nan() {
                 return Err(OdeError::NonFinite);
             }
@@ -1914,10 +2029,9 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
         }
         n_equal += 1;
         let t_old = t;
-        let y_old = y.clone();
         let h_step = t_new - t_old;
         t = t_new;
-        y = y_new;
+        std::mem::swap(&mut y, &mut y_new);
         // jac was refreshed during this step only if Newton failed; keep it
         for q in 0..n {
             d[order + 2][q] = d_inc[q] - d[order + 1][q];
@@ -1932,7 +2046,7 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
         let step = DenseStep {
             t0: t_old,
             h: h_step,
-            y0: y_old,
+            y0: y_new.clone(),
             kind: DenseKind::Backward(d[..=order].to_vec()),
         };
         if process_events(
@@ -1957,14 +2071,12 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
             continue;
         }
         let err_m = if order > 1 {
-            let e: Vec<f64> = d[order].iter().map(|v| errc[order - 1] * v).collect();
-            rms(&e, &scale)
+            bdf_error_rms(&d[order], &scale, errc[order - 1])
         } else {
             f64::INFINITY
         };
         let err_p = if order < max_order {
-            let e: Vec<f64> = d[order + 2].iter().map(|v| errc[order + 1] * v).collect();
-            rms(&e, &scale)
+            bdf_error_rms(&d[order + 2], &scale, errc[order + 1])
         } else {
             f64::INFINITY
         };

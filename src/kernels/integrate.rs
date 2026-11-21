@@ -162,9 +162,223 @@ where
     Ok((h / 3.0) * sum)
 }
 
+// A panel's numerical estimate is independent of the refinement budget.
+// Keep the ordinary arithmetic order, and rescale the operands when an
+// intermediate width or sum would overflow or the divided width is subnormal.
+fn simpson_panel_estimate(
+    a: f64,
+    b: f64,
+    fa: f64,
+    fm: f64,
+    fb: f64,
+) -> f64 {
+    let width = b - a;
+    let sixth = width / 6.0;
+    let sum = 4.0_f64.mul_add(fm, fa) + fb;
+    if sixth.is_normal() && sum.is_finite() {
+        return sixth * sum;
+    }
+    scaled_simpson_estimate(a, b, width, [fa, fm, fb], sum)
+}
+
+#[cold]
+fn scaled_simpson_estimate(
+    a: f64,
+    b: f64,
+    width: f64,
+    values: [f64; 3],
+    sum: f64,
+) -> f64 {
+    if !sum.is_finite() {
+        let [fa, fm, fb] = values;
+        if !fa.is_finite() || !fm.is_finite() || !fb.is_finite() {
+            return width * sum;
+        }
+        // The scaled sum is bounded by 3/4 of f64::MAX. Leave its inverse
+        // factor outside the product, so the weighted mean need not overflow.
+        let scaled = 4.0_f64.mul_add(0.125 * fm, 0.125 * fa) + 0.125 * fb;
+        return if width.is_finite() {
+            (width * (scaled / 3.0)) * 4.0
+        } else {
+            ((0.5 * b - 0.5 * a) * (scaled / 3.0)) * 8.0
+        };
+    }
+    if width.is_finite() {
+        width * (sum / 6.0)
+    } else {
+        ((0.5 * b - 0.5 * a) / 3.0) * sum
+    }
+}
+
+// The individual f64 parameters let a recursive call pass the inherited
+// samples and panel data directly. Each split evaluates only its new nodes.
+#[allow(clippy::too_many_arguments)]
+fn refine_simpson(
+    f: &impl Fn(f64) -> f64,
+    a: f64,
+    mid: f64,
+    b: f64,
+    fa: f64,
+    fm: f64,
+    fb: f64,
+    whole: f64,
+    tolerance: f64,
+    limit: usize,
+    budget: &mut usize,
+) -> f64 {
+    if limit == 0 || *budget == 0 || !whole.is_finite() {
+        return whole;
+    }
+    *budget -= 1;
+
+    let left = f64::midpoint(a, mid);
+    let right = f64::midpoint(mid, b);
+    let exact_eq = crate::kernels::exact_eq;
+    if exact_eq(a, left) || exact_eq(left, mid) || exact_eq(mid, right) || exact_eq(right, b) {
+        return refine_simpson_at_resolution(
+            f,
+            [a, mid, b],
+            [fa, fm, fb],
+            whole,
+            tolerance / 2.0,
+            limit - 1,
+            budget,
+        );
+    }
+
+    let fl = f(left);
+    let fr = f(right);
+    let left_width = mid - a;
+    let right_width = b - mid;
+    let left_sum = 4.0_f64.mul_add(fl, fa) + fm;
+    let right_sum = 4.0_f64.mul_add(fr, fm) + fb;
+    let left_estimate = (left_width / 6.0) * left_sum;
+    let right_estimate = (right_width / 6.0) * right_sum;
+    let (left_estimate, right_estimate) = if (left_estimate + right_estimate).is_finite()
+        && left_width.abs().min(right_width.abs()) >= 6.0 * f64::MIN_POSITIVE
+    {
+        (left_estimate, right_estimate)
+    } else {
+        (
+            scaled_simpson_estimate(a, mid, left_width, [fa, fl, fm], left_sum),
+            scaled_simpson_estimate(mid, b, right_width, [fm, fr, fb], right_sum),
+        )
+    };
+    let sum = left_estimate + right_estimate;
+    if !sum.is_finite() {
+        return sum;
+    }
+    let correction = (sum - whole) / 15.0;
+    if correction.abs() <= tolerance {
+        return sum + correction;
+    }
+
+    let next_tolerance = tolerance / 2.0;
+    refine_simpson(
+        f,
+        a,
+        left,
+        mid,
+        fa,
+        fl,
+        fm,
+        left_estimate,
+        next_tolerance,
+        limit - 1,
+        budget,
+    ) + refine_simpson(
+        f,
+        mid,
+        right,
+        b,
+        fm,
+        fr,
+        fb,
+        right_estimate,
+        next_tolerance,
+        limit - 1,
+        budget,
+    )
+}
+
+#[cold]
+fn refine_simpson_at_resolution(
+    f: &impl Fn(f64) -> f64,
+    bounds: [f64; 3],
+    values: [f64; 3],
+    whole: f64,
+    tolerance: f64,
+    limit: usize,
+    budget: &mut usize,
+) -> f64 {
+    let [a, mid, b] = bounds;
+    let [fa, fm, fb] = values;
+    let left = f64::midpoint(a, mid);
+    let right = f64::midpoint(mid, b);
+    let exact_eq = crate::kernels::exact_eq;
+    let left_collapsed = exact_eq(a, left) || exact_eq(left, mid);
+    let right_collapsed = exact_eq(mid, right) || exact_eq(right, b);
+    if left_collapsed && right_collapsed {
+        let left_width = (mid - a).abs();
+        let right_width = (b - mid).abs();
+        if exact_eq(left_width, right_width) {
+            return whole;
+        }
+        // Adjacent spacings differ only at a binade boundary, where one
+        // interval is twice the other. Integrating the interpolating quadratic
+        // gives 3/4 of the middle value and 1/4 of the farther endpoint.
+        let farther = if left_width > right_width {
+            fa
+        } else {
+            fb
+        };
+        return (b - a) * f64::midpoint(fm, f64::midpoint(fm, farther));
+    }
+    // An adjacent pair uses the trapezoid. Richardson's estimate assumes
+    // Simpson's rule in both children and does not apply in this case.
+    if left_collapsed {
+        let fr = f(right);
+        let right_estimate = simpson_panel_estimate(mid, b, fm, fr, fb);
+        (mid - a) * f64::midpoint(fa, fm)
+            + refine_simpson(
+                f,
+                mid,
+                right,
+                b,
+                fm,
+                fr,
+                fb,
+                right_estimate,
+                tolerance,
+                limit,
+                budget,
+            )
+    } else {
+        let fl = f(left);
+        let left_estimate = simpson_panel_estimate(a, mid, fa, fl, fm);
+        refine_simpson(
+            f,
+            a,
+            left,
+            mid,
+            fa,
+            fl,
+            fm,
+            left_estimate,
+            tolerance,
+            limit,
+            budget,
+        ) + (b - mid) * f64::midpoint(fm, fb)
+    }
+}
+
 /// # Adaptive Quadrature (Adaptive Simpson's Method)
 ///
-/// Recursively refines the interval until the estimated error satisfies the tolerance.
+/// Recursively refines the interval until the estimated error satisfies the tolerance
+/// or the refinement limit is reached. The integrand must return a consistent result
+/// for a given coordinate because refinement reuses the parent panel's samples.
+/// A panel with consecutive floating-point bounds uses a trapezoid through its
+/// two finite endpoint samples, or returns `NaN` if either sample is nonfinite.
 ///
 /// ## Arguments
 /// * `f` - Function to integrate.
@@ -189,68 +403,6 @@ pub fn adaptive_quadrature<F>(
 where
     F: Fn(f64) -> f64,
 {
-    // Inner recursive function. `budget` bounds the number of panels so that
-    // a NaN integrand, a zero tolerance or a non-integrable singularity
-    // cannot make the recursion exponential.
-    #[allow(clippy::too_many_arguments)]
-    fn adaptive_recursive<F>(
-        f: &F,
-        a: f64,
-        b: f64,
-        eps: f64,
-        whole_simpson: f64,
-        limit: usize,
-        budget: &std::cell::Cell<usize>,
-    ) -> f64
-    where
-        F: Fn(f64) -> f64,
-    {
-        if limit == 0 || budget.get() == 0 || !whole_simpson.is_finite() {
-            // Recursion limit reached, return current best guess
-            return whole_simpson;
-        }
-
-        budget.set(budget.get() - 1);
-
-        let mid = f64::midpoint(a, b);
-
-        let sub_mid_left = f64::midpoint(a, mid);
-
-        let sub_mid_right = f64::midpoint(mid, b);
-
-        let fa = f(a);
-
-        let fb = f(b);
-
-        let fm = f(mid);
-
-        let fml = f(sub_mid_left);
-
-        let fmr = f(sub_mid_right);
-
-        // Simp(a, b) = (b-a)/6 * (f(a) + 4f(m) + f(b))
-        let left_simpson = (mid - a) / 6.0 * (4.0f64.mul_add(fml, fa) + fm);
-
-        let right_simpson = (b - mid) / 6.0 * (4.0f64.mul_add(fmr, fm) + fb);
-
-        let sum_halves = left_simpson + right_simpson;
-
-        if !sum_halves.is_finite() {
-            return sum_halves;
-        }
-
-        // Error estimate (1/15 rule)
-        let error = (sum_halves - whole_simpson).abs() / 15.0;
-
-        if error <= eps {
-            // Richardson extrapolation: S + (S - S_whole)/15
-            sum_halves + (sum_halves - whole_simpson) / 15.0
-        } else {
-            adaptive_recursive(f, a, mid, eps / 2.0, left_simpson, limit - 1, budget)
-                + adaptive_recursive(f, mid, b, eps / 2.0, right_simpson, limit - 1, budget)
-        }
-    }
-
     let (a, b) = range;
 
     if !a.is_finite() || !b.is_finite() || tolerance.is_nan() {
@@ -261,11 +413,16 @@ where
         return 0.0;
     }
 
-    // Initial Simpson estimate
     let mid = f64::midpoint(a, b);
-
+    if crate::kernels::exact_eq(a, mid) || crate::kernels::exact_eq(mid, b) {
+        let (fa, fb) = (f(a), f(b));
+        return if fa.is_finite() && fb.is_finite() {
+            (b - a) * f64::midpoint(fa, fb)
+        } else {
+            f64::NAN
+        };
+    }
     let fm = f(mid);
-
     let (fa, fb) = (f(a), f(b));
 
     if fa.is_nan() || fb.is_nan() || fm.is_nan() {
@@ -280,15 +437,25 @@ where
         return crate::kernels::quadrature::tanh_sinh(&f, a, b, tolerance.max(1e-14)).value;
     }
 
-    let initial_simpson = (b - a) / 6.0 * (4.0f64.mul_add(fm, fa) + fb);
+    let initial = simpson_panel_estimate(a, b, fa, fm, fb);
 
-    // Never ask for more than ~1e-15 relative accuracy: a zero tolerance would
-    // otherwise subdivide until the panel budget is gone.
-    let tolerance = tolerance.max(1e-15 * initial_simpson.abs());
+    // The tolerance floor and panel budget bound work even for zero tolerance
+    // or a non-integrable singularity.
+    let tolerance = tolerance.max(1e-15 * initial.abs());
 
-    let budget = std::cell::Cell::new(50_000_usize);
-
-    adaptive_recursive(&f, a, b, tolerance, initial_simpson, 60, &budget)
+    refine_simpson(
+        &f,
+        a,
+        mid,
+        b,
+        fa,
+        fm,
+        fb,
+        initial,
+        tolerance,
+        60,
+        &mut 50_000,
+    )
 }
 
 /// # Romberg Integration

@@ -9,6 +9,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::kernels::calculus::jacobian;
+use crate::kernels::exact_eq;
 use crate::kernels::matrix::Matrix;
 
 /// Represents the solution to a system of linear equations.
@@ -200,59 +201,141 @@ pub fn solve_root_newton(
 
 /// Finds a root of `f` in `interval` by bisection.
 ///
+/// Endpoints may be in either order. A finite endpoint or midpoint whose
+/// residual is zero or has magnitude less than `tolerance` is accepted.
+/// Otherwise the absolute interval width is compared with the tolerance.
+/// Zero tolerance disables approximate stopping. The two endpoint evaluations
+/// are followed by at most `max_iter` midpoint evaluations. At the budget or
+/// when no representable point remains inside the bracket, returns its midpoint.
+///
 /// # Errors
-/// Returns an error when the end points do not bracket a sign change.
+/// Returns an error for non-finite endpoints or function values, a negative
+/// or non-finite tolerance, or endpoints with the same sign outside the tolerance.
 pub fn solve_root_bisection(
     f: impl Fn(f64) -> f64,
     interval: (f64, f64),
     tolerance: f64,
     max_iter: usize,
 ) -> Result<f64, String> {
-    let (mut a, mut b) = interval;
-    let (mut fa, fb) = (f(a), f(b));
-    if fa.abs() < tolerance {
+    let (a, b) = interval;
+    if !a.is_finite() || !b.is_finite() {
+        return Err("Root interval endpoints must be finite.".to_string());
+    }
+    check_root_tolerance(tolerance)?;
+    let (fa, fb) = (f(a), f(b));
+    if !fa.is_finite() || !fb.is_finite() {
+        return Err("Function value is not finite.".to_string());
+    }
+    // With zero tolerance, a strict comparison admits only signed zeros.
+    let residual_tolerance = tolerance.max(f64::from_bits(1));
+    if fa.abs() < residual_tolerance {
         return Ok(a);
     }
-    if fb.abs() < tolerance {
+    if fb.abs() < residual_tolerance {
         return Ok(b);
     }
-    if (fa * fb).partial_cmp(&0.0) != Some(std::cmp::Ordering::Less) {
+    let sign_at_a = fa.is_sign_negative();
+    if sign_at_a == fb.is_sign_negative() {
         return Err(format!("Interval [{a}, {b}] does not bracket a root"));
     }
-    for _ in 0..max_iter {
-        let mid = f64::midpoint(a, b);
-        let fm = f(mid);
-        if fm.abs() < tolerance || (b - a).abs() < tolerance {
-            return Ok(mid);
-        }
-        if fa * fm < 0.0 {
-            b = mid;
+    bisect_sampled(f, interval, sign_at_a, max_iter, |value, width, _| {
+        value.abs() < residual_tolerance || width < tolerance
+    })
+    .ok_or_else(|| "Function value is not finite.".to_string())
+}
+
+/// Bisects finite endpoints with already evaluated opposite, nonzero signs.
+///
+/// The stopping predicate receives the midpoint residual, absolute bracket
+/// width and midpoint coordinate. A non-finite midpoint residual gives `None`.
+pub(super) fn bisect_sampled(
+    mut f: impl FnMut(f64) -> f64,
+    (mut a, mut b): (f64, f64),
+    sign_at_a: bool,
+    max_iter: usize,
+    converged: impl Fn(f64, f64, f64) -> bool,
+) -> Option<f64> {
+    // Subsequent endpoints stay within the original interval.
+    let half_max = f64::MAX * 0.5;
+    let direct_midpoint = a.abs() <= half_max && b.abs() <= half_max;
+    #[allow(
+        clippy::manual_midpoint,
+        reason = "both endpoints stay within the prechecked half range"
+    )]
+    let midpoint = |a, b| {
+        if direct_midpoint {
+            (a + b) * 0.5
         } else {
+            f64::midpoint(a, b)
+        }
+    };
+    for _ in 0..max_iter {
+        let mid = midpoint(a, b);
+        if exact_eq(mid, a) || exact_eq(mid, b) {
+            return Some(mid);
+        }
+        let fm = f(mid);
+        if !fm.is_finite() {
+            return None;
+        }
+        if converged(fm, (b - a).abs(), mid) {
+            return Some(mid);
+        }
+        if fm.is_sign_negative() == sign_at_a {
             a = mid;
-            fa = fm;
+        } else {
+            b = mid;
         }
     }
-    Ok(f64::midpoint(a, b))
+    Some(midpoint(a, b))
+}
+
+fn check_root_tolerance(tolerance: f64) -> Result<(), String> {
+    if tolerance.is_finite() && tolerance >= 0.0 {
+        Ok(())
+    } else {
+        Err("Root tolerance must be finite and nonnegative.".to_string())
+    }
 }
 
 /// Finds a root of `f` near `guess`: Newton's method with a central
 /// difference derivative from several starting points, then bisection over
-/// growing brackets.
+/// growing brackets. A non-finite sample discards the current attempt.
 ///
 /// # Errors
-/// Returns an error when every strategy fails.
+/// Returns an error for a non-finite guess or a negative or non-finite
+/// tolerance, or when every strategy fails.
 pub fn solve_root(
     f: impl Fn(f64) -> f64,
     guess: f64,
     tolerance: f64,
     max_iter: usize,
 ) -> Result<f64, String> {
+    if !guess.is_finite() {
+        return Err("Root guess must be finite.".to_string());
+    }
+    check_root_tolerance(tolerance)?;
+    let finite_sample = |x: f64| {
+        if x.is_finite() {
+            f(x)
+        } else {
+            f64::NAN
+        }
+    };
     let df = |x: f64| {
         let h = 1e-6 * x.abs().max(1.0);
-        (f(x + h) - f(x - h)) / (2.0 * h)
+        let slope = (finite_sample(x + h) - finite_sample(x - h)) / (2.0 * h);
+        // A non-finite derivative cannot establish a converged zero step.
+        if slope.is_finite() {
+            slope
+        } else {
+            f64::NAN
+        }
     };
     for start in [guess, 0.0, -1.0, 2.0, 0.5, -0.5, 10.0] {
-        if let Ok(root) = solve_root_newton(&f, df, start, tolerance, max_iter) {
+        if let Ok(root) = solve_root_newton(finite_sample, df, start, tolerance, max_iter)
+            && root.is_finite()
+        {
             return Ok(root);
         }
     }

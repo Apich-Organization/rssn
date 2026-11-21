@@ -26,6 +26,16 @@ pub enum OdeSolverMethod {
     RungeKutta4,
 }
 
+impl OdeSolverMethod {
+    pub(crate) const fn stages(self) -> usize {
+        match self {
+            | Self::Euler => 1,
+            | Self::Heun => 2,
+            | Self::RungeKutta4 => 4,
+        }
+    }
+}
+
 /// A discrete trajectory: times and the state at each time.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Trajectory {
@@ -50,8 +60,6 @@ impl Trajectory {
 /// Rejects zero steps, non-finite inputs, unrepresentable steps, or a
 /// trajectory that cannot be reserved. Returns an error when the state stops
 /// being finite.
-// Equality detects an unrepresentable step/interval endpoint, not approximate convergence.
-#[allow(clippy::float_cmp)]
 pub fn solve_fixed(
     f: impl Fn(f64, &[f64], &mut [f64]),
     y0: &[f64],
@@ -61,36 +69,67 @@ pub fn solve_fixed(
 ) -> Result<Trajectory, String> {
     crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
     let (h, mut out) = fixed_grid(y0, t_span, steps)?;
-    let n = y0.len();
-    let mut y = y0.to_vec();
     out.t.push(t_span.0);
-    out.y.push(y.clone());
-    let mut k = vec![vec![0.0; n]; 4];
-    let mut stage = vec![0.0; n];
+    out.y.push(y0.to_vec());
+    integrate_fixed(&f, y0, t_span, steps, method, h, |time, state| {
+        out.t.push(time);
+        out.y.push(state.to_vec());
+    })?;
+    Ok(out)
+}
+
+/// Integrates on the same fixed grid as [`solve_fixed`] and returns its final
+/// state using scratch space proportional to the state dimension.
+///
+/// # Errors
+/// Rejects zero steps, non-finite inputs, unrepresentable steps, non-finite
+/// states, or cancellation.
+pub fn solve_fixed_final(
+    f: impl Fn(f64, &[f64], &mut [f64]),
+    y0: &[f64],
+    t_span: (f64, f64),
+    steps: usize,
+    method: OdeSolverMethod,
+) -> Result<Vec<f64>, String> {
+    crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
+    let h = fixed_step_size(y0, t_span, steps)?;
+    integrate_fixed(&f, y0, t_span, steps, method, h, |_, _| {})
+}
+
+#[allow(clippy::float_cmp, reason = "detects a step rounded to the same time")]
+fn integrate_fixed<F: Fn(f64, &[f64], &mut [f64])>(
+    f: &F,
+    y0: &[f64],
+    t_span: (f64, f64),
+    steps: usize,
+    method: OdeSolverMethod,
+    h: f64,
+    mut record: impl FnMut(f64, &[f64]),
+) -> Result<Vec<f64>, String> {
+    let mut y = y0.to_vec();
+    let (mut k, mut stage) = fixed_scratch(y.len(), method);
     for step in 0..steps {
         crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
         let t = t_span.0 + h * step as f64;
         if t_span.0 != t_span.1 && (h == 0.0 || t + h == t) {
             return Err("The step is too small to advance time.".to_string());
         }
-        advance(method, &f, t, &mut y, h, &mut k, &mut stage);
+        advance(method, f, t, &mut y, h, &mut k, &mut stage);
         crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
         if y.iter().any(|v| !v.is_finite()) {
             return Err("Overflow or invalid value encountered during ODE solving.".to_string());
         }
-        out.t.push(t_span.0 + h * (step + 1) as f64);
-        out.y.push(y.clone());
+        record(t_span.0 + h * (step + 1) as f64, &y);
     }
-    Ok(out)
+    Ok(y)
 }
 
-/// Validates the fixed grid and reserves a complete trajectory.
 #[allow(clippy::float_cmp, reason = "detects a step rounded to the same time")]
-fn fixed_grid(
+fn fixed_step_size(
     y0: &[f64],
     t_span: (f64, f64),
     steps: usize,
-) -> Result<(f64, Trajectory), String> {
+) -> Result<f64, String> {
     if steps == 0 {
         return Err("The number of steps must be positive.".to_owned());
     }
@@ -102,6 +141,15 @@ fn fixed_grid(
     if duration != 0.0 && t_span.0 + h == t_span.0 {
         return Err("The step is too small to advance time.".to_owned());
     }
+    Ok(h)
+}
+
+fn fixed_grid(
+    y0: &[f64],
+    t_span: (f64, f64),
+    steps: usize,
+) -> Result<(f64, Trajectory), String> {
+    let h = fixed_step_size(y0, t_span, steps)?;
     let capacity = steps
         .checked_add(1)
         .ok_or_else(|| "The number of trajectory samples is too large.".to_owned())?;
@@ -111,6 +159,27 @@ fn fixed_grid(
         .and_then(|()| y.try_reserve_exact(capacity))
         .map_err(|error| format!("Cannot reserve the ODE trajectory: {error}"))?;
     Ok((h, Trajectory { t, y }))
+}
+
+fn fixed_scratch(
+    n: usize,
+    method: OdeSolverMethod,
+) -> ([Vec<f64>; 4], Vec<f64>) {
+    let stages = method.stages();
+    (
+        std::array::from_fn(|i| {
+            if i < stages {
+                vec![0.0; n]
+            } else {
+                Vec::new()
+            }
+        }),
+        if stages > 1 {
+            vec![0.0; n]
+        } else {
+            Vec::new()
+        },
+    )
 }
 
 /// One step of `method` from `(t, y)` with step `h`, in place.
@@ -125,43 +194,49 @@ fn advance<F: Fn(f64, &[f64], &mut [f64])>(
     t: f64,
     y: &mut [f64],
     h: f64,
-    k: &mut [Vec<f64>],
+    k: &mut [Vec<f64>; 4],
     stage: &mut [f64],
 ) {
-    let n = y.len();
+    let [k0, k1, k2, k3] = k;
     match method {
         | OdeSolverMethod::Euler => {
-            f(t, y, &mut k[0]);
-            for i in 0..n {
-                y[i] += h * k[0][i];
+            f(t, y, k0);
+            for (value, &rate) in y.iter_mut().zip(k0.iter()) {
+                *value += h * rate;
             }
         },
         | OdeSolverMethod::Heun => {
-            f(t, y, &mut k[0]);
-            for i in 0..n {
-                stage[i] = y[i] + h * k[0][i];
+            f(t, y, k0);
+            for ((stage, &value), &rate) in stage.iter_mut().zip(y.iter()).zip(k0.iter()) {
+                *stage = value + h * rate;
             }
-            f(t + h, stage, &mut k[1]);
-            for i in 0..n {
-                y[i] += 0.5 * h * (k[0][i] + k[1][i]);
+            f(t + h, stage, k1);
+            for ((value, &first), &second) in y.iter_mut().zip(k0.iter()).zip(k1.iter()) {
+                *value += 0.5 * h * (first + second);
             }
         },
         | OdeSolverMethod::RungeKutta4 => {
-            f(t, y, &mut k[0]);
-            for i in 0..n {
-                stage[i] = y[i] + 0.5 * h * k[0][i];
+            f(t, y, k0);
+            for ((stage, &value), &rate) in stage.iter_mut().zip(y.iter()).zip(k0.iter()) {
+                *stage = value + 0.5 * h * rate;
             }
-            f(t + 0.5 * h, stage, &mut k[1]);
-            for i in 0..n {
-                stage[i] = y[i] + 0.5 * h * k[1][i];
+            f(t + 0.5 * h, stage, k1);
+            for ((stage, &value), &rate) in stage.iter_mut().zip(y.iter()).zip(k1.iter()) {
+                *stage = value + 0.5 * h * rate;
             }
-            f(t + 0.5 * h, stage, &mut k[2]);
-            for i in 0..n {
-                stage[i] = y[i] + h * k[2][i];
+            f(t + 0.5 * h, stage, k2);
+            for ((stage, &value), &rate) in stage.iter_mut().zip(y.iter()).zip(k2.iter()) {
+                *stage = value + h * rate;
             }
-            f(t + h, stage, &mut k[3]);
-            for i in 0..n {
-                y[i] += h / 6.0 * (k[0][i] + 2.0 * k[1][i] + 2.0 * k[2][i] + k[3][i]);
+            f(t + h, stage, k3);
+            for ((((value, &a), &b), &c), &d) in y
+                .iter_mut()
+                .zip(k0.iter())
+                .zip(k1.iter())
+                .zip(k2.iter())
+                .zip(k3.iter())
+            {
+                *value += h / 6.0 * (a + 2.0 * b + 2.0 * c + d);
             }
         },
     }
@@ -215,10 +290,8 @@ pub fn solve_fixed_events<F: Fn(f64, &[f64], &mut [f64])>(
     out.t.push(t_span.0);
     out.y.push(y.clone());
     let mut hits: Vec<FixedEvent> = Vec::new();
-    let mut k = vec![vec![0.0; n]; 4];
-    let mut stage = vec![0.0; n];
-    let mut probe_k = vec![vec![0.0; n]; 4];
-    let mut probe_stage = vec![0.0; n];
+    let (mut k, mut stage) = fixed_scratch(n, method);
+    let (mut probe_k, mut probe_stage) = fixed_scratch(n, method);
     let mut gprev: Vec<f64> = events.iter().map(|event| (event.g)(t_span.0, y0)).collect();
     let mut next = y.clone();
     let mut step_hits: Vec<FixedEvent> = Vec::new();
@@ -302,7 +375,7 @@ fn locate_in_step<F: Fn(f64, &[f64], &mut [f64])>(
     h: f64,
     g0: f64,
     event: &Event<'_>,
-    k: &mut [Vec<f64>],
+    k: &mut [Vec<f64>; 4],
     stage: &mut [f64],
 ) -> (f64, Vec<f64>) {
     let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
@@ -537,7 +610,8 @@ impl OdeStepMode {
         }
     }
 
-    /// Converts an [`OdeStepMode::Adaptive`] into [`OdeOptions`].
+    /// Converts an [`OdeStepMode::Adaptive`] into
+    /// [`OdeOptions`](crate::kernels::ode_adaptive::OdeOptions).
     ///
     /// # Errors
     /// Returns [`OdeError::Invalid`](crate::kernels::ode_adaptive::OdeError::Invalid)
@@ -668,8 +742,7 @@ fn explicit_fixed_with_events<F: Fn(f64, &[f64], &mut [f64])>(
     let dir = if t1 > t0 { 1.0 } else { -1.0 };
     let mut t = t0;
     let mut y = y0.to_vec();
-    let mut k = vec![vec![0.0; n]; 4];
-    let mut stage = vec![0.0; n];
+    let (mut k, mut stage) = fixed_scratch(n, method);
     let mut f0 = vec![0.0; n];
     let mut f1 = vec![0.0; n];
     f(t, &y, &mut f0);
@@ -800,8 +873,7 @@ fn explicit_doubling_adaptive<F: Fn(f64, &[f64], &mut [f64])>(
         * dir;
     let mut sol = OdeSolution::start(t0, y0);
     let mut gprev = initial_events(events, t0, y0)?;
-    let mut k = vec![vec![0.0; n]; 4];
-    let mut stage = vec![0.0; n];
+    let (mut k, mut stage) = fixed_scratch(n, method);
     let mut f1 = vec![0.0; n];
     let mut attempts = 0usize;
     while (t1 - t) * dir > 0.0 {

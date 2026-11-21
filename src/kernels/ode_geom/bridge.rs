@@ -2,6 +2,7 @@
 use super::GeometricMethod;
 use super::OdeGeomError;
 use super::Rate;
+use super::adaptive::GeometricStepper;
 
 /// A shooting residual failure retains the caller's original error type.
 #[derive(Debug)]
@@ -121,12 +122,13 @@ pub fn sample_fixed_geometric(
     let mut y = y0.to_vec();
     let mut t = ts[0];
     let mut out = vec![y.clone()];
+    let mut stepper = GeometricStepper::new(method);
+    let steps = steps.max(1);
     for target in &ts[1..] {
-        let steps = steps.max(1);
         let h = (target - t) / steps as f64;
         let mut time = t;
         for _ in 0..steps {
-            y = super::adaptive::geometric_step(method, rhs, time, &y, h)?;
+            y = stepper.step(rhs, time, &y, h)?.0;
             time += h;
         }
         t = *target;
@@ -137,7 +139,8 @@ pub fn sample_fixed_geometric(
 /// Evaluate one checked cubic Hermite segment in linear state-vector work.
 ///
 /// # Errors
-/// Empty/mismatched vectors, nonfinite values, or a query outside the segment.
+/// Empty or mismatched vectors, nonfinite inputs, a query outside the segment,
+/// or arithmetic overflow during the evaluation.
 pub fn hermite_segment(
     t0: f64,
     t1: f64,
@@ -153,28 +156,38 @@ pub fn hermite_segment(
             "Hermite endpoint vectors must have equal nonzero lengths".into(),
         ));
     }
-    if !t0.is_finite()
-        || !t1.is_finite()
-        || !t.is_finite()
-        || t1 <= t0
-        || !(t0..=t1).contains(&t)
-        || [y0, y1, f0, f1]
-            .iter()
-            .any(|v| v.iter().any(|x| !x.is_finite()))
-    {
+    if !t0.is_finite() || !t1.is_finite() || !t.is_finite() || t1 <= t0 || !(t0..=t1).contains(&t) {
         return Err(OdeGeomError::Domain(
             "invalid Hermite segment or query".into(),
         ));
     }
-    let h = t1 - t0;
-    let s = (t - t0) / h;
+    let width = t1 - t0;
+    let (h, scale, s) = if width.is_finite() {
+        (width, 1.0, (t - t0) / width)
+    } else {
+        // Halving each endpoint keeps the interval width representable.
+        // Restore that factor of two in the dimensionless slope weights.
+        let half_start = 0.5 * t0;
+        let half_width = 0.5 * t1 - half_start;
+        (half_width, 2.0, (0.5 * t - half_start) / half_width)
+    };
     let (h00, h10, h01, h11) = (
         2.0 * s * s * s - 3.0 * s * s + 1.0,
         s * s * s - 2.0 * s * s + s,
         -2.0 * s * s * s + 3.0 * s * s,
         s * s * s - s * s,
     );
-    Ok((0..n)
-        .map(|i| h00 * y0[i] + h10 * h * f0[i] + h01 * y1[i] + h11 * h * f1[i])
-        .collect())
+    let left_rate = (h10 * scale) * h;
+    let right_rate = (h11 * scale) * h;
+    let output: Vec<_> = (0..n)
+        .map(|i| h00 * y0[i] + left_rate * f0[i] + h01 * y1[i] + right_rate * f1[i])
+        .collect();
+    // All four inputs contribute even at an endpoint. A nonfinite input
+    // propagates through multiplication and addition into a nonfinite output.
+    if output.iter().any(|v| !v.is_finite()) {
+        return Err(OdeGeomError::Domain(
+            "nonfinite Hermite input or evaluation".into(),
+        ));
+    }
+    Ok(output)
 }

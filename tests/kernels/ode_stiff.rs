@@ -1,6 +1,10 @@
 //! Tests for the Radau IIA(5) and variable-order BDF stiff integrators.
 
+use std::cell::Cell;
+
 use rssn::kernels::dense::Mat;
+use rssn::kernels::jacobian::JacStructure;
+use rssn::kernels::ode_adaptive::OdeError;
 use rssn::kernels::ode_adaptive::OdeOptions;
 use rssn::kernels::ode_adaptive::rosenbrock23;
 use rssn::kernels::ode_stiff::BdfOptions;
@@ -297,4 +301,87 @@ fn bdf_accepts_a_time_dependent_mass_matrix() {
         .copied()
         .unwrap_or(f64::NAN);
     assert!((y - reference_y).abs() < 1e-7, "{y} vs {reference_y}");
+}
+
+#[test]
+fn bdf_banded_solver_includes_off_diagonal_mass_entries_that_appear_after_startup() {
+    // x' + t y' = -12 x and y' = -2 y. Place the time-dependent entry in
+    // both off-diagonal positions to exercise lower and upper band growth.
+    for (x, y) in [(0, 1), (1, 0)] {
+        let mass_at = |t: f64| {
+            let mut mass = Mat::identity(2);
+            mass.set(x, y, t);
+            mass
+        };
+        let rhs = |_: f64, state: &[f64], out: &mut [f64]| {
+            out[x] = -12.0 * state[x];
+            out[y] = -2.0 * state[y];
+        };
+        let options = OdeOptions {
+            rtol: 1e-9,
+            atol: 1e-11,
+            ..OdeOptions::default()
+        };
+        let bdf_options = BdfOptions {
+            mass_fn: Some(&mass_at),
+            structure: JacStructure::Banded { kl: 0, ku: 0 },
+            ..BdfOptions::default()
+        };
+        let solution = bdf_with(rhs, 0.0, 1.0, &[1.0, 1.0], &options, &bdf_options).unwrap();
+        for time in [0.2_f64, 0.75, 1.0] {
+            let state = solution.eval(time).unwrap();
+            let exact_y = (-2.0 * time).exp();
+            let exact_x = 1.02 * (-12.0 * time).exp() + (0.2 * time - 0.02) * exact_y;
+            assert!((state[x] - exact_x).abs() < 2e-8);
+            assert!((state[y] - exact_y).abs() < 2e-8);
+        }
+    }
+}
+
+#[test]
+fn bdf_checks_every_time_dependent_mass_result() {
+    for (bad, expected) in [
+        (Mat::identity(1), OdeError::Invalid),
+        (Mat::identity(3), OdeError::Invalid),
+        (
+            Mat {
+                rows: 2,
+                cols: 2,
+                data: vec![1.0, 0.0],
+            },
+            OdeError::Invalid,
+        ),
+        (
+            Mat::from_rows(&[vec![1.0, f64::INFINITY], vec![0.0, 1.0]]).unwrap(),
+            OdeError::NonFinite,
+        ),
+    ] {
+        let calls = Cell::new(0);
+        let mass_at = |_: f64| {
+            if calls.replace(calls.get() + 1) == 0 {
+                Mat::identity(2)
+            } else {
+                bad.clone()
+            }
+        };
+        let options = OdeOptions {
+            h0: Some(0.1),
+            max_steps: 1,
+            ..OdeOptions::default()
+        };
+        let bdf_options = BdfOptions {
+            mass_fn: Some(&mass_at),
+            ..BdfOptions::default()
+        };
+        let result = bdf_with(
+            |_, _, dy| dy.fill(0.0),
+            0.0,
+            1.0,
+            &[1.0, 1.0],
+            &options,
+            &bdf_options,
+        );
+        assert_eq!(result.unwrap_err(), expected);
+        assert_eq!(calls.get(), 2);
+    }
 }

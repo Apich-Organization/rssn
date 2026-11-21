@@ -1,3 +1,5 @@
+//! Stochastic differential equations: Euler-Maruyama, Milstein, SRK, Heun and adaptive steps.
+//!
 //! # Stochastic differential equations
 //!
 //! Integrators for `dX = a(t, X) dt + g(t, X) dW` with an `n`-vector state
@@ -39,8 +41,8 @@
 //!   a fixed-step reference.
 //!
 //! * [`sde_ensemble`]: many independent sample paths of a fixed-step scheme, run on the rayon
-//!   pool; member `i` is seeded by [`ensemble_seed`]`(seed, i)`, so the ensemble does not depend on
-//!   the thread count.
+//!   pool. Each member uses [`ensemble_seed`] with the common seed and its index,
+//!   so the ensemble does not depend on the thread count.
 //!
 //! * [`milstein_noncommutative_stratonovich`]: the Stratonovich Milstein scheme for
 //!   non-commutative noise, with `J_jl = I_jl + delta_jl h / 2 = dW_j dW_l / 2 + A_jl`.
@@ -93,20 +95,21 @@
 //! | [`milstein_stratonovich`], [`heun_stratonovich`], [`milstein_noncommutative_stratonovich`], [`srk_noncommutative_stratonovich`], [`sde_adaptive_stratonovich_with`], [`sde_adaptive_noncommutative_stratonovich_with`] | Stratonovich | `X_0 exp(sigma W_T)` |
 //!
 //! The increments are convention-free — both interpretations sample the same
-//! Brownian path — which is why the closure-free noise can be exposed as
-//! manifest operators (see [`crate::rules::sde`]) while the solvers stay
-//! Rust-only. A caller must not pair a Stratonovich scheme with coefficients
+//! Brownian path. Rust callers supply coefficient callbacks, and the native
+//! ABI uses retained coefficient tapes and noise samples. A caller must not
+//! pair a Stratonovich scheme with coefficients
 //! meant for Ito (or the reverse) without the `g g' h / 2` conversion; the two
 //! then differ at strong order one, which is the same order as the schemes
 //! themselves.
 //!
 //! The noise operators `sde_wiener` and `sde_levy_areas` in
-//! [`crate::rules::sde`] draw exactly the increments and iterated integrals the
+//! [`crate::rules::sde`](mod@crate::rules::sde) draw exactly the increments and iterated integrals the
 //! fixed-step solvers accept, so a host can sample once and integrate several
 //! schemes on the same path.
 
 use std::fmt;
 
+use crate::kernels::numeric_common::scale_product;
 use crate::kernels::random::Rng;
 
 /// Errors of the SDE integrators.
@@ -236,10 +239,48 @@ where
     A: Fn(f64, &[f64], &mut [f64]),
     G: Fn(f64, &[f64], &mut [f64]),
 {
+    euler_maruyama_core::<_, _, true>(drift, diff, m, t0, h, y0, dws).map(|(_, states)| states)
+}
+
+// Keep the path retention choice inside the kernel interface.
+#[allow(clippy::single_call_fn)]
+pub(crate) fn euler_maruyama_terminal<A, G>(
+    drift: A,
+    diff: G,
+    m: usize,
+    t0: f64,
+    h: f64,
+    y0: &[f64],
+    dws: &[Vec<f64>],
+) -> Result<Vec<f64>, SdeError>
+where
+    A: Fn(f64, &[f64], &mut [f64]),
+    G: Fn(f64, &[f64], &mut [f64]),
+{
+    euler_maruyama_core::<_, _, false>(drift, diff, m, t0, h, y0, dws).map(|(state, _)| state)
+}
+
+fn euler_maruyama_core<A, G, const RETAIN_PATH: bool>(
+    drift: A,
+    diff: G,
+    m: usize,
+    t0: f64,
+    h: f64,
+    y0: &[f64],
+    dws: &[Vec<f64>],
+) -> Result<(Vec<f64>, Vec<Vec<f64>>), SdeError>
+where
+    A: Fn(f64, &[f64], &mut [f64]),
+    G: Fn(f64, &[f64], &mut [f64]),
+{
     check(y0, m, dws)?;
     let n = y0.len();
     let mut y = y0.to_vec();
-    let mut out = vec![y.clone()];
+    let mut out = if RETAIN_PATH {
+        vec![y.clone()]
+    } else {
+        Vec::new()
+    };
     let (mut a, mut g) = (vec![0.0; n], vec![0.0; n * m]);
     for (k, dw) in dws.iter().enumerate() {
         let t = t0 + k as f64 * h;
@@ -253,14 +294,255 @@ where
             y[i] += s;
         }
         finite(&y, k)?;
-        out.push(y.clone());
+        if RETAIN_PATH {
+            out.push(y.clone());
+        }
     }
-    Ok(out)
+    Ok((y, out))
+}
+
+struct ProbeWidth {
+    step: f64,
+    sides: f64,
+    column_scale: Option<f64>,
+}
+
+impl ProbeWidth {
+    fn weighted_difference(
+        &self,
+        plus: f64,
+        minus: f64,
+        weight: f64,
+    ) -> f64 {
+        if !(plus.is_finite() && minus.is_finite() && weight.is_finite()) {
+            return f64::NAN;
+        }
+        let difference = plus - minus;
+        if difference == 0.0 || weight == 0.0 {
+            return 0.0;
+        }
+        if self.column_scale.is_none() && difference.is_finite() {
+            let slope = difference / (self.sides * self.step);
+            let term = slope * weight;
+            if slope.is_normal() && term.is_normal() {
+                return term;
+            }
+        }
+        // Keep the column magnitude and integration weight separate from the
+        // quotient so an intermediate overflow or underflow cannot erase it.
+        let (difference, sides) = if difference.is_finite() {
+            (difference, self.sides)
+        } else {
+            (0.5 * plus - 0.5 * minus, 0.5 * self.sides)
+        };
+        let signed_difference = if weight.is_sign_negative() {
+            -difference
+        } else {
+            difference
+        };
+        scale_product(
+            signed_difference,
+            &[self.column_scale.unwrap_or(1.0), weight.abs()],
+            &[self.step, sides],
+        )
+        .unwrap_or(f64::NAN)
+    }
+}
+
+struct DiffusionProbes {
+    plus_state: Vec<f64>,
+    minus_state: Vec<f64>,
+    plus_diffusion: Vec<f64>,
+    minus_diffusion: Vec<f64>,
+}
+
+impl DiffusionProbes {
+    fn new(
+        n: usize,
+        m: usize,
+    ) -> Self {
+        Self {
+            plus_state: vec![0.0; n],
+            minus_state: vec![0.0; n],
+            plus_diffusion: vec![0.0; n * m],
+            minus_diffusion: vec![0.0; n * m],
+        }
+    }
+
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "the diffusion call and selected column are explicit"
+    )]
+    fn measure<G: Fn(f64, &[f64], &mut [f64])>(
+        &mut self,
+        diff: &G,
+        t: f64,
+        y: &[f64],
+        g: &[f64],
+        m: usize,
+        j: usize,
+        radius: f64,
+    ) -> Result<Option<ProbeWidth>, ()> {
+        let column = g[j..].iter().step_by(m).copied();
+        let square_sum = column.clone().map(|value| value * value).sum::<f64>();
+        let direct_step = radius / square_sum.sqrt();
+        let (step, column_scale) =
+            if square_sum.is_normal() && direct_step.is_normal() && direct_step <= 0.5 * f64::MAX {
+                (direct_step, None)
+            } else {
+                if square_sum.is_nan() {
+                    return Err(());
+                }
+                let peak = column.clone().map(f64::abs).fold(0.0, f64::max);
+                if peak == 0.0 {
+                    return Ok(None);
+                }
+                if !peak.is_finite() || !radius.is_finite() {
+                    return Err(());
+                }
+                let norm = column
+                    .clone()
+                    .map(|value| (value / peak).powi(2))
+                    .sum::<f64>()
+                    .sqrt();
+                (radius / norm, Some(peak))
+            };
+
+        let mut plus_finite = true;
+        let mut minus_finite = true;
+        for (((&value, component), plus), minus) in y
+            .iter()
+            .zip(column)
+            .zip(&mut self.plus_state)
+            .zip(&mut self.minus_state)
+        {
+            let offset = column_scale.map_or_else(
+                || step * component,
+                |peak| {
+                    let ratio = component / peak;
+                    if ratio.is_normal() || component == 0.0 {
+                        step * ratio
+                    } else {
+                        scale_product(component, &[step], &[peak]).unwrap_or(f64::NAN)
+                    }
+                },
+            );
+            *plus = value + offset;
+            *minus = value - offset;
+            plus_finite &= plus.is_finite();
+            minus_finite &= minus.is_finite();
+        }
+        if !(plus_finite || minus_finite) {
+            return Err(());
+        }
+        // At a finite range boundary a one-sided probe uses the already
+        // evaluated diffusion at the unperturbed state for its other value.
+        if plus_finite {
+            diff(t, &self.plus_state, &mut self.plus_diffusion);
+        } else {
+            self.plus_diffusion.copy_from_slice(g);
+        }
+        if minus_finite {
+            diff(t, &self.minus_state, &mut self.minus_diffusion);
+        } else {
+            self.minus_diffusion.copy_from_slice(g);
+        }
+        Ok(Some(ProbeWidth {
+            step,
+            sides: if plus_finite && minus_finite {
+                2.0
+            } else {
+                1.0
+            },
+            column_scale,
+        }))
+    }
+}
+
+fn probe_radius(y: &[f64]) -> f64 {
+    1e-6 * y.iter().map(|v| v.abs()).fold(1.0, f64::max)
+}
+
+struct MilsteinWork {
+    probes: DiffusionProbes,
+    correction: Vec<f64>,
+}
+
+impl MilsteinWork {
+    fn new(
+        n: usize,
+        m: usize,
+    ) -> Self {
+        Self {
+            probes: DiffusionProbes::new(n, m),
+            correction: vec![0.0; n],
+        }
+    }
+
+    fn correction<G: Fn(f64, &[f64], &mut [f64])>(
+        &mut self,
+        diff: &G,
+        t: f64,
+        y: &[f64],
+        g: &[f64],
+        m: usize,
+        integral: impl Fn(usize, usize) -> f64,
+    ) -> &[f64] {
+        self.correction.fill(0.0);
+        self.probes.plus_diffusion.fill(0.0);
+        self.probes.minus_diffusion.fill(0.0);
+        let radius = probe_radius(y);
+        for j in 0..m {
+            let width = match self.probes.measure(diff, t, y, g, m, j, radius) {
+                | Ok(Some(width)) => width,
+                | Ok(None) => continue,
+                | Err(()) => {
+                    self.correction.fill(f64::NAN);
+                    break;
+                },
+            };
+            // Bounds on the operands keep both the quotient and the weighted
+            // term away from the exponent limits. Check the whole direction
+            // once so the common accumulation loop has no per-entry branch.
+            let direct = width.column_scale.is_none()
+                && (1e-50..=1e50).contains(&width.step)
+                && self
+                    .probes
+                    .plus_diffusion
+                    .iter()
+                    .zip(&self.probes.minus_diffusion)
+                    .fold(true, |valid, (plus, minus)| {
+                        let magnitude = (plus - minus).abs();
+                        valid & (magnitude == 0.0 || (1e-100..=1e100).contains(&magnitude))
+                    });
+            let denominator = width.sides * width.step;
+            for k in 0..m {
+                let weight = integral(j, k);
+                if direct && (weight == 0.0 || (1e-50..=1e50).contains(&weight.abs())) {
+                    for (i, correction) in self.correction.iter_mut().enumerate() {
+                        let at = i * m + k;
+                        let difference =
+                            self.probes.plus_diffusion[at] - self.probes.minus_diffusion[at];
+                        *correction += difference / denominator * weight;
+                    }
+                } else {
+                    for (i, correction) in self.correction.iter_mut().enumerate() {
+                        let at = i * m + k;
+                        *correction += width.weighted_difference(
+                            self.probes.plus_diffusion[at],
+                            self.probes.minus_diffusion[at],
+                            weight,
+                        );
+                    }
+                }
+            }
+        }
+        &self.correction
+    }
 }
 
 /// Milstein correction `sum_{j,k} (D_j g)_{.k} I_jk` for the iterated Ito
-/// integrals `areas[j * m + k] = I_jk` (row-major), with the directional
-/// derivatives `D_j g` taken by central differences along the columns of `g`.
+/// integrals `areas[j * m + k] = I_jk` (row-major).
 pub(crate) fn milstein_term_areas<G: Fn(f64, &[f64], &mut [f64])>(
     diff: &G,
     t: f64,
@@ -269,28 +551,34 @@ pub(crate) fn milstein_term_areas<G: Fn(f64, &[f64], &mut [f64])>(
     m: usize,
     areas: &[f64],
 ) -> Vec<f64> {
-    let n = y.len();
-    let mut corr = vec![0.0; n];
-    let (mut gp, mut gm) = (vec![0.0; n * m], vec![0.0; n * m]);
-    for j in 0..m {
-        let col: Vec<f64> = (0..n).map(|i| g[i * m + j]).collect();
-        let cn = col.iter().map(|v| v * v).sum::<f64>().sqrt();
-        if cn == 0.0 {
-            continue;
-        }
-        let scale = y.iter().map(|v| v.abs()).fold(1.0, f64::max);
-        let eps = 1e-6 * scale / cn;
-        let yp: Vec<f64> = (0..n).map(|i| y[i] + eps * col[i]).collect();
-        let ym: Vec<f64> = (0..n).map(|i| y[i] - eps * col[i]).collect();
-        diff(t, &yp, &mut gp);
-        diff(t, &ym, &mut gm);
-        for k in 0..m {
-            for i in 0..n {
-                corr[i] += (gp[i * m + k] - gm[i * m + k]) / (2.0 * eps) * areas[j * m + k];
-            }
-        }
+    let mut work = MilsteinWork::new(y.len(), m);
+    work.correction(diff, t, y, g, m, |j, k| areas[j * m + k]);
+    work.correction
+}
+
+fn ito_product(
+    left: f64,
+    right: f64,
+    diagonal: f64,
+) -> f64 {
+    let difference = left * right - diagonal;
+    if difference.is_finite() {
+        0.5 * difference
+    } else {
+        (0.5 * left).mul_add(right, -0.5 * diagonal)
     }
-    corr
+}
+
+fn stratonovich_product(
+    left: f64,
+    right: f64,
+) -> f64 {
+    let half = 0.5 * left;
+    if half.is_normal() || left == 0.0 {
+        half * right
+    } else {
+        0.5 * (left * right)
+    }
 }
 
 /// One Milstein correction `(1/2) sum_{j,k} (D_j g)_{.k} (dW_j dW_k - delta_jk h)`
@@ -304,13 +592,11 @@ pub(crate) fn milstein_term<G: Fn(f64, &[f64], &mut [f64])>(
     dw: &[f64],
     h: f64,
 ) -> Vec<f64> {
-    let mut areas = vec![0.0; m * m];
-    for j in 0..m {
-        for k in 0..m {
-            areas[j * m + k] = 0.5 * (dw[j] * dw[k] - if j == k { h } else { 0.0 });
-        }
-    }
-    milstein_term_areas(diff, t, y, g, m, &areas)
+    let mut work = MilsteinWork::new(y.len(), m);
+    work.correction(diff, t, y, g, m, |j, k| {
+        ito_product(dw[j], dw[k], if j == k { h } else { 0.0 })
+    });
+    work.correction
 }
 
 /// Milstein scheme (strong order 1) for commutative noise; arguments as in
@@ -331,16 +617,57 @@ where
     A: Fn(f64, &[f64], &mut [f64]),
     G: Fn(f64, &[f64], &mut [f64]),
 {
+    milstein_core::<_, _, true>(drift, diff, m, t0, h, y0, dws).map(|(_, states)| states)
+}
+
+// Keep the path retention choice inside the kernel interface.
+#[allow(clippy::single_call_fn)]
+pub(crate) fn milstein_terminal<A, G>(
+    drift: A,
+    diff: G,
+    m: usize,
+    t0: f64,
+    h: f64,
+    y0: &[f64],
+    dws: &[Vec<f64>],
+) -> Result<Vec<f64>, SdeError>
+where
+    A: Fn(f64, &[f64], &mut [f64]),
+    G: Fn(f64, &[f64], &mut [f64]),
+{
+    milstein_core::<_, _, false>(drift, diff, m, t0, h, y0, dws).map(|(state, _)| state)
+}
+
+fn milstein_core<A, G, const RETAIN_PATH: bool>(
+    drift: A,
+    diff: G,
+    m: usize,
+    t0: f64,
+    h: f64,
+    y0: &[f64],
+    dws: &[Vec<f64>],
+) -> Result<(Vec<f64>, Vec<Vec<f64>>), SdeError>
+where
+    A: Fn(f64, &[f64], &mut [f64]),
+    G: Fn(f64, &[f64], &mut [f64]),
+{
     check(y0, m, dws)?;
     let n = y0.len();
     let mut y = y0.to_vec();
-    let mut out = vec![y.clone()];
+    let mut out = if RETAIN_PATH {
+        vec![y.clone()]
+    } else {
+        Vec::new()
+    };
     let (mut a, mut g) = (vec![0.0; n], vec![0.0; n * m]);
+    let mut work = MilsteinWork::new(n, m);
     for (k, dw) in dws.iter().enumerate() {
         let t = t0 + k as f64 * h;
         drift(t, &y, &mut a);
         diff(t, &y, &mut g);
-        let corr = milstein_term(&diff, t, &y, &g, m, dw, h);
+        let corr = work.correction(&diff, t, &y, &g, m, |j, k| {
+            ito_product(dw[j], dw[k], if j == k { h } else { 0.0 })
+        });
         for i in 0..n {
             let mut s = a[i] * h + corr[i];
             for j in 0..m {
@@ -349,9 +676,11 @@ where
             y[i] += s;
         }
         finite(&y, k)?;
-        out.push(y.clone());
+        if RETAIN_PATH {
+            out.push(y.clone());
+        }
     }
-    Ok(out)
+    Ok((y, out))
 }
 
 /// Milstein scheme (strong order 1) for the *Stratonovich* interpretation
@@ -386,18 +715,15 @@ where
     let mut y = y0.to_vec();
     let mut out = vec![y.clone()];
     let (mut a, mut g) = (vec![0.0; n], vec![0.0; n * m]);
+    let mut work = MilsteinWork::new(n, m);
     for (k, dw) in dws.iter().enumerate() {
         let t = t0 + k as f64 * h;
         drift(t, &y, &mut a);
         diff(t, &y, &mut g);
-        let mut areas = vec![0.0; m * m];
-        for (row, d) in areas.chunks_mut(m).zip(dw) {
-            for (area, d2) in row.iter_mut().zip(dw) {
-                *area = 0.5 * d * d2;
-            }
-        }
-        let corr = milstein_term_areas(&diff, t, &y, &g, m, &areas);
-        for (((yi, ai), ci), grow) in y.iter_mut().zip(&a).zip(&corr).zip(g.chunks(m)) {
+        let corr = work.correction(&diff, t, &y, &g, m, |j, k| {
+            stratonovich_product(dw[j], dw[k])
+        });
+        for (((yi, ai), ci), grow) in y.iter_mut().zip(&a).zip(corr).zip(g.chunks(m)) {
             *yi += ai * h + ci + grow.iter().zip(dw).map(|(gij, dwj)| gij * dwj).sum::<f64>();
         }
         finite(&y, k)?;
@@ -442,6 +768,10 @@ fn zeta2_tail(p: usize) -> f64 {
 /// tail sum divided by `2 pi^2`, and `mu`, `nu` standard normal. The
 /// remainder error decays like `1 / terms^{3/2}` in distribution; a few
 /// terms suffice for strong order one.
+///
+/// `dw` contains the `m` supplied increments. The returned matrix is flat
+/// and row-major. Pair evaluation can run in parallel, with the same RNG
+/// draws and floating-point summation order for every worker count.
 #[must_use]
 pub fn levy_areas(
     rng: &mut Rng,
@@ -450,39 +780,189 @@ pub fn levy_areas(
     dw: &[f64],
     terms: usize,
 ) -> Vec<f64> {
+    const PAIRS_PER_CHUNK: usize = 128;
     let p = terms.max(1);
-    let xi: Vec<f64> = dw.iter().map(|d| d / h.sqrt()).collect();
-    let tail = zeta2_tail(p);
-    let rho = tail / (2.0 * std::f64::consts::PI.powi(2));
-    let srho = rho.sqrt();
-    // Fourier coefficients
-    let zeta: Vec<Vec<f64>> = (0..m)
-        .map(|_| (0..p).map(|_| rng.normal()).collect())
-        .collect();
-    let eta: Vec<Vec<f64>> = (0..m)
-        .map(|_| (0..p).map(|_| rng.normal()).collect())
-        .collect();
+    if m == 0 {
+        return Vec::new();
+    }
+    if m == 1 {
+        // A scalar integral has no skew part. Keep the original coefficient
+        // draws so subsequent steps see the same normal stream.
+        for _ in 0..p {
+            let _ = rng.normal();
+            let _ = rng.normal();
+        }
+        let _ = rng.normal();
+        return vec![ito_product(dw[0], dw[0], h)];
+    }
+    let sh = h.sqrt();
+    let xi: Vec<f64> = dw.iter().map(|d| d / sh).collect();
+    let srho = (zeta2_tail(p) / (2.0 * std::f64::consts::PI.powi(2))).sqrt();
+    // Draw all zeta coefficients, then all eta coefficients, in row order.
+    // Cache the shifted eta used in every pair incident to a given row.
+    let count = m * p;
+    let mut coefficients = crate::kernels::reuse::f64_scratch(3 * count);
+    coefficients.extend((0..2 * count).map(|_| rng.normal()));
+    coefficients.resize(3 * count, 0.0);
+    let (zeta, other) = coefficients.split_at_mut(count);
+    let (eta, shifted) = other.split_at_mut(count);
+    for ((shifted, eta), &increment) in shifted
+        .chunks_exact_mut(p)
+        .zip(eta.chunks_exact(p))
+        .zip(&xi)
+    {
+        let offset = std::f64::consts::SQRT_2 * increment;
+        for (value, &entry) in shifted.iter_mut().zip(eta) {
+            *value = offset + entry;
+        }
+    }
     let mu: Vec<f64> = (0..m).map(|_| rng.normal()).collect();
+    let bridge = LevyBridge {
+        h,
+        sh,
+        srho,
+        p,
+        dw,
+        xi: &xi,
+        mu: &mu,
+        zeta,
+        eta,
+        shifted,
+    };
     let mut areas = vec![0.0; m * m];
-    for j in 0..m {
-        areas[j * m + j] = 0.5 * (dw[j] * dw[j] - h);
-        for l in j + 1..m {
-            let mut a = 0.0;
-            for r in 0..p {
-                let rr = (r + 1) as f64;
-                a += (zeta[j][r] * (std::f64::consts::SQRT_2 * xi[l] + eta[l][r])
-                    - zeta[l][r] * (std::f64::consts::SQRT_2 * xi[j] + eta[j][r]))
-                    / rr;
+    let pairs = m * (m - 1) / 2;
+    if pairs.saturating_mul(p) >= 65_536
+        && crate::execution::should_split(pairs.div_ceil(PAIRS_PER_CHUNK), 4)
+    {
+        // Draw the independent tail normals in the original row-major order.
+        // Each disjoint chunk then replaces its draws with both integrals.
+        let mut packed = crate::kernels::reuse::f64_scratch(2 * pairs);
+        for _ in 0..pairs {
+            packed.extend([rng.normal(), 0.0]);
+        }
+        crate::kernels::par::for_chunks_mut(
+            &mut packed,
+            2 * PAIRS_PER_CHUNK,
+            4,
+            |chunk, values| {
+                let start = chunk * PAIRS_PER_CHUNK;
+                let (mut first, mut end) = (0, m - 1);
+                while first + 1 < end {
+                    let middle = usize::midpoint(first, end);
+                    if levy_row_start(m, middle) <= start {
+                        first = middle;
+                    } else {
+                        end = middle;
+                    }
+                }
+                let mut j = first;
+                let mut l = j + 1 + start - levy_row_start(m, j);
+                for pair in values.as_chunks_mut::<2>().0 {
+                    *pair = bridge.pair(j, l, pair[0]);
+                    l += 1;
+                    if l == m {
+                        j += 1;
+                        l = j + 1;
+                    }
+                }
+            },
+        );
+        let mut pairs = packed.as_chunks::<2>().0.iter();
+        for j in 0..m {
+            areas[j * m + j] = ito_product(dw[j], dw[j], h);
+            for (l, pair) in (j + 1..m).zip(&mut pairs) {
+                areas[j * m + l] = pair[0];
+                areas[l * m + j] = pair[1];
             }
-            a /= 2.0 * std::f64::consts::PI;
-            let nu = rng.normal();
-            let ijl =
-                h * (0.5 * xi[j] * xi[l] + a + srho * (mu[j] * xi[l] - mu[l] * xi[j]) + srho * nu);
-            areas[j * m + l] = ijl;
-            areas[l * m + j] = dw[j] * dw[l] - ijl;
+        }
+        return areas;
+    }
+    for j in 0..m {
+        areas[j * m + j] = ito_product(dw[j], dw[j], h);
+        for l in j + 1..m {
+            let [forward, reverse] = bridge.pair(j, l, rng.normal());
+            areas[j * m + l] = forward;
+            areas[l * m + j] = reverse;
         }
     }
     areas
+}
+
+const fn levy_row_start(
+    m: usize,
+    row: usize,
+) -> usize {
+    row * (2 * m - row - 1) / 2
+}
+
+struct LevyBridge<'a> {
+    h: f64,
+    sh: f64,
+    srho: f64,
+    p: usize,
+    dw: &'a [f64],
+    xi: &'a [f64],
+    mu: &'a [f64],
+    zeta: &'a [f64],
+    eta: &'a [f64],
+    shifted: &'a [f64],
+}
+
+impl LevyBridge<'_> {
+    fn pair(
+        &self,
+        j: usize,
+        l: usize,
+        tail_normal: f64,
+    ) -> [f64; 2] {
+        let Self {
+            h,
+            sh,
+            srho,
+            p,
+            dw,
+            xi,
+            mu,
+            zeta,
+            eta,
+            shifted,
+        } = *self;
+        let row_j = j * p..(j + 1) * p;
+        let row_l = l * p..(l + 1) * p;
+        let (zj, zl) = (&zeta[row_j.clone()], &zeta[row_l.clone()]);
+        let (ej, el) = (&shifted[row_j.clone()], &shifted[row_l.clone()]);
+        let mut a = 0.0;
+        for (r, ((&zj, &zl), (&ej, &el))) in zj.iter().zip(zl).zip(ej.iter().zip(el)).enumerate() {
+            a += (zj * el - zl * ej) / (r + 1) as f64;
+        }
+        a /= 2.0 * std::f64::consts::PI;
+        let ijl = h
+            * (0.5 * xi[j] * xi[l]
+                + a
+                + srho * (mu[j] * xi[l] - mu[l] * xi[j])
+                + srho * tail_normal);
+        let ilj = dw[j] * dw[l] - ijl;
+        if ijl.is_finite() && ilj.is_finite() || !h.is_finite() || h <= 0.0 {
+            return [ijl, ilj];
+        }
+        // The normalized increments or their product can overflow
+        // even when the physical integrals are both representable.
+        let symmetric = stratonovich_product(dw[j], dw[l]);
+        let (ej, el) = (&eta[row_j], &eta[row_l]);
+        let mut skew = 0.0;
+        for (r, ((&zj, &zl), (&ej, &el))) in zj.iter().zip(zl).zip(ej.iter().zip(el)).enumerate() {
+            let denominator = (r + 1) as f64 * (2.0 * std::f64::consts::PI);
+            let increment_scale = std::f64::consts::SQRT_2 * (sh / denominator);
+            let mode_scale = h / denominator;
+            let left = dw[j] * increment_scale + ej * mode_scale;
+            let right = dw[l] * increment_scale + el * mode_scale;
+            skew += zj * right - zl * left;
+        }
+        let tail_scale = srho * sh;
+        skew += mu[j] * (dw[l] * tail_scale) - mu[l] * (dw[j] * tail_scale);
+        skew += (h * srho) * tail_normal;
+        [symmetric + skew, symmetric - skew]
+    }
 }
 
 /// Samples `steps` Brownian increments and their iterated integrals
@@ -562,11 +1042,12 @@ where
     let mut y = y0.to_vec();
     let mut out = vec![y.clone()];
     let (mut a, mut g) = (vec![0.0; n], vec![0.0; n * m]);
+    let mut work = MilsteinWork::new(n, m);
     for (k, (dw, ar)) in noise.dws.iter().zip(&noise.areas).enumerate() {
         let t = t0 + k as f64 * h;
         drift(t, &y, &mut a);
         diff(t, &y, &mut g);
-        let corr = milstein_term_areas(&diff, t, &y, &g, m, ar);
+        let corr = work.correction(&diff, t, &y, &g, m, |j, l| ar[j * m + l]);
         for i in 0..n {
             let mut s = a[i] * h + corr[i];
             for j in 0..m {
@@ -636,12 +1117,19 @@ where
     let mut y = y0.to_vec();
     let mut out = vec![y.clone()];
     let (mut a, mut g) = (vec![0.0; n], vec![0.0; n * m]);
+    let mut work = MilsteinWork::new(n, m);
     for (k, (dw, ar)) in noise.dws.iter().zip(&noise.areas).enumerate() {
         let t = t0 + k as f64 * h;
         drift(t, &y, &mut a);
         diff(t, &y, &mut g);
-        let j = stratonovich_areas(ar, m, h);
-        let corr = milstein_term_areas(&diff, t, &y, &g, m, &j);
+        let corr = work.correction(&diff, t, &y, &g, m, |j, l| {
+            let value = ar[j * m + l];
+            if j == l {
+                value + 0.5 * h
+            } else {
+                value
+            }
+        });
         for i in 0..n {
             let mut s = a[i] * h + corr[i];
             for l in 0..m {
@@ -799,8 +1287,9 @@ where
 /// `a~_i = a_i + (1/2) sum_j sum_k g_{kj} d_k g_{ij}`.
 ///
 /// The correction is `(1/2) sum_j (D_j g)_{.j}` with the directional derivative of
-/// column `j` along itself, taken by central differences with the same scaling as
-/// the Milstein term (`eps = 1e-6 max(1, |y|_inf) / |g^j|`). The closure writes
+/// column `j` along itself, with the same scaled probes as the Milstein term.
+/// The ordinary step is `eps = 1e-6 max(1, |y|_inf) / |g^j|`. A probe uses one
+/// side at the floating-point range boundary when only that side is finite. The closure writes
 /// `a~` into its output, so any Ito integrator applied to `(a~, g)` converges to
 /// the Stratonovich solution of `(a, g)`.
 pub fn stratonovich_to_ito_drift<'a, A, G>(
@@ -817,31 +1306,110 @@ where
         let n = y.len();
         let mut g = vec![0.0; n * m];
         diff(t, y, &mut g);
-        let (mut gp, mut gm) = (vec![0.0; n * m], vec![0.0; n * m]);
-        let scale = y.iter().map(|v| v.abs()).fold(1.0, f64::max);
+        let mut probes = DiffusionProbes::new(n, m);
+        let radius = probe_radius(y);
         for j in 0..m {
-            let col: Vec<f64> = (0..n).map(|i| g[i * m + j]).collect();
-            let cn = col.iter().map(|v| v * v).sum::<f64>().sqrt();
-            if cn == 0.0 || !cn.is_finite() {
-                continue;
-            }
-            let eps = 1e-6 * scale / cn;
-            let yp: Vec<f64> = (0..n).map(|i| y[i] + eps * col[i]).collect();
-            let ym: Vec<f64> = (0..n).map(|i| y[i] - eps * col[i]).collect();
-            diff(t, &yp, &mut gp);
-            diff(t, &ym, &mut gm);
-            for i in 0..n {
-                out[i] += 0.5 * (gp[i * m + j] - gm[i * m + j]) / (2.0 * eps);
+            let width = match probes.measure(diff, t, y, &g, m, j, radius) {
+                | Ok(Some(width)) => width,
+                | Ok(None) => continue,
+                | Err(()) => {
+                    out.fill(f64::NAN);
+                    return;
+                },
+            };
+            for (i, value) in out.iter_mut().enumerate() {
+                let at = i * m + j;
+                *value += width.weighted_difference(
+                    probes.plus_diffusion[at],
+                    probes.minus_diffusion[at],
+                    0.5,
+                );
             }
         }
     }
 }
 
-/// Platen's derivative-free stochastic Runge-Kutta scheme.
+// Keep both the diffusion difference and the iterated integral in range
+// until the final correction is restored to its original scale.
+#[cold]
+fn platen_scaled_correction(
+    support: f64,
+    base: f64,
+    (weight, scales): (f64, [f64; 2]),
+    denominator: f64,
+) -> f64 {
+    let difference = support - base;
+    let (difference, scale) = if difference.is_infinite() {
+        (0.5 * support - 0.5 * base, 2.0)
+    } else {
+        (difference, 1.0)
+    };
+    if weight == 0.0 {
+        return difference * weight / denominator;
+    }
+    let signed = if weight.is_sign_negative() {
+        -difference
+    } else {
+        difference
+    };
+    scale_product(
+        signed,
+        &[weight.abs(), scales[0], scales[1], scale],
+        &[denominator],
+    )
+    .unwrap_or(f64::NAN)
+}
+
+#[cold]
+fn platen_scaled_integral(
+    left: f64,
+    right: f64,
+    diagonal: f64,
+    ito: f64,
+) -> (f64, [f64; 2]) {
+    const UP: f64 = f64::from_bits((1023 + 600) << 52);
+    const DOWN: f64 = f64::from_bits((1023 - 600) << 52);
+
+    if diagonal == 0.0 {
+        let signed = if right.is_sign_negative() {
+            -left
+        } else {
+            left
+        };
+        return (signed, [right.abs(), 1.0]);
+    }
+    // A diagonal term has left == right. Scaling both factors by the same
+    // power of two also scales the subtraction, including tiny cancellations.
+    let (scale, inverse) = if ito.is_finite() {
+        (UP, DOWN)
+    } else {
+        (DOWN, UP)
+    };
+    (
+        (scale * left).mul_add(scale * right, -(scale * diagonal) * scale),
+        [inverse; 2],
+    )
+}
+
+fn platen_bounded_diffusion(coefficients: &[f64]) -> bool {
+    // For nonzero magnitudes in these exponent bins (2^-250 through 2^251),
+    // every nonzero difference needs at most exponents -302 through 251.
+    coefficients.iter().fold(true, |bounded, value| {
+        let magnitude = value.abs().to_bits();
+        let exponent = magnitude >> 52;
+        bounded & (magnitude == 0 || ((1023 - 250)..=(1023 + 250)).contains(&exponent))
+    })
+}
+
+/// Platen's derivative-free stochastic Runge-Kutta scheme for commutative
+/// Itô noise, with strong order 1.
 ///
-/// Derivative-free stochastic Runge-Kutta scheme of Platen (strong order 1,
-/// commutative noise): the Milstein term is replaced by the difference of
-/// the diffusion at the supporting values `x + a h + g_j sqrt(h)`.
+/// Each supplied Brownian increment has `m` components. The scheme replaces
+/// the Milstein term with differences of the diffusion at supporting values
+/// `x + a h + g_j sqrt(abs(h))`.
+/// Corrections at extreme scales retain an out-of-range intermediate product
+/// in scaled form when the weighted result is representable. An empty
+/// increment sequence returns just `y0` without evaluating either callback.
 ///
 /// # Errors
 /// [`SdeError::Invalid`] or [`SdeError::NonFinite`].
@@ -859,25 +1427,61 @@ where
     G: Fn(f64, &[f64], &mut [f64]),
 {
     check(y0, m, dws)?;
+    if dws.is_empty() {
+        return Ok(vec![y0.to_vec()]);
+    }
     let n = y0.len();
     let sh = h.abs().sqrt();
+    let denominator = 2.0 * sh;
     let mut y = y0.to_vec();
-    let mut out = vec![y.clone()];
+    let mut out = Vec::with_capacity(dws.len() + 1);
+    out.push(y.clone());
     let (mut a, mut g, mut gs) = (vec![0.0; n], vec![0.0; n * m], vec![0.0; n * m]);
+    let mut scratch = super::reuse::f64_scratch(2 * n);
+    scratch.resize(2 * n, 0.0);
+    let (corr, ups) = scratch.split_at_mut(n);
     for (k, dw) in dws.iter().enumerate() {
         let t = t0 + k as f64 * h;
         drift(t, &y, &mut a);
         diff(t, &y, &mut g);
-        let mut corr = vec![0.0; n];
+        corr.fill(0.0);
+        let bounded_base = n >= 32 && m >= 2 && platen_bounded_diffusion(&g);
         for j in 0..m {
-            let ups: Vec<f64> = (0..n)
-                .map(|i| y[i] + a[i] * h + g[i * m + j] * sh)
-                .collect();
-            diff(t, &ups, &mut gs);
+            for (i, value) in ups.iter_mut().enumerate() {
+                *value = y[i] + a[i] * h + g[i * m + j] * sh;
+            }
+            diff(t, ups, &mut gs);
+            let bounded_direction = bounded_base && platen_bounded_diffusion(&gs);
             for kk in 0..m {
-                let ito = dw[j] * dw[kk] - if j == kk { h } else { 0.0 };
-                for i in 0..n {
-                    corr[i] += (gs[i * m + kk] - g[i * m + kk]) * ito / (2.0 * sh);
+                let diagonal = if j == kk { h } else { 0.0 };
+                let noise_product = dw[j] * dw[kk];
+                let ito = noise_product - diagonal;
+                let direct = ito.is_normal()
+                    || (ito == 0.0 && (noise_product.is_normal() || dw[j] == 0.0 || dw[kk] == 0.0));
+                // A bounded direction and weight cannot overflow or underflow
+                // their product. Keep this state loop free of per-entry checks.
+                if bounded_direction && (1e-100..=1e100).contains(&ito.abs()) {
+                    for (i, value) in corr.iter_mut().enumerate() {
+                        let at = i * m + kk;
+                        *value += (gs[at] - g[at]) * ito / denominator;
+                    }
+                } else if direct {
+                    for (i, value) in corr.iter_mut().enumerate() {
+                        let at = i * m + kk;
+                        let difference = gs[at] - g[at];
+                        let product = difference * ito;
+                        *value += if product.is_normal() || difference == 0.0 {
+                            product / denominator
+                        } else {
+                            platen_scaled_correction(gs[at], g[at], (ito, [1.0; 2]), denominator)
+                        };
+                    }
+                } else {
+                    let weight = platen_scaled_integral(dw[j], dw[kk], diagonal, ito);
+                    for (i, value) in corr.iter_mut().enumerate() {
+                        let at = i * m + kk;
+                        *value += platen_scaled_correction(gs[at], g[at], weight, denominator);
+                    }
                 }
             }
         }
@@ -1103,6 +1707,7 @@ where
     let mut path = SdePath::new(seed, t0, y0);
     let mut h = ((t1 - t0) * 1e-3).max(1e-9);
     let (mut a, mut g) = (vec![0.0; n], vec![0.0; n * m]);
+    let mut work = MilsteinWork::new(n, m);
     let mut a2 = vec![0.0; n];
     let mut count = 0;
     while t1 - t > 1e-14 * (1.0 + t1.abs()) {
@@ -1114,7 +1719,9 @@ where
         let dw = stack.take(h, m, &mut rng);
         drift(t, &y, &mut a);
         diff(t, &y, &mut g);
-        let corr = milstein_term(&diff, t, &y, &g, m, &dw, h);
+        let corr = work.correction(&diff, t, &y, &g, m, |j, k| {
+            ito_product(dw[j], dw[k], if j == k { h } else { 0.0 })
+        });
         let mut ynew = vec![0.0; n];
         let mut em_pred = vec![0.0; n];
         let mut err = 0.0_f64;
@@ -1317,6 +1924,7 @@ where
     let mut path = SdePath::new(seed, t0, y0);
     let mut size = (opts.cells / 1000).max(1);
     let (mut a, mut g) = (vec![0.0; n], vec![0.0; n * m]);
+    let mut work = MilsteinWork::new(n, m);
     let mut a2 = vec![0.0; n];
     let mut count = 0;
     while cell < opts.cells {
@@ -1330,7 +1938,7 @@ where
         let (dw, ar) = grid.span(cell, k);
         drift(t, &y, &mut a);
         diff(t, &y, &mut g);
-        let corr = milstein_term_areas(&diff, t, &y, &g, m, &ar);
+        let corr = work.correction(&diff, t, &y, &g, m, |j, l| ar[j * m + l]);
         let mut ynew = vec![0.0; n];
         let mut em_pred = vec![0.0; n];
         for i in 0..n {
