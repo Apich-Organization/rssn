@@ -48,11 +48,7 @@ fn call(
         .unwrap_or_else(|error| panic!("{name}: {error:?}"))
 }
 
-#[test]
-fn valid_portable_encoding_cannot_forge_a_panicking_spline() {
-    // The envelope is valid and finite, but degree == coefficient count makes
-    // the spline mathematically invalid. Validate this before de Boor indexing.
-    let rows = [vec![0.0_f64, 0.0, 1.0], vec![1.0], vec![1.0]];
+fn portable_spline(rows: [Vec<f64>; 3]) -> Value {
     let mut bytes = (rows.len() as u64).to_le_bytes().to_vec();
     for row in rows {
         bytes.extend_from_slice(&(row.len() as u64).to_le_bytes());
@@ -60,7 +56,7 @@ fn valid_portable_encoding_cannot_forge_a_panicking_spline() {
             bytes.extend_from_slice(&value.to_le_bytes());
         }
     }
-    let model = Value::Record(RecordValue {
+    Value::Record(RecordValue {
         fields: vec![
             (
                 "payload".into(),
@@ -72,7 +68,13 @@ fn valid_portable_encoding_cannot_forge_a_panicking_spline() {
             ("coordinate_unit".into(), scalar(1.0, "Time")),
             ("value_unit".into(), scalar(1.0, "Length")),
         ],
-    });
+    })
+}
+
+#[test]
+fn valid_portable_encoding_cannot_forge_a_panicking_spline() {
+    // An encoded degree equal to the coefficient count cannot define a span.
+    let model = portable_spline([vec![0.0, 0.0, 1.0], vec![1.0], vec![1.0]]);
     assert!(matches!(
         Session::new().call_value(
             "num_bspline_query",
@@ -81,6 +83,23 @@ fn valid_portable_encoding_cannot_forge_a_panicking_spline() {
         ),
         Err(OpError::Domain(_))
     ));
+}
+
+#[test]
+fn fitted_singleton_spline_survives_portable_round_trip() {
+    let encoded = portable_spline([vec![4.0, 4.0], vec![7.0], vec![0.0]]);
+    let fitted = call(
+        "num_bspline_build",
+        &[
+            tensor(&[1], &[4.0], DimExpr::Base("Time".into())),
+            tensor(&[1], &[7.0], DimExpr::Base("Length".into())),
+            Value::int(0),
+        ],
+    );
+    for model in [encoded, fitted] {
+        let output = call("num_bspline_query", &[model, scalar(50.0, "Time")]);
+        assert_eq!(number(&output), 7.0);
+    }
 }
 
 #[test]

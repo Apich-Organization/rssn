@@ -1,10 +1,12 @@
+//! Named JSON scenarios of the continuum and particle engines.
+//!
 //! Named, JSON-parameterised scenarios for the dimension-generic continuum
 //! and particle engines.
 //!
 //! Each scenario builds a standard validation problem of one engine, runs
 //! it, and returns the error against the exact solution (where one exists)
-//! together with a one-dimensional slice of the field. Every parameter has a
-//! default, so `{}` is a valid request.
+//! together with a one-dimensional slice of the field. Most requests supply defaults for every
+//! parameter. The N-body scenario requires positions and masses.
 //!
 //! | Scenario | Engine | Problem |
 //! |---|---|---|
@@ -41,27 +43,53 @@ use crate::sim::boundary::FluidBoundary;
 use crate::sim::boundary::FluidFaceBcs;
 use crate::sim::boundary::MarkerBcs;
 
-/// The scenario names handled here.
-pub const ENGINE_SCENARIOS: &[&str] = &[
-    "poisson_multigrid",
-    "heat_nd",
-    "wave_nd",
-    "euler_fv",
-    "dg_conservation",
-    "acoustics_pml",
-    "yee_fdtd",
-    "navier_stokes_mac",
-    "split_step",
-    "fem_simplex",
-    "elasticity_fem",
-    "bem_laplace",
-    "sph",
-    "dpd",
-    "md_lj",
-    "spin_model",
-    "nbody_gravity",
-    "kerr_geodesic",
-];
+// Each row ties the public name to its handler and its optional default request.
+// The N-body request requires the masses and positions from the catalog example.
+macro_rules! engine_scenarios {
+    ($($handler:ident $(=> $request:ty)?),+ $(,)?) => {
+        /// The names of the continuum and particle engine scenarios.
+        pub const ENGINE_SCENARIOS: &[&str] = &[$(stringify!($handler)),+];
+
+        /// Runs a registered engine scenario, returning `None` for an unknown name.
+        pub(super) fn run(name: &str, params: &str) -> Option<Result<Value, String>> {
+            match name {
+                $(stringify!($handler) => Some($handler(params)),)+
+                _ => None,
+            }
+        }
+
+        /// Reads the default fields from the engine's own request type.
+        pub(super) fn defaults(name: &str) -> Option<Value> {
+            match name {
+                $(stringify!($handler) => engine_scenarios!(@default $($request)?),)+
+                _ => None,
+            }
+        }
+    };
+    (@default $request:ty) => { serde_json::to_value(<$request>::default()).ok() };
+    (@default) => { None };
+}
+
+engine_scenarios! {
+    poisson_multigrid => PoissonReq,
+    heat_nd => HeatReq,
+    wave_nd => WaveReq,
+    euler_fv => EulerReq,
+    dg_conservation => DgReq,
+    acoustics_pml => AcousticsReq,
+    yee_fdtd => YeeReq,
+    navier_stokes_mac => NsReq,
+    split_step => SplitReq,
+    fem_simplex => FemReq,
+    elasticity_fem => ElasticReq,
+    bem_laplace => BemReq,
+    sph => SphReq,
+    dpd => DpdReq,
+    md_lj => MdReq,
+    spin_model => SpinReq,
+    nbody_gravity,
+    kerr_geodesic => KerrReq,
+}
 
 fn parse<T: DeserializeOwned>(params: &str) -> Result<T, String> {
     let text = if params.trim().is_empty() {
@@ -94,34 +122,6 @@ fn bc_set(name: &str) -> Result<FaceBcs, String> {
                 "unknown bc `{other}` (dirichlet, neumann, periodic)"
             ));
         },
-    })
-}
-
-/// Runs an engine scenario; `None` when `name` is not one of [`ENGINE_SCENARIOS`].
-pub(super) fn run(
-    name: &str,
-    params: &str,
-) -> Option<Result<Value, String>> {
-    Some(match name {
-        | "poisson_multigrid" => poisson_multigrid(params),
-        | "heat_nd" => heat_nd(params),
-        | "wave_nd" => wave_nd(params),
-        | "euler_fv" => euler_fv(params),
-        | "dg_conservation" => dg_conservation(params),
-        | "acoustics_pml" => acoustics_pml(params),
-        | "yee_fdtd" => yee_fdtd(params),
-        | "navier_stokes_mac" => navier_stokes_mac(params),
-        | "split_step" => split_step(params),
-        | "fem_simplex" => fem_simplex(params),
-        | "elasticity_fem" => elasticity_fem(params),
-        | "bem_laplace" => bem_laplace(params),
-        | "sph" => sph(params),
-        | "dpd" => dpd(params),
-        | "md_lj" => md_lj(params),
-        | "spin_model" => spin_model(params),
-        | "nbody_gravity" => nbody_gravity(params),
-        | "kerr_geodesic" => kerr_geodesic(params),
-        | _ => return None,
     })
 }
 
@@ -395,6 +395,7 @@ fn euler_fv(params: &str) -> Result<Value, String> {
     };
     cfg.riemann = match r.riemann.as_str() {
         | "hllc" => RiemannSolver::Hllc,
+        | "hlle" => RiemannSolver::Hlle,
         | "roe" => RiemannSolver::Roe,
         | "rusanov" => RiemannSolver::Rusanov,
         | other => return Err(format!("unknown riemann solver `{other}`")),
@@ -1351,32 +1352,4 @@ fn kerr_geodesic(params: &str) -> Result<Value, String> {
         "energy": g.energy,
         "angular_momentum": g.lz,
     }))
-}
-
-/// The parameters an engine scenario runs with when given `{}`: every
-/// field and its default value, as JSON. `None` for other names.
-///
-/// This is how [`schema`](super::schema) learns each engine's parameter
-/// names, types and defaults without a second, hand-written description.
-pub(super) fn defaults(name: &str) -> Option<Value> {
-    match name {
-        | "poisson_multigrid" => serde_json::to_value(PoissonReq::default()).ok(),
-        | "heat_nd" => serde_json::to_value(HeatReq::default()).ok(),
-        | "wave_nd" => serde_json::to_value(WaveReq::default()).ok(),
-        | "euler_fv" => serde_json::to_value(EulerReq::default()).ok(),
-        | "dg_conservation" => serde_json::to_value(DgReq::default()).ok(),
-        | "acoustics_pml" => serde_json::to_value(AcousticsReq::default()).ok(),
-        | "yee_fdtd" => serde_json::to_value(YeeReq::default()).ok(),
-        | "navier_stokes_mac" => serde_json::to_value(NsReq::default()).ok(),
-        | "split_step" => serde_json::to_value(SplitReq::default()).ok(),
-        | "fem_simplex" => serde_json::to_value(FemReq::default()).ok(),
-        | "elasticity_fem" => serde_json::to_value(ElasticReq::default()).ok(),
-        | "bem_laplace" => serde_json::to_value(BemReq::default()).ok(),
-        | "sph" => serde_json::to_value(SphReq::default()).ok(),
-        | "dpd" => serde_json::to_value(DpdReq::default()).ok(),
-        | "md_lj" => serde_json::to_value(MdReq::default()).ok(),
-        | "spin_model" => serde_json::to_value(SpinReq::default()).ok(),
-        | "kerr_geodesic" => serde_json::to_value(KerrReq::default()).ok(),
-        | _ => None,
-    }
 }

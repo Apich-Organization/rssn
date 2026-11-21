@@ -1,8 +1,11 @@
 //! Schwarzschild geodesics (ported from `physics_sim_geodesic_test.rs`).
 
+use std::num::NonZeroUsize;
+
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
 use rssn::sim::models::geodesic_relativity::*;
+use rssn::sim::relativity::KerrNewman;
 
 fn cfg() -> ProptestConfig {
     ProptestConfig {
@@ -151,7 +154,6 @@ fn kerr_frame_dragging_twists_a_zero_angular_velocity_infall() {
 
 #[test]
 fn kerr_circular_orbit_keeps_its_radius() {
-    use rssn::sim::relativity::KerrNewman;
     let (m, a, r) = (1.0, 0.9, 8.0);
     let k = KerrNewman { m, a, q: 0.0 };
     let (_, _, omega) = k.circular_orbit(r, true).unwrap();
@@ -166,4 +168,185 @@ fn kerr_circular_orbit_keeps_its_radius() {
     assert!(path.iter().any(|&(_, y)| y < -r * 0.9));
     // a naked-singularity-style initial radius inside the horizon is rejected by the engine
     assert!(run_kerr_newman_geodesic(&params(1.0, [1.5, 0.0, 0.0, 0.01], 1.0), 0.0, 0.0).is_err());
+}
+
+#[test]
+fn analytic_prograde_circular_orbits_are_valid_across_the_stationary_limit() {
+    // Specialize Bardeen–Press–Teukolsky (1972), equations 2.12–2.13, to
+    // unit mass and zero charge. The proper angular rate follows from
+    // Ω = 1 / (r^(3/2) + a) and the circular-orbit normalization.
+    let a = 0.99;
+    let metric = KerrNewman { m: 1.0, a, q: 0.0 };
+    for r in [1.9, 2.0_f64.next_down(), 2.0, 2.0_f64.next_up(), 2.1] {
+        let root_r = r.sqrt();
+        let r32 = r * root_r;
+        let den = root_r * (root_r * (r32 - 3.0 * root_r + 2.0 * a)).sqrt();
+        let phid = den.recip();
+        let energy = (r32 - 2.0 * root_r + a) / den;
+        let angular = (r * r - 2.0 * a * root_r + a * a) / den;
+        for sign in [1.0, -1.0] {
+            let g = equatorial_timelike_geodesic(
+                KerrNewman {
+                    a: sign * a,
+                    ..metric
+                },
+                [r, 0.0, 0.125, sign * phid],
+                EquatorialEnergyBranch::Nonnegative,
+            )
+            .unwrap();
+            assert!(
+                (g.energy - energy).abs() < 2e-14,
+                "{r}: {} vs {energy}",
+                g.energy
+            );
+            assert!((g.lz - sign * angular).abs() < 4e-14, "{r}: {}", g.lz);
+            assert!(g.constraint().abs() < 4e-14, "{r}: {}", g.constraint());
+        }
+        if r < 1.95 {
+            let mut p = params(1.0, [r, 0.0, 0.125, phid], 1.0);
+            p.initial_dt = 0.005;
+            let path = run_kerr_newman_geodesic(&p, a, 0.0).unwrap();
+            assert!(path.iter().all(|&(x, y)| (x.hypot(y) - r).abs() < 2e-7));
+            let &(x, y) = path.last().unwrap();
+            let phase = 0.125 + phid;
+            let error = (x - r * phase.cos()).hypot(y - r * phase.sin());
+            assert!(error < 2e-7, "{error}");
+        }
+    }
+}
+
+#[test]
+fn both_ergoregion_energy_branches_are_future_directed() {
+    let metric = KerrNewman {
+        m: 1.0,
+        a: 1.0,
+        q: 0.0,
+    };
+    // At an equatorial radius 3/2 the metric coefficients are rational:
+    // g_tt=1/3, g_tphi=-4/3, g_phiphi=55/12 and g_rr=9.
+    let r_dot = 0.1;
+    let ep = (1.0_f64 - (1.0 + 9.0 * r_dot * r_dot) / 3.0).sqrt();
+    for (branch, energy) in [
+        (EquatorialEnergyBranch::Nonnegative, ep),
+        (EquatorialEnergyBranch::Nonpositive, -ep),
+    ] {
+        let state = [1.5, r_dot, 0.0, 2.0];
+        let geodesic = equatorial_timelike_geodesic(metric, state, branch).unwrap();
+        let ut = 8.0 - 3.0 * energy;
+        let want_lz = -4.0 / 3.0 * ut + 55.0 / 6.0;
+        assert!((geodesic.energy - energy).abs() < 3e-15);
+        assert!((geodesic.lz - want_lz).abs() < 5e-15);
+        assert!((geodesic.pr - (9.0 * r_dot)).abs() < 1e-15);
+        assert!(geodesic.constraint().abs() < 1e-12);
+        // Hamiltonian evolution must advance coordinate time on either root.
+        let mut advanced = geodesic;
+        advanced.step(0.0001, true).unwrap();
+        assert!((advanced.t / 0.0001 - ut).abs() < 0.01);
+
+        let dt = 1.0 / 1024.0;
+        let mut p = params(1.0, state, 2.0 * dt);
+        p.initial_dt = dt;
+        let sampled = run_kerr_newman_geodesic_sampled(
+            &p,
+            1.0,
+            0.0,
+            branch,
+            NonZeroUsize::new(usize::MAX).unwrap(),
+        )
+        .unwrap();
+        let mut terminal = geodesic;
+        terminal.integrate(dt, 2, true, 1.001, 1e4).unwrap();
+        assert_eq!(
+            sampled,
+            [
+                (1.5, 0.0),
+                (
+                    terminal.r * terminal.phi.cos(),
+                    terminal.r * terminal.phi.sin()
+                )
+            ]
+        );
+    }
+
+    for state in [
+        [0.5, 0.0, 0.0, 2.0],
+        [1.0, 0.0, 0.0, 2.0],
+        [1.5, 0.0, 0.0, -2.0],
+        [1.5, 0.0, 0.0, 0.125],
+        [1.5, 0.0, f64::NAN, 2.0],
+    ] {
+        assert!(
+            equatorial_timelike_geodesic(metric, state, EquatorialEnergyBranch::Nonnegative)
+                .is_err()
+        );
+    }
+    for r in [2.0, 2.1] {
+        assert!(
+            equatorial_timelike_geodesic(
+                metric,
+                [r, 0.0, 0.0, 2.0],
+                EquatorialEnergyBranch::Nonpositive
+            )
+            .is_err()
+        );
+    }
+}
+
+#[test]
+fn sampled_trajectory_retains_only_stride_points_and_the_reached_end() {
+    let branch = EquatorialEnergyBranch::Nonnegative;
+    let mut plunge = params(1.0, [2.01, -0.1, 0.0, 0.0], 0.3);
+    plunge.initial_dt = 0.001;
+    let cases = [
+        params(1.0, [10.0, 0.0, 0.25, 0.05], 0.0),
+        params(1.0, [10.0, 0.0, 0.25, 0.05], 3.17),
+        params(1.0, [9_999.5, 8.0, 0.0, 0.0], 2.0),
+        plunge,
+    ];
+    for p in cases {
+        let full = run_kerr_newman_geodesic(&p, 0.0, 0.0).unwrap();
+        for stride in [1, 3, 7, usize::MAX] {
+            let sampled = run_kerr_newman_geodesic_sampled(
+                &p,
+                0.0,
+                0.0,
+                branch,
+                NonZeroUsize::new(stride).unwrap(),
+            )
+            .unwrap();
+            let mut expected: Vec<_> = full.iter().step_by(stride).copied().collect();
+            if (full.len() - 1) % stride != 0 {
+                expected.push(*full.last().unwrap());
+            }
+            assert_eq!(sampled, expected);
+        }
+        if p.initial_state[0] > 9_000.0 {
+            let &(x, y) = full.last().unwrap();
+            assert!(x.hypot(y) >= 1e4);
+            assert!(full.len() < 5);
+        } else if p.initial_state[0] < 3.0 {
+            let &(x, y) = full.last().unwrap();
+            assert!((x.hypot(y) - 2.002).abs() < 1e-12);
+            assert!(full.len() < 300);
+        }
+    }
+}
+
+#[test]
+fn invalid_time_bounds_terminate_without_invoking_the_legacy_integrator() {
+    for (end, dt) in [
+        (f64::INFINITY, 0.1),
+        (f64::NAN, 0.1),
+        (-1.0, 0.1),
+        (1.0, f64::INFINITY),
+        (1.0, f64::NAN),
+        (1.0, 0.0),
+        (1.0, -0.1),
+    ] {
+        let mut p = params(1.0, [10.0, 0.0, 0.0, 0.045], end);
+        p.initial_dt = dt;
+        assert!(run_kerr_newman_geodesic(&p, 0.0, 0.0).is_err());
+        assert_eq!(run_geodesic_simulation(&p), [(10.0, 0.0)]);
+        assert_eq!(run_geodesic_simulation_rk45(&p), [(10.0, 0.0)]);
+    }
 }

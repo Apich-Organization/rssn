@@ -2,7 +2,7 @@
 //!
 //! | Equations | Dimension | Boundaries | Sources |
 //! |---|---|---|---|
-//! | Maxwell TM (`Ez, Hx, Hy`) | 2D | grid edge | point source |
+//! | Maxwell TM (`Ez, Hx, Hy`) | 2D | ten-cell damping belt | soft point source |
 //!
 //! [`crate::sim::yee_fdtd`] is the general Yee solver in 1D/2D/3D with PEC,
 //! periodic and convolutional PML faces, dielectrics, current sources and
@@ -10,11 +10,11 @@
 
 use ndarray::Array1;
 use ndarray::Array2;
-use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
 
 use crate::io::write_npy_file;
+use crate::kernels::par::for_chunks_mut;
 
 /// Parameters for the FDTD simulation.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -27,112 +27,147 @@ pub struct FdtdParameters {
     pub time_steps: usize,
     /// The position of the source.
     pub source_pos: (usize, usize),
-    /// The frequency of the source.
+    /// The source frequency in cycles per time step. Integer shifts alias.
     pub source_freq: f64,
 }
 
-/// Runs a 2D FDTD simulation for the Transverse Magnetic (TM) mode.
-/// This solves for Ez, Hx, and Hy fields.
+const DAMPING_WIDTH: usize = 10;
+const DAMPING_FACTOR: f64 = 0.95;
+const PARALLEL_CELLS: usize = 8_192;
+
+/// Runs the two-dimensional transverse-magnetic model from zero fields.
 ///
-/// # Arguments
-/// * `params` - The simulation parameters.
-///
-/// # Returns
-/// A `Vec` containing snapshots of the Ez field at specified intervals.
+/// The returned arrays use shape `(width, height)` and record the electric
+/// field after time steps 1, 6, 11, and so on. The soft point source is added
+/// before the ten-cell boundary belt damps the electric field.
 ///
 /// # Panics
-/// Panics if `source_pos` lies outside the grid.
+/// Panics if the source lies outside the grid or its dimensions overflow
+/// addressable field storage.
 #[must_use]
 pub fn run_fdtd_simulation(params: &FdtdParameters) -> Vec<Array2<f64>> {
-    let (nx, ny) = (params.width, params.height);
-
-    assert!(
-        params.source_pos.0 < nx && params.source_pos.1 < ny,
-        "FDTD source position lies outside the grid"
-    );
-
-    // Row-major flat buffers: row `i` is the chunk `[i * ny, (i + 1) * ny)`.
-    let mut ez = vec![0.0_f64; nx * ny];
-
-    let mut hx = vec![0.0_f64; nx * ny];
-
-    let mut hy = vec![0.0_f64; nx * ny];
-
-    let pml_thickness = 10;
-
+    let size = fdtd_grid_size(params).unwrap_or_else(|error| panic!("{error}"));
     let mut snapshots = Vec::new();
+    if params.time_steps != 0 {
+        drop(propagate_fdtd(params, size, |step, ez| {
+            if step % 5 == 0 {
+                let shape = (params.width, params.height);
+                snapshots.push(
+                    Array2::from_shape_vec(shape, ez.to_vec())
+                        .unwrap_or_else(|_| Array2::zeros(shape)),
+                );
+            }
+        }));
+    }
+    snapshots
+}
 
-    let row_len = ny.max(1);
+/// Returns the electric field after the last requested time step.
+///
+/// The model starts from zero fields and records only the final array in
+/// `(width, height)` order. Zero steps return the unexcited field. The
+/// half-Courant update, point source and boundary damping are shared with
+/// [`run_fdtd_simulation`].
+///
+/// # Errors
+/// Returns an error for an out-of-grid source, oversized dimensions or a
+/// non-finite frequency.
+pub fn run_fdtd_final_field(params: &FdtdParameters) -> Result<Array2<f64>, String> {
+    let size = fdtd_grid_size(params)?;
+    if !params.source_freq.is_finite() {
+        return Err("FDTD source frequency must be finite".into());
+    }
+    let field = propagate_fdtd(params, size, |_, _| {});
+    Array2::from_shape_vec((params.width, params.height), field).map_err(|error| error.to_string())
+}
 
-    for t in 0..params.time_steps {
-        // Update Hx and Hy (Magnetic field): row `i` only reads Ez and writes its own H row.
-        hx.par_chunks_mut(row_len)
-            .zip(ez.par_chunks(row_len))
-            .take(nx.saturating_sub(1))
-            .for_each(|(hx_row, ez_row)| {
-                for j in 0..ny - 1 {
-                    hx_row[j] -= 0.5 * (ez_row[j + 1] - ez_row[j]);
-                }
-            });
+fn fdtd_grid_size(params: &FdtdParameters) -> Result<usize, &'static str> {
+    if params.source_pos.0 >= params.width || params.source_pos.1 >= params.height {
+        return Err("FDTD source position lies outside the grid");
+    }
+    params
+        .width
+        .checked_mul(params.height)
+        .filter(|&size| size <= isize::MAX as usize / size_of::<[f64; 2]>())
+        .ok_or("FDTD grid dimensions overflow addressable storage")
+}
 
-        let ez_next_rows = ez.par_chunks(row_len).skip(1);
-
-        hy.par_chunks_mut(row_len)
-            .zip(ez.par_chunks(row_len))
-            .zip(ez_next_rows)
-            .for_each(|((hy_row, ez_row), ez_next)| {
-                for j in 0..ny - 1 {
-                    hy_row[j] += 0.5 * (ez_next[j] - ez_row[j]);
-                }
-            });
-
-        // Update Ez (Electric field) from the freshly updated H rows (interior only).
-        ez.par_chunks_mut(row_len)
-            .enumerate()
-            .skip(1)
-            .take(nx.saturating_sub(2))
-            .for_each(|(i, ez_row)| {
-                let hy_row = &hy[i * ny..(i + 1) * ny];
-
-                let hy_prev_row = &hy[(i - 1) * ny..i * ny];
-
-                let hx_row = &hx[i * ny..(i + 1) * ny];
-
-                for j in 1..ny - 1 {
-                    ez_row[j] += 0.5 * (hy_row[j] - hy_prev_row[j] - (hx_row[j] - hx_row[j - 1]));
-                }
-            });
-
-        // Add soft source
-        let pulse = (-((t as f64 - 30.0).powi(2)) / 100.0).exp()
-            * (2.0 * std::f64::consts::PI * params.source_freq * (t as f64)).sin();
-
-        ez[params.source_pos.0 * ny + params.source_pos.1] += pulse;
-
-        // Apply PML/Boundary Damping in parallel
-        ez.par_chunks_mut(row_len)
-            .enumerate()
-            .for_each(|(i, ez_row)| {
-                for (j, v) in ez_row.iter_mut().enumerate() {
-                    if i < pml_thickness
-                        || i >= nx.saturating_sub(pml_thickness)
-                        || j < pml_thickness
-                        || j >= ny.saturating_sub(pml_thickness)
-                    {
-                        *v *= 0.95;
-                    }
-                }
-            });
-
-        if t % 5 == 0 {
-            snapshots.push(
-                Array2::from_shape_vec((nx, ny), ez.clone())
-                    .unwrap_or_else(|_| Array2::zeros((nx, ny))),
-            );
-        }
+fn propagate_fdtd(
+    params: &FdtdParameters,
+    size: usize,
+    mut record: impl FnMut(usize, &[f64]),
+) -> Vec<f64> {
+    let (nx, ny) = (params.width, params.height);
+    let (source_row, source_column) = params.source_pos;
+    let mut ez = vec![0.0_f64; size];
+    if params.time_steps == 0 {
+        return ez;
     }
 
-    snapshots
+    // The source is sampled at integer steps, so integer shifts in cycles
+    // per step alias exactly. Reduce before constructing the phase.
+    let angular_frequency = std::f64::consts::TAU * params.source_freq.fract();
+    let pulse = |step| {
+        let time = step as f64;
+        (-((time - 30.0).powi(2)) / 100.0).exp() * (angular_frequency * time).sin()
+    };
+    if nx < 3 || ny < 3 {
+        // There are no electric interior cells and every site is damped.
+        let source = source_row * ny + source_column;
+        for step in 0..params.time_steps {
+            ez[source] += pulse(step);
+            ez[source] *= DAMPING_FACTOR;
+            record(step, &ez);
+        }
+        return ez;
+    }
+
+    // Each magnetic cell stores Hx and Hy, both computed from the same
+    // two electric rows before any electric cell is advanced.
+    let mut magnetic = vec![[0.0_f64; 2]; size];
+    let rows_per_parallel_job = PARALLEL_CELLS.div_ceil(ny).max(2);
+    let last_magnetic = (nx - 1) * ny;
+    let undamped_rows = DAMPING_WIDTH..nx.saturating_sub(DAMPING_WIDTH);
+    let damp = |field: &mut [f64]| field.iter_mut().for_each(|v| *v *= DAMPING_FACTOR);
+
+    for step in 0..params.time_steps {
+        for_chunks_mut(
+            &mut magnetic[..last_magnetic],
+            ny,
+            rows_per_parallel_job,
+            |i, row| {
+                let previous = &ez[i * ny..(i + 1) * ny];
+                let next = &ez[(i + 1) * ny..(i + 2) * ny];
+                for (j, field) in row.iter_mut().take(ny - 1).enumerate() {
+                    field[0] -= 0.5 * (previous[j + 1] - previous[j]);
+                    field[1] += 0.5 * (next[j] - previous[j]);
+                }
+            },
+        );
+
+        let excitation = pulse(step);
+        for_chunks_mut(&mut ez, ny, rows_per_parallel_job, |i, row| {
+            if i != 0 && i < nx - 1 {
+                let current = &magnetic[i * ny..(i + 1) * ny];
+                let previous = &magnetic[(i - 1) * ny..i * ny];
+                for j in 1..ny - 1 {
+                    row[j] += 0.5
+                        * (current[j][1] - previous[j][1] - (current[j][0] - current[j - 1][0]));
+                }
+            }
+            if i == source_row {
+                row[source_column] += excitation;
+            }
+            if !undamped_rows.contains(&i) || ny <= 2 * DAMPING_WIDTH {
+                damp(row);
+            } else {
+                damp(&mut row[..DAMPING_WIDTH]);
+                damp(&mut row[ny - DAMPING_WIDTH..]);
+            }
+        });
+        record(step, &ez);
+    }
+    ez
 }
 
 /// An example scenario that runs an FDTD simulation and saves the final state.

@@ -224,141 +224,260 @@ fn apply_channel_bcs(
     }
 }
 
-/// Solves `-lap(p) = f` for the pressure on the interior nodes of the unit
-/// square with conjugate gradients (Jacobi preconditioned).
-///
-/// Neumann (`dp/dn = 0`) conditions hold on the inflow, the walls and every
-/// obstacle face, i.e. a neighbour that is outside the fluid is dropped from
-/// the stencil; the outflow column `i = n - 1` is a Dirichlet condition
-/// `p = 0`. `p` is the warm start and receives the solution; boundary
-/// nodes are filled by copying the adjacent interior value (Neumann) or
-/// zero (outflow).
-fn solve_channel_pressure(
-    p: &mut Array2<f64>,
-    rhs: &Array2<f64>,
-    solid: &Array2<bool>,
+const PRESSURE_TOLERANCE: f64 = 1e-10;
+
+struct PressureRow {
+    cell: usize,
+    neighbors: [usize; 4],
+    degree: u8,
+    diagonal: u8,
+}
+
+impl PressureRow {
+    fn adjacent(&self) -> &[usize] {
+        &self.neighbors[..usize::from(self.degree)]
+    }
+}
+
+/// Prepared pressure graph and per-step vectors for one fixed obstacle mask.
+struct ChannelPressure {
+    n: usize,
     h: f64,
-) -> Result<(), String> {
-    let n = p.nrows();
+    inv_h2: f64,
+    rows: Vec<PressureRow>,
+    diagonal: Vec<f64>,
+    closed: Vec<usize>,
+    closed_ends: Vec<usize>,
+    rhs: Vec<f64>,
+    initial: Vec<f64>,
+}
 
-    let inv_h2 = 1.0 / (h * h);
-
-    // Interior fluid unknowns, numbered row-major.
-    let mut id = Array2::<usize>::from_elem((n, n), usize::MAX);
-
-    let mut nodes = Vec::new();
-
-    for j in 1..n - 1 {
-        for i in 1..n - 1 {
-            if !solid[[j, i]] {
-                id[[j, i]] = nodes.len();
-
-                nodes.push((j, i));
-            }
-        }
-    }
-
-    let m = nodes.len();
-
-    if m == 0 {
-        p.fill(0.0);
-
-        return Ok(());
-    }
-
-    // Number of non-Neumann neighbours and the interior-fluid neighbours.
-    let neighbours = |j: usize, i: usize| -> (f64, [Option<usize>; 4]) {
-        let mut count = 0.0;
-
-        let mut list = [None; 4];
-
-        for (slot, (dj, di)) in [(0isize, -1isize), (0, 1), (-1, 0), (1, 0)]
-            .into_iter()
-            .enumerate()
-        {
-            let jj = j as isize + dj;
-
-            let ii = i as isize + di;
-
-            if ii == n as isize - 1 {
-                // Dirichlet outflow column (p = 0): contributes only to the diagonal.
-                count += 1.0;
-            } else if (1..n as isize - 1).contains(&jj) && (1..n as isize - 1).contains(&ii) {
-                let k = id[[jj as usize, ii as usize]];
-
-                if k != usize::MAX {
-                    count += 1.0;
-
-                    list[slot] = Some(k);
+impl ChannelPressure {
+    fn new(
+        solid: &Array2<bool>,
+        h: f64,
+    ) -> Self {
+        let n = solid.nrows();
+        let mut id = Array2::from_elem((n, n), usize::MAX);
+        let mut rows = Vec::new();
+        for j in 1..n - 1 {
+            for i in 1..n - 1 {
+                if !solid[[j, i]] {
+                    id[[j, i]] = rows.len();
+                    rows.push(PressureRow {
+                        cell: j * n + i,
+                        neighbors: [0; 4],
+                        degree: 0,
+                        diagonal: 0,
+                    });
                 }
             }
         }
-
-        (count, list)
-    };
-
-    let stencils: Vec<(f64, [Option<usize>; 4])> =
-        nodes.iter().map(|&(j, i)| neighbours(j, i)).collect();
-
-    let apply = |x: &[f64], y: &mut [f64]| {
-        for (k, (count, list)) in stencils.iter().enumerate() {
-            let mut s = count * x[k];
-
-            for nb in list.iter().flatten() {
-                s -= x[*nb];
+        for row in &mut rows {
+            let (j, i) = (row.cell / n, row.cell % n);
+            for (jj, ii) in [(j, i - 1), (j, i + 1), (j - 1, i), (j + 1, i)] {
+                let k = id[[jj, ii]];
+                if k != usize::MAX {
+                    row.neighbors[usize::from(row.degree)] = k;
+                    row.degree += 1;
+                }
             }
-
-            y[k] = s * inv_h2;
+            // A solid point on the outflow is a wall face, not a pressure anchor.
+            row.diagonal = row.degree + u8::from(i == n - 2 && !solid[[j, n - 1]]);
         }
-    };
 
-    let diag: Vec<f64> = stencils
-        .iter()
-        .map(|(c, _)| (c * inv_h2).max(f64::MIN_POSITIVE))
-        .collect();
-
-    let precond = |r: &[f64], z: &mut [f64]| {
-        for k in 0..r.len() {
-            z[k] = r[k] / diag[k];
-        }
-    };
-
-    let b: Vec<f64> = nodes.iter().map(|&(j, i)| rhs[[j, i]]).collect();
-
-    let x0: Vec<f64> = nodes.iter().map(|&(j, i)| p[[j, i]]).collect();
-
-    let res = cg(apply, precond, &b, Some(&x0), 1e-10, 20 * m + 200);
-
-    if !res.residual.is_finite() {
-        return Err("Pressure solve produced a non-finite residual.".to_string());
-    }
-
-    for (k, &(j, i)) in nodes.iter().enumerate() {
-        p[[j, i]] = res.x[k];
-    }
-
-    // Boundary and solid values: Neumann copy, Dirichlet outflow.
-    for j in 0..n {
-        p[[j, n - 1]] = 0.0;
-    }
-
-    for j in 0..n {
-        p[[j, 0]] = p[[j.clamp(1, n - 2), 1]];
-    }
-
-    for i in 0..n - 1 {
-        p[[0, i]] = p[[1, i]];
-
-        p[[n - 1, i]] = p[[n - 2, i]];
-    }
-
-    for ((j, i), &s) in solid.indexed_iter() {
-        if s {
-            p[[j, i]] = 0.0;
+        let width = n - 2;
+        let connected_rectangle =
+            rows.len() == width * width && (1..n - 1).any(|j| !solid[[j, n - 1]]);
+        let (closed, closed_ends) = if connected_rectangle {
+            (Vec::new(), Vec::new())
+        } else {
+            Self::pin_neumann_components(&mut rows)
+        };
+        let inv_h2 = 1.0 / (h * h);
+        let diagonal = rows
+            .iter()
+            .map(|row| f64::from(row.diagonal) * inv_h2)
+            .collect();
+        let count = rows.len();
+        Self {
+            n,
+            h,
+            inv_h2,
+            rows,
+            diagonal,
+            closed,
+            closed_ends,
+            rhs: vec![0.0; count],
+            initial: vec![0.0; count],
         }
     }
 
-    Ok(())
+    fn pin_neumann_components(rows: &mut [PressureRow]) -> (Vec<usize>, Vec<usize>) {
+        let mut visited = vec![false; rows.len()];
+        let mut pins = vec![false; rows.len()];
+        let mut component = Vec::new();
+        let mut closed = Vec::new();
+        let mut closed_ends = Vec::new();
+        for seed in 0..rows.len() {
+            if visited[seed] {
+                continue;
+            }
+            visited[seed] = true;
+            component.clear();
+            component.push(seed);
+            let mut offset = 0;
+            let mut has_outflow = false;
+            while let Some(&k) = component.get(offset) {
+                let row = &rows[k];
+                has_outflow |= row.diagonal > row.degree;
+                for &neighbor in row.adjacent() {
+                    if !visited[neighbor] {
+                        visited[neighbor] = true;
+                        component.push(neighbor);
+                    }
+                }
+                offset += 1;
+            }
+            if !has_outflow {
+                pins[seed] = true;
+                closed.extend_from_slice(&component);
+                closed_ends.push(closed.len());
+            }
+        }
+
+        if !closed.is_empty() {
+            for (i, row) in rows.iter_mut().enumerate() {
+                if pins[i] {
+                    row.degree = 0;
+                    row.diagonal = 1;
+                } else {
+                    // A pinned neighbor is zero Dirichlet: keep its diagonal
+                    // contribution and drop its off-diagonal coefficient.
+                    let mut degree = 0;
+                    for j in 0..usize::from(row.degree) {
+                        let k = row.neighbors[j];
+                        if !pins[k] {
+                            row.neighbors[usize::from(degree)] = k;
+                            degree += 1;
+                        }
+                    }
+                    row.degree = degree;
+                }
+            }
+        }
+        (closed, closed_ends)
+    }
+
+    fn solve(
+        &mut self,
+        pressure: &mut Array2<f64>,
+        u: &[f64],
+        v: &[f64],
+        solid: &Array2<bool>,
+        dt: f64,
+    ) -> Result<(), String> {
+        let n = self.n;
+        let h = 2.0 * self.h;
+        let p = pressure
+            .as_slice_mut()
+            .ok_or("channel pressure storage is not contiguous")?;
+        for (k, row) in self.rows.iter().enumerate() {
+            let i = row.cell;
+            let div = (u[i + 1] - u[i - 1]) / h + (v[i + n] - v[i - n]) / h;
+            let force = -div / dt;
+            if !force.is_finite() {
+                return Err("channel pressure source is non-finite".into());
+            }
+            self.rhs[k] = force;
+            self.initial[k] = p[i];
+        }
+        self.check_closed_flux()?;
+        if self.rhs.iter().all(|&value| value == 0.0) {
+            pressure.fill(0.0);
+            return Ok(());
+        }
+
+        let apply = |x: &[f64], y: &mut [f64]| {
+            for (k, row) in self.rows.iter().enumerate() {
+                let mut value = f64::from(row.diagonal) * x[k];
+                for &neighbor in row.adjacent() {
+                    value -= x[neighbor];
+                }
+                y[k] = value * self.inv_h2;
+            }
+        };
+        let precond = |r: &[f64], z: &mut [f64]| {
+            for ((z, r), d) in z.iter_mut().zip(r).zip(&self.diagonal) {
+                *z = r / d;
+            }
+        };
+        let cap = self.rows.len().saturating_mul(20).saturating_add(200);
+        let result = cg(
+            apply,
+            precond,
+            &self.rhs,
+            Some(&self.initial),
+            PRESSURE_TOLERANCE,
+            cap,
+        );
+        if !result.converged {
+            return Err(format!(
+                "channel pressure solve did not converge after {} iterations (relative residual {})",
+                result.iterations, result.residual
+            ));
+        }
+        for (row, &value) in self.rows.iter().zip(&result.x) {
+            p[row.cell] = value;
+        }
+        Self::fill_boundaries(pressure, solid);
+        Ok(())
+    }
+
+    fn check_closed_flux(&mut self) -> Result<(), String> {
+        let mut start = 0;
+        for &end in &self.closed_ends {
+            let component = &self.closed[start..end];
+            let scale = component
+                .iter()
+                .map(|&k| self.rhs[k].abs())
+                .fold(0.0, f64::max);
+            if scale > 0.0 {
+                let (sum, squared) = component.iter().fold((0.0, 0.0_f64), |(sum, squared), &k| {
+                    let term = self.rhs[k] / scale;
+                    (sum + term, squared + term * term)
+                });
+                if sum.abs() > PRESSURE_TOLERANCE * squared.sqrt() {
+                    return Err("closed channel region has incompatible net flux".into());
+                }
+            }
+            let gauge = component[0];
+            self.rhs[gauge] = 0.0;
+            self.initial[gauge] = 0.0;
+            start = end;
+        }
+        Ok(())
+    }
+
+    fn fill_boundaries(
+        pressure: &mut Array2<f64>,
+        solid: &Array2<bool>,
+    ) {
+        let n = pressure.nrows();
+        for j in 0..n {
+            pressure[[j, n - 1]] = 0.0;
+            pressure[[j, 0]] = pressure[[j.clamp(1, n - 2), 1]];
+        }
+        for i in 0..n - 1 {
+            pressure[[0, i]] = pressure[[1, i]];
+            pressure[[n - 1, i]] = pressure[[n - 2, i]];
+        }
+        for ((j, i), &obstacle) in solid.indexed_iter() {
+            if obstacle {
+                pressure[[j, i]] = 0.0;
+            }
+        }
+    }
 }
 
 /// Solves the 2D incompressible Navier-Stokes equations in the unit square
@@ -383,8 +502,9 @@ fn solve_channel_pressure(
 /// The explicit scheme needs `dt <= h^2 re / 4` and `dt <= h / |u|`.
 ///
 /// # Errors
-/// Returns an error if the grid has fewer than 3 points, the mask shape is
-/// not `(n, n)`, or the pressure solve produces a non-finite residual.
+/// Returns an error for invalid grid size, mask shape, time step, Reynolds
+/// number or inflow, non-finite fields, incompatible flux in a closed
+/// fluid region, or an unconverged pressure solve.
 pub fn run_channel_flow_with(cfg: &ChannelFlowConfig<'_>) -> NavierStokesOutput {
     let n = cfg.n;
 
@@ -407,6 +527,19 @@ pub fn run_channel_flow_with(cfg: &ChannelFlowConfig<'_>) -> NavierStokesOutput 
 
     let nu = 1.0 / re;
 
+    if !re.is_finite() || re <= 0.0 || !nu.is_finite() {
+        return Err("channel Reynolds number must give finite positive viscosity".into());
+    }
+    if !dt.is_finite() || dt < 0.0 || (cfg.n_iter != 0 && dt == 0.0) {
+        return Err("channel time step must be finite and positive when advancing".into());
+    }
+    let inflow_speed = match cfg.inflow {
+        | InflowProfile::Uniform(speed) | InflowProfile::Parabolic(speed) => speed,
+    };
+    if !inflow_speed.is_finite() {
+        return Err("channel inflow speed must be finite".into());
+    }
+
     let mut u = Array2::<f64>::zeros((n, n));
 
     let mut v = Array2::<f64>::zeros((n, n));
@@ -416,18 +549,18 @@ pub fn run_channel_flow_with(cfg: &ChannelFlowConfig<'_>) -> NavierStokesOutput 
     // Start from the boundary data so the first step already sees the inflow.
     apply_channel_bcs(&mut u, &mut v, cfg);
 
-    let mut rhs = Array2::<f64>::zeros((n, n));
+    if u.iter().any(|x| !x.is_finite()) {
+        return Err("channel inflow profile must be finite on the grid".into());
+    }
+    if cfg.n_iter == 0 {
+        return Ok((u, v, p));
+    }
 
+    let mut pressure = ChannelPressure::new(obstacle_mask, h);
+    let mut u_star = Array2::<f64>::zeros((n, n));
+    let mut v_star = Array2::<f64>::zeros((n, n));
     for _iter in 0..cfg.n_iter {
-        let u_old = u.clone();
-
-        let v_old = v.clone();
-
         // 1. Advection-diffusion at fluid points -> intermediate velocity.
-        let mut u_star = u.clone();
-
-        let mut v_star = v.clone();
-
         u_star
             .as_slice_mut()
             .ok_or_else(|| "velocity array is not contiguous".to_string())?
@@ -450,43 +583,41 @@ pub fn run_channel_flow_with(cfg: &ChannelFlowConfig<'_>) -> NavierStokesOutput 
                 }
 
                 // Upwind Advection
-                let u_curr = u_old[[j, i]];
-                let v_curr = v_old[[j, i]];
+                let u_curr = u[[j, i]];
+                let v_curr = v[[j, i]];
 
                 let du_dx = if u_curr > 0.0 {
-                    u_curr - u_old[[j, i - 1]]
+                    u_curr - u[[j, i - 1]]
                 } else {
-                    u_old[[j, i + 1]] - u_curr
+                    u[[j, i + 1]] - u_curr
                 } / h;
 
                 let du_dy = if v_curr > 0.0 {
-                    u_curr - u_old[[j - 1, i]]
+                    u_curr - u[[j - 1, i]]
                 } else {
-                    u_old[[j + 1, i]] - u_curr
+                    u[[j + 1, i]] - u_curr
                 } / h;
 
                 let dv_dx = if u_curr > 0.0 {
-                    v_curr - v_old[[j, i - 1]]
+                    v_curr - v[[j, i - 1]]
                 } else {
-                    v_old[[j, i + 1]] - v_curr
+                    v[[j, i + 1]] - v_curr
                 } / h;
 
                 let dv_dy = if v_curr > 0.0 {
-                    v_curr - v_old[[j - 1, i]]
+                    v_curr - v[[j - 1, i]]
                 } else {
-                    v_old[[j + 1, i]] - v_curr
+                    v[[j + 1, i]] - v_curr
                 } / h;
 
                 // Diffusion (Central Difference); solid neighbours hold zero velocity.
-                let lap_u =
-                    (u_old[[j, i + 1]] + u_old[[j, i - 1]] + u_old[[j + 1, i]] + u_old[[j - 1, i]]
-                        - 4.0 * u_curr)
-                        / (h * h);
+                let lap_u = (u[[j, i + 1]] + u[[j, i - 1]] + u[[j + 1, i]] + u[[j - 1, i]]
+                    - 4.0 * u_curr)
+                    / (h * h);
 
-                let lap_v =
-                    (v_old[[j, i + 1]] + v_old[[j, i - 1]] + v_old[[j + 1, i]] + v_old[[j - 1, i]]
-                        - 4.0 * v_curr)
-                        / (h * h);
+                let lap_v = (v[[j, i + 1]] + v[[j, i - 1]] + v[[j + 1, i]] + v[[j - 1, i]]
+                    - 4.0 * v_curr)
+                    / (h * h);
 
                 *u_val = dt.mul_add(-u_curr.mul_add(du_dx, v_curr * du_dy) + nu * lap_u, u_curr);
                 *v_val = dt.mul_add(-u_curr.mul_add(dv_dx, v_curr * dv_dy) + nu * lap_v, v_curr);
@@ -496,22 +627,17 @@ pub fn run_channel_flow_with(cfg: &ChannelFlowConfig<'_>) -> NavierStokesOutput 
         apply_channel_bcs(&mut u_star, &mut v_star, cfg);
 
         // 3. Pressure Poisson over fluid points: -lap(p) = -div(u*) / dt.
-        rhs.fill(0.0);
-
-        for j in 1..n - 1 {
-            for i in 1..n - 1 {
-                if obstacle_mask[[j, i]] {
-                    continue;
-                }
-
-                let div = (u_star[[j, i + 1]] - u_star[[j, i - 1]]) / (2.0 * h)
-                    + (v_star[[j + 1, i]] - v_star[[j - 1, i]]) / (2.0 * h);
-
-                rhs[[j, i]] = -div / dt;
-            }
-        }
-
-        solve_channel_pressure(&mut p, &rhs, obstacle_mask, h)?;
+        pressure.solve(
+            &mut p,
+            u_star
+                .as_slice()
+                .ok_or("channel velocity storage is not contiguous")?,
+            v_star
+                .as_slice()
+                .ok_or("channel velocity storage is not contiguous")?,
+            obstacle_mask,
+            dt,
+        )?;
 
         // 4. Velocity correction with Neumann-mirrored pressure at solid faces.
         let pressure_at = |j: usize, i: usize, jc: usize, ic: usize| -> f64 {
@@ -536,9 +662,13 @@ pub fn run_channel_flow_with(cfg: &ChannelFlowConfig<'_>) -> NavierStokesOutput 
 
                 let dp_dy = (pressure_at(j + 1, i, j, i) - pressure_at(j - 1, i, j, i)) / (2.0 * h);
 
-                u[[j, i]] = dt.mul_add(-dp_dx, u_star[[j, i]]);
-
-                v[[j, i]] = dt.mul_add(-dp_dy, v_star[[j, i]]);
+                let next_u = dt.mul_add(-dp_dx, u_star[[j, i]]);
+                let next_v = dt.mul_add(-dp_dy, v_star[[j, i]]);
+                if !next_u.is_finite() || !next_v.is_finite() {
+                    return Err("channel velocity became non-finite".into());
+                }
+                u[[j, i]] = next_u;
+                v[[j, i]] = next_v;
             }
         }
 
@@ -793,3 +923,28 @@ pub use crate::sim::ns_mac::ImmersedBody;
 pub use crate::sim::ns_mac::NsConfig;
 /// Second-order 2D/3D MAC solver with obstacles and immersed bodies: see [`crate::sim::ns_mac`].
 pub use crate::sim::ns_mac::NsSolver;
+
+#[cfg(test)]
+mod pressure_tests {
+    use super::ChannelPressure;
+    use ndarray::Array2;
+
+    #[test]
+    fn a_closed_two_cell_region_solves_compatible_nonzero_pressure() {
+        let n = 5;
+        let (j, i) = (2, 2);
+        let h = 0.25;
+        let dt = 0.01;
+        let solid = Array2::from_shape_fn((n, n), |(y, x)| y != j || (x != i && x != i + 1));
+        let mut u = vec![0.0; n * n];
+        u[j * n + i] = 1.0;
+        u[j * n + i + 1] = 1.0;
+        let v = vec![0.0; n * n];
+        let mut p = Array2::<f64>::zeros((n, n));
+        ChannelPressure::new(&solid, h)
+            .solve(&mut p, &u, &v, &solid, dt)
+            .unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(p[[j, i]].to_bits(), 0.0_f64.to_bits());
+        assert!((p[[j, i + 1]] - h / (2.0 * dt)).abs() < 1e-13);
+    }
+}

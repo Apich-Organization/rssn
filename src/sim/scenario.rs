@@ -11,8 +11,8 @@
 //! models. The dimension-generic continuum and particle engines are reachable
 //! by name through [`ENGINE_SCENARIOS`] (see
 //! [`scenario_engines`](super::scenario_engines) for the table of problems and
-//! parameters); every parameter of those has a default, so `{}` is a valid
-//! request.
+//! parameters). `{}` selects defaults where available. The N-body scenario
+//! requires positions and masses.
 
 use ndarray::Array2;
 use num_complex::Complex;
@@ -29,8 +29,7 @@ use super::models::linear_elasticity;
 use super::models::navier_stokes_fluid;
 use super::models::schrodinger_quantum;
 
-/// The scenario names [`run`] accepts.
-pub const SCENARIOS: &[&str] = &[
+const FIXED_SCENARIOS: &[&str] = &[
     "fdtd",
     "geodesic",
     "gpe",
@@ -42,27 +41,27 @@ pub const SCENARIOS: &[&str] = &[
     "ising_wolff",
     "sod_shock_tube",
     "kepler_symplectic",
-    "poisson_multigrid",
-    "heat_nd",
-    "wave_nd",
-    "euler_fv",
-    "dg_conservation",
-    "acoustics_pml",
-    "yee_fdtd",
-    "navier_stokes_mac",
-    "split_step",
-    "fem_simplex",
-    "elasticity_fem",
-    "bem_laplace",
-    "sph",
-    "dpd",
-    "md_lj",
-    "spin_model",
-    "nbody_gravity",
-    "kerr_geodesic",
 ];
 
 pub use super::scenario_engines::ENGINE_SCENARIOS;
+
+/// The scenario names [`run`] accepts, in catalog order.
+pub const SCENARIOS: &[&str] = &all_scenario_names();
+
+const fn all_scenario_names() -> [&'static str; FIXED_SCENARIOS.len() + ENGINE_SCENARIOS.len()] {
+    let mut names = [""; FIXED_SCENARIOS.len() + ENGINE_SCENARIOS.len()];
+    let mut i = 0;
+    while i < FIXED_SCENARIOS.len() {
+        names[i] = FIXED_SCENARIOS[i];
+        i += 1;
+    }
+    let mut j = 0;
+    while j < ENGINE_SCENARIOS.len() {
+        names[i + j] = ENGINE_SCENARIOS[j];
+        j += 1;
+    }
+    names
+}
 
 fn parse<T: DeserializeOwned>(params: &str) -> Result<T, String> {
     serde_json::from_str(params).map_err(|e| format!("invalid parameters: {e}"))

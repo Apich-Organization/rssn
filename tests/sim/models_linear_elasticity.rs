@@ -84,6 +84,29 @@ fn stiffness_uses_the_node_coordinates() {
 }
 
 #[test]
+fn stiffness_handles_translation_and_extreme_uniform_scale() {
+    let offset = 2.0_f64.powi(54);
+    let expected = k_of(1.0, 0.25);
+    for points in [
+        SQ.map(|(x, y)| (offset + 4.0 * x, offset + 4.0 * y)),
+        SQ.map(|(x, y)| (x * 1e-300, y * 1e-300)),
+        SQ.map(|(x, y)| (x * 1e300, y * 1e300)),
+        SQ.map(|(x, y)| ((2.0 * x - 1.0) * 1e308, (2.0 * y - 1.0) * 1e308)),
+    ] {
+        let scaled =
+            element_stiffness_matrix(points[0], points[1], points[2], points[3], 1.0, 0.25);
+        for (&entry, &reference) in scaled.iter().zip(expected.iter()) {
+            assert!((entry - reference).abs() < 1e-14, "{entry} vs {reference}");
+        }
+    }
+    let huge = k_of(f64::MAX, 0.25);
+    for (&entry, &reference) in huge.iter().zip(expected.iter()) {
+        assert!(entry.is_finite());
+        assert!((entry / f64::MAX - reference).abs() < 1e-14);
+    }
+}
+
+#[test]
 fn uniform_strain_energy_equals_half_c_times_area_on_a_trapezoid() {
     // u = (x, 0) is in the bilinear space: strain (1, 0, 0), energy = 1/2 c11 A.
     let (e, nu) = (7.0, 0.2);
@@ -170,6 +193,82 @@ fn a_softer_material_deflects_more() {
     let ds = run_elasticity_simulation(&soft).unwrap_or_else(|e| panic!("{e}"));
     let dk = run_elasticity_simulation(&stiff).unwrap_or_else(|e| panic!("{e}"));
     assert!((ds[2] / dk[2] - 10.0).abs() < 1e-6);
+}
+
+#[test]
+fn assembly_rejects_bad_connectivity_loads_and_orientation() {
+    let params = one_element(vec![0, 3], vec![(1, 1000.0, 0.0)]);
+    for invalid in [
+        ElasticityParameters {
+            elements: vec![[0, 1, 2, 4]],
+            ..params.clone()
+        },
+        ElasticityParameters {
+            elements: vec![[0, 3, 2, 1]],
+            ..params.clone()
+        },
+        ElasticityParameters {
+            fixed_nodes: vec![4],
+            ..params.clone()
+        },
+        ElasticityParameters {
+            loads: vec![(1, f64::INFINITY, 0.0)],
+            ..params.clone()
+        },
+        ElasticityParameters {
+            loads: vec![(4, 1.0, 0.0)],
+            ..params.clone()
+        },
+        ElasticityParameters {
+            poissons_ratio: 0.5,
+            ..params.clone()
+        },
+    ] {
+        assert!(run_elasticity_simulation(&invalid).is_err());
+    }
+    let duplicate = ElasticityParameters {
+        fixed_nodes: vec![0, 3, 0],
+        ..params.clone()
+    };
+    assert_eq!(
+        run_elasticity_simulation(&params).unwrap(),
+        run_elasticity_simulation(&duplicate).unwrap()
+    );
+}
+
+#[test]
+fn assembly_is_bitwise_stable_across_worker_counts() {
+    let (width, height) = (12, 5);
+    let nodes = (0..=height)
+        .flat_map(|y| (0..=width).map(move |x| (x as f64, y as f64)))
+        .collect();
+    let elements = (0..height)
+        .flat_map(|y| {
+            (0..width).map(move |x| {
+                let i = y * (width + 1) + x;
+                [i, i + 1, i + width + 2, i + width + 1]
+            })
+        })
+        .collect();
+    let params = ElasticityParameters {
+        nodes,
+        elements,
+        youngs_modulus: 1e5,
+        poissons_ratio: 0.2,
+        fixed_nodes: (0..=height).map(|y| y * (width + 1)).collect(),
+        loads: vec![(width, 0.0, -1.0)],
+    };
+    let run = |threads| {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap()
+            .install(|| run_elasticity_simulation(&params).unwrap())
+            .iter()
+            .map(|x| x.to_bits())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(run(1), run(2));
 }
 
 #[test]

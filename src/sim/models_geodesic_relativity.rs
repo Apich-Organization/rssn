@@ -13,8 +13,8 @@
 //! Key features include:
 //! - **Effective Potential Calculation**: Helper methods to calculate the effective potential for analysis of orbits.
 //! - **ODE System Definition**: `SchwarzschildSystem` defines the equations of motion for use with numerical ODE solvers.
-//! - **Adaptive Integration**: Uses a high-order adaptive Runge-Kutta method (Dormand-Prince 5(4)) for precision.
-//! - **Scenario Simulation**: Pre-configured scenarios for stable orbits, plunging trajectories, and photon deflection.
+//! - **Integration**: Uses implicit midpoint for equatorial timelike trajectories and retains adaptive Dormand–Prince 5(4) for Schwarzschild.
+//! - **Scenario Simulation**: Preconfigured timelike orbits, including plunges. The historical CSV name `photon_orbit` refers to a timelike example.
 //!
 //! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/black_hole_orbits_rust.png)
 //!
@@ -33,6 +33,7 @@
 
 use std::fs::File;
 use std::io::Write;
+use std::num::NonZeroUsize;
 use std::path::Path;
 
 use rayon::prelude::*;
@@ -171,19 +172,50 @@ impl OdeSystem for SchwarzschildSystem {
     }
 }
 
-/// Converts the proper-time state `[r, dr/dtau, phi, dphi/dtau]` of a timelike equatorial geodesic of
-/// the Kerr-Newman spacetime `metric` into the conserved energy / angular momentum and the radial
-/// momentum of the Hamiltonian engine.
-fn equatorial_geodesic(
+/// The sign of the conserved Killing energy of a timelike equatorial state.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EquatorialEnergyBranch {
+    /// Nonnegative energy. Continues the unique future-directed exterior root.
+    Nonnegative,
+    /// The second future-directed root in the ergoregion, with nonpositive energy.
+    Nonpositive,
+}
+
+/// Prepares a timelike equatorial Kerr–Newman geodesic in geometric units.
+///
+/// The proper-time state is `[r, dr/dτ, φ, dφ/dτ]`. Normalization selects
+/// a root with `dt/dτ > 0` in Boyer–Lindquist coordinates and converts it
+/// to the conserved energy per unit mass, angular momentum and radial
+/// momentum used by the Hamiltonian integrator. The radius must be
+/// outside the outer horizon when a horizon exists.
+///
+/// The nonnegative branch includes the stationary-limit surface. Within the
+/// ergoregion, a compatible spatial velocity can give two future-directed
+/// roots, one for each sign of the Killing energy. The branches coincide
+/// when the discriminant vanishes. The nonpositive branch is available only
+/// where the stationary Killing vector is spacelike.
+///
+/// # Errors
+///
+/// Returns an error for nonfinite inputs, a radius on or inside the outer
+/// horizon, or a state without a representable future-directed root on
+/// the selected branch.
+pub fn equatorial_timelike_geodesic(
     metric: KerrNewman,
     state: [f64; 4],
+    branch: EquatorialEnergyBranch,
 ) -> Result<Geodesic, String> {
     let [r, rd, phi, phid] = state;
     let (m, a, q) = (metric.m, metric.a, metric.q);
+    if ![m, a, q, r, rd, phi, phid].into_iter().all(f64::is_finite) {
+        return Err("geodesic metric and initial state must be finite".into());
+    }
     let delta = r * r - 2.0 * m * r + a * a + q * q;
-    if delta <= 0.0 || r <= 0.0 {
+    if r <= 0.0 || !delta.is_finite() || delta <= 0.0 || metric.horizon().is_some_and(|rh| r <= rh)
+    {
         return Err("initial radius is not outside the horizon".into());
     }
+
     let w = (2.0 * m * r - q * q) / (r * r);
     let gtt = -(1.0 - w);
     let gtp = -a * w;
@@ -191,20 +223,53 @@ fn equatorial_geodesic(
     let grr = r * r / delta;
     let b = gtp * phid;
     let c = gpp * phid * phid + grr * rd * rd + 1.0;
-    let disc = b.powi(2) - gtt * c;
-    if gtt >= 0.0 || disc < 0.0 {
+    if !(gpp > 0.0 && c.is_finite() && gtt.is_finite() && b.is_finite()) {
+        return Err(
+            "initial metric or velocity coefficients are outside the numerical range".into(),
+        );
+    }
+    if (gtt >= 0.0 && b >= 0.0)
+        || (matches!(branch, EquatorialEnergyBranch::Nonpositive) && gtt <= 0.0)
+    {
+        return Err("no future-directed timelike velocity on this energy branch".into());
+    }
+
+    let disc = if gtt >= 0.0 {
+        // The equatorial block satisfies g_tphi² - g_tt * g_phiphi = Δ.
+        // Using that identity avoids subtracting two large rotation terms.
+        let azimuth = delta.sqrt() * phid;
+        azimuth.mul_add(azimuth, -gtt * (grr * rd * rd + 1.0))
+    } else {
+        b.powi(2) - gtt * c
+    };
+    if !disc.is_finite() || disc < 0.0 {
         return Err("no future-directed timelike velocity with this spatial velocity".into());
     }
-    let ut = (-b - disc.sqrt()) / gtt;
-    let energy = -(gtt * ut + gtp * phid);
+    let root = disc.sqrt().abs();
+    let (ut, energy) = match branch {
+        | EquatorialEnergyBranch::Nonpositive => ((root - b) / gtt, -root),
+        | EquatorialEnergyBranch::Nonnegative if gtt >= 0.0 || b < -0.5 * root => {
+            // Rationalizing the positive-energy root gives the finite
+            // linear limit at g_tt = 0 and avoids cancellation there.
+            (c / (root - b), root)
+        },
+        | EquatorialEnergyBranch::Nonnegative => {
+            let ut = (-b - root) / gtt;
+            (ut, -(gtt * ut + b))
+        },
+    };
     let lz = gtp * ut + gpp * phid;
+    let pr = grr * rd;
+    if !(ut > 0.0 && ut.is_finite() && energy.is_finite() && lz.is_finite() && pr.is_finite()) {
+        return Err("future-directed timelike velocity is outside the numerical range".into());
+    }
     Ok(Geodesic {
         metric,
         t: 0.0,
         r,
         theta: std::f64::consts::FRAC_PI_2,
         phi,
-        pr: grr * rd,
+        pr,
         ptheta: 0.0,
         energy,
         lz,
@@ -218,7 +283,8 @@ fn equatorial_geodesic(
 /// The spacetime has (mass `params.black_hole_mass`, spin
 /// parameter `spin = a`, charge `charge = Q`, geometric units) integrated for the proper time
 /// `params.proper_time_end` with the symplectic implicit-midpoint engine of
-/// [`crate::sim::relativity`] (step `params.initial_dt`, mass-shell projection). The state is
+/// [`crate::sim::relativity`] (step `params.initial_dt`, mass-shell projection). This uses
+/// the [`EquatorialEnergyBranch::Nonnegative`] branch. The initial state is
 /// `[r, dr/dtau, phi, dphi/dtau]` as in [`GeodesicParameters`]. Returns the Cartesian path
 /// `(r cos phi, r sin phi)`; the run stops at the horizon (`r <= 1.001 r_+`) or on escape.
 ///
@@ -230,12 +296,48 @@ pub fn run_kerr_newman_geodesic(
     spin: f64,
     charge: f64,
 ) -> Result<Vec<(f64, f64)>, String> {
+    run_kerr_newman_geodesic_sampled(
+        params,
+        spin,
+        charge,
+        EquatorialEnergyBranch::Nonnegative,
+        NonZeroUsize::MIN,
+    )
+}
+
+/// Runs an equatorial timelike Kerr–Newman geodesic and retains fewer positions.
+///
+/// Returns the initial Cartesian position, every `retain_every` integration
+/// steps, and the final reached position, including an event between samples.
+/// A stride of one gives the full trajectory. The stride changes output
+/// storage only. The same initial step, proper-time target, horizon and
+/// escape tests, and model step limit apply at every stride. The selected
+/// energy branch has the meaning of [`equatorial_timelike_geodesic`].
+///
+/// # Errors
+///
+/// Returns an error for an invalid initial state, a nonfinite or negative
+/// proper-time target, a nonfinite or nonpositive initial step, or a failed
+/// implicit integration step.
+pub fn run_kerr_newman_geodesic_sampled(
+    params: &GeodesicParameters,
+    spin: f64,
+    charge: f64,
+    branch: EquatorialEnergyBranch,
+    retain_every: NonZeroUsize,
+) -> Result<Vec<(f64, f64)>, String> {
+    if !valid_time_span(params) {
+        return Err(
+            "proper time must be finite and nonnegative and step must be finite and positive"
+                .into(),
+        );
+    }
     let metric = KerrNewman {
         m: params.black_hole_mass,
         a: spin,
         q: charge,
     };
-    let mut g = equatorial_geodesic(metric, params.initial_state)?;
+    let mut g = equatorial_timelike_geodesic(metric, params.initial_state, branch)?;
     let r_stop = metric.horizon().map_or(0.05 * metric.m, |rh| 1.001 * rh);
     if g.r <= r_stop {
         return Err("initial radius is inside the stopping radius".into());
@@ -244,19 +346,39 @@ pub fn run_kerr_newman_geodesic(
     let h0 = params.initial_dt.max(1e-6);
     let mut tau = 0.0;
     let mut guard = 0usize;
+    let stride = retain_every.get();
+    let mut until_sample = stride;
     while tau < params.proper_time_end && guard < 2_000_000 {
         native_charge();
         guard += 1;
         let h = h0.min(params.proper_time_end - tau);
         let before = g.lambda;
         let term = g.integrate(h, 1, true, r_stop, 1e4)?;
-        tau += g.lambda - before;
-        path.push((g.r * g.phi.cos(), g.r * g.phi.sin()));
+        let elapsed = g.lambda - before;
+        if !(elapsed > 0.0 && elapsed.is_finite() && g.r.is_finite() && g.phi.is_finite()) {
+            return Err("geodesic step did not produce a finite, advancing state".into());
+        }
+        tau += elapsed;
+        until_sample -= 1;
+        if until_sample == 0 {
+            path.push((g.r * g.phi.cos(), g.r * g.phi.sin()));
+            until_sample = stride;
+        }
         if term != Termination::Steps {
             break;
         }
     }
+    if until_sample != stride {
+        path.push((g.r * g.phi.cos(), g.r * g.phi.sin()));
+    }
     Ok(path)
+}
+
+fn valid_time_span(params: &GeodesicParameters) -> bool {
+    params.proper_time_end.is_finite()
+        && params.proper_time_end >= 0.0
+        && params.initial_dt.is_finite()
+        && params.initial_dt > 0.0
 }
 
 /// Runs a geodesic simulation around a Schwarzschild black hole.
@@ -282,8 +404,14 @@ pub fn run_geodesic_simulation(params: &GeodesicParameters) -> Vec<(f64, f64)> {
 
 /// Adaptive Dormand-Prince 5(4) integration of the reduced Schwarzschild equations (the legacy
 /// path, kept as an independent reference and as the fallback of [`run_geodesic_simulation`]).
+///
+/// An invalid proper-time target or initial step returns only the initial Cartesian position.
 #[must_use]
 pub fn run_geodesic_simulation_rk45(params: &GeodesicParameters) -> Vec<(f64, f64)> {
+    if !valid_time_span(params) {
+        let [r, _, phi, _] = params.initial_state;
+        return vec![(r * phi.cos(), r * phi.sin())];
+    }
     let system = SchwarzschildSystem {
         mass: params.black_hole_mass,
     };
@@ -319,7 +447,7 @@ pub fn run_geodesic_simulation_rk45(params: &GeodesicParameters) -> Vec<(f64, f6
 /// This function sets up and runs simulations for:
 /// - A stable, precessing orbit.
 /// - A plunging orbit (where the particle falls into the black hole).
-/// - A photon orbit (light bending).
+/// - A fast timelike approach, saved under the historical name `photon_orbit`.
 ///
 /// The results are saved to `.csv` files for external visualization.
 ///

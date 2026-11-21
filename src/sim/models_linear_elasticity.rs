@@ -13,8 +13,6 @@ use std::path::Path;
 
 use ndarray::Array1;
 use ndarray::Array2;
-use ndarray::array;
-use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -64,76 +62,135 @@ pub fn element_stiffness_matrix(
     e: f64,
     nu: f64,
 ) -> Array2<f64> {
-    let pts = [p1, p2, p3, p4];
+    let block = stiffness([p1, p2, p3, p4], e, nu, false).unwrap_or([[f64::NAN; 8]; 8]);
+    Array2::from_shape_fn((8, 8), |(i, j)| block[i][j])
+}
 
-    // Natural coordinates of the corners.
-    let xi_n = [-1.0, 1.0, 1.0, -1.0];
+const GAUSS: f64 = 0.577_350_269_189_625_8;
+const XI: [f64; 4] = [-1.0, 1.0, 1.0, -1.0];
+const ETA: [f64; 4] = [-1.0, -1.0, 1.0, 1.0];
 
-    let eta_n = [-1.0, -1.0, 1.0, 1.0];
-
-    let c_mat = (e / nu.mul_add(-nu, 1.0))
-        * array![[1.0, nu, 0.0], [nu, 1.0, 0.0], [0.0, 0.0, (1.0 - nu) / 2.0]];
-
-    let g = 1.0 / 3.0_f64.sqrt();
-
-    let mut k = Array2::<f64>::zeros((8, 8));
-
-    for &xi in &[-g, g] {
-        for &eta in &[-g, g] {
-            // Shape-function derivatives in natural coordinates.
-            let mut dn_dxi = [0.0; 4];
-
-            let mut dn_deta = [0.0; 4];
-
-            for n in 0..4 {
-                dn_dxi[n] = 0.25 * xi_n[n] * (1.0 + eta_n[n] * eta);
-
-                dn_deta[n] = 0.25 * eta_n[n] * (1.0 + xi_n[n] * xi);
+fn local_points(points: [(f64, f64); 4]) -> Result<[[f64; 2]; 4], &'static str> {
+    if points
+        .iter()
+        .any(|&(x, y)| !x.is_finite() || !y.is_finite())
+    {
+        return Err("Q4 vertices must be finite");
+    }
+    let origin = [points[0].0, points[0].1];
+    let mut local = points.map(|(x, y)| [x - origin[0], y - origin[1]]);
+    if local.iter().flatten().any(|x| !x.is_finite()) {
+        let mid = |coordinate: fn((f64, f64)) -> f64| {
+            let mut range = [f64::INFINITY, f64::NEG_INFINITY];
+            for point in points {
+                let x = coordinate(point);
+                range = [range[0].min(x), range[1].max(x)];
             }
-
-            // Jacobian J = [[dx/dxi, dy/dxi], [dx/deta, dy/deta]].
-            let mut j = [[0.0; 2]; 2];
-
-            for n in 0..4 {
-                j[0][0] += dn_dxi[n] * pts[n].0;
-
-                j[0][1] += dn_dxi[n] * pts[n].1;
-
-                j[1][0] += dn_deta[n] * pts[n].0;
-
-                j[1][1] += dn_deta[n] * pts[n].1;
-            }
-
-            let det = j[0][0].mul_add(j[1][1], -(j[0][1] * j[1][0]));
-
-            let inv = [
-                [j[1][1] / det, -j[0][1] / det],
-                [-j[1][0] / det, j[0][0] / det],
-            ];
-
-            // Strain-displacement matrix B (3 x 8): [ex, ey, gxy].
-            let mut b_mat = Array2::<f64>::zeros((3, 8));
-
-            for n in 0..4 {
-                let dn_dx = inv[0][0].mul_add(dn_dxi[n], inv[0][1] * dn_deta[n]);
-
-                let dn_dy = inv[1][0].mul_add(dn_dxi[n], inv[1][1] * dn_deta[n]);
-
-                b_mat[[0, 2 * n]] = dn_dx;
-
-                b_mat[[1, 2 * n + 1]] = dn_dy;
-
-                b_mat[[2, 2 * n]] = dn_dy;
-
-                b_mat[[2, 2 * n + 1]] = dn_dx;
-            }
-
-            // Gauss weights are 1 for the 2-point rule.
-            k = k + b_mat.t().dot(&c_mat.dot(&b_mat)) * det.abs();
+            f64::midpoint(range[0], range[1])
+        };
+        let center = [mid(|p| p.0), mid(|p| p.1)];
+        local = points.map(|(x, y)| [x - center[0], y - center[1]]);
+    }
+    let scale = local
+        .iter()
+        .flatten()
+        .fold(0.0_f64, |m, value| m.max(value.abs()));
+    if scale == 0.0 {
+        return Err("Q4 vertices coincide");
+    }
+    // A common in-plane scale cancels between the gradients and the area.
+    if !(1e-135..=1e135).contains(&scale) {
+        for value in local.iter_mut().flatten() {
+            *value /= scale;
         }
     }
+    Ok(local)
+}
 
-    k
+fn material(
+    young: f64,
+    poisson: f64,
+) -> Result<(), &'static str> {
+    if !young.is_finite() || young <= 0.0 || !(-1.0 < poisson && poisson < 0.5) {
+        return Err("Q4 material requires finite E > 0 and -1 < nu < 0.5");
+    }
+    Ok(())
+}
+
+fn stiffness(
+    points: [(f64, f64); 4],
+    young: f64,
+    poisson: f64,
+    checked: bool,
+) -> Result<[[f64; 8]; 8], &'static str> {
+    let points = local_points(points)?;
+    let normal = poisson.mul_add(-poisson, 1.0).recip();
+    let transverse = poisson * normal;
+    let shear = 0.5 * (1.0 - poisson) * normal;
+    let mut k = [[0.0; 8]; 8];
+
+    for xi in [-GAUSS, GAUSS] {
+        for eta in [-GAUSS, GAUSS] {
+            let dxi = std::array::from_fn::<_, 4, _>(|i| 0.25 * XI[i] * (1.0 + ETA[i] * eta));
+            let deta = std::array::from_fn::<_, 4, _>(|i| 0.25 * ETA[i] * (1.0 + XI[i] * xi));
+            let mut j = [[0.0; 2]; 2];
+            for (i, p) in points.iter().enumerate() {
+                j[0][0] += dxi[i] * p[0];
+                j[0][1] += dxi[i] * p[1];
+                j[1][0] += deta[i] * p[0];
+                j[1][1] += deta[i] * p[1];
+            }
+            let det = j[0][0].mul_add(j[1][1], -(j[0][1] * j[1][0]));
+            if !det.is_finite() || det == 0.0 || (checked && det < 0.0) {
+                return Err(
+                    "Q4 mapping must have a finite nonzero Jacobian with positive orientation",
+                );
+            }
+            let area_weight = det.abs().sqrt();
+            let mut strain = [[0.0; 8]; 3];
+            for i in 0..4 {
+                // Combine inverse-Jacobian and quadrature factors before multiplying by the material.
+                let dx = j[1][1].mul_add(dxi[i], -j[0][1] * deta[i]) / area_weight;
+                let dy = (-j[1][0]).mul_add(dxi[i], j[0][0] * deta[i]) / area_weight;
+                strain[0][2 * i] = dx;
+                strain[1][2 * i + 1] = dy;
+                strain[2][2 * i] = dy;
+                strain[2][2 * i + 1] = dx;
+            }
+            let stress: [[f64; 8]; 3] = [
+                std::array::from_fn(|i| normal * strain[0][i] + transverse * strain[1][i]),
+                std::array::from_fn(|i| transverse * strain[0][i] + normal * strain[1][i]),
+                std::array::from_fn(|i| shear * strain[2][i]),
+            ];
+            for (row, entries) in k.iter_mut().enumerate() {
+                for (col, slot) in entries.iter_mut().enumerate().skip(row) {
+                    *slot += strain[0][row] * stress[0][col]
+                        + strain[1][row] * stress[1][col]
+                        + strain[2][row] * stress[2][col];
+                }
+            }
+        }
+    }
+    for row in 0..8 {
+        for col in row..8 {
+            let entry = k[row][col] * young;
+            if checked && !entry.is_finite() {
+                return Err("Q4 stiffness is outside the floating-point range");
+            }
+            k[row][col] = entry;
+            k[col][row] = entry;
+        }
+    }
+    Ok(k)
+}
+
+pub(crate) fn checked_stiffness(
+    points: [(f64, f64); 4],
+    young: f64,
+    poisson: f64,
+) -> Result<[[f64; 8]; 8], &'static str> {
+    material(young, poisson)?;
+    stiffness(points, young, poisson, true)
 }
 
 /// Runs a 2D linear elasticity simulation using the Finite Element Method.
@@ -154,89 +211,75 @@ pub fn element_stiffness_matrix(
 /// or if the global stiffness matrix is ill-conditioned.
 pub fn run_elasticity_simulation(params: &ElasticityParameters) -> Result<Vec<f64>, String> {
     let n_nodes = params.nodes.len();
+    let n_dofs = n_nodes.checked_mul(2).ok_or("Q4 degree count overflow")?;
+    material(params.youngs_modulus, params.poissons_ratio)?;
+    if params.elements.iter().flatten().any(|&i| i >= n_nodes)
+        || params.fixed_nodes.iter().any(|&i| i >= n_nodes)
+        || params
+            .loads
+            .iter()
+            .any(|&(i, fx, fy)| i >= n_nodes || !fx.is_finite() || !fy.is_finite())
+    {
+        return Err(
+            "Q4 connectivity, fixed nodes and loads must refer to finite valid data".into(),
+        );
+    }
+    let mut fixed = vec![false; n_nodes];
+    for &node in &params.fixed_nodes {
+        fixed[node] = true;
+    }
+    let mut f_global = Array1::<f64>::zeros(n_dofs);
+    for &(node, fx, fy) in &params.loads {
+        if !fixed[node] {
+            f_global[node * 2] += fx;
+            f_global[node * 2 + 1] += fy;
+        }
+    }
+    if f_global.iter().any(|value| !value.is_finite()) {
+        return Err("Q4 loads sum outside the floating-point range".into());
+    }
 
-    let n_dofs = n_nodes * 2;
-
-    // Parallel element stiffness matrix assembly
-    let triplets: Vec<(usize, usize, f64)> = params
+    let capacity = params
         .elements
-        .par_iter()
-        .flat_map(|element| {
-            let p1 = params.nodes[element[0]];
-
-            let p2 = params.nodes[element[1]];
-
-            let p3 = params.nodes[element[2]];
-
-            let p4 = params.nodes[element[3]];
-
-            let k_element = element_stiffness_matrix(
-                p1,
-                p2,
-                p3,
-                p4,
-                params.youngs_modulus,
-                params.poissons_ratio,
-            );
-
-            let dof_indices = [
-                element[0] * 2,
-                element[0] * 2 + 1,
-                element[1] * 2,
-                element[1] * 2 + 1,
-                element[2] * 2,
-                element[2] * 2 + 1,
-                element[3] * 2,
-                element[3] * 2 + 1,
-            ];
-
-            let mut element_triplets = Vec::with_capacity(64);
-
-            for r in 0..8 {
-                for c in 0..8 {
-                    element_triplets.push((dof_indices[r], dof_indices[c], k_element[[r, c]]));
+        .len()
+        .checked_mul(64)
+        .and_then(|n| n.checked_add(params.fixed_nodes.len().saturating_mul(2)))
+        .ok_or("Q4 stiffness entry count overflow")?;
+    let mut triplets = Vec::new();
+    triplets
+        .try_reserve_exact(capacity)
+        .map_err(|e| format!("Cannot reserve Q4 assembly: {e}"))?;
+    let blocks = crate::kernels::par::map_slice(&params.elements, 32, |element| {
+        stiffness(
+            element.map(|i| params.nodes[i]),
+            params.youngs_modulus,
+            params.poissons_ratio,
+            true,
+        )
+    });
+    for (element, block) in params.elements.iter().zip(blocks) {
+        let block = block?;
+        for (row, values) in block.iter().enumerate() {
+            let node = element[row / 2];
+            if fixed[node] {
+                continue;
+            }
+            for (col, &value) in values.iter().enumerate() {
+                let other = element[col / 2];
+                if !fixed[other] {
+                    triplets.push((node * 2 + row % 2, other * 2 + col % 2, value));
                 }
             }
-
-            element_triplets
-        })
-        .collect();
-
-    let mut f_global = Array1::<f64>::zeros(n_dofs);
-
-    for &(node_idx, fx, fy) in &params.loads {
-        f_global[node_idx * 2] += fx;
-
-        f_global[node_idx * 2 + 1] += fy;
+        }
+    }
+    for (node, &pinned) in fixed.iter().enumerate() {
+        if pinned {
+            let dof = node * 2;
+            triplets.extend([(dof, dof, 1.0), (dof + 1, dof + 1, 1.0)]);
+        }
     }
 
-    // Handle boundary conditions: zero out rows and columns of fixed DOFs
-    let fixed_dofs: std::collections::HashSet<usize> = params
-        .fixed_nodes
-        .iter()
-        .flat_map(|&node_idx| vec![node_idx * 2, node_idx * 2 + 1])
-        .collect();
-
-    let mut filtered_triplets: Vec<(usize, usize, f64)> = triplets
-        .into_par_iter()
-        .filter(|(r, c, _)| !fixed_dofs.contains(r) && !fixed_dofs.contains(c))
-        .collect();
-
-    for &node_idx in &params.fixed_nodes {
-        let dof1 = node_idx * 2;
-
-        let dof2 = node_idx * 2 + 1;
-
-        filtered_triplets.push((dof1, dof1, 1.0));
-
-        filtered_triplets.push((dof2, dof2, 1.0));
-
-        f_global[dof1] = 0.0;
-
-        f_global[dof2] = 0.0;
-    }
-
-    let k_global: SparseMat = csr_from_triplets(n_dofs, n_dofs, &filtered_triplets);
+    let k_global: SparseMat = csr_from_triplets(n_dofs, n_dofs, &triplets);
 
     let displacements = solve_conjugate_gradient(&k_global, &f_global, None, 5000, 1e-9)?;
 
@@ -360,32 +403,3 @@ pub use crate::sim::elasticity_fem::ElasticityProblem;
 pub use crate::sim::elasticity_fem::Material as SimplexMaterial;
 /// Simplex-mesh elasticity (plane stress/strain, 3D, P1/P2): see [`crate::sim::elasticity_fem`].
 pub use crate::sim::elasticity_fem::solve as solve_simplex_elasticity;
-
-/// Validate the Q4 reference mapping at every native quadrature point before
-/// assembly. Session adapters use this preflight instead of duplicating it.
-pub(crate) fn validate_quadrilateral(points: [(f64, f64); 4]) -> Result<(), String> {
-    let g = 1.0 / 3.0_f64.sqrt();
-    let xi_n = [-1.0, 1.0, 1.0, -1.0];
-    let eta_n = [-1.0, -1.0, 1.0, 1.0];
-    for xi in [-g, g] {
-        for eta in [-g, g] {
-            let mut j = [[0.0; 2]; 2];
-            for n in 0..4 {
-                let dx = 0.25 * xi_n[n] * (1.0 + eta_n[n] * eta);
-                let de = 0.25 * eta_n[n] * (1.0 + xi_n[n] * xi);
-                j[0][0] += dx * points[n].0;
-                j[0][1] += dx * points[n].1;
-                j[1][0] += de * points[n].0;
-                j[1][1] += de * points[n].1;
-            }
-            let det = j[0][0].mul_add(j[1][1], -(j[0][1] * j[1][0]));
-            if !det.is_finite() || det <= 0.0 {
-                return Err(
-                    "Q4 mapping must have finite positive Jacobian at every quadrature point"
-                        .into(),
-                );
-            }
-        }
-    }
-    Ok(())
-}

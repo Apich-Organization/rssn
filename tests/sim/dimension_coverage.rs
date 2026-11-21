@@ -9,11 +9,14 @@ use rssn::kernels::matrix::Matrix;
 use rssn::sim::classical;
 use rssn::sim::dimensional::IterativeMethod;
 use rssn::sim::dimensional::Transport;
+use rssn::sim::dimensional::advance_transport_nd;
 use rssn::sim::dimensional::solve_heat_adi_nd;
 use rssn::sim::dimensional::solve_poisson_iterative_nd;
 use rssn::sim::dimensional::solve_schrodinger_cn_nd;
 use rssn::sim::dimensional::solve_transport_nd;
+use rssn::sim::dimensional::solve_transport_sampled_nd;
 use rssn::sim::dimensional::solve_wave_leapfrog_nd;
+use rssn::sim::fdm_nd as grid_fdm;
 use rssn::sim::physics_cfd as cfd;
 use rssn::sim::physics_cnm as cnm;
 use rssn::sim::physics_fdm as fdm;
@@ -519,9 +522,100 @@ fn transport_rejects_bad_input() {
     );
 }
 
+#[test]
+fn transport_snapshot_cadence_keeps_endpoints_and_preserves_frozen_boundaries() {
+    let initial = [7.0, 1.0, 2.0, 3.0, -4.0];
+    let eq = Transport::Diffusion { alpha: 0.25 };
+    let full = solve_transport_nd(&initial, &[5], &[1.0], &eq, 0.125, 7).unwrap();
+    let sampled = solve_transport_sampled_nd(&initial, &[5], &[1.0], &eq, 0.125, 7, 3).unwrap();
+    assert_eq!(
+        sampled.iter().collect::<Vec<_>>(),
+        [&full[0], &full[3], &full[6], &full[7]]
+    );
+    assert!(full.iter().all(|row| row[0] == 7.0 && row[4] == -4.0));
+    assert_eq!(
+        advance_transport_nd(&initial, &[5], &[1.0], &eq, 0.125, 7).unwrap(),
+        full[7]
+    );
+    assert_eq!(
+        solve_transport_sampled_nd(&initial, &[5], &[1.0], &eq, 0.125, 0, 3).unwrap(),
+        vec![initial]
+    );
+    assert!(solve_transport_sampled_nd(&initial, &[5], &[1.0], &eq, 0.125, 7, 0).is_err());
+    assert!(solve_transport_nd(&initial, &[5], &[1.0], &eq, 0.125, usize::MAX).is_err());
+    assert!(advance_transport_nd(&initial, &[usize::MAX, 3], &[1.0; 2], &eq, 0.125, 1).is_err());
+    let _cancel = rssn::cancellation::install(std::sync::Arc::new(
+        std::sync::atomic::AtomicBool::new(true),
+    ));
+    assert!(
+        advance_transport_nd(&initial, &[5], &[1.0], &eq, 0.125, usize::MAX)
+            .unwrap_err()
+            .contains("cancelled")
+    );
+}
+
+#[test]
+fn transport_wraps_periodic_edges_and_corners_with_deterministic_parallel_updates() {
+    let run = |threads, dims: &[usize]| {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap()
+            .install(|| {
+                let len = dims.iter().product();
+                let initial: Vec<_> = (0..len).map(|p: usize| (p % 97) as f64).collect();
+                advance_transport_nd(
+                    &initial,
+                    dims,
+                    &vec![1.0; dims.len()],
+                    &Transport::Advection {
+                        velocity: vec![0.5; dims.len()],
+                    },
+                    0.125,
+                    3,
+                )
+                .unwrap()
+            })
+    };
+    let dims = [3, 110, 102];
+    let serial = run(1, &dims);
+    let parallel = run(4, &dims);
+    assert_eq!(serial, parallel);
+    assert_eq!(run(1, &[40_001]), run(4, &[40_001]));
+    let wrap = |p: usize, len| {
+        match p {
+            | 0 => len - 2,
+            | p if p == len - 1 => 1,
+            | p => p,
+        }
+    };
+    for z in 0..dims[2] {
+        for y in 0..dims[1] {
+            for x in 0..dims[0] {
+                assert_eq!(
+                    serial[idx3(dims, x, y, z)],
+                    serial[idx3(dims, wrap(x, dims[0]), wrap(y, dims[1]), wrap(z, dims[2]))],
+                );
+            }
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Crank-Nicolson heat (ADI)
 // ---------------------------------------------------------------------------
+
+#[test]
+fn heat_adi_factors_remain_finite_with_large_or_small_reference_scales() {
+    let initial = [4.0, 1.0, 5.0];
+    // h = D = dt, so ρ = 1/2 and the single interior node decays to zero.
+    for magnitude in [1.0, 2.0_f64.powi(664), 2.0_f64.powi(-664)] {
+        assert_eq!(
+            solve_heat_adi_nd(&initial, &[3], &[magnitude], magnitude, magnitude, 2).unwrap(),
+            [0.0, 0.0, 0.0],
+        );
+    }
+}
 
 #[test]
 fn heat_adi_one_axis_equals_the_legacy_1d_crank_nicolson() {
@@ -795,6 +889,50 @@ fn schrodinger_3d_box_eigenstate_and_norm_conservation() {
 // Wave
 // ---------------------------------------------------------------------------
 
+#[test]
+fn leapfrog_uses_one_spacing_factor_and_enforces_zero_boundary_data() {
+    let mut spec = grid_fdm::WaveSpec {
+        grid: grid_fdm::Grid {
+            nx: 3,
+            ny: 3,
+            h: 0.25,
+        },
+        c: 1.0,
+        steps: 2,
+        dt: 0.125,
+        initial: vec![9.0; 9],
+        velocity: vec![10.0; 9],
+    };
+    spec.initial[4] = 1.0;
+    spec.velocity[4] = 0.0;
+    let faces = grid_fdm::Boundary2D::uniform(grid_fdm::BoundaryCondition::Dirichlet(0.0));
+    let plain = grid_fdm::solve_wave(&spec).unwrap();
+    assert_eq!(plain, grid_fdm::solve_wave_with_bc(&spec, &faces).unwrap());
+    for (snapshot, center) in plain.iter().zip([1.0, 0.5, -0.5]) {
+        assert_eq!(
+            snapshot.values,
+            [0.0, 0.0, 0.0, 0.0, center, 0.0, 0.0, 0.0, 0.0]
+        );
+    }
+    spec.steps = 0;
+    assert_eq!(grid_fdm::solve_wave(&spec).unwrap(), plain[..1]);
+    assert_eq!(
+        grid_fdm::solve_wave_with_bc(&spec, &faces).unwrap(),
+        plain[..1]
+    );
+    spec.c = f64::NAN;
+    assert!(grid_fdm::solve_wave(&spec).is_err());
+}
+
+#[test]
+fn leapfrog_preserves_finite_courant_numbers_at_extreme_spacings() {
+    let initial = [0.0, 1.0, 0.0];
+    for scale in [1.0, 2.0_f64.powi(800), 2.0_f64.powi(-800)] {
+        let solution =
+            solve_wave_leapfrog_nd(&initial, &[0.0; 3], &[3], &[scale], 0.5, scale, 1).unwrap();
+        assert_eq!(solution[1], [0.0, 0.75, 0.0]);
+    }
+}
 #[test]
 fn wave_one_axis_equals_the_legacy_routine() {
     let n = 51;

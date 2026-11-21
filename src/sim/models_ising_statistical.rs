@@ -25,13 +25,14 @@
 //! | Dimension | `run_ising_simulation*`: 2-D parallel checkerboard Metropolis; [`run_lattice_simulation`] and `run_wolff_simulation` delegate to the dimension-generic engine of [`crate::sim::spin_models`] (any `D`) |
 //! | Models | Ising, q-state Potts, XY, Heisenberg ([`SpinModel`]) through [`run_lattice_simulation`] |
 //! | Algorithms | Metropolis (checkerboard, 2-D Ising), Metropolis / heat bath / Wolff / Swendsen-Wang for every model through [`SpinAlgorithm`]; tempering, Wang-Landau, reweighting in [`crate::sim::spin_models`] |
-//! | Boundaries | periodic (checkerboard; odd sides are handled by sequential updates of the extra row / column), periodic or open (`run_lattice_simulation`) |
+//! | Boundaries | periodic (checkerboard with sequential odd edges or single-site sweeps for axes of length one or two), periodic or open (`run_lattice_simulation`) |
 //! | Initial conditions | random (checkerboard), hot or cold (`run_lattice_simulation`) |
 //! | Exact references | Onsager `Tc`, energy and magnetisation in [`crate::sim::spin_models`] |
 
 use std::fmt::Write as OtherWrite;
 use std::fs::File;
 use std::io::Write;
+use std::num::NonZeroUsize;
 use std::path::Path;
 
 use ndarray::Array2;
@@ -73,8 +74,13 @@ fn row_rng(
     row: usize,
 ) -> StdRng {
     let mixed = seed
-        ^ ((step as u64) * 2 + colour).wrapping_mul(0x9E37_79B9_7F4A_7C15)
-        ^ (row as u64 + 1).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        ^ (step as u64)
+            .wrapping_mul(2)
+            .wrapping_add(colour)
+            .wrapping_mul(0x9E37_79B9_7F4A_7C15)
+        ^ (row as u64)
+            .wrapping_add(1)
+            .wrapping_mul(0xBF58_476D_1CE4_E5B9);
 
     StdRng::seed_from_u64(mixed)
 }
@@ -92,133 +98,389 @@ pub fn run_ising_simulation(params: &IsingParameters) -> (Vec<i8>, f64) {
 ///
 /// The initial configuration and every row update use their own generator
 /// derived from `seed`, so the result does not depend on thread scheduling.
+/// Grids with an axis of length one or two use ordered single-site sweeps.
+/// At positive temperature on a multi-site grid, each visit in such a
+/// sweep proposes a flip with probability one half.
 #[must_use]
 pub fn run_ising_simulation_seeded(
     params: &IsingParameters,
     seed: u64,
 ) -> (Vec<i8>, f64) {
-    if params.width == 0
-        || params.height == 0
-        || params.temperature.is_nan()
-        || params.temperature < 0.0
-    {
+    let Ok(mut model) = Checkerboard::new(params, seed) else {
         return (Vec::new(), f64::NAN);
+    };
+    for step in 0..params.mc_steps {
+        model.sweep(step);
+    }
+    let sum: i64 = model.spins.iter().map(|&s| i64::from(s)).sum();
+    let magnetization = (sum as f64 / model.spins.len() as f64).abs();
+    (model.spins, magnetization)
+}
+
+#[derive(Clone, Copy)]
+struct MetropolisWeights {
+    uphill: [f64; 2],
+}
+
+impl MetropolisWeights {
+    fn new(temperature: f64) -> Self {
+        let beta = temperature.abs().recip();
+        Self {
+            uphill: [(-4.0 * beta).exp(), (-8.0 * beta).exp()],
+        }
     }
 
-    let mut local_rng = StdRng::seed_from_u64(seed);
+    fn update(
+        self,
+        spin: i8,
+        neighbors: i8,
+        rng: &mut StdRng,
+    ) -> i8 {
+        let delta = 2 * spin * neighbors;
+        if delta < 0 {
+            return -spin;
+        }
+        let accept = match delta {
+            | 0 => 1.0,
+            | 4 => self.uphill[0],
+            | _ => self.uphill[1],
+        };
+        // Nonnegative energy changes always draw from the row's stream,
+        // including a zero-cost move at zero temperature.
+        if rng.random::<f64>() < accept {
+            -spin
+        } else {
+            spin
+        }
+    }
+}
 
-    let mut grid: Vec<i8> = (0..params.width * params.height)
-        .map(|_| {
+struct Checkerboard {
+    spins: Vec<i8>,
+    next: Vec<i8>,
+    width: usize,
+    height: usize,
+    inner_width: usize,
+    inner_height: usize,
+    weights: MetropolisWeights,
+    seed: u64,
+    parallel: bool,
+    lazy_narrow: bool,
+}
+
+const fn previous(
+    index: usize,
+    size: usize,
+) -> usize {
+    if index == 0 {
+        size - 1
+    } else {
+        index - 1
+    }
+}
+
+const fn following(
+    index: usize,
+    size: usize,
+) -> usize {
+    if index + 1 == size {
+        0
+    } else {
+        index + 1
+    }
+}
+
+impl Checkerboard {
+    fn new(
+        params: &IsingParameters,
+        seed: u64,
+    ) -> Result<Self, &'static str> {
+        const MIN_PARALLEL_SITES: usize = 16_384;
+
+        let width = params.width;
+        let height = params.height;
+        let sites = width
+            .checked_mul(height)
+            .filter(|&n| n > 0)
+            .ok_or("invalid Ising grid shape")?;
+        if params.temperature.is_nan() || params.temperature < 0.0 {
+            return Err("Ising temperature must be nonnegative");
+        }
+
+        let mut spins = Vec::new();
+        spins
+            .try_reserve_exact(sites)
+            .map_err(|_| "cannot allocate Ising spins")?;
+        let mut local_rng = StdRng::seed_from_u64(seed);
+        spins.extend((0..sites).map(|_| {
             if local_rng.random::<bool>() {
                 1
             } else {
                 -1
             }
+        }));
+
+        let inner_width = width - width % 2;
+        let inner_height = height - height % 2;
+        let mut next = Vec::new();
+        let parallel = if params.mc_steps > 0 && width > 2 && height > 2 {
+            let slots = inner_height * (inner_width / 2);
+            next.try_reserve_exact(slots)
+                .map_err(|_| "cannot allocate Ising sweep buffer")?;
+            next.resize(slots, 0);
+            crate::execution::should_split(inner_width * inner_height, MIN_PARALLEL_SITES)
+        } else {
+            false
+        };
+        Ok(Self {
+            spins,
+            next,
+            width,
+            height,
+            inner_width,
+            inner_height,
+            weights: MetropolisWeights::new(params.temperature),
+            seed,
+            parallel,
+            lazy_narrow: sites > 1 && params.temperature > 0.0,
         })
-        .collect();
-
-    let n_spins = (params.width * params.height) as f64;
-
-    let b = 1.0 / params.temperature;
-
-    for step in 0..params.mc_steps {
-        // Checkerboard update for parallelism: red points, then black points.
-        checkerboard_sweep(&mut grid, params.width, params.height, b, seed, step, 0);
-
-        checkerboard_sweep(&mut grid, params.width, params.height, b, seed, step, 1);
-
-        // odd periodic sides cannot be two-coloured: the extra row / column is updated site by
-        // site (each single-site Metropolis update is a valid move on its own)
-        if params.width % 2 == 1 || params.height % 2 == 1 {
-            sequential_edge_sweep(&mut grid, params.width, params.height, b, seed, step);
-        }
     }
 
-    let magnetization: f64 = grid.par_iter().map(|&s| f64::from(s)).sum::<f64>() / n_spins;
-
-    (grid, magnetization.abs())
-}
-
-/// One checkerboard half-sweep. Sites of one colour only read the opposite colour, so all flip
-/// decisions are computed from a shared view (one RNG stream per row) and applied afterwards.
-fn checkerboard_sweep(
-    grid: &mut [i8],
-    width: usize,
-    height: usize,
-    b: f64,
-    seed: u64,
-    step: usize,
-    parity: u64,
-) {
-    let view: &[i8] = grid;
-    // the interior has even sides, so its wrap-around neighbours have the opposite colour
-    let (h_in, w_in) = (height - height % 2, width - width % 2);
-
-    let flips: Vec<Vec<usize>> = (0..h_in)
-        .into_par_iter()
-        .map(|i| {
-            let mut local_rng = row_rng(seed, step, parity, i);
-
-            let mut out = Vec::new();
-
-            for j in 0..w_in {
-                if ((i + j) % 2) as u64 == parity {
-                    let idx = i * width + j;
-
-                    let top = view[((i + height - 1) % height) * width + j];
-
-                    let bottom = view[((i + 1) % height) * width + j];
-
-                    let left = view[i * width + (j + width - 1) % width];
-
-                    let right = view[i * width + (j + 1) % width];
-
-                    let sum_neighbors = f64::from(top + bottom + left + right);
-
-                    let delta_e = 2.0 * f64::from(view[idx]) * sum_neighbors;
-
-                    if delta_e < 0.0 || local_rng.random::<f64>() < (-delta_e * b).exp() {
-                        out.push(idx);
+    fn sweep(
+        &mut self,
+        step: usize,
+    ) {
+        if self.width <= 2 || self.height <= 2 {
+            // Repeated neighbors on thin tori can leave closed classes
+            // under unconditional systematic proposals. Skipping some
+            // proposals keeps the single-site Gibbs balance and lets the
+            // sweep reach configurations that would otherwise be skipped.
+            let mut rng = row_rng(self.seed, step, 2, 0);
+            for row in 0..self.height {
+                for column in 0..self.width {
+                    if !self.lazy_narrow || rng.random::<bool>() {
+                        self.update_site(row, column, &mut rng);
                     }
                 }
             }
+            return;
+        }
+        if !self.next.is_empty() {
+            self.sweep_colour(step, 0);
+            self.sweep_colour(step, 1);
+        }
 
-            out
-        })
-        .collect();
-
-    for idx in flips.into_iter().flatten() {
-        grid[idx] *= -1;
-    }
-}
-
-/// Sequential Metropolis update of the extra row / column of a lattice with an odd side.
-fn sequential_edge_sweep(
-    grid: &mut [i8],
-    width: usize,
-    height: usize,
-    b: f64,
-    seed: u64,
-    step: usize,
-) {
-    let mut rng = row_rng(seed, step, 2, 0);
-    let (h_in, w_in) = (height - height % 2, width - width % 2);
-    for i in 0..height {
-        for j in 0..width {
-            if i < h_in && j < w_in {
-                continue;
+        // The two colours leave any extra odd row or column untouched.
+        // Sweep those sites in their original flat order.
+        if self.inner_width < self.width || self.inner_height < self.height {
+            let mut rng = row_rng(self.seed, step, 2, 0);
+            if self.inner_width < self.width {
+                for row in 0..self.inner_height {
+                    self.update_site(row, self.inner_width, &mut rng);
+                }
             }
-            let idx = i * width + j;
-            let sum = grid[((i + height - 1) % height) * width + j]
-                + grid[((i + 1) % height) * width + j]
-                + grid[i * width + (j + width - 1) % width]
-                + grid[i * width + (j + 1) % width];
-            let delta_e = 2.0 * f64::from(grid[idx]) * f64::from(sum);
-            if delta_e < 0.0 || rng.random::<f64>() < (-delta_e * b).exp() {
-                grid[idx] *= -1;
+            if self.inner_height < self.height {
+                for column in 0..self.width {
+                    self.update_site(self.inner_height, column, &mut rng);
+                }
             }
         }
     }
+
+    fn sweep_colour(
+        &mut self,
+        step: usize,
+        colour: usize,
+    ) {
+        let width = self.width;
+        let height = self.height;
+        let seed = self.seed;
+        let weights = self.weights;
+        let grid = &self.spins;
+        let columns = self.inner_width / 2;
+
+        let update_row = |row, output: &mut [i8]| {
+            let mut rng = row_rng(seed, step, colour as u64, row);
+            let first = row * width;
+            let up = previous(row, height) * width;
+            let down = following(row, height) * width;
+            let current = &grid[first..first + width];
+            let top = &grid[up..up + width];
+            let bottom = &grid[down..down + width];
+            let start = (row % 2) ^ colour;
+            for (index, new) in output.iter_mut().enumerate() {
+                let column = start + 2 * index;
+                let neighbors = top[column]
+                    + bottom[column]
+                    + current[previous(column, width)]
+                    + current[following(column, width)];
+                *new = weights.update(current[column], neighbors, &mut rng);
+            }
+        };
+
+        // Every row reads the same pre-update configuration. Reusing the
+        // half-size buffer avoids allocating one flip list per row and colour.
+        if self.parallel {
+            crate::kernels::par::for_chunks_mut(&mut self.next, columns, 2, update_row);
+        } else {
+            for (row, output) in self.next.chunks_exact_mut(columns).enumerate() {
+                update_row(row, output);
+            }
+        }
+        for (row, (spins, updated)) in self
+            .spins
+            .chunks_exact_mut(width)
+            .zip(self.next.chunks_exact(columns))
+            .enumerate()
+        {
+            let start = (row % 2) ^ colour;
+            for (spin, &new) in spins[start..self.inner_width]
+                .iter_mut()
+                .step_by(2)
+                .zip(updated)
+            {
+                *spin = new;
+            }
+        }
+    }
+
+    fn update_site(
+        &mut self,
+        row: usize,
+        column: usize,
+        rng: &mut StdRng,
+    ) {
+        let width = self.width;
+        let height = self.height;
+        let start = row * width;
+        let idx = start + column;
+        let v = &mut self.spins;
+        // Self-bonds on a unit axis have constant energy. The two bonds on
+        // an extent-two axis remain distinct, although they share endpoints.
+        let vertical = if height == 1 {
+            0
+        } else {
+            v[previous(row, height) * width + column] + v[following(row, height) * width + column]
+        };
+        let horizontal = if width == 1 {
+            0
+        } else {
+            v[start + previous(column, width)] + v[start + following(column, width)]
+        };
+        v[idx] = self.weights.update(v[idx], vertical + horizontal, rng);
+    }
+
+    fn energy_and_magnetization(&self) -> (f64, f64) {
+        let mut horizontal = 0_i64;
+        let mut vertical = 0_i64;
+        let mut magnetization = 0_i64;
+        let width = self.width;
+        for (row, spins) in self.spins.chunks_exact(width).enumerate() {
+            let down = following(row, self.height) * width;
+            let below = &self.spins[down..down + width];
+            let right = spins.iter().skip(1).chain(&spins[..1]);
+            for ((&spin, &right), &bottom) in spins.iter().zip(right).zip(below) {
+                horizontal += i64::from(spin * right);
+                vertical += i64::from(spin * bottom);
+                magnetization += i64::from(spin);
+            }
+        }
+        let n = self.spins.len() as f64;
+        (
+            -(horizontal as f64 + vertical as f64) / n,
+            (magnetization as f64 / n).abs(),
+        )
+    }
+}
+
+#[derive(Default)]
+struct Moment {
+    mean: f64,
+    centered_square: f64,
+}
+
+impl Moment {
+    fn push(
+        &mut self,
+        value: f64,
+        count: f64,
+    ) {
+        let shift = value - self.mean;
+        self.mean += shift / count;
+        self.centered_square += shift * (value - self.mean);
+    }
+}
+
+/// Measures a seeded periodic 2D checkerboard Ising run after thermalization.
+///
+/// Discards `thermalisation` sweeps, then runs `params.mc_steps` more.
+/// Measures after every `sample_every` sweeps in the latter interval and
+/// returns the final spins alongside the per-site averages. Incomplete
+/// sampling intervals still advance the spins. Measurements use constant
+/// extra storage and do not consume random draws.
+///
+/// The bond energy counts the right and lower bond of every spin. Unit
+/// axes therefore contribute a constant self-bond energy, and extent-two
+/// axes have two bonds between the same pair. Susceptibility uses the
+/// variance of absolute magnetization. Binder is NaN when all measured
+/// magnetizations vanish.
+///
+/// # Errors
+///
+/// Returns an error for an invalid lattice, an overflowing sweep total,
+/// no complete measurement interval, or a nonpositive temperature or
+/// nonfinite inverse temperature.
+pub fn measure_ising_simulation_seeded(
+    params: &IsingParameters,
+    seed: u64,
+    thermalisation: usize,
+    sample_every: NonZeroUsize,
+) -> Result<(Vec<i8>, LatticeObservables), String> {
+    let beta = params.temperature.recip();
+    if params.temperature <= 0.0 || !beta.is_finite() {
+        return Err("Ising measurements require positive temperature with finite inverse".into());
+    }
+    let stride = sample_every.get();
+    if params.mc_steps < stride {
+        return Err("Ising measurements require a complete sampling interval".into());
+    }
+    let end = thermalisation
+        .checked_add(params.mc_steps)
+        .ok_or("Ising sweep count overflow")?;
+    let mut model = Checkerboard::new(params, seed)?;
+    for step in 0..thermalisation {
+        model.sweep(step);
+    }
+
+    let (mut energy, mut magnetization) = (Moment::default(), Moment::default());
+    let (mut m2, mut m4) = (0.0, 0.0);
+    let mut samples = 0.0;
+    let mut until_sample = stride;
+    for step in thermalisation..end {
+        model.sweep(step);
+        until_sample -= 1;
+        if until_sample == 0 {
+            until_sample = stride;
+            let (e, m) = model.energy_and_magnetization();
+            samples += 1.0;
+            energy.push(e, samples);
+            magnetization.push(m, samples);
+            let square = m * m;
+            m2 += square;
+            m4 += square * square;
+        }
+    }
+    let n = model.spins.len() as f64;
+    m2 /= samples;
+    m4 /= samples;
+    let result = LatticeObservables {
+        energy: energy.mean,
+        magnetization: magnetization.mean,
+        specific_heat: (energy.centered_square / samples) * beta * beta * n,
+        susceptibility: (magnetization.centered_square / samples) * beta * n,
+        binder: 1.0 - m4 / (3.0 * m2 * m2),
+    };
+    Ok((model.spins, result))
 }
 
 /// An example scenario that simulates the Ising model across a range of temperatures

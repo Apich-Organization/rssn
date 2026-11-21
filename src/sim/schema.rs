@@ -1,6 +1,6 @@
-//! Self-describing scenarios: the typed catalog behind [`scenario::run`].
+//! Self-describing scenarios: the typed catalog behind [`scenario::run`](super::scenario::run).
 //!
-//! [`scenario::run`](super::scenario::run) is a JSON-in, JSON-out entry point.
+//! The scenario runner is a JSON-in, JSON-out entry point.
 //! That keeps the C interface small, but a typed host language (Aevia) cannot
 //! check a JSON string, and writing a typed wrapper by hand for each of the
 //! scenarios is how the two drift apart. This module makes every scenario
@@ -699,22 +699,32 @@ const WITNESSED: &str = include_str!("scenario_results.json");
 /// Runs every scenario on its request and infers the shape of its result
 /// (the content of `scenario_results.json`).
 ///
+/// Independent scenarios use the
+/// active execution pool, and the first failure is reported in catalog order.
+///
 /// # Errors
 /// A scenario failed on its own defaults or example.
 pub fn witness() -> Result<Value, String> {
-    let mut out = serde_json::Map::new();
-    for &name in super::scenario::SCENARIOS {
+    use super::scenario;
+
+    let run = |index: usize| {
+        let name = scenario::SCENARIOS[index];
         let (params, _) = request(name).ok_or_else(|| format!("no request for `{name}`"))?;
-        let text = super::scenario::run(name, &params.to_string())
+        let text = scenario::run(name, &params.to_string())
             .map_err(|e| format!("`{name}` failed on its request: {e}"))?;
         let result: Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
         let fields = fields_of(name, &result, false, "->");
-        out.insert(
-            name.to_owned(),
-            serde_json::to_value(fields).map_err(|e| e.to_string())?,
-        );
-    }
-    Ok(Value::Object(out))
+        let witness = serde_json::to_value(fields).map_err(|e| e.to_string())?;
+        Ok((name.to_owned(), witness))
+    };
+    let len = scenario::SCENARIOS.len();
+    let outcomes = if super::models_geodesic_relativity::inherited_native_budget().is_some() {
+        // Spend a scoped step budget in the original catalog order.
+        (0..len).map(run).collect::<Result<Vec<_>, String>>()?
+    } else {
+        crate::kernels::par::try_map_indexed(len, 2, run)?
+    };
+    Ok(Value::Object(outcomes.into_iter().collect()))
 }
 
 /// The catalog of every scenario (see the module documentation).
@@ -803,8 +813,26 @@ mod tests {
 
     #[test]
     fn every_scenario_is_described() {
+        use super::super::scenario::ENGINE_SCENARIOS;
+        use super::super::scenario::SCENARIOS;
+
         let catalog = catalog();
-        assert_eq!(catalog.len(), super::super::scenario::SCENARIOS.len());
+        assert!(SCENARIOS.ends_with(ENGINE_SCENARIOS));
+        assert_eq!(
+            SCENARIOS
+                .iter()
+                .collect::<std::collections::BTreeSet<_>>()
+                .len(),
+            SCENARIOS.len()
+        );
+        assert_eq!(
+            catalog.iter().map(|s| s.name.as_str()).collect::<Vec<_>>(),
+            SCENARIOS
+        );
+        assert!(ENGINE_SCENARIOS.iter().all(|&name| {
+            let built_in_example = name == "nbody_gravity";
+            request(name).is_some_and(|(_, all_defaults)| all_defaults != built_in_example)
+        }));
         for s in &catalog {
             assert!(!s.summary.is_empty(), "{} has no summary", s.name);
             assert!(!s.params.is_empty(), "{} has no parameters", s.name);

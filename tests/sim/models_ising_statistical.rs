@@ -2,6 +2,8 @@
 //!
 //! `run_ising_simulation` uses a fixed default seed; the `_seeded` variant takes an explicit one.
 
+use std::num::NonZeroUsize;
+
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
 use rssn::sim::models::ising_statistical::*;
@@ -279,4 +281,193 @@ fn checkerboard_is_correct_on_odd_periodic_lattices() {
         1,
     );
     assert!(m.is_nan());
+}
+
+#[test]
+fn zero_cost_flips_and_self_bonds_have_the_correct_periodic_limit() {
+    let (initial, _) = run(1, 1, 2.0, 0);
+    for t in [0.0, -0.0, f64::from_bits(1), 0.1, f64::INFINITY] {
+        let (later, magnetization) = run(1, 1, t, 3);
+        assert_eq!(later, [-initial[0]]);
+        assert_eq!(magnetization.to_bits(), 1.0_f64.to_bits());
+        assert_eq!(
+            energy_per_spin(&later, 1, 1).to_bits(),
+            (-2.0_f64).to_bits()
+        );
+    }
+    for (width, height) in [(1, 2), (2, 1)] {
+        for t in [0.0, -0.0] {
+            let (spins, _) = run(width, height, t, 1);
+            assert_eq!(spins[0], spins[1]);
+            assert_eq!(
+                energy_per_spin(&spins, width, height).to_bits(),
+                (-2.0_f64).to_bits()
+            );
+        }
+    }
+    let (spins, m) = run(usize::MAX, 2, 1.0, 1);
+    assert!(spins.is_empty() && m.is_nan());
+}
+
+#[test]
+fn small_periodic_lattices_match_the_enumerated_canonical_energy() {
+    // This independent partition function includes all directed forward
+    // bonds, so self-bonds are constants and extent-two bonds occur twice.
+    for (width, height) in [(1, 2), (2, 1), (2, 2)] {
+        let temperature = 3.0;
+        let count = width * height;
+        let (mut z, mut energy, mut magnetization) = (0.0, 0.0, 0.0);
+        for config in 0..(1 << count) {
+            let grid: Vec<i8> = (0..count)
+                .map(|site| {
+                    if config & (1 << site) == 0 {
+                        -1
+                    } else {
+                        1
+                    }
+                })
+                .collect();
+            let e = energy_per_spin(&grid, width, height);
+            let m = grid.iter().map(|&s| f64::from(s)).sum::<f64>().abs() / count as f64;
+            let weight = (-e * count as f64 / temperature).exp();
+            z += weight;
+            energy += weight * e;
+            magnetization += weight * m;
+        }
+        let seed = if (width, height) == (2, 2) {
+            // Start in a closed period-two class of the previous
+            // checkerboard sweep. Each colour has one spin of each sign.
+            (0..64)
+                .find(|&seed| {
+                    let (grid, _) = run_ising_simulation_seeded(
+                        &IsingParameters {
+                            width,
+                            height,
+                            temperature,
+                            mc_steps: 0,
+                        },
+                        seed,
+                    );
+                    grid[0] != grid[3] && grid[1] != grid[2]
+                })
+                .unwrap()
+        } else {
+            76
+        };
+        let (_, observed) = measure_ising_simulation_seeded(
+            &IsingParameters {
+                width,
+                height,
+                temperature,
+                mc_steps: 30_000,
+            },
+            seed,
+            200,
+            NonZeroUsize::MIN,
+        )
+        .unwrap();
+        assert!((observed.energy - energy / z).abs() < 0.025, "{observed:?}");
+        assert!(
+            (observed.magnetization - magnetization / z).abs() < 0.02,
+            "{observed:?}"
+        );
+    }
+}
+
+#[test]
+fn thermalization_and_sampling_match_an_independent_observable_reduction() {
+    let params = IsingParameters {
+        width: 7,
+        height: 5,
+        temperature: 2.75,
+        mc_steps: 43,
+    };
+    let thermalisation = 12;
+    let seed = 123;
+    let (state, observables) = measure_ising_simulation_seeded(
+        &params,
+        seed,
+        thermalisation,
+        NonZeroUsize::new(4).unwrap(),
+    )
+    .unwrap();
+    let run_at = |steps| {
+        run_ising_simulation_seeded(
+            &IsingParameters {
+                mc_steps: steps,
+                ..params.clone()
+            },
+            seed,
+        )
+    };
+    assert_eq!(state, run_at(thermalisation + params.mc_steps).0);
+    let series: Vec<_> = (4..=params.mc_steps)
+        .step_by(4)
+        .map(|sweep| {
+            let (grid, m) = run_at(thermalisation + sweep);
+            (energy_per_spin(&grid, params.width, params.height), m)
+        })
+        .collect();
+    let avg =
+        |f: fn((f64, f64)) -> f64| series.iter().copied().map(f).sum::<f64>() / series.len() as f64;
+    let e = avg(|(e, _)| e);
+    let m = avg(|(_, m)| m);
+    let e2 = avg(|(e, _)| e * e);
+    let m2 = avg(|(_, m)| m * m);
+    let m4 = avg(|(_, m)| m.powi(4));
+    let sites = (params.width * params.height) as f64;
+    for (actual, expected) in [
+        (observables.energy, e),
+        (observables.magnetization, m),
+        (
+            observables.specific_heat,
+            (e2 - e * e) * sites / params.temperature.powi(2),
+        ),
+        (
+            observables.susceptibility,
+            (m2 - m * m) * sites / params.temperature,
+        ),
+        (observables.binder, 1.0 - m4 / (3.0 * m2 * m2)),
+    ] {
+        assert!((actual - expected).abs() < 2e-13, "{actual} vs {expected}");
+    }
+    assert!(
+        measure_ising_simulation_seeded(&params, seed, usize::MAX, NonZeroUsize::MIN,).is_err()
+    );
+    assert!(
+        measure_ising_simulation_seeded(&params, seed, 0, NonZeroUsize::new(44).unwrap(),).is_err()
+    );
+}
+
+#[test]
+fn checkerboard_measurement_is_identical_in_single_and_multi_worker_pools() {
+    let one = rayon::ThreadPoolBuilder::new()
+        .num_threads(1)
+        .build()
+        .unwrap();
+    let two = rayon::ThreadPoolBuilder::new()
+        .num_threads(2)
+        .build()
+        .unwrap();
+    let params = IsingParameters {
+        width: 133,
+        height: 131,
+        temperature: 2.27,
+        mc_steps: 25,
+    };
+    let run = || {
+        measure_ising_simulation_seeded(&params, 181, 12, NonZeroUsize::new(5).unwrap()).unwrap()
+    };
+    let (a, ax) = one.install(run);
+    let (b, bx) = two.install(run);
+    assert_eq!(a, b);
+    for (x, y) in [
+        (ax.energy, bx.energy),
+        (ax.magnetization, bx.magnetization),
+        (ax.specific_heat, bx.specific_heat),
+        (ax.susceptibility, bx.susceptibility),
+        (ax.binder, bx.binder),
+    ] {
+        assert_eq!(x.to_bits(), y.to_bits());
+    }
 }
