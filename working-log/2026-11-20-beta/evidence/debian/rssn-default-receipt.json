@@ -1,0 +1,50 @@
+{
+  "source_manifest_sha256": "11006bb004b5eff9141a3aaf4143b0cedadeb651e81a208c944d9bad2d37981a",
+  "source_files": 642,
+  "initial_clippy_reject_receipt_sha256": "e374cf90a7576bb3b63bda6939743b5192986c85e84b92bb4f8de480af52fbc6",
+  "configured_clippy": {
+    "exit": 0,
+    "compiler_config_sha256": "059f33339501d0fb56e142948138df40ac0f5a0675c07c1b938611e6b449f3db",
+    "wall_seconds": 90.275,
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "default_feature_library": {
+    "path": "/dev/shm/rssn-batched-stage5-retry/librssn.rlib",
+    "sha256": "ff2406a81b6fbc87827ce877dfb1c8cf8cb9019e696f39d0a7264613d6d8ec87",
+    "wall_seconds": 169.09
+  },
+  "native_default_feature_execution": {
+    "exit": 0,
+    "passed": 64,
+    "failed": 0,
+    "ignored": 0,
+    "wall_seconds": 1.218,
+    "log_sha256": "0d057ac08c7224b3e1a6f257c8d5cc3fcf365ed310406341c3ce67f8cce82af2",
+    "roots": [
+      {
+        "path": "tests/native_continuum.rs",
+        "passed": 13,
+        "tested_sha256": "5f721354ec4d0cecde551a72bf965efc6ae7a0d78b05a15e0cfcef5e420a339b",
+        "matches_working_tree": true,
+        "first_log_line": 3,
+        "last_log_line": 15
+      },
+      {
+        "path": "tests/native_execution.rs",
+        "passed": 11,
+        "tested_sha256": "846273d2437489ce8c5546d7ab1997ad8c37e26f706cae9c6983a0acc5f93d18",
+        "matches_working_tree": true,
+        "first_log_line": 16,
+        "last_log_line": 26
+      },
+      {
+        "path": "tests/numerical_abi.rs",
+        "passed": 40,
+        "tested_sha256": "0f726a4fe62fdbc0325d4e346478fb6f59607a42e9ef54b0a451bee5054f343a",
+        "matches_working_tree": true,
+        "first_log_line": 27,
+        "last_log_line": 66
+      }
+    ]
+  }
+}

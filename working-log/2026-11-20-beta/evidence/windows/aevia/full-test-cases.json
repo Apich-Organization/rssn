@@ -1,0 +1,38 @@
+{
+  "computed_catalog_sha256": "3a8963bad36032beb2f59833e1b8287022395c5cf0433733fe7088f9d2c5c53c",
+  "source_verified_after": true,
+  "fixtures": {
+    "AEVIA_TEST_DATABASE_URL": false,
+    "GNUPGHOME": false,
+    "AEVIA_REQUIRE_TEST_FIXTURES": false
+  },
+  "cases": {
+    "aevia-language-full": {
+      "exit": 0,
+      "targets_with_results": 236,
+      "passed": 3216,
+      "failed": 0,
+      "ignored": 5,
+      "measured": 0,
+      "filtered": 0
+    },
+    "aevia-platform-full": {
+      "exit": 0,
+      "targets_with_results": 17,
+      "passed": 282,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filtered": 0
+    },
+    "aevia-platform-docs-no-default": {
+      "exit": 0,
+      "targets_with_results": 2,
+      "passed": 32,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filtered": 0
+    }
+  }
+}
