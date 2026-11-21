@@ -1745,8 +1745,6 @@ mod tests {
 use std::collections::HashMap;
 
 use num_bigint::BigInt;
-use num_traits::One;
-use num_traits::Zero;
 
 /// Most atoms a diagram is built over.
 const MAX_ATOMS: usize = 64;
@@ -1968,6 +1966,9 @@ impl Bdd {
     }
 
     /// Satisfying assignments over `n` variables.
+    ///
+    /// Every subtree and skipped-variable factor count at most `2^n`.
+    /// Counts fit in `u128` even at the full 64-variable limit.
     fn count(
         &self,
         root: usize,
@@ -1988,26 +1989,27 @@ impl Bdd {
             bdd: &Bdd,
             node: usize,
             n: usize,
-            memo: &mut HashMap<usize, BigInt>,
-        ) -> BigInt {
+            memo: &mut HashMap<usize, u128>,
+        ) -> u128 {
             if node == FALSE {
-                return BigInt::zero();
+                return 0;
             }
             if node == TRUE {
-                return BigInt::one();
+                return 1;
             }
-            if let Some(hit) = memo.get(&node) {
-                return hit.clone();
+            if let Some(&hit) = memo.get(&node) {
+                return hit;
             }
             let here = bdd.variable(node);
             let (low, high) = (bdd.low(node), bdd.high(node));
             let low_count = go(bdd, low, n, memo) << (level(bdd, low, n) - here - 1);
             let high_count = go(bdd, high, n, memo) << (level(bdd, high, n) - here - 1);
             let total = low_count + high_count;
-            memo.insert(node, total.clone());
+            memo.insert(node, total);
             total
         }
-        go(self, root, n, &mut HashMap::new()) << level(self, root, n)
+        const { assert!(MAX_ATOMS < u128::BITS as usize) };
+        BigInt::from(go(self, root, n, &mut HashMap::new()) << level(self, root, n))
     }
 
     /// The least satisfying assignment (`false < true`) over `n` variables.
@@ -2518,6 +2520,25 @@ mod ext_tests {
 
     fn s(src: &str) -> String {
         simplify(&[logic()], src)
+    }
+
+    #[test]
+    fn symbolic_bdd_count_includes_skipped_variables_at_the_full_limit() {
+        use super::Bdd;
+        use super::FALSE;
+        use super::TRUE;
+        use num_bigint::BigInt;
+
+        let mut bdd = Bdd::new();
+        assert_eq!(bdd.count(FALSE, 0), BigInt::from(0));
+        assert_eq!(bdd.count(TRUE, 0), BigInt::from(1));
+        assert_eq!(bdd.count(TRUE, 1), BigInt::from(2));
+        assert_eq!(bdd.count(TRUE, 64), BigInt::from(1_u128 << 64));
+
+        let last = bdd.make(63, FALSE, TRUE).unwrap();
+        assert_eq!(bdd.count(last, 64), BigInt::from(1_u128 << 63));
+        let either = bdd.make(1, last, TRUE).unwrap();
+        assert_eq!(bdd.count(either, 64), BigInt::from(3_u128 << 62));
     }
 
     #[test]

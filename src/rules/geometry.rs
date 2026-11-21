@@ -360,7 +360,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "transform_vector",
             5,
             Request::TransformVector,
-            "`transform_vector(V, from, from_vars, to, to_vars)`: contravariant vector `V` transformed from `from(from_vars)` to `to(to_vars)`.",
+            "`transform_vector(V, from, from_vars, to, to_vars)` converts the contravariant components of `V` between coordinate systems.\n\nSupply the source coordinates as `from_vars` and the destination coordinates as `to_vars`. The result is a `list(...)` of components in the destination variables.\n\nThe operator rewrites the source components in the destination coordinates and multiplies by the Jacobian of the destination coordinates with respect to the source coordinates.",
         ),
         (
             "transform_covector",
@@ -734,6 +734,31 @@ fn christoffel_second(
 }
 
 /// `R^r_smn = ∂_m Γ^r_ns - ∂_n Γ^r_ms + Γ^r_ml Γ^l_ns - Γ^r_nl Γ^l_ms`.
+fn riemann_pair(
+    cx: &mut Cx<'_>,
+    gamma: &Tensor,
+    vars: &[NodeId],
+    r: usize,
+    s: usize,
+    m: usize,
+    v: usize,
+) -> Option<NodeId> {
+    let first = d(cx, gamma.get(&[r, v, s]), vars[m])?;
+    let second = d(cx, gamma.get(&[r, m, s]), vars[v])?;
+    let mut terms = Vec::with_capacity(2 + 2 * vars.len());
+    terms.push(first);
+    terms.push(neg(cx.graph, second));
+    for l in 0..vars.len() {
+        let p = mul(cx.graph, &[gamma.get(&[r, m, l]), gamma.get(&[l, v, s])]);
+        let q = mul(cx.graph, &[gamma.get(&[r, v, l]), gamma.get(&[l, m, s])]);
+        terms.push(p);
+        terms.push(neg(cx.graph, q));
+    }
+    let sum = add(cx.graph, &terms);
+    Some(normal_form(cx, sum))
+}
+
+/// The complete Riemann tensor, with both orientations of each pair.
 fn riemann(
     cx: &mut Cx<'_>,
     g: &[Vec<NodeId>],
@@ -745,21 +770,8 @@ fn riemann(
     for r in 0..n {
         for s in 0..n {
             for m in 0..n {
-                for v in 0..n {
-                    if v <= m {
-                        continue;
-                    }
-                    let first = d(cx, gamma.get(&[r, v, s]), vars[m])?;
-                    let second = d(cx, gamma.get(&[r, m, s]), vars[v])?;
-                    let mut terms = vec![first, neg(cx.graph, second)];
-                    for l in 0..n {
-                        let p = mul(cx.graph, &[gamma.get(&[r, m, l]), gamma.get(&[l, v, s])]);
-                        let q = mul(cx.graph, &[gamma.get(&[r, v, l]), gamma.get(&[l, m, s])]);
-                        terms.push(p);
-                        terms.push(neg(cx.graph, q));
-                    }
-                    let sum = add(cx.graph, &terms);
-                    let value = normal_form(cx, sum);
+                for v in m + 1..n {
+                    let value = riemann_pair(cx, &gamma, vars, r, s, m, v)?;
                     out.set(&[r, s, m, v], value);
                     // Antisymmetric in the last pair.
                     let negated = neg(cx.graph, value);
@@ -778,7 +790,26 @@ fn ricci(
     vars: &[NodeId],
 ) -> Option<Vec<Vec<NodeId>>> {
     let n = vars.len();
-    let r = riemann(cx, g, vars)?;
+    let gamma = christoffel_second(cx, g, vars)?;
+    // Only R^k_skv participates in the contraction. For each k and s, vary v
+    // in order and use the same orientation as the full Riemann tensor.
+    let mut contracted = Tensor::zeros(cx.graph, vec![n, n, n]);
+    for k in 0..n {
+        for s in 0..n {
+            for v in 0..n {
+                let value = match v.cmp(&k) {
+                    | std::cmp::Ordering::Less => {
+                        let pair = riemann_pair(cx, &gamma, vars, k, s, v, k)?;
+                        let negative = neg(cx.graph, pair);
+                        cx.simplify(negative)
+                    },
+                    | std::cmp::Ordering::Equal => continue,
+                    | std::cmp::Ordering::Greater => riemann_pair(cx, &gamma, vars, k, s, k, v)?,
+                };
+                contracted.set(&[s, v, k], value);
+            }
+        }
+    }
     let mut out = vec![vec![NodeId::NONE; n]; n];
     #[allow(clippy::needless_range_loop)]
     // index is used for more than one array / arithmetic; iterator form would not be clearer
@@ -786,7 +817,7 @@ fn ricci(
         #[allow(clippy::needless_range_loop)]
         // index is used for more than one array / arithmetic; iterator form would not be clearer
         for v in 0..n {
-            let terms: Vec<NodeId> = (0..n).map(|k| r.get(&[k, s, k, v])).collect();
+            let terms: Vec<NodeId> = (0..n).map(|k| contracted.get(&[s, v, k])).collect();
             let sum = add(cx.graph, &terms);
             out[s][v] = normal_form(cx, sum);
         }
@@ -1102,7 +1133,7 @@ fn transpose(m: &[Vec<NodeId>]) -> Vec<Vec<NodeId>> {
 // Differential forms
 // ----------------------------------------------------------------------
 
-/// Terms `(coefficient, sorted indices)` of a form.
+/// Terms `(coefficient, indices in input order)` of a form.
 fn read_form(
     graph: &mut Graph,
     node: NodeId,
@@ -1152,6 +1183,55 @@ fn sort_indices(indices: &mut [usize]) -> Option<bool> {
     if indices.windows(2).any(|w| w[0] == w[1]) {
         return None;
     }
+    Some(even)
+}
+
+/// Canonicalizes each wedge basis and retains its orientation.
+fn oriented_bases(terms: Vec<(NodeId, Vec<usize>)>) -> Vec<(NodeId, Vec<usize>, bool)> {
+    terms
+        .into_iter()
+        .filter_map(|(c, mut indices)| {
+            let even = if indices.windows(2).all(|pair| pair[0] < pair[1]) {
+                true
+            } else {
+                sort_indices(&mut indices)?
+            };
+            Some((c, indices, even))
+        })
+        .collect()
+}
+
+/// Merges disjoint canonical bases and gives the parity of their crossings.
+fn merge_wedge_indices(
+    left: &[usize],
+    right: &[usize],
+    merged: &mut Vec<usize>,
+) -> Option<bool> {
+    merged.clear();
+    if matches!((left.first(), right.first()), (Some(a), Some(b)) if a == b) {
+        return None;
+    }
+    merged.reserve_exact(left.len() + right.len());
+    let mut even = true;
+    let mut i = 0;
+    let mut j = 0;
+    while i < left.len() && j < right.len() {
+        match left[i].cmp(&right[j]) {
+            | std::cmp::Ordering::Less => {
+                merged.push(left[i]);
+                i += 1;
+            },
+            | std::cmp::Ordering::Equal => return None,
+            | std::cmp::Ordering::Greater => {
+                // This right basis index crosses every unmerged left index.
+                even ^= !(left.len() - i).is_multiple_of(2);
+                merged.push(right[j]);
+                j += 1;
+            },
+        }
+    }
+    merged.extend_from_slice(&left[i..]);
+    merged.extend_from_slice(&right[j..]);
     Some(even)
 }
 
@@ -1562,20 +1642,25 @@ impl Geometry {
             | Request::Wedge => {
                 let (a, b) = (read_form(cx.graph, arg(0)?)?, read_form(cx.graph, arg(1)?)?);
                 let mut out = Vec::new();
-                for (c1, i1) in &a {
-                    for (c2, i2) in &b {
-                        let mut full = [i1.clone(), i2.clone()].concat();
-                        let Some(even) = sort_indices(&mut full) else {
+                if a.is_empty() || b.is_empty() {
+                    return write_form(cx, out);
+                }
+                let (a, b) = (oriented_bases(a), oriented_bases(b));
+                let mut full = Vec::new();
+                for (c1, i1, even1) in &a {
+                    for (c2, i2, even2) in &b {
+                        let Some(cross_even) = merge_wedge_indices(i1, i2, &mut full) else {
                             continue;
                         };
                         let product = mul(cx.graph, &[*c1, *c2]);
+                        let even = (even1 == even2) == cross_even;
                         out.push((
                             if even {
                                 product
                             } else {
                                 neg(cx.graph, product)
                             },
-                            full,
+                            std::mem::take(&mut full),
                         ));
                     }
                 }
@@ -1640,9 +1725,19 @@ impl Geometry {
             },
             | Request::Boundary => {
                 let mut faces = Vec::new();
-                for (sign, cell) in read_chain(cx.graph, arg(0)?)? {
-                    for (s, face) in cell_boundary(cx, &cell)? {
-                        faces.push((sign * s, face));
+                for (weight, cell) in read_chain(cx.graph, arg(0)?)? {
+                    let cell_faces = cell_boundary(cx, &cell)?;
+                    let negative = cx.graph.number_of(weight)?.neg();
+                    let negative = cx.graph.num(negative);
+                    for (orientation, face) in cell_faces {
+                        faces.push((
+                            if orientation < 0 {
+                                negative
+                            } else {
+                                weight
+                            },
+                            face,
+                        ));
                     }
                 }
                 Some(write_chain(cx.graph, &faces))
@@ -1659,10 +1754,9 @@ impl Geometry {
                 let terms = read_form(cx.graph, arg(0)?)?;
                 let vars = items(cx.graph, arg(1)?)?;
                 let mut total = Vec::new();
-                for (sign, cell) in read_chain(cx.graph, arg(2)?)? {
+                for (weight, cell) in read_chain(cx.graph, arg(2)?)? {
                     let value = integrate_over_cell(cx, &terms, &vars, &cell)?;
-                    let m = cx.graph.int(sign);
-                    total.push(mul(cx.graph, &[m, value]));
+                    total.push(mul(cx.graph, &[weight, value]));
                 }
                 let sum = add(cx.graph, &total);
                 Some(cx.simplify(sum))
@@ -1743,14 +1837,15 @@ fn write_cell(
     named(graph, "cell", &[chart, params, bounds]).unwrap_or(chart)
 }
 
-/// A cell (multiplicity 1) or a chain, as `(multiplicity, cell)` pairs.
+/// A cell (multiplicity 1) or a chain with exact integer multiplicity nodes.
 fn read_chain(
     graph: &mut Graph,
     node: NodeId,
-) -> Option<Vec<(i64, Cell)>> {
+) -> Option<Vec<(NodeId, Cell)>> {
     let node = best(graph, node)?;
     if graph.ops().get(graph.op(node)).name.as_ref() != "chain" {
-        return Some(vec![(1, read_cell(graph, node)?)]);
+        let cell = read_cell(graph, node)?;
+        return Some(vec![(graph.int(1), cell)]);
     }
     let &[terms] = graph.children(node) else {
         return None;
@@ -1760,24 +1855,27 @@ fn read_chain(
         let &[m, c] = graph.children(t) else {
             return None;
         };
-        let m = graph.number_of(m)?.to_i64()?;
-        out.push((m, read_cell(graph, c)?));
+        let weight = graph.number_of(m)?.clone();
+        if !weight.is_integer() {
+            return None;
+        }
+        let cell = read_cell(graph, c)?;
+        out.push((graph.num(weight), cell));
     }
     Some(out)
 }
 
 fn write_chain(
     graph: &mut Graph,
-    cells: &[(i64, Cell)],
+    cells: &[(NodeId, Cell)],
 ) -> NodeId {
     let mut terms = Vec::new();
-    for (m, c) in cells {
-        if *m == 0 {
+    for &(weight, ref cell) in cells {
+        if graph.number_of(weight).is_some_and(Number::is_zero) {
             continue;
         }
-        let m = graph.int(*m);
-        let c = write_cell(graph, c);
-        terms.push(list(graph, &[m, c]));
+        let cell = write_cell(graph, cell);
+        terms.push(list(graph, &[weight, cell]));
     }
     let terms = list(graph, &terms);
     named(graph, "chain", &[terms]).unwrap_or(terms)

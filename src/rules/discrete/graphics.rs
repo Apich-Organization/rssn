@@ -1311,7 +1311,7 @@ pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         "bspline",
         Arity::Fixed(4),
         bspline,
-        "Evaluates a B-spline of `degree` with control points `P` and `knots` at numeric parameter `t` using de Boor's algorithm.",
+        "`bspline(P, degree, knots, t)` evaluates the curve with control points `P` at `t` using de Boor's algorithm.\n\nFor `n` control points, the nondecreasing knot list has `n + degree + 1` entries and `degree < n`.\n\nThe result is a point with the same number of coordinates as each control point. Both endpoints of `knots[degree] <= t <= knots[n]` are included.",
     )?;
     def_doc(
         i,

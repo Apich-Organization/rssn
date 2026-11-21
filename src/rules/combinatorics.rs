@@ -2405,10 +2405,36 @@ fn cycle_lengths(perm: &[usize]) -> Vec<u64> {
     lengths
 }
 
-fn inversions(perm: &[usize]) -> u64 {
-    let mut total = 0_u64;
-    for (i, &a) in perm.iter().enumerate() {
-        total += u64::try_from(perm[i + 1..].iter().filter(|&&b| b < a).count()).unwrap_or(0);
+/// Counts strict inversions of the validated zero-based ranks in `perm`.
+fn inversions(perm: &[usize]) -> u128 {
+    const SMALL_PERMUTATION: usize = 64;
+
+    if perm.len() <= SMALL_PERMUTATION {
+        let total = perm
+            .iter()
+            .enumerate()
+            .map(|(i, &a)| perm[i + 1..].iter().filter(|&&b| b < a).count())
+            .sum::<usize>();
+        return total as u128;
+    }
+
+    // A zero-based Fenwick tree of ranks already seen to the right. Each
+    // prefix query excludes the current rank, so equality never contributes.
+    let mut ranks = vec![0usize; perm.len()];
+    let mut total = 0u128;
+    for &rank in perm.iter().rev() {
+        let mut prefix = rank;
+        let mut below = 0usize;
+        while prefix > 0 {
+            below += ranks[prefix - 1];
+            prefix &= prefix - 1;
+        }
+        total += below as u128;
+        let mut position = rank;
+        while let Some(count) = ranks.get_mut(position) {
+            *count += 1;
+            position |= position + 1;
+        }
     }
     total
 }
@@ -2804,7 +2830,7 @@ fn install_ext(i: &mut Installer<'_>) -> Result<(), RuleError> {
             .doc("`inversions(perm)`: number of inversions `(i < j, perm[i] > perm[j])` in permutation `perm`."),
         |a| {
             let [items] = a else { return None };
-            Some(Value::Int(big(inversions(&permutation(items)?))))
+            Some(Value::Int(BigInt::from(inversions(&permutation(items)?))))
         },
     )?;
     exact_lists(
@@ -2890,6 +2916,7 @@ fn install_ext(i: &mut Installer<'_>) -> Result<(), RuleError> {
 
 #[cfg(test)]
 mod ext_tests {
+    use super::inversions;
     use crate::rules::combinatorics::combinatorics;
     use crate::rules::testing::simplify;
 
@@ -2954,5 +2981,13 @@ mod ext_tests {
         );
         assert_eq!(s("syt_count(list(3, 2))"), "5");
         assert_eq!(s("syt_count(list(3, 2, 1))"), "16");
+    }
+
+    #[test]
+    fn wide_inversion_count_is_exact() {
+        let mut perm: Vec<usize> = (0..100_000).rev().collect();
+        assert_eq!(inversions(&perm), 4_999_950_000);
+        perm.swap(65_535, 65_536);
+        assert_eq!(inversions(&perm), 4_999_949_999);
     }
 }

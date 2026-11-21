@@ -132,7 +132,7 @@ fn rs_error_count(
     a: &[NodeId],
 ) -> Option<V> {
     let (word, n) = word_count(cx, a)?;
-    if n > word.len() {
+    if !ec::rs_codeword_shape(word.len(), n) {
         return None;
     }
     let syndromes = ec::calculate_syndromes(&word, n);

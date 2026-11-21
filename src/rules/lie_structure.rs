@@ -6,7 +6,7 @@
 //! logarithm.
 //!
 //! The exact algorithms live in [`crate::kernels::lie_structure`]; this
-//! module reads and writes terms. It complements [`super::lie`] (brackets,
+//! module reads and writes terms. It complements [`lie`](mod@super::lie) (brackets,
 //! structure constants, the exponential map), which it needs.
 //!
 //! # Types, weights
@@ -68,7 +68,7 @@
 //! | operator | value |
 //! |---|---|
 //! | `gl_basis(n)`, `sl_basis(n)`, `so_basis(n)`, `sp_basis(n)`, `su_basis(n)` | bases of `gl(n)`, `sl(n)` (off-diagonal units, then `H_k = E_kk - E_{k+1,k+1}`), `so(n)` (`E_ij - E_ji`), `sp(2n)` (`[[A, B], [C, -A^T]]`, `B`, `C` symmetric; `n` is the half size), `su(n)` (`E_ij - E_ji`, `i(E_ij + E_ji)`, `i H_k`) |
-//! | `one_parameter_subgroup(A, t)` | `exp_map(t A)`, reduced by [`super::lie`] |
+//! | `one_parameter_subgroup(A, t)` | `exp_map(t A)`, reduced by [`lie`](mod@super::lie) |
 //! | `matrix_log(g)` | the principal logarithm for the cases `exp_map` covers: identity, unipotent, diagonal with positive entries, `2 x 2` matrices with positive determinant and real eigenvalues or a rotation, rotations of `R^3` |
 
 use std::collections::BTreeMap;

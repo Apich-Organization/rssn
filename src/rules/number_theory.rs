@@ -31,7 +31,7 @@
 //!
 //! The core operators are `gcd`, `lcm`, `mod`, `powmod`, `invmod`,
 //! `isprime`, `nextprime`, `totient`, `divisor_count`, `divisor_sum`,
-//! `factorint`, `jacobi`, `egcd`, `crt`, `pell`, `primes`, `cfrac`,
+//! `factorint`, `jacobi`, `egcd`, `crt`, `crt_general`, `pell`, `primes`, `cfrac`,
 //! `convergents` and `diophantine`. Quadratic residues, orders, discrete
 //! logarithms, arithmetic functions and the like live in
 //! this module: `legendre_symbol`, `kronecker_symbol`, `sqrtmod`,
@@ -43,7 +43,7 @@
 //!
 //! Parallelism: the ECM curves of one stage run in groups of 1, 2, 4, ... up to one per thread; the
 //! lowest curve index that finds a factor wins, so the divisor found does not depend on the thread
-//! count.
+//! count. Large coprime congruence systems use a product and remainder tree on an active CPU pool.
 
 use num_bigint::BigInt;
 use num_integer::Integer;
@@ -70,6 +70,9 @@ use crate::graph::Tier;
 use crate::graph::dim::DimRule;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
+use crate::kernel::Signature;
+use crate::kernel::TypeExpr;
+use crate::kernel::signature::NatExpr;
 
 use super::arith::arith;
 use super::poly::best;
@@ -346,12 +349,20 @@ fn egcd(
     a: &BigInt,
     b: &BigInt,
 ) -> (BigInt, BigInt, BigInt) {
+    if let (Some(x), Some(y)) = (
+        a.to_i64().and_then(i64::checked_abs),
+        b.to_i64().and_then(i64::checked_abs),
+    ) {
+        let (g, s, t) = crate::kernels::number_ext::xgcd(x, y);
+        let s = if a.is_negative() { -s } else { s };
+        let t = if b.is_negative() { -t } else { t };
+        return (BigInt::from(g), BigInt::from(s), BigInt::from(t));
+    }
     let (mut r0, mut r1) = (a.abs(), b.abs());
     let (mut s0, mut s1) = (BigInt::one(), BigInt::zero());
     let (mut t0, mut t1) = (BigInt::zero(), BigInt::one());
     while !r1.is_zero() {
-        let q = &r0 / &r1;
-        let r2 = &r0 - &q * &r1;
+        let (q, r2) = r0.div_rem(&r1);
         let s2 = &s0 - &q * &s1;
         let t2 = &t0 - &q * &t1;
         (r0, r1) = (r1, r2);
@@ -378,77 +389,14 @@ fn invmod(
     let (g, x, _) = egcd(&modulo(a, m)?, m);
     if g.is_one() {
         modulo(&x, m)
-    } else if m.is_one() {
-        Some(BigInt::zero())
     } else {
         None
     }
 }
 
-const BASES: [u64; 12] = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37];
-
-fn mulmod(
-    a: u64,
-    b: u64,
-    m: u64,
-) -> u64 {
-    let wide = u128::from(a) * u128::from(b) % u128::from(m);
-    u64::try_from(wide).unwrap_or(0)
-}
-
-fn powmod_u64(
-    mut base: u64,
-    mut exp: u64,
-    m: u64,
-) -> u64 {
-    let mut acc = 1 % m;
-    base %= m;
-    while exp > 0 {
-        if exp & 1 == 1 {
-            acc = mulmod(acc, base, m);
-        }
-        base = mulmod(base, base, m);
-        exp >>= 1;
-    }
-    acc
-}
-
-/// Deterministic Miller-Rabin: the first 12 primes are witnesses for every
-/// `n < 3.18e23` (the smallest strong pseudoprime to all of them is
-/// 318665857834031151167461), so all of `u64`. Larger numbers use [`bpsw`].
-fn is_prime_u64(n: u64) -> bool {
-    if n < 2 {
-        return false;
-    }
-    for p in BASES {
-        if n == p {
-            return true;
-        }
-        if n.is_multiple_of(p) {
-            return false;
-        }
-    }
-    let s = (n - 1).trailing_zeros();
-    let d = (n - 1) >> s;
-    'witness: for a in BASES {
-        let mut x = powmod_u64(a, d, n);
-        if x == 1 || x == n - 1 {
-            continue;
-        }
-        for _ in 1..s {
-            x = mulmod(x, x, n);
-            if x == n - 1 {
-                continue 'witness;
-            }
-        }
-        return false;
-    }
-    true
-}
-
 pub(crate) fn is_prime(n: &BigInt) -> bool {
     if let Some(small) = n.to_u64() {
-        return is_prime_u64(small);
+        return crate::kernels::number_theory::is_prime_miller_rabin(small);
     }
     if n.is_negative() {
         return false;
@@ -494,7 +442,7 @@ fn split(
     if n == 1 {
         return true;
     }
-    if is_prime_u64(n) {
+    if crate::kernels::number_theory::is_prime_miller_rabin(n) {
         out.push(n);
         return true;
     }
@@ -1027,40 +975,140 @@ fn jacobi(
     }
     let (mut a, mut n) = (modulo(a, n)?, n.clone());
     let mut sign = 1_i8;
-    let low = |x: &BigInt, m: u32| (x % m).to_u32().unwrap_or(0);
     while !a.is_zero() {
-        while !a.bit(0) {
-            a >>= 1;
-            if matches!(low(&n, 8), 3 | 5) {
-                sign = -sign;
-            }
-        }
-        std::mem::swap(&mut a, &mut n);
-        if low(&a, 4) == 3 && low(&n, 4) == 3 {
+        let twos = a.trailing_zeros().unwrap_or(0);
+        a >>= twos;
+        // For odd n, 2 has Jacobi symbol -1 exactly when n is 3 or 5 mod 8.
+        if twos % 2 != 0 && n.bit(1) != n.bit(2) {
             sign = -sign;
         }
-        a = modulo(&a, &n)?;
+        if a.bit(1) && n.bit(1) {
+            sign = -sign;
+        }
+        std::mem::swap(&mut a, &mut n);
+        a %= &n;
     }
     Some(if n.is_one() { sign } else { 0 })
 }
 
-fn crt(args: &[Vec<BigInt>]) -> Option<Value> {
+/// The canonical residue and period of a compatible congruence system.
+fn crt_solution(
+    args: &[Vec<BigInt>],
+    require_pairwise_coprime: bool,
+) -> Option<(BigInt, BigInt)> {
     let [residues, moduli] = args else {
         return None;
     };
     if residues.len() != moduli.len() || residues.is_empty() {
         return None;
     }
-    let (mut x, mut product) = (BigInt::zero(), BigInt::one());
-    for (r, m) in residues.iter().zip(moduli) {
-        // Solve x + product*t = r (mod m); needs product invertible mod m,
-        // i.e. the moduli are pairwise coprime.
-        let inverse = invmod(&product, m)?;
-        let t = modulo(&(modulo(&(r - &x), m)? * inverse), m)?;
-        x += &product * t;
-        product *= m;
+    if require_pairwise_coprime && crate::execution::should_split(moduli.len(), 64) {
+        let (mut substantial, mut total_bits, mut widest) = (0, 0_u64, 0);
+        for bits in moduli.iter().map(BigInt::bits).filter(|&bits| bits > 1) {
+            substantial += 1;
+            total_bits = total_bits.saturating_add(bits);
+            widest = widest.max(bits);
+        }
+        // Small, unit-heavy and strongly unbalanced inputs use the same serial merge.
+        if substantial >= 64
+            && substantial >= moduli.len().div_ceil(2)
+            && total_bits >= 4096
+            && widest <= total_bits / 4
+        {
+            let grain = if widest <= 64 { 32 } else { 2 };
+            return coprime_product_tree(residues, moduli, grain);
+        }
     }
-    modulo(&x, &product).map(Value::Int)
+    let (mut first, mut period) = (BigInt::zero(), BigInt::one());
+    for (r, m) in residues.iter().zip(moduli) {
+        if !m.is_positive() {
+            return None;
+        }
+        if m.is_one() {
+            continue;
+        }
+        // Divide the congruence period*t = r - first (mod m) by its gcd.
+        let (gcd, inverse, _) = egcd(&(&period % m), m);
+        let mut difference = r - &first;
+        let reduced;
+        let modulus = if gcd.is_one() {
+            m
+        } else {
+            if require_pairwise_coprime {
+                return None;
+            }
+            let (quotient, remainder) = difference.div_rem(&gcd);
+            if !remainder.is_zero() {
+                return None;
+            }
+            difference = quotient;
+            reduced = m / gcd;
+            &reduced
+        };
+        let step = (difference.mod_floor(modulus) * inverse).mod_floor(modulus);
+        // The old residue and the step are canonical, so their sum needs no reduction.
+        first += &period * step;
+        period *= modulus;
+    }
+    Some((first, period))
+}
+
+/// Coprime CRT with all inversions at the original modulus sizes.
+fn coprime_product_tree(
+    residues: &[BigInt],
+    moduli: &[BigInt],
+    grain: usize,
+) -> Option<(BigInt, BigInt)> {
+    use crate::kernels::par::map_indexed;
+
+    if moduli.iter().any(|modulus| !modulus.is_positive()) {
+        return None;
+    }
+    let mut levels = vec![moduli.to_vec()];
+    while let Some(children) = levels.last().filter(|children| children.len() > 1) {
+        let parents = map_indexed(children.len().div_ceil(2), grain, |index| {
+            let first = &children[2 * index];
+            children
+                .get(2 * index + 1)
+                .map_or_else(|| first.clone(), |second| first * second)
+        });
+        levels.push(parents);
+    }
+    // At a leaf i, outside[i] is the product of every other modulus, reduced modulo m_i.
+    let mut outside = vec![BigInt::one()];
+    for children in levels.iter().rev().skip(1) {
+        outside = map_indexed(children.len(), grain, |index| {
+            let parent = &outside[index / 2];
+            children.get(index ^ 1).map_or_else(
+                || parent.clone(),
+                |sibling| (parent * sibling) % &children[index],
+            )
+        });
+    }
+    let contributions = map_indexed(moduli.len(), grain, |index| {
+        let modulus = &moduli[index];
+        let (gcd, inverse, _) = egcd(&outside[index], modulus);
+        gcd.is_one()
+            .then(|| (residues[index].mod_floor(modulus) * inverse).mod_floor(modulus))
+    });
+    let mut contributions = contributions.into_iter().collect::<Option<Vec<_>>>()?;
+    // Weight each child by its sibling's product. Canonical child residues keep the sum below 2M.
+    for (children, parents) in levels.iter().zip(levels.iter().skip(1)) {
+        contributions = map_indexed(parents.len(), grain, |index| {
+            let left = 2 * index;
+            let right = left + 1;
+            if right == children.len() {
+                return contributions[left].clone();
+            }
+            let mut sum =
+                &contributions[left] * &children[right] + &contributions[right] * &children[left];
+            if sum >= parents[index] {
+                sum -= &parents[index];
+            }
+            sum
+        });
+    }
+    Some((contributions.pop()?, levels.pop()?.pop()?))
 }
 
 /// A kernel that works on the argument nodes directly, for operators whose
@@ -1609,7 +1657,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         set,
         binary("mod")
             .eval(mod_eval)
-            .doc("`mod(x, m)`: least non-negative residue of `x` modulo `m > 0`."),
+            .doc("`mod(x, m)`: least non-negative residue of `x` modulo `|m|` for `m != 0`."),
         |a| {
             match a {
                 | [x, m] => modulo(x, m).map(Value::Int),
@@ -1635,7 +1683,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         i,
         set,
         binary("invmod").doc(
-            "`invmod(x, m)`: modular multiplicative inverse `x^-1 mod m` when `gcd(x, m) = 1`.",
+            "`invmod(x, m)`: modular multiplicative inverse `x^-1 mod m` for positive `m` when `gcd(x, m) = 1`.",
         ),
         |a| {
             match a {
@@ -1760,8 +1808,27 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     exact_lists(
         i,
         set,
-        binary("crt").doc("`crt(remainders, moduli)`: Chinese remainder theorem solution `x` satisfying `x = r_i (mod m_i)`."),
-        crt,
+        binary("crt").doc("`crt(remainders, moduli)` returns the least nonnegative solution for nonempty equal-length lists and positive pairwise coprime moduli. Large systems can use a product and remainder tree on the active CPU pool."),
+        |args| crt_solution(args, true).map(|(first, _)| Value::Int(first)),
+    )?;
+    let integer_vector = |shape| {
+        TypeExpr::Tensor {
+            rank: NatExpr::Lit(1),
+            shape,
+            elem: Box::new(TypeExpr::Int),
+        }
+    };
+    exact_lists(
+        i,
+        set,
+        binary("crt_general")
+            .flags(OpFlags::HEAVY)
+            .signature(Signature::new(
+                vec![integer_vector(None), integer_vector(None)],
+                integer_vector(Some(vec![NatExpr::Lit(2)])),
+            ))
+            .doc("`crt_general(remainders, moduli)` returns `list(first, period)`, with `0 <= first < period` and `period` the least common multiple. Lists must be nonempty and equal in length, with compatible congruences and positive moduli. Remainders may be signed and moduli may share factors."),
+        |args| crt_solution(args, false).map(|(first, period)| Value::Flat(vec![first, period])),
     )?;
     exact(
         i,
@@ -1843,6 +1910,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             ("jacobi", DimRule::Dimensionless),
             ("egcd", DimRule::List),
             ("crt", DimRule::Dimensionless),
+            ("crt_general", DimRule::List),
             ("pell", DimRule::List),
             ("primes", DimRule::List),
             ("cfrac", DimRule::List),

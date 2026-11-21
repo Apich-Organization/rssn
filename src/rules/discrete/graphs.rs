@@ -28,7 +28,7 @@
 //! | `graph_neighbors(g, u)`, `graph_out_degree(g, u)`, `graph_in_degree(g, u)`, `graph_edges(g)`, `graph_hyperedges(g)` | `list(list(v, w), ...)`; degrees count adjacency entries; undirected edges are listed once (`u <= v`) as `list(u, v, w)` |
 //! | `graph_adjacency(g)`, `graph_incidence(g)`, `graph_laplacian(g)` | matrices; the adjacency matrix adds up parallel edges; the incidence matrix has columns for `graph_edges` with `-1/+1` for directed and `1/1` for undirected edges; the Laplacian is `D - A` with the *weighted* degree matrix `D` |
 //! | `graph_dfs(g, s)`, `graph_bfs(g, s)` | visit order |
-//! | `graph_components(g)`, `graph_is_connected(g)`, `graph_scc(g)` | components in order of their first vertex (BFS order inside each of `graph_components`, sorted inside each of `graph_scc`) |
+//! | `graph_components(g)`, `graph_is_connected(g)`, `graph_scc(g)` | BFS groups in first-vertex order, reachability from vertex zero, and strongly connected components with their vertices sorted |
 //! | `graph_has_cycle(g)`, `graph_bridges(g)` | cycle test; `list(bridges, articulation_points)` of an undirected graph |
 //! | `graph_kruskal(g)`, `graph_prim(g, s)` | minimum spanning forest edges `list(u, v, w)` |
 //! | `graph_edmonds_karp(g, s, t)`, `graph_dinic(g, s, t)` | maximum flow, edge weights are capacities (exact for exact capacities) |
@@ -47,6 +47,9 @@
 //! Shortest-path algorithms order by the numeric value of the weights; a
 //! symbolic weight counts as `oo` for the comparison (an edge with a symbolic
 //! weight is never part of a computed path), as in the legacy code.
+//! For a digraph, `graph_components` walks outgoing arcs from each root
+//! that has yet to be reached. These groups can overlap. Use `graph_scc`
+//! to partition a digraph by mutual reachability.
 //!
 //! Isomorphism, canonical labelling and automorphisms compare the *shape* of a
 //! graph: weights and hyperedges are ignored and parallel edges count as a
@@ -89,10 +92,12 @@ use crate::graph::op::core;
 use crate::graph::rule::Installer;
 use crate::kernels::graph::CanonicalLabelling;
 use crate::kernels::graph::ColourGraph;
+use crate::kernels::graph::DisjointSet;
 use crate::kernels::graph::SearchBudget;
 use crate::kernels::graph::canonical_labelling;
 use crate::kernels::graph::strongly_connected_by;
 use crate::kernels::graph::topological_by;
+use crate::kernels::graph::undirected_cuts_by;
 use crate::kernels::graph::wl_equivalent;
 
 /// One adjacency entry.
@@ -538,39 +543,29 @@ fn graph_laplacian(
 
 // ---------------- traversal ----------------
 
-fn dfs_visit(
-    gr: &Gr,
-    u: usize,
-    seen: &mut [bool],
-    out: &mut Vec<usize>,
-) {
-    seen[u] = true;
-    out.push(u);
-    for e in &gr.adj[u] {
-        if !seen[e.to] {
-            dfs_visit(gr, e.to, seen, out);
-        }
-    }
-}
-
-fn bfs_order(
+#[allow(
+    clippy::indexing_slicing,
+    reason = "parsed adjacency and roots have valid vertex indices"
+)]
+fn bfs_visit<Mark: Copy + PartialEq>(
     gr: &Gr,
     s: usize,
-) -> Vec<usize> {
-    let mut seen = vec![false; gr.n];
-    let mut out = Vec::new();
-    let mut queue = VecDeque::from([s]);
-    seen[s] = true;
+    seen: &mut [Mark],
+    mark: Mark,
+    queue: &mut VecDeque<usize>,
+    mut visit: impl FnMut(usize),
+) {
+    queue.push_back(s);
+    seen[s] = mark;
     while let Some(u) = queue.pop_front() {
-        out.push(u);
+        visit(u);
         for e in &gr.adj[u] {
-            if !seen[e.to] {
-                seen[e.to] = true;
+            if seen[e.to] != mark {
+                seen[e.to] = mark;
                 queue.push_back(e.to);
             }
         }
     }
-    out
 }
 
 fn graph_dfs(
@@ -580,9 +575,33 @@ fn graph_dfs(
     let [g, s] = a else { return None };
     let gr = read(cx, *g)?;
     let s = vertex(cx, *s, &gr)?;
-    let mut out = Vec::new();
-    dfs_visit(&gr, s, &mut vec![false; gr.n], &mut out);
-    Some(indices(&out))
+    Some(indices(&dfs_order(&gr, s)))
+}
+
+#[allow(
+    clippy::indexing_slicing,
+    reason = "parsed adjacency and the root have valid vertex indices"
+)]
+fn dfs_order(
+    gr: &Gr,
+    s: usize,
+) -> Vec<usize> {
+    let mut seen = vec![false; gr.n];
+    seen[s] = true;
+    let mut out = vec![s];
+    let mut search = vec![gr.adj[s].iter()];
+    while let Some(remaining) = search.last_mut() {
+        if let Some(edge) = remaining.next() {
+            if !seen[edge.to] {
+                seen[edge.to] = true;
+                out.push(edge.to);
+                search.push(gr.adj[edge.to].iter());
+            }
+        } else {
+            search.pop();
+        }
+    }
+    out
 }
 
 fn graph_bfs(
@@ -592,18 +611,34 @@ fn graph_bfs(
     let [g, s] = a else { return None };
     let gr = read(cx, *g)?;
     let s = vertex(cx, *s, &gr)?;
-    Some(indices(&bfs_order(&gr, s)))
+    let mut out = Vec::new();
+    bfs_visit(
+        &gr,
+        s,
+        &mut vec![false; gr.n],
+        true,
+        &mut VecDeque::new(),
+        |v| out.push(v),
+    );
+    Some(indices(&out))
 }
 
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    reason = "the marker is at most the validated vertex count and seen has one entry per vertex"
+)]
 fn components(gr: &Gr) -> Vec<Vec<usize>> {
-    let mut seen = vec![false; gr.n];
+    let mut seen = vec![0; gr.n];
+    let mut queue = VecDeque::new();
     let mut out = Vec::new();
     for u in 0..gr.n {
-        if !seen[u] {
-            let comp = bfs_order(gr, u);
-            for &v in &comp {
-                seen[v] = true;
-            }
+        if seen[u] == 0 {
+            // The directed variant walks each root's full reachable set,
+            // including vertices that earlier roots could also reach.
+            let mark = if gr.directed { u + 1 } else { 1 };
+            let mut comp = Vec::new();
+            bfs_visit(gr, u, &mut seen, mark, &mut queue, |v| comp.push(v));
             out.push(comp);
         }
     }
@@ -625,7 +660,27 @@ fn graph_is_connected(
     a: &[NodeId],
 ) -> Option<V> {
     let gr = read(cx, *a.first()?)?;
-    Some(V::Bool(components(&gr).len() == 1))
+    Some(V::Bool(reaches_all_from_first(&gr)))
+}
+
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "each vertex is visited at most once"
+)]
+fn reaches_all_from_first(gr: &Gr) -> bool {
+    if gr.n == 0 {
+        return false;
+    }
+    let mut count = 0;
+    bfs_visit(
+        gr,
+        0,
+        &mut vec![false; gr.n],
+        true,
+        &mut VecDeque::new(),
+        |_| count += 1,
+    );
+    count == gr.n
 }
 
 fn graph_scc(
@@ -648,46 +703,48 @@ fn graph_scc(
     ))
 }
 
-fn directed_cycle(
+#[allow(
+    clippy::indexing_slicing,
+    reason = "all queued indices come from parsed adjacency"
+)]
+fn directed_postorder(
     gr: &Gr,
-    u: usize,
-    color: &mut [u8],
+    mut visit: impl FnMut(usize),
 ) -> bool {
-    color[u] = 1;
-    for e in &gr.adj[u] {
-        if color[e.to] == 1 || (color[e.to] == 0 && directed_cycle(gr, e.to, color)) {
-            return true;
-        }
-    }
-    color[u] = 2;
-    false
-}
-
-fn undirected_cycle(
-    gr: &Gr,
-    u: usize,
-    parent_edge: Option<usize>,
-    seen: &mut [bool],
-) -> bool {
-    seen[u] = true;
-    for e in &gr.adj[u] {
-        if Some(e.id) == parent_edge {
+    let mut colors = vec![0; gr.n];
+    let mut search = Vec::new();
+    for (root, edges) in gr.adj.iter().enumerate() {
+        if colors[root] != 0 {
             continue;
         }
-        if seen[e.to] || undirected_cycle(gr, e.to, Some(e.id), seen) {
-            return true;
+        colors[root] = 1;
+        search.push((root, edges.iter()));
+        while let Some((vertex, remaining)) = search.last_mut() {
+            if let Some(edge) = remaining.next() {
+                match colors[edge.to] {
+                    | 0 => {
+                        colors[edge.to] = 1;
+                        search.push((edge.to, gr.adj[edge.to].iter()));
+                    },
+                    | 1 => return false,
+                    | _ => {},
+                }
+            } else {
+                colors[*vertex] = 2;
+                visit(*vertex);
+                search.pop();
+            }
         }
     }
-    false
+    true
 }
 
 fn has_cycle(gr: &Gr) -> bool {
     if gr.directed {
-        let mut color = vec![0_u8; gr.n];
-        (0..gr.n).any(|u| color[u] == 0 && directed_cycle(gr, u, &mut color))
+        !directed_postorder(gr, |_| {})
     } else {
-        let mut seen = vec![false; gr.n];
-        (0..gr.n).any(|u| !seen[u] && undirected_cycle(gr, u, None, &mut seen))
+        let mut sets = DisjointSet::new(gr.n);
+        gr.edges.iter().any(|&(u, v, _)| !sets.union(u, v))
     }
 }
 
@@ -699,101 +756,19 @@ fn graph_has_cycle(
     Some(V::Bool(has_cycle(&gr)))
 }
 
-struct Bridges {
-    time: usize,
-    disc: Vec<Option<usize>>,
-    low: Vec<usize>,
-    cuts: Vec<(usize, usize)>,
-    ap: Vec<bool>,
-}
-
-fn bridge_visit(
-    gr: &Gr,
-    u: usize,
-    parent_edge: Option<usize>,
-    s: &mut Bridges,
-) {
-    s.disc[u] = Some(s.time);
-    s.low[u] = s.time;
-    s.time += 1;
-    let mut children = 0;
-    for e in &gr.adj[u] {
-        if Some(e.id) == parent_edge {
-            continue;
-        }
-        let v = e.to;
-        if let Some(dv) = s.disc[v] {
-            s.low[u] = s.low[u].min(dv);
-        } else {
-            children += 1;
-            bridge_visit(gr, v, Some(e.id), s);
-            s.low[u] = s.low[u].min(s.low[v]);
-            if Some(s.low[v]) > s.disc[u] {
-                s.cuts.push((u, v));
-            }
-            if parent_edge.is_some() && Some(s.low[v]) >= s.disc[u] {
-                s.ap[u] = true;
-            }
-        }
-    }
-    if parent_edge.is_none() && children > 1 {
-        s.ap[u] = true;
-    }
-}
-
 fn graph_bridges(
     cx: &mut Cx<'_>,
     a: &[NodeId],
 ) -> Option<V> {
     let gr = read(cx, *a.first()?)?;
-    let mut s = Bridges {
-        time: 0,
-        disc: vec![None; gr.n],
-        low: vec![0; gr.n],
-        cuts: Vec::new(),
-        ap: vec![false; gr.n],
-    };
-    for u in 0..gr.n {
-        if s.disc[u].is_none() {
-            bridge_visit(&gr, u, None, &mut s);
-        }
-    }
-    let aps: Vec<usize> = (0..gr.n).filter(|&u| s.ap[u]).collect();
+    let cuts = undirected_cuts_by(&gr.adj, |edge| (edge.to, edge.id));
     Some(V::List(vec![
-        V::List(s.cuts.iter().map(|&(u, v)| pair(u, v)).collect()),
-        indices(&aps),
+        V::List(cuts.bridges.into_iter().map(|[u, v]| pair(u, v)).collect()),
+        indices(&cuts.articulation_points),
     ]))
 }
 
 // ---------------- spanning trees ----------------
-
-struct Dsu(Vec<usize>);
-
-impl Dsu {
-    fn find(
-        &mut self,
-        x: usize,
-    ) -> usize {
-        if self.0[x] != x {
-            let root = self.find(self.0[x]);
-            self.0[x] = root;
-        }
-        self.0[x]
-    }
-
-    fn union(
-        &mut self,
-        a: usize,
-        b: usize,
-    ) -> bool {
-        let (ra, rb) = (self.find(a), self.find(b));
-        if ra == rb {
-            return false;
-        }
-        self.0[ra] = rb;
-        true
-    }
-}
 
 fn edge_value((u, v, w): (usize, usize, NodeId)) -> V {
     V::List(vec![V::uint(u), V::uint(v), V::Node(w)])
@@ -806,7 +781,7 @@ fn graph_kruskal(
     let gr = read(cx, *a.first()?)?;
     let mut edges = gr.get_edges();
     edges.sort_by(|x, y| key(cx.graph, x.2).total_cmp(&key(cx.graph, y.2)));
-    let mut dsu = Dsu((0..gr.n).collect());
+    let mut dsu = DisjointSet::new(gr.n);
     let tree: Vec<V> = edges
         .into_iter()
         .filter(|&(u, v, _)| dsu.union(u, v))
@@ -1689,39 +1664,13 @@ fn kahn(gr: &Gr) -> Option<Vec<usize>> {
     topological_by(&gr.adj, |edge| edge.to).ok()
 }
 
-fn topo_visit(
-    gr: &Gr,
-    u: usize,
-    color: &mut [u8],
-    post: &mut Vec<usize>,
-) -> bool {
-    color[u] = 1;
-    for e in &gr.adj[u] {
-        match color[e.to] {
-            | 1 => return false,
-            | 0 => {
-                if !topo_visit(gr, e.to, color, post) {
-                    return false;
-                }
-            },
-            | _ => {},
-        }
-    }
-    color[u] = 2;
-    post.push(u);
-    true
-}
-
 fn topological_dfs(gr: &Gr) -> Option<Vec<usize>> {
     if !gr.directed {
         return None;
     }
-    let mut color = vec![0_u8; gr.n];
-    let mut post = Vec::new();
-    for u in 0..gr.n {
-        if color[u] == 0 && !topo_visit(gr, u, &mut color, &mut post) {
-            return None;
-        }
+    let mut post = Vec::with_capacity(gr.n);
+    if !directed_postorder(gr, |vertex| post.push(vertex)) {
+        return None;
     }
     post.reverse();
     Some(post)
@@ -2437,14 +2386,14 @@ pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         "graph_components",
         Arity::Fixed(1),
         graph_components,
-        "Returns the connected components (weakly connected for digraphs) of graph `g` as lists of vertices.",
+        "Returns connected components as vertex lists in breadth-first order. For a digraph, each list is an outgoing reachability walk from the next previously unreached vertex, so lists can overlap.",
     )?;
     def_doc(
         i,
         "graph_is_connected",
         Arity::Fixed(1),
         graph_is_connected,
-        "Returns `true` if graph `g` has at most one connected component.",
+        "Returns `true` when vertex zero can reach all vertices. A digraph uses outgoing arcs, and an empty graph returns `false`.",
     )?;
     def_doc(
         i,
@@ -2465,7 +2414,7 @@ pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         "graph_bridges",
         Arity::Fixed(1),
         graph_bridges,
-        "Returns `list(bridges, articulation_points)` of an undirected graph `g`.",
+        "Returns `list(bridges, articulation_points)` of an undirected graph. Bridges are in depth-first completion order, with the parent endpoint first. Articulation points are in vertex order. Parallel edges and self-loops are supported.",
     )?;
     def_doc(
         i,
@@ -2700,4 +2649,39 @@ pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         "Returns the graph join of `g` and `h` (disjoint union plus all edges between `V(g)` and `V(h)`).",
     )?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Gr;
+    use super::NodeId;
+    use super::components;
+    use super::dfs_order;
+    use super::has_cycle;
+    use super::topological_dfs;
+
+    #[test]
+    fn deep_and_disconnected_traversals() {
+        let n = 50_000;
+        let mut path = Gr::new(n, true);
+        for (source, target) in (0..n).zip(1..n) {
+            path.add_edge(source, target, NodeId::NONE);
+        }
+        assert!(dfs_order(&path, 0).into_iter().eq(0..n));
+        let order = topological_dfs(&path);
+        assert!(order.is_some_and(|order| order.into_iter().eq(0..n)));
+        assert!(!has_cycle(&path));
+        path.add_edge(n.saturating_sub(1), 0, NodeId::NONE);
+        assert!(topological_dfs(&path).is_none());
+        assert!(has_cycle(&path));
+
+        let disconnected = components(&Gr::new(n, false));
+        assert_eq!(disconnected.len(), n);
+        assert!(
+            disconnected
+                .iter()
+                .enumerate()
+                .all(|(v, vertices)| vertices == &[v])
+        );
+    }
 }

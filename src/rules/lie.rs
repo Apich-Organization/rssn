@@ -3,7 +3,7 @@
 //!
 //! Root systems, representations, structure theory (radical, Levi, Cartan
 //! subalgebras), the classical bases and the matrix logarithm are in
-//! [`super::lie_structure`].
+//! [`lie_structure`](mod@super::lie_structure).
 //!
 //! An element of a *matrix* Lie algebra is a square matrix
 //! `list(list(..), ..)`; an element of a Lie algebra of *vector fields* is

@@ -321,6 +321,17 @@ fn traversals_and_components() {
     assert_eq!(s(&format!("graph_is_connected({g})")), "false");
     assert_eq!(s("graph_is_connected(graph_cycle(5))"), "true");
     assert_eq!(s("graph_is_connected(graph_empty(0))"), "false");
+    assert_eq!(s("graph_is_connected(graph_empty(10000))"), "false");
+    let directed = "digraph(4, list(list(1, 0), list(2, 1)))";
+    assert_eq!(
+        s(&format!("graph_components({directed})")),
+        "list(list(0), list(1, 0), list(2, 1, 0), list(3))"
+    );
+    assert_eq!(s(&format!("graph_is_connected({directed})")), "false");
+    assert_eq!(
+        s("graph_is_connected(digraph(3, list(list(0, 1), list(1, 2))))"),
+        "true"
+    );
     assert_eq!(
         s(&format!("graph_bfs({g}, 9)")),
         format!("graph_bfs({g}, 9)")

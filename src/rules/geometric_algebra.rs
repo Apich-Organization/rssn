@@ -364,31 +364,50 @@ struct Mv {
     terms: BTreeMap<u32, NodeId>,
 }
 
-/// Sign and metric factor (`0` when a degenerate vector is contracted) of
-/// the product of two basis blades, and the resulting blade.
-fn blade_product(
-    sig: Sig,
-    a: u32,
-    b: u32,
-) -> (i64, u32) {
-    let mut sign = 1;
-    for i in 0..32 {
-        if (b >> i) & 1 == 1 && (a >> (i + 1)).count_ones() % 2 == 1 {
-            sign = -sign;
+/// Orthogonal metric masks shared by all pairs in a multivector product.
+struct BladeMetric {
+    negative: u32,
+    degenerate: u32,
+}
+
+impl BladeMetric {
+    const fn new((positive, negative, _): Sig) -> Self {
+        let positive_mask = (1 << positive) - 1;
+        let nondegenerate = (1 << (positive + negative)) - 1;
+        Self {
+            negative: nondegenerate ^ positive_mask,
+            degenerate: !nondegenerate,
         }
     }
-    for i in 0..32 {
-        if (a & b) >> i & 1 == 1 {
-            let (p, q, _) = sig;
-            if i >= p + q {
-                return (0, a ^ b);
-            }
-            if i >= p {
-                sign = -sign;
-            }
+
+    /// The sign and resulting basis blade. A repeated null vector gives zero.
+    const fn product(
+        &self,
+        left: u32,
+        right: u32,
+        crossings: u32,
+    ) -> (i64, u32) {
+        let overlap = left & right;
+        let blade = left ^ right;
+        if overlap & self.degenerate != 0 {
+            return (0, blade);
         }
+        let positive = ((crossings & right) ^ (overlap & self.negative))
+            .count_ones()
+            .is_multiple_of(2);
+        (if positive { 1 } else { -1 }, blade)
     }
-    (sign, a ^ b)
+}
+
+/// Bit i holds the parity of left basis indices greater than i.
+const fn crossing_parities(left: u32) -> u32 {
+    let mut parity = left >> 1;
+    parity ^= parity >> 1;
+    parity ^= parity >> 2;
+    parity ^= parity >> 4;
+    parity ^= parity >> 8;
+    parity ^= parity >> 16;
+    parity
 }
 
 fn read_sig(
@@ -409,7 +428,8 @@ fn read_sig(
             .and_then(|v| u32::try_from(v).ok())
     };
     let sig = (get(graph, p)?, get(graph, q)?, get(graph, r)?);
-    (sig.0 + sig.1 + sig.2 <= MAX_DIM).then_some(sig)
+    let dimension = sig.0.checked_add(sig.1)?.checked_add(sig.2)?;
+    (dimension <= MAX_DIM).then_some(sig)
 }
 
 fn sig_term(
@@ -542,10 +562,13 @@ fn product(
         return None;
     }
     let mut acc: BTreeMap<u32, Vec<NodeId>> = BTreeMap::new();
+    let metric = BladeMetric::new(a.sig);
     for (&ba, &ca) in &a.terms {
+        let crossings = crossing_parities(ba);
+        let grade_a = ba.count_ones();
         for (&bb, &cb) in &b.terms {
-            let (sign, blade) = blade_product(a.sig, ba, bb);
-            if sign == 0 || !keep(ba.count_ones(), bb.count_ones(), blade.count_ones()) {
+            let (sign, blade) = metric.product(ba, bb, crossings);
+            if sign == 0 || !keep(grade_a, bb.count_ones(), blade.count_ones()) {
                 continue;
             }
             let s = cx.graph.int(sign);
@@ -724,7 +747,7 @@ fn dual(
         return Some(r);
     }
     // I² = ±1 for a non-degenerate metric, so I⁻¹ = I / I².
-    let (sign, _) = blade_product(a.sig, blade, blade);
+    let (sign, _) = BladeMetric::new(a.sig).product(blade, blade, crossing_parities(blade));
     let s = cx.graph.int(sign);
     Some(scaled(cx, &r, s))
 }

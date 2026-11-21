@@ -483,6 +483,42 @@ fn isqrt_exact(v: u64) -> Option<u64> {
     (r.saturating_sub(1)..=r + 1).find(|&c| c * c == v)
 }
 
+struct CyclicLift {
+    power_classes: Vec<usize>,
+    inverse_root: u64,
+    inverse_order: u64,
+}
+
+impl CyclicLift {
+    fn lift(
+        &self,
+        character: &[u64],
+        degree: u64,
+        p: u64,
+    ) -> Option<Entry> {
+        let m = self.power_classes.len();
+        let mut multiplicities = Vec::with_capacity(m);
+        let mut total = 0;
+        let mut step = 1;
+        for _ in 0..m {
+            let mut sum = 0;
+            let mut phase = 1;
+            for &class in &self.power_classes {
+                sum = (sum + character[class] * phase) % p;
+                phase = phase * step % p;
+            }
+            let multiplicity = sum * self.inverse_order % p;
+            if multiplicity > degree {
+                return None;
+            }
+            multiplicities.push(multiplicity as i64);
+            total += multiplicity;
+            step = step * self.inverse_root % p;
+        }
+        (total == degree).then_some(Entry { m, v: multiplicities })
+    }
+}
+
 /// The character table of the group with multiplication table `t`.
 #[allow(clippy::too_many_lines)] // one algorithm: constants, eigenvectors, degrees, lifting
 pub(crate) fn character_table(t: &Tab) -> Option<CharTable> {
@@ -499,7 +535,8 @@ pub(crate) fn character_table(t: &Tab) -> Option<CharTable> {
     let sizes: Vec<usize> = classes.iter().map(Vec::len).collect();
     let inv_class: Vec<usize> = reps.iter().map(|&r| class_of[t.inv[r]]).collect();
     let id_class = class_of[t.id];
-    let e = (0..n).fold(1, |acc, x| acc.lcm(&t.order(x)));
+    let orders: Vec<_> = (0..n).map(|x| t.order(x)).collect();
+    let e = orders.iter().fold(1, |acc, order| acc.lcm(order));
     let p = find_prime(n, e, k);
 
     // Class multiplication constants a[j][i][l] = #{(x, y) in C_i x C_j : xy = z_l}.
@@ -578,46 +615,46 @@ pub(crate) fn character_table(t: &Tab) -> Option<CharTable> {
         })
         .unwrap_or(1);
 
+    // Both the power-class orbits and the cyclic roots are shared by all
+    // characters. Advance phases by modular multiplication within each DFT.
+    let lifts: Vec<_> = reps
+        .iter()
+        .map(|&g| {
+            let m = orders[g];
+            let omega_m = mpow(root_e, (e / m) as u64, p);
+            let mut power = t.id;
+            let power_classes = (0..m)
+                .map(|_| {
+                    let class = class_of[power];
+                    power = t.m(power, g);
+                    class
+                })
+                .collect();
+            CyclicLift {
+                power_classes,
+                inverse_root: minv(omega_m, p),
+                inverse_order: minv(m as u64, p),
+            }
+        })
+        .collect();
+    let inv_sizes: Vec<_> = sizes.iter().map(|&size| minv(size as u64, p)).collect();
     let mut rows_raw: Vec<(usize, Vec<Entry>)> = Vec::new();
     for w in &omegas {
         // chi(1)^2 = |G| / sum_i w_i w_{i'} / |C_i|
         let mut s = 0;
         for i in 0..k {
-            let term = w[i] * w[inv_class[i]] % p * minv(sizes[i] as u64 % p, p) % p;
+            let term = w[i] * w[inv_class[i]] % p * inv_sizes[i] % p;
             s = (s + term) % p;
         }
         let d2 = n as u64 % p * minv(s, p) % p;
         let d = isqrt_exact(d2)?;
         let chi_p: Vec<u64> = (0..k)
-            .map(|i| d % p * w[i] % p * minv(sizes[i] as u64 % p, p) % p)
+            .map(|i| d % p * w[i] % p * inv_sizes[i] % p)
             .collect();
-        let mut entries = Vec::with_capacity(k);
-        for i in 0..k {
-            let g = reps[i];
-            let m = t.order(g);
-            let omega_m = mpow(root_e, (e / m) as u64, p);
-            let inv_m = minv(m as u64 % p, p);
-            let mut v_m = vec![0_i64; m];
-            let mut total = 0;
-            for j in 0..m {
-                let mut acc = 0;
-                for tt in 0..m {
-                    let val = chi_p[class_of[t.pow(g, tt)]];
-                    let root = mpow(omega_m, ((m - j) * tt % m) as u64, p);
-                    acc = (acc + val * root) % p;
-                }
-                let mult = acc * inv_m % p;
-                if mult > d {
-                    return None;
-                }
-                v_m[j] = mult as i64;
-                total += mult;
-            }
-            if total != d {
-                return None;
-            }
-            entries.push(Entry { m, v: v_m });
-        }
+        let entries = lifts
+            .iter()
+            .map(|lift| lift.lift(&chi_p, d, p))
+            .collect::<Option<_>>()?;
         rows_raw.push((d as usize, entries));
     }
     let mut rows: Vec<(usize, Vec<Entry>, Vec<Complex64>)> = rows_raw
@@ -696,7 +733,12 @@ impl CharTable {
     ) -> Vec<usize> {
         self.reps
             .iter()
-            .map(|&r| self.class_of[t.pow(r, k)])
+            .map(|&r| {
+                // A class representative's order bounds its power cycle, even
+                // when the caller supplies an exponent near usize::MAX.
+                let steps = if k < t.n { k } else { k % t.order(r) };
+                self.class_of[t.pow(r, steps)]
+            })
             .collect()
     }
 }
@@ -1501,6 +1543,37 @@ mod tests {
             s(&format!("character_decompose({g}, list(1, 0, 0))"))
                 .starts_with("character_decompose(group(")
         );
+    }
+
+    #[test]
+    fn character_adams_handles_machine_size_exponents() {
+        let group = "symmetric_group(3)";
+        let values = "list(2, 0, -1)";
+        let request = |exponent| format!("character_adams({group}, {values}, {exponent})");
+        assert_eq!(s(&request(0)), "list(2, 2, 2)");
+        assert_eq!(s(&request(usize::MAX)), s(&request(usize::MAX % 6)));
+        assert_eq!(
+            s(&request(usize::MAX - 1)),
+            s(&request((usize::MAX - 1) % 6))
+        );
+    }
+
+    #[test]
+    fn cyclic_lift_recovers_each_frequency_at_order_three() {
+        let lift = super::CyclicLift {
+            power_classes: vec![0, 1, 2],
+            inverse_root: 4,
+            inverse_order: 5,
+        };
+        for (character, expected) in [
+            ([1, 1, 1], [1, 0, 0]),
+            ([1, 2, 4], [0, 1, 0]),
+            ([1, 4, 2], [0, 0, 1]),
+            ([2, 3, 5], [1, 1, 0]),
+        ] {
+            assert_eq!(lift.lift(&character, character[0], 7).unwrap().v, expected);
+        }
+        assert!(lift.lift(&[1, 0, 0], 1, 7).is_none());
     }
 
     #[test]

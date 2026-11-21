@@ -38,6 +38,9 @@
 //! or a non-zero integer `+-i` for the `i`-th generator or its inverse. The
 //! relators are words; `list(a, a, a)`, `list(a^3)` and `list(1, 1, 1)` all
 //! stand for `a^3`.
+//! Index-only requests verify live transitions without constructing action
+//! arrays. `fp_group` checks freely reduced relators and the generated
+//! permutation group's order before building a Cayley table.
 
 // Index loops over several parallel tables and float comparisons with explicit
 // tolerances read better than the iterator forms; `as` casts convert small,
@@ -49,6 +52,7 @@
     clippy::manual_midpoint
 )]
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 use num_bigint::BigInt;
@@ -354,15 +358,17 @@ struct Cosets {
     ncols: usize,
     table: Vec<usize>,
     parent: Vec<usize>,
+    pending: Vec<usize>,
     live: usize,
 }
 
 impl Cosets {
-    fn new(ngens: usize) -> Self {
+    fn new(ncols: usize) -> Self {
         let mut c = Self {
-            ncols: 2 * ngens,
+            ncols,
             table: Vec::new(),
             parent: Vec::new(),
+            pending: Vec::new(),
             live: 0,
         };
         c.new_coset();
@@ -430,7 +436,7 @@ impl Cosets {
         a: usize,
         b: usize,
     ) {
-        let mut queue = Vec::new();
+        let mut queue = std::mem::take(&mut self.pending);
         self.merge(a, b, &mut queue);
         let mut i = 0;
         while i < queue.len() {
@@ -458,6 +464,8 @@ impl Cosets {
                 }
             }
         }
+        queue.clear();
+        self.pending = queue;
     }
 
     /// Scans the word `w` (columns) from coset `c`, defining cosets as
@@ -471,8 +479,12 @@ impl Cosets {
         let (mut i, mut j) = (0_usize, w.len());
         // `j` is one past the last unscanned letter.
         loop {
-            while i < j && self.get(f, w[i]) != NONE {
-                f = self.get(f, w[i]);
+            while i < j {
+                let next = self.get(f, w[i]);
+                if next == NONE {
+                    break;
+                }
+                f = next;
                 i += 1;
             }
             if i == j {
@@ -481,8 +493,12 @@ impl Cosets {
                 }
                 return true;
             }
-            while j > i && self.get(b, w[j - 1] ^ 1) != NONE {
-                b = self.get(b, w[j - 1] ^ 1);
+            while j > i {
+                let next = self.get(b, w[j - 1] ^ 1);
+                if next == NONE {
+                    break;
+                }
+                b = next;
                 j -= 1;
             }
             if j == i {
@@ -502,17 +518,104 @@ impl Cosets {
             self.set(n, w[i] ^ 1, f);
         }
     }
+
+    fn live_rows(&self) -> impl Iterator<Item = usize> + '_ {
+        self.parent
+            .iter()
+            .copied()
+            .enumerate()
+            .filter_map(|(i, root)| (i == root).then_some(i))
+    }
+
+    /// Flatten representatives and check that every live transition has its
+    /// inverse before accepting the index or constructing an action.
+    fn seal(&mut self) -> Option<()> {
+        for row in 0..self.parent.len() {
+            self.rep(row);
+        }
+        for row in self.live_rows() {
+            for column in 0..self.ncols {
+                let next = *self.parent.get(self.get(row, column))?;
+                let previous = self.parent.get(self.get(next, column ^ 1))?;
+                if *previous != row {
+                    return None;
+                }
+            }
+        }
+        Some(())
+    }
+
+    fn permutations(&self) -> Vec<Perm> {
+        let mut labels = vec![NONE; self.parent.len()];
+        for (index, row) in self.live_rows().enumerate() {
+            labels[row] = index;
+        }
+        let mut perms: Vec<_> = (0..self.ncols / 2)
+            .map(|_| Vec::with_capacity(self.live))
+            .collect();
+        for row in self.live_rows() {
+            for (g, perm) in perms.iter_mut().enumerate() {
+                perm.push(labels[self.parent[self.get(row, 2 * g)]]);
+            }
+        }
+        perms
+    }
+
+    fn word_image(
+        &self,
+        start: usize,
+        word: &[usize],
+    ) -> usize {
+        word.iter()
+            .fold(start, |row, &column| self.parent[self.get(row, column)])
+    }
+
+    fn verifies(
+        &self,
+        relators: &[Vec<usize>],
+        subgens: &[Vec<usize>],
+    ) -> bool {
+        let relators: Vec<_> = relators.iter().map(|word| reduced_word(word)).collect();
+        self.live_rows().all(|row| {
+            relators
+                .iter()
+                .all(|word| self.word_image(row, word) == row)
+        }) && subgens
+            .iter()
+            .all(|word| self.word_image(0, &reduced_word(word)) == 0)
+    }
 }
 
-/// The coset table of `<gens | relators>` over the subgroup `subgens`:
-/// the number of cosets and, for each generator, its action on them
-/// (0-based images).
-pub(crate) fn todd_coxeter_table(
+fn reduced_word(word: &[usize]) -> Cow<'_, [usize]> {
+    if word.windows(2).all(|pair| pair[0] != pair[1] ^ 1) {
+        return Cow::Borrowed(word);
+    }
+    let mut reduced = Vec::with_capacity(word.len());
+    for &letter in word {
+        if reduced.last() == Some(&(letter ^ 1)) {
+            reduced.pop();
+        } else {
+            reduced.push(letter);
+        }
+    }
+    Cow::Owned(reduced)
+}
+
+fn enumerate_cosets(
     ngens: usize,
     relators: &[Vec<usize>],
     subgens: &[Vec<usize>],
-) -> Option<(usize, Vec<Perm>)> {
-    let mut t = Cosets::new(ngens);
+) -> Option<Cosets> {
+    let ncols = ngens.checked_mul(2)?;
+    if relators
+        .iter()
+        .chain(subgens)
+        .flatten()
+        .any(|&letter| letter >= ncols)
+    {
+        return None;
+    }
+    let mut t = Cosets::new(ncols);
     for w in subgens {
         if !t.scan_and_fill(0, w) {
             return None;
@@ -544,17 +647,19 @@ pub(crate) fn todd_coxeter_table(
         }
         c += 1;
     }
-    // Compress.
-    let live: Vec<usize> = (0..t.parent.len()).filter(|&k| t.parent[k] == k).collect();
-    let pos: HashMap<usize, usize> = live.iter().enumerate().map(|(i, &k)| (k, i)).collect();
-    let mut perms = vec![vec![0; live.len()]; ngens];
-    for (i, &k) in live.iter().enumerate() {
-        for (g, perm) in perms.iter_mut().enumerate() {
-            let img = t.get(k, 2 * g);
-            perm[i] = *pos.get(&t.rep(img))?;
-        }
-    }
-    Some((live.len(), perms))
+    t.seal()?;
+    Some(t)
+}
+
+/// The coset table of `<gens | relators>` over the subgroup `subgens`:
+/// the number of cosets and the generators' 0-based actions.
+pub(crate) fn todd_coxeter_table(
+    ngens: usize,
+    relators: &[Vec<usize>],
+    subgens: &[Vec<usize>],
+) -> Option<(usize, Vec<Perm>)> {
+    let table = enumerate_cosets(ngens, relators, subgens)?;
+    Some((table.live, table.permutations()))
 }
 
 /// Reads a word over the generators `gens` into columns (`2i` for the
@@ -655,7 +760,7 @@ fn todd_coxeter_index(
     a: &[NodeId],
 ) -> Option<V> {
     let (n, rels, subs) = read_presentation(cx.graph, a)?;
-    Some(V::uint(todd_coxeter_table(n, &rels, &subs)?.0))
+    Some(V::uint(enumerate_cosets(n, &rels, &subs)?.live))
 }
 
 fn fp_group_order(
@@ -663,7 +768,7 @@ fn fp_group_order(
     a: &[NodeId],
 ) -> Option<V> {
     let (n, rels, _) = read_presentation(cx.graph, a)?;
-    Some(V::uint(todd_coxeter_table(n, &rels, &[])?.0))
+    Some(V::uint(enumerate_cosets(n, &rels, &[])?.live))
 }
 
 fn fp_group(
@@ -671,11 +776,15 @@ fn fp_group(
     a: &[NodeId],
 ) -> Option<V> {
     let (n, rels, _) = read_presentation(cx.graph, a)?;
-    let (index, perms) = todd_coxeter_table(n, &rels, &[])?;
-    if index > TABLE_LIMIT {
+    let table = enumerate_cosets(n, &rels, &[])?;
+    if table.live > TABLE_LIMIT || !table.verifies(&rels, &[]) {
         return None;
     }
-    perm_group_term(cx.graph, index, &perms)
+    let chain = Chain::new(table.live, &table.permutations());
+    if chain.order() != BigInt::from(table.live) {
+        return None;
+    }
+    group_term_from_chain(cx.graph, &chain)
 }
 
 // ----------------------------------------------------------------------
@@ -737,18 +846,50 @@ pub(crate) fn perm_group_term(
     gens: &[Perm],
 ) -> Option<V> {
     let chain = Chain::new(n, gens);
+    group_term_from_chain(g, &chain)
+}
+
+fn group_term_from_chain(
+    g: &mut Graph,
+    chain: &Chain,
+) -> Option<V> {
     let elems = chain.elements(TABLE_LIMIT)?;
-    let pos: HashMap<&Perm, usize> = elems.iter().enumerate().map(|(i, p)| (p, i)).collect();
-    let mut table = Vec::with_capacity(elems.len());
-    for p in &elems {
-        let mut row = Vec::with_capacity(elems.len());
-        for q in &elems {
-            row.push(*pos.get(&compose(p, q))?);
-        }
-        table.push(row);
-    }
+    let table = cayley_rows(&elems)?;
     let nodes: Vec<NodeId> = elems.iter().map(|p| perm_node(g, p)).collect();
     build_group(g, &nodes, &table)
+}
+
+/// The product table in the supplied element order. Each row reuses its
+/// permutation buffer, and independent rows can use the active CPU pool.
+fn cayley_rows(elems: &[Perm]) -> Option<Vec<Vec<usize>>> {
+    let degree = elems.first()?.len();
+    let positions: HashMap<&[usize], usize> = elems
+        .iter()
+        .enumerate()
+        .map(|(i, p)| (p.as_slice(), i))
+        .collect();
+    let row = |p: &Perm, scratch: &mut [usize]| -> Option<Vec<usize>> {
+        let mut row = Vec::with_capacity(elems.len());
+        for q in elems {
+            for (slot, &point) in scratch.iter_mut().zip(q) {
+                *slot = p[point];
+            }
+            row.push(*positions.get(&*scratch)?);
+        }
+        Some(row)
+    };
+    let work = elems
+        .len()
+        .saturating_mul(elems.len())
+        .saturating_mul(degree);
+    if work >= 32_768 && crate::execution::should_split(elems.len(), 8) {
+        crate::kernels::par::map_slice(elems, 8, |p| row(p, &mut vec![0; degree]))
+            .into_iter()
+            .collect()
+    } else {
+        let mut scratch = vec![0; degree];
+        elems.iter().map(|p| row(p, &mut scratch)).collect()
+    }
 }
 
 fn chain_of(
@@ -1092,7 +1233,7 @@ pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         "todd_coxeter_index",
         Arity::Fixed(3),
         todd_coxeter_index,
-        "Computes the index of `subgroup_gens` in the finitely presented group `<gens | relators>` via Todd-Coxeter.",
+        "Computes the index of `subgroup_gens` in the finitely presented group `<gens | relators>` by Todd–Coxeter enumeration. The result counts live cosets with complete inverse transitions.",
     )?;
     def_doc(
         i,
@@ -1106,7 +1247,7 @@ pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         "fp_group",
         Arity::Fixed(2),
         fp_group,
-        "Constructs a `group(elements, table)` term for the finitely presented group `<gens | relators>` (order up to 720).",
+        "Constructs a `group(elements, table)` term for the finitely presented group `<gens | relators>` of order at most 720. The generator action satisfies the relators and has the same order as the enumerated coset count.",
     )?;
     def_doc(
         i,
@@ -1131,6 +1272,33 @@ mod tests {
         let mut p = identity(n);
         p.swap(0, 1);
         p
+    }
+
+    #[test]
+    fn cayley_rows_match_independent_composition_in_every_pool() {
+        let chain = Chain::new(5, &[cyc(5), swap01(5)]);
+        let elements = chain.elements(TABLE_LIMIT).unwrap();
+        assert_eq!(elements.len(), 120);
+        let expected: Vec<Vec<_>> = elements
+            .iter()
+            .map(|p| {
+                elements
+                    .iter()
+                    .map(|q| {
+                        let product = compose(p, q);
+                        elements.iter().position(|value| *value == product).unwrap()
+                    })
+                    .collect()
+            })
+            .collect();
+        for workers in [1, 2, 4] {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(workers)
+                .build()
+                .unwrap();
+            let actual = pool.install(|| cayley_rows(&elements)).unwrap();
+            assert_eq!(actual, expected);
+        }
     }
 
     #[test]
@@ -1336,6 +1504,36 @@ mod tests {
             s("fp_group_order(list(a), list())"),
             "fp_group_order(list(a), list())"
         );
+    }
+
+    #[test]
+    fn coset_seal_rejects_missing_or_inconsistent_inverse_edges() {
+        let mut table = Cosets::new(2);
+        assert_eq!(table.seal(), None);
+        let second = table.new_coset();
+        table.set(0, 0, second);
+        table.set(0, 1, 0);
+        table.set(second, 0, 0);
+        table.set(second, 1, second);
+        assert_eq!(table.seal(), None);
+        table.set(0, 1, second);
+        table.set(second, 1, 0);
+        assert_eq!(table.seal(), Some(()));
+        assert_eq!(table.permutations(), [vec![1, 0]]);
+    }
+
+    #[test]
+    fn coset_action_checks_relators_and_the_subgroup_at_the_base() {
+        let relators = [vec![0, 0], vec![2, 2, 2], vec![0, 2, 0, 2]];
+        let subgroup = [vec![0]];
+        let table = enumerate_cosets(2, &relators, &subgroup).unwrap();
+        assert_eq!(table.live, 3);
+        assert!(table.verifies(&relators, &subgroup));
+        assert!(!table.verifies(&[vec![2]], &[]));
+        assert!(!table.verifies(&[], &[vec![2]]));
+        assert!(reduced_word(&[0, 2, 3, 1]).is_empty());
+        assert!(enumerate_cosets(2, &[vec![4]], &[]).is_none());
+        assert!(enumerate_cosets(usize::MAX, &[], &[]).is_none());
     }
 
     #[test]
