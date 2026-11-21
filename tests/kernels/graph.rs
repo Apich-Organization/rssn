@@ -74,6 +74,185 @@ fn weak_components_ignore_arc_orientation_and_parallel_edges() {
 }
 
 #[test]
+fn multi_source_bfs_matches_the_minimum_of_independent_walks() {
+    let mut rng = Lcg::new(0x61a4);
+    let vertices = 12;
+    for _ in 0..40 {
+        let mut g = Graph::new(vertices);
+        for _ in 0..35 {
+            g.add_edge(rng.below(vertices), rng.below(vertices), -10.0);
+        }
+        let sources = [rng.below(vertices), rng.below(vertices)];
+        let expected: Vec<_> = bfs(&g, sources[0])
+            .into_iter()
+            .zip(bfs(&g, sources[1]))
+            .map(|(first, second)| first.min(second))
+            .collect();
+        assert_eq!(
+            graph::multi_source_bfs(&g, &[sources[1], sources[0], sources[1]]),
+            Ok(expected)
+        );
+        assert_eq!(
+            graph::multi_source_bfs(&g, &[]),
+            Ok(vec![usize::MAX; vertices])
+        );
+    }
+    let mut invalid = Graph::new(2);
+    invalid.add_edge(1, 2, 0.0);
+    assert_eq!(
+        graph::multi_source_bfs(&invalid, &[0]),
+        Ok(vec![0, usize::MAX])
+    );
+    for source in [1, 2] {
+        assert_eq!(
+            graph::multi_source_bfs(&invalid, &[source]),
+            Err(GraphStructureError::InvalidVertex)
+        );
+    }
+    assert_eq!(graph::multi_source_bfs(&Graph::new(0), &[]), Ok(vec![]));
+}
+
+#[test]
+fn condensation_deduplicates_cross_component_arcs() {
+    let g = Graph::from_edges(
+        8,
+        &[
+            (0, 3, -10.0),
+            (0, 5, 7.0),
+            (0, 1, 0.0),
+            (1, 0, 0.0),
+            (1, 3, 2.0),
+            (1, 6, 0.0),
+            (2, 2, 0.0),
+            (3, 4, 0.0),
+            (4, 3, 0.0),
+            (4, 5, 0.0),
+            (5, 6, 0.0),
+            (6, 5, 0.0),
+        ],
+    )
+    .unwrap();
+    let result = graph::condensation(&g).unwrap();
+    assert_eq!(
+        result.component_of,
+        graph::strongly_connected_components(&g).unwrap()
+    );
+    let labels = result.component_of;
+    assert_eq!(labels[0], labels[1]);
+    assert_eq!(labels[3], labels[4]);
+    assert_eq!(labels[5], labels[6]);
+    assert_eq!(
+        result.arcs,
+        [
+            [labels[0], labels[3]],
+            [labels[0], labels[5]],
+            [labels[3], labels[5]]
+        ]
+    );
+    assert!(result.arcs.iter().all(|[source, target]| source < target));
+    assert_eq!(
+        graph::condensation(&Graph::new(0)).unwrap().arcs,
+        Vec::<[usize; 2]>::new()
+    );
+    let mut invalid = Graph::new(2);
+    invalid.add_edge(1, 2, 0.0);
+    assert_eq!(
+        graph::condensation(&invalid),
+        Err(GraphStructureError::InvalidVertex)
+    );
+}
+
+#[test]
+fn undirected_cuts_match_removal_oracle_for_multigraphs() {
+    fn component_count(
+        n: usize,
+        edges: &[[usize; 2]],
+        skipped_edge: Option<usize>,
+        skipped_vertex: Option<usize>,
+    ) -> usize {
+        let mut seen = vec![false; n];
+        let mut active = Vec::new();
+        let mut count = 0;
+        if let Some(vertex) = skipped_vertex {
+            seen[vertex] = true;
+        }
+        for root in 0..n {
+            if seen[root] {
+                continue;
+            }
+            count += 1;
+            seen[root] = true;
+            active.push(root);
+            while let Some(u) = active.pop() {
+                for (id, &[first, second]) in edges.iter().enumerate() {
+                    if Some(id) == skipped_edge {
+                        continue;
+                    }
+                    let target = if u == first {
+                        second
+                    } else if u == second {
+                        first
+                    } else {
+                        continue;
+                    };
+                    if !seen[target] {
+                        seen[target] = true;
+                        active.push(target);
+                    }
+                }
+            }
+        }
+        count
+    }
+
+    let mut rng = Lcg::new(0x3abf);
+    for _ in 0..80 {
+        let n = 1 + rng.below(9);
+        let edges: Vec<_> = (0..rng.below(15))
+            .map(|_| [rng.below(n), rng.below(n)])
+            .collect();
+        let baseline = component_count(n, &edges, None, None);
+        let mut expected_bridges: Vec<_> = edges
+            .iter()
+            .enumerate()
+            .filter_map(|(id, &[u, v])| {
+                (component_count(n, &edges, Some(id), None) > baseline)
+                    .then_some([u.min(v), u.max(v)])
+            })
+            .collect();
+        expected_bridges.sort_unstable();
+        let expected_articulation: Vec<_> = (0..n)
+            .filter(|&v| component_count(n, &edges, None, Some(v)) > baseline)
+            .collect();
+        let result = graph::undirected_cuts(n, &edges).unwrap();
+        let mut bridges = result.bridges;
+        for edge in &mut bridges {
+            edge.sort_unstable();
+        }
+        bridges.sort_unstable();
+        assert_eq!(bridges, expected_bridges, "{edges:?}");
+        assert_eq!(
+            result.articulation_points, expected_articulation,
+            "{edges:?}"
+        );
+    }
+    assert!(graph::undirected_cuts(0, &[]).unwrap().bridges.is_empty());
+    assert_eq!(
+        graph::undirected_cuts(2, &[[1, 2]]),
+        Err(GraphStructureError::InvalidVertex)
+    );
+}
+
+#[test]
+fn undirected_cuts_handle_a_deep_path() {
+    let n = 30_000;
+    let edges: Vec<_> = (1..n).map(|vertex| [vertex - 1, vertex]).collect();
+    let result = graph::undirected_cuts(n, &edges).unwrap();
+    assert!(result.bridges.iter().eq(edges.iter().rev()));
+    assert!(result.articulation_points.into_iter().eq(1..n - 1));
+}
+
+#[test]
 fn bellman_ford_and_dag_match_distance_matrix_on_weighted_dags() {
     let n = 6;
     let mut rng = Lcg::new(0x5a8c);

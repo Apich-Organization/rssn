@@ -1,7 +1,9 @@
 //! # Finite Field Arithmetic
 //!
 //! This module provides numerical implementations for arithmetic in finite fields.
-//! It includes support for prime fields GF(p) and optimized arithmetic for GF(2^8).
+//! It includes support for prime fields GF(p) and arithmetic for GF(2^8) in the
+//! polynomial basis modulo `0x11d`. Use [`Gf256Multiplier`] to reuse a fixed
+//! coefficient across byte slices.
 
 use std::ops::Add;
 use std::ops::AddAssign;
@@ -318,42 +320,40 @@ impl Div for PrimeFieldElement {
 }
 
 const GF256_GENERATOR_POLY: u16 = 0x11d;
-
-const GF256_MODULUS: usize = 256;
+const GF256_SIZE: usize = 256;
+const GF256_ORDER: usize = GF256_SIZE - 1;
 
 struct Gf256Tables {
-    log: [u8; GF256_MODULUS],
-    exp: [u8; GF256_MODULUS],
+    log: [u8; GF256_SIZE],
+    // Repeat the cycle to index by either a sum or an offset difference of logs.
+    // Two spare entries give an array large enough for any two byte indices.
+    exp: [u8; 2 * GF256_SIZE],
 }
 
-static GF256_TABLES: std::sync::LazyLock<Gf256Tables> = std::sync::LazyLock::new(|| {
-    let mut log_table = [0u8; GF256_MODULUS];
-
-    let mut exp_table = [0u8; GF256_MODULUS];
-
+#[expect(
+    clippy::indexing_slicing,
+    reason = "the loop bounds the exponent index and polynomial reduction leaves a byte"
+)]
+static GF256_TABLES: Gf256Tables = {
+    let mut tables = Gf256Tables {
+        log: [0; GF256_SIZE],
+        exp: [0; 2 * GF256_SIZE],
+    };
+    let mut i = 0;
     let mut x: u16 = 1;
-
-    // for i in 0..255 {
-    for (i, value) in exp_table.iter_mut().enumerate().take(255) {
-        // exp_table[i] = x as u8;
-        *value = x as u8;
-
-        log_table[x as usize] = i as u8;
-
+    while i < tables.exp.len() {
+        tables.exp[i] = x as u8;
+        if i < GF256_ORDER {
+            tables.log[x as usize] = i as u8;
+        }
         x <<= 1;
-
-        if x >= 256 {
+        if x >= GF256_SIZE as u16 {
             x ^= GF256_GENERATOR_POLY;
         }
+        i += 1;
     }
-
-    exp_table[255] = exp_table[0];
-
-    Gf256Tables {
-        log: log_table,
-        exp: exp_table,
-    }
-});
+    tables
+};
 
 /// Performs addition in GF(2^8).
 ///
@@ -369,10 +369,15 @@ pub const fn gf256_add(
 
 /// Performs multiplication in GF(2^8) using lookup tables.
 ///
-/// This function uses precomputed logarithm and exponentiation tables for efficiency.
+/// The compile-time logarithm and exponentiation tables use the `0x11d` polynomial basis.
 #[inline]
 #[must_use]
-pub fn gf256_mul(
+#[expect(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    reason = "byte log indices fit their table and the sum of two bytes is at most 510"
+)]
+pub const fn gf256_mul(
     a: u8,
     b: u8,
 ) -> u8 {
@@ -380,11 +385,9 @@ pub fn gf256_mul(
         return 0;
     }
 
-    let log_a = u16::from(GF256_TABLES.log[a as usize]);
-
-    let log_b = u16::from(GF256_TABLES.log[b as usize]);
-
-    GF256_TABLES.exp[((log_a + log_b) % 255) as usize]
+    let log_a = GF256_TABLES.log[a as usize] as usize;
+    let log_b = GF256_TABLES.log[b as usize] as usize;
+    GF256_TABLES.exp[log_a + log_b]
 }
 
 /// Computes the multiplicative inverse in GF(2^8).
@@ -392,12 +395,17 @@ pub fn gf256_mul(
 /// # Errors
 /// * Returns an error if `a` is 0, as 0 has no multiplicative inverse.
 #[inline]
+#[expect(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    reason = "subtracting a byte log from 255 gives an exponent in 0..=255"
+)]
 pub fn gf256_inv(a: u8) -> Result<u8, String> {
     if a == 0 {
         return Err("Cannot invert 0".to_string());
     }
 
-    Ok(GF256_TABLES.exp[(255 - u16::from(GF256_TABLES.log[a as usize])) as usize])
+    Ok(GF256_TABLES.exp[GF256_ORDER - usize::from(GF256_TABLES.log[usize::from(a)])])
 }
 
 /// Performs division in GF(2^8).
@@ -407,6 +415,11 @@ pub fn gf256_inv(a: u8) -> Result<u8, String> {
 /// # Errors
 /// * Returns an error if the divisor `b` is 0.
 #[inline]
+#[expect(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    reason = "adding 255 to the log bounds the nonnegative difference by 510"
+)]
 pub fn gf256_div(
     a: u8,
     b: u8,
@@ -419,15 +432,20 @@ pub fn gf256_div(
         return Ok(0);
     }
 
-    let log_a = u16::from(GF256_TABLES.log[a as usize]);
-
-    let log_b = u16::from(GF256_TABLES.log[b as usize]);
-
-    Ok(GF256_TABLES.exp[((log_a + 255 - log_b) % 255) as usize])
+    let log_a = usize::from(GF256_TABLES.log[usize::from(a)]);
+    let log_b = usize::from(GF256_TABLES.log[usize::from(b)]);
+    Ok(GF256_TABLES.exp[log_a + GF256_ORDER - log_b])
 }
 
 /// Performs exponentiation in GF(2^8).
+///
+/// Exponent zero returns `1`, including for a zero base.
 #[must_use]
+#[expect(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    reason = "the reduced exponent product fits u16 and the residue is at most 254"
+)]
 pub fn gf256_pow(
     a: u8,
     exp: u64,
@@ -440,11 +458,102 @@ pub fn gf256_pow(
         return 0;
     }
 
-    let log_a = u16::from(GF256_TABLES.log[a as usize]);
+    let log_a = u16::from(GF256_TABLES.log[usize::from(a)]);
+    // Nonzero elements have order dividing 255, so reducing first keeps the product in u16.
+    let reduced_exp = (exp % GF256_ORDER as u64) as u16;
+    let new_log = (log_a * reduced_exp) % GF256_ORDER as u16;
+    GF256_TABLES.exp[usize::from(new_log)]
+}
 
-    let new_log = (u128::from(log_a) * u128::from(exp)) % 255;
+/// A reusable multiplier for a fixed coefficient in GF(2^8).
+///
+/// It owns a 256-byte lookup table and needs no heap allocation. Reuse it for operations
+/// on several slices with the same coefficient, such as erasure-coding stripes.
+///
+/// ```
+/// use rssn::kernels::finite_field::Gf256Multiplier;
+///
+/// let multiplier = Gf256Multiplier::new(2);
+/// let mut parity = [0x10, 0x20];
+/// multiplier.mul_add_assign(&[0x80, 1], &mut parity)?;
+/// assert_eq!(parity, [0x0d, 0x22]);
+/// # Ok::<(), String>(())
+/// ```
+#[derive(Clone, Debug)]
+pub struct Gf256Multiplier {
+    coefficient: u8,
+    products: [u8; GF256_SIZE],
+}
 
-    GF256_TABLES.exp[new_log as usize]
+#[expect(
+    clippy::indexing_slicing,
+    reason = "the constructor and byte lookups index a 256-entry table"
+)]
+impl Gf256Multiplier {
+    /// Builds a multiplier using the same polynomial basis as [`gf256_mul`].
+    #[must_use]
+    #[expect(
+        clippy::arithmetic_side_effects,
+        reason = "the table loop increments only while the index is below 256"
+    )]
+    pub const fn new(coefficient: u8) -> Self {
+        let mut products = [0; GF256_SIZE];
+        if coefficient > 1 {
+            let mut value = 1;
+            while value < GF256_SIZE {
+                products[value] = gf256_mul(coefficient, value as u8);
+                value += 1;
+            }
+        }
+        Self {
+            coefficient,
+            products,
+        }
+    }
+
+    /// Multiplies each byte of the slice by the coefficient in place.
+    pub fn scale_assign(
+        &self,
+        values: &mut [u8],
+    ) {
+        match self.coefficient {
+            | 0 => values.fill(0),
+            | 1 => {},
+            | _ => {
+                for value in values {
+                    *value = self.products[usize::from(*value)];
+                }
+            },
+        }
+    }
+
+    /// Adds the scaled source into the destination using field addition (XOR).
+    ///
+    /// # Errors
+    /// Returns an error and leaves the destination unchanged when the lengths differ.
+    pub fn mul_add_assign(
+        &self,
+        source: &[u8],
+        destination: &mut [u8],
+    ) -> Result<(), String> {
+        if source.len() != destination.len() {
+            return Err("GF(256) source and destination lengths must match".into());
+        }
+        match self.coefficient {
+            | 0 => {},
+            | 1 => {
+                for (&src, dst) in source.iter().zip(destination) {
+                    *dst ^= src;
+                }
+            },
+            | _ => {
+                for (&src, dst) in source.iter().zip(destination) {
+                    *dst ^= self.products[usize::from(src)];
+                }
+            },
+        }
+        Ok(())
+    }
 }
 
 impl AddAssign for PrimeFieldElement {

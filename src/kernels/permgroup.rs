@@ -29,6 +29,7 @@
 //! Computational Group Theory*), sized for degrees up to a few hundred and
 //! orders that a backtrack can still walk.
 
+use num_bigint::BigInt;
 use num_bigint::BigUint;
 use num_traits::One;
 use num_traits::ToPrimitive;
@@ -36,6 +37,7 @@ use num_traits::Zero;
 use rand_v09::Rng;
 use rand_v09::SeedableRng;
 use rand_v09::rngs::StdRng;
+use std::collections::HashMap;
 
 /// A permutation of `0..n`: `p[i]` is the image of `i`.
 pub type Perm = Vec<u32>;
@@ -87,31 +89,63 @@ pub fn is_permutation(p: &[u32]) -> bool {
     })
 }
 
-/// The cycles of `p` (fixed points included), each starting at its least point.
-#[must_use]
-pub fn cycles(p: &[u32]) -> Vec<Vec<u32>> {
+fn visit_cycles(
+    p: &[u32],
+    require_bijection: bool,
+    mut visit: impl FnMut(&mut Vec<u32>),
+) -> bool {
     let mut seen = vec![false; p.len()];
-    let mut out = Vec::new();
+    let mut cycle = Vec::new();
     for start in 0..p.len() {
         if seen[start] {
             continue;
         }
-        let mut cycle = Vec::new();
+        cycle.clear();
         let mut x = start;
-        while !seen[x] {
-            seen[x] = true;
+        loop {
+            let Some(slot) = seen.get_mut(x) else {
+                return false;
+            };
+            if *slot {
+                if require_bijection && x != start {
+                    return false;
+                }
+                break;
+            }
+            *slot = true;
             cycle.push(u32::try_from(x).unwrap_or(u32::MAX));
             x = p[x] as usize;
         }
-        out.push(cycle);
+        visit(&mut cycle);
     }
+    true
+}
+
+/// The cycles of `p` (fixed points included), each starting at its least point.
+///
+/// # Panics
+/// Panics if an image is outside the permutation's degree.
+#[must_use]
+pub fn cycles(p: &[u32]) -> Vec<Vec<u32>> {
+    let mut out = Vec::new();
+    assert!(
+        visit_cycles(p, false, |cycle| out.push(std::mem::take(cycle))),
+        "permutation image outside its degree"
+    );
     out
 }
 
 /// The cycle type: the sorted cycle lengths, fixed points included.
+///
+/// # Panics
+/// Panics if an image is outside the permutation's degree.
 #[must_use]
 pub fn cycle_type(p: &[u32]) -> Vec<usize> {
-    let mut t: Vec<usize> = cycles(p).iter().map(Vec::len).collect();
+    let mut t = Vec::new();
+    assert!(
+        visit_cycles(p, false, |cycle| t.push(cycle.len())),
+        "permutation image outside its degree"
+    );
     t.sort_unstable();
     t
 }
@@ -119,40 +153,110 @@ pub fn cycle_type(p: &[u32]) -> Vec<usize> {
 /// For each point, the length of its cycle under `p`.
 fn cycle_lengths(p: &[u32]) -> Vec<usize> {
     let mut out = vec![0; p.len()];
-    for c in cycles(p) {
-        for &x in &c {
-            out[x as usize] = c.len();
-        }
-    }
+    assert!(
+        visit_cycles(p, false, |c| {
+            for &x in c.iter() {
+                out[x as usize] = c.len();
+            }
+        }),
+        "permutation image outside its degree"
+    );
     out
 }
 
 /// The order of `p` (the lcm of its cycle lengths).
+///
+/// # Panics
+/// Panics if an image is outside the permutation's degree.
 #[must_use]
 pub fn element_order(p: &[u32]) -> BigUint {
-    cycles(p).iter().fold(BigUint::one(), |acc, c| {
-        let len = BigUint::from(c.len());
-        let g = num_integer::Integer::gcd(&acc, &len);
-        acc * len / g
+    let mut order = BigUint::one();
+    assert!(
+        visit_cycles(p, false, |cycle| {
+            if cycle.len() > 1 {
+                order = num_integer::Integer::lcm(&order, &BigUint::from(cycle.len()));
+            }
+        }),
+        "permutation image outside its degree"
+    );
+    order
+}
+
+/// `p^k` for `k ≥ 0`, using direct composition for powers that need few
+/// compositions and cycle rotations for other powers.
+#[must_use]
+pub fn power(
+    p: &[u32],
+    k: u64,
+) -> Perm {
+    match k {
+        | 0 => identity(p.len()),
+        | 1 => p.to_vec(),
+        | 2 => compose(p, p),
+        | _ if k.ilog2() + k.count_ones() <= 6 => power_by_squaring(p, k),
+        | _ => {
+            power_cycles(p, |len| (k % len as u64) as usize)
+                .unwrap_or_else(|| power_by_squaring(p, k))
+        },
+    }
+}
+
+/// Raises a permutation to an arbitrary signed integer power.
+///
+/// A negative exponent rotates each cycle in reverse. Returns `None` if
+/// the input images do not form a bijection of their degree.
+#[must_use]
+pub fn power_exact(
+    p: &[u32],
+    exponent: &BigInt,
+) -> Option<Perm> {
+    let mut residues = HashMap::new();
+    power_cycles(p, |len| {
+        *residues.entry(len).or_insert_with(|| {
+            num_integer::Integer::mod_floor(exponent, &BigInt::from(len))
+                .to_usize()
+                .unwrap_or_default()
+        })
     })
 }
 
-/// `p^k` for `k ≥ 0` by repeated squaring.
-#[must_use]
-pub fn power(
+fn power_cycles(
+    p: &[u32],
+    mut shift_for: impl FnMut(usize) -> usize,
+) -> Option<Perm> {
+    let mut out = vec![0; p.len()];
+    let valid = visit_cycles(p, true, |cycle| {
+        let len = cycle.len();
+        let shift = if len > 1 { shift_for(len) } else { 0 };
+        let (first, rest) = cycle.split_at(shift);
+        for (&src, &dst) in cycle.iter().zip(rest.iter().chain(first)) {
+            out[src as usize] = dst;
+        }
+    });
+    valid.then_some(out)
+}
+
+fn power_by_squaring(
     p: &[u32],
     mut k: u64,
 ) -> Perm {
     let mut base = p.to_vec();
-    let mut acc = identity(p.len());
+    let mut acc: Option<Perm> = None;
     while k > 0 {
-        if k & 1 == 1 {
-            acc = compose(&acc, &base);
+        let take_power = k & 1 == 1;
+        k >>= 1;
+        if k == 0 {
+            return match acc {
+                | Some(acc) => compose(&acc, &base),
+                | None => base,
+            };
+        }
+        if take_power {
+            acc = Some(acc.map_or_else(|| base.clone(), |acc| compose(&acc, &base)));
         }
         base = compose(&base, &base);
-        k >>= 1;
     }
-    acc
+    identity(p.len())
 }
 
 /// `g p g⁻¹`.

@@ -7,6 +7,102 @@
 
 use rssn::kernels::error_correction::*;
 
+fn rs_reference_multiply(
+    a: u8,
+    mut b: u8,
+) -> u8 {
+    let mut a = u16::from(a);
+    let mut result = 0;
+    while b != 0 {
+        if b & 1 != 0 {
+            result ^= a;
+        }
+        b >>= 1;
+        a <<= 1;
+        if a & 0x100 != 0 {
+            a ^= 0x11d;
+        }
+    }
+    result as u8
+}
+
+fn rs_reference_syndromes(
+    codeword: &[u8],
+    count: usize,
+) -> Vec<u8> {
+    let mut root = 1;
+    (0..count)
+        .map(|_| {
+            let value = codeword
+                .iter()
+                .fold(0, |sum, &byte| rs_reference_multiply(sum, root) ^ byte);
+            root = rs_reference_multiply(root, 2);
+            value
+        })
+        .collect()
+}
+
+#[test]
+fn prepared_reed_solomon_reuses_output_and_matches_the_field_oracle() {
+    let mut workspace = [0_u8; 255];
+    for parity in [0, 1, 2, 4, 8, 16, 32, 64, 128, 254, 255] {
+        let plan = ReedSolomonEncoder::new(parity).expect("valid parity");
+        assert_eq!(plan.parity_symbols(), parity);
+        let capacity = 255 - parity;
+        for count in [capacity, capacity / 2, 0] {
+            let message: Vec<_> = (0..count)
+                .map(|i| ((71 * i + 13 * parity) & 255) as u8)
+                .collect();
+            let size = count + parity;
+            workspace.fill(0xa5);
+            let word = plan.encode(&message).expect("valid codeword");
+            plan.encode_into(&message, &mut workspace[..size])
+                .expect("valid output");
+            assert_eq!(&workspace[..size], word);
+            assert!(workspace[size..].iter().all(|&byte| byte == 0xa5));
+            assert_eq!(&word[..count], message);
+            assert_eq!(
+                word,
+                reed_solomon_encode(&message, parity).expect("valid codeword")
+            );
+            assert!(
+                rs_reference_syndromes(&word, parity)
+                    .iter()
+                    .all(|&s| s == 0)
+            );
+        }
+    }
+}
+
+#[test]
+fn reed_solomon_validates_shape_before_allocating_or_writing() {
+    assert!(reed_solomon_encode(&[1], usize::MAX).is_err());
+    assert!(ReedSolomonEncoder::new(usize::MAX).is_err());
+    let plan = ReedSolomonEncoder::new(4).expect("valid parity");
+    let mut output = [0xa5; 7];
+    assert!(plan.encode_into(&[1, 2], &mut output).is_err());
+    assert!(plan.encode_into(&[1; 252], &mut output).is_err());
+    assert_eq!(output, [0xa5; 7]);
+
+    for (len, parity) in [(256, 0), (256, 1), (4, 5), (0, 1), (1, usize::MAX)] {
+        let mut malformed = vec![0; len];
+        assert!(!reed_solomon_check(&malformed, parity));
+        assert!(reed_solomon_decode(&mut malformed, parity).is_err());
+        assert_eq!(malformed, vec![0; len]);
+    }
+    assert!(reed_solomon_check(&[], 0));
+    assert!(reed_solomon_decode(&mut [], 0).is_ok());
+}
+
+#[test]
+fn raw_reed_solomon_syndromes_visit_each_field_root_at_most_once() {
+    let coefficients = [0x8b, 0x29, 0xee, 2, 9];
+    let expected = rs_reference_syndromes(&coefficients, 255);
+    assert!(expected.iter().any(|&s| s != 0));
+    assert_eq!(calculate_syndromes(&coefficients, 255), expected);
+    assert_eq!(calculate_syndromes(&coefficients, usize::MAX), expected);
+}
+
 // ============================================================================
 // Reed-Solomon Tests
 // ============================================================================

@@ -1,6 +1,54 @@
+use std::collections::VecDeque;
+
 use super::Graph;
 use super::GraphStructureError;
 use super::topological_sort;
+
+/// Finds unweighted distances from the nearest of several source vertices.
+///
+/// The result is indexed by vertex. Unreachable vertices have `usize::MAX`
+/// distance, including every vertex when `sources` is empty. Repeated
+/// sources are visited once and weights are ignored. Work is linear in
+/// the graph size and the length of `sources`.
+///
+/// # Errors
+///
+/// Reports an invalid source or a reached edge with an invalid endpoint.
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    reason = "the queue contains only valid vertices and a reachable simple path uses fewer edges than vertices"
+)]
+pub fn multi_source_bfs(
+    graph: &Graph,
+    sources: &[usize],
+) -> Result<Vec<usize>, GraphStructureError> {
+    let mut distances = vec![usize::MAX; graph.num_nodes()];
+    let mut queue = VecDeque::new();
+    for &source in sources {
+        let distance = distances
+            .get_mut(source)
+            .ok_or(GraphStructureError::InvalidVertex)?;
+        if *distance == usize::MAX {
+            *distance = 0;
+            queue.push_back(source);
+        }
+    }
+
+    while let Some(vertex) = queue.pop_front() {
+        let next_distance = distances[vertex] + 1;
+        for &(target, _) in graph.adj(vertex) {
+            let distance = distances
+                .get_mut(target)
+                .ok_or(GraphStructureError::InvalidVertex)?;
+            if *distance == usize::MAX {
+                *distance = next_distance;
+                queue.push_back(target);
+            }
+        }
+    }
+    Ok(distances)
+}
 
 /// Distances and predecessors from one source in vertex order.
 #[derive(Debug, Clone, PartialEq)]

@@ -1,8 +1,13 @@
+//! Weighted shortest paths, and partition refinement, canonical labelling and
+//! automorphism groups (`refine`, `canonical_labelling`, `isomorphic`, all
+//! over the `ColourGraph` input type).
+//!
 //! # Numerical Graph Algorithms
 //!
 //! This module provides graph data structures and algorithms tailored for numerical
 //! applications. A weighted graph supports path finding, component analysis,
-//! spanning forests, PageRank and flow networks.
+//! spanning forests, [`PageRank`](page_rank) and flow networks. Graph structure algorithms
+//! also expose component condensation and undirected bridges and cut vertices.
 //!
 //! # Canonical labelling
 //!
@@ -19,7 +24,7 @@
 //!   `CanonicalLabelling`: the canonical vertex order, the canonical code
 //!   (the adjacency matrix in that order, with the colours in front), the
 //!   automorphism group generators, their orbits, and the group order as a
-//!   [`BigInt`](num_bigint::BigInt).
+//!   [`BigInt`].
 //! * `isomorphic` is the plain isomorphism test built from the two: the
 //!   certificate rejects almost everything, the canonical codes decide the
 //!   rest, and `None` means the budget ran out.
@@ -38,11 +43,17 @@ use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use std::collections::VecDeque;
 
+mod cuts;
 mod directed;
 mod flow;
 mod paths;
 
+pub use cuts::UndirectedCuts;
+pub use cuts::undirected_cuts;
+pub(crate) use cuts::undirected_cuts_by;
+pub use directed::Condensation;
 pub use directed::GraphStructureError;
+pub use directed::condensation;
 pub(crate) use directed::strongly_connected_by;
 pub use directed::strongly_connected_components;
 pub(crate) use directed::topological_by;
@@ -53,6 +64,7 @@ pub use flow::maximum_flow;
 pub use paths::ShortestPaths;
 pub use paths::bellman_ford;
 pub use paths::dag_shortest_paths;
+pub use paths::multi_source_bfs;
 
 /// Represents a graph with weighted edges for numerical algorithms.
 /// The graph is represented by an adjacency list.
@@ -279,28 +291,10 @@ pub fn bfs(
     graph: &Graph,
     start_node: usize,
 ) -> Vec<usize> {
-    let num_nodes = graph.num_nodes();
-
-    let mut dist = vec![usize::MAX; num_nodes];
-
-    let mut queue = VecDeque::new();
-
-    dist[start_node] = 0;
-
-    queue.push_back(start_node);
-
-    while let Some(u) = queue.pop_front() {
-        let next_distance = dist[u] + 1;
-        for &(v, _) in graph.adj(u) {
-            if dist[v] == usize::MAX {
-                dist[v] = next_distance;
-
-                queue.push_back(v);
-            }
-        }
+    match multi_source_bfs(graph, &[start_node]) {
+        | Ok(distances) => distances,
+        | Err(error) => panic!("{error}"),
     }
-
-    dist
 }
 
 /// Computes the `PageRank` of the nodes in the graph.
@@ -1544,13 +1538,13 @@ fn orbits_of(
 }
 
 /// A disjoint-set forest with path halving and union by rank.
-struct DisjointSet {
+pub(crate) struct DisjointSet {
     parent: Vec<usize>,
     rank: Vec<u8>,
 }
 
 impl DisjointSet {
-    fn new(n: usize) -> Self {
+    pub(crate) fn new(n: usize) -> Self {
         Self {
             parent: (0..n).collect(),
             rank: vec![0; n],
@@ -1569,14 +1563,14 @@ impl DisjointSet {
         v
     }
 
-    fn union(
+    pub(crate) fn union(
         &mut self,
         a: usize,
         b: usize,
-    ) {
+    ) -> bool {
         let (mut root, mut other) = (self.find(a), self.find(b));
         if root == other {
-            return;
+            return false;
         }
         if self.rank[root] < self.rank[other] {
             std::mem::swap(&mut root, &mut other);
@@ -1585,6 +1579,7 @@ impl DisjointSet {
         if self.rank[root] == self.rank[other] {
             self.rank[root] += 1;
         }
+        true
     }
 }
 

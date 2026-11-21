@@ -32,12 +32,17 @@ pub const fn gcd(
 
 /// `a * b mod m` without overflow. `m` must be non-zero.
 #[inline]
-const fn mul_mod(
+pub(crate) const fn mul_mod(
     a: u64,
     b: u64,
     m: u64,
 ) -> u64 {
-    ((a as u128 * b as u128) % m as u128) as u64
+    let product = a as u128 * b as u128;
+    if product <= u64::MAX as u128 {
+        product as u64 % m
+    } else {
+        (product % m as u128) as u64
+    }
 }
 
 /// Computes `(base^exp) % modulus` efficiently using modular exponentiation (binary exponentiation).
@@ -58,19 +63,27 @@ pub const fn mod_pow(
     mut exp: u64,
     modulus: u64,
 ) -> u64 {
-    if modulus == 0 {
+    if modulus <= 1 {
         return 0;
     }
-    let mut res = 1 % modulus;
-    let mut base = (base % modulus as u128) as u64;
-    while exp > 0 {
+    let mut res = 1;
+    let mut base = if base < modulus as u128 {
+        base as u64
+    } else {
+        (base % modulus as u128) as u64
+    };
+    while exp > 1 {
         if exp & 1 == 1 {
             res = mul_mod(res, base, modulus);
         }
         base = mul_mod(base, base, modulus);
         exp >>= 1;
     }
-    res
+    if exp == 1 {
+        mul_mod(res, base, modulus)
+    } else {
+        res
+    }
 }
 
 /// Finds the modular multiplicative inverse of a number.
@@ -108,9 +121,8 @@ pub fn mod_inverse(
 
 /// Performs a Miller-Rabin primality test.
 ///
-/// The twelve prime bases 2..=37 are a deterministic witness set for every
-/// `n < 3.3e24`, hence for all of `u64`. Small primes are recognised by
-/// trial division first.
+/// The first twelve prime bases are a deterministic witness set over the
+/// entire `u64` range. Divisibility by those primes is checked first.
 ///
 /// # Arguments
 /// * `n` - The number to test for primality.
@@ -355,10 +367,11 @@ pub fn primes_sieve(limit: usize) -> Vec<usize> {
         .collect()
 }
 
-/// A square root of `n` modulo the prime `p` (Tonelli–Shanks): some `x` with
-/// `x² ≡ n (mod p)`, the smaller of the two roots.
+/// A square root of `n` modulo the prime `p`, choosing the smaller root.
 ///
-/// `None` when `p` is not an odd prime or `n` is a non-residue.
+/// Accepts `p = 2`. Returns `None` for a composite or invalid modulus or
+/// when `n` is a non-residue. Use [`PrimeSqrtPlan`] for repeated queries
+/// with the same prime modulus.
 #[must_use]
 pub fn sqrt_mod_prime(
     n: u64,
@@ -367,44 +380,187 @@ pub fn sqrt_mod_prime(
     if p == 2 {
         return Some(n & 1);
     }
-    if p < 3 || !is_prime_miller_rabin(p) {
-        return None;
+    let method = PrimeSqrtMethod::for_modulus(p)?;
+    method.root(n, p, || method.correction(p))
+}
+
+/// Prepared modular square roots for a fixed machine-word prime.
+///
+/// The plan checks primality and prepares the root of unity used by its
+/// square-root method. Repeated queries reuse these values.
+#[derive(Clone, Copy, Debug)]
+pub struct PrimeSqrtPlan {
+    modulus: u64,
+    method: PrimeSqrtMethod,
+    correction: u64,
+}
+
+impl PrimeSqrtPlan {
+    /// Prepares an odd prime modulus or `2`. Returns `None` for other moduli.
+    #[must_use]
+    pub fn new(modulus: u64) -> Option<Self> {
+        let method = PrimeSqrtMethod::for_modulus(modulus)?;
+        Some(Self {
+            modulus,
+            method,
+            correction: method.correction(modulus)?,
+        })
     }
-    let n = n % p;
-    if n == 0 {
-        return Some(0);
+
+    /// The prime modulus used by this plan.
+    #[must_use]
+    pub const fn modulus(&self) -> u64 {
+        self.modulus
     }
-    if mod_pow(u128::from(n), (p - 1) / 2, p) != 1 {
-        return None;
-    }
-    let s = (p - 1).trailing_zeros();
-    let q = (p - 1) >> s;
-    // Any non-residue.
-    let mut z = 2_u64;
-    while mod_pow(u128::from(z), (p - 1) / 2, p) != p - 1 {
-        z += 1;
-    }
-    let mut m = s;
-    let mut c = mod_pow(u128::from(z), q, p);
-    let mut t = mod_pow(u128::from(n), q, p);
-    let mut r = mod_pow(u128::from(n), q.div_ceil(2), p);
-    while t != 1 {
-        let mut i = 0;
-        let mut tt = t;
-        while tt != 1 {
-            tt = mul_mod(tt, tt, p);
-            i += 1;
+
+    /// Returns the smaller root of `n` modulo the prepared prime.
+    ///
+    /// The argument is reduced modulo the prime. Non-residues give `None`.
+    #[must_use]
+    #[inline]
+    pub fn sqrt(
+        &self,
+        n: u64,
+    ) -> Option<u64> {
+        if self.modulus == 2 {
+            return Some(n & 1);
         }
-        let mut b = c;
-        for _ in 0..m - i - 1 {
-            b = mul_mod(b, b, p);
-        }
-        m = i;
-        c = mul_mod(b, b, p);
-        t = mul_mod(t, c, p);
-        r = mul_mod(r, b, p);
+        self.method.root(n, self.modulus, || Some(self.correction))
     }
-    Some(r.min(p - r))
+}
+
+#[derive(Clone, Copy, Debug)]
+enum PrimeSqrtMethod {
+    Binary,
+    ThreeModFour,
+    FiveModEight,
+    Tonelli { odd: u64, twos: u32 },
+}
+
+impl PrimeSqrtMethod {
+    const fn for_modulus(p: u64) -> Option<Self> {
+        if p == 2 {
+            return Some(Self::Binary);
+        }
+        if p < 3 || !is_prime_miller_rabin(p) {
+            return None;
+        }
+        match p % 8 {
+            | 3 | 7 => Some(Self::ThreeModFour),
+            | 5 => Some(Self::FiveModEight),
+            | _ => {
+                let twos = (p - 1).trailing_zeros();
+                Some(Self::Tonelli {
+                    odd: (p - 1) >> twos,
+                    twos,
+                })
+            },
+        }
+    }
+
+    fn correction(
+        self,
+        p: u64,
+    ) -> Option<u64> {
+        match self {
+            | Self::Binary | Self::ThreeModFour => Some(1),
+            | Self::FiveModEight => Some(mod_pow(2, p / 4, p)),
+            | Self::Tonelli { odd, twos } => {
+                (2..p).find_map(|z| {
+                    let root = mod_pow(u128::from(z), odd, p);
+                    (repeated_square(root, twos - 1, p) == p - 1).then_some(root)
+                })
+            },
+        }
+    }
+
+    fn root(
+        self,
+        n: u64,
+        p: u64,
+        correction: impl FnOnce() -> Option<u64>,
+    ) -> Option<u64> {
+        let a = n % p;
+        if a == 0 {
+            return Some(0);
+        }
+        let root = match self {
+            | Self::Binary => return Some(a),
+            | Self::ThreeModFour => {
+                let root = mod_pow(u128::from(a), p / 4 + 1, p);
+                if mul_mod(root, root, p) != a {
+                    return None;
+                }
+                root
+            },
+            | Self::FiveModEight => {
+                let root = mod_pow(u128::from(a), p / 8 + 1, p);
+                let squared = mul_mod(root, root, p);
+                if squared == a {
+                    root
+                } else if squared == p - a {
+                    mul_mod(root, correction()?, p)
+                } else {
+                    return None;
+                }
+            },
+            | Self::Tonelli { odd, twos } => tonelli_root(a, p, odd, twos, correction)?,
+        };
+        Some(root.min(p - root))
+    }
+}
+
+fn repeated_square(
+    mut value: u64,
+    times: u32,
+    p: u64,
+) -> u64 {
+    for _ in 0..times {
+        value = mul_mod(value, value, p);
+    }
+    value
+}
+
+// Find the least i in 1..limit with value^(2^i) = 1. In the
+// first Tonelli step a non-residue has order 2^limit.
+fn tonelli_order(
+    mut value: u64,
+    limit: u32,
+    p: u64,
+) -> Option<u32> {
+    (1..limit).find(|_| {
+        value = mul_mod(value, value, p);
+        value == 1
+    })
+}
+
+fn tonelli_root(
+    a: u64,
+    p: u64,
+    odd: u64,
+    mut limit: u32,
+    correction: impl FnOnce() -> Option<u64>,
+) -> Option<u64> {
+    // One exponentiation supplies both a^((odd+1)/2) and a^odd.
+    let power = mod_pow(u128::from(a), odd / 2, p);
+    let mut root = mul_mod(a, power, p);
+    let mut residue = mul_mod(root, power, p);
+    if residue == 1 {
+        return Some(root);
+    }
+    let mut order = tonelli_order(residue, limit, p)?;
+    let mut unity = correction()?;
+    loop {
+        let factor = repeated_square(unity, limit - order - 1, p);
+        unity = mul_mod(factor, factor, p);
+        residue = mul_mod(residue, unity, p);
+        root = mul_mod(root, factor, p);
+        if residue == 1 {
+            return Some(root);
+        }
+        limit = order;
+        order = tonelli_order(residue, limit, p)?;
+    }
 }
 
 /// The least `x >= 0` with `g^x ≡ h (mod p)`.

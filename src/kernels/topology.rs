@@ -1,3 +1,5 @@
+//! Computational topology: simplicial complexes, Betti numbers, persistence.
+//!
 //! # Numerical Computational Topology
 //!
 //! Pure numeric algorithms for computational topology: Euclidean distances,
@@ -11,6 +13,8 @@
 //! list of simplices closed under taking faces, sorted by dimension and then
 //! lexicographically (see [`close_complex`]).
 
+use std::borrow::Cow;
+use std::cmp::Ordering;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::collections::VecDeque;
@@ -477,8 +481,7 @@ pub fn betti_numbers_at_radius(
 /// Errors of the exact persistent-homology routines.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PersistenceError {
-    /// A simplex has a face missing from the filtration, or a face that
-    /// enters later than the simplex itself.
+    /// A simplex has a NaN value or a missing or later-entering face.
     InvalidFiltration,
     /// The Vietoris-Rips filtration would need more simplices than allowed.
     TooManySimplices,
@@ -490,7 +493,9 @@ impl std::fmt::Display for PersistenceError {
         formatter: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         formatter.write_str(match self {
-            | Self::InvalidFiltration => "simplex filtration has a missing or later-entering face",
+            | Self::InvalidFiltration => {
+                "simplex filtration has NaN or a missing or later-entering face"
+            },
             | Self::TooManySimplices => "Vietoris-Rips filtration exceeds its simplex budget",
         })
     }
@@ -503,20 +508,22 @@ pub const DEFAULT_SIMPLEX_LIMIT: usize = 20_000_000;
 fn xor_sorted(
     a: &[usize],
     b: &[usize],
-) -> Vec<usize> {
-    let mut out = Vec::with_capacity(a.len() + b.len());
+    out: &mut Vec<usize>,
+) {
+    out.clear();
+    out.reserve(a.len().max(b.len()));
     let (mut i, mut j) = (0, 0);
     while i < a.len() && j < b.len() {
         match a[i].cmp(&b[j]) {
-            | std::cmp::Ordering::Less => {
+            | Ordering::Less => {
                 out.push(a[i]);
                 i += 1;
             },
-            | std::cmp::Ordering::Greater => {
+            | Ordering::Greater => {
                 out.push(b[j]);
                 j += 1;
             },
-            | std::cmp::Ordering::Equal => {
+            | Ordering::Equal => {
                 i += 1;
                 j += 1;
             },
@@ -524,16 +531,16 @@ fn xor_sorted(
     }
     out.extend_from_slice(&a[i..]);
     out.extend_from_slice(&b[j..]);
-    out
 }
 
 /// Exact persistent homology over `Z/2` of a filtered simplicial complex.
 ///
 /// `filtration` lists `(value, simplex)` pairs in any order; every proper
 /// face of a simplex must be present with a value no larger than the
-/// simplex's. The simplices are ordered by value, then dimension, then
-/// lexicographically, and the boundary matrix is reduced by the standard
-/// left-to-right column algorithm with *clearing* (the twist
+/// simplex's. A repeated simplex enters at its earliest value, and both
+/// signs of zero share a filtration level. Simplices are ordered by value,
+/// then dimension, then lexicographically. The boundary matrix is reduced
+/// by the standard left-to-right column algorithm with *clearing* (the twist
 /// optimisation): dimensions are processed from the top down, and a column
 /// that is the pivot of a reduced column of the next dimension is known to
 /// reduce to zero and is skipped.
@@ -549,31 +556,50 @@ pub fn persistent_homology(
     filtration: &[(f64, Simplex)],
     max_dim: usize,
 ) -> Result<Vec<PersistenceDiagram>, PersistenceError> {
-    let mut items: Vec<(f64, Simplex)> = filtration
-        .iter()
-        .map(|(v, s)| {
-            let mut s = s.clone();
-            s.sort_unstable();
-            s.dedup();
-            (*v, s)
-        })
-        .filter(|(_, s)| !s.is_empty())
-        .collect();
+    let mut items = Vec::with_capacity(filtration.len());
+    for (value, simplex) in filtration {
+        if simplex.is_empty() {
+            continue;
+        }
+        if value.is_nan() {
+            return Err(PersistenceError::InvalidFiltration);
+        }
+        let simplex = if simplex.is_sorted_by(|a, b| a < b) {
+            Cow::Borrowed(simplex.as_slice())
+        } else {
+            let mut sorted = simplex.clone();
+            sorted.sort_unstable();
+            sorted.dedup();
+            Cow::Owned(sorted)
+        };
+        items.push((*value, simplex));
+    }
+    let compare_value = |a: f64, b: f64| a.partial_cmp(&b).unwrap_or(Ordering::Equal);
     items.sort_by(|a, b| {
-        a.0.total_cmp(&b.0)
+        compare_value(a.0, b.0)
             .then(a.1.len().cmp(&b.1.len()))
             .then_with(|| a.1.cmp(&b.1))
     });
+    // Compact consecutive repeats before sizing the reduction workspace.
     items.dedup_by(|a, b| a.1 == b.1);
     let m = items.len();
-    let index: HashMap<&Simplex, usize> =
-        items.iter().enumerate().map(|(i, (_, s))| (s, i)).collect();
+    let mut index = HashMap::with_capacity(m);
+    let mut accounted_for = vec![false; m];
+    for (i, (_, s)) in items.iter().enumerate() {
+        // Only the first occurrence is a boundary index or a possible birth.
+        let first = *index.entry(s.as_ref()).or_insert(i);
+        accounted_for[i] = first != i;
+    }
     let dim_of = |i: usize| items[i].1.len() - 1;
 
     // Boundary columns (sorted row indices), grouped by dimension.
     let mut columns: Vec<Vec<usize>> = vec![Vec::new(); m];
     let mut by_dim: Vec<Vec<usize>> = vec![Vec::new(); max_dim + 2];
+    let mut face = Vec::new();
     for j in 0..m {
+        if accounted_for[j] {
+            continue;
+        }
         let s = &items[j].1;
         let d = s.len() - 1;
         if d <= max_dim + 1 {
@@ -581,20 +607,21 @@ pub fn persistent_homology(
         }
         if s.len() > 1 && d <= max_dim + 1 {
             let mut col = Vec::with_capacity(s.len());
-            for skip in 0..s.len() {
-                let face: Simplex = s
-                    .iter()
-                    .enumerate()
-                    .filter(|&(i, _)| i != skip)
-                    .map(|(_, &v)| v)
-                    .collect();
+            face.clear();
+            face.extend_from_slice(&s[..d]);
+            // Start at the face omitting the last vertex. Omitting each
+            // preceding vertex changes only one entry of the buffer.
+            for skip in (0..=d).rev() {
                 let i = *index
-                    .get(&face)
+                    .get(face.as_slice())
                     .ok_or(PersistenceError::InvalidFiltration)?;
                 if i >= j {
                     return Err(PersistenceError::InvalidFiltration);
                 }
                 col.push(i);
+                if skip > 0 {
+                    face[skip - 1] = s[skip];
+                }
             }
             col.sort_unstable();
             columns[j] = col;
@@ -602,7 +629,6 @@ pub fn persistent_homology(
     }
 
     let mut pivot_owner: Vec<Option<usize>> = vec![None; m];
-    let mut paired = vec![false; m];
     let mut cleared = vec![false; m];
     let mut diagrams: Vec<PersistenceDiagram> = (0..=max_dim)
         .map(|d| {
@@ -613,6 +639,7 @@ pub fn persistent_homology(
         })
         .collect();
 
+    let mut scratch = Vec::new();
     for d in (1..=max_dim + 1).rev() {
         for &j in &by_dim[d] {
             if cleared[j] {
@@ -620,13 +647,13 @@ pub fn persistent_homology(
             }
             while let Some(&low) = columns[j].last() {
                 if let Some(other) = pivot_owner[low] {
-                    let reduced = xor_sorted(&columns[j], &columns[other]);
-                    columns[j] = reduced;
+                    xor_sorted(&columns[j], &columns[other], &mut scratch);
+                    std::mem::swap(&mut columns[j], &mut scratch);
                     continue;
                 }
                 pivot_owner[low] = Some(j);
-                paired[low] = true;
-                paired[j] = true;
+                accounted_for[low] = true;
+                accounted_for[j] = true;
                 cleared[low] = true;
                 let (birth, death) = (items[low].0, items[j].0);
                 if death > birth {
@@ -640,7 +667,7 @@ pub fn persistent_homology(
     }
     for i in 0..m {
         let d = dim_of(i);
-        if !paired[i] && d <= max_dim {
+        if !accounted_for[i] && d <= max_dim {
             diagrams[d].intervals.push(PersistenceInterval {
                 birth: items[i].0,
                 death: f64::INFINITY,
@@ -648,11 +675,8 @@ pub fn persistent_homology(
         }
     }
     for dg in &mut diagrams {
-        dg.intervals.sort_by(|a, b| {
-            a.birth
-                .total_cmp(&b.birth)
-                .then(a.death.total_cmp(&b.death))
-        });
+        dg.intervals
+            .sort_by(|a, b| compare_value(a.birth, b.birth).then(compare_value(a.death, b.death)));
     }
     Ok(diagrams)
 }

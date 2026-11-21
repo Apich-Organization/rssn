@@ -1,3 +1,5 @@
+//! Exact homology with torsion, persistent homology, cubical complexes.
+//!
 //! # Exact and general algebraic topology
 //!
 //! Integer homology with torsion from the Smith normal form of the boundary
@@ -21,6 +23,7 @@ use num_traits::One;
 use num_traits::Signed;
 use num_traits::Zero;
 
+use super::number_theory;
 use super::qlinalg as ql;
 use super::qlinalg::Q;
 use super::topology::Simplex;
@@ -146,37 +149,73 @@ fn smith_dense(mut b: Vec<Vec<BigInt>>) -> Vec<BigInt> {
     out
 }
 
-/// The rank of an integer matrix modulo the prime `p`.
+/// The rank of a rectangular integer matrix over the field with prime
+/// modulus `p`. Binary elimination packs 64 columns into each machine word.
+///
+/// # Panics
+/// Panics for ragged rows or a modulus below two. The caller must supply a prime.
 #[must_use]
 pub fn rank_mod_p(
     m: &[Vec<i64>],
     p: u64,
 ) -> usize {
-    let pm = i128::from(p);
+    assert!(p >= 2, "field modulus must be prime");
+    let cols = m.first().map_or(0, Vec::len);
+    assert!(
+        m.iter().all(|row| row.len() == cols),
+        "matrix must be rectangular"
+    );
+    if cols == 0 {
+        return 0;
+    }
+    if p == 2 {
+        return binary_rank(m, cols);
+    }
     let mut a: Vec<Vec<u64>> = m
         .iter()
         .map(|r| {
             r.iter()
-                .map(|&x| u64::try_from(i128::from(x).rem_euclid(pm)).unwrap_or(0))
+                .map(|&x| {
+                    let magnitude = x.unsigned_abs() % p;
+                    if x < 0 && magnitude != 0 {
+                        p - magnitude
+                    } else {
+                        magnitude
+                    }
+                })
                 .collect()
         })
         .collect();
-    let cols = a.first().map_or(0, Vec::len);
     let mut rank = 0;
     for c in 0..cols {
         let Some(piv) = (rank..a.len()).find(|&r| a[r][c] != 0) else {
             continue;
         };
         a.swap(rank, piv);
-        let inv = mod_pow(a[rank][c], p - 2, p);
-        let pivot_row: Vec<u64> = a[rank].iter().map(|&x| mul_mod(x, inv, p)).collect();
-        for (r, row) in a.iter_mut().enumerate().skip(rank + 1) {
+        let [pivot_row, below @ ..] = &mut a[rank..] else {
+            break;
+        };
+        if pivot_row[c] != 1 {
+            let inverse = number_theory::mod_pow(u128::from(pivot_row[c]), p - 2, p);
+            for entry in &mut pivot_row[c..] {
+                *entry = number_theory::mul_mod(*entry, inverse, p);
+            }
+        }
+        for row in below {
             let f = row[c];
-            if r == rank || f == 0 {
+            if f == 0 {
                 continue;
             }
-            for (x, &y) in row.iter_mut().zip(&pivot_row).skip(c) {
-                *x = (*x + p - mul_mod(f, y, p)) % p;
+            row[c] = 0;
+            for (x, &y) in row[c + 1..].iter_mut().zip(&pivot_row[c + 1..]) {
+                if y != 0 {
+                    let product = number_theory::mul_mod(f, y, p);
+                    *x = if *x >= product {
+                        *x - product
+                    } else {
+                        p - (product - *x)
+                    };
+                }
             }
         }
         rank += 1;
@@ -187,35 +226,53 @@ pub fn rank_mod_p(
     rank
 }
 
-fn mul_mod(
-    a: u64,
-    b: u64,
-    p: u64,
-) -> u64 {
-    u64::try_from(u128::from(a) * u128::from(b) % u128::from(p)).unwrap_or(0)
-}
-
-fn mod_pow(
-    mut base: u64,
-    mut exp: u64,
-    p: u64,
-) -> u64 {
-    let mut acc = 1 % p;
-    base %= p;
-    while exp > 0 {
-        if exp & 1 == 1 {
-            acc = mul_mod(acc, base, p);
+fn binary_rank(
+    m: &[Vec<i64>],
+    cols: usize,
+) -> usize {
+    let word_count = cols.div_ceil(u64::BITS as usize);
+    let mut packed = vec![0_u64; m.len() * word_count];
+    let mut rows: Vec<_> = packed.chunks_exact_mut(word_count).collect();
+    for (source, dest) in m.iter().zip(&mut rows) {
+        for (chunk, word) in source.chunks(u64::BITS as usize).zip(dest.iter_mut()) {
+            *word = chunk
+                .iter()
+                .enumerate()
+                .fold(0, |bits, (position, &value)| {
+                    bits | ((value as u64 & 1) << position)
+                });
         }
-        base = mul_mod(base, base, p);
-        exp >>= 1;
     }
-    acc
+    let mut rank = 0;
+    for col in 0..cols {
+        let word = col / u64::BITS as usize;
+        let mask = 1_u64 << (col % u64::BITS as usize);
+        let Some(pivot) = rows[rank..].iter().position(|row| row[word] & mask != 0) else {
+            continue;
+        };
+        rows.swap(rank, rank + pivot);
+        let [pivot_row, below @ ..] = &mut rows[rank..] else {
+            break;
+        };
+        for row in below {
+            if row[word] & mask != 0 {
+                for (entry, pivot) in row[word..].iter_mut().zip(&pivot_row[word..]) {
+                    *entry ^= *pivot;
+                }
+            }
+        }
+        rank += 1;
+        if rank == rows.len() {
+            break;
+        }
+    }
+    rank
 }
 
-/// Whether `n` is prime (trial division; `n` is small).
+/// Whether `n` is prime, for the entire unsigned 64-bit range.
 #[must_use]
-pub fn is_prime(n: u64) -> bool {
-    n >= 2 && (2..=n.isqrt()).all(|d| !n.is_multiple_of(d))
+pub const fn is_prime(n: u64) -> bool {
+    number_theory::is_prime_miller_rabin(n)
 }
 
 // ----------------------------------------------------------------------
@@ -313,6 +370,12 @@ impl ChainComplex {
         &self,
         k: usize,
     ) -> Group {
+        if k >= self.dims.len() {
+            return Group {
+                rank: 0,
+                torsion: Vec::new(),
+            };
+        }
         let below = self.invariants(k).len();
         let above = self.invariants(k + 1);
         let rank = self
@@ -348,16 +411,44 @@ impl ChainComplex {
         k: usize,
         p: u64,
     ) -> usize {
-        let rk = |j: usize| {
-            if j == 0 || self.dim_at(j) == 0 || self.dim_at(j - 1) == 0 {
-                0
-            } else {
-                rank_mod_p(&self.d[j], p)
-            }
-        };
+        if k >= self.dims.len() {
+            return 0;
+        }
         self.dim_at(k)
-            .saturating_sub(rk(k))
-            .saturating_sub(rk(k + 1))
+            .saturating_sub(self.boundary_rank_mod_p(k, p))
+            .saturating_sub(self.boundary_rank_mod_p(k + 1, p))
+    }
+
+    /// Betti numbers in chain degree order over the field with prime modulus
+    /// `p`. Each boundary matrix is reduced once.
+    #[must_use]
+    pub fn betti_mod_p(
+        &self,
+        p: u64,
+    ) -> Vec<usize> {
+        let mut lower_rank = 0;
+        self.dims
+            .iter()
+            .enumerate()
+            .map(|(k, &dim)| {
+                let upper_rank = self.boundary_rank_mod_p(k + 1, p);
+                let betti = dim.saturating_sub(lower_rank).saturating_sub(upper_rank);
+                lower_rank = upper_rank;
+                betti
+            })
+            .collect()
+    }
+
+    fn boundary_rank_mod_p(
+        &self,
+        k: usize,
+        p: u64,
+    ) -> usize {
+        if k == 0 || self.dim_at(k) == 0 || self.dim_at(k - 1) == 0 {
+            0
+        } else {
+            rank_mod_p(&self.d[k], p)
+        }
     }
 
     /// The degree of the highest nonzero chain group, if any.

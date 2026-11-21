@@ -1,3 +1,5 @@
+//! The quadratic sieve and its self-initialising variant for integer factorisation.
+//!
 //! The quadratic sieve and its self-initialising variant (MPQS).
 //!
 //! `qs_factor(n, limits)` finds a non-trivial divisor of an odd composite
@@ -92,6 +94,7 @@
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
+use std::sync::OnceLock;
 
 use num_bigint::BigInt;
 use num_integer::Integer;
@@ -100,6 +103,9 @@ use num_traits::Signed;
 use num_traits::ToPrimitive;
 use num_traits::Zero;
 
+use crate::kernels::number_theory;
+use crate::kernels::number_theory::is_prime_miller_rabin;
+use crate::kernels::number_theory::mul_mod as mulmod;
 use crate::kernels::number_theory::primes_sieve;
 
 /// The logarithmic sieve stores `log2(p)` scaled by this factor.
@@ -120,7 +126,7 @@ const MAX_DIGITS: u32 = 80;
 /// allocating an unbounded matrix.
 pub const MAX_FACTOR_BASE_COLUMNS: usize = 40_000;
 /// Trial division by the primes below this before the sieve starts.
-const SMALL_TRIAL: u64 = 1_000;
+const SMALL_TRIAL: usize = 1_000;
 /// Relation-count target over the factor-base size (dependencies needed).
 const EXTRA_DEPENDENCIES: usize = 8;
 /// Polynomials sieved per deterministic parallel batch.
@@ -205,8 +211,9 @@ impl QsLimits {
     /// the attempt returns `None` before allocating the sieve. At 65 digits
     /// the matrix is already large (tens of thousands of columns and
     /// hundreds of megabytes at the peak), but the work bound still
-    /// terminates; beyond about 66 digits the factor base exceeds the
-    /// column limit, so the attempt returns `None` after construction.
+    /// terminates. Beyond about 66 digits the factor base typically exceeds
+    /// the column limit. The remaining primes are checked for direct
+    /// divisors before the attempt returns.
     #[must_use]
     pub fn for_digits(digits: u32) -> Self {
         let digits = digits.clamp(4, MAX_DIGITS);
@@ -352,9 +359,42 @@ pub fn qs_factor_with(
     config: QsConfig,
     stats: &mut QsStats,
 ) -> Option<BigInt> {
+    verified_split(n, config, stats).map(|(divisor, _)| divisor)
+}
+
+/// Splits `n` into two proper factors in ascending order.
+///
+/// Uses the same limits and early factor checks as [`qs_factor`]. The
+/// product of the returned factors is exactly `n`. Either may be composite.
+#[must_use]
+pub fn qs_factor_pair(
+    n: &BigInt,
+    limits: QsLimits,
+) -> Option<(BigInt, BigInt)> {
+    let config = QsConfig {
+        limits,
+        ..QsConfig::default()
+    };
+    let (divisor, cofactor) = verified_split(n, config, &mut QsStats::default())?;
+    if divisor > cofactor {
+        Some((cofactor, divisor))
+    } else {
+        Some((divisor, cofactor))
+    }
+}
+
+fn verified_split(
+    n: &BigInt,
+    config: QsConfig,
+    stats: &mut QsStats,
+) -> Option<(BigInt, BigInt)> {
     *stats = QsStats::default();
     let divisor = qs_core(n, config, stats)?;
-    (divisor > BigInt::one() && divisor < *n).then_some(divisor)
+    if !divisor.is_positive() || divisor.is_one() || divisor >= *n {
+        return None;
+    }
+    let (cofactor, remainder) = n.div_rem(&divisor);
+    remainder.is_zero().then_some((divisor, cofactor))
 }
 
 /// Immutable parameters shared by every polynomial of one attempt.
@@ -393,16 +433,19 @@ fn qs_core(
     config: QsConfig,
     stats: &mut QsStats,
 ) -> Option<BigInt> {
-    if !n.is_positive() || *n < BigInt::from(2) {
+    static DECIMAL_LIMIT: OnceLock<BigInt> = OnceLock::new();
+    if !n.is_positive() || n.is_one() {
         return None;
     }
-    if decimal_digits(n) > MAX_DIGITS {
+    if n >= DECIMAL_LIMIT.get_or_init(|| BigInt::from(10_u8).pow(MAX_DIGITS)) {
         return None;
     }
     if !n.bit(0) {
-        return (*n > BigInt::from(2)).then_some(BigInt::from(2));
+        let two = BigInt::from(2);
+        return (n != &two).then_some(two);
     }
-    if let Some(p) = small_prime_divisor(n) {
+    let words = n.magnitude().to_u32_digits();
+    if let Some(p) = small_prime_divisor(n, &words) {
         return Some(BigInt::from(p));
     }
     if is_probable_prime(n) {
@@ -417,17 +460,21 @@ fn qs_core(
     if limits.polynomials == 0 || limits.max_sieve_positions == 0 {
         return None;
     }
-    let factor_base = match build_factor_base(n, bound) {
-        | Ok(base) => base,
+    let length = 2 * interval + 1;
+    let length_u64 = u64::try_from(length).ok()?;
+    let max_base_entries = if limits.max_sieve_positions < length_u64 {
+        0
+    } else {
+        MAX_FACTOR_BASE_COLUMNS - 1
+    };
+    let factor_base = match build_factor_base(&words, bound, max_base_entries) {
+        | Ok(base) => base?,
         | Err(divisor) => return Some(divisor),
     };
     if factor_base.len() < 3 {
         return None;
     }
     let columns = factor_base.len() + 1;
-    if columns > MAX_FACTOR_BASE_COLUMNS {
-        return None;
-    }
     let divisors: Vec<BigInt> = factor_base.iter().map(|p| BigInt::from(p.prime)).collect();
     let large_prime_factor = limits
         .large_prime_factor
@@ -442,17 +489,16 @@ fn qs_core(
     let tolerance = (log2_approx(large_bound as f64) + 8.0) * LOG_SCALE;
     let params = SieveParams {
         interval,
-        length: 2 * interval + 1,
+        length,
         large_bound,
         large_primes: config.large_primes,
         tolerance,
     };
-    let length_u64 = u64::try_from(params.length).ok()?;
     let mut q_cursor = polynomial_prime_start(n, interval);
     let mut relations: Vec<Relation> = Vec::new();
     let mut partials: HashMap<u64, Relation> = HashMap::new();
     let extra = limits.extra_relations.max(EXTRA_DEPENDENCIES);
-    let mut target = columns + extra;
+    let mut target = columns.saturating_add(extra);
     let max_relations = 3 * columns + 256;
     let max_partials = columns.saturating_mul(PARTIALS_PER_COLUMN);
     let position_budget = limits.max_sieve_positions;
@@ -702,20 +748,31 @@ fn sieve_polynomial(
 }
 
 /// Returns the smallest prime divisor `p <= 1000` of the odd `n > 1`.
-fn small_prime_divisor(n: &BigInt) -> Option<u64> {
-    let primes = primes_sieve(usize::try_from(SMALL_TRIAL).ok()?);
-    for prime in primes.into_iter().skip(1) {
-        let divisor = BigInt::from(prime);
-        if (n % &divisor).is_zero() {
-            return (divisor != *n).then_some(prime as u64);
+fn small_prime_divisor(
+    n: &BigInt,
+    words: &[u32],
+) -> Option<u64> {
+    static PRIMES: OnceLock<Vec<usize>> = OnceLock::new();
+    let primes = PRIMES.get_or_init(|| primes_sieve(SMALL_TRIAL));
+    for &prime in primes.iter().skip(1) {
+        let prime = prime as u64;
+        if small_remainder(words, prime) == 0 {
+            return (n.to_u64() != Some(prime)).then_some(prime);
         }
     }
     None
 }
 
-/// Decimal digit count of a positive integer.
-fn decimal_digits(n: &BigInt) -> u32 {
-    u32::try_from(n.to_str_radix(10).len()).unwrap_or(u32::MAX)
+// Horner reduction over little-endian words. The remainder is strictly less
+// than the one-word modulus, so shifting it by 32 bits fits in a u64.
+fn small_remainder(
+    words: &[u32],
+    modulus: u64,
+) -> u64 {
+    debug_assert!((1..=u64::from(u32::MAX)).contains(&modulus));
+    words.iter().rev().fold(0_u64, |carry, &word| {
+        ((carry << 32) | u64::from(word)) % modulus
+    })
 }
 
 /// A Baillie-PSW probable-prime test.
@@ -729,7 +786,7 @@ fn decimal_digits(n: &BigInt) -> u32 {
 #[must_use]
 pub fn is_probable_prime(n: &BigInt) -> bool {
     if let Some(value) = n.to_u64() {
-        return is_probable_prime_u64(value);
+        return is_prime_miller_rabin(value);
     }
     if !n.is_positive() || !n.bit(0) {
         return false;
@@ -857,37 +914,6 @@ fn jacobi_big(
     if n.is_one() { result } else { 0 }
 }
 
-/// Deterministic Miller-Rabin for a machine word.
-fn is_probable_prime_u64(n: u64) -> bool {
-    if n < 2 {
-        return false;
-    }
-    for prime in [2_u64, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37] {
-        if n == prime {
-            return true;
-        }
-        if n.is_multiple_of(prime) {
-            return false;
-        }
-    }
-    let shift = (n - 1).trailing_zeros();
-    let odd = (n - 1) >> shift;
-    'witness: for base in [2_u64, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37] {
-        let mut power = powmod(base, odd, n);
-        if power == 1 || power == n - 1 {
-            continue;
-        }
-        for _ in 1..shift {
-            power = mulmod(power, power, n);
-            if power == n - 1 {
-                continue 'witness;
-            }
-        }
-        return false;
-    }
-    true
-}
-
 /// A root `r` of `r^k = n` for some `k >= 2`, if `n` is a perfect power.
 ///
 /// Only prime exponents below 64 need checking: a perfect power also has
@@ -920,35 +946,44 @@ struct FbPrime {
     log: u32,
 }
 
-/// Primes `p <= bound` that can divide `g(x)`, plus the special prime 2.
-///
-/// Returns `Err(p)` if `p` divides `n`, which is a factor of `n`.
+/// Finds factor-base columns and checks the entire bound for exact divisors.
+/// A zero entry limit requests only divisibility checks.
 fn build_factor_base(
-    n: &BigInt,
+    words: &[u32],
     bound: u64,
-) -> Result<Vec<FbPrime>, BigInt> {
-    let limit = usize::try_from(bound).map_err(|_| BigInt::one())?;
-    let mut base = Vec::new();
-    base.push(FbPrime {
-        prime: 2,
-        sqrt_n: 1,
-        log: scaled_log(2),
+    max_entries: usize,
+) -> Result<Option<Vec<FbPrime>>, BigInt> {
+    let Ok(limit) = usize::try_from(bound) else {
+        return Ok(None);
+    };
+    let mut base = (max_entries > 0).then(|| {
+        vec![FbPrime {
+            prime: 2,
+            sqrt_n: 1,
+            log: scaled_log(2),
+        }]
     });
     for prime in primes_sieve(limit).into_iter().skip(1) {
-        let prime = u64::try_from(prime).map_err(|_| BigInt::one())?;
-        let big = BigInt::from(prime);
-        let residue = mod_pos(n, &big);
-        let residue_u64 = residue.to_u64().ok_or_else(|| big.clone())?;
-        if residue_u64 == 0 {
-            return Err(big);
+        let prime = prime as u64;
+        let residue = small_remainder(words, prime);
+        if residue == 0 {
+            return Err(BigInt::from(prime));
         }
-        if jacobi(residue_u64, prime) != 1 {
-            continue;
-        }
-        let Some(root) = sqrt_mod_prime(residue_u64, prime) else {
+        let Some(entries) = &mut base else {
             continue;
         };
-        base.push(FbPrime {
+        if jacobi(residue, prime) != 1 {
+            continue;
+        }
+        if entries.len() == max_entries {
+            // No matrix fits. A later exact divisor is still useful.
+            base = None;
+            continue;
+        }
+        let Some(root) = sqrt_mod_residue(residue, prime) else {
+            continue;
+        };
+        entries.push(FbPrime {
             prime,
             sqrt_n: root,
             log: scaled_log(prime),
@@ -990,7 +1025,7 @@ fn build_polynomial(
 ) -> Option<Polynomial> {
     let prime = BigInt::from(q);
     let residue = mod_pos(n, &prime).to_u64()?;
-    let root = sqrt_mod_prime(residue, q)?;
+    let root = sqrt_mod_residue(residue, q)?;
     if root == 0 {
         return None;
     }
@@ -998,7 +1033,7 @@ fn build_polynomial(
     let root_big = BigInt::from(root);
     let difference = (n - &root_big * &root_big) / &prime;
     let difference_mod = mod_pos(&difference, &prime).to_u64()?;
-    let inverse = inverse(2 * root % q, q)?;
+    let inverse = inverse(mulmod(2, root, q), q)?;
     let lift = mulmod(difference_mod, inverse, q);
     let unsigned = &root_big + &prime * BigInt::from(lift);
     let half = &a >> 1;
@@ -1050,7 +1085,7 @@ fn next_polynomial_prime(
         if residue == 0 {
             return Err(big);
         }
-        if is_probable_prime_u64(candidate) && jacobi(residue, candidate) == 1 {
+        if is_prime_miller_rabin(candidate) && jacobi(residue, candidate) == 1 {
             return Ok(candidate);
         }
         candidate = candidate.checked_add(2).ok_or_else(BigInt::one)?;
@@ -1596,31 +1631,13 @@ fn jacobi(
     if n == 1 { result } else { 0 }
 }
 
-/// `a * b mod m` without overflow (`m < 2^64`).
-fn mulmod(
-    a: u64,
-    b: u64,
-    m: u64,
-) -> u64 {
-    ((u128::from(a) * u128::from(b)) % u128::from(m)) as u64
-}
-
 /// `base^exponent mod m`.
 fn powmod(
-    mut base: u64,
-    mut exponent: u64,
+    base: u64,
+    exponent: u64,
     m: u64,
 ) -> u64 {
-    let mut accumulator = 1 % m;
-    base %= m;
-    while exponent > 0 {
-        if exponent & 1 == 1 {
-            accumulator = mulmod(accumulator, base, m);
-        }
-        base = mulmod(base, base, m);
-        exponent >>= 1;
-    }
-    accumulator
+    number_theory::mod_pow(u128::from(base), exponent, m)
 }
 
 /// The inverse of `a` modulo the odd prime `m`.
@@ -1650,20 +1667,19 @@ fn inverse(
     Some((((old_t % modulus) + modulus) % modulus) as u64)
 }
 
-/// Tonelli-Shanks: a square root of `a` modulo the odd prime `p`.
-fn sqrt_mod_prime(
+/// A square root of the reduced quadratic residue `a` modulo the prime `p`.
+fn sqrt_mod_residue(
     a: u64,
     p: u64,
 ) -> Option<u64> {
-    let a = a % p;
     if a == 0 {
         return Some(0);
     }
     if p == 2 {
         return Some(a);
     }
-    if powmod(a, (p - 1) / 2, p) != 1 {
-        return None;
+    if p % 4 == 3 {
+        return Some(powmod(a, p.div_ceil(4), p));
     }
     let mut odd = p - 1;
     let mut shift = 0_u64;
@@ -1748,7 +1764,7 @@ mod tests {
                 if jacobi(a, p) != 1 {
                     continue;
                 }
-                let root = sqrt_mod_prime(a, p).expect("a residue has a root");
+                let root = sqrt_mod_residue(a, p).expect("a residue has a root");
                 assert_eq!(mulmod(root, root, p), a % p, "sqrt({a} mod {p})");
             }
         }
@@ -1781,7 +1797,13 @@ mod tests {
     #[test]
     fn polynomial_and_roots_satisfy_the_defining_congruences() {
         let n = n("1000003") * n("1000033");
-        let base = build_factor_base(&n, 500).expect("no factor in the base");
+        let base = build_factor_base(
+            &n.magnitude().to_u32_digits(),
+            500,
+            MAX_FACTOR_BASE_COLUMNS - 1,
+        )
+        .expect("no factor in the base")
+        .expect("the factor base fits");
         let divisors: Vec<BigInt> = base.iter().map(|p| BigInt::from(p.prime)).collect();
         let q = next_polynomial_prime(&n, polynomial_prime_start(&n, 1_000)).expect("a prime");
         let polynomial = build_polynomial(&n, q).expect("a polynomial");
@@ -1816,6 +1838,49 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn factor_base_cap_keeps_checking_for_exact_divisors() {
+        let p = BigInt::from(1_009_u32);
+        let composite = &p * BigInt::from(1_000_003_u32);
+        let words = composite.magnitude().to_u32_digits();
+        for max_entries in [0, 1, 3] {
+            assert_eq!(
+                build_factor_base(&words, 1_009, max_entries).err(),
+                Some(p.clone())
+            );
+        }
+        let no_small_factor = BigInt::from(1_000_003_u32) * BigInt::from(1_000_033_u32);
+        let words = no_small_factor.magnitude().to_u32_digits();
+        assert!(matches!(build_factor_base(&words, 1_009, 3), Ok(None)));
+    }
+
+    #[test]
+    fn modular_word_paths_match_exact_bigints() {
+        let value = BigInt::from(10_u8).pow(79) + BigInt::from(u64::MAX);
+        let words = value.magnitude().to_u32_digits();
+        for modulus in [3_u64, 997, 5_999_993, u64::from(u32::MAX)] {
+            let expected = (&value % BigInt::from(modulus)).to_u64();
+            assert_eq!(Some(small_remainder(&words, modulus)), expected);
+        }
+        for (a, b, modulus) in [
+            (4_000_031, 4_100_009, 5_999_993),
+            (u64::MAX - 2, u64::MAX - 4, u64::MAX - 58),
+            (2, u64::MAX - 2, u64::MAX - 58),
+        ] {
+            let expected = (BigInt::from(a) * BigInt::from(b) % BigInt::from(modulus)).to_u64();
+            assert_eq!(Some(mulmod(a, b, modulus)), expected);
+        }
+    }
+
+    #[test]
+    fn polynomial_lift_doubles_a_wide_root_modulo_its_prime() {
+        let q = 18_446_744_073_709_551_427_u64;
+        assert_eq!(sqrt_mod_residue(4, q), Some(q - 2));
+        let n = BigInt::from(q) + 4_u32;
+        let polynomial = build_polynomial(&n, q).expect("nonzero quadratic residue");
+        assert!((&polynomial.b * &polynomial.b - n).is_multiple_of(&polynomial.a));
     }
 
     #[test]

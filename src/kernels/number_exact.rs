@@ -48,10 +48,15 @@ pub fn binomial(
     if k < 0 || n < 0 || k > n {
         return BigInt::zero();
     }
+    let (n, k) = (n as u64, k as u64);
     let k = k.min(n - k);
+    if k > 64 {
+        return word_product(n - k + 1, n) / word_product(2, k);
+    }
     let mut result = BigInt::one();
     for step in 0..k {
-        result = result * BigInt::from(n - step) / BigInt::from(step + 1);
+        result *= n - step;
+        result /= step + 1;
     }
     result
 }
@@ -61,11 +66,42 @@ pub fn permutations(n: i64) -> BigInt {
     if n < 0 {
         return BigInt::zero();
     }
-    let mut result = BigInt::one();
-    for step in 2..=n {
-        result *= BigInt::from(step);
+    word_product(2, n as u64)
+}
+
+/// Exact number of ordered selections of `k` distinct members from `n`.
+/// An empty selection has one ordering. Negative or impossible inputs return zero.
+#[must_use]
+pub fn falling_factorial(
+    n: i64,
+    k: i64,
+) -> BigInt {
+    if k < 0 || n < 0 || k > n {
+        return BigInt::zero();
     }
-    result
+    word_product((n - k) as u64 + 1, n as u64)
+}
+
+fn word_product(
+    first: u64,
+    last: u64,
+) -> BigInt {
+    if last.saturating_sub(first) < 32 {
+        let mut result = BigInt::one();
+        let mut block = 1_u128;
+        for word in first..=last {
+            let word = u128::from(word);
+            if let Some(product) = block.checked_mul(word) {
+                block = product;
+            } else {
+                result *= block;
+                block = word;
+            }
+        }
+        return result * block;
+    }
+    let middle = first.midpoint(last);
+    word_product(first, middle) * word_product(middle + 1, last)
 }
 /// Greatest common divisor of signed magnitudes.
 ///

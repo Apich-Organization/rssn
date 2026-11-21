@@ -148,6 +148,60 @@ pub fn strongly_connected_components(graph: &Graph) -> Result<Vec<usize>, GraphS
     strongly_connected_by(&graph.adj, |edge| edge.0).ok_or(GraphStructureError::InvalidVertex)
 }
 
+/// A directed acyclic graph formed by contracting strongly connected components.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Condensation {
+    /// A dense, topologically ordered component label for each input vertex.
+    pub component_of: Vec<usize>,
+    /// Unique `[source, target]` arcs between components, with `source < target`.
+    pub arcs: Vec<[usize; 2]>,
+}
+
+/// Contracts each strongly connected component into one vertex of a DAG.
+///
+/// The component labels match [`strongly_connected_components`]. Within
+/// each source component, targets appear in the order first encountered
+/// when scanning its vertices in vertex order and arcs in insertion order.
+/// Parallel arcs collapse to one, internal arcs are dropped, and weights
+/// are ignored. Work and storage are linear in the input size.
+///
+/// # Errors
+///
+/// Reports an invalid edge endpoint.
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    reason = "the SCC traversal validates endpoints and component IDs are dense and bounded by the vertex count"
+)]
+pub fn condensation(graph: &Graph) -> Result<Condensation, GraphStructureError> {
+    let component_of = strongly_connected_components(graph)?;
+    let count = component_of
+        .iter()
+        .copied()
+        .max()
+        .map_or(0, |last| last + 1);
+    let mut first_vertex = vec![None; count];
+    let mut next_vertex = vec![None; graph.num_nodes()];
+    for (vertex, &component) in component_of.iter().enumerate().rev() {
+        next_vertex[vertex] = first_vertex[component].replace(vertex);
+    }
+
+    let mut arcs = Vec::new();
+    let mut seen_from = vec![None; count];
+    for (source, mut next) in first_vertex.into_iter().enumerate() {
+        while let Some(vertex) = next {
+            for &(target, _) in graph.adj(vertex) {
+                let target = component_of[target];
+                if target != source && seen_from[target].replace(source) != Some(source) {
+                    arcs.push([source, target]);
+                }
+            }
+            next = next_vertex[vertex];
+        }
+    }
+    Ok(Condensation { component_of, arcs })
+}
+
 struct Traversal {
     sequence: usize,
     discovered: Vec<Option<usize>>,

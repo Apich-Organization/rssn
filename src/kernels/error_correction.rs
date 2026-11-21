@@ -12,6 +12,7 @@
 //! - `reed_solomon_encode` - Encode data with configurable error correction symbols
 //! - `reed_solomon_decode` - Decode and correct errors in received codeword
 //! - `reed_solomon_check` - Verify codeword validity
+//! - [`ReedSolomonEncoder`] - Reuse a parity plan and caller-provided output buffers
 //!
 //! ### Hamming Codes
 //! - `hamming_encode_numerical` - Encode data into Hamming(7,4) codeword
@@ -280,29 +281,21 @@ impl PolyGF256 {
 // Reed-Solomon Codes
 // ============================================================================
 
-/// Computes the generator polynomial for a Reed-Solomon code with `n_parity` error correction symbols.
-///
-/// The generator polynomial is the product of (x - α^i) for i = 0 to n_parity-1,
-/// where α is the primitive element (2) of GF(2^8).
-pub(crate) fn rs_generator_poly(n_parity: usize) -> Result<Vec<u8>, String> {
-    if n_parity == 0 {
-        return Err("Number of parity symbols \
-             must be positive"
-            .to_string());
+const RS_MAX_SYMBOLS: usize = 255;
+
+/// Returns the monic generator `∏ (x + α^i)` in descending power order.
+fn rs_generator_poly(n_parity: usize) -> Vec<u8> {
+    let mut generator = Vec::with_capacity(n_parity + 1);
+    generator.push(1);
+    let mut root = 1;
+    for index in 1..=n_parity {
+        generator.push(0);
+        for term in (1..=index).rev() {
+            generator[term] ^= gf256_mul(generator[term - 1], root);
+        }
+        root = gf256_mul(root, 2);
     }
-
-    let mut g = vec![1u8];
-
-    for i in 0..n_parity {
-        // Multiply by (x - α^i), which in GF(2^8) is (x + α^i) since subtraction = addition
-        let root = gf256_pow(2, i as u64);
-
-        let factor = vec![1u8, root];
-
-        g = poly_mul_gf256(&g, &factor);
-    }
-
-    Ok(g)
+    generator
 }
 
 /// Multiplies two polynomials over GF(2^8).
@@ -325,50 +318,37 @@ fn poly_mul_gf256(
     result
 }
 
-/// Performs polynomial long division over GF(2^8).
-/// Returns the remainder after dividing dividend by divisor.
-fn poly_div_gf256(
-    mut dividend: Vec<u8>,
-    divisor: &[u8],
-) -> Result<Vec<u8>, String> {
-    if divisor.is_empty() {
-        return Err("Divisor cannot \
-                    be empty"
-            .to_string());
+fn rs_block_len(
+    message_len: usize,
+    n_parity: usize,
+) -> Result<usize, String> {
+    message_len
+        .checked_add(n_parity)
+        .filter(|&length| length <= RS_MAX_SYMBOLS)
+        .ok_or_else(|| "Message + parity length cannot exceed 255".to_string())
+}
+
+fn rs_encode_block(
+    message: &[u8],
+    output: &mut [u8],
+    mut feedback: impl FnMut(u8, &mut [u8]),
+) {
+    let (prefix, tail) = output.split_at_mut(message.len());
+    prefix.copy_from_slice(message);
+    if tail.is_empty() {
+        return;
     }
-
-    let divisor_len = divisor.len();
-
-    let lead_divisor = divisor[0];
-
-    let lead_divisor_inv = gf256_inv(lead_divisor)?;
-
-    while dividend.len() >= divisor_len {
-        let lead_dividend = dividend[0];
-
-        if lead_dividend == 0 {
-            dividend.remove(0);
-
-            continue;
+    tail.fill(0);
+    let n_parity = tail.len();
+    // Synthetic division by the monic generator. The leading term at
+    // each iteration is consumed and need not be written back.
+    for index in 0..message.len() {
+        let value = output[index];
+        if value != 0 {
+            feedback(value, &mut output[index + 1..=index + n_parity]);
         }
-
-        let coeff = gf256_mul(lead_dividend, lead_divisor_inv);
-
-        for i in 0..divisor_len {
-            let term = gf256_mul(coeff, divisor[i]);
-
-            dividend[i] ^= term;
-        }
-
-        dividend.remove(0);
     }
-
-    // Pad remainder to have n_parity bytes
-    while dividend.len() < divisor_len - 1 {
-        dividend.insert(0, 0);
-    }
-
-    Ok(dividend)
+    output[..message.len()].copy_from_slice(message);
 }
 
 /// Evaluates a polynomial over GF(2^8) at a given point.
@@ -376,6 +356,9 @@ fn poly_eval_gf256(
     poly: &[u8],
     x: u8,
 ) -> u8 {
+    if x == 1 {
+        return poly.iter().fold(0, |sum, &coefficient| sum ^ coefficient);
+    }
     let mut y = 0u8;
 
     for &coeff in poly {
@@ -391,6 +374,7 @@ fn poly_eval_gf256(
 /// It appends `n_parity` parity symbols to the message. The parity symbols are
 /// computed by dividing the message polynomial (shifted by `n_parity` positions)
 /// by the generator polynomial and taking the remainder.
+/// Use [`ReedSolomonEncoder`] to encode multiple messages with the same parity.
 ///
 /// # Arguments
 /// * `message` - A slice of bytes representing the message.
@@ -419,40 +403,115 @@ pub fn reed_solomon_encode(
     message: &[u8],
     n_parity: usize,
 ) -> Result<Vec<u8>, String> {
-    if message.len() + n_parity > 255 {
-        return Err("Message + parity length \
-             cannot exceed 255"
-            .to_string());
-    }
-
+    let length = rs_block_len(message.len(), n_parity)?;
     if n_parity == 0 {
         return Ok(message.to_vec());
     }
-
-    // Generate the generator polynomial
-    let gen_poly = rs_generator_poly(n_parity)?;
-
-    // Shift message polynomial by n_parity positions (multiply by x^n_parity)
-    let mut message_poly = message.to_vec();
-
-    message_poly.extend(vec![0; n_parity]);
-
-    // Compute remainder = message_poly mod gen_poly
-    let remainder = poly_div_gf256(message_poly, &gen_poly)?;
-
-    // Codeword = message + remainder (systematic encoding)
-    let mut codeword = message.to_vec();
-
-    codeword.extend(&remainder);
-
+    let mut codeword = vec![0; length];
+    if message.is_empty() {
+        return Ok(codeword);
+    }
+    let generator = rs_generator_poly(n_parity);
+    rs_encode_block(message, &mut codeword, |value, tail| {
+        for (target, &coefficient) in tail.iter_mut().zip(&generator[1..]) {
+            *target ^= gf256_mul(value, coefficient);
+        }
+    });
     Ok(codeword)
+}
+
+/// A prepared systematic Reed-Solomon encoder for one parity width.
+///
+/// Uses the same GF(256) basis and roots as [`reed_solomon_encode`]. A
+/// reusable table stores one scaled generator row per feedback symbol.
+/// The table contains `256 * n_parity` bytes and successful
+/// [`Self::encode_into`] calls need no allocation.
+#[derive(Clone, Debug)]
+pub struct ReedSolomonEncoder {
+    n_parity: usize,
+    feedback: Box<[u8]>,
+}
+
+impl ReedSolomonEncoder {
+    /// Prepares the generator's feedback rows for a given parity length.
+    ///
+    /// # Errors
+    /// More than 255 parity symbols cannot fit in a block.
+    pub fn new(n_parity: usize) -> Result<Self, String> {
+        rs_block_len(0, n_parity)?;
+        let generator = rs_generator_poly(n_parity);
+        let mut feedback = Vec::with_capacity(256 * n_parity);
+        for value in 0..=u8::MAX {
+            feedback.extend(
+                generator[1..]
+                    .iter()
+                    .map(|&coefficient| gf256_mul(value, coefficient)),
+            );
+        }
+        Ok(Self {
+            n_parity,
+            feedback: feedback.into_boxed_slice(),
+        })
+    }
+
+    /// Returns this encoder's parity length.
+    #[must_use]
+    pub const fn parity_symbols(&self) -> usize {
+        self.n_parity
+    }
+
+    /// Encodes `message` as data followed by parity bytes.
+    ///
+    /// # Errors
+    /// Returns an error if the combined output exceeds 255 symbols.
+    pub fn encode(
+        &self,
+        message: &[u8],
+    ) -> Result<Vec<u8>, String> {
+        let length = rs_block_len(message.len(), self.n_parity)?;
+        let mut output = vec![0; length];
+        self.write_block(message, &mut output);
+        Ok(output)
+    }
+
+    /// Encodes directly into a buffer of exactly `message.len() + n_parity` bytes.
+    ///
+    /// # Errors
+    /// Returns an error without changing `output` if either length is invalid.
+    pub fn encode_into(
+        &self,
+        message: &[u8],
+        output: &mut [u8],
+    ) -> Result<(), String> {
+        if output.len() != rs_block_len(message.len(), self.n_parity)? {
+            return Err("Reed-Solomon output length must match the message and parity".to_string());
+        }
+        self.write_block(message, output);
+        Ok(())
+    }
+
+    fn write_block(
+        &self,
+        message: &[u8],
+        output: &mut [u8],
+    ) {
+        rs_encode_block(message, output, |value, tail| {
+            let start = usize::from(value) * self.n_parity;
+            let row = &self.feedback[start..start + self.n_parity];
+            for (target, &scaled) in tail.iter_mut().zip(row) {
+                *target ^= scaled;
+            }
+        });
+    }
 }
 
 /// Decodes a Reed-Solomon codeword, correcting errors.
 ///
 /// This implementation uses the Berlekamp-Massey algorithm to find the error locator
 /// polynomial, Chien search to find error locations, and Forney's algorithm to find
-/// error magnitudes. It corrects errors in-place within the `codeword`.
+/// error magnitudes. It corrects up to `n_parity / 2` altered symbols in place.
+/// Beyond that correction radius, the received block may decode to another codeword.
+/// An error leaves `codeword` unchanged.
 ///
 /// # Arguments
 /// * `codeword` - A mutable slice of bytes representing the received codeword.
@@ -463,7 +522,8 @@ pub fn reed_solomon_encode(
 ///
 /// # Errors
 /// Returns an error if:
-/// - The number of errors exceeds the correction capability of the code.
+/// - The block exceeds 255 symbols or contains fewer symbols than its parity count.
+/// - The decoder cannot verify a correction within its error budget.
 /// - No valid error locations can be found.
 /// - The Berlekamp-Massey or Forney algorithms fail to converge.
 ///
@@ -485,6 +545,9 @@ pub fn reed_solomon_decode(
     codeword: &mut [u8],
     n_parity: usize,
 ) -> Result<(), String> {
+    if !rs_codeword_shape(codeword.len(), n_parity) {
+        return Err("Reed-Solomon requires parity <= codeword length <= 255".to_string());
+    }
     let syndromes = calculate_syndromes(codeword, n_parity);
 
     if syndromes.iter().all(|&s| s == 0) {
@@ -494,8 +557,8 @@ pub fn reed_solomon_decode(
     // Use Berlekamp-Massey to find error locator polynomial
     let sigma = berlekamp_massey(&syndromes);
 
-    // More than t = floor(n_parity / 2) errors cannot be located uniquely;
-    // report it instead of "correcting" to a different codeword.
+    // A locator above the correction radius cannot give a bounded-distance
+    // correction.
     let sigma_degree = sigma.iter().rposition(|&x| x != 0).unwrap_or(0);
 
     if sigma_degree > n_parity / 2 {
@@ -530,10 +593,7 @@ pub fn reed_solomon_decode(
         corrected[loc] ^= error_magnitudes[i];
     }
 
-    if !calculate_syndromes(&corrected, n_parity)
-        .iter()
-        .all(|&s| s == 0)
-    {
+    if !rs_syndrome_values(&corrected, n_parity).all(|s| s == 0) {
         return Err("Uncorrectable errors: \
                     corrected word is not a codeword."
             .to_string());
@@ -732,34 +792,47 @@ fn poly_derivative_gf256(poly: &[u8]) -> Vec<u8> {
 /// * `n_parity` - The number of parity symbols.
 ///
 /// # Returns
-/// `true` if the codeword is valid (all syndromes are zero).
+/// `true` if the block has at most 255 symbols, contains at least the
+/// requested parity count, and has all-zero syndromes.
 #[must_use]
 pub fn reed_solomon_check(
     codeword: &[u8],
     n_parity: usize,
 ) -> bool {
-    let syndromes = calculate_syndromes(codeword, n_parity);
+    rs_codeword_shape(codeword.len(), n_parity)
+        && rs_syndrome_values(codeword, n_parity).all(|s| s == 0)
+}
 
-    syndromes.iter().all(|&s| s == 0)
+pub(crate) const fn rs_codeword_shape(
+    length: usize,
+    n_parity: usize,
+) -> bool {
+    n_parity <= length && length <= RS_MAX_SYMBOLS
+}
+
+fn rs_syndrome_values(
+    codeword: &[u8],
+    n_parity: usize,
+) -> impl Iterator<Item = u8> + '_ {
+    let mut root = 1;
+    (0..n_parity).map(move |_| {
+        let syndrome = poly_eval_gf256(codeword, root);
+        root = gf256_mul(root, 2);
+        syndrome
+    })
 }
 
 /// Calculates the syndromes of a received codeword.
 ///
-/// The syndrome `S_i` is computed as the codeword polynomial evaluated at α^i.
+/// The syndrome `S_i` is the polynomial evaluated at α^i. Requests beyond
+/// 255 return the 255 distinct evaluations, since subsequent roots repeat.
+/// Use [`reed_solomon_check`] to validate the block shape and syndromes.
 #[must_use]
 pub fn calculate_syndromes(
     codeword: &[u8],
     n_parity: usize,
 ) -> Vec<u8> {
-    let mut syndromes = Vec::with_capacity(n_parity);
-
-    for i in 0..n_parity {
-        let alpha_i = gf256_pow(2, i as u64);
-
-        syndromes.push(poly_eval_gf256(codeword, alpha_i));
-    }
-
-    syndromes
+    rs_syndrome_values(codeword, n_parity.min(RS_MAX_SYMBOLS)).collect()
 }
 
 /// Finds the roots of the error locator polynomial to determine error locations.

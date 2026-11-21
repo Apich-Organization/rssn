@@ -17,6 +17,7 @@ use rssn::kernels::quadratic_sieve::QsLimits;
 use rssn::kernels::quadratic_sieve::QsStats;
 use rssn::kernels::quadratic_sieve::is_probable_prime;
 use rssn::kernels::quadratic_sieve::qs_factor;
+use rssn::kernels::quadratic_sieve::qs_factor_pair;
 use rssn::kernels::quadratic_sieve::qs_factor_with;
 use rssn::prelude::*;
 
@@ -184,6 +185,76 @@ fn check_divisor(
     assert!(divisor < *n, "divisor is not < n");
     assert!((n % &divisor).is_zero(), "divisor does not divide n");
     divisor
+}
+
+#[test]
+fn factor_base_preflight_preserves_exact_divisors_without_a_full_polynomial() {
+    let p = BigInt::from(1_009_u32);
+    let q = BigInt::from(1_000_003_u32);
+    let n = &p * &q;
+    let limits = QsLimits {
+        bound: 1_200,
+        interval: 1,
+        polynomials: 1,
+        max_sieve_positions: 200,
+        ..QsLimits::default()
+    };
+    let mut stats = QsStats {
+        polynomials: 7,
+        ..QsStats::default()
+    };
+    let config = QsConfig {
+        limits,
+        large_primes: true,
+    };
+    // The interval clamps to 100, so no complete 201-position sieve fits.
+    assert_eq!(qs_factor_with(&n, config, &mut stats), Some(p.clone()));
+    assert_eq!(stats, QsStats::default());
+    assert_eq!(qs_factor_pair(&n, limits), Some((p, q)));
+
+    let zero_budget = QsLimits {
+        max_sieve_positions: 0,
+        ..limits
+    };
+    assert!(qs_factor_pair(&n, zero_budget).is_none());
+}
+
+#[test]
+fn extreme_relation_margin_keeps_a_checked_work_budget() {
+    let n = BigInt::from(1_000_003_u32) * BigInt::from(1_000_033_u32);
+    let limits = QsLimits {
+        bound: 500,
+        interval: 3_000,
+        polynomials: 1,
+        extra_relations: usize::MAX,
+        max_sieve_positions: 6_001,
+        ..QsLimits::default()
+    };
+    let mut stats = QsStats::default();
+    let config = QsConfig {
+        limits,
+        large_primes: true,
+    };
+    if let Some(divisor) = qs_factor_with(&n, config, &mut stats) {
+        check_divisor(&n, Some(divisor));
+    }
+    assert_eq!(stats.polynomials, 1);
+    assert_eq!(stats.sieve_positions, 6_001);
+    assert_eq!(
+        qs_factor_pair(&n, limits),
+        Some((BigInt::from(1_000_003_u32), BigInt::from(1_000_033_u32)))
+    );
+}
+
+#[test]
+fn factor_pair_respects_the_exact_decimal_cutoff() {
+    let limit = BigInt::from(10_u8).pow(QsLimits::MAX_DIGITS);
+    let below = &limit - 2_u32;
+    let pair = qs_factor_pair(&below, QsLimits::default()).expect("even in-range integer");
+    assert_eq!(pair.0, BigInt::from(2_u8));
+    assert_eq!(pair.0 * pair.1, below);
+    assert!(qs_factor_pair(&limit, QsLimits::default()).is_none());
+    assert!(qs_factor_pair(&BigInt::from(2_u8), QsLimits::default()).is_none());
 }
 
 #[test]

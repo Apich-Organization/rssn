@@ -3,6 +3,7 @@
 
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
+use rssn::kernels::finite_field::Gf256Multiplier;
 use rssn::kernels::finite_field::PrimeFieldElement;
 use rssn::kernels::finite_field::gf256_add;
 use rssn::kernels::finite_field::gf256_div;
@@ -128,6 +129,127 @@ fn gf256_two_is_a_primitive_element() {
         seen[v] = true;
     }
     assert!(!seen[0]);
+}
+
+fn polynomial_product(
+    mut a: u8,
+    mut b: u8,
+) -> u8 {
+    let mut product = 0;
+    for _ in 0..8 {
+        if b & 1 != 0 {
+            product ^= a;
+        }
+        let carry = a & 0x80 != 0;
+        a <<= 1;
+        if carry {
+            a ^= 0x1d;
+        }
+        b >>= 1;
+    }
+    product
+}
+
+fn polynomial_power(
+    mut base: u8,
+    mut exponent: u64,
+) -> u8 {
+    let mut result = 1;
+    while exponent != 0 {
+        if exponent & 1 != 0 {
+            result = polynomial_product(result, base);
+        }
+        exponent >>= 1;
+        base = polynomial_product(base, base);
+    }
+    result
+}
+
+#[test]
+fn gf256_products_and_quotients_match_polynomial_arithmetic_exhaustively() {
+    assert_eq!(gf256_inv(0), Err("Cannot invert 0".into()));
+    assert_eq!(gf256_div(0, 0), Err("Division by zero".into()));
+    for b in 0..=u8::MAX {
+        if b != 0 {
+            let inv = gf256_inv(b).unwrap_or_else(|error| panic!("{error}"));
+            assert_eq!(polynomial_product(inv, b), 1);
+        }
+        for a in 0..=u8::MAX {
+            assert_eq!(gf256_mul(a, b), polynomial_product(a, b), "{a} × {b}");
+            if b != 0 {
+                let quotient = gf256_div(a, b).unwrap_or_else(|error| panic!("{error}"));
+                assert_eq!(polynomial_product(quotient, b), a, "{a} / {b}");
+            }
+        }
+    }
+}
+
+#[test]
+fn gf256_power_matches_polynomial_arithmetic_across_the_u64_range() {
+    for base in 0..=u8::MAX {
+        for exponent in [
+            0,
+            1,
+            2,
+            254,
+            255,
+            256,
+            510,
+            65_535,
+            1 << 32,
+            1 << 63,
+            u64::MAX - 2,
+            u64::MAX - 1,
+            u64::MAX,
+        ] {
+            assert_eq!(gf256_pow(base, exponent), polynomial_power(base, exponent));
+        }
+    }
+}
+
+#[test]
+fn gf256_fixed_coefficient_scales_and_accumulates_every_byte() {
+    const DOUBLER: Gf256Multiplier = Gf256Multiplier::new(2);
+    let mut fixed = [0, 1, 0x80];
+    DOUBLER.scale_assign(&mut fixed);
+    assert_eq!(fixed, [0, 2, 0x1d]);
+
+    let source: [u8; 256] = std::array::from_fn(|i| i as u8);
+    for coefficient in 0..=u8::MAX {
+        let multiplier = Gf256Multiplier::new(coefficient);
+        let mut scaled = source;
+        multiplier.scale_assign(&mut scaled);
+        let expected = source.map(|value| polynomial_product(coefficient, value));
+        assert_eq!(scaled, expected);
+
+        let initial = [0xa5; 256];
+        let mut accumulated = initial;
+        multiplier
+            .mul_add_assign(&source, &mut accumulated)
+            .unwrap();
+        assert_eq!(accumulated, expected.map(|value| value ^ 0xa5));
+        multiplier
+            .mul_add_assign(&source, &mut accumulated)
+            .unwrap();
+        assert_eq!(accumulated, initial);
+    }
+}
+
+#[test]
+fn gf256_fixed_coefficient_checks_shapes_before_mutating() {
+    let mut output = [1, 2, 3];
+    for coefficient in [0, 1, 0x53] {
+        let multiplier = Gf256Multiplier::new(coefficient);
+        assert!(multiplier.mul_add_assign(&[1, 2], &mut output).is_err());
+        assert!(
+            multiplier
+                .mul_add_assign(&[1, 2, 3, 4], &mut output)
+                .is_err()
+        );
+        assert_eq!(output, [1, 2, 3]);
+        assert!(multiplier.mul_add_assign(&[], &mut []).is_ok());
+        multiplier.scale_assign(&mut []);
+    }
 }
 
 proptest! {
