@@ -72,6 +72,7 @@ use crate::graph::Cx;
 use crate::graph::NodeId;
 use crate::graph::Number;
 use crate::graph::op::core;
+use crate::kernels::par::map_indexed;
 use crate::rules::poly::rational_function_in;
 use crate::rules::poly::univariate;
 
@@ -349,18 +350,20 @@ impl Hyper {
 }
 
 /// Removes the common integer factor of a row of integers (a no-op otherwise).
-fn primitive_row(row: &mut [Q]) {
+fn primitive_row(row: &mut [BigInt]) {
     let mut common = BigInt::zero();
     for v in row.iter() {
         if v.is_zero() {
             continue;
         }
-        common = num_integer::Integer::gcd(&common, v.numer());
+        common = num_integer::Integer::gcd(&common, v);
+        if common.is_one() {
+            return;
+        }
     }
     if common > BigInt::one() {
-        let scale = Q::from_integer(common);
         for v in row.iter_mut() {
-            *v /= &scale;
+            *v /= &common;
         }
     }
 }
@@ -369,23 +372,31 @@ fn primitive_row(row: &mut [Q]) {
 /// rows are made integral, combined with integer pivots and primitivised, so
 /// the rational entries do not grow during the elimination).
 pub(super) fn nullspace(
-    mut rows: Vec<Vec<Q>>,
+    rows: Vec<Vec<Q>>,
     columns: usize,
 ) -> Vec<Vec<Q>> {
-    for row in &mut rows {
-        let mut common = BigInt::one();
-        for v in row.iter() {
-            let denominator = v.denom();
-            let g = num_integer::Integer::gcd(&common, denominator);
-            common = common / g * denominator;
-        }
-        if common > BigInt::one() {
-            let scale = Q::from_integer(common);
-            for v in row.iter_mut() {
-                *v *= &scale;
+    let mut rows: Vec<Vec<BigInt>> = rows
+        .into_iter()
+        .map(|row| {
+            let common = row.iter().fold(BigInt::one(), |common, value| {
+                if value.denom().is_one() || value.denom() == &common {
+                    common
+                } else {
+                    num_integer::Integer::lcm(&common, value.denom())
+                }
+            });
+            if common.is_one() {
+                row.into_iter().map(|value| value.into_raw().0).collect()
+            } else {
+                row.into_iter()
+                    .map(|value| {
+                        let (numerator, denominator) = value.into_raw();
+                        numerator * (&common / denominator)
+                    })
+                    .collect()
             }
-        }
-    }
+        })
+        .collect();
     let mut pivots: Vec<usize> = Vec::new();
     let mut r = 0;
     for c in 0..columns {
@@ -397,28 +408,23 @@ pub(super) fn nullspace(
             continue;
         };
         rows.swap(r, found);
-        let pivot = rows
-            .get(r)
-            .and_then(|row| row.get(c))
-            .cloned()
-            .unwrap_or_else(Q::one);
-        let pivot_row = rows.get(r).cloned().unwrap_or_default();
-        for (i, row) in rows.iter_mut().enumerate() {
-            if i == r {
+        let (above, lower) = rows.split_at_mut(r);
+        let Some((pivot_row, below)) = lower.split_first_mut() else {
+            break;
+        };
+        let Some(pivot) = pivot_row.get(c) else {
+            continue;
+        };
+        for row in above.iter_mut().chain(below) {
+            let Some(factor) = row.get(c).filter(|value| !value.is_zero()).cloned() else {
                 continue;
-            }
-            let factor = row.get(c).cloned().unwrap_or_else(Q::zero);
-            if factor.is_zero() {
-                continue;
-            }
-            for (v, p) in row.iter_mut().zip(&pivot_row) {
-                *v = &*v * &pivot - &factor * p;
+            };
+            for (v, p) in row.iter_mut().zip(pivot_row.iter()) {
+                *v = &*v * pivot - &factor * p;
             }
             primitive_row(row);
         }
-        if let Some(row) = rows.get_mut(r) {
-            primitive_row(row);
-        }
+        primitive_row(pivot_row);
         pivots.push(c);
         r += 1;
     }
@@ -429,20 +435,12 @@ pub(super) fn nullspace(
             *slot = Q::one();
         }
         for (row, &pivot) in pivots.iter().enumerate() {
-            let value = rows
-                .get(row)
-                .and_then(|r| r.get(free))
-                .cloned()
-                .unwrap_or_else(Q::zero);
-            let scale = rows
-                .get(row)
-                .and_then(|r| r.get(pivot))
-                .cloned()
-                .unwrap_or_else(Q::one);
-            if let Some(slot) = vector.get_mut(pivot)
-                && !scale.is_zero()
+            if let Some(row) = rows.get(row)
+                && let Some(value) = row.get(free).filter(|v| !v.is_zero())
+                && let Some(scale) = row.get(pivot).filter(|v| !v.is_zero())
+                && let Some(slot) = vector.get_mut(pivot)
             {
-                *slot = -value / scale;
+                *slot = Q::new(-value, scale.clone());
             }
         }
         basis.push(vector);
@@ -979,8 +977,15 @@ fn left_factor(
 fn common_denominator(items: &[&Rat]) -> Option<Vec<Q>> {
     let mut common = vec![Q::one()];
     for r in items {
-        let g = univariate::gcd(&common, &r.den);
-        common = univariate::divrem(&univariate::mul(&common, &r.den), &g)?.0;
+        // Rat denominators are monic, including constant denominators.
+        if r.den.len() <= 1 || r.den == common {
+            continue;
+        }
+        let gcd = univariate::gcd(&common, &r.den);
+        if gcd != r.den {
+            let (factor, _) = univariate::divrem(&r.den, &gcd)?;
+            common = univariate::mul(&common, &factor);
+        }
     }
     Some(common)
 }
@@ -1002,6 +1007,7 @@ fn operator_rows(
             .iter()
             .map(|e| {
                 match e {
+                    | Some(r) if r.den == common => Some(r.num.clone()),
                     | Some(r) => {
                         Some(univariate::mul(
                             &r.num,
@@ -1203,28 +1209,32 @@ fn eigenring_factors_with(
     if n == 0 {
         return Vec::new();
     }
-    let mut basis: Vec<Ore> = Vec::new();
-    let mut images: Vec<Ore> = Vec::new();
-    for s in 0..=bound {
-        for j in 0..n {
-            let mut monomial = vec![Q::zero(); s];
-            monomial.push(Q::one());
-            let Some(mut coefficients) = (0..j).map(|_| zero_rat()).collect::<Option<Vec<Rat>>>()
-            else {
-                continue;
-            };
-            let Some(top) = rat(&monomial, denominator) else {
-                continue;
-            };
-            coefficients.push(top);
-            let e = Ore::new(coefficients);
-            let Some(image) = l.mul(&e).and_then(|p| p.right_divide(l)).map(|(_, r)| r) else {
-                continue;
-            };
-            basis.push(e);
-            images.push(image);
-        }
-    }
+    let Some(zero) = zero_rat() else {
+        return Vec::new();
+    };
+    // For a fixed numerator x^s, (L R) D^j gives every L (R D^j).
+    // The right division still depends on j. Collect in the original (s, j) order.
+    let jobs = map_indexed(bound + 1, 6, |s| {
+        let mut monomial = vec![Q::zero(); s];
+        monomial.push(Q::one());
+        let Some(top) = rat(&monomial, denominator) else {
+            return Vec::new();
+        };
+        let Some(product) = l.mul(&Ore::new(vec![top.clone()])) else {
+            return Vec::new();
+        };
+        (0..n)
+            .filter_map(|j| {
+                let mut coefficients = vec![zero.clone(); j];
+                coefficients.extend(product.c.iter().cloned());
+                let (_, image) = Ore::new(coefficients).right_divide(l)?;
+                let mut term = vec![zero.clone(); j];
+                term.push(top.clone());
+                Some((Ore::new(term), image))
+            })
+            .collect::<Vec<_>>()
+    });
+    let (basis, images): (Vec<_>, Vec<_>) = jobs.into_iter().flatten().unzip();
     if basis.is_empty() {
         return Vec::new();
     }
@@ -1694,6 +1704,23 @@ mod tests {
                 .iter()
                 .any(|f| f.sub(&linear).is_some_and(|d| d.is_zero())),
             "D - 1 not found"
+        );
+    }
+
+    #[test]
+    fn eigenring_nullspace_retains_exact_free_columns_with_mixed_denominators() {
+        let rational = |n, d| Q::new(BigInt::from(n), BigInt::from(d));
+        let rows = vec![
+            vec![rational(1, 2), rational(1, 3), rational(5, 6), q(0)],
+            vec![q(0), rational(2, 7), rational(2, 7), rational(4, 7)],
+            vec![rational(3, 2), q(1), rational(5, 2), q(0)],
+        ];
+        assert_eq!(
+            nullspace(rows, 4),
+            vec![
+                vec![q(-1), q(-1), q(1), q(0)],
+                vec![rational(4, 3), q(-2), q(0), q(1)]
+            ]
         );
     }
 

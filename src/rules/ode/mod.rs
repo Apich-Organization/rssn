@@ -120,7 +120,7 @@
 //!   `exp(λ/t) t^ρ Σ a_k t^k` (`exp(λ x)` at infinity). Results are
 //!   truncated series (eight terms in `dsolve`, order written
 //!   `big_o(t^n)`). When these fail, the Newton-polygon expansion of
-//!   [`formal`] is used: irregular points of any Poincaré rank, ramified
+//!   `formal` handles irregular points of any Poincaré rank, ramified
 //!   (fractional-power) solutions such as Airy's at infinity, exponential
 //!   parts `exp(Σ κ_s t^{-s/q})` with several terms, irrational or complex
 //!   `κ` (the coefficient field is extended by a factor of the
@@ -160,8 +160,8 @@
 //!
 //! | operator | value |
 //! |---|---|
-//! | `ode_frobenius(eq, y(x), x0, n)` | `list(y(x) = C1 y1 + C2 y2, list(r1, r2), recurrence)`: Frobenius series to order `n` about `x0`, the indicial roots and the explicit finite recurrence of the larger exponent |
-//! | `ode_asymptotic(eq, y(x), x0, n, x1, k)` | `list(re, im, error)`: the `k`-th (counting from 0) Newton-polygon formal solution at `x1` (`x0` rational or `oo`), its series with `n` terms summed up to the smallest term (optimal truncation); the error is the size of that term |
+//! | `ode_frobenius(eq, y(x), x0, n)` | `list(y(x) = C1 y1 + C2 y2, exponents, recurrence)` for a homogeneous linear second-order equation at rational `x0` or `oo`, with order `n` up to 60. The exponent list contains indicial roots at ordinary and regular singular points and formal exponent pairs at irregular points. The recurrence is an equation when available and an empty list otherwise. |
+//! | `ode_asymptotic(eq, y(x), x0, n, x1, k)` | `list(re, im, error)` for the `k`-th Newton-polygon formal solution at `x1` (`x0` rational or `oo`, `k` starts at zero). The error estimate is the magnitude of the first omitted term, or the final supplied term if all are used, scaled by the solution's prefactor. |
 //! | `ode_borel(eq, y(x), x0, n, x1, k)` | `list(re, im, error, stokes)`: the same formal solution summed by Borel–Padé resummation (Padé approximant of the Borel transform, Laplace integral along the ray of `x1`; when a Borel singularity lies near the ray, the median of the two lateral sums, `stokes = 1`) |
 //! | `ode_series(eq, y(x), x0, n)` | the power-series solution about `x0` to order `n` |
 //! | `rsolve_z(eq, y(n), conditions?)` | a linear recurrence solved by the z transform |
@@ -295,8 +295,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let frobenius = i.op(OpDescriptor::new("ode_frobenius", Arity::Fixed(4))
         .flags(OpFlags::HEAVY)
         .cost(100)
-        .doc("`ode_frobenius(ode, y, x0, order)`: applies the Frobenius method around regular singular point `x0`, returning solution, indicial roots, and recurrence."))?;
-    // A list of the solution equation, the indicial roots and the recurrence.
+        .doc("`ode_frobenius(eq, y(x), x0, n)` expands a homogeneous linear second-order equation about rational `x0` or `oo`, with order `n` up to 60. Returns the solution, indicial roots or formal exponent pairs, and a recurrence equation when available. The recurrence entry is an empty list otherwise."))?;
+    // A list of the solution equation, exponent data and the recurrence.
     i.dim(frobenius, DimRule::NonMetric);
     i.kernel(
         "ode/frobenius",
@@ -306,7 +306,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let asymptotic = i.op(OpDescriptor::new("ode_asymptotic", Arity::Fixed(6))
         .flags(OpFlags::HEAVY)
         .cost(100)
-        .doc("`ode_asymptotic(ode, y, x0, c, order, point)`: evaluates a truncated formal asymptotic expansion of `ode` at `point` around singular point `x0`."))?;
+        .doc("`ode_asymptotic(eq, y(x), x0, n, x1, k)` evaluates formal solution `k` of `eq` at `x1` using up to `n` terms around singular point `x0`. Returns the real part, imaginary part and scaled magnitude of the first omitted term. If all terms are used, the final supplied term gives the estimate. `k` starts at zero."))?;
     // `list(re, im, error)` are the components of the solution at the sample
     // point, so they carry the dependent variable's dimension.
     i.dim(asymptotic, DimRule::Custom(dim::rule));
@@ -321,7 +321,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let borel = i.op(OpDescriptor::new("ode_borel", Arity::Fixed(6))
         .flags(OpFlags::HEAVY)
         .cost(100)
-        .doc("`ode_borel(ode, y, x0, c, order, point)`: evaluates the Borel-Pade resummation of a divergent formal asymptotic solution of `ode` at `point`."))?;
+        .doc("`ode_borel(eq, y(x), x0, n, x1, k)` uses Borel–Padé resummation to evaluate formal solution `k` of `eq` at `x1` with `n` terms around singular point `x0`. Returns the real part, imaginary part, error estimate and Stokes indicator. `k` starts at zero."))?;
     // The Borel-Pade sum of the same formal solution.
     i.dim(borel, DimRule::Custom(dim::rule));
     i.kernel(
@@ -2058,8 +2058,8 @@ impl Kernel for FrobeniusReport {
     }
 }
 
-/// `ode_asymptotic(eq, y(x), x0, n, x1, k)`: the `k`-th formal solution at
-/// `x1` summed up to its smallest term.
+/// Evaluate the `k`-th formal solution at `x1` by least-term truncation or
+/// Borel–Padé resummation.
 struct Asymptotic {
     op: OpId,
     /// Borel–Padé resummation instead of optimal truncation.

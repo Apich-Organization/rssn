@@ -4,9 +4,10 @@
 //! `A u_xx + c(x) u` on a period `L` (`u(a) = u(a + L)`) is reduced to
 //! `H y = -y'' + V y = μ y`, `V = -c/A`, `L y = -A μ y`. In the real
 //! Fourier basis `{1, cos(2πkx/L), sin(2πkx/L)}` (normalised on the period)
-//! the operator is a symmetric matrix — the Hill determinant is its
-//! characteristic polynomial — whose eigenpairs are computed by cyclic
-//! Jacobi rotations:
+//! the operator is a symmetric matrix. Fourier coefficients of the sampled
+//! potential determine its entries through the product identities for sines
+//! and cosines. Cyclic Jacobi rotations compute the eigenpairs once for use
+//! by both the eigenvalue and mode queries.
 //!
 //! * `hill_eigen(m, L, N, V₀…V_{M-1})`: the `m`-th eigenvalue (`m ≥ 1`,
 //!   ascending, with multiplicity) for the potential sampled at
@@ -41,12 +42,20 @@ use crate::graph::Number;
 use crate::graph::OpDescriptor;
 use crate::graph::RuleError;
 use crate::graph::rule::Installer;
+use crate::kernels::reuse::PlanCache;
+use crate::kernels::reuse::fft_plan;
+use crate::kernels::reuse::fft_scratch_for;
+use num_complex::Complex64;
+use rustfft::FftDirection;
 use std::cell::RefCell;
-use std::f64::consts::PI;
-use std::rc::Rc;
+use std::f64::consts::SQRT_2;
+use std::f64::consts::TAU;
+use std::sync::Arc;
 
 const HARMONICS: usize = 24;
 const SAMPLES: usize = 256;
+const MAX_HARMONICS: usize = 64;
+const MAX_CACHED_SAMPLES: usize = 65_536;
 
 /// Eigenpairs of a symmetric matrix by cyclic Jacobi rotations, sorted
 /// ascending: `(values, vectors)` with `vectors[k]` the eigenvector of
@@ -102,23 +111,36 @@ pub(super) fn jacobi(mut a: Vec<Vec<f64>>) -> (Vec<f64>, Vec<Vec<f64>>) {
     (values, vectors)
 }
 
-/// The value of the real Fourier basis function number `i` at `x`.
-fn basis(
-    i: usize,
-    x: f64,
-    l: f64,
+/// Forms the real Galerkin matrix from the periodic coefficient table.
+/// `RustFFT` uses a negative exponent, so the sine coefficient is `-im`.
+#[allow(
+    clippy::single_call_fn,
+    reason = "keeps the Fourier product identities together"
+)]
+fn potential_entry(
+    coefficients: &[Complex64],
+    left: usize,
+    right: usize,
 ) -> f64 {
-    if i == 0 {
-        return (1.0 / l).sqrt();
+    let (left, right) = (left.min(right), left.max(right));
+    let frequency = right.div_ceil(2);
+    if left == 0 {
+        let entry = coefficients[frequency];
+        return match right {
+            | 0 => entry.re,
+            | _ if right % 2 == 1 => SQRT_2 * entry.re,
+            | _ => -SQRT_2 * entry.im,
+        };
     }
-    let k = i.div_ceil(2) as f64;
-    let angle = 2.0 * PI * k * x / l;
-    (2.0 / l).sqrt()
-        * if i % 2 == 1 {
-            angle.cos()
-        } else {
-            angle.sin()
-        }
+    let left_frequency = left.div_ceil(2);
+    let sum = coefficients[frequency + left_frequency];
+    let difference = coefficients[frequency - left_frequency];
+    match (left % 2, right % 2) {
+        | (1, 1) => difference.re + sum.re,
+        | (1, _) => -sum.im - difference.im,
+        | (_, 1) => difference.im - sum.im,
+        | _ => difference.re - sum.re,
+    }
 }
 
 struct Solved {
@@ -127,52 +149,146 @@ struct Solved {
     vectors: Vec<Vec<f64>>,
 }
 
-type Cached = (Vec<u64>, Rc<Solved>);
+type Cached = (Arc<[u64]>, Arc<Solved>);
+static CACHE: PlanCache<Arc<[u64]>, Solved> = PlanCache::new(32);
 
 thread_local! {
-    static CACHE: RefCell<Vec<Cached>> = const { RefCell::new(Vec::new()) };
+    // Repeated mode evaluations compare the key in place. The plan itself is
+    // immutable and shared with other threads through the bounded pool.
+    static LAST: RefCell<Option<Cached>> = const { RefCell::new(None) };
+}
+
+#[allow(
+    clippy::single_call_fn,
+    reason = "separates sampling and Fourier phase conventions from matrix assembly"
+)]
+fn coefficients(
+    potential: &[f64],
+    size: usize,
+    scale: f64,
+) -> Vec<Complex64> {
+    let samples = potential.len();
+    let mut coefficients = vec![Complex64::new(0.0, 0.0); size];
+    if potential
+        .iter()
+        .all(|&sample| crate::kernels::exact_eq(sample, potential[0]))
+    {
+        // A constant sequence has only the zeroth coefficient. Frequencies
+        // above the grid's Nyquist limit retain the original sampled aliasing.
+        for entry in coefficients.iter_mut().step_by(samples) {
+            entry.re = potential[0] / scale;
+        }
+        return coefficients;
+    }
+    let plan = fft_plan(samples, FftDirection::Forward);
+    let mut spectrum = fft_scratch_for(samples);
+    spectrum.extend(
+        potential
+            .iter()
+            .map(|&value| Complex64::new(value / scale, 0.0)),
+    );
+    let mut scratch = fft_scratch_for(plan.get_inplace_scratch_len());
+    scratch.resize(plan.get_inplace_scratch_len(), Complex64::new(0.0, 0.0));
+    plan.process_with_scratch(&mut spectrum, &mut scratch);
+    let weight = (samples as f64).recip();
+    for (frequency, entry) in coefficients.iter_mut().enumerate() {
+        let bin = frequency % samples;
+        *entry = if bin > samples / 2 {
+            spectrum[samples - bin].conj() * weight
+        } else {
+            spectrum[bin] * weight
+        };
+        if bin == 0 || 2 * bin == samples {
+            entry.im = 0.0;
+        }
+    }
+    coefficients
+}
+
+fn decompose<const PARALLEL: bool>(
+    period: f64,
+    harmonics: usize,
+    potential: &[f64],
+) -> Option<Arc<Solved>> {
+    let kinetic = |frequency: usize| (TAU * frequency as f64 / period).powi(2);
+    let largest_kinetic = kinetic(harmonics);
+    if !largest_kinetic.is_finite() || potential.iter().any(|sample| !sample.is_finite()) {
+        return None;
+    }
+    let largest = potential
+        .iter()
+        .fold(largest_kinetic, |max, value| max.max(value.abs()));
+    // A binary scale retains normal mantissas and keeps Jacobi's absolute
+    // stopping threshold relative to the assembled matrix.
+    let exponent = f64::from_bits(largest.to_bits() & 0x7ff0_0000_0000_0000);
+    let scale = if exponent > 0.0 {
+        exponent
+    } else if largest > 0.0 {
+        largest
+    } else {
+        1.0
+    };
+    let d = 2 * harmonics + 1;
+    let coefficients = coefficients(potential, d, scale);
+    let mut h = vec![vec![0.0; d]; d];
+    let row = |i: usize, row: &mut Vec<f64>| {
+        for (j, entry) in row.iter_mut().enumerate() {
+            *entry = potential_entry(&coefficients, i, j);
+        }
+        row[i] += kinetic(i.div_ceil(2)) / scale;
+    };
+    if PARALLEL {
+        crate::kernels::par::for_each_mut(&mut h, 65, row);
+    } else {
+        for (i, entries) in h.iter_mut().enumerate() {
+            row(i, entries);
+        }
+    }
+    let (mut values, vectors) = jacobi(h);
+    for value in &mut values {
+        *value *= scale;
+        if !value.is_finite() {
+            return None;
+        }
+    }
+    Some(Arc::new(Solved {
+        l: period,
+        values,
+        vectors,
+    }))
 }
 
 /// The decomposition for `L, N, V…`.
-fn solved(args: &[f64]) -> Option<Rc<Solved>> {
-    let key: Vec<u64> = args.iter().map(|v| v.to_bits()).collect();
-    if let Some(found) = CACHE.with(|c| {
-        c.borrow()
-            .iter()
-            .find(|(k, _)| *k == key)
-            .map(|(_, v)| Rc::clone(v))
+fn solved(args: &[f64]) -> Option<Arc<Solved>> {
+    if let Some(found) = LAST.with(|entry| {
+        let entry = entry.borrow();
+        let (key, value) = entry.as_ref()?;
+        key.iter()
+            .copied()
+            .eq(args.iter().map(|value| value.to_bits()))
+            .then(|| Arc::clone(value))
     }) {
         return Some(found);
     }
-    let (&l, &harmonics) = (args.first()?, args.get(1)?);
-    let potential = args.get(2..)?;
-    if l <= 0.0 || !(1.0..=64.0).contains(&harmonics) || potential.len() < 8 {
+    let &[period, harmonics, ref potential @ ..] = args else {
+        return None;
+    };
+    let harmonics = index(harmonics).filter(|&value| value <= MAX_HARMONICS)?;
+    if !period.is_finite() || period <= 0.0 || potential.len() < 8 {
         return None;
     }
-    let d = 2 * harmonics as usize + 1;
-    let m = potential.len();
-    let mut h = vec![vec![0.0; d]; d];
-    for (i, row) in h.iter_mut().enumerate() {
-        for (j, entry) in row.iter_mut().enumerate() {
-            let mut total = 0.0;
-            for (index, &v) in potential.iter().enumerate() {
-                let x = l * index as f64 / m as f64;
-                total += basis(i, x, l) * v * basis(j, x, l);
-            }
-            *entry = total * l / m as f64;
-        }
-        let k = i.div_ceil(2) as f64;
-        row[i] += (2.0 * PI * k / l).powi(2);
+    if potential.len() > MAX_CACHED_SAMPLES {
+        return decompose::<true>(period, harmonics, potential);
     }
-    let (values, vectors) = jacobi(h);
-    let value = Rc::new(Solved { l, values, vectors });
-    CACHE.with(|c| {
-        let mut cache = c.borrow_mut();
-        if cache.len() >= 32 {
-            cache.remove(0);
-        }
-        cache.push((key, Rc::clone(&value)));
-    });
+    let key: Arc<[u64]> = args.iter().map(|value| value.to_bits()).collect();
+    // A pending plan can have callers waiting on Rayon workers. Its builder
+    // completes on the calling thread, independently of those workers.
+    let value = CACHE
+        .try_get_or_insert_with(Arc::clone(&key), || {
+            decompose::<false>(period, harmonics, potential).ok_or(())
+        })
+        .ok()?;
+    LAST.with(|entry| *entry.borrow_mut() = Some((key, Arc::clone(&value))));
     Some(value)
 }
 
@@ -208,17 +324,23 @@ pub(super) fn hill_mode(args: &[f64]) -> f64 {
     ) else {
         return f64::NAN;
     };
+    if !x.is_finite() {
+        return f64::NAN;
+    }
     let Some(s) = solved(rest) else {
         return f64::NAN;
     };
     let Some(vector) = s.vectors.get(m - 1) else {
         return f64::NAN;
     };
-    vector
-        .iter()
-        .enumerate()
-        .map(|(i, c)| c * basis(i, x, s.l))
-        .sum()
+    let phase = TAU * ((x % s.l) / s.l);
+    let mut sum = vector[0];
+    for (frequency, &[cosine, sine]) in vector[1..].as_chunks::<2>().0.iter().enumerate() {
+        let (sin, cos) = (phase * (frequency + 1) as f64).sin_cos();
+        sum += SQRT_2 * cosine * cos;
+        sum += SQRT_2 * sine * sin;
+    }
+    sum / s.l.sqrt()
 }
 
 /// Registers the operators.
@@ -230,12 +352,12 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         (
             "hill_eigen",
             hill_eigen as fn(&[f64]) -> f64,
-            "`hill_eigen(n, L, c_samples...)`: `n`-th periodic Sturm-Liouville eigenvalue computed by Hill's Fourier-Galerkin method on `[0, L]`.",
+            "`hill_eigen(n, L, harmonics, potential_samples...)`: the `n`-th periodic Sturm-Liouville eigenvalue in ascending order. Uses 1–64 harmonics and at least eight finite, equally spaced potential samples on `[0, L)`.",
         ),
         (
             "hill_mode",
             hill_mode,
-            "`hill_mode(n, x, L, c_samples...)`: `n`-th normalized periodic eigenfunction at `x` computed by Hill's Fourier-Galerkin method.",
+            "`hill_mode(n, x, L, harmonics, potential_samples...)`: the `n`-th normalized periodic eigenfunction at offset `x` from the start of the period. Shares the Fourier-Galerkin decomposition with `hill_eigen`.",
         ),
     ] {
         let op = i.op(OpDescriptor::new(name, Arity::Variadic).eval(eval).doc(doc))?;

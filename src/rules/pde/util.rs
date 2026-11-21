@@ -33,6 +33,25 @@ pub(super) fn call(
     Some(cx.graph.node(op, args))
 }
 
+/// Choose an unused, printable integration identifier. It must be distinct
+/// even from bound occurrences inside the integrand before substitution.
+pub(super) fn fresh_integration_symbol(
+    cx: &mut Cx<'_>,
+    stem: &str,
+) -> NodeId {
+    let graph = &mut *cx.graph;
+    if graph.interner().find_symbol(stem).is_none() {
+        return graph.sym(stem);
+    }
+    for suffix in graph.len().. {
+        let name = format!("{stem}_{suffix}");
+        if graph.interner().find_symbol(&name).is_none() {
+            return graph.sym(&name);
+        }
+    }
+    unreachable!()
+}
+
 /// `pi`.
 pub(super) fn pi(cx: &mut Cx<'_>) -> Option<NodeId> {
     call(cx, "pi", &[])

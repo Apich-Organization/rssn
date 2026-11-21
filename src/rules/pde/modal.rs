@@ -10,6 +10,7 @@
 //! * the eigenvalues from the root operators (`bessel_zero`, `bessel_root`):
 //!   Dirichlet zeros of `J_ν`, Robin/Neumann roots of
 //!   `z J_ν'(z) + (hR) J_ν(z)` (ball: `ν = l + 1/2`, `h R - 1/2`);
+//!   the radial Neumann spectrum also includes the spatially constant mode;
 //! * the answer is the truncated sum
 //!   `Σ c_{n m} T(t) J_n(κ r) {cos, sin}(n θ)` (disk: `n ≤ 10`, 16 radial
 //!   modes) or `Σ c_{l m k} T(t) j_l(κ r) P_l^m(cos θ) {cos, sin}(m φ)`
@@ -29,10 +30,15 @@ use super::modes::exact_value;
 use super::util::call;
 use super::util::div;
 use super::util::is_zero_number;
+use crate::cancellation::checkpoint;
 use crate::graph::Cx;
 use crate::graph::Env;
+use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::Number;
+use crate::graph::SymbolId;
+use crate::kernels::exact_eq;
+use crate::kernels::par::try_map_indexed;
 use crate::kernels::special::bessel_j;
 use crate::rules::complex::build::add;
 use crate::rules::complex::build::mul;
@@ -54,12 +60,14 @@ const DISK_ROOTS: usize = 16;
 const BALL_DEGREE: usize = 8;
 const BALL_ROOTS: usize = 12;
 const RADIAL_NODES: usize = 64;
+const SAMPLE_PARALLEL_POINTS: usize = 16_384;
 
-/// A mode: eigenvalue `κ²` (as `κ`), the value of the radial function at the
-/// quadrature radii, and its node in the answer.
+/// A mode: eigenvalue `κ²` (as `κ`), samples and weighted squared norm of
+/// its radial function, and its node in the answer.
 struct RadialMode {
     kappa: f64,
     values: Vec<f64>,
+    norm: f64,
     node: NodeId,
 }
 
@@ -71,16 +79,48 @@ enum Boundary {
     Robin(f64),
 }
 
-fn evaluate(
-    cx: &Cx<'_>,
+fn sample_radius(
+    graph: &Graph,
     node: NodeId,
-    bindings: &[(crate::graph::SymbolId, f64)],
-) -> Option<f64> {
+    (r, theta, phi): (SymbolId, Option<SymbolId>, Option<SymbolId>),
+    radius: f64,
+    angles: &[(f64, f64, f64)],
+    azimuths: &[f64],
+) -> Option<Vec<f64>> {
+    checkpoint().ok()?;
     let mut env = Env::numeric(0.0);
-    for &(symbol, value) in bindings {
-        env.bind(symbol, value);
+    env.bind(r, radius);
+    let mut samples = Vec::with_capacity(angles.len() * azimuths.len());
+    for &(_, _, angle) in angles {
+        if let Some(symbol) = theta {
+            env.bind(symbol, angle);
+        }
+        for &azimuth in azimuths {
+            if let Some(symbol) = phi {
+                env.bind(symbol, azimuth);
+            }
+            samples.push(graph.eval(node, &env).filter(|value| value.is_finite())?);
+        }
     }
-    cx.graph.eval(node, &env).filter(|v| v.is_finite())
+    Some(samples)
+}
+
+fn trig_values(
+    weighted_angles: impl Iterator<Item = f64>,
+    present: bool,
+    is_cos: bool,
+) -> Vec<f64> {
+    weighted_angles
+        .map(|angle| {
+            if !present {
+                1.0
+            } else if is_cos {
+                angle.cos()
+            } else {
+                angle.sin()
+            }
+        })
+        .collect()
 }
 
 /// The numeric expansion, if the problem is a homogeneous heat or undamped
@@ -230,30 +270,28 @@ pub(super) fn solve(
             vec![0.0],
         )
     };
-    // Tables of the data on the grid: [datum][radius][angle][azimuth].
-    let mut tables: Vec<Vec<Vec<Vec<f64>>>> = Vec::new();
-    for (value, _) in &data {
-        let mut by_radius = Vec::new();
-        for &(rv, _) in &radial {
-            let mut by_angle = Vec::new();
-            for &(_, _, theta) in &angles {
-                let mut row = Vec::new();
-                for &phi in &azimuths {
-                    let mut bindings = vec![(r_symbol, rv)];
-                    if let Some(s) = theta_symbol {
-                        bindings.push((s, theta));
-                    }
-                    if let Some(s) = phi_symbol {
-                        bindings.push((s, phi));
-                    }
-                    row.push(evaluate(cx, *value, &bindings)?);
-                }
-                by_angle.push(row);
-            }
-            by_radius.push(by_angle);
-        }
-        tables.push(by_radius);
-    }
+    // Freeze the graph while evaluating independent radii. Each row stores
+    // the angular samples contiguously, in (theta, phi) order.
+    let graph: &Graph = cx.graph;
+    let angular_points = angles.len() * azimuths.len();
+    let grain = SAMPLE_PARALLEL_POINTS.div_ceil(angular_points);
+    let tables: Vec<Vec<Vec<f64>>> = data
+        .iter()
+        .map(|&(value, _)| {
+            try_map_indexed(radial.len(), grain, |i| {
+                sample_radius(
+                    graph,
+                    value,
+                    (r_symbol, theta_symbol, phi_symbol),
+                    radial[i].0,
+                    &angles,
+                    &azimuths,
+                )
+                .ok_or(())
+            })
+        })
+        .collect::<Result<_, _>>()
+        .ok()?;
     let mut terms = Vec::new();
     let time_factor = |cx: &mut Cx<'_>, kappa: f64, is_displacement: bool| -> Option<NodeId> {
         let omega2 = d * kappa * kappa + e;
@@ -285,6 +323,23 @@ pub(super) fn solve(
             Some(mul(cx.graph, &[inverse, s]))
         }
     };
+    let radial_weights: Vec<f64> = radial
+        .iter()
+        .map(|&(rv, w)| {
+            if geometry.sphere {
+                w * rv * rv
+            } else {
+                w * rv
+            }
+        })
+        .collect();
+    let radial_norm = |values: &[f64]| -> f64 {
+        radial_weights
+            .iter()
+            .zip(values)
+            .map(|(w, v)| w * v * v)
+            .sum()
+    };
     // Radial modes of a Bessel order `nu` (the disk order, or `l + 1/2`).
     let radial_modes =
         |cx: &mut Cx<'_>, nu: f64, ball: bool, constant: bool| -> Option<Vec<RadialMode>> {
@@ -299,6 +354,7 @@ pub(super) fn solve(
                 roots.push(0.0);
             }
             for m in 1..=count {
+                checkpoint().ok()?;
                 let z = match kind {
                     | Boundary::Dirichlet => super::numeric::bessel_zero(&[nu, m as f64]),
                     | Boundary::Robin(h) => {
@@ -307,10 +363,15 @@ pub(super) fn solve(
                         } else {
                             h * radius
                         };
-                        if shifted + nu <= 0.0 {
-                            return None;
+                        if exact_eq(shifted + nu, 0.0) && exact_eq(h, 0.0) {
+                            // z J_ν'(z) - ν J_ν(z) = -z J_{ν+1}(z).
+                            super::numeric::bessel_zero(&[nu + 1.0, m as f64])
+                        } else {
+                            if shifted + nu <= 0.0 {
+                                return None;
+                            }
+                            super::numeric::bessel_root(&[nu, shifted, m as f64])
                         }
-                        super::numeric::bessel_root(&[nu, shifted, m as f64])
                     },
                 };
                 if !z.is_finite() {
@@ -319,10 +380,15 @@ pub(super) fn solve(
                 roots.push(z / radius);
             }
             for kappa in roots {
-                if kappa.abs() < 1e-14 {
+                if exact_eq(kappa, 0.0) {
                     let values = vec![1.0; radial.len()];
                     let node = cx.graph.int(1);
-                    modes.push(RadialMode { kappa, values, node });
+                    modes.push(RadialMode {
+                        kappa,
+                        norm: radial_norm(&values),
+                        values,
+                        node,
+                    });
                     continue;
                 }
                 let scale = if ball {
@@ -356,17 +422,21 @@ pub(super) fn solve(
                 } else {
                     bessel
                 };
-                modes.push(RadialMode { kappa, values, node });
+                modes.push(RadialMode {
+                    kappa,
+                    norm: radial_norm(&values),
+                    values,
+                    node,
+                });
             }
             Some(modes)
         };
-    let radial_weight = |i: usize| -> f64 {
-        let (rv, w) = radial.get(i).copied().unwrap_or((0.0, 0.0));
-        if geometry.sphere {
-            w * rv * rv
-        } else {
-            w * rv
+    let coefficient = |mode: &RadialMode, projection: &[f64], norm_ang: f64| -> f64 {
+        let mut total = 0.0;
+        for ((weight, value), angular) in radial_weights.iter().zip(&mode.values).zip(projection) {
+            total += weight * value * angular;
         }
+        total / (mode.norm * norm_ang)
     };
     if geometry.sphere {
         let lmax = if geometry.theta.is_some() {
@@ -412,6 +482,7 @@ pub(super) fn solve(
                     },
                     | None => vec![(cx.graph.int(1), true)],
                 };
+                let azimuth_weight = 2.0 * PI / azimuths.len() as f64;
                 for (phi_node, is_cos) in phi_nodes {
                     let norm_phi = if geometry.phi.is_none() || m == 0 {
                         2.0 * PI
@@ -419,37 +490,35 @@ pub(super) fn solve(
                         PI
                     };
                     let norm_ang = norm_theta * norm_phi;
-                    for mode in &modes {
-                        let norm_r: f64 = mode
-                            .values
-                            .iter()
-                            .enumerate()
-                            .map(|(i, v)| radial_weight(i) * v * v)
-                            .sum();
-                        for (table, &(_, is_displacement)) in tables.iter().zip(&data) {
-                            let mut total = 0.0;
-                            for (i, by_angle) in table.iter().enumerate() {
-                                let mut angular = 0.0;
-                                for (j, row) in by_angle.iter().enumerate() {
-                                    let (_, wx, _) = angles[j];
-                                    for (k, &fv) in row.iter().enumerate() {
-                                        let trig = if geometry.phi.is_none() {
-                                            1.0
-                                        } else if is_cos {
-                                            (m as f64 * azimuths[k]).cos()
-                                        } else {
-                                            (m as f64 * azimuths[k]).sin()
-                                        };
-                                        angular += wx
-                                            * fv
-                                            * p_values[j]
-                                            * trig
-                                            * (2.0 * PI / azimuths.len() as f64);
+                    let trigs = trig_values(
+                        azimuths.iter().map(|&phi| m as f64 * phi),
+                        geometry.phi.is_some(),
+                        is_cos,
+                    );
+                    let projections: Vec<Vec<f64>> = tables
+                        .iter()
+                        .map(|table| {
+                            table
+                                .iter()
+                                .map(|samples| {
+                                    let mut angular = 0.0;
+                                    for ((row, &(_, wx, _)), p) in samples
+                                        .chunks_exact(trigs.len())
+                                        .zip(&angles)
+                                        .zip(&p_values)
+                                    {
+                                        for (fv, trig) in row.iter().zip(&trigs) {
+                                            angular += wx * fv * p * trig * azimuth_weight;
+                                        }
                                     }
-                                }
-                                total += radial_weight(i) * mode.values[i] * angular;
-                            }
-                            let coefficient = total / (norm_r * norm_ang);
+                                    angular
+                                })
+                                .collect()
+                        })
+                        .collect();
+                    for mode in &modes {
+                        for (projection, &(_, is_displacement)) in projections.iter().zip(&data) {
+                            let coefficient = coefficient(mode, projection, norm_ang);
                             if coefficient.abs() < 1e-14 {
                                 continue;
                             }
@@ -493,31 +562,31 @@ pub(super) fn solve(
                 } else {
                     PI
                 };
+                let trigs = trig_values(
+                    angles.iter().map(|&(_, _, theta)| order_n as f64 * theta),
+                    geometry.theta.is_some(),
+                    is_cos,
+                );
+                let projections: Vec<Vec<f64>> = tables
+                    .iter()
+                    .map(|table| {
+                        table
+                            .iter()
+                            .map(|samples| {
+                                let mut angular = 0.0;
+                                for ((&(_, w, _), value), trig) in
+                                    angles.iter().zip(samples).zip(&trigs)
+                                {
+                                    angular += w * value * trig;
+                                }
+                                angular
+                            })
+                            .collect()
+                    })
+                    .collect();
                 for mode in &modes {
-                    let norm_r: f64 = mode
-                        .values
-                        .iter()
-                        .enumerate()
-                        .map(|(i, v)| radial_weight(i) * v * v)
-                        .sum();
-                    for (table, &(_, is_displacement)) in tables.iter().zip(&data) {
-                        let mut total = 0.0;
-                        for (i, by_angle) in table.iter().enumerate() {
-                            let mut angular = 0.0;
-                            for (j, row) in by_angle.iter().enumerate() {
-                                let (_, w, theta) = angles[j];
-                                let trig = if geometry.theta.is_none() {
-                                    1.0
-                                } else if is_cos {
-                                    (order_n as f64 * theta).cos()
-                                } else {
-                                    (order_n as f64 * theta).sin()
-                                };
-                                angular += w * row.first().copied().unwrap_or(0.0) * trig;
-                            }
-                            total += radial_weight(i) * mode.values[i] * angular;
-                        }
-                        let coefficient = total / (norm_r * norm_ang);
+                    for (projection, &(_, is_displacement)) in projections.iter().zip(&data) {
+                        let coefficient = coefficient(mode, projection, norm_ang);
                         if coefficient.abs() < 1e-14 {
                             continue;
                         }

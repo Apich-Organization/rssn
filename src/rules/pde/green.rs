@@ -58,6 +58,73 @@ fn source_variable(
     Some(cx.graph.sym(&name))
 }
 
+/// The sign of a homogeneous image boundary on this axis.
+fn image_sign(
+    cx: &mut Cx<'_>,
+    condition: &super::Condition,
+) -> Option<i64> {
+    if condition.robin.is_some() || !cx.is_zero(condition.value) {
+        return None;
+    }
+    let order = *condition.derivative.get(condition.on)?;
+    if condition
+        .derivative
+        .iter()
+        .enumerate()
+        .any(|(axis, &value)| axis != condition.on && value != 0)
+    {
+        return None;
+    }
+    match order {
+        | 0 => Some(-1),
+        | 1 => Some(1),
+        | _ => None,
+    }
+}
+
+/// Squared distances and signs of the direct source and its reflections.
+/// Each axis contributes at most two squared gaps, shared by all images.
+fn image_radii(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+    conditions: &Conditions,
+    space: &[usize],
+) -> Option<Vec<(NodeId, i64)>> {
+    let mut squares = Vec::with_capacity(space.len());
+    let mut reflections = Vec::with_capacity(space.len());
+    for (position, &axis) in space.iter().enumerate() {
+        let x = p.vars[axis];
+        let source = source_variable(cx, x)?;
+        let gap = sub(cx.graph, x, source);
+        squares.push(powi(cx.graph, gap, 2));
+        if let Some(condition) = conditions.0.iter().find(|condition| condition.on == axis) {
+            let sign = image_sign(cx, condition)?;
+            let two = cx.graph.int(2);
+            let twice_point = mul(cx.graph, &[two, condition.point]);
+            let reflected = sub(cx.graph, twice_point, source);
+            let gap = sub(cx.graph, x, reflected);
+            reflections.push((position, powi(cx.graph, gap, 2), sign));
+        }
+    }
+    let count = 1 << reflections.len();
+    let mut image = squares.clone();
+    let mut radii = Vec::with_capacity(count);
+    for mask in 0..count {
+        let mut sign = 1;
+        for (bit, &(position, reflected, image_sign)) in reflections.iter().enumerate() {
+            let reflected_here = mask & (1 << bit) != 0;
+            image[position] = if reflected_here {
+                sign *= image_sign;
+                reflected
+            } else {
+                squares[position]
+            };
+        }
+        radii.push((add(cx.graph, &image), sign));
+    }
+    Some(radii)
+}
+
 /// One way to index the modes of an axis: a literal zero-mode term or the
 /// series from `start`.
 struct Choice {
@@ -192,48 +259,9 @@ fn wave_kernel(
     let c = sqrt(cx, speed2)?;
     let t = p.vars[time];
     let ct = mul(cx.graph, &[c, t]);
-    let mut reflections = Vec::new();
-    for (pos, &j) in space.iter().enumerate() {
-        if let Some(cond) = conditions.0.iter().find(|q| q.on == j) {
-            if cond.robin.is_some() || !cx.is_zero(cond.value) {
-                return None;
-            }
-            let sign = if cond.derivative == vec![0; p.dimension()] {
-                -1
-            } else if cond.derivative == p.unit(j, 1) {
-                1
-            } else {
-                return None;
-            };
-            reflections.push((pos, cond.point, sign));
-        }
-    }
-    let xs: Vec<NodeId> = space.iter().map(|&j| p.vars[j]).collect();
-    let ss: Vec<NodeId> = xs
-        .iter()
-        .map(|&x| source_variable(cx, x))
-        .collect::<Option<_>>()?;
-    let mut terms = Vec::new();
-    for mask in 0..(1_usize << reflections.len()) {
-        let mut sources = ss.clone();
-        let mut sign = 1_i64;
-        for (bit, &(pos, point, s)) in reflections.iter().enumerate() {
-            if mask >> bit & 1 == 1 {
-                let two = cx.graph.int(2);
-                let two_a = mul(cx.graph, &[two, point]);
-                sources[pos] = sub(cx.graph, two_a, sources[pos]);
-                sign *= s;
-            }
-        }
-        let squares: Vec<NodeId> = xs
-            .iter()
-            .zip(&sources)
-            .map(|(x, s)| {
-                let gap = sub(cx.graph, *x, *s);
-                powi(cx.graph, gap, 2)
-            })
-            .collect();
-        let r2 = add(cx.graph, &squares);
+    let radii = image_radii(cx, p, conditions, space)?;
+    let mut terms = Vec::with_capacity(radii.len());
+    for (r2, sign) in radii {
         let r = sqrt(cx, r2)?;
         let reach = sub(cx.graph, ct, r);
         let kernel = match d {
@@ -248,7 +276,10 @@ fn wave_kernel(
                 let (two, pi_node) = (cx.graph.int(2), pi(cx)?);
                 let ct2 = powi(cx.graph, ct, 2);
                 let gap = sub(cx.graph, ct2, r2);
-                let root = sqrt(cx, gap)?;
+                // Outside the cone the step function is zero. Keep its
+                // denominator real there so numerical evaluation gives zero.
+                let magnitude = call(cx, "abs", &[gap])?;
+                let root = sqrt(cx, magnitude)?;
                 let denominator = mul(cx.graph, &[two, pi_node, c, root]);
                 div(cx, h, denominator)
             },
@@ -295,16 +326,7 @@ fn heat_kernel(
         let direct = sub(cx.graph, x, s);
         let mut axis = super::classical::kernel(cx, d, direct, t)?;
         if let Some(cond) = conditions.0.iter().find(|q| q.on == j) {
-            if cond.robin.is_some() || !cx.is_zero(cond.value) {
-                return None;
-            }
-            let sign = if cond.derivative == vec![0; p.dimension()] {
-                -1
-            } else if cond.derivative == p.unit(j, 1) {
-                1
-            } else {
-                return None;
-            };
+            let sign = image_sign(cx, cond)?;
             let two = cx.graph.int(2);
             let two_a = mul(cx.graph, &[two, cond.point]);
             let reflected = sub(cx.graph, two_a, s);
@@ -506,47 +528,9 @@ fn fundamental(
             return None;
         }
     }
-    // Reflections: (axis, point, sign).
-    let mut reflections = Vec::new();
-    for (pos, &j) in space.iter().enumerate() {
-        if let Some(cond) = conditions.0.iter().find(|q| q.on == j) {
-            if cond.robin.is_some() || !cx.is_zero(cond.value) {
-                return None;
-            }
-            let sign = if cond.derivative == vec![0; p.dimension()] {
-                -1
-            } else if cond.derivative == p.unit(j, 1) {
-                1
-            } else {
-                return None;
-            };
-            reflections.push((pos, cond.point, sign));
-        }
-    }
-    let xs: Vec<NodeId> = space.iter().map(|&j| p.vars[j]).collect();
-    let ss: Vec<NodeId> = xs
-        .iter()
-        .map(|&x| source_variable(cx, x))
-        .collect::<Option<_>>()?;
-    let mut terms = Vec::new();
-    for mask in 0..(1_usize << reflections.len()) {
-        let mut sources = ss.clone();
-        let mut sign = 1_i64;
-        for (bit, &(pos, point, s)) in reflections.iter().enumerate() {
-            if mask >> bit & 1 == 1 {
-                // s ↦ 2 a - s.
-                let two = cx.graph.int(2);
-                let two_a = mul(cx.graph, &[two, point]);
-                sources[pos] = sub(cx.graph, two_a, sources[pos]);
-                sign *= s;
-            }
-        }
-        let mut squares = Vec::new();
-        for (x, s) in xs.iter().zip(&sources) {
-            let gap = sub(cx.graph, *x, *s);
-            squares.push(powi(cx.graph, gap, 2));
-        }
-        let r2 = add(cx.graph, &squares);
+    let radii = image_radii(cx, p, conditions, space)?;
+    let mut terms = Vec::with_capacity(radii.len());
+    for (r2, sign) in radii {
         let r = sqrt(cx, r2)?;
         let phi = match d {
             | 1 => {

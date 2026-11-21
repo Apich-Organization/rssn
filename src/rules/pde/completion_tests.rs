@@ -284,6 +284,26 @@ fn jordan_systems_with_sources_and_boundaries() {
 }
 
 #[test]
+fn parabolic_robin_keeps_initial_data_parameter_free() {
+    let heat = super::dimension_tests::HEAT;
+    let solution = any(&format!(
+        "pdsolve({heat}, u(x, t), list(at(diff(u(x, t), x), x, 0) + u(0, t) = 0, u(x, 0) = s*exp(-x)))"
+    ));
+    let (x, t) = (0.5_f64, 0.3_f64);
+    for s in [-2.5, 0.0, 3.0] {
+        let bindings = [("x", x), ("t", t), ("s", s)];
+        let actual = crate::rules::testing::numeric(
+            &crate::rules::standard(),
+            &rhs(&solution),
+            &bindings,
+            1e-9,
+        )
+        .0;
+        close(actual, s * (t - x).exp(), 1e-6, &solution);
+    }
+}
+
+#[test]
 fn robin_half_line_and_exterior_ball_heat() {
     let numeric = |text: &str, at: &[(&str, f64)]| {
         crate::rules::testing::numeric(&crate::rules::standard(), text, at, 1e-9).0
@@ -761,20 +781,18 @@ fn weyl_titchmarsh_edge_cases() {
 }
 #[test]
 fn separation_of_variables_for_variable_coefficients() {
-    // u_t = (1 + x)² u_xx + (1 + x) u_x on [0, 1] (Dirichlet): s = ln(1 + x), modes sin(m π s / ln 2).
+    // The shifted Euler chart s = ln(1 + x) gives two explicit Dirichlet modes.
     let eq = "diff(u(x, t), t) = (1 + x)^2*diff(diff(u(x, t), x), x) + (1 + x)*diff(u(x, t), x)";
     let l = 2.0_f64.ln();
     let data = "sin(pi*ln(1 + x)/ln(2)) + sin(3*pi*ln(1 + x)/ln(2))/2";
     let s = any(&format!(
         "pdsolve({eq}, u(x, t), list(u(0, t) = 0, u(1, t) = 0, u(x, 0) = {data}))"
     ));
-    assert!(s.contains("sl_mode") && s.contains("sl_eigen"), "{s}");
     let (x, t) = (0.45_f64, 0.01_f64);
     let s_x = x.ln_1p();
     let exact = (-(PI / l).powi(2) * t).exp() * (PI * s_x / l).sin()
         + 0.5 * (-(3.0 * PI / l).powi(2) * t).exp() * (3.0 * PI * s_x / l).sin();
-    let text = expand_integrals(&expand_sums(&rhs(&s), 5), 160);
-    close(value(&text, &[("x", x), ("t", t)]), exact, 2e-4, &s);
+    close(value(&rhs(&s), &[("x", x), ("t", t)]), exact, 1e-10, &s);
     // A potential and general data: u_t = u_xx + x u_x - u on [0, 1] with a Robin end, residual of the series.
     let eq = "diff(u(x, t), t) = diff(diff(u(x, t), x), x) + x*diff(u(x, t), x) - u(x, t)";
     let s = any(&format!(
@@ -1061,6 +1079,80 @@ fn greens_functions() {
         1e-12,
         &s,
     );
+}
+
+#[test]
+fn green_mixed_orthant_images_at_shifted_boundaries() {
+    let laplacian = "diff(diff(u(x, y, z), x), x) + diff(diff(u(x, y, z), y), y) + diff(diff(u(x, y, z), z), z) = 0";
+    let expression = any(&format!(
+        "pde_greens_function({laplacian}, u(x, y, z), list(u(1, y, z) = 0, at(diff(u(x, y, z), y), y, -1) = 0, u(x, y, 2) = 0))"
+    ));
+    let kernel = rhs(&expression);
+    let source = [1.9_f64, 0.5, 3.4];
+    let walls = [1.0, -1.0, 2.0];
+    let at = |[x, y, z]: [f64; 3]| {
+        value(
+            &kernel,
+            &[
+                ("x", x),
+                ("y", y),
+                ("z", z),
+                ("s_x", source[0]),
+                ("s_y", source[1]),
+                ("s_z", source[2]),
+            ],
+        )
+    };
+    let point = [1.3, -0.2, 2.8];
+    let reference: f64 = (0_u32..8)
+        .map(|mask| {
+            let squared: f64 = (0..3)
+                .map(|axis| {
+                    let coordinate = if mask & (1 << axis) == 0 {
+                        source[axis]
+                    } else {
+                        2.0 * walls[axis] - source[axis]
+                    };
+                    (point[axis] - coordinate).powi(2)
+                })
+                .sum();
+            let sign = if (mask & 0b101).count_ones().is_multiple_of(2) {
+                1.0
+            } else {
+                -1.0
+            };
+            -sign / (4.0 * PI * squared.sqrt())
+        })
+        .sum();
+    close(at(point), reference, 1e-12, &expression);
+    close(at([1.0, point[1], point[2]]), 0.0, 1e-12, &expression);
+    close(at([point[0], point[1], 2.0]), 0.0, 1e-12, &expression);
+    close(
+        at([point[0], -0.95, point[2]]),
+        at([point[0], -1.05, point[2]]),
+        1e-12,
+        &expression,
+    );
+}
+
+#[test]
+fn green_planar_wave_is_zero_outside_each_image_cone() {
+    let wave = "diff(diff(u(x, y, t), t), t) = diff(diff(u(x, y, t), x), x) + diff(diff(u(x, y, t), y), y)";
+    let expression = any(&format!(
+        "pde_greens_function({wave}, u(x, y, t), list(u(0, y, t) = 0))"
+    ));
+    let kernel = rhs(&expression);
+    let at = |x, t| {
+        value(
+            &kernel,
+            &[("x", x), ("y", 0.0), ("s_x", 1.0), ("s_y", 0.0), ("t", t)],
+        )
+    };
+    close(at(1.25, 0.1), 0.0, 1e-12, &expression);
+    close(at(1.25, -1.0), 0.0, 1e-12, &expression);
+    let want = 1.0 / (2.0 * PI * (0.5_f64.powi(2) - 0.25_f64.powi(2)).sqrt());
+    close(at(1.25, 0.5), want, 1e-12, &expression);
+    close(at(0.0, 1.5), 0.0, 1e-12, &expression);
 }
 
 #[test]
@@ -1917,7 +2009,7 @@ fn tanh_method_finds_travelling_waves() {
 }
 
 #[test]
-fn separable_variable_coefficients_in_two_variables() {
+fn separable_shifted_euler_in_two_variables() {
     // u_t = (1 + x)² u_xx + (1 + x) u_x + u_yy: an Euler mode times sin(y).
     let eq = "diff(u(x, y, t), t) = (1 + x)^2*diff(diff(u(x, y, t), x), x) + (1 + x)*diff(u(x, y, t), x) + diff(diff(u(x, y, t), y), y)";
     let l = 2.0_f64.ln();
@@ -1925,10 +2017,29 @@ fn separable_variable_coefficients_in_two_variables() {
     let s = any(&format!(
         "pdsolve({eq}, u(x, y, t), list(u(0, y, t) = 0, u(1, y, t) = 0, u(x, 0, t) = 0, u(x, pi, t) = 0, u(x, y, 0) = {data}))"
     ));
-    assert!(s.contains("sl_mode"), "{s}");
     let (x, y, t) = (0.45_f64, 1.1_f64, 0.01_f64);
     let exact = (-((PI / l).powi(2) + 1.0) * t).exp() * (PI * x.ln_1p() / l).sin() * y.sin();
-    let text = expand_integrals(&expand_sums(&rhs(&s), 4), 120);
+    close(
+        value(&rhs(&s), &[("x", x), ("y", y), ("t", t)]),
+        exact,
+        1e-10,
+        &s,
+    );
+}
+
+#[test]
+fn separable_variable_coefficients_in_two_variables() {
+    // With s = atan(x) the x-operator becomes ∂²/∂s² on [0, π/4].
+    // The initial data is the product of the two first Dirichlet modes.
+    let eq = "diff(u(x, y, t), t) = (1 + x^2)^2*diff(diff(u(x, y, t), x), x) + 2*x*(1 + x^2)*diff(u(x, y, t), x) + diff(diff(u(x, y, t), y), y)";
+    let data = "sin(4*atan(x))*sin(y)";
+    let s = any(&format!(
+        "pdsolve({eq}, u(x, y, t), list(u(0, y, t) = 0, u(1, y, t) = 0, u(x, 0, t) = 0, u(x, pi, t) = 0, u(x, y, 0) = {data}))"
+    ));
+    assert!(s.contains("sl_mode") && s.contains("sl_eigen"), "{s}");
+    let (x, y, t) = (0.45_f64, 1.1_f64, 0.01_f64);
+    let exact = (-17.0 * t).exp() * (4.0 * x.atan()).sin() * y.sin();
+    let text = expand_integrals(&expand_sums(&rhs(&s), 1), 32);
     close(
         value(&text, &[("x", x), ("y", y), ("t", t)]),
         exact,
@@ -2091,6 +2202,68 @@ fn poisson_integrals_on_disks_and_balls() {
         3e-4,
         &s,
     );
+}
+
+#[test]
+fn poisson_integral_reduces_constant_and_single_disk_modes() {
+    for source in [
+        "pde_poisson_integral(q + 3, R, 2)",
+        "pde_poisson_integral(q + 3, R, 3)",
+    ] {
+        let text = run(source);
+        assert!(!text.contains("defint("), "{text}");
+        close(value(&text, &[("q", 4.0)]), 7.0, 1e-12, &text);
+    }
+    let (r, radius, theta) = (0.6_f64, 1.7_f64, 0.8_f64);
+    let bindings = [("r", r), ("R", radius), ("theta", theta)];
+    for (source, expected) in [
+        ("cos(phi)", (r / radius) * theta.cos()),
+        ("cos(3*phi)", (r / radius).powi(3) * (3.0 * theta).cos()),
+        ("sin(-4*phi)", (r / radius).powi(4) * (-4.0 * theta).sin()),
+    ] {
+        let text = run(&format!("pde_poisson_integral({source}, R, 2)"));
+        assert!(!text.contains("defint("), "{text}");
+        close(value(&text, &bindings), expected, 1e-12, &text);
+    }
+}
+
+#[test]
+fn poisson_integral_preserves_free_parameters_in_boundary_data() {
+    let disk = run("pde_poisson_integral(alpha*cos(phi)^2, 1, 2)");
+    let text = expand_integrals(&disk, 64);
+    close(
+        value(&text, &[("r", 0.0), ("theta", 0.6), ("alpha", 5.0)]),
+        2.5,
+        1e-12,
+        &disk,
+    );
+
+    let ball = run("pde_poisson_integral(alpha*beta*cos(theta)^2, 1, 3)");
+    let text = expand_integrals(&ball, 32);
+    let bindings = [
+        ("r", 0.0),
+        ("theta", 0.6),
+        ("phi", 0.7),
+        ("alpha", 3.0),
+        ("beta", 5.0),
+    ];
+    close(value(&text, &bindings), 5.0, 7e-3, &ball);
+}
+
+#[test]
+fn poisson_integral_rejects_invalid_geometry() {
+    for source in [
+        "pde_poisson_integral(5, 0, 2)",
+        "pde_poisson_integral(5, -1, 3)",
+        "pde_poisson_integral(5, 1, 2.4)",
+        "pde_poisson_integral(5, 1, 4)",
+    ] {
+        let text = any(source);
+        assert!(
+            text.starts_with("pde_poisson_integral("),
+            "{source}: {text}"
+        );
+    }
 }
 
 #[test]

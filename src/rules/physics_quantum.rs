@@ -533,7 +533,7 @@ fn spherical_harmonic(
     if !(0..=40).contains(&l) {
         return None;
     }
-    if m.abs() > l {
+    if m.unsigned_abs() > l.unsigned_abs() {
         return Some(graph.int(0));
     }
     let (lu, mu) = (
@@ -843,6 +843,12 @@ mod tests {
     #[test]
     fn spherical_harmonics_and_hydrogen() {
         let rules = rules();
+        for m in [i64::MIN, -2, 2, i64::MAX] {
+            assert_eq!(
+                simplify(&rules, &format!("spherical_harmonic(1, {m}, theta, phi)")),
+                "0"
+            );
+        }
         let y10 = simplify(&rules, "spherical_harmonic(1, 0, theta, phi)");
         let want = (3.0 / (4.0 * std::f64::consts::PI)).sqrt() * 0.7_f64.cos();
         assert!(

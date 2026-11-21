@@ -21,11 +21,11 @@
 use super::Conditions;
 use super::Problem;
 use super::classical::kernel;
-use super::dummy;
 use super::spectral::evolution_time;
 use super::util::call;
 use super::util::defint;
 use super::util::div;
+use super::util::fresh_integration_symbol;
 use super::util::infinity;
 use super::util::is_zero_number;
 use super::util::sqrt;
@@ -283,13 +283,12 @@ pub(super) fn parabolic(
     }
     let beta = add(cx.graph, &beta_terms);
     let beta = cx.simplify(beta);
-    // Dummies of integration.
+    // Allocate each bound coordinate independently of the PDE, initial data,
+    // and boundary data. Repeated stems in higher dimensions stay distinct.
     let stems = ["s", "r", "q", "w", "z", "y"];
-    let mut dummies = Vec::new();
-    for axis in 0..c.space.len() {
-        let stem = stems.get(axis).copied().unwrap_or("s");
-        dummies.push(dummy(cx, p, stem).0);
-    }
+    let dummies: Vec<NodeId> = (0..c.space.len())
+        .map(|axis| fresh_integration_symbol(cx, stems.get(axis).copied().unwrap_or("s")))
+        .collect();
     let phase_at = |cx: &mut Cx<'_>, coords: &[NodeId], skip: Option<usize>| -> NodeId {
         let terms: Vec<NodeId> = coords
             .iter()
@@ -329,28 +328,32 @@ pub(super) fn parabolic(
             Some(mul(cx.graph, &factors))
         };
     let minus_one = cx.graph.int(-1);
-    // Initial data.
-    let f_at = substitute_space(cx, initial.value, &dummies, None);
-    let phase_s = phase_at(cx, &dummies, None);
-    let gauge_s = {
-        let e = mul(cx.graph, &[minus_one, phase_s]);
-        call(cx, "exp", &[e])?
-    };
-    let weight = product(cx, &dummies, t, None)?;
-    let integrand = mul(cx.graph, &[weight, gauge_s, f_at]);
     let mut parts = Vec::new();
-    if !cx.is_zero(initial.value) {
+    // The initial and source terms share the spatial gauge. A zero initial
+    // value needs neither coordinate substitution nor its kernel product.
+    let has_initial = !cx.is_zero(initial.value);
+    let has_source = !cx.is_zero(c.forcing);
+    let phase_s = if has_initial || has_source {
+        phase_at(cx, &dummies, None)
+    } else {
+        cx.graph.int(0)
+    };
+    if has_initial {
+        let f_at = substitute_space(cx, initial.value, &dummies, None);
+        let gauge = mul(cx.graph, &[minus_one, phase_s]);
+        let gauge = call(cx, "exp", &[gauge])?;
+        let weight = product(cx, &dummies, t, None)?;
+        let integrand = mul(cx.graph, &[weight, gauge, f_at]);
         parts.push(integrate_axes(cx, integrand, &dummies, &domains, None)?);
     }
     let zero = cx.graph.int(0);
     // Duhamel's integral for the source.
-    if !cx.is_zero(c.forcing) {
-        let (tau, _) = dummy(cx, p, "tau");
+    if has_source {
+        let tau = fresh_integration_symbol(cx, "tau");
         let source = substitute_space(cx, c.forcing, &dummies, None);
         let source = cx.graph.substitute(source, t, tau);
         let elapsed = sub(cx.graph, t, tau);
         let weight = product(cx, &dummies, elapsed, None)?;
-        let phase_s = phase_at(cx, &dummies, None);
         let b_tau = mul(cx.graph, &[beta, tau]);
         let gauge = {
             let e = add(cx.graph, &[phase_s, b_tau]);
@@ -367,7 +370,7 @@ pub(super) fn parabolic(
             | Domain::Half(s) => s,
             | Domain::Whole | Domain::Robin(_) => return None,
         };
-        let (tau, _) = dummy(cx, p, "tau");
+        let tau = fresh_integration_symbol(cx, "tau");
         let g_at = substitute_space(cx, g, &dummies, Some(axis));
         let g_at = cx.graph.substitute(g_at, t, tau);
         let elapsed = sub(cx.graph, t, tau);

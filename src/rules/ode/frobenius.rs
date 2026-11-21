@@ -30,11 +30,15 @@
 //!   [`super::formal`] when the rank-one search fails: the result carries
 //!   `exp(Σ κ_s v^{-s}) v^ρ Σ c_k v^k` with `v^r = x - x0` (or `1/x`), `κ`
 //!   and `ρ` possibly algebraic (`root_of` objects), and `ode_frobenius`
-//!   lists `(exponent part, ρ)` pairs and an empty recurrence.
+//!   lists `(exponent part, ρ)` pairs and an empty recurrence. Embeddings
+//!   share the same exact coefficients, and the report reuses the
+//!   prefactors of the two rendered solutions.
 //! * `ode_frobenius(eq, y(x), x0, n)` returns
-//!   `list(y(x) = C1 y1 + C2 y2, list(r1, r2), recurrence)` where the
-//!   recurrence is the explicit finite-order relation
-//!   `Σ_d c_d(k) a(k - d) = 0` of the larger exponent.
+//!   `list(y(x) = C1 y1 + C2 y2, exponents, recurrence)`. The regular
+//!   rational case gives the two indicial roots and the finite recurrence
+//!   `Σ_d c_d(k) a(k - d) = 0` of the larger exponent. The rank-one
+//!   rational case gives `(λ, ρ)` pairs and the recurrence of the first
+//!   branch. The quadratic and Newton-polygon paths have an empty recurrence.
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
@@ -731,10 +735,10 @@ pub(super) enum Local {
     },
     /// Newton-polygon expansion (any Poincaré rank, ramified, irrational or
     /// complex exponential parts, algebraic singular points): the
-    /// formal solutions with the index of the embedding of their field.
+    /// unique formal solutions in expansion order, each shared by its embeddings.
     Newton {
         point: NewtonPoint,
-        items: Vec<(FormalSolution, usize)>,
+        solutions: Vec<FormalSolution>,
     },
 }
 
@@ -797,33 +801,95 @@ fn newton(
     }
     for (new_point, formal_point) in candidates {
         let solutions = formal_solutions_newton(operator, &formal_point, n);
-        let mut items: Vec<(FormalSolution, usize)> = Vec::new();
-        for solution in solutions {
-            for k in 0..solution.field.degree() {
-                items.push((solution.clone(), k));
-            }
-        }
-        if items.len() >= 2 {
+        if newton_embeddings(&solutions).nth(1).is_some() {
             return Some(Local::Newton {
                 point: new_point,
-                items,
+                solutions,
             });
         }
     }
     None
 }
 
-/// The pieces of a Newton-polygon solution as terms: the exponent
-/// `Σ κ_s v^{-s}` (zero when absent), the exponent `ρ`, the truncated series
-/// and the variable `v`.
-fn newton_parts(
+/// The flat branch order used by the report and numerical operators.
+fn newton_embeddings(
+    solutions: &[FormalSolution]
+) -> impl Iterator<Item = (&FormalSolution, usize)> {
+    solutions
+        .iter()
+        .flat_map(|solution| (0..solution.field.degree()).map(move |k| (solution, k)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::formal::Field;
+    use super::*;
+
+    #[test]
+    fn newton_embeddings_borrow_solutions_in_branch_order() {
+        let solution = |field| {
+            FormalSolution {
+                field,
+                ramification: 1,
+                exponent: Vec::new(),
+                rho: Vec::new(),
+                coefficients: vec![vec![q(1)]],
+                log_terms: Vec::new(),
+            }
+        };
+        let rational = solution(Field::rationals());
+        let quadratic = solution(Field::extension(vec![q(1), q(0), q(1)]));
+        let solutions = [rational.clone(), quadratic, rational];
+        let branches: Vec<_> = newton_embeddings(&solutions).collect();
+        assert_eq!(branches.len(), 4);
+        for ((solution, k), (index, expected_k)) in
+            branches.into_iter().zip([(0, 0), (1, 0), (1, 1), (2, 0)])
+        {
+            assert!(std::ptr::eq(solution, &solutions[index]));
+            assert_eq!(k, expected_k);
+        }
+    }
+}
+
+/// The local variable, field embedding and powers in `exp(exponent) v^rho`.
+struct NewtonPrefactor {
+    alpha: Option<NodeId>,
+    v: NodeId,
+    exponent: NodeId,
+    rho: NodeId,
+}
+
+fn newton_element(
+    cx: &mut Cx<'_>,
+    e: &[Q],
+    alpha: Option<NodeId>,
+) -> NodeId {
+    let mut terms = Vec::new();
+    for (i, c) in e.iter().enumerate() {
+        if c.is_zero() {
+            continue;
+        }
+        let cn = node_of(cx.graph, c);
+        match (i, alpha) {
+            | (0, _) => terms.push(cn),
+            | (_, Some(a)) => {
+                let exponent = cx.graph.int(i64::try_from(i).unwrap_or(0));
+                let power = cx.graph.node(core::POW, &[a, exponent]);
+                terms.push(mul(cx.graph, &[cn, power]));
+            },
+            | _ => {},
+        }
+    }
+    add(cx.graph, &terms)
+}
+
+fn newton_prefactor(
     cx: &mut Cx<'_>,
     x: NodeId,
     point: &NewtonPoint,
     solution: &FormalSolution,
     k: usize,
-    n: usize,
-) -> Option<(NodeId, NodeId, NodeId, NodeId)> {
+) -> Option<NewtonPrefactor> {
     let root_of = cx.graph.ops().lookup("root_of")?;
     let alpha = if solution.field.is_rational() {
         None
@@ -833,25 +899,6 @@ fn newton_parts(
             arguments.push(node_of(cx.graph, c));
         }
         Some(cx.graph.node(root_of, &arguments))
-    };
-    let element = |cx: &mut Cx<'_>, e: &[Q]| -> NodeId {
-        let mut terms = Vec::new();
-        for (i, c) in e.iter().enumerate() {
-            if c.is_zero() {
-                continue;
-            }
-            let cn = node_of(cx.graph, c);
-            match (i, alpha) {
-                | (0, _) => terms.push(cn),
-                | (_, Some(a)) => {
-                    let exponent = cx.graph.int(i64::try_from(i).unwrap_or(0));
-                    let power = cx.graph.node(core::POW, &[a, exponent]);
-                    terms.push(mul(cx.graph, &[cn, power]));
-                },
-                | _ => {},
-            }
-        }
-        add(cx.graph, &terms)
     };
     let t = match point {
         | NewtonPoint::Infinity => local_variable(cx, x, None),
@@ -877,13 +924,28 @@ fn newton_parts(
     };
     let mut exponent_terms = Vec::new();
     for (s, kappa) in &solution.exponent {
-        let kn = element(cx, kappa);
+        let kn = newton_element(cx, kappa, alpha);
         let e = cx.graph.int(-*s);
         let power = cx.graph.node(core::POW, &[v, e]);
         exponent_terms.push(mul(cx.graph, &[kn, power]));
     }
     let exponent = add(cx.graph, &exponent_terms);
-    let rho = element(cx, &solution.rho);
+    let rho = newton_element(cx, &solution.rho, alpha);
+    Some(NewtonPrefactor {
+        alpha,
+        v,
+        exponent,
+        rho,
+    })
+}
+
+fn newton_series(
+    cx: &mut Cx<'_>,
+    solution: &FormalSolution,
+    prefactor: &NewtonPrefactor,
+    n: usize,
+) -> Option<NodeId> {
+    let NewtonPrefactor { alpha, v, .. } = *prefactor;
     let mut series_terms = Vec::new();
     let ln = cx.graph.ops().lookup("ln")?;
     let log_of_v = cx.graph.node(ln, &[v]);
@@ -894,7 +956,7 @@ fn newton_parts(
         }
         let mut parts = Vec::new();
         if !c.is_empty() {
-            parts.push(element(cx, c));
+            parts.push(newton_element(cx, c, alpha));
         }
         let mut factorial = 1_i64;
         for (i, lc) in logs.iter().enumerate() {
@@ -902,7 +964,7 @@ fn newton_parts(
             if lc.is_empty() {
                 continue;
             }
-            let coefficient = element(cx, lc);
+            let coefficient = newton_element(cx, lc, alpha);
             let divisor = cx.graph.num(Number::fraction(1, factorial)?);
             let exponent_node = cx.graph.int(i64::try_from(i + 1).ok()?);
             let power = cx.graph.node(core::POW, &[log_of_v, exponent_node]);
@@ -921,8 +983,7 @@ fn newton_parts(
     let e = cx.graph.int(i64::try_from(n).ok()?);
     let tail = cx.graph.node(core::POW, &[v, e]);
     series_terms.push(cx.graph.node(order_symbol, &[tail]));
-    let series = add(cx.graph, &series_terms);
-    Some((exponent, rho, series, v))
+    Some(add(cx.graph, &series_terms))
 }
 
 /// The equation in `t = 1/x`: `P2 (t^4 Y'' + 2 t^3 Y') - P1 t^2 Y' + P0 Y`
@@ -1222,12 +1283,26 @@ fn local_variable(
 }
 
 /// The two solutions as terms.
+struct SolutionPair {
+    branches: [NodeId; 2],
+    newton_exponents: Option<[[NodeId; 2]; 2]>,
+}
+
+impl SolutionPair {
+    const fn new(branches: [NodeId; 2]) -> Self {
+        Self {
+            branches,
+            newton_exponents: None,
+        }
+    }
+}
+
 fn solutions(
     cx: &mut Cx<'_>,
     x: NodeId,
     local: &Local,
     n: usize,
-) -> Option<(NodeId, NodeId)> {
+) -> Option<SolutionPair> {
     match local {
         | Local::Regular { centre, data } => {
             let t = local_variable(cx, x, centre.as_ref());
@@ -1240,7 +1315,7 @@ fn solutions(
                 let logged = mul(cx.graph, &[c, y1, log]);
                 y2 = add(cx.graph, &[logged, y2]);
             }
-            Some((y1, y2))
+            Some(SolutionPair::new([y1, y2]))
         },
         | Local::Quadratic { centre, data } => {
             let t = local_variable(cx, x, centre.as_ref());
@@ -1307,10 +1382,10 @@ fn solutions(
                     let second = mul(cx.graph, &[c_node, big_b]);
                     add(cx.graph, &[first, second])
                 };
-                return Some((
+                return Some(SolutionPair::new([
                     mul(cx.graph, &[sigma_power, real_inner]),
                     mul(cx.graph, &[sigma_power, imaginary_inner]),
-                ));
+                ]));
             }
             // Real irrational exponents σ ± τ √D.
             let mut pair = Vec::new();
@@ -1332,13 +1407,15 @@ fn solutions(
                 pair.push(mul(cx.graph, &[power, polynomial]));
             }
             let (&first, &second) = (pair.first()?, pair.get(1)?);
-            Some((first, second))
+            Some(SolutionPair::new([first, second]))
         },
-        | Local::Newton { point, items } => {
+        | Local::Newton { point, solutions } => {
             let exp = cx.graph.ops().lookup("exp")?;
-            let mut nodes = Vec::new();
-            for (solution, k) in items.iter().take(2) {
-                let (exponent, rho, series, v) = newton_parts(cx, x, point, solution, *k, n)?;
+            let mut embeddings = newton_embeddings(solutions);
+            let mut render = |(solution, k): (&FormalSolution, usize)| {
+                let prefactor = newton_prefactor(cx, x, point, solution, k)?;
+                let series = newton_series(cx, solution, &prefactor, n)?;
+                let NewtonPrefactor { exponent, rho, v, .. } = prefactor;
                 let mut factors = Vec::new();
                 if !cx.is_zero(exponent) {
                     factors.push(cx.graph.node(exp, &[exponent]));
@@ -1347,10 +1424,14 @@ fn solutions(
                     factors.push(cx.graph.node(core::POW, &[v, rho]));
                 }
                 factors.push(series);
-                nodes.push(mul(cx.graph, &factors));
-            }
-            let (&first, &second) = (nodes.first()?, nodes.get(1)?);
-            Some((first, second))
+                Some((mul(cx.graph, &factors), [exponent, rho]))
+            };
+            let (first, first_exponents) = render(embeddings.next()?)?;
+            let (second, second_exponents) = render(embeddings.next()?)?;
+            Some(SolutionPair {
+                branches: [first, second],
+                newton_exponents: Some([first_exponents, second_exponents]),
+            })
         },
         | Local::Formal { centre, items } => {
             let t = local_variable(cx, x, centre.as_ref());
@@ -1370,7 +1451,7 @@ fn solutions(
                 nodes.push(mul(cx.graph, &[factor, series]));
             }
             let (&first, &second) = (nodes.first()?, nodes.get(1)?);
-            Some((first, second))
+            Some(SolutionPair::new([first, second]))
         },
     }
 }
@@ -1388,7 +1469,7 @@ pub(super) fn series_solution(
     let x = problem.x;
     let p = polynomials(cx, &a, x)?;
     let found = local(&p, TERMS, &Point::Finite(None))?;
-    let (y1, y2) = solutions(cx, x, &found, TERMS)?;
+    let [y1, y2] = solutions(cx, x, &found, TERMS)?.branches;
     let (c1, c2) = (problem.constant(cx.graph), problem.constant(cx.graph));
     let terms = [mul(cx.graph, &[c1, y1]), mul(cx.graph, &[c2, y2])];
     let solution = add(cx.graph, &terms);
@@ -1467,15 +1548,14 @@ pub(super) fn asymptotic(
         return None;
     }
     let p = polynomials(cx, &a, problem.x)?;
-    let Local::Newton { items, .. } = newton(&p, n, &point)? else {
+    let Local::Newton { solutions, .. } = newton(&p, n, &point)? else {
         return None;
     };
-    let (solution, k) = items.get(which)?;
-    let embeddings = solution.field.embeddings();
+    let (solution, k) = newton_embeddings(&solutions).nth(which)?;
     let alpha = if solution.field.is_rational() {
         num_complex::Complex64::new(0.0, 0.0)
     } else {
-        *embeddings.get(*k)?
+        *solution.field.embeddings().get(k)?
     };
     let t = match &centre {
         | None => 1.0 / at,
@@ -1530,7 +1610,8 @@ pub(super) fn report(
     let x = problem.x;
     let p = polynomials(cx, &a, x)?;
     let found = local(&p, n, &point)?;
-    let (y1, y2) = solutions(cx, x, &found, n)?;
+    let rendered = solutions(cx, x, &found, n)?;
+    let [y1, y2] = rendered.branches;
     let (c1, c2) = (problem.constant(cx.graph), problem.constant(cx.graph));
     let terms = [mul(cx.graph, &[c1, y1]), mul(cx.graph, &[c2, y2])];
     let solution = add(cx.graph, &terms);
@@ -1572,10 +1653,15 @@ pub(super) fn report(
                 cx.graph.node(core::LIST, &[]),
             )
         },
-        | Local::Newton { point, items } => {
-            let mut pairs = Vec::new();
-            for (solution, k) in items {
-                let (exponent, rho, _, _) = newton_parts(cx, x, point, solution, *k, n)?;
+        | Local::Newton { point, solutions } => {
+            let mut pairs: Vec<_> = rendered
+                .newton_exponents?
+                .into_iter()
+                .map(|pair| cx.graph.node(core::LIST, &pair))
+                .collect();
+            for (solution, k) in newton_embeddings(solutions).skip(pairs.len()) {
+                let NewtonPrefactor { exponent, rho, .. } =
+                    newton_prefactor(cx, x, point, solution, k)?;
                 pairs.push(cx.graph.node(core::LIST, &[exponent, rho]));
             }
             (

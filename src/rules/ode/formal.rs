@@ -1396,24 +1396,24 @@ fn log_series(
 // ---------------------------------------------------------------------
 // Numeric evaluation.
 
-/// Sum of `Σ c_k v^k` truncated at the smallest term (optimal truncation):
-/// the value and the size of the first omitted term as an error estimate.
+/// Sums `Σ c_k v^k` until the first increase in nonzero term magnitude after
+/// the initial three terms. The error estimate is the first omitted term's
+/// magnitude, or the final supplied term's magnitude if all are used.
 #[must_use]
 pub fn optimal_truncation(
-    coefficients: &[Complex64],
+    coefficients: impl IntoIterator<Item = Complex64>,
     v: Complex64,
 ) -> (Complex64, f64) {
     let mut sum = Complex64::new(0.0, 0.0);
     let mut power = Complex64::new(1.0, 0.0);
     let mut previous = f64::INFINITY;
     let mut error = f64::INFINITY;
-    for (k, c) in coefficients.iter().enumerate() {
+    for (k, c) in coefficients.into_iter().enumerate() {
         let term = c * power;
         let size = term.norm();
         // Stop when the terms start to grow (past the first few).
-        if k > 2 && size > previous && size > 0.0 {
-            error = previous;
-            break;
+        if k > 2 && size > previous {
+            return (sum, size);
         }
         sum += term;
         if size > 0.0 {
@@ -1426,29 +1426,39 @@ pub fn optimal_truncation(
 }
 
 impl FormalSolution {
-    /// The solution at `x` for the embedding `alpha` of the field's
-    /// generator, with the singular point `point_value` (`α` itself for a
-    /// finite point; ignored for infinity, `infinity = true`). The series is
-    /// summed with [`optimal_truncation`]. Returns `(value, error)`.
+    /// The solution for the field embedding `alpha` at the local coordinate
+    /// `t`. Use the displacement from a finite singular point or `1/x` at
+    /// infinity. Returns the value and the scaled error estimate from
+    /// [`optimal_truncation`].
     #[must_use]
     pub fn evaluate(
         &self,
         alpha: Complex64,
         t: Complex64,
     ) -> (Complex64, f64) {
+        let (v, log_v, prefactor) = self.numeric_coordinate(alpha, t);
+        let coefficients = self.numeric_coefficients(alpha, log_v);
+        let (series_value, error) = optimal_truncation(coefficients, v);
+        (prefactor * series_value, error * prefactor.norm())
+    }
+
+    fn numeric_coordinate(
+        &self,
+        alpha: Complex64,
+        t: Complex64,
+    ) -> (Complex64, Complex64, Complex64) {
         let r = self.ramification as f64;
         // v = t^(1/r), principal branch.
         let v = (t.ln() / r).exp();
+        let log_v = v.ln();
         let mut exponent_sum = Complex64::new(0.0, 0.0);
         for (s, kappa) in &self.exponent {
             exponent_sum +=
                 self.field.numeric(kappa, alpha) * v.powi(-i32::try_from(*s).unwrap_or(0));
         }
         let rho = self.field.numeric(&self.rho, alpha);
-        let coefficients = self.numeric_coefficients(alpha, v);
-        let (series_value, error) = optimal_truncation(&coefficients, v);
-        let prefactor = exponent_sum.exp() * (rho * v.ln()).exp();
-        (prefactor * series_value, error * prefactor.norm())
+        let prefactor = exponent_sum.exp() * (rho * log_v).exp();
+        (v, log_v, prefactor)
     }
 }
 
@@ -1466,30 +1476,25 @@ impl FormalSolution {
     fn numeric_coefficients(
         &self,
         alpha: Complex64,
-        v: Complex64,
-    ) -> Vec<Complex64> {
-        let log = v.ln();
-        self.coefficients
-            .iter()
-            .enumerate()
-            .map(|(k, c)| {
-                let mut value = self.field.numeric(c, alpha);
-                let mut power = Complex64::new(1.0, 0.0);
-                let mut factorial = 1.0_f64;
-                for (i, lc) in self
-                    .log_terms
-                    .get(k)
-                    .map_or(&[][..], Vec::as_slice)
-                    .iter()
-                    .enumerate()
-                {
-                    power *= log;
-                    factorial *= (i + 1) as f64;
-                    value += self.field.numeric(lc, alpha) * power / factorial;
-                }
-                value
-            })
-            .collect()
+        log_v: Complex64,
+    ) -> impl Iterator<Item = Complex64> + '_ {
+        self.coefficients.iter().enumerate().map(move |(k, c)| {
+            let mut value = self.field.numeric(c, alpha);
+            let mut power = Complex64::new(1.0, 0.0);
+            let mut factorial = 1.0_f64;
+            for (i, lc) in self
+                .log_terms
+                .get(k)
+                .map_or(&[][..], Vec::as_slice)
+                .iter()
+                .enumerate()
+            {
+                power *= log_v;
+                factorial *= (i + 1) as f64;
+                value += self.field.numeric(lc, alpha) * power / factorial;
+            }
+            value
+        })
     }
 
     /// Like [`Self::evaluate`] with the series summed by Borel–Padé
@@ -1500,17 +1505,9 @@ impl FormalSolution {
         alpha: Complex64,
         t: Complex64,
     ) -> Option<(Complex64, f64, bool)> {
-        let r = self.ramification as f64;
-        let v = (t.ln() / r).exp();
-        let mut exponent_sum = Complex64::new(0.0, 0.0);
-        for (s, kappa) in &self.exponent {
-            exponent_sum +=
-                self.field.numeric(kappa, alpha) * v.powi(-i32::try_from(*s).unwrap_or(0));
-        }
-        let rho = self.field.numeric(&self.rho, alpha);
-        let coefficients = self.numeric_coefficients(alpha, v);
+        let (v, log_v, prefactor) = self.numeric_coordinate(alpha, t);
+        let coefficients: Vec<_> = self.numeric_coefficients(alpha, log_v).collect();
         let sum = super::resum::borel_pade(&coefficients, v)?;
-        let prefactor = exponent_sum.exp() * (rho * v.ln()).exp();
         Some((
             prefactor * sum.value,
             prefactor.norm() * sum.error,
@@ -1529,6 +1526,50 @@ mod tests {
 
     fn rational(a: &Elt) -> Q {
         a.first().cloned().unwrap_or_else(Q::zero)
+    }
+
+    #[test]
+    fn euler_truncation_reports_first_omitted_term_and_stops() {
+        let visited = std::cell::Cell::new(0);
+        let coefficients = [1.0, -1.0, 2.0, -6.0, 24.0, -120.0, 720.0]
+            .into_iter()
+            .map(|c| Complex64::new(c, 0.0))
+            .inspect(|_| visited.set(visited.get() + 1));
+        let (sum, error) = optimal_truncation(coefficients, Complex64::new(0.25, 0.0));
+        assert_eq!(visited.get(), 6);
+        assert_eq!(sum, Complex64::new(7.0 / 8.0, 0.0));
+        assert_eq!(error.to_bits(), (15.0_f64 / 128.0).to_bits());
+    }
+
+    #[test]
+    fn exhausted_truncation_uses_final_supplied_term() {
+        let v = Complex64::new(1.0, 0.0);
+        let coefficients = [1.0, 2.0, 0.0].map(|c| Complex64::new(c, 0.0));
+        let (sum, error) = optimal_truncation(coefficients, v);
+        assert_eq!(sum, Complex64::new(3.0, 0.0));
+        assert_eq!(error.to_bits(), 0.0_f64.to_bits());
+
+        let (sum, error) = optimal_truncation([], v);
+        assert_eq!(sum, Complex64::new(0.0, 0.0));
+        assert!(error.is_infinite() && error.is_sign_positive());
+    }
+
+    #[test]
+    fn formal_evaluation_scales_truncation_error() {
+        let euler = FormalSolution {
+            field: Field::rationals(),
+            ramification: 1,
+            exponent: Vec::new(),
+            rho: qs(&[2]),
+            coefficients: [1, -1, 2, -6, 24, -120, 720]
+                .into_iter()
+                .map(|c| qs(&[c]))
+                .collect(),
+            log_terms: Vec::new(),
+        };
+        let (value, error) = euler.evaluate(Complex64::new(0.0, 0.0), Complex64::new(0.25, 0.0));
+        assert!((value - Complex64::new(7.0 / 128.0, 0.0)).norm() < 1e-14);
+        assert!((error - 15.0 / 2048.0).abs() < 1e-14);
     }
 
     #[test]

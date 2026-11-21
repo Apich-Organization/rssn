@@ -1,5 +1,7 @@
 //! Poisson integrals: the harmonic function in a disk or ball with
-//! arbitrary boundary values, in closed integral form.
+//! arbitrary boundary values. Constant boundary values extend unchanged. A
+//! single sine or cosine with integer frequency `m` on a disk extends by
+//! multiplying the corresponding angular mode by `(r / R)^|m|`.
 //!
 //! `pde_poisson_integral(g, R, 2)`: `g(phi)` on the circle `r = R`,
 //! `u(r, theta) = (R² - r²)/(2π) ∫_0^{2π} g(φ) / (R² - 2 R r cos(θ - φ) + r²) dφ`.
@@ -11,17 +13,74 @@
 use super::util::call;
 use super::util::defint;
 use super::util::div;
+use super::util::fresh_integration_symbol;
 use super::util::pi;
 use super::util::sqrt;
 use crate::graph::Cx;
 use crate::graph::NodeId;
 use crate::graph::Number;
+use crate::graph::op::core;
 use crate::rules::complex::build::add;
 use crate::rules::complex::build::mul;
 use crate::rules::complex::build::neg;
 use crate::rules::complex::build::pow;
 use crate::rules::complex::build::powi;
 use crate::rules::complex::build::sub;
+
+fn depends_on(
+    cx: &Cx<'_>,
+    expression: NodeId,
+    angle: NodeId,
+) -> bool {
+    cx.graph
+        .symbol_of(angle)
+        .is_some_and(|symbol| cx.graph.depends_on(cx.graph.find(expression), symbol))
+}
+
+/// The Poisson extension of a single exact sine or cosine mode on a disk.
+fn disk_mode(
+    cx: &mut Cx<'_>,
+    datum: NodeId,
+    phi: NodeId,
+    theta: NodeId,
+    r: NodeId,
+    radius: NodeId,
+) -> Option<NodeId> {
+    let graph = &mut *cx.graph;
+    let op = graph.op(datum);
+    let cos = graph.ops().lookup("cos")?;
+    let sin = graph.ops().lookup("sin")?;
+    if op != cos && op != sin {
+        return None;
+    }
+    let &[phase] = graph.children(datum) else {
+        return None;
+    };
+    let mode = if graph.find(phase) == graph.find(phi) {
+        1
+    } else {
+        if graph.op(phase) != core::MUL {
+            return None;
+        }
+        let &[left, right] = graph.children(phase) else {
+            return None;
+        };
+        let coefficient = if graph.find(left) == graph.find(phi) {
+            right
+        } else if graph.find(right) == graph.find(phi) {
+            left
+        } else {
+            return None;
+        };
+        graph.number_of(coefficient)?.to_i64()?
+    };
+    let degree = mode.checked_abs()?;
+    let phase = graph.substitute(phase, phi, theta);
+    let trace = graph.node(op, &[phase]);
+    let ratio = div(cx, r, radius);
+    let weight = powi(cx.graph, ratio, degree);
+    Some(mul(cx.graph, &[weight, trace]))
+}
 
 /// The Poisson integral of the boundary datum `g` on the circle (`dimension`
 /// 2) or the sphere (`dimension` 3) of radius `radius`.
@@ -31,11 +90,28 @@ pub(super) fn poisson_integral(
     radius: NodeId,
     dimension: i64,
 ) -> Option<NodeId> {
+    if !(2..=3).contains(&dimension)
+        || cx.graph.number_of(radius).is_some_and(|value| {
+            value.is_negative()
+                || value.is_zero()
+                || matches!(value, Number::Float(x) if !x.is_finite())
+        })
+    {
+        return None;
+    }
     let (r, theta, phi) = (
         cx.graph.sym("r"),
         cx.graph.sym("theta"),
         cx.graph.sym("phi"),
     );
+    if !depends_on(cx, g, phi) && (dimension == 2 || !depends_on(cx, g, theta)) {
+        return Some(g);
+    }
+    if dimension == 2
+        && let Some(mode) = disk_mode(cx, g, phi, theta, r, radius)
+    {
+        return Some(cx.simplify(mode));
+    }
     let (zero, two, pi) = (cx.graph.int(0), cx.graph.int(2), pi(cx)?);
     let two_pi = mul(cx.graph, &[two, pi]);
     let r2 = powi(cx.graph, radius, 2);
@@ -43,7 +119,7 @@ pub(super) fn poisson_integral(
     let gap = sub(cx.graph, r2, rho2);
     match dimension {
         | 2 => {
-            let alpha = cx.graph.sym("alpha");
+            let alpha = fresh_integration_symbol(cx, "alpha");
             let datum = cx.graph.substitute(g, phi, alpha);
             let angle = sub(cx.graph, theta, alpha);
             let cosine = call(cx, "cos", &[angle])?;
@@ -59,7 +135,8 @@ pub(super) fn poisson_integral(
             Some(cx.simplify(u))
         },
         | 3 => {
-            let (alpha, beta) = (cx.graph.sym("alpha"), cx.graph.sym("beta"));
+            let alpha = fresh_integration_symbol(cx, "alpha");
+            let beta = fresh_integration_symbol(cx, "beta");
             let datum = {
                 let first = cx.graph.substitute(g, theta, alpha);
                 cx.graph.substitute(first, phi, beta)

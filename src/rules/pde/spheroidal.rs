@@ -22,6 +22,9 @@
 //! * oblate: `(ζ²+1) R'' + 2ζ R' - (λ + γ ζ² - m²/(ζ²+1)) R = 0` with the
 //!   parity of `S` at the focal disk `ζ = 0`, integrated in `ζ = sinh σ`.
 //!
+//! The regular radial tables grow through the largest requested coordinate.
+//! They share the fixed Runge–Kutta geometry and retain each finite prefix.
+//!
 //! The Dirichlet problem inside the spheroid `ξ < ξ₀` (`ζ < ζ₀`) with data
 //! `u(ξ₀, η, φ) = g(η, φ)` is solved by the finite expansion
 //! `u = Σ (a_mn cos mφ + b_mn sin mφ) S_mn(η) R_mn(ξ)/R_mn(ξ₀)` whose
@@ -44,113 +47,266 @@ use crate::graph::Number;
 use crate::graph::OpDescriptor;
 use crate::graph::RuleError;
 use crate::graph::rule::Installer;
+use crate::kernels::reuse::PlanCache;
 use crate::rules::complex::build::add;
 use crate::rules::complex::build::mul;
 use std::cell::RefCell;
 use std::f64::consts::PI;
-use std::rc::Rc;
+use std::sync::Arc;
+use std::sync::OnceLock;
+use std::sync::RwLock;
 
 const STEP: f64 = 0.002;
 const T_MAX: f64 = 4.5;
+const RADIAL_STEPS: usize = (T_MAX / STEP) as usize;
+const GEOMETRY_BLOCK: usize = 64;
+const GEOMETRY_BLOCKS: usize = RADIAL_STEPS.div_ceil(GEOMETRY_BLOCK);
 const MODES: usize = 16;
 const M_MAX: usize = 6;
 
-type RadialTable = Rc<Vec<f64>>;
+#[derive(Clone, Copy)]
+struct RadialStage {
+    gamma_coordinate: f64,
+    order_denominator: f64,
+    damping: f64,
+}
+
+type RadialStep = [RadialStage; 3];
+type GeometrySlot = OnceLock<[RadialStep; GEOMETRY_BLOCK]>;
+
+#[allow(
+    clippy::single_call_fn,
+    reason = "shares the fixed RK4 coordinate geometry across radial plans"
+)]
+fn step_geometry(
+    prolate: bool,
+    index: usize,
+) -> &'static RadialStep {
+    static PROLATE: [GeometrySlot; GEOMETRY_BLOCKS] = [const { OnceLock::new() }; GEOMETRY_BLOCKS];
+    static OBLATE: [GeometrySlot; GEOMETRY_BLOCKS] = [const { OnceLock::new() }; GEOMETRY_BLOCKS];
+    let blocks = if prolate { &PROLATE } else { &OBLATE };
+    let block = index / GEOMETRY_BLOCK;
+    &blocks[block].get_or_init(|| {
+        std::array::from_fn(|offset| {
+            let t = STEP * (block * GEOMETRY_BLOCK + offset) as f64;
+            [t, t + 0.5 * STEP, t + STEP].map(|t| {
+                let (s, c) = (t.sinh(), t.cosh());
+                if prolate {
+                    RadialStage {
+                        gamma_coordinate: c,
+                        order_denominator: s * s,
+                        damping: 1.0 / t.tanh(),
+                    }
+                } else {
+                    RadialStage {
+                        gamma_coordinate: s,
+                        order_denominator: c * c,
+                        damping: t.tanh(),
+                    }
+                }
+            })
+        })
+    })[index % GEOMETRY_BLOCK]
+}
+
+struct RadialPath {
+    prolate: bool,
+    eigenvalue: f64,
+    gamma: f64,
+    order_squared: f64,
+    values: Vec<f64>,
+    derivative: f64,
+    stopped: bool,
+}
+
+type RadialKey = (bool, usize, usize, u64);
+type RadialTable = Arc<RwLock<RadialPath>>;
+static RADIAL: PlanCache<RadialKey, RwLock<RadialPath>> = PlanCache::new(300);
+const READ_WINDOW: usize = 32;
+
+struct RadialWindow {
+    start: usize,
+    len: usize,
+    values: [f64; READ_WINDOW],
+}
+
+type LocalRadial = (RadialKey, RadialTable, RadialWindow);
 
 thread_local! {
-    static RADIAL: RefCell<Vec<([u64; 4], RadialTable)>> = const { RefCell::new(Vec::new()) };
+    static LAST_RADIAL: RefCell<Option<LocalRadial>> = const { RefCell::new(None) };
 }
 
 /// The regular radial function on the uniform grid `τ_i = i STEP`
 /// (`ξ = cosh τ` prolate, `ζ = sinh τ` oblate).
-fn radial_table(
-    prolate: bool,
-    m: usize,
-    n: usize,
-    gamma: f64,
-) -> Option<RadialTable> {
-    let key = [
-        u64::from(prolate),
-        (m * 1000 + n) as u64,
-        gamma.to_bits(),
-        0,
-    ];
-    if let Some(found) = RADIAL.with(|c| {
-        c.borrow()
-            .iter()
-            .find(|(k, _)| *k == key)
-            .map(|(_, v)| Rc::clone(v))
-    }) {
-        return Some(found);
-    }
-    let lambda = *spheroidal_pair(m, gamma).0.get(n.checked_sub(m)?)?;
-    let steps = (T_MAX / STEP) as usize;
-    let mf = m as f64;
-    let mut table = vec![0.0; steps + 1];
-    let (mut y, mut p, start);
-    if prolate {
-        // Series at the focal segment: R = τ^m (1 + a τ²), ξ = cosh τ.
-        let a = ((lambda - gamma) - mf * (mf + 1.0) / 3.0) / (4.0 * mf + 4.0);
-        start = 10;
-        let tau0 = STEP * start as f64;
-        for (i, slot) in table.iter_mut().enumerate().take(start) {
-            let tau = STEP * i as f64;
-            *slot = tau.powi(m as i32) * (1.0 + a * tau * tau);
+#[allow(
+    clippy::single_call_fn,
+    reason = "keeps radial plan initialization separate from progressive reads"
+)]
+fn radial_table(key: RadialKey) -> Option<RadialTable> {
+    let (prolate, m, n, gamma_bits) = key;
+    let gamma = f64::from_bits(gamma_bits);
+    RADIAL
+        .try_get_or_insert_with(key, || {
+            let offset = n.checked_sub(m).ok_or(())?;
+            let lambda = *spheroidal_pair(m, gamma).0.get(offset).ok_or(())?;
+            if !lambda.is_finite() {
+                return Err(());
+            }
+            let mf = m as f64;
+            let (mut values, derivative) = if prolate {
+                // Series at the focal segment: R = τ^m (1 + a τ²), ξ = cosh τ.
+                let a = ((lambda - gamma) - mf * (mf + 1.0) / 3.0) / (4.0 * mf + 4.0);
+                let start = 10usize;
+                let tau0 = STEP * start as f64;
+                let values = std::iter::once(if m == 0 { 1.0 } else { 0.0 })
+                    .chain((1..=start).map(|i| {
+                        let tau = STEP * i as f64;
+                        tau.powi(m as i32) * (1.0 + a * tau * tau)
+                    }))
+                    .collect();
+                let derivative = tau0.powi(m as i32 - 1)
+                    * (mf * (1.0 + a * tau0 * tau0) + 2.0 * a * tau0 * tau0);
+                (values, derivative)
+            } else if offset.is_multiple_of(2) {
+                (vec![1.0], 0.0)
+            } else {
+                (vec![0.0], 1.0)
+            };
+            let invalid = values.iter().position(|value| !value.is_finite());
+            if let Some(invalid) = invalid {
+                values.truncate(invalid);
+            }
+            Ok(Arc::new(RwLock::new(RadialPath {
+                prolate,
+                eigenvalue: lambda,
+                gamma,
+                order_squared: mf * mf,
+                values,
+                derivative,
+                stopped: invalid.is_some() || !derivative.is_finite(),
+            })))
+        })
+        .ok()
+}
+
+impl RadialPath {
+    #[allow(
+        clippy::single_call_fn,
+        reason = "keeps radial RK4 progression and finite prefixes together"
+    )]
+    fn extend(
+        &mut self,
+        end: usize,
+    ) {
+        if self.stopped || self.values.len() > end {
+            return;
         }
-        y = tau0.powi(m as i32) * (1.0 + a * tau0 * tau0);
-        p = tau0.powi(m as i32 - 1) * (mf * (1.0 + a * tau0 * tau0) + 2.0 * a * tau0 * tau0);
-    } else {
-        // The focal disk: parity of the angular function.
-        start = 0;
-        (y, p) = if (n - m).is_multiple_of(2) {
-            (1.0, 0.0)
-        } else {
-            (0.0, 1.0)
+        let Some(&last) = self.values.last() else {
+            return;
         };
-    }
-    table[start] = y;
-    let potential = |t: f64| -> f64 {
-        let (s, c) = (t.sinh(), t.cosh());
-        if prolate {
-            lambda - gamma * c * c + mf * mf / (s * s)
-        } else {
-            lambda + gamma * s * s - mf * mf / (c * c)
-        }
-    };
-    let damping = |t: f64| -> f64 {
-        if prolate {
-            1.0 / t.tanh()
-        } else {
-            t.tanh()
-        }
-    };
-    let h = STEP;
-    for i in start..steps {
-        let t = STEP * i as f64;
-        let f = |t: f64, y: f64, p: f64| -> f64 { potential(t) * y - damping(t) * p };
-        let (k1y, k1p) = (p, f(t, y, p));
-        let (k2y, k2p) = (
-            p + 0.5 * h * k1p,
-            f(t + 0.5 * h, y + 0.5 * h * k1y, p + 0.5 * h * k1p),
+        let (lambda, gamma, order, prolate) = (
+            self.eigenvalue,
+            self.gamma,
+            self.order_squared,
+            self.prolate,
         );
-        let (k3y, k3p) = (
-            p + 0.5 * h * k2p,
-            f(t + 0.5 * h, y + 0.5 * h * k2y, p + 0.5 * h * k2p),
-        );
-        let (k4y, k4p) = (p + h * k3p, f(t + h, y + h * k3y, p + h * k3p));
-        y += h / 6.0 * (k1y + 2.0 * k2y + 2.0 * k3y + k4y);
-        p += h / 6.0 * (k1p + 2.0 * k2p + 2.0 * k3p + k4p);
-        table[i + 1] = y;
-    }
-    let value = Rc::new(table);
-    RADIAL.with(|c| {
-        let mut cache = c.borrow_mut();
-        if cache.len() >= 300 {
-            cache.remove(0);
+        let f = |stage: RadialStage, y: f64, p: f64| {
+            let coordinate = stage.gamma_coordinate;
+            let potential = if prolate {
+                lambda - gamma * coordinate * coordinate + order / stage.order_denominator
+            } else {
+                lambda + gamma * coordinate * coordinate - order / stage.order_denominator
+            };
+            potential * y - stage.damping * p
+        };
+        let (mut y, mut p) = (last, self.derivative);
+        let h = STEP;
+        self.values.reserve(end + 1 - self.values.len());
+        for i in self.values.len() - 1..end {
+            let &[first, middle, last] = step_geometry(prolate, i);
+            let (k1y, k1p) = (p, f(first, y, p));
+            let (k2y, k2p) = (
+                p + 0.5 * h * k1p,
+                f(middle, y + 0.5 * h * k1y, p + 0.5 * h * k1p),
+            );
+            let (k3y, k3p) = (
+                p + 0.5 * h * k2p,
+                f(middle, y + 0.5 * h * k2y, p + 0.5 * h * k2p),
+            );
+            let (k4y, k4p) = (p + h * k3p, f(last, y + h * k3y, p + h * k3p));
+            y += h / 6.0 * (k1y + 2.0 * k2y + 2.0 * k3y + k4y);
+            p += h / 6.0 * (k1p + 2.0 * k2p + 2.0 * k3p + k4p);
+            if !y.is_finite() {
+                self.stopped = true;
+                return;
+            }
+            self.values.push(y);
+            self.derivative = p;
+            if !p.is_finite() {
+                self.stopped = true;
+                return;
+            }
         }
-        cache.push((key, Rc::clone(&value)));
-    });
-    Some(value)
+    }
+}
+
+impl RadialWindow {
+    fn refill<const N: usize>(
+        &mut self,
+        path: &RadialPath,
+        start: usize,
+    ) -> Option<[f64; N]> {
+        let values = path.values.get(start..)?;
+        let samples = *values.first_chunk()?;
+        self.start = start;
+        self.len = READ_WINDOW.min(values.len());
+        self.values[..self.len].copy_from_slice(&values[..self.len]);
+        Some(samples)
+    }
+}
+
+fn radial_samples<const N: usize>(
+    key: RadialKey,
+    start: usize,
+) -> Option<[f64; N]> {
+    LAST_RADIAL.with(|entry| {
+        let mut entry = entry.borrow_mut();
+        if entry.as_ref().is_none_or(|(cached, _, _)| *cached != key) {
+            *entry = Some((
+                key,
+                radial_table(key)?,
+                RadialWindow {
+                    start: 0,
+                    len: 0,
+                    values: [0.0; READ_WINDOW],
+                },
+            ));
+        }
+        let (_, table, window) = entry.as_mut()?;
+        if let Some(offset) = start.checked_sub(window.start)
+            && let Some(samples) = window.values[..window.len]
+                .get(offset..)
+                .and_then(<[f64]>::first_chunk)
+        {
+            return Some(*samples);
+        }
+        let samples = window.refill(
+            &table
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner),
+            start,
+        );
+        if samples.is_some() {
+            return samples;
+        }
+        let mut path = table
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        path.extend(start + N - 1);
+        let samples = window.refill(&path, start);
+        drop(path);
+        samples
+    })
 }
 
 /// The regular radial function at `x` (`ξ ≥ 1` prolate, `ζ ≥ 0` oblate).
@@ -161,9 +317,9 @@ pub(super) fn radial_value(
     gamma: f64,
     x: f64,
 ) -> f64 {
-    let Some(table) = radial_table(prolate, m, n, gamma) else {
+    if !x.is_finite() || !gamma.is_finite() {
         return f64::NAN;
-    };
+    }
     let t = if prolate {
         if x < 1.0 {
             return f64::NAN;
@@ -176,12 +332,23 @@ pub(super) fn radial_value(
         x.asinh()
     };
     let position = t / STEP;
-    if position >= (table.len() - 3) as f64 {
+    let limit = RADIAL_STEPS - 2;
+    if position >= limit as f64 {
         return f64::NAN;
     }
-    let i = (position.floor() as usize).clamp(1, table.len() - 3);
+    let key = (prolate, m, n, gamma.to_bits());
+    let floor = position.floor() as usize;
+    if crate::kernels::exact_eq(position, 0.0) {
+        return radial_samples::<1>(key, floor).map_or(f64::NAN, |[sample]| sample);
+    }
+    let i = floor.max(1);
     let u = position - i as f64;
-    let (p0, p1, p2, p3) = (table[i - 1], table[i], table[i + 1], table[i + 2]);
+    let Some([p0, p1, p2, p3]) = radial_samples(key, i - 1) else {
+        if crate::kernels::exact_eq(u, 0.0) {
+            return radial_samples::<1>(key, i).map_or(f64::NAN, |[sample]| sample);
+        }
+        return f64::NAN;
+    };
     let a = -u * (u - 1.0) * (u - 2.0) / 6.0;
     let b = (u + 1.0) * (u - 1.0) * (u - 2.0) / 2.0;
     let c = -(u + 1.0) * u * (u - 2.0) / 2.0;
@@ -200,7 +367,12 @@ pub(super) fn spheroidal_radial(args: &[f64]) -> f64 {
     ) else {
         return f64::NAN;
     };
-    if m < 0.0 || n < m || m.fract() != 0.0 || n.fract() != 0.0 {
+    if !kind.is_finite()
+        || !(0.0..=1e4).contains(&m)
+        || !(m..=1e4).contains(&n)
+        || m.fract() != 0.0
+        || n.fract() != 0.0
+    {
         return f64::NAN;
     }
     radial_value(kind > 0.0, m as usize, n as usize, gamma, x)
@@ -216,7 +388,9 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             .eval(spheroidal_radial)
             .doc(
                 "`spheroidal_radial(kind, m, n, gamma, xi)`: prolate (`kind > 0`) or oblate \
-                 radial spheroidal wave function of degree `n`, order `m`, parameter `gamma` at `xi`.",
+                 radial spheroidal wave function at `xi`. The kind, coordinate and `gamma` must be finite, \
+                 and the degree and order must be integers with `0 <= m <= n <= 10000`. \
+                 The radial coordinate is at least one for prolate and at least zero for oblate.",
             ),
     )?;
     i.dim(op, DimRule::Dimensionless);

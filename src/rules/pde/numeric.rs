@@ -32,11 +32,13 @@
 //! * `struve_h(nu, x)`, `struve_l(nu, x)`: the Struve functions `H_ν`,
 //!   `L_ν` (needed by the Fourier–Bessel moments of odd powers).
 
+use crate::cancellation::checkpoint;
 use crate::graph::Arity;
 use crate::graph::DimRule;
 use crate::graph::OpDescriptor;
 use crate::graph::RuleError;
 use crate::graph::rule::Installer;
+use crate::kernels::reuse::PlanCache;
 use crate::kernels::special::bessel_i;
 use crate::kernels::special::bessel_i0;
 use crate::kernels::special::bessel_i1;
@@ -47,8 +49,18 @@ use crate::kernels::special::bessel_k1;
 use crate::kernels::special::bessel_y;
 use crate::kernels::special::bessel_y1;
 use crate::kernels::special::gamma_numerical;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::sync::OnceLock;
+use std::sync::PoisonError;
+use std::time::Duration;
+use std::time::Instant;
 
 const BISECTIONS: u32 = 80;
+const SCAN_LIMIT: u32 = 200_000;
+const SCAN_CHUNK: u32 = 64;
+const SCAN_TIMEOUT: Duration = Duration::from_secs(3);
+const CACHED_BESSEL_RANKS: u32 = 256;
 
 /// Name, arity and numeric kernel of a root operator.
 type RootOperator = (&'static str, Arity, fn(&[f64]) -> f64);
@@ -64,6 +76,14 @@ fn cached(
     args: &[f64],
     compute: impl FnOnce() -> f64,
 ) -> f64 {
+    cached_optional(tag, args, || Some(compute()))
+}
+
+fn cached_optional(
+    tag: u64,
+    args: &[f64],
+    compute: impl FnOnce() -> Option<f64>,
+) -> f64 {
     if args.iter().any(|v| !v.is_finite()) {
         return f64::NAN;
     }
@@ -72,7 +92,9 @@ fn cached(
     if let Some(found) = ROOTS.with(|c| c.borrow().get(&key).copied()) {
         return found;
     }
-    let value = compute();
+    let Some(value) = compute() else {
+        return f64::NAN;
+    };
     ROOTS.with(|c| {
         let mut map = c.borrow_mut();
         if map.len() > 8192 {
@@ -81,6 +103,32 @@ fn cached(
         map.insert(key, value);
     });
     value
+}
+
+fn sign_change(
+    a: f64,
+    b: f64,
+) -> bool {
+    a.is_finite() && b.is_finite() && (a == 0.0 || a * b < 0.0)
+}
+
+fn refine_root(
+    g: &dyn Fn(f64) -> f64,
+    mut lo: f64,
+    mut hi: f64,
+    mut glo: f64,
+) -> f64 {
+    for _ in 0..BISECTIONS {
+        let mid = f64::midpoint(lo, hi);
+        let gm = g(mid);
+        if glo * gm <= 0.0 {
+            hi = mid;
+        } else {
+            lo = mid;
+            glo = gm;
+        }
+    }
+    f64::midpoint(lo, hi)
 }
 
 /// The `m`-th sign change of `g` on `x ≥ start` (steps of `step`), refined
@@ -97,34 +145,109 @@ fn nth_sign_change(
     // Each evaluation of `g` is a Bessel function whose cost grows with the
     // order, so a huge order (or a huge m) could take hours: give up after
     // a few seconds and report NaN (no root found) instead of hanging.
-    let started = std::time::Instant::now();
-    for step_index in 0..200_000_u32 {
-        if step_index % 64 == 63 && started.elapsed() > std::time::Duration::from_secs(3) {
+    let started = Instant::now();
+    for step_index in 0..SCAN_LIMIT {
+        if step_index % SCAN_CHUNK == SCAN_CHUNK - 1 && started.elapsed() > SCAN_TIMEOUT {
             return f64::NAN;
         }
         let next = x + step;
         let gn = g(next);
-        if gx.is_finite() && gn.is_finite() && (gx == 0.0 || gx * gn < 0.0) {
+        if sign_change(gx, gn) {
             found += 1;
             if found == m {
-                let (mut lo, mut hi, mut glo) = (x, next, gx);
-                for _ in 0..BISECTIONS {
-                    let mid = f64::midpoint(lo, hi);
-                    let gm = g(mid);
-                    if glo * gm <= 0.0 {
-                        hi = mid;
-                    } else {
-                        lo = mid;
-                        glo = gm;
-                    }
-                }
-                return f64::midpoint(lo, hi);
+                return refine_root(g, x, next, gx);
             }
         }
         x = next;
         gx = gn;
     }
     f64::NAN
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum BesselFamily {
+    Zero(u64),
+    Robin(u64, u64),
+}
+
+struct RootBracket {
+    lo: f64,
+    hi: f64,
+    g_lo: f64,
+    root: OnceLock<f64>,
+}
+
+struct RootScan {
+    x: f64,
+    gx: Option<f64>,
+    steps: u32,
+    brackets: Vec<Arc<RootBracket>>,
+}
+
+static BESSEL_SCANS: PlanCache<BesselFamily, Mutex<RootScan>> = PlanCache::new(128);
+
+/// Finds a bracket by continuing the original scan from the saved coordinate.
+/// Each rank is bisected lazily so asking for one high rank only refines its
+/// bracket. Different equation families do not share the scan lock.
+fn bessel_rank(
+    family: BesselFamily,
+    g: &dyn Fn(f64) -> f64,
+    start: f64,
+    step: f64,
+    rank: u32,
+) -> Option<f64> {
+    checkpoint().ok()?;
+    if rank > CACHED_BESSEL_RANKS {
+        return Some(nth_sign_change(g, start, step, rank));
+    }
+    let plan = BESSEL_SCANS.get_or_insert_with(family, || {
+        Arc::new(Mutex::new(RootScan {
+            x: start,
+            gx: None,
+            steps: 0,
+            brackets: Vec::new(),
+        }))
+    });
+    let rank_index = usize::try_from(rank).ok()?.checked_sub(1)?;
+    let started = Instant::now();
+    let bracket = loop {
+        checkpoint().ok()?;
+        let mut scan = plan.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some(bracket) = scan.brackets.get(rank_index) {
+            let bracket = Arc::clone(bracket);
+            drop(scan);
+            break bracket;
+        }
+        if scan.steps == SCAN_LIMIT || started.elapsed() > SCAN_TIMEOUT {
+            return None;
+        }
+        let mut gx = scan.gx.unwrap_or_else(|| g(scan.x));
+        let chunk_end = (scan.steps + SCAN_CHUNK).min(SCAN_LIMIT);
+        while scan.steps < chunk_end && scan.brackets.len() <= rank_index {
+            let x = scan.x;
+            let next = x + step;
+            let gn = g(next);
+            if sign_change(gx, gn) {
+                scan.brackets.push(Arc::new(RootBracket {
+                    lo: x,
+                    hi: next,
+                    g_lo: gx,
+                    root: OnceLock::new(),
+                }));
+            }
+            scan.x = next;
+            scan.gx = Some(gn);
+            gx = gn;
+            scan.steps += 1;
+        }
+        drop(scan);
+    };
+    checkpoint().ok()?;
+    Some(
+        *bracket
+            .root
+            .get_or_init(|| refine_root(g, bracket.lo, bracket.hi, bracket.g_lo)),
+    )
 }
 
 #[allow(
@@ -149,8 +272,14 @@ pub(super) fn bessel_zero(args: &[f64]) -> f64 {
         return f64::NAN;
     }
     let g = |x: f64| bessel_j(nu, x);
-    cached(3, args, || {
-        nth_sign_change(&g, 0.5_f64.mul_add(nu, 0.01), 0.1, m)
+    cached_optional(3, args, || {
+        bessel_rank(
+            BesselFamily::Zero(nu.to_bits()),
+            &g,
+            0.5_f64.mul_add(nu, 0.01),
+            0.1,
+            m,
+        )
     })
 }
 
@@ -168,7 +297,15 @@ pub(super) fn bessel_root(args: &[f64]) -> f64 {
     }
     let g =
         |x: f64| 0.5 * x * (bessel_j(nu - 1.0, x) - bessel_j(nu + 1.0, x)) + h * bessel_j(nu, x);
-    cached(4, args, || nth_sign_change(&g, 0.05, 0.05, m))
+    cached_optional(4, args, || {
+        bessel_rank(
+            BesselFamily::Robin(nu.to_bits(), h.to_bits()),
+            &g,
+            0.05,
+            0.05,
+            m,
+        )
+    })
 }
 
 /// `sl_root(p0, q0, p1, q1, L, m)`.

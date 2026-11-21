@@ -1,12 +1,10 @@
 //! The SDE noise rule set: the closure-free part of the stochastic solvers,
 //! exposed as manifest operators.
 //!
-//! The integrators in [`crate::kernels::sde`] take closures for the drift and
-//! the diffusion, so they cannot be manifest operators: an operator is called
-//! with values, and a host callback is not a value. What *can* cross the
-//! boundary is the noise itself — a Brownian sample is a pure function of a
-//! seed and the shape of the grid — so this rule set exposes exactly those
-//! primitives:
+//! This rule set exposes seeded noise and scheme metadata. The numerical
+//! ABI also exposes integration methods with owned drift and diffusion tapes
+//! under `num_analysis_sde_*`. Rust callers of [`crate::kernels::sde`] can use
+//! coefficient closures directly.
 //!
 //! | operator | value |
 //! |---|---|
@@ -19,11 +17,11 @@
 //! fact, and two hosts can compare paths without exchanging the increments. A
 //! host that has its own increments can ask for the Lévy areas alone with
 //! `sde_levy_areas`; the areas are *conditional* on those increments, exactly
-//! as in [`levy_areas`](crate::kernels::sde::levy_areas), so the increments are
+//! as in [`levy_areas`], so the increments are
 //! an argument rather than a second draw.
 //!
 //! `sde_scheme_info` answers the question "what does this solver promise?"
-//! without running it: the strong order and four design flags
+//! without running it: the strong order for commutative noise and four design flags
 //! (`1`/`0`) for the thirteen schemes of [`crate::kernels::sde`] — the Ito versus
 //! Stratonovich interpretation, whether the scheme needs commutative noise,
 //! whether it adapts the step size, and whether it needs the Lévy areas. It is
@@ -49,22 +47,17 @@
 //!
 //! # Limitations
 //!
-//! Only the noise is exposed. The solver loops themselves stay Rust-only: they
-//! take host closures for `a(t, x)` and `g(t, x)`, and wrapping them as
-//! operators would need a callback argument, which `Value` does not carry for
-//! the ensembles (they share `&Fn + Sync` and never mutate the closure). A
-//! host that wants the ensemble statistics computes them around the noise this
-//! rule set produces.
-//!
 //! `m` is not a parameter of `sde_levy_areas`: the length of `dw` *is* the
 //! number of Wiener processes, and a second copy could only disagree with it.
 //! `terms` bounds the Fourier modes of the bridge (accuracy improves like
 //! `terms^{-3/2}`, per `levy_areas`). A request whose arguments are symbolic,
 //! non-integral where an integer is required, out of the documented bounds
 //! (`1 <= m <= 4096`, `1 <= steps <= 1_000_000`, `steps*m <= 4_194_304`,
-//! `1 <= terms <= 1000`), or whose `h` is not a positive finite number stays a
-//! request ([`Outcome::Pass`]): the operator never clamps a parameter to make
-//! it fit, because a silently resized grid is a different sample.
+//! `1 <= terms <= 1000`, `m*m <= 4_194_304` and
+//! `m*(m-1)/2 * terms <= 67_108_864` for the areas), or whose `h` is not a
+//! positive finite number stays a request ([`Outcome::Pass`]). Lévy area
+//! inputs and results must be finite. The operator does not change sample
+//! dimensions or precision to fit a bound.
 //!
 //! `sde_scheme_info` takes its scheme name as a `Value::String`; rssn's surface
 //! syntax has no string literal, so it is a host-facing operator (the name
@@ -99,6 +92,8 @@ const MAX_STEPS: usize = 1_000_000;
 const MAX_SAMPLES: usize = 4_194_304;
 /// Largest number of bridge modes one area request may use.
 const MAX_TERMS: usize = 1000;
+/// Largest number of pair-mode terms one conditional area request may evaluate.
+const MAX_PAIR_MODES: usize = 67_108_864;
 
 /// The SDE-noise rule set.
 #[must_use]
@@ -124,7 +119,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         .doc(
             "`sde_levy_areas(seed, h, dw, terms)`: the `m*m` row-major iterated Ito \
                  integrals over one step, conditioned on the `m` increments `dw`, with a \
-                 seeded Fourier bridge truncated at `terms` modes.",
+                 seeded Fourier bridge truncated at `terms` modes. Requires finite inputs \
+                 and results, at most 4,194,304 output entries and 67,108,864 pair-mode terms.",
         ))?;
     // A Brownian increment over `h` is `sqrt(h)`: the rooted operand is the
     // fourth argument, not the first, so the explicit-operand rule is needed.
@@ -141,7 +137,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         .doc(
             "`sde_scheme_info(name)`: the metadata of one stochastic scheme as \
                  `list(strong_order, ito, commutative_only, adaptive, levy_areas)` — the \
-                 strong order and four flags (1 or 0). Unknown names stay a request.",
+                 strong order for commutative noise and four flags (1 or 0). Unknown names \
+                 stay a request.",
         ))?;
     // A metadata vector is a label result, not a physical quantity: the string
     // argument is non-metric, and so is the answer, so a dimensional check never
@@ -193,8 +190,7 @@ impl Kernel for Wiener {
         cx: &mut Cx<'_>,
         node: NodeId,
     ) -> Outcome {
-        let args = cx.graph.children(node).to_vec();
-        let &[seed, m, steps, h] = args.as_slice() else {
+        let &[seed, m, steps, h] = cx.graph.children(node) else {
             return Outcome::Pass;
         };
         let (Some(seed), Some(m), Some(steps), Some(h)) = (
@@ -248,8 +244,7 @@ impl Kernel for LevyAreas {
         cx: &mut Cx<'_>,
         node: NodeId,
     ) -> Outcome {
-        let args = cx.graph.children(node).to_vec();
-        let &[seed, h, increments, terms] = args.as_slice() else {
+        let &[seed, h, increments, terms] = cx.graph.children(node) else {
             return Outcome::Pass;
         };
         let (Some(seed), Some(h), Some(terms)) = (
@@ -259,21 +254,32 @@ impl Kernel for LevyAreas {
         ) else {
             return Outcome::Pass;
         };
-        let Some(dw) = list_of_numbers(cx.graph, increments) else {
-            return Outcome::Pass;
-        };
         let Ok(terms) = usize::try_from(terms) else {
             return Outcome::Pass;
         };
-        let m = dw.len();
-        if !h.is_finite() || h <= 0.0 {
+        if !h.is_finite() || h <= 0.0 || cx.graph.op(increments) != core::LIST {
             return Outcome::Pass;
         }
+        let increments = cx.graph.children(increments);
+        let m = increments.len();
         if !(1..=MAX_WIENER).contains(&m) || !(1..=MAX_TERMS).contains(&terms) {
             return Outcome::Pass;
         }
+        if m * m > MAX_SAMPLES || m * (m - 1) / 2 * terms > MAX_PAIR_MODES {
+            return Outcome::Pass;
+        }
+        let Some(dw) = increments
+            .iter()
+            .map(|&item| real(cx.graph, item).filter(|value| value.is_finite()))
+            .collect::<Option<Vec<_>>>()
+        else {
+            return Outcome::Pass;
+        };
         let mut rng = Rng::new(seed);
         let areas = levy_areas(&mut rng, m, h, &dw, terms);
+        if areas.iter().any(|value| !value.is_finite()) {
+            return Outcome::Pass;
+        }
         let items: Vec<NodeId> = areas.iter().map(|&value| cx.graph.float(value)).collect();
         Outcome::Equal(cx.graph.node(core::LIST, &items))
     }
@@ -335,8 +341,7 @@ impl Kernel for SchemeInfo {
         cx: &mut Cx<'_>,
         node: NodeId,
     ) -> Outcome {
-        let args = cx.graph.children(node).to_vec();
-        let &[scheme] = args.as_slice() else {
+        let &[scheme] = cx.graph.children(node) else {
             return Outcome::Pass;
         };
         let Some(fields) = scheme_name(cx.graph, scheme).and_then(scheme_fields) else {
@@ -345,29 +350,9 @@ impl Kernel for SchemeInfo {
             // rather than getting a guessed default.
             return Outcome::Pass;
         };
-        let items: Vec<NodeId> = fields.iter().map(|&value| cx.graph.float(value)).collect();
+        let items = fields.map(|value| cx.graph.float(value));
         Outcome::Equal(cx.graph.node(core::LIST, &items))
     }
-}
-
-/// The numbers a `list` term holds, in order.
-///
-/// `None` for anything that is not a list of numeric leaves: a symbolic
-/// increment would make the areas incomplete, and completing it with zeros is
-/// the kind of plausible wrong answer this rule set refuses.
-#[allow(clippy::single_call_fn)] // one kernel; separate so the contract is documented
-fn list_of_numbers(
-    graph: &Graph,
-    node: NodeId,
-) -> Option<Vec<f64>> {
-    if graph.op(node) != core::LIST {
-        return None;
-    }
-    graph
-        .children(node)
-        .iter()
-        .map(|&item| graph.number_of(item).map(Number::to_f64))
-        .collect()
 }
 
 #[cfg(test)]

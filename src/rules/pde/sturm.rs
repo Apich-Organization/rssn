@@ -1,12 +1,11 @@
 //! Variable-coefficient Sturm–Liouville problems that reduce to the
 //! constant-coefficient machinery.
 //!
-//! * **Euler–Cauchy type.** `a x² u_xx + b x u_x + …` in one variable
-//!   (the other coefficients constant): with `x = e^s` the operator becomes
-//!   `a w_ss + (b - a) w_s` with constant coefficients on `s ∈ [ln x₀, ln x₁]`,
-//!   the conditions are transformed (`u_x = e^{-s} w_s`), the scalar solvers
-//!   (intervals, drift gauge, Robin modes) solve the problem for `w`, and
-//!   `s = ln x` is substituted back.
+//! * **Euler–Cauchy type.** `a (x-c)² u_xx + b (x-c) u_x + …` reduces to
+//!   the constant-coefficient operator `a w_ss + (b - a) w_s` with
+//!   `s = ln|x-c|`. The interval lies on one side of the center `c`.
+//!   Boundary data transforms by `u_x = w_s / (x-c)`, including Robin
+//!   conditions, and the scalar solver supplies the solution for `w`.
 //! * **Legendre type.** `κ ((1 - x²) u_xx - 2 x u_x) + c u` on `-1 < x < 1`
 //!   with regularity at the ends (no boundary conditions): modes `P_n(x)`,
 //!   eigenvalue `n (n + 1)`, polynomial data in closed form.
@@ -37,6 +36,7 @@ use super::verified;
 use crate::graph::Cx;
 use crate::graph::NodeId;
 use crate::graph::op::core;
+use crate::rules::calculus::derivative;
 use crate::rules::complex::build::add;
 use crate::rules::complex::build::mul;
 use crate::rules::complex::build::neg;
@@ -75,6 +75,53 @@ fn power_ratio(
     p.constant(cx.graph, q).then_some(q)
 }
 
+/// Recognizes `a (x-c)^2` and `b (x-c)`, returning `(c, a, b)`.
+fn euler_coefficients(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+    x: NodeId,
+    second: NodeId,
+    first: NodeId,
+) -> Option<(NodeId, NodeId, NodeId)> {
+    let zero = cx.graph.int(0);
+    if let Some(a) = power_ratio(cx, p, second, x, 2) {
+        let b = if cx.is_zero(first) {
+            zero
+        } else {
+            power_ratio(cx, p, first, x, 1)?
+        };
+        return Some((zero, a, b));
+    }
+    let slope = derivative(cx.graph, second, x)?;
+    let curvature = derivative(cx.graph, slope, x)?;
+    let curvature = cx.simplify(curvature);
+    if !p.constant(cx.graph, curvature) || cx.is_zero(curvature) {
+        return None;
+    }
+    let intercept = cx.graph.substitute(slope, x, zero);
+    let intercept = neg(cx.graph, intercept);
+    let center = div(cx, intercept, curvature);
+    let center = cx.simplify(center);
+    let minimum = cx.graph.substitute(second, x, center);
+    if !p.constant(cx.graph, center) || !cx.is_zero(minimum) {
+        return None;
+    }
+    let two = cx.graph.int(2);
+    let a = div(cx, curvature, two);
+    let b = if cx.is_zero(first) {
+        zero
+    } else {
+        let b = derivative(cx.graph, first, x)?;
+        let b = cx.simplify(b);
+        let offset = cx.graph.substitute(first, x, center);
+        if !p.constant(cx.graph, b) || !cx.is_zero(offset) {
+            return None;
+        }
+        b
+    };
+    Some((center, a, b))
+}
+
 #[allow(clippy::too_many_lines)]
 fn euler(
     cx: &mut Cx<'_>,
@@ -83,7 +130,7 @@ fn euler(
 ) -> Option<NodeId> {
     let n = p.dimension();
     let time = evolution_time(cx, p);
-    // The Euler variable: u_xx has the coefficient a x², u_x the coefficient b x.
+    // Find the Euler variable and its spatial center.
     let mut chosen = None;
     for j in (0..n).filter(|&j| Some(j) != time) {
         let c2 = p.coefficient(cx.graph, &p.unit(j, 2));
@@ -91,17 +138,13 @@ fn euler(
             continue;
         }
         let x = p.vars[j];
-        let a = power_ratio(cx, p, c2, x, 2)?;
         let c1 = p.coefficient(cx.graph, &p.unit(j, 1));
-        let b = if cx.is_zero(c1) {
-            cx.graph.int(0)
-        } else {
-            power_ratio(cx, p, c1, x, 1)?
-        };
-        chosen = Some((j, a, b));
+        let (center, a, b) = euler_coefficients(cx, p, x, c2, c1)?;
+        chosen = Some((j, center, a, b));
         break;
     }
-    let (j, a, b) = chosen?;
+    let (j, center, a, b) = chosen?;
+    let center_is_origin = is_zero_number(cx.graph, center);
     let x = p.vars[j];
     // Every other coefficient is constant and free of derivatives in x.
     for (index, c) in &p.linear {
@@ -127,13 +170,28 @@ fn euler(
             return None;
         }
     }
-    // The branch: the interval of x lies in x > 0 or in x < 0.
+    // Reuse the signed distances when examining and transforming conditions.
+    let distances: Vec<_> = conditions
+        .0
+        .iter()
+        .map(|c| {
+            (c.on == j).then(|| {
+                if center_is_origin {
+                    c.point
+                } else {
+                    let point = sub(cx.graph, c.point, center);
+                    cx.simplify(point)
+                }
+            })
+        })
+        .collect();
     let mut negative = false;
     let mut positive = false;
-    for c in conditions.0.iter().filter(|c| c.on == j) {
-        match super::modes::exact_value(cx, c.point) {
+    for &point in distances.iter().flatten() {
+        match super::modes::exact_value(cx, point) {
             | Some(v) if v < 0.0 => negative = true,
             | Some(v) if v > 0.0 => positive = true,
+            | Some(_) => return None,
             | _ => {},
         }
     }
@@ -171,15 +229,20 @@ fn euler(
         mul(cx.graph, &[gap, d])
     };
     terms.push(first);
-    let exp_s = {
+    let original_x = {
         let e = call(cx, "exp", &[s])?;
-        if negative {
+        let signed = if negative {
             neg(cx.graph, e)
         } else {
             e
+        };
+        if center_is_origin {
+            signed
+        } else {
+            add(cx.graph, &[center, signed])
         }
     };
-    let source = cx.graph.substitute(p.source, x, exp_s);
+    let source = cx.graph.substitute(p.source, x, original_x);
     terms.push(source);
     let lhs = add(cx.graph, &terms);
     let zero = cx.graph.int(0);
@@ -187,14 +250,13 @@ fn euler(
     let scalar = Problem::parse(cx, equation, unknown)?;
     // The conditions.
     let mut list = Vec::new();
-    for c in &conditions.0 {
+    for (c, distance) in conditions.0.iter().zip(distances) {
         let mut value = c.value;
-        if c.on == j {
-            let x0 = c.point;
+        if let Some(distance) = distance {
             let magnitude = if negative {
-                neg(cx.graph, x0)
+                neg(cx.graph, distance)
             } else {
-                x0
+                distance
             };
             let point = call(cx, "ln", &[magnitude])?;
             let point = cx.simplify(point);
@@ -207,12 +269,13 @@ fn euler(
                     robin: None,
                 });
             } else if c.derivative == p.unit(j, 1) {
-                // u_x = w_s / x₀, u_x + h u = v becomes w_s + h x₀ w = x₀ v.
-                let scaled = mul(cx.graph, &[x0, value]);
+                // Multiplying u_x + h u = v by the signed distance gives
+                // w_s + (x₀-c) h w = (x₀-c) v.
+                let scaled = mul(cx.graph, &[distance, value]);
                 let scaled = cx.simplify(scaled);
                 let robin = match c.robin {
                     | Some(h) => {
-                        let hx = mul(cx.graph, &[h, x0]);
+                        let hx = mul(cx.graph, &[h, distance]);
                         Some(cx.simplify(hx))
                     },
                     | None => None,
@@ -237,7 +300,7 @@ fn euler(
         if uses_unknown {
             return None;
         }
-        value = cx.graph.substitute(value, x, exp_s);
+        value = cx.graph.substitute(value, x, original_x);
         value = cx.simplify(value);
         list.push(Condition {
             on: c.on,
@@ -251,19 +314,32 @@ fn euler(
     let &[_, w] = cx.graph.children(found) else {
         return None;
     };
-    let magnitude = if negative {
-        neg(cx.graph, x)
-    } else {
+    let relative = if center_is_origin {
         x
+    } else {
+        sub(cx.graph, x, center)
+    };
+    let magnitude = if negative {
+        neg(cx.graph, relative)
+    } else {
+        relative
     };
     let ln_x = call(cx, "ln", &[magnitude])?;
     let solution = cx.graph.substitute(w, s, ln_x);
     let solution = cx.simplify(solution);
     if !super::util::contains_op(cx.graph, solution, "sum")
         && !super::util::contains_op(cx.graph, solution, "defint")
-        && !verified(cx, p, solution)
     {
-        return None;
+        // For a shifted log chart the generic verification samples in x can
+        // lie entirely outside the chart. Verify the exactly transformed PDE.
+        let verified = if center_is_origin {
+            verified(cx, p, solution)
+        } else {
+            verified(cx, &scalar, w)
+        };
+        if !verified {
+            return None;
+        }
     }
     Some(solution)
 }

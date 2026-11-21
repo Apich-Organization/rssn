@@ -62,7 +62,7 @@
 //! | biharmonic, beam `u_tt + k u_xxxx` | box | 1, 2 | expansion (the symbol `Σ c_α Π (-λ_j)^{α_j/2}` is generic in the even operator), simply supported / sliding edges |
 //! | advection `a·∇u + c u = f` | whole space | any | characteristics, invariants `a_j x_l - a_l x_j` |
 //! | hyperbolic and parabolic *systems* with constant matrices | any domain of the scalar solvers | 1, 2, 3 | simultaneous diagonalisation `P^{-1} A_α P = diag`, scalar solution, `U = P W` |
-//! | | first-order systems without distinct eigenvalues (Jordan chains) | whole space with sources; bounded domains for derivative-free couplings and homogeneous boundary values | 1, 2, 3 | common Jordan basis, `w_a = Σ_j q_j(t, ∂) S_{a+j}` with polynomial `q_j` in `t`; sources by Duhamel with `(t - τ)^k` expanded into scalar solves with sources `τ^l s` |
+//! | first-order systems without distinct eigenvalues (Jordan chains) | whole space with sources; bounded domains for derivative-free couplings and homogeneous boundary values | 1, 2, 3 | common Jordan basis, `w_a = Σ_j q_j(t, ∂) S_{a+j}` with polynomial `q_j` in `t`; sources by Duhamel with `(t - τ)^k` expanded into scalar solves with sources `τ^l s` |
 //! | `a(x) u_xx + b(x) u_x + c(x) u` with smooth `a, b, c` | interval, Dirichlet / Neumann / Robin with zero values | 1 | numeric Sturm–Liouville operators `sl_eigen`, `sl_mode`, `sl_weight` (Prüfer shooting on Chebyshev samples of `p = exp ∫ b/a`, `w = p/a`, `q = -p c/a`), expansion with integral coefficients |
 //! | | `x < 0` Euler–Cauchy, several Euler variables | 1, 2 | `x = ± e^s` per variable, recursively |
 //! | heat on the half-line with Robin condition; Neumann with drift | half-line | 1 | heat kernel with the Robin image `-κ e^{κ(x+s)+κ²Dτ} erfc(…)` |
@@ -107,7 +107,7 @@
 //! | `pde_darboux_kdv(u, ψ)` | line | 1 | one Darboux step `ũ = u - 2 ∂²_x ln ψ` of a `KdV` solution with a Lax eigenfunction |
 //! | sech ansatz | line | 1 | `Σ a_j sech^j(μ(x - ct))` (focusing mKdV, …) in the same solver as the tanh method, tanh degrees up to 5, sech up to 4 |
 //! | `a₂ u_tt + a₁ u_t + a₀ u + b u_xx = 0`, boundary signal `u(0, t) = g(t)` or `u_x(0, t) = g(t)`, quiet start | half-line | 1 | Laplace transform in `t`: `e^{-x√(s²+m²)/c}` inverted by the shift theorem and the Bessel kernels (`J₁`, `I₁`, `J₀`, `I₀`) as a retarded integral over `g` (wave, Klein–Gordon, telegraph) |
-//! | `pde_poisson_integral(g, R, d)` | disk, ball | 2, 3 | Poisson integrals of arbitrary boundary data `g(phi)` / `g(theta, phi)` (nested `defint`s) |
+//! | `pde_poisson_integral(g, R, d)` | disk, ball | 2, 3 | harmonic extension of `g(phi)` / `g(theta, phi)` (uses `defint` for general data) |
 //! | `pde_greens_ball(R, d)` | disk, ball and their exteriors | 2, 3 | Dirichlet Green's function by Kelvin images, `ln(ρ²/\|x-s\|²)/4π`, `1/(4π\|x-s\|) - 1/(4πρ)` |
 //! | `a u_t = b [u_rr + (e₀ + 2Z/r - ℓ(ℓ+1)/r²) u]` (also `u_tt`) | half-line, bound states | 1 | Coulomb/Whittaker eigenfunctions `r^{ℓ+1} e^{-Zr/n} L_{n-ℓ-1}^{2ℓ+1}(2Zr/n)`, `E_n = -Z²/n²` (`coulomb_eigen`, `coulomb_mode`); data are projected on the bound states and refused unless the projection reproduces them |
 //! | `spheroidal_eigen(m, n, γ)`, `spheroidal_mode(m, n, γ, x)` | `[-1, 1]` | 1 | prolate (`γ > 0`) and oblate (`γ < 0`) angular functions in the orthonormal associated Legendre basis |
@@ -141,7 +141,7 @@
 //!   error-controlled cut-off `k_max ≤ 64`). The regular finite-interval
 //!   Weyl–Titchmarsh m-function and spectral density are numeric
 //!   (`sl_mfun_re`/`sl_mfun_im`/`sl_density`; poles and atom weights
-//!   documented in [`sl`]). Not covered: spheroidal exterior (radiation)
+//!   documented in `sl`). Not covered: spheroidal exterior (radiation)
 //!   problems and Neumann/Robin data on spheroids, half-line continuous
 //!   spectra and their Weyl–Titchmarsh measures beyond the Hankel, Weber and
 //!   Coulomb instances, zero order terms that are not a sum of
@@ -706,7 +706,7 @@ fn install_solvers_and_greens(i: &mut Installer<'_>) -> Result<(), RuleError> {
         (
             "pdsolve",
             Method::Any,
-            "`pdsolve(pde, u, ...)`: general symbolic/numeric PDE solver for unknown `u` with optional boundary/initial conditions.",
+            "`pdsolve(pde, u, ...)`: general symbolic/numeric PDE solver for unknown `u` with optional boundary/initial conditions. For homogeneous heat or undamped wave equations on disks and balls, the numerical modal fallback accepts general initial data with homogeneous Neumann boundaries.",
         ),
         (
             "solve_pde",
@@ -769,7 +769,7 @@ fn install_solvers_and_greens(i: &mut Installer<'_>) -> Result<(), RuleError> {
         (
             "solve_wave_equation_1d",
             Method::Wave,
-            "`solve_wave_equation_1d(pde, u, ...)`: solves the 1D wave equation.",
+            "`solve_wave_equation_1d(pde, u, conditions)` solves a symbolic wave equation and returns an equation for the unknown function.\n\nSupply the unknown as an application such as `u(x, t)`. The optional list of conditions gives initial values, initial velocity, or boundary data.\n\nThis spelling uses the same solver as `solve_wave_equation`. The arguments of the unknown function determine the spatial dimension.",
         ),
         (
             "solve_wave_equation_2d",
@@ -864,7 +864,7 @@ fn install_solvers_and_greens(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let op = i.op(heavy(
         "pde_poisson_integral",
         Arity::Fixed(3),
-        "`pde_poisson_integral(g, x, domain)`: Poisson integral representation of the harmonic function with boundary data `g` on `domain`.",
+        "`pde_poisson_integral(g, radius, dimension)`: harmonic extension of `g(phi)` on a disk (`dimension = 2`) or `g(theta, phi)` on a ball (`dimension = 3`). The positive `radius` is measured in the same units as `r`.",
     ))?;
     // The Poisson integral of boundary data `g` has the dimension of `g`.
     i.dim(op, DimRule::Same(0));
@@ -879,7 +879,7 @@ fn install_solvers_and_greens(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let op = i.op(heavy(
         "pde_greens_ball",
         Arity::Fixed(2),
-        "`pde_greens_ball(x, s)`: Dirichlet Green's function for the Laplacian on a unit/radius ball.",
+        "`pde_greens_ball(radius, dimension)`: Dirichlet Green's function for the negative Laplacian on a disk (`dimension = 2`) or ball (`dimension = 3`).",
     ))?;
     // `1/(4π|x - s|)` in 3D (`1/R`), a logarithm in 2D.
     i.dim(op, DimRule::Custom(dim::rule));
@@ -897,21 +897,21 @@ fn install_solvers_and_greens(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "pde_greens_robin",
             Request::GreensRobin,
             DimRule::Custom(dim::rule),
-            "`pde_greens_robin(x, s)`: Robin boundary Green's function for the Laplacian on a half-space.",
+            "`pde_greens_robin(dimension, h)`: Green's function for the negative Laplacian on a half-space with Robin coefficient `h` (`dimension = 2` or `3`).",
         ),
         // Interior ball Robin: every term scales as `1/R`.
         (
             "pde_greens_ball_robin",
             Request::GreensBallRobin,
             DimRule::Custom(dim::rule),
-            "`pde_greens_ball_robin(x, s)`: interior Robin Green's function for the Laplacian on a ball.",
+            "`pde_greens_ball_robin(radius, h)`: Green's function for the negative Laplacian inside a three-dimensional ball with Robin coefficient `h`.",
         ),
         // Zero-mean Neumann Green's function: `1/R` in 3D, a logarithm in 2D.
         (
             "pde_greens_ball_neumann",
             Request::GreensBallNeumann,
             DimRule::Custom(dim::rule),
-            "`pde_greens_ball_neumann(x, s)`: zero-mean Neumann Green's function for the Laplacian on a ball.",
+            "`pde_greens_ball_neumann(radius, dimension)`: zero-mean Neumann Green's function for the negative Laplacian on a disk (`dimension = 2`) or ball (`dimension = 3`).",
         ),
     ] {
         let op = i.op(heavy(name, Arity::Fixed(2), doc))?;
@@ -921,7 +921,7 @@ fn install_solvers_and_greens(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let op = i.op(heavy(
         "pde_greens_exterior_robin",
         Arity::Fixed(3),
-        "`pde_greens_exterior_robin(x, s, R)`: exterior Robin Green's function for the Laplacian outside a ball of radius `R`.",
+        "`pde_greens_exterior_robin(radius, h, dimension)`: Green's function for the negative Laplacian outside a disk (`dimension = 2`) or ball (`dimension = 3`) with Robin coefficient `h`.",
     ))?;
     // Exterior Robin: a logarithm in 2D and `1/R` in 3D.
     i.dim(op, DimRule::Custom(dim::rule));
@@ -936,7 +936,7 @@ fn install_solvers_and_greens(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let op = i.op(heavy(
         "pde_greens_function",
         Arity::Variadic,
-        "`pde_greens_function(op, domain, ...)`: symbolic Green's function for differential operator `op` on `domain`.",
+        "`pde_greens_function(equation, u(x, …)[, conditions])`: Green's function of a linear constant-coefficient PDE. Homogeneous conditions on a box use eigenfunction series. Supported free-space and orthant cases use fundamental solutions or heat and wave kernels, with reflected sources for homogeneous Dirichlet or Neumann walls. The source coordinate for `x` is `s_x`.",
     ))?;
     // The Green's function's dimension is fixed by the operator and the
     // domain; its expression is analysed directly, so the rule only has to
@@ -1081,11 +1081,12 @@ impl Kernel for Pde {
                 let &[g, radius, dimension] = args.as_slice() else {
                     return Outcome::Pass;
                 };
-                let Some(d) = modes::exact_value(cx, dimension) else {
-                    return Outcome::Pass;
+                let dimension = match modes::exact_value(cx, dimension) {
+                    | Some(2.0) => 2,
+                    | Some(3.0) => 3,
+                    | _ => return Outcome::Pass,
                 };
-                #[allow(clippy::cast_possible_truncation)]
-                poisson::poisson_integral(cx, g, radius, d.round() as i64)
+                poisson::poisson_integral(cx, g, radius, dimension)
                     .map_or(Outcome::Pass, Outcome::Pinned)
             },
             | Request::NlsSoliton => {
@@ -2179,9 +2180,6 @@ fn solve_classical(
             solution = dalembert(cx, p, conditions);
         }
         if solution.is_none() && p.dimension() == 4 && try_method(Wave) {
-            solution = kirchhoff(cx, p, conditions);
-        }
-        if solution.is_none() && p.dimension() == 4 && method == Any {
             solution = kirchhoff(cx, p, conditions);
         }
     }
