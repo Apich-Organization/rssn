@@ -20,7 +20,8 @@
 //!
 //! The univariate helpers (division, gcd, Sturm chains, isolation,
 //! resultants) are exact over [`BigRational`]; the Sturm chains are kept
-//! primitive so that coefficient growth stays manageable.
+//! primitive so that coefficient growth stays manageable. The field norm
+//! and symbolic resultant use the same rational polynomial primitive.
 
 // The algebraic-number API is documented and exercised by the unit tests;
 // comparison, isolation and refinement are part of the representation's
@@ -45,6 +46,8 @@ use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::Number;
 use crate::graph::op::core;
+
+pub(crate) use crate::rules::poly::univariate::resultant;
 
 /// Bound on the bisection steps of a refinement.
 const MAX_REFINE: usize = 4096;
@@ -573,89 +576,6 @@ pub(crate) fn isolate_roots(p: &[BigRational]) -> Vec<(BigRational, BigRational)
     out
 }
 
-/// The Sylvester resultant of `p` and `q`.
-#[must_use]
-pub(crate) fn resultant(
-    p: &[BigRational],
-    q: &[BigRational],
-) -> Option<BigRational> {
-    let m = degree(p)?;
-    let n = degree(q)?;
-    if m == 0 && n == 0 {
-        return Some(BigRational::one());
-    }
-    let size = m.saturating_add(n);
-    let mut rows: Vec<Vec<BigRational>> = Vec::with_capacity(size);
-    let descending_p: Vec<BigRational> =
-        p.iter().take(m.saturating_add(1)).rev().cloned().collect();
-    let descending_q: Vec<BigRational> =
-        q.iter().take(n.saturating_add(1)).rev().cloned().collect();
-    for shift in 0..n {
-        let mut row = vec![BigRational::zero(); size];
-        for (k, c) in descending_p.iter().enumerate() {
-            if let Some(slot) = row.get_mut(shift.saturating_add(k)) {
-                *slot = c.clone();
-            }
-        }
-        rows.push(row);
-    }
-    for shift in 0..m {
-        let mut row = vec![BigRational::zero(); size];
-        for (k, c) in descending_q.iter().enumerate() {
-            if let Some(slot) = row.get_mut(shift.saturating_add(k)) {
-                *slot = c.clone();
-            }
-        }
-        rows.push(row);
-    }
-    determinant(&mut rows)
-}
-
-/// Determinant by Gaussian elimination over `Q`.
-fn determinant(rows: &mut [Vec<BigRational>]) -> Option<BigRational> {
-    let n = rows.len();
-    let mut det = BigRational::one();
-    let mut flip = false;
-    for k in 0..n {
-        let pivot = (k..n).find(|&r| {
-            rows.get(r)
-                .and_then(|row| row.get(k))
-                .is_some_and(|v| !v.is_zero())
-        });
-        let Some(pivot) = pivot else {
-            // A singular matrix: the determinant is zero.
-            return Some(BigRational::zero());
-        };
-        if pivot != k {
-            rows.swap(k, pivot);
-            flip = !flip;
-        }
-        let pivot_value = rows.get(k)?.get(k)?.clone();
-        if pivot_value.is_zero() {
-            return None;
-        }
-        det *= &pivot_value;
-        for r in k.saturating_add(1)..n {
-            let factor = rows.get(r)?.get(k)?.clone() / &pivot_value;
-            if factor.is_zero() {
-                continue;
-            }
-            let pivot_row = rows.get(k)?.clone();
-            let row = rows.get_mut(r)?;
-            for c in k..n {
-                let value = pivot_row.get(c)?.clone();
-                if let Some(slot) = row.get_mut(c) {
-                    *slot -= &factor * &value;
-                }
-            }
-        }
-    }
-    if flip {
-        det = -det;
-    }
-    Some(det)
-}
-
 /// A real algebraic number: a square-free defining polynomial over `Q`
 /// together with an isolating interval for one of its real roots.
 ///
@@ -958,6 +878,22 @@ mod tests {
             .iter()
             .map(|&c| BigRational::from_integer(BigInt::from(c)))
             .collect()
+    }
+
+    #[test]
+    fn field_norm_resultant_preserves_orientation_and_padded_coefficient_lists() {
+        let p = poly(&[-2, 0, 0, 1, 0]);
+        let q = poly(&[3, -1, 0]);
+        // Res(t³ - 2, 3 - t) = 3³ - 2, and swapping changes the sign.
+        assert_eq!(
+            resultant(&p, &q),
+            Some(BigRational::from_integer(25.into()))
+        );
+        assert_eq!(
+            resultant(&q, &p),
+            Some(BigRational::from_integer((-25).into()))
+        );
+        assert_eq!(resultant(&p, &poly(&[0, 0])), None);
     }
 
     #[test]

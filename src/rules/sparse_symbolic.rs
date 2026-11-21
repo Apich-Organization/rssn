@@ -219,6 +219,12 @@ fn residue_node(
 /// The shape and raw `(row, column, value)` entries of a `sparse(...)` term.
 type RawEntries = (usize, usize, Vec<(usize, usize, NodeId)>);
 
+/// Original row indices for a compact matrix used by entry-only operations.
+struct RowMap {
+    rows: usize,
+    indices: Vec<usize>,
+}
+
 impl Sparse {
     /// The shape and raw `(row, column, value)` entries (zero-based) of a
     /// `sparse(...)` term.
@@ -259,6 +265,41 @@ impl Sparse {
         node: NodeId,
     ) -> Option<Matrix> {
         let (rows, cols, entries) = self.raw(cx.graph, node)?;
+        Self::read_entries(cx, rows, cols, entries)
+    }
+
+    /// Reads an entry-only matrix without allocating a row for each empty row
+    /// when the logical dimensions are much larger than the entry list.
+    fn read_compact(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Option<(Matrix, Option<RowMap>)> {
+        const MAX_ROWS_PER_TRIPLET: usize = 4;
+
+        let (rows, cols, mut entries) = self.raw(cx.graph, node)?;
+        let row_map = (rows > entries.len().saturating_mul(MAX_ROWS_PER_TRIPLET)).then(|| {
+            let mut indices: Vec<usize> = entries.iter().map(|&(i, _, _)| i).collect();
+            indices.sort_unstable();
+            indices.dedup();
+            // Keep triplets in their input order so duplicate coefficients
+            // are combined in the same order in both coefficient domains.
+            for (row, _, _) in &mut entries {
+                *row = indices.partition_point(|&i| i < *row);
+            }
+            RowMap { rows, indices }
+        });
+        let stored_rows = row_map.as_ref().map_or(rows, |map| map.indices.len());
+        let matrix = Self::read_entries(cx, stored_rows, cols, entries)?;
+        Some((matrix, row_map))
+    }
+
+    fn read_entries(
+        cx: &mut Cx<'_>,
+        rows: usize,
+        cols: usize,
+        entries: Vec<(usize, usize, NodeId)>,
+    ) -> Option<Matrix> {
         let exact: Option<Vec<(usize, usize, BigRational)>> = entries
             .iter()
             .map(|&(i, j, v)| rational(cx.graph, v).map(|q| (i, j, q)))
@@ -317,20 +358,31 @@ impl Sparse {
         graph: &mut Graph,
         matrix: &Matrix,
     ) -> NodeId {
+        self.write_rows(graph, matrix, None)
+    }
+
+    fn write_rows(
+        &self,
+        graph: &mut Graph,
+        matrix: &Matrix,
+        row_map: Option<&RowMap>,
+    ) -> NodeId {
+        let original_rows = |rows| row_map.map_or(rows, |map| map.rows);
+        let original_index = |i| row_map.map_or(i, |map| map.indices[i]);
         match matrix {
             | Matrix::Exact(m) => {
                 let entries = m
                     .triplets()
-                    .map(|(i, j, v)| (i, j, v.clone()))
-                    .collect::<Vec<_>>()
-                    .into_iter()
-                    .map(|(i, j, v)| (i, j, linalg::rational_node(graph, &v)))
+                    .map(|(i, j, v)| (original_index(i), j, linalg::rational_node(graph, v)))
                     .collect();
-                self.build(graph, m.rows, m.cols, entries)
+                self.build(graph, original_rows(m.rows), m.cols, entries)
             },
             | Matrix::Symbolic(m) => {
-                let entries = m.triplets().map(|(i, j, v)| (i, j, *v)).collect();
-                self.build(graph, m.rows, m.cols, entries)
+                let entries = m
+                    .triplets()
+                    .map(|(i, j, v)| (original_index(i), j, *v))
+                    .collect();
+                self.build(graph, original_rows(m.rows), m.cols, entries)
             },
         }
     }
@@ -344,8 +396,8 @@ impl Sparse {
     ) -> Option<NodeId> {
         match (self.kind, args) {
             | (Kind::Normalize, _) => {
-                let matrix = self.read(cx, node)?;
-                let canonical = self.write(cx.graph, &matrix);
+                let (matrix, row_map) = self.read_compact(cx, node)?;
+                let canonical = self.write_rows(cx.graph, &matrix, row_map.as_ref());
                 (canonical != node).then_some(canonical)
             },
             | (Kind::FromDense, [dense]) => {
@@ -399,7 +451,8 @@ impl Sparse {
                 Some(linalg::list(cx.graph, &[m, n]))
             },
             | (Kind::Nnz, [s]) => {
-                let count = match self.read(cx, *s)? {
+                let (matrix, _) = self.read_compact(cx, *s)?;
+                let count = match matrix {
                     | Matrix::Exact(m) => m.nnz(),
                     | Matrix::Symbolic(m) => m.nnz(),
                 };

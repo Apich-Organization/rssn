@@ -209,9 +209,19 @@ pub(crate) fn horner(
     g: &[BigInt],
     z: &Fx,
 ) -> Fx {
+    horner_with(g, z, |value, coefficient| {
+        value.add(&Fx::integer(coefficient))
+    })
+}
+
+fn horner_with<C>(
+    g: &[C],
+    z: &Fx,
+    add: impl Fn(&Fx, &C) -> Fx,
+) -> Fx {
     g.iter()
         .rev()
-        .fold(Fx::zero(), |acc, c| acc.mul(z).add(&Fx::integer(c)))
+        .fold(Fx::zero(), |acc, c| add(&acc.mul(z), c))
 }
 
 pub(crate) fn derivative_of(g: &[BigInt]) -> Vec<BigInt> {
@@ -301,19 +311,24 @@ pub(crate) fn durand_kerner(raw: &[f64]) -> Option<Vec<(f64, f64)>> {
         .then_some(z)
 }
 
-/// Roots refined to `BITS` bits.
+/// Roots refined independently to `BITS` bits, in the seed order. The
+/// polynomial and derivative share their prepared fixed-point coefficients.
 pub(crate) fn refined_roots(g: &[BigInt]) -> Option<Vec<Fx>> {
-    let derivative = derivative_of(g);
-    let mut out = Vec::new();
-    for (re, im) in approximate_roots(g)? {
-        let mut z = Fx::from_f64(re, im)?;
+    let roots = approximate_roots(g)?;
+    let coefficients: Vec<_> = g.iter().map(Fx::integer).collect();
+    let derivative: Vec<_> = derivative_of(g).iter().map(Fx::integer).collect();
+    crate::kernels::par::try_map_indexed(roots.len(), 4, |index| -> Result<Fx, ()> {
+        let &(re, im) = roots.get(index).ok_or(())?;
+        let mut z = Fx::from_f64(re, im).ok_or(())?;
         for _ in 0..12 {
-            let step = horner(g, &z).div(&horner(&derivative, &z))?;
+            let step = horner_with(&coefficients, &z, Fx::add)
+                .div(&horner_with(&derivative, &z, Fx::add))
+                .ok_or(())?;
             z = z.sub(&step);
         }
-        out.push(z);
-    }
-    Some(out)
+        Ok(z)
+    })
+    .ok()
 }
 
 fn permutations(items: &[usize]) -> Vec<Vec<usize>> {
@@ -703,6 +718,29 @@ mod tests {
         c.iter()
             .map(|&v| BigRational::from_integer(BigInt::from(v)))
             .collect()
+    }
+
+    #[test]
+    fn fixed_point_root_refinement_preserves_seed_order_across_pools() {
+        let coefficients: Vec<BigInt> = [-1, -1, 0, 0, 0, 0, 0, 1]
+            .into_iter()
+            .map(BigInt::from)
+            .collect();
+        let one = rayon::ThreadPoolBuilder::new()
+            .num_threads(1)
+            .build()
+            .unwrap();
+        let four = rayon::ThreadPoolBuilder::new()
+            .num_threads(4)
+            .build()
+            .unwrap();
+        let serial = one.install(|| refined_roots(&coefficients)).unwrap();
+        let parallel = four.install(|| refined_roots(&coefficients)).unwrap();
+        assert_eq!(serial.len(), 7);
+        assert_eq!(serial.len(), parallel.len());
+        for (a, b) in serial.iter().zip(&parallel) {
+            assert_eq!((&a.re, &a.im), (&b.re, &b.im));
+        }
     }
 
     #[test]

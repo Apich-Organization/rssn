@@ -474,7 +474,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "laplacian",
             Arity::Fixed(2),
             Request::Laplacian,
-            "`laplacian(f, vars)`: Laplacian `sum_i d^2f/dx_i^2` of scalar expression `f`.",
+            "`laplacian(f, vars)` sums the second partial derivatives of a scalar expression `f`.\n\nPass the variables as `list(x_1, ..., x_n)`. The operator differentiates twice with respect to each variable.\n\nFor example, `laplacian(x^2 + y^2, list(x, y))` returns `4`.",
         ),
         (
             "jacobian",
@@ -1042,7 +1042,11 @@ fn determinant(
     if n == 0 {
         return Some(cx.graph.int(1));
     }
-    if rational_matrix(cx.graph, m).is_none() && n <= 10 {
+    if let Some(mut exact) = rational_matrix(cx.graph, m) {
+        let factor = crate::kernels::qlinalg::det_in_place(&mut exact);
+        return Some(rational_node(cx.graph, &factor));
+    }
+    if n <= 10 {
         // Symbolic: Laplace expansion over memoised minors is division
         // free, so the result is a polynomial in the entries.
         let value = laplace(cx.graph, m);
@@ -1064,20 +1068,20 @@ fn laplace(
 ) -> NodeId {
     let n = m.len();
     // minors[mask] = det of rows n-|mask|.. restricted to the columns in mask
-    let mut minors: std::collections::HashMap<u32, NodeId> = std::collections::HashMap::new();
-    minors.insert(0, graph.int(1));
     let full: u32 = (1_u32 << n) - 1;
+    let mut minors = vec![graph.int(1); full as usize + 1];
     let mut masks: Vec<u32> = (1..=full).collect();
     masks.sort_by_key(|mask| mask.count_ones());
+    let mut terms = Vec::with_capacity(n);
     for mask in masks {
         let row = n - mask.count_ones() as usize;
-        let mut terms = Vec::new();
+        terms.clear();
         let mut sign_even = true;
         for col in 0..n {
             if mask & (1 << col) == 0 {
                 continue;
             }
-            let rest = minors[&(mask & !(1 << col))];
+            let rest = minors[(mask & !(1 << col)) as usize];
             let term = mul(graph, &[m[row][col], rest]);
             terms.push(if sign_even {
                 term
@@ -1087,9 +1091,9 @@ fn laplace(
             sign_even = !sign_even;
         }
         let value = add(graph, &terms);
-        minors.insert(mask, value);
+        minors[mask as usize] = value;
     }
-    minors[&full]
+    minors[full as usize]
 }
 
 /// The inverse of a square matrix of terms (exact or symbolic), for other

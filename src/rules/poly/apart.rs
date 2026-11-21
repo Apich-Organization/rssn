@@ -2,15 +2,17 @@
 //!
 //! `n / d = q + sum_i sum_{j <= m_i} a_ij / f_i^j`, where `d = c prod f_i^m_i`
 //! is the factorisation of the denominator into irreducible factors over `Q`
-//! and every numerator `a_ij` has degree below `deg f_i`. The numerators are
-//! found by solving one linear system over `Q` (the classical
-//! undetermined-coefficients method), which is exact and handles repeated
-//! and irreducible higher-degree factors uniformly.
+//! and every numerator `a_ij` has degree below `deg f_i`. For each factor
+//! power `F_i = f_i^m_i`, the polynomial Chinese remainder theorem gives the
+//! local numerator `r * (d/F_i)^(-1) mod F_i`, where `r` is the remainder of
+//! `n` divided by `d`. Repeated division by `f_i` gives the individual
+//! numerators for that block. Large decompositions can compute these blocks
+//! independently on the active CPU pool.
 //!
-//! Because the system is posed over the *full* irreducible factorisation,
-//! repeated factors and irreducible quadratics need no special case:
-//! `1/(x^2 (x + 1))` yields `1/x`, `1/x^2` and `1/(x + 1)`, and `1/(x^3 + 1)`
-//! yields a constant over `x + 1` plus a linear numerator over `x^2 - x + 1`.
+//! The full irreducible factorisation handles repeated factors and higher
+//! degrees uniformly. `1/(x^2 (x + 1))` yields `-1/x + 1/x^2 + 1/(x + 1)`.
+//! `1/(x^3 + 1)` yields a constant over `x + 1` plus a linear numerator over
+//! `x^2 - x + 1`.
 //!
 //! `split_real_quadratics` goes one step further and rewrites such a
 //! decomposition over `R`, adjoining `sqrt(discriminant)` for each real
@@ -20,6 +22,8 @@ use num_bigint::BigInt;
 use num_rational::BigRational;
 use num_traits::One;
 use num_traits::Zero;
+
+use crate::kernels::par;
 
 use super::univariate;
 use super::univariate::QPoly;
@@ -66,7 +70,12 @@ pub struct RadicalPiece {
     pub power: u32,
 }
 
-/// Decomposes `numer / denom`. Returns `None` for a zero denominator.
+/// Decomposes `numer / denom` over the rationals.
+///
+/// Input coefficients are in
+/// ascending degree. The result gives the polynomial quotient and nonzero
+/// fraction numerators, in factor order and increasing denominator power.
+/// Returns `None` for a zero denominator or an incomplete factorisation.
 #[must_use]
 pub fn apart(
     numer: &[BigRational],
@@ -91,55 +100,134 @@ pub fn apart(
         });
     }
     let (_, factors) = univariate::factor(&denom);
-    // Unknown numerators: for factor i and power j, a polynomial of degree
-    // below deg(f_i). Column = x^k * denom / f_i^j.
-    let n = denom.len() - 1;
-    let mut columns: Vec<QPoly> = Vec::with_capacity(n);
-    let mut labels: Vec<(usize, u32)> = Vec::with_capacity(n);
-    let rational_factors: Vec<QPoly> = factors
-        .iter()
-        .map(|(f, _)| f.iter().cloned().map(BigRational::from_integer).collect())
+    let factors: Vec<_> = factors
+        .into_iter()
+        .map(|(factor, power)| {
+            (
+                factor.into_iter().map(BigRational::from_integer).collect(),
+                power,
+            )
+        })
         .collect();
-    for (i, ((factor, multiplicity), fq)) in factors.iter().zip(&rational_factors).enumerate() {
-        let mut power: QPoly = vec![BigRational::one()];
-        for j in 1..=*multiplicity {
-            power = univariate::mul(&power, fq);
-            let (cofactor, _) = univariate::divrem(&denom, &power)?;
-            for k in 0..factor.len() - 1 {
-                let mut shifted = vec![BigRational::zero(); k];
-                shifted.extend(cofactor.iter().cloned());
-                columns.push(shifted);
-                labels.push((i, j));
+    let pieces = decompose_proper(&remainder, &denom, &factors)?;
+    Some(Apart { quotient, pieces })
+}
+
+fn decompose_proper(
+    remainder: &[BigRational],
+    denominator: &[BigRational],
+    factors: &[(QPoly, u32)],
+) -> Option<Vec<Piece>> {
+    const FACTOR_GRAIN: usize = 4;
+    let degree = denominator.len().checked_sub(1)?;
+    let factored_degree = factors
+        .iter()
+        .try_fold(0_usize, |total, (factor, multiplicity)| {
+            let factor_degree = factor.len().checked_sub(1)?;
+            if factor_degree == 0 || *multiplicity == 0 {
+                return None;
             }
-        }
-    }
-    if columns.len() != n {
+            total.checked_add(factor_degree.checked_mul(usize::try_from(*multiplicity).ok()?)?)
+        })?;
+    if factored_degree != degree {
         return None;
     }
-    let solution = solve_columns(&columns, &remainder, n)?;
+
+    if degree.saturating_mul(factors.len()) >= 192 {
+        let blocks = par::try_map_indexed(factors.len(), FACTOR_GRAIN, |index| {
+            let (factor, multiplicity) = factors.get(index).ok_or(())?;
+            factor_block(remainder, denominator, factor, *multiplicity).ok_or(())
+        })
+        .ok()?;
+        return Some(blocks.into_iter().flatten().collect());
+    }
     let mut pieces = Vec::new();
-    for (i, ((_, multiplicity), fq)) in factors.iter().zip(&rational_factors).enumerate() {
-        for j in 1..=*multiplicity {
-            let mut numerator: QPoly = labels
-                .iter()
-                .zip(&solution)
-                .filter(|((fi, fj), _)| *fi == i && *fj == j)
-                .map(|(_, v)| v.clone())
-                .collect();
-            while numerator.last().is_some_and(Zero::is_zero) {
-                numerator.pop();
-            }
-            if numerator.is_empty() {
-                continue;
-            }
+    for (factor, multiplicity) in factors {
+        pieces.extend(factor_block(remainder, denominator, factor, *multiplicity)?);
+    }
+    Some(pieces)
+}
+
+fn factor_block(
+    remainder: &[BigRational],
+    denominator: &[BigRational],
+    factor: &[BigRational],
+    multiplicity: u32,
+) -> Option<Vec<Piece>> {
+    let power = polynomial_power(factor, multiplicity);
+    let (cofactor, defect) = univariate::divrem(denominator, &power)?;
+    if !defect.is_empty() {
+        return None;
+    }
+    let (_, cofactor) = univariate::divrem(&cofactor, &power)?;
+    let inverse = inverse_modulo(&cofactor, &power)?;
+    let (_, reduced_remainder) = univariate::divrem(remainder, &power)?;
+    let (_, mut local) =
+        univariate::divrem(&univariate::mul(&reduced_remainder, &inverse), &power)?;
+
+    let mut pieces = Vec::new();
+    for exponent in (1..=multiplicity).rev() {
+        if local.is_empty() {
+            break;
+        }
+        let (quotient, numerator) = univariate::divrem(&local, factor)?;
+        local = quotient;
+        if !numerator.is_empty() {
             pieces.push(Piece {
-                factor: fq.clone(),
-                power: j,
+                factor: factor.to_vec(),
+                power: exponent,
                 numerator,
             });
         }
     }
-    Some(Apart { quotient, pieces })
+    pieces.reverse();
+    Some(pieces)
+}
+
+fn polynomial_power(
+    factor: &[BigRational],
+    exponent: u32,
+) -> QPoly {
+    match exponent {
+        | 0 => vec![BigRational::one()],
+        | 1 => factor.to_vec(),
+        | _ => {
+            let half = polynomial_power(factor, exponent / 2);
+            let squared = univariate::mul(&half, &half);
+            if exponent.is_multiple_of(2) {
+                squared
+            } else {
+                univariate::mul(&squared, factor)
+            }
+        },
+    }
+}
+
+/// Inverts a reduced residue modulo `modulus` with the Euclidean algorithm.
+fn inverse_modulo(
+    residue: &[BigRational],
+    modulus: &[BigRational],
+) -> Option<QPoly> {
+    let (mut previous, mut current) = (modulus.to_vec(), residue.to_vec());
+    let (mut previous_weight, mut current_weight) = (Vec::new(), vec![BigRational::one()]);
+    while current.len() > 1 {
+        let (quotient, remainder) = univariate::divrem(&previous, &current)?;
+        let next_weight = univariate::sub(
+            &previous_weight,
+            &univariate::mul(&quotient, &current_weight),
+        );
+        (previous, current) = (current, remainder);
+        (previous_weight, current_weight) = (current_weight, next_weight);
+    }
+    let [unit] = current.as_slice() else {
+        return None;
+    };
+    Some(
+        current_weight
+            .into_iter()
+            .map(|value| value / unit)
+            .collect(),
+    )
 }
 
 /// Rewrites the proper fractions of `parts` as terms with linear
@@ -226,48 +314,6 @@ pub fn split_real_quadratics(parts: &Apart) -> Option<Vec<RadicalPiece>> {
         }
     }
     Some(out)
-}
-
-/// Solves `sum_k a_k * column_k = target` over the rationals, where every
-/// polynomial has degree below `n` and there are `n` columns.
-fn solve_columns(
-    columns: &[QPoly],
-    target: &[BigRational],
-    n: usize,
-) -> Option<Vec<BigRational>> {
-    // Augmented matrix: row = coefficient of x^row.
-    let mut m: Vec<Vec<BigRational>> = (0..n)
-        .map(|row| {
-            let mut line: Vec<BigRational> = columns
-                .iter()
-                .map(|c| c.get(row).cloned().unwrap_or_else(BigRational::zero))
-                .collect();
-            line.push(target.get(row).cloned().unwrap_or_else(BigRational::zero));
-            line
-        })
-        .collect();
-    for col in 0..n {
-        let pivot = (col..n).find(|&r| !m[r][col].is_zero())?;
-        m.swap(col, pivot);
-        let lead = m[col][col].clone();
-        for value in &mut m[col] {
-            *value = &*value / &lead;
-        }
-        for row in 0..n {
-            if row != col && !m[row][col].is_zero() {
-                let factor = m[row][col].clone();
-                let pivot_row = m[col].clone();
-                for (value, p) in m[row].iter_mut().zip(&pivot_row) {
-                    *value = &*value - &factor * p;
-                }
-            }
-        }
-    }
-    Some(
-        m.into_iter()
-            .map(|row| row.last().cloned().unwrap_or_else(BigRational::zero))
-            .collect(),
-    )
 }
 
 #[cfg(test)]
@@ -519,6 +565,105 @@ mod tests {
                 },
             ]
         );
+    }
+
+    #[test]
+    fn rational_unit_and_non_monic_repeated_factors_keep_order_and_omit_zero_pieces() {
+        let linear = q(&[1, 2]);
+        let quadratic = q(&[1, 0, 1]);
+        let denominator = univariate::mul(
+            &[frac(-3, 7)],
+            &univariate::mul(
+                &polynomial_power(&linear, 3),
+                &polynomial_power(&quadratic, 2),
+            ),
+        );
+        let expected = Apart {
+            quotient: q(&[-2, 3]),
+            pieces: vec![
+                Piece {
+                    factor: linear.clone(),
+                    power: 1,
+                    numerator: vec![frac(1, 3)],
+                },
+                Piece {
+                    factor: linear,
+                    power: 3,
+                    numerator: vec![frac(5, 2)],
+                },
+                Piece {
+                    factor: quadratic.clone(),
+                    power: 1,
+                    numerator: q(&[-3, 1]),
+                },
+                Piece {
+                    factor: quadratic,
+                    power: 2,
+                    numerator: q(&[4, -2]),
+                },
+            ],
+        };
+        let mut numerator = recombine(&expected, &denominator);
+        numerator.push(BigRational::zero());
+        let mut padded_denominator = denominator;
+        padded_denominator.push(BigRational::zero());
+        assert_eq!(apart(&numerator, &padded_denominator), Some(expected));
+    }
+
+    #[test]
+    fn independent_factor_blocks_preserve_factor_and_power_order_across_pools() {
+        let factors: Vec<_> = (1..=12)
+            .map(|k| (q(&[k, 1]), u32::try_from(k % 2 + 1).unwrap()))
+            .collect();
+        let denominator = factors
+            .iter()
+            .fold(q(&[1]), |product, (factor, multiplicity)| {
+                univariate::mul(&product, &polynomial_power(factor, *multiplicity))
+            });
+        let expected = Apart {
+            quotient: Vec::new(),
+            pieces: factors
+                .iter()
+                .enumerate()
+                .flat_map(|(index, (factor, multiplicity))| {
+                    (1..=*multiplicity).map(move |power| {
+                        Piece {
+                            factor: factor.clone(),
+                            power,
+                            numerator: vec![frac(
+                                i64::try_from(index).unwrap() + 1,
+                                i64::from(power),
+                            )],
+                        }
+                    })
+                })
+                .collect(),
+        };
+        let remainder = recombine(&expected, &denominator);
+        for workers in [1, 2, 4] {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(workers)
+                .build()
+                .unwrap();
+            assert_eq!(
+                pool.install(|| decompose_proper(&remainder, &denominator, &factors)),
+                Some(expected.pieces.clone())
+            );
+        }
+    }
+
+    #[test]
+    fn invalid_factor_products_have_no_decomposition() {
+        let denominator = q(&[1, 2, 1]);
+        let remainder = q(&[1]);
+        for factors in [
+            vec![(q(&[1, 1]), 1)],
+            vec![(q(&[1, 1]), 1), (q(&[1, 1]), 1)],
+            vec![(q(&[0, 1]), 1), (q(&[1, 1]), 1)],
+            vec![(q(&[1, 1]), 2), (q(&[2, 1]), 0)],
+        ] {
+            assert_eq!(decompose_proper(&remainder, &denominator, &factors), None);
+        }
     }
 
     /// `1/(x^2 (x + 1)) = -1/x + 1/x^2 + 1/(x + 1)`, asserted as an exact

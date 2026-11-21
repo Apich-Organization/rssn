@@ -133,6 +133,42 @@ pub fn gcd(
     monic(&x)
 }
 
+/// The Sylvester resultant over `Q`. Coefficients are in ascending degree.
+/// Returns `None` for a zero polynomial, including an all-zero coefficient
+/// list. Two nonzero constants have resultant one.
+#[must_use]
+pub(crate) fn resultant(
+    p: &[BigRational],
+    q: &[BigRational],
+) -> Option<BigRational> {
+    let (mut left, mut right) = (trim(p.to_vec()), trim(q.to_vec()));
+    if left.is_empty() || right.is_empty() {
+        return None;
+    }
+
+    let mut value = BigRational::one();
+    while right.len() > 1 {
+        let (m, n) = (degree(&left)?, degree(&right)?);
+        if m % 2 == 1 && n % 2 == 1 {
+            value = -value;
+        }
+        if m < n {
+            std::mem::swap(&mut left, &mut right);
+            continue;
+        }
+        let (_, remainder) = divrem(&left, &right)?;
+        let Some(r) = degree(&remainder) else {
+            return Some(BigRational::zero());
+        };
+        // At roots of right, left and remainder agree. Reducing left's
+        // degree changes the power of right's leading coefficient by m - r.
+        let lead = right.last()?.clone();
+        value *= num_traits::pow(lead, m - r);
+        (left, right) = (right, remainder);
+    }
+    Some(value * num_traits::pow(right.first()?.clone(), degree(&left)?))
+}
+
 /// Derivative.
 #[must_use]
 pub fn derivative(p: &[BigRational]) -> QPoly {
@@ -897,6 +933,39 @@ mod tests {
 
     fn z(coeffs: &[i64]) -> ZPoly {
         coeffs.iter().map(|&c| BigInt::from(c)).collect()
+    }
+
+    #[test]
+    fn resultant_preserves_orientation_and_non_monic_scaling() {
+        let third = BigRational::new(BigInt::one(), BigInt::from(3));
+        let five_thirds = BigRational::new(BigInt::from(5), BigInt::from(3));
+        let p = [third, BigRational::one()];
+        let r = q(&[-1, 2]);
+        assert_eq!(resultant(&p, &r), Some(-&five_thirds));
+        assert_eq!(resultant(&r, &p), Some(five_thirds));
+        assert_eq!(
+            resultant(&q(&[-5, 13, 6]), &q(&[3, 4])),
+            Some(BigRational::from_integer(BigInt::from(-182)))
+        );
+        assert_eq!(
+            resultant(&q(&[-5, 13, 6]), &q(&[-1, 3])),
+            Some(BigRational::zero())
+        );
+    }
+
+    #[test]
+    fn resultant_distinguishes_constants_zero_and_trailing_padding() {
+        assert_eq!(resultant(&q(&[3, 0]), &q(&[5])), Some(BigRational::one()));
+        assert_eq!(
+            resultant(&q(&[3]), &q(&[-2, 0, 0, 1, 0])),
+            Some(BigRational::from_integer(BigInt::from(27)))
+        );
+        assert_eq!(
+            resultant(&q(&[-2, 0, 0, 1]), &q(&[-3])),
+            Some(BigRational::from_integer(BigInt::from(-27)))
+        );
+        assert_eq!(resultant(&q(&[]), &q(&[1, 1])), None);
+        assert_eq!(resultant(&q(&[1, 1]), &q(&[0, 0])), None);
     }
 
     fn product(

@@ -53,6 +53,9 @@ use super::qe_alg::RealAlg;
 const MAX_FIELD_DEGREE: usize = 128;
 /// Bound on the number of interpolation points.
 const MAX_INTERPOLATION: usize = 256;
+/// Minimum number of active rational entries for parallel pivot elimination.
+const PARALLEL_EMBEDDING_ENTRIES: usize = 1_024;
+const EMBEDDING_ROWS_PER_JOB: usize = 4;
 /// Bound on the bisection steps of a field-refinement.
 const MAX_BISECT: usize = 4096;
 /// Smallest positive integer shifts tried for a primitive element.
@@ -1144,7 +1147,7 @@ fn f_interval_contains_root(
 }
 
 /// The resolvent `Res_t(M(t), f(y - s t))` over `Q`, obtained by exact
-/// Lagrange interpolation of the coefficients of `y`.
+/// Newton interpolation of the coefficients of `y`.
 fn norm_shift(
     f: &[Elem],
     s: u32,
@@ -1156,48 +1159,48 @@ fn norm_shift(
     if degree_bound > MAX_INTERPOLATION {
         return None;
     }
-    let shift = BigRational::from_integer(BigInt::from(s));
+    let shift = BigRational::from_integer(-BigInt::from(s));
+    let mut shift_powers = Vec::with_capacity(m.saturating_add(1));
+    let mut power = BigRational::one();
+    for _ in 0..=m {
+        shift_powers.push(power.clone());
+        power *= &shift;
+    }
     // B_k(t) for k = 0..=m: G(t, y) = sum_k y^k B_k(t).
     let mut b_polys: Vec<Vec<BigRational>> = Vec::with_capacity(m.saturating_add(1));
     for k in 0..=m {
         let mut limb: Vec<BigRational> = Vec::new();
         for j in k..=m {
             let coefficient = f.get(j)?;
-            let factor = BigRational::from_integer(binomial(j, k));
-            let power = u32::try_from(j.saturating_sub(k)).ok()?;
-            let shift_power = num_traits::pow(shift.clone(), usize::try_from(power).ok()?);
-            let scale = &factor
-                * &shift_power
-                * BigRational::from_integer(BigInt::from(if (j - k).is_multiple_of(2) {
-                    1
-                } else {
-                    -1
-                }));
+            let power = j - k;
+            let scale = BigRational::from_integer(binomial(j, k)) * shift_powers.get(power)?;
             let scaled = alg::scale(coefficient.coeffs(), &scale);
-            let shifted: Vec<BigRational> =
-                std::iter::repeat_n(BigRational::zero(), power as usize)
-                    .chain(scaled)
-                    .collect();
+            let shifted: Vec<BigRational> = std::iter::repeat_n(BigRational::zero(), power)
+                .chain(scaled)
+                .collect();
             limb = alg::add(&limb, &shifted);
         }
         b_polys.push(limb);
     }
     // Interpolate H(y) = Res_t(M(t), G(t, y)) at degree_bound + 1 points.
     let count = degree_bound.saturating_add(1);
-    let mut xs: Vec<BigRational> = Vec::with_capacity(count);
-    let mut values: Vec<BigRational> = Vec::with_capacity(count);
-    for i in 0..count {
-        let x = interpolation_point(i);
-        let mut at_x = Vec::new();
-        let mut power = BigRational::one();
-        for poly in &b_polys {
-            at_x = alg::add(&at_x, &alg::scale(poly, &power));
-            power *= &x;
-        }
-        let value = alg::resultant(field.minpoly(), &at_x)?;
-        xs.push(x);
-        values.push(value);
-    }
+    let xs: Vec<_> = (0..count).map(interpolation_point).collect();
+    let values =
+        crate::kernels::par::try_map_indexed(count, 9, |index| -> Result<BigRational, ()> {
+            let x = xs.get(index).ok_or(())?;
+            let at_x = b_polys.iter().rev().fold(Vec::new(), |value, poly| {
+                alg::add(&alg::scale(&value, x), poly)
+            });
+            // A valid nonzero polynomial can specialize to zero at one point.
+            // Its field norm at that point is zero, so keep the interpolation
+            // abscissa and use that value.
+            if at_x.is_empty() {
+                Ok(BigRational::zero())
+            } else {
+                alg::resultant(field.minpoly(), &at_x).ok_or(())
+            }
+        })
+        .ok()?;
     let h = interpolate(&xs, &values)?;
     alg::degree(&h)?;
     Some(h)
@@ -1358,34 +1361,14 @@ fn try_shift(
     let new_field = Field::from_root(&minimal, lo, hi)?;
     let rows = d.checked_mul(m)?;
     // A column j is (theta + s c)^j expanded on the basis theta^u c^v.
-    let mut columns: Vec<Vec<BigRational>> = Vec::with_capacity(new_degree);
-    for j in 0..new_degree {
-        let mut out = vec![BigRational::zero(); rows];
-        for v in 0..=j {
-            let coefficient =
-                BigRational::from_integer(binomial(j, v)) * num_traits::pow(shift.clone(), v);
-            let u = j.saturating_sub(v);
-            add_ring_monomial(&mut out, field.minpoly(), f, m, u, v, &coefficient);
-        }
-        columns.push(out);
-    }
-    // A[row][j] = coefficient of the basis element `row` in (theta')^j.
-    let mut matrix: Vec<Vec<BigRational>> = vec![vec![BigRational::zero(); new_degree]; rows];
-    for (column_index, column) in columns.iter().enumerate() {
-        for (row, value) in column.iter().enumerate() {
-            if let Some(slot) = matrix.get_mut(row).and_then(|r| r.get_mut(column_index)) {
-                *slot = value.clone();
-            }
-        }
-    }
+    // A[row][j] is the coefficient of the basis element `row` in (theta')^j.
+    // Generate successive powers directly in the augmented system.
+    let mut augmented = embedding_matrix(field.minpoly(), f, m, rows, new_degree, &shift)?;
     // Right-hand side: theta itself, in the basis theta^u c^v.
-    let mut rhs = vec![BigRational::zero(); rows];
     for (u, coefficient) in field.theta().coeffs().iter().enumerate() {
-        if let Some(slot) = rhs.get_mut(u.saturating_mul(m)) {
-            *slot = coefficient.clone();
-        }
+        *augmented.get_mut(u.checked_mul(m)?)?.last_mut()? = coefficient.clone();
     }
-    let solution = solve(&matrix, &rhs, new_degree)?;
+    let solution = solve(augmented, new_degree)?;
     let theta_expr = Elem::from_coeffs(solution);
     let generator = new_field.theta();
     let root_expr = new_field.div(&generator.sub(&theta_expr), &Elem::rational(shift))?;
@@ -1415,6 +1398,48 @@ fn try_shift(
         theta: theta_expr,
         root: root_expr,
     })
+}
+
+fn embedding_matrix(
+    minpoly: &[BigRational],
+    f: &[Elem],
+    m: usize,
+    rows: usize,
+    columns: usize,
+    shift: &BigRational,
+) -> Option<Vec<Vec<BigRational>>> {
+    let mut augmented = vec![vec![BigRational::zero(); columns.checked_add(1)?]; rows];
+    let mut power = vec![BigRational::zero(); rows];
+    *power.first_mut()? = BigRational::one();
+    let mut next = power.clone();
+    for j in 0..columns {
+        for (row, coefficient) in augmented.iter_mut().zip(&power) {
+            row.get_mut(j)?.clone_from(coefficient);
+        }
+        if j.saturating_add(1) == columns {
+            break;
+        }
+        next.fill_with(BigRational::zero);
+        // Multiply the previous normal form by theta + s*c. Only terms
+        // crossing a basis boundary need reduction by the defining equations.
+        for (index, coefficient) in power.iter().enumerate().filter(|(_, c)| !c.is_zero()) {
+            let u = index.checked_div(m)?;
+            let v = index.checked_rem(m)?;
+            add_ring_monomial(
+                &mut next,
+                minpoly,
+                f,
+                m,
+                u.saturating_add(1),
+                v,
+                coefficient,
+            );
+            let scaled = coefficient * shift;
+            add_ring_monomial(&mut next, minpoly, f, m, u, v.saturating_add(1), &scaled);
+        }
+        std::mem::swap(&mut power, &mut next);
+    }
+    Some(augmented)
 }
 
 /// Adds `coefficient * theta^u c^v` to a normal form of
@@ -1490,7 +1515,9 @@ fn interpolation_point(index: usize) -> BigRational {
     BigRational::from_integer(value)
 }
 
-/// Lagrange interpolation through `(xs, values)`.
+/// Newton interpolation through `(xs, values)`, returned in ascending power
+/// basis. Divided differences and nested linear evaluation take quadratic
+/// work in the number of sample points.
 #[allow(clippy::single_call_fn)] // one call site
 fn interpolate(
     xs: &[BigRational],
@@ -1500,50 +1527,45 @@ fn interpolate(
     if n == 0 || values.len() != n {
         return None;
     }
-    let mut total = vec![BigRational::zero()];
-    for (i, value) in values.iter().enumerate() {
-        let mut basis = vec![BigRational::one()];
-        let mut denominator = BigRational::one();
-        for (j, x) in xs.iter().enumerate() {
-            if i == j {
-                continue;
+    let mut differences = values.to_vec();
+    for width in 1..n {
+        // Going backwards leaves both entries of the previous width intact.
+        for i in (width..n).rev() {
+            let denominator = &xs[i] - &xs[i - width];
+            if denominator.is_zero() {
+                return None;
             }
-            let length = basis.len().saturating_add(1);
-            let mut next = vec![BigRational::zero(); length];
-            for (k, c) in basis.iter().enumerate() {
-                if let Some(slot) = next.get_mut(k) {
-                    *slot -= c * x;
-                }
-                if let Some(slot) = next.get_mut(k.saturating_add(1)) {
-                    *slot += c;
-                }
-            }
-            basis = next;
-            denominator *= xs.get(i)? - x;
+            differences[i] = (&differences[i] - &differences[i - 1]) / denominator;
         }
-        if denominator.is_zero() {
-            return None;
-        }
-        let factor = value / denominator;
-        total = alg::add(&total, &alg::scale(&basis, &factor));
     }
-    Some(total)
+
+    let mut polynomial = Vec::with_capacity(n);
+    polynomial.push(differences.last()?.clone());
+    for (x, coefficient) in xs.iter().zip(&differences).take(n - 1).rev() {
+        // p <- (t - x) p + coefficient. The descending update preserves
+        // the coefficient of the preceding power until it has been read.
+        polynomial.push(BigRational::zero());
+        for i in (1..polynomial.len()).rev() {
+            polynomial[i] = &polynomial[i - 1] - x * &polynomial[i];
+        }
+        polynomial[0] = coefficient - x * &polynomial[0];
+    }
+    alg::trim(&mut polynomial);
+    Some(polynomial)
 }
 
-/// Gauss-Jordan solution of `matrix * solution = rhs` over `Q`.
+/// Gauss-Jordan solution over `Q`. The last column is the right-hand side.
+/// Free variables are set to zero.
 #[allow(clippy::single_call_fn)] // one call site
 fn solve(
-    matrix: &[Vec<BigRational>],
-    rhs: &[BigRational],
+    mut augmented: Vec<Vec<BigRational>>,
     columns: usize,
 ) -> Option<Vec<BigRational>> {
-    let rows = matrix.len();
-    let mut augmented: Vec<Vec<BigRational>> = Vec::with_capacity(rows);
-    for (i, row) in matrix.iter().enumerate() {
-        let mut line = row.clone();
-        line.push(rhs.get(i)?.clone());
-        augmented.push(line);
+    let width = columns.checked_add(1)?;
+    if augmented.iter().any(|row| row.len() != width) {
+        return None;
     }
+    let rows = augmented.len();
     let mut pivot_row = 0_usize;
     let mut pivots: Vec<usize> = Vec::new();
     for column in 0..columns {
@@ -1557,26 +1579,26 @@ fn solve(
             continue;
         };
         augmented.swap(pivot_row, found);
-        let pivot = augmented.get(pivot_row)?.get(column)?.clone();
-        if let Some(row) = augmented.get_mut(pivot_row) {
-            for value in row.iter_mut() {
-                *value /= &pivot;
-            }
+        let (above, rest) = augmented.split_at_mut(pivot_row);
+        let (pivot_row_values, below) = rest.split_first_mut()?;
+        let pivot = pivot_row_values.get(column)?.clone();
+        // Earlier pivot columns were cleared here. Earlier skipped columns
+        // were already zero in every remaining row when we skipped them.
+        let pivot_tail = pivot_row_values.get_mut(column..)?;
+        for value in pivot_tail.iter_mut() {
+            *value /= &pivot;
         }
-        for r in 0..rows {
-            if r == pivot_row {
-                continue;
-            }
-            let factor = augmented.get(r)?.get(column)?.clone();
-            if factor.is_zero() {
-                continue;
-            }
-            let pivot_values = augmented.get(pivot_row)?.clone();
-            let row = augmented.get_mut(r)?;
-            for c in 0..=columns {
-                let value = pivot_values.get(c)?;
-                if let Some(slot) = row.get_mut(c) {
-                    *slot -= &factor * value;
+        for rows in [above, below] {
+            let work = rows.len().saturating_mul(pivot_tail.len());
+            if work >= PARALLEL_EMBEDDING_ENTRIES {
+                crate::kernels::par::for_chunks_mut(rows, EMBEDDING_ROWS_PER_JOB, 2, |_, block| {
+                    for row in block {
+                        eliminate_column(row, column, pivot_tail);
+                    }
+                });
+            } else {
+                for row in rows {
+                    eliminate_column(row, column, pivot_tail);
                 }
             }
         }
@@ -1601,6 +1623,23 @@ fn solve(
         }
     }
     Some(solution)
+}
+
+fn eliminate_column(
+    row: &mut [BigRational],
+    column: usize,
+    pivot_tail: &[BigRational],
+) {
+    if let Some((leading, tail)) = row.get_mut(column..).and_then(<[_]>::split_first_mut)
+        && !leading.is_zero()
+    {
+        let factor = std::mem::take(leading);
+        for (value, pivot) in tail.iter_mut().zip(pivot_tail.iter().skip(1)) {
+            if !pivot.is_zero() {
+                *value -= &factor * pivot;
+            }
+        }
+    }
 }
 
 /// Whether the value of `theta_expr` at the new embedding is the old
@@ -1681,6 +1720,123 @@ mod tests {
     fn field_sqrt2() -> Field {
         let poly = vec![q(-2, 1), q(0, 1), q(1, 1)];
         Field::from_root(&poly, q(1, 1), q(2, 1)).unwrap_or_else(|| panic!())
+    }
+
+    #[test]
+    fn embedding_solver_handles_pivot_swaps_free_columns_and_inconsistency() {
+        let system = vec![
+            vec![q(0, 1), q(0, 1), q(3, 2), q(15, 2)],
+            vec![q(0, 1), q(2, 3), q(1, 2), q(7, 2)],
+            vec![q(0, 1), q(2, 1), q(1, 1), q(8, 1)],
+        ];
+        assert_eq!(
+            solve(system.clone(), 3),
+            Some(vec![q(0, 1), q(3, 2), q(5, 1)])
+        );
+        let mut inconsistent = system;
+        inconsistent.last_mut().unwrap()[3] = q(9, 1);
+        assert_eq!(solve(inconsistent, 3), None);
+        assert_eq!(solve(vec![vec![q(1, 1)]], 1), None);
+        assert_eq!(solve(vec![vec![q(1, 1)]], 0), None);
+        assert_eq!(solve(vec![vec![q(0, 1)]], 0), Some(Vec::new()));
+    }
+
+    #[test]
+    fn embedding_matrix_matches_exact_binomial_expansion_over_number_fields() {
+        let minpoly = [q(-2, 1), q(0, 1), q(0, 1), q(1, 1)];
+        for f in [
+            vec![Elem::rational(q(-7, 2)), Elem::zero(), Elem::one()],
+            vec![
+                Elem::from_coeffs(vec![q(1, 2), q(-2, 3)]),
+                Elem::from_coeffs(vec![q(0, 1), q(1, 4), q(2, 5)]),
+                Elem::one(),
+            ],
+        ] {
+            let m = 2;
+            let rows = 6;
+            let columns = 9;
+            for shift in [q(1, 1), q(2, 1), q(-3, 2)] {
+                let actual = embedding_matrix(&minpoly, &f, m, rows, columns, &shift).unwrap();
+                for j in 0..columns {
+                    let mut expected = vec![BigRational::zero(); rows];
+                    for v in 0..=j {
+                        let coefficient = BigRational::from_integer(binomial(j, v))
+                            * num_traits::pow(shift.clone(), v);
+                        add_ring_monomial(&mut expected, &minpoly, &f, m, j - v, v, &coefficient);
+                    }
+                    assert!(actual.iter().zip(expected).all(|(row, c)| row[j] == c));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn field_norm_retains_zero_specializations_and_adjacent_nonzero_values() {
+        let field = field_sqrt2();
+        let theta = field.theta();
+        let one = Elem::rational(q(1, 1));
+        let linear = [theta.clone(), one.clone()];
+        assert_eq!(
+            norm_shift(&linear, 1, &field),
+            Some(vec![q(0, 1), q(0, 1), q(1, 1)])
+        );
+
+        // In the cubic field, (y + theta)(y + theta + 1) has genuine zero
+        // polynomials at two interpolation points with shift one.
+        let field =
+            Field::from_root(&[q(-2, 1), q(0, 1), q(0, 1), q(1, 1)], q(1, 1), q(2, 1)).unwrap();
+        let theta = field.theta();
+        let theta_plus_one = theta.add(&one);
+        let quadratic = [
+            field.mul(&theta, &theta_plus_one),
+            theta.add(&theta_plus_one),
+            one,
+        ];
+        assert_eq!(
+            norm_shift(&quadratic, 1, &field),
+            Some(vec![
+                q(0, 1),
+                q(0, 1),
+                q(0, 1),
+                q(1, 1),
+                q(3, 1),
+                q(3, 1),
+                q(1, 1)
+            ])
+        );
+        assert_eq!(
+            norm_shift(&quadratic, 2, &field),
+            Some(vec![
+                q(2, 1),
+                q(-6, 1),
+                q(-6, 1),
+                q(-3, 1),
+                q(3, 1),
+                q(3, 1),
+                q(1, 1)
+            ])
+        );
+    }
+
+    #[test]
+    fn interpolation_handles_unsorted_rationals_zero_and_duplicate_points() {
+        let points = [q(9, 7), q(-2, 3), q(1, 5), q(0, 1), q(-5, 4)];
+        let polynomial = vec![q(1, 3), q(-2, 5), q(0, 1), q(5, 7)];
+        let values: Vec<_> = points
+            .iter()
+            .map(|point| alg::eval(&polynomial, point))
+            .collect();
+        assert_eq!(interpolate(&points, &values), Some(polynomial));
+        assert_eq!(
+            interpolate(&points, &[q(0, 1), q(0, 1), q(0, 1), q(0, 1), q(0, 1)]),
+            Some(Vec::new())
+        );
+        assert_eq!(
+            interpolate(&[q(1, 2), q(0, 1), q(1, 2)], &values[..3]),
+            None
+        );
+        assert_eq!(interpolate(&points, &values[..3]), None);
+        assert_eq!(interpolate(&[], &[]), None);
     }
 
     #[test]

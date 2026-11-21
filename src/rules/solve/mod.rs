@@ -180,7 +180,7 @@
 //! reported only when the solver's own answer supports them:
 //!
 //! * **Completeness.** An equation with a circular function of the unknown
-//!   ([`periodic_in`]) is `complete = false` and carries a `branch` condition:
+//!   (`periodic_in`) is `complete = false` and carries a `branch` condition:
 //!   the roots are principal-branch representatives (`sin(x) = 0` lists `0`,
 //!   not `k pi`; also `cos(x) = c`, `tan(x) = c`, `sin(a x + b) = c`, `sin(x^2)
 //!   = c`). `Solutions` has no way to express a family with an integer
@@ -189,7 +189,7 @@
 //!   (inverse functions, the Weierstrass substitution, multiple angles).
 //!   Periodicity hidden from the equation (an unevaluated user function) is not
 //!   seen.
-//! * **Multiplicity** ([`root_multiplicities`]), from the exact square-free
+//! * **Multiplicity** (`root_multiplicities`), from the exact square-free
 //!   decomposition of a univariate polynomial: the multiplicity of each exact
 //!   rational root of a rational polynomial; and 1 for every root of a
 //!   square-free polynomial, whatever the roots look like. With parameters,
@@ -199,7 +199,7 @@
 //!   is exact rather than generic. A repeated factor with an irrational or
 //!   symbolic root (`(x^2 - a)^2`) stays unreported: that would require matching
 //!   a root to a factor numerically.
-//! * **Conditions** ([`root_conditions`]) that the roots as written state about
+//! * **Conditions** (`root_conditions`) that the roots as written state about
 //!   a parameter expression: `e != 0` for a denominator, `e >= 0`
 //!   (`nonnegative`) for an even root such as `sqrt(a)`, `e > 0` for a
 //!   logarithm (`exp(x) = a` gives `ln(a)`) or an even root in a denominator,
@@ -1979,9 +1979,17 @@ mod tests {
         assert!(reduced, "{src}: {text}");
         let items = list_items(&text);
         assert!(items.len() >= at_least, "{src}: {text}");
+        let mut graph = Graph::new();
+        assert!(crate::graph::Engine::install(&mut graph, &rules).is_ok());
+        let parameter = graph.interner_mut().symbol("n");
         for item in &items {
+            let expression = graph
+                .parse(item)
+                .unwrap_or_else(|error| panic!("cannot parse `{item}`: {error}"));
             for n in -20..=20 {
-                let x = eval(&rules, item, &[("n", f64::from(n))]);
+                let mut env = Env::numeric(0.0);
+                env.bind(parameter, f64::from(n));
+                let x = graph.eval(expression, &env).unwrap_or(f64::NAN);
                 assert!(
                     f(x).abs() < 1e-8,
                     "{item} at n = {n} (x = {x}) is not a solution of {src}: {text}"

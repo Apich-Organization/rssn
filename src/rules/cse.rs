@@ -18,10 +18,17 @@
 //!   ordered so that each is defined before its first use.
 //!
 //! Equations `y = e` in the list keep their left-hand side, and only the
-//! right-hand sides are rewritten. The result feeds code generation and
-//! the multi-output JIT, which shares the same subexpressions.
+//! right-hand sides are rewritten. Temporary names avoid free symbols on
+//! both sides of the input equations and declared bound variables. Scoped
+//! operands of binding operators stay within their original scope. The result
+//! feeds code generation and the multi-output JIT.
 
 use std::collections::HashMap;
+use std::collections::HashSet;
+
+use num_bigint::BigInt;
+use num_bigint::BigUint;
+use num_traits::Zero;
 
 use crate::graph::Arity;
 use crate::graph::Cx;
@@ -29,12 +36,14 @@ use crate::graph::DimRule;
 use crate::graph::Graph;
 use crate::graph::Kernel;
 use crate::graph::NodeId;
+use crate::graph::Number;
 use crate::graph::OpDescriptor;
 use crate::graph::OpFlags;
 use crate::graph::OpId;
 use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
+use crate::graph::SymbolId;
 use crate::graph::Tier;
 use crate::graph::dim::DimCtx;
 use crate::graph::dim::DimError;
@@ -57,7 +66,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let cost = i.op(OpDescriptor::new("cse_cost", Arity::Fixed(1))
         .flags(OpFlags::HEAVY)
         .cost(100)
-        .doc("`cse_cost(expr_or_list)`: returns a pair `(before, after)` of operation counts before and after common subexpression elimination."))?;
+        .doc("`cse_cost(expr_or_list)`: returns exact integer operation counts `(before, after)`. The first count expands each input as a tree. The second counts each temporary definition once and each rewritten output, treating temporary references as leaves."))?;
     // `cse` returns a pair of lists (temporaries, rewritten expressions); the
     // rewritten expressions keep the common dimension of the input list.
     // `cse_cost` returns a pair of operation counts, i.e. pure numbers,
@@ -83,6 +92,8 @@ enum Local {
     /// A graph node used as a leaf (symbol, number, or anything without
     /// children).
     Leaf(NodeId),
+    /// An unchanged scoped operand and its original local node for costing.
+    Scoped(NodeId, usize),
     /// An operator applied to local nodes.
     Op(OpId, Vec<usize>),
 }
@@ -91,6 +102,7 @@ enum Local {
 struct Dag {
     nodes: Vec<Local>,
     index: HashMap<Local, usize>,
+    bound_symbols: HashSet<SymbolId>,
 }
 
 impl Dag {
@@ -135,12 +147,34 @@ impl Dag {
                 );
                 continue;
             }
-            let kids: Vec<usize> = children
-                .iter()
-                .filter_map(|c| seen.get(c).copied())
-                .collect();
-            let mut kids = kids;
             let op = graph.op(n);
+            let binder = graph.ops().get(op).binder.and_then(|binder| {
+                let var = children.get(usize::from(binder.var))?;
+                Some((binder, graph.as_symbol(*var)?))
+            });
+            let mut kids: Vec<usize> = if let Some((binder, symbol)) = binder {
+                self.bound_symbols.insert(symbol);
+                let var = usize::from(binder.var);
+                children
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(index, &child)| {
+                        let local = seen.get(&child).copied()?;
+                        let scoped = index == var
+                            || (index < u32::BITS as usize && binder.scope & (1 << index) != 0);
+                        Some(if scoped {
+                            self.intern(Local::Scoped(child, local))
+                        } else {
+                            local
+                        })
+                    })
+                    .collect()
+            } else {
+                children
+                    .iter()
+                    .filter_map(|c| seen.get(c).copied())
+                    .collect()
+            };
             if op == core::ADD || op == core::MUL {
                 kids.sort_unstable();
             }
@@ -159,23 +193,7 @@ impl Dag {
         let mut rounds = 0;
         loop {
             let live = self.live(roots);
-            let mut counts: HashMap<(OpId, usize, usize), usize> = HashMap::new();
-            for &i in &live {
-                if let Some(Local::Op(op, kids)) = self.nodes.get(i)
-                    && (*op == core::ADD || *op == core::MUL)
-                    && kids.len() >= 3
-                {
-                    let mut distinct = kids.clone();
-                    distinct.dedup();
-                    for a in 0..distinct.len() {
-                        for b in a + 1..distinct.len() {
-                            if let (Some(&x), Some(&y)) = (distinct.get(a), distinct.get(b)) {
-                                *counts.entry((*op, x, y)).or_insert(0) += 1;
-                            }
-                        }
-                    }
-                }
-            }
+            let counts = self.pair_counts(&live);
             let Some((&(op, x, y), _)) = counts
                 .iter()
                 .filter(|&(_, &c)| c >= 2)
@@ -211,6 +229,68 @@ impl Dag {
                 return rounds;
             }
         }
+    }
+
+    /// Counts pairs in the live n-ary arithmetic nodes. An operand must
+    /// occur in two distinct nodes of the same operator to share a pair.
+    fn pair_counts(
+        &self,
+        live: &[usize],
+    ) -> HashMap<(OpId, usize, usize), usize> {
+        const WIDE_ARITY: usize = 16;
+
+        let terms = live.iter().filter_map(|&i| {
+            let Local::Op(op, kids) = self.nodes.get(i)? else {
+                return None;
+            };
+            (kids.len() >= 3 && (*op == core::ADD || *op == core::MUL)).then_some((*op, kids))
+        });
+        // For narrow arithmetic nodes the extra scan costs more than the
+        // small number of impossible pairs it can remove.
+        let support = terms
+            .clone()
+            .any(|(_, kids)| kids.len() >= WIDE_ARITY)
+            .then(|| {
+                let mut support = vec![[0u8; 2]; self.nodes.len()];
+                for (op, kids) in terms.clone() {
+                    let group = usize::from(op == core::MUL);
+                    for run in kids.chunk_by(|x, y| x == y) {
+                        if let Some(&kid) = run.first()
+                            && let Some(hit) =
+                                support.get_mut(kid).and_then(|hits| hits.get_mut(group))
+                        {
+                            *hit = hit.saturating_add(1);
+                        }
+                    }
+                }
+                support
+            });
+        let mut counts = HashMap::new();
+        let mut distinct = Vec::new();
+        for (op, kids) in terms {
+            let group = usize::from(op == core::MUL);
+            distinct.clear();
+            if let Some(seen) = &support {
+                distinct.extend(
+                    kids.chunk_by(|x, y| x == y)
+                        .filter_map(|run| run.first().copied())
+                        .filter(|&kid| {
+                            seen.get(kid)
+                                .and_then(|hits| hits.get(group))
+                                .is_some_and(|&hit| hit >= 2)
+                        }),
+                );
+            } else {
+                distinct.extend_from_slice(kids);
+                distinct.dedup();
+            }
+            for (i, &x) in distinct.iter().enumerate() {
+                for &y in distinct.iter().skip(i + 1) {
+                    *counts.entry((op, x, y)).or_insert(0) += 1;
+                }
+            }
+        }
+        counts
     }
 
     /// Replaces references to the keys of `map` everywhere (parents are
@@ -301,24 +381,45 @@ impl Dag {
         uses
     }
 
-    /// Operation count of the expressions written out as trees.
-    fn tree_cost(
+    /// Count operator occurrences by forwarding multiplicities to earlier DAG nodes.
+    fn operation_count(
         &self,
-        i: usize,
-        memo: &mut HashMap<usize, usize>,
-    ) -> usize {
-        if let Some(&c) = memo.get(&i) {
-            return c;
+        roots: &[usize],
+        temporaries: &[usize],
+    ) -> BigUint {
+        let mut referenced = vec![false; self.nodes.len()];
+        let mut hits = vec![BigUint::ZERO; self.nodes.len()];
+        let mut scoped = vec![BigUint::ZERO; self.nodes.len()];
+        for &temporary in temporaries {
+            referenced[temporary] = true;
         }
-        let c = match self.nodes.get(i) {
-            | Some(Local::Op(_, kids)) => {
-                kids.len().saturating_sub(1).max(1)
-                    + kids.iter().map(|&k| self.tree_cost(k, memo)).sum::<usize>()
-            },
-            | _ => 0,
-        };
-        memo.insert(i, c);
-        c
+        for &node in roots.iter().chain(temporaries) {
+            hits[node] += 1_u32;
+        }
+        let mut total = BigUint::ZERO;
+        for (index, node) in self.nodes.iter().enumerate().rev() {
+            let rewritten = std::mem::take(&mut hits[index]);
+            let unchanged = std::mem::take(&mut scoped[index]);
+            if rewritten.is_zero() && unchanged.is_zero() {
+                continue;
+            }
+            match node {
+                | Local::Op(_, kids) => {
+                    total += (&rewritten + &unchanged) * kids.len().saturating_sub(1).max(1);
+                    for &kid in kids {
+                        if !referenced[kid] {
+                            hits[kid] += &rewritten;
+                        }
+                        scoped[kid] += &unchanged;
+                    }
+                },
+                | Local::Scoped(_, original) => {
+                    scoped[*original] += rewritten + unchanged;
+                },
+                | Local::Leaf(_) => {},
+            }
+        }
+        total
     }
 }
 
@@ -340,16 +441,19 @@ fn worth_naming(
         && kids.iter().all(|&k| leaf(k)))
 }
 
-struct Plan {
-    temporaries: Vec<(NodeId, NodeId)>,
-    results: Vec<NodeId>,
-    before: usize,
-    after: usize,
+enum Plan {
+    Costs([BigUint; 2]),
+    Rewrite {
+        temporaries: Vec<(NodeId, NodeId)>,
+        results: Vec<NodeId>,
+    },
 }
 
 fn plan(
     graph: &mut Graph,
     exprs: &[NodeId],
+    lhs: &[Option<NodeId>],
+    count_only: bool,
 ) -> Option<Plan> {
     let mut dag = Dag::default();
     let mut seen = HashMap::new();
@@ -357,10 +461,7 @@ fn plan(
         .iter()
         .map(|&e| dag.import(graph, e, &mut seen))
         .collect();
-    let before = {
-        let mut memo = HashMap::new();
-        roots.iter().map(|&r| dag.tree_cost(r, &mut memo)).sum()
-    };
+    let before = count_only.then(|| dag.operation_count(&roots, &[]));
     dag.extract_pairs(&mut roots);
     let uses = dag.uses(&roots);
     // Live nodes in creation order (children before parents).
@@ -375,19 +476,30 @@ fn plan(
                 && !roots.contains(&i)
         })
         .collect();
-    // Fresh names t1, t2, ... not used by the expressions.
-    let mut taken: Vec<String> = Vec::new();
-    for &e in exprs {
-        for s in graph.free_symbols(graph.find(e)) {
-            taken.push(graph.interner().symbol_name(*s).to_owned());
-        }
+    if let Some(before) = before {
+        return Some(Plan::Costs([before, dag.operation_count(&roots, &named)]));
     }
+    // Fresh names t1, t2, ... distinct from both inputs and written outputs.
+    let taken = if named.is_empty() {
+        HashSet::new()
+    } else {
+        exprs
+            .iter()
+            .chain(lhs.iter().flatten())
+            .flat_map(|&e| graph.free_symbols(graph.find(e)).iter().copied())
+            .chain(dag.bound_symbols.iter().copied())
+            .collect()
+    };
     let mut counter = 0;
     let mut fresh = |graph: &mut Graph| -> NodeId {
         loop {
             counter += 1;
             let name = format!("t{counter}");
-            if !taken.contains(&name) {
+            if graph
+                .interner()
+                .find_symbol(&name)
+                .is_none_or(|id| !taken.contains(&id))
+            {
                 return graph.sym(&name);
             }
         }
@@ -396,7 +508,7 @@ fn plan(
     let mut temporaries = Vec::new();
     for &i in &live {
         let node = match dag.nodes.get(i)? {
-            | Local::Leaf(n) => *n,
+            | Local::Leaf(n) | Local::Scoped(n, _) => *n,
             | Local::Op(op, kids) => {
                 let children: Vec<NodeId> =
                     kids.iter().filter_map(|k| built.get(k).copied()).collect();
@@ -412,30 +524,7 @@ fn plan(
         }
     }
     let results: Vec<NodeId> = roots.iter().filter_map(|r| built.get(r).copied()).collect();
-    // Cost after: each temporary once plus the rewritten results.
-    let after = {
-        let mut memo = HashMap::new();
-        let mut total = 0;
-        for &i in &live {
-            if (named.contains(&i) || roots.contains(&i))
-                && let Some(Local::Op(_, kids)) = dag.nodes.get(i)
-            {
-                total += kids.len().saturating_sub(1).max(1);
-                for &k in kids {
-                    if !named.contains(&k) {
-                        total += dag.tree_cost(k, &mut memo);
-                    }
-                }
-            }
-        }
-        total
-    };
-    Some(Plan {
-        temporaries,
-        results,
-        before,
-        after,
-    })
+    Some(Plan::Rewrite { temporaries, results })
 }
 
 struct Cse {
@@ -486,24 +575,22 @@ impl Kernel for Cse {
                 },
             }
         }
-        let Some(plan) = plan(cx.graph, &exprs) else {
+        let Some(plan) = plan(cx.graph, &exprs, &lhs, op == self.cost) else {
             return Outcome::Pass;
         };
         let g = &mut *cx.graph;
-        if op == self.cost {
-            let (b, a) = (
-                g.int(i64::try_from(plan.before).unwrap_or(i64::MAX)),
-                g.int(i64::try_from(plan.after).unwrap_or(i64::MAX)),
-            );
-            return Outcome::Pinned(g.node(core::LIST, &[b, a]));
-        }
-        let definitions: Vec<NodeId> = plan
-            .temporaries
+        let (temporaries, results) = match plan {
+            | Plan::Costs(costs) => {
+                let nodes = costs.map(|cost| g.num(Number::from(BigInt::from(cost))));
+                return Outcome::Pinned(g.node(core::LIST, &nodes));
+            },
+            | Plan::Rewrite { temporaries, results } => (temporaries, results),
+        };
+        let definitions: Vec<NodeId> = temporaries
             .iter()
             .map(|&(t, d)| g.node(core::EQ, &[t, d]))
             .collect();
-        let results: Vec<NodeId> = plan
-            .results
+        let results: Vec<NodeId> = results
             .iter()
             .zip(&lhs)
             .map(|(&r, l)| {

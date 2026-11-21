@@ -26,6 +26,7 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::id::FastMap;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 
@@ -163,21 +164,87 @@ fn denest(
     Some(graph.node(core::ADD, &[su, sv]))
 }
 
-/// Applies `f` bottom-up to every node of `e`.
+/// Checks whether the expanded tree fits in the direct traversal's work bound.
+fn fits_tree(
+    graph: &Graph,
+    node: NodeId,
+    remaining: &mut usize,
+) -> bool {
+    let Some(left) = remaining.checked_sub(1) else {
+        return false;
+    };
+    *remaining = left;
+    graph
+        .children(node)
+        .iter()
+        .all(|&child| fits_tree(graph, child, remaining))
+}
+
+/// Rewrites a small tree whose expanded size is already bounded.
+fn rewrite_small(
+    graph: &mut Graph,
+    node: NodeId,
+    f: &dyn Fn(&mut Graph, NodeId) -> Option<NodeId>,
+) -> NodeId {
+    let children = graph.children(node).to_vec();
+    let op = graph.op(node);
+    let new: Vec<NodeId> = children
+        .iter()
+        .map(|&child| rewrite_small(graph, child, f))
+        .collect();
+    let rebuilt = if new == children {
+        node
+    } else {
+        graph.try_node(op, &new).unwrap_or(node)
+    };
+    f(graph, rebuilt).unwrap_or(rebuilt)
+}
+
+/// Applies `f` bottom-up, reusing results whenever expanded traversal is large.
 fn rewrite(
     graph: &mut Graph,
     e: NodeId,
     f: &dyn Fn(&mut Graph, NodeId) -> Option<NodeId>,
 ) -> NodeId {
-    let children = graph.children(e).to_vec();
-    let op = graph.op(e);
-    let new: Vec<NodeId> = children.iter().map(|&c| rewrite(graph, c, f)).collect();
-    let rebuilt = if new == children {
-        e
-    } else {
-        graph.try_node(op, &new).unwrap_or(e)
-    };
-    f(graph, rebuilt).unwrap_or(rebuilt)
+    // Bound visits, not distinct nodes: a small shared graph can expand to a
+    // large tree. The read-only probe also limits the recursive descent depth.
+    const SMALL_TREE_VISITS: usize = 64;
+    let mut remaining = SMALL_TREE_VISITS;
+    if fits_tree(graph, e, &mut remaining) {
+        return rewrite_small(graph, e, f);
+    }
+    let mut rewritten = FastMap::<NodeId, NodeId>::default();
+    let mut stack = vec![(e, false)];
+    while let Some((node, expanded)) = stack.pop() {
+        if rewritten.contains_key(&node) {
+            continue;
+        }
+        let children = graph.children(node);
+        if !expanded && !children.is_empty() {
+            stack.push((node, true));
+            stack.extend(
+                children
+                    .iter()
+                    .rev()
+                    .filter(|c| !rewritten.contains_key(c))
+                    .map(|&c| (c, false)),
+            );
+            continue;
+        }
+        let rewritten_child = |&child: &NodeId| rewritten.get(&child).copied().unwrap_or(child);
+        let rebuilt = if children
+            .iter()
+            .any(|child| rewritten_child(child) != *child)
+        {
+            let new: Vec<NodeId> = children.iter().map(rewritten_child).collect();
+            graph.try_node(graph.op(node), &new).unwrap_or(node)
+        } else {
+            node
+        };
+        let result = f(graph, rebuilt).unwrap_or(rebuilt);
+        rewritten.insert(node, result);
+    }
+    rewritten.get(&e).copied().unwrap_or(e)
 }
 
 fn as_sqrt(

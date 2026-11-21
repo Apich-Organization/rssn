@@ -34,8 +34,15 @@
 //! `Σ_t c_t η_{e(k+t)}` with rational `c`, found as the solution of a
 //! circulant system and checked to 2^-250.
 //!
-//! Parallelism: the coset-representative search over the 5040 permutations and the resolvent values
-//! of the representatives are computed concurrently (in index order).
+//! Independent permutation monomials, coset representatives and orbit sums
+//! can use the active CPU pool. The analysis reuses a transformed monomial
+//! across groups and the members of each coset across transforms and exponent
+//! choices. Representative order and fixed-point arithmetic order are stable.
+//! Gauss-period evaluation shares unit phases by conductor and periods by
+//! character across exponent choices. The real path needs only cosines.
+
+use std::collections::HashMap;
+use std::sync::OnceLock;
 
 use num_bigint::BigInt;
 use num_integer::Integer;
@@ -251,28 +258,58 @@ fn small_enough(roots: &[Fx]) -> bool {
         .all(|r| r.re.bits() < limit && r.im.bits() < limit)
 }
 
-/// The orbit sum of `h`-images of the monomial with exponents `e`, for the
-/// ordering `sigma`.
-fn orbit_sum(
-    elements: &[Vec<u8>],
+/// The fixed-point monomial for one permutation and exponent vector.
+fn resolvent_monomial(
     sigma: &[u8],
     powers: &[Vec<Fx>],
-    e: &[usize],
+    exponents: &[usize],
 ) -> Option<Fx> {
-    let mut total = Fx::zero();
-    for h in elements {
-        let mut term = Fx::integer(&BigInt::one());
-        for (i, &ei) in e.iter().enumerate() {
-            if ei == 0 {
-                continue;
-            }
-            let image = *sigma.get(usize::from(*h.get(i)?))?;
-            let r = powers.get(usize::from(image))?.get(ei)?;
-            term = term.mul(r);
+    let mut term = Fx::integer(&BigInt::one());
+    for (i, &exponent) in exponents.iter().enumerate() {
+        if exponent != 0 {
+            let image = usize::from(*sigma.get(i)?);
+            term = term.mul(powers.get(image)?.get(exponent)?);
         }
-        total = total.add(&term);
     }
-    Some(total)
+    Some(term)
+}
+
+/// All permutations of a degree share a length. Degrees six and seven fit in
+/// three bits per image, with the leading image in the highest position.
+fn permutation_key(images: impl Iterator<Item = u8>) -> u32 {
+    images.fold(0, |key, image| (key << 3) | u32::from(image))
+}
+
+fn composed_images<'a>(
+    sigma: &'a [u8],
+    h: &'a [u8],
+) -> impl Iterator<Item = u8> + 'a {
+    h.iter()
+        .map(|&i| sigma.get(usize::from(i)).copied().unwrap_or(0))
+}
+
+fn coset_members(
+    sigma: &[u8],
+    elements: &[Vec<u8>],
+    permutation_indices: &HashMap<u32, usize>,
+) -> Option<Vec<usize>> {
+    elements
+        .iter()
+        .map(|h| {
+            permutation_indices
+                .get(&permutation_key(composed_images(sigma, h)))
+                .copied()
+        })
+        .collect()
+}
+
+fn orbit_sum(
+    members: &[usize],
+    monomials: &[Fx],
+) -> Option<Fx> {
+    members.iter().try_fold(Fx::zero(), |total, &index| {
+        Some(total.add(monomials.get(index)?))
+    })
 }
 
 /// Number of permutations / cosets from which the resolvent loops run in parallel.
@@ -317,19 +354,25 @@ pub fn analyse(c: &[BigRational]) -> Option<Analysis> {
         })
         .collect();
     let permutations = all_permutations(n);
+    let permutation_indices: HashMap<_, _> = permutations
+        .iter()
+        .enumerate()
+        .map(|(index, permutation)| (permutation_key(permutation.iter().copied()), index))
+        .collect();
+    let exponents = exponent_choices(n);
+    let choices: Vec<_> = (0..powers_by_transform.len())
+        .flat_map(|transform| exponents.iter().map(move |e| (transform, e)))
+        .collect();
+    let mut monomial_cache = vec![None; choices.len()];
     let magnitude_limit = u64::try_from(BITS).unwrap_or(0) + 300;
     for group in groups {
         let elements = group.elements();
         // Coset representatives: sigma minimal in its coset sigma.H.
         // (one membership test per permutation, in parallel, kept in order)
         let minimal = crate::kernels::par::map_slice(&permutations, RESOLVENT_PAR_GRAIN, |sigma| {
-            elements.iter().all(|h| {
-                let image: Vec<u8> = h
-                    .iter()
-                    .map(|&i| sigma.get(usize::from(i)).copied().unwrap_or(0))
-                    .collect();
-                image.as_slice() >= sigma.as_slice()
-            })
+            elements
+                .iter()
+                .all(|h| composed_images(sigma, h).ge(sigma.iter().copied()))
         });
         let representatives: Vec<&Vec<u8>> = permutations
             .iter()
@@ -337,17 +380,29 @@ pub fn analyse(c: &[BigRational]) -> Option<Analysis> {
             .filter(|&(_, &m)| m)
             .map(|(sigma, _)| sigma)
             .collect();
+        let members: Vec<_> =
+            crate::kernels::par::map_slice(&representatives, RESOLVENT_PAR_GRAIN, |sigma| {
+                coset_members(sigma, &elements, &permutation_indices)
+            })
+            .into_iter()
+            .collect::<Option<_>>()?;
         let mut ambiguous = false;
         let mut conclusive = false;
-        let choices: Vec<(usize, Vec<usize>)> = (0..powers_by_transform.len())
-            .flat_map(|t| exponent_choices(n).into_iter().map(move |e| (t, e)))
-            .collect();
-        for (transform, e) in choices {
-            let powers = powers_by_transform.get(transform)?;
-            // the coset resolvent values are independent fixed-point sums
+        for ((transform, e), cached) in choices.iter().zip(&mut monomial_cache) {
+            if cached.is_none() {
+                let powers = powers_by_transform.get(*transform)?;
+                *cached = Some(
+                    crate::kernels::par::map_slice(&permutations, RESOLVENT_PAR_GRAIN, |sigma| {
+                        resolvent_monomial(sigma, powers, e)
+                    })
+                    .into_iter()
+                    .collect::<Option<Vec<_>>>()?,
+                );
+            }
+            let monomials = cached.as_deref()?;
             let values: Vec<Fx> =
-                crate::kernels::par::map_slice(&representatives, RESOLVENT_PAR_GRAIN, |sigma| {
-                    orbit_sum(&elements, sigma, powers, &e)
+                crate::kernels::par::map_slice(&members, RESOLVENT_PAR_GRAIN, |coset| {
+                    orbit_sum(coset, monomials)
                 })
                 .into_iter()
                 .collect::<Option<Vec<Fx>>>()?;
@@ -908,6 +963,31 @@ pub fn cyclotomic_complex(analysis: &Analysis) -> Option<Cyclotomic> {
     cyclotomic_search(analysis, false)
 }
 
+/// The fixed-point unit phases for a conductor. Each slot is computed once
+/// per modulus and is reused by all its characters.
+fn cyclotomic_phases(
+    modulus: u64,
+    real: bool,
+) -> Option<Vec<Fx>> {
+    static PI: OnceLock<BigInt> = OnceLock::new();
+    let pi = PI.get_or_init(|| pi_fixed(BITS + 64));
+    let count = usize::try_from(modulus).ok()?;
+    Some(crate::kernels::par::map_indexed(count, 32, |index| {
+        let j = index as u64;
+        if gcd_u64(j, modulus) != 1 {
+            return Fx::zero();
+        }
+        let re = cos_fixed(j, modulus, pi, 64);
+        let im = if real {
+            BigInt::zero()
+        } else {
+            // sin(2π j/m) = cos(2π (4j - m) / 4m).
+            cos_fixed((4 * j + 3 * modulus) % (4 * modulus), 4 * modulus, pi, 64)
+        };
+        Fx { re, im }
+    }))
+}
+
 fn cyclotomic_search(
     analysis: &Analysis,
     real: bool,
@@ -921,66 +1001,42 @@ fn cyclotomic_search(
         return None;
     }
     let disc = discriminant(&analysis.monic)?;
-    let pi = pi_fixed(BITS + 64);
+    let rhs: Vec<Vec<Fx>> = (0..n)
+        .map(|k| {
+            let root = analysis.roots.get(*analysis.ordering.get(k)?)?;
+            Some(vec![if real {
+                Fx::real(root.re.clone())
+            } else {
+                root.clone()
+            }])
+        })
+        .collect::<Option<_>>()?;
     for m in candidate_moduli(&disc) {
         let characters = real_characters(m, n, real);
         if characters.is_empty() {
             continue;
         }
-        let cos_table: Vec<BigInt> = (0..m).map(|j| cos_fixed(j, m, &pi, 64)).collect();
-        // sin(2πu/m) = cos(2π (4u - m) / 4m)
-        let sin_table: Vec<BigInt> = (0..m)
-            .map(|u| cos_fixed((4 * u + 3 * m) % (4 * m), 4 * m, &pi, 64))
-            .collect();
+        let phases = cyclotomic_phases(m, real)?;
         for chi in &characters {
-            let coset = |k: usize| -> Vec<u64> {
-                let mut elements: Vec<u64> = chi
-                    .iter()
-                    .filter(|(_, v)| **v == k)
-                    .map(|(u, _)| *u)
-                    .collect();
-                elements.sort_unstable();
-                elements
-            };
+            let mut cosets = vec![Vec::new(); n];
+            for (&unit, &class) in chi {
+                cosets.get_mut(class)?.push(unit);
+            }
+            for coset in &mut cosets {
+                coset.sort_unstable();
+            }
+            let periods: Vec<Fx> = cosets
+                .iter()
+                .map(|coset| {
+                    coset.iter().try_fold(Fx::zero(), |sum, &unit| {
+                        Some(sum.add(phases.get(usize::try_from(unit).ok()?)?))
+                    })
+                })
+                .collect::<Option<_>>()?;
             for e in (1..n).filter(|e| gcd_u64(*e as u64, n as u64) == 1) {
-                let eta: Vec<Fx> = (0..n)
-                    .map(|k| {
-                        let mut sum = Fx::zero();
-                        for j in coset(k) {
-                            let index = usize::try_from(j).unwrap_or(0);
-                            let re = cos_table.get(index).cloned().unwrap_or_default();
-                            let im = if real {
-                                BigInt::zero()
-                            } else {
-                                sin_table.get(index).cloned().unwrap_or_default()
-                            };
-                            sum = sum.add(&Fx { re, im });
-                        }
-                        sum
-                    })
-                    .collect();
                 let matrix: Vec<Vec<Fx>> = (0..n)
-                    .map(|k| {
-                        (0..n)
-                            .map(|t| eta.get(e * (k + t) % n).cloned().unwrap_or_else(Fx::zero))
-                            .collect()
-                    })
+                    .map(|k| (0..n).map(|t| periods[e * (k + t) % n].clone()).collect())
                     .collect();
-                let rhs: Vec<Vec<Fx>> = (0..n)
-                    .map(|k| {
-                        analysis
-                            .ordering
-                            .get(k)
-                            .and_then(|&i| analysis.roots.get(i))
-                            .map(|r| {
-                                vec![if real {
-                                    Fx::real(r.re.clone())
-                                } else {
-                                    r.clone()
-                                }]
-                            })
-                    })
-                    .collect::<Option<_>>()?;
                 let Some(solution) = solve_system(matrix.clone(), rhs.clone()) else {
                     continue;
                 };
@@ -991,11 +1047,12 @@ fn cyclotomic_search(
                 else {
                     continue;
                 };
+                let coefficients: Vec<_> = c.iter().map(from_rational).collect();
                 let ok = (0..n).all(|k| {
                     let mut value = Fx::zero();
-                    for (t, q) in c.iter().enumerate() {
+                    for (t, q) in coefficients.iter().enumerate() {
                         if let Some(entry) = matrix.get(k).and_then(|row| row.get(t)) {
-                            value = value.add(&from_rational(q).mul(entry));
+                            value = value.add(&q.mul(entry));
                         }
                     }
                     rhs.get(k)
@@ -1009,17 +1066,16 @@ fn cyclotomic_search(
                 for k in 0..n {
                     let mut terms: Vec<(u64, BigRational)> = Vec::new();
                     for (t, q) in c.iter().enumerate() {
-                        for j in coset(e * (k + t) % n) {
-                            if real && j > m - j {
-                                continue;
-                            }
-                            match terms.iter_mut().find(|(jj, _)| *jj == j) {
-                                | Some((_, slot)) => *slot += q,
-                                | None => terms.push((j, q.clone())),
+                        if !q.is_zero() {
+                            // Multiplication by e permutes the classes, so
+                            // each unit can occur at most once in this root.
+                            for &j in &cosets[e * (k + t) % n] {
+                                if !real || j <= m - j {
+                                    terms.push((j, q.clone()));
+                                }
                             }
                         }
                     }
-                    terms.retain(|(_, q)| !q.is_zero());
                     terms.sort_by_key(|(j, _)| *j);
                     roots.push((k, terms));
                 }
@@ -1318,8 +1374,43 @@ mod tests {
     }
 
     #[test]
+    fn encoded_cosets_partition_every_supported_permutation() {
+        for degree in [6, 7] {
+            let permutations = all_permutations(degree);
+            let indices: HashMap<_, _> = permutations
+                .iter()
+                .enumerate()
+                .map(|(index, sigma)| (permutation_key(sigma.iter().copied()), index))
+                .collect();
+            assert_eq!(indices.len(), permutations.len());
+            for group in transitive_groups(degree) {
+                let elements = group.elements();
+                let mut visited = vec![false; permutations.len()];
+                for sigma in permutations.iter().filter(|sigma| {
+                    elements
+                        .iter()
+                        .all(|h| composed_images(sigma, h).ge(sigma.iter().copied()))
+                }) {
+                    let members = coset_members(sigma, &elements, &indices).unwrap();
+                    assert_eq!(members.len(), group.order, "{}", group.label);
+                    for (&index, h) in members.iter().zip(&elements) {
+                        let composed: Vec<_> = h.iter().map(|&i| sigma[usize::from(i)]).collect();
+                        assert_eq!(permutations[index], composed);
+                        assert!(
+                            !std::mem::replace(&mut visited[index], true),
+                            "{}",
+                            group.label
+                        );
+                    }
+                }
+                assert!(visited.into_iter().all(|seen| seen), "{}", group.label);
+            }
+        }
+    }
+
+    #[test]
     fn discriminants() {
-        // x^3 - 2: -108; x^2 + 1 is not covered (degree >= 2 only): -4.
+        // x^3 - 2 has discriminant -108 and x^2 + 1 has discriminant -4.
         let ints = |v: &[i64]| -> Vec<BigInt> { v.iter().map(|&c| BigInt::from(c)).collect() };
         assert_eq!(
             discriminant(&ints(&[-2, 0, 0, 1])),
@@ -1478,6 +1569,42 @@ mod tests {
         assert_eq!(a.group.label, "C7");
         let cyclo = cyclotomic(&a).expect("periods");
         assert_eq!(cyclo.conductor, 1247);
+    }
+
+    #[test]
+    fn fixed_point_unit_phases_are_pool_invariant() {
+        let modulus = 35_u64;
+        let one = rayon::ThreadPoolBuilder::new()
+            .num_threads(1)
+            .build()
+            .unwrap();
+        let real = one.install(|| cyclotomic_phases(modulus, true)).unwrap();
+        let complex = one.install(|| cyclotomic_phases(modulus, false)).unwrap();
+        let pi = pi_fixed(BITS + 64);
+        for j in 0..modulus {
+            let index = usize::try_from(j).unwrap();
+            assert_eq!(real[index].re, complex[index].re);
+            assert!(real[index].im.is_zero());
+            if gcd_u64(j, modulus) == 1 {
+                assert_eq!(complex[index].re, cos_fixed(j, modulus, &pi, 64));
+                assert_eq!(
+                    complex[index].im,
+                    cos_fixed((4 * j + 3 * modulus) % (4 * modulus), 4 * modulus, &pi, 64)
+                );
+            } else {
+                assert!(complex[index].re.is_zero() && complex[index].im.is_zero());
+            }
+        }
+        for workers in [2, 4] {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(workers)
+                .build()
+                .unwrap();
+            let again = pool.install(|| cyclotomic_phases(modulus, false)).unwrap();
+            for (a, b) in complex.iter().zip(&again) {
+                assert_eq!((&a.re, &a.im), (&b.re, &b.im));
+            }
+        }
     }
 
     #[test]

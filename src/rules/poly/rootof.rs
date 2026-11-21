@@ -1,8 +1,8 @@
 //! `root_of(k, c0, c1, ..., cn)`: the `k`-th root of a polynomial, exactly.
 //!
-//! The roots of `c0 + c1 x + ... + cn x^n` are counted from 0: the real
-//! roots in ascending order, then the non-real roots by real
-//! part and, for equal real parts, imaginary part.
+//! For exact rational coefficients, distinct roots of `c0 + c1 x + ... + cn x^n`
+//! are counted from 0: the real roots in exact ascending order, then the
+//! non-real roots by numerically determined real and imaginary parts.
 //!
 //! The coefficients are the arguments, so the object has
 //! numeric semantics wherever the coefficients have (they may be
@@ -39,6 +39,8 @@ use num_traits::One;
 use num_traits::Signed;
 use num_traits::ToPrimitive;
 use num_traits::Zero;
+use std::cmp::Ordering;
+use std::sync::Arc;
 
 use super::algebra::isolate;
 use super::algebra::refine_interval;
@@ -61,12 +63,13 @@ use crate::graph::dim::DimError;
 use crate::graph::dim::DimTerm;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
+use crate::kernels::par;
 
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let op = i.op(OpDescriptor::new("root_of", Arity::Variadic)
         .cost(40)
         .eval(evaluate)
-        .doc("`root_of(c0, c1, ..., cn, index)`: represents the `index`-th root (by root-ordering convention) of polynomial `c0 + c1*x + ... + cn*x^n = 0`."))?;
+        .doc("`root_of(k, c0, c1, ..., cn)` represents the root with zero-based index `k` of `c0 + c1*x + ... + cn*x^n`. For exact rational coefficients, distinct real roots appear in ascending order, followed by the non-real roots ordered numerically by real and imaginary parts.") )?;
     i.graph()
         .ops_mut()
         .set_attr(op, crate::graph::ComplexEval(evaluate_complex));
@@ -142,15 +145,17 @@ struct RootOf {
 /// A root of a primitive irreducible factor.
 #[derive(Clone)]
 struct Root {
-    factor: Vec<BigInt>,
+    factor: Arc<[BigInt]>,
     /// Index among all roots of the factor (real ones first, then the
     /// complex ones).
     local: usize,
     /// An isolating interval of a real root.
-    interval: Option<(BigRational, BigRational)>,
+    interval: Option<RealInterval>,
     /// Real and imaginary part (double precision).
     value: (f64, f64),
 }
+
+type RealInterval = (BigRational, BigRational);
 
 /// Complex ordering: by real part, then by imaginary part (real parts that
 /// agree to `1e-9` count as equal, so conjugates are ordered by sign).
@@ -169,11 +174,21 @@ fn complex_order(
 /// canonical order: the real roots ascending, then the non-real roots by
 /// real part and imaginary part.
 fn factor_roots(factor: &[BigInt]) -> Vec<Root> {
-    let rational: Vec<BigRational> = factor
-        .iter()
-        .cloned()
-        .map(BigRational::from_integer)
-        .collect();
+    let factor: Arc<[BigInt]> = Arc::from(factor);
+    if let [constant, leading] = factor.as_ref() {
+        if leading.is_zero() {
+            return Vec::new();
+        }
+        let root = BigRational::new(-constant, leading.clone());
+        let value = (root.to_f64().unwrap_or(f64::NAN), 0.0);
+        return vec![Root {
+            factor,
+            local: 0,
+            interval: Some((root.clone(), root)),
+            value,
+        }];
+    }
+    let rational = rational_coefficients(&factor);
     let width = BigRational::new(BigInt::one(), BigInt::from(10).pow(40));
     let mut out = Vec::new();
     let intervals = isolate(&rational);
@@ -184,11 +199,14 @@ fn factor_roots(factor: &[BigInt]) -> Vec<Root> {
             .to_f64()
             .unwrap_or(f64::NAN);
         out.push(Root {
-            factor: factor.to_vec(),
+            factor: Arc::clone(&factor),
             local: j,
             interval: Some(refined),
             value: (mid, 0.0),
         });
+    }
+    if real_count >= factor.len().saturating_sub(1) {
+        return out;
     }
     let floats: Option<Vec<f64>> = factor.iter().map(ToPrimitive::to_f64).collect();
     if let Some(mut approximations) = floats.and_then(|c| super::galois::durand_kerner(&c)) {
@@ -198,7 +216,7 @@ fn factor_roots(factor: &[BigInt]) -> Vec<Root> {
         complex.sort_by(|a, b| complex_order(*a, *b));
         for (i, value) in complex.into_iter().enumerate() {
             out.push(Root {
-                factor: factor.to_vec(),
+                factor: Arc::clone(&factor),
                 local: real_count + i,
                 interval: None,
                 value,
@@ -208,20 +226,83 @@ fn factor_roots(factor: &[BigInt]) -> Vec<Root> {
     out
 }
 
+fn rational_coefficients(factor: &[BigInt]) -> Vec<BigRational> {
+    factor
+        .iter()
+        .cloned()
+        .map(BigRational::from_integer)
+        .collect()
+}
+
+fn real_interval_order(
+    left: &RealInterval,
+    right: &RealInterval,
+) -> Option<Ordering> {
+    if left == right && left.0 == left.1 {
+        Some(Ordering::Equal)
+    } else if left.1 <= right.0 {
+        Some(Ordering::Less)
+    } else if right.1 <= left.0 {
+        Some(Ordering::Greater)
+    } else {
+        None
+    }
+}
+
+fn real_root_order(
+    a: &Root,
+    b: &Root,
+    left: &RealInterval,
+    right: &RealInterval,
+) -> Ordering {
+    if let Some(order) = real_interval_order(left, right) {
+        return order;
+    }
+    if a.factor == b.factor {
+        return a.local.cmp(&b.local);
+    }
+
+    // Distinct irreducible rational factors cannot share an algebraic root.
+    // Keep refining the wider enclosure until the rational intervals order
+    // the roots, even when their double-precision values are identical.
+    let a_coefficients = rational_coefficients(&a.factor);
+    let b_coefficients = rational_coefficients(&b.factor);
+    let (mut left, mut right) = (left.clone(), right.clone());
+    let shrink = BigRational::from_integer(BigInt::from(1 << 16));
+    loop {
+        let (left_width, right_width) = (&left.1 - &left.0, &right.1 - &right.0);
+        if left_width >= right_width {
+            left = refine_interval(&a_coefficients, left, &(left_width / &shrink));
+        } else {
+            right = refine_interval(&b_coefficients, right, &(right_width / &shrink));
+        }
+        if let Some(order) = real_interval_order(&left, &right) {
+            return order;
+        }
+    }
+}
+
 /// The roots of all the irreducible factors of `q` in the canonical global
 /// order (real roots ascending, then the complex ones).
 fn all_roots(q: &[BigRational]) -> Vec<Root> {
     let (_, factors) = univariate::factor(q);
-    let mut all: Vec<Root> = Vec::new();
-    for (factor, _) in factors {
-        all.extend(factor_roots(&factor));
-    }
+    let mut all: Vec<Root> = if q.len() >= 9 && crate::execution::should_split(factors.len(), 4) {
+        par::map_slice(&factors, 4, |(factor, _)| factor_roots(factor))
+            .into_iter()
+            .flatten()
+            .collect()
+    } else {
+        factors
+            .iter()
+            .flat_map(|(factor, _)| factor_roots(factor))
+            .collect()
+    };
     all.sort_by(|a, b| {
-        match (a.interval.is_some(), b.interval.is_some()) {
-            | (true, true) => a.value.0.total_cmp(&b.value.0),
-            | (true, false) => std::cmp::Ordering::Less,
-            | (false, true) => std::cmp::Ordering::Greater,
-            | (false, false) => complex_order(a.value, b.value),
+        match (&a.interval, &b.interval) {
+            | (Some(left), Some(right)) => real_root_order(a, b, left, right),
+            | (Some(_), None) => Ordering::Less,
+            | (None, Some(_)) => Ordering::Greater,
+            | (None, None) => complex_order(a.value, b.value),
         }
     });
     all
@@ -259,11 +340,7 @@ pub(crate) fn real_roots_as_objects(
     graph: &mut Graph,
     factor: &[BigInt],
 ) -> Option<Vec<(f64, NodeId)>> {
-    let rational: Vec<BigRational> = factor
-        .iter()
-        .cloned()
-        .map(BigRational::from_integer)
-        .collect();
+    let rational = rational_coefficients(factor);
     let width = BigRational::new(BigInt::one(), BigInt::from(10).pow(17));
     let mut out = Vec::new();
     for (j, interval) in isolate(&rational).into_iter().enumerate() {
@@ -376,18 +453,16 @@ impl Kernel for RootOf {
         if q.len() < 2 {
             return Outcome::Pass;
         }
-        let roots = all_roots(&q);
         let Some(Root {
             factor,
             local: j,
             interval,
             ..
-        }) = roots.get(k).cloned()
+        }) = all_roots(&q).into_iter().nth(k)
         else {
             return Outcome::Pass;
         };
-        let factor = positive(factor);
-        match factor.as_slice() {
+        match factor.as_ref() {
             | [c0, c1] => {
                 let value = BigRational::new(-c0.clone(), c1.clone());
                 Outcome::Equal(graph.num(Number::rat(value)))
@@ -436,11 +511,7 @@ impl Kernel for RootOf {
                 if !numeric {
                     return Outcome::Pass;
                 }
-                let rational: Vec<BigRational> = factor
-                    .iter()
-                    .cloned()
-                    .map(BigRational::from_integer)
-                    .collect();
+                let rational = rational_coefficients(&factor);
                 let width = BigRational::new(BigInt::one(), BigInt::from(10).pow(17));
                 let (a, b) = refine_interval(&rational, interval, &width);
                 let (lo, hi) = (
@@ -488,5 +559,108 @@ pub(crate) fn canonical_order(
         | (true, false) => std::cmp::Ordering::Less,
         | (false, true) => std::cmp::Ordering::Greater,
         | (false, false) => complex_order(a, b),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn close_rational_roots_are_ordered_before_float_rounding() {
+        let scale = BigInt::from(1_u64 << 60);
+        let lower = vec![BigInt::from(-1), BigInt::one()];
+        let upper = vec![-(&scale + BigInt::one()), scale];
+        let q = univariate::mul(
+            &rational_coefficients(&lower),
+            &rational_coefficients(&upper),
+        );
+        let roots = all_roots(&q);
+        assert_eq!(roots.len(), 2);
+        assert_eq!(roots[0].value.0.to_bits(), roots[1].value.0.to_bits());
+        assert_eq!(roots[0].factor.as_ref(), lower);
+        assert_eq!(roots[1].factor.as_ref(), upper);
+    }
+
+    #[test]
+    fn distinct_irrational_roots_can_start_in_overlapping_intervals() {
+        let scale = BigInt::from(10).pow(90);
+        let outer = factor_roots(&[BigInt::from(-2), BigInt::zero(), BigInt::one()]);
+        // The positive root of the inner factor is sqrt(2 - 10^-90).
+        // Its constant term has residue 1 modulo 4 and the magnitude has
+        // residue 3, so the root is irrational.
+        let inner = factor_roots(&[
+            BigInt::one() - BigInt::from(2) * &scale,
+            BigInt::zero(),
+            scale,
+        ]);
+        assert_eq!(outer.len(), 2);
+        assert_eq!(inner.len(), 2);
+        for index in [0, 1] {
+            let left = outer[index].interval.as_ref().unwrap();
+            let right = inner[index].interval.as_ref().unwrap();
+            assert!(real_interval_order(left, right).is_none());
+            let order = if index == 0 {
+                Ordering::Less
+            } else {
+                Ordering::Greater
+            };
+            assert_eq!(
+                real_root_order(&outer[index], &inner[index], left, right),
+                order
+            );
+            assert_eq!(
+                real_root_order(&inner[index], &outer[index], right, left),
+                order.reverse()
+            );
+        }
+    }
+
+    #[test]
+    fn factor_pool_preserves_real_and_complex_indices() {
+        let q = (1..=8).fold(
+            vec![BigRational::one(), BigRational::zero(), BigRational::one()],
+            |q, k| {
+                univariate::mul(
+                    &q,
+                    &rational_coefficients(&[BigInt::from(-k), BigInt::one()]),
+                )
+            },
+        );
+        let describe = |roots: Vec<Root>| {
+            roots
+                .into_iter()
+                .map(|root| {
+                    (
+                        root.factor,
+                        root.local,
+                        root.interval,
+                        root.value.0.to_bits(),
+                        root.value.1.to_bits(),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        let one = rayon::ThreadPoolBuilder::new()
+            .num_threads(1)
+            .build()
+            .unwrap();
+        let expected = describe(one.install(|| all_roots(&q)));
+        assert_eq!(expected.len(), 10);
+        assert_eq!(
+            expected[0].2,
+            Some((BigRational::one(), BigRational::one()))
+        );
+        assert_eq!(expected[8].1, 0);
+        assert_eq!(expected[9].1, 1);
+        assert!(f64::from_bits(expected[8].4).is_sign_negative());
+        assert!(f64::from_bits(expected[9].4).is_sign_positive());
+        for workers in [2, 4] {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(workers)
+                .build()
+                .unwrap();
+            assert_eq!(describe(pool.install(|| all_roots(&q))), expected);
+        }
     }
 }

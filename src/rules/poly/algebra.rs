@@ -5,13 +5,17 @@
 //! | `count_real_roots(p, x)` / `count_real_roots(p, x, a, b)` | distinct real roots (in `(a, b]`), by Sturm sequences |
 //! | `real_root_intervals(p, x)` | disjoint exact isolating intervals `list(a, b)`, `a = b` for rational roots |
 //! | `sturm_sequence(p, x)` | the Sturm chain |
-//! | `resultant(p, q, x)`, `discriminant(p, x)` | by fraction-free (Bareiss) elimination of the Sylvester matrix |
+//! | `square_free_factors(p, x)` | leading coefficient and monic factors grouped by multiplicity over `Q` |
+//! | `resultant(p, q, x)`, `discriminant(p, x)` | exact rational remainder sequence or fraction-free (Bareiss) elimination of the Sylvester matrix |
 //! | `leading_term(p, vars)`, `leading_coeff(p, vars)`, `leading_monomial(p, vars)` | with respect to an order (optional third argument `lex`, `grlex`, `grevlex`; default `lex`) |
 //! | `normal_form(p, polys, vars)` | remainder of `p` modulo the Gröbner basis of `polys` (`grevlex`) |
 //! | `ideal_member(p, polys, vars)` | whether `p` lies in the ideal |
 //! | `simplify_with_relations(e, relations, vars)` | numerator and denominator of `e` reduced modulo the relations |
 //! | `cad(polys, vars)` | sample points of the cells of a cylindrical algebraic decomposition of `R^n` sign-invariant for `polys` (any number of variables: projection by leading and all other coefficients, discriminants and pairwise resultants, then lifting over each sample) |
 //! | `expand_trig(e)` | sines, cosines and tangents of sums and integer multiples expanded |
+
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
@@ -49,12 +53,17 @@ use crate::graph::dim::DimError;
 use crate::graph::dim::DimTerm;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
+use crate::kernel::TypeExpr;
+use crate::kernel::infer::term;
+use crate::kernel::signature::Signature;
+use crate::kernels::par;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Request {
     CountRealRoots,
     RootIntervals,
     Sturm,
+    SquareFree,
     Resultant,
     Discriminant,
     LeadingTerm,
@@ -86,19 +95,25 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "sturm_sequence",
             Arity::Fixed(2),
             Request::Sturm,
-            "`sturm_sequence(poly, var)`: computes the Sturm sequence of polynomial `poly` in `var`.",
+            "`sturm_sequence(poly, var)` returns the Sturm chain of a univariate polynomial with exact rational coefficients.\n\nThe output is a `list(...)` of polynomials in `var`. For a nonconstant polynomial the chain starts with the polynomial and its derivative, followed by successive negated nonzero remainders.\n\nA constant produces a singleton list, including `list(0)` for zero. For example, `sturm_sequence(x^2 - 2, x)` returns `list(x^2 - 2, 2*x, 2)`.",
+        ),
+        (
+            "square_free_factors",
+            Arity::Fixed(2),
+            Request::SquareFree,
+            "`square_free_factors(poly, var)` decomposes a nonzero polynomial in the symbol `var` over the rationals.\n\nReturns `list(unit, list(list(factor, multiplicity), ...))`. The unit is the leading coefficient. Each factor is monic and square-free, and the factors are pairwise coprime and ordered by increasing multiplicity.\n\nA nonzero constant has an empty factor list. The zero polynomial and coefficients outside the rationals leave the request unevaluated.",
         ),
         (
             "resultant",
             Arity::Fixed(3),
             Request::Resultant,
-            "`resultant(p, q, var)`: computes the Sylvester resultant of polynomials `p` and `q` with respect to `var`.",
+            "`resultant(p, q, var)` computes the Sylvester resultant of the nonzero polynomials `p` and `q` in `var`.\n\nCoefficients may be exact rationals or expressions independent of `var`.\n\nA positive-degree common factor gives zero. The resultant of two nonzero constants is one.",
         ),
         (
             "discriminant",
             Arity::Fixed(2),
             Request::Discriminant,
-            "`discriminant(poly, var)`: computes the discriminant of polynomial `poly` with respect to `var`.",
+            "`discriminant(poly, var)` computes the discriminant of a positive-degree polynomial in `var`.\n\nCoefficients may be exact rationals or expressions independent of `var`.\n\nThe discriminant is one for a linear polynomial and zero when the polynomial has a repeated root.",
         ),
         (
             "leading_term",
@@ -156,6 +171,14 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         if request == Request::ExpandTrig {
             desc = desc.eval(identity);
         }
+        if request == Request::SquareFree {
+            desc = desc
+                .signature(Signature::new(vec![term(), TypeExpr::Symbol], term()))
+                .example(
+                    "square_free_factors(-6*x^2*(x^2+1)^3,x)",
+                    "list(-6, list(list(x, 2), list(x^2 + 1, 3)))",
+                );
+        }
         let op = i.op(desc)?;
         let rule = match request {
             // A count is a pure number and does not constrain the polynomial.
@@ -164,7 +187,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             // rational polynomials: the kernel only reduces when the
             // coefficients are rational, which forces a dimensionless
             // polynomial.
-            | Request::RootIntervals | Request::Sturm => {
+            | Request::RootIntervals | Request::Sturm | Request::SquareFree => {
                 DimRule::Custom(super::dimensionless_value)
             },
             // The cells live in the space of the listed variables.
@@ -392,6 +415,9 @@ impl Kernel for Algebra {
                 root_intervals_term(graph, p, x).map(|t| (t, true))
             },
             | (Request::Sturm, &[p, x]) => sturm_term(graph, p, x).map(|t| (t, true)),
+            | (Request::SquareFree, &[p, x]) => {
+                square_free_factors_term(graph, p, x).map(|t| (t, true))
+            },
             | (Request::Resultant, &[p, q, x]) => {
                 resultant_term(graph, p, q, x).map(|t| (t, false))
             },
@@ -452,6 +478,27 @@ fn univariate_q(
         | [c] if !c.is_zero() => Some(numer.iter().map(|a| a / c).collect()),
         | _ => None,
     }
+}
+
+fn square_free_factors_term(
+    graph: &mut Graph,
+    p: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    graph.symbol_of(x)?;
+    let coefficients = univariate_q(graph, p, x)?;
+    let leading = coefficients
+        .last()
+        .filter(|coefficient| !coefficient.is_zero())?;
+    let mut factors = Vec::new();
+    for (factor, multiplicity) in univariate::square_free(&coefficients) {
+        let factor = qpoly_term(graph, &factor, x);
+        let multiplicity = graph.int(i64::from(multiplicity));
+        factors.push(graph.node(core::LIST, &[factor, multiplicity]));
+    }
+    let factors = graph.node(core::LIST, &factors);
+    let unit = graph.num(Number::rat(leading.clone()));
+    Some(graph.node(core::LIST, &[unit, factors]))
 }
 
 /// The Sturm chain `p, p', -rem(p_{i-1}, p_i), ...`.
@@ -679,9 +726,48 @@ fn sturm_term(
 
 const CAP: usize = 200_000;
 
+fn bareiss_row(
+    row: &mut [Poly],
+    pivot: &[Poly],
+    previous: &Poly,
+    column: usize,
+) -> Option<()> {
+    let (head, tail) = row.split_at_mut_checked(column + 1)?;
+    let entry = head.last_mut()?;
+    let pivot_value = pivot.get(column)?;
+    for (value, pivot_entry) in tail.iter_mut().zip(pivot.get(column + 1..)?) {
+        let a = value.mul(pivot_value, CAP)?;
+        let b = entry.mul(pivot_entry, CAP)?;
+        *value = a.sub(&b).div_exact(previous, CAP)?;
+    }
+    *entry = Poly::zero();
+    Some(())
+}
+
+/// Estimates the scalar products in the two polynomial multiplications of
+/// each trailing entry. Sparse Sylvester rows can stay cheap even when the
+/// matrix has enough rows for the CPU pool.
+fn bareiss_row_work(
+    rows: &[Vec<Poly>],
+    pivot: &[Poly],
+    column: usize,
+) -> usize {
+    let tail_size = |row: &[Poly]| {
+        row[column + 1..]
+            .iter()
+            .fold(0_usize, |terms, entry| terms.saturating_add(entry.len()))
+    };
+    let (pivot_terms, pivot_tail_terms) = (pivot[column].len(), tail_size(pivot));
+    rows.iter().fold(0, |work, row| {
+        work.saturating_add(pivot_terms.saturating_mul(tail_size(row)))
+            .saturating_add(pivot_tail_terms.saturating_mul(row[column].len()))
+    })
+}
+
 /// The determinant of a square matrix of polynomials by Bareiss'
 /// fraction-free elimination.
 fn bareiss(mut m: Vec<Vec<Poly>>) -> Option<Poly> {
+    const ROW_GRAIN: usize = 8;
     let n = m.len();
     if n == 0 {
         return Some(Poly::constant(Number::from(1)));
@@ -699,15 +785,28 @@ fn bareiss(mut m: Vec<Vec<Poly>>) -> Option<Poly> {
                 | None => return Some(Poly::zero()),
             }
         }
-        for i in k + 1..n {
-            for j in k + 1..n {
-                let a = m[i][j].mul(&m[k][k], CAP)?;
-                let b = m[i][k].mul(&m[k][j], CAP)?;
-                m[i][j] = a.sub(&b).div_exact(&previous, CAP)?;
+        let (processed, rows) = m.split_at_mut_checked(k + 1)?;
+        let pivot = processed.last()?;
+        if crate::execution::should_split(rows.len(), ROW_GRAIN)
+            && bareiss_row_work(rows, pivot, k) >= 1024
+        {
+            let failed = AtomicBool::new(false);
+            par::for_each_mut(rows, ROW_GRAIN, |_, row| {
+                if !failed.load(Ordering::Relaxed)
+                    && bareiss_row(row, pivot, &previous, k).is_none()
+                {
+                    failed.store(true, Ordering::Relaxed);
+                }
+            });
+            if failed.into_inner() {
+                return None;
             }
-            m[i][k] = Poly::zero();
+        } else {
+            for row in rows {
+                bareiss_row(row, pivot, &previous, k)?;
+            }
         }
-        previous = m[k][k].clone();
+        previous = pivot.get(k)?.clone();
     }
     let det = m[n - 1][n - 1].clone();
     Some(if sign { det.neg() } else { det })
@@ -721,6 +820,14 @@ fn resultant(
     let (m, n) = (p.len().checked_sub(1)?, q.len().checked_sub(1)?);
     if m == 0 && n == 0 {
         return Some(Poly::constant(Number::from(1)));
+    }
+    let exact_scalar = |poly: &[Poly]| -> Option<QPoly> {
+        poly.iter()
+            .map(|c| c.as_constant()?.to_rational())
+            .collect()
+    };
+    if let (Some(p), Some(q)) = (exact_scalar(p), exact_scalar(q)) {
+        return univariate::resultant(&p, &q).map(|value| Poly::constant(Number::rat(value)));
     }
     let size = m + n;
     let mut rows = Vec::with_capacity(size);
@@ -750,9 +857,17 @@ fn in_x(
     let mut gens = Gens::default();
     let gx = gens.index(graph, x);
     let mut out = Vec::new();
+    let symbol = graph.symbol_of(x);
     for &t in terms {
         let t = super::best(graph, t)?;
         let p = from_term(graph, &mut gens, t, Limits::default())?;
+        if let Some(symbol) = symbol {
+            for other in p.support().into_iter().filter(|&other| other != gx) {
+                if graph.depends_on(graph.find(gens.node(other)?), symbol) {
+                    return None;
+                }
+            }
+        }
         let mut coefficients = p.coefficients_in(gx);
         while coefficients.last().is_some_and(Poly::is_zero) {
             coefficients.pop();

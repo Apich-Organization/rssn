@@ -7,16 +7,19 @@
 //! expansion, collection, division, greatest common divisors,
 //! factorisation, Gröbner bases — works on this representation.
 
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+use std::collections::btree_map::Entry;
 
+use crate::graph::ClassId;
 use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::Number;
 use crate::graph::op::core;
 
-/// A power product: `(generator, exponent)` pairs sorted by generator, all
-/// exponents positive. The empty monomial is `1`.
+/// A power product with unique `(generator, exponent)` pairs sorted by
+/// generator and positive exponents. The empty monomial is `1`.
 pub type Mono = Vec<(u32, u32)>;
 
 /// The generators of a polynomial: index `i` stands for `nodes[i]`.
@@ -86,17 +89,17 @@ pub struct Poly {
 }
 
 fn mono_mul(
-    a: &Mono,
-    b: &Mono,
-) -> Mono {
-    let mut out = Vec::with_capacity(a.len().saturating_add(b.len()));
+    left: &Mono,
+    right: &Mono,
+) -> Option<Mono> {
+    let mut out = Vec::with_capacity(left.len().saturating_add(right.len()));
     let (mut i, mut j) = (0, 0);
     loop {
-        match (a.get(i), b.get(j)) {
+        match (left.get(i), right.get(j)) {
             | (Some(&(ga, ea)), Some(&(gb, eb))) => {
                 match ga.cmp(&gb) {
                     | std::cmp::Ordering::Equal => {
-                        out.push((ga, ea.saturating_add(eb)));
+                        out.push((ga, ea.checked_add(eb)?));
                         i += 1;
                         j += 1;
                     },
@@ -118,7 +121,7 @@ fn mono_mul(
                 out.push(y);
                 j += 1;
             },
-            | (None, None) => return out,
+            | (None, None) => return Some(out),
         }
     }
 }
@@ -244,20 +247,20 @@ impl Poly {
     fn add_term(
         &mut self,
         mono: Mono,
-        coeff: &Number,
+        coeff: Cow<'_, Number>,
     ) {
-        match self.terms.get_mut(&mono) {
-            | Some(slot) => {
-                let sum = slot.add(coeff);
+        match self.terms.entry(mono) {
+            | Entry::Occupied(mut slot) => {
+                let sum = slot.get().add(coeff.as_ref());
                 if sum.is_zero() {
-                    self.terms.remove(&mono);
+                    slot.remove();
                 } else {
-                    *slot = sum;
+                    slot.insert(sum);
                 }
             },
-            | None => {
+            | Entry::Vacant(slot) => {
                 if !coeff.is_zero() {
-                    self.terms.insert(mono, coeff.clone());
+                    slot.insert(coeff.into_owned());
                 }
             },
         }
@@ -271,7 +274,7 @@ impl Poly {
     ) -> Self {
         let mut out = self.clone();
         for (mono, coeff) in &other.terms {
-            out.add_term(mono.clone(), coeff);
+            out.add_term(mono.clone(), Cow::Borrowed(coeff));
         }
         out
     }
@@ -304,12 +307,16 @@ impl Poly {
             terms: self
                 .terms
                 .iter()
-                .map(|(m, c)| (m.clone(), c.mul(factor)))
+                .filter_map(|(m, c)| {
+                    let product = c.mul(factor);
+                    (!product.is_zero()).then(|| (m.clone(), product))
+                })
                 .collect(),
         }
     }
 
-    /// Product. `None` when the result would exceed `cap` terms.
+    /// Product. `None` when the result exceeds `cap` terms or a power
+    /// cannot be represented by the monomial's exponent type.
     #[must_use]
     pub fn mul(
         &self,
@@ -319,7 +326,7 @@ impl Poly {
         let mut out = Self::zero();
         for (ma, ca) in &self.terms {
             for (mb, cb) in &other.terms {
-                out.add_term(mono_mul(ma, mb), &ca.mul(cb));
+                out.add_term(mono_mul(ma, mb)?, Cow::Owned(ca.mul(cb)));
             }
             if out.terms.len() > cap {
                 return None;
@@ -431,12 +438,15 @@ impl Poly {
             .unwrap_or(0)
     }
 
-    /// Total degree; zero for the zero polynomial.
+    /// Total degree, saturated at `u32::MAX`. The zero polynomial has degree zero.
     #[must_use]
     pub fn total_degree(&self) -> u32 {
         self.terms
             .keys()
-            .map(|m| m.iter().map(|&(_, e)| e).sum())
+            .map(|m| {
+                m.iter()
+                    .fold(0_u32, |degree, &(_, e)| degree.saturating_add(e))
+            })
             .max()
             .unwrap_or(0)
     }
@@ -473,7 +483,7 @@ impl Poly {
                 .filter(|&(g, _)| g != generator)
                 .collect();
             if let Some(slot) = out.get_mut(power as usize) {
-                slot.add_term(rest, coeff);
+                slot.add_term(rest, Cow::Borrowed(coeff));
             }
         }
         out
@@ -486,10 +496,28 @@ impl Poly {
         &self,
         generator: u32,
     ) -> Option<Vec<Number>> {
-        self.coefficients_in(generator)
-            .iter()
-            .map(Self::as_constant)
-            .collect()
+        let mut degree = 0;
+        for mono in self.terms.keys() {
+            match mono.as_slice() {
+                | [] => {},
+                | &[(g, exponent)] if g == generator => degree = degree.max(exponent),
+                | _ => return None,
+            }
+        }
+        let length = (degree as usize).checked_add(1)?;
+        let mut coefficients = Vec::new();
+        coefficients.try_reserve_exact(length).ok()?;
+        coefficients.resize_with(length, || Number::from(0));
+        for (mono, coefficient) in &self.terms {
+            let exponent = mono.first().map_or(0, |&(_, exponent)| exponent as usize);
+            let slot = &mut coefficients[exponent];
+            *slot = if slot.is_zero() {
+                coefficient.clone()
+            } else {
+                slot.add(coefficient)
+            };
+        }
+        Some(coefficients)
     }
 
     /// Builds a univariate polynomial in `gen` from coefficients by degree.
@@ -506,7 +534,7 @@ impl Poly {
             } else {
                 vec![(generator, power)]
             };
-            out.add_term(mono, coeff);
+            out.add_term(mono, Cow::Borrowed(coeff));
         }
         out
     }
@@ -533,7 +561,10 @@ impl Poly {
                     }
                 })
                 .collect();
-            out.add_term(lowered, &coeff.mul(&Number::from(i64::from(power))));
+            out.add_term(
+                lowered,
+                Cow::Owned(coeff.mul(&Number::from(i64::from(power)))),
+            );
         }
         out
     }
@@ -564,88 +595,251 @@ impl Default for Limits {
 /// expanded, so expansion is deep: `sin((x + 1)^2)` becomes the generator
 /// `sin(x^2 + 2*x + 1)`.
 ///
-/// Returns `None` when a limit is exceeded.
+/// Shared opaque arguments are expanded once per conversion. Generator
+/// indices retain encounter order within each local polynomial.
+/// Returns `None` when an expansion limit is exceeded, including a traversal
+/// depth of more than 2,000 operands.
 pub fn from_term(
     graph: &mut Graph,
     gens: &mut Gens,
     node: NodeId,
     limits: Limits,
 ) -> Option<Poly> {
-    let mut memo: HashMap<NodeId, Poly> = HashMap::new();
-    convert(graph, gens, node, limits, &mut memo, 0)
+    let mut scopes = vec![ConversionScope {
+        gens: std::mem::take(gens),
+        memo: PolynomialMemo::default(),
+    }];
+    let result = Expansion {
+        graph,
+        limits,
+        expanded: HashMap::new(),
+    }
+    .convert(node, &mut scopes);
+    // Keep the outer generator encounter order even when an expansion limit is hit.
+    *gens = scopes.swap_remove(0).gens;
+    result
 }
 
-fn convert(
-    graph: &mut Graph,
-    gens: &mut Gens,
-    node: NodeId,
+/// Polynomial values and generator indices are local to one generator table.
+#[derive(Default)]
+struct PolynomialMemo {
+    values: HashMap<NodeId, Poly>,
+    generators: Option<HashMap<ClassId, u32>>,
+}
+
+impl PolynomialMemo {
+    fn index(
+        &mut self,
+        graph: &Graph,
+        gens: &mut Gens,
+        node: NodeId,
+    ) -> u32 {
+        const INDEX_THRESHOLD: usize = 16;
+        if gens.len() < INDEX_THRESHOLD {
+            return gens.index(graph, node);
+        }
+        // Construction only adds fresh nodes to existing classes. No rule runs or unions
+        // of existing classes occur during one conversion.
+        let index = self.generators.get_or_insert_with(|| {
+            let mut index = HashMap::with_capacity(gens.len());
+            for (i, &generator) in gens.nodes.iter().enumerate() {
+                index
+                    .entry(graph.find(generator))
+                    .or_insert_with(|| u32::try_from(i).unwrap_or(u32::MAX));
+            }
+            index
+        });
+        *index.entry(graph.find(node)).or_insert_with(|| {
+            let i = u32::try_from(gens.len()).unwrap_or(u32::MAX);
+            gens.nodes.push(node);
+            i
+        })
+    }
+}
+
+#[derive(Default)]
+struct ConversionScope {
+    gens: Gens,
+    memo: PolynomialMemo,
+}
+
+impl ConversionScope {
+    fn remember(
+        &mut self,
+        node: NodeId,
+        polynomial: Poly,
+    ) -> ExpandedValue {
+        self.memo.values.insert(node, polynomial.clone());
+        ExpandedValue::Polynomial(polynomial)
+    }
+}
+
+/// A rendered child of an opaque operator belongs to the graph, so it can
+/// be shared across the otherwise independent generator tables.
+struct Expansion<'a> {
+    graph: &'a mut Graph,
     limits: Limits,
-    memo: &mut HashMap<NodeId, Poly>,
-    depth: usize,
-) -> Option<Poly> {
-    if let Some(done) = memo.get(&node) {
-        return Some(done.clone());
+    expanded: HashMap<NodeId, NodeId>,
+}
+
+enum ExpandedValue {
+    Polynomial(Poly),
+    Term(NodeId),
+}
+
+impl ExpandedValue {
+    fn polynomial(self) -> Option<Poly> {
+        match self {
+            | Self::Polynomial(value) => Some(value),
+            | Self::Term(_) => None,
+        }
     }
-    if depth > 2_000 {
-        return None;
-    }
-    let children = graph.children(node).to_vec();
-    let poly = if let Some(n) = graph.number_of(node) {
-        Poly::constant(n.clone())
-    } else if graph.op(node) == core::ADD {
-        let mut sum = Poly::zero();
-        for child in children {
-            sum = sum.add(&convert(graph, gens, child, limits, memo, depth + 1)?);
-            if sum.len() > limits.terms {
+}
+
+/// Pending work and its inputs are owned by the traversal stack. A branch
+/// retains just its current result while its next operand is converted.
+enum ExpandStep {
+    Visit(NodeId, usize),
+    Fold(NodeId, usize, usize, Poly),
+    Power(NodeId, u32),
+    Atom(NodeId, usize, Vec<NodeId>),
+    ExpandChild(NodeId, usize),
+    SaveChild(NodeId),
+}
+
+impl Expansion<'_> {
+    fn start(
+        &self,
+        steps: &mut Vec<ExpandStep>,
+        scope: &mut ConversionScope,
+        node: NodeId,
+        depth: usize,
+    ) -> Option<ExpandedValue> {
+        if let Some(done) = scope.memo.values.get(&node) {
+            return Some(ExpandedValue::Polynomial(done.clone()));
+        }
+        if let Some(number) = self.graph.number_of(node) {
+            return Some(scope.remember(node, Poly::constant(number.clone())));
+        }
+        let op = self.graph.op(node);
+        let children = self.graph.children(node);
+        if op == core::ADD || op == core::MUL {
+            let start = Poly::constant(Number::from(i64::from(op == core::MUL)));
+            if let Some(&first) = children.first() {
+                steps.push(ExpandStep::Fold(node, depth, 1, start));
+                steps.push(ExpandStep::Visit(first, depth + 1));
                 return None;
             }
+            return Some(scope.remember(node, start));
         }
-        sum
-    } else if graph.op(node) == core::MUL {
-        let mut product = Poly::constant(Number::from(1));
-        for child in children {
-            product = product.mul(
-                &convert(graph, gens, child, limits, memo, depth + 1)?,
-                limits.terms,
-            )?;
+        if let [base, exp] = children
+            && op == core::POW
+            && let Some(exponent) = self
+                .graph
+                .number_of(*exp)
+                .and_then(Number::to_i64)
+                .and_then(|e| u32::try_from(e).ok())
+                .filter(|&e| e <= self.limits.exponent)
+        {
+            steps.push(ExpandStep::Power(node, exponent));
+            steps.push(ExpandStep::Visit(*base, depth + 1));
+            return None;
         }
-        product
-    } else {
-        let power = match children.as_slice() {
-            | [base, exp] if graph.op(node) == core::POW => {
-                graph
-                    .number_of(*exp)
-                    .and_then(Number::to_i64)
-                    .and_then(|e| u32::try_from(e).ok())
-                    .filter(|&e| e <= limits.exponent)
-                    .map(|e| (*base, e))
-            },
-            | _ => None,
-        };
-        match power {
-            | Some((base, exponent)) => {
-                convert(graph, gens, base, limits, memo, depth + 1)?.pow(exponent, limits.terms)?
-            },
-            | None => {
-                // Not polynomial structure: a generator, with its arguments
-                // expanded.
-                let mut expanded = Vec::with_capacity(children.len());
-                for child in &children {
-                    let mut inner_gens = Gens::default();
-                    let inner = from_term(graph, &mut inner_gens, *child, limits)?;
-                    expanded.push(to_term(graph, &inner_gens, &inner));
-                }
-                let atom = if expanded == children {
-                    node
-                } else {
-                    graph.try_node(graph.op(node), &expanded)?
-                };
-                Poly::generator(gens.index(graph, atom))
-            },
+        if let Some(&first) = children.first() {
+            steps.push(ExpandStep::Atom(
+                node,
+                depth,
+                Vec::with_capacity(children.len()),
+            ));
+            steps.push(ExpandStep::ExpandChild(first, depth + 1));
+            return None;
         }
-    };
-    memo.insert(node, poly.clone());
-    Some(poly)
+        let index = scope.memo.index(self.graph, &mut scope.gens, node);
+        Some(scope.remember(node, Poly::generator(index)))
+    }
+
+    fn convert(
+        &mut self,
+        node: NodeId,
+        scopes: &mut Vec<ConversionScope>,
+    ) -> Option<Poly> {
+        const MAX_DEPTH: usize = 2_000;
+        let mut steps = vec![ExpandStep::Visit(node, 0)];
+        let mut result = None;
+        while let Some(step) = steps.pop() {
+            result = match step {
+                | ExpandStep::Visit(node, depth) => {
+                    if depth > MAX_DEPTH {
+                        return None;
+                    }
+                    self.start(&mut steps, scopes.last_mut()?, node, depth)
+                },
+                | ExpandStep::Fold(node, depth, next, mut total) => {
+                    let child = result?.polynomial()?;
+                    if self.graph.op(node) == core::ADD {
+                        for (mono, coefficient) in child.terms {
+                            total.add_term(mono, Cow::Owned(coefficient));
+                        }
+                        if total.len() > self.limits.terms {
+                            return None;
+                        }
+                    } else {
+                        total = total.mul(&child, self.limits.terms)?;
+                    }
+                    if let Some(&child) = self.graph.children(node).get(next) {
+                        steps.push(ExpandStep::Fold(node, depth, next + 1, total));
+                        steps.push(ExpandStep::Visit(child, depth + 1));
+                        None
+                    } else {
+                        Some(scopes.last_mut()?.remember(node, total))
+                    }
+                },
+                | ExpandStep::Power(node, exponent) => {
+                    let power = result?.polynomial()?.pow(exponent, self.limits.terms)?;
+                    Some(scopes.last_mut()?.remember(node, power))
+                },
+                | ExpandStep::Atom(node, depth, mut expanded) => {
+                    let ExpandedValue::Term(child) = result? else {
+                        return None;
+                    };
+                    expanded.push(child);
+                    let original = self.graph.children(node);
+                    if let Some(&child) = original.get(expanded.len()) {
+                        steps.push(ExpandStep::Atom(node, depth, expanded));
+                        steps.push(ExpandStep::ExpandChild(child, depth + 1));
+                        None
+                    } else {
+                        let atom = if expanded == original {
+                            node
+                        } else {
+                            self.graph.try_node(self.graph.op(node), &expanded)?
+                        };
+                        let scope = scopes.last_mut()?;
+                        let index = scope.memo.index(self.graph, &mut scope.gens, atom);
+                        Some(scope.remember(node, Poly::generator(index)))
+                    }
+                },
+                | ExpandStep::ExpandChild(node, depth) => {
+                    if let Some(&expanded) = self.expanded.get(&node) {
+                        Some(ExpandedValue::Term(expanded))
+                    } else {
+                        scopes.push(ConversionScope::default());
+                        steps.push(ExpandStep::SaveChild(node));
+                        steps.push(ExpandStep::Visit(node, depth));
+                        None
+                    }
+                },
+                | ExpandStep::SaveChild(node) => {
+                    let child = result?.polynomial()?;
+                    let scope = scopes.pop()?;
+                    let expanded = to_term(self.graph, &scope.gens, &child);
+                    self.expanded.insert(node, expanded);
+                    Some(ExpandedValue::Term(expanded))
+                },
+            };
+        }
+        result?.polynomial()
+    }
 }
 
 /// Builds the term for one monomial times a coefficient.
@@ -682,9 +876,6 @@ pub fn to_term(
 ) -> NodeId {
     let terms: Vec<NodeId> = poly
         .terms()
-        .map(|(m, c)| (m.clone(), c.clone()))
-        .collect::<Vec<_>>()
-        .iter()
         .map(|(mono, coeff)| term_of(graph, gens, mono, coeff))
         .collect();
     match terms.as_slice() {

@@ -30,7 +30,9 @@
 //! term that was just cancelled, so a tail is never reduced twice. Leading
 //! monomials are cached on the labelled polynomials, and the signature
 //! comparison of a scaled signature is evaluated without materialising the
-//! product.
+//! product. Generator normalization and independent reductions within a
+//! preparation sweep can use the active CPU pool. Each sweep sees the ordered
+//! results of the preceding sweep.
 //!
 //! # Affine input
 //!
@@ -74,12 +76,10 @@
 //!
 //! # Performance
 //!
-//! In the `test` profile the complete criteria path (homogenisation, signature
-//! loop and final reduction) solves Katsura-4 and Cyclic-5 in roughly 40 ms
-//! each on the machine used for this fix — well inside the 30 s budget and
-//! comparable to the matrix engine. Before the fix the same requests exhausted
-//! the criteria budget and needed seconds in a fallback route. The counters in
-//! [`F5Stats`] report the pairs, criterion discards and reductions of each run.
+//! The counters in [`F5Stats`] report the pairs, criterion discards and
+//! reductions of each run. During one-way reduction, the coefficient-size guard
+//! checks the initial polynomial and each changed tail. Skipping over an
+//! irreducible term leaves the remaining coefficients unchanged.
 //!
 //! # Coefficient domains
 //!
@@ -126,6 +126,7 @@ use crate::graph::PreparedWork;
 use crate::graph::RuleError;
 use crate::graph::Tier;
 use crate::graph::rule::Installer;
+use crate::kernels::par;
 use crate::rules::poly::f4::F4Limits;
 use crate::rules::poly::f4::common;
 use crate::rules::poly::f4::common::Mono;
@@ -518,23 +519,32 @@ fn prepare(
     domain: &Domain,
     generators: &[GPoly],
 ) -> Vec<GPoly> {
-    let mut current: Vec<GPoly> = generators
-        .iter()
-        .filter(|g| !g.is_zero())
-        .map(|g| common::monic(domain, g, ENGINE_ORDER))
-        .collect();
+    let normalize = |g: &GPoly| (!g.is_zero()).then(|| common::monic(domain, g, ENGINE_ORDER));
+    let mut current: Vec<GPoly> = if parallel_preparation(generators) {
+        par::map_slice(generators, PREPARE_GRAIN, normalize)
+            .into_iter()
+            .flatten()
+            .collect()
+    } else {
+        generators.iter().filter_map(normalize).collect()
+    };
     for _ in 0..3 {
-        let mut next: Vec<GPoly> = Vec::with_capacity(current.len());
-        for index in 0..current.len() {
-            let Some(polynomial) = current.get(index) else {
-                continue;
-            };
-            let previous = current.get(..index).unwrap_or(&[]);
+        let reduce = |index: usize| {
+            let (previous, after) = current.split_at_checked(index)?;
+            let polynomial = after.first()?;
             let remainder = normal_form(domain, polynomial, previous, ENGINE_ORDER);
-            if !remainder.is_zero() {
-                next.push(common::monic(domain, &remainder, ENGINE_ORDER));
-            }
-        }
+            (!remainder.is_zero()).then(|| common::monic(domain, &remainder, ENGINE_ORDER))
+        };
+        // Every reduction reads only the previous sweep. A few generators
+        // with small prefixes are cheaper to process without dispatch.
+        let next: Vec<GPoly> = if parallel_preparation(&current) {
+            par::map_indexed(current.len(), PREPARE_GRAIN, reduce)
+                .into_iter()
+                .flatten()
+                .collect()
+        } else {
+            (0..current.len()).filter_map(reduce).collect()
+        };
         if next == current {
             return next;
         }
@@ -544,6 +554,14 @@ fn prepare(
         }
     }
     current
+}
+
+const PREPARE_GRAIN: usize = 4;
+
+fn parallel_preparation(polynomials: &[GPoly]) -> bool {
+    let terms: usize = polynomials.iter().map(|poly| poly.terms().len()).sum();
+    terms.saturating_mul(polynomials.len()) >= 4096
+        && crate::execution::should_split(polynomials.len(), PREPARE_GRAIN)
 }
 
 /// The working polynomial of a reduction must not grow past this many terms.
@@ -558,9 +576,9 @@ const MAX_TERMS: usize = 20_000;
 /// per operation grows with them, so a bound keeps the run time predictable.
 const MAX_BITS: u64 = 32_768;
 
-/// Whether any coefficient in the iterator has outgrown [`MAX_BITS`].
-fn coefficients_too_large<'a>(terms: impl Iterator<Item = &'a Term>) -> bool {
-    terms.into_iter().any(|(_, coefficient)| {
+/// Whether any coefficient in this slice has outgrown [`MAX_BITS`].
+fn coefficients_too_large(terms: &[Term]) -> bool {
+    terms.iter().any(|(_, coefficient)| {
         coefficient.numer().bits() > MAX_BITS || coefficient.denom().bits() > MAX_BITS
     })
 }
@@ -568,8 +586,8 @@ fn coefficients_too_large<'a>(terms: impl Iterator<Item = &'a Term>) -> bool {
 /// The signature-admissible normal form of `p` with bound `bound`: a reducer
 /// `h` may be used with a multiplier `t` only when `t * sign(h) < bound`
 /// strictly. The result has signature at most `bound`. Returns `None` when the
-/// reduction budget is exhausted or the working polynomial outgrows
-/// [`MAX_TERMS`].
+/// reduction budget is exhausted or the working polynomial exceeds
+/// [`MAX_TERMS`] or [`MAX_BITS`].
 ///
 /// The working polynomial is kept as a vector of terms in descending order.
 /// Once the leading term is added to the remainder, the cursor moves past it
@@ -589,25 +607,21 @@ fn f5_normal_form(
     let mut remainder: Vec<Term> = Vec::new();
     let mut scratch: Vec<Term> = Vec::new();
     let mut cursor = 0_usize;
-    loop {
-        if work.len() > MAX_TERMS || coefficients_too_large(work.iter().skip(cursor)) {
-            return None;
-        }
-        let Some((monomial, coefficient)) = work.get(cursor).cloned() else {
-            break;
-        };
-        let mut reducer: Option<(&GPoly, Mono, BigRational)> = None;
+    if work.len() > MAX_TERMS || coefficients_too_large(&work) {
+        return None;
+    }
+    while let Some((monomial, coefficient)) = work.get(cursor) {
+        let mut reducer: Option<(&GPoly, Mono, &BigRational)> = None;
         for element in basis {
-            if !common::divides(&element.lm, &monomial) {
+            if element.sig.index < bound.index || !common::divides(&element.lm, monomial) {
                 continue;
             }
-            let multiplier = common::difference(&monomial, &element.lm);
+            let multiplier = common::difference(monomial, &element.lm);
             // One-way reduction: an equal signature is not admissible.
             if scaled_sig_cmp(&element.sig, &multiplier, bound) != Ordering::Less {
                 continue;
             }
-            let lead = element.poly.leading()?.1.clone();
-            reducer = Some((&element.poly, multiplier, lead));
+            reducer = Some((&element.poly, multiplier, &element.poly.leading()?.1));
             break;
         }
         match reducer {
@@ -617,7 +631,7 @@ fn f5_normal_form(
                     return None;
                 }
                 let factor = domain
-                    .div(&coefficient, &lead)
+                    .div(coefficient, lead)
                     .unwrap_or_else(|| domain.zero());
                 subtract_tail(
                     domain,
@@ -628,9 +642,13 @@ fn f5_normal_form(
                     &factor,
                     &mut scratch,
                 );
+                let tail = work.get(cursor..).unwrap_or(&[]);
+                if work.len() > MAX_TERMS || coefficients_too_large(tail) {
+                    return None;
+                }
             },
             | None => {
-                remainder.push((monomial, coefficient));
+                remainder.push((monomial.clone(), coefficient.clone()));
                 cursor = cursor.saturating_add(1);
             },
         }
@@ -638,7 +656,7 @@ fn f5_normal_form(
     Some(GPoly::new_in(domain, remainder, ENGINE_ORDER))
 }
 
-/// `work <- work - factor * x^multiplier * poly`, keeping `work[..=cursor]`
+/// `work <- work - factor * x^multiplier * poly`, keeping `work[..cursor]`
 /// untouched. The leading term of the shifted reducer cancels `work[cursor]`
 /// by construction, so only the tails are merged.
 fn subtract_tail(
@@ -651,52 +669,37 @@ fn subtract_tail(
     scratch: &mut Vec<Term>,
 ) {
     scratch.clear();
-    let tail = work.get(cursor.saturating_add(1)..).unwrap_or(&[]);
     let terms = poly.terms().get(1..).unwrap_or(&[]);
+    let mut tail = work.drain(cursor..);
+    let _ = tail.next();
     scratch.reserve(tail.len().saturating_add(terms.len()));
-    let mut i = 0_usize;
-    let mut j = 0_usize;
-    loop {
-        match (tail.get(i), terms.get(j)) {
-            | (Some((left, left_coefficient)), Some((right, right_coefficient))) => {
-                match compare_shifted(left, right, multiplier) {
-                    | Ordering::Greater => {
-                        scratch.push((left.clone(), left_coefficient.clone()));
-                        i = i.saturating_add(1);
-                    },
-                    | Ordering::Less => {
-                        scratch.push((
-                            common::multiply(right, multiplier),
-                            domain.neg(&domain.mul(right_coefficient, factor)),
-                        ));
-                        j = j.saturating_add(1);
-                    },
-                    | Ordering::Equal => {
-                        let value =
-                            domain.sub(left_coefficient, &domain.mul(factor, right_coefficient));
-                        if !domain.is_zero(&value) {
-                            scratch.push((left.clone(), value));
-                        }
-                        i = i.saturating_add(1);
-                        j = j.saturating_add(1);
-                    },
+    let mut tail = tail.peekable();
+    for (right, right_coefficient) in terms {
+        let order = loop {
+            let Some((left, _)) = tail.peek() else {
+                break Ordering::Less;
+            };
+            let order = compare_shifted(left, right, multiplier);
+            if order != Ordering::Greater {
+                break order;
+            }
+            scratch.extend(tail.next());
+        };
+        if order == Ordering::Equal {
+            if let Some((left, coefficient)) = tail.next() {
+                let value = domain.sub(&coefficient, &domain.mul(factor, right_coefficient));
+                if !domain.is_zero(&value) {
+                    scratch.push((left, value));
                 }
-            },
-            | (Some((left, left_coefficient)), None) => {
-                scratch.push((left.clone(), left_coefficient.clone()));
-                i = i.saturating_add(1);
-            },
-            | (None, Some((right, right_coefficient))) => {
-                scratch.push((
-                    common::multiply(right, multiplier),
-                    domain.neg(&domain.mul(right_coefficient, factor)),
-                ));
-                j = j.saturating_add(1);
-            },
-            | (None, None) => break,
+            }
+        } else {
+            scratch.push((
+                common::multiply(right, multiplier),
+                domain.neg(&domain.mul(right_coefficient, factor)),
+            ));
         }
     }
-    work.truncate(cursor);
+    scratch.extend(tail);
     work.append(scratch);
 }
 
@@ -752,6 +755,9 @@ fn f5_loop(
     let Some(first) = prepared.first() else {
         return Some(Vec::new());
     };
+    if prepared.len() > limits.basis {
+        return None;
+    }
     let dimension = first.leading()?.0.len();
     // The reference formulation sorts the generators by decreasing leading
     // monomial before numbering the signatures.
@@ -986,7 +992,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let op = i.op(OpDescriptor::new("groebner_f5", Arity::Variadic)
         .flags(OpFlags::HEAVY)
         .cost(100)
-        .doc("`groebner_f5(polys, vars, [order])`: computes a reduced Groebner basis of ideal `polys` over `vars` using Faugere's signature-based F5 algorithm."))?;
+        .doc("Computes the reduced Gröbner basis of `polys` over the listed `vars` with the signature-based F5 algorithm. Accepts `(polys, vars)`, `(polys, vars, order)`, `(polys, vars, p)`, or `(polys, vars, order, p)`. The default order is `lex`. Use `grlex` or `grevlex` to override it. Coefficients are rational by default or in GF(p) for prime p."))?;
     // A basis is a list of polynomials with the common dimension of the
     // generators (the first argument), matching the reduced `list(...)`.
     i.dim(op, DimRule::Same(0));
@@ -1450,6 +1456,78 @@ mod tests {
         );
         // With room to work, the operator returns the reduced basis.
         assert!(f5_basis(&generators, order, F5Limits::default()).is_some());
+    }
+
+    #[test]
+    fn f5_initial_basis_obeys_the_limit_without_processing_a_pair() {
+        let domain = Domain::Rational;
+        let p = poly(&[(1, vec![1, 0])], ENGINE_ORDER);
+        let limits = F5Limits {
+            basis: 0,
+            ..F5Limits::default()
+        };
+        let mut stats = F5Stats::default();
+        assert_eq!(f5_loop(&domain, &[p], limits, &mut stats), None);
+        assert_eq!(stats, F5Stats::default());
+        assert_eq!(f5_loop(&domain, &[], limits, &mut stats), Some(Vec::new()));
+    }
+
+    #[test]
+    fn f5_checks_coefficients_on_unchanged_and_replaced_tails() {
+        let domain = Domain::Rational;
+        let limit = usize::try_from(MAX_BITS).unwrap();
+        let below = BigRational::from_integer(BigInt::from(1) << (limit - 1));
+        let above = BigRational::from_integer(BigInt::from(1) << limit);
+        let bound = Sig::unit(2, 1);
+        let mut steps = 0;
+        let initial = GPoly::new(vec![(vec![1, 0], q(1)), (vec![0, 1], above)], ENGINE_ORDER);
+        assert_eq!(
+            f5_normal_form(&domain, &initial, &bound, &[], &mut steps, 1),
+            None
+        );
+        assert_eq!(steps, 0);
+
+        let p = GPoly::new(vec![(vec![1, 0], below)], ENGINE_ORDER);
+        let reducer = Labelled {
+            poly: poly(&[(1, vec![1, 0]), (2, vec![0, 1])], ENGINE_ORDER),
+            sig: Sig::unit(2, 2),
+            lm: vec![1, 0],
+            num: 2,
+        };
+        assert_eq!(
+            f5_normal_form(&domain, &p, &bound, &[], &mut steps, 1),
+            Some(p.clone())
+        );
+        assert_eq!(
+            f5_normal_form(&domain, &p, &bound, &[reducer], &mut steps, 1),
+            None
+        );
+        assert_eq!(steps, 1);
+    }
+
+    #[test]
+    fn f5_preparation_preserves_the_independent_prefix_order_across_cpu_pools() {
+        let domain = Domain::prime(BigInt::from(103)).unwrap();
+        let inputs: Vec<_> = (0..8)
+            .map(|variable| {
+                let terms = (0..64)
+                    .map(|power| {
+                        let mut monomial = vec![0; 9];
+                        monomial[variable] = 64 - power;
+                        monomial[8] = power;
+                        (monomial, q(1))
+                    })
+                    .collect();
+                GPoly::new(terms, ENGINE_ORDER)
+            })
+            .collect();
+        for workers in [1, 2, 4] {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(workers)
+                .build()
+                .unwrap();
+            assert_eq!(pool.install(|| prepare(&domain, &inputs)), inputs);
+        }
     }
 
     #[test]
