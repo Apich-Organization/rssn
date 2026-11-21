@@ -263,6 +263,89 @@ fn normalize_gives_unit_norm_and_leaves_zero_alone() {
 }
 
 #[test]
+fn l2_norm_preserves_compensating_coordinate_and_sample_scales() {
+    for (width, value, expected) in [(1e-300, 1e300, 1e150), (1e300, 1e-300, 1e-150)] {
+        let points = [(0.0, value), (width, -value)];
+        let got = l2_norm(&points);
+        assert!((got / expected - 1.0).abs() <= 2e-15);
+        let normalized = normalize(&points);
+        assert_eq!([normalized[0].0, normalized[1].0], [0.0, width]);
+        assert!((normalized[0].1 * width.sqrt() - 1.0).abs() <= 2e-15);
+        assert_eq!(normalized[0].1, -normalized[1].1);
+        assert!((l2_norm(&normalized) - 1.0).abs() <= 2e-15);
+    }
+
+    let max = f64::MAX;
+    let wide = [(-max, 1e-100), (max, 1e-100)];
+    let expected = 1e-100 * max.sqrt() * std::f64::consts::SQRT_2;
+    assert!((l2_norm(&wide) / expected - 1.0).abs() <= 2e-15);
+}
+
+#[test]
+fn normalization_keeps_scale_when_the_norm_does_not_fit_in_f64() {
+    let max = f64::MAX;
+    let wide = [(-max, max), (max, -max)];
+    assert!(l2_norm(&wide).is_infinite());
+    let expected = std::f64::consts::FRAC_1_SQRT_2 / max.sqrt();
+    let normalized = normalize(&wide);
+    assert!((normalized[0].1 / expected - 1.0).abs() <= 2e-15);
+    assert_eq!(normalized[0].1, -normalized[1].1);
+    assert!((l2_norm(&normalized) - 1.0).abs() <= 2e-15);
+
+    let least = f64::from_bits(1);
+    let tiny = [(0.0, least), (least, least)];
+    assert_eq!(l2_norm(&tiny), 0.0);
+    let normalized = normalize(&tiny);
+    assert!((normalized[0].1 * least.sqrt() - 1.0).abs() <= 2e-15);
+    assert_eq!(normalized[0].1, normalized[1].1);
+    assert!((l2_norm(&normalized) - 1.0).abs() <= 2e-15);
+}
+
+#[test]
+fn l2_grid_reuses_irregular_trapezoid_weights_and_checks_inputs() {
+    let x = [0.0, 1.0, 4.0, 4.0, 7.0];
+    let grid = L2Grid::new(&x).unwrap_or_else(|error| panic!("{error}"));
+    let weights = [0.5, 2.0, 1.5, 1.5, 1.5];
+    for values in [[0.5, -1.0, 3.0, 1.0, 0.0], [2.0, 0.0, -0.5, 4.0, 1.0]] {
+        let expected = weights
+            .iter()
+            .zip(values)
+            .map(|(weight, value)| weight * value * value)
+            .sum::<f64>()
+            .sqrt();
+        let (norm, normalized) = grid
+            .norm_and_normalize(&values)
+            .unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(grid.norm(&values), Ok(norm));
+        assert!((norm / expected - 1.0).abs() <= 2e-15);
+        assert!((grid.norm(&normalized).unwrap_or_default() - 1.0).abs() <= 2e-15);
+    }
+    assert!(grid.norm(&[1.0]).is_err());
+    assert!(grid.norm(&[1.0, 1.0, f64::NAN, 0.0, 1.0]).is_err());
+    assert!(L2Grid::new(&[0.0, f64::INFINITY]).is_err());
+    assert!(L2Grid::new(&[1.0, 0.0]).is_err());
+}
+
+#[test]
+fn l2_zero_measure_and_unchecked_signed_grid_keep_their_semantics() {
+    let max = f64::MAX;
+    let repeated = [(2.0, -max), (2.0, max), (2.0, -max)];
+    assert_eq!(l2_norm(&repeated), 0.0);
+    assert_eq!(normalize(&repeated), repeated.to_vec());
+    let grid = L2Grid::new(&[2.0, 2.0, 2.0]).unwrap_or_else(|error| panic!("{error}"));
+    assert_eq!(
+        grid.norm_and_normalize(&[-max, max, -max]),
+        Ok((0.0, vec![-max, max, -max]))
+    );
+    assert!(grid.norm(&[0.0, f64::INFINITY, 0.0]).is_err());
+    let empty = L2Grid::new(&[]).unwrap_or_else(|error| panic!("{error}"));
+    assert_eq!(empty.norm_and_normalize(&[]), Ok((0.0, Vec::new())));
+    assert_eq!(l2_norm(&[(0.0, 2.0), (2.0, 2.0), (1.0, 2.0)]), 2.0);
+    assert!(l2_norm(&[(1.0, 2.0), (0.0, 2.0)]).is_nan());
+    assert!(l2_norm(&[(0.0, f64::NAN), (1.0, 0.0)]).is_nan());
+}
+
+#[test]
 fn gram_schmidt_three_polynomials_is_orthonormal() {
     let n = 400;
     let basis = vec![

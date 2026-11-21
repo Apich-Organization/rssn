@@ -1,3 +1,6 @@
+//! D-finite functions: annihilating operators, closure, recurrences and
+//! an exact zero test.
+//!
 //! D-finite (holonomic) functions of one variable.
 //!
 //! A function is *D-finite* when it satisfies a linear differential equation
@@ -39,9 +42,13 @@
     reason = "dense polynomial arithmetic over vectors whose lengths are computed alongside"
 )]
 
+use std::cmp::Reverse;
+
 use num_bigint::BigInt;
+use num_integer::Integer;
 use num_rational::BigRational;
 use num_traits::One;
+use num_traits::Pow;
 use num_traits::Signed;
 use num_traits::ToPrimitive;
 use num_traits::Zero;
@@ -165,13 +172,6 @@ fn p_gcd(
         | Some(lead) => x.iter().map(|c| c / &lead).collect(),
         | None => x,
     }
-}
-
-fn p_eval(
-    a: &[Q],
-    x: &Q,
-) -> Q {
-    a.iter().rev().fold(Q::zero(), |acc, c| acc * x + c)
 }
 
 /// A rational function in lowest terms with a monic denominator.
@@ -578,6 +578,65 @@ fn series_mul(
     out
 }
 
+fn series_pow(
+    mut base: Vec<Q>,
+    exponent: u32,
+) -> Vec<Q> {
+    let n = base.len();
+    if n == 0 || exponent == 1 {
+        return base;
+    }
+    if exponent == 0 {
+        base.fill(Q::zero());
+        base[0] = Q::one();
+        return base;
+    }
+    if exponent == 2 {
+        return series_mul(&base, &base, n);
+    }
+    let mut result = vec![Q::zero(); n];
+    let Some(order) = base.iter().position(|v| !v.is_zero()) else {
+        return result;
+    };
+    // Factor out x^order before raising the remaining unit series to a power.
+    let exponent_size = usize::try_from(exponent).unwrap_or(usize::MAX);
+    let Some(offset) = order.checked_mul(exponent_size).filter(|&d| d < n) else {
+        return result;
+    };
+    let span = n - offset;
+    let coefficients = &base[order..order + span];
+    let leading = &coefficients[0];
+    let out = &mut result[offset..];
+    out[0] = Pow::pow(leading, exponent);
+
+    let terms: Vec<_> = coefficients
+        .iter()
+        .enumerate()
+        .skip(1)
+        .filter(|(_, c)| !c.is_zero())
+        .map(|(j, c)| (j, c / leading))
+        .collect();
+    if terms.is_empty() {
+        return result;
+    }
+
+    // For F = B^e, B F' = e B' F gives the coefficient relation
+    // k f[k] = sum(((e + 1) j - k) (b[j] / b[0]) f[k - j], j = 1..k).
+    let weight_multiplier = i128::from(exponent) + 1;
+    for k in 1..out.len() {
+        let mut value = Q::zero();
+        for (j, c) in terms.iter().take_while(|(j, _)| *j <= k) {
+            let prior = &out[k - j];
+            let weight = weight_multiplier * (*j as i128) - (k as i128);
+            if weight != 0 && !prior.is_zero() {
+                value += (c * prior) * BigInt::from(weight);
+            }
+        }
+        out[k] = value / BigInt::from(k);
+    }
+    result
+}
+
 fn series_deriv(
     a: &[Q],
     n: usize,
@@ -616,6 +675,8 @@ fn circular(
 
 impl Expr {
     /// The first `n` Taylor coefficients at the origin.
+    ///
+    /// Higher integer powers use a truncated recurrence over the nonzero base terms.
     #[must_use]
     pub fn series(
         &self,
@@ -629,17 +690,7 @@ impl Expr {
             },
             | Self::Mul(a, b) => Some(series_mul(&a.series(n)?, &b.series(n)?, n)),
             | Self::Scale(c, a) => Some(a.series(n)?.iter().map(|x| x * c).collect()),
-            | Self::Pow(a, e) => {
-                let base = a.series(n)?;
-                let mut out = vec![Q::zero(); n];
-                if let Some(first) = out.first_mut() {
-                    *first = Q::one();
-                }
-                for _ in 0..*e {
-                    out = series_mul(&out, &base, n);
-                }
-                Some(out)
-            },
+            | Self::Pow(a, e) => Some(series_pow(a.series(n)?, *e)),
             | Self::Diff(a) => Some(series_deriv(&a.series(n + 1)?, n)),
         }
     }
@@ -965,37 +1016,118 @@ pub fn recurrence(op: &[Poly]) -> Vec<(i64, Poly)> {
         .collect()
 }
 
-/// How many leading Taylor coefficients decide whether a solution of `op`
-/// is zero.
+// The highest shift cannot cancel: each contributing derivative order
+// has a distinct degree in the falling-factorial basis. In terms of the
+// Taylor index k, factor (k)_order from this leading recurrence coefficient.
+// The remaining coefficients are in the falling-factorial basis at k-order.
+fn leading_recurrence(op: &[Poly]) -> Option<(usize, Vec<Option<&Q>>)> {
+    let (shift, Reverse(order)) = op
+        .iter()
+        .enumerate()
+        .filter_map(|(i, poly)| {
+            let j = poly.iter().position(|c| !c.is_zero())?;
+            Some((i as i64 - j as i64, Reverse(i)))
+        })
+        .max()?;
+    let mut coefficients: Vec<_> = op
+        .iter()
+        .enumerate()
+        .skip(order)
+        .map(|(i, poly)| {
+            let j = usize::try_from(i as i128 - i128::from(shift)).ok()?;
+            poly.get(j).filter(|c| !c.is_zero())
+        })
+        .collect();
+    while coefficients.last().is_some_and(Option::is_none) {
+        coefficients.pop();
+    }
+    Some((order, coefficients))
+}
+
+// Return one past the largest non-negative integer root of the residual,
+// or zero when it has none. Its constant term is nonzero by construction.
+fn root_prefix(
+    coefficients: &[Option<&Q>],
+    max_terms: usize,
+) -> Option<usize> {
+    let lead = coefficients.last().copied().flatten()?;
+    let degree = coefficients.len() - 1;
+    if degree == 0 {
+        return Some(0);
+    }
+    if degree == 1 {
+        let root = -coefficients[0]? / lead;
+        return if root.is_positive() && root.is_integer() {
+            root.numer().to_usize()?.checked_add(1)
+        } else {
+            Some(0)
+        };
+    }
+
+    // At non-negative integers every falling factorial is non-negative.
+    // The nonzero constant term rules out any root when signs agree.
+    let leading_positive = lead.is_positive();
+    let opposite = coefficients
+        .iter()
+        .flatten()
+        .filter(|c| c.is_positive() != leading_positive)
+        .max_by(|a, b| {
+            if leading_positive {
+                b.cmp(a)
+            } else {
+                a.cmp(b)
+            }
+        });
+    let Some(opposite) = opposite else {
+        return Some(0);
+    };
+
+    // If B = ceil(max |opposite/lead|), then at z >= degree+B each
+    // omitted falling factor is at least B+1. The opposing terms sum to
+    // less than max |opposite/lead| * sum_{j>=1}(B+1)^(-j) <= 1 of the lead.
+    let bound = ((-(*opposite / lead)).ceil().to_integer() + (degree - 1))
+        .to_usize()
+        .filter(|&bound| bound <= max_terms)?;
+
+    let common = coefficients
+        .iter()
+        .flatten()
+        .fold(BigInt::one(), |lcm, c| lcm.lcm(c.denom()));
+    let integer: Vec<_> = coefficients
+        .iter()
+        .map(|c| c.map_or_else(BigInt::zero, |q| q.numer() * (&common / q.denom())))
+        .collect();
+    let root = (1..=bound).rev().find(|&z| {
+        // Terms of degree above z vanish. The remaining Newton form can
+        // be evaluated by Horner's rule without rational arithmetic.
+        let len = integer.len().min(z.saturating_add(1));
+        integer[..len]
+            .iter()
+            .enumerate()
+            .rev()
+            .fold(BigInt::zero(), |value, (i, c)| value * (z - i) + c)
+            .is_zero()
+    });
+    root.map_or(Some(0), |z| z.checked_add(1))
+}
+
+/// How many leading Taylor coefficients suffice to decide whether a solution
+/// of `op` is zero.
 ///
-/// Every coefficient the recurrence does not determine from earlier ones
-/// lies below this index. `None` when the bound exceeds `limits.max_terms`.
+/// Returns `None` for the zero operator or when the coefficient or search
+/// bound exceeds `limits.max_terms`.
 #[must_use]
 pub fn deciding_terms(
     op: &[Poly],
     limits: &Limits,
 ) -> Option<usize> {
-    let rec = recurrence(op);
-    let Some((top, lead)) = rec.last() else {
-        return Some(0);
-    };
-    // a_{m+top} is determined whenever lead(m) != 0 and m >= 0; undetermined
-    // are the indices below `top` and those at non-negative integer roots.
-    let mut need = (*top).max(0);
-    // Integer roots are bounded by Cauchy's bound.
-    let lead_coefficient = lead.last()?.abs();
-    let bound = lead
-        .iter()
-        .map(|c| (c.abs() / &lead_coefficient).ceil().to_integer())
-        .max()?
-        + BigInt::one();
-    let bound = bound.to_i64().filter(|b| *b <= limits.max_terms as i64)?;
-    for m in 0..=bound {
-        if p_eval(lead, &qi(m)).is_zero() {
-            need = need.max(m + top + 1);
-        }
+    let (order, coefficients) = leading_recurrence(op)?;
+    if order > limits.max_terms {
+        return None;
     }
-    let need = usize::try_from(need.max(0)).ok()?;
+    // Below order, either there is no recurrence equation yet or its
+    // leading coefficient vanishes. At and above it the common factor is nonzero.
+    let need = order.checked_add(root_prefix(&coefficients, limits.max_terms)?)?;
     (need <= limits.max_terms).then_some(need)
 }
 

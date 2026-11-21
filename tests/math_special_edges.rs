@@ -17,6 +17,35 @@ fn near(
     got == want || (got - want).abs() <= rel * want.abs()
 }
 
+#[test]
+fn exported_log_bessel_i_survives_underflow_of_the_scaled_value() {
+    use rssn::kernel::CallCtx;
+    use rssn::kernel::Value;
+
+    let session = rssn::Session::new();
+    let ctx = CallCtx::new();
+    let args = [Value::int(2000), Value::Float(1000.0)];
+    let log = session
+        .call_value("num_special_ext_bessel_in_log_abs", &args, &ctx)
+        .unwrap()
+        .as_f64()
+        .unwrap();
+    let scaled = session
+        .call_value("num_special_ext_bessel_in_scaled", &args, &ctx)
+        .unwrap();
+    assert_eq!(scaled, Value::Float(0.0));
+    assert!(near(log.exp(), 1.2950953907756812e-285, 1e-12));
+    assert!(
+        session
+            .call_value(
+                "num_special_ext_bessel_in_log_abs",
+                &[Value::int(1), Value::Float(0.0)],
+                &ctx
+            )
+            .is_err()
+    );
+}
+
 /// Collects failures so that one run reports every wrong value.
 struct Check(Vec<String>);
 impl Check {

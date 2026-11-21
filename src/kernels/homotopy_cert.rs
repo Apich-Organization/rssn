@@ -1,3 +1,5 @@
+//! Smale alpha-theory certificates for homotopy endpoints.
+//!
 //! # Smale alpha-theory certificates for homotopy endpoints
 //!
 //! [`smale_alpha`] evaluates, for a square polynomial system `f` and a
@@ -65,6 +67,8 @@ use crate::kernels::ball::eval_jacobian_terms;
 use crate::kernels::ball::eval_terms;
 use crate::kernels::ball::jacobian_at_terms;
 use crate::kernels::ball::real_terms;
+use crate::kernels::complex_scalar::Complex;
+use crate::kernels::numeric_common::scale_product;
 use num_complex::Complex64 as Cx;
 
 use crate::kernels::homotopy::HomotopyOptions;
@@ -134,6 +138,88 @@ fn solve_multi(
     Some(x)
 }
 
+/// Pivoted factors reused by the Newton step and all Smale derivative columns.
+struct AlphaJacobian {
+    factors: Vec<Vec<Cx>>,
+    swaps: Vec<usize>,
+}
+
+fn alpha_divide(
+    numerator: Cx,
+    divisor: Cx,
+) -> Cx {
+    let ratio = Complex::new(numerator.re, numerator.im).div(Complex::new(divisor.re, divisor.im));
+    Cx::new(ratio.re, ratio.im)
+}
+
+const fn finite_complex(value: Cx) -> bool {
+    value.re.is_finite() && value.im.is_finite()
+}
+
+impl AlphaJacobian {
+    fn factor(mut factors: Vec<Vec<Cx>>) -> Option<Self> {
+        let n = factors.len();
+        if factors.iter().flatten().any(|&z| !finite_complex(z)) {
+            return None;
+        }
+        let mut swaps = Vec::with_capacity(n);
+        for k in 0..n {
+            let p =
+                (k..n).max_by(|&i, &j| factors[i][k].norm().total_cmp(&factors[j][k].norm()))?;
+            if factors[p][k].norm() < 1e-300 {
+                return None;
+            }
+            swaps.push(p);
+            factors.swap(k, p);
+            let pivot = factors[k][k];
+            for i in k + 1..n {
+                let entry = factors[i][k];
+                let f = alpha_divide(entry, pivot);
+                if !finite_complex(f) || (f == Cx::ZERO && entry != Cx::ZERO) {
+                    return None;
+                }
+                // Later row swaps carry the already computed lower factors.
+                factors[i][k] = f;
+                for j in k + 1..n {
+                    let product = f * factors[k][j];
+                    factors[i][j] -= product;
+                    if !finite_complex(factors[i][j]) {
+                        return None;
+                    }
+                }
+            }
+        }
+        Some(Self { factors, swaps })
+    }
+
+    fn solve(
+        &self,
+        column: &mut [Cx],
+    ) -> Option<()> {
+        let n = column.len();
+        for (k, &p) in self.swaps.iter().enumerate() {
+            column.swap(k, p);
+        }
+        for k in 0..n {
+            let pivot = column[k];
+            for i in k + 1..n {
+                column[i] -= self.factors[i][k] * pivot;
+            }
+        }
+        for i in (0..n).rev() {
+            let mut sum = column[i];
+            for j in i + 1..n {
+                sum -= self.factors[i][j] * column[j];
+            }
+            column[i] = alpha_divide(sum, self.factors[i][i]);
+            if !finite_complex(column[i]) || (column[i] == Cx::ZERO && sum != Cx::ZERO) {
+                return None;
+            }
+        }
+        Some(())
+    }
+}
+
 /// Value and Jacobian of the system at `x`.
 fn value_and_jacobian(
     sys: &[Vec<PolyTerm>],
@@ -142,15 +228,16 @@ fn value_and_jacobian(
     let n = x.len();
     let mut f = vec![Cx::new(0.0, 0.0); sys.len()];
     let mut j = vec![vec![Cx::new(0.0, 0.0); n]; sys.len()];
+    let mut multiplicity = vec![0_u32; n];
     for (i, eq) in sys.iter().enumerate() {
         for t in eq {
-            f[i] += Cx::new(t.coef, 0.0) * monomial(x, &t.exps, &vec![0; n]);
+            f[i] += Cx::new(t.coef, 0.0) * monomial(x, &t.exps, &multiplicity);
             for k in 0..n {
-                let mut m = vec![0u32; n];
-                m[k] = 1;
+                multiplicity[k] = 1;
                 j[i][k] += Cx::new(t.coef, 0.0)
-                    * derivative_factor(&t.exps, &m)
-                    * monomial(x, &t.exps, &m);
+                    * derivative_factor(&t.exps, &multiplicity)
+                    * monomial(x, &t.exps, &multiplicity);
+                multiplicity[k] = 0;
             }
         }
     }
@@ -190,87 +277,201 @@ fn derivative_factor(
     f
 }
 
-/// Enumerates the multisets (multiplicity vectors) of size `k` over `n` indices.
-fn multisets(
-    n: usize,
-    k: u32,
-) -> Vec<Vec<u32>> {
+/// Visits the multisets of size `k` in lexicographic multiplicity order.
+fn visit_multisets(
+    multiplicity: &mut [u32],
+    degree: u32,
+    visit: &mut impl FnMut(&[u32]) -> Option<()>,
+) -> Option<()> {
     fn rec(
-        n: usize,
         idx: usize,
         left: u32,
-        cur: &mut Vec<u32>,
-        out: &mut Vec<Vec<u32>>,
-    ) {
-        if idx + 1 == n {
-            cur[idx] = left;
-            out.push(cur.clone());
-            return;
+        current: &mut [u32],
+        visit: &mut impl FnMut(&[u32]) -> Option<()>,
+    ) -> Option<()> {
+        if idx + 1 == current.len() {
+            current[idx] = left;
+            return visit(current);
         }
         for c in 0..=left {
-            cur[idx] = c;
-            rec(n, idx + 1, left - c, cur, out);
+            current[idx] = c;
+            rec(idx + 1, left - c, current, visit)?;
         }
+        Some(())
     }
-    let mut out = Vec::new();
-    let mut cur = vec![0u32; n];
-    if n > 0 {
-        rec(n, 0, k, &mut cur, &mut out);
-    }
-    out
+    rec(0, degree, multiplicity, visit)
 }
 
 fn factorial(k: u32) -> f64 {
-    (1..=k).map(f64::from).product()
+    if k > 170 {
+        f64::INFINITY
+    } else {
+        (1..=k).map(f64::from).product()
+    }
+}
+
+fn binomial(
+    n: u32,
+    k: u32,
+) -> Option<f64> {
+    let k = k.min(n.checked_sub(k)?);
+    (1..=k).try_fold(1.0, |product, j| {
+        let next = product * (f64::from(n - k + j) / f64::from(j));
+        next.is_finite().then_some(next)
+    })
+}
+
+fn multiplicity_weight(
+    multiplicity: &[u32],
+    degree: u32,
+    factorial: f64,
+) -> Option<f64> {
+    if factorial.is_finite() {
+        return Some(
+            factorial
+                / multiplicity
+                    .iter()
+                    .map(|&count| self::factorial(count))
+                    .product::<f64>(),
+        );
+    }
+    let mut remaining = degree;
+    multiplicity.iter().try_fold(1.0, |weight, &count| {
+        let next = weight * binomial(remaining, count)?;
+        remaining -= count;
+        next.is_finite().then_some(next)
+    })
+}
+
+fn higher_derivative(
+    equation: &[PolyTerm],
+    point: &[Cx],
+    multiplicity: &[u32],
+    factorial: f64,
+    weight: f64,
+) -> Option<Cx> {
+    if factorial.is_finite() {
+        let mut sum = Cx::ZERO;
+        for t in equation {
+            sum += Cx::new(t.coef, 0.0)
+                * derivative_factor(&t.exps, multiplicity)
+                * monomial(point, &t.exps, multiplicity);
+        }
+        let derivative = sum / factorial;
+        if finite_complex(derivative) {
+            return Some(derivative);
+        }
+    }
+
+    // Divide out the factorial combinatorially before forming the terms.
+    // D^m(x^e) / k! = x^(e-m) * product_j binomial(e_j, m_j) / weight.
+    let mut derivative = Cx::ZERO;
+    for t in equation {
+        if t.coef == 0.0
+            || t.exps
+                .iter()
+                .zip(multiplicity)
+                .zip(point)
+                .any(|((&e, &m), &z)| m > e || (e > m && z == Cx::ZERO))
+        {
+            continue;
+        }
+        let power = monomial(point, &t.exps, multiplicity);
+        let choose = t
+            .exps
+            .iter()
+            .zip(multiplicity)
+            .try_fold(1.0, |product, (&e, &m)| {
+                let next = product * binomial(e, m)?;
+                next.is_finite().then_some(next)
+            })?;
+        let coefficient = scale_product(t.coef, &[choose], &[weight]).ok()?;
+        if coefficient == 0.0 || power == Cx::ZERO {
+            return None;
+        }
+        derivative += Cx::new(coefficient, 0.0) * power;
+    }
+    finite_complex(derivative).then_some(derivative)
+}
+
+fn scaled_column_norm(
+    column: &[Cx],
+    squared: f64,
+) -> Option<f64> {
+    if squared.is_normal() {
+        return Some(squared.sqrt());
+    }
+    let scale = column
+        .iter()
+        .fold(0.0_f64, |peak, z| peak.max(z.re.abs()).max(z.im.abs()));
+    if scale == 0.0 {
+        return Some(0.0);
+    }
+    let relative: f64 = column.iter().map(|&z| (z / scale).norm_sqr()).sum();
+    let norm = scale * relative.sqrt();
+    norm.is_finite().then_some(norm)
 }
 
 /// Smale's `beta`, `gamma` and `alpha` for the square polynomial system
 /// `system` at the point `x` (one complex number per variable).
 ///
-/// Returns `None` for a non-square or malformed system, or a singular
-/// Jacobian at `x`.
+/// Returns `None` for malformed inputs, a singular Jacobian, or norms that
+/// cannot be computed within the numerical range.
 #[must_use]
 pub fn smale_alpha(
     system: &[Vec<PolyTerm>],
     x: &[(f64, f64)],
 ) -> Option<Certificate> {
     let n = system.len();
-    if n == 0 || x.len() != n || system.iter().any(|eq| eq.iter().any(|t| t.exps.len() != n)) {
+    if n == 0 || x.len() != n || x.iter().any(|&(re, im)| !re.is_finite() || !im.is_finite()) {
         return None;
     }
+    let dmax = system.iter().flatten().try_fold(0, |maximum, term| {
+        if term.exps.len() != n || !term.coef.is_finite() {
+            return None;
+        }
+        let degree = term
+            .exps
+            .iter()
+            .try_fold(0_u32, |degree, &e| degree.checked_add(e))?;
+        Some(maximum.max(degree))
+    })?;
     let pt: Vec<Cx> = x.iter().map(|&(re, im)| Cx::new(re, im)).collect();
-    let (fv, jac) = value_and_jacobian(system, &pt);
-    let rhs: Vec<Vec<Cx>> = fv.iter().map(|&v| vec![v]).collect();
-    let step = solve_multi(&jac, &rhs)?;
-    let beta = step.iter().map(|r| r[0].norm_sqr()).sum::<f64>().sqrt();
-    let dmax = system
-        .iter()
-        .flat_map(|eq| eq.iter().map(|t| t.exps.iter().sum::<u32>()))
-        .max()
-        .unwrap_or(0);
+    let (mut rhs, jac) = value_and_jacobian(system, &pt);
+    let solver = AlphaJacobian::factor(jac)?;
+    solver.solve(&mut rhs)?;
+    let beta = scaled_column_norm(&rhs, rhs.iter().map(Cx::norm_sqr).sum())?;
     let mut gamma = 0.0_f64;
+    let mut multiplicity = vec![0_u32; n];
     for k in 2..=dmax {
         let kf = factorial(k);
         let mut fro2 = 0.0;
-        for m in multisets(n, k) {
-            // number of ordered index tuples with this multiplicity pattern
-            let weight = kf / m.iter().map(|&c| factorial(c)).product::<f64>();
-            // column of T^{(k)}: (1/k!) d^m f_i for every equation i
-            let col: Vec<Vec<Cx>> = (0..n)
-                .map(|i| {
-                    let mut s = Cx::new(0.0, 0.0);
-                    for t in &system[i] {
-                        s += Cx::new(t.coef, 0.0)
-                            * derivative_factor(&t.exps, &m)
-                            * monomial(&pt, &t.exps, &m);
-                    }
-                    vec![s / kf]
-                })
-                .collect();
-            let w = solve_multi(&jac, &col)?;
-            fro2 += weight * w.iter().map(|r| r[0].norm_sqr()).sum::<f64>();
-        }
-        gamma = gamma.max(fro2.sqrt().powf(1.0 / f64::from(k - 1)));
+        let mut scaled_fro = None;
+        visit_multisets(&mut multiplicity, k, &mut |m| {
+            let weight = multiplicity_weight(m, k, kf)?;
+            for (v, equation) in rhs.iter_mut().zip(system) {
+                *v = higher_derivative(equation, &pt, m, kf, weight)?;
+            }
+            solver.solve(&mut rhs)?;
+            let squared: f64 = rhs.iter().map(Cx::norm_sqr).sum();
+            let next = fro2 + weight * squared;
+            if scaled_fro.is_none()
+                && next.is_finite()
+                && (squared.is_normal() || rhs.iter().all(|&z| z == Cx::ZERO))
+            {
+                fro2 = next;
+            } else {
+                let length = scaled_column_norm(&rhs, squared)? * weight.sqrt();
+                let norm = scaled_fro.unwrap_or_else(|| fro2.sqrt()).hypot(length);
+                if !norm.is_finite() {
+                    return None;
+                }
+                scaled_fro = Some(norm);
+            }
+            Some(())
+        })?;
+        let fro = scaled_fro.unwrap_or_else(|| fro2.sqrt());
+        gamma = gamma.max(fro.powf(1.0 / f64::from(k - 1)));
     }
     let alpha = beta * gamma;
     let certified = alpha.is_finite() && alpha < ALPHA_0;

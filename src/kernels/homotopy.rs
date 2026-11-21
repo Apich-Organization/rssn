@@ -1,3 +1,5 @@
+//! Homotopy continuation in projective coordinates with Cauchy endgame and path-jumping protection.
+//!
 //! # Homotopy continuation with projective coordinates and a Cauchy endgame
 //!
 //! A robust solver for square polynomial systems built on the total-degree
@@ -40,6 +42,9 @@
 //!   (counts in [`PathEnd::verified_steps`] and
 //!   [`PathEnd::unverified_steps`]).
 //!
+//! A tracking segment reuses its polynomial and Jacobian workspace across
+//! the Runge–Kutta predictor and Newton corrector evaluations.
+//!
 //! Parallelism: the start solutions are independent, so the paths of [`homotopy_solve`] (the first
 //! pass, the adaptive double-double redo and the path-jumping re-tracks) are tracked concurrently
 //! with rayon from four paths on and collected in start-solution order; the endpoints are
@@ -62,6 +67,8 @@ use crate::kernels::homotopy_cert::certify_homotopy_node;
 use crate::kernels::random::Rng;
 use crate::kernels::rootfind::PolyTerm;
 use crate::kernels::rootfind::RootError;
+use crate::kernels::rootfind::total_degree_plan;
+use crate::kernels::rootfind::total_degree_start;
 
 /// Options of [`homotopy_solve`].
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -307,6 +314,24 @@ struct Problem<F: Field> {
     patch_cx: Vec<Cx>,
 }
 
+struct Evaluation<F: Field> {
+    h: Vec<F>,
+    hx: Vec<Vec<F>>,
+    ht: Vec<F>,
+    powers: Vec<(F, F)>,
+}
+
+impl<F: Field> Evaluation<F> {
+    fn new(n: usize) -> Self {
+        Self {
+            h: vec![zero::<F>(); n],
+            hx: vec![vec![zero::<F>(); n]; n],
+            ht: vec![zero::<F>(); n],
+            powers: vec![(one::<F>(), one::<F>()); n],
+        }
+    }
+}
+
 /// Counts of certified and uncertified tracking steps.
 #[derive(Default, Clone, Copy)]
 struct StepTally {
@@ -333,38 +358,25 @@ fn cpow<F: Field>(
     r
 }
 
-fn eval_poly<F: Field>(
-    sys: &[Vec<PolyTerm>],
-    x: &[F],
-) -> (Vec<F>, Vec<Vec<F>>) {
-    let n = x.len();
-    let mut f = vec![zero::<F>(); sys.len()];
-    let mut j = vec![vec![zero::<F>(); n]; sys.len()];
-    for (i, eq) in sys.iter().enumerate() {
-        for term in eq {
-            let pw: Vec<F> = (0..n).map(|k| cpow(x[k], term.exps[k])).collect();
-            f[i] += pw.iter().fold(F::make(term.coef, 0.0), |a, &b| a * b);
-            for k in 0..n {
-                if term.exps[k] > 0 {
-                    let mut d = F::make(term.coef * f64::from(term.exps[k]), 0.0);
-                    for m in 0..n {
-                        d *= if m == k {
-                            cpow(x[m], term.exps[m] - 1)
-                        } else {
-                            pw[m]
-                        };
-                    }
-                    j[i][k] += d;
-                }
-            }
-        }
+fn power_and_previous<F: Field>(
+    x: F,
+    exponent: u32,
+) -> (F, F) {
+    if exponent == 0 {
+        return (one::<F>(), one::<F>());
     }
-    (f, j)
+    // Both powers follow the same multiplication order as `cpow`, including
+    // for zero coordinates, where recovering the previous power by division
+    // would be undefined.
+    let previous = cpow(x, exponent - 1);
+    let mut value = previous;
+    value *= x;
+    (value, previous)
 }
 
 fn csolve<F: Field>(
-    mut a: Vec<Vec<F>>,
-    mut b: Vec<F>,
+    a: &mut [Vec<F>],
+    b: &mut [F],
 ) -> Option<Vec<F>> {
     let n = b.len();
     for k in 0..n {
@@ -411,30 +423,51 @@ fn max_norm<F: Field>(v: &[F]) -> f64 {
 }
 
 impl<F: Field> Problem<F> {
-    /// `(H, H_x, H_t)` at `(X, t)` for complex `t`.
+    /// Evaluates `(H, H_x, H_t)` at `(X, t)`, replacing the workspace.
     fn eval(
         &self,
         x: &[F],
         t: F,
-    ) -> (Vec<F>, Vec<Vec<F>>, Vec<F>) {
+        work: &mut Evaluation<F>,
+    ) {
         let n = self.n;
-        let (fv, fj) = eval_poly(&self.homog, x);
-        let mut h = vec![zero::<F>(); n + 1];
-        let mut hx = vec![vec![zero::<F>(); n + 1]; n + 1];
-        let mut ht = vec![zero::<F>(); n + 1];
+        let Evaluation { h, hx, ht, powers } = work;
         let omt = one::<F>() - t;
-        for i in 0..n {
-            let d = self.deg[i];
-            let g = cpow(x[i + 1], d) - cpow(x[0], d);
-            let dgi = cpow(x[i + 1], d - 1).scale(f64::from(d));
-            let dg0 = -cpow(x[0], d - 1).scale(f64::from(d));
-            h[i] = self.gamma * g * omt + fv[i] * t;
-            ht[i] = fv[i] - self.gamma * g;
-            for k in 0..=n {
-                hx[i][k] = fj[i][k] * t;
+        for (i, equation) in self.homog.iter().enumerate() {
+            let row = &mut hx[i];
+            row.fill(zero::<F>());
+            let mut fv = zero::<F>();
+            for term in equation {
+                for (k, power) in powers.iter_mut().enumerate() {
+                    *power = power_and_previous(x[k], term.exps[k]);
+                }
+                fv += powers
+                    .iter()
+                    .fold(F::make(term.coef, 0.0), |a, &(value, _)| a * value);
+                for (k, &exponent) in term.exps.iter().enumerate() {
+                    if exponent > 0 {
+                        let mut derivative = F::make(term.coef * f64::from(exponent), 0.0);
+                        for (m, &(value, previous)) in powers.iter().enumerate() {
+                            derivative *= if m == k { previous } else { value };
+                        }
+                        row[k] += derivative;
+                    }
+                }
             }
-            hx[i][i + 1] += self.gamma * dgi * omt;
-            hx[i][0] += self.gamma * dg0 * omt;
+            let d = self.deg[i];
+            let (gi, lower_i) = power_and_previous(x[i + 1], d);
+            let (g0, lower_0) = power_and_previous(x[0], d);
+            let g = gi - g0;
+            let dgi = lower_i.scale(f64::from(d));
+            let dg0 = -lower_0.scale(f64::from(d));
+            h[i] = self.gamma * g * omt + fv * t;
+            ht[i] = fv - self.gamma * g;
+            for entry in row.iter_mut() {
+                // Use ordinary multiplication to keep its complex component order.
+                *entry = (*entry).mul(t);
+            }
+            row[i + 1] += self.gamma * dgi * omt;
+            row[0] += self.gamma * dg0 * omt;
         }
         let mut p = F::make(-1.0, 0.0);
         for k in 0..=n {
@@ -442,16 +475,20 @@ impl<F: Field> Problem<F> {
             hx[n][k] = self.patch[k];
         }
         h[n] = p;
-        (h, hx, ht)
+        ht[n] = zero::<F>();
     }
 
     fn tangent(
         &self,
         x: &[F],
         t: F,
+        work: &mut Evaluation<F>,
     ) -> Option<Vec<F>> {
-        let (_, hx, ht) = self.eval(x, t);
-        csolve(hx, ht.iter().map(|v| -*v).collect())
+        self.eval(x, t, work);
+        for value in &mut work.ht {
+            *value = -*value;
+        }
+        csolve(&mut work.hx, &mut work.ht)
     }
 
     /// Tracks along the straight segment `ta -> tb` in the `t` plane.
@@ -465,6 +502,7 @@ impl<F: Field> Problem<F> {
         tally: &mut StepTally,
     ) -> Option<Vec<F>> {
         let n1 = self.n + 1;
+        let mut work = Evaluation::new(n1);
         let dt = tb - ta;
         let mut x = x0.to_vec();
         let mut tau = 0.0_f64;
@@ -478,18 +516,18 @@ impl<F: Field> Problem<F> {
             }
             let s = step.min(1.0 - tau);
             let t0 = ta + dt.scale(tau);
-            let rk = || -> Option<Vec<F>> {
-                let k1 = self.tangent(&x, t0)?;
+            let mut rk = || -> Option<Vec<F>> {
+                let k1 = self.tangent(&x, t0, &mut work)?;
                 let xa: Vec<F> = (0..n1)
                     .map(|i| x[i] + (k1[i] * dt).scale(0.5 * s))
                     .collect();
-                let k2 = self.tangent(&xa, ta + dt.scale(tau + 0.5 * s))?;
+                let k2 = self.tangent(&xa, ta + dt.scale(tau + 0.5 * s), &mut work)?;
                 let xb: Vec<F> = (0..n1)
                     .map(|i| x[i] + (k2[i] * dt).scale(0.5 * s))
                     .collect();
-                let k3 = self.tangent(&xb, ta + dt.scale(tau + 0.5 * s))?;
+                let k3 = self.tangent(&xb, ta + dt.scale(tau + 0.5 * s), &mut work)?;
                 let xc: Vec<F> = (0..n1).map(|i| x[i] + (k3[i] * dt).scale(s)).collect();
-                let k4 = self.tangent(&xc, ta + dt.scale(tau + s))?;
+                let k4 = self.tangent(&xc, ta + dt.scale(tau + s), &mut work)?;
                 Some(
                     (0..n1)
                         .map(|i| {
@@ -510,8 +548,10 @@ impl<F: Field> Problem<F> {
                 xn = pred;
                 let mut prev = f64::INFINITY;
                 for it in 0..F::NEWTON_ITERS {
-                    let (h, hx, _) = self.eval(&xn, tn);
-                    let Some(dx) = csolve(hx, h) else { break };
+                    self.eval(&xn, tn, &mut work);
+                    let Some(dx) = csolve(&mut work.hx, &mut work.h) else {
+                        break;
+                    };
                     for i in 0..n1 {
                         xn[i] -= dx[i];
                     }
@@ -585,20 +625,22 @@ impl<F: Field> Problem<F> {
     fn cond_estimate(
         &self,
         x: &[F],
+        work: &mut Evaluation<F>,
     ) -> f64 {
-        let (_, hx, _) = self.eval(x, one::<F>());
+        self.eval(x, one::<F>(), work);
+        let hx = &work.hx;
         let n1 = self.n + 1;
         let nrm = |m: &[Vec<F>]| {
             m.iter()
                 .map(|r| r.iter().map(|c| c.norm()).sum::<f64>())
                 .fold(0.0, f64::max)
         };
-        let a_norm = nrm(&hx);
+        let a_norm = nrm(hx);
         let mut inv = vec![vec![zero::<F>(); n1]; n1];
         for c in 0..n1 {
             let mut e = vec![zero::<F>(); n1];
             e[c] = one::<F>();
-            match csolve(hx.clone(), e) {
+            match csolve(&mut hx.clone(), &mut e) {
                 | Some(col) => {
                     for r in 0..n1 {
                         inv[r][c] = col[r];
@@ -614,9 +656,22 @@ impl<F: Field> Problem<F> {
         &self,
         x: &[F],
     ) -> f64 {
-        let (fv, _) = eval_poly(&self.homog, x);
+        let mut norm = 0.0_f64;
+        for equation in &self.homog {
+            let mut fv = zero::<F>();
+            for term in equation {
+                let value = x
+                    .iter()
+                    .zip(&term.exps)
+                    .fold(F::make(term.coef, 0.0), |a, (&coord, &exponent)| {
+                        a * cpow(coord, exponent)
+                    });
+                fv += value;
+            }
+            norm = norm.max(fv.norm());
+        }
         let scale = 1.0 + max_norm(x).powi(self.deg.iter().copied().max().unwrap_or(1) as i32);
-        max_norm(&fv) / scale
+        norm / scale
     }
 }
 
@@ -795,9 +850,12 @@ fn classify<F: Field>(
     let n1 = pb.n + 1;
     // Newton polish of regular endpoints on the target (t = 1) system
     if ended.winding == 1 {
+        let mut work = Evaluation::new(n1);
         for _ in 0..8 {
-            let (h, hx, _) = pb.eval(&ended.x, one::<F>());
-            let Some(dx) = csolve(hx, h) else { break };
+            pb.eval(&ended.x, one::<F>(), &mut work);
+            let Some(dx) = csolve(&mut work.hx, &mut work.h) else {
+                break;
+            };
             let nrm = max_norm(&dx);
             if nrm > 1e-4 * (1.0 + max_norm(&ended.x)) {
                 break;
@@ -809,7 +867,7 @@ fn classify<F: Field>(
                 break;
             }
         }
-        ended.cond_ok = pb.cond_estimate(&ended.x) < F::COND_LIMIT;
+        ended.cond_ok = pb.cond_estimate(&ended.x, &mut work) < F::COND_LIMIT;
     }
     let big = max_norm(&ended.x).max(1e-300);
     let at_inf = ended.x[0].norm() <= opts.infinity_tol * big;
@@ -869,6 +927,16 @@ fn build_problem<F: Field>(
 /// Number of paths from which tracking switches to the parallel loop.
 const PATH_GRAIN: usize = 4;
 
+/// Maximum total-degree Bézout path count.
+const MAX_START_PATHS: u32 = 100_000;
+
+fn start_degrees(system: &[Vec<PolyTerm>]) -> Result<(Vec<u32>, usize), RootError> {
+    let equations = system
+        .iter()
+        .map(|eq| eq.iter().map(|t| (t.coef, t.exps.as_slice())));
+    total_degree_plan(system.len(), equations, MAX_START_PATHS, MAX_START_PATHS)
+}
+
 fn run_and_classify<F: Field>(
     pb: &Problem<F>,
     start: &[Cx],
@@ -895,42 +963,22 @@ fn run_and_classify<F: Field>(
 /// adaptive extended-precision tracking.
 ///
 /// # Errors
-/// [`RootError::Invalid`] for a non-square or malformed system or more than
-/// 100 000 start solutions.
+/// [`RootError::Invalid`] for an empty system, exponent vectors of the wrong
+/// length, nonfinite coefficients, equations without a positive declared
+/// degree, or a product of equation degrees above 100 000.
 pub fn homotopy_solve(
     system: &[Vec<PolyTerm>],
     opts: &HomotopyOptions,
 ) -> Result<Vec<PathEnd>, RootError> {
     let n = system.len();
-    if n == 0
-        || system
-            .iter()
-            .any(|eq| eq.is_empty() || eq.iter().any(|t| t.exps.len() != n))
-    {
-        return Err(RootError::Invalid);
-    }
-    let deg: Vec<u32> = system
-        .iter()
-        .map(|eq| {
-            eq.iter()
-                .map(|t| t.exps.iter().sum::<u32>())
-                .max()
-                .unwrap_or(0)
-        })
-        .collect();
-    if deg.contains(&0) {
-        return Err(RootError::Invalid);
-    }
-    let total: usize = deg.iter().map(|&d| d as usize).product();
-    if total > 100_000 {
-        return Err(RootError::Invalid);
-    }
+    let (deg, total) = start_degrees(system)?;
     let homog: Vec<Vec<PolyTerm>> = system
         .iter()
         .zip(&deg)
         .map(|(eq, &d)| {
             eq.iter()
                 .map(|t| {
+                    // Validation bounded the sum by the equation's degree.
                     let mut e = vec![d - t.exps.iter().sum::<u32>()];
                     e.extend_from_slice(&t.exps);
                     PolyTerm {
@@ -949,16 +997,10 @@ pub fn homotopy_solve(
     let pb: Problem<Cx> = build_problem(n, &homog, &deg, gamma, &patch);
     let pb_dd: Problem<Cdd> = build_problem(n, &homog, &deg, gamma, &patch);
     let starts: Vec<Vec<Cx>> = (0..total)
-        .map(|mut idx| {
-            let mut x = vec![Cx::new(1.0, 0.0)];
-            for &d in &deg {
-                let k = idx % d as usize;
-                idx /= d as usize;
-                x.push(Cx::from_polar(
-                    1.0,
-                    2.0 * std::f64::consts::PI * k as f64 / f64::from(d),
-                ));
-            }
+        .map(|idx| {
+            let x: Vec<_> = std::iter::once(Cx::new(1.0, 0.0))
+                .chain(total_degree_start(idx, &deg))
+                .collect();
             let s: Cx = (0..=n).map(|i| patch[i] * x[i]).sum();
             x.iter().map(|v| v / s).collect()
         })
@@ -1073,4 +1115,25 @@ pub fn homotopy_solve(
         }
     }
     Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PolyTerm;
+    use super::start_degrees;
+
+    #[test]
+    fn start_budget_includes_exactly_one_hundred_thousand_paths() {
+        let exact = [5, 5, 8, 500];
+        let system = exact
+            .iter()
+            .enumerate()
+            .map(|(i, &degree)| {
+                let mut exps = vec![0; exact.len()];
+                exps[i] = degree;
+                vec![PolyTerm { coef: 1.0, exps }]
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(start_degrees(&system), Ok((exact.to_vec(), 100_000)));
+    }
 }

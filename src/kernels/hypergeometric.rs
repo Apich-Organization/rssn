@@ -1,3 +1,5 @@
+//! Complex-parameter pFq, 2F1, 1F1 and Tricomi U by Taylor continuation of the defining ODE.
+//!
 //! # Hypergeometric functions with complex parameters and arguments
 //!
 //! * [`hyp_pfq`]: the generalised hypergeometric function `pFq(a; b; z)` for
@@ -775,10 +777,82 @@ fn levin_u(
     num / den
 }
 
+fn log_lanczos_sum(x: f64) -> f64 {
+    let mut sum = LANCZOS[0];
+    for (i, &coefficient) in LANCZOS.iter().enumerate().skip(1) {
+        sum += coefficient / (x + (i as f64 - 1.0));
+    }
+    sum.ln()
+}
+
+// weight * log(x (x + a + b) / ((x + a)(x + b))), for 0 < a <= b.
+fn gauss_log_cross(
+    x: f64,
+    a: f64,
+    b: f64,
+    weight: f64,
+) -> f64 {
+    let ar = a / (x + a);
+    let br = b / (x + b);
+    let ratio = ar * br;
+    if ratio < f64::MIN_POSITIVE {
+        // Multiply by the weight before the two ratios can underflow.
+        -(weight * ar) * br
+    } else if ratio <= 0.5 {
+        weight * (-ratio).ln_1p()
+    } else {
+        // Near ratio=1 the logarithms of the small cross-ratio are safer.
+        weight * (x.ln() - (x + a).ln() + (a / (x + b)).ln_1p())
+    }
+}
+
+fn gauss_at_one_real(
+    a: f64,
+    b: f64,
+    c: f64,
+) -> f64 {
+    let (a, b) = (a.min(b), a.max(b));
+    // When c is close to a + b, c - b is exact by Sterbenz's lemma.
+    let excess = (c - b) - a;
+    if excess <= 0.0 {
+        return f64::INFINITY;
+    }
+    // Gauss's theorem gives the mixed difference of log Gamma at excess,
+    // with offsets a and b. Cancel the linear Lanczos terms analytically.
+    // Shift all arguments together when the smallest needs the recurrence.
+    let step = f64::from(u8::from(excess < 0.5));
+    let base = excess + step;
+    let x = base + 6.5;
+    let main = a * (b / (x + a)).ln_1p()
+        + b * (a / (x + b)).ln_1p()
+        + gauss_log_cross(x, a, b, base - 0.5);
+    let correction = (log_lanczos_sum(c + step) - log_lanczos_sum(base + b))
+        + (log_lanczos_sum(base) - log_lanczos_sum(base + a));
+    let recurrence = if excess < 0.5 {
+        -gauss_log_cross(excess, a, b, 1.0)
+    } else {
+        0.0
+    };
+    // All terms in the original series are positive, starting with 1.
+    let log_ratio = main + correction + recurrence;
+    if log_ratio < 0.0 {
+        1.0
+    } else {
+        log_ratio.exp()
+    }
+}
+
 fn pfq_at_one(
     a: &[C],
     b: &[C],
 ) -> C {
+    if let ([aa, bb], [cc]) = (a, b)
+        && [aa, bb, cc]
+            .iter()
+            .all(|z| exact_eq(z.im, 0.0) && z.re > 0.0 && z.re.is_finite())
+    {
+        return C::new(gauss_at_one_real(aa.re, bb.re, cc.re), 0.0);
+    }
     let s: C = b.iter().sum::<C>() - a.iter().sum::<C>();
     if s.re <= 0.0 {
         return C::new(f64::INFINITY, 0.0);
@@ -902,6 +976,9 @@ pub fn hyp_pfq(
     if a.len() > b.len() + 1 {
         return nan();
     }
+    if a.len() == 2 && b.len() == 1 && exact_eq(z.re, 1.0) && exact_eq(z.im, 0.0) {
+        return pfq_at_one(a, b);
+    }
     if z.norm() == 0.0 {
         return ONE;
     }
@@ -963,6 +1040,10 @@ pub fn hyp_pfq(
 /// Gauss hypergeometric function `2F1(a, b; c; z)` for complex parameters
 /// and argument (principal branch, cut along `[1, inf)`; the value on the
 /// cut is the limit from `Im z -> 0+`).
+///
+/// For positive real parameters at `z = 1`, the gamma ratio in
+/// [Gauss's theorem](https://dlmf.nist.gov/15.4.E20) is evaluated in logarithmic
+/// form without forming large gamma values.
 #[must_use]
 pub fn hyp2f1_cplx(
     a: C,

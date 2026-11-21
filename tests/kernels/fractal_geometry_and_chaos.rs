@@ -512,6 +512,109 @@ fn test_ifs_fractal_bounded() {
     }
 }
 
+#[test]
+fn affine_ifs_normalizes_extreme_weights_and_respects_draw_boundaries() {
+    let maps = [
+        AffineTransform2D::new(0.0, 0.0, 0.0, 0.0, 10.0, 0.0),
+        AffineTransform2D::new(0.0, 0.0, 0.0, 0.0, 20.0, 0.0),
+    ];
+    let expected = [10.0, 20.0, 10.0, 10.0, 20.0, 10.0, 20.0, 20.0].map(|x| (x, 0.0));
+    for weight in [1.0, f64::MAX, f64::from_bits(1)] {
+        let plan = AffineIfs::new(&maps, &[weight; 2]).expect("positive finite weights");
+        assert_eq!(plan.generate((0.0, 0.0), 8, 0, 12_345).unwrap(), expected);
+        assert_eq!(
+            generate_ifs_fractal(&maps, &[weight; 2], (0.0, 0.0), 8, 0),
+            expected
+        );
+    }
+    // This seed advances to 2^63, so the first 31-bit draw is exactly 1/2.
+    let plan = AffineIfs::new(&maps, &[1.0, 1.0]).unwrap();
+    assert_eq!(
+        plan.generate((0.0, 0.0), 1, 0, 13_792_291_969_850_005_339)
+            .unwrap(),
+        [(10.0, 0.0)]
+    );
+    // Seed zero gives a draw of zero. The zero-weight map is still excluded.
+    let plan = AffineIfs::new(&maps, &[0.0, 1.0]).unwrap();
+    assert_eq!(plan.generate((0.0, 0.0), 1, 0, 0).unwrap(), [(20.0, 0.0)]);
+}
+
+#[test]
+fn affine_ifs_checked_generation_handles_bad_parameters_and_work() {
+    let map = AffineTransform2D::new(2.0, 0.0, 0.0, 2.0, 0.0, 0.0);
+    assert_eq!(AffineIfs::new(&[], &[]).unwrap_err(), IfsError::Shape);
+    assert_eq!(
+        AffineIfs::new(&[map], &[1.0, 2.0]).unwrap_err(),
+        IfsError::Shape
+    );
+    for weight in [-1.0, 0.0, f64::NAN, f64::INFINITY] {
+        assert_eq!(
+            AffineIfs::new(&[map], &[weight]).unwrap_err(),
+            IfsError::InvalidWeights
+        );
+        assert!(generate_ifs_fractal(&[map], &[weight], (0.0, 0.0), 1, 0).is_empty());
+    }
+    let invalid = AffineTransform2D { e: f64::NAN, ..map };
+    assert_eq!(
+        AffineIfs::new(&[invalid], &[1.0]).unwrap_err(),
+        IfsError::NonFiniteInput
+    );
+    let plan = AffineIfs::new(&[map], &[1.0]).unwrap();
+    assert_eq!(
+        plan.generate((f64::INFINITY, 0.0), 1, 0, 1),
+        Err(IfsError::NonFiniteInput)
+    );
+    assert_eq!(
+        plan.generate((f64::MAX, 0.0), 1, 1, 1),
+        Err(IfsError::NonFiniteOrbit)
+    );
+    // A second, constant map cannot recover a finite orbit after overflow.
+    let reset = AffineTransform2D::new(0.0, 0.0, 0.0, 0.0, 1.0, 1.0);
+    let alternating = AffineIfs::new(&[map, reset], &[1.0, 1.0]).unwrap();
+    assert_eq!(
+        alternating.generate((f64::MAX, 0.0), 2, 0, 12_345),
+        Err(IfsError::NonFiniteOrbit)
+    );
+    assert_eq!(
+        plan.generate((0.0, 0.0), 1, usize::MAX, 0),
+        Err(IfsError::WorkLimit)
+    );
+    assert_eq!(
+        plan.generate((0.0, 0.0), usize::MAX, 0, 0),
+        Err(IfsError::WorkLimit)
+    );
+    assert!(
+        plan.generate((0.0, 0.0), 0, usize::MAX, 0)
+            .unwrap()
+            .is_empty()
+    );
+}
+
+#[test]
+fn affine_ifs_burn_in_and_wide_map_indices_match_independent_formulas() {
+    let map = AffineTransform2D::new(0.5, 0.0, 0.0, 0.5, 0.5, 0.75);
+    let plan = AffineIfs::new(&[map], &[7.0]).unwrap();
+    let points = plan.generate((0.0, 0.0), 16, 8, 99).unwrap();
+    for (k, &(x, y)) in (9..=24).zip(&points) {
+        let expected = 1.0 - 2.0_f64.powi(-k);
+        assert_eq!((x, y), (expected, 1.5 * expected));
+    }
+
+    let maps: Vec<_> = (0..128)
+        .map(|index| AffineTransform2D::new(0.0, 0.0, 0.0, 0.0, f64::from(index), 0.0))
+        .collect();
+    let plan = AffineIfs::new(&maps, &[1.0; 128]).unwrap();
+    let mut state = 773_u64;
+    for (x, _) in plan.generate((0.0, 0.0), 64, 0, state).unwrap() {
+        state = state
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1);
+        let draw = state >> 33;
+        let expected = (128 * draw).div_ceil(1 << 31).saturating_sub(1);
+        assert_eq!(x.to_bits(), (expected as f64).to_bits());
+    }
+}
+
 // ============================================================================
 // FractalData Tests
 // ============================================================================

@@ -5,6 +5,7 @@
 //! geometrically for functions analytic in an annulus around the circle;
 //! open polygonal paths use composite Simpson on each segment.
 
+use std::cmp::Ordering;
 use std::f64::consts::PI;
 
 use num_complex::Complex64;
@@ -88,12 +89,141 @@ where
     circle_integral(f, z0, radius, n) / (2.0 * PI * I)
 }
 
+// Compare a sum of products with zero. A nonzero rounded sum already has the
+// exact sign by monotonic rounding of the two product magnitudes. Zero or
+// NaN can also come from cancellation or a lost product, so resolve those
+// cases from the exact integer significands.
+fn product_sum_order(
+    a: f64,
+    b: f64,
+    c: f64,
+    d: f64,
+) -> Ordering {
+    let sum = a * b + c * d;
+    if sum > 0.0 {
+        Ordering::Greater
+    } else if sum < 0.0 {
+        Ordering::Less
+    } else {
+        exact_product_sum_order(a, b, c, d)
+    }
+}
+
+fn dyadic_parts(value: f64) -> (u64, i32) {
+    let magnitude = value.abs().to_bits();
+    let biased = (magnitude >> 52) as i32;
+    let fraction = magnitude & 0x000f_ffff_ffff_ffff;
+    let significand = fraction | (u64::from(biased != 0) << 52);
+    (significand, biased.max(1) - 1075)
+}
+
+// Normalize the 106-bit product to compare by exponent and then significand.
+fn product_key(
+    a: f64,
+    b: f64,
+) -> (i32, u128) {
+    let (ma, ea) = dyadic_parts(a);
+    let (mb, eb) = dyadic_parts(b);
+    let product = u128::from(ma) * u128::from(mb);
+    if product == 0 {
+        return (i32::MIN, 0);
+    }
+    let shift = product.leading_zeros();
+    (ea + eb - shift as i32, product << shift)
+}
+
+#[cold]
+fn exact_product_sum_order(
+    a: f64,
+    b: f64,
+    c: f64,
+    d: f64,
+) -> Ordering {
+    let left_negative = a.is_sign_negative() != b.is_sign_negative();
+    let right_negative = c.is_sign_negative() != d.is_sign_negative();
+    if left_negative != right_negative {
+        let order = product_key(a, b).cmp(&product_key(c, d));
+        return if left_negative {
+            order.reverse()
+        } else {
+            order
+        };
+    }
+    if (a == 0.0 || b == 0.0) && (c == 0.0 || d == 0.0) {
+        Ordering::Equal
+    } else if left_negative {
+        Ordering::Less
+    } else {
+        Ordering::Greater
+    }
+}
+
+// Count signed crossings of the positive horizontal ray. The half-open
+// convention counts a vertex on the ray in just one adjoining edge.
+fn winding_edge(
+    from: Complex64,
+    to: Complex64,
+    limit_quarter_turn: bool,
+) -> Option<i64> {
+    if limit_quarter_turn && product_sum_order(from.re, to.re, from.im, to.im).is_lt() {
+        return None;
+    }
+    let above_from = from.im > 0.0;
+    let above_to = to.im > 0.0;
+    if above_from == above_to {
+        if from.im == 0.0 && to.im == 0.0 && from.re.is_sign_negative() != to.re.is_sign_negative()
+        {
+            return None;
+        }
+        return Some(0);
+    }
+    match product_sum_order(from.re, to.im, -from.im, to.re) {
+        | Ordering::Equal => None,
+        | Ordering::Greater if above_to => Some(1),
+        | Ordering::Less if above_from => Some(-1),
+        | _ => Some(0),
+    }
+}
+
+fn winding(
+    points: impl IntoIterator<Item = Complex64>,
+    limit_quarter_turn: bool,
+) -> Option<i64> {
+    let mut points = points.into_iter();
+    let first = points.next()?;
+    if !first.is_finite() || first == Complex64::ZERO {
+        return None;
+    }
+    let mut previous = first;
+    let mut total = 0;
+    for point in points {
+        if !point.is_finite() || point == Complex64::ZERO {
+            return None;
+        }
+        total += winding_edge(previous, point, limit_quarter_turn)?;
+        previous = point;
+    }
+    Some(total + winding_edge(previous, first, limit_quarter_turn)?)
+}
+
+/// Winding number about the origin of the closed polygonal path through `points`.
+///
+/// Joins the last vertex to the first. Counterclockwise turns count as
+/// positive. Returns `None` for an empty path, a nonfinite vertex or an edge
+/// through the origin. A single nonzero finite vertex has winding number zero.
+#[must_use]
+pub fn winding_number(points: &[Complex64]) -> Option<i64> {
+    winding(points.iter().copied(), false)
+}
+
 /// The number of zeros minus the number of poles of `f` inside a circle.
 ///
 /// The circle is `|z - center| = radius` (argument principle), and the count
-/// is the winding number of `f` around the origin. Robust: it follows the continuous argument of
-/// `f` instead of integrating `f'/f`. `None` if `f` vanishes or is not
-/// finite on the contour, or the sampling is too coarse to follow it.
+/// is the winding number of the polygon through the sampled values of `f`.
+/// Samples `f` once per node, in counterclockwise order, with at least 64
+/// nodes. Returns `None` if a sampled value is zero or nonfinite or if a
+/// sampled change of argument exceeds `pi / 2`. Undersampling can still
+/// alias a winding whose changes between nodes are not observed.
 #[must_use]
 pub fn count_zeros_poles<F>(
     f: F,
@@ -105,22 +235,7 @@ where
     F: Fn(Complex64) -> Complex64,
 {
     let n = n.max(64);
-    let mut previous = f(on_circle(center, radius, 0, n).0);
-    let mut winding = 0.0;
-    for k in 1..=n {
-        let value = f(on_circle(center, radius, k % n, n).0);
-        if !value.is_finite() || value.norm() == 0.0 {
-            return None;
-        }
-        let step = (value / previous).arg();
-        if step.abs() > PI / 2.0 {
-            return None;
-        }
-        winding += step;
-        previous = value;
-    }
-    #[allow(clippy::cast_possible_truncation)]
-    Some((winding / (2.0 * PI)).round() as i64)
+    winding((0..n).map(|k| f(on_circle(center, radius, k, n).0)), true)
 }
 
 /// `f'(z)` by the central difference along the real axis (valid for

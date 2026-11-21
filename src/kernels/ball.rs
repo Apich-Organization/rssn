@@ -1,8 +1,10 @@
+//! Complex balls with outward-rounded interval arithmetic (Krawczyk proofs).
+//!
 //! # Complex balls with outward-rounded real interval arithmetic
 //!
 //! A [`Cball`] is a rectangle `[re.lo, re.hi] + i [im.lo, im.hi]` of the
 //! complex plane. Its arithmetic is the rectangle arithmetic of
-//! [`Interval`](crate::backend::tape::Interval), which rounds every
+//! [`Interval`], which rounds every
 //! elementary operation outward by one ulp, so the computed rectangle
 //! encloses the exact image of every point of the operands. That is what
 //! makes the Krawczyk test of [`crate::kernels::homotopy_cert`] a proof
@@ -12,11 +14,14 @@
 //! vector per term). [`real_terms`] lifts the real `PolyTerm` systems of the
 //! homotopy kernel; [`eval_terms`], [`eval_jacobian_terms`] and
 //! [`values_at_terms`] evaluate them over balls and points.
+//! [`eval_value_and_jacobian_terms`] and [`values_and_jacobian_at_terms`]
+//! share the work when both outputs are needed.
 
 use crate::backend::tape::Interval;
 use crate::backend::tape::Scalar;
 use crate::kernels::rootfind::PolyTerm;
 use num_complex::Complex64 as Cx;
+use std::collections::HashMap;
 use std::ops::Add;
 use std::ops::Mul;
 use std::ops::Neg;
@@ -98,17 +103,17 @@ impl Cball {
 
     /// The centre.
     #[must_use]
-    pub fn centre(&self) -> Cx {
+    pub const fn centre(&self) -> Cx {
         Cx::new(
-            0.5 * self.re.lo + 0.5 * self.re.hi,
-            0.5 * self.im.lo + 0.5 * self.im.hi,
+            f64::midpoint(self.re.lo, self.re.hi),
+            f64::midpoint(self.im.lo, self.im.hi),
         )
     }
 
     /// The larger of the two half-widths.
     #[must_use]
     pub fn half_width(&self) -> f64 {
-        0.5 * (self.re.hi - self.re.lo).max(self.im.hi - self.im.lo)
+        interval_half_width(self.re).max(interval_half_width(self.im))
     }
 
     /// Whether both parts are finite.
@@ -132,6 +137,12 @@ impl Cball {
     /// A lower bound of `|z|` for `z` in the rectangle.
     #[must_use]
     pub fn modulus_lower(&self) -> f64 {
+        if [self.re.lo, self.re.hi, self.im.lo, self.im.hi]
+            .into_iter()
+            .any(f64::is_nan)
+        {
+            return 0.0;
+        }
         let re = if self.re.lo <= 0.0 && self.re.hi >= 0.0 {
             0.0
         } else {
@@ -142,17 +153,19 @@ impl Cball {
         } else {
             self.im.lo.abs().min(self.im.hi.abs())
         };
-        re.hypot(im)
+        modulus_bound(re, im, false)
     }
 
     /// An upper bound of `|z|` over the rectangle.
     #[must_use]
     pub fn modulus_upper(&self) -> f64 {
-        self.re
-            .lo
-            .abs()
-            .max(self.re.hi.abs())
-            .hypot(self.im.lo.abs().max(self.im.hi.abs()))
+        if [self.re.lo, self.re.hi, self.im.lo, self.im.hi]
+            .into_iter()
+            .any(f64::is_nan)
+        {
+            return f64::INFINITY;
+        }
+        modulus_bound(interval_abs_max(self.re), interval_abs_max(self.im), true)
     }
 
     /// The intersection, when the rectangles meet.
@@ -182,35 +195,187 @@ impl Cball {
             && self.im.hi < outer.im.hi
     }
 
-    /// `z^n` for `n >= 0` by repeated multiplication (one-ball enclosure).
+    /// A rectangular enclosure of `z^n` by binary exponentiation.
     #[must_use]
     pub fn powi(
         &self,
         n: u32,
     ) -> Self {
-        let mut r = Self::one();
-        for _ in 0..n {
-            r = r * *self;
+        if n != 0 && is_zero_interval(self.re) && is_zero_interval(self.im) {
+            return *self;
         }
-        r
+        let mut power = n;
+        let mut factor = *self;
+        let mut result = None;
+        while power != 0 {
+            if power & 1 != 0 {
+                result = Some(result.map_or(factor, |prefix| prefix * factor));
+            }
+            power >>= 1;
+            if power != 0 {
+                factor = factor.square_value();
+            }
+        }
+        result.unwrap_or_else(Self::one)
     }
 
-    /// `self / other`, `None` when the denominator may vanish.
+    /// `self / other`. Returns `None` when the denominator enclosure
+    /// cannot be separated from zero.
     #[must_use]
     pub fn div(
         &self,
         other: &Self,
     ) -> Option<Self> {
-        let denominator = other.re.mul(other.re).add(other.im.mul(other.im));
+        let maximum = interval_abs_max(other.re).max(interval_abs_max(other.im));
+        let (numerator, divisor) = if maximum > 0.0
+            && maximum.is_finite()
+            && !(f64::from_bits(523_u64 << 52)..=f64::from_bits(1523_u64 << 52)).contains(&maximum)
+        {
+            let exponent = ((maximum.to_bits() >> 52) & 0x7ff) as i32 - 1023;
+            let shift = (-exponent).clamp(-1022, 1023);
+            let scale = f64::from_bits(((shift + 1023) as u64) << 52);
+            (self.times_real(scale), other.times_real(scale))
+        } else {
+            (*self, *other)
+        };
+        let denominator = interval_square(divisor.re).add(interval_square(divisor.im));
         if denominator.lo <= 0.0 {
             return None;
         }
         let inverse = Self {
-            re: other.re.div(denominator),
-            im: other.im.neg().div(denominator),
+            re: divisor.re.div(denominator),
+            im: divisor.im.neg().div(denominator),
         };
-        Some(*self * inverse)
+        Some(numerator * inverse)
     }
+
+    fn square_value(self) -> Self {
+        if is_zero_interval(self.im) {
+            return Self {
+                re: interval_square(self.re),
+                im: self.im,
+            };
+        }
+        if is_zero_interval(self.re) {
+            return Self {
+                re: interval_square(self.im).neg(),
+                im: self.re,
+            };
+        }
+        Self {
+            re: interval_square(self.re).sub(interval_square(self.im)),
+            im: self.re.mul(self.im).mul(Interval::point(2.0)),
+        }
+    }
+
+    fn times_real(
+        self,
+        factor: f64,
+    ) -> Self {
+        let interval = Interval::point(factor);
+        let scaled = |value: Interval| {
+            if is_zero_interval(value) {
+                value
+            } else {
+                value.mul(interval)
+            }
+        };
+        Self {
+            re: scaled(self.re),
+            im: scaled(self.im),
+        }
+    }
+}
+
+fn interval_half_width(interval: Interval) -> f64 {
+    let width = interval.hi - interval.lo;
+    if width.is_finite() {
+        0.5 * width
+    } else {
+        0.5 * interval.hi - 0.5 * interval.lo
+    }
+}
+
+fn is_zero_interval(interval: Interval) -> bool {
+    interval.lo == 0.0 && interval.hi == 0.0
+}
+
+const fn interval_abs_max(interval: Interval) -> f64 {
+    interval.lo.abs().max(interval.hi.abs())
+}
+
+fn interval_square(interval: Interval) -> Interval {
+    if interval.lo.is_nan() || interval.hi.is_nan() {
+        return Interval::ENTIRE;
+    }
+    if is_zero_interval(interval) {
+        return Interval::point(0.0);
+    }
+    let far = interval_abs_max(interval);
+    let near = if interval.contains(0.0) {
+        0.0
+    } else {
+        interval.lo.abs().min(interval.hi.abs())
+    };
+    Interval {
+        lo: (near * near).next_down().max(0.0),
+        hi: (far * far).next_up(),
+    }
+}
+
+/// Bound the modulus as max(a,b) * sqrt(1 + (min(a,b)/max(a,b))²).
+/// Round each monotone operation in the requested direction.
+fn modulus_bound(
+    a: f64,
+    b: f64,
+    upper: bool,
+) -> f64 {
+    let far = a.max(b);
+    let near = a.min(b);
+    if near == 0.0 || !far.is_finite() {
+        return far;
+    }
+    if let Some(exact) = exact_modulus(far, near) {
+        return exact;
+    }
+    let round = |value: f64| {
+        if upper {
+            value.next_up()
+        } else {
+            value.next_down()
+        }
+    };
+    let ratio = round(near / far).max(0.0);
+    let square = round(ratio * ratio).max(0.0);
+    let distance = round(1.0 + square);
+    let bound = round(far * round(distance.sqrt()));
+    bound.max(far)
+}
+
+/// Recognize an exact Pythagorean norm when all its residuals fit in f64.
+#[allow(clippy::float_cmp, clippy::single_call_fn)]
+fn exact_modulus(
+    far: f64,
+    near: f64,
+) -> Option<f64> {
+    // Squared products above this input threshold have no residual bits
+    // below the f64 subnormal range.
+    const MIN: f64 = f64::from_bits(543_u64 << 52); // 2^-480
+    if near < MIN {
+        return None;
+    }
+    let far_square = far * far;
+    let near_square = near * near;
+    let square = far_square + near_square;
+    if !square.is_finite()
+        || square - far_square != near_square
+        || far.mul_add(far, -far_square) != 0.0
+        || near.mul_add(near, -near_square) != 0.0
+    {
+        return None;
+    }
+    let root = square.sqrt();
+    (root.mul_add(root, -square) == 0.0).then_some(root)
 }
 
 impl Add for Cball {
@@ -309,16 +474,219 @@ pub fn real_terms(system: &[Vec<PolyTerm>]) -> Vec<Vec<CTerm>> {
         .collect()
 }
 
-/// The value of one term over the box point `x`.
-fn term_value(
-    term: &CTerm,
-    x: &[Cball],
-) -> Cball {
-    let mut value = Cball::of(term.coef);
-    for (&exponent, &variable) in term.exps.iter().zip(x) {
-        value = value * variable.powi(exponent);
+/// Arithmetic used by the box and point polynomial evaluators.
+trait PolynomialValue: Copy + Add<Output = Self> + Mul<Output = Self> {
+    fn zero() -> Self;
+    fn coefficient(value: Cx) -> Self;
+    fn power(
+        self,
+        exponent: u32,
+    ) -> Self;
+    fn scale(
+        self,
+        factor: f64,
+    ) -> Self;
+}
+
+impl PolynomialValue for Cball {
+    fn zero() -> Self {
+        Self::zero()
     }
-    value
+
+    fn coefficient(value: Cx) -> Self {
+        Self::of(value)
+    }
+
+    fn power(
+        self,
+        exponent: u32,
+    ) -> Self {
+        self.powi(exponent)
+    }
+
+    fn scale(
+        self,
+        factor: f64,
+    ) -> Self {
+        self.times_real(factor)
+    }
+}
+
+impl PolynomialValue for Cx {
+    fn zero() -> Self {
+        Self::new(0.0, 0.0)
+    }
+
+    fn coefficient(value: Cx) -> Self {
+        value
+    }
+
+    fn power(
+        self,
+        exponent: u32,
+    ) -> Self {
+        self.powu(exponent)
+    }
+
+    fn scale(
+        self,
+        factor: f64,
+    ) -> Self {
+        self * factor
+    }
+}
+
+const INLINE_POWER_COLUMNS: usize = 8;
+const INLINE_POWER_COUNT: usize = 15;
+
+/// Powers zero and one need no storage. Small exponents have direct slots
+/// and arbitrary exponents use a sparse map instead of an exponent-sized table.
+struct PowerCache<'a, T> {
+    point: &'a [T],
+    enabled: bool,
+    small: Vec<[Option<T>; INLINE_POWER_COUNT]>,
+    large: Option<HashMap<(usize, u32), T>>,
+}
+
+impl<'a, T: PolynomialValue> PowerCache<'a, T> {
+    const fn new(
+        point: &'a [T],
+        enabled: bool,
+    ) -> Self {
+        Self {
+            point,
+            enabled,
+            small: Vec::new(),
+            large: None,
+        }
+    }
+
+    fn get(
+        &mut self,
+        column: usize,
+        power: u32,
+    ) -> T {
+        let value = self.point[column];
+        if power == 1 {
+            return value;
+        }
+        if !self.enabled {
+            return value.power(power);
+        }
+        if column < INLINE_POWER_COLUMNS && power <= 1 + INLINE_POWER_COUNT as u32 {
+            if self.small.len() <= column {
+                self.small
+                    .resize_with(self.point.len().min(INLINE_POWER_COLUMNS), || {
+                        [None; INLINE_POWER_COUNT]
+                    });
+            }
+            return *self.small[column][(power - 2) as usize]
+                .get_or_insert_with(|| value.power(power));
+        }
+        *self
+            .large
+            .get_or_insert_with(HashMap::new)
+            .entry((column, power))
+            .or_insert_with(|| value.power(power))
+    }
+}
+
+#[derive(Clone, Copy)]
+struct TermFactor<T> {
+    column: usize,
+    exponent: u32,
+    prefix: T,
+    value: T,
+}
+
+/// Evaluates a polynomial system with a power cache shared across its rows.
+/// Prefix products and a backwards suffix sweep evaluate a term and all
+/// of its partial derivatives without dividing by any input coordinate.
+fn evaluate_system<T: PolynomialValue, const VALUES: bool, const JACOBIAN: bool>(
+    system: &[Vec<CTerm>],
+    point: &[T],
+) -> (Vec<T>, Vec<Vec<T>>) {
+    let mut values = Vec::with_capacity(if VALUES { system.len() } else { 0 });
+    let mut jacobian = Vec::with_capacity(if JACOBIAN { system.len() } else { 0 });
+    let use_cache = system.len() > 2 || system.iter().any(|row| row.len() > 2);
+    let mut powers = PowerCache::new(point, use_cache);
+    let mut inline = [TermFactor {
+        column: 0,
+        exponent: 0,
+        prefix: T::zero(),
+        value: T::zero(),
+    }; INLINE_POWER_COLUMNS];
+    let mut spilled = Vec::new();
+    let short_term = point.len() <= INLINE_POWER_COLUMNS;
+
+    for equation in system {
+        let mut value = T::zero();
+        let mut row = if JACOBIAN {
+            vec![T::zero(); point.len()]
+        } else {
+            Vec::new()
+        };
+        for term in equation {
+            if term.coef.re == 0.0 && term.coef.im == 0.0 {
+                continue;
+            }
+            if JACOBIAN && !short_term {
+                spilled.clear();
+            }
+            let mut count = 0;
+            let mut prefix = T::coefficient(term.coef);
+            for (column, &exponent) in term.exps.iter().take(point.len()).enumerate() {
+                if exponent == 0 {
+                    continue;
+                }
+                let factor = powers.get(column, exponent);
+                if JACOBIAN {
+                    let part = TermFactor {
+                        column,
+                        exponent,
+                        prefix,
+                        value: factor,
+                    };
+                    if short_term {
+                        inline[count] = part;
+                        count += 1;
+                    } else {
+                        spilled.push(part);
+                    }
+                }
+                prefix = prefix * factor;
+            }
+            if VALUES {
+                value = value + prefix;
+            }
+            if JACOBIAN {
+                let factors = if short_term {
+                    &inline[..count]
+                } else {
+                    spilled.as_slice()
+                };
+                let mut suffix = None;
+                for factor in factors.iter().rev() {
+                    let left = if factor.exponent == 1 {
+                        factor.prefix
+                    } else {
+                        factor.prefix.scale(f64::from(factor.exponent))
+                            * powers.get(factor.column, factor.exponent - 1)
+                    };
+                    let derivative = suffix.map_or(left, |right| left * right);
+                    row[factor.column] = row[factor.column] + derivative;
+                    suffix = Some(suffix.map_or(factor.value, |right| factor.value * right));
+                }
+            }
+        }
+        if VALUES {
+            values.push(value);
+        }
+        if JACOBIAN {
+            jacobian.push(row);
+        }
+    }
+    (values, jacobian)
 }
 
 /// `f_i(X)` for every equation of the system (an enclosure of the range
@@ -328,51 +696,32 @@ pub fn eval_terms(
     system: &[Vec<CTerm>],
     x: &[Cball],
 ) -> Vec<Cball> {
-    system
-        .iter()
-        .map(|equation| {
-            equation
-                .iter()
-                .fold(Cball::zero(), |sum, term| sum + term_value(term, x))
-        })
-        .collect()
+    evaluate_system::<_, true, false>(system, x).0
 }
 
 /// The complex Jacobian `∂f_i/∂z_j` over the box.
 ///
-/// Each entry is an enclosure; the derivative of a monomial is
-/// `c e_j z_j^{e_j - 1} Π_{k ≠ j} z_k^{e_k}` (zero when `e_j = 0`).
+/// Each entry is an enclosure. A missing or zero exponent gives no
+/// contribution to that column.
 #[must_use]
 pub fn eval_jacobian_terms(
     system: &[Vec<CTerm>],
     x: &[Cball],
 ) -> Vec<Vec<Cball>> {
-    system
-        .iter()
-        .map(|equation| {
-            (0..x.len())
-                .map(|column| {
-                    equation
-                        .iter()
-                        .filter(|term| term.exps.get(column).copied().unwrap_or(0) > 0)
-                        .fold(Cball::zero(), |sum, term| {
-                            let exponent = term.exps.get(column).copied().unwrap_or(0);
-                            let mut value =
-                                Cball::of(term.coef) * Cball::point(f64::from(exponent), 0.0);
-                            for (k, (&power, &variable)) in term.exps.iter().zip(x).enumerate() {
-                                let power = if k == column {
-                                    power - 1
-                                } else {
-                                    power
-                                };
-                                value = value * variable.powi(power);
-                            }
-                            sum + value
-                        })
-                })
-                .collect()
-        })
-        .collect()
+    evaluate_system::<_, false, true>(system, x).1
+}
+
+/// Encloses both the values and the complex Jacobian of a system over a box.
+///
+/// The evaluator can reuse powers across rows and shares each term's products
+/// across the value and partial derivatives. Missing exponents are zero, and
+/// exponents beyond the number of coordinates are ignored.
+#[must_use]
+pub fn eval_value_and_jacobian_terms(
+    system: &[Vec<CTerm>],
+    x: &[Cball],
+) -> (Vec<Cball>, Vec<Vec<Cball>>) {
+    evaluate_system::<_, true, true>(system, x)
 }
 
 /// The values `f_i(x)` at a point, in plain `f64` arithmetic.
@@ -381,21 +730,7 @@ pub fn values_at_terms(
     system: &[Vec<CTerm>],
     x: &[Cx],
 ) -> Vec<Cx> {
-    system
-        .iter()
-        .map(|equation| {
-            equation
-                .iter()
-                .map(|term| {
-                    let mut value = term.coef;
-                    for (&power, &variable) in term.exps.iter().zip(x) {
-                        value *= variable.powi(i32::try_from(power).unwrap_or(0));
-                    }
-                    value
-                })
-                .sum()
-        })
-        .collect()
+    evaluate_system::<_, true, false>(system, x).0
 }
 
 /// The complex Jacobian at a point.
@@ -404,33 +739,19 @@ pub fn jacobian_at_terms(
     system: &[Vec<CTerm>],
     x: &[Cx],
 ) -> Vec<Vec<Cx>> {
-    system
-        .iter()
-        .map(|equation| {
-            (0..x.len())
-                .map(|column| {
-                    equation
-                        .iter()
-                        .filter(|term| term.exps.get(column).copied().unwrap_or(0) > 0)
-                        .map(|term| {
-                            let exponent = f64::from(term.exps.get(column).copied().unwrap_or(0));
-                            let mut value = term.coef * exponent;
-                            for (k, (&power, &variable)) in term.exps.iter().zip(x).enumerate() {
-                                let power = i32::try_from(if k == column {
-                                    power - 1
-                                } else {
-                                    power
-                                })
-                                .unwrap_or(0);
-                                value *= variable.powi(power);
-                            }
-                            value
-                        })
-                        .sum()
-                })
-                .collect()
-        })
-        .collect()
+    evaluate_system::<_, false, true>(system, x).1
+}
+
+/// Evaluates the values and complex Jacobian at a point using one power cache.
+///
+/// The arithmetic is ordinary complex `f64` arithmetic. The exponent
+/// convention matches [`eval_value_and_jacobian_terms`].
+#[must_use]
+pub fn values_and_jacobian_at_terms(
+    system: &[Vec<CTerm>],
+    x: &[Cx],
+) -> (Vec<Cx>, Vec<Vec<Cx>>) {
+    evaluate_system::<_, true, true>(system, x)
 }
 
 /// `f_i(X)` of a real system over a box.

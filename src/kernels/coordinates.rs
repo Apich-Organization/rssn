@@ -1,3 +1,5 @@
+//! Coordinate transformations between Cartesian, polar, cylindrical and spherical systems.
+//!
 //! # Coordinate transformations
 //!
 //! Conversions of plain `f64` points between Cartesian, polar, cylindrical
@@ -17,11 +19,12 @@
 //!   cylindrical `theta` is measured from the x axis, spherical `theta` from
 //!   the z axis. A caller holding the "math" `(r, phi, theta)` ordering must
 //!   permute the point; no `theta`/`phi` swap option is provided.
-//! * Conversion always goes through Cartesian; 2-D and 3-D systems cannot be
-//!   mixed, and a round trip loses angles to round-off (relative error a few
-//!   `1e-15` for non-degenerate points). Spherical `r` may be negative (the
-//!   point is then reflected through the origin); the origin maps to
-//!   `theta = 0`, `phi = atan2(0, 0)`.
+//! * Conversion between non-Cartesian systems goes through Cartesian. A
+//!   round trip can round angles, and 2-D and 3-D systems cannot be mixed.
+//!   [`cartesian_to_spherical`] and [`spherical_to_cartesian`] accept and
+//!   return three-element arrays without allocating. A negative spherical
+//!   radius reflects the point through the origin. The origin maps to
+//!   `theta = 0`, with its azimuth given by `atan2(y, x)` on the signed zeros.
 //! * [`numerical_jacobian`] and [`jacobian_determinant`] use central
 //!   differences with relative step `6e-6`, so they are accurate to roughly
 //!   `1e-9` relative for smooth maps and are meaningless at the singular
@@ -45,6 +48,8 @@ pub enum CoordinateSystem {
 /// Relative step for the central-difference Jacobian, near the optimum
 /// `eps^(1/3)` of a second-order formula.
 const JACOBIAN_STEP: f64 = 6.0e-6;
+/// 2⁵⁴ brings even the smallest subnormal f64 into the normal range.
+const SUBNORMAL_SCALE: f64 = 18_014_398_509_481_984.0;
 
 fn component(
     point: &[f64],
@@ -72,6 +77,65 @@ fn check_len(
     }
 }
 
+/// Converts Cartesian `[x, y, z]` to spherical `[r, theta, phi]`.
+///
+/// `theta` is measured from the positive z axis in `[0, π]` and `phi` is
+/// the azimuth from the positive x axis in `[-π, π]` (both in radians).
+/// With horizontal length `h = hypot(x, y)`, the polar angle is
+/// `atan2(h, z)`. It is zero at the origin. Finite coordinates can produce
+/// an infinite radius if the norm overflows, with both angles still defined.
+/// An infinite z component produces a NaN polar angle.
+#[must_use]
+pub fn cartesian_to_spherical([x, y, z]: [f64; 3]) -> [f64; 3] {
+    let horizontal = x.hypot(y);
+    let azimuth = y.atan2(x);
+
+    if horizontal.is_infinite() && x.is_finite() && y.is_finite() && z.is_finite() {
+        // The norm overflows, but taking the angle at half scale is safe.
+        let half_horizontal = (0.5 * x).hypot(0.5 * y);
+        return [f64::INFINITY, half_horizontal.atan2(0.5 * z), azimuth];
+    }
+    if horizontal.is_subnormal() && z.abs() <= f64::MAX / SUBNORMAL_SCALE {
+        // Restore precision lost by rounding the horizontal norm to a subnormal.
+        let horizontal = (x * SUBNORMAL_SCALE).hypot(y * SUBNORMAL_SCALE);
+        let z = z * SUBNORMAL_SCALE;
+        let radius = horizontal.hypot(z) / SUBNORMAL_SCALE;
+        return [radius, horizontal.atan2(z), azimuth];
+    }
+
+    let radius = horizontal.hypot(z);
+    let theta = if radius == 0.0 {
+        0.0
+    } else if z.is_infinite() {
+        f64::NAN
+    } else {
+        horizontal.atan2(z)
+    };
+    [radius, theta, azimuth]
+}
+
+/// Converts spherical `[r, theta, phi]` in radians to Cartesian `[x, y, z]`.
+///
+/// Uses the angles in [`cartesian_to_spherical`]. A negative radius reflects
+/// the Cartesian point through the origin. See [DLMF 1.5.16] for the map.
+///
+/// [DLMF 1.5.16]: https://dlmf.nist.gov/1.5.E16
+#[must_use]
+pub fn spherical_to_cartesian([r, theta, phi]: [f64; 3]) -> [f64; 3] {
+    let (sin_theta, cos_theta) = theta.sin_cos();
+    let (sin_phi, cos_phi) = phi.sin_cos();
+    if r.is_subnormal() {
+        // Form the unit direction before rounding at the scale of the radius.
+        return [
+            r * (sin_theta * cos_phi),
+            r * (sin_theta * sin_phi),
+            r * cos_theta,
+        ];
+    }
+    let horizontal = r * sin_theta;
+    [horizontal * cos_phi, horizontal * sin_phi, r * cos_theta]
+}
+
 /// Converts a point of `from` to Cartesian coordinates, without checking
 /// its length: missing components are taken as zero.
 #[must_use]
@@ -88,9 +152,7 @@ pub fn to_cartesian_pure(
         | CoordinateSystem::Cartesian => point.to_vec(),
         | CoordinateSystem::Polar => vec![a * b.cos(), a * b.sin()],
         | CoordinateSystem::Cylindrical => vec![a * b.cos(), a * b.sin(), c],
-        | CoordinateSystem::Spherical => {
-            vec![a * b.sin() * c.cos(), a * b.sin() * c.sin(), a * b.cos()]
-        },
+        | CoordinateSystem::Spherical => spherical_to_cartesian([a, b, c]).to_vec(),
     }
 }
 
@@ -111,15 +173,7 @@ pub fn from_cartesian_pure(
         | CoordinateSystem::Cartesian => point.to_vec(),
         | CoordinateSystem::Polar => vec![x.hypot(y), y.atan2(x)],
         | CoordinateSystem::Cylindrical => vec![x.hypot(y), y.atan2(x), z],
-        | CoordinateSystem::Spherical => {
-            let r = x.hypot(y).hypot(z);
-            let theta = if r == 0.0 {
-                0.0
-            } else {
-                (z / r).clamp(-1.0, 1.0).acos()
-            };
-            vec![r, theta, y.atan2(x)]
-        },
+        | CoordinateSystem::Spherical => cartesian_to_spherical([x, y, z]).to_vec(),
     }
 }
 
@@ -168,8 +222,16 @@ pub fn transform_point(
     if from == to {
         return Ok(point.to_vec());
     }
+    if from == CoordinateSystem::Cartesian {
+        check_len(point, to)?;
+        return Ok(from_cartesian_pure(point, to));
+    }
     let cartesian = to_cartesian_pure(point, from);
-    from_cartesian(&cartesian, to)
+    if to == CoordinateSystem::Cartesian {
+        Ok(cartesian)
+    } else {
+        from_cartesian(&cartesian, to)
+    }
 }
 
 /// Like [`transform_point`] but without validation: a direct, allocation
@@ -181,10 +243,12 @@ pub fn transform_point_pure(
     from: CoordinateSystem,
     to: CoordinateSystem,
 ) -> Vec<f64> {
-    if from == to {
-        return point.to_vec();
+    match (from, to) {
+        | (from, to) if from == to => point.to_vec(),
+        | (CoordinateSystem::Cartesian, to) => from_cartesian_pure(point, to),
+        | (from, CoordinateSystem::Cartesian) => to_cartesian_pure(point, from),
+        | _ => from_cartesian_pure(&to_cartesian_pure(point, from), to),
     }
-    from_cartesian_pure(&to_cartesian_pure(point, from), to)
 }
 
 /// Jacobian `J[i][j] = d(to_i) / d(from_j)` of the map `from -> to` at

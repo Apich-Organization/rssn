@@ -33,7 +33,7 @@
 //! ### Ray Tracing Primitives
 //! - Ray-sphere intersection
 //! - Ray-plane intersection
-//! - Ray-triangle intersection
+//! - Ray-triangle intersection with reusable geometry and parallel ray batches
 //!
 //! ### Quaternions
 //! - Quaternion representation and operations
@@ -67,6 +67,11 @@ use std::ops::Mul;
 use std::ops::Neg;
 use std::ops::Sub;
 
+use num_rational::BigRational;
+use num_traits::One;
+use num_traits::Signed;
+use num_traits::ToPrimitive;
+use num_traits::Zero;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -1478,7 +1483,458 @@ pub fn ray_plane_intersection(
     Some(Intersection { t, point, normal })
 }
 
-/// Computes ray-triangle intersection using Möller–Trumbore algorithm.
+const fn vector_is_finite(v: Vector3D) -> bool {
+    v.x.is_finite() && v.y.is_finite() && v.z.is_finite()
+}
+
+const fn largest_component(v: Vector3D) -> f64 {
+    v.x.abs().max(v.y.abs()).max(v.z.abs())
+}
+
+fn difference_of_products(
+    a: f64,
+    b: f64,
+    c: f64,
+    d: f64,
+) -> f64 {
+    let product = c * d;
+    a.mul_add(b, -product) + (-c).mul_add(d, product)
+}
+
+const fn project_to_triangle_plane(
+    v: Vector3D,
+    axis: usize,
+) -> Vector2D {
+    match axis {
+        | 0 => Vector2D::new(v.y, v.z),
+        | 1 => Vector2D::new(v.z, v.x),
+        | _ => Vector2D::new(v.x, v.y),
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum TriangleProjection {
+    Inverse([Vector2D; 2]),
+    Scaled {
+        edges: [Vector2D; 2],
+        scales: [f64; 2],
+        area: f64,
+    },
+}
+
+impl TriangleProjection {
+    fn new(
+        edges: [Vector2D; 2],
+        scales: [f64; 2],
+        area: f64,
+    ) -> Self {
+        let inv = scales.map(|scale| (1.0 / area) / scale);
+        let inverse = [
+            Vector2D::new(edges[1].y, -edges[1].x),
+            Vector2D::new(-edges[0].y, edges[0].x),
+        ];
+        let weights = [inverse[0] * inv[0], inverse[1] * inv[1]];
+        let representable = inverse.iter().zip(weights).all(|(unit, weight)| {
+            (unit.x == 0.0 || weight.x.is_normal()) && (unit.y == 0.0 || weight.y.is_normal())
+        });
+        if inv.iter().all(|v| v.is_normal()) && representable {
+            Self::Inverse(weights)
+        } else {
+            Self::Scaled { edges, scales, area }
+        }
+    }
+
+    fn coordinates(
+        &self,
+        point: Vector2D,
+    ) -> [f64; 2] {
+        let coordinate = |i: usize| {
+            match self {
+                | Self::Inverse(weights) => dot_product_2d(&point, &weights[i]),
+                | Self::Scaled { edges, scales, area } => {
+                    let value = if i == 0 {
+                        difference_of_products(point.x, edges[1].y, point.y, edges[1].x)
+                    } else {
+                        difference_of_products(edges[0].x, point.y, edges[0].y, point.x)
+                    };
+                    value / scales[i] / area
+                },
+            }
+        };
+        [coordinate(0), coordinate(1)]
+    }
+}
+
+fn exact_vector(v: Vector3D) -> Option<[BigRational; 3]> {
+    Some([
+        BigRational::from_float(v.x)?,
+        BigRational::from_float(v.y)?,
+        BigRational::from_float(v.z)?,
+    ])
+}
+
+fn exact_triple(
+    a: &[BigRational; 3],
+    b: &[BigRational; 3],
+    c: &[BigRational; 3],
+) -> BigRational {
+    &a[0] * (&b[1] * &c[2] - &b[2] * &c[1])
+        + &a[1] * (&b[2] * &c[0] - &b[0] * &c[2])
+        + &a[2] * (&b[0] * &c[1] - &b[1] * &c[0])
+}
+
+#[derive(Clone, Copy)]
+struct TriangleRayProjection {
+    plane_factor: f64,
+    absolute_denominator: f64,
+    uncertainty: f64,
+    direction_scale: Option<f64>,
+    projected_direction: Vector2D,
+}
+
+const fn valid_ray_range(
+    min_t: f64,
+    max_t: f64,
+) -> bool {
+    min_t.is_finite() && min_t >= 0.0 && max_t >= min_t
+}
+
+/// A triangle prepared for repeated ray intersections.
+#[derive(Debug, Clone, Copy)]
+pub struct PreparedTriangle {
+    vertices: [Vector3D; 3],
+    normal: Vector3D,
+    axis: usize,
+    area_scale: f64,
+    projection: TriangleProjection,
+}
+
+impl PreparedTriangle {
+    /// Prepares the triangle or returns `None` for invalid or collinear vertices.
+    #[must_use]
+    pub fn new(
+        v0: &Point3D,
+        v1: &Point3D,
+        v2: &Point3D,
+    ) -> Option<Self> {
+        let vertices = [v0.to_vector(), v1.to_vector(), v2.to_vector()];
+        let edge1 = vertices[1] - vertices[0];
+        let edge2 = vertices[2] - vertices[0];
+        let scales = [largest_component(edge1), largest_component(edge2)];
+        if !vector_is_finite(edge1) || !vector_is_finite(edge2) || scales.contains(&0.0) {
+            return None;
+        }
+        // Normalize each edge separately so widely differing edge lengths do
+        // not make the cross product overflow or its smaller edge disappear.
+        let edge1 = edge1 / scales[0];
+        let edge2 = edge2 / scales[1];
+        let cross = Vector3D::new(
+            difference_of_products(edge1.y, edge2.z, edge1.z, edge2.y),
+            difference_of_products(edge1.z, edge2.x, edge1.x, edge2.z),
+            difference_of_products(edge1.x, edge2.y, edge1.y, edge2.x),
+        );
+        let dominant = largest_component(cross);
+        if dominant == 0.0 {
+            return None;
+        }
+        let (axis, projected_area) = if cross.x.abs() >= dominant {
+            (0, cross.x)
+        } else if cross.y.abs() >= dominant {
+            (1, cross.y)
+        } else {
+            (2, cross.z)
+        };
+        let edges = [
+            project_to_triangle_plane(edge1, axis),
+            project_to_triangle_plane(edge2, axis),
+        ];
+        Some(Self {
+            vertices,
+            normal: (cross / dominant).normalize(),
+            axis,
+            area_scale: dominant.min(1.0),
+            projection: TriangleProjection::new(edges, scales, projected_area),
+        })
+    }
+
+    #[cold]
+    fn exact_intersection(
+        &self,
+        ray: &Ray,
+        min_t: f64,
+        max_t: f64,
+    ) -> Option<Intersection> {
+        let anchor = exact_vector(self.vertices[0])?;
+        let p1 = exact_vector(self.vertices[1])?;
+        let p2 = exact_vector(self.vertices[2])?;
+        let origin = exact_vector(ray.origin.to_vector())?;
+        let direction = exact_vector(ray.direction)?;
+        let first = std::array::from_fn(|i| &anchor[i] - &p1[i]);
+        let second = std::array::from_fn(|i| &anchor[i] - &p2[i]);
+        let rhs = std::array::from_fn(|i| &anchor[i] - &origin[i]);
+        let det = exact_triple(&direction, &first, &second);
+        if det.is_zero() {
+            return None;
+        }
+        let u = exact_triple(&direction, &rhs, &second) / &det;
+        let v = exact_triple(&direction, &first, &rhs) / &det;
+        if u.is_negative() || v.is_negative() || u + v > BigRational::one() {
+            return None;
+        }
+        let t = exact_triple(&rhs, &first, &second) / det;
+        if t < BigRational::from_float(min_t)?
+            || (max_t.is_finite() && t > BigRational::from_float(max_t)?)
+        {
+            return None;
+        }
+        self.hit_at(ray, t.to_f64()?)
+    }
+
+    fn hit_at(
+        &self,
+        ray: &Ray,
+        t: f64,
+    ) -> Option<Intersection> {
+        let point = ray.at(t);
+        vector_is_finite(point.to_vector()).then_some(Intersection {
+            t,
+            point,
+            normal: self.normal,
+        })
+    }
+
+    #[inline]
+    fn ray_projection(
+        &self,
+        raw_direction: Vector3D,
+    ) -> Option<TriangleRayProjection> {
+        let size = largest_component(raw_direction);
+        let (direction, direction_scale, angular_scale) = if (1e-150..=1e150).contains(&size) {
+            (raw_direction, None, size)
+        } else {
+            if size == 0.0 || !size.is_finite() {
+                return None;
+            }
+            (raw_direction / size, Some(size), 1.0)
+        };
+        let denominator = dot_product(&self.normal, &direction);
+        let abs_den = denominator.abs();
+        if abs_den > 16.0 * f64::EPSILON * angular_scale {
+            Some(TriangleRayProjection {
+                plane_factor: -1.0 / denominator,
+                absolute_denominator: abs_den,
+                uncertainty: 64.0 * f64::EPSILON * angular_scale,
+                direction_scale,
+                projected_direction: project_to_triangle_plane(direction, self.axis),
+            })
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn intersect_projected<const FIXED_PROJECTION: bool>(
+        &self,
+        ray: &Ray,
+        projection: TriangleRayProjection,
+        min_t: f64,
+        max_t: f64,
+    ) -> Option<Intersection> {
+        let offset = ray.origin.to_vector() - self.vertices[0];
+        let travel = dot_product(&offset, &self.normal) * projection.plane_factor;
+        let t = projection
+            .direction_scale
+            .map_or(travel, |scale| travel / scale);
+        if !t.is_finite() {
+            return None;
+        }
+        let near_limit = |bound: f64| {
+            bound.is_finite()
+                && (t - bound).abs() * projection.absolute_denominator
+                    <= projection.uncertainty * t.abs().max(bound)
+        };
+        if near_limit(min_t) || near_limit(max_t) {
+            return self.exact_intersection(ray, min_t, max_t);
+        }
+        if !(min_t..=max_t).contains(&t) {
+            return None;
+        }
+        let o = project_to_triangle_plane(offset, self.axis);
+        let d = projection.projected_direction;
+        let point = if FIXED_PROJECTION {
+            o
+        } else {
+            Vector2D::new(travel.mul_add(d.x, o.x), travel.mul_add(d.y, o.y))
+        };
+        let [u, v] = self.projection.coordinates(point);
+        let sum = u + v;
+        if !sum.is_finite() {
+            return self.exact_intersection(ray, min_t, max_t);
+        }
+        let lowest = u.min(v).min(1.0 - sum);
+        if lowest.abs() * projection.absolute_denominator * self.area_scale
+            <= projection.uncertainty
+        {
+            return self.exact_intersection(ray, min_t, max_t);
+        }
+        if lowest < 0.0 {
+            return None;
+        }
+        self.hit_at(ray, t)
+    }
+
+    /// Intersects a ray over the inclusive parameter interval `[min_t, max_t]`.
+    ///
+    /// The lower bound is finite and nonnegative. The upper bound may be
+    /// positive infinity. The returned normal follows the vertex winding.
+    /// Zero directions and rays numerically parallel to the plane have no hit.
+    /// Near a triangle edge or range endpoint, the signs are checked over
+    /// the exact binary-float inputs.
+    #[must_use]
+    #[inline]
+    pub fn intersect(
+        &self,
+        ray: &Ray,
+        min_t: f64,
+        max_t: f64,
+    ) -> Option<Intersection> {
+        if !valid_ray_range(min_t, max_t) {
+            return None;
+        }
+        self.intersect_projected::<false>(ray, self.ray_projection(ray.direction)?, min_t, max_t)
+    }
+
+    /// Intersects parallel rays with a common direction and parameter range.
+    ///
+    /// Results follow the order of `origins`, using the same bounds as
+    /// [`Self::intersect`]. Rays along the projection axis are culled against
+    /// the triangle's projected bounding box. An invalid shared setting
+    /// gives no hits.
+    #[must_use]
+    pub fn intersect_parallel(
+        &self,
+        origins: &[Point3D],
+        direction: Vector3D,
+        min_t: f64,
+        max_t: f64,
+    ) -> Vec<Option<Intersection>> {
+        let projection = valid_ray_range(min_t, max_t)
+            .then(|| self.ray_projection(direction))
+            .flatten();
+        let Some(projection) = projection else {
+            return vec![None; origins.len()];
+        };
+        let projected_direction = project_to_triangle_plane(direction, self.axis);
+        if projected_direction.x == 0.0 && projected_direction.y == 0.0 {
+            // Along the projection axis, the ray cannot move into the
+            // triangle's projected bounding box from outside it.
+            let [a, b, c] = self
+                .vertices
+                .map(|v| project_to_triangle_plane(v, self.axis));
+            let x = a.x.min(b.x).min(c.x)..=a.x.max(b.x).max(c.x);
+            let y = a.y.min(b.y).min(c.y)..=a.y.max(b.y).max(c.y);
+            return origins
+                .iter()
+                .map(|&origin| {
+                    let point = project_to_triangle_plane(origin.to_vector(), self.axis);
+                    if x.contains(&point.x) && y.contains(&point.y) {
+                        self.intersect_projected::<true>(
+                            &Ray::new(origin, direction),
+                            projection,
+                            min_t,
+                            max_t,
+                        )
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+        }
+        origins
+            .iter()
+            .map(|&origin| {
+                self.intersect_projected::<false>(
+                    &Ray::new(origin, direction),
+                    projection,
+                    min_t,
+                    max_t,
+                )
+            })
+            .collect()
+    }
+}
+
+enum TriangleCandidate {
+    Hit(Intersection),
+    Miss,
+    Prepare,
+}
+
+// Ordinary one-shot queries use the Möller–Trumbore determinants directly.
+// Exceptional scales and uncertain signs share the prepared path.
+#[inline]
+fn direct_triangle_candidate(
+    ray: &Ray,
+    vertices: [&Point3D; 3],
+    min_t: f64,
+) -> TriangleCandidate {
+    let [v0, v1, v2] = vertices.map(Point3D::to_vector);
+    let first = v1 - v0;
+    let second = v2 - v0;
+    let across = cross_product(&ray.direction, &second);
+    let det = dot_product(&first, &across);
+    if !(1e-6..=1e150).contains(&det.abs()) {
+        return TriangleCandidate::Prepare;
+    }
+    let inverse = 1.0 / det;
+    let offset = ray.origin.to_vector() - v0;
+    let u = inverse * dot_product(&offset, &across);
+    let uncertainty = 64.0 * f64::EPSILON;
+    if u.is_finite() && (u < -uncertainty || u > 1.0 + uncertainty) {
+        return TriangleCandidate::Miss;
+    }
+    let across = cross_product(&offset, &first);
+    let v = inverse * dot_product(&ray.direction, &across);
+    let sum = u + v;
+    if !sum.is_finite() {
+        return TriangleCandidate::Prepare;
+    }
+    let lowest = u.min(v).min(1.0 - sum);
+    if lowest.abs() <= uncertainty {
+        return TriangleCandidate::Prepare;
+    }
+    if lowest < 0.0 {
+        return TriangleCandidate::Miss;
+    }
+    let t = inverse * dot_product(&second, &across);
+    if !t.is_finite() || (t - min_t).abs() <= uncertainty * t.abs().max(min_t) {
+        return TriangleCandidate::Prepare;
+    }
+    if t < min_t {
+        return TriangleCandidate::Miss;
+    }
+    let normal = cross_product(&first, &second);
+    let magnitude = normal.magnitude();
+    if !magnitude.is_normal()
+        || det.abs() <= 16.0 * f64::EPSILON * magnitude * largest_component(ray.direction)
+    {
+        return TriangleCandidate::Prepare;
+    }
+    let point = ray.at(t);
+    if !vector_is_finite(point.to_vector()) {
+        return TriangleCandidate::Prepare;
+    }
+    TriangleCandidate::Hit(Intersection {
+        t,
+        point,
+        normal: normal / magnitude,
+    })
+}
+
+/// Intersects a ray with a triangle using a minimum ray parameter of `1e-6`.
+///
+/// Use [`PreparedTriangle`] to reuse triangle geometry or specify another
+/// parameter range. The returned normal follows the vertex winding.
 #[must_use]
 pub fn ray_triangle_intersection(
     ray: &Ray,
@@ -1486,51 +1942,14 @@ pub fn ray_triangle_intersection(
     v1: &Point3D,
     v2: &Point3D,
 ) -> Option<Intersection> {
-    let edge1 = Vector3D::new(v1.x - v0.x, v1.y - v0.y, v1.z - v0.z);
-
-    let edge2 = Vector3D::new(v2.x - v0.x, v2.y - v0.y, v2.z - v0.z);
-
-    let h = cross_product(&ray.direction, &edge2);
-
-    let a = dot_product(&edge1, &h);
-
-    if a.abs() < 1e-6 {
-        return None;
+    const MIN_T: f64 = 1e-6;
+    match direct_triangle_candidate(ray, [v0, v1, v2], MIN_T) {
+        | TriangleCandidate::Hit(hit) => Some(hit),
+        | TriangleCandidate::Miss => None,
+        | TriangleCandidate::Prepare => {
+            PreparedTriangle::new(v0, v1, v2)?.intersect(ray, MIN_T, f64::INFINITY)
+        },
     }
-
-    let f = 1.0 / a;
-
-    let s = Vector3D::new(
-        ray.origin.x - v0.x,
-        ray.origin.y - v0.y,
-        ray.origin.z - v0.z,
-    );
-
-    let u = f * dot_product(&s, &h);
-
-    if !(0.0..=1.0).contains(&u) {
-        return None;
-    }
-
-    let q = cross_product(&s, &edge1);
-
-    let v = f * dot_product(&ray.direction, &q);
-
-    if v < 0.0 || u + v > 1.0 {
-        return None;
-    }
-
-    let t = f * dot_product(&edge2, &q);
-
-    if t < 1e-6 {
-        return None;
-    }
-
-    let point = ray.at(t);
-
-    let normal = cross_product(&edge1, &edge2).normalize();
-
-    Some(Intersection { t, point, normal })
 }
 
 // ============================================================================

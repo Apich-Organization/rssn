@@ -1,3 +1,5 @@
+//! Fresnel integrals, their auxiliary functions and the complex error function.
+//!
 //! # Fresnel integrals
 //!
 //! The normalised Fresnel integrals (DLMF 7.2.7)
@@ -23,6 +25,7 @@
 //!
 //! Both are accurate to a few units in the last place away from the zeros of
 //! the function (where only absolute accuracy of about `1e-16` is possible).
+//! Use [`fresnel_sc_interval`] to integrate directly between two limits.
 //!
 //! ## Complex argument
 //!
@@ -33,6 +36,7 @@
 //! For large complex Fresnel arguments the tails use the expansion directly,
 //! computing their exponential phases before rotating the argument.
 
+use std::f64::consts::FRAC_1_PI;
 use std::f64::consts::FRAC_PI_2;
 use std::f64::consts::PI;
 use std::sync::OnceLock;
@@ -43,14 +47,20 @@ use num_complex::Complex64;
 const SERIES_LIMIT: f64 = 1.5;
 /// Beyond this `|x|` the correction to `±1/2` is below half an ulp.
 const SATURATION: f64 = 1.0e17;
+/// At and above 2⁵³ every finite f64 is an even integer.
+const ZERO_PHASE_LIMIT: f64 = 9_007_199_254_740_992.0;
+/// Beyond this the first neglected relative terms of f and g are below f64 epsilon.
+const INTERVAL_ASYMPTOTIC_LIMIT: f64 = 16_384.0;
 
-/// `sin(π u / 2)` and `cos(π u / 2)` for a reduced `u` in about `[0, 4]`.
-fn quarter_turns(u: f64) -> (f64, f64) {
-    let k = u.round();
-    let phi = FRAC_PI_2 * (u - k);
+/// Sine and cosine of π(high + low)/2, for a reduced argument.
+fn quarter_turns(
+    high: f64,
+    low: f64,
+) -> (f64, f64) {
+    let k = (high + low).round();
+    let phi = FRAC_PI_2 * ((high - k) + low);
     let (sp, cp) = phi.sin_cos();
-    // k mod 4 in 0..=3 (u is non-negative here, but stay safe for tiny negatives).
-    let q = k.rem_euclid(4.0) as i32;
+    let q = (k as i32).rem_euclid(4);
     match q {
         | 0 => (sp, cp),
         | 1 => (cp, -sp),
@@ -59,21 +69,26 @@ fn quarter_turns(u: f64) -> (f64, f64) {
     }
 }
 
+/// Reduce the two parts of x² modulo 4 without rounding their sum.
+fn square_phase_parts(x: f64) -> (f64, f64) {
+    if x.abs() >= ZERO_PHASE_LIMIT {
+        return (0.0, 0.0);
+    }
+    let square = x * x;
+    (square % 4.0, x.mul_add(x, -square) % 4.0)
+}
+
 /// `(sin(π x² / 2), cos(π x² / 2))` with the phase reduced exactly.
 #[must_use]
 pub fn sin_cos_half_pi_square(x: f64) -> (f64, f64) {
-    let ax = x.abs();
-    if !ax.is_finite() {
+    if !x.is_finite() {
         return (f64::NAN, f64::NAN);
     }
-    if ax >= 1.0e154 {
-        // x is a multiple of a huge power of two: x² ≡ 0 (mod 4).
+    if x.abs() >= ZERO_PHASE_LIMIT {
         return (0.0, 1.0);
     }
-    let p = ax * ax;
-    let e = ax.mul_add(ax, -p);
-    let u = (p % 4.0) + e;
-    quarter_turns(u)
+    let (high, low) = square_phase_parts(x);
+    quarter_turns(high, low)
 }
 
 /// Maclaurin series; returns `(S, C)` for `x >= 0` small.
@@ -155,6 +170,159 @@ pub fn fresnel_sc(x: f64) -> (f64, f64) {
     } else {
         (s, c)
     }
+}
+
+/// Normalised Fresnel sine and cosine integrals `(S, C)` over `[a, b]`.
+///
+/// Both integrands use the phase `π t² / 2`. Narrow intervals are integrated
+/// directly, and far from the origin the common endpoint limit cancels before
+/// rounding, so differences can survive even when the values from
+/// [`fresnel_sc`] round to the same number.
+///
+/// Reversing the limits negates both results. Infinite limits are interpreted
+/// as improper integrals. Equal limits give zero, including equal infinities.
+/// A NaN limit gives two NaNs.
+///
+/// ```
+/// use rssn::kernels::fresnel::fresnel_sc_interval;
+///
+/// let (s, c) = fresnel_sc_interval(1.0, 1.0_f64.next_up());
+/// assert_eq!(s, f64::EPSILON);
+/// assert!(c < 0.0);
+/// ```
+#[must_use]
+pub fn fresnel_sc_interval(
+    a: f64,
+    b: f64,
+) -> (f64, f64) {
+    if a.is_nan() || b.is_nan() {
+        return (f64::NAN, f64::NAN);
+    }
+    if matches!(a.partial_cmp(&b), Some(std::cmp::Ordering::Equal)) {
+        return (0.0, 0.0);
+    }
+    if a < b {
+        fresnel_increasing(a, b)
+    } else {
+        let (s, c) = fresnel_increasing(b, a);
+        (-s, -c)
+    }
+}
+
+/// Integrate over ordered, distinct limits. Both integrands are even.
+fn fresnel_increasing(
+    a: f64,
+    b: f64,
+) -> (f64, f64) {
+    let (a, b) = if b <= 0.0 { (-b, -a) } else { (a, b) };
+    if a >= 0.0 {
+        let width = b - a;
+        let linear = PI * (a * width);
+        let quadratic = FRAC_PI_2 * (width * width);
+        if linear + quadratic <= 0.5 {
+            return fresnel_short_interval(a, width, linear, quadratic);
+        }
+        if a >= INTERVAL_ASYMPTOTIC_LIMIT {
+            return fresnel_far_interval(a, b, width);
+        }
+        if a > SERIES_LIMIT {
+            let (sa, ca) = fresnel_tail(a);
+            let (sb, cb) = fresnel_tail(b);
+            return (sa - sb, ca - cb);
+        }
+    }
+    let (sa, ca) = fresnel_sc(a);
+    let (sb, cb) = fresnel_sc(b);
+    (sb - sa, cb - ca)
+}
+
+fn fresnel_short_interval(
+    a: f64,
+    width: f64,
+    linear: f64,
+    quadratic: f64,
+) -> (f64, f64) {
+    let (sin_a, cos_a) = sin_cos_half_pi_square(a);
+    // Integrate the phase increment u(linear + u * quadratic) for u in [0, 1].
+    // Forming a + u * width can round to an endpoint before evaluating the phase.
+    let (sin_increment, cos_increment) = if linear + quadratic <= 1.0e-8 {
+        // The mean phase is exact to first order; omitted cosine terms are < 0.5 ulp.
+        (0.5 * linear + quadratic / 3.0, 1.0)
+    } else {
+        // Positive nodes and weights of 8-point Gauss–Legendre on [-1, 1].
+        const NODES: [(f64, f64); 4] = [
+            (0.183_434_642_495_649_8, 0.362_683_783_378_362),
+            (0.525_532_409_916_329, 0.313_706_645_877_887_3),
+            (0.796_666_477_413_626_7, 0.222_381_034_453_374_5),
+            (0.960_289_856_497_536_3, 0.101_228_536_290_376_26),
+        ];
+        let mut sine = 0.0;
+        let mut cosine = 0.0;
+        for (node, weight) in NODES {
+            let left = 0.5 * (1.0 - node);
+            let right = 1.0_f64.midpoint(node);
+            let (s_left, c_left) = (left * quadratic.mul_add(left, linear)).sin_cos();
+            let (s_right, c_right) = (right * quadratic.mul_add(right, linear)).sin_cos();
+            sine = (0.5 * weight).mul_add(s_left + s_right, sine);
+            cosine = (0.5 * weight).mul_add(c_left + c_right, cosine);
+        }
+        (sine, cosine)
+    };
+    (
+        width * cos_a.mul_add(sin_increment, sin_a * cos_increment),
+        width * (-sin_a).mul_add(sin_increment, cos_a * cos_increment),
+    )
+}
+
+/// The pair of integrals from x to +∞, for `x > SERIES_LIMIT`.
+fn fresnel_tail(x: f64) -> (f64, f64) {
+    if x == f64::INFINITY {
+        return (0.0, 0.0);
+    }
+    let (f, g) = if x >= INTERVAL_ASYMPTOTIC_LIMIT {
+        let f = FRAC_1_PI / x;
+        (f, f * f / x)
+    } else {
+        aux_positive(x)
+    };
+    let (sin, cos) = sin_cos_half_pi_square(x);
+    (f.mul_add(cos, g * sin), (-f).mul_add(sin, g * cos))
+}
+
+fn fresnel_far_interval(
+    a: f64,
+    b: f64,
+    width: f64,
+) -> (f64, f64) {
+    if b == f64::INFINITY {
+        return fresnel_tail(a);
+    }
+
+    // Factor differences of 1/x and 1/x³. Subtracting them directly loses the
+    // envelope increment when the phases coincide and the limits are close.
+    let fraction = width / b;
+    let ratio = a / b;
+    let f_a = FRAC_1_PI / a;
+    let df = (FRAC_1_PI * fraction) / a;
+    let dg = (f_a * f_a) * (fraction * (1.0 + ratio + ratio * ratio)) / a;
+
+    if a >= ZERO_PHASE_LIMIT {
+        return (df, dg);
+    }
+    let f_b = FRAC_1_PI / b;
+    let g_b = f_b * f_b / b;
+    let (a_high, a_low) = square_phase_parts(a);
+    let (b_high, b_low) = square_phase_parts(b);
+    let (sin_a, cos_a) = quarter_turns(a_high, a_low);
+    // Trig differences via the half-sum and half-difference of the phases.
+    let (sin_mid, cos_mid) = quarter_turns(b_high.midpoint(a_high), b_low.midpoint(a_low));
+    let (sin_half_delta, _) = quarter_turns(0.5 * (b_high - a_high), 0.5 * (b_low - a_low));
+    let dcos = 2.0 * sin_mid * sin_half_delta;
+    let dsin = -2.0 * cos_mid * sin_half_delta;
+    (
+        df.mul_add(cos_a, dg * sin_a) + f_b.mul_add(dcos, g_b * dsin),
+        dg.mul_add(cos_a, -df * sin_a) + (-f_b).mul_add(dsin, g_b * dcos),
+    )
 }
 
 /// Fresnel sine integral `S(x) = ∫_0^x sin(π t² / 2) dt`.
@@ -625,6 +793,110 @@ mod tests {
             rel(fresnel_c(x), c, 2e-15);
             rel(fresnel_s(-x), -s, 2e-15);
             rel(fresnel_c(-x), -c, 2e-15);
+        }
+    }
+
+    #[test]
+    fn fresnel_interval_resolves_adjacent_endpoints_and_integrand_zeros() {
+        // Reference integrals evaluated in high precision at the exact f64 limits.
+        for (a, b, s, c) in [
+            (0.0, 1e-80, 5.235_987_755_982_988e-241, 1e-80),
+            (
+                1.0,
+                1.0_f64.next_up(),
+                f64::EPSILON,
+                -7.744_623_826_707_891e-32,
+            ),
+            (
+                2.0,
+                2.0_f64.next_up(),
+                6.195_699_061_366_313e-31,
+                4.440_892_098_500_626e-16,
+            ),
+            (
+                0.003,
+                0.55,
+                0.085_718_873_195_190_34,
+                0.534_711_086_109_143_1,
+            ),
+            (
+                2.47,
+                2.481,
+                -0.002_198_007_348_306_918,
+                -0.010_774_738_450_774_67,
+            ),
+        ] {
+            let (s_actual, c_actual) = fresnel_sc_interval(a, b);
+            rel(s_actual, s, 2e-15);
+            rel(c_actual, c, 2e-15);
+        }
+    }
+
+    #[test]
+    fn fresnel_interval_retains_far_tail_differences() {
+        for (a, b, s, c) in [
+            (
+                16_384.0,
+                16_384.5,
+                1.479_423_311_359_728e-6,
+                7.434_582_674_437_342e-6,
+            ),
+            (
+                1e6,
+                1e6 + 2.0,
+                6.366_184_991_305_831e-13,
+                6.079_246_701_537_249e-25,
+            ),
+            (
+                1e17,
+                1e17_f64.next_up(),
+                5.092_958_178_940_65e-34,
+                4.863_416_814_832_211e-68,
+            ),
+        ] {
+            let (s_actual, c_actual) = fresnel_sc_interval(a, b);
+            rel(s_actual, s, 2e-15);
+            rel(c_actual, c, 2e-15);
+        }
+
+        let (s, c) = fresnel_sc_interval(1e308, f64::INFINITY);
+        assert!(
+            s.to_bits()
+                .abs_diff(3.183_098_861_837_907e-309_f64.to_bits())
+                <= 1
+        );
+        assert_eq!(c, 0.0);
+    }
+
+    #[test]
+    fn fresnel_interval_additivity_orientation_and_infinite_limits() {
+        let (s, c) = fresnel_sc_interval(0.2, 3.1);
+        rel(s, 0.577_628_258_924_217_8, 2e-15);
+        rel(c, 0.361_672_844_916_903_2, 2e-15);
+        assert_eq!(fresnel_sc_interval(-3.1, -0.2), (s, c));
+        assert_eq!(fresnel_sc_interval(3.1, 0.2), (-s, -c));
+        let (s_left, c_left) = fresnel_sc_interval(0.2, 1.5);
+        let (s_right, c_right) = fresnel_sc_interval(1.5, 3.1);
+        rel(s_left + s_right, s, 2e-15);
+        rel(c_left + c_right, c, 2e-15);
+
+        let (s_tail, c_tail) = fresnel_sc_interval(2.0, f64::INFINITY);
+        rel(s_tail, 0.156_584_321_636_301_76, 2e-15);
+        rel(c_tail, 0.011_746_593_924_659_246, 2e-15);
+        assert_eq!(
+            fresnel_sc_interval(f64::NEG_INFINITY, -2.0),
+            (s_tail, c_tail)
+        );
+        assert_eq!(
+            fresnel_sc_interval(f64::NEG_INFINITY, f64::INFINITY),
+            (1.0, 1.0)
+        );
+        for limit in [0.0, f64::INFINITY, f64::NEG_INFINITY] {
+            assert_eq!(fresnel_sc_interval(limit, limit), (0.0, 0.0));
+        }
+        for (a, b) in [(f64::NAN, 0.0), (1.0, f64::NAN)] {
+            let (s, c) = fresnel_sc_interval(a, b);
+            assert!(s.is_nan() && c.is_nan());
         }
     }
 

@@ -479,8 +479,10 @@ impl RootSystem {
         Some(sum + ql::q(1))
     }
 
-    /// The Weyl dimension formula for the highest weight with Dynkin
-    /// labels `labels` (nonnegative integers).
+    /// The exact dimension for a highest weight with dimensionless Dynkin labels.
+    ///
+    /// Returns `None` unless there is one nonnegative integer label per
+    /// simple root.
     #[must_use]
     pub fn weyl_dim(
         &self,
@@ -489,14 +491,32 @@ impl RootSystem {
         if labels.len() != self.n || labels.iter().any(|&l| l < 0) {
             return None;
         }
+        // The common denominator of the simple-root lengths cancels in
+        // every factor of the Weyl product. Accumulate the two pairings in
+        // integers, including the shift by rho.
+        let common = self.lengths.iter().fold(BigInt::one(), |acc, length| {
+            num_integer::lcm(acc, length.denom().clone())
+        });
+        let lengths: Vec<_> = self
+            .lengths
+            .iter()
+            .map(|length| length.numer() * (&common / length.denom()))
+            .collect();
+        let shifted: Vec<_> = labels
+            .iter()
+            .zip(&lengths)
+            .map(|(&label, length)| (BigInt::from(label) + 1_i64) * length)
+            .collect();
         let mut value = Q::one();
         for root in &self.positive {
-            let (mut num, mut den) = (Q::zero(), Q::zero());
-            for ((&c, s), &l) in root.iter().zip(&self.lengths).zip(labels) {
-                num += ql::q(c) * s * ql::q(l + 1);
-                den += ql::q(c) * s;
+            let (mut num, mut den) = (BigInt::zero(), BigInt::zero());
+            for ((&c, length), weight) in root.iter().zip(&lengths).zip(&shifted) {
+                if c != 0 {
+                    num += weight * c;
+                    den += length * c;
+                }
             }
-            value = value * num / den;
+            value *= Q::new(num, den);
         }
         value.is_integer().then(|| value.to_integer())
     }
@@ -508,17 +528,40 @@ impl RootSystem {
         a: &[i64],
         b: &[i64],
     ) -> Q {
+        self.inner_shifted(a, b, 0)
+    }
+
+    fn inner_shifted(
+        &self,
+        a: &[i64],
+        b: &[i64],
+        shift: i64,
+    ) -> Q {
+        let shifted: Vec<_> = b
+            .iter()
+            .take(self.n)
+            .map(|&label| {
+                label
+                    .checked_add(shift)
+                    .map_or_else(|| Q::from_integer(BigInt::from(label) + shift), ql::q)
+            })
+            .collect();
         let mut total = Q::zero();
+        let two = ql::q(2);
         for (k, (&ak, length)) in a.iter().zip(&self.lengths).enumerate() {
             let x: Q =
-                (0..self.n).fold(Q::zero(), |acc, i| acc + ql::q(b[i]) * &self.inverse[i][k]);
-            total += x * ql::q(ak) * length / ql::q(2);
+                (0..self.n).fold(Q::zero(), |acc, i| acc + &shifted[i] * &self.inverse[i][k]);
+            total += x * ql::q(ak) * length / &two;
         }
         total
     }
 
     /// The Casimir eigenvalue `(L, L + 2 rho)` of the irreducible
-    /// representation of highest weight `L` (long roots of squared length 2).
+    /// representation of highest weight `L`, with long roots of squared length 2.
+    ///
+    /// Uses dimensionless Dynkin labels. Returns `None` for a reducible root
+    /// system or a label count different from its rank. Signed labels also
+    /// evaluate the same quadratic expression.
     #[must_use]
     pub fn casimir(
         &self,
@@ -527,12 +570,14 @@ impl RootSystem {
         if labels.len() != self.n || !self.is_irreducible() {
             return None;
         }
-        let shifted: Vec<i64> = labels.iter().map(|&l| l + 2).collect();
-        Some(self.inner(labels, &shifted))
+        Some(self.inner_shifted(labels, labels, 2))
     }
 
     /// The Dynkin index `dim(V) C(V) / dim(g)` (the fundamental of `su(n)`
     /// has index 1, the adjoint `2 h^vee`).
+    ///
+    /// Requires an irreducible root system and one nonnegative dimensionless
+    /// Dynkin label per simple root.
     #[must_use]
     pub fn dynkin_index(
         &self,
@@ -993,38 +1038,77 @@ pub struct RootSpace {
     pub space: QMat,
 }
 
-fn flatten(m: &[Vec<Q>]) -> Vec<Q> {
-    m.iter().flatten().cloned().collect()
-}
-
 impl Lie {
-    /// The Lie algebra spanned by a basis of rational matrices; `None`
-    /// unless they are independent and closed under the commutator.
+    /// The Lie algebra spanned by a basis of rational matrices.
+    ///
+    /// Returns `None` unless the basis is nonempty, consists of square
+    /// matrices of the same positive order, and is independent and closed
+    /// under the commutator. The structure constants use the input basis order.
     #[must_use]
     pub fn from_matrices(basis: &[QMat]) -> Option<Self> {
         let n = basis.len();
-        let flat: Vec<Vec<Q>> = basis.iter().map(|m| flatten(m)).collect();
-        let len = flat.first()?.len();
-        if ql::rank(&flat, len) != n {
+        let order = basis.first()?.len();
+        let entries = order.checked_mul(order)?;
+        let augmented_cols = entries.checked_add(n)?;
+        if n > entries
+            || basis
+                .iter()
+                .any(|matrix| matrix.len() != order || matrix.iter().any(|row| row.len() != order))
+        {
             return None;
         }
-        let system = ql::transpose(&flat, len);
+
+        // Reduce [B | I] once. Each echelon row on the left is paired with
+        // its coordinates in the original basis on the right.
+        let mut echelon: QMat = basis
+            .iter()
+            .enumerate()
+            .map(|(i, matrix)| {
+                matrix
+                    .iter()
+                    .flatten()
+                    .cloned()
+                    .chain((0..n).map(|j| ql::q(i64::from(i == j))))
+                    .collect()
+            })
+            .collect();
+        let pivots = ql::rref(&mut echelon, augmented_cols);
+        if pivots.len() != n || pivots.last().is_some_and(|&column| column >= entries) {
+            return None;
+        }
         let mut c = vec![vec![Vec::new(); n]; n];
         for i in 0..n {
-            for j in 0..n {
-                let ab = ql::matmul(&basis[i], &basis[j]);
-                let ba = ql::matmul(&basis[j], &basis[i]);
-                let diff: Vec<Q> = flatten(&ab)
+            c[i][i] = ql::zeros(n);
+            for j in i + 1..n {
+                let mut difference: Vec<Q> = ql::matmul(&basis[i], &basis[j])
                     .into_iter()
-                    .zip(flatten(&ba))
+                    .flatten()
+                    .zip(ql::matmul(&basis[j], &basis[i]).into_iter().flatten())
                     .map(|(x, y)| x - y)
                     .collect();
-                c[i][j] = ql::solve(&system, n, &diff)?;
-                // the solution must reproduce the commutator exactly
-                let back = ql::matvec(&system, &c[i][j]);
-                if back != diff {
+                let mut coordinates = ql::zeros(n);
+                for (row, &pivot) in echelon.iter().zip(&pivots) {
+                    if difference[pivot].is_zero() {
+                        continue;
+                    }
+                    let factor = difference[pivot].clone();
+                    let (span, transform) = row.split_at(entries);
+                    for (value, coefficient) in difference.iter_mut().zip(span).skip(pivot) {
+                        if !coefficient.is_zero() {
+                            *value -= &factor * coefficient;
+                        }
+                    }
+                    for (value, coefficient) in coordinates.iter_mut().zip(transform) {
+                        if !coefficient.is_zero() {
+                            *value += &factor * coefficient;
+                        }
+                    }
+                }
+                if !ql::is_zero_vec(&difference) {
                     return None;
                 }
+                c[j][i] = coordinates.iter().map(|v| -v).collect();
+                c[i][j] = coordinates;
             }
         }
         Some(Self { n, c })

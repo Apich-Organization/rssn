@@ -1,4 +1,12 @@
+//! Numerical Sturm isolation and refinement for real roots of a polynomial.
+//!
+//! [`find_roots`] uses a Cauchy bound for the complete search. Use
+//! [`find_roots_in`] when a finite interval is already known. Both use a
+//! floating Sturm chain for the interior of each interval.
+
 use crate::kernels::polynomial::Polynomial;
+use num_rational::BigRational;
+use num_traits::Zero;
 
 /// Generates the Sturm sequence for a numerical polynomial.
 ///
@@ -36,7 +44,7 @@ pub fn sturm_sequence(poly: &Polynomial) -> Vec<Polynomial> {
 
         let p_curr = &seq[i];
 
-        let (_, mut remainder) = p_prev.clone().long_division(&p_curr.clone());
+        let (_, mut remainder) = p_prev.clone().long_division(p_curr);
 
         if remainder.coeffs.is_empty()
             || (remainder.coeffs.len() == 1 && remainder.coeffs[0] == 0.0)
@@ -60,7 +68,17 @@ pub fn sturm_sequence(poly: &Polynomial) -> Vec<Polynomial> {
 // public Sturm sequence retains its original coefficient conventions; removing
 // its common polynomial factor prevents cancellation in repeated-root powers
 // from moving a sign change by sqrt(machine epsilon).
-fn counting_sequence(poly: &Polynomial) -> Vec<Polynomial> {
+fn counting_sequence(poly: &Polynomial) -> Result<Vec<Polynomial>, String> {
+    // Binary rescaling preserves coefficient ratios unless a coefficient
+    // underflows. Arbitrary positive scaling can move an exact split root.
+    let power_of_two = |magnitude: f64| {
+        let exponent_bits = magnitude.to_bits() & 0x7ff0_0000_0000_0000;
+        if exponent_bits == 0 {
+            f64::MIN_POSITIVE
+        } else {
+            f64::from_bits(exponent_bits)
+        }
+    };
     let scale = poly
         .coeffs
         .iter()
@@ -68,9 +86,13 @@ fn counting_sequence(poly: &Polynomial) -> Vec<Polynomial> {
         .map(f64::abs)
         .fold(0.0, f64::max);
     if !scale.is_finite() || super::exact_eq(scale, 0.0) {
-        return Vec::new();
+        return Ok(Vec::new());
     }
+    let scale = power_of_two(scale);
     let normalized = Polynomial::new(poly.coeffs.iter().map(|value| value / scale).collect());
+    if super::exact_eq(normalized.coeffs[0], 0.0) {
+        return Err("polynomial leading coefficient underflows during Sturm scaling".into());
+    }
     let mut sequence = sturm_sequence(&normalized);
     if let Some(gcd) = sequence.last().filter(|p| p.coeffs.len() > 1).cloned() {
         sequence = sequence
@@ -86,137 +108,387 @@ fn counting_sequence(poly: &Polynomial) -> Vec<Polynomial> {
             .map(f64::abs)
             .fold(0.0, f64::max);
         if scale > 0.0 && scale.is_finite() {
+            let scale = power_of_two(scale);
             for coefficient in &mut polynomial.coeffs {
                 *coefficient /= scale;
             }
         }
     }
-    sequence
+    if sequence.iter().any(|p| {
+        p.coeffs.first().is_none_or(|&c| super::exact_eq(c, 0.0))
+            || p.coeffs.iter().any(|c| !c.is_finite())
+    }) {
+        return Err("polynomial Sturm chain is not representable".into());
+    }
+    Ok(sequence)
 }
 
-/// Counts sign changes of the Sturm sequence at a point.
-pub(crate) fn count_sign_changes(
-    sequence: &[Polynomial],
-    point: f64,
-) -> usize {
-    let mut changes = 0;
+struct SturmTerm {
+    polynomial: Polynomial,
+    zero_order: usize,
+}
 
-    let mut last_sign: Option<i8> = None;
-
-    for poly in sequence {
-        let val = poly.eval(point);
-
-        let sign = if val > 0.0 {
-            Some(1)
-        } else if val < 0.0 {
-            Some(-1)
-        } else {
-            None
-        };
-
-        if let Some(s) = sign {
-            if let Some(ls) = last_sign
-                && s != ls
-            {
-                changes += 1;
-            }
-
-            last_sign = Some(s);
+impl SturmTerm {
+    fn new(mut polynomial: Polynomial) -> Self {
+        let retained = polynomial
+            .coeffs
+            .iter()
+            .rposition(|&c| !super::exact_eq(c, 0.0))
+            .map_or(0, |last| last + 1);
+        let zero_order = polynomial.coeffs.len() - retained;
+        polynomial.coeffs.truncate(retained);
+        Self {
+            polynomial,
+            zero_order,
         }
     }
 
-    changes
+    fn sign_at(
+        &self,
+        x: f64,
+    ) -> i8 {
+        if self.zero_order != 0 && super::exact_eq(x, 0.0) {
+            return 0;
+        }
+        // Evaluate the other factor without multiplying by a power of x.
+        // This preserves the sign next to zero even at subnormal x.
+        let value = self.polynomial.eval(x);
+        let sign = i8::from(value > 0.0) - i8::from(value < 0.0);
+        if x < 0.0 && self.zero_order % 2 == 1 {
+            -sign
+        } else {
+            sign
+        }
+    }
 }
 
-/// Isolates real roots of a numerical polynomial.
-///
-/// This function uses a bisection method combined with Sturm's theorem to recursively
-/// narrow down intervals until each interval contains exactly one distinct real root.
-///
-/// # Arguments
-/// * `poly` - The input polynomial as a `Polynomial`.
-/// * `precision` - The desired maximum width of the isolating intervals.
-///
-/// # Returns
-/// A `Result` containing a `Vec<(f64, f64)>` of tuples, where each tuple `(a, b)`
-/// represents an interval `[a, b]` containing exactly one root. Returns an error string
-/// if root bounding or counting fails.
-///
-/// # Errors
-/// Returns an error if the leading coefficient is zero (invalid for root isolation).
-pub fn isolate_real_roots(
-    poly: &Polynomial,
-    precision: f64,
-) -> Result<Vec<(f64, f64)>, String> {
-    if !precision.is_finite() || precision <= 0.0 {
-        return Err("root isolation precision must be finite and positive".into());
-    }
-    let seq = counting_sequence(poly);
+#[derive(Clone, Copy)]
+struct Endpoint {
+    x: f64,
+    variations: usize,
+    is_root: bool,
+}
 
+#[derive(Clone, Copy)]
+struct Bracket {
+    left: Endpoint,
+    right: Endpoint,
+}
+
+impl Bracket {
+    fn count(self) -> Result<usize, String> {
+        self.left
+            .variations
+            .checked_sub(self.right.variations)
+            .ok_or_else(|| "polynomial Sturm variations increased over an interval".into())
+    }
+
+    const fn midpoint(self) -> f64 {
+        f64::midpoint(self.left.x, self.right.x)
+    }
+
+    fn width(self) -> f64 {
+        self.right.x - self.left.x
+    }
+}
+
+/// Certifies zero at a caller-supplied floating endpoint using the original
+/// binary coefficients. Well-separated endpoints need only floating Horner.
+fn exact_endpoint_root(
+    poly: &Polynomial,
+    x: f64,
+) -> bool {
+    let Some(&leading) = poly.coeffs.first() else {
+        return false;
+    };
+    if super::exact_eq(x, 0.0) {
+        return poly.coeffs.last().is_some_and(|&c| super::exact_eq(c, 0.0));
+    }
+    // The positive Horner recurrence bounds the magnitude of the monomials.
+    // Leave extra room for accumulation and subnormal rounding. A subnormal
+    // leading coefficient needs the exact path because its initial rounding
+    // error could be magnified by a large endpoint.
+    let (value, magnitude) = poly.coeffs.iter().fold((0.0_f64, 0.0_f64), |(v, m), &c| {
+        (v.mul_add(x, c), m.mul_add(x.abs(), c.abs()))
+    });
+    let terms = poly.coeffs.len() as f64;
+    let uncertainty = terms * (8.0 * f64::EPSILON) * magnitude + terms * f64::from_bits(1);
+    if leading.is_normal() && value.is_finite() && value.abs() > uncertainty {
+        return false;
+    }
+    if !magnitude.is_finite()
+        && root_bound(poly).is_ok_and(|bound| x.abs() > bound.next_up().next_up())
+    {
+        return false;
+    }
+    let Some(argument) = BigRational::from_float(x) else {
+        return false;
+    };
+    poly.coeffs
+        .iter()
+        .try_fold(BigRational::zero(), |value, &coefficient| {
+            BigRational::from_float(coefficient).map(|coefficient| value * &argument + coefficient)
+        })
+        .is_some_and(|value| value.is_zero())
+}
+
+struct SturmCounter<'a> {
+    original: &'a Polynomial,
+    terms: Vec<SturmTerm>,
+}
+
+fn validate_coefficients(poly: &Polynomial) -> Result<(), String> {
+    if poly
+        .coeffs
+        .iter()
+        .any(|coefficient| !coefficient.is_finite())
+    {
+        return Err("polynomial coefficients must be finite".into());
+    }
+    if poly
+        .coeffs
+        .first()
+        .is_some_and(|&c| super::exact_eq(c, 0.0))
+    {
+        return Err("Leading coefficient cannot be zero.".into());
+    }
+    Ok(())
+}
+
+impl<'a> SturmCounter<'a> {
+    fn new(poly: &'a Polynomial) -> Result<Self, String> {
+        validate_coefficients(poly)?;
+        let terms = counting_sequence(poly)?
+            .into_iter()
+            .map(SturmTerm::new)
+            .collect();
+        Ok(Self {
+            original: poly,
+            terms,
+        })
+    }
+
+    fn endpoint(
+        &self,
+        x: f64,
+        exact_root: Option<bool>,
+    ) -> Endpoint {
+        let Some((first, rest)) = self.terms.split_first() else {
+            return Endpoint {
+                x,
+                variations: 0,
+                is_root: false,
+            };
+        };
+        let mut previous = if exact_root == Some(true) {
+            0
+        } else {
+            first.sign_at(x)
+        };
+        let is_root = exact_root.unwrap_or(previous == 0);
+        let mut variations = 0;
+        for term in rest {
+            let sign = term.sign_at(x);
+            if sign != 0 {
+                variations += usize::from(previous != 0 && sign != previous);
+                previous = sign;
+            }
+        }
+        Endpoint {
+            x,
+            variations,
+            is_root,
+        }
+    }
+
+    fn certified_endpoint(
+        &self,
+        x: f64,
+    ) -> Endpoint {
+        self.endpoint(x, Some(exact_endpoint_root(self.original, x)))
+    }
+
+    fn bracket(
+        &self,
+        (left, right): (f64, f64),
+    ) -> Bracket {
+        let left = self.certified_endpoint(left);
+        let right = if super::exact_eq(left.x, right) {
+            left
+        } else {
+            self.certified_endpoint(right)
+        };
+        Bracket { left, right }
+    }
+
+    // Sturm counts exclude the lower endpoint and include the upper one.
+    fn visit_isolated(
+        &self,
+        bracket: Bracket,
+        precision: f64,
+        mut accept: impl FnMut(Bracket) -> Result<(), String>,
+    ) -> Result<(), String> {
+        let mut pending = vec![bracket];
+        let mut subdivisions = 0;
+        while let Some(bracket) = pending.pop() {
+            let count = bracket.count()?;
+            if count == 0 {
+                continue;
+            }
+            if count == 1 || bracket.width() < precision {
+                accept(bracket)?;
+                continue;
+            }
+            let midpoint = bracket.midpoint();
+            if super::exact_eq(midpoint, bracket.left.x)
+                || super::exact_eq(midpoint, bracket.right.x)
+            {
+                return Err("roots cannot be separated at requested floating precision".into());
+            }
+            subdivisions += 1;
+            if subdivisions > 131072 {
+                return Err("root isolation work budget exhausted".into());
+            }
+            let midpoint = self.certified_endpoint(midpoint);
+            pending.push(Bracket {
+                left: midpoint,
+                right: bracket.right,
+            });
+            pending.push(Bracket {
+                left: bracket.left,
+                right: midpoint,
+            });
+        }
+        Ok(())
+    }
+
+    fn closed_interval(
+        &self,
+        bracket: Bracket,
+    ) -> Result<(f64, f64), String> {
+        let mut left = bracket.left;
+        if left.is_root {
+            let successor = left.x.next_up();
+            if successor > bracket.right.x {
+                return Err("roots cannot be enclosed by separate floating intervals".into());
+            }
+            let successor = self.certified_endpoint(successor);
+            let skipped = Bracket {
+                left,
+                right: successor,
+            }
+            .count()?;
+            if skipped > usize::from(successor.is_root) {
+                return Err("roots cannot be enclosed by separate floating intervals".into());
+            }
+            left = successor;
+        }
+        Ok((left.x, bracket.right.x))
+    }
+
+    fn refine(
+        &self,
+        mut bracket: Bracket,
+        tolerance: f64,
+    ) -> Result<f64, String> {
+        if bracket.count()? == 0 {
+            return Err("the root interval contains no root".into());
+        }
+        if bracket.right.is_root {
+            return Ok(bracket.right.x);
+        }
+        // Counts, unlike residual signs, also locate roots of even multiplicity.
+        for _ in 0..4096 {
+            let midpoint = bracket.midpoint();
+            if super::exact_eq(midpoint, bracket.left.x) {
+                return Ok(bracket.right.x);
+            }
+            if bracket.width() <= tolerance || super::exact_eq(midpoint, bracket.right.x) {
+                return Ok(midpoint);
+            }
+            let endpoint = self.endpoint(midpoint, None);
+            let lower = Bracket {
+                left: bracket.left,
+                right: endpoint,
+            };
+            let upper = Bracket {
+                left: endpoint,
+                right: bracket.right,
+            };
+            let lower_count = lower.count()?;
+            let upper_count = upper.count()?;
+            if lower_count != 0 {
+                bracket = lower;
+            } else if upper_count != 0 {
+                bracket = upper;
+            } else {
+                return Err("polynomial Sturm count was lost during refinement".into());
+            }
+        }
+        Err("root refinement work budget exhausted".into())
+    }
+
+    fn find(
+        &self,
+        bracket: Bracket,
+        tolerance: f64,
+    ) -> Result<Vec<f64>, String> {
+        let mut roots = Vec::new();
+        if bracket.left.is_root {
+            roots.push(bracket.left.x);
+        }
+        self.visit_isolated(bracket, tolerance, |interval| {
+            roots.push(self.refine(interval, tolerance)?);
+            Ok(())
+        })?;
+        Ok(roots)
+    }
+}
+
+fn valid_precision(value: f64) -> bool {
+    value.is_finite() && value > 0.0
+}
+
+fn valid_interval((left, right): (f64, f64)) -> bool {
+    left.is_finite() && right.is_finite() && left <= right
+}
+
+fn whole_interval(poly: &Polynomial) -> Result<(f64, f64), String> {
     let bound = root_bound(poly)?;
     if !bound.is_finite() {
         return Err("polynomial root bound is not representable".into());
     }
+    Ok((-bound, bound))
+}
 
-    let mut roots = Vec::new();
-
-    let mut stack = vec![(-bound, bound)];
-
-    while let Some((a, b)) = stack.pop() {
-        if b - a < precision {
-            let changes_a = count_sign_changes(&seq, a);
-
-            let changes_b = count_sign_changes(&seq, b);
-
-            let num_roots = changes_a.saturating_sub(changes_b);
-
-            if num_roots >= 1 {
-                // Interval is small but contains roots. We can't separate further within precision.
-                // Treat as one interval.
-                roots.push((a, b));
-            }
-
-            continue;
-        }
-
-        let changes_a = count_sign_changes(&seq, a);
-
-        let changes_b = count_sign_changes(&seq, b);
-
-        let num_roots = changes_a.saturating_sub(changes_b);
-
-        if num_roots == 0 {
-            continue;
-        }
-        if num_roots == 1 {
-            roots.push((a, b));
-        } else {
-            let mid = f64::midpoint(a, b);
-            if super::exact_eq(mid, a) || super::exact_eq(mid, b) {
-                return Err("roots cannot be separated at requested floating precision".into());
-            }
-            if stack.len() > 131072 {
-                return Err("root isolation work budget exhausted".into());
-            }
-            stack.push((a, mid));
-
-            stack.push((mid, b));
-        }
+/// Isolates the numerical real roots of a polynomial in ascending order.
+///
+/// Intervals are closed. A bracket may be wider than `precision` if its
+/// Sturm count is one. Roots that stay together in a bracket narrower than
+/// `precision` are returned as one cluster interval.
+///
+/// # Errors
+/// Invalid coefficients or precision, an unrepresentable root bound or
+/// Sturm chain, or failure to separate adjacent brackets in floating point.
+pub fn isolate_real_roots(
+    poly: &Polynomial,
+    precision: f64,
+) -> Result<Vec<(f64, f64)>, String> {
+    if !valid_precision(precision) {
+        return Err("root isolation precision must be finite and positive".into());
     }
-
-    roots.sort_by(|a, b| {
-        a.0.partial_cmp(&b.0).unwrap_or_else(|| {
-            if a.0.is_nan() && !b.0.is_nan() {
-                std::cmp::Ordering::Greater
-            } else if !a.0.is_nan() && b.0.is_nan() {
-                std::cmp::Ordering::Less
-            } else {
-                std::cmp::Ordering::Equal
-            }
-        })
-    });
-
-    Ok(roots)
+    let interval = whole_interval(poly)?;
+    let counter = SturmCounter::new(poly)?;
+    let bracket = counter.bracket(interval);
+    let mut intervals = Vec::new();
+    if bracket.left.is_root {
+        intervals.push((bracket.left.x, bracket.left.x));
+    }
+    counter.visit_isolated(bracket, precision, |interval| {
+        intervals.push(counter.closed_interval(interval)?);
+        Ok(())
+    })?;
+    Ok(intervals)
 }
 
 /// Computes an upper bound for the absolute value of the real roots (Cauchy's bound).
@@ -243,105 +515,85 @@ pub(crate) fn root_bound(poly: &Polynomial) -> Result<f64, String> {
     Ok(1.0 + max_coeff / lc.abs())
 }
 
-/// Refines a root within an isolated interval using the bisection method.
+/// Refines one isolated root in a closed interval by Sturm bisection.
 ///
-/// # Arguments
-/// * `poly` - The polynomial.
-/// * `interval` - A tuple `(min, max)` known to contain exactly one root.
-/// * `tolerance` - The convergence tolerance.
-///
-/// # Returns
-/// The approximated root.
+/// Returns NaN for invalid endpoints, tolerance, polynomial or root counts.
+/// If the width cannot be reduced further in floating point, returns an
+/// endpoint of the last bracket.
 #[must_use]
 pub fn refine_root_bisection(
     poly: &Polynomial,
     interval: (f64, f64),
     tolerance: f64,
 ) -> f64 {
-    let (mut a, mut b) = interval;
-    if !a.is_finite() || !b.is_finite() || a > b || !tolerance.is_finite() || tolerance <= 0.0 {
+    if !valid_interval(interval) || !valid_precision(tolerance) {
         return f64::NAN;
     }
-    let sequence = counting_sequence(poly);
-    if sequence
-        .first()
-        .is_some_and(|p| super::exact_eq(p.eval(a), 0.0))
-    {
-        return a;
-    }
-    if sequence
-        .first()
-        .is_some_and(|p| super::exact_eq(p.eval(b), 0.0))
-    {
-        return b;
-    }
-    let mut changes_a = count_sign_changes(&sequence, a);
-    if changes_a <= count_sign_changes(&sequence, b) {
-        return f64::NAN;
-    }
-    // Root counts, rather than a sign-changing residual, also refine roots of
-    // even multiplicity. Absolute residual tolerances depend on coefficient
-    // scaling and cannot certify an error in the root coordinate.
-    for _ in 0..4096 {
-        let midpoint = f64::midpoint(a, b);
-        if (b - a).abs() <= tolerance
-            || super::exact_eq(midpoint, a)
-            || super::exact_eq(midpoint, b)
-        {
-            return midpoint;
-        }
-        let changes_mid = count_sign_changes(&sequence, midpoint);
-        if changes_a > changes_mid {
-            b = midpoint;
+    if super::exact_eq(interval.0, interval.1) {
+        return if validate_coefficients(poly).is_ok() && exact_endpoint_root(poly, interval.0) {
+            interval.0
         } else {
-            a = midpoint;
-            changes_a = changes_mid;
-        }
+            f64::NAN
+        };
     }
-    f64::NAN
+    let Ok(counter) = SturmCounter::new(poly) else {
+        return f64::NAN;
+    };
+    let bracket = counter.bracket(interval);
+    if bracket.left.is_root {
+        return bracket.left.x;
+    }
+    counter.refine(bracket, tolerance).unwrap_or(f64::NAN)
 }
 
-/// Finds all distinct real roots of a polynomial.
+/// Finds numerical real roots of the polynomial in ascending order.
 ///
-/// This function first isolates roots using Sturm sequences and then refines them
-/// using the bisection method.
-///
-/// # Arguments
-/// * `poly` - The polynomial.
-/// * `tolerance` - The tolerance for root refinement.
-///
-/// # Returns
-/// A `Result` containing a sorted `Vec<f64>` of roots.
+/// Root isolation and refinement reuse the same Sturm chain. When distinct
+/// roots stay together in a bracket narrower than `tolerance`, the method
+/// returns one representative for that cluster.
 ///
 /// # Errors
-/// Returns an error if root isolation fails (e.g., if the leading coefficient is zero).
+/// Invalid coefficients or tolerance, an unrepresentable root bound or
+/// Sturm chain, or failure to isolate or refine a bracket.
 pub fn find_roots(
     poly: &Polynomial,
     tolerance: f64,
 ) -> Result<Vec<f64>, String> {
-    // Stage 1: Isolate roots. Use a coarser precision for isolation to save time,
-    // but ensuring it's fine enough to separate close roots.
-    // Sturm guarantees separation, so precision here just needs to be reasonable
-    // to stop the isolation recursion. 0.1 is often too coarse if roots are close,
-    // but the isolation logic splits until count is 1. The 'precision' arg in 'isolate_real_roots'
-    // is a stop condition for when to give up if the interval is too small but count > 1?
-    // We use the requested tolerance for isolation to ensure we separate close roots.
-    // If roots are closer than 'tolerance', they might be treated as a single root (or cluster),
-    // which is practically acceptable for numerical finding.
-    let isolation_precision = tolerance;
-
-    let intervals = isolate_real_roots(poly, isolation_precision)?;
-
-    let mut roots = Vec::with_capacity(intervals.len());
-
-    for interval in intervals {
-        let root = refine_root_bisection(poly, interval, tolerance);
-
-        roots.push(root);
+    if !valid_precision(tolerance) {
+        return Err("root tolerance must be finite and positive".into());
     }
+    let interval = whole_interval(poly)?;
+    let counter = SturmCounter::new(poly)?;
+    counter.find(counter.bracket(interval), tolerance)
+}
 
-    // Sort and dedup just in case, though Sturm guarantees distinct intervals
-    roots.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-
-    Ok(roots)
+/// Finds numerical real roots in the finite closed interval `[left, right]`.
+///
+/// Includes roots at either endpoint and returns results in ascending order.
+/// Endpoint checks use the original binary coefficients. Only the requested
+/// interval is searched, with the tolerance and cluster behavior of [`find_roots`].
+///
+/// # Errors
+/// Non-finite or reversed endpoints, invalid coefficients or tolerance,
+/// or a Sturm chain that cannot resolve the requested interval.
+pub fn find_roots_in(
+    poly: &Polynomial,
+    interval: (f64, f64),
+    tolerance: f64,
+) -> Result<Vec<f64>, String> {
+    if !valid_interval(interval) {
+        return Err("root interval endpoints must be finite and nondecreasing".into());
+    }
+    if !valid_precision(tolerance) {
+        return Err("root tolerance must be finite and positive".into());
+    }
+    if super::exact_eq(interval.0, interval.1) {
+        validate_coefficients(poly)?;
+        return Ok(exact_endpoint_root(poly, interval.0)
+            .then_some(interval.0)
+            .into_iter()
+            .collect());
+    }
+    let counter = SturmCounter::new(poly)?;
+    counter.find(counter.bracket(interval), tolerance)
 }

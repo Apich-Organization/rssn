@@ -1365,6 +1365,218 @@ impl AffineTransform2D {
     }
 }
 
+const IFS_DEFAULT_SEED: u64 = 12_345;
+const IFS_DRAW_COUNT: f64 = 2_147_483_648.0;
+const IFS_MAX_DRAW: u32 = (1 << 31) - 1;
+
+/// Invalid input or an unrepresentable orbit for an affine IFS.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IfsError {
+    /// The transform and weight counts differ or are zero.
+    Shape,
+    /// The weights must be finite, nonnegative and include a positive value.
+    InvalidWeights,
+    /// A coefficient or starting coordinate is nonfinite.
+    NonFiniteInput,
+    /// An affine step produced a nonfinite coordinate.
+    NonFiniteOrbit,
+    /// The work count overflows or a result allocation could not be reserved.
+    WorkLimit,
+}
+
+impl std::fmt::Display for IfsError {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        f.write_str(match self {
+            | Self::Shape => "IFS transforms and weights must have the same nonzero length",
+            | Self::InvalidWeights => {
+                "IFS weights must be finite and nonnegative with a positive total"
+            },
+            | Self::NonFiniteInput => "IFS coefficients and starting coordinates must be finite",
+            | Self::NonFiniteOrbit => "IFS step produced a nonfinite coordinate",
+            | Self::WorkLimit => "IFS work count or allocation exceeds capacity",
+        })
+    }
+}
+
+impl std::error::Error for IfsError {}
+
+/// A prepared affine iterated function system with fixed selection weights.
+///
+/// Preparation keeps the reachable integer cut points of the 31-bit drawing
+/// sequence. Reuse the same plan for independent starting points and seeds.
+#[derive(Debug, Clone)]
+pub struct AffineIfs {
+    transforms: Box<[AffineTransform2D]>,
+    cut_points: Box<[u32]>,
+}
+
+impl AffineIfs {
+    pub(crate) fn heap_bytes(&self) -> usize {
+        std::mem::size_of_val(self.transforms.as_ref())
+            .saturating_add(std::mem::size_of_val(self.cut_points.as_ref()))
+    }
+
+    /// Prepares an affine IFS from finite coefficients and relative weights.
+    ///
+    /// Zero-weight transformations are excluded. Bounds are inclusive at
+    /// the upper end of each draw interval.
+    ///
+    /// # Errors
+    /// Invalid shape, weights, coefficients or a failed allocation.
+    pub fn new(
+        transforms: &[AffineTransform2D],
+        weights: &[f64],
+    ) -> Result<Self, IfsError> {
+        if transforms.is_empty() || transforms.len() != weights.len() {
+            return Err(IfsError::Shape);
+        }
+        if transforms.iter().any(|map| {
+            ![map.a, map.b, map.c, map.d, map.e, map.f]
+                .into_iter()
+                .all(f64::is_finite)
+        }) {
+            return Err(IfsError::NonFiniteInput);
+        }
+        let (mut total, mut largest, mut positive) = (0.0, 0.0_f64, 0);
+        for &weight in weights {
+            if !weight.is_finite() || weight < 0.0 {
+                return Err(IfsError::InvalidWeights);
+            }
+            total += weight;
+            largest = largest.max(weight);
+            positive += usize::from(weight > 0.0);
+        }
+        if positive == 0 {
+            return Err(IfsError::InvalidWeights);
+        }
+        // Keep the old summation and normalization when the total is
+        // representable. Otherwise scale the entire distribution first.
+        let scale = if total.is_finite() {
+            1.0
+        } else {
+            let power_of_two = f64::from_bits(largest.to_bits() & 0x7ff0_0000_0000_0000);
+            total = weights.iter().map(|&weight| weight / power_of_two).sum();
+            power_of_two
+        };
+        let mut selected = Vec::new();
+        let mut cut_points = Vec::new();
+        selected
+            .try_reserve_exact(positive)
+            .map_err(|_| IfsError::WorkLimit)?;
+        cut_points
+            .try_reserve_exact(positive)
+            .map_err(|_| IfsError::WorkLimit)?;
+        let mut cumulative = 0.0;
+        for (&map, &weight) in transforms.iter().zip(weights) {
+            if weight == 0.0 {
+                continue;
+            }
+            cumulative += weight / scale;
+            let cutoff = ((cumulative / total) * IFS_DRAW_COUNT) as u32;
+            let cutoff = cutoff.min(IFS_MAX_DRAW);
+            if cut_points.last().is_none_or(|&previous| previous < cutoff) {
+                cut_points.push(cutoff);
+                selected.push(map);
+            }
+        }
+        if let Some(last) = cut_points.last_mut() {
+            *last = IFS_MAX_DRAW;
+        }
+        Ok(Self {
+            transforms: selected.into_boxed_slice(),
+            cut_points: cut_points.into_boxed_slice(),
+        })
+    }
+
+    /// Generates `num_points` transformed points after `skip` burn-in steps.
+    ///
+    /// The seed selects the same draw stream on every call. The starting
+    /// point itself is excluded. A request for zero points skips the burn-in.
+    ///
+    /// # Errors
+    /// A nonfinite starting point or step, work count overflow, or allocation
+    /// failure.
+    pub fn generate(
+        &self,
+        start: Point2D,
+        num_points: usize,
+        skip: usize,
+        seed: u64,
+    ) -> Result<Vec<Point2D>, IfsError> {
+        if !start.0.is_finite() || !start.1.is_finite() {
+            return Err(IfsError::NonFiniteInput);
+        }
+        let mut points = Vec::new();
+        if num_points == 0 {
+            return Ok(points);
+        }
+        skip.checked_add(num_points).ok_or(IfsError::WorkLimit)?;
+        points
+            .try_reserve_exact(num_points)
+            .map_err(|_| IfsError::WorkLimit)?;
+        let thresholds = self.cut_points.len() - 1;
+        if thresholds == 0 {
+            self.generate_with(start, num_points, skip, seed, points, |_| 0)
+        } else if thresholds <= 3 {
+            let mut small = [IFS_MAX_DRAW; 3];
+            small[..thresholds].copy_from_slice(&self.cut_points[..thresholds]);
+            let [a, b, c] = small;
+            self.generate_with(start, num_points, skip, seed, points, |draw| {
+                usize::from(a < draw) + usize::from(b < draw) + usize::from(c < draw)
+            })
+        } else {
+            self.generate_with(start, num_points, skip, seed, points, |draw| {
+                self.cut_points.partition_point(|&cutoff| cutoff < draw)
+            })
+        }
+    }
+
+    fn generate_with(
+        &self,
+        mut point: Point2D,
+        num_points: usize,
+        skip: usize,
+        mut seed: u64,
+        mut points: Vec<Point2D>,
+        select: impl Fn(u32) -> usize,
+    ) -> Result<Vec<Point2D>, IfsError> {
+        const CHECK_INTERVAL: usize = 64;
+        let mut advance = |point| {
+            seed = seed.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+            self.transforms[select((seed >> 33) as u32)].apply(point)
+        };
+        let validate = |(x, y): Point2D| {
+            if x.is_finite() && y.is_finite() {
+                Ok(())
+            } else {
+                Err(IfsError::NonFiniteOrbit)
+            }
+        };
+        // Each affine coordinate uses both inputs. A nonfinite coordinate
+        // persists in subsequent steps, so a block-end check detects any
+        // failure while bounding how much extra work a failure causes.
+        for offset in (0..skip).step_by(CHECK_INTERVAL) {
+            let block = (skip - offset).min(CHECK_INTERVAL);
+            for _ in 0..block {
+                point = advance(point);
+            }
+            validate(point)?;
+        }
+        for offset in (0..num_points).step_by(CHECK_INTERVAL) {
+            let block = (num_points - offset).min(CHECK_INTERVAL);
+            points.extend((0..block).map(|_| {
+                point = advance(point);
+                point
+            }));
+            validate(point)?;
+        }
+        Ok(points)
+    }
+}
+
 /// Generates an IFS fractal using the chaos game algorithm.
 ///
 /// # Arguments
@@ -1375,7 +1587,8 @@ impl AffineTransform2D {
 /// * `skip` - Number of initial points to skip (for convergence).
 ///
 /// # Returns
-/// A vector of 2D points on the fractal.
+/// A vector of 2D points on the fractal. Invalid input or a nonfinite orbit
+/// yields an empty vector. Use [`AffineIfs`] to reuse preparation or choose a seed.
 #[must_use]
 pub fn generate_ifs_fractal(
     transforms: &[AffineTransform2D],
@@ -1384,56 +1597,18 @@ pub fn generate_ifs_fractal(
     num_points: usize,
     skip: usize,
 ) -> Vec<(f64, f64)> {
-    if transforms.is_empty() || transforms.len() != probabilities.len() {
-        return vec![];
-    }
+    generate_ifs_checked(transforms, probabilities, start_point, num_points, skip)
+        .unwrap_or_default()
+}
 
-    // Build cumulative probabilities
-    let mut cumulative = Vec::with_capacity(probabilities.len());
-
-    let mut sum = 0.0;
-
-    for &p in probabilities {
-        sum += p;
-
-        cumulative.push(sum);
-    }
-
-    // Normalize
-    for c in &mut cumulative {
-        *c /= sum;
-    }
-
-    let mut points = Vec::with_capacity(num_points);
-
-    let mut current = start_point;
-
-    // Simple LCG random number generator for reproducibility
-    let mut rng_state = 12345u64;
-
-    let lcg_next = |state: &mut u64| -> f64 {
-        *state = state
-            .wrapping_mul(6_364_136_223_846_793_005)
-            .wrapping_add(1);
-
-        // The top 31 bits give an integer in [0, 2^31); dividing by 2^31
-        // yields r uniformly in [0, 1), covering all cumulative bins.
-        (*state >> 33) as f64 / 2_147_483_648.0
-    };
-
-    for i in 0..(num_points + skip) {
-        let r = lcg_next(&mut rng_state);
-
-        let idx = cumulative.iter().position(|&c| r <= c).unwrap_or(0);
-
-        current = transforms[idx].apply(current);
-
-        if i >= skip {
-            points.push(current);
-        }
-    }
-
-    points
+pub(crate) fn generate_ifs_checked(
+    transforms: &[AffineTransform2D],
+    weights: &[f64],
+    start: Point2D,
+    points: usize,
+    skip: usize,
+) -> Result<Vec<Point2D>, IfsError> {
+    AffineIfs::new(transforms, weights)?.generate(start, points, skip, IFS_DEFAULT_SEED)
 }
 
 /// Creates the Sierpinski triangle IFS.

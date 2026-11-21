@@ -15,9 +15,11 @@ use rssn::kernels::special::ln_gamma_numerical;
 use rssn::kernels::special_ext::anger_j;
 use rssn::kernels::special_ext::appell_f1;
 use rssn::kernels::special_ext::bessel_in;
+use rssn::kernels::special_ext::bessel_in_log_abs;
 use rssn::kernels::special_ext::bessel_in_scaled;
 use rssn::kernels::special_ext::bessel_jn;
 use rssn::kernels::special_ext::carlson_rf;
+use rssn::kernels::special_ext::carlson_rg;
 use rssn::kernels::special_ext::coulomb_c;
 use rssn::kernels::special_ext::coulomb_f;
 use rssn::kernels::special_ext::coulomb_f_prime;
@@ -31,7 +33,9 @@ use rssn::kernels::special_ext::elliptic_f;
 use rssn::kernels::special_ext::elliptic_k;
 use rssn::kernels::special_ext::hyp1f1;
 use rssn::kernels::special_ext::hyp2f1;
+use rssn::kernels::special_ext::jacobi_amplitude;
 use rssn::kernels::special_ext::jacobi_elliptic;
+use rssn::kernels::special_ext::jacobi_elliptic_batch;
 use rssn::kernels::special_ext::kelvin_bei;
 use rssn::kernels::special_ext::kelvin_ber;
 use rssn::kernels::special_ext::kelvin_kei;
@@ -99,6 +103,68 @@ fn incomplete_elliptic() {
 }
 
 #[test]
+fn incomplete_elliptic_handles_unit_parameter_and_its_small_complement() {
+    let quarter = std::f64::consts::FRAC_PI_2;
+    for phi in [-quarter.next_down(), -0.7, 0.7, quarter.next_down()] {
+        let expected = ((1.0 + phi.sin().abs()) / phi.cos()).ln().copysign(phi);
+        close(elliptic_f(phi, 1.0), expected, 3e-15);
+        close(elliptic_e_inc(phi, 1.0), phi.sin(), 2e-15);
+    }
+    assert_eq!(elliptic_f(quarter, 1.0), f64::INFINITY);
+    assert_eq!(elliptic_f(-quarter, 1.0), f64::NEG_INFINITY);
+    assert_eq!(elliptic_f(2.0 * PI, 1.0), f64::INFINITY);
+    close(elliptic_e_inc(PI + 0.7, 1.0), 2.0 + 0.7_f64.sin(), 2e-15);
+    assert_eq!(elliptic_f(-0.0, 1.0).to_bits(), (-0.0_f64).to_bits());
+    assert_eq!(elliptic_e_inc(-f64::MAX, 0.0), -f64::MAX);
+
+    let near_one = 1.0_f64.next_down();
+    close(elliptic_f(quarter, near_one), elliptic_k(near_one), 2e-15);
+    let just_below = quarter.next_down();
+    let expected = elliptic_k(near_one) - just_below.cos() / (1.0 - near_one).sqrt();
+    close(elliptic_f(just_below, near_one), expected, 2e-15);
+    close(
+        elliptic_e_inc(quarter, near_one),
+        elliptic_e(near_one),
+        2e-14,
+    );
+    assert!(elliptic_f(0.1, 1.01).is_nan());
+    assert!(elliptic_e_inc(f64::INFINITY, 0.0).is_nan());
+}
+
+#[test]
+fn carlson_second_kind_respects_symmetry_and_extreme_scale() {
+    assert_eq!(carlson_rg(0.0, 0.0, 0.0), 0.0);
+    assert_eq!(carlson_rg(4.0, 0.0, 0.0), 1.0);
+    close(
+        carlson_rg(0.0, 4.0, 4.0),
+        std::f64::consts::FRAC_PI_2,
+        2e-15,
+    );
+    assert_eq!(carlson_rg(4.0, 4.0, 4.0), 2.0);
+    let want = 0.5 * (3.0 + 2.0 * (0.5 * 7.0_f64).sqrt().asinh() / 7.0_f64.sqrt());
+    close(carlson_rg(2.0, 2.0, 9.0), want, 2e-15);
+    // mpmath elliprg(1, 2, 3) at 80 decimal digits.
+    for (a, b, c) in [(1.0, 2.0, 3.0), (2.0, 3.0, 1.0), (3.0, 1.0, 2.0)] {
+        let reference = 1.401_847_099_990_895;
+        close(carlson_rg(a, b, c), reference, 3e-15);
+        for scale in [1e-300_f64, 1e300] {
+            close(
+                carlson_rg(a * scale, b * scale, c * scale) / scale.sqrt(),
+                reference,
+                3e-15,
+            );
+        }
+    }
+    assert_eq!(
+        carlson_rg(0.0, f64::from_bits(1), f64::MAX),
+        0.5 * f64::MAX.sqrt()
+    );
+    assert!(carlson_rg(-1.0, 2.0, 3.0).is_nan());
+    assert!(carlson_rg(1.0, 2.0, f64::INFINITY).is_nan());
+    assert!(carlson_rg(1.0, 2.0, f64::NAN).is_nan());
+}
+
+#[test]
 fn jacobi_functions() {
     let (sn, cn, dn) = jacobi_elliptic(0.7, 0.0);
     close(sn, 0.7_f64.sin(), 1e-14);
@@ -109,6 +175,84 @@ fn jacobi_functions() {
     close(cn, (1.0 - sn * sn).sqrt(), 1e-12);
     close(dn, (1.0 - 0.5 * sn * sn).sqrt(), 1e-12);
     close(sn * sn + cn * cn, 1.0, 1e-14);
+}
+
+#[test]
+fn jacobi_amplitude_inverts_first_integral_over_multiple_periods() {
+    for m in [0.0, 0.25, 0.8, 0.999] {
+        for phi in [-30.3, -8.0, -0.4, 0.0, 0.7, 4.0, 33.3] {
+            let u = elliptic_f(phi, m);
+            let got = jacobi_amplitude(u, m);
+            close(got, phi, 2e-14);
+            let (sn, cn, _) = jacobi_elliptic(u, m);
+            close(got.sin(), sn, 8e-14);
+            close(got.cos(), cn, 8e-14);
+        }
+    }
+    assert_eq!(jacobi_amplitude(f64::MAX, 0.0), f64::MAX);
+    assert_eq!(jacobi_amplitude(-0.0, 0.3).to_bits(), (-0.0_f64).to_bits());
+    let u = 0.9_f64;
+    close(
+        jacobi_amplitude(u, 1.0),
+        2.0 * u.exp().atan() - std::f64::consts::FRAC_PI_2,
+        2e-15,
+    );
+    assert!(jacobi_amplitude(1.0, f64::NAN).is_nan());
+    assert!(jacobi_amplitude(f64::INFINITY, 0.3).is_nan());
+}
+
+#[test]
+fn jacobi_endpoint_limits_preserve_nonzero_values_and_nearby_periods() {
+    let m = 1.0_f64.next_down();
+    // Rounded 80-digit values from mpmath ellipfun at the exact binary64 m.
+    let (_, c, d) = jacobi_elliptic(10.0, m);
+    assert!((c / 9.079_985_903_213_866e-5 - 1.0).abs() < 2e-11);
+    assert!((d / 9.079_985_964_349_588e-5 - 1.0).abs() < 2e-11);
+    let k = elliptic_k(m);
+    let (s, c, d) = jacobi_elliptic(k, m);
+    close(s, 1.0, 1e-15);
+    close(c, 0.0, 1e-14);
+    assert!((d / (1.0 - m).sqrt() - 1.0).abs() < 1e-13);
+    let (s, c, d) = jacobi_elliptic(2.0 * k, m);
+    close(s, 0.0, 2e-14);
+    close(c, -1.0, 1e-15);
+    close(d, 1.0, 1e-15);
+
+    for (u, bits) in [(744.0, 3), (745.5, 1), (-745.5, 1), (745.8, 1), (745.9, 0)] {
+        let (_, c, d) = jacobi_elliptic(u, 1.0);
+        assert_eq!(c.to_bits(), bits, "cn({u}, 1)");
+        assert_eq!(d.to_bits(), bits, "dn({u}, 1)");
+    }
+    let (s, c, d) = jacobi_elliptic(f64::MAX, 0.9);
+    assert!(s.is_finite() && c.is_finite() && d.is_finite());
+    close(s * s + c * c, 1.0, 2e-15);
+    close(d * d + 0.9 * s * s, 1.0, 2e-15);
+}
+
+#[test]
+fn jacobi_batch_reuses_one_plan_and_preserves_order_and_bits() {
+    let mut inputs: Vec<f64> = (0..2048).map(|i| 0.371 * f64::from(i) - 380.0).collect();
+    inputs.extend([-0.0, f64::NAN, f64::INFINITY, f64::MAX]);
+    for m in [0.0, 0.35, 1.0, f64::NAN] {
+        let expected: Vec<_> = inputs
+            .iter()
+            .map(|&u| <[f64; 3]>::from(jacobi_elliptic(u, m)).map(f64::to_bits))
+            .collect();
+        for threads in [1, 4] {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap();
+            let actual = pool.install(|| jacobi_elliptic_batch(&inputs, m));
+            assert!(
+                actual
+                    .into_iter()
+                    .map(|row| row.map(f64::to_bits))
+                    .eq(expected.iter().copied())
+            );
+        }
+    }
+    assert!(jacobi_elliptic_batch(&[], 0.6).is_empty());
 }
 
 #[test]
@@ -717,6 +861,82 @@ fn bessel_i_reference_values() {
     }
     assert!(bessel_in(0, 1000.0).is_infinite());
     close(bessel_in(3, -2.0), -bessel_in(3, 2.0), 1e-14);
+}
+
+#[test]
+fn bessel_i_preserves_representable_results_between_scales() {
+    // Reference values use mpmath at 80 decimal digits.
+    for (n, x, value, scaled) in [
+        (
+            0,
+            710.0,
+            3.345_334_558_619_656e306,
+            1.497_467_500_502_415_7e-2,
+        ),
+        (
+            1,
+            -710.0,
+            -3.342_977_858_509_763e306,
+            -1.496_412_574_078_419_5e-2,
+        ),
+        (
+            1000,
+            1000.0,
+            2.723_453_646_910_843e229,
+            1.382_413_877_110_061e-205,
+        ),
+        (
+            300,
+            25.0,
+            6.493_085_299_984_382e-286,
+            9.017_560_415_660_616e-297,
+        ),
+        (2000, 1000.0, 1.295_095_390_775_680_6e-285, 0.0),
+        (8192, 5450.0, 8.694_007_864_710_012e13, 0.0),
+    ] {
+        assert!(rel(bessel_in(n, x), value) < 3e-12, "I_{n}({x})");
+        if scaled == 0.0 {
+            assert_eq!(bessel_in_scaled(n, x), 0.0);
+        } else {
+            assert!(
+                rel(bessel_in_scaled(n, x), scaled) < 3e-12,
+                "scaled I_{n}({x})"
+            );
+        }
+    }
+    assert!(bessel_in(0, 714.0).is_infinite());
+    assert_eq!(bessel_in(0, f64::MAX), f64::INFINITY);
+    assert!(rel(bessel_in_scaled(0, f64::MAX), 2.975_447_459_315_899_5e-155) < 3e-15);
+    assert!(rel(bessel_in_scaled(500, 9000.0), 3.918_703_303_688_904_5e-9) < 3e-14);
+}
+
+#[test]
+fn bessel_i_log_abs_preserves_underflowed_values_and_tiny_logs() {
+    for (n, x, expected) in [
+        (0, 1e-20, 2.5e-41),
+        (0, 710.0, 705.798_605_162_281_3),
+        (1000, 20.0, -3609.443_190_373_611_3),
+        (2000, 1000.0, -655.978_167_150_033_7),
+        (8192, 5450.0, 32.096_240_246_102_31),
+        (8000, 8192.0, 4527.059_762_526_437),
+    ] {
+        let actual = bessel_in_log_abs(n, x);
+        assert!(
+            rel(actual, expected) < 3e-13,
+            "ln |I_{n}({x})| = {actual:e}"
+        );
+        assert_eq!(bessel_in_log_abs(-n, -x), actual);
+    }
+
+    assert_eq!(bessel_in(3, -0.0).to_bits(), 0);
+    assert!(bessel_in(3, f64::NEG_INFINITY).is_nan());
+    assert!(bessel_in(-2, f64::INFINITY).is_nan());
+    assert_eq!(bessel_in_scaled(3, f64::NEG_INFINITY).to_bits(), 0);
+    assert_eq!(bessel_in_log_abs(0, -0.0), 0.0);
+    assert_eq!(bessel_in_log_abs(3, 0.0), f64::NEG_INFINITY);
+    assert_eq!(bessel_in_log_abs(3, f64::NEG_INFINITY), f64::INFINITY);
+    assert!(bessel_in_log_abs(0, f64::NAN).is_nan());
+    assert!(bessel_in_log_abs(i32::MIN, 1.0).is_finite());
 }
 
 #[test]

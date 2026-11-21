@@ -5,6 +5,7 @@ use assert_approx_eq::assert_approx_eq;
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
 use rssn::kernels::polynomial::Polynomial;
+use rssn::kernels::polynomial::PolynomialDivisionError;
 
 fn cfg() -> ProptestConfig {
     ProptestConfig {
@@ -83,6 +84,41 @@ fn long_division_symmetric_quotient_and_exact_division() {
         Polynomial::new(vec![1.0, 0.0, -1.0]).long_division(&Polynomial::new(vec![1.0, -1.0]));
     assert_eq!(&q.coeffs[..2], &[1.0, 1.0]);
     assert!(r.is_zero(1e-12));
+}
+
+#[test]
+fn checked_long_division_validates_zero_nonfinite_and_padded_divisors() {
+    let p = Polynomial::new(vec![2.0, 3.0]);
+    for divisor in [vec![], vec![0.0, -0.0]] {
+        assert_eq!(
+            p.clone().try_long_division(&Polynomial::new(divisor)),
+            Err(PolynomialDivisionError::ZeroDivisor)
+        );
+    }
+    assert_eq!(
+        p.clone()
+            .try_long_division(&Polynomial::new(vec![f64::INFINITY])),
+        Err(PolynomialDivisionError::NonFiniteInput)
+    );
+    let (q, r) = p
+        .try_long_division(&Polynomial::new(vec![-0.0, 1.0, -1.0]))
+        .unwrap();
+    assert_eq!(q.coeffs, [2.0]);
+    assert_eq!(r.coeffs, [5.0]);
+}
+
+#[test]
+fn checked_long_division_recovers_a_finite_remainder_after_product_overflow() {
+    let divisor = Polynomial::new(vec![1.0, f64::MAX]);
+    let (q, r) = Polynomial::new(vec![2.0, f64::MAX])
+        .try_long_division(&divisor)
+        .unwrap();
+    assert_eq!(q.coeffs, [2.0]);
+    assert_eq!(r.coeffs, [-f64::MAX]);
+    assert_eq!(
+        Polynomial::new(vec![4.0, f64::MAX]).try_long_division(&divisor),
+        Err(PolynomialDivisionError::NonFiniteResult)
+    );
 }
 
 #[test]

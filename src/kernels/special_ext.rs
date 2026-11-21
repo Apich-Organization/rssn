@@ -1,9 +1,11 @@
+//! Elliptic integrals, hypergeometric functions (real and complex argument) and integer-order Bessel functions.
+//!
 //! # Additional special functions
 //!
 //! Complete and incomplete elliptic integrals (Carlson symmetric forms and
 //! the arithmetic-geometric mean), Gauss hypergeometric `2F1`, Kummer
 //! `1F1`, Bessel functions of integer order (series, Hankel asymptotics and
-//! Miller backward recurrence) and Jacobi elliptic functions with exact
+//! Miller backward recurrence) and Jacobi elliptic functions with real
 //! period reduction.
 //!
 //! Elliptic integrals use the *parameter* `m = k^2`.
@@ -31,6 +33,8 @@
 //! Complex parameters and `pFq`, Kummer `M` and Tricomi `U` live in
 //! [`crate::kernels::hypergeometric`].
 
+use std::f64::consts::FRAC_PI_2;
+use std::f64::consts::LN_2;
 use std::f64::consts::PI;
 
 use num_complex::Complex64;
@@ -146,6 +150,47 @@ pub fn carlson_rd(
             / (ave * ave.sqrt())
 }
 
+/// Carlson's symmetric elliptic integral of the second kind `R_G(x, y, z)`.
+///
+/// The arguments must be nonnegative and finite. Invalid arguments return
+/// NaN. Two zero arguments are allowed, with `R_G(0, 0, z) = sqrt(z) / 2`.
+///
+/// The implementation uses [DLMF 19.21.10](https://dlmf.nist.gov/19.21.E10)
+/// with the median argument in its distinguished position to avoid cancellation.
+#[must_use]
+pub fn carlson_rg(
+    x: f64,
+    y: f64,
+    z: f64,
+) -> f64 {
+    let mut sorted = [x, y, z];
+    if sorted.iter().any(|x| !x.is_finite() || *x < 0.0) {
+        return f64::NAN;
+    }
+    sorted.sort_unstable_by(f64::total_cmp);
+    let [smallest, middle, scale] = sorted;
+    let root = scale.sqrt();
+    if scale <= 0.0 {
+        return 0.0;
+    }
+    let middle = middle / scale;
+    // Viewing R_G as a spherical mean of a square root bounds the absolute
+    // change when discarding both smaller arguments by sqrt(middle). This
+    // avoids an overflowing R_D when the correction is far below one ulp.
+    if middle <= f64::EPSILON * f64::EPSILON / 256.0 {
+        return 0.5 * root;
+    }
+    let smallest = smallest / scale;
+    let rf = carlson_rf(smallest, 1.0, middle);
+    let term = (middle - smallest) * (1.0 - middle) / 3.0;
+    let correction = if term > 0.0 {
+        term * carlson_rd(smallest, 1.0, middle)
+    } else {
+        0.0
+    };
+    (0.5 * (middle * rf + correction + (smallest / middle).sqrt())) * root
+}
+
 /// Complete elliptic integral of the first kind `K(m)`, `m < 1`.
 #[must_use]
 pub fn elliptic_k(m: f64) -> f64 {
@@ -188,101 +233,311 @@ pub fn elliptic_e(m: f64) -> f64 {
 }
 
 /// Incomplete elliptic integral of the first kind `F(phi, m)`.
+///
+/// The amplitude `phi` must be finite and the real parameter `m <= 1`.
+/// At `m = 1` the integral has signed infinity at or beyond the first pole
+/// `|phi| = pi / 2`. Invalid amplitudes or parameters return NaN.
 #[must_use]
 pub fn elliptic_f(
     phi: f64,
     m: f64,
 ) -> f64 {
-    // reduce to |phi| <= pi/2 using F(phi + n pi) = F(phi) + 2 n K
-    let n = (phi / PI).round();
-    let r = phi - n * PI;
+    use crate::kernels::exact_eq;
+
+    if !phi.is_finite() || m > 1.0 || m.is_nan() {
+        return f64::NAN;
+    }
+    if exact_eq(m, 0.0) || exact_eq(phi, 0.0) {
+        return phi;
+    }
+    if m == f64::NEG_INFINITY {
+        return 0.0_f64.copysign(phi);
+    }
+    if exact_eq(m, 1.0) {
+        return if phi.abs() < FRAC_PI_2 {
+            phi.tan().asinh()
+        } else {
+            f64::INFINITY.copysign(phi)
+        };
+    }
+
+    let r = centered_remainder(phi, PI);
+    if exact_eq(r.abs(), FRAC_PI_2) {
+        let complete = elliptic_k(m);
+        return if exact_eq(phi.abs(), FRAC_PI_2) {
+            complete.copysign(phi)
+        } else {
+            phi * (complete / FRAC_PI_2)
+        };
+    }
     let (s, c) = r.sin_cos();
-    let v = s * carlson_rf(c * c, 1.0 - m * s * s, 1.0);
-    v + 2.0 * n * elliptic_k(m)
+    // cos²(phi) + (1-m) sin²(phi) retains the small complement at m ≈ 1.
+    let q = c * c + (1.0 - m) * s * s;
+    let local = s * carlson_rf(c * c, q, 1.0);
+    extend_period(phi, r, local, elliptic_k, m)
 }
 
 /// Incomplete elliptic integral of the second kind `E(phi, m)`.
+///
+/// The amplitude `phi` must be finite and the real parameter `m <= 1`.
+/// Invalid amplitudes or parameters return NaN.
 #[must_use]
 pub fn elliptic_e_inc(
     phi: f64,
     m: f64,
 ) -> f64 {
-    let n = (phi / PI).round();
-    let r = phi - n * PI;
+    use crate::kernels::exact_eq;
+
+    if !phi.is_finite() || m > 1.0 || m.is_nan() {
+        return f64::NAN;
+    }
+    if exact_eq(m, 0.0) || exact_eq(phi, 0.0) {
+        return phi;
+    }
+    if m == f64::NEG_INFINITY {
+        return f64::INFINITY.copysign(phi);
+    }
+    let r = centered_remainder(phi, PI);
+    if exact_eq(m, 1.0) {
+        return extend_period(phi, r, r.sin(), elliptic_e, m);
+    }
     let (s, c) = r.sin_cos();
-    let q = 1.0 - m * s * s;
-    let v = s * carlson_rf(c * c, q, 1.0) - m / 3.0 * s * s * s * carlson_rd(c * c, q, 1.0);
-    v + 2.0 * n * elliptic_e(m)
+    let q = c * c + (1.0 - m) * s * s;
+    let local = s * carlson_rf(c * c, q, 1.0) - m / 3.0 * s * s * s * carlson_rd(c * c, q, 1.0);
+    extend_period(phi, r, local, elliptic_e, m)
+}
+
+fn centered_remainder(
+    argument: f64,
+    period: f64,
+) -> f64 {
+    let half_period = period * 0.5;
+    if argument.abs() <= half_period {
+        return argument;
+    }
+    let remainder = argument % period;
+    if remainder.abs() > half_period {
+        remainder - period.copysign(remainder)
+    } else {
+        remainder
+    }
+}
+
+fn extend_period(
+    phi: f64,
+    remainder: f64,
+    local: f64,
+    complete_integral: impl FnOnce(f64) -> f64,
+    m: f64,
+) -> f64 {
+    if phi.abs() <= FRAC_PI_2 {
+        return local;
+    }
+    let slope = complete_integral(m) / FRAC_PI_2;
+    phi * slope + (local - remainder * slope)
 }
 
 /// Jacobi elliptic functions `(sn, cn, dn)` of `u` with parameter
-/// `m = k^2` in `[0, 1]`; NaNs outside that range.
+/// `m = k^2` in `[0, 1]`. Nonfinite amplitudes or invalid parameters give
+/// three NaNs.
 ///
 /// The argument is first reduced modulo the real period `4K(m)` and
 /// folded with the quarter-period symmetries
 /// (`sn(2K - v) = sn(v)`, `cn(2K - v) = -cn(v)`, `dn(2K - v) = dn(v)`) so
 /// that the descending Landen / AGM iteration only ever sees an amplitude
-/// in `[0, pi/2]`. The identities `sn^2 + cn^2 = 1` and
-/// `dn^2 + m sn^2 = 1` therefore hold to machine precision for any
-/// `|u|`, and the accuracy is limited only by the representation of `u`
-/// itself (about `|u| * 1e-16`).
+/// in `[0, pi/2]`. For large `|u|`, phase accuracy is limited by the spacing
+/// of `u` and the rounding of the period used for argument reduction.
 #[must_use]
 pub fn jacobi_elliptic(
     u: f64,
     m: f64,
 ) -> (f64, f64, f64) {
-    if !u.is_finite() || !(0.0..=1.0).contains(&m) {
-        return (f64::NAN, f64::NAN, f64::NAN);
-    }
-    if m < 1e-15 {
-        return (u.sin(), u.cos(), 1.0);
-    }
-    if m > 1.0 - 1e-15 {
-        let t = u.tanh();
-        let s = 1.0 / u.cosh();
-        return (t, s, s);
-    }
-    let kk = elliptic_k(m);
-    let period = 4.0 * kk;
-    let r = u - period * (u / period).round();
-    let a = r.abs();
-    let (v, flip) = if a > kk {
-        (2.0 * kk - a, true)
-    } else {
-        (a, false)
-    };
-    let (s, c) = jacobi_landen(v, m);
-    let sn = if r < 0.0 { -s } else { s };
-    let cn = if flip { -c } else { c };
-    let dn = ((1.0 - m) + m * c * c).sqrt();
-    (sn, cn, dn)
+    Jacobi::for_parameter(m).map_or((f64::NAN, f64::NAN, f64::NAN), |plan| plan.values(u))
 }
 
-/// `(sin am, cos am)` for `u` in `[0, K]` by descending Landen iteration.
-fn jacobi_landen(
+/// Jacobi amplitude `am(u | m)`, the continuous real inverse of
+/// [`elliptic_f`] for `m` in `[0, 1]`.
+///
+/// For `m < 1`, the amplitude increases by `pi` over each `2 K(m)` interval.
+/// Nonfinite `u` and parameters outside `[0, 1]` return NaN.
+#[must_use]
+pub fn jacobi_amplitude(
     u: f64,
     m: f64,
-) -> (f64, f64) {
-    let mut a = [0.0; 40];
-    let mut c = [0.0; 40];
-    a[0] = 1.0;
-    let mut b = (1.0 - m).sqrt();
-    c[0] = m.sqrt();
-    let mut n = 0;
-    while n < 39 && c[n].abs() > 1e-16 {
-        a[n + 1] = f64::midpoint(a[n], b);
-        c[n + 1] = 0.5 * (a[n] - b);
-        b = (a[n] * b).sqrt();
-        n += 1;
+) -> f64 {
+    if !u.is_finite() {
+        return f64::NAN;
     }
-    let mut phi = (2.0_f64).powi(n as i32) * a[n] * u;
-    let mut i = n;
-    while i > 0 {
-        let arg = (c[i] * phi.sin() / a[i]).clamp(-1.0, 1.0);
-        phi = f64::midpoint(phi, arg.asin());
-        i -= 1;
+    match Jacobi::for_parameter(m) {
+        | Some(Jacobi::Circular) => u,
+        | Some(Jacobi::Hyperbolic) => 2.0 * (0.5 * u).tanh().atan(),
+        | Some(Jacobi::Landen(plan)) => {
+            let r = centered_remainder(u, 2.0 * plan.quarter);
+            let local = plan.principal(r.abs()).copysign(r);
+            if u.abs() <= plan.quarter {
+                local
+            } else {
+                let slope = FRAC_PI_2 / plan.quarter;
+                u * slope + (local - r * slope)
+            }
+        },
+        | None => f64::NAN,
     }
-    phi.sin_cos()
+}
+
+/// Evaluates the Jacobi elliptic functions at several points with one parameter.
+///
+/// Each output row holds `[sn, cn, dn]` for the corresponding input. Invalid
+/// arguments produce the same NaN rows as [`jacobi_elliptic`].
+/// The Landen plan is reused across all rows, and large batches can run in
+/// parallel without changing result order or arithmetic.
+#[must_use]
+pub fn jacobi_elliptic_batch(
+    inputs: &[f64],
+    m: f64,
+) -> Vec<[f64; 3]> {
+    if inputs.is_empty() {
+        return Vec::new();
+    }
+    let Some(plan) = Jacobi::for_parameter(m) else {
+        return vec![[f64::NAN; 3]; inputs.len()];
+    };
+    super::par::map_slice(inputs, 1024, |&u| plan.values(u).into())
+}
+
+enum Jacobi {
+    Circular,
+    Hyperbolic,
+    Landen(JacobiLanden),
+}
+
+impl Jacobi {
+    fn for_parameter(m: f64) -> Option<Self> {
+        if !(0.0..=1.0).contains(&m) {
+            return None;
+        }
+        if crate::kernels::exact_eq(m, 0.0) {
+            return Some(Self::Circular);
+        }
+        if crate::kernels::exact_eq(m, 1.0) {
+            return Some(Self::Hyperbolic);
+        }
+
+        // One AGM gives the quarter period and the coefficients for the
+        // descending Landen transformation. Sixteen steps cover binary64,
+        // whose smallest positive complement here is 2^-53.
+        let complement = 1.0 - m;
+        let (mut a, mut b) = (1.0, complement.sqrt());
+        let mut ratios = [0.0; 16];
+        // At the smallest binary64 complement the first two ratios can
+        // exceed 0.99. After two AGM steps b/a is already above 0.02.
+        let mut leading_defects = [0.0; 2];
+        let mut count = 0;
+        let mut stretch = 1.0;
+        for ratio in &mut ratios {
+            let delta = 0.5 * (a - b);
+            let mean = f64::midpoint(a, b);
+            *ratio = delta / mean;
+            if *ratio > 0.99
+                && let Some(defect) = leading_defects.get_mut(count)
+            {
+                *defect = b / mean;
+            }
+            b = (a * b).sqrt();
+            a = mean;
+            count += 1;
+            stretch *= 2.0;
+            if (a - b).abs() <= f64::EPSILON * a {
+                break;
+            }
+        }
+        Some(Self::Landen(JacobiLanden {
+            m,
+            complement,
+            quarter: FRAC_PI_2 / a,
+            stretch: stretch * a,
+            ratios,
+            leading_defects,
+            count,
+        }))
+    }
+
+    fn values(
+        &self,
+        u: f64,
+    ) -> (f64, f64, f64) {
+        if !u.is_finite() {
+            return (f64::NAN, f64::NAN, f64::NAN);
+        }
+        match self {
+            | Self::Circular => {
+                let (s, c) = u.sin_cos();
+                (s, c, 1.0)
+            },
+            | Self::Hyperbolic => {
+                let a = u.abs();
+                let exponent = LN_2 - a;
+                let sech = if exponent < -700.0 {
+                    // Keep exp itself in the normal range near underflow.
+                    // Squaring then rounds to the nearest subnormal, and
+                    // the denominator has already rounded to one here.
+                    let root = (0.5 * exponent).exp();
+                    root * root
+                } else {
+                    exponent.exp() / (1.0 + (-2.0 * a).exp())
+                };
+                (u.tanh(), sech, sech)
+            },
+            | Self::Landen(plan) => {
+                let quarter = plan.quarter;
+                let r = centered_remainder(u, 4.0 * quarter);
+                let a = r.abs();
+                let flip = a > quarter;
+                let folded = if flip { 2.0 * quarter - a } else { a };
+                let (s, c) = plan.principal(folded).sin_cos();
+                let sn = s.copysign(r);
+                let cn = if flip { -c } else { c };
+                let dn = (plan.complement + plan.m * c * c).sqrt();
+                (sn, cn, dn)
+            },
+        }
+    }
+}
+
+struct JacobiLanden {
+    m: f64,
+    complement: f64,
+    quarter: f64,
+    stretch: f64,
+    ratios: [f64; 16],
+    leading_defects: [f64; 2],
+    count: usize,
+}
+
+impl JacobiLanden {
+    /// Descending Landen transformation for `0 <= u <= K`.
+    fn principal(
+        &self,
+        u: f64,
+    ) -> f64 {
+        let mut phi = self.stretch * u;
+        for (index, &ratio) in self.ratios.iter().take(self.count).enumerate().rev() {
+            let correction = if let Some(&defect) = self.leading_defects.get(index)
+                && defect > 0.0
+            {
+                // For r = c/a near one, evaluate asin(r sin(phi)) through
+                // its cosine. The defect 1-r = b_old/a eliminates the
+                // cancellation in 1-r² when sin(phi) rounds to ±1.
+                let (sin_phi, cos_phi) = phi.sin_cos();
+                let cosine = (defect * (2.0 - defect) + (ratio * cos_phi).powi(2)).sqrt();
+                (ratio * sin_phi).atan2(cosine)
+            } else {
+                (ratio * phi.sin()).clamp(-1.0, 1.0).asin()
+            };
+            phi = f64::midpoint(phi, correction);
+        }
+        phi
+    }
 }
 
 fn is_nonpos_int(x: f64) -> bool {
@@ -866,84 +1121,233 @@ pub fn bessel_jn(
     sign * v
 }
 
-/// Miller recurrence for `e^{-x} I_n(x)`, `x > 0`, normalised by
-/// `I_0 + 2 sum_{k>=1} I_k = e^x`.
-fn bessel_i_miller_scaled(
+/// Intermediate values for the three output scales of the same positive kernel.
+enum ModifiedBesselI {
+    Series { leading: f64, tail: f64 },
+    Scaled(f64),
+    LogUnscaled(f64),
+    Logarithms { scaled: f64, unscaled: f64 },
+}
+
+/// Miller recurrence normalised by `I_0 + 2 sum_{k>=1} I_k = e^x`.
+#[allow(clippy::single_call_fn)]
+fn bessel_i_miller(
     n: usize,
     x: f64,
-) -> f64 {
+) -> ModifiedBesselI {
+    const RESCALE: f64 = 1e-250;
     let top = miller_start(n, x);
     let (mut ip, mut i) = (0.0_f64, 1e-30_f64);
     let mut sum = 0.0;
-    let mut ans = if top == n { i } else { 0.0 };
+    let mut answer = 0.0;
+    let mut shifts = 0_u32;
+    let mut answer_shifts = 0_u32;
     for k in (1..=top).rev() {
         let im = ip + 2.0 * k as f64 / x * i;
         ip = i;
         i = im;
-        if i.abs() > 1e250 {
-            i *= 1e-250;
-            ip *= 1e-250;
-            ans *= 1e-250;
-            sum *= 1e-250;
+        if i > 1e250 {
+            i *= RESCALE;
+            ip *= RESCALE;
+            sum *= RESCALE;
+            shifts += 1;
         }
         let idx = k - 1;
         if idx == n {
-            ans = i;
+            answer = i;
+            answer_shifts = shifts;
         }
         sum += if idx == 0 { i } else { 2.0 * i };
     }
-    ans / sum
+    // The captured term and the final sum can be hundreds of decades apart.
+    // Keep their intervening rescalings separate until restoring the answer.
+    let difference = shifts - answer_shifts;
+    let ratio = answer / sum;
+    let scaled = match difference {
+        | 0 => ratio,
+        | 1 => ratio * RESCALE,
+        | 2 => (ratio * RESCALE) * RESCALE,
+        | _ => 0.0,
+    };
+    if scaled.is_normal() {
+        ModifiedBesselI::Scaled(scaled)
+    } else {
+        let log_ratio = ratio.ln();
+        let shift = f64::from(difference) * RESCALE.ln();
+        ModifiedBesselI::Logarithms {
+            scaled: log_ratio + shift,
+            unscaled: log_ratio + (x + shift),
+        }
+    }
 }
 
-/// Exponentially scaled modified Bessel function `e^{-|x|} I_n(x)` for
-/// integer order; finite for every finite `x` (unlike [`bessel_in`], which
-/// overflows beyond `|x| ~ 709`).
+/// Normalised power series (DLMF 10.25.2), with the leading term kept separate.
+#[allow(clippy::single_call_fn)]
+fn bessel_i_series(
+    n: usize,
+    x: f64,
+) -> ModifiedBesselI {
+    let nf = n as f64;
+    let half = 0.5 * x;
+    let q = half * half;
+    let mut term = q / (nf + 1.0);
+    let mut tail = term;
+    for k in 2..32 {
+        let kf = f64::from(k);
+        term *= q / (kf * (kf + nf));
+        tail += term;
+        if term <= f64::EPSILON * tail {
+            break;
+        }
+    }
+    // The unnormalised power is safe here because half² <= n + 1.
+    if n <= 128 {
+        let mut leading = half.powi(n as i32);
+        for k in 1..=n {
+            leading /= k as f64;
+        }
+        if leading.is_normal() {
+            return ModifiedBesselI::Series { leading, tail };
+        }
+    }
+    let log_leading = nf * (x.ln() - LN_2) - ln_gamma_numerical(nf + 1.0);
+    ModifiedBesselI::LogUnscaled(log_leading + tail.ln_1p())
+}
+
+/// Large-order expansion (DLMF 10.41.3). Powers of the Debye parameter
+/// and the order are combined into reciprocal powers of `hypot(n, x)`.
+#[allow(clippy::single_call_fn)]
+fn bessel_i_debye(
+    n: usize,
+    x: f64,
+) -> ModifiedBesselI {
+    let n = n as f64;
+    let root = x.hypot(n);
+    let inv_root = root.recip();
+    let t2 = (n / root).powi(2);
+    let u1 = (3.0 - 5.0 * t2) / 24.0;
+    let u2 = (81.0 + t2 * (-462.0 + 385.0 * t2)) / 1152.0;
+    let u3 = (30_375.0 + t2 * (-369_603.0 + t2 * (765_765.0 - 425_425.0 * t2))) / 414_720.0;
+    let correction = inv_root * (u1 + inv_root * (u2 + inv_root * u3));
+    // The difference root - x would lose the order dependence at large x.
+    let root_minus_x = (0.5 * n) * (n / root.midpoint(x));
+    let exponent_per_order = -(n / x).asinh();
+    let log_normalizer = (2.0 * PI).ln().midpoint(root.ln());
+    let log_prefactor = correction.ln_1p() - log_normalizer;
+    ModifiedBesselI::Logarithms {
+        scaled: n.mul_add(exponent_per_order, root_minus_x) + log_prefactor,
+        unscaled: n.mul_add(exponent_per_order, root) + log_prefactor,
+    }
+}
+
+fn bessel_i_positive(
+    n: usize,
+    x: f64,
+) -> ModifiedBesselI {
+    if x.is_nan() {
+        return ModifiedBesselI::Scaled(f64::NAN);
+    }
+    if x == 0.0 {
+        return ModifiedBesselI::Scaled(if n == 0 { 1.0 } else { 0.0 });
+    }
+    if (0.5 * x).powi(2) <= (n + 1) as f64 {
+        return bessel_i_series(n, x);
+    }
+    if x >= 30.0
+        && let Some((p, _)) = hankel_sums(n, x, true)
+    {
+        return ModifiedBesselI::Scaled(p / ((2.0 * PI).sqrt() * x.sqrt()));
+    }
+    // Bound the recurrence cost when the fixed-order expansion fails.
+    if x.max(n as f64) >= 8192.0 {
+        return bessel_i_debye(n, x);
+    }
+    bessel_i_miller(n, x)
+}
+
+/// Applies the real parity relation `I_n(-x) = (-1)^n I_n(x)`.
+fn bessel_i_sign(
+    n: usize,
+    x: f64,
+    magnitude: f64,
+) -> f64 {
+    if x < 0.0 && n % 2 == 1 {
+        -magnitude
+    } else {
+        magnitude
+    }
+}
+
+/// Exponentially scaled modified Bessel function `exp(-|x|) I_n(x)`
+/// for integer order. Its limit at either infinity is zero.
 #[must_use]
 pub fn bessel_in_scaled(
     n: i32,
     x: f64,
 ) -> f64 {
-    if x.is_nan() {
-        return f64::NAN;
-    }
-    let nn = n.unsigned_abs() as usize;
-    let sign = if x < 0.0 && nn % 2 == 1 {
-        -1.0
-    } else {
-        1.0
-    };
+    let order = n.unsigned_abs() as usize;
     let ax = x.abs();
     if ax.is_infinite() {
         return 0.0;
     }
-    if ax == 0.0 {
-        return if nn == 0 { 1.0 } else { 0.0 };
-    }
-    let v = if ax * ax / 4.0 <= (nn + 1) as f64 {
-        bessel_series(nn, ax, 1.0) * (-ax).exp()
-    } else if ax >= 30.0 {
-        match hankel_sums(nn, ax, true) {
-            | Some((p, _)) => p / (2.0 * PI * ax).sqrt(),
-            | None => bessel_i_miller_scaled(nn, ax),
-        }
-    } else {
-        bessel_i_miller_scaled(nn, ax)
+    let value = match bessel_i_positive(order, ax) {
+        | ModifiedBesselI::Series { leading, tail } => (leading * (1.0 + tail)) * (-ax).exp(),
+        | ModifiedBesselI::Scaled(value) => value,
+        | ModifiedBesselI::LogUnscaled(log) => (log - ax).exp(),
+        | ModifiedBesselI::Logarithms { scaled, .. } => scaled.exp(),
     };
-    sign * v
+    bessel_i_sign(order, x, value)
 }
 
 /// Modified Bessel function of the first kind `I_n(x)` for integer order.
 ///
-/// Modified Bessel function of the first kind `I_n(x)` for integer
-/// order, by the same strategy as [`bessel_jn`] (series, Hankel
-/// expansion, Miller recurrence). Overflows to infinity beyond
-/// `|x| ~ 709`; use [`bessel_in_scaled`] there.
+/// Use [`bessel_in_scaled`] or [`bessel_in_log_abs`] when the unscaled
+/// magnitude is outside the floating-point range. Nonfinite inputs return NaN.
 #[must_use]
 pub fn bessel_in(
     n: i32,
     x: f64,
 ) -> f64 {
-    bessel_in_scaled(n, x) * x.abs().exp()
+    let order = n.unsigned_abs() as usize;
+    let ax = x.abs();
+    if ax.is_infinite() {
+        return f64::NAN;
+    }
+    let value = match bessel_i_positive(order, ax) {
+        | ModifiedBesselI::Series { leading, tail } => leading * (1.0 + tail),
+        | ModifiedBesselI::Scaled(value) if ax < 709.0 => value * ax.exp(),
+        | ModifiedBesselI::Scaled(value) => {
+            // Apply the exponential in two factors to avoid premature overflow.
+            let half_exp = (0.5 * ax).exp();
+            (value * half_exp) * half_exp
+        },
+        | ModifiedBesselI::LogUnscaled(log) => log.exp(),
+        | ModifiedBesselI::Logarithms { unscaled, .. } => unscaled.exp(),
+    };
+    bessel_i_sign(order, x, value)
+}
+
+/// Natural logarithm of the real magnitude `|I_n(x)|` for integer order.
+///
+/// The logarithm remains available after either value representation
+/// underflows or overflows. The result is even in both arguments. It is
+/// zero for `n = 0, x = 0`, negative infinity for nonzero order at zero,
+/// and positive infinity for `x = ±∞`. A NaN argument returns NaN.
+#[must_use]
+pub fn bessel_in_log_abs(
+    n: i32,
+    x: f64,
+) -> f64 {
+    let ax = x.abs();
+    if ax.is_infinite() {
+        return f64::INFINITY;
+    }
+    match bessel_i_positive(n.unsigned_abs() as usize, ax) {
+        | ModifiedBesselI::Series { leading, tail } => leading.ln() + tail.ln_1p(),
+        | ModifiedBesselI::Scaled(value) => value.ln() + ax,
+        | ModifiedBesselI::LogUnscaled(log) => log,
+        | ModifiedBesselI::Logarithms { unscaled, .. } => unscaled,
+    }
 }
 
 // ============================================================================

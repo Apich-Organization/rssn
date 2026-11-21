@@ -22,6 +22,32 @@ pub struct Polynomial {
     pub coeffs: Vec<f64>,
 }
 
+/// Why checked polynomial division could not produce finite coefficients.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PolynomialDivisionError {
+    /// The divisor is empty or every coefficient is zero.
+    ZeroDivisor,
+    /// An input coefficient is nonfinite.
+    NonFiniteInput,
+    /// A quotient or remainder coefficient exceeded the available range.
+    NonFiniteResult,
+}
+
+impl std::fmt::Display for PolynomialDivisionError {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        f.write_str(match self {
+            | Self::ZeroDivisor => "polynomial divisor must be nonzero",
+            | Self::NonFiniteInput => "polynomial division requires finite coefficients",
+            | Self::NonFiniteResult => "polynomial division produced a nonfinite coefficient",
+        })
+    }
+}
+
+impl std::error::Error for PolynomialDivisionError {}
+
 impl Polynomial {
     /// Creates a new `Polynomial` from coefficients (highest degree first).
     #[must_use]
@@ -123,52 +149,106 @@ impl Polynomial {
 
     /// Performs polynomial long division.
     ///
-    /// This method divides the current polynomial (dividend) by another polynomial (divisor).
-    ///
-    /// # Arguments
-    /// * `divisor` - The polynomial to divide by.
+    /// The divisor must have a nonzero leading coefficient. Use
+    /// [`Self::try_long_division`] to validate the inputs and results.
     ///
     /// # Returns
     /// A tuple `(quotient, remainder)` as `Polynomial`s.
+    ///
+    /// # Panics
+    /// Panics if the divisor has no coefficients.
     #[must_use]
     pub fn long_division(
-        mut self,
+        self,
         divisor: &Self,
     ) -> (Self, Self) {
-        // Coefficients are highest-degree-first, so the quotient of degrees
-        // n and m has n - m + 1 entries with the leading one first.
-        let q_len = if self.coeffs.len() >= divisor.coeffs.len() {
-            self.coeffs.len() - divisor.coeffs.len() + 1
+        self.divide_by::<false>(&divisor.coeffs)
+    }
+
+    /// Divides finite coefficients by a nonzero descending-coefficient polynomial.
+    ///
+    /// Leading zeros in the divisor are skipped. A fused update can retain a
+    /// finite coefficient when a product overflows before it is subtracted.
+    ///
+    /// # Errors
+    /// Returns an error for zero divisors, nonfinite inputs or nonfinite results.
+    pub fn try_long_division(
+        self,
+        divisor: &Self,
+    ) -> Result<(Self, Self), PolynomialDivisionError> {
+        if self
+            .coeffs
+            .iter()
+            .chain(&divisor.coeffs)
+            .any(|x| !x.is_finite())
+        {
+            return Err(PolynomialDivisionError::NonFiniteInput);
+        }
+        let start = divisor
+            .coeffs
+            .iter()
+            .position(|&x| x != 0.0)
+            .ok_or(PolynomialDivisionError::ZeroDivisor)?;
+        let (q, r) = self.divide_by::<true>(&divisor.coeffs[start..]);
+        if q.coeffs.iter().chain(&r.coeffs).any(|x| !x.is_finite()) {
+            return Err(PolynomialDivisionError::NonFiniteResult);
+        }
+        Ok((q, r))
+    }
+
+    fn divide_by<const CHECKED: bool>(
+        mut self,
+        divisor: &[f64],
+    ) -> (Self, Self) {
+        let (&lead, tail) = divisor.split_first().expect("polynomial divisor is empty");
+        let eliminated = self
+            .coeffs
+            .len()
+            .checked_sub(divisor.len())
+            .map_or(0, |d| d + 1);
+        let mut quotient = Vec::with_capacity(eliminated.max(1));
+        let safe_factor = if CHECKED {
+            (f64::MAX * 0.5) / tail.iter().fold(0.0_f64, |max, term| max.max(term.abs()))
         } else {
-            1
+            f64::INFINITY
         };
-
-        let mut quotient = vec![0.0; q_len];
-
-        let divisor_lead = divisor.coeffs[0];
-
-        while self.coeffs.len() >= divisor.coeffs.len() {
-            let lead_coeff = self.coeffs[0];
-
-            let q_coeff = lead_coeff / divisor_lead;
-
-            let deg_diff = self.coeffs.len() - divisor.coeffs.len();
-
-            quotient[q_len - 1 - deg_diff] = q_coeff;
-
-            for i in 0..divisor.coeffs.len() {
-                self.coeffs[i] -= divisor.coeffs[i] * q_coeff;
+        // Keep the original allocation during elimination. Only the trailing
+        // remainder needs to move when the calculation is complete.
+        for offset in 0..eliminated {
+            let (leading, remaining) = self.coeffs[offset..]
+                .split_first_mut()
+                .expect("each quotient term eliminates one coefficient");
+            let factor = *leading / lead;
+            quotient.push(factor);
+            if CHECKED && factor.abs() > safe_factor {
+                for (value, &term) in remaining.iter_mut().zip(tail) {
+                    let product = term * factor;
+                    *value = if product.is_finite() {
+                        *value - product
+                    } else {
+                        (-factor).mul_add(term, *value)
+                    };
+                }
+            } else {
+                for (value, &term) in remaining.iter_mut().zip(tail) {
+                    *value -= term * factor;
+                }
             }
-
-            self.coeffs.remove(0);
+        }
+        if quotient.is_empty() {
+            quotient.push(0.0);
         }
 
-        // A remainder of lower degree than expected has leading zeros;
-        // leaving them in would make it look like a polynomial with a zero
-        // leading coefficient to the next division.
-        let scale = self.coeffs.iter().fold(0.0_f64, |m, c| m.max(c.abs()));
-        while self.coeffs.len() > 1 && self.coeffs[0].abs() <= f64::EPSILON * 16.0 * scale {
-            self.coeffs.remove(0);
+        let remainder = &self.coeffs[eliminated..];
+        let scale = remainder.iter().fold(0.0_f64, |max, c| max.max(c.abs()));
+        let trim = remainder
+            .iter()
+            .take(remainder.len().saturating_sub(1))
+            .take_while(|c| (!CHECKED || c.is_finite()) && c.abs() <= f64::EPSILON * 16.0 * scale)
+            .count();
+
+        if eliminated + trim != 0 {
+            self.coeffs.drain(..eliminated + trim);
         }
 
         (Self { coeffs: quotient }, self)

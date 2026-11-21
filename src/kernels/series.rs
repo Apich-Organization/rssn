@@ -3,8 +3,7 @@
 //! Partial sums, and infinite sums with convergence acceleration.
 
 use crate::kernels::convergence::LevinVariant;
-use crate::kernels::convergence::levin_transform;
-use crate::kernels::convergence::richardson_extrapolation_with;
+use crate::kernels::convergence::levin_transform_terms;
 use crate::kernels::convergence::wynn_epsilon;
 
 /// Result of summing an infinite series numerically.
@@ -33,120 +32,191 @@ pub fn evaluate_power_series(
         .fold(0.0, |acc, &c| acc.mul_add(dx, c))
 }
 
-/// Sum of `term(k)` for `k` from `from` to `to` inclusive, with Kahan
-/// compensation. Empty when `to < from`.
+/// Sum of `term(k)` for `k` from `from` to `to` inclusive, with Kahan compensation.
+///
+/// Calls `term` once per integer in increasing order. A reversed interval
+/// returns zero without calling `term`. Distinct integer indices with
+/// magnitude above `2^53` may round to the same `f64` callback value.
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "The public callback takes an f64 index."
+)]
 pub fn sum_range(
     term: impl Fn(f64) -> f64,
     from: i64,
     to: i64,
 ) -> f64 {
+    if from > to {
+        return 0.0;
+    }
     let (mut sum, mut carry) = (0.0_f64, 0.0_f64);
-    let mut k = from;
-    while k <= to {
-        #[allow(clippy::cast_precision_loss)]
+    // Handle `to` separately so the loop never advances past i64::MAX.
+    for k in from..to {
         let y = term(k as f64) - carry;
         let t = sum + y;
         carry = (t - sum) - y;
         sum = t;
-        k += 1;
     }
-    sum
+    sum + (term(to as f64) - carry)
 }
 
-/// Partial sums kept for the Levin transform.
+/// Leading terms kept for the Levin transform.
 const LEVIN_TERMS: usize = 40;
+const WYNN_TERMS: usize = 24;
 
 /// Sum of `term(k)` for `k = from, from + 1, ...` to infinity.
 ///
-/// Partial sums are accumulated up to doubling checkpoints. At each one
-/// three extrapolations are tried — Wynn's epsilon algorithm on the recent
-/// partial sums (geometric and alternating convergence), Richardson
-/// extrapolation over the checkpoints (algebraic convergence such as
-/// `1/k^2`) and the Levin u transform of the first partial sums
-/// (logarithmic and alternating convergence) — and the process stops when
-/// the best of them changes by less than `tolerance`, or `max_terms` have been used. The error
-/// estimate is that last change, so a series that does not converge shows
-/// up as a large error rather than as a confident wrong number.
+/// The integer index advances through `i64::MAX`. See [`sum_terms_to_infinity`]
+/// for the stopping rules. Use that entry point for recurrences or to keep
+/// indices exact beyond the integer precision of the `f64` callback.
 pub fn sum_to_infinity(
     term: impl Fn(f64) -> f64,
     from: i64,
     tolerance: f64,
     max_terms: usize,
 ) -> SeriesSum {
-    let mut recent: Vec<f64> = Vec::new();
-    let mut checkpoints: Vec<f64> = Vec::new();
+    #[allow(clippy::cast_precision_loss)]
+    let terms = (from..=i64::MAX).map(|k| term(k as f64));
+    sum_terms_to_infinity(terms, tolerance, max_terms)
+}
+
+/// Estimates an infinite sum from terms supplied in order.
+///
+/// This accepts an unbounded generator or a finite prefix. At each doubling
+/// checkpoint it compares Wynn's epsilon algorithm on the most recent partial
+/// sums, Richardson extrapolation on the doubling checkpoints, and the
+/// Levin `u` transform of the first terms. A final partial block may still
+/// contribute Wynn or Levin estimates. The calculation stops on the requested
+/// tolerance, input exhaustion, or after evaluating `max_terms` terms.
+///
+/// The reported error is a change between estimates and is heuristic. When
+/// extrapolation has insufficient data, the result is the available partial
+/// sum with infinite error. A non-finite term or partial sum yields `NaN`
+/// and infinite error, counting the triggering term in `terms`.
+pub fn sum_terms_to_infinity(
+    terms: impl IntoIterator<Item = f64>,
+    tolerance: f64,
+    max_terms: usize,
+) -> SeriesSum {
+    let mut terms = terms.into_iter();
+    let mut recent = Vec::with_capacity(WYNN_TERMS.min(max_terms));
+    let mut richardson = Vec::new();
+    let mut head = Vec::with_capacity(LEVIN_TERMS.min(max_terms));
     let mut sum = 0.0_f64;
-    let mut k = from;
     let mut used = 0_usize;
     let mut best = (f64::NAN, f64::INFINITY);
-    let mut previous = (f64::NAN, f64::NAN);
+    let (mut previous_wynn, mut previous_richardson) = (f64::NAN, f64::NAN);
+    let mut levin_head = 0;
     let mut target = 16_usize;
-    // The first partial sums, for the Levin u transform (which needs the
-    // early terms and is best on logarithmically convergent series).
-    let mut head: Vec<f64> = Vec::new();
     while used < max_terms {
-        while used < target {
-            #[allow(clippy::cast_precision_loss)]
-            let t = term(k as f64);
-            if !t.is_finite() {
+        let end = target.min(max_terms);
+        let start = used;
+        while used < end {
+            let Some(term) = terms.next() else {
+                break;
+            };
+            used += 1;
+            sum += term;
+            if !sum.is_finite() {
                 return SeriesSum {
                     value: f64::NAN,
                     error: f64::INFINITY,
                     terms: used,
                 };
             }
-            sum += t;
-            k += 1;
-            used += 1;
-            if target - used < 24 {
+            if end - used < WYNN_TERMS {
                 recent.push(sum);
             }
             if head.len() < LEVIN_TERMS {
-                head.push(sum);
+                head.push(term);
             }
         }
-        checkpoints.push(sum);
-        let wynn = wynn_epsilon(&recent).last().copied().unwrap_or(0.0);
-        let rich = richardson_extrapolation_with(&checkpoints, 2.0)
-            .last()
-            .copied()
-            .unwrap_or(0.0);
-        // Each extrapolation is judged by how much it moved since the
-        // previous checkpoint.
-        // The Levin estimate is judged by its last two orders: the head
-        // stops growing, so its change between checkpoints would vanish.
-        let transforms = levin_transform(&head, LevinVariant::U, 1.0);
-        let levin = match transforms.as_slice() {
-            | [.., before, last] if transforms.len() >= 8 => (*last, (last - before).abs()),
-            | _ => (f64::NAN, f64::INFINITY),
-        };
-        let candidates = [
-            (wynn, (wynn - previous.0).abs()),
-            (rich, (rich - previous.1).abs()),
-            levin,
-        ];
-        previous = (wynn, rich);
-        for (value, change) in candidates {
-            if value.is_finite() && change.is_finite() && change < best.1 {
-                best = (value, change);
-            }
+        if used == start {
+            break;
         }
-        if best.1 <= tolerance.max(f64::EPSILON * best.0.abs()) {
+        if let Some(&wynn) = wynn_epsilon(&recent).last() {
+            consider_estimate(&mut best, wynn, previous_wynn);
+            previous_wynn = wynn;
+        }
+        // Richardson assumes an exact factor of two between checkpoints.
+        if used == target && target.is_power_of_two() {
+            let rich = richardson_step(&mut richardson, sum);
+            consider_estimate(&mut best, rich, previous_richardson);
+            previous_richardson = rich;
+        }
+        if head.len() >= 8 && head.len() != levin_head {
+            let transforms = levin_transform_terms(&head, LevinVariant::U, 1.0);
+            if let [.., before, last] = transforms.as_slice()
+                && transforms.len() >= 8
+            {
+                consider_estimate(&mut best, *last, *before);
+            }
+            levin_head = head.len();
+        }
+        if used < end || best.1 <= tolerance.max(f64::EPSILON * best.0.abs()) {
             break;
         }
         recent.clear();
-        target *= 2;
+        target = target.saturating_mul(2);
     }
     SeriesSum {
-        value: best.0,
+        value: if best.0.is_finite() || used == 0 {
+            best.0
+        } else {
+            sum
+        },
         error: best.1,
         terms: used,
     }
 }
 
+fn consider_estimate(
+    best: &mut (f64, f64),
+    value: f64,
+    previous: f64,
+) {
+    let change = (value - previous).abs();
+    if value.is_finite() && change.is_finite() && change < best.1 {
+        *best = (value, change);
+    }
+}
+
+// The newest row of the Richardson table suffices: each entry uses the
+// preceding column from this row and from the previous row.
+#[allow(
+    clippy::single_call_fn,
+    reason = "Advance only the new Richardson row at a doubling checkpoint."
+)]
+fn richardson_step(
+    row: &mut Vec<f64>,
+    mut estimate: f64,
+) -> f64 {
+    let mut factor = 2.0_f64;
+    for previous in row.iter_mut() {
+        let previous = std::mem::replace(previous, estimate);
+        estimate = factor.mul_add(estimate, -previous) / (factor - 1.0);
+        factor *= 2.0;
+    }
+    row.push(estimate);
+    estimate
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn one_richardson_row_matches_the_full_dyadic_table() {
+        let partial = [15.0, 15.5, 16.125, 16.3125, 16.413, 16.4417, 16.455_119];
+        let reference = crate::kernels::convergence::richardson_extrapolation_with(&partial, 2.0);
+        let mut row = Vec::new();
+        for (sample, expected) in partial.into_iter().zip(reference) {
+            assert_eq!(
+                richardson_step(&mut row, sample).to_bits(),
+                expected.to_bits()
+            );
+        }
+    }
 
     #[test]
     fn power_series_evaluation() {

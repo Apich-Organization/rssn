@@ -1,3 +1,6 @@
+//! Sequence and series convergence acceleration (Aitken, Richardson, Wynn,
+//! Levin on partial sums and on terms).
+//!
 //! # Convergence acceleration
 //!
 //! Sequence transformations that speed up slowly converging sequences and
@@ -13,6 +16,9 @@
 //! ([`levin_transform`]) and, without the cancellation of recovering
 //! `a_n = s_n - s_{n-1}` from rounded sums, directly on the terms
 //! ([`levin_transform_terms`], [`levin_sum_lazy`]).
+//! [`levin_condition_numbers`] estimates roundoff amplification at each
+//! order using the Fessler–Ford–Smith recurrence in one working column.
+//! [Algorithm 602: HURRY](https://doi.org/10.1145/356044.356052)
 //!
 //! # Limitations
 //!
@@ -54,6 +60,11 @@
 //!   available only through a recurrence.
 //! * **The early terms are needed.** The transforms consume a prefix of the
 //!   series; they cannot skip a slow start or extrapolate from a tail alone.
+
+use super::numeric_common::scale_product;
+use super::numeric_common::scaled_difference;
+
+const RICHARDSON_POWER_BLOCK: f64 = f64::from_bits(1535_u64 << 52); // 2^512
 
 /// Sums `term(n)` for `n = start, start + 1, ...` (at most `max_terms` terms)
 /// and stops, before adding it, at the first term whose magnitude is below
@@ -126,11 +137,9 @@ pub fn find_sequence_limit(
 
 /// Richardson extrapolation of approximations `A(h), A(h/2), A(h/4), ...`.
 ///
-/// The error of the approximations is assumed to have an expansion in powers of `h^2`; the
-/// error has an expansion in powers of `h^2` (Romberg integration,
-/// central differences): the standard factors `4^j`. The result holds the
-/// diagonal of the extrapolation table, the last entry being the highest
-/// order estimate.
+/// For errors that expand in powers of `h^2` (Romberg integration,
+/// central differences), the standard factors are `4^j`. The result is the
+/// diagonal of the extrapolation table, with the highest order estimate last.
 #[must_use]
 pub fn richardson_extrapolation(sequence: &[f64]) -> Vec<f64> {
     richardson_extrapolation_with(sequence, 4.0)
@@ -141,25 +150,111 @@ pub fn richardson_extrapolation(sequence: &[f64]) -> Vec<f64> {
 /// Column `j` of the table eliminates one
 /// error term by the factor `growth^j`: `growth = 4` for errors in `h^2,
 /// h^4, ...` as `h` halves, `growth = 2` for errors in `1/n, 1/n^2, ...` as
-/// the number of terms `n` doubles. Returns the diagonal of the table.
+/// the number of terms `n` doubles. Returns the diagonal and retains only
+/// one working column. For finite `growth > 1`, a change of scale avoids
+/// overflow in intermediate powers or products when the estimate is finite.
 #[must_use]
 pub fn richardson_extrapolation_with(
     sequence: &[f64],
     growth: f64,
 ) -> Vec<f64> {
+    let Some(&first) = sequence.first() else {
+        return Vec::new();
+    };
     let n = sequence.len();
-    let mut table = vec![vec![0.0; n]; n];
-    for (i, &value) in sequence.iter().enumerate() {
-        table[i][0] = value;
+    let mut diagonal = Vec::with_capacity(n);
+    diagonal.push(first);
+    if n == 1 {
+        return diagonal;
     }
+    let mut current = sequence.to_vec();
+    let stable_growth = growth.is_finite() && growth > 1.0;
     let mut factor = 1.0;
-    for j in 1..n {
-        factor *= growth;
-        for i in j..n {
-            table[i][j] = factor.mul_add(table[i][j - 1], -table[i - 1][j - 1]) / (factor - 1.0);
+    let mut scale_blocks = 0;
+    for remaining in (1..n).rev() {
+        if scale_blocks < 6 {
+            let larger = factor * growth;
+            if stable_growth && !larger.is_finite() {
+                factor = (factor / RICHARDSON_POWER_BLOCK) * (growth / RICHARDSON_POWER_BLOCK);
+                scale_blocks += 2;
+            } else {
+                factor = larger;
+            }
         }
+        if scale_blocks != 0
+            && richardson_correction_rounds_to_zero(&current[..=remaining], factor, scale_blocks)
+        {
+            diagonal.extend_from_slice(&current[1..=remaining]);
+            break;
+        }
+        let active = &mut current[..=remaining];
+        for offset in 0..remaining {
+            active[offset] = richardson_entry(
+                active[offset],
+                active[offset + 1],
+                factor,
+                scale_blocks,
+                stable_growth,
+            );
+        }
+        diagonal.push(active[0]);
     }
-    (0..n).map(|i| table[i][i]).collect()
+    diagonal
+}
+
+fn richardson_entry(
+    previous: f64,
+    current: f64,
+    factor: f64,
+    scale_blocks: i32,
+    stable_growth: bool,
+) -> f64 {
+    if scale_blocks == 0 {
+        let ordinary = factor.mul_add(current, -previous) / (factor - 1.0);
+        if ordinary.is_finite() || !stable_growth || !previous.is_finite() || !current.is_finite() {
+            return ordinary;
+        }
+        return current + scaled_difference(current, previous, factor - 1.0);
+    }
+    if !previous.is_finite() || !current.is_finite() {
+        return f64::NAN;
+    }
+    if scale_blocks >= 6 {
+        return current;
+    }
+    // One block prevents overflow in the difference. Once the factor is
+    // outside the float range, subtracting one has negligible relative effect.
+    let difference = scaled_difference(current, previous, RICHARDSON_POWER_BLOCK);
+    let factors = [
+        factor,
+        RICHARDSON_POWER_BLOCK,
+        RICHARDSON_POWER_BLOCK,
+        RICHARDSON_POWER_BLOCK,
+    ];
+    let denominator = &factors[..scale_blocks as usize];
+    // Finite operands and a positive denominator greater than one cannot overflow.
+    let correction = scale_product(difference, &[], denominator).unwrap_or(f64::NAN);
+    if correction == 0.0 {
+        current
+    } else {
+        current + correction
+    }
+}
+
+fn richardson_correction_rounds_to_zero(
+    current: &[f64],
+    factor: f64,
+    scale_blocks: i32,
+) -> bool {
+    let max = current.iter().try_fold(0.0_f64, |max, value| {
+        value.is_finite().then(|| max.max(value.abs()))
+    });
+    let exponent = |value: f64| ((value.to_bits() >> 52) & 0x7ff) as i32 - 1023;
+    // The upper bound for a difference is 2^(exponent(max) + 2).
+    // Leave a spare bit below half of the smallest subnormal.
+    max.is_some_and(|max| {
+        max == 0.0 || exponent(max) + 2 - exponent(factor) - 512 * scale_blocks <= -1076
+    })
 }
 
 /// Wynn's epsilon algorithm (Shanks transformation) on `sequence`.
@@ -217,30 +312,50 @@ pub enum LevinVariant {
     V,
 }
 
-/// Fessler-Ford-Smith recurrence shared by the partial-sum and the
-/// term entry points: `terms[n]` are the terms and `sums[n]` the matching
-/// partial sums.
-fn levin_core(
+const fn levin_usable_len(
+    len: usize,
+    variant: LevinVariant,
+) -> usize {
+    match variant {
+        | LevinVariant::V => len.saturating_sub(1),
+        | _ => len,
+    }
+}
+
+#[allow(
+    clippy::single_call_fn,
+    reason = "the Smith–Ford remainder has its own numerical range"
+)]
+const fn levin_v_remainder(
+    term: f64,
+    next: f64,
+) -> f64 {
+    if !term.is_finite() || !next.is_finite() {
+        return f64::NAN;
+    }
+    let product = term * next;
+    let difference = term - next;
+    if product.is_normal() && difference.is_finite() {
+        return product / difference;
+    }
+    // Divide through by the larger term before the multiplication can
+    // overflow or underflow. The quotient inside the denominator is bounded.
+    if term.abs() <= next.abs() {
+        term / (term / next - 1.0)
+    } else {
+        next / (1.0 - next / term)
+    }
+}
+
+fn levin_rows(
     terms: &[f64],
-    sums: &[f64],
     variant: LevinVariant,
     beta: f64,
-) -> Vec<f64> {
-    let m = terms.len().min(sums.len());
-    let usable = if variant == LevinVariant::V {
-        m.saturating_sub(1)
-    } else {
-        m
-    };
-    if usable == 0 {
-        return Vec::new();
-    }
-    let mut num = Vec::with_capacity(usable);
-    let mut den = Vec::with_capacity(usable);
-    for n in 0..usable {
-        let (Some(&a), Some(&s)) = (terms.get(n), sums.get(n)) else {
-            break;
-        };
+    mut row: impl FnMut(usize, f64) -> [f64; 2],
+) -> Vec<[f64; 2]> {
+    let usable = levin_usable_len(terms.len(), variant);
+    let mut rows = Vec::with_capacity(usable);
+    for (n, &a) in terms.iter().take(usable).enumerate() {
         #[allow(clippy::cast_precision_loss)]
         let nf = n as f64;
         let omega = match variant {
@@ -250,60 +365,96 @@ fn levin_core(
                 let Some(&next) = terms.get(n.saturating_add(1)) else {
                     break;
                 };
-                a * next / (a - next)
+                levin_v_remainder(a, next)
             },
         };
         if omega == 0.0 || !omega.is_finite() {
             break;
         }
-        num.push(s / omega);
-        den.push(1.0 / omega);
+        rows.push(row(n, omega));
     }
-    let mut out = Vec::new();
-    let mut k = 0usize;
-    loop {
-        if let (Some(&nu), Some(&de)) = (num.first(), den.first()) {
-            let v = nu / de;
-            if v.is_finite() {
-                out.push(v);
-            }
-        }
-        if num.len() < 2 {
-            break;
-        }
+    rows
+}
+
+/// The first row of each column in the Fessler–Ford–Smith recurrence.
+/// Each step reads the row to its right before that row is overwritten.
+fn levin_columns(
+    mut rows: Vec<[f64; 2]>,
+    beta: f64,
+) -> impl Iterator<Item = [f64; 2]> {
+    let mut order = 0usize;
+    std::iter::from_fn(move || {
+        let first = *rows.first()?;
         #[allow(clippy::cast_precision_loss)]
-        let kf = k as f64;
-        let mut nn = Vec::with_capacity(num.len().saturating_sub(1));
-        let mut dd = Vec::with_capacity(den.len().saturating_sub(1));
-        let pairs = num
-            .iter()
-            .zip(num.iter().skip(1))
-            .zip(den.iter().zip(den.iter().skip(1)));
-        for (n, ((&nlo, &nhi), (&dlo, &dhi))) in pairs.enumerate() {
+        let k = order as f64;
+        let next_len = rows.len().saturating_sub(1);
+        let mut tail = rows.as_mut_slice();
+        for n in 0..next_len {
+            let Some((left, right)) = tail.split_first_mut() else {
+                break;
+            };
+            let Some(&[nhi, dhi]) = right.first() else {
+                break;
+            };
             #[allow(clippy::cast_precision_loss)]
             let b = beta + n as f64;
-            let c = b * (b + kf).powf(kf - 1.0) / (b + kf + 1.0).powf(kf);
-            nn.push(nhi - c * nlo);
-            dd.push(dhi - c * dlo);
+            let x = b + k;
+            let numerator = b * x.powf(k - 1.0);
+            let denominator = (x + 1.0).powf(k);
+            // Preserve the usual evaluation order. Divide the powers first
+            // when their separate evaluation overflows for a positive shift.
+            let factor =
+                if b > 0.0 && b.is_finite() && (!numerator.is_finite() || !denominator.is_finite())
+                {
+                    (b / x) * (x / (x + 1.0)).powf(k)
+                } else {
+                    numerator / denominator
+                };
+            let [nlo, dlo] = *left;
+            *left = [nhi - factor * nlo, dhi - factor * dlo];
+            tail = right;
         }
-        num = nn;
-        den = dd;
-        k += 1;
-    }
+        rows.truncate(next_len);
+        order = order.saturating_add(1);
+        Some(first)
+    })
+}
+
+#[allow(
+    clippy::indexing_slicing,
+    reason = "the seed range is bounded by both slices"
+)]
+fn levin_core(
+    terms: &[f64],
+    sums: &[f64],
+    variant: LevinVariant,
+    beta: f64,
+) -> Vec<f64> {
+    let terms = &terms[..terms.len().min(sums.len())];
+    let rows = levin_rows(terms, variant, beta, |n, omega| {
+        [sums[n] / omega, 1.0 / omega]
+    });
+    let mut out = Vec::with_capacity(rows.len());
+    out.extend(
+        levin_columns(rows, beta).filter_map(|[numerator, denominator]| {
+            let estimate = numerator / denominator;
+            estimate.is_finite().then_some(estimate)
+        }),
+    );
     out
 }
 
 /// Levin-type sequence transformation of the partial sums `s_0, s_1, ...`.
 ///
 /// With the term `a_n = s_n - s_{n-1}` (`a_0 = s_0`) and the remainder
-/// estimate `omega_n` of the chosen [`LevinVariant`], the entry `k` of the
-/// result is the transform `L_k^{(0)}` computed with the stable
+/// estimate `omega_n` of the chosen [`LevinVariant`], the transform
+/// `L_k^{(0)}` is computed with the stable
 /// Fessler-Ford-Smith recurrence for numerator and denominator,
 /// `L_k^{(n)} = N_k^{(n)} / D_k^{(n)}` with
 /// `N_{k+1}^{(n)} = N_k^{(n+1)} - (beta+n)(beta+n+k)^{k-1} / (beta+n+k+1)^k N_k^{(n)}`.
-/// Entry `0` is the (weighted) first partial sum; later entries use more
-/// terms. `beta` is the shift (`1.0` is the usual choice). Entries that
-/// are not finite are dropped.
+/// Order zero uses the first partial sum and later orders use more
+/// terms. `beta` is the shift (`1.0` is the usual choice). The result lists
+/// finite estimates in order and omits any non-finite estimates.
 ///
 /// The terms are recovered by differencing, which cancels the leading
 /// digits that consecutive partial sums share; when the terms are available
@@ -441,8 +592,39 @@ pub fn levin_sum_lazy(
     best_estimate(&levin_transform_terms(&collected, variant, beta))
 }
 
-/// Condition number `kappa = sum_j |w_j|` of the Levin transform at the
-/// highest order `terms.len() - 1` supports.
+fn levin_condition_rows(
+    terms: &[f64],
+    variant: LevinVariant,
+    beta: f64,
+) -> Vec<[f64; 2]> {
+    if !beta.is_finite() || beta <= 0.0 {
+        return Vec::new();
+    }
+    levin_rows(terms, variant, beta, |n, omega| {
+        let reciprocal = 1.0 / omega;
+        // The coefficient of a term has a fixed sign in each column. With
+        // positive beta the row recurrence subtracts a nonnegative multiple
+        // of its left neighbor, so these alternating seeds add magnitudes.
+        let norm = if n.is_multiple_of(2) {
+            reciprocal.abs()
+        } else {
+            -reciprocal.abs()
+        };
+        [norm, reciprocal]
+    })
+}
+
+const fn levin_condition([norm, denominator]: [f64; 2]) -> f64 {
+    let kappa = (norm / denominator).abs();
+    if kappa.is_finite() && denominator.is_finite() {
+        kappa.max(1.0)
+    } else {
+        f64::INFINITY
+    }
+}
+
+/// Condition number `kappa = sum_j |w_j|` at the highest order the term
+/// count supports. [`LevinVariant::V`] consumes one extra look-ahead term.
 ///
 /// The transform is a weighted mean of the partial sums,
 /// `L = sum_j w_j s_j` with `sum_j w_j = 1`. Those weights are the solution
@@ -456,30 +638,57 @@ pub fn levin_sum_lazy(
 /// alternating terms give a convex combination with `kappa = 1`, while
 /// positive logarithmically convergent terms give weights of alternating
 /// sign whose absolute sum grows by a factor `~3.5` per order (for
-/// `1/(n+1)^2`: `4.6e5` at order 11, `2.3e8` at order 16). Infinite when a
-/// weight is not finite.
+/// `1/(n+1)^2`: `4.6e5` at order 11, `2.3e8` at order 16).
+/// Returns infinity for a nonpositive or non-finite `beta`, an invalid
+/// remainder in the required prefix, or a singular or unrepresentable
+/// condition number. Fewer than two terms return `1.0` by convention.
 #[must_use]
 pub fn levin_condition_number(
     terms: &[f64],
     variant: LevinVariant,
     beta: f64,
 ) -> f64 {
-    let n = terms.len();
-    if n < 2 {
+    if terms.len() < 2 {
         return 1.0;
     }
-    let mut total = 0.0;
-    for j in 0..n {
-        let mut basis = vec![0.0_f64; n];
-        if let Some(slot) = basis.get_mut(j) {
-            *slot = 1.0;
-        }
-        match levin_core(terms, &basis, variant, beta).last() {
-            | Some(&weight) if weight.is_finite() => total += weight.abs(),
-            | _ => return f64::INFINITY,
-        }
+    let rows = levin_condition_rows(terms, variant, beta);
+    if rows.len() != levin_usable_len(terms.len(), variant) {
+        return f64::INFINITY;
     }
-    total
+    levin_columns(rows, beta)
+        .last()
+        .map_or(f64::INFINITY, levin_condition)
+}
+
+/// Estimates the Levin weight condition number for each order starting at zero.
+///
+/// Each entry is the absolute sum of the normalized weights for its order.
+/// This measures sensitivity to the partial sums with fixed remainder
+/// estimates.
+/// A singular or unrepresentable order contributes infinity at its original
+/// position. The profile ends at the first invalid remainder estimate.
+/// [`LevinVariant::V`] uses one additional term beyond each order's prefix.
+/// A nonpositive or non-finite `beta` gives an empty profile. The recurrence
+/// uses quadratic time in the valid prefix length and linear workspace in the
+/// number of terms.
+///
+/// ```
+/// use rssn::kernels::convergence::LevinVariant;
+/// use rssn::kernels::convergence::levin_condition_numbers;
+/// let profile = levin_condition_numbers(&[1.0, -0.5, 0.25], LevinVariant::T, 1.0);
+/// assert_eq!(profile.len(), 3);
+/// assert!(profile.iter().all(|kappa| (kappa - 1.0).abs() < 1e-14));
+/// ```
+#[must_use]
+pub fn levin_condition_numbers(
+    terms: &[f64],
+    variant: LevinVariant,
+    beta: f64,
+) -> Vec<f64> {
+    let rows = levin_condition_rows(terms, variant, beta);
+    let mut profile = Vec::with_capacity(rows.len());
+    profile.extend(levin_columns(rows, beta).map(levin_condition));
+    profile
 }
 
 #[cfg(test)]
@@ -712,6 +921,82 @@ mod tests {
         let alt = alternating_harmonic(17);
         let kappa = levin_condition_number(&alt, LevinVariant::U, 1.0);
         assert!((kappa - 1.0).abs() < 1e-12, "{kappa}");
+    }
+
+    #[test]
+    fn levin_condition_profile_matches_explicit_weights_in_all_variants() {
+        let terms = [1.0, -0.41, 0.31, 0.17, -0.13, 0.11, -0.07, 0.04];
+        for variant in [LevinVariant::U, LevinVariant::T, LevinVariant::V] {
+            for beta in [0.25, 1.0, 4.5] {
+                let profile = levin_condition_numbers(&terms, variant, beta);
+                let look_ahead = usize::from(variant == LevinVariant::V);
+                assert_eq!(profile.len(), terms.len().saturating_sub(look_ahead));
+                for (order, &actual) in profile.iter().enumerate() {
+                    let count = order.saturating_add(1).saturating_add(look_ahead);
+                    let prefix = terms.get(..count).unwrap_or_default();
+                    let expected: f64 = (0..=order)
+                        .map(|column| {
+                            let mut basis = vec![0.0; count];
+                            if let Some(value) = basis.get_mut(column) {
+                                *value = 1.0;
+                            }
+                            levin_core(prefix, &basis, variant, beta)
+                                .last()
+                                .map_or(f64::NAN, |value| value.abs())
+                        })
+                        .sum();
+                    assert!(
+                        (actual - expected).abs() < 1e-12 * expected.max(1.0),
+                        "{variant:?} beta={beta} order={order}: {actual} vs {expected}"
+                    );
+                }
+                assert_eq!(
+                    profile.last().copied(),
+                    Some(levin_condition_number(&terms, variant, beta))
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn levin_condition_profile_identifies_singular_and_missing_orders() {
+        use LevinVariant::T;
+        use LevinVariant::V;
+
+        let singular = [1.0, 1.0, 0.5];
+        let profile = levin_condition_numbers(&singular, T, 1.0);
+        assert_eq!(profile.len(), 3);
+        assert_eq!(profile.first().copied(), Some(1.0));
+        assert_eq!(profile.get(1).copied(), Some(f64::INFINITY));
+        assert!(profile.last().is_some_and(|v| v.is_finite()));
+        assert!(levin_condition_numbers(&singular, V, 1.0).is_empty());
+        assert!(levin_condition_number(&singular, V, 1.0).is_infinite());
+        assert!(levin_condition_number(&singular, T, 0.0).is_infinite());
+        assert!(levin_condition_numbers(&singular, T, f64::NAN).is_empty());
+
+        let incomplete = [1.0, 0.0, 0.5];
+        assert_eq!(levin_condition_numbers(&incomplete, T, 1.0), [1.0]);
+        assert!(levin_condition_number(&incomplete, T, 1.0).is_infinite());
+    }
+
+    #[test]
+    fn levin_v_works_when_the_product_of_terms_is_out_of_range() {
+        for scale in [1e-200, 1e200] {
+            let terms = [scale, scale * 0.5, scale * 0.25, scale * 0.125];
+            let estimate = levin_transform_terms(&terms, LevinVariant::V, 1.0);
+            assert_eq!(estimate.len(), 3);
+            assert!((estimate.last().copied().unwrap_or(f64::NAN) / scale - 2.0).abs() < 1e-14);
+        }
+    }
+
+    #[test]
+    fn levin_retains_high_orders_when_separate_coefficient_powers_overflow() {
+        let terms = alternating_harmonic(192);
+        let estimate = levin_transform_terms(&terms, LevinVariant::T, 1.0);
+        assert_eq!(estimate.len(), terms.len());
+        let estimate = estimate.last().copied().unwrap_or(f64::NAN);
+        assert!((estimate - std::f64::consts::LN_2).abs() < 1e-13);
+        assert!((levin_condition_number(&terms, LevinVariant::T, 1.0) - 1.0).abs() < 1e-13);
     }
 
     #[test]

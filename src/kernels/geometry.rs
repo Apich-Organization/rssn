@@ -1,7 +1,10 @@
 //! Computational geometry kernels: convex hulls, Delaunay triangulation,
 //! Voronoi diagrams, polygon/segment/ray/triangle predicates, k-d trees, and BVH.
 
-/// Error returned by spatial index construction.
+mod kd_tree;
+pub use kd_tree::KdTree;
+
+/// Error from spatial index construction, spatial queries or distance evaluation.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GeometryError {
     /// Input point set was empty or zero-dimensional.
@@ -579,256 +582,6 @@ pub fn segment_triangle_intersection_3d(
     }
 }
 
-#[derive(Clone, Debug)]
-struct KdNode {
-    point_index: usize,
-    axis: usize,
-    left: Option<usize>,
-    right: Option<usize>,
-}
-
-/// A k-d tree for exact nearest-neighbor, k-nearest, and radius queries in `R^d`.
-#[derive(Clone, Debug)]
-pub struct KdTree {
-    points: Vec<Vec<f64>>,
-    dim: usize,
-    root: Option<usize>,
-    nodes: Vec<KdNode>,
-}
-
-impl KdTree {
-    /// Builds a k-d tree from `points`.
-    ///
-    /// # Errors
-    ///
-    /// * [`GeometryError::Empty`] if `points` is empty or 0-dimensional.
-    /// * [`GeometryError::ShapeMismatch`] if points have differing dimensions.
-    pub fn build(points: Vec<Vec<f64>>) -> Result<Self, GeometryError> {
-        if points.is_empty() {
-            return Err(GeometryError::Empty);
-        }
-        let dim = points[0].len();
-        if dim == 0 {
-            return Err(GeometryError::Empty);
-        }
-        for pt in &points {
-            if pt.len() != dim {
-                return Err(GeometryError::ShapeMismatch(format!(
-                    "expected dimension {dim}, found {}",
-                    pt.len()
-                )));
-            }
-        }
-        if points.iter().flatten().any(|v| !v.is_finite()) {
-            return Err(GeometryError::Domain(
-                "coordinates must be finite".to_string(),
-            ));
-        }
-        let mut indices: Vec<usize> = (0..points.len()).collect();
-        let mut nodes = Vec::with_capacity(points.len());
-        let root = Self::build_recursive(&points, &mut indices, 0, dim, &mut nodes);
-        Ok(Self {
-            points,
-            dim,
-            root,
-            nodes,
-        })
-    }
-
-    fn build_recursive(
-        points: &[Vec<f64>],
-        indices: &mut [usize],
-        depth: usize,
-        dim: usize,
-        nodes: &mut Vec<KdNode>,
-    ) -> Option<usize> {
-        if indices.is_empty() {
-            return None;
-        }
-        let axis = depth % dim;
-        let mid = indices.len() / 2;
-        indices.select_nth_unstable_by(mid, |&a, &b| points[a][axis].total_cmp(&points[b][axis]));
-        let point_index = indices[mid];
-        let (left_slice, right_with_mid) = indices.split_at_mut(mid);
-        let right_slice = &mut right_with_mid[1..];
-        let left = Self::build_recursive(points, left_slice, depth + 1, dim, nodes);
-        let right = Self::build_recursive(points, right_slice, depth + 1, dim, nodes);
-        let node_idx = nodes.len();
-        nodes.push(KdNode {
-            point_index,
-            axis,
-            left,
-            right,
-        });
-        Some(node_idx)
-    }
-
-    fn dist_sq(
-        a: &[f64],
-        b: &[f64],
-    ) -> f64 {
-        a.iter().zip(b).map(|(x, y)| (x - y) * (x - y)).sum()
-    }
-
-    /// Finds the nearest point to `query`, returning `(point_index, euclidean_distance)`.
-    ///
-    /// # Errors
-    ///
-    /// [`GeometryError::ShapeMismatch`] if `query.len()` does not match the tree dimension.
-    pub fn nearest(
-        &self,
-        query: &[f64],
-    ) -> Result<Option<(usize, f64)>, GeometryError> {
-        let mut res = self.k_nearest(query, 1)?;
-        Ok(res.pop())
-    }
-
-    /// Finds up to `k` nearest points to `query`, sorted by ascending distance.
-    ///
-    /// # Errors
-    ///
-    /// [`GeometryError::ShapeMismatch`] if `query.len()` does not match the tree dimension.
-    pub fn k_nearest(
-        &self,
-        query: &[f64],
-        k: usize,
-    ) -> Result<Vec<(usize, f64)>, GeometryError> {
-        if query.iter().any(|v| !v.is_finite()) {
-            return Err(GeometryError::Domain(
-                "query coordinates must be finite".to_string(),
-            ));
-        }
-        if query.len() != self.dim {
-            return Err(GeometryError::ShapeMismatch(format!(
-                "query dimension {} does not match tree dimension {}",
-                query.len(),
-                self.dim
-            )));
-        }
-        if k == 0 {
-            return Ok(Vec::new());
-        }
-        let mut best: Vec<(usize, f64)> = Vec::with_capacity(k + 1);
-        if let Some(root) = self.root {
-            self.k_nearest_rec(root, query, k, &mut best);
-        }
-        for item in &mut best {
-            item.1 = item.1.sqrt();
-        }
-        Ok(best)
-    }
-
-    fn k_nearest_rec(
-        &self,
-        node_idx: usize,
-        query: &[f64],
-        k: usize,
-        best: &mut Vec<(usize, f64)>,
-    ) {
-        let node = &self.nodes[node_idx];
-        let pt = &self.points[node.point_index];
-        let d2 = Self::dist_sq(query, pt);
-        if best.len() < k || d2 < best.last().map_or(f64::INFINITY, |x| x.1) {
-            let pos = best
-                .binary_search_by(|x| x.1.total_cmp(&d2))
-                .unwrap_or_else(|e| e);
-            best.insert(pos, (node.point_index, d2));
-            if best.len() > k {
-                best.pop();
-            }
-        }
-
-        let diff = query[node.axis] - pt[node.axis];
-        let (near, far) = if diff <= 0.0 {
-            (node.left, node.right)
-        } else {
-            (node.right, node.left)
-        };
-        if let Some(near_idx) = near {
-            self.k_nearest_rec(near_idx, query, k, best);
-        }
-        let worst_d2 = if best.len() < k {
-            f64::INFINITY
-        } else {
-            best.last().map_or(f64::INFINITY, |x| x.1)
-        };
-        if diff * diff <= worst_d2
-            && let Some(far_idx) = far
-        {
-            self.k_nearest_rec(far_idx, query, k, best);
-        }
-    }
-
-    /// Finds all points within Euclidean `radius` of `query`, sorted by ascending distance.
-    ///
-    /// # Errors
-    ///
-    /// [`GeometryError::ShapeMismatch`] if `query.len()` does not match the tree dimension.
-    pub fn radius_search(
-        &self,
-        query: &[f64],
-        radius: f64,
-    ) -> Result<Vec<(usize, f64)>, GeometryError> {
-        if query.iter().any(|v| !v.is_finite()) {
-            return Err(GeometryError::Domain(
-                "query coordinates must be finite".to_string(),
-            ));
-        }
-        if query.len() != self.dim {
-            return Err(GeometryError::ShapeMismatch(format!(
-                "query dimension {} does not match tree dimension {}",
-                query.len(),
-                self.dim
-            )));
-        }
-        if radius.is_nan() {
-            return Err(GeometryError::Domain("radius must not be NaN".to_string()));
-        }
-        if radius < 0.0 {
-            return Ok(Vec::new());
-        }
-        let r2 = radius * radius;
-        let mut found = Vec::new();
-        if let Some(root) = self.root {
-            self.radius_rec(root, query, r2, &mut found);
-        }
-        found.sort_by(|a, b| a.1.total_cmp(&b.1));
-        for item in &mut found {
-            item.1 = item.1.sqrt();
-        }
-        Ok(found)
-    }
-
-    fn radius_rec(
-        &self,
-        node_idx: usize,
-        query: &[f64],
-        r2: f64,
-        found: &mut Vec<(usize, f64)>,
-    ) {
-        let node = &self.nodes[node_idx];
-        let pt = &self.points[node.point_index];
-        let d2 = Self::dist_sq(query, pt);
-        if d2 <= r2 {
-            found.push((node.point_index, d2));
-        }
-        let diff = query[node.axis] - pt[node.axis];
-        let (near, far) = if diff <= 0.0 {
-            (node.left, node.right)
-        } else {
-            (node.right, node.left)
-        };
-        if let Some(near_idx) = near {
-            self.radius_rec(near_idx, query, r2, found);
-        }
-        if diff * diff <= r2
-            && let Some(far_idx) = far
-        {
-            self.radius_rec(far_idx, query, r2, found);
-        }
-    }
-}
-
 /// A 3D axis-aligned bounding box.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Aabb {
@@ -883,7 +636,7 @@ impl Aabb {
         distance
     }
 
-    fn ray_hits(
+    fn ray_hits<const CHECK_RANGE: bool>(
         self,
         origin: [f64; 3],
         dir: [f64; 3],
@@ -896,8 +649,16 @@ impl Aabb {
                     return false;
                 }
             } else {
-                let mut t1 = (self.min[axis] - origin[axis]) / dir[axis];
-                let mut t2 = (self.max[axis] - origin[axis]) / dir[axis];
+                let lo = self.min[axis] - origin[axis];
+                let hi = self.max[axis] - origin[axis];
+                let mut t1 = lo / dir[axis];
+                let mut t2 = hi / dir[axis];
+                if CHECK_RANGE
+                    && (slab_limit_needs_exact(t1, lo) || slab_limit_needs_exact(t2, hi))
+                    && let Some(hit) = self.ray_hits_exact(origin, dir)
+                {
+                    return hit;
+                }
                 if t1 > t2 {
                     std::mem::swap(&mut t1, &mut t2);
                 }
@@ -910,6 +671,86 @@ impl Aabb {
         }
         true
     }
+
+    #[cold]
+    fn ray_hits_exact(
+        self,
+        origin: [f64; 3],
+        dir: [f64; 3],
+    ) -> Option<bool> {
+        use num_rational::BigRational;
+
+        let mut enter = BigRational::default();
+        let mut leave: Option<BigRational> = None;
+        for axis in 0..3 {
+            if dir[axis] == 0.0 {
+                if origin[axis] < self.min[axis] || origin[axis] > self.max[axis] {
+                    return Some(false);
+                }
+                continue;
+            }
+            let origin = BigRational::from_float(origin[axis])?;
+            let direction = BigRational::from_float(dir[axis])?;
+            let mut first = (BigRational::from_float(self.min[axis])? - &origin) / &direction;
+            let mut last = (BigRational::from_float(self.max[axis])? - origin) / direction;
+            if first > last {
+                std::mem::swap(&mut first, &mut last);
+            }
+            enter = enter.max(first);
+            leave = Some(match leave {
+                | Some(previous) => previous.min(last),
+                | None => last,
+            });
+            if leave.as_ref().is_some_and(|end| enter > *end) {
+                return Some(false);
+            }
+        }
+        Some(true)
+    }
+
+    #[cold]
+    fn exact_squared_distance(
+        self,
+        point: [f64; 3],
+        exact_point: &[num_bigint::BigInt; 3],
+    ) -> ExactSquaredDistance {
+        use num_traits::Float;
+
+        let mut squared = num_bigint::BigInt::default();
+        for axis in 0..3 {
+            let boundary = if point[axis] < self.min[axis] {
+                self.min[axis]
+            } else if point[axis] > self.max[axis] {
+                self.max[axis]
+            } else {
+                continue;
+            };
+            if !boundary.is_finite() {
+                return ExactSquaredDistance::Unbounded;
+            }
+            let delta = binary_lattice_coordinate(boundary.integer_decode(), F64_LATTICE_EXPONENT)
+                - &exact_point[axis];
+            squared += &delta * &delta;
+        }
+        ExactSquaredDistance::Bounded(squared)
+    }
+}
+
+fn slab_limit_needs_exact(
+    value: f64,
+    delta: f64,
+) -> bool {
+    let magnitude = value.abs();
+    magnitude.is_infinite() || (magnitude < f64::MIN_POSITIVE && delta != 0.0)
+}
+
+// Float::integer_decode uses exponent -1075 for subnormal f64 values.
+const F64_LATTICE_EXPONENT: i32 = -1075;
+
+#[derive(PartialEq, PartialOrd)]
+enum ExactSquaredDistance {
+    Bounded(num_bigint::BigInt),
+    Unbounded,
 }
 
 #[derive(Clone, Debug)]
@@ -939,6 +780,7 @@ impl BvhNode {
 pub struct Bvh {
     nodes: Vec<BvhNode>,
     root: Option<usize>,
+    ordinary_coordinates: bool,
 }
 
 impl Bvh {
@@ -949,12 +791,24 @@ impl Bvh {
             return Self {
                 nodes: Vec::new(),
                 root: None,
+                ordinary_coordinates: true,
             };
         }
         let mut indices: Vec<usize> = (0..aabbs.len()).collect();
         let mut nodes = Vec::with_capacity(2 * aabbs.len());
         let root = Some(Self::build_rec(aabbs, &mut indices, &mut nodes));
-        Self { nodes, root }
+        let ordinary_coordinates = aabbs.iter().all(|bounds| {
+            bounds
+                .min
+                .into_iter()
+                .chain(bounds.max)
+                .all(kd_tree::ordinary_coordinate)
+        });
+        Self {
+            nodes,
+            root,
+            ordinary_coordinates,
+        }
     }
 
     fn build_rec(
@@ -999,6 +853,8 @@ impl Bvh {
     }
 
     /// Returns `(aabb_index, distance)` for the [`Aabb`] closest to `point`.
+    /// If its distance overflows `f64`, the index remains the nearest and
+    /// the distance is positive infinity.
     #[must_use]
     pub fn nearest_aabb(
         &self,
@@ -1006,37 +862,59 @@ impl Bvh {
     ) -> Option<(usize, f64)> {
         let root = self.root?;
         let mut best: Option<(usize, f64)> = None;
-        self.nearest_rec(root, point, &mut best);
+        self.nearest_rec(root, &mut best, &|bounds| bounds.distance_to_point(point));
+        if best.is_some_and(|(_, distance)| distance.is_infinite())
+            && point.iter().all(|coordinate| coordinate.is_finite())
+        {
+            return self.nearest_overflowing(root, point);
+        }
         best
     }
 
-    fn nearest_rec(
+    #[cold]
+    fn nearest_overflowing(
+        &self,
+        root: usize,
+        point: [f64; 3],
+    ) -> Option<(usize, f64)> {
+        use num_traits::Float;
+
+        let exact_point = point.map(|coordinate| {
+            binary_lattice_coordinate(coordinate.integer_decode(), F64_LATTICE_EXPONENT)
+        });
+        let mut best = None;
+        self.nearest_rec(root, &mut best, &|bounds| {
+            bounds.exact_squared_distance(point, &exact_point)
+        });
+        best.map(|(index, _)| (index, f64::INFINITY))
+    }
+
+    fn nearest_rec<D: PartialOrd>(
         &self,
         node_idx: usize,
-        point: [f64; 3],
-        best: &mut Option<(usize, f64)>,
+        best: &mut Option<(usize, D)>,
+        distance: &impl Fn(Aabb) -> D,
     ) {
-        let best_d2 = best.map_or(f64::INFINITY, |x| x.1);
         match self.nodes[node_idx] {
             | BvhNode::Leaf { bounds, item_index } => {
-                let d2 = bounds.distance_to_point(point);
-                if best.is_none() || d2 < best_d2 {
-                    *best = Some((item_index, d2));
+                let key = distance(bounds);
+                if best.as_ref().is_none_or(|(_, limit)| key < *limit) {
+                    *best = Some((item_index, key));
                 }
             },
             | BvhNode::Internal { left, right, .. } => {
-                let dl = self.nodes[left].bounds().distance_to_point(point);
-                let dr = self.nodes[right].bounds().distance_to_point(point);
+                let dl = distance(self.nodes[left].bounds());
+                let dr = distance(self.nodes[right].bounds());
                 let (first, d_first, second, d_second) = if dl <= dr {
                     (left, dl, right, dr)
                 } else {
                     (right, dr, left, dl)
                 };
-                if best.is_none() || d_first < best.map_or(f64::INFINITY, |x| x.1) {
-                    self.nearest_rec(first, point, best);
+                if best.as_ref().is_none_or(|(_, limit)| d_first < *limit) {
+                    self.nearest_rec(first, best, distance);
                 }
-                if best.is_none() || d_second < best.map_or(f64::INFINITY, |x| x.1) {
-                    self.nearest_rec(second, point, best);
+                if best.as_ref().is_none_or(|(_, limit)| d_second < *limit) {
+                    self.nearest_rec(second, best, distance);
                 }
             },
         }
@@ -1049,14 +927,35 @@ impl Bvh {
         origin: [f64; 3],
         dir: [f64; 3],
     ) -> Vec<usize> {
-        let mut hits = Vec::new();
         let Some(root) = self.root else {
-            return hits;
+            return Vec::new();
         };
+        // If all nonzero operands fall in 2^[-450, 450], the smallest
+        // nonzero subtraction is still at least 2^-502. Dividing by any
+        // of the directions stays inside the normal f64 range.
+        if self.ordinary_coordinates
+            && origin
+                .into_iter()
+                .chain(dir)
+                .all(kd_tree::ordinary_coordinate)
+        {
+            self.ray_intersect_from::<false>(root, origin, dir)
+        } else {
+            self.ray_intersect_from::<true>(root, origin, dir)
+        }
+    }
+
+    fn ray_intersect_from<const CHECK_RANGE: bool>(
+        &self,
+        root: usize,
+        origin: [f64; 3],
+        dir: [f64; 3],
+    ) -> Vec<usize> {
+        let mut hits = Vec::new();
         let mut stack = vec![root];
         while let Some(node_idx) = stack.pop() {
             let node = &self.nodes[node_idx];
-            if !node.bounds().ray_hits(origin, dir) {
+            if !node.bounds().ray_hits::<CHECK_RANGE>(origin, dir) {
                 continue;
             }
             match *node {
@@ -1071,23 +970,178 @@ impl Bvh {
     }
 }
 
+#[cfg(test)]
+mod bvh_tests {
+    use super::Aabb;
+    use super::Bvh;
+
+    #[test]
+    fn bvh_ray_is_invariant_when_parameters_leave_f64_range() {
+        let boxes = [
+            Aabb {
+                min: [1.0, 2.0, 0.0],
+                max: [1.25, 2.25, 0.0],
+            },
+            Aabb {
+                min: [2.0, 2.0, 0.0],
+                max: [3.0, 3.0, 0.0],
+            },
+        ];
+        let tree = Bvh::build(&boxes);
+        for direction in [1.0, 1.0e-310, f64::MAX] {
+            assert_eq!(
+                tree.ray_intersect([0.0; 3], [direction, direction, 0.0]),
+                [1]
+            );
+        }
+        let tiny = f64::from_bits(1);
+        let scaled_boxes = boxes.map(|aabb| {
+            Aabb {
+                min: aabb.min.map(|v| v * tiny),
+                max: aabb.max.map(|v| v * tiny),
+            }
+        });
+        let scaled = Bvh::build(&scaled_boxes);
+        assert_eq!(scaled.ray_intersect([0.0; 3], [1.0, 1.0, 0.0]), [1]);
+        assert_eq!(
+            scaled.ray_intersect([0.0; 3], [f64::MAX, f64::MAX, 0.0]),
+            [1]
+        );
+
+        // The subtraction can overflow even when the resulting parameter is small.
+        let m = f64::MAX;
+        let across = Bvh::build(&[Aabb {
+            min: [m, 2.0, 0.0],
+            max: [m, 2.5, 0.0],
+        }]);
+        assert_eq!(across.ray_intersect([-m, 0.0, 0.0], [m, 1.0, 0.0]), [0]);
+    }
+
+    #[test]
+    fn bvh_nearest_orders_distances_that_overflow_the_result() {
+        let m = f64::MAX;
+        let boxes = [-m * 0.75, -m * 0.25].map(|x| {
+            Aabb {
+                min: [x, 0.0, 0.0],
+                max: [x, 0.0, 0.0],
+            }
+        });
+        let tree = Bvh::build(&boxes);
+        assert_eq!(tree.nearest_aabb([m * 0.125, 0.0, 0.0]).unwrap().0, 1);
+        assert_eq!(tree.nearest_aabb([m, 0.0, 0.0]), Some((1, f64::INFINITY)));
+
+        // A small second coordinate can break a tie in the overflowing axis.
+        let tied = [
+            Aabb {
+                min: [-m, 0.0, 0.0],
+                max: [-m, 0.0, 0.0],
+            },
+            Aabb {
+                min: [-m, 1.0, 0.0],
+                max: [-m, 1.0, 0.0],
+            },
+        ];
+        assert_eq!(
+            Bvh::build(&tied).nearest_aabb([m, 10.0, 0.0]),
+            Some((1, f64::INFINITY))
+        );
+        assert_eq!(Bvh::build(&[]).nearest_aabb([m, 0.0, 0.0]), None);
+    }
+}
+
 /// The area of a polygon given its vertices, by the shoelace formula.
 ///
 /// `points` is `[x0, y0, x1, y1, …]`; the result is non-negative and does not
-/// depend on the winding direction.
+/// depend on the winding direction. Fewer than three vertices give zero.
+/// Ill-conditioned and extreme-scale inputs use the exact represented coordinates.
 #[must_use]
 pub fn polygon_area(points: &[f64]) -> f64 {
-    let count = points.len() / 2;
-    if count < 3 {
+    const MIN_RATIO: f64 = f64::from_bits((1023 - 20) << 52);
+    let (vertices, _) = points.as_chunks::<2>();
+    if vertices.len() < 3 {
         return 0.0;
     }
+    let origin = vertices[0];
+    let determinant = |a: &[f64; 2], b: &[f64; 2]| {
+        let positive = (a[0] - origin[0]) * (b[1] - origin[1]);
+        let negative = (a[1] - origin[1]) * (b[0] - origin[0]);
+        (positive - negative, positive.abs() + negative.abs())
+    };
     let mut total = 0.0;
-    for index in 0..count {
-        let next = (index + 1) % count;
-        total +=
-            points[index * 2] * points[next * 2 + 1] - points[next * 2] * points[index * 2 + 1];
+    let mut compensation = 0.0;
+    let mut magnitude_bound = 0.0;
+    let mut accumulate = |term: f64, bound: f64| {
+        let term = term - compensation;
+        let next = total + term;
+        compensation = (next - total) - term;
+        total = next;
+        magnitude_bound += bound;
+    };
+
+    // The fan excludes the two zero edges incident on its origin. Within
+    // each block the determinants are independent; only block totals need
+    // a compensated accumulation across the polygon.
+    let (from, from_tail) = vertices[1..vertices.len() - 1].as_chunks::<8>();
+    let (to, to_tail) = vertices[2..].as_chunks::<8>();
+    for (from, to) in from.iter().zip(to) {
+        let terms = std::array::from_fn(|i| determinant(&from[i], &to[i]));
+        let pairwise_sum =
+            |[a, b, c, d, e, f, g, h]: [f64; 8]| ((a + b) + (c + d)) + ((e + f) + (g + h));
+        accumulate(
+            pairwise_sum(terms.map(|term| term.0)),
+            pairwise_sum(terms.map(|term| term.1)),
+        );
     }
-    (total / 2.0).abs()
+    for (from, to) in from_tail.iter().zip(to_tail) {
+        let (value, bound) = determinant(from, to);
+        accumulate(value, bound);
+    }
+    let magnitude = total.abs();
+    let underflow_floor = (vertices.len() as f64) * f64::MIN_POSITIVE;
+    if magnitude.is_finite()
+        && magnitude > MIN_RATIO * magnitude_bound
+        && magnitude > underflow_floor
+    {
+        return magnitude / 2.0;
+    }
+    if magnitude_bound == 0.0
+        && (0..2).any(|axis| {
+            vertices
+                .iter()
+                .all(|point| crate::kernels::exact_eq(point[axis], origin[axis]))
+        })
+    {
+        return 0.0;
+    }
+    exact_polygon_area(vertices).unwrap_or(magnitude / 2.0)
+}
+
+#[cold]
+fn exact_polygon_area(vertices: &[[f64; 2]]) -> Option<f64> {
+    use num_bigint::BigInt;
+    use num_traits::Float;
+
+    if vertices.iter().flatten().any(|point| !point.is_finite()) {
+        return None;
+    }
+    let exponents = [0, 1].map(|axis| {
+        binary_lattice_exponent(vertices.iter().map(|point| point[axis].integer_decode()))
+    });
+    let to_lattice = |point: &[f64; 2]| {
+        std::array::from_fn(|axis| {
+            binary_lattice_coordinate(point[axis].integer_decode(), exponents[axis])
+        })
+    };
+    let mut vertices = vertices.iter().map(to_lattice);
+    let origin: [BigInt; 2] = vertices.next()?;
+    let mut previous = origin.clone();
+    let mut total = BigInt::ZERO;
+    for next in vertices {
+        total += &previous[0] * &next[1] - &previous[1] * &next[0];
+        previous = next;
+    }
+    total += &previous[0] * &origin[1] - &previous[1] * &origin[0];
+    scaled_lattice_magnitude(total, exponents[0] + exponents[1], 2)
 }
 
 /// The Euclidean distance between two points of the same dimension.
@@ -1113,11 +1167,17 @@ pub fn distance(
 }
 
 /// The non-negative volume of a tetrahedron, from four vertices in `R^3`.
+///
+/// Ill-conditioned and extreme-scale inputs use an exact determinant of the
+/// represented coordinates. Fewer than twelve coordinates give zero. Only
+/// the first twelve coordinates are used.
 #[must_use]
 pub fn tetrahedron_volume(points: &[f64]) -> f64 {
-    if points.len() < 12 {
+    // A ratio above 2^-20 leaves margin for an accurate volume magnitude.
+    const MIN_RATIO: f64 = f64::from_bits((1023 - 20) << 52);
+    let Some(points) = points.first_chunk::<12>() else {
         return 0.0;
-    }
+    };
     let a = [
         points[3] - points[0],
         points[4] - points[1],
@@ -1133,10 +1193,191 @@ pub fn tetrahedron_volume(points: &[f64]) -> f64 {
         points[10] - points[1],
         points[11] - points[2],
     ];
-    let cross = [
-        b[1] * c[2] - b[2] * c[1],
-        b[2] * c[0] - b[0] * c[2],
-        b[0] * c[1] - b[1] * c[0],
-    ];
-    (a[0] * cross[0] + a[1] * cross[1] + a[2] * cross[2]).abs() / 6.0
+    let positive = [b[1] * c[2], b[2] * c[0], b[0] * c[1]];
+    let negative = [b[2] * c[1], b[0] * c[2], b[1] * c[0]];
+    let cross: [f64; 3] = std::array::from_fn(|i| positive[i] - negative[i]);
+    let determinant = a[0] * cross[0] + a[1] * cross[1] + a[2] * cross[2];
+    let magnitude = determinant.abs();
+    let abs_a = a.map(f64::abs);
+    // The permanent measures cancellation across the six triple products.
+    let permanent = abs_a[0] * (positive[0].abs() + negative[0].abs())
+        + abs_a[1] * (positive[1].abs() + negative[1].abs())
+        + abs_a[2] * (positive[2].abs() + negative[2].abs());
+
+    // Small product errors can grow when the outer edge is large. A normal
+    // increment bounds the combined subnormal rounding loss with ample margin.
+    let underflow_floor = (abs_a[0] + abs_a[1] + abs_a[2] + 1.0) * f64::MIN_POSITIVE;
+    if magnitude.is_finite() && magnitude > MIN_RATIO * permanent && magnitude > underflow_floor {
+        return magnitude / 6.0;
+    }
+    if permanent == 0.0 && (0..3).any(|axis| a[axis] == 0.0 && b[axis] == 0.0 && c[axis] == 0.0) {
+        return 0.0;
+    }
+    exact_tetrahedron_volume(points).unwrap_or(magnitude / 6.0)
+}
+
+#[cold]
+fn exact_tetrahedron_volume(points: &[f64; 12]) -> Option<f64> {
+    use num_bigint::BigInt;
+    use num_traits::Float;
+
+    if points.iter().any(|coordinate| !coordinate.is_finite()) {
+        return None;
+    }
+    let decoded = points.map(Float::integer_decode);
+    // Put the coordinates on a common binary lattice so each difference
+    // and product is an exact integer operation.
+    let exponent = binary_lattice_exponent(decoded);
+    let coordinates = decoded.map(|coordinate| binary_lattice_coordinate(coordinate, exponent));
+    let [a, b, c]: [[BigInt; 3]; 3] = [3, 6, 9]
+        .map(|offset| std::array::from_fn(|axis| &coordinates[offset + axis] - &coordinates[axis]));
+    let determinant = &a[0] * (&b[1] * &c[2] - &b[2] * &c[1])
+        + &a[1] * (&b[2] * &c[0] - &b[0] * &c[2])
+        + &a[2] * (&b[0] * &c[1] - &b[1] * &c[0]);
+
+    // The determinant scales with the cube of the lattice spacing.
+    // Restore that factor and divide by six before rounding once.
+    scaled_lattice_magnitude(determinant, 3 * exponent, 6)
+}
+
+fn binary_lattice_exponent(coordinates: impl IntoIterator<Item = (u64, i16, i8)>) -> i32 {
+    coordinates
+        .into_iter()
+        .filter(|(mantissa, _, _)| *mantissa != 0)
+        .map(|(_, power, _)| i32::from(power))
+        .min()
+        .unwrap_or(0)
+}
+
+fn binary_lattice_coordinate(
+    (mantissa, power, sign): (u64, i16, i8),
+    exponent: i32,
+) -> num_bigint::BigInt {
+    let magnitude =
+        num_bigint::BigInt::from(mantissa) << (i32::from(power) - exponent).max(0).unsigned_abs();
+    if sign < 0 {
+        -magnitude
+    } else {
+        magnitude
+    }
+}
+
+fn scaled_lattice_magnitude(
+    value: num_bigint::BigInt,
+    power: i32,
+    divisor: u8,
+) -> Option<f64> {
+    use num_bigint::BigInt;
+    use num_rational::BigRational;
+    use num_traits::ToPrimitive;
+
+    let mut numerator = BigInt::from(value.into_parts().1);
+    let mut denominator = BigInt::from(divisor);
+    if power < 0 {
+        denominator <<= power.unsigned_abs();
+    } else {
+        numerator <<= power.unsigned_abs();
+    }
+    BigRational::new(numerator, denominator).to_f64()
+}
+
+#[cfg(test)]
+mod tetrahedron_tests {
+    use super::tetrahedron_volume;
+
+    const UNIT_AXES: [f64; 12] = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+
+    #[test]
+    fn tetrahedron_volume_preserves_the_flat_input_contract() {
+        assert_eq!(tetrahedron_volume(&UNIT_AXES), 1.0 / 6.0);
+        assert_eq!(tetrahedron_volume(&UNIT_AXES[..11]), 0.0);
+        let mut extra = UNIT_AXES.to_vec();
+        extra.push(f64::NAN);
+        assert_eq!(tetrahedron_volume(&extra), 1.0 / 6.0);
+        let mut coplanar = UNIT_AXES;
+        coplanar[9..].copy_from_slice(&[1.0, 1.0, 0.0]);
+        assert_eq!(tetrahedron_volume(&coplanar), 0.0);
+        let mut nonfinite = UNIT_AXES;
+        nonfinite[3] = f64::INFINITY;
+        assert_eq!(tetrahedron_volume(&nonfinite), f64::INFINITY);
+        nonfinite[3] = f64::NAN;
+        assert!(tetrahedron_volume(&nonfinite).is_nan());
+    }
+
+    #[test]
+    fn tetrahedron_volume_recovers_representable_extreme_results() {
+        // Expected values use rational arithmetic on the binary coordinates.
+        let cases = [
+            (
+                [
+                    -1e308, 0.0, 0.0, 1e308, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1e-300,
+                ],
+                33_333_333.333333336,
+            ),
+            (
+                [
+                    0.0, 0.0, 0.0, 1e-300, 0.0, 0.0, 0.0, 1e200, 0.0, 0.0, 0.0, 1e200,
+                ],
+                1.6666666666666666e99,
+            ),
+            (
+                [0.0, 0.0, 0.0, 1e308, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 2.0],
+                6.6666666666666664e307,
+            ),
+            (
+                [
+                    0.0, 0.0, 0.0, 1e300, 0.0, 0.0, 0.0, 1e-300, 0.0, 0.0, 0.0, 1e-300,
+                ],
+                1.6666666666666669e-301,
+            ),
+            (
+                [
+                    0.0, 0.0, 0.0, 1e300, 0.0, 1.0, 1e-200, 1e-200, 0.0, 0.0, 1e100, 1e-200,
+                ],
+                3.3333333333333336e-101,
+            ),
+        ];
+        for (points, expected) in cases {
+            assert_eq!(tetrahedron_volume(&points), expected, "{points:?}");
+        }
+        for (power, bits) in [(356, 11), (358, 0)] {
+            let scale = f64::from_bits((1023 - power) << 52);
+            let points = UNIT_AXES.map(|x| x * scale);
+            assert_eq!(tetrahedron_volume(&points).to_bits(), bits);
+        }
+        let huge = f64::from_bits((1023 + 550) << 52);
+        let mut mixed = UNIT_AXES;
+        mixed[3] = f64::from_bits(1);
+        mixed[7] = huge;
+        mixed[11] = huge;
+        assert_eq!(tetrahedron_volume(&mixed), 67_108_864.0 / 6.0);
+    }
+
+    #[test]
+    fn tetrahedron_volume_recovers_near_coplanar_magnitudes() {
+        let magnitude = 134_217_728.0; // 2^27
+        for offset in [1.0, 101.0] {
+            let points = [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                magnitude + offset,
+                magnitude,
+                0.0,
+                magnitude + 2.0 * offset,
+                magnitude + offset,
+                0.0,
+            ];
+            let mut opposite_winding = points;
+            for axis in 0..3 {
+                opposite_winding.swap(6 + axis, 9 + axis);
+            }
+            let expected = offset * offset / 6.0;
+            assert_eq!(tetrahedron_volume(&points), expected);
+            assert_eq!(tetrahedron_volume(&opposite_winding), expected);
+        }
+    }
 }

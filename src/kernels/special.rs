@@ -511,14 +511,22 @@ fn erf_series(x: f64) -> f64 {
     2.0 / std::f64::consts::PI.sqrt() * (-x2).exp() * sum
 }
 
-/// `erfc(x)` for `x >= 1.5` by the continued fraction
-/// `e^(-x^2)/sqrt(pi) / (x + (1/2)/(x + 1/(x + (3/2)/(x + ...))))`.
-fn erfc_tail(x: f64) -> f64 {
-    let mut f = x;
-    for k in (1..=300).rev() {
-        f = x + f64::from(k) * 0.5 / f;
+/// Denominator of the continued fraction for `erfc(x)` at `x >= 1.5`:
+/// `x + (1/2)/(x + 1/(x + (3/2)/(x + ...)))`.
+#[inline]
+fn erfc_tail_denominator(
+    x: f64,
+    terms: i32,
+) -> f64 {
+    let mut denominator = x;
+    for k in (1..=terms).rev() {
+        denominator = x + f64::from(k) * 0.5 / denominator;
     }
-    (-x * x).exp() / (std::f64::consts::PI.sqrt() * f)
+    denominator
+}
+
+fn erfc_tail(x: f64) -> f64 {
+    (-x * x).exp() / (std::f64::consts::PI.sqrt() * erfc_tail_denominator(x, 300))
 }
 
 /// Computes the complementary error function, erfc(x) = 1 - erf(x).
@@ -2265,23 +2273,144 @@ pub fn bessel_i(
 }
 
 /// Modified Bessel function of the second kind `K_ν(x)` for `x > 0`, by
-/// `∫_0^∞ e^{-x cosh t} cosh νt dt`.
+/// [its positive integral representation](https://dlmf.nist.gov/10.32.E9).
+///
+/// Uses a shifted integral outside the moderate range. See [`ln_bessel_k`]
+/// when the value of `K_ν(x)` is outside the floating-point range.
 #[must_use]
 pub fn bessel_k(
     nu: f64,
     x: f64,
 ) -> f64 {
-    if nu.is_nan() || x.is_nan() || x < 0.0 {
+    if (1e-12..=16.0).contains(&x) && nu.is_finite() {
+        let end = decay_end(x, nu);
+        if nu.abs() * end <= 600.0 {
+            return quad(|t| (-x * t.cosh()).exp() * (nu * t).cosh(), 0.0, end);
+        }
+    }
+    ln_bessel_k(nu, x).exp()
+}
+
+// (exp(t) - 1 - t) / t², including its limit at t = 0.
+fn exp_curvature(t: f64) -> f64 {
+    if t.abs() <= 0.125 {
+        const COEFFICIENTS: [f64; 10] = [
+            1.0 / 2.0,
+            1.0 / 6.0,
+            1.0 / 24.0,
+            1.0 / 120.0,
+            1.0 / 720.0,
+            1.0 / 5040.0,
+            1.0 / 40_320.0,
+            1.0 / 362_880.0,
+            1.0 / 3_628_800.0,
+            1.0 / 39_916_800.0,
+        ];
+        COEFFICIENTS
+            .iter()
+            .rev()
+            .fold(0.0, |polynomial, &c| polynomial * t + c)
+    } else {
+        (t.exp_m1() - t) / (t * t)
+    }
+}
+
+fn weighted_exp_cost(
+    log_weight: f64,
+    t: f64,
+) -> f64 {
+    if t > 48.0 {
+        // The linear terms cannot affect the rounded exponential here.
+        (log_weight + t).exp()
+    } else {
+        (log_weight + 2.0 * t.abs().ln() + exp_curvature(t).ln()).exp()
+    }
+}
+
+fn bessel_peak_integral(cost: impl Fn(f64) -> f64) -> f64 {
+    [-1.0, 1.0]
+        .into_iter()
+        .map(|sign| {
+            // The loss from the peak increases convexly on either side.
+            // A cutoff at loss 50 leaves tails below floating-point accuracy.
+            let mut end = 1.0;
+            while cost(sign * end) < 50.0 {
+                end *= 2.0;
+            }
+            quad(|t| (-cost(sign * t)).exp(), 0.0, end)
+        })
+        .sum()
+}
+
+/// Natural logarithm of the modified Bessel function `K_ν(x)` for real order.
+///
+/// Closed forms or a positive integral centered and scaled at its peak keep
+/// the result available even if `K_ν(x)` itself overflows or underflows.
+/// Even in `ν`. At zero the result is positive infinity, and at positive
+/// infinity it is negative infinity for finite order. Negative arguments
+/// and an infinite argument of infinite order give NaN.
+#[must_use]
+pub fn ln_bessel_k(
+    nu: f64,
+    x: f64,
+) -> f64 {
+    if nu.is_nan() || x.is_nan() || x < 0.0 || (x.is_infinite() && nu.is_infinite()) {
         return f64::NAN;
     }
-    if x == 0.0 {
+    if x == 0.0 || nu.is_infinite() {
         return f64::INFINITY;
     }
-    quad(
-        |t| (-x * t.cosh()).exp() * (nu * t).cosh(),
-        0.0,
-        decay_end(x, nu),
-    )
+    if x.is_infinite() {
+        return f64::NEG_INFINITY;
+    }
+
+    let nu = nu.abs();
+    if crate::kernels::exact_eq(nu, 0.5) {
+        // DLMF 10.39.2.
+        return -x + 0.5 * (std::f64::consts::FRAC_PI_2.ln() - x.ln());
+    }
+    if nu == 0.0 && x < 1e-12 {
+        // DLMF 10.31.2. The correction O(x² log x) is below one ulp.
+        return (std::f64::consts::LN_2 - x.ln() - EULER_GAMMA).ln();
+    }
+
+    // K_nu(x) = 1/2 ∫ exp(-x cosh(t) + |nu| t) dt over the real line.
+    // Its saddle is at asinh(|nu| / x); factor out its exponent there.
+    let scale = x.max(nu);
+    let order = nu / scale;
+    let argument = x / scale;
+    let radius = argument.hypot(order);
+    let log_radius = scale.ln() + radius.ln();
+    let ratio = nu / x;
+    let center = if ratio.is_finite() {
+        ratio.asinh()
+    } else {
+        nu.ln() - x.ln() + std::f64::consts::LN_2
+    };
+    let peak = scale * order.mul_add(center, -radius);
+    let order_fraction = order / radius;
+    let upper = 1.0_f64.midpoint(order_fraction);
+    // At offset s from the saddle, the loss is A (e^s - 1 - s)
+    // + B (e^-s - 1 + s), with A + B = hypot(x, nu) and 4 A B = x².
+    let (area, log_width) = if log_radius >= 0.0 {
+        let lower = 0.5 * (argument / radius).powi(2) / (1.0 + order_fraction);
+        let log_width = -0.5 * log_radius;
+        let width = log_width.exp();
+        let area = bessel_peak_integral(|u| {
+            let s = width * u;
+            u * u * (upper * exp_curvature(s) + lower * exp_curvature(-s))
+        });
+        (area, log_width)
+    } else {
+        // Tiny x can give an underflowing weight, with a far tail still
+        // contributing significantly. Keep both weights in logarithmic form.
+        let log_a = log_radius + upper.ln();
+        let log_b = 2.0 * (x.ln() - std::f64::consts::LN_2) - log_a;
+        let area =
+            bessel_peak_integral(|s| weighted_exp_cost(log_a, s) + weighted_exp_cost(log_b, -s));
+        (area, 0.0)
+    };
+    peak + (area * 0.5).ln() + log_width
 }
 
 /// `K₀(x)`.
@@ -2323,9 +2452,9 @@ pub fn erfi(x: f64) -> f64 {
     sum * 2.0 / std::f64::consts::PI.sqrt()
 }
 
-/// The inverse of `erfc`: `y` with `erfc(y) = p`, `0 < p < 2`. Newton
-/// steps on `erfc` refine the inverse of `erf(1 - p)`, which keeps full
-/// relative accuracy for small `p`.
+/// Returns `y` such that `erfc(y) = p` for `0 < p < 2`.
+/// The support endpoints return signed infinities. Inputs outside `[0, 2]`
+/// return NaN. Refinement in the far tail uses a logarithmic residual.
 #[must_use]
 #[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
 pub fn inverse_erfc(p: f64) -> f64 {
@@ -2362,25 +2491,26 @@ pub fn inverse_erfc(p: f64) -> f64 {
     // converges in a few steps from the asymptotic start.
     let target = p.ln();
     let sqrt_pi = std::f64::consts::PI.sqrt();
-    let ln_erfc = |y: f64| -> f64 {
-        if y < 25.0 {
-            erfc_numerical(y).ln()
-        } else {
-            // erfc(y) ~ e^-y^2 / (y sqrt(pi)) (1 - 1/(2y^2) + 3/(4y^4) - 15/(8y^6))
-            let u = 1.0 / (2.0 * y * y);
-            let series = 1.0 - u + 3.0 * u * u - 15.0 * u * u * u;
-            -y * y - (y * sqrt_pi).ln() + series.ln()
-        }
-    };
     let mut y = (-target - (-target).ln().max(0.0) * 0.5).max(0.5).sqrt();
     for _ in 0..60 {
-        let value = ln_erfc(y);
-        // d/dy ln erfc(y) = -2 exp(-y^2 - ln erfc(y)) / sqrt(pi)
-        let slope = -2.0 * (-y * y - value).exp() / sqrt_pi;
+        let (residual, slope) = if y < 8.0 {
+            let value = erfc_numerical(y).ln();
+            (value - target, -2.0 * (-y * y - value).exp() / sqrt_pi)
+        } else {
+            // After n terms the relative truncation error is bounded by
+            // (n + 1)! / (2 y²)^(n + 1). The derivative has magnitude
+            // at least 2y, bounding the effect on the root below 2e-17.
+            let terms = if y < 16.0 { 10 } else { 6 };
+            let denominator = erfc_tail_denominator(y, terms);
+            // The same fraction gives d(log erfc(y))/dy = -2 * denominator.
+            // Form -y² - log(p) together so the small residual keeps precision.
+            let residual = (-y).mul_add(y, -target) - (sqrt_pi * denominator).ln();
+            (residual, -2.0 * denominator)
+        };
         if slope == 0.0 || !slope.is_finite() {
             break;
         }
-        let step = (value - target) / slope;
+        let step = residual / slope;
         y -= step;
         if step.abs() <= 1e-15 * y.abs() {
             break;

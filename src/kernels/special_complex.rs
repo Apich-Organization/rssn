@@ -1,3 +1,5 @@
+//! Gamma, digamma, Lambert W and Bessel J/I functions of a complex argument.
+//!
 //! # Special functions of a complex argument
 //!
 //! The real-argument routines of [`special`](super::special) cover the
@@ -310,6 +312,9 @@ fn lambert_w_logarithmic(target: Complex64) -> Complex64 {
 /// The branch `k` of the Lambert W function: the solution of `w e^w = z`
 /// in the strip of branch `k`.
 ///
+/// On the negative real axis, a positive zero imaginary part selects the
+/// upper lip and a negative zero selects the lower lip.
+///
 /// `W_0(0) = 0` and `W_k(0) = -∞` for `k != 0`; the branch point `-1/e`
 /// gives `-1`.
 #[must_use]
@@ -332,13 +337,31 @@ pub fn lambert_w_complex(
     if is_inf(z) {
         return INF;
     }
+    let scale = z.re.abs().max(z.im.abs());
+    if k == 0 && scale <= 1.0 / 16_777_216.0 {
+        let square = z * z;
+        let quadratic = z - square;
+        // The real component can start at order |z|² near the imaginary axis.
+        let correction = square * (1.5 * z - (8.0 / 3.0) * square);
+        let mut expansion = quadratic + correction;
+        if quadratic.re.abs() < 0.5 * z.re.abs().max(square.re.abs()) {
+            // Preserve x+y² before adding corrections of order |z|⁴. Terms
+            // five and six keep accuracy when those corrections cancel too.
+            let higher = (square * square) * ((125.0 / 24.0) * z - (54.0 / 5.0) * square);
+            expansion.re = z.im.mul_add(z.im, z.re) + (correction.re - z.re * z.re) + higher.re;
+        }
+        if z.im == 0.0 {
+            expansion.im = z.im;
+        }
+        return expansion;
+    }
     let branch_offset = Complex64::new(z.re + INV_E, z.im);
-    let coalescing_branch = k == 0 || (k == -1 && z.im >= 0.0) || (k == 1 && z.im < 0.0);
+    let upper_lip = z.im.is_sign_positive();
+    let coalescing_branch = k == 0 || (k == -1 && upper_lip) || (k == 1 && !upper_lip);
     if coalescing_branch && branch_offset == ZERO {
-        return Complex64::new(-1.0, 0.0);
+        return Complex64::new(-1.0, if k == 0 { z.im } else { -z.im });
     }
     let phase_shift = Complex64::new(0.0, std::f64::consts::TAU * f64::from(k));
-    let scale = z.re.abs().max(z.im.abs());
     if scale >= 1e100 || (k != 0 && scale < 1e-100) {
         return lambert_w_logarithmic(scaled_log(z) + phase_shift);
     }

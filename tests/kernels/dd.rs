@@ -72,3 +72,62 @@ fn complex_arithmetic() {
     assert!((z - a).norm() < 1e-31);
     assert!((-a + a).norm() == 0.0);
 }
+
+#[test]
+fn square_root_recovers_the_low_part_at_both_float_limits() {
+    // Independently rounded high and residual from a 1800-digit square root.
+    for (input, high, low) in [
+        (
+            f64::from_bits(3),
+            0x1e6b_b67a_e858_4caa,
+            0x1b0c_ec95_d0b5_c1e3,
+        ),
+        (f64::MAX, 0x5fef_ffff_ffff_ffff, 0x5c90_0000_0000_0000),
+    ] {
+        let root = Dd::from_f64(input).sqrt();
+        assert_eq!(root.hi.to_bits(), high);
+        assert_eq!(root.lo.to_bits(), low);
+    }
+    assert_eq!(
+        Dd::from_f64(f64::INFINITY).sqrt(),
+        Dd::from_f64(f64::INFINITY)
+    );
+    assert!(Dd::from_f64(f64::NAN).sqrt().hi.is_nan());
+}
+
+#[test]
+fn euclidean_norm_keeps_both_parts_and_scales_its_squares() {
+    let scale = Dd::from_parts(1.0, 2.0_f64.powi(-60));
+    let c = Cdd {
+        re: Dd::from_f64(3.0) * scale,
+        im: Dd::from_f64(-4.0) * scale,
+    };
+    let want = Dd::from_f64(5.0) * scale;
+    assert!((c.norm_dd() - want).abs().hi < 2e-31);
+    assert_ne!(c.norm_dd().lo, 0.0);
+    assert_eq!(Dd::ZERO.hypot(-scale), scale);
+    assert_eq!(Cdd::new(-0.0, -0.0).norm_dd().hi.to_bits(), 0);
+
+    for scale in [f64::from_bits(1), 2.0_f64.powi(1000)] {
+        assert_eq!(
+            Dd::from_f64(3.0 * scale).hypot(Dd::from_f64(4.0 * scale)),
+            Dd::from_f64(5.0 * scale)
+        );
+    }
+    let large = Dd::from_f64(f64::MAX);
+    assert_eq!(large.hypot(large), Dd::from_f64(f64::INFINITY));
+}
+
+#[test]
+fn euclidean_norm_uses_the_low_part_to_round_subnormal_midpoints() {
+    // In units of the minimum subnormal, each norm is within 1e-15 of a
+    // half integer. Comparing x^2 + y^2 with (x + 1/2)^2 fixes the direction.
+    let y = Dd::from_f64(f64::from_bits(1 << 25));
+    for (x, expected) in [
+        ((1 << 50) - 2, (1 << 50) - 1),
+        ((1 << 50) + 1, (1 << 50) + 1),
+    ] {
+        let norm = Dd::from_f64(f64::from_bits(x)).hypot(y);
+        assert_eq!(norm, Dd::from_f64(f64::from_bits(expected)));
+    }
+}

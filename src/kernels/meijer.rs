@@ -26,6 +26,10 @@
 //!
 //! # Algorithms
 //!
+//! * **The exponential reduction.** The single-pole case
+//!   `G^{1,0}_{0,1}(z | b) = z^b exp(-z)` combines the logarithmic magnitudes
+//!   before exponentiating. This also covers arguments for which the general
+//!   residue sum loses the result to cancellation.
 //! * **Slater's residue series.** Closing the contour to the right
 //!   (`s = b_h + k`) gives
 //!   ```text
@@ -389,6 +393,70 @@ fn right_log_coefficient(
 /// Whether a complex factor is zero (a terminating residue series).
 fn is_zero(v: C) -> bool {
     v.re == 0.0 && v.im == 0.0
+}
+
+fn unit_phase(angle: f64) -> C {
+    if angle == 0.0 {
+        return ONE;
+    }
+    let (sin, cos) = angle.sin_cos();
+    C::new(cos, sin)
+}
+
+fn exp_with_subnormals(logarithm: f64) -> f64 {
+    const LOG_MIN_NORMAL: f64 = -708.396_418_532_264_1;
+    const EXP_NEG_700: f64 = 9.859_676_543_759_77e-305;
+    if logarithm < LOG_MIN_NORMAL {
+        // Near the subnormal range the shift is exact and exp has a normal
+        // result. The final multiplication rounds through gradual underflow.
+        (logarithm + 700.0).exp() * EXP_NEG_700
+    } else {
+        logarithm.exp()
+    }
+}
+
+/// The closed form for `G^{1,0}_{0,1}` away from the origin.
+fn exponential_family(
+    b: C,
+    z: C,
+) -> Option<C> {
+    let mut log_magnitude = -z.re;
+    let mut direction = unit_phase(-z.im);
+    if !is_zero(b) {
+        // |z| need not be representable even when its logarithm is. Keep
+        // the smaller component's contribution near the unit circle, too.
+        let larger = z.re.abs().max(z.im.abs());
+        let ratio = z.re.abs().min(z.im.abs()) / larger;
+        let log_radius = larger.ln() + 0.5 * (ratio * ratio).ln_1p();
+        let on_cut = z.re < 0.0 && z.im == 0.0;
+        let angle = if on_cut {
+            std::f64::consts::PI
+        } else {
+            z.arg()
+        };
+        log_magnitude =
+            b.re.mul_add(log_radius, (-b.im).mul_add(angle, log_magnitude));
+        // Use the upper side on the cut, including an input with -0i.
+        // Reducing the real power there preserves the parity of large integers.
+        let real_power = if on_cut { b.re % 2.0 } else { b.re };
+        let phase = b.im.mul_add(log_radius, real_power * angle);
+        // Separate rotations retain the power's phase when Im(z) is large.
+        direction *= unit_phase(phase);
+    }
+    let magnitude = exp_with_subnormals(log_magnitude);
+    if magnitude.is_normal() || direction == ONE {
+        return finite(direction * magnitude);
+    }
+    // The modulus can overflow while both Cartesian components are finite.
+    // This also rounds very small components only after applying the phase.
+    let component = |value: f64| {
+        if value == 0.0 {
+            value
+        } else {
+            exp_with_subnormals(log_magnitude + value.abs().ln()).copysign(value)
+        }
+    };
+    finite(C::new(component(direction.re), component(direction.im)))
 }
 
 /// Sums `sum_{k>=0} t_k` given the ratio `t_{k+1}/t_k`, until the terms fall
@@ -1368,10 +1436,9 @@ fn mellin_barnes(
 ///
 /// `p = a.len()` and `q = b.len()`. Returns `None` for invalid orders
 /// (`m > q` or `n > p`), non-finite inputs, `z = 0` where the limit does not
-/// exist, and parameter/argument combinations for which neither residue
-/// series nor the Mellin-Barnes integral is numerically valid. The result is
-/// never a silently wrong number: when the two independent methods disagree
-/// by more than `1e-7` relative, `None` is returned.
+/// exist, or when a finite value cannot be resolved. The single-pole
+/// exponential reduction uses its closed form. Residue series use the
+/// Mellin-Barnes integral as an independent cross-check where it applies.
 #[must_use]
 pub fn meijer_g(
     m: usize,
@@ -1393,8 +1460,14 @@ pub fn meijer_g(
     {
         return None;
     }
-    if z.norm() == 0.0 {
+    if is_zero(z) {
         return zero_limit(m, n, a, b);
+    }
+    if p == 0
+        && m == 1
+        && let [parameter] = b
+    {
+        return exponential_family(*parameter, z);
     }
     if p == 0 && q == 0 {
         return Some(ZERO);
@@ -2323,9 +2396,8 @@ mod tests {
         }
     }
 
-    /// Large `|z|` with `p > q` uses the convergent `1/z` series; with
-    /// `p < q` the value is exponentially small compared with the terms and
-    /// the kernel refuses rather than returning a rounded-off zero.
+    /// Large `|z|` on the diagonal uses the `1/z` series. The exponential
+    /// reduction also resolves values far below the terms of its residue sum.
     #[test]
     fn large_arguments() {
         // p = q: |z| > 1 uses the 1/z series.
@@ -2342,8 +2414,10 @@ mod tests {
                 "1/z series",
             );
         }
-        // p < q: large arguments cancel in the z-series.
-        assert_eq!(meijer_g(1, 0, &[], &[re(0.5)], re(80.0)), None);
+        // The exponential reduction resolves what cancels in the z-series.
+        let got = meijer_g(1, 0, &[], &[re(0.5)], re(80.0)).unwrap_or(C::new(f64::NAN, 0.0));
+        let want = 80.0_f64.sqrt() * (-80.0_f64).exp();
+        assert!((got.re / want - 1.0).abs() < 1e-12);
         // Moderate ones are still accurate.
         close(
             meijer_g(1, 0, &[], &[re(0.5)], re(6.0)).unwrap_or(C::new(f64::NAN, 0.0)),
