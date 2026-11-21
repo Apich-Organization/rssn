@@ -58,6 +58,62 @@ fn measured(value: &Value) -> (&Value, &rssn::kernel::value::UnitValue) {
 }
 
 #[test]
+fn a_graph_indexed_for_inspection_tracks_later_insertions_and_clones() {
+    use rssn::graph::Arity;
+    use rssn::graph::Graph;
+    use rssn::graph::OpDescriptor;
+    use rssn::graph::OpId;
+
+    let mut graph = Graph::new();
+    let f = graph
+        .ops_mut()
+        .register(OpDescriptor::new("f", Arity::Fixed(1)))
+        .unwrap();
+    let x = graph.sym("x");
+    let y = graph.sym("y");
+    let fx = graph.node(f, &[x]);
+    assert_eq!(graph.nodes_with_op(f), &[fx]);
+    let fy = graph.node(f, &[y]);
+    assert_eq!(graph.node(f, &[x]), fx);
+    assert_eq!(graph.nodes_with_op(f), &[fx, fy]);
+
+    let mut copy = graph.clone();
+    let ffx = copy.node(f, &[fx]);
+    assert_eq!(copy.nodes_with_op(f), &[fx, fy, ffx]);
+    assert_eq!(graph.nodes_with_op(f), &[fx, fy]);
+    assert!(graph.nodes_with_op(OpId::NONE).is_empty());
+}
+
+#[test]
+fn sort_tracing_keeps_registration_order_for_used_operators() {
+    use rssn::graph::Arity;
+    use rssn::graph::Graph;
+    use rssn::graph::OpDescriptor;
+    use rssn::kernel::sort::facts_of;
+
+    let mut graph = Graph::new();
+    let mut register = |name| {
+        graph
+            .ops_mut()
+            .register(OpDescriptor::new(name, Arity::Fixed(1)))
+            .unwrap()
+    };
+    let first = register("first_trace_fixture");
+    register("unused_trace_fixture");
+    let last = register("last_trace_fixture");
+    let one = graph.int(1);
+    let two = graph.int(2);
+    let last_call = graph.node(last, &[two]);
+    let first_call = graph.node(first, &[one]);
+    assert!(graph.union(last_call, two));
+    assert!(graph.union(first_call, one));
+    graph.rebuild();
+    let facts = facts_of(&graph);
+    let operators: Vec<_> = facts.iter().map(|fact| fact.op.as_str()).collect();
+    assert_eq!(operators, ["first_trace_fixture", "last_trace_fixture"]);
+}
+
+#[test]
 fn conflicting_named_definitions_keep_physical_metadata_and_hash_cons() {
     let session = Session::new();
     let value = quantity(Value::int(3), "m", DimExpr::base("Time"), 7);

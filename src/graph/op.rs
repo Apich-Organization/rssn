@@ -32,6 +32,7 @@ use std::any::TypeId;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
+use std::sync::OnceLock;
 
 use super::id::OpId;
 use super::id::to_u32;
@@ -684,6 +685,8 @@ pub mod core {
     pub const EQ: OpId = OpId(7);
 }
 
+type SignatureHashes = OnceLock<Box<[[u8; 16]]>>;
+
 /// Registry mapping [`OpId`]s to descriptors and names to ids.
 ///
 /// Besides the descriptor, any number of typed *attributes* can be attached
@@ -698,6 +701,8 @@ pub struct OpTable {
     by_name: HashMap<Arc<str>, Vec<OpId>>,
     by_alias: HashMap<Arc<str>, OpId>,
     attrs: HashMap<(OpId, TypeId), Arc<dyn Any + Send + Sync>>,
+    /// Digests in the same order as the effective ABI overloads.
+    signature_hashes: OnceLock<Vec<SignatureHashes>>,
 }
 
 impl fmt::Debug for OpTable {
@@ -729,6 +734,7 @@ impl OpTable {
             by_name: HashMap::new(),
             by_alias: HashMap::new(),
             attrs: HashMap::new(),
+            signature_hashes: OnceLock::new(),
         };
         let ac = OpFlags::COMMUTATIVE.with(OpFlags::ASSOCIATIVE);
         // Core algebra operates on graph expressions as well as unadorned
@@ -772,7 +778,7 @@ impl OpTable {
                 .flags(ac.with(OpFlags::TRANSPARENT))
                 .cost(1)
                 .eval(|a| a.iter().sum())
-                .doc("N-ary sum. Associative and commutative.")
+                .doc("`add(a, b, ...)` forms the sum of any number of terms and is printed with `+`.\n\nAddition is associative and commutative. Numeric operands are added directly.\n\nThe empty sum is `0`.")
                 .category("kernel")
                 .since("0.1")
                 .signature(
@@ -789,7 +795,7 @@ impl OpTable {
                 .flags(ac.with(OpFlags::TRANSPARENT))
                 .cost(1)
                 .eval(|a| a.iter().product())
-                .doc("N-ary product. Associative and commutative.")
+                .doc("`mul(a, b, ...)` forms the product of any number of terms and is printed with `*`.\n\nMultiplication is associative and commutative. Numeric operands are multiplied directly.\n\nThe empty product is `1`.")
                 .category("kernel")
                 .since("0.1")
                 .signature(
@@ -811,7 +817,7 @@ impl OpTable {
                         | _ => f64::NAN,
                     }
                 })
-                .doc("`base ^ exponent`.")
+                .doc("`pow(base, exponent)` raises `base` to `exponent` and is printed with `^`.\n\nFor positive real bases, the scalar overload also accepts fractional exponents.\n\nThe symbolic overload represents powers as terms and can preserve an exact expression such as `2^(1/2)`.")
                 .category("kernel")
                 .since("0.1")
                 .signature(Signature::scalars(
@@ -824,7 +830,7 @@ impl OpTable {
                 )),
             OpDescriptor::new("apply", Arity::Variadic)
                 .cost(2)
-                .doc("Application of an undetermined function: `apply(f, args...)`.")
+                .doc("`apply(f, args...)` represents an application whose function is undetermined.\n\nThe first child is the function expression, followed by its arguments in order.\n\nAn input such as `f(x, y)` is represented this way when `f` has no registered operator.")
                 .category("kernel")
                 .since("0.1")
                 .dynamic_reason(DynamicReason::FullyPolymorphic),
@@ -892,6 +898,9 @@ impl OpTable {
             self.by_alias.entry(Arc::clone(alias)).or_insert(id);
         }
         self.ops.push(desc);
+        if let Some(hashes) = self.signature_hashes.get_mut() {
+            hashes.push(OnceLock::new());
+        }
         id
     }
 
@@ -917,6 +926,13 @@ impl OpTable {
             {
                 if let Some(slot) = self.ops.get_mut(id.index()) {
                     slot.fill_gaps_from(&desc);
+                }
+                if let Some(hashes) = self
+                    .signature_hashes
+                    .get_mut()
+                    .and_then(|hashes| hashes.get_mut(id.index()))
+                {
+                    let _ = hashes.take();
                 }
                 return Ok(*id);
             }
@@ -1029,6 +1045,26 @@ impl OpTable {
         op: OpId,
     ) -> Option<&OpDescriptor> {
         self.ops.get(op.index())
+    }
+
+    /// Stable ABI signature hashes in overload order.
+    pub(crate) fn signature_hashes(
+        &self,
+        op: OpId,
+    ) -> &[[u8; 16]] {
+        let slots = self
+            .signature_hashes
+            .get_or_init(|| (0..self.ops.len()).map(|_| OnceLock::new()).collect());
+        let Some(slot) = slots.get(op.index()) else {
+            foreign_op(op)
+        };
+        slot.get_or_init(|| {
+            crate::kernel::infer::signature_view(self.get(op))
+                .0
+                .iter()
+                .map(Signature::hash)
+                .collect()
+        })
     }
 
     /// Attaches (or replaces) the attribute of type `T` on `op`.

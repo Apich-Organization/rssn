@@ -63,7 +63,6 @@
 //!   their kinks.
 
 pub mod dim;
-/// Polymorphic dimension signatures of plugin operators.
 pub mod dim_signature;
 // `pub(crate)` is the intended visibility: these are internal modules, so
 // `pub` items inside them are exactly as crate-private. Keep the explicit

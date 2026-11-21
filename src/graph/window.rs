@@ -20,6 +20,8 @@
 //! and carve/commit is the bridge between them.
 
 use std::collections::HashSet;
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::Ordering;
 
 use super::id::NodeId;
 use super::id::OpId;
@@ -83,7 +85,9 @@ impl TreeWindow {
     /// A child is copied into the window when it is an operator application
     /// that is either unshared (its class has a single parent) or
     /// [`TRANSPARENT`](OpFlags::TRANSPARENT), and the window holds fewer
-    /// than `max_cells` cells; otherwise it becomes an atom.
+    /// than `max_cells` cells; otherwise it becomes an atom. The root is
+    /// still expanded and opaque frontier children are retained, so the
+    /// final cell count can exceed the expansion threshold.
     #[must_use]
     pub fn carve(
         graph: &Graph,
@@ -117,7 +121,8 @@ impl TreeWindow {
             if parent == NIL {
                 window.root = cell;
             } else {
-                window.append_child(parent, cell);
+                // The cells are fresh, so no ancestor has a clean mark to clear.
+                window.link_child(parent, cell);
             }
             if inline {
                 stack.extend(children.iter().rev().map(|&c| (c, cell)));
@@ -425,6 +430,15 @@ impl TreeWindow {
         parent: CellId,
         child: CellId,
     ) {
+        self.link_child(parent, child);
+        self.touch(parent);
+    }
+
+    fn link_child(
+        &mut self,
+        parent: CellId,
+        child: CellId,
+    ) {
         let last = self.cell(parent).last;
         {
             let c = self.cell_mut(child);
@@ -440,7 +454,6 @@ impl TreeWindow {
         let p = self.cell_mut(parent);
         p.last = child;
         p.arity = p.arity.saturating_add(1);
-        self.touch(parent);
     }
 
     /// Forgets that `cell` and its ancestors were found clean: their
@@ -1029,9 +1042,7 @@ impl TreeWindow {
 #[derive(Debug, Default)]
 pub struct RewriteIndex<'r> {
     by_op: super::id::FastMap<OpId, Vec<&'r Rewrite>>,
-    /// Identifies the rule list (by the rules' addresses), never `0`: two
-    /// indexes of the same rules share it, so a window's clean marks carry
-    /// over between them.
+    /// Identifies this immutable index, or `0` when caching is disabled.
     id: u64,
 }
 
@@ -1039,14 +1050,19 @@ impl<'r> RewriteIndex<'r> {
     /// Indexes `rewrites`, keeping their order within each operator.
     #[must_use]
     pub fn new(rewrites: &[&'r Rewrite]) -> Self {
+        // A rebuilt index can borrow different rules at the same addresses.
+        // Exhausting the counter disables caching rather than reusing an id.
+        static NEXT_INDEX: AtomicU64 = AtomicU64::new(1);
         let mut by_op: super::id::FastMap<OpId, Vec<&'r Rewrite>> = super::id::FastMap::default();
-        let mut id: u64 = 0x9e37_79b9_7f4a_7c15;
         for &rewrite in rewrites {
             by_op.entry(rewrite.trigger()).or_default().push(rewrite);
-            id = (id.rotate_left(5) ^ std::ptr::from_ref(rewrite) as u64)
-                .wrapping_mul(0x0100_0000_01b3);
         }
-        Self { by_op, id: id | 1 }
+        let id = NEXT_INDEX
+            .try_update(Ordering::Relaxed, Ordering::Relaxed, |next| {
+                next.checked_add(1)
+            })
+            .unwrap_or(0);
+        Self { by_op, id }
     }
 
     /// The rewrites rooted at `op`, in their original order.
@@ -1445,6 +1461,52 @@ mod tests {
     }
 
     #[test]
+    fn zero_expansion_still_keeps_ordered_frontier() {
+        let mut g = graph();
+        let terms = ["f(a)", "f(b)", "f(c)"].map(|term| g.parse(term).unwrap_or(NodeId::NONE));
+        let root = g.node(core::MUL, &terms);
+        let w = TreeWindow::carve(&g, root, 0);
+        let copied: Vec<_> = w
+            .children(w.root())
+            .map(|id| w.atom(id).unwrap_or(NodeId::NONE))
+            .collect();
+        assert_eq!(copied, g.children(root));
+        assert_eq!(w.len(), 4);
+        assert_eq!(w.commit(&mut g), root);
+    }
+
+    #[test]
+    fn public_append_invalidates_only_its_ancestry() {
+        let mut g = graph();
+        let root = g.parse("(a + b) * f(c)").unwrap_or(NodeId::NONE);
+        let mut w = TreeWindow::carve(&g, root, 64);
+        let children: Vec<_> = w.children(w.root()).collect();
+        let [first, second] = children.as_slice() else {
+            panic!("expected two children");
+        };
+        let (branch, sibling) = if w.op(*first) == core::ADD {
+            (*first, *second)
+        } else {
+            (*second, *first)
+        };
+        for id in w.post_order() {
+            let cell = w.cell_mut(id);
+            cell.clean_rules = 17;
+            cell.clean_revision = 9;
+        }
+        let node = g.sym("d");
+        let detached = w.new_atom(&g, node);
+        w.append_child(branch, detached);
+        assert_eq!(w.cell(branch).clean_rules, 0);
+        assert_eq!(w.cell(w.root()).clean_rules, 0);
+        assert_eq!(w.cell(sibling).clean_rules, 17);
+        assert_eq!(w.cell(sibling).clean_revision, 9);
+        assert_eq!(w.parent(detached), Some(branch));
+        assert_eq!(w.children(branch).last(), Some(detached));
+        assert_eq!(w.arity(branch), 3);
+    }
+
+    #[test]
     fn splice_up_flattens_in_place() {
         let mut g = graph();
         let (a, b, c, d) = (g.sym("a"), g.sym("b"), g.sym("c"), g.sym("d"));
@@ -1548,6 +1610,40 @@ mod tests {
         let (a4, b4) = (w.new_atom(&g, a), w.new_atom(&g, b));
         let q = w.new_node(core::POW, &[b4, a4]);
         assert!(!w.same(&g, p, q));
+    }
+
+    #[test]
+    fn rebuilding_an_index_rematches_after_mutating_a_rule_in_place() {
+        let mut graph = Graph::new();
+        let one = graph.int(1);
+        let two = graph.int(2);
+        let op = graph
+            .ops_mut()
+            .register(OpDescriptor::new("window_identity", Arity::Fixed(1)))
+            .unwrap_or_else(|error| panic!("{error:?}"));
+        let root = graph.node(op, &[one]);
+        let make = |constant| {
+            Rewrite {
+                lhs: Pat::Node(op, vec![Pat::Exact(constant)]),
+                rhs: Pat::Exact(constant),
+                guards: Vec::new(),
+                nvars: 0,
+            }
+        };
+        let mut rule = Box::new(make(two));
+        let address = std::ptr::from_ref(rule.as_ref());
+        let mut window = TreeWindow::carve(&graph, root, 32);
+        {
+            let index = RewriteIndex::new(&[&rule]);
+            assert_eq!(window.optimize_with(&mut graph, &index, &[], 1), 0);
+            assert_eq!(window.cell(window.root()).clean_rules, index.id);
+            assert_eq!(window.optimize_with(&mut graph, &index, &[], 1), 0);
+        }
+        *rule = make(one);
+        assert_eq!(std::ptr::from_ref(rule.as_ref()), address);
+        let index = RewriteIndex::new(&[&rule]);
+        assert_eq!(window.optimize_with(&mut graph, &index, &[], 1), 1);
+        assert_eq!(window.commit(&mut graph), one);
     }
 
     #[test]

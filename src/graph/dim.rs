@@ -321,7 +321,7 @@ impl DimError {
     /// A stable, machine-readable kind for this finding.
     ///
     /// The code is part of the public contract: a binding branches on it
-    /// instead of parsing [`Display`]. The list is closed and never changes
+    /// instead of parsing [`Display`](std::fmt::Display). The list is closed and never changes
     /// for an existing variant; a future variant gets a new code. In
     /// particular, [`Self::UnknownUnit`] has one code for both a text
     /// declaration and an unresolved unit inside a term — the difference is
@@ -467,6 +467,30 @@ impl DimCtx<'_> {
         let id = self.arena.base_id(name)?;
         Some(DimTerm::base(id, exponent))
     }
+
+    /// Rejects incompatible known metric dimensions while leaving unknown
+    /// and non-metric arguments for the caller to interpret.
+    pub(crate) fn require_compatible(
+        &self,
+        left: &DimTerm,
+        right: &DimTerm,
+    ) -> Result<(), DimError> {
+        if left.is_any()
+            || right.is_any()
+            || left.is_non_metric()
+            || right.is_non_metric()
+            || left.has_unknown()
+            || right.has_unknown()
+            || left == right
+        {
+            return Ok(());
+        }
+        Err(DimError::Mismatch {
+            left: left.describe(self.arena),
+            right: right.describe(self.arena),
+            context: self.graph.display(self.node),
+        })
+    }
 }
 
 /// How an operator's result dimension is computed from its arguments.
@@ -513,6 +537,9 @@ pub enum DimRule {
     },
     /// All arguments are dimensionless and so is the result.
     Dimensionless,
+    /// The first two arguments must have compatible known metric dimensions.
+    /// The result is dimensionless, as for a cumulative probability.
+    CompatibleDimensionless,
     /// `1 / dim(argument 0)`.
     Inverse,
     /// `dim(argument 0)^2`.
@@ -621,6 +648,7 @@ impl fmt::Debug for DimRule {
             | Self::Root(_) => "Root",
             | Self::RootOf { .. } => "RootOf",
             | Self::Dimensionless => "Dimensionless",
+            | Self::CompatibleDimensionless => "CompatibleDimensionless",
             | Self::Inverse => "Inverse",
             | Self::Square => "Square",
             | Self::List => "List",
@@ -743,13 +771,21 @@ impl DimArena {
         &mut self,
         label: &str,
     ) -> DimVarId {
-        if let Some(&id) = self.var_ids.get(label) {
+        if let Some(id) = self.var_id(label) {
             return id;
         }
         let id = DimVarId(u32::try_from(self.vars.len()).unwrap_or(u32::MAX));
         self.vars.push(label.to_string());
         self.var_ids.insert(label.to_string(), id);
         id
+    }
+
+    /// Looks up a dimension variable without extending the arena.
+    pub(crate) fn var_id(
+        &self,
+        label: &str,
+    ) -> Option<DimVarId> {
+        self.var_ids.get(label).copied()
     }
 
     pub(crate) fn var_name(
@@ -1255,7 +1291,7 @@ impl DimTerm {
         }
         let mut vars = Vec::new();
         for (name, exponent) in dimension.exact_unknown()? {
-            let id = arena.var_ids.get(&name).copied().ok_or_else(|| {
+            let id = arena.var_id(&name).ok_or_else(|| {
                 DimError::Parse {
                     text: name.clone(),
                     reason: String::from("unknown dimension variable"),

@@ -444,12 +444,34 @@ fn opaque_on_apply(
     })
 }
 
+/// Whether the concrete term contains a heavy operator.
+///
+/// The traversal follows the selected node's children and visits each shared
+/// subterm once.
+pub(crate) fn contains_heavy_operator(
+    graph: &Graph,
+    node: NodeId,
+) -> bool {
+    let mut stack = vec![node];
+    let mut seen = std::collections::HashSet::new();
+    while let Some(n) = stack.pop() {
+        if !seen.insert(n) {
+            continue;
+        }
+        if graph.ops().get(graph.op(n)).flags.has(OpFlags::HEAVY) {
+            return true;
+        }
+        stack.extend_from_slice(graph.children(n));
+    }
+    false
+}
+
 /// Classes reachable from `roots` through e-node children, in discovery
 /// order (roots first).
 ///
 /// Class ids are dense arena indices, so membership is a bit-vector lookup
-/// rather than a hash: reachability runs on every scheduler iteration and
-/// inside every extraction.
+/// rather than a hash. Scheduler phases share the traversal until the graph
+/// changes, and extraction computes one for its own roots.
 #[must_use]
 pub fn reachable(
     graph: &Graph,
@@ -508,6 +530,71 @@ struct Candidate {
     /// Range of its children's local class indices in the shared `kids`
     /// array ([`NOT_REACHED`] for a child outside the reachable set).
     kids: std::ops::Range<usize>,
+}
+
+impl Candidate {
+    /// Updates the class choice and says whether the class acquired a
+    /// strictly better cost. Equal-cost choices still prefer the newer node.
+    fn improve(
+        &self,
+        best: &mut [Option<(u64, NodeId)>],
+        children: &[u32],
+    ) -> Option<bool> {
+        let below = children
+            .get(self.kids.clone())?
+            .iter()
+            .try_fold(0_u64, |sum, &child| {
+                best.get(child as usize)
+                    .copied()
+                    .flatten()
+                    .map(|(cost, _)| sum.saturating_add(cost))
+            })?;
+        let total = self.own.saturating_add(below.saturating_mul(self.scale));
+        let slot = best.get_mut(self.class as usize)?;
+        let better_cost = slot.is_none_or(|(cost, _)| total < cost);
+        if better_cost || slot.is_some_and(|(cost, node)| total == cost && self.enode > node) {
+            *slot = Some((total, self.enode));
+            Some(better_cost)
+        } else {
+            None
+        }
+    }
+}
+
+/// Propagates decreases from each child class to its dependent candidates.
+/// Pins are initialized by the caller and never change. Changes to tie-breaks
+/// affect reconstruction but have no effect on any parent's extraction cost.
+fn relax_pending(
+    items: &[Candidate],
+    children: &[u32],
+    best: &mut [Option<(u64, NodeId)>],
+) {
+    use std::collections::VecDeque;
+
+    let mut dependents = vec![Vec::new(); best.len()];
+    for (index, item) in items.iter().enumerate() {
+        if let Some(kids) = children.get(item.kids.clone()) {
+            for &child in kids {
+                if let Some(deps) = dependents.get_mut(child as usize) {
+                    deps.push(index);
+                }
+            }
+        }
+    }
+    let mut pending: VecDeque<_> = (0..items.len()).collect();
+    let mut queued = vec![true; items.len()];
+    while let Some(index) = pending.pop_front() {
+        queued[index] = false;
+        let item = &items[index];
+        if item.improve(best, children) == Some(true) {
+            for &dependent in &dependents[item.class as usize] {
+                if !queued[dependent] {
+                    queued[dependent] = true;
+                    pending.push_back(dependent);
+                }
+            }
+        }
+    }
 }
 
 /// A child class outside the reachable set: it has no extraction.
@@ -598,35 +685,21 @@ impl Extractor {
                 });
             }
         }
-        let mut changed = true;
-        while changed {
-            changed = false;
+        // Keep the contiguous sweeps for the usual case where reverse
+        // discovery roughly follows dependency order. Shared roots or
+        // deeply interleaved classes may need many more sweeps. When that
+        // happens, visit only candidates whose child costs can change.
+        for sweep in 0.. {
+            let mut changed = false;
             for item in &items {
-                let below = kids.get(item.kids.clone()).unwrap_or(&[]).iter().try_fold(
-                    0_u64,
-                    |acc, &child| {
-                        best.get(child as usize)
-                            .copied()
-                            .flatten()
-                            .map(|(c, _)| acc.saturating_add(c))
-                    },
-                );
-                let Some(below) = below else {
-                    continue;
-                };
-                let total = item.own.saturating_add(below.saturating_mul(item.scale));
-                // On a tie the younger node wins: simplification results
-                // are created after the terms they simplify.
-                let Some(slot) = best.get_mut(item.class as usize) else {
-                    continue;
-                };
-                let better = slot.is_none_or(|(old_cost, old_node)| {
-                    total < old_cost || (total == old_cost && item.enode > old_node)
-                });
-                if better {
-                    *slot = Some((total, item.enode));
-                    changed = true;
-                }
+                changed |= item.improve(&mut best, &kids).is_some();
+            }
+            if !changed {
+                break;
+            }
+            if sweep == 3 && items.len() >= 512 {
+                relax_pending(&items, &kids, &mut best);
+                break;
             }
         }
         Self { local, best }
@@ -754,6 +827,104 @@ mod tests {
         let ex = Extractor::new(&g, &[outer], &SizeCost);
         let out = ex.build(&mut g, outer);
         assert_eq!(out.map(|n| g.display(n)).as_deref(), Some("f(f(w))"));
+    }
+
+    #[test]
+    fn extraction_propagates_costs_across_many_shared_roots() {
+        struct UnitCost;
+
+        impl CostModel for UnitCost {
+            fn cost(
+                &self,
+                _graph: &Graph,
+                _node: NodeId,
+            ) -> Option<u64> {
+                Some(1)
+            }
+        }
+
+        let mut graph = Graph::new();
+        let operator = graph
+            .ops_mut()
+            .register(OpDescriptor::new("chain", Arity::Fixed(1)))
+            .expect("fresh unary operator");
+        let mut last = graph.sym("start");
+        let mut roots = vec![last];
+        for _ in 1..640 {
+            last = graph.node(operator, &[last]);
+            roots.push(last);
+        }
+        let extractor = Extractor::new(&graph, &roots, &UnitCost);
+        for (expected, node) in (1..).zip(roots) {
+            assert_eq!(extractor.cost(&graph, node), Some(expected));
+        }
+        assert_eq!(extractor.build(&mut graph, last), Some(last));
+    }
+
+    #[test]
+    fn dependency_relaxation_revisits_candidates_after_strict_cost_changes() {
+        let candidates = [
+            Candidate {
+                class: 0,
+                enode: NodeId::from_raw(100),
+                own: 0,
+                scale: 2,
+                kids: 0..1,
+            },
+            Candidate {
+                class: 1,
+                enode: NodeId::from_raw(103),
+                own: 8,
+                scale: 1,
+                kids: 1..1,
+            },
+            Candidate {
+                class: 1,
+                enode: NodeId::from_raw(104),
+                own: 2,
+                scale: 1,
+                kids: 1..2,
+            },
+            Candidate {
+                class: 1,
+                enode: NodeId::from_raw(105),
+                own: 2,
+                scale: 1,
+                kids: 1..2,
+            },
+            Candidate {
+                class: 2,
+                enode: NodeId::from_raw(106),
+                own: 1,
+                scale: 1,
+                kids: 2..2,
+            },
+            Candidate {
+                class: 2,
+                enode: NodeId::from_raw(107),
+                own: 0,
+                scale: 1,
+                kids: 2..3,
+            },
+            Candidate {
+                class: 2,
+                enode: NodeId::from_raw(108),
+                own: 0,
+                scale: 0,
+                kids: 3..4,
+            },
+        ];
+        let children = [1, 2, 0, NOT_REACHED];
+        let mut best = [None; 3];
+        relax_pending(&candidates, &children, &mut best);
+        assert_eq!(
+            best,
+            [
+                Some((6, NodeId::from_raw(100))),
+                Some((3, NodeId::from_raw(105))),
+                Some((1, NodeId::from_raw(106))),
+            ]
+        );
     }
 
     #[test]

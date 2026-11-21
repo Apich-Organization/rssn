@@ -353,7 +353,7 @@ fn refutation_survives_jitter(
 /// Works on a private copy of `graph`, so the caller's graph is untouched.
 /// Every fourth sample (when at least eight are requested) is drawn near a
 /// singular locus or a cancellation instead of uniformly, and is compared
-/// with the conditioning-aware tolerance of [`singular_tolerance`]. A
+/// with a conditioning-aware singularity tolerance. A
 /// refuted sample is still reported as a refutation: sampling is a smoke
 /// test, not a proof, and the singular-adjacent samples deliberately trade
 /// refutation power for robustness against rounding at the loci. A

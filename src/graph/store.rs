@@ -26,9 +26,11 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
 use std::hash::Hasher;
+use std::sync::OnceLock;
 
 use super::facts::Facts;
 use super::id::ClassId;
+use super::id::FastMap;
 use super::id::NodeId;
 use super::id::OpId;
 use super::id::PayloadId;
@@ -374,7 +376,8 @@ pub struct Graph {
     uses: Vec<UseCell>,
     structural: HashTable,
     memo: HashTable,
-    by_op: Vec<Vec<NodeId>>,
+    /// Built on demand for inspection and sort tracing.
+    by_op: OnceLock<FastMap<OpId, Vec<NodeId>>>,
     pending: Vec<NodeId>,
     analysis_pending: Vec<NodeId>,
     stamp: u32,
@@ -428,7 +431,7 @@ impl Clone for Graph {
             uses: self.uses.clone(),
             structural: self.structural.clone(),
             memo: self.memo.clone(),
-            by_op: self.by_op.clone(),
+            by_op: OnceLock::new(),
             pending: self.pending.clone(),
             analysis_pending: self.analysis_pending.clone(),
             stamp: self.stamp,
@@ -474,7 +477,7 @@ impl Graph {
             uses: Vec::new(),
             structural: HashTable::default(),
             memo: HashTable::default(),
-            by_op: Vec::new(),
+            by_op: OnceLock::new(),
             pending: Vec::new(),
             analysis_pending: Vec::new(),
             stamp: 0,
@@ -730,13 +733,35 @@ impl Graph {
     }
 
     /// All nodes built with `op`, in creation order (including redundant
-    /// ones). This is the index rules use to find their candidates.
+    /// ones). The first query builds an index from the existing nodes.
     #[must_use]
     pub fn nodes_with_op(
         &self,
         op: OpId,
     ) -> &[NodeId] {
-        self.by_op.get(op.index()).map_or(&[], Vec::as_slice)
+        self.operator_index().get(&op).map_or(&[], Vec::as_slice)
+    }
+
+    /// The operators with concrete nodes, in registration order, with their
+    /// corresponding node slices. Sort tracing visits only these operators.
+    pub(crate) fn operator_nodes(&self) -> Vec<(OpId, &[NodeId])> {
+        let mut groups: Vec<_> = self
+            .operator_index()
+            .iter()
+            .map(|(&op, nodes)| (op, nodes.as_slice()))
+            .collect();
+        groups.sort_unstable_by_key(|(op, _)| *op);
+        groups
+    }
+
+    fn operator_index(&self) -> &FastMap<OpId, Vec<NodeId>> {
+        self.by_op.get_or_init(|| {
+            let mut index = FastMap::<OpId, Vec<NodeId>>::default();
+            for (id, node) in self.nodes.iter().enumerate() {
+                index.entry(node.op).or_default().push(NodeId(to_u32(id)));
+            }
+            index
+        })
     }
 
     // ------------------------------------------------------------------
@@ -1272,12 +1297,8 @@ impl Graph {
         });
         let data = self.make(id);
         self.classes.push(data);
-        if self.by_op.len() <= op.index() {
-            self.by_op
-                .resize_with(op.index().saturating_add(1), Vec::new);
-        }
-        if let Some(list) = self.by_op.get_mut(op.index()) {
-            list.push(id);
+        if let Some(index) = self.by_op.get_mut() {
+            index.entry(op).or_default().push(id);
         }
 
         // --- congruence layer -------------------------------------------

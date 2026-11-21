@@ -1,3 +1,5 @@
+//! Polymorphic dimension signatures of plugin operators.
+//!
 //! # Dimension signatures for plugin operators
 //!
 //! A built-in operator states how its arguments' dimensions determine its

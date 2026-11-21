@@ -1088,6 +1088,22 @@ impl RuleSet {
         &self.name
     }
 
+    /// A clone of this recipe, including the manifest and dependency recipes.
+    pub(crate) fn same_recipe(
+        &self,
+        other: &Self,
+    ) -> bool {
+        Arc::ptr_eq(&self.install, &other.install)
+            && self.name == other.name
+            && self.meta == other.meta
+            && self.deps.len() == other.deps.len()
+            && self
+                .deps
+                .iter()
+                .zip(&other.deps)
+                .all(|(left, right)| left.same_recipe(right))
+    }
+
     /// Installs this set and its dependencies (each at most once, in
     /// dependency order) into `graph`, appending to `program`.
     ///

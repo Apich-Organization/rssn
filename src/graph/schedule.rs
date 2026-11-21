@@ -35,6 +35,7 @@ use super::extract::CostModel;
 use super::extract::Extractor;
 use super::extract::SizeCost;
 use super::extract::reachable;
+use super::id::ClassId;
 use super::id::NodeId;
 use super::id::OpId;
 use super::op::OpFlags;
@@ -70,7 +71,8 @@ pub struct Budget {
     pub ban_length: usize,
     /// Inner fixpoint rounds for the reduce tier per iteration.
     pub reduce_rounds: usize,
-    /// Maximum number of cells in a tree window.
+    /// Cell count at which carving stops expanding child subtrees.
+    /// The root and opaque frontier children are retained.
     pub window_cells: usize,
     /// Maximum rewrites applied per window optimisation.
     pub window_steps: usize,
@@ -319,6 +321,20 @@ struct Frontier {
     /// `(class, depth)` to the latest epoch at which a class within `depth`
     /// child steps of it changed.
     memo: super::id::FastMap<(u32, usize), u64>,
+}
+
+enum SearchNodes<'a> {
+    All(&'a [NodeId]),
+    Changed(Arc<[NodeId]>),
+}
+
+impl AsRef<[NodeId]> for SearchNodes<'_> {
+    fn as_ref(&self) -> &[NodeId] {
+        match self {
+            | Self::All(nodes) => nodes,
+            | Self::Changed(nodes) => nodes,
+        }
+    }
 }
 
 impl Frontier {
@@ -602,6 +618,29 @@ struct KernelOps {
     /// The kernel looks at every operator.
     all: bool,
     ops: Vec<OpId>,
+}
+
+/// Discovery order for the fixed roots of one engine run. Each phase
+/// requests it after the previous phase's rebuild.
+#[derive(Default)]
+struct RunReachability {
+    revision: Option<u64>,
+    classes: Vec<ClassId>,
+}
+
+impl RunReachability {
+    fn classes(
+        &mut self,
+        graph: &Graph,
+        roots: &[NodeId],
+    ) -> &[ClassId] {
+        let revision = graph.revision();
+        if self.revision != Some(revision) {
+            self.classes = reachable(graph, roots);
+            self.revision = Some(revision);
+        }
+        &self.classes
+    }
 }
 
 /// The program's rules grouped by tier, with every kernel's operator list.
@@ -927,6 +966,7 @@ impl Engine {
         let mut states = RuleStates::new(self.program.rules.len());
         let mut windowed: super::id::FastMap<NodeId, u64> = super::id::FastMap::default();
         let mut seen: super::id::FastMap<NodeId, u64> = super::id::FastMap::default();
+        let mut reachability = RunReachability::default();
         let normalizing: Vec<&Rewrite> = self.rewrites_of(Tier::Normalize);
         let normalizing_index = RewriteIndex::new(&normalizing);
         let exploring: Vec<&Rewrite> = self.rewrites_of(Tier::Explore);
@@ -966,6 +1006,7 @@ impl Engine {
                     budget,
                     &mut states,
                     &mut seen,
+                    &mut reachability,
                 );
                 if crate::cancellation::is_cancelled() {
                     stop = Stop::Cancelled;
@@ -993,6 +1034,7 @@ impl Engine {
                 &exploring,
                 &passes,
                 &mut windowed,
+                &mut reachability,
             );
             graph.rebuild();
             progress |= self.apply_tier(
@@ -1004,6 +1046,7 @@ impl Engine {
                 budget,
                 &mut states,
                 &mut seen,
+                &mut reachability,
             );
             graph.rebuild();
 
@@ -1012,7 +1055,8 @@ impl Engine {
                 break;
             }
             if env.numeric {
-                progress |= propagate_witnesses(graph, roots);
+                let classes = reachability.classes(graph, roots);
+                progress |= propagate_witnesses(graph, classes);
             }
             if goal.reached(graph, roots, env) {
                 stop = Stop::Goal;
@@ -1030,6 +1074,7 @@ impl Engine {
                     budget,
                     &mut states,
                     &mut seen,
+                    &mut reachability,
                 );
                 graph.rebuild();
             }
@@ -1148,6 +1193,7 @@ impl Engine {
         budget: &Budget,
         states: &mut RuleStates,
         seen: &mut super::id::FastMap<NodeId, u64>,
+        reachability: &mut RunReachability,
     ) -> bool {
         let index = self.tier_index();
         let segments = index.segments(tier);
@@ -1161,7 +1207,7 @@ impl Engine {
         // Which operators have candidates, as a bit set: every kernel of the
         // tier asks, and most of them find none.
         let mut present = OpSet::default();
-        for class in reachable(graph, roots) {
+        for &class in reachability.classes(graph, roots) {
             if crate::cancellation::is_cancelled() {
                 return false;
             }
@@ -1213,48 +1259,57 @@ impl Engine {
                 // is unchanged since its last complete search.
                 let searched_at = graph.epoch();
                 let mut frontier = Frontier::default();
-                // A full search borrows the candidate list; only an
-                // incremental one builds its own (filtered) list.
-                let todo: Vec<Option<std::borrow::Cow<'_, [NodeId]>>> = run
+                let mut changed_nodes: super::id::FastMap<_, Arc<[NodeId]>> =
+                    super::id::FastMap::default();
+                // A full search borrows the list. Incremental searches with
+                // the same trigger, epoch and depth share a filtered list.
+                let todo: Vec<_> =
+                    run.iter()
+                        .map(|&(i, rw)| {
+                            let trigger = rw.trigger();
+                            if !present.contains(trigger) {
+                                return None;
+                            }
+                            let nodes = candidates.get(&trigger)?;
+                            let since = states.get(i).and_then(|s| s.searched);
+                            let Some(since) =
+                                since.filter(|_| incremental && rw.guards.iter().all(local_guard))
+                            else {
+                                return Some(SearchNodes::All(nodes.as_slice()));
+                            };
+                            let depth = rw.lhs.depth();
+                            let changed = changed_nodes
+                                .entry((trigger, since, depth))
+                                .or_insert_with(|| {
+                                    nodes
+                                        .iter()
+                                        .copied()
+                                        .filter(|&n| {
+                                            seen.get(&n).copied().unwrap_or(u64::MAX) > since
+                                                || frontier.node(graph, n, depth) > since
+                                        })
+                                        .collect()
+                                });
+                            Some(SearchNodes::Changed(Arc::clone(changed)))
+                        })
+                        .collect();
+                let work: usize = todo
                     .iter()
-                    .map(|&(i, rw)| {
-                        if !present.contains(rw.trigger()) {
-                            return None;
-                        }
-                        let nodes = candidates.get(&rw.trigger())?;
-                        let since = states.get(i).and_then(|s| s.searched);
-                        let Some(since) =
-                            since.filter(|_| incremental && rw.guards.iter().all(local_guard))
-                        else {
-                            return Some(std::borrow::Cow::Borrowed(nodes.as_slice()));
-                        };
-                        let depth = rw.lhs.depth();
-                        Some(std::borrow::Cow::Owned(
-                            nodes
-                                .iter()
-                                .copied()
-                                .filter(|&n| {
-                                    seen.get(&n).copied().unwrap_or(u64::MAX) > since
-                                        || frontier.node(graph, n, depth) > since
-                                })
-                                .collect(),
-                        ))
-                    })
-                    .collect();
-                let work: usize = todo.iter().map(|t| t.as_ref().map_or(0, |n| n.len())).sum();
+                    .flatten()
+                    .map(|nodes| nodes.as_ref().len())
+                    .sum();
                 let found = {
                     let frozen: &Graph = graph;
                     let states_ro: &RuleStates = states;
                     let cancellation = crate::cancellation::current();
-                    let search = |(&(i, rw), nodes): (
-                        &(usize, &Rewrite),
-                        &Option<std::borrow::Cow<'_, [NodeId]>>,
-                    )| {
-                        let _scope = crate::cancellation::install_optional(cancellation.clone());
-                        let nodes = nodes.as_ref()?;
-                        let times = states_ro.get(i).map_or(0, |s| s.times_banned);
-                        Some(search_rewrite(frozen, rw, nodes, times, budget))
-                    };
+                    let search =
+                        |(&(i, rw), nodes): (&(usize, &Rewrite), &Option<SearchNodes<'_>>)| {
+                            let nodes = nodes.as_ref()?;
+                            let _scope =
+                                crate::cancellation::install_optional(cancellation.clone());
+                            let times = states_ro.get(i).map_or(0, |s| s.times_banned);
+                            Some(search_rewrite(frozen, rw, nodes.as_ref(), times, budget))
+                        };
                     if run.len() >= 2
                         && crate::execution::should_split(work, ENGINE_PAR_MIN_CANDIDATES)
                     {
@@ -1326,17 +1381,17 @@ impl Engine {
                 | Action::Rewrite(_) => {},
                 | Action::Kernel(kernel) => {
                     let revisit = kernel.revisit();
-                    let nodes: Vec<NodeId> = if wanted.all {
-                        candidates.values().flatten().copied().collect()
-                    } else {
-                        wanted
-                            .ops
-                            .iter()
-                            .filter_map(|op| candidates.get(op))
-                            .flatten()
-                            .copied()
-                            .collect()
-                    };
+                    let all = wanted
+                        .all
+                        .then(|| candidates.values())
+                        .into_iter()
+                        .flatten();
+                    let specific = (!wanted.all)
+                        .then_some(wanted.ops.as_slice())
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|op| candidates.get(op));
+                    let nodes = all.chain(specific).flatten().copied();
                     let two_phase = kernel.two_phase();
                     // Two-phase kernels: prepare every eligible node, run the
                     // heavy parts in parallel, commit in node order.
@@ -1447,12 +1502,13 @@ impl Engine {
         exploring: &[&Rewrite],
         passes: &[&dyn WindowPass],
         done: &mut super::id::FastMap<NodeId, u64>,
+        reachability: &mut RunReachability,
     ) -> bool {
         if normalizing.is_empty() && passes.is_empty() {
             return false;
         }
-        let classes = reachable(graph, roots);
-        let extractor = Extractor::for_classes(graph, &classes, &SizeCost);
+        let classes = reachability.classes(graph, roots);
+        let extractor = Extractor::for_classes(graph, classes, &SizeCost);
         let root_classes: super::id::FastSet<_> = roots.iter().map(|&r| graph.find(r)).collect();
         // Build every window's term before merging anything: the extractor
         // describes the graph as it is now.
@@ -1548,9 +1604,8 @@ fn term_touched(
 /// Returns whether any witness was added or tightened.
 fn propagate_witnesses(
     graph: &mut Graph,
-    roots: &[NodeId],
+    classes: &[ClassId],
 ) -> bool {
-    let classes = reachable(graph, roots);
     let mut changed = false;
     let mut args: Vec<f64> = Vec::new();
     // Reverse discovery order approximates children-first; iterate until
@@ -1641,6 +1696,21 @@ mod tests {
     use crate::graph::op::OpFlags;
     use crate::graph::op::core;
     use crate::graph::rule::Kernel;
+
+    #[test]
+    fn run_reachability_tracks_rebuilds_after_new_equalities() {
+        let mut graph = Graph::new();
+        let root = graph.parse("(a + b) * c").unwrap_or(NodeId::NONE);
+        let roots = [root];
+        let mut reachability = RunReachability::default();
+        let before = reachability.classes(&graph, &roots);
+        assert_eq!(before, reachable(&graph, &roots));
+        assert_eq!(before.len(), 5);
+        let literal = graph.num(Number::from(2));
+        assert!(graph.union(root, literal));
+        graph.rebuild();
+        assert_eq!(reachability.classes(&graph, &roots), [graph.find(root)]);
+    }
 
     /// Folds sums, products and powers of literal numbers.
     struct Fold;
@@ -1837,7 +1907,8 @@ mod tests {
         assert!(g.set_approx(g.find(y), Ball::exact(3.0)));
         let two_x = g.node(core::MUL, &[two, x]);
         let root = g.node(core::MUL, &[two_x, y]);
-        assert!(propagate_witnesses(&mut g, &[root]));
+        let classes = reachable(&g, &[root]);
+        assert!(propagate_witnesses(&mut g, &classes));
         let ball = g.approx(g.find(root)).unwrap_or(Ball::ENTIRE);
         assert!((ball.mid - 6.0).abs() < 1e-15, "{ball:?}");
         // 2·(1 ± 0.05)·3 has radius about 0.3; inheriting the largest child
@@ -1848,7 +1919,8 @@ mod tests {
         let z = g.sym("z");
         assert!(g.set_approx(g.find(z), Ball::exact(2.5)));
         let exact = g.node(core::MUL, &[two, z]);
-        assert!(propagate_witnesses(&mut g, &[exact]));
+        let classes = reachable(&g, &[exact]);
+        assert!(propagate_witnesses(&mut g, &classes));
         assert_eq!(g.approx(g.find(exact)).map(|b| b.rad), Some(0.0));
     }
 

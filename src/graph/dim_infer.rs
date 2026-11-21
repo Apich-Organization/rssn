@@ -461,6 +461,27 @@ impl<'a> DimInfer<'a> {
                 }
                 DimTerm::dimensionless()
             },
+            | DimRule::CompatibleDimensionless => {
+                let result = {
+                    let arena = self.read_arena();
+                    args.first()
+                        .zip(args.get(1))
+                        .map_or(Ok(()), |(left, right)| {
+                            DimCtx {
+                                graph: self.graph,
+                                arena: &arena,
+                                node,
+                            }
+                            .require_compatible(left, right)
+                        })
+                };
+                if let Err(error) = result {
+                    self.errors.push(error);
+                    DimTerm::any()
+                } else {
+                    DimTerm::dimensionless()
+                }
+            },
             | DimRule::Inverse => args.first().map_or_else(DimTerm::any, DimTerm::inverse),
             | DimRule::Square => {
                 args.first().map_or_else(DimTerm::any, |base| {
