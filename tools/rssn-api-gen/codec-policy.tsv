@@ -38,6 +38,8 @@ crate::kernels::distributions::dirichlet_sample	num_distributions_dirichlet_samp
 crate::kernels::distributions::multivariate_normal_log_pdf	num_distributions_multivariate_normal_log_pdf	numerical_stats	Dimensionless
 crate::kernels::distributions::multivariate_normal_pdf	num_distributions_multivariate_normal_pdf	numerical_stats	MultivariateDensity
 crate::kernels::distributions::multivariate_normal_sample	num_distributions_multivariate_normal_sample	numerical_stats	NormalSampleUnits
+crate::kernels::distributions::weibull_inverse_survival	num_distributions_weibull_inverse_survival	numerical_stats	DistributionScale
+crate::kernels::distributions::weibull_quantiles	num_distributions_weibull_quantiles	numerical_stats	DistributionScale
 crate::kernels::fft::fft	num_fft_fft	numerical_vector	Preserve
 crate::kernels::fft::fft2	num_fft_fft2	numerical_vector	Preserve
 crate::kernels::fft::fftfreq	num_fft_fftfreq	numerical_vector	InverseSecond
@@ -79,6 +81,7 @@ crate::kernels::geometry::segment_intersection_2d	num_geometry_segment_intersect
 crate::kernels::geometry::segment_triangle_intersection_3d	num_geometry_segment_triangle_intersection_3d	numerical_vector	EqualFive
 crate::kernels::geometry::tetrahedron_volume	num_geometry_tetrahedron_volume	numerical_vector	Cube
 crate::kernels::interp_ext::akima	num_interp_ext_akima	numerical_vector	Interpolation
+crate::kernels::interp_ext::akima_many	num_interp_ext_akima_many	numerical_vector	Interpolation
 crate::kernels::interp_ext::bicubic	num_interp_ext_bicubic	numerical_vector	GridInterpolation
 crate::kernels::interp_ext::bspline_eval	num_interp_ext_bspline_eval	numerical_vector	BSplineUnits
 crate::kernels::interp_ext::chebyshev_fit	num_interp_ext_chebyshev_fit	numerical_vector	FitOrdinate
@@ -87,6 +90,7 @@ crate::kernels::interp_ext::interp2	num_interp_ext_interp2	numerical_vector	Grid
 crate::kernels::interp_ext::interpn	num_interp_ext_interpn	numerical_vector	NdInterpolation
 crate::kernels::interp_ext::pade	num_interp_ext_pade	numerical_vector	PadeOrdinate
 crate::kernels::interp_ext::pchip	num_interp_ext_pchip	numerical_vector	Interpolation
+crate::kernels::interp_ext::pchip_many	num_interp_ext_pchip_many	numerical_vector	Interpolation
 crate::kernels::interp_ext::polyfit	num_interp_ext_polyfit	numerical_vector	FitOrdinate
 crate::kernels::interp_ext::polyval	num_interp_ext_polyval	numerical_vector	Preserve
 crate::kernels::interp_ext::rational_eval	num_interp_ext_rational_eval	numerical_vector	RationalOrdinate
@@ -102,13 +106,16 @@ crate::kernels::lowrank::qr_pivoted	num_lowrank_qr_pivoted	numerical_matrix	Pivo
 crate::kernels::matfun::expm	num_matfun_expm	numerical_matrix	Dimensionless
 crate::kernels::matfun::logm	num_matfun_logm	numerical_matrix	Dimensionless
 crate::kernels::matfun::norm1	num_matfun_norm1	numerical_matrix	Preserve
+crate::kernels::matfun::powm_psd	num_matfun_powm_psd	numerical_matrix	Dimensionless
 crate::kernels::matfun::sqrtm	num_matfun_sqrtm	numerical_matrix	Root
 crate::kernels::number_ext::catalan_exact	num_number_ext_catalan_exact	numerical_special	Dimensionless
 crate::kernels::number_ext::crt	num_number_ext_crt	numerical_special	Dimensionless
 crate::kernels::number_ext::mobius	num_number_ext_mobius	numerical_special	Dimensionless
+crate::kernels::number_ext::mobius_sieve	num_number_ext_mobius_sieve	numerical_special	Dimensionless
 crate::kernels::number_ext::mod_inv	num_number_ext_mod_inv	numerical_special	Dimensionless
 crate::kernels::number_ext::mod_pow	num_number_ext_mod_pow	numerical_special	Dimensionless
 crate::kernels::number_ext::partition_count	num_number_ext_partition_count	numerical_special	Dimensionless
+crate::kernels::number_ext::solve_linear_congruence	num_number_ext_solve_linear_congruence	numerical_special	Dimensionless
 crate::kernels::number_ext::stirling_first	num_number_ext_stirling_first	numerical_special	Dimensionless
 crate::kernels::number_ext::stirling_first_signed	num_number_ext_stirling_first_signed	numerical_special	Dimensionless
 crate::kernels::number_ext::stirling_second_exact	num_number_ext_stirling_second_exact	numerical_special	Dimensionless
@@ -125,6 +132,7 @@ crate::kernels::robust::bandwidth_silverman	num_robust_bandwidth_silverman	numer
 crate::kernels::robust::biweight_location	num_robust_biweight_location	numerical_stats	Preserve
 crate::kernels::robust::ecdf	num_robust_ecdf	numerical_stats	EqualInputs
 crate::kernels::robust::huber_location	num_robust_huber_location	numerical_stats	Preserve
+crate::kernels::robust::huber_location_with_scale	num_robust_huber_location_with_scale	numerical_stats	LocationWithScale
 crate::kernels::robust::iqr	num_robust_iqr	numerical_stats	Preserve
 crate::kernels::robust::mad	num_robust_mad	numerical_stats	Preserve
 crate::kernels::robust::median	num_robust_median	numerical_stats	Preserve
@@ -141,6 +149,8 @@ crate::kernels::schur::sylvester	num_schur_sylvester	numerical_matrix	Sylvester
 crate::kernels::series::evaluate_power_series	num_series_evaluate_power_series	numerical_vector	Dimensionless
 crate::kernels::signal::analytic_envelope	num_signal_analytic_envelope	numerical_vector	Preserve
 crate::kernels::signal::analytic_signal	num_signal_analytic_signal	numerical_vector	Preserve
+crate::kernels::signal::autocorrelation	num_signal_autocorrelation	numerical_vector	UnitlessResult
+crate::kernels::signal::autocovariance	num_signal_autocovariance	numerical_vector	Square
 crate::kernels::signal::blackman_window	num_signal_blackman_window	numerical_vector	Dimensionless
 crate::kernels::signal::butterworth_lowpass	num_signal_butterworth_lowpass	numerical_vector	Dimensionless
 crate::kernels::signal::convolve	num_signal_convolve	numerical_vector	Product
@@ -158,6 +168,7 @@ crate::kernels::signal::idst	num_signal_idst	numerical_vector	Preserve
 crate::kernels::signal::inverse_stft	num_signal_inverse_stft	numerical_vector	Quotient
 crate::kernels::signal::kaiser_window	num_signal_kaiser_window	numerical_vector	Dimensionless
 crate::kernels::signal::lfilter	num_signal_lfilter	numerical_vector	PreserveThird
+crate::kernels::signal::partial_autocorrelation	num_signal_partial_autocorrelation	numerical_vector	UnitlessResult
 crate::kernels::signal::resample_poly	num_signal_resample_poly	numerical_vector	Preserve
 crate::kernels::signal::savgol_coeffs	num_signal_savgol_coeffs	numerical_vector	Dimensionless
 crate::kernels::signal::savgol_filter	num_signal_savgol_filter	numerical_vector	Preserve
@@ -185,6 +196,7 @@ crate::kernels::special::incomplete_beta	num_special_incomplete_beta	numerical_s
 crate::kernels::special::laguerre_l	num_special_laguerre_l	numerical_special	Dimensionless
 crate::kernels::special::lambert_w	num_special_lambert_w	numerical_special	Dimensionless
 crate::kernels::special::legendre_p	num_special_legendre_p	numerical_special	Dimensionless
+crate::kernels::special::ln_bessel_k	num_special_ln_bessel_k	numerical_special	Dimensionless
 crate::kernels::special::ln_beta_numerical	num_special_ln_beta_numerical	numerical_special	Dimensionless
 crate::kernels::special::lower_incomplete_gamma	num_special_lower_incomplete_gamma	numerical_special	Dimensionless
 crate::kernels::special::polygamma_numerical	num_special_polygamma_numerical	numerical_special	Dimensionless
@@ -195,10 +207,12 @@ crate::kernels::special::upper_incomplete_gamma	num_special_upper_incomplete_gam
 crate::kernels::special_ext::anger_j	num_special_ext_anger_j	numerical_special	Dimensionless
 crate::kernels::special_ext::appell_f1	num_special_ext_appell_f1	numerical_special	Dimensionless
 crate::kernels::special_ext::bessel_in	num_special_ext_bessel_in	numerical_special	Dimensionless
+crate::kernels::special_ext::bessel_in_log_abs	num_special_ext_bessel_in_log_abs	numerical_special	Dimensionless
 crate::kernels::special_ext::bessel_in_scaled	num_special_ext_bessel_in_scaled	numerical_special	Dimensionless
 crate::kernels::special_ext::bessel_jn	num_special_ext_bessel_jn	numerical_special	Dimensionless
 crate::kernels::special_ext::carlson_rd	num_special_ext_carlson_rd	numerical_special	Dimensionless
 crate::kernels::special_ext::carlson_rf	num_special_ext_carlson_rf	numerical_special	Dimensionless
+crate::kernels::special_ext::carlson_rg	num_special_ext_carlson_rg	numerical_special	Dimensionless
 crate::kernels::special_ext::coulomb_c	num_special_ext_coulomb_c	numerical_special	Dimensionless
 crate::kernels::special_ext::coulomb_f	num_special_ext_coulomb_f	numerical_special	Dimensionless
 crate::kernels::special_ext::coulomb_f_prime	num_special_ext_coulomb_f_prime	numerical_special	Dimensionless
@@ -214,7 +228,9 @@ crate::kernels::special_ext::elliptic_k	num_special_ext_elliptic_k	numerical_spe
 crate::kernels::special_ext::hyp1f1	num_special_ext_hyp1f1	numerical_special	Dimensionless
 crate::kernels::special_ext::hyp2f1	num_special_ext_hyp2f1	numerical_special	Dimensionless
 crate::kernels::special_ext::hyp2f1_complex	num_special_ext_hyp2f1_complex	numerical_special	Dimensionless
+crate::kernels::special_ext::jacobi_amplitude	num_special_ext_jacobi_amplitude	numerical_special	Dimensionless
 crate::kernels::special_ext::jacobi_elliptic	num_special_ext_jacobi_elliptic	numerical_special	Dimensionless
+crate::kernels::special_ext::jacobi_elliptic_batch	num_special_ext_jacobi_elliptic_batch	numerical_special	Dimensionless
 crate::kernels::special_ext::kelvin_bei	num_special_ext_kelvin_bei	numerical_special	Dimensionless
 crate::kernels::special_ext::kelvin_ber	num_special_ext_kelvin_ber	numerical_special	Dimensionless
 crate::kernels::special_ext::kelvin_kei	num_special_ext_kelvin_kei	numerical_special	Dimensionless
@@ -311,6 +327,7 @@ crate::kernels::descriptive::corr	num_descriptive_corr	numerical_vector	Independ
 crate::kernels::descriptive::cov	num_descriptive_cov	numerical_vector	Product
 crate::kernels::descriptive::cov_exact	num_descriptive_cov_exact	numerical_vector	Product
 crate::kernels::descriptive::histogram	num_descriptive_histogram	numerical_vector	NativeHistogram
+crate::kernels::descriptive::histogram_edges	num_descriptive_histogram_edges	numerical_vector	EqualInputs
 crate::kernels::descriptive::kurtosis	num_descriptive_kurtosis	numerical_vector	UnitlessResult
 crate::kernels::descriptive::mean_exact	num_descriptive_mean_exact	numerical_vector	Preserve
 crate::kernels::descriptive::mode	num_descriptive_mode	numerical_vector	Preserve
@@ -367,6 +384,7 @@ crate::kernels::fractal_geometry_and_chaos::orbit_entropy	num_fractal_geometry_a
 crate::kernels::fractal_geometry_and_chaos::sierpinski_triangle_ifs	num_fractal_geometry_and_chaos_sierpinski_triangle_ifs	numerical_vector	Dimensionless
 crate::kernels::robust::kde	num_robust_kde	numerical_vector	Kde
 crate::kernels::special_exact::chebyshev_t_exact	num_special_exact_chebyshev_t_exact	numerical_vector	Dimensionless
+crate::kernels::special_exact::chebyshev_tu_mod	num_special_exact_chebyshev_tu_mod	numerical_vector	Dimensionless
 crate::kernels::special_exact::chebyshev_u_exact	num_special_exact_chebyshev_u_exact	numerical_vector	Dimensionless
 crate::kernels::special_exact::hermite_h_exact	num_special_exact_hermite_h_exact	numerical_vector	Dimensionless
 crate::kernels::special_exact::laguerre_l_exact	num_special_exact_laguerre_l_exact	numerical_vector	Dimensionless

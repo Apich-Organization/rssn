@@ -2838,6 +2838,88 @@
         "variadic": null
       }
     ],
+    "bootstrap_basic_ci": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          "symbol",
+          "real",
+          "real",
+          "real"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 1
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
     "bootstrap_ci": [
       {
         "type_params": [],
