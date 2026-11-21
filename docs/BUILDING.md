@@ -2,12 +2,11 @@
 
 [中文](BUILDING.zh.md)
 
-Ordinary `cargo build`, `cargo check`, and downstream Rust dependency builds
-produce the Rust library (`rlib`). They do not also link a shared C library or
-copy all dependencies into a static C archive. This keeps each Rust build from
-paying the distribution-artifact cost.
+Ordinary `cargo build` and downstream Rust builds use the Rust library (`rlib`).
+`cargo check` emits Rust metadata for type checking. Build the C static and
+shared libraries explicitly when preparing C artifacts.
 
-To produce the C libraries and refresh the checked-in cbindgen headers:
+On Linux, build the C libraries and refresh the checked-in cbindgen headers with the following commands.
 
 ```sh
 DEV=1 bash scripts/build_ffi.sh --features dev-headers
@@ -17,8 +16,8 @@ cc -I. examples/c/smoke.c target/ffi/librssn.a -lm -lpthread -ldl -o smoke
 
 The script invokes `cargo rustc --lib --crate-type staticlib,cdylib`. Static and shared libraries are placed under the selected target and profile
 directory. The default `ffi` profile inherits the release optimizations and
-enables unwinding, so the C wrappers can report Rust panics as
-`RssnStatus::Panic`. Set `RSSN_FFI_PROFILE=dev` for a development C build in
+enables unwinding, so guarded C entry points can report unwinding Rust panics
+as `RssnStatus::Panic`. Set `RSSN_FFI_PROFILE=dev` for a development C build in
 `debug`. The scripts accept `CARGO_TARGET_DIR` and Cargo options such as
 `--features jit`, `--target`, `--locked`, and `--offline`. C linker flags
 vary by platform.
@@ -26,6 +25,13 @@ vary by platform.
 Use `bash scripts/build_ffi.sh --package` or
 `scripts/build_ffi.ps1 -Package` on Windows to assemble a native archive with
 its headers, examples, bilingual guides, and checksum.
+
+The checkout configures `target-cpu=native` as the general Cargo build default.
+For `x86_64-pc-windows-msvc`, Cargo selects the target-specific stack linker flags.
+The release workflow sets `RUSTFLAGS="-C target-cpu=generic"` for the
+distributed archives. Use that setting when building a redistributable archive
+or targeting another machine. FFT planning can still select CPU instructions
+at runtime.
 
 Migration: C consumers previously using `cargo build --release` to obtain
 `librssn.a` or a shared library should use this explicit distribution command.
@@ -47,9 +53,10 @@ alongside the code that uses them.
 `signatures.witnessed.json` (the signatures mined from the test corpus, see
 [KERNEL.md](KERNEL.md)) is required in exactly the same way: the build fails with a
 message naming the file when it is missing, so two builds of the same sources
-cannot produce different manifests. Regenerate it with
-`cargo run --profile tools --bin signature-mine` after adding operators; until
-then new operators carry their derived (and overlay) signatures only.
+cannot produce different manifests. Collect a fresh test trace with
+`RSSN_SORT_TRACE=sorts.tsv cargo test --lib`, then regenerate the table with
+`cargo run --profile tools --bin signature-mine -- sorts.tsv`. Operators without
+a witness keep their declared, derived, or overlay signatures.
 
 Build metadata honors `SOURCE_DATE_EPOCH`, `VERGEN_IDEMPOTENT`, and explicit
 `VERGEN_*` overrides. On Linux it obtains host details from `/etc/os-release`,

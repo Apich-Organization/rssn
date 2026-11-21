@@ -9,4 +9,5 @@ accepted_licenses = [
 
 [output.handlebars]
 template_file = "about.hbs"
-output_path = "ATTRIBUTIONS.md"
+# Keep this exploratory report separate from the validated FFI release notice.
+output_path = "ATTRIBUTIONS.cargo-about.md"

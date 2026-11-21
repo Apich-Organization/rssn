@@ -1,0 +1,2 @@
+# Preserve verbatim upstream notice bytes, including their line endings.
+ATTRIBUTIONS.md -text -whitespace

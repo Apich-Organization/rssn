@@ -83,7 +83,7 @@ Use direct registration for a symbolic rule, host callback or native object.
 3. Declare a `Signature`, or a `DynamicReason` if it cannot have one. Add `.doc(..)`, `.category(..)` and `.since(..)`; the manifest is the documentation a host reads.
 4. Run the checks above, including `signature-audit`.
 
-`signatures.overlay.json` supplies reviewed corrections to inferred signatures. `signatures.witnessed.json` contains signatures mined from the test corpus. Keep both files with the sources so `build.rs` can load them. When new or changed inferred signatures need witnesses, regenerate the witnessed table with `cargo run --profile tools --bin signature-mine`. Codec-generated numerical operators carry declared signatures. [Kernel signature sources](docs/KERNEL.md#3a-witnessed-signatures)
+`signatures.overlay.json` supplies reviewed corrections to inferred signatures. `signatures.witnessed.json` contains signatures mined from the test corpus. Keep both files with the sources so `build.rs` can load them. When new or changed inferred signatures need witnesses, collect a fresh test trace with `RSSN_SORT_TRACE=sorts.tsv cargo test --lib`, then regenerate the table with `cargo run --profile tools --bin signature-mine -- sorts.tsv`. Codec-generated numerical operators carry declared signatures. [Kernel signature sources](docs/KERNEL.md#3a-witnessed-signatures)
 
 ### Changing the C interface
 
