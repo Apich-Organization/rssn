@@ -1,3 +1,5 @@
+//! Kerr geodesics in Mino time (exact bound orbits, unbound scattering) and black-hole shadows.
+//!
 //! # Kerr geodesics in Mino time: exact bound orbits, unbound scattering, black-hole shadows
 //!
 //! Geodesics of the Kerr metric (Boyer-Lindquist coordinates, `G = c = 1`, mass `M`, spin `a`)
@@ -39,7 +41,10 @@
 //! reaction and self-force are still absent. Ray tracing is numerical.
 
 use std::f64::consts::PI;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
 
+use crate::kernels::par;
 use crate::kernels::special_ext::elliptic_f;
 use crate::kernels::special_ext::elliptic_k;
 use crate::kernels::special_ext::jacobi_elliptic;
@@ -571,21 +576,33 @@ fn photon_orbit_constants(
 /// radius `3 sqrt(3) M`.
 ///
 /// # Errors
-/// Fails for `|a| >= M`, an observer on the axis or `n < 2`.
+/// Fails for non-finite inputs, `|a| >= M`, an observer on the axis,
+/// `n < 2`, or an output size that cannot be allocated.
+#[allow(
+    clippy::float_cmp,
+    reason = "an unchanged midpoint means bisection exhausted precision"
+)]
 pub fn shadow_boundary_analytic(
     m: f64,
     a: f64,
     theta_o: f64,
     n: usize,
 ) -> Result<Vec<(f64, f64)>, String> {
-    if a.abs() >= m || theta_o.sin().abs() < 1e-6 || n < 2 {
-        return Err("shadow needs |a| < M, an off-axis observer and n >= 2".into());
+    if ![m, a, theta_o].iter().all(|value| value.is_finite())
+        || a.abs() >= m
+        || theta_o.sin().abs() < 1e-6
+        || n < 2
+    {
+        return Err("shadow needs finite inputs, |a| < M, an off-axis observer and n >= 2".into());
     }
-    let mut out = Vec::with_capacity(2 * n);
+    let points = n.checked_mul(2).ok_or("shadow output size overflow")?;
+    let mut out = Vec::new();
+    out.try_reserve_exact(points)
+        .map_err(|err| format!("cannot allocate shadow output: {err}"))?;
     if a.abs() < 1e-9 {
         let rad = 27.0_f64.sqrt() * m;
-        for k in 0..2 * n {
-            let ang = 2.0 * PI * k as f64 / (2 * n) as f64;
+        for k in 0..points {
+            let ang = 2.0 * PI * k as f64 / points as f64;
             out.push((rad * ang.cos(), rad * ang.sin()));
         }
         return Ok(out);
@@ -601,22 +618,22 @@ pub fn shadow_boundary_analytic(
         kerr_photon_orbit_radius(m, a.abs(), false),
     );
     let samples = 20_000;
-    let rs: Vec<f64> = (0..=samples)
-        .map(|k| r_lo + (r_hi - r_lo) * f64::from(k) / f64::from(samples))
-        .collect();
-    let first = rs
-        .iter()
-        .position(|&r| beta2(r) >= 0.0)
+    let radius_at = |k| r_lo + (r_hi - r_lo) * f64::from(k) / f64::from(samples);
+    let first = (0..=samples)
+        .find(|&k| beta2(radius_at(k)) >= 0.0)
         .ok_or("no photon-orbit window for this observer")?;
-    let last = rs
-        .iter()
-        .rposition(|&r| beta2(r) >= 0.0)
+    let last = (first..=samples)
+        .rev()
+        .find(|&k| beta2(radius_at(k)) >= 0.0)
         .ok_or("no photon-orbit window for this observer")?;
     let refine = |mut lo: f64, mut hi: f64| {
         // beta2(lo) < 0 <= beta2(hi) (or the reverse): bisection on the sign change
         let flo = beta2(lo) >= 0.0;
         for _ in 0..200 {
             let mid = f64::midpoint(lo, hi);
+            if mid == lo || mid == hi {
+                break;
+            }
             if (beta2(mid) >= 0.0) == flo {
                 lo = mid;
             } else {
@@ -626,25 +643,25 @@ pub fn shadow_boundary_analytic(
         f64::midpoint(lo, hi)
     };
     let ra = if first > 0 {
-        refine(rs[first - 1], rs[first])
+        refine(radius_at(first - 1), radius_at(first))
     } else {
-        rs[first]
+        radius_at(first)
     };
-    let rb = if last + 1 < rs.len() {
-        refine(rs[last], rs[last + 1])
+    let rb = if last < samples {
+        refine(radius_at(last), radius_at(last + 1))
     } else {
-        rs[last]
+        radius_at(last)
     };
-    let mut upper = Vec::with_capacity(n);
     for k in 0..n {
         let r = ra + (rb - ra) * k as f64 / (n - 1) as f64;
         let (xi, _) = photon_orbit_constants(m, a, r);
         let b = beta2(r).max(0.0).sqrt();
-        upper.push((-xi / so, b));
+        out.push((-xi / so, b));
     }
-    let mut lower: Vec<(f64, f64)> = upper.iter().rev().map(|&(x, y)| (x, -y)).collect();
-    out.append(&mut upper);
-    out.append(&mut lower);
+    for index in (0..n).rev() {
+        let (alpha, beta) = out[index];
+        out.push((alpha, -beta));
+    }
     Ok(out)
 }
 
@@ -669,7 +686,7 @@ pub enum RayOutcome {
 /// `theta` if `polar_down`) by integrating the Mino-time equations with RK4.
 ///
 /// # Errors
-/// Fails if the ray is not allowed at the observer (`R(r_o) < 0` or `Theta(theta_o) < 0`) or if
+/// Fails if the ray is not allowed at the observer (`R(r_o) < 0` or `Theta(theta_o) < 0`),
 /// the step budget is exhausted.
 pub fn trace_ray(
     m: f64,
@@ -680,20 +697,17 @@ pub fn trace_ray(
     polar_down: bool,
 ) -> Result<RayOutcome, String> {
     let rh = m + (m * m - a * a).sqrt();
-    let rpot = |r: f64| {
-        let rr = r * r + a * a;
-        (rr - a * xi).powi(2) - (rr - 2.0 * m * r) * ((xi - a).powi(2) + eta)
-    };
+    let radial = RayRadial::new(m, a, xi, eta);
+    let rpot = |r| radial.potential(r);
     let z0 = theta_o.cos();
-    let zp2 = eta - (eta + xi * xi - a * a) * z0 * z0 - a * a * z0.powi(4);
+    let zp2 = polar_velocity_squared(a, xi, eta, z0);
     if rpot(r_o) < 0.0 || zp2 < -1e-12 {
         return Err("ray is not allowed at the observer".into());
     }
     let rhs = |y: &[f64; 5]| -> [f64; 5] {
         let (r, z) = (y[0], y[2]);
-        let k = (xi - a).powi(2) + eta;
         let rr = r * r + a * a;
-        let rpp = 0.5 * (4.0 * r * (rr - a * xi) - (2.0 * r - 2.0 * m) * k);
+        let rpp = radial.acceleration(r);
         let zpp = -(eta + xi * xi - a * a) * z - 2.0 * a * a * z.powi(3);
         let delta = r * r - 2.0 * m * r + a * a;
         let p = rr - a * xi;
@@ -750,6 +764,92 @@ pub fn trace_ray(
     Err("ray tracing step budget exhausted".into())
 }
 
+// The radial and polar equations in Mino time are independent. Both tracing
+// paths use these same radial terms and the same observer admissibility check.
+struct RayRadial {
+    twice_mass: f64,
+    spin_squared: f64,
+    spin_impact: f64,
+    carter_term: f64,
+}
+
+impl RayRadial {
+    fn new(
+        m: f64,
+        a: f64,
+        xi: f64,
+        eta: f64,
+    ) -> Self {
+        Self {
+            twice_mass: 2.0 * m,
+            spin_squared: a * a,
+            spin_impact: a * xi,
+            carter_term: (xi - a).powi(2) + eta,
+        }
+    }
+
+    fn potential(
+        &self,
+        r: f64,
+    ) -> f64 {
+        let rr = r * r + self.spin_squared;
+        (rr - self.spin_impact).powi(2) - (rr - self.twice_mass * r) * self.carter_term
+    }
+
+    fn acceleration(
+        &self,
+        r: f64,
+    ) -> f64 {
+        let rr = r * r + self.spin_squared;
+        0.5 * (4.0 * r * (rr - self.spin_impact) - (2.0 * r - self.twice_mass) * self.carter_term)
+    }
+
+    fn captured(
+        &self,
+        r_o: f64,
+        capture_radius: f64,
+        polar_velocity: f64,
+        token: Option<&AtomicBool>,
+    ) -> Result<bool, String> {
+        let initial_potential = self.potential(r_o);
+        if initial_potential < 0.0 || polar_velocity < -1e-12 {
+            return Err("ray is not allowed at the observer".into());
+        }
+        let (mut r, mut dr) = (r_o, -initial_potential.sqrt());
+        let mut turned = false;
+        for step in 0..4_000_000 {
+            if step % 256 == 0 && token.is_some_and(|token| token.load(Ordering::Relaxed)) {
+                return Err(crate::cancellation::Cancelled.to_string());
+            }
+            let h = 0.01 * (1.0_f64).min(1.0 / r);
+            let k1 = (dr, self.acceleration(r));
+            let k2 = (dr + 0.5 * h * k1.1, self.acceleration(r + 0.5 * h * k1.0));
+            let k3 = (dr + 0.5 * h * k2.1, self.acceleration(r + 0.5 * h * k2.0));
+            let k4 = (dr + h * k3.1, self.acceleration(r + h * k3.0));
+            r += h / 6.0 * (k1.0 + 2.0 * k2.0 + 2.0 * k3.0 + k4.0);
+            dr += h / 6.0 * (k1.1 + 2.0 * k2.1 + 2.0 * k3.1 + k4.1);
+            dr = dr.signum() * self.potential(r).max(0.0).sqrt();
+            if r <= capture_radius {
+                return Ok(true);
+            }
+            turned |= dr > 0.0;
+            if turned && r >= r_o {
+                return Ok(false);
+            }
+        }
+        Err("ray tracing step budget exhausted".into())
+    }
+}
+
+fn polar_velocity_squared(
+    a: f64,
+    xi: f64,
+    eta: f64,
+    z: f64,
+) -> f64 {
+    eta - (eta + xi * xi - a * a) * z * z - a * a * z.powi(4)
+}
+
 /// Shadow boundary found by ray tracing.
 ///
 /// For each of `n` directions in the image plane the
@@ -758,7 +858,13 @@ pub fn trace_ray(
 /// `theta_o`, far away at `r_o`).
 ///
 /// # Errors
-/// Propagates [`trace_ray`] failures.
+/// Propagates ray failures in image-angle order and honors host cancellation.
+/// Independent directions can run concurrently when the active pool has
+/// multiple workers, with the same point order and coordinates.
+#[allow(
+    clippy::float_cmp,
+    reason = "an unchanged midpoint means bisection exhausted precision"
+)]
 pub fn trace_shadow(
     m: f64,
     a: f64,
@@ -766,29 +872,38 @@ pub fn trace_shadow(
     r_o: f64,
     n: usize,
 ) -> Result<Vec<(f64, f64)>, String> {
+    let token = crate::cancellation::current();
     let (so, co) = theta_o.sin_cos();
-    let captured = |rho: f64, psi: f64| -> Result<bool, String> {
-        let (al, be) = (rho * psi.cos(), rho * psi.sin());
-        let xi = -al * so;
-        let eta = be * be + (al * al - a * a) * co * co;
-        Ok(trace_ray(m, a, theta_o, r_o, (xi, eta), be < 0.0)? == RayOutcome::Captured)
-    };
-    let mut out = Vec::with_capacity(n);
-    for k in 0..n {
+    // Match the observer's polar condition in `trace_ray`, which evaluates cosine directly.
+    let z = theta_o.cos();
+    let capture_radius = (m + (m * m - a * a).sqrt()) * (1.0 + 1e-9);
+    par::try_map_indexed(n, 4, |k| {
         let psi = 2.0 * PI * (k as f64 + 0.5) / n as f64;
+        let (cos, sin) = (psi.cos(), psi.sin());
         let (mut lo, mut hi) = (1e-3 * m, 12.0 * m);
         for _ in 0..60 {
             let mid = f64::midpoint(lo, hi);
-            if captured(mid, psi)? {
+            if mid == lo || mid == hi {
+                break;
+            }
+            let (al, be) = (mid * cos, mid * sin);
+            let xi = -al * so;
+            let eta = be * be + (al * al - a * a) * co * co;
+            let radial = RayRadial::new(m, a, xi, eta);
+            if radial.captured(
+                r_o,
+                capture_radius,
+                polar_velocity_squared(a, xi, eta, z),
+                token.as_deref(),
+            )? {
                 lo = mid;
             } else {
                 hi = mid;
             }
         }
         let rho = f64::midpoint(lo, hi);
-        out.push((rho * psi.cos(), rho * psi.sin()));
-    }
-    Ok(out)
+        Ok((rho * cos, rho * sin))
+    })
 }
 
 // ---------------------------------------------------------------------------

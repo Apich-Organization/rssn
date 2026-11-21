@@ -55,6 +55,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::kernels::matrix::Matrix;
+use crate::kernels::numeric_common::scale_product;
 use crate::kernels::ode::OdeSolverMethod;
 use crate::kernels::ode::solve_fixed;
 
@@ -1334,13 +1335,22 @@ pub fn wien_displacement_wavelength(temperature: f64) -> f64 {
 /// * `velocity` - Velocity (m/s)
 #[must_use]
 pub fn lorentz_factor(velocity: f64) -> f64 {
-    let beta = velocity / SPEED_OF_LIGHT;
+    1.0 / inverse_lorentz_factor(velocity.abs())
+}
 
-    if beta.abs() >= 1.0 {
-        return f64::INFINITY;
+fn inverse_lorentz_factor(speed: f64) -> f64 {
+    if speed >= SPEED_OF_LIGHT {
+        return 0.0;
     }
-
-    1.0 / beta.mul_add(-beta, 1.0).sqrt()
+    if speed > 0.5 * SPEED_OF_LIGHT {
+        // Subtraction in the original velocity units retains the gap to c.
+        let gap = SPEED_OF_LIGHT - speed;
+        let light_speed_squared = SPEED_OF_LIGHT * SPEED_OF_LIGHT;
+        (gap * (SPEED_OF_LIGHT + speed) / light_speed_squared).sqrt()
+    } else {
+        let beta = speed / SPEED_OF_LIGHT;
+        beta.mul_add(-beta, 1.0).sqrt()
+    }
 }
 
 /// Time dilation: Δt = γ * Δt₀
@@ -1382,7 +1392,7 @@ pub fn relativistic_momentum(
     lorentz_factor(velocity) * mass * velocity
 }
 
-/// Relativistic kinetic energy: KE = (γ - 1)mc²
+/// Relativistic kinetic energy `KE = (γ - 1)mc²`, accurate also in the low-speed limit.
 ///
 /// # Arguments
 /// * `mass` - Rest mass (kg)
@@ -1392,7 +1402,22 @@ pub fn relativistic_kinetic_energy(
     mass: f64,
     velocity: f64,
 ) -> f64 {
-    (lorentz_factor(velocity) - 1.0) * mass * SPEED_OF_LIGHT * SPEED_OF_LIGHT
+    // Squaring this speed and dividing by at most two stays normal.
+    const MIN_DIRECT_SPEED: f64 = f64::from_bits((1023_u64 - 510) << 52);
+    let speed = velocity.abs();
+    if (MIN_DIRECT_SPEED..SPEED_OF_LIGHT).contains(&speed) && mass.is_finite() {
+        let inverse_gamma = inverse_lorentz_factor(speed);
+        let speed_squared = speed * speed;
+        return mass * (speed_squared / inverse_gamma.mul_add(inverse_gamma, inverse_gamma));
+    }
+    if !mass.is_finite() || speed >= SPEED_OF_LIGHT || speed.is_nan() {
+        return (lorentz_factor(velocity) - 1.0) * mass * SPEED_OF_LIGHT * SPEED_OF_LIGHT;
+    }
+    if crate::kernels::exact_eq(speed, 0.0) {
+        return mass * 0.0;
+    }
+    // At such small speeds the two denominator factors round to 1 and 2.
+    scale_product(mass, &[speed, speed], &[2.0]).unwrap_or_else(|_| f64::INFINITY.copysign(mass))
 }
 
 /// Total relativistic energy: E = γmc²

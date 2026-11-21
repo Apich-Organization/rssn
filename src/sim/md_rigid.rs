@@ -1,9 +1,11 @@
+//! Rigid-molecule molecular dynamics.
+//!
 //! # Rigid-molecule molecular dynamics (3-D)
 //!
 //! Molecules made of several interaction sites move as rigid bodies: the centre of mass
 //! translates under the total force, and the orientation (unit quaternion) and body-frame
 //! angular momentum evolve under the total torque with the symplectic rotor splittings of
-//! [`crate::sim::symplectic::RigidBody`] (NO_SQUISH or exact symmetric-top flows, composable to
+//! [`crate::sim::symplectic::RigidBody`] (`NO_SQUISH` or exact symmetric-top flows, composable to
 //! any even order). No constraint iteration is needed: the rigid geometry is exact to round-off.
 //!
 //! Site-site forces come from the usual [`ForceField`] (intramolecular pairs are excluded
@@ -19,6 +21,7 @@ use crate::sim::md_engine::MdSystem;
 use crate::sim::md_engine::NeighbourList;
 use crate::sim::md_engine::compute_forces;
 use crate::sim::symplectic::RigidBody;
+use crate::sim::symplectic::composition_weights;
 use crate::sim::symplectic::quat_to_matrix;
 
 type V3 = [f64; 3];
@@ -410,43 +413,80 @@ impl RigidMdSimulation {
         }
     }
 
-    /// Advances one step (velocity-Verlet for the centre of mass, symplectic rotor splitting).
+    /// Advances the centre of mass by velocity Verlet and applies the selected rotor composition.
     ///
     /// # Errors
-    /// Propagates force-field errors or an invalid composition order.
+    /// Invalid rotation order or non-finite step times are reported before state updates.
+    /// A force-field error during propagation can leave the state partially advanced.
     pub fn step(&mut self) -> Result<(), String> {
+        let stages = self.rotor_stages()?;
+        self.step_with_rotor_stages(&stages)
+    }
+
+    fn rotor_stages(&self) -> Result<Vec<f64>, String> {
         let h = self.dt;
+        if !h.is_finite() {
+            return Err("rigid-molecule time step must be finite".into());
+        }
+        if self.mols.is_empty() {
+            return Ok(Vec::new());
+        }
+        let mut stages = composition_weights(self.order)?;
+        for stage in &mut stages {
+            *stage *= h;
+            if !stage.is_finite() {
+                return Err("rigid-molecule rotational substep is not representable".into());
+            }
+        }
+        Ok(stages)
+    }
+
+    fn step_with_rotor_stages(
+        &mut self,
+        stages: &[f64],
+    ) -> Result<(), String> {
+        let h = self.dt;
+        let next_time = self.sys.time + h;
+        if !next_time.is_finite() {
+            return Err("rigid-molecule step time is not representable".into());
+        }
         self.half_kick(h);
         for m in &mut self.mols {
             for a in 0..3 {
                 m.com[a] += h * m.vcom[a];
             }
-            if self.exact_rotor {
-                for c in crate::sim::symplectic::composition_weights(self.order)? {
-                    m.rb.free_flow_exact(c * h);
+            for &stage in stages {
+                if self.exact_rotor {
+                    m.rb.free_flow_exact(stage);
+                } else if self.top_split {
+                    m.rb.free_step_top(stage);
+                } else {
+                    m.rb.free_step(stage);
                 }
-            } else {
-                m.rb.free_step_composed(h, self.top_split, self.order)?;
             }
         }
         self.sync_sites();
         self.forces = compute_forces(&self.sys, &self.ff, &mut self.nl)?;
         self.half_kick(h);
         self.sync_sites();
-        self.sys.time += h;
+        self.sys.time = next_time;
         Ok(())
     }
 
-    /// Runs `n` steps.
+    /// Runs `n` steps using one rotor composition for the entire run.
     ///
     /// # Errors
-    /// Propagates step errors.
+    /// Propagates the errors of [`Self::step`]. Completed steps remain applied.
     pub fn run(
         &mut self,
         n: usize,
     ) -> Result<(), String> {
+        if n == 0 {
+            return Ok(());
+        }
+        let stages = self.rotor_stages()?;
         for _ in 0..n {
-            self.step()?;
+            self.step_with_rotor_stages(&stages)?;
         }
         Ok(())
     }

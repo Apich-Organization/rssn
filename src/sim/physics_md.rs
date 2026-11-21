@@ -62,6 +62,7 @@
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::kernels::numeric_common::scale_product;
 use crate::kernels::vector::norm;
 use crate::kernels::vector::scalar_mul;
 use crate::kernels::vector::vec_add;
@@ -320,6 +321,10 @@ where
 /// * `a` - Controls the width of the potential well
 /// * `re` - Equilibrium bond distance
 ///
+/// Separations below `1e-9` return infinite energy and a zero force vector.
+/// [`morse_radial`] evaluates the scalar curve at all nonnegative distances.
+///
+///
 /// # Errors
 /// Returns an error if the particles have different dimensions.
 pub fn morse_interaction(
@@ -329,27 +334,164 @@ pub fn morse_interaction(
     a: f64,
     re: f64,
 ) -> Result<(f64, Vec<f64>), String> {
-    let r_vec = vec_sub(&p1.position, &p2.position)?;
-
-    let r = norm(&r_vec);
+    let mut force = vec_sub(&p1.position, &p2.position)?;
+    let r = norm(&force);
 
     if r < 1e-9 {
-        return Ok((f64::INFINITY, vec![0.0; r_vec.len()]));
+        force.fill(0.0);
+        return Ok((f64::INFINITY, force));
+    }
+    let (potential, magnitude) = morse_at(r, de, a, re);
+    let scale = magnitude / r;
+    if scale.is_normal() || magnitude == 0.0 || !magnitude.is_finite() || !r.is_finite() {
+        for component in &mut force {
+            *component *= scale;
+        }
+    } else {
+        for component in &mut force {
+            *component = (*component / r) * magnitude;
+        }
+    }
+    Ok((potential, force))
+}
+
+/// Returns the Morse energy and the force along increasing distance.
+///
+/// The minimum is zero at `r = re`. At `r = 0` the scalar force is the
+/// one-sided radial derivative with a negative sign. There is no direction
+/// to assign to that force at coincident particle positions.
+///
+/// # Errors
+/// The distance, depth and equilibrium distance must be finite and
+/// nonnegative. The inverse length `a` must be finite and positive.
+/// Returns an error when the energy or radial force exceeds finite range.
+pub fn morse_radial(
+    r: f64,
+    de: f64,
+    a: f64,
+    re: f64,
+) -> Result<(f64, f64), String> {
+    if ![r, de, a, re].iter().all(|v| v.is_finite() && *v >= 0.0) || a == 0.0 {
+        return Err("invalid distance or Morse parameters".into());
+    }
+    let (potential, force) = morse_at(r, de, a, re);
+    if !(potential.is_finite() && force.is_finite()) {
+        return Err("Morse energy or radial force exceeds the finite range".into());
+    }
+    Ok((potential, force))
+}
+
+fn morse_at(
+    r: f64,
+    de: f64,
+    a: f64,
+    re: f64,
+) -> (f64, f64) {
+    let dr = r - re;
+    let z = -a * dr;
+    if z.abs() >= 710.0 && morse_scalable(dr, de, a) {
+        if de == 0.0 {
+            return (0.0, 0.0_f64.copysign(-dr));
+        }
+        // The opposite-sign exponential has already rounded out of 1 - e.
+        return morse_tail(z, de, a, 1.0);
     }
 
-    let exp_term = (-a * (r - re)).exp();
+    let (delta, exp) = if z.abs() < 0.125 {
+        let delta = -z.exp_m1();
+        (delta, 1.0 - delta)
+    } else {
+        let exp = z.exp();
+        (1.0 - exp, exp)
+    };
+    let energy_linear = de * delta;
+    let force_scale = -2.0 * de * a;
+    let force_linear = force_scale * delta;
+    let potential = energy_linear * delta;
+    let force = force_linear * exp;
+    if (energy_linear.is_normal()
+        && force_scale.is_normal()
+        && force_linear.is_normal()
+        && exp.is_normal()
+        && potential.is_normal()
+        && force.is_normal())
+        || !morse_scalable(dr, de, a)
+    {
+        return (potential, force);
+    }
+    if de == 0.0 || dr == 0.0 {
+        return (0.0, 0.0_f64.copysign(-dr));
+    }
+    morse_scaled(dr, z, de, a, delta, exp)
+}
 
-    let one_minus_exp = 1.0 - exp_term;
+const fn morse_scalable(
+    dr: f64,
+    de: f64,
+    a: f64,
+) -> bool {
+    dr.is_finite() && de.is_finite() && de >= 0.0 && a.is_finite() && a > 0.0
+}
 
-    let potential = de * one_minus_exp * one_minus_exp;
+fn morse_scaled(
+    dr: f64,
+    z: f64,
+    de: f64,
+    a: f64,
+    delta: f64,
+    exp: f64,
+) -> (f64, f64) {
+    if z.abs() < 0.125 {
+        // Keep a and the displacement as separate factors even if z underflows.
+        let shape = if z == 0.0 { 1.0 } else { delta / -z };
+        let distance = dr.abs();
+        let strength = de.copysign(-dr);
+        return (
+            morse_product(de, &[a, a, distance, distance, shape, shape]),
+            morse_product(strength, &[2.0, a, a, distance, shape, exp]),
+        );
+    }
+    morse_tail(z, de, a, delta)
+}
 
-    // V = De (1 - e)^2 with e = exp(-a (r - re)), so dV/dr = 2 De a (1 - e) e
-    // and the force along r_vec (from p2 to p1) is -dV/dr.
-    let force_magnitude = -2.0 * de * a * one_minus_exp * exp_term;
+fn morse_tail(
+    z: f64,
+    de: f64,
+    a: f64,
+    delta: f64,
+) -> (f64, f64) {
+    if z > 0.0 {
+        // (exp(z) - 1)^2 = exp(2z) (1 - exp(-z))^2.
+        let quarter = (z * 0.5).exp();
+        if !quarter.is_finite() {
+            return (f64::INFINITY, f64::INFINITY);
+        }
+        let ratio = if z >= 40.0 {
+            1.0
+        } else {
+            -(-z).exp_m1()
+        };
+        (
+            morse_product(de, &[ratio, ratio, quarter, quarter, quarter, quarter]),
+            morse_product(de, &[2.0, a, ratio, quarter, quarter, quarter, quarter]),
+        )
+    } else {
+        let quarter = (z * 0.25).exp();
+        if quarter == 0.0 {
+            return (de, -0.0);
+        }
+        (
+            morse_product(de, &[delta, delta]),
+            morse_product(-de, &[2.0, a, delta, quarter, quarter, quarter, quarter]),
+        )
+    }
+}
 
-    let force_on_p1 = scalar_mul(&r_vec, force_magnitude / r);
-
-    Ok((potential, force_on_p1))
+fn morse_product(
+    signed: f64,
+    factors: &[f64],
+) -> f64 {
+    scale_product(signed, factors, &[]).unwrap_or_else(|_| f64::INFINITY.copysign(signed))
 }
 
 /// Harmonic (spring) potential.

@@ -1,5 +1,6 @@
 //! Barnes-Hut and 2-D FMM against direct summation; gravity with symplectic integration.
 
+use rssn::kernels::numeric_common::NumericError;
 use rssn::kernels::random::Rng;
 use rssn::sim::nbody::*;
 use rssn::sim::symplectic::*;
@@ -33,6 +34,119 @@ fn rel_error<const D: usize>(
         }
     }
     (num / den).sqrt()
+}
+
+#[test]
+fn direct_field_matches_the_softened_two_body_formula() {
+    let pos = [[0.0, 0.0, 0.0], [3.0, -4.0, 0.0]];
+    let src = [2.0, -5.0];
+    let field = direct_field(&pos, &src, 12.0);
+    let denominator = 13.0_f64.powi(3);
+    let expected = [
+        [-15.0 / denominator, 20.0 / denominator, 0.0],
+        [-6.0 / denominator, 8.0 / denominator, 0.0],
+    ];
+    assert!(rel_error(&field, &expected) < 1e-14);
+    assert_eq!(field, direct_field(&pos, &src, -12.0));
+
+    assert_eq!(direct_field(&[[0.0], [2.0]], &src, 0.0), [[-5.0], [-2.0]]);
+    assert_eq!(
+        direct_field(&[[0.0; 4], [2.0, 0.0, 0.0, 0.0]], &src, 0.0),
+        [[-0.625, 0.0, 0.0, 0.0], [-0.25, 0.0, 0.0, 0.0]]
+    );
+    let coincident = [[1.0; 3]; 2];
+    assert_eq!(direct_field(&coincident, &src, 0.5), [[0.0; 3]; 2]);
+    assert!(
+        direct_field(&coincident, &src, 0.0)
+            .iter()
+            .flatten()
+            .all(|x| x.is_nan())
+    );
+}
+
+#[test]
+fn direct_field_preserves_representable_contributions_at_extreme_scales() {
+    let wide = direct_field(&[[-f64::MAX], [f64::MAX]], &[2.0, -5.0], 0.0);
+    assert!((wide[0][0] / -5.0 - 1.0).abs() < 1e-12);
+    assert!((wide[1][0] / -2.0 - 1.0).abs() < 1e-12);
+
+    let check = |actual: f64, expected: f64| {
+        assert!(
+            (actual / expected - 1.0).abs() < 1e-12,
+            "{actual:e} vs {expected:e}"
+        );
+    };
+    let far = direct_field(&[[0.0; 3], [1e160, 0.0, 0.0]], &[0.0, 1e300], 0.0);
+    check(far[0][0], 1e-20);
+    assert_eq!(far[0][1..], [0.0, 0.0]);
+    assert_eq!(far[1], [0.0; 3]);
+    let near = direct_field(&[[0.0; 3], [0.0, -1e-170, 0.0]], &[0.0, 1e-300], 0.0);
+    check(near[0][1], -1e40);
+    let softened = direct_field(&[[0.0; 3], [1e-170, 0.0, 0.0]], &[0.0, 1e-300], 1e-170);
+    check(softened[0][0], 1e40 / (2.0 * 2.0_f64.sqrt()));
+    let subnormal = direct_field(&[[0.0; 2], [1e308, 0.0]], &[0.0, 1.0], 0.0);
+    check(subnormal[0][0], 1e-308);
+
+    // The tiny transverse component needs its weight before rounding to the final scale.
+    let mixed = direct_field(&[[0.0; 2], [1e100, -1e-200]], &[0.0, 1e300], 0.0);
+    check(mixed[0][0], 1e200);
+    check(mixed[0][1], -1e-100);
+
+    // A weighted inverse can overflow or underflow even when the last multiplication fits.
+    let overflow = direct_field(&[[0.0; 2], [1e-100, 0.0]], &[0.0, 1e120], 0.0);
+    check(overflow[0][0], 1e220);
+    let underflow = direct_field(&[[0.0; 3], [1e100, 0.0, 0.0]], &[0.0, 1e-30], 0.0);
+    check(underflow[0][0], 1e-230);
+    let subnormal_radius_cubed = direct_field(&[[0.0; 3], [1e-107, 0.0, 0.0]], &[0.0, 1e-320], 0.0);
+    check(subnormal_radius_cubed[0][0], 1e-320_f64 * 1e214);
+
+    // The exponent exceeds the range of the ordinary inverse at this dimension.
+    let mut offset = [0.0; 128];
+    offset[0] = 256.0;
+    let high_dimensional = direct_field(&[[0.0; 128], offset], &[0.0, 256.0], 0.0);
+    check(high_dimensional[0][0], 2.0_f64.powi(-1008));
+}
+
+#[test]
+fn direct_field_into_reuses_storage_and_checks_shapes_before_writing() {
+    let pos = [[0.0, 0.0], [1.0, 2.0]];
+    let src = [1.0, -1.0];
+    let mut out = [[42.0; 2]; 2];
+    assert!(matches!(
+        direct_field_into(&pos, &src[..1], 0.0, &mut out),
+        Err(NumericError::ShapeMismatch(_))
+    ));
+    assert!(matches!(
+        direct_field_into(&pos, &src, 0.0, &mut out[..1]),
+        Err(NumericError::ShapeMismatch(_))
+    ));
+    assert_eq!(out, [[42.0; 2]; 2]);
+    for epsilon in [0.5, 1.0] {
+        direct_field_into(&pos, &src, epsilon, &mut out).unwrap();
+        assert_eq!(out.as_slice(), direct_field(&pos, &src, epsilon));
+    }
+    assert!(direct_field_into::<2>(&[], &[], 0.0, &mut []).is_ok());
+    assert_eq!(direct_field(&pos[..1], &[], 0.0), [[0.0, 0.0]]);
+    assert_eq!(direct_field(&[[0.0; 0]; 2], &[], 0.0), [[0.0_f64; 0]; 2]);
+}
+
+#[test]
+fn direct_field_is_bit_identical_in_single_and_multi_thread_pools() {
+    let pos = random_points::<3>(513, 67);
+    let mut rng = Rng::new(90);
+    let src: Vec<_> = (0..pos.len()).map(|_| rng.normal()).collect();
+    let pool = |threads| {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap()
+    };
+    let serial = pool(1).install(|| direct_field(&pos, &src, 0.05));
+    let mut parallel = vec![[0.0; 3]; pos.len()];
+    pool(4).install(|| direct_field_into(&pos, &src, 0.05, &mut parallel).unwrap());
+    for (a, b) in serial.iter().flatten().zip(parallel.iter().flatten()) {
+        assert_eq!(a.to_bits(), b.to_bits());
+    }
 }
 
 fn bh_vs_direct<const D: usize>(

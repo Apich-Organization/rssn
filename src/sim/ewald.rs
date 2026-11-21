@@ -1,3 +1,5 @@
+//! Ewald summation and particle-mesh Ewald.
+//!
 //! # Ewald summation and smooth particle-mesh Ewald (PME)
 //!
 //! Long-range Coulomb interactions in a periodic 3-D box (orthorhombic or general triclinic cell).
@@ -7,7 +9,7 @@
 //!
 //! | Method | Cost | Notes |
 //! |---|---|---|
-//! | [`ewald_reciprocal`] | `O(N K^3)` | direct reciprocal sum, energy, forces and virial |
+//! | [`ewald_reciprocal`], [`EwaldReciprocalPlan`] | `O(N K^3)` | direct reciprocal sum, energy, forces and virial |
 //! | [`pme_reciprocal`] | `O(N p^3 + K^3 log K)` | cardinal B-spline (even order) charge spreading, 3-D FFT from [`crate::kernels::fftconv`], analytic spline-derivative forces |
 //! | [`p3m_reciprocal_cell`] | `O(N p^3 + K^3 log K)` | **P3M** with the optimal Hockney-Eastwood influence function (alias sums), `ik` differentiation, triclinic cells; clearly smaller force errors than smooth PME on the same mesh |
 //! | [`ewald_energy_forces`] | `O(N^2 + N K^3)` | full reference (real space with minimum image, needs `r_cut <= L/2`) |
@@ -23,9 +25,16 @@
 //! the result depends only on the problem size, never on the thread count.
 
 use std::f64::consts::PI;
+use std::f64::consts::TAU;
+use std::sync::Arc;
 
+use crate::kernels::dd::Dd;
 use crate::kernels::fftconv::Complex;
 use crate::kernels::fftconv::fft;
+use crate::kernels::numeric_common::scale_product;
+use crate::kernels::reuse::PlanCache;
+use crate::kernels::reuse::ScratchPool;
+use crate::kernels::reuse::f64_scratch;
 use crate::kernels::special::erfc_numerical;
 use crate::sim::md_engine::ExtraForce;
 use crate::sim::md_engine::PairTerm;
@@ -110,12 +119,430 @@ pub fn reciprocal_basis(h: &[[f64; 3]; 3]) -> Result<[[f64; 3]; 3], String> {
     Ok(b)
 }
 
-/// `wave vectors x particles` from which the reciprocal Ewald sum runs in parallel.
+/// `wave pairs x particles` from which the reciprocal Ewald sum runs in parallel.
 const RECIPROCAL_PAR_WORK: usize = 200_000;
 /// Wave vectors per block of the parallel reciprocal sum.
 const RECIPROCAL_BLOCK: usize = 32;
 /// `n^2` from which the orthorhombic real-space sum runs in parallel.
 const REAL_SPACE_PAR_PAIRS: usize = 4_000_000;
+
+static RECIPROCAL_VECTORS: ScratchPool<[f64; 3]> = ScratchPool::new(16, 4 * 1024 * 1024);
+static RECIPROCAL_PHASES: ScratchPool<(f64, f64)> = ScratchPool::new(16, 4 * 1024 * 1024);
+
+#[derive(Debug)]
+struct ReciprocalWave {
+    index: [f64; 3],
+    direction: [f64; 3],
+    energy: f64,
+    force: f64,
+    strain: f64,
+}
+
+#[derive(Default)]
+struct ReciprocalTotals {
+    energy: f64,
+    virial: [[f64; 3]; 3],
+}
+
+/// Prepared direct reciprocal Ewald sum for a fixed periodic cell and cutoff.
+///
+/// The cell stores the three Cartesian lattice vectors as rows. The immutable
+/// plan shares reciprocal geometry across particle configurations and calls.
+/// Each retained wave represents a conjugate pair, with periodic phases
+/// evaluated in fractional coordinates.
+#[derive(Debug)]
+pub struct EwaldReciprocalPlan {
+    cell: [[f64; 3]; 3],
+    inverse: [[f64; 3]; 3],
+    diagonal: Option<[f64; 3]>,
+    length: f64,
+    volume: f64,
+    alpha: f64,
+    waves: Vec<ReciprocalWave>,
+}
+
+impl EwaldReciprocalPlan {
+    pub(crate) const fn heap_bytes(&self) -> usize {
+        self.waves.capacity() * size_of::<ReciprocalWave>()
+    }
+
+    /// Prepares all nonzero reciprocal wave pairs with `|n_i| <= kmax`.
+    ///
+    /// # Errors
+    ///
+    /// Invalid cell, screening or cutoff, unrepresentable reciprocal
+    /// geometry, or inability to allocate the wave list.
+    pub fn new(
+        h: &[[f64; 3]; 3],
+        alpha: f64,
+        kmax: i32,
+    ) -> Result<Self, String> {
+        let length = h.iter().flatten().map(|x| x.abs()).fold(0.0, f64::max);
+        if !h.iter().flatten().all(|x| x.is_finite())
+            || length == 0.0
+            || !alpha.is_finite()
+            || alpha <= 0.0
+            || kmax < 0
+        {
+            return Err("invalid direct Ewald cell, screening or cutoff".into());
+        }
+        // The raw cell volume need not fit in a float.
+        let cell = h.map(|row| row.map(|value| value / length));
+        let volume = det3(&cell).abs();
+        let inverse = inv3(&cell).ok_or("singular cell matrix")?;
+        let alpha = alpha * length;
+        if !inverse.iter().flatten().all(|x| x.is_finite()) || !alpha.is_finite() || alpha == 0.0 {
+            return Err("direct Ewald cell or reduced screening is not representable".into());
+        }
+        let b: [[f64; 3]; 3] =
+            std::array::from_fn(|i| std::array::from_fn(|c| TAU * inverse[c][i]));
+        let n = 2 * kmax as usize + 1;
+        let pairs = n.checked_pow(3).ok_or("direct Ewald wave count overflow")? / 2;
+        let mut waves = Vec::new();
+        waves
+            .try_reserve_exact(pairs.min(131_072))
+            .map_err(|_| "direct Ewald wave list allocation failed")?;
+        'modes: for nx in -kmax..=0 {
+            for ny in -kmax..=kmax {
+                for nz in -kmax..=kmax {
+                    if (nx, ny, nz) == (0, 0, 0) {
+                        break 'modes;
+                    }
+                    let index = [nx, ny, nz].map(f64::from);
+                    let k = std::array::from_fn(|c| {
+                        index[0] * b[0][c] + index[1] * b[1][c] + index[2] * b[2][c]
+                    });
+                    if let Some(wave) = reciprocal_wave(index, k, volume, alpha)? {
+                        if waves.len() == waves.capacity() {
+                            waves
+                                .try_reserve(1)
+                                .map_err(|_| "direct Ewald wave list allocation failed")?;
+                        }
+                        waves.push(wave);
+                    }
+                }
+            }
+        }
+        let diagonal = (0..3)
+            .all(|i| (0..3).all(|j| i == j || h[i][j] == 0.0))
+            .then(|| [h[0][0], h[1][1], h[2][2]]);
+        Ok(Self {
+            cell: *h,
+            inverse,
+            diagonal,
+            length,
+            volume,
+            alpha,
+            waves,
+        })
+    }
+
+    fn angles(
+        &self,
+        point: [f64; 3],
+    ) -> Result<[f64; 3], String> {
+        if let Some(periods) = self.diagonal {
+            return Ok(std::array::from_fn(|a| {
+                let period = periods[a];
+                let value = point[a];
+                let wrapped = if value.abs() > period.abs() {
+                    value % period
+                } else {
+                    value
+                };
+                let fraction = wrapped / period;
+                TAU * (fraction - fraction.round())
+            }));
+        }
+        let fraction = |point: [f64; 3]| -> [f64; 3] {
+            let [x, y, z] = point.map(|value| value / self.length);
+            std::array::from_fn(|a| {
+                x * self.inverse[0][a] + y * self.inverse[1][a] + z * self.inverse[2][a]
+            })
+        };
+        let mut f = fraction(point);
+        if f.iter().any(|value| !value.is_finite()) {
+            return Err("direct Ewald fractional coordinates are not representable".into());
+        }
+        if f.iter().any(|x| x.abs() > 4.0) {
+            let images = f.map(|value| Dd::from_f64(value.round()));
+            let reduced = std::array::from_fn(|c| {
+                let mut coordinate = Dd::from_f64(point[c]);
+                for (i, shift) in images.iter().enumerate() {
+                    coordinate -= *shift * Dd::from_f64(self.cell[i][c]);
+                }
+                coordinate.to_f64()
+            });
+            let reduced = fraction(reduced);
+            if reduced.iter().all(|x| x.is_finite()) {
+                f = reduced;
+            }
+        }
+        Ok(f.map(|value| TAU * (value - value.round())))
+    }
+
+    /// Computes reciprocal forces and virial, with self and background energy.
+    ///
+    /// The charges correspond one-to-one to the Cartesian positions. The
+    /// coupling constant scales energies, forces and virial. Fixed-order
+    /// reduction keeps repeated evaluations bitwise independent of worker
+    /// count.
+    ///
+    /// # Errors
+    ///
+    /// Wrong charge length, non-finite input, or unrepresentable phases or
+    /// results.
+    pub fn evaluate(
+        &self,
+        pos: &[[f64; 3]],
+        q: &[f64],
+        kc: f64,
+    ) -> Result<Recip, String> {
+        if q.len() != pos.len()
+            || !kc.is_finite()
+            || q.iter().any(|x| !x.is_finite())
+            || pos.iter().flatten().any(|x| !x.is_finite())
+        {
+            return Err("invalid direct Ewald positions, charges or coupling".into());
+        }
+        let n = pos.len();
+        let mut forces = vec![[0.0; 3]; n];
+        let mut totals = ReciprocalTotals::default();
+        let maximum_charge = q.iter().map(|value| value.abs()).fold(0.0, f64::max);
+        if kc == 0.0 || maximum_charge == 0.0 {
+            return Ok(Recip {
+                energy: totals.energy,
+                virial: totals.virial,
+                forces,
+            });
+        }
+        // Exact binary rescaling preserves cancellation in neutral cells.
+        let exponent = maximum_charge.to_bits() & 0x7ff0_0000_0000_0000;
+        let charge = f64::from_bits(exponent).max(f64::MIN_POSITIVE);
+        let mut normalized = f64_scratch(n);
+        normalized.extend(q.iter().map(|value| *value / charge));
+        if !self.waves.is_empty() {
+            let mut angles = RECIPROCAL_VECTORS.checkout_for(n);
+            for &point in pos {
+                angles.push(self.angles(point)?);
+            }
+            self.sum_waves(&angles, &normalized, &mut totals, &mut forces);
+        }
+        let energy_scale = [kc.abs(), charge, charge];
+        let (charge_squared, net_charge) = total_charge(&normalized);
+        let self_energy = -scaled_ewald(
+            charge_squared / PI.sqrt(),
+            &[energy_scale[0], charge, charge, self.alpha],
+            &[self.length],
+        )?;
+        let background = if net_charge == 0.0 {
+            0.0
+        } else {
+            scaled_ewald(
+                0.5 * PI,
+                &[
+                    energy_scale[0],
+                    charge,
+                    charge,
+                    net_charge.abs(),
+                    net_charge.abs(),
+                ],
+                &[self.length, self.volume, self.alpha, self.alpha],
+            )?
+        };
+        let reciprocal = scaled_ewald(totals.energy, &energy_scale, &[self.length])?;
+        let energy = (self_energy - background + reciprocal) * kc.signum();
+        if !energy.is_finite() {
+            return Err("direct Ewald energy is not representable".into());
+        }
+        for x in 0..3 {
+            for y in x..3 {
+                let value =
+                    scaled_ewald(totals.virial[x][y], &energy_scale, &[self.length])? * kc.signum();
+                totals.virial[x][y] = value;
+                totals.virial[y][x] = value;
+            }
+        }
+        for (force, &q) in forces.iter_mut().zip(q) {
+            if q == 0.0 {
+                force.fill(0.0);
+            } else {
+                let sign = kc.signum() * q.signum();
+                for component in force {
+                    *component = scaled_ewald(
+                        *component,
+                        &[kc.abs(), charge, q.abs()],
+                        &[self.length, self.length],
+                    )? * sign;
+                }
+            }
+        }
+        Ok(Recip {
+            energy,
+            virial: totals.virial,
+            forces,
+        })
+    }
+
+    fn sum_waves(
+        &self,
+        angles: &[[f64; 3]],
+        q: &[f64],
+        totals: &mut ReciprocalTotals,
+        forces: &mut [[f64; 3]],
+    ) {
+        let n = q.len();
+        if self.waves.len().saturating_mul(n) < RECIPROCAL_PAR_WORK {
+            let mut phases = RECIPROCAL_PHASES.checkout_for(n);
+            phases.resize(n, (0.0, 0.0));
+            reciprocal_block(&self.waves, angles, q, totals, forces, &mut phases);
+            return;
+        }
+
+        // Group already ordered blocks into memory-bounded batches.
+        // Group size affects scheduling and scratch use only.
+        let per_block = n.saturating_mul(size_of::<[f64; 3]>() + size_of::<(f64, f64)>());
+        let max_blocks = (16 * 1024 * 1024 / per_block).clamp(1, 32);
+        let blocks = self
+            .waves
+            .len()
+            .div_ceil(RECIPROCAL_BLOCK)
+            .min(max_blocks)
+            .min(crate::execution::cpu_threads().saturating_mul(4));
+        let mut workspace: Vec<_> = (0..blocks)
+            .map(|_| {
+                let mut forces = RECIPROCAL_VECTORS.checkout_for(n);
+                forces.resize(n, [0.0; 3]);
+                let mut phases = RECIPROCAL_PHASES.checkout_for(n);
+                phases.resize(n, (0.0, 0.0));
+                (ReciprocalTotals::default(), forces, phases)
+            })
+            .collect();
+        for group in self.waves.chunks(blocks * RECIPROCAL_BLOCK) {
+            let active = &mut workspace[..group.len().div_ceil(RECIPROCAL_BLOCK)];
+            crate::kernels::par::for_each_mut(active, 2, |i, (totals, forces, phases)| {
+                let start = i * RECIPROCAL_BLOCK;
+                let end = (start + RECIPROCAL_BLOCK).min(group.len());
+                *totals = ReciprocalTotals::default();
+                forces.fill([0.0; 3]);
+                reciprocal_block(&group[start..end], angles, q, totals, forces, phases);
+            });
+            for (part, block_forces, _) in active {
+                totals.energy += part.energy;
+                for a in 0..3 {
+                    for b in a..3 {
+                        totals.virial[a][b] += part.virial[a][b];
+                    }
+                }
+                for (force, add) in forces.iter_mut().zip(block_forces.iter()) {
+                    for a in 0..3 {
+                        force[a] += add[a];
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn reciprocal_wave(
+    index: [f64; 3],
+    k: [f64; 3],
+    volume: f64,
+    alpha: f64,
+) -> Result<Option<ReciprocalWave>, String> {
+    let [x, y, z] = k;
+    let square = x * x + y * y + z * z;
+    let norm = if square.is_normal() {
+        square.sqrt()
+    } else {
+        x.hypot(y).hypot(z)
+    };
+    if !norm.is_finite() || norm == 0.0 {
+        return Err("direct Ewald wave vector is not representable".into());
+    }
+    let screen = (0.5 * norm / alpha).powi(2);
+    let exponential = (-screen).exp();
+    if exponential == 0.0 {
+        return Ok(None);
+    }
+    let direct = (4.0 * PI / volume) * exponential / square;
+    let weight = if direct.is_normal() && square.is_normal() {
+        direct
+    } else {
+        scaled_ewald(4.0 * PI * exponential, &[], &[volume, norm, norm])?
+    };
+    let force = (2.0 * weight) * norm;
+    let strain = -2.0 * (1.0 + screen) * weight;
+    if !force.is_finite() || !strain.is_finite() {
+        return Err("direct Ewald wave weights are not representable".into());
+    }
+    Ok(Some(ReciprocalWave {
+        index,
+        direction: k.map(|value| value / norm),
+        energy: weight,
+        force,
+        strain,
+    }))
+}
+
+fn reciprocal_block(
+    waves: &[ReciprocalWave],
+    angles: &[[f64; 3]],
+    charges: &[f64],
+    totals: &mut ReciprocalTotals,
+    forces: &mut [[f64; 3]],
+    phases: &mut [(f64, f64)],
+) {
+    for wave in waves {
+        let [x, y, z] = wave.index;
+        let (mut sc, mut ss) = (0.0, 0.0);
+        for ((&[a, b, c], &q), phase) in angles.iter().zip(charges).zip(&mut *phases) {
+            let (s, c) = (x * a + y * b + z * c).sin_cos();
+            sc += q * c;
+            ss += q * s;
+            *phase = (s, c);
+        }
+        let s2 = sc * sc + ss * ss;
+        let energy = wave.energy * s2;
+        totals.energy += energy;
+        let strain = wave.strain * s2;
+        for a in 0..3 {
+            for b in a..3 {
+                let diagonal = if a == b { energy } else { 0.0 };
+                totals.virial[a][b] += diagonal + strain * wave.direction[a] * wave.direction[b];
+            }
+        }
+        for ([fx, fy, fz], &(s, c)) in forces.iter_mut().zip(&*phases) {
+            let f = wave.force * (sc * s - ss * c);
+            *fx += f * wave.direction[0];
+            *fy += f * wave.direction[1];
+            *fz += f * wave.direction[2];
+        }
+    }
+}
+
+fn total_charge(q: &[f64]) -> (f64, f64) {
+    let (mut q2, mut total, mut correction) = (0.0, 0.0_f64, 0.0);
+    for &q in q {
+        q2 += q * q;
+        let next = total + q;
+        correction += if total.abs() >= q.abs() {
+            (total - next) + q
+        } else {
+            (q - next) + total
+        };
+        total = next;
+    }
+    (q2, total + correction)
+}
+
+fn scaled_ewald(
+    value: f64,
+    numerator: &[f64],
+    denominator: &[f64],
+) -> Result<f64, String> {
+    scale_product(value, numerator, denominator).map_err(|error| error.to_string())
+}
 
 /// Direct reciprocal-space Ewald sum of an orthorhombic box with all wave vectors `|n_a| <= kmax`,
 /// plus self and background terms. See [`ewald_reciprocal_cell`] for general cells.
@@ -134,11 +561,13 @@ pub fn ewald_reciprocal(
 
 /// Direct reciprocal-space Ewald sum for a general triclinic cell.
 ///
-/// The cell `h` has the lattice vectors as rows: wave vectors `k = n_1 b_1 + n_2 b_2 + n_3 b_3` with `|n_i| <= kmax`, energy, forces,
-/// the reciprocal virial `-dE/d(strain)` and the self and neutralising-background terms.
+/// The rows of `h` are lattice vectors. Returns energy, forces and the
+/// reciprocal virial, including self and neutralising terms in the energy.
+/// Small fixed-cell plans are retained for repeated evaluations.
 ///
 /// # Errors
-/// Fails for a singular cell.
+///
+/// Invalid cell or particle data, or an unrepresentable result.
 pub fn ewald_reciprocal_cell(
     pos: &[[f64; 3]],
     q: &[f64],
@@ -147,105 +576,17 @@ pub fn ewald_reciprocal_cell(
     kmax: i32,
     kc: f64,
 ) -> Result<Recip, String> {
-    let vol = det3(h).abs();
-    let b = reciprocal_basis(h)?;
-    let n = pos.len();
-    let mut energy = charge_terms(q, vol, alpha, kc);
-    let mut forces = vec![[0.0; 3]; n];
-    let mut virial = [[0.0; 3]; 3];
-    let pref = 2.0 * PI * kc / vol;
-    // The wave vectors in lexicographic order. Each k contributes an energy
-    // term, a virial term and a force on every particle. Small sums use the
-    // plain running accumulation; large ones are cut into fixed blocks of
-    // wave vectors whose partial sums are computed in parallel and added in
-    // block order (a fixed association, independent of the thread count).
-    let mut ks: Vec<(f64, f64, f64)> = Vec::new();
-    for nx in -kmax..=kmax {
-        for ny in -kmax..=kmax {
-            for nz in -kmax..=kmax {
-                if nx != 0 || ny != 0 || nz != 0 {
-                    ks.push((f64::from(nx), f64::from(ny), f64::from(nz)));
-                }
-            }
-        }
+    static PLANS: PlanCache<([[u64; 3]; 3], u64, i32), EwaldReciprocalPlan> = PlanCache::new(2);
+    // A negative legacy cutoff has no reciprocal modes.
+    let kmax = kmax.max(0);
+    if kmax > 24 {
+        return EwaldReciprocalPlan::new(h, alpha, kmax)?.evaluate(pos, q, kc);
     }
-    let block_sum = |slice: &[(f64, f64, f64)]| -> (f64, [[f64; 3]; 3], Vec<[f64; 3]>) {
-        let (mut e_b, mut v_b) = (0.0, [[0.0; 3]; 3]);
-        let mut f_b = vec![[0.0; 3]; n];
-        let mut cs = Vec::with_capacity(n);
-        for &(fx, fy, fz) in slice {
-            let k = [
-                fx * b[0][0] + fy * b[1][0] + fz * b[2][0],
-                fx * b[0][1] + fy * b[1][1] + fz * b[2][1],
-                fx * b[0][2] + fy * b[1][2] + fz * b[2][2],
-            ];
-            let k2 = k[0] * k[0] + k[1] * k[1] + k[2] * k[2];
-            let a = (-k2 / (4.0 * alpha * alpha)).exp() / k2;
-            let (mut sc, mut ss) = (0.0, 0.0);
-            cs.clear();
-            for i in 0..n {
-                let ph = k[0] * pos[i][0] + k[1] * pos[i][1] + k[2] * pos[i][2];
-                let (s, c) = ph.sin_cos();
-                sc += q[i] * c;
-                ss += q[i] * s;
-                cs.push((c, s));
-            }
-            let s2 = sc * sc + ss * ss;
-            let ek = pref * a * s2;
-            e_b += ek;
-            let w = -2.0 * (1.0 / k2 + 1.0 / (4.0 * alpha * alpha));
-            for x in 0..3 {
-                for y in 0..3 {
-                    v_b[x][y] += ek * (if x == y { 1.0 } else { 0.0 } + w * k[x] * k[y]);
-                }
-            }
-            for i in 0..n {
-                let (c, s) = cs[i];
-                let im = sc * s - ss * c;
-                let f = 2.0 * pref * a * q[i] * im;
-                for x in 0..3 {
-                    f_b[i][x] += f * k[x];
-                }
-            }
-        }
-        (e_b, v_b, f_b)
-    };
-    if ks.len().saturating_mul(n) < RECIPROCAL_PAR_WORK {
-        // plain accumulation, as before
-        let (e_b, v_b, f_b) = block_sum(&ks);
-        energy += e_b;
-        for x in 0..3 {
-            for y in 0..3 {
-                virial[x][y] += v_b[x][y];
-            }
-        }
-        for i in 0..n {
-            for x in 0..3 {
-                forces[i][x] += f_b[i][x];
-            }
-        }
-    } else {
-        let blocks: Vec<&[(f64, f64, f64)]> = ks.chunks(RECIPROCAL_BLOCK).collect();
-        let parts = crate::kernels::par::map_slice(&blocks, 2, |blk| block_sum(blk));
-        for (e_b, v_b, f_b) in parts {
-            energy += e_b;
-            for x in 0..3 {
-                for y in 0..3 {
-                    virial[x][y] += v_b[x][y];
-                }
-            }
-            for i in 0..n {
-                for x in 0..3 {
-                    forces[i][x] += f_b[i][x];
-                }
-            }
-        }
-    }
-    Ok(Recip {
-        energy,
-        forces,
-        virial,
-    })
+    let key = (h.map(|row| row.map(f64::to_bits)), alpha.to_bits(), kmax);
+    let plan = PLANS.try_get_or_insert_with(key, || {
+        EwaldReciprocalPlan::new(h, alpha, kmax).map(Arc::new)
+    })?;
+    plan.evaluate(pos, q, kc)
 }
 
 /// Complete Ewald energy and forces for a triclinic cell.

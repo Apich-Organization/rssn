@@ -6,6 +6,10 @@
 //!
 //! No 1D/3D SPH, no boundary particles, no viscosity models beyond the
 //! artificial term.
+//!
+//! Large, sparse particle sets use compact neighbor rows in particle-index
+//! order. The combined density and force update builds those rows once.
+//! Small or dense sets and coordinates outside the safe cell range use pair sums.
 
 use std::ops::Add;
 use std::ops::Div;
@@ -15,6 +19,11 @@ use std::ops::Sub;
 use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
+
+use crate::kernels::par;
+use crate::kernels::reuse::Scratch;
+use crate::kernels::reuse::ScratchPool;
+use crate::sim::sph::Grid;
 
 /// A 2D vector.
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
@@ -234,33 +243,95 @@ impl<'de> Deserialize<'de> for SPHSystem {
     }
 }
 
+struct Neighbors {
+    offsets: Scratch<'static, usize>,
+    indices: Scratch<'static, usize>,
+}
+
+impl Neighbors {
+    fn new(
+        particles: &[Particle],
+        density_radius_sq: Option<f64>,
+        force_radius: Option<f64>,
+    ) -> Option<Self> {
+        const MAX_RECORDS: usize = 512 * 1024;
+        static WORK: ScratchPool<usize> = ScratchPool::new(4, 4 * 1024 * 1024);
+
+        let n = particles.len();
+        let min_particles = if force_radius.is_some() {
+            1024
+        } else {
+            1280
+        };
+        // An underflowed squared distance can fall inside the force cutoff
+        // even when its coordinates are too far apart to share a cell.
+        if n < min_particles
+            || (density_radius_sq.is_some() && particles.iter().any(|p| !p.mass.is_finite()))
+            || density_radius_sq.is_some_and(|r| !r.is_normal() || r <= 0.0)
+            || force_radius.is_some_and(|r| !(r * r).is_normal() || r <= 0.0)
+        {
+            return None;
+        }
+        let density_radius_sq = density_radius_sq.unwrap_or(0.0);
+        let force_radius = force_radius.unwrap_or(0.0);
+        let reach = density_radius_sq.sqrt().max(force_radius);
+        let points: Vec<[f64; 2]> = particles.iter().map(|p| [p.pos.x, p.pos.y]).collect();
+        let grid = Grid::for_reach(&points, reach)?;
+        let mut offsets = WORK.checkout_for(n + 1);
+        let mut indices = WORK.checkout_for(n.saturating_mul(8).min(MAX_RECORDS));
+        offsets.push(0);
+        for (i, point) in points.iter().enumerate() {
+            let start = indices.len();
+            let mut visited = 0;
+            grid.for_near(point, |j| {
+                visited += 1;
+                if indices.len() < MAX_RECORDS {
+                    let square = (particles[i].pos - particles[j].pos).norm_sq();
+                    if square < density_radius_sq || square.sqrt() < force_radius {
+                        indices.push(j);
+                    }
+                }
+            });
+            if visited > n / 2 || indices.len() == MAX_RECORDS {
+                return None;
+            }
+            indices[start..].sort_unstable();
+            offsets.push(indices.len());
+        }
+        Some(Self { offsets, indices })
+    }
+
+    fn row(
+        &self,
+        i: usize,
+    ) -> &[usize] {
+        &self.indices[self.offsets[i]..self.offsets[i + 1]]
+    }
+}
+
 impl SPHSystem {
     /// Computes the density and pressure of each particle.
     pub fn compute_density_pressure(&mut self) {
+        let neighbors = Neighbors::new(&self.particles, Some(self.poly6.h_sq), None);
+        self.density_pressure_with(neighbors.as_ref());
+    }
+
+    fn density_pressure_with(
+        &mut self,
+        neighbors: Option<&Neighbors>,
+    ) {
         let poly6 = &self.poly6;
-
         let gas_const = self.gas_const;
-
         let rest_density = self.rest_density;
-
-        // Densities depend only on positions and masses, so compute them from a shared view
-        // and write them back afterwards.
-        let results: Vec<(f64, f64)> = self
-            .particles
-            .par_iter()
-            .map(|p_i| {
-                let mut density = 0.0;
-
-                for p_j in &self.particles {
-                    let r_vec = p_i.pos - p_j.pos;
-
-                    density += p_j.mass * poly6.value(r_vec.norm_sq());
-                }
-
-                (density, gas_const * (density - rest_density).max(0.0))
-            })
-            .collect();
-
+        let results: Vec<_> = neighbors.map_or_else(
+            || self.direct_density_pressure(),
+            |rows| {
+                par::map_indexed(self.particles.len(), 128, |i| {
+                    let points = rows.row(i).iter().map(|&j| &self.particles[j]);
+                    density_at(&self.particles[i], points, poly6, gas_const, rest_density)
+                })
+            },
+        );
         for (p, (density, pressure)) in self.particles.iter_mut().zip(results) {
             p.density = density;
 
@@ -268,51 +339,85 @@ impl SPHSystem {
         }
     }
 
+    // Keep the contiguous all-pairs loop separate from indirect neighbor lookups.
+    #[inline(never)]
+    fn direct_density_pressure(&self) -> Vec<(f64, f64)> {
+        let poly6 = &self.poly6;
+        let gas_const = self.gas_const;
+        let rest_density = self.rest_density;
+        self.particles
+            .par_iter()
+            .map(|p_i| {
+                let mut density = 0.0;
+                for p_j in &self.particles {
+                    let r_vec = p_i.pos - p_j.pos;
+                    density += p_j.mass * poly6.value(r_vec.norm_sq());
+                }
+                (density, gas_const * (density - rest_density).max(0.0))
+            })
+            .collect()
+    }
+
     /// Computes the forces acting on each particle.
     pub fn compute_forces(&mut self) {
-        let spiky = &self.spiky;
+        let neighbors = Neighbors::new(&self.particles, None, Some(self.spiky.h));
+        self.forces_with(neighbors.as_ref());
+    }
 
-        let poly6 = &self.poly6;
-
-        let viscosity = self.viscosity;
-
-        let gravity = self.gravity;
-
-        let forces: Vec<Vector2D> = self
-            .particles
-            .par_iter()
-            .enumerate()
-            .map(|(i, p_i)| {
-                let mut force = Vector2D::default();
-
-                for (j, p_j) in self.particles.iter().enumerate() {
-                    if i == j {
-                        continue;
-                    }
-
-                    let r_vec = p_i.pos - p_j.pos;
-
-                    let r_norm = (r_vec.norm_sq()).sqrt();
-
-                    if r_norm < spiky.h {
-                        let avg_pressure = f64::midpoint(p_i.pressure, p_j.pressure);
-
-                        force =
-                            force - spiky.gradient(r_vec, r_norm) * (avg_pressure / p_j.density);
-
-                        let vel_diff = p_j.vel - p_i.vel;
-
-                        force = force + vel_diff * (viscosity * poly6.value(r_vec.norm_sq()));
-                    }
-                }
-
-                force + gravity * p_i.density
-            })
-            .collect();
+    fn forces_with(
+        &mut self,
+        neighbors: Option<&Neighbors>,
+    ) {
+        let n = self.particles.len();
+        let forces = neighbors.map_or_else(
+            || {
+                par::map_indexed(n, 48, |i| {
+                    self.force_at(i, self.particles.iter().enumerate())
+                })
+            },
+            |rows| {
+                par::map_indexed(n, 128, |i| {
+                    let particles = rows.row(i).iter().map(|&j| (j, &self.particles[j]));
+                    self.force_at(i, particles)
+                })
+            },
+        );
 
         for (p, force) in self.particles.iter_mut().zip(forces) {
             p.force = force;
         }
+    }
+
+    fn force_at<'a>(
+        &self,
+        i: usize,
+        particles: impl Iterator<Item = (usize, &'a Particle)>,
+    ) -> Vector2D {
+        let p_i = &self.particles[i];
+        let mut force = Vector2D::default();
+        for (j, p_j) in particles {
+            if i == j {
+                continue;
+            }
+            let r_vec = p_i.pos - p_j.pos;
+            let square = r_vec.norm_sq();
+            let r_norm = square.sqrt();
+            if r_norm < self.spiky.h {
+                let avg_pressure = f64::midpoint(p_i.pressure, p_j.pressure);
+                force = force - self.spiky.gradient(r_vec, r_norm) * (avg_pressure / p_j.density);
+                let vel_diff = p_j.vel - p_i.vel;
+                force = force + vel_diff * (self.viscosity * self.poly6.value(square));
+            }
+        }
+        force + self.gravity * p_i.density
+    }
+
+    /// Updates density, pressure and force for the current positions and velocities.
+    /// Reuses one neighborhood search for both interaction sweeps.
+    pub fn compute_density_and_forces(&mut self) {
+        let neighbors = Neighbors::new(&self.particles, Some(self.poly6.h_sq), Some(self.spiky.h));
+        self.density_pressure_with(neighbors.as_ref());
+        self.forces_with(neighbors.as_ref());
     }
 
     /// Integrates the equations of motion for each particle.
@@ -322,7 +427,7 @@ impl SPHSystem {
     ) {
         let bounds = self.bounds;
 
-        self.particles.par_iter_mut().for_each(|p| {
+        par::for_each_mut(&mut self.particles, 128, |_, p| {
             p.vel = p.vel + p.force * (dt / p.density);
 
             p.pos = p.pos + p.vel * dt;
@@ -358,12 +463,25 @@ impl SPHSystem {
         &mut self,
         dt: f64,
     ) {
-        self.compute_density_pressure();
-
-        self.compute_forces();
-
+        self.compute_density_and_forces();
         self.integrate(dt);
     }
+}
+
+#[inline]
+fn density_at<'a>(
+    p_i: &Particle,
+    particles: impl Iterator<Item = &'a Particle>,
+    poly6: &Poly6Kernel,
+    gas_const: f64,
+    rest_density: f64,
+) -> (f64, f64) {
+    let mut density = 0.0;
+    for p_j in particles {
+        let r_vec = p_i.pos - p_j.pos;
+        density += p_j.mass * poly6.value(r_vec.norm_sq());
+    }
+    (density, gas_const * (density - rest_density).max(0.0))
 }
 
 /// Simulates a 2D dam break scenario using Smoothed-Particle Hydrodynamics (SPH).

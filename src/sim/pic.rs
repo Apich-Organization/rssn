@@ -1,3 +1,5 @@
+//! Electrostatic particle-in-cell with `CIC` and four-point cubic assignment.
+//!
 //! # Electrostatic particle-in-cell on a periodic one-dimensional mesh
 //!
 //! Particles carry a charge and a mass; each step deposits the charge on a
@@ -43,6 +45,9 @@ use std::f64::consts::PI;
 
 use crate::kernels::fftconv::Complex;
 use crate::kernels::fftconv::fft;
+use crate::kernels::numeric_common::scale_product;
+
+const PARTICLE_GRAIN: usize = 16_384;
 
 /// Charge-assignment and field-gathering shape function.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -85,8 +90,8 @@ impl Grid {
     /// Creates a periodic mesh with `cells` cells on a box of length `length`.
     ///
     /// # Errors
-    /// If `cells` is not a power of two of at least 8, or `length` is not
-    /// finite and positive.
+    /// If `cells` is not a power of two of at least 8, `length` is not
+    /// finite and positive, or the spacing rounds to zero.
     pub fn new(
         cells: usize,
         length: f64,
@@ -97,10 +102,14 @@ impl Grid {
         if !length.is_finite() || length <= 0.0 {
             return Err("PIC needs a finite positive box length".into());
         }
+        let spacing = length / cells as f64;
+        if spacing == 0.0 {
+            return Err("PIC grid spacing rounds to zero".into());
+        }
         Ok(Self {
             cells,
             length,
-            spacing: length / cells as f64,
+            spacing,
         })
     }
 
@@ -122,6 +131,90 @@ impl Grid {
         self.spacing
     }
 
+    fn phase(
+        &self,
+        x: f64,
+    ) -> (usize, f64) {
+        let wrapped = if (0.0..self.length).contains(&x) {
+            x
+        } else {
+            x.rem_euclid(self.length)
+        };
+        let u = if self.spacing.is_normal() {
+            wrapped / self.spacing
+        } else {
+            // A rounded subnormal spacing can move a point to a different cell.
+            (wrapped / self.length) * self.cells as f64
+        };
+        let floor = u.floor();
+        (floor as usize & (self.cells - 1), u - floor)
+    }
+
+    fn linear(
+        &self,
+        x: f64,
+    ) -> Stencil<2> {
+        let (start, f) = self.phase(x);
+        Stencil {
+            start,
+            weights: [1.0 - f, f],
+        }
+    }
+
+    fn cubic(
+        &self,
+        x: f64,
+    ) -> Stencil<4> {
+        let (cell, f) = self.phase(x);
+        let a = f + 1.0;
+        let c = f - 1.0;
+        let d = f - 2.0;
+        Stencil {
+            start: cell.wrapping_sub(1) & (self.cells - 1),
+            weights: [
+                -f * c * d / 6.0,
+                a * c * d / 2.0,
+                -a * f * d / 2.0,
+                a * f * c / 6.0,
+            ],
+        }
+    }
+
+    fn charge_density<const N: usize>(
+        &self,
+        stencils: impl Iterator<Item = Stencil<N>>,
+        q: &[f64],
+    ) -> Vec<f64> {
+        let mut rho = vec![0.0; self.cells];
+        let mask = self.cells - 1;
+        if self.spacing.is_normal() {
+            for (stencil, &charge) in stencils.zip(q) {
+                stencil.scatter(&mut rho, mask, |w| charge * w);
+            }
+            for density in &mut rho {
+                *density /= self.spacing;
+            }
+        } else {
+            // On a subnormal mesh, forming q*w can erase a finite density.
+            for (stencil, &charge) in stencils.zip(q) {
+                stencil.scatter(&mut rho, mask, |weight| {
+                    let direct = charge * weight / self.spacing;
+                    if charge == 0.0 || weight == 0.0 {
+                        direct
+                    } else {
+                        scale_product(
+                            charge.signum() * weight.signum(),
+                            &[charge.abs(), weight.abs(), self.cells as f64],
+                            &[self.length],
+                        )
+                        .unwrap_or(direct)
+                    }
+                });
+            }
+        }
+        rho
+    }
+
     /// Deposits `q` at `pos` and returns the charge density per unit length.
     ///
     /// Positions are wrapped periodically. The two slices are zipped, so a
@@ -133,43 +226,10 @@ impl Grid {
         q: &[f64],
         shape: Shape,
     ) -> Vec<f64> {
-        let mut rho = vec![0.0; self.cells];
         match shape {
-            // The reference CIC path: kept separate from the generic stencils
-            // so that selecting `Linear` is bit-identical to the old scheme.
-            | Shape::Linear => {
-                for (&x, &qi) in pos.iter().zip(q.iter()) {
-                    let u = x.rem_euclid(self.length) / self.spacing;
-                    let fl = u.floor();
-                    let f = u - fl;
-                    let i0 = (fl as i64).rem_euclid(self.cells as i64) as usize;
-                    let i1 = i0.wrapping_add(1).rem_euclid(self.cells);
-                    let w0 = 1.0 - f;
-                    if let Some(c) = rho.get_mut(i0) {
-                        *c += qi * w0;
-                    }
-                    if let Some(c) = rho.get_mut(i1) {
-                        *c += qi * f;
-                    }
-                }
-            },
-            | Shape::Cubic => {
-                for (&x, &qi) in pos.iter().zip(q.iter()) {
-                    let u = x.rem_euclid(self.length) / self.spacing;
-                    let (base, w, count) = stencil(u, self.cells);
-                    for k in 0..count {
-                        let idx = base.wrapping_add(k).rem_euclid(self.cells);
-                        if let (Some(c), Some(&wk)) = (rho.get_mut(idx), w.get(k)) {
-                            *c += qi * wk;
-                        }
-                    }
-                }
-            },
+            | Shape::Linear => self.charge_density(pos.iter().map(|&x| self.linear(x)), q),
+            | Shape::Cubic => self.charge_density(pos.iter().map(|&x| self.cubic(x)), q),
         }
-        for c in &mut rho {
-            *c /= self.spacing;
-        }
-        rho
     }
 
     /// Gathers a mesh quantity to the particles with the same shape weights.
@@ -185,37 +245,55 @@ impl Grid {
         if field.len() != self.cells {
             return Err("PIC gather needs one field value per cell".into());
         }
-        let mut out = Vec::with_capacity(pos.len());
-        match shape {
+        let mask = self.cells - 1;
+        Ok(match shape {
             | Shape::Linear => {
-                for &x in pos {
-                    let u = x.rem_euclid(self.length) / self.spacing;
-                    let fl = u.floor();
-                    let f = u - fl;
-                    let i0 = (fl as i64).rem_euclid(self.cells as i64) as usize;
-                    let i1 = i0.wrapping_add(1).rem_euclid(self.cells);
-                    let w0 = 1.0 - f;
-                    let v0 = field.get(i0).copied().unwrap_or(0.0);
-                    let v1 = field.get(i1).copied().unwrap_or(0.0);
-                    out.push(w0 * v0 + f * v1);
-                }
+                crate::kernels::par::map_slice(pos, PARTICLE_GRAIN, |&x| {
+                    self.linear(x).sample(field, mask)
+                })
             },
             | Shape::Cubic => {
-                for &x in pos {
-                    let u = x.rem_euclid(self.length) / self.spacing;
-                    let (base, w, count) = stencil(u, self.cells);
-                    let mut acc = 0.0;
-                    for k in 0..count {
-                        let idx = base.wrapping_add(k).rem_euclid(self.cells);
-                        if let (Some(&vk), Some(&wk)) = (field.get(idx), w.get(k)) {
-                            acc += wk * vk;
-                        }
-                    }
-                    out.push(acc);
-                }
+                crate::kernels::par::map_slice(pos, PARTICLE_GRAIN, |&x| {
+                    self.cubic(x).sample(field, mask)
+                })
             },
+        })
+    }
+
+    /// Prepares the periodic weights for repeated transfers at fixed positions.
+    ///
+    /// # Errors
+    ///
+    /// A position is non-finite.
+    pub fn prepare_assignment(
+        &self,
+        pos: &[f64],
+        shape: Shape,
+    ) -> Result<AssignmentPlan, String> {
+        if pos.iter().any(|x| !x.is_finite()) {
+            return Err("PIC assignment positions must be finite".into());
         }
-        Ok(out)
+        let stencils = match shape {
+            | Shape::Linear => {
+                AssignmentStencils::Linear(crate::kernels::par::map_slice(
+                    pos,
+                    PARTICLE_GRAIN,
+                    |&x| self.linear(x),
+                ))
+            },
+            | Shape::Cubic => {
+                AssignmentStencils::Cubic(crate::kernels::par::map_slice(
+                    pos,
+                    PARTICLE_GRAIN,
+                    |&x| self.cubic(x),
+                ))
+            },
+        };
+        Ok(AssignmentPlan {
+            grid: *self,
+            stencils,
+            particles: pos.len(),
+        })
     }
 
     /// Solves `-d^2 phi / dx^2 = rho` and returns `phi` and `E = -d phi / dx`.
@@ -281,32 +359,113 @@ pub struct Field {
     pub e: Vec<f64>,
 }
 
-/// The first cell and weights of the four-point cubic stencil.
+#[derive(Clone, Copy, Debug)]
+struct Stencil<const N: usize> {
+    start: usize,
+    weights: [f64; N],
+}
+
+impl<const N: usize> Stencil<N> {
+    fn scatter(
+        self,
+        rho: &mut [f64],
+        mask: usize,
+        scale: impl Fn(f64) -> f64,
+    ) {
+        for (k, weight) in self.weights.into_iter().enumerate() {
+            rho[self.start.wrapping_add(k) & mask] += scale(weight);
+        }
+    }
+
+    fn sample(
+        self,
+        field: &[f64],
+        mask: usize,
+    ) -> f64 {
+        if N == 2 {
+            // Keep the original CIC association, including signed zero.
+            return self.weights[0] * field[self.start]
+                + self.weights[1] * field[self.start.wrapping_add(1) & mask];
+        }
+        self.weights
+            .into_iter()
+            .enumerate()
+            .fold(0.0, |acc, (k, w)| {
+                acc + w * field[self.start.wrapping_add(k) & mask]
+            })
+    }
+}
+
+#[derive(Clone, Debug)]
+enum AssignmentStencils {
+    Linear(Vec<Stencil<2>>),
+    Cubic(Vec<Stencil<4>>),
+}
+
+/// Prepared periodic particle-to-mesh and mesh-to-particle transfers.
 ///
-/// The weight at index `k` belongs to the cell `start + k` (modulo the mesh);
-/// the stencil starts one cell below the floor cell. The weights are the
-/// Lagrange basis of the four nodes `{-1, 0, 1, 2}` in cell units, evaluated at
-/// the fractional offset `f`, so they reproduce cubics and the smooth-field
-/// error is fourth order. `Linear` never reaches this helper; its dedicated
-/// path lives in [`Grid::deposit`] and [`Grid::gather`].
-fn stencil(
-    u: f64,
-    cells: usize,
-) -> (usize, [f64; 4], usize) {
-    let fl = u.floor();
-    let f = u - fl;
-    let start = (fl as i64)
-        .rem_euclid(cells as i64)
-        .wrapping_sub(1)
-        .rem_euclid(cells as i64) as usize;
-    let a = f + 1.0;
-    let c = f - 1.0;
-    let d = f - 2.0;
-    let w0 = -f * c * d / 6.0;
-    let w1 = a * c * d / 2.0;
-    let w2 = -a * f * d / 2.0;
-    let w3 = a * f * c / 6.0;
-    (start, [w0, w1, w2, w3], 4)
+/// Constructed by [`Grid::prepare_assignment`], a plan retains the stencil of
+/// each particle in the original order. Deposition and gathering share the
+/// same weights for every field evaluation.
+#[derive(Clone, Debug)]
+pub struct AssignmentPlan {
+    grid: Grid,
+    stencils: AssignmentStencils,
+    particles: usize,
+}
+
+impl AssignmentPlan {
+    pub(crate) const fn heap_bytes(&self) -> usize {
+        match &self.stencils {
+            | AssignmentStencils::Linear(s) => s.capacity() * size_of::<Stencil<2>>(),
+            | AssignmentStencils::Cubic(s) => s.capacity() * size_of::<Stencil<4>>(),
+        }
+    }
+
+    /// Deposits one charge per prepared particle as density per unit length.
+    ///
+    /// # Errors
+    ///
+    /// The charge array length differs from the prepared particle count.
+    pub fn deposit(
+        &self,
+        q: &[f64],
+    ) -> Result<Vec<f64>, String> {
+        if q.len() != self.particles {
+            return Err("PIC assignment needs one charge per prepared particle".into());
+        }
+        Ok(match &self.stencils {
+            | AssignmentStencils::Linear(s) => self.grid.charge_density(s.iter().copied(), q),
+            | AssignmentStencils::Cubic(s) => self.grid.charge_density(s.iter().copied(), q),
+        })
+    }
+
+    /// Evaluates the prepared stencils on a mesh field.
+    ///
+    /// # Errors
+    ///
+    /// The field does not have one entry per grid cell.
+    pub fn gather(
+        &self,
+        field: &[f64],
+    ) -> Result<Vec<f64>, String> {
+        if field.len() != self.grid.cells {
+            return Err("PIC gather needs one field value per cell".into());
+        }
+        let mask = self.grid.cells - 1;
+        Ok(match &self.stencils {
+            | AssignmentStencils::Linear(s) => {
+                crate::kernels::par::map_slice(s, PARTICLE_GRAIN, |&stencil| {
+                    stencil.sample(field, mask)
+                })
+            },
+            | AssignmentStencils::Cubic(s) => {
+                crate::kernels::par::map_slice(s, PARTICLE_GRAIN, |&stencil| {
+                    stencil.sample(field, mask)
+                })
+            },
+        })
+    }
 }
 
 /// Configuration of a [`Pic`] run.

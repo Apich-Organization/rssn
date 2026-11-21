@@ -1,3 +1,5 @@
+//! Smoothed-particle hydrodynamics in 1-3 dimensions.
+//!
 //! # Smoothed-particle hydrodynamics in 1, 2 and 3 dimensions
 //!
 //! Compressible, inviscid SPH for an ideal gas with density summation,
@@ -33,6 +35,8 @@
 
 use std::collections::HashMap;
 use std::f64::consts::PI;
+
+use crate::kernels::numeric_common::scale_product;
 
 /// Smoothing kernel family (support radius `2h`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -196,12 +200,79 @@ struct Ghost<const D: usize> {
     flip: [f64; D],
 }
 
-struct Grid<const D: usize> {
+fn make_ghosts<const D: usize>(
+    pos: &[[f64; D]],
+    lo: [f64; D],
+    hi: [f64; D],
+    bc: [SphBoundary; D],
+    reach: f64,
+) -> Vec<Ghost<D>> {
+    let mut all: Vec<_> = pos
+        .iter()
+        .enumerate()
+        .map(|(src, &pos)| {
+            Ghost {
+                src,
+                pos,
+                flip: [1.0; D],
+            }
+        })
+        .collect();
+    for a in 0..D {
+        if bc[a] == SphBoundary::Open {
+            continue;
+        }
+        let original = all.len();
+        let len = hi[a] - lo[a];
+        for i in 0..original {
+            let g = all[i];
+            if g.pos[a] - lo[a] < reach {
+                let mut near = g;
+                if bc[a] == SphBoundary::Periodic {
+                    near.pos[a] += len;
+                } else {
+                    near.pos[a] = 2.0 * lo[a] - g.pos[a];
+                    near.flip[a] = -g.flip[a];
+                }
+                all.push(near);
+            }
+            if hi[a] - g.pos[a] < reach {
+                let mut far = g;
+                if bc[a] == SphBoundary::Periodic {
+                    far.pos[a] -= len;
+                } else {
+                    far.pos[a] = 2.0 * hi[a] - g.pos[a];
+                    far.flip[a] = -g.flip[a];
+                }
+                all.push(far);
+            }
+        }
+    }
+    all
+}
+
+/// Cell grid for geometric candidate lookups at a bounded distance.
+pub(crate) struct Grid<const D: usize> {
     cell: f64,
     map: HashMap<[i64; D], Vec<usize>>,
 }
 
 impl<const D: usize> Grid<D> {
+    /// Indexes near points when the coordinates can be binned with room for rounding.
+    pub(crate) fn for_reach(
+        pts: &[[f64; D]],
+        reach: f64,
+    ) -> Option<Self> {
+        let width = reach * 1.125;
+        (D <= 3
+            && width.is_finite()
+            && pts
+                .iter()
+                .flatten()
+                .all(|&d| (d / width).abs() < (1_u64 << 47) as f64))
+        .then(|| Self::new(pts, width))
+    }
+
     fn key(
         &self,
         p: &[f64; D],
@@ -228,7 +299,8 @@ impl<const D: usize> Grid<D> {
         g
     }
 
-    fn for_near(
+    /// Visits every point from the query cell and its adjacent cells.
+    pub(crate) fn for_near(
         &self,
         p: &[f64; D],
         mut f: impl FnMut(usize),
@@ -247,6 +319,249 @@ impl<const D: usize> Grid<D> {
                 }
             }
         }
+    }
+}
+
+struct DensityCells<const D: usize> {
+    ghosts: Vec<Ghost<D>>,
+    origin: [f64; D],
+    grid: Option<Grid<D>>,
+}
+
+impl<const D: usize> DensityCells<D> {
+    fn visit(
+        &self,
+        index: usize,
+        reach: f64,
+        mut f: impl FnMut(usize, f64),
+    ) {
+        let pos = self.ghosts[index].pos;
+        let reach_squared = reach * reach;
+        let visit = |j: usize| {
+            let ghost = &self.ghosts[j];
+            let delta: [f64; D] = std::array::from_fn(|a| pos[a] - ghost.pos[a]);
+            let r2: f64 = delta.iter().map(|d| d * d).sum();
+            if reach_squared.is_normal() && r2 > reach_squared {
+                return;
+            }
+            let r = if r2.is_normal() || delta.iter().all(|&d| d == 0.0) {
+                r2.sqrt()
+            } else {
+                delta.into_iter().fold(0.0, f64::hypot)
+            };
+            if r < reach {
+                f(ghost.src, r);
+            }
+        };
+        if let Some(grid) = &self.grid {
+            let coords = std::array::from_fn(|a| pos[a] - self.origin[a]);
+            grid.for_near(&coords, visit);
+        } else {
+            (0..self.ghosts.len()).for_each(visit);
+        }
+    }
+}
+
+/// Reusable SPH density summation for fixed particle positions.
+///
+/// Periodic positions are wrapped into the primary cell. The sum includes
+/// the particle itself and one image per side of each periodic or reflecting
+/// axis, including their combinations at corners. On a periodic axis a
+/// support radius up to the period includes every contributing image.
+pub struct SphDensityPlan<const D: usize> {
+    n: usize,
+    max_h: f64,
+    offsets: Vec<usize>,
+    neighbors: Vec<(usize, f64)>,
+    remaining: Option<DensityCells<D>>,
+}
+
+impl<const D: usize> SphDensityPlan<D> {
+    pub(crate) fn cached_heap_bytes(&self) -> Option<usize> {
+        self.remaining.is_none().then(|| {
+            self.offsets.capacity() * size_of::<usize>()
+                + self.neighbors.capacity() * size_of::<(usize, f64)>()
+        })
+    }
+
+    /// Prepares a density plan with smoothing lengths up to `max_h`.
+    ///
+    /// # Errors
+    ///
+    /// Unsupported dimension, non-finite positions, invalid smoothing
+    /// length or invalid periodic or reflecting extents.
+    pub fn new(
+        pos: &[[f64; D]],
+        lo: [f64; D],
+        hi: [f64; D],
+        bc: [SphBoundary; D],
+        max_h: f64,
+    ) -> Result<Self, String> {
+        if !(1..=3).contains(&D) {
+            return Err("SPH density requires one to three dimensions".into());
+        }
+        Self::build(pos, lo, hi, bc, max_h)
+    }
+
+    fn build(
+        pos: &[[f64; D]],
+        mut lo: [f64; D],
+        mut hi: [f64; D],
+        bc: [SphBoundary; D],
+        max_h: f64,
+    ) -> Result<Self, String> {
+        const MAX_RECORDS: usize = 524_288;
+        let reach = 2.0 * max_h;
+        if reach <= 0.0 || !reach.is_finite() || pos.iter().flatten().any(|x| !x.is_finite()) {
+            return Err("invalid SPH density coordinates or smoothing limit".into());
+        }
+        let mut positions = pos.to_vec();
+        for a in 0..D {
+            if bc[a] == SphBoundary::Open {
+                continue;
+            }
+            let length = hi[a] - lo[a];
+            if !length.is_finite() || length <= 0.0 {
+                return Err("invalid SPH density boundary extent".into());
+            }
+            for point in &mut positions {
+                let x = point[a] - lo[a];
+                point[a] = if bc[a] == SphBoundary::Periodic {
+                    let wrapped = if (0.0..length).contains(&x) {
+                        x
+                    } else if x.is_finite() {
+                        x.rem_euclid(length)
+                    } else {
+                        (point[a].rem_euclid(length) - lo[a].rem_euclid(length)).rem_euclid(length)
+                    };
+                    if wrapped >= length {
+                        0.0
+                    } else {
+                        wrapped
+                    }
+                } else {
+                    x
+                };
+            }
+            lo[a] = 0.0;
+            hi[a] = length;
+        }
+        let ghosts = make_ghosts(&positions, lo, hi, bc, reach);
+        let origin = positions.first().copied().unwrap_or([0.0; D]);
+        let relative: Vec<[f64; D]> = ghosts
+            .iter()
+            .map(|g| std::array::from_fn(|a| g.pos[a] - origin[a]))
+            .collect();
+        let grid = Grid::for_reach(&relative, reach);
+        let cells = DensityCells { ghosts, origin, grid };
+        let n = pos.len();
+        let mut offsets = Vec::with_capacity(n + 1);
+        offsets.push(0);
+        let mut neighbors = Vec::with_capacity(n.saturating_mul(16).min(MAX_RECORDS));
+        for i in 0..n {
+            let start = neighbors.len();
+            let mut full = false;
+            cells.visit(i, reach, |j, distance| {
+                if neighbors.len() < MAX_RECORDS {
+                    neighbors.push((j, distance));
+                } else {
+                    full = true;
+                }
+            });
+            if full {
+                neighbors.truncate(start);
+                break;
+            }
+            offsets.push(neighbors.len());
+        }
+        let remaining = (offsets.len() <= n).then_some(cells);
+        Ok(Self {
+            n,
+            max_h,
+            offsets,
+            neighbors,
+            remaining,
+        })
+    }
+
+    /// Evaluates the mass density for a new mass, smoothing and kernel field.
+    ///
+    /// # Errors
+    ///
+    /// Wrong field lengths, negative or non-finite masses, invalid smoothing
+    /// lengths or an unrepresentable density.
+    pub fn evaluate(
+        &self,
+        mass: &[f64],
+        smoothing: &[f64],
+        kernel: KernelKind,
+    ) -> Result<Vec<f64>, String> {
+        if mass.len() != self.n
+            || smoothing.len() != self.n
+            || mass.iter().any(|&m| !m.is_finite() || m < 0.0)
+            || smoothing
+                .iter()
+                .any(|&h| !h.is_finite() || h <= 0.0 || h > self.max_h)
+        {
+            return Err("invalid SPH density masses or smoothing lengths".into());
+        }
+        let mut rho = vec![0.0; self.n];
+        self.write_density(mass, smoothing, kernel, &mut rho);
+        if rho.iter().any(|x| !x.is_finite()) {
+            return Err("SPH density is not representable".into());
+        }
+        Ok(rho)
+    }
+
+    fn write_density(
+        &self,
+        mass: &[f64],
+        smoothing: &[f64],
+        kernel: KernelKind,
+        rho: &mut [f64],
+    ) {
+        crate::kernels::par::for_each_mut(rho, 512, |i, density| {
+            let h = smoothing[i];
+            let reach = 2.0 * h;
+            let mut sum = 0.0;
+            let mut add = |j: usize, distance: f64| {
+                let m = mass[j];
+                if m == 0.0 || distance >= reach {
+                    return;
+                }
+                let weight = kernel.w(D, distance, h);
+                sum += if weight.is_normal() {
+                    m * weight
+                } else {
+                    scale_product(
+                        kernel.w(D, distance / h, 1.0) * m.signum(),
+                        &[m.abs()],
+                        &[h; 3][..D.clamp(1, 3)],
+                    )
+                    .unwrap_or(f64::INFINITY)
+                };
+            };
+            if let Some(&end) = self.offsets.get(i + 1) {
+                for &(j, distance) in &self.neighbors[self.offsets[i]..end] {
+                    add(j, distance);
+                }
+            } else if let Some(cells) = &self.remaining {
+                cells.visit(i, reach, add);
+            }
+            *density = sum;
+        });
+    }
+}
+
+fn sph_root(
+    value: f64,
+    dimension: usize,
+) -> f64 {
+    match dimension {
+        | 1 => value,
+        | 2 => value.sqrt(),
+        | 3 => value.cbrt(),
+        | _ => value.powf(1.0 / dimension as f64),
     }
 }
 
@@ -282,10 +597,25 @@ impl<const D: usize> Sph<D> {
             balsara: false,
             gravity: None,
         };
-        // initial h guess from the bounding volume
-        let vol: f64 = (0..D).map(|a| (hi[a] - lo[a]).max(1e-12)).product();
-        let h0 = s.eta * (vol / n as f64).powf(1.0 / D as f64);
-        s.h = vec![h0; n];
+        // Estimate h from the domain volume per particle.
+        let lengths: [f64; D] = std::array::from_fn(|a| {
+            let length = hi[a] - lo[a];
+            if length.is_finite() && length > 0.0 {
+                length
+            } else {
+                1e-12
+            }
+        });
+        let volume: f64 = lengths.iter().product();
+        let per_particle = volume / n as f64;
+        let direct = s.eta * per_particle.powf(1.0 / D as f64);
+        let h0 = if n == 0 || per_particle.is_normal() || !(1..=3).contains(&D) {
+            direct
+        } else {
+            let roots = lengths.map(|length| sph_root(length, D));
+            scale_product(s.eta, &roots, &[sph_root(n as f64, D)]).unwrap_or(direct)
+        };
+        s.h.fill(h0);
         s.update_density();
         s
     }
@@ -294,103 +624,43 @@ impl<const D: usize> Sph<D> {
         &self,
         reach: f64,
     ) -> Vec<Ghost<D>> {
-        let mut all: Vec<Ghost<D>> = (0..self.pos.len())
-            .map(|i| {
-                Ghost {
-                    src: i,
-                    pos: self.pos[i],
-                    flip: [1.0; D],
-                }
-            })
-            .collect();
-        for a in 0..D {
-            if self.bc[a] == SphBoundary::Open {
-                continue;
-            }
-            let len = self.hi[a] - self.lo[a];
-            let mut extra = Vec::new();
-            for g in &all {
-                let x = g.pos[a];
-                if x - self.lo[a] < reach {
-                    let mut n = *g;
-                    if self.bc[a] == SphBoundary::Periodic {
-                        n.pos[a] = x + len;
-                    } else {
-                        n.pos[a] = 2.0 * self.lo[a] - x;
-                        n.flip[a] = -g.flip[a];
-                    }
-                    extra.push(n);
-                }
-                if self.hi[a] - x < reach {
-                    let mut n = *g;
-                    if self.bc[a] == SphBoundary::Periodic {
-                        n.pos[a] = x - len;
-                    } else {
-                        n.pos[a] = 2.0 * self.hi[a] - x;
-                        n.flip[a] = -g.flip[a];
-                    }
-                    extra.push(n);
-                }
-            }
-            all.extend(extra);
-        }
-        all
+        make_ghosts(&self.pos, self.lo, self.hi, self.bc, reach)
     }
 
     /// Recomputes `rho` and `h` by summation with a fixed-point iteration on `h`.
     pub fn update_density(&mut self) {
-        let n = self.pos.len();
-        for _ in 0..4 {
-            let hmax = self.h.iter().copied().fold(0.0, f64::max);
-            let gh = self.ghosts(2.0 * hmax);
-            let pts: Vec<[f64; D]> = gh.iter().map(|g| g.pos).collect();
-            let grid = Grid::new(&pts, 2.0 * hmax);
-            let mut new_rho = vec![0.0; n];
-            for i in 0..n {
-                let hi = self.h[i];
-                let mut s = 0.0;
-                grid.for_near(&self.pos[i], |j| {
-                    let mut r2 = 0.0;
-                    for a in 0..D {
-                        r2 += (self.pos[i][a] - pts[j][a]).powi(2);
-                    }
-                    let r = r2.sqrt();
-                    if r < 2.0 * hi {
-                        s += self.mass[gh[j].src] * self.kernel.w(D, r, hi);
-                    }
-                });
-                new_rho[i] = s;
+        self.rho.resize(self.pos.len(), 0.0);
+        if self.pos.is_empty() {
+            return;
+        }
+        let mut plan: Option<SphDensityPlan<D>> = None;
+        let mut converged = false;
+        for iteration in 0..=4 {
+            let max_h = self.h.iter().copied().fold(0.0, f64::max);
+            if plan.as_ref().is_none_or(|plan| plan.max_h < max_h) {
+                let horizon = (1.125 * max_h).min(0.5 * f64::MAX);
+                plan = SphDensityPlan::build(&self.pos, self.lo, self.hi, self.bc, horizon).ok();
             }
-            let mut change = 0.0_f64;
-            for i in 0..n {
-                let hn = self.eta * (self.mass[i] / new_rho[i]).powf(1.0 / D as f64);
-                change = change.max(((hn - self.h[i]) / self.h[i]).abs());
-                self.h[i] = hn;
-            }
-            self.rho = new_rho;
-            if change < 1e-6 {
+            let Some(plan) = &plan else {
+                self.rho.fill(f64::NAN);
+                return;
+            };
+            plan.write_density(&self.mass, &self.h, self.kernel, &mut self.rho);
+            if converged || iteration == 4 {
                 break;
             }
-        }
-        // final density with converged h
-        let hmax = self.h.iter().copied().fold(0.0, f64::max);
-        let gh = self.ghosts(2.0 * hmax);
-        let pts: Vec<[f64; D]> = gh.iter().map(|g| g.pos).collect();
-        let grid = Grid::new(&pts, 2.0 * hmax);
-        for i in 0..n {
-            let hi = self.h[i];
-            let mut s = 0.0;
-            grid.for_near(&self.pos[i], |j| {
-                let mut r2 = 0.0;
-                for a in 0..D {
-                    r2 += (self.pos[i][a] - pts[j][a]).powi(2);
+            let mut change = 0.0_f64;
+            for ((h, &m), &rho) in self.h.iter_mut().zip(&self.mass).zip(&self.rho) {
+                let ratio = m / rho;
+                let mut next = self.eta * ratio.powf(1.0 / D as f64);
+                if !ratio.is_normal() && m > 0.0 && rho > 0.0 && self.eta > 0.0 {
+                    next = scale_product(self.eta, &[sph_root(m, D)], &[sph_root(rho, D)])
+                        .unwrap_or(next);
                 }
-                let r = r2.sqrt();
-                if r < 2.0 * hi {
-                    s += self.mass[gh[j].src] * self.kernel.w(D, r, hi);
-                }
-            });
-            self.rho[i] = s;
+                change = change.max(((next - *h) / *h).abs());
+                *h = next;
+            }
+            converged = change < 1e-6;
         }
     }
 

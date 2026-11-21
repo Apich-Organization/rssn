@@ -1,10 +1,12 @@
+//! Spectral methods.
+//!
 //! # Spectral methods (Fourier advection–diffusion)
 //!
 //! | Equation | 1D | 2D | 3D | Boundary conditions | Time stepping |
 //! |---|---|---|---|---|---|
 //! | advection–diffusion | yes | yes | yes | periodic | explicit Euler in the spectral domain |
 //!
-//! Power-of-two sizes are required. Higher-order integrators (ETDRK4),
+//! The Forward Euler FFT paths accept odd and even sizes. Higher-order integrators (ETDRK4),
 //! dealiasing, spectral Helmholtz solves and Chebyshev collocation for
 //! bounded domains with Dirichlet/Neumann/Robin faces are in
 //! [`crate::sim::spectral`]; split-step Fourier Schrödinger/GPE solvers are in
@@ -15,6 +17,9 @@ use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::kernels::par::for_chunks_mut;
+use crate::kernels::par::for_each_mut;
+use crate::kernels::reuse::fft_scratch_for;
 use crate::kernels::transforms::fft;
 use crate::kernels::transforms::fft_slice;
 use crate::kernels::transforms::ifft;
@@ -277,22 +282,56 @@ fn transform_z_columns(
     depth: usize,
     f: fn(&mut [Complex<f64>]),
 ) {
-    let columns: Vec<Vec<Complex<f64>>> = (0..plane_size)
-        .into_par_iter()
-        .map(|i| {
-            let mut z_col: Vec<_> = (0..depth).map(|k| data[k * plane_size + i]).collect();
-
-            f(&mut z_col);
-
-            z_col
-        })
-        .collect();
-
-    for (i, col) in columns.iter().enumerate() {
-        for (k, v) in col.iter().enumerate() {
-            data[k * plane_size + i] = *v;
-        }
+    if plane_size == 0 || depth <= 1 {
+        return;
     }
+    let data = &mut data[..plane_size * depth];
+    if plane_size == 1 {
+        f(data);
+        return;
+    }
+
+    let radix_two = depth.is_power_of_two();
+    if !radix_two && data.len() <= 16_384 && crate::execution::cpu_threads() > 1 {
+        // Keep the independent planned transforms on smaller parallel grids.
+        let columns: Vec<_> = (0..plane_size)
+            .into_par_iter()
+            .map(|i| {
+                let mut column: Vec<_> = (0..depth).map(|k| data[k * plane_size + i]).collect();
+                f(&mut column);
+                column
+            })
+            .collect();
+        for (i, column) in columns.iter().enumerate() {
+            for (k, &value) in column.iter().enumerate() {
+                data[k * plane_size + i] = value;
+            }
+        }
+        return;
+    }
+
+    let mut columns = fft_scratch_for(data.len());
+    columns.resize(data.len(), Complex::default());
+    // Planned transforms can do appreciable work even on a few short columns.
+    let gather_work = if radix_two {
+        2048usize
+    } else {
+        64usize
+    };
+    let gather_grain = gather_work.div_ceil(depth).max(2);
+    for_chunks_mut(&mut columns, depth, gather_grain, |i, column| {
+        for (value, &source) in column.iter_mut().zip(data[i..].iter().step_by(plane_size)) {
+            *value = source;
+        }
+        f(column);
+    });
+
+    let scatter_grain = 2048usize.div_ceil(plane_size).max(2);
+    for_chunks_mut(data, plane_size, scatter_grain, |k, plane| {
+        for (value, &source) in plane.iter_mut().zip(columns[k..].iter().step_by(depth)) {
+            *value = source;
+        }
+    });
 }
 
 /// Performs a 3D FFT.
@@ -386,57 +425,106 @@ pub fn solve_advection_diffusion_3d(
     initial_condition: &[f64],
     config: &AdvectionDiffusionConfig3d,
 ) -> Vec<f64> {
-    let kx = create_k_grid(config.width, config.dx);
-
-    let ky = create_k_grid(config.height, config.dy);
-
-    let kz = create_k_grid(config.depth, config.dz);
-
     let mut u_hat: Vec<Complex<f64>> = initial_condition
         .iter()
         .map(|&v| Complex::new(v, 0.0))
         .collect();
 
     fft3d(&mut u_hat, config.width, config.height, config.depth);
-
-    let plane_size = config.width * config.height;
-
-    for _ in 0..config.steps {
-        u_hat.par_iter_mut().enumerate().for_each(|(idx, val)| {
-            let i = idx % config.width;
-
-            let j = (idx / config.width) % config.height;
-
-            let k = idx / plane_size;
-
-            let kxi = kx[i];
-
-            let kyj = ky[j];
-
-            let kzk = kz[k];
-
-            let advection = Complex::new(
-                0.0,
-                config
-                    .c
-                    .2
-                    .mul_add(-kzk, (-config.c.0).mul_add(kxi, -(config.c.1 * kyj))),
-            );
-
-            let diffusion = Complex::new(
-                -config.d * kzk.mul_add(kzk, kyj.mul_add(kyj, kxi.powi(2))),
-                0.0,
-            );
-
-            let rhs = (advection + diffusion) * *val;
-
-            *val += rhs * config.dt;
-        });
-    }
-
+    advance_modes_3d(&mut u_hat, config);
     ifft3d(&mut u_hat, config.width, config.height, config.depth);
 
     u_hat.into_iter().map(|v| v.re).collect()
+}
+
+/// Advances an existing complex Fourier spectrum by the configured Euler steps.
+///
+/// The spectrum uses the unnormalized forward transform of [`fft3d`] and the
+/// same axis order, with x varying fastest, then y, then z. [`ifft3d`]
+/// divides by the grid size on returning to physical space. A zero-step
+/// or zero-time-step call keeps all validated coefficients unchanged.
+///
+/// # Errors
+/// Rejects zero or overflowing extents, mismatched shape, nonfinite data,
+/// invalid spacing or periods, invalid diffusivity or time step, and
+/// nonfinite computed output.
+/// When a call fails, the spectrum stays unchanged.
+pub fn advance_advection_diffusion_3d_modes(
+    spectrum: &mut [Complex<f64>],
+    config: &AdvectionDiffusionConfig3d,
+) -> Result<(), String> {
+    let size = config
+        .width
+        .checked_mul(config.height)
+        .and_then(|plane| plane.checked_mul(config.depth));
+    if size != Some(spectrum.len()) || spectrum.is_empty() {
+        return Err("3D spectrum needs positive extents matching its length".into());
+    }
+    let geometry = [
+        (config.width, config.dx),
+        (config.height, config.dy),
+        (config.depth, config.dz),
+    ];
+    if geometry
+        .iter()
+        .any(|&(n, spacing)| spacing <= 0.0 || !(n as f64 * spacing).is_finite())
+        || [config.c.0, config.c.1, config.c.2, config.d, config.dt]
+            .iter()
+            .any(|value| !value.is_finite())
+        || config.d < 0.0
+        || config.dt < 0.0
+        || spectrum.iter().any(|value| !value.is_finite())
+    {
+        return Err("invalid 3D advection-diffusion data or parameters".into());
+    }
+    if config.steps == 0 || config.dt == 0.0 {
+        return Ok(());
+    }
+
+    let mut work = fft_scratch_for(spectrum.len());
+    work.extend_from_slice(spectrum);
+    advance_modes_3d(&mut work, config);
+    if work.iter().any(|value| !value.is_finite()) {
+        return Err("3D spectral update exceeds the finite range".into());
+    }
+    spectrum.copy_from_slice(&work);
+    Ok(())
+}
+
+fn advance_modes_3d(
+    u_hat: &mut [Complex<f64>],
+    config: &AdvectionDiffusionConfig3d,
+) {
+    if config.steps == 0 {
+        return;
+    }
+    let kx = create_k_grid(config.width, config.dx);
+    let ky = create_k_grid(config.height, config.dy);
+    let kz = create_k_grid(config.depth, config.dz);
+    let plane_size = config.width * config.height;
+    let grain = 4096usize.div_ceil(config.steps).max(16);
+    for_each_mut(u_hat, grain, |idx, value| {
+        let kxi = kx[idx % config.width];
+        let kyj = ky[(idx / config.width) % config.height];
+        let kzk = kz[idx / plane_size];
+        let advection = Complex::new(
+            0.0,
+            config
+                .c
+                .2
+                .mul_add(-kzk, (-config.c.0).mul_add(kxi, -(config.c.1 * kyj))),
+        );
+        let diffusion = Complex::new(
+            -config.d * kzk.mul_add(kzk, kyj.mul_add(kyj, kxi.powi(2))),
+            0.0,
+        );
+        let symbol = advection + diffusion;
+        let mut mode = *value;
+        for _ in 0..config.steps {
+            mode += (symbol * mode) * config.dt;
+        }
+        *value = mode;
+    });
 }
 
 /// Example scenario for the 3D spectral solver.

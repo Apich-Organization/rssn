@@ -720,9 +720,8 @@ mod strengthened {
         let p = relativistic_momentum(m, v);
         assert!(rel(e * e, (p * c).powi(2) + mass_energy(m).powi(2)) < 1e-12);
         assert!(rel(relativistic_kinetic_energy(m, v), e - mass_energy(m)) < 1e-12);
-        // Kinetic energy tends to (1/2) m v^2 at low speed.
-        // (gamma - 1 loses about 5 digits to cancellation at 1 km/s, hence the loose bound.)
-        assert!(rel(relativistic_kinetic_energy(1.0, 1000.0), 0.5 * 1e6) < 1e-3);
+        // At 1 km/s, the relativistic correction to (1/2) m v^2 is about 8.3e-12.
+        assert!(rel(relativistic_kinetic_energy(1.0, 1000.0), 0.5 * 1e6) < 2e-11);
         // Velocity addition: 0.5c (+) 0.5c = 0.8c exactly, and c (+) anything = c.
         assert!((relativistic_velocity_addition(0.5 * c, 0.5 * c) / c - 0.8).abs() < 1e-12);
         assert!((relativistic_velocity_addition(c, 0.9 * c) - c).abs() < 1e-6);

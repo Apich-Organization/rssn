@@ -1,3 +1,5 @@
+//! Composition symplectic integrators, TTL, KS regularisation, rigid bodies.
+//!
 //! # Composition symplectic integrators, time transformation, regularisation, rigid bodies
 //!
 //! Building blocks for separable Hamiltonians `H = |p|^2/2 + V(q)` in any
@@ -6,10 +8,11 @@
 //! | Capability | Dimensions | Notes |
 //! |---|---|---|
 //! | Composition schemes [`Scheme`]: Verlet (2), Forest-Ruth (4), Yoshida (4, 6, 8), Blanes-Moan (4), triple jump of any even order | any | stage tables, tested by convergence order |
+//! | [`integrate_sampled`] | any | fixed-step phase histories with user-selected sampling cadence |
 //! | Time-transformed leapfrog [`ttl_step`] (Sundman-type, extended phase space, exactly reversible) and its composition to any even order [`ttl_step_composed`] / [`composition_weights`] | any | attractive potentials `V < 0`; order 4, 6, 8 remove the `O(h^2)` energy error (tested) |
 //! | Chain regularisation (Mikkola-Aarseth chain), algorithmic regularisation with Gragg-Bulirsch-Stoer extrapolation | 3 | [`crate::sim::chain`] (`N` bodies, adaptive `ds`) |
 //! | Kustaanheimo-Stiefel regularisation [`ks_propagate`] | 3 (via a 4-D oscillator) | perturbed Kepler problem, regular through collision |
-//! | Rigid body (quaternion, NO_SQUISH / Dullweber-Leimkuhler-McLachlan splitting) [`RigidBody`], exact symmetric-top flows ([`RigidBody::free_step_top`], exact for symmetric bodies), composition to any even order ([`RigidBody::free_step_composed`]), space-torque kicks | 3 | symplectic, reversible, exact `\|q\| = 1` and `\|L\|` conservation in free rotation; rigid molecules in MD: [`crate::sim::md_rigid`] |
+//! | Rigid body (quaternion, `NO_SQUISH` / Dullweber-Leimkuhler-McLachlan splitting) [`RigidBody`], exact symmetric-top flows ([`RigidBody::free_step_top`], exact for symmetric bodies), composition to any even order ([`RigidBody::free_step_composed`]), space-torque kicks | 3 | symplectic, reversible, exact `\|q\| = 1` and `\|L\|` conservation in free rotation; rigid molecules in MD: [`crate::sim::md_rigid`] |
 //!
 //! | Exact asymmetric top [`RigidBody::free_flow_exact`] (Jacobi `sn, cn, dn` for the angular momentum, elliptic integral of the third kind [`crate::sim::elliptic::elliptic_pi`] for the precession angle), Strang torque step on the exact flow [`RigidBody::step_exact`] | 3 | exact for any time (checked against RK4 with tiny steps), group property, symmetric / steady cases handled |
 //! | Implicit RATTLE-type torque step [`RigidBody::rattle_step`] (Moser-Veselov discrete rotor, Newton solve of `F J - J F^T = h Pi`) | 3 | symplectic, reversible, second order, exact space-`L` conservation |
@@ -20,6 +23,24 @@
 //! second order, composable to higher order; the implicit RATTLE alternative is second order only);
 //! the exact asymmetric flow uses the symmetric-top flow when two moments agree to 1e-12; non-separable or perturbed problems with velocity-dependent forces are not
 //! covered by the time-transformed schemes.
+
+use std::num::NonZeroUsize;
+use std::sync::OnceLock;
+
+use crate::kernels::numeric_common::trajectory_sample_count;
+use crate::kernels::reuse::f64_scratch;
+
+const VERLET: [(f64, f64); 2] = [(0.5, 1.0), (0.5, 0.0)];
+const YOSHIDA_SIX: [f64; 3] = [-1.17767998417887, 0.235573213359357, 0.784513610477560];
+const YOSHIDA_EIGHT: [f64; 7] = [
+    -1.61582374150097,
+    -2.44699182370524,
+    -0.00716989419708120,
+    2.44002732616735,
+    0.157739928123617,
+    1.82020630970714,
+    1.04242620869991,
+];
 
 /// A symplectic composition scheme for separable Hamiltonians.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -53,50 +74,52 @@ impl Scheme {
     /// Stage table: pairs `(drift, kick)` applied in sequence (drift first).
     #[must_use]
     pub fn stages(self) -> Vec<(f64, f64)> {
+        self.stage_table().to_vec()
+    }
+
+    fn stage_table(self) -> &'static [(f64, f64)] {
         match self {
-            | Self::Verlet => vec![(0.5, 1.0), (0.5, 0.0)],
+            | Self::Verlet => &VERLET,
             | Self::ForestRuth => {
-                let t = 1.0 / (2.0 - 2.0_f64.cbrt());
-                vec![
-                    (t / 2.0, t),
-                    ((1.0 - t) / 2.0, 1.0 - 2.0 * t),
-                    ((1.0 - t) / 2.0, t),
-                    (t / 2.0, 0.0),
-                ]
+                static STAGES: OnceLock<[(f64, f64); 4]> = OnceLock::new();
+                STAGES.get_or_init(|| {
+                    let t = 1.0 / (2.0 - 2.0_f64.cbrt());
+                    [
+                        (t / 2.0, t),
+                        ((1.0 - t) / 2.0, 1.0 - 2.0 * t),
+                        ((1.0 - t) / 2.0, t),
+                        (t / 2.0, 0.0),
+                    ]
+                })
             },
-            | Self::Yoshida4 => triple_jump(&Self::Verlet.stages(), 2),
+            | Self::Yoshida4 => {
+                static STAGES: OnceLock<Vec<(f64, f64)>> = OnceLock::new();
+                STAGES.get_or_init(|| triple_jump(&VERLET, 2))
+            },
             | Self::Yoshida6 => {
-                let w = [-1.17767998417887, 0.235573213359357, 0.784513610477560];
-                yoshida_weights(&w)
+                static STAGES: OnceLock<Vec<(f64, f64)>> = OnceLock::new();
+                STAGES.get_or_init(|| yoshida_stages(&YOSHIDA_SIX))
             },
             | Self::Yoshida8 => {
-                let w = [
-                    -1.61582374150097,
-                    -2.44699182370524,
-                    -0.00716989419708120,
-                    2.44002732616735,
-                    0.157739928123617,
-                    1.82020630970714,
-                    1.04242620869991,
-                ];
-                yoshida_weights(&w)
+                static STAGES: OnceLock<Vec<(f64, f64)>> = OnceLock::new();
+                STAGES.get_or_init(|| yoshida_stages(&YOSHIDA_EIGHT))
             },
             | Self::BlanesMoan4 => {
-                let a1 = 0.0792036964311957;
-                let a2 = 0.353172906049774;
-                let a3 = -0.0420650803577195;
-                let a4 = 1.0 - 2.0 * (a1 + a2 + a3);
-                let b1 = 0.209515106613362;
-                let b2 = -0.143851773179818;
-                let b3 = 0.5 - (b1 + b2);
-                vec![
-                    (a1, b1),
-                    (a2, b2),
-                    (a3, b3),
-                    (a4, b3),
-                    (a3, b2),
-                    (a2, b1),
-                    (a1, 0.0),
+                const A1: f64 = 0.0792036964311957;
+                const A2: f64 = 0.353172906049774;
+                const A3: f64 = -0.0420650803577195;
+                const A4: f64 = 1.0 - 2.0 * (A1 + A2 + A3);
+                const B1: f64 = 0.209515106613362;
+                const B2: f64 = -0.143851773179818;
+                const B3: f64 = 0.5 - (B1 + B2);
+                &[
+                    (A1, B1),
+                    (A2, B2),
+                    (A3, B3),
+                    (A4, B3),
+                    (A3, B2),
+                    (A2, B1),
+                    (A1, 0.0),
                 ]
             },
         }
@@ -134,18 +157,8 @@ pub fn composition_weights(order: usize) -> Result<Vec<f64>, String> {
     Ok(match order {
         | 2 => vec![1.0],
         | 4 => triple(&[1.0], 2),
-        | 6 => seq(&[-1.17767998417887, 0.235573213359357, 0.784513610477560]),
-        | 8 => {
-            seq(&[
-                -1.61582374150097,
-                -2.44699182370524,
-                -0.00716989419708120,
-                2.44002732616735,
-                0.157739928123617,
-                1.82020630970714,
-                1.04242620869991,
-            ])
-        },
+        | 6 => seq(&YOSHIDA_SIX),
+        | 8 => seq(&YOSHIDA_EIGHT),
         | _ => {
             let mut w = composition_weights(8)?;
             let mut p = 8;
@@ -184,27 +197,32 @@ where
 }
 
 /// Symmetric composition `S(w_k h) ... S(w_1 h) S(w_0 h) S(w_1 h) ... S(w_k h)` of Verlet.
-fn yoshida_weights(w: &[f64]) -> Vec<(f64, f64)> {
+fn yoshida_stages(w: &[f64]) -> Vec<(f64, f64)> {
     let w0 = 1.0 - 2.0 * w.iter().sum::<f64>();
-    let mut seq: Vec<f64> = w.iter().rev().copied().collect();
-    seq.push(w0);
-    seq.extend(w.iter().copied());
-    let base = Scheme::Verlet.stages();
-    let mut out = Vec::new();
-    for c in seq {
-        out.extend(base.iter().map(|&(a, b)| (a * c, b * c)));
-    }
-    merge_stages(out)
+    let weights = w
+        .iter()
+        .rev()
+        .copied()
+        .chain(std::iter::once(w0))
+        .chain(w.iter().copied());
+    compose_stages(&VERLET, weights)
 }
 
-fn merge_stages(stages: Vec<(f64, f64)>) -> Vec<(f64, f64)> {
-    let mut out: Vec<(f64, f64)> = Vec::with_capacity(stages.len());
+fn compose_stages(
+    base: &[(f64, f64)],
+    weights: impl IntoIterator<Item = f64>,
+) -> Vec<(f64, f64)> {
+    let weights = weights.into_iter();
+    let mut out = Vec::with_capacity(base.len().saturating_mul(weights.size_hint().0));
     let mut pending_drift = 0.0;
-    for (a, b) in stages {
-        pending_drift += a;
-        if b != 0.0 {
-            out.push((pending_drift, b));
-            pending_drift = 0.0;
+    for weight in weights {
+        for &(drift, kick) in base {
+            pending_drift += drift * weight;
+            let kick = kick * weight;
+            if kick != 0.0 {
+                out.push((pending_drift, kick));
+                pending_drift = 0.0;
+            }
         }
     }
     if pending_drift != 0.0 {
@@ -221,14 +239,40 @@ pub fn triple_jump(
 ) -> Vec<(f64, f64)> {
     let g = 1.0 / (2.0 - 2.0_f64.powf(1.0 / (p as f64 + 1.0)));
     let mid = 1.0 - 2.0 * g;
-    let mut out = Vec::new();
-    for c in [g, mid, g] {
-        out.extend(base.iter().map(|&(a, b)| (a * c, b * c)));
-    }
-    merge_stages(out)
+    compose_stages(base, [g, mid, g])
 }
 
-/// One step of a composition scheme; `acc(q, a)` writes the acceleration.
+fn advance_stages(
+    stages: &[(f64, f64)],
+    q: &mut [f64],
+    p: &mut [f64],
+    h: f64,
+    a: &mut [f64],
+    acc: &mut impl FnMut(&[f64], &mut [f64]) -> bool,
+) -> bool {
+    let p = &mut p[..q.len()];
+    for &(drift, kick) in stages {
+        let drift_step = drift * h;
+        for (position, momentum) in q.iter_mut().zip(&*p) {
+            *position += drift_step * momentum;
+        }
+        if kick != 0.0 {
+            if !acc(q, a) {
+                return false;
+            }
+            let kick_step = kick * h;
+            for (momentum, acceleration) in p.iter_mut().zip(&*a) {
+                *momentum += kick_step * acceleration;
+            }
+        }
+    }
+    true
+}
+
+/// One step of a composition scheme. `acc(q, a)` writes the acceleration.
+///
+/// # Panics
+/// Panics if a stage is executed and `p` is shorter than `q`.
 pub fn step<F>(
     stages: &[(f64, f64)],
     q: &mut [f64],
@@ -238,21 +282,20 @@ pub fn step<F>(
 ) where
     F: FnMut(&[f64], &mut [f64]),
 {
-    let mut a = vec![0.0; q.len()];
-    for &(d, k) in stages {
-        for i in 0..q.len() {
-            q[i] += d * h * p[i];
-        }
-        if k != 0.0 {
-            acc(q, &mut a);
-            for i in 0..q.len() {
-                p[i] += k * h * a[i];
-            }
-        }
+    if stages.is_empty() {
+        return;
     }
+    let mut a = vec![0.0; q.len()];
+    advance_stages(stages, q, p, h, &mut a, &mut |position, buffer| {
+        acc(position, buffer);
+        true
+    });
 }
 
-/// Integrates `n` steps of size `h` with `scheme`.
+/// Integrates `n` steps of signed size `h` with `scheme`, reusing acceleration storage.
+///
+/// # Panics
+/// Panics if `n` is positive and `p` is shorter than `q`.
 pub fn integrate<F>(
     scheme: Scheme,
     q: &mut [f64],
@@ -263,10 +306,115 @@ pub fn integrate<F>(
 ) where
     F: FnMut(&[f64], &mut [f64]),
 {
-    let st = scheme.stages();
-    for _ in 0..n {
-        step(&st, q, p, h, acc);
+    if n == 0 {
+        return;
     }
+    let stages = scheme.stage_table();
+    let mut a = f64_scratch(q.len());
+    a.resize(q.len(), 0.0);
+    let mut acceleration = |position: &[f64], buffer: &mut [f64]| {
+        acc(position, buffer);
+        true
+    };
+    for _ in 0..n {
+        a.fill(0.0);
+        advance_stages(stages, q, p, h, &mut a, &mut acceleration);
+    }
+}
+
+/// Position and momentum after a completed integrator step.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SymplecticSample {
+    /// Completed step count. Zero identifies the initial state.
+    pub step: usize,
+    /// Position coordinates at this step.
+    pub q: Vec<f64>,
+    /// Momentum coordinates at this step.
+    pub p: Vec<f64>,
+}
+
+/// Integrates a separable Hamiltonian and samples its phase state by step count.
+///
+/// Retains step zero, each multiple of `save_every`, and the final step.
+/// `h` may be negative for backward integration. With zero `h` the sampled
+/// state stays constant and the acceleration callback is skipped. Otherwise
+/// `acc(q, a)` must write every element of `a` at each kick.
+///
+/// # Errors
+/// Empty or unequal state slices, non-finite inputs, zero cadence, a
+/// non-finite state or acceleration, an unavailable snapshot allocation,
+/// or cancellation.
+pub fn integrate_sampled<F>(
+    scheme: Scheme,
+    q: &[f64],
+    p: &[f64],
+    h: f64,
+    steps: usize,
+    save_every: usize,
+    acc: &mut F,
+) -> Result<Vec<SymplecticSample>, String>
+where
+    F: FnMut(&[f64], &mut [f64]),
+{
+    if q.is_empty()
+        || q.len() != p.len()
+        || !h.is_finite()
+        || q.iter().chain(p).any(|value| !value.is_finite())
+    {
+        return Err("symplectic integration needs finite, equally sized nonempty phase slices and a finite step".into());
+    }
+    let cadence =
+        NonZeroUsize::new(save_every).ok_or("symplectic sample cadence must be positive")?;
+    let count = trajectory_sample_count(steps, cadence).ok_or("too many symplectic samples")?;
+    let mut samples = Vec::new();
+    samples
+        .try_reserve_exact(count)
+        .map_err(|_| "too many symplectic samples")?;
+    crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
+    let sample = |step, q: &[f64], p: &[f64]| {
+        SymplecticSample {
+            step,
+            q: q.to_vec(),
+            p: p.to_vec(),
+        }
+    };
+    samples.push(sample(0, q, p));
+    if steps == 0 {
+        return Ok(samples);
+    }
+    let (mut q, mut p) = (q.to_vec(), p.to_vec());
+    let stages = scheme.stage_table();
+    let mut a = f64_scratch(q.len());
+    a.resize(q.len(), 0.0);
+    let mut checked = |position: &[f64], buffer: &mut [f64]| {
+        if crate::cancellation::checkpoint().is_err()
+            || position.iter().any(|value| !value.is_finite())
+        {
+            return false;
+        }
+        buffer.fill(f64::NAN);
+        acc(position, buffer);
+        buffer.iter().all(|value| value.is_finite())
+    };
+    let mut completed = 0;
+    while completed < steps {
+        let next = completed.saturating_add(cadence.get()).min(steps);
+        if h != 0.0 {
+            for _ in completed..next {
+                crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
+                if !advance_stages(stages, &mut q, &mut p, h, &mut a, &mut checked)
+                    || q.iter().chain(&p).any(|value| !value.is_finite())
+                {
+                    crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
+                    return Err("symplectic acceleration or phase state is non-finite".into());
+                }
+            }
+        }
+        crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
+        completed = next;
+        samples.push(sample(completed, &q, &p));
+    }
+    Ok(samples)
 }
 
 // ---------------------------------------------------------------------------

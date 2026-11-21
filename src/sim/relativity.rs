@@ -1,3 +1,5 @@
+//! Kerr-Newman geodesics.
+//!
 //! # Kerr-Newman geodesics (Schwarzschild, Kerr, Reissner-Nordstrom)
 //!
 //! Timelike and null geodesics of the Kerr-Newman family in Boyer-Lindquist
@@ -22,6 +24,9 @@
 //! Limitations: Boyer-Lindquist coordinates are singular at the horizon, so
 //! integration stops at a user radius slightly outside it; the poles
 //! `theta = 0, pi` are excluded.
+
+use crate::kernels::exact_eq;
+use crate::kernels::krylov::exact_product_sum_scaled;
 
 /// Kerr-Newman spacetime with mass `m`, spin parameter `a` (`J / M`) and charge `q` (geometric units `G = c = 1`).
 #[derive(Clone, Copy, Debug)]
@@ -79,11 +84,70 @@ impl KerrNewman {
         Self { m, a: 0.0, q: 0.0 }
     }
 
-    /// Outer horizon radius `M + sqrt(M^2 - a^2 - Q^2)` (`None` for a naked singularity).
+    /// Outer horizon radius `M + sqrt(M^2 - a^2 - Q^2)`.
+    ///
+    /// Returns `None` for an invalid metric, a naked singularity, or an unrepresentable
+    /// radius. The zero-mass Schwarzschild limit has radius zero.
     #[must_use]
     pub fn horizon(&self) -> Option<f64> {
-        let d = self.m * self.m - self.a * self.a - self.q * self.q;
-        (d >= 0.0).then(|| self.m + d.sqrt())
+        if exact_eq(self.m, 0.0) && exact_eq(self.a, 0.0) && exact_eq(self.q, 0.0) {
+            return Some(0.0);
+        }
+        let radius = self.m * (1.0 + self.normalized_horizon_gap()?);
+        radius.is_finite().then_some(radius)
+    }
+
+    // The gap between the outer horizon and M, in units of M.
+    fn normalized_horizon_gap(&self) -> Option<f64> {
+        if !self.m.is_finite() || self.m <= 0.0 || !self.a.is_finite() || !self.q.is_finite() {
+            return None;
+        }
+        let spin = self.a.abs();
+        let charge = self.q.abs();
+        let leading = spin.max(charge);
+        let trailing = spin.min(charge);
+        if leading > self.m || (exact_eq(leading, self.m) && trailing > 0.0) {
+            return None;
+        }
+        if exact_eq(leading, 0.0) {
+            return Some(1.0);
+        }
+
+        let base = ((self.m - leading) / self.m) * (1.0 + leading / self.m);
+        if exact_eq(trailing, 0.0) {
+            return Some(base.sqrt());
+        }
+        let trailing_square = (trailing / self.m).powi(2);
+        let gap = base - trailing_square;
+        let margin = base.max(trailing_square) / 32.0;
+        if gap > margin {
+            return Some(gap.sqrt());
+        }
+        if gap < -margin {
+            return None;
+        }
+
+        // Use the original binary inputs at the extremality boundary. Dividing them
+        // by M first can change the sign of the tiny difference of the three squares.
+        let (fraction, exponent) =
+            exact_product_sum_scaled([(self.m, self.m), (-spin, spin), (-charge, charge)]);
+        if fraction < 0.0 {
+            return None;
+        }
+        if exact_eq(fraction, 0.0) {
+            return Some(0.0);
+        }
+        let bits = self.m.to_bits();
+        let biased = (bits >> 52) as i32;
+        let (mass_exponent, scale) = if biased == 0 {
+            let top = bits.ilog2();
+            (top as i32 - 1074, f64::from_bits(1_u64 << top))
+        } else {
+            (biased - 1023, f64::from_bits(bits & 0x7ff0_0000_0000_0000))
+        };
+        let power = exponent - 2 * mass_exponent;
+        let root = fraction * f64::from(1 + power.rem_euclid(2));
+        Some(root.sqrt() * 2.0_f64.powi(power.div_euclid(2)) / (self.m / scale))
     }
 
     fn delta(
@@ -177,53 +241,28 @@ impl KerrNewman {
         Some((-(gtt + gtp * omega) * ut, (gtp + gpp * omega) * ut, omega))
     }
 
-    /// Radius of the circular photon orbit (prograde or retrograde), by bisection.
+    /// Radius of the circular equatorial photon orbit strictly outside the outer horizon.
+    ///
+    /// The positive angular direction is selected by `prograde`. A branch that coincides
+    /// with the horizon, has no exterior root, or cannot be represented returns `None`.
     #[must_use]
     pub fn photon_orbit(
         &self,
         prograde: bool,
     ) -> Option<f64> {
-        let (m, a, q) = (self.m, self.a, self.q);
-        // g_tt + 2 g_tphi Omega + g_phiphi Omega^2 = 0 at the circular-orbit Omega
-        let f = |r: f64| -> f64 {
-            let w = 2.0 * m / r - q * q / (r * r);
-            let wp = -2.0 * m / (r * r) + 2.0 * q * q / (r * r * r);
-            let (gtt, gtp, gpp) = (-(1.0 - w), -a * w, r * r + a * a + a * a * w);
-            let (gttp, gtpp, gppp) = (wp, -a * wp, 2.0 * r + a * a * wp);
-            let (b2, ac) = (gtpp * gtpp, gttp * gppp);
-            let disc = b2 - ac;
-            let sgn = if prograde { 1.0 } else { -1.0 };
-            let om = (-gtpp + sgn * disc.max(0.0).sqrt()) / gppp;
-            gtt + 2.0 * gtp * om + gpp * om * om
+        let horizon_gap = self.normalized_horizon_gap()?;
+        let spin = self.a / self.m;
+        let spin = if prograde { spin } else { -spin };
+        let ratio = if !exact_eq(spin, 0.0) && exact_eq(self.q, 0.0) && horizon_gap > 0.0 {
+            // Kerr's trigonometric root. Using the gap in atan2 also retains the
+            // angular separation when the normalized spin is close to ±1.
+            let angle = (2.0 / 3.0) * horizon_gap.atan2(-spin);
+            2.0 * (1.0 + angle.cos())
+        } else {
+            photon_radius_ratio(spin, horizon_gap)
         };
-        let rh = self.horizon()?;
-        let (mut lo, mut hi) = (rh * 1.0000001 + 1e-9, 10.0 * m + 10.0 * (a.abs() + q.abs()));
-        // timelike orbits (f<0) outside, spacelike inside: find sign change from + to -
-        let n = 4000;
-        let mut prev = lo;
-        let mut found = false;
-        for k in 1..=n {
-            let x = lo + (hi - lo) * f64::from(k) / f64::from(n);
-            if f(prev) > 0.0 && f(x) <= 0.0 {
-                lo = prev;
-                hi = x;
-                found = true;
-                break;
-            }
-            prev = x;
-        }
-        if !found {
-            return None;
-        }
-        for _ in 0..200 {
-            let mid = f64::midpoint(lo, hi);
-            if f(mid) > 0.0 {
-                lo = mid;
-            } else {
-                hi = mid;
-            }
-        }
-        Some(f64::midpoint(lo, hi))
+        let radius = self.m * ratio;
+        (radius.is_finite() && radius > self.m * (1.0 + horizon_gap)).then_some(radius)
     }
 
     /// Innermost stable circular orbit: the minimum of `E(r)` over timelike circular orbits.
@@ -252,6 +291,48 @@ impl KerrNewman {
         }
         Some(f64::midpoint(lo, hi))
     }
+}
+
+fn photon_radius_ratio(
+    spin: f64,
+    horizon_gap: f64,
+) -> f64 {
+    if exact_eq(spin, 0.0) {
+        // Reissner-Nordstrom: (3 + sqrt(9 - 8 Q²/M²)) / 2.
+        return f64::midpoint(3.0, (1.0 + 8.0 * horizon_gap * horizon_gap).sqrt());
+    }
+    if exact_eq(horizon_gap, 0.0) {
+        // The extremal equation factors. A root at or below one has no exterior orbit.
+        return 2.0 * (1.0 - spin);
+    }
+
+    // x = r/M - 1. The outer orbit satisfies sqrt(Delta) = u - a, where
+    // u² = x + a² + gap² and Delta = (x - gap)(x + gap), all dimensionless.
+    // Outside the horizon, (u - a)² / Delta strictly decreases, so the sign
+    // is bracketed by the horizon and r/M = 4 without a radial scan.
+    let gap_squared = horizon_gap * horizon_gap;
+    let spin_squared = spin * spin;
+    let mut lower = horizon_gap;
+    let mut upper = 3.0;
+    for _ in 0..56 {
+        let middle = f64::midpoint(lower, upper);
+        if exact_eq(middle, lower) || exact_eq(middle, upper) {
+            break;
+        }
+        let u = (middle + spin_squared + gap_squared).sqrt();
+        let offset = if spin > 0.0 {
+            (middle + gap_squared) / (u + spin)
+        } else {
+            u - spin
+        };
+        let root_delta = ((middle - horizon_gap) * (middle + horizon_gap)).sqrt();
+        if root_delta >= offset {
+            upper = middle;
+        } else {
+            lower = middle;
+        }
+    }
+    1.0 + f64::midpoint(lower, upper)
 }
 
 /// Initial data of a geodesic: position, conserved `E`, `L`, polar momentum, radial direction and `mu^2`.

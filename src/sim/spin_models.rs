@@ -1,3 +1,5 @@
+//! Lattice spin models (Ising, Potts, XY, Heisenberg) with cluster updates.
+//!
 //! # Lattice spin models: Ising, Potts, XY, Heisenberg in 1-3 (any) dimensions
 //!
 //! Monte Carlo for `H = -J sum_<ij> s_i . s_j - J2 sum_<<ij>> s_i . s_j - h sum_i s_i[0]`
@@ -987,6 +989,126 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
     }
 }
 
+const INLINE_POTTS_COLORS: usize = 32;
+const INLINE_POTTS_WEIGHTS: usize = 17;
+
+#[derive(Clone, Copy, Debug, Default)]
+struct HeatBathWeight {
+    ordinary: f64,
+    relative: f64,
+}
+
+/// Scratch space for repeated Potts heat-bath sweeps.
+///
+/// It can be shared between models sequentially. The weight table is refreshed
+/// when the effective coupling or the lattice dimension changes.
+#[derive(Debug, Default)]
+pub struct PottsHeatBathWorkspace {
+    small_counts: [usize; INLINE_POTTS_COLORS],
+    counts: Vec<usize>,
+    small_weights: [HeatBathWeight; INLINE_POTTS_WEIGHTS],
+    weights: Vec<HeatBathWeight>,
+    configuration: Option<(u64, usize)>,
+}
+
+impl PottsHeatBathWorkspace {
+    fn prepare(
+        &mut self,
+        q: usize,
+        degree: usize,
+        coupling: f64,
+    ) -> (&mut [usize], &[HeatBathWeight]) {
+        let colors = if q <= self.small_counts.len() {
+            &mut self.small_counts[..q]
+        } else {
+            self.counts.resize(q, 0);
+            self.counts.as_mut_slice()
+        };
+        let width = degree + 1;
+        let factors = if width <= self.small_weights.len() {
+            &mut self.small_weights[..width]
+        } else {
+            self.weights.resize(width, HeatBathWeight::default());
+            self.weights.as_mut_slice()
+        };
+
+        let configuration = (coupling.to_bits(), degree);
+        if self.configuration != Some(configuration) {
+            for (count, weight) in factors.iter_mut().enumerate() {
+                let count_f = count as f64;
+                *weight = HeatBathWeight {
+                    ordinary: (coupling * count_f).exp(),
+                    relative: if count == 0 {
+                        1.0
+                    } else {
+                        (-coupling.abs() * count_f).exp()
+                    },
+                };
+            }
+            self.configuration = Some(configuration);
+        }
+        (colors, factors)
+    }
+}
+
+fn potts_count_colors(
+    neighbors: &[usize],
+    spins: &[usize],
+    counts: &mut [usize],
+) -> bool {
+    counts.fill(0);
+    let mut valid = true;
+    for &neighbor in neighbors {
+        if neighbor != usize::MAX {
+            if let Some(count) = counts.get_mut(spins[neighbor]) {
+                *count += 1;
+            } else {
+                valid = false;
+            }
+        }
+    }
+    valid
+}
+
+fn potts_weight_sum(
+    counts: &[usize],
+    weight: impl Fn(usize) -> f64,
+) -> f64 {
+    let mut total = 0.0;
+    for &count in counts {
+        total += weight(count);
+    }
+    total
+}
+
+fn potts_find_color(
+    counts: &[usize],
+    mut target: f64,
+    weight: impl Fn(usize) -> f64,
+) -> Option<usize> {
+    for (color, &count) in counts.iter().enumerate() {
+        let w = weight(count);
+        if target < w {
+            return Some(color);
+        }
+        target -= w;
+    }
+    None
+}
+
+fn potts_count_center(
+    counts: &[usize],
+    coupling: f64,
+) -> usize {
+    let counts = counts.iter().copied();
+    if coupling < 0.0 {
+        counts.min()
+    } else {
+        counts.max()
+    }
+    .unwrap_or(0)
+}
+
 /// q-state Potts model.
 #[derive(Clone, Debug)]
 pub struct Potts<const D: usize> {
@@ -1090,25 +1212,118 @@ impl<const D: usize> Potts<D> {
         f64::from(acc) / n as f64
     }
 
-    /// Heat-bath sweep.
+    /// Heat-bath sweep in site order, drawing once per site.
+    ///
+    /// Each neighbor contributes one bond, including multiple neighbors
+    /// with the same color. Missing open-boundary neighbors contribute none.
+    /// The geometry retains its usual minimum side length for periodic lattices.
     pub fn heat_bath_sweep(&mut self) {
-        let mut w = vec![0.0; self.q];
+        self.heat_bath_sweep_with(&mut PottsHeatBathWorkspace::default());
+    }
+
+    /// Heat-bath sweep that reuses the supplied workspace across calls.
+    ///
+    /// Finite ordinary weights are drawn in color order. When their total
+    /// is unrepresentable or subnormal, a common shift of the log weights
+    /// gives the same conditional law in a usable range. Infinite positive
+    /// or negative effective coupling selects uniformly among the colors
+    /// with the most or fewest matching neighbors, respectively.
+    /// Undefined effective coupling keeps the last-color fallback.
+    pub fn heat_bath_sweep_with(
+        &mut self,
+        workspace: &mut PottsHeatBathWorkspace,
+    ) {
+        if self.spins.is_empty() {
+            return;
+        }
+        let coupling = self.heat_bath_coupling();
+        let last = self.q - 1;
+        if self.lattice.sites() == 1 || coupling == 0.0 {
+            // With no bonds or zero coupling, the usual inverse CDF
+            // subtracts one repeatedly from the same initial target.
+            for spin in &mut self.spins {
+                let u = self.rng.uniform();
+                *spin = if coupling.is_nan() {
+                    last
+                } else {
+                    ((u * self.q as f64) as usize).min(last)
+                };
+            }
+            return;
+        }
+        let (counts, factors) = workspace.prepare(self.q, 2 * D, coupling);
+        let ordinary = |count: usize| factors[count].ordinary;
         for i in 0..self.spins.len() {
-            let mut tot = 0.0;
-            for s in 0..self.q {
-                w[s] = (self.beta * self.j * self.equal_neighbours(i, s) as f64).exp();
-                tot += w[s];
-            }
-            let mut u = self.rng.uniform() * tot;
-            let mut pick = self.q - 1;
-            for s in 0..self.q {
-                if u < w[s] {
-                    pick = s;
-                    break;
-                }
-                u -= w[s];
-            }
-            self.spins[i] = pick;
+            potts_count_colors(self.lattice.neighbours(i), &self.spins, counts);
+            let u = self.rng.uniform();
+            let total = potts_weight_sum(counts, ordinary);
+            self.spins[i] = if total.is_normal() {
+                // Preserve the original summation and inverse-CDF order.
+                potts_find_color(counts, u * total, ordinary).unwrap_or(last)
+            } else if coupling.is_nan() {
+                last
+            } else {
+                let center = potts_count_center(counts, coupling);
+                let relative = |count: usize| factors[count.abs_diff(center)].relative;
+                let total = potts_weight_sum(counts, relative);
+                potts_find_color(counts, u * total, relative).unwrap_or_else(|| {
+                    // Roundoff at the upper end must not select a zero-weight color.
+                    counts
+                        .iter()
+                        .rposition(|&count| relative(count) > 0.0)
+                        .unwrap_or(last)
+                })
+            };
+        }
+    }
+
+    /// Writes the single-site heat-bath conditional probabilities in color order.
+    ///
+    /// The output has one entry per color. Probabilities use shifted log
+    /// weights and include the infinite-coupling limits. The model and RNG
+    /// are read-only.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for an invalid site, output length, local spin label
+    /// or undefined effective coupling.
+    pub fn heat_bath_probabilities(
+        &self,
+        site: usize,
+        output: &mut [f64],
+    ) -> Result<(), String> {
+        if self.q < 2
+            || output.len() != self.q
+            || site >= self.spins.len()
+            || self.spins.len() != self.lattice.sites()
+        {
+            return Err("invalid Potts site, spin count or conditional output length".into());
+        }
+        let coupling = self.heat_bath_coupling();
+        if coupling.is_nan() {
+            return Err("undefined Potts effective coupling".into());
+        }
+        let mut workspace = PottsHeatBathWorkspace::default();
+        let (counts, factors) = workspace.prepare(self.q, 2 * D, coupling);
+        if self.spins[site] >= self.q
+            || !potts_count_colors(self.lattice.neighbours(site), &self.spins, counts)
+        {
+            return Err("invalid Potts spin color in the conditional neighborhood".into());
+        }
+        let center = potts_count_center(counts, coupling);
+        let relative = |count: usize| factors[count.abs_diff(center)].relative;
+        let total = potts_weight_sum(counts, relative);
+        for (p, &count) in output.iter_mut().zip(counts.iter()) {
+            *p = relative(count) / total;
+        }
+        Ok(())
+    }
+
+    const fn heat_bath_coupling(&self) -> f64 {
+        if self.j == 0.0 && !self.beta.is_nan() {
+            0.0
+        } else {
+            self.beta * self.j
         }
     }
 

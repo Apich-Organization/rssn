@@ -10,10 +10,12 @@
 //!   `N_b beta W / (M - n)` acceptance ratios) and
 //! * **directed-loop** (worm) updates: the loop head flips the spin of the leg it enters and
 //!   leaves the vertex through a leg drawn by the heat-bath rule `P(out) ~ W(vertex after the
-//!   flips)`, which satisfies the directed-loop equations (bounces are allowed). Loops are
-//!   repeated until about `2 n` vertex legs have been visited.
+//!   flips)`, which satisfies the directed-loop equations (bounces are allowed).
+//!   A nonempty sweep starts `max(8, N_sites)` worms. This count depends only on
+//!   the lattice size. Sites untouched by the string are sampled as free spins,
+//!   including every site when the expansion order is zero.
 //!
-//! The operator-string cutoff `M` grows automatically during thermalisation.
+//! The operator-string cutoff `M` grows as the expansion order increases, including during thermalisation.
 //!
 //! | Quantity | Estimator |
 //! |---|---|
@@ -109,14 +111,65 @@ pub fn square_bonds(
 
 const NONE: usize = usize::MAX;
 
+#[derive(Clone, Copy, Debug)]
+struct LoopExits {
+    weights: [f64; 4],
+    total: f64,
+}
+
+#[derive(Clone, Debug)]
+struct VertexWeights {
+    jz_bits: u64,
+    // The first weight is for opposite spins, the second for aligned spins.
+    diagonal: [f64; 2],
+    exits: [LoopExits; 64],
+}
+
+impl VertexWeights {
+    fn new(
+        jz: f64,
+        shift: f64,
+    ) -> Self {
+        let diagonal = [shift + 0.25 * jz, shift - 0.25 * jz];
+        let weights: [f64; 16] = std::array::from_fn(|mask| {
+            let input = mask & 3;
+            let output = mask >> 2;
+            let aligned = input == 0 || input == 3;
+            if input == output {
+                diagonal[usize::from(aligned)]
+            } else if !aligned && input ^ output == 3 {
+                0.5
+            } else {
+                0.0
+            }
+        });
+        let exits = std::array::from_fn(|index| {
+            let open = (index / 4) ^ (1 << (index % 4));
+            let weights = std::array::from_fn(|exit| weights[open ^ (1 << exit)]);
+            LoopExits {
+                total: weights.iter().sum(),
+                weights,
+            }
+        });
+        Self {
+            jz_bits: jz.to_bits(),
+            diagonal,
+            exits,
+        }
+    }
+}
+
 /// SSE simulation of the spin-1/2 XXZ model.
 #[derive(Clone, Debug)]
 pub struct SseXxz {
     n_sites: usize,
     bonds: Vec<(usize, usize)>,
     /// Ising anisotropy coupling `J_z` (the transverse coupling is `J_xy = 1`).
+    ///
+    /// If changed between sweeps, both diagonal weights must remain nonnegative
+    /// with the value returned by [`Self::constant`].
     pub jz: f64,
-    /// Inverse temperature.
+    /// Positive, finite inverse temperature.
     pub beta: f64,
     shift: f64,
     spins: Vec<i8>,
@@ -124,7 +177,9 @@ pub struct SseXxz {
     n_ops: usize,
     rng: Rng,
     link: Vec<usize>,
-    legspin: Vec<i8>,
+    vertices: Vec<u8>,
+    propagated: Vec<i8>,
+    weights: VertexWeights,
     first: Vec<usize>,
     last: Vec<usize>,
     colour: Vec<i8>,
@@ -145,7 +200,8 @@ impl SseXxz {
     /// Creates a simulation on the given bonds.
     ///
     /// # Errors
-    /// Fails for an empty bond list, out-of-range sites, a non-positive `beta`, or a graph that is
+    /// Fails for an empty or unencodable bond list, invalid sites or
+    /// couplings, a non-positive inverse temperature, or a graph that is
     /// not bipartite.
     pub fn new(
         n_sites: usize,
@@ -155,12 +211,17 @@ impl SseXxz {
         seed: u64,
     ) -> Result<Self, String> {
         if bonds.is_empty()
+            || !jz.is_finite()
+            || !beta.is_finite()
             || beta <= 0.0
             || bonds
                 .iter()
                 .any(|&(i, j)| i >= n_sites || j >= n_sites || i == j)
         {
-            return Err("need a non-empty valid bond list and beta > 0".into());
+            return Err("need valid bonds, finite coupling and finite beta > 0".into());
+        }
+        if bonds.len() > u32::MAX as usize / 2 {
+            return Err("bond count exceeds the SSE operator encoding".into());
         }
         // bipartite check
         let mut colour = vec![-1i8; n_sites];
@@ -205,7 +266,9 @@ impl SseXxz {
             n_ops: 0,
             rng,
             link: Vec::new(),
-            legspin: Vec::new(),
+            vertices: Vec::new(),
+            propagated: Vec::new(),
+            weights: VertexWeights::new(jz, shift),
             first: vec![NONE; n_sites],
             last: vec![NONE; n_sites],
             colour,
@@ -224,28 +287,6 @@ impl SseXxz {
         self.shift
     }
 
-    /// Weight of a vertex with leg spins `(in_i, in_j, out_i, out_j)` (each `+-1`).
-    fn weight(
-        &self,
-        s: [i8; 4],
-    ) -> f64 {
-        let [a, b, c, d] = s;
-        if a + b != c + d {
-            return 0.0;
-        }
-        if a == c && b == d {
-            if a == b {
-                self.shift - 0.25 * self.jz
-            } else {
-                self.shift + 0.25 * self.jz
-            }
-        } else if a == d && b == c && a != b {
-            0.5
-        } else {
-            0.0
-        }
-    }
-
     fn diag_update(&mut self) {
         let nb = self.bonds.len() as f64;
         let m = self.ops.len();
@@ -255,7 +296,7 @@ impl SseXxz {
             if op == 0 {
                 let b = self.rng.below(self.bonds.len() as u64) as usize;
                 let (i, j) = self.bonds[b];
-                let w = self.weight([self.spins[i], self.spins[j], self.spins[i], self.spins[j]]);
+                let w = self.weights.diagonal[usize::from(self.spins[i] == self.spins[j])];
                 let prob = nb * self.beta * w / (m - self.n_ops) as f64;
                 if prob >= 1.0 || self.rng.uniform() < prob {
                     self.ops[p] = (b as u32 + 1) * 2;
@@ -264,7 +305,7 @@ impl SseXxz {
             } else if op.is_multiple_of(2) {
                 let b = (op / 2 - 1) as usize;
                 let (i, j) = self.bonds[b];
-                let w = self.weight([self.spins[i], self.spins[j], self.spins[i], self.spins[j]]);
+                let w = self.weights.diagonal[usize::from(self.spins[i] == self.spins[j])];
                 let prob = (m - self.n_ops + 1) as f64 / (nb * self.beta * w);
                 if prob >= 1.0 || self.rng.uniform() < prob {
                     self.ops[p] = 0;
@@ -282,13 +323,13 @@ impl SseXxz {
     fn build_links(&mut self) {
         let m = self.ops.len();
         budget_tick(m, m);
-        self.link.clear();
+        // Each active leg is linked during this pass. Identity slots are
+        // never read as vertices, so the rest of the allocated array can stay.
         self.link.resize(4 * m, NONE);
-        self.legspin.clear();
-        self.legspin.resize(4 * m, 0);
+        self.vertices.resize(m, 0);
         self.first.fill(NONE);
         self.last.fill(NONE);
-        let mut sigma = self.spins.clone();
+        self.propagated.clone_from(&self.spins);
         for p in 0..m {
             let op = self.ops[p];
             if op == 0 {
@@ -297,14 +338,15 @@ impl SseXxz {
             let b = (op / 2 - 1) as usize;
             let (i, j) = self.bonds[b];
             let v = 4 * p;
-            self.legspin[v] = sigma[i];
-            self.legspin[v + 1] = sigma[j];
-            if op % 2 == 1 {
-                sigma[i] = -sigma[i];
-                sigma[j] = -sigma[j];
-            }
-            self.legspin[v + 2] = sigma[i];
-            self.legspin[v + 3] = sigma[j];
+            let input = u8::from(self.propagated[i] > 0) | (u8::from(self.propagated[j] > 0) << 1);
+            let output = if op % 2 == 1 {
+                self.propagated[i] = -self.propagated[i];
+                self.propagated[j] = -self.propagated[j];
+                input ^ 3
+            } else {
+                input
+            };
+            self.vertices[p] = input | (output << 2);
             for (site, leg_in, leg_out) in [(i, v, v + 2), (j, v + 1, v + 3)] {
                 if self.last[site] == NONE {
                     self.first[site] = leg_in;
@@ -325,87 +367,80 @@ impl SseXxz {
         }
     }
 
-    /// One loop-update pass; returns the number of vertex legs visited.
-    fn loop_update(&mut self) -> usize {
+    fn loop_update(&mut self) {
         self.build_links();
         let m = self.ops.len();
         budget_tick(m, m);
-        if self.n_ops == 0 {
-            return 0;
-        }
-        let target = 2 * self.n_ops.max(8);
-        let mut visited = 0;
-        while visited < target {
-            // random leg of a random existing operator
-            let v0 = loop {
-                budget_tick(1, m);
-                let v = self.rng.below(4 * m as u64) as usize;
-                if self.ops[v / 4] != 0 {
-                    break v;
-                }
-            };
-            let mut v = v0;
-            loop {
-                budget_tick(1, m);
-                let p = v / 4;
-                let l_in = v % 4;
-                let mut s = [
-                    self.legspin[4 * p],
-                    self.legspin[4 * p + 1],
-                    self.legspin[4 * p + 2],
-                    self.legspin[4 * p + 3],
-                ];
-                s[l_in] = -s[l_in];
-                let mut w = [0.0; 4];
-                for (l_out, wv) in w.iter_mut().enumerate() {
-                    let mut t = s;
-                    t[l_out] = -t[l_out];
-                    *wv = self.weight(t);
-                }
-                let total: f64 = w.iter().sum();
-                let mut r = self.rng.uniform() * total;
-                let mut l_out = 3;
-                for (k, wv) in w.iter().enumerate() {
-                    if r < *wv {
-                        l_out = k;
+        if self.n_ops != 0 {
+            // A predetermined number of reversible worm transitions preserves
+            // the distribution. A stop based on their lengths can bias it.
+            for _ in 0..self.n_sites.max(8) {
+                // random leg of a random existing operator
+                let v0 = loop {
+                    budget_tick(1, m);
+                    let v = self.rng.below(4 * m as u64) as usize;
+                    if self.ops[v / 4] != 0 {
+                        break v;
+                    }
+                };
+                let mut v = v0;
+                loop {
+                    budget_tick(1, m);
+                    let p = v / 4;
+                    let l_in = v % 4;
+                    let mask = self.vertices[p];
+                    let exits = &self.weights.exits[usize::from(mask) * 4 + l_in];
+                    let mut r = self.rng.uniform() * exits.total;
+                    let mut l_out = 3;
+                    for (k, wv) in exits.weights.iter().enumerate() {
+                        if r < *wv {
+                            l_out = k;
+                            break;
+                        }
+                        r -= wv;
+                    }
+                    self.vertices[p] = mask ^ (1 << l_in) ^ (1 << l_out);
+                    v = self.link[4 * p + l_out];
+                    if v == v0 {
                         break;
                     }
-                    r -= wv;
-                }
-                s[l_out] = -s[l_out];
-                for k in 0..4 {
-                    self.legspin[4 * p + k] = s[k];
-                }
-                visited += 1;
-                v = self.link[4 * p + l_out];
-                if v == v0 {
-                    break;
                 }
             }
-        }
-        // write back operator types and the reference state
-        for p in 0..m {
-            if self.ops[p] == 0 {
-                continue;
+            // Write back operator types once all worms have closed.
+            for p in 0..m {
+                if self.ops[p] == 0 {
+                    continue;
+                }
+                let b = self.ops[p] / 2 - 1;
+                let vertex = self.vertices[p];
+                let diagonal = vertex & 1 == (vertex >> 2) & 1;
+                self.ops[p] = b * 2 + 2 + u32::from(!diagonal);
             }
-            let b = self.ops[p] / 2 - 1;
-            let diagonal = self.legspin[4 * p] == self.legspin[4 * p + 2];
-            self.ops[p] = b * 2 + 2 + u32::from(!diagonal);
         }
+
+        budget_tick(self.n_sites, m);
         for site in 0..self.n_sites {
             if self.first[site] == NONE {
                 if self.rng.uniform() < 0.5 {
                     self.spins[site] = -self.spins[site];
                 }
             } else {
-                self.spins[site] = self.legspin[self.first[site]];
+                let first = self.first[site];
+                let bit = (self.vertices[first / 4] >> (first % 4)) & 1;
+                self.spins[site] = if bit == 0 { -1 } else { 1 };
             }
         }
-        visited
     }
 
     /// One Monte Carlo sweep (diagonal update, directed loops, cutoff adjustment).
+    ///
+    /// Fixed worm counts and the zero-order spin refresh reproduce the same
+    /// trajectory for the same seed and inputs under this schedule. They
+    /// change the sequences produced by earlier visit-capped releases.
     pub fn sweep(&mut self) {
+        if self.weights.jz_bits != self.jz.to_bits() {
+            self.weights = VertexWeights::new(self.jz, self.shift);
+        }
         self.diag_update();
         self.loop_update();
         let want = self.n_ops + self.n_ops / 3 + 8;
@@ -445,8 +480,13 @@ impl SseXxz {
         }
         let nb = self.bonds.len() as f64;
         let (mut sn, mut sn2, mut sm2, mut ss2) = (0.0, 0.0, 0.0, 0.0);
-        let mut series = Vec::with_capacity(sweeps);
-        for _ in 0..sweeps {
+        // The error estimate uses only complete equal-size blocks; the
+        // trailing remainder still contributes to the global estimators.
+        let blocks = sweeps.clamp(1, 20);
+        let block_len = sweeps / blocks;
+        let covered = blocks * block_len;
+        let mut block_sums = [0.0; 20];
+        for index in 0..sweeps {
             self.sweep();
             let s = self.sample();
             let n = s.n_ops as f64;
@@ -454,18 +494,18 @@ impl SseXxz {
             sn2 += n * n;
             sm2 += s.magnetisation * s.magnetisation;
             ss2 += s.staggered * s.staggered;
-            series.push(n);
+            if index < covered {
+                block_sums[index / block_len] += n;
+            }
         }
         let cnt = sweeps.max(1) as f64;
         let nbar = sn / cnt;
         let (n2_mean, nbar_sq) = (sn2 / cnt, nbar * nbar);
         let energy = nb * self.shift - nbar / self.beta;
-        // blocked error of <n>
-        let blocks = 20.min(series.len().max(1));
-        let bl = series.len() / blocks.max(1);
-        let means: Vec<f64> = (0..blocks)
-            .map(|k| series[k * bl..(k + 1) * bl].iter().sum::<f64>() / bl.max(1) as f64)
-            .collect();
+        let means = &mut block_sums[..blocks];
+        for sum in means.iter_mut() {
+            *sum /= block_len.max(1) as f64;
+        }
         let mm = means.iter().sum::<f64>() / blocks as f64;
         let var = means.iter().map(|x| (x - mm).powi(2)).sum::<f64>() / (blocks.max(2) - 1) as f64;
         SseResult {

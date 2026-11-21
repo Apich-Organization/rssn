@@ -1,3 +1,5 @@
+//! Dissipative particle dynamics (2D/3D).
+//!
 //! # Dissipative particle dynamics (DPD) in 2D and 3D
 //!
 //! Groot–Warren DPD fluid in a periodic box or a walled slab: soft conservative repulsion
@@ -51,6 +53,7 @@
 
 use crate::kernels::random::Rng;
 use std::collections::HashMap;
+use std::ops::Range;
 
 /// DPD parameters.
 #[derive(Clone, Copy, Debug)]
@@ -103,7 +106,161 @@ pub struct DpdWall {
     pub kind: WallKind,
 }
 
+const NO_PARTICLE: usize = usize::MAX;
+
+struct DpdCellRow {
+    key: [i64; 3],
+    head: usize,
+    neighbors: Range<usize>,
+}
+
+/// Scratch shared by all force evaluations of one trajectory.
+#[derive(Default)]
+struct DpdCellWorkspace {
+    lookup: HashMap<[i64; 3], usize>,
+    rows: Vec<DpdCellRow>,
+    neighbor_heads: Vec<usize>,
+    particle_rows: Vec<usize>,
+    next_particle: Vec<usize>,
+}
+
+impl DpdCellWorkspace {
+    fn rebuild(
+        &mut self,
+        params: DpdParams,
+        positions: &[[f64; 3]],
+        wall_axis: Option<usize>,
+    ) {
+        let ncell: [i64; 3] = std::array::from_fn(|axis| {
+            if axis < params.dim {
+                ((params.box_len[axis] / params.rc).floor() as i64).max(1)
+            } else {
+                1
+            }
+        });
+        self.lookup.clear();
+        self.rows.clear();
+        self.neighbor_heads.clear();
+        self.particle_rows.resize(positions.len(), 0);
+        self.next_particle.resize(positions.len(), NO_PARTICLE);
+
+        // Prepending in reverse particle order reproduces ascending indices
+        // within every occupied cell, independent of the hash seed.
+        for (particle, position) in positions.iter().enumerate().rev() {
+            let mut key = [0; 3];
+            for axis in 0..params.dim {
+                let count = ncell[axis];
+                let c = ((position[axis] / params.box_len[axis]) * count as f64).floor() as i64;
+                key[axis] = if Some(axis) == wall_axis {
+                    c.clamp(0, count - 1)
+                } else if (0..count).contains(&c) {
+                    c
+                } else {
+                    c.rem_euclid(count)
+                };
+            }
+            let row = *self.lookup.entry(key).or_insert_with(|| {
+                let index = self.rows.len();
+                self.rows.push(DpdCellRow {
+                    key,
+                    head: NO_PARTICLE,
+                    neighbors: 0..0,
+                });
+                index
+            });
+            self.particle_rows[particle] = row;
+            self.next_particle[particle] = std::mem::replace(&mut self.rows[row].head, particle);
+        }
+
+        // The same ordered neighbor row serves every particle in this cell.
+        for row in 0..self.rows.len() {
+            let key = self.rows[row].key;
+            let [xs, ys, zs] = std::array::from_fn(|axis| {
+                Self::adjacent_axis(key[axis], ncell[axis], wall_axis == Some(axis))
+            });
+            let start = self.neighbor_heads.len();
+            for x in xs.into_iter().flatten() {
+                for y in ys.into_iter().flatten() {
+                    for z in zs.into_iter().flatten() {
+                        if let Some(&neighbor) = self.lookup.get(&[x, y, z]) {
+                            self.neighbor_heads.push(self.rows[neighbor].head);
+                        }
+                    }
+                }
+            }
+            self.rows[row].neighbors = start..self.neighbor_heads.len();
+        }
+    }
+
+    /// Removes repeated periodic columns in their original -1, 0, +1
+    /// visitation order. The Cartesian product then has no repeated cell.
+    const fn adjacent_axis(
+        center: i64,
+        count: i64,
+        walled: bool,
+    ) -> [Option<i64>; 3] {
+        if walled {
+            return [
+                if center > 0 {
+                    Some(center - 1)
+                } else {
+                    None
+                },
+                Some(center),
+                if center + 1 < count {
+                    Some(center + 1)
+                } else {
+                    None
+                },
+            ];
+        }
+        if count == 1 {
+            return [Some(0), None, None];
+        }
+        let previous = if center == 0 {
+            count - 1
+        } else {
+            center - 1
+        };
+        let next = if center + 1 == count {
+            0
+        } else {
+            center + 1
+        };
+        [
+            Some(previous),
+            Some(center),
+            if count > 2 {
+                Some(next)
+            } else {
+                None
+            },
+        ]
+    }
+
+    fn neighbor_heads(
+        &self,
+        particle: usize,
+    ) -> &[usize] {
+        let row = self.particle_rows[particle];
+        &self.neighbor_heads[self.rows[row].neighbors.clone()]
+    }
+
+    fn particles_in_cell(
+        &self,
+        head: usize,
+    ) -> impl Iterator<Item = usize> {
+        std::iter::successors(Some(head), |&particle| {
+            let next = self.next_particle[particle];
+            (next != NO_PARTICLE).then_some(next)
+        })
+    }
+}
+
 /// DPD particle system.
+///
+/// Pair-force evaluations rebuild cell occupancy from the current positions
+/// and reuse the allocation for cell rows and neighbor lists between steps.
 pub struct Dpd {
     /// Parameters.
     pub params: DpdParams,
@@ -120,6 +277,7 @@ pub struct Dpd {
     wall: Option<DpdWall>,
     /// Particles that crossed a wall (an odd number of times) in the last position update.
     crossed: Vec<bool>,
+    cell_workspace: DpdCellWorkspace,
 }
 
 impl Dpd {
@@ -158,6 +316,7 @@ impl Dpd {
             t: 0.0,
             wall: None,
             crossed: vec![false; n],
+            cell_workspace: DpdCellWorkspace::default(),
         };
         let mom = s.momentum();
         for v in &mut s.vel {
@@ -165,7 +324,7 @@ impl Dpd {
                 v[a] -= mom[a] / (n as f64 * params.mass);
             }
         }
-        s.compute_forces(1.0, true);
+        s.compute_forces(1.0);
         Ok(s)
     }
 
@@ -191,7 +350,7 @@ impl Dpd {
         }
         self.wall = Some(wall);
         self.reflect();
-        self.compute_forces(1.0, true);
+        self.compute_forces(1.0);
         Ok(())
     }
 
@@ -332,104 +491,50 @@ impl Dpd {
     fn compute_forces(
         &mut self,
         dt: f64,
-        rebuild: bool,
     ) {
-        let _ = rebuild;
         let p = self.params;
         let n = self.len();
-        let ncell: Vec<i64> = (0..p.dim)
-            .map(|a| ((p.box_len[a] / p.rc).floor() as i64).max(1))
-            .collect();
-        let mut cells: HashMap<[i64; 3], Vec<usize>> = HashMap::new();
         let wall_axis = self.wall.map(|w| w.axis);
-        let key = |x: &[f64; 3]| -> [i64; 3] {
-            let mut k = [0i64; 3];
-            for a in 0..p.dim {
-                let c = ((x[a] / p.box_len[a]) * ncell[a] as f64).floor() as i64;
-                k[a] = if Some(a) == wall_axis {
-                    c.clamp(0, ncell[a] - 1)
-                } else {
-                    c.rem_euclid(ncell[a])
-                };
-            }
-            k
-        };
-        for i in 0..n {
-            cells.entry(key(&self.pos[i])).or_default().push(i);
-        }
+        self.cell_workspace.rebuild(p, &self.pos, wall_axis);
+        self.force.resize(n, [0.0; 3]);
+        self.force.fill([0.0; 3]);
+        let force = &mut self.force;
         let sigma = (2.0 * p.gamma * p.kt).sqrt();
-        let mut f = vec![[0.0; 3]; n];
+        let dt_sqrt = dt.sqrt();
+        let cutoff_squared = p.rc * p.rc;
         let mut virial = 0.0;
-        let ox: Vec<i64> = vec![-1, 0, 1];
-        let oy: Vec<i64> = if p.dim >= 2 {
-            vec![-1, 0, 1]
-        } else {
-            vec![0]
-        };
-        let oz: Vec<i64> = if p.dim >= 3 {
-            vec![-1, 0, 1]
-        } else {
-            vec![0]
-        };
         for i in 0..n {
-            let ki = key(&self.pos[i]);
-            let mut seen: Vec<[i64; 3]> = Vec::new();
-            for &dx in &ox {
-                for &dy in &oy {
-                    for &dz in &oz {
-                        let off = [dx, dy, dz];
-                        let mut kk = [0i64; 3];
-                        let mut outside = false;
-                        for a in 0..3 {
-                            kk[a] = if a < p.dim {
-                                if Some(a) == wall_axis {
-                                    let c = ki[a] + off[a];
-                                    outside |= c < 0 || c >= ncell[a];
-                                    c.clamp(0, ncell[a] - 1)
-                                } else {
-                                    (ki[a] + off[a]).rem_euclid(ncell[a])
-                                }
-                            } else {
-                                0
-                            };
+            for &head in self.cell_workspace.neighbor_heads(i) {
+                for j in self.cell_workspace.particles_in_cell(head) {
+                    if j <= i {
+                        continue;
+                    }
+                    let mut d = [0.0; 3];
+                    let mut r2 = 0.0;
+                    for axis in 0..p.dim {
+                        let mut x = self.pos[i][axis] - self.pos[j][axis];
+                        if Some(axis) != wall_axis {
+                            x -= p.box_len[axis] * (x / p.box_len[axis]).round();
                         }
-                        if outside || seen.contains(&kk) {
-                            continue;
-                        }
-                        seen.push(kk);
-                        let Some(list) = cells.get(&kk) else { continue };
-                        for &j in list {
-                            if j <= i {
-                                continue;
-                            }
-                            let mut d = [0.0; 3];
-                            let mut r2 = 0.0;
-                            for a in 0..p.dim {
-                                let mut x = self.pos[i][a] - self.pos[j][a];
-                                if Some(a) != wall_axis {
-                                    x -= p.box_len[a] * (x / p.box_len[a]).round();
-                                }
-                                d[a] = x;
-                                r2 += x * x;
-                            }
-                            if r2 >= p.rc * p.rc || r2 == 0.0 {
-                                continue;
-                            }
-                            let r = r2.sqrt();
-                            let w = 1.0 - r / p.rc;
-                            let mut vr = 0.0;
-                            for a in 0..p.dim {
-                                vr += (self.vel[i][a] - self.vel[j][a]) * d[a] / r;
-                            }
-                            let xi = self.rng.normal();
-                            let mag = p.a * w - p.gamma * w * w * vr + sigma * w * xi / dt.sqrt();
-                            virial += p.a * w * r;
-                            for a in 0..p.dim {
-                                let fa = mag * d[a] / r;
-                                f[i][a] += fa;
-                                f[j][a] -= fa;
-                            }
-                        }
+                        d[axis] = x;
+                        r2 += x * x;
+                    }
+                    if r2 >= cutoff_squared || r2 == 0.0 {
+                        continue;
+                    }
+                    let r = r2.sqrt();
+                    let w = 1.0 - r / p.rc;
+                    let mut vr = 0.0;
+                    for axis in 0..p.dim {
+                        vr += (self.vel[i][axis] - self.vel[j][axis]) * d[axis] / r;
+                    }
+                    let xi = self.rng.normal();
+                    let mag = p.a * w - p.gamma * w * w * vr + sigma * w * xi / dt_sqrt;
+                    virial += p.a * w * r;
+                    for axis in 0..p.dim {
+                        let fa = mag * d[axis] / r;
+                        force[i][axis] += fa;
+                        force[j][axis] -= fa;
                     }
                 }
             }
@@ -438,7 +543,7 @@ impl Dpd {
             && w.a_wall > 0.0
         {
             let len = p.box_len[w.axis];
-            for (i, fi) in f.iter_mut().enumerate() {
+            for (i, fi) in force.iter_mut().enumerate() {
                 let z = self.pos[i][w.axis];
                 if z < p.rc {
                     let fw = w.a_wall * (1.0 - z / p.rc);
@@ -455,7 +560,6 @@ impl Dpd {
                 }
             }
         }
-        self.force = f;
         self.virial = virial;
     }
 
@@ -476,7 +580,7 @@ impl Dpd {
             }
         }
         self.wrap();
-        self.compute_forces(dt, true);
+        self.compute_forces(dt);
         for i in 0..self.len() {
             if self.wall.is_some() && self.crossed[i] {
                 // The particle is now on the reflected branch of its path, so the part of the

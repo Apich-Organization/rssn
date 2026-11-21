@@ -1,3 +1,5 @@
+//! Symplectic and stiff (implicit, Rosenbrock) integrators.
+//!
 //! # Structure-preserving and stiff integrators
 //!
 //! * **Symplectic** integrators for separable Hamiltonians
@@ -25,6 +27,10 @@
 //! Higher-order (6, 8) and Blanes-Moan schemes, time-transformed and
 //! regularised integrators and rigid-body splittings are in
 //! [`crate::sim::symplectic`].
+//! [`symplectic_step_with_workspace`] reuses a caller-provided acceleration buffer.
+
+use crate::kernels::exact_eq;
+use crate::kernels::numeric_common::scale_product;
 
 #[allow(clippy::needless_range_loop)] // row operations index two rows at once
 /// Solves `a x = b` in place by Gaussian elimination with partial
@@ -86,6 +92,124 @@ where
     jac
 }
 
+fn verlet_kick(
+    p: &mut [f64],
+    a: &[f64],
+    mass: f64,
+    dt: f64,
+) {
+    let half_dt = 0.5 * dt;
+    let coefficient = half_dt * mass;
+    if (half_dt.is_normal() && coefficient.is_normal()) || !valid_step_scales(mass, dt) {
+        for (pi, ai) in p.iter_mut().zip(a) {
+            *pi += coefficient * ai;
+        }
+    } else {
+        let factors = [0.5, dt.abs(), mass];
+        for (pi, &ai) in p.iter_mut().zip(a) {
+            let kick = if ai.is_finite() {
+                step_product(ai, dt, &factors, &[])
+            } else {
+                coefficient * ai
+            };
+            *pi += kick;
+        }
+    }
+}
+
+fn verlet_drift(
+    q: &mut [f64],
+    p: &[f64],
+    mass: f64,
+    dt: f64,
+) {
+    let (p, _) = p.split_at(q.len().min(p.len()));
+    if exact_eq(mass, 1.0) {
+        for (qi, pi) in q.iter_mut().zip(p) {
+            *qi += dt * pi;
+        }
+    } else if valid_step_scales(mass, dt) && !all_normal_drift_products(p, dt) {
+        let factors = [dt.abs()];
+        let divisors = [mass];
+        for (qi, &pi) in q.iter_mut().zip(p) {
+            let product = dt * pi;
+            let drift = if product.is_normal() || exact_eq(pi, 0.0) || !pi.is_finite() {
+                product / mass
+            } else {
+                step_product(pi, dt, &factors, &divisors)
+            };
+            *qi += drift;
+        }
+    } else {
+        for (qi, pi) in q.iter_mut().zip(p) {
+            *qi += dt * pi / mass;
+        }
+    }
+}
+
+fn all_normal_drift_products(
+    p: &[f64],
+    dt: f64,
+) -> bool {
+    let exponent = dt.abs().to_bits() >> 52;
+    if exponent == 0 {
+        return false;
+    }
+    // With biased exponents E and F the exact product is in
+    // [2^(E+F-2046), 2^(E+F-2044)). Bound both significands by that interval.
+    let lower = 1024_u64.saturating_sub(exponent).max(1) << 52;
+    let upper = (3068 - exponent).min(2047) << 52;
+    let width = upper - lower;
+    // Use a reduction without early exit so the integer range check can vectorize.
+    p.iter().fold(true, |safe, p| {
+        let magnitude = p.to_bits() & 0x7fff_ffff_ffff_ffff;
+        safe & (magnitude.wrapping_sub(lower) < width || magnitude == 0)
+    })
+}
+
+fn valid_step_scales(
+    mass: f64,
+    dt: f64,
+) -> bool {
+    mass.is_finite() && mass > 0.0 && dt.is_finite() && !exact_eq(dt, 0.0)
+}
+
+#[cold]
+fn step_product(
+    value: f64,
+    dt: f64,
+    factors: &[f64],
+    divisors: &[f64],
+) -> f64 {
+    let signed = if dt.is_sign_negative() {
+        -value
+    } else {
+        value
+    };
+    scale_product(signed, factors, divisors).unwrap_or_else(|_| f64::INFINITY.copysign(signed))
+}
+
+fn symplectic_step_by(
+    q: &mut [f64],
+    p: &mut [f64],
+    mass: f64,
+    intervals: &[f64],
+    mut kick: impl FnMut(&[f64], &mut [f64], f64),
+) {
+    for &h in intervals {
+        kick(q, p, h);
+        verlet_drift(q, p, mass, h);
+        kick(q, p, h);
+    }
+}
+
+fn yoshida_intervals(dt: f64) -> [f64; 3] {
+    let cbrt2 = 2.0_f64.cbrt();
+    let w1 = 1.0 / (2.0 - cbrt2);
+    let w0 = -cbrt2 * w1;
+    [w1 * dt, w0 * dt, w1 * dt]
+}
+
 /// One step of the Störmer–Verlet (leapfrog) method for `q'' = a(q)`
 /// (`a` the acceleration, `-∇V/m`): kick, drift, kick.
 pub fn verlet_step<A>(
@@ -97,17 +221,9 @@ pub fn verlet_step<A>(
 ) where
     A: Fn(&[f64]) -> Vec<f64>,
 {
-    let a = acceleration(q);
-    for (pi, ai) in p.iter_mut().zip(&a) {
-        *pi += 0.5 * dt * mass * ai;
-    }
-    for (qi, pi) in q.iter_mut().zip(p.iter()) {
-        *qi += dt * pi / mass;
-    }
-    let a = acceleration(q);
-    for (pi, ai) in p.iter_mut().zip(&a) {
-        *pi += 0.5 * dt * mass * ai;
-    }
+    symplectic_step_by(q, p, mass, &[dt], |q, p, h| {
+        verlet_kick(p, &acceleration(q), mass, h);
+    });
 }
 
 /// One step of the fourth-order Forest–Ruth (Yoshida) composition of
@@ -121,12 +237,9 @@ pub fn yoshida4_step<A>(
 ) where
     A: Fn(&[f64]) -> Vec<f64>,
 {
-    let cbrt2 = 2.0_f64.cbrt();
-    let w1 = 1.0 / (2.0 - cbrt2);
-    let w0 = -cbrt2 * w1;
-    for w in [w1, w0, w1] {
-        verlet_step(q, p, mass, w * dt, acceleration);
-    }
+    symplectic_step_by(q, p, mass, &yoshida_intervals(dt), |q, p, h| {
+        verlet_kick(p, &acceleration(q), mass, h);
+    });
 }
 
 /// Integrates a separable Hamiltonian system for `steps` steps with the
@@ -166,6 +279,54 @@ pub enum SymplecticIntegratorMethod {
     Verlet,
     /// Fourth-order Forest–Ruth / Yoshida composition.
     Yoshida4,
+}
+
+/// Advances a separable Hamiltonian by one signed step using an acceleration buffer.
+///
+/// `q` is position, `p` is momentum, and `mass` is a shared positive scalar mass.
+/// The callback must fill every entry of `work` with the acceleration at its position argument.
+/// The integrator makes two callback calls for Verlet and six for Yoshida4, in kick order.
+/// The workspace is reused by all of these calls and may be retained between steps.
+///
+/// # Errors
+/// Invalid dimensions, mass or unrepresentable step intervals are rejected before
+/// touching `q`, `p` or `work`.
+/// Once started, the step mutates `q` and `p` in place and propagates the callback's values.
+pub fn symplectic_step_with_workspace(
+    q: &mut [f64],
+    p: &mut [f64],
+    mass: f64,
+    dt: f64,
+    method: SymplecticIntegratorMethod,
+    work: &mut [f64],
+    mut acceleration: impl FnMut(&[f64], &mut [f64]),
+) -> Result<(), String> {
+    if q.is_empty() || q.len() != p.len() || q.len() != work.len() {
+        return Err(
+            "positions, momenta and acceleration workspace must have the same nonzero length"
+                .into(),
+        );
+    }
+    if !mass.is_finite() || mass <= 0.0 || !dt.is_finite() {
+        return Err("symplectic step requires positive finite mass and a finite time step".into());
+    }
+    let single = [dt];
+    let yoshida;
+    let intervals: &[f64] = match method {
+        | SymplecticIntegratorMethod::Verlet => &single,
+        | SymplecticIntegratorMethod::Yoshida4 => {
+            yoshida = yoshida_intervals(dt);
+            if yoshida.iter().any(|h| !h.is_finite()) {
+                return Err("Yoshida substep is not representable".into());
+            }
+            &yoshida
+        },
+    };
+    symplectic_step_by(q, p, mass, intervals, |q, p, h| {
+        acceleration(q, work);
+        verlet_kick(p, work, mass, h);
+    });
+    Ok(())
 }
 
 /// Trajectory returned by [`solve_symplectic`].

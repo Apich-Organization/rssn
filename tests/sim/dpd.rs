@@ -7,6 +7,8 @@
 
 use rssn::sim::dpd::Dpd;
 use rssn::sim::dpd::DpdParams;
+use rssn::sim::dpd::DpdWall;
+use rssn::sim::dpd::WallKind;
 
 fn params(
     dim: usize,
@@ -200,6 +202,56 @@ fn minimum_image_acts_across_the_periodic_boundary() {
         "wrapped to the far side: {}",
         w.pos[0][0]
     );
+}
+
+#[test]
+fn short_periodic_sides_apply_each_pair_once_and_do_not_wrap_at_a_wall() {
+    // The public parameters can change after construction. A side with one
+    // cell repeats all three offsets, and a side with two repeats two.
+    let p = params(2, 4.0, 0.0, 0.0, 0.0);
+    let mut periodic = Dpd::new(2, p, 9).unwrap();
+    let mut slab = Dpd::new(2, p, 9).unwrap();
+    slab.set_walls(DpdWall {
+        axis: 1,
+        a_wall: 0.0,
+        kind: WallKind::Specular,
+    })
+    .unwrap();
+    for fluid in [&mut periodic, &mut slab] {
+        fluid.params.box_len = [1.5, 2.5, 4.0];
+        fluid.params.a = 20.0;
+        fluid.pos = vec![[0.125, 0.125, 0.0], [1.375, 2.375, 0.0]];
+        fluid.vel.fill([0.0; 3]);
+        // The previously stored force is zero. The first update uses only
+        // half a velocity kick from the new force.
+        fluid.step(0.125);
+    }
+    let distance = 0.25 * 2.0_f64.sqrt();
+    let force_per_axis = 20.0 * (1.0 - distance) / 2.0_f64.sqrt();
+    let kick = 0.5 * 0.125 * force_per_axis;
+    for axis in 0..2 {
+        assert!((periodic.vel[0][axis] - kick).abs() < 2e-15);
+        assert!((periodic.vel[1][axis] + kick).abs() < 2e-15);
+    }
+    assert!(slab.vel.iter().flatten().all(|&v| v.to_bits() == 0));
+}
+
+#[test]
+fn cell_workspace_rebuilds_when_the_public_geometry_changes() {
+    let p = params(3, 4.0, 0.0, 0.0, 0.0);
+    let mut fluid = Dpd::new(2, p, 21).unwrap();
+    fluid.pos = vec![[0.125, 0.125, 0.125], [3.875, 0.125, 0.125]];
+    fluid.params.a = 8.0;
+    fluid.params.rc = 0.25;
+    fluid.step(0.125);
+    assert!(fluid.vel.iter().flatten().all(|&v| v.to_bits() == 0));
+
+    // At the previous cutoff this pair was exactly excluded. Increasing
+    // the cutoff brings it into range across the periodic boundary.
+    fluid.params.rc = 0.5;
+    fluid.step(0.125);
+    assert_eq!(fluid.vel[0][0].to_bits(), 0.25_f64.to_bits());
+    assert_eq!(fluid.vel[1][0].to_bits(), (-0.25_f64).to_bits());
 }
 
 #[test]

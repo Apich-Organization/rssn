@@ -135,8 +135,58 @@ pub fn mat_inverse<const D: usize>(a: &Mat<D>) -> Option<Mat<D>> {
 
 /// Matrix exponential `e^A` and the first phi-function `phi1(A) = sum A^k/(k+1)!`
 /// (so that `x(t) = e^{At} x0 + t phi1(At) b` solves `x' = A x + b`).
+///
+/// Diagonal matrices use the scalar functions independently. A diagonal
+/// exponential can overflow while the corresponding `phi1` stays finite.
+/// A simple shear whose nonzero rows and columns have disjoint indices
+/// uses `e^A = I + A` and `phi1(A) = I + A/2`.
 #[must_use]
 pub fn mat_exp_phi1<const D: usize>(a: &Mat<D>) -> (Mat<D>, Mat<D>) {
+    if a.iter()
+        .enumerate()
+        .all(|(i, row)| row.iter().enumerate().all(|(j, &x)| i == j || x == 0.0))
+    {
+        let (mut e, mut phi) = ([[0.0; D]; D], [[0.0; D]; D]);
+        for (i, row) in a.iter().enumerate() {
+            let x = row[i];
+            let exponential = x.exp();
+            e[i][i] = exponential;
+            phi[i][i] = if x == 0.0 {
+                1.0
+            } else if exponential.is_infinite() && x.is_finite() {
+                // In this range subtracting one has no effect on the rounded
+                // quotient. Divide before forming the product of the halves.
+                let half = (0.5 * x).exp();
+                half * (half / x)
+            } else if x.is_infinite() {
+                exponential
+            } else {
+                x.exp_m1() / x
+            };
+        }
+        return (e, phi);
+    }
+
+    let mut id = [[0.0; D]; D];
+    for i in 0..D {
+        id[i][i] = 1.0;
+    }
+    if a.iter()
+        .enumerate()
+        .all(|(i, row)| row.iter().all(|&x| x == 0.0) || a.iter().all(|r| r[i] == 0.0))
+    {
+        // Each term of A² uses a row and column with the same inner index.
+        // The zero pattern makes every term vanish without multiplying A.
+        let (mut e, mut phi) = (id, id);
+        for (i, row) in a.iter().enumerate() {
+            for (j, &x) in row.iter().enumerate() {
+                e[i][j] += x;
+                phi[i][j] += 0.5 * x;
+            }
+        }
+        return (e, phi);
+    }
+
     let norm = a
         .iter()
         .map(|r| r.iter().map(|x| x.abs()).sum::<f64>())
@@ -152,10 +202,6 @@ pub fn mat_exp_phi1<const D: usize>(a: &Mat<D>) -> (Mat<D>, Mat<D>) {
         for c in r.iter_mut() {
             *c *= scale;
         }
-    }
-    let mut id = [[0.0; D]; D];
-    for i in 0..D {
-        id[i][i] = 1.0;
     }
     let (mut e, mut phi) = (id, id);
     let mut term = id; // x^k / k!

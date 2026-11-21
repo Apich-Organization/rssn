@@ -1,3 +1,5 @@
+//! Split-step Fourier Schrodinger/GPE solver (1D-3D, imaginary time).
+//!
 //! # Split-step Fourier solver for Schrödinger and Gross–Pitaevskii equations
 //!
 //! Solves `i ψ_t = -(1/2m) Δψ + V(t, x) ψ + g |ψ|² ψ` (units `ħ = 1`) in one,
@@ -11,6 +13,10 @@
 //!   ([`SplitStep::ground_state`]), for the linear Schrödinger equation
 //!   (`g = 0`) and the GPE;
 //! * energy, chemical potential and norm diagnostics.
+//!
+//! [`LinearSplitPlan`] prepares the phases for repeated real-time propagation
+//! in a fixed real potential. It accepts periodic grids with arbitrary positive
+//! extents, including odd sizes.
 //!
 //! | Equation | 1D | 2D | 3D | Boundary | Time stepping |
 //! |---|---|---|---|---|---|
@@ -36,8 +42,12 @@
 //! periodic box, and a rotated corner would leave it) and each sub-step rotates by at most
 //! `π/2`; no dipolar interactions.
 
+use crate::kernels::fft::Norm;
+use crate::kernels::fft::transform_axes_in_place;
+use crate::kernels::numeric_common::scale_product;
 use crate::sim::spectral::SpectralGrid;
 use num_complex::Complex;
+use std::f64::consts::TAU;
 
 /// Splitting scheme.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -46,6 +56,297 @@ pub enum SplitOrder {
     Strang,
     /// Yoshida composition of three Strang steps (order 4).
     Yoshida4,
+}
+
+/// Prepared real-time split-step propagation for the linear Schrödinger equation.
+///
+/// The plan owns the phases for one fixed real potential and a signed time
+/// step. Each evolution reuses those phases and the shared FFT plans. Wave
+/// functions and potentials are flattened with the x axis varying fastest.
+#[derive(Debug)]
+pub struct LinearSplitPlan {
+    shape: [usize; 3],
+    dim: usize,
+    size: usize,
+    phases: Option<LinearPhases>,
+}
+
+#[derive(Debug)]
+struct LinearPhases {
+    kinetic: Vec<Complex<f64>>,
+    half_potential: Vec<Complex<f64>>,
+    step_potential: Vec<Complex<f64>>,
+    middle: Option<YoshidaPhases>,
+}
+
+#[derive(Debug)]
+struct YoshidaPhases {
+    kinetic: Vec<Complex<f64>>,
+    bridge_potential: Vec<Complex<f64>>,
+}
+
+impl LinearSplitPlan {
+    /// Prepares a fixed real potential on a one- to three-dimensional periodic grid.
+    ///
+    /// Each positive extent in `n` corresponds to a finite positive box length
+    /// and the mass must be finite and positive. The potential is sampled at
+    /// every grid point. `dt` may be negative for inverse time evolution or zero
+    /// for the identity.
+    ///
+    /// # Errors
+    /// Invalid grid dimensions, lengths, mass, time step or potential, a phase
+    /// angle outside the representable range, or failure to reserve storage.
+    pub fn new(
+        n: &[usize],
+        lengths: &[f64],
+        mass: f64,
+        potential: &[f64],
+        dt: f64,
+        order: SplitOrder,
+    ) -> Result<Self, String> {
+        let dim = n.len();
+        if !(1..=3).contains(&dim)
+            || lengths.len() != dim
+            || n.contains(&0)
+            || lengths.iter().any(|&len| !len.is_finite() || len <= 0.0)
+            || !mass.is_finite()
+            || mass <= 0.0
+            || !dt.is_finite()
+        {
+            return Err("invalid linear split-step grid, mass or time step".into());
+        }
+        let size = n
+            .iter()
+            .try_fold(1_usize, |size, &extent| size.checked_mul(extent))
+            .ok_or("linear split-step grid size overflows")?;
+        if potential.len() != size || potential.iter().any(|value| !value.is_finite()) {
+            return Err("linear split-step needs one finite potential value per point".into());
+        }
+
+        let mut shape = [1; 3];
+        shape[..dim].copy_from_slice(n);
+        shape[..dim].reverse();
+        if dt == 0.0 {
+            return Ok(Self {
+                shape,
+                dim,
+                size,
+                phases: None,
+            });
+        }
+        let (outer, middle) = match order {
+            | SplitOrder::Strang => (1.0, None),
+            | SplitOrder::Yoshida4 => {
+                let root = 2.0_f64.cbrt();
+                (1.0 / (2.0 - root), Some(-root / (2.0 - root)))
+            },
+        };
+        let half_potential = Self::potential_phases(potential, dt, outer * 0.5)?;
+        // Two adjoining half steps form a single complex multiplication.
+        let mut step_potential = Self::reserve(size)?;
+        step_potential.extend(half_potential.iter().map(|&phase| phase * phase));
+        let phases = LinearPhases {
+            kinetic: Self::kinetic_phases(n, lengths, size, mass, dt, outer)?,
+            half_potential,
+            step_potential,
+            middle: if let Some(weight) = middle {
+                Some(YoshidaPhases {
+                    kinetic: Self::kinetic_phases(n, lengths, size, mass, dt, weight)?,
+                    bridge_potential: Self::potential_phases(
+                        potential,
+                        dt,
+                        f64::midpoint(outer, weight),
+                    )?,
+                })
+            } else {
+                None
+            },
+        };
+        Ok(Self {
+            shape,
+            dim,
+            size,
+            phases: Some(phases),
+        })
+    }
+
+    fn reserve<T>(size: usize) -> Result<Vec<T>, String> {
+        let mut buffer = Vec::new();
+        buffer
+            .try_reserve_exact(size)
+            .map_err(|_| "linear split-step phase storage allocation failed")?;
+        Ok(buffer)
+    }
+
+    fn potential_phases(
+        potential: &[f64],
+        dt: f64,
+        weight: f64,
+    ) -> Result<Vec<Complex<f64>>, String> {
+        let mut phases = Self::reserve(potential.len())?;
+        let sign = -dt.signum() * weight.signum();
+        for &value in potential {
+            let angle = scale_product(value, &[dt.abs(), weight.abs()], &[])
+                .map_err(|_| "linear split-step potential phase is not representable")?;
+            phases.push(Complex::from_polar(1.0, sign * angle));
+        }
+        Ok(phases)
+    }
+
+    #[allow(
+        clippy::single_call_fn,
+        reason = "Build kinetic phases from separable Fourier axes."
+    )]
+    fn kinetic_phases(
+        n: &[usize],
+        lengths: &[f64],
+        size: usize,
+        mass: f64,
+        dt: f64,
+        weight: f64,
+    ) -> Result<Vec<Complex<f64>>, String> {
+        let mut axes = [vec![0.0], vec![0.0], vec![0.0]];
+        let error = "linear split-step kinetic phase is not representable";
+        for ((axis, &extent), &len) in axes.iter_mut().zip(n).zip(lengths) {
+            *axis = Self::reserve(extent)?;
+            for j in 0..extent {
+                let angular_mode = TAU * j.min(extent - j) as f64;
+                let angle = scale_product(
+                    0.5 * angular_mode * angular_mode,
+                    &[dt.abs(), weight.abs()],
+                    &[mass, len, len],
+                )
+                .map_err(|_| error)?;
+                axis.push(angle);
+            }
+        }
+        let [x, y, z] = axes;
+        let sign = -dt.signum() * weight.signum();
+        let mut phases = Self::reserve(size)?;
+        for z in z {
+            for &y in &y {
+                for &x in &x {
+                    let angle = x + y + z;
+                    if !angle.is_finite() {
+                        return Err(error.into());
+                    }
+                    phases.push(Complex::from_polar(1.0, sign * angle));
+                }
+            }
+        }
+        Ok(phases)
+    }
+
+    /// Number of points in the periodic grid.
+    #[must_use]
+    pub const fn size(&self) -> usize {
+        self.size
+    }
+
+    pub(crate) const fn heap_bytes(&self) -> usize {
+        let Some(phases) = &self.phases else {
+            return 0;
+        };
+        let middle = if let Some(middle) = &phases.middle {
+            middle.kinetic.capacity() + middle.bridge_potential.capacity()
+        } else {
+            0
+        };
+        (phases.kinetic.capacity()
+            + phases.half_potential.capacity()
+            + phases.step_potential.capacity()
+            + middle)
+            * size_of::<Complex<f64>>()
+    }
+
+    fn apply_phase(
+        psi: &mut [Complex<f64>],
+        phases: &[Complex<f64>],
+    ) {
+        for (value, &phase) in psi.iter_mut().zip(phases) {
+            *value *= phase;
+        }
+    }
+
+    fn apply_kinetic(
+        &self,
+        psi: &mut [Complex<f64>],
+        phases: &[Complex<f64>],
+    ) {
+        let shape = &self.shape[..self.dim];
+        let axes = &[2, 1, 0][3 - self.dim..];
+        transform_axes_in_place(psi, shape, axes, false, Norm::Backward);
+        Self::apply_phase(psi, phases);
+        transform_axes_in_place(psi, shape, axes, true, Norm::Backward);
+    }
+
+    /// Evolves one wave function for `steps` steps, with no resampling of the potential.
+    ///
+    /// A zero step count or a zero time step returns the original samples exactly.
+    ///
+    /// # Errors
+    /// A wrong input length, a non-finite sample, or a nonrepresentable wave function.
+    pub fn evolve(
+        &self,
+        psi0: &[Complex<f64>],
+        steps: usize,
+    ) -> Result<Vec<Complex<f64>>, String> {
+        if psi0.len() != self.size() {
+            return Err("linear split-step wave function does not match the grid".into());
+        }
+        let mut peak = 0.0_f64;
+        for value in psi0 {
+            if !value.re.is_finite() || !value.im.is_finite() {
+                return Err("linear split-step wave function must be finite".into());
+            }
+            peak = peak.max(value.re.abs()).max(value.im.abs());
+        }
+        let mut psi = psi0.to_vec();
+        let Some(phases) = &self.phases else {
+            return Ok(psi);
+        };
+        if steps == 0 || peak == 0.0 {
+            return Ok(psi);
+        }
+
+        // FFT intermediates can be much larger than the physical samples.
+        // Power-of-two scaling also preserves headroom for subnormal inputs.
+        let scale = (!(1e-140..=1e140).contains(&peak))
+            .then(|| f64::from_bits(peak.to_bits() & 0x7ff0_0000_0000_0000).max(f64::MIN_POSITIVE));
+        if let Some(scale) = scale {
+            for value in &mut psi {
+                *value /= scale;
+            }
+        }
+        Self::apply_phase(&mut psi, &phases.half_potential);
+        for step in 1..=steps {
+            self.apply_kinetic(&mut psi, &phases.kinetic);
+            if let Some(middle) = &phases.middle {
+                Self::apply_phase(&mut psi, &middle.bridge_potential);
+                self.apply_kinetic(&mut psi, &middle.kinetic);
+                Self::apply_phase(&mut psi, &middle.bridge_potential);
+                self.apply_kinetic(&mut psi, &phases.kinetic);
+            }
+            let following = if step == steps {
+                &phases.half_potential
+            } else {
+                &phases.step_potential
+            };
+            Self::apply_phase(&mut psi, following);
+        }
+        if let Some(scale) = scale {
+            for value in &mut psi {
+                *value *= scale;
+            }
+        }
+        if psi
+            .iter()
+            .any(|value| !value.re.is_finite() || !value.im.is_finite())
+        {
+            return Err("evolved linear split-step wave function is not representable".into());
+        }
+        Ok(psi)
+    }
 }
 
 /// Ground state found by imaginary-time propagation.
@@ -92,6 +393,30 @@ impl SplitStep {
         Ok(Self { grid, origin, mass })
     }
 
+    /// Prepares a fixed real potential sampled at the points of this box.
+    ///
+    /// # Errors
+    /// See [`LinearSplitPlan::new`].
+    pub fn prepare_linear(
+        &self,
+        potential: &[f64],
+        dt: f64,
+        order: SplitOrder,
+    ) -> Result<LinearSplitPlan, String> {
+        let dim = self.grid.dim;
+        if dim > self.grid.n.len() {
+            return Err("invalid linear split-step grid dimension".into());
+        }
+        LinearSplitPlan::new(
+            &self.grid.n[..dim],
+            &self.grid.len[..dim],
+            self.mass,
+            potential,
+            dt,
+            order,
+        )
+    }
+
     /// Physical coordinate of point `p`.
     #[must_use]
     pub fn x(
@@ -110,13 +435,54 @@ impl SplitStep {
         (0..self.grid.dim).map(|a| self.grid.h(a)).product()
     }
 
-    /// `∫ |ψ|²`.
+    /// `∫ |ψ|²`, with rescaling when necessary to keep the integrated norm in range.
     #[must_use]
     pub fn norm2(
         &self,
         psi: &[Complex<f64>],
     ) -> f64 {
-        psi.iter().map(Complex::norm_sqr).sum::<f64>() * self.cell()
+        let squared = psi.iter().map(Complex::norm_sqr).sum::<f64>();
+        let cell = self.cell();
+        let direct = squared * cell;
+        if squared.is_normal() && cell.is_normal() && direct.is_normal() {
+            return direct;
+        }
+        self.scaled_norm2(psi, direct)
+    }
+
+    #[allow(
+        clippy::single_call_fn,
+        reason = "Keep the ordinary norm's arithmetic in its fast path."
+    )]
+    fn scaled_norm2(
+        &self,
+        psi: &[Complex<f64>],
+        direct: f64,
+    ) -> f64 {
+        let dim = self.grid.dim;
+        let lengths = &self.grid.len[..dim];
+        let n = &self.grid.n[..dim];
+        if lengths.iter().any(|&len| !len.is_finite() || len <= 0.0) || n.contains(&0) {
+            return direct;
+        }
+        let mut peak = 0.0_f64;
+        for value in psi {
+            if !value.re.is_finite() || !value.im.is_finite() {
+                return direct;
+            }
+            peak = peak.max(value.re.abs()).max(value.im.abs());
+        }
+        if peak == 0.0 {
+            return 0.0;
+        }
+        let squared = psi
+            .iter()
+            .map(|value| (*value / peak).norm_sqr())
+            .sum::<f64>();
+        let mut numerator = [peak; 5];
+        numerator[2..2 + dim].copy_from_slice(lengths);
+        let denominator = self.grid.n.map(|value| value as f64);
+        scale_product(squared, &numerator[..2 + dim], &denominator[..dim]).unwrap_or(f64::INFINITY)
     }
 
     /// Samples a complex function on the grid.

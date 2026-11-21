@@ -1,3 +1,5 @@
+//! Multigrid methods.
+//!
 //! # Multigrid (Poisson)
 //!
 //! | Equation | 1D | 2D | 3D | Boundary conditions | Cycles |
@@ -232,7 +234,7 @@ pub struct Grid2D {
 }
 
 impl Grid2D {
-    pub(crate) fn new(
+    fn new(
         n: usize,
         h: f64,
     ) -> Self {
@@ -243,234 +245,188 @@ impl Grid2D {
             h,
         }
     }
-
-    pub(crate) const fn idx(
-        &self,
-        i: usize,
-        j: usize,
-    ) -> usize {
-        i * self.n + j
-    }
 }
 
-/// 2D Smoother: Red-Black Gauss-Seidel.
-pub(crate) fn smooth_2d(
-    grid: &mut Grid2D,
-    num_sweeps: usize,
-) {
-    let n = grid.n;
+// The two independent row passes can split large grids in the active pool.
+const PARALLEL_POISSON_SIDE: usize = 257;
+const POISSON_ROW_BATCH: usize = 16;
 
+fn smooth_2d(grid: &mut Grid2D) {
+    let n = grid.n;
     let h_sq = grid.h * grid.h;
 
-    for _ in 0..num_sweeps {
-        // Red points, then black points.
-        smooth_colour_2d(grid, n, h_sq, 0);
-
-        smooth_colour_2d(grid, n, h_sq, 1);
+    // A pre- or post-smoothing pass has two red-black sweeps. Nodes of one
+    // colour read only nodes of the opposite colour, so each update is in place.
+    for _ in 0..2 {
+        for colour in 0..2 {
+            for i in 1..n - 1 {
+                let first = 1 + ((i + 1 + colour) % 2);
+                for j in (first..n - 1).step_by(2) {
+                    let k = i * n + j;
+                    let neighbors = grid.u[k - n] + grid.u[k + n] + grid.u[k - 1] + grid.u[k + 1];
+                    grid.u[k] = 0.25 * h_sq.mul_add(grid.f[k], neighbors);
+                }
+            }
+        }
     }
 }
 
-/// Updates all interior points of one colour; they only read the opposite colour, so the
-/// updates are computed from a shared view and applied afterwards.
-fn smooth_colour_2d(
-    grid: &mut Grid2D,
-    n: usize,
-    h_sq: f64,
-    parity: usize,
+fn residual_2d(
+    grid: &Grid2D,
+    residual: &mut [f64],
+    parallel: bool,
 ) {
-    let u_view = &grid.u;
-
-    let f_view = &grid.f;
-
-    let updates: Vec<(usize, f64)> = (1..n - 1)
-        .into_par_iter()
-        .flat_map_iter(|i| {
-            (1..n - 1)
-                .filter(move |j| (i + j) % 2 == parity)
-                .map(move |j| {
-                    let u_neighbors = u_view[(i - 1) * n + j]
-                        + u_view[(i + 1) * n + j]
-                        + u_view[i * n + (j - 1)]
-                        + u_view[i * n + (j + 1)];
-
-                    (
-                        i * n + j,
-                        0.25 * h_sq.mul_add(f_view[i * n + j], u_neighbors),
-                    )
-                })
-        })
-        .collect();
-
-    for (k, v) in updates {
-        grid.u[k] = v;
-    }
-}
-
-/// 2D Residual Calculation.
-pub(crate) fn calculate_residual_2d(grid: &Grid2D) -> Grid2D {
     let n = grid.n;
-
     let h_sq_inv = 1.0 / (grid.h * grid.h);
+    let interior = &mut residual[n..n * (n - 1)];
+    let residual_row = |(i, row): (usize, &mut [f64])| {
+        let first = (i + 1) * n;
+        for (j, val) in row.iter_mut().enumerate().take(n - 1).skip(1) {
+            let k = first + j;
+            let a_u = (4.0f64.mul_add(grid.u[k], -grid.u[k - n])
+                - grid.u[k + n]
+                - grid.u[k - 1]
+                - grid.u[k + 1])
+                * h_sq_inv;
+            *val = grid.f[k] - a_u;
+        }
+    };
 
-    let mut residual_grid = Grid2D::new(n, grid.h);
-
-    residual_grid.f[n..n * (n - 1)] // Interior rows
-        .par_chunks_mut(n)
-        .enumerate()
-        .for_each(|(i_offset, row)| {
-            let i = i_offset + 1;
-
-            for (j, val) in row.iter_mut().enumerate().take(n - 1).skip(1) {
-                let a_u = (4.0f64.mul_add(grid.u[i * n + j], -grid.u[(i - 1) * n + j])
-                    - grid.u[(i + 1) * n + j]
-                    - grid.u[i * n + (j - 1)]
-                    - grid.u[i * n + (j + 1)])
-                    * h_sq_inv;
-
-                *val = grid.f[i * n + j] - a_u;
-            }
-        });
-
-    residual_grid
+    if parallel {
+        interior
+            .par_chunks_mut(n)
+            .with_min_len(POISSON_ROW_BATCH)
+            .enumerate()
+            .for_each(residual_row);
+    } else {
+        interior.chunks_mut(n).enumerate().for_each(residual_row);
+    }
 }
 
-/// 2D Restriction: Full-weighting.
-pub(crate) fn restrict_2d(fine_grid: &Grid2D) -> Grid2D {
-    let fine_n = fine_grid.n;
-
-    let coarse_n = (fine_n - 1) / 2 + 1;
-
-    let mut coarse_grid = Grid2D::new(coarse_n, fine_grid.h * 2.0);
-
-    for i in 1..coarse_n - 1 {
-        for j in 1..coarse_n - 1 {
-            let fi = 2 * i;
-
-            let fj = 2 * j;
-
-            let val = (fine_grid.f[fine_grid.idx(fi, fj)].mul_add(
-                4.0,
-                (fine_grid.f[fine_grid.idx(fi - 1, fj)]
-                    + fine_grid.f[fine_grid.idx(fi + 1, fj)]
-                    + fine_grid.f[fine_grid.idx(fi, fj - 1)]
-                    + fine_grid.f[fine_grid.idx(fi, fj + 1)])
-                    * 2.0,
-            ) + (fine_grid.f[fine_grid.idx(fi - 1, fj - 1)]
-                + fine_grid.f[fine_grid.idx(fi + 1, fj - 1)]
-                + fine_grid.f[fine_grid.idx(fi - 1, fj + 1)]
-                + fine_grid.f[fine_grid.idx(fi + 1, fj + 1)]))
-                / 16.0;
-
-            let helper = coarse_grid.idx(i, j);
-
-            coarse_grid.f[helper] = val;
-        }
-    }
-
-    coarse_grid
-}
-
-/// 2D Prolongation: Bilinear interpolation.
-pub(crate) fn prolongate_2d(coarse_grid: &Grid2D) -> Grid2D {
-    let coarse_n = coarse_grid.n;
-
-    let fine_n = 2 * (coarse_n - 1) + 1;
-
-    let mut fine_grid = Grid2D::new(fine_n, coarse_grid.h / 2.0);
-
-    for i in 0..coarse_n {
-        for j in 0..coarse_n {
-            let helper = fine_grid.idx(2 * i, 2 * j);
-
-            fine_grid.u[helper] = coarse_grid.u[coarse_grid.idx(i, j)];
-        }
-    }
-
-    for i in 0..fine_n {
-        for j in 0..fine_n {
-            if i % 2 == 1 && j % 2 == 0 {
-                let helper_a =
-                    fine_grid.u[fine_grid.idx(i - 1, j)] + fine_grid.u[fine_grid.idx(i + 1, j)];
-
-                let a_helper = fine_grid.idx(i, j);
-
-                fine_grid.u[a_helper] = 0.5 * (helper_a);
-            } else if i % 2 == 0 && j % 2 == 1 {
-                let helper_b =
-                    fine_grid.u[fine_grid.idx(i, j - 1)] + fine_grid.u[fine_grid.idx(i, j + 1)];
-
-                let b_helper = fine_grid.idx(i, j);
-
-                fine_grid.u[b_helper] = 0.5 * (helper_b);
-            } else if i % 2 == 1 && j % 2 == 1 {
-                let helper_c = fine_grid.u[fine_grid.idx(i - 1, j - 1)]
-                    + fine_grid.u[fine_grid.idx(i + 1, j - 1)]
-                    + fine_grid.u[fine_grid.idx(i - 1, j + 1)]
-                    + fine_grid.u[fine_grid.idx(i + 1, j + 1)];
-
-                let c_helper = fine_grid.idx(i, j);
-
-                fine_grid.u[c_helper] = 0.25 * (helper_c);
-            }
-        }
-    }
-
-    fine_grid
-}
-
-/// 2D V-Cycle.
-pub(crate) fn v_cycle_2d(
-    grid: &mut Grid2D,
-    level: usize,
-    max_levels: usize,
+fn restrict_2d(
+    residual: &[f64],
+    fine_n: usize,
+    coarse: &mut Grid2D,
 ) {
-    smooth_2d(grid, 2);
-
-    if level < max_levels - 1 {
-        let residual_grid = calculate_residual_2d(grid);
-
-        let mut coarse_grid = restrict_2d(&residual_grid);
-
-        v_cycle_2d(&mut coarse_grid, level + 1, max_levels);
-
-        let correction_grid = prolongate_2d(&coarse_grid);
-
-        for (u_i, &corr_i) in grid.u.iter_mut().zip(&correction_grid.u) {
-            *u_i += corr_i;
+    for i in 1..coarse.n - 1 {
+        for j in 1..coarse.n - 1 {
+            let k = 2 * (i * fine_n + j);
+            coarse.f[i * coarse.n + j] = (residual[k].mul_add(
+                4.0,
+                (residual[k - fine_n] + residual[k + fine_n] + residual[k - 1] + residual[k + 1])
+                    * 2.0,
+            ) + (residual[k - fine_n - 1]
+                + residual[k + fine_n - 1]
+                + residual[k - fine_n + 1]
+                + residual[k + fine_n + 1]))
+                / 16.0;
         }
     }
-
-    smooth_2d(grid, 2);
 }
 
-/// Solves the 2D Poisson equation `-∇²u = f` using the multigrid method.
+// Preserve the interpolation grouping and rounding of the fixed V-cycle.
+#[allow(clippy::manual_midpoint)]
+fn correct_2d(
+    fine: &mut Grid2D,
+    coarse: &Grid2D,
+    parallel: bool,
+) {
+    let n = fine.n;
+    let w = coarse.n;
+    let interior = &mut fine.u[n..n * (n - 1)];
+    let correct_row = |(i, row): (usize, &mut [f64])| {
+        let i = i + 1;
+        let base = (i / 2) * w;
+        for (j, value) in row.iter_mut().enumerate().take(n - 1).skip(1) {
+            let k = base + j / 2;
+            *value += match (i % 2, j % 2) {
+                | (0, 0) => coarse.u[k],
+                | (1, 0) => 0.5 * (coarse.u[k] + coarse.u[k + w]),
+                | (0, 1) => 0.5 * (coarse.u[k] + coarse.u[k + 1]),
+                | _ => {
+                    0.25 * (coarse.u[k] + coarse.u[k + w] + coarse.u[k + 1] + coarse.u[k + w + 1])
+                },
+            };
+        }
+    };
+    if parallel {
+        interior
+            .par_chunks_mut(n)
+            .with_min_len(POISSON_ROW_BATCH)
+            .enumerate()
+            .for_each(correct_row);
+    } else {
+        interior.chunks_mut(n).enumerate().for_each(correct_row);
+    }
+}
+
+fn v_cycle_2d(
+    grid: &mut Grid2D,
+    lower_levels: &mut [Grid2D],
+    residual: &mut [f64],
+    can_split: bool,
+) {
+    let parallel = can_split && grid.n >= PARALLEL_POISSON_SIDE;
+    smooth_2d(grid);
+
+    if let Some((coarse, rest)) = lower_levels.split_first_mut() {
+        residual_2d(grid, residual, parallel);
+        restrict_2d(residual, grid.n, coarse);
+        coarse.u.fill(0.0);
+        v_cycle_2d(coarse, rest, residual, can_split);
+        correct_2d(grid, coarse, parallel);
+    }
+
+    smooth_2d(grid);
+}
+
+/// Solves `-∇²u = f` on the unit square by running `num_cycles` multigrid V-cycles.
+///
+/// Input and output are both flattened with x varying fastest. All boundary
+/// values are fixed to zero, and source entries on those boundaries are ignored.
+/// With zero cycles, or with a boundary-only 2×2 grid, the result is all zeros.
 ///
 /// # Errors
 ///
-/// This function will return an error if the grid size `n` is not of the form `2^k + 1`.
+/// Returns an error if `n` is not of the form `2^k + 1` for a nonnegative integer
+/// `k`, or if `f` does not have exactly `n * n` entries.
 pub fn solve_poisson_2d_multigrid(
     n: usize,
     f: &[f64],
     num_cycles: usize,
 ) -> Result<Vec<f64>, String> {
-    let num_levels: usize = ((n as f64 - 1.0).log2() as i64).try_into().unwrap_or(0);
-
-    if (2_usize.pow(num_levels as u32) + 1) != n {
-        return Err("Grid size `n` \
-                    must be of the \
-                    form 2^k + 1."
-            .to_string());
+    if n < 2 || !(n - 1).is_power_of_two() {
+        return Err("Grid size `n` must be of the form 2^k + 1.".into());
+    }
+    if n.checked_mul(n) != Some(f.len()) {
+        return Err("`f` must have n^2 entries.".into());
+    }
+    if n == 2 || num_cycles == 0 {
+        return Ok(vec![0.0; f.len()]);
     }
 
-    let mut finest_grid = Grid2D::new(n, 1.0 / (n - 1) as f64);
+    let mut grid = Grid2D::new(n, 1.0 / (n - 1) as f64);
+    grid.f.copy_from_slice(f);
 
-    finest_grid.f.copy_from_slice(f);
+    let levels = (n - 1).trailing_zeros() as usize;
+    let mut lower_levels: Vec<Grid2D> = (1..levels)
+        .map(|level| {
+            let side = ((n - 1) >> level) + 1;
+            Grid2D::new(side, 1.0 / (side - 1) as f64)
+        })
+        .collect();
+    let mut residual = if lower_levels.is_empty() {
+        Vec::new()
+    } else {
+        vec![0.0; f.len()]
+    };
+    let can_split = crate::execution::should_split(n, PARALLEL_POISSON_SIDE);
 
     for _ in 0..num_cycles {
-        v_cycle_2d(&mut finest_grid, 0, num_levels);
+        v_cycle_2d(&mut grid, &mut lower_levels, &mut residual, can_split);
     }
 
-    Ok(finest_grid.u)
+    Ok(grid.u)
 }
 
 /// Solves a 2D Poisson problem with a known analytical solution.

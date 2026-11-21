@@ -1,3 +1,5 @@
+//! Hermite N-body integrators with block time steps, PN terms and KS binaries.
+//!
 //! # Hermite N-body integrators with individual block time steps and post-Newtonian gravity
 //!
 //! Direct-summation gravity in 3-D (`G` explicit, optional Plummer softening) integrated with
@@ -42,16 +44,50 @@ pub enum HermiteOrder {
 pub enum StepPolicy {
     /// One shared constant step for all particles.
     Shared(f64),
-    /// Individual block steps, powers of two of `dt_max` (a power of two itself),
-    /// accuracy parameter `eta`, smallest allowed step `dt_min`.
+    /// Individual block steps on the power-of-two lattice within `[dt_min, dt_max]`.
     Block {
         /// Accuracy parameter of the Aarseth criterion.
         eta: f64,
-        /// Largest step (rounded down to a power of two).
+        /// Upper bound, rounded down to a power of two.
         dt_max: f64,
-        /// Smallest step.
+        /// Lower bound, rounded up to a power of two.
         dt_min: f64,
     },
+}
+
+impl StepPolicy {
+    fn step_bounds(self) -> Result<Self, String> {
+        match self {
+            | Self::Shared(h) if h.is_finite() && h > 0.0 => Ok(self),
+            | Self::Shared(_) => Err("shared step must be finite and positive".into()),
+            | Self::Block { eta, dt_max, dt_min } => {
+                if !eta.is_finite()
+                    || eta <= 0.0
+                    || !dt_max.is_finite()
+                    || !dt_min.is_finite()
+                    || dt_min <= 0.0
+                    || dt_min > dt_max
+                {
+                    return Err("invalid block step parameters".into());
+                }
+                let lower = pow2_floor(dt_min);
+                let lower = if lower < dt_min {
+                    2.0 * lower
+                } else {
+                    lower
+                };
+                let upper = pow2_floor(dt_max);
+                if lower > upper {
+                    return Err("block step interval contains no power of two".into());
+                }
+                Ok(Self::Block {
+                    eta,
+                    dt_max: upper,
+                    dt_min: lower,
+                })
+            },
+        }
+    }
 }
 
 /// Configuration of a [`HermiteSystem`].
@@ -448,9 +484,16 @@ fn pair_snap(
     scale(s, f)
 }
 
-/// Largest power of two not larger than `x` (`x > 0`).
-fn pow2_floor(x: f64) -> f64 {
-    2.0_f64.powf(x.log2().floor())
+/// Largest representable power of two not larger than finite positive `x`.
+const fn pow2_floor(x: f64) -> f64 {
+    let bits = x.to_bits();
+    let exponent = bits & 0x7ff0_0000_0000_0000;
+    if exponent == 0 {
+        // For a subnormal, the highest occupied significand bit is the power of two.
+        f64::from_bits(1_u64 << bits.ilog2())
+    } else {
+        f64::from_bits(exponent)
+    }
 }
 
 /// Predicted state of a particle at time `t`.
@@ -467,8 +510,8 @@ impl HermiteSystem {
     /// Creates a system (all particles at time `t0`) and evaluates the initial derivatives.
     ///
     /// # Errors
-    /// Fails for mismatched array lengths, fewer than two particles, a non-positive step
-    /// parameter, or PN combined with softening or the sixth-order scheme.
+    /// Fails for mismatched array lengths, fewer than two particles, a non-finite initial
+    /// time, invalid step parameters, or a block interval with no power of two.
     pub fn new(
         mass: Vec<f64>,
         pos: Vec<V3>,
@@ -486,16 +529,8 @@ impl HermiteSystem {
         if n < 2 || pos.len() != n || vel.len() != n {
             return Err("need at least two particles with matching arrays".into());
         }
-        match policy {
-            | StepPolicy::Shared(h) if h <= 0.0 => {
-                return Err("shared step must be positive".into());
-            },
-            | StepPolicy::Block { eta, dt_max, dt_min }
-                if eta <= 0.0 || dt_max <= 0.0 || dt_min <= 0.0 || dt_min > dt_max =>
-            {
-                return Err("invalid block step parameters".into());
-            },
-            | _ => {},
+        if !t0.is_finite() {
+            return Err("initial Hermite time must be finite".into());
         }
         let z = vec![[0.0; 3]; n];
         let mut s = Self {
@@ -549,6 +584,7 @@ impl HermiteSystem {
     }
 
     fn initialise(&mut self) -> Result<(), String> {
+        let policy = self.policy.step_bounds()?;
         let n = self.mass.len();
         let t = self.time;
         let pred: Vec<Predicted> = (0..n)
@@ -573,9 +609,8 @@ impl HermiteSystem {
             self.jerkn[i] = out[k].4;
             self.t_last[i] = t;
         }
-        let live: Vec<usize> = (0..n).filter(|&i| !self.is_dead(i)).collect();
-        for i in live {
-            self.dt[i] = match self.policy {
+        for i in all {
+            self.dt[i] = match policy {
                 | StepPolicy::Shared(h) => h,
                 | StepPolicy::Block { eta, dt_max, dt_min } => {
                     let (a, j) = (norm(self.acc[i]), norm(self.jerk[i]));
@@ -584,23 +619,19 @@ impl HermiteSystem {
                     } else {
                         dt_max
                     };
-                    Self::quantise(guess.min(dt_max), dt_max, dt_min)
+                    Self::quantise(guess.min(dt_max), dt_min, dt_max)
                 },
             };
         }
         Ok(())
     }
 
-    fn quantise(
+    const fn quantise(
         proposed: f64,
-        dt_max: f64,
         dt_min: f64,
+        dt_max: f64,
     ) -> f64 {
-        let mut dt = pow2_floor(dt_max);
-        while dt > proposed && dt > dt_min {
-            dt *= 0.5;
-        }
-        dt
+        pow2_floor(proposed.max(dt_min).min(dt_max))
     }
 
     /// Prediction of particle `i` to time `t` (Taylor polynomial of its stored derivatives).
@@ -1015,14 +1046,19 @@ impl HermiteSystem {
     /// Advances the system by one block: the particles that are due at the earliest end time.
     ///
     /// # Errors
+    /// Rejects invalid step bounds and clocks that cannot advance to a finite time.
     /// Propagates binary propagation errors.
     pub fn step(&mut self) -> Result<(), String> {
+        let policy = self.policy.step_bounds()?;
         let n = self.mass.len();
         let t_new = self.next_time();
+        if !t_new.is_finite() || !self.time.is_finite() || t_new <= self.time {
+            return Err("Hermite step cannot advance to a later finite time".into());
+        }
         let active: Vec<usize> = (0..n)
             .filter(|&i| {
-                !self.is_dead(i)
-                    && (self.t_last[i] + self.dt[i] - t_new).abs() <= 1e-12 * self.dt[i]
+                let end = self.t_last[i] + self.dt[i];
+                end.is_finite() && (end - t_new).abs() <= 1e-12 * self.dt[i]
             })
             .collect();
         let mut pred: Vec<Predicted> = (0..n)
@@ -1109,7 +1145,7 @@ impl HermiteSystem {
             self.jerkn[i] = jn;
             self.t_last[i] = t_new;
             self.updates += 1;
-            self.dt[i] = self.next_dt(i, t_new);
+            self.dt[i] = self.next_dt(i, t_new, policy);
         }
         self.interactions += (active.len() * n) as u64;
         self.time = t_new;
@@ -1120,8 +1156,9 @@ impl HermiteSystem {
         &self,
         i: usize,
         t_new: f64,
+        policy: StepPolicy,
     ) -> f64 {
-        match self.policy {
+        match policy {
             | StepPolicy::Shared(h) => h,
             | StepPolicy::Block { eta, dt_max, dt_min } => {
                 let (a, j, s, c) = (
@@ -1140,30 +1177,31 @@ impl HermiteSystem {
                     dt_max
                 };
                 let old = self.dt[i];
-                let mut dt = old;
                 if proposed < old {
-                    while dt > proposed && dt > dt_min {
-                        dt *= 0.5;
-                    }
-                } else if proposed >= 2.0 * old
-                    && 2.0 * old <= pow2_floor(dt_max)
-                    && (t_new / (2.0 * old)).fract() == 0.0
-                {
-                    dt = 2.0 * old;
+                    return Self::quantise(proposed, dt_min, dt_max);
                 }
-                dt.max(dt_min)
+                let doubled = 2.0 * old;
+                if proposed >= doubled && doubled <= dt_max && (t_new / doubled).fract() == 0.0 {
+                    doubled.max(dt_min)
+                } else {
+                    old.max(dt_min).min(dt_max)
+                }
             },
         }
     }
 
-    /// Runs blocks until the next block would end after `t_end`.
+    /// Runs complete blocks until the next block would end after `t_end`.
+    /// To query a state between block times, use [`Self::state_at`].
     ///
     /// # Errors
-    /// Propagates [`step`](Self::step) errors.
+    /// Rejects a non-finite end time and propagates [`step`](Self::step) errors.
     pub fn advance_to(
         &mut self,
         t_end: f64,
     ) -> Result<(), String> {
+        if !t_end.is_finite() {
+            return Err("Hermite end time must be finite".into());
+        }
         while self.next_time() <= t_end {
             self.step()?;
         }

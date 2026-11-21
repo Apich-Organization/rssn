@@ -23,8 +23,8 @@
 //! marks independently of Brownian refinement, stops continuous integration at
 //! each arrival, then applies its jump. Rejection changes neither arrivals nor
 //! marks. Constant-mark compensation and an explicit expectation callback are
-//! available. JumpPath node values are post-jump; chord interpolation across a
-//! jump is not a reconstruction of its left limit.
+//! available. [`JumpPath`] stores post-jump states. Chord interpolation
+//! approaches the post-jump value and can differ from the jump's left limit.
 //!
 //! Non-Gaussian stable noise supports Itô Euler, drift-implicit Euler and theta
 //! stepping, on fixed/uniform grids and adaptive schedules. Brownian Milstein or
@@ -43,8 +43,10 @@
 
 mod adaptive_ext;
 
+use crate::kernels::online_stats::OnlineCovariance;
 use crate::kernels::random::Rng;
 use crate::kernels::sde as kernel;
+
 use std::cell::Cell;
 use std::cell::RefCell;
 
@@ -1516,6 +1518,61 @@ impl JumpDistribution {
         &self,
         stream: &mut Stream,
     ) -> Result<Vec<f64>, SdeError> {
+        let mut mark = self.allocate_mark()?;
+        self.fill_mark(stream, &mut mark)?;
+        Ok(mark)
+    }
+
+    /// Fills caller-owned storage with consecutive jump marks, in sample-major order.
+    ///
+    /// Each mark has the same component count as [`Self::sample`]. Fills
+    /// consume the same stream draws as repeated calls to that method, and
+    /// an empty output is a no-op. The mark shape is checked once per
+    /// nonempty batch.
+    ///
+    /// # Errors
+    /// Invalid parameters, output length not divisible by the mark dimension,
+    /// or a numerical failure while sampling. A numerical failure can leave
+    /// partial output and advances the stream through the failing draw.
+    pub fn fill_marks(
+        &self,
+        stream: &mut Stream,
+        output: &mut [f64],
+    ) -> Result<(), SdeError> {
+        if output.is_empty() {
+            return Ok(());
+        }
+        let width = self.validated_mark_width()?;
+        if !output.len().is_multiple_of(width) {
+            return Err(SdeError::shape(
+                "jump sample output length must be a multiple of the mark dimension",
+            ));
+        }
+        for mark in output.chunks_exact_mut(width) {
+            self.fill_mark(stream, mark)?;
+        }
+        Ok(())
+    }
+
+    fn allocate_mark(&self) -> Result<Vec<f64>, SdeError> {
+        let width = self.validated_mark_width()?;
+        let mut mark = Vec::new();
+        mark.try_reserve_exact(width)
+            .map_err(|_| SdeError::invalid("jump mark dimension exceeds available storage"))?;
+        mark.resize(width, 0.0);
+        Ok(mark)
+    }
+
+    const fn mark_width(&self) -> usize {
+        match self {
+            | Self::Constant(mark)
+            | Self::Normal { mean: mark, .. }
+            | Self::Uniform { low: mark, .. } => mark.len(),
+            | Self::DoubleExponential { dim, .. } | Self::AlphaStable { dim, .. } => *dim,
+        }
+    }
+
+    fn validated_mark_width(&self) -> Result<usize, SdeError> {
         match self {
             | Self::Constant(z) => {
                 if z.is_empty() || !z.iter().all(|v| v.is_finite()) {
@@ -1523,7 +1580,6 @@ impl JumpDistribution {
                         "constant jump mark must be non-empty and finite",
                     ));
                 }
-                Ok(z.clone())
             },
             | Self::Normal { mean, std } => {
                 if mean.is_empty()
@@ -1533,11 +1589,6 @@ impl JumpDistribution {
                 {
                     return Err(SdeError::invalid("invalid Normal jump mark parameters"));
                 }
-                Ok(mean
-                    .iter()
-                    .zip(std)
-                    .map(|(&m, &s)| m + s * stream.next_normal())
-                    .collect())
             },
             | Self::DoubleExponential {
                 p_up,
@@ -1557,17 +1608,6 @@ impl JumpDistribution {
                         "invalid DoubleExponential (Kou) jump parameters",
                     ));
                 }
-                let mut out = Vec::with_capacity(*dim);
-                for _ in 0..*dim {
-                    let u_dir = stream.next_unit();
-                    let u_exp = stream.next_unit().max(f64::MIN_POSITIVE);
-                    if u_dir < *p_up {
-                        out.push(-u_exp.ln() / *eta_up);
-                    } else {
-                        out.push(u_exp.ln() / *eta_down);
-                    }
-                }
-                Ok(out)
             },
             | Self::Uniform { low, high } => {
                 if low.is_empty()
@@ -1577,31 +1617,71 @@ impl JumpDistribution {
                 {
                     return Err(SdeError::invalid("invalid Uniform jump parameters"));
                 }
-                Ok(low
-                    .iter()
-                    .zip(high)
-                    .map(|(&l, &h)| l + (h - l) * stream.next_unit())
-                    .collect())
+            },
+            | Self::AlphaStable { dim, .. } => {
+                if *dim == 0 {
+                    return Err(SdeError::invalid("AlphaStable jump dimension is zero"));
+                }
+            },
+        }
+        Ok(self.mark_width())
+    }
+
+    // The caller has checked all mark widths and the non-stable parameters.
+    // Stable-law validation stays in the kernel's shared sampler.
+    fn fill_mark(
+        &self,
+        stream: &mut Stream,
+        output: &mut [f64],
+    ) -> Result<(), SdeError> {
+        match self {
+            | Self::Constant(mark) => output.copy_from_slice(mark),
+            | Self::Normal { mean, std } => {
+                for ((value, &mean), &std) in output.iter_mut().zip(mean).zip(std) {
+                    *value = mean + std * stream.next_normal();
+                }
+            },
+            | Self::DoubleExponential {
+                p_up,
+                eta_up,
+                eta_down,
+                ..
+            } => {
+                for value in output {
+                    let u_dir = stream.next_unit();
+                    let u_exp = stream.next_unit().max(f64::MIN_POSITIVE);
+                    *value = if u_dir < *p_up {
+                        -u_exp.ln() / *eta_up
+                    } else {
+                        u_exp.ln() / *eta_down
+                    };
+                }
+            },
+            | Self::Uniform { low, high } => {
+                for ((value, &low), &high) in output.iter_mut().zip(low).zip(high) {
+                    let draw = stream.next_unit();
+                    let span = high - low;
+                    *value = if span.is_finite() {
+                        low + span * draw
+                    } else {
+                        // The endpoints have opposite signs; weight them before subtracting.
+                        low * (1.0 - draw) + high * draw
+                    };
+                }
             },
             | Self::AlphaStable {
                 alpha,
                 beta,
                 scale,
                 location,
-                dim,
+                ..
             } => {
-                if *dim == 0 {
-                    return Err(SdeError::invalid("AlphaStable jump dimension is zero"));
+                for value in output {
+                    *value = sample_alpha_stable(stream, *alpha, *beta, *scale, *location)?;
                 }
-                let mut out = Vec::with_capacity(*dim);
-                for _ in 0..*dim {
-                    out.push(sample_alpha_stable(
-                        stream, *alpha, *beta, *scale, *location,
-                    )?);
-                }
-                Ok(out)
             },
         }
+        Ok(())
     }
 
     /// Analytical mean mark `E[Z]` when finite and known (used for compensated Poisson jumps).
@@ -1768,9 +1848,19 @@ pub fn levy_increments(
 /// Supports `EulerMaruyama`, `Milstein`, `HeunStratonovich`, `DriftImplicitEuler`,
 /// `ThetaMaruyama`, and `DriftImplicitMilstein` for the continuous diffusion part.
 ///
+/// A fixed or uniform schedule allows up to 1,048,576 integration steps and
+/// simulated jumps each. Stored path and Wiener arrays each allow up to
+/// 8,388,608 scalar values. The same value limit also bounds the state and
+/// mark components processed across all jumps. The expected jump count
+/// must fit the event budget before sampling. If the realized count exceeds
+/// the budget, the solver stops before applying that step's jumps.
+///
 /// # Errors
 ///
-/// Returns [`SdeError`] if parameters or shapes are invalid or the state becomes non-finite.
+/// [`SdeError::Invalid`] for invalid parameters or a non-finite per-step
+/// Poisson mean, [`SdeError::StepLimit`] for an exceeded work budget,
+/// [`SdeError::Shape`] for invalid shapes, or [`SdeError::NonFinite`] for a
+/// non-finite state.
 pub fn integrate_jump_diffusion<A, G, J>(
     mut drift: A,
     mut diffusion: G,
@@ -1805,6 +1895,25 @@ where
             ));
         },
     };
+    if !dt.is_finite() {
+        return Err(SdeError::invalid(
+            "fixed jump-diffusion step size must be finite",
+        ));
+    }
+    let mean = jump_spec.intensity * dt;
+    if !mean.is_finite() {
+        return Err(SdeError::invalid(
+            "fixed jump-diffusion per-step Poisson mean must be finite",
+        ));
+    }
+    let points = fixed_jump_storage(steps, n, noise)?;
+    let jump_width = n.max(jump_spec.distribution.mark_width());
+    let jump_limit = FIXED_JUMP_COUNT_LIMIT.min(FIXED_JUMP_VALUE_LIMIT / jump_width);
+    if mean * steps as f64 > jump_limit as f64 {
+        return Err(SdeError::StepLimit(format!(
+            "fixed jump-diffusion expected jump count exceeds its budget of {jump_limit}"
+        )));
+    }
 
     // c(E[Z]) is not E[c(Z)] for a nonlinear jump coefficient. Only constant
     // marks have an exact compensator without an additional expectation callback.
@@ -1821,10 +1930,6 @@ where
         None
     };
 
-    let increments = wiener(options.seed, noise, steps, dt);
-    // Use a distinct deterministic seed stream for the Poisson jump counts and marks
-    let mut jump_stream = Stream::new(ensemble_seed(options.seed, 0x4A55_4D50));
-    let mut area_stream = Rng::new(ensemble_seed(options.seed, 0x4152_4541));
     let terms = if options.terms == 0 {
         default_terms(dt)
     } else {
@@ -1843,12 +1948,17 @@ where
         ));
     }
 
+    let increments = wiener(options.seed, noise, steps, dt);
+    // Use a distinct deterministic seed stream for the Poisson jump counts and marks.
+    let mut jump_stream = Stream::new(ensemble_seed(options.seed, 0x4A55_4D50));
+    let mut area_stream = Rng::new(ensemble_seed(options.seed, 0x4152_4541));
 
-    let mut ts = Vec::with_capacity(steps + 1);
-    let mut ys = Vec::with_capacity(steps + 1);
+    let mut ts = Vec::with_capacity(points);
+    let mut ys = Vec::with_capacity(points);
     let mut jump_counts = Vec::with_capacity(steps);
     let mut total_jumps = 0usize;
     let mut nfev = 0usize;
+    let mut mark = Vec::new();
 
     let mut y = y0.to_vec();
     ts.push(options.t0);
@@ -1904,13 +2014,18 @@ where
         };
 
         // Compound Poisson jumps on [t_curr, t_next]
-        let n_jumps = sample_poisson(&mut jump_stream, jump_spec.intensity * dt);
+        let n_jumps = sample_poisson(&mut jump_stream, mean);
+        total_jumps = checked_fixed_jump_count(total_jumps, n_jumps, jump_limit)?;
         jump_counts.push(n_jumps);
-        total_jumps += n_jumps;
 
+        if n_jumps != 0 && mark.is_empty() {
+            mark = jump_spec.distribution.allocate_mark()?;
+        }
         for _ in 0..n_jumps {
-            let z = jump_spec.distribution.sample(&mut jump_stream)?;
-            let delta_jump = jump_coeff(t_curr, &y_cont, &z)?;
+            jump_spec
+                .distribution
+                .fill_mark(&mut jump_stream, &mut mark)?;
+            let delta_jump = jump_coeff(t_curr, &y_cont, &mark)?;
             if delta_jump.len() != n {
                 return Err(SdeError::Shape(format!(
                     "jump_coeff returned {} values for state of {n}",
@@ -1954,11 +2069,81 @@ where
     })
 }
 
+const FIXED_JUMP_COUNT_LIMIT: usize = 1_048_576;
+const FIXED_JUMP_VALUE_LIMIT: usize = 8_388_608;
+
+#[allow(
+    clippy::single_call_fn,
+    reason = "Check fixed jump trajectory dimensions before allocating Wiener samples."
+)]
+fn fixed_jump_storage(
+    steps: usize,
+    state: usize,
+    noise: usize,
+) -> Result<usize, SdeError> {
+    if steps > FIXED_JUMP_COUNT_LIMIT {
+        return Err(SdeError::StepLimit(format!(
+            "fixed jump-diffusion step count exceeds its budget of {FIXED_JUMP_COUNT_LIMIT}"
+        )));
+    }
+    let points = steps + 1;
+    if steps
+        .checked_mul(noise)
+        .is_none_or(|len| len > FIXED_JUMP_VALUE_LIMIT)
+        || points
+            .checked_mul(state)
+            .is_none_or(|len| len > FIXED_JUMP_VALUE_LIMIT)
+    {
+        return Err(SdeError::StepLimit(format!(
+            "fixed jump-diffusion path or Wiener samples exceed the value budget of {FIXED_JUMP_VALUE_LIMIT}"
+        )));
+    }
+    Ok(points)
+}
+
+#[allow(
+    clippy::single_call_fn,
+    reason = "Validate a sampled count before allocating or running any jump callback."
+)]
+fn checked_fixed_jump_count(
+    total: usize,
+    sampled: usize,
+    limit: usize,
+) -> Result<usize, SdeError> {
+    total
+        .checked_add(sampled)
+        .filter(|&count| count <= limit)
+        .ok_or_else(|| {
+            SdeError::StepLimit(format!(
+                "fixed jump-diffusion sampled jump count exceeds its budget of {limit}"
+            ))
+        })
+}
+
+#[cfg(test)]
+mod fixed_jump_count_tests {
+    use super::SdeError;
+    use super::checked_fixed_jump_count;
+
+    #[test]
+    fn sampled_counts_can_reach_the_limit_but_never_saturate_or_wrap() {
+        assert_eq!(checked_fixed_jump_count(90, 10, 100), Ok(100));
+        assert_eq!(checked_fixed_jump_count(100, 0, 100), Ok(100));
+        for (total, sampled) in [(0, usize::MAX), (1, usize::MAX), (99, 2), (100, 1)] {
+            assert!(matches!(
+                checked_fixed_jump_count(total, sampled, 100),
+                Err(SdeError::StepLimit(_))
+            ));
+        }
+    }
+}
+
 /// Integrate a jump diffusion with an explicit compensator.
 ///
 /// Integrate a compensated jump diffusion with an explicit expected jump coefficient.
-/// `expected_jump(t, y)` must return E[c(t, y, Z)], not c(t, y, E[Z]).
-/// This supports nonlinear coefficients and any mark distribution with a finite expectation.
+/// `expected_jump(t, y)` must return the expected coefficient `E[c(t, y, Z)]`.
+/// For nonlinear coefficients, evaluate the coefficient under the mark distribution
+/// before taking the expectation.
 ///
 /// # Errors
 /// Invalid integration inputs, callback shapes, or non-finite expected coefficients.
@@ -2156,10 +2341,11 @@ where
 #[derive(Clone, Copy, Debug)]
 pub struct MlmcOptions {
     /// Time-stepping scheme used on each level (`EulerMaruyama`, `Milstein`,
-    /// `DriftImplicitEuler`, `ThetaMaruyama`, `DriftImplicitMilstein`, `HeunStratonovich`,
-    /// or `SrkPlaten`).
+    /// `MilsteinStratonovich`, `HeunStratonovich`, `SrkPlaten`, `DriftImplicitEuler`,
+    /// `ThetaMaruyama`, or `DriftImplicitMilstein`).
     pub method: Method,
-    /// Noise structure (`Diagonal` or `General`).
+    /// Commutative noise, either [`Structure::Diagonal`] or
+    /// [`Structure::General`] with `commutative: true`.
     pub structure: Structure,
     /// Base RNG seed.
     pub seed: u64,
@@ -2173,9 +2359,9 @@ pub struct MlmcOptions {
     pub min_level: usize,
     /// Maximum hierarchy depth `L <= max_level`.
     pub max_level: usize,
-    /// Initial warmup samples per level used to estimate level variances `V_l`.
+    /// Initial warmup samples per level (at least two) used to estimate level variances `V_l`.
     pub warmup_samples: usize,
-    /// Maximum samples per level cap (guards against runaway allocations in tests).
+    /// Maximum samples per level, including warmup. Must be at least `warmup_samples`.
     pub max_samples_per_level: usize,
     /// Target root-mean-square error `\varepsilon > 0`.
     pub target_rmse: f64,
@@ -2248,10 +2434,16 @@ where
 {
     let states = match method {
         | Method::EulerMaruyama => {
-            kernel::euler_maruyama(drift, diffusion, noise, t0, dt, y0, increments)
-                .map_err(SdeError::from)?
+            return kernel::euler_maruyama_terminal(
+                drift, diffusion, noise, t0, dt, y0, increments,
+            )
+            .map_err(SdeError::from);
         },
-        | Method::Milstein | Method::MilsteinNoncommutative => {
+        | Method::Milstein => {
+            return kernel::milstein_terminal(drift, diffusion, noise, t0, dt, y0, increments)
+                .map_err(SdeError::from);
+        },
+        | Method::MilsteinNoncommutative => {
             kernel::milstein(drift, diffusion, noise, t0, dt, y0, increments)
                 .map_err(SdeError::from)?
         },
@@ -2310,6 +2502,32 @@ where
         .ok_or_else(|| SdeError::invalid("empty trajectory in MLMC"))
 }
 
+struct MlmcMoments {
+    origin: f64,
+    statistics: OnlineCovariance,
+}
+
+impl MlmcMoments {
+    fn new() -> Result<Self, SdeError> {
+        Ok(Self {
+            origin: 0.0,
+            statistics: OnlineCovariance::new(1)
+                .map_err(|error| SdeError::invalid(error.to_string()))?,
+        })
+    }
+
+    const fn samples(&self) -> usize {
+        // The only insertion sites check the per-level usize sample cap.
+        self.statistics.count() as usize
+    }
+
+    fn mean(&self) -> f64 {
+        self.statistics
+            .mean()
+            .map_or(self.origin, |mean| self.origin + mean[0])
+    }
+}
+
 /// Estimate a terminal SDE expectation with multilevel Monte Carlo.
 ///
 /// Estimates the expected value `E[payoff(X_{t1})]` of a terminal functional of an
@@ -2317,10 +2535,15 @@ where
 /// method with coupled fine/coarse Brownian paths (`\Delta W^{(c)}_k = \Delta W^{(f)}_{2k} + \Delta W^{(f)}_{2k+1}`)
 /// and optimal sample allocation `N_l \propto \sqrt{V_l / C_l}`.
 ///
+/// Each (level, sample index) draws from its own deterministic seeded stream.
+/// A coupled fine/coarse pair shares that stream. The estimates for a given seed
+/// may differ from versions that reused streams across levels.
+///
 /// # Errors
 ///
 /// Returns [`SdeError`] if options or callback dimensions are invalid or if any
-/// simulated trajectory becomes non-finite.
+/// simulated trajectory becomes non-finite. Returns [`SdeError::StepLimit`] if cancelled
+/// at a checkpoint between solves and payoff evaluations.
 pub fn mlmc<A, G, P>(
     drift: A,
     diffusion: G,
@@ -2345,6 +2568,8 @@ where
         || options.target_rmse <= 0.0
         || !options.target_rmse.is_finite()
         || options.max_level < options.min_level
+        || options.warmup_samples < 2
+        || options.max_samples_per_level < options.warmup_samples
     {
         return Err(SdeError::invalid("invalid MlmcOptions parameters"));
     }
@@ -2379,29 +2604,33 @@ where
 
     let span = options.t1 - options.t0;
     let max_lv = options.max_level;
-    let mut n_samples = vec![0usize; max_lv + 1];
-    let mut sum_y = vec![0.0f64; max_lv + 1];
-    let mut sum_y2 = vec![0.0f64; max_lv + 1];
+    let mut levels = (0..=max_lv)
+        .map(|_| MlmcMoments::new())
+        .collect::<Result<Vec<_>, _>>()?;
     let mut total_cost = 0usize;
 
+    let checkpoint = || {
+        crate::cancellation::checkpoint().map_err(|error| SdeError::StepLimit(error.to_string()))
+    };
     let sample_level_batch = |level: usize,
                               count: usize,
-                              start_idx: usize,
-                              payoff: &mut P|
-     -> Result<(f64, f64, usize), SdeError> {
+                              payoff: &mut P,
+                              moments: &mut MlmcMoments|
+     -> Result<usize, SdeError> {
+        let start_idx = moments.samples();
         let fine_steps = options.base_steps * (1usize << level);
         let dt_fine = span / fine_steps as f64;
-        let mut s1 = 0.0f64;
-        let mut s2 = 0.0f64;
         let mut cost = 0usize;
 
         for idx in start_idx..start_idx + count {
-            let path_seed = ensemble_seed(
-                options
-                    .seed
-                    .wrapping_add((level as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15)),
-                idx,
-            );
+            checkpoint()?;
+            // Levels fit in six bits. Reserve those bits in the sample key
+            // so distinct level/sample pairs cannot feed the same stream.
+            let sample_key = idx
+                .checked_mul(64)
+                .and_then(|key| key.checked_add(level))
+                .ok_or_else(|| SdeError::invalid("MLMC sample stream index overflows"))?;
+            let path_seed = ensemble_seed(options.seed, sample_key);
             let fine_inc = wiener(path_seed, noise, fine_steps, dt_fine);
             let y_fine = simulate_terminal_with_increments(
                 &drift_fn,
@@ -2416,7 +2645,9 @@ where
             if let Some(err) = adapters.failure() {
                 return Err(err);
             }
+            checkpoint()?;
             let p_fine = payoff(&y_fine)?;
+            checkpoint()?;
             if !p_fine.is_finite() {
                 return Err(SdeError::NonFinite(
                     "MLMC payoff returned non-finite".into(),
@@ -2451,7 +2682,9 @@ where
                 if let Some(err) = adapters.failure() {
                     return Err(err);
                 }
+                checkpoint()?;
                 let p_coarse = payoff(&y_coarse)?;
+                checkpoint()?;
                 if !p_coarse.is_finite() {
                     return Err(SdeError::NonFinite(
                         "MLMC payoff returned non-finite".into(),
@@ -2460,21 +2693,24 @@ where
                 cost += fine_steps + coarse_steps;
                 p_fine - p_coarse
             };
-            s1 += diff_val;
-            s2 += diff_val * diff_val;
+            // Center at the first observed payoff difference. This keeps the
+            // running mean precise when the payoff has a large common offset.
+            if idx == 0 {
+                moments.origin = diff_val;
+            }
+            moments
+                .statistics
+                .push(&[diff_val - moments.origin])
+                .map_err(|error| SdeError::NonFinite(error.to_string()))?;
         }
-        Ok((s1, s2, cost))
+        Ok(cost)
     };
 
-    let warmup = options.warmup_samples.max(10);
+    let warmup = options.warmup_samples;
     let mut active_max_l = options.min_level.min(max_lv);
 
-    for l in 0..=active_max_l {
-        let (s1, s2, c) = sample_level_batch(l, warmup, 0, &mut payoff)?;
-        n_samples[l] += warmup;
-        sum_y[l] += s1;
-        sum_y2[l] += s2;
-        total_cost += c;
+    for (l, moments) in levels.iter_mut().enumerate().take(active_max_l + 1) {
+        total_cost += sample_level_batch(l, warmup, &mut payoff, moments)?;
     }
 
     loop {
@@ -2484,9 +2720,10 @@ where
         let mut sum_sqrt_vc = 0.0f64;
 
         for l in 0..=active_max_l {
-            let nl = n_samples[l] as f64;
-            let mean = sum_y[l] / nl;
-            let var = ((sum_y2[l] / nl) - mean * mean).max(0.0);
+            let var = levels[l]
+                .statistics
+                .population_covariance()
+                .map_or(0.0, |values| values[0]);
             variances[l] = var;
             let fine_steps = (options.base_steps * (1usize << l)) as f64;
             costs[l] = if l == 0 {
@@ -2502,21 +2739,18 @@ where
         for l in 0..=active_max_l {
             let target_nl =
                 ((2.0 / eps2) * (variances[l] / costs[l]).sqrt() * sum_sqrt_vc).ceil() as usize;
-            let capped_nl = target_nl.clamp(warmup, options.max_samples_per_level.max(warmup));
-            if capped_nl > n_samples[l] {
-                let extra = capped_nl - n_samples[l];
-                let (s1, s2, c) = sample_level_batch(l, extra, n_samples[l], &mut payoff)?;
-                n_samples[l] += extra;
-                sum_y[l] += s1;
-                sum_y2[l] += s2;
-                total_cost += c;
+            let capped_nl = target_nl.clamp(warmup, options.max_samples_per_level);
+            let moments = &mut levels[l];
+            let samples = moments.samples();
+            if capped_nl > samples {
+                total_cost += sample_level_batch(l, capped_nl - samples, &mut payoff, moments)?;
             }
         }
 
         // Test weak convergence bias at active_max_l
-        let mean_l = (sum_y[active_max_l] / n_samples[active_max_l] as f64).abs();
+        let mean_l = levels[active_max_l].mean().abs();
         let mean_prev = if active_max_l >= 1 {
-            (sum_y[active_max_l - 1] / n_samples[active_max_l - 1] as f64).abs()
+            levels[active_max_l - 1].mean().abs()
         } else {
             0.0
         };
@@ -2525,29 +2759,24 @@ where
             break;
         }
         active_max_l += 1;
-        let (s1, s2, c) = sample_level_batch(active_max_l, warmup, 0, &mut payoff)?;
-        n_samples[active_max_l] += warmup;
-        sum_y[active_max_l] += s1;
-        sum_y2[active_max_l] += s2;
-        total_cost += c;
+        total_cost +=
+            sample_level_batch(active_max_l, warmup, &mut payoff, &mut levels[active_max_l])?;
     }
 
     let mut estimate = 0.0f64;
     let mut total_var = 0.0f64;
-    let mut levels = Vec::with_capacity(active_max_l + 1);
+    let mut level_stats = Vec::with_capacity(active_max_l + 1);
 
-    for l in 0..=active_max_l {
-        let nl = n_samples[l];
-        let nl_f = nl as f64;
-        let mean_diff = sum_y[l] / nl_f;
-        let variance = if nl > 1 {
-            ((sum_y2[l] - nl_f * mean_diff * mean_diff) / (nl_f - 1.0)).max(0.0)
-        } else {
-            0.0
-        };
+    for (l, moments) in levels.iter().enumerate().take(active_max_l + 1) {
+        let nl = moments.samples();
+        let mean_diff = moments.mean();
+        let variance = moments
+            .statistics
+            .sample_covariance()
+            .map_or(0.0, |values| values[0]);
         estimate += mean_diff;
-        total_var += variance / nl_f;
-        levels.push(MlmcLevelStats {
+        total_var += variance / nl as f64;
+        level_stats.push(MlmcLevelStats {
             level: l,
             steps: options.base_steps * (1usize << l),
             samples: nl,
@@ -2556,11 +2785,12 @@ where
         });
     }
 
+    checkpoint()?;
     Ok(MlmcResult {
         estimate,
         variance: total_var,
         std_error: total_var.sqrt(),
-        levels,
+        levels: level_stats,
         total_cost,
     })
 }

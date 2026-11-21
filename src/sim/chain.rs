@@ -1,3 +1,5 @@
+//! Chain and algorithmic regularisation for few-body gravity.
+//!
 //! # Chain regularisation and algorithmic regularisation for few-body gravity
 //!
 //! Gravitational `N`-body dynamics (3-D, `G` explicit) integrated in the fictitious time
@@ -17,6 +19,7 @@
 //! [`crate::sim::symplectic::ttl_step_composed`] provides composition schemes of order 4, 6, 8
 //! for the time-transformed leapfrog.
 
+use crate::kernels::numeric_common::scale_product;
 use crate::sim::symplectic::TtlState;
 use crate::sim::symplectic::ttl_step;
 
@@ -111,8 +114,46 @@ fn sub3(
     [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
 }
 
+fn squared_norm3(a: V3) -> f64 {
+    a[0] * a[0] + a[1] * a[1] + a[2] * a[2]
+}
+
 fn norm3(a: V3) -> f64 {
-    (a[0] * a[0] + a[1] * a[1] + a[2] * a[2]).sqrt()
+    let squared = squared_norm3(a);
+    if squared.is_normal() {
+        squared.sqrt()
+    } else {
+        a[0].hypot(a[1]).hypot(a[2])
+    }
+}
+
+fn scaled_radius(
+    r: V3,
+    g: f64,
+    mass_a: f64,
+    mass_b: f64,
+) -> Option<(f64, f64)> {
+    if !g.is_finite()
+        || !mass_a.is_finite()
+        || !mass_b.is_finite()
+        || mass_a <= 0.0
+        || mass_b <= 0.0
+        || r.iter().any(|x| !x.is_finite())
+    {
+        return None;
+    }
+    let scale = r.iter().map(|x| x.abs()).fold(0.0, f64::max);
+    (scale > 0.0).then(|| (scale, squared_norm3(r.map(|x| x / scale)).sqrt()))
+}
+
+fn scaled_interaction(
+    value: f64,
+    numerator: &[f64],
+    denominator: &[f64],
+) -> f64 {
+    // Pair geometry and reference factors have already been validated. The
+    // remaining failure is an interaction outside the f64 output range.
+    scale_product(value, numerator, denominator).unwrap_or_else(|_| f64::INFINITY.copysign(value))
 }
 
 /// Gravitational `N`-body system in the Mikkola-Aarseth chain representation.
@@ -145,7 +186,9 @@ impl ChainSystem {
     /// Builds the chain system from Cartesian data.
     ///
     /// # Errors
-    /// Fails for fewer than two bodies, length mismatch or non-positive masses.
+    /// Fails for fewer than two bodies, length mismatch, non-positive
+    /// or non-finite masses, non-finite inputs, or an unrepresentable initial
+    /// chain or energy. The unsoftened interaction is singular at coincidence.
     pub fn new(
         g: f64,
         mass: &[f64],
@@ -156,10 +199,16 @@ impl ChainSystem {
         if n < 2 || pos.len() != n || vel.len() != n {
             return Err("need at least two bodies with matching position/velocity data".into());
         }
-        if mass.iter().any(|&m| m <= 0.0) {
-            return Err("masses must be positive".into());
+        if mass.iter().any(|&m| !m.is_finite() || m <= 0.0) {
+            return Err("masses must be finite and positive".into());
+        }
+        if !g.is_finite() || pos.iter().chain(vel).flatten().any(|v| !v.is_finite()) {
+            return Err("chain gravity, positions and velocities must be finite".into());
         }
         let mt: f64 = mass.iter().sum();
+        if !mt.is_finite() {
+            return Err("total chain mass is not representable".into());
+        }
         let mut com_pos = [0.0; 3];
         let mut com_vel = [0.0; 3];
         for i in 0..n {
@@ -167,6 +216,9 @@ impl ChainSystem {
                 com_pos[a] += mass[i] * pos[i][a] / mt;
                 com_vel[a] += mass[i] * vel[i][a] / mt;
             }
+        }
+        if com_pos.iter().chain(&com_vel).any(|v| !v.is_finite()) {
+            return Err("chain centre of mass is not representable".into());
         }
         let rel: Vec<V3> = pos.iter().map(|p| sub3(*p, com_pos)).collect();
         let order = greedy_chain(&rel);
@@ -176,6 +228,9 @@ impl ChainSystem {
         let vc: Vec<V3> = (0..n - 1)
             .map(|k| sub3(vel[order[k + 1]], vel[order[k]]))
             .collect();
+        if xc.iter().chain(&vc).flatten().any(|v| !v.is_finite()) {
+            return Err("relative chain state is not representable".into());
+        }
         let mut s = Self {
             g,
             mass: mass.to_vec(),
@@ -188,6 +243,11 @@ impl ChainSystem {
             b: 0.0,
         };
         s.b = -s.energy();
+        if !s.b.is_finite() {
+            return Err(
+                "initial chain energy is not finite (coincident bodies are singular)".into(),
+            );
+        }
         Ok(s)
     }
 
@@ -229,35 +289,105 @@ impl ChainSystem {
             .sum()
     }
 
-    /// Accelerations per chain position and the positive potential `U = -V`.
-    fn chain_accelerations(
+    /// Accelerations per body in the original input order.
+    ///
+    /// The returned vectors are Cartesian accelerations. In states mutated
+    /// after construction, coincidences retain the gravitational singularity.
+    #[must_use]
+    pub fn accelerations(&self) -> Vec<V3> {
+        let mut acceleration = vec![[0.0; 3]; self.order.len()];
+        self.pair_interactions::<true, true>(&mut acceleration);
+        acceleration
+    }
+
+    /// Traverses pairs in chain order and optionally writes their accelerations.
+    /// The accumulated potential is the positive binding contribution `U = -V`.
+    fn pair_interactions<const FORCE: bool, const BODY_ORDER: bool>(
         &self,
-        xc: &[V3],
-    ) -> (Vec<V3>, f64) {
-        let n = self.order.len();
-        let mc = self.masses_in_chain();
-        let mut acc = vec![[0.0; 3]; n];
-        let mut u = 0.0;
-        for a in 0..n {
+        acceleration: &mut [V3],
+    ) -> f64 {
+        if FORCE {
+            acceleration.fill([0.0; 3]);
+        }
+        let ordinary_mass = (self.g == 0.0 || (1e-70..=1e70).contains(&self.g.abs()))
+            && self.mass.iter().all(|m| (1e-70..=1e70).contains(m));
+        // Nonzero links in this range have dyadic spacing above 1e-96.
+        // Summing links cannot create finer nonzero spacing. At the other
+        // end an increment bounded by 1e75 stops changing a sum long
+        // before its cube could overflow.
+        let ordinary_links = self.xc.iter().flatten().all(|x| {
+            let component = x.abs();
+            component == 0.0 || (1e-80..=1e75).contains(&component)
+        });
+        if ordinary_mass && ordinary_links {
+            self.sum_pairs::<FORCE, BODY_ORDER, false>(acceleration)
+        } else {
+            self.sum_pairs::<FORCE, BODY_ORDER, true>(acceleration)
+        }
+    }
+
+    fn sum_pairs<const FORCE: bool, const BODY_ORDER: bool, const SCALED: bool>(
+        &self,
+        acceleration: &mut [V3],
+    ) -> f64 {
+        let g = self.g;
+        let mut binding = 0.0;
+        for (a, &body_a) in self.order.iter().enumerate() {
+            let mass_a = self.mass[body_a];
+            let force_a = if BODY_ORDER { body_a } else { a };
+            let gm_a = g * mass_a;
             let mut r = [0.0; 3];
-            for b in a + 1..n {
-                r = add3(r, xc[b - 1]); // chain sum of vectors between a and b
-                let d = norm3(r);
-                let d3 = d * d * d;
-                u += self.g * mc[a] * mc[b] / d;
-                for k in 0..3 {
-                    acc[a][k] += self.g * mc[b] * r[k] / d3;
-                    acc[b][k] -= self.g * mc[a] * r[k] / d3;
+            for (offset, &body_b) in self.order[a + 1..].iter().enumerate() {
+                let b = a + 1 + offset;
+                r = add3(r, self.xc[b - 1]);
+                let mass_b = self.mass[body_b];
+                let force_b = if BODY_ORDER { body_b } else { b };
+                let radius = if SCALED {
+                    scaled_radius(r, g, mass_a, mass_b)
+                } else {
+                    None
+                };
+                if let Some((scale, unit)) = radius {
+                    binding += scaled_interaction(g, &[mass_a, mass_b], &[scale, unit]);
+                    if FORCE {
+                        let factors = [scale, scale, scale, unit, unit, unit];
+                        for (i, &ri) in r.iter().enumerate() {
+                            if ri != 0.0 {
+                                let signed_g = if ri.is_sign_negative() {
+                                    -g
+                                } else {
+                                    g
+                                };
+                                acceleration[force_a][i] +=
+                                    scaled_interaction(signed_g, &[mass_b, ri.abs()], &factors);
+                                acceleration[force_b][i] -=
+                                    scaled_interaction(signed_g, &[mass_a, ri.abs()], &factors);
+                            }
+                        }
+                    }
+                } else {
+                    // Ordinary arithmetic also preserves the singularity
+                    // in a manually supplied coincident state.
+                    let distance = squared_norm3(r).sqrt();
+                    binding += gm_a * mass_b / distance;
+                    if FORCE {
+                        let cube = distance * distance * distance;
+                        let gm_b = g * mass_b;
+                        for (i, &ri) in r.iter().enumerate() {
+                            acceleration[force_a][i] += gm_b * ri / cube;
+                            acceleration[force_b][i] -= gm_a * ri / cube;
+                        }
+                    }
                 }
             }
         }
-        (acc, u)
+        binding
     }
 
-    /// Potential energy (negative).
+    /// Potential energy (negative for attractive gravity).
     #[must_use]
     pub fn potential(&self) -> f64 {
-        -self.chain_accelerations(&self.xc).1
+        -self.pair_interactions::<false, false>(&mut [])
     }
 
     /// Total energy.
@@ -382,8 +512,17 @@ impl ChainSystem {
         &mut self,
         h: f64,
     ) {
+        let mut acceleration = vec![[0.0; 3]; self.order.len()];
+        self.leapfrog_with_acceleration(h, &mut acceleration);
+    }
+
+    fn leapfrog_with_acceleration(
+        &mut self,
+        h: f64,
+        acc: &mut [V3],
+    ) {
         self.half_drift(0.5 * h);
-        let (acc, u) = self.chain_accelerations(&self.xc);
+        let u = self.pair_interactions::<true, false>(acc);
         let dt = h / u;
         for k in 0..self.vc.len() {
             for a in 0..3 {
@@ -427,10 +566,11 @@ impl ChainSystem {
         kmax: usize,
     ) -> f64 {
         let start = self.clone();
+        let mut acceleration = vec![[0.0; 3]; self.order.len()];
         let (y, err) = gbs(kmax, |m| {
             let mut s = start.clone();
             for _ in 0..m {
-                s.leapfrog(ds / m as f64);
+                s.leapfrog_with_acceleration(ds / m as f64, &mut acceleration);
             }
             s.pack()
         });
@@ -537,7 +677,9 @@ fn greedy_chain(pos: &[V3]) -> Vec<usize> {
                 continue;
             }
             let (dh, dt) = (dist(c, head), dist(c, tail));
-            if dh < best.2 {
+            // Even a separation outside f64 range has a deterministic
+            // candidate. This avoids indexing with the absent-body sentinel.
+            if best.0 == usize::MAX || dh < best.2 {
                 best = (c, true, dh);
             }
             if dt < best.2 {

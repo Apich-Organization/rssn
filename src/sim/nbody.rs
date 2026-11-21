@@ -1,3 +1,5 @@
+//! Barnes-Hut and fast multipole N-body solvers.
+//!
 //! # Tree and multipole N-body solvers for gravity and Coulomb
 //!
 //! Long-range interactions with the Gauss-law kernel of the dimension: the
@@ -20,8 +22,12 @@
 //! [`crate::sim::hermite`]. Limitations: Barnes-Hut and the 2-D FMM are open-boundary only;
 //! the periodic FMM softens the far lattice consistently (Plummer form factor).
 //!
-//! Parallelism: [`direct_field`] and the Barnes-Hut traversals of [`gravity_accelerations`] /
-//! [`coulomb_forces`] evaluate the bodies concurrently (bit-identical).
+//! Reuse an output slice across direct solves with [`direct_field_into`]. The direct solver and
+//! the Barnes-Hut traversals of [`gravity_accelerations`] and [`coulomb_forces`] evaluate bodies
+//! concurrently with results that are independent of thread count.
+
+use crate::kernels::numeric_common::NumericError;
+use crate::kernels::numeric_common::scale_product;
 
 const NONE: u32 = u32::MAX;
 const MAX_DEPTH: usize = 48;
@@ -318,33 +324,177 @@ const DIRECT_PAR_BODIES: usize = 256;
 /// Bodies from which the Barnes-Hut traversals run in parallel.
 const TREE_PAR_BODIES: usize = 512;
 
-/// Exact `O(N^2)` field of all sources at every body (self excluded).
+#[inline]
+#[expect(
+    clippy::single_call_fn,
+    reason = "separate pair arithmetic from the ordered row accumulation"
+)]
+fn direct_pair<const D: usize>(
+    target: &[f64; D],
+    point: &[f64; D],
+    source: f64,
+    eps: f64,
+) -> [f64; D] {
+    let d = std::array::from_fn(|a| point[a] - target[a]);
+    let r2 = d.iter().map(|x| x * x).sum::<f64>() + eps * eps;
+    if r2.is_normal() {
+        let denominator = match D {
+            | 1 => r2.sqrt(),
+            | 2 => r2,
+            | 3 => r2 * r2.sqrt(),
+            | 4 => r2 * r2,
+            | _ => r2.powf(D as f64 / 2.0),
+        };
+        let weight = source / denominator;
+        if (D <= 2 || denominator.is_normal()) && (weight.is_normal() || source == 0.0) {
+            return d.map(|x| x * weight);
+        }
+    }
+    scaled_direct_pair(target, point, d, source, eps, r2)
+}
+
+#[cold]
+#[expect(
+    clippy::single_call_fn,
+    reason = "keep the range fallback out of the direct loop"
+)]
+fn scaled_direct_pair<const D: usize>(
+    target: &[f64; D],
+    point: &[f64; D],
+    d: [f64; D],
+    source: f64,
+    eps: f64,
+    r2: f64,
+) -> [f64; D] {
+    if !source.is_finite()
+        || !eps.is_finite()
+        || target.iter().chain(point).any(|x| !x.is_finite())
+        || (eps == 0.0 && d.iter().all(|&x| x == 0.0))
+    {
+        // Preserve the IEEE result for nonfinite inputs and unsoftened coincidences.
+        let inv = r2.powf(-(D as f64) / 2.0);
+        return d.map(|x| source * (x * inv));
+    }
+    if source == 0.0 {
+        return [0.0; D];
+    }
+
+    // An overflowing displacement can be measured at half scale. Keep the original finite
+    // components for the numerator, where tiny offsets can still have a representable effect.
+    let wide = d.iter().any(|x| x.is_infinite());
+    let offsets: [f64; D] = if wide {
+        std::array::from_fn(|a| point[a] * 0.5 - target[a] * 0.5)
+    } else {
+        d
+    };
+    let softening = if wide { eps * 0.5 } else { eps };
+    let scale = offsets.iter().fold(softening.abs(), |m, x| m.max(x.abs()));
+    let norm2 =
+        offsets.iter().map(|x| (x / scale).powi(2)).sum::<f64>() + (softening / scale).powi(2);
+    let norm = norm2.sqrt() * if wide { 2.0 } else { 1.0 };
+    // Two factors per dimension and two numerator factors fit the shared scaler's limit.
+    if D <= 127 {
+        let radius = [[scale, norm]; D];
+        return std::array::from_fn(|a| {
+            let (offset, factor) = if d[a].is_finite() {
+                (d[a], 1.0)
+            } else {
+                (offsets[a], 2.0)
+            };
+            scale_product(offset.abs(), &[source.abs(), factor], radius.as_flattened())
+                .unwrap_or(f64::INFINITY)
+                .copysign(source.signum() * offset.signum())
+        });
+    }
+    let log_weight = source.abs().ln() - D as f64 * (scale.ln() + norm.ln());
+    std::array::from_fn(|a| {
+        let (offset, log_factor) = if d[a].is_finite() {
+            (d[a], 0.0)
+        } else {
+            (offsets[a], std::f64::consts::LN_2)
+        };
+        (log_weight + offset.abs().ln() + log_factor)
+            .exp()
+            .copysign(source.signum() * offset.signum())
+    })
+}
+
+fn direct_row<const D: usize>(
+    pos: &[[f64; D]],
+    src: &[f64],
+    eps: f64,
+    i: usize,
+) -> [f64; D] {
+    let mut row = [0.0; D];
+    if D == 0 || pos.len() < 2 {
+        return row;
+    }
+    let target = &pos[i];
+    for (j, (point, &weight)) in pos.iter().zip(&src[..pos.len()]).enumerate() {
+        if i != j {
+            let pair = direct_pair(target, point, weight, eps);
+            for (total, contribution) in row.iter_mut().zip(pair) {
+                *total += contribution;
+            }
+        }
+    }
+    row
+}
+
+/// Direct `O(N^2)` field of all sources at every body, excluding its own contribution.
+///
+/// Use [`direct_field_into`] when the input lengths need to be checked or the output storage
+/// is already available. `eps` sets the Plummer softening length by its magnitude. Distinct
+/// coincident bodies with zero softening have an undefined pair contribution (`NaN`).
+///
+/// # Panics
+/// Panics in positive dimensions if there are at least two bodies and `src` is shorter than `pos`.
 #[must_use]
 pub fn direct_field<const D: usize>(
     pos: &[[f64; D]],
     src: &[f64],
     eps: f64,
 ) -> Vec<[f64; D]> {
-    let n = pos.len();
-    // Row i is an independent sequential sum over j: rows run in parallel,
-    // the result is bit-identical to the serial double loop.
-    crate::kernels::par::map_indexed(n, DIRECT_PAR_BODIES, |i| {
-        let mut row = [0.0; D];
-        for j in 0..n {
-            if i == j {
-                continue;
-            }
-            let mut d = [0.0; D];
-            for a in 0..D {
-                d[a] = pos[j][a] - pos[i][a];
-            }
-            let k = kernel(&d, eps);
-            for a in 0..D {
-                row[a] += src[j] * k[a];
-            }
-        }
-        row
+    // The input order within a row is fixed regardless of how rows are scheduled.
+    crate::kernels::par::map_indexed(pos.len(), DIRECT_PAR_BODIES, |i| {
+        direct_row(pos, src, eps, i)
     })
+}
+
+/// Writes the direct `O(N^2)` field to an existing output slice, excluding self interactions.
+///
+/// `pos`, `src`, and `out` must have the same length. Empty slices succeed. Each output row
+/// is overwritten, and source contributions are added in input order inside the row. Softening
+/// and coincidence behavior follow [`direct_field`].
+///
+/// # Errors
+/// Returns [`NumericError::ShapeMismatch`] on a length mismatch and leaves `out` unchanged.
+///
+/// # Examples
+/// ```
+/// use rssn::sim::nbody::direct_field_into;
+///
+/// let pos = [[0.0], [2.0]];
+/// let mut out = [[0.0]; 2];
+/// direct_field_into(&pos, &[1.0, 3.0], 0.0, &mut out)?;
+/// assert_eq!(out, [[3.0], [-1.0]]);
+/// # Ok::<(), rssn::kernels::numeric_common::NumericError>(())
+/// ```
+pub fn direct_field_into<const D: usize>(
+    pos: &[[f64; D]],
+    src: &[f64],
+    eps: f64,
+    out: &mut [[f64; D]],
+) -> Result<(), NumericError> {
+    if pos.len() != src.len() || pos.len() != out.len() {
+        return Err(NumericError::ShapeMismatch(
+            "positions, sources, and output must have equal lengths".into(),
+        ));
+    }
+    crate::kernels::par::for_each_mut(out, DIRECT_PAR_BODIES, |i, row| {
+        *row = direct_row(pos, src, eps, i);
+    });
+    Ok(())
 }
 
 /// Barnes-Hut gravitational accelerations `a_i = G sum_j m_j K(x_j - x_i)`.

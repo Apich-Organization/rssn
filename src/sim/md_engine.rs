@@ -1,3 +1,5 @@
+//! Dimension-generic molecular dynamics engine.
+//!
 //! # Dimension-generic molecular dynamics engine
 //!
 //! A complete MD toolkit in reduced units (`k_B = 1`) for any dimension `D`
@@ -14,7 +16,7 @@
 //! | Barostats ([`Barostat`]) | Berendsen, isotropic MTK (Martyna-Tobias-Klein), and the flexible-cell Parrinello-Rahman / MTK barostat [`FlexibleBarostat`] (full triclinic cell matrix, orthorhombic or isotropic modes, target pressure tensor, cell Nose-Hoover chain = MTTK) |
 //! | Cells | orthorhombic, and general triclinic cells ([`SimBox::triclinic`], cell lists in fractional coordinates, 3^D image refinement of the minimum image) |
 //! | Constraints | SHAKE (positions) and RATTLE (velocities) for distance constraints; composable with Nose-Hoover chains, Langevin (constrained BAOAB) and the flexible barostat (bond flow `r.(v + v_g r) = 0`); the constraint virial is the **exact instantaneous** virial of the constraint forces (acceleration-level condition, no time-step lag, [`MdSimulation::refresh_constraint_virial`]) |
-//! | Rigid molecules | [`crate::sim::md_rigid`]: centre-of-mass + quaternion integration (NO_SQUISH or exact symmetric-top flows, any even order), molecular virial |
+//! | Rigid molecules | [`crate::sim::md_rigid`]: centre-of-mass + quaternion integration (`NO_SQUISH` or exact symmetric-top flows, any even order), molecular virial |
 //! | Observables | kinetic/potential energy, temperature, pressure tensor, [`Rdf`], [`msd`], [`vacf`], [`energy_drift_slope`] |
 //!
 //! Long-range electrostatics (Ewald, PME) live in [`crate::sim::ewald`] and plug
@@ -36,6 +38,7 @@
 //! affine deformation plus particle displacement exceed the skin (and after every lattice
 //! reduction).
 
+use std::collections::BTreeMap;
 use std::collections::HashSet;
 
 use crate::kernels::random::Rng;
@@ -902,10 +905,17 @@ impl<const D: usize> NeighbourList<D> {
     }
 
     /// Rebuilds the list with a cell grid (brute force under Lees-Edwards shear).
+    ///
+    /// Sparse boxes store only occupied cells. Orthorhombic periodic positions
+    /// are assigned to cells modulo the box length without modifying the system.
     pub fn build(
         &mut self,
         sys: &MdSystem<D>,
     ) {
+        // Coarser cells still cover the cutoff stencil and keep indices well
+        // within the precision of the floating-point coordinate mapping.
+        const MAX_CELLS_PER_AXIS: usize = 1 << 30;
+
         self.builds += 1;
         let n = sys.n();
         let rl = self.rcut + self.skin;
@@ -913,6 +923,9 @@ impl<const D: usize> NeighbourList<D> {
         self.pairs.clear();
         self.ref_pos.clone_from(&sys.pos);
         self.ref_cell = sys.bx.matrix();
+        if n < 2 || rl2 == 0.0 {
+            return;
+        }
         let close = |i: usize, j: usize| -> bool {
             let mut d = [0.0; D];
             for a in 0..D {
@@ -933,20 +946,6 @@ impl<const D: usize> NeighbourList<D> {
         }
         // grid; open axes extend over the particle bounding range
         let tri = sys.bx.cell.is_some();
-        let pc: Vec<[f64; D]> = if tri {
-            sys.pos
-                .iter()
-                .map(|p| {
-                    let mut s = sys.bx.to_fractional(p);
-                    for c in &mut s {
-                        *c -= c.floor();
-                    }
-                    s
-                })
-                .collect()
-        } else {
-            sys.pos.clone()
-        };
         let mut lo = [0.0; D];
         let mut ext = if tri { [1.0; D] } else { sys.bx.len };
         for a in 0..D {
@@ -961,84 +960,163 @@ impl<const D: usize> NeighbourList<D> {
                 ext[a] = (mx - mn).max(1e-12);
             }
         }
-        let mut nc = [1usize; D];
-        for a in 0..D {
+        let counts = std::array::from_fn(|k| {
+            let a = D - 1 - k;
             let width = if tri {
                 sys.bx.height(a)
             } else {
                 ext[a]
             };
-            let c = (width / rl).floor() as usize;
-            nc[a] = if c >= 3 { c } else { 1 };
-        }
-        let total: usize = nc.iter().product();
-        let cell_of = |p: &[f64; D]| -> usize {
-            let mut idx = 0usize;
-            let mut stride = 1usize;
-            for a in 0..D {
-                let mut c = (((p[a] - lo[a]) / ext[a]) * nc[a] as f64).floor() as i64;
-                c = c.clamp(0, nc[a] as i64 - 1);
-                idx += c as usize * stride;
-                stride *= nc[a];
-            }
-            idx
-        };
-        let mut cells: Vec<Vec<usize>> = vec![Vec::new(); total];
-        for i in 0..n {
-            cells[cell_of(&pc[i])].push(i);
-        }
-        let offsets: Vec<[i64; D]> = {
-            let count = 3usize.pow(D as u32);
-            (0..count)
-                .map(|mut r| {
-                    let mut o = [0i64; D];
-                    for a in 0..D {
-                        o[a] = (r % 3) as i64 - 1;
-                        r /= 3;
-                    }
-                    o
-                })
-                .collect()
-        };
-        for c in 0..total {
-            let mut coords = [0i64; D];
-            let mut r = c;
-            for a in 0..D {
-                coords[a] = (r % nc[a]) as i64;
-                r /= nc[a];
-            }
-            for off in &offsets {
-                let mut nb = 0usize;
-                let mut stride = 1usize;
-                let mut valid = true;
-                for a in 0..D {
-                    let mut x = coords[a] + off[a];
-                    if nc[a] == 1 {
-                        if off[a] != 0 {
-                            valid = false;
-                            break;
-                        }
-                        x = 0;
-                    } else if x < 0 || x >= nc[a] as i64 {
-                        if sys.bx.bc[a] == Boundary::Periodic {
-                            x = x.rem_euclid(nc[a] as i64);
-                        } else {
-                            valid = false;
-                            break;
-                        }
-                    }
-                    nb += x as usize * stride;
-                    stride *= nc[a];
+            let c = ((width / rl).floor() as usize).min(MAX_CELLS_PER_AXIS);
+            if c >= 3 { c } else { 1 }
+        });
+        let grid = NeighbourGrid::new(counts, &sys.bx.bc);
+        let keys = sys.pos.iter().map(|p| {
+            let mut pos = *p;
+            if tri {
+                pos = sys.bx.to_fractional(p);
+                for c in &mut pos {
+                    *c -= c.floor();
                 }
-                if !valid || nb < c {
-                    continue;
+            }
+            std::array::from_fn(|k| {
+                let a = D - 1 - k;
+                let mut x = pos[a];
+                if !tri && grid.periodic[k] && (x < 0.0 || x >= ext[a]) {
+                    x = x.rem_euclid(ext[a]);
                 }
-                for &i in &cells[c] {
-                    for &j in &cells[nb] {
-                        if (nb == c && j <= i) || !close(i, j) {
-                            continue;
-                        }
-                        self.pairs.push((i.min(j), i.max(j)));
+                ((((x - lo[a]) / ext[a]) * counts[k] as f64) as usize).min(counts[k] - 1)
+            })
+        });
+        let total = counts.into_iter().try_fold(1usize, usize::checked_mul);
+        // Bound dense bin storage by the number of particles. Overflow just
+        // selects the sparse representation, which never linearizes a key.
+        if let Some(total) = total.filter(|&size| size <= n.saturating_mul(8)) {
+            let mut cells: Vec<Vec<usize>> = vec![Vec::new(); total];
+            for (i, key) in keys.enumerate() {
+                cells[grid.index(&key)].push(i);
+            }
+            for (index, here) in cells.iter().enumerate() {
+                if !here.is_empty() {
+                    grid.append_pairs(
+                        &mut self.pairs,
+                        grid.coordinates(index),
+                        here,
+                        |key| Some(cells[grid.index(key)].as_slice()),
+                        close,
+                    );
+                }
+            }
+        } else {
+            let mut cells = BTreeMap::<_, Vec<_>>::new();
+            for (i, key) in keys.enumerate() {
+                cells.entry(key).or_default().push(i);
+            }
+            for (&key, here) in &cells {
+                grid.append_pairs(
+                    &mut self.pairs,
+                    key,
+                    here,
+                    |key| cells.get(key).map(Vec::as_slice),
+                    close,
+                );
+            }
+        }
+    }
+}
+
+/// Cell coordinates are stored with the fastest-varying axis last. Their
+/// lexicographic order matches ascending indices in the dense grid.
+struct NeighbourGrid<const D: usize> {
+    counts: [usize; D],
+    periodic: [bool; D],
+    offsets: Vec<[i8; D]>,
+}
+
+impl<const D: usize> NeighbourGrid<D> {
+    fn new(
+        counts: [usize; D],
+        boundaries: &[Boundary; D],
+    ) -> Self {
+        let periodic = std::array::from_fn(|k| boundaries[D - 1 - k] == Boundary::Periodic);
+        // Extend in the original stencil order, omitting the inactive
+        // displacements on axes with just one cell.
+        let active = counts.iter().filter(|&&count| count > 1).count();
+        let mut offsets = Vec::with_capacity(3usize.pow(active as u32));
+        offsets.push([0; D]);
+        for k in (0..D).rev() {
+            if counts[k] > 1 {
+                let len = offsets.len();
+                offsets.extend_from_within(..);
+                offsets.extend_from_within(..len);
+                for offset in &mut offsets[..len] {
+                    offset[k] = -1;
+                }
+                for offset in &mut offsets[2 * len..] {
+                    offset[k] = 1;
+                }
+            }
+        }
+        Self {
+            counts,
+            periodic,
+            offsets,
+        }
+    }
+
+    fn index(
+        &self,
+        key: &[usize; D],
+    ) -> usize {
+        (0..D).fold(0, |index, k| index * self.counts[k] + key[k])
+    }
+
+    fn coordinates(
+        &self,
+        mut index: usize,
+    ) -> [usize; D] {
+        let mut key = [0; D];
+        for k in (0..D).rev() {
+            key[k] = index % self.counts[k];
+            index /= self.counts[k];
+        }
+        key
+    }
+
+    fn append_pairs<'a>(
+        &self,
+        pairs: &mut Vec<(usize, usize)>,
+        key: [usize; D],
+        here: &[usize],
+        cell: impl Fn(&[usize; D]) -> Option<&'a [usize]>,
+        close: impl Fn(usize, usize) -> bool,
+    ) {
+        'stencil: for offset in &self.offsets {
+            let mut neighbour = [0; D];
+            for k in 0..D {
+                let c = key[k] as i64 + i64::from(offset[k]);
+                let count = self.counts[k] as i64;
+                neighbour[k] = if (0..count).contains(&c) {
+                    c as usize
+                } else if !self.periodic[k] {
+                    continue 'stencil;
+                } else if c < 0 {
+                    self.counts[k] - 1
+                } else {
+                    0
+                };
+            }
+            if neighbour < key {
+                continue;
+            }
+            let Some(other) = cell(&neighbour) else {
+                continue;
+            };
+            let same = neighbour == key;
+            for &i in here {
+                for &j in other {
+                    if (!same || j > i) && close(i, j) {
+                        pairs.push((i.min(j), i.max(j)));
                     }
                 }
             }
@@ -1926,15 +2004,84 @@ fn unit_ball_volume(d: usize) -> f64 {
 }
 
 /// Radial distribution function accumulator (any dimension, periodic box, `rmax <= L/2`).
+///
+/// Each frame contributes its pair counts and an ideal-gas reference of
+/// `N² / V` times the shell volume, using that frame's population and volume.
 #[derive(Clone, Debug)]
 pub struct Rdf<const D: usize> {
     /// Maximum distance.
     pub rmax: f64,
     /// Histogram of pair counts.
     pub hist: Vec<f64>,
-    frames: usize,
-    n: usize,
+    exposure: RdfExposure,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+struct RdfExposure {
+    count: usize,
+    population: usize,
     volume: f64,
+    sum: f64,
+    correction: f64,
+}
+
+impl RdfExposure {
+    fn pending(self) -> f64 {
+        if self.count == 0 {
+            return 0.0;
+        }
+        let n = self.population as f64;
+        let rho = n / self.volume;
+        self.count as f64 * n * rho
+    }
+
+    fn accumulate(
+        &mut self,
+        exposure: f64,
+    ) {
+        let next = self.sum + exposure;
+        if next.is_finite() {
+            self.correction += if self.sum.abs() >= exposure.abs() {
+                (self.sum - next) + exposure
+            } else {
+                (exposure - next) + self.sum
+            };
+        } else {
+            self.correction = 0.0;
+        }
+        self.sum = next;
+    }
+
+    fn extend(
+        &mut self,
+        population: usize,
+        volume: f64,
+        frames: usize,
+    ) {
+        if population == 0 || frames == 0 {
+            return;
+        }
+        if self.population == population
+            && self.volume.to_bits() == volume.to_bits()
+            && let Some(count) = self.count.checked_add(frames)
+        {
+            self.count = count;
+            return;
+        }
+        self.accumulate(self.pending());
+        self.population = population;
+        self.volume = volume;
+        self.count = frames;
+    }
+
+    fn reference(self) -> f64 {
+        if self.count == 0 {
+            return f64::NAN;
+        }
+        let mut exposure = self;
+        exposure.accumulate(self.pending());
+        exposure.sum + exposure.correction
+    }
 }
 
 impl<const D: usize> Rdf<D> {
@@ -1947,48 +2094,102 @@ impl<const D: usize> Rdf<D> {
         Self {
             rmax,
             hist: vec![0.0; bins],
-            frames: 0,
-            n: 0,
-            volume: 0.0,
+            exposure: RdfExposure::default(),
         }
     }
 
-    /// Adds one configuration.
+    /// Adds one configuration. An empty configuration contributes no counts
+    /// or normalization weight.
     pub fn add_frame(
         &mut self,
         sys: &MdSystem<D>,
     ) {
         let nb = self.hist.len();
+        if nb == 0 {
+            return;
+        }
+        // Broad one-dimensional shells keep enough pairs for the direct loop.
+        if D == 1 && self.rmax > 0.125 * sys.bx.len[0] {
+            self.bin_pairs::<false>(sys, nb);
+        } else {
+            self.bin_pairs::<true>(sys, nb);
+        }
+        self.exposure.extend(sys.n(), sys.bx.volume(), 1);
+    }
+
+    fn bin_pairs<const SCREEN: bool>(
+        &mut self,
+        sys: &MdSystem<D>,
+        nb: usize,
+    ) {
         let dr = self.rmax / nb as f64;
+        let square_limit = (self.rmax * self.rmax).next_up();
         for i in 0..sys.n() {
             for j in i + 1..sys.n() {
                 let d = sep(sys, i, j);
-                let r = dot(&d, &d).sqrt();
+                let square = dot(&d, &d);
+                // A square above the upward bound cannot round inside the cutoff.
+                if SCREEN && square > square_limit {
+                    continue;
+                }
+                let r = square.sqrt();
                 if r < self.rmax {
-                    self.hist[(r / dr) as usize] += 2.0;
+                    let bin = ((r / dr) as usize).min(nb - 1);
+                    self.hist[bin] += 2.0;
                 }
             }
         }
-        self.frames += 1;
-        self.n = sys.n();
-        self.volume = sys.bx.volume();
     }
 
-    /// Returns `(r, g(r))` pairs.
+    /// Combines counts and reference weights from independent frame groups.
+    ///
+    /// Both accumulators must use the same bins, cutoff and coordinate units.
+    /// Each group's original per-frame population and volume determine its
+    /// weight in the merged result.
+    ///
+    /// # Errors
+    /// Mismatched bin counts or cutoffs, or a nonfinite combined count.
+    pub fn merge(
+        &mut self,
+        other: &Self,
+    ) -> Result<(), String> {
+        if self.hist.len() != other.hist.len() || self.rmax.to_bits() != other.rmax.to_bits() {
+            return Err("RDF bins and cutoffs must match".into());
+        }
+        if self
+            .hist
+            .iter()
+            .zip(&other.hist)
+            .any(|(a, b)| !(a + b).is_finite())
+        {
+            return Err("RDF combined counts must be finite".into());
+        }
+        self.exposure.accumulate(other.exposure.sum);
+        self.exposure.accumulate(other.exposure.correction);
+        self.exposure.extend(
+            other.exposure.population,
+            other.exposure.volume,
+            other.exposure.count,
+        );
+        for (a, b) in self.hist.iter_mut().zip(&other.hist) {
+            *a += *b;
+        }
+        Ok(())
+    }
+
+    /// Returns `(r, g(r))` pairs. The density ratios are undefined (`NaN`)
+    /// until a frame with particles has been added.
     #[must_use]
     pub fn result(&self) -> Vec<(f64, f64)> {
         let nb = self.hist.len();
         let dr = self.rmax / nb as f64;
-        let rho = self.n as f64 / self.volume;
+        let reference = self.exposure.reference();
         let vb = unit_ball_volume(D);
         (0..nb)
             .map(|k| {
                 let (r1, r2) = (k as f64 * dr, (k + 1) as f64 * dr);
                 let shell = vb * (r2.powi(D as i32) - r1.powi(D as i32));
-                (
-                    f64::midpoint(r1, r2),
-                    self.hist[k] / (self.frames as f64 * self.n as f64 * rho * shell),
-                )
+                (f64::midpoint(r1, r2), self.hist[k] / (reference * shell))
             })
             .collect()
     }
