@@ -34,6 +34,8 @@ fn compressed_core_import_round_trips_and_checks_untrusted_shapes() {
     )
     .unwrap();
     assert!((high_order.entry(&vec![1; 100]).unwrap() - 1.0).abs() < 1e-12);
+    assert_eq!(high_order.inner_workspace_len(&high_order), Ok(0));
+    assert!((high_order.inner(&high_order).unwrap() / 2.0_f64.powi(100) - 1.0).abs() < 1e-12);
     assert!(high_order.to_dense().is_err());
     assert!(high_order.storage_len() < 500);
 }
@@ -112,6 +114,93 @@ fn tensor_train_exact_and_compressed_contractions() {
     let dense_inner: f64 = values.iter().map(|x| x * x).sum();
     assert!((train.inner(&train).unwrap() / dense_inner - 1.0).abs() < 1e-12);
     assert!((train.entry(&[2, 3, 4, 1]).unwrap() - 3.0 * 5.0 * 7.0 * 2.0).abs() < 1e-10);
+}
+
+fn mixed_rank_train(
+    ranks: [usize; 5],
+    seed: usize,
+) -> TensorTrain {
+    let cores = ranks
+        .windows(2)
+        .enumerate()
+        .map(|(mode, pair)| {
+            let (left, right) = (pair[0], pair[1]);
+            let values = (0..left * 6 * right)
+                .map(|i| (((i + 1) * (i * 7 + mode + seed) % 23) as f64 - 11.0) / 16.0)
+                .collect();
+            TrainCore::new([left, 6, right], values).unwrap()
+        })
+        .collect();
+    TensorTrain::from_cores(cores).unwrap()
+}
+
+#[test]
+fn mixed_rank_contractions_match_dense_products_and_reuse_dirty_workspace() {
+    let a = mixed_rank_train([1, 3, 6, 2, 1], 11);
+    let b = mixed_rank_train([1, 5, 2, 5, 1], 13);
+    let pairs: Vec<_> = a
+        .to_dense()
+        .unwrap()
+        .into_iter()
+        .zip(b.to_dense().unwrap())
+        .collect();
+    let expected: f64 = pairs.iter().map(|(x, y)| x * y).sum();
+    let scale: f64 = pairs.iter().map(|(x, y)| (x * y).abs()).sum();
+    let len = a
+        .inner_workspace_len(&b)
+        .unwrap()
+        .max(b.inner_workspace_len(&a).unwrap());
+    let mut work = vec![f64::NAN; len];
+    work.extend([41.0, -43.0]);
+    for (left, right) in [(&a, &b), (&b, &a), (&a, &b)] {
+        let got = left.inner_with_workspace(right, &mut work).unwrap();
+        assert!(
+            (got - expected).abs() <= 2e-13 * scale,
+            "{got} vs {expected}"
+        );
+        assert_eq!(got.to_bits(), left.inner(right).unwrap().to_bits());
+        assert_eq!(&work[len..], &[41.0, -43.0]);
+    }
+}
+
+#[test]
+fn inner_workspace_validates_shapes_before_writing() {
+    let a = mixed_rank_train([1, 3, 6, 2, 1], 11);
+    let other = tt_svd(&[1.0, 2.0], &[2], 0.0, None).unwrap();
+    let length = a.inner_workspace_len(&a).unwrap();
+    let mut work = vec![17.0; length - 1];
+    assert_eq!(
+        a.inner_with_workspace(&a, &mut work),
+        Err(TrainError::InvalidInput)
+    );
+    assert_eq!(
+        a.inner_with_workspace(&other, &mut work),
+        Err(TrainError::InvalidInput)
+    );
+    assert_eq!(a.inner_workspace_len(&other), Err(TrainError::InvalidInput));
+    assert_eq!(a.inner(&other), Err(TrainError::InvalidInput));
+    assert!(work.iter().all(|&v| v == 17.0));
+}
+
+#[test]
+fn one_mode_inner_recovers_cancellation_and_gradual_underflow() {
+    let vector = |data: Vec<f64>| {
+        let core = TrainCore::new([1, data.len(), 1], data).unwrap();
+        TensorTrain::from_cores(vec![core]).unwrap()
+    };
+    let huge = 2.0_f64.powi(800);
+    let a = vector(vec![huge, huge, 3.0]);
+    let b = vector(vec![huge, -huge, 4.0]);
+    assert_eq!(a.inner_workspace_len(&b), Ok(0));
+    assert_eq!(a.inner(&b), Ok(12.0));
+    assert_eq!(a.inner_with_workspace(&b, &mut []), Ok(12.0));
+    assert_eq!(a.inner(&a), Err(TrainError::Overflow));
+
+    let min = f64::from_bits(1);
+    assert_eq!(
+        vector(vec![min, min]).inner(&vector(vec![0.5, 0.5])),
+        Ok(min)
+    );
 }
 
 #[test]

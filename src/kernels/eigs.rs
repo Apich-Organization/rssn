@@ -1,3 +1,5 @@
+//! Lanczos and Arnoldi eigensolvers with restarts and shift-invert.
+//!
 //! # Sparse eigensolvers: Lanczos and Arnoldi with restarts
 //!
 //! Matrix-free eigenvalue solvers for a few eigenpairs of large operators:
@@ -106,7 +108,7 @@ fn nrm(a: &[f64]) -> f64 {
     dot(a, a).sqrt()
 }
 
-/// Orthogonalises `w` against `v[..cnt]` (classical Gram-Schmidt twice) and
+/// Orthogonalises `w` against `v[..cnt]` (modified Gram–Schmidt twice) and
 /// returns the coefficients.
 fn orthogonalise(
     w: &mut [f64],
@@ -114,16 +116,24 @@ fn orthogonalise(
     cnt: usize,
 ) -> Vec<f64> {
     let mut h = vec![0.0; cnt];
+    orthogonalise_into(w, &v[..cnt], &mut h);
+    h
+}
+
+fn orthogonalise_into(
+    w: &mut [f64],
+    v: &[Vec<f64>],
+    h: &mut [f64],
+) {
     for _ in 0..2 {
-        for i in 0..cnt {
-            let c = dot(w, &v[i]);
-            h[i] += c;
-            for (wq, vq) in w.iter_mut().zip(&v[i]) {
+        for (direction, coefficient) in v.iter().zip(h.iter_mut()) {
+            let c = dot(w, direction);
+            *coefficient += c;
+            for (wq, vq) in w.iter_mut().zip(direction) {
                 *wq -= c * vq;
             }
         }
     }
-    h
 }
 
 fn random_unit(
@@ -139,56 +149,111 @@ fn random_unit(
     v
 }
 
-/// Arnoldi factorisation of length `m`.
+fn arnoldi_direction_norm(w: &mut [f64]) -> (f64, Option<f64>) {
+    let squared = dot(w, w);
+    // Keep ordinary directions in-place. The lower bound also leaves room to
+    // square residuals as small as the relative breakdown threshold.
+    if (1e-200..=1e200).contains(&squared) || squared.is_nan() {
+        return (squared.sqrt(), None);
+    }
+    let scale = w.iter().map(|x| x.abs()).fold(0.0, f64::max);
+    if scale == 0.0 || !scale.is_finite() {
+        return (scale, None);
+    }
+    for x in w.iter_mut() {
+        *x /= scale;
+    }
+    (nrm(w), Some(scale))
+}
+
+/// Computes a matrix-free Arnoldi factorisation with up to `m` directions.
 ///
-/// Arnoldi factorisation of length `m` started at `v0` (normalised
-/// internally): returns `(V, H, beta)` with `V` holding `m + 1` basis
-/// vectors (the last one is the normalised residual direction, zero after a
-/// lucky breakdown), `H` the `m x m` Hessenberg matrix and `beta` the
-/// residual norm, so that `A V_m = V_m H + beta v_{m+1} e_m^T`.
+/// The operator must overwrite its output slice with `A x`. The return value
+/// `(V, H, beta)` satisfies `A V_m ≈ V_m H + beta v_{m+1} e_m^T`. The first
+/// vector in `V` is the normalised `v0` and the last of its `m + 1` vectors
+/// is the normalised residual direction. `H` is `m x m` and upper Hessenberg.
+/// Iteration stops when the residual is at most `1e-14` times the norm of
+/// the current operator image or when the ambient dimension is exhausted.
+/// Unused vectors and columns are zero-padded, with `beta = 0` after this
+/// breakdown. A zero or empty start gives all zeros and skips the operator.
+///
+/// A non-finite start or operator image, or overflow in a projected
+/// coefficient or residual norm, is signalled by NaN in `beta` and on the
+/// failing diagonal of `H`, if present. Earlier completed columns and basis
+/// vectors are retained.
 pub fn arnoldi<A: Fn(&[f64], &mut [f64])>(
     apply: A,
     v0: &[f64],
     m: usize,
 ) -> (Vec<Vec<f64>>, Mat, f64) {
     let n = v0.len();
-    let s = nrm(v0).max(f64::MIN_POSITIVE);
-    let mut v: Vec<Vec<f64>> = vec![v0.iter().map(|e| e / s).collect()];
+    let mut v = Vec::with_capacity(m + 1);
     let mut h = Mat::zeros(m, m);
+    let mut start = v0.to_vec();
+    let (norm, _) = arnoldi_direction_norm(&mut start);
+    if norm == 0.0 || !norm.is_finite() {
+        let beta = if norm == 0.0 { 0.0 } else { f64::NAN };
+        if beta.is_nan() && m > 0 {
+            h.set(0, 0, beta);
+        }
+        v.resize_with(m + 1, || vec![0.0; n]);
+        return (v, h, beta);
+    }
+    for x in &mut start {
+        *x /= norm;
+    }
+    v.push(start);
+    if m == 0 {
+        return (v, h, 0.0);
+    }
+
     let mut beta = 0.0;
     let mut w = vec![0.0; n];
+    let mut coefficients = vec![0.0; m.min(n)];
     for j in 0..m {
         apply(&v[j], &mut w);
-        let c = orthogonalise(&mut w, &v, j + 1);
-        for i in 0..=j {
-            h.set(i, j, c[i]);
+        let (norm, scale) = arnoldi_direction_norm(&mut w);
+        if norm == 0.0 {
+            beta = 0.0;
+            break;
         }
-        beta = nrm(&w);
+        if !norm.is_finite() {
+            beta = f64::NAN;
+            h.set(j, j, beta);
+            break;
+        }
+
+        let column = &mut coefficients[..=j];
+        column.fill(0.0);
+        orthogonalise_into(&mut w, &v, column);
+        let residual = nrm(&w);
+        // The next direction exists only if the residual is significant at
+        // this step's scale and the basis does not span the ambient space.
+        let extend = j + 1 < n && residual > 1e-14 * norm;
+        beta = if extend { residual } else { 0.0 };
+        if let Some(scale) = scale {
+            beta *= scale;
+            for value in column.iter_mut() {
+                *value *= scale;
+            }
+            if !beta.is_finite() || column.iter().any(|x| !x.is_finite()) {
+                beta = f64::NAN;
+                h.set(j, j, beta);
+                break;
+            }
+        }
+        for (i, &value) in column.iter().enumerate() {
+            h.set(i, j, value);
+        }
+        if !extend {
+            break;
+        }
         if j + 1 < m {
             h.set(j + 1, j, beta);
         }
-        if beta > 1e-14 * (1.0 + c.iter().map(|x| x.abs()).sum::<f64>()) {
-            v.push(w.iter().map(|e| e / beta).collect());
-        } else {
-            beta = 0.0;
-            v.push(vec![0.0; n]);
-            if j + 1 < m {
-                h.set(j + 1, j, 0.0);
-                // continue with an arbitrary orthogonal direction would be needed;
-                // stop the factorisation here (invariant subspace found)
-                let mut hh = Mat::zeros(m, m);
-                for a in 0..m {
-                    for b in 0..m {
-                        hh.set(a, b, h.at(a, b));
-                    }
-                }
-                while v.len() < m + 1 {
-                    v.push(vec![0.0; n]);
-                }
-                return (v, hh, 0.0);
-            }
-        }
+        v.push(w.iter().map(|e| e / residual).collect());
     }
+    v.resize_with(m + 1, || vec![0.0; n]);
     (v, h, beta)
 }
 

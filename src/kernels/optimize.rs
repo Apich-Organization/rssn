@@ -27,7 +27,13 @@ use argmin_math::ArgminScaledAdd;
 use argmin_math::ArgminSub;
 use ndarray::Array1;
 use ndarray::Array2;
+use ndarray::ArrayView1;
+use ndarray::ArrayViewMut1;
+use ndarray::linalg::general_mat_vec_mul;
 use rand_v09::rngs::StdRng as ParticleSwarmRng;
+
+use crate::kernels::numeric_common::scale_product;
+use crate::kernels::reuse::f64_scratch;
 
 type P = Array1<f64>;
 
@@ -83,17 +89,221 @@ impl Default for OptimizationConfig {
     }
 }
 
-/// Rosenbrock function optimization (classical test function)
+/// The chained Rosenbrock function, summed over adjacent coordinates.
+///
+/// Each pair `(x, y)` contributes `(a - x)^2 + b (y - x^2)^2`.
 pub struct Rosenbrock {
-    /// Parameter a (usually 1.0).
+    /// Target of the linear terms (usually 1.0).
     pub a: f64,
-    /// Parameter b (usually 100.0).
+    /// Weight of the squared coupling residuals (usually 100.0).
     pub b: f64,
 }
 
 impl Default for Rosenbrock {
     fn default() -> Self {
         Self { a: 1.0, b: 100.0 }
+    }
+}
+
+// Returns a mantissa for the coupling residual and a factor whose square
+// restores its magnitude. Scaling before the fused difference preserves
+// finite weighted terms even when the unweighted residual is out of range.
+fn rescale_rosenbrock_residual(
+    x: f64,
+    y: f64,
+    residual: f64,
+) -> (f64, f64) {
+    const UP: f64 = f64::from_bits(1535_u64 << 52); // 2^512
+    const DOWN: f64 = f64::from_bits(511_u64 << 52); // 2^-512
+    const SMALL_X: f64 = f64::from_bits(573_u64 << 52); // 2^-450
+    const SMALL_Y: f64 = f64::from_bits(123_u64 << 52); // 2^-900
+    if residual.is_infinite() && x.is_finite() && y.is_finite() {
+        let scaled = x * DOWN;
+        (scaled.mul_add(-scaled, (y * DOWN) * DOWN), UP)
+    } else if residual.abs() < f64::MIN_POSITIVE
+        && x.abs() < SMALL_X
+        && y.abs() < SMALL_Y
+        && !crate::kernels::exact_eq(x, 0.0)
+    {
+        let scaled = x * UP;
+        (scaled.mul_add(-scaled, (y * UP) * UP), DOWN)
+    } else {
+        (residual, 1.0)
+    }
+}
+
+fn rosenbrock_scaled_product(
+    value: f64,
+    factors: &[f64],
+) -> f64 {
+    // The caller handles zero/non-finite factors before requesting scaling.
+    scale_product(value, factors, &[]).unwrap_or_else(|_| f64::INFINITY.copysign(value))
+}
+
+const ROSENBROCK_BOUNDED_SCALE: u64 = 1123_u64 << 52; // 2^100
+const ROSENBROCK_COST_THRESHOLD: f64 = f64::from_bits(173_u64 << 52); // 2^-850
+
+fn ordinary_rosenbrock_scale(value: f64) -> bool {
+    const LOWER: u64 = 923_u64 << 52; // 2^-100
+    let magnitude = value.to_bits() & 0x7fff_ffff_ffff_ffff;
+    magnitude == 0 || (LOWER..=ROSENBROCK_BOUNDED_SCALE).contains(&magnitude)
+}
+
+impl Rosenbrock {
+    fn cost_pairs<const SCALED: bool>(
+        &self,
+        param: &Array1<f64>,
+    ) -> f64 {
+        let term = |x: f64, y: f64| {
+            let linear = self.a - x;
+            let penalty = if SCALED {
+                self.pair_penalty(x, y)
+            } else {
+                self.b * x.mul_add(-x, y).powi(2)
+            };
+            linear.mul_add(linear, penalty)
+        };
+        param.as_slice().map_or_else(
+            || {
+                (0..param.len() - 1)
+                    .map(|i| term(param[i], param[i + 1]))
+                    .sum()
+            },
+            |values| values.windows(2).map(|pair| term(pair[0], pair[1])).sum(),
+        )
+    }
+
+    fn gradient_pairs<const SCALED: bool>(
+        &self,
+        param: &Array1<f64>,
+        gradient: &mut Vec<f64>,
+    ) {
+        let (a, b) = (self.a, self.b);
+        let weighted_residual = |x: f64, y: f64| b * x.mul_add(-x, y);
+        let left = |x: f64, weighted: f64| (-2.0_f64).mul_add(a - x, -4.0 * (x * weighted));
+        if !SCALED && let Some(values) = param.as_slice() {
+            // Each interior output is independent. Three shifted slices
+            // expose contiguous reads and a single disjoint output stream.
+            let end = values.len() - 1;
+            gradient.resize(values.len(), 0.0);
+            gradient[0] = left(values[0], weighted_residual(values[0], values[1]));
+            for (((entry, &x), &y), &z) in gradient[1..end]
+                .iter_mut()
+                .zip(&values[..end - 1])
+                .zip(&values[1..end])
+                .zip(&values[2..])
+            {
+                *entry = 2.0 * weighted_residual(x, y) + left(y, weighted_residual(y, z));
+            }
+            gradient[end] = 2.0 * weighted_residual(values[end - 1], values[end]);
+            return;
+        }
+        // Each interior coordinate receives the right derivative of the
+        // previous pair and the left derivative of the current one.
+        let mut previous = 0.0;
+        let mut derivative = |x, y| {
+            let (left, right) = if SCALED {
+                self.pair_derivatives(x, y)
+            } else {
+                let weighted = weighted_residual(x, y);
+                (left(x, weighted), 2.0 * weighted)
+            };
+            let value = previous + left;
+            previous = right;
+            value
+        };
+        if let Some(values) = param.as_slice() {
+            gradient.extend(values.windows(2).map(|pair| derivative(pair[0], pair[1])));
+        } else {
+            gradient.extend((0..param.len() - 1).map(|i| derivative(param[i], param[i + 1])));
+        }
+        gradient.push(previous);
+    }
+
+    #[inline]
+    fn pair_penalty(
+        &self,
+        x: f64,
+        y: f64,
+    ) -> f64 {
+        let residual = x.mul_add(-x, y);
+        let square = residual * residual;
+        if square.is_normal() || crate::kernels::exact_eq(residual, 0.0) {
+            return self.b * square;
+        }
+        self.scaled_penalty(x, y, residual)
+    }
+
+    #[cold]
+    fn scaled_penalty(
+        &self,
+        x: f64,
+        y: f64,
+        residual: f64,
+    ) -> f64 {
+        let (residual, scale) = rescale_rosenbrock_residual(x, y, residual);
+        if crate::kernels::exact_eq(scale, 1.0)
+            || !self.b.is_finite()
+            || crate::kernels::exact_eq(residual, 0.0)
+        {
+            (self.b * residual) * residual
+        } else {
+            let magnitude = residual.abs();
+            rosenbrock_scaled_product(self.b, &[magnitude, magnitude, scale, scale, scale, scale])
+        }
+    }
+
+    #[inline]
+    fn pair_derivatives(
+        &self,
+        x: f64,
+        y: f64,
+    ) -> (f64, f64) {
+        let residual = x.mul_add(-x, y);
+        let weighted = self.b * residual;
+        let mixed = x * weighted;
+        let (coupling, next) =
+            if weighted.is_normal() && (mixed.is_normal() || crate::kernels::exact_eq(x, 0.0)) {
+                (-4.0 * mixed, 2.0 * weighted)
+            } else {
+                self.scaled_derivatives(x, y, residual)
+            };
+        ((-2.0_f64).mul_add(self.a - x, coupling), next)
+    }
+
+    #[cold]
+    fn scaled_derivatives(
+        &self,
+        x: f64,
+        y: f64,
+        residual: f64,
+    ) -> (f64, f64) {
+        let (residual, scale) = rescale_rosenbrock_residual(x, y, residual);
+        if !residual.is_finite() || !x.is_finite() || !self.b.is_finite() {
+            let weighted = self.b * residual;
+            return (-4.0 * (x * weighted), 2.0 * weighted);
+        }
+        if crate::kernels::exact_eq(residual, 0.0) {
+            return (0.0, 0.0);
+        }
+        let signed = if residual.is_sign_negative() {
+            -self.b
+        } else {
+            self.b
+        };
+        let magnitude = residual.abs();
+        let right = rosenbrock_scaled_product(signed, &[2.0, magnitude, scale, scale]);
+        let left = if crate::kernels::exact_eq(x, 0.0) {
+            0.0
+        } else {
+            let weight = if x.is_sign_negative() {
+                signed
+            } else {
+                -signed
+            };
+            rosenbrock_scaled_product(weight, &[4.0, magnitude, x.abs(), scale, scale])
+        };
+        (left, right)
     }
 }
 
@@ -106,23 +316,25 @@ impl CostFunction for Rosenbrock {
         param: &Self::Param,
     ) -> Result<Self::Output, Error> {
         if param.len() < 2 {
-            return Err(Error::msg(
-                "Parameter dimension \
-                 must be at least 2",
-            ));
+            return Err(Error::msg("Rosenbrock needs at least two coordinates"));
         }
-
-        let mut sum = 0.0;
-
-        for i in 0..param.len() - 1 {
-            let x = param[i];
-
-            let y = param[i + 1];
-
-            sum += (self.a - x).mul_add(self.a - x, self.b * x.mul_add(-x, y).powi(2));
+        if crate::kernels::exact_eq(self.b, 0.0) {
+            return Ok(param
+                .iter()
+                .take(param.len() - 1)
+                .map(|x| (self.a - x).powi(2))
+                .sum());
         }
-
-        Ok(sum)
+        // With this weight, even 2^64 subnormal square roundings
+        // contribute less than 2^-911 in total. At this cost cutoff they
+        // are below the precision of the ordinary result.
+        if self.b.abs() <= f64::from_bits(ROSENBROCK_BOUNDED_SCALE) {
+            let ordinary = self.cost_pairs::<false>(param);
+            if ordinary.is_finite() && ordinary.abs() >= ROSENBROCK_COST_THRESHOLD {
+                return Ok(ordinary);
+            }
+        }
+        Ok(self.cost_pairs::<true>(param))
     }
 }
 
@@ -135,31 +347,34 @@ impl Gradient for Rosenbrock {
         param: &Self::Param,
     ) -> Result<Self::Gradient, Error> {
         let n = param.len();
-
         if n < 2 {
-            return Err(Error::msg(
-                "Parameter dimension \
-                 must be at least 2",
-            ));
+            return Err(Error::msg("Rosenbrock needs at least two coordinates"));
         }
-
-        let mut grad = Array1::zeros(n);
-
-        for i in 0..n - 1 {
-            let x = param[i];
-
-            let y = param[i + 1];
-
-            if i == 0 {
-                grad[i] = (-2.0f64).mul_add(self.a - x, -(4.0 * self.b * x * x.mul_add(-x, y)));
+        let mut gradient = Vec::with_capacity(n);
+        if crate::kernels::exact_eq(self.b, 0.0) {
+            gradient.extend(param.iter().take(n - 1).map(|x| -2.0 * (self.a - x)));
+            gradient.push(0.0);
+        } else {
+            // Nonzero inputs in range are multiples of 2^-152. Residuals
+            // are multiples of 2^-304, so the bounded nonzero products used
+            // for both gradient contributions stay in the normal range.
+            let ordinary = n >= 16
+                && ordinary_rosenbrock_scale(self.b)
+                && param.as_slice().map_or_else(
+                    || (0..n).fold(true, |ok, i| ok & ordinary_rosenbrock_scale(param[i])),
+                    |values| {
+                        values
+                            .iter()
+                            .fold(true, |ok, &x| ok & ordinary_rosenbrock_scale(x))
+                    },
+                );
+            if ordinary {
+                self.gradient_pairs::<false>(param, &mut gradient);
             } else {
-                grad[i] += 2.0 * self.b * param[i - 1].mul_add(-param[i - 1], param[i]);
+                self.gradient_pairs::<true>(param, &mut gradient);
             }
-
-            grad[i + 1] = 2.0 * self.b * x.mul_add(-x, y);
         }
-
-        Ok(grad)
+        Ok(Array1::from_vec(gradient))
     }
 }
 
@@ -248,6 +463,165 @@ impl LinearRegression {
 
         Ok(Self { x, y })
     }
+
+    /// Evaluates the half mean-squared residual and its coefficient gradient.
+    ///
+    /// The intercept is the first coefficient, followed by one slope per
+    /// column of `x`. Both outputs use the same residual evaluation.
+    ///
+    /// # Errors
+    /// Returns an error if the data are empty, the row and target counts
+    /// differ, or the coefficient count differs from `x.ncols() + 1`.
+    pub fn value_and_gradient(
+        &self,
+        param: &Array1<f64>,
+    ) -> Result<(f64, Array1<f64>), Error> {
+        self.with_residuals(param, |residuals| {
+            let cost = half_mean_square(residuals.iter().copied(), residuals.len());
+            (cost, self.gradient_from_residuals(residuals))
+        })
+    }
+
+    fn parameters<'p>(
+        &self,
+        param: &'p Array1<f64>,
+    ) -> Result<(f64, ArrayView1<'p, f64>), Error> {
+        if self.x.is_empty() || self.x.nrows() != self.y.len() {
+            return Err(Error::msg("invalid regression data shape"));
+        }
+        if param.len().checked_sub(1) != Some(self.x.ncols()) {
+            return Err(Error::msg(
+                "expected the intercept and one slope per feature column",
+            ));
+        }
+        Ok((param[0], param.slice(ndarray::s![1..])))
+    }
+
+    fn single_column_residuals(
+        &self,
+        intercept: f64,
+        slope: f64,
+    ) -> impl Iterator<Item = f64> + Clone + '_ {
+        self.x
+            .column(0)
+            .into_iter()
+            .zip(&self.y)
+            .map(move |(&x, &target)| regression_residual(x * slope, intercept, target))
+    }
+
+    fn with_row_buffer<T>(
+        &self,
+        evaluate: impl FnOnce(ArrayViewMut1<'_, f64>) -> T,
+    ) -> T {
+        const STACK_ROWS: usize = 64;
+        let n = self.y.len();
+        if n <= STACK_ROWS {
+            let mut storage = [0.0; STACK_ROWS];
+            evaluate(ArrayViewMut1::from(&mut storage[..n]))
+        } else {
+            let mut scratch = f64_scratch(n);
+            scratch.resize(n, 0.0);
+            evaluate(ArrayViewMut1::from(&mut scratch[..]))
+        }
+    }
+
+    fn with_residuals<T>(
+        &self,
+        param: &Array1<f64>,
+        evaluate: impl FnOnce(ArrayView1<'_, f64>) -> T,
+    ) -> Result<T, Error> {
+        let (intercept, slopes) = self.parameters(param)?;
+        Ok(self.with_row_buffer(|mut residuals| {
+            if slopes.len() == 1 {
+                for (entry, value) in residuals
+                    .iter_mut()
+                    .zip(self.single_column_residuals(intercept, slopes[0]))
+                {
+                    *entry = value;
+                }
+            } else {
+                general_mat_vec_mul(1.0, &self.x, &slopes, 0.0, &mut residuals);
+                for (prediction, &target) in residuals.iter_mut().zip(&self.y) {
+                    *prediction = regression_residual(*prediction, intercept, target);
+                }
+            }
+            evaluate(residuals.view())
+        }))
+    }
+
+    fn gradient_from_residuals(
+        &self,
+        residuals: ArrayView1<'_, f64>,
+    ) -> Array1<f64> {
+        let count = residuals.len() as f64;
+        let columns = self.x.ncols();
+        let mut gradient = Array1::zeros(columns + 1);
+        gradient[0] = residuals.sum();
+        if columns > 1
+            && residuals.len() >= 64
+            && let Some(matrix) = self.x.as_slice()
+            && let Some(coefficients) = gradient.as_slice_mut()
+        {
+            // Stream contiguous rows while keeping the order of terms in each
+            // column's dot product.
+            let slopes = &mut coefficients[1..];
+            for (row, &residual) in matrix.chunks_exact(columns).zip(&residuals) {
+                for (entry, &predictor) in slopes.iter_mut().zip(row) {
+                    *entry += predictor * residual;
+                }
+            }
+        } else {
+            general_mat_vec_mul(
+                1.0,
+                &self.x.t(),
+                &residuals,
+                0.0,
+                &mut gradient.slice_mut(ndarray::s![1..]),
+            );
+        }
+        gradient /= count;
+        if gradient.iter().any(|v| !v.is_finite()) {
+            // Normalize the terms before summing when the unscaled sum
+            // overflows, even though its mean can be finite.
+            if !gradient[0].is_finite() {
+                gradient[0] = residuals.iter().map(|r| r / count).sum();
+            }
+            for (entry, column) in gradient.iter_mut().skip(1).zip(self.x.columns()) {
+                if !entry.is_finite() {
+                    *entry = column
+                        .iter()
+                        .zip(&residuals)
+                        .map(|(x, r)| x * (r / count))
+                        .sum();
+                }
+            }
+        }
+        gradient
+    }
+}
+
+fn regression_residual(
+    prediction: f64,
+    intercept: f64,
+    target: f64,
+) -> f64 {
+    prediction + intercept - target
+}
+
+fn half_mean_square(
+    residuals: impl Iterator<Item = f64> + Clone,
+    count: usize,
+) -> f64 {
+    let count = count as f64;
+    let total: f64 = residuals.clone().map(|r| r * r).sum();
+    if total.is_infinite() || (total > 0.0 && total < f64::MIN_POSITIVE * count) {
+        let scale = residuals.clone().map(f64::abs).fold(0.0, f64::max);
+        if scale.is_finite() && scale > 0.0 {
+            let scaled: f64 = residuals.map(|r| (r / scale).powi(2)).sum();
+            return (scale * (scaled / (2.0 * count))) * scale;
+        }
+    }
+    total / (2.0 * count)
 }
 
 impl CostFunction for LinearRegression {
@@ -258,15 +632,19 @@ impl CostFunction for LinearRegression {
         &self,
         param: &Self::Param,
     ) -> Result<Self::Output, Error> {
-        let mut total_error = 0.0;
-
-        let predictions = self.x.dot(&param.slice(ndarray::s![1..]));
-
-        for (prediction, &target) in predictions.iter().zip(self.y.iter()) {
-            total_error += (prediction + param[0] - target).powi(2);
+        let (intercept, slopes) = self.parameters(param)?;
+        if slopes.len() == 1 {
+            let residuals = self.single_column_residuals(intercept, slopes[0]);
+            return Ok(half_mean_square(residuals, self.y.len()));
         }
-
-        Ok(total_error / (2.0 * self.y.len() as f64))
+        Ok(self.with_row_buffer(|mut predictions| {
+            general_mat_vec_mul(1.0, &self.x, &slopes, 0.0, &mut predictions);
+            let residuals = predictions
+                .iter()
+                .zip(&self.y)
+                .map(|(&prediction, &target)| regression_residual(prediction, intercept, target));
+            half_mean_square(residuals, self.y.len())
+        }))
     }
 }
 
@@ -278,23 +656,7 @@ impl Gradient for LinearRegression {
         &self,
         param: &Self::Param,
     ) -> Result<Self::Gradient, Error> {
-        let m = self.y.len() as f64;
-
-        let predictions = self.x.dot(&param.slice(ndarray::s![1..])) + param[0];
-
-        let errors = predictions - &self.y;
-
-        let mut grad = Array1::zeros(param.len());
-
-        grad[0] = errors.sum() / m;
-
-        let x_t = self.x.t();
-
-        let grad_rest = x_t.dot(&errors) / m;
-
-        grad.slice_mut(ndarray::s![1..]).assign(&grad_rest);
-
-        Ok(grad)
+        self.with_residuals(param, |residuals| self.gradient_from_residuals(residuals))
     }
 }
 

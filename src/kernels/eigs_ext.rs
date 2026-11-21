@@ -1,3 +1,5 @@
+//! Krylov-Schur, block Lanczos and Jacobi-Davidson eigensolvers, generalised problems.
+//!
 //! # Robust sparse eigensolvers: Krylov-Schur, block Lanczos, Jacobi-Davidson
 //!
 //! Extensions of [`crate::kernels::eigs`] for harder problems:
@@ -877,6 +879,24 @@ pub struct GenEigsOptions {
     pub eigs: EigsOptions,
 }
 
+fn gen_residual_norm(parts: &[Vec<f64>; 2]) -> f64 {
+    let square_sum = parts.iter().map(|p| rdot(p, p)).sum::<f64>();
+    if (square_sum.is_finite() && square_sum >= 1e-270) || square_sum.is_nan() {
+        return square_sum.sqrt();
+    }
+    // Squaring can overflow or underflow even for a representable norm.
+    let peak = parts.iter().flatten().map(|v| v.abs()).fold(0.0, f64::max);
+    if peak == 0.0 || !peak.is_finite() {
+        return peak;
+    }
+    let scaled_sum = parts
+        .iter()
+        .flatten()
+        .map(|v| (v / peak).powi(2))
+        .sum::<f64>();
+    peak * scaled_sum.sqrt()
+}
+
 fn gen_residuals(
     apply_a: &dyn Fn(&[f64], &mut [f64]),
     apply_b: &dyn Fn(&[f64], &mut [f64]),
@@ -884,29 +904,26 @@ fn gen_residuals(
 ) {
     let n = r.vectors_re.first().map_or(0, Vec::len);
     let (mut ax, mut bx) = (vec![0.0; n], vec![0.0; n]);
+    let mut parts = [vec![0.0; n], vec![0.0; n]];
     for i in 0..r.values.len() {
         let (lr, li) = r.values[i];
         let (xr, xi) = (&r.vectors_re[i], &r.vectors_im[i]);
         // residual of A x - lambda B x with complex x, lambda
-        let mut sq = 0.0;
-        let mut parts = [vec![0.0; n], vec![0.0; n]];
         apply_a(xr, &mut ax);
         apply_b(xr, &mut bx);
         for q in 0..n {
             parts[0][q] = ax[q] - lr * bx[q];
             parts[1][q] = -li * bx[q];
         }
-        // contribution of the imaginary part of x
-        apply_a(xi, &mut ax);
-        apply_b(xi, &mut bx);
-        for q in 0..n {
-            parts[0][q] += li * bx[q];
-            parts[1][q] += ax[q] - lr * bx[q];
+        if xi.iter().any(|&value| value != 0.0) {
+            apply_a(xi, &mut ax);
+            apply_b(xi, &mut bx);
+            for q in 0..n {
+                parts[0][q] += li * bx[q];
+                parts[1][q] += ax[q] - lr * bx[q];
+            }
         }
-        for p in &parts {
-            sq += rdot(p, p);
-        }
-        r.residuals[i] = sq.sqrt();
+        r.residuals[i] = gen_residual_norm(&parts);
     }
 }
 
@@ -939,7 +956,10 @@ pub fn b_is_positive_definite<B: Fn(&[f64], &mut [f64])>(
 /// in the `B` inner product on `(A - sigma B)^{-1} B`, which is self-adjoint
 /// there; `theta` maps back to `lambda = sigma + 1/theta`. The returned
 /// eigenvectors are `B`-orthonormal and `residuals` are the true norms
-/// `|A x - lambda B x|`.
+/// `||A x - lambda B x||₂`. Convergence uses the Ritz residuals of the
+/// transformed operator. The callbacks write the full action of a linear
+/// map. For a purely real eigenvector the residual requires one application
+/// of each operator.
 ///
 /// **Indefinite `B`.** The `B` inner product only exists for positive definite `B`. The
 /// solver first estimates the extreme eigenvalues of `B` by Lanczos
@@ -992,6 +1012,8 @@ where
 /// `A` is an arbitrary real matrix and `B` real and nonsingular: the `k`
 /// eigenvalues closest to `opts.sigma` by Krylov-Schur on
 /// `(A - sigma B)^{-1} B`. Eigenvalues may be complex.
+/// The residuals are the absolute 2-norms in the original pencil, as in
+/// [`eigs_gen_sym_shift_invert`].
 ///
 /// # Errors
 /// As [`eigs_krylov_schur`].

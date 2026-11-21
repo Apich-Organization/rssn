@@ -1,12 +1,14 @@
 //! Tensor-train compression by successive thin SVDs (TT-SVD).
 //!
-//! Storage is sum_k r[k] n[k] r[k+1]. Reconstruction is optional: entries,
+//! Storage is `sum_k r[k] n[k] r[k+1]`. Reconstruction is optional: entries,
 //! inner products and norms can be evaluated directly on the compressed cores.
 //! The discarded singular-value norms give an a posteriori Frobenius error
 //! estimate; floating-point SVD roundoff is additional to this estimate.
 
 use super::dense::Mat;
 use super::dense::svd;
+use super::krylov::dot_exact;
+use super::reuse::f64_scratch;
 
 /// Invalid input, arithmetic overflow, or failure of an SVD.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -486,38 +488,314 @@ impl TensorTrain {
 
     /// Inner product by contraction of bond matrices, without decompression.
     ///
+    /// Each physical slice advances the bond matrix `E` by a term `A_k^T E B_k`.
+    /// The contraction order is selected from the bond ranks, and the same two bond
+    /// buffers are reused across the cores.
+    ///
     /// # Errors
     /// Returns an error for different shapes or an unrepresentable contraction.
     pub fn inner(
         &self,
         other: &Self,
     ) -> Result<f64, TrainError> {
+        const STACK_ENTRIES: usize = 64;
+        let layout = self.inner_layout(other)?;
+        if layout.len == 0 {
+            self.contract_inner(other, layout, &mut [])
+        } else if layout.len <= STACK_ENTRIES {
+            self.contract_inner(other, layout, &mut [0.0; STACK_ENTRIES])
+        } else {
+            let mut work = f64_scratch(layout.len);
+            work.resize(layout.len, 0.0);
+            self.contract_inner(other, layout, &mut work)
+        }
+    }
+
+    /// Number of `f64` entries required by [`Self::inner_with_workspace`].
+    ///
+    /// The workspace is sized by the bond ranks. Two rank-one tensor trains need no workspace.
+    ///
+    /// # Errors
+    /// Returns an error if the shapes differ or the workspace extent is unrepresentable.
+    pub fn inner_workspace_len(
+        &self,
+        other: &Self,
+    ) -> Result<usize, TrainError> {
+        Ok(self.inner_layout(other)?.len)
+    }
+
+    /// Contracts two tensor trains using a caller-owned workspace.
+    ///
+    /// Provide at least [`Self::inner_workspace_len`] entries. The workspace can be reused
+    /// with different trains, and any entries beyond the required length are left untouched.
+    ///
+    /// # Errors
+    /// Returns an error for different shapes, insufficient workspace, or arithmetic overflow.
+    pub fn inner_with_workspace(
+        &self,
+        other: &Self,
+        work: &mut [f64],
+    ) -> Result<f64, TrainError> {
+        let layout = self.inner_layout(other)?;
+        if work.len() < layout.len {
+            return Err(TrainError::InvalidInput);
+        }
+        self.contract_inner(other, layout, work)
+    }
+
+    fn inner_layout(
+        &self,
+        other: &Self,
+    ) -> Result<InnerLayout, TrainError> {
+        const MAX_WORK_ENTRIES: usize = isize::MAX as usize / std::mem::size_of::<f64>();
         if self.shape != other.shape {
             return Err(TrainError::InvalidInput);
         }
-        let mut state = vec![1.0];
+        if self
+            .cores
+            .iter()
+            .chain(&other.cores)
+            .all(|core| core.right == 1)
+        {
+            return Ok(InnerLayout { bond: 0, len: 0 });
+        }
+        let mut bond = 1;
+        let mut intermediate = 0;
         for (a, b) in self.cores.iter().zip(&other.cores) {
-            let mut next = vec![0.0; a.right.checked_mul(b.right).ok_or(TrainError::Overflow)?];
-            for i in 0..a.left {
-                for j in 0..b.left {
-                    for k in 0..a.mode {
-                        let weight = state[i * b.left + j];
-                        for p in 0..a.right {
-                            for q in 0..b.right {
-                                next[p * b.right + q] += weight
-                                    * a.data[(i * a.mode + k) * a.right + p]
-                                    * b.data[(j * b.mode + k) * b.right + q];
-                            }
-                        }
-                    }
+            bond = bond.max(size(&[a.right, b.right])?);
+            let (_, required) = inner_step(a, b);
+            intermediate = intermediate.max(required);
+        }
+        let len = size(&[2, bond])?
+            .checked_add(intermediate)
+            .ok_or(TrainError::Overflow)?;
+        if len > MAX_WORK_ENTRIES {
+            return Err(TrainError::Overflow);
+        }
+        Ok(InnerLayout { bond, len })
+    }
+
+    #[expect(
+        clippy::arithmetic_side_effects,
+        clippy::indexing_slicing,
+        reason = "the layout checks bond sizes and the workspace before contraction"
+    )]
+    fn contract_inner(
+        &self,
+        other: &Self,
+        layout: InnerLayout,
+        work: &mut [f64],
+    ) -> Result<f64, TrainError> {
+        if let ([a], [b]) = (self.cores.as_slice(), other.cores.as_slice()) {
+            let pairs = a.data.iter().copied().zip(b.data.iter().copied());
+            let fast: f64 = pairs.clone().map(|(x, y)| x * y).sum();
+            let value = if fast.is_normal() {
+                fast
+            } else {
+                dot_exact(pairs)
+            };
+            return value
+                .is_finite()
+                .then_some(value)
+                .ok_or(TrainError::Overflow);
+        }
+        if layout.len == 0 {
+            let mut state = 1.0;
+            for (a, b) in self.cores.iter().zip(&other.cores) {
+                state = a
+                    .data
+                    .iter()
+                    .zip(&b.data)
+                    .map(|(x, y)| state * x * y)
+                    .sum::<f64>();
+                if !state.is_finite() {
+                    return Err(TrainError::Overflow);
                 }
             }
-            if !next.iter().all(|v| v.is_finite()) {
-                return Err(TrainError::Overflow);
+            return Ok(state);
+        }
+
+        let (mut state, rest) = work.split_at_mut(layout.bond);
+        let (mut next, aux) = rest.split_at_mut(layout.bond);
+        state[0] = 1.0;
+        for (a, b) in self.cores.iter().zip(&other.cores) {
+            let input = &state[..a.left * b.left];
+            let output = &mut next[..a.right * b.right];
+            output.fill(0.0);
+            let (step, required) = inner_step(a, b);
+            match step {
+                | InnerStep::Direct => inner_direct(a, b, input, output),
+                | InnerStep::Left => inner_left(a, b, input, output, &mut aux[..required]),
+                | InnerStep::Right => inner_right(a, b, input, output, &mut aux[..required]),
             }
-            state = next;
+            if output.iter().any(|v| !v.is_finite()) {
+                if step == InnerStep::Direct {
+                    return Err(TrainError::Overflow);
+                }
+                // The factored intermediate can overflow before multiplication by the other core.
+                output.fill(0.0);
+                inner_direct(a, b, input, output);
+                if output.iter().any(|v| !v.is_finite()) {
+                    return Err(TrainError::Overflow);
+                }
+            }
+            std::mem::swap(&mut state, &mut next);
         }
         Ok(state[0])
+    }
+}
+
+#[derive(Clone, Copy)]
+struct InnerLayout {
+    bond: usize,
+    len: usize,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum InnerStep {
+    Direct,
+    Left,
+    Right,
+}
+
+fn inner_step(
+    a: &TrainCore,
+    b: &TrainCore,
+) -> (InnerStep, usize) {
+    let mut best = (InnerStep::Direct, 0);
+    let mut cost = a
+        .left
+        .saturating_mul(b.left)
+        .saturating_mul(a.right)
+        .saturating_mul(b.right);
+    for (step, extent, terms) in [
+        (
+            InnerStep::Left,
+            a.right.checked_mul(b.left),
+            a.left.saturating_add(b.right),
+        ),
+        (
+            InnerStep::Right,
+            a.left.checked_mul(b.right),
+            b.left.saturating_add(a.right),
+        ),
+    ] {
+        if let Some(extent) = extent {
+            let candidate = extent.saturating_mul(terms);
+            if (candidate, extent) < (cost, best.1) {
+                best = (step, extent);
+                cost = candidate;
+            }
+        }
+    }
+    best
+}
+
+#[expect(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    reason = "core construction validates the storage layout and the callers bound the indices"
+)]
+fn inner_row(
+    core: &TrainCore,
+    left: usize,
+    mode: usize,
+) -> &[f64] {
+    let start = (left * core.mode + mode) * core.right;
+    &core.data[start..start + core.right]
+}
+
+#[inline]
+fn inner_axpy(
+    out: &mut [f64],
+    coefficient: f64,
+    row: &[f64],
+) {
+    for (value, rhs) in out.iter_mut().zip(row) {
+        *value += coefficient * rhs;
+    }
+}
+
+fn inner_direct(
+    a: &TrainCore,
+    b: &TrainCore,
+    state: &[f64],
+    next: &mut [f64],
+) {
+    for (i, s) in state.chunks_exact(b.left).enumerate() {
+        for (j, &weight) in s.iter().enumerate() {
+            for k in 0..a.mode {
+                let right = inner_row(b, j, k);
+                for (&left, out) in inner_row(a, i, k)
+                    .iter()
+                    .zip(next.chunks_exact_mut(b.right))
+                {
+                    inner_axpy(out, weight * left, right);
+                }
+            }
+        }
+    }
+}
+
+// Accumulate (A_k^T E) B_k over the physical index k.
+#[expect(
+    clippy::indexing_slicing,
+    clippy::single_call_fn,
+    reason = "the left contraction kernel reads column j within its b.left columns"
+)]
+fn inner_left(
+    a: &TrainCore,
+    b: &TrainCore,
+    state: &[f64],
+    next: &mut [f64],
+    aux: &mut [f64],
+) {
+    for k in 0..a.mode {
+        aux.fill(0.0);
+        for (i, s) in state.chunks_exact(b.left).enumerate() {
+            for (&left, t) in inner_row(a, i, k).iter().zip(aux.chunks_exact_mut(b.left)) {
+                inner_axpy(t, left, s);
+            }
+        }
+        for j in 0..b.left {
+            let right = inner_row(b, j, k);
+            for (t, out) in aux.chunks_exact(b.left).zip(next.chunks_exact_mut(b.right)) {
+                inner_axpy(out, t[j], right);
+            }
+        }
+    }
+}
+
+// Accumulate A_k^T (E B_k) with the opposite order of contraction.
+#[expect(
+    clippy::single_call_fn,
+    reason = "keeps the right-first kernel separate from dispatch"
+)]
+fn inner_right(
+    a: &TrainCore,
+    b: &TrainCore,
+    state: &[f64],
+    next: &mut [f64],
+    aux: &mut [f64],
+) {
+    for k in 0..a.mode {
+        aux.fill(0.0);
+        for (s, t) in state
+            .chunks_exact(b.left)
+            .zip(aux.chunks_exact_mut(b.right))
+        {
+            for (j, &weight) in s.iter().enumerate() {
+                inner_axpy(t, weight, inner_row(b, j, k));
+            }
+        }
+        for (i, t) in aux.chunks_exact(b.right).enumerate() {
+            for (&left, out) in inner_row(a, i, k)
+                .iter()
+                .zip(next.chunks_exact_mut(b.right))
+            {
+                inner_axpy(out, left, t);
+            }
+        }
     }
 }
 

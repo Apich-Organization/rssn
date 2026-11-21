@@ -1,3 +1,5 @@
+//! Real Schur, QZ (generalized Schur), Sylvester, and Lyapunov decompositions.
+//!
 //! Real Schur, QZ (generalized Schur), Sylvester, and continuous-time
 //! Lyapunov solvers on [`Mat`].
 
@@ -50,161 +52,425 @@ pub fn schur(a: &Mat) -> Result<Schur, DenseError> {
     Ok(Schur { q, t })
 }
 
-/// Solves the continuous-time Sylvester equation `A X + X B = C` via the
-/// Bartels-Stewart algorithm (real Schur reduction + block back-substitution).
+/// A reusable Bartels-Stewart reduction for `A X + X B = C`.
+///
+/// Keep the plan when the coefficient matrices are fixed and the right-hand side
+/// changes. [`Self::for_lyapunov`] prepares the case `B = A^T` from one real Schur
+/// decomposition.
+#[derive(Debug)]
+pub struct SylvesterPlan {
+    rows: usize,
+    cols: usize,
+    reduced: Option<ReducedSylvester>,
+}
+
+#[derive(Debug)]
+struct ReducedSylvester {
+    left: Schur,
+    left_transpose: Mat,
+    right: Schur,
+    right_transpose: Mat,
+    row_blocks: Vec<(usize, usize)>,
+    col_blocks: Vec<(usize, usize)>,
+    large_coefficients: bool,
+}
+
+// Allow room for the sum of two coefficients and the growth of a four-row elimination.
+const BLOCK_SCALE_LIMIT: f64 = f64::MAX / 16.0;
+
+impl SylvesterPlan {
+    pub(crate) fn heap_bytes(&self) -> usize {
+        self.reduced.as_ref().map_or(0, |reduced| {
+            [
+                &reduced.left.q,
+                &reduced.left.t,
+                &reduced.left_transpose,
+                &reduced.right.q,
+                &reduced.right.t,
+                &reduced.right_transpose,
+            ]
+            .into_iter()
+            .map(|matrix| matrix.data.capacity() * size_of::<f64>())
+            .sum::<usize>()
+                + (reduced.row_blocks.capacity() + reduced.col_blocks.capacity())
+                    * size_of::<(usize, usize)>()
+        })
+    }
+
+    /// Prepares a Sylvester solver for square matrices `A` and `B`.
+    ///
+    /// # Errors
+    /// Returns an error for invalid matrix storage, non-finite values,
+    /// cancellation or a failed Schur reduction.
+    pub fn new(
+        a: &Mat,
+        b: &Mat,
+    ) -> Result<Self, DenseError> {
+        if !valid_square(a) || !valid_square(b) {
+            return Err(DenseError::Shape);
+        }
+        Self::from_valid_shapes(a, b)
+    }
+
+    /// Prepares a reusable solver for `A X + X A^T = Q`.
+    ///
+    /// # Errors
+    /// Returns an error for invalid matrix storage, non-finite values,
+    /// cancellation or a failed Schur reduction.
+    pub fn for_lyapunov(a: &Mat) -> Result<Self, DenseError> {
+        if !valid_square(a) {
+            return Err(DenseError::Shape);
+        }
+        Self::from_valid_lyapunov_shape(a)
+    }
+
+    /// Solves the original equation for a new right-hand side with the plan's shape.
+    ///
+    /// # Errors
+    /// Returns an error for inconsistent shape, non-finite input or arithmetic,
+    /// cancellation, or a singular Sylvester operator.
+    pub fn solve(
+        &self,
+        c: &Mat,
+    ) -> Result<Mat, DenseError> {
+        validate_rhs(c, self.rows, self.cols)?;
+        self.solve_validated(c)
+    }
+
+    fn from_valid_shapes(
+        a: &Mat,
+        b: &Mat,
+    ) -> Result<Self, DenseError> {
+        if !a.is_finite() || !b.is_finite() {
+            return Err(DenseError::NonFinite);
+        }
+        let reduced = if a.rows == 0 || b.rows == 0 {
+            None
+        } else {
+            Some(ReducedSylvester::new(
+                sylvester_schur(a)?,
+                sylvester_schur(b)?,
+            ))
+        };
+        Ok(Self {
+            rows: a.rows,
+            cols: b.rows,
+            reduced,
+        })
+    }
+
+    fn from_valid_lyapunov_shape(a: &Mat) -> Result<Self, DenseError> {
+        if !a.is_finite() {
+            return Err(DenseError::NonFinite);
+        }
+        let n = a.rows;
+        let reduced = if n == 0 {
+            None
+        } else {
+            let left = sylvester_schur(a)?;
+            // Reversing coordinates makes T^T upper quasi-triangular again.
+            // For the reversal J, A^T = (U J) (J T^T J) (U J)^T.
+            let mut q = Mat::zeros(n, n);
+            let mut t = Mat::zeros(n, n);
+            for (i, ri) in (0..n).zip((0..n).rev()) {
+                for (j, rj) in (0..n).zip((0..n).rev()) {
+                    q.set(i, j, left.q.at(i, rj));
+                    t.set(i, j, left.t.at(rj, ri));
+                }
+            }
+            Some(ReducedSylvester::new(left, Schur { q, t }))
+        };
+        Ok(Self {
+            rows: n,
+            cols: n,
+            reduced,
+        })
+    }
+
+    fn solve_validated(
+        &self,
+        c: &Mat,
+    ) -> Result<Mat, DenseError> {
+        let Some(reduced) = &self.reduced else {
+            return Ok(Mat::zeros(self.rows, self.cols));
+        };
+        reduced.solve(c)
+    }
+}
+
+impl ReducedSylvester {
+    fn new(
+        left: Schur,
+        right: Schur,
+    ) -> Self {
+        let left_transpose = left.q.transpose();
+        let right_transpose = right.q.transpose();
+        let row_blocks = schur_blocks(&left.t);
+        let col_blocks = schur_blocks(&right.t);
+        let large_coefficients = left
+            .t
+            .data
+            .iter()
+            .chain(&right.t.data)
+            .any(|v| v.abs() >= BLOCK_SCALE_LIMIT);
+        Self {
+            left,
+            left_transpose,
+            right,
+            right_transpose,
+            row_blocks,
+            col_blocks,
+            large_coefficients,
+        }
+    }
+
+    fn solve(
+        &self,
+        c: &Mat,
+    ) -> Result<Mat, DenseError> {
+        crate::cancellation::checkpoint()?;
+        let f = self.left_transpose.matmul(c)?.matmul(&self.right.q)?;
+        let r = &self.left.t;
+        let s = &self.right.t;
+        let mut y = Mat::zeros(r.rows, s.rows);
+        for &(c0, cw) in &self.col_blocks {
+            for &(r0, rw) in self.row_blocks.iter().rev() {
+                crate::cancellation::checkpoint()?;
+                let mut rhs = [0.0; 4];
+                for dc in 0..cw {
+                    let col = c0.saturating_add(dc);
+                    for dr in 0..rw {
+                        let row = r0.saturating_add(dr);
+                        let mut value = f.at(row, col);
+                        for k in r0.saturating_add(rw)..r.rows {
+                            value -= r.at(row, k) * y.at(k, col);
+                        }
+                        for l in 0..c0 {
+                            value -= y.at(row, l) * s.at(l, col);
+                        }
+                        if let Some(slot) = rhs.get_mut(dc.saturating_mul(rw).saturating_add(dr)) {
+                            *slot = value;
+                        }
+                    }
+                }
+                if rw == 1 && cw == 1 {
+                    let left = r.at(r0, r0);
+                    let right = s.at(c0, c0);
+                    let coefficient = left + right;
+                    let [value, ..] = rhs;
+                    if !value.is_finite() {
+                        return Err(DenseError::NonFinite);
+                    }
+                    if coefficient == 0.0 {
+                        return Err(DenseError::Singular);
+                    }
+                    let entry = if coefficient.is_finite() {
+                        value / coefficient
+                    } else {
+                        (0.5 * value) / (0.5 * left + 0.5 * right)
+                    };
+                    y.set(r0, c0, entry);
+                } else {
+                    let solution =
+                        solve_schur_block(r, s, (r0, rw), (c0, cw), rhs, self.large_coefficients)?;
+                    for dc in 0..cw {
+                        for dr in 0..rw {
+                            let entry = dc.saturating_mul(rw).saturating_add(dr);
+                            let value = solution.get(entry).copied().ok_or(DenseError::Shape)?;
+                            y.set(r0.saturating_add(dr), c0.saturating_add(dc), value);
+                        }
+                    }
+                }
+            }
+        }
+        let result = self.left.q.matmul(&y)?.matmul(&self.right_transpose)?;
+        result
+            .is_finite()
+            .then_some(result)
+            .ok_or(DenseError::NonFinite)
+    }
+}
+
+fn valid_square(a: &Mat) -> bool {
+    a.rows == a.cols && a.rows.checked_mul(a.cols) == Some(a.data.len())
+}
+
+fn validate_rhs(
+    c: &Mat,
+    rows: usize,
+    cols: usize,
+) -> Result<(), DenseError> {
+    if c.rows != rows || c.cols != cols || rows.checked_mul(cols) != Some(c.data.len()) {
+        return Err(DenseError::Shape);
+    }
+    if !c.is_finite() {
+        return Err(DenseError::NonFinite);
+    }
+    Ok(())
+}
+
+fn sylvester_schur(a: &Mat) -> Result<Schur, DenseError> {
+    crate::cancellation::checkpoint()?;
+    let peak = a
+        .data
+        .iter()
+        .fold(0.0_f64, |max, value| max.max(value.abs()));
+    // The Francis/Householder reduction can form expressions of degree four.
+    // Normalize extreme operands independently to protect the Schur iteration.
+    let result = if peak > 0.0 && !(1e-75..=1e75).contains(&peak) {
+        let scaled = Mat {
+            rows: a.rows,
+            cols: a.cols,
+            data: a.data.iter().map(|v| v / peak).collect(),
+        };
+        let mut result = schur(&scaled)?;
+        for value in &mut result.t.data {
+            *value *= peak;
+        }
+        result
+    } else {
+        schur(a)?
+    };
+    (result.q.is_finite() && result.t.is_finite())
+        .then_some(result)
+        .ok_or(DenseError::NonFinite)
+}
+
+fn schur_blocks(t: &Mat) -> Vec<(usize, usize)> {
+    let mut blocks = Vec::new();
+    let mut i = 0usize;
+    while i < t.rows {
+        let next = i.saturating_add(1);
+        // The real Schur reduction writes exact zeros at deflated boundaries.
+        let width = if next < t.rows && t.at(next, i) != 0.0 {
+            2
+        } else {
+            1
+        };
+        blocks.push((i, width));
+        i = i.saturating_add(width);
+    }
+    blocks
+}
+
+#[expect(
+    clippy::single_call_fn,
+    clippy::indexing_slicing,
+    reason = "Schur block widths at most two give at most four equations"
+)]
+fn solve_schur_block(
+    r: &Mat,
+    s: &Mat,
+    (r0, rw): (usize, usize),
+    (c0, cw): (usize, usize),
+    mut rhs: [f64; 4],
+    large_coefficients: bool,
+) -> Result<[f64; 4], DenseError> {
+    let peak = if large_coefficients {
+        (0..rw)
+            .flat_map(|i| (0..rw).map(move |j| r.at(r0.saturating_add(i), r0.saturating_add(j))))
+            .chain((0..cw).flat_map(|i| {
+                (0..cw).map(move |j| s.at(c0.saturating_add(i), c0.saturating_add(j)))
+            }))
+            .fold(0.0_f64, |max, value| max.max(value.abs()))
+    } else {
+        0.0
+    };
+    let scale = if peak >= BLOCK_SCALE_LIMIT {
+        let scale = peak.recip();
+        for value in &mut rhs {
+            *value *= scale;
+        }
+        scale
+    } else {
+        1.0
+    };
+    let dim = rw.saturating_mul(cw);
+    let mut sys = [[0.0; 4]; 4];
+    for dc in 0..cw {
+        for dr in 0..rw {
+            let eq = dc.saturating_mul(rw).saturating_add(dr);
+            for dr2 in 0..rw {
+                let col = dc.saturating_mul(rw).saturating_add(dr2);
+                sys[eq][col] += r.at(r0.saturating_add(dr), r0.saturating_add(dr2)) * scale;
+            }
+            for dc2 in 0..cw {
+                let col = dc2.saturating_mul(rw).saturating_add(dr);
+                sys[eq][col] += s.at(c0.saturating_add(dc2), c0.saturating_add(dc)) * scale;
+            }
+        }
+    }
+    if !sys.iter().flatten().chain(&rhs).all(|v| v.is_finite()) {
+        return Err(DenseError::NonFinite);
+    }
+    // Apply partial pivoting to the right-hand side as the small system is eliminated.
+    for k in 0..dim {
+        crate::cancellation::checkpoint()?;
+        let below = k.saturating_add(1)..dim;
+        let mut pivot = k;
+        for row in below.clone() {
+            if sys[row][k].abs() > sys[pivot][k].abs() {
+                pivot = row;
+            }
+        }
+        if sys[pivot][k] == 0.0 {
+            return Err(DenseError::Singular);
+        }
+        sys.swap(pivot, k);
+        rhs.swap(pivot, k);
+        for row in below.clone() {
+            let multiplier = sys[row][k] / sys[k][k];
+            if multiplier != 0.0 {
+                for col in below.clone() {
+                    sys[row][col] -= multiplier * sys[k][col];
+                }
+                rhs[row] -= multiplier * rhs[k];
+            }
+        }
+    }
+    for row in (0..dim).rev() {
+        for col in row.saturating_add(1)..dim {
+            rhs[row] -= sys[row][col] * rhs[col];
+        }
+        rhs[row] /= sys[row][row];
+    }
+    rhs.iter()
+        .all(|v| v.is_finite())
+        .then_some(rhs)
+        .ok_or(DenseError::NonFinite)
+}
+
+/// Solves the continuous-time Sylvester equation `A X + X B = C` by real
+/// Schur reduction and block back-substitution.
 ///
 /// # Errors
-///
-/// [`DenseError::Shape`] on incompatible dimensions, [`DenseError::NonFinite`]
-/// on non-finite entries, or [`DenseError::Singular`] when `A` and `-B` share
-/// an eigenvalue.
+/// Returns an error for invalid shapes, non-finite input or arithmetic,
+/// cancellation, a failed Schur reduction, or a singular Sylvester operator.
 pub fn sylvester(
     a: &Mat,
     b: &Mat,
     c: &Mat,
 ) -> Result<Mat, DenseError> {
-    if a.rows != a.cols || b.rows != b.cols || c.rows != a.rows || c.cols != b.cols {
+    if !valid_square(a) || !valid_square(b) {
         return Err(DenseError::Shape);
     }
-    if !a.is_finite() || !b.is_finite() || !c.is_finite() {
-        return Err(DenseError::NonFinite);
-    }
-    let n = a.rows;
-    let m = b.rows;
-    if n == 0 || m == 0 {
-        return Ok(Mat::zeros(n, m));
-    }
-
-    let sa = schur(a)?;
-    let sb = schur(b)?;
-    let u = sa.q;
-    let r = sa.t;
-    let v = sb.q;
-    let s = sb.t;
-
-    let f = u.transpose().matmul(c)?.matmul(&v)?;
-
-    let mut row_blocks: Vec<(usize, usize)> = Vec::new();
-    let mut i = n;
-    while i > 0 {
-        if i >= 2
-            && r.at(i.saturating_sub(1), i.saturating_sub(2)).abs()
-                > 1e-12
-                    * (r.at(i.saturating_sub(2), i.saturating_sub(2)).abs()
-                        + r.at(i.saturating_sub(1), i.saturating_sub(1)).abs()
-                        + 1.0)
-        {
-            let start = i.saturating_sub(2);
-            row_blocks.push((start, 2));
-            i = start;
-        } else {
-            let start = i.saturating_sub(1);
-            row_blocks.push((start, 1));
-            i = start;
-        }
-    }
-
-    let mut col_blocks: Vec<(usize, usize)> = Vec::new();
-    let mut j = 0;
-    while j < m {
-        if j.saturating_add(1) < m
-            && s.at(j.saturating_add(1), j).abs()
-                > 1e-12
-                    * (s.at(j, j).abs()
-                        + s.at(j.saturating_add(1), j.saturating_add(1)).abs()
-                        + 1.0)
-        {
-            col_blocks.push((j, 2));
-            j = j.saturating_add(2);
-        } else {
-            col_blocks.push((j, 1));
-            j = j.saturating_add(1);
-        }
-    }
-
-    let mut y = Mat::zeros(n, m);
-    for &(c0, cw) in &col_blocks {
-        for &(r0, rw) in &row_blocks {
-            let mut rhs = [0.0; 4];
-            for dr in 0..rw {
-                for dc in 0..cw {
-                    let mut val = f.at(r0.saturating_add(dr), c0.saturating_add(dc));
-                    for k in r0.saturating_add(rw)..n {
-                        val -= r.at(r0.saturating_add(dr), k) * y.at(k, c0.saturating_add(dc));
-                    }
-                    for l in 0..c0 {
-                        val -= y.at(r0.saturating_add(dr), l) * s.at(l, c0.saturating_add(dc));
-                    }
-                    if let Some(slot) = rhs.get_mut(dr.saturating_mul(cw).saturating_add(dc)) {
-                        *slot = val;
-                    }
-                }
-            }
-            let dim = rw.saturating_mul(cw);
-            let mut sys = Mat::zeros(dim, dim);
-            for dc in 0..cw {
-                for dr in 0..rw {
-                    let eq = dc.saturating_mul(rw).saturating_add(dr);
-                    for dr2 in 0..rw {
-                        let col = dc.saturating_mul(rw).saturating_add(dr2);
-                        sys.set(
-                            eq,
-                            col,
-                            sys.at(eq, col) + r.at(r0.saturating_add(dr), r0.saturating_add(dr2)),
-                        );
-                    }
-                    for dc2 in 0..cw {
-                        let col = dc2.saturating_mul(rw).saturating_add(dr);
-                        sys.set(
-                            eq,
-                            col,
-                            sys.at(eq, col) + s.at(c0.saturating_add(dc2), c0.saturating_add(dc)),
-                        );
-                    }
-                }
-            }
-            let mut rhs_vec = vec![0.0; dim];
-            for dc in 0..cw {
-                for dr in 0..rw {
-                    if let Some(slot) = rhs_vec.get_mut(dc.saturating_mul(rw).saturating_add(dr)) {
-                        *slot = rhs
-                            .get(dr.saturating_mul(cw).saturating_add(dc))
-                            .copied()
-                            .unwrap_or(0.0);
-                    }
-                }
-            }
-            let sol = dense::solve(&sys, &rhs_vec)?;
-            for dc in 0..cw {
-                for dr in 0..rw {
-                    y.set(
-                        r0.saturating_add(dr),
-                        c0.saturating_add(dc),
-                        sol.get(dc.saturating_mul(rw).saturating_add(dr))
-                            .copied()
-                            .unwrap_or(0.0),
-                    );
-                }
-            }
-        }
-    }
-
-    u.matmul(&y)?.matmul(&v.transpose())
+    validate_rhs(c, a.rows, b.rows)?;
+    SylvesterPlan::from_valid_shapes(a, b)?.solve_validated(c)
 }
 
 /// Solves the continuous-time Lyapunov equation `A X + X A^T = Q`.
 ///
 /// # Errors
-///
 /// As [`sylvester`].
 pub fn lyapunov(
     a: &Mat,
     q: &Mat,
 ) -> Result<Mat, DenseError> {
-    if a.rows != a.cols || q.rows != a.rows || q.cols != a.cols {
+    if !valid_square(a) {
         return Err(DenseError::Shape);
     }
-    sylvester(a, &a.transpose(), q)
+    validate_rhs(q, a.rows, a.rows)?;
+    SylvesterPlan::from_valid_lyapunov_shape(a)?.solve_validated(q)
 }
 
 /// Result of the real QZ (generalized Schur) decomposition of `(A, B)`:

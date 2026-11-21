@@ -1,3 +1,5 @@
+//! Algebraic multigrid for non-symmetric systems (Ruge-Stueben, Petrov-Galerkin aggregation).
+//!
 //! # Algebraic multigrid for non-symmetric systems
 //!
 //! [`AmgGeneral`] builds a hierarchy for a general sparse [`Csr`] matrix
@@ -22,9 +24,11 @@
 //!
 //! Smoothing is Gauss-Seidel (forward before, backward after the coarse
 //! correction). The cycle is a good right preconditioner for GMRES and
-//! BiCGSTAB ([`AmgGeneral::precondition`]) when used on non-symmetric
+//! `BiCGSTAB` ([`AmgGeneral::precondition`]) when used on non-symmetric
 //! operators; plain stand-alone cycling ([`AmgGeneral::solve`]) converges for
-//! diffusion-dominated and moderately convective problems.
+//! diffusion-dominated and moderately convective problems. Cycles reuse sparse
+//! level work vectors. For repeated calls, [`AmgGeneral::workspace_len`] gives
+//! the size of a caller-owned workspace.
 
 use crate::kernels::dense::Lu;
 use crate::kernels::dense::Mat;
@@ -38,6 +42,8 @@ use crate::kernels::multigrid::MgResult;
 use crate::kernels::multigrid::aggregate;
 use crate::kernels::multigrid::spgemm;
 use crate::kernels::multigrid::transpose;
+use crate::kernels::numeric_common::NumericError;
+use crate::kernels::reuse::f64_scratch;
 
 /// Coarsening strategy of [`AmgGeneral`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -95,13 +101,27 @@ struct Level {
 pub struct AmgGeneral {
     levels: Vec<Level>,
     coarse_a: Csr,
+    coarse_diag: Vec<f64>,
     coarse_lu: Option<Lu>,
+    workspace_len: usize,
     sweeps: usize,
     cycle: Cycle,
 }
 
 fn norm2(v: &[f64]) -> f64 {
     v.iter().map(|x| x * x).sum::<f64>().sqrt()
+}
+
+fn residual_into(
+    a: &Csr,
+    x: &[f64],
+    b: &[f64],
+    work: &mut [f64],
+) {
+    a.matvec(x, work);
+    for (ax, rhs) in work.iter_mut().zip(b) {
+        *ax = rhs - *ax;
+    }
 }
 
 /// Strong dependencies `S_i = {j != i : -a_ij >= theta max_k(-a_ik)}`.
@@ -350,6 +370,20 @@ fn smooth(
 }
 
 impl AmgGeneral {
+    pub(crate) fn heap_bytes(&self) -> usize {
+        let levels = self.levels.iter().map(|level| {
+            level.a.heap_bytes()
+                + level.p.heap_bytes()
+                + level.r.heap_bytes()
+                + level.diag.capacity() * size_of::<f64>()
+        });
+        self.levels.capacity() * size_of::<Level>()
+            + levels.sum::<usize>()
+            + self.coarse_a.heap_bytes()
+            + self.coarse_diag.capacity() * size_of::<f64>()
+            + self.coarse_lu.as_ref().map_or(0, Lu::heap_bytes)
+    }
+
     /// Builds the hierarchy.
     ///
     /// # Errors
@@ -450,10 +484,17 @@ impl AmgGeneral {
             }
         }
         let coarse_lu = dense::lu_factor(&dm).ok();
+        let coarse_diag = cur.diagonal();
+        let workspace_len = levels.iter().fold(
+            levels.first().map_or(0, |level| level.a.rows),
+            |size, level| size.saturating_add(level.r.rows.saturating_mul(2)),
+        );
         Ok(Self {
             levels,
             coarse_a: cur,
+            coarse_diag,
             coarse_lu,
+            workspace_len,
             sweeps: opts.sweeps.max(1),
             cycle: opts.cycle,
         })
@@ -477,6 +518,11 @@ impl AmgGeneral {
         total as f64 / fine as f64
     }
 
+    #[expect(
+        clippy::arithmetic_side_effects,
+        clippy::indexing_slicing,
+        reason = "row vectors match the operator and index ranges come from the CSR structure"
+    )]
     fn gauss_seidel(
         a: &Csr,
         x: &mut [f64],
@@ -485,85 +531,201 @@ impl AmgGeneral {
         sweeps: usize,
         forward: bool,
     ) {
-        for _ in 0..sweeps {
-            let order: Box<dyn Iterator<Item = usize>> = if forward {
-                Box::new(0..a.rows)
-            } else {
-                Box::new((0..a.rows).rev())
-            };
-            for i in order {
-                let mut s = b[i];
-                for k in a.indptr[i]..a.indptr[i + 1] {
-                    let j = a.indices[k];
-                    if j != i {
-                        s -= a.values[k] * x[j];
-                    }
+        let mut update_row = |i: usize| {
+            let mut s = b[i];
+            for k in a.indptr[i]..a.indptr[i + 1] {
+                let j = a.indices[k];
+                if j != i {
+                    s -= a.values[k] * x[j];
                 }
-                x[i] = s / diag[i];
+            }
+            x[i] = s / diag[i];
+        };
+        for _ in 0..sweeps {
+            if forward {
+                (0..a.rows).for_each(&mut update_row);
+            } else {
+                (0..a.rows).rev().for_each(&mut update_row);
             }
         }
     }
 
     fn cycle_at(
         &self,
-        l: usize,
+        levels: &[Level],
         x: &mut [f64],
         b: &[f64],
+        fine_work: &mut [f64],
+        workspace: &mut [f64],
     ) {
-        if l == self.levels.len() {
+        let Some((lev, coarser)) = levels.split_first() else {
             if let Some(lu) = &self.coarse_lu
                 && lu.solve_into(b, x).is_ok()
             {
                 return;
             }
-            let d = self.coarse_a.diagonal();
-            Self::gauss_seidel(&self.coarse_a, x, b, &d, 20, true);
+            Self::gauss_seidel(&self.coarse_a, x, b, &self.coarse_diag, 20, true);
             return;
-        }
-        let lev = &self.levels[l];
+        };
+        let (rc, rest) = workspace.split_at_mut(lev.r.rows);
+        let (ec, rest) = rest.split_at_mut(lev.r.rows);
+
         Self::gauss_seidel(&lev.a, x, b, &lev.diag, self.sweeps, true);
-        let mut ax = vec![0.0; x.len()];
-        lev.a.matvec(x, &mut ax);
-        let res: Vec<f64> = b.iter().zip(&ax).map(|(p, q)| p - q).collect();
-        let mut rc = vec![0.0; lev.r.rows];
-        lev.r.matvec(&res, &mut rc);
-        let mut ec = vec![0.0; rc.len()];
+        let (fine, _) = fine_work.split_at_mut(lev.a.rows);
+        residual_into(&lev.a, x, b, fine);
+        lev.r.matvec(fine, rc);
+        ec.fill(0.0);
         let gamma = if self.cycle == Cycle::W {
             2
         } else {
             1
         };
+        // The fine residual has been restricted, so recursion may overwrite the fine buffer.
         for _ in 0..gamma {
-            self.cycle_at(l + 1, &mut ec, &rc);
+            self.cycle_at(coarser, ec, rc, fine_work, rest);
         }
-        let mut corr = vec![0.0; x.len()];
-        lev.p.matvec(&ec, &mut corr);
-        for (xi, c) in x.iter_mut().zip(&corr) {
-            *xi += c;
+        let (fine, _) = fine_work.split_at_mut(lev.a.rows);
+        lev.p.matvec(ec, fine);
+        for (xi, c) in x.iter_mut().zip(fine) {
+            *xi += *c;
         }
         Self::gauss_seidel(&lev.a, x, b, &lev.diag, self.sweeps, false);
     }
 
+    fn fine(&self) -> &Csr {
+        self.levels.first().map_or(&self.coarse_a, |l| &l.a)
+    }
+
+    fn apply_cycle(
+        &self,
+        b: &[f64],
+        x: &mut [f64],
+        workspace: &mut [f64],
+    ) {
+        let rows = self.levels.first().map_or(0, |level| level.a.rows);
+        let (fine_work, coarse_work) = workspace.split_at_mut(rows);
+        self.cycle_at(&self.levels, x, b, fine_work, coarse_work);
+    }
+
+    fn cycle_from_pool(
+        &self,
+        b: &[f64],
+        x: &mut [f64],
+    ) {
+        let mut workspace = f64_scratch(self.workspace_len);
+        workspace.resize(self.workspace_len, 0.0);
+        self.apply_cycle(b, x, &mut workspace);
+    }
+
+    fn check_cycle_shapes(
+        &self,
+        b: &[f64],
+        x: &[f64],
+        workspace: &[f64],
+    ) -> Result<(), NumericError> {
+        let order = self.fine().rows;
+        if b.len() != order || x.len() != order {
+            return Err(NumericError::ShapeMismatch(format!(
+                "AMG expects RHS and iterate of length {order}, got {} and {}",
+                b.len(),
+                x.len()
+            )));
+        }
+        if workspace.len() < self.workspace_len {
+            return Err(NumericError::ShapeMismatch(format!(
+                "AMG requires {} workspace entries, got {}",
+                self.workspace_len,
+                workspace.len()
+            )));
+        }
+        Ok(())
+    }
+
+    /// Number of `f64` entries needed by the caller-supplied cycle workspace.
+    ///
+    /// Storage is one finest-level vector shared by all levels and two vectors
+    /// sized for each coarser level.
+    /// A hierarchy consisting of only the terminal level needs no workspace.
+    #[must_use]
+    pub const fn workspace_len(&self) -> usize {
+        self.workspace_len
+    }
+
     /// One cycle for `A x = b` starting from `x`.
+    ///
+    /// # Panics
+    /// Panics if either vector length differs from the order of the fine operator.
     pub fn vcycle(
         &self,
         b: &[f64],
         x: &mut [f64],
     ) {
-        self.cycle_at(0, x, b);
+        let order = self.fine().rows;
+        assert!(
+            b.len() == order && x.len() == order,
+            "AMG vector length mismatch"
+        );
+        self.cycle_from_pool(b, x);
     }
 
     /// Preconditioner action `z = M^{-1} r` (one cycle from zero).
+    ///
+    /// # Panics
+    /// Panics if either vector length differs from the order of the fine operator.
     pub fn precondition(
         &self,
         r: &[f64],
         z: &mut [f64],
     ) {
+        let order = self.fine().rows;
+        assert!(
+            r.len() == order && z.len() == order,
+            "AMG vector length mismatch"
+        );
         z.fill(0.0);
-        self.cycle_at(0, z, r);
+        self.cycle_from_pool(r, z);
+    }
+
+    /// Applies one cycle with the current `x` and a caller-owned workspace.
+    ///
+    /// A slice of at least [`Self::workspace_len`] entries can be reused across calls.
+    /// Its initial contents need not be initialized to zero.
+    ///
+    /// # Errors
+    /// Returns [`NumericError::ShapeMismatch`] before modifying `x` or `workspace`
+    /// if either vector has the wrong length or the workspace is too short.
+    pub fn vcycle_with_workspace(
+        &self,
+        b: &[f64],
+        x: &mut [f64],
+        workspace: &mut [f64],
+    ) -> Result<(), NumericError> {
+        self.check_cycle_shapes(b, x, workspace)?;
+        self.apply_cycle(b, x, workspace);
+        Ok(())
+    }
+
+    /// Applies the preconditioner from zero with a caller-owned workspace.
+    ///
+    /// # Errors
+    /// Returns [`NumericError::ShapeMismatch`] before modifying `z` or `workspace`
+    /// if either vector has the wrong length or the workspace is too short.
+    pub fn precondition_with_workspace(
+        &self,
+        r: &[f64],
+        z: &mut [f64],
+        workspace: &mut [f64],
+    ) -> Result<(), NumericError> {
+        self.check_cycle_shapes(r, z, workspace)?;
+        z.fill(0.0);
+        self.apply_cycle(r, z, workspace);
+        Ok(())
     }
 
     /// Solves `A x = b` by repeated cycles.
+    ///
+    /// # Panics
+    /// Panics if the right-hand side or supplied initial iterate has the wrong length.
     #[must_use]
     pub fn solve(
         &self,
@@ -572,19 +734,27 @@ impl AmgGeneral {
         tol: f64,
         max_cycles: usize,
     ) -> MgResult {
-        let fine = self.levels.first().map_or(&self.coarse_a, |l| &l.a);
+        let fine = self.fine();
+        assert!(
+            b.len() == fine.rows && x0.is_none_or(|x| x.len() == fine.rows),
+            "AMG vector length mismatch"
+        );
         let mut x = x0.map_or_else(|| vec![0.0; b.len()], <[f64]>::to_vec);
+        let work_len = self.workspace_len.max(fine.rows);
+        let mut workspace = f64_scratch(work_len);
+        workspace.resize(work_len, 0.0);
         let bn = norm2(b).max(f64::MIN_POSITIVE);
-        let res = |x: &[f64]| {
-            let mut ax = vec![0.0; b.len()];
-            fine.matvec(x, &mut ax);
-            norm2(&b.iter().zip(&ax).map(|(p, q)| p - q).collect::<Vec<_>>()) / bn
+        let res = |x: &[f64], work: &mut [f64]| {
+            let (ax, _) = work.split_at_mut(fine.rows);
+            residual_into(fine, x, b, ax);
+            norm2(ax) / bn
         };
-        let mut history = vec![res(&x)];
-        let mut converged = history[0] <= tol;
+        let r = res(&x, &mut workspace);
+        let mut history = vec![r];
+        let mut converged = r <= tol;
         while !converged && history.len() <= max_cycles {
-            self.cycle_at(0, &mut x, b);
-            let r = res(&x);
+            self.apply_cycle(b, &mut x, &mut workspace);
+            let r = res(&x, &mut workspace);
             history.push(r);
             converged = r <= tol;
         }

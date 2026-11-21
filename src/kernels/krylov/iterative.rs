@@ -562,6 +562,7 @@ fn cg(
         return inner_result(x, 0, true);
     }
     let mut p = z.clone();
+    let mut candidate = vec![0.0; n];
     let mut rz = dot(&r, &z);
     let mut it = 0;
     while it < max_iter {
@@ -577,15 +578,13 @@ fn cg(
         let alpha = rz.ratio(pap);
         let alpha_step = PreparedScale::new(alpha);
         let negative_alpha_step = PreparedScale::new(alpha.negated());
-        let candidate: Vec<_> = x
-            .iter()
-            .zip(&p)
-            .map(|(x, p)| alpha_step.add(*x, *p))
-            .collect();
+        for ((next, &value), &direction) in candidate.iter_mut().zip(&x).zip(&p) {
+            *next = alpha_step.add(value, direction);
+        }
         if candidate.iter().any(|v| !v.is_finite()) {
             return inner_result(x, it, true);
         }
-        x = candidate;
+        std::mem::swap(&mut x, &mut candidate);
         it += 1;
         for i in 0..n {
             r[i] = negative_alpha_step.add(r[i], ap[i]);
@@ -627,32 +626,30 @@ fn projected_update(
     h: &[Vec<f64>],
     g: &[f64],
     z: &[Vec<f64>],
-    used: usize,
-) -> Option<Vec<f64>> {
-    let mut y = vec![0.0; used];
+    y: &mut [f64],
+    candidate: &mut [f64],
+) -> bool {
+    let used = y.len();
     for i in (0..used).rev() {
         let mut value = g[i];
         for j in i + 1..used {
-            value = (-h[i][j]).mul_add(y[j], value);
+            value = (-h[j][i]).mul_add(y[j], value);
         }
         if h[i][i] == 0.0 {
-            return None;
+            return false;
         }
         y[i] = value / h[i][i];
         if !y[i].is_finite() {
-            return None;
+            return false;
         }
     }
-    let mut candidate = x.to_vec();
+    candidate.copy_from_slice(x);
     for j in 0..used {
         for q in 0..x.len() {
             candidate[q] = y[j].mul_add(z[j][q], candidate[q]);
         }
     }
-    if candidate.iter().any(|v| !v.is_finite()) {
-        return None;
-    }
-    Some(candidate)
+    candidate.iter().all(|value| value.is_finite())
 }
 fn gmres(
     apply: &impl Fn(&[f64], &mut [f64]),
@@ -663,61 +660,78 @@ fn gmres(
     max_iter: usize,
 ) -> Inner {
     let n = b.len();
-    let m = restart.clamp(1, n.max(1));
+    let m = restart.clamp(1, n.max(1)).min(max_iter);
     let bn = norm(b);
     let mut x = vec![0.0; n];
     let mut r = b.to_vec();
+    let mut v = vec![vec![0.0; n]];
+    let mut z = Vec::with_capacity(m);
+    // Arnoldi writes one Hessenberg column at a time. Store only the upper
+    // triangle and its subdiagonal, growing with the basis actually used.
+    let mut h: Vec<Vec<f64>> = Vec::with_capacity(m);
+    let (mut cs, mut sn) = (vec![0.0_f64; m], vec![0.0_f64; m]);
+    let mut g = vec![0.0; m + 1];
+    let mut y = vec![0.0; m];
+    let mut candidate = vec![0.0; n];
     let mut total = 0;
     while total < max_iter && relative(&r, bn) > tol {
         let beta = norm(&r).value();
         if !beta.is_finite() || beta == 0.0 {
             return inner_result(x, total, true);
         }
-        let mut v = vec![r.iter().map(|e| e / beta).collect::<Vec<_>>()];
-        let mut z = Vec::with_capacity(m);
-        let mut h = vec![vec![0.0; m]; m + 1];
-        let (mut cs, mut sn) = (vec![0.0_f64; m], vec![0.0_f64; m]);
-        let mut g = vec![0.0; m + 1];
+        for (component, &residual) in v[0].iter_mut().zip(&r) {
+            *component = residual / beta;
+        }
         g[0] = beta;
         let mut used = 0;
         for j in 0..m {
-            let mut zj = vec![0.0; n];
-            let mut w = vec![0.0; n];
-            if !evaluate(precond, &v[j], &mut zj) {
+            // Grow on demand, then reuse the same columns after a restart.
+            if z.len() == j {
+                z.push(vec![0.0; n]);
+                v.push(vec![0.0; n]);
+                h.push(vec![0.0; j + 2]);
+            }
+            let (basis, next) = v.split_at_mut(j + 1);
+            let w = &mut next[0];
+            let zj = &mut z[j];
+            if !evaluate(precond, &basis[j], zj) {
                 return inner_result(x, total, true);
             }
-            normalize(&mut zj);
-            if !evaluate(apply, &zj, &mut w) {
+            normalize(zj);
+            if !evaluate(apply, zj, w) {
                 return inner_result(x, total, true);
             }
-            z.push(zj);
+            let column = &mut h[j];
+            column[..=j].fill(0.0);
             // Twice-modified Gram-Schmidt retains orthogonality near breakdown.
             for _ in 0..2 {
                 for i in 0..=j {
-                    let projection = dot(&w, &v[i]).value();
+                    let projection = dot(w, &basis[i]).value();
                     if !projection.is_finite() {
                         return inner_result(x, total, true);
                     }
-                    h[i][j] += projection;
+                    column[i] += projection;
                     for q in 0..n {
-                        w[q] = (-projection).mul_add(v[i][q], w[q]);
+                        w[q] = (-projection).mul_add(basis[i][q], w[q]);
                     }
                 }
             }
-            h[j + 1][j] = norm(&w).value();
-            if !h[j + 1][j].is_finite() {
+            column[j + 1] = norm(w).value();
+            if !column[j + 1].is_finite() {
                 return inner_result(x, total, true);
             }
-            let breakdown = h[j + 1][j] == 0.0;
+            let breakdown = column[j + 1] == 0.0;
             if !breakdown {
-                v.push(w.iter().map(|e| e / h[j + 1][j]).collect());
+                for component in w {
+                    *component /= column[j + 1];
+                }
             }
             for i in 0..j {
-                let t = cs[i].mul_add(h[i][j], sn[i] * h[i + 1][j]);
-                h[i + 1][j] = (-sn[i]).mul_add(h[i][j], cs[i] * h[i + 1][j]);
-                h[i][j] = t;
+                let t = cs[i].mul_add(column[i], sn[i] * column[i + 1]);
+                column[i + 1] = (-sn[i]).mul_add(column[i], cs[i] * column[i + 1]);
+                column[i] = t;
             }
-            let d = h[j][j].hypot(h[j + 1][j]);
+            let d = column[j].hypot(column[j + 1]);
             if !d.is_finite() {
                 return inner_result(x, total, true);
             }
@@ -725,11 +739,11 @@ fn gmres(
                 cs[j] = 1.0;
                 sn[j] = 0.0;
             } else {
-                cs[j] = h[j][j] / d;
-                sn[j] = h[j + 1][j] / d;
+                cs[j] = column[j] / d;
+                sn[j] = column[j + 1] / d;
             }
-            h[j][j] = d;
-            h[j + 1][j] = 0.0;
+            column[j] = d;
+            column[j + 1] = 0.0;
             g[j + 1] = -sn[j] * g[j];
             g[j] *= cs[j];
             total += 1;
@@ -738,10 +752,10 @@ fn gmres(
                 break;
             }
         }
-        let Some(candidate) = projected_update(&x, &h, &g, &z, used) else {
+        if !projected_update(&x, &h, &g, &z, &mut y[..used], &mut candidate) {
             return inner_result(x, total, false);
-        };
-        x = candidate;
+        }
+        std::mem::swap(&mut x, &mut candidate);
         if !residual(apply, &x, b, &mut r) {
             return inner_result(x, total, true);
         }

@@ -1,3 +1,5 @@
+//! Geometric multigrid (V/W/FMG) and smoothed-aggregation algebraic multigrid.
+//!
 //! # Multigrid
 //!
 //! * [`GeometricMg`]: geometric multigrid for the Poisson-type operator
@@ -22,6 +24,7 @@ use crate::kernels::dense::{
     self,
 };
 use crate::kernels::krylov::Csr;
+use crate::kernels::krylov::residual_ratio;
 
 /// Multigrid cycle shape.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -103,25 +106,227 @@ pub struct GeometricMg {
     levels: usize,
 }
 
+/// Reusable intermediate storage for adjacent geometric grid transfers.
+///
+/// A workspace may be reused across hierarchies, levels and directions. It
+/// grows only when a larger intermediate grid is needed.
+#[derive(Debug, Default)]
+pub struct GeometricTransferWorkspace {
+    first: Vec<f64>,
+    second: Vec<f64>,
+}
+
+/// Invalid level or buffer sizes for a geometric grid transfer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GeometricTransferError {
+    /// The requested fine level has no next coarser level.
+    Level,
+    /// A buffer does not have the expected number of unknowns.
+    Shape,
+}
+
+impl std::fmt::Display for GeometricTransferError {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        f.write_str(match self {
+            | Self::Level => "geometric transfer needs an adjacent coarser level",
+            | Self::Shape => "geometric transfer buffer length does not match its grid",
+        })
+    }
+}
+
+impl std::error::Error for GeometricTransferError {}
+
+impl GeometricTransferWorkspace {
+    pub(crate) const fn heap_bytes(&self) -> usize {
+        self.first
+            .capacity()
+            .saturating_add(self.second.capacity())
+            .saturating_mul(std::mem::size_of::<f64>())
+    }
+
+    fn transfer(
+        &mut self,
+        dim: usize,
+        from_n: usize,
+        to_n: usize,
+        from: &[f64],
+        to: &mut [f64],
+        axis: impl Fn(&[f64], &mut [f64], usize, usize, usize),
+    ) {
+        if dim == 1 {
+            axis(from, to, from_n, to_n, 1);
+            return;
+        }
+        let first_size = to_n * from_n.pow((dim - 1) as u32);
+        if self.first.len() < first_size {
+            self.first.resize(first_size, 0.0);
+        }
+        let first = &mut self.first[..first_size];
+        axis(from, first, from_n, to_n, 1);
+        if dim == 2 {
+            axis(first, to, from_n, to_n, to_n);
+            return;
+        }
+        let second_size = to_n * to_n * from_n;
+        if self.second.len() < second_size {
+            self.second.resize(second_size, 0.0);
+        }
+        let second = &mut self.second[..second_size];
+        axis(first, second, from_n, to_n, to_n);
+        axis(second, to, from_n, to_n, to_n * to_n);
+    }
+}
+
+fn full_weight(
+    left: f64,
+    center: f64,
+    right: f64,
+) -> f64 {
+    let weighted = 0.5 * center + 0.25 * left + 0.25 * right;
+    if weighted.abs() <= f64::MIN_POSITIVE {
+        let peak = left.abs().max(center.abs()).max(right.abs());
+        if peak > 0.0 && peak <= f64::MIN_POSITIVE {
+            // These three values are integral multiples of the smallest
+            // subnormal. Form the exact quarter-weighted numerator and round
+            // once to the nearest multiple, with ties to even.
+            let units = |value: f64| {
+                let magnitude = (value.to_bits() & (u64::MAX >> 1)) as i64;
+                if value.is_sign_negative() {
+                    -magnitude
+                } else {
+                    magnitude
+                }
+            };
+            let numerator = units(left) + 2 * units(center) + units(right);
+            let magnitude = numerator.unsigned_abs();
+            let whole = magnitude / 4;
+            let remainder = magnitude % 4;
+            let rounded = whole + u64::from(remainder > 2 || (remainder == 2 && whole & 1 != 0));
+            let sign = if numerator < 0 {
+                1_u64 << 63
+            } else {
+                0
+            };
+            return f64::from_bits(sign | rounded);
+        }
+    }
+    weighted
+}
+
+fn restrict_axis(
+    from: &[f64],
+    to: &mut [f64],
+    nf: usize,
+    nc: usize,
+    inner: usize,
+) {
+    for (fine, coarse) in from
+        .chunks_exact(nf * inner)
+        .zip(to.chunks_exact_mut(nc * inner))
+    {
+        for (j, column) in coarse.chunks_exact_mut(inner).enumerate() {
+            let start = 2 * j * inner;
+            for (k, slot) in column.iter_mut().enumerate() {
+                *slot = full_weight(
+                    fine[start + k],
+                    fine[start + inner + k],
+                    fine[start + 2 * inner + k],
+                );
+            }
+        }
+    }
+}
+
+fn prolong_axis(
+    from: &[f64],
+    to: &mut [f64],
+    nc: usize,
+    nf: usize,
+    inner: usize,
+) {
+    for (coarse, fine) in from
+        .chunks_exact(nc * inner)
+        .zip(to.chunks_exact_mut(nf * inner))
+    {
+        for (j, column) in coarse.chunks_exact(inner).enumerate() {
+            let offset = 2 * j * inner;
+            let midpoint = &mut fine[offset..offset + inner];
+            if j == 0 {
+                for (slot, &right) in midpoint.iter_mut().zip(column) {
+                    *slot = f64::midpoint(0.0, right);
+                }
+            } else {
+                let left_column = &coarse[(j - 1) * inner..j * inner];
+                for ((slot, &left), &right) in midpoint.iter_mut().zip(left_column).zip(column) {
+                    *slot = f64::midpoint(left, right);
+                }
+            }
+            fine[offset + inner..offset + 2 * inner].copy_from_slice(column);
+        }
+        let last = &coarse[(nc - 1) * inner..];
+        for (slot, &left) in fine[(nf - 1) * inner..].iter_mut().zip(last) {
+            *slot = f64::midpoint(left, 0.0);
+        }
+    }
+}
+
 fn norm2(v: &[f64]) -> f64 {
     v.iter().map(|x| x * x).sum::<f64>().sqrt()
+}
+
+const fn ordinary_square_sum(sum: f64) -> bool {
+    // Leave headroom so underflowing terms cannot affect the ordinary norm.
+    sum >= 1e-270 && sum.is_finite()
+}
+
+fn fine_residuals<'a>(
+    rhs: &'a [f64],
+    applied: &'a [f64],
+) -> impl Iterator<Item = f64> + Clone + 'a {
+    rhs.iter().zip(applied).map(|(rhs, applied)| rhs - applied)
+}
+
+fn stable_residual_norm(
+    residuals: impl Iterator<Item = f64> + Clone,
+    square_sum: f64,
+) -> f64 {
+    if ordinary_square_sum(square_sum) || square_sum.is_nan() {
+        return square_sum.sqrt();
+    }
+    let peak = residuals.clone().map(f64::abs).fold(0.0, f64::max);
+    if peak == 0.0 || !peak.is_finite() {
+        return peak;
+    }
+    let normalized = residuals.map(|r| (r / peak).powi(2)).sum::<f64>().sqrt();
+    peak * normalized
 }
 
 impl GeometricMg {
     /// Creates the hierarchy for `n = 2^k - 1` interior points per direction.
     ///
     /// Returns `None` when `dim` is not 1, 2 or 3, when `n` is not of the
-    /// form `2^k - 1` (`k >= 1`) or when `shift < 0`.
+    /// form `2^k - 1` (`k >= 1`), when the grid size overflows, or when
+    /// `shift` is negative or non-finite.
     #[must_use]
     pub fn new(
         dim: usize,
         n: usize,
         shift: f64,
     ) -> Option<Self> {
-        if !(1..=3).contains(&dim) || n == 0 || (n + 1) & n != 0 || shift < 0.0 {
+        let extent = n.checked_add(1)?;
+        if !(1..=3).contains(&dim)
+            || n == 0
+            || !extent.is_power_of_two()
+            || !shift.is_finite()
+            || shift < 0.0
+        {
             return None;
         }
-        let levels = (n + 1).trailing_zeros() as usize;
+        n.checked_pow(dim as u32)?;
+        let levels = extent.trailing_zeros() as usize;
         Some(Self {
             dim,
             n,
@@ -140,6 +345,19 @@ impl GeometricMg {
     #[must_use]
     pub const fn levels(&self) -> usize {
         self.levels
+    }
+
+    /// Number of unknowns at a level, or `None` if the level is absent.
+    #[must_use]
+    pub const fn level_size(
+        &self,
+        level: usize,
+    ) -> Option<usize> {
+        if level < self.levels {
+            Some(self.n_at(level).pow(self.dim as u32))
+        } else {
+            None
+        }
     }
 
     const fn n_at(
@@ -190,10 +408,12 @@ impl GeometricMg {
         sweeps: usize,
         sm: Smoother,
     ) {
+        if sweeps == 0 {
+            return;
+        }
         let n = self.n_at(level);
         let ih2 = 1.0 / (self.h_at(level) * self.h_at(level));
         let diag = 2.0 * self.dim as f64 * ih2 + self.shift;
-        let strides: Vec<usize> = (0..self.dim).map(|d| n.pow(d as u32)).collect();
         match sm {
             | Smoother::Jacobi => {
                 let omega = match self.dim {
@@ -210,23 +430,40 @@ impl GeometricMg {
                 }
             },
             | Smoother::RedBlackGaussSeidel => {
+                let rows = if self.dim >= 2 { n } else { 1 };
+                let planes = if self.dim == 3 { n } else { 1 };
+                let plane = rows * n;
                 for _ in 0..sweeps {
                     for color in 0..2 {
-                        for idx in 0..u.len() {
-                            let mut parity = 0;
-                            let mut s = f[idx];
-                            for d in 0..self.dim {
-                                let c = (idx / strides[d]) % n;
-                                parity += c;
-                                if c > 0 {
-                                    s += ih2 * u[idx - strides[d]];
+                        for z in 0..planes {
+                            for y in 0..rows {
+                                let row = z * plane + y * n;
+                                // Every grid extent is odd, so a flat index and
+                                // the sum of its coordinates have the same parity.
+                                let first = color ^ (row & 1);
+                                for x in (first..n).step_by(2) {
+                                    let idx = row + x;
+                                    let mut s = f[idx];
+                                    if x > 0 {
+                                        s += ih2 * u[idx - 1];
+                                    }
+                                    if x + 1 < n {
+                                        s += ih2 * u[idx + 1];
+                                    }
+                                    if y > 0 {
+                                        s += ih2 * u[idx - n];
+                                    }
+                                    if y + 1 < rows {
+                                        s += ih2 * u[idx + n];
+                                    }
+                                    if z > 0 {
+                                        s += ih2 * u[idx - plane];
+                                    }
+                                    if z + 1 < planes {
+                                        s += ih2 * u[idx + plane];
+                                    }
+                                    u[idx] = s / diag;
                                 }
-                                if c + 1 < n {
-                                    s += ih2 * u[idx + strides[d]];
-                                }
-                            }
-                            if parity % 2 == color {
-                                u[idx] = s / diag;
                             }
                         }
                     }
@@ -235,81 +472,103 @@ impl GeometricMg {
         }
     }
 
-    /// Full-weighting restriction from `level` to `level + 1`.
+    /// Restrict a fine grid to the adjacent coarser level by full weighting.
+    ///
+    /// The stencil is `[1, 2, 1]/4` along each axis. Axis passes run in
+    /// x, y, z order on flat buffers with x varying fastest. Each pass
+    /// rounds to `f64` before the next. The same workspace may be used
+    /// for later transfers in either direction.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a missing adjacent level or incorrect buffer
+    /// lengths. The output is untouched on such errors.
+    pub fn restrict_into(
+        &self,
+        level: usize,
+        fine: &[f64],
+        coarse: &mut [f64],
+        workspace: &mut GeometricTransferWorkspace,
+    ) -> Result<(), GeometricTransferError> {
+        let (nf, nc) = self.transfer_extents(level, fine.len(), coarse.len())?;
+        workspace.transfer(self.dim, nf, nc, fine, coarse, restrict_axis);
+        Ok(())
+    }
+
+    /// Interpolate from the adjacent coarser level by multilinear interpolation.
+    ///
+    /// The `level` argument identifies the fine output. Missing boundary
+    /// coarse points have value zero, matching homogeneous Dirichlet data.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a missing adjacent level or incorrect buffer
+    /// lengths. The output is untouched on such errors.
+    pub fn prolong_into(
+        &self,
+        level: usize,
+        coarse: &[f64],
+        fine: &mut [f64],
+        workspace: &mut GeometricTransferWorkspace,
+    ) -> Result<(), GeometricTransferError> {
+        let (nf, nc) = self.transfer_extents(level, fine.len(), coarse.len())?;
+        workspace.transfer(self.dim, nc, nf, coarse, fine, prolong_axis);
+        Ok(())
+    }
+
+    const fn transfer_extents(
+        &self,
+        level: usize,
+        fine_len: usize,
+        coarse_len: usize,
+    ) -> Result<(usize, usize), GeometricTransferError> {
+        if level >= self.levels - 1 {
+            return Err(GeometricTransferError::Level);
+        }
+        let nf = self.n_at(level);
+        let nc = self.n_at(level + 1);
+        if fine_len != nf.pow(self.dim as u32) || coarse_len != nc.pow(self.dim as u32) {
+            return Err(GeometricTransferError::Shape);
+        }
+        Ok((nf, nc))
+    }
+
     fn restrict(
         &self,
         level: usize,
-        r: &[f64],
+        fine: &[f64],
+        workspace: &mut GeometricTransferWorkspace,
     ) -> Vec<f64> {
-        let mut cur = r.to_vec();
-        let mut dims = vec![self.n_at(level); self.dim];
         let nc = self.n_at(level + 1);
-        for axis in 0..self.dim {
-            let nf = dims[axis];
-            let inner: usize = dims[..axis].iter().product();
-            let outer: usize = dims[axis + 1..].iter().product();
-            let mut next = vec![0.0; inner * nc * outer];
-            for o in 0..outer {
-                for j in 0..nc {
-                    for i in 0..inner {
-                        let c = 2 * j + 1;
-                        let mut s = 0.5 * cur[i + inner * (c + nf * o)];
-                        if c > 0 {
-                            s += 0.25 * cur[i + inner * (c - 1 + nf * o)];
-                        }
-                        if c + 1 < nf {
-                            s += 0.25 * cur[i + inner * (c + 1 + nf * o)];
-                        }
-                        next[i + inner * (j + nc * o)] = s;
-                    }
-                }
-            }
-            cur = next;
-            dims[axis] = nc;
-        }
-        cur
+        let mut coarse = vec![0.0; nc.pow(self.dim as u32)];
+        workspace.transfer(
+            self.dim,
+            self.n_at(level),
+            nc,
+            fine,
+            &mut coarse,
+            restrict_axis,
+        );
+        coarse
     }
 
-    /// Multilinear interpolation from `level + 1` to `level`.
     fn prolong(
         &self,
         level: usize,
-        e: &[f64],
+        coarse: &[f64],
+        workspace: &mut GeometricTransferWorkspace,
     ) -> Vec<f64> {
-        let mut cur = e.to_vec();
-        let nc = self.n_at(level + 1);
         let nf = self.n_at(level);
-        let mut dims = vec![nc; self.dim];
-        for axis in 0..self.dim {
-            let inner: usize = dims[..axis].iter().product();
-            let outer: usize = dims[axis + 1..].iter().product();
-            let mut next = vec![0.0; inner * nf * outer];
-            for o in 0..outer {
-                for i in 0..nf {
-                    for k in 0..inner {
-                        let v = if i % 2 == 1 {
-                            cur[k + inner * (i / 2 + nc * o)]
-                        } else {
-                            let left = if i >= 2 {
-                                cur[k + inner * (i / 2 - 1 + nc * o)]
-                            } else {
-                                0.0
-                            };
-                            let right = if i / 2 < nc {
-                                cur[k + inner * (i / 2 + nc * o)]
-                            } else {
-                                0.0
-                            };
-                            f64::midpoint(left, right)
-                        };
-                        next[k + inner * (i + nf * o)] = v;
-                    }
-                }
-            }
-            cur = next;
-            dims[axis] = nf;
-        }
-        cur
+        let mut fine = vec![0.0; nf.pow(self.dim as u32)];
+        workspace.transfer(
+            self.dim,
+            self.n_at(level + 1),
+            nf,
+            coarse,
+            &mut fine,
+            prolong_axis,
+        );
+        fine
     }
 
     fn cycle(
@@ -318,6 +577,7 @@ impl GeometricMg {
         u: &mut [f64],
         f: &[f64],
         opts: &MgOptions,
+        transfers: &mut GeometricTransferWorkspace,
     ) {
         if level + 1 == self.levels {
             // single unknown
@@ -329,7 +589,7 @@ impl GeometricMg {
         let mut au = vec![0.0; u.len()];
         self.apply(level, u, &mut au);
         let r: Vec<f64> = f.iter().zip(&au).map(|(a, b)| a - b).collect();
-        let rc = self.restrict(level, &r);
+        let rc = self.restrict(level, &r, transfers);
         let mut ec = vec![0.0; rc.len()];
         let gamma = if opts.cycle == Cycle::W {
             2
@@ -337,9 +597,9 @@ impl GeometricMg {
             1
         };
         for _ in 0..gamma {
-            self.cycle(level + 1, &mut ec, &rc, opts);
+            self.cycle(level + 1, &mut ec, &rc, opts, transfers);
         }
-        let corr = self.prolong(level, &ec);
+        let corr = self.prolong(level, &ec, transfers);
         for (ui, c) in u.iter_mut().zip(&corr) {
             *ui += c;
         }
@@ -353,10 +613,13 @@ impl GeometricMg {
         f: &[f64],
         opts: &MgOptions,
     ) {
-        self.cycle(0, u, f, opts);
+        self.cycle(0, u, f, opts, &mut GeometricTransferWorkspace::default());
     }
 
-    /// Residual 2-norm `|f - A u|` on the fine grid.
+    /// Absolute residual 2-norm `||f - A u||₂` on the fine grid.
+    ///
+    /// Returns infinity if the norm overflows and propagates a NaN stencil
+    /// residual. The norm is in the same units as the right-hand side.
     #[must_use]
     pub fn residual_norm(
         &self,
@@ -365,10 +628,19 @@ impl GeometricMg {
     ) -> f64 {
         let mut au = vec![0.0; u.len()];
         self.apply(0, u, &mut au);
-        norm2(&f.iter().zip(&au).map(|(a, b)| a - b).collect::<Vec<_>>())
+        let residuals = fine_residuals(f, &au);
+        let square_sum = residuals.clone().map(|r| r * r).sum::<f64>();
+        stable_residual_norm(residuals, square_sum)
     }
 
     /// Solves `A u = f` by repeated cycles from `u = 0` (or `x0`).
+    ///
+    /// The history records `||f - A u||₂ / ||f||₂` for nonzero `f`.
+    /// For an exactly zero right-hand side, the denominator is
+    /// [`f64::MIN_POSITIVE`]. A nonzero relative residual that underflows
+    /// is reported as the smallest positive subnormal. Non-finite
+    /// right-hand sides or applied iterates give an undefined residual
+    /// (NaN). Only a finite residual at or below the tolerance converges.
     #[must_use]
     pub fn solve(
         &self,
@@ -376,27 +648,15 @@ impl GeometricMg {
         x0: Option<&[f64]>,
         opts: &MgOptions,
     ) -> MgResult {
-        let mut u = x0.map_or_else(|| vec![0.0; f.len()], <[f64]>::to_vec);
-        let bn = norm2(f).max(f64::MIN_POSITIVE);
-        let mut history = vec![self.residual_norm(&u, f) / bn];
-        let mut converged = history[0] <= opts.tol;
-        while !converged && history.len() <= opts.max_cycles {
-            self.cycle(0, &mut u, f, opts);
-            let r = self.residual_norm(&u, f) / bn;
-            history.push(r);
-            converged = r <= opts.tol;
-        }
-        MgResult {
-            x: u,
-            history,
-            converged,
-        }
+        let u = x0.map_or_else(|| vec![0.0; f.len()], <[f64]>::to_vec);
+        self.finish_cycles(u, f, opts, &mut GeometricTransferWorkspace::default())
     }
 
     /// Full multigrid: nested iteration from the coarsest grid upwards with
     /// `cycles` cycles per level, then (optionally) further cycles on the fine
     /// grid until the tolerance is met. One FMG sweep with one V-cycle per
     /// level already reaches discretisation accuracy.
+    /// Uses the same residual and stopping criterion as [`Self::solve`].
     #[must_use]
     pub fn fmg(
         &self,
@@ -404,28 +664,62 @@ impl GeometricMg {
         cycles: usize,
         opts: &MgOptions,
     ) -> MgResult {
+        let mut transfers = GeometricTransferWorkspace::default();
         let mut fs: Vec<Vec<f64>> = vec![f.to_vec()];
         for l in 0..self.levels - 1 {
-            let rc = self.restrict(l, &fs[l]);
+            let rc = self.restrict(l, &fs[l], &mut transfers);
             fs.push(rc);
         }
         let mut u = vec![0.0; fs[self.levels - 1].len()];
-        self.cycle(self.levels - 1, &mut u, &fs[self.levels - 1], opts);
+        self.cycle(
+            self.levels - 1,
+            &mut u,
+            &fs[self.levels - 1],
+            opts,
+            &mut transfers,
+        );
         for l in (0..self.levels - 1).rev() {
-            let mut un = self.prolong(l, &u);
+            let mut un = self.prolong(l, &u, &mut transfers);
             for _ in 0..cycles.max(1) {
-                self.cycle(l, &mut un, &fs[l], opts);
+                self.cycle(l, &mut un, &fs[l], opts, &mut transfers);
             }
             u = un;
         }
-        let bn = norm2(f).max(f64::MIN_POSITIVE);
-        let mut history = vec![self.residual_norm(&u, f) / bn];
-        let mut converged = history[0] <= opts.tol;
+        self.finish_cycles(u, f, opts, &mut transfers)
+    }
+
+    fn finish_cycles(
+        &self,
+        mut u: Vec<f64>,
+        f: &[f64],
+        opts: &MgOptions,
+        transfers: &mut GeometricTransferWorkspace,
+    ) -> MgResult {
+        let rhs_square_sum = f.iter().map(|v| v * v).sum::<f64>();
+        let rhs_norm = rhs_square_sum.sqrt();
+        let ordinary_rhs = ordinary_square_sum(rhs_square_sum);
+        let zero_rhs = rhs_square_sum == 0.0 && f.iter().all(|&v| v == 0.0);
+        let mut applied = vec![0.0; u.len()];
+        let mut relative = |u: &[f64]| {
+            self.apply(0, u, &mut applied);
+            let residuals = fine_residuals(f, &applied);
+            let square_sum = residuals.clone().map(|r| r * r).sum::<f64>();
+            if ordinary_rhs && ordinary_square_sum(square_sum) {
+                square_sum.sqrt() / rhs_norm
+            } else if zero_rhs && applied.iter().all(|v| v.is_finite()) {
+                stable_residual_norm(residuals, square_sum) / f64::MIN_POSITIVE
+            } else {
+                residual_ratio(f, &applied).unwrap_or(f64::NAN)
+            }
+        };
+        let converged_at = |r: f64| r.is_finite() && r <= opts.tol;
+        let mut history = vec![relative(&u)];
+        let mut converged = converged_at(history[0]);
         while !converged && history.len() <= opts.max_cycles {
-            self.cycle(0, &mut u, f, opts);
-            let r = self.residual_norm(&u, f) / bn;
+            self.cycle(0, &mut u, f, opts, transfers);
+            let r = relative(&u);
             history.push(r);
-            converged = r <= opts.tol;
+            converged = converged_at(r);
         }
         MgResult {
             x: u,
@@ -635,6 +929,19 @@ pub(crate) fn aggregate(
 }
 
 impl Amg {
+    pub(crate) fn heap_bytes(&self) -> usize {
+        let levels = self.levels.iter().map(|level| {
+            level.a.heap_bytes()
+                + level.p.heap_bytes()
+                + level.r.heap_bytes()
+                + level.diag.capacity() * size_of::<f64>()
+        });
+        self.levels.capacity() * size_of::<AmgLevel>()
+            + levels.sum::<usize>()
+            + self.coarse_a.heap_bytes()
+            + self.coarse_lu.as_ref().map_or(0, Lu::heap_bytes)
+    }
+
     /// Builds the hierarchy for a symmetric positive definite matrix.
     ///
     /// # Errors

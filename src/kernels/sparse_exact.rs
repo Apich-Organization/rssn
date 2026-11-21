@@ -1,3 +1,8 @@
+//! Exact sparse linear algebra.
+//!
+//! Sparsity-preserving elimination over any domain, modular determinants,
+//! Dixon lifting and Wiedemann's algorithm.
+//!
 //! Exact sparse linear algebra over an arbitrary coefficient domain.
 //!
 //! The dense exact routines ([`crate::kernels::qlinalg`], the symbolic
@@ -46,7 +51,9 @@
     reason = "index arithmetic over rows whose bounds are established by the constructors"
 )]
 
+use std::alloc::Layout;
 use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::fmt::Debug;
 
 use num_bigint::BigInt;
@@ -173,17 +180,17 @@ impl Gfp {
     /// `a * b mod p`.
     #[inline]
     #[must_use]
-    pub fn mul_mod(
+    pub const fn mul_mod(
         self,
         a: u64,
         b: u64,
     ) -> u64 {
-        ((u128::from(a) * u128::from(b)) % u128::from(self.0)) as u64
+        super::number_theory::mul_mod(a, b, self.0)
     }
 
     /// `a^e mod p`.
     #[must_use]
-    pub fn pow_mod(
+    pub const fn pow_mod(
         self,
         mut a: u64,
         mut e: u64,
@@ -556,6 +563,76 @@ fn axpy_rows<D: Domain>(
     out
 }
 
+struct EliminationWorkspace<E> {
+    // A row can be listed more than once if a column disappears and fills in
+    // again. Active rows are re-checked before each attempted elimination.
+    candidates: Vec<Vec<usize>>,
+    counts: Vec<usize>,
+    scratch: Vec<(usize, E)>,
+}
+
+impl<E> EliminationWorkspace<E> {
+    fn new(
+        rows: &[Vec<(usize, E)>],
+        cols: usize,
+    ) -> Self {
+        let mut candidates = vec![Vec::new(); cols];
+        let mut counts = vec![0; cols];
+        for (i, row) in rows.iter().enumerate() {
+            for (j, _) in row {
+                candidates[*j].push(i);
+                counts[*j] += 1;
+            }
+        }
+        Self {
+            candidates,
+            counts,
+            scratch: Vec::new(),
+        }
+    }
+
+    fn update<D: Domain<E = E>>(
+        &mut self,
+        dom: &mut D,
+        target: usize,
+        row: &mut Vec<(usize, E)>,
+        minus_factor: &E,
+        pivot_row: &[(usize, E)],
+        pivot_col: usize,
+    ) {
+        self.scratch.reserve(row.len());
+        let mut left = row.drain(..).peekable();
+        for &(col, ref pivot_value) in pivot_row {
+            while let Some(entry) = left.next_if(|(j, _)| *j < col) {
+                self.scratch.push(entry);
+            }
+            let term = dom.mul(minus_factor, pivot_value);
+            let prior = left.next_if(|(j, _)| *j == col);
+            let filled = prior.is_none();
+            let value = match prior {
+                | Some((_, old)) => dom.add(&old, &term),
+                | None => term,
+            };
+            // The pivot vanishes algebraically even when a symbolic domain
+            // cannot see the cancellation in its current normal form.
+            if dom.is_zero(&value) || col == pivot_col {
+                if !filled {
+                    self.counts[col] = self.counts[col].saturating_sub(1);
+                }
+            } else {
+                if filled {
+                    self.candidates[col].push(target);
+                    self.counts[col] += 1;
+                }
+                self.scratch.push((col, value));
+            }
+        }
+        self.scratch.extend(left);
+        // Draining leaves the original allocation available for the next row.
+        std::mem::swap(row, &mut self.scratch);
+    }
+}
+
 fn entry<E>(
     row: &[(usize, E)],
     col: usize,
@@ -628,31 +705,71 @@ fn parity(sequence: &[usize]) -> bool {
     odd
 }
 
+fn scan_pivot_row<E>(
+    rows: &[Vec<(usize, E)>],
+    active: &[bool],
+    width: impl Fn(&[(usize, E)]) -> usize,
+) -> Option<(usize, usize)> {
+    let mut best = None;
+    for (i, row) in rows.iter().enumerate() {
+        if !active[i] {
+            continue;
+        }
+        let w = width(row);
+        if w > 0 && best.is_none_or(|(bw, _)| w < bw) {
+            best = Some((w, i));
+            if w == 1 {
+                break;
+            }
+        }
+    }
+    best
+}
+
 /// Gaussian elimination with sparsity-preserving pivoting.
 ///
 /// Pivots are only taken in columns below `pivot_cols`, which lets a caller
 /// append right-hand sides as extra columns. `record` keeps the list of row
 /// operations (needed to solve for further right-hand sides later).
+/// Pivot ties are broken by the original row and column indices.
 pub fn echelon<D: Domain>(
     dom: &mut D,
     matrix: &SparseMat<D::E>,
     pivot_cols: usize,
     record: bool,
 ) -> Echelon<D::E> {
+    echelon_owned(dom, matrix.clone(), pivot_cols, record)
+}
+
+fn echelon_owned<D: Domain>(
+    dom: &mut D,
+    matrix: SparseMat<D::E>,
+    pivot_cols: usize,
+    record: bool,
+) -> Echelon<D::E> {
+    const INDEXED_PIVOT_MIN_ROWS: usize = 128;
     let pivot_cols = pivot_cols.min(matrix.cols);
-    let mut rows: Vec<Vec<(usize, D::E)>> = matrix.data.clone();
+    let mut rows = matrix.data;
     let mut active = vec![true; matrix.rows];
-    // Rows that may hold an entry in each column. Entries are added as fill
-    // appears and never removed, so a listed row is re-checked before use.
-    let mut col_rows: Vec<Vec<usize>> = vec![Vec::new(); matrix.cols];
-    let mut col_count = vec![0_usize; matrix.cols];
-    for (i, row) in rows.iter().enumerate() {
-        for (j, _) in row {
-            col_rows[*j].push(i);
-            col_count[*j] += 1;
+    let mut workspace = EliminationWorkspace::new(&rows, matrix.cols);
+    let width = |row: &[(usize, D::E)]| {
+        if pivot_cols == matrix.cols {
+            row.len()
+        } else {
+            row.partition_point(|(j, _)| *j < pivot_cols)
         }
-    }
-    let width = |row: &[(usize, D::E)]| row.iter().take_while(|(j, _)| *j < pivot_cols).count();
+    };
+    // A short scan avoids index allocation for small matrices. The index
+    // holds one key per eligible row and breaks ties in the same row order.
+    let mut eligible: Option<BTreeSet<_>> = (rows.len() >= INDEXED_PIVOT_MIN_ROWS).then(|| {
+        rows.iter()
+            .enumerate()
+            .filter_map(|(i, row)| {
+                let w = width(row);
+                (w > 0).then_some((w, i))
+            })
+            .collect()
+    });
     let mut out = Echelon {
         cols: matrix.cols,
         pivots: Vec::new(),
@@ -661,68 +778,52 @@ pub fn echelon<D: Domain>(
         rest: Vec::new(),
     };
     loop {
-        // The sparsest active row that still has a pivotable entry.
-        let mut best: Option<(usize, usize)> = None;
-        for (i, row) in rows.iter().enumerate() {
-            if !active[i] {
-                continue;
-            }
-            let w = width(row);
-            if w > 0 && best.is_none_or(|(_, bw)| w < bw) {
-                best = Some((i, w));
-                if w == 1 {
-                    break;
-                }
-            }
-        }
-        let Some((pr, _)) = best else {
+        let best = eligible.as_mut().map_or_else(
+            || scan_pivot_row(&rows, &active, width),
+            BTreeSet::pop_first,
+        );
+        let Some((pivot_width, pr)) = best else {
             break;
         };
         // In that row, the column with the fewest remaining entries.
-        let pc = rows[pr]
+        let pc = rows[pr][..pivot_width]
             .iter()
-            .take_while(|(j, _)| *j < pivot_cols)
             .map(|(j, _)| *j)
-            .min_by_key(|&j| (col_count[j], j))
+            .min_by_key(|&j| (workspace.counts[j], j))
             .unwrap_or(0);
-        let Some(pivot) = entry(&rows[pr], pc).cloned() else {
+        let Ok(pivot_index) = rows[pr].binary_search_by_key(&pc, |(j, _)| *j) else {
             break;
         };
         active[pr] = false;
         let index = out.pivots.len();
-        let pivot_row = rows[pr].clone();
+        let pivot_row = std::mem::take(&mut rows[pr]);
+        let pivot = &pivot_row[pivot_index].1;
         for (j, _) in &pivot_row {
-            col_count[*j] = col_count[*j].saturating_sub(1);
+            workspace.counts[*j] = workspace.counts[*j].saturating_sub(1);
         }
-        let targets = std::mem::take(&mut col_rows[pc]);
+        let targets = std::mem::take(&mut workspace.candidates[pc]);
         for target in targets {
             if !active[target] {
                 continue;
             }
-            let Some(value) = entry(&rows[target], pc).cloned() else {
+            let Some(value) = entry(&rows[target], pc) else {
                 continue;
             };
-            let Some(factor) = dom.div(&value, &pivot) else {
+            let Some(factor) = dom.div(value, pivot) else {
                 continue;
             };
             let minus = dom.neg(&factor);
-            let before: Vec<usize> = rows[target].iter().map(|(j, _)| *j).collect();
-            let mut updated = axpy_rows(dom, &rows[target], &minus, &pivot_row);
-            // The pivot column cancels exactly by construction; a domain
-            // whose normal form misses that must not leave a ghost entry.
-            updated.retain(|(j, _)| *j != pc);
-            for (j, _) in &updated {
-                if before.binary_search(j).is_err() {
-                    col_rows[*j].push(target);
-                    col_count[*j] += 1;
+            let previous_width = eligible.as_ref().map(|_| width(&rows[target]));
+            workspace.update(dom, target, &mut rows[target], &minus, &pivot_row, pc);
+            if let (Some(index), Some(previous_width)) = (&mut eligible, previous_width) {
+                let updated_width = width(&rows[target]);
+                if updated_width != previous_width {
+                    index.remove(&(previous_width, target));
+                    if updated_width != 0 {
+                        index.insert((updated_width, target));
+                    }
                 }
             }
-            for j in &before {
-                if updated.binary_search_by(|(c, _)| c.cmp(j)).is_err() {
-                    col_count[*j] = col_count[*j].saturating_sub(1);
-                }
-            }
-            rows[target] = updated;
             if record {
                 out.ops.push((target, index, factor));
             }
@@ -812,24 +913,30 @@ pub enum Solution<E> {
     },
 }
 
-/// Solves `A x = b`, or returns `None` when `b` has the wrong length.
+/// Solves `A x = b`.
+///
+/// Returns `None` when the matrix and right-hand side row counts disagree
+/// or the augmented column count cannot be represented by the workspace.
 pub fn solve<D: Domain>(
     dom: &mut D,
     matrix: &SparseMat<D::E>,
     b: &[D::E],
 ) -> Option<Solution<D::E>> {
-    if b.len() != matrix.rows {
+    if b.len() != matrix.rows || matrix.data.len() != matrix.rows {
         return None;
     }
     let n = matrix.cols;
+    let augmented_cols = n.checked_add(1)?;
+    Layout::array::<Vec<usize>>(augmented_cols).ok()?;
+    Layout::array::<D::E>(n).ok()?;
     let mut augmented = matrix.clone();
-    augmented.cols = n + 1;
+    augmented.cols = augmented_cols;
     for (row, value) in augmented.data.iter_mut().zip(b) {
         if !dom.is_zero(value) {
             row.push((n, value.clone()));
         }
     }
-    let e = echelon(dom, &augmented, n, false);
+    let e = echelon_owned(dom, augmented, n, false);
     if e.rest.iter().any(|(_, row)| !row.is_empty()) {
         return Some(Solution::Inconsistent);
     }
@@ -887,35 +994,8 @@ pub fn nullspace<D: Domain>(
 
 /// Deterministic Miller-Rabin for 64-bit integers.
 #[must_use]
-pub fn is_prime_u64(n: u64) -> bool {
-    if n < 2 {
-        return false;
-    }
-    for p in [2_u64, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37] {
-        if n.is_multiple_of(p) {
-            return n == p;
-        }
-    }
-    let field = Gfp(n);
-    let (mut d, mut s) = (n - 1, 0_u32);
-    while d % 2 == 0 {
-        d /= 2;
-        s += 1;
-    }
-    'witness: for a in [2_u64, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37] {
-        let mut x = field.pow_mod(a, d);
-        if x == 1 || x == n - 1 {
-            continue;
-        }
-        for _ in 1..s {
-            x = field.mul_mod(x, x);
-            if x == n - 1 {
-                continue 'witness;
-            }
-        }
-        return false;
-    }
-    true
+pub const fn is_prime_u64(n: u64) -> bool {
+    super::number_theory::is_prime_miller_rabin(n)
 }
 
 /// The primes below `2^62`, largest first: the moduli of the modular

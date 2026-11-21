@@ -434,14 +434,45 @@ pub enum FaerDecompositionResult<T: Field> {
 }
 
 /// A generic dense matrix over any type that implements the Field trait.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Matrix<T: Field> {
     rows: usize,
     cols: usize,
     data: Vec<T>,
     /// Computational backend used for matrix operations.
-    #[serde(default)]
     pub backend: Backend,
+}
+
+#[derive(Deserialize)]
+#[serde(rename = "Matrix")]
+struct MatrixStorage<T> {
+    rows: usize,
+    cols: usize,
+    data: Vec<T>,
+    #[serde(default)]
+    backend: Backend,
+}
+
+impl<'de, T: Field + Deserialize<'de>> Deserialize<'de> for Matrix<T> {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let MatrixStorage {
+            rows,
+            cols,
+            data,
+            backend,
+        } = MatrixStorage::deserialize(deserializer)?;
+        if rows.checked_mul(cols) != Some(data.len()) {
+            return Err(serde::de::Error::custom(
+                "matrix dimensions must match its row-major storage",
+            ));
+        }
+        Ok(Self {
+            rows,
+            cols,
+            data,
+            backend,
+        })
+    }
 }
 
 impl<T: Field> Matrix<T> {
@@ -453,14 +484,14 @@ impl<T: Field> Matrix<T> {
     /// * `data` - A `Vec` containing the matrix elements in row-major order.
     ///
     /// # Panics
-    /// Panics if `rows * cols` does not equal `data.len()`.
+    /// Panics if the product of the dimensions overflows or differs from `data.len()`.
     #[must_use]
     pub fn new(
         rows: usize,
         cols: usize,
         data: Vec<T>,
     ) -> Self {
-        assert_eq!(rows * cols, data.len());
+        assert_eq!(rows.checked_mul(cols), Some(data.len()));
 
         Self {
             rows,
@@ -497,15 +528,21 @@ impl<T: Field> Matrix<T> {
     ///
     /// # Returns
     /// A new `Matrix` of the specified dimensions, with all elements initialized to `T::zero()`.
+    ///
+    /// # Panics
+    /// Panics if the product of the dimensions overflows.
     #[must_use]
     pub fn zeros(
         rows: usize,
         cols: usize,
     ) -> Self {
+        let Some(length) = rows.checked_mul(cols) else {
+            panic!("matrix dimensions exceed storage capacity");
+        };
         Self {
             rows,
             cols,
-            data: vec![T::zero(); rows * cols],
+            data: vec![T::zero(); length],
             backend: Backend::default(),
         }
     }
@@ -527,6 +564,10 @@ impl<T: Field> Matrix<T> {
         row: usize,
         col: usize,
     ) -> &T {
+        assert!(
+            row < self.rows && col < self.cols,
+            "matrix coordinates are out of bounds"
+        );
         &self.data[row * self.cols + col]
     }
 
@@ -546,6 +587,10 @@ impl<T: Field> Matrix<T> {
         row: usize,
         col: usize,
     ) -> &mut T {
+        assert!(
+            row < self.rows && col < self.cols,
+            "matrix coordinates are out of bounds"
+        );
         &mut self.data[row * self.cols + col]
     }
 
@@ -699,15 +744,105 @@ impl<T: Field> Matrix<T> {
     /// A new `Matrix` representing the transpose.
     #[must_use]
     pub fn transpose(&self) -> Self {
-        let mut new_data = vec![T::zero(); self.rows * self.cols];
+        const MAX_TILE_COLUMNS: usize = 32;
+        const MAX_TILE_BYTES: usize = 1024 * 1024;
+        const MIN_TILED_ENTRIES: usize = 128 * 1024;
 
-        for i in 0..self.rows {
-            for j in 0..self.cols {
-                new_data[j * self.rows + i] = self.get(i, j).clone();
+        let data = if self.rows <= 1 || self.cols <= 1 {
+            self.data.clone()
+        } else {
+            let mut data = Vec::with_capacity(self.data.len());
+            let input = self.data.chunks_exact(self.cols);
+            let tile_width = if self.data.len() < MIN_TILED_ENTRIES || self.rows.min(self.cols) < 16
+            {
+                0
+            } else {
+                let column_bytes = self.rows.saturating_mul(std::mem::size_of::<T>().max(1));
+                (MAX_TILE_BYTES / column_bytes)
+                    .min(MAX_TILE_COLUMNS)
+                    .min(self.cols)
+            };
+            if tile_width < 4 {
+                for column in 0..self.cols {
+                    data.extend(input.clone().map(|row| row[column].clone()));
+                }
+            } else {
+                // Gather a small column band using contiguous source reads.
+                // Appending moves the clones into the result without filling
+                // the destination with temporary field-zero values.
+                let mut columns: Vec<_> = (0..tile_width)
+                    .map(|_| Vec::with_capacity(self.rows))
+                    .collect();
+                for start in (0..self.cols).step_by(tile_width) {
+                    let width = (self.cols - start).min(tile_width);
+                    let band = &mut columns[..width];
+                    for row in input.clone() {
+                        for (column, value) in band.iter_mut().zip(&row[start..start + width]) {
+                            column.push(value.clone());
+                        }
+                    }
+                    for column in band {
+                        data.append(column);
+                    }
+                }
+            }
+            data
+        };
+        Self {
+            rows: self.cols,
+            cols: self.rows,
+            data,
+            backend: self.backend,
+        }
+    }
+
+    /// Writes the transpose into an existing matrix and copies the source backend.
+    ///
+    /// The output must already have the transposed shape. Entries use
+    /// `T::clone_from`, which can reuse storage owned by the field element.
+    ///
+    /// # Errors
+    /// A shape mismatch leaves the destination unchanged.
+    pub fn transpose_into(
+        &self,
+        output: &mut Self,
+    ) -> Result<(), &'static str> {
+        const TILE: usize = 32;
+        if output.rows != self.cols || output.cols != self.rows {
+            return Err("transpose destination has the wrong shape");
+        }
+        if self.rows <= 1 || self.cols <= 1 {
+            output.data.clone_from_slice(&self.data);
+        } else if self.rows.min(self.cols) <= 8 {
+            let input = self.data.chunks_exact(self.cols);
+            for (column, destination) in output.data.chunks_exact_mut(self.rows).enumerate() {
+                for (target, row) in destination.iter_mut().zip(input.clone()) {
+                    target.clone_from(&row[column]);
+                }
+            }
+        } else {
+            for row_start in (0..self.rows).step_by(TILE) {
+                let row_count = (self.rows - row_start).min(TILE);
+                let row_end = row_start + row_count;
+                let input =
+                    self.data[row_start * self.cols..row_end * self.cols].chunks_exact(self.cols);
+                for column_start in (0..self.cols).step_by(TILE) {
+                    let column_count = (self.cols - column_start).min(TILE);
+                    let column_end = column_start + column_count;
+                    let band = &mut output.data[column_start * self.rows..column_end * self.rows];
+                    for (offset, source) in input.clone().enumerate() {
+                        let entries = &source[column_start..column_end];
+                        for (destination_column, value) in
+                            band.chunks_exact_mut(self.rows).zip(entries)
+                        {
+                            destination_column[row_start + offset].clone_from(value);
+                        }
+                    }
+                }
             }
         }
-
-        Self::new(self.cols, self.rows, new_data).with_backend(self.backend)
+        output.backend = self.backend;
+        Ok(())
     }
 
     /// # Strassen's Matrix Multiplication

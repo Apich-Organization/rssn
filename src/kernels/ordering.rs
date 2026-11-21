@@ -1,5 +1,9 @@
+//! Fill-reducing orderings: approximate minimum degree and nested dissection.
+//!
 //! # Fill-reducing orderings for sparse symmetric patterns
 //!
+//! * [`Csr::rcm_ordering`](super::krylov::Csr::rcm_ordering): reverse
+//!   Cuthill-McKee with a pseudo-peripheral start per component;
 //! * [`amd_order`]: approximate minimum degree on the quotient graph
 //!   (Amestoy, Davis and Duff). Eliminated vertices become *elements* that
 //!   absorb the elements adjacent to them (including aggressive absorption),
@@ -15,27 +19,33 @@
 //!   small pieces are ordered with [`amd_order`]; separators are numbered
 //!   last;
 //! * [`cholesky_fill`]: symbolic Cholesky factor size for a given ordering.
+//! * [`ordering_metrics`]: half-bandwidth and lower profile for a given
+//!   ordering.
 //!
-//! All routines take the adjacency lists of a symmetric pattern without self
-//! loops (`adj[i]` lists the neighbours of `i`, each edge in both lists) and
-//! return `perm` with `perm[new] = old`.
+//! The ordering routines take adjacency lists for a symmetric pattern and
+//! return `perm` with `perm[new] = old`. `adj[i]` lists the neighbours of `i`.
 //!
 //! # Limitations and coverage
 //!
-//! * The routines assume a symmetric pattern and validate nothing: a missing
-//!   mirror entry silently orders the symmetrised pattern, and self loops or
-//!   out-of-range indices are not rejected.
+//! * AMD, nested dissection and Cholesky fill assume every edge is listed
+//!   in both directions with in-range vertex indices. AMD ignores duplicate
+//!   neighbours and diagonal entries. For bandwidth and profile,
+//!   [`ordering_metrics`] checks indices and treats each edge as undirected.
 //! * [`amd_order`] is approximate minimum degree without a supernode
 //!   post-processing pass; [`nested_dissection_order`] bisects by BFS level
 //!   structures with separator refinement, not by a multilevel or spectral
 //!   partition, so on very large irregular graphs the fill can be larger than
 //!   a state-of-the-art ordering.
-//! * No numerical pivoting is considered: [`cholesky_fill`] counts the symbolic
-//!   factor of a symmetric pattern only, and no ordering is supplied for
-//!   unsymmetric LU here (the sparse LU in `krylov` builds its own orderings).
+//! * [`cholesky_fill`] counts the symbolic factor of a symmetric pattern.
+//!   The sparse LU in `krylov` applies a symmetric ordering before numerical
+//!   row pivoting.
 //! * Memory is proportional to the number of nonzeros for AMD; the nested
 //!   dissection recursion stores each separator explicitly, and the routines
 //!   are single-threaded and deterministic.
+
+use super::numeric_common::NumericError;
+
+pub(super) mod rcm;
 
 const NIL: usize = usize::MAX;
 
@@ -48,13 +58,34 @@ const DENSE: u8 = 3;
 /// Approximate minimum degree ordering of the pattern `adj`.
 ///
 /// Returns `perm` with `perm[new] = old` (a permutation of `0..adj.len()`).
+/// The pattern must be symmetric. Duplicate entries and self loops do not
+/// affect the ordering.
+///
+/// # Panics
+/// A neighbour index is outside `0..adj.len()`.
 #[must_use]
 pub fn amd_order(adj: &[Vec<usize>]) -> Vec<usize> {
     let n = adj.len();
-    if n == 0 {
-        return Vec::new();
+    if adj.iter().all(Vec::is_empty) {
+        return (0..n).rev().collect();
     }
-    let mut a: Vec<Vec<usize>> = adj.to_vec();
+    let mut mark = vec![0usize; n];
+    let mut a: Vec<Vec<usize>> = adj
+        .iter()
+        .enumerate()
+        .map(|(v, row)| {
+            let tag = v + 1;
+            mark[v] = tag;
+            let mut neighbors = Vec::with_capacity(row.len().min(n));
+            for &u in row {
+                if mark[u] != tag {
+                    mark[u] = tag;
+                    neighbors.push(u);
+                }
+            }
+            neighbors
+        })
+        .collect();
     let mut e: Vec<Vec<usize>> = vec![Vec::new(); n];
     let mut l: Vec<Vec<usize>> = vec![Vec::new(); n];
     let mut status = vec![VAR; n];
@@ -62,10 +93,9 @@ pub fn amd_order(adj: &[Vec<usize>]) -> Vec<usize> {
     let mut degree: Vec<usize> = a.iter().map(Vec::len).collect();
     let mut elem_deg = vec![0usize; n];
     let mut parent = vec![NIL; n];
-    let mut mark = vec![0usize; n];
     let mut w = vec![0usize; n];
-    let mut stamp = 0usize;
-    let mut wbase = 0usize;
+    // Initial row tags are 1..=n. Pivot tags start above them.
+    let mut stamp = n;
     // dense rows are ordered last
     let dense_limit = ((10.0 * (n as f64).sqrt()) as usize).max(16);
     let mut dense: Vec<usize> = Vec::new();
@@ -82,7 +112,7 @@ pub fn amd_order(adj: &[Vec<usize>]) -> Vec<usize> {
         }
     }
     for &d in &dense {
-        a[d].clear();
+        a[d] = Vec::new();
     }
     let n_active = n - dense.len();
     // bucket lists of variables by degree
@@ -111,14 +141,25 @@ pub fn amd_order(adj: &[Vec<usize>]) -> Vec<usize> {
                 prev[next[v]] = prev[v];
             }
         };
+    let mut elim = Vec::with_capacity(n);
     for v in 0..n {
         if status[v] == VAR {
-            insert(v, degree[v], &mut head, &mut next, &mut prev);
+            if degree[v] == 0 {
+                status[v] = DEAD;
+                elim.push(v);
+            } else {
+                insert(v, degree[v], &mut head, &mut next, &mut prev);
+            }
         }
     }
+    // A degree-zero vertex starts with an empty quotient neighborhood.
+    // Preserve the descending tie order of the initial degree-zero bucket.
+    elim.reverse();
     let mut mindeg = 0usize;
-    let mut nel = 0usize;
-    let mut elim: Vec<usize> = Vec::with_capacity(n);
+    let mut nel = elim.len();
+    let mut lp = Vec::new();
+    let mut hashes = Vec::new();
+    let mut mass = Vec::new();
     while nel < n_active {
         while mindeg < n && head[mindeg] == NIL {
             mindeg += 1;
@@ -132,9 +173,9 @@ pub fn amd_order(adj: &[Vec<usize>]) -> Vec<usize> {
         stamp += 1;
         mark[p] = stamp;
         // Lp = (A_p + union of L_e, e in E_p) minus p
-        let mut lp: Vec<usize> = Vec::new();
-        let ap = std::mem::take(&mut a[p]);
-        for &j in &ap {
+        lp.clear();
+        let mut element = std::mem::take(&mut a[p]);
+        for &j in &element {
             if status[j] == VAR && mark[j] != stamp {
                 mark[j] = stamp;
                 lp.push(j);
@@ -159,59 +200,56 @@ pub fn amd_order(adj: &[Vec<usize>]) -> Vec<usize> {
             lp_deg += nv[j];
             remove(j, degree[j], &mut head, &mut next, &mut prev);
         }
-        elem_deg[p] = lp_deg;
         // |Le \ Lp| for the elements adjacent to Lp
-        wbase += n + 2;
         for &i in &lp {
             for &el in &e[i] {
                 if status[el] == ELEM && el != p {
-                    if w[el] < wbase {
-                        w[el] = wbase + elem_deg[el];
+                    // Variables in Lp and adjacent elements have disjoint
+                    // slots, so their marks share the current pivot tag.
+                    if mark[el] != stamp {
+                        mark[el] = stamp;
+                        w[el] = elem_deg[el];
                     }
                     w[el] -= nv[i];
                 }
             }
         }
         // update the variables of Lp
-        let mut hashes: Vec<(usize, usize)> = Vec::with_capacity(lp.len());
-        let mut mass: Vec<usize> = Vec::new();
+        hashes.clear();
+        mass.clear();
         for &i in &lp {
             let mut ext = 0usize;
             let mut hsh = 0usize;
-            let old_e = std::mem::take(&mut e[i]);
-            let mut new_e: Vec<usize> = Vec::with_capacity(old_e.len() + 1);
-            for &el in &old_e {
+            e[i].retain(|&el| {
                 if status[el] != ELEM || el == p {
-                    continue;
+                    return false;
                 }
-                let rem = w[el] - wbase;
+                let rem = w[el];
                 if rem > 0 {
                     ext += rem;
                     hsh = hsh.wrapping_add(el);
-                    new_e.push(el);
+                    true
                 } else {
                     // Le is contained in Lp: aggressive absorption
                     status[el] = DEAD;
                     l[el] = Vec::new();
+                    false
                 }
-            }
-            let old_a = std::mem::take(&mut a[i]);
-            let mut new_a: Vec<usize> = Vec::with_capacity(old_a.len());
-            for &j in &old_a {
-                if status[j] == VAR && mark[j] != stamp {
+            });
+            a[i].retain(|&j| {
+                let keep = status[j] == VAR && mark[j] != stamp;
+                if keep {
                     ext += nv[j];
                     hsh = hsh.wrapping_add(j);
-                    new_a.push(j);
                 }
-            }
-            if new_a.is_empty() && new_e.is_empty() {
+                keep
+            });
+            if a[i].is_empty() && e[i].is_empty() {
                 // only the pivot element remains: mass elimination
                 mass.push(i);
-                a[i] = new_a;
-                e[i] = new_e;
                 continue;
             }
-            new_e.push(p);
+            e[i].push(p);
             hsh = hsh.wrapping_add(p);
             let bound_n = n_active.saturating_sub(nel + nvpiv + nv[i]);
             let mut d = ext + (lp_deg - nv[i]);
@@ -219,13 +257,13 @@ pub fn amd_order(adj: &[Vec<usize>]) -> Vec<usize> {
             d = d.min(degree[i] + lp_deg - nv[i]);
             degree[i] = d;
             hashes.push((hsh, i));
-            a[i] = new_a;
-            e[i] = new_e;
         }
         for &i in &mass {
             status[i] = DEAD;
             parent[i] = p;
             nvpiv += nv[i];
+            a[i] = Vec::new();
+            e[i] = Vec::new();
         }
         // supervariable detection among the surviving members of Lp
         hashes.sort_unstable();
@@ -265,20 +303,26 @@ pub fn amd_order(adj: &[Vec<usize>]) -> Vec<usize> {
         nel += nvpiv;
         nv[p] = nvpiv;
         // finalise element p and reinsert the variables
-        let live: Vec<usize> = lp.iter().copied().filter(|&i| status[i] == VAR).collect();
-        elem_deg[p] = live.iter().map(|&i| nv[i]).sum();
-        for &i in &live {
+        element.clear();
+        elem_deg[p] = 0;
+        for &i in lp.iter().filter(|&&i| status[i] == VAR) {
+            element.push(i);
+            elem_deg[p] += nv[i];
             insert(i, degree[i], &mut head, &mut next, &mut prev);
             mindeg = mindeg.min(degree[i].min(n));
         }
-        l[p] = live;
+        l[p] = element;
         elim.push(p);
     }
     // numbering: pivot, then everything merged into it, depth first
-    let mut children: Vec<Vec<usize>> = vec![Vec::new(); n];
-    for v in 0..n {
-        if parent[v] != NIL {
-            children[parent[v]].push(v);
+    let mut first_child = head;
+    let mut sibling = next;
+    first_child.fill(NIL);
+    sibling.fill(NIL);
+    for (v, &p) in parent.iter().enumerate() {
+        if p != NIL {
+            sibling[v] = first_child[p];
+            first_child[p] = v;
         }
     }
     let mut perm = Vec::with_capacity(n);
@@ -287,8 +331,10 @@ pub fn amd_order(adj: &[Vec<usize>]) -> Vec<usize> {
         stack.push(p);
         while let Some(v) = stack.pop() {
             perm.push(v);
-            for &c in children[v].iter().rev() {
-                stack.push(c);
+            let mut child = first_child[v];
+            while child != NIL {
+                stack.push(child);
+                child = sibling[child];
             }
         }
     }
@@ -521,4 +567,82 @@ pub fn cholesky_fill(
         structs[j] = s;
     }
     total
+}
+
+/// Structural bandwidth and lower profile after a symmetric permutation.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct OrderingMetrics {
+    /// Largest distance from the diagonal of any structural entry.
+    pub half_bandwidth: usize,
+    /// Sum of the distances to the first lower-triangular entry of each row.
+    /// The diagonal contributes zero.
+    pub profile: usize,
+}
+
+/// Measures the bandwidth and profile of a permuted sparse pattern.
+///
+/// `perm[new] = old` names the original vertex at each reordered position.
+/// Edges may be listed in either or both directions. Duplicate and diagonal
+/// entries leave both metrics unchanged. The work is linear in the number
+/// of vertices and listed edges, with linear storage in the vertex count.
+///
+/// # Errors
+/// The permutation is malformed, a neighbour is out of range, or the
+/// accumulated profile does not fit a `usize`.
+pub fn ordering_metrics(
+    adj: &[Vec<usize>],
+    perm: &[usize],
+) -> Result<OrderingMetrics, NumericError> {
+    measure_ordering(adj.iter().map(Vec::as_slice), perm)
+}
+
+pub(crate) fn measure_ordering<'a>(
+    rows: impl ExactSizeIterator<Item = &'a [usize]>,
+    perm: &[usize],
+) -> Result<OrderingMetrics, NumericError> {
+    let vertices = rows.len();
+    if perm.len() != vertices {
+        return Err(NumericError::ShapeMismatch(format!(
+            "ordering has {} positions for {vertices} vertices",
+            perm.len()
+        )));
+    }
+    let mut positions = vec![NIL; vertices];
+    for (new, &old) in perm.iter().enumerate() {
+        match positions.get_mut(old) {
+            | Some(position) if *position == NIL => *position = new,
+            | Some(_) => {
+                return Err(NumericError::Domain(format!(
+                    "duplicate vertex {old} in ordering"
+                )));
+            },
+            | None => {
+                return Err(NumericError::Domain(format!(
+                    "ordering vertex {old} is out of range"
+                )));
+            },
+        }
+    }
+    let mut row_width = vec![0usize; vertices];
+    for (row, neighbors) in rows.enumerate() {
+        let i = positions[row];
+        for &neighbor in neighbors {
+            let Some(&j) = positions.get(neighbor) else {
+                return Err(NumericError::Domain(format!(
+                    "neighbour {neighbor} in row {row} is out of range",
+                )));
+            };
+            let width = &mut row_width[i.max(j)];
+            *width = (*width).max(i.abs_diff(j));
+        }
+    }
+    let mut metrics = OrderingMetrics::default();
+    for width in row_width {
+        metrics.half_bandwidth = metrics.half_bandwidth.max(width);
+        metrics.profile = metrics
+            .profile
+            .checked_add(width)
+            .ok_or_else(|| NumericError::Domain("ordering profile exceeds usize".to_owned()))?;
+    }
+    Ok(metrics)
 }

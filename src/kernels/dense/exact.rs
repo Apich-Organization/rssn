@@ -36,6 +36,7 @@ pub fn lu_exact(
     n: usize,
     a: &[BigRational],
 ) -> Result<(Vec<BigRational>, Vec<BigRational>, Vec<BigRational>), ExactError> {
+    const PARALLEL_PRODUCTS: usize = 8_192;
     let size = n.checked_mul(n).ok_or(ExactError::Shape)?;
     if size != a.len() {
         return Err(ExactError::Shape);
@@ -43,6 +44,7 @@ pub fn lu_exact(
     let mut u: Vec<BigRational> = a.to_vec();
     let mut l = vec![BigRational::zero(); size];
     let mut p = vec![BigRational::zero(); size];
+    let mut factors = Vec::with_capacity(n.saturating_sub(1));
     for index in 0..n {
         l[index * n + index] = BigRational::one();
         p[index * n + index] = BigRational::one();
@@ -66,13 +68,40 @@ pub fn lu_exact(
                 l.swap(pivot * n + inner, column * n + inner);
             }
         }
-        let lead = u[column * n + column].clone();
-        for row in column + 1..n {
-            let factor = u[row * n + column].clone() / &lead;
-            l[row * n + column] = factor.clone();
-            for inner in column..n {
-                let term = factor.clone() * u[column * n + inner].clone();
-                u[row * n + inner] -= term;
+        let first = column + 1;
+        let (prefix, trailing) = u.split_at_mut(first * n);
+        let pivot_row = &prefix[column * n..];
+        let lead = &pivot_row[column];
+        factors.clear();
+        for (index, row) in trailing.chunks_exact(n).enumerate() {
+            if row[column].is_zero() {
+                factors.push(None);
+            } else {
+                let factor = &row[column] / lead;
+                l[(first + index) * n + column] = factor.clone();
+                factors.push(Some(factor));
+            }
+        }
+        let update = |index: usize, row: &mut [BigRational]| {
+            if let Some(factor) = &factors[index] {
+                row[column] = BigRational::zero();
+                for (value, pivot) in row[first..].iter_mut().zip(&pivot_row[first..]) {
+                    if !pivot.is_zero() {
+                        *value -= factor * pivot;
+                    }
+                }
+            }
+        };
+        // Once the pivot and its multipliers are fixed, each trailing row
+        // is independent. Sparse zero multipliers need no matrix updates.
+        let width = n - first;
+        if width.saturating_mul(factors.iter().filter(|factor| factor.is_some()).count())
+            >= PARALLEL_PRODUCTS
+        {
+            crate::kernels::par::for_chunks_mut(trailing, n, 2, update);
+        } else {
+            for (row, values) in trailing.chunks_exact_mut(n).enumerate() {
+                update(row, values);
             }
         }
     }
@@ -80,6 +109,9 @@ pub fn lu_exact(
 }
 
 /// An exact QR decomposition by modified Gram-Schmidt.
+///
+/// The orthonormal columns of Q precede any unused zero columns. R retains
+/// the input's shape, including when the columns are dependent.
 ///
 /// # Errors
 ///
@@ -96,6 +128,9 @@ pub fn qr_exact(
     }
     let mut q = vec![BigRational::zero(); square];
     let mut r = vec![BigRational::zero(); size];
+    if size == 0 {
+        return Ok((q, r));
+    }
     let mut rank = 0;
     for column in 0..cols {
         let mut v: Vec<BigRational> = (0..rows)

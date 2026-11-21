@@ -7,6 +7,7 @@ use rssn::kernels::krylov::Csr;
 use rssn::kernels::krylov::gmres;
 use rssn::kernels::krylov::identity_precond;
 use rssn::kernels::multigrid::Cycle;
+use rssn::kernels::numeric_common::NumericError;
 
 /// Upwind finite-difference matrix of `-eps Laplace u + b . grad u` on the unit square.
 fn convection_diffusion(
@@ -176,6 +177,96 @@ fn stand_alone_cycles_converge_for_diffusion_dominated_problems() {
     )
     .unwrap();
     assert!(w.solve(&b, None, 1e-8, 60).converged);
+}
+
+#[test]
+fn reused_workspace_matches_fresh_cycles_for_both_hierarchies() {
+    let a = convection_diffusion(24, 0.07, 1.0, 0.5);
+    let rhs = rhs(a.rows);
+    for kind in [AmgKind::RugeStuben, AmgKind::SmoothedAggregation] {
+        for cycle in [Cycle::V, Cycle::W] {
+            let amg = AmgGeneral::build(
+                &a,
+                &AmgGeneralOptions {
+                    kind,
+                    cycle,
+                    sweeps: 2,
+                    ..AmgGeneralOptions::default()
+                },
+            )
+            .unwrap();
+            assert!(amg.num_levels() >= 3);
+            let required = amg.workspace_len();
+            assert!((a.rows..=8 * a.rows).contains(&required));
+            let mut workspace = vec![f64::NAN; required];
+            workspace.extend([17.0, -19.0]);
+            for scale in [1.0, -2.0, 0.0] {
+                let b: Vec<_> = rhs.iter().map(|x| x * scale).collect();
+                let mut fresh = vec![0.125 + scale; a.rows];
+                let mut reused = fresh.clone();
+                amg.vcycle(&b, &mut fresh);
+                amg.vcycle_with_workspace(&b, &mut reused, &mut workspace)
+                    .unwrap();
+                for (a, b) in fresh.iter().zip(&reused) {
+                    assert_eq!(a.to_bits(), b.to_bits());
+                }
+                amg.precondition(&b, &mut fresh);
+                amg.precondition_with_workspace(&b, &mut reused, &mut workspace)
+                    .unwrap();
+                for (a, b) in fresh.iter().zip(&reused) {
+                    assert_eq!(a.to_bits(), b.to_bits());
+                }
+                assert_eq!(&workspace[required..], &[17.0, -19.0]);
+            }
+        }
+    }
+}
+
+#[test]
+fn checked_cycle_shapes_are_validated_before_writing() {
+    let a = convection_diffusion(12, 1.0, 0.5, 0.25);
+    let amg = AmgGeneral::build(&a, &AmgGeneralOptions::default()).unwrap();
+    let b = rhs(a.rows);
+    let mut iterate = vec![5.0; b.len()];
+    let mut workspace = vec![17.0; amg.workspace_len()];
+    let short_workspace = workspace.len() - 1;
+    assert!(matches!(
+        amg.precondition_with_workspace(&b, &mut iterate, &mut workspace[..short_workspace]),
+        Err(NumericError::ShapeMismatch(_))
+    ));
+    assert!(matches!(
+        amg.vcycle_with_workspace(&b[..b.len() - 1], &mut iterate, &mut workspace),
+        Err(NumericError::ShapeMismatch(_))
+    ));
+    assert!(matches!(
+        amg.precondition_with_workspace(&b, &mut iterate[..b.len() - 1], &mut workspace),
+        Err(NumericError::ShapeMismatch(_))
+    ));
+    assert!(iterate.iter().all(|&x| x == 5.0));
+    assert!(workspace.iter().all(|&x| x == 17.0));
+}
+
+#[test]
+fn singular_terminal_operator_uses_its_cached_smoother_without_workspace() {
+    let matrix = Csr::from_triplets(
+        2,
+        2,
+        &[(0, 0, 1.0), (0, 1, -1.0), (1, 0, -1.0), (1, 1, 1.0)],
+    );
+    let amg = AmgGeneral::build(&matrix, &AmgGeneralOptions::default()).unwrap();
+    assert_eq!(amg.num_levels(), 1);
+    assert_eq!(amg.workspace_len(), 0);
+    let b = [1.0, -1.0];
+    let mut x = [7.0; 2];
+    amg.precondition_with_workspace(&b, &mut x, &mut [])
+        .unwrap();
+    assert_eq!(x, [1.0, 0.0]);
+    let mut ax = [0.0; 2];
+    matrix.matvec(&x, &mut ax);
+    assert_eq!(ax, b);
+    let solved = amg.solve(&b, None, 0.0, 2);
+    assert!(solved.converged);
+    assert_eq!(solved.history, [1.0, 0.0]);
 }
 
 #[test]

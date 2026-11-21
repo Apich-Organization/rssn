@@ -1,5 +1,6 @@
 //! Tests for expm, sqrtm, logm, phi functions and exp(tA) v.
 
+use rssn::kernels::dense::DenseError;
 use rssn::kernels::dense::Mat;
 use rssn::kernels::dense::{
     self,
@@ -10,6 +11,7 @@ use rssn::kernels::matfun::expm_krylov;
 use rssn::kernels::matfun::expm_multiply;
 use rssn::kernels::matfun::logm;
 use rssn::kernels::matfun::phi_matrices;
+use rssn::kernels::matfun::powm_psd;
 use rssn::kernels::matfun::sqrtm;
 
 fn maxdiff(
@@ -177,6 +179,92 @@ fn sqrtm_and_logm() {
     let neg = Mat::from_rows(&[vec![-1.0, 0.0], vec![0.0, 1.0]]).unwrap();
     assert!(sqrtm(&neg).is_err() || logm(&neg).is_err());
     assert!(logm(&Mat::zeros(2, 2)).is_err());
+}
+
+#[test]
+fn diagonal_spectral_functions_preserve_the_full_dynamic_range() {
+    let tiny = f64::from_bits(1);
+    let diag = Mat::from_rows(&[vec![tiny, 0.0], vec![0.0, f64::MAX]]).unwrap();
+    let root = sqrtm(&diag).unwrap();
+    let log = logm(&diag).unwrap();
+    assert_eq!(root.data, [tiny.sqrt(), 0.0, 0.0, f64::MAX.sqrt()]);
+    assert_eq!(log.data, [tiny.ln(), 0.0, 0.0, f64::MAX.ln()]);
+    let power = powm_psd(&diag, 0.5).unwrap();
+    for index in 0..2 {
+        assert!((power.at(index, index) / root.at(index, index) - 1.0).abs() <= 2.0 * f64::EPSILON);
+    }
+    assert_eq!(powm_psd(&diag, -1.0), Err(DenseError::NoConvergence));
+    let indefinite = Mat::from_rows(&[vec![-tiny, 0.0], vec![0.0, f64::MAX]]).unwrap();
+    assert_eq!(sqrtm(&indefinite), Err(DenseError::Singular));
+    assert_eq!(powm_psd(&indefinite, 0.5), Err(DenseError::Singular));
+    assert_eq!(logm(&indefinite), Err(DenseError::Singular));
+}
+
+#[test]
+fn a_large_diagonal_does_not_hide_a_nonsymmetric_block() {
+    let a = Mat::from_rows(&[
+        vec![1e16, 0.0, 0.0],
+        vec![0.0, 4.0, 1.0],
+        vec![0.0, 0.0, 4.0],
+    ])
+    .unwrap();
+    let root = sqrtm(&a).unwrap();
+    let log = logm(&a).unwrap();
+    assert!((root.at(1, 2) - 0.25).abs() < 1e-12);
+    assert!((log.at(1, 2) - 0.25).abs() < 1e-9);
+    assert_eq!(root.at(2, 1), 0.0);
+    assert_eq!(log.at(2, 1), 0.0);
+    assert_eq!(powm_psd(&a, 0.5), Err(DenseError::Shape));
+}
+
+#[test]
+fn symmetric_powers_handle_zero_and_reciprocals() {
+    let spd = Mat::from_rows(&[vec![5.0, 4.0], vec![4.0, 5.0]]).unwrap();
+    let inverse = powm_psd(&spd, -1.0).unwrap();
+    assert!(maxdiff(&inverse.matmul(&spd).unwrap(), &Mat::identity(2)) < 1e-14);
+    assert_eq!(inverse.at(0, 1).to_bits(), inverse.at(1, 0).to_bits());
+    let psd = Mat::from_rows(&[vec![2.0, 2.0], vec![2.0, 2.0]]).unwrap();
+    let root = powm_psd(&psd, 0.5).unwrap();
+    assert!(
+        maxdiff(
+            &root,
+            &Mat::from_rows(&[vec![1.0; 2], vec![1.0; 2]]).unwrap()
+        ) < 1e-14
+    );
+    assert_eq!(powm_psd(&psd, 0.0).unwrap(), Mat::identity(2));
+    assert_eq!(powm_psd(&psd, -0.5), Err(DenseError::Singular));
+    assert_eq!(logm(&psd), Err(DenseError::Singular));
+    assert_eq!(powm_psd(&spd, f64::INFINITY), Err(DenseError::NonFinite));
+    let malformed = Mat {
+        rows: 2,
+        cols: 2,
+        data: vec![1.0],
+    };
+    assert_eq!(sqrtm(&malformed), Err(DenseError::Shape));
+    assert_eq!(logm(&malformed), Err(DenseError::Shape));
+    assert_eq!(powm_psd(&malformed, 1.0), Err(DenseError::Shape));
+}
+
+#[test]
+fn symmetric_reconstruction_is_independent_of_the_active_pool() {
+    let mut spd = Mat::identity(192);
+    spd.set(0, 0, 5.0);
+    spd.set(1, 1, 5.0);
+    spd.set(0, 1, 4.0);
+    spd.set(1, 0, 4.0);
+    let sequential = rayon::ThreadPoolBuilder::new()
+        .num_threads(1)
+        .build()
+        .unwrap();
+    let workers = rayon::ThreadPoolBuilder::new()
+        .num_threads(4)
+        .build()
+        .unwrap();
+    let expected = sequential.install(|| sqrtm(&spd).unwrap());
+    let actual = workers.install(|| sqrtm(&spd).unwrap());
+    assert_eq!(actual, expected);
+    assert!((actual.at(0, 1) - 1.0).abs() < 1e-14);
+    assert_eq!(actual.at(0, 1).to_bits(), actual.at(1, 0).to_bits());
 }
 
 #[test]

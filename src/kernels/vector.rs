@@ -13,9 +13,10 @@
 //!
 //! # Limitations and coverage
 //!
-//! * Vectors are plain `&[f64]` slices of equal length; results are freshly
-//!   allocated `Vec`s, so there is no in-place, SIMD or GPU path and no
-//!   generic scalar type. Only [`cross_product`] is fixed to three dimensions.
+//! * Vectors are plain `&[f64]` slices. [`normalize_into`] accepts caller-owned
+//!   output and scalar distance uses no intermediate vector. The other
+//!   vector-valued results allocate `Vec`s. Only [`cross_product`] is fixed to
+//!   three dimensions.
 //! * There is no matrix, quaternion or geometric-algebra type here (see
 //!   `matrix`, `computer_graphics` and `geometric_algebra`) and no operator
 //!   overloading; the API is a set of functions returning `Err` on a length
@@ -27,6 +28,20 @@
 //! * [`is_orthogonal`] / [`is_parallel`] take the caller's `epsilon` and test
 //!   the raw or normalised dot product, so the former is an absolute test and
 //!   the latter is scale-free; neither is exact for nearly degenerate inputs.
+
+fn same_length(
+    v1: &[f64],
+    v2: &[f64],
+) -> Result<(), String> {
+    if v1.len() == v2.len() {
+        return Ok(());
+    }
+    Err(format!(
+        "Dimension mismatch: v1.len() = {}, v2.len() = {}",
+        v1.len(),
+        v2.len()
+    ))
+}
 
 /// Adds two vectors element-wise.
 ///
@@ -45,15 +60,7 @@ pub fn vec_add(
     v1: &[f64],
     v2: &[f64],
 ) -> Result<Vec<f64>, String> {
-    if v1.len() != v2.len() {
-        return Err(format!(
-            "Dimension mismatch: \
-             v1.len() = {}, v2.len() \
-             = {}",
-            v1.len(),
-            v2.len()
-        ));
-    }
+    same_length(v1, v2)?;
 
     Ok(v1.iter().zip(v2.iter()).map(|(a, b)| a + b).collect())
 }
@@ -75,15 +82,7 @@ pub fn vec_sub(
     v1: &[f64],
     v2: &[f64],
 ) -> Result<Vec<f64>, String> {
-    if v1.len() != v2.len() {
-        return Err(format!(
-            "Dimension mismatch: \
-             v1.len() = {}, v2.len() \
-             = {}",
-            v1.len(),
-            v2.len()
-        ));
-    }
+    same_length(v1, v2)?;
 
     Ok(v1.iter().zip(v2.iter()).map(|(a, b)| a - b).collect())
 }
@@ -120,17 +119,27 @@ pub fn dot_product(
     v1: &[f64],
     v2: &[f64],
 ) -> Result<f64, String> {
-    if v1.len() != v2.len() {
-        return Err(format!(
-            "Dimension mismatch: \
-             v1.len() = {}, v2.len() \
-             = {}",
-            v1.len(),
-            v2.len()
-        ));
-    }
+    same_length(v1, v2)?;
 
     Ok(v1.iter().zip(v2.iter()).map(|(a, b)| a * b).sum())
+}
+
+fn norm_parts(values: impl Iterator<Item = f64> + Clone) -> (Option<f64>, f64) {
+    let squares = values.clone().map(|x| x * x).sum::<f64>();
+    if squares.is_normal() || squares.is_nan() {
+        return (None, squares.sqrt());
+    }
+    let scale = values.clone().map(f64::abs).fold(0.0, f64::max);
+    if scale == 0.0 || scale.is_infinite() {
+        return (None, scale);
+    }
+    let squares = values
+        .map(|x| {
+            let x = x / scale;
+            x * x
+        })
+        .sum::<f64>();
+    (Some(scale), squares.sqrt())
 }
 
 /// Computes the Euclidean norm ($`L_2`$ norm) of a vector.
@@ -138,7 +147,8 @@ pub fn dot_product(
 /// Formula: $||\mathbf{v}||_2 = \sqrt{\sum_{i=1}^n `v_i^2`}$
 #[must_use]
 pub fn norm(v: &[f64]) -> f64 {
-    v.iter().map(|&a| a * a).sum::<f64>().sqrt()
+    let (scale, length) = norm_parts(v.iter().copied());
+    scale.unwrap_or(1.0) * length
 }
 
 /// Computes the Manhattan norm ($`L_1`$ norm) of a vector.
@@ -190,15 +200,37 @@ pub fn lp_norm(
 /// # Errors
 /// Returns an error if the vector is a zero vector.
 pub fn normalize(v: &[f64]) -> Result<Vec<f64>, String> {
-    let n = norm(v);
+    Ok(normalized(v)?.collect())
+}
 
-    if n == 0.0 {
-        return Err("Cannot normalize a zero \
-             vector."
-            .to_string());
+/// Writes the normalized vector into an existing slice of the same length.
+/// Finite nonzero vectors can be normalized even when their norm overflows.
+/// # Errors
+/// Returns an error for a zero vector or an output with a different length.
+/// Leaves `out` unchanged on error.
+pub fn normalize_into(
+    v: &[f64],
+    out: &mut [f64],
+) -> Result<(), String> {
+    if v.len() != out.len() {
+        return Err("Normalization output must have the same length as the input.".into());
     }
+    for (dest, value) in out.iter_mut().zip(normalized(v)?) {
+        *dest = value;
+    }
+    Ok(())
+}
 
-    Ok(scalar_mul(v, 1.0 / n))
+fn normalized(v: &[f64]) -> Result<impl Iterator<Item = f64> + '_, String> {
+    let (scale, length) = norm_parts(v.iter().copied());
+    if length == 0.0 {
+        return Err("Cannot normalize a zero vector.".into());
+    }
+    let inverse = length.recip();
+    Ok(v.iter().map(move |&value| {
+        let value = scale.map_or(value, |scale| value / scale);
+        value * inverse
+    }))
 }
 
 /// Computes the cross product of two 3D vectors.
@@ -230,7 +262,8 @@ pub fn cross_product(
     ])
 }
 
-/// Computes the Euclidean distance between two vectors.
+/// Computes the Euclidean distance between two vectors without allocating an
+/// intermediate vector.
 ///
 /// # Errors
 /// Returns an error if the vectors have different lengths.
@@ -238,9 +271,41 @@ pub fn distance(
     v1: &[f64],
     v2: &[f64],
 ) -> Result<f64, String> {
-    let diff = vec_sub(v1, v2)?;
+    same_length(v1, v2)?;
+    let (scale, length) = norm_parts(v1.iter().zip(v2).map(|(a, b)| a - b));
+    Ok(scale.unwrap_or(1.0) * length)
+}
 
-    Ok(norm(&diff))
+fn direction_cosine(
+    v1: &[f64],
+    v2: &[f64],
+) -> Option<f64> {
+    let (scale1, length1) = norm_parts(v1.iter().copied());
+    let (scale2, length2) = norm_parts(v2.iter().copied());
+    if length1 == 0.0 || length2 == 0.0 {
+        return None;
+    }
+
+    let pairs = v1.iter().zip(v2);
+    let denominator = length1 * length2;
+    if scale1.is_none()
+        && scale2.is_none()
+        && (denominator.is_normal() || !length1.is_finite() || !length2.is_finite())
+    {
+        return Some(pairs.map(|(a, b)| a * b).sum::<f64>() / denominator);
+    }
+
+    let unit1 = length1.recip();
+    let unit2 = length2.recip();
+    Some(
+        pairs
+            .map(|(&a, &b)| {
+                let a = scale1.map_or(a, |s| a / s) * unit1;
+                let b = scale2.map_or(b, |s| b / s) * unit2;
+                a * b
+            })
+            .sum(),
+    )
 }
 
 /// Computes the angle between two vectors in radians.
@@ -253,19 +318,8 @@ pub fn angle(
     v1: &[f64],
     v2: &[f64],
 ) -> Result<f64, String> {
-    let n1 = norm(v1);
-
-    let n2 = norm(v2);
-
-    if n1 == 0.0 || n2 == 0.0 {
-        return Ok(0.0);
-    }
-
-    let dot = dot_product(v1, v2)?;
-
-    let cos_theta = (dot / (n1 * n2)).clamp(-1.0, 1.0);
-
-    Ok(cos_theta.acos())
+    same_length(v1, v2)?;
+    Ok(direction_cosine(v1, v2).map_or(0.0, |cosine| cosine.clamp(-1.0, 1.0).acos()))
 }
 
 /// Projects vector `v1` onto vector `v2`.
@@ -300,6 +354,7 @@ pub fn project(
 ///
 /// Formula: $\mathbf{r} = \mathbf{v} - 2(\mathbf{v} \cdot \mathbf{n})\mathbf{n}$
 /// Note: The normal vector `n` must be normalized.
+/// The result can remain finite even when the intermediate correction overflows.
 ///
 /// # Errors
 /// Returns an error if the vectors have different lengths.
@@ -315,10 +370,57 @@ pub fn reflect(
     }
 
     let dot = dot_product(v, n)?;
+    let factor = 2.0 * dot;
+    let components = v.iter().zip(n);
+    if factor.is_finite() || n.iter().any(|x| x.abs() > 1.0 || x.is_nan()) {
+        return Ok(components.map(|(x, normal)| x - normal * factor).collect());
+    }
 
-    let scaled_n = scalar_mul(n, 2.0 * dot);
+    // The product can exceed the Float range while adding the original
+    // coordinate brings the result back into range.
+    if dot.is_finite() {
+        return Ok(components
+            .map(|(&x, &normal)| (-2.0 * normal).mul_add(dot, x))
+            .collect());
+    }
 
-    vec_sub(v, &scaled_n)
+    if v.iter().any(|x| !x.is_finite()) {
+        return Ok(components.map(|(x, normal)| x - normal * factor).collect());
+    }
+    let scale = linf_norm(v);
+    let (sum, correction) =
+        components
+            .clone()
+            .fold((0.0_f64, 0.0), |(sum, correction), (x, normal)| {
+                let product = (x / scale) * normal;
+                let next = sum + product;
+                let residual = if sum.abs() >= product.abs() {
+                    (sum - next) + product
+                } else {
+                    (product - next) + sum
+                };
+                (next, correction + residual)
+            });
+    let dot = sum + correction;
+    let factor = 2.0 * dot;
+    if factor == 0.0 {
+        return Ok(v.to_vec());
+    }
+
+    Ok(components
+        .map(|(&x, &normal)| {
+            let signed = if factor.is_sign_negative() {
+                -normal
+            } else {
+                normal
+            };
+            match crate::kernels::numeric_common::scale_product(signed, &[factor.abs(), scale], &[])
+            {
+                | Ok(correction) => x - correction,
+                | Err(_) => (-2.0 * normal).mul_add(dot, x / scale) * scale,
+            }
+        })
+        .collect())
 }
 
 /// Linearly interpolates between two vectors.
@@ -379,19 +481,7 @@ pub fn is_parallel(
             .to_string());
     }
 
-    let n1 = norm(v1);
-
-    let n2 = norm(v2);
-
-    if n1 == 0.0 || n2 == 0.0 {
-        return Ok(true);
-    }
-
-    let dot = dot_product(v1, v2)?;
-
-    let cos_theta = (dot / (n1 * n2)).abs();
-
-    Ok((1.0 - cos_theta).abs() < epsilon)
+    Ok(direction_cosine(v1, v2).is_none_or(|cosine| (1.0 - cosine.abs()).abs() < epsilon))
 }
 
 /// Computes the cosine similarity between two vectors.
@@ -402,18 +492,7 @@ pub fn cosine_similarity(
     v1: &[f64],
     v2: &[f64],
 ) -> Result<f64, String> {
-    let n1 = norm(v1);
-
-    let n2 = norm(v2);
-
-    if n1 == 0.0 || n2 == 0.0 {
-        return Err("Cosine similarity is \
-             undefined for zero \
-             vectors."
-            .to_string());
-    }
-
-    let dot = dot_product(v1, v2)?;
-
-    Ok(dot / (n1 * n2))
+    same_length(v1, v2)?;
+    direction_cosine(v1, v2)
+        .ok_or_else(|| "Cosine similarity is undefined for zero vectors.".into())
 }

@@ -96,7 +96,8 @@ fn dot(
     a.iter().zip(b).map(|(x, y)| x * y).sum()
 }
 
-/// Nelder-Mead simplex method. `step` is the initial simplex edge length.
+/// Nelder–Mead simplex method, with `step` scaling the initial coordinate
+/// offsets. Tied objective values retain their previous simplex order.
 pub fn nelder_mead<F: Fn(&[f64]) -> f64>(
     f: F,
     x0: &[f64],
@@ -115,7 +116,8 @@ pub fn nelder_mead<F: Fn(&[f64]) -> f64>(
             converged: true,
         };
     }
-    let mut pts: Vec<Vec<f64>> = vec![x0.to_vec()];
+    let mut pts = Vec::with_capacity(n + 1);
+    pts.push(x0.to_vec());
     for i in 0..n {
         let mut p = x0.to_vec();
         p[i] += if p[i] == 0.0 {
@@ -126,85 +128,113 @@ pub fn nelder_mead<F: Fn(&[f64]) -> f64>(
         pts.push(p);
     }
     let mut vals: Vec<f64> = pts.iter().map(|p| f(p)).collect();
+    // Sort the logical order instead of copying coordinates. Retaining it
+    // across iterations preserves the stable tie order of the simplex.
+    let mut order: Vec<usize> = (0..=n).collect();
+    let mut centroid = Vec::new();
+    let mut reflected = Vec::new();
+    let mut trial = Vec::new();
     let mut evals = n + 1;
     let mut it = 0;
     let mut converged = false;
     while it < max_iter {
         it += 1;
-        let mut idx: Vec<usize> = (0..=n).collect();
-        idx.sort_by(|&a, &b| vals[a].total_cmp(&vals[b]));
-        pts = idx.iter().map(|&i| pts[i].clone()).collect();
-        vals = idx.iter().map(|&i| vals[i]).collect();
-        let spread = (vals[n] - vals[0]).abs();
-        let size = pts[1..]
-            .iter()
-            .map(|p| {
-                p.iter()
-                    .zip(&pts[0])
-                    .map(|(a, b)| (a - b).abs())
-                    .fold(0.0, f64::max)
-            })
-            .fold(0.0, f64::max);
-        if spread <= tol * (1.0 + vals[0].abs()) && size <= tol.sqrt() {
-            converged = true;
-            break;
+        order.sort_by(|&a, &b| vals[a].total_cmp(&vals[b]));
+        let best = order[0];
+        let worst = order[n];
+        let spread = (vals[worst] - vals[best]).abs();
+        if spread <= tol * (1.0 + vals[best].abs()) {
+            let size = order[1..]
+                .iter()
+                .map(|&i| {
+                    pts[i]
+                        .iter()
+                        .zip(&pts[best])
+                        .map(|(a, b)| (a - b).abs())
+                        .fold(0.0, f64::max)
+                })
+                .fold(0.0, f64::max);
+            if size <= tol.sqrt() {
+                converged = true;
+                break;
+            }
         }
-        let cen: Vec<f64> = (0..n)
-            .map(|j| pts[..n].iter().map(|p| p[j]).sum::<f64>() / n as f64)
-            .collect();
-        let along =
-            |t: f64| -> Vec<f64> { (0..n).map(|j| cen[j] + t * (pts[n][j] - cen[j])).collect() };
-        let xr = along(-1.0);
-        let fr = f(&xr);
+        centroid.resize(n, -0.0);
+        // Match the accumulator initial value and addition order of f64::sum.
+        centroid.fill(-0.0);
+        for &i in &order[..n] {
+            for (sum, &coordinate) in centroid.iter_mut().zip(&pts[i]) {
+                *sum += coordinate;
+            }
+        }
+        for coordinate in &mut centroid {
+            *coordinate /= n as f64;
+        }
+        reflected.resize(n, 0.0);
+        nelder_mead_trial(&mut reflected, &centroid, &pts[worst], -1.0);
+        let fr = f(&reflected);
         evals += 1;
-        if fr < vals[0] {
-            let xe = along(-2.0);
-            let fe = f(&xe);
+        if fr < vals[best] {
+            trial.resize(n, 0.0);
+            nelder_mead_trial(&mut trial, &centroid, &pts[worst], -2.0);
+            let fe = f(&trial);
             evals += 1;
             if fe < fr {
-                pts[n] = xe;
-                vals[n] = fe;
+                std::mem::swap(&mut pts[worst], &mut trial);
+                vals[worst] = fe;
             } else {
-                pts[n] = xr;
-                vals[n] = fr;
+                std::mem::swap(&mut pts[worst], &mut reflected);
+                vals[worst] = fr;
             }
-        } else if fr < vals[n - 1] {
-            pts[n] = xr;
-            vals[n] = fr;
+        } else if fr < vals[order[n - 1]] {
+            std::mem::swap(&mut pts[worst], &mut reflected);
+            vals[worst] = fr;
         } else {
-            let (xc, fc) = if fr < vals[n] {
-                let x = along(-0.5);
-                let v = f(&x);
-                (x, v)
+            let scale = if fr < vals[worst] {
+                -0.5
             } else {
-                let x = along(0.5);
-                let v = f(&x);
-                (x, v)
+                0.5
             };
+            trial.resize(n, 0.0);
+            nelder_mead_trial(&mut trial, &centroid, &pts[worst], scale);
+            let fc = f(&trial);
             evals += 1;
-            if fc < vals[n].min(fr) {
-                pts[n] = xc;
-                vals[n] = fc;
+            if fc < vals[worst].min(fr) {
+                std::mem::swap(&mut pts[worst], &mut trial);
+                vals[worst] = fc;
             } else {
-                for i in 1..=n {
-                    for j in 0..n {
-                        pts[i][j] = pts[0][j] + 0.5 * (pts[i][j] - pts[0][j]);
-                    }
+                // The centroid buffer is now free to hold the fixed shrink anchor.
+                centroid.copy_from_slice(&pts[best]);
+                for &i in &order[1..] {
+                    nelder_mead_trial(&mut trial, &centroid, &pts[i], 0.5);
+                    std::mem::swap(&mut pts[i], &mut trial);
                     vals[i] = f(&pts[i]);
                     evals += 1;
                 }
             }
         }
     }
-    let best = (0..=n)
+    let best = order
+        .into_iter()
         .min_by(|&a, &b| vals[a].total_cmp(&vals[b]))
         .unwrap_or(0);
     OptResult {
-        x: pts[best].clone(),
+        x: pts.swap_remove(best),
         fx: vals[best],
         iterations: it,
         evaluations: evals,
         converged,
+    }
+}
+
+fn nelder_mead_trial(
+    output: &mut [f64],
+    anchor: &[f64],
+    point: &[f64],
+    scale: f64,
+) {
+    for ((value, &base), &coordinate) in output.iter_mut().zip(anchor).zip(point) {
+        *value = base + scale * (coordinate - base);
     }
 }
 

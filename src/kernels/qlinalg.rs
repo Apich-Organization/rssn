@@ -1,3 +1,5 @@
+//! Exact linear algebra over the rationals.
+//!
 //! # Exact linear algebra over the rationals
 //!
 //! Dense matrices of [`BigRational`] stored as rows: reduced row echelon
@@ -7,6 +9,8 @@
 //!
 //! Parallelism: the row updates of an elimination step run concurrently from 48 rows on (exact
 //! arithmetic, identical result).
+
+use std::alloc::Layout;
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
@@ -121,13 +125,23 @@ pub fn nullspace(
     out
 }
 
-/// A particular solution of `m x = b` (free variables set to zero), if any.
+/// A particular solution of `m x = b`, with free variables set to zero.
+///
+/// Returns `None` for an inconsistent system, a mismatched right-hand
+/// side, or an invalid matrix shape. Pivots are chosen from left to right.
 #[must_use]
 pub fn solve(
     m: &[Vec<Q>],
     cols: usize,
     b: &[Q],
 ) -> Option<Vec<Q>> {
+    if m.len() != b.len() || m.iter().any(|row| row.len() != cols) {
+        return None;
+    }
+    Layout::array::<Q>(cols.checked_add(1)?).ok()?;
+    if b.iter().all(Zero::is_zero) {
+        return Some(zeros(cols));
+    }
     let mut aug: QMat = m
         .iter()
         .zip(b)
@@ -138,13 +152,48 @@ pub fn solve(
                 .collect()
         })
         .collect();
-    let pivots = rref(&mut aug, cols + 1);
-    if pivots.last() == Some(&cols) {
+
+    // Only rows below the pivot can affect later pivot choices. Keep already
+    // selected rows in echelon form for back substitution.
+    let mut pivots = Vec::with_capacity(cols.min(aug.len()));
+    for c in 0..cols {
+        let rank = pivots.len();
+        if rank == aug.len() {
+            break;
+        }
+        let Some(p) = (rank..aug.len()).find(|&i| !aug[i][c].is_zero()) else {
+            continue;
+        };
+        aug.swap(rank, p);
+        let (head, tail) = aug.split_at_mut(rank + 1);
+        let pivot = &head[rank];
+        super::par::for_each_mut(tail, 48, |_, row| {
+            if row[c].is_zero() {
+                return;
+            }
+            let factor = std::mem::take(&mut row[c]) / &pivot[c];
+            for (x, y) in row[c + 1..].iter_mut().zip(&pivot[c + 1..]) {
+                if !y.is_zero() {
+                    *x -= &factor * y;
+                }
+            }
+        });
+        pivots.push(c);
+    }
+    // A dependent row has a zero coefficient block and must have zero RHS.
+    if aug[pivots.len()..].iter().any(|row| !row[cols].is_zero()) {
         return None;
     }
+
     let mut x = zeros(cols);
-    for (row, &p) in aug.iter().zip(&pivots) {
-        x[p] = row[cols].clone();
+    for (mut row, p) in aug.into_iter().zip(pivots).rev() {
+        let mut residual = row.pop()?;
+        for (coefficient, value) in row[p + 1..].iter().zip(&x[p + 1..]) {
+            if !coefficient.is_zero() && !value.is_zero() {
+                residual -= coefficient * value;
+            }
+        }
+        x[p] = residual / &row[p];
     }
     Some(x)
 }
@@ -227,8 +276,13 @@ pub fn inverse(m: &[Vec<Q>]) -> Option<QMat> {
 /// The determinant of a square matrix.
 #[must_use]
 pub fn det(m: &[Vec<Q>]) -> Q {
-    let n = m.len();
-    let mut a = m.to_vec();
+    det_in_place(&mut m.to_vec())
+}
+
+/// Determinant of a square matrix whose rows can be overwritten.
+pub(crate) fn det_in_place(a: &mut [Vec<Q>]) -> Q {
+    const GRAIN: usize = 48;
+    let n = a.len();
     let mut d = Q::one();
     for c in 0..n {
         let Some(p) = (c..n).find(|&i| !a[i][c].is_zero()) else {
@@ -238,17 +292,30 @@ pub fn det(m: &[Vec<Q>]) -> Q {
             a.swap(p, c);
             d = -d;
         }
-        d *= a[c][c].clone();
-        let pivot_row = a[c].clone();
-        for row in a.iter_mut().skip(c + 1) {
+        let (prefix, tail) = a.split_at_mut(c + 1);
+        let pivot_row = &prefix[c];
+        d *= &pivot_row[c];
+        let grain = if crate::execution::should_split(tail.len(), GRAIN)
+            && tail
+                .iter()
+                .filter(|row| !row[c].is_zero())
+                .nth(15)
+                .is_some()
+        {
+            GRAIN
+        } else {
+            usize::MAX
+        };
+        super::par::for_each_mut(tail, grain, |_, row| {
             if row[c].is_zero() {
-                continue;
+                return;
             }
             let f = &row[c] / &pivot_row[c];
-            for (x, y) in row.iter_mut().zip(&pivot_row).skip(c) {
+            row[c] = Q::zero();
+            for (x, y) in row.iter_mut().zip(pivot_row).skip(c + 1) {
                 *x -= &f * y;
             }
-        }
+        });
     }
     d
 }

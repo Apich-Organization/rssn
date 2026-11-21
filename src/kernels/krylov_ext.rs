@@ -1,11 +1,13 @@
+//! MINRES, BiCGSTAB(l), IDR(s) and flexible GMRES.
+//!
 //! # Further Krylov solvers
 //!
 //! Matrix-free iterative solvers complementing [`crate::kernels::krylov`]:
 //!
 //! * [`minres`]: MINRES for symmetric (possibly indefinite) systems with a
 //!   symmetric positive definite preconditioner (Paige and Saunders);
-//! * [`bicgstab_l`]: BiCGSTAB(`l`) of Sleijpen and Fokkema, right
-//!   preconditioned (`l = 1` is BiCGSTAB, larger `l` copes with complex
+//! * [`bicgstab_l`]: `BiCGSTAB`(`l`) of Sleijpen and Fokkema, right
+//!   preconditioned (`l = 1` is `BiCGSTAB`, larger `l` copes with complex
 //!   spectra);
 //! * [`idr_s`]: IDR(`s`) of Sonneveld and van Gijzen with the
 //!   biorthogonal residual-smoothing-free variant and right preconditioning;
@@ -15,7 +17,10 @@
 //! `apply(x, y)` writes `A x` into `y`; the preconditioner closures write an
 //! approximation of `M^{-1} r` into their second argument.
 
+use std::alloc::Layout;
+
 use crate::kernels::krylov::IterResult;
+use crate::kernels::krylov::residual_ratio;
 use crate::kernels::random::Rng;
 
 fn dot(
@@ -144,8 +149,14 @@ where
 /// `l = 1` is classical `BiCGSTAB`; `l = 2` or more smooths the residual
 /// polynomial with a degree-`l` minimal-residual step, which avoids the
 /// breakdown of `BiCGSTAB` on matrices with strongly complex spectra. The
-/// iteration count is the number of outer cycles; each costs `2 l`
-/// matrix-vector products.
+/// iteration count is the number of outer cycles started. Each complete cycle
+/// uses `2 l` matrix-vector products, plus the initial and final verification
+/// for the solve.
+///
+/// Convergence is verified against the original system using the requested
+/// nonnegative, finite tolerance. With a zero right-hand side, the reported
+/// relative residual is zero for an exact solution and infinite otherwise.
+/// Both callbacks must overwrite every output entry with finite values.
 pub fn bicgstab_l<A, M>(
     apply: A,
     precond: M,
@@ -161,136 +172,204 @@ where
 {
     let l = l.max(1);
     let n = b.len();
+    let mut x = x0
+        .filter(|v| v.len() == n)
+        .map_or_else(|| vec![0.0; n], <[f64]>::to_vec);
+    if x0.is_some_and(|v| v.len() != n)
+        || !tol.is_finite()
+        || tol < 0.0
+        || b.iter().chain(&x).any(|v| !v.is_finite())
+    {
+        return bicgstab_l_report(x, f64::INFINITY, 0, tol);
+    }
+
+    let mut image = vec![f64::NAN; n];
+    if n != 0 {
+        apply(&x, &mut image);
+    }
+    let r_init: Vec<_> = b.iter().zip(&image).map(|(b, a)| b - a).collect();
     let bn = nrm(b).max(f64::MIN_POSITIVE);
-    let x0v = x0.map_or_else(|| vec![0.0; n], <[f64]>::to_vec);
+    let mut rn = nrm(&r_init);
+    let initial = || residual_ratio(b, &image).unwrap_or(f64::INFINITY);
+    if max_iter == 0 || !rn.is_finite() || !bn.is_finite() || rn / bn <= tol {
+        return bicgstab_l_report(x, initial(), 0, tol);
+    }
+    let Some(width) = l.checked_add(1) else {
+        return bicgstab_l_report(x, initial(), 0, tol);
+    };
+    let Some(small_matrix_len) = width
+        .checked_mul(width)
+        .filter(|&len| Layout::array::<f64>(len).is_ok())
+    else {
+        return bicgstab_l_report(x, initial(), 0, tol);
+    };
+
     let mut tmp = vec![0.0; n];
     // operator B v = A M^{-1} v; unknown correction y with x = x0 + M^{-1} y
-    let op = |v: &[f64], out: &mut [f64], tmp: &mut Vec<f64>| {
+    let op = |v: &[f64], out: &mut [f64], tmp: &mut [f64]| {
+        if !bicgstab_l_finite(v) {
+            return false;
+        }
+        tmp.fill(f64::NAN);
         precond(v, tmp);
+        if !bicgstab_l_finite(tmp) {
+            return false;
+        }
+        // Every output entry participates in a checked dot product or squared
+        // norm before that direction is reused.
+        out.fill(f64::NAN);
         apply(tmp, out);
+        true
     };
-    let r_init = residual(&apply, b, &x0v);
     let mut xc = vec![0.0; n]; // correction in the preconditioned space
-    let rt = r_init.clone();
-    let mut r: Vec<Vec<f64>> = vec![vec![0.0; n]; l + 1];
-    let mut u: Vec<Vec<f64>> = vec![vec![0.0; n]; l + 1];
-    r[0] = r_init;
-    let (mut rho0, mut alpha, mut omega) = (1.0, 0.0, 1.0);
+    let rt = r_init;
+    let mut r = vec![vec![0.0; n]; width];
+    let mut u = vec![vec![0.0; n]; width];
+    r[0].copy_from_slice(&rt);
+    let mut tau = vec![0.0; small_matrix_len];
+    let mut sigma = vec![0.0; width];
+    let mut gp = vec![0.0; width];
+    let mut g = vec![0.0; width];
+    let mut gpp = vec![0.0; width];
+    let (mut rho0, mut alpha, mut omega) = (1.0_f64, 0.0, 1.0);
     let mut it = 0;
-    let mut rn = nrm(&r[0]);
-    while rn / bn > tol && it < max_iter {
+    'cycles: while rn / bn > tol && it < max_iter {
         it += 1;
         rho0 *= -omega;
         for j in 0..l {
             let rho1 = dot(&rt, &r[j]);
-            if rho0 == 0.0 {
-                return finish(&apply, &precond, b, &x0v, &xc, it);
+            if rho0 == 0.0 || !rho0.is_finite() || !rho1.is_finite() {
+                break 'cycles;
             }
             let beta = alpha * rho1 / rho0;
+            if !beta.is_finite() {
+                break 'cycles;
+            }
             rho0 = rho1;
             for i in 0..=j {
                 for q in 0..n {
                     u[i][q] = r[i][q] - beta * u[i][q];
                 }
             }
-            let uj = u[j].clone();
-            let mut out = vec![0.0; n];
-            op(&uj, &mut out, &mut tmp);
-            u[j + 1] = out;
+            let (u_prefix, u_next) = u.split_at_mut(j + 1);
+            if !op(&u_prefix[j], &mut u_next[0], &mut tmp) {
+                break 'cycles;
+            }
             let gamma = dot(&u[j + 1], &rt);
-            if gamma == 0.0 {
-                return finish(&apply, &precond, b, &x0v, &xc, it);
+            if gamma == 0.0 || !gamma.is_finite() {
+                break 'cycles;
             }
             alpha = rho0 / gamma;
+            if !alpha.is_finite() {
+                break 'cycles;
+            }
             for i in 0..=j {
-                let ui1 = u[i + 1].clone();
-                axpy(-alpha, &ui1, &mut r[i]);
+                axpy(-alpha, &u[i + 1], &mut r[i]);
             }
-            let rj = r[j].clone();
-            let mut out = vec![0.0; n];
-            op(&rj, &mut out, &mut tmp);
-            r[j + 1] = out;
-            let u0 = u[0].clone();
-            axpy(alpha, &u0, &mut xc);
+            let (r_prefix, r_next) = r.split_at_mut(j + 1);
+            if !op(&r_prefix[j], &mut r_next[0], &mut tmp) {
+                break 'cycles;
+            }
+            axpy(alpha, &u[0], &mut xc);
         }
-        // minimal residual part
-        let mut tau = vec![vec![0.0; l + 1]; l + 1];
-        let mut sigma = vec![0.0; l + 1];
-        let mut gp = vec![0.0; l + 1];
+        // Minimal residual part. Every used entry of the upper triangle
+        // and the coefficient vectors is overwritten in this cycle.
         for j in 1..=l {
+            let (prefix, current) = r.split_at_mut(j);
+            let rj = &mut current[0];
             for i in 1..j {
-                tau[i][j] = dot(&r[j], &r[i]) / sigma[i];
-                let ri = r[i].clone();
-                axpy(-tau[i][j], &ri, &mut r[j]);
+                let coefficient = if sigma[i] == 0.0 {
+                    0.0
+                } else {
+                    dot(rj, &prefix[i]) / sigma[i]
+                };
+                if !coefficient.is_finite() {
+                    break 'cycles;
+                }
+                tau[i * width + j] = coefficient;
+                axpy(-coefficient, &prefix[i], rj);
             }
-            sigma[j] = dot(&r[j], &r[j]);
+            sigma[j] = dot(rj, rj);
+            if !sigma[j].is_finite() || (sigma[j] == 0.0 && rj.iter().any(|&v| v != 0.0)) {
+                break 'cycles;
+            }
             gp[j] = if sigma[j] == 0.0 {
                 0.0
             } else {
-                dot(&r[0], &r[j]) / sigma[j]
+                dot(&prefix[0], rj) / sigma[j]
             };
+            if !gp[j].is_finite() {
+                break 'cycles;
+            }
         }
-        let mut g = vec![0.0; l + 1];
         g[l] = gp[l];
         omega = g[l];
         for j in (1..l).rev() {
             let mut s = gp[j];
             for i in j + 1..=l {
-                s -= tau[j][i] * g[i];
+                s -= tau[j * width + i] * g[i];
             }
             g[j] = s;
         }
-        let mut gpp = vec![0.0; l + 1];
         for j in 1..l {
             let mut s = g[j + 1];
             for i in j + 1..l {
-                s += tau[j][i] * g[i + 1];
+                s += tau[j * width + i] * g[i + 1];
             }
             gpp[j] = s;
         }
-        let r0c = r[0].clone();
-        axpy(g[1], &r0c, &mut xc);
-        let rl = r[l].clone();
-        axpy(-gp[l], &rl, &mut r[0]);
-        let ul = u[l].clone();
-        axpy(-g[l], &ul, &mut u[0]);
+        if g[1..].iter().chain(&gpp[1..l]).any(|v| !v.is_finite()) {
+            break;
+        }
+        let (r0, r_high) = r.split_at_mut(1);
+        let (u0, u_high) = u.split_at_mut(1);
+        axpy(g[1], &r0[0], &mut xc);
+        axpy(-gp[l], &r_high[l - 1], &mut r0[0]);
+        axpy(-g[l], &u_high[l - 1], &mut u0[0]);
         for j in 1..l {
-            let uj = u[j].clone();
-            axpy(-g[j], &uj, &mut u[0]);
-            let rj = r[j].clone();
-            axpy(gpp[j], &rj, &mut xc);
-            axpy(-gp[j], &rj, &mut r[0]);
+            axpy(-g[j], &u_high[j - 1], &mut u0[0]);
+            let rj = &r_high[j - 1];
+            axpy(gpp[j], rj, &mut xc);
+            axpy(-gp[j], rj, &mut r0[0]);
         }
         rn = nrm(&r[0]);
         if !rn.is_finite() {
             break;
         }
     }
-    finish(&apply, &precond, b, &x0v, &xc, it)
+    if bicgstab_l_finite(&xc) {
+        tmp.fill(f64::NAN);
+        precond(&xc, &mut tmp);
+        if x.iter().zip(&tmp).all(|(&a, &c)| (a + c).is_finite()) {
+            for (value, &correction) in x.iter_mut().zip(&tmp) {
+                *value += correction;
+            }
+            image.fill(f64::NAN);
+            apply(&x, &mut image);
+        }
+    }
+    let residual = residual_ratio(b, &image).unwrap_or(f64::INFINITY);
+    bicgstab_l_report(x, residual, it, tol)
 }
 
-fn finish<A, M>(
-    apply: &A,
-    precond: &M,
-    b: &[f64],
-    x0: &[f64],
-    xc: &[f64],
+#[allow(clippy::needless_bitwise_bool)] // An eager reduction can use vector instructions.
+fn bicgstab_l_finite(values: &[f64]) -> bool {
+    values
+        .iter()
+        .fold(true, |finite, value| finite & value.is_finite())
+}
+
+const fn bicgstab_l_report(
+    x: Vec<f64>,
+    residual: f64,
     it: usize,
-) -> IterResult
-where
-    A: Fn(&[f64], &mut [f64]),
-    M: Fn(&[f64], &mut [f64]),
-{
-    let n = b.len();
-    let mut corr = vec![0.0; n];
-    precond(xc, &mut corr);
-    let x: Vec<f64> = x0.iter().zip(&corr).map(|(a, c)| a + c).collect();
-    let res = nrm(&residual(apply, b, &x)) / nrm(b).max(f64::MIN_POSITIVE);
+    tol: f64,
+) -> IterResult {
     IterResult {
         x,
-        residual: res,
+        residual,
         iterations: it,
-        converged: res.is_finite() && res < 1.0,
+        converged: residual.is_finite() && residual <= tol,
     }
 }
 

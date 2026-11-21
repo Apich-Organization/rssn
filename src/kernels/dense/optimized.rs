@@ -1,8 +1,7 @@
 //! The `faer` backend for the `f64` linear-algebra kernels.
 //!
-//! `faer` is column-major and takes its own matrix type, so every entry point
-//! copies the caller's row-major slice into a `Mat`. That copy is O(n²) against
-//! an O(n³) kernel and is not the thing worth optimising.
+//! Factorizations pass row-major views to `faer`, which creates the owned
+//! working matrices. Matrix multiplication uses row-major views throughout.
 //!
 //! Everything here is `f64`. There is no generic element type and no strided
 //! entry point: a non-contiguous operand cannot be expressed, so it cannot be
@@ -12,30 +11,35 @@
 use super::DenseError;
 use faer::Accum;
 use faer::Mat;
-use faer::get_global_parallelism;
+use faer::MatMut;
+use faer::MatRef;
+use faer::Par;
 use faer::linalg::solvers::PartialPivLu;
 use faer::linalg::solvers::Qr;
 use faer::linalg::solvers::Solve;
 
-/// A row-major slice as a `faer` matrix, checking the shape.
-fn matrix(
+fn validate_matrix(
     rows: usize,
     cols: usize,
     a: &[f64],
-) -> Result<Mat<f64>, DenseError> {
+) -> Result<(), DenseError> {
     if rows.checked_mul(cols) != Some(a.len()) {
         return Err(DenseError::Shape);
     }
     if a.iter().any(|v| !v.is_finite()) {
         return Err(DenseError::NonFinite);
     }
-    let mut out = Mat::<f64>::zeros(rows, cols);
-    for row in 0..rows {
-        for column in 0..cols {
-            out[(row, column)] = a[row * cols + column];
-        }
-    }
-    Ok(out)
+    Ok(())
+}
+
+/// A checked row-major view that lets `faer` own the only factorization copy.
+fn matrix(
+    rows: usize,
+    cols: usize,
+    a: &[f64],
+) -> Result<MatRef<'_, f64>, DenseError> {
+    validate_matrix(rows, cols, a)?;
+    Ok(MatRef::from_row_major_slice(a, rows, cols))
 }
 
 /// A `faer` matrix as a row-major `Vec`.
@@ -79,7 +83,7 @@ pub fn det(
     if rows == 0 {
         return Ok(1.0);
     }
-    Ok(matrix.as_ref().determinant())
+    Ok(matrix.determinant())
 }
 
 /// The inverse of a square matrix.
@@ -98,7 +102,7 @@ pub fn inv(
     if rows == 0 {
         return Ok(Vec::new());
     }
-    let lu = PartialPivLu::new(matrix.as_ref());
+    let lu = PartialPivLu::new(matrix);
     if is_singular(lu.U(), rows) {
         return Err(DenseError::Singular);
     }
@@ -130,7 +134,7 @@ pub fn solve(
     if rows == 0 {
         return Ok(Vec::new());
     }
-    let lu = PartialPivLu::new(matrix.as_ref());
+    let lu = PartialPivLu::new(matrix);
     if is_singular(lu.U(), rows) {
         return Err(DenseError::Singular);
     }
@@ -164,7 +168,7 @@ pub fn lu(
     if rows == 0 {
         return Ok((Vec::new(), Vec::new(), Vec::new()));
     }
-    let lu = PartialPivLu::new(matrix.as_ref());
+    let lu = PartialPivLu::new(matrix);
     let (forward, _) = lu.P().arrays();
     let mut p = vec![0.0; rows * rows];
     for (row, &source) in forward.iter().enumerate() {
@@ -173,7 +177,9 @@ pub fn lu(
     Ok((p, to_row_major(lu.L()), to_row_major(lu.U())))
 }
 
-/// `A = Q R` with `Q` orthonormal and `rows × rows`.
+/// QR factors of A. Q is orthonormal and has shape `rows × rows`. R
+/// stores its first `min(rows, cols)` rows with `cols` columns. The stored
+/// part reconstructs A with the same number of leading columns of Q.
 ///
 /// # Errors
 /// Invalid shapes or parameters, non-finite inputs, or numerical solver failure.
@@ -191,12 +197,14 @@ pub fn qr(
         }
         return Ok((q, vec![0.0; rows * cols]));
     }
-    let qr = Qr::new(matrix.as_ref());
+    let qr = Qr::new(matrix);
     let q = qr.compute_Q();
     Ok((to_row_major(q.as_ref()), to_row_major(qr.R())))
 }
 
 /// `A B` for `A` of shape `rows × inner` and `B` of `inner × cols`.
+/// Large products use the active Rayon pool. Inputs and output use row-major
+/// storage throughout.
 ///
 /// # Errors
 /// Invalid shapes or parameters, non-finite inputs, or numerical solver failure.
@@ -208,21 +216,32 @@ pub fn matmul(
     b: &[f64],
 ) -> Result<Vec<f64>, DenseError> {
     let output_len = rows.checked_mul(cols).ok_or(DenseError::Shape)?;
-    let lhs = matrix(rows, inner, a)?;
-    let rhs = matrix(inner, cols, b)?;
+    validate_matrix(rows, inner, a)?;
+    validate_matrix(inner, cols, b)?;
+    let mut out = Vec::new();
+    out.try_reserve_exact(output_len)
+        .map_err(|_| DenseError::Shape)?;
+    out.resize(output_len, 0.0);
     if rows == 0 || inner == 0 || cols == 0 {
-        return Ok(vec![0.0; output_len]);
+        return Ok(out);
     }
-    let mut out = Mat::<f64>::zeros(rows, cols);
+    let parallelism = if !cfg!(miri) && output_len.saturating_mul(inner) >= super::DENSE_PAR_FLOPS {
+        match crate::execution::cpu_threads() {
+            | 1 => Par::Seq,
+            | threads => Par::rayon(threads),
+        }
+    } else {
+        Par::Seq
+    };
     faer::linalg::matmul::matmul(
-        out.as_mut(),
+        MatMut::from_row_major_slice_mut(&mut out, rows, cols),
         Accum::Replace,
-        lhs.as_ref(),
-        rhs.as_ref(),
+        MatRef::from_row_major_slice(a, rows, inner),
+        MatRef::from_row_major_slice(b, inner, cols),
         1.0,
-        get_global_parallelism(),
+        parallelism,
     );
-    Ok(to_row_major(out.as_ref()))
+    Ok(out)
 }
 
 /// Minimum-norm least-squares solve using the shared thin SVD and an absolute

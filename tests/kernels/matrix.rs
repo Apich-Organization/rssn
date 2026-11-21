@@ -64,6 +64,119 @@ fn transpose() {
 }
 
 #[test]
+fn matrix_coordinates_and_serialized_shapes_are_checked_per_axis() {
+    use std::panic::AssertUnwindSafe;
+    use std::panic::catch_unwind;
+
+    let mut matrix = m(2, 2, &[1.0, 2.0, 3.0, 4.0]);
+    assert!(catch_unwind(|| matrix.get(0, 2)).is_err());
+    assert!(catch_unwind(|| matrix.get(2, 0)).is_err());
+    assert!(catch_unwind(AssertUnwindSafe(|| *matrix.get_mut(0, 2) = 42.0)).is_err());
+    assert_eq!(matrix.data(), &[1.0, 2.0, 3.0, 4.0]);
+
+    let overflowing = usize::MAX / 2 + 1;
+    assert!(catch_unwind(|| Matrix::<f64>::new(overflowing, 2, vec![])).is_err());
+    assert!(catch_unwind(|| Matrix::<f64>::zeros(overflowing, 2)).is_err());
+    let legacy = r#"{"rows":1,"cols":2,"data":[1.0,2.0]}"#;
+    let restored: Matrix<f64> = serde_json::from_str(legacy).expect("default backend");
+    assert_eq!(restored, m(1, 2, &[1.0, 2.0]));
+    let with_backend = matrix.with_backend(Backend::Faer);
+    let encoded = serde_json::to_string(&with_backend).expect("serialize row-major fields");
+    assert_eq!(
+        serde_json::from_str::<Matrix<f64>>(&encoded).expect("deserialize valid storage"),
+        with_backend
+    );
+    let wrong = r#"{"rows":2,"cols":2,"data":[1.0,2.0]}"#;
+    assert!(serde_json::from_str::<Matrix<f64>>(wrong).is_err());
+    let wrapped = format!(r#"{{"rows":{overflowing},"cols":2,"data":[]}}"#);
+    assert!(serde_json::from_str::<Matrix<f64>>(&wrapped).is_err());
+}
+
+#[test]
+fn transpose_preserves_entry_bits_and_backend_for_thin_empty_and_tiled_shapes() {
+    let patterns = [
+        0.0_f64.to_bits(),
+        (-0.0_f64).to_bits(),
+        f64::MAX.to_bits(),
+        f64::NEG_INFINITY.to_bits(),
+        0x7ff8_0000_0000_0003,
+        1,
+    ];
+    for (rows, cols) in [
+        (0, 5),
+        (5, 0),
+        (0, usize::MAX),
+        (usize::MAX, 0),
+        (1, 281),
+        (281, 1),
+        (5, 17),
+        (129, 253),
+        (129, 1031),
+        (2017, 19),
+        (65, 527),
+    ] {
+        let source: Vec<_> = (0..rows * cols)
+            .map(|index| {
+                let bits = if index % 5 == 0 {
+                    patterns[index / 5 % patterns.len()]
+                } else {
+                    (index as f64).to_bits()
+                };
+                f64::from_bits(bits)
+            })
+            .collect();
+        // Compute the expected destination directly from flat coordinates.
+        let expected: Vec<_> = (0..source.len())
+            .map(|dest| source[(dest % rows) * cols + dest / rows].to_bits())
+            .collect();
+        let a = Matrix::new(rows, cols, source).with_backend(Backend::Faer);
+        let mut output = Matrix::zeros(cols, rows);
+        a.transpose_into(&mut output).expect("preallocated shape");
+        for result in [a.transpose(), output] {
+            assert_eq!(
+                (result.rows(), result.cols(), result.backend),
+                (cols, rows, Backend::Faer)
+            );
+            assert_eq!(
+                result
+                    .data()
+                    .iter()
+                    .map(|v| v.to_bits())
+                    .collect::<Vec<_>>(),
+                expected
+            );
+        }
+    }
+}
+
+#[test]
+fn transpose_into_rejects_an_equal_size_wrong_shape_and_supports_exact_fields() {
+    use num_rational::BigRational;
+
+    let source = m(2, 3, &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).with_backend(Backend::Faer);
+    let mut wrong = m(2, 3, &[8.0; 6]);
+    let previous = wrong.clone();
+    assert!(source.transpose_into(&mut wrong).is_err());
+    assert_eq!(wrong, previous);
+
+    let rational: Vec<_> = (0..129 * 131)
+        .map(|i| BigRational::new((i - 97).into(), (i + 1).into()))
+        .collect();
+    let source = Matrix::new(129, 131, rational);
+    let mut output = Matrix::zeros(131, 129);
+    source.transpose_into(&mut output).expect("valid shape");
+    let gathered = source.transpose();
+    for i in 0..129 {
+        for j in 0..131 {
+            let k = i * 131 + j;
+            let want = BigRational::new((k as i64 - 97).into(), (k as i64 + 1).into());
+            assert_eq!(gathered.get(j, i), &want);
+            assert_eq!(output.get(j, i), &want);
+        }
+    }
+}
+
+#[test]
 fn determinant() {
     assert_approx_eq!(
         m(2, 2, &[1.0, 2.0, 3.0, 4.0])

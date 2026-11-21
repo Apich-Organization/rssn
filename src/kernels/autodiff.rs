@@ -1,3 +1,5 @@
+//! Forward-mode dual numbers and reverse-mode tape automatic differentiation.
+//!
 //! Automatic Differentiation (AD): forward-mode dual numbers ([`Dual`]) and
 //! tape-based reverse-mode AD ([`Tape`], [`Var`]).
 
@@ -125,25 +127,139 @@ impl Dual {
     }
 
     /// Integer power `self^n`.
+    ///
+    /// For a finite nonzero base and finite tangent, a representable tangent
+    /// is retained even when the primal or an unscaled power overflows or
+    /// underflows.
     #[must_use]
     pub fn powi(
         self,
         n: i32,
     ) -> Self {
-        if n == 0 {
-            return Self::constant(1.0);
+        self.integer_power::<false>(n).0
+    }
+
+    /// Evaluates `self^n` and both derivatives along `self.deriv`.
+    ///
+    /// Treats the input as `self.val + t * self.deriv` and differentiates
+    /// at `t = 0`. The returned dual holds the value and first derivative;
+    /// the second component is the second derivative with respect to `t`.
+    /// The powers zero and one have zero second derivative.
+    #[must_use]
+    pub fn powi_with_second_derivative(
+        self,
+        n: i32,
+    ) -> (Self, f64) {
+        self.integer_power::<true>(n)
+    }
+
+    fn integer_power<const SECOND: bool>(
+        self,
+        n: i32,
+    ) -> (Self, f64) {
+        match n {
+            | 0 => return (Self::constant(1.0), 0.0),
+            | 1 => return (self, 0.0),
+            | _ => {},
         }
-        // MIN - 1 is not representable as i32. Saturation would keep the
-        // exponent even and reverse the derivative sign on negative bases.
-        let derivative_power = if n == i32::MIN {
-            self.val.powi(n) / self.val
+        let n = i64::from(n);
+        let offset = if SECOND { 2 } else { 1 };
+        // Within this box every nonzero intermediate is normal. Otherwise
+        // check the actual products before using the unscaled result.
+        let moderate = (-64..=64).contains(&n)
+            && moderate_power_factor(self.val)
+            && (self.deriv == 0.0 || moderate_power_factor(self.deriv));
+        let tangent = self.deriv * n as f64;
+        let squared_tangent = if SECOND {
+            tangent * self.deriv
         } else {
-            self.val.powi(n - 1)
+            0.0
         };
-        Self::new(
-            self.val.powi(n),
-            self.deriv * f64::from(n) * derivative_power,
-        )
+        let anchor = floating_integer_power(self.val, n - offset);
+        let curvature = if SECOND {
+            squared_tangent * (n - 1) as f64 * anchor
+        } else {
+            0.0
+        };
+
+        // Keep the IEEE behavior at poles and for nonfinite inputs.
+        if !moderate && (self.val == 0.0 || !self.val.is_finite() || !self.deriv.is_finite()) {
+            let value = floating_integer_power(self.val, n);
+            let slope = if SECOND {
+                floating_integer_power(self.val, n - 1)
+            } else {
+                anchor
+            };
+            return (Self::new(value, tangent * slope), curvature);
+        }
+
+        // Reuse one power to evaluate the primal and all requested derivatives.
+        let slope = if SECOND {
+            anchor * self.val
+        } else {
+            anchor
+        };
+        let value = slope * self.val;
+        let derivative = tangent * slope;
+        if moderate
+            || (anchor.is_normal()
+                && slope.is_normal()
+                && value.is_normal()
+                && (self.deriv == 0.0
+                    || (tangent.is_normal()
+                        && derivative.is_normal()
+                        && (!SECOND || (squared_tangent.is_normal() && curvature.is_normal())))))
+        {
+            return (Self::new(value, derivative), curvature);
+        }
+        self.scaled_integer_power::<SECOND>(n)
+    }
+
+    fn scaled_integer_power<const SECOND: bool>(
+        self,
+        n: i64,
+    ) -> (Self, f64) {
+        let offset = if SECOND { 2 } else { 1 };
+        let base = PowerFactor::positive(self.val.abs());
+        let anchor = PowerFactor::power(self.val.abs(), n - offset);
+        let slope = if SECOND {
+            anchor.product(base)
+        } else {
+            anchor
+        };
+        let sign = if self.val.is_sign_negative() && n % 2 != 0 {
+            -1.0
+        } else {
+            1.0
+        };
+        let slope_sign = if self.val.is_sign_negative() {
+            -sign
+        } else {
+            sign
+        };
+        let tangent_sign = slope_sign * (n as f64).signum() * self.deriv.signum();
+        let value = slope.product(base).round(sign);
+        if self.deriv == 0.0 {
+            let curvature = if SECOND {
+                0.0_f64.copysign(sign)
+            } else {
+                0.0
+            };
+            return (Self::new(value, 0.0_f64.copysign(tangent_sign)), curvature);
+        }
+        let seed = PowerFactor::positive(self.deriv.abs());
+        let weighted_seed = seed.product(PowerFactor::positive((n as f64).abs()));
+        let derivative = slope.product(weighted_seed).round(tangent_sign);
+        let curvature = if SECOND {
+            anchor
+                .product(weighted_seed)
+                .product(seed)
+                .product(PowerFactor::positive(((n - 1) as f64).abs()))
+                .round(sign)
+        } else {
+            0.0
+        };
+        (Self::new(value, derivative), curvature)
     }
 
     /// Absolute value `|self|`.
@@ -193,6 +309,130 @@ impl Dual {
     #[must_use]
     pub fn atan(self) -> Self {
         Self::new(self.val.atan(), self.deriv / (1.0 + self.val * self.val))
+    }
+}
+
+fn floating_integer_power(
+    base: f64,
+    power: i64,
+) -> f64 {
+    match power {
+        | 0 => 1.0,
+        | 1 => base,
+        | 2 => base * base,
+        | -64..=64 => base.powi(power as i32),
+        | _ => {
+            // Derivative exponents can extend below i32::MIN. Keep integer
+            // parity even when a wider exponent requires powf.
+            let magnitude = base.abs().powf(power as f64);
+            if base.is_sign_negative() && power % 2 != 0 {
+                -magnitude
+            } else {
+                magnitude
+            }
+        },
+    }
+}
+
+const fn moderate_power_factor(value: f64) -> bool {
+    let exponent = (value.to_bits() >> 52) & 2047;
+    exponent.wrapping_sub(1015) <= 16 // Binary exponent -8 through 8.
+}
+
+/// A positive factor with a normalized significand and unrestricted exponent.
+#[derive(Clone, Copy)]
+struct PowerFactor {
+    significand: f64,
+    exponent: i64,
+}
+
+impl PowerFactor {
+    fn positive(value: f64) -> Self {
+        let (normalized, offset) = if value.is_subnormal() {
+            (value * 18_014_398_509_481_984.0, -54)
+        } else {
+            (value, 0)
+        };
+        let bits = normalized.to_bits();
+        Self {
+            significand: f64::from_bits((bits & 0x000f_ffff_ffff_ffff) | (1023_u64 << 52)),
+            exponent: ((bits >> 52) & 2047) as i64 - 1023 + offset,
+        }
+    }
+
+    #[allow(
+        clippy::single_call_fn,
+        reason = "isolates range reduction for a powered factor"
+    )]
+    fn power(
+        base: f64,
+        power: i64,
+    ) -> Self {
+        let mut exponent = power as f64;
+        let mut value = base.powf(exponent);
+        if value.is_normal() {
+            return Self::positive(value);
+        }
+        let estimate = base.log2() * exponent;
+        // At most two binary64 factors and two i32 factors are applied to
+        // this power. Beyond this bound they cannot restore a finite value.
+        if estimate.abs() > 8192.0 {
+            return Self {
+                significand: 1.0,
+                exponent: if estimate > 0.0 {
+                    8192
+                } else {
+                    -8192
+                },
+            };
+        }
+        let mut squarings = 0;
+        while !value.is_normal() {
+            exponent *= 0.5;
+            squarings += 1;
+            value = base.powf(exponent);
+        }
+        let mut factor = Self::positive(value);
+        for _ in 0..squarings {
+            factor = factor.product(factor);
+        }
+        factor
+    }
+
+    fn product(
+        self,
+        rhs: Self,
+    ) -> Self {
+        let significand = self.significand * rhs.significand;
+        let exponent = self.exponent + rhs.exponent;
+        if significand >= 2.0 {
+            Self {
+                significand: significand * 0.5,
+                exponent: exponent + 1,
+            }
+        } else {
+            Self {
+                significand,
+                exponent,
+            }
+        }
+    }
+
+    fn round(
+        self,
+        sign: f64,
+    ) -> f64 {
+        let value = match self.exponent {
+            | 1024.. => f64::INFINITY,
+            | e @ -1022..=1023 => {
+                let fraction = self.significand.to_bits() & 0x000f_ffff_ffff_ffff;
+                f64::from_bits(fraction | ((e + 1023) as u64) << 52)
+            },
+            | e @ -1074..=-1023 => self.significand * f64::from_bits(1 << (e + 1074)),
+            | -1075 => (self.significand * 0.5) * f64::from_bits(1),
+            | _ => 0.0,
+        };
+        value.copysign(sign)
     }
 }
 

@@ -1,3 +1,5 @@
+//! Multilevel nested dissection (heavy-edge coarsening, FM refinement, vertex-cover separators).
+//!
 //! # Multilevel nested dissection
 //!
 //! [`multilevel_nested_dissection_order`] orders a sparse symmetric pattern
@@ -613,30 +615,43 @@ fn induced_lists(
     lists
 }
 
-fn components(lists: &[Vec<usize>]) -> Vec<Vec<usize>> {
-    let n = lists.len();
-    let mut seen = vec![false; n];
-    let mut out = Vec::new();
-    for s in 0..n {
-        if seen[s] {
+// The flat BFS stream is only needed when the piece has several components.
+// Unvisited members carry a marker; clearing it on discovery also restores
+// the same scratch buffer for induced-graph construction or recursion.
+fn piece_components(
+    adj: &[Vec<usize>],
+    verts: &[usize],
+    local: &mut [usize],
+) -> Option<(Vec<usize>, Vec<usize>)> {
+    const UNVISITED: usize = 0;
+    for &vertex in verts {
+        local[vertex] = UNVISITED;
+    }
+    let mut order = Vec::with_capacity(verts.len());
+    let mut ends = Vec::new();
+    for &seed in verts {
+        if local[seed] != UNVISITED {
             continue;
         }
-        let mut comp = vec![s];
-        seen[s] = true;
-        let mut h = 0;
-        while h < comp.len() {
-            let v = comp[h];
-            h += 1;
-            for &u in &lists[v] {
-                if !seen[u] {
-                    seen[u] = true;
-                    comp.push(u);
+        let mut head = order.len();
+        order.push(seed);
+        local[seed] = usize::MAX;
+        while head < order.len() {
+            let vertex = order[head];
+            head += 1;
+            for &neighbour in &adj[vertex] {
+                if local[neighbour] == UNVISITED {
+                    local[neighbour] = usize::MAX;
+                    order.push(neighbour);
                 }
             }
         }
-        out.push(comp);
+        if ends.is_empty() && order.len() == verts.len() {
+            return None;
+        }
+        ends.push(order.len());
     }
-    out
+    Some((order, ends))
 }
 
 /// Multilevel nested dissection ordering of the pattern `adj` (see the
@@ -672,19 +687,34 @@ fn order_piece(
     if verts.is_empty() {
         return;
     }
-    let lists = induced_lists(adj, verts, local);
-    let comps = components(&lists);
-    if comps.len() > 1 {
-        for c in comps {
-            let vs: Vec<usize> = c.iter().map(|&i| verts[i]).collect();
-            order_piece(adj, &vs, local, rng, perm, o);
+    if let Some((order, ends)) = piece_components(adj, verts, local) {
+        let mut start = 0;
+        for end in ends {
+            order_connected_piece(adj, &order[start..end], local, rng, perm, o);
+            start = end;
+        }
+    } else {
+        order_connected_piece(adj, verts, local, rng, perm, o);
+    }
+}
+
+fn order_connected_piece(
+    adj: &[Vec<usize>],
+    verts: &[usize],
+    local: &mut [usize],
+    rng: &mut Lcg,
+    perm: &mut Vec<usize>,
+    o: &NdOptions,
+) {
+    if verts.len() <= o.leaf {
+        if let [vertex] = verts {
+            perm.push(*vertex);
+        } else {
+            order_leaf_with_halo(adj, verts, local, perm);
         }
         return;
     }
-    if verts.len() <= o.leaf {
-        order_leaf_with_halo(adj, verts, local, perm);
-        return;
-    }
+    let lists = induced_lists(adj, verts, local);
     let g = WGraph::from_lists(&lists);
     let part = bisect(&g, rng, o);
     let sep0 = vertex_separator(&g, &part);
@@ -701,6 +731,8 @@ fn order_piece(
             .collect()
     };
     let (a, b) = (side(0), side(1));
+    drop(g);
+    drop(st);
     if a.is_empty() || b.is_empty() || sep.len() * 2 > verts.len() {
         // degenerate split: fall back to minimum degree for this piece
         for i in amd_order(&lists) {
@@ -708,6 +740,7 @@ fn order_piece(
         }
         return;
     }
+    drop(lists);
     order_piece(adj, &a, local, rng, perm, o);
     order_piece(adj, &b, local, rng, perm, o);
     // separator vertices: order them by minimum degree within the separator graph

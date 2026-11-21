@@ -1,8 +1,9 @@
 //! # Numerical Tensor Operations
 //!
 //! This module provides numerical tensor operations, primarily using `ndarray`
-//! for efficient multi-dimensional array manipulation. It includes functions
-//! for tensor contraction (tensordot), outer product, and Einstein summation (`einsum`).
+//! for efficient multi-dimensional array manipulation. It supports
+//! [tensor contraction](tensordot_views), outer and inner products, and
+//! generalized traces.
 //!
 //! [`cp_als`] adds a CP (CANDECOMP/PARAFAC) decomposition by alternating
 //! least squares: `T ~= sum_r lambda_r a_r o b_r o c_r`, with unit-norm factor
@@ -38,25 +39,43 @@
 //!   factors.
 
 use ndarray::ArrayD;
+use ndarray::ArrayView1;
+use ndarray::ArrayViewD;
 use ndarray::IxDyn;
 
 use crate::kernels::dense::Mat;
 use crate::kernels::dense::svd;
 
-/// Performs tensor contraction between two N-dimensional arrays (tensordot).
+/// Contracts two tensors along the paired axes in `axes_a` and `axes_b`.
 ///
-/// # Arguments
-/// * `a`, `b` - The two tensors (`ndarray::ArrayD<f64>`) to contract.
-/// * `axes_a`, `axes_b` - The axes to contract for tensor `a` and `b` respectively.
-///
-/// # Returns
-/// The resulting contracted tensor as an `ndarray::ArrayD<f64>`.
+/// The free axes of `a` precede the free axes of `b`, each in its original
+/// order. See [`tensordot_views`] for the shape and borrowing rules.
 ///
 /// # Errors
-/// Returns an error if the number of axes to contract mismatch, or if the dimensions along these axes do not match.
+/// Returns the axis and output shape errors of [`tensordot_views`].
 pub fn tensordot(
     a: &ArrayD<f64>,
     b: &ArrayD<f64>,
+    axes_a: &[usize],
+    axes_b: &[usize],
+) -> Result<ArrayD<f64>, String> {
+    tensordot_views(a.view(), b.view(), axes_a, axes_b)
+}
+
+/// Contracts two tensor views along paired axes, including sliced and reversed views.
+///
+/// The output keeps the free axes of `a`, then the free axes of `b`, in their
+/// original order within each operand. Empty axis lists give an outer product,
+/// contracting all axes gives a scalar, and a contracted axis of length zero
+/// contributes a zero sum. Inputs are borrowed when their strides allow the
+/// contraction to be represented as a matrix multiplication.
+///
+/// # Errors
+/// Returns an error for unequal axis-list lengths, out-of-range or repeated
+/// axes, unequal paired extents, or an unrepresentable output shape.
+pub fn tensordot_views(
+    a: ArrayViewD<'_, f64>,
+    b: ArrayViewD<'_, f64>,
     axes_a: &[usize],
     axes_b: &[usize],
 ) -> Result<ArrayD<f64>, String> {
@@ -97,45 +116,51 @@ pub fn tensordot(
     }
 
     let free_axes_a: Vec<_> = (0..a.ndim()).filter(|i| !axes_a.contains(i)).collect();
-
     let free_axes_b: Vec<_> = (0..b.ndim()).filter(|i| !axes_b.contains(i)).collect();
 
-    let perm_a: Vec<_> = free_axes_a.iter().chain(axes_a.iter()).copied().collect();
-
-    let perm_b: Vec<_> = axes_b.iter().chain(free_axes_b.iter()).copied().collect();
-
-    let a_perm = a.clone().permuted_axes(perm_a);
-
-    let b_perm = b.clone().permuted_axes(perm_b);
-
-    let free_dim_a = free_axes_a.iter().map(|&i| a.shape()[i]).product::<usize>();
-
-    let free_dim_b = free_axes_b.iter().map(|&i| b.shape()[i]).product::<usize>();
+    let final_shape: Vec<_> = free_axes_a
+        .iter()
+        .map(|&i| a.shape()[i])
+        .chain(free_axes_b.iter().map(|&i| b.shape()[i]))
+        .collect();
+    let empty_output = final_shape.contains(&0);
+    // ndarray also checks the product of the nonzero extents of an empty
+    // shape, since a stride can span those extents.
+    let max_extent = (isize::MAX as usize)
+        / if empty_output {
+            1
+        } else {
+            size_of::<f64>()
+        };
+    final_shape
+        .iter()
+        .filter(|&&dim| dim != 0)
+        .try_fold(1_usize, |extent, &dim| extent.checked_mul(dim))
+        .filter(|&extent| extent <= max_extent)
+        .ok_or_else(|| "Tensor contraction output shape is too large.".to_string())?;
+    let final_shape = IxDyn(&final_shape);
 
     let contracted_dim = axes_a.iter().map(|&i| a.shape()[i]).product::<usize>();
+    if empty_output || contracted_dim == 0 {
+        return Ok(ArrayD::zeros(final_shape));
+    }
+    let free_dim_a = free_axes_a.iter().map(|&i| a.shape()[i]).product::<usize>();
+    let free_dim_b = free_axes_b.iter().map(|&i| b.shape()[i]).product::<usize>();
 
+    let perm_a: Vec<_> = free_axes_a.iter().chain(axes_a).copied().collect();
+    let perm_b: Vec<_> = axes_b.iter().chain(&free_axes_b).copied().collect();
+    let a_perm = a.permuted_axes(perm_a);
+    let b_perm = b.permuted_axes(perm_b);
     let a_mat = a_perm
         .to_shape((free_dim_a, contracted_dim))
-        .map_err(|e| e.to_string())?
-        .to_owned();
-
+        .map_err(|e| e.to_string())?;
     let b_mat = b_perm
         .to_shape((contracted_dim, free_dim_b))
-        .map_err(|e| e.to_string())?
-        .to_owned();
-
-    let result_mat = a_mat.dot(&b_mat);
-
-    let mut final_shape_dims = Vec::new();
-
-    final_shape_dims.extend(free_axes_a.iter().map(|&i| a.shape()[i]));
-
-    final_shape_dims.extend(free_axes_b.iter().map(|&i| b.shape()[i]));
-
-    Ok(result_mat
-        .to_shape(IxDyn(&final_shape_dims))
-        .map_err(|e| e.to_string())?
-        .to_owned())
+        .map_err(|e| e.to_string())?;
+    a_mat
+        .dot(&b_mat)
+        .into_shape_clone(final_shape)
+        .map_err(|e| e.to_string())
 }
 
 /// Computes the outer product of two tensors.
@@ -211,11 +236,12 @@ pub fn tensor_vec_mul(
         ));
     }
 
-    let vec_arr = ndarray::Array1::from_vec(vector.to_vec());
-
-    let res = tensordot(tensor, &vec_arr.into_dyn(), &[tensor.ndim() - 1], &[0])?;
-
-    Ok(res)
+    tensordot_views(
+        tensor.view(),
+        ArrayView1::from(vector).into_dyn(),
+        &[tensor.ndim() - 1],
+        &[0],
+    )
 }
 
 /// Computes the inner product of two tensors of the same shape.

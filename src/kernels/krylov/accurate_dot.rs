@@ -1,4 +1,7 @@
 //! Exact products accumulated in fixed binary bins, rounded once at the boundary.
+use num_bigint::BigInt;
+use num_bigint::Sign;
+
 const LOW: i32 = -2148;
 const BITS: usize = 32;
 // Maximum product bit is 4195 relative to LOW. The remaining bins provide
@@ -204,6 +207,21 @@ fn accumulate(pairs: impl IntoIterator<Item = (f64, f64)>) -> Sum {
         sum.add(a, b);
     }
     sum
+}
+
+pub(super) fn product_sum_integer(pairs: impl IntoIterator<Item = (f64, f64)>) -> BigInt {
+    let mut sum = accumulate(pairs);
+    let negative = sum.normalize();
+    let sign = if negative {
+        Sign::Minus
+    } else {
+        Sign::Plus
+    };
+    let limbs = sum.bins[..=sum.last]
+        .iter()
+        .map(|&bin| u32::try_from(bin).expect("normalized binary limb"))
+        .collect();
+    BigInt::new(sign, limbs)
 }
 /// Return a signed normalized mantissa and unbounded binary exponent.
 pub(super) fn product_sum<I>(pairs: I) -> (f64, i32)

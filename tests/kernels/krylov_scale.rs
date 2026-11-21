@@ -70,6 +70,27 @@ fn mode(m: usize) -> Method {
         | _ => Method::Bicgstab,
     }
 }
+
+#[test]
+fn gmres_reuses_the_basis_across_multiple_restarts() {
+    let rhs: Vec<_> = (0..8).map(|i| 3.0 + f64::from(i)).collect();
+    let result = solve(
+        |x, y| {
+            for (i, (value, rhs)) in x.iter().zip(y).enumerate() {
+                *rhs = (3.0 + i as f64) * value;
+            }
+        },
+        |input, output| output.copy_from_slice(input),
+        &rhs,
+        None,
+        1e-12,
+        100,
+        Method::Gmres(2),
+    );
+    assert!(result.iterations > 2 && result.converged, "{result:?}");
+    assert!(result.x.iter().all(|value| (value - 1.0).abs() < 1e-11));
+}
+
 #[test]
 fn coupled_matrix_scales_and_initial_guesses() {
     for method in 0..3 {

@@ -1,3 +1,5 @@
+//! Sparse CSR matrices and Krylov solvers with preconditioners.
+//!
 //! # Sparse matrices and Krylov solvers
 //!
 //! A compressed-sparse-row matrix ([`Csr`]), Jacobi, ILU(0) and IC(0)
@@ -69,7 +71,7 @@ pub struct Csr {
 
 /// Nonzeros from which [`Csr::matvec`] runs in parallel.
 const SPMV_PAR_NNZ: usize = 60_000;
-/// Rows per parallel block of [`Csr::matvec`].
+/// Maximum rows per parallel block of [`Csr::matvec`].
 const SPMV_BLOCK: usize = 512;
 
 /// Applies validated CSR arrays using the same accumulation on both sparse APIs.
@@ -86,9 +88,18 @@ pub(super) fn csr_matvec(
     };
     if values.len() >= SPMV_PAR_NNZ {
         let rows = rows.min(y.len());
-        super::par::for_chunks_mut(&mut y[..rows], SPMV_BLOCK, 2, |b, block| {
+        // Wide matrices can clear the work threshold with fewer than one
+        // full block of rows. Keep more than one block available per worker.
+        let workers = crate::execution::cpu_threads();
+        let block_rows = if workers > 1 {
+            rows.div_ceil(workers.saturating_mul(2))
+                .clamp(1, SPMV_BLOCK)
+        } else {
+            SPMV_BLOCK
+        };
+        super::par::for_chunks_mut(&mut y[..rows], block_rows, 2, |b, block| {
             for (r, slot) in block.iter_mut().enumerate() {
-                *slot = row(b * SPMV_BLOCK + r);
+                *slot = row(b * block_rows + r);
             }
         });
     } else {
@@ -98,7 +109,38 @@ pub(super) fn csr_matvec(
     }
 }
 
+fn csr_diagonal<'a>(
+    size: usize,
+    indptr: &'a [usize],
+    indices: &'a [usize],
+    values: &'a [f64],
+) -> impl Iterator<Item = f64> + 'a {
+    (0..size).map(move |i| {
+        (indptr[i]..indptr[i + 1])
+            .find(|&k| indices[k] == i)
+            .map_or(0.0, |k| values[k])
+    })
+}
+
+/// Prepares Jacobi weights from the diagonal of validated CSR arrays.
+pub(super) fn csr_jacobi_inverse(
+    size: usize,
+    indptr: &[usize],
+    indices: &[usize],
+    values: &[f64],
+) -> Vec<f64> {
+    csr_diagonal(size, indptr, indices, values)
+        .map(|d| if d == 0.0 { 1.0 } else { 1.0 / d })
+        .collect()
+}
+
 impl Csr {
+    pub(crate) const fn heap_bytes(&self) -> usize {
+        self.indptr.capacity() * size_of::<usize>()
+            + self.indices.capacity() * size_of::<usize>()
+            + self.values.capacity() * size_of::<f64>()
+    }
+
     /// Builds a matrix from `(row, col, value)` triplets; duplicates are summed.
     #[must_use]
     pub fn from_triplets(
@@ -156,22 +198,24 @@ impl Csr {
     /// Diagonal of the matrix.
     #[must_use]
     pub fn diagonal(&self) -> Vec<f64> {
-        (0..self.rows.min(self.cols))
-            .map(|i| {
-                (self.indptr[i]..self.indptr[i + 1])
-                    .find(|&k| self.indices[k] == i)
-                    .map_or(0.0, |k| self.values[k])
-            })
-            .collect()
+        csr_diagonal(
+            self.rows.min(self.cols),
+            &self.indptr,
+            &self.indices,
+            &self.values,
+        )
+        .collect()
     }
 
     /// Jacobi preconditioner apply function data: the inverse diagonal.
     #[must_use]
     pub fn jacobi_inverse(&self) -> Vec<f64> {
-        self.diagonal()
-            .iter()
-            .map(|&d| if d == 0.0 { 1.0 } else { 1.0 / d })
-            .collect()
+        csr_jacobi_inverse(
+            self.rows.min(self.cols),
+            &self.indptr,
+            &self.indices,
+            &self.values,
+        )
     }
 
     /// ILU(0) factorisation (incomplete LU keeping the sparsity pattern).
@@ -282,53 +326,80 @@ impl Csr {
     /// [`Csr::ilu0`] written as `L D L^T` instead of `L U`.
     ///
     /// # Returns
-    /// `None` when the diagonal is missing in some row or when a pivot `d_i`
-    /// is not positive (zero pivot, indefinite matrix, or round-off that
-    /// destroys positivity). No `NaN` is produced; the caller falls back to
-    /// [`Csr::jacobi_inverse`] or to the unpreconditioned path.
+    /// `None` for malformed CSR, a missing diagonal, a nonpositive pivot,
+    /// or unrepresentable lower-triangular factor entries. The factor
+    /// stores only the strict lower triangle, its transpose and the pivots.
     #[must_use]
     pub fn ic0(&self) -> Option<Ic0> {
         let n = self.rows;
-        if self.cols != n {
+        let empty = n == 0
+            && self.cols == 0
+            && self.indptr == [0]
+            && self.indices.is_empty()
+            && self.values.is_empty();
+        if !empty && !ilut::valid_csr(self) {
             return None;
         }
-        let mut diag = vec![0usize; n];
-        for i in 0..n {
-            diag[i] = (self.indptr[i]..self.indptr[i + 1]).find(|&k| self.indices[k] == i)?;
-        }
-        // `l` starts as a copy of `A`: its strictly lower entries are
-        // overwritten by `L`, its upper entries are never read.
-        let mut l = self.values.clone();
+
+        let mut indptr = vec![0; n + 1];
         let mut d = vec![0.0; n];
+        for i in 0..n {
+            let start = self.indptr[i];
+            let diagonal = self.indices[start..self.indptr[i + 1]]
+                .binary_search(&i)
+                .ok()?;
+            indptr[i + 1] = indptr[i] + diagonal;
+            d[i] = self.values[start + diagonal];
+        }
+        let entries = indptr[n];
+        let mut l = Self {
+            rows: n,
+            cols: n,
+            indptr,
+            indices: Vec::with_capacity(entries),
+            values: Vec::with_capacity(entries),
+        };
         let mut pos = vec![usize::MAX; n];
         for i in 0..n {
-            for k in self.indptr[i]..self.indptr[i + 1] {
-                pos[self.indices[k]] = k;
+            let start = l.indptr[i];
+            let end = l.indptr[i + 1];
+            let input = self.indptr[i]..self.indptr[i] + (end - start);
+            l.indices.extend_from_slice(&self.indices[input.clone()]);
+            for k in start..end {
+                pos[l.indices[k]] = k;
             }
             let mut acc = 0.0;
-            for k in self.indptr[i]..diag[i] {
-                let j = self.indices[k];
-                let mut s = self.values[k];
-                for kk in self.indptr[j]..diag[j] {
-                    let p = pos[self.indices[kk]];
-                    if p != usize::MAX && p < diag[i] {
-                        s -= l[p] * d[self.indices[kk]] * l[kk];
+            for (&j, &value) in l.indices[start..end].iter().zip(&self.values[input]) {
+                let mut s = value;
+                for kk in l.indptr[j]..l.indptr[j + 1] {
+                    let column = l.indices[kk];
+                    let p = pos[column];
+                    if p != usize::MAX {
+                        s -= l.values[p] * d[column] * l.values[kk];
                     }
                 }
                 let dj = d[j];
-                if !dj.is_finite() || dj <= 0.0 {
+                let factor = s / dj;
+                if !factor.is_finite() || (factor == 0.0 && s != 0.0) {
                     return None;
                 }
-                l[k] = s / dj;
-                acc += l[k] * l[k] * dj;
+                l.values.push(factor);
+                let square = factor * factor;
+                // s = factor * dj in exact arithmetic. Using s avoids
+                // squaring out of range before the pivot restores the scale.
+                acc += if square.is_normal() {
+                    square * dj
+                } else {
+                    factor * s
+                };
             }
-            let di = self.values[diag[i]] - acc;
+            let di = d[i] - acc;
             if !di.is_finite() || di <= 0.0 {
                 return None;
             }
             d[i] = di;
-            for k in self.indptr[i]..self.indptr[i + 1] {
-                pos[self.indices[k]] = usize::MAX;
+            for &column in &l.indices[start..end] {
+                pos[column] = usize::MAX;
             }
         }
         // Transpose of the strictly lower factor, for the backward solve.
@@ -336,38 +407,26 @@ impl Csr {
             rows: n,
             cols: n,
             indptr: vec![0; n + 1],
-            indices: Vec::new(),
-            values: Vec::new(),
+            indices: vec![0; entries],
+            values: vec![0.0; entries],
         };
-        for i in 0..n {
-            for k in self.indptr[i]..diag[i] {
-                lt.indptr[self.indices[k] + 1] += 1;
-            }
+        for &column in &l.indices {
+            lt.indptr[column + 1] += 1;
         }
         for i in 0..n {
             lt.indptr[i + 1] += lt.indptr[i];
         }
-        lt.indices = vec![0; lt.indptr[n]];
-        lt.values = vec![0.0; lt.indptr[n]];
-        let mut next = lt.indptr.clone();
+        pos.copy_from_slice(&lt.indptr[..n]);
         for i in 0..n {
-            for k in self.indptr[i]..diag[i] {
-                let c = self.indices[k];
-                let p = next[c];
-                next[c] += 1;
+            for k in l.indptr[i]..l.indptr[i + 1] {
+                let c = l.indices[k];
+                let p = pos[c];
+                pos[c] += 1;
                 lt.indices[p] = i;
-                lt.values[p] = l[k];
+                lt.values[p] = l.values[k];
             }
         }
-        Some(Ic0 {
-            l: Self {
-                values: l,
-                ..self.clone()
-            },
-            diag,
-            lt,
-            d,
-        })
+        Some(Ic0 { l, lt, d })
     }
 }
 
@@ -375,7 +434,6 @@ impl Csr {
 #[derive(Debug, Clone)]
 pub struct Ic0 {
     l: Csr,
-    diag: Vec<usize>,
     lt: Csr,
     d: Vec<f64>,
 }
@@ -392,7 +450,7 @@ impl Ic0 {
         // L u = r (unit diagonal), then u <- D^-1 u.
         for i in 0..n {
             let mut s = r[i];
-            for k in self.l.indptr[i]..self.diag[i] {
+            for k in self.l.indptr[i]..self.l.indptr[i + 1] {
                 s -= self.l.values[k] * z[self.l.indices[k]];
             }
             z[i] = s;
@@ -443,6 +501,13 @@ where
     I::IntoIter: Clone,
 {
     accurate_dot::product_sum(pairs)
+}
+
+/// Exact coefficient of a sum of finite products in units of 2^-2148.
+pub(crate) fn exact_product_sum_integer(
+    pairs: impl IntoIterator<Item = (f64, f64)>
+) -> num_bigint::BigInt {
+    accurate_dot::product_sum_integer(pairs)
 }
 
 /// Correctly rounded dot product of `(a, b)` pairs, shared with the block
@@ -840,30 +905,6 @@ pub enum SparseLuError {
     Singular(usize),
 }
 
-/// Breadth-first search from `start`; fills `dist` for the visited
-/// vertices (which must be `usize::MAX` on entry) and returns them in
-/// visiting order.
-fn bfs_order(
-    adj: &[Vec<usize>],
-    start: usize,
-    dist: &mut [usize],
-) -> Vec<usize> {
-    let mut queue = vec![start];
-    dist[start] = 0;
-    let mut head = 0;
-    while head < queue.len() {
-        let v = queue[head];
-        head += 1;
-        for &w in &adj[v] {
-            if dist[w] == usize::MAX {
-                dist[w] = dist[v] + 1;
-                queue.push(w);
-            }
-        }
-    }
-    queue
-}
-
 impl Csr {
     /// Adjacency lists of the symmetrised pattern `A + A^T` (no self loops).
     fn symmetric_adjacency(&self) -> Vec<Vec<usize>> {
@@ -919,71 +960,17 @@ impl Csr {
 
     /// Reverse Cuthill-McKee ordering of the symmetrised pattern, with a
     /// George-Liu pseudo-peripheral start vertex per connected component.
+    /// Uses the leading `min(rows, cols)` square, with every stored
+    /// off-diagonal entry contributing an edge regardless of its value.
+    /// Components, including isolated vertices, are processed in ascending
+    /// order of their smallest vertex, then the complete order is reversed.
     /// Returns `perm` with `perm[new] = old`.
     #[must_use]
     pub fn rcm_ordering(&self) -> Vec<usize> {
-        let adj = self.symmetric_adjacency();
-        let n = adj.len();
-        let deg: Vec<usize> = adj.iter().map(Vec::len).collect();
-        let mut visited = vec![false; n];
-        let mut order: Vec<usize> = Vec::with_capacity(n);
-        let mut dist = vec![usize::MAX; n];
-        for seed in 0..n {
-            if visited[seed] {
-                continue;
-            }
-            // pseudo-peripheral start vertex of the component
-            let mut start = seed;
-            let mut queue = bfs_order(&adj, start, &mut dist);
-            let mut ecc = dist[*queue.last().unwrap_or(&start)];
-            for _ in 0..16 {
-                let cand = queue
-                    .iter()
-                    .copied()
-                    .filter(|&v| dist[v] == ecc)
-                    .min_by_key(|&v| deg[v])
-                    .unwrap_or(start);
-                for &v in &queue {
-                    dist[v] = usize::MAX;
-                }
-                let q2 = bfs_order(&adj, cand, &mut dist);
-                let e2 = dist[*q2.last().unwrap_or(&cand)];
-                if e2 > ecc {
-                    start = cand;
-                    ecc = e2;
-                    for &v in &q2 {
-                        dist[v] = usize::MAX;
-                    }
-                    queue = bfs_order(&adj, start, &mut dist);
-                } else {
-                    for &v in &q2 {
-                        dist[v] = usize::MAX;
-                    }
-                    queue = bfs_order(&adj, start, &mut dist);
-                    break;
-                }
-            }
-            for &v in &queue {
-                dist[v] = usize::MAX;
-            }
-            // Cuthill-McKee numbering from `start`
-            let begin = order.len();
-            order.push(start);
-            visited[start] = true;
-            let mut head = begin;
-            while head < order.len() {
-                let v = order[head];
-                head += 1;
-                let mut nb: Vec<usize> = adj[v].iter().copied().filter(|&w| !visited[w]).collect();
-                nb.sort_by_key(|&w| deg[w]);
-                for w in nb {
-                    visited[w] = true;
-                    order.push(w);
-                }
-            }
+        if self.indices.is_empty() {
+            return (0..self.rows.min(self.cols)).rev().collect();
         }
-        order.reverse();
-        order
+        super::ordering::rcm::reverse_cuthill_mckee(&self.symmetric_adjacency())
     }
 
     /// Minimum-degree ordering on the elimination graph of the
@@ -1472,7 +1459,7 @@ mod tests {
         let mut l = vec![vec![0.0; n]; n];
         for i in 0..n {
             l[i][i] = 1.0;
-            for k in f.l.indptr[i]..f.diag[i] {
+            for k in f.l.indptr[i]..f.l.indptr[i + 1] {
                 l[i][f.l.indices[k]] = f.l.values[k];
             }
         }

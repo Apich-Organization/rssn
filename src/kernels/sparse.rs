@@ -9,14 +9,12 @@
 //!
 //! ## Row/column convention
 //!
-//! CSC stores, for each column `j`, the row indices of its non-zeros in
-//! `row_idx[col_ptr[j]..col_ptr[j + 1]]` with the values in the matching slots of
-//! `val()`. Consequently every accessor here is written as
-//! `(row, column)` = `(row_idx[k], j)`, and a product is accumulated as
-//! `y[row] += val * x[col]`. The entry index and the value index inside a column
-//! run over the same range, so reading the column pointer as a *row* pointer
-//! would silently transpose the matrix; the tests pin the orientation with an
-//! asymmetric, non-square case.
+//! CSC stores the row indices and values of each column `j` in matching slots.
+//! In compressed storage these slots span `col_ptr[j]..col_ptr[j + 1]`.
+//! Uncompressed storage can reserve additional capacity in each column, so
+//! the matrix-vector kernels use faer's range of live entries. The ordinary
+//! product accumulates `y[row] += val * x[col]`, and the transposed product
+//! accumulates `y[col] += val * x[row]`.
 
 use faer::sparse::SparseColMat;
 use faer::sparse::SparseRowMat;
@@ -27,6 +25,7 @@ use ndarray::Array2;
 use ndarray::ArrayD;
 use serde::Deserialize;
 use serde::Serialize;
+use std::ops::Range;
 
 use crate::kernels::matrix::Matrix;
 
@@ -93,35 +92,108 @@ pub fn sp_mat_vec_mul(
     vector: &[f64],
 ) -> Result<Vec<f64>, String> {
     if matrix.ncols() != vector.len() {
-        return Err("Matrix and \
-                    vector dimensions \
-                    are not compatible \
-                    for multiplication.\
-                    "
-        .to_string());
+        return Err(MATVEC_SHAPE_ERROR.into());
     }
-
-    let col_ptr = matrix.col_ptr();
-
-    let row_idx = matrix.row_idx();
-
-    let values = matrix.val();
-
     let mut result = vec![0.0; matrix.nrows()];
+    accumulate_matvec(matrix, vector, &mut result);
+    Ok(result)
+}
 
-    for col in 0..matrix.ncols() {
-        let start = col_ptr[col];
+/// Computes `A x` into caller-owned storage, replacing every output element.
+///
+/// # Errors
+/// The input needs one value per column and the output one per row.
+/// On a shape error the output is untouched.
+pub fn sp_mat_vec_mul_into(
+    matrix: &SparseMat,
+    vector: &[f64],
+    result: &mut [f64],
+) -> Result<(), String> {
+    if matrix.ncols() != vector.len() || matrix.nrows() != result.len() {
+        return Err(MATVEC_SHAPE_ERROR.into());
+    }
+    result.fill(0.0);
+    accumulate_matvec(matrix, vector, result);
+    Ok(())
+}
 
-        let end = col_ptr[col + 1];
+/// Computes `Aᵀ x` by taking a dot product over each original column.
+///
+/// Each dot product uses the stored order of the live entries.
+///
+/// # Errors
+/// The vector length differs from the number of rows of `A`.
+pub fn sp_mat_transpose_vec_mul(
+    matrix: &SparseMat,
+    vector: &[f64],
+) -> Result<Vec<f64>, String> {
+    if matrix.nrows() != vector.len() {
+        return Err(MATVEC_SHAPE_ERROR.into());
+    }
+    Ok(transpose_products(matrix, vector).collect())
+}
 
-        let x_col = vector[col];
+/// Computes `Aᵀ x` into caller-owned storage, replacing every output element.
+///
+/// # Errors
+/// The input needs one value per row and the output one per column.
+/// On a shape error the output is untouched.
+pub fn sp_mat_transpose_vec_mul_into(
+    matrix: &SparseMat,
+    vector: &[f64],
+    result: &mut [f64],
+) -> Result<(), String> {
+    if matrix.nrows() != vector.len() || matrix.ncols() != result.len() {
+        return Err(MATVEC_SHAPE_ERROR.into());
+    }
+    for (slot, value) in result.iter_mut().zip(transpose_products(matrix, vector)) {
+        *slot = value;
+    }
+    Ok(())
+}
 
-        for k in start..end {
-            result[row_idx[k]] += values[k] * x_col;
+const MATVEC_SHAPE_ERROR: &str =
+    "Matrix and vector dimensions are not compatible for multiplication.";
+
+fn live_columns(matrix: &SparseMat) -> impl Iterator<Item = (&[usize], &[f64])> {
+    entries_at(matrix, live_column_spans(matrix))
+}
+
+fn live_column_spans(matrix: &SparseMat) -> impl Iterator<Item = Range<usize>> {
+    let symbolic = matrix.symbolic();
+    (0..matrix.ncols()).map(move |column| symbolic.col_range(column))
+}
+
+fn entries_at<'a>(
+    matrix: &'a SparseMat,
+    spans: impl Iterator<Item = Range<usize>> + 'a,
+) -> impl Iterator<Item = (&'a [usize], &'a [f64])> + 'a {
+    let rows = matrix.row_idx();
+    let values = matrix.val();
+    spans.map(move |span| (&rows[span.clone()], &values[span]))
+}
+
+fn accumulate_matvec(
+    matrix: &SparseMat,
+    vector: &[f64],
+    result: &mut [f64],
+) {
+    for ((rows, values), &x) in live_columns(matrix).zip(vector) {
+        for (&row, &value) in rows.iter().zip(values) {
+            result[row] += value * x;
         }
     }
+}
 
-    Ok(result)
+fn transpose_products<'a>(
+    matrix: &'a SparseMat,
+    vector: &'a [f64],
+) -> impl Iterator<Item = f64> + 'a {
+    live_columns(matrix).map(|(rows, values)| {
+        rows.iter()
+            .zip(values)
+            .fold(0.0, |sum, (&row, &value)| sum + value * vector[row])
+    })
 }
 
 /// Converts a dense `ndarray::Array` to a sparse matrix.
@@ -285,58 +357,224 @@ pub fn is_diagonal(matrix: &SparseMat) -> bool {
     true
 }
 
-/// Computes the Frobenius norm of a sparse matrix.
+/// Computes the Frobenius norm from the live CSC entries.
+///
+/// Extreme magnitudes are rescaled when the direct sum of squares leaves the
+/// normal range. An empty matrix has norm zero.
 #[must_use]
 pub fn frobenius_norm(matrix: &SparseMat) -> f64 {
-    let mut sum = 0.0;
-
-    for &val in matrix.val() {
-        sum += val * val;
-    }
-
-    sum.sqrt()
+    let squares = fold_live_values(matrix, |sum, &value| sum + value * value);
+    finish_frobenius(matrix, squares)
 }
 
-/// Computes the L1 norm of a sparse matrix (max column sum).
+/// Computes the maximum absolute column sum from the live CSC entries.
+///
+/// An empty matrix has norm zero. Column sums containing `NaN` are skipped.
 #[must_use]
 pub fn l1_norm(matrix: &SparseMat) -> f64 {
-    let col_ptr = matrix.col_ptr();
-
-    let values = matrix.val();
-
-    let mut max_sum: f64 = 0.0;
-
-    for col in 0..matrix.ncols() {
-        let mut col_sum = 0.0;
-
-        for &val in &values[col_ptr[col]..col_ptr[col + 1]] {
-            col_sum += val.abs();
-        }
-
-        if col_sum > max_sum {
-            max_sum = col_sum;
-        }
-    }
-
-    max_sum
+    finish_l1(matrix, max_column_sum(matrix, |_, sum| sum))
 }
 
-/// Computes the Linf norm of a sparse matrix (max row sum).
+/// Computes the maximum absolute row sum from the live CSC entries.
+///
+/// An empty matrix has norm zero. Row sums containing `NaN` are skipped.
 #[must_use]
 pub fn linf_norm(matrix: &SparseMat) -> f64 {
-    let row_idx = matrix.row_idx();
-
-    let values = matrix.val();
-
+    if matrix.nrows() == 0 || matrix.ncols() == 0 || matrix.val().is_empty() {
+        return 0.0;
+    }
     let mut row_sums = vec![0.0; matrix.nrows()];
+    for_each_live_chunk(matrix, |rows, values| {
+        for (&row, &value) in rows.iter().zip(values) {
+            row_sums[row] += value.abs();
+        }
+    });
+    finish_row_sums(matrix, &mut row_sums)
+}
 
-    for (k, &row) in row_idx.iter().enumerate() {
-        row_sums[row] += values[k].abs();
+/// Frobenius and induced norms of a real sparse matrix.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct SparseNorms {
+    /// Square root of the sum of squared entries.
+    pub frobenius: f64,
+    /// Maximum absolute column sum.
+    pub l1: f64,
+    /// Maximum absolute row sum.
+    pub linf: f64,
+}
+
+/// Computes the Frobenius, induced 1- and induced infinity norms together.
+///
+/// Ordinary inputs use one traversal of the live entries. Extreme scales
+/// may need additional passes. Empty matrices produce three zeros.
+#[must_use]
+pub fn matrix_norms(matrix: &SparseMat) -> SparseNorms {
+    if matrix.nrows() == 0 || matrix.ncols() == 0 || matrix.val().is_empty() {
+        return SparseNorms::default();
+    }
+    let mut row_sums = vec![0.0; matrix.nrows()];
+    let mut squares = 0.0;
+    let mut l1 = 0.0_f64;
+    let populated = live_column_spans(matrix).filter(|span| !span.is_empty());
+    for (rows, values) in entries_at(matrix, populated) {
+        let mut col_sum = 0.0;
+        for (&row, &value) in rows.iter().zip(values) {
+            let magnitude = value.abs();
+            squares += value * value;
+            col_sum += magnitude;
+            row_sums[row] += magnitude;
+        }
+        l1 = l1.max(col_sum);
+    }
+    SparseNorms {
+        frobenius: finish_frobenius(matrix, squares),
+        l1: finish_l1(matrix, l1),
+        linf: finish_row_sums(matrix, &mut row_sums),
+    }
+}
+
+fn for_each_live_chunk(
+    matrix: &SparseMat,
+    mut visit: impl FnMut(&[usize], &[f64]),
+) {
+    let pointers = matrix.col_ptr();
+    // Compressed columns occupy one contiguous live span, even when the
+    // backing arrays contain unused entries before or after it.
+    if matrix.col_nnz().is_none()
+        && let (Some(&start), Some(&end)) = (pointers.first(), pointers.last())
+    {
+        visit(&matrix.row_idx()[start..end], &matrix.val()[start..end]);
+    } else {
+        for (rows, values) in live_columns(matrix) {
+            visit(rows, values);
+        }
+    }
+}
+
+fn fold_live_values(
+    matrix: &SparseMat,
+    fold: impl Fn(f64, &f64) -> f64,
+) -> f64 {
+    let mut result = 0.0;
+    for_each_live_chunk(matrix, |_, values| {
+        result = values.iter().fold(result, &fold);
+    });
+    result
+}
+
+fn finish_frobenius(
+    matrix: &SparseMat,
+    squares: f64,
+) -> f64 {
+    if squares.is_normal() || squares.is_nan() {
+        return squares.sqrt();
+    }
+    let scale = fold_live_values(matrix, |largest, value| largest.max(value.abs()));
+    if scale == 0.0 || scale.is_infinite() {
+        return scale;
+    }
+    let scaled = fold_live_values(matrix, |sum, &value| {
+        let relative = value / scale;
+        sum + relative * relative
+    });
+    scale * scaled.sqrt()
+}
+
+const LARGE_TOTAL: f64 = 0.5 * f64::MAX;
+
+fn max_column_sum(
+    matrix: &SparseMat,
+    finish: impl Fn(&[f64], f64) -> f64,
+) -> f64 {
+    let values = matrix.val();
+    live_column_spans(matrix)
+        .filter(|span| !span.is_empty())
+        .fold(0.0, |largest, span| {
+            let column = &values[span];
+            let sum = column.iter().fold(0.0, |sum, value| sum + value.abs());
+            largest.max(finish(column, sum))
+        })
+}
+
+fn finish_l1(
+    matrix: &SparseMat,
+    largest: f64,
+) -> f64 {
+    if largest >= LARGE_TOTAL {
+        max_column_sum(matrix, finish_column_sum)
+    } else {
+        largest
+    }
+}
+
+// Keeping half of each positive term gives room for the compensated sum
+// before rounding the result at the original scale.
+#[derive(Clone, Copy, Default)]
+struct HalfSum {
+    sum: f64,
+    correction: f64,
+}
+
+impl HalfSum {
+    fn add(
+        &mut self,
+        value: f64,
+    ) {
+        let half = 0.5 * value.abs();
+        let total = self.sum + half;
+        if total.is_finite() {
+            self.correction += if self.sum >= half {
+                (self.sum - total) + half
+            } else {
+                (half - total) + self.sum
+            };
+        }
+        self.sum = total;
     }
 
-    row_sums
-        .into_iter()
-        .fold(0.0, |max, s| if s > max { s } else { max })
+    fn total(self) -> f64 {
+        2.0 * (self.sum + self.correction)
+    }
+}
+
+fn finish_column_sum(
+    values: &[f64],
+    sum: f64,
+) -> f64 {
+    if sum >= LARGE_TOTAL {
+        let mut recovered = HalfSum::default();
+        for &value in values {
+            recovered.add(value);
+        }
+        recovered.total()
+    } else {
+        sum
+    }
+}
+
+fn finish_row_sums(
+    matrix: &SparseMat,
+    sums: &mut [f64],
+) -> f64 {
+    let maximum = |sums: &[f64]| sums.iter().copied().fold(0.0, f64::max);
+    let largest = maximum(sums);
+    if largest < LARGE_TOTAL {
+        return largest;
+    }
+    let mut recovered = vec![HalfSum::default(); sums.len()];
+    for_each_live_chunk(matrix, |rows, values| {
+        for (&row, &value) in rows.iter().zip(values) {
+            if sums[row] >= LARGE_TOTAL {
+                recovered[row].add(value);
+            }
+        }
+    });
+    for (sum, recovered) in sums.iter_mut().zip(recovered) {
+        if *sum >= LARGE_TOTAL {
+            *sum = recovered.total();
+        }
+    }
+    maximum(sums)
 }
 
 /// A serializable representation of a sparse matrix in CSR format.

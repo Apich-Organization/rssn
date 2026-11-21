@@ -1,5 +1,7 @@
 //! # Matrix functions
 //!
+//! Exponentials, square roots, logarithms, powers, and exponential integrators.
+//!
 //! * [`expm`]: matrix exponential by scaling and squaring with diagonal
 //!   Pade approximants of degree 3, 5, 7, 9 or 13 chosen from the 1-norm
 //!   (Higham 2005 / Al-Mohy and Higham 2009 thresholds);
@@ -7,6 +9,7 @@
 //!   determinantal scaling;
 //! * [`logm`]: principal logarithm by inverse scaling and squaring with a
 //!   Gauss-Legendre (Pade) partial-fraction evaluation of `log(I + X)`;
+//! * [`powm_psd`]: real powers of a symmetric positive semidefinite matrix;
 //! * [`phi_matrices`]: the exponential-integrator functions
 //!   `phi_k(A)` (`phi_0 = exp`, `phi_{k+1}(z) = (phi_k(z) - 1/k!) / z`)
 //!   through one exponential of an augmented matrix;
@@ -15,9 +18,9 @@
 //!   [`expm_krylov`] does the same for a matrix-free operator with an
 //!   Arnoldi/Krylov projection and adaptive sub-stepping.
 //!
-//! `sqrtm` and `logm` require that `A` has no eigenvalues on the closed
-//! negative real axis (for `logm` also that `A` is nonsingular); they return
-//! an error otherwise.
+//! The general real `sqrtm` and `logm` algorithms require a spectrum off
+//! the closed negative real axis. The symmetric path also admits singular
+//! positive semidefinite matrices for `sqrtm` and positive powers.
 
 use crate::kernels::dense::DenseError;
 use crate::kernels::dense::Mat;
@@ -214,31 +217,124 @@ fn pade_solve(
     Ok(out)
 }
 
-/// Whether `a` is symmetric to rounding (entries compared with a relative
-/// tolerance of `4 eps` of the largest entry).
-fn is_symmetric(a: &Mat) -> bool {
-    let scale = a.data.iter().fold(0.0_f64, |m, x| m.max(x.abs()));
-    let tol = 4.0 * f64::EPSILON * scale;
-    (0..a.rows).all(|i| (0..i).all(|j| (a.at(i, j) - a.at(j, i)).abs() <= tol))
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum MatrixStructure {
+    Diagonal,
+    Symmetric,
+    General,
+}
+
+fn matrix_structure(a: &Mat) -> Result<MatrixStructure, DenseError> {
+    if a.rows != a.cols || a.rows.checked_mul(a.cols) != Some(a.data.len()) {
+        return Err(DenseError::Shape);
+    }
+    if !a.is_finite() {
+        return Err(DenseError::NonFinite);
+    }
+    crate::cancellation::checkpoint()?;
+    let mut structure = MatrixStructure::Diagonal;
+    for i in 0..a.rows {
+        for j in 0..i {
+            let (lower, upper) = (a.at(i, j), a.at(j, i));
+            let scale = lower.abs().max(upper.abs());
+            if (lower - upper).abs() > (4.0 * f64::EPSILON) * scale {
+                return Ok(MatrixStructure::General);
+            }
+            if scale > 0.0 {
+                structure = MatrixStructure::Symmetric;
+            }
+        }
+    }
+    Ok(structure)
+}
+
+fn psd_eigenvalue(
+    lambda: f64,
+    scale: f64,
+    slack: f64,
+) -> Option<f64> {
+    (lambda >= -slack * scale).then_some(lambda.max(0.0))
 }
 
 /// `V f(L) V^T` for a symmetric `a = V L V^T`; `f` returns `None` outside its
 /// domain, which becomes [`DenseError::Singular`].
 fn spectral_function(
     a: &Mat,
+    structure: MatrixStructure,
     f: impl Fn(f64, f64) -> Option<f64>,
 ) -> Result<Mat, DenseError> {
-    let (values, vectors) = dense::eigen_symmetric(a)?;
     let n = a.rows;
-    let scale = values.iter().fold(0.0_f64, |m, x| m.max(x.abs()));
-    let mut out = Mat::zeros(n, n);
-    for (k, &lambda) in values.iter().enumerate() {
-        let g = f(lambda, scale).ok_or(DenseError::Singular)?;
+    if structure == MatrixStructure::Diagonal {
+        // Work entrywise to avoid scaling small diagonal entries to zero when
+        // another diagonal entry is many orders of magnitude larger.
+        let mut out = Mat::zeros(n, n);
         for i in 0..n {
-            let vik = vectors.at(i, k) * g;
-            for j in 0..n {
-                out.data[i * n + j] += vik * vectors.at(j, k);
+            let diagonal = a.at(i, i);
+            let value = f(diagonal, diagonal.abs()).ok_or(DenseError::Singular)?;
+            if !value.is_finite() {
+                return Err(DenseError::NoConvergence);
             }
+            out.set(i, i, value);
+        }
+        return Ok(out);
+    }
+    let (mut values, vectors) = dense::eigen_symmetric(a)?;
+    if values.iter().any(|value| !value.is_finite()) {
+        return Err(DenseError::NoConvergence);
+    }
+    let scale = values.iter().fold(0.0_f64, |m, x| m.max(x.abs()));
+    for value in &mut values {
+        *value = f(*value, scale).ok_or(DenseError::Singular)?;
+        if !value.is_finite() {
+            return Err(DenseError::NoConvergence);
+        }
+    }
+    if values
+        .iter()
+        .all(|&value| crate::kernels::exact_eq(value, 1.0))
+    {
+        return Ok(Mat::identity(n));
+    }
+    let out = reconstruct_symmetric(n, &vectors, &values)?;
+    if !out.is_finite() {
+        return Err(DenseError::NoConvergence);
+    }
+    Ok(out)
+}
+
+#[expect(
+    clippy::single_call_fn,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    reason = "spectral output and eigenvectors are validated n-by-n matrices"
+)]
+fn reconstruct_symmetric(
+    n: usize,
+    eigenvectors: &Mat,
+    weights: &[f64],
+) -> Result<Mat, DenseError> {
+    let vectors = &eigenvectors.data;
+    let mut out = Mat::zeros(n, n);
+    let grain = if n >= 192 { 2 } else { usize::MAX };
+    super::par::for_chunks_mut(&mut out.data, n, grain, |i, row| {
+        if crate::cancellation::is_cancelled() {
+            return;
+        }
+        let vi = &vectors[i * n..(i + 1) * n];
+        for (item, vj) in row[..=i].iter_mut().zip(vectors.chunks_exact(n)) {
+            *item = vi
+                .iter()
+                .zip(weights)
+                .zip(vj)
+                .fold(0.0, |sum, ((left, weight), right)| {
+                    sum + (left * weight) * right
+                });
+        }
+    });
+    crate::cancellation::checkpoint()?;
+    for j in 0..n {
+        for i in 0..j {
+            out.set(i, j, out.at(j, i));
         }
     }
     Ok(out)
@@ -248,34 +344,18 @@ fn spectral_function(
 /// determinantal scaling, quadratically convergent).
 ///
 /// # Errors
-/// [`DenseError::Shape`], [`DenseError::NonFinite`], or
-/// [`DenseError::NoConvergence`] / [`DenseError::Singular`] when `A` has
-/// eigenvalues on the closed negative real axis. Symmetric input goes
-/// through the eigen-decomposition, so singular positive semi-definite
-/// matrices work.
+/// [`DenseError::Shape`] for malformed or nonsquare matrices and
+/// [`DenseError::NonFinite`] for non-finite inputs. Returns
+/// [`DenseError::Singular`] for a detected spectral domain failure or
+/// [`DenseError::NoConvergence`] when the algorithm cannot produce a finite
+/// result. Symmetric positive semidefinite matrices can be singular.
 pub fn sqrtm(a: &Mat) -> Result<Mat, DenseError> {
-    if a.rows != a.cols {
-        return Err(DenseError::Shape);
-    }
+    let structure = matrix_structure(a)?;
     let n = a.rows;
-    if n == 0 {
-        return Ok(Mat::zeros(0, 0));
-    }
-    if !a.is_finite() {
-        return Err(DenseError::NonFinite);
-    }
-    if is_symmetric(a) {
-        // Exact for singular positive semi-definite input, which the
-        // Denman-Beavers iteration below cannot factor.
+    if structure != MatrixStructure::General {
         let slack = 4.0 * n as f64 * f64::EPSILON;
-        return spectral_function(a, |lambda, scale| {
-            if lambda >= 0.0 {
-                Some(lambda.sqrt())
-            } else if lambda >= -slack * scale {
-                Some(0.0)
-            } else {
-                None
-            }
+        return spectral_function(a, structure, |lambda, scale| {
+            psd_eigenvalue(lambda, scale, slack).map(f64::sqrt)
         });
     }
     let mut y = a.clone();
@@ -340,18 +420,12 @@ fn gauss_legendre_01(m: usize) -> (Vec<f64>, Vec<f64>) {
 /// # Errors
 /// [`DenseError::Shape`] or the errors of [`sqrtm`].
 pub fn logm(a: &Mat) -> Result<Mat, DenseError> {
-    if a.rows != a.cols {
-        return Err(DenseError::Shape);
-    }
+    let structure = matrix_structure(a)?;
     let n = a.rows;
-    if n == 0 {
-        return Ok(Mat::zeros(0, 0));
-    }
-    if !a.is_finite() {
-        return Err(DenseError::NonFinite);
-    }
-    if is_symmetric(a) {
-        return spectral_function(a, |lambda, _| (lambda > 0.0).then(|| lambda.ln()));
+    if structure != MatrixStructure::General {
+        return spectral_function(a, structure, |lambda, _| {
+            (lambda > 0.0).then(|| lambda.ln())
+        });
     }
     let id = Mat::identity(n);
     let mut t = a.clone();
@@ -380,6 +454,39 @@ pub fn logm(a: &Mat) -> Result<Mat, DenseError> {
     }
     // X (I + x X)^{-1} = (I + x X)^{-1} X, columns above are (I + xX)^{-1} X
     Ok(lin(&r, 2f64.powi(k), &r, 0.0))
+}
+
+/// Real power `A^exponent` of a symmetric positive semidefinite matrix.
+///
+/// Positive powers keep zero eigenvalues, and a zero exponent gives the
+/// identity, including for singular matrices. Negative powers require a
+/// positive definite matrix. Tiny negative eigenvalues from rounding the
+/// symmetric eigendecomposition are treated as zero for nonnegative powers.
+///
+/// # Errors
+/// Returns [`DenseError::Shape`] for malformed, nonsquare or nonsymmetric
+/// matrices, [`DenseError::NonFinite`] for non-finite entries or exponent,
+/// [`DenseError::Singular`] outside the spectral domain, and
+/// [`DenseError::NoConvergence`] if the algorithm cannot compute a finite result.
+pub fn powm_psd(
+    a: &Mat,
+    exponent: f64,
+) -> Result<Mat, DenseError> {
+    let structure = matrix_structure(a)?;
+    if structure == MatrixStructure::General {
+        return Err(DenseError::Shape);
+    }
+    if !exponent.is_finite() {
+        return Err(DenseError::NonFinite);
+    }
+    let slack = 4.0 * a.rows as f64 * f64::EPSILON;
+    spectral_function(a, structure, |lambda, scale| {
+        if exponent < 0.0 {
+            (lambda > 0.0).then(|| lambda.powf(exponent))
+        } else {
+            psd_eigenvalue(lambda, scale, slack).map(|value| value.powf(exponent))
+        }
+    })
 }
 
 /// The `phi_k(A)` functions, `k = 0..=p`, from one augmented matrix exponential.

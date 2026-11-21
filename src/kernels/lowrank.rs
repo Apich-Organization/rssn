@@ -1,3 +1,5 @@
+//! Rank-revealing QR, randomized SVD, LOBPCG and Anderson acceleration.
+//!
 //! Rank-revealing and matrix-free numerical linear algebra, and fixed-point
 //! acceleration.
 //!
@@ -41,6 +43,7 @@
 
 use crate::kernels::dense;
 use crate::kernels::dense::Mat;
+use crate::kernels::par::for_chunks_mut;
 
 /// Why a routine of this module failed.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -165,6 +168,26 @@ fn orthonormalize(
 // Column-pivoted QR
 // ---------------------------------------------------------------------------
 
+const PIVOT_STEP_PARALLEL_WORK: usize = 196_608;
+const THIN_Q_PARALLEL_WORK: usize = 4_000_000;
+
+fn householder_grain(
+    minimum_work: usize,
+    work_per_column: usize,
+) -> usize {
+    minimum_work.div_ceil(work_per_column).max(4)
+}
+
+fn apply_householder(
+    column: &mut [f64],
+    reflector: &[f64],
+) {
+    let projection = 2.0 * dot(reflector, column);
+    for (value, entry) in column.iter_mut().zip(reflector) {
+        *value -= projection * entry;
+    }
+}
+
 /// A column-pivoted QR factorisation `A P = Q R`.
 #[derive(Clone, Debug)]
 pub struct PivotedQr {
@@ -211,7 +234,7 @@ impl PivotedQr {
         let mut y: Vec<f64> = (0..rank)
             .map(|j| (0..self.q.rows).map(|i| self.q.at(i, j) * b[i]).sum())
             .collect();
-        solve_triangular(&self.r, &mut y);
+        solve_triangular(&mut y, |i, j| self.r.at(i, j));
         let mut x = vec![0.0; self.r.cols];
         for (j, value) in y.into_iter().enumerate() {
             x[self.perm[j]] = value;
@@ -235,19 +258,19 @@ fn numerical_rank(
 }
 
 fn solve_triangular(
-    r: &Mat,
     y: &mut [f64],
+    entry: impl Fn(usize, usize) -> f64,
 ) {
     for i in (0..y.len()).rev() {
         for j in i + 1..y.len() {
-            y[i] -= r.at(i, j) * y[j];
+            y[i] -= entry(i, j) * y[j];
         }
-        y[i] /= r.at(i, i);
+        y[i] /= entry(i, i);
     }
 }
 
 struct PivotedReduction {
-    r: Mat,
+    transposed_r: Mat,
     perm: Vec<usize>,
     reflectors: Vec<Vec<f64>>,
     scale: f64,
@@ -258,7 +281,8 @@ struct PivotedReduction {
 /// At each step the remaining column of largest norm is brought forward, so
 /// the diagonal of `R` decreases in magnitude and its decay reveals the
 /// numerical rank. Column norms are downdated and recomputed when
-/// cancellation makes the downdate unreliable.
+/// cancellation makes the downdate unreliable. Each reflector applies to
+/// contiguous columns, with large independent column batches running in parallel.
 ///
 /// # Errors
 /// [`LowRankError::Shape`] for inconsistent storage or non-finite entries,
@@ -268,29 +292,15 @@ pub fn qr_pivoted(a: &Mat) -> Result<PivotedQr, LowRankError> {
     let (m, n) = (a.rows, a.cols);
     let k = m.min(n);
     let PivotedReduction {
-        r,
+        transposed_r,
         perm,
         reflectors,
         scale,
-    } = reduce_columns(a, k)?;
-    // Thin Q: apply the reflectors to the first k columns of the identity.
-    let mut q = Mat::zeros(m, k);
-    for j in 0..k {
-        q.set(j, j, 1.0);
-    }
-    for (step, v) in reflectors.iter().enumerate().rev() {
-        for j in 0..k {
-            let s: f64 = 2.0 * (step..m).map(|i| v[i - step] * q.at(i, j)).sum::<f64>();
-            for i in step..m {
-                let value = q.at(i, j) - s * v[i - step];
-                q.set(i, j, value);
-            }
-        }
-    }
+    } = reduce_columns(a, k, true)?;
     let mut thin = Mat::zeros(k, n);
     for i in 0..k {
         for j in i..n {
-            thin.set(i, j, r.at(i, j) * scale);
+            thin.set(i, j, transposed_r.at(j, i) * scale);
         }
     }
     if !thin.is_finite() {
@@ -298,12 +308,38 @@ pub fn qr_pivoted(a: &Mat) -> Result<PivotedQr, LowRankError> {
             "the triangular factor exceeds finite floating-point range".into(),
         ));
     }
+    drop(transposed_r);
+    // Thin Q: apply the reflectors to the first k columns of the identity.
+    let mut transposed_q = Mat::zeros(k, m);
+    if k > 0 {
+        for_chunks_mut(
+            &mut transposed_q.data,
+            m,
+            householder_grain(THIN_Q_PARALLEL_WORK, m * k),
+            |j, column| {
+                column[j] = 1.0;
+                for (step, reflector) in reflectors.iter().enumerate().rev() {
+                    apply_householder(&mut column[step..], reflector);
+                }
+            },
+        );
+    }
+    let q = if k <= 1 {
+        Mat {
+            rows: m,
+            cols: k,
+            data: transposed_q.data,
+        }
+    } else {
+        transposed_q.transpose()
+    };
     Ok(PivotedQr { q, r: thin, perm })
 }
 
 fn reduce_columns(
     a: &Mat,
     k: usize,
+    retain_reflectors: bool,
 ) -> Result<PivotedReduction, LowRankError> {
     let (m, n) = (a.rows, a.cols);
     let magnitude = a
@@ -322,38 +358,49 @@ fn reduce_columns(
     } else {
         1.0
     };
-    let mut r = a.clone();
+    if k == 0 {
+        return Ok(PivotedReduction {
+            transposed_r: Mat::zeros(n, 0),
+            perm: if retain_reflectors {
+                (0..n).collect()
+            } else {
+                Vec::new()
+            },
+            reflectors: Vec::new(),
+            scale,
+        });
+    }
+    // Householder application, swaps and norm fallback all traverse columns.
+    let mut transposed_r = a.transpose();
     #[allow(
         clippy::float_cmp,
         reason = "only the exact identity scale skips multiplication"
     )]
     if scale != 1.0 {
-        for x in &mut r.data {
+        for x in &mut transposed_r.data {
             *x /= scale;
         }
     }
     let mut perm: Vec<usize> = (0..n).collect();
-    let mut norms: Vec<f64> = (0..n)
-        .map(|j| (0..m).map(|i| r.at(i, j).powi(2)).sum::<f64>().sqrt())
-        .collect();
+    let mut norms: Vec<f64> = transposed_r.data.chunks_exact(m).map(norm).collect();
     let mut reference = norms.clone();
-    let mut reflectors: Vec<Vec<f64>> = Vec::with_capacity(k);
+    let mut reflectors = Vec::with_capacity(if retain_reflectors { k } else { 0 });
+    let mut reused_reflector = Vec::new();
     for step in 0..k {
         let pivot = (step..n)
             .max_by(|&x, &y| norms[x].total_cmp(&norms[y]))
             .unwrap_or(step);
         if pivot != step {
-            for i in 0..m {
-                let (x, y) = (r.at(i, step), r.at(i, pivot));
-                r.set(i, step, y);
-                r.set(i, pivot, x);
-            }
+            let (head, tail) = transposed_r.data.split_at_mut(pivot * m);
+            head[step * m..(step + 1) * m].swap_with_slice(&mut tail[..m]);
             perm.swap(step, pivot);
             norms.swap(step, pivot);
             reference.swap(step, pivot);
         }
         // Householder vector for column `step`, rows `step..m`.
-        let mut v: Vec<f64> = (step..m).map(|i| r.at(i, step)).collect();
+        let start = step * m;
+        let mut v = std::mem::take(&mut reused_reflector);
+        v.extend_from_slice(&transposed_r.data[start + step..start + m]);
         let alpha = norm(&v);
         if alpha > 0.0 {
             let beta = if v[0] >= 0.0 { -alpha } else { alpha };
@@ -363,39 +410,38 @@ fn reduce_columns(
                 for x in &mut v {
                     *x /= vn;
                 }
-                for j in step..n {
-                    let s: f64 = 2.0 * (step..m).map(|i| v[i - step] * r.at(i, j)).sum::<f64>();
-                    for i in step..m {
-                        let value = r.at(i, j) - s * v[i - step];
-                        r.set(i, j, value);
-                    }
-                }
+                for_chunks_mut(
+                    &mut transposed_r.data[start..],
+                    m,
+                    householder_grain(PIVOT_STEP_PARALLEL_WORK, m - step),
+                    |_, column| apply_householder(&mut column[step..], &v),
+                );
             }
         } else {
             v.fill(0.0);
         }
-        for i in step + 1..m {
-            r.set(i, step, 0.0);
-        }
+        transposed_r.data[start + step + 1..start + m].fill(0.0);
         // Downdate the norms of the remaining columns.
         for j in step + 1..n {
             if norms[j] > 0.0 {
-                let ratio = r.at(step, j) / norms[j];
+                let ratio = transposed_r.at(j, step) / norms[j];
                 let remaining = (1.0 - ratio * ratio).max(0.0);
                 norms[j] *= remaining.sqrt();
                 if norms[j] < 1e-7 * reference[j] {
-                    norms[j] = (step + 1..m)
-                        .map(|i| r.at(i, j).powi(2))
-                        .sum::<f64>()
-                        .sqrt();
+                    norms[j] = norm(&transposed_r.data[j * m + step + 1..(j + 1) * m]);
                     reference[j] = norms[j];
                 }
             }
         }
-        reflectors.push(v);
+        if retain_reflectors {
+            reflectors.push(v);
+        } else {
+            v.clear();
+            reused_reflector = v;
+        }
     }
     Ok(PivotedReduction {
-        r,
+        transposed_r,
         perm,
         reflectors,
         scale,
@@ -432,9 +478,13 @@ pub fn interpolative_decomposition(
             "interpolative rank exceeds a matrix extent".into(),
         ));
     }
-    let PivotedReduction { r, mut perm, .. } = reduce_columns(a, max_rank)?;
+    let PivotedReduction {
+        transposed_r,
+        mut perm,
+        ..
+    } = reduce_columns(a, max_rank, false)?;
     let tolerance = a.rows.max(a.cols) as f64 * f64::EPSILON;
-    let rank = numerical_rank(&r, max_rank, tolerance);
+    let rank = numerical_rank(&transposed_r, max_rank, tolerance);
     let mut coefficients = Mat::zeros(rank, a.cols);
     let mut rhs = vec![0.0; rank];
     for (pivot, &column) in perm.iter().enumerate() {
@@ -443,9 +493,9 @@ pub fn interpolative_decomposition(
             continue;
         }
         for (i, value) in rhs.iter_mut().enumerate() {
-            *value = r.at(i, pivot);
+            *value = transposed_r.at(pivot, i);
         }
-        solve_triangular(&r, &mut rhs);
+        solve_triangular(&mut rhs, |i, j| transposed_r.at(j, i));
         for (i, &value) in rhs.iter().enumerate() {
             coefficients.set(i, column, value);
         }
@@ -497,7 +547,9 @@ impl Default for RandomizedOptions {
 /// The range of `A` is sampled with `k + oversample` random vectors,
 /// sharpened by power iterations with re-orthogonalisation between them, and
 /// the small projected matrix is decomposed densely. The cost is
-/// `2 (power_iterations + 1) (k + oversample)` products.
+/// at most `2 (power_iterations + 1) (k + oversample)` products. Extreme
+/// sampled columns are rescaled before orthogonalisation. Singular values
+/// retain the scale of the original operator.
 ///
 /// # Errors
 /// [`LowRankError::Shape`] when `k` is zero or exceeds `min(m, n)`, or a
@@ -520,18 +572,23 @@ pub fn randomized_svd(
     let mut rng = Gaussian::new(options.seed);
     let write_product = |f: &dyn Fn(&[f64], &mut [f64]), x: &[f64], y: &mut [f64]| {
         f(x, y);
-        if y.iter().any(|v| !v.is_finite()) {
-            Err(LowRankError::Shape(
-                "the operator returned a non-finite product".into(),
-            ))
-        } else {
-            Ok(())
-        }
+        y.iter()
+            .try_fold(0.0_f64, |peak, &v| {
+                v.is_finite().then_some(peak.max(v.abs()))
+            })
+            .ok_or_else(|| LowRankError::Shape("the operator returned a non-finite product".into()))
     };
     let apply =
         |f: &dyn Fn(&[f64], &mut [f64]), x: &[f64], len: usize| -> Result<Vec<f64>, LowRankError> {
             let mut y = vec![0.0; len];
-            write_product(f, x, &mut y)?;
+            let peak = write_product(f, x, &mut y)?;
+            if peak > 0.0 && !(1e-140..=1e140).contains(&peak) {
+                // Rescaling a column preserves the sampled subspace and
+                // keeps Gram-Schmidt's squared norms in range.
+                for value in &mut y {
+                    *value /= peak;
+                }
+            }
             Ok(y)
         };
     let mut omega = vec![0.0; n];
@@ -566,21 +623,28 @@ pub fn randomized_svd(
     let small = dense::svd(&b).map_err(|e| LowRankError::NoConvergence(format!("{e:?}")))?;
     let k = k.min(small.s.len());
     let mut u = Mat::zeros(m, k);
-    for j in 0..k {
-        for (i, qi) in q.iter().enumerate() {
-            let c = small.u.at(i, j);
-            for row in 0..m {
-                let value = u.at(row, j) + c * qi[row];
-                u.set(row, j, value);
+    // Lift U = Q * U_small with contiguous output rows. Each element
+    // accumulates its contributions from Q in the original order.
+    for (qi, coefficients) in q.iter().zip(small.u.data.chunks_exact(small.u.cols)) {
+        for (row, &sample) in u.data.chunks_exact_mut(k).zip(qi) {
+            for (value, &coefficient) in row.iter_mut().zip(coefficients) {
+                *value += coefficient * sample;
             }
         }
     }
-    let mut v = Mat::zeros(n, k);
-    for j in 0..k {
-        for i in 0..n {
-            v.set(i, j, small.v.at(i, j));
+    let v = if small.v.cols == k {
+        small.v
+    } else {
+        let mut v = Mat::zeros(n, k);
+        for (out, row) in v
+            .data
+            .chunks_exact_mut(k)
+            .zip(small.v.data.chunks_exact(small.v.cols))
+        {
+            out.copy_from_slice(&row[..k]);
         }
-    }
+        v
+    };
     Ok(dense::Svd {
         u,
         s: small.s.into_iter().take(k).collect(),

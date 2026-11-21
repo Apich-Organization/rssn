@@ -110,16 +110,36 @@ pub fn matmul(
     b: &[f64],
 ) -> Vec<f64> {
     let mut data = vec![0.0; rows * cols];
-    for row in 0..rows {
-        for column in 0..cols {
-            if inner == 0 {
-                break;
+    if data.is_empty() || inner == 0 {
+        return data;
+    }
+    let left_rows = a[..rows * inner].chunks_exact(inner);
+    let right = &b[..inner * cols];
+    if cols <= 4 {
+        // With only a few columns, keep each dot in a register instead of
+        // updating the output row once per factor.
+        for (left, output) in left_rows.zip(data.chunks_exact_mut(cols)) {
+            for (column, slot) in output.iter_mut().enumerate() {
+                let mut value = left[0] * right[column];
+                for (k, factor) in left.iter().enumerate().skip(1) {
+                    value += factor * right[k * cols + column];
+                }
+                *slot = value;
             }
-            let mut total = a[row * inner] * b[column];
-            for k in 1..inner {
-                total += a[row * inner + k] * b[k * cols + column];
+        }
+        return data;
+    }
+    let right_rows = right.chunks_exact(cols);
+    for (left, output) in left_rows.zip(data.chunks_exact_mut(cols)) {
+        for (value, &right) in output.iter_mut().zip(&right[..cols]) {
+            *value = left[0] * right;
+        }
+        for (&factor, right) in left.iter().skip(1).zip(right_rows.clone().skip(1)) {
+            // Visit adjacent columns while preserving the dot-product order
+            // and the first product's signed zero for each cell.
+            for (value, &element) in output.iter_mut().zip(right) {
+                *value += factor * element;
             }
-            data[row * cols + column] = total;
         }
     }
     data

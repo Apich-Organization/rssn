@@ -1,3 +1,5 @@
+//! Dense linear algebra: LU, Cholesky, QR, SVD, symmetric and general eigenvalues.
+//!
 //! # Dense linear algebra on row-major `f64` matrices
 //!
 //! A small self-contained dense toolkit: LU with partial pivoting,
@@ -176,18 +178,39 @@ impl Mat {
         &self,
         x: &[f64],
     ) -> Vec<f64> {
-        let row = |i: usize| -> f64 {
-            self.data[i * self.cols..(i + 1) * self.cols]
-                .iter()
-                .zip(x)
-                .map(|(a, b)| a * b)
-                .sum()
-        };
+        let row = |i| self.row_product(i, x);
         if self.rows * self.cols >= DENSE_PAR_FLOPS / 8 {
             super::par::map_indexed(self.rows, 2, row)
         } else {
             (0..self.rows).map(row).collect()
         }
+    }
+
+    /// Matrix-vector product into an existing buffer with one entry per row.
+    pub(crate) fn matvec_into(
+        &self,
+        x: &[f64],
+        output: &mut [f64],
+    ) {
+        assert_eq!(output.len(), self.rows);
+        let grain = if self.rows * self.cols >= DENSE_PAR_FLOPS / 8 {
+            2
+        } else {
+            usize::MAX
+        };
+        super::par::for_each_mut(output, grain, |i, value| *value = self.row_product(i, x));
+    }
+
+    fn row_product(
+        &self,
+        row: usize,
+        x: &[f64],
+    ) -> f64 {
+        self.data[row * self.cols..(row + 1) * self.cols]
+            .iter()
+            .zip(x)
+            .map(|(a, b)| a * b)
+            .sum()
     }
 
     /// Matrix product.
@@ -323,6 +346,10 @@ pub fn lu_factor(a: &Mat) -> Result<Lu, DenseError> {
 }
 
 impl Lu {
+    pub(crate) const fn heap_bytes(&self) -> usize {
+        self.factors.data.capacity() * size_of::<f64>() + self.piv.capacity() * size_of::<usize>()
+    }
+
     /// Solves `A x = b`, returning a new solution vector.
     ///
     /// Returns an empty vector for a short right-hand side and ignores any

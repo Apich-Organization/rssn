@@ -1,3 +1,5 @@
+//! Structured (banded, sparse) Jacobians, colouring finite differences and banded LU.
+//!
 //! # Structured Jacobians and linear solvers for stiff integrators
 //!
 //! Infrastructure shared by [`crate::kernels::ode_stiff`]:
@@ -28,6 +30,7 @@ use crate::kernels::krylov::Csr;
 use crate::kernels::krylov::SparseLu;
 use crate::kernels::krylov::SparseOrdering;
 use crate::kernels::ode_stiff::JacobianFn;
+use crate::kernels::reuse::f64_scratch;
 
 /// User-supplied sparse Jacobian `J(t, y)` of the right-hand side.
 pub type SparseJacobianFn<'a> = dyn Fn(f64, &[f64]) -> Csr + 'a;
@@ -639,12 +642,32 @@ pub fn fd_jacobian_dense<F: Fn(f64, &[f64], &mut [f64])>(
     jac
 }
 
-/// Parallel [`fd_jacobian_dense`]: the columns are independent right-hand side evaluations, so they
-/// are computed concurrently (collected in column order; the result is bit-identical to the serial
-/// function).
+fn fresh_fd_column(
+    f: &impl Fn(f64, &[f64], &mut [f64]),
+    t: f64,
+    perturbed: &mut [f64],
+    f0: &[f64],
+    column: usize,
+    values: &mut [f64],
+) {
+    let original = perturbed[column];
+    let step = f64::EPSILON.sqrt() * original.abs().max(1e-5);
+    perturbed[column] = original + step;
+    f(t, perturbed, values);
+    perturbed[column] = original;
+    for (value, &base) in values.iter_mut().zip(f0) {
+        *value = (*value - base) / step;
+    }
+}
+
+/// Dense finite-difference Jacobian from independent right-hand side columns.
 ///
-/// Needs a `Sync` right-hand side and is worthwhile when `f` is expensive (a column costs one
-/// evaluation); below `n = 16` it runs sequentially.
+/// Independent column groups share one work vector per job. Below 16 columns
+/// or with one active worker, evaluation runs in index order. Each evaluation
+/// receives a zero-initialized output buffer.
+///
+/// # Panics
+/// Panics if `f0` has fewer components than `y`.
 #[must_use]
 pub fn fd_jacobian_dense_par<F: Fn(f64, &[f64], &mut [f64]) + Sync>(
     f: &F,
@@ -653,25 +676,56 @@ pub fn fd_jacobian_dense_par<F: Fn(f64, &[f64], &mut [f64]) + Sync>(
     f0: &[f64],
 ) -> Mat {
     let n = y.len();
-    let columns: Vec<Vec<f64>> = super::par::map_indexed(n, 16, |j| {
-        let dj = f64::EPSILON.sqrt() * y[j].abs().max(1e-5);
-        let mut yp = y.to_vec();
-        yp[j] = y[j] + dj;
-        let mut fp = vec![0.0; n];
-        f(t, &yp, &mut fp);
-        (0..n).map(|i| (fp[i] - f0[i]) / dj).collect()
-    });
-    let mut jac = Mat::zeros(n, n);
-    for (j, col) in columns.iter().enumerate() {
-        for (i, v) in col.iter().enumerate() {
-            jac.set(i, j, *v);
+    let base = &f0[..n];
+    if !crate::execution::should_split(n, 16) {
+        let mut jacobian = Mat::zeros(n, n);
+        if n == 0 {
+            return jacobian;
         }
+        if let [single] = y {
+            fresh_fd_column(f, t, &mut [*single], base, 0, &mut jacobian.data);
+            return jacobian;
+        }
+        let mut state = f64_scratch(n);
+        state.extend_from_slice(y);
+        let mut values = f64_scratch(n);
+        values.resize(n, 0.0);
+        for column in 0..n {
+            values.fill(0.0);
+            fresh_fd_column(f, t, &mut state, base, column, &mut values);
+            for (row, &value) in values.iter().enumerate() {
+                jacobian.set(row, column, value);
+            }
+        }
+        return jacobian;
     }
-    jac
+
+    // Store each column contiguously while Rayon jobs own disjoint output slices.
+    let workers = crate::execution::cpu_threads();
+    let columns_per_job = n.div_ceil(workers.saturating_mul(4));
+    let mut transposed = Mat::zeros(n, n);
+    super::par::for_chunks_mut(&mut transposed.data, columns_per_job * n, 2, |job, data| {
+        let mut state = f64_scratch(n);
+        state.extend_from_slice(y);
+        for (local, values) in data.chunks_exact_mut(n).enumerate() {
+            fresh_fd_column(
+                f,
+                t,
+                &mut state,
+                base,
+                job * columns_per_job + local,
+                values,
+            );
+        }
+    });
+    transposed.transpose()
 }
 
-/// Parallel [`fd_jacobian_colored`]: one evaluation per colour, the colours
-/// computed concurrently; identical to the serial result.
+/// Evaluates the columns of each colour together and writes the result on `pattern`.
+///
+/// Each evaluation gets a zero-initialized output. Worker jobs reuse their
+/// perturbed state. Large colour sets on sparse patterns retain only the
+/// differences referenced by the pattern. Valid colours come from [`color_columns`].
 #[must_use]
 pub fn fd_jacobian_colored_par<F: Fn(f64, &[f64], &mut [f64]) + Sync>(
     f: &F,
@@ -684,32 +738,135 @@ pub fn fd_jacobian_colored_par<F: Fn(f64, &[f64], &mut [f64]) + Sync>(
 ) -> Csr {
     let n = y.len();
     let (color, ncolors) = colors;
-    let delta: Vec<f64> = y
-        .iter()
-        .map(|v| f64::EPSILON.sqrt() * v.abs().max(1e-5))
-        .collect();
-    let mut cols_of: Vec<Vec<usize>> = vec![Vec::new(); *ncolors];
+    let ncolors = *ncolors;
+    if ncolors == 0 {
+        return pattern.clone();
+    }
+    let base = &f0[..n];
+    if ncolors == 1
+        && color.as_slice() == [0]
+        && let [initial] = y
+    {
+        let step = f64::EPSILON.sqrt() * initial.abs().max(1e-5);
+        let mut values = [0.0];
+        f(t, &[*initial + step], &mut values);
+        let mut out = pattern.clone();
+        out.values.fill((values[0] - base[0]) / step);
+        *nfev += 1;
+        return out;
+    }
+    let mut delta = f64_scratch(n);
+    delta.extend(y.iter().map(|v| f64::EPSILON.sqrt() * v.abs().max(1e-5)));
+    let mut counts = vec![0; ncolors];
+    for &class in color {
+        counts[class] += 1;
+    }
+    let mut columns: Vec<_> = counts.iter().copied().map(Vec::with_capacity).collect();
     for (j, &c) in color.iter().enumerate() {
-        cols_of[c].push(j);
+        columns[c].push(j);
     }
-    let diffs: Vec<Vec<f64>> = super::par::map_slice(&cols_of, 4, |cols| {
-        let mut yp = y.to_vec();
-        for &j in cols {
-            yp[j] = y[j] + delta[j];
+    let sample = |state: &mut [f64], group: usize, values: &mut [f64]| {
+        let members = &columns[group];
+        for &j in members {
+            state[j] = y[j] + delta[j];
         }
-        let mut fp = vec![0.0; n];
-        f(t, &yp, &mut fp);
-        (0..n).map(|i| fp[i] - f0[i]).collect()
-    });
-    *nfev += *ncolors;
+        f(t, state, values);
+        for &j in members {
+            state[j] = y[j];
+        }
+    };
+    let parallel = crate::execution::should_split(ncolors, 4);
+    let colors_per_job = if parallel {
+        ncolors.div_ceil(crate::execution::cpu_threads().saturating_mul(4))
+    } else {
+        ncolors
+    };
     let mut out = pattern.clone();
-    for i in 0..pattern.rows {
-        for k in pattern.indptr[i]..pattern.indptr[i + 1] {
-            let j = pattern.indices[k];
-            out.values[k] = diffs[color[j]][i] / delta[j];
+    // A few colours fit in flat scratch. With widely varying row lengths,
+    // recording only referenced entries bounds the extra storage by nnz.
+    if ncolors.saturating_mul(n) > pattern.indices.len().saturating_mul(8) {
+        fill_sparse_color_rows(
+            &mut out,
+            counts,
+            color,
+            y,
+            colors_per_job,
+            sample,
+            |row, column, values| (values[row] - base[row]) / delta[column],
+        );
+    } else {
+        let stride = n.max(1);
+        let mut values = f64_scratch(ncolors * stride);
+        values.resize(ncolors * stride, 0.0);
+        super::par::for_chunks_mut(&mut values, colors_per_job * stride, 2, |job, samples| {
+            let mut state = f64_scratch(n);
+            state.extend_from_slice(y);
+            for (local, values) in samples.chunks_exact_mut(stride).enumerate() {
+                sample(&mut state, job * colors_per_job + local, &mut values[..n]);
+            }
+        });
+        for (row, bounds) in pattern.indptr.windows(2).enumerate() {
+            for index in bounds[0]..bounds[1] {
+                let column = pattern.indices[index];
+                let sample = values[color[column] * stride + row];
+                out.values[index] = (sample - base[row]) / delta[column];
+            }
         }
     }
+    *nfev += ncolors;
     out
+}
+
+#[allow(
+    clippy::single_call_fn,
+    reason = "keeps sparse per-color storage separate from flat sample storage"
+)]
+fn fill_sparse_color_rows(
+    out: &mut Csr,
+    mut counts: Vec<usize>,
+    color: &[usize],
+    y: &[f64],
+    colors_per_job: usize,
+    sample: impl Fn(&mut [f64], usize, &mut [f64]) + Sync,
+    derivative: impl Fn(usize, usize, &[f64]) -> f64 + Sync,
+) {
+    struct Entry {
+        row: usize,
+        index: usize,
+        value: f64,
+    }
+    counts.fill(0);
+    for &column in &out.indices {
+        counts[color[column]] += 1;
+    }
+    let mut groups: Vec<Vec<Entry>> = counts.into_iter().map(Vec::with_capacity).collect();
+    for (row, bounds) in out.indptr.windows(2).enumerate() {
+        for index in bounds[0]..bounds[1] {
+            groups[color[out.indices[index]]].push(Entry {
+                row,
+                index,
+                value: 0.0,
+            });
+        }
+    }
+    let n = y.len();
+    let columns = &out.indices;
+    super::par::for_chunks_mut(&mut groups, colors_per_job, 2, |job, groups| {
+        let mut state = f64_scratch(n);
+        state.extend_from_slice(y);
+        let mut values = f64_scratch(n);
+        values.resize(n, 0.0);
+        for (local, entries) in groups.iter_mut().enumerate() {
+            values.fill(0.0);
+            sample(&mut state, job * colors_per_job + local, &mut values);
+            for entry in entries {
+                entry.value = derivative(entry.row, columns[entry.index], &values);
+            }
+        }
+    });
+    for entry in groups.into_iter().flatten() {
+        out.values[entry.index] = entry.value;
+    }
 }
 
 /// Assembles the triplets of the block system

@@ -1,3 +1,5 @@
+//! Block sparse row (BSR) matrices: block matvec, transpose, product, block Jacobi and block ILU(0).
+//!
 //! # Block sparse row (BSR) matrices
 //!
 //! A [`Bsr`] stores a matrix as a grid of dense `br x bc` blocks, in
@@ -29,7 +31,8 @@
 //!   (every output entry is the correctly rounded dot product of its row,
 //!   and padding contributes exact zeros); block rows are processed in
 //!   parallel from [`BSR_PAR_NNZ`] stored scalars on.
-//! * [`Bsr::transpose`], [`Bsr::matmul`], [`Bsr::diagonal_blocks`].
+//! * [`Bsr::transpose`], sparse [`Bsr::matmul`], dense batch
+//!   [`Bsr::matmul_dense`], and [`Bsr::diagonal_blocks`].
 //! * [`Bsr::block_jacobi`] ([`BlockJacobi`]) and [`Bsr::bilu0`] ([`Bilu0`])
 //!   are block preconditioners for the matrix-free Krylov solvers in
 //!   [`crate::kernels::krylov`]: wrap `apply` in a closure.
@@ -43,6 +46,10 @@
 
 use super::krylov::Csr;
 use super::krylov::dot_exact;
+use std::collections::HashMap;
+
+#[path = "bsr/product.rs"]
+mod product;
 
 /// Stored scalars from which [`Bsr::matvec`] runs in parallel.
 pub const BSR_PAR_NNZ: usize = 60_000;
@@ -77,7 +84,7 @@ pub enum BsrError {
         /// The block row.
         block_row: usize,
     },
-    /// A representation invariant is violated.
+    /// A storage shape, allocation, or representation invariant is invalid.
     Invalid(String),
 }
 
@@ -128,7 +135,7 @@ pub struct Bsr {
     pub values: Vec<f64>,
 }
 
-const fn check_block(
+fn check_block(
     nrows: usize,
     ncols: usize,
     br: usize,
@@ -149,14 +156,113 @@ const fn check_block(
             block: bc,
         });
     }
+    br.checked_mul(bc).ok_or_else(size_error)?;
     Ok(())
+}
+
+fn size_error() -> BsrError {
+    BsrError::Invalid("sparse storage exceeds representable or available allocation size".into())
+}
+
+fn filled<T: Clone>(
+    len: usize,
+    value: T,
+) -> Result<Vec<T>, BsrError> {
+    let mut data = Vec::new();
+    data.try_reserve_exact(len).map_err(|_| size_error())?;
+    data.resize(len, value);
+    Ok(data)
+}
+
+fn extend_zeros(
+    values: &mut Vec<f64>,
+    len: usize,
+) -> Result<(), BsrError> {
+    values
+        .try_reserve(len.saturating_sub(values.len()))
+        .map_err(|_| size_error())?;
+    values.resize(len, 0.0);
+    Ok(())
+}
+
+fn validate_csr(csr: &Csr) -> Result<(), BsrError> {
+    if csr.rows.checked_add(1) != Some(csr.indptr.len())
+        || csr.indices.len() != csr.values.len()
+        || csr.indptr.first() != Some(&0)
+        || csr.indptr.last() != Some(&csr.indices.len())
+        || csr.indptr.windows(2).any(|w| w[0] > w[1])
+        || csr.indices.iter().any(|&col| col >= csr.cols)
+    {
+        return Err(BsrError::Invalid("malformed CSR arrays".into()));
+    }
+    Ok(())
+}
+
+/// A dense address table for modest column counts, with sparse storage for
+/// shapes whose empty columns would otherwise dominate memory and runtime.
+enum BlockSlots {
+    Dense(Vec<usize>),
+    Sparse(HashMap<usize, usize>),
+}
+
+impl BlockSlots {
+    fn new(
+        cols: usize,
+        possible_entries: usize,
+    ) -> Result<Self, BsrError> {
+        let dense_limit = possible_entries.saturating_mul(4).clamp(1024, 262_144);
+        if cols <= dense_limit {
+            Ok(Self::Dense(filled(cols, usize::MAX)?))
+        } else {
+            Ok(Self::Sparse(HashMap::new()))
+        }
+    }
+
+    fn get(
+        &self,
+        column: usize,
+    ) -> Option<usize> {
+        match self {
+            | Self::Dense(slots) => (slots[column] != usize::MAX).then_some(slots[column]),
+            | Self::Sparse(slots) => slots.get(&column).copied(),
+        }
+    }
+
+    fn insert(
+        &mut self,
+        column: usize,
+        index: usize,
+    ) -> Result<(), BsrError> {
+        match self {
+            | Self::Dense(slots) => slots[column] = index,
+            | Self::Sparse(slots) => {
+                slots.try_reserve(1).map_err(|_| size_error())?;
+                slots.insert(column, index);
+            },
+        }
+        Ok(())
+    }
+
+    fn clear(
+        &mut self,
+        columns: impl IntoIterator<Item = usize>,
+    ) {
+        match self {
+            | Self::Dense(slots) => {
+                for column in columns {
+                    slots[column] = usize::MAX;
+                }
+            },
+            | Self::Sparse(slots) => slots.clear(),
+        }
+    }
 }
 
 impl Bsr {
     /// An all-zero matrix with no stored blocks.
     ///
     /// # Errors
-    /// [`BsrError::ZeroBlock`] or [`BsrError::NotDivisible`].
+    /// A zero or incompatible block extent, or an unrepresentable allocation.
     pub fn zeros(
         nrows: usize,
         ncols: usize,
@@ -164,12 +270,13 @@ impl Bsr {
         bc: usize,
     ) -> Result<Self, BsrError> {
         check_block(nrows, ncols, br, bc)?;
+        let ptr_len = (nrows / br).checked_add(1).ok_or_else(size_error)?;
         Ok(Self {
             nrows,
             ncols,
             br,
             bc,
-            indptr: vec![0; nrows / br + 1],
+            indptr: filled(ptr_len, 0)?,
             indices: Vec::new(),
             values: Vec::new(),
         })
@@ -228,97 +335,95 @@ impl Bsr {
         let nbr = self.block_rows();
         let nbc = self.block_cols();
         let nb = self.indices.len();
-        if self.indptr.len() != nbr + 1 || self.indptr[0] != 0 || self.indptr[nbr] != nb {
+        if nbr.checked_add(1) != Some(self.indptr.len())
+            || self.indptr.first() != Some(&0)
+            || self.indptr.last() != Some(&nb)
+            || self.indptr.windows(2).any(|w| w[0] > w[1])
+        {
             return Err("block-row pointers do not match the indices".into());
         }
-        if self.values.len() != nb * self.br * self.bc {
+        if nb.checked_mul(self.br * self.bc) != Some(self.values.len()) {
             return Err("values do not hold br * bc scalars per block".into());
         }
-        for i in 0..nbr {
-            if self.indptr[i] > self.indptr[i + 1] {
-                return Err("block-row pointers are not monotone".into());
+        for row in self.indptr.windows(2) {
+            let columns = &self.indices[row[0]..row[1]];
+            if columns.iter().any(|&col| col >= nbc) {
+                return Err("block-column index out of range".into());
             }
-            for k in self.indptr[i]..self.indptr[i + 1] {
-                if self.indices[k] >= nbc {
-                    return Err("block-column index out of range".into());
-                }
-                if k > self.indptr[i] && self.indices[k - 1] >= self.indices[k] {
-                    return Err("block-column indices are not strictly increasing".into());
-                }
+            if columns.windows(2).any(|w| w[0] >= w[1]) {
+                return Err("block-column indices are not strictly increasing".into());
             }
         }
         Ok(())
     }
 
-    /// Converts a CSR matrix; a block is stored iff any of its entries is
-    /// nonzero, and the zeros inside a stored block are padding.
+    /// Converts a CSR matrix with one entry per coordinate. A block is stored
+    /// when it contains a nonzero, and zeros inside the block are padding.
     ///
     /// # Errors
-    /// [`BsrError::ZeroBlock`] or [`BsrError::NotDivisible`].
+    /// An incompatible block shape, malformed CSR arrays, or an
+    /// unrepresentable allocation.
     pub fn from_csr(
         csr: &Csr,
         br: usize,
         bc: usize,
     ) -> Result<Self, BsrError> {
         check_block(csr.rows, csr.cols, br, bc)?;
-        let nbr = csr.rows / br;
-        let nbc = csr.cols / bc;
+        validate_csr(csr)?;
+        let mut out = Self::zeros(csr.rows, csr.cols, br, bc)?;
+        if csr.indices.is_empty() {
+            return Ok(out);
+        }
         let bs = br * bc;
-        let mut indptr = vec![0usize; nbr + 1];
-        let mut indices: Vec<usize> = Vec::new();
-        let mut values: Vec<f64> = Vec::new();
-        // `slot[jb]` is the position of block column `jb` in the current block
-        // row, or `usize::MAX`.
-        let mut slot = vec![usize::MAX; nbc];
-        for ib in 0..nbr {
-            let first = indices.len();
+        let mut slot = BlockSlots::new(out.block_cols(), csr.indices.len())?;
+        for ib in 0..out.block_rows() {
+            let first = out.indices.len();
             for r in 0..br {
                 let row = ib * br + r;
                 for k in csr.indptr[row]..csr.indptr[row + 1] {
                     if csr.values[k] != 0.0 {
                         let jb = csr.indices[k] / bc;
-                        if slot[jb] == usize::MAX {
-                            slot[jb] = 0;
-                            indices.push(jb);
+                        if slot.get(jb).is_none() {
+                            slot.insert(jb, 0)?;
+                            out.indices.try_reserve(1).map_err(|_| size_error())?;
+                            out.indices.push(jb);
                         }
                     }
                 }
             }
-            indices[first..].sort_unstable();
-            values.resize(indices.len() * bs, 0.0);
-            for (offset, jb) in indices[first..].iter().enumerate() {
-                slot[*jb] = first + offset;
+            let columns = &mut out.indices[first..];
+            columns.sort_unstable();
+            extend_zeros(
+                &mut out.values,
+                out.indices.len().checked_mul(bs).ok_or_else(size_error)?,
+            )?;
+            for (offset, &jb) in out.indices[first..].iter().enumerate() {
+                slot.insert(jb, first + offset)?;
             }
             for r in 0..br {
                 let row = ib * br + r;
                 for k in csr.indptr[row]..csr.indptr[row + 1] {
                     if csr.values[k] != 0.0 {
                         let col = csr.indices[k];
-                        let at = slot[col / bc];
-                        values[at * bs + r * bc + col % bc] = csr.values[k];
+                        let at = slot.get(col / bc).ok_or_else(|| {
+                            BsrError::Invalid("converted CSR block is missing".into())
+                        })?;
+                        out.values[at * bs + r * bc + col % bc] = csr.values[k];
                     }
                 }
             }
-            for jb in &indices[first..] {
-                slot[*jb] = usize::MAX;
-            }
-            indptr[ib + 1] = indices.len();
+            slot.clear(out.indices[first..].iter().copied());
+            out.indptr[ib + 1] = out.indices.len();
         }
-        Ok(Self {
-            nrows: csr.rows,
-            ncols: csr.cols,
-            br,
-            bc,
-            indptr,
-            indices,
-            values,
-        })
+        Ok(out)
     }
 
-    /// Builds a matrix from `(row, col, value)` triplets (duplicates summed).
+    /// Builds a matrix from `(row, col, value)` triplets. Out-of-range
+    /// triplets are ignored, duplicate coordinates are summed in input order,
+    /// and canceling blocks are omitted.
     ///
     /// # Errors
-    /// [`BsrError::ZeroBlock`] or [`BsrError::NotDivisible`].
+    /// An incompatible block shape or an unrepresentable allocation.
     pub fn from_triplets(
         nrows: usize,
         ncols: usize,
@@ -326,18 +431,60 @@ impl Bsr {
         bc: usize,
         trip: &[(usize, usize, f64)],
     ) -> Result<Self, BsrError> {
-        check_block(nrows, ncols, br, bc)?;
-        Self::from_csr(&Csr::from_triplets(nrows, ncols, trip), br, bc)
+        let mut out = Self::zeros(nrows, ncols, br, bc)?;
+        let bs = br * bc;
+        let mut entries = Vec::new();
+        entries
+            .try_reserve_exact(trip.len())
+            .map_err(|_| size_error())?;
+        entries.extend(
+            trip.iter()
+                .filter(|&&(row, col, _)| row < nrows && col < ncols)
+                .map(|&(row, col, value)| (row / br, col / bc, (row % br) * bc + col % bc, value)),
+        );
+        entries.sort_by_key(|&(row, col, entry, _)| (row, col, entry));
+        for block in entries.chunk_by(|a, b| (a.0, a.1) == (b.0, b.1)) {
+            let (ib, jb, _, _) = block[0];
+            let offset = out.values.len();
+            for duplicates in block.chunk_by(|a, b| a.2 == b.2) {
+                let (_, _, at, first) = duplicates[0];
+                let value = duplicates[1..]
+                    .iter()
+                    .fold(first, |total, &(_, _, _, value)| total + value);
+                if value == 0.0 {
+                    continue;
+                }
+                if out.values.len() == offset {
+                    extend_zeros(
+                        &mut out.values,
+                        offset.checked_add(bs).ok_or_else(size_error)?,
+                    )?;
+                    out.indices.try_reserve(1).map_err(|_| size_error())?;
+                    out.indices.push(jb);
+                    out.indptr[ib + 1] += 1;
+                }
+                out.values[offset + at] = value;
+            }
+        }
+        for ib in 0..out.block_rows() {
+            out.indptr[ib + 1] += out.indptr[ib];
+        }
+        Ok(out)
     }
 
     /// Converts to CSR, dropping the zeros inside blocks.
+    ///
+    /// # Panics
+    /// A malformed matrix or a scalar row count too large for the CSR
+    /// row-pointer array can panic.
     #[must_use]
     pub fn to_csr(&self) -> Csr {
         let nbr = self.block_rows();
         let bs = self.br * self.bc;
         let mut indptr = vec![0usize; self.nrows + 1];
-        let mut indices = Vec::with_capacity(self.nnz());
-        let mut values = Vec::with_capacity(self.nnz());
+        let nnz = self.nnz();
+        let mut indices = Vec::with_capacity(nnz);
+        let mut values = Vec::with_capacity(nnz);
         for ib in 0..nbr {
             for r in 0..self.br {
                 for k in self.indptr[ib]..self.indptr[ib + 1] {
@@ -361,18 +508,37 @@ impl Bsr {
         }
     }
 
-    /// One output row of the product: the correctly rounded dot product.
-    fn row_dot(
+    /// Scalar entries of a row in ascending column order, skipping padding.
+    fn row_entries(
         &self,
         ib: usize,
         r: usize,
-        x: &[f64],
-    ) -> f64 {
+    ) -> impl Iterator<Item = (usize, f64)> + Clone + '_ {
         let (bs, bc) = (self.br * self.bc, self.bc);
-        let (values, indices) = (&self.values, &self.indices);
-        dot_exact((self.indptr[ib]..self.indptr[ib + 1]).flat_map(move |k| {
-            (0..bc).map(move |c| (values[k * bs + r * bc + c], x[indices[k] * bc + c]))
-        }))
+        let row_start = r * bc;
+        (self.indptr[ib]..self.indptr[ib + 1]).flat_map(move |k| {
+            let offset = k * bs + row_start;
+            let column = self.indices[k] * bc;
+            self.values[offset..offset + bc]
+                .iter()
+                .copied()
+                .enumerate()
+                .filter(|&(_, value)| value != 0.0)
+                .map(move |(c, value)| (column + c, value))
+        })
+    }
+
+    fn write_matvec_rows(
+        &self,
+        first: usize,
+        x: &[f64],
+        y: &mut [f64],
+    ) {
+        for (ib, block) in y.chunks_mut(self.br).enumerate() {
+            for (r, value) in block.iter_mut().enumerate() {
+                *value = dot_exact(self.row_entries(first + ib, r).map(|(c, a)| (a, x[c])));
+            }
+        }
     }
 
     /// Matrix-vector product `y = A x`.
@@ -380,7 +546,11 @@ impl Bsr {
     /// Every entry of `y` is the correctly rounded dot product of its row, so
     /// the result equals [`Csr::matvec`] of [`Bsr::to_csr`] bit for bit,
     /// whatever the block shape; block rows run in parallel for large
-    /// matrices without changing a bit.
+    /// matrices without changing a bit. Only the first `min(y.len(), nrows)`
+    /// output entries are written.
+    ///
+    /// # Panics
+    /// A malformed matrix or an input missing a referenced entry can panic.
     pub fn matvec(
         &self,
         x: &[f64],
@@ -388,24 +558,67 @@ impl Bsr {
     ) {
         let rows = self.nrows.min(y.len());
         if self.values.len() >= BSR_PAR_NNZ {
-            let chunk = BSR_CHUNK_ROWS * self.br;
+            let chunk = BSR_CHUNK_ROWS.saturating_mul(self.br);
             super::par::for_chunks_mut(&mut y[..rows], chunk, 2, |b, block| {
-                for (r, slot) in block.iter_mut().enumerate() {
-                    let row = b * chunk + r;
-                    *slot = self.row_dot(row / self.br, row % self.br, x);
-                }
+                self.write_matvec_rows(b * BSR_CHUNK_ROWS, x, block);
             });
         } else {
-            for row in 0..rows {
-                y[row] = self.row_dot(row / self.br, row % self.br, x);
-            }
+            self.write_matvec_rows(0, x, &mut y[..rows]);
         }
+    }
+
+    /// Multiplies a row-major dense matrix of shape `(ncols, rhs_cols)` by
+    /// this BSR matrix on the left. Returns row-major `(nrows, rhs_cols)`.
+    /// Each output is rounded once from the exact dot product, so running
+    /// [`Self::matvec`] on each RHS column gives the same bits.
+    ///
+    /// # Errors
+    /// A malformed BSR matrix, a dense operand that disagrees with its given
+    /// width, or an unrepresentable or unavailable output allocation.
+    pub fn matmul_dense(
+        &self,
+        x: &[f64],
+        rhs_cols: usize,
+    ) -> Result<Vec<f64>, BsrError> {
+        self.validate().map_err(BsrError::Invalid)?;
+        if self.ncols.checked_mul(rhs_cols) != Some(x.len()) {
+            return Err(BsrError::ShapeMismatch(format!(
+                "dense right-hand side has {} entries for {} rows and {rhs_cols} columns",
+                x.len(),
+                self.ncols
+            )));
+        }
+        let len = self.nrows.checked_mul(rhs_cols).ok_or_else(size_error)?;
+        let mut output = filled(len, 0.0)?;
+        if self.indices.is_empty() || len == 0 {
+            return Ok(output);
+        }
+        let write = |first, output: &mut [f64]| {
+            for (offset, cell) in output.iter_mut().enumerate() {
+                let index = first + offset;
+                let row = index / rhs_cols;
+                let rhs = index % rhs_cols;
+                let entries = self.row_entries(row / self.br, row % self.br);
+                *cell = dot_exact(entries.map(|(c, a)| (a, x[c * rhs_cols + rhs])));
+            }
+        };
+        if self.stored_len().saturating_mul(rhs_cols) >= BSR_PAR_NNZ {
+            let chunk = 512;
+            super::par::for_chunks_mut(&mut output, chunk, 2, |b, out| write(b * chunk, out));
+        } else {
+            write(0, &mut output);
+        }
+        Ok(output)
     }
 
     /// Transposed product `y = A^T x` (`y` has `ncols` entries).
     ///
-    /// Accumulates block by block in plain `f64`, so it is *not* required to
-    /// match `transpose().matvec` bit for bit.
+    /// Accumulates block by block in plain `f64`, which can round differently
+    /// from the exact dot products in `transpose().matvec`.
+    ///
+    /// # Panics
+    /// A malformed matrix or slices shorter than the corresponding extents
+    /// can panic.
     pub fn matvec_transpose(
         &self,
         x: &[f64],
@@ -419,7 +632,10 @@ impl Bsr {
                 for r in 0..self.br {
                     let xr = x[ib * self.br + r];
                     for c in 0..self.bc {
-                        y[jb * self.bc + c] += self.values[k * bs + r * self.bc + c] * xr;
+                        let a = self.values[k * bs + r * self.bc + c];
+                        if a != 0.0 {
+                            y[jb * self.bc + c] += a * xr;
+                        }
                     }
                 }
             }
@@ -427,6 +643,10 @@ impl Bsr {
     }
 
     /// The transpose, with block shape `(bc, br)`.
+    ///
+    /// # Panics
+    /// A malformed matrix or a block-column count too large for the
+    /// transposed row-pointer array can panic.
     #[must_use]
     pub fn transpose(&self) -> Self {
         let (nbr, nbc) = (self.block_rows(), self.block_cols());
@@ -467,10 +687,13 @@ impl Bsr {
 
     /// The product `A B`; block shape `(self.br, other.bc)`.
     ///
-    /// Blocks that cancel to exactly zero are not stored.
+    /// Blocks that cancel to exactly zero are omitted. Large products share
+    /// independent ranges of block rows across workers while keeping the
+    /// accumulation order within each output block fixed.
     ///
     /// # Errors
-    /// [`BsrError::ShapeMismatch`] when the inner extents or block sizes differ.
+    /// Different inner extents or block sizes, malformed sparse arrays, or
+    /// an unrepresentable or unavailable sparse allocation.
     pub fn matmul(
         &self,
         other: &Self,
@@ -488,95 +711,71 @@ impl Bsr {
                 other.bc
             )));
         }
-        let (m, k, n) = (self.br, self.bc, other.bc);
-        let nbr = self.block_rows();
-        let nbc = other.block_cols();
-        let out_bs = m * n;
-        let mut indptr = vec![0usize; nbr + 1];
-        let mut indices: Vec<usize> = Vec::new();
-        let mut values: Vec<f64> = Vec::new();
-        let mut slot = vec![usize::MAX; nbc];
-        let mut acc: Vec<f64> = Vec::new();
-        let mut cols: Vec<usize> = Vec::new();
-        for ib in 0..nbr {
-            acc.clear();
-            cols.clear();
-            for ka in self.indptr[ib]..self.indptr[ib + 1] {
-                let mid = self.indices[ka];
-                let a = &self.values[ka * m * k..(ka + 1) * m * k];
-                for kb in other.indptr[mid]..other.indptr[mid + 1] {
-                    let jb = other.indices[kb];
-                    if slot[jb] == usize::MAX {
-                        slot[jb] = cols.len();
-                        cols.push(jb);
-                        acc.resize(cols.len() * out_bs, 0.0);
-                    }
-                    let b = &other.values[kb * k * n..(kb + 1) * k * n];
-                    let c = &mut acc[slot[jb] * out_bs..(slot[jb] + 1) * out_bs];
-                    gemm_acc(c, a, b, m, k, n, 1.0);
-                }
-            }
-            let mut order: Vec<usize> = (0..cols.len()).collect();
-            order.sort_unstable_by_key(|p| cols[*p]);
-            for p in order {
-                let block = &acc[p * out_bs..(p + 1) * out_bs];
-                if block.iter().any(|v| *v != 0.0) {
-                    indices.push(cols[p]);
-                    values.extend_from_slice(block);
-                }
-            }
-            for jb in &cols {
-                slot[*jb] = usize::MAX;
-            }
-            indptr[ib + 1] = indices.len();
-        }
-        Ok(Self {
-            nrows: self.nrows,
-            ncols: other.ncols,
-            br: m,
-            bc: n,
-            indptr,
-            indices,
-            values,
-        })
+        self.validate().map_err(BsrError::Invalid)?;
+        other.validate().map_err(BsrError::Invalid)?;
+        product::matmul(self, other)
     }
 
     /// The square diagonal blocks, one dense row-major `b x b` block per block
     /// row (all zero when the block is not stored).
     ///
     /// # Errors
-    /// [`BsrError::NotSquare`] unless the matrix and its blocks are square.
+    /// Non-square or malformed input, or an unrepresentable allocation.
     pub fn diagonal_blocks(&self) -> Result<Vec<Vec<f64>>, BsrError> {
+        let bs = self.square_block_area()?;
+        let mut diagonal = Vec::new();
+        diagonal
+            .try_reserve_exact(self.block_rows())
+            .map_err(|_| size_error())?;
+        for block_row in 0..self.block_rows() {
+            let mut block = filled(bs, 0.0)?;
+            if let Some(k) = self.diagonal_index(block_row) {
+                block.copy_from_slice(&self.values[k * bs..(k + 1) * bs]);
+            }
+            diagonal.push(block);
+        }
+        Ok(diagonal)
+    }
+
+    fn square_block_area(&self) -> Result<usize, BsrError> {
         if self.nrows != self.ncols || self.br != self.bc {
             return Err(BsrError::NotSquare);
         }
-        let bs = self.br * self.bc;
-        Ok((0..self.block_rows())
-            .map(|ib| {
-                let row = &self.indices[self.indptr[ib]..self.indptr[ib + 1]];
-                row.binary_search(&ib).map_or_else(
-                    |_| vec![0.0; bs],
-                    |p| {
-                        let k = self.indptr[ib] + p;
-                        self.values[k * bs..(k + 1) * bs].to_vec()
-                    },
-                )
-            })
-            .collect())
+        self.validate().map_err(BsrError::Invalid)?;
+        Ok(self.br * self.bc)
+    }
+
+    fn diagonal_index(
+        &self,
+        block_row: usize,
+    ) -> Option<usize> {
+        let start = self.indptr[block_row];
+        let end = self.indptr[block_row + 1];
+        let offset = self.indices[start..end].binary_search(&block_row).ok()?;
+        Some(start + offset)
     }
 
     /// Block-Jacobi preconditioner: the inverse of every diagonal block.
     ///
     /// # Errors
-    /// [`BsrError::NotSquare`], or [`BsrError::SingularBlock`] for the first
-    /// block row whose diagonal block is singular (or not stored).
+    /// Non-square or malformed input, an unrepresentable allocation, or
+    /// [`BsrError::SingularBlock`] for the first absent or singular diagonal.
     pub fn block_jacobi(&self) -> Result<BlockJacobi, BsrError> {
         let b = self.br;
-        let bs = b * b;
-        let mut inverse = Vec::with_capacity(self.block_rows() * bs);
-        for (ib, block) in self.diagonal_blocks()?.iter().enumerate() {
-            let inv = invert(block, b).ok_or(BsrError::SingularBlock { block_row: ib })?;
-            inverse.extend_from_slice(&inv);
+        let bs = self.square_block_area()?;
+        let rows = self.block_rows();
+        let mut inverse = filled(rows.checked_mul(bs).ok_or_else(size_error)?, 0.0)?;
+        if rows != 0 {
+            let mut workspace = BlockInverse::new(b, bs)?;
+            for (block_row, output) in inverse.chunks_exact_mut(bs).enumerate() {
+                let missing = BsrError::SingularBlock { block_row };
+                let k = self
+                    .diagonal_index(block_row)
+                    .ok_or(BsrError::SingularBlock { block_row })?;
+                if !workspace.invert(&self.values[k * bs..(k + 1) * bs], output) {
+                    return Err(missing);
+                }
+            }
         }
         Ok(BlockJacobi { b, inverse })
     }
@@ -584,65 +783,65 @@ impl Bsr {
     /// Block ILU(0): incomplete block LU keeping the block sparsity pattern.
     ///
     /// # Errors
-    /// [`BsrError::NotSquare`], [`BsrError::MissingDiagonal`] when a diagonal
-    /// block is not stored, [`BsrError::SingularBlock`] for a singular pivot.
+    /// Non-square or malformed input, an unrepresentable allocation,
+    /// [`BsrError::MissingDiagonal`] for an absent block, or
+    /// [`BsrError::SingularBlock`] for a singular pivot.
     pub fn bilu0(&self) -> Result<Bilu0, BsrError> {
-        if self.nrows != self.ncols || self.br != self.bc {
-            return Err(BsrError::NotSquare);
-        }
         let b = self.br;
-        let bs = b * b;
+        let bs = self.square_block_area()?;
         let nbr = self.block_rows();
         let mut lu = self.clone();
-        let mut diag = vec![0usize; nbr];
-        let mut inv_diag = vec![0.0; nbr * bs];
+        let mut diag = filled(nbr, 0usize)?;
+        let mut inv_diag = filled(nbr.checked_mul(bs).ok_or_else(size_error)?, 0.0)?;
+        if nbr == 0 {
+            return Ok(Bilu0 { lu, diag, inv_diag });
+        }
         // Position of block column `j` inside the current block row.
-        let mut pos = vec![usize::MAX; nbr];
-        let mut tmp = vec![0.0; bs];
+        let mut pos = filled(nbr, usize::MAX)?;
+        let mut tmp = filled(bs, 0.0)?;
+        let mut workspace = BlockInverse::new(b, bs)?;
         for i in 0..nbr {
             let (start, end) = (lu.indptr[i], lu.indptr[i + 1]);
             for k in start..end {
                 pos[lu.indices[k]] = k;
             }
-            let Some(d) = (start..end).find(|k| lu.indices[*k] == i) else {
+            let d = pos[i];
+            if d == usize::MAX {
                 return Err(BsrError::MissingDiagonal { block_row: i });
-            };
+            }
             diag[i] = d;
+            // The U row used in an update was factored earlier. Splitting
+            // here borrows its factors without copying a block per update.
+            let (previous, remaining) = lu.values.split_at_mut(start * bs);
             for ik in start..d {
                 let k = lu.indices[ik];
                 // L_ik = A_ik * inv(U_kk)
+                let offset = (ik - start) * bs;
                 tmp.fill(0.0);
                 gemm_acc(
                     &mut tmp,
-                    &lu.values[ik * bs..(ik + 1) * bs],
+                    &remaining[offset..offset + bs],
                     &inv_diag[k * bs..(k + 1) * bs],
-                    b,
                     b,
                     b,
                     1.0,
                 );
-                lu.values[ik * bs..(ik + 1) * bs].copy_from_slice(&tmp);
+                remaining[offset..offset + bs].copy_from_slice(&tmp);
                 // A_ij -= L_ik * U_kj for j > k inside the pattern of row i.
                 for kj in (diag[k] + 1)..lu.indptr[k + 1] {
                     let j = lu.indices[kj];
                     if pos[j] != usize::MAX {
-                        let u = lu.values[kj * bs..(kj + 1) * bs].to_vec();
-                        let at = pos[j];
-                        gemm_acc(
-                            &mut lu.values[at * bs..(at + 1) * bs],
-                            &tmp,
-                            &u,
-                            b,
-                            b,
-                            b,
-                            -1.0,
-                        );
+                        let u = &previous[kj * bs..(kj + 1) * bs];
+                        let offset = (pos[j] - start) * bs;
+                        gemm_acc(&mut remaining[offset..offset + bs], &tmp, u, b, b, -1.0);
                     }
                 }
             }
-            let pivot = &lu.values[d * bs..(d + 1) * bs];
-            let inv = invert(pivot, b).ok_or(BsrError::SingularBlock { block_row: i })?;
-            inv_diag[i * bs..(i + 1) * bs].copy_from_slice(&inv);
+            let offset = (d - start) * bs;
+            let pivot = &remaining[offset..offset + bs];
+            if !workspace.invert(pivot, &mut inv_diag[i * bs..(i + 1) * bs]) {
+                return Err(BsrError::SingularBlock { block_row: i });
+            }
             for k in start..end {
                 pos[lu.indices[k]] = usize::MAX;
             }
@@ -656,35 +855,51 @@ fn gemm_acc(
     c: &mut [f64],
     a: &[f64],
     b: &[f64],
-    m: usize,
     k: usize,
     n: usize,
     alpha: f64,
 ) {
-    for i in 0..m {
-        for p in 0..k {
-            let aip = alpha * a[i * k + p];
+    for (c_row, a_row) in c.chunks_exact_mut(n).zip(a.chunks_exact(k)) {
+        for (&aip, b_row) in a_row.iter().zip(b.chunks_exact(n)) {
+            let aip = alpha * aip;
             if aip != 0.0 {
-                for j in 0..n {
-                    c[i * n + j] += aip * b[p * n + j];
+                for (value, &bpj) in c_row.iter_mut().zip(b_row) {
+                    *value += aip * bpj;
                 }
             }
         }
     }
 }
 
-/// LU with partial pivoting of the `n x n` row-major matrix `a`; returns the
-/// packed factors and the row permutation, or `None` when singular.
+/// In-place LU with partial pivoting. Returns the scale applied before
+/// factorization or `None` if it breaks down.
+#[allow(
+    clippy::single_call_fn,
+    reason = "factorization and inverse solves have distinct invariants"
+)]
 fn lu_factor(
-    a: &[f64],
+    lu: &mut [f64],
+    perm: &mut [usize],
     n: usize,
-) -> Option<(Vec<f64>, Vec<usize>)> {
-    let mut lu = a.to_vec();
-    let scale = lu.iter().fold(0.0_f64, |m, v| m.max(v.abs()));
-    if scale == 0.0 || !scale.is_finite() {
+) -> Option<f64> {
+    let scale = lu.iter().try_fold(0.0_f64, |largest, value| {
+        value.is_finite().then_some(largest.max(value.abs()))
+    })?;
+    if scale == 0.0 {
         return None;
     }
-    let mut perm: Vec<usize> = (0..n).collect();
+    let (pivot_scale, normalization) = if (1e-150..=1e150).contains(&scale) {
+        (scale, 1.0)
+    } else {
+        for value in &mut *lu {
+            *value /= scale;
+        }
+        (1.0, scale)
+    };
+    let min_pivot = f64::EPSILON * pivot_scale;
+    for (i, at) in perm.iter_mut().enumerate() {
+        *at = i;
+    }
     for col in 0..n {
         let mut best = col;
         for r in (col + 1)..n {
@@ -692,7 +907,8 @@ fn lu_factor(
                 best = r;
             }
         }
-        if lu[best * n + col].abs() <= f64::EPSILON * scale {
+        let pivot = lu[best * n + col];
+        if !pivot.is_finite() || pivot.abs() <= min_pivot {
             return None;
         }
         if best != col {
@@ -709,37 +925,67 @@ fn lu_factor(
             }
         }
     }
-    Some((lu, perm))
+    Some(normalization)
 }
 
-/// The inverse of an `n x n` row-major matrix by LU, or `None` if singular.
-fn invert(
-    a: &[f64],
+/// Work buffers shared by all block inversions in one factorization.
+struct BlockInverse {
     n: usize,
-) -> Option<Vec<f64>> {
-    let (lu, perm) = lu_factor(a, n)?;
-    let mut inverse = vec![0.0; n * n];
-    let mut col = vec![0.0; n];
-    for e in 0..n {
-        for r in 0..n {
-            col[r] = if perm[r] == e { 1.0 } else { 0.0 };
-        }
-        for r in 0..n {
-            for c in 0..r {
-                col[r] -= lu[r * n + c] * col[c];
-            }
-        }
-        for r in (0..n).rev() {
-            for c in (r + 1)..n {
-                col[r] -= lu[r * n + c] * col[c];
-            }
-            col[r] /= lu[r * n + r];
-        }
-        for r in 0..n {
-            inverse[r * n + e] = col[r];
-        }
+    lu: Vec<f64>,
+    perm: Vec<usize>,
+    col: Vec<f64>,
+}
+
+impl BlockInverse {
+    fn new(
+        n: usize,
+        area: usize,
+    ) -> Result<Self, BsrError> {
+        Ok(Self {
+            n,
+            lu: filled(area, 0.0)?,
+            perm: filled(n, 0)?,
+            col: filled(n, 0.0)?,
+        })
     }
-    inverse.iter().all(|v| v.is_finite()).then_some(inverse)
+
+    fn invert(
+        &mut self,
+        block: &[f64],
+        output: &mut [f64],
+    ) -> bool {
+        let n = self.n;
+        self.lu.copy_from_slice(block);
+        let Some(normalization) = lu_factor(&mut self.lu, &mut self.perm, n) else {
+            return false;
+        };
+        let (lu, perm, col) = (&self.lu, &self.perm, &mut self.col);
+        for e in 0..n {
+            for r in 0..n {
+                col[r] = if perm[r] == e { 1.0 } else { 0.0 };
+            }
+            for r in 0..n {
+                for c in 0..r {
+                    col[r] -= lu[r * n + c] * col[c];
+                }
+            }
+            for r in (0..n).rev() {
+                for c in (r + 1)..n {
+                    col[r] -= lu[r * n + c] * col[c];
+                }
+                col[r] /= lu[r * n + r];
+            }
+            for r in 0..n {
+                output[r * n + e] = col[r];
+            }
+        }
+        if normalization.to_bits() != 1.0_f64.to_bits() {
+            for value in &mut *output {
+                *value /= normalization;
+            }
+        }
+        output.iter().all(|v| v.is_finite())
+    }
 }
 
 /// `y = M x` for a row-major `n x n` block.
@@ -769,6 +1015,9 @@ impl BlockJacobi {
     }
 
     /// `z = M^-1 r`, block by block.
+    ///
+    /// # Panics
+    /// A slice shorter than the matrix extent can panic.
     pub fn apply(
         &self,
         r: &[f64],
@@ -794,6 +1043,9 @@ pub struct Bilu0 {
 
 impl Bilu0 {
     /// `z = (L U)^-1 r`: block forward then backward substitution.
+    ///
+    /// # Panics
+    /// A slice shorter than the matrix extent can panic.
     pub fn apply(
         &self,
         r: &[f64],
@@ -802,8 +1054,11 @@ impl Bilu0 {
         let b = self.lu.br;
         let bs = b * b;
         let nbr = self.lu.block_rows();
-        let mut tmp = vec![0.0; b];
-        let mut acc = vec![0.0; b];
+        if nbr == 0 {
+            return;
+        }
+        let mut acc = super::reuse::f64_scratch(b);
+        acc.resize(b, 0.0);
         // L y = r (y stored in z)
         for i in 0..nbr {
             acc.copy_from_slice(&r[i * b..(i + 1) * b]);
@@ -830,38 +1085,49 @@ impl Bilu0 {
                     }
                 }
             }
-            block_apply(&self.inv_diag[i * bs..(i + 1) * bs], b, &acc, &mut tmp);
-            z[i * b..(i + 1) * b].copy_from_slice(&tmp);
+            block_apply(
+                &self.inv_diag[i * bs..(i + 1) * bs],
+                b,
+                &acc,
+                &mut z[i * b..(i + 1) * b],
+            );
         }
     }
 }
 
-/// Number of distinct `br x bc` blocks holding a nonzero, and the number of
-/// nonzeros of `csr`.
+/// Number of distinct `br x bc` blocks holding a nonzero.
+#[allow(
+    clippy::single_call_fn,
+    reason = "keep the candidate traversal separate from ranking"
+)]
 fn count_blocks(
     csr: &Csr,
     br: usize,
     bc: usize,
-) -> (usize, usize) {
+) -> Result<usize, BsrError> {
     let nbr = csr.rows / br;
-    let mut mark = vec![usize::MAX; csr.cols / bc];
-    let (mut blocks, mut nnz) = (0usize, 0usize);
+    let mut mark = BlockSlots::new(csr.cols / bc, csr.values.len())?;
+    let mut columns = Vec::new();
+    let mut blocks = 0;
     for ib in 0..nbr {
         for r in 0..br {
             let row = ib * br + r;
             for k in csr.indptr[row]..csr.indptr[row + 1] {
                 if csr.values[k] != 0.0 {
-                    nnz += 1;
                     let jb = csr.indices[k] / bc;
-                    if mark[jb] != ib {
-                        mark[jb] = ib;
-                        blocks += 1;
+                    if mark.get(jb).is_none() {
+                        mark.insert(jb, 0)?;
+                        columns.try_reserve(1).map_err(|_| size_error())?;
+                        columns.push(jb);
                     }
                 }
             }
         }
+        blocks += columns.len();
+        mark.clear(columns.iter().copied());
+        columns.clear();
     }
-    (blocks, nnz)
+    Ok(blocks)
 }
 
 /// Picks the block shape for `csr` among `candidates`.
@@ -869,8 +1135,8 @@ fn count_blocks(
 /// A candidate qualifies when it divides the matrix shape and its fill ratio
 /// (stored scalars per true nonzero, see [`Bsr::fill_ratio`]) is at most
 /// [`MAX_FILL_RATIO`]. The largest qualifying block wins, ties going to the
-/// lower fill ratio; with no qualifying candidate (or no nonzeros) the answer
-/// is `(1, 1)`.
+/// lower fill ratio. The result is `(1, 1)` for malformed CSR arrays or
+/// when no candidate qualifies.
 #[must_use]
 pub fn choose_block_size(
     csr: &Csr,
@@ -878,16 +1144,25 @@ pub fn choose_block_size(
 ) -> (usize, usize) {
     let mut best = (1usize, 1usize);
     let mut best_key = (1usize, f64::INFINITY);
+    if validate_csr(csr).is_err() {
+        return best;
+    }
+    let nnz = csr.values.iter().filter(|&&value| value != 0.0).count();
+    if nnz == 0 {
+        return best;
+    }
     for &(br, bc) in candidates {
-        if br == 0 || bc == 0 || !csr.rows.is_multiple_of(br) || !csr.cols.is_multiple_of(bc) {
+        if check_block(csr.rows, csr.cols, br, bc).is_err() {
             continue;
         }
-        let (blocks, nnz) = count_blocks(csr, br, bc);
-        if nnz == 0 {
-            continue;
-        }
-        let ratio = (blocks * br * bc) as f64 / nnz as f64;
         let area = br * bc;
+        if area < best_key.0 {
+            continue;
+        }
+        let Ok(blocks) = count_blocks(csr, br, bc) else {
+            continue;
+        };
+        let ratio = (blocks as f64 * area as f64) / nnz as f64;
         if ratio <= MAX_FILL_RATIO
             && (area > best_key.0 || (area == best_key.0 && ratio < best_key.1))
         {
@@ -899,343 +1174,5 @@ pub fn choose_block_size(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::kernels::krylov::cg;
-    use crate::kernels::random::Rng;
-
-    fn random_csr(
-        rng: &mut Rng,
-        rows: usize,
-        cols: usize,
-        density: f64,
-    ) -> Csr {
-        let mut trip = Vec::new();
-        for r in 0..rows {
-            for c in 0..cols {
-                if rng.uniform() < density {
-                    trip.push((r, c, rng.normal() + 0.1));
-                }
-            }
-        }
-        Csr::from_triplets(rows, cols, &trip)
-    }
-
-    fn dense(csr: &Csr) -> Vec<f64> {
-        let mut out = vec![0.0; csr.rows * csr.cols];
-        for r in 0..csr.rows {
-            for k in csr.indptr[r]..csr.indptr[r + 1] {
-                out[r * csr.cols + csr.indices[k]] = csr.values[k];
-            }
-        }
-        out
-    }
-
-    #[test]
-    fn roundtrip_csr_bsr_csr() {
-        let mut rng = Rng::new(1);
-        for (br, bc) in [(1, 1), (2, 3), (3, 2), (4, 3), (12, 18)] {
-            let csr = random_csr(&mut rng, 12, 18, 0.2);
-            let bsr = Bsr::from_csr(&csr, br, bc).unwrap();
-            assert_eq!(bsr.validate(), Ok(()));
-            assert_eq!(bsr.to_csr(), csr);
-            assert_eq!(bsr.nnz(), csr.values.len());
-        }
-    }
-
-    #[test]
-    fn matvec_equals_csr_bit_for_bit() {
-        let mut rng = Rng::new(2);
-        let csr = random_csr(&mut rng, 24, 30, 0.15);
-        let x: Vec<f64> = (0..30).map(|_| rng.normal()).collect();
-        let mut want = vec![0.0; 24];
-        csr.matvec(&x, &mut want);
-        for (br, bc) in [(1, 1), (2, 3), (4, 5), (3, 6)] {
-            let bsr = Bsr::from_csr(&csr, br, bc).unwrap();
-            let mut got = vec![9.0; 24];
-            bsr.matvec(&x, &mut got);
-            assert_eq!(got, want, "block {br}x{bc}");
-        }
-    }
-
-    #[test]
-    fn matvec_parallel_path_is_identical() {
-        let mut rng = Rng::new(3);
-        let n = 600;
-        let csr = random_csr(&mut rng, n, n, 0.2);
-        let bsr = Bsr::from_csr(&csr, 4, 4).unwrap();
-        assert!(bsr.stored_len() >= BSR_PAR_NNZ);
-        let x: Vec<f64> = (0..n).map(|_| rng.normal()).collect();
-        let (mut a, mut b) = (vec![0.0; n], vec![0.0; n]);
-        csr.matvec(&x, &mut a);
-        bsr.matvec(&x, &mut b);
-        assert_eq!(a, b);
-    }
-
-    #[test]
-    fn transpose_and_matvec_transpose() {
-        let mut rng = Rng::new(4);
-        let csr = random_csr(&mut rng, 12, 18, 0.25);
-        let bsr = Bsr::from_csr(&csr, 3, 2).unwrap();
-        let t = bsr.transpose();
-        assert_eq!((t.br, t.bc, t.nrows, t.ncols), (2, 3, 18, 12));
-        assert_eq!(t.validate(), Ok(()));
-        let d = dense(&csr);
-        let dt = dense(&t.to_csr());
-        for r in 0..12 {
-            for c in 0..18 {
-                assert_eq!(d[r * 18 + c], dt[c * 12 + r]);
-            }
-        }
-        assert_eq!(t.transpose(), bsr);
-        let x: Vec<f64> = (0..12).map(|_| rng.normal()).collect();
-        let (mut y1, mut y2) = (vec![0.0; 18], vec![0.0; 18]);
-        bsr.matvec_transpose(&x, &mut y1);
-        t.matvec(&x, &mut y2);
-        for (a, b) in y1.iter().zip(&y2) {
-            assert!((a - b).abs() < 1e-12);
-        }
-    }
-
-    #[test]
-    fn matmul_matches_dense() {
-        let mut rng = Rng::new(5);
-        let a = random_csr(&mut rng, 8, 12, 0.3);
-        let b = random_csr(&mut rng, 12, 6, 0.3);
-        let c = Bsr::from_csr(&a, 2, 3)
-            .unwrap()
-            .matmul(&Bsr::from_csr(&b, 3, 2).unwrap())
-            .unwrap();
-        assert_eq!(c.validate(), Ok(()));
-        assert_eq!((c.br, c.bc), (2, 2));
-        let (da, db, dc) = (dense(&a), dense(&b), dense(&c.to_csr()));
-        for i in 0..8 {
-            for j in 0..6 {
-                let want: f64 = (0..12).map(|k| da[i * 12 + k] * db[k * 6 + j]).sum();
-                assert!((dc[i * 6 + j] - want).abs() < 1e-12);
-            }
-        }
-        let bad = Bsr::from_csr(&b, 1, 2).unwrap();
-        assert!(matches!(
-            Bsr::from_csr(&a, 2, 3).unwrap().matmul(&bad),
-            Err(BsrError::ShapeMismatch(_))
-        ));
-    }
-
-    /// A block-tridiagonal matrix of `n` block rows with random `b x b` blocks.
-    fn block_tridiagonal(
-        rng: &mut Rng,
-        n: usize,
-        b: usize,
-    ) -> Csr {
-        let mut trip = Vec::new();
-        for i in 0..n {
-            for j in [i.wrapping_sub(1), i, i + 1] {
-                if j >= n {
-                    continue;
-                }
-                for r in 0..b {
-                    for c in 0..b {
-                        let mut v = rng.normal();
-                        if i == j && r == c {
-                            v += 6.0;
-                        }
-                        trip.push((i * b + r, j * b + c, v));
-                    }
-                }
-            }
-        }
-        Csr::from_triplets(n * b, n * b, &trip)
-    }
-
-    #[test]
-    fn bilu0_is_exact_without_fill() {
-        let mut rng = Rng::new(6);
-        let (n, b) = (7, 3);
-        let csr = block_tridiagonal(&mut rng, n, b);
-        let bsr = Bsr::from_csr(&csr, b, b).unwrap();
-        let ilu = bsr.bilu0().unwrap();
-        let x: Vec<f64> = (0..n * b).map(|_| rng.normal()).collect();
-        let mut rhs = vec![0.0; n * b];
-        bsr.matvec(&x, &mut rhs);
-        let mut z = vec![0.0; n * b];
-        ilu.apply(&rhs, &mut z);
-        for (a, e) in z.iter().zip(&x) {
-            assert!((a - e).abs() < 1e-10, "{a} vs {e}");
-        }
-    }
-
-    #[test]
-    fn block_jacobi_inverts_block_diagonal_matrix() {
-        let mut rng = Rng::new(7);
-        let csr = block_tridiagonal(&mut rng, 1, 4);
-        let bsr = Bsr::from_csr(&csr, 4, 4).unwrap();
-        let pre = bsr.block_jacobi().unwrap();
-        let x: Vec<f64> = (0..4).map(|_| rng.normal()).collect();
-        let mut rhs = vec![0.0; 4];
-        bsr.matvec(&x, &mut rhs);
-        let mut z = vec![0.0; 4];
-        pre.apply(&rhs, &mut z);
-        for (a, e) in z.iter().zip(&x) {
-            assert!((a - e).abs() < 1e-10);
-        }
-        let singular = Bsr::from_triplets(
-            2,
-            2,
-            2,
-            2,
-            &[(0, 0, 1.0), (0, 1, 2.0), (1, 0, 2.0), (1, 1, 4.0)],
-        )
-        .unwrap();
-        assert_eq!(
-            singular.block_jacobi(),
-            Err(BsrError::SingularBlock { block_row: 0 })
-        );
-        let missing = Bsr::from_triplets(
-            4,
-            4,
-            2,
-            2,
-            &[(0, 0, 1.0), (1, 1, 1.0), (0, 2, 1.0), (2, 0, 1.0)],
-        )
-        .unwrap();
-        assert_eq!(
-            missing.bilu0(),
-            Err(BsrError::MissingDiagonal { block_row: 1 })
-        );
-    }
-
-    #[test]
-    fn shape_validation() {
-        let csr = Csr::from_triplets(5, 4, &[(0, 0, 1.0)]);
-        assert_eq!(
-            Bsr::from_csr(&csr, 2, 2),
-            Err(BsrError::NotDivisible { extent: 5, block: 2 })
-        );
-        assert_eq!(Bsr::from_csr(&csr, 0, 2), Err(BsrError::ZeroBlock));
-        let mut bsr = Bsr::from_csr(&Csr::from_triplets(4, 4, &[(0, 0, 1.0)]), 2, 2).unwrap();
-        assert_eq!(bsr.validate(), Ok(()));
-        bsr.indices[0] = 9;
-        assert!(bsr.validate().is_err());
-    }
-
-    #[test]
-    fn empty_matrix() {
-        let empty = Csr::from_triplets(0, 0, &[]);
-        let bsr = Bsr::from_csr(&empty, 2, 2).unwrap();
-        assert_eq!(bsr.block_count(), 0);
-        assert_eq!(bsr.validate(), Ok(()));
-        assert_eq!(bsr.to_csr(), empty);
-        let zero = Bsr::from_csr(&Csr::from_triplets(4, 6, &[]), 2, 3).unwrap();
-        assert_eq!(zero.block_count(), 0);
-        assert!((zero.fill_ratio() - 1.0).abs() < f64::EPSILON);
-        let mut y = vec![1.0; 4];
-        zero.matvec(&[0.0; 6], &mut y);
-        assert_eq!(y, vec![0.0; 4]);
-        assert_eq!(zero.transpose().validate(), Ok(()));
-    }
-
-    #[test]
-    fn unit_blocks_are_csr() {
-        let mut rng = Rng::new(8);
-        let csr = random_csr(&mut rng, 10, 10, 0.3);
-        let bsr = Bsr::from_csr(&csr, 1, 1).unwrap();
-        assert_eq!(bsr.indptr, csr.indptr);
-        assert_eq!(bsr.indices, csr.indices);
-        assert_eq!(bsr.values, csr.values);
-        assert!((bsr.fill_ratio() - 1.0).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn block_size_selection() {
-        // 2x2 nodal blocks on a chain: dense blocks, ratio 1 (4x4 would store 1.86x).
-        let mut rng = Rng::new(9);
-        let csr = block_tridiagonal(&mut rng, 10, 2);
-        let cands = [(4, 4), (3, 3), (2, 2), (1, 1)];
-        assert_eq!(choose_block_size(&csr, &cands), (2, 2));
-        let bsr = Bsr::from_csr(&csr, 2, 2).unwrap();
-        assert!((bsr.fill_ratio() - 1.0).abs() < 1e-12);
-        // A scalar tridiagonal matrix gains nothing from blocks.
-        let trip: Vec<_> = (0..12)
-            .flat_map(|i| [(i, i, 2.0), (i, (i + 1) % 12, -1.0)])
-            .collect();
-        let scalar = Csr::from_triplets(12, 12, &trip);
-        assert_eq!(choose_block_size(&scalar, &cands), (1, 1));
-        assert_eq!(
-            choose_block_size(&Csr::from_triplets(4, 4, &[]), &cands),
-            (1, 1)
-        );
-    }
-
-    /// `P (x) S` with the 2-D five-point Laplacian `P` on an `m x m` grid and a
-    /// dense SPD `s x s` nodal coupling `S`: scalar Jacobi cannot see `S`.
-    fn nodal_system(
-        m: usize,
-        s: usize,
-        coupling: &[f64],
-    ) -> Csr {
-        let mut trip = Vec::new();
-        for gy in 0..m {
-            for gx in 0..m {
-                let node = gy * m + gx;
-                let mut nbrs = vec![(node, 4.0)];
-                if gx > 0 {
-                    nbrs.push((node - 1, -1.0));
-                }
-                if gx + 1 < m {
-                    nbrs.push((node + 1, -1.0));
-                }
-                if gy > 0 {
-                    nbrs.push((node - m, -1.0));
-                }
-                if gy + 1 < m {
-                    nbrs.push((node + m, -1.0));
-                }
-                for (other, w) in nbrs {
-                    for a in 0..s {
-                        for b in 0..s {
-                            trip.push((node * s + a, other * s + b, w * coupling[a * s + b]));
-                        }
-                    }
-                }
-            }
-        }
-        Csr::from_triplets(m * m * s, m * m * s, &trip)
-    }
-
-    fn cg_iterations(
-        csr: &Csr,
-        pre: &dyn Fn(&[f64], &mut [f64]),
-    ) -> usize {
-        let n = csr.rows;
-        let b: Vec<f64> = (0..n).map(|i| 1.0 + (i % 7) as f64).collect();
-        let result = cg(|x, y| csr.matvec(x, y), pre, &b, None, 1e-8, 5000);
-        assert!(result.converged);
-        result.iterations
-    }
-
-    #[test]
-    fn block_jacobi_beats_scalar_jacobi_in_cg() {
-        let couplings: [(usize, Vec<f64>); 2] = [
-            (2, vec![1.0, 0.95, 0.95, 1.0]),
-            (3, vec![1.0, 0.9, 0.9, 0.9, 1.0, 0.9, 0.9, 0.9, 1.0]),
-        ];
-        for (s, coupling) in couplings {
-            let csr = nodal_system(12, s, &coupling);
-            let inv = csr.jacobi_inverse();
-            let scalar = cg_iterations(&csr, &|r, z| {
-                for i in 0..r.len() {
-                    z[i] = r[i] * inv[i];
-                }
-            });
-            let bsr = Bsr::from_csr(&csr, s, s).unwrap();
-            assert!((bsr.fill_ratio() - 1.0).abs() < 1e-12);
-            let pre = bsr.block_jacobi().unwrap();
-            let block = cg_iterations(&csr, &|r, z| pre.apply(r, z));
-            assert!(block < scalar, "s={s}: block {block} vs scalar {scalar}");
-            let ilu = bsr.bilu0().unwrap();
-            let bilu = cg_iterations(&csr, &|r, z| ilu.apply(r, z));
-            assert!(bilu < block, "s={s}: bilu {bilu} vs block {block}");
-        }
-    }
-}
+#[path = "bsr/tests.rs"]
+mod tests;
