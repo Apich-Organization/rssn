@@ -62,7 +62,7 @@ pub fn complex() -> RuleSet {
 pub use crate::graph::ComplexEval;
 
 /// Largest integer power expanded by the splitter.
-const MAX_POWER: i64 = 32;
+const MAX_POWER: u64 = 32;
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let unit = i.op(OpDescriptor::new("I", Arity::Fixed(0))
@@ -327,10 +327,10 @@ fn split_term(
             | (core::POW, &[base, exponent]) => {
                 let n = graph.number_of(exponent).and_then(Number::to_i64);
                 match n {
-                    | Some(n) if n != 0 && n.abs() <= MAX_POWER => {
+                    | Some(n) if n != 0 && n.unsigned_abs() <= MAX_POWER => {
                         let parts = part(graph, base)?;
                         let mut acc = (graph.int(1), zero);
-                        for _ in 0..n.abs() {
+                        for _ in 0..n.unsigned_abs() {
                             acc = product(graph, acc, parts);
                         }
                         if n < 0 {
@@ -742,6 +742,15 @@ mod tests {
         assert_eq!(run("abs(3 + 4*I)"), "5");
         assert_eq!(run("arg(I)"), "1/2*pi");
         assert_eq!(run("arg(-2)"), "pi");
+    }
+
+    #[test]
+    fn integer_power_outside_the_split_bound_stays_symbolic() {
+        let got = run("re((1 + I)^(-9223372036854775808))");
+        assert!(
+            got.contains("re(") && got.contains("9223372036854775808"),
+            "{got}"
+        );
     }
 
     #[test]

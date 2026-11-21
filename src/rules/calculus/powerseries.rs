@@ -12,6 +12,9 @@
 //! symbolic coefficients are built as terms and simplified once at the
 //! end. Where a leading coefficient must be known to be non-zero (to
 //! divide by it), it is simplified and tested.
+//! Composition uses the positive valuation of the nonconstant part to
+//! bound the number of Taylor weights. The inverse hyperbolic sine and
+//! tangent support direct series when their argument has zero constant term.
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
@@ -141,13 +144,13 @@ impl Expander<'_, '_> {
         &mut self,
         mut s: Series,
     ) -> Series {
-        while let Some(&first) = s.coefficients.first() {
-            if !self.is_zero(first) {
-                break;
-            }
-            s.coefficients.remove(0);
-            s.valuation += 1;
-        }
+        let zeros = s
+            .coefficients
+            .iter()
+            .take_while(|&&coefficient| self.is_zero(coefficient))
+            .count();
+        s.coefficients.drain(..zeros);
+        s.valuation += i64::try_from(zeros).unwrap_or(0);
         s
     }
 
@@ -195,11 +198,14 @@ impl Expander<'_, '_> {
         let valuation = a.valuation + b.valuation;
         let length = self.length(valuation);
         let mut out = Vec::with_capacity(length);
+        let right_len = b.coefficients.len();
         for k in 0..length {
             let mut acc = self.zero();
-            for i in 0..=k {
-                if let (Some(&x), Some(&y)) = (a.coefficients.get(i), b.coefficients.get(k - i)) {
-                    let term = self.mul(x, y);
+            if right_len > 0 {
+                let first = k.saturating_sub(right_len - 1);
+                let end = (k + 1).min(a.coefficients.len());
+                for i in first..end {
+                    let term = self.mul(a.coefficients[i], b.coefficients[k - i]);
                     acc = self.add(acc, term);
                 }
             }
@@ -272,12 +278,18 @@ impl Expander<'_, '_> {
         self.one()
     }
 
-    /// `sum_k weights[k] u^k` for a series `u` of positive valuation.
+    /// Evaluates an elementary series in an argument of positive valuation.
     fn compose(
         &mut self,
-        weights: &[Number],
+        kind: &Weights,
         u: &Series,
     ) -> Series {
+        let n = if u.coefficients.is_empty() {
+            0
+        } else {
+            usize::try_from(self.order / u.valuation).unwrap_or(0)
+        };
+        let weights = Self::weights(kind, n);
         let mut result = Series {
             valuation: 0,
             coefficients: Vec::new(),
@@ -315,18 +327,21 @@ impl Expander<'_, '_> {
         if s.valuation < 0 {
             return None;
         }
-        let constant = if s.valuation == 0 {
-            *s.coefficients.first()?
-        } else {
-            self.zero()
-        };
-        let mut rest = s.clone();
-        if s.valuation == 0
-            && let Some(first) = rest.coefficients.first_mut()
-        {
-            *first = self.cx.graph.int(0);
+        if s.valuation > 0 {
+            return Some((self.zero(), s.clone()));
         }
-        Some((constant, rest))
+        let (&constant, terms) = s.coefficients.split_first()?;
+        let zeros = terms
+            .iter()
+            .take_while(|&&c| self.cx.graph.number_of(c).is_some_and(Number::is_zero))
+            .count();
+        Some((
+            constant,
+            Series {
+                valuation: 1 + i64::try_from(zeros).unwrap_or(0),
+                coefficients: terms[zeros..].to_vec(),
+            },
+        ))
     }
 
     /// Taylor weights of the elementary functions at zero, up to `n`.
@@ -334,60 +349,135 @@ impl Expander<'_, '_> {
         kind: &Weights,
         n: usize,
     ) -> Vec<Number> {
-        let factorial = |k: usize| (1..=k).fold(BigInt::one(), |acc, i| acc * BigInt::from(i));
-        let frac = |p: BigInt, q: BigInt| Number::rat(BigRational::new(p, q));
+        let unit_fraction =
+            |sign: i32, denominator| Number::rat(BigRational::new_raw(sign.into(), denominator));
+        match kind {
+            | Weights::Exp | Weights::Sin | Weights::Cos | Weights::Sinh | Weights::Cosh => {
+                let mut factorial = BigInt::one();
+                (0..=n)
+                    .map(|k| {
+                        if k > 0 {
+                            factorial *= k;
+                        }
+                        let sign = match kind {
+                            | Weights::Exp => 1,
+                            | Weights::Sin | Weights::Sinh if k % 2 == 1 => {
+                                if matches!(kind, Weights::Sin) && k % 4 == 3 {
+                                    -1
+                                } else {
+                                    1
+                                }
+                            },
+                            | Weights::Cos | Weights::Cosh if k.is_multiple_of(2) => {
+                                if matches!(kind, Weights::Cos) && k % 4 == 2 {
+                                    -1
+                                } else {
+                                    1
+                                }
+                            },
+                            | _ => 0,
+                        };
+                        if sign == 0 {
+                            Number::from(0)
+                        } else {
+                            unit_fraction(sign, factorial.clone())
+                        }
+                    })
+                    .collect()
+            },
+            | Weights::Log1p | Weights::Atan | Weights::Atanh => {
+                (0..=n)
+                    .map(|k| {
+                        let sign = match kind {
+                            | Weights::Log1p if k > 0 => {
+                                if k % 2 == 1 {
+                                    1
+                                } else {
+                                    -1
+                                }
+                            },
+                            | Weights::Atan | Weights::Atanh if k % 2 == 1 => {
+                                if matches!(kind, Weights::Atan) && k % 4 == 3 {
+                                    -1
+                                } else {
+                                    1
+                                }
+                            },
+                            | _ => 0,
+                        };
+                        if sign == 0 {
+                            Number::from(0)
+                        } else {
+                            unit_fraction(sign, BigInt::from(k))
+                        }
+                    })
+                    .collect()
+            },
+            | Weights::Asin | Weights::Asinh => {
+                // Advance the two integer factors of binomial(2m,m)/4^m,
+                // the derivative's coefficient at even degree 2m.
+                let mut central = BigInt::one();
+                let mut four_to_m = BigInt::one();
+                (0..=n)
+                    .map(|k| {
+                        if k.is_multiple_of(2) {
+                            return Number::from(0);
+                        }
+                        let numerator = if matches!(kind, Weights::Asinh) && k % 4 == 3 {
+                            -&central
+                        } else {
+                            central.clone()
+                        };
+                        let weight = BigRational::new(numerator, &four_to_m * k);
+                        central *= k;
+                        central <<= 1;
+                        central /= k.div_ceil(2);
+                        four_to_m <<= 2;
+                        Number::rat(weight)
+                    })
+                    .collect()
+            },
+            | Weights::Binomial(exponent) => Self::binomial_weights(exponent, n),
+        }
+    }
+
+    fn binomial_weights(
+        exponent: &Number,
+        n: usize,
+    ) -> Vec<Number> {
+        if let Some(exact) = exponent.to_rational() {
+            let mut coefficient = BigRational::one();
+            let mut numerator = exact.numer().clone();
+            let denominator = exact.denom();
+            let mut weights = Vec::with_capacity(n + 1);
+            weights.push(Number::from(1));
+            for k in 1..=n {
+                coefficient = BigRational::new(
+                    coefficient.numer() * &numerator,
+                    coefficient.denom() * denominator * k,
+                );
+                weights.push(Number::rat(coefficient.clone()));
+                numerator -= denominator;
+            }
+            return weights;
+        }
+
+        // For approximate exponents use the original multiplication order.
+        let mut factorial = BigInt::one();
         (0..=n)
             .map(|k| {
-                match kind {
-                    | Weights::Exp => frac(BigInt::one(), factorial(k)),
-                    | Weights::Sin | Weights::Sinh if k % 2 == 1 => {
-                        let sign = if matches!(kind, Weights::Sin) && (k / 2) % 2 == 1 {
-                            -1
-                        } else {
-                            1
-                        };
-                        frac(BigInt::from(sign), factorial(k))
-                    },
-                    | Weights::Cos | Weights::Cosh if k % 2 == 0 => {
-                        let sign = if matches!(kind, Weights::Cos) && (k / 2) % 2 == 1 {
-                            -1
-                        } else {
-                            1
-                        };
-                        frac(BigInt::from(sign), factorial(k))
-                    },
-                    | Weights::Log1p if k > 0 => {
-                        frac(
-                            BigInt::from(if k % 2 == 1 { 1 } else { -1 }),
-                            BigInt::from(k),
-                        )
-                    },
-                    | Weights::Atan if k % 2 == 1 => {
-                        frac(
-                            BigInt::from(if (k / 2) % 2 == 0 { 1 } else { -1 }),
-                            BigInt::from(k),
-                        )
-                    },
-                    | Weights::Asin if k % 2 == 1 => {
-                        let m = k / 2;
-                        let top = factorial(2 * m);
-                        let bottom = num_traits::pow(BigInt::from(4), m)
-                            * factorial(m)
-                            * factorial(m)
-                            * BigInt::from(k);
-                        frac(top, bottom)
-                    },
-                    | Weights::Binomial(e) => {
-                        // e (e-1) ... (e-k+1) / k!
-                        let mut value = Number::from(1);
-                        for i in 0..k {
-                            let factor = e.add(&Number::from(-i64::try_from(i).unwrap_or(0)));
-                            value = value.mul(&factor);
-                        }
-                        value.mul(&frac(BigInt::one(), factorial(k)))
-                    },
-                    | _ => Number::from(0),
+                if k > 0 {
+                    factorial *= k;
                 }
+                let mut value = Number::from(1);
+                for i in 0..k {
+                    let factor = exponent.add(&Number::from(-i64::try_from(i).unwrap_or(0)));
+                    value = value.mul(&factor);
+                }
+                value.mul(&Number::rat(BigRational::new_raw(
+                    BigInt::one(),
+                    factorial.clone(),
+                )))
             })
             .collect()
     }
@@ -482,11 +572,7 @@ impl Expander<'_, '_> {
                     .collect(),
             };
             let (_, u) = self.split_constant(&ratio)?;
-            let weights = Self::weights(
-                &Weights::Binomial(e.clone()),
-                usize::try_from(self.order.max(0)).unwrap_or(0) + 2,
-            );
-            let mut body = self.compose(&weights, &u);
+            let mut body = self.compose(&Weights::Binomial(e.clone()), &u);
             let e_node = self.num(e);
             let lead_power = self.cx.graph.node(core::POW, &[lead, e_node]);
             body.coefficients = body
@@ -503,12 +589,10 @@ impl Expander<'_, '_> {
         };
         let name = self.cx.graph.ops().get(op).name.to_string();
         let s = self.expand(arg)?;
-        let n = usize::try_from(self.order.max(0)).unwrap_or(0) + 2;
         match name.as_str() {
             | "exp" => {
                 let (c0, u) = self.split_constant(&s)?;
-                let weights = Self::weights(&Weights::Exp, n);
-                let body = self.compose(&weights, &u);
+                let body = self.compose(&Weights::Exp, &u);
                 let factor = self.function_of("exp", c0)?;
                 Some(self.scaled(&body, factor))
             },
@@ -528,8 +612,7 @@ impl Expander<'_, '_> {
                         .collect(),
                 };
                 let (_, u) = self.split_constant(&ratio)?;
-                let weights = Self::weights(&Weights::Log1p, n);
-                let body = self.compose(&weights, &u);
+                let body = self.compose(&Weights::Log1p, &u);
                 let log_lead = self.function_of("ln", lead)?;
                 let constant = Series::constant(log_lead);
                 Some(self.sum(&constant, &body))
@@ -542,8 +625,8 @@ impl Expander<'_, '_> {
                 } else {
                     (Weights::Sin, Weights::Cos)
                 };
-                let odd = self.compose(&Self::weights(&odd_kind, n), &u);
-                let even = self.compose(&Self::weights(&even_kind, n), &u);
+                let odd = self.compose(&odd_kind, &u);
+                let even = self.compose(&even_kind, &u);
                 let (s_name, c_name) = if hyperbolic {
                     ("sinh", "cosh")
                 } else {
@@ -578,17 +661,18 @@ impl Expander<'_, '_> {
                 let inverse = self.inverse(&bottom)?;
                 Some(self.product(&top, &inverse))
             },
-            | "atan" | "asin" => {
+            | "atan" | "asin" | "atanh" | "asinh" => {
                 let (c0, u) = self.split_constant(&s)?;
                 if !self.is_zero(c0) {
                     return None;
                 }
-                let kind = if name == "atan" {
-                    Weights::Atan
-                } else {
-                    Weights::Asin
+                let kind = match name.as_str() {
+                    | "atan" => Weights::Atan,
+                    | "asin" => Weights::Asin,
+                    | "atanh" => Weights::Atanh,
+                    | _ => Weights::Asinh,
                 };
-                Some(self.compose(&Self::weights(&kind, n), &u))
+                Some(self.compose(&kind, &u))
             },
             | "sqrt" => {
                 let half = self.num(Number::fraction(1, 2)?);
@@ -624,7 +708,9 @@ enum Weights {
     Cosh,
     Log1p,
     Atan,
+    Atanh,
     Asin,
+    Asinh,
     Binomial(Number),
 }
 
@@ -671,13 +757,95 @@ pub fn laurent_expansion(
         coefficients.push(simplified);
     }
     // Leading coefficients that only simplified to zero now.
-    let mut valuation = series.valuation;
-    while coefficients
-        .first()
-        .is_some_and(|&c| expander.cx.graph.number_of(c).is_some_and(Number::is_zero))
-    {
-        coefficients.remove(0);
-        valuation += 1;
-    }
+    let zeros = coefficients
+        .iter()
+        .take_while(|&&c| expander.cx.graph.number_of(c).is_some_and(Number::is_zero))
+        .count();
+    coefficients.drain(..zeros);
+    let valuation = series.valuation + i64::try_from(zeros).unwrap_or(0);
     Some((valuation, coefficients))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::graph::Engine;
+    use crate::graph::Env;
+
+    use super::*;
+
+    #[test]
+    fn inverse_hyperbolic_taylor_weights_are_exact() {
+        let mut graph = Graph::new();
+        let engine = Engine::install(&mut graph, &crate::rules::standard()).unwrap();
+        let x = graph.sym("x");
+        let zero = graph.int(0);
+        let env = Env::symbolic();
+        let mut cx = Cx {
+            graph: &mut graph,
+            env: &env,
+            engine: &engine,
+        };
+        for (function, odd) in [
+            (
+                "asinh(x)",
+                [(1, 1), (-1, 6), (3, 40), (-5, 112), (35, 1152)],
+            ),
+            ("atanh(x)", [(1, 1), (1, 3), (1, 5), (1, 7), (1, 9)]),
+        ] {
+            let term = cx.graph.parse(function).unwrap();
+            let (valuation, coefficients) = laurent_expansion(&mut cx, term, x, zero, 9).unwrap();
+            assert_eq!(valuation, 1);
+            assert_eq!(coefficients.len(), 9);
+            for (k, &coefficient) in coefficients.iter().enumerate() {
+                let expected = if k.is_multiple_of(2) {
+                    let (n, d) = odd[k / 2];
+                    Number::fraction(n, d).unwrap()
+                } else {
+                    Number::from(0)
+                };
+                assert_eq!(
+                    cx.graph.number_of(coefficient),
+                    Some(&expected),
+                    "{function}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn sparse_composition_keeps_valuation_and_through_order_terms() {
+        let mut graph = Graph::new();
+        let engine = Engine::install(&mut graph, &crate::rules::standard()).unwrap();
+        let x = graph.sym("x");
+        let zero = graph.int(0);
+        let term = graph.parse("atanh(x^4+x^5)").unwrap();
+        let env = Env::symbolic();
+        let mut cx = Cx {
+            graph: &mut graph,
+            env: &env,
+            engine: &engine,
+        };
+        let (valuation, coefficients) = laurent_expansion(&mut cx, term, x, zero, 14).unwrap();
+        assert_eq!(valuation, 4);
+        assert_eq!(coefficients.len(), 11);
+        let expected = [
+            (1, 1),
+            (1, 1),
+            (0, 1),
+            (0, 1),
+            (0, 1),
+            (0, 1),
+            (0, 1),
+            (0, 1),
+            (1, 3),
+            (1, 1),
+            (1, 1),
+        ];
+        for (&coefficient, (n, d)) in coefficients.iter().zip(expected) {
+            assert_eq!(
+                cx.graph.number_of(coefficient),
+                Number::fraction(n, d).as_ref(),
+            );
+        }
+    }
 }

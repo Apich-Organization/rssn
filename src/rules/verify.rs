@@ -1,10 +1,11 @@
 //! Verification: checking a claimed result instead of computing one.
 //!
-//! Every operator answers `true` or `false`. A claim is accepted when the
-//! defining identity simplifies to zero, or — when simplification cannot
-//! decide — when it holds numerically at sample points of every free
-//! symbol; a single sample that refutes it gives `false`. A claim that can
-//! be neither simplified nor evaluated anywhere is not accepted.
+//! Verification operators return `true` or `false` for supported claims.
+//! A residual that simplifies to an exact number must equal zero. Approximate
+//! residuals use a numerical tolerance. For an unresolved residual, numerical
+//! sampling rejects the claim if a finite sample refutes it or if no finite
+//! sample is available. Definite integrals use quadrature. Limit checks call
+//! the shared calculus limit reducer.
 //!
 //! | operator | checks |
 //! |---|---|
@@ -14,7 +15,7 @@
 //! | `verify_ode_solution(equation, y(x), solution)` | the solution satisfies the differential equation |
 //! | `verify_inverse(A, B)` | `A B = I` |
 //! | `verify_derivative(f, x, g)` | `f' = g` |
-//! | `verify_limit(f, x, a, L)` | `f → L` as `x → a`, by probing near `a` |
+//! | `verify_limit(f, x, a, L, [dir])` | the shared calculus reducer finds `f → L` as `x → a`, optionally from `plus` or `minus` |
 
 use crate::graph::Arity;
 use crate::graph::Cx;
@@ -22,20 +23,27 @@ use crate::graph::Env;
 use crate::graph::Graph;
 use crate::graph::Kernel;
 use crate::graph::NodeId;
+use crate::graph::Number;
 use crate::graph::OpDescriptor;
 use crate::graph::OpFlags;
 use crate::graph::OpId;
 use crate::graph::Outcome;
+use crate::graph::Payload;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
+use crate::kernel::Signature;
+use crate::kernel::TypeExpr;
+use crate::kernel::infer::term;
 use crate::kernels::integrate::gauss_kronrod_any;
 use crate::rules::complex::build::sub;
 use crate::rules::poly::best;
 
+use super::calculus::calculus;
 use super::calculus::derivative;
+use super::calculus::limit_for_claim;
 use super::linalg::linalg;
 use super::logic::logic;
 
@@ -43,6 +51,7 @@ use super::logic::logic;
 #[must_use]
 pub fn verify() -> RuleSet {
     RuleSet::new("verify", install)
+        .needs(calculus())
         .needs(linalg())
         .needs(logic())
 }
@@ -70,7 +79,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "verify_integral",
             3,
             Request::Integral,
-            "`verify_integral(integrand, antiderivative, var)`: checks whether `diff(antiderivative, var) == integrand`.",
+            "`verify_integral(f, x, F)` checks whether `diff(F, x) == f`.",
         ),
         (
             "verify_definite_integral",
@@ -82,31 +91,40 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "verify_ode_solution",
             3,
             Request::Ode,
-            "`verify_ode_solution(ode, solution, var)`: checks whether `solution` satisfies the ordinary differential equation `ode` with respect to `var`.",
+            "`verify_ode_solution(equation, y(x), solution)` checks whether the proposed `solution` for `y(x)` satisfies the differential equation.",
         ),
         (
             "verify_inverse",
             2,
             Request::Inverse,
-            "`verify_inverse(f, g)`: checks whether functions/expressions `f` and `g` are mutual inverses.",
+            "`verify_inverse(A, B)` checks whether the matrix product `A*B` equals the identity.",
         ),
         (
             "verify_derivative",
             3,
             Request::Derivative,
-            "`verify_derivative(expr, derivative, var)`: checks whether `diff(expr, var) == derivative`.",
+            "`verify_derivative(f, x, g)` checks whether `diff(f, x) == g`. An exact residual must be zero. Approximate residuals use the numerical tolerance.",
         ),
         (
             "verify_limit",
             4,
             Request::Limit,
-            "`verify_limit(expr, var, point, value)`: checks whether the limit of `expr` as `var -> point` equals `value`.",
+            "`verify_limit(f, x, a, L, [dir])` checks the limit of `f` as `x` approaches `a` against `L`, which may be finite or signed infinity. The optional `plus` or `minus` selects one side. Uses the same calculus reducer as `limit`. A claim with insufficient evidence returns `false`.",
         ),
     ] {
-        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
-            .flags(OpFlags::HEAVY)
-            .cost(100)
-            .doc(doc))?;
+        let descriptor = if request == Request::Limit {
+            let mut parameters = vec![term(), TypeExpr::Symbol, term(), term()];
+            let two_sided = Signature::new(parameters.clone(), TypeExpr::Bool);
+            parameters.push(TypeExpr::Symbol);
+            OpDescriptor::new(name, Arity::Variadic)
+                .flags(OpFlags::HEAVY.with(OpFlags::PREDICATE))
+                .binder(1, 0b1)
+                .signature(two_sided)
+                .signature(Signature::new(parameters, TypeExpr::Bool))
+        } else {
+            OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY)
+        };
+        let op = i.op(descriptor.cost(100).doc(doc))?;
         i.kernel(
             &format!("verify/{name}"),
             Tier::Reduce,
@@ -144,11 +162,7 @@ impl Kernel for Verify {
         let Some(verdict) = verdict else {
             return Outcome::Pass;
         };
-        let name = if verdict { "true" } else { "false" };
-        match cx.graph.ops().lookup(name) {
-            | Some(op) => Outcome::Equal(cx.graph.node(op, &[])),
-            | None => Outcome::Pass,
-        }
+        Outcome::Equal(cx.graph.lit(Payload::Bool(verdict)))
     }
 }
 
@@ -166,16 +180,26 @@ fn residual(
 /// Reachable classes of a term from which [`vanishes`] evaluates its sample points concurrently.
 const VERIFY_PAR_NODES: usize = 40;
 
-/// Whether `term` is identically zero: `Some(true)` when it simplifies to
-/// zero or vanishes at every sample, `Some(false)` when a sample refutes
-/// it, `None` when there is no evidence either way.
+/// Classifies finite numerical samples and ignores unavailable evaluations.
+fn sample_verdict(values: impl IntoIterator<Item = Option<f64>>) -> Option<bool> {
+    let mut evidence = false;
+    for value in values.into_iter().flatten() {
+        if value.abs() > 1e-8 {
+            return Some(false);
+        }
+        evidence = true;
+    }
+    evidence.then_some(true)
+}
+
+/// Checks an exact residual directly and samples an unresolved expression.
 fn vanishes(
     cx: &mut Cx<'_>,
     term: NodeId,
 ) -> Option<bool> {
     let simplified = cx.simplify(term);
     if let Some(n) = cx.graph.number_of(simplified) {
-        return Some(n.is_zero() || n.to_f64().abs() < 1e-12);
+        return Some(n.is_zero() || (!n.is_exact() && n.to_f64().abs() < 1e-12));
     }
     let symbols = cx.graph.free_symbols(cx.graph.find(simplified)).to_vec();
     // The twelve sample points are independent evaluations of an immutable graph. The verdict
@@ -193,20 +217,15 @@ fn vanishes(
         }
         graph.eval(simplified, &env).filter(|v| v.is_finite())
     };
-    let values: Vec<Option<f64>> =
-        if crate::graph::extract::reachable(graph, &[simplified]).len() >= VERIFY_PAR_NODES {
-            crate::kernels::par::map_indexed(12, 2, |s| sample_value(s as u32))
-        } else {
-            (0..12_u32).map(sample_value).collect()
-        };
-    let mut evidence = false;
-    for value in values.into_iter().flatten() {
-        if value.abs() > 1e-8 {
-            return Some(false);
-        }
-        evidence = true;
+    if crate::graph::extract::reachable(graph, &[simplified]).len() >= VERIFY_PAR_NODES
+        && crate::execution::should_split(12, 2)
+    {
+        sample_verdict(crate::kernels::par::map_indexed(12, 2, |s| {
+            sample_value(s as u32)
+        }))
+    } else {
+        sample_verdict((0..12_u32).map(sample_value))
     }
-    evidence.then_some(true)
 }
 
 fn solution(
@@ -368,52 +387,42 @@ fn limit(
     cx: &mut Cx<'_>,
     args: &[NodeId],
 ) -> Option<bool> {
-    let &[f, x, a, l] = args else {
-        return None;
+    let (f, x, a, claim, direction) = match *args {
+        | [f, x, a, claim] => (f, x, a, claim, None),
+        | [f, x, a, claim, direction] => (f, x, a, claim, Some(direction)),
+        | _ => return None,
     };
-    let symbol = cx.graph.symbol_of(x)?;
-    let f = best(cx.graph, f)?;
-    let env = Env::numeric(0.0);
-    let point = cx.graph.eval(a, &env)?;
-    let claimed = cx.graph.eval(l, &env)?;
-    let probe = |graph: &Graph, t: f64| {
-        let mut env = Env::numeric(0.0);
-        env.bind(symbol, t);
-        graph.eval(f, &env)
+    let Some(found) = limit_for_claim(cx, f, x, a, direction) else {
+        return Some(false);
     };
-    let mut evidence = false;
-    for k in 3..=7 {
-        let eps = 10f64.powi(-k);
-        let points: Vec<f64> = if point.is_infinite() {
-            vec![point.signum() / eps]
-        } else {
-            vec![point + eps, point - eps]
-        };
-        for t in points {
-            let Some(v) = probe(cx.graph, t) else {
-                continue;
-            };
-            if !v.is_finite() {
-                if claimed.is_infinite() && v.signum() == claimed.signum() {
-                    evidence = true;
-                    continue;
-                }
-                continue;
-            }
-            if claimed.is_infinite() {
-                if k == 7 && v.abs() < 1e6 {
-                    return Some(false);
-                }
-                continue;
-            }
-            let tolerance = 1e-6_f64.max(100.0 * eps.sqrt()) * claimed.abs().max(1.0);
-            if k >= 6 && (v - claimed).abs() > tolerance {
-                return Some(false);
-            }
-            evidence = true;
-        }
+    let claim = cx.simplify(claim);
+    if cx.graph.same(found, claim) {
+        return Some(true);
     }
-    Some(evidence)
+    let infinity = cx.graph.ops().lookup("oo")?;
+    let positive = cx.graph.node(infinity, &[]);
+    let minus_one = cx.graph.int(-1);
+    let negative = cx.graph.node(core::MUL, &[minus_one, positive]);
+    let sign = |value| {
+        if cx.graph.same(value, positive) {
+            Some(true)
+        } else if cx.graph.same(value, negative) {
+            Some(false)
+        } else {
+            match cx.graph.number_of(value) {
+                | Some(Number::Float(n)) if n.is_infinite() => Some(n.is_sign_positive()),
+                | _ => None,
+            }
+        }
+    };
+    let signs = (sign(found), sign(claim));
+    Some(match signs {
+        | (None, None) => {
+            let difference = sub(cx.graph, found, claim);
+            vanishes(cx, difference) == Some(true)
+        },
+        | (found, claim) => found == claim,
+    })
 }
 
 #[cfg(test)]

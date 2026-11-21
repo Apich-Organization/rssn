@@ -8,6 +8,8 @@
 //! what must hold modulo known equalities: exact folding of all-numeric
 //! nodes and the identities of 0 and 1.
 
+use std::collections::HashMap;
+
 use crate::graph::Cx;
 use crate::graph::Graph;
 use crate::graph::Kernel;
@@ -210,36 +212,83 @@ fn number_atom(
     window.new_atom(graph, node)
 }
 
-/// A group of like terms (or factors): its key cells, a hash of their
-/// fingerprints, and the accumulated number.
+/// Like terms or factors with the same structural key.
 struct Group {
     key: Vec<CellId>,
     hash: u64,
     value: Number,
 }
 
-/// Finds the entry of `groups` whose key cells are structurally the same as
-/// `key`, comparing element-wise after sorting by fingerprint.
-///
-/// Structurally equal cells have equal fingerprints, so a group whose hash
-/// differs cannot match: the hash turns the quadratic scan of deep `same`
-/// comparisons into one integer comparison per group.
-fn find_group(
-    graph: &Graph,
-    window: &TreeWindow,
-    groups: &[Group],
-    key: &[CellId],
-    hash: u64,
-) -> Option<usize> {
-    groups.iter().position(|group| {
-        group.hash == hash
-            && group.key.len() == key.len()
-            && group
-                .key
-                .iter()
-                .zip(key)
-                .all(|(&a, &b)| window.same(graph, a, b))
-    })
+struct Groups {
+    entries: Vec<Group>,
+    wide: bool,
+    index: Option<HashMap<u64, usize>>,
+}
+
+impl Groups {
+    const fn new(arity: usize) -> Self {
+        Self {
+            entries: Vec::new(),
+            wide: arity >= 4096,
+            index: None,
+        }
+    }
+
+    fn add(
+        &mut self,
+        graph: &Graph,
+        window: &TreeWindow,
+        key: impl AsRef<[CellId]> + Into<Vec<CellId>>,
+        hash: u64,
+        value: Number,
+    ) {
+        const INDEX_THRESHOLD: usize = 128;
+        let matches = |group: &Group| {
+            let cells = key.as_ref();
+            group.hash == hash
+                && group.key.len() == cells.len()
+                && group
+                    .key
+                    .iter()
+                    .zip(cells)
+                    .all(|(&a, &b)| window.same(graph, a, b))
+        };
+        let index = if let Some(index) = &self.index {
+            index.get(&hash).and_then(|&first| {
+                if self.entries.get(first).is_some_and(matches) {
+                    Some(first)
+                } else {
+                    // Hash collisions use the same structural equality as
+                    // the small-window path.
+                    self.entries.iter().position(matches)
+                }
+            })
+        } else {
+            self.entries.iter().position(matches)
+        };
+        if let Some(group) = index.and_then(|i| self.entries.get_mut(i)) {
+            group.value = group.value.add(&value);
+            return;
+        }
+
+        let index = self.entries.len();
+        self.entries.push(Group {
+            key: key.into(),
+            hash,
+            value,
+        });
+        // Index only wide expressions with many distinct groups. Emission
+        // and coefficient accumulation retain the first encounter order.
+        if let Some(lookup) = &mut self.index {
+            lookup.entry(hash).or_insert(index);
+        } else if self.wide && self.entries.len() == INDEX_THRESHOLD {
+            let mut lookup = HashMap::with_capacity(INDEX_THRESHOLD);
+            for (index, group) in self.entries.iter().enumerate() {
+                lookup.entry(group.hash).or_insert(index);
+            }
+            self.index = Some(lookup);
+        }
+    }
 }
 
 /// `cells` sorted by fingerprint (stably), with a hash of the sorted
@@ -310,7 +359,7 @@ fn sum(
     cell: CellId,
 ) -> CellId {
     let mut constant = Number::from(0);
-    let mut groups: Vec<Group> = Vec::new();
+    let mut groups = Groups::new(window.arity(cell));
     for term in window.children(cell) {
         let (coeff, factors) = split_term(graph, window, term);
         if factors.is_empty() {
@@ -318,21 +367,9 @@ fn sum(
             continue;
         }
         let (key, hash) = sorted_by_fingerprint(graph, window, factors);
-        match find_group(graph, window, &groups, &key, hash) {
-            | Some(i) => {
-                if let Some(group) = groups.get_mut(i) {
-                    group.value = group.value.add(&coeff);
-                }
-            },
-            | None => {
-                groups.push(Group {
-                    key,
-                    hash,
-                    value: coeff,
-                });
-            },
-        }
+        groups.add(graph, window, key, hash, coeff);
     }
+    let groups = groups.entries;
     let mut pieces = Vec::with_capacity(groups.len().saturating_add(1));
     for group in &groups {
         if !group.value.is_zero() {
@@ -371,7 +408,7 @@ fn product(
     cell: CellId,
 ) -> CellId {
     let mut coeff = Number::from(1);
-    let mut groups: Vec<Group> = Vec::new();
+    let mut groups = Groups::new(window.arity(cell));
     for factor in window.children(cell) {
         if let Some(n) = window.number(graph, factor) {
             coeff = coeff.mul(n);
@@ -382,23 +419,10 @@ fn product(
             coeff = coeff.mul(&folded);
             continue;
         }
-        let key = [base];
         let hash = window.fingerprint(graph, base);
-        match find_group(graph, window, &groups, &key, hash) {
-            | Some(i) => {
-                if let Some(group) = groups.get_mut(i) {
-                    group.value = group.value.add(&exp);
-                }
-            },
-            | None => {
-                groups.push(Group {
-                    key: key.to_vec(),
-                    hash,
-                    value: exp,
-                });
-            },
-        }
+        groups.add(graph, window, [base], hash, exp);
     }
+    let groups = groups.entries;
     if coeff.is_zero() {
         return number_atom(graph, window, coeff);
     }
@@ -626,6 +650,59 @@ mod tests {
         // `x + x` occurs under two different parents, so it is an atom of
         // the outer window and gets a window of its own.
         assert_eq!(simplify("f(x + x) + g(x + x)"), "f(2*x) + g(2*x)");
+    }
+
+    #[test]
+    fn wide_windows_collect_like_terms_and_powers_after_indexing() {
+        for op in [core::ADD, core::MUL] {
+            let mut graph = Graph::new();
+            let count = 2048;
+            let symbols: Vec<_> = (0..count).map(|i| graph.sym(&format!("x{i}"))).collect();
+            let expected = graph.node(op, &symbols);
+            let twice = graph.int(2);
+            let inverse = graph.int(-1);
+            let mut input = Vec::with_capacity(2 * count);
+            for number in [twice, inverse] {
+                for &symbol in &symbols {
+                    let term = if op == core::ADD {
+                        graph.node(core::MUL, &[number, symbol])
+                    } else {
+                        graph.node(core::POW, &[symbol, number])
+                    };
+                    input.push(term);
+                }
+            }
+            let original = graph.node(op, &input);
+            let mut window = TreeWindow::carve(&graph, original, 20000);
+            assert!(Collect.run(&mut graph, &mut window));
+            assert_eq!(window.commit(&mut graph), expected);
+        }
+    }
+
+    #[test]
+    fn indexed_groups_compare_keys_even_when_fingerprints_collide() {
+        let mut graph = Graph::new();
+        let root = graph.sym("root");
+        let mut window = TreeWindow::carve(&graph, root, 32);
+        let keys: Vec<_> = (0..140)
+            .map(|i| {
+                let symbol = graph.sym(&format!("x{i}"));
+                window.new_atom(&graph, symbol)
+            })
+            .collect();
+        let mut groups = Groups::new(4096);
+        for &cell in &keys {
+            groups.add(&graph, &window, [cell], 42, Number::from(1));
+        }
+        for &cell in keys.iter().rev() {
+            groups.add(&graph, &window, [cell], 42, Number::from(2));
+        }
+        assert!(groups.index.is_some());
+        assert_eq!(groups.entries.len(), keys.len());
+        for (group, cell) in groups.entries.iter().zip(keys) {
+            assert_eq!(group.key, [cell]);
+            assert_eq!(group.value, Number::from(3));
+        }
     }
 }
 

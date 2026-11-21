@@ -36,6 +36,10 @@
 //! non-existent limits (`sin(x)` at infinity, `abs(x)/x` at zero) stay
 //! unevaluated instead of being given a numeric guess.
 
+use num_rational::BigRational;
+use num_traits::Signed;
+use num_traits::Zero;
+
 use crate::graph::Ball;
 use crate::graph::Cx;
 use crate::graph::Env;
@@ -53,6 +57,8 @@ use crate::rules::poly::ratio;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Limits;
 use crate::rules::poly::repr::to_term;
+use crate::rules::poly::univariate;
+use crate::rules::poly::univariate::QPoly;
 
 use super::diff::Differentiate;
 use super::integrate::Functions;
@@ -71,6 +77,7 @@ pub(super) enum Probe {
     Finite(f64),
     PlusInfinity,
     MinusInfinity,
+    NoRealSamples,
     Unknown,
 }
 
@@ -105,8 +112,11 @@ fn probe_one_side(
     from_above: bool,
     env: &Env,
 ) -> Probe {
+    const SAMPLES: usize = 21;
     let mut env = env.clone();
-    let mut values: Vec<f64> = Vec::new();
+    let mut values = [0.0; SAMPLES];
+    let mut count = 0;
+    let mut nonreal = 0;
     for k in 6..=26 {
         let step = 0.5_f64.powi(k);
         let point = if target.is_infinite() {
@@ -119,18 +129,44 @@ fn probe_one_side(
         };
         env.bind(x, point);
         match graph.eval(term, &env) {
-            | Some(v) if !v.is_nan() => values.push(v),
-            | _ => {},
+            | Some(v) if !v.is_nan() => {
+                values[count] = v;
+                count += 1;
+            },
+            | Some(_) => nonreal += 1,
+            | None => {},
         }
     }
-    let n = values.len();
+    if nonreal == SAMPLES && target.is_finite() {
+        // The regular steps can all overshoot a nearby endpoint. Test the
+        // closest representable point on this side before rejecting it.
+        let nearest = if from_above {
+            target.next_up()
+        } else {
+            target.next_down()
+        };
+        if nearest.is_finite() {
+            env.bind(x, nearest);
+            if graph.eval(term, &env).is_some_and(f64::is_nan) {
+                return Probe::NoRealSamples;
+            }
+        }
+    }
+    let values = &values[..count];
+    let n = count;
     if n < 6 {
         return Probe::Unknown;
     }
     let tail = &values[n - 6..];
     let last = tail[5];
-    if tail.iter().all(|v| v.is_infinite())
-        || (last.abs() > 1e6 && tail.windows(2).all(|w| w[1].abs() >= w[0].abs()))
+    let common_sign = tail
+        .iter()
+        .all(|v| v.is_sign_positive() == last.is_sign_positive());
+    if common_sign
+        && (tail.iter().all(|v| v.is_infinite())
+            || (last.abs() > 1e6
+                && last.abs() > 1.01 * tail[0].abs()
+                && tail.windows(2).all(|w| w[1].abs() >= w[0].abs())))
     {
         return if last > 0.0 {
             Probe::PlusInfinity
@@ -143,16 +179,18 @@ fn probe_one_side(
     }
     // Slow divergence (logarithms): the values move steadily in one
     // direction and the steps do not shrink.
-    let steps: Vec<f64> = values.windows(2).map(|w| w[1] - w[0]).collect();
-    let recent = &steps[steps.len().saturating_sub(10)..];
-    let one_way = recent.iter().all(|d| *d > 0.0) || recent.iter().all(|d| *d < 0.0);
-    if one_way && recent.len() == 10 && recent[9].abs() >= 0.5 * recent[0].abs() && last.abs() > 5.0
-    {
-        return if recent[9] > 0.0 {
-            Probe::PlusInfinity
-        } else {
-            Probe::MinusInfinity
-        };
+    if n >= 11 && last.abs() > 5.0 {
+        let recent = &values[n - 11..];
+        let first_step = recent[1] - recent[0];
+        let last_step = recent[10] - recent[9];
+        if last_step.abs() >= 0.5 * first_step.abs() {
+            if recent.windows(2).all(|w| w[1] > w[0]) {
+                return Probe::PlusInfinity;
+            }
+            if recent.windows(2).all(|w| w[1] < w[0]) {
+                return Probe::MinusInfinity;
+            }
+        }
     }
     // Converging: successive differences must shrink.
     let d1 = (tail[5] - tail[4]).abs();
@@ -184,20 +222,20 @@ pub(super) fn probe(
     if target.is_infinite() {
         return probe_one_side(graph, term, x, target, true, env);
     }
-    let above = probe_one_side(graph, term, x, target, true, env);
-    let below = probe_one_side(graph, term, x, target, false, env);
     match side {
-        | Side::Above => above,
-        | Side::Below => below,
+        | Side::Above => probe_one_side(graph, term, x, target, true, env),
+        | Side::Below => probe_one_side(graph, term, x, target, false, env),
         | Side::Both => {
+            let above = probe_one_side(graph, term, x, target, true, env);
+            let below = probe_one_side(graph, term, x, target, false, env);
             match (above, below) {
                 | (Probe::Finite(a), Probe::Finite(b)) if (a - b).abs() <= 1e-5 * (1.0 + a.abs()) => {
                     Probe::Finite(f64::midpoint(a, b))
                 },
                 | (a, b) if a == b => a,
                 // Defined on one side only (sqrt, ln): that side decides.
-                | (a, Probe::Unknown) => a,
-                | (Probe::Unknown, b) => b,
+                | (a, Probe::NoRealSamples | Probe::Unknown)
+                | (Probe::NoRealSamples | Probe::Unknown, a) => a,
                 | _ => Probe::Unknown,
             }
         },
@@ -686,6 +724,52 @@ impl Limiter<'_, '_> {
             .is_some_and(f64::is_infinite)
     }
 
+    /// Evaluates a rational limit at an exact point outside the Float range.
+    fn rational_at_large_finite_point(
+        &mut self,
+        term: NodeId,
+        point: &BigRational,
+    ) -> Option<NodeId> {
+        if !self.depends(term) {
+            return Some(term);
+        }
+        let (numerator, denominator) =
+            crate::rules::poly::rational_function_in(self.cx.graph, term, self.x)?;
+        let first_nonzero = |mut polynomial: QPoly| {
+            for order in 0..polynomial.len() {
+                let value = univariate::eval(&polynomial, point);
+                if !value.is_zero() {
+                    return Some((order, value));
+                }
+                polynomial = univariate::derivative(&polynomial);
+            }
+            None
+        };
+        let (denominator_order, denominator_value) = first_nonzero(denominator)?;
+        let Some((numerator_order, numerator_value)) = first_nonzero(numerator) else {
+            return Some(self.cx.graph.int(0));
+        };
+        match numerator_order.cmp(&denominator_order) {
+            | std::cmp::Ordering::Equal => {
+                // Equal orders have the same Taylor factorial, which cancels.
+                Some(
+                    self.cx
+                        .graph
+                        .num(Number::rat(numerator_value / denominator_value)),
+                )
+            },
+            | std::cmp::Ordering::Greater => Some(self.cx.graph.int(0)),
+            | std::cmp::Ordering::Less => {
+                let odd_pole = (denominator_order - numerator_order) % 2 != 0;
+                if odd_pole && self.side == Side::Both {
+                    return None;
+                }
+                let positive = numerator_value.is_positive() == denominator_value.is_positive();
+                Some(self.infinite(positive != (odd_pole && self.side == Side::Below)))
+            },
+        }
+    }
+
     /// Whether `f` is a single elementary building block (a power, a
     /// function application) whose probe can be trusted to mean divergence
     /// rather than a large finite value.
@@ -1168,28 +1252,46 @@ impl Limiter<'_, '_> {
     }
 
     /// Whether `candidate` agrees with the numeric behaviour of `f`.
+    /// `None` means all numeric test points on the requested side were non-real.
     fn verified(
         &self,
         f: NodeId,
         candidate: NodeId,
-    ) -> bool {
+    ) -> Option<bool> {
         let env = generic_env(self.cx.graph, f, self.symbol, &Env::numeric(0.0));
         let env = generic_env(self.cx.graph, candidate, self.symbol, &env);
         let observed = probe(self.cx.graph, f, self.symbol, self.target, self.side, &env);
-        let Some(claimed) = self.cx.graph.eval(candidate, &env) else {
+        match (observed, self.cx.graph.eval(candidate, &env)) {
+            | (Probe::NoRealSamples, _) => None,
             // Nothing to compare with: no evidence against.
-            return true;
-        };
-        match observed {
-            | Probe::Finite(v) => {
-                claimed.is_finite()
-                    && ((claimed - v).abs() <= 1e-4 * (1.0 + v.abs())
-                        || self.approaches(f, claimed, &env))
+            | (_, None) => Some(true),
+            | (Probe::Finite(v), Some(claimed)) => {
+                Some(
+                    claimed.is_finite()
+                        && ((claimed - v).abs() <= 1e-4 * (1.0 + v.abs())
+                            || self.approaches(f, claimed, &env)),
+                )
             },
-            | Probe::PlusInfinity => claimed == f64::INFINITY,
-            | Probe::MinusInfinity => claimed == f64::NEG_INFINITY,
-            | Probe::Unknown => claimed.is_finite(),
+            | (Probe::PlusInfinity, Some(claimed)) => Some(claimed == f64::INFINITY),
+            | (Probe::MinusInfinity, Some(claimed)) => Some(claimed == f64::NEG_INFINITY),
+            | (Probe::Unknown, Some(claimed)) => Some(claimed.is_finite()),
         }
+    }
+}
+
+/// Reads the optional side on a limit or limit verification request.
+pub(super) fn side(
+    graph: &Graph,
+    direction: Option<NodeId>,
+) -> Option<Side> {
+    let Some(direction) = direction else {
+        return Some(Side::Both);
+    };
+    let symbol = graph.symbol_of(direction)?;
+    match graph.interner().symbol_name(symbol) {
+        | "plus" => Some(Side::Above),
+        | "minus" => Some(Side::Below),
+        | _ => None,
     }
 }
 
@@ -1200,22 +1302,13 @@ fn arguments(
 ) -> Option<(NodeId, NodeId, NodeId, Side)> {
     match *graph.children(node) {
         | [f, x, a] => Some((f, x, a, Side::Both)),
-        | [f, x, a, direction] => {
-            let name = graph
-                .symbol_of(direction)
-                .map(|s| graph.interner().symbol_name(s).to_owned())?;
-            let side = match name.as_str() {
-                | "plus" => Side::Above,
-                | "minus" => Side::Below,
-                | _ => return None,
-            };
-            Some((f, x, a, side))
-        },
+        | [f, x, a, direction] => Some((f, x, a, side(graph, Some(direction))?)),
         | _ => None,
     }
 }
 
 /// Symbolic kernel for `limit`.
+#[derive(Copy, Clone)]
 pub(super) struct SymbolicLimit {
     pub(super) limit: OpId,
     pub(super) infinity: OpId,
@@ -1256,6 +1349,9 @@ pub(super) fn limit_at(
     // continuity there, which is all that can be done symbolically.
     let env = generic_env(cx.graph, point, symbol, &Env::numeric(0.0));
     let target = cx.graph.eval(point, &env)?;
+    if target.is_nan() {
+        return None;
+    }
     let term = cx.simplify(f);
     let mut limiter = Limiter {
         cx,
@@ -1267,6 +1363,15 @@ pub(super) fn limit_at(
         target,
         side,
     };
+    if target.is_infinite()
+        && let Some(exact_point) = limiter
+            .cx
+            .graph
+            .number_of(point)
+            .and_then(Number::to_rational)
+    {
+        return limiter.rational_at_large_finite_point(term, &exact_point);
+    }
     if let Some(exact) = limiter
         .exponential_quotient_at_point(term)
         .or_else(|| limiter.exponential_product_at_infinity(term))
@@ -1277,12 +1382,12 @@ pub(super) fn limit_at(
     // expressions that the other heuristics cannot see.
     let gruntz = super::gruntz::limit(limiter.cx, infinity, term, x, point, target, side);
     if let Some(candidate) = gruntz
-        && limiter.verified(term, candidate)
+        && limiter.verified(term, candidate)?
     {
         return Some(candidate);
     }
     let candidate = limiter.limit(term, 0)?;
-    if limiter.verified(term, candidate) {
+    if limiter.verified(term, candidate)? {
         return Some(candidate);
     }
     // The numeric probe cannot see a finite limit that is hidden behind

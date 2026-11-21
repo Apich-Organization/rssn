@@ -13,29 +13,159 @@
 //! | `acos_branch(z, k, s)` | `2 k pi + s acos z`, `s = ±1` |
 //! | `atan_branch(z, k)` | `k pi + atan z` |
 //! | `asinh_branch(z, k)`, `acosh_branch(z, k)`, `atanh_branch(z, k)` | logarithmic forms on branch `k` |
+//!
+//! Positive integer root degrees are periodic in the integer branch index.
+//! Exact symbolic indices are reduced before constructing the phase.
 
 use std::f64::consts::PI;
 use std::f64::consts::TAU;
 
 use num_complex::Complex64;
+use num_integer::Integer;
+use num_rational::BigRational;
+use num_traits::Signed;
 
 use crate::graph::Arity;
 use crate::graph::ComplexEval;
+use crate::graph::Cx;
+use crate::graph::Graph;
+use crate::graph::Kernel;
+use crate::graph::NodeId;
+use crate::graph::Number;
 use crate::graph::OpDescriptor;
 use crate::graph::OpFlags;
+use crate::graph::OpId;
+use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::Tier;
+use crate::graph::op::core;
 use crate::graph::rule::Installer;
 
 const I: Complex64 = Complex64::new(0.0, 1.0);
 
 /// Branch `k` of the `n`-th root.
+#[allow(
+    clippy::float_cmp,
+    reason = "the exact orders one and two have dedicated formulas"
+)]
 fn root(
     z: Complex64,
     n: f64,
     k: f64,
 ) -> Complex64 {
-    Complex64::from_polar(z.norm().powf(1.0 / n), (z.arg() + TAU * k) / n)
+    let integral_index = k.fract() == 0.0;
+    if n == 1.0 && integral_index {
+        return z;
+    }
+    let scale = z.re.abs().max(z.im.abs());
+    let scaled = ((0.0 < scale && scale < f64::MIN_POSITIVE)
+        || (scale.is_finite() && scale > f64::MAX / 2.0))
+        .then(|| z / scale);
+    if n == 2.0 && integral_index {
+        let principal = scaled.map_or_else(|| z.sqrt(), |unit| unit.sqrt() * scale.sqrt());
+        return if k % 2.0 == 0.0 {
+            principal
+        } else {
+            -principal
+        };
+    }
+    let phase = if n > 0.0 && n.fract() == 0.0 && integral_index {
+        let reduced = if k.abs() >= n { k % n } else { k };
+        z.arg() / n + TAU * (reduced / n)
+    } else {
+        (z.arg() + TAU * k) / n
+    };
+    let inverse_degree = n.recip();
+    let radius = scaled.map_or_else(
+        || z.norm().powf(inverse_degree),
+        |unit| scale.powf(inverse_degree) * unit.norm().powf(inverse_degree),
+    );
+    Complex64::from_polar(radius, phase)
+}
+
+struct RootBranches {
+    root: OpId,
+    sqrt: OpId,
+    principal_sqrt: OpId,
+    abs: OpId,
+    arg: OpId,
+    exp: OpId,
+    pi: OpId,
+    unit: OpId,
+}
+
+fn scaled_index(
+    graph: &mut Graph,
+    degree: NodeId,
+    index: NodeId,
+    inverse: NodeId,
+) -> NodeId {
+    let (Some(Number::Int(degree)), Some(Number::Int(value))) =
+        (graph.number_of(degree), graph.number_of(index))
+    else {
+        return graph.node(core::MUL, &[index, inverse]);
+    };
+    if !degree.is_positive() {
+        return graph.node(core::MUL, &[index, inverse]);
+    }
+    let reduced = if value.magnitude() >= degree.magnitude() {
+        value % degree
+    } else {
+        value.clone()
+    };
+    graph.num(Number::rat(BigRational::new(reduced, degree.clone())))
+}
+
+impl Kernel for RootBranches {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.root, self.sqrt]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let graph = &mut *cx.graph;
+        let (z, degree, index) = match *graph.children(node) {
+            | [z, index] => (z, None, index),
+            | [z, degree, index] => (z, Some(degree), index),
+            | _ => return Outcome::Pass,
+        };
+        let two = graph.int(2);
+        let degree = degree.unwrap_or(two);
+        if let Some(Number::Int(value)) = graph.number_of(index) {
+            match graph.number_of(degree).and_then(Number::to_i64) {
+                | Some(1) => return Outcome::Equal(z),
+                | Some(2) => {
+                    let odd = value.is_odd();
+                    let principal = graph.node(self.principal_sqrt, &[z]);
+                    let result = if odd {
+                        let minus_one = graph.int(-1);
+                        graph.node(core::MUL, &[minus_one, principal])
+                    } else {
+                        principal
+                    };
+                    return Outcome::Equal(result);
+                },
+                | _ => {},
+            }
+        }
+        let minus_one = graph.int(-1);
+        let inverse = graph.node(core::POW, &[degree, minus_one]);
+        let branch_fraction = scaled_index(graph, degree, index, inverse);
+        let magnitude = graph.node(self.abs, &[z]);
+        let radius = graph.node(core::POW, &[magnitude, inverse]);
+        let unit = graph.node(self.unit, &[]);
+        let pi = graph.node(self.pi, &[]);
+        let argument = graph.node(self.arg, &[z]);
+        let fractional_argument = graph.node(core::MUL, &[argument, inverse]);
+        let shift = graph.node(core::MUL, &[two, pi, branch_fraction]);
+        let angle = graph.node(core::ADD, &[fractional_argument, shift]);
+        let phase = graph.node(core::MUL, &[unit, angle]);
+        let rotation = graph.node(self.exp, &[phase]);
+        Outcome::Equal(graph.node(core::MUL, &[radius, rotation]))
+    }
 }
 
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
@@ -48,12 +178,12 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         (
             "sqrt_branch",
             2,
-            "`sqrt_branch(z, k)`: branch `k` of the square root `|z|^(1/2) * exp(I * (arg(z) + 2*pi*k) / 2)`.",
+            "`sqrt_branch(z, k)` selects the principal square root for an even integer `k` and its negative for an odd integer `k`.",
         ),
         (
             "root_branch",
             3,
-            "`root_branch(z, n, k)`: branch `k` of the `n`-th root `|z|^(1/n) * exp(I * (arg(z) + 2*pi*k) / n)`.",
+            "`root_branch(z, n, k)` gives `|z|^(1/n) * exp(I * (arg(z) + 2*pi*k) / n)`. For a positive integer degree `n`, integer indices that differ by a multiple of `n` select the same root.",
         ),
         (
             "power_branch",
@@ -169,12 +299,50 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             i.graph().ops_mut().set_attr(op, eval);
         }
     }
+    let [
+        Some(root),
+        Some(sqrt),
+        Some(principal_sqrt),
+        Some(abs),
+        Some(arg),
+        Some(exp),
+        Some(pi),
+        Some(unit),
+    ] = [
+        "root_branch",
+        "sqrt_branch",
+        "sqrt",
+        "abs",
+        "arg",
+        "exp",
+        "pi",
+        "I",
+    ]
+    .map(|name| i.graph().ops().lookup(name))
+    else {
+        return Err(RuleError::Invalid {
+            rule: "complex/periodic-root".into(),
+            reason: "needs elementary and complex operators",
+        });
+    };
+    i.kernel(
+        "complex/periodic-root",
+        Tier::Normalize,
+        RootBranches {
+            root,
+            sqrt,
+            principal_sqrt,
+            abs,
+            arg,
+            exp,
+            pi,
+            unit,
+        },
+    );
     i.rewrites(
         Tier::Normalize,
         &[
             "branch/log: log_branch(?z, ?k) => ln(abs(?z)) + I * (arg(?z) + 2 * pi * ?k)",
-            "branch/sqrt: sqrt_branch(?z, ?k) => abs(?z)^(1/2) * exp(I * (arg(?z) + 2 * pi * ?k) / 2)",
-            "branch/root: root_branch(?z, ?n, ?k) => abs(?z)^(1 / ?n) * exp(I * (arg(?z) + 2 * pi * ?k) / ?n)",
             "branch/power: power_branch(?z, ?w, ?k) => exp(?w * log_branch(?z, ?k))",
             "branch/asin: asin_branch(?z, ?k) => ?k * pi + (-1)^?k * asin(?z) if integer(?k)",
             "branch/acos: acos_branch(?z, ?k, ?s) => 2 * ?k * pi + ?s * acos(?z)",
@@ -194,6 +362,7 @@ mod tests {
 
     use super::super::complex;
     use super::super::eval_complex;
+    use super::root;
     use crate::graph::Budget;
     use crate::graph::Engine;
     use crate::graph::Env;
@@ -218,6 +387,34 @@ mod tests {
         assert_eq!(run("asin_branch(0, 1)"), "pi");
         assert_eq!(run("atan_branch(1, 1)"), "5/4*pi");
         assert_eq!(run("acos_branch(1, 1, -1)"), "2*pi");
+    }
+
+    #[test]
+    fn floating_root_phase_respects_large_integer_periods() {
+        let radicand = Complex64::new(8.0, 0.0);
+        let index = 9_007_199_254_740_991.0;
+        let radius = 3.0_f64.sqrt();
+        assert!((root(radicand, 3.0, index) - Complex64::new(-1.0, radius)).norm() < 1e-14);
+        assert!((root(radicand, 3.0, -index) - Complex64::new(-1.0, -radius)).norm() < 1e-14);
+        assert_eq!(root(radicand, 1.0, index), radicand);
+        assert!((root(radicand, 1e308, 5e307) + 1.0).norm() < 1e-14);
+    }
+
+    #[test]
+    fn square_root_scaling_preserves_the_cut_and_extreme_magnitudes() {
+        let upper = Complex64::new(-4.0, 0.0);
+        let lower = Complex64::new(-4.0, -0.0);
+        assert_eq!(root(upper, 2.0, 0.0), Complex64::new(0.0, 2.0));
+        assert_eq!(root(lower, 2.0, 0.0), Complex64::new(0.0, -2.0));
+        assert_eq!(root(lower, 2.0, -1.0), Complex64::new(0.0, 2.0));
+
+        let large = 1.6e308_f64;
+        let unit = root(Complex64::new(large, large), 2.0, 0.0) / large.sqrt();
+        assert!((unit * unit - Complex64::new(1.0, 1.0)).norm() < 1e-14);
+
+        let tiny = f64::from_bits(1);
+        let unit = root(Complex64::new(0.0, tiny), 2.0, 0.0) / tiny.sqrt();
+        assert!((unit * unit - Complex64::new(0.0, 1.0)).norm() < 1e-14);
     }
 
     /// Every branch, exponentiated or mapped back, gives the argument.

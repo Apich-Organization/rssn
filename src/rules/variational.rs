@@ -3,7 +3,7 @@
 //! A functional `S[u] = ∫ L(x, u, u', u'', ...) dx` is given by its
 //! Lagrangian `L`, written with the undetermined function itself —
 //! `y(x)`, `diff(y(x), x)`, `diff(diff(y(x), x), x)` — exactly as in
-//! [`dsolve`](super::ode). Functions of several variables (`u(x, y)`,
+//! [`dsolve`](mod@super::ode). Functions of several variables (`u(x, y)`,
 //! `diff(u(x, y), y)`) give field equations.
 //!
 //! | operator | value |

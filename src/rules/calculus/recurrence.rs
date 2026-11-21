@@ -3,18 +3,19 @@
 //! For `S(n) = Σ_{k=a}^{n+c} F(n, k)`, which Gosper's algorithm usually
 //! cannot close (`Σ binomial(n, k) x^k`, `Σ binomial(n, k)^2`), the exact
 //! values `S(0), …, S(N)` are computed as rational functions of at most
-//! one further parameter `γ`. A linear recurrence of order at most two
-//! with polynomial coefficients in `n` over `Q(γ)` is fitted to them; the
-//! fit is overdetermined, so a spurious recurrence is rejected. A
-//! first-order recurrence `S(n+1) = K ∏(n + αᵢ)/∏(n + βⱼ) S(n)` is then
-//! solved as a product of gamma functions. Every closed form is checked
-//! against further exact values before it is returned. This is the
-//! approach of guess-and-prove summation with the proof (Zeilberger's
-//! certificate) replaced by verification at extra points.
+//! one further parameter `γ`. An overdetermined fit looks for a first-order
+//! recurrence with polynomial coefficients in `n` over `Q(γ)`. The form
+//! `S(n+1) = K ∏(n + αᵢ)/∏(n + βⱼ) S(n)` is then solved as a product of gamma
+//! functions. The closed form is checked at three additional indices.
+//! Each check compares rational functions exactly when both values can be
+//! represented in `Q(γ)`. Other evaluable forms, including remaining gamma
+//! functions, use a numerical comparison. These are finite checks of the
+//! guessed recurrence and the resulting closed form.
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use num_traits::One;
+use num_traits::ToPrimitive;
 use num_traits::Zero;
 
 use super::gosper::Frac;
@@ -68,10 +69,7 @@ pub(super) fn sum_by_recurrence(
     for m in 0..=POINTS {
         values.push(value_at(cx, m)?);
     }
-    let (order, coefficients) = guess(&values)?;
-    if order != 1 {
-        return None;
-    }
+    let coefficients = guess(&values)?;
     let closed = solve_first_order(cx.graph, &coefficients, &values, n, gamma)?;
     let closed = cx.simplify(closed);
     // Verify at further points.
@@ -153,68 +151,74 @@ fn rewrite_binomials(
 }
 
 fn agrees(
-    graph: &Graph,
+    graph: &mut Graph,
     got: NodeId,
     want: &Frac,
     gamma: Option<NodeId>,
 ) -> bool {
+    if let Some(exact) = frac_of(graph, got, gamma) {
+        return !exact.d.iter().all(Zero::is_zero)
+            && !want.d.iter().all(Zero::is_zero)
+            && (exact == *want
+                || univariate::mul(&exact.n, &want.d) == univariate::mul(&want.n, &exact.d));
+    }
+
     let at = BigRational::new(BigInt::from(37), BigInt::from(100));
     let mut env = Env::numeric(0.0);
     if let Some(symbol) = gamma.and_then(|g| graph.symbol_of(g)) {
         env.bind(symbol, 0.37);
     }
-    let Some(value) = graph.eval(got, &env) else {
+    let Some(value) = graph.eval(got, &env).filter(|v| v.is_finite()) else {
         return false;
     };
-    let expected = Number::rat(univariate::eval(&want.n, &at)).to_f64()
-        / Number::rat(univariate::eval(&want.d, &at)).to_f64();
+    let Some(expected) = frac_at(want, &at)
+        .and_then(|ratio| ratio.to_f64())
+        .filter(|v| v.is_finite())
+    else {
+        return false;
+    };
     (value - expected).abs() <= 1e-9 * expected.abs().max(1.0)
 }
 
-/// Fits `Σ_j P_j(n) S(n+j) = 0`: the order and the coefficient
-/// polynomials `P_j` (ascending in `n`, entries over `Q(γ)`).
-fn guess(values: &[Frac]) -> Option<(usize, Vec<Vec<Frac>>)> {
-    for order in 1..=2_usize {
-        for degree in 0..=3_usize {
-            let unknowns = (order + 1) * (degree + 1);
-            let equations = values.len().checked_sub(order)?;
-            if equations < unknowns + 2 {
-                continue;
-            }
-            // Rows: n = 0..equations; columns (j, i): n^i S(n+j).
-            let mut rows = Vec::with_capacity(equations);
-            for m in 0..equations {
-                let mut row = Vec::with_capacity(unknowns);
-                for j in 0..=order {
-                    let mut power = BigRational::one();
-                    for _ in 0..=degree {
-                        row.push(values[m + j].mul(&Frac::poly(vec![power.clone()])));
-                        power *= BigRational::from_integer(BigInt::from(m));
-                    }
+/// Fits `P₀(n) S(n) + P₁(n) S(n+1) = 0` over `Q(γ)`, with coefficients
+/// of each polynomial in ascending order in `n`.
+fn guess(values: &[Frac]) -> Option<Vec<Vec<Frac>>> {
+    let equations = values.len().checked_sub(1)?;
+    for width in 1..=4 {
+        let unknowns = 2 * width;
+        if equations < unknowns + 2 {
+            continue;
+        }
+        // Rows: n = 0..equations; columns (j, i): n^i S(n+j).
+        let mut rows = Vec::with_capacity(equations);
+        for (m, pair) in values.windows(2).enumerate() {
+            let mut row = Vec::with_capacity(unknowns);
+            for value in pair {
+                let mut power = BigRational::one();
+                for _ in 0..width {
+                    row.push(value.mul(&Frac::poly(vec![power.clone()])));
+                    power *= BigRational::from_integer(BigInt::from(m));
                 }
-                rows.push(row);
             }
-            // Normalise one unknown to 1, trying each column of the highest
-            // shift in turn.
-            for pivot in (order * (degree + 1)..unknowns).rev() {
-                let rhs: Vec<Frac> = rows.iter().map(|r| Frac::zero().sub(&r[pivot])).collect();
-                let reduced: Vec<Vec<Frac>> = rows
-                    .iter()
-                    .map(|r| {
-                        r.iter()
-                            .enumerate()
-                            .filter(|&(c, _)| c != pivot)
-                            .map(|(_, v)| v.clone())
-                            .collect()
-                    })
-                    .collect();
-                if let Some(x) = solve(reduced, rhs, unknowns - 1) {
-                    let mut all = x;
-                    all.insert(pivot, Frac::poly(vec![BigRational::one()]));
-                    let coefficients: Vec<Vec<Frac>> =
-                        all.chunks(degree + 1).map(<[Frac]>::to_vec).collect();
-                    return Some((order, coefficients));
-                }
+            rows.push(row);
+        }
+        // Normalise one unknown to 1, trying each column of the second
+        // polynomial in descending degree.
+        for pivot in (width..unknowns).rev() {
+            let rhs: Vec<Frac> = rows.iter().map(|r| Frac::zero().sub(&r[pivot])).collect();
+            let reduced: Vec<Vec<Frac>> = rows
+                .iter()
+                .map(|r| {
+                    r.iter()
+                        .enumerate()
+                        .filter(|&(c, _)| c != pivot)
+                        .map(|(_, v)| v.clone())
+                        .collect()
+                })
+                .collect();
+            if let Some(mut coefficients) = solve(reduced, rhs, unknowns - 1) {
+                coefficients.insert(pivot, Frac::poly(vec![BigRational::one()]));
+                return Some(coefficients.chunks(width).map(<[Frac]>::to_vec).collect());
             }
         }
     }
@@ -448,4 +452,98 @@ pub(super) fn solve_first_order(
         }
     }
     Some(graph.node(core::MUL, &factors))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::graph::Engine;
+
+    use super::*;
+
+    #[test]
+    fn recurrence_spot_check_detects_exact_mismatches() {
+        let mut graph = Graph::new();
+        let _engine = Engine::install(&mut graph, &crate::rules::standard()).unwrap();
+        let gamma = graph.sym("g");
+        // A match at the numerical probe alone does not establish equality
+        // of the two rational functions in g.
+        let collision = graph.parse("g-37/100").unwrap();
+        assert!(!agrees(&mut graph, collision, &Frac::zero(), Some(gamma)));
+
+        let scale = BigInt::from(10).pow(400);
+        let tiny = BigRational::new(BigInt::one(), scale.clone());
+        let tiny_node = graph.num(Number::rat(tiny.clone()));
+        assert!(!agrees(&mut graph, tiny_node, &Frac::zero(), None));
+        assert!(agrees(&mut graph, tiny_node, &frac_const(tiny), None));
+
+        let scaled_form = Frac {
+            n: vec![
+                BigRational::from_integer(&scale * 3),
+                BigRational::from_integer(&scale * 2),
+            ],
+            d: vec![BigRational::from_integer(scale)],
+        };
+        let same_function = graph.parse("3+2*g").unwrap();
+        assert!(agrees(&mut graph, same_function, &scaled_form, Some(gamma)));
+    }
+
+    #[test]
+    fn recurrence_spot_check_can_evaluate_remaining_gamma_functions() {
+        let mut graph = Graph::new();
+        let _engine = Engine::install(&mut graph, &crate::rules::standard()).unwrap();
+        let gamma = graph.sym("g");
+        let got = graph.parse("gamma(8+g)/gamma(7+g)").unwrap();
+        assert!(frac_of(&mut graph, got, Some(gamma)).is_none());
+        let scale = BigInt::from(10).pow(400);
+        let expected = Frac {
+            n: vec![
+                BigRational::from_integer(&scale * 7),
+                BigRational::from_integer(scale.clone()),
+            ],
+            d: vec![BigRational::from_integer(scale)],
+        };
+        assert!(agrees(&mut graph, got, &expected, Some(gamma)));
+        assert!(!agrees(&mut graph, got, &Frac::zero(), Some(gamma)));
+    }
+
+    #[test]
+    fn only_an_order_one_fit_is_usable_for_the_closed_form() {
+        let from_int = |x: BigInt| frac_const(BigRational::from_integer(x));
+        let mut central = BigInt::one();
+        let mut binomials = Vec::new();
+        for n in 0..=POINTS + 4 {
+            binomials.push(from_int(central.clone()));
+            central = central * (2 * (2 * n + 1)) / (n + 1);
+        }
+        let sample_len = usize::try_from(POINTS + 1).unwrap();
+        let coefficients = guess(&binomials[..sample_len]).unwrap();
+        let [p0, p1] = coefficients.as_slice() else {
+            panic!("{coefficients:?}");
+        };
+        for (n, pair) in binomials.windows(2).enumerate() {
+            let x = BigRational::from_integer(BigInt::from(n));
+            let sum = frac_add(
+                &frac_at_polynomial(p0, &x).mul(&pair[0]),
+                &frac_at_polynomial(p1, &x).mul(&pair[1]),
+            );
+            assert!(sum.is_zero(), "n={n}: {sum:?}");
+        }
+
+        let mut fibonacci = vec![from_int(0.into()), from_int(1.into())];
+        for n in 2..sample_len {
+            fibonacci.push(frac_add(&fibonacci[n - 2], &fibonacci[n - 1]));
+        }
+        assert!(guess(&fibonacci).is_none());
+    }
+
+    fn frac_at_polynomial(
+        coefficients: &[Frac],
+        at: &BigRational,
+    ) -> Frac {
+        let at = frac_const(at.clone());
+        coefficients
+            .iter()
+            .rev()
+            .fold(Frac::zero(), |acc, c| frac_add(&acc.mul(&at), c))
+    }
 }

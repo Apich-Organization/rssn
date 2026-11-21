@@ -10,7 +10,7 @@
 //!
 //! | operator | meaning |
 //! |---|---|
-//! | `meijerg(m, n, list(a), list(b), z)` | `G^{m,n}_{p,q}(z | a; b)`, `p = len(a)`, `q = len(b)`; the first `n` entries of `a` and the first `m` entries of `b` are the contour-defining sets |
+//! | `meijerg(m, n, list(a), list(b), z)` | `G^{m,n}_{p,q}(z \| a; b)`, `p = len(a)`, `q = len(b)`; the first `n` entries of `a` and the first `m` entries of `b` are the contour-defining sets |
 //! | `meijer_mellin(m, n, list(a), list(b), s)` | the Mellin transform `int_0^inf x^{s-1} G(x) dx`, as the exact gamma product |
 //! | `meijer_series(m, n, list(a), list(b), z, k[, direction])` | the first `k` terms of the residue series at `z = 0` (`direction = 0`, the default) or of the expansion at infinity (`direction = oo`) |
 //!
@@ -34,21 +34,21 @@
 //!
 //! | parameters | value |
 //! |---|---|
-//! | `G^{1,0}_{0,1}(z | b)` | `z^b e^{-z}` |
-//! | `G^{1,1}_{1,1}(z | a; b)` | `Gamma(1+b-a) z^b (1+z)^{a-b-1}` |
-//! | `G^{1,0}_{0,2}(z | b, b+1/2)` | `z^b cos(2 sqrt z)/sqrt(pi)` |
-//! | `G^{1,0}_{0,2}(z | b+1/2, b)` | `z^b sin(2 sqrt z)/sqrt(pi)` |
-//! | `G^{1,1}_{1,2}(z | 1; 1/2, 0)` | `sqrt(pi) erf(sqrt z)` |
-//! | `G^{2,0}_{1,2}(z | 1; 1/2, 0)` | `sqrt(pi) erfc(sqrt z)` |
-//! | `G^{1,1}_{1,3}(z | 1; 3/4, 1/4, 0)` | `2 fresnels(2 z^{1/4}/sqrt(pi))` |
-//! | `G^{1,1}_{1,3}(z | 1; 1/4, 3/4, 0)` | `2 fresnelc(2 z^{1/4}/sqrt(pi))` |
-//! | `G^{1,0}_{0,2}(z | b1, b2)` | `z^{(b1+b2)/2} J_{b1-b2}(2 sqrt z)` |
-//! | `G^{1,0}_{0,2}(-w | nu/2, -nu/2)` | `i^nu I_nu(2 sqrt w)` for `w > 0` |
-//! | `G^{2,0}_{0,2}(z | b1, b2)` | `2 z^{(b1+b2)/2} K_{b1-b2}(2 sqrt z)` |
-//! | `G^{1,0}_{0,2}(z | b, b)` | `z^b J_0(2 sqrt z)` |
-//! | `G^{2,0}_{1,3}(z | a; b1, b2, a)` | `z^{(b1+b2)/2} Y_{b1-b2}(2 sqrt z)` when `a = b2 - 1/2` |
-//! | `G^{1,2}_{2,2}(z | 1, 1; 1, 0)` | `ln(1+z)` |
-//! | `G^{1,2}_{2,2}(z | 1/2, 1; 1/2, 0)` | `2 atan(sqrt z)` |
+//! | `G^{1,0}_{0,1}(z \| b)` | `z^b e^{-z}` |
+//! | `G^{1,1}_{1,1}(z \| a; b)` | `Gamma(1+b-a) z^b (1+z)^{a-b-1}` |
+//! | `G^{1,0}_{0,2}(z \| b, b+1/2)` | `z^b cos(2 sqrt z)/sqrt(pi)` |
+//! | `G^{1,0}_{0,2}(z \| b+1/2, b)` | `z^b sin(2 sqrt z)/sqrt(pi)` |
+//! | `G^{1,1}_{1,2}(z \| 1; 1/2, 0)` | `sqrt(pi) erf(sqrt z)` |
+//! | `G^{2,0}_{1,2}(z \| 1; 1/2, 0)` | `sqrt(pi) erfc(sqrt z)` |
+//! | `G^{1,1}_{1,3}(z \| 1; 3/4, 1/4, 0)` | `2 fresnels(2 z^{1/4}/sqrt(pi))` |
+//! | `G^{1,1}_{1,3}(z \| 1; 1/4, 3/4, 0)` | `2 fresnelc(2 z^{1/4}/sqrt(pi))` |
+//! | `G^{1,0}_{0,2}(z \| b1, b2)` | `z^{(b1+b2)/2} J_{b1-b2}(2 sqrt z)` |
+//! | `G^{1,0}_{0,2}(-w \| nu/2, -nu/2)` | `i^nu I_nu(2 sqrt w)` for `w > 0` |
+//! | `G^{2,0}_{0,2}(z \| b1, b2)` | `2 z^{(b1+b2)/2} K_{b1-b2}(2 sqrt z)` |
+//! | `G^{1,0}_{0,2}(z \| b, b)` | `z^b J_0(2 sqrt z)` |
+//! | `G^{2,0}_{1,3}(z \| a; b1, b2, a)` | `z^{(b1+b2)/2} Y_{b1-b2}(2 sqrt z)` when `a = b2 - 1/2` |
+//! | `G^{1,2}_{2,2}(z \| 1, 1; 1, 0)` | `ln(1+z)` |
+//! | `G^{1,2}_{2,2}(z \| 1/2, 1; 1/2, 0)` | `2 atan(sqrt z)` |
 //! | any `p < q` with a terminating numerator parameter | the finite Slater `pF_{q-1}` series as an explicit polynomial |
 //!
 //! The Bessel forms carry the shift symmetry `G(z | a+c; b+c) = z^c G(z|a;b)`

@@ -17,8 +17,8 @@
 //! | `sum(f, k, a, b)`, `product(f, k, a, b)`, `converges(f, k)` | finite and closed-form sums and products, and convergence tests |
 //! | `sum(t)`, `sum(t, axis)` | the sum of every element of a tensor, and the sum along one axis (see `tensor`) |
 //! | `antidifference(t, k)`, `indefinite_sum(f, k)`, `indefinite_product(f, k)` | Gosper's indefinite sum and the indefinite product |
-//! | `zeilberger(F, k, n)` | `list(list(p_0, …, p_J), G/F)`: Zeilberger's recurrence `Σ_j p_j(n) S(n+j) = 0` for `S(n) = Σ_k F(n, k)` and the telescoping certificate |
-//! | `definite_sum(F, k, n)` | the closed form of `Σ_{k=-oo}^{oo} F(n, k)` from the first-order Zeilberger recurrence |
+//! | `zeilberger(F, k, n)` | `list(list(p_0, …, p_J), G/F)` with `Σ_j p_j(n) F(n+j, k) = G(n, k+1) - G(n, k)`. Summing gives a homogeneous recurrence when the boundary terms cancel. |
+//! | `definite_sum(F, k, n)` | seeks a closed form of `Σ_{k=-oo}^{oo} F(n, k)` and checks it against direct sums on known finite support |
 
 mod algebraic;
 mod algebraic_field;
@@ -136,6 +136,20 @@ pub fn calculus() -> RuleSet {
     RuleSet::new("calculus", install)
         .needs(elementary())
         .needs(poly())
+}
+
+/// Computes a claimed limit using the registered calculus reducer.
+pub(super) fn limit_for_claim(
+    cx: &mut Cx<'_>,
+    f: NodeId,
+    x: NodeId,
+    a: NodeId,
+    direction: Option<NodeId>,
+) -> Option<NodeId> {
+    let ops = cx.graph.ops();
+    let limit = *ops.attr::<limits::SymbolicLimit>(ops.lookup("limit")?)?;
+    let side = limits::side(cx.graph, direction)?;
+    limits::limit_at(cx, limit.functions, limit.infinity, f, x, a, side)
 }
 
 /// Attaches the partial derivatives of operator `name`, one pattern per
@@ -318,15 +332,13 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         .cost(100)
         .binder(1, 0b1)
         .doc("`limit(f, x, a, [dir])`: limit of `f` as bound variable `x` approaches `a` (optional direction `plus` or `minus`)."))?;
-    i.kernel(
-        "calculus/limit",
-        Tier::Reduce,
-        limits::SymbolicLimit {
-            limit,
-            infinity,
-            functions,
-        },
-    );
+    let symbolic_limit = limits::SymbolicLimit {
+        limit,
+        infinity,
+        functions,
+    };
+    i.graph().ops_mut().set_attr(limit, symbolic_limit);
+    i.kernel("calculus/limit", Tier::Reduce, symbolic_limit);
     i.kernel(
         "calculus/limit-numeric",
         Tier::Reduce,
@@ -371,7 +383,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         product: i.op(request(
             "product",
             4,
-            "`product(expr, k, lo, hi)`: symbolic/numeric product over bound index `k` from `lo` to `hi`.",
+            "`product(expr, k, lo, hi)` multiplies the values of `expr` over a bound index `k` from `lo` through `hi`, inclusive.\n\nSmall literal integer ranges substitute each index value. A factor independent of `k` can be raised to the number of terms.\n\nSymbolic bounds can reduce through factorials or a known finite-product formula. An unsupported request remains unevaluated.",
         )
         .binder(1, 0b1))?,
         converges: i.op(request(
@@ -452,7 +464,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let definite_sum = i.op(request(
         "definite_sum",
         3,
-        "`definite_sum(F, k, n)`: evaluates a definite hypergeometric sum over bound index `k` as a function of `n`.",
+        "`definite_sum(F, k, n)` seeks a closed form in `n` for the sum of `F(n, k)` over all integer `k`.\n\nThe names `k` and `n` are symbols. Creative telescoping obtains a recurrence and the solver checks its proposed closed form against direct values where the support is known.\n\nFor example, `definite_sum(binomial(n, k), k, n)` returns `2^n`. The request remains unevaluated when the solver cannot establish a closed form.",
     )
     .binder(1, 0b1))?;
     // The recurrence and its certificate are a list of equations, not a

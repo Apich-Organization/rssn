@@ -166,7 +166,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "residue",
             3,
             Request::Residue,
-            "`residue(f, z, a)`: residue of `f(z)` at point `a`.",
+            "`residue(f, z, a)` returns the coefficient of `(z - a)^(-1)` in `f(z)` near `a`.\n\nIt returns zero at a regular point and for a removable singularity.\n\nIt uses a pole calculation or a Laurent expansion and leaves a request unevaluated if the coefficient cannot be determined.",
         ),
         (
             "singularity",
@@ -178,7 +178,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "contour_integral",
             3,
             Request::Contour,
-            "`contour_integral(f, z, C)`: contour integral of `f(z)` along contour `C` (`circle`, `polygon`, or `path`).",
+            "`contour_integral(f, z, C)` integrates `f(z)` along a `circle`, `polygon`, or parametrized `path`.\n\nThe circle and polygon forms sum residues weighted by the winding number. A pole on the contour leaves the request unevaluated.\n\nThe path form substitutes the real parameter, multiplies by the path derivative, and integrates the real and imaginary parts.",
         ),
         (
             "cauchy_integral",
@@ -190,13 +190,13 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "cauchy_derivative",
             4,
             Request::CauchyDerivative,
-            "`cauchy_derivative(f, z, a, n)`: Cauchy integral `∮ f(z) / (z - a)^(n + 1) dz` around `a`.",
+            "`cauchy_derivative(f, z, a, n)` returns the Cauchy integral `∮ f(z) / (z - a)^(n + 1) dz` around `a`.\n\nThe order `n` is a nonnegative integer. The result is `2*pi*I * f^(n)(a) / n!`.\n\nThe local Taylor coefficient of order `n` determines the integral. When that coefficient cannot be determined, the request remains unevaluated.",
         ),
         (
             "count_zeros_poles",
             3,
             Request::CountZerosPoles,
-            "`count_zeros_poles(f, z, C)`: zeros minus poles of `f(z)` inside contour `C`, counted with multiplicity.",
+            "`count_zeros_poles(f, z, C)` returns the number of zeros minus poles of `f(z)`, with multiplicity, inside the oriented contour `C`.\n\nThe contour may be a circle or a closed polygon. Reversing the polygon orientation reverses the sign.\n\nThe operator checks the exact count and the sampled argument principle where available. Disagreement leaves the request unevaluated.",
         ),
         (
             "radius_of_convergence",
@@ -244,7 +244,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "winding_number",
             2,
             Request::WindingNumber,
-            "`winding_number(p, C)`: winding number of closed contour `C` around point `p`.",
+            "`winding_number(p, C)` returns the signed number of turns of the circle or closed polygon `C` around `p`.\n\nCounterclockwise turns are positive. Points outside a simple contour have winding number zero.\n\nA point on the boundary has no winding number and leaves the request unevaluated.",
         ),
         (
             "contour_integral_residue_theorem",
@@ -667,10 +667,11 @@ fn contour_of(
             };
             let centre = value_of(graph, c)?;
             let radius = value_of(graph, r)?;
-            (centre.is_finite() && radius.im == 0.0 && radius.re > 0.0).then_some(Contour::Circle {
-                centre,
-                radius: radius.re,
-            })
+            (centre.is_finite() && radius.is_finite() && radius.im == 0.0 && radius.re > 0.0)
+                .then_some(Contour::Circle {
+                    centre,
+                    radius: radius.re,
+                })
         },
         | "polygon" => {
             let &[list] = graph.children(term) else {
@@ -701,7 +702,7 @@ impl Contour {
         match self {
             | Self::Circle { centre, radius } => {
                 let d = (z - centre).norm();
-                ((d - radius).abs() > 1e-9 * (1.0 + radius)).then_some(i64::from(d < *radius))
+                ((d - radius).abs() > 1e-9 * radius).then_some(i64::from(d < *radius))
             },
             | Self::Polygon(v) => polygon_winding(v, z),
         }
@@ -713,27 +714,63 @@ fn polygon_winding(
     v: &[Complex64],
     z: Complex64,
 ) -> Option<i64> {
-    let tol = 1e-9 * (1.0 + v.iter().map(|p| p.norm()).fold(0.0, f64::max));
+    const PARALLEL_EDGES: usize = 32_768;
+    const EDGES_PER_BLOCK: usize = 2_048;
+    if !crate::execution::should_split(v.len(), PARALLEL_EDGES) {
+        return polygon_edge_winding(v, z, 0..v.len());
+    }
+    let blocks = v.len().div_ceil(EDGES_PER_BLOCK);
+    let partials = crate::kernels::par::try_map_indexed(blocks, 2, |block| {
+        let start = block * EDGES_PER_BLOCK;
+        let end = start.saturating_add(EDGES_PER_BLOCK).min(v.len());
+        polygon_edge_winding(v, z, start..end).ok_or(())
+    })
+    .ok()?;
+    Some(partials.into_iter().sum())
+}
+
+fn polygon_edge_winding(
+    v: &[Complex64],
+    z: Complex64,
+    edges: std::ops::Range<usize>,
+) -> Option<i64> {
+    const BOUNDARY_TOLERANCE_SQUARED: f64 = 1e-18;
     let mut winding = 0;
-    for k in 0..v.len() {
+    for k in edges {
         let (a, b) = (v[k], v[(k + 1) % v.len()]);
-        let edge = b - a;
-        let length2 = edge.norm_sqr();
-        let t = if length2 == 0.0 {
-            0.0
-        } else {
-            (((z - a) * edge.conj()).re / length2).clamp(0.0, 1.0)
-        };
-        if (z - (a + edge * t)).norm() <= tol {
-            return None;
+        let mut edge = b - a;
+        let mut offset = z - a;
+        if !edge.is_finite() || !offset.is_finite() {
+            // Opposite-sign finite coordinates can overflow on subtraction.
+            edge = b / 2.0 - a / 2.0;
+            offset = z / 2.0 - a / 2.0;
         }
-        let side = edge.re * (z.im - a.im) - (z.re - a.re) * edge.im;
-        if a.im <= z.im {
-            if b.im > z.im && side > 0.0 {
-                winding += 1;
+        let edge_scale = edge.re.abs().max(edge.im.abs());
+        if edge_scale == 0.0 {
+            if a == z {
+                return None;
             }
-        } else if b.im <= z.im && side < 0.0 {
-            winding -= 1;
+            continue;
+        }
+        // Measure boundary distance in edge-local coordinates, with neither
+        // the tolerance nor the projection depending on the polygon's origin.
+        let direction = edge / edge_scale;
+        let relative = offset / edge_scale;
+        if relative.re.abs().max(relative.im.abs()) <= 2.0 {
+            let projection =
+                (relative.re * direction.re + relative.im * direction.im) / direction.norm_sqr();
+            let nearest = direction * projection.clamp(0.0, 1.0);
+            if (relative - nearest).norm_sqr() <= BOUNDARY_TOLERANCE_SQUARED {
+                return None;
+            }
+        }
+        let crosses_up = a.im <= z.im && b.im > z.im;
+        let crosses_down = b.im <= z.im && a.im > z.im;
+        if crosses_up || crosses_down {
+            let offset = offset / offset.re.abs().max(offset.im.abs());
+            let side = direction.re * offset.im - direction.im * offset.re;
+            winding += i64::from(crosses_up && side > 0.0);
+            winding -= i64::from(crosses_down && side < 0.0);
         }
     }
     Some(winding)
@@ -1507,11 +1544,61 @@ fn mobius_term(
 
 #[cfg(test)]
 mod tests {
+    use num_complex::Complex64;
+
     use super::super::complex;
+    use super::polygon_winding;
     use crate::rules::testing::simplify;
 
     fn run(src: &str) -> String {
         simplify(&[complex()], src)
+    }
+
+    #[test]
+    fn large_polygon_winding_matches_across_worker_counts() {
+        let vertices: Vec<_> = (0..65_536)
+            .map(|index| {
+                let angle = std::f64::consts::TAU * f64::from(index) / 65_536.0;
+                Complex64::new(angle.cos(), angle.sin())
+            })
+            .collect();
+        for threads in [1, 2, 4] {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap();
+            pool.install(|| {
+                assert_eq!(
+                    polygon_winding(&vertices, Complex64::new(0.0, 0.0)),
+                    Some(1)
+                );
+                assert_eq!(
+                    polygon_winding(&vertices, Complex64::new(2.0, 1.0)),
+                    Some(0)
+                );
+                assert_eq!(polygon_winding(&vertices, vertices[51_001]), None);
+            });
+        }
+    }
+
+    #[test]
+    fn symbolic_contour_docs_use_the_registered_contract() {
+        use crate::kernel::manifest::DocSource;
+
+        let session = crate::api::Session::with_rules(&[complex()]).unwrap();
+        let manifest = session.manifest();
+        for name in [
+            "residue",
+            "contour_integral",
+            "cauchy_derivative",
+            "count_zeros_poles",
+            "winding_number",
+        ] {
+            let info = manifest.ops.iter().find(|op| op.name == name).unwrap();
+            assert_eq!(info.doc_source, DocSource::Declared, "{name}");
+            assert!(info.doc_path.is_none(), "{name}: {:?}", info.doc_path);
+            assert!(info.doc.starts_with(&format!("`{name}(")), "{name}");
+        }
     }
 
     #[test]
@@ -1705,6 +1792,60 @@ mod tests {
             &[],
         );
         assert!(!reduced, "{text}");
+    }
+
+    #[test]
+    fn polygon_winding_is_translation_and_scale_invariant() {
+        for (origin, span) in [
+            (Complex64::new(1e12, -1e12), 1.0),
+            (Complex64::new(0.0, 0.0), 1e-200),
+            (Complex64::new(0.0, 0.0), 1e200),
+            (Complex64::new(-1e308, -1e308), 1e308),
+        ] {
+            let delta = Complex64::new(span, span);
+            let mut vertices = [
+                origin,
+                origin + Complex64::new(span, 0.0),
+                origin + delta,
+                origin + delta,
+                origin + Complex64::new(0.0, span),
+            ];
+            let inside = origin + delta / 2.0;
+            let outside = origin - delta / 2.0;
+            assert_eq!(polygon_winding(&vertices, inside), Some(1));
+            assert_eq!(polygon_winding(&vertices, outside), Some(0));
+            assert_eq!(polygon_winding(&vertices, origin), None);
+            assert_eq!(
+                polygon_winding(&vertices, origin + Complex64::new(span / 2.0, 0.0)),
+                None
+            );
+            vertices.reverse();
+            assert_eq!(polygon_winding(&vertices, inside), Some(-1));
+        }
+        let huge = [
+            Complex64::new(-1e308, -1e308),
+            Complex64::new(1e308, -1e308),
+            Complex64::new(1e308, 1e308),
+            Complex64::new(-1e308, 1e308),
+        ];
+        assert_eq!(polygon_winding(&huge, Complex64::new(0.0, 0.0)), Some(1));
+    }
+
+    #[test]
+    fn winding_resolves_small_circles_and_translated_polygons_in_the_graph() {
+        assert_eq!(run("winding_number(0, circle(0, 1/10000000000))"), "1");
+        assert_eq!(
+            run("winding_number(1/5000000000, circle(0, 1/10000000000))"),
+            "0"
+        );
+        let translated =
+            "polygon(list(1000000000000, 1000000000001, 1000000000001+I, 1000000000000+I))";
+        assert_eq!(
+            run(&format!(
+                "winding_number(2000000000001/2+I/2, {translated})"
+            )),
+            "1"
+        );
     }
 
     #[test]

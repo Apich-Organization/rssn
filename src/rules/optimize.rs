@@ -1055,6 +1055,25 @@ fn convexity(
             }
         }
     }
+    // Exact literal entries certify a constant Hessian. Its principal minors
+    // decide the sign everywhere, without sampling the same matrix repeatedly.
+    let constant = h
+        .iter()
+        .map(|row| {
+            row.iter()
+                .map(|&entry| {
+                    match cx.graph.payload(entry) {
+                        | Some(crate::graph::Payload::Num(number)) => number.to_rational(),
+                        | _ => None,
+                    }
+                })
+                .collect::<Option<Vec<Q>>>()
+        })
+        .collect::<Option<Vec<_>>>();
+    if let Some(constant) = constant {
+        return Some(truth(cx.graph, principal_minors_nonnegative(&constant)));
+    }
+
     let n = vars.len();
     // Exact witnesses against convexity at rational sample points.
     let samples = [-2_i64, -1, 0, 1, 2, 3];

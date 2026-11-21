@@ -990,7 +990,7 @@ fn identity_node(
     sub_of(graph, scaled_lhs, right)
 }
 
-/// A linear system in reduced row echelon form.
+/// A linear system in row echelon form.
 struct System {
     rows: Vec<Vec<BigRational>>,
     pivots: Vec<(usize, usize)>,
@@ -1018,31 +1018,21 @@ fn solve_system(
             continue;
         };
         rows.swap(row, pivot);
-        let lead = rows
-            .get(row)
-            .and_then(|x| x.get(column))
-            .cloned()
-            .unwrap_or_else(BigRational::zero);
-        for r in 0..count {
-            if r == row {
+        let (previous, below) = rows.split_at_mut(row.saturating_add(1));
+        let pivot_row = previous.last()?;
+        let lead = pivot_row.get(column)?;
+        for target in below {
+            let (entry, trailing) = target.get_mut(column..)?.split_first_mut()?;
+            if entry.is_zero() {
                 continue;
             }
-            let Some(factor) = rows
-                .get(r)
-                .and_then(|x| x.get(column))
-                .filter(|v| !v.is_zero())
-                .cloned()
-            else {
-                continue;
-            };
-            let factor = factor / &lead;
-            for column_index in column..=columns {
-                let offset = rows
-                    .get(row)
-                    .and_then(|x| x.get(column_index))
-                    .cloned()
-                    .unwrap_or_else(BigRational::zero);
-                if let Some(slot) = rows.get_mut(r).and_then(|x| x.get_mut(column_index)) {
+            let factor = &*entry / lead;
+            *entry = BigRational::zero();
+            for (slot, offset) in trailing
+                .iter_mut()
+                .zip(pivot_row.iter().skip(column.saturating_add(1)))
+            {
+                if !offset.is_zero() {
                     *slot -= offset * &factor;
                 }
             }
@@ -1080,33 +1070,19 @@ impl System {
             *slot = value;
         }
         for &(row, column) in self.pivots.iter().rev() {
-            let mut total = self
-                .rows
-                .get(row)
-                .and_then(|r| r.get(self.columns))
-                .cloned()
-                .unwrap_or_else(BigRational::zero);
-            for other in 0..self.columns {
-                if other == column {
-                    continue;
-                }
-                let coefficient = self
-                    .rows
-                    .get(row)
-                    .and_then(|r| r.get(other))
-                    .cloned()
-                    .unwrap_or_else(BigRational::zero);
-                let value = x.get(other).cloned().unwrap_or_else(BigRational::zero);
-                total -= coefficient * value;
-            }
-            let lead = self
-                .rows
-                .get(row)
-                .and_then(|r| r.get(column))
-                .cloned()
-                .unwrap_or_else(BigRational::zero);
-            if lead.is_zero() {
+            let Some(coefficients) = self.rows.get(row) else {
                 continue;
+            };
+            let (Some(initial), Some(lead)) =
+                (coefficients.get(self.columns), coefficients.get(column))
+            else {
+                continue;
+            };
+            let mut total = initial.clone();
+            for (coefficient, value) in coefficients.iter().zip(&x).skip(column.saturating_add(1)) {
+                if !coefficient.is_zero() && !value.is_zero() {
+                    total -= coefficient * value;
+                }
             }
             if let Some(slot) = x.get_mut(column) {
                 *slot = total / lead;
@@ -1860,20 +1836,28 @@ fn reconstruct(
         if stage > sample_limit {
             break;
         }
-        while next < stage {
+        let count = usize::try_from(stage.checked_sub(next)?).ok()?;
+        // Each specialisation is independent. Assemble in index order so
+        // the reconstruction and its held-out points remain deterministic.
+        let samples = crate::kernels::par::map_indexed(count, 4, |index| {
             if expired(deadline) {
                 return None;
             }
-            let n0 = FIRST_SAMPLE.checked_add(next)?;
-            next = next.checked_add(1)?;
-            let Some(slice) = slice_at(problem, order, q_set, degree, n0) else {
-                continue;
-            };
+            let n0 = FIRST_SAMPLE
+                .checked_add(next)?
+                .checked_add(i64::try_from(index).ok()?)?;
+            let slice = slice_at(problem, order, q_set, degree, n0)?;
             if let Null::Unique(x) = null_vector(&slice, order, degree) {
-                xs.push(rat(n0));
-                vectors.push(x);
+                Some((rat(n0), x))
+            } else {
+                None
             }
+        });
+        for (n, x) in samples.into_iter().flatten() {
+            xs.push(n);
+            vectors.push(x);
         }
+        next = stage;
         if expired(deadline) {
             return None;
         }
@@ -1882,6 +1866,40 @@ fn reconstruct(
         }
     }
     None
+}
+
+/// Finds the first certificate degree worth reconstructing from the
+/// specialised system. Increasing the degree only appends columns: a
+/// unique solution with a nonzero leading recurrence coefficient extends
+/// by zeros, and a multidimensional null space cannot shrink.
+fn first_reconstruction_degree(
+    slice: &Slice,
+    order: usize,
+    limit: usize,
+    deadline: Option<Instant>,
+) -> Option<usize> {
+    let candidate = |degree| {
+        matches!(
+            null_vector(slice, order, degree),
+            Null::Unique(_) | Null::Many
+        )
+    };
+    if expired(deadline) || !candidate(limit) {
+        return None;
+    }
+    let (mut low, mut high) = (0, limit);
+    while low < high {
+        if expired(deadline) {
+            return None;
+        }
+        let degree = low.midpoint(high);
+        if candidate(degree) {
+            high = degree;
+        } else {
+            low = degree.saturating_add(1);
+        }
+    }
+    Some(low)
 }
 
 /// The smallest order, and for it the smallest certificate degree, at which
@@ -1915,32 +1933,14 @@ fn exact_search(
             MAX_CERTIFICATE_DEGREE
         };
         let limit = widened.saturating_add(4).min(certificate_bound);
-        // The ansätze of one order are nested, so a system that has no
-        // solution at the largest degree has none at any smaller one: one
-        // probe at `limit` settles whether the order is worth scanning.
+        // Every degree uses a prefix of this same specialised system.
         let Some(probe) = slice_at(problem, order, &q_set, limit, FIRST_SAMPLE) else {
             continue;
         };
-        let probed = null_vector(&probe, order, limit);
-        if matches!(probed, Null::Absent) {
-            continue;
-        }
-        for degree in 0..=limit {
-            if expired(deadline) {
-                return None;
-            }
-            let Some(slice) = slice_at(problem, order, &q_set, degree, FIRST_SAMPLE) else {
-                break;
-            };
-            match null_vector(&slice, order, degree) {
-                | Null::Absent | Null::Degenerate => {},
-                | Null::Unique(_) | Null::Many => {
-                    if let Some(found) = reconstruct(problem, order, &q_set, degree, deadline) {
-                        return Some(found);
-                    }
-                    break;
-                },
-            }
+        if let Some(degree) = first_reconstruction_degree(&probe, order, limit, deadline)
+            && let Some(found) = reconstruct(problem, order, &q_set, degree, deadline)
+        {
+            return Some(found);
         }
     }
     None
@@ -3070,6 +3070,100 @@ mod tests {
     use crate::graph::Engine;
     use std::time::Duration;
     use std::time::Instant;
+
+    #[test]
+    fn echelon_system_back_substitutes_with_a_free_column() {
+        let mut rows = [[2, 3, 1, 7], [0, 0, 1, 3], [4, 6, 2, 14]]
+            .map(|row| row.map(rat).to_vec())
+            .to_vec();
+        let system = solve_system(rows.clone(), 3).expect("consistent system");
+        assert_eq!(system.free, [1]);
+        assert_eq!(system.solution(None), [rat(2), rat(0), rat(3)]);
+        assert_eq!(
+            system.solution(Some((1, rat(1)))),
+            [
+                BigRational::new(BigInt::one(), BigInt::from(2)),
+                rat(1),
+                rat(3)
+            ]
+        );
+        if let Some(rhs) = rows.last_mut().and_then(|row| row.last_mut()) {
+            *rhs -= rat(1);
+        }
+        assert!(solve_system(rows, 3).is_none());
+    }
+
+    #[test]
+    fn certificate_degree_search_matches_linear_scan() {
+        let polynomial = |degree| {
+            let mut coefficients = vec![BigRational::zero(); degree];
+            coefficients.push(BigRational::one());
+            coefficients
+        };
+        for (degrees, expected) in [
+            (&[1, 2, 3][..], Some(0)),
+            (&[2, 3, 1, 4][..], Some(2)),
+            (&[2, 3, 4][..], None),
+            (&[0, 2, 3][..], None),
+            (&[0, 2, 2][..], Some(2)),
+        ] {
+            let slice = Slice {
+                p: vec![polynomial(0), polynomial(1)],
+                v: degrees.iter().map(|&degree| polynomial(degree)).collect(),
+            };
+            for (limit, _) in degrees.iter().enumerate() {
+                let linear = (0..=limit).find(|&degree| {
+                    matches!(null_vector(&slice, 1, degree), Null::Unique(_) | Null::Many)
+                });
+                assert_eq!(first_reconstruction_degree(&slice, 1, limit, None), linear);
+            }
+            assert_eq!(
+                first_reconstruction_degree(&slice, 1, degrees.len() - 1, None),
+                expected
+            );
+            assert_eq!(
+                first_reconstruction_degree(&slice, 1, degrees.len() - 1, Some(Instant::now())),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn parallel_reconstruction_keeps_exact_coefficient_and_sample_order() {
+        let mut graph = Graph::new();
+        let engine = Engine::install(&mut graph, &crate::rules::standard()).expect("install");
+        let n = graph.sym("n");
+        let k = graph.sym("k");
+        let ns = graph.symbol_of(n).expect("n is a symbol");
+        let ks = graph.symbol_of(k).expect("k is a symbol");
+        let f = graph.parse("binomial(n, k)^2").expect("parse");
+        let env = Env::symbolic();
+        let mut cx = Cx {
+            graph: &mut graph,
+            env: &env,
+            engine: &engine,
+        };
+        let symbols = Symbols { n, k, ns, ks };
+        let factors = factorize(&mut cx, f, symbols).expect("factorisation");
+        let qn = qn_problem(&mut cx, &factors, symbols, 1).expect("specialisation");
+        let find = |threads| {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .expect("thread pool")
+                .install(|| exact_search(&qn.problem, 1, 1, None))
+                .expect("recurrence")
+        };
+        let serial = find(1);
+        let parallel = find(4);
+        assert_eq!(serial.p, parallel.p);
+        assert_eq!(serial.q_set, parallel.q_set);
+        assert_eq!(serial.u.len(), parallel.u.len());
+        for (a, b) in serial.u.iter().zip(parallel.u) {
+            assert_eq!(a.n, b.n);
+            assert_eq!(a.d, b.d);
+        }
+    }
 
     /// The raised order bound is bounded in cost: a forced order-five search
     /// of `binomial(n, k)^5` must return a verdict quickly. The minimal

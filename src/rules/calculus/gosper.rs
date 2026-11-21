@@ -12,13 +12,18 @@
 //! `A/B = p(k+1)/p(k) · q(k)/r(k+1)` (with `q(k)` and `r(k+j)` coprime for
 //! every `j ≥ 1`) reduces the problem to a polynomial solution `f` of
 //! `c q(k) f(k+1) - r(k) f(k) = p(k)`; the linear system for its
-//! coefficients is solved exactly over `Q(c)`. The result is checked
-//! numerically before it is returned.
+//! coefficients is solved exactly over `Q(c)`. Comparing leading
+//! coefficients gives at most two candidate degrees, including the case
+//! where the first two leading coefficients cancel. The search keeps shifts
+//! through 48 and polynomial degrees through `min(deg p + 24, 32)`. Probe
+//! batches for larger polynomials can check independent shifts on the active
+//! CPU pool. The result is checked numerically before it is returned.
 
 use num_bigint::BigInt;
 use num_integer::Integer;
 use num_rational::BigRational;
 use num_traits::One;
+use num_traits::ToPrimitive;
 use num_traits::Zero;
 
 use crate::graph::Cx;
@@ -28,6 +33,7 @@ use crate::graph::NodeId;
 use crate::graph::Number;
 use crate::graph::op::core;
 use crate::rules::poly::best;
+use crate::rules::poly::galois::taylor_shift;
 use crate::rules::poly::ratio;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Limits;
@@ -70,22 +76,7 @@ fn shift(
     p: &[BigRational],
     s: i64,
 ) -> QPoly {
-    let mut out = vec![BigRational::zero(); p.len()];
-    let s = q(s);
-    for (i, a) in p.iter().enumerate() {
-        // a (k + s)^i = a Σ_j C(i, j) s^(i-j) k^j
-        let mut binomial = BigRational::one();
-        for j in (0..=i).rev() {
-            // C(i, j) s^(i - j)
-            let power = num_traits::pow(s.clone(), i - j);
-            out[j] += a * &binomial * power;
-            if j > 0 {
-                binomial = binomial * q(i64::try_from(j).unwrap_or(0))
-                    / q(i64::try_from(i - j + 1).unwrap_or(1));
-            }
-        }
-    }
-    trim(out)
+    trim(taylor_shift(p, &q(s)))
 }
 
 /// A rational function of one parameter γ over `Q`: numerator and
@@ -339,19 +330,12 @@ fn gosper(
     let (mut qk, mut rk, mut pk): (QPoly, QPoly, QPoly) =
         (a, shift(&b, -1), vec![BigRational::one()]);
     // Gosper form: remove common factors of q(k) and r(k + j), j ≥ 1.
-    let mut j = 1;
-    while j <= MAX_SHIFT {
-        let g = univariate::gcd(&qk, &shift(&rk, j));
-        if g.len() > 1 {
-            qk = univariate::divrem(&qk, &g)?.0;
-            rk = univariate::divrem(&rk, &shift(&g, -j))?.0;
-            for i in 1..j {
-                pk = univariate::mul(&pk, &shift(&g, -i));
-            }
-            j = 1;
-            continue;
+    while let Some((j, g)) = shift_factor(&qk, &rk) {
+        qk = univariate::divrem(&qk, &g)?.0;
+        rk = univariate::divrem(&rk, &shift(&g, -j))?.0;
+        for i in 1..j {
+            pk = univariate::mul(&pk, &shift(&g, -i));
         }
-        j += 1;
     }
     // c q(k) f(k+1) - r(k) f(k) = p(k), f of degree d over Q(γ).
     let gamma: QPoly = match &c_rational {
@@ -359,43 +343,9 @@ fn gosper(
         | None => vec![BigRational::zero(), BigRational::one()],
     };
     let degree_p = pk.len().saturating_sub(1);
-    let mut solution = None;
-    for d in 0..=(degree_p + MAX_DEGREE).min(MAX_DEGREE + 8) {
-        let unknowns = d + 1;
-        let size = (qk.len().max(rk.len()) + d).max(pk.len());
-        let mut rows = vec![vec![Frac::zero(); unknowns]; size];
-        let mut rhs = vec![Frac::zero(); size];
-        for (m, value) in pk.iter().enumerate() {
-            rhs[m] = Frac::poly(vec![value.clone()]);
-        }
-        for i in 0..unknowns {
-            // k^i shifted: (k + 1)^i
-            let mut monomial = vec![BigRational::zero(); i + 1];
-            monomial[i] = BigRational::one();
-            let shifted = shift(&monomial, 1);
-            let left = univariate::mul(&qk, &shifted);
-            let right = univariate::mul(&rk, &monomial);
-            for (m, coefficient) in left.iter().enumerate() {
-                if m < size {
-                    let term = univariate::mul(&gamma, std::slice::from_ref(coefficient));
-                    rows[m][i] = Frac::poly(univariate::add(&rows[m][i].n, &term));
-                }
-            }
-            for (m, coefficient) in right.iter().enumerate() {
-                if m < size {
-                    rows[m][i] = Frac::poly(univariate::sub(
-                        &rows[m][i].n,
-                        std::slice::from_ref(coefficient),
-                    ));
-                }
-            }
-        }
-        if let Some(x) = solve(rows, rhs, unknowns) {
-            solution = Some(x);
-            break;
-        }
-    }
-    let f = solution?;
+    let f = candidate_degrees(&qk, &rk, c_rational.as_ref(), degree_p)
+        .into_iter()
+        .find_map(|degree| solve_degree(&qk, &rk, &pk, &gamma, degree))?;
     // T(k) = r(k) f(k) / p(k) · t(k), with γ = c.
     let graph = &mut *cx.graph;
     let from_q = |graph: &mut Graph, p: &[BigRational], x: NodeId| -> NodeId {
@@ -443,6 +393,122 @@ fn gosper(
     verified(cx, big_t, t, k).then_some(big_t)
 }
 
+fn shift_factor(
+    qk: &[BigRational],
+    rk: &[BigRational],
+) -> Option<(i64, QPoly)> {
+    const BATCH: usize = 8;
+    if qk.len() < 2 || rk.len() < 2 {
+        return None;
+    }
+    let factor_at = |j| {
+        let g = univariate::gcd(qk, &shift(rk, j));
+        (g.len() > 1).then_some((j, g))
+    };
+    if qk.len().min(rk.len()) < 8 {
+        return (1..=MAX_SHIFT).find_map(factor_at);
+    }
+
+    // Small shifts are common. Probe them in order before parallel batches.
+    if let Some(found) = (1..=4).find_map(factor_at) {
+        return Some(found);
+    }
+    if !crate::execution::should_split(BATCH, BATCH) {
+        return (5..=MAX_SHIFT).find_map(factor_at);
+    }
+    for start in (5..=MAX_SHIFT).step_by(BATCH) {
+        let batch_len = BATCH.min(usize::try_from(MAX_SHIFT + 1 - start).ok()?);
+        let factors = crate::kernels::par::map_indexed(batch_len, 4, |index| {
+            factor_at(start + i64::try_from(index).ok()?)
+        });
+        if let Some(found) = factors.into_iter().flatten().next() {
+            return Some(found);
+        }
+    }
+    None
+}
+
+fn candidate_degrees(
+    qk: &[BigRational],
+    rk: &[BigRational],
+    c: Option<&BigRational>,
+    degree_p: usize,
+) -> Vec<usize> {
+    let (Some((q_lead, q_lower)), Some((r_lead, r_lower))) = (qk.split_last(), rk.split_last())
+    else {
+        return Vec::new();
+    };
+    let operator_degree = if c.is_some_and(Zero::is_zero) {
+        r_lower.len()
+    } else {
+        q_lower.len().max(r_lower.len())
+    };
+    // Leading terms that survive force deg p = operator_degree + d.
+    // Matching leading terms lower this degree by one unless
+    // r_lead*d + c*q_next - r_next also vanishes.
+    let matched = c.filter(|&value| qk.len() == rk.len() && value * q_lead == *r_lead);
+    let (nominal, resonance) = matched.map_or_else(
+        || (degree_p.checked_sub(operator_degree), None),
+        |value| {
+            let q_next = q_lower.last().cloned().unwrap_or_else(BigRational::zero);
+            let r_next = r_lower.last().cloned().unwrap_or_else(BigRational::zero);
+            let d = (r_next - value * q_next) / r_lead;
+            let resonance = d.is_integer().then(|| d.to_usize()).flatten();
+            (
+                degree_p.saturating_add(1).checked_sub(operator_degree),
+                resonance,
+            )
+        },
+    );
+    let degree_limit = degree_p.saturating_add(MAX_DEGREE).min(MAX_DEGREE + 8);
+    let mut degrees: Vec<_> = nominal
+        .into_iter()
+        .chain(resonance)
+        .filter(|&d| d <= degree_limit)
+        .collect();
+    degrees.sort_unstable();
+    degrees.dedup();
+    degrees
+}
+
+fn solve_degree(
+    qk: &[BigRational],
+    rk: &[BigRational],
+    pk: &[BigRational],
+    gamma: &[BigRational],
+    degree: usize,
+) -> Option<Vec<Frac>> {
+    let unknowns = degree + 1;
+    let size = (qk.len().max(rk.len()) + degree).max(pk.len());
+    let mut rows = vec![vec![Frac::zero(); unknowns]; size];
+    let mut rhs = vec![Frac::zero(); size];
+    for (m, value) in pk.iter().enumerate() {
+        rhs[m] = Frac::poly(vec![value.clone()]);
+    }
+    let mut shifted = vec![BigRational::one()];
+    for i in 0..unknowns {
+        // Update (k + 1)^(i - 1) to (k + 1)^i in place.
+        if i > 0 {
+            shifted.push(BigRational::zero());
+            for m in (1..=i).rev() {
+                shifted[m] = &shifted[m] + &shifted[m - 1];
+            }
+        }
+        let left = univariate::mul(qk, &shifted);
+        for (m, coefficient) in left.iter().enumerate() {
+            rows[m][i] = Frac::poly(univariate::mul(gamma, std::slice::from_ref(coefficient)));
+        }
+        for (m, coefficient) in rk.iter().enumerate() {
+            let target = &mut rows[m + i][i];
+            *target = Frac::poly(univariate::sub(
+                &target.n,
+                std::slice::from_ref(coefficient),
+            ));
+        }
+    }
+    solve(rows, rhs, unknowns)
+}
+
 fn minus_one(graph: &mut Graph) -> NodeId {
     graph.int(-1)
 }
@@ -484,4 +550,55 @@ fn verified(
         checked += 1;
     }
     checked >= 3
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn polynomial(coefficients: &[i64]) -> QPoly {
+        coefficients.iter().copied().map(q).collect()
+    }
+
+    #[test]
+    fn exceptional_degree_survives_two_leading_cancellations() {
+        // (k² + 1)(k + 1) - (k² + k + 1)k = 1.
+        let qk = polynomial(&[1, 0, 1]);
+        let rk = polynomial(&[1, 1, 1]);
+        let one = polynomial(&[1]);
+        let candidates = candidate_degrees(&qk, &rk, one.first(), 0);
+        assert_eq!(candidates, [1]);
+        let result = solve_degree(&qk, &rk, &one, &one, candidates[0]).unwrap();
+        assert_eq!(result, [Frac::zero(), Frac::poly(one)],);
+    }
+
+    #[test]
+    fn candidate_degrees_cover_symbolic_and_constant_scales() {
+        let qk = polynomial(&[3, 0, 1]);
+        let rk = polynomial(&[1, 1, 2]);
+        assert_eq!(candidate_degrees(&qk, &rk, None, 4), [2]);
+        assert_eq!(candidate_degrees(&qk, &rk, Some(&q(3)), 4), [2]);
+        // Matching leading coefficients, with a nonintegral resonance.
+        assert_eq!(candidate_degrees(&qk, &rk, Some(&q(2)), 4), [3]);
+        assert!(candidate_degrees(&qk, &rk, None, 1).is_empty());
+    }
+
+    #[test]
+    fn parallel_shift_search_keeps_the_first_common_factor() {
+        let build = |roots: &[i64]| {
+            roots.iter().fold(polynomial(&[1]), |value, &root| {
+                univariate::mul(&value, &polynomial(&[-root, 1]))
+            })
+        };
+        let qk = build(&[1, 100, 200, 300, 400, 500, 600, 700]);
+        let rk = build(&[11, 116, 216, 316, 416, 516, 616, 716]);
+        let expected = Some((10, polynomial(&[-1, 1])));
+        for workers in [1, 4] {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(workers)
+                .build()
+                .unwrap();
+            assert_eq!(pool.install(|| shift_factor(&qk, &rk)), expected);
+        }
+    }
 }

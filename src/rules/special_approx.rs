@@ -8,12 +8,14 @@
 //!
 //! `f` is compiled with the [current](crate::backend::current) backend;
 //! symbols other than `x` take their values from the bindings of the run.
-//! The results are ordinary terms (kept in their numerically stable form):
+//! The rational result uses a factored numerator and denominator that are
+//! defined at the selected interpolation sites. The results are ordinary terms:
 //! they can be evaluated, compiled, differentiated or printed like any
 //! other.
 
 use crate::graph::Arity;
 use crate::graph::Cx;
+use crate::graph::Graph;
 use crate::graph::Kernel;
 use crate::graph::NodeId;
 use crate::graph::OpDescriptor;
@@ -25,6 +27,7 @@ use crate::graph::SymbolId;
 use crate::graph::Tier;
 use crate::graph::dim::DimRule;
 use crate::graph::rule::Installer;
+use crate::kernels::approx::Aaa;
 use crate::kernels::approx::ChebSeries;
 use crate::kernels::approx::aaa;
 use crate::kernels::approx::clenshaw;
@@ -72,7 +75,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         },
     );
     let op = i.op(heavy("rational_approx").doc(
-        "`rational_approx(f, x, a, b)`: AAA barycentric rational approximant of `f(x)` on `[a, b]`.",
+        "`rational_approx(f, x, a, b)`: AAA barycentric rational approximant of `f(x)` on `[a, b]`, including evaluation at the selected interpolation sites.",
     ))?;
     i.dim(op, DimRule::Same(0));
     i.kernel(
@@ -110,8 +113,8 @@ impl Kernel for Approximate {
         let &[f, x, a, b] = cx.graph.children(node) else {
             return Outcome::Pass;
         };
-        // Pinned: combining the barycentric form into one fraction would
-        // destroy its stability.
+        // Preserve the factored form so coefficient expansion does not
+        // introduce additional cancellation.
         self.approximate(cx, f, x, a, b)
             .map_or(Outcome::Pass, Outcome::Pinned)
     }
@@ -140,14 +143,14 @@ impl Approximate {
             return None;
         }
         let body = best(cx.graph, f)?;
+        let free = cx.graph.free_symbols(cx.graph.find(body)).to_vec();
         let bindings: Vec<(SymbolId, f64)> = cx
             .env
             .bindings()
             .iter()
             .copied()
-            .filter(|&(s, _)| s != variable)
+            .filter(|&(s, _)| s != variable && free.contains(&s))
             .collect();
-        let free = cx.graph.free_symbols(cx.graph.find(body)).to_vec();
         if free
             .iter()
             .any(|&s| s != variable && !bindings.iter().any(|&(b, _)| b == s))
@@ -186,39 +189,203 @@ impl Approximate {
                 Some(cx.graph.node(chebyshev_series, &args))
             },
             | Kind::Rational => {
-                // Chebyshev points of the first kind: all interior, so no
-                // support point sits on an end of the interval, where the
-                // barycentric form is 0/0.
-                let half = 0.5 * (hi - lo);
+                let midpoint = f64::midpoint(lo, hi);
+                if !free.contains(&variable) {
+                    let value = eval(midpoint);
+                    return value.is_finite().then(|| cx.graph.float(value));
+                }
+                let width = hi - lo;
+                let scale = width.recip();
+                if !scale.is_finite() || scale <= 0.0 {
+                    return None;
+                }
+                // First-kind Chebyshev points are interior to the interval.
+                let half = 0.5 * width;
                 let z: Vec<f64> = (0..SAMPLES)
                     .map(|k| {
                         let angle =
                             std::f64::consts::PI * (2.0 * k as f64 + 1.0) / (2.0 * SAMPLES as f64);
-                        f64::midpoint(lo, hi) - half * angle.cos()
+                        midpoint - half * angle.cos()
                     })
                     .collect();
-                let samples: Vec<f64> = z.iter().map(|&t| eval(t)).collect();
+                if z.windows(2).any(|pair| pair[0] >= pair[1]) {
+                    return None;
+                }
+                let mut samples = vec![f64::NAN; z.len()];
+                compiled.eval_batch(&[&z], &values, &mut [&mut samples]);
                 if samples.iter().any(|v| !v.is_finite()) {
                     return None;
                 }
                 let r = aaa(&z, &samples, tolerance, MAX_TERMS).ok()?;
-                let (mut numerator, mut denominator) = (Vec::new(), Vec::new());
-                for ((&zj, &fj), &wj) in r.z.iter().zip(&r.f).zip(&r.w) {
-                    let node = cx.graph.float(zj);
-                    let difference = sub(cx.graph, x, node);
-                    let pole = powi(cx.graph, difference, -1);
-                    let weight = cx.graph.float(wj);
-                    let weighted = cx.graph.float(wj * fj);
-                    numerator.push(mul(cx.graph, &[weighted, pole]));
-                    denominator.push(mul(cx.graph, &[weight, pole]));
-                }
-                let numerator = add(cx.graph, &numerator);
-                let denominator = add(cx.graph, &denominator);
-                let reciprocal = powi(cx.graph, denominator, -1);
-                Some(mul(cx.graph, &[numerator, reciprocal]))
+                rational_term(cx.graph, x, scale, &r)
             },
         }
     }
+}
+
+#[derive(Clone, Copy)]
+struct RationalFactors {
+    product: NodeId,
+    numerator: NodeId,
+    denominator: NodeId,
+}
+
+impl RationalFactors {
+    fn sums(
+        self,
+        graph: &mut Graph,
+        right: Self,
+    ) -> (NodeId, NodeId) {
+        let left_numerator = mul(graph, &[self.numerator, right.product]);
+        let right_numerator = mul(graph, &[right.numerator, self.product]);
+        let numerator = add(graph, &[left_numerator, right_numerator]);
+        let left_denominator = mul(graph, &[self.denominator, right.product]);
+        let right_denominator = mul(graph, &[right.denominator, self.product]);
+        let denominator = add(graph, &[left_denominator, right_denominator]);
+        (numerator, denominator)
+    }
+
+    fn build(
+        graph: &mut Graph,
+        terms: &[Self],
+    ) -> Self {
+        if let &[only] = terms {
+            return only;
+        }
+        let (left, right) = terms.split_at(terms.len() / 2);
+        let left = Self::build(graph, left);
+        let right = Self::build(graph, right);
+        let (numerator, denominator) = left.sums(graph, right);
+        let product = mul(graph, &[left.product, right.product]);
+        Self {
+            product,
+            numerator,
+            denominator,
+        }
+    }
+}
+
+struct WeightedSite {
+    center: f64,
+    weight: f64,
+    value: f64,
+    difference: NodeId,
+}
+
+impl WeightedSite {
+    fn factors(
+        &self,
+        graph: &mut Graph,
+    ) -> RationalFactors {
+        RationalFactors {
+            product: self.difference,
+            numerator: graph.float(self.weight * self.value),
+            denominator: graph.float(self.weight),
+        }
+    }
+
+    fn pair(
+        &self,
+        graph: &mut Graph,
+        right: &Self,
+        scale: f64,
+    ) -> RationalFactors {
+        let (anchor, other) = if self.weight.abs() <= right.weight.abs() {
+            (self, right)
+        } else {
+            (right, self)
+        };
+        let shift = (anchor.center - other.center) * scale;
+        let anchor_value = anchor.weight * anchor.value;
+        let other_value = other.weight * other.value;
+        let product = mul(graph, &[self.difference, right.difference]);
+        if !(anchor_value + other_value).is_finite() {
+            let left = self.factors(graph);
+            let right = right.factors(graph);
+            let (numerator, denominator) = left.sums(graph, right);
+            return RationalFactors {
+                product,
+                numerator,
+                denominator,
+            };
+        }
+        let affine = |graph: &mut Graph, a: f64, b: f64| {
+            let slope = graph.float(a + b);
+            let constant = graph.float(shift * a);
+            let scaled = mul(graph, &[slope, anchor.difference]);
+            add(graph, &[scaled, constant])
+        };
+        let numerator = affine(graph, anchor_value, other_value);
+        let denominator = affine(graph, anchor.weight, other.weight);
+        RationalFactors {
+            product,
+            numerator,
+            denominator,
+        }
+    }
+}
+
+/// Multiply the barycentric terms by the common product of the normalized
+/// site differences. Balanced blocks share their products and no site
+/// introduces a division by zero.
+#[allow(
+    clippy::single_call_fn,
+    reason = "keeps graph construction separate from fitting the approximation"
+)]
+fn rational_term(
+    graph: &mut Graph,
+    x: NodeId,
+    scale: f64,
+    r: &Aaa,
+) -> Option<NodeId> {
+    if r.z.len() != r.f.len() || r.z.len() != r.w.len() || r.w.iter().any(|w| !w.is_finite()) {
+        return None;
+    }
+    let mut sites =
+        r.z.iter()
+            .zip(&r.f)
+            .zip(&r.w)
+            .filter(|(_, w)| **w != 0.0)
+            .peekable();
+    let first = sites.next()?;
+    if sites.peek().is_none() {
+        let ((_, &value), _) = first;
+        return Some(graph.float(value));
+    }
+    let scale_node = graph.float(scale);
+    let mut sites: Vec<_> = std::iter::once(first)
+        .chain(sites)
+        .map(|((&site, &value), &weight)| {
+            let literal = graph.float(site);
+            let difference = sub(graph, x, literal);
+            WeightedSite {
+                center: site,
+                weight,
+                value,
+                difference: mul(graph, &[difference, scale_node]),
+            }
+        })
+        .collect();
+    sites.sort_unstable_by(|left, right| left.center.total_cmp(&right.center));
+    let (left, right) = sites.split_at(sites.len().div_ceil(2));
+    let mut terms: Vec<_> = left
+        .iter()
+        .zip(right)
+        .map(|(left, right)| left.pair(graph, right, scale))
+        .collect();
+    if left.len() > right.len() {
+        terms.push(left[right.len()].factors(graph));
+    }
+    if let &[term] = terms.as_slice() {
+        let reciprocal = powi(graph, term.denominator, -1);
+        return Some(mul(graph, &[term.numerator, reciprocal]));
+    }
+    let (left, right) = terms.split_at(terms.len() / 2);
+    let left = RationalFactors::build(graph, left);
+    let right = RationalFactors::build(graph, right);
+    let (numerator, denominator) = left.sums(graph, right);
+    let reciprocal = powi(graph, denominator, -1);
+    Some(mul(graph, &[numerator, reciprocal]))
 }
 
 #[cfg(test)]

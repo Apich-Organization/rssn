@@ -113,12 +113,13 @@ fn to_rat(
             return None;
         };
         let e = integer(graph, *exponent)?;
-        let base = to_rat(graph, *base, x)?;
-        let one = RatFn::constant(BigRational::one());
-        let positive = (0..e.unsigned_abs().min(4096)).fold(one.clone(), |acc, _| acc.mul(&base));
-        if e.unsigned_abs() > 4096 {
+        let magnitude = e.unsigned_abs();
+        if magnitude > 4096 {
             return None;
         }
+        let base = to_rat(graph, *base, x)?;
+        let one = RatFn::constant(BigRational::one());
+        let positive = (0..magnitude).fold(one.clone(), |acc, _| acc.mul(&base));
         return if e < 0 {
             one.div(&positive)
         } else {
@@ -200,6 +201,30 @@ fn to_expr(
     atom.is_valid().then_some(Expr::Atom(atom))
 }
 
+/// Keeps a positive power above the requested series order factored. Its
+/// coefficients below that order depend only on the matching base prefix.
+///
+/// Small powers retain direct rational conversion, which can be cheaper than
+/// the truncated recurrence for a short rational denominator.
+fn to_series_expr(
+    graph: &Graph,
+    node: NodeId,
+    x: SymbolId,
+    terms: usize,
+) -> Option<Expr> {
+    const SMALL_RATIONAL_POWER: usize = 16;
+
+    if graph.op(node) == core::POW
+        && let [base, exponent] = graph.children(node)
+        && let Some(exponent) = integer(graph, *exponent).and_then(|n| u32::try_from(n).ok())
+        && u64::from(exponent) > terms.max(SMALL_RATIONAL_POWER) as u64
+    {
+        let base = to_series_expr(graph, *base, x, terms)?;
+        return Some(Expr::Pow(Box::new(base), exponent));
+    }
+    to_expr(graph, node, x)
+}
+
 /// `sum c_k v^k` as a term in the variable node `v`.
 fn poly_term(
     graph: &mut Graph,
@@ -234,6 +259,17 @@ fn truth(
 }
 
 impl Holonomic {
+    fn read_input(
+        graph: &mut Graph,
+        f: NodeId,
+        x: NodeId,
+    ) -> Option<(NodeId, NodeId, SymbolId)> {
+        let x = best(graph, x)?;
+        let symbol = graph.as_symbol(x)?;
+        let f = best(graph, f)?;
+        Some((f, x, symbol))
+    }
+
     /// The expression of argument `f` in the variable argument `x`, with the
     /// variable's node.
     fn read(
@@ -241,9 +277,7 @@ impl Holonomic {
         f: NodeId,
         x: NodeId,
     ) -> Option<(Expr, NodeId)> {
-        let x = best(graph, x)?;
-        let symbol = graph.as_symbol(x)?;
-        let f = best(graph, f)?;
+        let (f, x, symbol) = Self::read_input(graph, f, x)?;
         Some((to_expr(graph, f, symbol)?, x))
     }
 
@@ -277,12 +311,13 @@ impl Holonomic {
                 Some(linalg::list(graph, &items))
             },
             | (Kind::Series, [f, x, k]) => {
-                let (expr, x) = Self::read(graph, *f, *x)?;
                 let k = best(graph, *k)?;
                 let k = usize::try_from(integer(graph, k)?).ok()?;
                 if k > limits.max_terms {
                     return None;
                 }
+                let (f, x, symbol) = Self::read_input(graph, *f, *x)?;
+                let expr = to_series_expr(graph, f, symbol, k)?;
                 let series = expr.series(k)?;
                 Some(poly_term(graph, &series, x))
             },
@@ -342,7 +377,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             3,
             Kind::Series,
             DimRule::Same(0),
-            "`holonomic_series(f, x, k)`: computes the degree-`k` Taylor polynomial expansion of holonomic expression `f` in `x`.",
+            "`holonomic_series(f, x, k)` computes the Taylor terms of `f` at zero in `x` with degree below `k`.",
         ),
         (
             "holonomic_zero",

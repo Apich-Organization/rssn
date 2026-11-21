@@ -370,6 +370,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "elementary/acos-r3: acos(3^(1/2)/2) => pi/6",
             "elementary/acos-reflect: acos(?x) => pi - acos(-?x) if negative(?x), number(?x)",
             "elementary/atan-1: atan(1) => pi/4",
+            "elementary/atan-neg-1: atan(-1) => -pi/4",
             "elementary/atan-r3: atan(3^(1/2)) => pi/3",
             "elementary/atan-r3i: atan(3^(-1/2)) => pi/6",
             "elementary/sin-pi/6: sin(pi/6) => 1/2",

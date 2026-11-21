@@ -56,6 +56,7 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::id::FastMap;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 use crate::rules::arith::arith;
@@ -91,9 +92,22 @@ enum Val {
 struct Units<'c, 'a> {
     cx: &'c mut Cx<'a>,
     quantity: OpId,
+    evaluated: FastMap<(NodeId, usize), NodeId>,
+    simplifications: usize,
 }
 
 impl Units<'_, '_> {
+    fn simplify(
+        &mut self,
+        node: NodeId,
+    ) -> NodeId {
+        // A nested engine run can merge classes or pin a new extraction.
+        // A term evaluated before that run is no longer a valid cache entry.
+        self.evaluated.clear();
+        self.simplifications += 1;
+        self.cx.simplify(node)
+    }
+
     fn scale_term(
         &mut self,
         scale: &Scale,
@@ -129,7 +143,7 @@ impl Units<'_, '_> {
         }
         let factor = self.scale_term(scale);
         let product = self.cx.graph.node(core::MUL, &[value, factor]);
-        self.cx.simplify(product)
+        self.simplify(product)
     }
 
     fn unit_term(
@@ -175,15 +189,11 @@ impl Units<'_, '_> {
         self.cx.graph.number_of(node).and_then(Number::to_rational)
     }
 
-    /// Reads `quantity(v, u)` without evaluating anything else.
+    /// Evaluates the scalar value of an extracted `quantity(v, u)` term.
     fn lone_quantity(
         &mut self,
-        node: NodeId,
+        term: NodeId,
     ) -> Option<Val> {
-        let term = best(self.cx.graph, node)?;
-        if self.cx.graph.op(term) != self.quantity {
-            return None;
-        }
         let &[value, unit] = self.cx.graph.children(term) else {
             return None;
         };
@@ -197,7 +207,7 @@ impl Units<'_, '_> {
             let scaled = self.scaled(value, &resolved.scale);
             let shift = self.cx.graph.num(Number::rat(offset));
             let sum = self.cx.graph.node(core::ADD, &[scaled, shift]);
-            let sum = self.cx.simplify(sum);
+            let sum = self.simplify(sum);
             let kelvin = coherent_unit(&resolved.dim);
             return Some(Val::Quant {
                 value: sum,
@@ -257,7 +267,6 @@ impl Units<'_, '_> {
         Some(Val::Quant { value, unit })
     }
 
-    #[allow(clippy::too_many_lines)]
     fn eval(
         &mut self,
         node: NodeId,
@@ -266,19 +275,48 @@ impl Units<'_, '_> {
         if depth > 48 {
             return None;
         }
-        if let Some(q) = self.lone_quantity(node) {
-            return Some(q);
+        let key = (node, depth);
+        if let Some(&scalar) = self.evaluated.get(&key) {
+            return Some(Val::Scalar(scalar));
         }
-        let term = best(self.cx.graph, node)?;
-        let op = self.cx.graph.op(term);
-        let children = self.cx.graph.children(term).to_vec();
-        if children.is_empty() {
+        let mut term = best(self.cx.graph, node)?;
+        let mut op = self.cx.graph.op(term);
+        let before = self.simplifications;
+        if op == self.quantity {
+            if let Some(quantity) = self.lone_quantity(term) {
+                return Some(quantity);
+            }
+            if self.simplifications == before {
+                return None;
+            }
+            // A failed quantity evaluation can still simplify its contents.
+            term = best(self.cx.graph, node)?;
+            op = self.cx.graph.op(term);
+            if op == self.quantity {
+                return None;
+            }
+        }
+        if self.cx.graph.children(term).is_empty() {
             return Some(Val::Scalar(term));
         }
-        if op == self.quantity {
-            // A malformed quantity or one with an unknown unit.
-            return None;
+        let result = self.eval_operator(term, op, depth)?;
+        if let Val::Scalar(scalar) = result
+            && before == self.simplifications
+        {
+            // The recursion depth matters even for an otherwise identical term.
+            self.evaluated.insert(key, scalar);
         }
+        Some(result)
+    }
+
+    #[allow(clippy::too_many_lines)]
+    fn eval_operator(
+        &mut self,
+        term: NodeId,
+        op: OpId,
+        depth: usize,
+    ) -> Option<Val> {
+        let children = self.cx.graph.children(term).to_vec();
         match op {
             | core::ADD => {
                 // point + point (two absolute temperatures) is not an
@@ -330,7 +368,7 @@ impl Units<'_, '_> {
                 }
                 let sum = self.cx.graph.node(core::ADD, &terms);
                 Some(Val::Quant {
-                    value: self.cx.simplify(sum),
+                    value: self.simplify(sum),
                     unit: first_unit,
                 })
             },
@@ -406,9 +444,9 @@ impl Units<'_, '_> {
         val: &Val,
     ) -> NodeId {
         match val {
-            | Val::Scalar(n) => self.cx.simplify(*n),
+            | Val::Scalar(n) => self.simplify(*n),
             | Val::Quant { value, unit } => {
-                let value = self.cx.simplify(*value);
+                let value = self.simplify(*value);
                 self.quantity_term(value, unit)
             },
         }
@@ -451,7 +489,7 @@ impl Units<'_, '_> {
             | Some(offset) => {
                 let shift = self.cx.graph.num(Number::rat(-offset.clone()));
                 let sum = self.cx.graph.node(core::ADD, &[si, shift]);
-                self.cx.simplify(sum)
+                self.simplify(sum)
             },
             | None => si,
         };
@@ -570,6 +608,8 @@ impl Kernel for Request1 {
         let mut units = Units {
             cx,
             quantity: self.quantity,
+            evaluated: FastMap::default(),
+            simplifications: 0,
         };
         let result = match (self.request, args.as_slice()) {
             | (Request::Unify, &[e]) => units.eval(e, 0).map(|v| units.finish(&v)),

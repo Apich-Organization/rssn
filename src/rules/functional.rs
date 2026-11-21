@@ -8,7 +8,7 @@
 //! `op_add(A, B, ...)`, `op_scale(c, A)`, `op_compose(A, B, ...)` (`B`
 //! acts first) and `op_power(A, n)`; a matrix acts on a vector by
 //! `matmul`. `op_apply(A, f)` applies it. The quantum-mechanical
-//! operators of [`physics`](super::physics) are built from these.
+//! operators of [`physics`](mod@super::physics) are built from these.
 //!
 //! # Function spaces
 //!
@@ -64,6 +64,7 @@ use crate::graph::dim::DimCtx;
 use crate::graph::dim::DimError;
 use crate::graph::dim::DimRule;
 use crate::graph::dim::DimTerm;
+use crate::graph::extract::contains_heavy_operator as is_heavy;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 use crate::rules::complex::build::add;
@@ -522,25 +523,6 @@ impl Kernel for Functional {
 // ----------------------------------------------------------------------
 // Operators
 // ----------------------------------------------------------------------
-
-/// Whether a heavy operator occurs anywhere in `node`.
-fn is_heavy(
-    graph: &Graph,
-    node: NodeId,
-) -> bool {
-    let mut stack = vec![node];
-    let mut seen = std::collections::HashSet::new();
-    while let Some(n) = stack.pop() {
-        if !seen.insert(n) {
-            continue;
-        }
-        if graph.ops().get(graph.op(n)).flags.has(OpFlags::HEAVY) {
-            return true;
-        }
-        stack.extend_from_slice(graph.children(n));
-    }
-    false
-}
 
 fn vector(
     graph: &mut Graph,

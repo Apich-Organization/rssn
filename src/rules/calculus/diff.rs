@@ -1,10 +1,10 @@
 //! Differentiation kernels.
 
-use std::collections::HashMap;
+#[cfg(test)]
+mod tests;
 
 use crate::graph::Ball;
 use crate::graph::Cx;
-use crate::graph::Env;
 use crate::graph::Extractor;
 use crate::graph::Graph;
 use crate::graph::Kernel;
@@ -15,7 +15,13 @@ use crate::graph::Outcome;
 use crate::graph::Pat;
 use crate::graph::SizeCost;
 use crate::graph::SymbolId;
+use crate::graph::id::FastMap;
 use crate::graph::op::core;
+
+// Ordinary products keep their expanded shape for downstream rewrites.
+const PRODUCT_TREE_THRESHOLD: usize = 64;
+const PRODUCT_TREE_MIN_ACTIVE: usize = 5;
+const PRODUCT_LEAF_SIZE: usize = 16;
 
 /// Operator attribute: the partial derivatives of an operator.
 ///
@@ -24,8 +30,9 @@ use crate::graph::op::core;
 /// differentiated in (the order of a Bessel function), which is fine as
 /// long as that argument does not depend on the variable.
 ///
-/// Attaching this to an operator is all it takes to teach the
-/// differentiation kernel about it.
+/// Attaching this to an ordinary operator teaches the differentiation kernel
+/// its chain rule. Binding operators require separate differentiation rules
+/// that account for their scope and the meaning of the bound expression.
 #[derive(Clone, Debug)]
 pub struct Partials(pub Vec<Option<Pat>>);
 
@@ -86,7 +93,12 @@ impl Differentiate {
     ) -> NodeId {
         let zero = graph.int(0);
         let one = graph.int(1);
-        let mut done: HashMap<NodeId, NodeId> = HashMap::new();
+        let mut done = FastMap::default();
+        // Pat::instantiate needs a mutable graph. Copy the pattern definitions
+        // once per operator so identical subcalls can share them.
+        let mut partials = FastMap::default();
+        let mut children = Vec::new();
+        let mut derivs = Vec::new();
         let mut stack = vec![(root, false)];
         while let Some((node, expanded)) = stack.pop() {
             if done.contains_key(&node) {
@@ -94,7 +106,8 @@ impl Differentiate {
             }
             // Lists and equations are differentiated elementwise, keeping
             // their shape even where an element is constant.
-            let elementwise = matches!(graph.op(node), core::LIST | core::EQ);
+            let op = graph.op(node);
+            let elementwise = matches!(op, core::LIST | core::EQ);
             if !elementwise && !graph.depends_on(graph.find(node), x) {
                 done.insert(node, zero);
                 continue;
@@ -103,92 +116,173 @@ impl Differentiate {
                 done.insert(node, one);
                 continue;
             }
-            let op = graph.op(node);
-            let structural = elementwise
-                || op == core::ADD
-                || op == core::MUL
-                || graph.ops().attr::<super::Partials>(op).is_some();
-            if !structural {
-                let unevaluated = graph.node(self.diff, &[node, var]);
-                done.insert(node, unevaluated);
-                continue;
-            }
-            let children = graph.children(node).to_vec();
+            let chain = if elementwise || matches!(op, core::ADD | core::MUL) {
+                None
+            } else {
+                let attr = partials.entry(op).or_insert_with(|| {
+                    let ops = graph.ops();
+                    if ops.get(op).binder.is_some() {
+                        None
+                    } else {
+                        ops.attr::<Partials>(op).cloned()
+                    }
+                });
+                let Some(attr) = attr else {
+                    done.insert(node, graph.node(self.diff, &[node, var]));
+                    continue;
+                };
+                Some(attr.0.as_slice())
+            };
             if !expanded {
                 stack.push((node, true));
                 stack.extend(
-                    children
+                    graph
+                        .children(node)
                         .iter()
                         .filter(|c| !done.contains_key(c))
                         .map(|&c| (c, false)),
                 );
                 continue;
             }
-            let derivs: Vec<NodeId> = children
-                .iter()
-                .map(|c| done.get(c).copied().unwrap_or(zero))
-                .collect();
-            if elementwise {
-                let mapped = graph.node(op, &derivs);
-                done.insert(node, mapped);
-                continue;
-            }
-            let mut terms: Vec<NodeId> = Vec::new();
-            if op == core::ADD {
-                terms.extend(derivs.iter().copied().filter(|&d| d != zero));
-            } else if op == core::MUL {
-                for (i, &d) in derivs.iter().enumerate() {
-                    if d == zero {
-                        continue;
-                    }
-                    let mut factors: Vec<NodeId> = children
-                        .iter()
-                        .enumerate()
-                        .filter(|&(j, _)| j != i)
-                        .map(|(_, &c)| c)
-                        .collect();
-                    if d != one {
-                        factors.push(d);
-                    }
-                    terms.push(product(graph, &factors, one));
-                }
-            } else {
-                let partials = graph
-                    .ops()
-                    .attr::<super::Partials>(op)
-                    .map_or_default(|p| p.0.clone());
-                for (i, &d) in derivs.iter().enumerate() {
-                    if d == zero {
-                        continue;
-                    }
-                    let partial = partials
-                        .get(i)
-                        .and_then(Option::as_ref)
-                        .and_then(|p| p.instantiate(graph, &children));
-                    let term = match partial {
-                        | Some(p) if d == one => p,
-                        | Some(p) => graph.node(core::MUL, &[p, d]),
-                        // No rule for this argument: leave the whole node.
-                        | None => graph.node(self.diff, &[node, var]),
-                    };
-                    terms.push(term);
-                    if partial.is_none() {
-                        break;
-                    }
-                }
-                if partials.len() < derivs.len() {
-                    terms = vec![graph.node(self.diff, &[node, var])];
-                }
-            }
-            let result = match terms.as_slice() {
-                | [] => zero,
-                | [only] => *only,
-                | _ => graph.node(core::ADD, &terms),
+            children.clear();
+            children.extend_from_slice(graph.children(node));
+            derivs.clear();
+            derivs.extend(
+                children
+                    .iter()
+                    .map(|c| done.get(c).copied().unwrap_or(zero)),
+            );
+            let result = match op {
+                | core::LIST | core::EQ => graph.node(op, &derivs),
+                | core::ADD => {
+                    derivs.retain(|&d| d != zero);
+                    sum(graph, &derivs, zero)
+                },
+                | core::MUL
+                    if children.len() > PRODUCT_TREE_THRESHOLD
+                        && derivs
+                            .iter()
+                            .filter(|&&d| d != zero)
+                            .take(PRODUCT_TREE_MIN_ACTIVE)
+                            .count()
+                            == PRODUCT_TREE_MIN_ACTIVE =>
+                {
+                    product_tree(graph, &children, &derivs, zero, one).1
+                },
+                | core::MUL => expanded_product_rule(graph, &children, &derivs, zero, one),
+                | _ => {
+                    chain_rule(graph, &children, &derivs, chain.unwrap_or(&[]), zero, one)
+                        .unwrap_or_else(|| graph.node(self.diff, &[node, var]))
+                },
             };
             done.insert(node, result);
         }
         done.get(&root).copied().unwrap_or(zero)
     }
+}
+
+fn sum(
+    graph: &mut Graph,
+    terms: &[NodeId],
+    zero: NodeId,
+) -> NodeId {
+    match terms {
+        | [] => zero,
+        | [only] => *only,
+        | _ => graph.node(core::ADD, terms),
+    }
+}
+
+#[allow(
+    clippy::single_call_fn,
+    reason = "chain-rule fallback keeps the whole derivative atomic"
+)]
+fn chain_rule(
+    graph: &mut Graph,
+    children: &[NodeId],
+    derivs: &[NodeId],
+    partials: &[Option<Pat>],
+    zero: NodeId,
+    one: NodeId,
+) -> Option<NodeId> {
+    // A missing partial for a dependent argument blocks the full chain rule.
+    // Adding a known contribution to diff(whole, x) would count it twice.
+    let active = || derivs.iter().enumerate().filter(|&(_, &d)| d != zero);
+    if active().any(|(i, _)| partials.get(i).is_none_or(Option::is_none)) {
+        return None;
+    }
+    let mut terms = Vec::new();
+    for (i, &d) in active() {
+        let partial = partials.get(i)?.as_ref()?.instantiate(graph, children)?;
+        terms.push(if d == one {
+            partial
+        } else {
+            graph.node(core::MUL, &[partial, d])
+        });
+    }
+    Some(sum(graph, &terms, zero))
+}
+
+fn expanded_product_rule(
+    graph: &mut Graph,
+    children: &[NodeId],
+    derivs: &[NodeId],
+    zero: NodeId,
+    one: NodeId,
+) -> NodeId {
+    let mut terms = Vec::new();
+    let mut factors = Vec::with_capacity(children.len());
+    for (i, &d) in derivs.iter().enumerate() {
+        if d == zero {
+            continue;
+        }
+        factors.clear();
+        factors.extend(
+            children
+                .iter()
+                .enumerate()
+                .filter_map(|(j, &child)| (i != j).then_some(child)),
+        );
+        if d != one {
+            factors.push(d);
+        }
+        terms.push(product(graph, &factors, one));
+    }
+    sum(graph, &terms, zero)
+}
+
+/// Compute a product and its derivative together. Splitting the product saves
+/// copying every other factor for each derivative. The graph can flatten small
+/// subproducts while larger subproducts remain shared nodes.
+fn product_tree(
+    graph: &mut Graph,
+    children: &[NodeId],
+    derivs: &[NodeId],
+    zero: NodeId,
+    one: NodeId,
+) -> (NodeId, NodeId) {
+    if children.len() <= PRODUCT_LEAF_SIZE {
+        return (
+            product(graph, children, one),
+            expanded_product_rule(graph, children, derivs, zero, one),
+        );
+    }
+    let mid = children.len() / 2;
+    let (left, right) = children.split_at(mid);
+    let (left_derivs, right_derivs) = derivs.split_at(mid);
+    let (a, da) = product_tree(graph, left, left_derivs, zero, one);
+    let (b, db) = product_tree(graph, right, right_derivs, zero, one);
+    let derivative = match (da == zero, db == zero) {
+        | (true, true) => zero,
+        | (false, true) => graph.node(core::MUL, &[da, b]),
+        | (true, false) => graph.node(core::MUL, &[a, db]),
+        | (false, false) => {
+            let first = graph.node(core::MUL, &[da, b]);
+            let second = graph.node(core::MUL, &[a, db]);
+            graph.node(core::ADD, &[first, second])
+        },
+    };
+    (graph.node(core::MUL, &[a, b]), derivative)
 }
 
 fn product(
@@ -248,8 +342,8 @@ impl Kernel for FiniteDifference {
         let Some(at) = cx.env.value(x) else {
             return Outcome::Pass;
         };
+        let mut env = cx.env.clone();
         let f = |t: f64| {
-            let mut env: Env = cx.env.clone();
             env.bind(x, t);
             graph.eval(term, &env)
         };
@@ -261,23 +355,66 @@ impl Kernel for FiniteDifference {
     }
 }
 
-/// Central differences with two Richardson extrapolation steps; the error
-/// estimate is the difference between the last two extrapolants.
+/// Central differences with two Richardson extrapolation steps. Halving the
+/// initial stencil finds a two-sided neighborhood for domain-limited functions.
 fn richardson(
-    f: impl Fn(f64) -> Option<f64>,
+    mut f: impl FnMut(f64) -> Option<f64>,
     at: f64,
 ) -> Option<Ball> {
-    let h0 = 1e-2 * at.abs().max(1.0);
-    let central = |h: f64| Some((f(at + h)? - f(at - h)?) / (2.0 * h));
-    let (d1, d2, d3) = (central(h0)?, central(h0 / 2.0)?, central(h0 / 4.0)?);
-    let (e1, e2) = ((4.0 * d2 - d1) / 3.0, (4.0 * d3 - d2) / 3.0);
-    let best = (16.0 * e2 - e1) / 15.0;
-    best.is_finite().then(|| {
-        Ball {
-            mid: best,
-            rad: (best - e2).abs().max(f64::EPSILON * best.abs()),
+    if !at.is_finite() {
+        return None;
+    }
+    let mut h = 1e-2 * at.abs().max(1.0);
+    let mut difference = None;
+    let mut extrapolation = None;
+    for _ in 0..32 {
+        let upper = at + h;
+        let lower = at - h;
+        if !(lower < at && at < upper) {
+            return None;
         }
-    })
+        if upper.is_finite() && lower.is_finite() {
+            // None means the graph cannot evaluate the term at all. A
+            // nonfinite value may just mean this point is outside its domain.
+            let right = f(upper)?;
+            let left = if right.is_finite() {
+                f(lower)?
+            } else {
+                f64::NAN
+            };
+            let width = upper - lower;
+            let delta = right - left;
+            let current = if delta.is_finite() {
+                delta / width
+            } else {
+                right / width - left / width
+            };
+            if current.is_finite() {
+                if let Some(coarse) = difference.replace(current) {
+                    // These forms avoid overflowing on a large finite slope.
+                    let first = current + (current - coarse) / 3.0;
+                    if let Some(coarse) = extrapolation.replace(first) {
+                        let best = first + (first - coarse) / 15.0;
+                        let error = (best - first).abs();
+                        if best.is_finite() && error.is_finite() {
+                            // The derivative requires the function to be
+                            // defined at the point, as well as around it.
+                            return f(at)?.is_finite().then_some(Ball {
+                                mid: best,
+                                rad: error.max(f64::EPSILON * best.abs()),
+                            });
+                        }
+                    }
+                }
+                h *= 0.5;
+                continue;
+            }
+        }
+        difference = None;
+        extrapolation = None;
+        h *= 0.5;
+    }
+    None
 }
 
 /// `diffn(f, x, n)`: `n` nested `diff` requests for a literal `n ≥ 0`.
