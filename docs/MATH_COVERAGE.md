@@ -268,5 +268,6 @@ The typed numerical ABI additionally exposes checked records, tensors and sessio
 | Real tensor FFTs, cosine and sine transforms, Hilbert, zoom FFT, coherence, wavelet packets, stationary wavelets, overlap-save convolution, and digital filtering | `tests/signal_transforms.rs` |
 | Weighted paths, minimum cuts, graph isomorphism and native graph schemas | `tests/kernels/graph.rs`, `tests/native_discrete.rs` |
 | Low-rank approximation and units of interpolation coefficients | `src/kernels/lowrank.rs`, `tests/native_linear.rs` |
+| Optimisation, control, time series, survival, MCMC, meshes, CAD and arbitrary precision | unit tests in `src/kernels/{convex,milp,glm,timeseries,survival,mcmc,control,meshgen,cad,mp}/` |
 
 The symbolic battery distinguishes exact-value checks from documented requests that remain unresolved in symbolic mode. Use the named test as the source of its expected behavior. Numerical answers also depend on precision, conditioning and the applicable error thresholds.
