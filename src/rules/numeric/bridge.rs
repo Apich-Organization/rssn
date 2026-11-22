@@ -59,6 +59,10 @@ pub(super) enum Data {
     },
     /// A symbol used as a name.
     Name(String),
+    /// A string literal: an option name, or a number carried as decimal text
+    /// (the arbitrary-precision operators of `mp` pass their operands and
+    /// results this way, so a value keeps every digit it was given).
+    Text(String),
     /// A list of unlike parts: a ragged list of lists (the coefficient
     /// arrays of a multilevel wavelet transform, an adjacency list) or a
     /// structured result (a decomposition's core and factors).
@@ -95,6 +99,7 @@ impl std::fmt::Display for Shown<'_> {
                 )
             },
             | Some(Data::Name(n)) => write!(f, "the symbol `{n}`"),
+            | Some(Data::Text(t)) => write!(f, "the string \"{t}\""),
             | Some(Data::Tree(parts)) => write!(f, "a ragged list of {} parts", parts.len()),
         }
     }
@@ -168,6 +173,13 @@ fn decode_at(
     if depth > MAX_DEPTH {
         return None;
     }
+    // A string literal decodes to its text; the arbitrary-precision operators
+    // carry their operands this way.
+    if let Some(crate::graph::Payload::Str(text)) = graph.payload(node)
+        && graph.op(node) == core::LIT
+    {
+        return Some(Data::Text(text.to_string()));
+    }
     // A ragged list is tried only after the rectangular reading fails, and
     // only near the top, so hostile nesting cannot make the decoder
     // exponential.
@@ -228,7 +240,7 @@ fn decode_uniform(
                 inner = Some(s);
                 flat.extend(data);
             },
-            | Data::Name(_) | Data::Tree(_) => return None,
+            | Data::Name(_) | Data::Text(_) | Data::Tree(_) => return None,
         }
         if flat.len() > MAX_LEN * 4 {
             return None;
@@ -248,6 +260,7 @@ fn encode(
     match data {
         | Data::Scalar(x) => x.is_finite().then(|| graph.float(*x)),
         | Data::Name(_) => None,
+        | Data::Text(text) => Some(graph.lit(crate::graph::Payload::Str(text.as_str().into()))),
         | Data::Tree(parts) => {
             let items: Option<Vec<NodeId>> = parts.iter().map(|p| encode(graph, p)).collect();
             Some(graph.node(core::LIST, &items?))
@@ -445,6 +458,41 @@ pub(super) const fn num(x: f64) -> Option<Data> {
 #[allow(clippy::unnecessary_wraps)]
 pub(super) fn vec_out(v: Vec<f64>) -> Option<Data> {
     Some(Data::vector(v))
+}
+
+/// The text of argument `at`, or a [`DiagKind::Shape`] finding.
+pub(super) fn text(
+    args: &[Data],
+    at: usize,
+) -> Option<&str> {
+    match args.get(at) {
+        | Some(Data::Text(text)) => Some(text.as_str()),
+        | other => {
+            bad(
+                at,
+                DiagKind::Shape,
+                format_args!("expected a string, got {}", Shown(other)),
+            )
+        },
+    }
+}
+
+/// The text of argument `at` when it is a string, else `None` without a
+/// finding: a caller that also accepts a symbol or a number asks this first.
+pub(super) fn text_opt(
+    args: &[Data],
+    at: usize,
+) -> Option<&str> {
+    match args.get(at) {
+        | Some(Data::Text(text)) => Some(text.as_str()),
+        | _ => None,
+    }
+}
+
+// reason: kept `Option` so every kernel body is a uniform `Option<Data>` expression.
+#[allow(clippy::unnecessary_wraps)]
+pub(super) fn text_out(text: String) -> Option<Data> {
+    Some(Data::Text(text))
 }
 
 // ---------------------------------------------------------------------------
@@ -2101,6 +2149,7 @@ fn finite(data: &Data) -> bool {
         | Data::Scalar(x) => x.is_finite(),
         | Data::Array { data, .. } => data.iter().all(|x| x.is_finite()),
         | Data::Name(_) => false,
+        | Data::Text(_) => true,
         | Data::Tree(parts) => parts.iter().all(finite),
     }
 }

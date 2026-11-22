@@ -26,6 +26,7 @@
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use num_traits::One;
+use num_traits::Signed;
 use num_traits::Zero;
 
 use crate::graph::Arity;
@@ -50,6 +51,8 @@ use crate::graph::rule::Installer;
 use crate::kernels::matrix::FaerDecompositionResult;
 use crate::kernels::matrix::FaerDecompositionType;
 use crate::kernels::matrix::Matrix;
+use crate::kernels::par;
+use crate::kernels::qlinalg;
 use crate::rules::poly::best;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Limits;
@@ -831,51 +834,6 @@ trait Field {
     ) -> bool;
 }
 
-struct Rationals;
-
-impl Field for Rationals {
-    type E = BigRational;
-
-    fn zero(&mut self) -> BigRational {
-        BigRational::zero()
-    }
-
-    fn one(&mut self) -> BigRational {
-        BigRational::one()
-    }
-
-    fn sub(
-        &mut self,
-        a: &BigRational,
-        b: &BigRational,
-    ) -> BigRational {
-        a - b
-    }
-
-    fn mul(
-        &mut self,
-        a: &BigRational,
-        b: &BigRational,
-    ) -> BigRational {
-        a * b
-    }
-
-    fn div(
-        &mut self,
-        a: &BigRational,
-        b: &BigRational,
-    ) -> Option<BigRational> {
-        (!b.is_zero()).then(|| a / b)
-    }
-
-    fn is_zero(
-        &mut self,
-        a: &BigRational,
-    ) -> bool {
-        a.is_zero()
-    }
-}
-
 struct Terms<'c, 'a> {
     cx: &'c mut Cx<'a>,
 }
@@ -990,13 +948,23 @@ fn rref<F: Field>(
 fn rational_matrix(
     graph: &Graph,
     m: &[Vec<NodeId>],
-) -> Option<Vec<Vec<BigRational>>> {
+) -> Option<qlinalg::QMat> {
     m.iter()
         .map(|row| {
             row.iter()
                 .map(|&e| graph.number_of(e).and_then(Number::to_rational))
                 .collect()
         })
+        .collect()
+}
+
+/// The entries of a vector as exact rationals, if all of them are.
+fn rational_vector(
+    graph: &Graph,
+    v: &[NodeId],
+) -> Option<Vec<qlinalg::Q>> {
+    v.iter()
+        .map(|&e| graph.number_of(e).and_then(Number::to_rational))
         .collect()
 }
 
@@ -1007,6 +975,54 @@ pub(crate) fn rational_node(
     graph.num(Number::rat(value.clone()))
 }
 
+fn rational_vector_nodes(
+    graph: &mut Graph,
+    values: Vec<qlinalg::Q>,
+) -> Vec<NodeId> {
+    values
+        .into_iter()
+        .map(|v| graph.num(Number::rat(v)))
+        .collect()
+}
+
+fn rational_matrix_to_nodes(
+    graph: &mut Graph,
+    m: qlinalg::QMat,
+) -> Vec<Vec<NodeId>> {
+    m.into_iter()
+        .map(|row| rational_vector_nodes(graph, row))
+        .collect()
+}
+
+fn rational_matrix_term(
+    graph: &mut Graph,
+    m: qlinalg::QMat,
+) -> NodeId {
+    let rows = rational_matrix_to_nodes(graph, m);
+    matrix_term(graph, &rows)
+}
+
+fn univariate_poly_term(
+    cx: &mut Cx<'_>,
+    coeffs: Vec<qlinalg::Q>,
+    indeterminate: NodeId,
+) -> Option<NodeId> {
+    let num_coeffs: Vec<Number> = coeffs.into_iter().map(Number::rat).collect();
+    let mut gens = Gens::default();
+    let gen_idx = gens.index(cx.graph, indeterminate);
+    let poly = Poly::from_univariate(gen_idx, &num_coeffs);
+    let expanded = to_term(cx.graph, &gens, &poly);
+    if cx.graph.op(indeterminate) == core::SYM {
+        Some(cx.simplify(expanded))
+    } else {
+        let mut full_gens = Gens::default();
+        full_gens.index(cx.graph, indeterminate);
+        let reparsed = from_term(cx.graph, &mut full_gens, expanded, Limits::default())?;
+        let canonical = to_term(cx.graph, &full_gens, &reparsed);
+        Some(cx.simplify(canonical))
+    }
+}
+
 /// Runs `rref` over the best field for the matrix and returns the reduced
 /// matrix as terms, the pivots, and the determinant factor.
 fn reduce(
@@ -1014,12 +1030,14 @@ fn reduce(
     m: &[Vec<NodeId>],
 ) -> Option<(Vec<Vec<NodeId>>, Vec<usize>, NodeId)> {
     if let Some(mut exact) = rational_matrix(cx.graph, m) {
-        let (pivots, factor) = rref(&mut Rationals, &mut exact)?;
-        let reduced = exact
-            .iter()
-            .map(|row| row.iter().map(|v| rational_node(cx.graph, v)).collect())
-            .collect();
-        let factor = rational_node(cx.graph, &factor);
+        let rows = exact.len();
+        let cols = exact.first().map_or(0, Vec::len);
+        let pivots = qlinalg::rref(&mut exact, cols);
+        exact.resize(rows, qlinalg::zeros(cols));
+        let reduced = rational_matrix_to_nodes(cx.graph, exact);
+        let factor = cx
+            .graph
+            .int(i64::from(pivots.len() == rows && rows == cols));
         return Some((reduced, pivots, factor));
     }
     let mut work: Vec<Vec<NodeId>> = m
@@ -1131,7 +1149,11 @@ fn inverse(
     if m.iter().any(|r| r.len() != n) {
         return None;
     }
-    if rational_matrix(cx.graph, m).is_none() && n <= 6 {
+    if let Some(exact) = rational_matrix(cx.graph, m) {
+        let inv = qlinalg::inverse(&exact)?;
+        return Some(rational_matrix_to_nodes(cx.graph, inv));
+    }
+    if n <= 6 {
         // Symbolic: adj(A) / det(A) keeps entries as quotients of
         // polynomials in the entries.
         let det = determinant(cx, m)?;
@@ -1186,6 +1208,11 @@ fn nullspace(
     cx: &mut Cx<'_>,
     m: &[Vec<NodeId>],
 ) -> Option<Vec<Vec<NodeId>>> {
+    if let Some(exact) = rational_matrix(cx.graph, m) {
+        let cols = exact.first().map_or(0, Vec::len);
+        let basis = qlinalg::nullspace(&exact, cols);
+        return Some(rational_matrix_to_nodes(cx.graph, basis));
+    }
     let cols = m.first().map_or(0, Vec::len);
     let (reduced, pivots, _) = reduce(cx, m)?;
     let mut basis = Vec::new();
@@ -1218,6 +1245,10 @@ fn matmul(
     if inner != b.len() {
         return None;
     }
+    if let (Some(qa), Some(qb)) = (rational_matrix(graph, a), rational_matrix(graph, b)) {
+        let prod = qlinalg::matmul(&qa, &qb);
+        return Some(rational_matrix_to_nodes(graph, prod));
+    }
     let cols = b.first().map_or(0, Vec::len);
     let mut out = Vec::with_capacity(a.len());
     for row in a {
@@ -1234,7 +1265,8 @@ fn matmul(
 }
 
 /// Characteristic polynomial `det(l I - A)` as an expanded polynomial in
-/// `l`, by the Faddeev–LeVerrier recurrence (no zero tests needed).
+/// `l`, using exact rational kernels when possible and symbolic Faddeev–LeVerrier
+/// otherwise.
 fn charpoly(
     cx: &mut Cx<'_>,
     m: &[Vec<NodeId>],
@@ -1243,6 +1275,10 @@ fn charpoly(
     let n = m.len();
     if m.iter().any(|r| r.len() != n) {
         return None;
+    }
+    if let Some(exact) = rational_matrix(cx.graph, m) {
+        let coeffs = qlinalg::charpoly(&exact)?;
+        return univariate_poly_term(cx, coeffs, l);
     }
     // c_n = 1, M_0 = 0; M_k = A M_{k-1} + c_{n-k+1} I, c_{n-k} = -tr(A M_k)/k
     let mut coefficients = vec![cx.graph.int(0); n + 1];
@@ -1410,6 +1446,66 @@ fn lu(
     let n = m.len();
     if m.iter().any(|r| r.len() != n) {
         return None;
+    }
+    if let Some(mut u) = rational_matrix(cx.graph, m) {
+        let mut l = qlinalg::identity(n);
+        let mut perm: Vec<usize> = (0..n).collect();
+        for col in 0..n {
+            let pivot_row = (col..n).find(|&r| !u[r][col].is_zero())?;
+            if pivot_row != col {
+                u.swap(pivot_row, col);
+                perm.swap(pivot_row, col);
+                let (head, tail) = l.split_at_mut(pivot_row);
+                head[col][..col].swap_with_slice(&mut tail[0][..col]);
+            }
+            let tail_len = n - col - 1;
+            if tail_len == 0 {
+                continue;
+            }
+            let inv_pivot = u[col][col].recip();
+            let (head_u, tail_u) = u.split_at_mut(col + 1);
+            let pivot_tail = &head_u[col][col + 1..n];
+            let mut factors: Vec<Option<qlinalg::Q>> = Vec::with_capacity(tail_len);
+            for (idx, row) in tail_u.iter_mut().enumerate() {
+                if row[col].is_zero() {
+                    factors.push(None);
+                } else {
+                    let factor = std::mem::take(&mut row[col]) * &inv_pivot;
+                    l[col + 1 + idx][col] = factor.clone();
+                    factors.push(Some(factor));
+                }
+            }
+            let grain =
+                if crate::execution::should_split_work(tail_len, (n - col).saturating_mul(64))
+                    || crate::execution::should_split(tail_len, 48)
+                {
+                    crate::execution::choose_chunk_size(tail_len, 8)
+                } else {
+                    usize::MAX
+                };
+            let factor_slice = factors.as_slice();
+            par::for_each_mut(tail_u, grain, |idx, row| {
+                let Some(ref factor) = factor_slice[idx] else {
+                    return;
+                };
+                for (dst, y) in row[col + 1..n].iter_mut().zip(pivot_tail) {
+                    if !y.is_zero() {
+                        *dst -= factor * y;
+                    }
+                }
+            });
+        }
+        let (zero, one) = (cx.graph.int(0), cx.graph.int(1));
+        let p: Vec<Vec<NodeId>> = perm
+            .iter()
+            .map(|&k| (0..n).map(|j| if j == k { one } else { zero }).collect())
+            .collect();
+        let (p, l_node, u_node) = (
+            matrix_term(cx.graph, &p),
+            rational_matrix_term(cx.graph, l),
+            rational_matrix_term(cx.graph, u),
+        );
+        return Some(list(cx.graph, &[p, l_node, u_node]));
     }
     let mut u: Vec<Vec<NodeId>> = m
         .iter()
@@ -1718,9 +1814,13 @@ impl LinalgKernel {
                 // A vector is a row on the left of a product and a column
                 // anywhere else; the result of a product with a vector is
                 // a vector again.
+                enum AccMat {
+                    Rational(qlinalg::QMat),
+                    Symbolic(Vec<Vec<NodeId>>),
+                }
                 let last = args.len().saturating_sub(1);
                 let mut flat = false;
-                let mut acc = Vec::new();
+                let mut acc: Option<AccMat> = None;
                 for (k, &next) in args.iter().enumerate() {
                     let b = match operand(cx.graph, next)? {
                         | Operand::Matrix(m) => m,
@@ -1733,30 +1833,81 @@ impl LinalgKernel {
                             v.into_iter().map(|e| vec![e]).collect()
                         },
                     };
-                    acc = if k == 0 {
-                        b
-                    } else {
-                        matmul(cx.graph, &acc, &b)?
-                    };
+                    acc = Some(match acc {
+                        | None => {
+                            match rational_matrix(cx.graph, &b) {
+                                | Some(qb) => AccMat::Rational(qb),
+                                | None => AccMat::Symbolic(b),
+                            }
+                        },
+                        | Some(AccMat::Rational(qa)) => {
+                            let inner = qa.first().map_or(0, Vec::len);
+                            if inner != b.len() {
+                                return None;
+                            }
+                            if let Some(qb) = rational_matrix(cx.graph, &b) {
+                                AccMat::Rational(qlinalg::matmul(&qa, &qb))
+                            } else {
+                                let sym_a = rational_matrix_to_nodes(cx.graph, qa);
+                                AccMat::Symbolic(matmul(cx.graph, &sym_a, &b)?)
+                            }
+                        },
+                        | Some(AccMat::Symbolic(sym_a)) => {
+                            AccMat::Symbolic(matmul(cx.graph, &sym_a, &b)?)
+                        },
+                    });
                 }
-                normalise_entries(cx, &mut acc);
-                if flat && (acc.len() == 1 || acc.iter().all(|r| r.len() == 1)) {
-                    let items: Vec<NodeId> = acc.into_iter().flatten().collect();
-                    return Some(list(cx.graph, &items));
+                match acc.unwrap_or_else(|| AccMat::Symbolic(Vec::new())) {
+                    | AccMat::Rational(qa) => {
+                        if flat && (qa.len() == 1 || qa.iter().all(|r| r.len() == 1)) {
+                            let items =
+                                rational_vector_nodes(cx.graph, qa.into_iter().flatten().collect());
+                            return Some(list(cx.graph, &items));
+                        }
+                        Some(rational_matrix_term(cx.graph, qa))
+                    },
+                    | AccMat::Symbolic(mut sym_acc) => {
+                        normalise_entries(cx, &mut sym_acc);
+                        if flat && (sym_acc.len() == 1 || sym_acc.iter().all(|r| r.len() == 1)) {
+                            let items: Vec<NodeId> = sym_acc.into_iter().flatten().collect();
+                            return Some(list(cx.graph, &items));
+                        }
+                        Some(matrix_term(cx.graph, &sym_acc))
+                    },
                 }
-                Some(matrix_term(cx.graph, &acc))
             },
             | Request::Madd
                 if operand(cx.graph, arg(0)?).is_some_and(|o| matches!(o, Operand::Vector(_))) =>
             {
-                let mut acc = vector(cx.graph, arg(0)?)?;
+                let mut vecs = Vec::with_capacity(args.len());
+                vecs.push(vector(cx.graph, arg(0)?)?);
+                let len = vecs[0].len();
                 for &next in args.get(1..)? {
                     let Operand::Vector(b) = operand(cx.graph, next)? else {
                         return None;
                     };
-                    if b.len() != acc.len() {
+                    if b.len() != len {
                         return None;
                     }
+                    vecs.push(b);
+                }
+                if let Some(q_vecs) = vecs
+                    .iter()
+                    .map(|v| rational_vector(cx.graph, v))
+                    .collect::<Option<Vec<_>>>()
+                {
+                    let mut acc = vec![qlinalg::Q::zero(); len];
+                    for v in q_vecs {
+                        for (dst, val) in acc.iter_mut().zip(v) {
+                            *dst += val;
+                        }
+                    }
+                    let items = rational_vector_nodes(cx.graph, acc);
+                    return Some(list(cx.graph, &items));
+                }
+                let mut iter = vecs.into_iter();
+                let mut acc = iter.next()?;
+                for b in iter {
                     for (x, y) in acc.iter_mut().zip(b) {
                         *x = add(cx.graph, &[*x, y]);
                     }
@@ -1770,17 +1921,57 @@ impl LinalgKernel {
             {
                 let c = arg(0)?;
                 let v = vector(cx.graph, arg(1)?)?;
+                if let (Some(qc), Some(qv)) = (
+                    cx.graph.number_of(c).and_then(Number::to_rational),
+                    rational_vector(cx.graph, &v),
+                ) {
+                    let scaled: Vec<qlinalg::Q> = qv.into_iter().map(|x| &qc * x).collect();
+                    let items = rational_vector_nodes(cx.graph, scaled);
+                    return Some(list(cx.graph, &items));
+                }
                 let scaled: Vec<NodeId> = v.iter().map(|&e| mul(cx.graph, &[c, e])).collect();
                 Some(list(cx.graph, &scaled))
             },
             | Request::Madd => {
-                let mut acc = matrix(cx.graph, arg(0)?)?;
+                let mut mats = Vec::with_capacity(args.len());
+                mats.push(matrix(cx.graph, arg(0)?)?);
+                let rows = mats[0].len();
+                let cols = mats[0].first().map_or(0, Vec::len);
                 for &next in args.get(1..)? {
                     let b = matrix(cx.graph, next)?;
-                    if b.len() != acc.len() || b.first().map(Vec::len) != acc.first().map(Vec::len)
-                    {
+                    if b.len() != rows || b.first().map_or(0, Vec::len) != cols {
                         return None;
                     }
+                    mats.push(b);
+                }
+                if let Some(mut q_mats) = mats
+                    .iter()
+                    .map(|m| rational_matrix(cx.graph, m))
+                    .collect::<Option<Vec<_>>>()
+                {
+                    let mut acc = q_mats.remove(0);
+                    let grain =
+                        if crate::execution::should_split_work(rows, cols.saturating_mul(64))
+                            || crate::execution::should_split(rows, 48)
+                        {
+                            crate::execution::choose_chunk_size(rows, 8)
+                        } else {
+                            usize::MAX
+                        };
+                    for other in q_mats {
+                        par::for_each_mut(&mut acc, grain, |i, row| {
+                            for (dst, src) in row.iter_mut().zip(&other[i]) {
+                                if !src.is_zero() {
+                                    *dst += src;
+                                }
+                            }
+                        });
+                    }
+                    return Some(rational_matrix_term(cx.graph, acc));
+                }
+                let mut iter = mats.into_iter();
+                let mut acc = iter.next()?;
+                for b in iter {
                     for (row, other) in acc.iter_mut().zip(&b) {
                         for (x, &y) in row.iter_mut().zip(other) {
                             *x = add(cx.graph, &[*x, y]);
@@ -1793,6 +1984,29 @@ impl LinalgKernel {
             | Request::Smul => {
                 let c = arg(0)?;
                 let m = matrix(cx.graph, arg(1)?)?;
+                if let (Some(qc), Some(mut qm)) = (
+                    cx.graph.number_of(c).and_then(Number::to_rational),
+                    rational_matrix(cx.graph, &m),
+                ) {
+                    let rows = qm.len();
+                    let cols = qm.first().map_or(0, Vec::len);
+                    let grain =
+                        if crate::execution::should_split_work(rows, cols.saturating_mul(64))
+                            || crate::execution::should_split(rows, 48)
+                        {
+                            crate::execution::choose_chunk_size(rows, 8)
+                        } else {
+                            usize::MAX
+                        };
+                    par::for_each_mut(&mut qm, grain, |_, row| {
+                        for val in row {
+                            if !val.is_zero() {
+                                *val = &*val * &qc;
+                            }
+                        }
+                    });
+                    return Some(rational_matrix_term(cx.graph, qm));
+                }
                 let scaled: Vec<Vec<NodeId>> = m
                     .iter()
                     .map(|row| row.iter().map(|&e| mul(cx.graph, &[c, e])).collect())
@@ -1842,6 +2056,11 @@ impl LinalgKernel {
             },
             | Request::Rank => {
                 let m = matrix(cx.graph, arg(0)?)?;
+                if let Some(exact) = rational_matrix(cx.graph, &m) {
+                    let cols = exact.first().map_or(0, Vec::len);
+                    let r = qlinalg::rank(&exact, cols);
+                    return Some(cx.graph.int(i64::try_from(r).ok()?));
+                }
                 let (_, pivots, _) = reduce(cx, &m)?;
                 Some(cx.graph.int(i64::try_from(pivots.len()).ok()?))
             },
@@ -1852,6 +2071,13 @@ impl LinalgKernel {
             },
             | Request::Rref => {
                 let m = matrix(cx.graph, arg(0)?)?;
+                if let Some(mut exact) = rational_matrix(cx.graph, &m) {
+                    let rows = exact.len();
+                    let cols = exact.first().map_or(0, Vec::len);
+                    qlinalg::rref(&mut exact, cols);
+                    exact.resize(rows, qlinalg::zeros(cols));
+                    return Some(rational_matrix_term(cx.graph, exact));
+                }
                 let (reduced, _, _) = reduce(cx, &m)?;
                 Some(matrix_term(cx.graph, &reduced))
             },
@@ -1867,7 +2093,78 @@ impl LinalgKernel {
                 if b.len() != a.len() {
                     return None;
                 }
+                let rows = a.len();
                 let cols = a.first().map_or(0, Vec::len);
+                if let (Some(qa), Some(qb)) =
+                    (rational_matrix(cx.graph, &a), rational_vector(cx.graph, &b))
+                {
+                    if rows == cols
+                        && rows >= 6
+                        && let Some(sol) = qlinalg::solve_dixon(&qa, &qb)
+                    {
+                        let items = rational_vector_nodes(cx.graph, sol);
+                        return Some(list(cx.graph, &items));
+                    }
+                    let mut aug: qlinalg::QMat = qa
+                        .into_iter()
+                        .zip(qb)
+                        .map(|(mut row, bi)| {
+                            row.push(bi);
+                            row
+                        })
+                        .collect();
+                    let pivots = qlinalg::rref(&mut aug, cols + 1);
+                    if pivots.contains(&cols) {
+                        return Some(list(cx.graph, &[]));
+                    }
+                    if pivots.len() == cols {
+                        let sol: Vec<qlinalg::Q> = aug
+                            .into_iter()
+                            .take(cols)
+                            .map(|mut row| row.pop().unwrap_or_else(qlinalg::Q::zero))
+                            .collect();
+                        let items = rational_vector_nodes(cx.graph, sol);
+                        return Some(list(cx.graph, &items));
+                    }
+                    let mut is_pivot = vec![false; cols];
+                    for &p in &pivots {
+                        if p < cols {
+                            is_pivot[p] = true;
+                        }
+                    }
+                    let mut solution = vec![cx.graph.int(0); cols];
+                    let mut free_params = Vec::new();
+                    let mut parameter = 0_usize;
+                    for (col, &piv) in is_pivot.iter().enumerate() {
+                        if !piv {
+                            parameter += 1;
+                            let sym = cx.graph.sym(&format!("t{parameter}"));
+                            solution[col] = sym;
+                            free_params.push((col, sym));
+                        }
+                    }
+                    for (row, &p) in pivots.iter().enumerate() {
+                        let mut terms = Vec::new();
+                        if !aug[row][cols].is_zero() {
+                            terms.push(rational_node(cx.graph, &aug[row][cols]));
+                        }
+                        for &(free_col, sym) in &free_params {
+                            let coeff = &aug[row][free_col];
+                            if !coeff.is_zero() {
+                                let neg_coeff = -coeff;
+                                let coeff_node = rational_node(cx.graph, &neg_coeff);
+                                terms.push(mul(cx.graph, &[coeff_node, sym]));
+                            }
+                        }
+                        solution[p] = if terms.is_empty() {
+                            cx.graph.int(0)
+                        } else {
+                            let value = add(cx.graph, &terms);
+                            cx.simplify(value)
+                        };
+                    }
+                    return Some(list(cx.graph, &solution));
+                }
                 let augmented: Vec<Vec<NodeId>> = a
                     .iter()
                     .zip(&b)
@@ -1929,7 +2226,21 @@ impl LinalgKernel {
             },
             | Request::Dot => {
                 let (a, b) = (vector(cx.graph, arg(0)?)?, vector(cx.graph, arg(1)?)?);
-                (a.len() == b.len()).then(|| dot(cx.graph, &a, &b))
+                if a.len() != b.len() {
+                    return None;
+                }
+                if let (Some(qa), Some(qb)) =
+                    (rational_vector(cx.graph, &a), rational_vector(cx.graph, &b))
+                {
+                    let mut sum = qlinalg::Q::zero();
+                    for (x, y) in qa.iter().zip(&qb) {
+                        if !x.is_zero() && !y.is_zero() {
+                            sum += x * y;
+                        }
+                    }
+                    return Some(cx.graph.num(Number::rat(sum)));
+                }
+                Some(dot(cx.graph, &a, &b))
             },
             | Request::Cross => {
                 let (a, b) = (vector(cx.graph, arg(0)?)?, vector(cx.graph, arg(1)?)?);
@@ -1983,6 +2294,15 @@ impl LinalgKernel {
             },
             | Request::Outer => {
                 let (a, b) = (vector(cx.graph, arg(0)?)?, vector(cx.graph, arg(1)?)?);
+                if let (Some(qa), Some(qb)) =
+                    (rational_vector(cx.graph, &a), rational_vector(cx.graph, &b))
+                {
+                    let rows: qlinalg::QMat = qa
+                        .iter()
+                        .map(|x| qb.iter().map(|y| x * y).collect())
+                        .collect();
+                    return Some(rational_matrix_term(cx.graph, rows));
+                }
                 let rows: Vec<Vec<NodeId>> = a
                     .iter()
                     .map(|&x| b.iter().map(|&y| mul(cx.graph, &[x, y])).collect())
@@ -2480,8 +2800,6 @@ mod tests {
 // | `hermite_form(A)` | `list(H, U)` with `U A = H` the row-style Hermite normal form of an integer matrix |
 // | `is_symmetric(A)`, `is_orthogonal(A)`, `is_positive_definite(A)` | truth values (the last for exact rational matrices, by Sylvester's criterion) |
 
-use num_traits::Signed;
-
 type Mat = Vec<Vec<NodeId>>;
 
 /// Largest matrix the Jordan machinery accepts.
@@ -2506,6 +2824,14 @@ fn product(
     a: &[Vec<NodeId>],
     b: &[Vec<NodeId>],
 ) -> Option<Mat> {
+    let inner = a.first().map_or(0, Vec::len);
+    if inner != b.len() {
+        return None;
+    }
+    if let (Some(qa), Some(qb)) = (rational_matrix(cx.graph, a), rational_matrix(cx.graph, b)) {
+        let prod = qlinalg::matmul(&qa, &qb);
+        return Some(rational_matrix_to_nodes(cx.graph, prod));
+    }
     let mut out = matmul(cx.graph, a, b)?;
     for row in &mut out {
         for entry in row.iter_mut() {
@@ -2523,6 +2849,28 @@ fn sum(
 ) -> Option<Mat> {
     if a.len() != b.len() {
         return None;
+    }
+    if let (Some(mut qa), Some(qb)) = (rational_matrix(cx.graph, a), rational_matrix(cx.graph, b)) {
+        for (ra, rb) in qa.iter_mut().zip(&qb) {
+            if ra.len() != rb.len() {
+                return None;
+            }
+            if sign == 1 {
+                for (x, y) in ra.iter_mut().zip(rb) {
+                    *x += y;
+                }
+            } else if sign == -1 {
+                for (x, y) in ra.iter_mut().zip(rb) {
+                    *x -= y;
+                }
+            } else {
+                let s = qlinalg::q(sign);
+                for (x, y) in ra.iter_mut().zip(rb) {
+                    *x += &s * y;
+                }
+            }
+        }
+        return Some(rational_matrix_to_nodes(cx.graph, qa));
     }
     let factor = cx.graph.int(sign);
     let mut out = Vec::with_capacity(a.len());
@@ -2546,6 +2894,19 @@ fn scale(
     factor: NodeId,
     a: &[Vec<NodeId>],
 ) -> Mat {
+    if let (Some(qf), Some(mut qa)) = (
+        cx.graph.number_of(factor).and_then(Number::to_rational),
+        rational_matrix(cx.graph, a),
+    ) {
+        for row in &mut qa {
+            for val in row {
+                if !val.is_zero() {
+                    *val = &*val * &qf;
+                }
+            }
+        }
+        return rational_matrix_to_nodes(cx.graph, qa);
+    }
     a.iter()
         .map(|row| {
             row.iter()
@@ -2581,6 +2942,10 @@ fn rank_of(
     if rows.is_empty() {
         return Some(0);
     }
+    if let Some(exact) = rational_matrix(cx.graph, rows) {
+        let cols = exact.first().map_or(0, Vec::len);
+        return Some(qlinalg::rank(&exact, cols));
+    }
     let (_, pivots, _) = reduce(cx, rows)?;
     Some(pivots.len())
 }
@@ -2590,6 +2955,11 @@ fn apply(
     m: &[Vec<NodeId>],
     v: &[NodeId],
 ) -> Vec<NodeId> {
+    if let (Some(qm), Some(qv)) = (rational_matrix(cx.graph, m), rational_vector(cx.graph, v))
+        && qm.first().is_none_or(|r| r.len() == qv.len())
+    {
+        return rational_vector_nodes(cx.graph, qlinalg::matvec(&qm, &qv));
+    }
     m.iter()
         .map(|row| {
             let terms: Vec<NodeId> = row
@@ -2823,11 +3193,36 @@ fn matrix_exponential(
     matrix_function(cx, f, x, m)
 }
 
+fn integer_power_q(
+    m: &[Vec<qlinalg::Q>],
+    exponent: u64,
+) -> qlinalg::QMat {
+    let mut result = qlinalg::identity(m.len());
+    let mut base = m.to_vec();
+    let mut e = exponent;
+    while e > 0 {
+        if e & 1 == 1 {
+            result = qlinalg::matmul(&result, &base);
+        }
+        e >>= 1;
+        if e > 0 {
+            base = qlinalg::matmul(&base, &base);
+        }
+    }
+    result
+}
+
 fn integer_power(
     cx: &mut Cx<'_>,
     m: &[Vec<NodeId>],
     exponent: u64,
 ) -> Option<Mat> {
+    if let Some(exact) = rational_matrix(cx.graph, m) {
+        return Some(rational_matrix_to_nodes(
+            cx.graph,
+            integer_power_q(&exact, exponent),
+        ));
+    }
     let mut result = identity_rows(cx.graph, m.len());
     let mut base = m.to_vec();
     let mut e = exponent;
@@ -2850,6 +3245,20 @@ fn matrix_power(
 ) -> Option<Mat> {
     if let Some(e) = cx.graph.number_of(exponent).and_then(Number::to_i64) {
         let magnitude = Some(e.unsigned_abs()).filter(|&v| v <= 100_000)?;
+        if let Some(exact) = rational_matrix(cx.graph, m) {
+            if !square(m) {
+                return None;
+            }
+            let base = if e >= 0 {
+                exact
+            } else {
+                qlinalg::inverse(&exact)?
+            };
+            return Some(rational_matrix_to_nodes(
+                cx.graph,
+                integer_power_q(&base, magnitude),
+            ));
+        }
         if e >= 0 {
             return integer_power(cx, m, magnitude);
         }
@@ -2896,6 +3305,58 @@ fn flatten(m: &[Vec<NodeId>]) -> Vec<NodeId> {
     m.iter().flatten().copied().collect()
 }
 
+#[allow(clippy::single_call_fn)]
+fn minpoly_q(m: &[Vec<qlinalg::Q>]) -> Option<Vec<qlinalg::Q>> {
+    let n = m.len();
+    let mut basis: Vec<(Vec<qlinalg::Q>, usize, Vec<qlinalg::Q>)> = Vec::with_capacity(n);
+    let mut power = qlinalg::identity(n);
+
+    for k in 0..=n {
+        let mut v: Vec<qlinalg::Q> = power.iter().flatten().cloned().collect();
+        let mut combo = vec![qlinalg::Q::zero(); k + 1];
+        combo[k] = qlinalg::Q::one();
+
+        for (e_vec, p_col, e_combo) in &basis {
+            if v[*p_col].is_zero() {
+                continue;
+            }
+            let f = std::mem::replace(&mut v[*p_col], qlinalg::Q::zero());
+            for (dst, src) in v[*p_col + 1..].iter_mut().zip(&e_vec[*p_col + 1..]) {
+                if !src.is_zero() {
+                    *dst -= &f * src;
+                }
+            }
+            for (dst, src) in combo.iter_mut().zip(e_combo) {
+                if !src.is_zero() {
+                    *dst -= &f * src;
+                }
+            }
+        }
+
+        let Some(pivot_idx) = v.iter().position(|x| !x.is_zero()) else {
+            return Some(combo);
+        };
+        if k == n {
+            return None;
+        }
+        let inv = v[pivot_idx].recip();
+        v[pivot_idx] = qlinalg::Q::one();
+        for x in &mut v[pivot_idx + 1..] {
+            if !x.is_zero() {
+                *x = &*x * &inv;
+            }
+        }
+        for c in &mut combo {
+            if !c.is_zero() {
+                *c = &*c * &inv;
+            }
+        }
+        basis.push((v, pivot_idx, combo));
+        power = qlinalg::matmul(m, &power);
+    }
+    None
+}
+
 fn minimal_polynomial(
     cx: &mut Cx<'_>,
     m: &[Vec<NodeId>],
@@ -2904,6 +3365,10 @@ fn minimal_polynomial(
     let n = m.len();
     if !square(m) {
         return None;
+    }
+    if let Some(exact) = rational_matrix(cx.graph, m) {
+        let coeffs = minpoly_q(&exact)?;
+        return univariate_poly_term(cx, coeffs, l);
     }
     let mut powers: Vec<Mat> = vec![identity_rows(cx.graph, n)];
     for k in 1..=n {
@@ -2929,6 +3394,23 @@ fn minimal_polynomial(
         }
     }
     None
+}
+
+fn horner_mat_q(
+    m: &[Vec<qlinalg::Q>],
+    coeffs: &[qlinalg::Q],
+) -> qlinalg::QMat {
+    let n = m.len();
+    let mut acc = vec![qlinalg::zeros(n); n];
+    for c in coeffs.iter().rev() {
+        acc = qlinalg::matmul(&acc, m);
+        if !c.is_zero() {
+            for (i, row) in acc.iter_mut().enumerate() {
+                row[i] += c;
+            }
+        }
+    }
+    acc
 }
 
 /// `p(A)` for a polynomial `p` in `x`, by Horner's rule on the
@@ -2972,6 +3454,15 @@ fn matrix_polynomial(
         current = current.derivative(gx);
         order += 1;
     }
+    if let (Some(exact), Some(q_coeffs)) = (
+        rational_matrix(cx.graph, m),
+        rational_vector(cx.graph, &coefficients),
+    ) {
+        return Some(rational_matrix_to_nodes(
+            cx.graph,
+            horner_mat_q(&exact, &q_coeffs),
+        ));
+    }
     let identity = identity_rows(cx.graph, n);
     let mut acc = zero_matrix(cx.graph, n, n);
     for &c in coefficients.iter().rev() {
@@ -2986,10 +3477,53 @@ fn matrix_polynomial(
 // Pseudo-inverse and friends
 // ----------------------------------------------------------------------
 
+fn pinv_q(m: &[Vec<qlinalg::Q>]) -> Option<qlinalg::QMat> {
+    let rows = m.len();
+    let cols = m.first().map_or(0, Vec::len);
+    if rows == 0 || cols == 0 {
+        return Some(vec![qlinalg::zeros(rows); cols]);
+    }
+    let mut r = m.to_vec();
+    let pivots = qlinalg::rref(&mut r, cols);
+    if pivots.is_empty() {
+        return Some(vec![qlinalg::zeros(rows); cols]);
+    }
+    if pivots.len() == rows && rows == cols {
+        return qlinalg::inverse(m);
+    }
+    if pivots.len() == cols {
+        let at = qlinalg::transpose(m, cols);
+        let ata = qlinalg::matmul(&at, m);
+        return qlinalg::solve_mat(&ata, cols, &at);
+    }
+    if pivots.len() == rows {
+        let at = qlinalg::transpose(m, cols);
+        let aat = qlinalg::matmul(m, &at);
+        let sol = qlinalg::solve_mat(&aat, rows, m)?;
+        return Some(qlinalg::transpose(&sol, cols));
+    }
+    let c: qlinalg::QMat = m
+        .iter()
+        .map(|row| pivots.iter().map(|&p| row[p].clone()).collect())
+        .collect();
+    let ct = qlinalg::transpose(&c, pivots.len());
+    let rt = qlinalg::transpose(&r, cols);
+    let rrt = qlinalg::matmul(&r, &rt);
+    let ctc = qlinalg::matmul(&ct, &c);
+    let rrt_inv = qlinalg::inverse(&rrt)?;
+    let ctc_inv = qlinalg::inverse(&ctc)?;
+    let left = qlinalg::matmul(&rt, &rrt_inv);
+    let right = qlinalg::matmul(&ctc_inv, &ct);
+    Some(qlinalg::matmul(&left, &right))
+}
+
 fn pseudo_inverse(
     cx: &mut Cx<'_>,
     m: &[Vec<NodeId>],
 ) -> Option<Mat> {
+    if let Some(exact) = rational_matrix(cx.graph, m) {
+        return Some(rational_matrix_to_nodes(cx.graph, pinv_q(&exact)?));
+    }
     let rows = m.len();
     let cols = m.first().map_or(0, Vec::len);
     let (reduced, pivots, _) = reduce(cx, m)?;
@@ -3014,6 +3548,17 @@ fn colspace(
     cx: &mut Cx<'_>,
     m: &[Vec<NodeId>],
 ) -> Option<Vec<Vec<NodeId>>> {
+    if let Some(exact) = rational_matrix(cx.graph, m) {
+        let cols = exact.first().map_or(0, Vec::len);
+        let mut work = exact;
+        let pivots = qlinalg::rref(&mut work, cols);
+        return Some(
+            pivots
+                .iter()
+                .map(|&p| m.iter().map(|row| row[p]).collect())
+                .collect(),
+        );
+    }
     let (_, pivots, _) = reduce(cx, m)?;
     Some(
         pivots
@@ -3027,8 +3572,47 @@ fn rowspace(
     cx: &mut Cx<'_>,
     m: &[Vec<NodeId>],
 ) -> Option<Vec<Vec<NodeId>>> {
+    if let Some(mut exact) = rational_matrix(cx.graph, m) {
+        let cols = exact.first().map_or(0, Vec::len);
+        qlinalg::rref(&mut exact, cols);
+        return Some(rational_matrix_to_nodes(cx.graph, exact));
+    }
     let (reduced, pivots, _) = reduce(cx, m)?;
     Some(reduced.into_iter().take(pivots.len()).collect())
+}
+
+fn ldl_q(m: &[Vec<qlinalg::Q>]) -> Option<(qlinalg::QMat, Vec<qlinalg::Q>)> {
+    let n = m.len();
+    let mut l = qlinalg::identity(n);
+    let mut d: Vec<qlinalg::Q> = Vec::with_capacity(n);
+    for j in 0..n {
+        let mut value = m[j][j].clone();
+        for (k, dk) in d.iter().enumerate() {
+            let ljk = &l[j][k];
+            if !ljk.is_zero() {
+                value -= ljk * ljk * dk;
+            }
+        }
+        if value.is_zero() {
+            return None;
+        }
+        let inv_d = value.recip();
+        d.push(value);
+        for i in j + 1..n {
+            let mut entry = m[i][j].clone();
+            for (k, dk) in d.iter().enumerate().take(j) {
+                let lik = &l[i][k];
+                let ljk = &l[j][k];
+                if !lik.is_zero() && !ljk.is_zero() {
+                    entry -= lik * ljk * dk;
+                }
+            }
+            if !entry.is_zero() {
+                l[i][j] = entry * &inv_d;
+            }
+        }
+    }
+    Some((l, d))
 }
 
 fn ldl(
@@ -3038,6 +3622,13 @@ fn ldl(
     let n = m.len();
     if !square(m) {
         return None;
+    }
+    if let Some(exact) = rational_matrix(cx.graph, m) {
+        let (l, d) = ldl_q(&exact)?;
+        return Some((
+            rational_matrix_to_nodes(cx.graph, l),
+            rational_vector_nodes(cx.graph, d),
+        ));
     }
     let mut l = identity_rows(cx.graph, n);
     let mut d: Vec<NodeId> = Vec::with_capacity(n);
@@ -3069,12 +3660,30 @@ fn ldl(
     Some((l, d))
 }
 
+fn is_symmetric_q(m: &[Vec<qlinalg::Q>]) -> bool {
+    let n = m.len();
+    if n == 0 || m.iter().any(|r| r.len() != n) {
+        return false;
+    }
+    for (i, row) in m.iter().enumerate() {
+        for (j, entry) in row.iter().enumerate().skip(i + 1) {
+            if *entry != m[j][i] {
+                return false;
+            }
+        }
+    }
+    true
+}
+
 fn is_symmetric(
     cx: &mut Cx<'_>,
     m: &[Vec<NodeId>],
 ) -> bool {
     if !square(m) {
         return false;
+    }
+    if let Some(exact) = rational_matrix(cx.graph, m) {
+        return is_symmetric_q(&exact);
     }
     for (i, row) in m.iter().enumerate() {
         for (j, &entry) in row.iter().enumerate().skip(i + 1) {
@@ -3092,6 +3701,28 @@ fn cholesky(
     cx: &mut Cx<'_>,
     m: &[Vec<NodeId>],
 ) -> Option<Mat> {
+    if let Some(exact) = rational_matrix(cx.graph, m) {
+        if !is_symmetric_q(&exact) {
+            return None;
+        }
+        let (l_q, d_q) = ldl_q(&exact)?;
+        if d_q.iter().any(|dj| !dj.is_positive()) {
+            return None;
+        }
+        let mut l = rational_matrix_to_nodes(cx.graph, l_q);
+        let d_nodes = rational_vector_nodes(cx.graph, d_q);
+        for (j, &dj) in d_nodes.iter().enumerate() {
+            let root = sqrt(cx.graph, dj)?;
+            let root = cx.simplify(root);
+            for row in &mut l {
+                if !cx.is_zero(row[j]) {
+                    let scaled = mul(cx.graph, &[row[j], root]);
+                    row[j] = normal(cx, scaled);
+                }
+            }
+        }
+        return Some(l);
+    }
     if !is_symmetric(cx, m) {
         return None;
     }
@@ -3112,6 +3743,42 @@ fn cholesky(
     Some(l)
 }
 
+#[allow(clippy::single_call_fn)]
+fn gram_schmidt_q(vectors: &[Vec<qlinalg::Q>]) -> Vec<Vec<qlinalg::Q>> {
+    let mut basis: Vec<Vec<qlinalg::Q>> = Vec::new();
+    let mut squares: Vec<qlinalg::Q> = Vec::new();
+    for v in vectors {
+        let mut w = v.clone();
+        for (b, bb) in basis.iter().zip(&squares) {
+            let mut numerator = qlinalg::Q::zero();
+            for (vi, bi) in v.iter().zip(b) {
+                if !vi.is_zero() && !bi.is_zero() {
+                    numerator += vi * bi;
+                }
+            }
+            if !numerator.is_zero() {
+                let coeff = numerator / bb;
+                for (wi, bi) in w.iter_mut().zip(b) {
+                    if !bi.is_zero() {
+                        *wi -= &coeff * bi;
+                    }
+                }
+            }
+        }
+        let mut length_sq = qlinalg::Q::zero();
+        for wi in &w {
+            if !wi.is_zero() {
+                length_sq += wi * wi;
+            }
+        }
+        if !length_sq.is_zero() {
+            basis.push(w);
+            squares.push(length_sq);
+        }
+    }
+    basis
+}
+
 /// Gram–Schmidt on vectors (orthogonal, or orthonormal), dropping the
 /// dependent ones.
 fn gram_schmidt(
@@ -3119,6 +3786,14 @@ fn gram_schmidt(
     vectors: &[Vec<NodeId>],
     normalise: bool,
 ) -> Option<Vec<Vec<NodeId>>> {
+    if !normalise
+        && let Some(q_vecs) = vectors
+            .iter()
+            .map(|v| rational_vector(cx.graph, v))
+            .collect::<Option<Vec<_>>>()
+    {
+        return Some(rational_matrix_to_nodes(cx.graph, gram_schmidt_q(&q_vecs)));
+    }
     let mut basis: Vec<Vec<NodeId>> = Vec::new();
     let mut squares: Vec<NodeId> = Vec::new();
     for v in vectors {

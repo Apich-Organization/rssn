@@ -2467,6 +2467,14 @@ mod tests {
         "amg_solve",
         // The roots' dimensions follow from coefficients that are bare numbers.
         "polynomial_system_roots",
+        // A chain diagnostic is a pure number whatever the chain measures,
+        // and a precision conversion maps text to a double with no dimension.
+        "rhat",
+        "effective_sample_size",
+        "geweke",
+        "mp_to_float",
+        "mp_compare",
+        "mp_digits",
         // Integrals over sampled points depend on the abscissa's dimension.
         "function_l1_norm",
         "function_l2_norm",

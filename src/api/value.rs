@@ -272,8 +272,15 @@ impl Session {
     /// * the call fails before evaluation (unknown operator, wrong argument
     ///   count, an argument with no term form): the [`OpError`] mapped to a
     ///   [`Diag`] of kind `Unsupported`, `Arity`, `Shape` or `Domain`;
-    /// * a heavy operator that has no recorded reasons stays unreduced: a
-    ///   [`DiagKind::Unspecified`](crate::kernel::DiagKind) finding says so.
+    /// * a heavy operator that recorded no reason of its own: a finding
+    ///   *derived* from the operator's metadata rather than from the
+    ///   evaluator — a wrong argument count is `Arity`, arguments no typed
+    ///   overload accepts are `Shape` (naming the candidates), a symbolic
+    ///   argument to an operator that computes only from literals is
+    ///   `Symbolic`, and everything else is `Unsupported` with the
+    ///   descriptor's own [`DynamicReason`](crate::kernel::signature::DynamicReason)
+    ///   when it has one. [`DiagKind::Unspecified`](crate::kernel::DiagKind)
+    ///   is left for a host diagnostic that carries no kind at all.
     ///
     /// A symbolic result that is a legitimate answer (`sin(x)`) is `Ok`: only a
     /// request an evaluator declined is an error here.
@@ -316,11 +323,7 @@ impl Session {
         }
         let descriptor = inner.graph.ops().get(inner.graph.op(node));
         if descriptor.flags.has(crate::graph::OpFlags::HEAVY) && *descriptor.name == *name {
-            return Err(Diag::new(
-                DiagKind::Unspecified,
-                "the call was left unevaluated and the operator recorded no reason",
-            )
-            .in_op(name));
+            return Err(crate::kernel::diag::classify(descriptor, args));
         }
         Ok(value)
     }
@@ -1091,6 +1094,12 @@ fn diag_of_error(
             )
         },
         | OpError::HostDiagnostic { message, .. } => Diag::new(DiagKind::Unspecified, message),
+        | OpError::NotReduced(what) => {
+            Diag::new(
+                DiagKind::Unsupported,
+                format!("`{what}` has no closed form for these arguments"),
+            )
+        },
         | other => Diag::new(DiagKind::Unspecified, other.to_string()),
     };
     diag.in_op(name)

@@ -171,6 +171,140 @@ impl fmt::Display for Diag {
 
 impl std::error::Error for Diag {}
 
+/// Classifies an unreduced call of a heavy operator that recorded no reason.
+///
+/// Table-driven numeric operators record their own reasons (see
+/// `rules::numeric`); a **heavy** operator — one with symbolic rules, a typed
+/// dispatch or a host callback — leaves its call as a term when it declines,
+/// and the places that decline are too many to instrument one by one. The
+/// operator's own metadata answers instead:
+///
+/// * the argument count is not one the descriptor accepts → [`DiagKind::Arity`];
+/// * the descriptor has typed overloads and none of them accepts these
+///   arguments → [`DiagKind::Shape`], naming the candidate signatures;
+/// * several overloads tie → [`DiagKind::Shape`], naming them;
+/// * an argument is a symbolic expression while the operator has scalar
+///   numeric semantics → [`DiagKind::Symbolic`];
+/// * otherwise → [`DiagKind::Unsupported`], with the descriptor's
+///   [`DynamicReason`](crate::kernel::signature::DynamicReason) when it has one
+///   (a request reduced by rules, a variadic shape, ...).
+///
+/// The answer is *derived*, not recorded, and the message says only what the
+/// metadata supports: it never invents a numeric cause that was not observed.
+#[must_use]
+pub fn classify(
+    descriptor: &crate::graph::op::OpDescriptor,
+    args: &[crate::kernel::value::Value],
+) -> Diag {
+    let name: &str = &descriptor.name;
+    let given = args.len();
+    if !descriptor.arity.accepts(given) {
+        let expected = descriptor
+            .arity
+            .max()
+            .map_or_else(|| "any number of".to_string(), |count| count.to_string());
+        return Diag::new(
+            DiagKind::Arity,
+            format!("takes {expected} arguments, got {given}"),
+        )
+        .in_op(name);
+    }
+    if !descriptor.overloads.is_empty() {
+        let candidates = || {
+            let shown: Vec<String> = descriptor
+                .overloads
+                .iter()
+                .take(4)
+                .map(render_signature)
+                .collect();
+            shown.join("; ")
+        };
+        match crate::kernel::overload::best(&descriptor.overloads, args) {
+            | crate::kernel::overload::Best::None => {
+                return Diag::new(
+                    DiagKind::Shape,
+                    format!(
+                        "no overload accepts ({}); the operator declares {}",
+                        render_kinds(args),
+                        candidates()
+                    ),
+                )
+                .in_op(name);
+            },
+            | crate::kernel::overload::Best::Ambiguous(tied) => {
+                let shown: Vec<String> = tied
+                    .iter()
+                    .filter_map(|&index| descriptor.overloads.get(index))
+                    .map(render_signature)
+                    .collect();
+                return Diag::new(
+                    DiagKind::Shape,
+                    format!(
+                        "several overloads accept ({}) equally well: {}",
+                        render_kinds(args),
+                        shown.join("; ")
+                    ),
+                )
+                .in_op(name);
+            },
+            | crate::kernel::overload::Best::Unique(_) => {},
+        }
+    }
+    if descriptor.eval.is_some()
+        && let Some(index) = args
+            .iter()
+            .position(|value| matches!(value, crate::kernel::value::Value::Term(_)))
+    {
+        return Diag::new(
+            DiagKind::Symbolic,
+            "the argument is a symbolic expression, and this operator computes only from literal \
+             numbers",
+        )
+        .at(index)
+        .in_op(name);
+    }
+    let reason = match descriptor.dynamic_reason {
+        | Some(crate::kernel::signature::DynamicReason::Request) => {
+            "the operator is reduced by rules, and no rule applies to this form"
+        },
+        | Some(crate::kernel::signature::DynamicReason::ShapeDependent) => {
+            "the result shape depends on the arguments, and this shape is outside what the \
+             operator supports"
+        },
+        | Some(crate::kernel::signature::DynamicReason::FullyPolymorphic) => {
+            "the operator is polymorphic over its arguments, and no rule applies to this form"
+        },
+        | Some(crate::kernel::signature::DynamicReason::OpaquePayload) => {
+            "the operator needs a host payload, which this call does not carry"
+        },
+        | Some(crate::kernel::signature::DynamicReason::Variadic) => {
+            "the operator takes a variadic argument list, and no rule applies to this form"
+        },
+        | Some(crate::kernel::signature::DynamicReason::NotYetSpecified) => {
+            "the operator has no typed signature yet, and its rules did not reduce this form"
+        },
+        | None => "the operator declined this form and recorded no reason",
+    };
+    Diag::new(DiagKind::Unsupported, reason).in_op(name)
+}
+
+/// Renders `(params) -> result` for a candidate signature.
+fn render_signature(signature: &crate::kernel::signature::Signature) -> String {
+    let params: Vec<String> = signature.params.iter().map(ToString::to_string).collect();
+    let tail = if signature.variadic.is_some() {
+        ", .."
+    } else {
+        ""
+    };
+    format!("({}{tail}) -> {}", params.join(", "), signature.ret)
+}
+
+/// Renders the argument kinds of a call as `int, list`.
+fn render_kinds(args: &[crate::kernel::value::Value]) -> String {
+    let kinds: Vec<String> = args.iter().map(|value| value.kind().to_string()).collect();
+    kinds.join(", ")
+}
+
 impl From<Diag> for crate::kernel::call::OpError {
     /// A host diagnostic carrying the kind's [stable code](DiagKind::code) and
     /// the full text of the finding.
@@ -267,7 +401,10 @@ mod tests {
     use super::capture_all;
     use super::fail;
     use super::report;
+    use crate::api::Session;
+    use crate::kernel::call::CallCtx;
     use crate::kernel::call::OpError;
+    use crate::kernel::value::Value;
 
     fn evaluator(x: f64) -> Option<f64> {
         if x < 0.0 {
@@ -321,6 +458,39 @@ mod tests {
                 assert!(message.contains("fluxes do not balance"), "{message}");
             },
             | other => panic!("{other:?}"),
+        }
+    }
+
+
+    /// A heavy operator that declines used to answer `Unspecified`; the
+    /// classifier now derives a kind from the descriptor, so a wrong argument
+    /// count is named as such.
+    #[test]
+    fn a_wrong_argument_count_is_an_arity_finding() {
+        let session = Session::new();
+        let finding = match session.apply_diag("diff", &[], &CallCtx::new()) {
+            | Err(finding) => finding,
+            | Ok(value) => panic!("expected a finding, got {value:?}"),
+        };
+        assert_eq!(finding.kind, super::DiagKind::Arity);
+        assert_eq!(finding.op, "diff");
+        assert!(!finding.message.is_empty());
+    }
+
+    /// The classifier never invents a numeric cause: with the right number of
+    /// arguments but a form no rule accepts, the kind is one the caller can
+    /// branch on, and never the catch-all.
+    #[test]
+    fn a_declined_call_is_classified_not_unspecified() {
+        let session = Session::new();
+        let args = [
+            Value::Symbol("x".to_string()),
+            Value::Symbol("x".to_string()),
+            Value::Symbol("x".to_string()),
+        ];
+        if let Err(finding) = session.apply_diag("diff", &args, &CallCtx::new()) {
+            assert_ne!(finding.kind, super::DiagKind::Unspecified, "{finding}");
+            assert_eq!(finding.op, "diff");
         }
     }
 }

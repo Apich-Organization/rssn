@@ -48,14 +48,23 @@
 //! chapter of `ARCHITECTURE.md`.
 
 mod bridge;
+mod conic;
+mod control;
 mod decomp;
 #[cfg(test)]
 mod diag_tests;
 mod functions;
+mod glm;
+mod mcmc;
+mod mesh;
+mod milp;
+mod mp;
 mod ode;
 mod resample;
 mod solvers;
 mod special;
+mod survival;
+mod timeseries;
 mod transform;
 
 use crate::graph::Arity;
@@ -85,13 +94,22 @@ pub fn numeric() -> RuleSet {
 }
 
 /// Every table of operators the bridge reduces.
-const TABLES: [&[bridge::Entry]; 6] = [
+const TABLES: [&[bridge::Entry]; 15] = [
     bridge::ENTRIES,
     special::ENTRIES,
     resample::ENTRIES,
     transform::ENTRIES,
     decomp::ENTRIES,
     solvers::ENTRIES,
+    conic::ENTRIES,
+    milp::ENTRIES,
+    glm::ENTRIES,
+    timeseries::ENTRIES,
+    control::ENTRIES,
+    survival::ENTRIES,
+    mcmc::ENTRIES,
+    mesh::ENTRIES,
+    mp::ENTRIES,
 ];
 
 /// Why the call `node` of a table-driven numeric operator does not reduce.
@@ -255,6 +273,63 @@ fn bridge_dimension(name: &str) -> DimRule {
         | "fgmres_solve"
         | "bicgstab_l_solve" => DimRule::Any,
         | _ if name.starts_with("function_") => DimRule::Any,
+        // Arbitrary-precision operators carry their value as decimal text, so
+        // the result is a label rather than a quantity. `mp_to_float` narrows
+        // text to a double, which has no dimension either.
+        | "mp_to_float"
+        | "mp_compare"
+        | "mp_digits"
+        | "rhat"
+        | "effective_sample_size"
+        | "geweke" => DimRule::Any,
+        | _ if name.starts_with("mp_") && name != "mp_ball" => DimRule::NonMetric,
+        // Statistics, optimisation, control and mesh operators return a
+        // structured decomposition — coefficients, gains, orders, survival
+        // curves, triangles — whose dimension follows from the request, not
+        // from one argument. `Container` is the rule for exactly that: it
+        // reports a container and stays compatible with the reduced literal.
+        | _ if name.starts_with("glm_")
+            || name.starts_with("arx")
+            || name.starts_with("tf_")
+            || name.starts_with("ss_")
+            || name.starts_with("mpc_")
+            || name.starts_with("pid_")
+            || name.starts_with("milp_")
+            || name.starts_with("qp_")
+            || name.starts_with("socp_")
+            || name.starts_with("sdp_")
+            || name == "care"
+            || name == "dare"
+            || name == "lqr"
+            || name == "dlqr"
+            || name == "lqg"
+            || name == "kalman_gain"
+            || name == "kalman_filter"
+            || name == "acf"
+            || name == "pacf"
+            || name == "ar_fit"
+            || name == "arima_fit"
+            || name == "holt_winters"
+            || name == "holt_winters_mul"
+            || name == "delaunay_2d"
+            || name == "delaunay_3d"
+            || name == "cdt_2d"
+            || name == "refine_quality"
+            || name == "kaplan_meier"
+            || name == "nelson_aalen"
+            || name == "log_rank"
+            || name == "cox_fit"
+            || name == "mp_ball" =>
+        {
+            DimRule::Container
+        },
+        // A forecast or a fitted mean keeps the dimension of the sample it
+        // was computed from.
+        | "difference"
+        | "arima_forecast"
+        | "glm_predict"
+        | "cox_predict"
+        | "chain_autocorrelation" => DimRule::Same(0),
         | _ => DimRule::Same(0),
     }
 }
@@ -732,13 +807,22 @@ mod tests {
         let mut graph = Graph::new();
         let sets: Vec<RuleSet> = vec![numeric()];
         assert!(Engine::install(&mut graph, &sets).is_ok());
-        let tables: [&[super::bridge::Entry]; 6] = [
+        let tables: [&[super::bridge::Entry]; 15] = [
             super::bridge::ENTRIES,
             super::special::ENTRIES,
             super::resample::ENTRIES,
             super::transform::ENTRIES,
             super::decomp::ENTRIES,
             super::solvers::ENTRIES,
+            super::conic::ENTRIES,
+            super::milp::ENTRIES,
+            super::glm::ENTRIES,
+            super::timeseries::ENTRIES,
+            super::control::ENTRIES,
+            super::survival::ENTRIES,
+            super::mcmc::ENTRIES,
+            super::mesh::ENTRIES,
+            super::mp::ENTRIES,
         ];
         let mut seen = 0;
         for entry in tables.into_iter().flatten() {

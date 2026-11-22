@@ -50,9 +50,141 @@
 //!   a documented gap; GIF animation I/O is in [`gif`] and SVG parsing/I/O is
 //!   in [`svg`].
 
+/// Typed tabular data: columns, data frames, typed CSV and JSON.
+#[allow(
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::single_call_fn,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::redundant_else,
+    clippy::if_not_else,
+    clippy::suboptimal_flops,
+    clippy::doc_markdown,
+    clippy::needless_pass_by_value,
+    clippy::too_many_lines,
+    clippy::too_many_arguments,
+    clippy::similar_names,
+    clippy::manual_let_else,
+    clippy::option_if_let_else,
+    clippy::collapsible_if,
+    clippy::unnecessary_wraps,
+    clippy::many_single_char_names,
+    clippy::manual_clamp,
+    clippy::needless_range_loop,
+    clippy::type_complexity,
+    clippy::module_name_repetitions,
+    clippy::must_use_candidate,
+    clippy::missing_const_for_fn,
+    clippy::use_self
+)]
+pub mod frame;
 pub mod gif;
+/// HDF5 files: groups, attributes and contiguous or chunked datasets.
+#[allow(
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::single_call_fn,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::redundant_else,
+    clippy::if_not_else,
+    clippy::suboptimal_flops,
+    clippy::doc_markdown,
+    clippy::needless_pass_by_value,
+    clippy::too_many_lines,
+    clippy::too_many_arguments,
+    clippy::similar_names,
+    clippy::manual_let_else,
+    clippy::option_if_let_else,
+    clippy::collapsible_if,
+    clippy::unnecessary_wraps,
+    clippy::many_single_char_names,
+    clippy::manual_clamp,
+    clippy::needless_range_loop,
+    clippy::type_complexity,
+    clippy::module_name_repetitions,
+    clippy::must_use_candidate,
+    clippy::missing_const_for_fn,
+    clippy::use_self
+)]
+pub mod hdf5;
 pub mod latex;
 pub(crate) mod markup;
+/// NetCDF classic and 64-bit offset files.
+#[allow(
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::single_call_fn,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::redundant_else,
+    clippy::if_not_else,
+    clippy::suboptimal_flops,
+    clippy::doc_markdown,
+    clippy::needless_pass_by_value,
+    clippy::too_many_lines,
+    clippy::too_many_arguments,
+    clippy::similar_names,
+    clippy::manual_let_else,
+    clippy::option_if_let_else,
+    clippy::collapsible_if,
+    clippy::unnecessary_wraps,
+    clippy::many_single_char_names,
+    clippy::manual_clamp,
+    clippy::needless_range_loop,
+    clippy::type_complexity,
+    clippy::module_name_repetitions,
+    clippy::must_use_candidate,
+    clippy::missing_const_for_fn,
+    clippy::use_self
+)]
+pub mod netcdf;
+/// Apache Parquet files with a flat schema.
+#[allow(
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::single_call_fn,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::redundant_else,
+    clippy::if_not_else,
+    clippy::suboptimal_flops,
+    clippy::doc_markdown,
+    clippy::needless_pass_by_value,
+    clippy::too_many_lines,
+    clippy::too_many_arguments,
+    clippy::similar_names,
+    clippy::manual_let_else,
+    clippy::option_if_let_else,
+    clippy::collapsible_if,
+    clippy::unnecessary_wraps,
+    clippy::many_single_char_names,
+    clippy::manual_clamp,
+    clippy::needless_range_loop,
+    clippy::type_complexity,
+    clippy::module_name_repetitions,
+    clippy::must_use_candidate,
+    clippy::missing_const_for_fn,
+    clippy::use_self
+)]
+pub mod parquet;
 pub mod plot;
 pub mod pretty;
 pub mod raster;
