@@ -112,6 +112,7 @@ ndarray = { version = "0.16", features = ["serde"] }
 statrs = "0.19"
 argmin-math = { version = "0.5", features = ["ndarray_latest-nolinalg"] }
 argmin = { version = "0.11", features = ["serde", "serde1"] }
+basin = { version = "3.5", features = ["ndarray_v0_16"] }
 rustfft = "6.4"
 once_cell = "1.21"
 # Not upgrading because of argmin requires ndarray 0.16

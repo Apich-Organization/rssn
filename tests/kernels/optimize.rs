@@ -1,4 +1,4 @@
-//! Gradient-based optimisation drivers built on `argmin` (ported from
+//! Optimization drivers built on Basin and Argmin (ported from
 //! `numerical_optimize_test.rs`).
 
 use argmin::core::CostFunction;
@@ -102,14 +102,83 @@ fn rosenbrock_bfgs_finds_the_minimum() {
         &cfg,
     )
     .unwrap_or_else(|e| panic!("{e}"));
-    let best = res.state.get_best_param().cloned().unwrap_or_default();
+    assert!(res.best_cost <= cfg.tolerance, "cost {}", res.best_cost);
     assert!(
-        res.state.get_best_cost() < 1e-4,
-        "cost {}",
-        res.state.get_best_cost()
+        (res.best_param[0] - 1.0).abs() < 0.1,
+        "x = {}",
+        res.best_param[0]
     );
-    assert!((best[0] - 1.0).abs() < 0.1, "x = {}", best[0]);
-    assert!((best[1] - 1.0).abs() < 0.1, "y = {}", best[1]);
+    assert!(
+        (res.best_param[1] - 1.0).abs() < 0.1,
+        "y = {}",
+        res.best_param[1]
+    );
+}
+
+#[test]
+fn bfgs_converges_at_a_stationary_start_with_an_unreachable_target() {
+    let cfg = config(ProblemType::Sphere, 50, -1.0, 2);
+    let result = EquationOptimizer::solve_with_bfgs(Sphere, Array1::zeros(2), &cfg)
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(result.termination, "GradientTolerance");
+    assert_eq!(result.iterations, 0);
+    assert_eq!(result.best_param, vec![0.0, 0.0]);
+    assert_eq!(result.best_cost, 0.0);
+}
+
+#[test]
+fn bfgs_returns_the_start_at_a_zero_iteration_limit() {
+    let cfg = config(ProblemType::Sphere, 0, 1e-8, 2);
+    let initial = vec![1.0, -2.0];
+    let result =
+        EquationOptimizer::solve_with_bfgs(Sphere, Array1::from_vec(initial.clone()), &cfg)
+            .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(result.termination, "MaxIter");
+    assert_eq!(result.iterations, 0);
+    assert_eq!(result.best_param, initial);
+    assert_eq!(result.best_cost, 5.0);
+}
+
+#[test]
+fn bfgs_returns_the_start_when_its_cost_overflows_at_a_zero_iteration_limit() {
+    let cfg = config(ProblemType::Sphere, 0, 1e-8, 1);
+    let initial = vec![1e155];
+    let result =
+        EquationOptimizer::solve_with_bfgs(Sphere, Array1::from_vec(initial.clone()), &cfg)
+            .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(result.termination, "MaxIter");
+    assert_eq!(result.iterations, 0);
+    assert_eq!(result.best_param, initial);
+    assert_eq!(result.best_cost, f64::INFINITY);
+}
+
+#[test]
+fn bfgs_result_round_trips_with_a_native_fingerprint() {
+    let cfg = config(ProblemType::Sphere, 50, 1e-8, 2);
+    let result =
+        EquationOptimizer::solve_with_bfgs(Sphere, Array1::from_vec(vec![1.0, -2.0]), &cfg)
+            .unwrap_or_else(|e| panic!("{e}"));
+    assert!(result.best_cost <= cfg.tolerance);
+    assert!(result.cost_evals > 0);
+    assert!(result.gradient_evals > 0);
+    assert_eq!(result.termination, "TargetCost");
+
+    let codec = bincode_next::config::standard()
+        .with_deterministic_bincode()
+        .with_fingerprint();
+    let mut bytes = bincode_next::encode_to_vec(&result, codec).unwrap_or_else(|e| panic!("{e}"));
+    let (decoded, read) =
+        bincode_next::decode_from_slice(&bytes, codec).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(result, decoded);
+    assert_eq!(read, bytes.len());
+
+    bytes[0] ^= 1;
+    let decoded: Result<(rssn::kernels::optimize::BfgsResult, usize), _> =
+        bincode_next::decode_from_slice(&bytes, codec);
+    assert!(matches!(
+        decoded,
+        Err(bincode_next::error::DecodeError::SchemaMismatch { .. })
+    ));
 }
 
 #[test]
@@ -152,8 +221,9 @@ fn sphere_gradient_descent_reaches_the_origin() {
 #[test]
 fn convergence_summary_reflects_cost() {
     let cfg = config(ProblemType::Sphere, 500, 1e-8, 2);
-    let res = EquationOptimizer::solve_with_bfgs(Sphere, Array1::from(vec![1.0, 1.0]), &cfg)
-        .unwrap_or_else(|e| panic!("{e}"));
+    let res =
+        EquationOptimizer::solve_with_gradient_descent(Sphere, Array1::from(vec![1.0, 1.0]), &cfg)
+            .unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(
         ResultAnalyzer::analyze_convergence(&res.state),
         "Excellent convergence"
@@ -176,7 +246,7 @@ proptest! {
         let cfg = config(ProblemType::Sphere, 100, 1e-10, 2);
         let res = EquationOptimizer::solve_with_bfgs(Sphere, Array1::from(vec![x, y]), &cfg)
             .map_err(|e| TestCaseError::fail(e.to_string()))?;
-        prop_assert!(res.state.get_best_cost() <= x * x + y * y + 1e-12);
+        prop_assert!(res.best_cost <= x * x + y * y + 1e-12);
     }
 }
 
@@ -201,7 +271,7 @@ mod ledger_fill {
 
     #[test]
     fn print_optimization_result_accepts_a_finished_run() {
-        let res = EquationOptimizer::solve_with_bfgs(
+        let res = EquationOptimizer::solve_with_gradient_descent(
             Sphere,
             Array1::from(vec![1.0, 1.0]),
             &config(ProblemType::Sphere, 50, 1e-8, 2),
