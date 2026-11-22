@@ -17,6 +17,51 @@ Release changes to the RSSN kernel, algorithms and embedding APIs. 本文记录 
 - Native object bindings derive runtime arity from the signature's argument list. Dense value preflight checks bounds without allocating a traversal buffer.
 - Binary manifest, plugin and compute records use native bincode-next 3.2 traits. Signature and manifest bytes remain deterministic. Manifest verification reads the existing operator and unit tables in place and streams the canonical encoding into the hash. Compatibility tests compare the supported previous wire layouts with the native encoding. JSON and CBOR expose metadata to self-describing consumers.
 
+### Coverage: optimisation, statistics, control, meshes, data and precision
+
+- Add `kernels::convex`: linear programs with two-sided bounds, convex quadratic programs by a dual active-set method, second-order cone programs by a Nesterov–Todd predictor–corrector interior point method, and semidefinite programs by ADMM with a Jacobi symmetric eigensolver. The linear solver is the existing tested two-phase simplex, so a bound shift and the upper-bound rows are the only new code on that path.
+- Add `kernels::milp`: mixed-integer linear programming by best-bound branch and bound with pseudo-cost branching over that simplex, and a sequential quadratic program whose subproblem is solved by projected conjugate gradients on the working set. The subproblem never forms a dense factorisation, so a sparse problem costs `O(nnz * iterations)` per QP instead of the dense `O(n^3)` of `kernels::optim::sqp`, which stays as the reference for small dense problems.
+- Add `kernels::glm` (Gaussian, Poisson, binomial, gamma and inverse-Gaussian families with seven links, IRLS with step halving, deviance, AIC and standard errors) and `kernels::timeseries` (autocorrelation, partial autocorrelation, Yule–Walker AR, Hannan–Rissanen ARIMA with a conditional-sum-of-squares refinement and forecasting, additive and multiplicative Holt–Winters, Kalman filtering and Rauch–Tung–Striebel smoothing).
+- Add `kernels::survival` (Kaplan–Meier with Greenwood variance and a complementary-log-log band, Nelson–Aalen, the log-rank test, and Cox regression by Newton–Raphson with Breslow or Efron ties and Harrell's concordance) and `kernels::mcmc` (random-walk Metropolis–Hastings, Hamiltonian Monte Carlo with leapfrog integration, a Gibbs sweep, a deterministic PCG32 generator, split R-hat, effective sample size, autocorrelation and the Geweke score).
+- Add `kernels::control`: state space with controllability, observability, pole placement checks and zero-order-hold discretisation by scaling and squaring, transfer functions with series, parallel, feedback, Bode, Nyquist and margin computation, continuous and discrete Riccati equations with LQR, LQG and Kalman gains, a condensed-QP MPC step, PID tuning from a first-order-plus-dead-time model, and ARX and eigensystem-realisation identification.
+- Add `kernels::meshgen` (Bowyer–Watson Delaunay triangulation in 2D with Lawson flips, constrained triangulation by edge flipping, Ruppert-style quality refinement, an advancing front, and Delaunay tetrahedralisation with the insphere predicate) and `kernels::cad` (binary and ASCII STL, an ISO-10303-21 subset of STEP, welding, degenerate removal, consistent orientation, hole filling, manifold and closedness checks, and BSP-tree Boolean union, difference and intersection).
+- Add `io::frame`: typed columns with nulls, a data frame with select, filter, sort, join and group-by aggregation, RFC 4180 CSV with type inference, and JSON in both array-of-objects and object-of-arrays forms. Add `io::parquet` (flat schema, PLAIN encoding, RLE/bit-packed definition levels, hand-written Thrift compact metadata, Snappy decompression), `io::hdf5` (superblocks 0–3, object headers 1 and 2, contiguous, compact and chunked datasets, deflate and shuffle, attributes, plus a writer for contiguous datasets) and `io::netcdf` (CDF-1 and CDF-2 with record dimensions, in and out). Every codec validates lengths and offsets before slicing and returns `Err` on a malformed file.
+- Add `kernels::mp`: an arbitrary-precision tower. `Real` is `mant * 2^exp` with the mantissa of any width, every operation correctly rounded once from an exact `BigInt` result in five rounding modes; the elementary functions return balls whose radius bounds the series truncation and the rounding; `consts` computes `pi`, `e`, `ln 2`, `sqrt 2` and the golden ratio by integer series; `decimal` reads and writes decimal text exactly and renders a ball only when both endpoints agree on the digits. The `mp_*` operators carry their operands as decimal string literals, so precision travels with the value and no session state, global rounding mode or new Aevia value type is needed. `mp_to_float` is a single correctly rounded narrowing step.
+- Expose the new families as table-driven operators (`qp_solve`, `socp_solve`, `sdp_solve`, `milp_solve`, `glm_fit`, `glm_predict`, `acf`, `pacf`, `difference`, `ar_fit`, `arima_fit`, `arima_forecast`, `holt_winters`, `holt_winters_mul`, `kalman_filter`, `care`, `dare`, `lqr`, `dlqr`, `lqg`, `kalman_gain`, `tf_state_space`, `ss_transfer`, `tf_poles`, `tf_bode`, `tf_nyquist`, `pid_tune`, `mpc_plan`, `arx_fit`, `kaplan_meier`, `nelson_aalen`, `log_rank`, `cox_fit`, `cox_predict`, `rhat`, `effective_sample_size`, `chain_autocorrelation`, `geweke`, `delaunay_2d`, `delaunay_3d`, `cdt_2d`, `refine_quality`, and the `mp_*` family). Each records why a call did not reduce.
+- Extend the diagnostics channel beyond the table-driven families: `kernel::diag::classify` derives a reason for a heavy operator that recorded none, from the operator's arity, its typed overloads and its declared `DynamicReason`, so `Session::apply_diag` no longer answers `Unspecified` for a wrong argument count, a call no overload accepts, or a symbolic argument to a numeric-only operator.
+
+### Performance: shared numerical infrastructure
+
+- Add `kernels::par`: deterministic data-parallel helpers. Maps collect in index order and reductions fold fixed-size blocks in block order, so `RAYON_NUM_THREADS=1` and sixteen threads give the same bits; every helper has a sequential path below a grain size, and work items inherit the active cancellation scope.
+- Add `kernels::reuse`: bounded scratch pools (per-thread slots over sharded shared storage) that lease empty buffers by minimum capacity and retain allocations subject to byte and count limits, plus plan caches for immutable built artefacts and a process-wide `global_pool()`. FFT plans are keyed by length and direction and concurrent requests for one key share a build.
+- Add `execution::HostEnvironment`: the host's CPU count, SIMD width and L1/L2 tile sizes are probed once, and `should_split`, `should_split_work`, `choose_chunk_size` and `with_scoped_pool` decide when a kernel splits without oversubscribing an enclosing pool.
+- Add batched modular inversion over a slice, slice-level modular add/sub/scale/axpy/dot, and an NTT plan cache with `poly_mul_ntt_mod`, differentially tested against schoolbook multiplication.
+- Add u64 fast paths under the generic exact algorithms, each checked against its reference: modular row echelon for F4, a u64 S-polynomial merge for Gröbner bases, modular determinant and Dixon lifting, and a `gcd_u128` that falls back to the tested u64 gcd. `kernels::qlinalg` gains Bareiss elimination, modular determinants, characteristic polynomials, Hermite and Smith normal forms.
+- Rewrite `apart` on a modular Z algorithm (rational reconstruction, f-adic expansion) with a pseudo-division path for symbolic parameters; add a parallel factor-block decomposition with a serial/parallel determinism test.
+- Reuse scratch and matching state across a scheduler run: `MatchScratch` is shared by consecutive rewrites, the reachable set is rebuilt in place, tier sweeps reuse their bucket workspace, and incremental searches memoise the changed-node list per (trigger, epoch, depth).
+
+### Consolidation: one modular-arithmetic implementation
+
+- Add `kernels::modular`: `Montgomery` for an odd modulus, `Barrett` for any modulus of at least two, `mod_inv_u64`, `extended_gcd_u64` and the shared `add_mod_raw`/`sub_mod_raw`. `finite_field::{MontgomeryPrimeField, BarrettMod}`, `number_theory::MontU64`, `sparse_exact::{MontGfp, BarrettGfp}` and `qlinalg`'s private context are now aliases. The copies had drifted in their reduction contracts — one reduced its inputs before adding, one assumed `p < 2^63`, one handled the REDC carry and one did not — so a fix reached one copy and left the others.
+- `sparse_exact::Gfp` carries a `Barrett` reducer instead of the bare modulus, so a sparse-elimination multiply is a multiply, a shift and at most two subtractions rather than a `u128` hardware division: 4.8–5.3x on the multiply (1.8 ns against 8.6–9.3 ns, release). `Barrett` implements `Domain` directly, and the Montgomery special cases in `Gfp::batch_inv` and `reduce_rational_matrix_mod_p` are gone.
+
+### Consolidation: one implementation per primitive
+
+- `is_prime` (six copies), `mod_inv_u64` (five), same-type `gcd` (four), `isqrt` (three) and Tonelli–Shanks (four) now delegate to the `number_theory` and `modular` implementations. Types that genuinely differ (`i64`, `BigInt`, `i128`) keep a wrapper but no longer their own algorithm.
+- The merge caught a real bug: `number_exact::garner_step_with` used `mont.mul` where the canonical type spells `mul_mont`, so `crt([3, 5], [4, 9])` returned 35 instead of 23.
+
+### Performance: foundational kernels
+
+- Dense linear algebra: cache-blocked `matmul` that streams one panel of the right operand per output block, a parallel LU trailing update, column-wise Cholesky, a row-wise QR `R` update, and pooled reflector buffers. Bit-identical to the scalar oracle at every size and thread count; matmul 2.9–3.8x, QR 2.35–4.4x, LU and Cholesky up to 2.1–2.4x at the sizes tested.
+- Sparse and interpolation: parallel `A^T x` per column, block-parallel Jacobi preconditioner setup and application, and parallel tensor-spline line reduction, each bit-identical across thread counts.
+- Special functions and quadrature: bounded `(tag, order)` cache for Gauss–Legendre and Clenshaw–Curtis rules (105 us to 0.7 us at order 64, 18.5 ms to 1.9 us at 512), a cached Bernoulli table (489 us to 2.2 us), and element-wise parallel `*_batch` entry points (`erf` over 200k values: 981 ms to 77.6 ms).
+- Polynomial arithmetic: Karatsuba threshold 33 to 40 and FFT threshold 129 to 48, both re-measured (mul 1.22x at 48, 1.84x at 64, 3.01x at 128); `eval_batch` advances four Horner chains at once (3x at eight points); Karatsuba leases its split buffers from `reuse::f64_scratch`.
+
+### Accuracy: composition in double-double
+
+- `Polynomial::compose` accumulates in double-double and rounds once. Composition is ill-conditioned when the intermediate terms `c_k Q(x)^k` dwarf the result, and the `f64` Horner and Brent-Kung strategies then rounded differently — up to 3.6e-16 relative apart on a non-contractive inner polynomial. Both now run over `Dd` and round to the same `f64` at every degree from 4 to 90.
+- `mul_fft` documents its error (`O(log n)` epsilons against one or two for schoolbook). `mul_karatsuba` is the tighter-association option, `pow` is consistent with repeated `mul`, and a regression test bounds the FFT tier at 1e-11 relative against the schoolbook oracle.
+
 ### Numerical and symbolic algorithms
 
 - Add stiff one-dimensional method-of-lines integration with time-dependent Dirichlet and Neumann boundaries, including measured callback programs for embedded hosts.
@@ -141,6 +186,14 @@ Release changes to the RSSN kernel, algorithms and embedding APIs. 本文记录 
 - 定步长 ODE 可以只返回末态。对角 ETDRK4 的定步与自适应路径共用实权重步进器。Kerr–Newman 轨道可按步距采样，并在能层内选择相容的未来指向能量分支。
 - 有限域同调通过一次边界秩计算得到各次数结果。二元消元打包行位，奇素数运算覆盖完整无符号机器字范围。置换循环支持有符号任意精度指数。
 - 带种子的 Ising 模拟支持在线观测，Potts 扫描复用邻域权重表。复数 Lambert W 区分负实割线两侧，反余误差函数保留次正规概率的尾部精度。
+
+### 统一与性能
+
+- 新增 `kernels::modular`，作为无除法模运算的唯一实现：`Montgomery`（奇模数）与 `Barrett`（任意不小于 2 的模数），并统一 `mod_inv_u64`、`extended_gcd_u64` 与共享的加减法。`finite_field::MontgomeryPrimeField`、`number_theory::MontU64`、`sparse_exact::MontGfp`、`finite_field::BarrettMod`、`sparse_exact::BarrettGfp` 以及 `qlinalg` 的私有上下文均改为别名；此前的副本在约减契约上已经分叉（有的先约减再相加，有的依赖 `p < 2^63`，有的处理 REDC 进位、有的不处理）。
+- `sparse_exact::Gfp` 改为携带 `Barrett` 约减器，稀疏消元中的一次乘法由 128 位硬件除法变为一次乘法加移位：模乘本身提速 4.8–5.3 倍（1.8 ns 对 8.6–9.3 ns）。`Barrett` 直接实现 `Domain`，`batch_inv` 与 `reduce_rational_matrix_mod_p` 中的 Montgomery 特判随之删除。
+- `is_prime`（六份）、`mod_inv_u64`（五份）、同类型 `gcd`（四份）、`isqrt`（三份）与 Tonelli–Shanks（四份）合并为单一实现。合并过程中发现并修复了 `number_exact` 的一处真实错误：`crt([3, 5], [4, 9])` 曾返回 35 而非 23。
+- `Polynomial::compose` 改用双倍精度累加并只在最后舍入一次；两条求值路径（Horner 与 Brent–Kung）现在舍入到同一个 `f64`，原先相对偏差可达 3.6e-16。`mul_fft` 的误差量级（`O(log n)` 个 eps）写入文档，并有回归测试将其限制在 1e-11。
+- 基础内核提速：分块矩阵乘法 2.9–3.8 倍、QR 2.35–4.4 倍、LU 与 Cholesky 最高 2.1–2.4 倍；求积规则按 `(tag, 阶数)` 缓存（64 阶 105 us 降至 0.7 us，512 阶 18.5 ms 降至 1.9 us）；多项式乘法在 128 次时 3.01 倍。
 
 ### 构建与兼容性
 
