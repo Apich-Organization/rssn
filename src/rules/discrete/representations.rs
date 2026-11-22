@@ -106,10 +106,7 @@ const fn minv(
 }
 
 fn is_prime(n: u64) -> bool {
-    n >= 2
-        && (2..n)
-            .take_while(|d| d * d <= n)
-            .all(|d| !n.is_multiple_of(d))
+    crate::kernels::number_theory::is_prime_miller_rabin(n)
 }
 
 /// The null vector of the `k x k` matrix `a` modulo `p`, if the null space is
@@ -479,8 +476,8 @@ fn find_prime(
 }
 
 fn isqrt_exact(v: u64) -> Option<u64> {
-    let r = (v as f64).sqrt().round() as u64;
-    (r.saturating_sub(1)..=r + 1).find(|&c| c * c == v)
+    let root = crate::kernels::number_theory::isqrt(v);
+    (root.checked_mul(root) == Some(v)).then_some(root)
 }
 
 struct CyclicLift {

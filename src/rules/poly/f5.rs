@@ -110,6 +110,7 @@ use std::cmp::Ordering;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 
+use num_bigint::BigInt;
 use num_rational::BigRational;
 
 use crate::graph::Arity;
@@ -126,7 +127,9 @@ use crate::graph::PreparedWork;
 use crate::graph::RuleError;
 use crate::graph::Tier;
 use crate::graph::rule::Installer;
+use crate::kernels::finite_field::BarrettMod;
 use crate::kernels::par;
+use crate::kernels::reuse::global_pool;
 use crate::rules::poly::f4::F4Limits;
 use crate::rules::poly::f4::common;
 use crate::rules::poly::f4::common::Mono;
@@ -351,6 +354,23 @@ fn shifted_revlex_cmp(
     Ordering::Equal
 }
 
+/// Packed 64-bit monomial divisibility bitmask for 1-cycle rejection.
+#[inline]
+fn mono_div_mask(m: &[u32]) -> u64 {
+    common::mono_mask(m)
+}
+
+/// Writes `a / b` (elementwise saturating difference) into `out` without reallocating.
+#[inline]
+fn difference_into(
+    a: &[u32],
+    b: &[u32],
+    out: &mut Mono,
+) {
+    out.clear();
+    out.extend(a.iter().zip(b).map(|(&x, &y)| x.saturating_sub(y)));
+}
+
 /// A polynomial together with its signature and the time it entered the basis.
 #[derive(Clone, Debug)]
 struct Labelled {
@@ -360,6 +380,10 @@ struct Labelled {
     sig: Sig,
     /// Cached leading monomial of `poly`.
     lm: Mono,
+    /// Packed divisibility bitmask of `lm`.
+    lm_mask: u64,
+    /// Packed divisibility bitmask of `sig.mono`.
+    sig_mask: u64,
     /// Insertion number; larger means generated later.
     num: usize,
 }
@@ -376,8 +400,12 @@ struct Pair {
     sig: Sig,
     /// Scaled signature of the first side.
     side_a: Sig,
+    /// Packed divisibility bitmask of `side_a.mono`.
+    side_a_mask: u64,
     /// Scaled signature of the second side.
     side_b: Sig,
+    /// Packed divisibility bitmask of `side_b.mono`.
+    side_b_mask: u64,
 }
 
 impl PartialEq for Pair {
@@ -413,29 +441,51 @@ impl Ord for Pair {
 
 /// Builds the critical pair `(a, b)`. The signature of its S-polynomial is the
 /// larger of `(lcm/lm f) * sign(f)` and `(lcm/lm g) * sign(g)`.
+fn make_pair_from_sigs(
+    lm_a: &[u32],
+    sig_a: &Sig,
+    lm_b: &[u32],
+    sig_b: &Sig,
+    a: usize,
+    b: usize,
+) -> Pair {
+    let lcm = common::lcm(lm_a, lm_b);
+    let shift_a = common::difference(&lcm, lm_a);
+    let shift_b = common::difference(&lcm, lm_b);
+    let side_a = sig_a.scaled(&shift_a);
+    let side_b = sig_b.scaled(&shift_b);
+    let side_a_mask = mono_div_mask(&side_a.mono);
+    let side_b_mask = mono_div_mask(&side_b.mono);
+    let sig = if sig_cmp(&side_a, &side_b) == Ordering::Greater {
+        side_a.clone()
+    } else {
+        side_b.clone()
+    };
+    Pair {
+        a,
+        b,
+        sig,
+        side_a,
+        side_a_mask,
+        side_b,
+        side_b_mask,
+    }
+}
+
 fn make_pair(
     basis: &[Labelled],
     a: usize,
     b: usize,
 ) -> Option<Pair> {
     let (first, second) = (basis.get(a)?, basis.get(b)?);
-    let lcm = common::lcm(&first.lm, &second.lm);
-    let shift_a = common::difference(&lcm, &first.lm);
-    let shift_b = common::difference(&lcm, &second.lm);
-    let side_a = first.sig.scaled(&shift_a);
-    let side_b = second.sig.scaled(&shift_b);
-    let sig = if sig_cmp(&side_a, &side_b) == Ordering::Greater {
-        side_a.clone()
-    } else {
-        side_b.clone()
-    };
-    Some(Pair {
+    Some(make_pair_from_sigs(
+        &first.lm,
+        &first.sig,
+        &second.lm,
+        &second.sig,
         a,
         b,
-        sig,
-        side_a,
-        side_b,
-    })
+    ))
 }
 
 /// Which criterion made a pair redundant.
@@ -457,12 +507,14 @@ enum Criterion {
 fn side_redundant(
     basis: &[Labelled],
     sig: &Sig,
+    sig_mask: u64,
     source: usize,
     strategy: Strategy,
 ) -> Option<Criterion> {
     for element in basis {
         if strategy.syzygy
             && sig.index < element.sig.index
+            && (element.lm_mask & !sig_mask) == 0
             && common::divides(&element.lm, &sig.mono)
         {
             return Some(Criterion::Syzygy);
@@ -470,6 +522,7 @@ fn side_redundant(
         if strategy.rewritten
             && element.num > source
             && element.sig.index == sig.index
+            && (element.sig_mask & !sig_mask) == 0
             && common::divides(&element.sig.mono, &sig.mono)
         {
             return Some(Criterion::Rewritten);
@@ -489,15 +542,17 @@ fn pair_redundant(
     let sides = [
         (
             &pair.side_a,
+            pair.side_a_mask,
             basis.get(pair.a).map_or(0, |element| element.num),
         ),
         (
             &pair.side_b,
+            pair.side_b_mask,
             basis.get(pair.b).map_or(0, |element| element.num),
         ),
     ];
-    for (signature, source) in sides {
-        if let Some(criterion) = side_redundant(basis, signature, source, strategy) {
+    for (signature, sig_mask, source) in sides {
+        if let Some(criterion) = side_redundant(basis, signature, sig_mask, source, strategy) {
             match criterion {
                 | Criterion::Syzygy => {
                     stats.syzygy_discards = stats.syzygy_discards.saturating_add(1);
@@ -606,22 +661,39 @@ fn f5_normal_form(
     let mut work: Vec<Term> = p.terms().to_vec();
     let mut remainder: Vec<Term> = Vec::new();
     let mut scratch: Vec<Term> = Vec::new();
+    let mut multiplier_buf: Mono = Vec::new();
+    let mut candidates = global_pool().scratch_usize(basis.len());
+    for (idx, element) in basis.iter().enumerate() {
+        if element.sig.index > bound.index
+            || (element.sig.index == bound.index && element.sig.degree <= bound.degree)
+        {
+            candidates.push(idx);
+        }
+    }
     let mut cursor = 0_usize;
     if work.len() > MAX_TERMS || coefficients_too_large(&work) {
         return None;
     }
     while let Some((monomial, coefficient)) = work.get(cursor) {
+        let mono_mask = mono_div_mask(monomial);
         let mut reducer: Option<(&GPoly, Mono, &BigRational)> = None;
-        for element in basis {
-            if element.sig.index < bound.index || !common::divides(&element.lm, monomial) {
+        for &idx in candidates.iter() {
+            let Some(element) = basis.get(idx) else {
+                continue;
+            };
+            if (element.lm_mask & !mono_mask) != 0 || !common::divides(&element.lm, monomial) {
                 continue;
             }
-            let multiplier = common::difference(monomial, &element.lm);
+            difference_into(monomial, &element.lm, &mut multiplier_buf);
             // One-way reduction: an equal signature is not admissible.
-            if scaled_sig_cmp(&element.sig, &multiplier, bound) != Ordering::Less {
+            if scaled_sig_cmp(&element.sig, &multiplier_buf, bound) != Ordering::Less {
                 continue;
             }
-            reducer = Some((&element.poly, multiplier, &element.poly.leading()?.1));
+            reducer = Some((
+                &element.poly,
+                multiplier_buf.clone(),
+                &element.poly.leading()?.1,
+            ));
             break;
         }
         match reducer {
@@ -737,36 +809,513 @@ fn compare_shifted(
     }
 }
 
-/// The signature-driven loop. `generators` are homogeneous and monic; the
-/// result is a Gröbner basis in the graded reverse-lexicographic order (not
-/// necessarily reduced or minimal).
-///
-/// Pairs are popped in increasing signature order. A pair whose side meets one
-/// of the two criteria is dropped without any reduction; the others have their
-/// S-polynomial reduced by one-way signature-admissible reductions and the
-/// non-zero remainder is added to the basis with the pair's signature.
-fn f5_loop(
+/// Compact machine-word labelled polynomial for 62-bit prime fields `GF(p)`.
+#[derive(Clone, Debug)]
+struct LabelledU64 {
+    /// Terms sorted strictly descending in `ENGINE_ORDER`, residues in `1..p`.
+    terms: Vec<(Mono, u64)>,
+    /// The signature of the representation.
+    sig: Sig,
+    /// Cached leading monomial of `terms`.
+    lm: Mono,
+    /// Packed divisibility bitmask of `lm`.
+    lm_mask: u64,
+    /// Packed divisibility bitmask of `sig.mono`.
+    sig_mask: u64,
+    /// Insertion number; larger means generated later.
+    num: usize,
+}
+
+/// Compares `a * shift_a` against `b * shift_b` in `ENGINE_ORDER` without allocating.
+fn compare_double_shifted(
+    a: &[u32],
+    shift_a: &[u32],
+    b: &[u32],
+    shift_b: &[u32],
+) -> Ordering {
+    let deg_a: u64 = a
+        .iter()
+        .zip(shift_a)
+        .map(|(&x, &s)| u64::from(x.saturating_add(s)))
+        .sum();
+    let deg_b: u64 = b
+        .iter()
+        .zip(shift_b)
+        .map(|(&x, &s)| u64::from(x.saturating_add(s)))
+        .sum();
+    match deg_a.cmp(&deg_b) {
+        | Ordering::Equal => {
+            let len = a.len().max(b.len());
+            for i in (0..len).rev() {
+                let va = a
+                    .get(i)
+                    .copied()
+                    .unwrap_or(0)
+                    .saturating_add(shift_a.get(i).copied().unwrap_or(0));
+                let vb = b
+                    .get(i)
+                    .copied()
+                    .unwrap_or(0)
+                    .saturating_add(shift_b.get(i).copied().unwrap_or(0));
+                if va != vb {
+                    return vb.cmp(&va);
+                }
+            }
+            Ordering::Equal
+        },
+        | other => other,
+    }
+}
+
+/// Computes `S(f, g) = (1/lc f)(L/lm f)f - (1/lc g)(L/lm g)g` modulo `p` into `out`.
+fn s_polynomial_u64(
+    barrett: BarrettMod,
+    f: &[(Mono, u64)],
+    g: &[(Mono, u64)],
+    lcm_buf: &mut Mono,
+    shift_f: &mut Mono,
+    shift_g: &mut Mono,
+    out: &mut Vec<(Mono, u64)>,
+) -> Option<()> {
+    out.clear();
+    let (Some((fm, fc)), Some((gm, gc))) = (f.first(), g.first()) else {
+        return Some(());
+    };
+    let p = barrett.modulus();
+    let inv_fc = if *fc == 1 {
+        1
+    } else {
+        common::mod_inv_u64(*fc, p)?
+    };
+    let inv_gc = if *gc == 1 {
+        1
+    } else {
+        common::mod_inv_u64(*gc, p)?
+    };
+    let neg_inv_gc = barrett.neg(inv_gc);
+
+    lcm_buf.clear();
+    lcm_buf.extend(fm.iter().zip(gm).map(|(&x, &y)| x.max(y)));
+    difference_into(lcm_buf, fm, shift_f);
+    difference_into(lcm_buf, gm, shift_g);
+
+    let f_tail = f.get(1..).unwrap_or(&[]);
+    let g_tail = g.get(1..).unwrap_or(&[]);
+    out.reserve(f_tail.len().saturating_add(g_tail.len()));
+
+    let (mut i, mut j) = (0_usize, 0_usize);
+    while let (Some((ma, ca)), Some((mb, cb))) = (f_tail.get(i), g_tail.get(j)) {
+        match compare_double_shifted(ma, shift_f, mb, shift_g) {
+            | Ordering::Greater => {
+                let c = if inv_fc == 1 {
+                    *ca
+                } else {
+                    barrett.mul(*ca, inv_fc)
+                };
+                if c != 0 {
+                    out.push((common::multiply(ma, shift_f), c));
+                }
+                i = i.saturating_add(1);
+            },
+            | Ordering::Less => {
+                let c = barrett.mul(*cb, neg_inv_gc);
+                if c != 0 {
+                    out.push((common::multiply(mb, shift_g), c));
+                }
+                j = j.saturating_add(1);
+            },
+            | Ordering::Equal => {
+                let ta = if inv_fc == 1 {
+                    *ca
+                } else {
+                    barrett.mul(*ca, inv_fc)
+                };
+                let tb = barrett.mul(*cb, neg_inv_gc);
+                let c = barrett.add(ta, tb);
+                if c != 0 {
+                    out.push((common::multiply(ma, shift_f), c));
+                }
+                i = i.saturating_add(1);
+                j = j.saturating_add(1);
+            },
+        }
+    }
+    while let Some((ma, ca)) = f_tail.get(i) {
+        let c = if inv_fc == 1 {
+            *ca
+        } else {
+            barrett.mul(*ca, inv_fc)
+        };
+        if c != 0 {
+            out.push((common::multiply(ma, shift_f), c));
+        }
+        i = i.saturating_add(1);
+    }
+    while let Some((mb, cb)) = g_tail.get(j) {
+        let c = barrett.mul(*cb, neg_inv_gc);
+        if c != 0 {
+            out.push((common::multiply(mb, shift_g), c));
+        }
+        j = j.saturating_add(1);
+    }
+    Some(())
+}
+
+/// `work <- work - factor * x^multiplier * poly` modulo `p`, keeping `work[..cursor]` untouched.
+fn subtract_tail_u64(
+    barrett: BarrettMod,
+    work: &mut Vec<(Mono, u64)>,
+    cursor: usize,
+    poly: &[(Mono, u64)],
+    multiplier: &[u32],
+    factor: u64,
+    scratch: &mut Vec<(Mono, u64)>,
+) {
+    scratch.clear();
+    let terms = poly.get(1..).unwrap_or(&[]);
+    let neg_factor = barrett.neg(factor);
+    let mut tail = work.drain(cursor..);
+    let _ = tail.next();
+    scratch.reserve(tail.len().saturating_add(terms.len()));
+    let mut tail = tail.peekable();
+    for (right, right_c) in terms {
+        let order = loop {
+            let Some((left, _)) = tail.peek() else {
+                break Ordering::Less;
+            };
+            let order = compare_shifted(left, right, multiplier);
+            if order != Ordering::Greater {
+                break order;
+            }
+            scratch.extend(tail.next());
+        };
+        let scaled = barrett.mul(*right_c, neg_factor);
+        if order == Ordering::Equal {
+            if let Some((left, coeff)) = tail.next() {
+                let value = barrett.add(coeff, scaled);
+                if value != 0 {
+                    scratch.push((left, value));
+                }
+            }
+        } else if scaled != 0 {
+            scratch.push((common::multiply(right, multiplier), scaled));
+        }
+    }
+    scratch.extend(tail);
+    work.append(scratch);
+}
+
+fn f5_normal_form_u64(
+    barrett: BarrettMod,
+    spoly: &[(Mono, u64)],
+    bound: &Sig,
+    basis: &[LabelledU64],
+    steps: &mut usize,
+    limit: usize,
+    work: &mut Vec<(Mono, u64)>,
+    remainder: &mut Vec<(Mono, u64)>,
+    scratch: &mut Vec<(Mono, u64)>,
+    multiplier_buf: &mut Mono,
+) -> Option<()> {
+    work.clear();
+    work.extend(spoly.iter().cloned());
+    remainder.clear();
+    if work.len() > MAX_TERMS {
+        return None;
+    }
+    let mut candidates = global_pool().scratch_usize(basis.len());
+    for (idx, element) in basis.iter().enumerate() {
+        if element.sig.index > bound.index
+            || (element.sig.index == bound.index && element.sig.degree <= bound.degree)
+        {
+            candidates.push(idx);
+        }
+    }
+    let p = barrett.modulus();
+    let mut chosen_multiplier: Mono = Vec::new();
+    let mut cursor = 0_usize;
+    while let Some((monomial, coefficient)) = work.get(cursor) {
+        let mono_mask = mono_div_mask(monomial);
+        let mut reducer: Option<(usize, u64)> = None;
+        for &idx in candidates.iter() {
+            let Some(element) = basis.get(idx) else {
+                continue;
+            };
+            if (element.lm_mask & !mono_mask) != 0 || !common::divides(&element.lm, monomial) {
+                continue;
+            }
+            difference_into(monomial, &element.lm, multiplier_buf);
+            if scaled_sig_cmp(&element.sig, multiplier_buf, bound) != Ordering::Less {
+                continue;
+            }
+            let lead_c = element.terms.first()?.1;
+            std::mem::swap(&mut chosen_multiplier, multiplier_buf);
+            reducer = Some((idx, lead_c));
+            break;
+        }
+        match reducer {
+            | Some((idx, lead_c)) => {
+                *steps = steps.saturating_add(1);
+                if *steps > limit {
+                    return None;
+                }
+                let coeff = *coefficient;
+                let factor = if lead_c == 1 {
+                    coeff
+                } else {
+                    barrett.mul(coeff, common::mod_inv_u64(lead_c, p)?)
+                };
+                let poly_terms = &basis.get(idx)?.terms;
+                subtract_tail_u64(
+                    barrett,
+                    work,
+                    cursor,
+                    poly_terms,
+                    &chosen_multiplier,
+                    factor,
+                    scratch,
+                );
+                if work.len() > MAX_TERMS {
+                    return None;
+                }
+            },
+            | None => {
+                remainder.push((monomial.clone(), *coefficient));
+                cursor = cursor.saturating_add(1);
+            },
+        }
+    }
+    Some(())
+}
+
+fn side_redundant_u64(
+    basis: &[LabelledU64],
+    sig: &Sig,
+    sig_mask: u64,
+    source: usize,
+    strategy: Strategy,
+) -> Option<Criterion> {
+    for element in basis {
+        if strategy.syzygy
+            && sig.index < element.sig.index
+            && (element.lm_mask & !sig_mask) == 0
+            && common::divides(&element.lm, &sig.mono)
+        {
+            return Some(Criterion::Syzygy);
+        }
+        if strategy.rewritten
+            && element.num > source
+            && element.sig.index == sig.index
+            && (element.sig_mask & !sig_mask) == 0
+            && common::divides(&element.sig.mono, &sig.mono)
+        {
+            return Some(Criterion::Rewritten);
+        }
+    }
+    None
+}
+
+fn pair_redundant_u64(
+    basis: &[LabelledU64],
+    pair: &Pair,
+    strategy: Strategy,
+    stats: &mut F5Stats,
+) -> bool {
+    let sides = [
+        (
+            &pair.side_a,
+            pair.side_a_mask,
+            basis.get(pair.a).map_or(0, |element| element.num),
+        ),
+        (
+            &pair.side_b,
+            pair.side_b_mask,
+            basis.get(pair.b).map_or(0, |element| element.num),
+        ),
+    ];
+    for (signature, sig_mask, source) in sides {
+        if let Some(criterion) = side_redundant_u64(basis, signature, sig_mask, source, strategy) {
+            match criterion {
+                | Criterion::Syzygy => {
+                    stats.syzygy_discards = stats.syzygy_discards.saturating_add(1);
+                },
+                | Criterion::Rewritten => {
+                    stats.rewritten_discards = stats.rewritten_discards.saturating_add(1);
+                },
+            }
+            return true;
+        }
+    }
+    false
+}
+
+fn monic_u64(
+    barrett: BarrettMod,
+    terms: &mut Vec<(Mono, u64)>,
+) -> Option<()> {
+    let Some((_, lead)) = terms.first() else {
+        return Some(());
+    };
+    let lead = *lead;
+    if lead == 1 {
+        return Some(());
+    }
+    let inv = common::mod_inv_u64(lead, barrett.modulus())?;
+    for (idx, (_, c)) in terms.iter_mut().enumerate() {
+        *c = if idx == 0 {
+            1
+        } else {
+            barrett.mul(*c, inv)
+        };
+    }
+    Some(())
+}
+
+fn f5_loop_u64(
     domain: &Domain,
-    generators: &[GPoly],
+    barrett: BarrettMod,
+    prepared: &[GPoly],
+    dimension: usize,
     limits: F5Limits,
     stats: &mut F5Stats,
 ) -> Option<Vec<GPoly>> {
-    let mut prepared = prepare(domain, generators);
-    let Some(first) = prepared.first() else {
-        return Some(Vec::new());
-    };
-    if prepared.len() > limits.basis {
-        return None;
-    }
-    let dimension = first.leading()?.0.len();
-    // The reference formulation sorts the generators by decreasing leading
-    // monomial before numbering the signatures.
-    prepared.sort_by(|a, b| {
-        match (a.leading(), b.leading()) {
-            | (Some((left, _)), Some((right, _))) => ENGINE_ORDER.cmp(right, left),
-            | _ => Ordering::Equal,
+    let p = barrett.modulus();
+    let mut basis: Vec<LabelledU64> = Vec::with_capacity(prepared.len());
+    for (position, poly) in prepared.iter().enumerate() {
+        let num = position.saturating_add(1);
+        let lm = poly
+            .leading()
+            .map_or_else(|| vec![0_u32; dimension], |(monomial, _)| monomial.clone());
+        let mut terms = Vec::with_capacity(poly.terms().len());
+        for (m, c) in poly.terms() {
+            let cu = common::coeff_to_u64(c, p)?;
+            if cu != 0 {
+                terms.push((m.clone(), cu));
+            }
         }
-    });
+        monic_u64(barrett, &mut terms)?;
+        let sig = Sig::unit(dimension, num);
+        let lm_mask = mono_div_mask(&lm);
+        let sig_mask = mono_div_mask(&sig.mono);
+        basis.push(LabelledU64 {
+            terms,
+            sig,
+            lm,
+            lm_mask,
+            sig_mask,
+            num,
+        });
+    }
+    let mut queue: BinaryHeap<Reverse<Pair>> = BinaryHeap::new();
+    for second in 1..basis.len() {
+        for first in 0..second {
+            if let (Some(a), Some(b)) = (basis.get(first), basis.get(second)) {
+                queue.push(Reverse(make_pair_from_sigs(
+                    &a.lm, &a.sig, &b.lm, &b.sig, first, second,
+                )));
+            }
+        }
+    }
+    let mut lcm_buf: Mono = Vec::with_capacity(dimension);
+    let mut shift_f: Mono = Vec::with_capacity(dimension);
+    let mut shift_g: Mono = Vec::with_capacity(dimension);
+    let mut spol_buf: Vec<(Mono, u64)> = Vec::new();
+    let mut work_buf: Vec<(Mono, u64)> = Vec::new();
+    let mut rem_buf: Vec<(Mono, u64)> = Vec::new();
+    let mut scratch_buf: Vec<(Mono, u64)> = Vec::new();
+    let mut multiplier_buf: Mono = Vec::with_capacity(dimension);
+
+    while let Some(Reverse(pair)) = queue.pop() {
+        stats.pairs_processed = stats.pairs_processed.saturating_add(1);
+        if stats.pairs_processed > limits.pairs {
+            return None;
+        }
+        if pair_redundant_u64(&basis, &pair, limits.strategy, stats) {
+            continue;
+        }
+        let (Some(first), Some(second)) = (basis.get(pair.a), basis.get(pair.b)) else {
+            continue;
+        };
+        s_polynomial_u64(
+            barrett,
+            &first.terms,
+            &second.terms,
+            &mut lcm_buf,
+            &mut shift_f,
+            &mut shift_g,
+            &mut spol_buf,
+        )?;
+        f5_normal_form_u64(
+            barrett,
+            &spol_buf,
+            &pair.sig,
+            &basis,
+            &mut stats.reductions,
+            limits.reductions,
+            &mut work_buf,
+            &mut rem_buf,
+            &mut scratch_buf,
+            &mut multiplier_buf,
+        )?;
+        if rem_buf.is_empty() {
+            stats.zero_reductions = stats.zero_reductions.saturating_add(1);
+            continue;
+        }
+        if basis.len() >= limits.basis {
+            return None;
+        }
+        let new = basis.len();
+        let num = new.saturating_add(1);
+        let Some((lm, _)) = rem_buf.first() else {
+            continue;
+        };
+        let lm = lm.clone();
+        let mut poly_terms = std::mem::take(&mut rem_buf);
+        monic_u64(barrett, &mut poly_terms)?;
+        let lm_mask = mono_div_mask(&lm);
+        let sig_mask = mono_div_mask(&pair.sig.mono);
+        basis.push(LabelledU64 {
+            terms: poly_terms,
+            sig: pair.sig,
+            lm,
+            lm_mask,
+            sig_mask,
+            num,
+        });
+        stats.polynomials_added = stats.polynomials_added.saturating_add(1);
+        for other in 0..new {
+            if let (Some(a), Some(b)) = (basis.get(other), basis.get(new)) {
+                queue.push(Reverse(make_pair_from_sigs(
+                    &a.lm, &a.sig, &b.lm, &b.sig, other, new,
+                )));
+            }
+        }
+    }
+    Some(
+        basis
+            .into_iter()
+            .map(|element| {
+                GPoly::new_in(
+                    domain,
+                    element
+                        .terms
+                        .into_iter()
+                        .map(|(m, c)| (m, BigRational::from_integer(BigInt::from(c))))
+                        .collect(),
+                    ENGINE_ORDER,
+                )
+            })
+            .collect(),
+    )
+}
+
+fn f5_loop_general(
+    domain: &Domain,
+    prepared: Vec<GPoly>,
+    dimension: usize,
+    limits: F5Limits,
+    stats: &mut F5Stats,
+) -> Option<Vec<GPoly>> {
     let mut basis: Vec<Labelled> = prepared
         .into_iter()
         .enumerate()
@@ -775,10 +1324,15 @@ fn f5_loop(
             let lm = poly
                 .leading()
                 .map_or_else(|| vec![0_u32; dimension], |(monomial, _)| monomial.clone());
+            let sig = Sig::unit(dimension, num);
+            let lm_mask = mono_div_mask(&lm);
+            let sig_mask = mono_div_mask(&sig.mono);
             Labelled {
                 poly,
-                sig: Sig::unit(dimension, num),
+                sig,
                 lm,
+                lm_mask,
+                sig_mask,
                 num,
             }
         })
@@ -786,8 +1340,10 @@ fn f5_loop(
     let mut queue: BinaryHeap<Reverse<Pair>> = BinaryHeap::new();
     for second in 1..basis.len() {
         for first in 0..second {
-            if let Some(pair) = make_pair(&basis, first, second) {
-                queue.push(Reverse(pair));
+            if let (Some(a), Some(b)) = (basis.get(first), basis.get(second)) {
+                queue.push(Reverse(make_pair_from_sigs(
+                    &a.lm, &a.sig, &b.lm, &b.sig, first, second,
+                )));
             }
         }
     }
@@ -824,10 +1380,14 @@ fn f5_loop(
             continue;
         };
         let lm = lm.clone();
+        let lm_mask = mono_div_mask(&lm);
+        let sig_mask = mono_div_mask(&pair.sig.mono);
         basis.push(Labelled {
             poly: common::monic(domain, &remainder, ENGINE_ORDER),
             sig: pair.sig,
             lm,
+            lm_mask,
+            sig_mask,
             num,
         });
         stats.polynomials_added = stats.polynomials_added.saturating_add(1);
@@ -838,6 +1398,44 @@ fn f5_loop(
         }
     }
     Some(basis.into_iter().map(|element| element.poly).collect())
+}
+
+/// The signature-driven loop. `generators` are homogeneous and monic; the
+/// result is a Gröbner basis in the graded reverse-lexicographic order (not
+/// necessarily reduced or minimal).
+///
+/// Pairs are popped in increasing signature order. A pair whose side meets one
+/// of the two criteria is dropped without any reduction; the others have their
+/// S-polynomial reduced by one-way signature-admissible reductions and the
+/// non-zero remainder is added to the basis with the pair's signature.
+fn f5_loop(
+    domain: &Domain,
+    generators: &[GPoly],
+    limits: F5Limits,
+    stats: &mut F5Stats,
+) -> Option<Vec<GPoly>> {
+    let mut prepared = prepare(domain, generators);
+    let Some(first) = prepared.first() else {
+        return Some(Vec::new());
+    };
+    if prepared.len() > limits.basis {
+        return None;
+    }
+    let dimension = first.leading()?.0.len();
+    // The reference formulation sorts the generators by decreasing leading
+    // monomial before numbering the signatures.
+    prepared.sort_by(|a, b| {
+        match (a.leading(), b.leading()) {
+            | (Some((left, _)), Some((right, _))) => ENGINE_ORDER.cmp(right, left),
+            | _ => Ordering::Equal,
+        }
+    });
+    if let Some(p_u64) = common::small_prime_modulus(domain)
+        && let Some(barrett) = BarrettMod::new(p_u64)
+    {
+        return f5_loop_u64(domain, barrett, &prepared, dimension, limits, stats);
+    }
+    f5_loop_general(domain, prepared, dimension, limits, stats)
 }
 
 /// The reduced Gröbner basis of the ideal generated by `generators` in
@@ -1445,6 +2043,8 @@ mod tests {
             poly: poly(&[(1, vec![1, 0])], ENGINE_ORDER),
             sig: Sig::unit(2, 2),
             lm: vec![1, 0],
+            lm_mask: mono_div_mask(&[1, 0]),
+            sig_mask: 0,
             num: 2,
         };
         let p = poly(&[(1, vec![1, 1])], ENGINE_ORDER);
@@ -1492,6 +2092,8 @@ mod tests {
             poly: poly(&[(1, vec![1, 0]), (2, vec![0, 1])], ENGINE_ORDER),
             sig: Sig::unit(2, 2),
             lm: vec![1, 0],
+            lm_mask: mono_div_mask(&[1, 0]),
+            sig_mask: 0,
             num: 2,
         };
         assert_eq!(
@@ -1618,12 +2220,16 @@ mod tests {
                 poly: poly(&[(1, vec![2, 0])], ENGINE_ORDER),
                 sig: Sig::unit(2, 1),
                 lm: vec![2, 0],
+                lm_mask: mono_div_mask(&[2, 0]),
+                sig_mask: 0,
                 num: 1,
             },
             Labelled {
                 poly: poly(&[(1, vec![1, 1])], ENGINE_ORDER),
                 sig: Sig::unit(2, 2),
                 lm: vec![1, 1],
+                lm_mask: mono_div_mask(&[1, 1]),
+                sig_mask: 0,
                 num: 2,
             },
         ];
@@ -1657,6 +2263,8 @@ mod tests {
             poly: poly(&[(1, vec![0, 1])], ENGINE_ORDER),
             sig: Sig::unit(2, 1),
             lm: vec![0, 1],
+            lm_mask: mono_div_mask(&[0, 1]),
+            sig_mask: 0,
             num: 1,
         }];
         let p = poly(&[(1, vec![1, 1])], ENGINE_ORDER);
@@ -1972,5 +2580,84 @@ mod tests {
         extended.push(basis[0].clone());
         let (again, _) = f5_basis_with_stats_in(&domain, &extended, order, F5Limits::default());
         assert_eq!(again.as_deref(), Some(basis.as_slice()));
+    }
+
+    #[test]
+    fn f5_u64_fast_path_matches_general_path_and_masks_are_sound() {
+        // Soundness of mono_div_mask across <= 8 and > 8 variables.
+        let samples = [
+            vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            vec![1, 0, 3, 0, 0, 0, 0, 2, 1, 0],
+            vec![2, 4, 3, 0, 1, 0, 0, 5, 1, 2],
+            vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 4],
+            vec![9, 8, 7, 6, 5, 4, 3, 2, 1, 5],
+        ];
+        for a in &samples {
+            let ma = mono_div_mask(a);
+            for b in &samples {
+                let mb = mono_div_mask(b);
+                if common::divides(a, b) {
+                    assert_eq!(ma & !mb, 0, "mono_div_mask rejected a valid divisor");
+                }
+            }
+        }
+
+        // Exact agreement (basis and F5Stats) between f5_loop_u64 and f5_loop_general
+        // across small and large 62-bit prime moduli.
+        for modulus in [2_u64, 5, 101, 65_521, (1_u64 << 61) - 1] {
+            let domain = Domain::prime(BigInt::from(modulus))
+                .unwrap_or_else(|| panic!("{modulus} is prime"));
+            let system = oracle::katsura(3);
+            let gens = oracle::generators(
+                i64::try_from(modulus.min(i64::MAX as u64)).unwrap_or(101),
+                &system,
+                ENGINE_ORDER,
+            );
+            let working: Vec<GPoly> = if gens.iter().all(common::is_homogeneous) {
+                prepare(&domain, &gens)
+            } else {
+                let h: Vec<GPoly> = gens
+                    .iter()
+                    .map(|g| common::homogenise(g, ENGINE_ORDER))
+                    .collect();
+                prepare(&domain, &h)
+            };
+            let mut sorted = working;
+            sorted.sort_by(|a, b| {
+                match (a.leading(), b.leading()) {
+                    | (Some((l, _)), Some((r, _))) => ENGINE_ORDER.cmp(r, l),
+                    | _ => Ordering::Equal,
+                }
+            });
+            let dim = sorted[0].leading().map_or(0, |(m, _)| m.len());
+            let barrett =
+                BarrettMod::new(modulus).unwrap_or_else(|| panic!("barrett for {modulus}"));
+            let mut stats_fast = F5Stats::default();
+            let mut stats_gen = F5Stats::default();
+            let fast = f5_loop_u64(
+                &domain,
+                barrett,
+                &sorted,
+                dim,
+                F5Limits::default(),
+                &mut stats_fast,
+            );
+            let general =
+                f5_loop_general(&domain, sorted, dim, F5Limits::default(), &mut stats_gen);
+            assert_eq!(fast, general, "basis mismatch for GF({modulus})");
+            assert_eq!(stats_fast, stats_gen, "stats mismatch for GF({modulus})");
+        }
+
+        // Serial vs parallel determinism over a 62-bit prime field.
+        let p = 65_521_i64;
+        let domain = Domain::prime(BigInt::from(p)).unwrap_or_else(|| panic!("65521 is prime"));
+        let gens = oracle::generators(p, &oracle::cyclic(4), Order::GradedRevLex);
+        let serial = crate::execution::with_scoped_pool(Some(1), || {
+            f5_basis_with_stats_in(&domain, &gens, Order::GradedRevLex, F5Limits::default())
+        });
+        let parallel = crate::execution::with_scoped_pool(Some(4), || {
+            f5_basis_with_stats_in(&domain, &gens, Order::GradedRevLex, F5Limits::default())
+        });
+        assert_eq!(serial, parallel);
     }
 }

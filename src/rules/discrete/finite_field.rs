@@ -25,6 +25,7 @@
 use num_bigint::BigInt;
 use num_traits::One;
 use num_traits::Signed;
+use num_traits::ToPrimitive;
 use num_traits::Zero;
 
 use super::V;
@@ -38,14 +39,354 @@ use crate::graph::Cx;
 use crate::graph::NodeId;
 use crate::graph::RuleError;
 use crate::graph::rule::Installer;
+use crate::kernels::finite_field::BarrettMod;
+use crate::kernels::finite_field::poly_mul_ntt_mod;
 
 pub(super) type Poly = Vec<BigInt>;
+pub(super) type PolyU64 = Vec<u64>;
+
+/// Returns `Some(BarrettMod)` when `p` fits in the fast 62-bit `u64` path (`1 < p < 2^62`).
+#[inline]
+pub(super) fn fast_barrett(p: &BigInt) -> Option<BarrettMod> {
+    let m = p.to_u64().filter(|&m| m > 1 && m < (1u64 << 62))?;
+    BarrettMod::new(m)
+}
+
+/// Reduces a `BigInt` coefficient modulo `barrett.modulus()`.
+#[inline]
+pub(super) fn bigint_to_u64_mod(
+    c: &BigInt,
+    p: &BigInt,
+    barrett: BarrettMod,
+) -> u64 {
+    if let Some(v) = c.to_u64() {
+        return barrett.reduce_u64(v);
+    }
+    if let Some(v) = c.to_i64() {
+        let mag = barrett.reduce_u64(v.unsigned_abs());
+        return if v < 0 {
+            barrett.neg(mag)
+        } else {
+            mag
+        };
+    }
+    modulo(c, p).to_u64().unwrap_or(0)
+}
+
+/// Converts a highest-degree-first `Poly` (`Vec<BigInt>`) into a normalized `PolyU64`.
+pub(super) fn poly_to_u64(
+    f: &Poly,
+    p: &BigInt,
+    barrett: BarrettMod,
+) -> PolyU64 {
+    let mut out: Vec<u64> = f.iter().map(|c| bigint_to_u64_mod(c, p, barrett)).collect();
+    norm_u64_in_place(&mut out, barrett);
+    out
+}
+
+/// Converts a normalized `PolyU64` back into `Poly` (`Vec<BigInt>`).
+pub(super) fn poly_from_u64(f: &[u64]) -> Poly {
+    f.iter().map(|&c| BigInt::from(c)).collect()
+}
+
+/// Reduces `f` modulo `barrett.modulus()` and strips leading zeros in place.
+pub(super) fn norm_u64_in_place(
+    f: &mut PolyU64,
+    barrett: BarrettMod,
+) {
+    for c in f.iter_mut() {
+        *c = barrett.reduce_u64(*c);
+    }
+    let first = f.iter().position(|&c| c != 0).unwrap_or(f.len());
+    if first > 0 {
+        f.drain(..first);
+    }
+}
+
+/// Returns a normalized copy of `f` with leading zeros stripped.
+pub(super) fn norm_u64(
+    mut f: PolyU64,
+    barrett: BarrettMod,
+) -> PolyU64 {
+    norm_u64_in_place(&mut f, barrett);
+    f
+}
+
+/// Highest-degree-first polynomial addition over `u64` residues.
+#[expect(
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
+    reason = "out has length n = f.len().max(g.len()) and reverse index i < f.len(), g.len()"
+)]
+pub(super) fn padd_u64(
+    f: &[u64],
+    g: &[u64],
+    barrett: BarrettMod,
+) -> PolyU64 {
+    let n = f.len().max(g.len());
+    let mut out = vec![0u64; n];
+    for (i, &c) in f.iter().rev().enumerate() {
+        out[n - 1 - i] = barrett.reduce_u64(c);
+    }
+    for (i, &c) in g.iter().rev().enumerate() {
+        let idx = n - 1 - i;
+        out[idx] = barrett.add(out[idx], c);
+    }
+    norm_u64(out, barrett)
+}
+
+/// Highest-degree-first polynomial negation over `u64` residues.
+pub(super) fn pneg_u64(
+    f: &[u64],
+    barrett: BarrettMod,
+) -> PolyU64 {
+    let out: Vec<u64> = f.iter().map(|&c| barrett.neg(c)).collect();
+    norm_u64(out, barrett)
+}
+
+/// Highest-degree-first polynomial subtraction over `u64` residues.
+#[expect(
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
+    reason = "out has length n = f.len().max(g.len()) and reverse index i < f.len(), g.len()"
+)]
+pub(super) fn psub_u64(
+    f: &[u64],
+    g: &[u64],
+    barrett: BarrettMod,
+) -> PolyU64 {
+    let n = f.len().max(g.len());
+    let mut out = vec![0u64; n];
+    for (i, &c) in f.iter().rev().enumerate() {
+        out[n - 1 - i] = barrett.reduce_u64(c);
+    }
+    for (i, &c) in g.iter().rev().enumerate() {
+        let idx = n - 1 - i;
+        out[idx] = barrett.sub(out[idx], c);
+    }
+    norm_u64(out, barrett)
+}
+
+/// Highest-degree-first polynomial multiplication over `u64` residues.
+///
+/// Uses cached NTT when the degree is large and the modulus is NTT-friendly,
+/// otherwise uses a 4-term fused `u128` accumulation kernel with [`BarrettMod`]
+/// and pooled scratch memory from [`crate::kernels::reuse::global_pool`].
+#[expect(
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
+    reason = "out has length f.len() + g.len() - 1 and i + j < out.len()"
+)]
+pub(super) fn pmul_u64(
+    f: &[u64],
+    g: &[u64],
+    barrett: BarrettMod,
+) -> PolyU64 {
+    if f.is_empty() || g.is_empty() {
+        return Vec::new();
+    }
+    if f.len() >= 32
+        && g.len() >= 32
+        && let Some(prod) = poly_mul_ntt_mod(f, g, barrett.modulus())
+    {
+        return norm_u64(prod, barrett);
+    }
+    let out_len = f.len() + g.len() - 1;
+    let mut out = vec![0u64; out_len];
+    for (i, &a) in f.iter().enumerate() {
+        let a_red = barrett.reduce_u64(a);
+        if a_red == 0 {
+            continue;
+        }
+        let a128 = u128::from(a_red);
+        let dst = &mut out[i..i + g.len()];
+        let mut cg = g.chunks_exact(4);
+        let mut cd = dst.chunks_exact_mut(4);
+        for (xg, yd) in cg.by_ref().zip(cd.by_ref()) {
+            yd[0] = barrett.reduce_u128(u128::from(yd[0]) + a128 * u128::from(xg[0]));
+            yd[1] = barrett.reduce_u128(u128::from(yd[1]) + a128 * u128::from(xg[1]));
+            yd[2] = barrett.reduce_u128(u128::from(yd[2]) + a128 * u128::from(xg[2]));
+            yd[3] = barrett.reduce_u128(u128::from(yd[3]) + a128 * u128::from(xg[3]));
+        }
+        for (&xg, yd) in cg.remainder().iter().zip(cd.into_remainder()) {
+            *yd = barrett.reduce_u128(u128::from(*yd) + a128 * u128::from(xg));
+        }
+    }
+    norm_u64(out, barrett)
+}
+
+/// Euclidean polynomial division `(quotient, remainder)` on highest-degree-first
+/// `u64` slices using 4-way unrolled [`crate::kernels::finite_field::slice_axpy_mod`].
+#[expect(
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
+    reason = "k + g.len() <= rem.len() for all k in 0..quot_len"
+)]
+pub(super) fn pdivmod_u64(
+    f: &[u64],
+    g: &[u64],
+    barrett: BarrettMod,
+) -> Option<(PolyU64, PolyU64)> {
+    let lead_inv = barrett.inv(*g.first()?)?;
+    let mut rem = f.to_vec();
+    norm_u64_in_place(&mut rem, barrett);
+    if rem.len() < g.len() {
+        return Some((Vec::new(), rem));
+    }
+    let quot_len = rem.len() - g.len() + 1;
+    let mut quot = vec![0u64; quot_len];
+    let g_tail = &g[1..];
+    for k in 0..quot_len {
+        let coeff = barrett.mul(rem[k], lead_inv);
+        quot[k] = coeff;
+        rem[k] = 0;
+        if coeff != 0 && !g_tail.is_empty() {
+            let neg_coeff = barrett.neg(coeff);
+            let window = &mut rem[k + 1..k + g.len()];
+            let mut cg = g_tail.chunks_exact(4);
+            let mut cw = window.chunks_exact_mut(4);
+            let a128 = u128::from(neg_coeff);
+            for (xg, yw) in cg.by_ref().zip(cw.by_ref()) {
+                yw[0] = barrett.reduce_u128(u128::from(yw[0]) + a128 * u128::from(xg[0]));
+                yw[1] = barrett.reduce_u128(u128::from(yw[1]) + a128 * u128::from(xg[1]));
+                yw[2] = barrett.reduce_u128(u128::from(yw[2]) + a128 * u128::from(xg[2]));
+                yw[3] = barrett.reduce_u128(u128::from(yw[3]) + a128 * u128::from(xg[3]));
+            }
+            for (&xg, yw) in cg.remainder().iter().zip(cw.into_remainder()) {
+                *yw = barrett.reduce_u128(u128::from(*yw) + a128 * u128::from(xg));
+            }
+        }
+    }
+    Some((norm_u64(quot, barrett), norm_u64(rem, barrett)))
+}
+
+/// Polynomial remainder `f mod m` on highest-degree-first `u64` slices.
+#[expect(
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
+    reason = "k + m.len() <= rem.len() for all k in 0..quot_len"
+)]
+pub(super) fn reduce_u64(
+    f: &[u64],
+    m: &[u64],
+    barrett: BarrettMod,
+) -> Option<PolyU64> {
+    let lead_inv = barrett.inv(*m.first()?)?;
+    let mut rem = f.to_vec();
+    norm_u64_in_place(&mut rem, barrett);
+    if rem.len() < m.len() {
+        return Some(rem);
+    }
+    let quot_len = rem.len() - m.len() + 1;
+    let m_tail = &m[1..];
+    for k in 0..quot_len {
+        let coeff = barrett.mul(rem[k], lead_inv);
+        rem[k] = 0;
+        if coeff != 0 && !m_tail.is_empty() {
+            let neg_coeff = barrett.neg(coeff);
+            let window = &mut rem[k + 1..k + m.len()];
+            let mut cm = m_tail.chunks_exact(4);
+            let mut cw = window.chunks_exact_mut(4);
+            let a128 = u128::from(neg_coeff);
+            for (xm, yw) in cm.by_ref().zip(cw.by_ref()) {
+                yw[0] = barrett.reduce_u128(u128::from(yw[0]) + a128 * u128::from(xm[0]));
+                yw[1] = barrett.reduce_u128(u128::from(yw[1]) + a128 * u128::from(xm[1]));
+                yw[2] = barrett.reduce_u128(u128::from(yw[2]) + a128 * u128::from(xm[2]));
+                yw[3] = barrett.reduce_u128(u128::from(yw[3]) + a128 * u128::from(xm[3]));
+            }
+            for (&xm, yw) in cm.remainder().iter().zip(cw.into_remainder()) {
+                *yw = barrett.reduce_u128(u128::from(*yw) + a128 * u128::from(xm));
+            }
+        }
+    }
+    Some(norm_u64(rem, barrett))
+}
+
+/// Extended Euclidean algorithm `(d, s, t)` on `u64` polynomials with `s*f + t*g = d`.
+pub(super) fn pegcd_u64(
+    f: &[u64],
+    g: &[u64],
+    barrett: BarrettMod,
+) -> Option<(PolyU64, PolyU64, PolyU64)> {
+    let mut r0 = norm_u64(f.to_vec(), barrett);
+    let mut r1 = norm_u64(g.to_vec(), barrett);
+    let (mut s0, mut s1) = (vec![1u64], Vec::new());
+    let (mut t0, mut t1) = (Vec::new(), vec![1u64]);
+    while !r1.is_empty() {
+        let (q, r2) = pdivmod_u64(&r0, &r1, barrett)?;
+        let qs1 = pmul_u64(&q, &s1, barrett);
+        let qt1 = pmul_u64(&q, &t1, barrett);
+        let s2 = psub_u64(&s0, &qs1, barrett);
+        let t2 = psub_u64(&t0, &qt1, barrett);
+        (r0, r1) = (r1, r2);
+        (s0, s1) = (s1, s2);
+        (t0, t1) = (t1, t2);
+    }
+    Some((r0, s0, t0))
+}
+
+/// Makes `f` monic over `u64` residues.
+pub(super) fn monic_u64(
+    f: &[u64],
+    barrett: BarrettMod,
+) -> Option<PolyU64> {
+    let Some(&lead) = f.first() else {
+        return Some(Vec::new());
+    };
+    let inv = barrett.inv(lead)?;
+    if inv == 1 {
+        return Some(norm_u64(f.to_vec(), barrett));
+    }
+    let mut out = vec![0u64; f.len()];
+    crate::kernels::finite_field::slice_scale_mod(f, inv, barrett.modulus(), &mut out);
+    Some(norm_u64(out, barrett))
+}
+
+/// Monic GCD of `f` and `g` on `u64` slices (without computing Bézout coefficients).
+pub(super) fn pgcd_u64(
+    f: &[u64],
+    g: &[u64],
+    barrett: BarrettMod,
+) -> Option<PolyU64> {
+    let mut r0 = norm_u64(f.to_vec(), barrett);
+    let mut r1 = norm_u64(g.to_vec(), barrett);
+    while !r1.is_empty() {
+        let r2 = reduce_u64(&r0, &r1, barrett)?;
+        r0 = r1;
+        r1 = r2;
+    }
+    monic_u64(&r0, barrett)
+}
+
+/// Inverse of `x` modulo `m` over `GF(p)` on `u64` slices.
+#[expect(
+    clippy::indexing_slicing,
+    reason = "d.len() == 1 guarantees d[0] is valid"
+)]
+pub(super) fn xinv_u64(
+    x: &[u64],
+    m: &[u64],
+    barrett: BarrettMod,
+) -> Option<PolyU64> {
+    let x_red = reduce_u64(x, m, barrett)?;
+    let (d, s, _) = pegcd_u64(&x_red, m, barrett)?;
+    if d.len() != 1 {
+        return None;
+    }
+    let d_inv = barrett.inv(d[0])?;
+    let mut scaled = vec![0u64; s.len()];
+    crate::kernels::finite_field::slice_scale_mod(&s, d_inv, barrett.modulus(), &mut scaled);
+    reduce_u64(&norm_u64(scaled, barrett), m, barrett)
+}
 
 /// Reduces the coefficients modulo `p` and strips leading zeros.
 pub(super) fn norm(
     mut f: Poly,
     p: &BigInt,
 ) -> Poly {
+    if let Some(barrett) = fast_barrett(p) {
+        return poly_from_u64(&poly_to_u64(&f, p, barrett));
+    }
     for c in &mut f {
         *c = modulo(c, p);
     }
@@ -59,6 +400,11 @@ pub(super) fn padd(
     g: &Poly,
     p: &BigInt,
 ) -> Poly {
+    if let Some(barrett) = fast_barrett(p) {
+        let fu = poly_to_u64(f, p, barrett);
+        let gu = poly_to_u64(g, p, barrett);
+        return poly_from_u64(&padd_u64(&fu, &gu, barrett));
+    }
     let n = f.len().max(g.len());
     let mut out = vec![BigInt::zero(); n];
     for (i, c) in f.iter().rev().enumerate() {
@@ -74,6 +420,10 @@ fn pneg(
     f: &Poly,
     p: &BigInt,
 ) -> Poly {
+    if let Some(barrett) = fast_barrett(p) {
+        let fu = poly_to_u64(f, p, barrett);
+        return poly_from_u64(&pneg_u64(&fu, barrett));
+    }
     norm(f.iter().map(|c| -c).collect(), p)
 }
 
@@ -82,6 +432,11 @@ pub(super) fn psub(
     g: &Poly,
     p: &BigInt,
 ) -> Poly {
+    if let Some(barrett) = fast_barrett(p) {
+        let fu = poly_to_u64(f, p, barrett);
+        let gu = poly_to_u64(g, p, barrett);
+        return poly_from_u64(&psub_u64(&fu, &gu, barrett));
+    }
     padd(f, &pneg(g, p), p)
 }
 
@@ -92,6 +447,11 @@ pub(super) fn pmul(
 ) -> Poly {
     if f.is_empty() || g.is_empty() {
         return Vec::new();
+    }
+    if let Some(barrett) = fast_barrett(p) {
+        let fu = poly_to_u64(f, p, barrett);
+        let gu = poly_to_u64(g, p, barrett);
+        return poly_from_u64(&pmul_u64(&fu, &gu, barrett));
     }
     let mut out = vec![BigInt::zero(); f.len() + g.len() - 1];
     for (i, a) in f.iter().enumerate() {
@@ -109,6 +469,12 @@ pub(super) fn pdivmod(
     g: &Poly,
     p: &BigInt,
 ) -> Option<(Poly, Poly)> {
+    if let Some(barrett) = fast_barrett(p) {
+        let fu = poly_to_u64(f, p, barrett);
+        let gu = poly_to_u64(g, p, barrett);
+        let (q, r) = pdivmod_u64(&fu, &gu, barrett)?;
+        return Some((poly_from_u64(&q), poly_from_u64(&r)));
+    }
     let lead_inv = mod_inverse(g.first()?, p)?;
     let mut rem = f.clone();
     if rem.len() < g.len() {
@@ -131,6 +497,12 @@ pub(super) fn pegcd(
     g: &Poly,
     p: &BigInt,
 ) -> Option<(Poly, Poly, Poly)> {
+    if let Some(barrett) = fast_barrett(p) {
+        let fu = poly_to_u64(f, p, barrett);
+        let gu = poly_to_u64(g, p, barrett);
+        let (d, s, t) = pegcd_u64(&fu, &gu, barrett)?;
+        return Some((poly_from_u64(&d), poly_from_u64(&s), poly_from_u64(&t)));
+    }
     let (mut r0, mut r1) = (f.clone(), g.clone());
     let (mut s0, mut s1) = (vec![BigInt::one()], Vec::new());
     let (mut t0, mut t1) = (Vec::new(), vec![BigInt::one()]);
@@ -149,6 +521,10 @@ pub(super) fn monic(
     f: &Poly,
     p: &BigInt,
 ) -> Option<Poly> {
+    if let Some(barrett) = fast_barrett(p) {
+        let fu = poly_to_u64(f, p, barrett);
+        return Some(poly_from_u64(&monic_u64(&fu, barrett)?));
+    }
     let Some(lead) = f.first() else {
         return Some(Vec::new());
     };
@@ -161,6 +537,14 @@ fn peval(
     x: &BigInt,
     p: &BigInt,
 ) -> BigInt {
+    if let Some(barrett) = fast_barrett(p) {
+        let xu = bigint_to_u64_mod(x, p, barrett);
+        let acc = f.iter().fold(0u64, |acc, c| {
+            let cu = bigint_to_u64_mod(c, p, barrett);
+            barrett.add(barrett.mul(acc, xu), cu)
+        });
+        return BigInt::from(acc);
+    }
     f.iter()
         .fold(BigInt::zero(), |acc, c| modulo(&(acc * x + c), p))
 }
@@ -298,6 +682,11 @@ fn gfp_gcd(
     let [f, g, p] = a else { return None };
     let p = modulus(cx, *p)?;
     let (f, g) = (read_poly(cx, *f, &p)?, read_poly(cx, *g, &p)?);
+    if let Some(barrett) = fast_barrett(&p) {
+        let fu = poly_to_u64(&f, &p, barrett);
+        let gu = poly_to_u64(&g, &p, barrett);
+        return Some(poly_value(poly_from_u64(&pgcd_u64(&fu, &gu, barrett)?)));
+    }
     let (d, _, _) = pegcd(&f, &g, &p)?;
     Some(poly_value(monic(&d, &p)?))
 }
@@ -353,6 +742,11 @@ pub(super) fn reduce(
     m: &Poly,
     p: &BigInt,
 ) -> Option<Poly> {
+    if let Some(barrett) = fast_barrett(p) {
+        let fu = poly_to_u64(f, p, barrett);
+        let mu = poly_to_u64(m, p, barrett);
+        return Some(poly_from_u64(&reduce_u64(&fu, &mu, barrett)?));
+    }
     Some(pdivmod(f, m, p)?.1)
 }
 
@@ -384,6 +778,16 @@ fn xadd(
     m: &Poly,
     p: &BigInt,
 ) -> Option<Poly> {
+    if let Some(barrett) = fast_barrett(p) {
+        let xu = poly_to_u64(x, p, barrett);
+        let yu = poly_to_u64(y, p, barrett);
+        let mu = poly_to_u64(m, p, barrett);
+        return Some(poly_from_u64(&reduce_u64(
+            &padd_u64(&xu, &yu, barrett),
+            &mu,
+            barrett,
+        )?));
+    }
     reduce(&padd(x, y, p), m, p)
 }
 
@@ -393,6 +797,16 @@ fn xsub(
     m: &Poly,
     p: &BigInt,
 ) -> Option<Poly> {
+    if let Some(barrett) = fast_barrett(p) {
+        let xu = poly_to_u64(x, p, barrett);
+        let yu = poly_to_u64(y, p, barrett);
+        let mu = poly_to_u64(m, p, barrett);
+        return Some(poly_from_u64(&reduce_u64(
+            &psub_u64(&xu, &yu, barrett),
+            &mu,
+            barrett,
+        )?));
+    }
     reduce(&psub(x, y, p), m, p)
 }
 
@@ -402,6 +816,16 @@ fn xmul(
     m: &Poly,
     p: &BigInt,
 ) -> Option<Poly> {
+    if let Some(barrett) = fast_barrett(p) {
+        let xu = poly_to_u64(x, p, barrett);
+        let yu = poly_to_u64(y, p, barrett);
+        let mu = poly_to_u64(m, p, barrett);
+        return Some(poly_from_u64(&reduce_u64(
+            &pmul_u64(&xu, &yu, barrett),
+            &mu,
+            barrett,
+        )?));
+    }
     reduce(&pmul(x, y, p), m, p)
 }
 
@@ -412,6 +836,11 @@ pub(super) fn xinv(
     m: &Poly,
     p: &BigInt,
 ) -> Option<Poly> {
+    if let Some(barrett) = fast_barrett(p) {
+        let xu = poly_to_u64(x, p, barrett);
+        let mu = poly_to_u64(m, p, barrett);
+        return Some(poly_from_u64(&xinv_u64(&xu, &mu, barrett)?));
+    }
     let x = reduce(x, m, p)?;
     let (d, s, _) = pegcd(&x, m, p)?;
     if d.len() != 1 {
@@ -427,6 +856,17 @@ fn xdiv(
     m: &Poly,
     p: &BigInt,
 ) -> Option<Poly> {
+    if let Some(barrett) = fast_barrett(p) {
+        let xu = poly_to_u64(x, p, barrett);
+        let yu = poly_to_u64(y, p, barrett);
+        let mu = poly_to_u64(m, p, barrett);
+        let inv_y = xinv_u64(&yu, &mu, barrett)?;
+        return Some(poly_from_u64(&reduce_u64(
+            &pmul_u64(&xu, &inv_y, barrett),
+            &mu,
+            barrett,
+        )?));
+    }
     xmul(x, &xinv(y, m, p)?, m, p)
 }
 
@@ -458,6 +898,25 @@ fn gfx_pow(
     let (m, p) = field(cx, *m, *p)?;
     let x = read_poly(cx, *x, &p)?;
     let e = big(cx.graph, *e)?;
+    if let Some(barrett) = fast_barrett(&p) {
+        let xu = poly_to_u64(&x, &p, barrett);
+        let mu = poly_to_u64(&m, &p, barrett);
+        let mut base = if e.is_negative() {
+            xinv_u64(&xu, &mu, barrett)?
+        } else {
+            reduce_u64(&xu, &mu, barrett)?
+        };
+        let mut exp = e.abs();
+        let mut acc = reduce_u64(&[1u64], &mu, barrett)?;
+        while !exp.is_zero() {
+            if exp.bit(0) {
+                acc = reduce_u64(&pmul_u64(&acc, &base, barrett), &mu, barrett)?;
+            }
+            base = reduce_u64(&pmul_u64(&base, &base, barrett), &mu, barrett)?;
+            exp >>= 1;
+        }
+        return Some(poly_value(poly_from_u64(&acc)));
+    }
     let mut base = if e.is_negative() {
         xinv(&x, &m, &p)?
     } else {
@@ -915,5 +1374,98 @@ mod tests {
         );
         // the multiplicative group of GF(8) is cyclic of order 7
         assert_eq!(s("gfx_pow(list(1, 0), 7, list(1, 1, 0, 1), 2)"), "list(1)");
+    }
+
+    #[test]
+    fn u64_ntt_and_large_prime_paths_agree_with_reference() {
+        use num_bigint::BigInt;
+
+        // 1. NTT-friendly prime (998244353) with degree >= 35 exercises poly_mul_ntt_mod inside pmul_u64.
+        let p_ntt = BigInt::from(998_244_353u64);
+        let b_ntt = super::fast_barrett(&p_ntt)
+            .unwrap_or_else(|| panic!("998244353 must use fast_barrett"));
+        let f_ntt: super::Poly = (0..36)
+            .map(|i| BigInt::from((i * 12_345 + 7) % 998_244_353u64))
+            .collect();
+        let g_ntt: super::Poly = (0..38)
+            .map(|i| BigInt::from((i * 54_321 + 13) % 998_244_353u64))
+            .collect();
+        let prod_ntt = super::pmul(&f_ntt, &g_ntt, &p_ntt);
+        // Schoolbook BigInt reference
+        let mut expected = vec![BigInt::from(0); f_ntt.len() + g_ntt.len() - 1];
+        for (i, a) in f_ntt.iter().enumerate() {
+            for (j, b) in g_ntt.iter().enumerate() {
+                expected[i + j] += a * b;
+            }
+        }
+        let expected = super::norm(expected, &p_ntt);
+        assert_eq!(prod_ntt, expected);
+        let (q_ntt, r_ntt) =
+            super::pdivmod(&prod_ntt, &g_ntt, &p_ntt).unwrap_or_else(|| panic!("pdivmod failed"));
+        assert_eq!(q_ntt, f_ntt);
+        assert!(r_ntt.is_empty());
+
+        // Verify pgcd_u64 matches gfp_gcd and pegcd for shared factor.
+        let common = vec![BigInt::from(1), BigInt::from(17), BigInt::from(99)];
+        let f_common = super::pmul(&f_ntt, &common, &p_ntt);
+        let g_common = super::pmul(&g_ntt, &common, &p_ntt);
+        let gcd_u64 = super::poly_from_u64(
+            &super::pgcd_u64(
+                &super::poly_to_u64(&f_common, &p_ntt, b_ntt),
+                &super::poly_to_u64(&g_common, &p_ntt, b_ntt),
+                b_ntt,
+            )
+            .unwrap_or_else(|| panic!("pgcd_u64 failed")),
+        );
+        let (d_egcd, _, _) =
+            super::pegcd(&f_common, &g_common, &p_ntt).unwrap_or_else(|| panic!("pegcd failed"));
+        assert_eq!(
+            gcd_u64,
+            super::monic(&d_egcd, &p_ntt).unwrap_or_else(|| panic!("monic failed"))
+        );
+
+        // 2. 61-bit Mersenne prime 2^61 - 1 (< 2^62) exercises Barrett u64 fast path near the boundary.
+        let p61_u64 = (1u64 << 61) - 1;
+        let p61 = BigInt::from(p61_u64);
+        assert!(super::fast_barrett(&p61).is_some());
+        let a61 = vec![
+            BigInt::from(p61_u64 - 3),
+            BigInt::from(p61_u64 - 19),
+            BigInt::from(42),
+        ];
+        let b61 = vec![BigInt::from(5), BigInt::from(p61_u64 - 7)];
+        let m61 = vec![BigInt::from(1), BigInt::from(0), BigInt::from(1)];
+        let inv_a = super::xinv(&a61, &m61, &p61).unwrap_or_else(|| panic!("xinv failed"));
+        let rem_one = super::reduce(&super::pmul(&a61, &inv_a, &p61), &m61, &p61)
+            .unwrap_or_else(|| panic!("reduce failed"));
+        assert_eq!(rem_one, vec![BigInt::from(1)]);
+        let prod61 = super::pmul(&a61, &b61, &p61);
+        let (q61, r61) =
+            super::pdivmod(&prod61, &b61, &p61).unwrap_or_else(|| panic!("pdivmod61 failed"));
+        assert_eq!(q61, a61);
+        assert!(r61.is_empty());
+        assert_eq!(
+            s(&format!(
+                "gfp_gcd(list(1, 0, {}), list(1, {}), {p61_u64})",
+                p61_u64 - 9,
+                p61_u64 - 3
+            )),
+            format!("list(1, {})", p61_u64 - 3)
+        );
+
+        // 3. 127-bit Mersenne prime 2^127 - 1 (> 2^62) exercises BigInt fallback cleanly.
+        let p127 = (BigInt::from(1) << 127) - 1;
+        assert!(super::fast_barrett(&p127).is_none());
+        let a127 = vec![&p127 - BigInt::from(5), BigInt::from(11)];
+        let b127 = vec![BigInt::from(3), &p127 - BigInt::from(2)];
+        let prod127 = super::pmul(&a127, &b127, &p127);
+        let (q127, r127) =
+            super::pdivmod(&prod127, &a127, &p127).unwrap_or_else(|| panic!("pdivmod127 failed"));
+        assert_eq!(q127, b127);
+        assert!(r127.is_empty());
+        assert_eq!(
+            s("gfx_mul(list(1, 0), list(1, 1), list(1, 0, 1), 2^127 - 1)"),
+            format!("list(1, {})", (BigInt::from(1) << 127) - 2)
+        );
     }
 }

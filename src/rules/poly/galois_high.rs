@@ -788,15 +788,12 @@ fn cos_fixed(
     sum >> guard
 }
 
+/// `gcd(a, b)`; the implementation is [`crate::kernels::number_theory::gcd`].
 fn gcd_u64(
     a: u64,
     b: u64,
 ) -> u64 {
-    if b == 0 {
-        a
-    } else {
-        gcd_u64(b, a % b)
-    }
+    crate::kernels::number_theory::gcd(a, b)
 }
 
 /// The distinct prime factors of `n` below `limit` (trial division).

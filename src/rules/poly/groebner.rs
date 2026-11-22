@@ -48,8 +48,15 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
+use num_bigint::BigInt;
+use num_integer::Integer;
 use num_rational::BigRational;
+use num_traits::One;
+use num_traits::ToPrimitive;
 
+use crate::kernels::finite_field::BarrettMod;
+use crate::kernels::modular::mod_inv_u64;
+use crate::kernels::reuse::global_pool;
 use crate::rules::poly::field::Domain;
 
 /// A monomial order.
@@ -279,6 +286,80 @@ impl GPoly {
     }
 }
 
+const THRESH6: [u64; 9] = [
+    0b00_0000, 0b00_0001, 0b00_0011, 0b00_0111, 0b00_1111, 0b00_1111, 0b01_1111, 0b01_1111,
+    0b11_1111,
+];
+const SUPPORT_LOW8: u64 = 0b000001_000001_000001_000001_000001_000001_000001_000001;
+
+/// Packed 64-bit monomial divisibility bitmask for 1-cycle rejection.
+///
+/// Whenever monomial `a` divides `b`, `(mono_div_mask(a) & !mono_div_mask(b)) == 0`.
+#[inline]
+#[allow(clippy::indexing_slicing, clippy::arithmetic_side_effects)]
+fn mono_div_mask(m: &[u32]) -> u64 {
+    let mut mask = 0_u64;
+    for (i, &e) in m.iter().enumerate() {
+        if e > 0 {
+            if i < 8 {
+                mask |= THRESH6[(e as usize).min(8)] << (i * 6);
+            } else {
+                mask |= 1_u64 << (48 + ((i - 8) & 15));
+            }
+        }
+    }
+    mask
+}
+
+#[inline]
+fn coprime_with_masks(
+    a: &[u32],
+    b: &[u32],
+    mask_a: u64,
+    mask_b: u64,
+) -> bool {
+    if (mask_a & mask_b & SUPPORT_LOW8) != 0 {
+        return false;
+    }
+    if a.len() <= 8 && b.len() <= 8 {
+        return true;
+    }
+    a.iter().zip(b).skip(8).all(|(&x, &y)| x == 0 || y == 0)
+}
+
+#[inline]
+fn small_prime_modulus(domain: &Domain) -> Option<u64> {
+    match domain {
+        | Domain::Rational => None,
+        | Domain::Prime(p) => p.to_u64().filter(|&m| m > 1 && m < (1_u64 << 62)),
+    }
+}
+
+#[inline]
+fn coeff_to_u64(
+    c: &BigRational,
+    p: u64,
+) -> Option<u64> {
+    if c.denom().is_one()
+        && let Some(v) = c.numer().to_u64()
+    {
+        return Some(if v < p { v } else { v % p });
+    }
+    let p_big = BigInt::from(p);
+    let numer = c.numer().mod_floor(&p_big).to_u64()?;
+    if c.denom().is_one() {
+        return Some(numer);
+    }
+    let denom = c.denom().mod_floor(&p_big).to_u64()?;
+    let inv = mod_inv_u64(denom, p)?;
+    u64::try_from((u128::from(numer) * u128::from(inv)) % u128::from(p)).ok()
+}
+
+#[inline]
+fn u64_to_rat(c: u64) -> BigRational {
+    BigRational::from_integer(BigInt::from(c))
+}
+
 fn divides(
     a: &[u32],
     b: &[u32],
@@ -312,25 +393,479 @@ pub fn reduce_in(
     basis: &[GPoly],
     order: Order,
 ) -> GPoly {
-    let mut work = p.clone();
+    if p.is_zero() || basis.is_empty() {
+        return p.clone();
+    }
+    let mut lead_masks = global_pool().scratch_i64(basis.len());
+    for g in basis {
+        let mask = g.leading().map_or(0_u64, |(m, _)| mono_div_mask(m));
+        lead_masks.push(mask as i64);
+    }
+    if let Some(p_u64) = small_prime_modulus(domain)
+        && let Some(barrett) = BarrettMod::new(p_u64)
+        && let Some(fast) = reduce_mod_u64(barrett, p, basis, &lead_masks, order)
+    {
+        return fast;
+    }
+    reduce_general_with_masks(domain, p, basis, &lead_masks, order)
+}
+
+/// Reduces every polynomial in `polys` modulo `basis` over `domain`,
+/// dispatching deterministically to the active CPU pool when profitable.
+#[must_use]
+pub fn reduce_batch_in(
+    domain: &Domain,
+    polys: &[GPoly],
+    basis: &[GPoly],
+    order: Order,
+) -> Vec<GPoly> {
+    if polys.is_empty() || basis.is_empty() {
+        return polys.to_vec();
+    }
+    let basis_masks: Vec<u64> = basis
+        .iter()
+        .map(|g| g.leading().map_or(0_u64, |(m, _)| mono_div_mask(m)))
+        .collect();
+    let basis_terms: usize = basis.iter().map(|g| g.terms().len()).sum();
+    let poly_terms: usize = polys.iter().map(|p| p.terms().len()).sum();
+    let avg_terms = poly_terms.checked_div(polys.len()).unwrap_or(1).max(1);
+    let est_work = avg_terms.saturating_mul(basis_terms.max(1));
+
+    if let Some(p_u64) = small_prime_modulus(domain)
+        && let Some(barrett) = BarrettMod::new(p_u64)
+    {
+        let mut u64_basis: Option<Vec<Vec<(Vec<u32>, u64)>>> =
+            Some(Vec::with_capacity(basis.len()));
+        if let Some(ref mut converted) = u64_basis {
+            for g in basis {
+                if let Some(terms) = gpoly_to_u64(g, p_u64) {
+                    converted.push(terms);
+                } else {
+                    u64_basis = None;
+                    break;
+                }
+            }
+        }
+        if let Some(u64_basis) = u64_basis {
+            let reduce_one = |poly: &GPoly| -> Option<GPoly> {
+                let mut work = gpoly_to_u64(poly, p_u64)?;
+                let mut scratch = Vec::with_capacity(work.len());
+                let mut done = Vec::new();
+                let mut shift = Vec::new();
+                reduce_u64_terms(
+                    barrett,
+                    &mut work,
+                    &u64_basis,
+                    &basis_masks,
+                    order,
+                    &mut scratch,
+                    &mut done,
+                    &mut shift,
+                )?;
+                Some(u64_terms_to_gpoly(done))
+            };
+            if crate::execution::should_split_work(polys.len(), est_work) {
+                let mapped = crate::kernels::par::map_indexed(polys.len(), 2, |idx| {
+                    polys.get(idx).and_then(reduce_one)
+                });
+                if mapped.iter().all(Option::is_some) {
+                    return mapped.into_iter().flatten().collect();
+                }
+            } else {
+                let mut out = Vec::with_capacity(polys.len());
+                let mut ok = true;
+                for poly in polys {
+                    if let Some(r) = reduce_one(poly) {
+                        out.push(r);
+                    } else {
+                        ok = false;
+                        break;
+                    }
+                }
+                if ok {
+                    return out;
+                }
+            }
+        }
+    }
+
+    let masks_i64: Vec<i64> = basis_masks.iter().map(|&m| m as i64).collect();
+    if crate::execution::should_split_work(polys.len(), est_work) {
+        crate::kernels::par::map_indexed(polys.len(), 2, |idx| {
+            polys.get(idx).map_or_else(
+                || GPoly { terms: Vec::new() },
+                |poly| reduce_general_with_masks(domain, poly, basis, &masks_i64, order),
+            )
+        })
+    } else {
+        polys
+            .iter()
+            .map(|poly| reduce_general_with_masks(domain, poly, basis, &masks_i64, order))
+            .collect()
+    }
+}
+
+#[allow(clippy::single_call_fn)]
+fn gpoly_to_u64(
+    p: &GPoly,
+    p_u64: u64,
+) -> Option<Vec<(Vec<u32>, u64)>> {
+    let mut terms = Vec::with_capacity(p.terms().len());
+    for (m, c) in p.terms() {
+        let v = coeff_to_u64(c, p_u64)?;
+        if v != 0 {
+            terms.push((m.clone(), v));
+        }
+    }
+    Some(terms)
+}
+
+#[inline]
+fn u64_terms_to_gpoly(terms: Vec<(Vec<u32>, u64)>) -> GPoly {
+    GPoly {
+        terms: terms.into_iter().map(|(m, c)| (m, u64_to_rat(c))).collect(),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn sub_scaled_u64_tail(
+    barrett: BarrettMod,
+    work_tail: &[(Vec<u32>, u64)],
+    g_tail: &[(Vec<u32>, u64)],
+    shift: &[u32],
+    factor: u64,
+    order: Order,
+    out: &mut Vec<(Vec<u32>, u64)>,
+) {
+    out.clear();
+    out.reserve(work_tail.len().saturating_add(g_tail.len()));
+    let neg_factor = barrett.neg(factor);
+    let mut i = 0_usize;
+    let mut j = 0_usize;
+    let mut pending_mono: Vec<u32> = Vec::new();
+    let mut pending_coeff = 0_u64;
+    let mut has_pending = false;
+    if let Some((gm, gc)) = g_tail.first() {
+        pending_mono.extend(gm.iter().zip(shift).map(|(&a, &b)| a.saturating_add(b)));
+        pending_coeff = barrett.mul(*gc, neg_factor);
+        has_pending = true;
+    }
+    loop {
+        match (work_tail.get(i), has_pending) {
+            | (Some((am, ac)), true) => {
+                match order.cmp(am, &pending_mono) {
+                    | Ordering::Greater => {
+                        out.push((am.clone(), *ac));
+                        i = i.saturating_add(1);
+                    },
+                    | Ordering::Less => {
+                        if pending_coeff != 0 {
+                            out.push((std::mem::take(&mut pending_mono), pending_coeff));
+                        } else {
+                            pending_mono.clear();
+                        }
+                        j = j.saturating_add(1);
+                        if let Some((gm, gc)) = g_tail.get(j) {
+                            pending_mono
+                                .extend(gm.iter().zip(shift).map(|(&a, &b)| a.saturating_add(b)));
+                            pending_coeff = barrett.mul(*gc, neg_factor);
+                        } else {
+                            has_pending = false;
+                        }
+                    },
+                    | Ordering::Equal => {
+                        let sum = barrett.add(*ac, pending_coeff);
+                        if sum != 0 {
+                            out.push((am.clone(), sum));
+                        }
+                        i = i.saturating_add(1);
+                        j = j.saturating_add(1);
+                        pending_mono.clear();
+                        if let Some((gm, gc)) = g_tail.get(j) {
+                            pending_mono
+                                .extend(gm.iter().zip(shift).map(|(&a, &b)| a.saturating_add(b)));
+                            pending_coeff = barrett.mul(*gc, neg_factor);
+                        } else {
+                            has_pending = false;
+                        }
+                    },
+                }
+            },
+            | (Some((am, ac)), false) => {
+                out.push((am.clone(), *ac));
+                i = i.saturating_add(1);
+            },
+            | (None, true) => {
+                if pending_coeff != 0 {
+                    out.push((std::mem::take(&mut pending_mono), pending_coeff));
+                } else {
+                    pending_mono.clear();
+                }
+                j = j.saturating_add(1);
+                if let Some((gm, gc)) = g_tail.get(j) {
+                    pending_mono.extend(gm.iter().zip(shift).map(|(&a, &b)| a.saturating_add(b)));
+                    pending_coeff = barrett.mul(*gc, neg_factor);
+                } else {
+                    has_pending = false;
+                }
+            },
+            | (None, false) => break,
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn reduce_u64_terms(
+    barrett: BarrettMod,
+    work: &mut Vec<(Vec<u32>, u64)>,
+    basis: &[Vec<(Vec<u32>, u64)>],
+    basis_masks: &[u64],
+    order: Order,
+    scratch: &mut Vec<(Vec<u32>, u64)>,
+    done: &mut Vec<(Vec<u32>, u64)>,
+    shift: &mut Vec<u32>,
+) -> Option<()> {
+    let p_u64 = barrett.modulus();
+    done.clear();
+    let mut head = 0_usize;
+    while let Some((mono, coeff)) = work.get(head) {
+        let mono_mask = mono_div_mask(mono);
+        let mut chosen: Option<usize> = None;
+        for (idx, g) in basis.iter().enumerate() {
+            let g_mask = basis_masks.get(idx).copied().unwrap_or(0);
+            if (g_mask & !mono_mask) != 0 {
+                continue;
+            }
+            if let Some((lead_mono, _)) = g.first()
+                && divides(lead_mono, mono)
+            {
+                chosen = Some(idx);
+                break;
+            }
+        }
+        if let Some(idx) = chosen {
+            let g = basis.get(idx)?;
+            let (lead_mono, lead_coeff) = g.first()?;
+            shift.clear();
+            shift.extend(
+                mono.iter()
+                    .zip(lead_mono)
+                    .map(|(&a, &b)| a.saturating_sub(b)),
+            );
+            let factor = if *lead_coeff == 1 {
+                *coeff
+            } else {
+                barrett.mul(*coeff, mod_inv_u64(*lead_coeff, p_u64)?)
+            };
+            let work_tail = work.get(head.saturating_add(1)..).unwrap_or(&[]);
+            let g_tail = g.get(1..).unwrap_or(&[]);
+            sub_scaled_u64_tail(barrett, work_tail, g_tail, shift, factor, order, scratch);
+            std::mem::swap(work, scratch);
+            scratch.clear();
+            head = 0;
+        } else {
+            done.push((mono.clone(), *coeff));
+            head = head.saturating_add(1);
+        }
+    }
+    Some(())
+}
+
+#[allow(clippy::single_call_fn)]
+fn reduce_mod_u64(
+    barrett: BarrettMod,
+    p: &GPoly,
+    basis: &[GPoly],
+    lead_masks: &[i64],
+    order: Order,
+) -> Option<GPoly> {
+    let p_u64 = barrett.modulus();
+    let mut work = gpoly_to_u64(p, p_u64)?;
+    let mut cached: Vec<Option<Vec<(Vec<u32>, u64)>>> = vec![None; basis.len()];
+    let mut scratch: Vec<(Vec<u32>, u64)> = Vec::with_capacity(work.len());
+    let mut done: Vec<(Vec<u32>, u64)> = Vec::new();
+    let mut shift: Vec<u32> = Vec::new();
+    let mut head = 0_usize;
+
+    while let Some((mono, coeff)) = work.get(head) {
+        let mono_mask = mono_div_mask(mono);
+        let mut chosen: Option<usize> = None;
+        for (idx, g) in basis.iter().enumerate() {
+            let g_mask = lead_masks.get(idx).copied().unwrap_or(0) as u64;
+            if (g_mask & !mono_mask) != 0 {
+                continue;
+            }
+            if let Some((lead_mono, _)) = g.leading()
+                && divides(lead_mono, mono)
+            {
+                chosen = Some(idx);
+                break;
+            }
+        }
+        if let Some(idx) = chosen {
+            let slot = cached.get_mut(idx)?;
+            if slot.is_none() {
+                *slot = Some(gpoly_to_u64(basis.get(idx)?, p_u64)?);
+            }
+            let g = slot.as_ref()?;
+            let (lead_mono, lead_coeff) = g.first()?;
+            shift.clear();
+            shift.extend(
+                mono.iter()
+                    .zip(lead_mono)
+                    .map(|(&a, &b)| a.saturating_sub(b)),
+            );
+            let factor = if *lead_coeff == 1 {
+                *coeff
+            } else {
+                barrett.mul(*coeff, mod_inv_u64(*lead_coeff, p_u64)?)
+            };
+            let work_tail = work.get(head.saturating_add(1)..).unwrap_or(&[]);
+            let g_tail = g.get(1..).unwrap_or(&[]);
+            sub_scaled_u64_tail(
+                barrett,
+                work_tail,
+                g_tail,
+                &shift,
+                factor,
+                order,
+                &mut scratch,
+            );
+            std::mem::swap(&mut work, &mut scratch);
+            scratch.clear();
+            head = 0;
+        } else {
+            done.push((mono.clone(), *coeff));
+            head = head.saturating_add(1);
+        }
+    }
+    Some(u64_terms_to_gpoly(done))
+}
+
+fn sub_scaled_general_tail(
+    domain: &Domain,
+    work_tail: &[Term],
+    g_tail: &[Term],
+    shift: &[u32],
+    factor: &BigRational,
+    order: Order,
+    out: &mut Vec<Term>,
+) {
+    out.clear();
+    out.reserve(work_tail.len().saturating_add(g_tail.len()));
+    let neg_factor = domain.neg(factor);
+    let mut i = 0_usize;
+    let mut j = 0_usize;
+    let shift_term = |t: &Term| -> Term {
+        (
+            t.0.iter()
+                .zip(shift)
+                .map(|(&a, &b)| a.saturating_add(b))
+                .collect(),
+            domain.mul(&t.1, &neg_factor),
+        )
+    };
+    let mut pending = g_tail.first().map(shift_term);
+    loop {
+        match (work_tail.get(i), &pending) {
+            | (Some(a), Some(b)) => {
+                match order.cmp(&a.0, &b.0) {
+                    | Ordering::Greater => {
+                        out.push(a.clone());
+                        i = i.saturating_add(1);
+                    },
+                    | Ordering::Less => {
+                        if !domain.is_zero(&b.1) {
+                            out.push(b.clone());
+                        }
+                        j = j.saturating_add(1);
+                        pending = g_tail.get(j).map(shift_term);
+                    },
+                    | Ordering::Equal => {
+                        let sum = domain.add(&a.1, &b.1);
+                        if !domain.is_zero(&sum) {
+                            out.push((a.0.clone(), sum));
+                        }
+                        i = i.saturating_add(1);
+                        j = j.saturating_add(1);
+                        pending = g_tail.get(j).map(shift_term);
+                    },
+                }
+            },
+            | (Some(a), None) => {
+                out.push(a.clone());
+                i = i.saturating_add(1);
+            },
+            | (None, Some(b)) => {
+                if !domain.is_zero(&b.1) {
+                    out.push(b.clone());
+                }
+                j = j.saturating_add(1);
+                pending = g_tail.get(j).map(shift_term);
+            },
+            | (None, None) => break,
+        }
+    }
+}
+
+fn reduce_general_with_masks(
+    domain: &Domain,
+    p: &GPoly,
+    basis: &[GPoly],
+    lead_masks: &[i64],
+    order: Order,
+) -> GPoly {
+    if p.is_zero() || basis.is_empty() {
+        return p.clone();
+    }
+    let mut work: Vec<Term> = p.terms().to_vec();
+    let mut scratch: Vec<Term> = Vec::with_capacity(work.len());
     let mut done: Vec<Term> = Vec::new();
-    while let Some((mono, coeff)) = work.leading().cloned() {
-        let reducer = basis.iter().find_map(|g| {
-            let (lead_mono, lead_coeff) = g.leading()?;
-            divides(lead_mono, &mono).then_some((g, lead_mono, lead_coeff))
-        });
-        match reducer {
-            | Some((g, lead_mono, lead_coeff)) => {
-                let shift: Vec<u32> = mono.iter().zip(lead_mono).map(|(a, b)| a - b).collect();
-                let factor = domain
-                    .div(&coeff, lead_coeff)
-                    .unwrap_or_else(|| domain.zero());
-                work = work.sub_scaled(domain, g, &shift, &factor, order);
-            },
-            | None => {
-                done.push((mono, coeff));
-                work.terms.remove(0);
-            },
+    let mut shift: Vec<u32> = Vec::new();
+    let mut head = 0_usize;
+
+    while let Some((mono, coeff)) = work.get(head) {
+        let mono_mask = mono_div_mask(mono);
+        let mut reducer: Option<(&GPoly, &[u32], &BigRational)> = None;
+        for (idx, g) in basis.iter().enumerate() {
+            let g_mask = lead_masks.get(idx).copied().unwrap_or(0) as u64;
+            if (g_mask & !mono_mask) != 0 {
+                continue;
+            }
+            if let Some((lead_mono, lead_coeff)) = g.leading()
+                && divides(lead_mono, mono)
+            {
+                reducer = Some((g, lead_mono, lead_coeff));
+                break;
+            }
+        }
+        if let Some((g, lead_mono, lead_coeff)) = reducer {
+            shift.clear();
+            shift.extend(
+                mono.iter()
+                    .zip(lead_mono)
+                    .map(|(&a, &b)| a.saturating_sub(b)),
+            );
+            let factor = domain
+                .div(coeff, lead_coeff)
+                .unwrap_or_else(|| domain.zero());
+            let work_tail = work.get(head.saturating_add(1)..).unwrap_or(&[]);
+            let g_tail = g.terms().get(1..).unwrap_or(&[]);
+            sub_scaled_general_tail(
+                domain,
+                work_tail,
+                g_tail,
+                &shift,
+                &factor,
+                order,
+                &mut scratch,
+            );
+            std::mem::swap(&mut work, &mut scratch);
+            scratch.clear();
+            head = 0;
+        } else {
+            done.push((mono.clone(), coeff.clone()));
+            head = head.saturating_add(1);
         }
     }
     GPoly { terms: done }
@@ -397,6 +932,158 @@ pub fn groebner(
     groebner_in(&Domain::Rational, generators, order, limits)
 }
 
+fn monic_u64(
+    barrett: BarrettMod,
+    terms: &mut Vec<(Vec<u32>, u64)>,
+) -> Option<()> {
+    let Some((_, lead)) = terms.first() else {
+        return Some(());
+    };
+    let lead = *lead;
+    if lead == 1 {
+        return Some(());
+    }
+    let inv = mod_inv_u64(lead, barrett.modulus())?;
+    for (idx, (_, c)) in terms.iter_mut().enumerate() {
+        *c = if idx == 0 {
+            1
+        } else {
+            barrett.mul(*c, inv)
+        };
+    }
+    Some(())
+}
+
+fn s_polynomial_u64(
+    barrett: BarrettMod,
+    f: &[(Vec<u32>, u64)],
+    g: &[(Vec<u32>, u64)],
+    order: Order,
+    out: &mut Vec<(Vec<u32>, u64)>,
+) -> Option<()> {
+    out.clear();
+    let (Some((fm, fc)), Some((gm, gc))) = (f.first(), g.first()) else {
+        return Some(());
+    };
+    let p_u64 = barrett.modulus();
+    let common = lcm(fm, gm);
+    let shift_f: Vec<u32> = common
+        .iter()
+        .zip(fm)
+        .map(|(&a, &b)| a.saturating_sub(b))
+        .collect();
+    let shift_g: Vec<u32> = common
+        .iter()
+        .zip(gm)
+        .map(|(&a, &b)| a.saturating_sub(b))
+        .collect();
+    let inv_fc = if *fc == 1 {
+        1
+    } else {
+        mod_inv_u64(*fc, p_u64)?
+    };
+    let inv_gc = if *gc == 1 {
+        1
+    } else {
+        mod_inv_u64(*gc, p_u64)?
+    };
+    let neg_inv_gc = barrett.neg(inv_gc);
+    let mut left: Vec<(Vec<u32>, u64)> = Vec::with_capacity(f.len().saturating_sub(1));
+    for (m, c) in f.get(1..).unwrap_or(&[]) {
+        let scaled = if inv_fc == 1 {
+            *c
+        } else {
+            barrett.mul(*c, inv_fc)
+        };
+        if scaled != 0 {
+            left.push((
+                m.iter()
+                    .zip(&shift_f)
+                    .map(|(&a, &b)| a.saturating_add(b))
+                    .collect(),
+                scaled,
+            ));
+        }
+    }
+    let g_tail = g.get(1..).unwrap_or(&[]);
+    let mut i = 0_usize;
+    let mut j = 0_usize;
+    let mut pending_mono: Vec<u32> = Vec::new();
+    let mut pending_coeff = 0_u64;
+    let mut has_pending = false;
+    if let Some((gm, gc)) = g_tail.first() {
+        pending_mono.extend(gm.iter().zip(&shift_g).map(|(&a, &b)| a.saturating_add(b)));
+        pending_coeff = barrett.mul(*gc, neg_inv_gc);
+        has_pending = true;
+    }
+    loop {
+        match (left.get(i), has_pending) {
+            | (Some((am, ac)), true) => {
+                match order.cmp(am, &pending_mono) {
+                    | Ordering::Greater => {
+                        out.push((am.clone(), *ac));
+                        i = i.saturating_add(1);
+                    },
+                    | Ordering::Less => {
+                        if pending_coeff != 0 {
+                            out.push((std::mem::take(&mut pending_mono), pending_coeff));
+                        } else {
+                            pending_mono.clear();
+                        }
+                        j = j.saturating_add(1);
+                        if let Some((gm, gc)) = g_tail.get(j) {
+                            pending_mono.extend(
+                                gm.iter().zip(&shift_g).map(|(&a, &b)| a.saturating_add(b)),
+                            );
+                            pending_coeff = barrett.mul(*gc, neg_inv_gc);
+                        } else {
+                            has_pending = false;
+                        }
+                    },
+                    | Ordering::Equal => {
+                        let sum = barrett.add(*ac, pending_coeff);
+                        if sum != 0 {
+                            out.push((am.clone(), sum));
+                        }
+                        i = i.saturating_add(1);
+                        j = j.saturating_add(1);
+                        pending_mono.clear();
+                        if let Some((gm, gc)) = g_tail.get(j) {
+                            pending_mono.extend(
+                                gm.iter().zip(&shift_g).map(|(&a, &b)| a.saturating_add(b)),
+                            );
+                            pending_coeff = barrett.mul(*gc, neg_inv_gc);
+                        } else {
+                            has_pending = false;
+                        }
+                    },
+                }
+            },
+            | (Some((am, ac)), false) => {
+                out.push((am.clone(), *ac));
+                i = i.saturating_add(1);
+            },
+            | (None, true) => {
+                if pending_coeff != 0 {
+                    out.push((std::mem::take(&mut pending_mono), pending_coeff));
+                } else {
+                    pending_mono.clear();
+                }
+                j = j.saturating_add(1);
+                if let Some((gm, gc)) = g_tail.get(j) {
+                    pending_mono
+                        .extend(gm.iter().zip(&shift_g).map(|(&a, &b)| a.saturating_add(b)));
+                    pending_coeff = barrett.mul(*gc, neg_inv_gc);
+                } else {
+                    has_pending = false;
+                }
+            },
+            | (None, false) => break,
+        }
+    }
+    Some(())
+}
+
 /// [`groebner`] over `domain`.
 ///
 /// The generators must have canonical coefficients in `domain` (see
@@ -410,42 +1097,82 @@ pub fn groebner_in(
     order: Order,
     limits: GroebnerLimits,
 ) -> Option<Vec<GPoly>> {
-    let mut basis: Vec<GPoly> = generators
-        .iter()
-        .filter(|g| !g.is_zero())
-        .map(|g| g.monic_in(domain))
-        .collect();
+    if let Some(p_u64) = small_prime_modulus(domain)
+        && let Some(barrett) = BarrettMod::new(p_u64)
+        && let Some(fast) = groebner_mod_u64(barrett, generators, order, limits)
+    {
+        return fast;
+    }
+    groebner_general(domain, generators, order, limits)
+}
+
+#[allow(clippy::single_call_fn)]
+fn groebner_mod_u64(
+    barrett: BarrettMod,
+    generators: &[GPoly],
+    order: Order,
+    limits: GroebnerLimits,
+) -> Option<Option<Vec<GPoly>>> {
+    let p_u64 = barrett.modulus();
+    let mut basis: Vec<Vec<(Vec<u32>, u64)>> = Vec::with_capacity(generators.len());
+    let mut lead_masks: Vec<u64> = Vec::with_capacity(generators.len());
+    for g in generators {
+        if g.is_zero() {
+            continue;
+        }
+        let mut terms = gpoly_to_u64(g, p_u64)?;
+        if terms.is_empty() {
+            continue;
+        }
+        monic_u64(barrett, &mut terms)?;
+        let mask = terms.first().map_or(0_u64, |(m, _)| mono_div_mask(m));
+        lead_masks.push(mask);
+        basis.push(terms);
+    }
+
     let mut pairs: Vec<(usize, usize)> = (0..basis.len())
         .flat_map(|i| (0..i).map(move |j| (j, i)))
         .collect();
     let mut reductions = 0_usize;
-    // With several threads the pairs of the smallest total degree are reduced
-    // in batches against the same basis snapshot; with one thread the batch
-    // size is 1 and this is the classic one-pair-at-a-time loop. The reduced
-    // basis is unique, so it is the same either way.
-    let cap = if rayon::current_num_threads() > 1 {
-        BATCH_PER_THREAD * rayon::current_num_threads()
+    let threads = crate::execution::effective_threads();
+    let cap = if threads > 1 {
+        BATCH_PER_THREAD.saturating_mul(threads)
     } else {
         1
     };
+
+    let mut spol_buf: Vec<(Vec<u32>, u64)> = Vec::new();
+    let mut scratch_buf: Vec<(Vec<u32>, u64)> = Vec::new();
+    let mut done_buf: Vec<(Vec<u32>, u64)> = Vec::new();
+    let mut shift_buf: Vec<u32> = Vec::new();
+
     while !pairs.is_empty() {
         let mut batch: Vec<(usize, usize)> = Vec::new();
         let mut batch_degree: Option<u64> = None;
         while !pairs.is_empty() && batch.len() < cap {
-            // Normal strategy: the pair whose leading monomials have the
-            // smallest least common multiple.
-            let pick = (0..pairs.len()).min_by(|&a, &b| {
-                let key = |(i, j): (usize, usize)| {
-                    match (basis[i].leading(), basis[j].leading()) {
+            let pick = match (0..pairs.len()).min_by(|&a, &b| {
+                let key = |pair_idx: usize| -> Vec<u32> {
+                    let Some(&(i, j)) = pairs.get(pair_idx) else {
+                        return Vec::new();
+                    };
+                    match (
+                        basis.get(i).and_then(|g| g.first()),
+                        basis.get(j).and_then(|g| g.first()),
+                    ) {
                         | (Some((x, _)), Some((y, _))) => lcm(x, y),
                         | _ => Vec::new(),
                     }
                 };
-                order.cmp(&key(pairs[a]), &key(pairs[b]))
-            })?;
-            let (i, j) = pairs[pick];
-            let (Some((lead_i, _)), Some((lead_j, _))) = (basis[i].leading(), basis[j].leading())
-            else {
+                order.cmp(&key(a), &key(b))
+            }) {
+                | Some(p) => p,
+                | None => return Some(None),
+            };
+            let &(i, j) = pairs.get(pick)?;
+            let (Some((lead_i, _)), Some((lead_j, _))) = (
+                basis.get(i).and_then(|g| g.first()),
+                basis.get(j).and_then(|g| g.first()),
+            ) else {
                 pairs.swap_remove(pick);
                 continue;
             };
@@ -455,23 +1182,291 @@ pub fn groebner_in(
                 break;
             }
             pairs.swap_remove(pick);
-            // First criterion: coprime leading monomials reduce to zero.
-            if lead_i.iter().zip(lead_j).all(|(&a, &b)| a == 0 || b == 0) {
+            let mask_i = lead_masks.get(i).copied().unwrap_or(0);
+            let mask_j = lead_masks.get(j).copied().unwrap_or(0);
+            if coprime_with_masks(lead_i, lead_j, mask_i, mask_j) {
                 continue;
             }
-            // Second criterion: some k whose leading monomial divides the lcm
-            // and whose pairs with i and j have already been handled.
+            let common_mask = mono_div_mask(&common);
             let covered = (0..basis.len()).any(|k| {
                 k != i
                     && k != j
-                    && basis[k].leading().is_some_and(|(m, _)| divides(m, &common))
+                    && (lead_masks.get(k).copied().unwrap_or(0) & !common_mask) == 0
+                    && basis
+                        .get(k)
+                        .and_then(|g| g.first())
+                        .is_some_and(|(m, _)| divides(m, &common))
                     && !pairs.contains(&(i.min(k), i.max(k)))
                     && !pairs.contains(&(j.min(k), j.max(k)))
             });
             if covered {
                 continue;
             }
-            reductions += 1;
+            reductions = reductions.saturating_add(1);
+            if reductions > limits.reductions {
+                return Some(None);
+            }
+            batch_degree = Some(degree);
+            batch.push((i, j));
+        }
+        if batch.is_empty() {
+            continue;
+        }
+        let snapshot = basis.len();
+        let basis_terms: usize = basis.iter().map(Vec::len).sum();
+        let est_work = basis_terms.saturating_mul(basis.len()).max(1);
+        let remainders: Vec<Vec<(Vec<u32>, u64)>> =
+            if batch.len() >= 2 && crate::execution::should_split_work(batch.len(), est_work) {
+                let basis_ref = &basis;
+                let masks_ref = &lead_masks;
+                let mapped = crate::kernels::par::map_slice(&batch, 2, |&(i, j)| {
+                    let mut spol = Vec::new();
+                    let mut scratch = Vec::new();
+                    let mut done = Vec::new();
+                    let mut shift = Vec::new();
+                    let (Some(fi), Some(gj)) = (basis_ref.get(i), basis_ref.get(j)) else {
+                        return Some(Vec::new());
+                    };
+                    s_polynomial_u64(barrett, fi, gj, order, &mut spol)?;
+                    reduce_u64_terms(
+                        barrett,
+                        &mut spol,
+                        basis_ref,
+                        masks_ref,
+                        order,
+                        &mut scratch,
+                        &mut done,
+                        &mut shift,
+                    )?;
+                    Some(done)
+                });
+                let mut collected = Vec::with_capacity(mapped.len());
+                for item in mapped {
+                    collected.push(item?);
+                }
+                collected
+            } else {
+                let mut collected = Vec::with_capacity(batch.len());
+                for &(i, j) in &batch {
+                    let (Some(fi), Some(gj)) = (basis.get(i), basis.get(j)) else {
+                        collected.push(Vec::new());
+                        continue;
+                    };
+                    s_polynomial_u64(barrett, fi, gj, order, &mut spol_buf)?;
+                    reduce_u64_terms(
+                        barrett,
+                        &mut spol_buf,
+                        &basis,
+                        &lead_masks,
+                        order,
+                        &mut scratch_buf,
+                        &mut done_buf,
+                        &mut shift_buf,
+                    )?;
+                    collected.push(std::mem::take(&mut done_buf));
+                }
+                collected
+            };
+        for mut remainder in remainders {
+            if basis.len() > snapshot && !remainder.is_empty() {
+                reduce_u64_terms(
+                    barrett,
+                    &mut remainder,
+                    &basis,
+                    &lead_masks,
+                    order,
+                    &mut scratch_buf,
+                    &mut done_buf,
+                    &mut shift_buf,
+                )?;
+                remainder = std::mem::take(&mut done_buf);
+            }
+            if !remainder.is_empty() {
+                if basis.len() >= limits.basis {
+                    return Some(None);
+                }
+                let new = basis.len();
+                monic_u64(barrett, &mut remainder)?;
+                let mask = remainder.first().map_or(0_u64, |(m, _)| mono_div_mask(m));
+                pairs.extend((0..new).map(|k| (k, new)));
+                lead_masks.push(mask);
+                basis.push(remainder);
+            }
+        }
+    }
+
+    let mut minimal: Vec<Vec<(Vec<u32>, u64)>> = Vec::new();
+    let mut min_masks: Vec<u64> = Vec::new();
+    for (index, g) in basis.iter().enumerate() {
+        let Some((lead, _)) = g.first() else {
+            continue;
+        };
+        let lead_mask = lead_masks.get(index).copied().unwrap_or(0);
+        let redundant = basis.iter().enumerate().any(|(other, h)| {
+            other != index
+                && (lead_masks.get(other).copied().unwrap_or(0) & !lead_mask) == 0
+                && h.first()
+                    .is_some_and(|(m, _)| divides(m, lead) && (m != lead || other < index))
+        });
+        if !redundant {
+            minimal.push(g.clone());
+            min_masks.push(lead_mask);
+        }
+    }
+
+    let min_terms: usize = minimal.iter().map(Vec::len).sum();
+    let est_inter_work = min_terms.saturating_mul(minimal.len()).max(1);
+    let mut reduced: Vec<GPoly> =
+        if crate::execution::should_split_work(minimal.len(), est_inter_work) {
+            let mapped = crate::kernels::par::map_indexed(minimal.len(), 2, |index| {
+                let mut others = Vec::with_capacity(minimal.len().saturating_sub(1));
+                let mut other_masks = Vec::with_capacity(minimal.len().saturating_sub(1));
+                for (k, (h, &hm)) in minimal.iter().zip(&min_masks).enumerate() {
+                    if k != index {
+                        others.push(h.clone());
+                        other_masks.push(hm);
+                    }
+                }
+                let mut work = minimal.get(index)?.clone();
+                let mut scratch = Vec::with_capacity(work.len());
+                let mut done = Vec::new();
+                let mut shift = Vec::new();
+                reduce_u64_terms(
+                    barrett,
+                    &mut work,
+                    &others,
+                    &other_masks,
+                    order,
+                    &mut scratch,
+                    &mut done,
+                    &mut shift,
+                )?;
+                monic_u64(barrett, &mut done)?;
+                Some(u64_terms_to_gpoly(done))
+            });
+            let mut out = Vec::with_capacity(mapped.len());
+            for item in mapped {
+                out.push(item?);
+            }
+            out
+        } else {
+            let mut out = Vec::with_capacity(minimal.len());
+            for (index, g) in minimal.iter().enumerate() {
+                let mut others = Vec::with_capacity(minimal.len().saturating_sub(1));
+                let mut other_masks = Vec::with_capacity(minimal.len().saturating_sub(1));
+                for (k, (h, &hm)) in minimal.iter().zip(&min_masks).enumerate() {
+                    if k != index {
+                        others.push(h.clone());
+                        other_masks.push(hm);
+                    }
+                }
+                let mut work = g.clone();
+                reduce_u64_terms(
+                    barrett,
+                    &mut work,
+                    &others,
+                    &other_masks,
+                    order,
+                    &mut scratch_buf,
+                    &mut done_buf,
+                    &mut shift_buf,
+                )?;
+                let mut rem = std::mem::take(&mut done_buf);
+                monic_u64(barrett, &mut rem)?;
+                out.push(u64_terms_to_gpoly(rem));
+            }
+            out
+        };
+
+    reduced.sort_by(|a, b| {
+        match (a.leading(), b.leading()) {
+            | (Some((x, _)), Some((y, _))) => order.cmp(x, y),
+            | _ => Ordering::Equal,
+        }
+    });
+    Some(Some(reduced))
+}
+
+#[allow(clippy::single_call_fn)]
+fn groebner_general(
+    domain: &Domain,
+    generators: &[GPoly],
+    order: Order,
+    limits: GroebnerLimits,
+) -> Option<Vec<GPoly>> {
+    let mut basis: Vec<GPoly> = generators
+        .iter()
+        .filter(|g| !g.is_zero())
+        .map(|g| g.monic_in(domain))
+        .collect();
+    let mut lead_masks: Vec<i64> = basis
+        .iter()
+        .map(|g| g.leading().map_or(0_u64, |(m, _)| mono_div_mask(m)) as i64)
+        .collect();
+    let mut pairs: Vec<(usize, usize)> = (0..basis.len())
+        .flat_map(|i| (0..i).map(move |j| (j, i)))
+        .collect();
+    let mut reductions = 0_usize;
+    let threads = crate::execution::effective_threads();
+    let cap = if threads > 1 {
+        BATCH_PER_THREAD.saturating_mul(threads)
+    } else {
+        1
+    };
+    while !pairs.is_empty() {
+        let mut batch: Vec<(usize, usize)> = Vec::new();
+        let mut batch_degree: Option<u64> = None;
+        while !pairs.is_empty() && batch.len() < cap {
+            let pick = (0..pairs.len()).min_by(|&a, &b| {
+                let key = |pair_idx: usize| -> Vec<u32> {
+                    let Some(&(i, j)) = pairs.get(pair_idx) else {
+                        return Vec::new();
+                    };
+                    match (
+                        basis.get(i).and_then(GPoly::leading),
+                        basis.get(j).and_then(GPoly::leading),
+                    ) {
+                        | (Some((x, _)), Some((y, _))) => lcm(x, y),
+                        | _ => Vec::new(),
+                    }
+                };
+                order.cmp(&key(a), &key(b))
+            })?;
+            let &(i, j) = pairs.get(pick)?;
+            let (Some((lead_i, _)), Some((lead_j, _))) = (
+                basis.get(i).and_then(GPoly::leading),
+                basis.get(j).and_then(GPoly::leading),
+            ) else {
+                pairs.swap_remove(pick);
+                continue;
+            };
+            let common = lcm(lead_i, lead_j);
+            let degree: u64 = common.iter().map(|&e| u64::from(e)).sum();
+            if batch_degree.is_some_and(|d| d != degree) {
+                break;
+            }
+            pairs.swap_remove(pick);
+            let mask_i = lead_masks.get(i).copied().unwrap_or(0) as u64;
+            let mask_j = lead_masks.get(j).copied().unwrap_or(0) as u64;
+            if coprime_with_masks(lead_i, lead_j, mask_i, mask_j) {
+                continue;
+            }
+            let common_mask = mono_div_mask(&common);
+            let covered = (0..basis.len()).any(|k| {
+                k != i
+                    && k != j
+                    && ((lead_masks.get(k).copied().unwrap_or(0) as u64) & !common_mask) == 0
+                    && basis
+                        .get(k)
+                        .and_then(GPoly::leading)
+                        .is_some_and(|(m, _)| divides(m, &common))
+                    && !pairs.contains(&(i.min(k), i.max(k)))
+                    && !pairs.contains(&(j.min(k), j.max(k)))
+            });
+            if covered {
+                continue;
+            }
+            reductions = reductions.saturating_add(1);
             if reductions > limits.reductions {
                 return None;
             }
@@ -482,33 +1477,44 @@ pub fn groebner_in(
             continue;
         }
         let snapshot = basis.len();
-        let remainders: Vec<GPoly> = if batch.len() >= 2 {
-            let basis_ref = &basis;
-            crate::kernels::par::map_slice(&batch, 2, |&(i, j)| {
-                reduce_in(
-                    domain,
-                    &s_polynomial(domain, &basis_ref[i], &basis_ref[j], order),
-                    basis_ref,
-                    order,
-                )
-            })
-        } else {
-            batch
-                .iter()
-                .map(|&(i, j)| {
-                    reduce_in(
+        let basis_terms: usize = basis.iter().map(|g| g.terms().len()).sum();
+        let est_work = basis_terms.saturating_mul(basis.len()).max(1);
+        let remainders: Vec<GPoly> =
+            if batch.len() >= 2 && crate::execution::should_split_work(batch.len(), est_work) {
+                let basis_ref = &basis;
+                let masks_ref = &lead_masks;
+                crate::kernels::par::map_slice(&batch, 2, |&(i, j)| {
+                    let (Some(fi), Some(gj)) = (basis_ref.get(i), basis_ref.get(j)) else {
+                        return GPoly { terms: Vec::new() };
+                    };
+                    reduce_general_with_masks(
                         domain,
-                        &s_polynomial(domain, &basis[i], &basis[j], order),
-                        &basis,
+                        &s_polynomial(domain, fi, gj, order),
+                        basis_ref,
+                        masks_ref,
                         order,
                     )
                 })
-                .collect()
-        };
+            } else {
+                batch
+                    .iter()
+                    .map(|&(i, j)| {
+                        let (Some(fi), Some(gj)) = (basis.get(i), basis.get(j)) else {
+                            return GPoly { terms: Vec::new() };
+                        };
+                        reduce_general_with_masks(
+                            domain,
+                            &s_polynomial(domain, fi, gj, order),
+                            &basis,
+                            &lead_masks,
+                            order,
+                        )
+                    })
+                    .collect()
+            };
         for remainder in remainders {
-            // elements added earlier in this batch may reduce it further
             let remainder = if basis.len() > snapshot {
-                reduce_in(domain, &remainder, &basis, order)
+                reduce_general_with_masks(domain, &remainder, &basis, &lead_masks, order)
             } else {
                 remainder
             };
@@ -517,38 +1523,70 @@ pub fn groebner_in(
                     return None;
                 }
                 let new = basis.len();
+                let monic_rem = remainder.monic_in(domain);
+                let mask = monic_rem.leading().map_or(0_u64, |(m, _)| mono_div_mask(m)) as i64;
                 pairs.extend((0..new).map(|k| (k, new)));
-                basis.push(remainder.monic_in(domain));
+                lead_masks.push(mask);
+                basis.push(monic_rem);
             }
         }
     }
 
-    // Minimal: drop elements whose leading monomial is divisible by another's.
     let mut minimal: Vec<GPoly> = Vec::new();
+    let mut min_masks: Vec<i64> = Vec::new();
     for (index, g) in basis.iter().enumerate() {
         let Some((lead, _)) = g.leading() else {
             continue;
         };
+        let lead_mask = lead_masks.get(index).copied().unwrap_or(0) as u64;
         let redundant = basis.iter().enumerate().any(|(other, h)| {
             other != index
+                && ((lead_masks.get(other).copied().unwrap_or(0) as u64) & !lead_mask) == 0
                 && h.leading()
                     .is_some_and(|(m, _)| divides(m, lead) && (m != lead || other < index))
         });
         if !redundant {
             minimal.push(g.clone());
+            min_masks.push(lead_mask as i64);
         }
     }
-    // Reduced: each element fully reduced modulo the others.
-    let mut reduced = Vec::with_capacity(minimal.len());
-    for (index, g) in minimal.iter().enumerate() {
-        let others: Vec<GPoly> = minimal
-            .iter()
-            .enumerate()
-            .filter(|&(k, _)| k != index)
-            .map(|(_, h)| h.clone())
-            .collect();
-        reduced.push(reduce_in(domain, g, &others, order).monic_in(domain));
-    }
+    let min_terms: usize = minimal.iter().map(|g| g.terms().len()).sum();
+    let est_inter_work = min_terms.saturating_mul(minimal.len()).max(1);
+    let mut reduced = if crate::execution::should_split_work(minimal.len(), est_inter_work) {
+        crate::kernels::par::map_indexed(minimal.len(), 2, |index| {
+            let mut others = Vec::with_capacity(minimal.len().saturating_sub(1));
+            let mut other_masks = Vec::with_capacity(minimal.len().saturating_sub(1));
+            for (k, (h, &hm)) in minimal.iter().zip(&min_masks).enumerate() {
+                if k != index {
+                    others.push(h.clone());
+                    other_masks.push(hm);
+                }
+            }
+            minimal.get(index).map_or_else(
+                || GPoly { terms: Vec::new() },
+                |g| {
+                    reduce_general_with_masks(domain, g, &others, &other_masks, order)
+                        .monic_in(domain)
+                },
+            )
+        })
+    } else {
+        let mut out = Vec::with_capacity(minimal.len());
+        for (index, g) in minimal.iter().enumerate() {
+            let mut others = Vec::with_capacity(minimal.len().saturating_sub(1));
+            let mut other_masks = Vec::with_capacity(minimal.len().saturating_sub(1));
+            for (k, (h, &hm)) in minimal.iter().zip(&min_masks).enumerate() {
+                if k != index {
+                    others.push(h.clone());
+                    other_masks.push(hm);
+                }
+            }
+            out.push(
+                reduce_general_with_masks(domain, g, &others, &other_masks, order).monic_in(domain),
+            );
+        }
+        out
+    };
     reduced.sort_by(|a, b| {
         match (a.leading(), b.leading()) {
             | (Some((x, _)), Some((y, _))) => order.cmp(x, y),
@@ -575,11 +1613,20 @@ fn staircase(
     leads: &[&Vec<u32>],
     n: usize,
 ) -> Option<Staircase> {
+    let lead_masks: Vec<u64> = leads.iter().map(|l| mono_div_mask(l)).collect();
     let mut standard: Vec<Vec<u32>> = Vec::new();
     let mut index: HashMap<Vec<u32>, usize> = HashMap::new();
     let mut frontier = vec![vec![0_u32; n]];
     while let Some(m) = frontier.pop() {
-        if index.contains_key(&m) || leads.iter().any(|l| divides(l, &m)) {
+        if index.contains_key(&m) {
+            continue;
+        }
+        let m_mask = mono_div_mask(&m);
+        if leads
+            .iter()
+            .zip(&lead_masks)
+            .any(|(l, &lm)| (lm & !m_mask) == 0 && divides(l, &m))
+        {
             continue;
         }
         if standard.len() >= FGLM_MAX_DIMENSION {
@@ -696,6 +1743,13 @@ struct EchelonRow {
     pivot: usize,
 }
 
+/// Machine-word echelon row for FGLM over a 62-bit prime field `GF(p)`.
+struct EchelonRowU64 {
+    vector: Vec<u64>,
+    combination: Vec<u64>,
+    pivot: usize,
+}
+
 /// The reduced Gröbner basis in the order `to` of a zero-dimensional ideal
 /// given by its reduced Gröbner basis `basis` in the order `from` (FGLM),
 /// over the rationals.
@@ -749,17 +1803,257 @@ pub fn fglm_in(
     if !(0..n).all(pure_power) {
         return None;
     }
-    // The standard monomials, found from 1 by multiplying with the variables.
     let unit_monomial = vec![0_u32; n];
     let (standard, index) = staircase(&leads, n)?;
+
+    if let Some(p_u64) = small_prime_modulus(domain)
+        && let Some(barrett) = BarrettMod::new(p_u64)
+        && let Some(fast) = fglm_mod_u64(
+            domain,
+            barrett,
+            basis,
+            &standard,
+            &index,
+            &unit_monomial,
+            n,
+            from,
+            to,
+        )
+    {
+        return Some(fast);
+    }
+    fglm_general(
+        domain,
+        basis,
+        &standard,
+        &index,
+        &unit_monomial,
+        n,
+        from,
+        to,
+    )
+}
+
+#[allow(
+    clippy::single_call_fn,
+    clippy::too_many_arguments,
+    clippy::too_many_lines
+)]
+fn fglm_mod_u64(
+    domain: &Domain,
+    barrett: BarrettMod,
+    basis: &[GPoly],
+    standard: &[Vec<u32>],
+    index: &HashMap<Vec<u32>, usize>,
+    unit_monomial: &[u32],
+    n: usize,
+    from: Order,
+    to: Order,
+) -> Option<Vec<GPoly>> {
+    let p_u64 = barrett.modulus();
+    let p128 = u128::from(p_u64);
+    let threshold = u128::MAX.saturating_sub(p128.saturating_mul(p128));
+    let dimension = standard.len();
+
+    let mut u64_basis: Vec<Vec<(Vec<u32>, u64)>> = Vec::with_capacity(basis.len());
+    let mut basis_masks: Vec<u64> = Vec::with_capacity(basis.len());
+    for g in basis {
+        let terms = gpoly_to_u64(g, p_u64)?;
+        let mask = terms.first().map_or(0_u64, |(m, _)| mono_div_mask(m));
+        basis_masks.push(mask);
+        u64_basis.push(terms);
+    }
+
+    let mut work_buf: Vec<(Vec<u32>, u64)> = Vec::new();
+    let mut scratch_buf: Vec<(Vec<u32>, u64)> = Vec::new();
+    let mut done_buf: Vec<(Vec<u32>, u64)> = Vec::new();
+    let mut shift_buf: Vec<u32> = Vec::new();
+
+    let mut multiplication: Vec<Vec<Vec<(usize, u64)>>> = Vec::with_capacity(n);
+    for i in 0..n {
+        let mut columns = Vec::with_capacity(dimension);
+        for m in standard {
+            let mut product = m.clone();
+            let slot = product.get_mut(i)?;
+            *slot = slot.saturating_add(1);
+            let column = match index.get(&product) {
+                | Some(&position) => vec![(position, 1_u64)],
+                | None => {
+                    work_buf.clear();
+                    work_buf.push((product, 1_u64));
+                    reduce_u64_terms(
+                        barrett,
+                        &mut work_buf,
+                        &u64_basis,
+                        &basis_masks,
+                        from,
+                        &mut scratch_buf,
+                        &mut done_buf,
+                        &mut shift_buf,
+                    )?;
+                    let mut entries = Vec::with_capacity(done_buf.len());
+                    for (monomial, coeff) in &done_buf {
+                        entries.push((*index.get(monomial)?, *coeff));
+                    }
+                    entries
+                },
+            };
+            columns.push(column);
+        }
+        multiplication.push(columns);
+    }
+
+    let mut acc: Vec<u128> = vec![0_u128; dimension];
+    let mut multiply = |i: usize, v: &[u64]| -> Option<Vec<u64>> {
+        acc.fill(0);
+        let cols = multiplication.get(i)?;
+        for (j, &value) in v.iter().enumerate() {
+            if value == 0 {
+                continue;
+            }
+            let val128 = u128::from(value);
+            for &(r, coeff) in cols.get(j)? {
+                if let Some(slot) = acc.get_mut(r) {
+                    let sum = slot.saturating_add(val128.saturating_mul(u128::from(coeff)));
+                    *slot = if sum >= threshold {
+                        sum % p128
+                    } else {
+                        sum
+                    };
+                }
+            }
+        }
+        Some(acc.iter().map(|&sum| barrett.reduce_u128(sum)).collect())
+    };
+
+    let mut unit_vector = vec![0_u64; dimension];
+    *unit_vector.get_mut(*index.get(unit_monomial)?)? = 1_u64;
+    let mut queue: Vec<(Vec<u32>, Vec<u64>)> = vec![(unit_monomial.to_vec(), unit_vector)];
+    let mut seen: HashSet<Vec<u32>> = HashSet::from([unit_monomial.to_vec()]);
+    let mut out_staircase: Vec<Vec<u32>> = Vec::new();
+    let mut rows: Vec<EchelonRowU64> = Vec::new();
+    let mut new_leads: Vec<Vec<u32>> = Vec::new();
+    let mut new_lead_masks: Vec<u64> = Vec::new();
+    let mut result: Vec<GPoly> = Vec::new();
+
+    let mut rest_scratch = global_pool().scratch_i64(dimension);
+    let mut coeff_scratch = global_pool().scratch_i64(dimension);
+
+    while !queue.is_empty() {
+        let smallest = (0..queue.len()).min_by(|&a, &b| {
+            let key = |k: usize| queue.get(k).map(|e| e.0.as_slice());
+            match (key(a), key(b)) {
+                | (Some(x), Some(y)) => to.cmp(x, y),
+                | _ => Ordering::Equal,
+            }
+        })?;
+        let (monomial, vector) = queue.swap_remove(smallest);
+        let mono_mask = mono_div_mask(&monomial);
+        if new_leads
+            .iter()
+            .zip(&new_lead_masks)
+            .any(|(l, &lm)| (lm & !mono_mask) == 0 && divides(l, &monomial))
+        {
+            continue;
+        }
+        rest_scratch.clear();
+        rest_scratch.extend(vector.iter().map(|&v| v as i64));
+        coeff_scratch.clear();
+        coeff_scratch.resize(out_staircase.len(), 0_i64);
+
+        for row in &rows {
+            let c = rest_scratch.get(row.pivot).copied().unwrap_or(0) as u64;
+            if c == 0 {
+                continue;
+            }
+            let neg_c = p_u64.saturating_sub(c);
+            let neg_c_128 = u128::from(neg_c);
+            let c_128 = u128::from(c);
+            for (slot, &val) in rest_scratch.iter_mut().zip(&row.vector) {
+                if val != 0 {
+                    let cur = *slot as u64;
+                    let updated =
+                        barrett.reduce_u128(u128::from(cur) + neg_c_128 * u128::from(val));
+                    *slot = updated as i64;
+                }
+            }
+            for (slot, &val) in coeff_scratch.iter_mut().zip(&row.combination) {
+                if val != 0 {
+                    let cur = *slot as u64;
+                    let updated = barrett.reduce_u128(u128::from(cur) + c_128 * u128::from(val));
+                    *slot = updated as i64;
+                }
+            }
+        }
+        if let Some(pivot) = rest_scratch.iter().position(|&v| v != 0) {
+            let scale = rest_scratch.get(pivot).copied().unwrap_or(0) as u64;
+            let inv_scale = mod_inv_u64(scale, p_u64)?;
+            let neg_inv_scale = barrett.neg(inv_scale);
+            let mut combination = Vec::with_capacity(coeff_scratch.len().saturating_add(1));
+            for &c in coeff_scratch.iter() {
+                combination.push(barrett.mul(c as u64, neg_inv_scale));
+            }
+            combination.push(inv_scale);
+            let row_vec: Vec<u64> = rest_scratch
+                .iter()
+                .map(|&v| barrett.mul(v as u64, inv_scale))
+                .collect();
+            rows.push(EchelonRowU64 {
+                vector: row_vec,
+                combination,
+                pivot,
+            });
+            for i in 0..n {
+                let mut next = monomial.clone();
+                let slot = next.get_mut(i)?;
+                *slot = slot.saturating_add(1);
+                if seen.insert(next.clone()) {
+                    queue.push((next, multiply(i, &vector)?));
+                }
+            }
+            out_staircase.push(monomial);
+        } else {
+            let mut terms: Vec<Term> = vec![(monomial.clone(), u64_to_rat(1))];
+            for (s, &c) in out_staircase.iter().zip(coeff_scratch.iter()) {
+                if c != 0 {
+                    terms.push((s.clone(), u64_to_rat(barrett.neg(c as u64))));
+                }
+            }
+            result.push(GPoly::new_in(domain, terms, to));
+            new_lead_masks.push(mono_mask);
+            new_leads.push(monomial);
+        }
+    }
+
+    result.sort_by(|a, b| {
+        match (a.leading(), b.leading()) {
+            | (Some((x, _)), Some((y, _))) => to.cmp(x, y),
+            | _ => Ordering::Equal,
+        }
+    });
+    Some(result)
+}
+
+#[allow(clippy::single_call_fn, clippy::too_many_arguments)]
+fn fglm_general(
+    domain: &Domain,
+    basis: &[GPoly],
+    standard: &[Vec<u32>],
+    index: &HashMap<Vec<u32>, usize>,
+    unit_monomial: &[u32],
+    n: usize,
+    from: Order,
+    to: Order,
+) -> Option<Vec<GPoly>> {
     let dimension = standard.len();
     // Multiplication by x_i on the standard monomials, as sparse columns.
     let mut multiplication: Vec<Vec<Vec<(usize, BigRational)>>> = Vec::with_capacity(n);
     for i in 0..n {
         let mut columns = Vec::with_capacity(dimension);
-        for m in &standard {
+        for m in standard {
             let mut product = m.clone();
-            *product.get_mut(i)? += 1;
+            let slot = product.get_mut(i)?;
+            *slot = slot.saturating_add(1);
             let column = match index.get(&product) {
                 | Some(&position) => vec![(position, domain.one())],
                 | None => {
@@ -797,12 +2091,13 @@ pub fn fglm_in(
     };
     // Walk the monomials in the target order.
     let mut unit_vector = vec![domain.zero(); dimension];
-    *unit_vector.get_mut(*index.get(&unit_monomial)?)? = domain.one();
-    let mut queue: Vec<(Vec<u32>, Vec<BigRational>)> = vec![(unit_monomial.clone(), unit_vector)];
-    let mut seen: HashSet<Vec<u32>> = HashSet::from([unit_monomial]);
-    let mut staircase: Vec<Vec<u32>> = Vec::new();
+    *unit_vector.get_mut(*index.get(unit_monomial)?)? = domain.one();
+    let mut queue: Vec<(Vec<u32>, Vec<BigRational>)> = vec![(unit_monomial.to_vec(), unit_vector)];
+    let mut seen: HashSet<Vec<u32>> = HashSet::from([unit_monomial.to_vec()]);
+    let mut out_staircase: Vec<Vec<u32>> = Vec::new();
     let mut rows: Vec<EchelonRow> = Vec::new();
     let mut new_leads: Vec<Vec<u32>> = Vec::new();
+    let mut new_lead_masks: Vec<u64> = Vec::new();
     let mut result: Vec<GPoly> = Vec::new();
     while !queue.is_empty() {
         let smallest = (0..queue.len()).min_by(|&a, &b| {
@@ -813,12 +2108,17 @@ pub fn fglm_in(
             }
         })?;
         let (monomial, vector) = queue.swap_remove(smallest);
-        if new_leads.iter().any(|l| divides(l, &monomial)) {
+        let mono_mask = mono_div_mask(&monomial);
+        if new_leads
+            .iter()
+            .zip(&new_lead_masks)
+            .any(|(l, &lm)| (lm & !mono_mask) == 0 && divides(l, &monomial))
+        {
             continue;
         }
         // Reduce against the echelon rows, tracking the combination.
         let mut rest = vector.clone();
-        let mut coefficients = vec![domain.zero(); staircase.len()];
+        let mut coefficients = vec![domain.zero(); out_staircase.len()];
         for row in &rows {
             let c = rest.get(row.pivot)?.clone();
             if domain.is_zero(&c) {
@@ -857,21 +2157,23 @@ pub fn fglm_in(
             });
             for i in 0..n {
                 let mut next = monomial.clone();
-                *next.get_mut(i)? += 1;
+                let slot = next.get_mut(i)?;
+                *slot = slot.saturating_add(1);
                 if seen.insert(next.clone()) {
                     queue.push((next, multiply(i, &vector)?));
                 }
             }
-            staircase.push(monomial);
+            out_staircase.push(monomial);
         } else {
             // monomial = Σ coefficients_j staircase_j modulo the ideal.
             let mut terms: Vec<Term> = vec![(monomial.clone(), domain.one())];
-            for (s, c) in staircase.iter().zip(&coefficients) {
+            for (s, c) in out_staircase.iter().zip(&coefficients) {
                 if !domain.is_zero(c) {
                     terms.push((s.clone(), domain.neg(c)));
                 }
             }
             result.push(GPoly::new_in(domain, terms, to));
+            new_lead_masks.push(mono_mask);
             new_leads.push(monomial);
         }
     }
@@ -1924,5 +3226,146 @@ mod tests {
             conversions >= 15,
             "FGLM succeeded only {conversions} times over the prime fields"
         );
+    }
+
+    #[test]
+    fn groebner_mono_div_mask_and_u64_fast_paths_agree_with_general_and_parallel() {
+        // Soundness of mono_div_mask and coprime_with_masks across <= 8 and > 8 variables.
+        let samples = [
+            vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            vec![1, 0, 2, 0, 0, 0, 0, 3, 1, 0],
+            vec![3, 2, 2, 0, 1, 0, 0, 5, 1, 2],
+            vec![0, 4, 0, 1, 0, 0, 0, 0, 0, 4],
+            vec![8, 9, 7, 6, 5, 4, 3, 2, 1, 5],
+        ];
+        for a in &samples {
+            let ma = mono_div_mask(a);
+            for b in &samples {
+                let mb = mono_div_mask(b);
+                if divides(a, b) {
+                    assert_eq!(ma & !mb, 0, "mono_div_mask rejected true divisor");
+                }
+                let expected_coprime = a.iter().zip(b).all(|(&x, &y)| x == 0 || y == 0);
+                assert_eq!(coprime_with_masks(a, b, ma, mb), expected_coprime);
+            }
+        }
+
+        // Exact agreement between u64 fast paths and general BigRational paths
+        // for groebner, reduce_batch_in, and fglm over small and 61-bit primes.
+        for modulus in [2_i64, 101, 65_521, (1_i64 << 61) - 1] {
+            let domain = Domain::prime(BigInt::from(modulus))
+                .unwrap_or_else(|| panic!("{modulus} is prime"));
+            let system = oracle::katsura(3);
+            let gens = oracle::generators(modulus, &system, Order::GradedRevLex);
+            let fast_gb = groebner_in(
+                &domain,
+                &gens,
+                Order::GradedRevLex,
+                GroebnerLimits::default(),
+            )
+            .unwrap_or_else(|| panic!("fast groebner GF({modulus})"));
+            let gen_gb = groebner_general(
+                &domain,
+                &gens,
+                Order::GradedRevLex,
+                GroebnerLimits::default(),
+            )
+            .unwrap_or_else(|| panic!("general groebner GF({modulus})"));
+            assert_eq!(fast_gb, gen_gb, "groebner mismatch for GF({modulus})");
+
+            // Batch normal-form reduction agreement and serial-vs-parallel determinism.
+            let mut candidates = gens.clone();
+            for k in 0..48 {
+                let mut m = vec![0_u32; 4];
+                m[k % 4] = u32::try_from((k / 4) % 3 + 1).unwrap_or(1);
+                m[(k + 1) % 4] = 1;
+                candidates.push(GPoly::new_in(
+                    &domain,
+                    vec![(m, u64_to_rat(u64::try_from((k % 7) + 1).unwrap_or(1)))],
+                    Order::GradedRevLex,
+                ));
+            }
+            let serial_batch = crate::execution::with_scoped_pool(Some(1), || {
+                reduce_batch_in(&domain, &candidates, &fast_gb, Order::GradedRevLex)
+            });
+            let parallel_batch = crate::execution::with_scoped_pool(Some(4), || {
+                reduce_batch_in(&domain, &candidates, &fast_gb, Order::GradedRevLex)
+            });
+            assert_eq!(serial_batch, parallel_batch);
+            for (cand, red) in candidates.iter().zip(&serial_batch) {
+                let masks: Vec<i64> = fast_gb
+                    .iter()
+                    .map(|g| g.leading().map_or(0_u64, |(m, _)| mono_div_mask(m)) as i64)
+                    .collect();
+                assert_eq!(
+                    red,
+                    &reduce_general_with_masks(
+                        &domain,
+                        cand,
+                        &fast_gb,
+                        &masks,
+                        Order::GradedRevLex
+                    )
+                );
+            }
+
+            // FGLM u64 fast path vs general path (for primes where katsura-3 is 0-dim).
+            if modulus != 2 {
+                let leads: Vec<&Vec<u32>> = fast_gb
+                    .iter()
+                    .filter_map(|g| g.leading().map(|(m, _)| m))
+                    .collect();
+                let n = leads[0].len();
+                let unit = vec![0_u32; n];
+                let (standard, index) =
+                    staircase(&leads, n).unwrap_or_else(|| panic!("staircase for GF({modulus})"));
+                let barrett = BarrettMod::new(modulus as u64)
+                    .unwrap_or_else(|| panic!("barrett for {modulus}"));
+                let fast_lex = fglm_mod_u64(
+                    &domain,
+                    barrett,
+                    &fast_gb,
+                    &standard,
+                    &index,
+                    &unit,
+                    n,
+                    Order::GradedRevLex,
+                    Order::Lex,
+                );
+                let gen_lex = fglm_general(
+                    &domain,
+                    &fast_gb,
+                    &standard,
+                    &index,
+                    &unit,
+                    n,
+                    Order::GradedRevLex,
+                    Order::Lex,
+                );
+                assert_eq!(fast_lex, gen_lex, "fglm mismatch for GF({modulus})");
+            }
+        }
+
+        // Serial vs parallel determinism for Buchberger over GF(65521).
+        let p = 65_521_i64;
+        let domain = Domain::prime(BigInt::from(p)).unwrap_or_else(|| panic!("65521 is prime"));
+        let gens = oracle::generators(p, &oracle::cyclic(4), Order::GradedRevLex);
+        let serial = crate::execution::with_scoped_pool(Some(1), || {
+            groebner_in(
+                &domain,
+                &gens,
+                Order::GradedRevLex,
+                GroebnerLimits::default(),
+            )
+        });
+        let parallel = crate::execution::with_scoped_pool(Some(4), || {
+            groebner_in(
+                &domain,
+                &gens,
+                Order::GradedRevLex,
+                GroebnerLimits::default(),
+            )
+        });
+        assert_eq!(serial, parallel);
     }
 }

@@ -45,8 +45,12 @@ use std::fmt;
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use num_traits::One;
+use num_traits::Signed;
+use num_traits::ToPrimitive;
 use num_traits::Zero;
 
+use crate::kernels::finite_field::BarrettMod;
+use crate::kernels::finite_field::MontgomeryPrimeField;
 use crate::rules::discrete::mod_inverse;
 use crate::rules::discrete::modulo;
 use crate::rules::number_theory::is_prime;
@@ -82,6 +86,30 @@ impl Domain {
             | Self::Rational => None,
             | Self::Prime(p) => Some(p),
         }
+    }
+
+    /// Returns the prime modulus as a `u64` when this is a prime field `GF(p)`
+    /// and `p` fits in a `u64` (`2 <= p <= u64::MAX`).
+    #[must_use]
+    pub fn prime_u64(&self) -> Option<u64> {
+        match self {
+            | Self::Rational => None,
+            | Self::Prime(p) => p.to_u64().filter(|&m| m >= 2),
+        }
+    }
+
+    /// Returns a precomputed [`MontgomeryPrimeField`] engine when this is an odd
+    /// prime field `GF(p)` with `p` fitting in `u64`.
+    #[must_use]
+    pub fn montgomery(&self) -> Option<MontgomeryPrimeField> {
+        MontgomeryPrimeField::new(self.prime_u64()?)
+    }
+
+    /// Returns a precomputed [`BarrettMod`] engine when this is a prime field
+    /// `GF(p)` with `p` fitting in `u64`.
+    #[must_use]
+    pub fn barrett(&self) -> Option<BarrettMod> {
+        BarrettMod::new(self.prime_u64()?)
     }
 
     /// Whether this is the rational field.
@@ -136,11 +164,41 @@ impl Domain {
         }
     }
 
+    /// Reduces a `BigInt` modulo a `u64` prime `p_u64` without allocating when
+    /// `value` fits in `u64` or `i64`.
+    fn bigint_mod_u64(
+        value: &BigInt,
+        p: &BigInt,
+        barrett: BarrettMod,
+    ) -> u64 {
+        if let Some(v) = value.to_u64() {
+            return barrett.reduce_u64(v);
+        }
+        if let Some(v) = value.to_i64() {
+            let mag = barrett.reduce_u64(v.unsigned_abs());
+            return if v < 0 {
+                barrett.neg(mag)
+            } else {
+                mag
+            };
+        }
+        modulo(value, p).to_u64().unwrap_or(0)
+    }
+
     /// The canonical residue of a rational modulo `p`.
     fn residue(
         coefficient: &BigRational,
         p: &BigInt,
     ) -> Option<BigInt> {
+        if let Some(barrett) = p.to_u64().and_then(BarrettMod::new) {
+            let numer = Self::bigint_mod_u64(coefficient.numer(), p, barrett);
+            if coefficient.denom().is_one() {
+                return Some(BigInt::from(numer));
+            }
+            let denom = Self::bigint_mod_u64(coefficient.denom(), p, barrett);
+            let inv = barrett.inv(denom)?;
+            return Some(BigInt::from(barrett.mul(numer, inv)));
+        }
         let numer = modulo(coefficient.numer(), p);
         if coefficient.denom().is_one() {
             return Some(numer);
@@ -163,6 +221,17 @@ impl Domain {
         coefficient.numer().clone()
     }
 
+    /// Fast extraction of a canonical `u64` integer coefficient when non-negative.
+    fn integer_u64(coefficient: &BigRational) -> Option<u64> {
+        debug_assert!(
+            coefficient.denom().is_one(),
+            "a canonical GF(p) coefficient is an integer"
+        );
+        (!coefficient.numer().is_negative())
+            .then(|| coefficient.numer().to_u64())
+            .flatten()
+    }
+
     /// `a + b` in the field.
     #[must_use]
     pub fn add(
@@ -173,6 +242,13 @@ impl Domain {
         match self {
             | Self::Rational => a + b,
             | Self::Prime(p) => {
+                if let (Some(barrett), Some(au), Some(bu)) = (
+                    p.to_u64().and_then(BarrettMod::new),
+                    Self::integer_u64(a),
+                    Self::integer_u64(b),
+                ) {
+                    return BigRational::from_integer(BigInt::from(barrett.add(au, bu)));
+                }
                 BigRational::from_integer(modulo(&(Self::integer(a) + Self::integer(b)), p))
             },
         }
@@ -188,6 +264,13 @@ impl Domain {
         match self {
             | Self::Rational => a - b,
             | Self::Prime(p) => {
+                if let (Some(barrett), Some(au), Some(bu)) = (
+                    p.to_u64().and_then(BarrettMod::new),
+                    Self::integer_u64(a),
+                    Self::integer_u64(b),
+                ) {
+                    return BigRational::from_integer(BigInt::from(barrett.sub(au, bu)));
+                }
                 BigRational::from_integer(modulo(&(Self::integer(a) - Self::integer(b)), p))
             },
         }
@@ -203,6 +286,13 @@ impl Domain {
         match self {
             | Self::Rational => a * b,
             | Self::Prime(p) => {
+                if let (Some(barrett), Some(au), Some(bu)) = (
+                    p.to_u64().and_then(BarrettMod::new),
+                    Self::integer_u64(a),
+                    Self::integer_u64(b),
+                ) {
+                    return BigRational::from_integer(BigInt::from(barrett.mul(au, bu)));
+                }
                 BigRational::from_integer(modulo(&(Self::integer(a) * Self::integer(b)), p))
             },
         }
@@ -217,6 +307,11 @@ impl Domain {
         match self {
             | Self::Rational => -a,
             | Self::Prime(p) => {
+                if let (Some(barrett), Some(au)) =
+                    (p.to_u64().and_then(BarrettMod::new), Self::integer_u64(a))
+                {
+                    return BigRational::from_integer(BigInt::from(barrett.neg(au)));
+                }
                 BigRational::from_integer(modulo(&(BigInt::zero() - Self::integer(a)), p))
             },
         }
@@ -238,6 +333,21 @@ impl Domain {
                 }
             },
             | Self::Prime(p) => {
+                if let Some(barrett) = p.to_u64().and_then(BarrettMod::new) {
+                    let numer = Self::bigint_mod_u64(a.numer(), p, barrett);
+                    if numer == 0 {
+                        return None;
+                    }
+                    let residue = if a.denom().is_one() {
+                        numer
+                    } else {
+                        let denom = Self::bigint_mod_u64(a.denom(), p, barrett);
+                        barrett.mul(numer, barrett.inv(denom)?)
+                    };
+                    return barrett
+                        .inv(residue)
+                        .map(|inv| BigRational::from_integer(BigInt::from(inv)));
+                }
                 let residue = Self::residue(a, p)?;
                 if residue.is_zero() {
                     return None;
@@ -254,6 +364,17 @@ impl Domain {
         a: &BigRational,
         b: &BigRational,
     ) -> Option<BigRational> {
+        if let Self::Prime(p) = self
+            && let (Some(barrett), Some(au), Some(bu)) = (
+                p.to_u64().and_then(BarrettMod::new),
+                Self::integer_u64(a),
+                Self::integer_u64(b),
+            )
+        {
+            return barrett
+                .div(au, bu)
+                .map(|q| BigRational::from_integer(BigInt::from(q)));
+        }
         Some(self.mul(a, &self.inv(b)?))
     }
 }
@@ -1066,5 +1187,49 @@ mod tests {
         assert_eq!(domain.div(&a, &b), Some(rational(3, 2)));
         assert_eq!(domain.inv(&domain.zero()), None);
         assert_eq!(domain.normalize(&a), Some(a));
+        assert_eq!(domain.prime_u64(), None);
+        assert_eq!(domain.montgomery(), None);
+        assert_eq!(domain.barrett(), None);
+    }
+
+    #[test]
+    fn u64_prime_domain_helpers_and_large_prime_fallback_agree() {
+        // 61-bit Mersenne prime 2^61 - 1 fits in u64 fast path.
+        let p61 = (1u64 << 61) - 1;
+        let dom61 = Domain::prime(BigInt::from(p61)).unwrap();
+        assert_eq!(dom61.prime_u64(), Some(p61));
+        assert!(dom61.montgomery().is_some());
+        assert!(dom61.barrett().is_some());
+
+        let a = BigRational::from_integer(BigInt::from(p61 - 17));
+        let b = BigRational::from_integer(BigInt::from(p61 - 29));
+        let sum = dom61.add(&a, &b);
+        assert_eq!(sum, BigRational::from_integer(BigInt::from(p61 - 46)));
+        let prod = dom61.mul(&a, &b);
+        assert_eq!(prod, BigRational::from_integer(BigInt::from(17 * 29)));
+        let inv_a = dom61.inv(&a).unwrap();
+        assert_eq!(dom61.mul(&a, &inv_a), dom61.one());
+        assert_eq!(dom61.div(&prod, &a), Some(b));
+
+        // GF(2) has prime_u64 = Some(2), barrett = Some(..), montgomery = None (even prime).
+        let dom2 = Domain::prime(BigInt::from(2)).unwrap();
+        assert_eq!(dom2.prime_u64(), Some(2));
+        assert!(dom2.barrett().is_some());
+        assert!(dom2.montgomery().is_none());
+
+        // 127-bit Mersenne prime 2^127 - 1 exceeds u64 and uses BigInt fallback.
+        let p127: BigInt = (BigInt::from(1) << 127) - 1;
+        let dom127 = Domain::prime(p127.clone()).unwrap();
+        assert_eq!(dom127.prime_u64(), None);
+        assert!(dom127.montgomery().is_none());
+        assert!(dom127.barrett().is_none());
+        let x = BigRational::from_integer(&p127 - BigInt::from(5));
+        let y = BigRational::from_integer(&p127 - BigInt::from(7));
+        assert_eq!(
+            dom127.mul(&x, &y),
+            BigRational::from_integer(BigInt::from(35))
+        );
+        let inv_x = dom127.inv(&x).unwrap();
+        assert_eq!(dom127.mul(&x, &inv_x), dom127.one());
     }
 }

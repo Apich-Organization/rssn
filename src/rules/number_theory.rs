@@ -317,11 +317,53 @@ fn mod_eval(args: &[f64]) -> f64 {
     a.rem_euclid(m.abs()).to_f64().unwrap_or(f64::NAN)
 }
 
+fn small_rem_u32_digits(
+    words: &[u32],
+    modulus: u64,
+) -> u64 {
+    if modulus <= u64::from(u32::MAX) {
+        words.iter().rev().fold(0_u64, |carry, &word| {
+            ((carry << 32) | u64::from(word)) % modulus
+        })
+    } else {
+        let m128 = u128::from(modulus);
+        words.iter().rev().fold(0_u128, |carry, &word| {
+            ((carry << 32) | u128::from(word)) % m128
+        }) as u64
+    }
+}
+
+fn bigint_mod_u64(
+    a: &BigInt,
+    m: u64,
+) -> u64 {
+    if m <= 1 {
+        return 0;
+    }
+    if let Some(v) = a.to_u64() {
+        return v % m;
+    }
+    if let Some(v) = a.to_i64() {
+        let r = v.unsigned_abs() % m;
+        return if v < 0 && r != 0 { m - r } else { r };
+    }
+    let (sign, digits) = a.to_u32_digits();
+    let rem = small_rem_u32_digits(&digits, m);
+    if sign == num_bigint::Sign::Minus && rem != 0 {
+        m - rem
+    } else {
+        rem
+    }
+}
+
 /// Greatest common divisor, non-negative.
 pub(crate) fn gcd(
     a: &BigInt,
     b: &BigInt,
 ) -> BigInt {
+    if let (Some(au), Some(bu)) = (a.magnitude().to_u64(), b.magnitude().to_u64()) {
+        return BigInt::from(crate::kernels::number_theory::gcd(au, bu));
+    }
     let (mut x, mut y) = (a.abs(), b.abs());
     while !y.is_zero() {
         let r = &x % &y;
@@ -338,6 +380,9 @@ fn modulo(
 ) -> Option<BigInt> {
     if m.is_zero() {
         return None;
+    }
+    if let Some(mu) = m.magnitude().to_u64() {
+        return Some(BigInt::from(bigint_mod_u64(a, mu)));
     }
     let m = m.abs();
     let r = a % &m;
@@ -379,12 +424,35 @@ fn egcd(
 }
 
 /// The inverse of `a` modulo `m > 0`, if `gcd(a, m) = 1`.
-fn invmod(
+fn mod_inverse(
     a: &BigInt,
     m: &BigInt,
 ) -> Option<BigInt> {
     if !m.is_positive() {
         return None;
+    }
+    if let Some(m_i64) = m.to_i64() {
+        if m_i64 == 1 {
+            return Some(BigInt::zero());
+        }
+        let a_i64 = a
+            .to_i64()
+            .unwrap_or_else(|| bigint_mod_u64(a, m_i64 as u64) as i64);
+        return crate::kernels::number_theory::mod_inverse(a_i64, m_i64).map(BigInt::from);
+    }
+    if let Some(m_u64) = m.to_u64() {
+        let m_i128 = i128::from(m_u64);
+        let a_rem = i128::from(bigint_mod_u64(a, m_u64));
+        let (mut r0, mut r1) = (m_i128, a_rem);
+        let (mut t0, mut t1) = (0_i128, 1_i128);
+        while r1 != 0 {
+            let q = r0 / r1;
+            (r0, r1) = (r1, r0 - q * r1);
+            (t0, t1) = (t1, t0 - q * t1);
+        }
+        return (r0 == 1)
+            .then(|| u64::try_from(t0.rem_euclid(m_i128)).ok().map(BigInt::from))
+            .flatten();
     }
     let (g, x, _) = egcd(&modulo(a, m)?, m);
     if g.is_one() {
@@ -401,80 +469,20 @@ pub(crate) fn is_prime(n: &BigInt) -> bool {
     if n.is_negative() {
         return false;
     }
+    if let Some(wide) = n.to_u128() {
+        return crate::kernels::number_theory::is_prime_u128(wide);
+    }
     bpsw(n)
-}
-
-const fn gcd_u64(
-    mut a: u64,
-    mut b: u64,
-) -> u64 {
-    while b != 0 {
-        (a, b) = (b, a % b);
-    }
-    a
-}
-
-/// A non-trivial factor of the odd composite `n` by Pollard's rho.
-fn rho(n: u64) -> Option<u64> {
-    let step = |x: u64, c: u64| {
-        let wide = (u128::from(x) * u128::from(x) + u128::from(c)) % u128::from(n);
-        u64::try_from(wide).unwrap_or(0)
-    };
-    for c in 1..64 {
-        let (mut x, mut y, mut d) = (2_u64, 2_u64, 1_u64);
-        while d == 1 {
-            x = step(x, c);
-            y = step(step(y, c), c);
-            d = gcd_u64(x.abs_diff(y), n);
-        }
-        if d != n {
-            return Some(d);
-        }
-    }
-    None
-}
-
-/// Appends the prime factors of `n` (with multiplicity) to `out`.
-fn split(
-    n: u64,
-    out: &mut Vec<u64>,
-) -> bool {
-    if n == 1 {
-        return true;
-    }
-    if crate::kernels::number_theory::is_prime_miller_rabin(n) {
-        out.push(n);
-        return true;
-    }
-    // Rho cycles too early on prime squares.
-    let root = n.isqrt();
-    if root * root == n {
-        return split(root, out) && split(root, out);
-    }
-    rho(n).is_some_and(|d| split(d, out) && split(n / d, out))
 }
 
 /// Prime factorisation as ascending `(prime, exponent)` pairs.
 pub(crate) fn factor(n: &BigInt) -> Option<Vec<(u64, u32)>> {
-    let mut n = n.to_u64().filter(|&v| v >= 1)?;
-    let mut primes = Vec::new();
-    for d in 2..=1000_u64 {
-        if d * d > n {
-            break;
-        }
-        while n % d == 0 {
-            primes.push(d);
-            n /= d;
-        }
-    }
-    if !split(n, &mut primes) {
-        return None;
-    }
-    primes.sort_unstable();
+    let val = n.to_u64().filter(|&v| v >= 1)?;
+    let primes = crate::kernels::number_theory::factorize(val);
     let mut out: Vec<(u64, u32)> = Vec::new();
     for p in primes {
         match out.last_mut() {
-            | Some((q, e)) if *q == p => *e += 1,
+            | Some((q, e)) if *q == p => *e = e.saturating_add(1),
             | _ => out.push((p, 1)),
         }
     }
@@ -576,42 +584,80 @@ fn strong_lucas(n: &BigInt) -> bool {
 /// probable-prime test to base 2 and a strong Lucas test. No composite is
 /// known that passes it (and none exists below `2^64`).
 pub(crate) fn bpsw(n: &BigInt) -> bool {
-    if *n < BigInt::from(2) {
+    if let Some(small) = n.to_u64() {
+        return crate::kernels::number_theory::is_prime_miller_rabin(small);
+    }
+    if n.is_negative() {
         return false;
     }
-    for p in SMALL_PRIMES {
-        let p = BigInt::from(p);
-        if *n == p {
-            return true;
-        }
-        if (n % &p).is_zero() {
+    if let Some(wide) = n.to_u128() {
+        return crate::kernels::number_theory::is_prime_u128(wide);
+    }
+    let small_primes = crate::kernels::reuse::global_pool().prime_sieve_cache(100);
+    let (_, digits) = n.to_u32_digits();
+    for &p in small_primes.iter() {
+        if small_rem_u32_digits(&digits, p as u64) == 0 {
             return false;
         }
     }
     strong_probable_prime(n, &BigInt::from(2)) && strong_lucas(n)
 }
 
-const SMALL_PRIMES: [u32; 25] = [
-    2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97,
-];
-
 /// Sieve of Eratosthenes: `flags[k]` says whether `k` is prime.
 fn prime_flags(limit: usize) -> Vec<bool> {
-    let mut flags = vec![true; limit + 1];
-    for k in 0..=1.min(limit) {
-        flags[k] = false;
+    if limit < 2 {
+        return vec![false; limit.saturating_add(1)];
     }
-    let mut p = 2;
-    while p * p <= limit {
-        if flags[p] {
-            let mut multiple = p * p;
-            while multiple <= limit {
-                flags[multiple] = false;
-                multiple += p;
+    if limit <= 1_000_000 {
+        let primes = crate::kernels::reuse::global_pool().prime_sieve_cache(limit);
+        let mut flags = vec![false; limit.saturating_add(1)];
+        for &p in primes.iter() {
+            if let Some(slot) = flags.get_mut(p) {
+                *slot = true;
             }
         }
-        p += 1;
+        return flags;
     }
+    let root = crate::kernels::number_theory::isqrt(limit as u64) as usize;
+    let base_primes = crate::kernels::reuse::global_pool().prime_sieve_cache(root);
+    let len = limit.saturating_add(1);
+    let mut flags = vec![true; len];
+    if let Some(slot) = flags.get_mut(0) {
+        *slot = false;
+    }
+    if let Some(slot) = flags.get_mut(1) {
+        *slot = false;
+    }
+    let chunk = crate::execution::choose_chunk_size(len, 65_536);
+    crate::kernels::par::for_chunks_mut(&mut flags, chunk, 2, |chunk_idx, slice| {
+        let lo = chunk_idx.saturating_mul(chunk);
+        let hi = lo.saturating_add(slice.len()).saturating_sub(1);
+        for &p in base_primes.iter() {
+            let p_sq = p.saturating_mul(p);
+            if p_sq > hi {
+                break;
+            }
+            let mut start = if p_sq >= lo {
+                p_sq
+            } else {
+                let rem = lo % p;
+                if rem == 0 {
+                    lo
+                } else {
+                    lo.saturating_add(p.saturating_sub(rem))
+                }
+            };
+            while start <= hi {
+                if let Some(slot) = slice.get_mut(start.saturating_sub(lo)) {
+                    *slot = false;
+                }
+                let Some(next) = start.checked_add(p) else {
+                    break;
+                };
+                start = next;
+            }
+        }
+    });
     flags
 }
 
@@ -704,7 +750,7 @@ fn ecm_curve(
     if g > BigInt::one() {
         return (g < *n).then_some(g);
     }
-    let inverse = invmod(&denominator, n)?;
+    let inverse = mod_inverse(&denominator, n)?;
     let curve = Montgomery {
         n,
         a24: numerator * inverse % n,
@@ -734,7 +780,9 @@ fn ecm_curve(
         return None;
     }
     // Stage 2.
-    let coprime: Vec<u64> = (1..=D / 2).filter(|&j| gcd_u64(j, D) == 1).collect();
+    let coprime: Vec<u64> = (1..=D / 2)
+        .filter(|&j| crate::kernels::number_theory::gcd(j, D) == 1)
+        .collect();
     let mut multiples: Vec<XzPoint> = vec![
         (BigInt::zero(), BigInt::zero()),
         point.clone(),
@@ -891,11 +939,27 @@ pub(crate) fn factor_big(n: &BigInt) -> Option<Vec<(BigInt, u32)>> {
     }
     let mut primes: Vec<BigInt> = Vec::new();
     let mut rest = n.clone();
-    for d in 2_u32..=1000 {
-        let d = BigInt::from(d);
-        while (&rest % &d).is_zero() {
-            primes.push(d.clone());
-            rest /= &d;
+    if let Some(twos) = rest.trailing_zeros()
+        && twos > 0
+    {
+        let count = usize::try_from(twos).ok()?;
+        primes.extend(std::iter::repeat_n(BigInt::from(2), count));
+        rest >>= twos;
+    }
+    let small_primes = crate::kernels::reuse::global_pool().prime_sieve_cache(1000);
+    let mut digits = rest.to_u32_digits().1;
+    for &p in small_primes.iter().skip(1) {
+        let p_u64 = p as u64;
+        if small_rem_u32_digits(&digits, p_u64) == 0 {
+            let p_big = BigInt::from(p_u64);
+            while small_rem_u32_digits(&digits, p_u64) == 0 {
+                primes.push(p_big.clone());
+                rest /= &p_big;
+                digits = rest.to_u32_digits().1;
+            }
+            if rest.is_one() {
+                break;
+            }
         }
     }
     let mut stack = vec![rest];
@@ -952,6 +1016,24 @@ fn next_prime(n: &BigInt) -> Option<BigInt> {
     if *n < two {
         return Some(two);
     }
+    if let Some(v) = n.to_u64()
+        && v <= u64::MAX - 2048
+    {
+        let mut candidate = if (v & 1) == 0 {
+            v.saturating_add(1)
+        } else {
+            v.saturating_add(2)
+        };
+        for _ in 0..1_000_000 {
+            if crate::kernels::number_theory::is_prime_miller_rabin(candidate) {
+                return Some(BigInt::from(candidate));
+            }
+            let Some(next) = candidate.checked_add(2) else {
+                break;
+            };
+            candidate = next;
+        }
+    }
     let mut candidate: BigInt = n + 1;
     if !candidate.bit(0) {
         candidate += 1;
@@ -972,6 +1054,12 @@ fn jacobi(
 ) -> Option<i8> {
     if !n.is_positive() || !n.bit(0) {
         return None;
+    }
+    if let Some(n_u64) = n.to_u64() {
+        let a_i128 = a
+            .to_i128()
+            .unwrap_or_else(|| i128::from(bigint_mod_u64(a, n_u64)));
+        return i8::try_from(crate::kernels::number_theory::jacobi_symbol(a_i128, n_u64)).ok();
     }
     let (mut a, mut n) = (modulo(a, n)?, n.clone());
     let mut sign = 1_i8;
@@ -1019,8 +1107,53 @@ fn crt_solution(
             return coprime_product_tree(residues, moduli, grain);
         }
     }
-    let (mut first, mut period) = (BigInt::zero(), BigInt::one());
-    for (r, m) in residues.iter().zip(moduli) {
+    let mut idx = 0_usize;
+    let mut first_u128 = 0_u128;
+    let mut period_u128 = 1_u128;
+    while let (Some(r_big), Some(m_big)) = (residues.get(idx), moduli.get(idx)) {
+        if !m_big.is_positive() {
+            return None;
+        }
+        if m_big.is_one() {
+            idx = idx.saturating_add(1);
+            continue;
+        }
+        let Some(m_u64) = m_big.to_u64().filter(|&v| v <= i64::MAX as u64) else {
+            break;
+        };
+        let r_u64 = bigint_mod_u64(r_big, m_u64);
+        let f_mod_m = (first_u128 % u128::from(m_u64)) as i64;
+        let p_mod_m = (period_u128 % u128::from(m_u64)) as i64;
+        let (g_128, inv_128, _) = crate::kernels::number_ext::xgcd(p_mod_m, m_u64 as i64);
+        let g = u64::try_from(g_128).ok()?;
+        let (modulus, diff_q) = if g == 1 {
+            (m_u64, i128::from(r_u64) - i128::from(f_mod_m))
+        } else {
+            if require_pairwise_coprime {
+                return None;
+            }
+            let diff = i128::from(r_u64) - i128::from(f_mod_m);
+            if diff % g_128 != 0 {
+                return None;
+            }
+            (m_u64 / g, diff / g_128)
+        };
+        let Some(next_period) = period_u128.checked_mul(u128::from(modulus)) else {
+            break;
+        };
+        let mod_i128 = i128::from(modulus);
+        let inv_u = u128::try_from(inv_128.rem_euclid(mod_i128)).ok()?;
+        let diff_u = u128::try_from(diff_q.rem_euclid(mod_i128)).ok()?;
+        let step = (diff_u * inv_u) % u128::from(modulus);
+        first_u128 = first_u128.saturating_add(period_u128.saturating_mul(step));
+        period_u128 = next_period;
+        idx = idx.saturating_add(1);
+    }
+    if idx == moduli.len() {
+        return Some((BigInt::from(first_u128), BigInt::from(period_u128)));
+    }
+    let (mut first, mut period) = (BigInt::from(first_u128), BigInt::from(period_u128));
+    for (r, m) in residues.iter().zip(moduli).skip(idx) {
         if !m.is_positive() {
             return None;
         }
@@ -1687,7 +1820,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ),
         |a| {
             match a {
-                | [x, m] => invmod(x, m).map(Value::Int),
+                | [x, m] => mod_inverse(x, m).map(Value::Int),
                 | _ => None,
             }
         },
@@ -2647,50 +2780,15 @@ fn mulm(
 }
 
 /// A square root of `a` modulo the prime `p` by Tonelli–Shanks.
+///
+/// The implementation is [`crate::kernels::number_theory::sqrt_mod_prime`],
+/// which returns the smaller of the two roots; every caller here passes a
+/// prime modulus.
 fn tonelli_shanks(
     a: u64,
     p: u64,
 ) -> Option<u64> {
-    let a = a % p;
-    if a == 0 {
-        return Some(0);
-    }
-    if p == 2 {
-        return Some(a);
-    }
-    if pow_mod(a, (p - 1) / 2, p) != 1 {
-        return None;
-    }
-    let (mut q, mut s) = (p - 1, 0_u32);
-    while q % 2 == 0 {
-        q /= 2;
-        s += 1;
-    }
-    let mut z = 2;
-    while pow_mod(z, (p - 1) / 2, p) != p - 1 {
-        z += 1;
-    }
-    let mut m = s;
-    let mut c = pow_mod(z, q, p);
-    let mut t = pow_mod(a, q, p);
-    let mut r = pow_mod(a, q.div_ceil(2), p);
-    while t != 1 {
-        let mut i = 0_u32;
-        let mut probe = t;
-        while probe != 1 {
-            probe = pow_mod(probe, 2, p);
-            i += 1;
-            if i >= m {
-                return None;
-            }
-        }
-        let b = pow_mod(c, 1 << (m - i - 1), p);
-        m = i;
-        c = pow_mod(b, 2, p);
-        t = mulm(t, c, p);
-        r = mulm(r, b, p);
-    }
-    Some(r.min(p - r))
+    crate::kernels::number_theory::sqrt_mod_prime(a, p)
 }
 
 /// Carmichael's `λ(n)`.
@@ -2801,7 +2899,7 @@ fn dlog(
         table.entry(value.clone()).or_insert(j);
         value = &value * &g % n;
     }
-    let giant_inverse = invmod(&g.modpow(&big(m), n), n)?;
+    let giant_inverse = mod_inverse(&g.modpow(&big(m), n), n)?;
     let mut gamma = h;
     for i in 0..=m {
         if let Some(&j) = table.get(&gamma) {

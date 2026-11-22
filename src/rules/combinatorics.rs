@@ -2313,14 +2313,12 @@ fn necklaces(
     Some(total / n)
 }
 
+/// `gcd(a, b)`; the implementation is [`crate::kernels::number_theory::gcd`].
 const fn gcd_u64(
-    mut a: u64,
-    mut b: u64,
+    a: u64,
+    b: u64,
 ) -> u64 {
-    while b != 0 {
-        (a, b) = (b, a % b);
-    }
-    a
+    crate::kernels::number_theory::gcd(a, b)
 }
 
 fn bracelets(

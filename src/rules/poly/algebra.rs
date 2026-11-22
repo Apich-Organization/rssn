@@ -18,6 +18,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 
 use num_bigint::BigInt;
+use num_integer::Integer;
 use num_rational::BigRational;
 use num_traits::One;
 use num_traits::Signed;
@@ -27,6 +28,7 @@ use super::groebner;
 use super::groebner::GPoly;
 use super::groebner::GroebnerLimits;
 use super::groebner::Order;
+use super::multifactor;
 use super::repr::Gens;
 use super::repr::Limits;
 use super::repr::Poly;
@@ -34,6 +36,8 @@ use super::repr::from_term;
 use super::repr::to_term;
 use super::univariate;
 use super::univariate::QPoly;
+use super::univariate::ZPoly;
+use crate::execution;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::DimRule;
@@ -501,7 +505,8 @@ fn square_free_factors_term(
     Some(graph.node(core::LIST, &[unit, factors]))
 }
 
-/// The Sturm chain `p, p', -rem(p_{i-1}, p_i), ...`.
+/// The exact Sturm chain `p, p', -rem(p_{i-1}, p_i), ...` over `Q` (unscaled,
+/// for `sturm_sequence(p, x)`).
 fn sturm_chain(p: &[BigRational]) -> Vec<QPoly> {
     let mut chain: Vec<QPoly> = vec![p.to_vec(), univariate::derivative(p)];
     while chain.last().is_some_and(|q| !q.is_empty()) {
@@ -518,13 +523,109 @@ fn sturm_chain(p: &[BigRational]) -> Vec<QPoly> {
     chain
 }
 
-/// Sign of `q` at `x`, or at `±∞` for `None` (`positive = true` for `+∞`).
-fn sign_at(
-    q: &[BigRational],
+/// Fraction-free positive-multiplier pseudo-remainder in `Z[x]`: computes a
+/// strictly positive integer multiple of `rem_Q(a, b)` without creating rationals.
+fn prem_pos_z(
+    a: &[BigInt],
+    b: &[BigInt],
+) -> Option<ZPoly> {
+    let lead = b.last()?;
+    if lead.is_zero() {
+        return None;
+    }
+    let mut a_len = a.len();
+    while a_len > 0 && a[a_len - 1].is_zero() {
+        a_len -= 1;
+    }
+    if a_len < b.len() {
+        return Some(a[..a_len].to_vec());
+    }
+    let abs_lead = lead.abs();
+    let lead_neg = lead.is_negative();
+    let q_len = a_len - b.len() + 1;
+    let mut rem: ZPoly = a[..a_len].to_vec();
+    for k in (0..q_len).rev() {
+        let top = rem[k + b.len() - 1].clone();
+        if top.is_zero() {
+            continue;
+        }
+        let g = top.gcd(&abs_lead);
+        let step = &abs_lead / &g;
+        let mut factor = &top / &g;
+        if lead_neg {
+            factor = -factor;
+        }
+        if !step.is_one() {
+            for r in &mut rem[..k + b.len() - 1] {
+                *r *= &step;
+            }
+        }
+        rem[k + b.len() - 1] = BigInt::zero();
+        for j in 0..(b.len() - 1) {
+            if !b[j].is_zero() {
+                rem[k + j] -= &factor * &b[j];
+            }
+        }
+    }
+    rem.truncate(b.len() - 1);
+    while rem.last().is_some_and(Zero::is_zero) {
+        rem.pop();
+    }
+    Some(rem)
+}
+
+/// Primitive integer Sturm chain over `Z[x]` where each polynomial is scaled by a
+/// positive rational content factor so that all coefficients are coprime integers
+/// and every sign at $x \in \mathbb{Q} \cup \{\pm\infty\}$ is identical to [`sturm_chain`].
+fn primitive_sturm_chain(p: &[BigRational]) -> Vec<ZPoly> {
+    let normalize_pos_z = |mut ints: ZPoly| -> ZPoly {
+        while ints.last().is_some_and(Zero::is_zero) {
+            ints.pop();
+        }
+        if ints.is_empty() {
+            return Vec::new();
+        }
+        let content = ints.iter().fold(BigInt::zero(), |acc, c| acc.gcd(c));
+        if content.is_zero() || content.is_one() {
+            ints
+        } else {
+            ints.into_iter().map(|c| c / &content).collect()
+        }
+    };
+    let normalize_pos_q = |q: &[BigRational]| -> ZPoly {
+        if q.is_empty() {
+            return Vec::new();
+        }
+        let den_lcm = q.iter().fold(BigInt::one(), |acc, c| acc.lcm(c.denom()));
+        let ints: ZPoly = q.iter().map(|c| (c * &den_lcm).to_integer()).collect();
+        normalize_pos_z(ints)
+    };
+    let p0 = normalize_pos_q(p);
+    let p1 = normalize_pos_q(&univariate::derivative(p));
+    let mut chain: Vec<ZPoly> = vec![p0, p1];
+    while chain.last().is_some_and(|q| !q.is_empty()) {
+        let n = chain.len();
+        let Some(rem) = prem_pos_z(&chain[n - 2], &chain[n - 1]) else {
+            break;
+        };
+        if rem.is_empty() {
+            break;
+        }
+        let neg_rem: ZPoly = rem.into_iter().map(|c| -c).collect();
+        chain.push(normalize_pos_z(neg_rem));
+    }
+    chain.retain(|q| !q.is_empty());
+    chain
+}
+
+/// Sign of an integer polynomial `q` at rational `x = num / den` (`den > 0`) via
+/// fraction-free homogeneous Horner evaluation, or at `±∞` for `None`.
+fn sign_at_z(
+    q: &[BigInt],
     at: Option<&BigRational>,
     positive: bool,
 ) -> i32 {
-    let sign = |v: &BigRational| {
+    let sign_z = |v: &BigInt| {
         if v.is_zero() {
             0
         } else if v.is_positive() {
@@ -534,9 +635,32 @@ fn sign_at(
         }
     };
     match at {
-        | Some(x) => sign(&univariate::eval(q, x)),
+        | Some(x) => {
+            if q.is_empty() {
+                return 0;
+            }
+            let num = x.numer();
+            let den = x.denom();
+            if den.is_one() {
+                let val = q.iter().rev().fold(BigInt::zero(), |acc, c| acc * num + c);
+                return sign_z(&val);
+            }
+            // Homogeneous Horner: evaluate sum_{k=0}^d c_k num^k den^(d - k)
+            // Since den > 0, den^d > 0 so the sign is preserved without rational divisions!
+            let mut acc = BigInt::zero();
+            let mut den_pow = BigInt::one();
+            for (i, c) in q.iter().rev().enumerate() {
+                if i == 0 {
+                    acc = c.clone();
+                } else {
+                    den_pow *= den;
+                    acc = acc * num + c * &den_pow;
+                }
+            }
+            sign_z(&acc)
+        },
         | None => {
-            let lead = q.last().map_or(0, sign);
+            let lead = q.last().map_or(0, sign_z);
             let odd = q.len().is_multiple_of(2);
             if positive || !odd {
                 lead
@@ -547,26 +671,32 @@ fn sign_at(
     }
 }
 
-fn variations(
-    chain: &[QPoly],
+fn variations_z(
+    chain: &[ZPoly],
     at: Option<&BigRational>,
     positive: bool,
 ) -> usize {
-    let signs: Vec<i32> = chain
-        .iter()
-        .map(|q| sign_at(q, at, positive))
-        .filter(|&s| s != 0)
-        .collect();
-    signs.windows(2).filter(|w| w[0] != w[1]).count()
+    let mut count = 0_usize;
+    let mut prev_sign = 0_i32;
+    for q in chain {
+        let s = sign_at_z(q, at, positive);
+        if s != 0 {
+            if prev_sign != 0 && prev_sign != s {
+                count += 1;
+            }
+            prev_sign = s;
+        }
+    }
+    count
 }
 
 /// Distinct real roots of `p` in `(a, b]` (`None` ends are infinite).
-fn sturm_count(
-    chain: &[QPoly],
+fn sturm_count_z(
+    chain: &[ZPoly],
     a: Option<&BigRational>,
     b: Option<&BigRational>,
 ) -> usize {
-    variations(chain, a, false).saturating_sub(variations(chain, b, true))
+    variations_z(chain, a, false).saturating_sub(variations_z(chain, b, true))
 }
 
 /// An interval endpoint.
@@ -605,12 +735,12 @@ fn count_real_roots(
     if q.len() < 2 {
         return None;
     }
-    let chain = sturm_chain(&q);
+    let chain = primitive_sturm_chain(&q);
     let (a, b) = match interval {
         | Some((a, b)) => (endpoint(graph, a)?, endpoint(graph, b)?),
         | None => (End::Infinite, End::Infinite),
     };
-    i64::try_from(sturm_count(&chain, a.value(), b.value())).ok()
+    i64::try_from(sturm_count_z(&chain, a.value(), b.value())).ok()
 }
 
 /// Exact isolating intervals of the distinct real roots, ascending.
@@ -618,7 +748,7 @@ pub(crate) fn isolate(q: &[BigRational]) -> Vec<(BigRational, BigRational)> {
     if q.len() < 2 {
         return Vec::new();
     }
-    let chain = sturm_chain(q);
+    let chain = primitive_sturm_chain(q);
     // Cauchy bound.
     let lead = q.last().cloned().unwrap_or_else(BigRational::one);
     let bound = q
@@ -637,7 +767,7 @@ pub(crate) fn isolate(q: &[BigRational]) -> Vec<(BigRational, BigRational)> {
         if work > 100_000 {
             break;
         }
-        match sturm_count(&chain, Some(&a), Some(&b)) {
+        match sturm_count_z(&chain, Some(&a), Some(&b)) {
             | 0 => {},
             | 1 => {
                 match rational.iter().find(|r| **r > a && **r <= b) {
@@ -663,16 +793,19 @@ fn refine(
     width: &BigRational,
 ) -> (BigRational, BigRational) {
     let two = BigRational::from_integer(BigInt::from(2));
-    let chain = sturm_chain(q);
+    let chain = primitive_sturm_chain(q);
+    let Some(p0) = chain.first() else {
+        return (a, b);
+    };
     for _ in 0..200 {
         if &b - &a <= *width {
             break;
         }
         let mid = (&a + &b) / &two;
-        if univariate::eval(q, &mid).is_zero() {
+        if sign_at_z(p0, Some(&mid), true) == 0 {
             return (mid.clone(), mid);
         }
-        if sturm_count(&chain, Some(&a), Some(&mid)) == 1 {
+        if sturm_count_z(&chain, Some(&a), Some(&mid)) == 1 {
             b = mid;
         } else {
             a = mid;
@@ -812,6 +945,81 @@ fn bareiss(mut m: Vec<Vec<Poly>>) -> Option<Poly> {
     Some(if sign { det.neg() } else { det })
 }
 
+/// Exact Sylvester resultant over $\mathbb{Q}[x]$ via Collins' Modular Resultant
+/// and Chinese Remainder reconstruction (with parallel prime evaluation on large
+/// degree products), completely eliminating rational PRS GCD swell.
+pub(crate) fn modular_resultant_q(
+    p: &[BigRational],
+    q: &[BigRational],
+) -> Option<BigRational> {
+    let trim_q = |poly: &[BigRational]| -> QPoly {
+        let mut out = poly.to_vec();
+        while out.last().is_some_and(Zero::is_zero) {
+            out.pop();
+        }
+        out
+    };
+    let (p_trim, q_trim) = (trim_q(p), trim_q(q));
+    if p_trim.is_empty() || q_trim.is_empty() {
+        return None;
+    }
+    let m = p_trim.len() - 1;
+    let n = q_trim.len() - 1;
+    if m == 0 && n == 0 {
+        return Some(BigRational::one());
+    }
+    if m == 0 {
+        return Some(num_traits::pow(p_trim[0].clone(), n));
+    }
+    if n == 0 {
+        return Some(num_traits::pow(q_trim[0].clone(), m));
+    }
+
+    let (cp, zp) = univariate::primitive(&p_trim);
+    let (cq, zq) = univariate::primitive(&q_trim);
+    let scale = num_traits::pow(cp, n) * num_traits::pow(cq, m);
+
+    let lc_p = zp.last()?;
+    let lc_q = zq.last()?;
+    let bound_bits = multifactor::hadamard_resultant_bound_bits(&zp, &zq);
+    let needed_primes = bound_bits.div_ceil(30).max(2);
+
+    // Collect admissible 31-bit primes not dividing lc(zp) or lc(zq).
+    let mut primes = Vec::with_capacity(needed_primes);
+    let mut prime_idx = 0_usize;
+    while primes.len() < needed_primes {
+        let pr = multifactor::nth_word_prime(prime_idx);
+        prime_idx += 1;
+        let pr_big = BigInt::from(pr);
+        if !lc_p.mod_floor(&pr_big).is_zero() && !lc_q.mod_floor(&pr_big).is_zero() {
+            primes.push(pr);
+        }
+    }
+
+    let eval_prime = |index: usize| -> (u64, u64) {
+        let pr = primes[index];
+        let ap = multifactor::fp_reduce_z(&zp, pr);
+        let bp = multifactor::fp_reduce_z(&zq, pr);
+        (pr, multifactor::resultant_fp(&ap, &bp, pr))
+    };
+
+    let work_per_prime = (m + n) * (m + n);
+    let residues: Vec<(u64, u64)> = if execution::should_split_work(primes.len(), work_per_prime) {
+        par::map_indexed(primes.len(), 2, eval_prime)
+    } else {
+        (0..primes.len()).map(eval_prime).collect()
+    };
+
+    let mut crt_acc = vec![BigInt::zero()];
+    let mut crt_mod = BigInt::zero();
+    for (pr, res_p) in residues {
+        multifactor::crt_step_poly(&mut crt_acc, &mut crt_mod, &[res_p], pr);
+    }
+    let half = &crt_mod >> 1;
+    let res_z = multifactor::symmetric_mod(crt_acc.first()?, &crt_mod, &half);
+    Some(scale * BigRational::from_integer(res_z))
+}
+
 /// `res_x(p, q)` from coefficient lists in `x` (ascending).
 fn resultant(
     p: &[Poly],
@@ -827,7 +1035,7 @@ fn resultant(
             .collect()
     };
     if let (Some(p), Some(q)) = (exact_scalar(p), exact_scalar(q)) {
-        return univariate::resultant(&p, &q).map(|value| Poly::constant(Number::rat(value)));
+        return modular_resultant_q(&p, &q).map(|value| Poly::constant(Number::rat(value)));
     }
     let size = m + n;
     let mut rows = Vec::with_capacity(size);
@@ -1168,11 +1376,14 @@ fn cad_samples(
         return Some(fibre_samples(&[])?.into_iter().map(|v| vec![v]).collect());
     }
     let projection = project(polys, y)?;
-    let mut cells = Vec::new();
-    for sample in cad_samples(&projection, base)? {
+    let base_samples = cad_samples(&projection, base)?;
+    if base_samples.len() > 100_000 {
+        return None;
+    }
+    let lift_sample = |sample: &Vec<Number>| -> Result<Vec<Vec<Number>>, ()> {
         let point: Vec<(u32, BigRational)> = base
             .iter()
-            .zip(&sample)
+            .zip(sample)
             .map(|(&g, v)| {
                 Some((
                     g,
@@ -1180,12 +1391,34 @@ fn cad_samples(
                         .or_else(|| BigRational::from_float(v.to_f64()))?,
                 ))
             })
-            .collect::<Option<_>>()?;
-        for value in fibre_samples(&point)? {
-            let mut cell = sample.clone();
-            cell.push(value);
-            cells.push(cell);
-        }
+            .collect::<Option<_>>()
+            .ok_or(())?;
+        let ys = fibre_samples(&point).ok_or(())?;
+        Ok(ys
+            .into_iter()
+            .map(|value| {
+                let mut cell = sample.clone();
+                cell.push(value);
+                cell
+            })
+            .collect())
+    };
+    let lifted: Vec<Vec<Vec<Number>>> =
+        if execution::should_split_work(base_samples.len(), polys.len().saturating_mul(64)) {
+            par::try_map_indexed(base_samples.len(), 2, |index| {
+                lift_sample(base_samples.get(index).ok_or(())?)
+            })
+            .ok()?
+        } else {
+            base_samples
+                .iter()
+                .map(lift_sample)
+                .collect::<Result<Vec<_>, _>>()
+                .ok()?
+        };
+    let mut cells = Vec::new();
+    for chunk in lifted {
+        cells.extend(chunk);
         if cells.len() > 100_000 {
             return None;
         }
@@ -1259,25 +1492,46 @@ fn cad_plane(
             }
         }
     }
-    let mut cells = Vec::new();
-    for xs in cad_line(&projection) {
+    let xs_samples = cad_line(&projection);
+    let polys_q: Vec<Vec<QPoly>> = polys
+        .iter()
+        .map(|p| p.iter().map(as_x).collect::<Option<Vec<_>>>())
+        .collect::<Option<Vec<_>>>()?;
+    let lift_x = |xs: &Number| -> Result<(Number, Vec<Number>), ()> {
         let at = xs
             .to_rational()
-            .or_else(|| BigRational::from_float(xs.to_f64()))?;
+            .or_else(|| BigRational::from_float(xs.to_f64()))
+            .ok_or(())?;
         // Each polynomial at x = xs, as a univariate polynomial in y.
-        let mut fibres = Vec::new();
-        for p in &polys {
+        let mut fibres = Vec::with_capacity(polys_q.len());
+        for p in &polys_q {
             let mut q: QPoly = Vec::with_capacity(p.len());
-            for c in p {
-                let cq = as_x(c)?;
-                q.push(univariate::eval(&cq, &at));
+            for cq in p {
+                q.push(univariate::eval(cq, &at));
             }
             while q.last().is_some_and(Zero::is_zero) {
                 q.pop();
             }
             fibres.push(q);
         }
-        for ys in cad_line(&fibres) {
+        Ok((xs.clone(), cad_line(&fibres)))
+    };
+    let lifted: Vec<(Number, Vec<Number>)> =
+        if execution::should_split_work(xs_samples.len(), polys_q.len().saturating_mul(64)) {
+            par::try_map_indexed(xs_samples.len(), 2, |index| {
+                lift_x(xs_samples.get(index).ok_or(())?)
+            })
+            .ok()?
+        } else {
+            xs_samples
+                .iter()
+                .map(lift_x)
+                .collect::<Result<Vec<_>, _>>()
+                .ok()?
+        };
+    let mut cells = Vec::new();
+    for (xs, ys_list) in lifted {
+        for ys in ys_list {
             let (a, b) = (graph.num(xs.clone()), graph.num(ys));
             cells.push(graph.node(core::LIST, &[a, b]));
         }
@@ -1577,5 +1831,131 @@ mod tests {
         let rules = crate::rules::standard();
         let at = crate::rules::testing::eval(&rules, &triple, &[("x", 0.7)]);
         assert!((at - (2.1_f64).sin()).abs() < 1e-12, "{triple}");
+    }
+
+    #[test]
+    fn modular_resultant_matches_rational_prs_and_edges() {
+        use super::*;
+
+        let rat = |n: i64, d: i64| BigRational::new(BigInt::from(n), BigInt::from(d));
+        let p = vec![rat(1, 3), rat(-5, 2), rat(7, 6), rat(4, 1), rat(-3, 5)];
+        let q = vec![rat(-2, 7), rat(3, 1), rat(-1, 4), rat(5, 3)];
+        assert_eq!(modular_resultant_q(&p, &q), univariate::resultant(&p, &q));
+        assert_eq!(modular_resultant_q(&q, &p), univariate::resultant(&q, &p));
+
+        // Swapped odd degrees (deg 1 vs deg 3) and shared factor.
+        let lin = vec![rat(-1, 1), rat(3, 2)];
+        let cub = vec![rat(-2, 1), rat(0, 1), rat(1, 3), rat(5, 1)];
+        assert_eq!(
+            modular_resultant_q(&lin, &cub),
+            univariate::resultant(&lin, &cub)
+        );
+        let prod_q = univariate::mul(&lin, &cub);
+        assert_eq!(
+            modular_resultant_q(&lin, &prod_q),
+            Some(BigRational::zero())
+        );
+
+        // High-degree polynomials where rational PRS would suffer severe swell.
+        let mut a: QPoly = vec![BigRational::one()];
+        let mut b: QPoly = vec![BigRational::one()];
+        for k in 1_i64..=10 {
+            a = univariate::mul(&a, &[rat(-k, 1), rat(2 * k + 1, 1)]);
+            b = univariate::mul(&b, &[rat(k + 2, 3), rat(3 * k - 1, 2)]);
+        }
+        assert_eq!(modular_resultant_q(&a, &b), univariate::resultant(&a, &b));
+
+        // Constant and zero edges.
+        assert_eq!(
+            modular_resultant_q(&[rat(3, 1)], &cub),
+            univariate::resultant(&[rat(3, 1)], &cub)
+        );
+        assert_eq!(modular_resultant_q(&[], &cub), None);
+    }
+
+    #[test]
+    fn primitive_sturm_chain_matches_exact_sturm_variations() {
+        use super::*;
+
+        let rat = |n: i64, d: i64| BigRational::new(BigInt::from(n), BigInt::from(d));
+        // (x - 1/3)^2 * (x + 5/2) * (x^2 - 2) * (x^2 + 1)
+        let f1 = [rat(-1, 3), rat(1, 1)];
+        let f2 = [rat(5, 2), rat(1, 1)];
+        let f3 = [rat(-2, 1), rat(0, 1), rat(1, 1)];
+        let f4 = [rat(1, 1), rat(0, 1), rat(1, 1)];
+        let mut p = univariate::mul(&f1, &f1);
+        p = univariate::mul(&p, &f2);
+        p = univariate::mul(&p, &f3);
+        p = univariate::mul(&p, &f4);
+
+        let chain_q = sturm_chain(&p);
+        let chain_z = primitive_sturm_chain(&p);
+        let sign_q = |q: &[BigRational], at: Option<&BigRational>, pos: bool| -> i32 {
+            match at {
+                | Some(x) => {
+                    let v = univariate::eval(q, x);
+                    if v.is_zero() {
+                        0
+                    } else if v.is_positive() {
+                        1
+                    } else {
+                        -1
+                    }
+                },
+                | None => {
+                    let lead = q.last().map_or(0, |v| {
+                        if v.is_zero() {
+                            0
+                        } else if v.is_positive() {
+                            1
+                        } else {
+                            -1
+                        }
+                    });
+                    if pos || !q.len().is_multiple_of(2) {
+                        lead
+                    } else {
+                        -lead
+                    }
+                },
+            }
+        };
+        let vars_q = |at: Option<&BigRational>, pos: bool| -> usize {
+            let mut count = 0_usize;
+            let mut prev = 0_i32;
+            for q in &chain_q {
+                let s = sign_q(q, at, pos);
+                if s != 0 {
+                    if prev != 0 && prev != s {
+                        count += 1;
+                    }
+                    prev = s;
+                }
+            }
+            count
+        };
+
+        for pt in [None, Some(rat(-3, 1)), Some(rat(1, 3)), Some(rat(3, 2))] {
+            for pos in [false, true] {
+                assert_eq!(
+                    variations_z(&chain_z, pt.as_ref(), pos),
+                    vars_q(pt.as_ref(), pos)
+                );
+            }
+        }
+        assert_eq!(sturm_count_z(&chain_z, None, None), 4);
+    }
+
+    #[test]
+    fn cad_is_deterministic_across_thread_counts() {
+        let rules = crate::rules::standard();
+        for src in [
+            "cad(list(x^2 + y^2 - 1, x - y), list(x, y))",
+            "cad(list(x^2 + y^2 + z^2 - 1), list(x, y, z))",
+        ] {
+            let seq = crate::execution::with_scoped_pool(Some(1), || simplify(&rules, src));
+            let par = crate::execution::with_scoped_pool(Some(4), || simplify(&rules, src));
+            assert_eq!(seq, par, "CAD mismatch for {src}");
+        }
     }
 }

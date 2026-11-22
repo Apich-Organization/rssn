@@ -148,6 +148,7 @@ fn queue_pair(
     pairs: &mut PairBuckets,
     pending: &mut HashSet<(usize, usize)>,
     basis: &[GPoly],
+    lead_masks: &[u64],
     sugar: &[u64],
     first: usize,
     second: usize,
@@ -160,7 +161,15 @@ fn queue_pair(
     let (Some((fi, _)), Some((gi, _))) = (f.leading(), g.leading()) else {
         return Some(());
     };
-    if common::coprime(fi, gi) {
+    let mask_i = lead_masks
+        .get(i)
+        .copied()
+        .unwrap_or_else(|| common::mono_mask(fi));
+    let mask_j = lead_masks
+        .get(j)
+        .copied()
+        .unwrap_or_else(|| common::mono_mask(gi));
+    if common::coprime_with_masks(fi, gi, mask_i, mask_j) {
         return Some(());
     }
     let lcm = common::lcm(fi, gi);
@@ -187,14 +196,20 @@ fn queue_pair(
 /// A pair selected in the current batch is still awaiting matrix reduction.
 fn covered(
     basis: &[GPoly],
+    lead_masks: &[u64],
     pending: &HashSet<(usize, usize)>,
     batch: &HashSet<(usize, usize)>,
     a: usize,
     b: usize,
     lcm: &[u32],
+    lcm_mask: u64,
 ) -> bool {
     basis.iter().enumerate().any(|(k, g)| {
         if k == a || k == b {
+            return false;
+        }
+        let mask_k = lead_masks.get(k).copied().unwrap_or(0);
+        if (mask_k & !lcm_mask) != 0 {
             return false;
         }
         let Some((lead, _)) = g.leading() else {
@@ -236,7 +251,9 @@ fn prepare_rows(
     let work = rows.iter().fold(0_usize, |total, (_, index)| {
         total.saturating_add(basis[*index].terms().len())
     });
-    let grain = if work >= 4_096 {
+    let avg_work = work.checked_div(rows.len()).unwrap_or(0);
+    let grain = if work >= 4_096 && crate::execution::should_split_work(rows.len(), avg_work.max(1))
+    {
         64
     } else {
         usize::MAX
@@ -290,6 +307,10 @@ pub fn f4_basis_in(
         .iter()
         .map(|g| g.leading().map_or(0, |(m, _)| common::total_degree(m)))
         .collect();
+    let mut lead_masks: Vec<u64> = basis
+        .iter()
+        .map(|g| g.leading().map_or(0, |(m, _)| common::mono_mask(m)))
+        .collect();
     let mut pairs = PairBuckets::new();
     let mut pending: HashSet<(usize, usize)> = HashSet::new();
     for b in 0..basis.len() {
@@ -298,6 +319,7 @@ pub fn f4_basis_in(
                 &mut pairs,
                 &mut pending,
                 &basis,
+                &lead_masks,
                 &sugar,
                 a,
                 b,
@@ -325,10 +347,22 @@ pub fn f4_basis_in(
             let (Some((fi, _)), Some((gi, _))) = (f.leading(), g.leading()) else {
                 continue;
             };
-            if common::coprime(fi, gi) {
+            let mask_a = lead_masks.get(pair.a).copied().unwrap_or(0);
+            let mask_b = lead_masks.get(pair.b).copied().unwrap_or(0);
+            if common::coprime_with_masks(fi, gi, mask_a, mask_b) {
                 continue;
             }
-            if covered(&basis, &pending, &batch, pair.a, pair.b, &pair.lcm) {
+            let lcm_mask = common::mono_mask(&pair.lcm);
+            if covered(
+                &basis,
+                &lead_masks,
+                &pending,
+                &batch,
+                pair.a,
+                pair.b,
+                &pair.lcm,
+                lcm_mask,
+            ) {
                 continue;
             }
             batch.insert((pair.a, pair.b));
@@ -382,8 +416,13 @@ pub fn f4_basis_in(
                 break;
             };
             position = position.saturating_add(1);
+            let current_mask = common::mono_mask(&current);
             let mut chosen: Option<usize> = None;
             for (index, g) in basis.iter().enumerate() {
+                let lead_mask = lead_masks.get(index).copied().unwrap_or(0);
+                if (lead_mask & !current_mask) != 0 {
+                    continue;
+                }
                 let Some((lead, _)) = g.leading() else {
                     continue;
                 };
@@ -430,9 +469,12 @@ pub fn f4_basis_in(
             let Some(monomial) = columns.monomial(rank) else {
                 continue;
             };
-            let is_covered = basis.iter().take(old_len).any(|g| {
-                g.leading()
-                    .is_some_and(|(m, _)| common::divides(m, monomial))
+            let mono_mask = common::mono_mask(monomial);
+            let is_covered = basis.iter().enumerate().take(old_len).any(|(idx, g)| {
+                let lead_mask = lead_masks.get(idx).copied().unwrap_or(0);
+                (lead_mask & !mono_mask) == 0
+                    && g.leading()
+                        .is_some_and(|(m, _)| common::divides(m, monomial))
             });
             if is_covered {
                 continue;
@@ -446,7 +488,10 @@ pub fn f4_basis_in(
                 return None;
             }
             let degree = common::total_degree(monomial).max(key);
-            basis.push(common::monic(domain, &remainder, order));
+            let monic_rem = common::monic(domain, &remainder, order);
+            let mask = monic_rem.leading().map_or(0, |(m, _)| common::mono_mask(m));
+            basis.push(monic_rem);
+            lead_masks.push(mask);
             sugar.push(degree);
             added.push(basis.len().saturating_sub(1));
         }
@@ -456,6 +501,7 @@ pub fn f4_basis_in(
                     &mut pairs,
                     &mut pending,
                     &basis,
+                    &lead_masks,
                     &sugar,
                     other,
                     index,
@@ -1138,6 +1184,25 @@ mod tests {
         assert_eq!(f4_basis(&generators, order, F4Limits::default()), expected);
         assert_eq!(f4_via(&generators, order, F4Limits::default()), expected);
     }
+
+    #[test]
+    fn f4_u64_modular_echelon_agrees_with_general_echelon_and_parallel_execution() {
+        let modulus = 65_521_i64;
+        let domain =
+            Domain::prime(BigInt::from(modulus)).unwrap_or_else(|| panic!("65521 is prime"));
+        let order = Order::GradedRevLex;
+        let system = oracle::katsura(3);
+        let generators = oracle::generators(modulus, &system, order);
+
+        let serial = crate::execution::with_scoped_pool(Some(1), || {
+            f4_basis_in(&domain, &generators, order, F4Limits::default())
+        });
+        let parallel = crate::execution::with_scoped_pool(Some(4), || {
+            f4_basis_in(&domain, &generators, order, F4Limits::default())
+        });
+        assert_eq!(serial, parallel);
+        assert_eq!(serial, Some(oracle::buchberger_fp(modulus, &system, order)));
+    }
 }
 
 pub(super) mod common {
@@ -1157,7 +1222,7 @@ pub(super) mod common {
     //! This module holds what they share:
     //!
     //! * monomial arithmetic on exponent vectors (`divides`, `lcm`, `multiply`,
-    //!   `difference`, `total_degree`);
+    //!   `difference`, `total_degree`, `mono_mask`);
     //! * sparse polynomial helpers on [`GPoly`] — scaling, multiplication by a
     //!   monomial, S-polynomials, homogenisation;
     //! * the sparse row echelon form used by the matrices;
@@ -1182,15 +1247,20 @@ pub(super) mod common {
     #![allow(
         clippy::single_call_fn,
         clippy::too_many_lines,
-        clippy::too_many_arguments
+        clippy::too_many_arguments,
+        clippy::indexing_slicing,
+        clippy::arithmetic_side_effects
     )]
 
     use std::cmp::Ordering;
-    use std::collections::BTreeMap;
     use std::collections::HashMap;
 
     use num_bigint::BigInt;
+    use num_integer::Integer;
     use num_rational::BigRational;
+    use num_traits::One;
+    use num_traits::ToPrimitive;
+    use num_traits::Zero;
 
     use crate::graph::Cx;
     use crate::graph::Graph;
@@ -1214,7 +1284,33 @@ pub(super) mod common {
     /// canonical elements of the domain of the run.
     pub type Row = Vec<(usize, BigRational)>;
 
+    const THRESH6: [u64; 9] = [
+        0b00_0000, 0b00_0001, 0b00_0011, 0b00_0111, 0b00_1111, 0b00_1111, 0b01_1111, 0b01_1111,
+        0b11_1111,
+    ];
+    const SUPPORT_LOW8: u64 = 0b000001_000001_000001_000001_000001_000001_000001_000001;
+
+    /// Packed 64-bit exponent divisibility bitmask for fast 1-cycle rejection.
+    ///
+    /// If `a` divides `b`, then `(mono_mask(a) & !mono_mask(b)) == 0`.
+    #[must_use]
+    #[inline]
+    pub fn mono_mask(m: &[u32]) -> u64 {
+        let mut mask = 0_u64;
+        for (i, &e) in m.iter().enumerate() {
+            if e > 0 {
+                if i < 8 {
+                    mask |= THRESH6[(e as usize).min(8)] << (i * 6);
+                } else {
+                    mask |= 1_u64 << (48 + ((i - 8) & 15));
+                }
+            }
+        }
+        mask
+    }
+
     /// Whether the monomial `a` divides the monomial `b`.
+    #[inline]
     pub fn divides(
         a: &[u32],
         b: &[u32],
@@ -1232,13 +1328,105 @@ pub(super) mod common {
     }
 
     /// Whether two monomials are coprime, i.e. their lcm is their product. Equal
-    /// leading monomials are not coprime.
+    /// leading monomials are not coprime. This is the reference the masked test
+    /// below checks against, so it exists only for tests.
+    #[cfg(test)]
     #[must_use]
     pub fn coprime(
         a: &[u32],
         b: &[u32],
     ) -> bool {
         a.iter().zip(b).all(|(&x, &y)| x == 0 || y == 0)
+    }
+
+    /// Fast coprimality check using precomputed [`mono_mask`] values.
+    #[must_use]
+    #[inline]
+    pub fn coprime_with_masks(
+        a: &[u32],
+        b: &[u32],
+        mask_a: u64,
+        mask_b: u64,
+    ) -> bool {
+        if (mask_a & mask_b & SUPPORT_LOW8) != 0 {
+            return false;
+        }
+        if a.len() <= 8 && b.len() <= 8 {
+            return true;
+        }
+        a.iter().zip(b).skip(8).all(|(&x, &y)| x == 0 || y == 0)
+    }
+
+    /// Returns `Some(p)` when `domain` is `Domain::Prime(p)` and `p` fits in a
+    /// 62-bit `u64` (`1 < p < 2^62`), enabling machine-word modular arithmetic.
+    #[must_use]
+    #[inline]
+    pub fn small_prime_modulus(domain: &Domain) -> Option<u64> {
+        match domain {
+            | Domain::Rational => None,
+            | Domain::Prime(p) => p.to_u64().filter(|&m| m > 1 && m < (1_u64 << 62)),
+        }
+    }
+
+    /// Multiplicative inverse of `a` modulo prime `p` in `1..p`.
+    ///
+    /// The implementation is [`crate::kernels::modular::mod_inv_u64`].
+    pub use crate::kernels::modular::mod_inv_u64;
+
+    /// Montgomery's trick batch modular inversion of non-zero elements modulo `p`.
+    ///
+    /// Computes all `values.len()` modular inverses using a single extended GCD
+    /// and `3 * (values.len() - 1)` modular multiplications.
+    pub fn batch_inv_u64(
+        values: &[u64],
+        p: u64,
+        out: &mut Vec<u64>,
+    ) -> Option<()> {
+        out.clear();
+        if values.is_empty() {
+            return Some(());
+        }
+        out.resize(values.len(), 0);
+        let p128 = u128::from(p);
+        let mut acc = 1_u64;
+        for (slot, &v) in out.iter_mut().zip(values) {
+            let v_mod = v % p;
+            if v_mod == 0 {
+                return None;
+            }
+            *slot = acc;
+            acc = ((u128::from(acc) * u128::from(v_mod)) % p128) as u64;
+        }
+        let mut inv = mod_inv_u64(acc, p)?;
+        for (slot, &v) in out.iter_mut().zip(values).rev() {
+            let v_mod = v % p;
+            let prefix = *slot;
+            *slot = ((u128::from(inv) * u128::from(prefix)) % p128) as u64;
+            inv = ((u128::from(inv) * u128::from(v_mod)) % p128) as u64;
+        }
+        Some(())
+    }
+
+    /// Converts a canonical `GF(p)` coefficient to `u64` in `0..p`.
+    #[must_use]
+    #[inline]
+    pub fn coeff_to_u64(
+        c: &BigRational,
+        p: u64,
+    ) -> Option<u64> {
+        if c.denom().is_one()
+            && let Some(v) = c.numer().to_u64()
+        {
+            return Some(if v < p { v } else { v % p });
+        }
+        let p_big = BigInt::from(p);
+        let numer = c.numer().mod_floor(&p_big).to_u64()?;
+        if c.denom().is_one() {
+            return Some(numer);
+        }
+        let denom = c.denom().mod_floor(&p_big).to_u64()?;
+        let inv = mod_inv_u64(denom, p)?;
+        Some(((u128::from(numer) * u128::from(inv)) % u128::from(p)) as u64)
     }
 
     /// The product of two monomials.
@@ -1308,6 +1496,35 @@ pub(super) mod common {
     ) -> GPoly {
         match p.leading() {
             | Some((_, lead)) => {
+                if domain.is_one(lead) {
+                    return p.clone();
+                }
+                if let Some(p_u64) = small_prime_modulus(domain)
+                    && let Some(lead_u64) = coeff_to_u64(lead, p_u64)
+                    && let Some(inv_u64) = mod_inv_u64(lead_u64, p_u64)
+                {
+                    let p128 = u128::from(p_u64);
+                    let inv128 = u128::from(inv_u64);
+                    let mut terms = Vec::with_capacity(p.terms().len());
+                    let mut ok = true;
+                    for (m, c) in p.terms() {
+                        if let Some(cu) = coeff_to_u64(c, p_u64) {
+                            let scaled = ((u128::from(cu) * inv128) % p128) as u64;
+                            if scaled != 0 {
+                                terms.push((
+                                    m.clone(),
+                                    BigRational::from_integer(BigInt::from(scaled)),
+                                ));
+                            }
+                        } else {
+                            ok = false;
+                            break;
+                        }
+                    }
+                    if ok {
+                        return GPoly::new_in(domain, terms, order);
+                    }
+                }
                 let Some(inverse) = domain.inv(lead) else {
                     return GPoly::new_in(domain, Vec::new(), order);
                 };
@@ -1576,13 +1793,19 @@ pub(super) mod common {
         basis: &[GPoly],
         order: Order,
     ) -> Vec<GPoly> {
+        let lead_masks: Vec<u64> = basis
+            .iter()
+            .map(|g| g.leading().map_or(0, |(m, _)| mono_mask(m)))
+            .collect();
         let mut minimal: Vec<GPoly> = Vec::new();
         for (index, g) in basis.iter().enumerate() {
             let Some((lead, _)) = g.leading() else {
                 continue;
             };
+            let lead_mask = lead_masks[index];
             let redundant = basis.iter().enumerate().any(|(other, h)| {
                 other != index
+                    && (lead_masks[other] & !lead_mask) == 0
                     && h.leading()
                         .is_some_and(|(m, _)| divides(m, lead) && (m != lead || other < index))
             });
@@ -1590,20 +1813,39 @@ pub(super) mod common {
                 minimal.push(g.clone());
             }
         }
-        let mut reduced: Vec<GPoly> = Vec::with_capacity(minimal.len());
-        for (index, g) in minimal.iter().enumerate() {
-            let others: Vec<GPoly> = minimal
-                .iter()
-                .enumerate()
-                .filter(|&(k, _)| k != index)
-                .map(|(_, h)| h.clone())
-                .collect();
-            reduced.push(monic(
-                domain,
-                &normal_form(domain, g, &others, order),
-                order,
-            ));
-        }
+        let total_terms: usize = minimal.iter().map(|g| g.terms().len()).sum();
+        let mut reduced: Vec<GPoly> =
+            if crate::execution::should_split_work(minimal.len(), total_terms.max(1)) {
+                crate::kernels::par::map_indexed(minimal.len(), 2, |index| {
+                    let others: Vec<GPoly> = minimal
+                        .iter()
+                        .enumerate()
+                        .filter(|&(k, _)| k != index)
+                        .map(|(_, h)| h.clone())
+                        .collect();
+                    monic(
+                        domain,
+                        &normal_form(domain, &minimal[index], &others, order),
+                        order,
+                    )
+                })
+            } else {
+                let mut out = Vec::with_capacity(minimal.len());
+                for (index, g) in minimal.iter().enumerate() {
+                    let others: Vec<GPoly> = minimal
+                        .iter()
+                        .enumerate()
+                        .filter(|&(k, _)| k != index)
+                        .map(|(_, h)| h.clone())
+                        .collect();
+                    out.push(monic(
+                        domain,
+                        &normal_form(domain, g, &others, order),
+                        order,
+                    ));
+                }
+                out
+            };
         reduced.sort_by(|a, b| {
             match (a.leading(), b.leading()) {
                 | (Some((x, _)), Some((y, _))) => order.cmp(x, y),
@@ -1687,8 +1929,8 @@ pub(super) mod common {
     /// Multiplication by a monomial is injective on monomials of a fixed
     /// dimension, so a row built by [`matrix_row`] is already duplicate-free.
     /// Exponent vectors of mixed dimensions can nevertheless map two terms to
-    /// the same column; merging them here keeps the invariants [`subtract_rows`]
-    /// and [`echelon`] rely on (strictly increasing ranks, no zero entries).
+    /// the same column; merging them here keeps the invariants [`echelon`]
+    /// relies on (strictly increasing ranks, no zero entries).
     /// Without the merge a duplicate leading rank would never cancel, and the
     /// elimination would loop until the reduction budget was exhausted.
     fn merge_row(
@@ -1712,49 +1954,656 @@ pub(super) mod common {
         merged
     }
 
-    /// `a - factor * b` on rows sorted by increasing column rank.
-    fn subtract_rows(
-        domain: &Domain,
-        a: &Row,
-        b: &Row,
-        factor: &BigRational,
-    ) -> Row {
-        let mut out: Row = Vec::with_capacity(a.len().saturating_add(b.len()));
-        let mut i = 0_usize;
-        let mut j = 0_usize;
-        loop {
-            match (a.get(i), b.get(j)) {
-                | (Some((ra, ca)), Some((rb, cb))) => {
-                    match ra.cmp(rb) {
-                        | Ordering::Less => {
-                            out.push((*ra, ca.clone()));
-                            i = i.saturating_add(1);
-                        },
-                        | Ordering::Greater => {
-                            out.push((*rb, domain.neg(&domain.mul(cb, factor))));
-                            j = j.saturating_add(1);
-                        },
-                        | Ordering::Equal => {
-                            let value = domain.sub(ca, &domain.mul(factor, cb));
-                            if !domain.is_zero(&value) {
-                                out.push((*ra, value));
-                            }
-                            i = i.saturating_add(1);
-                            j = j.saturating_add(1);
-                        },
-                    }
-                },
-                | (Some((ra, ca)), None) => {
-                    out.push((*ra, ca.clone()));
-                    i = i.saturating_add(1);
-                },
-                | (None, Some((rb, cb))) => {
-                    out.push((*rb, domain.neg(&domain.mul(cb, factor))));
-                    j = j.saturating_add(1);
-                },
-                | (None, None) => return out,
+    const WORD_BITS: usize = usize::BITS as usize;
+    const WORD_SHIFT: usize = WORD_BITS.trailing_zeros() as usize;
+    const WORD_MASK: usize = WORD_BITS - 1;
+
+    #[inline]
+    fn highest_bit_le(
+        mask_words: &[usize],
+        top_col: usize,
+    ) -> Option<usize> {
+        let mut w_idx = top_col >> WORD_SHIFT;
+        let bit_in_word = top_col & WORD_MASK;
+        let top_mask = usize::MAX >> (WORD_MASK - bit_in_word);
+        let mut word = mask_words.get(w_idx).copied().unwrap_or(0) & top_mask;
+        if word != 0 {
+            let highest_bit = WORD_MASK - (word.leading_zeros() as usize);
+            return Some((w_idx << WORD_SHIFT) | highest_bit);
+        }
+        while w_idx > 0 {
+            w_idx -= 1;
+            word = mask_words[w_idx];
+            if word != 0 {
+                let highest_bit = WORD_MASK - (word.leading_zeros() as usize);
+                return Some((w_idx << WORD_SHIFT) | highest_bit);
             }
         }
+        None
+    }
+
+    fn merge_row_u64(
+        row: &Row,
+        p: u64,
+    ) -> Option<Vec<(usize, u64)>> {
+        let mut out: Vec<(usize, u64)> = Vec::with_capacity(row.len());
+        let sorted = row.windows(2).all(|w| w[0].0 < w[1].0);
+        if sorted {
+            for (rank, coeff) in row {
+                let c = coeff_to_u64(coeff, p)?;
+                if c != 0 {
+                    out.push((*rank, c));
+                }
+            }
+            return Some(out);
+        }
+        for (rank, coeff) in row {
+            let c = coeff_to_u64(coeff, p)?;
+            if c != 0 {
+                out.push((*rank, c));
+            }
+        }
+        out.sort_by_key(|(rank, _)| *rank);
+        let mut merged: Vec<(usize, u64)> = Vec::with_capacity(out.len());
+        for (rank, value) in out {
+            match merged.last_mut() {
+                | Some((last, acc)) if *last == rank => {
+                    let sum = *acc + value;
+                    *acc = if sum >= p { sum - p } else { sum };
+                },
+                | _ => merged.push((rank, value)),
+            }
+        }
+        merged.retain(|(_, value)| *value != 0);
+        Some(merged)
+    }
+
+    /// Fast Macaulay matrix Gaussian elimination over `GF(p)` for 62-bit primes `p`.
+    ///
+    /// Uses compact `u64` sparse rows, Montgomery's trick batch inversion for the
+    /// initial reducer-pivot prefix, and a reusable dense `u128` delayed-reduction
+    /// accumulator paired with a word-level bitset leased from
+    /// [`crate::kernels::reuse::global_pool`].
+    fn echelon_mod_u64(
+        p: u64,
+        rows: Vec<Row>,
+        steps: &mut usize,
+        limit: usize,
+    ) -> Option<Vec<(usize, Row)>> {
+        if rows.is_empty() {
+            return Some(Vec::new());
+        }
+        let total_nnz: usize = rows.iter().map(Vec::len).sum();
+        let avg_nnz = total_nnz.checked_div(rows.len()).unwrap_or(1).max(1);
+        let mut u64_rows: Vec<Vec<(usize, u64)>> =
+            if crate::execution::should_split_work(rows.len(), avg_nnz) {
+                crate::kernels::par::try_map_indexed(rows.len(), 64, |i| {
+                    merge_row_u64(&rows[i], p).ok_or(())
+                })
+                .ok()?
+            } else {
+                let mut converted = Vec::with_capacity(rows.len());
+                for r in &rows {
+                    converted.push(merge_row_u64(r, p)?);
+                }
+                converted
+            };
+        drop(rows);
+
+        let max_col = u64_rows
+            .iter()
+            .filter_map(|r| r.last().map(|&(col, _)| col))
+            .max();
+        let Some(max_col) = max_col else {
+            return Some(Vec::new());
+        };
+        let num_cols = max_col.saturating_add(1);
+        let num_words = num_cols.div_ceil(WORD_BITS);
+
+        let mut pivots: Vec<Option<Vec<(usize, u64)>>> = vec![None; num_cols];
+        let mut mask_words = crate::kernels::reuse::global_pool().scratch_usize(num_words);
+        mask_words.resize(num_words, 0);
+
+        // Identify the initial prefix of rows with pairwise distinct leading columns
+        // (in F4, all reducer rows sit at the front with distinct leading columns)
+        // and normalize them in a single batch using Montgomery's trick!
+        let mut prefix_len = 0_usize;
+        let mut to_invert_indices: Vec<usize> = Vec::new();
+        let mut to_invert_values: Vec<u64> = Vec::new();
+        for (idx, row) in u64_rows.iter().enumerate() {
+            if let Some(&(lead, lead_val)) = row.last() {
+                let w = lead >> WORD_SHIFT;
+                let bit = 1_usize << (lead & WORD_MASK);
+                if (mask_words[w] & bit) != 0 {
+                    break;
+                }
+                mask_words[w] |= bit;
+                if lead_val != 1 {
+                    to_invert_indices.push(idx);
+                    to_invert_values.push(lead_val);
+                }
+            }
+            prefix_len = idx.saturating_add(1);
+        }
+        mask_words.fill(0);
+
+        if !to_invert_values.is_empty() {
+            let mut invs = Vec::with_capacity(to_invert_values.len());
+            batch_inv_u64(&to_invert_values, p, &mut invs)?;
+            let p128 = u128::from(p);
+            for (&row_idx, &inv) in to_invert_indices.iter().zip(&invs) {
+                let inv128 = u128::from(inv);
+                let row = &mut u64_rows[row_idx];
+                let last_idx = row.len().saturating_sub(1);
+                for (i, (_, val)) in row.iter_mut().enumerate() {
+                    *val = if i == last_idx {
+                        1
+                    } else {
+                        ((u128::from(*val) * inv128) % p128) as u64
+                    };
+                }
+            }
+        }
+
+        let mut row_iter = u64_rows.into_iter();
+        for _ in 0..prefix_len {
+            if let Some(row) = row_iter.next()
+                && let Some(&(lead, _)) = row.last()
+            {
+                pivots[lead] = Some(row);
+            }
+        }
+
+        // Dense u128 delayed-reduction workspace for remaining rows.
+        let p_u128 = u128::from(p);
+        let threshold = u128::MAX - p_u128 * p_u128;
+
+        let mut remaining: Vec<Vec<(usize, u64)>> = row_iter.collect();
+        if !remaining.is_empty() {
+            let rem_nnz: usize = remaining.iter().map(Vec::len).sum();
+            let avg_rem = rem_nnz.checked_div(remaining.len()).unwrap_or(1).max(1);
+            let est_work = avg_rem.saturating_mul(prefix_len.clamp(1, 32));
+            if remaining.len() >= 4
+                && crate::execution::should_split_work(remaining.len(), est_work)
+            {
+                let chunk = crate::execution::choose_chunk_size(remaining.len(), 4);
+                let step_counter = std::sync::atomic::AtomicUsize::new(*steps);
+                let exceeded = std::sync::atomic::AtomicBool::new(false);
+                let mut paired: Vec<(Vec<(usize, u64)>, usize)> = remaining
+                    .iter_mut()
+                    .map(|r| (std::mem::take(r), 0_usize))
+                    .collect();
+
+                crate::kernels::par::for_chunks_mut(&mut paired, chunk, 2, |_, slice| {
+                    if exceeded.load(std::sync::atomic::Ordering::Relaxed) {
+                        return;
+                    }
+                    let mut local_mask =
+                        crate::kernels::reuse::global_pool().scratch_usize(num_words);
+                    local_mask.resize(num_words, 0);
+                    let mut surv_mask =
+                        crate::kernels::reuse::global_pool().scratch_usize(num_words);
+                    surv_mask.resize(num_words, 0);
+                    let mut local_acc = vec![0_u128; num_cols];
+
+                    for (row, out_steps) in slice.iter_mut() {
+                        if exceeded.load(std::sync::atomic::Ordering::Relaxed) {
+                            break;
+                        }
+                        let Some(&(lead, _)) = row.last() else {
+                            continue;
+                        };
+                        for &(col, val) in row.iter() {
+                            local_acc[col] = u128::from(val);
+                            local_mask[col >> WORD_SHIFT] |= 1_usize << (col & WORD_MASK);
+                        }
+                        let mut top_col = lead;
+                        let mut local_steps = 0_usize;
+                        let mut hit_limit = false;
+                        loop {
+                            let Some(curr_lead) = highest_bit_le(&local_mask, top_col) else {
+                                break;
+                            };
+                            let val = (local_acc[curr_lead] % p_u128) as u64;
+                            local_mask[curr_lead >> WORD_SHIFT] &=
+                                !(1_usize << (curr_lead & WORD_MASK));
+                            if val == 0 {
+                                local_acc[curr_lead] = 0;
+                            } else if let Some(pivot) = &pivots[curr_lead] {
+                                local_steps = local_steps.saturating_add(1);
+                                if step_counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+                                    >= limit
+                                {
+                                    exceeded.store(true, std::sync::atomic::Ordering::Relaxed);
+                                    hit_limit = true;
+                                    break;
+                                }
+                                local_acc[curr_lead] = 0;
+                                let neg_factor = u128::from(p - val);
+                                for &(col, p_val) in &pivot[..pivot.len().saturating_sub(1)] {
+                                    let slot = &mut local_acc[col];
+                                    let sum = *slot + neg_factor * u128::from(p_val);
+                                    *slot = if sum >= threshold {
+                                        sum % p_u128
+                                    } else {
+                                        sum
+                                    };
+                                    local_mask[col >> WORD_SHIFT] |= 1_usize << (col & WORD_MASK);
+                                }
+                            } else {
+                                local_acc[curr_lead] = u128::from(val);
+                                surv_mask[curr_lead >> WORD_SHIFT] |=
+                                    1_usize << (curr_lead & WORD_MASK);
+                            }
+                            if curr_lead == 0 {
+                                break;
+                            }
+                            top_col = curr_lead - 1;
+                        }
+                        if hit_limit {
+                            break;
+                        }
+                        row.clear();
+                        let max_word = lead >> WORD_SHIFT;
+                        for w_idx in 0..=max_word {
+                            let mut word = surv_mask[w_idx];
+                            surv_mask[w_idx] = 0;
+                            while word != 0 {
+                                let bit = word.trailing_zeros() as usize;
+                                word &= word - 1;
+                                let col = (w_idx << WORD_SHIFT) | bit;
+                                let val = local_acc[col] as u64;
+                                local_acc[col] = 0;
+                                if val != 0 {
+                                    row.push((col, val));
+                                }
+                            }
+                        }
+                        *out_steps = local_steps;
+                    }
+                });
+
+                if exceeded.load(std::sync::atomic::Ordering::Relaxed) {
+                    return None;
+                }
+                for (dst, (src, row_s)) in remaining.iter_mut().zip(paired) {
+                    *dst = src;
+                    *steps = steps.saturating_add(row_s);
+                }
+                if *steps > limit {
+                    return None;
+                }
+            }
+        }
+
+        let mut acc: Vec<u128> = Vec::new();
+
+        for mut row in remaining {
+            let Some(&(lead, lead_val)) = row.last() else {
+                continue;
+            };
+            if pivots[lead].is_none() {
+                if lead_val != 1 {
+                    let inv128 = u128::from(mod_inv_u64(lead_val, p)?);
+                    let last_idx = row.len().saturating_sub(1);
+                    for (i, (_, val)) in row.iter_mut().enumerate() {
+                        *val = if i == last_idx {
+                            1
+                        } else {
+                            ((u128::from(*val) * inv128) % p_u128) as u64
+                        };
+                    }
+                }
+                pivots[lead] = Some(row);
+                continue;
+            }
+
+            if acc.is_empty() {
+                acc.resize(num_cols, 0);
+            }
+
+            for &(col, val) in &row {
+                acc[col] = u128::from(val);
+                mask_words[col >> WORD_SHIFT] |= 1_usize << (col & WORD_MASK);
+            }
+
+            let mut top_col = lead;
+            loop {
+                let Some(curr_lead) = highest_bit_le(&mask_words, top_col) else {
+                    break;
+                };
+                let val = (acc[curr_lead] % p_u128) as u64;
+                if val == 0 {
+                    acc[curr_lead] = 0;
+                    mask_words[curr_lead >> WORD_SHIFT] &= !(1_usize << (curr_lead & WORD_MASK));
+                    if curr_lead == 0 {
+                        break;
+                    }
+                    top_col = curr_lead - 1;
+                    continue;
+                }
+
+                if let Some(pivot) = &pivots[curr_lead] {
+                    *steps = steps.saturating_add(1);
+                    if *steps > limit {
+                        return None;
+                    }
+                    acc[curr_lead] = 0;
+                    mask_words[curr_lead >> WORD_SHIFT] &= !(1_usize << (curr_lead & WORD_MASK));
+                    let neg_factor = u128::from(p - val);
+                    for &(col, p_val) in &pivot[..pivot.len().saturating_sub(1)] {
+                        let slot = &mut acc[col];
+                        let sum = *slot + neg_factor * u128::from(p_val);
+                        *slot = if sum >= threshold {
+                            sum % p_u128
+                        } else {
+                            sum
+                        };
+                        mask_words[col >> WORD_SHIFT] |= 1_usize << (col & WORD_MASK);
+                    }
+                    if curr_lead == 0 {
+                        break;
+                    }
+                    top_col = curr_lead - 1;
+                } else {
+                    acc[curr_lead] = u128::from(val);
+                    let inv128 = if val == 1 {
+                        1_u128
+                    } else {
+                        u128::from(mod_inv_u64(val, p)?)
+                    };
+                    let mut new_pivot = Vec::new();
+                    let max_word = curr_lead >> WORD_SHIFT;
+                    for w_idx in 0..=max_word {
+                        let mut word = mask_words[w_idx];
+                        mask_words[w_idx] = 0;
+                        while word != 0 {
+                            let bit = word.trailing_zeros() as usize;
+                            word &= word - 1;
+                            let col = (w_idx << WORD_SHIFT) | bit;
+                            let raw = acc[col];
+                            acc[col] = 0;
+                            let c = if col == curr_lead {
+                                1_u64
+                            } else {
+                                let rem = raw % p_u128;
+                                if rem == 0 {
+                                    0
+                                } else if inv128 == 1 {
+                                    rem as u64
+                                } else {
+                                    ((rem * inv128) % p_u128) as u64
+                                }
+                            };
+                            if c != 0 {
+                                new_pivot.push((col, c));
+                            }
+                        }
+                    }
+                    pivots[curr_lead] = Some(new_pivot);
+                    break;
+                }
+            }
+        }
+
+        let mut result = Vec::new();
+        for (lead, maybe_row) in pivots.into_iter().enumerate() {
+            if let Some(u64_row) = maybe_row {
+                let row: Row = u64_row
+                    .into_iter()
+                    .map(|(col, c)| (col, BigRational::from_integer(BigInt::from(c))))
+                    .collect();
+                result.push((lead, row));
+            }
+        }
+        Some(result)
+    }
+
+    /// Dense-workspace + word-bitset Gaussian elimination over `Q` or large `GF(p)`.
+    fn echelon_general(
+        domain: &Domain,
+        rows: Vec<Row>,
+        steps: &mut usize,
+        limit: usize,
+    ) -> Option<Vec<(usize, Row)>> {
+        if rows.is_empty() {
+            return Some(Vec::new());
+        }
+        let total_nnz: usize = rows.iter().map(Vec::len).sum();
+        let avg_nnz = total_nnz.checked_div(rows.len()).unwrap_or(1).max(1);
+        let mut merged_rows: Vec<Row> = if crate::execution::should_split_work(rows.len(), avg_nnz)
+        {
+            crate::kernels::par::map_slice(&rows, 64, |r| merge_row(domain, r.clone()))
+        } else {
+            rows.into_iter().map(|r| merge_row(domain, r)).collect()
+        };
+
+        let max_col = merged_rows
+            .iter()
+            .filter_map(|r| r.last().map(|&(col, _)| col))
+            .max();
+        let Some(max_col) = max_col else {
+            return Some(Vec::new());
+        };
+        let num_cols = max_col.saturating_add(1);
+        let num_words = num_cols.div_ceil(WORD_BITS);
+
+        let mut pivots: Vec<Option<Row>> = vec![None; num_cols];
+        let mut mask_words = crate::kernels::reuse::global_pool().scratch_usize(num_words);
+        mask_words.resize(num_words, 0);
+
+        // Identify the initial prefix of rows with pairwise distinct leading columns.
+        let mut prefix_len = 0_usize;
+        let mut prefix_work = 0_usize;
+        for (idx, row) in merged_rows.iter().enumerate() {
+            if let Some(&(lead, ref coeff)) = row.last() {
+                let w = lead >> WORD_SHIFT;
+                let bit = 1_usize << (lead & WORD_MASK);
+                if (mask_words[w] & bit) != 0 {
+                    break;
+                }
+                mask_words[w] |= bit;
+                if !domain.is_one(coeff) {
+                    prefix_work = prefix_work.saturating_add(row.len());
+                }
+            }
+            prefix_len = idx.saturating_add(1);
+        }
+        mask_words.fill(0);
+
+        if prefix_len > 0 && prefix_work > 0 {
+            let avg_prefix = prefix_work.checked_div(prefix_len).unwrap_or(1).max(1);
+            if crate::execution::should_split_work(prefix_len, avg_prefix) {
+                let normalized =
+                    crate::kernels::par::try_map_indexed::<_, (), _>(prefix_len, 32, |idx| {
+                        let mut r = merged_rows[idx].clone();
+                        if let Some((_, coeff)) = r.last()
+                            && !domain.is_one(coeff)
+                        {
+                            let inv = domain.inv(coeff).ok_or(())?;
+                            let last_i = r.len().saturating_sub(1);
+                            for (i, (_, v)) in r.iter_mut().enumerate() {
+                                *v = if i == last_i {
+                                    domain.one()
+                                } else {
+                                    domain.mul(v, &inv)
+                                };
+                            }
+                        }
+                        Ok(r)
+                    })
+                    .ok()?;
+                for (dst, src) in merged_rows.iter_mut().take(prefix_len).zip(normalized) {
+                    *dst = src;
+                }
+            } else {
+                for r in merged_rows.iter_mut().take(prefix_len) {
+                    if let Some((_, coeff)) = r.last()
+                        && !domain.is_one(coeff)
+                    {
+                        let inv = domain.inv(coeff)?;
+                        let last_i = r.len().saturating_sub(1);
+                        for (i, (_, v)) in r.iter_mut().enumerate() {
+                            *v = if i == last_i {
+                                domain.one()
+                            } else {
+                                domain.mul(v, &inv)
+                            };
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut row_iter = merged_rows.into_iter();
+        for _ in 0..prefix_len {
+            if let Some(row) = row_iter.next()
+                && let Some(&(lead, _)) = row.last()
+            {
+                pivots[lead] = Some(row);
+            }
+        }
+
+        let is_rational = domain.is_rational();
+        let mut acc: Vec<BigRational> = Vec::new();
+
+        for mut row in row_iter {
+            let Some(&(lead, _)) = row.last() else {
+                continue;
+            };
+            if pivots[lead].is_none() {
+                if let Some((_, coeff)) = row.last()
+                    && !domain.is_one(coeff)
+                {
+                    let inv = domain.inv(coeff)?;
+                    let last_i = row.len().saturating_sub(1);
+                    for (i, (_, v)) in row.iter_mut().enumerate() {
+                        *v = if i == last_i {
+                            domain.one()
+                        } else {
+                            domain.mul(v, &inv)
+                        };
+                    }
+                }
+                pivots[lead] = Some(row);
+                continue;
+            }
+
+            if acc.is_empty() {
+                acc.resize_with(num_cols, BigRational::zero);
+            }
+
+            for (col, val) in row {
+                acc[col] = val;
+                mask_words[col >> WORD_SHIFT] |= 1_usize << (col & WORD_MASK);
+            }
+
+            let mut top_col = lead;
+            loop {
+                let Some(curr_lead) = highest_bit_le(&mask_words, top_col) else {
+                    break;
+                };
+                if domain.is_zero(&acc[curr_lead]) {
+                    acc[curr_lead] = BigRational::zero();
+                    mask_words[curr_lead >> WORD_SHIFT] &= !(1_usize << (curr_lead & WORD_MASK));
+                    if curr_lead == 0 {
+                        break;
+                    }
+                    top_col = curr_lead - 1;
+                    continue;
+                }
+
+                if let Some(pivot) = &pivots[curr_lead] {
+                    *steps = steps.saturating_add(1);
+                    if *steps > limit {
+                        return None;
+                    }
+                    let factor = std::mem::replace(&mut acc[curr_lead], BigRational::zero());
+                    mask_words[curr_lead >> WORD_SHIFT] &= !(1_usize << (curr_lead & WORD_MASK));
+                    let factor_is_one = domain.is_one(&factor);
+                    for (col, p_val) in &pivot[..pivot.len().saturating_sub(1)] {
+                        let slot = &mut acc[*col];
+                        if is_rational {
+                            if factor_is_one {
+                                if slot.is_zero() {
+                                    *slot = -p_val;
+                                } else {
+                                    *slot -= p_val;
+                                }
+                            } else if slot.is_zero() {
+                                *slot = -(&factor * p_val);
+                            } else {
+                                *slot -= &factor * p_val;
+                            }
+                        } else {
+                            let prod = if factor_is_one {
+                                p_val.clone()
+                            } else {
+                                domain.mul(&factor, p_val)
+                            };
+                            *slot = if slot.is_zero() {
+                                domain.neg(&prod)
+                            } else {
+                                domain.sub(slot, &prod)
+                            };
+                        }
+                        if slot.is_zero() {
+                            mask_words[*col >> WORD_SHIFT] &= !(1_usize << (*col & WORD_MASK));
+                        } else {
+                            mask_words[*col >> WORD_SHIFT] |= 1_usize << (*col & WORD_MASK);
+                        }
+                    }
+                    if curr_lead == 0 {
+                        break;
+                    }
+                    top_col = curr_lead - 1;
+                } else {
+                    let lead_coeff = &acc[curr_lead];
+                    let lead_is_one = domain.is_one(lead_coeff);
+                    let inverse = if lead_is_one {
+                        BigRational::one()
+                    } else {
+                        domain.inv(lead_coeff)?
+                    };
+                    let mut new_pivot = Vec::new();
+                    let max_word = curr_lead >> WORD_SHIFT;
+                    for w_idx in 0..=max_word {
+                        let mut word = mask_words[w_idx];
+                        mask_words[w_idx] = 0;
+                        while word != 0 {
+                            let bit = word.trailing_zeros() as usize;
+                            word &= word - 1;
+                            let col = (w_idx << WORD_SHIFT) | bit;
+                            let raw = std::mem::replace(&mut acc[col], BigRational::zero());
+                            if !domain.is_zero(&raw) {
+                                let c = if col == curr_lead {
+                                    domain.one()
+                                } else if lead_is_one {
+                                    raw
+                                } else if is_rational {
+                                    &raw * &inverse
+                                } else {
+                                    domain.mul(&raw, &inverse)
+                                };
+                                if !domain.is_zero(&c) {
+                                    new_pivot.push((col, c));
+                                }
+                            }
+                        }
+                    }
+                    pivots[curr_lead] = Some(new_pivot);
+                    break;
+                }
+            }
+        }
+
+        let mut result = Vec::new();
+        for (lead, maybe_row) in pivots.into_iter().enumerate() {
+            if let Some(row) = maybe_row {
+                result.push((lead, row));
+            }
+        }
+        Some(result)
     }
 
     /// The row echelon form of a list of rows over `domain`.
@@ -1777,37 +2626,10 @@ pub(super) mod common {
         steps: &mut usize,
         limit: usize,
     ) -> Option<Vec<(usize, Row)>> {
-        let mut pivots: BTreeMap<usize, Row> = BTreeMap::new();
-        for row in rows {
-            let mut current = merge_row(domain, row);
-            while let Some(&(lead, _)) = current.last() {
-                match pivots.get(&lead) {
-                    | Some(pivot) => {
-                        *steps = steps.saturating_add(1);
-                        if *steps > limit {
-                            return None;
-                        }
-                        let Some((_, coefficient)) = current.last() else {
-                            break;
-                        };
-                        let factor = coefficient.clone();
-                        current = subtract_rows(domain, &current, pivot, &factor);
-                    },
-                    | None => {
-                        let Some((_, coefficient)) = current.last() else {
-                            break;
-                        };
-                        let inverse = domain.inv(coefficient)?;
-                        for (_, value) in &mut current {
-                            *value = domain.mul(value, &inverse);
-                        }
-                        pivots.insert(lead, current);
-                        break;
-                    },
-                }
-            }
+        if let Some(p_u64) = small_prime_modulus(domain) {
+            return echelon_mod_u64(p_u64, rows, steps, limit);
         }
-        Some(pivots.into_iter().collect())
+        echelon_general(domain, rows, steps, limit)
     }
 
     /// The polynomial a row of a Macaulay matrix stands for.
@@ -1860,6 +2682,120 @@ pub(super) mod common {
         }
 
         #[test]
+        fn mono_mask_and_batch_inv_soundness() {
+            let samples = [
+                vec![0, 0, 0, 0],
+                vec![1, 0, 2, 0],
+                vec![2, 3, 2, 1],
+                vec![0, 5, 0, 4],
+                vec![8, 9, 0, 1],
+            ];
+            for a in &samples {
+                let ma = mono_mask(a);
+                for b in &samples {
+                    let mb = mono_mask(b);
+                    if divides(a, b) {
+                        assert_eq!(ma & !mb, 0, "mask must not reject true divisor");
+                    }
+                    assert_eq!(coprime_with_masks(a, b, ma, mb), coprime(a, b));
+                }
+            }
+            let p = 65_521_u64;
+            let vals = vec![1_u64, 2, 3, 17, 1024, 65_520];
+            let mut invs = Vec::new();
+            batch_inv_u64(&vals, p, &mut invs).unwrap_or_else(|| panic!("all non-zero mod p"));
+            for (&v, &inv) in vals.iter().zip(&invs) {
+                assert_eq!((v * inv) % p, 1);
+            }
+        }
+
+        #[test]
+        fn echelon_u64_fast_path_matches_general_echelon_over_prime_field() {
+            let p = 101_i64;
+            let domain = Domain::prime(BigInt::from(p)).unwrap_or_else(|| panic!("101 is prime"));
+            let rows = vec![
+                vec![(0, q(3)), (2, q(5)), (4, q(7))],
+                vec![(1, q(2)), (2, q(9)), (4, q(14))],
+                vec![(0, q(6)), (1, q(4)), (2, q(19)), (4, q(28))],
+                vec![(0, q(1)), (3, q(11))],
+            ];
+            let mut steps_fast = 0;
+            let mut steps_gen = 0;
+            let fast = echelon_mod_u64(101, rows.clone(), &mut steps_fast, 1000);
+            let general = echelon_general(&domain, rows, &mut steps_gen, 1000);
+            assert_eq!(fast, general);
+            assert_eq!(steps_fast, steps_gen);
+        }
+
+        #[test]
+        fn echelon_u64_parallel_non_pivot_reduction_matches_serial_and_general() {
+            let p = 65_521_u64;
+            let domain = Domain::prime(BigInt::from(p)).unwrap_or_else(|| panic!("65521 is prime"));
+            let mut rows = Vec::new();
+            // 64 initial pivot rows with distinct leading columns 64..128
+            for i in 0..64_usize {
+                rows.push(vec![
+                    (i % 16, q(((i * 7 + 3) % 100) as i64)),
+                    ((i + 5) % 64, q(((i * 11 + 1) % 97 + 1) as i64)),
+                    (64 + i, q((i % 29 + 1) as i64)),
+                ]);
+            }
+            // 1024 non-pivot rows exceeding RSSN_PARALLEL_MIN_WORK to exercise kernels::par
+            for r in 0..1024_usize {
+                let c0 = r % 32;
+                let c1 = 32 + (r * 3) % 32;
+                let p0 = 64 + (r % 64);
+                let p1 = 64 + ((r * 5 + 1) % 64);
+                let mut row = vec![
+                    (c0, q(((r * 13 + 5) % 251 + 1) as i64)),
+                    (c1, q(((r * 17 + 7) % 251 + 1) as i64)),
+                    (p0, q(((r * 3 + 1) % 101 + 1) as i64)),
+                ];
+                if p1 != p0 {
+                    row.push((p1, q(((r * 19 + 2) % 101 + 1) as i64)));
+                }
+                rows.push(row);
+            }
+            let serial = crate::execution::with_scoped_pool(Some(1), || {
+                let mut s = 0;
+                echelon_mod_u64(p, rows.clone(), &mut s, 1_000_000)
+            })
+            .unwrap_or_else(|| panic!("serial echelon"));
+            let parallel = crate::execution::with_scoped_pool(Some(4), || {
+                let mut s = 0;
+                echelon_mod_u64(p, rows.clone(), &mut s, 1_000_000)
+            })
+            .unwrap_or_else(|| panic!("parallel echelon"));
+            let general = {
+                let mut s = 0;
+                echelon_general(&domain, rows, &mut s, 1_000_000)
+                    .unwrap_or_else(|| panic!("general echelon"))
+            };
+            let leads = |pivots: &[(usize, Row)]| -> Vec<usize> {
+                pivots.iter().map(|(c, _)| *c).collect()
+            };
+            assert_eq!(leads(&parallel), leads(&serial));
+            assert_eq!(leads(&serial), leads(&general));
+            // Verify row-space equivalence: reducing every parallel pivot modulo general pivots yields zero.
+            let mut cols = Vec::new();
+            for col in 0..128 {
+                cols.push(vec![u32::try_from(col).unwrap_or(0)]);
+            }
+            let columns = Columns::new(cols, Order::GradedRevLex);
+            let gen_polys: Vec<GPoly> = general
+                .iter()
+                .map(|(_, r)| row_polynomial(&domain, r, &columns, Order::GradedRevLex))
+                .collect();
+            for (_, r) in &parallel {
+                let poly = row_polynomial(&domain, r, &columns, Order::GradedRevLex);
+                assert!(
+                    normal_form(&domain, &poly, &gen_polys, Order::GradedRevLex).is_zero(),
+                    "parallel echelon row outside general row space"
+                );
+            }
+        }
+
+        #[test]
         fn s_polynomial_cancels_the_common_leading_term() {
             let order = Order::GradedRevLex;
             // x^2 - y and x*y - 1: S = y*(x^2 - y) - x*(x*y - 1) = x - y^2, and
@@ -1908,13 +2844,15 @@ pub(super) mod common {
             // elimination would spin until the step budget ran out.
             let rows = vec![vec![(0, q(1)), (2, q(1)), (2, q(-1))], vec![(2, q(1))]];
             let mut steps = 0;
-            let pivots = echelon(&Domain::Rational, rows, &mut steps, 100).expect("must terminate");
+            let pivots = echelon(&Domain::Rational, rows, &mut steps, 100)
+                .unwrap_or_else(|| panic!("must terminate"));
             assert_eq!(pivots.len(), 2);
             assert_eq!(pivots[0].0, 0);
             assert_eq!(pivots[1].0, 2);
             // Duplicate entries that do not cancel are added.
             let rows = vec![vec![(1, q(2)), (1, q(3))]];
-            let pivots = echelon(&Domain::Rational, rows, &mut 0, 100).expect("must terminate");
+            let pivots = echelon(&Domain::Rational, rows, &mut 0, 100)
+                .unwrap_or_else(|| panic!("must terminate"));
             assert_eq!(pivots, vec![(1, vec![(1, q(1))])]);
         }
 
