@@ -667,7 +667,8 @@ pub(crate) fn rational_function_in(
     Some((as_q(&r.numer)?, as_q(&r.denom)?))
 }
 
-/// Partial fractions of a rational function of `x` over `Q`:
+/// Partial fractions of a rational function of `x` over `Q` (and exact
+/// rational functions with independent symbolic parameters):
 /// `polynomial + sum numerator / factor^power`.
 fn apart_term(
     graph: &mut Graph,
@@ -679,7 +680,58 @@ fn apart_term(
     let gx = gens.index(graph, x);
     let r = ratio(graph, &mut gens, term, Limits::default())?;
     if gens.len() != 1 {
-        return None;
+        let symbol = graph.symbol_of(x)?;
+        for other in r
+            .numer
+            .support()
+            .into_iter()
+            .chain(r.denom.support())
+            .filter(|&g| g != gx)
+        {
+            if graph.depends_on(graph.find(gens.node(other)?), symbol) {
+                return None;
+            }
+        }
+        let parts = apart::apart_poly(&r.numer, &r.denom, gx)?;
+        let scaled_ratio = |graph: &mut Graph, num: &Poly, den: &Poly| -> Option<NodeId> {
+            if let Some(c) = den.as_constant() {
+                let inv = c.recip()?;
+                return Some(to_term(graph, &gens, &num.scale(&inv)));
+            }
+            let top = to_term(graph, &gens, num);
+            let bottom = to_term(graph, &gens, den);
+            let minus_one = graph.int(-1);
+            let inv = graph.node(core::POW, &[bottom, minus_one]);
+            Some(if graph.number_of(top).is_some_and(Number::is_one) {
+                inv
+            } else {
+                graph.node(core::MUL, &[top, inv])
+            })
+        };
+        let mut terms = Vec::new();
+        if !parts.quotient_numer.is_zero() {
+            terms.push(scaled_ratio(
+                graph,
+                &parts.quotient_numer,
+                &parts.quotient_denom,
+            )?);
+        }
+        for piece in &parts.pieces {
+            let base = to_term(graph, &gens, &piece.factor);
+            let exponent = graph.int(-i64::from(piece.power));
+            let factor_inv = graph.node(core::POW, &[base, exponent]);
+            let coeff = scaled_ratio(graph, &piece.numer, &piece.denom)?;
+            terms.push(if graph.number_of(coeff).is_some_and(Number::is_one) {
+                factor_inv
+            } else {
+                graph.node(core::MUL, &[coeff, factor_inv])
+            });
+        }
+        return Some(match terms.as_slice() {
+            | [] => graph.int(0),
+            | [only] => *only,
+            | _ => graph.node(core::ADD, &terms),
+        });
     }
     let as_q = |p: &Poly| -> Option<QPoly> {
         p.univariate_in(gx)?
@@ -884,8 +936,28 @@ fn gcd(
     q: NodeId,
     x: NodeId,
 ) -> Option<NodeId> {
-    let (a, b) = (rational_in(graph, p, x)?, rational_in(graph, q, x)?);
-    Some(from_rational(graph, &univariate::gcd(&a, &b), x))
+    if let (Some(a), Some(b)) = (rational_in(graph, p, x), rational_in(graph, q, x)) {
+        return Some(from_rational(graph, &multifactor::gcd_q(&a, &b), x));
+    }
+    let (term_p, term_q) = (best(graph, p)?, best(graph, q)?);
+    let mut gens = Gens::default();
+    let gx = gens.index(graph, x);
+    let poly_p = from_term(graph, &mut gens, term_p, Limits::default())?;
+    let poly_q = from_term(graph, &mut gens, term_q, Limits::default())?;
+    if let Some(symbol) = graph.symbol_of(x) {
+        for other in poly_p
+            .support()
+            .into_iter()
+            .chain(poly_q.support())
+            .filter(|&g| g != gx)
+        {
+            if graph.depends_on(graph.find(gens.node(other)?), symbol) {
+                return None;
+            }
+        }
+    }
+    let g = multifactor::poly_gcd(&poly_p, &poly_q)?;
+    Some(to_term(graph, &gens, &g))
 }
 
 /// Builds `unit * prod factor_i^e_i` from integer factors in `x`.
@@ -1202,7 +1274,7 @@ fn together(
         return None;
     }
     if cancel {
-        // Cancel a common factor when the quotient is univariate over Q.
+        // Cancel a common factor when the quotient is univariate or multivariate over Q.
         let mut support = r.numer.support();
         support.extend(r.denom.support());
         support.sort_unstable();
@@ -1215,7 +1287,7 @@ fn together(
                     .collect()
             };
             if let (Some(n), Some(d)) = (as_q(&r.numer), as_q(&r.denom)) {
-                let g = univariate::gcd(&n, &d);
+                let g = multifactor::gcd_q(&n, &d);
                 let lead = d.last().cloned().unwrap_or_else(BigRational::one);
                 // Normalise so that the denominator is monic.
                 let scaled: QPoly = g.iter().map(|c| c * &lead).collect();
@@ -1233,6 +1305,17 @@ fn together(
                     };
                 }
             }
+        } else if !support.is_empty()
+            && r.numer.is_exact()
+            && r.denom.is_exact()
+            && let Some(g) = multifactor::poly_gcd(&r.numer, &r.denom)
+            && g.as_constant().is_none()
+            && let (Some(nq), Some(dq)) = (
+                r.numer.div_exact(&g, Limits::default().terms),
+                r.denom.div_exact(&g, Limits::default().terms),
+            )
+        {
+            r = PolyRatio { numer: nq, denom: dq };
         }
     }
     let numer = to_term(graph, &gens, &r.numer);
@@ -1428,10 +1511,33 @@ mod tests {
         assert_eq!(run("cancel((x^2 - 1)/(x - 1))"), "x + 1");
         assert_eq!(run("cancel((x^2 + 2*x + 1)/(x^2 - 1))"), "(x + 1)/(x - 1)");
         assert_eq!(run("cancel(x/x^3)"), "1/x^2");
+        assert_eq!(run("cancel((x^2 - y^2)/(x - y))"), "x + y");
+        assert_eq!(run("pgcd(x^2*y - y^3, x^2 - 2*x*y + y^2, x)"), "x - y");
         assert_eq!(run("apart(1/(x^2 - 1), x)"), "1/2/(x - 1) - 1/2/(x + 1)");
         assert_eq!(
             run("apart((x^3 + 1)/(x^2 + 1), x)"),
             "x + (1 - x)/(x^2 + 1)"
         );
+        let sym_param = run("apart((a*x + b)/(x^2 - 1), x)");
+        assert!(
+            sym_param.contains("x - 1") && sym_param.contains("x + 1"),
+            "{sym_param}"
+        );
+        let diff_sq = run("apart(1/(x^2 - a^2), x)");
+        // The sum is printed in the engine's canonical order, so the pole
+        // may read `x + a` or `a + x`; the numeric check below is the real one.
+        assert!(
+            diff_sq.contains("x - a") || diff_sq.contains("-a + x"),
+            "{diff_sq}"
+        );
+        for (xv, av, bv) in [(2.3, 0.7, -1.1), (-1.4, 1.9, 0.5)] {
+            let at = [("x", xv), ("a", av), ("b", bv)];
+            let w1 = eval(&[poly()], "(a*x + b)/(x^2 - 1)", &at);
+            let g1 = eval(&[poly()], &sym_param, &at);
+            assert!((w1 - g1).abs() < 1e-10, "{sym_param}: {w1} vs {g1}");
+            let w2 = eval(&[poly()], "1/(x^2 - a^2)", &at);
+            let g2 = eval(&[poly()], &diff_sq, &at);
+            assert!((w2 - g2).abs() < 1e-10, "{diff_sq}: {w2} vs {g2}");
+        }
     }
 }
