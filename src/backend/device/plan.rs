@@ -402,11 +402,12 @@ impl Plan {
             )));
         }
         let dtype = preferred_dtype(device.info());
-        let mut flat = Vec::with_capacity(self.externals * rows);
+        let mut flat = crate::kernels::reuse::f64_scratch(self.externals * rows);
         for c in externals {
             flat.extend_from_slice(c);
         }
         let external = device.upload(&flat, dtype)?;
+        drop(flat);
         let mut outputs: Vec<Option<Buffer>> = Vec::with_capacity(self.nodes.len());
         for node in &self.nodes {
             let Some(node) = node else {
@@ -434,21 +435,29 @@ impl Plan {
             outputs.push(Some(out));
         }
         let mut answers = Vec::with_capacity(self.results.len());
+        let mut scratch_col: Option<Buffer> = None;
         for &s in &self.results {
-            let mut host = vec![0.0; rows];
             match s {
-                | Source::External(i) => host.copy_from_slice(externals[i]),
+                | Source::External(i) => answers.push(externals[i].to_vec()),
                 | Source::Output(NodeId(n), j) => {
                     let produced = outputs
                         .get(n)
                         .and_then(Option::as_ref)
                         .ok_or_else(|| invalid("a result names a fused-away output"))?;
-                    let mut column = device.alloc(rows, dtype)?;
-                    device.copy(produced, j * rows, &mut column, 0, rows)?;
-                    device.download(&column, &mut host)?;
+                    let mut host = vec![0.0; rows];
+                    if j == 0 && produced.len() == rows {
+                        device.download(produced, &mut host)?;
+                    } else {
+                        let column = match &mut scratch_col {
+                            | Some(buf) => buf,
+                            | None => scratch_col.insert(device.alloc(rows, dtype)?),
+                        };
+                        device.copy(produced, j * rows, column, 0, rows)?;
+                        device.download(column, &mut host)?;
+                    }
+                    answers.push(host);
                 },
             }
-            answers.push(host);
         }
         Ok(answers)
     }

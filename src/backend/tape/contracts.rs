@@ -74,6 +74,27 @@ impl Tape {
     }
 }
 
+// Full equality resolves hash collisions; all constant/function bit patterns
+// and operand order are retained for the native cache.
+#[cfg(feature = "jit")]
+impl ProgramKey {
+    pub(in crate::backend) fn matches(
+        &self,
+        tape: &Tape,
+    ) -> bool {
+        self.inputs == tape.inputs
+            && self.params == tape.params
+            && self.args == tape.args
+            && self.outputs == tape.outputs
+            && self.insts.len() == tape.insts.len()
+            && self
+                .insts
+                .iter()
+                .zip(&tape.insts)
+                .all(|(&key, inst)| key == ordered_key_of(inst))
+    }
+}
+
 // IEEE operand order and constant bit patterns are part of the program.
 // Builder commoning may use canonical arithmetic keys; a native code cache
 // must retain the exact instruction order instead.

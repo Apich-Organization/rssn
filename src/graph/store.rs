@@ -387,7 +387,7 @@ pub struct Graph {
     scratch: Vec<u32>,
     /// Reused operand buffer of [`Graph::try_node`].
     operands: Vec<NodeId>,
-    assumptions: HashMap<SymbolId, Facts>,
+    assumptions: FastMap<SymbolId, Facts>,
     /// Interned base dimensions, exponent atoms and dimension variables.
     pub(crate) dims: std::sync::Arc<std::sync::RwLock<crate::graph::dim::DimArena>>,
     /// Declared dimensions of symbols.
@@ -410,7 +410,7 @@ pub struct Graph {
 /// matching against a frozen graph, so the cache sits behind a lock.
 #[derive(Debug, Default)]
 pub(super) struct FactsCache {
-    pub(super) table: std::sync::Mutex<(u64, super::id::FastMap<u32, Facts>)>,
+    pub(super) table: std::sync::RwLock<(u64, super::id::FastMap<u32, Facts>)>,
 }
 
 impl Clone for Graph {
@@ -486,7 +486,7 @@ impl Graph {
             conflicts: Vec::new(),
             scratch: Vec::new(),
             operands: Vec::new(),
-            assumptions: HashMap::new(),
+            assumptions: FastMap::default(),
             dims: std::sync::Arc::new(std::sync::RwLock::new(crate::graph::dim::DimArena::new())),
             dim_assumptions: HashMap::new(),
             ascending: super::id::FastSet::default(),
@@ -1237,24 +1237,31 @@ impl Graph {
             return;
         }
         let mut value = identity.clone();
-        let mut rest = Vec::with_capacity(buf.len());
-        for &c in buf.iter() {
-            match self.as_number(c) {
-                | Some(n) => {
-                    value = if op == core::ADD {
-                        value.add(n)
-                    } else {
-                        value.mul(n)
-                    }
-                },
-                | None => rest.push(c),
+        let mut write = 0_usize;
+        for read in 0..buf.len() {
+            let Some(&c) = buf.get(read) else {
+                continue;
+            };
+            if let Some(n) = self.as_number(c) {
+                value = if op == core::ADD {
+                    value.add(n)
+                } else {
+                    value.mul(n)
+                };
+            } else {
+                if write != read
+                    && let Some(slot) = buf.get_mut(write)
+                {
+                    *slot = c;
+                }
+                write = write.saturating_add(1);
             }
         }
-        if value != identity || rest.is_empty() {
+        buf.truncate(write);
+        if value != identity || buf.is_empty() {
             let literal = self.num(value);
-            rest.insert(0, literal);
+            buf.insert(0, literal);
         }
-        *buf = rest;
     }
 
     fn intern(
@@ -1738,7 +1745,8 @@ impl Graph {
             data.uses_tail = NO_USE;
             std::mem::replace(&mut data.uses_head, NO_USE)
         };
-        let mut key = Vec::new();
+        let mut key = std::mem::take(&mut self.scratch);
+        key.clear();
         while let Some(&UseCell { node: user, next }) = self.uses.get(cell as usize) {
             cell = next;
             if self.n(user).flags & REDUNDANT != 0 || self.n(user).stamp == stamp {
@@ -1758,6 +1766,7 @@ impl Graph {
                 self.push_use(ClassId(now.0), user);
             }
         }
+        self.scratch = key;
     }
 
     /// Recomputes the analysis data of the parents of `class`.
@@ -1796,7 +1805,7 @@ impl Graph {
             return Err("validate() called with pending unions; call rebuild() first".to_owned());
         }
         let mut roots = 0_usize;
-        let mut seen: HashMap<(OpId, PayloadId, Vec<u32>), ClassId> = HashMap::new();
+        let mut seen: FastMap<(OpId, PayloadId, Vec<u32>), ClassId> = FastMap::default();
         let mut key = Vec::new();
         for i in 0..self.nodes.len() {
             let id = NodeId(to_u32(i));

@@ -404,22 +404,34 @@ pub fn run_cols(
     columns: &[&[f64]],
     params: &[f64],
 ) -> Result<Vec<Vec<f64>>, DeviceError> {
-    let lens: Vec<usize> = columns.iter().map(|c| c.len()).collect();
-    let mut flat = Vec::with_capacity(lens.iter().sum());
+    let mut lens_stack = [0_usize; 16];
+    let lens_heap: Vec<usize>;
+    let lens: &[usize] = if columns.len() <= lens_stack.len() {
+        for (dst, col) in lens_stack.iter_mut().zip(columns) {
+            *dst = col.len();
+        }
+        &lens_stack[..columns.len()]
+    } else {
+        lens_heap = columns.iter().map(|c| c.len()).collect();
+        &lens_heap
+    };
+    let total_in: usize = lens.iter().sum();
+    let mut buf =
+        crate::kernels::reuse::f64_scratch(total_in.max(ir.outputs.len().saturating_mul(rows)));
     for c in columns {
-        flat.extend_from_slice(c);
+        buf.extend_from_slice(c);
     }
     let dtype = preferred_dtype(device.info());
     let kernel = device.compile(ir)?;
-    let input = device.upload(&flat, dtype)?;
+    let input = device.upload(&buf, dtype)?;
     let mut output = device.alloc(ir.outputs.len().saturating_mul(rows), dtype)?;
-    device.launch_cols(&*kernel, rows, &input, &lens, params, &mut output)?;
-    let mut host = vec![0.0; output.len()];
-    device.download(&output, &mut host)?;
+    device.launch_cols(&*kernel, rows, &input, lens, params, &mut output)?;
+    buf.resize(output.len(), 0.0);
+    device.download(&output, &mut buf)?;
     Ok(if rows == 0 {
         vec![Vec::new(); ir.outputs.len()]
     } else {
-        host.chunks(rows).map(<[f64]>::to_vec).collect()
+        buf.chunks(rows).map(<[f64]>::to_vec).collect()
     })
 }
 
@@ -517,20 +529,35 @@ pub fn map_reduce(
         return Ok(vec![op.identity(); outputs]);
     }
     let fused = map_reduce_pass(map, op)?;
-    let lens = vec![n; columns.len()];
-    let mut flat = Vec::with_capacity(n.saturating_mul(columns.len()));
+    let lens_stack = [n; 16];
+    let mut lens_heap = Vec::new();
+    let lens: &[usize] = if columns.len() <= lens_stack.len() {
+        &lens_stack[..columns.len()]
+    } else {
+        lens_heap.resize(columns.len(), n);
+        &lens_heap
+    };
+    let mut flat = crate::kernels::reuse::f64_scratch(n.saturating_mul(columns.len()));
     for c in columns {
         flat.extend_from_slice(c);
     }
     let dtype = preferred_dtype(device.info());
     let kernel = device.compile(&fused)?;
     let input = device.upload(&flat, dtype)?;
+    drop(flat);
     let rows = n.div_ceil(FAN_IN);
     let mut level = device.alloc(outputs.saturating_mul(rows), dtype)?;
-    device.launch_cols(&*kernel, rows, &input, &lens, params, &mut level)?;
-    let level_lens = vec![rows; outputs];
+    device.launch_cols(&*kernel, rows, &input, lens, params, &mut level)?;
+    let level_stack = [rows; 16];
+    let mut level_heap = Vec::new();
+    let level_lens: &[usize] = if outputs <= level_stack.len() {
+        &level_stack[..outputs]
+    } else {
+        level_heap.resize(outputs, rows);
+        &level_heap
+    };
     (0..outputs)
-        .map(|k| reduce_column(device, op, &level, &level_lens, k))
+        .map(|k| reduce_column(device, op, &level, level_lens, k))
         .collect()
 }
 
@@ -561,7 +588,7 @@ pub fn matmul(
     }
     if k == 0 {
         // An empty sum: the product is the zero matrix.
-        let zeros = device.upload(&vec![0.0; c.len()], c.dtype())?;
+        let zeros = device.alloc(c.len(), c.dtype())?;
         *c = zeros;
         return Ok(());
     }
@@ -870,18 +897,25 @@ pub fn ensemble_dopri5(
         .first_step
         .filter(|h| *h > 0.0)
         .unwrap_or((t1 - t0) / 64.0);
-    let mut flat = Vec::with_capacity((n + 2) * rows);
+    let mut buf = crate::kernels::reuse::f64_scratch((n + 2) * rows);
     for c in y0 {
-        flat.extend_from_slice(c);
+        buf.extend_from_slice(c);
     }
-    flat.extend(std::iter::repeat_n(t0, rows));
-    flat.extend(std::iter::repeat_n(h0, rows));
+    buf.extend(std::iter::repeat_n(t0, rows));
+    buf.extend(std::iter::repeat_n(h0, rows));
     let mut p = params.to_vec();
     p.extend([t1, t_done, tolerance.rtol, tolerance.atol]);
     let kernel = device.compile(&step)?;
-    let mut a = device.upload(&flat, dtype)?;
+    let mut a = device.upload(&buf, dtype)?;
     let mut b = device.alloc((n + 2) * rows, dtype)?;
-    let lens = vec![rows; n + 2];
+    let lens_stack = [rows; 16];
+    let mut lens_heap = Vec::new();
+    let lens: &[usize] = if n + 2 <= lens_stack.len() {
+        &lens_stack[..n + 2]
+    } else {
+        lens_heap.resize(n + 2, rows);
+        &lens_heap
+    };
     let mut launches = 0_usize;
     // Checking costs a few tiny launches and one download; do it rarely
     // while far from the end and never more than every fourth step.
@@ -892,7 +926,7 @@ pub fn ensemble_dopri5(
             std::mem::swap(&mut a, &mut b);
             launches += 1;
         }
-        let slowest = reduce_column(device, ReduceOp::Min, &a, &lens, n)?;
+        let slowest = reduce_column(device, ReduceOp::Min, &a, lens, n)?;
         if slowest >= t_done {
             break;
         }
@@ -903,10 +937,10 @@ pub fn ensemble_dopri5(
             )));
         }
     }
-    let mut host = vec![0.0; (n + 2) * rows];
-    device.download(&a, &mut host)?;
+    buf.resize((n + 2) * rows, 0.0);
+    device.download(&a, &mut buf)?;
     Ok(Ensemble {
-        y: host.chunks(rows).take(n).map(<[f64]>::to_vec).collect(),
+        y: buf.chunks(rows).take(n).map(<[f64]>::to_vec).collect(),
         launches,
     })
 }

@@ -453,7 +453,7 @@ pub(crate) fn contains_heavy_operator(
     node: NodeId,
 ) -> bool {
     let mut stack = vec![node];
-    let mut seen = std::collections::HashSet::new();
+    let mut seen = super::id::FastSet::default();
     while let Some(n) = stack.pop() {
         if !seen.insert(n) {
             continue;
@@ -466,27 +466,37 @@ pub(crate) fn contains_heavy_operator(
     false
 }
 
-/// Classes reachable from `roots` through e-node children, in discovery
-/// order (roots first).
-///
-/// Class ids are dense arena indices, so membership is a bit-vector lookup
-/// rather than a hash. Scheduler phases share the traversal until the graph
-/// changes, and extraction computes one for its own roots.
-#[must_use]
-pub fn reachable(
+/// Reusable bitset and stack scratch for [`reachable`] / [`reachable_into`].
+#[derive(Default)]
+pub(super) struct ReachableScratch {
+    seen: Vec<u64>,
+    stack: Vec<ClassId>,
+}
+
+/// Fills `order` with classes reachable from `roots` using reusable `scratch`.
+pub(super) fn reachable_into(
     graph: &Graph,
     roots: &[NodeId],
-) -> Vec<ClassId> {
+    scratch: &mut ReachableScratch,
+    order: &mut Vec<ClassId>,
+) {
     // One bit per node: this runs on every scheduler pass, and inside nested
     // runs on a graph that already holds a whole template, so the table is
     // kept eight times smaller than a `Vec<bool>`.
-    let mut seen = vec![0_u64; graph.len().div_ceil(64)];
+    let words = graph.len().div_ceil(64);
+    scratch.seen.clear();
+    scratch.seen.resize(words, 0);
+    scratch.stack.clear();
+    scratch
+        .stack
+        .extend(roots.iter().rev().map(|&r| graph.find(r)));
+    order.clear();
+    let seen = &mut scratch.seen;
+    let stack = &mut scratch.stack;
     let is_seen = |seen: &[u64], index: usize| {
         seen.get(index / 64)
             .is_none_or(|word| word & (1 << (index % 64)) != 0)
     };
-    let mut order = Vec::new();
-    let mut stack: Vec<ClassId> = roots.iter().rev().map(|&r| graph.find(r)).collect();
     while let Some(class) = stack.pop() {
         let index = class.index();
         let Some(word) = seen.get_mut(index / 64) else {
@@ -511,12 +521,28 @@ pub fn reachable(
         for enode in graph.enodes(class) {
             for &child in graph.children(enode) {
                 let child_class = graph.find(child);
-                if !is_seen(&seen, child_class.index()) {
+                if !is_seen(seen, child_class.index()) {
                     stack.push(child_class);
                 }
             }
         }
     }
+}
+
+/// Classes reachable from `roots` through e-node children, in discovery
+/// order (roots first).
+///
+/// Class ids are dense arena indices, so membership is a bit-vector lookup
+/// rather than a hash. Scheduler phases share the traversal until the graph
+/// changes, and extraction computes one for its own roots.
+#[must_use]
+pub fn reachable(
+    graph: &Graph,
+    roots: &[NodeId],
+) -> Vec<ClassId> {
+    let mut scratch = ReachableScratch::default();
+    let mut order = Vec::new();
+    reachable_into(graph, roots, &mut scratch, &mut order);
     order
 }
 
@@ -571,12 +597,33 @@ fn relax_pending(
 ) {
     use std::collections::VecDeque;
 
-    let mut dependents = vec![Vec::new(); best.len()];
+    let n_classes = best.len();
+    let mut offsets = vec![0_usize; n_classes.saturating_add(1)];
+    for item in items {
+        if let Some(kids) = children.get(item.kids.clone()) {
+            for &child in kids {
+                if let Some(slot) = offsets.get_mut((child as usize).saturating_add(1)) {
+                    *slot = slot.saturating_add(1);
+                }
+            }
+        }
+    }
+    let mut total = 0_usize;
+    for slot in &mut offsets {
+        total = total.saturating_add(*slot);
+        *slot = total;
+    }
+    let mut write_pos = offsets.clone();
+    let mut flat_deps = vec![0_usize; total];
     for (index, item) in items.iter().enumerate() {
         if let Some(kids) = children.get(item.kids.clone()) {
             for &child in kids {
-                if let Some(deps) = dependents.get_mut(child as usize) {
-                    deps.push(index);
+                if let Some(pos_slot) = write_pos.get_mut(child as usize) {
+                    let pos = *pos_slot;
+                    *pos_slot = pos.saturating_add(1);
+                    if let Some(dst) = flat_deps.get_mut(pos) {
+                        *dst = index;
+                    }
                 }
             }
         }
@@ -584,13 +631,27 @@ fn relax_pending(
     let mut pending: VecDeque<_> = (0..items.len()).collect();
     let mut queued = vec![true; items.len()];
     while let Some(index) = pending.pop_front() {
-        queued[index] = false;
-        let item = &items[index];
+        if let Some(q) = queued.get_mut(index) {
+            *q = false;
+        }
+        let Some(item) = items.get(index) else {
+            continue;
+        };
         if item.improve(best, children) == Some(true) {
-            for &dependent in &dependents[item.class as usize] {
-                if !queued[dependent] {
-                    queued[dependent] = true;
-                    pending.push_back(dependent);
+            let class_idx = item.class as usize;
+            let start = offsets.get(class_idx).copied().unwrap_or(0);
+            let end = offsets
+                .get(class_idx.saturating_add(1))
+                .copied()
+                .unwrap_or(start);
+            if let Some(deps) = flat_deps.get(start..end) {
+                for &dependent in deps {
+                    if let Some(q) = queued.get_mut(dependent)
+                        && !*q
+                    {
+                        *q = true;
+                        pending.push_back(dependent);
+                    }
                 }
             }
         }
@@ -621,6 +682,7 @@ pub(super) struct BuildMemo {
     built: super::id::FastMap<ClassId, NodeId>,
     open: super::id::FastSet<ClassId>,
     stack: Vec<(ClassId, bool)>,
+    children: Vec<NodeId>,
 }
 
 impl Extractor {
@@ -748,7 +810,12 @@ impl Extractor {
         memo: &mut BuildMemo,
     ) -> Option<NodeId> {
         let root = graph.find(node);
-        let BuildMemo { built, open, stack } = memo;
+        let BuildMemo {
+            built,
+            open,
+            stack,
+            children,
+        } = memo;
         open.clear();
         stack.clear();
         stack.push((root, false));
@@ -765,25 +832,21 @@ impl Extractor {
                 built.insert(class, enode);
                 continue;
             }
-            let child_classes: Vec<ClassId> = graph
-                .children(enode)
-                .iter()
-                .map(|&c| graph.find(c))
-                .collect();
-            if child_classes.is_empty() {
+            if graph.children(enode).is_empty() {
                 built.insert(class, enode);
             } else if expanded {
-                let mut children = Vec::with_capacity(child_classes.len());
-                for child in &child_classes {
-                    children.push(*built.get(child)?);
+                children.clear();
+                for &child in graph.children(enode) {
+                    children.push(*built.get(&graph.find(child))?);
                 }
-                let term = graph.try_node(graph.op(enode), &children)?;
+                let term = graph.try_node(graph.op(enode), children)?;
                 built.insert(class, term);
             } else {
                 stack.push((class, true));
-                for child in child_classes {
-                    if !built.contains_key(&child) {
-                        stack.push((child, false));
+                for &child in graph.children(enode) {
+                    let child_class = graph.find(child);
+                    if !built.contains_key(&child_class) {
+                        stack.push((child_class, false));
                     }
                 }
             }

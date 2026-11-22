@@ -19,10 +19,10 @@
 //! So the DAG owns sharing and equivalence, the window owns local search,
 //! and carve/commit is the bridge between them.
 
-use std::collections::HashSet;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
 
+use super::id::FastSet;
 use super::id::NodeId;
 use super::id::OpId;
 use super::id::to_u32;
@@ -285,11 +285,23 @@ impl TreeWindow {
     /// All live cells in post-order (children before parents).
     #[must_use]
     pub fn post_order(&self) -> Vec<CellId> {
+        let mut stack = Vec::new();
         let mut out = Vec::with_capacity(self.live);
+        self.post_order_into(&mut stack, &mut out);
+        out
+    }
+
+    fn post_order_into(
+        &self,
+        stack: &mut Vec<(CellId, bool)>,
+        out: &mut Vec<CellId>,
+    ) {
+        out.clear();
+        stack.clear();
         if self.root == NIL {
-            return out;
+            return;
         }
-        let mut stack = vec![(self.root, false)];
+        stack.push((self.root, false));
         while let Some((cell, expanded)) = stack.pop() {
             if expanded {
                 out.push(cell);
@@ -302,7 +314,6 @@ impl TreeWindow {
                 }
             }
         }
-        out
     }
 
     /// Sum of operator costs of interior cells plus one per atom.
@@ -311,16 +322,25 @@ impl TreeWindow {
         &self,
         graph: &Graph,
     ) -> u64 {
-        self.post_order()
-            .into_iter()
-            .map(|c| {
-                if self.atom(c).is_some() {
-                    1
-                } else {
-                    u64::from(graph.ops().get(self.op(c)).cost)
+        if self.root == NIL {
+            return 0;
+        }
+        let ops = graph.ops();
+        let mut total = 0_u64;
+        let mut stack = vec![self.root];
+        while let Some(cell) = stack.pop() {
+            if self.atom(cell).is_some() {
+                total = total.saturating_add(1);
+            } else {
+                total = total.saturating_add(u64::from(ops.get(self.op(cell)).cost));
+                let mut child = self.cell(cell).first;
+                while child != NIL {
+                    stack.push(child);
+                    child = self.cell(child).next;
                 }
-            })
-            .sum()
+            }
+        }
+        total
     }
 
     /// Order-insensitive (for commutative operators) structural hash of the
@@ -389,12 +409,16 @@ impl TreeWindow {
         if self.op(a) != self.op(b) || self.arity(a) != self.arity(b) {
             return false;
         }
+        if !graph.ops().get(self.op(a)).flags.has(OpFlags::COMMUTATIVE) {
+            return self
+                .children(a)
+                .zip(self.children(b))
+                .all(|(x, y)| self.same(graph, x, y));
+        }
         let mut ca: Vec<CellId> = self.children(a).collect();
         let mut cb: Vec<CellId> = self.children(b).collect();
-        if graph.ops().get(self.op(a)).flags.has(OpFlags::COMMUTATIVE) {
-            self.sort_by_fingerprint(graph, &mut ca);
-            self.sort_by_fingerprint(graph, &mut cb);
-        }
+        self.sort_by_fingerprint(graph, &mut ca);
+        self.sort_by_fingerprint(graph, &mut cb);
         ca.iter().zip(&cb).all(|(&x, &y)| self.same(graph, x, y))
     }
 
@@ -637,13 +661,19 @@ impl TreeWindow {
         if let Some(atom) = self.atom(cell) {
             return atom;
         }
-        let children: Vec<NodeId> = self
-            .children(cell)
-            .collect::<Vec<_>>()
-            .into_iter()
-            .map(|c| self.node_of(graph, c))
-            .collect();
-        graph.node(self.op(cell), &children)
+        let arity = self.arity(cell);
+        let mut stack = [NodeId::NONE; 4];
+        let mut heap = Vec::new();
+        let children: &mut [NodeId] = if arity <= stack.len() {
+            stack.get_mut(..arity).unwrap_or(&mut [])
+        } else {
+            heap.resize(arity, NodeId::NONE);
+            &mut heap
+        };
+        for (slot, c) in children.iter_mut().zip(self.children(cell)) {
+            *slot = self.node_of(graph, c);
+        }
+        graph.node(self.op(cell), children)
     }
 
     /// Interns the whole window. The result equals the node the window was
@@ -703,11 +733,23 @@ impl TreeWindow {
         rewrite: &Rewrite,
         cell: CellId,
     ) -> Option<WindowMatch> {
+        let mut scratch = WindowMatchScratch::default();
+        self.find_match_into(graph, rewrite, cell, &mut scratch)
+            .then_some(scratch.found)
+    }
+
+    fn find_match_into<'p>(
+        &self,
+        graph: &mut Graph,
+        rewrite: &'p Rewrite,
+        cell: CellId,
+        scratch: &mut WindowMatchScratch<'p>,
+    ) -> bool {
         let Pat::Node(op, pats) = &rewrite.lhs else {
-            return None;
+            return false;
         };
         if self.atom(cell).is_some() || self.op(cell) != *op {
-            return None;
+            return false;
         }
         let flags = graph.ops().get(*op).flags;
         // Reject on arity before allocating the match state: the optimiser
@@ -719,7 +761,7 @@ impl TreeWindow {
             pats.len() == arity
         };
         if !arity_fits {
-            return None;
+            return false;
         }
         // Every operand pattern that is not a variable must be able to match
         // some operand (the one in its position, for a non-commutative
@@ -737,45 +779,51 @@ impl TreeWindow {
                 }
         });
         if !possible {
-            return None;
+            return false;
         }
-        let children: Vec<CellId> = self.children(cell).collect();
-        let mut found = WindowMatch {
-            subst: vec![Vec::new(); rewrite.nvars],
-            ops: vec![OpId::NONE; rewrite.nvars],
-            rest: Vec::new(),
-        };
+        scratch.children.clear();
+        scratch.children.extend(self.children(cell));
+        for slot in &mut scratch.found.subst {
+            slot.clear();
+        }
+        scratch.found.subst.resize_with(rewrite.nvars, Vec::new);
+        scratch.found.ops.clear();
+        scratch.found.ops.resize(rewrite.nvars, OpId::NONE);
+        scratch.found.rest.clear();
         let mut search = Search {
             window: self,
             graph,
             rewrite,
-            rest: Vec::new(),
-            ops: found.ops.clone(),
+            rest: &mut scratch.found.rest,
+            ops: &mut scratch.found.ops,
         };
-        let matched = if flags.has(OpFlags::COMMUTATIVE) {
+        if flags.has(OpFlags::COMMUTATIVE) {
             let allow_rest = flags.has(OpFlags::ASSOCIATIVE);
-            (pats.len() == children.len() || (allow_rest && pats.len() < children.len())) && {
-                let mut used = vec![false; children.len()];
-                search.assign(
-                    pats,
-                    &children,
-                    0,
-                    &mut used,
-                    &mut Vec::new(),
-                    &mut found.subst,
-                    Mode::Root,
-                )
-            }
+            (pats.len() == scratch.children.len()
+                || (allow_rest && pats.len() < scratch.children.len()))
+                && {
+                    scratch.used.clear();
+                    scratch.used.resize(scratch.children.len(), false);
+                    scratch.goals.clear();
+                    search.assign(
+                        pats,
+                        &scratch.children,
+                        0,
+                        &mut scratch.used,
+                        &mut scratch.goals,
+                        &mut scratch.found.subst,
+                        Mode::Root,
+                    )
+                }
         } else {
-            pats.len() == children.len() && {
-                let mut goals: Vec<(&Pat, CellId)> =
-                    pats.iter().zip(children.iter().copied()).rev().collect();
-                search.solve(&mut goals, &mut found.subst)
+            pats.len() == scratch.children.len() && {
+                scratch.goals.clear();
+                scratch
+                    .goals
+                    .extend(pats.iter().zip(scratch.children.iter().copied()).rev());
+                search.solve(&mut scratch.goals, &mut scratch.found.subst)
             }
-        };
-        found.rest = std::mem::take(&mut search.rest);
-        found.ops = std::mem::take(&mut search.ops);
-        matched.then_some(found)
+        }
     }
 
     /// A necessary condition for `pat` to match `cell`: the checks
@@ -906,6 +954,9 @@ impl TreeWindow {
     ) -> usize {
         let mut steps = 0_usize;
         let mut rounds = 0_usize;
+        let mut post_stack = Vec::new();
+        let mut order = Vec::with_capacity(self.live);
+        let mut match_scratch = WindowMatchScratch::default();
         loop {
             rounds = rounds.saturating_add(1);
             let mut changed = self.flatten(graph);
@@ -916,7 +967,8 @@ impl TreeWindow {
                 steps = steps.saturating_add(1);
             }
             let revision = graph.revision();
-            'cells: for cell in self.post_order() {
+            self.post_order_into(&mut post_stack, &mut order);
+            'cells: for &cell in &order {
                 if self.atom(cell).is_some() {
                     continue;
                 }
@@ -932,16 +984,18 @@ impl TreeWindow {
                         continue 'cells;
                     }
                     let started = super::profile::start();
-                    let found = self.find_match(graph, rewrite, cell);
+                    let found = self.find_match_into(graph, rewrite, cell, &mut match_scratch);
                     super::profile::record(
                         started,
                         "window",
                         std::ptr::from_ref(rewrite) as usize,
-                        usize::from(found.is_some()),
+                        usize::from(found),
                         || super::profile::describe(&rewrite.lhs, graph.ops()),
                     );
-                    if let Some(found) = found
-                        && self.apply(graph, rewrite, cell, &found).is_some()
+                    if found
+                        && self
+                            .apply(graph, rewrite, cell, &match_scratch.found)
+                            .is_some()
                     {
                         changed = true;
                         steps = steps.saturating_add(1);
@@ -986,28 +1040,35 @@ impl TreeWindow {
         let index = RewriteIndex::new(rewrites);
         let mut best = self.clone();
         let mut best_cost = best.cost(graph);
-        let mut seen: HashSet<u64> = HashSet::new();
+        let mut seen: FastSet<u64> = FastSet::default();
         seen.insert(self.fingerprint(graph, self.root));
         let mut frontier = vec![self.clone()];
+        let mut post_stack = Vec::new();
+        let mut order = Vec::new();
+        let mut match_scratch = WindowMatchScratch::default();
         for _ in 0..depth {
             let mut next: Vec<(u64, Self)> = Vec::new();
             for state in &frontier {
-                for cell in state.post_order() {
+                state.post_order_into(&mut post_stack, &mut order);
+                for &cell in &order {
                     for rewrite in moves {
                         let started = super::profile::start();
-                        let found = state.find_match(graph, rewrite, cell);
+                        let found = state.find_match_into(graph, rewrite, cell, &mut match_scratch);
                         super::profile::record(
                             started,
                             "beam",
                             std::ptr::from_ref(*rewrite) as usize,
-                            usize::from(found.is_some()),
+                            usize::from(found),
                             || super::profile::describe(&rewrite.lhs, graph.ops()),
                         );
-                        let Some(found) = found else {
+                        if !found {
                             continue;
-                        };
+                        }
                         let mut succ = state.clone();
-                        if succ.apply(graph, rewrite, cell, &found).is_none() {
+                        if succ
+                            .apply(graph, rewrite, cell, &match_scratch.found)
+                            .is_none()
+                        {
                             continue;
                         }
                         succ.optimize_with(graph, &index, passes, max_steps);
@@ -1094,6 +1155,14 @@ pub struct WindowMatch {
     pub rest: Vec<CellId>,
 }
 
+#[derive(Default)]
+struct WindowMatchScratch<'p> {
+    children: Vec<CellId>,
+    used: Vec<bool>,
+    goals: Vec<(&'p Pat, CellId)>,
+    found: WindowMatch,
+}
+
 /// Where a commutative assignment takes place.
 #[derive(Copy, Clone)]
 enum Mode {
@@ -1110,8 +1179,8 @@ struct Search<'a> {
     window: &'a TreeWindow,
     graph: &'a mut Graph,
     rewrite: &'a Rewrite,
-    rest: Vec<CellId>,
-    ops: Vec<OpId>,
+    rest: &'a mut Vec<CellId>,
+    ops: &'a mut Vec<OpId>,
 }
 
 impl Search<'_> {
@@ -1131,28 +1200,29 @@ impl Search<'_> {
             // its goals are solved, and by the root only once it matched (no
             // goal looks at `rest`). Built only then: this is the leaf of a
             // search over every placement.
-            let left = || -> Vec<CellId> {
-                children
-                    .iter()
-                    .zip(used.iter())
-                    .filter(|(_, u)| !**u)
-                    .map(|(c, _)| *c)
-                    .collect()
+            let fill_left = |out: &mut Vec<CellId>| {
+                out.clear();
+                out.extend(
+                    children
+                        .iter()
+                        .zip(used.iter())
+                        .filter(|(_, u)| !**u)
+                        .map(|(c, _)| *c),
+                );
             };
             return match mode {
                 | Mode::Root => {
                     let matched = self.solve(goals, subst);
                     if matched {
-                        self.rest = left();
+                        fill_left(self.rest);
                     }
                     matched
                 },
                 | Mode::Nested => self.solve(goals, subst),
                 | Mode::Absorb(var, op) => {
-                    let left = left();
                     let index = var as usize;
                     if let Some(slot) = subst.get_mut(index) {
-                        *slot = left;
+                        fill_left(slot);
                     }
                     if let Some(slot) = self.ops.get_mut(index) {
                         *slot = op;

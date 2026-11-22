@@ -458,9 +458,11 @@ pub trait Device: Send + Sync {
         len: usize,
     ) -> Result<(), DeviceError> {
         check_copy(self.uid(), src, src_at, dst, dst_at, len)?;
-        let mut from = vec![0.0; src.len()];
+        let mut from = crate::kernels::reuse::f64_scratch(src.len());
+        from.resize(src.len(), 0.0);
         self.download(src, &mut from)?;
-        let mut to = vec![0.0; dst.len()];
+        let mut to = crate::kernels::reuse::f64_scratch(dst.len());
+        to.resize(dst.len(), 0.0);
         self.download(dst, &mut to)?;
         to[dst_at..dst_at + len].copy_from_slice(&from[src_at..src_at + len]);
         *dst = self.upload(&to, dst.dtype())?;
@@ -806,19 +808,29 @@ pub fn build_devices() -> Vec<String> {
 
 // --- host-side conveniences built on the trait --------------------------------
 
+fn pack_columns_into(
+    columns: &[&[f64]],
+    flat: &mut Vec<f64>,
+) -> Result<usize, DeviceError> {
+    let rows = columns.first().map_or(0, |c| c.len());
+    if columns.iter().any(|c| c.len() != rows) {
+        return Err(DeviceError::Mismatch("columns differ in length".into()));
+    }
+    flat.clear();
+    flat.reserve(rows * columns.len());
+    for c in columns {
+        flat.extend_from_slice(c);
+    }
+    Ok(rows)
+}
+
 /// Packs columns into one column-major host vector.
 ///
 /// # Errors
 /// [`DeviceError::Mismatch`] when the columns differ in length.
 pub fn pack_columns(columns: &[&[f64]]) -> Result<(Vec<f64>, usize), DeviceError> {
-    let rows = columns.first().map_or(0, |c| c.len());
-    if columns.iter().any(|c| c.len() != rows) {
-        return Err(DeviceError::Mismatch("columns differ in length".into()));
-    }
-    let mut flat = Vec::with_capacity(rows * columns.len());
-    for c in columns {
-        flat.extend_from_slice(c);
-    }
+    let mut flat = Vec::new();
+    let rows = pack_columns_into(columns, &mut flat)?;
     Ok((flat, rows))
 }
 
@@ -841,22 +853,24 @@ pub fn map_columns(
             columns.len()
         )));
     }
-    let (flat, rows) = if columns.is_empty() {
-        (Vec::new(), 0)
-    } else {
-        pack_columns(columns)?
-    };
     let dtype = preferred_dtype(device.info());
     let kernel = device.compile(ir)?;
-    let input = device.upload(&flat, dtype)?;
+    let total_in = columns.first().map_or(0, |c| c.len()) * columns.len();
+    let mut buf = crate::kernels::reuse::f64_scratch(total_in.max(ir.outputs.len()));
+    let rows = if columns.is_empty() {
+        0
+    } else {
+        pack_columns_into(columns, &mut buf)?
+    };
+    let input = device.upload(&buf, dtype)?;
     let mut output = device.alloc(ir.outputs.len() * rows, dtype)?;
     device.launch(&*kernel, rows, &input, params, &mut output)?;
-    let mut host = vec![0.0; output.len()];
-    device.download(&output, &mut host)?;
+    buf.resize(output.len(), 0.0);
+    device.download(&output, &mut buf)?;
     Ok(if rows == 0 {
         vec![Vec::new(); ir.outputs.len()]
     } else {
-        host.chunks(rows).map(<[f64]>::to_vec).collect()
+        buf.chunks(rows).map(<[f64]>::to_vec).collect()
     })
 }
 
@@ -916,10 +930,12 @@ pub fn ensemble_rk4(
     }
     let n = y0.len();
     let step = rk4_step(rhs, n)?;
-    let (flat, rows) = pack_columns(y0)?;
+    let total = y0.first().map_or(0, |c| c.len()) * n;
+    let mut buf = crate::kernels::reuse::f64_scratch(total);
+    let rows = pack_columns_into(y0, &mut buf)?;
     let dtype = preferred_dtype(device.info());
     let kernel = device.compile(&step)?;
-    let mut a = device.upload(&flat, dtype)?;
+    let mut a = device.upload(&buf, dtype)?;
     let mut b = device.alloc(n * rows, dtype)?;
     let h = (t1 - t0) / steps as f64;
     let mut p = params.to_vec();
@@ -933,12 +949,12 @@ pub fn ensemble_rk4(
         device.launch(&*kernel, rows, &a, &p, &mut b)?;
         std::mem::swap(&mut a, &mut b);
     }
-    let mut host = vec![0.0; n * rows];
-    device.download(&a, &mut host)?;
+    buf.resize(n * rows, 0.0);
+    device.download(&a, &mut buf)?;
     Ok(if rows == 0 {
         vec![Vec::new(); n]
     } else {
-        host.chunks(rows).map(<[f64]>::to_vec).collect()
+        buf.chunks(rows).map(<[f64]>::to_vec).collect()
     })
 }
 
@@ -979,32 +995,55 @@ struct DeviceProgram {
 }
 
 impl DeviceProgram {
-    fn run(
+    fn pack_and_launch(
         &self,
         columns: &[&[f64]],
         params: &[f64],
         rows: usize,
-    ) -> Result<Vec<Vec<f64>>, DeviceError> {
+    ) -> Result<Buffer, DeviceError> {
         let ir = self.kernel.ir();
         let dtype = preferred_dtype(self.device.info());
-        let mut flat = Vec::with_capacity(rows * ir.inputs);
+        let mut flat = crate::kernels::reuse::f64_scratch(rows * ir.inputs);
         for i in 0..ir.inputs {
             let column = columns.get(i).copied().unwrap_or(&[]);
-            for row in 0..rows {
-                flat.push(column.get(row).copied().unwrap_or(f64::NAN));
+            let take = rows.min(column.len());
+            flat.extend_from_slice(&column[..take]);
+            if take < rows {
+                let new_len = flat.len() + (rows - take);
+                flat.resize(new_len, f64::NAN);
             }
         }
         let input = self.device.upload(&flat, dtype)?;
+        drop(flat);
         let mut output = self.device.alloc(ir.outputs.len() * rows, dtype)?;
         self.device
             .launch(&*self.kernel, rows, &input, params, &mut output)?;
-        let mut host = vec![0.0; output.len()];
+        Ok(output)
+    }
+
+    fn run_into(
+        &self,
+        columns: &[&[f64]],
+        params: &[f64],
+        out: &mut [&mut [f64]],
+        rows: usize,
+    ) -> Result<(), DeviceError> {
+        if rows == 0 {
+            return Ok(());
+        }
+        let output = self.pack_and_launch(columns, params, rows)?;
+        let outputs = self.kernel.ir().outputs.len();
+        if outputs == 1 && out.len() == 1 {
+            self.device.download(&output, &mut out[0][..rows])?;
+            return Ok(());
+        }
+        let mut host = crate::kernels::reuse::f64_scratch(output.len());
+        host.resize(output.len(), 0.0);
         self.device.download(&output, &mut host)?;
-        Ok(if rows == 0 {
-            vec![Vec::new(); ir.outputs.len()]
-        } else {
-            host.chunks(rows).map(<[f64]>::to_vec).collect()
-        })
+        for (dst, src) in out.iter_mut().zip(host.chunks(rows)) {
+            dst[..rows].copy_from_slice(src);
+        }
+        Ok(())
     }
 }
 
@@ -1027,16 +1066,46 @@ impl CompiledMulti for DeviceProgram {
         params: &[f64],
         out: &mut [f64],
     ) {
-        let cols: Vec<&[f64]> = inputs.iter().map(std::slice::from_ref).collect();
-        let result = self.run(&cols, params, 1);
-        for (k, slot) in out.iter_mut().enumerate() {
-            *slot = result
-                .as_ref()
-                .ok()
-                .and_then(|r| r.get(k))
-                .and_then(|c| c.first())
-                .copied()
-                .unwrap_or(f64::NAN);
+        let mut col_stack: [&[f64]; 16] = [&[]; 16];
+        let col_heap: Vec<&[f64]>;
+        let cols: &[&[f64]] = if inputs.len() <= col_stack.len() {
+            for (dst, src) in col_stack.iter_mut().zip(inputs) {
+                *dst = std::slice::from_ref(src);
+            }
+            &col_stack[..inputs.len()]
+        } else {
+            col_heap = inputs.iter().map(std::slice::from_ref).collect();
+            &col_heap
+        };
+        let outputs = self.kernel.ir().outputs.len();
+        if out.len() == outputs {
+            if let Ok(output) = self.pack_and_launch(cols, params, 1)
+                && self.device.download(&output, out).is_ok()
+            {
+                return;
+            }
+            out.fill(f64::NAN);
+            return;
+        }
+        let mut host_stack = [f64::NAN; 16];
+        let mut host_heap = Vec::new();
+        let host: &mut [f64] = if outputs <= host_stack.len() {
+            &mut host_stack[..outputs]
+        } else {
+            host_heap.resize(outputs, f64::NAN);
+            &mut host_heap
+        };
+        if let Ok(output) = self.pack_and_launch(cols, params, 1)
+            && self.device.download(&output, host).is_ok()
+        {
+            for (slot, val) in out
+                .iter_mut()
+                .zip(host.iter().chain(std::iter::repeat(&f64::NAN)))
+            {
+                *slot = *val;
+            }
+        } else {
+            out.fill(f64::NAN);
         }
     }
 
@@ -1047,19 +1116,10 @@ impl CompiledMulti for DeviceProgram {
         out: &mut [&mut [f64]],
     ) {
         let rows = out.iter().map(|o| o.len()).min().unwrap_or(0);
-        match self.run(columns, params, rows) {
-            | Ok(result) => {
-                for (dst, src) in out.iter_mut().zip(&result) {
-                    for (d, s) in dst.iter_mut().zip(src) {
-                        *d = *s;
-                    }
-                }
-            },
-            | Err(_) => {
-                for dst in out.iter_mut() {
-                    dst.fill(f64::NAN);
-                }
-            },
+        if self.run_into(columns, params, out, rows).is_err() {
+            for dst in out.iter_mut() {
+                dst.fill(f64::NAN);
+            }
         }
     }
 }

@@ -27,8 +27,8 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::Mutex;
 use std::sync::OnceLock;
+use std::sync::RwLock;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
@@ -408,12 +408,6 @@ pub const NATIVE_BATCH_ROWS: usize = 64;
 
 const MIN_PAR_BATCH_ROWS: usize = 32_768;
 
-fn has_ordered_callbacks(tape: &Tape) -> bool {
-    tape.insts
-        .iter()
-        .any(|inst| matches!(inst, Inst::Call(..) | Inst::Extern1(..) | Inst::Extern2(..)))
-}
-
 impl JitFunction {
     /// Compiles `tape` (which should already be optimised).
     ///
@@ -739,7 +733,7 @@ impl JitFunction {
             outputs: tape.outputs.len() + usize::from(tail_loop),
             tape: (!tail_loop).then(|| Arc::new(tape.clone())),
             batch: Arc::new(NativeBatch::default()),
-            parallel_rows: !has_ordered_callbacks(tape),
+            parallel_rows: !tape.has_ordered_callbacks(),
         })
     }
 
@@ -805,6 +799,9 @@ impl JitFunction {
         out: &mut [f64],
     ) {
         let rows = out.len();
+        if rows == 0 || crate::cancellation::is_cancelled() {
+            return;
+        }
         if rows >= NATIVE_BATCH_ROWS
             && let Some(kernel) = kernel
             && self.run_batch(kernel, columns, &[], &mut [out], rows)
@@ -813,12 +810,16 @@ impl JitFunction {
         }
         let mut point = crate::kernels::reuse::f64_scratch(self.inputs.max(1));
         point.resize(self.inputs.max(1), f64::NAN);
+        let arg_slice = point.get_mut(..self.inputs).unwrap_or(&mut []);
         let mut value = [f64::NAN];
         for (row, slot) in out.iter_mut().enumerate() {
-            for (arg, column) in point.iter_mut().zip(columns) {
+            if row & 255 == 0 && crate::cancellation::is_cancelled() {
+                return;
+            }
+            for (arg, column) in arg_slice.iter_mut().zip(columns) {
                 *arg = column.get(row).copied().unwrap_or(f64::NAN);
             }
-            self.run(&point, &[], &mut value);
+            self.run(arg_slice, &[], &mut value);
             *slot = value[0];
         }
     }
@@ -978,21 +979,111 @@ impl CompiledMulti for JitFunction {
         out: &mut [&mut [f64]],
     ) {
         let rows = out.iter().map(|o| o.len()).min().unwrap_or(0);
-        if rows >= NATIVE_BATCH_ROWS
-            && out.len() == self.outputs
-            && let Some(kernel) = self.batch_kernel()
-            && self.run_batch(kernel, columns, params, out, rows)
-        {
+        if rows == 0 || crate::cancellation::is_cancelled() {
             return;
         }
-        let mut point = vec![f64::NAN; self.inputs];
-        let mut values = vec![f64::NAN; self.outputs];
-        for row in 0..rows {
-            for (arg, column) in point.iter_mut().zip(columns) {
-                *arg = column.get(row).copied().unwrap_or(f64::NAN);
+        let kernel = (rows >= NATIVE_BATCH_ROWS && out.len() == self.outputs)
+            .then(|| self.batch_kernel())
+            .flatten();
+        let can_par =
+            self.parallel_rows && crate::execution::should_split(rows, MIN_PAR_BATCH_ROWS);
+        if !can_par {
+            self.eval_batch_rows(kernel, columns, 0, params, out, rows);
+            return;
+        }
+        if out.len() == 1 {
+            if let Some(single) = out.first_mut()
+                && let Some(slice) = single.get_mut(..rows)
+            {
+                let block_rows = super::BATCH_PAR_ROWS;
+                crate::kernels::par::for_chunks_mut(slice, block_rows, 2, |block_idx, chunk| {
+                    let row_offset = block_idx.saturating_mul(block_rows);
+                    let chunk_len = chunk.len();
+                    self.eval_batch_rows(
+                        kernel,
+                        columns,
+                        row_offset,
+                        params,
+                        &mut [chunk],
+                        chunk_len,
+                    );
+                });
             }
-            self.run(&point, params, &mut values);
-            for (column, &v) in out.iter_mut().zip(&values) {
+            return;
+        }
+        use rayon::prelude::*;
+        let block_rows = super::BATCH_PAR_ROWS;
+        let n_chunks = rows.div_ceil(block_rows);
+        let mut chunk_cols: Vec<Vec<&mut [f64]>> = (0..n_chunks)
+            .map(|_| Vec::with_capacity(out.len()))
+            .collect();
+        for col in out.iter_mut() {
+            let Some(mut rest) = col.get_mut(..rows) else {
+                return;
+            };
+            for chunk in &mut chunk_cols {
+                let take = block_rows.min(rest.len());
+                let (head, tail) = rest.split_at_mut(take);
+                chunk.push(head);
+                rest = tail;
+            }
+        }
+        let cancellation = crate::cancellation::current();
+        chunk_cols.par_iter_mut().enumerate().for_each_init(
+            || crate::cancellation::install_optional(cancellation.clone()),
+            |_, (chunk_idx, cols)| {
+                let row_offset = chunk_idx.saturating_mul(block_rows);
+                let chunk_rows = cols.first().map_or(0, |c| c.len());
+                self.eval_batch_rows(kernel, columns, row_offset, params, cols, chunk_rows);
+            },
+        );
+    }
+}
+
+impl JitFunction {
+    fn eval_batch_rows(
+        &self,
+        kernel: Option<&super::lir_jit::LirModule>,
+        columns: &[&[f64]],
+        row_offset: usize,
+        params: &[f64],
+        out: &mut [&mut [f64]],
+        rows: usize,
+    ) {
+        if rows == 0 || crate::cancellation::is_cancelled() {
+            return;
+        }
+        if let Some(kernel) = kernel
+            && rows >= NATIVE_BATCH_ROWS
+            && out.len() == self.outputs
+        {
+            let ran = if row_offset == 0 {
+                self.run_batch(kernel, columns, params, out, rows)
+            } else {
+                let block_cols = super::batch_columns(columns, row_offset, rows);
+                self.run_batch(kernel, &block_cols, params, out, rows)
+            };
+            if ran {
+                return;
+            }
+        }
+        let in_len = self.inputs.max(1);
+        let out_len = self.outputs.max(1);
+        let mut scratch = crate::kernels::reuse::f64_scratch(in_len.saturating_add(out_len));
+        scratch.resize(in_len.saturating_add(out_len), f64::NAN);
+        let (point, values) = scratch.split_at_mut(in_len);
+        let arg_slice = point.get_mut(..self.inputs).unwrap_or(&mut []);
+        let out_slice = values.get_mut(..self.outputs).unwrap_or(&mut []);
+        for row in 0..rows {
+            if row & 255 == 0 && crate::cancellation::is_cancelled() {
+                return;
+            }
+            let src_row = row_offset.saturating_add(row);
+            for (arg, column) in arg_slice.iter_mut().zip(columns) {
+                *arg = column.get(src_row).copied().unwrap_or(f64::NAN);
+            }
+            self.run(arg_slice, params, out_slice);
+            for (column, &v) in out.iter_mut().zip(out_slice.iter()) {
                 if let Some(slot) = column.get_mut(row) {
                     *slot = v;
                 }
@@ -1020,13 +1111,17 @@ impl Compiled for JitFunction {
         columns: &[&[f64]],
         out: &mut [f64],
     ) {
+        if out.is_empty() || crate::cancellation::is_cancelled() {
+            return;
+        }
         let kernel = (out.len() >= NATIVE_BATCH_ROWS && self.outputs == 1 && self.params == 0)
             .then(|| self.batch_kernel())
             .flatten();
         if self.parallel_rows && crate::execution::should_split(out.len(), MIN_PAR_BATCH_ROWS) {
             let rows_per_block = super::BATCH_PAR_ROWS;
             crate::kernels::par::for_chunks_mut(out, rows_per_block, 2, |block, rows| {
-                let columns = super::batch_columns(columns, block * rows_per_block, rows.len());
+                let columns =
+                    super::batch_columns(columns, block.saturating_mul(rows_per_block), rows.len());
                 self.call_rows(kernel, &columns, rows);
             });
         } else {
@@ -1114,7 +1209,7 @@ impl CompiledMulti for Handle {
 }
 
 type CompileCell = Arc<OnceLock<Result<Arc<JitFunction>, BackendError>>>;
-type CompilationCache = Mutex<HashMap<(u64, ProgramKey), CompileCell>>;
+type CompilationCache = RwLock<crate::graph::id::FastMap<u64, Vec<(ProgramKey, CompileCell)>>>;
 
 /// The Cranelift backend, with exact program identity and a context key.
 ///
@@ -1148,7 +1243,7 @@ impl CraneliftBackend {
     #[must_use]
     pub fn with_key(key_extra: u64) -> Self {
         Self {
-            cache: Mutex::new(HashMap::new()),
+            cache: RwLock::new(crate::graph::id::FastMap::default()),
             key_extra,
         }
     }
@@ -1166,7 +1261,7 @@ impl CraneliftBackend {
         key_extra: u64,
     ) {
         self.key_extra = key_extra;
-        if let Ok(mut cache) = self.cache.lock() {
+        if let Ok(mut cache) = self.cache.write() {
             cache.clear();
         }
     }
@@ -1202,17 +1297,38 @@ impl CraneliftBackend {
         &self,
         tape: &Tape,
     ) -> Result<Arc<JitFunction>, BackendError> {
-        let key = (self.key_extra, tape.program_key());
-        let cell = if let Ok(mut cache) = self.cache.lock() {
-            Arc::clone(
-                cache
-                    .entry(key)
-                    .or_insert_with(|| Arc::new(OnceLock::new())),
-            )
+        let bucket_key = self.cache_key(tape);
+        let hit = if let Ok(cache) = self.cache.read() {
+            let found = cache.get(&bucket_key).and_then(|entries| {
+                entries
+                    .iter()
+                    .find(|(program, _)| program.matches(tape))
+                    .map(|(_, cell)| Arc::clone(cell))
+            });
+            drop(cache);
+            found
         } else {
             return JitFunction::compile(tape).map(Arc::new);
         };
-        // No cache mutex is held while compiling. Concurrent requests for the
+        let cell = if let Some(cell) = hit {
+            cell
+        } else if let Ok(mut cache) = self.cache.write() {
+            let entries = cache.entry(bucket_key).or_default();
+            let resolved = if let Some((_, existing)) =
+                entries.iter().find(|(program, _)| program.matches(tape))
+            {
+                Arc::clone(existing)
+            } else {
+                let new_cell = Arc::new(OnceLock::new());
+                entries.push((tape.program_key(), Arc::clone(&new_cell)));
+                new_cell
+            };
+            drop(cache);
+            resolved
+        } else {
+            return JitFunction::compile(tape).map(Arc::new);
+        };
+        // No cache lock is held while compiling. Concurrent requests for the
         // same exact program share one initialization, including failure.
         cell.get_or_init(|| JitFunction::compile(tape).map(Arc::new))
             .clone()
@@ -1221,10 +1337,11 @@ impl CraneliftBackend {
     /// Number of distinct programs compiled so far.
     #[must_use]
     pub fn cached(&self) -> usize {
-        self.cache.lock().map_or(0, |cache| {
+        self.cache.read().map_or(0, |cache| {
             cache
                 .values()
-                .filter(|cell| cell.get().is_some_and(Result::is_ok))
+                .flat_map(|entries| entries.iter())
+                .filter(|(_, cell)| cell.get().is_some_and(Result::is_ok))
                 .count()
         })
     }
@@ -1348,7 +1465,7 @@ impl Tiered {
         tape: Tape,
         threshold: usize,
     ) -> Self {
-        let use_columnar_batches = !has_ordered_callbacks(&tape);
+        let use_columnar_batches = !tape.has_ordered_callbacks();
         Self {
             tape: Arc::new(tape),
             use_columnar_batches,
@@ -1418,15 +1535,10 @@ impl Compiled for Tiered {
         }
         self.count(out.len());
         if self.use_columnar_batches {
-            let rows_per_block = super::BATCH_PAR_ROWS;
-            if crate::execution::should_split(out.len(), MIN_PAR_BATCH_ROWS) {
-                crate::kernels::par::for_chunks_mut(out, rows_per_block, 2, |block, rows| {
-                    let columns = super::batch_columns(columns, block * rows_per_block, rows.len());
-                    self.tape.eval_columns(&columns, &[], &mut [rows]);
-                });
-            } else {
-                self.tape.eval_columns(columns, &[], &mut [out]);
-            }
+            self.tape.eval_columns(columns, &[], &mut [out]);
+            return;
+        }
+        if crate::cancellation::is_cancelled() {
             return;
         }
         let mut point = crate::kernels::reuse::f64_scratch(self.tape.inputs);
@@ -1434,6 +1546,9 @@ impl Compiled for Tiered {
         let mut values = crate::kernels::reuse::f64_scratch(self.tape.insts.len());
         let mut value = [f64::NAN];
         for (row, slot) in out.iter_mut().enumerate() {
+            if row & 255 == 0 && crate::cancellation::is_cancelled() {
+                return;
+            }
             for (arg, column) in point.iter_mut().zip(columns) {
                 *arg = column.get(row).copied().unwrap_or(f64::NAN);
             }
@@ -1871,5 +1986,77 @@ mod tests {
             (value - reference).abs() < 1e-12 && error < 1e-10,
             "{value} vs {reference} ± {error}"
         );
+    }
+
+    #[test]
+    fn cranelift_cache_hits_and_parallel_eval_batch_match_scalar() {
+        let tape = Tape {
+            insts: vec![
+                Inst::Input(0),
+                Inst::Param(0),
+                Inst::Mul(0, 0),
+                Inst::Add(2, 1),
+                Inst::Neg(0),
+                Inst::Sub(2, 4),
+            ],
+            args: Vec::new(),
+            outputs: vec![3, 5],
+            inputs: 1,
+            params: 1,
+        };
+        let backend = CraneliftBackend::with_key(42);
+        let first = backend
+            .compile_tape(&tape)
+            .unwrap_or_else(|e| panic!("compile_tape failed: {e}"));
+        let second = backend
+            .compile_tape(&tape)
+            .unwrap_or_else(|e| panic!("cache hit failed: {e}"));
+        assert!(Arc::ptr_eq(&first, &second));
+        assert_eq!(backend.cached(), 1);
+
+        let params = [2.5_f64];
+        for n in [0_usize, 1, 255, 256, 257, 36_865] {
+            let mut x = Vec::with_capacity(n);
+            for i in 0..n {
+                let val = match i {
+                    | 0 => -0.0,
+                    | 1 => f64::NAN,
+                    | 2 => f64::INFINITY,
+                    | _ => (i as f64) * 0.125 - 4.0,
+                };
+                x.push(val);
+            }
+            let mut out0 = vec![0.0_f64; n];
+            let mut out1 = vec![0.0_f64; n];
+            let mut expected0 = Vec::with_capacity(n);
+            let mut expected1 = Vec::with_capacity(n);
+            for &xi in &x {
+                let mut row_out = [0.0_f64; 2];
+                first.eval(&[xi], &params, &mut row_out);
+                let [r0, r1] = row_out;
+                expected0.push(r0.to_bits());
+                expected1.push(r1.to_bits());
+            }
+            if let Ok(pool) = rayon::ThreadPoolBuilder::new().num_threads(4).build() {
+                pool.install(|| {
+                    first.eval_batch(&[&x], &params, &mut [&mut out0, &mut out1]);
+                });
+            } else {
+                first.eval_batch(&[&x], &params, &mut [&mut out0, &mut out1]);
+            }
+            let actual0: Vec<u64> = out0.iter().map(|v| v.to_bits()).collect();
+            let actual1: Vec<u64> = out1.iter().map(|v| v.to_bits()).collect();
+            assert_eq!(actual0, expected0, "row count {n} output 0 mismatch");
+            assert_eq!(actual1, expected1, "row count {n} output 1 mismatch");
+        }
+
+        let cancelled = Arc::new(AtomicBool::new(true));
+        let sentinel = 123.456_f64;
+        let x = vec![1.0_f64; 257];
+        let mut out0 = vec![sentinel; 257];
+        let mut out1 = vec![sentinel; 257];
+        let _guard = crate::cancellation::install(cancelled);
+        first.eval_batch(&[&x], &params, &mut [&mut out0, &mut out1]);
+        assert_eq!(out0.first().map(|v| v.to_bits()), Some(sentinel.to_bits()));
     }
 }

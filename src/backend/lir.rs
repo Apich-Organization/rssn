@@ -58,13 +58,13 @@
 //! programs keep their own structured IR; LIR is the CPU-side common
 //! denominator.
 
-use std::collections::HashMap;
 use std::fmt;
 
 use rayon::prelude::*;
 
 use super::Intrinsic;
 use super::tape::Cmp;
+use crate::graph::id::FastMap;
 use crate::graph::op::EvalFn;
 use crate::kernels::reuse::ScratchPool;
 
@@ -810,7 +810,7 @@ impl Module {
         // A callee's writable parameter marks every caller argument it may
         // alias. Walk reverse call edges once for each newly writable slot,
         // including mutually recursive functions.
-        let mut callers: HashMap<_, Vec<_>> = HashMap::new();
+        let mut callers: FastMap<_, Vec<_>> = FastMap::default();
         let mut pending = Vec::new();
         let mut written = Vec::with_capacity(effects.len());
         for (func, effect) in effects.into_iter().enumerate() {
@@ -854,7 +854,7 @@ fn slice_effects(f: &Function) -> SliceEffects {
         return SliceEffects { written, calls };
     }
 
-    let mut successors: HashMap<_, Vec<_>> = HashMap::new();
+    let mut successors: FastMap<_, Vec<_>> = FastMap::default();
     let mut stores = Vec::new();
     let mut call_sites = Vec::new();
     let mut edge = |source, dest| {
@@ -890,7 +890,7 @@ fn slice_effects(f: &Function) -> SliceEffects {
 
     // Visit each (register, entry parameter) pair once. Origins are visited
     // in entry order, so the last element suffices to detect a cycle.
-    let mut origins: HashMap<_, Vec<_>> = HashMap::new();
+    let mut origins: FastMap<_, Vec<_>> = FastMap::default();
     let mut pending = Vec::new();
     for (parameter, reg) in params
         .iter()
@@ -1275,15 +1275,22 @@ impl Interp<'_> {
         let Some(f) = self.module.functions.get(func.0 as usize) else {
             return Flow::Bail(0);
         };
+        let mut stack = [Slot::F(0.0); 32];
         let mut local = Vec::new();
         let mut scratch;
-        let r = if f.regs.len() >= 512 {
-            scratch = INTERPRETER_REGISTERS.checkout_for(f.regs.len());
-            &mut *scratch
-        } else {
+        let r: &mut [Slot] = if f.regs.len() <= stack.len() {
+            for (dst, &t) in stack.iter_mut().zip(&f.regs) {
+                *dst = Slot::zero(t);
+            }
+            stack.get_mut(..f.regs.len()).unwrap_or(&mut [])
+        } else if f.regs.len() < 512 {
+            local.extend(f.regs.iter().map(|&t| Slot::zero(t)));
             &mut local
+        } else {
+            scratch = INTERPRETER_REGISTERS.checkout_for(f.regs.len());
+            scratch.extend(f.regs.iter().map(|&t| Slot::zero(t)));
+            &mut *scratch
         };
-        r.extend(f.regs.iter().map(|&t| Slot::zero(t)));
         let mut block = 0_usize;
         let mut incoming: Vec<Slot> = args.to_vec();
         let mut eval_args = Vec::new();
@@ -1472,6 +1479,7 @@ pub fn batch_from_tape(tape: &super::tape::Tape) -> Option<Function> {
     let mut regs: Vec<Reg> = Vec::with_capacity(tape.insts.len());
     let zero_f = f.ins(Inst::F(0.0));
     let one_f = f.ins(Inst::F(1.0));
+    let one_i = f.ins(Inst::I(1));
     for inst in &tape.insts {
         let r = match *inst {
             | T::Const(c) => f.ins(Inst::F(c)),
@@ -1531,8 +1539,7 @@ pub fn batch_from_tape(tape: &super::tape::Tape) -> Option<Function> {
         let column = *outs.get(k)?;
         f.ins(Inst::Store(column, row, reg(out)));
     }
-    let one = f.ins(Inst::I(1));
-    let next = f.ins(Inst::IAdd(row, one));
+    let next = f.ins(Inst::IAdd(row, one_i));
     f.jump(head, &[next]);
     f.switch_to(exit);
     f.ret(&[]);
@@ -1913,5 +1920,35 @@ mod tests {
         };
         let out = m.interpret(FuncId(0), &mut [Value::F(1.0), Value::F(5.0)], 100);
         assert_eq!(out, Ok(Outcome::Returned(vec![Value::F(4.0)])));
+    }
+
+    #[test]
+    fn small_and_pooled_register_frames_preserve_exact_results() {
+        let build_chain = |steps: usize| -> Module {
+            let mut f = FunctionBuilder::new("chain", &[Ty::F64], &[Ty::F64]);
+            let mut acc = f.param(0);
+            let one = f.ins(Inst::F(1.0));
+            for _ in 0..steps {
+                acc = f.ins(Inst::FAdd(acc, one));
+            }
+            f.ret(&[acc]);
+            Module {
+                functions: vec![f.finish().unwrap_or_else(|e| panic!("{e}"))],
+            }
+        };
+        // Small frame exercises stack buffer (<= 32 regs).
+        let small = build_chain(12);
+        assert_eq!(
+            small.interpret(FuncId(0), &mut [Value::F(2.5)], 1_000),
+            Ok(Outcome::Returned(vec![Value::F(14.5)]))
+        );
+        // Mid frame exercises local Vec (33..512 regs), large frame exercises ScratchPool (>= 512 regs).
+        for (steps, want) in [(48_usize, 50.5_f64), (600_usize, 602.5_f64)] {
+            let m = build_chain(steps);
+            assert_eq!(
+                m.interpret(FuncId(0), &mut [Value::F(2.5)], 10_000),
+                Ok(Outcome::Returned(vec![Value::F(want)]))
+            );
+        }
     }
 }

@@ -301,31 +301,57 @@ impl LirModule {
             .entries
             .get(func.0 as usize)
             .ok_or_else(|| LirError(format!("unknown function f{}", func.0)))?;
-        let mut slots: Vec<u64> = Vec::with_capacity(args.len().saturating_mul(2));
+        let slot_count: usize = args
+            .iter()
+            .map(|a| usize::from(matches!(a, Value::Read(_) | Value::Write(_))).saturating_add(1))
+            .sum();
+        let mut slot_stack = [0_u64; 16];
+        let mut slot_heap = Vec::new();
+        let slots: &mut [u64] = if slot_count <= slot_stack.len() {
+            slot_stack.get_mut(..slot_count).unwrap_or(&mut [])
+        } else {
+            slot_heap.resize(slot_count, 0);
+            &mut slot_heap
+        };
+        let mut idx = 0_usize;
+        let push = |slots: &mut [u64], pos: &mut usize, val: u64| {
+            if let Some(slot) = slots.get_mut(*pos) {
+                *slot = val;
+            }
+            *pos = pos.saturating_add(1);
+        };
         for a in args.iter_mut() {
             match a {
-                | Value::F(x) => slots.push(x.to_bits()),
-                | Value::I(x) => slots.push(x.cast_unsigned()),
-                | Value::B(x) => slots.push(u64::from(*x)),
+                | Value::F(x) => push(slots, &mut idx, x.to_bits()),
+                | Value::I(x) => push(slots, &mut idx, x.cast_unsigned()),
+                | Value::B(x) => push(slots, &mut idx, u64::from(*x)),
                 | Value::Read(s) => {
-                    slots.push(s.as_ptr() as usize as u64);
-                    slots.push(s.len() as u64);
+                    push(slots, &mut idx, s.as_ptr() as usize as u64);
+                    push(slots, &mut idx, s.len() as u64);
                 },
                 | Value::Write(s) => {
-                    slots.push(s.as_mut_ptr() as usize as u64);
-                    slots.push(s.len() as u64);
+                    push(slots, &mut idx, s.as_mut_ptr() as usize as u64);
+                    push(slots, &mut idx, s.len() as u64);
                 },
             }
         }
-        let mut out = vec![0_u64; f.results.len().max(1)];
-        let status = abi::lir_call(entry, &slots, &mut out);
+        let out_count = f.results.len().max(1);
+        let mut out_stack = [0_u64; 4];
+        let mut out_heap = Vec::new();
+        let out: &mut [u64] = if out_count <= out_stack.len() {
+            out_stack.get_mut(..out_count).unwrap_or(&mut [])
+        } else {
+            out_heap.resize(out_count, 0);
+            &mut out_heap
+        };
+        let status = abi::lir_call(entry, slots, out);
         if status != 0 {
             return Ok(Outcome::Bailed(status));
         }
         Ok(Outcome::Returned(
             f.results
                 .iter()
-                .zip(&out)
+                .zip(out.iter())
                 .map(|(t, &bits)| {
                     match t {
                         | Ty::F64 => Value::F(f64::from_bits(bits)),

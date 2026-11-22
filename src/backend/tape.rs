@@ -773,6 +773,15 @@ impl Tape {
         }
     }
 
+    /// Whether any instruction invokes an opaque host callback (`Call`,
+    /// `Extern1`, `Extern2`) whose side-effects or invocation order depend on
+    /// sequential row ordering.
+    pub(super) fn has_ordered_callbacks(&self) -> bool {
+        self.insts
+            .iter()
+            .any(|inst| matches!(inst, Inst::Call(..) | Inst::Extern1(..) | Inst::Extern2(..)))
+    }
+
     /// Evaluates the program at every row of a batch, column-wise.
     ///
     /// `columns[i][row]` is input `i` (a missing element reads NaN, like a
@@ -781,46 +790,113 @@ impl Tape {
     /// [`COLUMN_BLOCK`]: each instruction runs over a whole block before
     /// the next one, which turns the per-instruction dispatch of the scalar
     /// interpreter into one dispatch per block and lets the arithmetic
-    /// vectorise. A gather reads the selected input column directly for each
-    /// row. Every row gets exactly the bits [`Tape::eval`] gives it.
+    /// vectorise. Large pure batches split independent row chunks across the
+    /// active CPU pool while respecting cancellation and producing the exact
+    /// same bits as [`Tape::eval`].
     pub fn eval_columns(
         &self,
         columns: &[&[f64]],
         params: &[f64],
         out: &mut [&mut [f64]],
     ) {
-        const B: usize = COLUMN_BLOCK;
-        static NAN_BLOCK: [f64; COLUMN_BLOCK] = [f64::NAN; COLUMN_BLOCK];
+        const PAR_BLOCK: usize = COLUMN_BLOCK * 16;
+        const PAR_WORK_THRESHOLD: usize = 65_536;
         let rows = out.iter().map(|o| o.len()).min().unwrap_or(0);
+        if rows == 0 || self.outputs.is_empty() || crate::cancellation::is_cancelled() {
+            return;
+        }
+        let can_par = !self.has_ordered_callbacks()
+            && rows.saturating_mul(self.insts.len()) >= PAR_WORK_THRESHOLD
+            && crate::execution::should_split(rows.div_ceil(PAR_BLOCK), 2);
+        if !can_par {
+            self.eval_columns_range(columns, params, out, 0, rows);
+            return;
+        }
+        if out.len() == 1 {
+            if let Some(single) = out.first_mut()
+                && let Some(slice) = single.get_mut(..rows)
+            {
+                crate::kernels::par::for_chunks_mut(slice, PAR_BLOCK, 2, |chunk_idx, chunk_out| {
+                    let row_offset = chunk_idx.saturating_mul(PAR_BLOCK);
+                    let chunk_rows = chunk_out.len();
+                    self.eval_columns_range(
+                        columns,
+                        params,
+                        &mut [chunk_out],
+                        row_offset,
+                        chunk_rows,
+                    );
+                });
+            }
+            return;
+        }
+        use rayon::prelude::*;
+        let n_chunks = rows.div_ceil(PAR_BLOCK);
+        let mut chunk_cols: Vec<Vec<&mut [f64]>> = (0..n_chunks)
+            .map(|_| Vec::with_capacity(out.len()))
+            .collect();
+        for col in out.iter_mut() {
+            let Some(mut rest) = col.get_mut(..rows) else {
+                return;
+            };
+            for chunk in &mut chunk_cols {
+                let take = PAR_BLOCK.min(rest.len());
+                let (head, tail) = rest.split_at_mut(take);
+                chunk.push(head);
+                rest = tail;
+            }
+        }
+        let cancellation = crate::cancellation::current();
+        chunk_cols.par_iter_mut().enumerate().for_each_init(
+            || crate::cancellation::install_optional(cancellation.clone()),
+            |_, (chunk_idx, cols)| {
+                let row_offset = chunk_idx.saturating_mul(PAR_BLOCK);
+                let chunk_rows = cols.first().map_or(0, |c| c.len());
+                self.eval_columns_range(columns, params, cols, row_offset, chunk_rows);
+            },
+        );
+    }
+
+    fn eval_columns_range(
+        &self,
+        columns: &[&[f64]],
+        params: &[f64],
+        out: &mut [&mut [f64]],
+        row_offset: usize,
+        rows: usize,
+    ) {
+        static NAN_BLOCK: [f64; COLUMN_BLOCK] = [f64::NAN; COLUMN_BLOCK];
         if rows == 0 || self.outputs.is_empty() {
             return;
         }
-        let stride = rows.min(B);
+        let stride = rows.min(COLUMN_BLOCK);
         let register_slots = self.insts.len().saturating_mul(stride);
-        // Reuse compact register files. Larger files benefit from zero-filled allocation.
-        let mut pooled;
-        let mut allocated;
-        let regs = if register_slots <= 4_096 {
-            pooled = crate::kernels::reuse::f64_scratch(register_slots);
-            pooled.resize(register_slots, 0.0);
-            pooled.as_mut_slice()
-        } else {
-            allocated = vec![0.0_f64; register_slots];
-            allocated.as_mut_slice()
-        };
+        let mut pooled = crate::kernels::reuse::f64_scratch(register_slots);
+        pooled.resize(register_slots, 0.0);
+        let regs = pooled.as_mut_slice();
         let mut v: Vec<f64> = Vec::new();
-        let mut row0 = 0;
+        let mut row0 = 0_usize;
         while row0 < rows {
-            let n = stride.min(rows - row0);
+            if crate::cancellation::is_cancelled() {
+                return;
+            }
+            let n = stride.min(rows.saturating_sub(row0));
+            let abs_row0 = row_offset.saturating_add(row0);
             for (r, inst) in self.insts.iter().enumerate() {
-                let (before, after) = regs.split_at_mut(r * stride);
-                let dst = &mut after[..n];
+                let reg_offset = r.saturating_mul(stride);
+                let (before, after) = regs.split_at_mut(reg_offset);
+                let Some(dst) = after.get_mut(..n) else {
+                    continue;
+                };
+                let nan_slice = NAN_BLOCK.get(..n).unwrap_or(&[]);
                 let src = |reg: Reg| -> &[f64] {
-                    let start = reg as usize * stride;
+                    let start = (reg as usize).saturating_mul(stride);
                     // An out-of-range register reads as NaN, as in the generic
                     // arm: an empty slice would end the `zip` early and leave
                     // `dst` holding the previous block's values.
-                    before.get(start..start + n).unwrap_or(&NAN_BLOCK[..n])
+                    before
+                        .get(start..start.saturating_add(n))
+                        .unwrap_or(nan_slice)
                 };
                 match *inst {
                     | Inst::Const(c) => dst.fill(c),
@@ -829,107 +905,120 @@ impl Tape {
                     },
                     | Inst::Input(i) => {
                         let column = columns.get(i as usize).copied().unwrap_or(&[]);
-                        if let Some(block) = column.get(row0..row0 + n) {
+                        if let Some(block) = column.get(abs_row0..abs_row0.saturating_add(n)) {
                             dst.copy_from_slice(block);
                         } else {
                             for (k, d) in dst.iter_mut().enumerate() {
-                                *d = column.get(row0 + k).copied().unwrap_or(f64::NAN);
+                                *d = column
+                                    .get(abs_row0.saturating_add(k))
+                                    .copied()
+                                    .unwrap_or(f64::NAN);
                             }
                         }
                     },
-                    | Inst::Add(a, b) => {
-                        for ((d, x), y) in dst.iter_mut().zip(src(a)).zip(src(b)) {
-                            *d = x + y;
-                        }
-                    },
-                    | Inst::Sub(a, b) => {
-                        for ((d, x), y) in dst.iter_mut().zip(src(a)).zip(src(b)) {
-                            *d = x - y;
-                        }
-                    },
-                    | Inst::Mul(a, b) => {
-                        for ((d, x), y) in dst.iter_mut().zip(src(a)).zip(src(b)) {
-                            *d = x * y;
-                        }
-                    },
-                    | Inst::Div(a, b) => {
-                        for ((d, x), y) in dst.iter_mut().zip(src(a)).zip(src(b)) {
-                            *d = x / y;
-                        }
-                    },
-                    | Inst::Neg(a) => {
-                        for (d, x) in dst.iter_mut().zip(src(a)) {
-                            *d = -x;
-                        }
-                    },
-                    // The remaining scalar instructions run as straight
-                    // column loops too, so no row goes through the generic
-                    // operand buffer below; each uses the same scalar rule
-                    // as `Tape::eval`, so results are bit-identical.
+                    | Inst::Add(a, b) => eval_binary_slice(dst, src(a), src(b), |x, y| x + y),
+                    | Inst::Sub(a, b) => eval_binary_slice(dst, src(a), src(b), |x, y| x - y),
+                    | Inst::Mul(a, b) => eval_binary_slice(dst, src(a), src(b), |x, y| x * y),
+                    | Inst::Div(a, b) => eval_binary_slice(dst, src(a), src(b), |x, y| x / y),
+                    | Inst::Neg(a) => eval_unary_slice(dst, src(a), |x| -x),
                     | Inst::PowI(a, k) => {
-                        for (d, &x) in dst.iter_mut().zip(src(a)) {
-                            *d = <f64 as Scalar>::powi(x, k);
-                        }
+                        eval_unary_slice(dst, src(a), |x| <f64 as Scalar>::powi(x, k));
                     },
                     | Inst::PowF(a, b) => {
-                        for ((d, &x), &y) in dst.iter_mut().zip(src(a)).zip(src(b)) {
-                            *d = <f64 as Scalar>::powf(x, y);
-                        }
+                        eval_binary_slice(dst, src(a), src(b), <f64 as Scalar>::powf);
                     },
                     | Inst::Unary(f, a) => {
-                        for (d, &x) in dst.iter_mut().zip(src(a)) {
-                            *d = f.apply(x);
+                        match f {
+                            | Intrinsic::Sqrt => eval_unary_slice(dst, src(a), f64::sqrt),
+                            | Intrinsic::Abs => eval_unary_slice(dst, src(a), f64::abs),
+                            | Intrinsic::Floor => eval_unary_slice(dst, src(a), f64::floor),
+                            | Intrinsic::Ceil => eval_unary_slice(dst, src(a), f64::ceil),
+                            | other => eval_unary_slice(dst, src(a), |x| other.apply(x)),
                         }
                     },
                     | Inst::Atan2(a, b) => {
-                        for ((d, &x), &y) in dst.iter_mut().zip(src(a)).zip(src(b)) {
-                            *d = <f64 as Scalar>::atan2(x, y);
-                        }
+                        eval_binary_slice(dst, src(a), src(b), <f64 as Scalar>::atan2);
                     },
                     | Inst::Cmp(c, a, b) => {
-                        for ((d, &x), &y) in dst.iter_mut().zip(src(a)).zip(src(b)) {
-                            *d = <f64 as Scalar>::compare(x, c, y);
+                        match c {
+                            | Cmp::Lt => eval_binary_slice(dst, src(a), src(b), |x, y| bit(x < y)),
+                            | Cmp::Le => {
+                                eval_binary_slice(dst, src(a), src(b), |x, y| bit(x <= y));
+                            },
+                            | Cmp::Gt => eval_binary_slice(dst, src(a), src(b), |x, y| bit(x > y)),
+                            | Cmp::Ge => {
+                                eval_binary_slice(dst, src(a), src(b), |x, y| bit(x >= y));
+                            },
+                            | Cmp::Eq => {
+                                eval_binary_slice(dst, src(a), src(b), |x, y| {
+                                    bit(compare_f64(x, Cmp::Eq, y))
+                                });
+                            },
+                            | Cmp::Ne => {
+                                eval_binary_slice(dst, src(a), src(b), |x, y| {
+                                    bit(compare_f64(x, Cmp::Ne, y))
+                                });
+                            },
                         }
                     },
                     | Inst::Select(c, a, b) => {
-                        for (((d, &w), &x), &y) in
-                            dst.iter_mut().zip(src(c)).zip(src(a)).zip(src(b))
-                        {
-                            *d = <f64 as Scalar>::select(w, x, y);
-                        }
+                        eval_select_slice(dst, src(c), src(a), src(b));
                     },
                     | Inst::Gather(base, index) => {
                         for (k, (d, &offset)) in dst.iter_mut().zip(src(index)).enumerate() {
                             *d = gather_slot(base, offset, self.inputs)
-                                .and_then(|slot| columns.get(slot)?.get(row0 + k))
+                                .and_then(|slot| columns.get(slot)?.get(abs_row0.saturating_add(k)))
                                 .copied()
                                 .unwrap_or(f64::NAN);
                         }
                     },
                     | _ => {
-                        let ops = operands(inst, &self.args);
-                        for (k, d) in dst.iter_mut().enumerate() {
-                            v.clear();
-                            v.extend(ops.iter().map(|&o| {
-                                before
-                                    .get(o as usize * stride + k)
-                                    .copied()
-                                    .unwrap_or(f64::NAN)
-                            }));
-                            *d = apply(inst, &v);
-                        }
+                        with_operands(inst, &self.args, |ops| {
+                            let mut stack = [0.0_f64; 8];
+                            if let Some(buf) = stack.get_mut(..ops.len()) {
+                                for (k, d) in dst.iter_mut().enumerate() {
+                                    for (slot, &o) in buf.iter_mut().zip(ops) {
+                                        *slot = before
+                                            .get(
+                                                (o as usize)
+                                                    .saturating_mul(stride)
+                                                    .saturating_add(k),
+                                            )
+                                            .copied()
+                                            .unwrap_or(f64::NAN);
+                                    }
+                                    *d = apply(inst, buf);
+                                }
+                            } else {
+                                for (k, d) in dst.iter_mut().enumerate() {
+                                    v.clear();
+                                    v.extend(ops.iter().map(|&o| {
+                                        before
+                                            .get(
+                                                (o as usize)
+                                                    .saturating_mul(stride)
+                                                    .saturating_add(k),
+                                            )
+                                            .copied()
+                                            .unwrap_or(f64::NAN)
+                                    }));
+                                    *d = apply(inst, &v);
+                                }
+                            }
+                        });
                     },
                 }
             }
             for (column, &r) in out.iter_mut().zip(&self.outputs) {
-                let start = r as usize * stride;
-                if let (Some(dst), Some(src)) =
-                    (column.get_mut(row0..row0 + n), regs.get(start..start + n))
-                {
+                let start = (r as usize).saturating_mul(stride);
+                if let (Some(dst), Some(src)) = (
+                    column.get_mut(row0..row0.saturating_add(n)),
+                    regs.get(start..start.saturating_add(n)),
+                ) {
                     dst.copy_from_slice(src);
                 }
             }
-            row0 += n;
+            row0 = row0.saturating_add(n);
         }
     }
 
@@ -975,19 +1064,21 @@ impl Tape {
         params: &[f64],
     ) -> Vec<f64> {
         let params: Vec<Dual> = params.iter().map(|&p| Dual(p, 0.0)).collect();
+        let mut seeded: Vec<Dual> = inputs.iter().map(|&x| Dual(x, 0.0)).collect();
         let mut values = Vec::with_capacity(self.insts.len());
         let mut out = vec![Dual(0.0, 0.0); self.outputs.len()];
-        (0..inputs.len())
-            .map(|i| {
-                let seeded: Vec<Dual> = inputs
-                    .iter()
-                    .enumerate()
-                    .map(|(j, &x)| Dual(x, if i == j { 1.0 } else { 0.0 }))
-                    .collect();
-                self.run(&seeded, &params, &mut values, &mut out);
-                out.get(k).map_or(f64::NAN, |d| d.1)
-            })
-            .collect()
+        let mut grad = Vec::with_capacity(inputs.len());
+        for i in 0..inputs.len() {
+            if let Some(slot) = seeded.get_mut(i) {
+                slot.1 = 1.0;
+            }
+            self.run(&seeded, &params, &mut values, &mut out);
+            grad.push(out.get(k).map_or(f64::NAN, |d| d.1));
+            if let Some(slot) = seeded.get_mut(i) {
+                slot.1 = 0.0;
+            }
+        }
+        grad
     }
 
     /// The Hessian of output `k` with respect to every input at `inputs`,
@@ -1190,6 +1281,98 @@ pub trait Scalar: Copy + FromExtern {
 
 /// Rows per block of [`Tape::eval_columns`].
 pub const COLUMN_BLOCK: usize = 256;
+
+#[inline]
+fn eval_unary_slice(
+    dst: &mut [f64],
+    src: &[f64],
+    f: impl Fn(f64) -> f64,
+) {
+    let (d_chunks, d_rem) = dst.as_chunks_mut::<8>();
+    let (s_chunks, s_rem) = src.as_chunks::<8>();
+    for ([d0, d1, d2, d3, d4, d5, d6, d7], &[s0, s1, s2, s3, s4, s5, s6, s7]) in
+        d_chunks.iter_mut().zip(s_chunks)
+    {
+        *d0 = f(s0);
+        *d1 = f(s1);
+        *d2 = f(s2);
+        *d3 = f(s3);
+        *d4 = f(s4);
+        *d5 = f(s5);
+        *d6 = f(s6);
+        *d7 = f(s7);
+    }
+    for (d, &s) in d_rem.iter_mut().zip(s_rem) {
+        *d = f(s);
+    }
+}
+
+#[inline]
+fn eval_binary_slice(
+    dst: &mut [f64],
+    lhs: &[f64],
+    rhs: &[f64],
+    f: impl Fn(f64, f64) -> f64,
+) {
+    let (d_chunks, d_rem) = dst.as_chunks_mut::<8>();
+    let (l_chunks, l_rem) = lhs.as_chunks::<8>();
+    let (r_chunks, r_rem) = rhs.as_chunks::<8>();
+    for (
+        ([d0, d1, d2, d3, d4, d5, d6, d7], &[l0, l1, l2, l3, l4, l5, l6, l7]),
+        &[r0, r1, r2, r3, r4, r5, r6, r7],
+    ) in d_chunks.iter_mut().zip(l_chunks).zip(r_chunks)
+    {
+        *d0 = f(l0, r0);
+        *d1 = f(l1, r1);
+        *d2 = f(l2, r2);
+        *d3 = f(l3, r3);
+        *d4 = f(l4, r4);
+        *d5 = f(l5, r5);
+        *d6 = f(l6, r6);
+        *d7 = f(l7, r7);
+    }
+    for ((d, &l), &r) in d_rem.iter_mut().zip(l_rem).zip(r_rem) {
+        *d = f(l, r);
+    }
+}
+
+#[inline]
+#[allow(clippy::single_call_fn)]
+fn eval_select_slice(
+    dst: &mut [f64],
+    cond: &[f64],
+    lhs: &[f64],
+    rhs: &[f64],
+) {
+    let (d_chunks, d_rem) = dst.as_chunks_mut::<8>();
+    let (c_chunks, c_rem) = cond.as_chunks::<8>();
+    let (l_chunks, l_rem) = lhs.as_chunks::<8>();
+    let (r_chunks, r_rem) = rhs.as_chunks::<8>();
+    for (
+        (
+            ([d0, d1, d2, d3, d4, d5, d6, d7], &[c0, c1, c2, c3, c4, c5, c6, c7]),
+            &[l0, l1, l2, l3, l4, l5, l6, l7],
+        ),
+        &[r0, r1, r2, r3, r4, r5, r6, r7],
+    ) in d_chunks
+        .iter_mut()
+        .zip(c_chunks)
+        .zip(l_chunks)
+        .zip(r_chunks)
+    {
+        *d0 = <f64 as Scalar>::select(c0, l0, r0);
+        *d1 = <f64 as Scalar>::select(c1, l1, r1);
+        *d2 = <f64 as Scalar>::select(c2, l2, r2);
+        *d3 = <f64 as Scalar>::select(c3, l3, r3);
+        *d4 = <f64 as Scalar>::select(c4, l4, r4);
+        *d5 = <f64 as Scalar>::select(c5, l5, r5);
+        *d6 = <f64 as Scalar>::select(c6, l6, r6);
+        *d7 = <f64 as Scalar>::select(c7, l7, r7);
+    }
+    for (((d, &c), &l), &r) in d_rem.iter_mut().zip(c_rem).zip(l_rem).zip(r_rem) {
+        *d = <f64 as Scalar>::select(c, l, r);
+    }
+}
 
 /// The input slot a `Gather(base, offset)` reads, if any.
 ///
@@ -1683,7 +1866,7 @@ impl Scalar for Dual {
         args: &[Self],
     ) -> Self {
         // Value exactly; directional derivative by central differences.
-        let point: Vec<f64> = args.iter().map(|d| d.0).collect();
+        let mut point: Vec<f64> = args.iter().map(|d| d.0).collect();
         let value = f(&point);
         let mut slope = 0.0;
         for (k, d) in args.iter().enumerate() {
@@ -1691,12 +1874,20 @@ impl Scalar for Dual {
                 continue;
             }
             let h = 1e-6 * (1.0 + d.0.abs());
-            let (mut up, mut down) = (point.clone(), point.clone());
-            if let (Some(u), Some(w)) = (up.get_mut(k), down.get_mut(k)) {
-                *u += h;
-                *w -= h;
+            if let Some(&orig) = point.get(k) {
+                if let Some(slot) = point.get_mut(k) {
+                    *slot = orig + h;
+                }
+                let up = f(&point);
+                if let Some(slot) = point.get_mut(k) {
+                    *slot = orig - h;
+                }
+                let down = f(&point);
+                if let Some(slot) = point.get_mut(k) {
+                    *slot = orig;
+                }
+                slope += (up - down) / (2.0 * h) * d.1;
             }
-            slope += (f(&up) - f(&down)) / (2.0 * h) * d.1;
         }
         Self(value, slope)
     }
@@ -1966,7 +2157,7 @@ impl Scalar for HyperDual {
     ) -> Self {
         // Values exactly; first derivatives by central differences, as for
         // `Dual`; no second-order rule, so the mixed component is NaN.
-        let point: Vec<f64> = args.iter().map(|d| d.v).collect();
+        let mut point: Vec<f64> = args.iter().map(|d| d.v).collect();
         let value = f(&point);
         let mut slope1 = 0.0;
         let mut slope2 = 0.0;
@@ -1975,14 +2166,22 @@ impl Scalar for HyperDual {
                 continue;
             }
             let h = 1e-6 * (1.0 + d.v.abs());
-            let (mut up, mut down) = (point.clone(), point.clone());
-            if let (Some(u), Some(w)) = (up.get_mut(k), down.get_mut(k)) {
-                *u += h;
-                *w -= h;
+            if let Some(&orig) = point.get(k) {
+                if let Some(slot) = point.get_mut(k) {
+                    *slot = orig + h;
+                }
+                let up = f(&point);
+                if let Some(slot) = point.get_mut(k) {
+                    *slot = orig - h;
+                }
+                let down = f(&point);
+                if let Some(slot) = point.get_mut(k) {
+                    *slot = orig;
+                }
+                let derivative = (up - down) / (2.0 * h);
+                slope1 += derivative * d.d1;
+                slope2 += derivative * d.d2;
             }
-            let derivative = (f(&up) - f(&down)) / (2.0 * h);
-            slope1 += derivative * d.d1;
-            slope2 += derivative * d.d2;
         }
         Self {
             v: value,
@@ -2817,5 +3016,136 @@ mod tests {
         let mut out = vec![7.0; rows];
         tape.eval_columns(&[&xs], &[], &mut [&mut out]);
         assert!(out.iter().all(|v| v.is_nan()), "{out:?}");
+    }
+
+    #[test]
+    fn eval_columns_serial_and_parallel_match_scalar_bit_exact() {
+        let mut g = Graph::new();
+        assert!(Engine::install(&mut g, &rules::standard()).is_ok());
+        let r0 = g
+            .parse("sin(x) * exp(-y/4) + sqrt(abs(x - y) + 1) + (x^3 - y^2) / (1 + x^2)")
+            .unwrap_or_else(|e| panic!("{e}"));
+        let r1 = g
+            .parse("atan2(y, x) + lt(x, y) * (x + 2)^(1/3) + p")
+            .unwrap_or_else(|e| panic!("{e}"));
+        let x = g.interner_mut().symbol("x");
+        let y = g.interner_mut().symbol("y");
+        let p = g.interner_mut().symbol("p");
+        let base_tape = lower(&g, &[r0, r1], &[x, y], &[p])
+            .unwrap_or_else(|e| panic!("{e}"))
+            .optimise();
+        // Also test Select + Gather edge cases in a larger (> 16 insts, > 4096 slots) tape.
+        let mut big_insts = base_tape.insts.clone();
+        let base_len = Reg::try_from(big_insts.len()).unwrap_or(0);
+        let out0_reg = base_tape.outputs.first().copied().unwrap_or(0);
+        let out1_reg = base_tape.outputs.get(1).copied().unwrap_or(0);
+        big_insts.push(Inst::Const(1.0)); // base_len
+        big_insts.push(Inst::Gather(0, base_len)); // base_len + 1 => input[1]
+        big_insts.push(Inst::Select(out1_reg, out0_reg, base_len.saturating_add(1)));
+        let tape = Tape {
+            insts: big_insts,
+            args: base_tape.args,
+            inputs: 2,
+            params: 1,
+            outputs: vec![out0_reg, base_len.saturating_add(2)],
+        };
+        assert!(tape.insts.len().saturating_mul(COLUMN_BLOCK) > 4_096);
+
+        let params = [0.625];
+        for rows in [0_usize, 1, 7, 255, 256, 257, 4_096, 4_097, 9_217] {
+            let mut xs: Vec<f64> = (0..rows)
+                .map(|i| (f64::from(u32::try_from(i).unwrap_or(0)) * 0.037) - 3.5)
+                .collect();
+            let mut ys: Vec<f64> = (0..rows.saturating_sub(3))
+                .map(|i| (f64::from(u32::try_from(i % 29).unwrap_or(0)) - 14.0) * 0.25)
+                .collect();
+            if rows > 6 {
+                for (slot, val) in
+                    xs.iter_mut()
+                        .zip([f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -0.0])
+                {
+                    *slot = val;
+                }
+                if let Some(slot) = ys.get_mut(4) {
+                    *slot = f64::NAN;
+                }
+                if let Some(slot) = ys.get_mut(5) {
+                    *slot = -0.0;
+                }
+            }
+            let mut scalar0 = Vec::with_capacity(rows);
+            let mut scalar1 = Vec::with_capacity(rows);
+            let single_tape = Tape {
+                outputs: vec![out0_reg],
+                ..tape.clone()
+            };
+            for row in 0..rows {
+                let mut vals = [0.0; 2];
+                let xi = xs.get(row).copied().unwrap_or(f64::NAN);
+                let yi = ys.get(row).copied().unwrap_or(f64::NAN);
+                tape.eval(&[xi, yi], &params, &mut vals);
+                scalar0.push(vals[0]);
+                scalar1.push(vals[1]);
+            }
+            for workers in [1_usize, 4] {
+                let pool = rayon::ThreadPoolBuilder::new()
+                    .num_threads(workers)
+                    .build()
+                    .unwrap_or_else(|e| panic!("{e}"));
+                pool.install(|| {
+                    let mut out0 = vec![-99.0; rows];
+                    let mut out1 = vec![-99.0; rows];
+                    tape.eval_columns(&[&xs, &ys], &params, &mut [&mut out0, &mut out1]);
+                    for (row, ((&got0, &want0), (&got1, &want1))) in out0
+                        .iter()
+                        .zip(&scalar0)
+                        .zip(out1.iter().zip(&scalar1))
+                        .enumerate()
+                    {
+                        assert_eq!(
+                            got0.to_bits(),
+                            want0.to_bits(),
+                            "rows={rows} workers={workers} row={row} out0"
+                        );
+                        assert_eq!(
+                            got1.to_bits(),
+                            want1.to_bits(),
+                            "rows={rows} workers={workers} row={row} out1"
+                        );
+                    }
+                    let mut single_out = vec![-99.0; rows];
+                    single_tape.eval_columns(&[&xs, &ys], &params, &mut [&mut single_out]);
+                    for (row, (&got, &want)) in single_out.iter().zip(&scalar0).enumerate() {
+                        assert_eq!(
+                            got.to_bits(),
+                            want.to_bits(),
+                            "rows={rows} workers={workers} row={row} single"
+                        );
+                    }
+                });
+            }
+        }
+    }
+
+    #[test]
+    fn eval_columns_stops_when_cancelled() {
+        use std::sync::Arc;
+        use std::sync::atomic::AtomicBool;
+        use std::sync::atomic::Ordering;
+
+        let t = tape("sin(x) + cos(y)");
+        let rows = 512;
+        let xs = vec![1.0; rows];
+        let ys = vec![2.0; rows];
+        let mut out = vec![42.0; rows];
+        let token = Arc::new(AtomicBool::new(true));
+        let _guard = crate::cancellation::install(Arc::clone(&token));
+        t.eval_columns(&[&xs, &ys], &[], &mut [&mut out]);
+        assert!(out.iter().all(|v| v.to_bits() == 42.0_f64.to_bits()));
+        token.store(false, Ordering::Relaxed);
+        t.eval_columns(&[&xs, &ys], &[], &mut [&mut out]);
+        let mut expected = [0.0];
+        t.eval(&[1.0, 2.0], &[], &mut expected);
+        assert!(out.iter().all(|v| v.to_bits() == expected[0].to_bits()));
     }
 }

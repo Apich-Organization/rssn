@@ -595,11 +595,26 @@ impl Compiled for Tape {
         &self,
         args: &[f64],
     ) -> f64 {
-        self.run(
-            args,
-            &mut Vec::with_capacity(self.instrs.len()),
-            &mut Vec::new(),
-        )
+        thread_local! {
+            static INTERP_SCRATCH: std::cell::RefCell<(Vec<f64>, Vec<f64>)> = const {
+                std::cell::RefCell::new((Vec::new(), Vec::new()))
+            };
+        }
+        INTERP_SCRATCH.with(|buffers| {
+            match buffers.try_borrow_mut() {
+                | Ok(mut pair) => {
+                    let (values, scratch) = &mut *pair;
+                    self.run(args, values, scratch)
+                },
+                | Err(_) => {
+                    self.run(
+                        args,
+                        &mut Vec::with_capacity(self.instrs.len()),
+                        &mut Vec::new(),
+                    )
+                },
+            }
+        })
     }
 
     fn call_batch(
@@ -607,9 +622,10 @@ impl Compiled for Tape {
         columns: &[&[f64]],
         out: &mut [f64],
     ) {
-        let mut values = Vec::with_capacity(self.instrs.len());
-        let mut scratch = Vec::new();
-        let mut args = vec![f64::NAN; self.arity];
+        let mut values = crate::kernels::reuse::f64_scratch(self.instrs.len());
+        let mut scratch = crate::kernels::reuse::f64_scratch(8);
+        let mut args = crate::kernels::reuse::f64_scratch(self.arity);
+        args.resize(self.arity, f64::NAN);
         for (row, slot) in out.iter_mut().enumerate() {
             for (arg, column) in args.iter_mut().zip(columns) {
                 *arg = column.get(row).copied().unwrap_or(f64::NAN);
@@ -790,5 +806,39 @@ mod tests {
             Some(BackendError::NoSemantics("diff".to_owned()))
         );
         assert_eq!(Interpreter.name(), "interpreter");
+    }
+
+    #[test]
+    fn tape_function_batches_preserve_bits_across_worker_counts() {
+        let (g, root, inputs) = setup("sin(x)^2 * exp(-y) + (x - y)/(1 + x^2)");
+        let compiled = Interpreter
+            .compile_multi(&g, &[root], &inputs, &[])
+            .unwrap_or_else(|e| panic!("{e}"));
+        let rows = 9_001_usize;
+        let xs: Vec<f64> = (0..rows)
+            .map(|i| f64::from(u32::try_from(i).unwrap_or(0)) * 0.013 - 4.0)
+            .collect();
+        let ys: Vec<f64> = (0..rows)
+            .map(|i| f64::from(u32::try_from(i % 17).unwrap_or(0)) * 0.3 - 2.0)
+            .collect();
+        let mut reference = Vec::with_capacity(rows);
+        let mut pt = [0.0];
+        for (&x, &y) in xs.iter().zip(&ys) {
+            compiled.eval(&[x, y], &[], &mut pt);
+            reference.push(pt[0]);
+        }
+        for workers in [1_usize, 4] {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(workers)
+                .build()
+                .unwrap_or_else(|e| panic!("{e}"));
+            pool.install(|| {
+                let mut out = vec![0.0; rows];
+                compiled.eval_batch(&[&xs, &ys], &[], &mut [&mut out]);
+                for (row, (&got, &want)) in out.iter().zip(&reference).enumerate() {
+                    assert_eq!(got.to_bits(), want.to_bits(), "workers={workers} row={row}");
+                }
+            });
+        }
     }
 }

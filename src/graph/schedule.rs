@@ -24,7 +24,6 @@
 //! semantics, so numeric kernels higher up find their inputs evaluated.
 
 use rayon::prelude::*;
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
@@ -33,8 +32,11 @@ use super::extract::BuildMemo;
 use super::extract::ClosedForm;
 use super::extract::CostModel;
 use super::extract::Extractor;
+use super::extract::ReachableScratch;
 use super::extract::SizeCost;
+#[cfg(test)]
 use super::extract::reachable;
+use super::extract::reachable_into;
 use super::id::ClassId;
 use super::id::NodeId;
 use super::id::OpId;
@@ -338,6 +340,10 @@ impl AsRef<[NodeId]> for SearchNodes<'_> {
 }
 
 impl Frontier {
+    fn clear(&mut self) {
+        self.memo.clear();
+    }
+
     fn enabled() -> bool {
         static FULL: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
         !*FULL.get_or_init(|| std::env::var_os("RSSN_FULL_SEARCH").is_some_and(|v| v != "0"))
@@ -436,20 +442,20 @@ enum Search {
 /// in parallel; below it the same search runs sequentially.
 const ENGINE_PAR_MIN_CANDIDATES: usize = 512;
 
-/// Searches `rewrite` over `nodes`, honouring its (ban-scaled) match limit
-/// and fuel. Pure in `graph`.
-fn search_rewrite(
+/// Searches `rewrite` over `nodes` using reusable `scratch`, honouring its
+/// (ban-scaled) match limit and fuel. Pure in `graph`.
+fn search_rewrite_with_scratch<'p>(
     graph: &Graph,
-    rewrite: &Rewrite,
+    rewrite: &'p Rewrite,
     nodes: &[NodeId],
     times_banned: u32,
     budget: &Budget,
+    scratch: &mut super::pattern::MatchScratch<'p>,
 ) -> Search {
     let shift = times_banned.min(16);
     let limit = budget.match_limit.saturating_mul(1_usize << shift);
     let mut matches = Vec::new();
     let mut fuel = budget.match_fuel;
-    let mut scratch = super::pattern::MatchScratch::default();
     let cap = limit.saturating_add(1);
     let started = super::profile::start();
     for &node in nodes {
@@ -465,7 +471,7 @@ fn search_rewrite(
             rewrite.nvars,
             cap,
             &mut fuel,
-            &mut scratch,
+            scratch,
             &mut matches,
         );
         if fuel == 0 {
@@ -577,6 +583,10 @@ struct OpSet {
 }
 
 impl OpSet {
+    fn clear(&mut self) {
+        self.words.fill(0);
+    }
+
     fn insert(
         &mut self,
         op: OpId,
@@ -600,6 +610,17 @@ impl OpSet {
             .get(index / 64)
             .is_some_and(|bits| bits & (1_u64 << (index % 64)) != 0)
     }
+}
+
+/// Reusable scratch buffers across `apply_tier` calls within one `Engine::run`.
+#[derive(Default)]
+struct TierWorkspace {
+    op_buckets: Vec<Vec<NodeId>>,
+    present_ops: Vec<OpId>,
+    present: OpSet,
+    active_positions: Vec<u32>,
+    frontier: Frontier,
+    changed_nodes: super::id::FastMap<(OpId, u64, usize), Arc<[NodeId]>>,
 }
 
 /// One step of a tier's sweep over the program.
@@ -626,6 +647,7 @@ struct KernelOps {
 struct RunReachability {
     revision: Option<u64>,
     classes: Vec<ClassId>,
+    scratch: ReachableScratch,
 }
 
 impl RunReachability {
@@ -636,7 +658,7 @@ impl RunReachability {
     ) -> &[ClassId] {
         let revision = graph.revision();
         if self.revision != Some(revision) {
-            self.classes = reachable(graph, roots);
+            reachable_into(graph, roots, &mut self.scratch, &mut self.classes);
             self.revision = Some(revision);
         }
         &self.classes
@@ -753,30 +775,28 @@ impl TierIndex {
         self.tiers.get(tier_slot(tier)).map_or(&[], Vec::as_slice)
     }
 
-    /// The segments of `tier` a sweep over candidates with operators
-    /// `present` must visit, in program order: every other segment is a
-    /// kernel none of whose operators occurs, which the sweep would skip.
-    fn active(
+    /// Collects the sorted, deduplicated positions of segments in `tier`
+    /// that a sweep over candidates with operators `present` must visit.
+    fn collect_active_positions(
         &self,
         tier: Tier,
-        present: impl Iterator<Item = OpId>,
-    ) -> Vec<&Segment> {
+        present: &[OpId],
+        positions: &mut Vec<u32>,
+    ) {
         let slot = tier_slot(tier);
-        let segments = self.segments(tier);
-        let mut positions: Vec<u32> = self.always.get(slot).cloned().unwrap_or_default();
+        positions.clear();
+        if let Some(always) = self.always.get(slot) {
+            positions.extend_from_slice(always);
+        }
         if let Some(map) = self.by_op.get(slot) {
             for op in present {
-                if let Some(list) = map.get(&op) {
+                if let Some(list) = map.get(op) {
                     positions.extend_from_slice(list);
                 }
             }
         }
         positions.sort_unstable();
         positions.dedup();
-        positions
-            .into_iter()
-            .filter_map(|p| segments.get(p as usize))
-            .collect()
     }
 }
 
@@ -967,10 +987,16 @@ impl Engine {
         let mut windowed: super::id::FastMap<NodeId, u64> = super::id::FastMap::default();
         let mut seen: super::id::FastMap<NodeId, u64> = super::id::FastMap::default();
         let mut reachability = RunReachability::default();
+        let mut tier_ws = TierWorkspace::default();
         let normalizing: Vec<&Rewrite> = self.rewrites_of(Tier::Normalize);
-        let normalizing_index = RewriteIndex::new(&normalizing);
-        let exploring: Vec<&Rewrite> = self.rewrites_of(Tier::Explore);
         let passes: Vec<&dyn WindowPass> = self.program.passes.iter().map(|p| &**p).collect();
+        let normalizing_index = (!normalizing.is_empty() || !passes.is_empty())
+            .then(|| RewriteIndex::new(&normalizing));
+        let exploring: Vec<&Rewrite> = if budget.beam_width > 0 && normalizing_index.is_some() {
+            self.rewrites_of(Tier::Explore)
+        } else {
+            Vec::new()
+        };
 
         graph.rebuild();
         // A nested run works inside its parent's numeric context and must
@@ -1007,6 +1033,7 @@ impl Engine {
                     &mut states,
                     &mut seen,
                     &mut reachability,
+                    &mut tier_ws,
                 );
                 if crate::cancellation::is_cancelled() {
                     stop = Stop::Cancelled;
@@ -1025,18 +1052,20 @@ impl Engine {
             }
             // Tier 1: destructive clean-up in windows, then the same
             // simplifications modulo the graph's equalities.
-            progress |= Self::windows(
-                graph,
-                roots,
-                budget,
-                &normalizing,
-                &normalizing_index,
-                &exploring,
-                &passes,
-                &mut windowed,
-                &mut reachability,
-            );
-            graph.rebuild();
+            if let Some(normalizing_index) = &normalizing_index {
+                progress |= Self::windows(
+                    graph,
+                    roots,
+                    budget,
+                    &normalizing,
+                    normalizing_index,
+                    &exploring,
+                    &passes,
+                    &mut windowed,
+                    &mut reachability,
+                );
+                graph.rebuild();
+            }
             progress |= self.apply_tier(
                 graph,
                 roots,
@@ -1047,6 +1076,7 @@ impl Engine {
                 &mut states,
                 &mut seen,
                 &mut reachability,
+                &mut tier_ws,
             );
             graph.rebuild();
 
@@ -1075,6 +1105,7 @@ impl Engine {
                     &mut states,
                     &mut seen,
                     &mut reachability,
+                    &mut tier_ws,
                 );
                 graph.rebuild();
             }
@@ -1107,9 +1138,10 @@ impl Engine {
                         extractor.cost(graph, r).map(|c| acc.saturating_add(c))
                     })
                 };
-                let cost = total(&Extractor::new(graph, roots, &ClosedForm), graph)
+                let classes = reachability.classes(graph, roots);
+                let cost = total(&Extractor::for_classes(graph, classes, &ClosedForm), graph)
                     .or_else(|| {
-                        total(&Extractor::new(graph, roots, &SizeCost), graph)
+                        total(&Extractor::for_classes(graph, classes, &SizeCost), graph)
                             .map(|c| c.saturating_add(1 << 40))
                     })
                     .unwrap_or(u64::MAX);
@@ -1137,7 +1169,8 @@ impl Engine {
         let solved = if stop == Stop::Cancelled {
             false
         } else {
-            let closed = Extractor::new(graph, roots, &ClosedForm);
+            let classes = reachability.classes(graph, roots);
+            let closed = Extractor::for_classes(graph, classes, &ClosedForm);
             roots.iter().all(|&r| closed.cost(graph, r).is_some())
         };
         Report {
@@ -1194,6 +1227,7 @@ impl Engine {
         states: &mut RuleStates,
         seen: &mut super::id::FastMap<NodeId, u64>,
         reachability: &mut RunReachability,
+        ws: &mut TierWorkspace,
     ) -> bool {
         let index = self.tier_index();
         let segments = index.segments(tier);
@@ -1203,10 +1237,13 @@ impl Engine {
         let incremental = Frontier::enabled();
         let heavy =
             |graph: &Graph, node: NodeId| graph.ops().get(graph.op(node)).flags.has(OpFlags::HEAVY);
-        let mut candidates: BTreeMap<OpId, Vec<NodeId>> = BTreeMap::new();
-        // Which operators have candidates, as a bit set: every kernel of the
-        // tier asks, and most of them find none.
-        let mut present = OpSet::default();
+        for &op in &ws.present_ops {
+            if let Some(bucket) = ws.op_buckets.get_mut(op.index()) {
+                bucket.clear();
+            }
+        }
+        ws.present_ops.clear();
+        ws.present.clear();
         for &class in reachability.classes(graph, roots) {
             if crate::cancellation::is_cancelled() {
                 return false;
@@ -1227,58 +1264,78 @@ impl Engine {
             let epoch = graph.epoch();
             for enode in graph.enodes(class) {
                 let op = graph.op(enode);
-                present.insert(op);
-                candidates.entry(op).or_default().push(enode);
+                let op_idx = op.index();
+                if op_idx >= ws.op_buckets.len() {
+                    ws.op_buckets
+                        .resize_with(op_idx.saturating_add(1), Vec::new);
+                }
+                if !ws.present.contains(op) {
+                    ws.present.insert(op);
+                    ws.present_ops.push(op);
+                }
+                if let Some(bucket) = ws.op_buckets.get_mut(op_idx) {
+                    bucket.push(enode);
+                }
                 seen.entry(enode).or_insert(epoch);
             }
         }
+        // Preserve ascending OpId order for `wanted.all` kernels (matching `BTreeMap`).
+        ws.present_ops.sort_unstable();
+        index.collect_active_positions(tier, &ws.present_ops, &mut ws.active_positions);
         let mut changed = false;
         let rules = &self.program.rules;
-        for segment in index.active(tier, candidates.keys().copied()) {
+        for pos_idx in 0..ws.active_positions.len() {
             if crate::cancellation::is_cancelled() {
                 return changed;
             }
+            let Some(&pos) = ws.active_positions.get(pos_idx) else {
+                continue;
+            };
+            let Some(segment) = segments.get(pos as usize) else {
+                continue;
+            };
             // A maximal run of consecutive rewrites of this tier is searched
             // in one batch against the frozen graph (egg's scheme) and then
             // applied in program order; kernels keep their place.
             if let Segment::Rewrites(span) = segment {
-                let run: Vec<(usize, &Rewrite)> = span
-                    .clone()
-                    .filter_map(|i| {
-                        let rule = rules.get(i)?;
-                        match &rule.action {
-                            | Action::Rewrite(rw) if states.banned_until(i) <= iteration => {
-                                Some((i, rw))
-                            },
-                            | _ => None,
-                        }
-                    })
-                    .collect();
+                let TierWorkspace {
+                    op_buckets,
+                    present,
+                    frontier,
+                    changed_nodes,
+                    ..
+                } = ws;
+                let searched_at = graph.epoch();
+                frontier.clear();
+                changed_nodes.clear();
                 // The nodes each rewrite must search: all candidates of its
                 // trigger, minus (incrementally) those whose neighbourhood
-                // is unchanged since its last complete search.
-                let searched_at = graph.epoch();
-                let mut frontier = Frontier::default();
-                let mut changed_nodes: super::id::FastMap<_, Arc<[NodeId]>> =
-                    super::id::FastMap::default();
-                // A full search borrows the list. Incremental searches with
-                // the same trigger, epoch and depth share a filtered list.
-                let todo: Vec<_> =
-                    run.iter()
-                        .map(|&(i, rw)| {
+                // is unchanged since its last complete search. A full search
+                // borrows the bucket; incremental searches with the same
+                // trigger, epoch and depth share a filtered list.
+                let todo: Vec<(usize, &Rewrite, SearchNodes<'_>)> =
+                    span.clone()
+                        .filter_map(|i| {
+                            let rule = rules.get(i)?;
+                            let Action::Rewrite(rw) = &rule.action else {
+                                return None;
+                            };
+                            if states.banned_until(i) > iteration {
+                                return None;
+                            }
                             let trigger = rw.trigger();
                             if !present.contains(trigger) {
                                 return None;
                             }
-                            let nodes = candidates.get(&trigger)?;
+                            let nodes = op_buckets.get(trigger.index()).map(Vec::as_slice)?;
                             let since = states.get(i).and_then(|s| s.searched);
                             let Some(since) =
                                 since.filter(|_| incremental && rw.guards.iter().all(local_guard))
                             else {
-                                return Some(SearchNodes::All(nodes.as_slice()));
+                                return Some((i, rw, SearchNodes::All(nodes)));
                             };
                             let depth = rw.lhs.depth();
-                            let changed = changed_nodes
+                            let filtered = changed_nodes
                                 .entry((trigger, since, depth))
                                 .or_insert_with(|| {
                                     nodes
@@ -1290,47 +1347,66 @@ impl Engine {
                                         })
                                         .collect()
                                 });
-                            Some(SearchNodes::Changed(Arc::clone(changed)))
+                            Some((i, rw, SearchNodes::Changed(Arc::clone(filtered))))
                         })
                         .collect();
-                let work: usize = todo
-                    .iter()
-                    .flatten()
-                    .map(|nodes| nodes.as_ref().len())
-                    .sum();
+                if todo.is_empty() {
+                    graph.advance_epoch();
+                    continue;
+                }
+                let work: usize = todo.iter().map(|(_, _, nodes)| nodes.as_ref().len()).sum();
                 let found = {
                     let frozen: &Graph = graph;
                     let states_ro: &RuleStates = states;
                     let cancellation = crate::cancellation::current();
-                    let search =
-                        |(&(i, rw), nodes): (&(usize, &Rewrite), &Option<SearchNodes<'_>>)| {
-                            let nodes = nodes.as_ref()?;
-                            let _scope =
-                                crate::cancellation::install_optional(cancellation.clone());
-                            let times = states_ro.get(i).map_or(0, |s| s.times_banned);
-                            Some(search_rewrite(frozen, rw, nodes.as_ref(), times, budget))
-                        };
-                    if run.len() >= 2
+                    if todo.len() >= 2
                         && crate::execution::should_split(work, ENGINE_PAR_MIN_CANDIDATES)
                     {
-                        run.par_iter()
-                            .zip(todo.par_iter())
-                            .map(search)
+                        todo.par_iter()
+                            .map_init(
+                                || {
+                                    (
+                                        crate::cancellation::install_optional(cancellation.clone()),
+                                        super::pattern::MatchScratch::default(),
+                                    )
+                                },
+                                |(_, scratch), &(i, rw, ref nodes)| {
+                                    let times = states_ro.get(i).map_or(0, |s| s.times_banned);
+                                    search_rewrite_with_scratch(
+                                        frozen,
+                                        rw,
+                                        nodes.as_ref(),
+                                        times,
+                                        budget,
+                                        scratch,
+                                    )
+                                },
+                            )
                             .collect::<Vec<_>>()
                     } else {
-                        run.iter().zip(todo.iter()).map(search).collect::<Vec<_>>()
+                        let mut scratch = super::pattern::MatchScratch::default();
+                        todo.iter()
+                            .map(|&(i, rw, ref nodes)| {
+                                let times = states_ro.get(i).map_or(0, |s| s.times_banned);
+                                search_rewrite_with_scratch(
+                                    frozen,
+                                    rw,
+                                    nodes.as_ref(),
+                                    times,
+                                    budget,
+                                    &mut scratch,
+                                )
+                            })
+                            .collect::<Vec<_>>()
                     }
                 };
                 // Everything applied from here on is stamped with a later
                 // epoch than the search saw.
                 graph.advance_epoch();
-                for (&(i, rewrite), result) in run.iter().zip(found) {
+                for (&(i, rewrite, _), result) in todo.iter().zip(found) {
                     if crate::cancellation::is_cancelled() {
                         return changed;
                     }
-                    let Some(result) = result else {
-                        continue;
-                    };
                     let state = states.entry(i);
                     match result {
                         | Search::Banned => {
@@ -1373,7 +1449,7 @@ impl Engine {
             let Some(wanted) = index.kernel_ops.get(at) else {
                 continue;
             };
-            if !wanted.all && !wanted.ops.iter().any(|&op| present.contains(op)) {
+            if !wanted.all && !wanted.ops.iter().any(|&op| ws.present.contains(op)) {
                 continue;
             }
             let state = states.entry(at);
@@ -1383,19 +1459,24 @@ impl Engine {
                     let revisit = kernel.revisit();
                     let all = wanted
                         .all
-                        .then(|| candidates.values())
+                        .then(|| {
+                            ws.present_ops
+                                .iter()
+                                .filter_map(|op| ws.op_buckets.get(op.index()))
+                        })
                         .into_iter()
                         .flatten();
                     let specific = (!wanted.all)
                         .then_some(wanted.ops.as_slice())
                         .into_iter()
                         .flatten()
-                        .filter_map(|op| candidates.get(op));
+                        .filter_map(|op| ws.op_buckets.get(op.index()));
                     let nodes = all.chain(specific).flatten().copied();
                     let two_phase = kernel.two_phase();
                     // Two-phase kernels: prepare every eligible node, run the
-                    // heavy parts in parallel, commit in node order.
+                    // heavy parts in parallel when justified, commit in node order.
                     let mut staged: Vec<Staged> = Vec::new();
+                    let mut heavy_jobs = 0_usize;
                     let mut memo = ReducedMemo {
                         revision: graph.revision(),
                         map: super::id::FastMap::default(),
@@ -1424,6 +1505,7 @@ impl Engine {
                                     staged.push((node, Some(outcome), None));
                                 },
                                 | Prepared::Work(work) => {
+                                    heavy_jobs = heavy_jobs.saturating_add(1);
                                     staged.push((node, None, Some(work)));
                                 },
                             }
@@ -1441,30 +1523,49 @@ impl Engine {
                         }
                     }
                     if two_phase {
-                        let works: Vec<Option<Box<dyn PreparedWork>>> =
-                            staged.iter_mut().map(|(_, _, w)| w.take()).collect();
-                        let heavy_jobs = works.iter().filter(|w| w.is_some()).count();
-                        let cancellation = crate::cancellation::current();
-                        let run = |work: Option<Box<dyn PreparedWork>>| {
-                            let _scope =
-                                crate::cancellation::install_optional(cancellation.clone());
-                            if crate::cancellation::is_cancelled() {
-                                None
-                            } else {
-                                work.map(PreparedWork::run)
+                        let mut par_results: Vec<Option<Box<dyn std::any::Any + Send>>> =
+                            Vec::new();
+                        let parallel =
+                            heavy_jobs > 0 && crate::execution::should_split(heavy_jobs, 2);
+                        if parallel {
+                            let mut jobs: Vec<(usize, Box<dyn PreparedWork>)> =
+                                Vec::with_capacity(heavy_jobs);
+                            for (idx, (_, _, work)) in staged.iter_mut().enumerate() {
+                                if let Some(work) = work.take() {
+                                    jobs.push((idx, work));
+                                }
                             }
-                        };
-                        let results: Vec<Option<Box<dyn std::any::Any + Send>>> =
-                            if crate::execution::should_split(heavy_jobs, 2) {
-                                works.into_par_iter().map(run).collect()
-                            } else {
-                                works.into_iter().map(run).collect()
-                            };
-                        for ((node, done, _), result) in staged.into_iter().zip(results) {
+                            let cancellation = crate::cancellation::current();
+                            let completed: Vec<_> = jobs
+                                .into_par_iter()
+                                .map_init(
+                                    || crate::cancellation::install_optional(cancellation.clone()),
+                                    |_, (idx, work)| {
+                                        (!crate::cancellation::is_cancelled())
+                                            .then(|| (idx, work.run()))
+                                    },
+                                )
+                                .collect();
+                            par_results.resize_with(staged.len(), || None);
+                            for (idx, out) in completed.into_iter().flatten() {
+                                if let Some(slot) = par_results.get_mut(idx) {
+                                    *slot = Some(out);
+                                }
+                            }
+                        }
+                        let mut results_iter = par_results.into_iter();
+                        for (node, done, work) in staged {
                             if crate::cancellation::is_cancelled() {
                                 return changed;
                             }
-                            let outcome = match (done, result) {
+                            let work_result = if parallel {
+                                results_iter.next().flatten()
+                            } else if crate::cancellation::is_cancelled() {
+                                None
+                            } else {
+                                work.map(PreparedWork::run)
+                            };
+                            let outcome = match (done, work_result) {
                                 | (Some(outcome), _) => outcome,
                                 | (None, Some(result)) => {
                                     kernel.commit(
@@ -1509,16 +1610,35 @@ impl Engine {
         }
         let classes = reachability.classes(graph, roots);
         let extractor = Extractor::for_classes(graph, classes, &SizeCost);
-        let root_classes: super::id::FastSet<_> = roots.iter().map(|&r| graph.find(r)).collect();
+        let mut root_stack = [ClassId::NONE; 8];
+        let mut root_set = super::id::FastSet::default();
+        let use_stack_roots = roots.len() <= root_stack.len();
+        if use_stack_roots {
+            for (slot, &r) in root_stack.iter_mut().zip(roots) {
+                *slot = graph.find(r);
+            }
+        } else {
+            root_set.extend(roots.iter().map(|&r| graph.find(r)));
+        }
+        let is_root_class = |class: ClassId| {
+            if use_stack_roots {
+                root_stack
+                    .get(..roots.len())
+                    .is_some_and(|s| s.contains(&class))
+            } else {
+                root_set.contains(&class)
+            }
+        };
         // Build every window's term before merging anything: the extractor
         // describes the graph as it is now.
         let mut terms = Vec::new();
         let mut memo = BuildMemo::default();
+        let mut touched_scratch = TermTouchedScratch::default();
         for &class in classes.iter().rev() {
             if crate::cancellation::is_cancelled() {
                 return false;
             }
-            if !root_classes.contains(&class) && graph.has_single_parent(class) {
+            if !is_root_class(class) && graph.has_single_parent(class) {
                 // Unshared: some ancestor's window covers it.
                 continue;
             }
@@ -1534,7 +1654,7 @@ impl Engine {
             }
             let fresh = done
                 .get(&term)
-                .is_none_or(|&last| term_touched(graph, term) > last);
+                .is_none_or(|&last| term_touched_into(graph, term, &mut touched_scratch) > last);
             if fresh {
                 terms.push((origin, term));
             }
@@ -1581,20 +1701,29 @@ impl Engine {
     }
 }
 
+#[derive(Default)]
+struct TermTouchedScratch {
+    stack: Vec<NodeId>,
+    visited: super::id::FastSet<NodeId>,
+}
+
 /// The latest epoch at which a class of the concrete term `term` changed.
-fn term_touched(
+#[allow(clippy::single_call_fn)]
+fn term_touched_into(
     graph: &Graph,
     term: NodeId,
+    scratch: &mut TermTouchedScratch,
 ) -> u64 {
     let mut latest = 0;
-    let mut stack = vec![term];
-    let mut visited: super::id::FastSet<NodeId> = super::id::FastSet::default();
-    while let Some(node) = stack.pop() {
-        if !visited.insert(node) {
+    scratch.stack.clear();
+    scratch.stack.push(term);
+    scratch.visited.clear();
+    while let Some(node) = scratch.stack.pop() {
+        if !scratch.visited.insert(node) {
             continue;
         }
         latest = latest.max(graph.touched(node));
-        stack.extend_from_slice(graph.children(node));
+        scratch.stack.extend_from_slice(graph.children(node));
     }
     latest
 }
@@ -2103,5 +2232,141 @@ mod tests {
             "the session's registry must reach the manifest"
         );
         assert!(engine.manifest().verify());
+    }
+
+    #[test]
+    fn engine_run_serial_and_parallel_match_deterministically() {
+        use super::super::rule::Prepared;
+        use super::super::rule::PreparedWork;
+
+        struct Work(i64);
+        impl PreparedWork for Work {
+            fn run(self: Box<Self>) -> Box<dyn std::any::Any + Send> {
+                Box::new(self.0.saturating_mul(2))
+            }
+        }
+
+        struct TwoPhaseDouble(OpId);
+        impl Kernel for TwoPhaseDouble {
+            fn ops(&self) -> Vec<OpId> {
+                vec![self.0]
+            }
+
+            fn reduce(
+                &self,
+                _cx: &mut Cx<'_>,
+                _node: NodeId,
+            ) -> Outcome {
+                Outcome::Pass
+            }
+
+            fn revisit(&self) -> bool {
+                true
+            }
+
+            fn two_phase(&self) -> bool {
+                true
+            }
+
+            fn prepare(
+                &self,
+                cx: &mut Cx<'_>,
+                node: NodeId,
+            ) -> Prepared {
+                if let Some(&arg) = cx.graph.children(node).first()
+                    && let Some(n) = cx.graph.number_of(arg).and_then(Number::to_i64)
+                {
+                    return Prepared::Work(Box::new(Work(n)));
+                }
+                Prepared::Done(Outcome::Pass)
+            }
+
+            fn commit(
+                &self,
+                cx: &mut Cx<'_>,
+                _node: NodeId,
+                result: Box<dyn std::any::Any + Send>,
+            ) -> Outcome {
+                match result.downcast::<i64>() {
+                    | Ok(v) => Outcome::Equal(cx.graph.num(Number::from(*v))),
+                    | Err(_) => Outcome::Pass,
+                }
+            }
+        }
+
+        let make_set = || {
+            RuleSet::new("par-det", |i| {
+                let _tag = i.op(OpDescriptor::new("tag", Arity::Fixed(1)).flags(OpFlags::HEAVY))?;
+                let dbl = i.op(OpDescriptor::new("dbl", Arity::Fixed(1)).flags(OpFlags::HEAVY))?;
+                i.kernel("two-phase-dbl", Tier::Reduce, TwoPhaseDouble(dbl));
+                i.kernel("fold", Tier::Normalize, Fold);
+                i.rewrites(
+                    Tier::Normalize,
+                    &[
+                        "untag: tag(?x) => ?x + 0",
+                        "add-zero: ?x + 0 => ?x",
+                        "mul-one: ?x * 1 => ?x",
+                    ],
+                )?;
+                Ok(())
+            })
+        };
+
+        let run_with_threads = |threads: usize| {
+            let mut g = Graph::new();
+            let set = make_set();
+            let engine = Engine::install(&mut g, &[set]).unwrap_or_else(|e| panic!("{e}"));
+            let tag_op = g.ops().lookup("tag").unwrap_or(OpId::NONE);
+            let dbl_op = g.ops().lookup("dbl").unwrap_or(OpId::NONE);
+            // Build >512 tagged & doubled candidates to exercise parallel batch search & two-phase commit.
+            let mut layer: Vec<NodeId> = Vec::with_capacity(320);
+            let one = g.num(Number::from(1));
+            for k in 1_i64..=320 {
+                let lit = g.num(Number::from(k));
+                let tagged = g.node(tag_op, &[lit]);
+                let doubled = g.node(dbl_op, &[tagged]);
+                layer.push(g.node(core::MUL, &[doubled, one]));
+            }
+            while layer.len() > 1 {
+                let mut next = Vec::with_capacity(layer.len().div_ceil(2));
+                let mut i = 0_usize;
+                while i < layer.len() {
+                    if let (Some(&a), Some(&b)) = (layer.get(i), layer.get(i.saturating_add(1))) {
+                        next.push(g.node(core::ADD, &[a, b]));
+                    } else if let Some(&a) = layer.get(i) {
+                        next.push(a);
+                    }
+                    i = i.saturating_add(2);
+                }
+                layer = next;
+            }
+            let acc = layer.first().copied().unwrap_or(one);
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap_or_else(|e| panic!("{e}"));
+            let report = pool.install(|| {
+                engine.run(
+                    &mut g,
+                    &[acc],
+                    &Env::symbolic(),
+                    &Saturate,
+                    &Budget::default(),
+                )
+            });
+            assert_eq!(g.validate(), Ok(()));
+            (report, best(&mut g, acc))
+        };
+
+        let (r1, term1) = run_with_threads(1);
+        let (r4, term4) = run_with_threads(4);
+        assert_eq!(r1.stop, r4.stop);
+        assert_eq!(r1.iterations, r4.iterations);
+        assert_eq!(r1.unions, r4.unions);
+        assert_eq!(r1.applied, r4.applied);
+        assert_eq!(r1.solved, r4.solved);
+        assert!(r1.solved);
+        assert_eq!(term1, "102720");
+        assert_eq!(term1, term4);
     }
 }

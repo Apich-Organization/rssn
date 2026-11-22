@@ -65,6 +65,38 @@ fn check_compile_cache_constants(device: &dyn Device) {
     }
 }
 
+/// The cache evicts one entry when it is full instead of clearing itself: a
+/// program that cycles through more distinct kernels than the cache holds must
+/// not recompile everything on every launch. The observable difference is the
+/// retained size, which stays at the capacity instead of collapsing to the
+/// number of compiles since the last clear.
+#[test]
+fn cpu_compile_cache_evicts_one_entry_instead_of_clearing() {
+    let device = CpuDevice::sequential();
+    let compile = |bits: u64| {
+        device
+            .compile(&KernelIr {
+                ops: vec![KernelOp::Const(f64::from_bits(bits))],
+                inputs: 0,
+                params: 0,
+                outputs: vec![0],
+                fold: None,
+            })
+            .unwrap()
+    };
+    let capacity = super::cpu::MAX_CACHED_KERNELS;
+    let base = 1.5_f64.to_bits();
+    for index in 0..capacity.saturating_add(5) {
+        let _ = compile(base.saturating_add(index as u64));
+    }
+    assert_eq!(
+        device.cached_kernel_count(),
+        capacity,
+        "the cache retained {} of {capacity} kernels, so it cleared itself",
+        device.cached_kernel_count()
+    );
+}
+
 #[test]
 fn cpu_compile_cache_compares_constant_bits() {
     check_compile_cache_constants(&CpuDevice::sequential());
@@ -1255,6 +1287,142 @@ fn wgsl_of_the_rk4_step_has_the_expected_shape() {
     assert!(w.contains("rssn_out[1u * rssn_rows + row]"));
     assert!(w.contains("rssn_params[0u]") && w.contains("rssn_params[1u]"));
     assert!(w.contains("@compute @workgroup_size(64)"));
+}
+
+#[test]
+fn cpu_and_cpu_parallel_match_bit_exact_across_edge_sizes_and_matmul() {
+    let seq = CpuDevice::sequential();
+    let par = CpuDevice::parallel();
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(4)
+        .build()
+        .unwrap();
+
+    // 1. Multi-output elementwise kernel across edge sizes and special floats.
+    let ir = everything();
+    let k_seq = seq.compile(&ir).unwrap();
+    let k_par = par.compile(&ir).unwrap();
+    for rows in [
+        0_usize, 1, 7, 127, 128, 129, 255, 256, 257, 2048, 2049, 4609,
+    ] {
+        let mut flat = Vec::with_capacity(rows * 2);
+        for i in 0..rows {
+            flat.push(match i {
+                | 0 => -0.0,
+                | 1 => f64::NAN,
+                | 2 => f64::INFINITY,
+                | 3 => f64::NEG_INFINITY,
+                | _ => 0.25 + (i as f64) * 0.01,
+            });
+        }
+        for i in 0..rows {
+            flat.push(1.5 + ((i % 19) as f64) * 0.125);
+        }
+        let in_seq = seq.upload(&flat, Dtype::F64).unwrap();
+        let in_par = par.upload(&flat, Dtype::F64).unwrap();
+        let mut out_seq = seq.alloc(rows * ir.outputs.len(), Dtype::F64).unwrap();
+        let mut out_par = par.alloc(rows * ir.outputs.len(), Dtype::F64).unwrap();
+        seq.launch(&*k_seq, rows, &in_seq, &[0.75], &mut out_seq)
+            .unwrap();
+        pool.install(|| {
+            par.launch(&*k_par, rows, &in_par, &[0.75], &mut out_par)
+                .unwrap();
+        });
+        let mut got_seq = vec![0.0; rows * ir.outputs.len()];
+        let mut got_par = vec![0.0; rows * ir.outputs.len()];
+        seq.download(&out_seq, &mut got_seq).unwrap();
+        par.download(&out_par, &mut got_par).unwrap();
+        for (idx, (&a, &b)) in got_seq.iter().zip(&got_par).enumerate() {
+            assert!(
+                same(a, b),
+                "elementwise rows={rows} idx={idx}: {a:?} vs {b:?}"
+            );
+        }
+    }
+
+    // 2. Structured stencil kernel across serial and parallel thresholds.
+    let stencil =
+        array::stencil1d_kernel(&[(-1, 1.0), (0, -2.0), (1, 1.0)], array::Boundary::Clamp).unwrap();
+    for rows in [0_usize, 1, 129, 257, 513] {
+        let u: Vec<f64> = (0..rows).map(|i| (i as f64) * 0.5).collect();
+        let want = array::run_cols(&seq, &stencil, rows, &[&u], &[]).unwrap();
+        let got = pool
+            .install(|| array::run_cols(&par, &stencil, rows, &[&u], &[]))
+            .unwrap();
+        assert_eq!(got.len(), want.len());
+        for (a, b) in got[0].iter().zip(&want[0]) {
+            assert_eq!(a.to_bits(), b.to_bits());
+        }
+    }
+
+    // 3. Deterministic reduction across REDUCE_CHUNK boundaries.
+    for len in [0_usize, 1, 4096, 4097, 16_385] {
+        let mut vals: Vec<f64> = (0..len)
+            .map(|i| (((i * 7 + 3) % 97) as f64 - 48.0) * 0.125)
+            .collect();
+        if let Some(first) = vals.first_mut() {
+            *first = -0.0;
+        }
+        let b_seq = seq.upload(&vals, Dtype::F64).unwrap();
+        let b_par = par.upload(&vals, Dtype::F64).unwrap();
+        for op in [ReduceOp::Sum, ReduceOp::Max, ReduceOp::Min] {
+            let s = seq.reduce(op, &b_seq).unwrap();
+            let p = pool.install(|| par.reduce(op, &b_par)).unwrap();
+            assert!(same(s, p), "reduce {op:?} len={len}: {s:?} vs {p:?}");
+        }
+    }
+
+    // 4. Bit-exact L1-tiled matmul across wide-1-row, few-row, general, and k=0 shapes.
+    for (m, k, n) in [(1, 32, 3000), (3, 35, 2500), (17, 9, 521), (5, 0, 7)] {
+        let a: Vec<f64> = (0..m * k).map(|i| ((i % 13) as f64 - 6.0) * 0.25).collect();
+        let b: Vec<f64> = (0..k * n).map(|i| ((i % 11) as f64 - 5.0) * 0.5).collect();
+        let ba_s = seq.upload(&a, Dtype::F64).unwrap();
+        let bb_s = seq.upload(&b, Dtype::F64).unwrap();
+        let mut bc_s = seq.alloc(m * n, Dtype::F64).unwrap();
+        seq.matmul(&ba_s, &bb_s, &mut bc_s, m, k, n).unwrap();
+
+        let ba_p = par.upload(&a, Dtype::F64).unwrap();
+        let bb_p = par.upload(&b, Dtype::F64).unwrap();
+        let mut bc_p = par.alloc(m * n, Dtype::F64).unwrap();
+        pool.install(|| par.matmul(&ba_p, &bb_p, &mut bc_p, m, k, n).unwrap());
+
+        let mut c_s = vec![0.0; m * n];
+        let mut c_p = vec![0.0; m * n];
+        seq.download(&bc_s, &mut c_s).unwrap();
+        par.download(&bc_p, &mut c_p).unwrap();
+        assert_eq!(c_s.len(), c_p.len());
+        for (idx, (&vs, &vp)) in c_s.iter().zip(&c_p).enumerate() {
+            assert_eq!(
+                vs.to_bits(),
+                vp.to_bits(),
+                "matmul {m}x{k}*{k}x{n} mismatch at {idx}"
+            );
+        }
+    }
+}
+
+#[test]
+fn cpu_device_stops_cleanly_when_cancelled() {
+    let dev = CpuDevice::parallel();
+    let ir = decay();
+    let k = dev.compile(&ir).unwrap();
+    let xs = vec![1.0; 257];
+    let buf = dev.upload(&xs, Dtype::F64).unwrap();
+    let mut out = dev.alloc(257, Dtype::F64).unwrap();
+    let token = Arc::new(std::sync::atomic::AtomicBool::new(true));
+    let _guard = crate::cancellation::install(token);
+    assert!(matches!(
+        dev.launch(&*k, 257, &buf, &[1.0], &mut out),
+        Err(DeviceError::Backend(_))
+    ));
+    assert!(matches!(
+        dev.reduce(ReduceOp::Sum, &buf),
+        Err(DeviceError::Backend(_))
+    ));
+    assert!(matches!(
+        dev.matmul(&buf, &buf, &mut out, 1, 257, 1),
+        Err(DeviceError::Backend(_))
+    ));
 }
 
 // --- wgpu (feature gpu-wgpu) ----------------------------------------------------

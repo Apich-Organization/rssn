@@ -197,18 +197,29 @@ impl Rewrite {
         graph: &mut Graph,
         m: &Match,
     ) -> Option<NodeId> {
-        let subst = m.materialize(graph);
-        if !self.admits(graph, &subst) {
+        let mut subst_buf = Vec::new();
+        let subst = m.materialize_into(graph, &mut subst_buf);
+        if !self.admits(graph, subst) {
             return None;
         }
-        let rhs = self.rhs.instantiate(graph, &subst)?;
+        let rhs = self.rhs.instantiate(graph, subst)?;
         if m.rest.is_empty() {
             return Some(rhs);
         }
-        let mut children = Vec::with_capacity(m.rest.len().saturating_add(1));
-        children.push(rhs);
-        children.extend_from_slice(&m.rest);
-        graph.try_node(self.trigger(), &children)
+        let total = m.rest.len().saturating_add(1);
+        let mut stack = [NodeId::NONE; 4];
+        let mut heap = Vec::new();
+        let children: &mut [NodeId] = if total <= stack.len() {
+            stack.get_mut(..total).unwrap_or(&mut [])
+        } else {
+            heap.resize(total, NodeId::NONE);
+            &mut heap
+        };
+        if let Some((first, tail)) = children.split_first_mut() {
+            *first = rhs;
+            tail.copy_from_slice(&m.rest);
+        }
+        graph.try_node(self.trigger(), children)
     }
 }
 

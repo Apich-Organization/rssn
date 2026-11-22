@@ -142,15 +142,18 @@ impl Graph {
     ) -> Facts {
         let class = self.find(node);
         let revision = self.revision();
-        if let Ok(table) = self.facts_cache.table.lock()
-            && table.0 == revision
-            && let Some(&known) = table.1.get(&class.raw())
-        {
-            return known;
+        if let Ok(table) = self.facts_cache.table.read() {
+            let cached = (table.0 == revision)
+                .then(|| table.1.get(&class.raw()).copied())
+                .flatten();
+            drop(table);
+            if let Some(known) = cached {
+                return known;
+            }
         }
         let mut memo = FastMap::default();
         let facts = self.class_facts(class, &mut memo);
-        if let Ok(mut table) = self.facts_cache.table.lock() {
+        if let Ok(mut table) = self.facts_cache.table.write() {
             if table.0 != revision {
                 table.0 = revision;
                 table.1.clear();
@@ -254,12 +257,29 @@ impl Graph {
             return self.assumption(symbol);
         }
         let children = self.children(node);
-        let of: Vec<Facts> = children
-            .iter()
-            .map(|&c| self.class_facts(self.find(c), memo))
-            .collect();
-        let all = |wanted: Facts| of.iter().all(|f| f.has(wanted));
-        let any = |wanted: Facts| of.iter().any(|f| f.has(wanted));
+        let mut all_facts = Facts(u8::MAX);
+        let mut any_facts = Facts::NONE;
+        let mut all_signed = true;
+        let mut neg_flips = 0_usize;
+        let mut first = Facts::NONE;
+        let mut second = Facts::NONE;
+        for (idx, &c) in children.iter().enumerate() {
+            let cf = self.class_facts(self.find(c), memo);
+            if idx == 0 {
+                first = cf;
+            } else if idx == 1 {
+                second = cf;
+            }
+            all_facts = Facts(all_facts.0 & cf.0);
+            any_facts = any_facts | cf;
+            if !cf.has(Facts::NONNEGATIVE) && !cf.has(Facts::NONPOSITIVE) {
+                all_signed = false;
+            } else if !cf.has(Facts::NONNEGATIVE) {
+                neg_flips = neg_flips.saturating_add(1);
+            }
+        }
+        let all = |wanted: Facts| all_facts.has(wanted);
+        let any = |wanted: Facts| any_facts.has(wanted);
         let mut facts = Facts::NONE;
         match self.op(node) {
             | core::ADD => {
@@ -292,13 +312,9 @@ impl Graph {
                 if all(Facts::NONZERO) {
                     facts = facts | Facts::NONZERO;
                 }
-                if of
-                    .iter()
-                    .all(|f| f.has(Facts::NONNEGATIVE) || f.has(Facts::NONPOSITIVE))
-                {
-                    let flips = of.iter().filter(|f| !f.has(Facts::NONNEGATIVE)).count();
+                if all_signed {
                     facts = facts
-                        | if flips % 2 == 0 {
+                        | if neg_flips % 2 == 0 {
                             Facts::NONNEGATIVE
                         } else {
                             Facts::NONPOSITIVE
@@ -306,8 +322,7 @@ impl Graph {
                 }
             },
             | core::POW => {
-                let base = of.first().copied().unwrap_or(Facts::NONE);
-                let exp = of.get(1).copied().unwrap_or(Facts::NONE);
+                let (base, exp) = (first, second);
                 if base.has(Facts::POSITIVE) && exp.has(Facts::REAL) {
                     facts = facts | Facts::POSITIVE;
                 }
@@ -474,5 +489,29 @@ mod tests {
         g.union(x, known);
         g.rebuild();
         assert!(g.facts(x).has(Facts::POSITIVE));
+    }
+
+    #[test]
+    fn facts_cache_parallel_reads_match_serial() {
+        let mut g = setup();
+        let nodes = [
+            g.parse("p + 1").unwrap_or_else(|e| panic!("{e}")),
+            g.parse("p * (-r)^2 + exp(r)")
+                .unwrap_or_else(|e| panic!("{e}")),
+            g.parse("(-p) * p * (-2)").unwrap_or_else(|e| panic!("{e}")),
+            g.parse("p^r").unwrap_or_else(|e| panic!("{e}")),
+        ];
+        let expected: Vec<Facts> = nodes.iter().map(|&n| g.facts(n)).collect();
+        std::thread::scope(|s| {
+            for _ in 0..4 {
+                s.spawn(|| {
+                    for _ in 0..32 {
+                        for (&node, &want) in nodes.iter().zip(&expected) {
+                            assert_eq!(g.facts(node), want);
+                        }
+                    }
+                });
+            }
+        });
     }
 }

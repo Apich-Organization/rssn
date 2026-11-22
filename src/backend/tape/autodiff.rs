@@ -21,10 +21,15 @@ impl ReverseWork {
     fn new(
         registers: usize,
         inputs: usize,
+        second_order: bool,
     ) -> Self {
         Self {
             adjoints: vec![Dual(0.0, 0.0); registers],
-            product: vec![0.0; inputs],
+            product: if second_order {
+                vec![0.0; inputs]
+            } else {
+                Vec::new()
+            },
             local: Vec::new(),
         }
     }
@@ -166,7 +171,7 @@ impl Tape {
                 dst.0 = x;
             }
         }
-        let mut work = ReverseWork::new(self.insts.len(), inputs.len());
+        let mut work = ReverseWork::new(self.insts.len(), inputs.len(), direction.is_some());
         for ((&reg, &weight), value) in self.outputs.iter().zip(weights).zip(&out) {
             if weight == 0.0 {
                 continue;
@@ -204,7 +209,7 @@ impl Tape {
             .collect();
         let mut data = vec![0.0; cells];
         let fill = |start: usize, rows: &mut [f64]| {
-            let mut work = ReverseWork::new(self.insts.len(), columns);
+            let mut work = ReverseWork::new(self.insts.len(), columns, false);
             let mut dependencies = OutputDependencies {
                 seen: if self.insts.len() >= 64 {
                     vec![0; self.insts.len()]
@@ -224,9 +229,10 @@ impl Tape {
                     row.fill(f64::NAN);
                     continue;
                 }
-                work.product.fill(0.0);
-                work.adjoints[register].0 = 1.0;
-                if dependencies.collect(self, register, offset + 1) {
+                if let Some(slot) = work.adjoints.get_mut(register) {
+                    slot.0 = 1.0;
+                }
+                if dependencies.collect(self, register, offset.saturating_add(1)) {
                     self.reverse_sweep(
                         &values,
                         &mut work,
@@ -345,8 +351,10 @@ fn accumulate_input(
     i: usize,
     bar: Dual,
 ) {
-    if let (Some(g), Some(h)) = (gradient.get_mut(i), product.get_mut(i)) {
+    if let Some(g) = gradient.get_mut(i) {
         *g += bar.0;
+    }
+    if let Some(h) = product.get_mut(i) {
         *h += bar.1;
     }
 }

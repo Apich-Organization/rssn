@@ -71,13 +71,30 @@ impl Match {
         &self,
         graph: &mut Graph,
     ) -> Vec<NodeId> {
-        let mut subst = self.subst.clone();
+        if self.multi.is_empty() {
+            return self.subst.clone();
+        }
+        let mut buf = Vec::new();
+        let _ = self.materialize_into(graph, &mut buf);
+        buf
+    }
+
+    pub(super) fn materialize_into<'a>(
+        &'a self,
+        graph: &mut Graph,
+        buf: &'a mut Vec<NodeId>,
+    ) -> &'a [NodeId] {
+        if self.multi.is_empty() {
+            return &self.subst;
+        }
+        buf.clear();
+        buf.extend_from_slice(&self.subst);
         for (var, op, operands) in &self.multi {
-            if let Some(slot) = subst.get_mut(*var as usize) {
+            if let Some(slot) = buf.get_mut(*var as usize) {
                 *slot = graph.node(*op, operands);
             }
         }
-        subst
+        buf.as_slice()
     }
 }
 
@@ -601,11 +618,18 @@ impl Pat {
             | Self::Num(n) => Some(graph.num(n.clone())),
             | Self::Exact(node) => Some(*node),
             | Self::Node(op, children) => {
-                let mut built = Vec::with_capacity(children.len());
-                for child in children {
-                    built.push(child.instantiate(graph, subst)?);
+                let mut stack = [NodeId::NONE; 4];
+                let mut heap = Vec::new();
+                let built: &mut [NodeId] = if children.len() <= stack.len() {
+                    stack.get_mut(..children.len()).unwrap_or(&mut [])
+                } else {
+                    heap.resize(children.len(), NodeId::NONE);
+                    &mut heap
+                };
+                for (slot, child) in built.iter_mut().zip(children) {
+                    *slot = child.instantiate(graph, subst)?;
                 }
-                graph.try_node(*op, &built)
+                graph.try_node(*op, built)
             },
         }
     }
@@ -676,23 +700,31 @@ impl Pat {
         scratch.subst.resize(nvars, NodeId::NONE);
         scratch.classes.clear();
         scratch.possible.clear();
+        scratch.multi.clear();
+        scratch.want.clear();
+        scratch.have.clear();
         let MatchScratch {
             goals,
             used,
             subst,
             classes,
             possible,
+            multi,
+            want,
+            have,
         } = scratch;
         let mut matcher = Matcher {
             graph,
             limit,
             out,
             root,
-            multi: Vec::new(),
+            multi,
             fuel: *fuel,
             used,
             classes,
             possible,
+            want,
+            have,
             root_children: &[],
             root_window: None,
         };
@@ -742,6 +774,9 @@ pub struct MatchScratch<'p> {
     subst: Vec<NodeId>,
     classes: Vec<u32>,
     possible: Vec<u8>,
+    multi: Vec<(u32, OpId, Vec<NodeId>)>,
+    want: Vec<u32>,
+    have: Vec<u32>,
 }
 
 /// The arena windows of one commutative assignment.
@@ -773,7 +808,7 @@ struct Matcher<'g, 'o, 'u> {
     out: &'o mut Vec<Match>,
     root: NodeId,
     /// Variables currently bound to several operands of a nested node.
-    multi: Vec<(u32, OpId, Vec<NodeId>)>,
+    multi: &'u mut Vec<(u32, OpId, Vec<NodeId>)>,
     /// Search steps left.
     fuel: usize,
     /// Arena of "child already assigned" flags; each commutative
@@ -788,6 +823,8 @@ struct Matcher<'g, 'o, 'u> {
     /// `patterns x children` block per assignment: the test is the same at
     /// every placement that reaches the pair.
     possible: &'u mut Vec<u8>,
+    want: &'u mut Vec<u32>,
+    have: &'u mut Vec<u32>,
     /// The root's children and, during a commutative root assignment, the
     /// base of its window: the match's `rest` is computed from them only
     /// when a match is emitted, not for every tentative placement.
@@ -1009,30 +1046,28 @@ impl<'p> Matcher<'_, '_, '_> {
             | Pat::Var(v) => {
                 let index = *v as usize;
                 let bound = subst.get(index).copied().unwrap_or(NodeId::NONE);
-                if let Some((_, op, operands)) = self.multi.iter().find(|(var, _, _)| var == v) {
+                if let Some(pos) = self.multi.iter().position(|(var, _, _)| var == v)
+                    && let Some(&(_, op, ref operands)) = self.multi.get(pos)
+                {
                     // Bound to several operands elsewhere: this occurrence
                     // must be a node made of the same operands. Operator and
                     // arity are compared before any operand list is built.
-                    let op = *op;
                     let arity = operands.len();
-                    let mut want: Option<Vec<u32>> = None;
+                    self.want.clear();
+                    let want = &mut *self.want;
+                    let have = &mut *self.have;
                     let same = graph.enodes(class).any(|enode| {
                         if graph.op(enode) != op || graph.children(enode).len() != arity {
                             return false;
                         }
-                        let want = want.get_or_insert_with(|| {
-                            let mut want: Vec<u32> =
-                                operands.iter().map(|&o| graph.find(o).raw()).collect();
+                        if want.is_empty() && !operands.is_empty() {
+                            want.extend(operands.iter().map(|&o| graph.find(o).raw()));
                             want.sort_unstable();
-                            want
-                        });
-                        let mut have: Vec<u32> = graph
-                            .children(enode)
-                            .iter()
-                            .map(|&c| graph.find(c).raw())
-                            .collect();
+                        }
+                        have.clear();
+                        have.extend(graph.children(enode).iter().map(|&c| graph.find(c).raw()));
                         have.sort_unstable();
-                        have == *want
+                        *have == *want
                     });
                     if same {
                         self.solve(goals, subst, rest);
