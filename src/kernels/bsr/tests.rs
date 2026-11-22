@@ -570,3 +570,31 @@ fn block_jacobi_beats_scalar_jacobi_in_cg() {
         assert!(bilu < block, "s={s}: bilu {bilu} vs block {block}");
     }
 }
+
+#[test]
+fn block_jacobi_setup_and_apply_are_thread_count_independent() {
+    // 1100 block rows of 4x4 blocks: the set-up and the apply both cross the
+    // parallel work threshold (apply work is b^2 per block).
+    let csr = block_tridiagonal(&mut Rng::new(404), 1100, 4);
+    let a = Bsr::from_csr(&csr, 4, 4).unwrap();
+    let rhs: Vec<f64> = (0..a.nrows).map(|i| 0.5 + (i % 11) as f64 * 0.25).collect();
+    let run = |threads: usize| {
+        crate::execution::with_scoped_pool(Some(threads), || {
+            let pre = a.block_jacobi().unwrap();
+            let mut z = vec![0.0; a.nrows];
+            pre.apply(&rhs, &mut z);
+            (pre, z)
+        })
+    };
+    let (serial_pre, serial_z) = run(1);
+    for threads in [2usize, 4] {
+        let (parallel_pre, parallel_z) = run(threads);
+        assert_eq!(serial_pre, parallel_pre);
+        assert!(
+            serial_z
+                .iter()
+                .zip(&parallel_z)
+                .all(|(a, b)| a.to_bits() == b.to_bits())
+        );
+    }
+}

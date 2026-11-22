@@ -130,7 +130,7 @@ pub fn sp_mat_transpose_vec_mul(
     if matrix.nrows() != vector.len() {
         return Err(MATVEC_SHAPE_ERROR.into());
     }
-    Ok(transpose_products(matrix, vector).collect())
+    Ok(transpose_products(matrix, vector))
 }
 
 /// Computes `Aᵀ x` into caller-owned storage, replacing every output element.
@@ -178,22 +178,45 @@ fn accumulate_matvec(
     vector: &[f64],
     result: &mut [f64],
 ) {
-    for ((rows, values), &x) in live_columns(matrix).zip(vector) {
-        for (&row, &value) in rows.iter().zip(values) {
+    for ((row_indices, values), &x) in live_columns(matrix).zip(vector) {
+        for (&row, &value) in row_indices.iter().zip(values) {
             result[row] += value * x;
         }
     }
 }
 
-fn transpose_products<'a>(
-    matrix: &'a SparseMat,
-    vector: &'a [f64],
-) -> impl Iterator<Item = f64> + 'a {
-    live_columns(matrix).map(|(rows, values)| {
-        rows.iter()
-            .zip(values)
-            .fold(0.0, |sum, (&row, &value)| sum + value * vector[row])
-    })
+/// One column of `Aᵀ x`: a dot product in the stored order of the live entries.
+fn transpose_column_product(
+    matrix: &SparseMat,
+    vector: &[f64],
+    column: usize,
+) -> f64 {
+    let span = matrix.symbolic().col_range(column);
+    matrix.row_idx()[span.clone()]
+        .iter()
+        .zip(&matrix.val()[span])
+        .fold(0.0, |sum, (&row, &value)| sum + value * vector[row])
+}
+
+/// Minimum columns per worker when `Aᵀ x` runs in parallel.
+const TRANSPOSE_GRAIN: usize = 64;
+
+fn transpose_products(
+    matrix: &SparseMat,
+    vector: &[f64],
+) -> Vec<f64> {
+    let ncols = matrix.ncols();
+    let nnz: usize = live_column_spans(matrix).map(|span| span.len()).sum();
+    let per_column = nnz / ncols.max(1);
+    if ncols >= TRANSPOSE_GRAIN && crate::execution::should_split_work(ncols, per_column.max(1)) {
+        crate::kernels::par::map_indexed(ncols, TRANSPOSE_GRAIN, |column| {
+            transpose_column_product(matrix, vector, column)
+        })
+    } else {
+        (0..ncols)
+            .map(|column| transpose_column_product(matrix, vector, column))
+            .collect()
+    }
 }
 
 /// Converts a dense `ndarray::Array` to a sparse matrix.
@@ -734,6 +757,28 @@ mod tests {
     use ndarray::array;
 
     use super::*;
+    use crate::execution::with_scoped_pool;
+
+    /// A banded matrix large enough to cross the parallel work threshold.
+    fn banded(
+        rows: usize,
+        cols: usize,
+        band: usize,
+    ) -> SparseMat {
+        let mut triplets = Vec::with_capacity(rows.saturating_mul(band));
+        for r in 0..rows {
+            for k in 0..band {
+                let c = (r + k * 7) % cols;
+                let m = u8::try_from((r * 31 + k * 17) % 13).unwrap_or(0);
+                triplets.push((r, c, 1.0 + 0.25 * f64::from(m)));
+            }
+        }
+        csr_from_triplets(rows, cols, &triplets)
+    }
+
+    fn bits(values: &[f64]) -> Vec<u64> {
+        values.iter().map(|v| v.to_bits()).collect()
+    }
 
     #[test]
     pub fn test_csr_from_triplets() {
@@ -864,5 +909,47 @@ mod tests {
         let back = data.to_csmat();
 
         assert_eq!(to_dense(&back), to_dense(&mat));
+    }
+
+    /// The per-column `Aᵀ x` runs in parallel above the work threshold; it must
+    /// reproduce the sequential path bit for bit, as must the sequential `A x`.
+    #[test]
+    pub fn transpose_vec_mul_is_thread_count_independent() {
+        let (rows, cols, band) = (4096usize, 4096usize, 24usize);
+        let mat = banded(rows, cols, band);
+        let x: Vec<f64> = (0..cols).map(|i| 0.5 + 0.125 * (i % 7) as f64).collect();
+        let y: Vec<f64> = (0..rows).map(|i| -0.25 + 0.0625 * (i % 5) as f64).collect();
+
+        let serial = with_scoped_pool(Some(1), || {
+            (
+                sp_mat_vec_mul(&mat, &x).unwrap_or_default(),
+                sp_mat_transpose_vec_mul(&mat, &y).unwrap_or_default(),
+            )
+        });
+
+        for workers in [2usize, 4] {
+            let parallel = with_scoped_pool(Some(workers), || {
+                (
+                    sp_mat_vec_mul(&mat, &x).unwrap_or_default(),
+                    sp_mat_transpose_vec_mul(&mat, &y).unwrap_or_default(),
+                )
+            });
+            assert_eq!(bits(&parallel.0), bits(&serial.0));
+            assert_eq!(bits(&parallel.1), bits(&serial.1));
+        }
+    }
+
+    /// Small products keep the sequential path under any thread budget.
+    #[test]
+    pub fn small_spmv_is_thread_count_independent() {
+        let mat = banded(32, 32, 3);
+        let x: Vec<f64> = (0..32).map(|i| 1.0 + (i % 4) as f64).collect();
+        let serial = with_scoped_pool(Some(1), || sp_mat_vec_mul(&mat, &x).unwrap_or_default());
+        for workers in [2usize, 4] {
+            let parallel = with_scoped_pool(Some(workers), || {
+                sp_mat_vec_mul(&mat, &x).unwrap_or_default()
+            });
+            assert_eq!(bits(&serial), bits(&parallel));
+        }
     }
 }

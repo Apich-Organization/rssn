@@ -30,10 +30,21 @@
 //! * [`eigen_generalized_symmetric`] returns no eigenvectors when `B` is
 //!   indefinite (the reduction is to `B^{-1} A`, which is not symmetric).
 //!
-//! Parallelism: [`Mat::matmul`] and [`Mat::matvec`] run row by row concurrently above a size
-//! threshold; every row keeps its sequential accumulation order, so the results are bit-identical
-//! to a one-thread run. [`lu_factor`] stays sequential: the per-step dispatch cost of a parallel
-//! trailing update did not pay at 700 x 700.
+//! # Parallelism and determinism
+//!
+//! Every kernel keeps the arithmetic order of the sequential reference: only
+//! the independent outer loop (a row, a column, a row block) is handed to
+//! `kernels::par`, and each entry is still accumulated over the same index in
+//! the same direction. A reduction never changes association, so the results
+//! are bit-identical for one thread, four threads or the sequential path.
+//!
+//! [`Mat::matmul`] updates blocks of output rows so one panel of the right
+//! operand is streamed once per block instead of once per row; [`lu_factor`]
+//! splits the rows of its trailing update; [`cholesky`] splits the rows of a
+//! column; [`qr`] splits the rows of the `R` and `Q` updates; and the
+//! Hessenberg reduction and [`Lu::inverse`] split rows and columns. Work below
+//! `DENSE_PAR_WORK` element updates stays on the sequential path, so small
+//! matrices never pay a fork/join.
 
 use std::fmt;
 
@@ -78,6 +89,28 @@ impl From<crate::cancellation::Cancelled> for DenseError {
 
 /// Multiply-adds from which dense products run in parallel.
 const DENSE_PAR_FLOPS: usize = 4_000_000;
+
+/// Element updates from which a single LU trailing update is split across
+/// threads.
+///
+/// Below it the fork/join costs more than the step; the value keeps every
+/// 200 x 200 factorization on the sequential path.
+const DENSE_PAR_WORK: usize = 250_000;
+
+/// Element updates from which one Cholesky column is split across threads.
+///
+/// The columns of a factorisation are a serial chain, so it pays to split a
+/// column earlier than a rank-one update. The largest column of a 256 x 256
+/// matrix is `128 * 128` and stays sequential.
+const DENSE_PAR_WORK_COLUMN: usize = 20_000;
+
+/// Element updates from which one Householder step's `R` and `Q` updates are
+/// split across threads.
+const DENSE_PAR_WORK_QR: usize = 50_000;
+
+/// Rows of a product that are updated together, so one panel of the right
+/// operand is streamed once per block instead of once per output row.
+const DENSE_MATMUL_BLOCK_F64: usize = 16_384;
 
 /// Row-major dense matrix.
 #[derive(Debug, Clone, PartialEq)]
@@ -238,23 +271,35 @@ impl Mat {
         if oc == 0 {
             return Ok(out);
         }
-        // one output row per task; the row's own accumulation order is the
-        // serial one, so the product is bit-identical
+        // A block of output rows shares one pass over `other`, so a panel of the
+        // right operand is streamed once per block instead of once per row.
+        // Inside a block `k` stays the outer loop and every entry accumulates
+        // in ascending `k`, which is exactly the serial order.
+        let block_rows = (DENSE_MATMUL_BLOCK_F64 / oc).clamp(1, 64);
         let grain = if size.saturating_mul(m) >= DENSE_PAR_FLOPS {
             2
         } else {
             usize::MAX
         };
-        super::par::for_chunks_mut(&mut out.data, oc, grain, |i, out_row| {
-            for k in 0..m {
-                let a = self.data[i * m + k];
-                if a != 0.0 {
-                    for j in 0..oc {
-                        out_row[j] += a * other.data[k * oc + j];
+        super::par::for_chunks_mut(
+            &mut out.data,
+            block_rows.saturating_mul(oc),
+            grain,
+            |block, rows| {
+                let row0 = block.saturating_mul(block_rows);
+                for k in 0..m {
+                    let right = &other.data[k * oc..(k + 1) * oc];
+                    for (local, out_row) in rows.chunks_exact_mut(oc).enumerate() {
+                        let a = self.data[(row0 + local) * m + k];
+                        if a != 0.0 {
+                            for (slot, &factor) in out_row.iter_mut().zip(right) {
+                                *slot += a * factor;
+                            }
+                        }
                     }
                 }
-            }
-        });
+            },
+        );
         Ok(out)
     }
 
@@ -327,16 +372,31 @@ pub fn lu_factor(a: &Mat) -> Result<Lu, DenseError> {
             piv.swap(k, p);
             sign = -sign;
         }
-        let d = lu.at(k, k);
-        for i in k + 1..n {
-            let m = lu.at(i, k) / d;
-            lu.data[i * n + k] = m;
-            if m != 0.0 {
-                for j in k + 1..n {
-                    lu.data[i * n + j] -= m * lu.data[k * n + j];
+        let d = lu.data[k * n + k];
+        let trailing = n - k - 1;
+        if trailing == 0 {
+            break;
+        }
+        // Split off the pivot row so the rows below can be updated concurrently
+        // while it is read. Each trailing entry is updated exactly once per `k`
+        // and the row update runs left to right, so the bits are the serial
+        // ones; only the order in which independent rows are visited changes.
+        let (head, tail) = lu.data.split_at_mut((k + 1) * n);
+        let pivot_row = &head[k * n + k + 1..(k + 1) * n];
+        let grain = if trailing.saturating_mul(trailing) >= DENSE_PAR_WORK {
+            2
+        } else {
+            usize::MAX
+        };
+        super::par::for_chunks_mut(tail, n, grain, |_, row| {
+            let factor = row[k] / d;
+            row[k] = factor;
+            if factor != 0.0 {
+                for (slot, &pivot) in row[k + 1..].iter_mut().zip(pivot_row) {
+                    *slot -= factor * pivot;
                 }
             }
-        }
+        });
     }
     Ok(Lu {
         factors: lu,
@@ -394,10 +454,18 @@ impl Lu {
         b: &[f64],
         x: &mut [f64],
     ) {
-        let n = self.factors.rows;
         for (value, &pivot) in x.iter_mut().zip(&self.piv) {
             *value = b[pivot];
         }
+        self.forward_backward(x);
+    }
+
+    /// Solves `L U x = b` for an already permuted right-hand side `x`.
+    fn forward_backward(
+        &self,
+        x: &mut [f64],
+    ) {
+        let n = self.factors.rows;
         for i in 0..n {
             for j in 0..i {
                 x[i] -= self.factors.at(i, j) * x[j];
@@ -409,6 +477,18 @@ impl Lu {
             }
             x[i] /= self.factors.at(i, i);
         }
+    }
+
+    /// Solves `A x = e_j` for the `j`-th unit vector `e_j`.
+    fn substitute_unit(
+        &self,
+        j: usize,
+        x: &mut [f64],
+    ) {
+        for (value, &pivot) in x.iter_mut().zip(&self.piv) {
+            *value = if pivot == j { 1.0 } else { 0.0 };
+        }
+        self.forward_backward(x);
     }
 
     /// Determinant of the factored matrix.
@@ -425,13 +505,23 @@ impl Lu {
     pub fn inverse(&self) -> Mat {
         let n = self.factors.rows;
         let mut inv = Mat::zeros(n, n);
-        let mut e = vec![0.0; n];
-        let mut c = vec![0.0; n];
-        for j in 0..n {
-            e[j] = 1.0;
-            self.substitute(&e, &mut c);
-            e[j] = 0.0;
-            for (i, &value) in c.iter().enumerate() {
+        if n == 0 {
+            return inv;
+        }
+        // One column per task: the substitutions of distinct columns are
+        // independent and each keeps the serial left-to-right order.
+        let grain = if n.saturating_mul(n).saturating_mul(n) >= DENSE_PAR_FLOPS {
+            2
+        } else {
+            usize::MAX
+        };
+        let mut columns = crate::kernels::reuse::global_pool().scratch_f64(n * n);
+        columns.resize(n * n, 0.0);
+        super::par::for_chunks_mut(&mut columns[..], n, grain, |j, column| {
+            self.substitute_unit(j, column);
+        });
+        for (j, column) in columns.chunks_exact(n).enumerate() {
+            for (i, &value) in column.iter().enumerate() {
                 inv.data[i * n + j] = value;
             }
         }
@@ -470,21 +560,41 @@ pub fn cholesky(a: &Mat) -> Result<Mat, DenseError> {
     }
     let n = a.rows;
     let mut l = Mat::zeros(n, n);
-    for i in 0..n {
+    // Scratch column for the entries below the diagonal of one column. The
+    // entries of a column only need the columns to their left, so they are
+    // independent and can be computed concurrently; each one subtracts
+    // `k = 0..j` in the same order as the sequential sweep, so the bits match.
+    let mut column = crate::kernels::reuse::global_pool().scratch_f64(n);
+    for j in 0..n {
         crate::cancellation::checkpoint()?;
-        for j in 0..=i {
-            let mut s = a.at(i, j);
+        let mut s = a.data[j * n + j];
+        for k in 0..j {
+            s -= l.data[j * n + k] * l.data[j * n + k];
+        }
+        if s <= 0.0 {
+            return Err(DenseError::Singular);
+        }
+        let diagonal = s.sqrt();
+        l.data[j * n + j] = diagonal;
+        let rows = n - j - 1;
+        if rows == 0 {
+            continue;
+        }
+        let grain = if rows.saturating_mul(j) >= DENSE_PAR_WORK_COLUMN {
+            2
+        } else {
+            usize::MAX
+        };
+        super::par::map_indexed_into(rows, grain, &mut column, |offset| {
+            let i = j + 1 + offset;
+            let mut s = a.data[i * n + j];
             for k in 0..j {
-                s -= l.at(i, k) * l.at(j, k);
+                s -= l.data[i * n + k] * l.data[j * n + k];
             }
-            if i == j {
-                if s <= 0.0 {
-                    return Err(DenseError::Singular);
-                }
-                l.set(i, i, s.sqrt());
-            } else {
-                l.set(i, j, s / l.at(j, j));
-            }
+            s / diagonal
+        });
+        for (offset, &value) in column.iter().enumerate() {
+            l.data[(j + 1 + offset) * n + j] = value;
         }
     }
     Ok(l)
@@ -525,41 +635,71 @@ pub fn qr(a: &Mat) -> (Mat, Mat) {
     let (m, n) = (a.rows, a.cols);
     let mut r = a.clone();
     let mut q = Mat::identity(m);
+    let pool = crate::kernels::reuse::global_pool();
+    let mut v = pool.scratch_f64(m);
+    v.resize(m, 0.0);
+    let mut weights = pool.scratch_f64(n.max(1));
+    weights.resize(n.max(1), 0.0);
     for k in 0..n.min(m.saturating_sub(1)) {
         let mut norm = 0.0;
         for i in k..m {
-            norm += r.at(i, k) * r.at(i, k);
+            norm += r.data[i * n + k] * r.data[i * n + k];
         }
         let norm = norm.sqrt();
         if norm == 0.0 {
             continue;
         }
-        let alpha = if r.at(k, k) > 0.0 {
+        let alpha = if r.data[k * n + k] > 0.0 {
             -norm
         } else {
             norm
         };
-        let mut v = vec![0.0; m];
+        // The reflector is zero above row `k`; clear the reused buffer so the
+        // full-length sums below see the same terms as a fresh allocation.
+        v[..k].fill(0.0);
         for i in k..m {
-            v[i] = r.at(i, k);
+            v[i] = r.data[i * n + k];
         }
         v[k] -= alpha;
         let vn: f64 = v.iter().map(|x| x * x).sum();
         if vn == 0.0 {
             continue;
         }
-        for j in 0..n {
-            let d: f64 = (k..m).map(|i| v[i] * r.at(i, j)).sum::<f64>() * 2.0 / vn;
+        let grain = if (m - k).saturating_mul(n) >= DENSE_PAR_WORK_QR {
+            2
+        } else {
+            usize::MAX
+        };
+        // Every column of `R` is updated by its own scalar `2 v^T r_j / v^T v`,
+        // computed from the pre-update matrix exactly as the column-by-column
+        // loop did. Materialising the scalars first lets the rows be updated in
+        // parallel while each entry sees the identical single subtraction.
+        super::par::map_indexed_into(n, grain, &mut weights, |j| {
+            let mut sum = 0.0;
             for i in k..m {
-                r.data[i * n + j] -= d * v[i];
+                sum += v[i] * r.data[i * n + j];
             }
-        }
-        for i in 0..m {
-            let d: f64 = (k..m).map(|j| q.at(i, j) * v[j]).sum::<f64>() * 2.0 / vn;
+            sum * 2.0 / vn
+        });
+        let (_upper, lower) = r.data.split_at_mut(k * n);
+        super::par::for_chunks_mut(lower, n, grain, |offset, row| {
+            let factor = v[k + offset];
+            for (slot, &weight) in row.iter_mut().zip(weights.iter()) {
+                *slot -= weight * factor;
+            }
+        });
+        // Each row of `Q` projects onto the reflector independently, and the
+        // projection keeps the serial `j = k..m` order.
+        super::par::for_chunks_mut(&mut q.data, m, grain, |_, row| {
+            let mut sum = 0.0;
             for j in k..m {
-                q.data[i * m + j] -= d * v[j];
+                sum += row[j] * v[j];
             }
-        }
+            let factor = sum * 2.0 / vn;
+            for (slot, &reflector) in row[k..].iter_mut().zip(&v[k..]) {
+                *slot -= factor * reflector;
+            }
+        });
     }
     (q, r)
 }
@@ -1083,11 +1223,13 @@ pub fn eigenvalues(a: &Mat) -> Result<Vec<(f64, f64)>, DenseError> {
     if n == 1 {
         return Ok(vec![(a.at(0, 0), 0.0)]);
     }
-    // 1-based working copy.
-    let mut h = vec![vec![0.0; n + 2]; n + 2];
+    // 1-based working copy in one flat buffer, `h[i * ld + j]` for
+    // `1 <= i, j <= n`; the two guard rows and columns stay zero.
+    let ld = n + 2;
+    let mut h = vec![0.0; ld * ld];
     for i in 0..n {
         for j in 0..n {
-            h[i + 1][j + 1] = a.at(i, j);
+            h[(i + 1) * ld + j + 1] = a.at(i, j);
         }
     }
     // Balancing (power-of-two diagonal similarity) to equalise row/column norms.
@@ -1098,8 +1240,8 @@ pub fn eigenvalues(a: &Mat) -> Result<Vec<(f64, f64)>, DenseError> {
             let (mut c, mut r) = (0.0, 0.0);
             for j in 1..=n {
                 if j != i {
-                    c += h[j][i].abs();
-                    r += h[i][j].abs();
+                    c += h[j * ld + i].abs();
+                    r += h[i * ld + j].abs();
                 }
             }
             if c != 0.0 && r != 0.0 {
@@ -1118,10 +1260,10 @@ pub fn eigenvalues(a: &Mat) -> Result<Vec<(f64, f64)>, DenseError> {
                 if (c + r) / f < 0.95 * s {
                     balanced = false;
                     for j in 1..=n {
-                        h[i][j] /= f;
+                        h[i * ld + j] /= f;
                     }
                     for j in 1..=n {
-                        h[j][i] *= f;
+                        h[j * ld + i] *= f;
                     }
                 }
             }
@@ -1132,32 +1274,32 @@ pub fn eigenvalues(a: &Mat) -> Result<Vec<(f64, f64)>, DenseError> {
         let mut x: f64 = 0.0;
         let mut i = m;
         for j in m..=n {
-            if h[j][m - 1].abs() > x.abs() {
-                x = h[j][m - 1];
+            if h[j * ld + m - 1].abs() > x.abs() {
+                x = h[j * ld + m - 1];
                 i = j;
             }
         }
         if i != m {
             for j in m - 1..=n {
-                let t = h[i][j];
-                h[i][j] = h[m][j];
-                h[m][j] = t;
+                let t = h[i * ld + j];
+                h[i * ld + j] = h[m * ld + j];
+                h[m * ld + j] = t;
             }
             for j in 1..=n {
-                h[j].swap(i, m);
+                h.swap(j * ld + i, j * ld + m);
             }
         }
         if x != 0.0 {
             for i in m + 1..=n {
-                let mut y = h[i][m - 1];
+                let mut y = h[i * ld + m - 1];
                 if y != 0.0 {
                     y /= x;
-                    h[i][m - 1] = y;
+                    h[i * ld + m - 1] = y;
                     for j in m..=n {
-                        h[i][j] -= y * h[m][j];
+                        h[i * ld + j] -= y * h[m * ld + j];
                     }
                     for j in 1..=n {
-                        h[j][m] += y * h[j][i];
+                        h[j * ld + m] += y * h[j * ld + i];
                     }
                 }
             }
@@ -1165,13 +1307,13 @@ pub fn eigenvalues(a: &Mat) -> Result<Vec<(f64, f64)>, DenseError> {
     }
     for i in 3..=n {
         for j in 1..i - 1 {
-            h[i][j] = 0.0;
+            h[i * ld + j] = 0.0;
         }
     }
     let mut anorm = 0.0;
     for i in 1..=n {
         for j in i.saturating_sub(1).max(1)..=n {
-            anorm += h[i][j].abs();
+            anorm += h[i * ld + j].abs();
         }
     }
     let mut wr = vec![0.0; n + 1];
@@ -1184,25 +1326,25 @@ pub fn eigenvalues(a: &Mat) -> Result<Vec<(f64, f64)>, DenseError> {
         loop {
             let mut l = nn;
             while l >= 2 {
-                s = h[l - 1][l - 1].abs() + h[l][l].abs();
+                s = h[(l - 1) * ld + l - 1].abs() + h[l * ld + l].abs();
                 if s == 0.0 {
                     s = anorm;
                 }
-                if crate::kernels::exact_eq(h[l][l - 1].abs() + s, s) {
-                    h[l][l - 1] = 0.0;
+                if crate::kernels::exact_eq(h[l * ld + l - 1].abs() + s, s) {
+                    h[l * ld + l - 1] = 0.0;
                     break;
                 }
                 l -= 1;
             }
-            x = h[nn][nn];
+            x = h[nn * ld + nn];
             if l == nn {
                 wr[nn] = x + t;
                 wi[nn] = 0.0;
                 nn -= 1;
                 break;
             }
-            y = h[nn - 1][nn - 1];
-            w = h[nn][nn - 1] * h[nn - 1][nn];
+            y = h[(nn - 1) * ld + nn - 1];
+            w = h[nn * ld + nn - 1] * h[(nn - 1) * ld + nn];
             if l == nn - 1 {
                 p = 0.5 * (y - x);
                 q = p * p + w;
@@ -1232,9 +1374,9 @@ pub fn eigenvalues(a: &Mat) -> Result<Vec<(f64, f64)>, DenseError> {
             if its == 10 || its == 20 {
                 t += x;
                 for i in 1..=nn {
-                    h[i][i] -= x;
+                    h[i * ld + i] -= x;
                 }
-                s = h[nn][nn - 1].abs() + h[nn - 1][nn - 2].abs();
+                s = h[nn * ld + nn - 1].abs() + h[(nn - 1) * ld + nn - 2].abs();
                 x = 0.75 * s;
                 y = x;
                 w = -0.4375 * s * s;
@@ -1242,12 +1384,12 @@ pub fn eigenvalues(a: &Mat) -> Result<Vec<(f64, f64)>, DenseError> {
             its += 1;
             let mut m = nn - 2;
             loop {
-                z = h[m][m];
+                z = h[m * ld + m];
                 r = x - z;
                 s = y - z;
-                p = (r * s - w) / h[m + 1][m] + h[m][m + 1];
-                q = h[m + 1][m + 1] - z - r - s;
-                r = h[m + 2][m + 1];
+                p = (r * s - w) / h[(m + 1) * ld + m] + h[m * ld + m + 1];
+                q = h[(m + 1) * ld + m + 1] - z - r - s;
+                r = h[(m + 2) * ld + m + 1];
                 s = p.abs() + q.abs() + r.abs();
                 p /= s;
                 q /= s;
@@ -1255,27 +1397,28 @@ pub fn eigenvalues(a: &Mat) -> Result<Vec<(f64, f64)>, DenseError> {
                 if m == l {
                     break;
                 }
-                let u = h[m][m - 1].abs() * (q.abs() + r.abs());
-                let v = p.abs() * (h[m - 1][m - 1].abs() + z.abs() + h[m + 1][m + 1].abs());
+                let u = h[m * ld + m - 1].abs() * (q.abs() + r.abs());
+                let v = p.abs()
+                    * (h[(m - 1) * ld + m - 1].abs() + z.abs() + h[(m + 1) * ld + m + 1].abs());
                 if crate::kernels::exact_eq(u + v, v) {
                     break;
                 }
                 m -= 1;
             }
             for i in m + 2..=nn {
-                h[i][i - 2] = 0.0;
+                h[i * ld + i - 2] = 0.0;
                 if i != m + 2 {
-                    h[i][i - 3] = 0.0;
+                    h[i * ld + i - 3] = 0.0;
                 }
             }
             for k in m..nn {
                 if k != m {
-                    p = h[k][k - 1];
-                    q = h[k + 1][k - 1];
+                    p = h[k * ld + k - 1];
+                    q = h[(k + 1) * ld + k - 1];
                     r = if k == nn - 1 {
                         0.0
                     } else {
-                        h[k + 2][k - 1]
+                        h[(k + 2) * ld + k - 1]
                     };
                     x = p.abs() + q.abs() + r.abs();
                     if x != 0.0 {
@@ -1288,10 +1431,10 @@ pub fn eigenvalues(a: &Mat) -> Result<Vec<(f64, f64)>, DenseError> {
                 if s != 0.0 {
                     if k == m {
                         if l != m {
-                            h[k][k - 1] = -h[k][k - 1];
+                            h[k * ld + k - 1] = -h[k * ld + k - 1];
                         }
                     } else {
-                        h[k][k - 1] = -s * x;
+                        h[k * ld + k - 1] = -s * x;
                     }
                     p += s;
                     x = p / s;
@@ -1300,23 +1443,23 @@ pub fn eigenvalues(a: &Mat) -> Result<Vec<(f64, f64)>, DenseError> {
                     q /= p;
                     r /= p;
                     for j in k..=nn {
-                        p = h[k][j] + q * h[k + 1][j];
+                        p = h[k * ld + j] + q * h[(k + 1) * ld + j];
                         if k != nn - 1 {
-                            p += r * h[k + 2][j];
-                            h[k + 2][j] -= p * z;
+                            p += r * h[(k + 2) * ld + j];
+                            h[(k + 2) * ld + j] -= p * z;
                         }
-                        h[k + 1][j] -= p * y;
-                        h[k][j] -= p * x;
+                        h[(k + 1) * ld + j] -= p * y;
+                        h[k * ld + j] -= p * x;
                     }
                     let mmin = if nn < k + 3 { nn } else { k + 3 };
                     for i in l..=mmin {
-                        p = x * h[i][k] + y * h[i][k + 1];
+                        p = x * h[i * ld + k] + y * h[i * ld + k + 1];
                         if k != nn - 1 {
-                            p += z * h[i][k + 2];
-                            h[i][k + 2] -= p * r;
+                            p += z * h[i * ld + k + 2];
+                            h[i * ld + k + 2] -= p * r;
                         }
-                        h[i][k + 1] -= p * q;
-                        h[i][k] -= p;
+                        h[i * ld + k + 1] -= p * q;
+                        h[i * ld + k] -= p;
                     }
                 }
             }
@@ -1496,63 +1639,84 @@ fn hessenberg(a: &Mat) -> (Mat, Mat) {
     if n < 3 {
         return (h, q);
     }
+    let pool = crate::kernels::reuse::global_pool();
+    let mut reflector = pool.scratch_f64(n);
+    let mut weights = pool.scratch_f64(n);
+    reflector.resize(n, 0.0);
+    weights.resize(n, 0.0);
     for k in 0..n - 2 {
+        let rows = n - k - 1;
         let mut norm = 0.0;
         for i in k + 1..n {
-            norm += h.at(i, k) * h.at(i, k);
+            norm += h.data[i * n + k] * h.data[i * n + k];
         }
         let norm = norm.sqrt();
         if norm == 0.0 {
             continue;
         }
-        let x0 = h.at(k + 1, k);
+        let x0 = h.data[(k + 1) * n + k];
         let alpha = if x0 >= 0.0 { -norm } else { norm };
-        let mut v = Vec::with_capacity(n - k - 1);
-        v.push(x0 - alpha);
-        for i in k + 2..n {
-            v.push(h.at(i, k));
+        reflector[0] = x0 - alpha;
+        for t in 1..rows {
+            reflector[t] = h.data[(k + 1 + t) * n + k];
         }
-        let vn2: f64 = v.iter().map(|e| e * e).sum();
+        let v = &reflector[..rows];
+        let mut vn2 = 0.0;
+        for &value in v {
+            vn2 += value * value;
+        }
         if vn2 == 0.0 {
             continue;
         }
         let beta = 2.0 / vn2;
+        let grain = if rows.saturating_mul(n - k) >= DENSE_PAR_WORK {
+            2
+        } else {
+            usize::MAX
+        };
+        // Left apply: one scalar per column, `beta * v^T H[k+1.., j]`, from the
+        // pre-update matrix; then each row of the block is updated in place.
+        // Every entry sees the same single subtraction as the serial loop.
         for j in k..n {
-            let s: f64 = v
-                .iter()
-                .enumerate()
-                .map(|(t, vt)| vt * h.at(k + 1 + t, j))
-                .sum::<f64>()
-                * beta;
-            for (t, vt) in v.iter().enumerate() {
-                h.set(k + 1 + t, j, h.at(k + 1 + t, j) - s * vt);
+            let mut sum = 0.0;
+            for (t, &value) in v.iter().enumerate() {
+                sum += value * h.data[(k + 1 + t) * n + j];
             }
+            weights[j - k] = sum * beta;
         }
-        for i in 0..n {
-            let s: f64 = v
-                .iter()
-                .enumerate()
-                .map(|(t, vt)| h.at(i, k + 1 + t) * vt)
-                .sum::<f64>()
-                * beta;
-            for (t, vt) in v.iter().enumerate() {
-                h.set(i, k + 1 + t, h.at(i, k + 1 + t) - s * vt);
+        let column_weights = &weights[..n - k];
+        let (_upper, lower) = h.data.split_at_mut((k + 1) * n);
+        super::par::for_chunks_mut(lower, n, grain, |offset, row| {
+            let value = v[offset];
+            for (slot, &weight) in row[k..].iter_mut().zip(column_weights) {
+                *slot -= weight * value;
             }
-        }
-        for i in 0..n {
-            let s: f64 = v
-                .iter()
-                .enumerate()
-                .map(|(t, vt)| q.at(i, k + 1 + t) * vt)
-                .sum::<f64>()
-                * beta;
-            for (t, vt) in v.iter().enumerate() {
-                q.set(i, k + 1 + t, q.at(i, k + 1 + t) - s * vt);
+        });
+        // Right apply on `H`, then on `Q`: each row's projection is a fixed
+        // `t = 0..rows` sum, so the rows are independent.
+        super::par::for_chunks_mut(&mut h.data, n, grain, |_, row| {
+            let mut sum = 0.0;
+            for (t, &value) in v.iter().enumerate() {
+                sum += row[k + 1 + t] * value;
             }
-        }
-        h.set(k + 1, k, alpha);
+            let weight = sum * beta;
+            for (slot, &value) in row[k + 1..].iter_mut().zip(v) {
+                *slot -= weight * value;
+            }
+        });
+        super::par::for_chunks_mut(&mut q.data, n, grain, |_, row| {
+            let mut sum = 0.0;
+            for (t, &value) in v.iter().enumerate() {
+                sum += row[k + 1 + t] * value;
+            }
+            let weight = sum * beta;
+            for (slot, &value) in row[k + 1..].iter_mut().zip(v) {
+                *slot -= weight * value;
+            }
+        });
+        h.data[(k + 1) * n + k] = alpha;
         for i in k + 2..n {
-            h.set(i, k, 0.0);
+            h.data[i * n + k] = 0.0;
         }
     }
     (h, q)
@@ -2213,6 +2377,378 @@ mod tests {
             );
         }
         assert_residuals(&b, &eb);
+    }
+
+    /// Raw bits of a slice, for exact comparisons.
+    fn bits(values: &[f64]) -> Vec<u64> {
+        values.iter().map(|value| value.to_bits()).collect()
+    }
+
+    /// Deterministic xorshift values in `[-1, 1)`, so the kernels are fed
+    /// non-trivial data without a dependency or a fixed literal table.
+    fn sample(
+        seed: u64,
+        len: usize,
+    ) -> Vec<f64> {
+        let mut state = seed | 1;
+        (0..len)
+            .map(|_| {
+                state ^= state << 13;
+                state ^= state >> 7;
+                state ^= state << 17;
+                ((state >> 11) as f64 / (1u64 << 53) as f64) * 2.0 - 1.0
+            })
+            .collect()
+    }
+
+    /// Strictly diagonally dominant matrix: every Gershgorin disk is centred on
+    /// a positive diagonal entry with a smaller radius, so `LU` never meets a
+    /// zero pivot and the spectrum is real and positive.
+    fn well_conditioned(
+        n: usize,
+        seed: u64,
+    ) -> Mat {
+        let mut data = sample(seed, n * n);
+        for i in 0..n {
+            let mut radius = 0.0;
+            for j in 0..n {
+                if i != j {
+                    radius += data[i * n + j].abs();
+                }
+            }
+            data[i * n + i] = radius + 1.0;
+        }
+        Mat {
+            rows: n,
+            cols: n,
+            data,
+        }
+    }
+
+    /// Symmetric positive definite `B^T B + n I`, formed without the kernel
+    /// under test.
+    fn spd(
+        n: usize,
+        seed: u64,
+    ) -> Mat {
+        let b = sample(seed, n * n);
+        let mut data = vec![0.0; n * n];
+        for i in 0..n {
+            for j in 0..n {
+                let mut sum = 0.0;
+                for k in 0..n {
+                    sum += b[k * n + i] * b[k * n + j];
+                }
+                data[i * n + j] = sum;
+            }
+            data[i * n + i] += n as f64;
+        }
+        Mat {
+            rows: n,
+            cols: n,
+            data,
+        }
+    }
+
+    /// The plain triple loop `C = A B`, with the serial accumulation order.
+    fn scalar_matmul(
+        rows: usize,
+        inner: usize,
+        cols: usize,
+        a: &[f64],
+        b: &[f64],
+    ) -> Vec<f64> {
+        let mut out = vec![0.0; rows * cols];
+        for i in 0..rows {
+            for k in 0..inner {
+                let factor = a[i * inner + k];
+                if factor != 0.0 {
+                    for j in 0..cols {
+                        out[i * cols + j] += factor * b[k * cols + j];
+                    }
+                }
+            }
+        }
+        out
+    }
+
+    /// The pre-optimisation sequential `lu_factor`, kept as the oracle.
+    fn reference_lu(a: &Mat) -> (Mat, Vec<usize>, f64) {
+        let n = a.rows;
+        let mut lu = a.clone();
+        let mut piv: Vec<usize> = (0..n).collect();
+        let mut sign = 1.0;
+        for k in 0..n {
+            let mut p = k;
+            for i in k + 1..n {
+                if lu.at(i, k).abs() > lu.at(p, k).abs() {
+                    p = i;
+                }
+            }
+            assert_ne!(lu.at(p, k), 0.0, "oracle fed a singular matrix");
+            if p != k {
+                for j in 0..n {
+                    lu.data.swap(k * n + j, p * n + j);
+                }
+                piv.swap(k, p);
+                sign = -sign;
+            }
+            let d = lu.at(k, k);
+            for i in k + 1..n {
+                let m = lu.at(i, k) / d;
+                lu.data[i * n + k] = m;
+                if m != 0.0 {
+                    for j in k + 1..n {
+                        lu.data[i * n + j] -= m * lu.data[k * n + j];
+                    }
+                }
+            }
+        }
+        (lu, piv, sign)
+    }
+
+    /// The pre-optimisation sequential `cholesky`, kept as the oracle.
+    fn reference_cholesky(a: &Mat) -> Result<Mat, DenseError> {
+        let n = a.rows;
+        let mut l = Mat::zeros(n, n);
+        for i in 0..n {
+            for j in 0..=i {
+                let mut s = a.at(i, j);
+                for k in 0..j {
+                    s -= l.at(i, k) * l.at(j, k);
+                }
+                if i == j {
+                    if s <= 0.0 {
+                        return Err(DenseError::Singular);
+                    }
+                    l.set(i, i, s.sqrt());
+                } else {
+                    l.set(i, j, s / l.at(j, j));
+                }
+            }
+        }
+        Ok(l)
+    }
+
+    /// The pre-optimisation sequential `qr`, kept as the oracle.
+    fn reference_qr(a: &Mat) -> (Mat, Mat) {
+        let (m, n) = (a.rows, a.cols);
+        let mut r = a.clone();
+        let mut q = Mat::identity(m);
+        for k in 0..n.min(m.saturating_sub(1)) {
+            let mut norm = 0.0;
+            for i in k..m {
+                norm += r.at(i, k) * r.at(i, k);
+            }
+            let norm = norm.sqrt();
+            if norm == 0.0 {
+                continue;
+            }
+            let alpha = if r.at(k, k) > 0.0 {
+                -norm
+            } else {
+                norm
+            };
+            let mut v = vec![0.0; m];
+            for i in k..m {
+                v[i] = r.at(i, k);
+            }
+            v[k] -= alpha;
+            let vn: f64 = v.iter().map(|x| x * x).sum();
+            if vn == 0.0 {
+                continue;
+            }
+            for j in 0..n {
+                let d: f64 = (k..m).map(|i| v[i] * r.at(i, j)).sum::<f64>() * 2.0 / vn;
+                for i in k..m {
+                    r.data[i * n + j] -= d * v[i];
+                }
+            }
+            for i in 0..m {
+                let d: f64 = (k..m).map(|j| q.at(i, j) * v[j]).sum::<f64>() * 2.0 / vn;
+                for j in k..m {
+                    q.data[i * m + j] -= d * v[j];
+                }
+            }
+        }
+        (q, r)
+    }
+
+    /// Serial forward/back substitution with a known pivot order.
+    fn reference_solve(
+        factors: &Mat,
+        piv: &[usize],
+        b: &[f64],
+    ) -> Vec<f64> {
+        let n = factors.rows;
+        let mut x = vec![0.0; n];
+        for (value, &pivot) in x.iter_mut().zip(piv) {
+            *value = b[pivot];
+        }
+        for i in 0..n {
+            for j in 0..i {
+                x[i] -= factors.at(i, j) * x[j];
+            }
+        }
+        for i in (0..n).rev() {
+            for j in i + 1..n {
+                x[i] -= factors.at(i, j) * x[j];
+            }
+            x[i] /= factors.at(i, i);
+        }
+        x
+    }
+
+    /// Every kernel result that the blocked/parallel paths touch, as raw bits.
+    fn kernel_bits(
+        a: &Mat,
+        s: &Mat,
+        rhs: &[f64],
+    ) -> Vec<u64> {
+        let mut out = Vec::new();
+        out.extend(bits(&a.matmul(s).expect("shapes agree").data));
+        let lu = lu_factor(a).expect("nonsingular");
+        out.extend(bits(&lu.inverse().data));
+        out.extend(bits(&lu.solve(rhs)));
+        out.push(lu.det().to_bits());
+        out.extend(bits(&cholesky(s).expect("spd").data));
+        let (q, r) = qr(a);
+        out.extend(bits(&q.data));
+        out.extend(bits(&r.data));
+        out.extend(
+            eigenvalues(a)
+                .expect("converges")
+                .iter()
+                .flat_map(|value| [value.0.to_bits(), value.1.to_bits()]),
+        );
+        out
+    }
+
+    /// The two routines whose parallel path needs a sizeable matrix.
+    fn factorization_bits(a: &Mat) -> Vec<u64> {
+        let lu = lu_factor(a).expect("nonsingular");
+        let (q, r) = qr(a);
+        let mut out = bits(&lu.factors.data);
+        out.extend(bits(&q.data));
+        out.extend(bits(&r.data));
+        out
+    }
+
+    #[test]
+    fn blocked_kernels_match_the_sequential_oracle_bit_for_bit() {
+        /// Runs every kernel and compares against the sequential oracle.
+        fn check_oracle(
+            n: usize,
+            a: &Mat,
+            s: &Mat,
+            rhs: &[f64],
+        ) {
+            for (rows, inner, cols) in [(n, n, n), (n, n, 3), (n, 3, n), (n, n, 1)] {
+                let left = Mat {
+                    rows,
+                    cols: inner,
+                    data: sample(0x5eed_3000 + rows as u64, rows * inner),
+                };
+                let right = Mat {
+                    rows: inner,
+                    cols,
+                    data: sample(0x5eed_4000 + cols as u64, inner * cols),
+                };
+                let product = left.matmul(&right).expect("shapes agree");
+                let naive = scalar_matmul(rows, inner, cols, &left.data, &right.data);
+                assert_eq!(
+                    bits(&product.data),
+                    bits(&naive),
+                    "matmul {rows}x{inner}x{cols}"
+                );
+            }
+
+            let lu = lu_factor(a).expect("nonsingular");
+            let (factors, piv, sign) = reference_lu(a);
+            assert_eq!(bits(&lu.factors.data), bits(&factors.data), "lu n={n}");
+            assert_eq!(lu.piv, piv, "piv n={n}");
+            assert_eq!(lu.sign.to_bits(), sign.to_bits(), "sign n={n}");
+            assert_eq!(
+                bits(&lu.solve(rhs)),
+                bits(&reference_solve(&factors, &piv, rhs))
+            );
+
+            let mut reference_inverse = vec![0.0; n * n];
+            for j in 0..n {
+                let mut unit = vec![0.0; n];
+                unit[j] = 1.0;
+                for (i, value) in reference_solve(&factors, &piv, &unit).iter().enumerate() {
+                    reference_inverse[i * n + j] = *value;
+                }
+            }
+            assert_eq!(
+                bits(&lu.inverse().data),
+                bits(&reference_inverse),
+                "inverse n={n}"
+            );
+
+            let l = cholesky(s).expect("spd");
+            let oracle = reference_cholesky(s).expect("spd");
+            assert_eq!(bits(&l.data), bits(&oracle.data), "cholesky n={n}");
+
+            let (q, r) = qr(a);
+            let (oracle_q, oracle_r) = reference_qr(a);
+            assert_eq!(bits(&q.data), bits(&oracle_q.data), "qr q n={n}");
+            assert_eq!(bits(&r.data), bits(&oracle_r.data), "qr r n={n}");
+        }
+
+        for n in [1usize, 3, 8, 33, 200] {
+            let a = well_conditioned(n, 0x5eed_0000 + n as u64);
+            let s = spd(n, 0x5eed_1000 + n as u64);
+            let rhs = sample(0x5eed_2000 + n as u64, n);
+            crate::execution::with_scoped_pool(Some(1), || check_oracle(n, &a, &s, &rhs));
+            crate::execution::with_scoped_pool(Some(4), || check_oracle(n, &a, &s, &rhs));
+        }
+    }
+
+    #[test]
+    fn blocked_kernels_are_bit_identical_for_one_and_four_threads() {
+        for n in [1usize, 3, 8, 33, 200] {
+            let a = well_conditioned(n, 0xdead_0000 + n as u64);
+            let s = spd(n, 0xdead_1000 + n as u64);
+            let rhs = sample(0xdead_2000 + n as u64, n);
+            let serial = crate::execution::with_scoped_pool(Some(1), || kernel_bits(&a, &s, &rhs));
+            let parallel =
+                crate::execution::with_scoped_pool(Some(4), || kernel_bits(&a, &s, &rhs));
+            assert_eq!(serial, parallel, "thread count changed the bits at n={n}");
+        }
+        // `504^2 > DENSE_PAR_WORK`, so the LU trailing update and the QR row
+        // update really do split at four threads.
+        let n = 504;
+        let a = well_conditioned(n, 0xdead_5000);
+        let serial = crate::execution::with_scoped_pool(Some(1), || factorization_bits(&a));
+        let parallel = crate::execution::with_scoped_pool(Some(4), || factorization_bits(&a));
+        assert_eq!(serial, parallel, "thread count changed the bits at n={n}");
+    }
+
+    #[test]
+    fn hessenberg_qr_spectrum_matches_the_schur_path() {
+        for n in [3usize, 8, 17, 33] {
+            let a = well_conditioned(n, 0x51ed_0000 + n as u64);
+            let mut direct = eigenvalues(&a).expect("converges");
+            let schur = eigen(&a).expect("converges");
+            assert_eq!(direct.len(), n);
+            for lam in &schur.values {
+                let tolerance = 1e-8 * (1.0 + lam.0.hypot(lam.1));
+                let best = direct
+                    .iter()
+                    .map(|other| (lam.0 - other.0).abs().hypot(lam.1 - other.1))
+                    .fold(f64::INFINITY, f64::min);
+                assert!(best <= tolerance, "n={n}: {lam:?} is {best} away");
+                if let Some(position) = direct
+                    .iter()
+                    .position(|other| (lam.0 - other.0).abs().hypot(lam.1 - other.1) <= tolerance)
+                {
+                    direct.swap_remove(position);
+                }
+            }
+            assert!(direct.is_empty(), "n={n}: unmatched eigenvalues left over");
+        }
     }
 }
 

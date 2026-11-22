@@ -1104,16 +1104,24 @@ pub fn tensor_cubic_spline_interpolation(
     for a in 0..axes.len() {
         let n = dims[a];
 
-        let mut reduced = Vec::with_capacity(current.len() / n);
+        let reduced = {
+            let lines = current.len() / n;
+            let build = |line_index: usize| -> Result<f64, String> {
+                let line = &current[line_index * n..(line_index + 1) * n];
+                let points: Vec<(f64, f64)> =
+                    axes[a].iter().copied().zip(line.iter().copied()).collect();
 
-        for line in current.chunks(n) {
-            let points: Vec<(f64, f64)> =
-                axes[a].iter().copied().zip(line.iter().copied()).collect();
+                let spline = cubic_spline_with(&points, SplineEnd::NotAKnot)?;
 
-            let spline = cubic_spline_with(&points, SplineEnd::NotAKnot)?;
-
-            reduced.push(spline(point[a]));
-        }
+                Ok(spline(point[a]))
+            };
+            if lines >= 2 && crate::execution::should_split_work(lines, n.saturating_mul(4).max(1))
+            {
+                crate::kernels::par::try_map_indexed(lines, 64, build)?
+            } else {
+                (0..lines).map(build).collect::<Result<Vec<_>, String>>()?
+            }
+        };
 
         current = reduced;
     }
@@ -1520,5 +1528,36 @@ mod tests {
         assert_eq!(spline(0.25).to_bits(), 0x3fd7_8000_0000_0000);
 
         assert_eq!(spline(1.75).to_bits(), 0x3fd7_8000_0000_0000);
+    }
+
+    /// The per-line tensor spline reduction must be bit-identical for every
+    /// thread count; the grid is wide enough to cross the parallel threshold.
+    #[test]
+    fn tensor_cubic_spline_is_thread_count_independent() {
+        use crate::execution::with_scoped_pool;
+
+        let nx = 32usize;
+        let ny = 512usize;
+        let ax: Vec<f64> = (0..nx).map(|i| i as f64 / (nx - 1) as f64).collect();
+        let ay: Vec<f64> = (0..ny).map(|j| j as f64 / (ny - 1) as f64).collect();
+        let f = |x: f64, y: f64| (2.0 * x).sin() * (3.0 * y).cos() + 0.25 * x * y;
+        let mut values = vec![0.0; nx * ny];
+        for j in 0..ny {
+            for i in 0..nx {
+                values[i + j * nx] = f(ax[i], ay[j]);
+            }
+        }
+        let axes = [ax, ay];
+        let point = [0.37, 0.61];
+
+        let serial = with_scoped_pool(Some(1), || {
+            tensor_cubic_spline_interpolation(&axes, &values, &point).unwrap()
+        });
+        for threads in [2usize, 4] {
+            let parallel = with_scoped_pool(Some(threads), || {
+                tensor_cubic_spline_interpolation(&axes, &values, &point).unwrap()
+            });
+            assert_eq!(parallel.to_bits(), serial.to_bits());
+        }
     }
 }

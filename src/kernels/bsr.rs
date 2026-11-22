@@ -55,6 +55,8 @@ mod product;
 pub const BSR_PAR_NNZ: usize = 60_000;
 /// Block rows per parallel chunk of [`Bsr::matvec`].
 const BSR_CHUNK_ROWS: usize = 64;
+/// Block rows per parallel chunk of the block-Jacobi set-up and apply.
+const JACOBI_CHUNK_BLOCKS: usize = 64;
 /// The largest fill ratio [`choose_block_size`] accepts.
 pub const MAX_FILL_RATIO: f64 = 1.5;
 
@@ -766,14 +768,33 @@ impl Bsr {
         let rows = self.block_rows();
         let mut inverse = filled(rows.checked_mul(bs).ok_or_else(size_error)?, 0.0)?;
         if rows != 0 {
-            let mut workspace = BlockInverse::new(b, bs)?;
-            for (block_row, output) in inverse.chunks_exact_mut(bs).enumerate() {
+            let invert = |block_row: usize, workspace: &mut BlockInverse, output: &mut [f64]| {
                 let missing = BsrError::SingularBlock { block_row };
                 let k = self
                     .diagonal_index(block_row)
                     .ok_or(BsrError::SingularBlock { block_row })?;
-                if !workspace.invert(&self.values[k * bs..(k + 1) * bs], output) {
-                    return Err(missing);
+                if workspace.invert(&self.values[k * bs..(k + 1) * bs], output) {
+                    Ok(())
+                } else {
+                    Err(missing)
+                }
+            };
+            if rows >= JACOBI_CHUNK_BLOCKS * 2
+                && crate::execution::should_split_work(rows, bs.saturating_mul(b).max(1))
+            {
+                let chunk = JACOBI_CHUNK_BLOCKS.saturating_mul(bs);
+                super::par::try_for_chunks_mut(&mut inverse, chunk, 2, |part, out| {
+                    let first = part.saturating_mul(JACOBI_CHUNK_BLOCKS);
+                    let mut workspace = BlockInverse::new(b, bs)?;
+                    for (local, output) in out.chunks_exact_mut(bs).enumerate() {
+                        invert(first + local, &mut workspace, output)?;
+                    }
+                    Ok(())
+                })?;
+            } else {
+                let mut workspace = BlockInverse::new(b, bs)?;
+                for (block_row, output) in inverse.chunks_exact_mut(bs).enumerate() {
+                    invert(block_row, &mut workspace, output)?;
                 }
             }
         }
@@ -1016,6 +1037,9 @@ impl BlockJacobi {
 
     /// `z = M^-1 r`, block by block.
     ///
+    /// Blocks are independent, so large systems invert them in parallel without
+    /// changing a bit: every output block keeps its own arithmetic order.
+    ///
     /// # Panics
     /// A slice shorter than the matrix extent can panic.
     pub fn apply(
@@ -1024,6 +1048,22 @@ impl BlockJacobi {
         z: &mut [f64],
     ) {
         let (b, bs) = (self.b, self.b * self.b);
+        let blocks = self.inverse.len() / bs;
+        if blocks >= JACOBI_CHUNK_BLOCKS * 2
+            && crate::execution::should_split_work(blocks, bs.max(1))
+        {
+            let chunk = JACOBI_CHUNK_BLOCKS.saturating_mul(b);
+            let span = blocks.saturating_mul(b);
+            super::par::for_chunks_mut(&mut z[..span], chunk, 2, |part, out| {
+                let first = part.saturating_mul(JACOBI_CHUNK_BLOCKS);
+                for (local, target) in out.chunks_exact_mut(b).enumerate() {
+                    let block = first + local;
+                    let inv = &self.inverse[block * bs..(block + 1) * bs];
+                    block_apply(inv, b, &r[block * b..(block + 1) * b], target);
+                }
+            });
+            return;
+        }
         for (i, inv) in self.inverse.chunks_exact(bs).enumerate() {
             block_apply(inv, b, &r[i * b..(i + 1) * b], &mut z[i * b..(i + 1) * b]);
         }

@@ -1089,6 +1089,72 @@ pub fn bessel_i1(x: f64) -> f64 {
 }
 
 // ============================================================================
+// Batch Evaluation
+// ============================================================================
+
+/// Element count below which a batch call stays sequential.
+const BATCH_GRAIN: usize = 64;
+
+/// [`gamma_numerical`] over a slice.
+///
+/// Elements are independent and the outputs are collected in input order, so
+/// the result is bit-identical to calling the scalar function on each element,
+/// for every thread count.
+#[must_use]
+pub fn gamma_batch(values: &[f64]) -> Vec<f64> {
+    crate::kernels::par::map_slice(values, BATCH_GRAIN, |&x| gamma_numerical(x))
+}
+
+/// [`ln_gamma_numerical`] over a slice, with the same bit-identical contract as
+/// [`gamma_batch`].
+#[must_use]
+pub fn ln_gamma_batch(values: &[f64]) -> Vec<f64> {
+    crate::kernels::par::map_slice(values, BATCH_GRAIN, |&x| ln_gamma_numerical(x))
+}
+
+/// [`digamma_numerical`] over a slice, with the same bit-identical contract as
+/// [`gamma_batch`].
+#[must_use]
+pub fn digamma_batch(values: &[f64]) -> Vec<f64> {
+    crate::kernels::par::map_slice(values, BATCH_GRAIN, |&x| digamma_numerical(x))
+}
+
+/// [`erf_numerical`] over a slice, with the same bit-identical contract as
+/// [`gamma_batch`].
+#[must_use]
+pub fn erf_batch(values: &[f64]) -> Vec<f64> {
+    crate::kernels::par::map_slice(values, BATCH_GRAIN, |&x| erf_numerical(x))
+}
+
+/// [`erfc_numerical`] over a slice, with the same bit-identical contract as
+/// [`gamma_batch`].
+#[must_use]
+pub fn erfc_batch(values: &[f64]) -> Vec<f64> {
+    crate::kernels::par::map_slice(values, BATCH_GRAIN, |&x| erfc_numerical(x))
+}
+
+/// [`bessel_j0`] over a slice, with the same bit-identical contract as
+/// [`gamma_batch`].
+#[must_use]
+pub fn bessel_j0_batch(values: &[f64]) -> Vec<f64> {
+    crate::kernels::par::map_slice(values, BATCH_GRAIN, |&x| bessel_j0(x))
+}
+
+/// [`bessel_j1`] over a slice, with the same bit-identical contract as
+/// [`gamma_batch`].
+#[must_use]
+pub fn bessel_j1_batch(values: &[f64]) -> Vec<f64> {
+    crate::kernels::par::map_slice(values, BATCH_GRAIN, |&x| bessel_j1(x))
+}
+
+/// [`bessel_i0`] over a slice, with the same bit-identical contract as
+/// [`gamma_batch`].
+#[must_use]
+pub fn bessel_i0_batch(values: &[f64]) -> Vec<f64> {
+    crate::kernels::par::map_slice(values, BATCH_GRAIN, |&x| bessel_i0(x))
+}
+
+// ============================================================================
 // Orthogonal Polynomials
 // ============================================================================
 
@@ -1394,23 +1460,40 @@ pub fn riemann_zeta(s: f64) -> f64 {
     (2.0_f64).powf(s) * std::f64::consts::PI.powf(s - 1.0) * sin_part * g * zeta_reflected
 }
 
+/// Borwein's eta-series weights `d_k = N Σ_{i<=k} (N+i-1)! 4^i / ((N-i)! (2i)!)`,
+/// independent of `s`, built once on first use.
+static ETA_WEIGHTS: once_cell::sync::OnceCell<[f64; 33]> = once_cell::sync::OnceCell::new();
+
+#[allow(clippy::single_call_fn)] // only the eta series consumes the weights
+fn eta_weights() -> &'static [f64; 33] {
+    ETA_WEIGHTS.get_or_init(|| {
+        const N: usize = 32;
+        // d_k = N * sum_{i<=k} (N+i-1)! 4^i / ((N-i)! (2i)!), built from term ratios.
+        let n = N as f64;
+        let mut d = [0.0_f64; N + 1];
+        let mut term = 1.0_f64;
+        let mut acc = 1.0_f64;
+        if let Some(slot) = d.get_mut(0) {
+            *slot = acc;
+        }
+        for i in 0..N {
+            let fi = i as f64;
+            term *= (n + fi) * 4.0 * (n - fi) / ((2.0 * fi + 1.0) * (2.0 * fi + 2.0));
+            acc += term;
+            if let Some(slot) = d.get_mut(i + 1) {
+                *slot = acc;
+            }
+        }
+        d
+    })
+}
+
 /// ζ(s) for `-1/2 < s < 1` through Borwein's accelerated alternating series for
 /// the Dirichlet eta function.
 fn zeta_via_eta(s: f64) -> f64 {
     const N: usize = 32;
-    // d_k = N * sum_{i<=k} (N+i-1)! 4^i / ((N-i)! (2i)!), built from term ratios.
-    let n = N as f64;
-    let mut d = [0.0_f64; N + 1];
-    let mut term = 1.0_f64;
-    let mut acc = 1.0_f64;
-    d[0] = acc;
-    for i in 0..N {
-        let fi = i as f64;
-        term *= (n + fi) * 4.0 * (n - fi) / ((2.0 * fi + 1.0) * (2.0 * fi + 2.0));
-        acc += term;
-        d[i + 1] = acc;
-    }
-    let dn = d[N];
+    let d = eta_weights();
+    let dn = d.get(N).copied().unwrap_or(1.0);
     let mut sum = 0.0;
     for (k, dk) in d.iter().enumerate().take(N) {
         let sign = if k % 2 == 0 { 1.0 } else { -1.0 };
@@ -1473,63 +1556,106 @@ pub fn softplus(x: f64) -> f64 {
     }
 }
 
+/// Largest Bernoulli index kept in the shared table. Higher orders are built
+/// on demand (their values overflow `f64` near 200 anyway).
+const BERNOULLI_TABLE_MAX: u32 = 128;
+
+/// Name of the Bernoulli table cache inside the reuse pool.
+const BERNOULLI_CACHE_NAME: &str = "special.bernoulli";
+
+/// The first Bernoulli numbers as exact ratios of small integers.
+const BERNOULLI_PRECOMPUTED: [f64; 21] = [
+    1.0,                // B_0
+    -0.5,               // B_1
+    1.0 / 6.0,          // B_2
+    0.0,                // B_3
+    -1.0 / 30.0,        // B_4
+    0.0,                // B_5
+    1.0 / 42.0,         // B_6
+    0.0,                // B_7
+    -1.0 / 30.0,        // B_8
+    0.0,                // B_9
+    5.0 / 66.0,         // B_10
+    0.0,                // B_11
+    -691.0 / 2730.0,    // B_12
+    0.0,                // B_13
+    7.0 / 6.0,          // B_14
+    0.0,                // B_15
+    -3617.0 / 510.0,    // B_16
+    0.0,                // B_17
+    43867.0 / 798.0,    // B_18
+    0.0,                // B_19
+    -174_611.0 / 330.0, // B_20
+];
+
+/// Bernoulli numbers `[B_0, ..., B_max_n]` by the recurrence
+/// `B_m = -1/(m+1) * Σ_{k<m} C(m+1, k) B_k`.
+///
+/// Every entry depends only on the lower ones, so a table built to a larger
+/// bound agrees bit for bit with a table built to a smaller one on the shared
+/// prefix. That is what makes the bucketed cache exact.
+fn build_bernoulli_table(max_n: u32) -> Vec<f64> {
+    let len = (max_n as usize).saturating_add(1);
+    let mut b = vec![0.0; len];
+    let seeded = BERNOULLI_PRECOMPUTED.len().min(len);
+    if let Some(head) = b.get_mut(..seeded) {
+        head.copy_from_slice(&BERNOULLI_PRECOMPUTED[..seeded]);
+    }
+    for m in BERNOULLI_PRECOMPUTED.len()..len {
+        if m % 2 == 1 {
+            if let Some(slot) = b.get_mut(m) {
+                *slot = 0.0;
+            }
+            continue;
+        }
+        let mut sum = 0.0;
+        let m_plus_1 = (m + 1) as u64;
+        for k in 0..m {
+            let bk = b.get(k).copied().unwrap_or(0.0);
+            sum += binomial(m_plus_1, k as u64) * bk;
+        }
+        if let Some(slot) = b.get_mut(m) {
+            *slot = -sum / (m_plus_1 as f64);
+        }
+    }
+    b
+}
+
 /// Computes the n-th Bernoulli number `B_n`.
+///
+/// Orders up to `BERNOULLI_TABLE_MAX` are served from a small bucketed table
+/// cache (the three buckets are 32, 64 and 128), so repeated polynomial and
+/// zeta evaluations do not rebuild the recurrence.
 #[must_use]
 pub fn bernoulli_number(n: u32) -> f64 {
-    // Precomputed first few Bernoulli numbers
-    let precomputed = [
-        1.0,                // B_0
-        -0.5,               // B_1
-        1.0 / 6.0,          // B_2
-        0.0,                // B_3
-        -1.0 / 30.0,        // B_4
-        0.0,                // B_5
-        1.0 / 42.0,         // B_6
-        0.0,                // B_7
-        -1.0 / 30.0,        // B_8
-        0.0,                // B_9
-        5.0 / 66.0,         // B_10
-        0.0,                // B_11
-        -691.0 / 2730.0,    // B_12
-        0.0,                // B_13
-        7.0 / 6.0,          // B_14
-        0.0,                // B_15
-        -3617.0 / 510.0,    // B_16
-        0.0,                // B_17
-        43867.0 / 798.0,    // B_18
-        0.0,                // B_19
-        -174_611.0 / 330.0, // B_20
-    ];
-
-    if (n as usize) < precomputed.len() {
-        return precomputed[n as usize];
+    if let Some(&value) = BERNOULLI_PRECOMPUTED.get(n as usize) {
+        return value;
     }
 
     if n % 2 == 1 {
         return 0.0;
     }
 
-    // Dynamic computation using recurrence:
-    // B_m = -1/(m+1) * Σ_{k=0}^{m-1} (m+1 choose k) B_k
-    let mut b = vec![0.0; (n + 1) as usize];
-    b[..precomputed.len()].copy_from_slice(&precomputed[..]);
-
-    for m in precomputed.len()..=(n as usize) {
-        if m % 2 == 1 {
-            b[m] = 0.0;
-            continue;
-        }
-        let mut sum = 0.0;
-        let m_plus_1 = (m + 1) as u64;
-        #[allow(clippy::needless_range_loop)]
-        // index is used for more than one array / arithmetic; iterator form would not be clearer
-        for k in 0..m {
-            sum += binomial(m_plus_1, k as u64) * b[k];
-        }
-        b[m] = -sum / (m_plus_1 as f64);
+    if n > BERNOULLI_TABLE_MAX {
+        return build_bernoulli_table(n)
+            .get(n as usize)
+            .copied()
+            .unwrap_or(0.0);
     }
 
-    b[n as usize]
+    let bucket = if n <= 32 {
+        32
+    } else if n <= 64 {
+        64
+    } else {
+        128
+    };
+    let table = crate::kernels::reuse::global_pool()
+        .named_plan_cache::<u32, Vec<f64>>(BERNOULLI_CACHE_NAME, 8)
+        .get_or_insert_with(bucket, || {
+            std::sync::Arc::new(build_bernoulli_table(bucket))
+        });
+    table.get(n as usize).copied().unwrap_or(0.0)
 }
 
 /// Computes the n-th Bernoulli polynomial `B_n(x)`.
@@ -3404,5 +3530,80 @@ mod debye_tests {
         assert_eq!(regularized_upper_gamma(f64::INFINITY, 3.0), 1.0);
         assert!(regularized_lower_gamma(f64::INFINITY, f64::INFINITY).is_nan());
         assert!(regularized_lower_gamma(f64::NAN, 1.0).is_nan());
+    }
+}
+
+#[cfg(test)]
+mod cache_and_batch_tests {
+    //! Table-cache reuse and batch/scalar equivalence of the special functions.
+
+    #![allow(clippy::indexing_slicing, clippy::arithmetic_side_effects)]
+
+    use super::*;
+
+    fn bits(values: &[f64]) -> Vec<u64> {
+        values.iter().map(|value| value.to_bits()).collect()
+    }
+
+    #[test]
+    fn bernoulli_table_is_cached_and_keeps_its_values() {
+        // Exact precomputed entries, then the first recurrence-built ones.
+        assert_eq!(bernoulli_number(0), 1.0);
+        assert_eq!(bernoulli_number(1), -0.5);
+        assert_eq!(bernoulli_number(2), 1.0 / 6.0);
+        assert_eq!(bernoulli_number(3), 0.0);
+        assert_eq!(bernoulli_number(20), -174_611.0 / 330.0);
+        assert_eq!(bernoulli_number(23), 0.0);
+        assert!((bernoulli_number(22) - 854_513.0 / 138.0).abs() <= 1e-12 * 6.2e3);
+        assert!((bernoulli_number(24) + 236_364_091.0 / 2730.0).abs() <= 1e-12 * 8.7e4);
+
+        let cache = crate::kernels::reuse::global_pool()
+            .named_plan_cache::<u32, Vec<f64>>("special.bernoulli", 8);
+        let before = cache.stats().hits;
+        let first = bits(&(0..=64).map(bernoulli_number).collect::<Vec<_>>());
+        let second = bits(&(0..=64).map(bernoulli_number).collect::<Vec<_>>());
+        assert_eq!(
+            first, second,
+            "the table must not depend on its build order"
+        );
+        assert!(
+            cache.stats().hits >= before + 1,
+            "the second pass must be served by the table cache"
+        );
+    }
+
+    #[test]
+    fn cached_eta_weights_keep_the_zeta_values() {
+        // ζ(1/2) is on the Borwein eta branch and exercises the cached weights.
+        assert!((riemann_zeta(0.5) + 1.460_354_508_809_586_8).abs() < 1e-13);
+        // The same call twice must agree bit for bit.
+        assert_eq!(riemann_zeta(0.5).to_bits(), riemann_zeta(0.5).to_bits());
+    }
+
+    #[test]
+    fn batch_entry_points_match_the_scalar_functions_bit_for_bit() {
+        let inputs: Vec<f64> = (-40..=40).map(|k| f64::from(k) * 0.137).collect();
+        let cases: [(Vec<f64>, fn(f64) -> f64); 8] = [
+            (gamma_batch(&inputs), gamma_numerical),
+            (ln_gamma_batch(&inputs), ln_gamma_numerical),
+            (digamma_batch(&inputs), digamma_numerical),
+            (erf_batch(&inputs), erf_numerical),
+            (erfc_batch(&inputs), erfc_numerical),
+            (bessel_j0_batch(&inputs), bessel_j0),
+            (bessel_j1_batch(&inputs), bessel_j1),
+            (bessel_i0_batch(&inputs), bessel_i0),
+        ];
+        for (batch, scalar) in cases {
+            let expected = bits(&inputs.iter().map(|&x| scalar(x)).collect::<Vec<_>>());
+            assert_eq!(bits(&batch), expected);
+        }
+    }
+
+    #[test]
+    fn batch_results_are_thread_count_independent() {
+        let inputs: Vec<f64> = (1..=512).map(|k| f64::from(k) / 37.0).collect();
+        let serial = crate::execution::with_scoped_pool(Some(1), || bits(&gamma_batch(&inputs)));
+        let parallel = crate::execution::with_scoped_pool(Some(4), || bits(&gamma_batch(&inputs)));
+        assert_eq!(serial, parallel);
     }
 }

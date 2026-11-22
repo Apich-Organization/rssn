@@ -97,6 +97,7 @@ use std::collections::HashMap;
 use std::sync::OnceLock;
 
 use num_bigint::BigInt;
+use num_bigint::BigUint;
 use num_integer::Integer;
 use num_traits::One;
 use num_traits::Signed;
@@ -105,11 +106,13 @@ use num_traits::Zero;
 
 use crate::kernels::number_theory;
 use crate::kernels::number_theory::is_prime_miller_rabin;
+use crate::kernels::number_theory::is_prime_u128;
 use crate::kernels::number_theory::mul_mod as mulmod;
 use crate::kernels::number_theory::primes_sieve;
+use crate::kernels::reuse::global_pool;
 
-/// The logarithmic sieve stores `log2(p)` scaled by this factor.
-const LOG_SCALE: f64 = 256.0;
+/// Minimum sub-interval length when parallelizing a single large polynomial.
+const SIEVE_BLOCK_LEN: usize = 32_768;
 /// Above this many decimal digits a request returns `None` immediately.
 ///
 /// The parameters are calibrated through this size; the practical limit is
@@ -408,6 +411,10 @@ struct SieveParams {
     large_bound: u64,
     /// Whether partial relations are collected.
     large_primes: bool,
+    /// Scale factor mapping `log2(p)` into compact `u8` sieve entries.
+    log_scale: f64,
+    /// Scaled `log2(2)` value for parity sieving.
+    two_log: u8,
     /// Log-scale slack for the candidate test.
     tolerance: f64,
 }
@@ -467,7 +474,12 @@ fn qs_core(
     } else {
         MAX_FACTOR_BASE_COLUMNS - 1
     };
-    let factor_base = match build_factor_base(&words, bound, max_base_entries) {
+    let n_bits = n.bits() as f64;
+    let max_log2_g = (n_bits * 0.5 + log2_approx(interval as f64) + 16.0)
+        .min(n_bits + 8.0)
+        .max(32.0);
+    let log_scale = (225.0 / max_log2_g).clamp(1.0, 16.0);
+    let factor_base = match build_factor_base(&words, bound, max_base_entries, log_scale) {
         | Ok(base) => base?,
         | Err(divisor) => return Some(divisor),
     };
@@ -475,7 +487,7 @@ fn qs_core(
         return None;
     }
     let columns = factor_base.len() + 1;
-    let divisors: Vec<BigInt> = factor_base.iter().map(|p| BigInt::from(p.prime)).collect();
+    let divisors: Vec<BigUint> = factor_base.iter().map(|p| BigUint::from(p.prime)).collect();
     let large_prime_factor = limits
         .large_prime_factor
         .clamp(1, bound.saturating_sub(1).max(1));
@@ -485,13 +497,15 @@ fn qs_core(
         1
     };
     // The sieve counts each factor-base prime once; the slack covers the
-    // unsieved large cofactor and the rounding of the logarithmic sums.
-    let tolerance = (log2_approx(large_bound as f64) + 8.0) * LOG_SCALE;
+    // unsieved large cofactor and the rounding of the compact u8 sums.
+    let tolerance = (log2_approx(large_bound as f64) + 8.5) * log_scale;
     let params = SieveParams {
         interval,
         length,
         large_bound,
         large_primes: config.large_primes,
+        log_scale,
+        two_log: scaled_log(2, log_scale),
         tolerance,
     };
     let mut q_cursor = polynomial_prime_start(n, interval);
@@ -522,9 +536,26 @@ fn qs_core(
         // Batches are independent; `map_slice` returns them in index order,
         // so the relation stream (and the result) does not depend on the
         // number of worker threads.
-        let outputs = crate::kernels::par::map_slice(&primes, 4, |&q| {
-            sieve_polynomial(n, q, &factor_base, &divisors, params)
-        });
+        let outputs = if batch >= 2 && crate::execution::should_split_work(batch, length) {
+            crate::kernels::par::map_slice(&primes, 2, |&q| {
+                sieve_polynomial(n, q, &factor_base, &divisors, params, false)
+            })
+        } else if batch == 1 {
+            let split_interval = crate::execution::should_split_work(length, 4);
+            vec![sieve_polynomial(
+                n,
+                primes[0],
+                &factor_base,
+                &divisors,
+                params,
+                split_interval,
+            )]
+        } else {
+            primes
+                .iter()
+                .map(|&q| sieve_polynomial(n, q, &factor_base, &divisors, params, false))
+                .collect()
+        };
         for output in outputs {
             if let Some(factor) = output.factor {
                 return Some(factor);
@@ -578,26 +609,129 @@ fn sieve_polynomial(
     n: &BigInt,
     q: u64,
     factor_base: &[FbPrime],
-    divisors: &[BigInt],
+    divisors: &[BigUint],
     params: SieveParams,
+    split_interval: bool,
+) -> SieveOutput {
+    let Some(polynomial) = build_polynomial(n, q) else {
+        return SieveOutput::default();
+    };
+    let fb_len = factor_base.len();
+    let skip = factor_base.iter().position(|entry| entry.prime == q);
+    let mut roots_buf = global_pool().scratch_usize(fb_len * 2);
+    roots_buf.resize(fb_len * 2, 0);
+    let (roots1_slice, roots2_slice) = roots_buf.split_at_mut(fb_len);
+    sieve_roots_into(
+        &polynomial,
+        factor_base,
+        skip,
+        divisors,
+        roots1_slice,
+        roots2_slice,
+    );
+
+    if split_interval && params.length > SIEVE_BLOCK_LEN {
+        let num_blocks = params.length.div_ceil(SIEVE_BLOCK_LEN);
+        let blocks = crate::kernels::par::map_indexed(num_blocks, 2, |block_idx| {
+            let start_idx = block_idx * SIEVE_BLOCK_LEN;
+            let end_idx = (start_idx + SIEVE_BLOCK_LEN).min(params.length);
+            sieve_range(
+                n,
+                &polynomial,
+                factor_base,
+                divisors,
+                roots1_slice,
+                roots2_slice,
+                skip,
+                params,
+                start_idx,
+                end_idx,
+            )
+        });
+        let cap = 4 * divisors.len() + 256;
+        let mut merged = SieveOutput {
+            polynomial: true,
+            ..SieveOutput::default()
+        };
+        merged.stats.polynomials = 1;
+        for block in blocks {
+            if block.factor.is_some() {
+                merged.factor = block.factor;
+                return merged;
+            }
+            merged.stats.candidates += block.stats.candidates;
+            for rel in block.full {
+                if merged.full.len() + merged.partial.len() >= cap {
+                    break;
+                }
+                merged.stats.full_relations += 1;
+                merged.full.push(rel);
+            }
+            for pair in block.partial {
+                if merged.full.len() + merged.partial.len() >= cap {
+                    break;
+                }
+                merged.stats.partial_relations += 1;
+                merged.partial.push(pair);
+            }
+            if merged.full.len() + merged.partial.len() >= cap {
+                break;
+            }
+        }
+        return merged;
+    }
+
+    let mut output = sieve_range(
+        n,
+        &polynomial,
+        factor_base,
+        divisors,
+        roots1_slice,
+        roots2_slice,
+        skip,
+        params,
+        0,
+        params.length,
+    );
+    if output.factor.is_none() {
+        output.polynomial = true;
+        output.stats.polynomials = 1;
+    }
+    output
+}
+
+#[allow(clippy::too_many_arguments)]
+fn sieve_range(
+    n: &BigInt,
+    polynomial: &Polynomial,
+    factor_base: &[FbPrime],
+    divisors: &[BigUint],
+    roots1: &[usize],
+    roots2: &[usize],
+    skip: Option<usize>,
+    params: SieveParams,
+    start_idx: usize,
+    end_idx: usize,
 ) -> SieveOutput {
     let mut output = SieveOutput::default();
-    let Some(polynomial) = build_polynomial(n, q) else {
+    let sub_len = end_idx.saturating_sub(start_idx);
+    if sub_len == 0 {
         return output;
-    };
-    let length = params.length;
+    }
     let interval = params.interval;
-    let skip = factor_base.iter().position(|entry| entry.prime == q);
-    let (roots1, roots2) = sieve_roots(&polynomial, factor_base, skip, divisors);
     // g(x) is even iff x and c have the same parity; convert that to an
     // index parity through x = index - interval.
     let x_parity = usize::from(polynomial.c.is_odd());
     let index_parity = (x_parity + interval % 2) % 2;
-    let mut sieve = vec![0_u32; length];
-    let two_log = scaled_log(2);
-    for index in (index_parity..length).step_by(2) {
-        sieve[index] += two_log;
+    let first_two = usize::from(start_idx % 2 != index_parity);
+
+    let mut sieve = global_pool().scratch_bytes(sub_len);
+    sieve.resize(sub_len, 0_u8);
+    let two_log = params.two_log;
+    for local_idx in (first_two..sub_len).step_by(2) {
+        sieve[local_idx] = sieve[local_idx].saturating_add(two_log);
     }
+
     for (index, entry) in factor_base.iter().enumerate().skip(1) {
         if Some(index) == skip {
             continue;
@@ -607,38 +741,109 @@ fn sieve_polynomial(
             break;
         }
         let log = entry.log;
-        let first = (usize::try_from(roots1[index]).unwrap_or(0) + interval) % prime;
-        let mut position = first;
-        while position < length {
-            sieve[position] += log;
-            position += prime;
-        }
-        let second = roots2[index];
-        if second != roots1[index] {
-            let mut position = (usize::try_from(second).unwrap_or(0) + interval) % prime;
-            while position < length {
-                sieve[position] += log;
-                position += prime;
+        let r1 = roots1[index];
+        let r2 = roots2[index];
+        let positions = if r1 == r2 {
+            [r1, usize::MAX]
+        } else {
+            [r1, r2]
+        };
+        for root in positions {
+            if root == usize::MAX {
+                continue;
+            }
+            let global_first = (root + interval) % prime;
+            let mut local_pos = if global_first >= start_idx {
+                global_first - start_idx
+            } else {
+                let rem = (start_idx - global_first) % prime;
+                if rem == 0 { 0 } else { prime - rem }
+            };
+            while local_pos < sub_len {
+                sieve[local_pos] = sieve[local_pos].saturating_add(log);
+                local_pos += prime;
             }
         }
     }
-    // Every `x` is considered. `g(x)` is even for exactly one parity (the
-    // special prime 2 above); the other parity gives odd, still smoothable
-    // values.
-    let mut candidate = vec![false; length];
+
+    let cand_word_count = sub_len.div_ceil(64);
+    let mut cand_words = global_pool().scratch_i64(cand_word_count);
+    cand_words.resize(cand_word_count, 0_i64);
+    let vertex = -polynomial.two_b_f64 / (2.0 * polynomial.a_f64);
+    let mut any_candidate = false;
     let mut square_factor = None;
-    for (index, log) in sieve.iter().enumerate() {
-        let x = index as f64 - interval as f64;
-        let value = (polynomial.a_f64 * x + polynomial.two_b_f64) * x + polynomial.c_f64;
-        if value == 0.0 {
-            // (a x + b)^2 = n exactly; this is a factor with no sieve.
-            let ax_b = &polynomial.a * BigInt::from(index as i64 - interval as i64) + &polynomial.b;
-            square_factor = Some(Integer::gcd(&ax_b, n));
-            continue;
+
+    for (word_idx, block_start) in (0..sub_len).step_by(64).enumerate() {
+        let block_end = (block_start + 64).min(sub_len);
+        let x_lo = (start_idx + block_start) as f64 - interval as f64;
+        let x_hi = (start_idx + block_end - 1) as f64 - interval as f64;
+        let val_lo = (polynomial.a_f64 * x_lo + polynomial.two_b_f64) * x_lo + polynomial.c_f64;
+        let val_hi = (polynomial.a_f64 * x_hi + polynomial.two_b_f64) * x_hi + polynomial.c_f64;
+
+        let mut word_mask = 0_u64;
+        if val_lo != 0.0
+            && val_hi != 0.0
+            && val_lo.signum() == val_hi.signum()
+            && (vertex < x_lo - 2.0 || vertex > x_hi + 2.0)
+        {
+            let min_abs = val_lo.abs().min(val_hi.abs());
+            let raw_thresh =
+                log2_approx(min_abs) * params.log_scale - params.tolerance - params.log_scale;
+            let prune_u8 = if raw_thresh <= 0.0 {
+                0_u8
+            } else if raw_thresh >= 255.0 {
+                255_u8
+            } else {
+                raw_thresh.floor() as u8
+            };
+            if sieve[block_start..block_end].iter().any(|&s| s >= prune_u8) {
+                for local_idx in block_start..block_end {
+                    let s = sieve[local_idx];
+                    if s < prune_u8 {
+                        continue;
+                    }
+                    let x = (start_idx + local_idx) as f64 - interval as f64;
+                    let value =
+                        (polynomial.a_f64 * x + polynomial.two_b_f64) * x + polynomial.c_f64;
+                    if value == 0.0 {
+                        let ax_b = &polynomial.a
+                            * BigInt::from((start_idx + local_idx) as i64 - interval as i64)
+                            + &polynomial.b;
+                        square_factor = Some(Integer::gcd(&ax_b, n));
+                        continue;
+                    }
+                    if f64::from(s) + params.tolerance
+                        >= log2_approx(value.abs()) * params.log_scale
+                    {
+                        word_mask |= 1_u64 << (local_idx - block_start);
+                    }
+                }
+            }
+        } else {
+            for local_idx in block_start..block_end {
+                let x = (start_idx + local_idx) as f64 - interval as f64;
+                let value = (polynomial.a_f64 * x + polynomial.two_b_f64) * x + polynomial.c_f64;
+                if value == 0.0 {
+                    let ax_b = &polynomial.a
+                        * BigInt::from((start_idx + local_idx) as i64 - interval as i64)
+                        + &polynomial.b;
+                    square_factor = Some(Integer::gcd(&ax_b, n));
+                    continue;
+                }
+                if f64::from(sieve[local_idx]) + params.tolerance
+                    >= log2_approx(value.abs()) * params.log_scale
+                {
+                    word_mask |= 1_u64 << (local_idx - block_start);
+                }
+            }
         }
-        candidate[index] =
-            f64::from(*log) + params.tolerance >= log2_approx(value.abs()) * LOG_SCALE;
+
+        if word_mask != 0 {
+            cand_words[word_idx] = word_mask as i64;
+            any_candidate = true;
+        }
     }
+
     if let Some(factor) = square_factor
         && factor > BigInt::one()
         && factor < *n
@@ -646,15 +851,20 @@ fn sieve_polynomial(
         output.factor = Some(factor);
         return output;
     }
-    if !candidate.iter().any(|&hit| hit) {
-        output.polynomial = true;
-        output.stats.polynomials = 1;
+    if !any_candidate {
         return output;
     }
-    let mut hits: Vec<(u32, u32)> = Vec::new();
-    for (index, hit) in candidate.iter().enumerate() {
-        if *hit && index % 2 == index_parity {
-            hits.push((index as u32, 0));
+
+    let mut hits = global_pool().scratch_i64(0);
+    for (word_idx, &word) in cand_words.iter().enumerate() {
+        let mut bits = word as u64;
+        while bits != 0 {
+            let bit = bits.trailing_zeros() as usize;
+            bits &= bits - 1;
+            let local_pos = (word_idx << 6) + bit;
+            if (local_pos & 1) == (first_two & 1) {
+                hits.push((local_pos as i64) << 32);
+            }
         }
     }
     for (index, entry) in factor_base.iter().enumerate().skip(1) {
@@ -665,85 +875,125 @@ fn sieve_polynomial(
         if prime == 0 {
             break;
         }
-        let mut positions = [roots1[index], roots2[index]];
-        if positions[0] == positions[1] {
-            positions[1] = u32::MAX;
-        }
-        for root in positions {
-            if root == u32::MAX {
-                continue;
-            }
-            let mut position = (usize::try_from(root).unwrap_or(0) + interval) % prime;
-            while position < length {
-                if candidate[position] {
-                    hits.push((position as u32, index as u32));
-                }
-                position += prime;
-            }
-        }
-    }
-    hits.sort_unstable_by_key(|&(position, prime)| (position, prime));
-    let known = &polynomial.q % n;
-    let mut next_hit = 0_usize;
-    for index in 0..length {
-        if !candidate[index] {
-            continue;
-        }
-        output.stats.candidates += 1;
-        let x = index as i64 - interval as i64;
-        let value = evaluate_g(&polynomial, x);
-        let negative = value.is_negative();
-        let mut magnitude = value.abs();
-        let mut exponents: Vec<(u32, u32)> = Vec::new();
-        while next_hit < hits.len()
-            && usize::try_from(hits[next_hit].0).unwrap_or(usize::MAX) == index
-        {
-            let prime_index = usize::try_from(hits[next_hit].1).unwrap_or(usize::MAX);
-            if prime_index >= divisors.len() {
-                next_hit += 1;
-                continue;
-            }
-            let mut exponent = 0_u32;
-            loop {
-                let (quotient, remainder) = magnitude.div_rem(&divisors[prime_index]);
-                if !remainder.is_zero() {
-                    break;
-                }
-                magnitude = quotient;
-                exponent += 1;
-                if magnitude.is_one() {
-                    break;
-                }
-            }
-            if exponent > 0 {
-                exponents.push((hits[next_hit].1, exponent));
-            }
-            next_hit += 1;
-        }
-        let relation = Relation {
-            x: mod_pos(&(&polynomial.a * BigInt::from(x) + &polynomial.b), n),
-            known: known.clone(),
-            negative,
-            exponents,
+        let r1 = roots1[index];
+        let r2 = roots2[index];
+        let positions = if r1 == r2 {
+            [r1, usize::MAX]
+        } else {
+            [r1, r2]
         };
-        if magnitude.is_one() {
-            output.stats.full_relations += 1;
-            output.full.push(relation);
-        } else if let Some(cofactor) = magnitude
-            .to_u64()
-            .filter(|&value| value <= params.large_bound)
-        {
-            output.stats.partial_relations += 1;
-            if params.large_primes {
-                output.partial.push((cofactor, relation));
+        for root in positions {
+            if root == usize::MAX {
+                continue;
+            }
+            let global_first = (root + interval) % prime;
+            let mut local_pos = if global_first >= start_idx {
+                global_first - start_idx
+            } else {
+                let rem = (start_idx - global_first) % prime;
+                if rem == 0 { 0 } else { prime - rem }
+            };
+            while local_pos < sub_len {
+                if ((cand_words[local_pos >> 6] as u64 >> (local_pos & 63)) & 1) != 0 {
+                    hits.push(((local_pos as i64) << 32) | (index as i64));
+                }
+                local_pos += prime;
             }
         }
-        if output.full.len() + output.partial.len() >= 4 * divisors.len() + 256 {
-            break;
+    }
+    hits.sort_unstable();
+
+    let known = &polynomial.q % n;
+    let cap = 4 * divisors.len() + 256;
+    let mut next_hit = 0_usize;
+    'cand: for (word_idx, &word) in cand_words.iter().enumerate() {
+        let mut bits = word as u64;
+        while bits != 0 {
+            let bit = bits.trailing_zeros() as usize;
+            bits &= bits - 1;
+            let local_pos = (word_idx << 6) + bit;
+            if local_pos >= sub_len {
+                break;
+            }
+            output.stats.candidates += 1;
+            let x = (start_idx + local_pos) as i64 - interval as i64;
+            let value = evaluate_g(polynomial, x);
+            if value.is_zero() {
+                let ax_b = &polynomial.a * BigInt::from(x) + &polynomial.b;
+                let factor = Integer::gcd(&ax_b, n);
+                if factor > BigInt::one() && factor < *n {
+                    output.factor = Some(factor);
+                    return output;
+                }
+                while next_hit < hits.len() && ((hits[next_hit] >> 32) as usize) == local_pos {
+                    next_hit += 1;
+                }
+                continue;
+            }
+            let negative = value.is_negative();
+            let mut mag = value.magnitude().clone();
+            let mut rem_u64 = mag.to_u64();
+            let mut exponents: Vec<(u32, u32)> = Vec::new();
+            while next_hit < hits.len() && ((hits[next_hit] >> 32) as usize) == local_pos {
+                let prime_index = (hits[next_hit] & 0xffff_ffff) as usize;
+                next_hit += 1;
+                if prime_index >= divisors.len() {
+                    continue;
+                }
+                let p_u64 = factor_base[prime_index].prime;
+                let mut exponent = 0_u32;
+                if let Some(ref mut small) = rem_u64 {
+                    while *small > 1 && (*small).is_multiple_of(p_u64) {
+                        *small /= p_u64;
+                        exponent += 1;
+                    }
+                } else {
+                    loop {
+                        let (quotient, remainder) = mag.div_rem(&divisors[prime_index]);
+                        if !remainder.is_zero() {
+                            break;
+                        }
+                        mag = quotient;
+                        exponent += 1;
+                        if let Some(small) = mag.to_u64() {
+                            rem_u64 = Some(small);
+                            if small == 1 {
+                                break;
+                            }
+                        }
+                    }
+                    if let Some(ref mut small) = rem_u64 {
+                        while *small > 1 && (*small).is_multiple_of(p_u64) {
+                            *small /= p_u64;
+                            exponent += 1;
+                        }
+                    }
+                }
+                if exponent > 0 {
+                    exponents.push((prime_index as u32, exponent));
+                }
+            }
+            let relation = Relation {
+                x: mod_pos(&(&polynomial.a * BigInt::from(x) + &polynomial.b), n),
+                known: known.clone(),
+                negative,
+                exponents,
+            };
+            let remaining_u64 = rem_u64.or_else(|| mag.to_u64());
+            if remaining_u64 == Some(1) {
+                output.stats.full_relations += 1;
+                output.full.push(relation);
+            } else if let Some(cofactor) = remaining_u64.filter(|&v| v <= params.large_bound) {
+                output.stats.partial_relations += 1;
+                if params.large_primes {
+                    output.partial.push((cofactor, relation));
+                }
+            }
+            if output.full.len() + output.partial.len() >= cap {
+                break 'cand;
+            }
         }
     }
-    output.polynomial = true;
-    output.stats.polynomials = 1;
     output
 }
 
@@ -785,8 +1035,8 @@ fn small_remainder(
 /// Miller-Rabin bases (318665857834031151167461) does not.
 #[must_use]
 pub fn is_probable_prime(n: &BigInt) -> bool {
-    if let Some(value) = n.to_u64() {
-        return is_prime_miller_rabin(value);
+    if let Some(value) = n.to_u128() {
+        return is_prime_u128(value);
     }
     if !n.is_positive() || !n.bit(0) {
         return false;
@@ -942,8 +1192,8 @@ struct FbPrime {
     prime: u64,
     /// A square root of `n` modulo `prime` (unused for `prime = 2`).
     sqrt_n: u64,
-    /// `log2(prime)` scaled by [`LOG_SCALE`].
-    log: u32,
+    /// `log2(prime)` scaled into compact byte units.
+    log: u8,
 }
 
 /// Finds factor-base columns and checks the entire bound for exact divisors.
@@ -952,18 +1202,59 @@ fn build_factor_base(
     words: &[u32],
     bound: u64,
     max_entries: usize,
+    log_scale: f64,
 ) -> Result<Option<Vec<FbPrime>>, BigInt> {
     let Ok(limit) = usize::try_from(bound) else {
         return Ok(None);
     };
+    let primes = primes_sieve(limit);
     let mut base = (max_entries > 0).then(|| {
         vec![FbPrime {
             prime: 2,
             sqrt_n: 1,
-            log: scaled_log(2),
+            log: scaled_log(2, log_scale),
         }]
     });
-    for prime in primes_sieve(limit).into_iter().skip(1) {
+    if primes.len() <= 1 {
+        return Ok(base);
+    }
+    let odd_primes = &primes[1..];
+    if odd_primes.len() >= 4096 && crate::execution::should_split_work(odd_primes.len(), 32) {
+        let checked = crate::kernels::par::map_slice(odd_primes, 512, |&p| {
+            let prime = p as u64;
+            let residue = small_remainder(words, prime);
+            if residue == 0 {
+                return Err(prime);
+            }
+            if max_entries == 0 || jacobi(residue, prime) != 1 {
+                return Ok(None);
+            }
+            Ok(sqrt_mod_residue(residue, prime).map(|root| {
+                FbPrime {
+                    prime,
+                    sqrt_n: root,
+                    log: scaled_log(prime, log_scale),
+                }
+            }))
+        });
+        for item in checked {
+            match item {
+                | Err(divisor) => return Err(BigInt::from(divisor)),
+                | Ok(Some(entry)) => {
+                    if let Some(entries) = &mut base {
+                        if entries.len() == max_entries {
+                            base = None;
+                        } else {
+                            entries.push(entry);
+                        }
+                    }
+                },
+                | Ok(None) => {},
+            }
+        }
+        return Ok(base);
+    }
+    for &prime in odd_primes {
         let prime = prime as u64;
         let residue = small_remainder(words, prime);
         if residue == 0 {
@@ -986,15 +1277,20 @@ fn build_factor_base(
         entries.push(FbPrime {
             prime,
             sqrt_n: root,
-            log: scaled_log(prime),
+            log: scaled_log(prime, log_scale),
         });
     }
     Ok(base)
 }
 
-/// `log2(p)` scaled and rounded to the sieve unit.
-fn scaled_log(p: u64) -> u32 {
-    (log2_approx(p as f64) * LOG_SCALE).round() as u32
+/// `log2(p)` scaled and rounded to the compact `u8` sieve unit.
+fn scaled_log(
+    p: u64,
+    log_scale: f64,
+) -> u8 {
+    (log2_approx(p as f64) * log_scale)
+        .round()
+        .clamp(1.0, 255.0) as u8
 }
 
 /// A polynomial `a x^2 + 2 b x + c = ((a x + b)^2 - n) / a`, `a = q^2`.
@@ -1098,14 +1394,21 @@ fn next_polynomial_prime(
 /// `roots2` equals `roots1` for a double root. The prime `q` that defines
 /// `a` is skipped: it divides `a`, is accounted for separately through
 /// the square `a = q^2`, and never takes part in the smooth part.
-fn sieve_roots(
+///
+/// The roots are written into caller-provided slices so a caller can keep one
+/// scratch buffer across the polynomials of a sieve instead of allocating two
+/// vectors per polynomial. Both slices are cleared first: a pooled buffer
+/// carries the previous polynomial's roots.
+fn sieve_roots_into(
     polynomial: &Polynomial,
     base: &[FbPrime],
     skip: Option<usize>,
-    divisors: &[BigInt],
-) -> (Vec<u32>, Vec<u32>) {
-    let mut roots1 = vec![0_u32; base.len()];
-    let mut roots2 = vec![0_u32; base.len()];
+    divisors: &[BigUint],
+    roots1: &mut [usize],
+    roots2: &mut [usize],
+) {
+    roots1.fill(0);
+    roots2.fill(0);
     let q = polynomial.q.to_u64().unwrap_or(0);
     for (index, entry) in base.iter().enumerate().skip(1) {
         if Some(index) == skip {
@@ -1115,17 +1418,44 @@ fn sieve_roots(
         let prime = entry.prime;
         let inverse_q = inverse(q % prime, prime).unwrap_or(0);
         let inverse_a = mulmod(inverse_q, inverse_q, prime);
-        let b_mod = mod_pos(&polynomial.b, &divisors[index])
-            .to_u64()
-            .unwrap_or(0)
-            % prime;
+        let b_mod = match divisors.get(index) {
+            | Some(divisor) => mod_pos_u64(&polynomial.b, divisor),
+            | None => mod_pos_u64(&polynomial.b, &BigUint::from(prime)),
+        };
         let t_mod = entry.sqrt_n % prime;
         let first = mulmod(mod_sub(t_mod, b_mod, prime), inverse_a, prime);
         let second = mulmod(mod_sub(prime - t_mod, b_mod, prime), inverse_a, prime);
-        roots1[index] = u32::try_from(first).unwrap_or(0);
-        roots2[index] = u32::try_from(second).unwrap_or(0);
+        roots1[index] = usize::try_from(first).unwrap_or(0);
+        roots2[index] = usize::try_from(second).unwrap_or(0);
     }
+}
+
+/// The roots as two vectors, for tests and single-polynomial callers.
+#[cfg(test)]
+fn sieve_roots(
+    polynomial: &Polynomial,
+    base: &[FbPrime],
+    skip: Option<usize>,
+    divisors: &[BigUint],
+) -> (Vec<usize>, Vec<usize>) {
+    let mut roots1 = vec![0_usize; base.len()];
+    let mut roots2 = vec![0_usize; base.len()];
+    sieve_roots_into(polynomial, base, skip, divisors, &mut roots1, &mut roots2);
     (roots1, roots2)
+}
+
+/// `x mod m` in `[0, m)` as a `u64`, for `m <= u64::MAX`.
+fn mod_pos_u64(
+    x: &BigInt,
+    m: &BigUint,
+) -> u64 {
+    let residue = x.magnitude() % m;
+    let value = u64::try_from(residue).unwrap_or(0);
+    if x.is_negative() && value != 0 {
+        m.to_u64().unwrap_or(0).saturating_sub(value)
+    } else {
+        value
+    }
 }
 
 /// `a - b mod m` for `0 <= a, b < m`.
@@ -1801,10 +2131,11 @@ mod tests {
             &n.magnitude().to_u32_digits(),
             500,
             MAX_FACTOR_BASE_COLUMNS - 1,
+            1.0,
         )
         .expect("no factor in the base")
         .expect("the factor base fits");
-        let divisors: Vec<BigInt> = base.iter().map(|p| BigInt::from(p.prime)).collect();
+        let divisors: Vec<BigUint> = base.iter().map(|p| BigUint::from(p.prime)).collect();
         let q = next_polynomial_prime(&n, polynomial_prime_start(&n, 1_000)).expect("a prime");
         let polynomial = build_polynomial(&n, q).expect("a polynomial");
         // a = q^2, b^2 = n (mod a), c = (b^2 - n)/a.
@@ -1830,7 +2161,7 @@ mod tests {
             }
             let modulus = BigInt::from(entry.prime);
             for root in [roots1[index], roots2[index]] {
-                let value = evaluate_g(&polynomial, i64::from(root));
+                let value = evaluate_g(&polynomial, i64::try_from(root).unwrap_or(0));
                 assert!(
                     mod_pos(&value, &modulus).is_zero(),
                     "p = {}, root = {root}",
@@ -1847,13 +2178,13 @@ mod tests {
         let words = composite.magnitude().to_u32_digits();
         for max_entries in [0, 1, 3] {
             assert_eq!(
-                build_factor_base(&words, 1_009, max_entries).err(),
+                build_factor_base(&words, 1_009, max_entries, 1.0).err(),
                 Some(p.clone())
             );
         }
         let no_small_factor = BigInt::from(1_000_003_u32) * BigInt::from(1_000_033_u32);
         let words = no_small_factor.magnitude().to_u32_digits();
-        assert!(matches!(build_factor_base(&words, 1_009, 3), Ok(None)));
+        assert!(matches!(build_factor_base(&words, 1_009, 3, 1.0), Ok(None)));
     }
 
     #[test]

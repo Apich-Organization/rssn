@@ -522,13 +522,58 @@ pub fn sinh_sinh<F: Fn(f64) -> f64>(
     de_driver(&f, &map, 6.5, tol, 10)
 }
 
+/// Orders at or above this are worth caching: Newton's iteration on the
+/// Legendre recurrence costs `O(n^2)`, while a cache hit is a copy.
+const RULE_CACHE_MIN_ORDER: usize = 32;
+
+/// Orders above this are built on demand. The shared rule cache is bounded, so
+/// caching an unbounded order would only evict the entries callers reuse.
+const RULE_CACHE_MAX_ORDER: usize = 4096;
+
+/// Cache tags for the rules built here. `Custom` keeps them separate from the
+/// reuse pool's own Gauss-Legendre / Clenshaw-Curtis builders, whose node
+/// rounding differs; a hit must return the exact values this module computes.
+const GAUSS_LEGENDRE_CACHE_TAG: u64 = 0x474C_5255_4C45_0001;
+const CLENSHAW_CURTIS_CACHE_TAG: u64 = 0x4343_5255_4C45_0002;
+
+/// Node evaluations below which the parallel rules stay sequential.
+const RULE_EVAL_GRAIN: usize = 64;
+
+/// Returns a cached `n`-point rule, or a fresh one outside the cache range.
+///
+/// The cache key is `(tag, n)` and the builder is the same routine that would
+/// run uncached, so a hit is bit-identical to a fresh computation.
+fn cached_rule(
+    tag: u64,
+    n: usize,
+    build: impl FnOnce() -> (Vec<f64>, Vec<f64>),
+) -> (Vec<f64>, Vec<f64>) {
+    if n < RULE_CACHE_MIN_ORDER || n > RULE_CACHE_MAX_ORDER {
+        return build();
+    }
+    let rule = crate::kernels::reuse::global_pool().get_or_init_quadrature(
+        crate::kernels::reuse::QuadratureRuleKind::Custom(tag),
+        n,
+        || std::sync::Arc::new(build()),
+    );
+    let (nodes, weights) = &*rule;
+    (nodes.clone(), weights.clone())
+}
+
 /// Gauss-Legendre nodes and weights on `[-1, 1]` with `n` points
 /// (Newton iteration on the Legendre recurrence).
+///
+/// Orders in `[32, 4096]` are cached and reused across calls.
 #[must_use]
 pub fn gauss_legendre_rule(n: usize) -> (Vec<f64>, Vec<f64>) {
     if n == 0 {
         return (Vec::new(), Vec::new());
     }
+    cached_rule(GAUSS_LEGENDRE_CACHE_TAG, n, || build_gauss_legendre_rule(n))
+}
+
+#[allow(clippy::single_call_fn)] // the cached and uncached paths share one builder
+fn build_gauss_legendre_rule(n: usize) -> (Vec<f64>, Vec<f64>) {
     let mut x = vec![0.0; n];
     let mut w = vec![0.0; n];
     let nf = n as f64;
@@ -585,10 +630,43 @@ pub fn gauss_legendre<F: Fn(f64) -> f64>(
         .sum::<f64>()
 }
 
+/// [`gauss_legendre`] with the `n` node evaluations spread over the pool.
+///
+/// The node values are independent and are collected in node order, and the
+/// weighted terms are still summed in that order, so the value is bit-identical
+/// to [`gauss_legendre`] for every thread count. Most useful when one
+/// evaluation of `f` is expensive.
+pub fn gauss_legendre_par<F: Fn(f64) -> f64 + Sync>(
+    f: F,
+    a: f64,
+    b: f64,
+    n: usize,
+) -> f64 {
+    let (x, w) = gauss_legendre_rule(n);
+    let h = 0.5 * (b - a);
+    let m = f64::midpoint(a, b);
+    let values = crate::kernels::par::map_slice(&x, RULE_EVAL_GRAIN, |&xi| f(m + h * xi));
+    h * values
+        .iter()
+        .zip(&w)
+        .map(|(&value, &wi)| wi * value)
+        .sum::<f64>()
+}
+
 /// Clenshaw-Curtis nodes and weights on `[-1, 1]` with `n + 1` points
 /// (`n` is rounded up to an even number, at least 2).
+///
+/// Orders in `[32, 4096]` are cached and reused across calls.
 #[must_use]
 pub fn clenshaw_curtis_rule(n: usize) -> (Vec<f64>, Vec<f64>) {
+    let n = n.max(2).div_ceil(2) * 2;
+    cached_rule(CLENSHAW_CURTIS_CACHE_TAG, n, || {
+        build_clenshaw_curtis_rule(n)
+    })
+}
+
+#[allow(clippy::single_call_fn)] // the cached and uncached paths share one builder
+fn build_clenshaw_curtis_rule(n: usize) -> (Vec<f64>, Vec<f64>) {
     let n = n.max(2).div_ceil(2) * 2;
     let nf = n as f64;
     let mut x = vec![0.0; n + 1];
@@ -622,6 +700,28 @@ pub fn clenshaw_curtis<F: Fn(f64) -> f64>(
         .iter()
         .zip(&w)
         .map(|(&xi, &wi)| wi * f(m + h * xi))
+        .sum::<f64>()
+}
+
+/// [`clenshaw_curtis`] with the node evaluations spread over the pool.
+///
+/// Node values are collected in node order and the weighted terms are summed
+/// in that order, so the value is bit-identical to [`clenshaw_curtis`] for
+/// every thread count.
+pub fn clenshaw_curtis_par<F: Fn(f64) -> f64 + Sync>(
+    f: F,
+    a: f64,
+    b: f64,
+    n: usize,
+) -> f64 {
+    let (x, w) = clenshaw_curtis_rule(n);
+    let h = 0.5 * (b - a);
+    let m = f64::midpoint(a, b);
+    let values = crate::kernels::par::map_slice(&x, RULE_EVAL_GRAIN, |&xi| f(m + h * xi));
+    h * values
+        .iter()
+        .zip(&w)
+        .map(|(&value, &wi)| wi * value)
         .sum::<f64>()
 }
 
@@ -893,7 +993,12 @@ fn filon2d_sweep<F: Fn(f64, f64) -> f64>(
         mx.push(quadratic_panel_moments(x0, hx, wx));
         my.push(quadratic_panel_moments(y0, hy, wy));
     }
-    let mut grid = vec![0.0; nodes * nodes];
+    // The adaptive driver sweeps repeatedly with growing `panels`; keep the
+    // (2n + 1)^2 amplitude grid in the shared scratch pool instead of
+    // reallocating up to 2 MiB on every sweep.
+    let cells = nodes.saturating_mul(nodes);
+    let mut grid = crate::kernels::reuse::global_pool().scratch_f64(cells);
+    grid.resize(cells, 0.0);
     for i in 0..nodes {
         let x = lo[0] + i as f64 * hx;
         for j in 0..nodes {
@@ -3023,5 +3128,76 @@ mod triangle_tests {
         assert!(!result.converged, "{result:?}");
         assert_eq!(result.evaluations, 10, "the initial panel only");
         assert!(result.error > 0.0);
+    }
+}
+
+#[cfg(test)]
+mod rule_cache_and_parallel_tests {
+    //! Cached quadrature rules and the parallel rule evaluators.
+
+    #![allow(clippy::indexing_slicing, clippy::arithmetic_side_effects)]
+
+    use super::*;
+
+    fn bits(values: &[f64]) -> Vec<u64> {
+        values.iter().map(|value| value.to_bits()).collect()
+    }
+
+    #[test]
+    fn cached_rules_match_a_fresh_build_and_hit_the_cache() {
+        let n = 96;
+        let fresh = build_gauss_legendre_rule(n);
+        let first = gauss_legendre_rule(n);
+        let second = gauss_legendre_rule(n);
+        assert_eq!(bits(&first.0), bits(&fresh.0));
+        assert_eq!(bits(&first.1), bits(&fresh.1));
+        assert_eq!(bits(&first.0), bits(&second.0));
+        assert_eq!(bits(&first.1), bits(&second.1));
+
+        let fresh_cc = build_clenshaw_curtis_rule(96);
+        let cc_first = clenshaw_curtis_rule(96);
+        let cc_second = clenshaw_curtis_rule(96);
+        assert_eq!(bits(&cc_first.0), bits(&fresh_cc.0));
+        assert_eq!(bits(&cc_first.1), bits(&fresh_cc.1));
+        assert_eq!(bits(&cc_first.0), bits(&cc_second.0));
+        assert_eq!(bits(&cc_first.1), bits(&cc_second.1));
+
+        // The plan-cache hit counter only grows, so a lower bound is safe even
+        // when other tests share the process-wide pool.
+        let before = crate::kernels::reuse::global_pool().stats().plans.hits;
+        let _ = gauss_legendre_rule(n);
+        let _ = clenshaw_curtis_rule(96);
+        let after = crate::kernels::reuse::global_pool().stats().plans.hits;
+        assert!(
+            after >= before + 1,
+            "repeated rule requests must be served by the cache"
+        );
+    }
+
+    #[test]
+    fn parallel_rules_are_bit_identical_to_the_serial_rule() {
+        let f = |x: f64| (3.0 * x).sin() * (-x * x).exp();
+        for n in [64_usize, 257] {
+            let serial = gauss_legendre(&f, -1.0, 1.0, n);
+            let one = crate::execution::with_scoped_pool(Some(1), || {
+                gauss_legendre_par(&f, -1.0, 1.0, n)
+            });
+            let four = crate::execution::with_scoped_pool(Some(4), || {
+                gauss_legendre_par(&f, -1.0, 1.0, n)
+            });
+            assert_eq!(one.to_bits(), serial.to_bits());
+            assert_eq!(four.to_bits(), serial.to_bits());
+        }
+        for n in [64_usize, 256] {
+            let serial = clenshaw_curtis(&f, -1.0, 1.0, n);
+            let one = crate::execution::with_scoped_pool(Some(1), || {
+                clenshaw_curtis_par(&f, -1.0, 1.0, n)
+            });
+            let four = crate::execution::with_scoped_pool(Some(4), || {
+                clenshaw_curtis_par(&f, -1.0, 1.0, n)
+            });
+            assert_eq!(one.to_bits(), serial.to_bits());
+            assert_eq!(four.to_bits(), serial.to_bits());
+        }
     }
 }
