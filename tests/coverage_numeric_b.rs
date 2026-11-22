@@ -459,7 +459,7 @@ fn sparse_exact_determinants_agree_across_methods() {
             "seed {seed}"
         );
         // integer determinant reduced mod a prime equals the GF(p) elimination
-        let p = Gfp(1_000_000_007);
+        let p = Gfp::new(1_000_000_007);
         let rows: Vec<Vec<u64>> = a
             .iter()
             .map(|r| r.iter().map(|v| p.reduce(&v.to_integer())).collect())
@@ -676,24 +676,24 @@ fn prime_field_helpers() {
     assert!(ps.windows(2).all(|w| w[0] > w[1]));
     assert!(ps.iter().all(|&p| p < 1 << 62 && is_prime_u64(p)));
     // Gfp arithmetic
-    let p = Gfp(2_305_843_009_213_693_951);
+    let p = Gfp::new(2_305_843_009_213_693_951);
     let mut rng = Lcg(5);
     for _ in 0..100 {
         let (a, b) = (rng.next() << 20 | rng.next(), rng.next() << 25 | rng.next());
         assert_eq!(
             p.mul_mod(a, b) as u128,
-            (a as u128 * b as u128) % p.0 as u128
+            (a as u128 * b as u128) % p.p as u128
         );
-        let a = a % p.0;
+        let a = a % p.p;
         if a != 0 {
             assert_eq!(p.mul_mod(a, p.inv(a).unwrap()), 1);
-            assert_eq!(p.pow_mod(a, p.0 - 1), 1, "Fermat");
+            assert_eq!(p.pow_mod(a, p.p - 1), 1, "Fermat");
         }
     }
     assert!(p.inv(0).is_none());
-    assert!(p.inv(p.0).is_none());
+    assert!(p.inv(p.p).is_none());
     assert_eq!(p.pow_mod(7, 0), 1);
-    assert_eq!(p.reduce(&BigInt::from(-1)), p.0 - 1);
+    assert_eq!(p.reduce(&BigInt::from(-1)), p.p - 1);
 }
 
 #[test]
@@ -747,11 +747,11 @@ impl ModInv for BigInt {
 
 #[test]
 fn black_box_methods_over_a_prime_field() {
-    let p = Gfp(1_000_003);
+    let p = Gfp::new(1_000_003);
     // Berlekamp-Massey on Fibonacci numbers mod p: order-2 recurrence
     let mut fib = vec![1_u64, 1];
     for i in 2..30 {
-        let next = (fib[i - 1] + fib[i - 2]) % p.0;
+        let next = (fib[i - 1] + fib[i - 2]) % p.p;
         fib.push(next);
     }
     let c = berlekamp_massey(&fib, p);
@@ -760,7 +760,7 @@ fn black_box_methods_over_a_prime_field() {
     for i in 0..fib.len() - 2 {
         let s: u64 = (0..3)
             .map(|k| p.mul_mod(c[k], fib[i + k]))
-            .fold(0, |a, b| (a + b) % p.0);
+            .fold(0, |a, b| (a + b) % p.p);
         assert_eq!(s, 0, "recurrence fails at {i}: {c:?}");
     }
     // LFSR of order 4 with random coefficients
@@ -769,7 +769,7 @@ fn black_box_methods_over_a_prime_field() {
     for i in 4..60 {
         let mut v = 0u64;
         for (k, &ck) in coeffs.iter().enumerate() {
-            v = (v + p.mul_mod(ck, seq[i - 1 - k])) % p.0;
+            v = (v + p.mul_mod(ck, seq[i - 1 - k])) % p.p;
         }
         seq.push(v);
     }
@@ -778,7 +778,7 @@ fn black_box_methods_over_a_prime_field() {
     for i in 0..seq.len() - 4 {
         let s: u64 = (0..5)
             .map(|k| p.mul_mod(c[k], seq[i + k]))
-            .fold(0, |a, b| (a + b) % p.0);
+            .fold(0, |a, b| (a + b) % p.p);
         assert_eq!(s, 0, "order 4, index {i}");
     }
     // empty and constant-zero sequences do not panic
@@ -789,7 +789,7 @@ fn black_box_methods_over_a_prime_field() {
     let mut dom = p;
     let diag = SparseMat::from_triplets(&mut dom, 3, 3, [(0, 0, 1), (1, 1, 2), (2, 2, 3)]).unwrap();
     let minpoly = minpoly_wiedemann(&diag, p, 3, 42).unwrap();
-    let want = vec![p.0 - 6, 11, p.0 - 6, 1];
+    let want = vec![p.p - 6, 11, p.p - 6, 1];
     assert_eq!(minpoly, want);
     // repeated eigenvalues lower the degree
     let rep =
@@ -806,7 +806,7 @@ fn black_box_methods_over_a_prime_field() {
 
 #[test]
 fn wiedemann_solves_sparse_systems() {
-    let p = Gfp(1_000_000_007);
+    let p = Gfp::new(1_000_000_007);
     let n = 12;
     let a = random_int_mat(n, 25, 4242, true);
     let rows: Vec<Vec<u64>> = a
@@ -816,7 +816,7 @@ fn wiedemann_solves_sparse_systems() {
     let mut dom = p;
     let sp = SparseMat::from_dense(&mut dom, &rows);
     let mut rng = Lcg(8);
-    let b: Vec<u64> = (0..n).map(|_| rng.next() % p.0).collect();
+    let b: Vec<u64> = (0..n).map(|_| rng.next() % p.p).collect();
     let x = solve_wiedemann(&sp, &b, p, 5, 1).expect("solvable");
     assert_eq!(sp.matvec(&mut dom, &x).unwrap(), b);
     // wrong shapes

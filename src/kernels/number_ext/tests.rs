@@ -219,4 +219,138 @@ fn catalan_exact_matches_the_convolution_recurrence() {
     }
     assert_eq!(catalan_exact(0), counts[0]);
     assert_eq!(catalan_exact(i64::MIN), BigInt::default());
+    // Large n (> 64) delegates to Kummer/binary-splitting binomial.
+    let c100 = catalan_exact(100);
+    assert_eq!(
+        c100,
+        number_exact::binomial(200, 100) / BigInt::from(101_u64)
+    );
+    let c300 = catalan_exact(300);
+    assert_eq!(
+        c300,
+        number_exact::binomial(600, 300) / BigInt::from(301_u64)
+    );
+}
+
+#[test]
+fn totient_sieve_matches_scalar_phi_and_divisor_identity() {
+    assert_eq!(totient_sieve(0), Ok(vec![0]));
+    assert_eq!(totient_sieve(1), Ok(vec![0, 1]));
+    assert!(totient_sieve(usize::MAX).is_err());
+    assert!(totient_sieve(usize::MAX / 2).is_err());
+
+    let Ok(values) = totient_sieve(4_096) else {
+        panic!("totient_sieve(4_096) failed");
+    };
+    let mut divisor_sums = vec![0_u64; values.len()];
+    for (n, &phi_n) in values.iter().enumerate() {
+        assert_eq!(phi_n, number_theory::phi(n as u64), "n = {n}");
+        if n >= 1 {
+            for multiple in (n..divisor_sums.len()).step_by(n) {
+                divisor_sums[multiple] += phi_n;
+            }
+        }
+    }
+    for (n, &sum) in divisor_sums.iter().enumerate().skip(1) {
+        assert_eq!(sum, n as u64, "sum of totients of divisors at n = {n}");
+    }
+}
+
+#[test]
+fn crt_bigint_handles_non_coprime_and_wide_moduli() {
+    assert_eq!(crt_bigint(&[], &[]), Err(NumberExtError::Empty));
+    assert!(matches!(
+        crt_bigint(&[BigInt::from(1)], &[]),
+        Err(NumberExtError::ShapeMismatch(_))
+    ));
+    assert!(crt_bigint(&[BigInt::from(1)], &[BigInt::from(0)]).is_err());
+    assert!(crt_bigint(&[BigInt::from(1)], &[BigInt::from(-5)]).is_err());
+    assert!(
+        crt_bigint(
+            &[BigInt::from(1), BigInt::from(2)],
+            &[BigInt::from(4), BigInt::from(6)],
+        )
+        .is_err()
+    );
+
+    // Non-coprime small congruences match `crt`.
+    let small = crt_bigint(
+        &[BigInt::from(7), BigInt::from(13), BigInt::from(19)],
+        &[BigInt::from(12), BigInt::from(18), BigInt::from(30)],
+    );
+    assert_eq!(small, Ok((BigInt::from(139), BigInt::from(180))));
+
+    // Wide > 128-bit moduli and > 64 congruences exercising tree merge.
+    let primes: Vec<BigInt> = number_theory::primes_sieve(500)
+        .into_iter()
+        .map(BigInt::from)
+        .collect();
+    let secret: BigInt = (BigInt::from(1_u8) << 300) + BigInt::from(123_456_789_012_345_u64);
+    let rems: Vec<BigInt> = primes.iter().map(|p| &secret % p).collect();
+    let Ok((solved, period)) = crt_bigint(&rems, &primes) else {
+        panic!("consistent prime CRT failed");
+    };
+    assert_eq!(solved, secret);
+    assert!(period > secret);
+
+    let big_m1: BigInt = (BigInt::from(1_u8) << 150) + 1;
+    let big_m2: BigInt = (BigInt::from(1_u8) << 150) + 3;
+    let big_secret: BigInt = (BigInt::from(1_u8) << 250) + 42;
+    let Ok((r_big, p_big)) = crt_bigint(
+        &[&big_secret % &big_m1, &big_secret % &big_m2],
+        &[big_m1.clone(), big_m2.clone()],
+    ) else {
+        panic!("wide non-coprime CRT failed");
+    };
+    assert_eq!(&r_big % &big_m1, &big_secret % &big_m1);
+    assert_eq!(&r_big % &big_m2, &big_secret % &big_m2);
+    assert!(r_big >= BigInt::from(0) && r_big < p_big);
+}
+
+#[test]
+fn batch_mod_pow_matches_scalar_mod_pow_for_odd_and_even_moduli() {
+    assert!(matches!(
+        batch_mod_pow(&[1], &[], 7),
+        Err(NumberExtError::ShapeMismatch(_))
+    ));
+    assert!(batch_mod_pow(&[1], &[2], 0).is_err());
+    assert!(batch_mod_pow(&[1], &[2], -9).is_err());
+    assert_eq!(batch_mod_pow(&[], &[], 7), Ok(Vec::new()));
+    assert_eq!(batch_mod_pow(&[-5, 7, 0], &[0, 3, 9], 1), Ok(vec![0, 0, 0]));
+
+    let count = 1_024_usize;
+    let bases: Vec<i64> = (0..count)
+        .map(|i| {
+            match i % 5 {
+                | 0 => i64::MIN,
+                | 1 => -(i as i64) - 1,
+                | 2 => 0,
+                | 3 => i64::MAX,
+                | _ => (i as i64) * 1_000_003,
+            }
+        })
+        .collect();
+    let exponents: Vec<u64> = (0..count)
+        .map(|i| {
+            match i % 4 {
+                | 0 => 0,
+                | 1 => 1,
+                | 2 => (i as u64) * 97 + 3,
+                | _ => u64::MAX,
+            }
+        })
+        .collect();
+
+    for modulus in [2_i64, 97, 1_000_000_007, 1_i64 << 62, i64::MAX] {
+        let Ok(batch) = batch_mod_pow(&bases, &exponents, modulus) else {
+            panic!("batch_mod_pow failed for modulus {modulus}");
+        };
+        assert_eq!(batch.len(), count);
+        for i in 0..count {
+            let Ok(single) = mod_pow(bases[i], exponents[i], modulus) else {
+                panic!("mod_pow failed");
+            };
+            assert_eq!(batch[i], single, "mismatch at i = {i}, modulus = {modulus}");
+        }
+    }
 }

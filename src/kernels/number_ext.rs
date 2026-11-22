@@ -2,8 +2,14 @@
 
 use num_bigint::BigInt;
 use num_bigint::BigUint;
+use num_integer::Integer;
+use num_traits::Signed;
+use num_traits::Zero;
 
+use crate::kernels::number_exact;
 use crate::kernels::number_theory;
+use crate::kernels::par;
+use crate::kernels::reuse::global_pool;
 
 /// Error returned by extended number-theoretic operations.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -228,14 +234,14 @@ pub fn mobius_sieve(limit: usize) -> Result<Vec<i64>, NumberExtError> {
     if limit > 0 {
         values[1] = 1;
     }
-    let mut primes = Vec::new();
+    let mut primes = global_pool().scratch_usize(0);
     for number in 2..=limit {
         if values[number] == 2 {
             primes.try_reserve(1).map_err(|_| capacity_error())?;
             primes.push(number);
             values[number] = -1;
         }
-        for &prime in &primes {
+        for &prime in &*primes {
             let Some(composite) = number.checked_mul(prime).filter(|&x| x <= limit) else {
                 break;
             };
@@ -406,6 +412,9 @@ pub fn catalan_exact(n: i64) -> BigInt {
     if n < 0 {
         return BigInt::from(0u8);
     }
+    if n > 64 && n <= i64::MAX / 2 {
+        return number_exact::binomial(2 * n, n) / BigInt::from((n as u64) + 1);
+    }
     let n = n as u64;
     let mut binom = BigUint::from(1u8);
     for i in 0..n {
@@ -430,6 +439,182 @@ pub fn mod_inv(
     }
     number_theory::mod_inverse(a, modulus)
         .ok_or_else(|| NumberExtError::Domain("value has no modular inverse".to_owned()))
+}
+
+/// Computes Euler's totient `φ(0)` through `φ(limit)` with a linear sieve.
+///
+/// The value at index zero is zero and `φ(1) = 1`. Uses pooled prime scratch
+/// storage from [`global_pool`] and runs in `O(limit)` time.
+///
+/// # Errors
+/// Returns [`NumberExtError::Domain`] when the inclusive length overflows
+/// `usize` or cannot be reserved in memory.
+pub fn totient_sieve(limit: usize) -> Result<Vec<u64>, NumberExtError> {
+    let capacity_error = || NumberExtError::Domain("totient sieve extent is too large".to_owned());
+    let len = limit.checked_add(1).ok_or_else(capacity_error)?;
+    let mut phi = Vec::new();
+    phi.try_reserve_exact(len).map_err(|_| capacity_error())?;
+    phi.resize(len, 0_u64);
+    if limit > 0 {
+        phi[1] = 1;
+    }
+    let approx_primes = if limit >= 16 {
+        ((limit as f64 / ((limit as f64).ln() - 1.1).max(1.0)) as usize + 16).min(len)
+    } else {
+        8_usize.min(len)
+    };
+    let mut primes = global_pool().scratch_usize(0);
+    primes
+        .try_reserve(approx_primes)
+        .map_err(|_| capacity_error())?;
+    for number in 2..=limit {
+        if phi[number] == 0 {
+            primes.try_reserve(1).map_err(|_| capacity_error())?;
+            primes.push(number);
+            phi[number] = (number - 1) as u64;
+        }
+        for &prime in &*primes {
+            let Some(composite) = number.checked_mul(prime).filter(|&x| x <= limit) else {
+                break;
+            };
+            if number.is_multiple_of(prime) {
+                phi[composite] = phi[number] * (prime as u64);
+                break;
+            }
+            phi[composite] = phi[number] * ((prime - 1) as u64);
+        }
+    }
+    Ok(phi)
+}
+
+fn crt_bigint_tree(
+    remainders: &[BigInt],
+    moduli: &[BigInt],
+) -> Result<(BigInt, BigInt), NumberExtError> {
+    let len = remainders.len();
+    if len == 1 {
+        let m = moduli[0].clone();
+        let mut r = &remainders[0] % &m;
+        if r.is_negative() {
+            r += &m;
+        }
+        return Ok((r, m));
+    }
+    let mid = len / 2;
+    let (r_left, r_right) = remainders.split_at(mid);
+    let (m_left, m_right) = moduli.split_at(mid);
+    let (left, right) = if crate::execution::should_split_work(len, 64) {
+        let token = crate::cancellation::current();
+        let left_token = token.clone();
+        rayon::join(
+            move || {
+                let _guard = crate::cancellation::install_optional(left_token);
+                crt_bigint_tree(r_left, m_left)
+            },
+            move || {
+                let _guard = crate::cancellation::install_optional(token);
+                crt_bigint_tree(r_right, m_right)
+            },
+        )
+    } else {
+        (
+            crt_bigint_tree(r_left, m_left),
+            crt_bigint_tree(r_right, m_right),
+        )
+    };
+    let (r1, m1) = left?;
+    let (r2, m2) = right?;
+    let (g, s, _) = number_exact::bigint_xgcd(&m1, &m2);
+    let diff = &r2 - &r1;
+    let (q, rem) = diff.div_rem(&g);
+    if !rem.is_zero() {
+        return Err(NumberExtError::Domain(
+            "inconsistent congruences in crt_bigint".to_string(),
+        ));
+    }
+    let m2_g = &m2 / &g;
+    let lcm = &m1 * &m2_g;
+    let mut step = (&q * &s) % &m2_g;
+    if step.is_negative() {
+        step += &m2_g;
+    }
+    Ok((&r1 + &m1 * &step, lcm))
+}
+
+/// Arbitrary-precision Chinese Remainder Theorem solving `x ≡ remainders[i] (mod moduli[i])`.
+///
+/// Returns `(first, period)` with `0 <= first < period`, where `period` is the
+/// least common multiple of `moduli`. Non-coprime moduli are supported.
+///
+/// # Errors
+/// Returns [`NumberExtError::ShapeMismatch`] if slice lengths differ,
+/// [`NumberExtError::Empty`] if the slices are empty, or [`NumberExtError::Domain`]
+/// if any modulus is nonpositive or the congruences are inconsistent.
+pub fn crt_bigint(
+    remainders: &[BigInt],
+    moduli: &[BigInt],
+) -> Result<(BigInt, BigInt), NumberExtError> {
+    if remainders.len() != moduli.len() {
+        return Err(NumberExtError::ShapeMismatch(format!(
+            "crt_bigint needs equal-length slices, found {} and {}",
+            remainders.len(),
+            moduli.len()
+        )));
+    }
+    if remainders.is_empty() {
+        return Err(NumberExtError::Empty);
+    }
+    if moduli.iter().any(|m| !m.is_positive()) {
+        return Err(NumberExtError::Domain(
+            "crt_bigint requires positive moduli".to_string(),
+        ));
+    }
+    crt_bigint_tree(remainders, moduli)
+}
+
+/// Batched modular exponentiation computing `bases[i]^exponents[i] mod modulus` in `[0, modulus)`.
+///
+/// Uses division-free Montgomery multiplication (`MontU64`) when `modulus` is odd
+/// and parallelizes across large batches via [`par::map_indexed`].
+///
+/// # Errors
+/// Returns [`NumberExtError::ShapeMismatch`] if `bases` and `exponents` differ in
+/// length, or [`NumberExtError::Domain`] if `modulus <= 0`.
+pub fn batch_mod_pow(
+    bases: &[i64],
+    exponents: &[u64],
+    modulus: i64,
+) -> Result<Vec<i64>, NumberExtError> {
+    if bases.len() != exponents.len() {
+        return Err(NumberExtError::ShapeMismatch(format!(
+            "batch_mod_pow needs equal-length slices, found {} and {}",
+            bases.len(),
+            exponents.len()
+        )));
+    }
+    if modulus <= 0 {
+        return Err(NumberExtError::Domain(
+            "batch_mod_pow requires a positive modulus".to_string(),
+        ));
+    }
+    if bases.is_empty() {
+        return Ok(Vec::new());
+    }
+    if modulus == 1 {
+        return Ok(vec![0; bases.len()]);
+    }
+    let m = modulus as u64;
+    if let Some(mont) = number_theory::MontU64::new(m) {
+        Ok(par::map_indexed(bases.len(), 256, |i| {
+            let base = bases[i].rem_euclid(modulus) as u64;
+            mont.pow(base, exponents[i]) as i64
+        }))
+    } else {
+        Ok(par::map_indexed(bases.len(), 256, |i| {
+            let base = bases[i].rem_euclid(modulus) as u128;
+            number_theory::mod_pow(base, exponents[i], m) as i64
+        }))
+    }
 }
 
 #[cfg(test)]

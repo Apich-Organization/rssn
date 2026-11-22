@@ -701,7 +701,7 @@ fn prime(
         .filter(BigRational::is_integer)?
         .to_integer()
         .to_u64()?;
-    (p < (1 << 62) && sx::is_prime_u64(p)).then_some(Gfp(p))
+    (p < (1 << 62) && sx::is_prime_u64(p)).then_some(Gfp::new(p))
 }
 
 /// The residue of a rational modulo `p`, or `None` when the denominator is

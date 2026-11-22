@@ -77,7 +77,7 @@ impl NativeType for PrimeMatrix {
         if self.data.rows > 256 || self.data.cols > 256 || self.data.nnz() > 65536 {
             return Err(err("prime sparse size budget exceeded"));
         }
-        prime(self.field.0)?;
+        prime(self.field.p)?;
         Ok(())
     }
 }
@@ -85,7 +85,7 @@ fn prime(p: u64) -> Result<se::Gfp, OpError> {
     if !se::is_prime_u64(p) {
         return Err(err("finite-field modulus must be prime"));
     }
-    Ok(se::Gfp(p))
+    Ok(se::Gfp::new(p))
 }
 fn exact_flat(a: &se::SparseMat<BigRational>) -> Result<Dynamic, OpError> {
     let dense = a.to_dense(&mut se::Rationals);
@@ -135,7 +135,7 @@ object_binding!(exact_rational_reconstruct,"num_linear_rational_reconstruct","cr
 object_binding!(exact_prime_sparse_new,"num_linear_prime_sparse_new","","Native exact sparse/domain operation specialized to BigRational or a validated prime field. Coefficients are normalized dimensionless exact values; finite shape, coefficient-bit and work budgets are enforced.",true,(p:u64,rows:usize,cols:usize,ri:Vec<usize>,ci:Vec<usize>,values:Vec<u64>)->NewObject<PrimeMatrix>,|ctx,p,rows,cols,ri,ci,values|{let _=ctx;let mut f=prime(p)?;if rows>256||cols>256||ri.len()!=ci.len()||ri.len()!=values.len()||values.len()>65536{return Err(err("prime matrix shape/allocation budget exceeded"));}let data=se::SparseMat::from_triplets(&mut f,rows,cols,ri.into_iter().zip(ci).zip(values).map(|((r,c),v)|(r,c,v%p))).map_err(err)?;Ok(NewObject::normalized(PrimeMatrix{data,field:f}))});
 object_binding!(exact_berlekamp_massey,"num_linear_berlekamp_massey","crate::kernels::sparse_exact::berlekamp_massey","Native exact sparse/domain operation specialized to BigRational or a validated prime field. Coefficients are normalized dimensionless exact values; finite shape, coefficient-bit and work budgets are enforced.",true,(sequence:Vec<u64>,p:u64)->Vec<u64>,|ctx,sequence,p|{let _=ctx;let f=prime(p)?;if sequence.len()>4096||sequence.iter().any(|v|*v>=p){return Err(err("finite field sequence must have at most 4096 reduced residues"));}Ok(se::berlekamp_massey(&sequence,f))});
 object_binding!(exact_minpoly_wiedemann,"num_linear_minpoly_wiedemann","crate::kernels::sparse_exact::minpoly_wiedemann","Native exact sparse/domain operation specialized to BigRational or a validated prime field. Coefficients are normalized dimensionless exact values; finite shape, coefficient-bit and work budgets are enforced.",true,(a:Handle<PrimeMatrix>,trials:usize,seed:u64)->Option<Vec<u64>>,|ctx,a,trials,seed|{let _=ctx;if trials==0||trials>32{return Err(err("Wiedemann trial budget exceeded"));}a.with(ctx,|a|Ok(se::minpoly_wiedemann(&a.data,a.field,trials,seed)))});
-object_binding!(exact_solve_wiedemann,"num_linear_solve_wiedemann","crate::kernels::sparse_exact::solve_wiedemann","Native exact sparse/domain operation specialized to BigRational or a validated prime field. Coefficients are normalized dimensionless exact values; finite shape, coefficient-bit and work budgets are enforced.",true,(a:Handle<PrimeMatrix>,b:Vec<u64>,trials:usize,seed:u64)->Option<Vec<u64>>,|ctx,a,b,trials,seed|{let _=ctx;if trials==0||trials>32{return Err(err("Wiedemann trial budget exceeded"));}a.with(ctx,|a|{if b.iter().any(|v|*v>=a.field.0){return Err(err("finite field RHS residues must be reduced"));}Ok(se::solve_wiedemann(&a.data,&b,a.field,trials,seed))})});
+object_binding!(exact_solve_wiedemann,"num_linear_solve_wiedemann","crate::kernels::sparse_exact::solve_wiedemann","Native exact sparse/domain operation specialized to BigRational or a validated prime field. Coefficients are normalized dimensionless exact values; finite shape, coefficient-bit and work budgets are enforced.",true,(a:Handle<PrimeMatrix>,b:Vec<u64>,trials:usize,seed:u64)->Option<Vec<u64>>,|ctx,a,b,trials,seed|{let _=ctx;if trials==0||trials>32{return Err(err("Wiedemann trial budget exceeded"));}a.with(ctx,|a|{if b.iter().any(|v|*v>=a.field.p){return Err(err("finite field RHS residues must be reduced"));}Ok(se::solve_wiedemann(&a.data,&b,a.field,trials,seed))})});
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     api::install(i, BINDINGS, "numerical_matrix")
 }

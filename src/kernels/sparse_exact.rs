@@ -52,8 +52,6 @@
 )]
 
 use std::alloc::Layout;
-use std::collections::BTreeMap;
-use std::collections::BTreeSet;
 use std::fmt::Debug;
 
 use num_bigint::BigInt;
@@ -171,12 +169,82 @@ impl Domain for Rationals {
     }
 }
 
-/// The field of integers modulo a prime below `2^63`; elements are reduced
-/// residues.
+/// The field of integers modulo a prime, with the reduction context for that
+/// prime attached.
+///
+/// Elements are reduced residues in `[0, p)`. The context carries a Barrett
+/// reducer, so a multiplication inside an elimination is a multiply, a shift
+/// and at most two subtractions instead of a 128-bit hardware division (30–100
+/// cycles). The previous representation was the bare modulus, which forced
+/// every product through `u128` division.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Gfp(pub u64);
+pub struct Gfp {
+    /// The prime modulus.
+    pub p: u64,
+    reducer: Barrett,
+}
+
+/// Division-free Montgomery arithmetic for odd moduli.
+///
+/// The implementation is [`crate::kernels::modular::Montgomery`]; the name is
+/// kept because the sparse elimination code was written against it.
+pub use crate::kernels::modular::Montgomery as MontGfp;
+
+use crate::kernels::modular::Barrett;
+
+/// A Montgomery context for a modulus the row-accumulation kernel can handle.
+///
+/// An inner product adds up to sixteen products of residues below `p` in a
+/// `u128` before reducing once, which stays below `2^128` only while `p < 2^62`.
+/// A larger modulus keeps the plain reduction path: the shared `Montgomery`
+/// type has no such bound, so the restriction belongs to this caller and is
+/// applied here rather than assumed of the context.
+fn mont_for_rows(p: u64) -> Option<MontGfp> {
+    (p < (1 << 62)).then(|| MontGfp::new(p)).flatten()
+}
+
+/// Division-free Barrett arithmetic for any modulus.
+///
+/// The implementation is [`crate::kernels::modular::Barrett`].
+pub use crate::kernels::modular::Barrett as BarrettGfp;
+
+/// Fast modular inverse of `a` modulo `p` by the extended Euclidean algorithm.
+///
+/// The implementation is [`crate::kernels::modular::mod_inv_u64`]; the name is
+/// kept because the sparse elimination code was written against it.
+pub use crate::kernels::modular::mod_inv_u64 as fast_inv_mod;
 
 impl Gfp {
+    /// The field of integers modulo `p`.
+    ///
+    /// A modulus below two is not a field; such a value keeps the historical
+    /// behaviour of mapping every residue to zero, which the operations below
+    /// check before touching the reducer.
+    #[must_use]
+    pub const fn new(p: u64) -> Self {
+        // `Barrett::new_prime` needs a modulus of at least two. The sentinel is
+        // never consulted, because every operation guards on `p <= 1` first.
+        let modulus = if p < 2 { 2 } else { p };
+        Self {
+            p,
+            reducer: Barrett::new_prime(modulus),
+        }
+    }
+
+    /// The prime modulus.
+    #[inline]
+    #[must_use]
+    pub const fn prime(self) -> u64 {
+        self.p
+    }
+
+    /// The division-free reducer for this modulus.
+    #[inline]
+    #[must_use]
+    pub const fn reducer(self) -> Barrett {
+        self.reducer
+    }
+
     /// `a * b mod p`.
     #[inline]
     #[must_use]
@@ -185,35 +253,55 @@ impl Gfp {
         a: u64,
         b: u64,
     ) -> u64 {
-        super::number_theory::mul_mod(a, b, self.0)
+        self.reducer.mul(a, b)
+    }
+
+    /// `(a + b) mod p`.
+    #[inline]
+    #[must_use]
+    pub const fn add_mod(
+        self,
+        a: u64,
+        b: u64,
+    ) -> u64 {
+        self.reducer.add(a, b)
+    }
+
+    /// `(a - b) mod p`.
+    #[inline]
+    #[must_use]
+    pub const fn sub_mod(
+        self,
+        a: u64,
+        b: u64,
+    ) -> u64 {
+        self.reducer.sub(a, b)
     }
 
     /// `a^e mod p`.
     #[must_use]
     pub const fn pow_mod(
         self,
-        mut a: u64,
-        mut e: u64,
+        a: u64,
+        e: u64,
     ) -> u64 {
-        let mut acc = 1 % self.0;
-        a %= self.0;
-        while e > 0 {
-            if e & 1 == 1 {
-                acc = self.mul_mod(acc, a);
-            }
-            a = self.mul_mod(a, a);
-            e >>= 1;
+        if self.p <= 1 {
+            return 0;
         }
-        acc
+        self.reducer.pow(a, e)
     }
 
-    /// The inverse of `a` (Fermat), or `None` for zero.
+    /// The inverse of `a` modulo `p`, or `None` for zero.
+    #[inline]
     #[must_use]
-    pub fn inv(
+    pub const fn inv(
         self,
         a: u64,
     ) -> Option<u64> {
-        (!a.is_multiple_of(self.0)).then(|| self.pow_mod(a, self.0 - 2))
+        if self.p <= 1 {
+            return None;
+        }
+        self.reducer.inv(a)
     }
 
     /// The residue of an integer.
@@ -222,21 +310,93 @@ impl Gfp {
         self,
         a: &BigInt,
     ) -> u64 {
-        a.mod_floor(&BigInt::from(self.0)).to_u64().unwrap_or(0)
+        if self.p <= 1 {
+            return 0;
+        }
+        if let Some(v) = a.to_i64() {
+            let r = v.unsigned_abs() % self.p;
+            return if v < 0 && r != 0 {
+                self.p - r
+            } else {
+                r
+            };
+        }
+        if let Some(v) = a.to_i128() {
+            let r = (v.unsigned_abs() % u128::from(self.p)) as u64;
+            return if v < 0 && r != 0 {
+                self.p - r
+            } else {
+                r
+            };
+        }
+        let mut rem = (a % BigInt::from(self.p)).to_i128().unwrap_or(0);
+        if rem < 0 {
+            rem += i128::from(self.p);
+        }
+        rem as u64
+    }
+
+    /// Batch modular inversion of non-zero elements in `values` modulo `p`
+    /// using Montgomery's trick: 1 extended GCD plus `3(k - 1)` modular
+    /// multiplications, all division-free, leasing its prefix-product
+    /// workspace from [`crate::kernels::reuse::global_pool`].
+    ///
+    /// Returns `None` if `p <= 1` or any element is divisible by `p`.
+    #[must_use]
+    pub fn batch_inv(
+        self,
+        values: &[u64],
+    ) -> Option<Vec<u64>> {
+        if self.p <= 1 {
+            return None;
+        }
+        let n = values.len();
+        if n == 0 {
+            return Some(Vec::new());
+        }
+        let mut out = vec![0_u64; n];
+        let mut prefix = crate::kernels::reuse::global_pool().scratch_usize(n);
+        prefix.resize(n, 0);
+        // Prefix products in the standard domain: the Barrett reducer needs no
+        // representation change, so the powers of `R` the Montgomery version
+        // had to cancel do not arise.
+        let mut running = 1_u64;
+        for (i, &v) in values.iter().enumerate() {
+            let r = if v >= self.p { v % self.p } else { v };
+            if r == 0 {
+                return None;
+            }
+            prefix[i] = running as usize;
+            running = self.reducer.mul(running, r);
+        }
+        let mut inv_acc = self.inv(running)?;
+        for i in (0..n).rev() {
+            let r = if values[i] >= self.p {
+                values[i] % self.p
+            } else {
+                values[i]
+            };
+            out[i] = self.reducer.mul(inv_acc, prefix[i] as u64);
+            inv_acc = self.reducer.mul(inv_acc, r);
+        }
+        Some(out)
     }
 }
 
 impl Domain for Gfp {
     type E = u64;
 
+    #[inline]
     fn zero(&mut self) -> u64 {
         0
     }
 
+    #[inline]
     fn one(&mut self) -> u64 {
-        1 % self.0
+        1 % self.p
     }
 
+    #[inline]
     fn is_zero(
         &mut self,
         a: &u64,
@@ -244,23 +404,40 @@ impl Domain for Gfp {
         *a == 0
     }
 
+    #[inline]
     fn add(
         &mut self,
         a: &u64,
         b: &u64,
     ) -> u64 {
-        ((u128::from(*a) + u128::from(*b)) % u128::from(self.0)) as u64
+        let p = self.p;
+        let ar = if *a >= p { *a % p } else { *a };
+        let br = if *b >= p { *b % p } else { *b };
+        let (sum, over) = ar.overflowing_add(br);
+        if over || sum >= p {
+            sum.wrapping_sub(p)
+        } else {
+            sum
+        }
     }
 
+    #[inline]
     fn sub(
         &mut self,
         a: &u64,
         b: &u64,
     ) -> u64 {
-        ((u128::from(*a) + u128::from(self.0) - u128::from(*b % self.0)) % u128::from(self.0))
-            as u64
+        let p = self.p;
+        let ar = if *a >= p { *a % p } else { *a };
+        let br = if *b >= p { *b % p } else { *b };
+        if ar >= br {
+            ar - br
+        } else {
+            p - (br - ar)
+        }
     }
 
+    #[inline]
     fn mul(
         &mut self,
         a: &u64,
@@ -269,6 +446,20 @@ impl Domain for Gfp {
         self.mul_mod(*a, *b)
     }
 
+    #[inline]
+    fn neg(
+        &mut self,
+        a: &u64,
+    ) -> u64 {
+        let r = if *a >= self.p {
+            *a % self.p
+        } else {
+            *a
+        };
+        if r == 0 { 0 } else { self.p - r }
+    }
+
+    #[inline]
     fn div(
         &mut self,
         a: &u64,
@@ -276,6 +467,158 @@ impl Domain for Gfp {
     ) -> Option<u64> {
         self.inv(*b).map(|i| self.mul_mod(*a, i))
     }
+}
+
+impl Domain for Barrett {
+    type E = u64;
+
+    #[inline]
+    fn zero(&mut self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn one(&mut self) -> u64 {
+        1 % self.modulus()
+    }
+
+    #[inline]
+    fn is_zero(
+        &mut self,
+        a: &u64,
+    ) -> bool {
+        *a == 0
+    }
+
+    #[inline]
+    fn add(
+        &mut self,
+        a: &u64,
+        b: &u64,
+    ) -> u64 {
+        Barrett::add(*self, *a, *b)
+    }
+
+    #[inline]
+    fn sub(
+        &mut self,
+        a: &u64,
+        b: &u64,
+    ) -> u64 {
+        Barrett::sub(*self, *a, *b)
+    }
+
+    #[inline]
+    fn mul(
+        &mut self,
+        a: &u64,
+        b: &u64,
+    ) -> u64 {
+        Barrett::mul(*self, *a, *b)
+    }
+
+    #[inline]
+    fn neg(
+        &mut self,
+        a: &u64,
+    ) -> u64 {
+        Barrett::neg(*self, *a)
+    }
+
+    #[inline]
+    fn div(
+        &mut self,
+        a: &u64,
+        b: &u64,
+    ) -> Option<u64> {
+        Barrett::div(*self, *a, *b)
+    }
+}
+
+/// Reduces a sparse rational matrix directly to `GF(p)` using Montgomery's
+/// trick batch inversion over all non-trivial denominators, leasing its
+/// workspace from [`crate::kernels::reuse::global_pool`].
+///
+/// Returns `None` if the modulus is below two or any entry has a denominator
+/// divisible by it.
+#[must_use]
+pub fn reduce_rational_matrix_mod_p(
+    matrix: &SparseMat<BigRational>,
+    field: Gfp,
+) -> Option<SparseMat<u64>> {
+    if field.p <= 1 {
+        return None;
+    }
+    let nnz = matrix.nnz();
+    if nnz == 0 {
+        return Some(SparseMat::zeros(matrix.rows, matrix.cols));
+    }
+    let pool = crate::kernels::reuse::global_pool();
+    let mut denoms = pool.scratch_usize(nnz);
+    let mut numer_residues = pool.scratch_usize(nnz);
+    let mut prefix = pool.scratch_usize(nnz);
+    denoms.clear();
+    numer_residues.clear();
+    prefix.clear();
+
+    let mut running = 1_u64;
+    let mut has_nontrivial = false;
+    for row in &matrix.data {
+        for (_, q) in row {
+            let num_r = field.reduce(q.numer());
+            numer_residues.push(num_r as usize);
+            if q.is_integer() {
+                denoms.push(1);
+                prefix.push(0);
+            } else {
+                let den_r = field.reduce(q.denom());
+                if den_r == 0 {
+                    return None;
+                }
+                if den_r == 1 {
+                    denoms.push(1);
+                    prefix.push(0);
+                } else {
+                    has_nontrivial = true;
+                    prefix.push(running as usize);
+                    running = field.mul_mod(running, den_r);
+                    denoms.push(den_r as usize);
+                }
+            }
+        }
+    }
+
+    if has_nontrivial {
+        let mut inv_acc = field.inv(running)?;
+        for idx in (0..nnz).rev() {
+            let d = denoms[idx] as u64;
+            if d > 1 {
+                let d_inv = field.mul_mod(inv_acc, prefix[idx] as u64);
+                inv_acc = field.mul_mod(inv_acc, d);
+                numer_residues[idx] = field.mul_mod(numer_residues[idx] as u64, d_inv) as usize;
+            }
+        }
+    }
+
+    let mut flat_idx = 0_usize;
+    let mut data = Vec::with_capacity(matrix.rows);
+    for row in &matrix.data {
+        let mut out_row = Vec::with_capacity(row.len());
+        for &(col, _) in row {
+            let val = numer_residues[flat_idx] as u64;
+            flat_idx += 1;
+            if val != 0 {
+                out_row.push((col, val));
+            }
+        }
+        data.push(out_row);
+    }
+
+    Some(SparseMat {
+        rows: matrix.rows,
+        cols: matrix.cols,
+        data,
+    })
 }
 
 /// A sparse matrix: per row, the non-zero entries sorted by column.
@@ -314,28 +657,35 @@ impl<E: Clone + Debug> SparseMat<E> {
         cols: usize,
         triplets: impl IntoIterator<Item = (usize, usize, E)>,
     ) -> Result<Self, String> {
-        let mut maps: Vec<BTreeMap<usize, E>> = vec![BTreeMap::new(); rows];
+        let mut raw_rows: Vec<Vec<(usize, E)>> = vec![Vec::new(); rows];
         for (i, j, v) in triplets {
             if i >= rows || j >= cols {
                 return Err(format!(
                     "entry ({i}, {j}) is outside a {rows} x {cols} matrix"
                 ));
             }
-            let merged = match maps[i].get(&j) {
-                | Some(old) => dom.add(old, &v),
-                | None => v,
-            };
-            maps[i].insert(j, merged);
+            raw_rows[i].push((j, v));
         }
         let mut data = Vec::with_capacity(rows);
-        for map in maps {
-            let mut row = Vec::with_capacity(map.len());
-            for (j, v) in map {
-                if !dom.is_zero(&v) {
-                    row.push((j, v));
+        for mut row in raw_rows {
+            if row.is_empty() {
+                data.push(row);
+                continue;
+            }
+            // Stable sort by column preserves input combination order for duplicate positions.
+            row.sort_by_key(|&(j, _)| j);
+            let mut merged_row: Vec<(usize, E)> = Vec::with_capacity(row.len());
+            for (j, v) in row {
+                if let Some((last_col, last_val)) = merged_row.last_mut()
+                    && *last_col == j
+                {
+                    *last_val = dom.add(last_val, &v);
+                } else {
+                    merged_row.push((j, v));
                 }
             }
-            data.push(row);
+            merged_row.retain(|(_, v)| !dom.is_zero(v));
+            data.push(merged_row);
         }
         Ok(Self { rows, cols, data })
     }
@@ -466,8 +816,9 @@ impl<E: Clone + Debug> SparseMat<E> {
 
     /// `self * other`, or `None` when the inner dimensions differ. Each
     /// result row is accumulated from the rows of `other` it touches
-    /// (Gustavson's algorithm), so the cost follows the number of products
-    /// that are actually non-zero.
+    /// (Gustavson's algorithm) using a sparse dense-indexed accumulator with
+    /// pooled index scratch, so the cost follows the number of products that
+    /// are actually non-zero without `BTreeMap` node allocations.
     #[must_use]
     pub fn matmul<D: Domain<E = E>>(
         &self,
@@ -477,24 +828,42 @@ impl<E: Clone + Debug> SparseMat<E> {
         if self.cols != other.rows {
             return None;
         }
+        let n_cols = other.cols;
+        let pool = crate::kernels::reuse::global_pool();
+        let mut marker = pool.scratch_usize(n_cols);
+        marker.resize(n_cols, usize::MAX);
+        let mut touched = pool.scratch_usize(n_cols.min(64));
+        let mut values: Vec<E> = Vec::new();
         let mut data = Vec::with_capacity(self.rows);
+
         for row in &self.data {
-            let mut acc: BTreeMap<usize, E> = BTreeMap::new();
+            touched.clear();
+            values.clear();
             for (k, a) in row {
                 for (j, b) in &other.data[*k] {
                     let term = dom.mul(a, b);
-                    let merged = match acc.get(j) {
-                        | Some(old) => dom.add(old, &term),
-                        | None => term,
-                    };
-                    acc.insert(*j, merged);
+                    let pos = marker[*j];
+                    if pos == usize::MAX {
+                        let idx = values.len();
+                        marker[*j] = idx;
+                        touched.push(*j);
+                        values.push(term);
+                    } else {
+                        values[pos] = dom.add(&values[pos], &term);
+                    }
                 }
             }
-            data.push(
-                acc.into_iter()
-                    .filter(|(_, v)| !dom.is_zero(v))
-                    .collect::<Vec<_>>(),
-            );
+            touched.sort_unstable();
+            let mut out_row = Vec::with_capacity(touched.len());
+            for &col in touched.iter() {
+                let pos = marker[col];
+                marker[col] = usize::MAX;
+                let v = &values[pos];
+                if !dom.is_zero(v) {
+                    out_row.push((col, v.clone()));
+                }
+            }
+            data.push(out_row);
         }
         Some(Self {
             rows: self.rows,
@@ -526,6 +895,27 @@ impl<E: Clone + Debug> SparseMat<E> {
                 })
                 .collect(),
         )
+    }
+
+    /// Computes and caches a symmetric Reverse Cuthill-McKee bandwidth-reducing
+    /// ordering for this matrix's sparsity pattern via
+    /// [`crate::kernels::reuse::ComputeReusePool::sparse_ordering_plan`].
+    #[must_use]
+    pub fn rcm_ordering_plan(&self) -> std::sync::Arc<crate::kernels::reuse::SparseOrderingPlan> {
+        let nnz = self.nnz();
+        let pool = crate::kernels::reuse::global_pool();
+        let mut row_ptrs = pool.scratch_usize(self.rows.saturating_add(1));
+        let mut col_indices = pool.scratch_usize(nnz);
+        row_ptrs.clear();
+        col_indices.clear();
+        row_ptrs.push(0);
+        for row in &self.data {
+            for &(col, _) in row {
+                col_indices.push(col);
+            }
+            row_ptrs.push(col_indices.len());
+        }
+        pool.sparse_ordering_plan(&row_ptrs, &col_indices)
     }
 }
 
@@ -563,31 +953,137 @@ fn axpy_rows<D: Domain>(
     out
 }
 
+/// Intrusive bucketed priority queue of active rows keyed by `(width, row_index)`,
+/// replacing `BTreeSet<(usize, usize)>` with `O(1)` bucket updates and tie-breaking
+/// in ascending row order.
+struct RowDegreeQueue {
+    /// `buckets[w]`: sorted list of active row indices with pivotable width `w`.
+    buckets: Vec<Vec<usize>>,
+    /// Current recorded width for each row (`0` if inactive or zero width).
+    row_width: Vec<usize>,
+    /// Lower bound on the minimum non-empty width bucket (`>= 1`).
+    min_width: usize,
+    /// Number of active rows currently stored in buckets `>= 1`.
+    active_count: usize,
+}
+
+impl RowDegreeQueue {
+    fn new(
+        rows: usize,
+        max_width: usize,
+        initial_widths: &[usize],
+    ) -> Self {
+        let mut buckets = vec![Vec::new(); max_width.saturating_add(1)];
+        let mut row_width = vec![0_usize; rows];
+        let mut min_width = max_width.saturating_add(1);
+        let mut active_count = 0_usize;
+        // Iterating i in 0..rows naturally populates each bucket in ascending row order!
+        for (i, &w) in initial_widths.iter().enumerate() {
+            row_width[i] = w;
+            if w > 0 {
+                buckets[w].push(i);
+                if w < min_width {
+                    min_width = w;
+                }
+                active_count += 1;
+            }
+        }
+        Self {
+            buckets,
+            row_width,
+            min_width,
+            active_count,
+        }
+    }
+
+    #[inline]
+    fn pop_first(&mut self) -> Option<(usize, usize)> {
+        if self.active_count == 0 {
+            return None;
+        }
+        while self.min_width < self.buckets.len() && self.buckets[self.min_width].is_empty() {
+            self.min_width += 1;
+        }
+        if self.min_width >= self.buckets.len() {
+            return None;
+        }
+        let w = self.min_width;
+        let bucket = &mut self.buckets[w];
+        let pr = bucket.remove(0);
+        self.row_width[pr] = 0;
+        self.active_count -= 1;
+        Some((w, pr))
+    }
+
+    #[inline]
+    fn update_width(
+        &mut self,
+        row: usize,
+        new_width: usize,
+    ) {
+        let old_width = self.row_width[row];
+        if old_width == new_width {
+            return;
+        }
+        if old_width > 0 {
+            let bucket = &mut self.buckets[old_width];
+            if let Ok(pos) = bucket.binary_search(&row) {
+                bucket.remove(pos);
+                self.active_count -= 1;
+            }
+        }
+        self.row_width[row] = new_width;
+        if new_width > 0 {
+            if new_width >= self.buckets.len() {
+                self.buckets.resize(new_width.saturating_add(1), Vec::new());
+            }
+            let bucket = &mut self.buckets[new_width];
+            let pos = bucket.partition_point(|&r| r < row);
+            bucket.insert(pos, row);
+            if new_width < self.min_width {
+                self.min_width = new_width;
+            }
+            self.active_count += 1;
+        }
+    }
+}
+
 struct EliminationWorkspace<E> {
     // A row can be listed more than once if a column disappears and fills in
     // again. Active rows are re-checked before each attempted elimination.
     candidates: Vec<Vec<usize>>,
     counts: Vec<usize>,
     scratch: Vec<(usize, E)>,
+    pivot_able_widths: Vec<usize>,
+    pivot_cols: usize,
 }
 
 impl<E> EliminationWorkspace<E> {
     fn new(
         rows: &[Vec<(usize, E)>],
         cols: usize,
+        pivot_cols: usize,
     ) -> Self {
         let mut candidates = vec![Vec::new(); cols];
         let mut counts = vec![0; cols];
+        let mut pivot_able_widths = Vec::with_capacity(rows.len());
         for (i, row) in rows.iter().enumerate() {
+            let mut w = 0_usize;
             for (j, _) in row {
                 candidates[*j].push(i);
                 counts[*j] += 1;
+                if *j < pivot_cols {
+                    w += 1;
+                }
             }
+            pivot_able_widths.push(w);
         }
         Self {
             candidates,
             counts,
             scratch: Vec::new(),
+            pivot_able_widths,
+            pivot_cols,
         }
     }
 
@@ -599,11 +1095,16 @@ impl<E> EliminationWorkspace<E> {
         minus_factor: &E,
         pivot_row: &[(usize, E)],
         pivot_col: usize,
-    ) {
-        self.scratch.reserve(row.len());
+    ) -> usize {
+        self.scratch.reserve(row.len() + pivot_row.len());
         let mut left = row.drain(..).peekable();
+        let mut new_pivot_width = 0_usize;
+        let pivot_cols = self.pivot_cols;
         for &(col, ref pivot_value) in pivot_row {
             while let Some(entry) = left.next_if(|(j, _)| *j < col) {
+                if entry.0 < pivot_cols {
+                    new_pivot_width += 1;
+                }
                 self.scratch.push(entry);
             }
             let term = dom.mul(minus_factor, pivot_value);
@@ -624,12 +1125,22 @@ impl<E> EliminationWorkspace<E> {
                     self.candidates[col].push(target);
                     self.counts[col] += 1;
                 }
+                if col < pivot_cols {
+                    new_pivot_width += 1;
+                }
                 self.scratch.push((col, value));
             }
         }
-        self.scratch.extend(left);
+        for entry in left {
+            if entry.0 < pivot_cols {
+                new_pivot_width += 1;
+            }
+            self.scratch.push(entry);
+        }
+        self.pivot_able_widths[target] = new_pivot_width;
         // Draining leaves the original allocation available for the next row.
         std::mem::swap(row, &mut self.scratch);
+        new_pivot_width
     }
 }
 
@@ -682,12 +1193,19 @@ impl<E: Clone + Debug> Echelon<E> {
 /// Whether a sequence of distinct indices is an odd permutation of its
 /// sorted order (counted by cycles of the ranking).
 fn parity(sequence: &[usize]) -> bool {
-    let mut order: Vec<usize> = (0..sequence.len()).collect();
+    let n = sequence.len();
+    if n <= 1 {
+        return false;
+    }
+    let pool = crate::kernels::reuse::global_pool();
+    let mut order = pool.scratch_usize(n);
+    order.clear();
+    order.extend(0..n);
     order.sort_by_key(|&k| sequence[k]);
     // `order[r]` is the position holding the r-th smallest value.
-    let mut seen = vec![false; order.len()];
+    let mut seen = vec![false; n];
     let mut odd = false;
-    for start in 0..order.len() {
+    for start in 0..n {
         if seen[start] {
             continue;
         }
@@ -705,17 +1223,15 @@ fn parity(sequence: &[usize]) -> bool {
     odd
 }
 
-fn scan_pivot_row<E>(
-    rows: &[Vec<(usize, E)>],
+fn scan_pivot_row(
+    widths: &[usize],
     active: &[bool],
-    width: impl Fn(&[(usize, E)]) -> usize,
 ) -> Option<(usize, usize)> {
     let mut best = None;
-    for (i, row) in rows.iter().enumerate() {
+    for (i, &w) in widths.iter().enumerate() {
         if !active[i] {
             continue;
         }
-        let w = width(row);
         if w > 0 && best.is_none_or(|(bw, _)| w < bw) {
             best = Some((w, i));
             if w == 1 {
@@ -747,62 +1263,50 @@ fn echelon_owned<D: Domain>(
     pivot_cols: usize,
     record: bool,
 ) -> Echelon<D::E> {
-    const INDEXED_PIVOT_MIN_ROWS: usize = 128;
+    const INDEXED_PIVOT_MIN_ROWS: usize = 64;
     let pivot_cols = pivot_cols.min(matrix.cols);
     let mut rows = matrix.data;
     let mut active = vec![true; matrix.rows];
-    let mut workspace = EliminationWorkspace::new(&rows, matrix.cols);
-    let width = |row: &[(usize, D::E)]| {
-        if pivot_cols == matrix.cols {
-            row.len()
-        } else {
-            row.partition_point(|(j, _)| *j < pivot_cols)
-        }
-    };
-    // A short scan avoids index allocation for small matrices. The index
-    // holds one key per eligible row and breaks ties in the same row order.
-    let mut eligible: Option<BTreeSet<_>> = (rows.len() >= INDEXED_PIVOT_MIN_ROWS).then(|| {
-        rows.iter()
-            .enumerate()
-            .filter_map(|(i, row)| {
-                let w = width(row);
-                (w > 0).then_some((w, i))
-            })
-            .collect()
-    });
+    let mut workspace = EliminationWorkspace::new(&rows, matrix.cols, pivot_cols);
+    let mut queue = (rows.len() >= INDEXED_PIVOT_MIN_ROWS)
+        .then(|| RowDegreeQueue::new(rows.len(), pivot_cols, &workspace.pivot_able_widths));
     let mut out = Echelon {
         cols: matrix.cols,
-        pivots: Vec::new(),
-        rows: Vec::new(),
+        pivots: Vec::with_capacity(matrix.rows.min(pivot_cols)),
+        rows: Vec::with_capacity(matrix.rows.min(pivot_cols)),
         ops: Vec::new(),
         rest: Vec::new(),
     };
     loop {
-        let best = eligible.as_mut().map_or_else(
-            || scan_pivot_row(&rows, &active, width),
-            BTreeSet::pop_first,
+        let best = queue.as_mut().map_or_else(
+            || scan_pivot_row(&workspace.pivot_able_widths, &active),
+            RowDegreeQueue::pop_first,
         );
         let Some((pivot_width, pr)) = best else {
             break;
         };
         // In that row, the column with the fewest remaining entries.
-        let pc = rows[pr][..pivot_width]
-            .iter()
-            .map(|(j, _)| *j)
-            .min_by_key(|&j| (workspace.counts[j], j))
-            .unwrap_or(0);
-        let Ok(pivot_index) = rows[pr].binary_search_by_key(&pc, |(j, _)| *j) else {
-            break;
-        };
+        let mut pc = rows[pr][0].0;
+        let mut best_key = (workspace.counts[pc], pc);
+        let mut pivot_index = 0_usize;
+        for (idx, &(j, _)) in rows[pr][..pivot_width].iter().enumerate().skip(1) {
+            let key = (workspace.counts[j], j);
+            if key < best_key {
+                best_key = key;
+                pc = j;
+                pivot_index = idx;
+            }
+        }
         active[pr] = false;
+        workspace.pivot_able_widths[pr] = 0;
         let index = out.pivots.len();
         let pivot_row = std::mem::take(&mut rows[pr]);
         let pivot = &pivot_row[pivot_index].1;
         for (j, _) in &pivot_row {
             workspace.counts[*j] = workspace.counts[*j].saturating_sub(1);
         }
-        let targets = std::mem::take(&mut workspace.candidates[pc]);
-        for target in targets {
+        let mut targets = std::mem::take(&mut workspace.candidates[pc]);
+        for &target in &targets {
             if !active[target] {
                 continue;
             }
@@ -813,21 +1317,17 @@ fn echelon_owned<D: Domain>(
                 continue;
             };
             let minus = dom.neg(&factor);
-            let previous_width = eligible.as_ref().map(|_| width(&rows[target]));
-            workspace.update(dom, target, &mut rows[target], &minus, &pivot_row, pc);
-            if let (Some(index), Some(previous_width)) = (&mut eligible, previous_width) {
-                let updated_width = width(&rows[target]);
-                if updated_width != previous_width {
-                    index.remove(&(previous_width, target));
-                    if updated_width != 0 {
-                        index.insert((updated_width, target));
-                    }
-                }
+            let updated_width =
+                workspace.update(dom, target, &mut rows[target], &minus, &pivot_row, pc);
+            if let Some(q) = &mut queue {
+                q.update_width(target, updated_width);
             }
             if record {
                 out.ops.push((target, index, factor));
             }
         }
+        targets.clear();
+        workspace.candidates[pc] = targets;
         out.pivots.push((pr, pc));
         out.rows.push(pivot_row);
     }
@@ -837,6 +1337,82 @@ fn echelon_owned<D: Domain>(
         }
     }
     out
+}
+
+/// Reduced row echelon form (Gauss-Jordan form) of a sparse matrix over `dom`.
+///
+/// Scales every pivot row so its pivot entry is `1` and eliminates each pivot
+/// column from all earlier pivot rows as well as subsequent rows. Returns the
+/// reduced [`SparseMat<D::E>`] with pivot rows placed in canonical order at the
+/// top followed by any zero rows, together with the sorted list of pivot columns.
+pub fn rref<D: Domain>(
+    dom: &mut D,
+    matrix: &SparseMat<D::E>,
+) -> (SparseMat<D::E>, Vec<usize>) {
+    let mut e = echelon(dom, matrix, matrix.cols, false);
+    let rank = e.rank();
+    if rank == 0 {
+        return (SparseMat::zeros(matrix.rows, matrix.cols), Vec::new());
+    }
+    // Order pivot rows by ascending pivot column.
+    let mut perm: Vec<usize> = (0..rank).collect();
+    perm.sort_unstable_by_key(|&k| e.pivots[k].1);
+
+    let mut piv_cols: Vec<usize> = Vec::with_capacity(rank);
+    let mut piv_rows: Vec<Vec<(usize, D::E)>> = Vec::with_capacity(rank);
+    for k in perm {
+        let pc = e.pivots[k].1;
+        let row = std::mem::take(&mut e.rows[k]);
+        piv_cols.push(pc);
+        piv_rows.push(row);
+    }
+
+    // Normalize each pivot row so its pivot entry is 1.
+    for k in 0..rank {
+        let pc = piv_cols[k];
+        if let Some(piv_val) = entry(&piv_rows[k], pc).cloned()
+            && let Some(inv) = {
+                // `one` takes the domain mutably, so it is materialised before
+                // the borrow `div` needs.
+                let one = dom.one();
+                dom.div(&one, &piv_val)
+            }
+        {
+            for (col, val) in &mut piv_rows[k] {
+                if *col == pc {
+                    *val = dom.one();
+                } else {
+                    *val = dom.mul(val, &inv);
+                }
+            }
+        }
+    }
+
+    // Eliminate upward from k = rank - 1 down to 0.
+    for k in (0..rank).rev() {
+        let pc = piv_cols[k];
+        let pivot_row = piv_rows[k].clone();
+        for target in 0..k {
+            if let Some(factor) = entry(&piv_rows[target], pc).cloned() {
+                let minus = dom.neg(&factor);
+                let mut merged = axpy_rows(dom, &piv_rows[target], &minus, &pivot_row);
+                // Ensure the pivot column itself is removed even in unsimplified symbolic domains.
+                merged.retain(|(col, _)| *col != pc);
+                piv_rows[target] = merged;
+            }
+        }
+    }
+
+    let mut data = piv_rows;
+    data.resize(matrix.rows, Vec::new());
+    (
+        SparseMat {
+            rows: matrix.rows,
+            cols: matrix.cols,
+            data,
+        },
+        piv_cols,
+    )
 }
 
 /// The rank of a matrix.
@@ -1069,6 +1645,10 @@ fn norm_bound<'a>(values: impl Iterator<Item = &'a BigInt>) -> BigInt {
 /// The determinant of a square rational matrix, exactly, by modular
 /// determinants combined with the Chinese remainder theorem up to
 /// Hadamard's bound. `None` when the matrix is not square.
+///
+/// Evaluates word-sized prime moduli in parallel via [`crate::kernels::par::map_indexed`]
+/// when [`crate::execution::should_split_work`] indicates enough work, and folds
+/// the modular determinants in deterministic prime order via incremental CRT.
 #[must_use]
 pub fn det_rational(matrix: &SparseMat<BigRational>) -> Option<BigRational> {
     if matrix.rows != matrix.cols {
@@ -1088,22 +1668,53 @@ pub fn det_rational(matrix: &SparseMat<BigRational>) -> Option<BigRational> {
         .map(|row| norm_bound(row.iter().map(|(_, v)| v)))
         .product();
     let target = bound * BigInt::from(2) + BigInt::one();
+
+    // Pre-collect the exact list of word primes needed to exceed `target`.
+    let mut primes = Vec::new();
+    let mut prod_check = BigInt::one();
+    for p in word_primes() {
+        primes.push(p);
+        prod_check *= BigInt::from(p);
+        if prod_check > target {
+            break;
+        }
+    }
+
+    let num_primes = primes.len();
+    let nnz = integer.nnz().max(integer.rows);
+    let per_prime_work = nnz.saturating_mul(integer.rows.max(1));
+    let residues: Vec<Option<u64>> =
+        if crate::execution::should_split_work(num_primes, per_prime_work) {
+            crate::kernels::par::map_indexed(num_primes, 2, |idx| {
+                let p = primes[idx];
+                let mut field = Gfp::new(p);
+                let reduced = reduce_matrix(&integer, field);
+                det(&mut field, &reduced)
+            })
+        } else {
+            primes
+                .iter()
+                .map(|&p| {
+                    let mut field = Gfp::new(p);
+                    let reduced = reduce_matrix(&integer, field);
+                    det(&mut field, &reduced)
+                })
+                .collect()
+        };
+
     let mut modulus = BigInt::one();
     let mut residue = BigInt::zero();
-    for p in word_primes() {
-        let mut field = Gfp(p);
-        let reduced = reduce_matrix(&integer, field);
-        let d = det(&mut field, &reduced)?;
+    for (&p, maybe_d) in primes.iter().zip(residues) {
+        let d = maybe_d?;
+        let field = Gfp::new(p);
+        let mut dom = field;
         // Chinese remainder: residue + modulus * t = d (mod p).
         let have = field.reduce(&residue);
-        let diff = field.sub(&d, &have);
+        let diff = dom.sub(&d, &have);
         let inv = field.inv(field.reduce(&modulus))?;
         let t = field.mul_mod(diff, inv);
         residue += &modulus * BigInt::from(t);
         modulus *= BigInt::from(p);
-        if modulus > target {
-            break;
-        }
     }
     // The symmetric representative.
     if &residue * BigInt::from(2) > modulus {
@@ -1139,9 +1750,13 @@ pub fn rational_reconstruct(
 }
 
 /// A sparse factorisation modulo a prime, kept for repeated solves.
+///
+/// Precomputes the inverse of every pivot in the echelon form and uses
+/// Montgomery/Barrett arithmetic plus pooled scratch buffers for each solve step.
 struct ModularFactor {
     field: Gfp,
     echelon: Echelon<u64>,
+    pivot_invs: Vec<u64>,
     n: usize,
 }
 
@@ -1152,9 +1767,18 @@ impl ModularFactor {
     ) -> Option<Self> {
         let mut dom = field;
         let echelon = echelon(&mut dom, matrix, matrix.cols, true);
-        (echelon.rank() == matrix.rows).then_some(Self {
+        if echelon.rank() != matrix.rows {
+            return None;
+        }
+        let mut pivot_vals = Vec::with_capacity(echelon.pivots.len());
+        for (row, &(_, pc)) in echelon.rows.iter().zip(&echelon.pivots) {
+            pivot_vals.push(*entry(row, pc)?);
+        }
+        let pivot_invs = field.batch_inv(&pivot_vals)?;
+        Some(Self {
             field,
             echelon,
+            pivot_invs,
             n: matrix.cols,
         })
     }
@@ -1165,16 +1789,118 @@ impl ModularFactor {
         b: &[u64],
     ) -> Option<Vec<u64>> {
         let mut dom = self.field;
-        let mut r = b.to_vec();
+        let pool = crate::kernels::reuse::global_pool();
+        let mut r = pool.scratch_usize(b.len());
+        r.clear();
+        r.extend(b.iter().map(|&v| v as usize));
         for &(target, index, factor) in &self.echelon.ops {
-            let source = r[self.echelon.pivots[index].0];
-            let scaled = dom.mul(&factor, &source);
-            r[target] = dom.sub(&r[target], &scaled);
+            let source = r[self.echelon.pivots[index].0] as u64;
+            if source != 0 {
+                let scaled = dom.mul(&factor, &source);
+                let cur = r[target] as u64;
+                r[target] = dom.sub(&cur, &scaled) as usize;
+            }
         }
-        let rhs: Vec<u64> = self.echelon.pivots.iter().map(|&(pr, _)| r[pr]).collect();
         let mut x = vec![0_u64; self.n];
-        back_substitute(&mut dom, &self.echelon, &mut x, &rhs, self.n)?;
+        for k in (0..self.echelon.pivots.len()).rev() {
+            let (pr, pc) = self.echelon.pivots[k];
+            let mut acc = r[pr] as u64;
+            for &(j, v) in &self.echelon.rows[k] {
+                if j != pc && j < self.n {
+                    let xj = x[j];
+                    if xj != 0 {
+                        let term = dom.mul(&v, &xj);
+                        acc = dom.sub(&acc, &term);
+                    }
+                }
+            }
+            x[pc] = dom.mul(&acc, &self.pivot_invs[k]);
+        }
         Some(x)
+    }
+}
+
+/// Flat CSR representation of an integer sparse matrix for fast `A * d` products
+/// with `u64` digit vectors during Dixon `p`-adic lifting.
+struct IntegerCsr {
+    rows: usize,
+    row_ptr: Vec<usize>,
+    col_idx: Vec<usize>,
+    values: Vec<BigInt>,
+    small_i64: Option<Vec<i64>>,
+}
+
+impl IntegerCsr {
+    fn from_sparse(matrix: &SparseMat<BigInt>) -> Self {
+        let nnz = matrix.nnz();
+        let mut row_ptr = Vec::with_capacity(matrix.rows.saturating_add(1));
+        let mut col_idx = Vec::with_capacity(nnz);
+        let mut values = Vec::with_capacity(nnz);
+        let mut small_vals = Vec::with_capacity(nnz);
+        let mut all_small = true;
+        row_ptr.push(0);
+        for row in &matrix.data {
+            for (col, val) in row {
+                col_idx.push(*col);
+                if all_small {
+                    if let Some(v64) = val.to_i64() {
+                        small_vals.push(v64);
+                    } else {
+                        all_small = false;
+                    }
+                }
+                values.push(val.clone());
+            }
+            row_ptr.push(col_idx.len());
+        }
+        Self {
+            rows: matrix.rows,
+            row_ptr,
+            col_idx,
+            values,
+            small_i64: all_small.then_some(small_vals),
+        }
+    }
+
+    fn mul_digits(
+        &self,
+        digits: &[u64],
+        out: &mut Vec<BigInt>,
+    ) {
+        let n = self.rows;
+        let nnz = self.col_idx.len();
+        let grain = if crate::execution::should_split_work(n, (nnz / n.max(1)).max(16)) {
+            64
+        } else {
+            usize::MAX
+        };
+        if let Some(small) = &self.small_i64 {
+            crate::kernels::par::map_indexed_into(n, grain, out, |i| {
+                let start = self.row_ptr[i];
+                let end = self.row_ptr[i + 1];
+                let mut acc = 0_i128;
+                for k in start..end {
+                    let d = digits[self.col_idx[k]];
+                    if d != 0 {
+                        acc += i128::from(small[k]) * i128::from(d);
+                    }
+                }
+                BigInt::from(acc)
+            });
+        } else {
+            crate::kernels::par::map_indexed_into(n, grain, out, |i| {
+                let start = self.row_ptr[i];
+                let end = self.row_ptr[i + 1];
+                let mut acc = BigInt::zero();
+                for k in start..end {
+                    let d = digits[self.col_idx[k]];
+                    if d != 0 {
+                        acc += &self.values[k] * BigInt::from(d);
+                    }
+                }
+                acc
+            });
+        }
     }
 }
 
@@ -1196,32 +1922,42 @@ pub fn solve_dixon(
     matrix: &SparseMat<BigRational>,
     b: &[BigRational],
 ) -> Option<Vec<BigRational>> {
-    let n = matrix.rows;
-    if n != matrix.cols || b.len() != n {
+    if b.len() != matrix.rows {
         return None;
     }
-    if n == 0 {
+    let mut sols = solve_dixon_multi(matrix, std::slice::from_ref(&b.to_vec()))?;
+    sols.pop()
+}
+
+/// Solves a square non-singular rational system `A X = B` for multiple
+/// right-hand sides `rhs` simultaneously by Dixon's `p`-adic lifting,
+/// sharing a single modular factorization of `A` and a single flat CSR
+/// workspace across all right-hand side columns.
+///
+/// Returns `None` when `matrix` is not square, any vector in `rhs` does not
+/// have length `matrix.rows`, or `matrix` is singular.
+#[must_use]
+pub fn solve_dixon_multi(
+    matrix: &SparseMat<BigRational>,
+    rhs: &[Vec<BigRational>],
+) -> Option<Vec<Vec<BigRational>>> {
+    let n = matrix.rows;
+    if n != matrix.cols || rhs.iter().any(|b| b.len() != n) {
+        return None;
+    }
+    if rhs.is_empty() {
         return Some(Vec::new());
     }
+    if n == 0 {
+        return Some(vec![Vec::new(); rhs.len()]);
+    }
     let (integer, scales) = integer_rows(matrix);
-    // Scale each right-hand side with its row, then clear what is left.
-    let scaled: Vec<BigRational> = b
-        .iter()
-        .zip(&scales)
-        .map(|(v, s)| v * BigRational::from(s.clone()))
-        .collect();
-    let common = scaled
-        .iter()
-        .fold(BigInt::one(), |acc, v| acc.lcm(v.denom()));
-    let rhs: Vec<BigInt> = scaled
-        .iter()
-        .map(|v| (v * BigRational::from(common.clone())).to_integer())
-        .collect();
     let (field, factor) = word_primes().take(4).find_map(|p| {
-        let field = Gfp(p);
+        let field = Gfp::new(p);
         ModularFactor::new(&reduce_matrix(&integer, field), field).map(|f| (field, f))
     })?;
-    let p = BigInt::from(field.0);
+    let p = BigInt::from(field.p);
+
     // Cramer's rule with Hadamard's inequality bounds numerators and
     // denominators of the solution of the integer system.
     let transposed = integer.transpose();
@@ -1230,46 +1966,229 @@ pub fn solve_dixon(
         .iter()
         .map(|column| norm_bound(column.iter().map(|(_, v)| v)))
         .product();
-    let limit = &hadamard * &hadamard * norm_bound(rhs.iter()) * BigInt::from(4);
-    let mut ints = BigIntegers;
-    let mut residual = rhs.clone();
-    let mut lifted = vec![BigInt::zero(); n];
-    let mut power = BigInt::one();
-    let mut next_try = 4_usize;
-    let mut step = 0_usize;
-    loop {
-        let digits = factor.solve(&residual.iter().map(|v| field.reduce(v)).collect::<Vec<_>>())?;
-        let digit_ints: Vec<BigInt> = digits.iter().map(|&d| BigInt::from(d)).collect();
-        let product = integer.matvec(&mut ints, &digit_ints)?;
-        for ((r, ax), (x, d)) in residual
-            .iter_mut()
-            .zip(&product)
-            .zip(lifted.iter_mut().zip(&digit_ints))
-        {
-            // Exact: r = A d (mod p) by construction.
-            *r = (&*r - ax) / &p;
-            *x += d * &power;
-        }
-        power *= &p;
-        step += 1;
-        let done = power > limit;
-        // Small solutions are found long before the bound; try early, at
-        // geometrically spaced steps, and always at the bound.
-        if step == next_try || done || residual.iter().all(Zero::is_zero) {
-            next_try = next_try.saturating_mul(2);
-            let candidate: Option<Vec<BigRational>> = lifted
-                .iter()
-                .map(|v| rational_reconstruct(v, &power))
-                .collect();
-            if let Some(x) = candidate
-                && verifies(&integer, &rhs, &x)
+    let hadamard_sq_4 = &hadamard * &hadamard * BigInt::from(4);
+    let csr = IntegerCsr::from_sparse(&integer);
+
+    let lift_one = |b: &Vec<BigRational>| -> Option<Vec<BigRational>> {
+        let scaled: Vec<BigRational> = b
+            .iter()
+            .zip(&scales)
+            .map(|(v, s)| v * BigRational::from(s.clone()))
+            .collect();
+        let common = scaled
+            .iter()
+            .fold(BigInt::one(), |acc, v| acc.lcm(v.denom()));
+        let int_rhs: Vec<BigInt> = scaled
+            .iter()
+            .map(|v| (v * BigRational::from(common.clone())).to_integer())
+            .collect();
+        let limit = &hadamard_sq_4 * norm_bound(int_rhs.iter());
+
+        let pool = crate::kernels::reuse::global_pool();
+        let mut res_mod_p = pool.scratch_usize(n);
+        let mut residual = int_rhs.clone();
+        let mut lifted = vec![BigInt::zero(); n];
+        let mut product = Vec::with_capacity(n);
+        let mut power = BigInt::one();
+        let mut next_try = 4_usize;
+        let mut step = 0_usize;
+
+        loop {
+            res_mod_p.clear();
+            res_mod_p.extend(residual.iter().map(|v| field.reduce(v) as usize));
+            let digits =
+                factor.solve(&res_mod_p.iter().map(|&v| v as u64).collect::<Vec<u64>>())?;
+            csr.mul_digits(&digits, &mut product);
+            for ((r, ax), (x, &d)) in residual
+                .iter_mut()
+                .zip(&product)
+                .zip(lifted.iter_mut().zip(&digits))
             {
-                let unscale = BigRational::from(common);
-                return Some(x.into_iter().map(|v| v / &unscale).collect());
+                // Exact: r = A d (mod p) by construction.
+                *r = (&*r - ax) / &p;
+                if d != 0 {
+                    *x += BigInt::from(d) * &power;
+                }
             }
-            if done {
-                return None;
+            power *= &p;
+            step += 1;
+            let done = power > limit;
+            // Small solutions are found long before the bound; try early, at
+            // geometrically spaced steps, and always at the bound.
+            if step == next_try || done || residual.iter().all(Zero::is_zero) {
+                next_try = next_try.saturating_mul(2);
+                let candidate: Option<Vec<BigRational>> = lifted
+                    .iter()
+                    .map(|v| rational_reconstruct(v, &power))
+                    .collect();
+                if let Some(x) = candidate
+                    && verifies(&integer, &int_rhs, &x)
+                {
+                    let unscale = BigRational::from(common);
+                    return Some(x.into_iter().map(|v| v / &unscale).collect());
+                }
+                if done {
+                    return None;
+                }
             }
+        }
+    };
+
+    let k = rhs.len();
+    let per_rhs_work = integer.nnz().max(n).saturating_mul(8);
+    if crate::execution::should_split_work(k, per_rhs_work) {
+        crate::kernels::par::try_map_indexed(k, 2, |idx| lift_one(&rhs[idx]).ok_or(())).ok()
+    } else {
+        rhs.iter().map(lift_one).collect()
+    }
+}
+
+/// Flattened Compressed Sparse Row (CSR) matrix in Montgomery domain for
+/// division-free Wiedemann Krylov sequences.
+///
+/// Each row product accumulates `u128` products in Montgomery representation
+/// and performs a single `MontGfp::redc` at the end of the row (chunked every
+/// 16 entries so `u128` never overflows for `p < 2^62`).
+struct MontgomeryCsr {
+    rows: usize,
+    cols: usize,
+    row_ptr: Vec<usize>,
+    col_idx: Vec<usize>,
+    val_mont: Vec<u64>,
+    mont: Option<MontGfp>,
+    field: Gfp,
+}
+
+impl MontgomeryCsr {
+    fn new(
+        matrix: &SparseMat<u64>,
+        field: Gfp,
+    ) -> Self {
+        let nnz = matrix.nnz();
+        let mut row_ptr = Vec::with_capacity(matrix.rows.saturating_add(1));
+        let mut col_idx = Vec::with_capacity(nnz);
+        let mut val_mont = Vec::with_capacity(nnz);
+        let mont = mont_for_rows(field.p);
+        row_ptr.push(0);
+        for row in &matrix.data {
+            for &(c, v) in row {
+                let vr = v % field.p;
+                if vr != 0 {
+                    col_idx.push(c);
+                    val_mont.push(mont.map_or(vr, |m| m.to_mont(vr)));
+                }
+            }
+            row_ptr.push(col_idx.len());
+        }
+        Self {
+            rows: matrix.rows,
+            cols: matrix.cols,
+            row_ptr,
+            col_idx,
+            val_mont,
+            mont,
+            field,
+        }
+    }
+
+    #[inline]
+    fn row_dot(
+        &self,
+        row: usize,
+        x: &[usize],
+    ) -> usize {
+        let start = self.row_ptr[row];
+        let end = self.row_ptr[row + 1];
+        if start == end {
+            return 0;
+        }
+        let cols = &self.col_idx[start..end];
+        let vals = &self.val_mont[start..end];
+        if let Some(m) = self.mont {
+            // For p < 2^62, each product is < 2^124, so up to 16 products fit in u128 (< 2^128).
+            // Chunking by 16 and taking redc or modulo p*2^64 avoids all overflow and hardware division!
+            let mut total = 0_u64;
+            for (c_chunk, v_chunk) in cols.chunks(16).zip(vals.chunks(16)) {
+                let mut sum = 0_u128;
+                for (&c, &v) in c_chunk.iter().zip(v_chunk) {
+                    sum += (v as u128) * (x[c] as u128);
+                }
+                // Split 128-bit sum into low 64 bits and high 64 bits:
+                // redc(lo) + hi mod p = sum * R^{-1} mod p.
+                let lo = (sum as u64) as u128;
+                let hi = (sum >> 64) as u64;
+                let red_lo = m.redc(lo);
+                let red_hi = if hi >= m.modulus() {
+                    hi % m.modulus()
+                } else {
+                    hi
+                };
+                let chunk_val = m.add_mont(red_lo, red_hi);
+                total = m.add_mont(total, chunk_val);
+            }
+            total as usize
+        } else {
+            let p = self.field.p as u128;
+            let mut sum = 0_u128;
+            for (&c, &v) in cols.iter().zip(vals) {
+                sum = (sum + (v as u128) * (x[c] as u128)) % p;
+            }
+            (sum as u64) as usize
+        }
+    }
+
+    fn spmv_into(
+        &self,
+        x: &[usize],
+        y: &mut Vec<usize>,
+    ) {
+        let n = self.rows;
+        let nnz = self.col_idx.len();
+        let work_per_row = (nnz / n.max(1)).max(4);
+        let grain = if crate::execution::should_split_work(n, work_per_row) {
+            128
+        } else {
+            usize::MAX
+        };
+        crate::kernels::par::map_indexed_into(n, grain, y, |i| self.row_dot(i, x));
+    }
+
+    #[inline]
+    fn dot(
+        &self,
+        u: &[u64],
+        w: &[usize],
+    ) -> u64 {
+        if let Some(m) = self.mont {
+            // u is in standard domain, w is instandard domain (< p).
+            // Delayed u128 accumulation with chunks of 16, single reduction per chunk!
+            let mut total = 0_u64;
+            for (u_chunk, w_chunk) in u.chunks(16).zip(w.chunks(16)) {
+                let mut sum = 0_u128;
+                for (&ui, &wi) in u_chunk.iter().zip(w_chunk) {
+                    sum += (ui as u128) * (wi as u128);
+                }
+                let lo = (sum as u64) as u128;
+                let hi = (sum >> 64) as u64;
+                let red_lo = m.redc(lo);
+                let red_hi = if hi >= m.modulus() {
+                    hi % m.modulus()
+                } else {
+                    hi
+                };
+                // chunk_val = sum * R^{-1} mod p; we convert back via mul_mont(..., r2_mod_p) at the end!
+                let chunk_val = m.add_mont(red_lo, red_hi);
+                total = m.add_mont(total, chunk_val);
+            }
+            m.mul_mont(total, m.r2_mod())
+        } else {
+            let mut dom = self.field;
+            let mut acc = 0_u64;
+            for (&a, &b) in u.iter().zip(w) {
+                let term = dom.mul(&a, &(b as u64));
+                acc = dom.add(&acc, &term);
+            }
+            acc
         }
     }
 }
@@ -1289,60 +2208,6 @@ fn verifies(
     })
 }
 
-/// The integers as a [`Domain`] for products (division is exact division
-/// and fails otherwise; elimination does not use this domain).
-struct BigIntegers;
-
-impl Domain for BigIntegers {
-    type E = BigInt;
-
-    fn zero(&mut self) -> BigInt {
-        BigInt::zero()
-    }
-
-    fn one(&mut self) -> BigInt {
-        BigInt::one()
-    }
-
-    fn is_zero(
-        &mut self,
-        a: &BigInt,
-    ) -> bool {
-        a.is_zero()
-    }
-
-    fn add(
-        &mut self,
-        a: &BigInt,
-        b: &BigInt,
-    ) -> BigInt {
-        a + b
-    }
-
-    fn sub(
-        &mut self,
-        a: &BigInt,
-        b: &BigInt,
-    ) -> BigInt {
-        a - b
-    }
-
-    fn mul(
-        &mut self,
-        a: &BigInt,
-        b: &BigInt,
-    ) -> BigInt {
-        a * b
-    }
-
-    fn div(
-        &mut self,
-        a: &BigInt,
-        b: &BigInt,
-    ) -> Option<BigInt> {
-        (!b.is_zero() && (a % b).is_zero()).then(|| a / b)
-    }
-}
 
 // ---------------------------------------------------------------------------
 // Black-box methods over a prime field
@@ -1357,6 +2222,7 @@ pub fn berlekamp_massey(
     field: Gfp,
 ) -> Vec<u64> {
     let mut dom = field;
+    let mont = mont_for_rows(field.p);
     // c(x) = 1 + c1 x + ...: s[i] + c1 s[i-1] + ... = 0.
     let mut c: Vec<u64> = vec![1];
     let mut prev: Vec<u64> = vec![1];
@@ -1364,10 +2230,39 @@ pub fn berlekamp_massey(
     let mut shift = 1_usize;
     let mut last = 1_u64;
     for i in 0..sequence.len() {
-        let mut d = sequence[i] % field.0;
-        for k in 1..=len.min(c.len() - 1) {
-            let term = dom.mul(&c[k], &sequence[i - k]);
-            d = dom.add(&d, &term);
+        let mut d = sequence[i] % field.p;
+        let bound = len.min(c.len() - 1);
+        if let Some(m) = mont
+            && bound > 0
+        {
+            // Delayed u128 accumulation in chunks of 16, single reduction per chunk!
+            let mut total = 0_u64;
+            let mut k = 1_usize;
+            while k <= bound {
+                let end = (k + 16).min(bound + 1);
+                let mut sum = 0_u128;
+                for idx in k..end {
+                    sum += (c[idx] as u128) * ((sequence[i - idx] % field.p) as u128);
+                }
+                let lo = (sum as u64) as u128;
+                let hi = (sum >> 64) as u64;
+                let red_lo = m.redc(lo);
+                let red_hi = if hi >= m.modulus() {
+                    hi % m.modulus()
+                } else {
+                    hi
+                };
+                let chunk_val = m.add_mont(red_lo, red_hi);
+                total = m.add_mont(total, chunk_val);
+                k = end;
+            }
+            let inner = m.mul_mont(total, m.r2_mod());
+            d = m.add_mont(d, inner);
+        } else {
+            for k in 1..=bound {
+                let term = dom.mul(&c[k], &sequence[i - k]);
+                d = dom.add(&d, &term);
+            }
         }
         if d == 0 {
             shift += 1;
@@ -1380,9 +2275,17 @@ pub fn berlekamp_massey(
         if c.len() < prev.len() + shift {
             c.resize(prev.len() + shift, 0);
         }
-        for (k, v) in prev.iter().enumerate() {
-            let term = dom.mul(&coef, v);
-            c[k + shift] = dom.sub(&c[k + shift], &term);
+        if let Some(m) = mont {
+            let coef_mont = m.to_mont(coef);
+            for (k, &v) in prev.iter().enumerate() {
+                let term = m.mul_mont(coef_mont, v);
+                c[k + shift] = m.sub_mont(c[k + shift], term);
+            }
+        } else {
+            for (k, v) in prev.iter().enumerate() {
+                let term = dom.mul(&coef, v);
+                c[k + shift] = dom.sub(&c[k + shift], &term);
+            }
         }
         if 2 * len <= i {
             len = i + 1 - len;
@@ -1410,43 +2313,50 @@ impl Lcg {
         self.0 ^= self.0 << 13;
         self.0 ^= self.0 >> 7;
         self.0 ^= self.0 << 17;
-        self.0 % field.0
+        self.0 % field.p
     }
 }
 
-/// The minimal polynomial of the sequence `u^T A^i v`, `i = 0, 1, ...`.
-fn projected_minpoly(
-    matrix: &SparseMat<u64>,
-    field: Gfp,
+/// The minimal polynomial of the sequence `u^T A^i v`, `i = 0, 1, ...`,
+/// using the flattened Montgomery CSR representation and pooled Krylov buffers.
+fn projected_minpoly_csr(
+    csr: &MontgomeryCsr,
     u: &[u64],
     v: &[u64],
 ) -> Option<Vec<u64>> {
-    let mut dom = field;
-    let n = matrix.rows;
-    let mut w = v.to_vec();
-    let mut sequence = Vec::with_capacity(2 * n + 2);
-    for _ in 0..2 * n + 2 {
-        let mut dot = 0_u64;
-        for (a, b) in u.iter().zip(&w) {
-            let term = dom.mul(a, b);
-            dot = dom.add(&dot, &term);
-        }
-        sequence.push(dot);
-        w = matrix.matvec(&mut dom, &w)?;
+    if u.len() != csr.rows || v.len() != csr.cols {
+        return None;
     }
-    Some(berlekamp_massey(&sequence, field))
+    let n = csr.rows;
+    let pool = crate::kernels::reuse::global_pool();
+    let mut w = pool.scratch_usize(n);
+    let mut next_w = pool.scratch_usize(n);
+    w.clear();
+    w.extend(v.iter().map(|&val| (val % csr.field.p) as usize));
+    let steps = 2 * n + 2;
+    let mut sequence = Vec::with_capacity(steps);
+    for step in 0..steps {
+        sequence.push(csr.dot(u, &w));
+        if step + 1 < steps {
+            csr.spmv_into(&w, &mut next_w);
+            std::mem::swap(&mut *w, &mut *next_w);
+        }
+    }
+    Some(berlekamp_massey(&sequence, csr.field))
 }
 
 /// The minimal polynomial of a square matrix over `GF(p)` by Wiedemann's
 /// algorithm, monic, lowest degree first.
 ///
-/// The algorithm multiplies by the matrix `2n` times per trial and stores
-/// two vectors: no entry of the matrix is ever changed, so there is no
-/// fill-in. One random projection yields a divisor of the minimal
-/// polynomial, and the right one with probability at least `1 - 2n/p`; the
-/// result here is the least common multiple over `trials` projections
-/// (seeded, so the function is deterministic). `None` when the matrix is not
-/// square.
+/// The algorithm flattens `matrix` once into a Montgomery-domain CSR
+/// workspace, multiplies by the matrix `2n` times per trial with delayed
+/// `u128` row accumulation, and leases Krylov vectors from
+/// [`crate::kernels::reuse::global_pool`]: no entry of the matrix is ever
+/// changed, so there is no fill-in. One random projection yields a divisor
+/// of the minimal polynomial, and the right one with probability at least
+/// `1 - 2n/p`; the result here is the least common multiple over `trials`
+/// projections (seeded, so the function is deterministic). `None` when the
+/// matrix is not square.
 #[must_use]
 pub fn minpoly_wiedemann(
     matrix: &SparseMat<u64>,
@@ -1458,12 +2368,13 @@ pub fn minpoly_wiedemann(
     if n != matrix.cols {
         return None;
     }
+    let csr = MontgomeryCsr::new(matrix, field);
     let mut rng = Lcg(seed | 1);
     let mut best: Vec<u64> = vec![1];
     for _ in 0..trials.max(1) {
         let u: Vec<u64> = (0..n).map(|_| rng.next(field)).collect();
         let v: Vec<u64> = (0..n).map(|_| rng.next(field)).collect();
-        let m = projected_minpoly(matrix, field, &u, &v)?;
+        let m = projected_minpoly_csr(&csr, &u, &v)?;
         best = poly_lcm(&best, &m, field);
     }
     Some(best)
@@ -1472,6 +2383,8 @@ pub fn minpoly_wiedemann(
 /// Solves a square non-singular system `A x = b` over `GF(p)` by Wiedemann's
 /// algorithm.
 ///
+/// Flattens `matrix` once into a Montgomery-domain CSR workspace and leases
+/// Krylov vectors from [`crate::kernels::reuse::global_pool`].
 /// Returns `None` when the projection does not determine a solution
 /// (singular matrix, or an unlucky projection in each of the `trials`). A
 /// returned vector always satisfies `A x = b`.
@@ -1487,29 +2400,64 @@ pub fn solve_wiedemann(
     if n != matrix.cols || b.len() != n {
         return None;
     }
+    let csr = MontgomeryCsr::new(matrix, field);
+    let pool = crate::kernels::reuse::global_pool();
+    let mut w = pool.scratch_usize(n);
+    let mut next_w = pool.scratch_usize(n);
     let mut dom = field;
     let mut rng = Lcg(seed | 1);
+    let b_reduced: Vec<u64> = b.iter().map(|&v| v % field.p).collect();
+
     for _ in 0..trials.max(1) {
         let u: Vec<u64> = (0..n).map(|_| rng.next(field)).collect();
-        let m = projected_minpoly(matrix, field, &u, b)?;
+        let m = projected_minpoly_csr(&csr, &u, &b_reduced)?;
         // m(A) b = 0 with m(0) != 0 gives x = -(1/m0) sum_{k>=1} m_k A^(k-1) b.
         let Some(m0_inv) = m.first().and_then(|&c| field.inv(c)) else {
             continue;
         };
         let mut x = vec![0_u64; n];
-        let mut w = b.to_vec();
-        for &coefficient in m.iter().skip(1) {
-            for (xi, wi) in x.iter_mut().zip(&w) {
-                let term = dom.mul(&coefficient, wi);
-                *xi = dom.add(xi, &term);
+        w.clear();
+        w.extend(b_reduced.iter().map(|&v| v as usize));
+        let coeffs = &m[1..];
+        for (step, &coefficient) in coeffs.iter().enumerate() {
+            if coefficient != 0 {
+                if let Some(mont) = csr.mont {
+                    let c_mont = mont.to_mont(coefficient);
+                    for (xi, &wi) in x.iter_mut().zip(w.iter()) {
+                        let term = mont.mul_mont(c_mont, wi as u64);
+                        *xi = mont.add_mont(*xi, term);
+                    }
+                } else {
+                    for (xi, &wi) in x.iter_mut().zip(w.iter()) {
+                        let term = dom.mul(&coefficient, &(wi as u64));
+                        *xi = dom.add(xi, &term);
+                    }
+                }
             }
-            w = matrix.matvec(&mut dom, &w)?;
+            if step + 1 < coeffs.len() {
+                csr.spmv_into(&w, &mut next_w);
+                std::mem::swap(&mut *w, &mut *next_w);
+            }
         }
         let scale = dom.neg(&m0_inv);
-        for xi in &mut x {
-            *xi = dom.mul(xi, &scale);
+        if let Some(mont) = csr.mont {
+            let scale_mont = mont.to_mont(scale);
+            for xi in &mut x {
+                *xi = mont.mul_mont(*xi, scale_mont);
+            }
+        } else {
+            for xi in &mut x {
+                *xi = dom.mul(xi, &scale);
+            }
         }
-        if matrix.matvec(&mut dom, &x)? == b.iter().map(|v| v % field.0).collect::<Vec<_>>() {
+        w.clear();
+        w.extend(x.iter().map(|&v| v as usize));
+        csr.spmv_into(&w, &mut next_w);
+        if next_w
+            .iter()
+            .zip(&b_reduced)
+            .all(|(&got, &want)| (got as u64) == want)
+        {
             return Some(x);
         }
     }
@@ -1864,7 +2812,7 @@ mod tests {
         assert!(!is_prime_u64(3_215_031_751));
         let p = word_primes().next().unwrap();
         assert!(p < (1 << 62) && is_prime_u64(p));
-        let field = Gfp(101);
+        let field = Gfp::new(101);
         let mut dom = field;
         assert_eq!(dom.sub(&3, &5), 99);
         assert_eq!(dom.div(&1, &2), Some(51));
@@ -1896,22 +2844,22 @@ mod tests {
 
     #[test]
     fn berlekamp_massey_finds_fibonacci() {
-        let field = Gfp(1_000_000_007);
+        let field = Gfp::new(1_000_000_007);
         let mut s = vec![0_u64, 1];
         for i in 2..20 {
-            s.push((s[i - 1] + s[i - 2]) % field.0);
+            s.push((s[i - 1] + s[i - 2]) % field.p);
         }
         // s[i+2] - s[i+1] - s[i] = 0.
         assert_eq!(
             berlekamp_massey(&s, field),
-            vec![field.0 - 1, field.0 - 1, 1]
+            vec![field.p - 1, field.p - 1, 1]
         );
         assert_eq!(berlekamp_massey(&[0, 0, 0], field), vec![1]);
     }
 
     #[test]
     fn wiedemann_agrees_with_elimination() {
-        let field = Gfp(word_primes().next().unwrap());
+        let field = Gfp::new(word_primes().next().unwrap());
         let rational = sample(40, 3, 11);
         let (integer, _) = integer_rows(&rational);
         let a = reduce_matrix(&integer, field);
@@ -1962,10 +2910,108 @@ mod tests {
         .unwrap();
         assert_eq!(
             minpoly_wiedemann(&projection, field, 4, 3).unwrap(),
-            vec![0, field.0 - 1, 1]
+            vec![0, field.p - 1, 1]
         );
         assert!(solve_wiedemann(&projection, &[1, 2, 3, 4], field, 3, 5).is_none());
         assert!(minpoly_wiedemann(&SparseMat::zeros(2, 3), field, 1, 1).is_none());
+    }
+
+    /// The field arithmetic must agree with `u128` arithmetic for every prime
+    /// the engine accepts, including the ones near `2^62` where a careless
+    /// Barrett estimate is off by more than one.
+    #[test]
+    fn gfp_arithmetic_matches_the_u128_reference() {
+        for p in [
+            2_u64,
+            3,
+            97,
+            1_000_003,
+            1_000_000_007,
+            (1 << 31) - 1,
+            (1 << 61) - 1,
+            (1 << 62) - 57,
+        ] {
+            let field = Gfp::new(p);
+            assert_eq!(field.prime(), p);
+            let mut s = 0x2545_F491_4F6C_DD1D_u64;
+            let mut next = move || {
+                s ^= s << 13;
+                s ^= s >> 7;
+                s ^= s << 17;
+                s
+            };
+            for _ in 0..200 {
+                let a = next() % p;
+                let b = next() % p;
+                assert_eq!(
+                    u128::from(field.mul_mod(a, b)),
+                    u128::from(a) * u128::from(b) % u128::from(p),
+                    "p = {p}, {a} * {b}"
+                );
+                assert_eq!(
+                    u128::from(field.add_mod(a, b)),
+                    (u128::from(a) + u128::from(b)) % u128::from(p)
+                );
+                let e = next() % 64;
+                let mut want = 1_u128 % u128::from(p);
+                for _ in 0..e {
+                    want = want * u128::from(a) % u128::from(p);
+                }
+                assert_eq!(field.pow_mod(a, e), want as u64, "p = {p}, {a}^{e}");
+                if a != 0 {
+                    let inv = field.inv(a).expect("non-zero is invertible modulo a prime");
+                    assert_eq!(field.mul_mod(a, inv), 1, "p = {p}, a = {a}");
+                }
+            }
+            assert!(field.inv(0).is_none());
+        }
+        // A modulus below two is not a field; the old representation answered
+        // zero rather than panicking, and so does this one.
+        let degenerate = Gfp::new(1);
+        assert_eq!(degenerate.mul_mod(3, 4), 0);
+        assert_eq!(degenerate.pow_mod(3, 2), 0);
+        assert!(degenerate.inv(3).is_none());
+    }
+
+    /// Batch inversion must equal the element-wise inverses, and the prefix
+    /// products must survive a modulus close to the word size.
+    #[test]
+    fn gfp_batch_inverse_matches_individual_inverses() {
+        for p in [7_u64, 1_000_000_007, (1 << 61) - 1] {
+            let field = Gfp::new(p);
+            // Reduce into `[1, p - 1]`: a zero residue has no inverse, and the
+            // point of the test is the prefix-product trick, not the rejection.
+            let values: Vec<u64> = (1..=64).map(|v| (v * 7_919 + 3) % (p - 1) + 1).collect();
+            let batch = field.batch_inv(&values).expect("all values are non-zero");
+            for (i, &v) in values.iter().enumerate() {
+                assert_eq!(field.mul_mod(v, batch[i]), 1, "p = {p}, index {i}");
+            }
+            assert!(field.batch_inv(&[1, 0, 2]).is_none());
+        }
+    }
+
+    /// The Barrett reducer is a [`Domain`] in its own right: a bare
+    /// [`BarrettGfp`] must drive the same elimination as the field wrapper,
+    /// which is what lets a caller skip the wrapper entirely.
+    #[test]
+    fn barrett_domain_eliminates_like_gfp() {
+        let p = 1_000_003_u64;
+        let mut field = Gfp::new(p);
+        let mut reducer = Barrett::new_prime(p);
+        let triplets = vec![(0, 0, 2_u64), (0, 1, 1), (1, 0, 1), (1, 1, 3), (2, 2, 5)];
+        let via_field = SparseMat::from_triplets(&mut field, 3, 3, triplets.clone()).unwrap();
+        let via_reducer = SparseMat::from_triplets(&mut reducer, 3, 3, triplets).unwrap();
+        assert_eq!(via_field, via_reducer);
+        assert_eq!(
+            rank(&mut field, &via_field),
+            rank(&mut reducer, &via_reducer)
+        );
+        // 2x + y = 5, x + 3y = 10  =>  x = 1, y = 3  (mod 1000003)
+        let b = vec![5_u64, 10, 0];
+        assert_eq!(
+            solve(&mut field, &via_field, &b).unwrap(),
+            solve(&mut reducer, &via_reducer, &b).unwrap()
+        );
     }
 
     #[test]
