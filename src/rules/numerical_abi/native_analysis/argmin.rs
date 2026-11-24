@@ -1,4 +1,4 @@
-//! Concrete native argmin generic instantiations on measured immutable tapes.
+//! Native optimization bindings for measured immutable tapes.
 use crate::backend::tape::Tape;
 use crate::graph::RuleError;
 use crate::graph::rule::Installer;
@@ -6,6 +6,7 @@ use crate::kernel::CallCtx;
 use crate::kernel::OpError;
 use crate::kernel::Value;
 use crate::kernel::value::TensorValue;
+use crate::kernels::optimize::BfgsResult;
 use crate::kernels::optimize::EquationOptimizer;
 use crate::kernels::optimize::OptimizationConfig;
 use crate::kernels::optimize::ProblemType;
@@ -141,6 +142,37 @@ impl<S: State<Param = Array1<f64>, Float = f64>> RetainedState for Vector<S> {
         format!("{:?}", self.0.get_termination_status())
     }
 }
+impl RetainedState for BfgsResult {
+    fn analyze(&self) -> String {
+        optimize::convergence_summary(self.best_cost)
+    }
+
+    fn print(&self) {
+        optimize::print_progress(
+            Some(&self.best_param),
+            self.best_cost,
+            self.iterations,
+            self.cost_evals,
+            self.gradient_evals,
+        );
+    }
+
+    fn point(&self) -> Option<Vec<f64>> {
+        Some(self.best_param.clone())
+    }
+
+    fn cost(&self) -> f64 {
+        self.best_cost
+    }
+
+    fn iterations(&self) -> u64 {
+        self.iterations
+    }
+
+    fn termination(&self) -> String {
+        self.termination.clone()
+    }
+}
 struct Population(
     argmin::core::PopulationState<argmin::solver::particleswarm::Particle<Array1<f64>, f64>, f64>,
 );
@@ -266,11 +298,10 @@ fn execute(
             ))
         },
         | 1 => {
-            Box::new(Vector(
+            Box::new(
                 EquationOptimizer::solve_with_bfgs(cost, Array1::from(x), &cfg)
-                    .map_err(api::error)?
-                    .state,
-            ))
+                    .map_err(api::error)?,
+            )
         },
         | 2 => {
             Box::new(Vector(
@@ -326,7 +357,7 @@ fn execute(
 
 object_binding!(optimizer_solve_with_gradient_descent,"num_analysis_solve_with_gradient_descent_tape","crate::kernels::optimize::EquationOptimizer::solve_with_gradient_descent","Actual native argmin solve_with_gradient_descent instantiated with an owned native tape cost and exact reverse gradient. Inputs and parameters retain independent reference domains; target_cost is normalized objective target,not a gradient tolerance. Oracle budget covers both cost and gradient calls. PSO uses initial/upper as bounds and the native randomness semantics. Other methods ignore upper. Generic auto_solve explicitly instantiates the native steepest-descent solver.",false,(tape:Input,output:usize,initial:Input,upper:Input,params:Input,target_cost:f64,iterations:u64,budget:usize)->NewObject<ResultObject>,|ctx:&CallCtx<'_>,tape:Input,output:usize,initial:Input,upper:Input,params:Input,target_cost:f64,iterations:u64,budget:usize|execute(ctx,0,tape,output,initial,upper,params,target_cost,iterations,budget));
 
-object_binding!(optimizer_solve_with_bfgs,"num_analysis_solve_with_bfgs_tape","crate::kernels::optimize::EquationOptimizer::solve_with_bfgs","Actual native argmin solve_with_bfgs instantiated with an owned native tape cost and exact reverse gradient. Inputs and parameters retain independent reference domains; target_cost is normalized objective target,not a gradient tolerance. Oracle budget covers both cost and gradient calls. PSO uses initial/upper as bounds and the native randomness semantics. Other methods ignore upper. Generic auto_solve explicitly instantiates the native steepest-descent solver.",false,(tape:Input,output:usize,initial:Input,upper:Input,params:Input,target_cost:f64,iterations:u64,budget:usize)->NewObject<ResultObject>,|ctx:&CallCtx<'_>,tape:Input,output:usize,initial:Input,upper:Input,params:Input,target_cost:f64,iterations:u64,budget:usize|execute(ctx,1,tape,output,initial,upper,params,target_cost,iterations,budget));
+object_binding!(optimizer_solve_with_bfgs,"num_analysis_solve_with_bfgs_tape","crate::kernels::optimize::EquationOptimizer::solve_with_bfgs","Basin BFGS with a native tape objective and exact reverse gradient. Inputs and parameters retain independent reference domains. The target is a normalized objective value. The oracle budget covers cost and gradient calls. The upper bound argument is ignored.",false,(tape:Input,output:usize,initial:Input,upper:Input,params:Input,target_cost:f64,iterations:u64,budget:usize)->NewObject<ResultObject>,|ctx:&CallCtx<'_>,tape:Input,output:usize,initial:Input,upper:Input,params:Input,target_cost:f64,iterations:u64,budget:usize|execute(ctx,1,tape,output,initial,upper,params,target_cost,iterations,budget));
 
 object_binding!(optimizer_auto_solve_conjugate_gradient,"num_analysis_auto_solve_conjugate_gradient_tape","crate::kernels::optimize::EquationOptimizer::auto_solve_conjugate_gradient","Actual native argmin auto_solve_conjugate_gradient instantiated with an owned native tape cost and exact reverse gradient. Inputs and parameters retain independent reference domains; target_cost is normalized objective target,not a gradient tolerance. Oracle budget covers both cost and gradient calls. PSO uses initial/upper as bounds and the native randomness semantics. Other methods ignore upper. Generic auto_solve explicitly instantiates the native steepest-descent solver.",false,(tape:Input,output:usize,initial:Input,upper:Input,params:Input,target_cost:f64,iterations:u64,budget:usize)->NewObject<ResultObject>,|ctx:&CallCtx<'_>,tape:Input,output:usize,initial:Input,upper:Input,params:Input,target_cost:f64,iterations:u64,budget:usize|execute(ctx,2,tape,output,initial,upper,params,target_cost,iterations,budget));
 

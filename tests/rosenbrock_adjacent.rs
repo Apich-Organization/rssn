@@ -2,7 +2,6 @@
 
 use argmin::core::CostFunction;
 use argmin::core::Gradient;
-use argmin::core::State;
 use ndarray::Array1;
 use rssn::kernels::optimize::EquationOptimizer;
 use rssn::kernels::optimize::OptimizationConfig;
@@ -169,8 +168,8 @@ fn bfgs_uses_the_corrected_three_dimensional_gradient() {
         &config,
     )
     .unwrap();
-    assert!(optimum.state.get_best_cost() < 1e-9);
-    let point = optimum.state.get_best_param().unwrap();
+    assert!(optimum.best_cost < 1e-9);
+    let point = &optimum.best_param;
     assert!(
         point.iter().all(|v| (v - 1.0).abs() < 1e-4),
         "point {point:?}"

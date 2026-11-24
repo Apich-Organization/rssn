@@ -4,16 +4,16 @@ This inventory covers normal Cargo dependencies in the default C and C++
 library builds listed below. Each build uses the release workflow’s
 locked Cargo graph and default RSSN features.
 
-Cargo.lock SHA-256: `45a4b5ac7416e6d1f11d86ad90fd020d3d0c654a771a8b56fd9dec79eceb9e10`
+Cargo.lock SHA-256: `ec538d6de4f58df823205160cc70580f556fbdd5975e5aad47a0ac1412ea9766`
 
 | Release archive target | Rust target | Package versions |
 | --- | --- | ---: |
-| linux-x86_64 | `x86_64-unknown-linux-gnu` | 115 |
-| linux-aarch64 | `aarch64-unknown-linux-gnu` | 111 |
-| windows-x86_64 | `x86_64-pc-windows-msvc` | 116 |
-| windows-aarch64 | `aarch64-pc-windows-msvc` | 112 |
-| macos-x86_64 | `x86_64-apple-darwin` | 121 |
-| macos-aarch64 | `aarch64-apple-darwin` | 117 |
+| linux-x86_64 | `x86_64-unknown-linux-gnu` | 118 |
+| linux-aarch64 | `aarch64-unknown-linux-gnu` | 114 |
+| windows-x86_64 | `x86_64-pc-windows-msvc` | 119 |
+| windows-aarch64 | `aarch64-pc-windows-msvc` | 115 |
+| macos-x86_64 | `x86_64-apple-darwin` | 124 |
+| macos-aarch64 | `aarch64-apple-darwin` | 120 |
 
 ## Package versions and notice sources
 
@@ -30,6 +30,7 @@ recorded in the archive. The full texts appear below.
 | [argmin-math](https://crates.io/crates/argmin-math/0.5.1) | 0.5.1 | MIT OR Apache-2.0 | All six | `ba6958a87117ff5e1d0d7716856a4303752518012ec4a67a68446b6631a1a54d` | [LICENSE-MIT](#notice-23f18e03dc49) [(upstream)](https://raw.githubusercontent.com/argmin-rs/argmin/48dbd837faa4643c936564f34d3480a6639f2673/LICENSE-MIT), [LICENSE-APACHE](#notice-11f10b8009ae) [(upstream)](https://raw.githubusercontent.com/argmin-rs/argmin/48dbd837faa4643c936564f34d3480a6639f2673/LICENSE-APACHE) |
 | [arrayvec](https://crates.io/crates/arrayvec/0.7.8) | 0.7.8 | MIT OR Apache-2.0 | All six | `d3fb67a6e08acf24fdeccbac2cb6ac4305825bd1f117462e0e6f2f193345ad56` | [LICENSE-APACHE](#notice-a60eea817514), [LICENSE-MIT](#notice-4da95ec4ecb6) |
 | [atomic-wait](https://crates.io/crates/atomic-wait/1.1.0) | 1.1.0 | BSD-2-Clause | All six | `a55b94919229f2c42292fd71ffa4b75e83193bffdd77b1e858cd55fd2d0b0ea8` | [LICENSE](#notice-a7bd8b93bc1e) |
+| [basin](https://crates.io/crates/basin/3.5.0) | 3.5.0 | MIT OR Apache-2.0 | All six | `b0ea8cc5224c7a53c4086c95846765d5dd433da8e9f49dda2dfecccb051ceb1e` | [COPYRIGHT](#notice-20e9628f2dff), [LICENSE-APACHE](#notice-62c7a1e35f56), [LICENSE-MIT](#notice-c350265d5a2d) |
 | [bincode-next](https://crates.io/crates/bincode-next/3.2.0) | 3.2.0 | MIT or Apache-2.0 | All six | `d262d0b897a7057038a9a42ba67ff34427760a66911d8c6f24bb2a7b6bec3e70` | [LICENSE-APACHE.md](#notice-f65d23115014), [LICENSE-MIT.md](#notice-62b97d1f2595), [LICENSE.md](#notice-e6aca33a25f2) |
 | [bincode_derive-next](https://crates.io/crates/bincode_derive-next/3.2.0) | 3.2.0 | MIT or Apache-2.0 | All six | `65f2ebb0598587317df2b1b7dfa9d8d5287f52d8c4a62083b48c1be1807800b1` | [LICENSE.md](#notice-e6aca33a25f2) |
 | [bitflags](https://crates.io/crates/bitflags/2.13.2) | 2.13.2 | MIT OR Apache-2.0 | All six | `3ded4057c258ba199e2d26386d3af3780957ecaee6c4ef4041c6b4b8b97c0b06` | [LICENSE-APACHE](#notice-a60eea817514), [LICENSE-MIT](#notice-6485b8ed310d) |
@@ -103,11 +104,13 @@ recorded in the archive. The full texts appear below.
 | [rand](https://crates.io/crates/rand/0.10.3) | 0.10.3 | MIT OR Apache-2.0 | All six | `65c9fb96cbc91e3478eaae79a69fcd3f1ae4ad052e471fe6732fff548984b4af` | [COPYRIGHT](#notice-90eb64f0279b), [LICENSE-APACHE](#notice-35242e7a83f6), [LICENSE-MIT](#notice-209fbbe0ad52) |
 | [rand](https://crates.io/crates/rand/0.8.8) | 0.8.8 | MIT OR Apache-2.0 | All six | `e058c7de0b26af77780c769414d6257830bb240f3c38477dbc2c16e5f54d6d4c` | [COPYRIGHT](#notice-90eb64f0279b), [LICENSE-APACHE](#notice-35242e7a83f6), [LICENSE-MIT](#notice-209fbbe0ad52) |
 | [rand](https://crates.io/crates/rand/0.9.5) | 0.9.5 | MIT OR Apache-2.0 | All six | `b9ef1d0d795eb7d84685bca4f72f3649f064e6641543d3a8c415898726a57b41` | [COPYRIGHT](#notice-90eb64f0279b), [LICENSE-APACHE](#notice-35242e7a83f6), [LICENSE-MIT](#notice-209fbbe0ad52) |
+| [rand_chacha](https://crates.io/crates/rand_chacha/0.10.0) | 0.10.0 | MIT OR Apache-2.0 | All six | `3e6af7f3e25ded52c41df4e0b1af2d047e45896c2f3281792ed68a1c243daedb` | [COPYRIGHT](#notice-90eb64f0279b), [LICENSE-APACHE](#notice-35242e7a83f6), [LICENSE-MIT](#notice-209fbbe0ad52) |
 | [rand_chacha](https://crates.io/crates/rand_chacha/0.9.0) | 0.9.0 | MIT OR Apache-2.0 | All six | `d3022b5f1df60f26e1ffddd6c66e8aa15de382ae63b3a0c1bfc0e4d3e3f325cb` | [COPYRIGHT](#notice-90eb64f0279b), [LICENSE-APACHE](#notice-35242e7a83f6), [LICENSE-MIT](#notice-209fbbe0ad52) |
 | [rand_core](https://crates.io/crates/rand_core/0.10.1) | 0.10.1 | MIT OR Apache-2.0 | All six | `63b8176103e19a2643978565ca18b50549f6101881c443590420e4dc998a3c69` | [COPYRIGHT](#notice-92b81db30f7a), [LICENSE-APACHE](#notice-6df43f6f4b5d), [LICENSE-MIT](#notice-8b6e9feec03e) |
 | [rand_core](https://crates.io/crates/rand_core/0.6.4) | 0.6.4 | MIT OR Apache-2.0 | All six | `ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c` | [COPYRIGHT](#notice-90eb64f0279b), [LICENSE-APACHE](#notice-6df43f6f4b5d), [LICENSE-MIT](#notice-209fbbe0ad52) |
 | [rand_core](https://crates.io/crates/rand_core/0.9.5) | 0.9.5 | MIT OR Apache-2.0 | All six | `76afc826de14238e6e8c374ddcc1fa19e374fd8dd986b0d2af0d02377261d83c` | [COPYRIGHT](#notice-90eb64f0279b), [LICENSE-APACHE](#notice-6df43f6f4b5d), [LICENSE-MIT](#notice-209fbbe0ad52) |
 | [rand_distr](https://crates.io/crates/rand_distr/0.5.1) | 0.5.1 | MIT OR Apache-2.0 | All six | `6a8615d50dcf34fa31f7ab52692afec947c4dd0ab803cc87cb3b0b4570ff7463` | [COPYRIGHT](#notice-90eb64f0279b), [LICENSE-APACHE](#notice-6df43f6f4b5d), [LICENSE-MIT](#notice-a771e4354f6b) |
+| [rand_distr](https://crates.io/crates/rand_distr/0.6.0) | 0.6.0 | MIT OR Apache-2.0 | All six | `4d431c2703ccf129de4d45253c03f49ebb22b97d6ad79ee3ecfc7e3f4862c1d8` | [COPYRIGHT](#notice-90eb64f0279b), [LICENSE-APACHE](#notice-6df43f6f4b5d), [LICENSE-MIT](#notice-a771e4354f6b) |
 | [rand_xoshiro](https://crates.io/crates/rand_xoshiro/0.7.0) | 0.7.0 | MIT OR Apache-2.0 | All six | `f703f4665700daf5512dcca5f43afa6af89f09db47fb56be587f80636bda2d41` | [COPYRIGHT](#notice-90eb64f0279b), [LICENSE-APACHE](#notice-62c7a1e35f56), [LICENSE-MIT](#notice-31edd94ac845) |
 | [rapidhash](https://crates.io/crates/rapidhash/4.5.1) | 4.5.1 | MIT OR Apache-2.0 | All six | `5da7e78a036ce858e8d55b7e7dc8ba3a88b78350fd2155d3591bbd966b58589e` | [LICENSE-APACHE](#notice-d902d7d4433c), [LICENSE-MIT](#notice-d7bb236e93b1) |
 | [raw-cpuid](https://crates.io/crates/raw-cpuid/11.6.0) | 11.6.0 | MIT | All six | `498cd0dc59d73224351ee52a95fee0f1a617a2eae0e7d9d720cc622c73a54186` | [LICENSE.md](#notice-cdd45f4d0c55) |
@@ -1557,6 +1560,218 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
+```
+
+### Notice 20e9628f2dff
+
+SHA-256 `20e9628f2dffb3a477a5621a60911b0e05a8f5ef9eeb252482ec0e7e2dcf1d7d` with 10741 original bytes
+
+```text
+Basin is copyright its contributors and is licensed under either of Apache
+License, Version 2.0 or the MIT license, at your option. See LICENSE-APACHE and
+LICENSE-MIT for the full texts.
+
+Basin incorporates code derived from third-party software. The required notices
+are reproduced below.
+
+================================================================================
+sisyfuzz 0.1.0 (https://docs.rs/crate/sisyfuzz/0.1.0/source/)
+================================================================================
+
+The TNC solver, its limited-memory preconditioner, and the parameter-transform
+adapter (src/solver/tnc.rs, src/solver/tnc/history.rs, and
+src/core/parameter_transform.rs) are adapted from sisyfuzz 0.1.0.
+
+Copyright 2026 Frans Henskens
+
+The upstream code is licensed under the Apache License, Version 2.0. Its author
+submitted this adaptation under Basin's contribution terms, licensing the
+contribution under either MIT or Apache-2.0, at the recipient's option.
+See LICENSE-MIT and LICENSE-APACHE for the full texts.
+
+Upstream Apache-2.0 notice:
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+================================================================================
+sisyfuzz local 0.1.2 L-BFGS-B model (https://github.com/fhenskens/sisyfuzz)
+================================================================================
+
+The signed-column/scaled compact model, smaller reduced systems, interior-first
+policy and retained free-coordinate inverse updates in
+src/solver/lbfgs/integrated_model.rs and src/solver/lbfgs/model_strategy.rs are
+adapted from src/lbfgsb/model.rs, src/lbfgsb.rs and src/quasi_newton.rs at
+sisyfuzz commit 39f6d4d0062607eb48b07d5cd5f847fb7da13828. The adaptation supports
+Basin's scalar/backend types, arbitrary bounds, lifecycle and line-search
+contracts. Projected mode searches a chord to the projected endpoint.
+
+The per-trial projected Armijo search in src/line_search/projected_armijo.rs
+and explicit projected ray/Armijo/chord integration in
+src/solver/lbfgs/model_strategy/projected.rs additionally adapt
+src/line_search.rs, src/more_thuente.rs and src/lbfgs.rs at that revision.
+The legacy chord policy remains available separately from the projected trial
+and original-direction feasible-ray policies.
+
+Copyright 2026 Frans Henskens
+
+The upstream implementation is licensed under Apache-2.0. The upstream
+Apache-2.0 notice above applies; see LICENSE-APACHE for the full license text.
+
+================================================================================
+PRIMA (https://github.com/libprima/prima)
+================================================================================
+
+Basin's Powell-family derivative-free solvers --- COBYLA, NEWUOA, BOBYQA, and
+LINCOA (src/solver/{cobyla,newuoa,bobyqa,lincoa}{,.rs}) --- are derived from
+PRIMA, Zaikun Zhang's modern-Fortran reference implementation of M. J. D.
+Powell's methods. PRIMA is the authoritative source for the exact formulas and
+was used as the cross-validation oracle for these solvers. PRIMA is distributed
+under the BSD 3-Clause License, whose terms require that the following notice be
+retained:
+
+    BSD 3-Clause License
+
+    Copyright (c) 2020--2023, Zaikun ZHANG ( https://www.zhangzk.net )
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are met:
+
+    1. Redistributions of source code must retain the above copyright notice,
+       this list of conditions and the following disclaimer.
+
+    2. Redistributions in binary form must reproduce the above copyright notice,
+       this list of conditions and the following disclaimer in the documentation
+       and/or other materials provided with the distribution.
+
+    3. Neither the name of the copyright holder nor the names of its
+       contributors may be used to endorse or promote products derived from
+       this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+    ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+    CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+    SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+    INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+    CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+    ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+    POSSIBILITY OF SUCH DAMAGE.
+
+================================================================================
+L-BFGS-B (https://users.iems.northwestern.edu/~nocedal/lbfgsb.html)
+================================================================================
+
+Basin's bound-constrained L-BFGS-B solver (the `Lbfgsb` mode of `Lbfgs`) is a
+port of the L-BFGS-B version 3.0 Fortran code (April 2011): the generalized
+Cauchy point, subspace minimization, compact-form, and `formk` routines
+(src/solver/lbfgs/{cauchy,subsm,formk,compact,backend}.rs) are translated from
+`lbfgsb.f`. The code is by Ciyou Zhu, Richard H. Byrd, Peihuang Lu, and Jorge
+Nocedal (ACM TOMS Algorithm 778), with the version-3.0 subspace-minimization
+improvement and correction by José Luis Morales and Jorge Nocedal. It is
+released under the New BSD License (a.k.a. Modified BSD / BSD 3-Clause), whose
+terms require that the following notice be retained:
+
+    Copyright (c) 2011, Ciyou Zhu, Richard H. Byrd, Peihuang Lu, Jorge Nocedal,
+    and José Luis Morales.
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are met:
+
+    1. Redistributions of source code must retain the above copyright notice,
+       this list of conditions and the following disclaimer.
+
+    2. Redistributions in binary form must reproduce the above copyright notice,
+       this list of conditions and the following disclaimer in the documentation
+       and/or other materials provided with the distribution.
+
+    3. Neither the name of the copyright holders nor the names of its
+       contributors may be used to endorse or promote products derived from
+       this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+    ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+    CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+    SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+    INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+    CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+    ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+    POSSIBILITY OF SUCH DAMAGE.
+
+
+SLSQP least-squares and factor-update algorithms
+=============================================
+
+Modern Fortran Edition of the SLSQP Optimizer
+https://github.com/jacobwilliams/slsqp
+
+Copyright (c) 2016-2025, Jacob Williams
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice, this
+  list of conditions and the following disclaimer in the documentation and/or
+  other materials provided with the distribution.
+
+* The names of its contributors may not be used to endorse or promote products
+  derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+--------------------------------------------------------------------------------
+Original License:
+
+SLSQP - Sequential Least Squares Programming
+Copyright (c) 1988, Dieter Kraft (kraft@hm.edu)
+Copyright (c) 1994, Association for Computing Machinery
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
 ### Notice 23f18e03dc49
@@ -7463,6 +7678,34 @@ SHA-256 `c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383` with 
     LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE
+```
+
+### Notice c350265d5a2d
+
+SHA-256 `c350265d5a2d04f8ba0f19ada3936c9d1003be9ef55192e2a85f2580e3e45b41` with 1070 original bytes
+
+```text
+MIT License
+
+Copyright (c) 2026 Johan Larsson
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
 
 ### Notice c43b9a9b1387

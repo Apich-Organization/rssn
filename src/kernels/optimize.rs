@@ -1,5 +1,4 @@
-//! A comprehensive optimization module for solving various types of equations
-//! using multiple optimization algorithms from the argmin 0.11 library.
+//! Equation optimization with Basin BFGS and Argmin's other solvers.
 
 use std::f64::consts::PI;
 
@@ -18,13 +17,18 @@ use argmin::solver::conjugategradient::beta::PolakRibierePlus;
 use argmin::solver::gradientdescent::SteepestDescent;
 use argmin::solver::linesearch::MoreThuenteLineSearch;
 use argmin::solver::particleswarm::ParticleSwarm;
-use argmin::solver::quasinewton::BFGS;
 use argmin_math::ArgminConj;
 use argmin_math::ArgminDot;
 use argmin_math::ArgminL2Norm;
 use argmin_math::ArgminMul;
 use argmin_math::ArgminScaledAdd;
 use argmin_math::ArgminSub;
+use basin::Bfgs;
+use basin::IncumbentState;
+use basin::line_search::MoreThuente;
+use bincode_next::Decode;
+use bincode_next::Encode;
+use bincode_next::Fingerprint;
 use ndarray::Array1;
 use ndarray::Array2;
 use ndarray::ArrayView1;
@@ -40,12 +44,6 @@ type P = Array1<f64>;
 type G = Array1<f64>;
 
 type F = f64;
-
-#[allow(dead_code)]
-type H = Array2<f64>;
-
-#[allow(dead_code)]
-type BFGSState = IterState<P, G, (), H, (), F>;
 
 type MThLineSearch = MoreThuenteLineSearch<P, G, F>;
 
@@ -691,27 +689,53 @@ type CGResult<C, P, G, F> = OptimizationResult<C, CGOptimizer<P, G, F>, CGIterSt
 
 type AutoSolveResult<C, P, G, F, Error> = Result<CGResult<C, P, G, F>, Error>;
 
-type Vector = Array1<f64>;
+/// Result of a BFGS solve with native `bincode-next` fingerprint support.
+#[derive(Debug, Clone, PartialEq, Encode, Decode, Fingerprint)]
+pub struct BfgsResult {
+    /// Best parameter vector observed during the solve.
+    pub best_param: Vec<f64>,
+    /// Objective value at the best parameter vector.
+    pub best_cost: f64,
+    /// Number of completed solver iterations.
+    pub iterations: u64,
+    /// Number of objective evaluations performed.
+    pub cost_evals: u64,
+    /// Number of gradient evaluations performed.
+    pub gradient_evals: u64,
+    /// Short name of the stopping reason, for display.
+    pub termination: String,
+}
 
-type Scalar = f64;
+// Let existing RSSN callers supply the same objective and gradient as before.
+struct BfgsObjective<C>(C);
 
-type HessianApprox = Array2<f64>;
+impl<C: CostFunction<Param = Array1<f64>, Output = f64>> basin::CostFunction for BfgsObjective<C> {
+    type Error = Error;
+    type Output = f64;
+    type Param = Array1<f64>;
 
-// 1. Line Search Type
-// MoreThuenteLineSearch<Vector, ScaledVector, Scalar>
-type BFGSLineSearch = MoreThuenteLineSearch<Vector, Vector, Scalar>;
+    fn cost(
+        &self,
+        param: &Self::Param,
+    ) -> Result<Self::Output, Self::Error> {
+        self.0.cost(param)
+    }
+}
 
-// IterState<Vector, ScaledVector, Alpha, Direction (HessianApprox), LineSearchState, Scalar>
-type BFGSIterState = IterState<Vector, Vector, (), HessianApprox, (), Scalar>;
+impl<C> basin::Gradient for BfgsObjective<C>
+where
+    C: CostFunction<Param = Array1<f64>, Output = f64>
+        + Gradient<Param = Array1<f64>, Gradient = Array1<f64>>,
+{
+    type Gradient = Array1<f64>;
 
-// 3. Optimizer Type
-// BFGS<LineSearch, Scalar>
-type BFGSOptimizer = BFGS<BFGSLineSearch, Scalar>;
-
-// OptimizationResult<CostFunction, Optimizer, IterState>
-type BFGSResult<C> = OptimizationResult<C, BFGSOptimizer, BFGSIterState>;
-
-type BFGSSolveResult<C, E> = Result<BFGSResult<C>, E>;
+    fn gradient(
+        &self,
+        param: &Self::Param,
+    ) -> Result<Self::Gradient, Self::Error> {
+        self.0.gradient(param)
+    }
+}
 
 type PsoVector = Array1<f64>;
 
@@ -813,34 +837,52 @@ impl EquationOptimizer {
         Ok(res)
     }
 
-    /// Solve using BFGS quasi-Newton method
+    /// Solve using Basin's BFGS method with a More–Thuente line search.
+    ///
+    /// Uses `config.tolerance` as the target objective value.
     ///
     /// # Errors
-    /// Returns an error if the BFGS optimization fails.
+    /// Propagates errors from the objective or gradient.
     pub fn solve_with_bfgs<C>(
         cost_function: C,
         initial_param: Array1<f64>,
         config: &OptimizationConfig,
-    ) -> BFGSSolveResult<C, Error>
+    ) -> Result<BfgsResult, Error>
     where
         C: CostFunction<Param = Array1<f64>, Output = f64>
             + Gradient<Param = Array1<f64>, Gradient = Array1<f64>>,
     {
-        let linesearch = MoreThuenteLineSearch::new();
+        // Use the same convergence thresholds as Argmin's BFGS defaults.
+        // Keep long steps reachable for shallow objectives within the oracle budget.
+        let line_search = MoreThuente::new().stpmax(f64::MAX).maxfev(100);
+        let solver = Bfgs::with_line_search(line_search)
+            .with_absolute_gradient_tolerance(f64::EPSILON.sqrt())
+            .with_absolute_cost_change_tolerance(f64::EPSILON);
+        let executor =
+            basin::Executor::from_start(BfgsObjective(cost_function), solver, initial_param)
+                .max_iter(config.max_iters);
 
-        let solver = BFGS::new(linesearch);
-
-        let res = Executor::new(cost_function, solver)
-            .configure(|state| {
-                state
-                    .inv_hessian(Array2::eye(initial_param.len()))
-                    .param(initial_param)
-                    .max_iters(config.max_iters)
-                    .target_cost(config.tolerance)
-            })
-            .run()?;
-
-        Ok(res)
+        // Argmin treats NaN and negative infinity as unreachable targets.
+        // Positive infinity accepts any finite objective value.
+        let executor = if config.tolerance > f64::NEG_INFINITY {
+            executor.target_objective(config.tolerance.min(f64::MAX))
+        } else {
+            executor
+        };
+        let result = executor.run()?;
+        // A run can end without an incumbent when its objective values are infinite.
+        let (best_param, best_cost) = result.state.incumbent_record().map_or_else(
+            || (result.param(), result.cost()),
+            |best| (best.param, best.cost),
+        );
+        Ok(BfgsResult {
+            best_param: best_param.to_vec(),
+            best_cost,
+            iterations: result.iter(),
+            cost_evals: result.counts.cost_evals,
+            gradient_evals: result.counts.gradient_evals,
+            termination: format!("{:?}", result.report.code()),
+        })
     }
 
     /// Solve using particle swarm optimization (for non-differentiable functions)
@@ -898,57 +940,54 @@ pub struct ResultAnalyzer;
 impl ResultAnalyzer {
     /// Prints the optimization results to the console.
     pub fn print_optimization_result<S: State<Param = Array1<f64>, Float = f64>>(state: &S) {
-        println!("Optimization Results:");
-
-        println!("  Converged: {}", state.get_best_cost() < 1e-4);
-
-        if let Some(best_param) = state.get_best_param() {
-            println!(
-                "  Best solution: \
-                 {best_param:?}"
-            );
-        } else {
-            println!(
-                "  Best solution: Not \
-                 available"
-            );
-        }
-
-        println!("  Best value: {:.6}", state.get_best_cost());
-
-        println!("  Iterations: {}", state.get_iter());
-
         let func_counts = state.get_func_counts();
-
-        println!(
-            "  Function evaluations: \
-             {}",
-            func_counts.get("cost").unwrap_or(&0)
+        print_progress(
+            state
+                .get_best_param()
+                .map(|point| point as &dyn std::fmt::Debug),
+            state.get_best_cost(),
+            state.get_iter(),
+            func_counts.get("cost").copied().unwrap_or(0),
+            func_counts.get("gradient").copied().unwrap_or(0),
         );
-
-        if let Some(grad_counts) = func_counts.get("gradient")
-            && *grad_counts > 0
-        {
-            println!(
-                "  Gradient \
-                     evaluations: \
-                     {grad_counts}"
-            );
-        }
     }
 
     /// Analyzes the convergence state and returns a summary string.
     pub fn analyze_convergence<S: State<Float = f64>>(state: &S) -> String {
-        let cost = state.get_best_cost();
+        convergence_summary(state.get_best_cost())
+    }
+}
 
-        if cost < 1e-6 {
-            "Excellent convergence".to_string()
-        } else if cost < 1e-3 {
-            "Good convergence".to_string()
-        } else if cost < 1e-1 {
-            "Moderate convergence".to_string()
-        } else {
-            "Poor convergence".to_string()
-        }
+pub(crate) fn print_progress(
+    best_param: Option<&dyn std::fmt::Debug>,
+    cost: f64,
+    iterations: u64,
+    cost_evals: u64,
+    gradient_evals: u64,
+) {
+    println!("Optimization Results:");
+    println!("  Converged: {}", cost < 1e-4);
+    if let Some(best_param) = best_param {
+        println!("  Best solution: {best_param:?}");
+    } else {
+        println!("  Best solution: Not available");
+    }
+    println!("  Best value: {cost:.6}");
+    println!("  Iterations: {iterations}");
+    println!("  Function evaluations: {cost_evals}");
+    if gradient_evals > 0 {
+        println!("  Gradient evaluations: {gradient_evals}");
+    }
+}
+
+pub(crate) fn convergence_summary(cost: f64) -> String {
+    if cost < 1e-6 {
+        "Excellent convergence".to_string()
+    } else if cost < 1e-3 {
+        "Good convergence".to_string()
+    } else if cost < 1e-1 {
+        "Moderate convergence".to_string()
+    } else {
+        "Poor convergence".to_string()
     }
 }
