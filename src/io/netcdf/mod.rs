@@ -1,23 +1,30 @@
-//! NetCDF classic and 64-bit offset files.
+//! NetCDF classic, 64-bit offset and 64-bit data files.
 //!
 //! A dependency-free reader and writer for the NetCDF classic data model as
-//! stored in `CDF\x01` (classic) and `CDF\x02` (64-bit offset) files. The
+//! stored in `CDF\x01` (classic), `CDF\x02` (64-bit offset) and `CDF\x05`
+//! (64-bit data) files. The
 //! reader parses the header lists (`NC_DIMENSION`, `NC_ATTRIBUTE`,
 //! `NC_VARIABLE`), the record (unlimited) dimension with record-major
 //! variable layout, and the `NC_BYTE` through `NC_DOUBLE` external types.
 //!
-//! Every value is exposed as `f64`; integer types convert exactly up to 2^53.
-//! The writer always emits a `CDF\x01` header with four-byte padding, the
-//! dimensions and variables of the supplied [`NcFile`], and big-endian data.
+//! Numeric values are exposed as `f64` (integer types convert exactly up to
+//! 2^53). Variables of external type `NC_CHAR` are surfaced as [`NcType::Char`]
+//! with their raw byte values preserved in [`Variable::data`] and convenience
+//! string decoders [`Variable::as_string`] and [`Variable::as_strings`].
+//!
+//! The writer emits `CDF\x01`, `CDF\x02` or `CDF\x05` headers with four-byte
+//! padding and big-endian data via [`write_netcdf`] /
+//! [`write_netcdf_with_format`] and [`to_bytes`] / [`to_bytes_with_format`],
+//! automatically upgrading a classic header to `CDF\x02` when any variable
+//! offset exceeds `u32::MAX`. `CDF\x05` widens every count, name length and
+//! offset to 64 bits; the type codes and dimension identifiers stay 32-bit.
 //!
 //! # Limitations
 //!
-//! - `CDF\x05` (NetCDF-4 64-bit data) is rejected, as are HDF5-backed
-//!   NetCDF-4 files.
+//! - HDF5-backed NetCDF-4 files (the `.nc4` container) are rejected; the three
+//!   classic headers are all supported.
 //! - Only the first dimension may be unlimited, as required by the classic
 //!   format.
-//! - Character data is only decoded for attributes; variables of type
-//!   `NC_CHAR` are exposed as byte values (`NcType::U8`).
 //!
 //! Every length, count and offset read from a file is checked against the
 //! buffer before use, and arrays are capped at 64 MiB and 2^32 elements.
@@ -60,13 +67,27 @@ const NC_FLOAT: u32 = 5;
 /// External type: 64-bit IEEE floating point.
 const NC_DOUBLE: u32 = 6;
 
+/// Binary format version emitted by the NetCDF writer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum NcFormat {
+    /// NetCDF classic format (`CDF\x01`, 32-bit variable offsets).
+    #[default]
+    Classic,
+    /// NetCDF 64-bit offset format (`CDF\x02`, 64-bit variable offsets).
+    Offset64,
+    /// NetCDF 64-bit data format (`CDF\x05`, every count and offset 64-bit).
+    Cdf5,
+}
+
 /// The external datatype of a NetCDF variable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NcType {
     /// Signed 8-bit integer (`NC_BYTE`).
     I8,
-    /// Unsigned 8-bit integer (`NC_CHAR`).
+    /// Unsigned 8-bit integer (stored as `NC_CHAR`).
     U8,
+    /// Character data (`NC_CHAR`).
+    Char,
     /// Signed 16-bit integer (`NC_SHORT`).
     I16,
     /// Unsigned 16-bit integer.
@@ -85,7 +106,7 @@ impl NcType {
     /// Byte width of one value of this type.
     const fn size(self) -> usize {
         match self {
-            | Self::I8 | Self::U8 => 1,
+            | Self::I8 | Self::U8 | Self::Char => 1,
             | Self::I16 | Self::U16 => 2,
             | Self::I32 | Self::U32 | Self::F32 => 4,
             | Self::F64 => 8,
@@ -96,7 +117,7 @@ impl NcType {
     const fn code(self) -> u32 {
         match self {
             | Self::I8 => NC_BYTE,
-            | Self::U8 => NC_CHAR,
+            | Self::U8 | Self::Char => NC_CHAR,
             | Self::I16 | Self::U16 => NC_SHORT,
             | Self::I32 | Self::U32 => NC_INT,
             | Self::F32 => NC_FLOAT,
@@ -127,8 +148,118 @@ pub struct Variable {
     pub nc_type: NcType,
     /// Variable attributes in file order.
     pub attributes: Vec<(String, NcValue)>,
-    /// Row-major values converted to `f64`.
+    /// Row-major values converted to `f64` (byte values `0.0..=255.0` for [`NcType::Char`]).
     pub data: Vec<f64>,
+}
+
+/// Decodes a NUL-terminated or NUL-padded byte slice into a UTF-8 string.
+fn decode_char_slice(bytes: &[u8]) -> Option<String> {
+    let end = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
+    std::str::from_utf8(bytes.get(..end)?)
+        .ok()
+        .map(str::to_owned)
+}
+
+impl Variable {
+    /// Creates a 1-D [`NcType::Char`] variable from a UTF-8 string.
+    pub fn from_string(
+        name: impl Into<String>,
+        dim_name: impl Into<String>,
+        text: &str,
+        attributes: Vec<(String, NcValue)>,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            dims: vec![dim_name.into()],
+            nc_type: NcType::Char,
+            attributes,
+            data: text.as_bytes().iter().map(|&b| f64::from(b)).collect(),
+        }
+    }
+
+    /// Creates an N-D [`NcType::Char`] variable from fixed-width NUL-padded strings.
+    ///
+    /// Each string is truncated or NUL-padded to `str_len` bytes, which should
+    /// match the innermost (last) dimension in `dims`.
+    pub fn from_strings(
+        name: impl Into<String>,
+        dims: Vec<String>,
+        strings: &[&str],
+        str_len: usize,
+        attributes: Vec<(String, NcValue)>,
+    ) -> Self {
+        let mut data = Vec::with_capacity(strings.len().saturating_mul(str_len));
+        for text in strings {
+            let bytes = text.as_bytes();
+            let take = bytes.len().min(str_len);
+            for &b in &bytes[..take] {
+                data.push(f64::from(b));
+            }
+            for _ in take..str_len {
+                data.push(0.0);
+            }
+        }
+        Self {
+            name: name.into(),
+            dims,
+            nc_type: NcType::Char,
+            attributes,
+            data,
+        }
+    }
+
+    /// Converts [`Self::data`] to raw bytes when `self.nc_type == NcType::Char`.
+    fn char_bytes(&self) -> Option<Vec<u8>> {
+        if self.nc_type != NcType::Char {
+            return None;
+        }
+        let mut bytes = Vec::with_capacity(self.data.len());
+        for &value in &self.data {
+            if !value.is_finite() {
+                return None;
+            }
+            let truncated = value.trunc();
+            if !(0.0..=255.0).contains(&truncated) {
+                return None;
+            }
+            bytes.push(truncated as u8);
+        }
+        Some(bytes)
+    }
+
+    /// Decodes a 1-D (or scalar) [`NcType::Char`] variable as a UTF-8 string.
+    ///
+    /// Returns `None` if this variable is not [`NcType::Char`] or its bytes are
+    /// not valid UTF-8.
+    pub fn as_string(&self) -> Option<String> {
+        let bytes = self.char_bytes()?;
+        decode_char_slice(&bytes)
+    }
+
+    /// Decodes a 1-D or N-D [`NcType::Char`] variable into a list of strings.
+    ///
+    /// For 1-D (or scalar) variables this returns a single-element vector; for
+    /// 2-D and higher-rank variables the last dimension in `self.dims` is used
+    /// as the fixed byte width of each string (looked up in `dimensions`).
+    pub fn as_strings(
+        &self,
+        dimensions: &[Dimension],
+    ) -> Option<Vec<String>> {
+        let bytes = self.char_bytes()?;
+        if self.dims.len() <= 1 {
+            return Some(vec![decode_char_slice(&bytes)?]);
+        }
+        let last_dim = self.dims.last()?;
+        let str_len = dimensions.iter().find(|d| d.name == *last_dim)?.len;
+        if str_len == 0 {
+            return Some(Vec::new());
+        }
+        let mut out = Vec::with_capacity(bytes.len() / str_len);
+        for chunk in bytes.chunks_exact(str_len) {
+            out.push(decode_char_slice(chunk)?);
+        }
+        Some(out)
+    }
 }
 
 /// An attribute value.
@@ -159,6 +290,18 @@ pub struct NcFile {
     pub global_attributes: Vec<(String, NcValue)>,
 }
 
+impl NcFile {
+    /// Decodes the named [`NcType::Char`] variable into strings using this
+    /// file's dimension table.
+    pub fn variable_strings(
+        &self,
+        name: &str,
+    ) -> Option<Vec<String>> {
+        let variable = self.variables.iter().find(|var| var.name == name)?;
+        variable.as_strings(&self.dimensions)
+    }
+}
+
 // -------------------------------------------------------------------------
 // Big-endian cursor
 // -------------------------------------------------------------------------
@@ -169,12 +312,27 @@ struct Cursor<'a> {
     data: &'a [u8],
     /// Next unread byte.
     pos: usize,
+    /// Whether `NON_NEG` fields are 64-bit (CDF-5).
+    wide: bool,
 }
 
 impl<'a> Cursor<'a> {
     /// Creates a cursor at the start of `data`.
     const fn new(data: &'a [u8]) -> Self {
-        Self { data, pos: 0 }
+        Self {
+            data,
+            pos: 0,
+            wide: false,
+        }
+    }
+
+    /// Reads a `NON_NEG` field, which is 64-bit in CDF-5 and 32-bit before.
+    fn nonneg(&mut self) -> Result<u64, String> {
+        if self.wide {
+            self.u64()
+        } else {
+            Ok(u64::from(self.u32()?))
+        }
     }
 
     /// Consumes `count` bytes, failing on any overrun.
@@ -231,7 +389,7 @@ impl<'a> Cursor<'a> {
 
     /// Reads a padded name.
     fn name(&mut self) -> Result<String, String> {
-        let len = to_usize(u64::from(self.u32()?), "name length")?;
+        let len = to_usize(self.nonneg()?, "name length")?;
         if len > MAX_NAME {
             return Err(format!("name of {len} bytes is unreasonably long"));
         }
@@ -287,7 +445,7 @@ const fn external_size(code: u32) -> Result<usize, ()> {
 const fn nc_type_of(code: u32) -> Result<NcType, ()> {
     match code {
         | NC_BYTE => Ok(NcType::I8),
-        | NC_CHAR => Ok(NcType::U8),
+        | NC_CHAR => Ok(NcType::Char),
         | NC_SHORT => Ok(NcType::I16),
         | NC_INT => Ok(NcType::I32),
         | NC_FLOAT => Ok(NcType::F32),
@@ -332,7 +490,7 @@ struct Header {
 fn read_attribute(cur: &mut Cursor<'_>) -> Result<(String, NcValue), String> {
     let name = cur.name()?;
     let code = cur.u32()?;
-    let count = to_usize(u64::from(cur.u32()?), "attribute element count")?;
+    let count = to_usize(cur.nonneg()?, "attribute element count")?;
     let size = external_size(code)
         .map_err(|()| format!("attribute {name} uses unsupported type code {code}"))?;
     let bytes = count
@@ -360,7 +518,7 @@ fn read_attribute(cur: &mut Cursor<'_>) -> Result<(String, NcValue), String> {
 /// Reads an attribute list, returning an empty vector for an absent list.
 fn read_attribute_list(cur: &mut Cursor<'_>) -> Result<Vec<(String, NcValue)>, String> {
     let tag = cur.u32()?;
-    let count = to_usize(u64::from(cur.u32()?), "attribute count")?;
+    let count = to_usize(cur.nonneg()?, "attribute count")?;
     if tag == 0 {
         if count != 0 {
             return Err("absent attribute list declares entries".to_owned());
@@ -459,14 +617,24 @@ fn parse_header(data: &[u8]) -> Result<Header, String> {
         return Err("not a NetCDF classic file: magic mismatch".to_owned());
     }
     let version = *magic.get(3).ok_or("truncated NetCDF magic")?;
-    if !matches!(version, 1 | 2) {
+    if !matches!(version, 1 | 2 | 5) {
         return Err(format!(
-            "unsupported NetCDF version {version}; only CDF-1 and CDF-2 are supported"
+            "unsupported NetCDF version {version}; CDF-1, CDF-2 and CDF-5 are supported"
         ));
     }
     let mut cur = Cursor::new(data);
+    cur.wide = version == 5;
     cur.skip(4)?;
-    let numrecs = if version == 1 {
+    // `numrecs` is a 32-bit count up to CDF-2 and a 64-bit count in CDF-5.
+    let numrecs = if version == 5 {
+        let raw = cur.u64()?;
+        if raw == u64::MAX {
+            return Err(
+                "streaming files with indeterminate record counts are not supported".to_owned(),
+            );
+        }
+        raw
+    } else {
         let raw = cur.u32()?;
         if raw == u32::MAX {
             return Err(
@@ -474,12 +642,10 @@ fn parse_header(data: &[u8]) -> Result<Header, String> {
             );
         }
         u64::from(raw)
-    } else {
-        cur.u64()?
     };
 
     let dim_tag = cur.u32()?;
-    let dim_count = to_usize(u64::from(cur.u32()?), "dimension count")?;
+    let dim_count = to_usize(cur.nonneg()?, "dimension count")?;
     let mut dimensions = Vec::new();
     if dim_tag == 0 {
         if dim_count != 0 {
@@ -491,11 +657,7 @@ fn parse_header(data: &[u8]) -> Result<Header, String> {
         }
         for _ in 0..dim_count {
             let name = cur.name()?;
-            let len = if version == 1 {
-                u64::from(cur.u32()?)
-            } else {
-                cur.u64()?
-            };
+            let len = cur.nonneg()?;
             let unlimited = len == 0;
             if unlimited && !dimensions.is_empty() {
                 return Err("only the first dimension may be the unlimited dimension".to_owned());
@@ -517,7 +679,7 @@ fn parse_header(data: &[u8]) -> Result<Header, String> {
     let global_attributes = read_attribute_list(&mut cur)?;
 
     let var_tag = cur.u32()?;
-    let var_count = to_usize(u64::from(cur.u32()?), "variable count")?;
+    let var_count = to_usize(cur.nonneg()?, "variable count")?;
     let mut variables = Vec::new();
     if var_tag == 0 {
         if var_count != 0 {
@@ -529,13 +691,13 @@ fn parse_header(data: &[u8]) -> Result<Header, String> {
         }
         for _ in 0..var_count {
             let name = cur.name()?;
-            let ndims = to_usize(u64::from(cur.u32()?), "variable rank")?;
+            let ndims = to_usize(cur.nonneg()?, "variable rank")?;
             if ndims > 1024 {
                 return Err(format!("variable {name} has an implausible rank {ndims}"));
             }
             let mut dimids = Vec::with_capacity(ndims);
             for _ in 0..ndims {
-                let id = to_usize(u64::from(cur.u32()?), "dimension id")?;
+                let id = to_usize(cur.nonneg()?, "dimension id")?;
                 if id >= dimensions.len() {
                     return Err(format!(
                         "variable {name} references dimension {id}, which does not exist"
@@ -547,7 +709,7 @@ fn parse_header(data: &[u8]) -> Result<Header, String> {
             let code = cur.u32()?;
             let _ = external_size(code)
                 .map_err(|()| format!("variable {name} uses unsupported type code {code}"))?;
-            let _vsize = cur.u32()?;
+            let _vsize = cur.nonneg()?;
             let begin = if version == 1 {
                 u64::from(cur.u32()?)
             } else {
@@ -800,7 +962,7 @@ fn encode_values(
                         }
                         out.push(truncated as i8 as u8);
                     },
-                    | NcType::U8 => {
+                    | NcType::U8 | NcType::Char => {
                         if !(0.0..=255.0).contains(&truncated) {
                             return Err(format!("value {value} does not fit in a u8"));
                         }
@@ -836,9 +998,9 @@ fn encode_values(
 fn put_name(
     out: &mut Vec<u8>,
     name: &str,
+    wide: bool,
 ) {
-    let len = u32::try_from(name.len()).unwrap_or(0);
-    out.extend_from_slice(&len.to_be_bytes());
+    put_count(out, u64::try_from(name.len()).unwrap_or(0), wide);
     out.extend_from_slice(name.as_bytes());
     while out.len() % 4 != 0 {
         out.push(0);
@@ -850,8 +1012,9 @@ fn put_attribute(
     out: &mut Vec<u8>,
     name: &str,
     value: &NcValue,
+    wide: bool,
 ) {
-    put_name(out, name);
+    put_name(out, name, wide);
     let (code, count, body) = match value {
         | NcValue::Text(text) => (NC_CHAR, text.len(), text.as_bytes().to_vec()),
         | NcValue::Int(number) => (NC_INT, 1, number.to_be_bytes().to_vec()),
@@ -878,7 +1041,7 @@ fn put_attribute(
         },
     };
     out.extend_from_slice(&code.to_be_bytes());
-    out.extend_from_slice(&u32::try_from(count).unwrap_or(0).to_be_bytes());
+    put_count(out, u64::try_from(count).unwrap_or(0), wide);
     out.extend_from_slice(&body);
     while out.len() % 4 != 0 {
         out.push(0);
@@ -889,66 +1052,98 @@ fn put_attribute(
 fn put_attribute_list(
     out: &mut Vec<u8>,
     attributes: &[(String, NcValue)],
+    wide: bool,
 ) {
     if attributes.is_empty() {
         out.extend_from_slice(&0_u32.to_be_bytes());
-        out.extend_from_slice(&0_u32.to_be_bytes());
+        put_count(out, 0, wide);
         return;
     }
     out.extend_from_slice(&NC_ATTRIBUTE.to_be_bytes());
-    out.extend_from_slice(&u32::try_from(attributes.len()).unwrap_or(0).to_be_bytes());
+    put_count(out, u64::try_from(attributes.len()).unwrap_or(0), wide);
     for (name, value) in attributes {
-        put_attribute(out, name, value);
+        put_attribute(out, name, value, wide);
     }
 }
 
-/// Serialises a `CDF\x01` header, using `begins` for the variable offsets.
+/// Writes a `NON_NEG` field at the width the format uses.
+fn put_count(
+    out: &mut Vec<u8>,
+    value: u64,
+    wide: bool,
+) {
+    if wide {
+        out.extend_from_slice(&value.to_be_bytes());
+    } else {
+        out.extend_from_slice(&u32::try_from(value).unwrap_or(0).to_be_bytes());
+    }
+}
+
+/// Serialises a `CDF\x01` or `CDF\x02` header, using `begins` for variable offsets.
 fn build_header(
     file: &NcFile,
     begins: &[u64],
     numrecs: u64,
+    format: NcFormat,
 ) -> Result<Vec<u8>, String> {
     let mut out = Vec::new();
-    out.extend_from_slice(b"CDF\x01");
-    out.extend_from_slice(&u32::try_from(numrecs).unwrap_or(0).to_be_bytes());
+    let wide = matches!(format, NcFormat::Cdf5);
+    match format {
+        | NcFormat::Classic => out.extend_from_slice(b"CDF\x01"),
+        | NcFormat::Offset64 => out.extend_from_slice(b"CDF\x02"),
+        | NcFormat::Cdf5 => out.extend_from_slice(b"CDF\x05"),
+    }
+    if numrecs == u64::MAX {
+        return Err("record count cannot equal the streaming sentinel".to_owned());
+    }
+    if wide {
+        out.extend_from_slice(&numrecs.to_be_bytes());
+    } else {
+        let numrecs_u32 = u32::try_from(numrecs)
+            .map_err(|_| "record count exceeds the 32-bit limit of CDF-1 and CDF-2".to_owned())?;
+        if numrecs_u32 == u32::MAX {
+            return Err("record count cannot equal the streaming sentinel u32::MAX".to_owned());
+        }
+        out.extend_from_slice(&numrecs_u32.to_be_bytes());
+    }
     if file.dimensions.is_empty() {
         out.extend_from_slice(&0_u32.to_be_bytes());
-        out.extend_from_slice(&0_u32.to_be_bytes());
+        put_count(&mut out, 0, wide);
     } else {
         out.extend_from_slice(&NC_DIMENSION.to_be_bytes());
-        out.extend_from_slice(
-            &u32::try_from(file.dimensions.len())
-                .unwrap_or(0)
-                .to_be_bytes(),
+        put_count(
+            &mut out,
+            u64::try_from(file.dimensions.len()).unwrap_or(0),
+            wide,
         );
         for dimension in &file.dimensions {
-            put_name(&mut out, &dimension.name);
+            put_name(&mut out, &dimension.name, wide);
             let len = if dimension.unlimited {
-                0_u32
+                0
             } else {
-                u32::try_from(dimension.len)
+                u64::try_from(dimension.len)
                     .map_err(|_| format!("dimension {} is too long", dimension.name))?
             };
-            out.extend_from_slice(&len.to_be_bytes());
+            put_count(&mut out, len, wide);
         }
     }
-    put_attribute_list(&mut out, &file.global_attributes);
+    put_attribute_list(&mut out, &file.global_attributes, wide);
     if file.variables.is_empty() {
         out.extend_from_slice(&0_u32.to_be_bytes());
-        out.extend_from_slice(&0_u32.to_be_bytes());
+        put_count(&mut out, 0, wide);
     } else {
         out.extend_from_slice(&NC_VARIABLE.to_be_bytes());
-        out.extend_from_slice(
-            &u32::try_from(file.variables.len())
-                .unwrap_or(0)
-                .to_be_bytes(),
+        put_count(
+            &mut out,
+            u64::try_from(file.variables.len()).unwrap_or(0),
+            wide,
         );
         for (index, variable) in file.variables.iter().enumerate() {
-            put_name(&mut out, &variable.name);
-            out.extend_from_slice(
-                &u32::try_from(variable.dims.len())
-                    .unwrap_or(0)
-                    .to_be_bytes(),
+            put_name(&mut out, &variable.name, wide);
+            put_count(
+                &mut out,
+                u64::try_from(variable.dims.len()).unwrap_or(0),
+                wide,
             );
             for name in &variable.dims {
                 let id = file
@@ -961,9 +1156,9 @@ fn build_header(
                             variable.name
                         )
                     })?;
-                out.extend_from_slice(&u32::try_from(id).unwrap_or(0).to_be_bytes());
+                put_count(&mut out, u64::try_from(id).unwrap_or(0), wide);
             }
-            put_attribute_list(&mut out, &variable.attributes);
+            put_attribute_list(&mut out, &variable.attributes, wide);
             out.extend_from_slice(&variable.nc_type.code().to_be_bytes());
             let shape = variable_shape(file, variable)?;
             let slab: &[usize] = if is_record_variable(file, variable) {
@@ -974,15 +1169,56 @@ fn build_header(
             let size = element_count(slab)?
                 .checked_mul(u64::try_from(variable.nc_type.size()).unwrap_or(0))
                 .ok_or_else(|| format!("variable {} is too large", variable.name))?;
-            out.extend_from_slice(&u32::try_from(align4(size)).unwrap_or(0).to_be_bytes());
-            out.extend_from_slice(
-                &u32::try_from(*begins.get(index).unwrap_or(&0))
-                    .map_err(|_| format!("variable {} offset is too large", variable.name))?
-                    .to_be_bytes(),
-            );
+            put_count(&mut out, align4(size), wide);
+            let begin = *begins.get(index).unwrap_or(&0);
+            match format {
+                | NcFormat::Classic => {
+                    let begin_u32 = u32::try_from(begin)
+                        .map_err(|_| format!("variable {} offset is too large", variable.name))?;
+                    out.extend_from_slice(&begin_u32.to_be_bytes());
+                },
+                | NcFormat::Offset64 | NcFormat::Cdf5 => {
+                    out.extend_from_slice(&begin.to_be_bytes());
+                },
+            }
         }
     }
     Ok(out)
+}
+
+/// Computes variable `begin` offsets and per-record `stride` for a header of length `header_len`.
+fn compute_begins(
+    file: &NcFile,
+    encoded: &[Vec<u8>],
+    numrecs: u64,
+    header_len: u64,
+) -> (Vec<u64>, u64) {
+    let mut begins = vec![0_u64; file.variables.len()];
+    let mut pos = align4(header_len);
+    for (index, variable) in file.variables.iter().enumerate() {
+        let record = is_record_variable(file, variable);
+        if !record {
+            begins[index] = pos;
+            let bytes = u64::try_from(encoded[index].len()).unwrap_or(0);
+            pos = align4(pos.saturating_add(bytes));
+        }
+    }
+    let record_start = pos;
+    let mut record_offset = 0_u64;
+    for (index, variable) in file.variables.iter().enumerate() {
+        let record = is_record_variable(file, variable);
+        if record {
+            begins[index] = record_start.saturating_add(record_offset);
+            let bytes = u64::try_from(encoded[index].len()).unwrap_or(0);
+            let slab = if numrecs == 0 {
+                bytes
+            } else {
+                bytes / numrecs
+            };
+            record_offset = record_offset.saturating_add(align4(slab));
+        }
+    }
+    (begins, record_offset)
 }
 
 /// Resolves the shape of `variable`, substituting the record count for the
@@ -1021,7 +1257,8 @@ fn is_record_variable(
         .any(|dimension| dimension.unlimited && dimension.name == *first)
 }
 
-/// Writes a NetCDF classic file to disk.
+/// Writes a NetCDF file to disk (using `CDF\x02` when `file.version == 2` or
+/// when any variable offset exceeds `u32::MAX`, otherwise `CDF\x01`).
 ///
 /// # Errors
 /// Fails when a variable references an unknown dimension, data lengths do not
@@ -1036,12 +1273,59 @@ pub fn write_netcdf(
         .map_err(|error| format!("failed to write {}: {error}", path.display()))
 }
 
-/// Serialises a NetCDF classic (`CDF\x01`) file image.
+/// Writes a NetCDF file to disk using the requested [`NcFormat`].
+///
+/// If [`NcFormat::Classic`] is requested but a variable offset exceeds
+/// `u32::MAX`, the writer automatically upgrades to [`NcFormat::Offset64`].
+///
+/// # Errors
+/// Fails when serialisation fails or the file cannot be written.
+pub fn write_netcdf_with_format(
+    path: &Path,
+    file: &NcFile,
+    format: NcFormat,
+) -> Result<(), String> {
+    let bytes = to_bytes_with_format(file, format)?;
+    std::fs::write(path, bytes)
+        .map_err(|error| format!("failed to write {}: {error}", path.display()))
+}
+
+/// Serialises a NetCDF file image (using `CDF\x02` when `file.version == 2` or
+/// when any variable offset exceeds `u32::MAX`, otherwise `CDF\x01`).
 ///
 /// # Errors
 /// Fails when a variable references an unknown dimension, data lengths do not
 /// match the declared shape, or the unlimited dimension is not first.
 pub fn write_netcdf_bytes(file: &NcFile) -> Result<Vec<u8>, String> {
+    let format = if file.version == 2 {
+        NcFormat::Offset64
+    } else {
+        NcFormat::Classic
+    };
+    to_bytes_with_format(file, format)
+}
+
+/// Alias for [`write_netcdf_bytes`].
+///
+/// # Errors
+/// Fails when a variable references an unknown dimension, data lengths do not
+/// match the declared shape, or the unlimited dimension is not first.
+pub fn to_bytes(file: &NcFile) -> Result<Vec<u8>, String> {
+    write_netcdf_bytes(file)
+}
+
+/// Serialises a NetCDF file image using the requested [`NcFormat`].
+///
+/// If [`NcFormat::Classic`] is requested but a variable offset exceeds
+/// `u32::MAX`, the writer automatically upgrades to [`NcFormat::Offset64`].
+///
+/// # Errors
+/// Fails when a variable references an unknown dimension, data lengths do not
+/// match the declared shape, or the unlimited dimension is not first.
+pub fn to_bytes_with_format(
+    file: &NcFile,
+    format: NcFormat,
+) -> Result<Vec<u8>, String> {
     let rec_index = file
         .dimensions
         .iter()
@@ -1057,7 +1341,6 @@ pub fn write_netcdf_bytes(file: &NcFile) -> Result<Vec<u8>, String> {
             .map_or(0, |dimension| u64::try_from(dimension.len).unwrap_or(0))
     });
 
-    let mut shapes = Vec::with_capacity(file.variables.len());
     let mut encoded = Vec::with_capacity(file.variables.len());
     for variable in &file.variables {
         let shape = variable_shape(file, variable)?;
@@ -1076,39 +1359,26 @@ pub fn write_netcdf_bytes(file: &NcFile) -> Result<Vec<u8>, String> {
             return Err(format!("variable {} exceeds the size limit", variable.name));
         }
         encoded.push(encode_values(variable.nc_type, &variable.data)?);
-        shapes.push(shape);
     }
 
     let zeros = vec![0_u64; file.variables.len()];
-    let header_len = u64::try_from(build_header(file, &zeros, numrecs)?.len()).unwrap_or(0);
-    let mut begins = vec![0_u64; file.variables.len()];
-    let mut pos = align4(header_len);
-    for (index, variable) in file.variables.iter().enumerate() {
-        let record = is_record_variable(file, variable);
-        if !record {
-            begins[index] = pos;
-            let bytes = u64::try_from(encoded[index].len()).unwrap_or(0);
-            pos = align4(pos.saturating_add(bytes));
-        }
-    }
-    let record_start = pos;
-    let mut record_offset = 0_u64;
-    for (index, variable) in file.variables.iter().enumerate() {
-        let record = is_record_variable(file, variable);
-        if record {
-            begins[index] = record_start.saturating_add(record_offset);
-            let bytes = u64::try_from(encoded[index].len()).unwrap_or(0);
-            let slab = if numrecs == 0 {
-                bytes
-            } else {
-                bytes / numrecs
-            };
-            record_offset = record_offset.saturating_add(align4(slab));
-        }
-    }
-    let stride = record_offset;
+    let mut active_format = format;
+    let header_len =
+        u64::try_from(build_header(file, &zeros, numrecs, active_format)?.len()).unwrap_or(0);
+    let (mut begins, mut stride) = compute_begins(file, &encoded, numrecs, header_len);
 
-    let mut out = build_header(file, &begins, numrecs)?;
+    if active_format == NcFormat::Classic
+        && begins.iter().any(|&offset| offset > u64::from(u32::MAX))
+    {
+        active_format = NcFormat::Offset64;
+        let header_len_64 =
+            u64::try_from(build_header(file, &zeros, numrecs, active_format)?.len()).unwrap_or(0);
+        let recomputed = compute_begins(file, &encoded, numrecs, header_len_64);
+        begins = recomputed.0;
+        stride = recomputed.1;
+    }
+
+    let mut out = build_header(file, &begins, numrecs, active_format)?;
     let write_at = |out: &mut Vec<u8>, target: u64, bytes: &[u8]| -> Result<(), String> {
         let target = to_usize(target, "data offset")?;
         while out.len() < target {
@@ -1151,13 +1421,17 @@ pub fn write_netcdf_bytes(file: &NcFile) -> Result<Vec<u8>, String> {
 mod tests {
     use super::Dimension;
     use super::NcFile;
+    use super::NcFormat;
     use super::NcType;
     use super::NcValue;
     use super::Variable;
     use super::read_netcdf;
     use super::read_netcdf_bytes;
+    use super::to_bytes;
+    use super::to_bytes_with_format;
     use super::write_netcdf;
     use super::write_netcdf_bytes;
+    use super::write_netcdf_with_format;
 
     /// A unique temporary path for one test.
     fn temp_path(tag: &str) -> std::path::PathBuf {
@@ -1218,6 +1492,68 @@ mod tests {
                 data: vec![273.15],
             }],
             global_attributes: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn cdf5_widens_every_header_count() {
+        let file = grid_file();
+        let bytes = to_bytes_with_format(&file, NcFormat::Cdf5).expect("serialise CDF-5");
+        assert_eq!(&bytes[..4], b"CDF\x05");
+        let parsed = read_netcdf_bytes(&bytes).expect("parse CDF-5");
+        assert_eq!(parsed.dimensions.len(), file.dimensions.len());
+        assert_eq!(parsed.variables.len(), file.variables.len());
+        for (left, right) in parsed.variables.iter().zip(&file.variables) {
+            assert_eq!(left.name, right.name);
+            assert_eq!(left.data, right.data);
+        }
+        // The record count is 64-bit from CDF-2 on.
+        assert_eq!(bytes.len() > 8, true);
+    }
+
+    #[test]
+    fn cdf5_round_trips_records_and_attributes() {
+        let file = record_file();
+        let bytes = to_bytes_with_format(&file, NcFormat::Cdf5).expect("serialise CDF-5");
+        let parsed = read_netcdf_bytes(&bytes).expect("parse CDF-5");
+        assert_eq!(parsed.variables.len(), file.variables.len());
+        for (left, right) in parsed.variables.iter().zip(&file.variables) {
+            assert_eq!(left.data, right.data, "variable {}", right.name);
+        }
+        assert_eq!(parsed.global_attributes.len(), file.global_attributes.len());
+    }
+
+    #[test]
+    fn every_format_round_trips_through_a_file() {
+        for format in [NcFormat::Classic, NcFormat::Offset64, NcFormat::Cdf5] {
+            let path = temp_path(&format!("format_{format:?}"));
+            let file = record_file();
+            write_netcdf_with_format(&path, &file, format).expect("write");
+            let back = read_netcdf(&path).expect("read");
+            let _ = std::fs::remove_file(&path);
+            assert_eq!(back.variables.len(), file.variables.len(), "{format:?}");
+            for (left, right) in back.variables.iter().zip(&file.variables) {
+                assert_eq!(left.data, right.data, "{format:?} {}", right.name);
+            }
+        }
+    }
+
+    /// The reference library writes these files; they are checked in so the
+    /// test runs in a normal `cargo test`.
+    #[test]
+    fn reads_reference_written_files() {
+        let base = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/netcdf");
+        for name in ["cdf5.nc", "cdf2.nc"] {
+            let path = base.join(name);
+            let file = read_netcdf(&path).expect("read fixture");
+            assert!(!file.variables.is_empty(), "{name} has no variables");
+            for variable in &file.variables {
+                assert!(
+                    variable.data.iter().all(|value| value.is_finite()),
+                    "{name} {} has a non-finite value",
+                    variable.name
+                );
+            }
         }
     }
 
@@ -1312,13 +1648,13 @@ mod tests {
     fn reads_cdf2_header() {
         let mut out = Vec::new();
         out.extend_from_slice(b"CDF\x02");
-        out.extend_from_slice(&0_u64.to_be_bytes());
+        out.extend_from_slice(&0_u32.to_be_bytes());
         out.extend_from_slice(&10_u32.to_be_bytes());
         out.extend_from_slice(&1_u32.to_be_bytes());
         out.extend_from_slice(&1_u32.to_be_bytes());
         out.extend_from_slice(b"x");
         out.extend_from_slice(&[0; 3]);
-        out.extend_from_slice(&2_u64.to_be_bytes());
+        out.extend_from_slice(&2_u32.to_be_bytes());
         out.extend_from_slice(&0_u32.to_be_bytes());
         out.extend_from_slice(&0_u32.to_be_bytes());
         out.extend_from_slice(&11_u32.to_be_bytes());
@@ -1346,6 +1682,151 @@ mod tests {
         assert_eq!(parsed.dimensions.len(), 1);
         assert_eq!(parsed.dimensions[0].len, 2);
         assert_eq!(parsed.variables[0].data, vec![1.5, 2.5]);
+    }
+
+    #[test]
+    fn round_trip_cdf2_fixed_and_record_variables() {
+        let file = NcFile {
+            version: 2,
+            dimensions: vec![
+                Dimension {
+                    name: "time".to_owned(),
+                    len: 3,
+                    unlimited: true,
+                },
+                Dimension {
+                    name: "station".to_owned(),
+                    len: 2,
+                    unlimited: false,
+                },
+            ],
+            variables: vec![
+                Variable {
+                    name: "lat".to_owned(),
+                    dims: vec!["station".to_owned()],
+                    nc_type: NcType::F32,
+                    attributes: vec![("units".to_owned(), NcValue::Text("degN".to_owned()))],
+                    data: vec![37.5, 42.25],
+                },
+                Variable {
+                    name: "temp".to_owned(),
+                    dims: vec!["time".to_owned(), "station".to_owned()],
+                    nc_type: NcType::F64,
+                    attributes: vec![("units".to_owned(), NcValue::Text("K".to_owned()))],
+                    data: vec![280.0, 281.5, 282.0, 283.5, 284.0, 285.5],
+                },
+                Variable {
+                    name: "flags".to_owned(),
+                    dims: vec!["time".to_owned()],
+                    nc_type: NcType::I8,
+                    attributes: Vec::new(),
+                    data: vec![-1.0, 0.0, 1.0],
+                },
+            ],
+            global_attributes: vec![
+                ("title".to_owned(), NcValue::Text("cdf2 test".to_owned())),
+                ("rev".to_owned(), NcValue::Int(2)),
+            ],
+        };
+
+        let bytes = to_bytes_with_format(&file, NcFormat::Offset64).expect("serialise CDF-2");
+        assert_eq!(&bytes[..4], b"CDF\x02");
+
+        let parsed = read_netcdf_bytes(&bytes).expect("parse CDF-2");
+        assert_eq!(parsed.version, 2);
+        assert_eq!(parsed.dimensions, file.dimensions);
+        assert_eq!(parsed.global_attributes, file.global_attributes);
+        assert_eq!(parsed.variables, file.variables);
+
+        // Also verify default to_bytes respects file.version == 2 and file-based write_netcdf_with_format.
+        let default_bytes = to_bytes(&file).expect("default to_bytes");
+        assert_eq!(&default_bytes[..4], b"CDF\x02");
+
+        let path = temp_path("cdf2_roundtrip");
+        write_netcdf_with_format(&path, &file, NcFormat::Offset64).expect("write CDF-2");
+        let from_disk = read_netcdf(&path).expect("read CDF-2");
+        assert_eq!(from_disk.version, 2);
+        assert_eq!(from_disk.variables, file.variables);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn round_trip_nc_char_variables_and_string_decoding() {
+        let file = NcFile {
+            version: 1,
+            dimensions: vec![
+                Dimension {
+                    name: "title_len".to_owned(),
+                    len: 5,
+                    unlimited: false,
+                },
+                Dimension {
+                    name: "n_stations".to_owned(),
+                    len: 3,
+                    unlimited: false,
+                },
+                Dimension {
+                    name: "name_len".to_owned(),
+                    len: 8,
+                    unlimited: false,
+                },
+            ],
+            variables: vec![
+                Variable::from_string(
+                    "label",
+                    "title_len",
+                    "hello",
+                    vec![("long_name".to_owned(), NcValue::Text("label".to_owned()))],
+                ),
+                Variable::from_strings(
+                    "stations",
+                    vec!["n_stations".to_owned(), "name_len".to_owned()],
+                    &["alpha", "beta", "gamma"],
+                    8,
+                    Vec::new(),
+                ),
+            ],
+            global_attributes: Vec::new(),
+        };
+
+        for format in [NcFormat::Classic, NcFormat::Offset64] {
+            let bytes = to_bytes_with_format(&file, format).expect("serialise NC_CHAR");
+            let parsed = read_netcdf_bytes(&bytes).expect("parse NC_CHAR");
+
+            let label = &parsed.variables[0];
+            assert_eq!(label.nc_type, NcType::Char);
+            assert_eq!(label.as_string(), Some("hello".to_owned()));
+            assert_eq!(
+                label.as_strings(&parsed.dimensions),
+                Some(vec!["hello".to_owned()])
+            );
+            // Numeric byte values remain accessible in `data`.
+            assert_eq!(label.data, vec![104.0, 101.0, 108.0, 108.0, 111.0]);
+
+            let stations = &parsed.variables[1];
+            assert_eq!(stations.nc_type, NcType::Char);
+            assert_eq!(
+                stations.as_strings(&parsed.dimensions),
+                Some(vec![
+                    "alpha".to_owned(),
+                    "beta".to_owned(),
+                    "gamma".to_owned(),
+                ])
+            );
+            assert_eq!(
+                parsed.variable_strings("stations"),
+                Some(vec![
+                    "alpha".to_owned(),
+                    "beta".to_owned(),
+                    "gamma".to_owned(),
+                ])
+            );
+        }
+
+        // Non-char variables return None for string helpers.
+        let numeric = &grid_file().variables[0];
+        assert_eq!(numeric.as_string(), None);
+        assert_eq!(numeric.as_strings(&grid_file().dimensions), None);
     }
 
     #[test]
