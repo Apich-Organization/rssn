@@ -48,6 +48,7 @@ pub mod differential_geometry;
     clippy::too_many_lines
 )]
 pub mod distributions;
+pub mod distributions_ext;
 pub mod eigs;
 pub mod eigs_ext;
 pub mod error_correction;

@@ -3607,3 +3607,50 @@ mod cache_and_batch_tests {
         assert_eq!(serial, parallel);
     }
 }
+
+/// The `n`-th harmonic number `sum_{k=1..n} 1/k`.
+#[must_use]
+pub fn harmonic(n: u64) -> f64 {
+    statrs::function::harmonic::harmonic(n)
+}
+
+/// The inverse of the regularized incomplete beta function in its probability
+/// argument: the `x` with `I_x(a, b) = p`.
+///
+/// # Errors
+/// Returns an error when `a` or `b` is not positive or `p` lies outside
+/// `[0, 1]`.
+pub fn inverse_beta_reg(
+    a: f64,
+    b: f64,
+    p: f64,
+) -> Result<f64, String> {
+    if !(a > 0.0) || !(b > 0.0) {
+        return Err("inverse_beta_reg needs positive shape parameters".to_string());
+    }
+    if !(0.0..=1.0).contains(&p) {
+        return Err("inverse_beta_reg needs a probability in [0, 1]".to_string());
+    }
+    Ok(statrs::function::beta::inv_beta_reg(a, b, p))
+}
+
+/// The multinomial coefficient `n! / (k_1! ... k_m!)`.
+///
+/// # Panics
+/// Panics when the parts do not sum to `n`, as `statrs` does.
+#[must_use]
+pub fn multinomial(
+    n: u64,
+    parts: &[u64],
+) -> f64 {
+    statrs::function::factorial::multinomial(n, parts)
+}
+
+/// The logarithm of the binomial coefficient `ln C(n, k)`.
+#[must_use]
+pub fn ln_binomial(
+    n: u64,
+    k: u64,
+) -> f64 {
+    statrs::function::factorial::ln_binomial(n, k)
+}
