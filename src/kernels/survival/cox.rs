@@ -209,6 +209,12 @@ fn evaluate(
 }
 
 /// Harrell's concordance index at the linear predictor `x . beta`.
+///
+/// A pair `(i, j)` with `event[i]` observed is comparable when `time[i] < time[j]`
+/// or when `time[i] == time[j]` and observation `j` is censored (so `j`'s true
+/// event time exceeds `time[i]`). Pairs of tied events are not comparable, and
+/// tied risk scores contribute `0.5` to the concordant count.
+#[allow(clippy::float_cmp)] // exact comparison identifies tied observation times
 fn concordance(
     x: &[Vec<f64>],
     time: &[f64],
@@ -224,14 +230,19 @@ fn concordance(
             continue;
         }
         for j in 0..n {
-            if i == j || time[j] <= time[i] {
+            if i == j {
+                continue;
+            }
+            let is_comparable = time[j] > time[i] || (time[j] == time[i] && !event[j]);
+            if !is_comparable {
                 continue;
             }
             comparable += 1.0;
-            if risk[i] > risk[j] {
-                concordant += 1.0;
-            } else if (risk[i] - risk[j]).abs() < f64::EPSILON {
+            let tol = 16.0 * f64::EPSILON * (1.0 + risk[i].abs().max(risk[j].abs()));
+            if (risk[i] - risk[j]).abs() <= tol {
                 concordant += 0.5;
+            } else if risk[i] > risk[j] {
+                concordant += 1.0;
             }
         }
     }
@@ -364,6 +375,7 @@ pub fn cox_predict(
 #[cfg(test)]
 mod tests {
     use super::Ties;
+    use super::concordance;
     use super::cox_fit;
     use super::cox_predict;
 
@@ -445,5 +457,46 @@ mod tests {
         assert!(cox_fit(&constant, &time, &event, Ties::Efron, 50, 1e-9).is_err());
         assert!(cox_fit(&x, &time, &event, Ties::Efron, 0, 1e-9).is_err());
         assert!(cox_fit(&x, &time, &event, Ties::Efron, 50, 0.0).is_err());
+    }
+
+    #[test]
+    fn concordance_counts_tied_event_and_censored_pairs() {
+        let time = vec![2.0, 2.0, 5.0];
+        let event = vec![true, false, true];
+        let beta = vec![1.0];
+
+        // Event at t = 2 has higher risk than both the censored observation
+        // tied at t = 2 and the later event at t = 5: 2/2 concordant.
+        let x_concordant = vec![vec![2.0], vec![1.0], vec![0.0]];
+        let c = concordance(&x_concordant, &time, &event, &beta);
+        assert!((c - 1.0).abs() < 1e-15, "c = {c}");
+
+        // Flipping the tied censored observation to have higher risk makes
+        // (0, 1) discordant while (0, 2) stays concordant: 1/2 = 0.5.
+        let x_mixed = vec![vec![2.0], vec![3.0], vec![0.0]];
+        let c_mixed = concordance(&x_mixed, &time, &event, &beta);
+        assert!((c_mixed - 0.5).abs() < 1e-15, "c = {c_mixed}");
+    }
+
+    #[test]
+    fn concordance_excludes_tied_events_and_awards_half_for_risk_ties() {
+        let x = vec![vec![1.0], vec![1.0], vec![1.0]];
+        let time = vec![2.0, 2.0, 5.0];
+        let event = vec![true, true, true];
+        let beta = vec![1.0];
+        // (0, 1) and (1, 0) are tied events (not comparable); (0, 2) and (1, 2)
+        // are comparable with tied risk scores, earning 0.5 each.
+        let c = concordance(&x, &time, &event, &beta);
+        assert!((c - 0.5).abs() < 1e-15, "c = {c}");
+    }
+
+    #[test]
+    fn concordance_returns_zero_when_no_pairs_are_comparable() {
+        let x = vec![vec![1.0], vec![2.0]];
+        let beta = vec![1.0];
+        // Two tied events with no later observations: zero comparable pairs.
+        assert_eq!(concordance(&x, &[2.0, 2.0], &[true, true], &beta), 0.0);
+        // All observations censored: zero comparable pairs.
+        assert_eq!(concordance(&x, &[1.0, 2.0], &[false, false], &beta), 0.0);
     }
 }

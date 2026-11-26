@@ -18,8 +18,8 @@ pub struct KmEstimate {
     pub events: Vec<usize>,
     /// Estimated survival probability `S(t)` at each time.
     pub survival: Vec<f64>,
-    /// Greenwood variance of `S(t)`; `NaN` once the risk set is exhausted by
-    /// events, where the formula is undefined.
+    /// Greenwood variance of `S(t)`; `0.0` once the risk set is exhausted by
+    /// events (where `S(t) = 0`).
     pub variance: Vec<f64>,
     /// Lower confidence bound at the requested level.
     pub lower: Vec<f64>,
@@ -98,7 +98,7 @@ pub fn kaplan_meier(
     };
     let mut survival = 1.0;
     let mut greenwood = 0.0;
-    let mut undefined = false;
+    let mut exhausted = false;
     for row in &rows {
         let n = row.at_risk as f64;
         let d = row.events as f64;
@@ -106,12 +106,13 @@ pub fn kaplan_meier(
         if row.at_risk > row.events {
             greenwood += d / (n * (n - d));
         } else {
-            // The risk set is emptied by events: the Greenwood increment is
-            // infinite, so the variance (and the interval) is undefined.
-            undefined = true;
+            // The risk set is emptied by events, so S(t) = 0 and the
+            // limiting Greenwood variance is 0.
+            survival = 0.0;
+            exhausted = true;
         }
-        let variance = if undefined {
-            f64::NAN
+        let variance = if exhausted {
+            0.0
         } else {
             survival * survival * greenwood
         };
@@ -210,5 +211,24 @@ mod tests {
         // S stays at 2/3, so the curve never reaches one half.
         let never = kaplan_meier(&[1.0, 2.0, 3.0], &[true, false, false], 0.95).expect("estimate");
         assert_eq!(median_survival(&never), None);
+    }
+
+    #[test]
+    fn exhausted_risk_set_has_zero_variance_and_zero_interval() {
+        let km = kaplan_meier(&[1.0, 2.0, 3.0], &[true, true, true], 0.95).expect("estimate");
+        assert_eq!(km.times, vec![1.0, 2.0, 3.0]);
+        assert!(km.variance.iter().all(|v| v.is_finite()));
+        assert!((km.survival[2] - 0.0).abs() < 1e-15);
+        assert_eq!(km.variance[2], 0.0);
+        assert_eq!(km.lower[2], 0.0);
+        assert_eq!(km.upper[2], 0.0);
+
+        // Tied events exhausting the remaining risk set.
+        let tied = kaplan_meier(&[1.0, 2.0, 2.0], &[true, true, true], 0.95).expect("estimate");
+        assert_eq!(tied.times, vec![1.0, 2.0]);
+        assert!((tied.survival[1] - 0.0).abs() < 1e-15);
+        assert!(tied.variance[1].is_finite() && tied.variance[1] == 0.0);
+        assert_eq!(tied.lower[1], 0.0);
+        assert_eq!(tied.upper[1], 0.0);
     }
 }
