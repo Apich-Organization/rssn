@@ -111,6 +111,16 @@ enum Request {
     WindingNumber,
     ResidueTheorem,
     BranchCut,
+    WirtingerDz,
+    WirtingerDzbar,
+    ComplexLaplacian,
+    CauchyRiemannCartesian,
+    CauchyRiemannPolar,
+    HarmonicConjugate,
+    ReconstructHolomorphic,
+    IsMeromorphic,
+    IsEntire,
+    ComplexDiff,
 }
 
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
@@ -149,7 +159,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.op(OpDescriptor::new("ray", Arity::Fixed(2)).doc(
         "`ray(p, theta)`: half-line `{p + r * exp(I * theta) : r >= 0}` representing a branch cut.",
     ))?;
-    let table: [(&str, u8, Request, &str); 18] = [
+    let table: [(&str, u8, Request, &str); 28] = [
         (
             "poles",
             2,
@@ -257,6 +267,66 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             2,
             Request::BranchCut,
             "`branch_cut(f, z)`: list of `ray(p, theta)` branch cuts of principal multi-valued functions in `f(z)`.",
+        ),
+        (
+            "wirtinger_dz",
+            2,
+            Request::WirtingerDz,
+            "`wirtinger_dz(f, z)`: Wirtinger derivative `1/2 * (d/dx - I * d/dy) f(z)`.",
+        ),
+        (
+            "wirtinger_dzbar",
+            2,
+            Request::WirtingerDzbar,
+            "`wirtinger_dzbar(f, z)`: Wirtinger derivative `1/2 * (d/dx + I * d/dy) f(z)` (vanishes for holomorphic `f`).",
+        ),
+        (
+            "complex_laplacian",
+            2,
+            Request::ComplexLaplacian,
+            "`complex_laplacian(f, z)`: `4 * d/dz d/d(conj(z)) f(z)`.",
+        ),
+        (
+            "cauchy_riemann_cartesian",
+            2,
+            Request::CauchyRiemannCartesian,
+            "`cauchy_riemann_cartesian(f, z)`: returns `list(u_x - v_y, u_y + v_x)` for `f(x + I*y) = u + I*v`.",
+        ),
+        (
+            "cauchy_riemann_polar",
+            3,
+            Request::CauchyRiemannPolar,
+            "`cauchy_riemann_polar(f, r, theta)`: returns `list(r*u_r - v_theta, u_theta + r*v_r)` for `f(r*exp(I*theta)) = u + I*v`.",
+        ),
+        (
+            "harmonic_conjugate",
+            3,
+            Request::HarmonicConjugate,
+            "`harmonic_conjugate(u, x, y)`: constructs a harmonic conjugate `v(x, y)` of harmonic `u(x, y)`.",
+        ),
+        (
+            "reconstruct_holomorphic",
+            3,
+            Request::ReconstructHolomorphic,
+            "`reconstruct_holomorphic(u, x, y)`: constructs holomorphic `u + I*v` from harmonic real part `u(x, y)`.",
+        ),
+        (
+            "is_meromorphic",
+            2,
+            Request::IsMeromorphic,
+            "`is_meromorphic(f, z)`: `true` if `f(z)` is meromorphic on `C` (holomorphic away from isolated poles, no branch cuts).",
+        ),
+        (
+            "is_entire",
+            2,
+            Request::IsEntire,
+            "`is_entire(f, z)`: `true` if `f(z)` is holomorphic on all of `C` with no poles or branch cuts.",
+        ),
+        (
+            "complex_diff",
+            3,
+            Request::ComplexDiff,
+            "`complex_diff(f, z, n)`: `n`-th complex derivative of holomorphic `f(z)`.",
         ),
     ];
     let ops = Ops::of(i.graph()).ok_or_else(|| {
@@ -1111,7 +1181,236 @@ impl Analysis {
                 let (minus_b, minus_c) = (build::neg(cx.graph, m[1]), build::neg(cx.graph, m[2]));
                 Some(mobius_term(cx.graph, [m[3], minus_b, minus_c, m[0]]))
             },
+            | Request::WirtingerDz => self.wirtinger(cx, arg(0)?, arg(1)?, false),
+            | Request::WirtingerDzbar => self.wirtinger(cx, arg(0)?, arg(1)?, true),
+            | Request::ComplexLaplacian => {
+                let f = arg(0)?;
+                let z = arg(1)?;
+                let dzbar = self.wirtinger(cx, f, z, true)?;
+                let dz_dzbar = self.wirtinger(cx, dzbar, z, false)?;
+                let four = cx.graph.int(4);
+                let prod = build::mul(cx.graph, &[four, dz_dzbar]);
+                Some(cx.simplify(prod))
+            },
+            | Request::CauchyRiemannCartesian => self.cr_cartesian(cx, arg(0)?, arg(1)?),
+            | Request::CauchyRiemannPolar => self.cr_polar(cx, arg(0)?, arg(1)?, arg(2)?),
+            | Request::HarmonicConjugate => self.harmonic_conjugate(cx, arg(0)?, arg(1)?, arg(2)?),
+            | Request::ReconstructHolomorphic => {
+                let u = arg(0)?;
+                let x = arg(1)?;
+                let y = arg(2)?;
+                let v = self.harmonic_conjugate(cx, u, x, y)?;
+                let unit = cx.graph.node(self.ops.unit, &[]);
+                let iv = build::mul(cx.graph, &[unit, v]);
+                let sum = build::add(cx.graph, &[u, iv]);
+                Some(cx.simplify(sum))
+            },
+            | Request::IsMeromorphic => self.check_meromorphic(cx, arg(0)?, arg(1)?, false),
+            | Request::IsEntire => self.check_meromorphic(cx, arg(0)?, arg(1)?, true),
+            | Request::ComplexDiff => {
+                let f = arg(0)?;
+                let z = arg(1)?;
+                let n = cx.graph.number_of(arg(2)?).and_then(Number::to_i64)?;
+                if n < 0 {
+                    return None;
+                }
+                let analytic = self.check_analytic(cx, f, z)?;
+                if cx.graph.payload(analytic) != Some(&Payload::Bool(true)) {
+                    return None;
+                }
+                let mut cur = best(cx.graph, f)?;
+                for _ in 0..n {
+                    cur = derivative(cx.graph, cur, z)?;
+                    cur = cx.simplify(cur);
+                }
+                Some(cur)
+            },
         }
+    }
+
+    /// Wirtinger derivative `d/dz` (`bar = false`) or `d/d(conj(z))` (`bar = true`).
+    fn wirtinger(
+        &self,
+        cx: &mut Cx<'_>,
+        f: NodeId,
+        z: NodeId,
+        bar: bool,
+    ) -> Option<NodeId> {
+        let _ = cx.graph.symbol_of(z)?;
+        let term = best(cx.graph, f)?;
+        let fresh = |graph: &mut Graph, name: &str| {
+            let symbol = graph.interner_mut().fresh_symbol(name);
+            graph.assume(symbol, Facts::REAL);
+            symbol
+        };
+        let (xs, ys) = (fresh(cx.graph, "wx"), fresh(cx.graph, "wy"));
+        let (x, y) = (cx.graph.symbol_node(xs), cx.graph.symbol_node(ys));
+        let unit = cx.graph.node(self.ops.unit, &[]);
+        let iy = build::mul(cx.graph, &[unit, y]);
+        let w_plus = build::add(cx.graph, &[x, iy]);
+        let w_minus = build::sub(cx.graph, x, iy);
+        let conj_z = build::call(cx.graph, self.ops.conj, &[z]);
+        let g = cx.graph.substitute(term, conj_z, w_minus);
+        let g = cx.graph.substitute(g, z, w_plus);
+        let g = desugar(cx.graph, self.ops, g, &mut HashMap::new())?;
+        let g = cx.simplify(g);
+        let gx = derivative(cx.graph, g, x)?;
+        let gy = derivative(cx.graph, g, y)?;
+        let i_gy = build::mul(cx.graph, &[unit, gy]);
+        let comb = if bar {
+            build::add(cx.graph, &[gx, i_gy])
+        } else {
+            build::sub(cx.graph, gx, i_gy)
+        };
+        let half = cx.graph.num(Number::fraction(1, 2)?);
+        let raw = build::mul(cx.graph, &[half, comb]);
+        let two = cx.graph.int(2);
+        let two_i = build::mul(cx.graph, &[two, unit]);
+        let sum_z = build::add(cx.graph, &[z, conj_z]);
+        let x_expr = build::mul(cx.graph, &[half, sum_z]);
+        let diff_z = build::sub(cx.graph, z, conj_z);
+        let two_i_inv = build::powi(cx.graph, two_i, -1);
+        let y_expr = build::mul(cx.graph, &[diff_z, two_i_inv]);
+        let back = cx.graph.substitute(raw, x, x_expr);
+        let back = cx.graph.substitute(back, y, y_expr);
+        Some(cx.simplify(back))
+    }
+
+    fn cr_cartesian(
+        &self,
+        cx: &mut Cx<'_>,
+        f: NodeId,
+        z: NodeId,
+    ) -> Option<NodeId> {
+        let _ = cx.graph.symbol_of(z)?;
+        let term = best(cx.graph, f)?;
+        let xs = cx.graph.interner_mut().symbol("x");
+        let ys = cx.graph.interner_mut().symbol("y");
+        cx.graph.assume(xs, Facts::REAL);
+        cx.graph.assume(ys, Facts::REAL);
+        let (x, y) = (cx.graph.symbol_node(xs), cx.graph.symbol_node(ys));
+        let unit = cx.graph.node(self.ops.unit, &[]);
+        let iy = build::mul(cx.graph, &[unit, y]);
+        let w = build::add(cx.graph, &[x, iy]);
+        let g = cx.graph.substitute(term, z, w);
+        let g = desugar(cx.graph, self.ops, g, &mut HashMap::new())?;
+        let (u, v) = super::split(cx.graph, self.ops, g)?;
+        let (u, v) = (cx.simplify(u), cx.simplify(v));
+        let (ux, uy) = (derivative(cx.graph, u, x)?, derivative(cx.graph, u, y)?);
+        let (vx, vy) = (derivative(cx.graph, v, x)?, derivative(cx.graph, v, y)?);
+        let d1 = build::sub(cx.graph, ux, vy);
+        let d2 = build::add(cx.graph, &[uy, vx]);
+        let eq1 = cx.simplify(d1);
+        let eq2 = cx.simplify(d2);
+        Some(build::call(cx.graph, core::LIST, &[eq1, eq2]))
+    }
+
+    fn cr_polar(
+        &self,
+        cx: &mut Cx<'_>,
+        f: NodeId,
+        r: NodeId,
+        theta: NodeId,
+    ) -> Option<NodeId> {
+        let term = best(cx.graph, f)?;
+        let rs = cx.graph.symbol_of(r)?;
+        let ts = cx.graph.symbol_of(theta)?;
+        cx.graph.assume(rs, Facts::REAL);
+        cx.graph.assume(ts, Facts::REAL);
+        let z_sym = cx.graph.interner_mut().symbol("z");
+        let z_node = cx.graph.symbol_node(z_sym);
+        let target = if cx.graph.depends_on(cx.graph.find(term), z_sym) {
+            z_node
+        } else {
+            r
+        };
+        let unit = cx.graph.node(self.ops.unit, &[]);
+        let cos_t = build::call(cx.graph, self.ops.cos, &[theta]);
+        let sin_t = build::call(cx.graph, self.ops.sin, &[theta]);
+        let i_sin = build::mul(cx.graph, &[unit, sin_t]);
+        let cis_t = build::add(cx.graph, &[cos_t, i_sin]);
+        let polar_z = build::mul(cx.graph, &[r, cis_t]);
+        let g = cx.graph.substitute(term, target, polar_z);
+        let g = desugar(cx.graph, self.ops, g, &mut HashMap::new())?;
+        let (u, v) = super::split(cx.graph, self.ops, g)?;
+        let (u, v) = (cx.simplify(u), cx.simplify(v));
+        let (ur, ut) = (derivative(cx.graph, u, r)?, derivative(cx.graph, u, theta)?);
+        let (vr, vt) = (derivative(cx.graph, v, r)?, derivative(cx.graph, v, theta)?);
+        let r_ur = build::mul(cx.graph, &[r, ur]);
+        let d1 = build::sub(cx.graph, r_ur, vt);
+        let eq1 = cx.simplify(d1);
+        let r_vr = build::mul(cx.graph, &[r, vr]);
+        let d2 = build::add(cx.graph, &[ut, r_vr]);
+        let eq2 = cx.simplify(d2);
+        Some(build::call(cx.graph, core::LIST, &[eq1, eq2]))
+    }
+
+    fn harmonic_conjugate(
+        &self,
+        cx: &mut Cx<'_>,
+        u: NodeId,
+        x: NodeId,
+        y: NodeId,
+    ) -> Option<NodeId> {
+        let u_best = best(cx.graph, u)?;
+        let ux_raw = derivative(cx.graph, u_best, x)?;
+        let ux = cx.simplify(ux_raw);
+        let uy_raw = derivative(cx.graph, u_best, y)?;
+        let uy = cx.simplify(uy_raw);
+        let uxx_raw = derivative(cx.graph, ux, x)?;
+        let uxx = cx.simplify(uxx_raw);
+        let uyy_raw = derivative(cx.graph, uy, y)?;
+        let uyy = cx.simplify(uyy_raw);
+        let lap_raw = build::add(cx.graph, &[uxx, uyy]);
+        let lap = cx.simplify(lap_raw);
+        if !cx.graph.number_of(lap).is_some_and(Number::is_zero) {
+            return None;
+        }
+        let int_op = cx.graph.ops().lookup("integral")?;
+        let v1_req = build::call(cx.graph, int_op, &[ux, y]);
+        let v1 = cx.simplify(v1_req);
+        if cx.graph.op(v1) == int_op {
+            return None;
+        }
+        let v1_x_raw = derivative(cx.graph, v1, x)?;
+        let v1_x = cx.simplify(v1_x_raw);
+        let neg_uy = build::neg(cx.graph, uy);
+        let rem_raw = build::sub(cx.graph, neg_uy, v1_x);
+        let rem = cx.simplify(rem_raw);
+        let v2_req = build::call(cx.graph, int_op, &[rem, x]);
+        let v2 = cx.simplify(v2_req);
+        if cx.graph.op(v2) == int_op {
+            return None;
+        }
+        let sum = build::add(cx.graph, &[v1, v2]);
+        Some(cx.simplify(sum))
+    }
+
+    fn check_meromorphic(
+        &self,
+        cx: &mut Cx<'_>,
+        f: NodeId,
+        z: NodeId,
+        entire_only: bool,
+    ) -> Option<NodeId> {
+        let analytic = self.check_analytic(cx, f, z)?;
+        if cx.graph.payload(analytic) != Some(&Payload::Bool(true)) {
+            return Some(cx.graph.lit(Payload::Bool(false)));
+        }
+        if let Some(cuts) = self.branch_cut(cx, f, z)
+            && cx.graph.op(cuts) == core::LIST
+            && !cx.graph.children(cuts).is_empty()
+        {
+            return Some(cx.graph.lit(Payload::Bool(false)));
+        }
+        let Some(q) = quotient(cx.graph, self.ops, f, z) else {
+            return Some(cx.graph.lit(Payload::Bool(false)));
+        };
+        if !entire_only {
+            return Some(cx.graph.lit(Payload::Bool(true)));
+        }
+        let poles = poles_of(cx, self.ops, &q)?;
+        Some(cx.graph.lit(Payload::Bool(poles.is_empty())))
     }
 
     /// Cauchy–Riemann for `f(x + I y)`.

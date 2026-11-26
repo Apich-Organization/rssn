@@ -339,6 +339,93 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             unit,
         },
     );
+    for (name, arity, doc) in [
+        (
+            "arg_branch",
+            2,
+            "`arg_branch(z, theta0)`: argument of `z` in `(theta0, theta0 + 2*pi]`, placing the branch cut along ray `theta0`.",
+        ),
+        (
+            "log_cut",
+            2,
+            "`log_cut(z, theta0)`: complex logarithm `ln|z| + I*arg_branch(z, theta0)` with branch cut along ray `theta0`.",
+        ),
+        (
+            "sqrt_cut",
+            2,
+            "`sqrt_cut(z, theta0)`: square root with branch cut along ray `theta0`.",
+        ),
+        (
+            "pow_cut",
+            3,
+            "`pow_cut(z, w, theta0)`: complex power `exp(w * log_cut(z, theta0))` with branch cut along ray `theta0`.",
+        ),
+    ] {
+        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
+            .cost(10)
+            .doc(doc))?;
+        let eval = match name {
+            | "arg_branch" => {
+                ComplexEval(|a| {
+                    let z = *a.first()?;
+                    let theta0 = a.get(1)?.re;
+                    let mut shifted = (z.arg() - theta0).rem_euclid(TAU);
+                    if shifted == 0.0 {
+                        shifted = TAU;
+                    }
+                    Some(Complex64::new(theta0 + shifted, 0.0))
+                })
+            },
+            | "log_cut" => {
+                ComplexEval(|a| {
+                    let z = *a.first()?;
+                    let theta0 = a.get(1)?.re;
+                    let mut shifted = (z.arg() - theta0).rem_euclid(TAU);
+                    if shifted == 0.0 {
+                        shifted = TAU;
+                    }
+                    Some(Complex64::new(z.norm().ln(), theta0 + shifted))
+                })
+            },
+            | "sqrt_cut" => {
+                ComplexEval(|a| {
+                    let z = *a.first()?;
+                    let theta0 = a.get(1)?.re;
+                    let mut shifted = (z.arg() - theta0).rem_euclid(TAU);
+                    if shifted == 0.0 {
+                        shifted = TAU;
+                    }
+                    Some(Complex64::from_polar(
+                        z.norm().sqrt(),
+                        f64::midpoint(theta0, shifted + theta0) - 0.0,
+                    ))
+                })
+            },
+            | _ => {
+                ComplexEval(|a| {
+                    let z = *a.first()?;
+                    let w = *a.get(1)?;
+                    let theta0 = a.get(2)?.re;
+                    let mut shifted = (z.arg() - theta0).rem_euclid(TAU);
+                    if shifted == 0.0 {
+                        shifted = TAU;
+                    }
+                    let log_z = Complex64::new(z.norm().ln(), theta0 + shifted);
+                    Some((w * log_z).exp())
+                })
+            },
+        };
+        i.graph().ops_mut().set_attr(op, eval);
+    }
+    i.rewrites(
+        Tier::Normalize,
+        &[
+            "branch/log-cut: log_cut(?z, ?theta0) => ln(abs(?z)) + I * arg_branch(?z, ?theta0)",
+            "branch/sqrt-cut: sqrt_cut(?z, ?theta0) => abs(?z)^(1/2) * exp(I * arg_branch(?z, ?theta0) / 2)",
+            "branch/pow-cut: pow_cut(?z, ?w, ?theta0) => exp(?w * log_cut(?z, ?theta0))",
+            "branch/arg-principal: arg_branch(?z, -pi) => arg(?z)",
+        ],
+    )?;
     i.rewrites(
         Tier::Normalize,
         &[

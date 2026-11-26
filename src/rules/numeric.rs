@@ -48,6 +48,7 @@
 //! chapter of `ARCHITECTURE.md`.
 
 mod bridge;
+mod complex_ball;
 mod conic;
 mod control;
 mod decomp;
@@ -94,8 +95,9 @@ pub fn numeric() -> RuleSet {
 }
 
 /// Every table of operators the bridge reduces.
-const TABLES: [&[bridge::Entry]; 15] = [
+const TABLES: [&[bridge::Entry]; 16] = [
     bridge::ENTRIES,
+    complex_ball::ENTRIES,
     special::ENTRIES,
     resample::ENTRIES,
     transform::ENTRIES,
@@ -235,11 +237,93 @@ fn bridge_dimension(name: &str) -> DimRule {
     match name {
         // Windows and special functions of a complex argument take bare
         // numbers.
-        | "hann_window" | "hamming_window" | "blackman_window" | "lgamma_complex"
-        | "gamma_complex" | "digamma_complex" | "lambert_w_complex" | "bessel_j_complex"
-        | "bessel_i_complex" | "erf_complex" | "fresnel_s_complex" | "fresnel_c_complex" => {
-            DimRule::Dimensionless
-        },
+        | "hann_window"
+        | "hamming_window"
+        | "blackman_window"
+        | "lgamma_complex"
+        | "gamma_complex"
+        | "digamma_complex"
+        | "lambert_w_complex"
+        | "bessel_j_complex"
+        | "bessel_i_complex"
+        | "erf_complex"
+        | "fresnel_s_complex"
+        | "fresnel_c_complex"
+        | "cball_add"
+        | "cball_sub"
+        | "cball_mul"
+        | "cball_div"
+        | "cball_pow"
+        | "cball_exp"
+        | "cball_ln"
+        | "cball_sqrt"
+        | "cball_sin"
+        | "cball_cos"
+        | "cball_tan"
+        | "cball_sinh"
+        | "cball_cosh"
+        | "cball_tanh"
+        | "cinterval_add"
+        | "cinterval_sub"
+        | "cinterval_mul"
+        | "cinterval_div"
+        | "cinterval_exp"
+        | "cinterval_ln"
+        | "cinterval_sqrt"
+        | "cinterval_sin"
+        | "cinterval_cos"
+        | "rgamma_complex"
+        | "polygamma_complex"
+        | "beta_complex"
+        | "ln_beta_complex"
+        | "lower_gamma_complex"
+        | "upper_gamma_complex"
+        | "incomplete_beta_complex"
+        | "pochhammer_complex"
+        | "barnes_g_complex"
+        | "erfc_complex"
+        | "erfcx_complex"
+        | "erfi_complex"
+        | "faddeeva_w_complex"
+        | "dawson_complex"
+        | "exp_integral_e1_complex"
+        | "exp_integral_ei_complex"
+        | "log_integral_complex"
+        | "sin_integral_complex"
+        | "cos_integral_complex"
+        | "sinh_integral_complex"
+        | "cosh_integral_complex"
+        | "bessel_y_complex"
+        | "bessel_k_complex"
+        | "hankel_h1_complex"
+        | "hankel_h2_complex"
+        | "airy_ai_complex"
+        | "airy_ai_prime_complex"
+        | "airy_bi_complex"
+        | "airy_bi_prime_complex"
+        | "struve_h_complex"
+        | "struve_l_complex"
+        | "riemann_zeta_complex"
+        | "dirichlet_eta_complex"
+        | "hurwitz_zeta_complex"
+        | "polylog_complex"
+        | "lerch_phi_complex"
+        | "elliptic_k_complex"
+        | "elliptic_e_complex"
+        | "jacobi_sn_complex"
+        | "jacobi_cn_complex"
+        | "jacobi_dn_complex"
+        | "jacobi_theta_complex"
+        | "weierstrass_p_complex"
+        | "dedekind_eta_complex"
+        | "klein_j_complex"
+        | "wright_omega_complex"
+        | "whittaker_m_complex"
+        | "whittaker_w_complex"
+        | "parabolic_cylinder_d_complex"
+        | "hyp0f1_complex"
+        | "hyp1f1_complex"
+        | "hyp2f1_complex" => DimRule::Dimensionless,
         // This interval takes normalized observations. The statistic controls its scale.
         | "bootstrap_basic_ci" => DimRule::Dimensionless,
         | "cross_correlation" | "tensor_inner" | "tensor_outer" | "tensordot" => DimRule::Product,

@@ -112,6 +112,18 @@ pub(super) const ENTRIES: &[Entry] = &[
         doc: "`mp_ball(expr, digits)`: `list(low, high)`, a rigorous enclosure of `expr` at `digits` significant digits.",
     },
     Entry {
+        name: "mp_complex_ball",
+        params: "td",
+        eval: mp_complex_ball,
+        doc: "`mp_complex_ball(expr, digits)`: `list(list(re_lo, re_hi), list(im_lo, im_hi))`, a rigorous complex enclosure of `expr` at `digits` significant digits.",
+    },
+    Entry {
+        name: "mp_complex_eval",
+        params: "td",
+        eval: mp_complex_eval,
+        doc: "`mp_complex_eval(expr, digits)`: `list(re, im)` of the complex expression `expr` to `digits` significant decimal digits.",
+    },
+    Entry {
         name: "mp_digits",
         params: "t",
         eval: mp_digits,
@@ -239,6 +251,24 @@ fn mp_ball(args: &[Data]) -> Option<Data> {
     let places = digits(args, 1)?;
     let (low, high) = reason(0, mp::enclosure_text(expression, places))?;
     Some(Data::Tree(vec![Data::Text(low), Data::Text(high)]))
+}
+
+fn mp_complex_eval(args: &[Data]) -> Option<Data> {
+    let expression = text(args, 0)?;
+    let places = digits(args, 1)?;
+    let (re, im) = reason(0, mp::eval_complex_text(expression, places))?;
+    Some(Data::Tree(vec![Data::Text(re), Data::Text(im)]))
+}
+
+fn mp_complex_ball(args: &[Data]) -> Option<Data> {
+    let expression = text(args, 0)?;
+    let places = digits(args, 1)?;
+    let ((re_lo, re_hi), (im_lo, im_hi)) =
+        reason(0, mp::enclosure_complex_text(expression, places))?;
+    Some(Data::Tree(vec![
+        Data::Tree(vec![Data::Text(re_lo), Data::Text(re_hi)]),
+        Data::Tree(vec![Data::Text(im_lo), Data::Text(im_hi)]),
+    ]))
 }
 
 fn mp_digits(args: &[Data]) -> Option<Data> {

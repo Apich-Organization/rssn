@@ -27,7 +27,10 @@ use super::bridge::require;
 use super::bridge::scalar;
 use crate::kernel::diag::DiagKind;
 use crate::kernels::fresnel;
+use crate::kernels::hypergeometric;
 use crate::kernels::special_complex;
+use crate::kernels::special_complex_ext as ext;
+use crate::kernels::special_ext;
 
 /// Largest real or imaginary part of an argument.
 const MAX_PART: f64 = 1.0e6;
@@ -122,6 +125,277 @@ fn fresnel_c_complex(a: &[Data]) -> Option<Data> {
     pair(Complex64::new(re, im))
 }
 
+fn rgamma_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::rgamma_complex(point(a, 0)?))
+}
+
+fn polygamma_complex(a: &[Data]) -> Option<Data> {
+    let n = scalar(a, 0)?;
+    if n < 0.0 || n.fract() != 0.0 || n > 20.0 {
+        return None;
+    }
+    pair(ext::polygamma_complex(n as u32, point(a, 1)?))
+}
+
+fn beta_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::beta_complex(point(a, 0)?, point(a, 2)?))
+}
+
+fn ln_beta_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::ln_beta_complex(point(a, 0)?, point(a, 2)?))
+}
+
+fn lower_gamma_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::lower_incomplete_gamma_complex(
+        point(a, 0)?,
+        point(a, 2)?,
+    ))
+}
+
+fn upper_gamma_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::upper_incomplete_gamma_complex(
+        point(a, 0)?,
+        point(a, 2)?,
+    ))
+}
+
+fn incomplete_beta_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::incomplete_beta_complex(
+        point(a, 0)?,
+        point(a, 2)?,
+        point(a, 4)?,
+    ))
+}
+
+fn pochhammer_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::pochhammer_complex(point(a, 0)?, point(a, 2)?))
+}
+
+fn barnes_g_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::barnes_g_complex(point(a, 0)?))
+}
+
+fn erfc_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::erfc_complex(erf_argument(a)?))
+}
+
+fn erfcx_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::erfcx_complex(erf_argument(a)?))
+}
+
+fn erfi_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::erfi_complex(erf_argument(a)?))
+}
+
+fn faddeeva_w_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::voigt_complex(erf_argument(a)?))
+}
+
+fn dawson_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::dawson_complex(erf_argument(a)?))
+}
+
+fn exp_integral_e1_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::exp_integral_e1_complex(point(a, 0)?))
+}
+
+fn exp_integral_ei_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::exp_integral_ei_complex(point(a, 0)?))
+}
+
+fn log_integral_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::log_integral_complex(point(a, 0)?))
+}
+
+fn sin_integral_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::sin_cos_integral_complex(point(a, 0)?).0)
+}
+
+fn cos_integral_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::sin_cos_integral_complex(point(a, 0)?).1)
+}
+
+fn sinh_integral_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::sinh_cosh_integral_complex(point(a, 0)?).0)
+}
+
+fn cosh_integral_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::sinh_cosh_integral_complex(point(a, 0)?).1)
+}
+
+fn bessel_y_complex(a: &[Data]) -> Option<Data> {
+    let (nu, z) = bessel_arguments(a)?;
+    pair(ext::bessel_y_complex(nu, z))
+}
+
+fn bessel_k_complex(a: &[Data]) -> Option<Data> {
+    let (nu, z) = bessel_arguments(a)?;
+    pair(ext::bessel_k_complex(nu, z))
+}
+
+fn hankel_h1_complex(a: &[Data]) -> Option<Data> {
+    let (nu, z) = bessel_arguments(a)?;
+    pair(ext::hankel_h1_complex(nu, z))
+}
+
+fn hankel_h2_complex(a: &[Data]) -> Option<Data> {
+    let (nu, z) = bessel_arguments(a)?;
+    pair(ext::hankel_h2_complex(nu, z))
+}
+
+fn airy_ai_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::airy_ai_complex(point(a, 0)?).0)
+}
+
+fn airy_ai_prime_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::airy_ai_complex(point(a, 0)?).1)
+}
+
+fn airy_bi_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::airy_bi_complex(point(a, 0)?).0)
+}
+
+fn airy_bi_prime_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::airy_bi_complex(point(a, 0)?).1)
+}
+
+fn struve_h_complex(a: &[Data]) -> Option<Data> {
+    let (nu, z) = bessel_arguments(a)?;
+    pair(ext::struve_h_complex(nu, z))
+}
+
+fn struve_l_complex(a: &[Data]) -> Option<Data> {
+    let (nu, z) = bessel_arguments(a)?;
+    pair(ext::struve_l_complex(nu, z))
+}
+
+fn riemann_zeta_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::riemann_zeta_complex(point(a, 0)?))
+}
+
+fn dirichlet_eta_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::dirichlet_eta_complex(point(a, 0)?))
+}
+
+fn hurwitz_zeta_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::hurwitz_zeta_complex(point(a, 0)?, point(a, 2)?))
+}
+
+fn polylog_complex_op(a: &[Data]) -> Option<Data> {
+    let s = scalar(a, 0)?;
+    if s.abs() > 100.0 {
+        return None;
+    }
+    pair(special_ext::polylog_complex(
+        Complex64::new(s, 0.0),
+        point(a, 1)?,
+    ))
+}
+
+fn lerch_phi_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::lerch_phi_complex(
+        point(a, 0)?,
+        point(a, 2)?,
+        point(a, 4)?,
+    ))
+}
+
+fn elliptic_k_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::elliptic_k_complex(point(a, 0)?))
+}
+
+fn elliptic_e_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::elliptic_e_complex(point(a, 0)?))
+}
+
+fn jacobi_sn_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::jacobi_elliptic_complex(point(a, 0)?, point(a, 2)?).0)
+}
+
+fn jacobi_cn_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::jacobi_elliptic_complex(point(a, 0)?, point(a, 2)?).1)
+}
+
+fn jacobi_dn_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::jacobi_elliptic_complex(point(a, 0)?, point(a, 2)?).2)
+}
+
+fn jacobi_theta_complex(a: &[Data]) -> Option<Data> {
+    let k = scalar(a, 0)?;
+    if k.fract() != 0.0 || !(1.0..=4.0).contains(&k) {
+        return None;
+    }
+    pair(ext::jacobi_theta_complex(
+        k as u8,
+        point(a, 1)?,
+        point(a, 3)?,
+    ))
+}
+
+fn weierstrass_p_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::weierstrass_p_complex(
+        point(a, 0)?,
+        point(a, 2)?,
+        point(a, 4)?,
+    ))
+}
+
+fn dedekind_eta_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::dedekind_eta_complex(point(a, 0)?))
+}
+
+fn klein_j_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::klein_j_complex(point(a, 0)?))
+}
+
+fn wright_omega_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::wright_omega_complex(point(a, 0)?))
+}
+
+fn whittaker_m_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::whittaker_m_complex(
+        point(a, 0)?,
+        point(a, 2)?,
+        point(a, 4)?,
+    ))
+}
+
+fn whittaker_w_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::whittaker_w_complex(
+        point(a, 0)?,
+        point(a, 2)?,
+        point(a, 4)?,
+    ))
+}
+
+fn parabolic_cylinder_d_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::parabolic_cylinder_d_complex(
+        point(a, 0)?,
+        point(a, 2)?,
+    ))
+}
+
+fn hyp0f1_complex(a: &[Data]) -> Option<Data> {
+    pair(ext::hyp0f1_complex(point(a, 0)?, point(a, 2)?))
+}
+
+fn hyp1f1_complex(a: &[Data]) -> Option<Data> {
+    pair(hypergeometric::hyp1f1_cplx(
+        point(a, 0)?,
+        point(a, 2)?,
+        point(a, 4)?,
+    ))
+}
+
+fn hyp2f1_complex(a: &[Data]) -> Option<Data> {
+    pair(hypergeometric::hyp2f1_cplx(
+        point(a, 0)?,
+        point(a, 2)?,
+        point(a, 4)?,
+        point(a, 6)?,
+    ))
+}
+
 pub(super) const ENTRIES: &[Entry] = &[
     Entry {
         name: "lgamma_complex",
@@ -176,6 +450,318 @@ pub(super) const ENTRIES: &[Entry] = &[
         params: "ss",
         eval: fresnel_c_complex,
         doc: "`fresnel_c_complex(re, im)`: `list(re, im)` of the complex Fresnel cosine integral `C(re + i*im)`.",
+    },
+    Entry {
+        name: "rgamma_complex",
+        params: "ss",
+        eval: rgamma_complex,
+        doc: "`rgamma_complex(re, im)`: `list(re, im)` of `1 / Gamma(z)`.",
+    },
+    Entry {
+        name: "polygamma_complex",
+        params: "sss",
+        eval: polygamma_complex,
+        doc: "`polygamma_complex(n, re, im)`: `list(re, im)` of `psi^(n)(z)`.",
+    },
+    Entry {
+        name: "beta_complex",
+        params: "ssss",
+        eval: beta_complex,
+        doc: "`beta_complex(ar, ai, br, bi)`: `list(re, im)` of `B(a, b)`.",
+    },
+    Entry {
+        name: "ln_beta_complex",
+        params: "ssss",
+        eval: ln_beta_complex,
+        doc: "`ln_beta_complex(ar, ai, br, bi)`: `list(re, im)` of `ln B(a, b)`.",
+    },
+    Entry {
+        name: "lower_gamma_complex",
+        params: "ssss",
+        eval: lower_gamma_complex,
+        doc: "`lower_gamma_complex(ar, ai, zr, zi)`: `list(re, im)` of lower incomplete gamma `gamma(a, z)`.",
+    },
+    Entry {
+        name: "upper_gamma_complex",
+        params: "ssss",
+        eval: upper_gamma_complex,
+        doc: "`upper_gamma_complex(ar, ai, zr, zi)`: `list(re, im)` of upper incomplete gamma `Gamma(a, z)`.",
+    },
+    Entry {
+        name: "incomplete_beta_complex",
+        params: "ssssss",
+        eval: incomplete_beta_complex,
+        doc: "`incomplete_beta_complex(ar, ai, br, bi, zr, zi)`: `list(re, im)` of `B_z(a, b)`.",
+    },
+    Entry {
+        name: "pochhammer_complex",
+        params: "ssss",
+        eval: pochhammer_complex,
+        doc: "`pochhammer_complex(zr, zi, wr, wi)`: `list(re, im)` of `(z)_w`.",
+    },
+    Entry {
+        name: "barnes_g_complex",
+        params: "ss",
+        eval: barnes_g_complex,
+        doc: "`barnes_g_complex(re, im)`: `list(re, im)` of Barnes G-function `G(z)`.",
+    },
+    Entry {
+        name: "erfc_complex",
+        params: "ss",
+        eval: erfc_complex,
+        doc: "`erfc_complex(re, im)`: `list(re, im)` of `erfc(z)`.",
+    },
+    Entry {
+        name: "erfcx_complex",
+        params: "ss",
+        eval: erfcx_complex,
+        doc: "`erfcx_complex(re, im)`: `list(re, im)` of `exp(z^2) * erfc(z)`.",
+    },
+    Entry {
+        name: "erfi_complex",
+        params: "ss",
+        eval: erfi_complex,
+        doc: "`erfi_complex(re, im)`: `list(re, im)` of `erfi(z)`.",
+    },
+    Entry {
+        name: "faddeeva_w_complex",
+        params: "ss",
+        eval: faddeeva_w_complex,
+        doc: "`faddeeva_w_complex(re, im)`: `list(re, im)` of Faddeeva function `w(z)`.",
+    },
+    Entry {
+        name: "dawson_complex",
+        params: "ss",
+        eval: dawson_complex,
+        doc: "`dawson_complex(re, im)`: `list(re, im)` of Dawson integral `D+(z)`.",
+    },
+    Entry {
+        name: "exp_integral_e1_complex",
+        params: "ss",
+        eval: exp_integral_e1_complex,
+        doc: "`exp_integral_e1_complex(re, im)`: `list(re, im)` of `E_1(z)`.",
+    },
+    Entry {
+        name: "exp_integral_ei_complex",
+        params: "ss",
+        eval: exp_integral_ei_complex,
+        doc: "`exp_integral_ei_complex(re, im)`: `list(re, im)` of `Ei(z)`.",
+    },
+    Entry {
+        name: "log_integral_complex",
+        params: "ss",
+        eval: log_integral_complex,
+        doc: "`log_integral_complex(re, im)`: `list(re, im)` of `li(z)`.",
+    },
+    Entry {
+        name: "sin_integral_complex",
+        params: "ss",
+        eval: sin_integral_complex,
+        doc: "`sin_integral_complex(re, im)`: `list(re, im)` of `Si(z)`.",
+    },
+    Entry {
+        name: "cos_integral_complex",
+        params: "ss",
+        eval: cos_integral_complex,
+        doc: "`cos_integral_complex(re, im)`: `list(re, im)` of `Ci(z)`.",
+    },
+    Entry {
+        name: "sinh_integral_complex",
+        params: "ss",
+        eval: sinh_integral_complex,
+        doc: "`sinh_integral_complex(re, im)`: `list(re, im)` of `Shi(z)`.",
+    },
+    Entry {
+        name: "cosh_integral_complex",
+        params: "ss",
+        eval: cosh_integral_complex,
+        doc: "`cosh_integral_complex(re, im)`: `list(re, im)` of `Chi(z)`.",
+    },
+    Entry {
+        name: "bessel_y_complex",
+        params: "sss",
+        eval: bessel_y_complex,
+        doc: "`bessel_y_complex(nu, re, im)`: `list(re, im)` of `Y_nu(z)`.",
+    },
+    Entry {
+        name: "bessel_k_complex",
+        params: "sss",
+        eval: bessel_k_complex,
+        doc: "`bessel_k_complex(nu, re, im)`: `list(re, im)` of `K_nu(z)`.",
+    },
+    Entry {
+        name: "hankel_h1_complex",
+        params: "sss",
+        eval: hankel_h1_complex,
+        doc: "`hankel_h1_complex(nu, re, im)`: `list(re, im)` of `H_nu^(1)(z)`.",
+    },
+    Entry {
+        name: "hankel_h2_complex",
+        params: "sss",
+        eval: hankel_h2_complex,
+        doc: "`hankel_h2_complex(nu, re, im)`: `list(re, im)` of `H_nu^(2)(z)`.",
+    },
+    Entry {
+        name: "airy_ai_complex",
+        params: "ss",
+        eval: airy_ai_complex,
+        doc: "`airy_ai_complex(re, im)`: `list(re, im)` of `Ai(z)`.",
+    },
+    Entry {
+        name: "airy_ai_prime_complex",
+        params: "ss",
+        eval: airy_ai_prime_complex,
+        doc: "`airy_ai_prime_complex(re, im)`: `list(re, im)` of `Ai'(z)`.",
+    },
+    Entry {
+        name: "airy_bi_complex",
+        params: "ss",
+        eval: airy_bi_complex,
+        doc: "`airy_bi_complex(re, im)`: `list(re, im)` of `Bi(z)`.",
+    },
+    Entry {
+        name: "airy_bi_prime_complex",
+        params: "ss",
+        eval: airy_bi_prime_complex,
+        doc: "`airy_bi_prime_complex(re, im)`: `list(re, im)` of `Bi'(z)`.",
+    },
+    Entry {
+        name: "struve_h_complex",
+        params: "sss",
+        eval: struve_h_complex,
+        doc: "`struve_h_complex(nu, re, im)`: `list(re, im)` of `H_nu(z)`.",
+    },
+    Entry {
+        name: "struve_l_complex",
+        params: "sss",
+        eval: struve_l_complex,
+        doc: "`struve_l_complex(nu, re, im)`: `list(re, im)` of `L_nu(z)`.",
+    },
+    Entry {
+        name: "riemann_zeta_complex",
+        params: "ss",
+        eval: riemann_zeta_complex,
+        doc: "`riemann_zeta_complex(re, im)`: `list(re, im)` of `zeta(s)`.",
+    },
+    Entry {
+        name: "dirichlet_eta_complex",
+        params: "ss",
+        eval: dirichlet_eta_complex,
+        doc: "`dirichlet_eta_complex(re, im)`: `list(re, im)` of `eta(s)`.",
+    },
+    Entry {
+        name: "hurwitz_zeta_complex",
+        params: "ssss",
+        eval: hurwitz_zeta_complex,
+        doc: "`hurwitz_zeta_complex(sr, si, ar, ai)`: `list(re, im)` of `zeta(s, a)`.",
+    },
+    Entry {
+        name: "polylog_complex",
+        params: "sss",
+        eval: polylog_complex_op,
+        doc: "`polylog_complex(s, re, im)`: `list(re, im)` of `Li_s(z)`.",
+    },
+    Entry {
+        name: "lerch_phi_complex",
+        params: "ssssss",
+        eval: lerch_phi_complex,
+        doc: "`lerch_phi_complex(zr, zi, sr, si, ar, ai)`: `list(re, im)` of `Phi(z, s, a)`.",
+    },
+    Entry {
+        name: "elliptic_k_complex",
+        params: "ss",
+        eval: elliptic_k_complex,
+        doc: "`elliptic_k_complex(re, im)`: `list(re, im)` of `K(m)`.",
+    },
+    Entry {
+        name: "elliptic_e_complex",
+        params: "ss",
+        eval: elliptic_e_complex,
+        doc: "`elliptic_e_complex(re, im)`: `list(re, im)` of `E(m)`.",
+    },
+    Entry {
+        name: "jacobi_sn_complex",
+        params: "ssss",
+        eval: jacobi_sn_complex,
+        doc: "`jacobi_sn_complex(ur, ui, mr, mi)`: `list(re, im)` of `sn(u | m)`.",
+    },
+    Entry {
+        name: "jacobi_cn_complex",
+        params: "ssss",
+        eval: jacobi_cn_complex,
+        doc: "`jacobi_cn_complex(ur, ui, mr, mi)`: `list(re, im)` of `cn(u | m)`.",
+    },
+    Entry {
+        name: "jacobi_dn_complex",
+        params: "ssss",
+        eval: jacobi_dn_complex,
+        doc: "`jacobi_dn_complex(ur, ui, mr, mi)`: `list(re, im)` of `dn(u | m)`.",
+    },
+    Entry {
+        name: "jacobi_theta_complex",
+        params: "sssss",
+        eval: jacobi_theta_complex,
+        doc: "`jacobi_theta_complex(k, zr, zi, qr, qi)`: `list(re, im)` of `theta_k(z, q)`.",
+    },
+    Entry {
+        name: "weierstrass_p_complex",
+        params: "ssssss",
+        eval: weierstrass_p_complex,
+        doc: "`weierstrass_p_complex(zr, zi, w1r, w1i, w2r, w2i)`: `list(re, im)` of `wp(z; w1, w2)`.",
+    },
+    Entry {
+        name: "dedekind_eta_complex",
+        params: "ss",
+        eval: dedekind_eta_complex,
+        doc: "`dedekind_eta_complex(re, im)`: `list(re, im)` of `eta(tau)`.",
+    },
+    Entry {
+        name: "klein_j_complex",
+        params: "ss",
+        eval: klein_j_complex,
+        doc: "`klein_j_complex(re, im)`: `list(re, im)` of `j(tau)`.",
+    },
+    Entry {
+        name: "wright_omega_complex",
+        params: "ss",
+        eval: wright_omega_complex,
+        doc: "`wright_omega_complex(re, im)`: `list(re, im)` of `omega(z)`.",
+    },
+    Entry {
+        name: "whittaker_m_complex",
+        params: "ssssss",
+        eval: whittaker_m_complex,
+        doc: "`whittaker_m_complex(kr, ki, mr, mi, zr, zi)`: `list(re, im)` of `M_{kappa, mu}(z)`.",
+    },
+    Entry {
+        name: "whittaker_w_complex",
+        params: "ssssss",
+        eval: whittaker_w_complex,
+        doc: "`whittaker_w_complex(kr, ki, mr, mi, zr, zi)`: `list(re, im)` of `W_{kappa, mu}(z)`.",
+    },
+    Entry {
+        name: "parabolic_cylinder_d_complex",
+        params: "ssss",
+        eval: parabolic_cylinder_d_complex,
+        doc: "`parabolic_cylinder_d_complex(nur, nui, zr, zi)`: `list(re, im)` of `D_nu(z)`.",
+    },
+    Entry {
+        name: "hyp0f1_complex",
+        params: "ssss",
+        eval: hyp0f1_complex,
+        doc: "`hyp0f1_complex(br, bi, zr, zi)`: `list(re, im)` of `0F1(; b; z)`.",
+    },
+    Entry {
+        name: "hyp1f1_complex",
+        params: "ssssss",
+        eval: hyp1f1_complex,
+        doc: "`hyp1f1_complex(ar, ai, br, bi, zr, zi)`: `list(re, im)` of `1F1(a; b; z)`.",
+    },
+    Entry {
+        name: "hyp2f1_complex",
+        params: "ssssssss",
+        eval: hyp2f1_complex,
+        doc: "`hyp2f1_complex(ar, ai, br, bi, cr, ci, zr, zi)`: `list(re, im)` of `2F1(a, b; c; z)`.",
     },
 ];
 

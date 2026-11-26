@@ -23,7 +23,13 @@
 //! complex-analysis kernels and the tests use it to check symbolic results.
 
 pub mod analysis;
+pub mod asymptotics;
 pub mod branches;
+pub mod conformal;
+pub mod contour;
+pub mod dynamics;
+pub mod riemann;
+pub mod transforms;
 
 use std::collections::HashMap;
 
@@ -80,12 +86,98 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let arg = i.op(OpDescriptor::new("arg", Arity::Fixed(1))
         .cost(8)
         .doc("`arg(z)`: principal argument (phase angle) of `z` in `(-pi, pi]`."))?;
+    let complex_expand = i.op(OpDescriptor::new("complex_expand", Arity::Fixed(1))
+        .flags(crate::graph::OpFlags::HEAVY)
+        .cost(30)
+        .doc("`complex_expand(z)`: expands `z` into explicit Cartesian form `re(z) + I*im(z)`."))?;
+    let abs_sq = i.op(OpDescriptor::new("abs_sq", Arity::Fixed(1))
+        .cost(8)
+        .doc("`abs_sq(z)`: squared modulus `re(z)^2 + im(z)^2`."))?;
+    let cis = i.op(OpDescriptor::new("cis", Arity::Fixed(1))
+        .cost(8)
+        .doc("`cis(t)`: unit complex number `cos(t) + I*sin(t)`."))?;
+    let sign_complex = i.op(OpDescriptor::new("sign_complex", Arity::Fixed(1))
+        .cost(8)
+        .doc("`sign_complex(z)`: complex signum `z / abs(z)` on the unit circle."))?;
+    let _to_polar = i.op(OpDescriptor::new("to_polar", Arity::Fixed(1))
+        .cost(10)
+        .doc("`to_polar(z)`: polar coordinates `list(abs(z), arg(z))`."))?;
+    let from_polar = i.op(OpDescriptor::new("from_polar", Arity::Fixed(2))
+        .cost(10)
+        .doc("`from_polar(r, theta)`: reconstructs `r * (cos(theta) + I*sin(theta))`."))?;
+    let _to_riemann_sphere = i.op(OpDescriptor::new("to_riemann_sphere", Arity::Fixed(1))
+        .cost(12)
+        .doc("`to_riemann_sphere(z)`: stereographic projection `(X, Y, Z)` onto the unit Riemann sphere `S^2`."))?;
+    let from_riemann_sphere = i.op(OpDescriptor::new("from_riemann_sphere", Arity::Fixed(3))
+        .cost(12)
+        .doc("`from_riemann_sphere(X, Y, Z)`: inverse stereographic projection `(X + I*Y) / (1 - Z)` from `S^2` to `C`."))?;
+    let chordal_distance = i.op(OpDescriptor::new("chordal_distance", Arity::Fixed(2))
+        .cost(12)
+        .doc("`chordal_distance(z1, z2)`: spherical chordal distance `2*abs(z1 - z2) / sqrt((1 + abs(z1)^2)*(1 + abs(z2)^2))` on `S^2`."))?;
     {
         let ops = i.graph().ops_mut();
         ops.set_attr(unit, Always(Facts::NONZERO));
         ops.set_attr(re, Always(Facts::REAL));
         ops.set_attr(im, Always(Facts::REAL));
         ops.set_attr(arg, Always(Facts::REAL));
+        ops.set_attr(abs_sq, Always(Facts::NONNEGATIVE));
+        ops.set_attr(chordal_distance, Always(Facts::NONNEGATIVE));
+        ops.set_attr(
+            cis,
+            ComplexEval(|a| {
+                a.first().map(|t| {
+                    let i_unit = Complex64::new(0.0, 1.0);
+                    (i_unit * *t).exp()
+                })
+            }),
+        );
+        ops.set_attr(
+            abs_sq,
+            ComplexEval(|a| a.first().map(|z| Complex64::new(z.norm_sqr(), 0.0))),
+        );
+        ops.set_attr(
+            sign_complex,
+            ComplexEval(|a| {
+                a.first().map(|z| {
+                    let n = z.norm();
+                    if n == 0.0 {
+                        Complex64::new(0.0, 0.0)
+                    } else {
+                        z / n
+                    }
+                })
+            }),
+        );
+        ops.set_attr(
+            from_polar,
+            ComplexEval(|a| {
+                let r = a.first()?;
+                let t = a.get(1)?;
+                let i_unit = Complex64::new(0.0, 1.0);
+                Some(*r * (i_unit * *t).exp())
+            }),
+        );
+        ops.set_attr(
+            from_riemann_sphere,
+            ComplexEval(|a| {
+                let x = *a.first()?;
+                let y = *a.get(1)?;
+                let z = *a.get(2)?;
+                let i_unit = Complex64::new(0.0, 1.0);
+                Some((x + i_unit * y) / (Complex64::new(1.0, 0.0) - z))
+            }),
+        );
+        ops.set_attr(
+            chordal_distance,
+            ComplexEval(|a| {
+                let z1 = *a.first()?;
+                let z2 = *a.get(1)?;
+                Some(Complex64::new(
+                    crate::kernels::complex_coords::chordal_distance(z1, z2),
+                    0.0,
+                ))
+            }),
+        );
     }
     if let Some(abs) = i.graph().ops().lookup("abs") {
         i.graph()
@@ -110,8 +202,30 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "complex/conj-cos: conj(cos(?a)) => cos(conj(?a))",
             "complex/conj-sinh: conj(sinh(?a)) => sinh(conj(?a))",
             "complex/conj-cosh: conj(cosh(?a)) => cosh(conj(?a))",
+            "complex/conj-tan: conj(tan(?a)) => tan(conj(?a))",
+            "complex/conj-cot: conj(cot(?a)) => cot(conj(?a))",
+            "complex/conj-sec: conj(sec(?a)) => sec(conj(?a))",
+            "complex/conj-csc: conj(csc(?a)) => csc(conj(?a))",
+            "complex/conj-tanh: conj(tanh(?a)) => tanh(conj(?a))",
+            "complex/conj-coth: conj(coth(?a)) => coth(conj(?a))",
+            "complex/conj-sech: conj(sech(?a)) => sech(conj(?a))",
+            "complex/conj-csch: conj(csch(?a)) => csch(conj(?a))",
+            "complex/conj-asin: conj(asin(?a)) => asin(conj(?a))",
+            "complex/conj-acos: conj(acos(?a)) => acos(conj(?a))",
+            "complex/conj-atan: conj(atan(?a)) => atan(conj(?a))",
+            "complex/conj-asinh: conj(asinh(?a)) => asinh(conj(?a))",
+            "complex/conj-acosh: conj(acosh(?a)) => acosh(conj(?a))",
+            "complex/conj-atanh: conj(atanh(?a)) => atanh(conj(?a))",
             "complex/arg-positive: arg(?x) => 0 if positive(?x)",
             "complex/arg-negative: arg(?x) => pi if negative(?x)",
+            "complex/abs-sq: abs_sq(?z) => re(?z)^2 + im(?z)^2",
+            "complex/cis: cis(?t) => cos(?t) + I * sin(?t)",
+            "complex/sign: sign_complex(?z) => ?z / abs(?z) if nonzero(?z)",
+            "complex/to-polar: to_polar(?z) => list(abs(?z), arg(?z))",
+            "complex/from-polar: from_polar(?r, ?t) => ?r * (cos(?t) + I * sin(?t))",
+            "complex/to-sphere: to_riemann_sphere(?z) => list(2*re(?z)/(abs(?z)^2 + 1), 2*im(?z)/(abs(?z)^2 + 1), (abs(?z)^2 - 1)/(abs(?z)^2 + 1))",
+            "complex/from-sphere: from_riemann_sphere(?x, ?y, ?z) => (?x + I * ?y) / (1 - ?z)",
+            "complex/chordal: chordal_distance(?a, ?b) => 2 * abs(?a - ?b) / sqrt((1 + abs(?a)^2) * (1 + abs(?b)^2))",
         ],
     )?;
     i.rewrites(
@@ -125,6 +239,12 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         }
     })?;
     branches::install(i)?;
+    riemann::install(i)?;
+    contour::install(i)?;
+    asymptotics::install(i)?;
+    conformal::install(i)?;
+    transforms::install(i)?;
+    dynamics::install(i)?;
     analysis::install(i)?;
     i.kernel("complex/unit-power", Tier::Normalize, UnitPower { unit });
     i.kernel(
@@ -136,6 +256,14 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             im,
             conj,
             arg,
+        },
+    );
+    i.kernel(
+        "complex/expand",
+        Tier::Reduce,
+        ComplexExpand {
+            op: complex_expand,
+            ops,
         },
     );
     i.kernel("complex/exp-i", Tier::Normalize, ExpI { ops });
@@ -150,14 +278,30 @@ pub(crate) struct Ops {
     pub(crate) im: OpId,
     pub(crate) exp: OpId,
     pub(crate) ln: OpId,
+    pub(crate) sqrt: OpId,
     pub(crate) sin: OpId,
     pub(crate) cos: OpId,
+    pub(crate) tan: OpId,
+    pub(crate) cot: OpId,
+    pub(crate) sec: OpId,
+    pub(crate) csc: OpId,
     pub(crate) sinh: OpId,
     pub(crate) cosh: OpId,
+    pub(crate) tanh: OpId,
+    pub(crate) coth: OpId,
+    pub(crate) sech: OpId,
+    pub(crate) csch: OpId,
+    pub(crate) asin: OpId,
+    pub(crate) acos: OpId,
+    pub(crate) atan: OpId,
+    pub(crate) asinh: OpId,
+    pub(crate) acosh: OpId,
+    pub(crate) atanh: OpId,
     pub(crate) atan2: OpId,
     pub(crate) abs: OpId,
     pub(crate) conj: OpId,
     pub(crate) arg: OpId,
+    pub(crate) pi: OpId,
 }
 
 impl Ops {
@@ -169,14 +313,30 @@ impl Ops {
             im: get("im")?,
             exp: get("exp")?,
             ln: get("ln")?,
+            sqrt: get("sqrt")?,
             sin: get("sin")?,
             cos: get("cos")?,
+            tan: get("tan")?,
+            cot: get("cot")?,
+            sec: get("sec")?,
+            csc: get("csc")?,
             sinh: get("sinh")?,
             cosh: get("cosh")?,
+            tanh: get("tanh")?,
+            coth: get("coth")?,
+            sech: get("sech")?,
+            csch: get("csch")?,
+            asin: get("asin")?,
+            acos: get("acos")?,
+            atan: get("atan")?,
+            asinh: get("asinh")?,
+            acosh: get("acosh")?,
+            atanh: get("atanh")?,
             atan2: get("atan2")?,
             abs: get("abs")?,
             conj: get("conj")?,
             arg: get("arg")?,
+            pi: get("pi")?,
         })
     }
 }
@@ -356,7 +516,14 @@ fn split_term(
                         let angle = mul(graph, &[y, log]);
                         Some(polar(graph, ops, modulus, angle))
                     },
-                    | _ => None,
+                    | _ => {
+                        let (a, b) = part(graph, base)?;
+                        let (c, d) = part(graph, exponent)?;
+                        let (lr, li) = split_ln(graph, ops, (a, b));
+                        let (pr, pi_part) = product(graph, (c, d), (lr, li));
+                        let modulus = call(graph, ops.exp, &[pr]);
+                        Some(polar(graph, ops, modulus, pi_part))
+                    },
                 }
             },
             | (op, &[w]) if op == ops.exp => {
@@ -366,27 +533,135 @@ fn split_term(
             },
             | (op, &[w]) if op == ops.ln => {
                 let (a, b) = part(graph, w)?;
-                let modulus = modulus(graph, a, b);
-                let re = call(graph, ops.ln, &[modulus]);
-                let im = call(graph, ops.atan2, &[b, a]);
-                Some((re, im))
+                Some(split_ln(graph, ops, (a, b)))
+            },
+            | (op, &[w]) if op == ops.sqrt => {
+                let (a, b) = part(graph, w)?;
+                Some(split_sqrt(graph, ops, (a, b)))
             },
             | (op, &[w]) if op == ops.sin || op == ops.cos || op == ops.sinh || op == ops.cosh => {
                 let (a, b) = part(graph, w)?;
-                let (sin_a, cos_a) = (call(graph, ops.sin, &[a]), call(graph, ops.cos, &[a]));
-                let (sinh_b, cosh_b) = (call(graph, ops.sinh, &[b]), call(graph, ops.cosh, &[b]));
-                let (sinh_a, cosh_a) = (call(graph, ops.sinh, &[a]), call(graph, ops.cosh, &[a]));
-                let (sin_b, cos_b) = (call(graph, ops.sin, &[b]), call(graph, ops.cos, &[b]));
-                Some(if op == ops.sin {
-                    (mul(graph, &[sin_a, cosh_b]), mul(graph, &[cos_a, sinh_b]))
-                } else if op == ops.cos {
-                    let im = mul(graph, &[sin_a, sinh_b]);
-                    (mul(graph, &[cos_a, cosh_b]), neg(graph, im))
-                } else if op == ops.sinh {
-                    (mul(graph, &[sinh_a, cos_b]), mul(graph, &[cosh_a, sin_b]))
+                Some(split_trig_hyp(graph, ops, op, a, b))
+            },
+            | (op, &[w]) if op == ops.tan || op == ops.cot || op == ops.sec || op == ops.csc => {
+                let (a, b) = part(graph, w)?;
+                let (sa, ca) = split_trig_hyp(graph, ops, ops.sin, a, b);
+                let (sb, cb) = split_trig_hyp(graph, ops, ops.cos, a, b);
+                let one = (graph.int(1), zero);
+                Some(if op == ops.tan {
+                    cdiv(graph, (sa, ca), (sb, cb))
+                } else if op == ops.cot {
+                    cdiv(graph, (sb, cb), (sa, ca))
+                } else if op == ops.sec {
+                    cdiv(graph, one, (sb, cb))
                 } else {
-                    (mul(graph, &[cosh_a, cos_b]), mul(graph, &[sinh_a, sin_b]))
+                    cdiv(graph, one, (sa, ca))
                 })
+            },
+            | (op, &[w]) if op == ops.tanh || op == ops.coth || op == ops.sech || op == ops.csch =>
+            {
+                let (a, b) = part(graph, w)?;
+                let (sa, ca) = split_trig_hyp(graph, ops, ops.sinh, a, b);
+                let (sb, cb) = split_trig_hyp(graph, ops, ops.cosh, a, b);
+                let one = (graph.int(1), zero);
+                Some(if op == ops.tanh {
+                    cdiv(graph, (sa, ca), (sb, cb))
+                } else if op == ops.coth {
+                    cdiv(graph, (sb, cb), (sa, ca))
+                } else if op == ops.sech {
+                    cdiv(graph, one, (sb, cb))
+                } else {
+                    cdiv(graph, one, (sa, ca))
+                })
+            },
+            | (op, &[w]) if op == ops.atan => {
+                // atan(a + ib) = 0.5*(atan2(a, 1-b) - atan2(-a, 1+b)) + (i/4)*ln(((1+b)^2+a^2)/((1-b)^2+a^2))
+                let (a, b) = part(graph, w)?;
+                let one = graph.int(1);
+                let one_minus_b = sub(graph, one, b);
+                let one_plus_b = add(graph, &[one, b]);
+                let neg_a = neg(graph, a);
+                let half = graph.num(Number::fraction(1, 2).unwrap_or_else(|| Number::from(0)));
+                let quarter = graph.num(Number::fraction(1, 4).unwrap_or_else(|| Number::from(0)));
+                let t1 = call(graph, ops.atan2, &[a, one_minus_b]);
+                let t2 = call(graph, ops.atan2, &[neg_a, one_plus_b]);
+                let diff_t = sub(graph, t1, t2);
+                let re = mul(graph, &[half, diff_t]);
+                let a2 = build::powi(graph, a, 2);
+                let p_plus = build::powi(graph, one_plus_b, 2);
+                let p_minus = build::powi(graph, one_minus_b, 2);
+                let num = add(graph, &[p_plus, a2]);
+                let den = add(graph, &[p_minus, a2]);
+                let den_inv = build::powi(graph, den, -1);
+                let ratio = mul(graph, &[num, den_inv]);
+                let ln_ratio = call(graph, ops.ln, &[ratio]);
+                let im = mul(graph, &[quarter, ln_ratio]);
+                Some((re, im))
+            },
+            | (op, &[w]) if op == ops.atanh => {
+                let (a, b) = part(graph, w)?;
+                let one = graph.int(1);
+                let one_plus_a = add(graph, &[one, a]);
+                let one_minus_a = sub(graph, one, a);
+                let neg_b = neg(graph, b);
+                let half = graph.num(Number::fraction(1, 2).unwrap_or_else(|| Number::from(0)));
+                let quarter = graph.num(Number::fraction(1, 4).unwrap_or_else(|| Number::from(0)));
+                let b2 = build::powi(graph, b, 2);
+                let p_plus = build::powi(graph, one_plus_a, 2);
+                let p_minus = build::powi(graph, one_minus_a, 2);
+                let num = add(graph, &[p_plus, b2]);
+                let den = add(graph, &[p_minus, b2]);
+                let den_inv = build::powi(graph, den, -1);
+                let ratio = mul(graph, &[num, den_inv]);
+                let ln_ratio = call(graph, ops.ln, &[ratio]);
+                let re = mul(graph, &[quarter, ln_ratio]);
+                let t1 = call(graph, ops.atan2, &[b, one_plus_a]);
+                let t2 = call(graph, ops.atan2, &[neg_b, one_minus_a]);
+                let diff_t = sub(graph, t1, t2);
+                let im = mul(graph, &[half, diff_t]);
+                Some((re, im))
+            },
+            | (op, &[w])
+                if op == ops.asin || op == ops.acos || op == ops.asinh || op == ops.acosh =>
+            {
+                let (a, b) = part(graph, w)?;
+                let (a2, b2) = product(graph, (a, b), (a, b));
+                let one = graph.int(1);
+                if op == ops.asinh {
+                    // ln(z + sqrt(z^2 + 1))
+                    let a2_p1 = add(graph, &[a2, one]);
+                    let (sr, si) = split_sqrt(graph, ops, (a2_p1, b2));
+                    let sum_r = add(graph, &[a, sr]);
+                    let sum_i = add(graph, &[b, si]);
+                    Some(split_ln(graph, ops, (sum_r, sum_i)))
+                } else if op == ops.acosh {
+                    // ln(z + sqrt(z-1)*sqrt(z+1))
+                    let a_p1 = add(graph, &[a, one]);
+                    let a_m1 = sub(graph, a, one);
+                    let (p1r, p1i) = split_sqrt(graph, ops, (a_p1, b));
+                    let (m1r, m1i) = split_sqrt(graph, ops, (a_m1, b));
+                    let (pr, pi_p) = product(graph, (p1r, p1i), (m1r, m1i));
+                    let sum_r = add(graph, &[a, pr]);
+                    let sum_i = add(graph, &[b, pi_p]);
+                    Some(split_ln(graph, ops, (sum_r, sum_i)))
+                } else {
+                    // asin(z) = -i * ln(i*z + sqrt(1 - z^2))
+                    let one_m_a2 = sub(graph, one, a2);
+                    let neg_b2 = neg(graph, b2);
+                    let (sr, si) = split_sqrt(graph, ops, (one_m_a2, neg_b2));
+                    let arg_r = sub(graph, sr, b);
+                    let arg_i = add(graph, &[a, si]);
+                    let (lr, li) = split_ln(graph, ops, (arg_r, arg_i));
+                    if op == ops.asin {
+                        Some((li, neg(graph, lr)))
+                    } else {
+                        let pi_node = call(graph, ops.pi, &[]);
+                        let half =
+                            graph.num(Number::fraction(1, 2).unwrap_or_else(|| Number::from(0)));
+                        let hp = mul(graph, &[half, pi_node]);
+                        Some((sub(graph, hp, li), lr))
+                    }
+                }
             },
             | (op, &[y, x]) if op == ops.atan2 => {
                 // real for real arguments
@@ -421,6 +696,84 @@ fn split_term(
     };
     memo.insert(term, result);
     result
+}
+
+/// `(a + bi) / (c + di) = ((ac + bd) + i(bc - ad)) / (c^2 + d^2)`.
+fn cdiv(
+    graph: &mut Graph,
+    (a, b): (NodeId, NodeId),
+    (c, d): (NodeId, NodeId),
+) -> (NodeId, NodeId) {
+    let c2 = build::powi(graph, c, 2);
+    let d2 = build::powi(graph, d, 2);
+    let denom = add(graph, &[c2, d2]);
+    let inv = build::powi(graph, denom, -1);
+    let ac = mul(graph, &[a, c]);
+    let bd = mul(graph, &[b, d]);
+    let bc = mul(graph, &[b, c]);
+    let ad = mul(graph, &[a, d]);
+    let sum_re = add(graph, &[ac, bd]);
+    let diff_im = sub(graph, bc, ad);
+    let re = mul(graph, &[sum_re, inv]);
+    let im = mul(graph, &[diff_im, inv]);
+    (re, im)
+}
+
+fn split_ln(
+    graph: &mut Graph,
+    ops: Ops,
+    (a, b): (NodeId, NodeId),
+) -> (NodeId, NodeId) {
+    let m = modulus(graph, a, b);
+    (call(graph, ops.ln, &[m]), call(graph, ops.atan2, &[b, a]))
+}
+
+fn split_sqrt(
+    graph: &mut Graph,
+    ops: Ops,
+    (a, b): (NodeId, NodeId),
+) -> (NodeId, NodeId) {
+    let m = modulus(graph, a, b);
+    let half = graph.num(Number::fraction(1, 2).unwrap_or_else(|| Number::from(0)));
+    let r = build::pow(graph, m, half);
+    let at = call(graph, ops.atan2, &[b, a]);
+    let angle = mul(graph, &[half, at]);
+    polar(graph, ops, r, angle)
+}
+
+fn split_trig_hyp(
+    graph: &mut Graph,
+    ops: Ops,
+    op: OpId,
+    a: NodeId,
+    b: NodeId,
+) -> (NodeId, NodeId) {
+    if op == ops.sin {
+        let sa = call(graph, ops.sin, &[a]);
+        let cb = call(graph, ops.cosh, &[b]);
+        let ca = call(graph, ops.cos, &[a]);
+        let sb = call(graph, ops.sinh, &[b]);
+        (mul(graph, &[sa, cb]), mul(graph, &[ca, sb]))
+    } else if op == ops.cos {
+        let sa = call(graph, ops.sin, &[a]);
+        let sb = call(graph, ops.sinh, &[b]);
+        let ca = call(graph, ops.cos, &[a]);
+        let cb = call(graph, ops.cosh, &[b]);
+        let im = mul(graph, &[sa, sb]);
+        (mul(graph, &[ca, cb]), neg(graph, im))
+    } else if op == ops.sinh {
+        let sa = call(graph, ops.sinh, &[a]);
+        let cb = call(graph, ops.cos, &[b]);
+        let ca = call(graph, ops.cosh, &[a]);
+        let sb = call(graph, ops.sin, &[b]);
+        (mul(graph, &[sa, cb]), mul(graph, &[ca, sb]))
+    } else {
+        let ca = call(graph, ops.cosh, &[a]);
+        let cb = call(graph, ops.cos, &[b]);
+        let sa = call(graph, ops.sinh, &[a]);
+        let sb = call(graph, ops.sin, &[b]);
+        (mul(graph, &[ca, cb]), mul(graph, &[sa, sb]))
+    }
 }
 
 /// `(a + bi)(c + di)`.
@@ -607,6 +960,33 @@ impl Kernel for Parts {
             return Outcome::Pass;
         }
         Outcome::Equal(result)
+    }
+}
+
+struct ComplexExpand {
+    op: OpId,
+    ops: Ops,
+}
+
+impl Kernel for ComplexExpand {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.op]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let &[z] = cx.graph.children(node) else {
+            return Outcome::Pass;
+        };
+        let Some((a, b)) = split(cx.graph, self.ops, z) else {
+            return Outcome::Pass;
+        };
+        let (a, b) = (cx.simplify(a), cx.simplify(b));
+        let expanded = build::complex(cx.graph, self.ops.unit, a, b);
+        Outcome::Equal(expanded)
     }
 }
 
