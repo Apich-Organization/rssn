@@ -55,12 +55,15 @@ use basin::GoldenSection;
 use basin::Gradient;
 use basin::GradientDescent;
 use basin::HalleyRoot;
+use basin::IncumbentState;
 use basin::Lbfgs;
+use basin::line_search::MoreThuente;
 use basin::Lbfgsb;
 use basin::Lincoa;
 use basin::Mads;
 use basin::NelderMead;
 use basin::NewtonRoot;
+use basin::OptimizationResult;
 use basin::Newuoa;
 use basin::NonlinearCg;
 use basin::PointState;
@@ -382,8 +385,16 @@ impl SolverKind {
 pub struct MinimizeOptions {
     /// Iteration budget.
     pub max_iter: u64,
-    /// Cost at or below which the result is reported as converged.
+    /// Cost at or below which the result is reported as converged. Passed to
+    /// the run as the target objective, so a solver stops as soon as it reaches
+    /// it and reports `TargetCost` — except `Cobyla`, `Slsqp` and `Tnc`, whose
+    /// seeded state carries no incumbent record for the framework to test.
     pub tolerance: f64,
+    /// Euclidean gradient norm (or, for a projected solver, the projected
+    /// gradient) at or below which the solver stops. Only the solvers that
+    /// report a gradient use it; the default is the square root of the
+    /// machine epsilon.
+    pub gradient_tolerance: f64,
     /// Seed for the stochastic solvers, so runs are reproducible.
     pub seed: u64,
     /// Box bounds `(lower, upper)`; `None` leaves every variable free.
@@ -395,6 +406,7 @@ impl Default for MinimizeOptions {
         Self {
             max_iter: 1_000,
             tolerance: 1e-6,
+            gradient_tolerance: f64::EPSILON.sqrt(),
             seed: 0,
             bounds: None,
         }
@@ -406,14 +418,23 @@ impl From<&OptimizationConfig> for MinimizeOptions {
         Self {
             max_iter: config.max_iters,
             tolerance: config.tolerance,
-            seed: 0,
-            bounds: None,
+            ..Self::default()
         }
     }
 }
 
 /// What a run produced.
-#[derive(Debug, Clone, PartialEq)]
+///
+/// The fingerprint derives let a result cross the native ABI unchanged, the
+/// same way every other record RSSN publishes does.
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    bincode_next::Encode,
+    bincode_next::Decode,
+    bincode_next::Fingerprint,
+)]
 pub struct MinimizeResult {
     /// Best parameter vector found.
     pub x: Vec<f64>,
@@ -425,22 +446,51 @@ pub struct MinimizeResult {
     pub cost_evals: u64,
     /// Whether `cost` reached the requested tolerance.
     pub converged: bool,
+    /// Why the solver stopped, named as the framework names it
+    /// (`TargetCost`, `MaxIter`, `GradientTolerance`, …).
+    pub termination: String,
+}
+
+/// The best iterate a run observed, with its cost.
+///
+/// A run whose costs are all infinite never establishes an incumbent, so the
+/// best-record accessors would panic; the final iterate is the honest answer
+/// there.
+fn best_point<S>(
+    result: &OptimizationResult<S>,
+) -> (S::Param, S::Float)
+where
+    S: IncumbentState,
+    S::Param: Clone,
+{
+    match result.state.incumbent_record() {
+        | Some(best) => (best.param.clone(), best.cost),
+        | None => (result.param().clone(), result.cost()),
+    }
 }
 
 /// Runs `solver` on `problem` and converts the framework result.
+///
+/// The target objective is only set when the tolerance is finite, because the
+/// framework asserts on a non-finite target; an unreachable target is the way
+/// a caller asks for "run until something else stops you".
 macro_rules! solve_with {
     ($problem:expr, $solver:expr, $start:expr, $options:expr) => {{
         let start: Vec<f64> = $start;
-        let result = Executor::from_start($problem, $solver, start)
-            .max_iter($options.max_iter)
-            .run()
-            .map_err(|error| error.to_string())?;
+        let executor = Executor::from_start($problem, $solver, start).max_iter($options.max_iter);
+        let executor = match $options.tolerance.is_finite() {
+            | true => executor.target_objective($options.tolerance),
+            | false => executor,
+        };
+        let result = executor.run().map_err(|error| error.to_string())?;
+        let (x, cost) = best_point(&result);
         Ok(MinimizeResult {
-            x: result.param().clone(),
-            cost: result.cost(),
+            x,
+            cost,
             iterations: result.iter(),
             cost_evals: result.cost_evals(),
-            converged: result.cost() <= $options.tolerance,
+            converged: cost <= $options.tolerance,
+            termination: format!("{:?}", result.report.code()),
         })
     }};
 }
@@ -501,20 +551,47 @@ impl Constraints for ScalarView<'_> {
     }
 }
 
+/// As [`solve_with`], for a solver whose seeded state carries no incumbent
+/// record: the framework cannot express a target objective for it, so the run
+/// stops on the solver's own convergence test or the iteration budget.
+macro_rules! solve_without_target {
+    ($problem:expr, $solver:expr, $start:expr, $options:expr) => {{
+        let start: Vec<f64> = $start;
+        let result = Executor::from_start($problem, $solver, start)
+            .max_iter($options.max_iter)
+            .run()
+            .map_err(|error| error.to_string())?;
+        let (x, cost) = best_point(&result);
+        Ok(MinimizeResult {
+            x,
+            cost,
+            iterations: result.iter(),
+            cost_evals: result.cost_evals(),
+            converged: cost <= $options.tolerance,
+            termination: format!("{:?}", result.report.code()),
+        })
+    }};
+}
+
 /// Runs a solver whose initial state is a single point.
 macro_rules! solve_point {
     ($problem:expr, $solver:expr, $start:expr, $options:expr) => {{
         let start: Vec<f64> = $start;
-        let result = Executor::new($problem, $solver, PointState::new(start))
-            .max_iter($options.max_iter)
-            .run()
-            .map_err(|error| error.to_string())?;
+        let executor =
+            Executor::new($problem, $solver, PointState::new(start)).max_iter($options.max_iter);
+        let executor = match $options.tolerance.is_finite() {
+            | true => executor.target_objective($options.tolerance),
+            | false => executor,
+        };
+        let result = executor.run().map_err(|error| error.to_string())?;
+        let (x, cost) = best_point(&result);
         Ok(MinimizeResult {
-            x: result.param().clone(),
-            cost: result.cost(),
+            x,
+            cost,
             iterations: result.iter(),
             cost_evals: result.cost_evals(),
-            converged: result.cost() <= $options.tolerance,
+            converged: cost <= $options.tolerance,
+            termination: format!("{:?}", result.report.code()),
         })
     }};
 }
@@ -523,16 +600,21 @@ macro_rules! solve_point {
 macro_rules! solve_scalar {
     ($problem:expr, $solver:expr, $start:expr, $options:expr) => {{
         let start: f64 = $start;
-        let result = Executor::new($problem, $solver, PointState::new(start))
-            .max_iter($options.max_iter)
-            .run()
-            .map_err(|error| error.to_string())?;
+        let executor =
+            Executor::new($problem, $solver, PointState::new(start)).max_iter($options.max_iter);
+        let executor = match $options.tolerance.is_finite() {
+            | true => executor.target_objective($options.tolerance),
+            | false => executor,
+        };
+        let result = executor.run().map_err(|error| error.to_string())?;
+        let (x, cost) = best_point(&result);
         Ok(MinimizeResult {
-            x: vec![*result.param()],
-            cost: result.cost(),
+            x: vec![x],
+            cost,
             iterations: result.iter(),
             cost_evals: result.cost_evals(),
-            converged: result.cost() <= $options.tolerance,
+            converged: cost <= $options.tolerance,
+            termination: format!("{:?}", result.report.code()),
         })
     }};
 }
@@ -542,20 +624,48 @@ macro_rules! solve_population {
     ($problem:expr, $solver:expr, $start:expr, $options:expr) => {{
         let _ = $start;
         let state = PopulationProgress::empty();
-        let result = Executor::new($problem, $solver, state)
+        let executor = Executor::new($problem, $solver, state)
             .require_evaluated_state()
-            .max_iter($options.max_iter)
+            .max_iter($options.max_iter);
+        let executor = match $options.tolerance.is_finite() {
+            | true => executor.target_objective($options.tolerance),
+            | false => executor,
+        };
+        let result = executor
             .run_with_solver()
             .map_err(|error| error.to_string())?
             .into_result();
+        let (x, cost) = best_point(&result);
         Ok(MinimizeResult {
-            x: result.param().clone(),
-            cost: result.cost(),
+            x,
+            cost,
             iterations: result.iter(),
             cost_evals: result.cost_evals(),
-            converged: result.cost() <= $options.tolerance,
+            converged: cost <= $options.tolerance,
+            termination: format!("{:?}", result.report.code()),
         })
     }};
+}
+
+/// The stationarity test, for a solver that reports a gradient.
+///
+/// The framework's cost-change test is deliberately not used: it stops when
+/// two consecutive costs are within the tolerance, and a simplex or population
+/// method reports the same best cost on many consecutive iterations, so that
+/// test would stop such a solver on its first repeat. Those families keep
+/// their own tolerance test — simplex size, mesh size, search-distribution
+/// collapse — which is the test their algorithm actually defines.
+macro_rules! stationary {
+    ($solver:expr, $options:expr) => {
+        $solver.with_absolute_gradient_tolerance($options.gradient_tolerance)
+    };
+}
+
+/// The stationarity test for a solver whose bounds define the projection.
+macro_rules! projected {
+    ($solver:expr, $options:expr) => {
+        $solver.with_absolute_projected_gradient_tolerance($options.gradient_tolerance)
+    };
 }
 
 /// Minimises `problem` with `kind`.
@@ -595,27 +705,63 @@ pub fn minimize(
     let x0 = start.to_vec();
     match kind {
         | SolverKind::GradientDescent { step } => {
-            solve_with!(problem, GradientDescent::new(step), x0, options)
+            solve_with!(problem, stationary!(GradientDescent::new(step), options), x0, options)
         },
-        | SolverKind::Bfgs => solve_with!(problem, Bfgs::new(), x0, options),
-        | SolverKind::Lbfgs => solve_with!(problem, Lbfgs::new(), x0, options),
+        // A shallow objective needs a long step: the More–Thuente search is
+        // left free to take one, which the Wolfe search's default bound rules
+        // out.
+        | SolverKind::Bfgs => solve_with!(
+            problem,
+            stationary!(
+                Bfgs::with_line_search(MoreThuente::new().stpmax(f64::MAX).maxfev(100)),
+                options
+            ),
+            x0,
+            options
+        ),
+        | SolverKind::Lbfgs => solve_with!(
+            problem,
+            stationary!(Lbfgs::new().unbounded(), options),
+            x0,
+            options
+        ),
+        // The bounded variant exposes no gradient test: its iterate is
+        // projected onto the box, so a plain gradient norm says nothing.
         | SolverKind::Lbfgsb => solve_with!(problem, Lbfgsb::new(), x0, options),
-        | SolverKind::NonlinearCg => solve_with!(problem, NonlinearCg::new(), x0, options),
+        | SolverKind::NonlinearCg => {
+            solve_with!(problem, stationary!(NonlinearCg::new(), options), x0, options)
+        },
+        // Derivative-free, global and scalar families: no framework check, for
+        // the reason recorded at `stationary!` — each keeps the tolerance test
+        // its own algorithm defines.
         | SolverKind::NelderMead => solve_with!(problem, NelderMead::new(), x0, options),
         | SolverKind::NelderMeadProjected => {
-            solve_with!(problem, NelderMead::new().projected(), x0, options)
+            solve_with!(
+                problem,
+                NelderMead::new().projected(),
+                x0,
+                options
+            )
         },
         | SolverKind::Bobyqa => solve_with!(problem, Bobyqa::new(), x0, options),
         | SolverKind::Newuoa => solve_with!(problem, Newuoa::new(), x0, options),
         | SolverKind::Lincoa => solve_with!(problem, Lincoa::new(), x0, options),
-        | SolverKind::Cobyla => solve_with!(problem, Cobyla::new(), x0, options),
+        // `Cobyla`, `Slsqp` and `Tnc` seed a state with no incumbent record, so
+        // the framework cannot express a target objective for them; they stop
+        // on their own internal test or the iteration budget.
+        | SolverKind::Cobyla => solve_without_target!(problem, Cobyla::new(), x0, options),
         | SolverKind::Direct => solve_point!(problem, Direct::new(), x0, options),
         | SolverKind::Mads => solve_with!(problem, Mads::new(), x0, options),
-        | SolverKind::Slsqp => solve_with!(problem, Slsqp::new(), x0, options),
+        | SolverKind::Slsqp => solve_without_target!(problem, Slsqp::new(), x0, options),
         | SolverKind::ProjectedGradientDescent { alpha } => {
-            solve_with!(problem, ProjectedGradientDescent::new(alpha), x0, options)
+            solve_with!(
+                problem,
+                projected!(ProjectedGradientDescent::new(alpha), options),
+                x0,
+                options
+            )
         },
-        | SolverKind::Tnc => solve_with!(problem, Tnc::new(), x0, options),
+        | SolverKind::Tnc => solve_without_target!(problem, Tnc::new(), x0, options),
         | SolverKind::CmaEs { sigma } => {
             solve_with!(
                 problem,
@@ -632,9 +778,16 @@ pub fn minimize(
                 options
             )
         },
-        | SolverKind::De => solve_population!(problem, De::new(options.seed), x0, options),
+        | SolverKind::De => {
+            solve_population!(problem, De::new(options.seed), x0, options)
+        },
         | SolverKind::GlobalBestPso => {
-            solve_population!(problem, GlobalBestPso::new(options.seed), x0, options)
+            solve_population!(
+                problem,
+                GlobalBestPso::new(options.seed),
+                x0,
+                options
+            )
         },
         | SolverKind::RandomSearch { lambda } => {
             solve_population!(
@@ -645,10 +798,19 @@ pub fn minimize(
             )
         },
         | SolverKind::SolisWets => {
-            solve_with!(problem, SolisWets::new(options.seed), x0, options)
+            solve_with!(
+                problem,
+                SolisWets::new(options.seed),
+                x0,
+                options
+            )
         },
-        | SolverKind::Ssga => solve_population!(problem, Ssga::new(options.seed), x0, options),
-        | SolverKind::Gbnm => solve_with!(problem, Gbnm::new(options.seed), x0, options),
+        | SolverKind::Ssga => {
+            solve_population!(problem, Ssga::new(options.seed), x0, options)
+        },
+        | SolverKind::Gbnm => {
+            solve_with!(problem, Gbnm::new(options.seed), x0, options)
+        },
         | SolverKind::Brent => {
             let scalar = ScalarView::new(&problem, x0[0]);
             solve_scalar!(scalar, Brent::new(), x0[0], options)

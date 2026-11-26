@@ -65,6 +65,69 @@ fn test_function_values_at_known_points() {
 }
 
 #[test]
+fn bfgs_converges_at_a_stationary_start_with_an_unreachable_target() {
+    let cfg = config(ProblemType::Sphere, 50, -1.0, 2);
+    let result = EquationOptimizer::solve_with_bfgs(&Sphere::problem(2), &[0.0, 0.0], &cfg)
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(result.termination, "GradientTolerance");
+    assert_eq!(result.iterations, 0);
+    assert_eq!(result.x, vec![0.0, 0.0]);
+    assert_eq!(result.cost, 0.0);
+}
+
+#[test]
+fn bfgs_returns_the_start_at_a_zero_iteration_limit() {
+    let cfg = config(ProblemType::Sphere, 0, 1e-8, 2);
+    let initial = vec![1.0, -2.0];
+    let result = EquationOptimizer::solve_with_bfgs(&Sphere::problem(2), &initial, &cfg)
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(result.termination, "MaxIter");
+    assert_eq!(result.iterations, 0);
+    assert_eq!(result.x, initial);
+    assert_eq!(result.cost, 5.0);
+}
+
+#[test]
+fn bfgs_returns_the_start_when_its_cost_overflows_at_a_zero_iteration_limit() {
+    let cfg = config(ProblemType::Sphere, 0, 1e-8, 1);
+    let initial = vec![1e155];
+    let result = EquationOptimizer::solve_with_bfgs(&Sphere::problem(1), &initial, &cfg)
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(result.termination, "MaxIter");
+    assert_eq!(result.iterations, 0);
+    assert_eq!(result.x, initial);
+    assert_eq!(result.cost, f64::INFINITY);
+}
+
+#[test]
+fn minimize_result_round_trips_with_a_native_fingerprint() {
+    let cfg = config(ProblemType::Sphere, 50, 1e-8, 2);
+    let result = EquationOptimizer::solve_with_bfgs(&Sphere::problem(2), &[1.0, -2.0], &cfg)
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert!(result.cost <= cfg.tolerance);
+    assert!(result.cost_evals > 0);
+    assert_eq!(result.termination, "TargetCost");
+
+    let codec = bincode_next::config::standard()
+        .with_deterministic_bincode()
+        .with_fingerprint();
+    let mut bytes =
+        bincode_next::encode_to_vec(&result, codec).unwrap_or_else(|e| panic!("{e}"));
+    let (decoded, read) =
+        bincode_next::decode_from_slice(&bytes, codec).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(result, decoded);
+    assert_eq!(read, bytes.len());
+
+    bytes[0] ^= 1;
+    let decoded: Result<(rssn::kernels::optimize::MinimizeResult, usize), _> =
+        bincode_next::decode_from_slice(&bytes, codec);
+    assert!(matches!(
+        decoded,
+        Err(bincode_next::error::DecodeError::SchemaMismatch { .. })
+    ));
+}
+
+#[test]
 fn rosenbrock_bfgs_finds_the_minimum() {
     let cfg = config(ProblemType::Rosenbrock, 1000, 1e-8, 2);
     let res = EquationOptimizer::solve_with_bfgs(&Rosenbrock::problem(2), &[-1.2, 1.0], &cfg)
@@ -138,18 +201,24 @@ fn every_solver_kind_runs_on_a_quadratic() {
             tolerance: 1e-6,
             seed: 7,
             bounds: Some(bounds.clone()),
+            ..MinimizeOptions::default()
         };
         let result = minimize(&problem, &[2.5, -3.0], kind, &options)
             .unwrap_or_else(|e| panic!("{kind:?}: {e}"));
         assert!(
             result.cost <= 1.0,
-            "{kind:?} left the cost at {} (x = {:?})",
+            "{kind:?} left the cost at {} (x = {:?}, termination {}, {} iterations)",
             result.cost,
-            result.x
+            result.x,
+            result.termination,
+            result.iterations
         );
+        // `Direct` publishes its whole search as one initialisation step, so it
+        // can legitimately report zero iterations; every solver must still
+        // evaluate.
         assert!(
-            result.cost_evals > 0 && result.iterations > 0,
-            "{kind:?} reported no work"
+            result.cost_evals > 0,
+            "{kind:?} reported no cost evaluations"
         );
     }
 }

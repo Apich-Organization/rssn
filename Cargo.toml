@@ -112,7 +112,7 @@ ndarray = { version = "0.17", features = ["serde"] }
 statrs = { version = "0.19", default-features = false, features = ["std"] }
 # Numerical optimization. `basin` runs on plain `Vec<f64>` so it adds no
 # linear-algebra backend of its own.
-basin = { version = "3.4", default-features = false }
+basin = { version = "3.5", default-features = false }
 rustfft = "6.4"
 # Zstandard for Parquet pages; the reference implementation, not a reimplementation.
 zstd = { version = "0.14", default-features = false }

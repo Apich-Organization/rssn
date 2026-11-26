@@ -419,6 +419,105 @@ fn strings(values: &[&str]) -> Value {
 }
 
 #[test]
+fn basin_bfgs_tape_preserves_units_and_oracle_budget() {
+    let session = rssn::Session::new();
+    let ctx = CallCtx::new();
+    let call = |name, values: &[Value]| session.call_value(name, values, &ctx);
+    let length = DimExpr::base("Length");
+    let mass = DimExpr::base("Mass");
+    let tape = call(
+        "num_native_tape_lower",
+        &[
+            strings(&["(x-2)*(x-2)"]),
+            strings(&["x"]),
+            strings(&[]),
+            dynamic_vector(vec![scalar(3.0, length.clone())]),
+            dynamic_vector(vec![]),
+            dynamic_vector(vec![scalar(5.0, mass)]),
+        ],
+    )
+    .unwrap();
+    let solve = |budget: usize| {
+        call(
+            "num_analysis_solve_with_bfgs_tape",
+            &[
+                tape.clone(),
+                Value::int(0),
+                dynamic_vector(vec![scalar(0.0, length.clone())]),
+                dynamic_vector(vec![]),
+                dynamic_vector(vec![]),
+                Value::Float(1e-12),
+                Value::int(50),
+                Value::int(budget),
+            ],
+        )
+    };
+    let error = solve(1).unwrap_err();
+    assert!(error.to_string().contains("oracle budget exhausted"));
+
+    let result = solve(100).unwrap();
+    let Value::Record(record) = call("num_analysis_optimization_result", &[result]).unwrap() else {
+        panic!("expected an optimization result record");
+    };
+    assert_eq!(
+        record.get("termination"),
+        Some(&Value::String("TargetCost".into()))
+    );
+    let Some(Value::Variant(point)) = record.get("x") else {
+        panic!("expected an optional best point");
+    };
+    let [Value::Tensor(point)] = point.payload.as_slice() else {
+        panic!("expected a best point");
+    };
+    let [Value::Dyn(coordinate)] = point.data.as_slice() else {
+        panic!("expected a measured coordinate");
+    };
+    assert_eq!(coordinate.dim, length);
+    assert!((coordinate.value.as_f64().unwrap() - 6.0).abs() < 3e-6);
+}
+
+#[test]
+fn basin_bfgs_tape_reaches_a_shallow_minimum_within_the_oracle_budget() {
+    let session = rssn::Session::new();
+    let ctx = CallCtx::new();
+    let call = |name, values: &[Value]| session.call_value(name, values, &ctx);
+    let dimensionless = DimExpr::Dimless;
+    let tape = call(
+        "num_native_tape_lower",
+        &[
+            strings(&["a*x*x-x"]),
+            strings(&["x"]),
+            strings(&["a"]),
+            dynamic_vector(vec![scalar(1.0, dimensionless.clone())]),
+            dynamic_vector(vec![scalar(1.0, dimensionless.clone())]),
+            dynamic_vector(vec![scalar(1.0, dimensionless.clone())]),
+        ],
+    )
+    .unwrap();
+    let result = call(
+        "num_analysis_solve_with_bfgs_tape",
+        &[
+            tape,
+            Value::int(0),
+            dynamic_vector(vec![scalar(0.0, dimensionless.clone())]),
+            dynamic_vector(vec![]),
+            dynamic_vector(vec![scalar(0.5e-28, dimensionless)]),
+            Value::Float(-4.9e27),
+            Value::int(100),
+            Value::int(500),
+        ],
+    )
+    .unwrap();
+    let Value::Record(record) = call("num_analysis_optimization_result", &[result]).unwrap() else {
+        panic!("expected an optimization result record");
+    };
+    assert_eq!(
+        record.get("termination"),
+        Some(&Value::String("TargetCost".into()))
+    );
+}
+
+#[test]
 fn prepared_newton_cg_reuses_a_tape_after_the_original_is_released() {
     let session = rssn::Session::new();
     let ctx = CallCtx::new();

@@ -141,11 +141,7 @@ impl RetainedState for Finished {
     }
 
     fn termination(&self) -> String {
-        if self.result.converged {
-            "converged".to_string()
-        } else {
-            "iteration budget exhausted".to_string()
-        }
+        self.result.termination.clone()
     }
 }
 struct ResultObject {
