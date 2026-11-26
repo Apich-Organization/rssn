@@ -1,7 +1,0 @@
-rustfmt 1.12.0-nightly (5f4effd579 2026-11-13)
-cargo +nightly fmt --all -- --check in /home/pana/dev2/rssn
-passed
-cargo +nightly fmt --all -- --check in /home/pana/dev2/aevia
-passed
-cargo +nightly fmt --all -- --check in /home/pana/dev2/aevia/platform
-passed
