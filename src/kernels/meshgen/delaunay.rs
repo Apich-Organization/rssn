@@ -1,29 +1,35 @@
 //! Delaunay triangulation in the plane.
 //!
 //! [`delaunay_2d`] runs the Bowyer–Watson insertion scheme on a super-triangle
-//! and then restores the empty-circumcircle property with Lawson edge flips.
-//! [`constrained_delaunay_2d`] additionally forces a set of input segments into
-//! the mesh by removing the triangles they cross and re-triangulating the
-//! resulting cavity (Sloan's edge-flipping insertion).
+//! using exact adaptive-precision geometric predicates with Simulation of
+//! Simplicity (SoS) tie-breaking for cocircular points, and then restores the
+//! empty-circumcircle property with Lawson edge flips.
+//!
+//! [`constrained_delaunay_2d`] and [`constrained_delaunay_2d_mesh`] force a
+//! set of input segments into the mesh by first preprocessing the segments
+//! (splitting segments at any existing collinear vertices, and in
+//! [`constrained_delaunay_2d_mesh`] also splitting mutually crossing segments
+//! at newly inserted Steiner intersection vertices) before enforcing every
+//! sub-segment by cavity re-triangulation (Sloan's algorithm).
 //!
 //! # Limitations
 //!
-//! * The predicates use plain `f64` arithmetic. Inputs that are exactly
-//!   cocircular are handled by a strict in-circle test, so the chosen diagonal
-//!   of a degenerate quad is arbitrary but the result is still a valid
-//!   triangulation.
-//! * Segments that pass exactly through an existing vertex, or that cross each
-//!   other, are not supported; the segment is left out in that case.
 //! * The duplicate-point scan is `O(n)` in the point count through a uniform
-//!   grid, but the Bowyer–Watson insertion is `O(n^2)`.
+//!   grid, while the 2D Bowyer–Watson insertion is `O(n^2)`.
+//! * [`constrained_delaunay_2d`] returns triangle indices into the caller's
+//!   fixed point slice, so mutually crossing segments require
+//!   [`constrained_delaunay_2d_mesh`], which returns the augmented [`TriMesh2`]
+//!   including any inserted Steiner vertices.
 
 use std::collections::HashMap;
 use std::collections::HashSet;
 
+use super::util::TriMesh2;
 use super::util::as_ccw;
+use super::util::distance2;
 use super::util::ear_clip;
 use super::util::edge_key;
-use super::util::incircle;
+use super::util::incircle_sos;
 use super::util::orient2d;
 use super::util::segments_cross;
 use super::util::triangle_area;
@@ -63,38 +69,56 @@ pub fn delaunay_2d(points: &[[f64; 2]]) -> Result<Vec<[usize; 3]>, String> {
 
     let super_triangle = as_ccw(&pts, [n, n + 1, n + 2]);
     let mut triangles: Vec<[usize; 3]> = vec![super_triangle];
+    // Circumcircle of every triangle, in the same order as `triangles`. It is
+    // a floating-point pre-filter: only points near or on a circumcircle are
+    // decided by the exact predicate, which is what keeps the result identical
+    // to a pure `incircle_sos` scan while cutting its cost by an order of
+    // magnitude on a large cloud.
+    let mut circles: Vec<Option<(f64, f64, f64)>> = vec![circumcircle(&pts, super_triangle)];
+
+    let mut boundary: HashMap<(usize, usize), usize> = HashMap::new();
+    let mut candidates: Vec<(usize, usize)> = Vec::new();
+    let mut kept: Vec<[usize; 3]> = Vec::with_capacity(triangles.len() + 4);
+    let mut kept_circles: Vec<Option<(f64, f64, f64)>> = Vec::with_capacity(triangles.len() + 4);
 
     for i in 0..n {
-        let p = pts[i];
-        let mut boundary: HashMap<(usize, usize), usize> = HashMap::new();
-        let mut kept: Vec<[usize; 3]> = Vec::with_capacity(triangles.len() + 4);
+        boundary.clear();
+        kept.clear();
+        kept_circles.clear();
 
-        for t in &triangles {
-            let inside = incircle(pts[t[0]], pts[t[1]], pts[t[2]], p) > 0.0;
+        for (index, t) in triangles.iter().enumerate() {
+            let inside = match circles[index] {
+                | Some(circle) => point_in_circumcircle(circle, pts[i], &pts, *t, i),
+                | None => incircle_sos(&pts, t[0], t[1], t[2], i),
+            };
             if inside {
                 for k in 0..3 {
                     *boundary.entry((t[k], t[(k + 1) % 3])).or_insert(0) += 1;
                 }
             } else {
                 kept.push(*t);
+                kept_circles.push(circles[index]);
             }
         }
 
         // Sorting the boundary keys keeps the triangle order independent of
         // the hash-map iteration order.
-        let mut candidates: Vec<(usize, usize)> = boundary.keys().copied().collect();
+        candidates.clear();
+        candidates.extend(boundary.keys().copied());
         candidates.sort_unstable();
-        for (a, b) in candidates {
+        for &(a, b) in &candidates {
             if boundary.contains_key(&(b, a)) {
                 continue;
             }
             let candidate = as_ccw(&pts, [a, b, i]);
             if triangle_area(pts[candidate[0]], pts[candidate[1]], pts[candidate[2]]) > 0.0 {
                 kept.push(candidate);
+                kept_circles.push(circumcircle(&pts, candidate));
             }
         }
 
-        triangles = kept;
+        std::mem::swap(&mut triangles, &mut kept);
+        std::mem::swap(&mut circles, &mut kept_circles);
     }
 
     triangles.retain(|t| t[0] < n && t[1] < n && t[2] < n);
@@ -105,8 +129,63 @@ pub fn delaunay_2d(points: &[[f64; 2]]) -> Result<Vec<[usize; 3]>, String> {
     Ok(triangles)
 }
 
-/// Incremental Delaunay triangulation of `points`.
-///
+/// Floating-point circumcircle `(centre_x, centre_y, radius^2)` of a triangle,
+/// or `None` when the triangle is too close to degenerate for the circle to be
+/// trusted.
+fn circumcircle(
+    points: &[[f64; 2]],
+    t: [usize; 3],
+) -> Option<(f64, f64, f64)> {
+    let (ax, ay) = (points[t[0]][0], points[t[0]][1]);
+    let (bx, by) = (points[t[1]][0], points[t[1]][1]);
+    let (cx, cy) = (points[t[2]][0], points[t[2]][1]);
+    let d = 2.0 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
+    let edge = ((bx - ax) * (bx - ax) + (by - ay) * (by - ay))
+        .max((cx - bx) * (cx - bx) + (cy - by) * (cy - by))
+        .max((ax - cx) * (ax - cx) + (ay - cy) * (ay - cy));
+    // `d` is twice the signed area; below this ratio the centre is
+    // ill-conditioned and the exact predicate is cheaper than trusting it.
+    if !d.is_finite() || d.abs() <= 1e-4 * edge {
+        return None;
+    }
+    let a2 = ax * ax + ay * ay;
+    let b2 = bx * bx + by * by;
+    let c2 = cx * cx + cy * cy;
+    let ux = (a2 * (by - cy) + b2 * (cy - ay) + c2 * (ay - by)) / d;
+    let uy = (a2 * (cx - bx) + b2 * (ax - cx) + c2 * (bx - ax)) / d;
+    let r2 = (ax - ux) * (ax - ux) + (ay - uy) * (ay - uy);
+    if ux.is_finite() && uy.is_finite() && r2.is_finite() && r2 >= 0.0 {
+        Some((ux, uy, r2))
+    } else {
+        None
+    }
+}
+
+/// Whether `p` lies inside the cached circumcircle, falling back to the exact
+/// predicate only when the floating-point decision is within its error bound.
+fn point_in_circumcircle(
+    circle: (f64, f64, f64),
+    p: [f64; 2],
+    points: &[[f64; 2]],
+    t: [usize; 3],
+    index: usize,
+) -> bool {
+    let (ux, uy, r2) = circle;
+    let dx = p[0] - ux;
+    let dy = p[1] - uy;
+    let d2 = dx * dx + dy * dy;
+    let magnitude = (d2 + r2 + ux * ux + uy * uy + p[0] * p[0] + p[1] * p[1]).max(1.0);
+    let tolerance = 1e-10 * magnitude;
+    if d2 < r2 - tolerance {
+        return true;
+    }
+    if d2 > r2 + tolerance {
+        return false;
+    }
+    incircle_sos(points, t[0], t[1], t[2], index)
+}
+
+/// Incremental Delaunay triangulation of `points`.///
 /// This is the incremental entry point of the same Bowyer–Watson insertion
 /// used by [`delaunay_2d`]: points are inserted one at a time into the growing
 /// triangulation, and each insertion only re-triangulates the cavity of
@@ -121,20 +200,78 @@ pub fn delaunay_2d_incremental(points: &[[f64; 2]]) -> Result<Vec<[usize; 3]>, S
 
 /// Delaunay triangulation of `points` with the given segments forced in.
 ///
-/// Each `(u, v)` in `segments` becomes an edge of the returned triangulation.
-/// Segments are inserted by removing every triangle the segment crosses and
-/// re-triangulating the two halves of the resulting cavity (Sloan's algorithm).
+/// Each `(u, v)` in `segments` becomes a chain of constrained edges in the
+/// returned triangulation: any segment passing through existing collinear
+/// vertices is automatically split at those vertices before enforcement.
+///
+/// # Errors
+///
+/// Returns `Err` when the points are invalid, when a segment index is out of
+/// range, when a segment joins a vertex to itself, or when two segments cross
+/// transversely (in which case [`constrained_delaunay_2d_mesh`] should be used
+/// so the intersection Steiner points can be returned).
+pub fn constrained_delaunay_2d(
+    points: &[[f64; 2]],
+    segments: &[(usize, usize)],
+) -> Result<Vec<[usize; 3]>, String> {
+    validate(points)?;
+    let (_pts, sub_segments) = preprocess_segments(points, segments, false)?;
+    let mut triangles = delaunay_2d(points)?;
+
+    for &(u, v) in &sub_segments {
+        insert_segment(points, &mut triangles, u, v);
+    }
+
+    let fixed: HashSet<(usize, usize)> =
+        sub_segments.iter().map(|&(u, v)| edge_key(u, v)).collect();
+    lawson(points, &mut triangles, &fixed);
+
+    Ok(triangles)
+}
+
+/// Constrained Delaunay triangulation of `points` and `segments`, returning
+/// the full [`TriMesh2`] including any Steiner vertices inserted where input
+/// segments cross.
+///
+/// Segments passing through existing collinear vertices are split at those
+/// vertices, and mutually crossing segments are split at their intersection
+/// points (deduplicated against existing vertices within tolerance). Every
+/// input segment is guaranteed to be represented as a chain of constrained
+/// edges in the output mesh.
 ///
 /// # Errors
 ///
 /// Returns `Err` when the points are invalid, when a segment index is out of
 /// range, or when a segment joins a vertex to itself.
-pub fn constrained_delaunay_2d(
+pub fn constrained_delaunay_2d_mesh(
     points: &[[f64; 2]],
     segments: &[(usize, usize)],
-) -> Result<Vec<[usize; 3]>, String> {
-    let mut triangles = delaunay_2d(points)?;
+) -> Result<TriMesh2, String> {
+    validate(points)?;
+    let (pts, sub_segments) = preprocess_segments(points, segments, true)?;
+    let mut triangles = delaunay_2d(&pts)?;
 
+    for &(u, v) in &sub_segments {
+        insert_segment(&pts, &mut triangles, u, v);
+    }
+
+    let fixed: HashSet<(usize, usize)> =
+        sub_segments.iter().map(|&(u, v)| edge_key(u, v)).collect();
+    lawson(&pts, &mut triangles, &fixed);
+
+    Ok(TriMesh2 {
+        points: pts,
+        triangles,
+    })
+}
+
+/// Preprocesses constraint segments by splitting segments at existing collinear
+/// vertices and (when `allow_steiner` is `true`) at mutual segment crossings.
+fn preprocess_segments(
+    points: &[[f64; 2]],
+    segments: &[(usize, usize)],
+    allow_steiner: bool,
+) -> Result<(Vec<[f64; 2]>, Vec<(usize, usize)>), String> {
     for &(u, v) in segments {
         if u >= points.len() || v >= points.len() {
             return Err("segment index out of range".to_string());
@@ -142,13 +279,200 @@ pub fn constrained_delaunay_2d(
         if u == v {
             return Err("degenerate segment".to_string());
         }
-        insert_segment(points, &mut triangles, u, v);
     }
 
-    let fixed: HashSet<(usize, usize)> = segments.iter().map(|&(u, v)| edge_key(u, v)).collect();
-    lawson(points, &mut triangles, &fixed);
+    let (mut min_x, mut min_y) = (f64::INFINITY, f64::INFINITY);
+    let (mut max_x, mut max_y) = (f64::NEG_INFINITY, f64::NEG_INFINITY);
+    for p in points {
+        min_x = min_x.min(p[0]);
+        min_y = min_y.min(p[1]);
+        max_x = max_x.max(p[0]);
+        max_y = max_y.max(p[1]);
+    }
+    let scale = (max_x - min_x).max(max_y - min_y).max(1.0);
+    let pt_tol = 1e-11 * scale;
+    let pt_tol2 = pt_tol * pt_tol;
+    let collinear_tol = 1e-12 * scale;
 
-    Ok(triangles)
+    let mut pts = points.to_vec();
+    let mut segs = dedup_segments(segments);
+
+    for _ in 0..64 {
+        // 1. Split every segment at any existing vertex lying strictly on it.
+        let mut after_collinear: Vec<(usize, usize)> = Vec::with_capacity(segs.len());
+        for &(u, v) in &segs {
+            let a = pts[u];
+            let b = pts[v];
+            let len2 = distance2(a, b);
+            if len2 <= 0.0 {
+                continue;
+            }
+            let len = len2.sqrt();
+            let dx = b[0] - a[0];
+            let dy = b[1] - a[1];
+
+            let mut interior: Vec<usize> = Vec::new();
+            for (w, &p) in pts.iter().enumerate() {
+                if w == u || w == v {
+                    continue;
+                }
+                let t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / len2;
+                if t <= 0.0 || t >= 1.0 {
+                    continue;
+                }
+                if distance2(p, a) <= pt_tol2 || distance2(p, b) <= pt_tol2 {
+                    continue;
+                }
+                if orient2d(a, b, p).abs() <= collinear_tol * len {
+                    interior.push(w);
+                }
+            }
+
+            if interior.is_empty() {
+                after_collinear.push((u, v));
+            } else {
+                after_collinear.extend(split_segment_by_vertices(&pts, u, v, &interior));
+            }
+        }
+        segs = dedup_segments(&after_collinear);
+
+        // 2. Detect and split mutually crossing segments.
+        let mut splits: Vec<Vec<usize>> = vec![Vec::new(); segs.len()];
+        let mut any_crossing = false;
+
+        for i in 0..segs.len() {
+            let (a, b) = segs[i];
+            for j in (i + 1)..segs.len() {
+                let (c, d) = segs[j];
+                if a == c || a == d || b == c || b == d {
+                    continue;
+                }
+                if segments_cross(pts[a], pts[b], pts[c], pts[d]) {
+                    if !allow_steiner {
+                        return Err(
+                            "crossing segments require Steiner points; use constrained_delaunay_2d_mesh"
+                                .to_string(),
+                        );
+                    }
+                    any_crossing = true;
+                    let inter = segment_intersection(pts[a], pts[b], pts[c], pts[d]);
+                    let idx = find_or_insert_vertex(&mut pts, inter, pt_tol2);
+                    if idx != a && idx != b {
+                        splits[i].push(idx);
+                    }
+                    if idx != c && idx != d {
+                        splits[j].push(idx);
+                    }
+                }
+            }
+        }
+
+        if !any_crossing {
+            break;
+        }
+
+        let mut next_segs: Vec<(usize, usize)> = Vec::with_capacity(segs.len() * 2);
+        for (i, &(u, v)) in segs.iter().enumerate() {
+            if splits[i].is_empty() {
+                next_segs.push((u, v));
+            } else {
+                next_segs.extend(split_segment_by_vertices(&pts, u, v, &splits[i]));
+            }
+        }
+        segs = dedup_segments(&next_segs);
+    }
+
+    Ok((pts, segs))
+}
+
+/// Deduplicates undirected segments and removes zero-length `(u, u)` entries.
+fn dedup_segments(raw: &[(usize, usize)]) -> Vec<(usize, usize)> {
+    let mut seen: HashSet<(usize, usize)> = HashSet::with_capacity(raw.len());
+    let mut out: Vec<(usize, usize)> = Vec::with_capacity(raw.len());
+    for &(u, v) in raw {
+        if u == v {
+            continue;
+        }
+        let key = edge_key(u, v);
+        if seen.insert(key) {
+            out.push(key);
+        }
+    }
+    out
+}
+
+/// Splits the segment `(u, v)` along `u -> v` at all given interior vertices.
+fn split_segment_by_vertices(
+    pts: &[[f64; 2]],
+    u: usize,
+    v: usize,
+    verts: &[usize],
+) -> Vec<(usize, usize)> {
+    let a = pts[u];
+    let b = pts[v];
+    let dx = b[0] - a[0];
+    let dy = b[1] - a[1];
+    let len2 = dx * dx + dy * dy;
+    if len2 <= 0.0 {
+        return Vec::new();
+    }
+
+    let mut ordered: Vec<(f64, usize)> = verts
+        .iter()
+        .copied()
+        .filter(|&w| w != u && w != v)
+        .map(|w| {
+            let p = pts[w];
+            let t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / len2;
+            (t, w)
+        })
+        .collect();
+    ordered.sort_by(|x, y| x.0.total_cmp(&y.0).then_with(|| x.1.cmp(&y.1)));
+
+    let mut chain: Vec<usize> = Vec::with_capacity(ordered.len() + 2);
+    chain.push(u);
+    for (_, w) in ordered {
+        if chain.last().copied() != Some(w) {
+            chain.push(w);
+        }
+    }
+    if chain.last().copied() != Some(v) {
+        chain.push(v);
+    }
+
+    chain.windows(2).map(|pair| (pair[0], pair[1])).collect()
+}
+
+/// Computes the intersection point of two transversely crossing segments.
+fn segment_intersection(
+    a: [f64; 2],
+    b: [f64; 2],
+    c: [f64; 2],
+    d: [f64; 2],
+) -> [f64; 2] {
+    let abx = b[0] - a[0];
+    let aby = b[1] - a[1];
+    let cdx = d[0] - c[0];
+    let cdy = d[1] - c[1];
+    let denom = abx * cdy - aby * cdx;
+    let t = (((c[0] - a[0]) * cdy - (c[1] - a[1]) * cdx) / denom).clamp(0.0, 1.0);
+    [a[0] + t * abx, a[1] + t * aby]
+}
+
+/// Returns the index of an existing vertex within `tol2` of `p`, or appends `p`.
+fn find_or_insert_vertex(
+    pts: &mut Vec<[f64; 2]>,
+    p: [f64; 2],
+    tol2: f64,
+) -> usize {
+    for (idx, &q) in pts.iter().enumerate() {
+        if distance2(q, p) <= tol2 {
+            return idx;
+        }
+    }
+    let idx = pts.len();
+    pts.push(p);
+    idx
 }
 
 /// Rejects inputs the triangulation cannot handle.
@@ -279,7 +603,7 @@ fn lawson(
         } else {
             (b, a)
         };
-        if incircle(points[u], points[v], points[c], points[d]) <= 0.0 {
+        if !incircle_sos(points, u, v, c, d) {
             continue;
         }
 
@@ -494,11 +818,14 @@ fn walk_cycle(
 #[cfg(test)]
 mod tests {
     use super::constrained_delaunay_2d;
+    use super::constrained_delaunay_2d_mesh;
     use super::delaunay_2d;
     use super::delaunay_2d_incremental;
     use crate::kernels::meshgen::util::count_edges;
+    use crate::kernels::meshgen::util::edge_key;
     use crate::kernels::meshgen::util::incircle;
     use crate::kernels::meshgen::util::min_angle_deg;
+    use crate::kernels::meshgen::util::orient2d;
     use crate::kernels::meshgen::util::triangle_areas;
 
     fn expect_ok<T>(result: Result<T, String>) -> T {
@@ -637,5 +964,132 @@ mod tests {
         let points = [[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]];
         let triangles = expect_ok(delaunay_2d(&points));
         assert_eq!(triangles.len(), 0);
+    }
+
+    fn has_edge(
+        triangles: &[[usize; 3]],
+        u: usize,
+        v: usize,
+    ) -> bool {
+        let target = edge_key(u, v);
+        triangles.iter().any(|t| {
+            edge_key(t[0], t[1]) == target
+                || edge_key(t[1], t[2]) == target
+                || edge_key(t[2], t[0]) == target
+        })
+    }
+
+    #[test]
+    fn constrained_segment_splits_at_collinear_vertices() {
+        // Segment (0, 3) passes through two existing interior vertices 1 and 2.
+        let points = [
+            [0.0, 0.0],
+            [1.0, 0.0],
+            [2.0, 0.0],
+            [3.0, 0.0],
+            [1.5, 2.0],
+            [1.5, -2.0],
+        ];
+        let triangles = expect_ok(constrained_delaunay_2d(&points, &[(0, 3)]));
+
+        assert!(has_edge(&triangles, 0, 1), "sub-edge (0, 1) missing");
+        assert!(has_edge(&triangles, 1, 2), "sub-edge (1, 2) missing");
+        assert!(has_edge(&triangles, 2, 3), "sub-edge (2, 3) missing");
+
+        for t in &triangles {
+            assert!(orient2d(points[t[0]], points[t[1]], points[t[2]]) > 0.0);
+        }
+        let total: f64 = triangle_areas(&points, &triangles).iter().sum();
+        assert!((total - 6.0).abs() < 1e-12, "total area {total}");
+    }
+
+    #[test]
+    fn constrained_crossing_x_inserts_steiner_point() {
+        let points = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]];
+        let segments = [(0, 2), (1, 3)];
+        let mesh = expect_ok(constrained_delaunay_2d_mesh(&points, &segments));
+
+        assert_eq!(mesh.points.len(), 5, "expected one Steiner intersection");
+        let center = 4_usize;
+        assert!((mesh.points[center][0] - 0.5).abs() < 1e-12);
+        assert!((mesh.points[center][1] - 0.5).abs() < 1e-12);
+
+        for corner in 0..4 {
+            assert!(
+                has_edge(&mesh.triangles, corner, center),
+                "sub-edge ({corner}, {center}) missing from {:?}",
+                mesh.triangles
+            );
+        }
+
+        for t in &mesh.triangles {
+            assert!(orient2d(mesh.points[t[0]], mesh.points[t[1]], mesh.points[t[2]]) > 0.0);
+        }
+        let total: f64 = triangle_areas(&mesh.points, &mesh.triangles).iter().sum();
+        assert!((total - 1.0).abs() < 1e-12, "total area {total}");
+    }
+
+    #[test]
+    fn constrained_multiple_crossing_grid_segments() {
+        // Unit square corners plus midpoints forming a 2x2 crossing grid of
+        // two horizontal and two vertical segments (4 interior intersections).
+        let points = [
+            [0.0, 0.0], // 0
+            [3.0, 0.0], // 1
+            [3.0, 3.0], // 2
+            [0.0, 3.0], // 3
+            [0.0, 1.0], // 4
+            [3.0, 1.0], // 5
+            [0.0, 2.0], // 6
+            [3.0, 2.0], // 7
+            [1.0, 0.0], // 8
+            [1.0, 3.0], // 9
+            [2.0, 0.0], // 10
+            [2.0, 3.0], // 11
+        ];
+        let segments = [(4, 5), (6, 7), (8, 9), (10, 11)];
+        let mesh = expect_ok(constrained_delaunay_2d_mesh(&points, &segments));
+
+        // 12 original vertices + 4 crossing Steiner vertices at (1,1),(2,1),(1,2),(2,2).
+        assert_eq!(mesh.points.len(), 16, "expected 4 Steiner intersections");
+
+        for t in &mesh.triangles {
+            assert!(orient2d(mesh.points[t[0]], mesh.points[t[1]], mesh.points[t[2]]) > 0.0);
+        }
+        let total: f64 = triangle_areas(&mesh.points, &mesh.triangles).iter().sum();
+        assert!((total - 9.0).abs() < 1e-10, "total area {total}");
+
+        // Verify every crossing point exists and every horizontal/vertical chain
+        // of 3 sub-segments is present in the output triangulation.
+        let find_pt = |x: f64, y: f64| -> usize {
+            mesh.points
+                .iter()
+                .position(|p| (p[0] - x).abs() < 1e-9 && (p[1] - y).abs() < 1e-9)
+                .unwrap_or_else(|| panic!("missing vertex ({x}, {y})"))
+        };
+        let p11 = find_pt(1.0, 1.0);
+        let p21 = find_pt(2.0, 1.0);
+        let p12 = find_pt(1.0, 2.0);
+        let p22 = find_pt(2.0, 2.0);
+
+        for (u, v) in [
+            (4, p11),
+            (p11, p21),
+            (p21, 5),
+            (6, p12),
+            (p12, p22),
+            (p22, 7),
+            (8, p11),
+            (p11, p12),
+            (p12, 9),
+            (10, p21),
+            (p21, p22),
+            (p22, 11),
+        ] {
+            assert!(
+                has_edge(&mesh.triangles, u, v),
+                "constrained sub-edge ({u}, {v}) missing"
+            );
+        }
     }
 }

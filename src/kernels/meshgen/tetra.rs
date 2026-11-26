@@ -1,24 +1,25 @@
 //! Three-dimensional Delaunay tetrahedralisation and tetrahedral mesh queries.
 //!
-//! [`delaunay_3d`] is a Bowyer–Watson insertion built on the in-sphere
-//! predicate: a new point claims a connected cavity of tetrahedra whose
-//! circumspheres contain it, and the cavity boundary is re-coned to the point.
-//! The cavity is grown by breadth-first search from the tetrahedron whose
-//! circumsphere most deeply contains the point, which keeps the result valid
-//! when the input is cospherical or lies on the convex hull.
+//! [`delaunay_3d`] runs an `O(n log n)` expected-time Bowyer–Watson insertion:
 //!
-//! # Limitations
-//!
-//! * The predicates are plain `f64`. Strongly degenerate inputs (coplanar
-//!   subsets, repeated points) are rejected by [`delaunay_3d`] or produce a
-//!   tetrahedralisation that is valid but not unique.
-//! * The insertion is `O(n^2)` in the point count, so it targets the hundreds
-//!   to low thousands of points rather than large clouds.
+//! 1. Duplicate points are rejected in `O(n)` expected time via a 3D spatial
+//!    hash grid.
+//! 2. Input indices are ordered along a 3D Morton (Z-order) curve so
+//!    consecutive insertions are spatially close.
+//! 3. Each point is located in `O(1)` average steps by a visibility walk over
+//!    the tetrahedron-to-tetrahedron adjacency graph, and its Bowyer–Watson
+//!    cavity is discovered by local BFS using exact adaptive-precision
+//!    [`super::util::insphere_sos`] predicates with Simulation of Simplicity
+//!    (SoS) tie-breaking for cospherical configurations.
 
 use std::collections::HashMap;
 use std::collections::VecDeque;
 
+use super::util::insphere_sos;
 use super::util::orient3d;
+
+/// Sentinel value indicating no adjacent tetrahedron across a face.
+const NO_NEIGHBOR: usize = usize::MAX;
 
 /// An unstructured tetrahedral mesh in three dimensions.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -27,52 +28,6 @@ pub struct TetMesh {
     pub points: Vec<[f64; 3]>,
     /// Positively oriented tetrahedra, as quadruples of vertex indices.
     pub tetrahedra: Vec<[usize; 4]>,
-}
-
-/// The relative tolerance used when comparing in-sphere values.
-const INSPHERE_EPS: f64 = 1e-12;
-
-/// The in-sphere determinant of `p` against the positively oriented tetrahedron
-/// `a`, `b`, `c`, `d`.
-///
-/// The value is positive when `p` lies strictly inside the circumsphere. The
-/// raw determinant of the `4 x 4` system has the opposite sign in three
-/// dimensions, so the result is negated once here.
-fn insphere(
-    a: [f64; 3],
-    b: [f64; 3],
-    c: [f64; 3],
-    d: [f64; 3],
-    p: [f64; 3],
-) -> f64 {
-    let ax = a[0] - p[0];
-    let ay = a[1] - p[1];
-    let az = a[2] - p[2];
-    let bx = b[0] - p[0];
-    let by = b[1] - p[1];
-    let bz = b[2] - p[2];
-    let cx = c[0] - p[0];
-    let cy = c[1] - p[1];
-    let cz = c[2] - p[2];
-    let dx = d[0] - p[0];
-    let dy = d[1] - p[1];
-    let dz = d[2] - p[2];
-
-    let a2 = ax * ax + ay * ay + az * az;
-    let b2 = bx * bx + by * by + bz * bz;
-    let c2 = cx * cx + cy * cy + cz * cz;
-    let d2 = dx * dx + dy * dy + dz * dz;
-
-    let minor_b = cz * d2 - c2 * dz;
-    let minor_c = cy * d2 - c2 * dy;
-    let minor_d = cy * dz - cz * dy;
-
-    let first = ax * (by * minor_b - bz * minor_c + b2 * minor_d)
-        - ay * (bx * minor_b - bz * (cx * d2 - c2 * dx) + b2 * (cx * dz - cz * dx))
-        + az * (bx * minor_c - by * (cx * d2 - c2 * dx) + b2 * (cx * dy - cy * dx))
-        - a2 * (bx * minor_d - by * (cx * dz - cz * dx) + bz * (cx * dy - cy * dx));
-
-    -first
 }
 
 /// Delaunay tetrahedralisation of `points`.
@@ -94,11 +49,8 @@ pub fn delaunay_3d(points: &[[f64; 3]]) -> Result<Vec<[usize; 4]>, String> {
         }
     }
 
-    let n = points.len();
-    let mut pts = points.to_vec();
-
     let (mut lo, mut hi) = ([f64::INFINITY; 3], [f64::NEG_INFINITY; 3]);
-    for p in &pts {
+    for p in points {
         for axis in 0..3 {
             lo[axis] = lo[axis].min(p[axis]);
             hi[axis] = hi[axis].max(p[axis]);
@@ -108,78 +60,119 @@ pub fn delaunay_3d(points: &[[f64; 3]]) -> Result<Vec<[usize; 4]>, String> {
         .max(hi[1] - lo[1])
         .max(hi[2] - lo[2])
         .max(1.0);
+
+    check_duplicates_3d(points, lo, span)?;
+
+    let n = points.len();
+    let mut order: Vec<usize> = (0..n).collect();
+    let inv_span = 1.0 / span;
+    order.sort_unstable_by_key(|&i| morton_key(points[i], lo, inv_span));
+
+    let mut pts = Vec::with_capacity(n + 4);
+    pts.extend_from_slice(points);
+
     let centre = [
         f64::midpoint(lo[0], hi[0]),
         f64::midpoint(lo[1], hi[1]),
         f64::midpoint(lo[2], hi[2]),
     ];
 
-    let s = 20.0 * span;
+    let s = 100.0 * span;
     pts.push([centre[0] - 3.0 * s, centre[1] - s, centre[2] - s]);
     pts.push([centre[0] + 3.0 * s, centre[1] - s, centre[2] - s]);
     pts.push([centre[0], centre[1] + 3.0 * s, centre[2] - s]);
     pts.push([centre[0], centre[1], centre[2] + 3.0 * s]);
 
-    let mut tets: Vec<[usize; 4]> = vec![positive(pts.as_slice(), [n, n + 1, n + 2, n + 3])];
+    let super_tet = positive(&pts, [n, n + 1, n + 2, n + 3]);
+    let mut tets: Vec<[usize; 4]> = Vec::with_capacity(6 * n + 16);
+    let mut adj: Vec<[usize; 4]> = Vec::with_capacity(6 * n + 16);
+    let mut alive: Vec<bool> = Vec::with_capacity(6 * n + 16);
+    let mut in_cavity: Vec<u32> = Vec::with_capacity(6 * n + 16);
+    let mut free_list: Vec<usize> = Vec::new();
 
-    for i in 0..n {
-        let p = pts[i];
-        if tets.is_empty() {
-            return Err("the point set is degenerate".to_string());
-        }
+    tets.push(super_tet);
+    adj.push([NO_NEIGHBOR; 4]);
+    alive.push(true);
+    in_cavity.push(0);
 
-        let mut seed = 0_usize;
-        let mut best = f64::NEG_INFINITY;
-        for (index, t) in tets.iter().enumerate() {
-            let value = insphere(pts[t[0]], pts[t[1]], pts[t[2]], pts[t[3]], p);
-            if value > best {
-                best = value;
-                seed = index;
-            }
-        }
-        if best <= 0.0 {
+    let mut stamp: u32 = 0;
+    let mut last_tet: usize = 0;
+    let mut cavity: Vec<usize> = Vec::new();
+    let mut queue: VecDeque<usize> = VecDeque::new();
+    let mut boundary: Vec<([usize; 3], usize, usize)> = Vec::new();
+    let mut edge_map: HashMap<(usize, usize), (usize, usize)> = HashMap::new();
+
+    for &p_idx in &order {
+        let p = pts[p_idx];
+
+        let Some(seed) = locate_containing_tet(&pts, &tets, &adj, &alive, last_tet, p_idx) else {
             continue;
+        };
+
+        stamp = stamp.wrapping_add(1);
+        if stamp == 0 {
+            in_cavity.fill(0);
+            stamp = 1;
         }
 
-        let neighbours = face_neighbours(&tets);
-        let mut inside = vec![false; tets.len()];
-        inside[seed] = true;
-        let mut queue: VecDeque<usize> = VecDeque::new();
+        // BFS over tet-to-tet adjacency to discover the Bowyer-Watson cavity.
+        cavity.clear();
+        queue.clear();
+        in_cavity[seed] = stamp;
+        cavity.push(seed);
         queue.push_back(seed);
 
-        while let Some(current) = queue.pop_front() {
-            let t = tets[current];
-            for face in faces(t) {
-                let key = face_key(face);
-                let Some(list) = neighbours.get(&key) else {
+        while let Some(cur) = queue.pop_front() {
+            for f in 0..4 {
+                let nb = adj[cur][f];
+                if nb == NO_NEIGHBOR || !alive[nb] || in_cavity[nb] == stamp {
                     continue;
-                };
-                for &other in list {
-                    if other == current || inside[other] {
-                        continue;
-                    }
-                    let o = tets[other];
-                    let value = insphere(pts[o[0]], pts[o[1]], pts[o[2]], pts[o[3]], p);
-                    if value >= -INSPHERE_EPS {
-                        inside[other] = true;
-                        queue.push_back(other);
-                    }
+                }
+                let o = tets[nb];
+                if insphere_sos(&pts, o[0], o[1], o[2], o[3], p_idx) {
+                    in_cavity[nb] = stamp;
+                    cavity.push(nb);
+                    queue.push_back(nb);
                 }
             }
         }
 
-        let mut boundary: Vec<[usize; 3]> = Vec::new();
-        for (index, t) in tets.iter().enumerate() {
-            if !inside[index] {
-                continue;
+        // Expand the cavity across any coplanar/non-visible boundary face so
+        // every newly coned tetrahedron has strictly positive volume.
+        let mut cav_idx = 0_usize;
+        while cav_idx < cavity.len() {
+            let t = cavity[cav_idx];
+            cav_idx += 1;
+            let v = tets[t];
+            for f in 0..4 {
+                let nb = adj[t][f];
+                if nb != NO_NEIGHBOR && alive[nb] && in_cavity[nb] == stamp {
+                    continue;
+                }
+                let face = tet_face(v, f);
+                if orient3d(pts[face[0]], pts[face[1]], pts[face[2]], p) <= 0.0
+                    && nb != NO_NEIGHBOR
+                    && alive[nb]
+                {
+                    in_cavity[nb] = stamp;
+                    cavity.push(nb);
+                }
             }
-            for face in faces(*t) {
-                let key = face_key(face);
-                let shared = neighbours.get(&key).map_or(0, |list| {
-                    list.iter().filter(|&&other| inside[other]).count()
-                });
-                if shared == 1 {
-                    boundary.push(face);
+        }
+
+        // Collect cavity boundary faces and their exterior neighbor slots.
+        boundary.clear();
+        for &t in &cavity {
+            let v = tets[t];
+            for f in 0..4 {
+                let nb = adj[t][f];
+                if nb == NO_NEIGHBOR || !alive[nb] || in_cavity[nb] != stamp {
+                    let ext_f = if nb != NO_NEIGHBOR {
+                        adj[nb].iter().position(|&x| x == t).unwrap_or(0)
+                    } else {
+                        0
+                    };
+                    boundary.push((tet_face(v, f), nb, ext_f));
                 }
             }
         }
@@ -188,34 +181,195 @@ pub fn delaunay_3d(points: &[[f64; 3]]) -> Result<Vec<[usize; 4]>, String> {
             continue;
         }
 
-        let mut kept: Vec<[usize; 4]> = Vec::new();
-        for (index, t) in tets.iter().enumerate() {
-            if !inside[index] {
-                kept.push(*t);
+        // Retire cavity tetrahedra.
+        for &t in &cavity {
+            alive[t] = false;
+            free_list.push(t);
+        }
+
+        // Create new tetrahedra coned to `p_idx` and wire up adjacency.
+        edge_map.clear();
+        for &(face, ext_nb, ext_f) in &boundary {
+            let new_t = if let Some(slot) = free_list.pop() {
+                tets[slot] = [face[0], face[1], face[2], p_idx];
+                adj[slot] = [NO_NEIGHBOR, NO_NEIGHBOR, NO_NEIGHBOR, ext_nb];
+                alive[slot] = true;
+                slot
+            } else {
+                let slot = tets.len();
+                tets.push([face[0], face[1], face[2], p_idx]);
+                adj.push([NO_NEIGHBOR, NO_NEIGHBOR, NO_NEIGHBOR, ext_nb]);
+                alive.push(true);
+                in_cavity.push(0);
+                slot
+            };
+            last_tet = new_t;
+
+            if ext_nb != NO_NEIGHBOR {
+                adj[ext_nb][ext_f] = new_t;
+            }
+
+            let internal_edges = [
+                (0_usize, face[1], face[2]),
+                (1_usize, face[0], face[2]),
+                (2_usize, face[0], face[1]),
+            ];
+            for (f_idx, u, v) in internal_edges {
+                let key = if u <= v { (u, v) } else { (v, u) };
+                if let Some((other_t, other_f)) = edge_map.remove(&key) {
+                    adj[new_t][f_idx] = other_t;
+                    adj[other_t][other_f] = new_t;
+                } else {
+                    edge_map.insert(key, (new_t, f_idx));
+                }
             }
         }
-        for face in boundary {
-            let candidate = positive(pts.as_slice(), [face[0], face[1], face[2], i]);
-            let volume = orient3d(
-                pts[candidate[0]],
-                pts[candidate[1]],
-                pts[candidate[2]],
-                pts[candidate[3]],
-            );
-            if volume > 0.0 {
-                kept.push(candidate);
+    }
+
+    let mut result: Vec<[usize; 4]> = Vec::new();
+    for (idx, &t) in tets.iter().enumerate() {
+        if alive[idx] && t[0] < n && t[1] < n && t[2] < n && t[3] < n {
+            result.push(t);
+        }
+    }
+
+    Ok(result)
+}
+
+/// Checks for duplicate or near-coincident 3D points in `O(n)` expected time
+/// using a uniform spatial hash grid.
+fn check_duplicates_3d(
+    points: &[[f64; 3]],
+    lo: [f64; 3],
+    span: f64,
+) -> Result<(), String> {
+    let tol = 1e-12 * span;
+    let inv_cell = 1.0 / tol;
+    let mut grid: HashMap<(i64, i64, i64), Vec<usize>> = HashMap::with_capacity(points.len());
+
+    for (i, p) in points.iter().enumerate() {
+        let cx = ((p[0] - lo[0]) * inv_cell).floor() as i64;
+        let cy = ((p[1] - lo[1]) * inv_cell).floor() as i64;
+        let cz = ((p[2] - lo[2]) * inv_cell).floor() as i64;
+
+        for dx in -1_i64..=1 {
+            for dy in -1_i64..=1 {
+                for dz in -1_i64..=1 {
+                    if let Some(bucket) = grid.get(&(cx + dx, cy + dy, cz + dz)) {
+                        for &j in bucket {
+                            let q = points[j];
+                            if (q[0] - p[0]).abs() <= tol
+                                && (q[1] - p[1]).abs() <= tol
+                                && (q[2] - p[2]).abs() <= tol
+                            {
+                                return Err("duplicate points".to_string());
+                            }
+                        }
+                    }
+                }
             }
         }
-        tets = kept;
+        grid.entry((cx, cy, cz)).or_default().push(i);
     }
 
-    tets.retain(|t| t[0] < n && t[1] < n && t[2] < n && t[3] < n);
-    for t in &mut tets {
-        *t = positive(points, *t);
-    }
-    deduplicate(&mut tets);
+    Ok(())
+}
 
-    Ok(tets)
+/// Spreads the lowest 10 bits of `v` so there are two zero bits between each
+/// bit, used for 3D Morton (Z-order) curve keys.
+const fn spread_bits_3d(mut v: u32) -> u32 {
+    v &= 0x0000_03ff;
+    v = (v | (v << 16)) & 0x0300_00ff;
+    v = (v | (v << 8)) & 0x0300_f00f;
+    v = (v | (v << 4)) & 0x030c_30c3;
+    v = (v | (v << 2)) & 0x0924_9249;
+    v
+}
+
+/// 30-bit Morton (Z-order) key for spatial sorting in `[lo, lo + span]^3`.
+fn morton_key(
+    p: [f64; 3],
+    lo: [f64; 3],
+    inv_span: f64,
+) -> u32 {
+    let q = |x: f64, l: f64| -> u32 { (((x - l) * inv_span).clamp(0.0, 1.0) * 1023.0) as u32 };
+    spread_bits_3d(q(p[0], lo[0]))
+        | (spread_bits_3d(q(p[1], lo[1])) << 1)
+        | (spread_bits_3d(q(p[2], lo[2])) << 2)
+}
+
+/// Returns face `f` of the positively oriented tetrahedron `v` (the face
+/// opposite `v[f]`), oriented so that `orient3d(face[0], face[1], face[2], v[f]) > 0`.
+const fn tet_face(
+    v: [usize; 4],
+    f: usize,
+) -> [usize; 3] {
+    match f {
+        | 0 => [v[1], v[3], v[2]],
+        | 1 => [v[0], v[2], v[3]],
+        | 2 => [v[0], v[3], v[1]],
+        | _ => [v[0], v[1], v[2]],
+    }
+}
+
+/// Locates a live tetrahedron whose circumsphere contains `pts[p_idx]` via a
+/// visibility walk starting from `start`, falling back to a linear scan if
+/// the walk encounters a cycle or boundary.
+fn locate_containing_tet(
+    pts: &[[f64; 3]],
+    tets: &[[usize; 4]],
+    adj: &[[usize; 4]],
+    alive: &[bool],
+    start: usize,
+    p_idx: usize,
+) -> Option<usize> {
+    let p = pts[p_idx];
+    let mut cur = if start < alive.len() && alive[start] {
+        start
+    } else {
+        alive.iter().position(|&a| a)?
+    };
+
+    let max_steps = tets.len() + 64;
+    for step in 0..max_steps {
+        let v = tets[cur];
+        let mut stepped = false;
+        for k in 0..4 {
+            let f = (step + k) & 3;
+            let face = tet_face(v, f);
+            if orient3d(pts[face[0]], pts[face[1]], pts[face[2]], p) < 0.0 {
+                let nb = adj[cur][f];
+                if nb != NO_NEIGHBOR && alive[nb] {
+                    cur = nb;
+                    stepped = true;
+                    break;
+                }
+            }
+        }
+        if !stepped {
+            let v = tets[cur];
+            if insphere_sos(pts, v[0], v[1], v[2], v[3], p_idx) {
+                return Some(cur);
+            }
+            for &nb in &adj[cur] {
+                if nb != NO_NEIGHBOR && alive[nb] {
+                    let o = tets[nb];
+                    if insphere_sos(pts, o[0], o[1], o[2], o[3], p_idx) {
+                        return Some(nb);
+                    }
+                }
+            }
+            break;
+        }
+    }
+
+    // Fallback linear scan if the visibility walk stalled.
+    for (idx, &v) in tets.iter().enumerate() {
+        if alive[idx] && insphere_sos(pts, v[0], v[1], v[2], v[3], p_idx) {
+            return Some(idx);
+        }
+    }
+    None
 }
 
 /// The volume of every tetrahedron in `tets`, always non-negative.
@@ -295,32 +449,12 @@ fn positive(
     t
 }
 
-/// Maps every face to the tetrahedra that contain it.
-fn face_neighbours(tets: &[[usize; 4]]) -> HashMap<[usize; 3], Vec<usize>> {
-    let mut map: HashMap<[usize; 3], Vec<usize>> = HashMap::new();
-    for (index, t) in tets.iter().enumerate() {
-        for face in faces(*t) {
-            map.entry(face_key(face)).or_default().push(index);
-        }
-    }
-    map
-}
-
-/// Removes tetrahedra that repeat the same four vertices.
-fn deduplicate(tets: &mut Vec<[usize; 4]>) {
-    let mut seen: std::collections::HashSet<[usize; 4]> = std::collections::HashSet::new();
-    tets.retain(|t| {
-        let mut key = *t;
-        key.sort_unstable();
-        seen.insert(key)
-    });
-}
-
 #[cfg(test)]
 mod tests {
     use super::boundary_faces;
     use super::delaunay_3d;
     use super::tetra_volumes;
+    use crate::kernels::meshgen::util::insphere;
     use crate::kernels::meshgen::util::orient3d;
 
     fn expect_ok<T>(result: Result<T, String>) -> T {
@@ -426,5 +560,76 @@ mod tests {
             ])
             .is_err()
         );
+        assert!(
+            delaunay_3d(&[
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0],
+                [1.0, 0.0, 0.0],
+            ])
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn regular_cospherical_3x3x3_grid_fills_exact_volume() {
+        let mut points = Vec::with_capacity(27);
+        for z in 0..3 {
+            for y in 0..3 {
+                for x in 0..3 {
+                    points.push([f64::from(x), f64::from(y), f64::from(z)]);
+                }
+            }
+        }
+        let tets = expect_ok(delaunay_3d(&points));
+        assert!(!tets.is_empty());
+
+        for t in &tets {
+            assert!(orient3d(points[t[0]], points[t[1]], points[t[2]], points[t[3]]) > 0.0);
+        }
+        let total: f64 = tetra_volumes(&points, &tets).iter().sum();
+        assert!((total - 8.0).abs() < 1e-9, "total volume {total}");
+    }
+
+    #[test]
+    fn large_3d_point_cloud_is_valid_and_delaunay() {
+        let mut points = cube();
+        let mut state: u64 = 0x9e37_79b9_7f4a_7c15;
+        let mut next_coord = || -> f64 {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            let u = ((state >> 11) as f64) / ((1_u64 << 53) as f64);
+            0.01 + 0.98 * u
+        };
+        for _ in 0..500 {
+            points.push([next_coord(), next_coord(), next_coord()]);
+        }
+
+        let tets = expect_ok(delaunay_3d(&points));
+        assert!(tets.len() > 500, "expected >500 tets, got {}", tets.len());
+
+        for t in &tets {
+            assert!(orient3d(points[t[0]], points[t[1]], points[t[2]], points[t[3]]) > 0.0);
+        }
+
+        let total: f64 = tetra_volumes(&points, &tets).iter().sum();
+        assert!((total - 1.0).abs() < 1e-9, "total volume {total}");
+
+        // Verify the Delaunay empty-circumsphere property on a broad sample.
+        let stride = (tets.len() / 200).max(1);
+        for t in tets.iter().step_by(stride) {
+            for (idx, &p) in points.iter().enumerate() {
+                if idx == t[0] || idx == t[1] || idx == t[2] || idx == t[3] {
+                    continue;
+                }
+                let val = insphere(points[t[0]], points[t[1]], points[t[2]], points[t[3]], p);
+                assert!(
+                    val <= 0.0,
+                    "point {idx} strictly inside circumsphere of {t:?}: {val}"
+                );
+            }
+        }
     }
 }
