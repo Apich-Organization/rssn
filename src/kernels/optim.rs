@@ -1863,7 +1863,8 @@ pub fn simplex_with(
 ) -> LpResult {
     let iters = std::cell::Cell::new(0usize);
     let bland_n = std::cell::Cell::new(0usize);
-    let status = simplex_core(c, a, rel, b, pricing, &iters, &bland_n);
+    let status =
+        simplex_core(c, a, rel, b, pricing, None, &iters, &bland_n).unwrap_or(LpStatus::Infeasible);
     LpResult {
         status,
         iterations: iters.get(),
@@ -1871,15 +1872,53 @@ pub fn simplex_with(
     }
 }
 
+/// Two-phase tableau simplex with a selectable pricing rule and an explicit
+/// total pivot budget across Phase I and Phase II.
+///
+/// # Errors
+/// Returns an error string when the total number of pivots across Phase I and
+/// Phase II would exceed `max_iter` before optimality, infeasibility, or
+/// unboundedness is determined.
+pub fn simplex_with_max_iter(
+    c: &[f64],
+    a: &[Vec<f64>],
+    rel: &[Relation],
+    b: &[f64],
+    pricing: Pricing,
+    max_iter: usize,
+) -> Result<LpResult, String> {
+    let iters = std::cell::Cell::new(0usize);
+    let bland_n = std::cell::Cell::new(0usize);
+    match simplex_core(c, a, rel, b, pricing, Some(max_iter), &iters, &bland_n) {
+        | Ok(status) => {
+            Ok(LpResult {
+                status,
+                iterations: iters.get(),
+                bland_pivots: bland_n.get(),
+            })
+        },
+        | Err(()) => Err("iteration limit exceeded".to_string()),
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PhaseOutcome {
+    Optimal,
+    Unbounded,
+    LimitExceeded,
+}
+
+#[allow(clippy::too_many_arguments)]
 fn simplex_core(
     c: &[f64],
     a: &[Vec<f64>],
     rel: &[Relation],
     b: &[f64],
     pricing: Pricing,
+    max_iter: Option<usize>,
     iters: &std::cell::Cell<usize>,
     bland_n: &std::cell::Cell<usize>,
-) -> LpStatus {
+) -> Result<LpStatus, ()> {
     let n = c.len();
     let m = a.len();
     // Normalise so that b >= 0.
@@ -1928,7 +1967,11 @@ fn simplex_core(
     }
     let eps = 1e-9;
     // Runs the simplex on cost vector `cost` (length `total`) restricted to columns < `limit`.
-    let run = |t: &mut Vec<Vec<f64>>, basis: &mut Vec<usize>, cost: &[f64], limit: usize| -> bool {
+    let run = |t: &mut Vec<Vec<f64>>,
+               basis: &mut Vec<usize>,
+               cost: &[f64],
+               limit: usize|
+     -> PhaseOutcome {
         // reduced costs row
         let mut rc: Vec<f64> = (0..=total)
             .map(|j| if j < total { cost[j] } else { 0.0 })
@@ -1944,7 +1987,8 @@ fn simplex_core(
         let mut degenerate_run = 0usize;
         let stall_limit = 2 * (m + 1);
         let mut last_obj = rc[total];
-        for _ in 0..50_000 {
+        let mut phase_iters = 0usize;
+        loop {
             let use_bland = pricing == Pricing::Bland || degenerate_run >= stall_limit;
             let entering = if use_bland {
                 (0..limit).find(|&j| rc[j] < -eps)
@@ -1969,7 +2013,17 @@ fn simplex_core(
                 }
                 best.map(|(j, _)| j)
             };
-            let Some(e) = entering else { return true };
+            let Some(e) = entering else {
+                return PhaseOutcome::Optimal;
+            };
+            if let Some(budget) = max_iter {
+                if iters.get() >= budget {
+                    return PhaseOutcome::LimitExceeded;
+                }
+            } else if phase_iters >= 50_000 {
+                return PhaseOutcome::Optimal;
+            }
+            phase_iters += 1;
             iters.set(iters.get() + 1);
             if use_bland {
                 bland_n.set(bland_n.get() + 1);
@@ -1989,7 +2043,9 @@ fn simplex_core(
                     }
                 }
             }
-            let Some((r, _)) = best else { return false };
+            let Some((r, _)) = best else {
+                return PhaseOutcome::Unbounded;
+            };
             let p = t[r][e];
             for j in 0..=total {
                 t[r][j] /= p;
@@ -2015,20 +2071,21 @@ fn simplex_core(
                 degenerate_run += 1;
             }
         }
-        true
     };
     if nart > 0 {
         let mut c1 = vec![0.0; total];
         for v in &mut c1[n + nslack..] {
             *v = 1.0;
         }
-        run(&mut t, &mut basis, &c1, total);
+        if run(&mut t, &mut basis, &c1, total) == PhaseOutcome::LimitExceeded {
+            return Err(());
+        }
         let infeas: f64 = (0..m)
             .filter(|&i| basis[i] >= n + nslack)
             .map(|i| t[i][total])
             .sum();
         if infeas > 1e-7 {
-            return LpStatus::Infeasible;
+            return Ok(LpStatus::Infeasible);
         }
         // Pivot remaining (degenerate) artificials out of the basis.
         for i in 0..m {
@@ -2053,8 +2110,10 @@ fn simplex_core(
     }
     let mut c2 = vec![0.0; total];
     c2[..n].copy_from_slice(c);
-    if !run(&mut t, &mut basis, &c2, n + nslack) {
-        return LpStatus::Unbounded;
+    match run(&mut t, &mut basis, &c2, n + nslack) {
+        | PhaseOutcome::Optimal => {},
+        | PhaseOutcome::Unbounded => return Ok(LpStatus::Unbounded),
+        | PhaseOutcome::LimitExceeded => return Err(()),
     }
     let mut x = vec![0.0; n];
     for i in 0..m {
@@ -2063,5 +2122,5 @@ fn simplex_core(
         }
     }
     let value = dot(c, &x);
-    LpStatus::Optimal { x, value }
+    Ok(LpStatus::Optimal { x, value })
 }

@@ -5,12 +5,13 @@
 //! variables, so the problem is first shifted by its finite lower bounds,
 //! `x = lower + y` with `y >= 0`, and every finite upper bound is turned into
 //! one extra `y_j <= upper_j - lower_j` row. The shifted problem is handed to
-//! [`crate::kernels::optim::simplex_with`] with steepest-edge pricing, and the
-//! optimum is mapped back to the original variables.
+//! [`crate::kernels::optim::simplex_with_max_iter`] with steepest-edge pricing
+//! and the caller's pivot budget, and the optimum is mapped back to the
+//! original variables.
 
 use crate::kernels::optim::LpStatus as OptLpStatus;
 use crate::kernels::optim::Pricing;
-use crate::kernels::optim::simplex_with;
+use crate::kernels::optim::simplex_with_max_iter;
 
 /// Sense of a linear-programming row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -67,12 +68,13 @@ pub struct LpSolution {
 
 /// Solves a bounded dense linear program.
 ///
-/// `max_iter` is accepted for interface uniformity; the tableau simplex keeps
-/// its own internal pivot budget, so a value of zero is the only one rejected.
+/// `max_iter` limits the total number of simplex pivots performed across
+/// Phase I and Phase II.
 ///
 /// # Errors
 /// Returns an error string when the dimensions disagree, when any input entry
-/// is not finite, or when `max_iter` is zero.
+/// is not finite, when `max_iter` is zero, or when the simplex exceeds
+/// `max_iter` pivots.
 pub fn solve_lp(
     p: &LpProblem,
     max_iter: usize,
@@ -119,7 +121,8 @@ pub fn solve_lp(
     let mapped: Vec<crate::kernels::optim::Relation> =
         senses.iter().map(|r| map_relation(*r)).collect();
 
-    let result = simplex_with(&p.c, &rows, &mapped, &rhs, Pricing::SteepestEdge);
+    let result =
+        simplex_with_max_iter(&p.c, &rows, &mapped, &rhs, Pricing::SteepestEdge, max_iter)?;
 
     match result.status {
         | OptLpStatus::Optimal { x, value: _ } => {
@@ -330,5 +333,27 @@ mod tests {
             upper: vec![None, None],
         };
         assert!(solve_lp(&p, 100).is_err());
+    }
+
+    #[test]
+    fn max_iter_budget_enforced() {
+        // Requires 2 pivots: (0, 0) -> (0, 3) -> (1, 3).
+        let p = LpProblem {
+            c: vec![-1.0, -2.0],
+            a: vec![vec![1.0, 1.0], vec![1.0, 0.0], vec![0.0, 1.0]],
+            rel: vec![Relation::Le, Relation::Le, Relation::Le],
+            b: vec![4.0, 2.0, 3.0],
+            lower: vec![0.0, 0.0],
+            upper: vec![Some(2.0), Some(3.0)],
+        };
+        let err = solve_lp(&p, 1).unwrap_err();
+        assert!(err.contains("iteration limit"), "unexpected error: {err}");
+
+        let ok = solve_lp(&p, 10).unwrap();
+        assert_eq!(ok.status, LpStatus::Optimal);
+        assert!(ok.iterations <= 10);
+        assert!(close(ok.x[0], 1.0));
+        assert!(close(ok.x[1], 3.0));
+        assert!(close(ok.objective, -7.0));
     }
 }

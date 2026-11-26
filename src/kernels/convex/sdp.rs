@@ -1,13 +1,21 @@
 //! Semidefinite programming by the SDPAD alternating-direction method.
 //!
 //! The problem is `minimise c . x` subject to the linear matrix inequality
-//! `F(x) = F0 + sum_i x_i F_i ⪰ 0` and optional equality rows `A x = b`. It is
-//! solved by the over-relaxed ADMM of Wen, Goldfarb and Yin (SDPAD):
+//! `F(x) = F0 + sum_i x_i F_i ⪰ 0` and optional linear constraints
+//! `a_r . x (rel_r) b_r` (equalities, `<=`, and `>=`). Equality rows are
+//! enforced directly in the quadratic `x`-update, while linear inequality rows
+//! are written in non-negative slack form `G x + h = z_lin >= 0` and handled
+//! alongside the PSD cone `F(x) = Z ⪰ 0` by the over-relaxed ADMM of Wen,
+//! Goldfarb and Yin (SDPAD):
 //!
 //! ```text
-//! x <- argmin_x  c . x + <Y, F(x) - Z> + (rho/2) ||F(x) - Z||_F^2   s.t. Ax = b
-//! Z <- proj_{Z ⪰ 0} ( gamma F(x) + (1 - gamma) Z + Y / rho )
-//! Y <- Y + rho ( gamma F(x) + (1 - gamma) Z - Z )
+//! x     <- argmin_x  c . x + <Y, F(x) - Z> + (rho/2) ||F(x) - Z||_F^2
+//!                    + <y_lin, G x + h - z_lin> + (rho/2) ||G x + h - z_lin||_2^2
+//!                    s.t. A_eq x = b_eq
+//! Z     <- proj_{Z ⪰ 0} ( gamma F(x) + (1 - gamma) Z + Y / rho )
+//! z_lin <- proj_{z >= 0} ( gamma (G x + h) + (1 - gamma) z_lin + y_lin / rho )
+//! Y     <- Y + rho ( gamma F(x) + (1 - gamma) Z - Z )
+//! y_lin <- y_lin + rho ( gamma (G x + h) + (1 - gamma) z_lin - z_lin )
 //! ```
 //!
 //! with the over-relaxation factor `gamma = 1.6`, `rho = 1.0`, and an adaptive
@@ -31,11 +39,11 @@ pub struct SdpProblem {
     pub f0: Vec<Vec<f64>>,
     /// Matrices `F_i` of the linear matrix inequality (one per variable).
     pub fs: Vec<Vec<Vec<f64>>>,
-    /// Optional equality rows `A x = b`.
+    /// Optional linear constraint rows `a_r . x (rel_r) b_r`.
     pub a: Vec<Vec<f64>>,
-    /// Sense of each equality row; only [`Relation::Eq`] is supported.
+    /// Sense of each linear constraint row (`Eq`, `Le`, or `Ge`).
     pub rel: Vec<Relation>,
-    /// Right-hand side of each equality row.
+    /// Right-hand side of each linear constraint row.
     pub b: Vec<f64>,
 }
 
@@ -48,9 +56,9 @@ pub struct SdpSolution {
     pub objective: f64,
     /// Number of ADMM iterations.
     pub iterations: usize,
-    /// Primal residual `||F(x) - Z||_F`.
+    /// Combined primal residual `sqrt(||F(x) - Z||_F^2 + ||G x + h - z_lin||_2^2)`.
     pub primal_residual: f64,
-    /// Dual residual `rho ||Z - Z_prev||_F`.
+    /// Combined dual residual `rho sqrt(||Z - Z_prev||_F^2 + ||z_lin - z_lin_prev||_2^2)`.
     pub dual_residual: f64,
     /// Smallest eigenvalue of `F(x)` at the returned point.
     pub min_eigenvalue: f64,
@@ -60,7 +68,7 @@ pub struct SdpSolution {
 ///
 /// # Errors
 /// Returns an error string when the dimensions disagree, when an entry is not
-/// finite, or when a linear row is not an equality.
+/// finite, when `max_iter` is zero, or when the `x`-update system is singular.
 pub fn solve_sdp(
     p: &SdpProblem,
     max_iter: usize,
@@ -70,13 +78,42 @@ pub fn solve_sdp(
         return Err("iteration budget is zero".to_string());
     }
     let n = p.f0.len();
-    let me = p.a.len();
 
-    // H_ij = <F_i, F_j>.
+    // Partition linear rows into equalities `A_eq x = b_eq` and non-negative
+    // linear cone constraints `G x + h_lin = z_lin >= 0`.
+    let mut a_eq: Vec<Vec<f64>> = Vec::new();
+    let mut b_eq: Vec<f64> = Vec::new();
+    let mut g_lin: Vec<Vec<f64>> = Vec::new();
+    let mut h_lin: Vec<f64> = Vec::new();
+    for r in 0..p.a.len() {
+        match p.rel[r] {
+            | Relation::Eq => {
+                a_eq.push(p.a[r].clone());
+                b_eq.push(p.b[r]);
+            },
+            | Relation::Le => {
+                // a_r . x <= b_r  <=>  (-a_r) . x + b_r >= 0
+                g_lin.push(p.a[r].iter().map(|v| -v).collect());
+                h_lin.push(p.b[r]);
+            },
+            | Relation::Ge => {
+                // a_r . x >= b_r  <=>  a_r . x - b_r >= 0
+                g_lin.push(p.a[r].clone());
+                h_lin.push(-p.b[r]);
+            },
+        }
+    }
+    let me = a_eq.len();
+    let mi = g_lin.len();
+
+    // H_ij = <F_i, F_j> + sum_k g_ki g_kj.
     let mut h = vec![vec![0.0; m]; m];
     for i in 0..m {
         for j in i..m {
-            let v = inner(&p.fs[i], &p.fs[j]);
+            let mut v = inner(&p.fs[i], &p.fs[j]);
+            for k in 0..mi {
+                v += g_lin[k][i] * g_lin[k][j];
+            }
             h[i][j] = v;
             h[j][i] = v;
         }
@@ -85,6 +122,8 @@ pub fn solve_sdp(
     let mut x = vec![0.0; m];
     let mut z = vec![vec![0.0; n]; n];
     let mut y = vec![vec![0.0; n]; n];
+    let mut z_lin = vec![0.0; mi];
+    let mut y_lin = vec![0.0; mi];
 
     let mut rho = 1.0f64;
     let gamma = 1.6f64;
@@ -93,15 +132,19 @@ pub fn solve_sdp(
     let mut dual_residual = f64::INFINITY;
 
     for it in 0..max_iter {
-        // x-update: minimise the augmented Lagrangian over the affine set Ax = b.
+        // x-update: minimise the augmented Lagrangian over the affine set A_eq x = b_eq.
         let r = sub(&p.f0, &z);
         let mut d = vec![0.0; m];
         for i in 0..m {
-            d[i] = p.c[i] + inner(&y, &p.fs[i]) + rho * inner(&r, &p.fs[i]);
+            let mut acc = p.c[i] + inner(&y, &p.fs[i]) + rho * inner(&r, &p.fs[i]);
+            for k in 0..mi {
+                acc += g_lin[k][i] * (y_lin[k] + rho * (h_lin[k] - z_lin[k]));
+            }
+            d[i] = acc;
         }
-        x = solve_x_update(&h, &p.a, &d, &p.b, rho, m, me)?;
+        x = solve_x_update(&h, &a_eq, &d, &b_eq, rho, m, me)?;
 
-        // Z-update with over-relaxation.
+        // Z-update with over-relaxation for the PSD cone.
         let fx = linear_map(&p.f0, &p.fs, &x);
         let mut fhat = vec![vec![0.0; n]; n];
         for i in 0..n {
@@ -117,17 +160,41 @@ pub fn solve_sdp(
         }
         let z_new = project_psd(&input);
 
-        // Y-update.
+        // z_lin-update with over-relaxation for the linear non-negative cone.
+        let mut sl = vec![0.0; mi];
+        let mut shat = vec![0.0; mi];
+        let mut z_lin_new = vec![0.0; mi];
+        for k in 0..mi {
+            sl[k] = dot(&g_lin[k], &x) + h_lin[k];
+            shat[k] = gamma * sl[k] + (1.0 - gamma) * z_lin[k];
+            z_lin_new[k] = (shat[k] + y_lin[k] / rho).max(0.0);
+        }
+
+        // Y-update (PSD and linear duals).
         for i in 0..n {
             for j in 0..n {
                 y[i][j] += rho * (fhat[i][j] - z_new[i][j]);
             }
         }
+        for k in 0..mi {
+            y_lin[k] += rho * (shat[k] - z_lin_new[k]);
+        }
 
-        // Residuals.
-        primal_residual = frob(&sub(&fx, &z_new));
-        dual_residual = rho * frob(&sub(&z_new, &z));
+        // Combined primal and dual residuals.
+        let mat_p = sub(&fx, &z_new);
+        let mat_d = sub(&z_new, &z);
+        let mut lin_p_sq = 0.0;
+        let mut lin_d_sq = 0.0;
+        for k in 0..mi {
+            let dp = sl[k] - z_lin_new[k];
+            let dd = z_lin_new[k] - z_lin[k];
+            lin_p_sq += dp * dp;
+            lin_d_sq += dd * dd;
+        }
+        primal_residual = (inner(&mat_p, &mat_p) + lin_p_sq).max(0.0).sqrt();
+        dual_residual = rho * (inner(&mat_d, &mat_d) + lin_d_sq).max(0.0).sqrt();
         z = z_new;
+        z_lin = z_lin_new;
         iterations = it + 1;
 
         // Adaptive rho every fifty iterations.
@@ -139,6 +206,9 @@ pub fn solve_sdp(
                         *v *= 0.5;
                     }
                 }
+                for v in &mut y_lin {
+                    *v *= 0.5;
+                }
             } else if dual_residual > 10.0 * primal_residual {
                 rho *= 0.5;
                 for row in y.iter_mut() {
@@ -146,11 +216,14 @@ pub fn solve_sdp(
                         *v *= 2.0;
                     }
                 }
+                for v in &mut y_lin {
+                    *v *= 2.0;
+                }
             }
         }
 
-        let scale_p = 1.0 + frob(&z);
-        let scale_d = 1.0 + frob(&y);
+        let scale_p = 1.0 + (inner(&z, &z) + dot(&z_lin, &z_lin)).max(0.0).sqrt();
+        let scale_d = 1.0 + (inner(&y, &y) + dot(&y_lin, &y_lin)).max(0.0).sqrt();
         if primal_residual < 1e-8 * scale_p && dual_residual < 1e-8 * scale_d {
             break;
         }
@@ -354,10 +427,6 @@ fn sub(
     out
 }
 
-fn frob(a: &[Vec<f64>]) -> f64 {
-    inner(a, a).max(0.0).sqrt()
-}
-
 fn dot(
     a: &[f64],
     b: &[f64],
@@ -390,19 +459,14 @@ fn validate(p: &SdpProblem) -> Result<usize, String> {
         return Err("objective coefficients must be finite".to_string());
     }
     if p.rel.len() != p.a.len() || p.b.len() != p.a.len() {
-        return Err("equality rows, senses and right-hand sides must agree".to_string());
-    }
-    for r in &p.rel {
-        if *r != Relation::Eq {
-            return Err("only equality linear constraints are supported".to_string());
-        }
+        return Err("linear rows, senses and right-hand sides must agree".to_string());
     }
     for row in &p.a {
         if row.len() != m {
-            return Err("equality rows must have one entry per variable".to_string());
+            return Err("linear rows must have one entry per variable".to_string());
         }
         if row.iter().any(|v| !v.is_finite()) {
-            return Err("equality coefficients must be finite".to_string());
+            return Err("linear coefficients must be finite".to_string());
         }
     }
     if p.b.iter().any(|v| !v.is_finite()) {
@@ -474,15 +538,97 @@ mod tests {
     }
 
     #[test]
-    fn non_equality_row_is_rejected() {
+    fn with_le_inequality_row() {
+        // min x1 + x2  s.t.  [[x1, 1], [1, x2]] ⪰ 0,  x1 <= 0.5
+        // Since x1 * x2 >= 1 and x1 <= 0.5, opt is (0.5, 2.0), objective 2.5.
         let p = SdpProblem {
-            c: vec![1.0],
-            f0: vec![vec![1.0]],
-            fs: vec![vec![vec![1.0]]],
-            a: vec![vec![1.0]],
+            c: vec![1.0, 1.0],
+            f0: vec![vec![0.0, 1.0], vec![1.0, 0.0]],
+            fs: vec![
+                vec![vec![1.0, 0.0], vec![0.0, 0.0]],
+                vec![vec![0.0, 0.0], vec![0.0, 1.0]],
+            ],
+            a: vec![vec![1.0, 0.0]],
             rel: vec![Relation::Le],
-            b: vec![1.0],
+            b: vec![0.5],
         };
-        assert!(solve_sdp(&p, 100).is_err());
+        let s = solve_sdp(&p, 20000).unwrap();
+        assert!((s.x[0] - 0.5).abs() < 1e-3, "x0 = {}", s.x[0]);
+        assert!((s.x[1] - 2.0).abs() < 1e-3, "x1 = {}", s.x[1]);
+        assert!((s.objective - 2.5).abs() < 1e-3, "obj = {}", s.objective);
+        assert!(s.min_eigenvalue > -1e-5, "min_eig = {}", s.min_eigenvalue);
+        assert!(s.x[0] <= 0.5 + 1e-4, "x0 = {}", s.x[0]);
+    }
+
+    #[test]
+    fn with_ge_inequality_row() {
+        // min x1 + x2  s.t.  [[x1, 1], [1, x2]] ⪰ 0,  x1 >= 2.0
+        // Since x1 * x2 >= 1 and x1 >= 2.0, opt is (2.0, 0.5), objective 2.5.
+        let p = SdpProblem {
+            c: vec![1.0, 1.0],
+            f0: vec![vec![0.0, 1.0], vec![1.0, 0.0]],
+            fs: vec![
+                vec![vec![1.0, 0.0], vec![0.0, 0.0]],
+                vec![vec![0.0, 0.0], vec![0.0, 1.0]],
+            ],
+            a: vec![vec![1.0, 0.0]],
+            rel: vec![Relation::Ge],
+            b: vec![2.0],
+        };
+        let s = solve_sdp(&p, 20000).unwrap();
+        assert!((s.x[0] - 2.0).abs() < 1e-3, "x0 = {}", s.x[0]);
+        assert!((s.x[1] - 0.5).abs() < 1e-3, "x1 = {}", s.x[1]);
+        assert!((s.objective - 2.5).abs() < 1e-3, "obj = {}", s.objective);
+        assert!(s.min_eigenvalue > -1e-5, "min_eig = {}", s.min_eigenvalue);
+        assert!(s.x[0] >= 2.0 - 1e-4, "x0 = {}", s.x[0]);
+    }
+
+    #[test]
+    fn with_mixed_eq_le_ge_rows() {
+        // min x1 + 2 x2 + 3 x3
+        // s.t. [[x1, 1, 0], [1, x2, 0], [0, 0, x3]] ⪰ 0,
+        //      x1 + x2 + x3 = 5,  x1 <= 2,  x3 >= 1.
+        // Opt: (2, 2, 1), objective 9.
+        let p = SdpProblem {
+            c: vec![1.0, 2.0, 3.0],
+            f0: vec![
+                vec![0.0, 1.0, 0.0],
+                vec![1.0, 0.0, 0.0],
+                vec![0.0, 0.0, 0.0],
+            ],
+            fs: vec![
+                vec![
+                    vec![1.0, 0.0, 0.0],
+                    vec![0.0, 0.0, 0.0],
+                    vec![0.0, 0.0, 0.0],
+                ],
+                vec![
+                    vec![0.0, 0.0, 0.0],
+                    vec![0.0, 1.0, 0.0],
+                    vec![0.0, 0.0, 0.0],
+                ],
+                vec![
+                    vec![0.0, 0.0, 0.0],
+                    vec![0.0, 0.0, 0.0],
+                    vec![0.0, 0.0, 1.0],
+                ],
+            ],
+            a: vec![
+                vec![1.0, 1.0, 1.0],
+                vec![1.0, 0.0, 0.0],
+                vec![0.0, 0.0, 1.0],
+            ],
+            rel: vec![Relation::Eq, Relation::Le, Relation::Ge],
+            b: vec![5.0, 2.0, 1.0],
+        };
+        let s = solve_sdp(&p, 20000).unwrap();
+        assert!((s.x[0] - 2.0).abs() < 1e-3, "x0 = {}", s.x[0]);
+        assert!((s.x[1] - 2.0).abs() < 1e-3, "x1 = {}", s.x[1]);
+        assert!((s.x[2] - 1.0).abs() < 1e-3, "x2 = {}", s.x[2]);
+        assert!((s.objective - 9.0).abs() < 1e-3, "obj = {}", s.objective);
+        assert!(s.min_eigenvalue > -1e-5, "min_eig = {}", s.min_eigenvalue);
+        assert!((s.x[0] + s.x[1] + s.x[2] - 5.0).abs() < 1e-4);
+        assert!(s.x[0] <= 2.0 + 1e-4);
+        assert!(s.x[2] >= 1.0 - 1e-4);
     }
 }

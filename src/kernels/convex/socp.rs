@@ -1,4 +1,5 @@
-//! Second-order cone programming by a primal–dual interior-point method.
+//! Second-order cone programming by a primal–dual interior-point method with
+//! Nesterov–Todd (NT) scaling and Mehrotra predictor–corrector steps.
 //!
 //! A cone constraint is given in the form
 //! `||A_i x + b_i||_2 <= c_i . x + d_i`, whose slack `s_i = (t_i, z_i)` with
@@ -10,23 +11,26 @@
 //! minimise  c . x   subject to   G x + h = s,   s in K,   E x = f,
 //! ```
 //!
-//! with `K` a product of second-order cones. The solver is an infeasible-start
-//! primal–dual method: it keeps `s` and the dual `y` strictly inside `K` and
-//! drives the residuals `Gx + h - s`, `Ex - f` and `c - G'y + E'nu` to zero
-//! while reducing the duality gap `s . y`. Complementarity is linearised
-//! through the symmetric scaling given by the Hessian of the cone barrier
-//! `phi(s) = -log det(s)`,
+//! with `K` a product of linear and second-order cones. The solver is an
+//! infeasible-start primal–dual method that keeps `s` and the dual `y` strictly
+//! inside `K` and drives the residuals `Gx + h - s`, `Ex - f` and
+//! `c - G'y + E'nu` to zero while reducing the duality gap `s . y`.
 //!
-//! ```text
-//! dy + mu * Hess phi(s) ds = -y - mu * grad phi(s),
-//! ```
+//! At each iteration, the symmetric positive definite Nesterov–Todd scaling
+//! operator `W` satisfying `W^{-1} s = W y = lambda` and `W^{-2} s = y` is
+//! constructed block by block, and the dense KKT system with normal block
+//! `M = G' W^{-2} G` is factored once with [`crate::kernels::dense::lu_factor`]
+//! and reused for both the affine-scaling predictor step and the Mehrotra
+//! second-order corrector + adaptive-centering step.
 //!
-//! which keeps the primal and dual iterates balanced (it is the barrier-based
-//! member of the Nesterov–Todd family). The resulting symmetric positive
-//! definite system is solved densely with [`crate::kernels::dense::lu_factor`].
-//! The centring parameter is `mu = sigma * gap / deg` with `sigma = 0.3` and a
-//! `0.5` fraction-to-boundary step rule; this keeps the slack well away from
-//! the cone apex, where the barrier Hessian would otherwise blow up.
+//! Convergence is measured on a scale-invariant merit: the run stops when the
+//! duality gap is at most `1e-11` in absolute terms *or* `1e-11` relative to
+//! `1 + max(|primal objective|, |dual objective|)`, and the residuals are small
+//! relative to `1 + ||h||`, `1 + ||f||` and `1 + ||c||`. An infeasible-start
+//! method can wobble on a hard instance, so the best iterate seen (by that
+//! merit) is kept and returned when the budget runs out; a long stretch without
+//! measurable progress ends the run early instead of burning the remaining
+//! iterations.
 
 use crate::kernels::dense::Mat;
 use crate::kernels::dense::{
@@ -88,14 +92,22 @@ pub struct SocpSolution {
 struct Block {
     start: usize,
     dim: usize,
-    soc: bool,
+}
+
+/// Nesterov–Todd scaling data for a single cone block.
+enum NtBlock {
+    /// Linear (1-D) cone: `w = sqrt(s / y)`.
+    Linear { w: f64 },
+    /// Second-order cone (`dim > 1`): `W = beta * P_{w_bar^{1/2}}` with
+    /// `det(w_bar) = 1` and `beta = (det(s) / det(y))^{1/4}`.
+    Soc { beta: f64, w_bar: Vec<f64> },
 }
 
 /// Solves a second-order cone program.
 ///
 /// # Errors
 /// Returns an error string when the dimensions disagree, when an entry is not
-/// finite, or when the KKT system is singular.
+/// finite, when `max_iter` is zero, or when the KKT system is singular.
 pub fn solve_socp(
     p: &SocpProblem,
     max_iter: usize,
@@ -119,7 +131,6 @@ pub fn solve_socp(
                 blocks.push(Block {
                     start: g.len(),
                     dim: 1,
-                    soc: false,
                 });
                 g.push(row);
                 h.push(p.b[i]);
@@ -128,7 +139,6 @@ pub fn solve_socp(
                 blocks.push(Block {
                     start: g.len(),
                     dim: 1,
-                    soc: false,
                 });
                 g.push(p.a[i].clone());
                 h.push(-p.b[i]);
@@ -145,7 +155,6 @@ pub fn solve_socp(
         blocks.push(Block {
             start: g.len(),
             dim: 1,
-            soc: false,
         });
         g.push(row);
         h.push(-p.lower[j]);
@@ -157,7 +166,6 @@ pub fn solve_socp(
             blocks.push(Block {
                 start: g.len(),
                 dim: 1,
-                soc: false,
             });
             g.push(row);
             h.push(u);
@@ -165,7 +173,6 @@ pub fn solve_socp(
     }
     for cone in &p.cones {
         let dim = 1 + cone.a.len();
-        let soc = dim > 1;
         let start = g.len();
         g.push(cone.c.clone());
         h.push(cone.d);
@@ -173,14 +180,20 @@ pub fn solve_socp(
             g.push(row.clone());
             h.push(cone.b[k]);
         }
-        blocks.push(Block { start, dim, soc });
+        blocks.push(Block { start, dim });
     }
 
     let m_tot = g.len();
     let me = eq_rows.len();
-    let n_lin = blocks.iter().filter(|b| !b.soc).count();
-    let n_soc = blocks.iter().filter(|b| b.soc).count();
-    let bdeg = (n_lin + 2 * n_soc).max(1) as f64;
+    // Under the Jordan-algebra central path `lambda o lambda = mu * e`, each
+    // linear cone and each second-order cone contributes `mu` to `s . y`.
+    let n_cones = blocks.len().max(1) as f64;
+
+    // Scale factors for the relative stopping test, so a problem whose data is
+    // large is not forced to an unreachable absolute tolerance.
+    let h_norm = norm(&h);
+    let f_norm = norm(&f);
+    let c_norm = norm(&p.c);
 
     // Strictly interior starting point: the identity of each cone.
     let mut x = vec![0.0; n];
@@ -193,67 +206,170 @@ pub fn solve_socp(
     let mut nu = vec![0.0; me];
 
     let mut iterations = 0usize;
-    let mut primal_residual: f64;
-    let mut dual_residual: f64;
-    let mut gap: f64;
-    let sigma = 0.3f64;
+
+    // The best iterate seen. An infeasible-start method can wobble on a hard
+    // instance; returning the best point instead of the last one keeps the
+    // reported residuals meaningful when the budget runs out.
+    let mut best: Option<(f64, Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>)> = None;
+    let mut best_score = f64::INFINITY;
+    let mut stall = 0usize;
+
+    // Scratch reused across iterations.
+    let mut rp = vec![0.0; m_tot];
+    let mut re = vec![0.0; me];
+    let mut rd = vec![0.0; n];
+    let mut g_col = vec![0.0; m_tot];
+    let mut w2g = vec![0.0; m_tot];
 
     for _ in 0..max_iter {
-        let gx = g_matvec(&g, &x, m_tot, n);
-        let mut rp = vec![0.0; m_tot];
-        for r in 0..m_tot {
-            rp[r] = gx[r] + h[r] - s[r];
-        }
-        let mut re = vec![0.0; me];
-        for k in 0..me {
-            let mut acc = -f[k];
-            for j in 0..n {
-                acc += eq_rows[k][j] * x[j];
-            }
-            re[k] = acc;
-        }
-        let gty = gt_matvec(&g, &y, m_tot, n);
-        let mut rd = vec![0.0; n];
-        for j in 0..n {
-            let mut acc = p.c[j] - gty[j];
-            for k in 0..me {
-                acc += eq_rows[k][j] * nu[k];
-            }
-            rd[j] = acc;
-        }
-        gap = s.iter().zip(&y).map(|(a, b)| a * b).sum();
-        primal_residual = norm(&rp) + norm(&re);
-        dual_residual = norm(&rd);
+        residual_vectors(
+            &p.c, &g, &h, &f, &eq_rows, &x, &s, &y, &nu, n, m_tot, me, &mut rp, &mut re, &mut rd,
+        );
 
-        if gap < 1e-9 && primal_residual < 1e-7 && dual_residual < 1e-7 {
+        let rp_norm = norm(&rp);
+        let re_norm = norm(&re);
+        let rd_norm = norm(&rd);
+        let gap = dot(&s, &y).max(0.0);
+
+        let primal_objective = dot(&p.c, &x);
+        let dual_objective = dot(&h, &y) - dot(&f, &nu);
+        let scale = 1.0 + primal_objective.abs().max(dual_objective.abs());
+        let rel_gap = gap / scale;
+
+        // A single merit that mixes relative infeasibility and the relative
+        // duality gap, used to keep the best iterate.
+        let score = rel_gap
+            + rp_norm / (1.0 + h_norm)
+            + re_norm / (1.0 + f_norm)
+            + rd_norm / (1.0 + c_norm);
+        if score < best_score * (1.0 - 1e-6) {
+            best_score = score;
+            best = Some((gap, x.clone(), s.clone(), y.clone(), nu.clone()));
+            stall = 0;
+        } else {
+            stall += 1;
+        }
+
+        // Absolute or relative: the absolute test keeps the accuracy of a
+        // small instance, the relative one rescues a large instance whose
+        // absolute gap can never reach `1e-10`.
+        let gap_small = gap <= 1e-11 || rel_gap <= 1e-11;
+        if gap_small
+            && rp_norm <= 1e-8 * (1.0 + h_norm)
+            && re_norm <= 1e-8 * (1.0 + f_norm)
+            && rd_norm <= 1e-8 * (1.0 + c_norm)
+        {
+            break;
+        }
+        // No measurable progress for a long stretch: further iterations only
+        // burn the budget (and, on an infeasible instance, drift).
+        if stall >= 60 {
             break;
         }
 
-        // Centring parameter of the target central-path point.
-        let mu = (sigma * gap / bdeg).max(0.0);
+        // Compute Nesterov–Todd scaling W and scaled iterate lambda = W^{-1} s = W y.
+        let (nt, lambda) = compute_nt_scaling(&blocks, &s, &y);
 
-        // Scaled Hessian of the complementarity: M = mu G' Hess phi(s) G.
+        // Form M = G' W^{-2} G and factor the KKT system ONCE per iteration.
         let mut mm = vec![vec![0.0; n]; n];
         for j in 0..n {
-            let mut v = vec![0.0; m_tot];
             for r in 0..m_tot {
-                v[r] = g[r][j];
+                g_col[r] = g[r][j];
             }
-            let hv = apply_hess(&blocks, &s, &v);
-            for k in 0..n {
+            apply_w_inv2_into(&blocks, &nt, &g_col, &mut w2g);
+            for k in j..n {
                 let mut acc = 0.0;
                 for r in 0..m_tot {
-                    acc += g[r][k] * hv[r];
+                    acc += g[r][k] * w2g[r];
                 }
-                mm[k][j] = mu * acc;
+                mm[k][j] = acc;
+                mm[j][k] = acc;
             }
         }
+        let lu = factor_kkt(&mm, &eq_rows, n, me)?;
 
-        let (dx, ds, dy, dnu) = direction(
-            &blocks, &s, &y, &rp, &rd, &re, &mm, &g, &eq_rows, n, m_tot, me, mu,
-        )?;
+        // 1. Predictor (affine-scaling) step:
+        //    lambda o (W^{-1} ds_aff + W dy_aff) = -lambda o lambda
+        //    <=> W^{-1} ds_aff + W dy_aff = -lambda.
+        let ds_aff_target: Vec<f64> = lambda.iter().map(|v| -v).collect();
+        let (_, ds_aff, dy_aff, _) = solve_direction_with_lu(
+            &lu,
+            &blocks,
+            &nt,
+            &rp,
+            &rd,
+            &re,
+            &g,
+            n,
+            m_tot,
+            me,
+            &ds_aff_target,
+        );
 
-        let alpha = step_length(&blocks, &s, &y, &ds, &dy);
+        let alpha_p_aff = block_max_step(&blocks, &s, &ds_aff).min(1.0);
+        let alpha_d_aff = block_max_step(&blocks, &y, &dy_aff).min(1.0);
+        let mut gap_aff = 0.0;
+        for r in 0..m_tot {
+            gap_aff += (s[r] + alpha_p_aff * ds_aff[r]) * (y[r] + alpha_d_aff * dy_aff[r]);
+        }
+        let mu = (gap / n_cones).max(0.0);
+        let mu_aff = (gap_aff / n_cones).max(0.0);
+        let sigma = if mu > 1e-300 {
+            (mu_aff / mu).powi(3).clamp(1e-4, 0.99)
+        } else {
+            0.1
+        };
+
+        // 2. Corrector + adaptive centering step (reusing the same LU factor):
+        //    r_lambda = -lambda o lambda - (W^{-1} ds_aff) o (W dy_aff) + sigma * mu * e.
+        let lam_sq = jordan_prod(&blocks, &lambda, &lambda);
+        let w_inv_ds_aff = apply_w_inv(&blocks, &nt, &ds_aff);
+        let w_dy_aff = apply_w(&blocks, &nt, &dy_aff);
+        let corr_prod = jordan_prod(&blocks, &w_inv_ds_aff, &w_dy_aff);
+
+        let mut r_lambda = vec![0.0; m_tot];
+        for r in 0..m_tot {
+            r_lambda[r] = -lam_sq[r] - corr_prod[r];
+        }
+        let smu = sigma * mu;
+        for b in &blocks {
+            r_lambda[b.start] += smu;
+        }
+        let ds_corr_target = jordan_inv_apply(&blocks, &lambda, &r_lambda);
+
+        let (dx, ds, dy, dnu) = solve_direction_with_lu(
+            &lu,
+            &blocks,
+            &nt,
+            &rp,
+            &rd,
+            &re,
+            &g,
+            n,
+            m_tot,
+            me,
+            &ds_corr_target,
+        );
+
+        // 3. Fraction-to-boundary step with strict cone-interior safeguard.
+        let alpha_p_max = block_max_step(&blocks, &s, &ds);
+        let alpha_d_max = block_max_step(&blocks, &y, &dy);
+        let amax = alpha_p_max.min(alpha_d_max);
+        let mut alpha = if amax.is_infinite() {
+            1.0
+        } else {
+            (0.99 * amax).min(1.0)
+        };
+        while alpha > 1e-14
+            && (!is_strictly_interior(&blocks, &s, &ds, alpha)
+                || !is_strictly_interior(&blocks, &y, &dy, alpha))
+        {
+            alpha *= 0.5;
+        }
+        if alpha <= 1e-14 {
+            break;
+        }
+
         for j in 0..n {
             x[j] += alpha * dx[j];
         }
@@ -267,32 +383,20 @@ pub fn solve_socp(
         iterations += 1;
     }
 
-    // Final residuals at the returned iterate.
-    let gx = g_matvec(&g, &x, m_tot, n);
-    let mut rp = vec![0.0; m_tot];
-    for r in 0..m_tot {
-        rp[r] = gx[r] + h[r] - s[r];
+    // Return the best iterate rather than whichever point the last step
+    // reached, then recompute its residuals from scratch.
+    if let Some((_, bx, bs, by, bnu)) = best {
+        x = bx;
+        s = bs;
+        y = by;
+        nu = bnu;
     }
-    let mut re = vec![0.0; me];
-    for k in 0..me {
-        let mut acc = -f[k];
-        for j in 0..n {
-            acc += eq_rows[k][j] * x[j];
-        }
-        re[k] = acc;
-    }
-    let gty = gt_matvec(&g, &y, m_tot, n);
-    let mut rd = vec![0.0; n];
-    for j in 0..n {
-        let mut acc = p.c[j] - gty[j];
-        for k in 0..me {
-            acc += eq_rows[k][j] * nu[k];
-        }
-        rd[j] = acc;
-    }
-    gap = s.iter().zip(&y).map(|(a, b)| a * b).sum();
-    primal_residual = norm(&rp) + norm(&re);
-    dual_residual = norm(&rd);
+    residual_vectors(
+        &p.c, &g, &h, &f, &eq_rows, &x, &s, &y, &nu, n, m_tot, me, &mut rp, &mut re, &mut rd,
+    );
+    let gap = dot(&s, &y).max(0.0);
+    let primal_residual = norm(&rp) + norm(&re);
+    let dual_residual = norm(&rd);
 
     Ok(SocpSolution {
         objective: dot(&p.c, &x),
@@ -304,41 +408,317 @@ pub fn solve_socp(
     })
 }
 
-/// Computes one Newton direction targeting the central path at `mu`.
+/// Fills the primal, equality and dual residuals at `(x, s, y, nu)`.
 #[allow(clippy::too_many_arguments)]
-fn direction(
-    blocks: &[Block],
+fn residual_vectors(
+    c: &[f64],
+    g: &[Vec<f64>],
+    h: &[f64],
+    f: &[f64],
+    eq_rows: &[Vec<f64>],
+    x: &[f64],
     s: &[f64],
     y: &[f64],
-    rp: &[f64],
-    rd: &[f64],
-    re: &[f64],
-    mm: &[Vec<f64>],
-    g: &[Vec<f64>],
-    eq_rows: &[Vec<f64>],
+    nu: &[f64],
     n: usize,
     m_tot: usize,
     me: usize,
-    mu: f64,
-) -> Result<(Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>), String> {
-    let gphi = barrier_grad(blocks, s);
-    let mut ypg = vec![0.0; m_tot];
+    rp: &mut [f64],
+    re: &mut [f64],
+    rd: &mut [f64],
+) {
     for r in 0..m_tot {
-        ypg[r] = y[r] + mu * gphi[r];
+        let row = &g[r];
+        let mut acc = h[r] - s[r];
+        for k in 0..n {
+            acc += row[k] * x[k];
+        }
+        rp[r] = acc;
     }
-    let gt_ypg = gt_matvec(g, &ypg, m_tot, n);
-    let hrp = apply_hess(blocks, s, rp);
-    let gt_hrp = gt_matvec(g, &hrp, m_tot, n);
+    for k in 0..me {
+        let row = &eq_rows[k];
+        let mut acc = -f[k];
+        for j in 0..n {
+            acc += row[j] * x[j];
+        }
+        re[k] = acc;
+    }
+    // rd = c - G'y + E'nu.
+    rd.copy_from_slice(&c[..n]);
+    for r in 0..m_tot {
+        let yr = y[r];
+        if yr != 0.0 {
+            let row = &g[r];
+            for j in 0..n {
+                rd[j] -= yr * row[j];
+            }
+        }
+    }
+    for k in 0..me {
+        let nuk = nu[k];
+        if nuk != 0.0 {
+            let row = &eq_rows[k];
+            for j in 0..n {
+                rd[j] += nuk * row[j];
+            }
+        }
+    }
+}
+
+/// Lorentz determinant `v_0^2 - ||v_{1:}||_2^2` for a second-order cone vector.
+fn soc_det(v: &[f64]) -> f64 {
+    let mut tail_sq = 0.0;
+    for &vk in &v[1..] {
+        tail_sq += vk * vk;
+    }
+    v[0] * v[0] - tail_sq
+}
+
+/// Computes the Nesterov–Todd scaling blocks `W` and scaled iterate
+/// `lambda = W^{-1} s = W y`.
+fn compute_nt_scaling(
+    blocks: &[Block],
+    s: &[f64],
+    y: &[f64],
+) -> (Vec<NtBlock>, Vec<f64>) {
+    let mut nt = Vec::with_capacity(blocks.len());
+    let mut lambda = vec![0.0; s.len()];
+    for b in blocks {
+        let sb = &s[b.start..b.start + b.dim];
+        let yb = &y[b.start..b.start + b.dim];
+        if b.dim == 1 {
+            let s0 = sb[0].max(1e-300);
+            let y0 = yb[0].max(1e-300);
+            let w = (s0 / y0).sqrt();
+            lambda[b.start] = (s0 * y0).sqrt();
+            nt.push(NtBlock::Linear { w });
+        } else {
+            let det_s = soc_det(sb).max(1e-300);
+            let det_y = soc_det(yb).max(1e-300);
+            let sqrt_ds = det_s.sqrt();
+            let sqrt_dy = det_y.sqrt();
+
+            let mut s_bar = vec![0.0; b.dim];
+            let mut y_bar = vec![0.0; b.dim];
+            for k in 0..b.dim {
+                s_bar[k] = sb[k] / sqrt_ds;
+                y_bar[k] = yb[k] / sqrt_dy;
+            }
+            let gamma = (0.5 * (1.0 + dot(&s_bar, &y_bar))).max(1.0).sqrt();
+            let inv_2g = 0.5 / gamma;
+            let mut w_bar = vec![0.0; b.dim];
+            w_bar[0] = inv_2g * (s_bar[0] + y_bar[0]);
+            for k in 1..b.dim {
+                w_bar[k] = inv_2g * (s_bar[k] - y_bar[k]);
+            }
+            let beta = (sqrt_ds / sqrt_dy).sqrt();
+            let block_nt = NtBlock::Soc { beta, w_bar };
+            apply_w_block(&block_nt, yb, &mut lambda[b.start..b.start + b.dim]);
+            nt.push(block_nt);
+        }
+    }
+    (nt, lambda)
+}
+
+/// Applies `W` to a single block.
+fn apply_w_block(
+    nt: &NtBlock,
+    v: &[f64],
+    out: &mut [f64],
+) {
+    match nt {
+        | NtBlock::Linear { w } => {
+            out[0] = w * v[0];
+        },
+        | NtBlock::Soc { beta, w_bar } => {
+            let mut c = 0.0;
+            for k in 1..v.len() {
+                c += w_bar[k] * v[k];
+            }
+            out[0] = beta * (w_bar[0] * v[0] + c);
+            let coef = v[0] + c / (1.0 + w_bar[0]);
+            for k in 1..v.len() {
+                out[k] = beta * (v[k] + coef * w_bar[k]);
+            }
+        },
+    }
+}
+
+/// Applies `W` across all blocks.
+fn apply_w(
+    blocks: &[Block],
+    nt: &[NtBlock],
+    v: &[f64],
+) -> Vec<f64> {
+    let mut out = vec![0.0; v.len()];
+    for (b, ntb) in blocks.iter().zip(nt) {
+        apply_w_block(
+            ntb,
+            &v[b.start..b.start + b.dim],
+            &mut out[b.start..b.start + b.dim],
+        );
+    }
+    out
+}
+
+/// Applies `W^{-1}` across all blocks.
+fn apply_w_inv(
+    blocks: &[Block],
+    nt: &[NtBlock],
+    v: &[f64],
+) -> Vec<f64> {
+    let mut out = vec![0.0; v.len()];
+    for (b, ntb) in blocks.iter().zip(nt) {
+        let vb = &v[b.start..b.start + b.dim];
+        let ob = &mut out[b.start..b.start + b.dim];
+        match ntb {
+            | NtBlock::Linear { w } => {
+                ob[0] = vb[0] / w;
+            },
+            | NtBlock::Soc { beta, w_bar } => {
+                let inv_beta = 1.0 / beta;
+                let mut c = 0.0;
+                for k in 1..vb.len() {
+                    c += w_bar[k] * vb[k];
+                }
+                ob[0] = inv_beta * (w_bar[0] * vb[0] - c);
+                let coef = -vb[0] + c / (1.0 + w_bar[0]);
+                for k in 1..vb.len() {
+                    ob[k] = inv_beta * (vb[k] + coef * w_bar[k]);
+                }
+            },
+        }
+    }
+    out
+}
+
+/// Applies `W^{-2}` across all blocks (`W^{-2} s = y`).
+fn apply_w_inv2(
+    blocks: &[Block],
+    nt: &[NtBlock],
+    v: &[f64],
+) -> Vec<f64> {
+    let mut out = vec![0.0; v.len()];
+    apply_w_inv2_into(blocks, nt, v, &mut out);
+    out
+}
+
+/// Applies `W^{-2}` across all blocks into caller-provided storage.
+fn apply_w_inv2_into(
+    blocks: &[Block],
+    nt: &[NtBlock],
+    v: &[f64],
+    out: &mut [f64],
+) {
+    for (b, ntb) in blocks.iter().zip(nt) {
+        let vb = &v[b.start..b.start + b.dim];
+        let ob = &mut out[b.start..b.start + b.dim];
+        match ntb {
+            | NtBlock::Linear { w } => {
+                ob[0] = vb[0] / (w * w);
+            },
+            | NtBlock::Soc { beta, w_bar } => {
+                let inv_b2 = 1.0 / (beta * beta);
+                let mut c = 0.0;
+                for k in 1..vb.len() {
+                    c += w_bar[k] * vb[k];
+                }
+                let alpha = 2.0 * (w_bar[0] * vb[0] - c);
+                ob[0] = inv_b2 * (alpha * w_bar[0] - vb[0]);
+                for k in 1..vb.len() {
+                    ob[k] = inv_b2 * (-alpha * w_bar[k] + vb[k]);
+                }
+            },
+        }
+    }
+}
+
+/// Blockwise Jordan product `u o v`.
+fn jordan_prod(
+    blocks: &[Block],
+    u: &[f64],
+    v: &[f64],
+) -> Vec<f64> {
+    let mut out = vec![0.0; u.len()];
+    for b in blocks {
+        let ub = &u[b.start..b.start + b.dim];
+        let vb = &v[b.start..b.start + b.dim];
+        let ob = &mut out[b.start..b.start + b.dim];
+        if b.dim == 1 {
+            ob[0] = ub[0] * vb[0];
+        } else {
+            ob[0] = dot(ub, vb);
+            for k in 1..b.dim {
+                ob[k] = ub[0] * vb[k] + vb[0] * ub[k];
+            }
+        }
+    }
+    out
+}
+
+/// Solves `lambda o z = r` blockwise using the closed-form arrowhead inverse.
+fn jordan_inv_apply(
+    blocks: &[Block],
+    lambda: &[f64],
+    r: &[f64],
+) -> Vec<f64> {
+    let mut out = vec![0.0; r.len()];
+    for b in blocks {
+        let lb = &lambda[b.start..b.start + b.dim];
+        let rb = &r[b.start..b.start + b.dim];
+        let ob = &mut out[b.start..b.start + b.dim];
+        if b.dim == 1 {
+            ob[0] = rb[0] / lb[0].max(1e-300);
+        } else {
+            let l0 = lb[0].max(1e-300);
+            let det = soc_det(lb).max(1e-300);
+            let mut l1_dot_r1 = 0.0;
+            for k in 1..b.dim {
+                l1_dot_r1 += lb[k] * rb[k];
+            }
+            let z0 = (l0 * rb[0] - l1_dot_r1) / det;
+            ob[0] = z0;
+            for k in 1..b.dim {
+                ob[k] = (rb[k] - z0 * lb[k]) / l0;
+            }
+        }
+    }
+    out
+}
+
+/// Solves for `(dx, ds, dy, dnu)` given a pre-factored KKT matrix and scaled
+/// complementarity target `W^{-1} ds + W dy = ds_target`.
+#[allow(clippy::too_many_arguments)]
+fn solve_direction_with_lu(
+    lu: &dense::Lu,
+    blocks: &[Block],
+    nt: &[NtBlock],
+    rp: &[f64],
+    rd: &[f64],
+    re: &[f64],
+    g: &[Vec<f64>],
+    n: usize,
+    m_tot: usize,
+    me: usize,
+    ds_target: &[f64],
+) -> (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>) {
+    let w_inv_ds = apply_w_inv(blocks, nt, ds_target);
+    let w_inv2_rp = apply_w_inv2(blocks, nt, rp);
+    let mut comb = vec![0.0; m_tot];
+    for r in 0..m_tot {
+        comb[r] = w_inv_ds[r] - w_inv2_rp[r];
+    }
+    let gt_comb = gt_matvec(g, &comb, m_tot, n);
 
     let mut rhs = vec![0.0; n + me];
     for j in 0..n {
-        rhs[j] = -rd[j] - gt_ypg[j] - mu * gt_hrp[j];
+        rhs[j] = -rd[j] + gt_comb[j];
     }
     for k in 0..me {
         rhs[n + k] = -re[k];
     }
 
-    let sol = solve_kkt(mm, eq_rows, &rhs, n, me)?;
+    let sol = lu.solve(&rhs);
     let dx = sol[0..n].to_vec();
     let dnu = sol[n..].to_vec();
 
@@ -348,81 +728,16 @@ fn direction(
         ds[r] = gdx[r] + rp[r];
     }
 
-    let hds = apply_hess(blocks, s, &ds);
+    let w_inv2_ds = apply_w_inv2(blocks, nt, &ds);
     let mut dy = vec![0.0; m_tot];
     for r in 0..m_tot {
-        dy[r] = -y[r] - mu * gphi[r] - mu * hds[r];
+        dy[r] = w_inv_ds[r] - w_inv2_ds[r];
     }
 
-    Ok((dx, ds, dy, dnu))
+    (dx, ds, dy, dnu)
 }
 
-/// Gradient of the cone barrier `phi` at `s`, block by block.
-fn barrier_grad(
-    blocks: &[Block],
-    s: &[f64],
-) -> Vec<f64> {
-    let mut out = vec![0.0; s.len()];
-    for b in blocks {
-        let sb = &s[b.start..b.start + b.dim];
-        if b.dim == 1 {
-            let d = sb[0].max(f64::MIN_POSITIVE);
-            out[b.start] = -1.0 / d;
-        } else {
-            let s0 = sb[0];
-            let mut s2 = 0.0;
-            for k in 1..b.dim {
-                s2 += sb[k] * sb[k];
-            }
-            let det = (s0 * s0 - s2).max(1e-300);
-            let c = 2.0 / det;
-            out[b.start] = -c * s0;
-            for k in 1..b.dim {
-                out[b.start + k] = c * sb[k];
-            }
-        }
-    }
-    out
-}
-
-/// Applies the cone barrier Hessian `Hess phi(s)` to `v`, block by block.
-fn apply_hess(
-    blocks: &[Block],
-    s: &[f64],
-    v: &[f64],
-) -> Vec<f64> {
-    let mut out = vec![0.0; v.len()];
-    for b in blocks {
-        let sb = &s[b.start..b.start + b.dim];
-        let vb = &v[b.start..b.start + b.dim];
-        if b.dim == 1 {
-            let d = sb[0].max(f64::MIN_POSITIVE);
-            out[b.start] = vb[0] / (d * d);
-        } else {
-            let s0 = sb[0];
-            let mut s2 = 0.0;
-            for k in 1..b.dim {
-                s2 += sb[k] * sb[k];
-            }
-            let det = (s0 * s0 - s2).max(1e-300);
-            let d2 = det * det;
-            let mut sv = 0.0;
-            for k in 1..b.dim {
-                sv += sb[k] * vb[k];
-            }
-            let v0 = vb[0];
-            out[b.start] = (2.0 * (s0 * s0 + s2) / d2) * v0 - (4.0 * s0 / d2) * sv;
-            let coef = 2.0 / det;
-            let sc = 4.0 * sv / d2;
-            for k in 1..b.dim {
-                out[b.start + k] = -(4.0 * s0 * sb[k] / d2) * v0 + coef * vb[k] + sc * sb[k];
-            }
-        }
-    }
-    out
-}
-
-/// Largest step keeping `s + alpha ds` inside every block of the cone.
+/// Largest step keeping `s + alpha ds` inside a single cone block.
 fn max_step(
     s: &[f64],
     ds: &[f64],
@@ -435,6 +750,13 @@ fn max_step(
         return f64::INFINITY;
     }
     let dim = s.len();
+    // Necessary condition for `s + alpha ds in Q`: `s_0 + alpha ds_0 > 0`.
+    let alpha_cap = if ds[0] < -1e-300 {
+        (-s[0] / ds[0]).max(0.0)
+    } else {
+        f64::INFINITY
+    };
+
     let mut a0 = s[0] * s[0];
     let mut a1 = 2.0 * s[0] * ds[0];
     let mut a2 = ds[0] * ds[0];
@@ -449,60 +771,94 @@ fn max_step(
     if a2.abs() < 1e-300 {
         if a1 < 0.0 {
             let r = -a0 / a1;
-            return if r > 0.0 { r } else { f64::INFINITY };
+            return if r > 0.0 {
+                r.min(alpha_cap)
+            } else {
+                alpha_cap
+            };
         }
-        return f64::INFINITY;
+        return alpha_cap;
     }
     let disc = a1 * a1 - 4.0 * a2 * a0;
+    if a2 < 0.0 {
+        // Unique positive root since a0 > 0 and a2 < 0.
+        let sq = disc.max(0.0).sqrt();
+        let r = if a1 < 0.0 {
+            2.0 * a0 / (-a1 + sq)
+        } else {
+            (a1 + sq) / (-2.0 * a2)
+        };
+        return r.max(0.0).min(alpha_cap);
+    }
+    // a2 > 0.0
+    if a1 >= 0.0 {
+        return alpha_cap;
+    }
     if disc < 0.0 {
+        // Roundoff near a tangent/apex when ds_0 < 0.
+        if alpha_cap.is_finite() {
+            return (-a1 / (2.0 * a2)).max(0.0).min(alpha_cap);
+        }
         return f64::INFINITY;
     }
+    // Both roots are positive; the smaller one hits the boundary of +Q first.
     let sq = disc.sqrt();
-    let r1 = (-a1 - sq) / (2.0 * a2);
-    let r2 = (-a1 + sq) / (2.0 * a2);
-    let mut best = f64::INFINITY;
-    for r in [r1, r2] {
-        if r > 1e-15 && r < best {
-            best = r;
+    let r = 2.0 * a0 / (-a1 + sq);
+    r.max(0.0).min(alpha_cap)
+}
+
+/// Maximum step to the cone boundary across all blocks.
+fn block_max_step(
+    blocks: &[Block],
+    v: &[f64],
+    dv: &[f64],
+) -> f64 {
+    let mut amax = f64::INFINITY;
+    for b in blocks {
+        let vb = &v[b.start..b.start + b.dim];
+        let dvb = &dv[b.start..b.start + b.dim];
+        amax = amax.min(max_step(vb, dvb));
+    }
+    amax
+}
+
+/// Checks that `v + alpha dv` lies strictly inside every cone block.
+fn is_strictly_interior(
+    blocks: &[Block],
+    v: &[f64],
+    dv: &[f64],
+    alpha: f64,
+) -> bool {
+    for b in blocks {
+        let v0 = v[b.start] + alpha * dv[b.start];
+        if !v0.is_finite() || v0 <= 0.0 {
+            return false;
+        }
+        if b.dim > 1 {
+            let mut tail_sq = 0.0;
+            for k in 1..b.dim {
+                let vk = v[b.start + k] + alpha * dv[b.start + k];
+                if !vk.is_finite() {
+                    return false;
+                }
+                tail_sq += vk * vk;
+            }
+            if v0 * v0 - tail_sq <= 0.0 {
+                return false;
+            }
         }
     }
-    best
+    true
 }
 
-/// Common step length for the primal and dual blocks.
-fn step_length(
-    blocks: &[Block],
-    s: &[f64],
-    y: &[f64],
-    ds: &[f64],
-    dy: &[f64],
-) -> f64 {
-    let mut alpha_s = f64::INFINITY;
-    let mut alpha_y = f64::INFINITY;
-    for b in blocks {
-        let sb = &s[b.start..b.start + b.dim];
-        let yb = &y[b.start..b.start + b.dim];
-        let dsb = &ds[b.start..b.start + b.dim];
-        let dyb = &dy[b.start..b.start + b.dim];
-        alpha_s = alpha_s.min(max_step(sb, dsb));
-        alpha_y = alpha_y.min(max_step(yb, dyb));
-    }
-    let amax = alpha_s.min(alpha_y);
-    if amax.is_infinite() {
-        1.0
-    } else {
-        (0.5 * amax).min(1.0)
-    }
-}
-
-/// Solves the dense KKT system for `(dx, dnu)`.
-fn solve_kkt(
+/// Factors the dense KKT system once per iteration for reuse across predictor
+/// and corrector solves.
+fn factor_kkt(
     mm: &[Vec<f64>],
     eq_rows: &[Vec<f64>],
-    rhs: &[f64],
     n: usize,
     me: usize,
-) -> Result<Vec<f64>, String> {
+) -> Result<dense::Lu, String> {
     let size = n + me;
     let mut k = vec![vec![0.0; size]; size];
     for i in 0..n {
@@ -518,14 +874,17 @@ fn solve_kkt(
         }
     }
     let mat = Mat::from_rows(&k).map_err(|e| e.to_string())?;
-    match dense::solve(&mat, rhs) {
-        | Ok(sol) => Ok(sol),
+    match dense::lu_factor(&mat) {
+        | Ok(lu) => Ok(lu),
         | Err(_) => {
             for i in 0..n {
                 k[i][i] += 1e-8;
             }
+            for r in 0..me {
+                k[n + r][n + r] -= 1e-8;
+            }
             let mat2 = Mat::from_rows(&k).map_err(|e| e.to_string())?;
-            dense::solve(&mat2, rhs).map_err(|_| "singular kkt system".to_string())
+            dense::lu_factor(&mat2).map_err(|_| "singular kkt system".to_string())
         },
     }
 }
@@ -655,10 +1014,11 @@ mod tests {
             lower: vec![-10.0, -10.0, -10.0],
             upper: vec![None, None, None],
         };
-        let s = solve_socp(&p, 400).unwrap();
-        assert!(s.objective.abs() < 1e-4, "t = {}", s.objective);
-        assert!((s.x[0] - 1.0).abs() < 1e-4, "x = {}", s.x[0]);
-        assert!((s.x[1] - 2.0).abs() < 1e-4, "y = {}", s.x[1]);
+        let s = solve_socp(&p, 100).unwrap();
+        assert!(s.objective.abs() < 1e-6, "t = {}", s.objective);
+        assert!((s.x[0] - 1.0).abs() < 1e-6, "x = {}", s.x[0]);
+        assert!((s.x[1] - 2.0).abs() < 1e-6, "y = {}", s.x[1]);
+        assert!(s.iterations < 40, "iterations = {}", s.iterations);
     }
 
     #[test]
@@ -685,16 +1045,104 @@ mod tests {
             lower: vec![-10.0, -10.0, -10.0],
             upper: vec![None, None, None],
         };
-        let s = solve_socp(&p, 400).unwrap();
+        let s = solve_socp(&p, 100).unwrap();
         let expected = 1.0 / 3.0_f64.sqrt();
         assert!(
-            (s.objective - expected).abs() < 1e-4,
+            (s.objective - expected).abs() < 1e-6,
             "t = {}, expected = {}",
             s.objective,
             expected
         );
-        assert!((s.x[0] - 4.0 / 3.0).abs() < 1e-4, "x0 = {}", s.x[0]);
-        assert!((s.x[1] - 7.0 / 3.0).abs() < 1e-4, "x1 = {}", s.x[1]);
+        assert!((s.x[0] - 4.0 / 3.0).abs() < 1e-6, "x0 = {}", s.x[0]);
+        assert!((s.x[1] - 7.0 / 3.0).abs() < 1e-6, "x1 = {}", s.x[1]);
+        assert!(s.iterations < 40, "iterations = {}", s.iterations);
+    }
+
+    #[test]
+    fn lp_as_socp() {
+        // min -x0 - 2 x1  s.t.  x0 + x1 <= 4,  0 <= x0 <= 2,  0 <= x1 <= 3
+        // -> (1, 3), objective -7.
+        let p = SocpProblem {
+            c: vec![-1.0, -2.0],
+            a: vec![vec![1.0, 1.0]],
+            rel: vec![Relation::Le],
+            b: vec![4.0],
+            cones: Vec::new(),
+            lower: vec![0.0, 0.0],
+            upper: vec![Some(2.0), Some(3.0)],
+        };
+        let s = solve_socp(&p, 100).unwrap();
+        assert!((s.x[0] - 1.0).abs() < 1e-6, "x0 = {}", s.x[0]);
+        assert!((s.x[1] - 3.0).abs() < 1e-6, "x1 = {}", s.x[1]);
+        assert!((s.objective + 7.0).abs() < 1e-6, "obj = {}", s.objective);
+        assert!(s.iterations < 30, "iterations = {}", s.iterations);
+    }
+
+    #[test]
+    fn multiple_cones_and_equality() {
+        // min t1 + t2
+        // s.t. ||(x, y - 1)||_2 <= t1,  ||(x - 2, y - 1)||_2 <= t2,  y = 0.
+        // Unique optimum: x = 1, y = 0, t1 = t2 = sqrt(2), obj = 2 sqrt(2).
+        let p = SocpProblem {
+            c: vec![0.0, 0.0, 1.0, 1.0],
+            a: vec![vec![0.0, 1.0, 0.0, 0.0]],
+            rel: vec![Relation::Eq],
+            b: vec![0.0],
+            cones: vec![
+                SocCone {
+                    a: vec![vec![1.0, 0.0, 0.0, 0.0], vec![0.0, 1.0, 0.0, 0.0]],
+                    b: vec![0.0, -1.0],
+                    c: vec![0.0, 0.0, 1.0, 0.0],
+                    d: 0.0,
+                },
+                SocCone {
+                    a: vec![vec![1.0, 0.0, 0.0, 0.0], vec![0.0, 1.0, 0.0, 0.0]],
+                    b: vec![-2.0, -1.0],
+                    c: vec![0.0, 0.0, 0.0, 1.0],
+                    d: 0.0,
+                },
+            ],
+            lower: vec![-10.0, -10.0, 0.0, 0.0],
+            upper: vec![None, None, None, None],
+        };
+        let s = solve_socp(&p, 100).unwrap();
+        let rt2 = 2.0_f64.sqrt();
+        // The optimum is tangentially degenerate: the duality gap is quadratic
+        // in the distance to it, so a gap of `1e-12` leaves about `1e-6` in
+        // the coordinates while the objective is already accurate to `1e-12`.
+        assert!((s.x[0] - 1.0).abs() < 1e-5, "x = {}", s.x[0]);
+        assert!(s.x[1].abs() < 1e-5, "y = {}", s.x[1]);
+        assert!((s.x[2] - rt2).abs() < 1e-5, "t1 = {}", s.x[2]);
+        assert!((s.x[3] - rt2).abs() < 1e-5, "t2 = {}", s.x[3]);
+        assert!(
+            (s.objective - 2.0 * rt2).abs() < 1e-6,
+            "obj = {}",
+            s.objective
+        );
+        assert!(s.iterations < 40, "iterations = {}", s.iterations);
+    }
+
+    #[test]
+    fn nt_scaling_identities() {
+        let blocks = vec![Block { start: 0, dim: 1 }, Block { start: 1, dim: 4 }];
+        let s = vec![3.0, 5.0, 1.0, -2.0, 1.5];
+        let y = vec![0.7, 4.0, -1.5, 0.5, 2.0];
+        let (nt, lambda) = compute_nt_scaling(&blocks, &s, &y);
+        let w_inv_s = apply_w_inv(&blocks, &nt, &s);
+        let w_y = apply_w(&blocks, &nt, &y);
+        let w_inv2_s = apply_w_inv2(&blocks, &nt, &s);
+        for i in 0..s.len() {
+            assert!((w_inv_s[i] - lambda[i]).abs() < 1e-12);
+            assert!((w_y[i] - lambda[i]).abs() < 1e-12);
+            assert!((w_inv2_s[i] - y[i]).abs() < 1e-12);
+        }
+        // Check Jordan inverse: lambda o (L(lambda)^{-1} r) == r.
+        let r = vec![1.2, 2.3, -0.4, 0.9, -1.1];
+        let z = jordan_inv_apply(&blocks, &lambda, &r);
+        let lz = jordan_prod(&blocks, &lambda, &z);
+        for i in 0..r.len() {
+            assert!((lz[i] - r[i]).abs() < 1e-12);
+        }
     }
 
     #[test]
@@ -709,5 +1157,71 @@ mod tests {
             upper: vec![None],
         };
         assert!(solve_socp(&p, 10).is_err());
+    }
+
+    #[test]
+    fn large_data_converges_on_a_relative_gap() {
+        // The same LP as `lp_as_socp` scaled by 10^6. An absolute gap
+        // tolerance of 1e-10 would be unreachable; the relative test is not.
+        let scale = 1e6;
+        let p = SocpProblem {
+            c: vec![-scale, -2.0 * scale],
+            a: vec![vec![1.0, 1.0]],
+            rel: vec![Relation::Le],
+            b: vec![4.0 * scale],
+            cones: Vec::new(),
+            lower: vec![0.0, 0.0],
+            upper: vec![Some(2.0 * scale), Some(3.0 * scale)],
+        };
+        let s = solve_socp(&p, 100).expect("solve");
+        assert!((s.x[0] - scale).abs() < 1e-4 * scale, "x0 = {}", s.x[0]);
+        assert!(
+            (s.x[1] - 3.0 * scale).abs() < 1e-4 * scale,
+            "x1 = {}",
+            s.x[1]
+        );
+        // Both the cost and the right-hand side are scaled, so the optimal
+        // value scales quadratically.
+        let expected = -7.0 * scale * scale;
+        assert!(
+            (s.objective - expected).abs() < 1e-6 * expected.abs(),
+            "obj = {}",
+            s.objective
+        );
+        assert!(s.iterations < 60, "iterations = {}", s.iterations);
+        // The reported gap is the complementarity product of the returned
+        // point, not a stale value from an earlier iteration.
+        assert!(s.gap >= 0.0);
+        assert!(s.primal_residual < 1e-3 * scale);
+    }
+
+    #[test]
+    fn returned_residuals_describe_the_returned_point() {
+        // min t  s.t.  ||(x - 3, y + 4)|| <= t,  x + y = 1.
+        // The distance from (3, -4) to the line is 2 / sqrt(2) = sqrt(2), and
+        // the closest point is (4, -3).
+        let p = SocpProblem {
+            c: vec![0.0, 0.0, 1.0],
+            a: vec![vec![1.0, 1.0, 0.0]],
+            rel: vec![Relation::Eq],
+            b: vec![1.0],
+            cones: vec![SocCone {
+                a: vec![vec![1.0, 0.0, 0.0], vec![0.0, 1.0, 0.0]],
+                b: vec![-3.0, 4.0],
+                c: vec![0.0, 0.0, 1.0],
+                d: 0.0,
+            }],
+            lower: vec![-100.0, -100.0, -100.0],
+            upper: vec![None, None, None],
+        };
+        let s = solve_socp(&p, 200).expect("solve");
+        let root2 = 2.0_f64.sqrt();
+        assert!((s.objective - root2).abs() < 1e-6, "obj = {}", s.objective);
+        assert!((s.x[0] - 4.0).abs() < 1e-5, "x = {}", s.x[0]);
+        assert!((s.x[1] + 3.0).abs() < 1e-5, "y = {}", s.x[1]);
+        // The residuals reported describe the returned point.
+        assert!(s.primal_residual < 1e-6, "rp = {}", s.primal_residual);
+        assert!(s.dual_residual < 1e-6, "rd = {}", s.dual_residual);
+        assert!(s.gap < 1e-7, "gap = {}", s.gap);
     }
 }

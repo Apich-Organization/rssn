@@ -17,9 +17,14 @@
 //!
 //! and the multiplier of `p` is raised from zero until either `p` becomes
 //! active (it joins `W`) or an active multiplier would turn negative (that
-//! constraint leaves `W`). The iteration is finite for a positive definite
-//! `Q`; a positive semidefinite `Q` is regularised on the diagonal by
-//! `1e-12 * max(1, ||Q||_inf)` only when the Cholesky factorisation fails.
+//! constraint leaves `W`). When `Q` is positive semidefinite (Cholesky fails),
+//! the solver verifies positive semidefiniteness via symmetric
+//! eigendecomposition, extracts the null-space basis `V_0` of `Q`, and tests
+//! for a feasible recession direction `d = V_0 alpha` with `c . d < 0` via
+//! [`super::lp::solve_lp`] so genuinely unbounded PSD problems are reported as
+//! `"unbounded"` (and infeasible ones as `"infeasible"`) rather than masked by
+//! diagonal regularisation. Bounded PSD problems are then solved with a tiny
+//! diagonal shift `1e-12 * max(1, ||Q||_inf)`.
 
 use std::collections::BTreeSet;
 
@@ -28,7 +33,10 @@ use crate::kernels::dense::{
     self,
 };
 
+use super::lp::LpProblem;
+use super::lp::LpStatus;
 use super::lp::Relation;
+use super::lp::solve_lp;
 
 /// A convex quadratic program `minimise 0.5 x'Qx + c'x`.
 #[derive(Debug, Clone, PartialEq)]
@@ -76,7 +84,9 @@ struct Cons {
 /// # Errors
 /// Returns an error string when the dimensions disagree, when an entry is not
 /// finite, when `q` has a negative eigenvalue (a non-convex problem), when the
-/// problem is infeasible, or when the active-set iteration exceeds `max_iter`.
+/// problem is infeasible, when a positive semidefinite problem is unbounded
+/// below on its feasible set, or when the active-set iteration exceeds
+/// `max_iter`.
 pub fn solve_qp(
     p: &QpProblem,
     max_iter: usize,
@@ -94,17 +104,28 @@ pub fn solve_qp(
         }
     }
 
-    // Factorise Q, regularising a semidefinite matrix only when needed.
+    // Factorise Q. When Cholesky fails, verify PSD, check for an unbounded
+    // recession direction in ker(Q), and only then apply tiny regularisation.
     let qmat = Mat::from_rows(&q_orig).map_err(|e| e.to_string())?;
     let mut q_alg = q_orig.clone();
     let chol = match dense::cholesky(&qmat) {
         | Ok(l) => l,
         | Err(_) => {
-            let (vals, _) = dense::eigen_symmetric(&qmat).map_err(|e| e.to_string())?;
+            let (vals, vecs) = dense::eigen_symmetric(&qmat).map_err(|e| e.to_string())?;
             let scale = inf_norm(&q_orig).max(1.0);
             let min_eig = vals.first().copied().unwrap_or(0.0);
             if min_eig < -1e-8 * scale {
                 return Err("quadratic matrix is not positive semidefinite".to_string());
+            }
+            let mut v0: Vec<Vec<f64>> = Vec::new();
+            for (col, &ev) in vals.iter().enumerate() {
+                if ev <= 1e-10 * scale {
+                    let basis_vec: Vec<f64> = (0..n).map(|row| vecs.at(row, col)).collect();
+                    v0.push(basis_vec);
+                }
+            }
+            if !v0.is_empty() {
+                check_psd_unbounded(p, &v0, n)?;
             }
             let reg = 1e-12 * scale;
             for (i, row) in q_alg.iter_mut().enumerate() {
@@ -311,6 +332,73 @@ pub fn solve_qp(
         iterations,
         active: active_set.into_iter().collect(),
     })
+}
+
+/// Tests whether a positive semidefinite QP has a feasible recession direction
+/// `d = V_0 alpha` (`||alpha||_inf <= 1`) in `ker(Q)` with `c . d < 0`.
+///
+/// When such a direction exists, feasibility of the original polyhedron is
+/// checked first so infeasible problems still report `"infeasible"` rather than
+/// `"unbounded"`.
+fn check_psd_unbounded(
+    p: &QpProblem,
+    v0: &[Vec<f64>],
+    n: usize,
+) -> Result<(), String> {
+    let k = v0.len();
+    let c_lp: Vec<f64> = v0.iter().map(|v| dot(&p.c, v)).collect();
+    let mut a_lp: Vec<Vec<f64>> = Vec::with_capacity(p.a.len() + n);
+    let mut rel_lp: Vec<Relation> = Vec::with_capacity(p.a.len() + n);
+    let mut b_lp: Vec<f64> = Vec::with_capacity(p.a.len() + n);
+
+    for i in 0..p.a.len() {
+        let row: Vec<f64> = v0.iter().map(|v| dot(&p.a[i], v)).collect();
+        a_lp.push(row);
+        rel_lp.push(p.rel[i]);
+        b_lp.push(0.0);
+    }
+    for j in 0..n {
+        let row: Vec<f64> = v0.iter().map(|v| v[j]).collect();
+        a_lp.push(row);
+        if p.upper[j].is_some() {
+            // Finite lower and upper bounds force d_j == 0.
+            rel_lp.push(Relation::Eq);
+        } else {
+            // Finite lower bound with +inf upper bound forces d_j >= 0.
+            rel_lp.push(Relation::Ge);
+        }
+        b_lp.push(0.0);
+    }
+
+    let rec_budget = (100 * (k + a_lp.len() + 1)).max(1000);
+    let rec_lp = LpProblem {
+        c: c_lp,
+        a: a_lp,
+        rel: rel_lp,
+        b: b_lp,
+        lower: vec![-1.0; k],
+        upper: vec![Some(1.0); k],
+    };
+    let rec_sol = solve_lp(&rec_lp, rec_budget)?;
+    if rec_sol.status == LpStatus::Optimal && rec_sol.objective < -1e-9 {
+        // Confirm the original feasible set is non-empty before declaring
+        // unboundedness.
+        let feas_budget = (100 * (n + p.a.len() + 1)).max(1000);
+        let feas_lp = LpProblem {
+            c: vec![0.0; n],
+            a: p.a.clone(),
+            rel: p.rel.clone(),
+            b: p.b.clone(),
+            lower: p.lower.clone(),
+            upper: p.upper.clone(),
+        };
+        let feas_sol = solve_lp(&feas_lp, feas_budget)?;
+        if feas_sol.status == LpStatus::Infeasible {
+            return Err("infeasible".to_string());
+        }
+        return Err("unbounded".to_string());
+    }
+    Ok(())
 }
 
 /// Solves the block system for `(dx, du)` given the working set `w`.
@@ -605,5 +693,73 @@ mod tests {
             upper: vec![None, None],
         };
         assert!(solve_qp(&p, 100).is_err());
+    }
+
+    #[test]
+    fn unbounded_psd_qp() {
+        // min 0.5 x0^2 - x1  s.t.  x0 >= 0, x1 >= 0  ->  unbounded along (0, 1).
+        let p = QpProblem {
+            q: vec![vec![1.0, 0.0], vec![0.0, 0.0]],
+            c: vec![0.0, -1.0],
+            a: Vec::new(),
+            rel: Vec::new(),
+            b: Vec::new(),
+            lower: vec![0.0, 0.0],
+            upper: vec![None, None],
+        };
+        let err = solve_qp(&p, 1000).unwrap_err();
+        assert_eq!(err, "unbounded");
+    }
+
+    #[test]
+    fn bounded_psd_qp() {
+        // min 0.5 x0^2 + x1  s.t.  x0 >= 0, x1 >= 0  ->  (0, 0), objective 0.
+        let p = QpProblem {
+            q: vec![vec![1.0, 0.0], vec![0.0, 0.0]],
+            c: vec![0.0, 1.0],
+            a: Vec::new(),
+            rel: Vec::new(),
+            b: Vec::new(),
+            lower: vec![0.0, 0.0],
+            upper: vec![None, None],
+        };
+        let s = solve_qp(&p, 1000).unwrap();
+        assert!(close(s.x[0], 0.0), "x0 = {}", s.x[0]);
+        assert!(close(s.x[1], 0.0), "x1 = {}", s.x[1]);
+        assert!(close(s.objective, 0.0), "objective = {}", s.objective);
+    }
+
+    #[test]
+    fn infeasible_psd_qp_reports_infeasible_not_unbounded() {
+        // min 0.5 x0^2 - x1  s.t.  x0 >= 0, x1 >= 0, x0 <= -1  ->  infeasible.
+        let p = QpProblem {
+            q: vec![vec![1.0, 0.0], vec![0.0, 0.0]],
+            c: vec![0.0, -1.0],
+            a: vec![vec![1.0, 0.0]],
+            rel: vec![Relation::Le],
+            b: vec![-1.0],
+            lower: vec![0.0, 0.0],
+            upper: vec![None, None],
+        };
+        let err = solve_qp(&p, 1000).unwrap_err();
+        assert_eq!(err, "infeasible");
+    }
+
+    #[test]
+    fn rank_one_nondiagonal_bounded_psd_qp() {
+        // min 0.5 (x0 + x1)^2 + x0 - x1  s.t.  x0 >= 0, x1 >= 0  ->  (0, 1), objective -0.5.
+        let p = QpProblem {
+            q: vec![vec![1.0, 1.0], vec![1.0, 1.0]],
+            c: vec![1.0, -1.0],
+            a: Vec::new(),
+            rel: Vec::new(),
+            b: Vec::new(),
+            lower: vec![0.0, 0.0],
+            upper: vec![None, None],
+        };
+        let s = solve_qp(&p, 1000).unwrap();
+        assert!(close(s.x[0], 0.0), "x0 = {}", s.x[0]);
+        assert!(close(s.x[1], 1.0), "x1 = {}", s.x[1]);
+        assert!(close(s.objective, -0.5), "objective = {}", s.objective);
     }
 }
