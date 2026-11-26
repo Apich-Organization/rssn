@@ -1,0 +1,4 @@
+# The C bridge only needs the R headers: it loads the rssn shared library at
+# run time with `dlopen` / `LoadLibrary`, so the package has no link-time
+# dependency on it and no import library is needed.
+PKG_CFLAGS = -std=gnu99

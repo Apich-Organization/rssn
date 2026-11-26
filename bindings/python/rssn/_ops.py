@@ -11002,92 +11002,92 @@ def a_0(*, session=None):
     return _apply("a_0", (), session)
 
 
-def abs(a0, *, session=None):
+def abs(x, *, session=None):
     """
     `abs(x)`: absolute value (or complex modulus) `|x|`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("abs", (a0,), session)
+    return _apply("abs", (x,), session)
 
 
-def acf(a0, a1, *, session=None):
+def acf(x, max_lag, *, session=None):
     """
     `acf(x, max_lag)`: the sample autocorrelation of `x` for lags `0..=max_lag`. Sample autocorrelation function. Returns `max_lag + 1` values with `result[0] = 1`. The lag-`k` estimate is `Σ_{t>k} (x_t - x̄)(x_{t-k} - x̄) / Σ_t (x_t - x̄)²`, the usual biased estimator with the full-sample denominator. Lags beyond `x.len() - 1` are not produced, and a constant series yields zeros after lag zero.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("acf", (a0, a1), session)
+    return _apply("acf", (x, max_lag), session)
 
 
-def acos(a0, *, session=None):
+def acos(x, *, session=None):
     """
     `acos(x)`: principal inverse cosine of `x`, in `[0, pi]` for real `x` in `[-1, 1]`. `acos(x)` as a ball, for `|x| <= 1`. # Errors Fails outside `[-1, 1]` or when an exponent leaves the range.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("acos", (a0,), session)
+    return _apply("acos", (x,), session)
 
 
-def acos_branch(a0, a1, a2, *, session=None):
+def acos_branch(z, k, s, *, session=None):
     """
     `acos_branch(z, k, s)`: branch `(k, s)` of the inverse cosine `2*k*pi + s * acos(z)` with sign `s` in `{+1, -1}`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("acos_branch", (a0, a1, a2), session)
+    return _apply("acos_branch", (z, k, s), session)
 
 
-def acosh(a0, *, session=None):
+def acosh(x, *, session=None):
     """
     `acosh(x)`: principal inverse hyperbolic cosine `ln(x + sqrt(x^2 - 1))`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("acosh", (a0,), session)
+    return _apply("acosh", (x,), session)
 
 
-def acosh_branch(a0, a1, *, session=None):
+def acosh_branch(z, k, *, session=None):
     """
     `acosh_branch(z, k)`: branch `k` of the inverse hyperbolic cosine.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("acosh_branch", (a0, a1), session)
+    return _apply("acosh_branch", (z, k), session)
 
 
-def acot(a0, *, session=None):
+def acot(x, *, session=None):
     """
     `acot(x)`: principal inverse cotangent `atan(1 / x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("acot", (a0,), session)
+    return _apply("acot", (x,), session)
 
 
-def acoth(a0, *, session=None):
+def acoth(x, *, session=None):
     """
     `acoth(x)`: inverse hyperbolic cotangent `atanh(1 / x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("acoth", (a0,), session)
+    return _apply("acoth", (x,), session)
 
 
-def acsc(a0, *, session=None):
+def acsc(x, *, session=None):
     """
     `acsc(x)`: principal inverse cosecant `asin(1 / x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("acsc", (a0,), session)
+    return _apply("acsc", (x,), session)
 
 
-def acsch(a0, *, session=None):
+def acsch(x, *, session=None):
     """
     `acsch(x)`: inverse hyperbolic cosecant `asinh(1 / x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("acsch", (a0,), session)
+    return _apply("acsch", (x,), session)
 
 
-def action(a0, a1, a2, a3, a4, a5, *, session=None):
+def action(L, y, path, x, a, b, *, session=None):
     """
     `action(L, y, path, x, a, b)`: substitutes `path` for `y` in Lagrangian `L` and forms the definite action integral `defint(L[y:=path], x, a, b)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("action", (a0, a1, a2, a3, a4, a5), session)
+    return _apply("action", (L, y, path, x, a, b), session)
 
 
 def add(*args, session=None):
@@ -11098,12 +11098,12 @@ def add(*args, session=None):
     return _apply("add", args, session)
 
 
-def adjoint_group(a0, a1, *, session=None):
+def adjoint_group(g, X, *, session=None):
     """
     `adjoint_group(g, X)`: adjoint group action `Ad_g(X) = g X g^-1` for invertible matrix `g` and Lie algebra element `X`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("adjoint_group", (a0, a1), session)
+    return _apply("adjoint_group", (g, X), session)
 
 
 def adjoint_rep(*args, session=None):
@@ -11114,68 +11114,68 @@ def adjoint_rep(*args, session=None):
     return _apply("adjoint_rep", args, session)
 
 
-def adjugate(a0, *, session=None):
+def adjugate(A, *, session=None):
     """
     `adjugate(A)`: classical adjugate (transpose of cofactor matrix) of square matrix `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("adjugate", (a0,), session)
+    return _apply("adjugate", (A,), session)
 
 
-def advect_fd(a0, a1, a2, a3, *, session=None):
+def advect_fd(velocity, u0, t_end, steps, *, session=None):
     """
     `advect_fd(velocity, u0, t_end, steps)`: Lax-Wendroff finite-difference advection solver for `u_t + v . grad u = 0`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("advect_fd", (a0, a1, a2, a3), session)
+    return _apply("advect_fd", (velocity, u0, t_end, steps), session)
 
 
-def advect_fd_upwind(a0, a1, a2, a3, *, session=None):
+def advect_fd_upwind(velocity, u0, t_end, steps, *, session=None):
     """
     `advect_fd_upwind(velocity, u0, t_end, steps)`: first-order monotone upwind finite-difference advection solver.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("advect_fd_upwind", (a0, a1, a2, a3), session)
+    return _apply("advect_fd_upwind", (velocity, u0, t_end, steps), session)
 
 
-def airfoil_equation(a0, a1, a2, *, session=None):
+def airfoil_equation(f, x, t, *, session=None):
     """
     `airfoil_equation(f, x, t)`: inversion of the finite Hilbert transform on `[-1, 1]`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("airfoil_equation", (a0, a1, a2), session)
+    return _apply("airfoil_equation", (f, x, t), session)
 
 
-def airyai(a0, *, session=None):
+def airyai(x, *, session=None):
     """
     `airyai(x)`: Airy function of the first kind `Ai(x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("airyai", (a0,), session)
+    return _apply("airyai", (x,), session)
 
 
-def airyaiprime(a0, *, session=None):
+def airyaiprime(x, *, session=None):
     """
     `airyaiprime(x)`: derivative `Ai'(x)` of the Airy function of the first kind.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("airyaiprime", (a0,), session)
+    return _apply("airyaiprime", (x,), session)
 
 
-def airybi(a0, *, session=None):
+def airybi(x, *, session=None):
     """
     `airybi(x)`: Airy function of the second kind `Bi(x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("airybi", (a0,), session)
+    return _apply("airybi", (x,), session)
 
 
-def airybiprime(a0, *, session=None):
+def airybiprime(x, *, session=None):
     """
     `airybiprime(x)`: derivative `Bi'(x)` of the Airy function of the second kind.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("airybiprime", (a0,), session)
+    return _apply("airybiprime", (x,), session)
 
 
 def algebraic_connectivity(a0, *, session=None):
@@ -11186,20 +11186,20 @@ def algebraic_connectivity(a0, *, session=None):
     return _apply("algebraic_connectivity", (a0,), session)
 
 
-def all_models(a0, *, session=None):
+def all_models(formula, *, session=None):
     """
     `all_models(formula)`: enumerates all satisfying Boolean assignments of `formula`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("all_models", (a0,), session)
+    return _apply("all_models", (formula,), session)
 
 
-def amg_solve(a0, a1, a2, a3, *, session=None):
+def amg_solve(entries, b, tol, kind, *, session=None):
     """
     `amg_solve(entries, b, tol, kind)`: solve sparse `A x = b` by algebraic multigrid (`ruge_stuben` or `smoothed_aggregation`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("amg_solve", (a0, a1, a2, a3), session)
+    return _apply("amg_solve", (entries, b, tol, kind), session)
 
 
 def and_(*args, session=None):
@@ -11210,92 +11210,92 @@ def and_(*args, session=None):
     return _apply("and", args, session)
 
 
-def anderson_fixed_point(a0, a1, a2, a3, *, session=None):
+def anderson_fixed_point(g, vars, x0, tol, *, session=None):
     """
     `anderson_fixed_point(g, vars, x0, tol)`: fixed point `x = g(x)` by Anderson acceleration starting from `x0` within tolerance `tol`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("anderson_fixed_point", (a0, a1, a2, a3), session)
+    return _apply("anderson_fixed_point", (g, vars, x0, tol), session)
 
 
-def angerj(a0, a1, *, session=None):
+def angerj(nu, x, *, session=None):
     """
     `angerj(nu, x)`: Anger function `J_nu(x) = (1/pi) int_0^pi cos(nu*theta - x*sin(theta)) dtheta`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("angerj", (a0, a1), session)
+    return _apply("angerj", (nu, x), session)
 
 
-def angle(a0, a1, *, session=None):
+def angle(u, v, *, session=None):
     """
     `angle(u, v)`: angle in radians between vectors `u` and `v`. Computes the angle between two vectors in radians. Formula: $\\theta = \\arccos\\left(\\frac{\\mathbf{a} \\cdot \\mathbf{b}}{||\\mathbf{a}|| ||\\mathbf{b}||}\\right)$ # Errors Returns an error if the vectors have different lengths.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("angle", (a0, a1), session)
+    return _apply("angle", (u, v), session)
 
 
-def angular_momentum(a0, a1, *, session=None):
+def angular_momentum(r, p, *, session=None):
     """
     `angular_momentum(r, p)`: orbital angular momentum `r x p`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("angular_momentum", (a0, a1), session)
+    return _apply("angular_momentum", (r, p), session)
 
 
-def angular_momentum_z(a0, *, session=None):
+def angular_momentum_z(phi, *, session=None):
     """
     `angular_momentum_z(phi)`: z-component angular momentum operator `-i hbar d/dphi`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("angular_momentum_z", (a0,), session)
+    return _apply("angular_momentum_z", (phi,), session)
 
 
-def annulus_neg_root(a0, a1, a2, a3, a4, a5, a6, a7, *, session=None):
+def annulus_neg_root(nu, a, b, alpha1, beta1, alpha2, beta2, k, *, session=None):
     """
     `annulus_neg_root(nu, a, b, alpha1, beta1, alpha2, beta2, k)`: `k`-th negative radial Sturm-Liouville root on the annulus `[a, b]`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("annulus_neg_root", (a0, a1, a2, a3, a4, a5, a6, a7), session)
+    return _apply("annulus_neg_root", (nu, a, b, alpha1, beta1, alpha2, beta2, k), session)
 
 
-def annulus_root(a0, a1, a2, a3, a4, a5, a6, a7, *, session=None):
+def annulus_root(nu, a, b, alpha1, beta1, alpha2, beta2, k, *, session=None):
     """
     `annulus_root(nu, a, b, alpha1, beta1, alpha2, beta2, k)`: `k`-th positive radial Bessel-cross-product root on the annulus `[a, b]`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("annulus_root", (a0, a1, a2, a3, a4, a5, a6, a7), session)
+    return _apply("annulus_root", (nu, a, b, alpha1, beta1, alpha2, beta2, k), session)
 
 
-def anova(a0, *, session=None):
+def anova(groups, *, session=None):
     """
     `anova(groups)`: one-way analysis of variance returning `list(f_statistic, p_value)` for a list of sample `groups`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("anova", (a0,), session)
+    return _apply("anova", (groups,), session)
 
 
-def antidifference(a0, a1, *, session=None):
+def antidifference(t, k, *, session=None):
     """
     `antidifference(t, k)`: computes a closed-form antidifference `T(k)` satisfying `T(k+1) - T(k) = t(k)` (Gosper's algorithm). A hypergeometric antidifference of `t` in `k`: `T` with `T(k+1) - T(k) = t(k)`, if one exists. The index is an integer; with `nonnegative` it is also known to be at least zero (sums from a non-negative lower limit), which lets factorial and binomial ratios simplify.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("antidifference", (a0, a1), session)
+    return _apply("antidifference", (t, k), session)
 
 
-def apart(a0, a1, *, session=None):
+def apart(expr, var, *, session=None):
     """
     `apart(expr, var)`: computes the partial fraction decomposition of rational `expr` with respect to `var`. Decomposes `numer / denom` over the rationals. Input coefficients are in ascending degree. The result gives the polynomial quotient and nonzero fraction numerators, in factor order and increasing denominator power. Returns `None` for a zero denominator, an incomplete factorisation, or a decomposition that does not recombine.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("apart", (a0, a1), session)
+    return _apply("apart", (expr, var), session)
 
 
-def appell_f1(a0, a1, a2, a3, a4, a5, *, session=None):
+def appell_f1(a, b1, b2, c, x, y, *, session=None):
     """
     `appell_f1(a, b1, b2, c, x, y)`: Appell hypergeometric function `F_1(a; b1, b2; c; x, y)`. Appell's first double hypergeometric function `F_1(a; b_1, b_2; c; x, y)` `= Σ_{m,n≥0} (a)_{m+n} (b_1)_m (b_2)_n / ((c)_{m+n} m! n!) x^m y^n`. The double series converges for `|x| < 1`, `|y| < 1`; it is summed directly when `max(|x|, |y|) <= 0.95` or when `a`/`b_1`/`b_2` is a non-positive integer (the series then terminates). Otherwise Euler's integral `F_1 = Γ(c)/(Γ(a)Γ(c-a)) ∫_0^1 t^(a-1)(1-t)^(c-a-1)` `× (1-xt)^(-b_1) (1-yt)^(-b_2) dt` is evaluated by tanh-sinh quadrature, which requires `c > a > 0` and `x, y < 1`. `NaN` outside those domains (`c <= 0`, `x >= 1`, `y >= 1`, or no applicable representation). Accuracy is about `1e-13`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("appell_f1", (a0, a1, a2, a3, a4, a5), session)
+    return _apply("appell_f1", (a, b1, b2, c, x, y), session)
 
 
 def apply(*args, session=None):
@@ -11322,156 +11322,156 @@ def apply_transform_vector(a0, a1, *, session=None):
     return _apply("apply_transform_vector", (a0, a1), session)
 
 
-def ar_fit(a0, a1, *, session=None):
+def ar_fit(x, p, *, session=None):
     """
     `ar_fit(x, p)`: `list(phi, sigma2, aic, intercept)` of an autoregression of order `p` fitted by the Yule–Walker equations.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ar_fit", (a0, a1), session)
+    return _apply("ar_fit", (x, p), session)
 
 
-def are_orthogonal(a0, a1, a2, a3, a4, *, session=None):
+def are_orthogonal(f, g, x, a, b, *, session=None):
     """
     `are_orthogonal(f, g, x, a, b)`: `true` if `<f, g> = int_a^b conj(f) g dx = 0`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("are_orthogonal", (a0, a1, a2, a3, a4), session)
+    return _apply("are_orthogonal", (f, g, x, a, b), session)
 
 
-def arg(a0, *, session=None):
+def arg(z, *, session=None):
     """
     `arg(z)`: principal argument (phase angle) of `z` in `(-pi, pi]`. The argument, `arg z`, in `(-π, π]`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("arg", (a0,), session)
+    return _apply("arg", (z,), session)
 
 
-def arima_fit(a0, a1, a2, a3, *, session=None):
+def arima_fit(x, p, d, q, *, session=None):
     """
     `arima_fit(x, p, d, q)`: `list(ar, ma, sigma2, aic, loglik, mean)` of an ARIMA(`p`, `d`, `q`) fitted by Hannan–Rissanen and refined by conditional sum of squares. Fits an ARIMA(`p`, `d`, `q`) model. The series is differenced `d` times and an ARMA(`p`, `q`) is fitted to the result by the Hannan–Rissanen procedure: a long autoregression provides residuals, a regression on lagged values and lagged residuals gives initial parameters, and a Gauss–Newton search on the conditional sum of squares refines them. Orders are capped at `p ≤ 6` and `q ≤ 4`. # Errors Returns a lowercase message when an order exceeds the cap, the series is too short for the requested differencing or order, or a least-squares stage cannot be solved.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("arima_fit", (a0, a1, a2, a3), session)
+    return _apply("arima_fit", (x, p, d, q), session)
 
 
-def arima_forecast(a0, a1, a2, a3, a4, *, session=None):
+def arima_forecast(x, p, d, q, horizon, *, session=None):
     """
     `arima_forecast(x, p, d, q, horizon)`: the next `horizon` values of `x` under an ARIMA(`p`, `d`, `q`) refitted to the whole series. Forecasts an ARIMA model forward from a series. `x` must be the series the model was fitted to, i.e. already differenced `d` times, so the returned values are forecasts of the same differenced series. Future shocks are set to zero, so the forecasts follow the conditional mean recursion. # Errors Returns a lowercase message when the horizon is zero and the series is empty, or the series is shorter than the model order.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("arima_forecast", (a0, a1, a2, a3, a4), session)
+    return _apply("arima_forecast", (x, p, d, q, horizon), session)
 
 
-def arx_fit(a0, a1, a2, a3, a4, *, session=None):
+def arx_fit(u, y, na, nb, delay, *, session=None):
     """
     `arx_fit(u, y, na, nb, delay)`: `list(a, b, fit)` of an ARX model by least squares.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("arx_fit", (a0, a1, a2, a3, a4), session)
+    return _apply("arx_fit", (u, y, na, nb, delay), session)
 
 
-def asec(a0, *, session=None):
+def asec(x, *, session=None):
     """
     `asec(x)`: principal inverse secant `acos(1 / x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("asec", (a0,), session)
+    return _apply("asec", (x,), session)
 
 
-def asech(a0, *, session=None):
+def asech(x, *, session=None):
     """
     `asech(x)`: principal inverse hyperbolic secant `acosh(1 / x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("asech", (a0,), session)
+    return _apply("asech", (x,), session)
 
 
-def asin(a0, *, session=None):
+def asin(x, *, session=None):
     """
     `asin(x)`: principal inverse sine of `x`, in `[-pi/2, pi/2]` for real `x` in `[-1, 1]`. `asin(x)` as a ball, for `|x| <= 1`. # Errors Fails outside `[-1, 1]` or when an exponent leaves the range.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("asin", (a0,), session)
+    return _apply("asin", (x,), session)
 
 
-def asin_branch(a0, a1, *, session=None):
+def asin_branch(z, k, *, session=None):
     """
     `asin_branch(z, k)`: branch `k` of the inverse sine `k*pi + (-1)^k * asin(z)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("asin_branch", (a0, a1), session)
+    return _apply("asin_branch", (z, k), session)
 
 
-def asinh(a0, *, session=None):
+def asinh(x, *, session=None):
     """
     `asinh(x)`: inverse hyperbolic sine `ln(x + sqrt(x^2 + 1))`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("asinh", (a0,), session)
+    return _apply("asinh", (x,), session)
 
 
-def asinh_branch(a0, a1, *, session=None):
+def asinh_branch(z, k, *, session=None):
     """
     `asinh_branch(z, k)`: branch `k` of the inverse hyperbolic sine.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("asinh_branch", (a0, a1), session)
+    return _apply("asinh_branch", (z, k), session)
 
 
-def asymptotic(a0, a1, a2, *, session=None):
+def asymptotic(f, x, n, *, session=None):
     """
     `asymptotic(f, x, n)`: asymptotic expansion of `f(x)` as `x -> oo` up to order `n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("asymptotic", (a0, a1, a2), session)
+    return _apply("asymptotic", (f, x, n), session)
 
 
-def at(a0, a1, a2, *, session=None):
+def at(f, x, a, *, session=None):
     """
     `at(f, x, a)`: boundary or point evaluation `f|_{x = a}` used in PDE initial/boundary conditions.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("at", (a0, a1, a2), session)
+    return _apply("at", (f, x, a), session)
 
 
-def atan(a0, *, session=None):
+def atan(x, *, session=None):
     """
     `atan(x)`: principal inverse tangent of `x`, in `(-pi/2, pi/2)` for real `x`. `atan(x)` as a ball. # Errors Fails when an exponent leaves the representable range.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("atan", (a0,), session)
+    return _apply("atan", (x,), session)
 
 
-def atan2(a0, a1, *, session=None):
+def atan2(y, x, *, session=None):
     """
     `atan2(y, x)`: two-argument arctangent of `(y, x)`, giving the angle in `(-pi, pi]` from the positive x-axis. `atan2(y, x)` as a ball, with the quadrant resolved. # Errors Fails when both operands are zero or an exponent leaves the range.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("atan2", (a0, a1), session)
+    return _apply("atan2", (y, x), session)
 
 
-def atan_branch(a0, a1, *, session=None):
+def atan_branch(z, k, *, session=None):
     """
     `atan_branch(z, k)`: branch `k` of the inverse tangent `k*pi + atan(z)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("atan_branch", (a0, a1), session)
+    return _apply("atan_branch", (z, k), session)
 
 
-def atanh(a0, *, session=None):
+def atanh(x, *, session=None):
     """
     `atanh(x)`: inverse hyperbolic tangent `ln((1 + x) / (1 - x)) / 2`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("atanh", (a0,), session)
+    return _apply("atanh", (x,), session)
 
 
-def atanh_branch(a0, a1, *, session=None):
+def atanh_branch(z, k, *, session=None):
     """
     `atanh_branch(z, k)`: branch `k` of the inverse hyperbolic tangent.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("atanh_branch", (a0, a1), session)
+    return _apply("atanh_branch", (z, k), session)
 
 
 def baker_campbell_hausdorff(*args, session=None):
@@ -11482,28 +11482,28 @@ def baker_campbell_hausdorff(*args, session=None):
     return _apply("baker_campbell_hausdorff", args, session)
 
 
-def ballot(a0, a1, *, session=None):
+def ballot(up, down, *, session=None):
     """
     `ballot(up, down)`: ballot number `C(up + down, down) * (up - down + 1) / (up + 1)` for `up >= down`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ballot", (a0, a1), session)
+    return _apply("ballot", (up, down), session)
 
 
-def bandwidth_scott(a0, *, session=None):
+def bandwidth_scott(sample, *, session=None):
     """
     `bandwidth_scott(sample)`: Scott's rule-of-thumb kernel density bandwidth for `sample`. Scott's rule bandwidth `1.06 sd n^(-1/5)`. Requires at least two finite observations.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bandwidth_scott", (a0,), session)
+    return _apply("bandwidth_scott", (sample,), session)
 
 
-def bandwidth_silverman(a0, *, session=None):
+def bandwidth_silverman(sample, *, session=None):
     """
     `bandwidth_silverman(sample)`: Silverman's rule-of-thumb kernel density bandwidth for `sample`. Silverman's rule-of-thumb bandwidth `0.9 min(sd, IQR/1.34) n^(-1/5)`. Uses `sd` when `IQR` is zero. Requires at least two finite observations.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bandwidth_silverman", (a0,), session)
+    return _apply("bandwidth_silverman", (sample,), session)
 
 
 def barycentric(a0, a1, a2, a3, *, session=None):
@@ -11514,12 +11514,12 @@ def barycentric(a0, a1, a2, a3, *, session=None):
     return _apply("barycentric", (a0, a1, a2, a3), session)
 
 
-def bayes_update(a0, a1, a2, *, session=None):
+def bayes_update(prior, likelihood, data, *, session=None):
     """
     `bayes_update(prior, likelihood, data)`: conjugate Bayesian posterior distribution given `prior`, `likelihood` model, and `data`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bayes_update", (a0, a1, a2), session)
+    return _apply("bayes_update", (prior, likelihood, data), session)
 
 
 def bch_decode(a0, a1, *, session=None):
@@ -11538,188 +11538,188 @@ def bch_encode(a0, a1, *, session=None):
     return _apply("bch_encode", (a0, a1), session)
 
 
-def bdd(a0, *, session=None):
+def bdd(formula, *, session=None):
     """
     `bdd(formula)`: constructs the canonical reduced ordered binary decision diagram (ROBDD) representation of `formula`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bdd", (a0,), session)
+    return _apply("bdd", (formula,), session)
 
 
-def bdd_size(a0, *, session=None):
+def bdd_size(formula, *, session=None):
     """
     `bdd_size(formula)`: returns the number of decision nodes in the ROBDD of `formula`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bdd_size", (a0,), session)
+    return _apply("bdd_size", (formula,), session)
 
 
-def bei(a0, a1, *, session=None):
+def bei(n, x, *, session=None):
     """
     `bei(n, x)`: Kelvin function `bei_n(x)` of integer order `n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bei", (a0, a1), session)
+    return _apply("bei", (n, x), session)
 
 
-def bell(a0, *, session=None):
+def bell(n, *, session=None):
     """
     `bell(n)`: `n`-th Bell number, counting partitions of an `n`-element set. Computes the Bell number `B(n)` as an `f64`. Counts all partitions of a set of `n` elements, including the one partition of the empty set. Returns positive infinity when the count overflows `f64` (`n >= 219`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bell", (a0,), session)
+    return _apply("bell", (n,), session)
 
 
-def ber(a0, a1, *, session=None):
+def ber(n, x, *, session=None):
     """
     `ber(n, x)`: Kelvin function `ber_n(x)` of integer order `n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ber", (a0, a1), session)
+    return _apply("ber", (n, x), session)
 
 
-def bernoulli(a0, *, session=None):
+def bernoulli(p, *, session=None):
     """
     `bernoulli(p)`: Bernoulli distribution with success probability `p`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bernoulli", (a0,), session)
+    return _apply("bernoulli", (p,), session)
 
 
-def bernoulli_number(a0, *, session=None):
+def bernoulli_number(n, *, session=None):
     """
     `bernoulli_number(n)`: `n`-th Bernoulli number `B_n` (with `B_1 = -1/2`). Computes the n-th Bernoulli number `B_n`. Orders up to `BERNOULLI_TABLE_MAX` are served from a small bucketed table cache (the three buckets are 32, 64 and 128), so repeated polynomial and zeta evaluations do not rebuild the recurrence.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bernoulli_number", (a0,), session)
+    return _apply("bernoulli_number", (n,), session)
 
 
-def bessel_differential_equation(a0, a1, a2, *, session=None):
+def bessel_differential_equation(y, x, n, *, session=None):
     """
     `bessel_differential_equation(y, x, n)`: Bessel differential equation `x^2 y'' + x y' + (x^2 - n^2) y = 0`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bessel_differential_equation", (a0, a1, a2), session)
+    return _apply("bessel_differential_equation", (y, x, n), session)
 
 
-def bessel_i_complex(a0, a1, a2, *, session=None):
+def bessel_i_complex(nu, re, im, *, session=None):
     """
     `bessel_i_complex(nu, re, im)`: `list(re, im)` of the modified Bessel function of the first kind `I_nu(re + i*im)` for real order `nu`. The modified Bessel function of the first kind `I_ν(z)` for real order `ν` and complex `z` (principal branch).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bessel_i_complex", (a0, a1, a2), session)
+    return _apply("bessel_i_complex", (nu, re, im), session)
 
 
-def bessel_j_complex(a0, a1, a2, *, session=None):
+def bessel_j_complex(nu, re, im, *, session=None):
     """
     `bessel_j_complex(nu, re, im)`: `list(re, im)` of the Bessel function of the first kind `J_nu(re + i*im)` for real order `nu`. The Bessel function of the first kind `J_ν(z)` for real order `ν` and complex `z` (principal branch of `z^ν`, cut along the negative real axis).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bessel_j_complex", (a0, a1, a2), session)
+    return _apply("bessel_j_complex", (nu, re, im), session)
 
 
-def bessel_k0(a0, *, session=None):
+def bessel_k0(x, *, session=None):
     """
     `bessel_k0(x)`: modified Bessel function of the second kind of order zero `K_0(x)`. `K₀(x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bessel_k0", (a0,), session)
+    return _apply("bessel_k0", (x,), session)
 
 
-def bessel_k1(a0, *, session=None):
+def bessel_k1(x, *, session=None):
     """
     `bessel_k1(x)`: modified Bessel function of the second kind of order one `K_1(x)`. `K₁(x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bessel_k1", (a0,), session)
+    return _apply("bessel_k1", (x,), session)
 
 
-def bessel_neg_root(a0, a1, *, session=None):
+def bessel_neg_root(nu, h, *, session=None):
     """
     `bessel_neg_root(nu, h)`: unique positive `s` such that `s I_nu'(s) + h I_nu(s) = 0` (corresponding to negative eigenvalue `-s^2`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bessel_neg_root", (a0, a1), session)
+    return _apply("bessel_neg_root", (nu, h), session)
 
 
-def bessel_root(a0, a1, a2, *, session=None):
+def bessel_root(nu, h, k, *, session=None):
     """
     `bessel_root(nu, h, k)`: `k`-th positive root of the Robin Bessel equation `z J_nu'(z) + h J_nu(z) = 0`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bessel_root", (a0, a1, a2), session)
+    return _apply("bessel_root", (nu, h, k), session)
 
 
-def bessel_zero(a0, a1, *, session=None):
+def bessel_zero(nu, k, *, session=None):
     """
     `bessel_zero(nu, k)`: `k`-th positive zero `j_{nu, k}` of the Bessel function `J_nu(z)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bessel_zero", (a0, a1), session)
+    return _apply("bessel_zero", (nu, k), session)
 
 
-def besseli(a0, a1, *, session=None):
+def besseli(nu, x, *, session=None):
     """
     `besseli(nu, x)`: modified Bessel function of the first kind `I_nu(x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("besseli", (a0, a1), session)
+    return _apply("besseli", (nu, x), session)
 
 
-def besselj(a0, a1, *, session=None):
+def besselj(nu, x, *, session=None):
     """
     `besselj(nu, x)`: Bessel function of the first kind `J_nu(x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("besselj", (a0, a1), session)
+    return _apply("besselj", (nu, x), session)
 
 
-def besselk(a0, a1, *, session=None):
+def besselk(nu, x, *, session=None):
     """
     `besselk(nu, x)`: modified Bessel function of the second kind `K_nu(x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("besselk", (a0, a1), session)
+    return _apply("besselk", (nu, x), session)
 
 
-def bessely(a0, a1, *, session=None):
+def bessely(nu, x, *, session=None):
     """
     `bessely(nu, x)`: Bessel function of the second kind `Y_nu(x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bessely", (a0, a1), session)
+    return _apply("bessely", (nu, x), session)
 
 
-def best_approximation(a0, a1, a2, a3, a4, *, session=None):
+def best_approximation(f, basis, x, a, b, *, session=None):
     """
     `best_approximation(f, basis, x, a, b)`: `L^2([a, b])` orthogonal projection of `f` onto `span(basis)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("best_approximation", (a0, a1, a2, a3, a4), session)
+    return _apply("best_approximation", (f, basis, x, a, b), session)
 
 
-def beta(a0, a1, *, session=None):
+def beta(x, y, *, session=None):
     """
     `beta(x, y)`: Euler beta function `B(x, y) = Gamma(x) Gamma(y) / Gamma(x + y)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("beta", (a0, a1), session)
+    return _apply("beta", (x, y), session)
 
 
-def beta_dist(a0, a1, *, session=None):
+def beta_dist(a, b, *, session=None):
     """
     `beta_dist(a, b)`: beta distribution with shape parameters `a` and `b`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("beta_dist", (a0, a1), session)
+    return _apply("beta_dist", (a, b), session)
 
 
-def beta_reg(a0, a1, a2, *, session=None):
+def beta_reg(a, b, x, *, session=None):
     """
     `beta_reg(a, b, x)`: regularized incomplete beta function `I_x(a, b) = B(x; a, b) / B(a, b)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("beta_reg", (a0, a1, a2), session)
+    return _apply("beta_reg", (a, b, x), session)
 
 
 def betti_at_radius(a0, a1, a2, *, session=None):
@@ -11754,132 +11754,132 @@ def bezier_split(a0, a1, *, session=None):
     return _apply("bezier_split", (a0, a1), session)
 
 
-def bicgstab_l_solve(a0, a1, a2, *, session=None):
+def bicgstab_l_solve(a, b, tol, *, session=None):
     """
     `bicgstab_l_solve(a, b, tol)`: solve general linear system `A x = b` by BiCGSTAB(l) to relative tolerance `tol`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bicgstab_l_solve", (a0, a1, a2), session)
+    return _apply("bicgstab_l_solve", (a, b, tol), session)
 
 
-def big_o(a0, *, session=None):
+def big_o(term, *, session=None):
     """
     `big_o(term)`: Landau big-O remainder term representing omitted higher-order terms of order `term`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("big_o", (a0,), session)
+    return _apply("big_o", (term,), session)
 
 
-def bigomega(a0, *, session=None):
+def bigomega(n, *, session=None):
     """
     `bigomega(n)`: number of prime factors of `n` counted with multiplicity (`Omega(n)`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bigomega", (a0,), session)
+    return _apply("bigomega", (n,), session)
 
 
-def binomial(a0, a1, *, session=None):
+def binomial(n, k, *, session=None):
     """
     `binomial(n, k)`: binomial coefficient `C(n, k) = n! / (k! (n - k)!)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("binomial", (a0, a1), session)
+    return _apply("binomial", (n, k), session)
 
 
-def binomial_dist(a0, a1, *, session=None):
+def binomial_dist(n, p, *, session=None):
     """
     `binomial_dist(n, p)`: binomial distribution with `n` trials and success probability `p`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("binomial_dist", (a0, a1), session)
+    return _apply("binomial_dist", (n, p), session)
 
 
-def binomial_mod(a0, a1, a2, *, session=None):
+def binomial_mod(n, k, p, *, session=None):
     """
     `binomial_mod(n, k, p)`: binomial coefficient `C(n, k) mod p` for prime `p` via Lucas's theorem.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("binomial_mod", (a0, a1, a2), session)
+    return _apply("binomial_mod", (n, k, p), session)
 
 
-def binomial_test(a0, a1, a2, *, session=None):
+def binomial_test(k, n, p, *, session=None):
     """
     `binomial_test(k, n, p)`: exact two-sided binomial test p-value for `k` successes in `n` trials under null probability `p`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("binomial_test", (a0, a1, a2), session)
+    return _apply("binomial_test", (k, n, p), session)
 
 
-def binomial_trials(a0, *, session=None):
+def binomial_trials(n, *, session=None):
     """
     `binomial_trials(n)`: inert binomial likelihood descriptor with `n` trials for Bayesian updates.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("binomial_trials", (a0,), session)
+    return _apply("binomial_trials", (n,), session)
 
 
-def biweight_location(a0, a1, *, session=None):
+def biweight_location(x, c, *, session=None):
     """
     `biweight_location(x, c)`: Tukey biweight M-estimator of location for `x` with tuning constant `c`. Tukey biweight location estimator (tuning constant `c`, 4.685 typical).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("biweight_location", (a0, a1), session)
+    return _apply("biweight_location", (x, c), session)
 
 
-def blackman_window(a0, *, session=None):
+def blackman_window(n, *, session=None):
     """
     `blackman_window(n)`: `n`-point symmetric Blackman window sequence. Generates a Blackman window of length `n`. `w[i] = 0.42 - 0.5 cos(2 pi i / (n - 1)) + 0.08 cos(4 pi i / (n - 1))`, symmetric with both endpoints at zero (in exact arithmetic). # Arguments * `n` - The number of points in the output window.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("blackman_window", (a0,), session)
+    return _apply("blackman_window", (n,), session)
 
 
-def bloch_wave(a0, a1, a2, *, session=None):
+def bloch_wave(k, r, u, *, session=None):
     """
     `bloch_wave(k, r, u)`: Bloch wavefunction `exp(i k . r) * u` with wavevector `k` and periodic part `u`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bloch_wave", (a0, a1, a2), session)
+    return _apply("bloch_wave", (k, r, u), session)
 
 
-def boltzmann_distribution(a0, a1, a2, *, session=None):
+def boltzmann_distribution(E, T, Z, *, session=None):
     """
     `boltzmann_distribution(E, T, Z)`: canonical Boltzmann probability `exp(-E / (k_B T)) / Z`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("boltzmann_distribution", (a0, a1, a2), session)
+    return _apply("boltzmann_distribution", (E, T, Z), session)
 
 
-def boltzmann_entropy(a0, *, session=None):
+def boltzmann_entropy(Omega, *, session=None):
     """
     `boltzmann_entropy(Omega)`: statistical entropy `S = k_B ln(Omega)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("boltzmann_entropy", (a0,), session)
+    return _apply("boltzmann_entropy", (Omega,), session)
 
 
-def bootstrap_basic_ci(a0, a1, a2, a3, a4, *, session=None):
+def bootstrap_basic_ci(data, statistic, alpha, resamples, seed, *, session=None):
     """
     `bootstrap_basic_ci(data, statistic, alpha, resamples, seed)`: `list(lo, hi)` reverse percentile confidence interval of level `1 - alpha`, reflected about the statistic of the data. Pass finite normalized observations and a statistic symbol (`mean`, `median`, `std`, `variance`, `mad` or `iqr`). Basic (reverse percentile) bootstrap confidence interval. Reflects the seeded percentile endpoints about the statistic evaluated on the observed sample. The statistic has the concurrency contract of [`bootstrap_ci_parallel`]. Returns NaN endpoints if that estimate is not finite. NaN replicates are excluded.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bootstrap_basic_ci", (a0, a1, a2, a3, a4), session)
+    return _apply("bootstrap_basic_ci", (data, statistic, alpha, resamples, seed), session)
 
 
-def bootstrap_ci(a0, a1, a2, a3, a4, *, session=None):
+def bootstrap_ci(data, statistic, alpha, resamples, seed, *, session=None):
     """
     `bootstrap_ci(data, statistic, alpha, resamples, seed)`: `list(lo, hi)` percentile bootstrap confidence interval of level `1 - alpha`. Percentile bootstrap confidence interval for `statistic` at level `1 - alpha`, with `resamples` seeded resamples. Calls `statistic` once per resample in draw order and excludes NaN replicates from the interval.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bootstrap_ci", (a0, a1, a2, a3, a4), session)
+    return _apply("bootstrap_ci", (data, statistic, alpha, resamples, seed), session)
 
 
-def bose_einstein_distribution(a0, a1, a2, *, session=None):
+def bose_einstein_distribution(E, mu, T, *, session=None):
     """
     `bose_einstein_distribution(E, mu, T)`: Bose-Einstein mean occupation number at energy `E`, chemical potential `mu`, temperature `T`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bose_einstein_distribution", (a0, a1, a2), session)
+    return _apply("bose_einstein_distribution", (E, mu, T), session)
 
 
 def bottleneck_distance(a0, a1, *, session=None):
@@ -11890,12 +11890,12 @@ def bottleneck_distance(a0, a1, *, session=None):
     return _apply("bottleneck_distance", (a0, a1), session)
 
 
-def boundary(a0, *, session=None):
+def boundary(M, *, session=None):
     """
     `boundary(M)`: oriented `(k-1)`-chain boundary `dM` of a `k`-cell or `k`-chain `M`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("boundary", (a0,), session)
+    return _apply("boundary", (M,), session)
 
 
 def box_counting(a0, a1, *, session=None):
@@ -11906,36 +11906,36 @@ def box_counting(a0, a1, *, session=None):
     return _apply("box_counting", (a0, a1), session)
 
 
-def bracelets(a0, a1, *, session=None):
+def bracelets(n, k, *, session=None):
     """
     `bracelets(n, k)`: number of distinct `k`-ary bracelets of length `n` under rotation and reflection.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bracelets", (a0, a1), session)
+    return _apply("bracelets", (n, k), session)
 
 
-def braket(a0, a1, a2, *, session=None):
+def braket(phi, psi, x, *, session=None):
     """
     `braket(phi, psi, x)`: inner product `int_{-oo}^{oo} conj(phi) psi dx`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("braket", (a0, a1, a2), session)
+    return _apply("braket", (phi, psi, x), session)
 
 
-def braket_on(a0, a1, a2, a3, a4, *, session=None):
+def braket_on(phi, psi, x, a, b, *, session=None):
     """
     `braket_on(phi, psi, x, a, b)`: inner product `int_a^b conj(phi) psi dx` on `[a, b]`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("braket_on", (a0, a1, a2, a3, a4), session)
+    return _apply("braket_on", (phi, psi, x, a, b), session)
 
 
-def branch_cut(a0, a1, *, session=None):
+def branch_cut(f, z, *, session=None):
     """
     `branch_cut(f, z)`: list of `ray(p, theta)` branch cuts of principal multi-valued functions in `f(z)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("branch_cut", (a0, a1), session)
+    return _apply("branch_cut", (f, z), session)
 
 
 def bravais_lattices(*, session=None):
@@ -11946,12 +11946,12 @@ def bravais_lattices(*, session=None):
     return _apply("bravais_lattices", (), session)
 
 
-def bspline(a0, a1, a2, a3, *, session=None):
+def bspline(P, degree, knots, t, *, session=None):
     """
     `bspline(P, degree, knots, t)` evaluates the curve with control points `P` at `t` using de Boor's algorithm. For `n` control points, the nondecreasing knot list has `n + degree + 1` entries and `degree < n`. The result is a point with the same number of coordinates as each control point. Both endpoints of `knots[degree] <= t <= knots[n]` are included.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("bspline", (a0, a1, a2, a3), session)
+    return _apply("bspline", (P, degree, knots, t), session)
 
 
 def burning_ship_escape(a0, a1, a2, *, session=None):
@@ -11970,76 +11970,76 @@ def c_0(*, session=None):
     return _apply("c_0", (), session)
 
 
-def cad(a0, a1, *, session=None):
+def cad(polys, vars, *, session=None):
     """
     `cad(polys, vars)`: computes a cylindrical algebraic decomposition sample-point cell list for `polys` over `vars`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cad", (a0, a1), session)
+    return _apply("cad", (polys, vars), session)
 
 
-def cad_cells(a0, a1, *, session=None):
+def cad_cells(polys, vars, *, session=None):
     """
     `cad_cells(polys, vars)`: decomposes `R^n` over `vars` into sign-invariant cylindrical algebraic decomposition cells for `polys`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cad_cells", (a0, a1), session)
+    return _apply("cad_cells", (polys, vars), session)
 
 
-def cancel(a0, *, session=None):
+def cancel(expr, *, session=None):
     """
     `cancel(expr)`: cancels common polynomial factors between numerator and denominator of `expr`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cancel", (a0,), session)
+    return _apply("cancel", (expr,), session)
 
 
-def canonical_momentum(a0, a1, a2, *, session=None):
+def canonical_momentum(L, y, x, *, session=None):
     """
     `canonical_momentum(L, y, x)`: computes the canonical conjugate momentum `dL/dy'` (or list of momenta) for Lagrangian `L` and coordinate(s) `y` with respect to `x`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("canonical_momentum", (a0, a1, a2), session)
+    return _apply("canonical_momentum", (L, y, x), session)
 
 
-def care(a0, a1, a2, a3, *, session=None):
+def care(a, b, q, r, *, session=None):
     """
     `care(a, b, q, r)`: the stabilising solution `P` of the continuous algebraic Riccati equation `A'P + PA - PBR^-1B'P + Q = 0`. Solves the continuous algebraic Riccati equation `A^T P + P A - P B R^{-1} B^T P + Q = 0`. The solution is the stabilizing one, obtained from the stable invariant subspace of the Hamiltonian matrix. A Kleinman iteration refines it when the eigenvector solution leaves a residual above `1e-6` relative. # Errors Returns an error for inconsistent dimensions, a singular `R`, or when the Hamiltonian eigensystem cannot be formed.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("care", (a0, a1, a2, a3), session)
+    return _apply("care", (a, b, q, r), session)
 
 
-def carmichael(a0, *, session=None):
+def carmichael(n, *, session=None):
     """
     `carmichael(n)`: Carmichael's lambda function `lambda(n)`, the exponent of `(Z/nZ)^*`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("carmichael", (a0,), session)
+    return _apply("carmichael", (n,), session)
 
 
-def carnot_efficiency(a0, a1, *, session=None):
+def carnot_efficiency(Tc, Th, *, session=None):
     """
     `carnot_efficiency(Tc, Th)`: Carnot thermal efficiency `1 - T_c / T_h`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("carnot_efficiency", (a0, a1), session)
+    return _apply("carnot_efficiency", (Tc, Th), session)
 
 
-def casimir_eigenvalue(a0, a1, *, session=None):
+def casimir_eigenvalue(T, hw, *, session=None):
     """
     `casimir_eigenvalue(T, hw)`: quadratic Casimir eigenvalue `(hw, hw + 2*rho)` for irrep `V(hw)` of type `T`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("casimir_eigenvalue", (a0, a1), session)
+    return _apply("casimir_eigenvalue", (T, hw), session)
 
 
-def catalan(a0, *, session=None):
+def catalan(n, *, session=None):
     """
     `catalan(n)`: `n`-th Catalan number `C(2n, n) / (n + 1)`. Computes the nth Catalan number `C_n`. `C_n` = (1 / (n + 1)) * C(2n, n)
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("catalan", (a0,), session)
+    return _apply("catalan", (n,), session)
 
 
 def catmull_rom(a0, a1, a2, a3, a4, *, session=None):
@@ -12050,116 +12050,116 @@ def catmull_rom(a0, a1, a2, a3, a4, *, session=None):
     return _apply("catmull_rom", (a0, a1, a2, a3, a4), session)
 
 
-def cauchy(a0, a1, *, session=None):
+def cauchy(x0, gamma, *, session=None):
     """
     `cauchy(x0, gamma)`: Cauchy-Lorentz distribution with location `x0` and scale `gamma`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cauchy", (a0, a1), session)
+    return _apply("cauchy", (x0, gamma), session)
 
 
-def cauchy_derivative(a0, a1, a2, a3, *, session=None):
+def cauchy_derivative(f, z, a, n, *, session=None):
     """
     `cauchy_derivative(f, z, a, n)` returns the Cauchy integral `∮ f(z) / (z - a)^(n + 1) dz` around `a`. The order `n` is a nonnegative integer. The result is `2*pi*I * f^(n)(a) / n!`. The local Taylor coefficient of order `n` determines the integral. When that coefficient cannot be determined, the request remains unevaluated.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cauchy_derivative", (a0, a1, a2, a3), session)
+    return _apply("cauchy_derivative", (f, z, a, n), session)
 
 
-def cauchy_integral(a0, a1, a2, *, session=None):
+def cauchy_integral(f, z, a, *, session=None):
     """
     `cauchy_integral(f, z, a)`: Cauchy integral `∮ f(z) / (z - a) dz` around `a`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cauchy_integral", (a0, a1, a2), session)
+    return _apply("cauchy_integral", (f, z, a), session)
 
 
-def cayley_hamilton(a0, *, session=None):
+def cayley_hamilton(A, *, session=None):
     """
     `cayley_hamilton(A)`: evaluate the characteristic polynomial of `A` at `A` (verifies `p(A) = 0`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cayley_hamilton", (a0,), session)
+    return _apply("cayley_hamilton", (A,), session)
 
 
-def cdf(a0, a1, *, session=None):
+def cdf(d, x, *, session=None):
     """
     `cdf(d, x)`: cumulative distribution function `P(X <= x)` of distribution `d` at point `x`. The point shares the distribution's dimension and the probability is dimensionless. Floating normal, lognormal, exponential, Weibull, and Cauchy calls use tail-stable evaluation.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cdf", (a0, a1), session)
+    return _apply("cdf", (d, x), session)
 
 
-def cdt_2d(a0, a1, *, session=None):
+def cdt_2d(points, segments, *, session=None):
     """
     `cdt_2d(points, segments)`: the constrained Delaunay triangulation of `points` that keeps every `list(i, j)` segment as an edge.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cdt_2d", (a0, a1), session)
+    return _apply("cdt_2d", (points, segments), session)
 
 
-def ceil(a0, *, session=None):
+def ceil(x, *, session=None):
     """
     `ceil(x)`: smallest integer greater than or equal to `x`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ceil", (a0,), session)
+    return _apply("ceil", (x,), session)
 
 
-def cell(a0, a1, a2, *, session=None):
+def cell(phi, params, bounds, *, session=None):
     """
     `cell(phi, params, bounds)`: oriented `k`-cell parametrized by `phi(params)` over parameter box `bounds`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cell", (a0, a1, a2), session)
+    return _apply("cell", (phi, params, bounds), session)
 
 
-def central_binomial(a0, *, session=None):
+def central_binomial(n, *, session=None):
     """
     `central_binomial(n)`: central binomial coefficient `C(2n, n)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("central_binomial", (a0,), session)
+    return _apply("central_binomial", (n,), session)
 
 
-def central_moment_of(a0, a1, *, session=None):
+def central_moment_of(d, k, *, session=None):
     """
     `central_moment_of(d, k)`: `k`-th central moment `E[(X - E[X])^k]` of distribution `d`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("central_moment_of", (a0, a1), session)
+    return _apply("central_moment_of", (d, k), session)
 
 
-def centripetal_acceleration(a0, a1, *, session=None):
+def centripetal_acceleration(v, r, *, session=None):
     """
     `centripetal_acceleration(v, r)`: centripetal acceleration magnitude `v^2 / r` for speed `v` and radius `r`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("centripetal_acceleration", (a0, a1), session)
+    return _apply("centripetal_acceleration", (v, r), session)
 
 
-def cfrac(a0, *, session=None):
+def cfrac(x, *, session=None):
     """
     `cfrac(x)`: continued fraction expansion `[a0, a1, ...]` of rational or quadratic-irrational `x`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cfrac", (a0,), session)
+    return _apply("cfrac", (x,), session)
 
 
-def chain(a0, *, session=None):
+def chain(terms, *, session=None):
     """
     `chain(terms)`: formal linear combination `list(list(mult, cell), ...)` of oriented cells.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("chain", (a0,), session)
+    return _apply("chain", (terms,), session)
 
 
-def chain_autocorrelation(a0, a1, *, session=None):
+def chain_autocorrelation(chain, max_lag, *, session=None):
     """
     `chain_autocorrelation(chain, max_lag)`: the sample autocorrelation of `chain` for lags `0..=max_lag`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("chain_autocorrelation", (a0, a1), session)
+    return _apply("chain_autocorrelation", (chain, max_lag), session)
 
 
 def character_adams(a0, a1, a2, *, session=None):
@@ -12258,12 +12258,12 @@ def character_tensor(a0, a1, a2, *, session=None):
     return _apply("character_tensor", (a0, a1, a2), session)
 
 
-def charfn(a0, a1, *, session=None):
+def charfn(d, t, *, session=None):
     """
     `charfn(d, t)`: characteristic function `E[exp(i t X)]` of distribution `d` at argument `t`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("charfn", (a0, a1), session)
+    return _apply("charfn", (d, t), session)
 
 
 def charpoly(a0, a1, *, session=None):
@@ -12274,20 +12274,20 @@ def charpoly(a0, a1, *, session=None):
     return _apply("charpoly", (a0, a1), session)
 
 
-def chebyshev_approx(a0, a1, a2, a3, *, session=None):
+def chebyshev_approx(f, x, a, b, *, session=None):
     """
     `chebyshev_approx(f, x, a, b)`: adaptive Chebyshev polynomial interpolant of `f(x)` on `[a, b]` returned as `chebyshev_series(...)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("chebyshev_approx", (a0, a1, a2, a3), session)
+    return _apply("chebyshev_approx", (f, x, a, b), session)
 
 
-def chebyshev_differential_equation(a0, a1, a2, *, session=None):
+def chebyshev_differential_equation(y, x, n, *, session=None):
     """
     `chebyshev_differential_equation(y, x, n)`: Chebyshev differential equation `(1 - x^2) y'' - x y' + n^2 y = 0`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("chebyshev_differential_equation", (a0, a1, a2), session)
+    return _apply("chebyshev_differential_equation", (y, x, n), session)
 
 
 def chebyshev_series(*args, session=None):
@@ -12298,28 +12298,28 @@ def chebyshev_series(*args, session=None):
     return _apply("chebyshev_series", args, session)
 
 
-def chebyshevt(a0, a1, *, session=None):
+def chebyshevt(n, x, *, session=None):
     """
     `chebyshevt(n, x)`: Chebyshev polynomial of the first kind `T_n(x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("chebyshevt", (a0, a1), session)
+    return _apply("chebyshevt", (n, x), session)
 
 
-def chebyshevu(a0, a1, *, session=None):
+def chebyshevu(n, x, *, session=None):
     """
     `chebyshevu(n, x)`: Chebyshev polynomial of the second kind `U_n(x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("chebyshevu", (a0, a1), session)
+    return _apply("chebyshevu", (n, x), session)
 
 
-def check_analytic(a0, a1, *, session=None):
+def check_analytic(f, z, *, session=None):
     """
     `check_analytic(f, z)`: `true` if `f(z)` satisfies the Cauchy-Riemann equations, `false` otherwise.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("check_analytic", (a0, a1), session)
+    return _apply("check_analytic", (f, z), session)
 
 
 def check_jacobi(*args, session=None):
@@ -12330,84 +12330,84 @@ def check_jacobi(*args, session=None):
     return _apply("check_jacobi", args, session)
 
 
-def chi(a0, *, session=None):
+def chi(x, *, session=None):
     """
     `chi(x)`: hyperbolic cosine integral `Chi(x) = gamma + ln|x| + int_0^x (cosh(t) - 1)/t dt`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("chi", (a0,), session)
+    return _apply("chi", (x,), session)
 
 
-def chi_squared(a0, *, session=None):
+def chi_squared(k, *, session=None):
     """
     `chi_squared(k)`: chi-squared distribution with `k` degrees of freedom.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("chi_squared", (a0,), session)
+    return _apply("chi_squared", (k,), session)
 
 
-def chi_squared_test(a0, a1, *, session=None):
+def chi_squared_test(observed, expected, *, session=None):
     """
     `chi_squared_test(observed, expected)`: Pearson's chi-squared goodness-of-fit test returning `list(statistic, p_value)`. Performs a chi-squared goodness-of-fit test. Tests if observed frequencies match expected frequencies. Returns (chi-squared statistic, p-value).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("chi_squared_test", (a0, a1), session)
+    return _apply("chi_squared_test", (observed, expected), session)
 
 
-def cholesky(a0, *, session=None):
+def cholesky(A, *, session=None):
     """
     `cholesky(A)`: lower-triangular Cholesky factor `L` with `A = L L^T` for positive-definite `A`. Cholesky factor `L` (lower triangular) with `A = L L^T`. # Errors [`DenseError::Singular`] if `A` is not symmetric positive definite.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cholesky", (a0,), session)
+    return _apply("cholesky", (A,), session)
 
 
-def christoffel(a0, a1, *, session=None):
+def christoffel(g, vars, *, session=None):
     """
     `christoffel(g, vars)`: Christoffel symbols of the second kind `Gamma^k_ij` for metric `g` in `vars`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("christoffel", (a0, a1), session)
+    return _apply("christoffel", (g, vars), session)
 
 
-def christoffel1(a0, a1, *, session=None):
+def christoffel1(g, vars, *, session=None):
     """
     `christoffel1(g, vars)`: Christoffel symbols of the first kind `Gamma_kij` for metric `g` in `vars`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("christoffel1", (a0, a1), session)
+    return _apply("christoffel1", (g, vars), session)
 
 
-def ci(a0, *, session=None):
+def ci(x, *, session=None):
     """
     `ci(x)`: cosine integral `Ci(x) = -int_x^infty cos(t)/t dt`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ci", (a0,), session)
+    return _apply("ci", (x,), session)
 
 
-def circle(a0, a1, *, session=None):
+def circle(c, r, *, session=None):
     """
     `circle(c, r)`: counter-clockwise circular contour with center `c` and radius `r`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("circle", (a0, a1), session)
+    return _apply("circle", (c, r), session)
 
 
-def clebsch_gordan(a0, a1, a2, a3, a4, a5, *, session=None):
+def clebsch_gordan(j1, m1, j2, m2, J, M, *, session=None):
     """
     `clebsch_gordan(j1, m1, j2, m2, J, M)`: exact Clebsch-Gordan coefficient `<j1 m1; j2 m2 | J M>` via Racah's formula (half-integers allowed), returned as `+-sqrt(q)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("clebsch_gordan", (a0, a1, a2, a3, a4, a5), session)
+    return _apply("clebsch_gordan", (j1, m1, j2, m2, J, M), session)
 
 
-def cnf(a0, *, session=None):
+def cnf(formula, *, session=None):
     """
     `cnf(formula)`: converts propositional `formula` to conjunctive normal form.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cnf", (a0,), session)
+    return _apply("cnf", (formula,), session)
 
 
 def code_min_distance(a0, *, session=None):
@@ -12426,60 +12426,60 @@ def code_rate(a0, a1, *, session=None):
     return _apply("code_rate", (a0, a1), session)
 
 
-def coeff(a0, a1, a2, *, session=None):
+def coeff(poly, var, n, *, session=None):
     """
     `coeff(poly, var, n)`: returns the coefficient of `var^n` in polynomial `poly`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("coeff", (a0, a1, a2), session)
+    return _apply("coeff", (poly, var, n), session)
 
 
-def coefficient_of_variation(a0, *, session=None):
+def coefficient_of_variation(xs, *, session=None):
     """
     `coefficient_of_variation(xs)`: coefficient of variation `std / mean` of list `xs`. Computes the coefficient of variation (CV = `std_dev` / mean). Useful for comparing variability across datasets with different means.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("coefficient_of_variation", (a0,), session)
+    return _apply("coefficient_of_variation", (xs,), session)
 
 
-def cofactors(a0, *, session=None):
+def cofactors(A, *, session=None):
     """
     `cofactors(A)`: cofactor matrix of square matrix `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cofactors", (a0,), session)
+    return _apply("cofactors", (A,), session)
 
 
-def coherence(a0, a1, a2, a3, a4, *, session=None):
+def coherence(x, y, window, hop, sample_rate, *, session=None):
     """
     `coherence(x, y, window, hop, sample_rate)`: one-sided magnitude-squared Welch coherence. Bins with zero power have zero coherence.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("coherence", (a0, a1, a2, a3, a4), session)
+    return _apply("coherence", (x, y, window, hop, sample_rate), session)
 
 
-def collect(a0, a1, *, session=None):
+def collect(expr, var, *, session=None):
     """
     `collect(expr, var)`: groups terms of `expr` by powers of `var`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("collect", (a0, a1), session)
+    return _apply("collect", (expr, var), session)
 
 
-def colspace(a0, *, session=None):
+def colspace(A, *, session=None):
     """
     `colspace(A)`: basis of the column space of matrix `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("colspace", (a0,), session)
+    return _apply("colspace", (A,), session)
 
 
-def commutator(a0, a1, a2, *, session=None):
+def commutator(A, B, psi, *, session=None):
     """
     `commutator(A, B, psi)`: action `[A, B] psi = A(B(psi)) - B(A(psi))` of the operator commutator.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("commutator", (a0, a1, a2), session)
+    return _apply("commutator", (A, B, psi), session)
 
 
 def commutator_table(*args, session=None):
@@ -12490,12 +12490,12 @@ def commutator_table(*args, session=None):
     return _apply("commutator_table", args, session)
 
 
-def companion(a0, a1, *, session=None):
+def companion(p, x, *, session=None):
     """
     `companion(p, x)`: Frobenius companion matrix of polynomial `p` in variable `x`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("companion", (a0, a1), session)
+    return _apply("companion", (p, x), session)
 
 
 def complex_map_fixed_points(a0, a1, *, session=None):
@@ -12514,84 +12514,84 @@ def complex_map_stability(a0, a1, a2, *, session=None):
     return _apply("complex_map_stability", (a0, a1, a2), session)
 
 
-def component(a0, a1, *, session=None):
+def component(T, indices, *, session=None):
     """
     `component(T, indices)`: entry of tensor `T` at 1-based index list `indices`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("component", (a0, a1), session)
+    return _apply("component", (T, indices), session)
 
 
-def compositions(a0, a1, *, session=None):
+def compositions(n, k, *, session=None):
     """
     `compositions(n, k)`: number of compositions of `n` into `k` positive integer parts, `C(n - 1, k - 1)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("compositions", (a0, a1), session)
+    return _apply("compositions", (n, k), session)
 
 
-def conditional_entropy(a0, *, session=None):
+def conditional_entropy(mat, *, session=None):
     """
     `conditional_entropy(mat)`: conditional entropy `H(Y | X) = H(X, Y) - H(X)` for joint probability matrix `mat`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("conditional_entropy", (a0,), session)
+    return _apply("conditional_entropy", (mat,), session)
 
 
-def confidence_interval(a0, a1, *, session=None):
+def confidence_interval(sample, level, *, session=None):
     """
     `confidence_interval(sample, level)`: confidence interval `list(lo, hi)` for the population mean at confidence level `level` via Student's t-distribution.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("confidence_interval", (a0, a1), session)
+    return _apply("confidence_interval", (sample, level), session)
 
 
-def conj(a0, *, session=None):
+def conj(z, *, session=None):
     """
     `conj(z)`: complex conjugate `re(z) - I * im(z)` of `z`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("conj", (a0,), session)
+    return _apply("conj", (z,), session)
 
 
-def conservation_laws(a0, a1, *, session=None):
+def conservation_laws(pde, u, *, session=None):
     """
     `conservation_laws(pde, u)`: conserved densities and fluxes of `pde` for unknown `u`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("conservation_laws", (a0, a1), session)
+    return _apply("conservation_laws", (pde, u), session)
 
 
-def continue_along(a0, a1, a2, a3, *, session=None):
+def continue_along(f, z, points, order, *, session=None):
     """
     `continue_along(f, z, points, order)`: Taylor expansion of `f(z)` at the last point, analytically continued along `points`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("continue_along", (a0, a1, a2, a3), session)
+    return _apply("continue_along", (f, z, points, order), session)
 
 
-def contour_integral(a0, a1, a2, *, session=None):
+def contour_integral(f, z, C, *, session=None):
     """
     `contour_integral(f, z, C)` integrates `f(z)` along a `circle`, `polygon`, or parametrized `path`. The circle and polygon forms sum residues weighted by the winding number. A pole on the contour leaves the request unevaluated. The path form substitutes the real parameter, multiplies by the path derivative, and integrates the real and imaginary parts.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("contour_integral", (a0, a1, a2), session)
+    return _apply("contour_integral", (f, z, C), session)
 
 
-def contour_integral_residue_theorem(a0, a1, a2, *, session=None):
+def contour_integral_residue_theorem(f, z, poles, *, session=None):
     """
     `contour_integral_residue_theorem(f, z, poles)`: `2*pi*I` times the sum of residues of `f(z)` at the listed poles.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("contour_integral_residue_theorem", (a0, a1, a2), session)
+    return _apply("contour_integral_residue_theorem", (f, z, poles), session)
 
 
-def contract(a0, a1, a2, *, session=None):
+def contract(T, i, j, *, session=None):
     """
     `contract(T, i, j)`: trace of tensor `T` over 1-based index slots `i` and `j`. Contracts a single tensor along two specified axes (a generalised trace): the result has rank `ndim - 2` and entries `sum_t a[..., t, ..., t, ...]`, the remaining axes in their original order. # Errors Returns an error if the axes are equal, out of range, or of different lengths.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("contract", (a0, a1, a2), session)
+    return _apply("contract", (T, i, j), session)
 
 
 def conv_encode(a0, *, session=None):
@@ -12602,60 +12602,60 @@ def conv_encode(a0, *, session=None):
     return _apply("conv_encode", (a0,), session)
 
 
-def convergents(a0, a1, *, session=None):
+def convergents(x, n, *, session=None):
     """
     `convergents(x, n)`: first `n` continued-fraction convergents `p_k / q_k` of `x`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("convergents", (a0, a1), session)
+    return _apply("convergents", (x, n), session)
 
 
-def converges(a0, a1, *, session=None):
+def converges(term, k, *, session=None):
     """
     `converges(term, k)`: tests convergence of infinite series `sum_{k} term(k)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("converges", (a0, a1), session)
+    return _apply("converges", (term, k), session)
 
 
-def convert(a0, a1, *, session=None):
+def convert(qty, target_unit, *, session=None):
     """
     `convert(qty, target_unit)`: converts quantity `qty` to compatible `target_unit`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("convert", (a0, a1), session)
+    return _apply("convert", (qty, target_unit), session)
 
 
-def convolution(a0, a1, a2, *, session=None):
+def convolution(f, g, t, *, session=None):
     """
     `convolution(f, g, t)`: continuous convolution `(f * g)(t)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("convolution", (a0, a1, a2), session)
+    return _apply("convolution", (f, g, t), session)
 
 
-def convolve(a0, a1, a2, *, session=None):
+def convolve(f, g, t, *, session=None):
     """
     `convolve(f, g, t)`: continuous convolution `(f * g)(t)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("convolve", (a0, a1, a2), session)
+    return _apply("convolve", (f, g, t), session)
 
 
-def coordinate_metric(a0, a1, *, session=None):
+def coordinate_metric(sys, vars, *, session=None):
     """
     `coordinate_metric(sys, vars)`: metric tensor `g = J^T J` of coordinate system `sys` in `vars`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("coordinate_metric", (a0, a1), session)
+    return _apply("coordinate_metric", (sys, vars), session)
 
 
-def correlation(a0, a1, *, session=None):
+def correlation(xs, ys, *, session=None):
     """
     `correlation(xs, ys)`: Pearson correlation coefficient `cov(xs, ys) / (std(xs) * std(ys))` of lists `xs` and `ys`. Computes the Pearson correlation coefficient of two slices of data. # Arguments * `data1` - The first slice of `f64` data points. * `data2` - The second slice of `f64` data points. # Returns The Pearson correlation coefficient as an `f64`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("correlation", (a0, a1), session)
+    return _apply("correlation", (xs, ys), session)
 
 
 def correlation_dimension(a0, a1, *, session=None):
@@ -12666,132 +12666,132 @@ def correlation_dimension(a0, a1, *, session=None):
     return _apply("correlation_dimension", (a0, a1), session)
 
 
-def cos(a0, *, session=None):
+def cos(x, *, session=None):
     """
     `cos(x)`: cosine of angle `x` in radians.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cos", (a0,), session)
+    return _apply("cos", (x,), session)
 
 
-def cosh(a0, *, session=None):
+def cosh(x, *, session=None):
     """
     `cosh(x)`: hyperbolic cosine `(e^x + e^-x) / 2`. `cosh(x)` as a ball. # Errors Fails when an exponent leaves the representable range.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cosh", (a0,), session)
+    return _apply("cosh", (x,), session)
 
 
-def cot(a0, *, session=None):
+def cot(x, *, session=None):
     """
     `cot(x)`: cotangent `cos(x) / sin(x)` of angle `x` in radians.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cot", (a0,), session)
+    return _apply("cot", (x,), session)
 
 
-def coth(a0, *, session=None):
+def coth(x, *, session=None):
     """
     `coth(x)`: hyperbolic cotangent `cosh(x) / sinh(x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("coth", (a0,), session)
+    return _apply("coth", (x,), session)
 
 
-def coulomb_c(a0, a1, *, session=None):
+def coulomb_c(l, eta, *, session=None):
     """
     `coulomb_c(l, eta)`: Coulomb Gamow normalization factor `C_l(eta)`. The Coulomb normalising constant `C_l(η)` (DLMF 33.2.5), `C_l(η) = 2^l e^{-πη/2} |Γ(l + 1 + iη)| / Γ(2l + 2)`, evaluated in logarithmic form so that large `|η|` neither overflows nor underflows prematurely.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("coulomb_c", (a0, a1), session)
+    return _apply("coulomb_c", (l, eta), session)
 
 
-def coulomb_eigen(a0, a1, a2, *, session=None):
+def coulomb_eigen(l, Z, n, *, session=None):
     """
     `coulomb_eigen(l, Z, n)`: numeric bound-state energy eigenvalue `E_n` of the radial Coulomb operator with angular momentum `l` and charge `Z`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("coulomb_eigen", (a0, a1, a2), session)
+    return _apply("coulomb_eigen", (l, Z, n), session)
 
 
-def coulomb_f(a0, a1, a2, *, session=None):
+def coulomb_f(l, eta, rho, *, session=None):
     """
     `coulomb_f(l, eta, rho)`: regular Coulomb wave function `F_l(eta, rho)`. The regular Coulomb function `F_l(η, ρ)` (DLMF 33.2.4). Domain and accuracy: see [`coulomb_fg`]; `None` where no representation is available.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("coulomb_f", (a0, a1, a2), session)
+    return _apply("coulomb_f", (l, eta, rho), session)
 
 
-def coulomb_force(a0, a1, a2, *, session=None):
+def coulomb_force(q1, q2, r, *, session=None):
     """
     `coulomb_force(q1, q2, r)`: electrostatic force magnitude `q1 q2 / (4 pi epsilon_0 r^2)`. Calculates the electric force between two point charges using Coulomb's law. F = k * q1 * q2 / r² # Arguments * `q1`, `q2` - Charges (C) * `r` - Distance between charges (m) # Returns force magnitude (N), positive for repulsion
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("coulomb_force", (a0, a1, a2), session)
+    return _apply("coulomb_force", (q1, q2, r), session)
 
 
-def coulomb_fp(a0, a1, a2, *, session=None):
+def coulomb_fp(l, eta, rho, *, session=None):
     """
     `coulomb_fp(l, eta, rho)`: derivative `F_l'(eta, rho)` with respect to `rho`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("coulomb_fp", (a0, a1, a2), session)
+    return _apply("coulomb_fp", (l, eta, rho), session)
 
 
-def coulomb_g(a0, a1, a2, *, session=None):
+def coulomb_g(l, eta, rho, *, session=None):
     """
     `coulomb_g(l, eta, rho)`: irregular Coulomb wave function `G_l(eta, rho)`. The irregular Coulomb function `G_l(η, ρ)`, normalised by `F' G - F G' = 1` (DLMF 33.2.6). Domain and accuracy: see [`coulomb_fg`].
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("coulomb_g", (a0, a1, a2), session)
+    return _apply("coulomb_g", (l, eta, rho), session)
 
 
-def coulomb_gp(a0, a1, a2, *, session=None):
+def coulomb_gp(l, eta, rho, *, session=None):
     """
     `coulomb_gp(l, eta, rho)`: derivative `G_l'(eta, rho)` with respect to `rho`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("coulomb_gp", (a0, a1, a2), session)
+    return _apply("coulomb_gp", (l, eta, rho), session)
 
 
-def coulomb_mode(a0, a1, a2, a3, *, session=None):
+def coulomb_mode(l, Z, n, r, *, session=None):
     """
     `coulomb_mode(l, Z, n, r)`: normalized numeric bound-state radial Coulomb eigenfunction evaluated at radius `r`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("coulomb_mode", (a0, a1, a2, a3), session)
+    return _apply("coulomb_mode", (l, Z, n, r), session)
 
 
-def coulomb_sigma(a0, a1, *, session=None):
+def coulomb_sigma(l, eta, *, session=None):
     """
     `coulomb_sigma(l, eta)`: Coulomb phase shift `sigma_l(eta) = arg Gamma(l + 1 + i*eta)`. The Coulomb phase shift `σ_l(η) = arg Γ(l + 1 + iη)` (DLMF 33.2.10).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("coulomb_sigma", (a0, a1), session)
+    return _apply("coulomb_sigma", (l, eta), session)
 
 
-def coulomb_wave(a0, a1, a2, a3, *, session=None):
+def coulomb_wave(l, eta, k, r, *, session=None):
     """
     `coulomb_wave(l, eta, k, r)`: regular Coulomb continuum wavefunction `F_l(eta, k * r)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("coulomb_wave", (a0, a1, a2, a3), session)
+    return _apply("coulomb_wave", (l, eta, k, r), session)
 
 
-def coulombs_law(a0, a1, *, session=None):
+def coulombs_law(q, r, *, session=None):
     """
     `coulombs_law(q, r)`: electric field vector `q r / (4 pi epsilon_0 |r|^3)` of a point charge `q`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("coulombs_law", (a0, a1), session)
+    return _apply("coulombs_law", (q, r), session)
 
 
-def count_models(a0, *, session=None):
+def count_models(formula, *, session=None):
     """
     `count_models(formula)`: counts the exact number of satisfying Boolean assignments of `formula` via ROBDD.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("count_models", (a0,), session)
+    return _apply("count_models", (formula,), session)
 
 
 def count_real_roots(*args, session=None):
@@ -12802,68 +12802,68 @@ def count_real_roots(*args, session=None):
     return _apply("count_real_roots", args, session)
 
 
-def count_zeros_poles(a0, a1, a2, *, session=None):
+def count_zeros_poles(f, z, C, *, session=None):
     """
     `count_zeros_poles(f, z, C)` returns the number of zeros minus poles of `f(z)`, with multiplicity, inside the oriented contour `C`. The contour may be a circle or a closed polygon. Reversing the polygon orientation reverses the sign. The operator checks the exact count and the sampled argument principle where available. Disagreement leaves the request unevaluated.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("count_zeros_poles", (a0, a1, a2), session)
+    return _apply("count_zeros_poles", (f, z, C), session)
 
 
-def covariance(a0, a1, *, session=None):
+def covariance(xs, ys, *, session=None):
     """
     `covariance(xs, ys)`: population covariance `(1/n) sum (x_i - mean_x)(y_i - mean_y)` of lists `xs` and `ys`. Computes the sample covariance of two slices of data. # Arguments * `data1` - The first slice of `f64` data points. * `data2` - The second slice of `f64` data points. # Returns The covariance of the two data sets, or NaN when the slices differ in length or hold fewer than two points.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("covariance", (a0, a1), session)
+    return _apply("covariance", (xs, ys), session)
 
 
-def covariant_derivative(a0, a1, a2, *, session=None):
+def covariant_derivative(V, g, vars, *, session=None):
     """
     `covariant_derivative(V, g, vars)`: covariant derivative `nabla_k V^i` of vector `V` with respect to metric `g` in `vars`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("covariant_derivative", (a0, a1, a2), session)
+    return _apply("covariant_derivative", (V, g, vars), session)
 
 
-def covariant_divergence(a0, a1, a2, *, session=None):
+def covariant_divergence(V, g, vars, *, session=None):
     """
     `covariant_divergence(V, g, vars)`: covariant divergence `nabla_i V^i` of vector `V` for metric `g(vars)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("covariant_divergence", (a0, a1, a2), session)
+    return _apply("covariant_divergence", (V, g, vars), session)
 
 
-def cox_fit(a0, a1, a2, a3, a4, *, session=None):
+def cox_fit(x, time, event, ties, tol, *, session=None):
     """
     `cox_fit(x, time, event, ties, tol)`: `list(beta, se, z, p, loglik, concordance)` of the Cox proportional-hazards model; `x` is a list of covariate rows without an intercept and `ties` is `breslow` or `efron`. Fits a Cox proportional-hazards model by Newton-Raphson on the partial likelihood, with step halving when a full step lowers the likelihood. `x` holds one row of covariates per observation, `time` the observed times and `event` whether the observation ended in the event. The iteration stops when the largest absolute change of a coefficient falls below `tol` or after `max_iter` iterations; the fit reports which happened through [`CoxFit::converged`]. # Errors Returns an error for empty or mismatched inputs, non-finite values, an empty design matrix, a covariate column with zero variance, a sample in which every observation is censored, a singular observed information matrix, or a non-positive `max_iter` or `tol`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cox_fit", (a0, a1, a2, a3, a4), session)
+    return _apply("cox_fit", (x, time, event, ties, tol), session)
 
 
-def cox_predict(a0, a1, *, session=None):
+def cox_predict(x, beta, *, session=None):
     """
     `cox_predict(x, beta)`: the relative hazard `exp(x . beta)` of each covariate row. Relative hazards `exp(x . beta)` for new covariate rows. # Errors Returns an error when a row does not have one entry per fitted coefficient.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cox_predict", (a0, a1), session)
+    return _apply("cox_predict", (x, beta), session)
 
 
-def cp_als(a0, a1, a2, a3, *, session=None):
+def cp_als(t, rank, sweeps, seed, *, session=None):
     """
     `cp_als(t, rank, sweeps, seed)`: CP decomposition of tensor `t` by alternating least squares returning `list(weights, factors, residual)`. CP (CANDECOMP/PARAFAC) decomposition by alternating least squares. Factorises a dense tensor as `T ~= sum_r lambda_r a_r o b_r o c_r` for `options.rank` components, by solving one matricised least-squares problem per mode per sweep (the standard ALS update on the mode-`k` unfolding against the Khatri-Rao product of the other factors). Factors are initialised uniformly at random from `options.seed` and normalised after every update, with the removed norms kept in [`CpDecomposition::weights`]. A rank-`R` tensor whose factors span a full-rank problem is recovered to rounding error, but the factors themselves are only determined up to permutation and scaling: compare reconstructions, not factors. CP is ill-posed, so the result says what happened rather than assuming success. `converged` means the residual reached `tol`; `stagnated` means sweeps stopped improving while the residual stayed above `tol`; `diverged` means a weight blew up, which is how a degenerate problem (border rank below rank) shows itself; `rank_deficient` means the least-squares system was numerically rank deficient in its direct SVD solve. # Errors Returns an error for a tensor of rank below 2, an empty dimension, non-finite entries/options, a zero rank, zero sweeps, or rescaling overflow. Updates solve the Khatri-Rao least-squares system directly by SVD, once per mode, avoiding normal equations and squared condition numbers. Input normalization protects uniformly very small or very large tensors.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cp_als", (a0, a1, a2, a3), session)
+    return _apply("cp_als", (t, rank, sweeps, seed), session)
 
 
-def cp_dense(a0, a1, *, session=None):
+def cp_dense(weights, factors, *, session=None):
     """
     `cp_dense(weights, factors)`: reconstruct dense tensor from CP `weights` and factor matrices.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cp_dense", (a0, a1), session)
+    return _apply("cp_dense", (weights, factors), session)
 
 
 def crc16(a0, *, session=None):
@@ -12914,52 +12914,52 @@ def crc8(a0, *, session=None):
     return _apply("crc8", (a0,), session)
 
 
-def critical_pairs(a0, a1, *, session=None):
+def critical_pairs(rules, vars, *, session=None):
     """
     `critical_pairs(rules, vars)`: computes the list of critical pairs induced by overlaps among the rewrite `rules` over `vars`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("critical_pairs", (a0, a1), session)
+    return _apply("critical_pairs", (rules, vars), session)
 
 
-def cross(a0, a1, *, session=None):
+def cross(u, v, *, session=None):
     """
     `cross(u, v)`: 3D vector cross product `u x v`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cross", (a0, a1), session)
+    return _apply("cross", (u, v), session)
 
 
-def cross_correlation(a0, a1, *, session=None):
+def cross_correlation(x, y, *, session=None):
     """
     `cross_correlation(x, y)`: full linear cross-correlation of real sequences `x` and `y`. Computes the discrete cross-correlation of two sequences. Cross-correlation is a measure of similarity of two series as a function of the displacement of one relative to the other. # Arguments * `a` - The first input sequence. * `v` - The second input sequence. # Returns The discrete cross-correlation of `a` and `v`. # Example ```rust use rssn::kernels::signal::cross_correlation; let a = vec![1.0, 2.0, 3.0]; let v = vec![0.0, 1.0, 0.5]; let res = cross_correlation(&a, &v); // correlation(a, v)[k] = sum_i a[i] * v[i-k] ```
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cross_correlation", (a0, a1), session)
+    return _apply("cross_correlation", (x, y), session)
 
 
-def cross_entropy(a0, a1, *, session=None):
+def cross_entropy(p, q, *, session=None):
     """
     `cross_entropy(p, q)`: cross-entropy `H(P, Q) = -sum p_i ln(q_i)` between probability distributions `p` and `q`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cross_entropy", (a0, a1), session)
+    return _apply("cross_entropy", (p, q), session)
 
 
-def crt(a0, a1, *, session=None):
+def crt(remainders, moduli, *, session=None):
     """
     `crt(remainders, moduli)` returns the least nonnegative solution for nonempty equal-length lists and positive pairwise coprime moduli. Large systems can use a product and remainder tree on the active CPU pool. Chinese Remainder Theorem: solves `x ≡ remainders[i] (mod moduli[i])`. Returns `(first, period)` with `0 <= first < period`. The period is the least common multiple of the moduli. Non-coprime moduli are supported. # Errors The inputs must be nonempty, of the same length, and have positive moduli and consistent congruences. The period must fit in `i64`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("crt", (a0, a1), session)
+    return _apply("crt", (remainders, moduli), session)
 
 
-def crt_general(a0, a1, *, session=None):
+def crt_general(remainders, moduli, *, session=None):
     """
     `crt_general(remainders, moduli)` returns `list(first, period)`, with `0 <= first < period` and `period` the least common multiple. Lists must be nonempty and equal in length, with compatible congruences and positive moduli. Remainders may be signed and moduli may share factors.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("crt_general", (a0, a1), session)
+    return _apply("crt_general", (remainders, moduli), session)
 
 
 def crystal_systems(*, session=None):
@@ -12994,36 +12994,36 @@ def crystallographic_restriction(*args, session=None):
     return _apply("crystallographic_restriction", args, session)
 
 
-def csc(a0, *, session=None):
+def csc(x, *, session=None):
     """
     `csc(x)`: cosecant `1 / sin(x)` of angle `x` in radians.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("csc", (a0,), session)
+    return _apply("csc", (x,), session)
 
 
-def csch(a0, *, session=None):
+def csch(x, *, session=None):
     """
     `csch(x)`: hyperbolic cosecant `1 / sinh(x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("csch", (a0,), session)
+    return _apply("csch", (x,), session)
 
 
-def cse(a0, *, session=None):
+def cse(expr_or_list, *, session=None):
     """
     `cse(expr_or_list)`: common subexpression elimination returning a pair `(temporaries, rewritten)` of shared bindings and rewritten expressions. The CSE rule set.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cse", (a0,), session)
+    return _apply("cse", (expr_or_list,), session)
 
 
-def cse_cost(a0, *, session=None):
+def cse_cost(expr_or_list, *, session=None):
     """
     `cse_cost(expr_or_list)`: returns exact integer operation counts `(before, after)`. The first count expands each input as a tree. The second counts each temporary definition once and each rewritten output, treating temporary references as leaves.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cse_cost", (a0,), session)
+    return _apply("cse_cost", (expr_or_list,), session)
 
 
 def cubical_betti(*args, session=None):
@@ -13042,28 +13042,28 @@ def cubical_euler_characteristic(*args, session=None):
     return _apply("cubical_euler_characteristic", args, session)
 
 
-def curl(a0, a1, *, session=None):
+def curl(F, vars, *, session=None):
     """
     `curl(F, vars)`: 3D curl `nabla x F` of vector field `F`. Curl of a three-dimensional vector field. Returns `None` for wrong dimensions.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("curl", (a0, a1), session)
+    return _apply("curl", (F, vars), session)
 
 
-def curl_in(a0, a1, a2, *, session=None):
+def curl_in(F, sys, vars, *, session=None):
     """
     `curl_in(F, sys, vars)`: physical-component curl of vector `F` in 3D orthogonal coordinate system `sys(vars)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("curl_in", (a0, a1, a2), session)
+    return _apply("curl_in", (F, sys, vars), session)
 
 
-def cycle_type(a0, *, session=None):
+def cycle_type(perm, *, session=None):
     """
     `cycle_type(perm)`: sorted list of disjoint cycle lengths of permutation `perm`. The cycle type: the sorted cycle lengths, fixed points included. # Panics Panics if an image is outside the permutation's degree.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("cycle_type", (a0,), session)
+    return _apply("cycle_type", (perm,), session)
 
 
 def cyclic_group(a0, *, session=None):
@@ -13074,52 +13074,52 @@ def cyclic_group(a0, *, session=None):
     return _apply("cyclic_group", (a0,), session)
 
 
-def dare(a0, a1, a2, a3, *, session=None):
+def dare(a, b, q, r, *, session=None):
     """
     `dare(a, b, q, r)`: the stabilising solution `P` of the discrete algebraic Riccati equation. Solves the discrete algebraic Riccati equation `P = A^T P A - A^T P B (R + B^T P B)^{-1} B^T P A + Q`. Uses monotone value iteration from `P = Q` with a `1e-12` stopping tolerance and an iteration cap of 10 000. # Errors Returns an error for inconsistent dimensions or a singular `R + B^T P B`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("dare", (a0, a1, a2, a3), session)
+    return _apply("dare", (a, b, q, r), session)
 
 
-def debye_frequency(a0, a1, *, session=None):
+def debye_frequency(v, n, *, session=None):
     """
     `debye_frequency(v, n)`: Debye cutoff frequency `v (6 pi^2 n)^(1/3)` for sound speed `v` and atomic density `n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("debye_frequency", (a0, a1), session)
+    return _apply("debye_frequency", (v, n), session)
 
 
-def debye_heat_capacity(a0, a1, a2, *, session=None):
+def debye_heat_capacity(N, TD, T, *, session=None):
     """
     `debye_heat_capacity(N, TD, T)`: Debye model heat capacity at temperature `T` with Debye temperature `TD`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("debye_heat_capacity", (a0, a1, a2), session)
+    return _apply("debye_heat_capacity", (N, TD, T), session)
 
 
-def definite_sum(a0, a1, a2, *, session=None):
+def definite_sum(F, k, n, *, session=None):
     """
     `definite_sum(F, k, n)` seeks a closed form in `n` for the sum of `F(n, k)` over all integer `k`. The names `k` and `n` are symbols. Creative telescoping obtains a recurrence and the solver checks its proposed closed form against direct values where the support is known. For example, `definite_sum(binomial(n, k), k, n)` returns `2^n`. The request remains unevaluated when the solver cannot establish a closed form.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("definite_sum", (a0, a1, a2), session)
+    return _apply("definite_sum", (F, k, n), session)
 
 
-def defint(a0, a1, a2, a3, *, session=None):
+def defint(f, x, a, b, *, session=None):
     """
     `defint(f, x, a, b)`: definite integral of `f` with respect to bound variable `x` from `a` to `b`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("defint", (a0, a1, a2, a3), session)
+    return _apply("defint", (f, x, a, b), session)
 
 
-def degree(a0, a1, *, session=None):
+def degree(poly, var, *, session=None):
     """
     `degree(poly, var)`: returns the polynomial degree of `poly` in `var`. Degree, or `None` for the zero polynomial.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("degree", (a0, a1), session)
+    return _apply("degree", (poly, var), session)
 
 
 def deinterleave(a0, a1, *, session=None):
@@ -13130,100 +13130,100 @@ def deinterleave(a0, a1, *, session=None):
     return _apply("deinterleave", (a0, a1), session)
 
 
-def delaunay_2d(a0, *, session=None):
+def delaunay_2d(points, *, session=None):
     """
     `delaunay_2d(points)`: the counter-clockwise Delaunay triangulation of a list of `list(x, y)` points, as `list(i, j, k)` index triples.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("delaunay_2d", (a0,), session)
+    return _apply("delaunay_2d", (points,), session)
 
 
-def delaunay_3d(a0, *, session=None):
+def delaunay_3d(points, *, session=None):
     """
     `delaunay_3d(points)`: the Delaunay tetrahedralisation of a list of `list(x, y, z)` points, as `list(i, j, k, l)` index quadruples. Delaunay tetrahedralisation of `points`. Returns positively oriented tetrahedra as quadruples of indices into `points`. # Errors Returns `Err` when fewer than four points are supplied, when a coordinate is not finite, or when two points coincide.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("delaunay_3d", (a0,), session)
+    return _apply("delaunay_3d", (points,), session)
 
 
-def denest_sqrt(a0, *, session=None):
+def denest_sqrt(expr, *, session=None):
     """
     `denest_sqrt(expr)`: denests nested square roots in `expr` (e.g. `sqrt(a + b*sqrt(c))`) into simpler radical sums when possible.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("denest_sqrt", (a0,), session)
+    return _apply("denest_sqrt", (expr,), session)
 
 
-def density_of_states_3d(a0, a1, a2, *, session=None):
+def density_of_states_3d(E, m, V, *, session=None):
     """
     `density_of_states_3d(E, m, V)`: 3D free-electron density of states at energy `E`, mass `m`, and volume `V`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("density_of_states_3d", (a0, a1, a2), session)
+    return _apply("density_of_states_3d", (E, m, V), session)
 
 
-def derangements(a0, *, session=None):
+def derangements(n, *, session=None):
     """
     `derangements(n)`: subfactorial `!n`, counting permutations of `n` elements with no fixed points.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("derangements", (a0,), session)
+    return _apply("derangements", (n,), session)
 
 
-def det(a0, *, session=None):
+def det(A, *, session=None):
     """
     `det(A)`: determinant of square matrix `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("det", (a0,), session)
+    return _apply("det", (A,), session)
 
 
-def diag(a0, *, session=None):
+def diag(v_or_A, *, session=None):
     """
     `diag(v_or_A)`: build a diagonal matrix from vector `v`, or extract the main diagonal of matrix `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("diag", (a0,), session)
+    return _apply("diag", (v_or_A,), session)
 
 
-def diff(a0, a1, *, session=None):
+def diff(f, x, *, session=None):
     """
     `diff(f, x)`: symbolic derivative of `f` with respect to `x`. The derivative of `f` with respect to the symbol `x`, as an unevaluated request.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("diff", (a0, a1), session)
+    return _apply("diff", (f, x), session)
 
 
-def difference(a0, a1, *, session=None):
+def difference(x, d, *, session=None):
     """
     `difference(x, d)`: the `d`-fold first difference of `x`. `d`-fold first difference. Each pass replaces `x` by `x[t+1] - x[t]`, so the result is `d` entries shorter than the input (and empty once the series is exhausted).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("difference", (a0, a1), session)
+    return _apply("difference", (x, d), session)
 
 
-def diffn(a0, a1, a2, *, session=None):
+def diffn(f, x, n, *, session=None):
     """
     `diffn(f, x, n)`: `n`-th order symbolic derivative of `f` with respect to `x` for non-negative integer `n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("diffn", (a0, a1, a2), session)
+    return _apply("diffn", (f, x, n), session)
 
 
-def digamma(a0, *, session=None):
+def digamma(z, *, session=None):
     """
     `digamma(z)`: logarithmic derivative `psi(z) = Gamma'(z) / Gamma(z)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("digamma", (a0,), session)
+    return _apply("digamma", (z,), session)
 
 
-def digamma_complex(a0, a1, *, session=None):
+def digamma_complex(re, im, *, session=None):
     """
     `digamma_complex(re, im)`: `list(re, im)` of the complex digamma function `psi(z) = Gamma'(z) / Gamma(z)`. The digamma function `ψ(z) = Γ'(z) / Γ(z)`; poles give NaN.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("digamma_complex", (a0, a1), session)
+    return _apply("digamma_complex", (re, im), session)
 
 
 def digraph(*args, session=None):
@@ -13242,204 +13242,204 @@ def dihedral_group(a0, *, session=None):
     return _apply("dihedral_group", (a0,), session)
 
 
-def dim_irrep(a0, a1, *, session=None):
+def dim_irrep(T, hw, *, session=None):
     """
     `dim_irrep(T, hw)`: dimension of the irreducible representation of type `T` with highest weight `hw` (Dynkin labels).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("dim_irrep", (a0, a1), session)
+    return _apply("dim_irrep", (T, hw), session)
 
 
-def dimension(a0, *, session=None):
+def dimension(qty, *, session=None):
     """
     `dimension(qty)`: returns the physical dimension of quantity `qty`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("dimension", (a0,), session)
+    return _apply("dimension", (qty,), session)
 
 
-def dims(a0, *, session=None):
+def dims(A, *, session=None):
     """
     `dims(A)`: dimensions `list(rows, cols)` of matrix `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("dims", (a0,), session)
+    return _apply("dims", (A,), session)
 
 
-def diophantine(a0, a1, *, session=None):
+def diophantine(eq, vars, *, session=None):
     """
     `diophantine(eq, vars)`: integer solutions to Diophantine equation `eq` in variables `vars`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("diophantine", (a0, a1), session)
+    return _apply("diophantine", (eq, vars), session)
 
 
-def dirac(a0, *, session=None):
+def dirac(x, *, session=None):
     """
     `dirac(x)`: Dirac delta distribution centered at `x = 0`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("dirac", (a0,), session)
+    return _apply("dirac", (x,), session)
 
 
-def dirac_adjoint(a0, *, session=None):
+def dirac_adjoint(psi, *, session=None):
     """
     `dirac_adjoint(psi)`: Dirac adjoint `psi^dagger gamma^0` of a four-component spinor `psi`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("dirac_adjoint", (a0,), session)
+    return _apply("dirac_adjoint", (psi,), session)
 
 
-def dirac_equation(a0, a1, a2, *, session=None):
+def dirac_equation(psi, m, x, *, session=None):
     """
     `dirac_equation(psi, m, x)`: residual `(i gamma^mu partial_mu - m) psi` of the free Dirac equation in natural units.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("dirac_equation", (a0, a1, a2), session)
+    return _apply("dirac_equation", (psi, m, x), session)
 
 
-def dirac_gamma(a0, *, session=None):
+def dirac_gamma(mu, *, session=None):
     """
     `dirac_gamma(mu)`: 4x4 Dirac gamma matrix in the Dirac representation (`mu = 0..3`, or `5` for `gamma^5`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("dirac_gamma", (a0,), session)
+    return _apply("dirac_gamma", (mu,), session)
 
 
-def directional(a0, a1, a2, *, session=None):
+def directional(f, vars, v, *, session=None):
     """
     `directional(f, vars, v)`: directional derivative `(grad f) . v` along vector `v`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("directional", (a0, a1, a2), session)
+    return _apply("directional", (f, vars, v), session)
 
 
-def discrete_convolution(a0, a1, a2, *, session=None):
+def discrete_convolution(f, g, n, *, session=None):
     """
     `discrete_convolution(f, g, n)`: discrete convolution sum `sum_k f(k) * g(n - k)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("discrete_convolution", (a0, a1, a2), session)
+    return _apply("discrete_convolution", (f, g, n), session)
 
 
-def discriminant(a0, a1, *, session=None):
+def discriminant(poly, var, *, session=None):
     """
     `discriminant(poly, var)` computes the discriminant of a positive-degree polynomial in `var`. Coefficients may be exact rationals or expressions independent of `var`. The discriminant is one for a linear polynomial and zero when the polynomial has a repeated root.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("discriminant", (a0, a1), session)
+    return _apply("discriminant", (poly, var), session)
 
 
-def distance(a0, a1, *, session=None):
+def distance(a, b, *, session=None):
     """
     `distance(a, b)`: Euclidean distance `abs(a - b)` between complex points `a` and `b`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("distance", (a0, a1), session)
+    return _apply("distance", (a, b), session)
 
 
-def div(a0, a1, *, session=None):
+def div(F, vars, *, session=None):
     """
     `div(F, vars)`: divergence `sum_i dF_i/dx_i` of vector field `F`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("div", (a0, a1), session)
+    return _apply("div", (F, vars), session)
 
 
-def div_in(a0, a1, a2, *, session=None):
+def div_in(F, sys, vars, *, session=None):
     """
     `div_in(F, sys, vars)`: divergence of physical-component vector `F` in orthogonal coordinate system `sys(vars)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("div_in", (a0, a1, a2), session)
+    return _apply("div_in", (F, sys, vars), session)
 
 
-def divide(a0, a1, *, session=None):
+def divide(a, b, *, session=None):
     """
     `divide(a, b)`: the quotient `a / b`. Rewritten to `mul(a, pow(b, -1))` and printed as `a/b`. The name is `divide` because `div` is the divergence of a vector field.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("divide", (a0, a1), session)
+    return _apply("divide", (a, b), session)
 
 
-def divisor_count(a0, *, session=None):
+def divisor_count(n, *, session=None):
     """
     `divisor_count(n)`: number of positive divisors `tau(n)` of positive integer `n`. Returns the number of positive divisors $\\tau(n) = \\sigma_0(n)$ (`divisor_count(0) = 0`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("divisor_count", (a0,), session)
+    return _apply("divisor_count", (n,), session)
 
 
-def divisor_sum(a0, *, session=None):
+def divisor_sum(n, *, session=None):
     """
     `divisor_sum(n)`: sum of positive divisors `sigma_1(n)` of positive integer `n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("divisor_sum", (a0,), session)
+    return _apply("divisor_sum", (n,), session)
 
 
-def divisors(a0, *, session=None):
+def divisors(n, *, session=None):
     """
     `divisors(n)`: sorted list of all positive divisors of `n`. Returns all positive divisors of `n` in ascending order (`divisors(0)` is empty).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("divisors", (a0,), session)
+    return _apply("divisors", (n,), session)
 
 
-def dlog(a0, a1, a2, *, session=None):
+def dlog(g, h, n, *, session=None):
     """
     `dlog(g, h, n)`: discrete logarithm `k` satisfying `g^k = h (mod n)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("dlog", (a0, a1, a2), session)
+    return _apply("dlog", (g, h, n), session)
 
 
-def dlqr(a0, a1, a2, a3, *, session=None):
+def dlqr(a, b, q, r, *, session=None):
     """
     `dlqr(a, b, q, r)`: `list(K, P)`, the discrete linear-quadratic gain and the Riccati solution. Discrete linear-quadratic regulator: returns `(K, P)` with `K = (R + B^T P B)^{-1} B^T P A`. # Errors As [`dare`].
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("dlqr", (a0, a1, a2, a3), session)
+    return _apply("dlqr", (a, b, q, r), session)
 
 
-def dnf(a0, *, session=None):
+def dnf(formula, *, session=None):
     """
     `dnf(formula)`: converts propositional `formula` to disjunctive normal form.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("dnf", (a0,), session)
+    return _apply("dnf", (formula,), session)
 
 
-def doppler_effect(a0, a1, *, session=None):
+def doppler_effect(f, v, *, session=None):
     """
     `doppler_effect(f, v)`: longitudinal relativistic Doppler-shifted frequency for receding velocity `v`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("doppler_effect", (a0, a1), session)
+    return _apply("doppler_effect", (f, v), session)
 
 
-def dot(a0, a1, *, session=None):
+def dot(u, v, *, session=None):
     """
     `dot(u, v)`: Euclidean dot product `sum_i u_i v_i` of vectors `u` and `v`. Dimension-generic dot product: dispatches on the vector type.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("dot", (a0, a1), session)
+    return _apply("dot", (u, v), session)
 
 
-def double_factorial(a0, *, session=None):
+def double_factorial(n, *, session=None):
     """
     `double_factorial(n)`: double factorial `n!! = n * (n - 2) * ...`. Computes the double factorial n!! n!! = n * (n-2) * (n-4) * ... * (1 or 2)
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("double_factorial", (a0,), session)
+    return _apply("double_factorial", (n,), session)
 
 
-def drude_conductivity(a0, a1, a2, a3, *, session=None):
+def drude_conductivity(n, e, tau, m, *, session=None):
     """
     `drude_conductivity(n, e, tau, m)`: Drude electrical conductivity `n e^2 tau / m`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("drude_conductivity", (a0, a1, a2, a3), session)
+    return _apply("drude_conductivity", (n, e, tau, m), session)
 
 
 def dsolve(*args, session=None):
@@ -13450,36 +13450,36 @@ def dsolve(*args, session=None):
     return _apply("dsolve", args, session)
 
 
-def dwt2(a0, a1, *, session=None):
+def dwt2(matrix, wavelet, *, session=None):
     """
     `dwt2(matrix, wavelet)`: single-level 2D separable discrete wavelet transform returning `list(LL, LH, HL, HH)`. The first letter gives the row-wise filter and the second gives the column-wise filter. One level of the separable two-dimensional transform, `x` row-major with `rows x cols` entries. The rows are transformed first, then the columns, and the four sub-bands are packed into a `(2*ra) x (2*ca)` row-major array with `ra = w.coeff_len(rows, b)` and `ca = w.coeff_len(cols, b)`: `LL` at rows `0..ra`, columns `0..ca`; `LH` at rows `0..ra`, columns `ca..2ca`; `HL` at rows `ra..2ra`, columns `0..ca`; `HH` at rows `ra..2ra`, columns `ca..2ca`. In each label, the first letter gives the filter within each row (horizontal) and the second the filter within each column (vertical). # Errors [`WaveletError::Shape`] when `rows * cols` does not match `x.len()`, or when a row or column transform fails.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("dwt2", (a0, a1), session)
+    return _apply("dwt2", (matrix, wavelet), session)
 
 
-def dwt_approx(a0, a1, *, session=None):
+def dwt_approx(x, wavelet, *, session=None):
     """
     `dwt_approx(x, wavelet)`: single-level discrete wavelet approximation coefficients of `x`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("dwt_approx", (a0, a1), session)
+    return _apply("dwt_approx", (x, wavelet), session)
 
 
-def dwt_detail(a0, a1, *, session=None):
+def dwt_detail(x, wavelet, *, session=None):
     """
     `dwt_detail(x, wavelet)`: single-level discrete wavelet detail coefficients of `x`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("dwt_detail", (a0, a1), session)
+    return _apply("dwt_detail", (x, wavelet), session)
 
 
-def dynkin_index(a0, a1, *, session=None):
+def dynkin_index(T, hw, *, session=None):
     """
     `dynkin_index(T, hw)`: Dynkin index `dim(V) * C(V) / dim(g)` of irrep `V(hw)` of type `T`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("dynkin_index", (a0, a1), session)
+    return _apply("dynkin_index", (T, hw), session)
 
 
 def ec_add(a0, a1, a2, *, session=None):
@@ -13578,12 +13578,12 @@ def ec_y(a0, *, session=None):
     return _apply("ec_y", (a0,), session)
 
 
-def ecdf(a0, a1, *, session=None):
+def ecdf(sample, x, *, session=None):
     """
     `ecdf(sample, x)`: empirical cumulative distribution function of `sample` evaluated at `x`. Empirical CDF of `data` at `x`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ecdf", (a0, a1), session)
+    return _apply("ecdf", (sample, x), session)
 
 
 def ecdh_public(a0, a1, a2, *, session=None):
@@ -13618,164 +13618,164 @@ def ecdsa_verify(a0, a1, a2, a3, a4, a5, *, session=None):
     return _apply("ecdsa_verify", (a0, a1, a2, a3, a4, a5), session)
 
 
-def effective_sample_size(a0, *, session=None):
+def effective_sample_size(chain, *, session=None):
     """
     `effective_sample_size(chain)`: the effective number of independent draws in `chain`, from the initial positive sequence of its autocorrelations. Effective sample size by the initial positive sequence estimator. The autocorrelations are summed in adjacent pairs and the sum is truncated at the first non-positive pair, which keeps the estimate from being dragged down by the noise of the tail. Lags are computed only until that truncation, so a well-mixing chain costs two passes over the data. Returns the number of independent draws with the same information content as the chain. # Errors Returns an error for fewer than four draws or a constant chain.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("effective_sample_size", (a0,), session)
+    return _apply("effective_sample_size", (chain,), session)
 
 
-def egcd(a0, a1, *, session=None):
+def egcd(x, y, *, session=None):
     """
     `egcd(x, y)`: extended Euclidean algorithm returning `list(g, s, t)` with `g = s*x + t*y = gcd(x, y)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("egcd", (a0, a1), session)
+    return _apply("egcd", (x, y), session)
 
 
-def ei(a0, *, session=None):
+def ei(x, *, session=None):
     """
     `ei(x)`: exponential integral `Ei(x) = -PV int_{-x}^infty exp(-t)/t dt`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ei", (a0,), session)
+    return _apply("ei", (x,), session)
 
 
-def eigenvals(a0, *, session=None):
+def eigenvals(A, *, session=None):
     """
     `eigenvals(A)`: eigenvalues of square matrix `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("eigenvals", (a0,), session)
+    return _apply("eigenvals", (A,), session)
 
 
-def eigenvects(a0, *, session=None):
+def eigenvects(A, *, session=None):
     """
     `eigenvects(A)`: eigenvalues and eigenvectors of square matrix `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("eigenvects", (a0,), session)
+    return _apply("eigenvects", (A,), session)
 
 
-def einstein(a0, a1, *, session=None):
+def einstein(g, vars, *, session=None):
     """
     `einstein(g, vars)`: Einstein tensor `G = Ric - (R / 2) * g` for metric `g` in `vars`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("einstein", (a0, a1), session)
+    return _apply("einstein", (g, vars), session)
 
 
-def einstein_field_equations(a0, a1, a2, a3, *, session=None):
+def einstein_field_equations(Ric, R, g, T, *, session=None):
     """
     `einstein_field_equations(Ric, R, g, T)`: residual `G - (8 pi G_N / c_0^4) T` of the Einstein field equations.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("einstein_field_equations", (a0, a1, a2, a3), session)
+    return _apply("einstein_field_equations", (Ric, R, g, T), session)
 
 
-def einstein_heat_capacity(a0, a1, a2, *, session=None):
+def einstein_heat_capacity(N, TE, T, *, session=None):
     """
     `einstein_heat_capacity(N, TE, T)`: Einstein model heat capacity at temperature `T` with Einstein temperature `TE`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("einstein_heat_capacity", (a0, a1, a2), session)
+    return _apply("einstein_heat_capacity", (N, TE, T), session)
 
 
-def einstein_tensor_from(a0, a1, a2, *, session=None):
+def einstein_tensor_from(Ric, R, g, *, session=None):
     """
     `einstein_tensor_from(Ric, R, g)`: Einstein tensor `G = Ric - (1/2) R g` from Ricci tensor, scalar curvature, and metric.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("einstein_tensor_from", (a0, a1, a2), session)
+    return _apply("einstein_tensor_from", (Ric, R, g), session)
 
 
-def electric_field_from_potential(a0, a1, *, session=None):
+def electric_field_from_potential(V, vars, *, session=None):
     """
     `electric_field_from_potential(V, vars)`: electrostatic field `-grad V` from scalar potential `V`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("electric_field_from_potential", (a0, a1), session)
+    return _apply("electric_field_from_potential", (V, vars), session)
 
 
-def electric_field_from_potentials(a0, a1, a2, a3, *, session=None):
+def electric_field_from_potentials(V, A, vars, t, *, session=None):
     """
     `electric_field_from_potentials(V, A, vars, t)`: electric field `-(grad V + dA/dt)` from scalar potential `V` and vector potential `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("electric_field_from_potentials", (a0, a1, a2, a3), session)
+    return _apply("electric_field_from_potentials", (V, A, vars, t), session)
 
 
-def em_energy_density(a0, a1, *, session=None):
+def em_energy_density(E, B, *, session=None):
     """
     `em_energy_density(E, B)`: electromagnetic energy density `(epsilon_0 |E|^2 + |B|^2 / mu_0) / 2`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("em_energy_density", (a0, a1), session)
+    return _apply("em_energy_density", (E, B), session)
 
 
-def energy_band(a0, a1, a2, *, session=None):
+def energy_band(k, m, E0, *, session=None):
     """
     `energy_band(k, m, E0)`: parabolic band dispersion `E0 + hbar^2 k^2 / (2 m)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("energy_band", (a0, a1, a2), session)
+    return _apply("energy_band", (k, m, E0), session)
 
 
-def energy_eigenvalue(a0, a1, a2, *, session=None):
+def energy_eigenvalue(H, psi, x, *, session=None):
     """
     `energy_eigenvalue(H, psi, x)`: energy eigenvalue `E` satisfying `H psi = E psi` in variable `x`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("energy_eigenvalue", (a0, a1, a2), session)
+    return _apply("energy_eigenvalue", (H, psi, x), session)
 
 
-def entails(a0, a1, *, session=None):
+def entails(premise, conclusion, *, session=None):
     """
     `entails(premise, conclusion)`: decides whether `premise` semantically entails `conclusion` (`true` or `false`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("entails", (a0, a1), session)
+    return _apply("entails", (premise, conclusion), session)
 
 
-def enthalpy(a0, a1, a2, *, session=None):
+def enthalpy(U, P, V, *, session=None):
     """
     `enthalpy(U, P, V)`: enthalpy `H = U + P V`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("enthalpy", (a0, a1, a2), session)
+    return _apply("enthalpy", (U, P, V), session)
 
 
-def entropy(a0, *, session=None):
+def entropy(ps, *, session=None):
     """
     `entropy(ps)`: Shannon entropy (in nats) `-sum p_i ln(p_i)` of probability list `ps`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("entropy", (a0,), session)
+    return _apply("entropy", (ps,), session)
 
 
-def entropy_bits(a0, *, session=None):
+def entropy_bits(ps, *, session=None):
     """
     `entropy_bits(ps)`: Shannon entropy (in bits) `-sum p_i log2(p_i)` of probability list `ps`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("entropy_bits", (a0,), session)
+    return _apply("entropy_bits", (ps,), session)
 
 
-def entropy_from_helmholtz(a0, a1, *, session=None):
+def entropy_from_helmholtz(A, T, *, session=None):
     """
     `entropy_from_helmholtz(A, T)`: thermodynamic entropy `-dA/dT` from Helmholtz free energy `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("entropy_from_helmholtz", (a0, a1), session)
+    return _apply("entropy_from_helmholtz", (A, T), session)
 
 
-def entropy_of(a0, *, session=None):
+def entropy_of(d, *, session=None):
     """
     `entropy_of(d)`: differential or discrete information entropy of distribution `d`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("entropy_of", (a0,), session)
+    return _apply("entropy_of", (d,), session)
 
 
 def epsilon_0(*, session=None):
@@ -13794,52 +13794,52 @@ def eq(a0, a1, *, session=None):
     return _apply("eq", (a0, a1), session)
 
 
-def equivalent(a0, a1, *, session=None):
+def equivalent(f, g, *, session=None):
     """
     `equivalent(f, g)`: decides whether propositional formulas `f` and `g` are logically equivalent (`true` or `false`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("equivalent", (a0, a1), session)
+    return _apply("equivalent", (f, g), session)
 
 
-def erf(a0, *, session=None):
+def erf(x, *, session=None):
     """
     `erf(x)`: Gauss error function `(2 / sqrt(pi)) * int_0^x exp(-t^2) dt`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("erf", (a0,), session)
+    return _apply("erf", (x,), session)
 
 
-def erf_complex(a0, a1, *, session=None):
+def erf_complex(re, im, *, session=None):
     """
     `erf_complex(re, im)`: `list(re, im)` of the complex error function `erf(re + i*im)`. Error function of a complex argument. Maclaurin series for `|z| < 1.5`, otherwise `1 - exp(-z²) w(i z)` after folding to `Re z >= 0` with `erf(-z) = -erf(z)`. The exponential is scaled with the Faddeeva factor near the floating-point range limits.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("erf_complex", (a0, a1), session)
+    return _apply("erf_complex", (re, im), session)
 
 
-def erfc(a0, *, session=None):
+def erfc(x, *, session=None):
     """
     `erfc(x)`: complementary error function `1 - erf(x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("erfc", (a0,), session)
+    return _apply("erfc", (x,), session)
 
 
-def erfcinv(a0, *, session=None):
+def erfcinv(y, *, session=None):
     """
     `erfcinv(y)`: inverse complementary error function solving `erfc(x) = y`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("erfcinv", (a0,), session)
+    return _apply("erfcinv", (y,), session)
 
 
-def erfi(a0, *, session=None):
+def erfi(x, *, session=None):
     """
     `erfi(x)`: imaginary error function `-i * erf(i * x)`. The imaginary error function `erfi(x) = -i erf(ix) = (2/√π) ∫_0^x e^{t²} dt`, from its everywhere-convergent power series (all terms of one sign, so no cancellation).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("erfi", (a0,), session)
+    return _apply("erfi", (x,), session)
 
 
 def euclidean_distance(a0, a1, *, session=None):
@@ -13858,52 +13858,52 @@ def euler_gamma(*, session=None):
     return _apply("euler_gamma", (), session)
 
 
-def euler_lagrange(a0, a1, a2, *, session=None):
+def euler_lagrange(L, y, x, *, session=None):
     """
     `euler_lagrange(L, y, x)`: computes the Euler-Lagrange residual expression `d/dx(dL/dy') - dL/dy` (with higher-order jet terms when present) for Lagrangian `L` and dependent variable(s) `y` of `x`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("euler_lagrange", (a0, a1, a2), session)
+    return _apply("euler_lagrange", (L, y, x), session)
 
 
-def euler_lagrange_equation(a0, a1, a2, *, session=None):
+def euler_lagrange_equation(L, q, t, *, session=None):
     """
     `euler_lagrange_equation(L, q, t)`: Euler-Lagrange residual `d/dt(dL/dq_dot) - dL/dq` for generalized coordinate `q(t)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("euler_lagrange_equation", (a0, a1, a2), session)
+    return _apply("euler_lagrange_equation", (L, q, t), session)
 
 
-def euler_number(a0, *, session=None):
+def euler_number(n, *, session=None):
     """
     `euler_number(n)`: `n`-th Euler number `E_n` (0 for odd `n`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("euler_number", (a0,), session)
+    return _apply("euler_number", (n,), session)
 
 
-def eulerian(a0, a1, *, session=None):
+def eulerian(n, k, *, session=None):
     """
     `eulerian(n, k)`: Eulerian number `A(n, k)`, counting permutations of `n` elements with `k` ascents.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("eulerian", (a0, a1), session)
+    return _apply("eulerian", (n, k), session)
 
 
-def exists(a0, a1, *, session=None):
+def exists(var_or_list, formula, *, session=None):
     """
     `exists(var_or_list, formula)`: existentially quantifies Boolean variable(s) out of `formula`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("exists", (a0, a1), session)
+    return _apply("exists", (var_or_list, formula), session)
 
 
-def exp(a0, *, session=None):
+def exp(x, *, session=None):
     """
     `exp(x)`: natural exponential function `e^x`. `exp(x)` as a ball. # Errors Fails when an exponent leaves the representable range.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("exp", (a0,), session)
+    return _apply("exp", (x,), session)
 
 
 def exp_map(*args, session=None):
@@ -13914,84 +13914,84 @@ def exp_map(*args, session=None):
     return _apply("exp_map", args, session)
 
 
-def expand(a0, *, session=None):
+def expand(expr, *, session=None):
     """
     `expand(expr)`: expands products and integer powers in `expr` into a sum of terms.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("expand", (a0,), session)
+    return _apply("expand", (expr,), session)
 
 
-def expand_binomial(a0, a1, a2, *, session=None):
+def expand_binomial(a, b, n, *, session=None):
     """
     `expand_binomial(a, b, n)`: expands `(a + b)^n` via the binomial theorem `sum_{j=0}^n C(n, j) a^{n-j} b^j`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("expand_binomial", (a0, a1, a2), session)
+    return _apply("expand_binomial", (a, b, n), session)
 
 
-def expand_trig(a0, *, session=None):
+def expand_trig(expr, *, session=None):
     """
     `expand_trig(expr)`: expands trigonometric functions of sums and integer multiples into polynomials in `sin` and `cos`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("expand_trig", (a0,), session)
+    return _apply("expand_trig", (expr,), session)
 
 
-def expect_of(a0, a1, a2, *, session=None):
+def expect_of(d, x, expr, *, session=None):
     """
     `expect_of(d, x, expr)`: expected value `E[expr(x)]` under random variable `x ~ d`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("expect_of", (a0, a1, a2), session)
+    return _apply("expect_of", (d, x, expr), session)
 
 
-def expectation(a0, *, session=None):
+def expectation(d, *, session=None):
     """
     `expectation(d)`: expected value (mean) `E[X]` of distribution `d`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("expectation", (a0,), session)
+    return _apply("expectation", (d,), session)
 
 
-def expectation_value(a0, a1, a2, *, session=None):
+def expectation_value(A, psi, x, *, session=None):
     """
     `expectation_value(A, psi, x)`: normalized expectation value `<psi|A|psi> / <psi|psi>`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("expectation_value", (a0, a1, a2), session)
+    return _apply("expectation_value", (A, psi, x), session)
 
 
-def exponential(a0, *, session=None):
+def exponential(rate, *, session=None):
     """
     `exponential(rate)`: exponential distribution with rate parameter `rate`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("exponential", (a0,), session)
+    return _apply("exponential", (rate,), session)
 
 
-def exterior_d(a0, a1, *, session=None):
+def exterior_d(omega, vars, *, session=None):
     """
     `exterior_d(omega, vars)`: exterior derivative `d omega` of differential form `omega` in variables `vars`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("exterior_d", (a0, a1), session)
+    return _apply("exterior_d", (omega, vars), session)
 
 
-def f_dist(a0, a1, *, session=None):
+def f_dist(d1, d2, *, session=None):
     """
     `f_dist(d1, d2)`: Fisher-Snedecor F-distribution with degrees of freedom `d1` and `d2`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("f_dist", (a0, a1), session)
+    return _apply("f_dist", (d1, d2), session)
 
 
-def factor(a0, *, session=None):
+def factor(expr, *, session=None):
     """
     `factor(expr)`: factors a polynomial or rational expression into irreducible factors over the rationals.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("factor", (a0,), session)
+    return _apply("factor", (expr,), session)
 
 
 def factor_mod(a0, a1, a2, *, session=None):
@@ -14002,28 +14002,28 @@ def factor_mod(a0, a1, a2, *, session=None):
     return _apply("factor_mod", (a0, a1, a2), session)
 
 
-def factorial(a0, *, session=None):
+def factorial(n, *, session=None):
     """
     `factorial(n)`: factorial `n! = 1 * 2 * ... * n` for non-negative integer `n`. Computes the factorial of `n` (`n!`) as an `f64`. # Arguments * `n` - The non-negative integer for which to compute the factorial. # Returns The factorial of `n` as an `f64`. Returns `f64::INFINITY` if `n` is too large to fit in `f64`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("factorial", (a0,), session)
+    return _apply("factorial", (n,), session)
 
 
-def factorint(a0, *, session=None):
+def factorint(n, *, session=None):
     """
     `factorint(n)`: prime factorization of `n` as `list(list(p, e), ...)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("factorint", (a0,), session)
+    return _apply("factorint", (n,), session)
 
 
-def falling(a0, a1, *, session=None):
+def falling(x, k, *, session=None):
     """
     `falling(x, k)`: falling factorial `x * (x - 1) * ... * (x - k + 1)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("falling", (a0, a1), session)
+    return _apply("falling", (x, k), session)
 
 
 def false(*, session=None):
@@ -14034,212 +14034,212 @@ def false(*, session=None):
     return _apply("false", (), session)
 
 
-def farey(a0, *, session=None):
+def farey(n, *, session=None):
     """
     `farey(n)`: Farey sequence `F_n` of reduced fractions in `[0, 1]` with denominator `<= n`, as `list(list(p, q), ...)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("farey", (a0,), session)
+    return _apply("farey", (n,), session)
 
 
-def fermi_dirac_distribution(a0, a1, a2, *, session=None):
+def fermi_dirac_distribution(E, mu, T, *, session=None):
     """
     `fermi_dirac_distribution(E, mu, T)`: Fermi-Dirac mean occupation number at energy `E`, chemical potential `mu`, temperature `T`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("fermi_dirac_distribution", (a0, a1, a2), session)
+    return _apply("fermi_dirac_distribution", (E, mu, T), session)
 
 
-def fermi_energy_3d(a0, a1, *, session=None):
+def fermi_energy_3d(n, m, *, session=None):
     """
     `fermi_energy_3d(n, m)`: 3D Fermi energy for electron number density `n` and mass `m`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("fermi_energy_3d", (a0, a1), session)
+    return _apply("fermi_energy_3d", (n, m), session)
 
 
-def fermi_wavevector_3d(a0, *, session=None):
+def fermi_wavevector_3d(n, *, session=None):
     """
     `fermi_wavevector_3d(n)`: 3D Fermi wavevector `(3 pi^2 n)^(1/3)` for number density `n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("fermi_wavevector_3d", (a0,), session)
+    return _apply("fermi_wavevector_3d", (n,), session)
 
 
-def fermion_propagator(a0, a1, *, session=None):
+def fermion_propagator(p, m, *, session=None):
     """
     `fermion_propagator(p, m)`: momentum-space Dirac fermion propagator `i (p_slash + m) / (p^2 - m^2)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("fermion_propagator", (a0, a1), session)
+    return _apply("fermion_propagator", (p, m), session)
 
 
-def feynman_propagator_position_space(a0, a1, a2, *, session=None):
+def feynman_propagator_position_space(x, y, m, *, session=None):
     """
     `feynman_propagator_position_space(x, y, m)`: 1D Fourier transform of the scalar Feynman propagator from `x` to `y`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("feynman_propagator_position_space", (a0, a1, a2), session)
+    return _apply("feynman_propagator_position_space", (x, y, m), session)
 
 
-def feynman_slash(a0, *, session=None):
+def feynman_slash(p, *, session=None):
     """
     `feynman_slash(p)`: Feynman slash `gamma^mu p_mu` for a four-vector `p = list(p0, p1, p2, p3)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("feynman_slash", (a0,), session)
+    return _apply("feynman_slash", (p,), session)
 
 
-def fft_abs(a0, *, session=None):
+def fft_abs(x, *, session=None):
     """
     `fft_abs(x)`: magnitude spectrum `|DFT(x)|` of real sequence `x`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("fft_abs", (a0,), session)
+    return _apply("fft_abs", (x,), session)
 
 
-def fft_im(a0, *, session=None):
+def fft_im(x, *, session=None):
     """
     `fft_im(x)`: imaginary part of the discrete Fourier transform of real sequence `x`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("fft_im", (a0,), session)
+    return _apply("fft_im", (x,), session)
 
 
-def fft_re(a0, *, session=None):
+def fft_re(x, *, session=None):
     """
     `fft_re(x)`: real part of the discrete Fourier transform of real sequence `x`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("fft_re", (a0,), session)
+    return _apply("fft_re", (x,), session)
 
 
-def fftconv(a0, a1, *, session=None):
+def fftconv(a, b, *, session=None):
     """
     `fftconv(a, b)`: linear convolution of two real numeric sequences `a` and `b` via FFT.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("fftconv", (a0, a1), session)
+    return _apply("fftconv", (a, b), session)
 
 
-def fgmres_solve(a0, a1, a2, *, session=None):
+def fgmres_solve(a, b, tol, *, session=None):
     """
     `fgmres_solve(a, b, tol)`: solve general linear system `A x = b` by flexible GMRES to relative tolerance `tol`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("fgmres_solve", (a0, a1, a2), session)
+    return _apply("fgmres_solve", (a, b, tol), session)
 
 
-def fibonacci(a0, *, session=None):
+def fibonacci(n, *, session=None):
     """
     `fibonacci(n)`: `n`-th Fibonacci number `F_n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("fibonacci", (a0,), session)
+    return _apply("fibonacci", (n,), session)
 
 
-def final_value_laplace(a0, a1, *, session=None):
+def final_value_laplace(F, s, *, session=None):
     """
     `final_value_laplace(F, s)`: applies the Laplace final-value theorem `lim_{s->0} s * F(s)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("final_value_laplace", (a0, a1), session)
+    return _apply("final_value_laplace", (F, s), session)
 
 
-def final_value_z(a0, a1, *, session=None):
+def final_value_z(F, z, *, session=None):
     """
     `final_value_z(F, z)`: applies the Z-transform final-value theorem `lim_{z->1} (z - 1) * F(z)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("final_value_z", (a0, a1), session)
+    return _apply("final_value_z", (F, z), session)
 
 
-def find_constrained_extrema(a0, a1, a2, *, session=None):
+def find_constrained_extrema(f, constraints, vars, *, session=None):
     """
     `find_constrained_extrema(f, constraints, vars)`: finds extrema of `f` subject to equality `constraints` over `vars` using Lagrange multipliers.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("find_constrained_extrema", (a0, a1, a2), session)
+    return _apply("find_constrained_extrema", (f, constraints, vars), session)
 
 
-def find_extrema(a0, a1, *, session=None):
+def find_extrema(f, vars, *, session=None):
     """
     `find_extrema(f, vars)`: finds unconstrained critical points of `f` with respect to `vars` and classifies them via the Hessian.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("find_extrema", (a0, a1), session)
+    return _apply("find_extrema", (f, vars), session)
 
 
-def first_integral(a0, a1, a2, *, session=None):
+def first_integral(L, y, x, *, session=None):
     """
     `first_integral(L, y, x)`: computes the Beltrami / energy first integral `L - y' * dL/dy'` for a first-order Lagrangian `L(x, y, y')`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("first_integral", (a0, a1, a2), session)
+    return _apply("first_integral", (L, y, x), session)
 
 
-def first_law_thermodynamics(a0, a1, a2, *, session=None):
+def first_law_thermodynamics(dU, Q, W, *, session=None):
     """
     `first_law_thermodynamics(dU, Q, W)`: first law residual `dU - (Q - W)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("first_law_thermodynamics", (a0, a1, a2), session)
+    return _apply("first_law_thermodynamics", (dU, Q, W), session)
 
 
-def first_order_energy_correction(a0, a1, a2, *, session=None):
+def first_order_energy_correction(V, psi, x, *, session=None):
     """
     `first_order_energy_correction(V, psi, x)`: first-order perturbation energy shift `<psi|V|psi> / <psi|psi>`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("first_order_energy_correction", (a0, a1, a2), session)
+    return _apply("first_order_energy_correction", (V, psi, x), session)
 
 
-def fisher_exact(a0, a1, a2, a3, *, session=None):
+def fisher_exact(a, b, c, d, *, session=None):
     """
     `fisher_exact(a, b, c, d)`: two-sided Fisher's exact test p-value for a 2x2 contingency table `[[a, b], [c, d]]`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("fisher_exact", (a0, a1, a2, a3), session)
+    return _apply("fisher_exact", (a, b, c, d), session)
 
 
-def floor(a0, *, session=None):
+def floor(x, *, session=None):
     """
     `floor(x)`: greatest integer less than or equal to `x`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("floor", (a0,), session)
+    return _apply("floor", (x,), session)
 
 
-def forall(a0, a1, *, session=None):
+def forall(var_or_list, formula, *, session=None):
     """
     `forall(var_or_list, formula)`: universally quantifies Boolean variable(s) out of `formula`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("forall", (a0, a1), session)
+    return _apply("forall", (var_or_list, formula), session)
 
 
-def form(a0, *, session=None):
+def form(terms, *, session=None):
     """
     `form(terms)`: differential form `sum c dx_i ^ ...` represented by `list(list(coeff, list(i, ...)), ...)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("form", (a0,), session)
+    return _apply("form", (terms,), session)
 
 
-def fourier(a0, a1, a2, *, session=None):
+def fourier(f, t, omega, *, session=None):
     """
     `fourier(f, t, omega)`: continuous Fourier transform of `f(t)` into frequency `omega`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("fourier", (a0, a1, a2), session)
+    return _apply("fourier", (f, t, omega), session)
 
 
-def fourier_series(a0, a1, a2, a3, *, session=None):
+def fourier_series(f, x, L, n, *, session=None):
     """
     `fourier_series(f, x, L, n)`: trigonometric Fourier series of `f(x)` on `[-L, L]` up to `n` harmonics.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("fourier_series", (a0, a1, a2, a3), session)
+    return _apply("fourier_series", (f, x, L, n), session)
 
 
 def fp_group(a0, a1, *, session=None):
@@ -14266,20 +14266,20 @@ def fp_group_order(a0, a1, *, session=None):
     return _apply("fp_group_order", (a0, a1), session)
 
 
-def frac(a0, *, session=None):
+def frac(x, *, session=None):
     """
     `frac(x)`: fractional part `x - floor(x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("frac", (a0,), session)
+    return _apply("frac", (x,), session)
 
 
-def fredholm_eigenvalues(a0, a1, a2, a3, a4, a5, *, session=None):
+def fredholm_eigenvalues(us, vs, x, t, a, b, *, session=None):
     """
     `fredholm_eigenvalues(us, vs, x, t, a, b)`: eigenvalues of the separable Fredholm operator with kernel `sum u_i(x) v_i(t)` on `[a, b]`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("fredholm_eigenvalues", (a0, a1, a2, a3, a4, a5), session)
+    return _apply("fredholm_eigenvalues", (us, vs, x, t, a, b), session)
 
 
 def fredholm_neumann(a0, a1, a2, a3, a4, a5, a6, a7, *, session=None):
@@ -14306,380 +14306,380 @@ def fredholm_solve(a0, a1, a2, a3, a4, a5, a6, *, session=None):
     return _apply("fredholm_solve", (a0, a1, a2, a3, a4, a5, a6), session)
 
 
-def fresnel_c_complex(a0, a1, *, session=None):
+def fresnel_c_complex(re, im, *, session=None):
     """
     `fresnel_c_complex(re, im)`: `list(re, im)` of the complex Fresnel cosine integral `C(re + i*im)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("fresnel_c_complex", (a0, a1), session)
+    return _apply("fresnel_c_complex", (re, im), session)
 
 
-def fresnel_s_complex(a0, a1, *, session=None):
+def fresnel_s_complex(re, im, *, session=None):
     """
     `fresnel_s_complex(re, im)`: `list(re, im)` of the complex Fresnel sine integral `S(re + i*im)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("fresnel_s_complex", (a0, a1), session)
+    return _apply("fresnel_s_complex", (re, im), session)
 
 
-def fresnelc(a0, *, session=None):
+def fresnelc(x, *, session=None):
     """
     `fresnelc(x)`: Fresnel cosine integral `int_0^x cos(pi * t^2 / 2) dt`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("fresnelc", (a0,), session)
+    return _apply("fresnelc", (x,), session)
 
 
-def fresnels(a0, *, session=None):
+def fresnels(x, *, session=None):
     """
     `fresnels(x)`: Fresnel sine integral `int_0^x sin(pi * t^2 / 2) dt`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("fresnels", (a0,), session)
+    return _apply("fresnels", (x,), session)
 
 
-def frft_im(a0, a1, a2, *, session=None):
+def frft_im(re, im, a, *, session=None):
     """
     `frft_im(re, im, a)`: imaginary part of the discrete fractional Fourier transform of order `a` of `re + i*im`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("frft_im", (a0, a1, a2), session)
+    return _apply("frft_im", (re, im, a), session)
 
 
-def frft_re(a0, a1, a2, *, session=None):
+def frft_re(re, im, a, *, session=None):
     """
     `frft_re(re, im, a)`: real part of the discrete fractional Fourier transform of order `a` of `re + i*im`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("frft_re", (a0, a1, a2), session)
+    return _apply("frft_re", (re, im, a), session)
 
 
-def from_cartesian(a0, a1, *, session=None):
+def from_cartesian(sys, coords, *, session=None):
     """
     `from_cartesian(sys, coords)`: coordinates in system `sys` expressed in terms of Cartesian `coords`. Converts a Cartesian point to the system `to`. # Errors Returns an error if `point` has the wrong number of components (2 for polar, 3 for cylindrical and spherical).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("from_cartesian", (a0, a1), session)
+    return _apply("from_cartesian", (sys, coords), session)
 
 
-def fubini(a0, *, session=None):
+def fubini(n, *, session=None):
     """
     `fubini(n)`: `n`-th ordered Bell (Fubini) number, counting weak orderings on `n` elements.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("fubini", (a0,), session)
+    return _apply("fubini", (n,), session)
 
 
-def function_inf_norm(a0, *, session=None):
+def function_inf_norm(points, *, session=None):
     """
     `function_inf_norm(points)`: infinity (supremum) norm of a tabulated function `list(list(x, y), ...)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("function_inf_norm", (a0,), session)
+    return _apply("function_inf_norm", (points,), session)
 
 
-def function_inner(a0, a1, *, session=None):
+def function_inner(f, g, *, session=None):
     """
     `function_inner(f, g)`: numerical L2 inner product of two tabulated functions `f` and `g`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("function_inner", (a0, a1), session)
+    return _apply("function_inner", (f, g), session)
 
 
-def function_l1_norm(a0, *, session=None):
+def function_l1_norm(points, *, session=None):
     """
     `function_l1_norm(points)`: numerical L1 norm of a tabulated function `list(list(x, y), ...)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("function_l1_norm", (a0,), session)
+    return _apply("function_l1_norm", (points,), session)
 
 
-def function_l2_norm(a0, *, session=None):
+def function_l2_norm(points, *, session=None):
     """
     `function_l2_norm(points)`: numerical L2 norm of a tabulated function `list(list(x, y), ...)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("function_l2_norm", (a0,), session)
+    return _apply("function_l2_norm", (points,), session)
 
 
-def function_normalize(a0, *, session=None):
+def function_normalize(f, *, session=None):
     """
     `function_normalize(f)`: L2-normalized copy of tabulated function `f`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("function_normalize", (a0,), session)
+    return _apply("function_normalize", (f,), session)
 
 
-def function_project(a0, a1, *, session=None):
+def function_project(f, g, *, session=None):
     """
     `function_project(f, g)`: orthogonal L2 projection of tabulated function `f` onto `g`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("function_project", (a0, a1), session)
+    return _apply("function_project", (f, g), session)
 
 
-def ga_apply_versor(a0, a1, *, session=None):
+def ga_apply_versor(V, X, *, session=None):
     """
     `ga_apply_versor(V, X)`: versor sandwich product `V X^ V^-1` (grade-involuted `X^` for odd versor `V`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ga_apply_versor", (a0, a1), session)
+    return _apply("ga_apply_versor", (V, X), session)
 
 
-def ga_commutator(a0, a1, *, session=None):
+def ga_commutator(A, B, *, session=None):
     """
     `ga_commutator(A, B)`: commutator product `(A B - B A) / 2`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ga_commutator", (a0, a1), session)
+    return _apply("ga_commutator", (A, B), session)
 
 
-def ga_conjugate(a0, *, session=None):
+def ga_conjugate(A, *, session=None):
     """
     `ga_conjugate(A)`: Clifford conjugate scaling each grade-`k` part by `(-1)^(k*(k+1)/2)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ga_conjugate", (a0,), session)
+    return _apply("ga_conjugate", (A,), session)
 
 
-def ga_dual(a0, *, session=None):
+def ga_dual(A, *, session=None):
     """
     `ga_dual(A)`: dual `A I^-1` with respect to pseudoscalar `I` (or `A I` for degenerate metrics).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ga_dual", (a0,), session)
+    return _apply("ga_dual", (A,), session)
 
 
-def ga_exp(a0, *, session=None):
+def ga_exp(A, *, session=None):
     """
     `ga_exp(A)`: Clifford exponential `exp(A)` when `A^2` is a scalar.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ga_exp", (a0,), session)
+    return _apply("ga_exp", (A,), session)
 
 
-def ga_gp(a0, a1, *, session=None):
+def ga_gp(A, B, *, session=None):
     """
     `ga_gp(A, B)`: geometric product `A B` of multivectors `A` and `B`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ga_gp", (a0, a1), session)
+    return _apply("ga_gp", (A, B), session)
 
 
-def ga_grade(a0, a1, *, session=None):
+def ga_grade(A, k, *, session=None):
     """
     `ga_grade(A, k)`: grade-`k` projection `<A>_k` of multivector `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ga_grade", (a0, a1), session)
+    return _apply("ga_grade", (A, k), session)
 
 
-def ga_inner(a0, a1, *, session=None):
+def ga_inner(A, B, *, session=None):
     """
     `ga_inner(A, B)`: Hestenes inner product `sum_{r,s>0} <A_r B_s>_{|r-s|}`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ga_inner", (a0, a1), session)
+    return _apply("ga_inner", (A, B), session)
 
 
-def ga_inverse(a0, *, session=None):
+def ga_inverse(A, *, session=None):
     """
     `ga_inverse(A)`: multiplicative inverse `A^-1` for a versor or blade with nonzero scalar square.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ga_inverse", (a0,), session)
+    return _apply("ga_inverse", (A,), session)
 
 
-def ga_involute(a0, *, session=None):
+def ga_involute(A, *, session=None):
     """
     `ga_involute(A)`: grade involution `A^` scaling each grade-`k` part by `(-1)^k`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ga_involute", (a0,), session)
+    return _apply("ga_involute", (A,), session)
 
 
-def ga_lcontract(a0, a1, *, session=None):
+def ga_lcontract(A, B, *, session=None):
     """
     `ga_lcontract(A, B)`: left contraction `sum_{r,s} <A_r B_s>_{s-r}`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ga_lcontract", (a0, a1), session)
+    return _apply("ga_lcontract", (A, B), session)
 
 
-def ga_norm(a0, *, session=None):
+def ga_norm(A, *, session=None):
     """
     `ga_norm(A)`: norm `sqrt(<A A~>_0)` of multivector `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ga_norm", (a0,), session)
+    return _apply("ga_norm", (A,), session)
 
 
-def ga_norm_squared(a0, *, session=None):
+def ga_norm_squared(A, *, session=None):
     """
     `ga_norm_squared(A)`: squared norm `<A A~>_0` of multivector `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ga_norm_squared", (a0,), session)
+    return _apply("ga_norm_squared", (A,), session)
 
 
-def ga_normalize(a0, *, session=None):
+def ga_normalize(A, *, session=None):
     """
     `ga_normalize(A)`: normalized multivector `A / ga_norm(A)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ga_normalize", (a0,), session)
+    return _apply("ga_normalize", (A,), session)
 
 
-def ga_rcontract(a0, a1, *, session=None):
+def ga_rcontract(A, B, *, session=None):
     """
     `ga_rcontract(A, B)`: right contraction `sum_{r,s} <A_r B_s>_{r-s}`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ga_rcontract", (a0, a1), session)
+    return _apply("ga_rcontract", (A, B), session)
 
 
-def ga_reverse(a0, *, session=None):
+def ga_reverse(A, *, session=None):
     """
     `ga_reverse(A)`: reversion `A~` scaling each grade-`k` part by `(-1)^(k*(k-1)/2)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ga_reverse", (a0,), session)
+    return _apply("ga_reverse", (A,), session)
 
 
-def ga_rotor(a0, a1, *, session=None):
+def ga_rotor(B, angle, *, session=None):
     """
     `ga_rotor(B, angle)`: rotor `exp(-angle * B_hat / 2)` for bivector `B` and rotation angle `angle`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ga_rotor", (a0, a1), session)
+    return _apply("ga_rotor", (B, angle), session)
 
 
-def ga_scalar_product(a0, a1, *, session=None):
+def ga_scalar_product(A, B, *, session=None):
     """
     `ga_scalar_product(A, B)`: scalar product `<A B>_0` of multivectors `A` and `B`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ga_scalar_product", (a0, a1), session)
+    return _apply("ga_scalar_product", (A, B), session)
 
 
-def ga_undual(a0, *, session=None):
+def ga_undual(A, *, session=None):
     """
     `ga_undual(A)`: undual `A I` with respect to pseudoscalar `I`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ga_undual", (a0,), session)
+    return _apply("ga_undual", (A,), session)
 
 
-def ga_wedge(a0, a1, *, session=None):
+def ga_wedge(A, B, *, session=None):
     """
     `ga_wedge(A, B)`: outer (exterior) product `A ^ B = sum_{r,s} <A_r B_s>_{r+s}`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ga_wedge", (a0, a1), session)
+    return _apply("ga_wedge", (A, B), session)
 
 
-def gamma(a0, *, session=None):
+def gamma(z, *, session=None):
     """
     `gamma(z)`: Euler gamma function `Gamma(z)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("gamma", (a0,), session)
+    return _apply("gamma", (z,), session)
 
 
-def gamma_complex(a0, a1, *, session=None):
+def gamma_complex(re, im, *, session=None):
     """
     `gamma_complex(re, im)`: `list(re, im)` of the complex Gamma function `Gamma(re + i*im)`. `Γ(z)`; poles (non-positive integers) give `+∞`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("gamma_complex", (a0, a1), session)
+    return _apply("gamma_complex", (re, im), session)
 
 
-def gamma_dist(a0, a1, *, session=None):
+def gamma_dist(shape, rate, *, session=None):
     """
     `gamma_dist(shape, rate)`: gamma distribution with shape parameter `shape` and rate parameter `rate`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("gamma_dist", (a0, a1), session)
+    return _apply("gamma_dist", (shape, rate), session)
 
 
-def gamma_lr(a0, a1, *, session=None):
+def gamma_lr(a, x, *, session=None):
     """
     `gamma_lr(a, x)`: regularized lower incomplete gamma function `P(a, x) = gamma(a, x) / Gamma(a)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("gamma_lr", (a0, a1), session)
+    return _apply("gamma_lr", (a, x), session)
 
 
-def gauss_theorem(a0, a1, a2, *, session=None):
+def gauss_theorem(F, vars, bounds, *, session=None):
     """
     `gauss_theorem(F, vars, bounds)`: outward flux integral of vector field `F` over box `bounds` via the divergence theorem.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("gauss_theorem", (a0, a1, a2), session)
+    return _apply("gauss_theorem", (F, vars, bounds), session)
 
 
-def gaussian_curvature(a0, a1, *, session=None):
+def gaussian_curvature(g, vars, *, session=None):
     """
     `gaussian_curvature(g, vars)`: Gaussian curvature `K = R / 2` of a 2D metric `g` in `vars`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("gaussian_curvature", (a0, a1), session)
+    return _apply("gaussian_curvature", (g, vars), session)
 
 
-def gcd(a0, a1, *, session=None):
+def gcd(a, b, *, session=None):
     """
     `gcd(a, b)`: greatest common divisor of integers `a` and `b`. Computes the greatest common divisor (GCD) of two numbers using Stein's binary GCD algorithm after one initial Euclidean reduction step. # Arguments * `a` - The first number. * `b` - The second number. # Returns The greatest common divisor of `a` and `b`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("gcd", (a0, a1), session)
+    return _apply("gcd", (a, b), session)
 
 
-def ge(a0, a1, *, session=None):
+def ge(a, b, *, session=None):
     """
     `ge(a, b)`: greater-than-or-equal comparison `a >= b`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ge", (a0, a1), session)
+    return _apply("ge", (a, b), session)
 
 
-def generalized_stokes(a0, a1, a2, *, session=None):
+def generalized_stokes(omega, vars, M, *, session=None):
     """
     `generalized_stokes(omega, vars, M)`: evaluates both sides of `int_M d(omega) = int_{dM} omega` as an equation.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("generalized_stokes", (a0, a1, a2), session)
+    return _apply("generalized_stokes", (omega, vars, M), session)
 
 
-def geodesic_acceleration(a0, a1, *, session=None):
+def geodesic_acceleration(metric, coords, *, session=None):
     """
     `geodesic_acceleration(metric, coords)`: geodesic equation acceleration vector `-Gamma^mu_{alpha beta} u^alpha u^beta` for `metric` and `coords`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("geodesic_acceleration", (a0, a1), session)
+    return _apply("geodesic_acceleration", (metric, coords), session)
 
 
-def geometric(a0, *, session=None):
+def geometric(p, *, session=None):
     """
     `geometric(p)`: geometric distribution with success probability `p`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("geometric", (a0,), session)
+    return _apply("geometric", (p,), session)
 
 
-def geometric_mean(a0, *, session=None):
+def geometric_mean(xs, *, session=None):
     """
     `geometric_mean(xs)`: geometric mean `(prod x_i)^(1/n)` of list `xs`. Computes the geometric mean of a slice of positive data. GM = (x1 * x2 * ... * xn)^(1/n)
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("geometric_mean", (a0,), session)
+    return _apply("geometric_mean", (xs,), session)
 
 
-def geweke(a0, *, session=None):
+def geweke(chain, *, session=None):
     """
     `geweke(chain)`: the Geweke convergence z-score of the first tenth against the last half of `chain`. Geweke z-score comparing the first 10 % with the last 50 % of a chain. The two segments are compared with a difference of means standardised by their sample variances. Values far from zero in absolute value suggest that the chain has not converged. # Errors Returns an error for fewer than twenty draws or a zero variance.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("geweke", (a0,), session)
+    return _apply("geweke", (chain,), session)
 
 
 def gf256_add(a0, a1, *, session=None):
@@ -14810,12 +14810,12 @@ def gf_add(a0, a1, a2, *, session=None):
     return _apply("gf_add", (a0, a1, a2), session)
 
 
-def gf_coeffs(a0, a1, a2, *, session=None):
+def gf_coeffs(f, x, count, *, session=None):
     """
     `gf_coeffs(f, x, count)`: extract the first `count` Taylor coefficients of generating function `f(x)` at `x = 0`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("gf_coeffs", (a0, a1, a2), session)
+    return _apply("gf_coeffs", (f, x, count), session)
 
 
 def gf_div(a0, a1, a2, *, session=None):
@@ -15098,84 +15098,84 @@ def gfx_sub(a0, a1, a2, a3, *, session=None):
     return _apply("gfx_sub", (a0, a1, a2, a3), session)
 
 
-def gibbs_free_energy(a0, a1, a2, *, session=None):
+def gibbs_free_energy(H, T, S, *, session=None):
     """
     `gibbs_free_energy(H, T, S)`: Gibbs free energy `G = H - T S`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("gibbs_free_energy", (a0, a1, a2), session)
+    return _apply("gibbs_free_energy", (H, T, S), session)
 
 
-def gini(a0, *, session=None):
+def gini(ps, *, session=None):
     """
     `gini(ps)`: Gini impurity `1 - sum p_i^2` of categorical distribution `ps`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("gini", (a0,), session)
+    return _apply("gini", (ps,), session)
 
 
-def gl_basis(a0, *, session=None):
+def gl_basis(n, *, session=None):
     """
     `gl_basis(n)`: standard matrix basis `E_ij` of the general linear Lie algebra `gl(n)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("gl_basis", (a0,), session)
+    return _apply("gl_basis", (n,), session)
 
 
-def glm_fit(a0, a1, a2, a3, a4, a5, *, session=None):
+def glm_fit(x, y, family, link, weights, tol, *, session=None):
     """
     `glm_fit(x, y, family, link, weights, tol)`: `list(beta, se, deviance, null_deviance, aic, iterations, fitted)` of a generalised linear model fitted by iteratively reweighted least squares; `x` is a list of rows without an intercept, `weights` is empty for equal weights.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("glm_fit", (a0, a1, a2, a3, a4, a5), session)
+    return _apply("glm_fit", (x, y, family, link, weights, tol), session)
 
 
-def glm_predict(a0, a1, a2, *, session=None):
+def glm_predict(x, beta, link, *, session=None):
     """
     `glm_predict(x, beta, link)`: the fitted mean of each row of `x` given the coefficients `beta` (intercept first) and the `link`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("glm_predict", (a0, a1, a2), session)
+    return _apply("glm_predict", (x, beta, link), session)
 
 
-def grad(a0, a1, *, session=None):
+def grad(f, vars, *, session=None):
     """
     `grad(f, vars)`: gradient vector `[df/dx_1, ..., df/dx_n]` of scalar expression `f`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("grad", (a0, a1), session)
+    return _apply("grad", (f, vars), session)
 
 
-def grad_in(a0, a1, a2, *, session=None):
+def grad_in(f, sys, vars, *, session=None):
     """
     `grad_in(f, sys, vars)`: physical-component gradient of scalar `f` in orthogonal coordinate system `sys(vars)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("grad_in", (a0, a1, a2), session)
+    return _apply("grad_in", (f, sys, vars), session)
 
 
-def gram_matrix(a0, a1, a2, a3, *, session=None):
+def gram_matrix(funcs, x, a, b, *, session=None):
     """
     `gram_matrix(funcs, x, a, b)`: Gram matrix of `L^2([a, b])` inner products `<f_i, f_j>`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("gram_matrix", (a0, a1, a2, a3), session)
+    return _apply("gram_matrix", (funcs, x, a, b), session)
 
 
-def gram_schmidt(a0, a1, a2, a3, *, session=None):
+def gram_schmidt(funcs, x, a, b, *, session=None):
     """
     `gram_schmidt(funcs, x, a, b)`: orthogonal basis of `span(funcs)` on `[a, b]` in `L^2(x)`. Performs the Gram-Schmidt process to orthogonalize a set of functions. All functions must have the same sampling points. # Errors Returns an error if any pair of input functions has mismatched sample points.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("gram_schmidt", (a0, a1, a2, a3), session)
+    return _apply("gram_schmidt", (funcs, x, a, b), session)
 
 
-def gram_schmidt_orthonormal(a0, a1, a2, a3, *, session=None):
+def gram_schmidt_orthonormal(funcs, x, a, b, *, session=None):
     """
     `gram_schmidt_orthonormal(funcs, x, a, b)`: orthonormal basis of `span(funcs)` on `[a, b]` in `L^2(x)`. Performs the Gram-Schmidt process to orthonormalize a set of functions. # Errors Returns an error if any pair of input functions has mismatched sample points.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("gram_schmidt_orthonormal", (a0, a1, a2, a3), session)
+    return _apply("gram_schmidt_orthonormal", (funcs, x, a, b), session)
 
 
 def graph(*args, session=None):
@@ -15634,20 +15634,20 @@ def graph_vertex_cover(a0, a1, a2, *, session=None):
     return _apply("graph_vertex_cover", (a0, a1, a2), session)
 
 
-def gravitational_force(a0, a1, a2, *, session=None):
+def gravitational_force(m1, m2, r, *, session=None):
     """
     `gravitational_force(m1, m2, r)`: Newtonian gravitational force magnitude `G_N m1 m2 / r^2`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("gravitational_force", (a0, a1, a2), session)
+    return _apply("gravitational_force", (m1, m2, r), session)
 
 
-def gravitational_time_dilation(a0, a1, a2, *, session=None):
+def gravitational_time_dilation(t, r, M, *, session=None):
     """
     `gravitational_time_dilation(t, r, M)`: proper time `t sqrt(1 - r_s / r)` at radius `r` outside mass `M`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("gravitational_time_dilation", (a0, a1, a2), session)
+    return _apply("gravitational_time_dilation", (t, r, M), session)
 
 
 def greens_theorem(a0, a1, a2, a3, *, session=None):
@@ -16050,20 +16050,20 @@ def group_sylow_subgroups(a0, a1, *, session=None):
     return _apply("group_sylow_subgroups", (a0, a1), session)
 
 
-def gt(a0, a1, *, session=None):
+def gt(a, b, *, session=None):
     """
     `gt(a, b)`: strict greater-than comparison `a > b`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("gt", (a0, a1), session)
+    return _apply("gt", (a, b), session)
 
 
-def gumbel(a0, a1, *, session=None):
+def gumbel(mu, beta, *, session=None):
     """
     `gumbel(mu, beta)`: Gumbel (type-I extreme value) distribution with location `mu` and scale `beta`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("gumbel", (a0, a1), session)
+    return _apply("gumbel", (mu, beta), session)
 
 
 def h_planck(*, session=None):
@@ -16074,76 +16074,76 @@ def h_planck(*, session=None):
     return _apply("h_planck", (), session)
 
 
-def hall_coefficient(a0, a1, *, session=None):
+def hall_coefficient(n, q, *, session=None):
     """
     `hall_coefficient(n, q)`: Hall coefficient `1 / (n q)` for carrier density `n` and charge `q`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hall_coefficient", (a0, a1), session)
+    return _apply("hall_coefficient", (n, q), session)
 
 
-def hamilton_equations(a0, a1, a2, *, session=None):
+def hamilton_equations(H, q, p, *, session=None):
     """
     `hamilton_equations(H, q, p)`: Hamilton's canonical equations `list(dH/dp, -dH/dq)` for `(q_dot, p_dot)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hamilton_equations", (a0, a1, a2), session)
+    return _apply("hamilton_equations", (H, q, p), session)
 
 
-def hamiltonian(a0, a1, *, session=None):
+def hamiltonian(T, V, *, session=None):
     """
     `hamiltonian(T, V)`: total mechanical energy `H = T + V` from kinetic energy `T` and potential energy `V`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hamiltonian", (a0, a1), session)
+    return _apply("hamiltonian", (T, V), session)
 
 
-def hamiltonian_3d(a0, a1, a2, *, session=None):
+def hamiltonian_3d(m, V, vars, *, session=None):
     """
     `hamiltonian_3d(m, V, vars)`: multi-dimensional Hamiltonian `-(hbar^2 / (2 m)) nabla^2 + V` in coordinates `vars`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hamiltonian_3d", (a0, a1, a2), session)
+    return _apply("hamiltonian_3d", (m, V, vars), session)
 
 
-def hamiltonian_free_particle(a0, a1, *, session=None):
+def hamiltonian_free_particle(m, x, *, session=None):
     """
     `hamiltonian_free_particle(m, x)`: 1D free-particle Hamiltonian `-(hbar^2 / (2 m)) d^2/dx^2`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hamiltonian_free_particle", (a0, a1), session)
+    return _apply("hamiltonian_free_particle", (m, x), session)
 
 
-def hamiltonian_harmonic_oscillator(a0, a1, a2, *, session=None):
+def hamiltonian_harmonic_oscillator(m, w, x, *, session=None):
     """
     `hamiltonian_harmonic_oscillator(m, w, x)`: 1D quantum harmonic oscillator Hamiltonian with frequency `w`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hamiltonian_harmonic_oscillator", (a0, a1, a2), session)
+    return _apply("hamiltonian_harmonic_oscillator", (m, w, x), session)
 
 
-def hamiltonian_of(a0, a1, a2, *, session=None):
+def hamiltonian_of(L, y, x, *, session=None):
     """
     `hamiltonian_of(L, y, x)`: computes the Hamiltonian `sum(y' * dL/dy') - L` via Legendre transform of Lagrangian `L`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hamiltonian_of", (a0, a1, a2), session)
+    return _apply("hamiltonian_of", (L, y, x), session)
 
 
-def hamiltonian_operator(a0, a1, a2, *, session=None):
+def hamiltonian_operator(m, V, x, *, session=None):
     """
     `hamiltonian_operator(m, V, x)`: 1D Hamiltonian operator `-(hbar^2 / (2 m)) d^2/dx^2 + V`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hamiltonian_operator", (a0, a1, a2), session)
+    return _apply("hamiltonian_operator", (m, V, x), session)
 
 
-def hamiltons_principle(a0, a1, a2, *, session=None):
+def hamiltons_principle(L, q, t, *, session=None):
     """
     `hamiltons_principle(L, q, t)`: applies Hamilton's principle to Lagrangian `L`, returning `euler_lagrange(L, q, t)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hamiltons_principle", (a0, a1, a2), session)
+    return _apply("hamiltons_principle", (L, q, t), session)
 
 
 def hamming_check(a0, *, session=None):
@@ -16186,44 +16186,44 @@ def hamming_weight(a0, *, session=None):
     return _apply("hamming_weight", (a0,), session)
 
 
-def hamming_window(a0, *, session=None):
+def hamming_window(n, *, session=None):
     """
     `hamming_window(n)`: `n`-point symmetric Hamming window sequence. Generates a Hamming window of length `n`. # Arguments * `n` - The number of points in the output window.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hamming_window", (a0,), session)
+    return _apply("hamming_window", (n,), session)
 
 
-def hann_window(a0, *, session=None):
+def hann_window(n, *, session=None):
     """
     `hann_window(n)`: `n`-point symmetric Hann window sequence. Generates a Hann window of length `n`. # Arguments * `n` - The number of points in the output window.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hann_window", (a0,), session)
+    return _apply("hann_window", (n,), session)
 
 
-def harmonic(a0, *, session=None):
+def harmonic(n, *, session=None):
     """
     `harmonic(n)`: `n`-th harmonic number `H_n = sum_{k=1}^n 1/k` (analytically continued via `psi(x + 1) + gamma`). The `n`-th harmonic number `sum_{k=1..n} 1/k`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("harmonic", (a0,), session)
+    return _apply("harmonic", (n,), session)
 
 
-def harmonic_mean(a0, *, session=None):
+def harmonic_mean(xs, *, session=None):
     """
     `harmonic_mean(xs)`: harmonic mean `n / (sum 1/x_i)` of list `xs`. Computes the harmonic mean of a slice of positive data. HM = n / (1/x1 + 1/x2 + ... + 1/xn)
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("harmonic_mean", (a0,), session)
+    return _apply("harmonic_mean", (xs,), session)
 
 
-def harmonic_oscillator_frequency(a0, a1, *, session=None):
+def harmonic_oscillator_frequency(k, m, *, session=None):
     """
     `harmonic_oscillator_frequency(k, m)`: angular frequency `sqrt(k / m)` of a simple harmonic oscillator.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("harmonic_oscillator_frequency", (a0, a1), session)
+    return _apply("harmonic_oscillator_frequency", (k, m), session)
 
 
 def hbar(*, session=None):
@@ -16234,52 +16234,52 @@ def hbar(*, session=None):
     return _apply("hbar", (), session)
 
 
-def heat_capacity(a0, a1, *, session=None):
+def heat_capacity(U, T, *, session=None):
     """
     `heat_capacity(U, T)`: heat capacity `dU/dT` at constant volume.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("heat_capacity", (a0, a1), session)
+    return _apply("heat_capacity", (U, T), session)
 
 
-def heat_fd(a0, a1, a2, a3, a4, *, session=None):
+def heat_fd(alpha, u0, bc_val, t_end, steps, *, session=None):
     """
     `heat_fd(alpha, u0, bc_val, t_end, steps)`: finite-difference heat equation solver on the unit domain with uniform Dirichlet boundary value `bc_val`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("heat_fd", (a0, a1, a2, a3, a4), session)
+    return _apply("heat_fd", (alpha, u0, bc_val, t_end, steps), session)
 
 
-def heat_fd_bc(a0, a1, a2, a3, a4, a5, *, session=None):
+def heat_fd_bc(alpha, u0, bc, bc_val, t_end, steps, *, session=None):
     """
     `heat_fd_bc(alpha, u0, bc, bc_val, t_end, steps)`: finite-difference heat equation solver with per-face Dirichlet/Neumann boundary condition `bc`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("heat_fd_bc", (a0, a1, a2, a3, a4, a5), session)
+    return _apply("heat_fd_bc", (alpha, u0, bc, bc_val, t_end, steps), session)
 
 
-def heaviside(a0, *, session=None):
+def heaviside(x, *, session=None):
     """
     `heaviside(x)`: Heaviside step function (`0` for `x < 0`, `1/2` at `0`, `1` for `x > 0`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("heaviside", (a0,), session)
+    return _apply("heaviside", (x,), session)
 
 
-def helmholtz_free_energy(a0, a1, a2, *, session=None):
+def helmholtz_free_energy(U, T, S, *, session=None):
     """
     `helmholtz_free_energy(U, T, S)`: Helmholtz free energy `A = U - T S`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("helmholtz_free_energy", (a0, a1, a2), session)
+    return _apply("helmholtz_free_energy", (U, T, S), session)
 
 
-def helmholtz_from_partition(a0, a1, *, session=None):
+def helmholtz_from_partition(Z, T, *, session=None):
     """
     `helmholtz_from_partition(Z, T)`: Helmholtz free energy `-k_B T ln(Z)` from partition function `Z`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("helmholtz_from_partition", (a0, a1), session)
+    return _apply("helmholtz_from_partition", (Z, T), session)
 
 
 def henon_orbit(a0, a1, a2, a3, *, session=None):
@@ -16290,60 +16290,60 @@ def henon_orbit(a0, a1, a2, a3, *, session=None):
     return _apply("henon_orbit", (a0, a1, a2, a3), session)
 
 
-def hermite(a0, a1, *, session=None):
+def hermite(n, x, *, session=None):
     """
     `hermite(n, x)`: physicists' Hermite polynomial `H_n(x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hermite", (a0, a1), session)
+    return _apply("hermite", (n, x), session)
 
 
-def hermite_differential_equation(a0, a1, a2, *, session=None):
+def hermite_differential_equation(y, x, n, *, session=None):
     """
     `hermite_differential_equation(y, x, n)`: Hermite differential equation `y'' - 2 x y' + 2 n y = 0`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hermite_differential_equation", (a0, a1, a2), session)
+    return _apply("hermite_differential_equation", (y, x, n), session)
 
 
-def hermite_form(a0, *, session=None):
+def hermite_form(A, *, session=None):
     """
     `hermite_form(A)`: Hermite normal form `list(H, U)` of integer matrix `A` with `U A = H`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hermite_form", (a0,), session)
+    return _apply("hermite_form", (A,), session)
 
 
-def hermite_rodrigues(a0, a1, *, session=None):
+def hermite_rodrigues(n, x, *, session=None):
     """
     `hermite_rodrigues(n, x)`: Rodrigues' formula for Hermite polynomials `(-1)^n exp(x^2) d^n/dx^n exp(-x^2)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hermite_rodrigues", (a0, a1), session)
+    return _apply("hermite_rodrigues", (n, x), session)
 
 
-def hessian(a0, a1, *, session=None):
+def hessian(f, vars, *, session=None):
     """
     `hessian(f, vars)`: Hessian matrix `H_{ij} = d^2f/(dx_i dx_j)` of scalar expression `f`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hessian", (a0, a1), session)
+    return _apply("hessian", (f, vars), session)
 
 
-def hessian_definiteness(a0, a1, a2, *, session=None):
+def hessian_definiteness(f, vars, point, *, session=None):
     """
     `hessian_definiteness(f, vars, point)`: classifies the Hessian of `f` with respect to `vars` at `point` (e.g. `positive_definite`, `negative_definite`, `indefinite`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hessian_definiteness", (a0, a1, a2), session)
+    return _apply("hessian_definiteness", (f, vars, point), session)
 
 
-def hilbert(a0, *, session=None):
+def hilbert(n, *, session=None):
     """
     `hilbert(n)` constructs the `n × n` Hilbert matrix. With zero-based row and column indices its entries are `H_{ij} = 1 / (i + j + 1)`. The entries are exact rational numbers.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hilbert", (a0,), session)
+    return _apply("hilbert", (n,), session)
 
 
 def hill_eigen(*args, session=None):
@@ -16362,140 +16362,140 @@ def hill_mode(*args, session=None):
     return _apply("hill_mode", args, session)
 
 
-def holonomic_equal(a0, a1, a2, *, session=None):
+def holonomic_equal(f, g, x, *, session=None):
     """
     `holonomic_equal(f, g, x)`: decides whether holonomic expressions `f(x)` and `g(x)` are identically equal (`true` or `false`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("holonomic_equal", (a0, a1, a2), session)
+    return _apply("holonomic_equal", (f, g, x), session)
 
 
-def holonomic_ode(a0, a1, *, session=None):
+def holonomic_ode(f, x, *, session=None):
     """
     `holonomic_ode(f, x)`: finds a linear homogeneous ODE annihilator for holonomic expression `f` in `x`, returned as a list of polynomial coefficients.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("holonomic_ode", (a0, a1), session)
+    return _apply("holonomic_ode", (f, x), session)
 
 
-def holonomic_recurrence(a0, a1, a2, *, session=None):
+def holonomic_recurrence(f, x, n, *, session=None):
     """
     `holonomic_recurrence(f, x, n)`: finds a linear recurrence relation for the Taylor coefficients of `f(x)` in index `n`, returned as `[shift, poly]` pairs.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("holonomic_recurrence", (a0, a1, a2), session)
+    return _apply("holonomic_recurrence", (f, x, n), session)
 
 
-def holonomic_series(a0, a1, a2, *, session=None):
+def holonomic_series(f, x, k, *, session=None):
     """
     `holonomic_series(f, x, k)` computes the Taylor terms of `f` at zero in `x` with degree below `k`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("holonomic_series", (a0, a1, a2), session)
+    return _apply("holonomic_series", (f, x, k), session)
 
 
-def holonomic_zero(a0, a1, *, session=None):
+def holonomic_zero(f, x, *, session=None):
     """
     `holonomic_zero(f, x)`: decides whether holonomic expression `f(x)` is identically zero (`true` or `false`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("holonomic_zero", (a0, a1), session)
+    return _apply("holonomic_zero", (f, x), session)
 
 
-def holt_winters(a0, a1, a2, a3, a4, *, session=None):
+def holt_winters(x, season, alpha, beta, gamma, *, session=None):
     """
     `holt_winters(x, season, alpha, beta, gamma)`: `list(fitted, level, trend, season, sse)` of additive Holt–Winters smoothing.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("holt_winters", (a0, a1, a2, a3, a4), session)
+    return _apply("holt_winters", (x, season, alpha, beta, gamma), session)
 
 
-def holt_winters_mul(a0, a1, a2, a3, a4, *, session=None):
+def holt_winters_mul(x, season, alpha, beta, gamma, *, session=None):
     """
     `holt_winters_mul(x, season, alpha, beta, gamma)`: the multiplicative Holt–Winters form, `list(fitted, level, trend, season, sse)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("holt_winters_mul", (a0, a1, a2, a3, a4), session)
+    return _apply("holt_winters_mul", (x, season, alpha, beta, gamma), session)
 
 
-def hooi(a0, a1, a2, a3, *, session=None):
+def hooi(t, ranks, sweeps, tol, *, session=None):
     """
     `hooi(t, ranks, sweeps, tol)`: Tucker approximation of tensor `t` by higher-order orthogonal iteration, returning `list(core, factors, error)`. Refine a truncated HOSVD using higher-order orthogonal iteration. Each coordinate step computes the leading singular subspace after projecting all other modes. Ranks are upper bounds and may be clamped to the available subspace. Initialization is deterministic HOSVD; HOOI can converge to a local optimum or stationary point. Inspect `relative_error` independently from `converged`. Exhausting the sweep budget returns the best observed approximation with `converged = false`. Residuals near floating-point roundoff also terminate the iteration. Input normalization protects intermediate norm calculations at uniformly small/large scales. No Gram matrices or condition-number squaring are used. Zero tensors use a rank-one zero core. # Errors Non-finite data, empty modes, invalid ranks/tolerance/budget, SVD failure, or arithmetic overflow return an error.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hooi", (a0, a1, a2, a3), session)
+    return _apply("hooi", (t, ranks, sweeps, tol), session)
 
 
-def hook_lengths(a0, *, session=None):
+def hook_lengths(shape, *, session=None):
     """
     `hook_lengths(shape)`: Young diagram hook lengths for integer partition `shape`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hook_lengths", (a0,), session)
+    return _apply("hook_lengths", (shape,), session)
 
 
-def hosvd(a0, a1, *, session=None):
+def hosvd(t, ranks, *, session=None):
     """
     `hosvd(t, ranks)`: truncated higher-order SVD of tensor `t` returning `list(core, factors, singular_values)`. The higher-order SVD (Tucker decomposition) of a dense tensor. For each mode the tensor is unfolded to `n_k x prod(rest)`, the leading left singular vectors of the unfolding become the factor, and the core is the tensor contracted with every factor. `ranks` may be `None` for the numerical multilinear rank of the unfoldings (at most `min(n_k, prod(rest))`, and less when an unfolding is rank deficient in floating point); a requested rank above that is clamped to it. The decomposition is exact before truncation and gives `||T - C x U||_F <= sqrt(sum_k sum_{j > r_k} sigma_{k,j}^2)`. # Errors Fails when `ranks` does not have one entry per mode, when a requested rank is zero, when a mode is empty, or when a mode unfolding has no nonzero singular value.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hosvd", (a0, a1), session)
+    return _apply("hosvd", (t, ranks), session)
 
 
-def huber_location(a0, a1, *, session=None):
+def huber_location(x, k, *, session=None):
     """
     `huber_location(x, k)`: Huber M-estimator of location for `x` with tuning constant `k`. Huber M-estimator of location with tuning constant `k` (1.345 is the classical choice), scale fixed to the normalised MAD. NaNs are ignored. An invalid tuning constant or an empty effective sample yields NaN. An undefined or zero MAD gives the sample median.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("huber_location", (a0, a1), session)
+    return _apply("huber_location", (x, k), session)
 
 
-def hurwitz_zeta(a0, a1, *, session=None):
+def hurwitz_zeta(s, q, *, session=None):
     """
     `hurwitz_zeta(s, q)`: Hurwitz zeta function `sum_{n=0}^infty (n + q)^{-s}`. Computes the Hurwitz zeta function ζ(s, q) for real s and q. Defined as Σ_{n=0}^∞ 1/(n+q)^s.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hurwitz_zeta", (a0, a1), session)
+    return _apply("hurwitz_zeta", (s, q), session)
 
 
-def hydrogen_energy(a0, *, session=None):
+def hydrogen_energy(n, *, session=None):
     """
     `hydrogen_energy(n)`: hydrogen atom energy level `-hbar^2 / (2 * m_e * a_0^2 * n^2)` for principal quantum number `n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hydrogen_energy", (a0,), session)
+    return _apply("hydrogen_energy", (n,), session)
 
 
-def hydrogen_radial(a0, a1, a2, *, session=None):
+def hydrogen_radial(n, l, r, *, session=None):
     """
     `hydrogen_radial(n, l, r)`: normalized hydrogenic radial wavefunction `R_nl(r)` expressed in terms of the Bohr radius `a_0`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hydrogen_radial", (a0, a1, a2), session)
+    return _apply("hydrogen_radial", (n, l, r), session)
 
 
-def hydrogen_wavefunction(a0, a1, a2, a3, a4, a5, *, session=None):
+def hydrogen_wavefunction(n, l, m, r, theta, phi, *, session=None):
     """
     `hydrogen_wavefunction(n, l, m, r, theta, phi)`: full hydrogen atom eigenfunction `R_nl(r) * Y_l^m(theta, phi)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hydrogen_wavefunction", (a0, a1, a2, a3, a4, a5), session)
+    return _apply("hydrogen_wavefunction", (n, l, m, r, theta, phi), session)
 
 
-def hyper1f1(a0, a1, a2, *, session=None):
+def hyper1f1(a, b, z, *, session=None):
     """
     `hyper1f1(a, b, z)`: Kummer confluent hypergeometric function `_1F_1(a; b; z)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hyper1f1", (a0, a1, a2), session)
+    return _apply("hyper1f1", (a, b, z), session)
 
 
-def hyper2f1(a0, a1, a2, a3, *, session=None):
+def hyper2f1(a, b, c, z, *, session=None):
     """
     `hyper2f1(a, b, c, z)`: Gauss hypergeometric function `_2F_1(a, b; c; z)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("hyper2f1", (a0, a1, a2, a3), session)
+    return _apply("hyper2f1", (a, b, c, z), session)
 
 
 def hyperpfq(*args, session=None):
@@ -16506,84 +16506,84 @@ def hyperpfq(*args, session=None):
     return _apply("hyperpfq", args, session)
 
 
-def ideal_gas_law(a0, a1, a2, a3, a4, *, session=None):
+def ideal_gas_law(P, V, n, R, T, *, session=None):
     """
     `ideal_gas_law(P, V, n, R, T)`: ideal gas equation of state residual `P V - n R T`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ideal_gas_law", (a0, a1, a2, a3, a4), session)
+    return _apply("ideal_gas_law", (P, V, n, R, T), session)
 
 
-def ideal_gas_pressure(a0, a1, a2, *, session=None):
+def ideal_gas_pressure(n, T, V, *, session=None):
     """
     `ideal_gas_pressure(n, T, V)`: ideal gas pressure `n R_gas T / V`. Ideal gas law: PV = nRT, solving for pressure. # Arguments * `n` - Amount of substance (mol) * `t` - Temperature (K) * `v` - Volume (m³)
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ideal_gas_pressure", (a0, a1, a2), session)
+    return _apply("ideal_gas_pressure", (n, T, V), session)
 
 
-def ideal_member(a0, a1, a2, *, session=None):
+def ideal_member(poly, generators, vars, *, session=None):
     """
     `ideal_member(poly, generators, vars)`: decides whether `poly` belongs to the polynomial ideal generated by `generators` over `vars` (`true` or `false`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ideal_member", (a0, a1, a2), session)
+    return _apply("ideal_member", (poly, generators, vars), session)
 
 
-def identity(a0, *, session=None):
+def identity(n, *, session=None):
     """
     `identity(n)`: `n x n` identity matrix `I_n`. Identity matrix of size `n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("identity", (a0,), session)
+    return _apply("identity", (n,), session)
 
 
-def idwt(a0, a1, a2, *, session=None):
+def idwt(approx, detail, wavelet, *, session=None):
     """
     `idwt(approx, detail, wavelet)`: single-level inverse discrete wavelet transform. Inverse of [`dwt`] (exact up to rounding). # Errors [`WaveletError::Shape`] when the two coefficient lists differ in length or are empty.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("idwt", (a0, a1, a2), session)
+    return _apply("idwt", (approx, detail, wavelet), session)
 
 
-def idwt2(a0, a1, a2, a3, a4, *, session=None):
+def idwt2(ll, lh, hl, hh, wavelet, *, session=None):
     """
     `idwt2(ll, lh, hl, hh, wavelet)`: single-level 2D inverse discrete wavelet transform from four sub-bands. Inverse of [`dwt2`]: `rows` and `cols` are the shape of the original array. # Errors [`WaveletError::Shape`] when the packed array does not have the expected `(2*ra) x (2*ca)` size, or when a column or row transform fails.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("idwt2", (a0, a1, a2, a3, a4), session)
+    return _apply("idwt2", (ll, lh, hl, hh, wavelet), session)
 
 
-def iff(a0, a1, *, session=None):
+def iff(p, q, *, session=None):
     """
     `iff(p, q)`: logical biconditional `p <=> q`, true when `p` and `q` have the same truth value.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("iff", (a0, a1), session)
+    return _apply("iff", (p, q), session)
 
 
-def ifft_abs(a0, a1, *, session=None):
+def ifft_abs(re, im, *, session=None):
     """
     `ifft_abs(re, im)`: magnitude of the inverse DFT of complex spectrum `re + i*im`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ifft_abs", (a0, a1), session)
+    return _apply("ifft_abs", (re, im), session)
 
 
-def ifft_im(a0, a1, *, session=None):
+def ifft_im(re, im, *, session=None):
     """
     `ifft_im(re, im)`: imaginary part of the inverse DFT of complex spectrum `re + i*im`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ifft_im", (a0, a1), session)
+    return _apply("ifft_im", (re, im), session)
 
 
-def ifft_re(a0, a1, *, session=None):
+def ifft_re(re, im, *, session=None):
     """
     `ifft_re(re, im)`: real part of the inverse DFT of complex spectrum `re + i*im`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ifft_re", (a0, a1), session)
+    return _apply("ifft_re", (re, im), session)
 
 
 def ifs_apply(a0, a1, a2, *, session=None):
@@ -16602,60 +16602,60 @@ def ifs_generate(a0, a1, a2, *, session=None):
     return _apply("ifs_generate", (a0, a1, a2), session)
 
 
-def iid_mean(a0, a1, *, session=None):
+def iid_mean(d, n, *, session=None):
     """
     `iid_mean(d, n)`: distribution of the sample mean of `n` independent, identically distributed copies of `d`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("iid_mean", (a0, a1), session)
+    return _apply("iid_mean", (d, n), session)
 
 
-def iid_sum(a0, a1, *, session=None):
+def iid_sum(d, n, *, session=None):
     """
     `iid_sum(d, n)`: distribution of the sum of `n` independent, identically distributed copies of `d`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("iid_sum", (a0, a1), session)
+    return _apply("iid_sum", (d, n), session)
 
 
-def im(a0, *, session=None):
+def im(z, *, session=None):
     """
     `im(z)`: imaginary part of complex number `z`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("im", (a0,), session)
+    return _apply("im", (z,), session)
 
 
-def implies(a0, a1, *, session=None):
+def implies(p, q, *, session=None):
     """
     `implies(p, q)`: material implication `p => q`, equivalent to `or(not(p), q)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("implies", (a0, a1), session)
+    return _apply("implies", (p, q), session)
 
 
-def inclusion_exclusion(a0, *, session=None):
+def inclusion_exclusion(levels, *, session=None):
     """
     `inclusion_exclusion(levels)`: alternating sum `sum_k (-1)^k levels[k]` for inclusion-exclusion counting.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("inclusion_exclusion", (a0,), session)
+    return _apply("inclusion_exclusion", (levels,), session)
 
 
-def indefinite_product(a0, a1, *, session=None):
+def indefinite_product(f, k, *, session=None):
     """
     `indefinite_product(f, k)`: symbolic indefinite product `P(k)` satisfying `P(k+1)/P(k) = f(k)`. `P(k)` with `P(k + 1) / P(k) = f(k)`, checked.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("indefinite_product", (a0, a1), session)
+    return _apply("indefinite_product", (f, k), session)
 
 
-def indefinite_sum(a0, a1, *, session=None):
+def indefinite_sum(f, k, *, session=None):
     """
     `indefinite_sum(f, k)`: symbolic indefinite sum `T(k)` satisfying `T(k+1) - T(k) = f(k)`. `T(k)` with `T(k + 1) - T(k) = f(k)`, checked.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("indefinite_sum", (a0, a1), session)
+    return _apply("indefinite_sum", (f, k), session)
 
 
 def induced_subgraph(a0, a1, *, session=None):
@@ -16666,44 +16666,44 @@ def induced_subgraph(a0, a1, *, session=None):
     return _apply("induced_subgraph", (a0, a1), session)
 
 
-def initial_value_laplace(a0, a1, *, session=None):
+def initial_value_laplace(F, s, *, session=None):
     """
     `initial_value_laplace(F, s)`: applies the Laplace initial-value theorem `lim_{s->oo} s * F(s)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("initial_value_laplace", (a0, a1), session)
+    return _apply("initial_value_laplace", (F, s), session)
 
 
-def initial_value_z(a0, a1, *, session=None):
+def initial_value_z(F, z, *, session=None):
     """
     `initial_value_z(F, z)`: applies the Z-transform initial-value theorem `lim_{z->oo} F(z)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("initial_value_z", (a0, a1), session)
+    return _apply("initial_value_z", (F, z), session)
 
 
-def inner_product(a0, a1, a2, a3, a4, *, session=None):
+def inner_product(f, g, x, a, b, *, session=None):
     """
     `inner_product(f, g, x, a, b)`: inner product `<f, g> = int_a^b conj(f) g dx`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("inner_product", (a0, a1, a2, a3, a4), session)
+    return _apply("inner_product", (f, g, x, a, b), session)
 
 
-def integral(a0, a1, *, session=None):
+def integral(f, x, *, session=None):
     """
     `integral(f, x)`: symbolic indefinite integral (antiderivative) of `f` with respect to `x`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("integral", (a0, a1), session)
+    return _apply("integral", (f, x), session)
 
 
-def integrate_form(a0, a1, a2, *, session=None):
+def integrate_form(omega, vars, M, *, session=None):
     """
     `integrate_form(omega, vars, M)`: integral `int_M omega` of differential form `omega(vars)` over cell or chain `M`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("integrate_form", (a0, a1, a2), session)
+    return _apply("integrate_form", (omega, vars, M), session)
 
 
 def interleave(a0, a1, *, session=None):
@@ -16714,148 +16714,148 @@ def interleave(a0, a1, *, session=None):
     return _apply("interleave", (a0, a1), session)
 
 
-def internal_energy_from_partition(a0, a1, *, session=None):
+def internal_energy_from_partition(Z, T, *, session=None):
     """
     `internal_energy_from_partition(Z, T)`: internal energy `k_B T^2 d(ln Z)/dT` from partition function `Z`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("internal_energy_from_partition", (a0, a1), session)
+    return _apply("internal_energy_from_partition", (Z, T), session)
 
 
-def interpolate(a0, a1, a2, *, session=None):
+def interpolate(xs, ys, x, *, session=None):
     """
     `interpolate(xs, ys, x)`: evaluate the Lagrange interpolating polynomial through `(xs, ys)` at `x`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("interpolate", (a0, a1, a2), session)
+    return _apply("interpolate", (xs, ys, x), session)
 
 
-def invariant_factors(a0, *, session=None):
+def invariant_factors(A, *, session=None):
     """
     `invariant_factors(A)`: invariant factors (diagonal of Smith normal form) of integer matrix `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("invariant_factors", (a0,), session)
+    return _apply("invariant_factors", (A,), session)
 
 
-def inverse(a0, *, session=None):
+def inverse(A, *, session=None):
     """
     `inverse(A)`: multiplicative inverse `A^{-1}` of square invertible matrix `A`. Inverse of a square matrix through LU solves.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("inverse", (a0,), session)
+    return _apply("inverse", (A,), session)
 
 
-def inverse_erfc(a0, *, session=None):
+def inverse_erfc(x, *, session=None):
     """
     `inverse_erfc(x)`: inverse complementary error function solving `erfc(y) = x`. Returns `y` such that `erfc(y) = p` for `0 < p < 2`. The support endpoints return signed infinities. Inputs outside `[0, 2]` return NaN. Refinement in the far tail uses a logarithmic residual.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("inverse_erfc", (a0,), session)
+    return _apply("inverse_erfc", (x,), session)
 
 
-def inverse_fourier(a0, a1, a2, *, session=None):
+def inverse_fourier(F, omega, t, *, session=None):
     """
     `inverse_fourier(F, omega, t)`: inverse Fourier transform recovering `f(t)` from `F(omega)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("inverse_fourier", (a0, a1, a2), session)
+    return _apply("inverse_fourier", (F, omega, t), session)
 
 
-def inverse_laplace(a0, a1, a2, *, session=None):
+def inverse_laplace(F, s, t, *, session=None):
     """
     `inverse_laplace(F, s, t)`: inverse Laplace transform recovering `f(t)` from `F(s)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("inverse_laplace", (a0, a1, a2), session)
+    return _apply("inverse_laplace", (F, s, t), session)
 
 
-def inverse_wavelet_packet(a0, a1, *, session=None):
+def inverse_wavelet_packet(bands, wavelet, *, session=None):
     """
     `inverse_wavelet_packet(bands, wavelet)`: reconstruct the signal from the equal-width leaf bands of `wavelet_packet`. Reconstructs a signal from the complete leaf level of [`wavelet_packet`]. # Errors [`WaveletError::Shape`] when the number of bands is not a power of two, their lengths differ, or they are empty.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("inverse_wavelet_packet", (a0, a1), session)
+    return _apply("inverse_wavelet_packet", (bands, wavelet), session)
 
 
-def inverse_ztransform(a0, a1, a2, *, session=None):
+def inverse_ztransform(F, z, n, *, session=None):
     """
     `inverse_ztransform(F, z, n)`: inverse Z-transform recovering sequence `f(n)` from `F(z)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("inverse_ztransform", (a0, a1, a2), session)
+    return _apply("inverse_ztransform", (F, z, n), session)
 
 
-def inversions(a0, *, session=None):
+def inversions(perm, *, session=None):
     """
     `inversions(perm)`: number of inversions `(i < j, perm[i] > perm[j])` in permutation `perm`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("inversions", (a0,), session)
+    return _apply("inversions", (perm,), session)
 
 
-def invmod(a0, a1, *, session=None):
+def invmod(x, m, *, session=None):
     """
     `invmod(x, m)`: modular multiplicative inverse `x^-1 mod m` for positive `m` when `gcd(x, m) = 1`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("invmod", (a0, a1), session)
+    return _apply("invmod", (x, m), session)
 
 
-def involutions(a0, *, session=None):
+def involutions(n, *, session=None):
     """
     `involutions(n)`: `n`-th telephone number, counting involutions (self-inverse permutations) on `n` elements.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("involutions", (a0,), session)
+    return _apply("involutions", (n,), session)
 
 
-def iqr(a0, *, session=None):
+def iqr(xs, *, session=None):
     """
     `iqr(xs)`: interquartile range `Q3 - Q1` of list `xs`. Computes the Interquartile Range (IQR) = Q3 - Q1.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("iqr", (a0,), session)
+    return _apply("iqr", (xs,), session)
 
 
-def iroot(a0, a1, *, session=None):
+def iroot(n, k, *, session=None):
     """
     `iroot(n, k)`: integer `k`-th root `floor(n^(1/k))` for `n >= 0` and `k >= 1`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("iroot", (a0, a1), session)
+    return _apply("iroot", (n, k), session)
 
 
-def irrep_weights(a0, a1, *, session=None):
+def irrep_weights(T, hw, *, session=None):
     """
     `irrep_weights(T, hw)`: dominant weights with multiplicities `list(list(w, m), ...)` of irrep `V(hw)` of type `T`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("irrep_weights", (a0, a1), session)
+    return _apply("irrep_weights", (T, hw), session)
 
 
-def is_concave(a0, a1, *, session=None):
+def is_concave(f, vars, *, session=None):
     """
     `is_concave(f, vars)`: tests whether `f` is concave in `vars` via Hessian negative semidefiniteness.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("is_concave", (a0, a1), session)
+    return _apply("is_concave", (f, vars), session)
 
 
-def is_convex(a0, a1, *, session=None):
+def is_convex(f, vars, *, session=None):
     """
     `is_convex(f, vars)`: tests whether `f` is convex in `vars` via Hessian positive semidefiniteness.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("is_convex", (a0, a1), session)
+    return _apply("is_convex", (f, vars), session)
 
 
-def is_inside_contour(a0, a1, *, session=None):
+def is_inside_contour(p, C, *, session=None):
     """
     `is_inside_contour(p, C)`: `true` if point `p` lies strictly inside contour `C`, `false` otherwise.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("is_inside_contour", (a0, a1), session)
+    return _apply("is_inside_contour", (p, C), session)
 
 
 def is_irreducible_mod(a0, a1, a2, *, session=None):
@@ -16866,12 +16866,12 @@ def is_irreducible_mod(a0, a1, a2, *, session=None):
     return _apply("is_irreducible_mod", (a0, a1, a2), session)
 
 
-def is_killing(a0, a1, a2, *, session=None):
+def is_killing(xi, g, vars, *, session=None):
     """
     `is_killing(xi, g, vars)`: `true` if vector field `xi` is a Killing field (`L_xi g = 0`) of metric `g(vars)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("is_killing", (a0, a1, a2), session)
+    return _apply("is_killing", (xi, g, vars), session)
 
 
 def is_lie_algebra(*args, session=None):
@@ -16882,116 +16882,116 @@ def is_lie_algebra(*args, session=None):
     return _apply("is_lie_algebra", args, session)
 
 
-def is_orthogonal(a0, *, session=None):
+def is_orthogonal(A, *, session=None):
     """
     `is_orthogonal(A)`: returns `1` if `A^T A = I` and `0` otherwise. Checks if two vectors are orthogonal. # Errors Returns an error if the vectors have different lengths.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("is_orthogonal", (a0,), session)
+    return _apply("is_orthogonal", (A,), session)
 
 
-def is_positive_definite(a0, *, session=None):
+def is_positive_definite(A, *, session=None):
     """
     `is_positive_definite(A)`: returns `1` if `A` is symmetric positive definite and `0` otherwise.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("is_positive_definite", (a0,), session)
+    return _apply("is_positive_definite", (A,), session)
 
 
-def is_square(a0, *, session=None):
+def is_square(n, *, session=None):
     """
     `is_square(n)`: `true` if `n` is a perfect square (`n = k^2`), `false` otherwise.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("is_square", (a0,), session)
+    return _apply("is_square", (n,), session)
 
 
-def is_squarefree(a0, *, session=None):
+def is_squarefree(n, *, session=None):
     """
     `is_squarefree(n)`: `true` if `n` is divisible by no square of a prime, `false` otherwise.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("is_squarefree", (a0,), session)
+    return _apply("is_squarefree", (n,), session)
 
 
-def is_symmetric(a0, *, session=None):
+def is_symmetric(A, *, session=None):
     """
     `is_symmetric(A)`: returns `1` if `A = A^T` and `0` otherwise. Checks if the sparse matrix is symmetric ($A = A^T$).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("is_symmetric", (a0,), session)
+    return _apply("is_symmetric", (A,), session)
 
 
-def isoperimetric(a0, a1, a2, a3, a4, *, session=None):
+def isoperimetric(L, G, y, x, lam, *, session=None):
     """
     `isoperimetric(L, G, y, x, lam)`: computes the constrained Euler-Lagrange expression `euler_lagrange(L + lam * G, y, x)` with Lagrange multiplier `lam`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("isoperimetric", (a0, a1, a2, a3, a4), session)
+    return _apply("isoperimetric", (L, G, y, x, lam), session)
 
 
-def isprime(a0, *, session=None):
+def isprime(n, *, session=None):
     """
     `isprime(n)`: `true` if integer `n` is prime, `false` otherwise.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("isprime", (a0,), session)
+    return _apply("isprime", (n,), session)
 
 
-def isqrt(a0, *, session=None):
+def isqrt(n, *, session=None):
     """
     `isqrt(n)`: integer square root `floor(sqrt(n))` for `n >= 0`. Floor of the square root of `n`, exact for all `u64`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("isqrt", (a0,), session)
+    return _apply("isqrt", (n,), session)
 
 
-def jacobi(a0, a1, *, session=None):
+def jacobi(x, n, *, session=None):
     """
     `jacobi(x, n)`: Jacobi symbol `(x / n)` for odd positive integer `n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("jacobi", (a0, a1), session)
+    return _apply("jacobi", (x, n), session)
 
 
-def jacobi_equation(a0, a1, a2, a3, *, session=None):
+def jacobi_equation(L, y, x, h, *, session=None):
     """
     `jacobi_equation(L, y, x, h)`: computes the Jacobi accessory differential expression for variation `h` around an extremal of Lagrangian `L(x, y, y')`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("jacobi_equation", (a0, a1, a2, a3), session)
+    return _apply("jacobi_equation", (L, y, x, h), session)
 
 
-def jacobian(a0, a1, *, session=None):
+def jacobian(F, vars, *, session=None):
     """
     `jacobian(F, vars)`: Jacobian matrix `J_{ij} = dF_i/dx_j` of vector field `F`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("jacobian", (a0, a1), session)
+    return _apply("jacobian", (F, vars), session)
 
 
-def joint_entropy(a0, *, session=None):
+def joint_entropy(mat, *, session=None):
     """
     `joint_entropy(mat)`: joint Shannon entropy (in nats) of joint probability matrix `mat`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("joint_entropy", (a0,), session)
+    return _apply("joint_entropy", (mat,), session)
 
 
-def jordan(a0, *, session=None):
+def jordan(A, *, session=None):
     """
     `jordan(A)`: Jordan canonical form `list(P, J)` with `A = P J P^{-1}`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("jordan", (a0,), session)
+    return _apply("jordan", (A,), session)
 
 
-def jordan_blocks(a0, *, session=None):
+def jordan_blocks(A, *, session=None):
     """
     `jordan_blocks(A)`: list of Jordan block sizes and eigenvalues of `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("jordan_blocks", (a0,), session)
+    return _apply("jordan_blocks", (A,), session)
 
 
 def julia_escape(a0, a1, a2, a3, a4, *, session=None):
@@ -17010,52 +17010,52 @@ def k_B(*, session=None):
     return _apply("k_B", (), session)
 
 
-def kalman_filter(a0, a1, a2, a3, a4, *, session=None):
+def kalman_filter(y, transition, observation, process_cov, noise_cov, *, session=None):
     """
     `kalman_filter(y, transition, observation, process_cov, noise_cov)`: `list(filtered, loglik)` of a linear Gaussian state-space model from a zero initial state and the unit initial covariance; `y` is a list of observation vectors. Runs the Kalman filter for a linear Gaussian state-space model `x_t = F x_{t-1} + w_t` with `w_t ~ N(0, Q)` and `y_t = H x_t + v_t` with `v_t ~ N(0, R)`, started from `x_0 ~ N(x0, p0)`. # Errors Returns a lowercase message when a matrix has the wrong shape, the observation sequence is empty or has rows of the wrong length, a value is not finite, or the innovation covariance is not positive definite.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("kalman_filter", (a0, a1, a2, a3, a4), session)
+    return _apply("kalman_filter", (y, transition, observation, process_cov, noise_cov), session)
 
 
-def kalman_gain(a0, a1, a2, a3, *, session=None):
+def kalman_gain(a, c, w, v, *, session=None):
     """
     `kalman_gain(a, c, w, v)`: the steady-state Kalman gain of `x+ = a x + w` observed through `c`, with process covariance `w` and noise covariance `v`. Steady-state Kalman gain from the dual Riccati equation. `W` is the process-noise covariance and `V` the measurement-noise covariance. Returns `L = P C^T V^{-1}` where `P` solves `A P + P A^T - P C^T V^{-1} C P + W = 0`. # Errors Returns an error for inconsistent dimensions or a singular `V`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("kalman_gain", (a0, a1, a2, a3), session)
+    return _apply("kalman_gain", (a, c, w, v), session)
 
 
-def kaplan_meier(a0, a1, a2, *, session=None):
+def kaplan_meier(time, event, conf, *, session=None):
     """
     `kaplan_meier(time, event, conf)`: `list(times, at_risk, events, survival, variance, lower, upper)` of the product-limit estimator, with `event` a list of 1 (observed) and 0 (censored) and a `conf` confidence level. Kaplan-Meier product-limit estimate of the survival function. `time` holds the observed times and `event` is true when the observation ended in the event of interest and false when it was censored. The inputs are not modified; the estimate is computed on an internal sorted copy. `conf` is the two-sided confidence level and must lie strictly between 0 and 1. # Errors Returns an error for empty or mismatched inputs, non-finite times, a confidence level outside `(0, 1)`, or a sample in which every observation is censored.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("kaplan_meier", (a0, a1, a2), session)
+    return _apply("kaplan_meier", (time, event, conf), session)
 
 
-def kde(a0, a1, a2, *, session=None):
+def kde(sample, x, h, *, session=None):
     """
     `kde(sample, x, h)`: Gaussian kernel density estimate of `sample` at `x` with bandwidth `h`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("kde", (a0, a1, a2), session)
+    return _apply("kde", (sample, x, h), session)
 
 
-def kei(a0, a1, *, session=None):
+def kei(n, x, *, session=None):
     """
     `kei(n, x)`: Kelvin function `kei_n(x)` of integer order `n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("kei", (a0, a1), session)
+    return _apply("kei", (n, x), session)
 
 
-def ker(a0, a1, *, session=None):
+def ker(n, x, *, session=None):
     """
     `ker(n, x)`: Kelvin function `ker_n(x)` of integer order `n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ker", (a0, a1), session)
+    return _apply("ker", (n, x), session)
 
 
 def killing_form(*args, session=None):
@@ -17066,60 +17066,60 @@ def killing_form(*args, session=None):
     return _apply("killing_form", args, session)
 
 
-def killing_tensor(a0, a1, a2, *, session=None):
+def killing_tensor(xi, g, vars, *, session=None):
     """
     `killing_tensor(xi, g, vars)`: Lie derivative `(L_xi g)_ij = nabla_i xi_j + nabla_j xi_i` of metric `g(vars)` along vector `xi`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("killing_tensor", (a0, a1, a2), session)
+    return _apply("killing_tensor", (xi, g, vars), session)
 
 
-def kinematics(a0, a1, *, session=None):
+def kinematics(r, t, *, session=None):
     """
     `kinematics(r, t)`: position, velocity `dr/dt`, and acceleration `d^2r/dt^2` as `list(r, v, a)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("kinematics", (a0, a1), session)
+    return _apply("kinematics", (r, t), session)
 
 
-def kinetic_energy(a0, a1, *, session=None):
+def kinetic_energy(m, v, *, session=None):
     """
     `kinetic_energy(m, v)`: translational kinetic energy `(1/2) m v^2`. Kinetic energy `½ vᵀ M v` with the consistent mass matrix.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("kinetic_energy", (a0, a1), session)
+    return _apply("kinetic_energy", (m, v), session)
 
 
-def kinetic_operator(a0, a1, *, session=None):
+def kinetic_operator(m, x, *, session=None):
     """
     `kinetic_operator(m, x)`: 1D kinetic energy operator `-(hbar^2 / (2 m)) d^2/dx^2`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("kinetic_operator", (a0, a1), session)
+    return _apply("kinetic_operator", (m, x), session)
 
 
-def kkt_minimum(a0, a1, a2, *, session=None):
+def kkt_minimum(f, constraints, vars, *, session=None):
     """
     `kkt_minimum(f, constraints, vars)`: returns the KKT candidate point minimizing `f` subject to `constraints`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("kkt_minimum", (a0, a1, a2), session)
+    return _apply("kkt_minimum", (f, constraints, vars), session)
 
 
-def kkt_points(a0, a1, a2, *, session=None):
+def kkt_points(f, constraints, vars, *, session=None):
     """
     `kkt_points(f, constraints, vars)`: enumerates Karush-Kuhn-Tucker candidate points and multipliers for inequality-constrained optimization.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("kkt_points", (a0, a1, a2), session)
+    return _apply("kkt_points", (f, constraints, vars), session)
 
 
-def kl_divergence(a0, a1, *, session=None):
+def kl_divergence(p, q, *, session=None):
     """
     `kl_divergence(p, q)`: Kullback-Leibler divergence `D_KL(P || Q) = sum p_i ln(p_i / q_i)` from `q` to `p`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("kl_divergence", (a0, a1), session)
+    return _apply("kl_divergence", (p, q), session)
 
 
 def klein_four_group(*, session=None):
@@ -17130,12 +17130,12 @@ def klein_four_group(*, session=None):
     return _apply("klein_four_group", (), session)
 
 
-def klein_gordon_equation(a0, a1, a2, *, session=None):
+def klein_gordon_equation(phi, m, x, *, session=None):
     """
     `klein_gordon_equation(phi, m, x)`: residual `(partial_mu partial^mu + m^2) phi` of the Klein-Gordon equation in natural units.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("klein_gordon_equation", (a0, a1, a2), session)
+    return _apply("klein_gordon_equation", (phi, m, x), session)
 
 
 def knuth_bendix(*args, session=None):
@@ -17146,236 +17146,236 @@ def knuth_bendix(*args, session=None):
     return _apply("knuth_bendix", args, session)
 
 
-def kretschmann(a0, a1, *, session=None):
+def kretschmann(g, vars, *, session=None):
     """
     `kretschmann(g, vars)`: Kretschmann curvature scalar `R_ijkl R^ijkl` of metric `g` in `vars`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("kretschmann", (a0, a1), session)
+    return _apply("kretschmann", (g, vars), session)
 
 
-def kron(a0, a1, *, session=None):
+def kron(A, B, *, session=None):
     """
     `kron(A, B)`: Kronecker product `A otimes B` of matrices `A` and `B`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("kron", (a0, a1), session)
+    return _apply("kron", (A, B), session)
 
 
-def kronecker(a0, *, session=None):
+def kronecker(n, *, session=None):
     """
     `kronecker(n)`: Kronecker delta `delta_{n, 0}`, equal to `1` when `n = 0` and `0` for nonzero integers.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("kronecker", (a0,), session)
+    return _apply("kronecker", (n,), session)
 
 
-def kronecker_symbol(a0, a1, *, session=None):
+def kronecker_symbol(a, n, *, session=None):
     """
     `kronecker_symbol(a, n)`: Kronecker symbol `(a / n)` for arbitrary integer `n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("kronecker_symbol", (a0, a1), session)
+    return _apply("kronecker_symbol", (a, n), session)
 
 
-def kurtosis(a0, *, session=None):
+def kurtosis(xs, *, session=None):
     """
     `kurtosis(xs)`: Pearson kurtosis `m4 / m2^2` of list `xs`. Computes the unbiased sample excess kurtosis `G2` (the estimator used by Excel's `KURT` and `scipy.stats.kurtosis(fisher=True, bias=False)`); a normal distribution has expected value 0. With `g2 = m4 / m2^2 - 3` (central moments divided by `n`), `G2 = (n - 1) / ((n - 2)(n - 3)) * ((n + 1) g2 + 6)`. Returns `NaN` for fewer than four points and `0.0` for constant data.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("kurtosis", (a0,), session)
+    return _apply("kurtosis", (xs,), session)
 
 
-def kurtosis_of(a0, *, session=None):
+def kurtosis_of(d, *, session=None):
     """
     `kurtosis_of(d)`: excess kurtosis (standardized 4th central moment minus 3) of distribution `d`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("kurtosis_of", (a0,), session)
+    return _apply("kurtosis_of", (d,), session)
 
 
-def l2_distance(a0, a1, a2, a3, a4, *, session=None):
+def l2_distance(f, g, x, a, b, *, session=None):
     """
     `l2_distance(f, g, x, a, b)`: `L^2` distance `||f - g||_2` on `[a, b]`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("l2_distance", (a0, a1, a2, a3, a4), session)
+    return _apply("l2_distance", (f, g, x, a, b), session)
 
 
-def l2_norm(a0, a1, a2, a3, *, session=None):
+def l2_norm(f, x, a, b, *, session=None):
     """
     `l2_norm(f, x, a, b)`: `L^2` norm `sqrt(int_a^b |f|^2 dx)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("l2_norm", (a0, a1, a2, a3), session)
+    return _apply("l2_norm", (f, x, a, b), session)
 
 
-def lagrangian(a0, a1, *, session=None):
+def lagrangian(T, V, *, session=None):
     """
     `lagrangian(T, V)`: classical Lagrangian `L = T - V` from kinetic energy `T` and potential energy `V`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lagrangian", (a0, a1), session)
+    return _apply("lagrangian", (T, V), session)
 
 
-def laguerre(a0, a1, *, session=None):
+def laguerre(n, x, *, session=None):
     """
     `laguerre(n, x)`: Laguerre polynomial `L_n(x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("laguerre", (a0, a1), session)
+    return _apply("laguerre", (n, x), session)
 
 
-def laguerre_differential_equation(a0, a1, a2, *, session=None):
+def laguerre_differential_equation(y, x, n, *, session=None):
     """
     `laguerre_differential_equation(y, x, n)`: Laguerre differential equation `x y'' + (1 - x) y' + n y = 0`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("laguerre_differential_equation", (a0, a1, a2), session)
+    return _apply("laguerre_differential_equation", (y, x, n), session)
 
 
-def laguerre_gen(a0, a1, a2, *, session=None):
+def laguerre_gen(n, alpha, x, *, session=None):
     """
     `laguerre_gen(n, alpha, x)`: generalized Laguerre polynomial `L_n^(alpha)(x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("laguerre_gen", (a0, a1, a2), session)
+    return _apply("laguerre_gen", (n, alpha, x), session)
 
 
-def laguerre_rodrigues(a0, a1, *, session=None):
+def laguerre_rodrigues(n, x, *, session=None):
     """
     `laguerre_rodrigues(n, x)`: Rodrigues' formula for Laguerre polynomials `(exp(x) / n!) d^n/dx^n (exp(-x) x^n)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("laguerre_rodrigues", (a0, a1), session)
+    return _apply("laguerre_rodrigues", (n, x), session)
 
 
-def lah(a0, a1, *, session=None):
+def lah(n, k, *, session=None):
     """
     `lah(n, k)`: unsigned Lah number `L(n, k)`, counting partitions of `n` elements into `k` non-empty ordered lists.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lah", (a0, a1), session)
+    return _apply("lah", (n, k), session)
 
 
-def lambert_w_complex(a0, a1, a2, *, session=None):
+def lambert_w_complex(re, im, k, *, session=None):
     """
     `lambert_w_complex(re, im, k)`: `list(re, im)` of branch `k` of the complex Lambert W function solving `w exp(w) = re + i*im`. The branch `k` of the Lambert W function: the solution of `w e^w = z` in the strip of branch `k`. On the negative real axis, a positive zero imaginary part selects the upper lip and a negative zero selects the lower lip. `W_0(0) = 0` and `W_k(0) = -∞` for `k != 0`; the branch point `-1/e` gives `-1`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lambert_w_complex", (a0, a1, a2), session)
+    return _apply("lambert_w_complex", (re, im, k), session)
 
 
-def lambertw(a0, *, session=None):
+def lambertw(x, *, session=None):
     """
     `lambertw(x)`: principal branch `W_0(x)` of the Lambert W function solving `w exp(w) = x`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lambertw", (a0,), session)
+    return _apply("lambertw", (x,), session)
 
 
-def lambertw_m1(a0, *, session=None):
+def lambertw_m1(x, *, session=None):
     """
     `lambertw_m1(x)`: lower real branch `W_{-1}(x)` of the Lambert W function for `-1/e <= x < 0`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lambertw_m1", (a0,), session)
+    return _apply("lambertw_m1", (x,), session)
 
 
-def laplace(a0, a1, a2, *, session=None):
+def laplace(f, t, s, *, session=None):
     """
     `laplace(f, t, s)`: unilateral Laplace transform `int_0^oo f(t) * exp(-s*t) dt`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("laplace", (a0, a1, a2), session)
+    return _apply("laplace", (f, t, s), session)
 
 
-def laplace_ball(a0, a1, a2, a3, *, session=None):
+def laplace_ball(g, r, theta, R, *, session=None):
     """
     `laplace_ball(g, r, theta, R)`: harmonic solution of the Dirichlet Laplace equation on a 3D ball of radius `R` with boundary data `g`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("laplace_ball", (a0, a1, a2, a3), session)
+    return _apply("laplace_ball", (g, r, theta, R), session)
 
 
-def laplace_beltrami(a0, a1, a2, *, session=None):
+def laplace_beltrami(f, g, vars, *, session=None):
     """
     `laplace_beltrami(f, g, vars)`: Laplace-Beltrami operator `(1/sqrt|g|) d_i(sqrt|g| g^ij d_j f)` of `f` for metric `g(vars)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("laplace_beltrami", (a0, a1, a2), session)
+    return _apply("laplace_beltrami", (f, g, vars), session)
 
 
-def laplace_disk(a0, a1, a2, a3, *, session=None):
+def laplace_disk(g, r, theta, R, *, session=None):
     """
     `laplace_disk(g, r, theta, R)`: harmonic solution of the Dirichlet Laplace equation on a disk of radius `R` with boundary data `g(theta)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("laplace_disk", (a0, a1, a2, a3), session)
+    return _apply("laplace_disk", (g, r, theta, R), session)
 
 
-def laplace_dist(a0, a1, *, session=None):
+def laplace_dist(mu, b, *, session=None):
     """
     `laplace_dist(mu, b)`: Laplace distribution with location `mu` and scale `b`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("laplace_dist", (a0, a1), session)
+    return _apply("laplace_dist", (mu, b), session)
 
 
-def laplacian(a0, a1, *, session=None):
+def laplacian(f, vars, *, session=None):
     """
     `laplacian(f, vars)` sums the second partial derivatives of a scalar expression `f`. Pass the variables as `list(x_1, ..., x_n)`. The operator differentiates twice with respect to each variable. For example, `laplacian(x^2 + y^2, list(x, y))` returns `4`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("laplacian", (a0, a1), session)
+    return _apply("laplacian", (f, vars), session)
 
 
-def laplacian_in(a0, a1, a2, *, session=None):
+def laplacian_in(f, sys, vars, *, session=None):
     """
     `laplacian_in(f, sys, vars)`: scalar Laplacian of `f` in orthogonal coordinate system `sys(vars)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("laplacian_in", (a0, a1, a2), session)
+    return _apply("laplacian_in", (f, sys, vars), session)
 
 
-def lattice_volume(a0, a1, a2, *, session=None):
+def lattice_volume(a1, a2, a3, *, session=None):
     """
     `lattice_volume(a1, a2, a3)`: primitive cell volume `a1 . (a2 x a3)` from basis vectors.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lattice_volume", (a0, a1, a2), session)
+    return _apply("lattice_volume", (a1, a2, a3), session)
 
 
-def laurent(a0, a1, a2, a3, *, session=None):
+def laurent(f, x, a, n, *, session=None):
     """
     `laurent(f, x, a, n)`: Laurent/Puiseux series expansion of `f` about `x = a` up to order `n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("laurent", (a0, a1, a2, a3), session)
+    return _apply("laurent", (f, x, a, n), session)
 
 
-def lcm(a0, a1, *, session=None):
+def lcm(a, b, *, session=None):
     """
     `lcm(a, b)`: least common multiple of integers `a` and `b`. Computes the least common multiple (LCM) of two numbers. Returns `0` when either argument is `0`, and `u64::MAX` when the true value does not fit (use [`checked_lcm`] to tell the two apart).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lcm", (a0, a1), session)
+    return _apply("lcm", (a, b), session)
 
 
-def ldl(a0, *, session=None):
+def ldl(A, *, session=None):
     """
     `ldl(A)`: LDL^T factorization `list(L, D)` of symmetric matrix `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ldl", (a0,), session)
+    return _apply("ldl", (A,), session)
 
 
-def le(a0, a1, *, session=None):
+def le(a, b, *, session=None):
     """
     `le(a, b)`: less-than-or-equal comparison `a <= b`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("le", (a0, a1), session)
+    return _apply("le", (a, b), session)
 
 
 def leading_coeff(*args, session=None):
@@ -17402,92 +17402,92 @@ def leading_term(*args, session=None):
     return _apply("leading_term", args, session)
 
 
-def left_nullspace(a0, *, session=None):
+def left_nullspace(A, *, session=None):
     """
     `left_nullspace(A)`: basis of the left nullspace `{y : y^T A = 0}` of matrix `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("left_nullspace", (a0,), session)
+    return _apply("left_nullspace", (A,), session)
 
 
-def legendre(a0, a1, *, session=None):
+def legendre(n, x, *, session=None):
     """
     `legendre(n, x)`: Legendre polynomial `P_n(x)` of degree `n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("legendre", (a0, a1), session)
+    return _apply("legendre", (n, x), session)
 
 
-def legendre_condition(a0, a1, a2, *, session=None):
+def legendre_condition(L, y, x, *, session=None):
     """
     `legendre_condition(L, y, x)`: computes the second partial derivative `d^2 L / d(y')^2` used in the Legendre necessary condition for an extremum.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("legendre_condition", (a0, a1, a2), session)
+    return _apply("legendre_condition", (L, y, x), session)
 
 
-def legendre_differential_equation(a0, a1, a2, *, session=None):
+def legendre_differential_equation(y, x, n, *, session=None):
     """
     `legendre_differential_equation(y, x, n)`: Legendre differential equation `(1 - x^2) y'' - 2 x y' + n (n + 1) y = 0`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("legendre_differential_equation", (a0, a1, a2), session)
+    return _apply("legendre_differential_equation", (y, x, n), session)
 
 
-def legendre_rodrigues(a0, a1, *, session=None):
+def legendre_rodrigues(n, x, *, session=None):
     """
     `legendre_rodrigues(n, x)`: Rodrigues' formula for Legendre polynomials `(1 / (2^n n!)) d^n/dx^n (x^2 - 1)^n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("legendre_rodrigues", (a0, a1), session)
+    return _apply("legendre_rodrigues", (n, x), session)
 
 
-def legendre_symbol(a0, a1, *, session=None):
+def legendre_symbol(a, p, *, session=None):
     """
     `legendre_symbol(a, p)`: Legendre symbol `(a / p)` for odd prime `p`. Computes the Legendre symbol $\\left(\\frac{a}{p}\\right)$ for an odd prime `p`. Returns `0` if `p < 3`, `p` is composite, or `p` divides `a`; `1` if `a` is a quadratic residue modulo `p`; and `-1` if `a` is a quadratic non-residue.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("legendre_symbol", (a0, a1), session)
+    return _apply("legendre_symbol", (a, p), session)
 
 
-def legendre_transform(a0, a1, a2, *, session=None):
+def legendre_transform(f, x, p, *, session=None):
     """
     `legendre_transform(f, x, p)`: computes the Legendre-Fenchel transform `sup_x (p * x - f(x))`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("legendre_transform", (a0, a1, a2), session)
+    return _apply("legendre_transform", (f, x, p), session)
 
 
-def lerch(a0, a1, a2, *, session=None):
+def lerch(z, s, a, *, session=None):
     """
     `lerch(z, s, a)`: Lerch transcendent `Phi(z, s, a) = sum_{n=0}^infty z^n / (n + a)^s`. The Lerch transcendent `Φ(z, s, a) = Σ_{k=0}^∞ z^k / (k+a)^s` for real `s`, real `a > 0` and `z < 1` (the standard range). For `|z| <= 9/10` the defining series is summed directly. For `s > 0` and `|z| > 9/10` the Euler integral `Φ = 1/Γ(s) ∫_0^∞ t^(s-1) e^(-a t)/(1 - z e^(-t)) dt` is evaluated by double-exponential quadrature, which covers `z < 0` (`|z| > 1` included) as well as `z ↑ 1`. Non-positive integer `s` use the rational form `(z d/dz + a)^n 1/(1-z)`. At `z = 1` the analytic continuation `ζ(s, a)` is returned; `z > 1` and non-positive non-integer `s` with `|z| > 9/10` are outside the implemented range (`NaN`). Accuracy is about `1e-13` for moderate parameters.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lerch", (a0, a1, a2), session)
+    return _apply("lerch", (z, s, a), session)
 
 
-def lgamma(a0, *, session=None):
+def lgamma(z, *, session=None):
     """
     `lgamma(z)`: natural logarithm of `|Gamma(z)|`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lgamma", (a0,), session)
+    return _apply("lgamma", (z,), session)
 
 
-def lgamma_complex(a0, a1, *, session=None):
+def lgamma_complex(re, im, *, session=None):
     """
     `lgamma_complex(re, im)`: `list(re, im)` of `ln Gamma(z)` for `z = re + i*im`, continuous off the non-positive real axis.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lgamma_complex", (a0, a1), session)
+    return _apply("lgamma_complex", (re, im), session)
 
 
-def li(a0, *, session=None):
+def li(x, *, session=None):
     """
     `li(x)`: logarithmic integral `li(x) = int_0^x dt / ln(t)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("li", (a0,), session)
+    return _apply("li", (x,), session)
 
 
 def lie_bracket(*args, session=None):
@@ -17498,36 +17498,36 @@ def lie_bracket(*args, session=None):
     return _apply("lie_bracket", args, session)
 
 
-def lie_cartan_matrix(a0, *, session=None):
+def lie_cartan_matrix(T, *, session=None):
     """
     `lie_cartan_matrix(T)`: Cartan matrix of Lie algebra type `T` (Bourbaki numbering).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_cartan_matrix", (a0,), session)
+    return _apply("lie_cartan_matrix", (T,), session)
 
 
-def lie_cartan_solvable_test(a0, *, session=None):
+def lie_cartan_solvable_test(L, *, session=None):
     """
     `lie_cartan_solvable_test(L)`: `true` if Cartan's solvability criterion `K(L, [L, L]) = 0` holds.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_cartan_solvable_test", (a0,), session)
+    return _apply("lie_cartan_solvable_test", (L,), session)
 
 
-def lie_cartan_subalgebra(a0, *, session=None):
+def lie_cartan_subalgebra(L, *, session=None):
     """
     `lie_cartan_subalgebra(L)`: basis of a Cartan subalgebra of Lie algebra `L`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_cartan_subalgebra", (a0,), session)
+    return _apply("lie_cartan_subalgebra", (L,), session)
 
 
-def lie_cartan_type(a0, *, session=None):
+def lie_cartan_type(M, *, session=None):
     """
     `lie_cartan_type(M)`: Cartan classification string (such as `"A2+A1"`) of Cartan matrix `M`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_cartan_type", (a0,), session)
+    return _apply("lie_cartan_type", (M,), session)
 
 
 def lie_casimir_operator(*args, session=None):
@@ -17538,244 +17538,244 @@ def lie_casimir_operator(*args, session=None):
     return _apply("lie_casimir_operator", args, session)
 
 
-def lie_center(a0, *, session=None):
+def lie_center(L, *, session=None):
     """
     `lie_center(L)`: basis of the center `{x in L : [x, L] = 0}` of Lie algebra `L`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_center", (a0,), session)
+    return _apply("lie_center", (L,), session)
 
 
-def lie_coxeter_number(a0, *, session=None):
+def lie_coxeter_number(T, *, session=None):
     """
     `lie_coxeter_number(T)`: Coxeter number `h` of irreducible Lie algebra type `T`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_coxeter_number", (a0,), session)
+    return _apply("lie_coxeter_number", (T,), session)
 
 
-def lie_derived_dims(a0, *, session=None):
+def lie_derived_dims(L, *, session=None):
     """
     `lie_derived_dims(L)`: dimensions of the subalgebras in the derived series of `L`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_derived_dims", (a0,), session)
+    return _apply("lie_derived_dims", (L,), session)
 
 
-def lie_derived_series(a0, *, session=None):
+def lie_derived_series(L, *, session=None):
     """
     `lie_derived_series(L)`: derived series `L >= [L, L] >= ...` as a list of coordinate bases.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_derived_series", (a0,), session)
+    return _apply("lie_derived_series", (L,), session)
 
 
-def lie_dimension(a0, *, session=None):
+def lie_dimension(T, *, session=None):
     """
     `lie_dimension(T)`: dimension `n + 2*N` of semisimple Lie algebra type `T`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_dimension", (a0,), session)
+    return _apply("lie_dimension", (T,), session)
 
 
-def lie_dual_coxeter_number(a0, *, session=None):
+def lie_dual_coxeter_number(T, *, session=None):
     """
     `lie_dual_coxeter_number(T)`: dual Coxeter number `h^vee` of irreducible Lie algebra type `T`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_dual_coxeter_number", (a0,), session)
+    return _apply("lie_dual_coxeter_number", (T,), session)
 
 
-def lie_dynkin_diagram(a0, *, session=None):
+def lie_dynkin_diagram(T, *, session=None):
     """
     `lie_dynkin_diagram(T)`: Dynkin diagram edges `list(i, j, multiplicity)` (1-based; arrow from longer root `i` to `j`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_dynkin_diagram", (a0,), session)
+    return _apply("lie_dynkin_diagram", (T,), session)
 
 
-def lie_elements(a0, a1, *, session=None):
+def lie_elements(L, vectors, *, session=None):
     """
     `lie_elements(L, vectors)`: matrices in `L` corresponding to coordinate `vectors`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_elements", (a0, a1), session)
+    return _apply("lie_elements", (L, vectors), session)
 
 
-def lie_exponents(a0, *, session=None):
+def lie_exponents(T, *, session=None):
     """
     `lie_exponents(T)`: exponents of Lie algebra type `T`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_exponents", (a0,), session)
+    return _apply("lie_exponents", (T,), session)
 
 
-def lie_fundamental_weights(a0, *, session=None):
+def lie_fundamental_weights(T, *, session=None):
     """
     `lie_fundamental_weights(T)`: fundamental weights of type `T` in simple-root coordinates.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_fundamental_weights", (a0,), session)
+    return _apply("lie_fundamental_weights", (T,), session)
 
 
-def lie_gram(a0, *, session=None):
+def lie_gram(T, *, session=None):
     """
     `lie_gram(T)`: Gram matrix of simple roots of type `T` with long roots of squared length 2.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_gram", (a0,), session)
+    return _apply("lie_gram", (T,), session)
 
 
-def lie_highest_root(a0, *, session=None):
+def lie_highest_root(T, *, session=None):
     """
     `lie_highest_root(T)`: highest root of irreducible Lie algebra type `T` in simple-root coordinates.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_highest_root", (a0,), session)
+    return _apply("lie_highest_root", (T,), session)
 
 
-def lie_is_nilpotent(a0, *, session=None):
+def lie_is_nilpotent(L, *, session=None):
     """
     `lie_is_nilpotent(L)`: `true` if Lie algebra `L` is nilpotent, `false` otherwise.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_is_nilpotent", (a0,), session)
+    return _apply("lie_is_nilpotent", (L,), session)
 
 
-def lie_is_semisimple(a0, *, session=None):
+def lie_is_semisimple(L, *, session=None):
     """
     `lie_is_semisimple(L)`: `true` if Lie algebra `L` is semisimple (nondegenerate Killing form), `false` otherwise.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_is_semisimple", (a0,), session)
+    return _apply("lie_is_semisimple", (L,), session)
 
 
-def lie_is_solvable(a0, *, session=None):
+def lie_is_solvable(L, *, session=None):
     """
     `lie_is_solvable(L)`: `true` if Lie algebra `L` is solvable, `false` otherwise.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_is_solvable", (a0,), session)
+    return _apply("lie_is_solvable", (L,), session)
 
 
-def lie_is_subalgebra(a0, a1, *, session=None):
+def lie_is_subalgebra(L, vectors, *, session=None):
     """
     `lie_is_subalgebra(L, vectors)`: `true` if `span(vectors)` is closed under the Lie bracket of `L`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_is_subalgebra", (a0, a1), session)
+    return _apply("lie_is_subalgebra", (L, vectors), session)
 
 
-def lie_levi(a0, *, session=None):
+def lie_levi(L, *, session=None):
     """
     `lie_levi(L)`: Levi decomposition `list(levi_factor, radical)` of Lie algebra `L`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_levi", (a0,), session)
+    return _apply("lie_levi", (L,), session)
 
 
-def lie_lower_central_dims(a0, *, session=None):
+def lie_lower_central_dims(L, *, session=None):
     """
     `lie_lower_central_dims(L)`: dimensions of the subalgebras in the lower central series of `L`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_lower_central_dims", (a0,), session)
+    return _apply("lie_lower_central_dims", (L,), session)
 
 
-def lie_lower_central_series(a0, *, session=None):
+def lie_lower_central_series(L, *, session=None):
     """
     `lie_lower_central_series(L)`: lower central series `L >= [L, L] >= [L, [L, L]] >= ...` as a list of bases.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_lower_central_series", (a0,), session)
+    return _apply("lie_lower_central_series", (L,), session)
 
 
-def lie_num_positive_roots(a0, *, session=None):
+def lie_num_positive_roots(T, *, session=None):
     """
     `lie_num_positive_roots(T)`: number of positive roots of Lie algebra type `T`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_num_positive_roots", (a0,), session)
+    return _apply("lie_num_positive_roots", (T,), session)
 
 
-def lie_positive_roots(a0, *, session=None):
+def lie_positive_roots(T, *, session=None):
     """
     `lie_positive_roots(T)`: positive roots of type `T` in simple-root coordinates, ordered by height.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_positive_roots", (a0,), session)
+    return _apply("lie_positive_roots", (T,), session)
 
 
-def lie_radical(a0, *, session=None):
+def lie_radical(L, *, session=None):
     """
     `lie_radical(L)`: basis of the solvable radical of Lie algebra `L`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_radical", (a0,), session)
+    return _apply("lie_radical", (L,), session)
 
 
-def lie_rank(a0, *, session=None):
+def lie_rank(T, *, session=None):
     """
     `lie_rank(T)`: rank (dimension of Cartan subalgebra) of Lie algebra type `T`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_rank", (a0,), session)
+    return _apply("lie_rank", (T,), session)
 
 
-def lie_root_decomposition(a0, a1, *, session=None):
+def lie_root_decomposition(L, h, *, session=None):
     """
     `lie_root_decomposition(L, h)`: root-space decomposition `list(list(list(root, basis), ...), missing_dim)` of `L` with respect to Cartan subalgebra `h`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_root_decomposition", (a0, a1), session)
+    return _apply("lie_root_decomposition", (L, h), session)
 
 
-def lie_sc(a0, *, session=None):
+def lie_sc(c, *, session=None):
     """
     `lie_sc(c)`: inert Lie algebra wrapper for structure constants tensor `c[i][j][k]`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_sc", (a0,), session)
+    return _apply("lie_sc", (c,), session)
 
 
-def lie_sc_of(a0, *, session=None):
+def lie_sc_of(L, *, session=None):
     """
     `lie_sc_of(L)`: `lie_sc(...)` structure-constants representation of matrix Lie algebra basis `L`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_sc_of", (a0,), session)
+    return _apply("lie_sc_of", (L,), session)
 
 
-def lie_simple_roots(a0, *, session=None):
+def lie_simple_roots(T, *, session=None):
     """
     `lie_simple_roots(T)`: simple roots of Lie algebra type `T` in Euclidean coordinates.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_simple_roots", (a0,), session)
+    return _apply("lie_simple_roots", (T,), session)
 
 
-def lie_upper_central_dims(a0, *, session=None):
+def lie_upper_central_dims(L, *, session=None):
     """
     `lie_upper_central_dims(L)`: dimensions of the ideals in the upper central series of `L`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_upper_central_dims", (a0,), session)
+    return _apply("lie_upper_central_dims", (L,), session)
 
 
-def lie_upper_central_series(a0, *, session=None):
+def lie_upper_central_series(L, *, session=None):
     """
     `lie_upper_central_series(L)`: upper central series `Z_1 <= Z_2 <= ...` (omitting leading 0) as a list of bases.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_upper_central_series", (a0,), session)
+    return _apply("lie_upper_central_series", (L,), session)
 
 
-def lie_weyl_group_order(a0, *, session=None):
+def lie_weyl_group_order(T, *, session=None):
     """
     `lie_weyl_group_order(T)`: order `|W|` of the Weyl group of Lie algebra type `T`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lie_weyl_group_order", (a0,), session)
+    return _apply("lie_weyl_group_order", (T,), session)
 
 
 def limit(*args, session=None):
@@ -17786,76 +17786,76 @@ def limit(*args, session=None):
     return _apply("limit", args, session)
 
 
-def lincong(a0, a1, a2, *, session=None):
+def lincong(a, b, m, *, session=None):
     """
     `lincong(a, b, m)`: general solution `list(x0, step)` to `a*x = b (mod m)`, or empty list if unsolvable.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lincong", (a0, a1, a2), session)
+    return _apply("lincong", (a, b, m), session)
 
 
-def line_integral(a0, a1, a2, a3, a4, *, session=None):
+def line_integral(f, r, t, a, b, *, session=None):
     """
     `line_integral(f, r, t, a, b)`: scalar line integral `int_a^b f(r(t)) ||r'(t)|| dt`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("line_integral", (a0, a1, a2, a3, a4), session)
+    return _apply("line_integral", (f, r, t, a, b), session)
 
 
-def line_integral_vec(a0, a1, a2, a3, a4, *, session=None):
+def line_integral_vec(F, r, t, a, b, *, session=None):
     """
     `line_integral_vec(F, r, t, a, b)`: vector line integral `int_a^b F(r(t)) . r'(t) dt`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("line_integral_vec", (a0, a1, a2, a3, a4), session)
+    return _apply("line_integral_vec", (F, r, t, a, b), session)
 
 
-def linear_regression(a0, a1, *, session=None):
+def linear_regression(xs, ys, *, session=None):
     """
     `linear_regression(xs, ys)`: ordinary least-squares linear regression returning `list(intercept, slope)` (or coefficient list for multiple regression).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("linear_regression", (a0, a1), session)
+    return _apply("linear_regression", (xs, ys), session)
 
 
-def linprog(a0, a1, a2, *, session=None):
+def linprog(c, A, b, *, session=None):
     """
     `linprog(c, A, b)`: minimizes `c^T x` subject to `A x <= b, x >= 0` using the simplex method.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("linprog", (a0, a1, a2), session)
+    return _apply("linprog", (c, A, b), session)
 
 
-def linprog_eq(a0, a1, a2, *, session=None):
+def linprog_eq(c, A, b, *, session=None):
     """
     `linprog_eq(c, A, b)`: minimizes `c^T x` subject to `A x = b, x >= 0` using the two-phase simplex method.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("linprog_eq", (a0, a1, a2), session)
+    return _apply("linprog_eq", (c, A, b), session)
 
 
-def linprog_max(a0, a1, a2, *, session=None):
+def linprog_max(c, A, b, *, session=None):
     """
     `linprog_max(c, A, b)`: maximizes `c^T x` subject to `A x <= b, x >= 0` using the simplex method.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("linprog_max", (a0, a1, a2), session)
+    return _apply("linprog_max", (c, A, b), session)
 
 
-def linsolve(a0, a1, *, session=None):
+def linsolve(A, b, *, session=None):
     """
     `linsolve(A, b)`: solution `x` to the linear system `A x = b`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("linsolve", (a0, a1), session)
+    return _apply("linsolve", (A, b), session)
 
 
-def liouville(a0, *, session=None):
+def liouville(n, *, session=None):
     """
     `liouville(n)`: Liouville function `lambda(n) = (-1)^Omega(n)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("liouville", (a0,), session)
+    return _apply("liouville", (n,), session)
 
 
 def list(*args, session=None):
@@ -17874,60 +17874,60 @@ def lit(*, session=None):
     return _apply("lit", (), session)
 
 
-def ln(a0, *, session=None):
+def ln(x, *, session=None):
     """
     `ln(x)`: natural logarithm (base `e`) of `x`. `ln(x)` as a ball, for `x > 0`. # Errors Fails for a non-positive operand or when an exponent leaves the range.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ln", (a0,), session)
+    return _apply("ln", (x,), session)
 
 
-def ln_factorial(a0, *, session=None):
+def ln_factorial(n, *, session=None):
     """
     `ln_factorial(n)`: natural logarithm of factorial `ln(n!) = ln Gamma(n + 1)`. `ln(n!)` for real `n > -1`, through `ln Γ(n + 1)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ln_factorial", (a0,), session)
+    return _apply("ln_factorial", (n,), session)
 
 
-def lobpcg_eigenvalues(a0, a1, a2, *, session=None):
+def lobpcg_eigenvalues(a, k, tol, *, session=None):
     """
     `lobpcg_eigenvalues(a, k, tol)`: smallest `k` eigenvalues of symmetric matrix `a` by LOBPCG to tolerance `tol`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lobpcg_eigenvalues", (a0, a1, a2), session)
+    return _apply("lobpcg_eigenvalues", (a, k, tol), session)
 
 
-def log(a0, a1, *, session=None):
+def log(b, x, *, session=None):
     """
     `log(b, x)`: logarithm of `x` to base `b`, equal to `ln(x) / ln(b)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("log", (a0, a1), session)
+    return _apply("log", (b, x), session)
 
 
-def log_branch(a0, a1, *, session=None):
+def log_branch(z, k, *, session=None):
     """
     `log_branch(z, k)`: branch `k` of the complex logarithm `ln|z| + I * (arg(z) + 2*pi*k)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("log_branch", (a0, a1), session)
+    return _apply("log_branch", (z, k), session)
 
 
-def log_rank(a0, a1, a2, a3, *, session=None):
+def log_rank(time_a, event_a, time_b, event_b, *, session=None):
     """
     `log_rank(time_a, event_a, time_b, event_b)`: `list(chi2, p_value, observed, expected)` of the two-sample log-rank test. Log-rank test comparing the survival curves of two independent groups. At every distinct event time the observed number of events in the first group is compared with its hypergeometric expectation over the pooled risk set; the squared standardised difference is referred to a chi-square distribution with one degree of freedom. # Errors Returns an error for empty or mismatched inputs, non-finite times, or when the pooled risk sets carry no variance (for example when a single subject is at risk at every event time).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("log_rank", (a0, a1, a2, a3), session)
+    return _apply("log_rank", (time_a, event_a, time_b, event_b), session)
 
 
-def logistic(a0, a1, *, session=None):
+def logistic(mu, s, *, session=None):
     """
     `logistic(mu, s)`: logistic distribution with location `mu` and scale `s`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("logistic", (a0, a1), session)
+    return _apply("logistic", (mu, s), session)
 
 
 def logistic_bifurcation(a0, a1, a2, a3, a4, *, session=None):
@@ -17954,20 +17954,20 @@ def logistic_lyapunov(a0, a1, a2, *, session=None):
     return _apply("logistic_lyapunov", (a0, a1, a2), session)
 
 
-def lognormal(a0, a1, *, session=None):
+def lognormal(mu, sigma, *, session=None):
     """
     `lognormal(mu, sigma)`: log-normal distribution with underlying normal mean `mu` and standard deviation `sigma`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lognormal", (a0, a1), session)
+    return _apply("lognormal", (mu, sigma), session)
 
 
-def london_penetration_depth(a0, a1, a2, a3, *, session=None):
+def london_penetration_depth(m, mu, ns, q, *, session=None):
     """
     `london_penetration_depth(m, mu, ns, q)`: London penetration depth `sqrt(m / (mu n_s q^2))`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("london_penetration_depth", (a0, a1, a2, a3), session)
+    return _apply("london_penetration_depth", (m, mu, ns, q), session)
 
 
 def look_at(a0, a1, a2, *, session=None):
@@ -17978,28 +17978,28 @@ def look_at(a0, a1, a2, *, session=None):
     return _apply("look_at", (a0, a1, a2), session)
 
 
-def lorentz_factor(a0, *, session=None):
+def lorentz_factor(v, *, session=None):
     """
     `lorentz_factor(v)`: special-relativistic Lorentz factor `gamma = (1 - v^2 / c_0^2)^(-1/2)`. Lorentz factor γ = 1 / √(1 - v²/c²) # Arguments * `velocity` - Velocity (m/s)
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lorentz_factor", (a0,), session)
+    return _apply("lorentz_factor", (v,), session)
 
 
-def lorentz_force(a0, a1, a2, a3, *, session=None):
+def lorentz_force(q, E, v, B, *, session=None):
     """
     `lorentz_force(q, E, v, B)`: electromagnetic Lorentz force `q (E + v x B)`. Calculates the Lorentz force on a charged particle. F = q(E + v × B) - returns force magnitude assuming v ⟂ B # Arguments * `charge` - Particle charge (C) * `velocity` - Particle speed (m/s) * `e_field` - Electric field magnitude (V/m) * `b_field` - Magnetic field magnitude (T)
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lorentz_force", (a0, a1, a2, a3), session)
+    return _apply("lorentz_force", (q, E, v, B), session)
 
 
-def lorentz_transformation_x(a0, a1, a2, *, session=None):
+def lorentz_transformation_x(x, t, v, *, session=None):
     """
     `lorentz_transformation_x(x, t, v)`: 1+1D Lorentz boost `list(x', t')` along `x` at velocity `v`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lorentz_transformation_x", (a0, a1, a2), session)
+    return _apply("lorentz_transformation_x", (x, t, v), session)
 
 
 def lorenz(*args, session=None):
@@ -18026,68 +18026,68 @@ def lorenz_orbit(*args, session=None):
     return _apply("lorenz_orbit", args, session)
 
 
-def lower_index(a0, a1, *, session=None):
+def lower_index(V, g, *, session=None):
     """
     `lower_index(V, g)`: covariant vector `g_ij V^j` obtained by lowering index of `V` with metric `g`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lower_index", (a0, a1), session)
+    return _apply("lower_index", (V, g), session)
 
 
-def lp_norm(a0, a1, a2, a3, a4, *, session=None):
+def lp_norm(f, p, x, a, b, *, session=None):
     """
     `lp_norm(f, p, x, a, b)`: `L^p` norm `(int_a^b |f|^p dx)^(1/p)`. Computes the $`L_p`$ norm of a vector. Formula: $||\\mathbf{v}||_p = (\\sum_{i=1}^n |`v_i|^p)^{1/p`}$
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lp_norm", (a0, a1, a2, a3, a4), session)
+    return _apply("lp_norm", (f, p, x, a, b), session)
 
 
-def lqg(a0, a1, a2, a3, a4, a5, a6, *, session=None):
+def lqg(a, b, c, q, r, w, v, *, session=None):
     """
     `lqg(a, b, c, q, r, w, v)`: `list(K, L)`, the LQR gain and the steady-state Kalman gain of the dual problem. Linear-quadratic-Gaussian controller: returns `(LQR gain, Kalman gain)`. # Errors As [`lqr`] and [`kalman_gain`].
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lqg", (a0, a1, a2, a3, a4, a5, a6), session)
+    return _apply("lqg", (a, b, c, q, r, w, v), session)
 
 
-def lqr(a0, a1, a2, a3, *, session=None):
+def lqr(a, b, q, r, *, session=None):
     """
     `lqr(a, b, q, r)`: `list(K, P)`, the continuous linear-quadratic gain `K = R^-1 B' P` and the Riccati solution. Continuous linear-quadratic regulator: returns `(K, P)` with `K = R^{-1} B^T P`. # Errors As [`care`].
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lqr", (a0, a1, a2, a3), session)
+    return _apply("lqr", (a, b, q, r), session)
 
 
-def lstsq(a0, a1, *, session=None):
+def lstsq(A, b, *, session=None):
     """
     `lstsq(A, b)`: least-squares solution minimizing `||A x - b||_2`. Least-squares solution of `a x = b`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lstsq", (a0, a1), session)
+    return _apply("lstsq", (A, b), session)
 
 
-def lt(a0, a1, *, session=None):
+def lt(a, b, *, session=None):
     """
     `lt(a, b)`: strict less-than comparison `a < b`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lt", (a0, a1), session)
+    return _apply("lt", (a, b), session)
 
 
-def lu(a0, *, session=None):
+def lu(A, *, session=None):
     """
     `lu(A)`: LU factorization `list(L, U, P)` with `P A = L U`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lu", (a0,), session)
+    return _apply("lu", (A,), session)
 
 
-def lucas(a0, *, session=None):
+def lucas(n, *, session=None):
     """
     `lucas(n)`: `n`-th Lucas number `L_n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("lucas", (a0,), session)
+    return _apply("lucas", (n,), session)
 
 
 def lyapunov_exponent(a0, a1, a2, a3, *, session=None):
@@ -18114,20 +18114,20 @@ def m_p(*, session=None):
     return _apply("m_p", (), session)
 
 
-def mad(a0, *, session=None):
+def mad(x, *, session=None):
     """
     `mad(x)`: median absolute deviation of sample `x`. Median absolute deviation; multiplied by 1.4826 when `normal` is true so it estimates the standard deviation for Gaussian data.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mad", (a0,), session)
+    return _apply("mad", (x,), session)
 
 
-def mad_sigma(a0, *, session=None):
+def mad_sigma(x, *, session=None):
     """
     `mad_sigma(x)`: normalized median absolute deviation (`1.4826 * mad(x)`), consistent with normal standard deviation.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mad_sigma", (a0,), session)
+    return _apply("mad_sigma", (x,), session)
 
 
 def madd(*args, session=None):
@@ -18138,12 +18138,12 @@ def madd(*args, session=None):
     return _apply("madd", args, session)
 
 
-def magnetic_field_from_vector_potential(a0, a1, *, session=None):
+def magnetic_field_from_vector_potential(A, vars, *, session=None):
     """
     `magnetic_field_from_vector_potential(A, vars)`: magnetic field `curl A` from vector potential `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("magnetic_field_from_vector_potential", (a0, a1), session)
+    return _apply("magnetic_field_from_vector_potential", (A, vars), session)
 
 
 def mandelbrot_escape(a0, a1, a2, *, session=None):
@@ -18202,28 +18202,28 @@ def map_stability(a0, a1, a2, *, session=None):
     return _apply("map_stability", (a0, a1, a2), session)
 
 
-def mass_energy_equivalence(a0, *, session=None):
+def mass_energy_equivalence(m, *, session=None):
     """
     `mass_energy_equivalence(m)`: rest energy `E_0 = m c_0^2`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mass_energy_equivalence", (a0,), session)
+    return _apply("mass_energy_equivalence", (m,), session)
 
 
-def matexp(a0, a1, *, session=None):
+def matexp(A, t, *, session=None):
     """
     `matexp(A, t)`: matrix exponential `exp(t * A)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("matexp", (a0, a1), session)
+    return _apply("matexp", (A, t), session)
 
 
-def matfun(a0, a1, a2, *, session=None):
+def matfun(f, x, A, *, session=None):
     """
     `matfun(f, x, A)`: analytic matrix function `f(A)` computed via spectral/Jordan decomposition.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("matfun", (a0, a1, a2), session)
+    return _apply("matfun", (f, x, A), session)
 
 
 def matmul(*args, session=None):
@@ -18234,92 +18234,92 @@ def matmul(*args, session=None):
     return _apply("matmul", args, session)
 
 
-def matpoly(a0, a1, a2, *, session=None):
+def matpoly(p, x, A, *, session=None):
     """
     `matpoly(p, x, A)`: evaluate scalar polynomial `p(x)` at square matrix `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("matpoly", (a0, a1, a2), session)
+    return _apply("matpoly", (p, x, A), session)
 
 
-def matrix_anticommutator(a0, a1, *, session=None):
+def matrix_anticommutator(A, B, *, session=None):
     """
     `matrix_anticommutator(A, B)`: matrix anticommutator `A B + B A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("matrix_anticommutator", (a0, a1), session)
+    return _apply("matrix_anticommutator", (A, B), session)
 
 
-def matrix_commutator(a0, a1, *, session=None):
+def matrix_commutator(A, B, *, session=None):
     """
     `matrix_commutator(A, B)`: matrix commutator `A B - B A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("matrix_commutator", (a0, a1), session)
+    return _apply("matrix_commutator", (A, B), session)
 
 
-def matrix_log(a0, *, session=None):
+def matrix_log(g, *, session=None):
     """
     `matrix_log(g)`: principal matrix logarithm `log(g)` for supported invertible matrices `g`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("matrix_log", (a0,), session)
+    return _apply("matrix_log", (g,), session)
 
 
-def matsqrt(a0, *, session=None):
+def matsqrt(A, *, session=None):
     """
     `matsqrt(A)`: principal matrix square root `S` satisfying `S^2 = A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("matsqrt", (a0,), session)
+    return _apply("matsqrt", (A,), session)
 
 
-def max_of(a0, *, session=None):
+def max_of(xs, *, session=None):
     """
     `max_of(xs)`: maximum element of list `xs`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("max_of", (a0,), session)
+    return _apply("max_of", (xs,), session)
 
 
-def maxwell_equations(a0, a1, a2, a3, a4, a5, *, session=None):
+def maxwell_equations(E, B, rho, J, vars, t, *, session=None):
     """
     `maxwell_equations(E, B, rho, J, vars, t)`: list of the four Maxwell equation residuals (Gauss, Gauss-magnetism, Faraday, Ampere-Maxwell).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("maxwell_equations", (a0, a1, a2, a3, a4, a5), session)
+    return _apply("maxwell_equations", (E, B, rho, J, vars, t), session)
 
 
-def mean(a0, *, session=None):
+def mean(xs, *, session=None):
     """
     `mean(xs)`: arithmetic mean of list `xs`. Computes the mean of a slice of data. # Arguments * `data` - A unmutable slice of `f64` data points. # Returns The mean of the data as an `f64`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mean", (a0,), session)
+    return _apply("mean", (xs,), session)
 
 
-def mean_interval(a0, a1, a2, a3, *, session=None):
+def mean_interval(mean, std, n, z, *, session=None):
     """
     `mean_interval(mean, std, n, z)`: confidence interval `list(lo, hi)` for population mean given sample `mean`, `std`, `n`, and critical value `z`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mean_interval", (a0, a1, a2, a3), session)
+    return _apply("mean_interval", (mean, std, n, z), session)
 
 
-def median(a0, *, session=None):
+def median(xs, *, session=None):
     """
     `median(xs)`: median (50th percentile) of list `xs`. Computes the median of a slice of data. # Arguments * `data` - A mutable slice of `f64` data points. # Returns The median of the data as an `f64`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("median", (a0,), session)
+    return _apply("median", (xs,), session)
 
 
-def median_of(a0, *, session=None):
+def median_of(d, *, session=None):
     """
     `median_of(d)`: median (50th percentile) of distribution `d`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("median_of", (a0,), session)
+    return _apply("median_of", (d,), session)
 
 
 def meijer_mellin(a0, a1, a2, a3, a4, *, session=None):
@@ -18370,44 +18370,44 @@ def mesh_triangulate(a0, *, session=None):
     return _apply("mesh_triangulate", (a0,), session)
 
 
-def metric_geodesic_acceleration(a0, a1, a2, *, session=None):
+def metric_geodesic_acceleration(g, vars, v, *, session=None):
     """
     `metric_geodesic_acceleration(g, vars, v)`: geodesic acceleration `-Gamma^k_ij v^i v^j` for metric `g(vars)` and velocity `v`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("metric_geodesic_acceleration", (a0, a1, a2), session)
+    return _apply("metric_geodesic_acceleration", (g, vars, v), session)
 
 
-def mgf(a0, a1, *, session=None):
+def mgf(d, t, *, session=None):
     """
     `mgf(d, t)`: moment-generating function `M_X(t) = E[exp(t X)]` of distribution `d` at argument `t`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mgf", (a0, a1), session)
+    return _apply("mgf", (d, t), session)
 
 
-def milp_solve(a0, a1, a2, a3, a4, a5, a6, *, session=None):
+def milp_solve(c, a, rel, b, bounds, kinds, max_nodes, *, session=None):
     """
     `milp_solve(c, a, rel, b, bounds, kinds, max_nodes)`: `list(x, objective, nodes, gap, optimal)` of a mixed-integer linear program by branch and bound; `kinds` is a list of `continuous`, `integer` or `binary`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("milp_solve", (a0, a1, a2, a3, a4, a5, a6), session)
+    return _apply("milp_solve", (c, a, rel, b, bounds, kinds, max_nodes), session)
 
 
-def min_of(a0, *, session=None):
+def min_of(xs, *, session=None):
     """
     `min_of(xs)`: minimum element of list `xs`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("min_of", (a0,), session)
+    return _apply("min_of", (xs,), session)
 
 
-def minkowski_dot(a0, a1, *, session=None):
+def minkowski_dot(a, b, *, session=None):
     """
     `minkowski_dot(a, b)`: Minkowski inner product `a^mu b_mu` with signature `(+1, -1, -1, -1)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("minkowski_dot", (a0, a1), session)
+    return _apply("minkowski_dot", (a, b), session)
 
 
 def minkowski_metric(*, session=None):
@@ -18418,76 +18418,76 @@ def minkowski_metric(*, session=None):
     return _apply("minkowski_metric", (), session)
 
 
-def minpoly(a0, a1, *, session=None):
+def minpoly(A, x, *, session=None):
     """
     `minpoly(A, x)`: minimal polynomial of square matrix `A` in variable `x`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("minpoly", (a0, a1), session)
+    return _apply("minpoly", (A, x), session)
 
 
-def minres_solve(a0, a1, a2, *, session=None):
+def minres_solve(a, b, tol, *, session=None):
     """
     `minres_solve(a, b, tol)`: solve symmetric linear system `A x = b` by MINRES to relative tolerance `tol`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("minres_solve", (a0, a1, a2), session)
+    return _apply("minres_solve", (a, b, tol), session)
 
 
-def mobius(a0, *, session=None):
+def mobius(n, *, session=None):
     """
     `mobius(n)`: Möbius function `mu(n)` (`0` if not squarefree, `(-1)^omega(n)` otherwise). Möbius function `μ(n)`, extended to return zero for `n <= 0`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mobius", (a0,), session)
+    return _apply("mobius", (n,), session)
 
 
-def mobius_apply(a0, a1, *, session=None):
+def mobius_apply(M, z, *, session=None):
     """
     `mobius_apply(M, z)`: apply Möbius transformation matrix `M = list(list(a, b), list(c, d))` to `z`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mobius_apply", (a0, a1), session)
+    return _apply("mobius_apply", (M, z), session)
 
 
-def mobius_compose(a0, a1, *, session=None):
+def mobius_compose(M, N, *, session=None):
     """
     `mobius_compose(M, N)`: composition of two Möbius transformation matrices `M` and `N`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mobius_compose", (a0, a1), session)
+    return _apply("mobius_compose", (M, N), session)
 
 
-def mobius_inverse(a0, *, session=None):
+def mobius_inverse(M, *, session=None):
     """
     `mobius_inverse(M)`: inverse Möbius transformation matrix of `M`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mobius_inverse", (a0,), session)
+    return _apply("mobius_inverse", (M,), session)
 
 
-def mod(a0, a1, *, session=None):
+def mod(x, m, *, session=None):
     """
     `mod(x, m)`: least non-negative residue of `x` modulo `|m|` for `m != 0`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mod", (a0, a1), session)
+    return _apply("mod", (x, m), session)
 
 
-def mode(a0, *, session=None):
+def mode(xs, *, session=None):
     """
     `mode(xs)`: most frequent value (mode) of list `xs`. Finds the mode (most frequent value) of a slice of data. For continuous data, rounds to a specified number of decimal places. Returns None if no mode exists (all values unique or empty).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mode", (a0,), session)
+    return _apply("mode", (xs,), session)
 
 
-def mode_of(a0, *, session=None):
+def mode_of(d, *, session=None):
     """
     `mode_of(d)`: mode (point of maximum density or probability mass) of distribution `d`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mode_of", (a0,), session)
+    return _apply("mode_of", (d,), session)
 
 
 def molecule_decomposition(*args, session=None):
@@ -18538,44 +18538,44 @@ def molecule_vibrations_table(*args, session=None):
     return _apply("molecule_vibrations_table", args, session)
 
 
-def moment(a0, a1, *, session=None):
+def moment(xs, k, *, session=None):
     """
     `moment(xs, k)`: `k`-th central moment `(1/n) sum (x_i - mean)^k` of list `xs`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("moment", (a0, a1), session)
+    return _apply("moment", (xs, k), session)
 
 
-def moment_of(a0, a1, *, session=None):
+def moment_of(d, k, *, session=None):
     """
     `moment_of(d, k)`: `k`-th raw moment `E[X^k]` of distribution `d`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("moment_of", (a0, a1), session)
+    return _apply("moment_of", (d, k), session)
 
 
-def moment_of_inertia_point_mass(a0, a1, *, session=None):
+def moment_of_inertia_point_mass(m, r, *, session=None):
     """
     `moment_of_inertia_point_mass(m, r)`: moment of inertia `m r^2` of a point mass at distance `r`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("moment_of_inertia_point_mass", (a0, a1), session)
+    return _apply("moment_of_inertia_point_mass", (m, r), session)
 
 
-def momentum(a0, a1, *, session=None):
+def momentum(m, v, *, session=None):
     """
     `momentum(m, v)`: linear momentum `p = m * v`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("momentum", (a0, a1), session)
+    return _apply("momentum", (m, v), session)
 
 
-def momentum_operator(a0, *, session=None):
+def momentum_operator(x, *, session=None):
     """
     `momentum_operator(x)`: 1D momentum operator `-i hbar d/dx`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("momentum_operator", (a0,), session)
+    return _apply("momentum_operator", (x,), session)
 
 
 def moran_dimension(a0, *, session=None):
@@ -18586,148 +18586,148 @@ def moran_dimension(a0, *, session=None):
     return _apply("moran_dimension", (a0,), session)
 
 
-def motzkin(a0, *, session=None):
+def motzkin(n, *, session=None):
     """
     `motzkin(n)`: `n`-th Motzkin number, counting non-intersecting chords on `n` points on a circle.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("motzkin", (a0,), session)
+    return _apply("motzkin", (n,), session)
 
 
-def mp_add(a0, a1, a2, *, session=None):
+def mp_add(a, b, digits, *, session=None):
     """
     `mp_add(a, b, digits)`: the sum of two decimal numbers, to `digits` significant digits.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mp_add", (a0, a1, a2), session)
+    return _apply("mp_add", (a, b, digits), session)
 
 
-def mp_ball(a0, a1, *, session=None):
+def mp_ball(expr, digits, *, session=None):
     """
     `mp_ball(expr, digits)`: `list(low, high)`, a rigorous enclosure of `expr` at `digits` significant digits.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mp_ball", (a0, a1), session)
+    return _apply("mp_ball", (expr, digits), session)
 
 
-def mp_compare(a0, a1, *, session=None):
+def mp_compare(a, b, *, session=None):
     """
     `mp_compare(a, b)`: `-1`, `0` or `1` as the decimal `a` is below, equal to or above `b`, compared exactly.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mp_compare", (a0, a1), session)
+    return _apply("mp_compare", (a, b), session)
 
 
-def mp_const(a0, a1, *, session=None):
+def mp_const(name, digits, *, session=None):
     """
     `mp_const(name, digits)`: the constant `pi`, `e`, `tau`, `ln2`, `sqrt2` or `phi` to `digits` significant decimal digits.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mp_const", (a0, a1), session)
+    return _apply("mp_const", (name, digits), session)
 
 
-def mp_digits(a0, *, session=None):
+def mp_digits(x, *, session=None):
     """
     `mp_digits(x)`: the number of significant decimal digits the literal `x` carries.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mp_digits", (a0,), session)
+    return _apply("mp_digits", (x,), session)
 
 
-def mp_div(a0, a1, a2, *, session=None):
+def mp_div(a, b, digits, *, session=None):
     """
     `mp_div(a, b, digits)`: the quotient of two decimal numbers, to `digits` significant digits.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mp_div", (a0, a1, a2), session)
+    return _apply("mp_div", (a, b, digits), session)
 
 
-def mp_eval(a0, a1, *, session=None):
+def mp_eval(expr, digits, *, session=None):
     """
     `mp_eval(expr, digits)`: the value of the expression `expr` to `digits` significant decimal digits, as text, correctly rounded.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mp_eval", (a0, a1), session)
+    return _apply("mp_eval", (expr, digits), session)
 
 
-def mp_from_float(a0, a1, *, session=None):
+def mp_from_float(x, digits, *, session=None):
     """
     `mp_from_float(x, digits)`: the decimal expansion of the double `x` to `digits` significant digits; the double is exact, so the digits are its true value.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mp_from_float", (a0, a1), session)
+    return _apply("mp_from_float", (x, digits), session)
 
 
-def mp_mul(a0, a1, a2, *, session=None):
+def mp_mul(a, b, digits, *, session=None):
     """
     `mp_mul(a, b, digits)`: the product of two decimal numbers, to `digits` significant digits.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mp_mul", (a0, a1, a2), session)
+    return _apply("mp_mul", (a, b, digits), session)
 
 
-def mp_round(a0, a1, *, session=None):
+def mp_round(x, digits, *, session=None):
     """
     `mp_round(x, digits)`: the decimal `x` rounded to `digits` significant digits, nearest even.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mp_round", (a0, a1), session)
+    return _apply("mp_round", (x, digits), session)
 
 
-def mp_round_mode(a0, a1, a2, *, session=None):
+def mp_round_mode(x, digits, mode, *, session=None):
     """
     `mp_round_mode(x, digits, mode)`: `x` rounded to `digits` significant digits in `mode` (`nearest`, `zero`, `away`, `up`, `down`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mp_round_mode", (a0, a1, a2), session)
+    return _apply("mp_round_mode", (x, digits, mode), session)
 
 
-def mp_sub(a0, a1, a2, *, session=None):
+def mp_sub(a, b, digits, *, session=None):
     """
     `mp_sub(a, b, digits)`: the difference of two decimal numbers, to `digits` significant digits.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mp_sub", (a0, a1, a2), session)
+    return _apply("mp_sub", (a, b, digits), session)
 
 
-def mp_to_float(a0, *, session=None):
+def mp_to_float(x, *, session=None):
     """
     `mp_to_float(x)`: the decimal `x` narrowed to a double, correctly rounded (no double rounding through an intermediate).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mp_to_float", (a0,), session)
+    return _apply("mp_to_float", (x,), session)
 
 
-def mpc_plan(a0, a1, a2, a3, a4, a5, a6, a7, a8, *, session=None):
+def mpc_plan(a, b, c, d, x0, reference, horizon, q, r, *, session=None):
     """
     `mpc_plan(a, b, c, d, x0, reference, horizon, q, r)`: `list(u, predicted_states, objective, iterations)` of one receding-horizon step solved as a condensed quadratic program.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mpc_plan", (a0, a1, a2, a3, a4, a5, a6, a7, a8), session)
+    return _apply("mpc_plan", (a, b, c, d, x0, reference, horizon, q, r), session)
 
 
-def mpow(a0, a1, *, session=None):
+def mpow(A, n, *, session=None):
     """
     `mpow(A, n)`: matrix power `A^n` for integer or rational exponent `n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mpow", (a0, a1), session)
+    return _apply("mpow", (A, n), session)
 
 
-def mseries(a0, a1, a2, a3, *, session=None):
+def mseries(f, vars, point, N, *, session=None):
     """
     `mseries(f, vars, point, N)`: multivariate series expansion of `f` in `vars` about `point` truncated at total degree `N`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mseries", (a0, a1, a2, a3), session)
+    return _apply("mseries", (f, vars, point, N), session)
 
 
-def mtaylor(a0, a1, a2, a3, *, session=None):
+def mtaylor(f, vars, point, N, *, session=None):
     """
     `mtaylor(f, vars, point, N)`: multivariate Taylor polynomial of `f` in `vars` about finite `point` up to total degree `N`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mtaylor", (a0, a1, a2, a3), session)
+    return _apply("mtaylor", (f, vars, point, N), session)
 
 
 def mu_0(*, session=None):
@@ -18746,12 +18746,12 @@ def mul(*args, session=None):
     return _apply("mul", args, session)
 
 
-def mult_order(a0, a1, *, session=None):
+def mult_order(a, n, *, session=None):
     """
     `mult_order(a, n)`: multiplicative order of `a` modulo `n` (smallest `k >= 1` with `a^k = 1 (mod n)`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mult_order", (a0, a1), session)
+    return _apply("mult_order", (a, n), session)
 
 
 def multibrot_escape(a0, a1, a2, a3, *, session=None):
@@ -18762,28 +18762,28 @@ def multibrot_escape(a0, a1, a2, a3, *, session=None):
     return _apply("multibrot_escape", (a0, a1, a2, a3), session)
 
 
-def multinomial(a0, *, session=None):
+def multinomial(ks, *, session=None):
     """
     `multinomial(ks)`: multinomial coefficient `(sum k_i)! / prod(k_i!)` for a list of non-negative integers `ks`. The multinomial coefficient `n! / (k_1! ... k_m!)`. # Panics Panics when the parts do not sum to `n`, as `statrs` does.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("multinomial", (a0,), session)
+    return _apply("multinomial", (ks,), session)
 
 
-def mutual_information(a0, *, session=None):
+def mutual_information(mat, *, session=None):
     """
     `mutual_information(mat)`: mutual information `I(X; Y) = H(X) + H(Y) - H(X, Y)` for joint probability matrix `mat`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mutual_information", (a0,), session)
+    return _apply("mutual_information", (mat,), session)
 
 
-def mv(a0, a1, *, session=None):
+def mv(sig, terms, *, session=None):
     """
     `mv(sig, terms)`: canonical multivector over metric signature `sig = list(p, q, r)` with `terms = list(list(blade_mask, coeff), ...)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mv", (a0, a1), session)
+    return _apply("mv", (sig, terms), session)
 
 
 def mv_add(*args, session=None):
@@ -18794,148 +18794,148 @@ def mv_add(*args, session=None):
     return _apply("mv_add", args, session)
 
 
-def mv_basis(a0, a1, *, session=None):
+def mv_basis(sig, k, *, session=None):
     """
     `mv_basis(sig, k)`: `k`-th basis vector `e_k` (1-based) in signature `sig`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mv_basis", (a0, a1), session)
+    return _apply("mv_basis", (sig, k), session)
 
 
-def mv_blade(a0, a1, a2, *, session=None):
+def mv_blade(sig, mask, c, *, session=None):
     """
     `mv_blade(sig, mask, c)`: single-blade multivector `c * e_mask` in signature `sig`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mv_blade", (a0, a1, a2), session)
+    return _apply("mv_blade", (sig, mask, c), session)
 
 
-def mv_coeff(a0, a1, *, session=None):
+def mv_coeff(A, mask, *, session=None):
     """
     `mv_coeff(A, mask)`: coefficient of blade `mask` in multivector `A` (0 if absent).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mv_coeff", (a0, a1), session)
+    return _apply("mv_coeff", (A, mask), session)
 
 
-def mv_pseudoscalar(a0, *, session=None):
+def mv_pseudoscalar(sig, *, session=None):
     """
     `mv_pseudoscalar(sig)`: unit pseudoscalar `e_1 ... e_n` of the Clifford algebra with signature `sig`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mv_pseudoscalar", (a0,), session)
+    return _apply("mv_pseudoscalar", (sig,), session)
 
 
-def mv_scalar(a0, a1, *, session=None):
+def mv_scalar(sig, s, *, session=None):
     """
     `mv_scalar(sig, s)`: scalar multivector with value `s` in Clifford algebra with signature `sig`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mv_scalar", (a0, a1), session)
+    return _apply("mv_scalar", (sig, s), session)
 
 
-def mv_scalar_part(a0, *, session=None):
+def mv_scalar_part(A, *, session=None):
     """
     `mv_scalar_part(A)`: grade-0 scalar part `<A>_0` of multivector `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mv_scalar_part", (a0,), session)
+    return _apply("mv_scalar_part", (A,), session)
 
 
-def mv_scale(a0, a1, *, session=None):
+def mv_scale(c, A, *, session=None):
     """
     `mv_scale(c, A)`: multivector `A` scaled by scalar `c`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mv_scale", (a0, a1), session)
+    return _apply("mv_scale", (c, A), session)
 
 
-def mv_sub(a0, a1, *, session=None):
+def mv_sub(A, B, *, session=None):
     """
     `mv_sub(A, B)`: difference `A - B` of two multivectors.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mv_sub", (a0, a1), session)
+    return _apply("mv_sub", (A, B), session)
 
 
-def mv_vector(a0, a1, *, session=None):
+def mv_vector(sig, coords, *, session=None):
     """
     `mv_vector(sig, coords)`: grade-1 vector multivector from coordinate list `coords` in signature `sig`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("mv_vector", (a0, a1), session)
+    return _apply("mv_vector", (sig, coords), session)
 
 
-def narayana(a0, a1, *, session=None):
+def narayana(n, k, *, session=None):
     """
     `narayana(n, k)`: Narayana number `N(n, k) = C(n, k) * C(n, k - 1) / n`, counting Dyck paths of semilength `n` with `k` peaks.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("narayana", (a0, a1), session)
+    return _apply("narayana", (n, k), session)
 
 
-def natural_boundary(a0, a1, a2, *, session=None):
+def natural_boundary(L, y, x, *, session=None):
     """
     `natural_boundary(L, y, x)`: returns the natural boundary expression `canonical_momentum(L, y, x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("natural_boundary", (a0, a1, a2), session)
+    return _apply("natural_boundary", (L, y, x), session)
 
 
-def ne(a0, a1, *, session=None):
+def ne(a, b, *, session=None):
     """
     `ne(a, b)`: inequality comparison `a != b`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ne", (a0, a1), session)
+    return _apply("ne", (a, b), session)
 
 
-def necklaces(a0, a1, *, session=None):
+def necklaces(n, k, *, session=None):
     """
     `necklaces(n, k)`: number of distinct `k`-ary necklaces of length `n` under cyclic rotation.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("necklaces", (a0, a1), session)
+    return _apply("necklaces", (n, k), session)
 
 
-def neg(a0, *, session=None):
+def neg(a, *, session=None):
     """
     `neg(a)`: the negation `-a`. Rewritten to `mul(-1, a)` and printed as `-a`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("neg", (a0,), session)
+    return _apply("neg", (a,), session)
 
 
-def negative_binomial(a0, a1, *, session=None):
+def negative_binomial(r, p, *, session=None):
     """
     `negative_binomial(r, p)`: negative binomial distribution for `r` successes with probability `p`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("negative_binomial", (a0, a1), session)
+    return _apply("negative_binomial", (r, p), session)
 
 
-def nelson_aalen(a0, a1, *, session=None):
+def nelson_aalen(time, event, *, session=None):
     """
     `nelson_aalen(time, event)`: `list(times, hazard, cumulative_hazard)` of the Nelson–Aalen estimator. Nelson-Aalen estimate of the cumulative hazard function. The increment at a time with `d` events among `n` subjects at risk is `d / n`. The inputs are not modified. # Errors Returns an error for empty or mismatched inputs, non-finite times, or a sample in which every observation is censored.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("nelson_aalen", (a0, a1), session)
+    return _apply("nelson_aalen", (time, event), session)
 
 
-def nested_dissection_order(a0, *, session=None):
+def nested_dissection_order(adjacency, *, session=None):
     """
     `nested_dissection_order(adjacency)`: fill-reducing elimination ordering `perm` of a symmetric graph by multilevel nested dissection. Nested dissection ordering by recursive level-structure bisection. Pieces of at most 300 vertices are ordered by [`amd_order`]; larger connected pieces are split by a vertex separator taken from a BFS level structure rooted at a pseudo-peripheral vertex (the level near the middle with the best size/balance trade-off, pruned of vertices without neighbours on the far side); separators are numbered after both halves.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("nested_dissection_order", (a0,), session)
+    return _apply("nested_dissection_order", (adjacency,), session)
 
 
-def newton_cg_minimize(a0, a1, a2, *, session=None):
+def newton_cg_minimize(f, vars, x0, *, session=None):
     """
     `newton_cg_minimize(f, vars, x0)`: minimiser of `f(vars)` starting from `x0` by trust-region Newton-CG with symbolic gradient and Hessian.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("newton_cg_minimize", (a0, a1, a2), session)
+    return _apply("newton_cg_minimize", (f, vars, x0), session)
 
 
 def newton_fractal_root(a0, a1, a2, a3, *, session=None):
@@ -18946,164 +18946,164 @@ def newton_fractal_root(a0, a1, a2, a3, *, session=None):
     return _apply("newton_fractal_root", (a0, a1, a2, a3), session)
 
 
-def newtons_second_law(a0, a1, *, session=None):
+def newtons_second_law(m, a, *, session=None):
     """
     `newtons_second_law(m, a)`: net force `F = m * a` for mass `m` and acceleration `a`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("newtons_second_law", (a0, a1), session)
+    return _apply("newtons_second_law", (m, a), session)
 
 
-def nextprime(a0, *, session=None):
+def nextprime(n, *, session=None):
     """
     `nextprime(n)`: smallest prime strictly greater than `n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("nextprime", (a0,), session)
+    return _apply("nextprime", (n,), session)
 
 
-def nmaximize(a0, a1, a2, *, session=None):
+def nmaximize(f, vars, start, *, session=None):
     """
     `nmaximize(f, vars, start)`: numerically maximizes `f(vars)` from initial point `start` using BFGS with compiled gradient.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("nmaximize", (a0, a1, a2), session)
+    return _apply("nmaximize", (f, vars, start), session)
 
 
-def nmaximize_global(a0, a1, a2, *, session=None):
+def nmaximize_global(f, vars, bounds, *, session=None):
     """
     `nmaximize_global(f, vars, bounds)`: numerically finds the global maximum of `f(vars)` over box `bounds`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("nmaximize_global", (a0, a1, a2), session)
+    return _apply("nmaximize_global", (f, vars, bounds), session)
 
 
-def nminimize(a0, a1, a2, *, session=None):
+def nminimize(f, vars, start, *, session=None):
     """
     `nminimize(f, vars, start)`: numerically minimizes `f(vars)` from initial point `start` using BFGS with compiled gradient.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("nminimize", (a0, a1, a2), session)
+    return _apply("nminimize", (f, vars, start), session)
 
 
-def nminimize_global(a0, a1, a2, *, session=None):
+def nminimize_global(f, vars, bounds, *, session=None):
     """
     `nminimize_global(f, vars, bounds)`: numerically finds the global minimum of `f(vars)` over box `bounds`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("nminimize_global", (a0, a1, a2), session)
+    return _apply("nminimize_global", (f, vars, bounds), session)
 
 
-def nnf(a0, *, session=None):
+def nnf(formula, *, session=None):
     """
     `nnf(formula)`: converts propositional `formula` to negation normal form.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("nnf", (a0,), session)
+    return _apply("nnf", (formula,), session)
 
 
-def noether_current(a0, a1, a2, *, session=None):
+def noether_current(L, u, generator, *, session=None):
     """
     `noether_current(L, u, generator)`: conserved Noether current `list(J^x, J^t)` for Lagrangian `L` and symmetry `generator`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("noether_current", (a0, a1, a2), session)
+    return _apply("noether_current", (L, u, generator), session)
 
 
-def nonlinear_regression(a0, a1, a2, a3, a4, *, session=None):
+def nonlinear_regression(xs, ys, model, x, params, *, session=None):
     """
     `nonlinear_regression(xs, ys, model, x, params)`: non-linear least-squares fit returning normal equations as a solve request.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("nonlinear_regression", (a0, a1, a2, a3, a4), session)
+    return _apply("nonlinear_regression", (xs, ys, model, x, params), session)
 
 
-def norm(a0, *, session=None):
+def norm(v, *, session=None):
     """
     `norm(v)`: Euclidean (L2) norm `||v||_2` of vector `v`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("norm", (a0,), session)
+    return _apply("norm", (v,), session)
 
 
-def normal(a0, a1, *, session=None):
+def normal(mu, sigma, *, session=None):
     """
     `normal(mu, sigma)`: normal (Gaussian) distribution with mean `mu` and standard deviation `sigma`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("normal", (a0, a1), session)
+    return _apply("normal", (mu, sigma), session)
 
 
-def normal_form(a0, a1, a2, *, session=None):
+def normal_form(poly, basis, vars, *, session=None):
     """
     `normal_form(poly, basis, vars)`: reduces `poly` modulo a Groebner `basis` over `vars`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("normal_form", (a0, a1, a2), session)
+    return _apply("normal_form", (poly, basis, vars), session)
 
 
-def normal_known_sd(a0, *, session=None):
+def normal_known_sd(sigma, *, session=None):
     """
     `normal_known_sd(sigma)`: inert normal likelihood descriptor with known standard deviation `sigma` for Bayesian updates.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("normal_known_sd", (a0,), session)
+    return _apply("normal_known_sd", (sigma,), session)
 
 
-def normalize(a0, *, session=None):
+def normalize(v, *, session=None):
     """
     `normalize(v)`: unit vector `v / ||v||_2` in the direction of `v`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("normalize", (a0,), session)
+    return _apply("normalize", (v,), session)
 
 
-def normalize_wavefunction(a0, a1, *, session=None):
+def normalize_wavefunction(psi, x, *, session=None):
     """
     `normalize_wavefunction(psi, x)`: normalizes `psi` by `sqrt(<psi|psi>)` over `x in (-oo, oo)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("normalize_wavefunction", (a0, a1), session)
+    return _apply("normalize_wavefunction", (psi, x), session)
 
 
-def not_(a0, *, session=None):
+def not_(p, *, session=None):
     """
     `not(p)`: logical negation of `p`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("not", (a0,), session)
+    return _apply("not", (p,), session)
 
 
-def nsolve(a0, a1, a2, *, session=None):
+def nsolve(eq_or_system, var_or_vars, guess, *, session=None):
     """
     `nsolve(eq_or_system, var_or_vars, guess)`: numerically finds a root of `eq_or_system` starting from `guess`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("nsolve", (a0, a1, a2), session)
+    return _apply("nsolve", (eq_or_system, var_or_vars, guess), session)
 
 
-def nsolve_certified(a0, a1, a2, *, session=None):
+def nsolve_certified(eq, var, interval, *, session=None):
     """
     `nsolve_certified(eq, var, interval)`: computes a certified enclosure for a root of `eq` in `interval` via interval arithmetic.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("nsolve_certified", (a0, a1, a2), session)
+    return _apply("nsolve_certified", (eq, var, interval), session)
 
 
-def nth_prime(a0, *, session=None):
+def nth_prime(k, *, session=None):
     """
     `nth_prime(k)`: the `k`-th prime number (1-based, so `nth_prime(1) = 2`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("nth_prime", (a0,), session)
+    return _apply("nth_prime", (k,), session)
 
 
-def nullspace(a0, *, session=None):
+def nullspace(A, *, session=None):
     """
     `nullspace(A)`: basis of the kernel `{x : A x = 0}` of matrix `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("nullspace", (a0,), session)
+    return _apply("nullspace", (A,), session)
 
 
 def num_ad_forward_gradient(a0, a1, a2, *, session=None):
@@ -49674,12 +49674,12 @@ def ode_borel(a0, a1, a2, a3, a4, a5, *, session=None):
     return _apply("ode_borel", (a0, a1, a2, a3, a4, a5), session)
 
 
-def ode_classify(a0, a1, *, session=None):
+def ode_classify(ode, y, *, session=None):
     """
     `ode_classify(ode, y)`: classifies an ordinary differential equation `ode` for dependent function `y`, returning a list of applicable solver classes.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ode_classify", (a0, a1), session)
+    return _apply("ode_classify", (ode, y), session)
 
 
 def ode_darboux(*args, session=None):
@@ -49690,20 +49690,20 @@ def ode_darboux(*args, session=None):
     return _apply("ode_darboux", args, session)
 
 
-def ode_etdrk4(a0, a1, a2, a3, a4, a5, a6, a7, *, session=None):
+def ode_etdrk4(L, f, vars, t, u0, t0, t1, steps, *, session=None):
     """
     `ode_etdrk4(L, f, vars, t, u0, t0, t1, steps)`: `u(t1)` for `u' = L u + f(t, u)` by fourth-order exponential time differencing.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ode_etdrk4", (a0, a1, a2, a3, a4, a5, a6, a7), session)
+    return _apply("ode_etdrk4", (L, f, vars, t, u0, t0, t1, steps), session)
 
 
-def ode_fourier(a0, a1, *, session=None):
+def ode_fourier(ode, y, *, session=None):
     """
     `ode_fourier(ode, y)`: solves linear constant-coefficient `ode` for `y` using Fourier transform.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ode_fourier", (a0, a1), session)
+    return _apply("ode_fourier", (ode, y), session)
 
 
 def ode_frobenius(a0, a1, a2, a3, *, session=None):
@@ -49714,12 +49714,12 @@ def ode_frobenius(a0, a1, a2, a3, *, session=None):
     return _apply("ode_frobenius", (a0, a1, a2, a3), session)
 
 
-def ode_imex(a0, a1, a2, a3, a4, a5, a6, a7, a8, *, session=None):
+def ode_imex(f_ex, f_im, vars, t, y0, t0, t1, steps, scheme, *, session=None):
     """
     `ode_imex(f_ex, f_im, vars, t, y0, t0, t1, steps, scheme)`: `y(t1)` for `y' = f_ex + f_im` with explicit `f_ex` and stiff implicit `f_im` using `euler`, `ars222`, or `ars343`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ode_imex", (a0, a1, a2, a3, a4, a5, a6, a7, a8), session)
+    return _apply("ode_imex", (f_ex, f_im, vars, t, y0, t0, t1, steps, scheme), session)
 
 
 def ode_jacobi_last_multiplier(*args, session=None):
@@ -49730,60 +49730,60 @@ def ode_jacobi_last_multiplier(*args, session=None):
     return _apply("ode_jacobi_last_multiplier", args, session)
 
 
-def ode_series(a0, a1, a2, a3, *, session=None):
+def ode_series(ode, y, x0, order, *, session=None):
     """
     `ode_series(ode, y, x0, order)`: computes a power-series solution `y(x) = ...` of `ode` about `x0` up to `order`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ode_series", (a0, a1, a2, a3), session)
+    return _apply("ode_series", (ode, y, x0, order), session)
 
 
-def ode_solve(a0, a1, a2, a3, a4, a5, a6, a7, *, session=None):
+def ode_solve(rhs, vars, t, y0, t0, t1, tol, method, *, session=None):
     """
     `ode_solve(rhs, vars, t, y0, t0, t1, tol, method)`: `y(t1)` for `y' = rhs(t, y)` with `y(t0) = y0` using `dopri5`, `rosenbrock23`, `radau5`, `bdf`, `sdirk3`, or `exprb32`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ode_solve", (a0, a1, a2, a3, a4, a5, a6, a7), session)
+    return _apply("ode_solve", (rhs, vars, t, y0, t0, t1, tol, method), session)
 
 
-def ode_symmetries(a0, a1, *, session=None):
+def ode_symmetries(ode, y, *, session=None):
     """
     `ode_symmetries(ode, y)`: finds Lie point symmetry generators `[xi, eta]` admitted by `ode` for dependent function `y`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ode_symmetries", (a0, a1), session)
+    return _apply("ode_symmetries", (ode, y), session)
 
 
-def ode_symplectic(a0, a1, a2, a3, a4, a5, a6, a7, *, session=None):
+def ode_symplectic(accel, vars, q0, p0, t0, t1, steps, method, *, session=None):
     """
     `ode_symplectic(accel, vars, q0, p0, t0, t1, steps, method)`: `list(q, p)` at `t1` for `q' = p`, `p' = accel(q)` using `verlet`, `yoshida4`, `yoshida6`, or `yoshida8`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ode_symplectic", (a0, a1, a2, a3, a4, a5, a6, a7), session)
+    return _apply("ode_symplectic", (accel, vars, q0, p0, t0, t1, steps, method), session)
 
 
-def odeint(a0, a1, a2, a3, a4, a5, *, session=None):
+def odeint(f, y, x, x0, y0, x1, *, session=None):
     """
     `odeint(f, y, x, x0, y0, x1)`: numerically integrates `dy/dx = f(x, y)` from `(x0, y0)` to `x1`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("odeint", (a0, a1, a2, a3, a4, a5), session)
+    return _apply("odeint", (f, y, x, x0, y0, x1), session)
 
 
-def omega(a0, *, session=None):
+def omega(n, *, session=None):
     """
     `omega(n)`: number of distinct prime factors of `n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("omega", (a0,), session)
+    return _apply("omega", (n,), session)
 
 
-def one_parameter_subgroup(a0, a1, *, session=None):
+def one_parameter_subgroup(A, t, *, session=None):
     """
     `one_parameter_subgroup(A, t)`: one-parameter subgroup `exp_map(t * A)` generated by matrix `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("one_parameter_subgroup", (a0, a1), session)
+    return _apply("one_parameter_subgroup", (A, t), session)
 
 
 def oo(*, session=None):
@@ -49802,20 +49802,20 @@ def op_add(*args, session=None):
     return _apply("op_add", args, session)
 
 
-def op_apply(a0, a1, *, session=None):
+def op_apply(A, f, *, session=None):
     """
     `op_apply(A, f)`: apply linear operator `A` to function or vector `f`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("op_apply", (a0, a1), session)
+    return _apply("op_apply", (A, f), session)
 
 
-def op_commutator(a0, a1, *, session=None):
+def op_commutator(A, B, *, session=None):
     """
     `op_commutator(A, B)`: commutator `[A, B] = A B - B A` of operators `A` and `B`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("op_commutator", (a0, a1), session)
+    return _apply("op_commutator", (A, B), session)
 
 
 def op_compose(*args, session=None):
@@ -49826,12 +49826,12 @@ def op_compose(*args, session=None):
     return _apply("op_compose", args, session)
 
 
-def op_d(a0, *, session=None):
+def op_d(x, *, session=None):
     """
     `op_d(x)`: differential operator `f -> d/dx(f)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("op_d", (a0,), session)
+    return _apply("op_d", (x,), session)
 
 
 def op_identity(*, session=None):
@@ -49842,52 +49842,52 @@ def op_identity(*, session=None):
     return _apply("op_identity", (), session)
 
 
-def op_int(a0, a1, *, session=None):
+def op_int(a, x, *, session=None):
     """
     `op_int(a, x)`: Volterra integration operator `f -> int_a^x f(t) dt`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("op_int", (a0, a1), session)
+    return _apply("op_int", (a, x), session)
 
 
-def op_laplacian(a0, *, session=None):
+def op_laplacian(vars, *, session=None):
     """
     `op_laplacian(vars)`: Laplacian differential operator `sum_i d^2 / dx_i^2` over `vars`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("op_laplacian", (a0,), session)
+    return _apply("op_laplacian", (vars,), session)
 
 
-def op_mul(a0, *, session=None):
+def op_mul(g, *, session=None):
     """
     `op_mul(g)`: linear multiplication operator `f -> g * f`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("op_mul", (a0,), session)
+    return _apply("op_mul", (g,), session)
 
 
-def op_power(a0, a1, *, session=None):
+def op_power(A, n, *, session=None):
     """
     `op_power(A, n)`: `n`-fold composition `A^n` of linear operator `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("op_power", (a0, a1), session)
+    return _apply("op_power", (A, n), session)
 
 
-def op_scale(a0, a1, *, session=None):
+def op_scale(c, A, *, session=None):
     """
     `op_scale(c, A)`: linear operator `A` scaled by `c`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("op_scale", (a0, a1), session)
+    return _apply("op_scale", (c, A), session)
 
 
-def operator_adjoint(a0, *, session=None):
+def operator_adjoint(A, *, session=None):
     """
     `operator_adjoint(A)`: formal `L^2` adjoint `A*` of differential/multiplication operator `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("operator_adjoint", (a0,), session)
+    return _apply("operator_adjoint", (A,), session)
 
 
 def or_(*args, session=None):
@@ -49914,20 +49914,20 @@ def orbit_entropy(a0, *, session=None):
     return _apply("orbit_entropy", (a0,), session)
 
 
-def orthogonal_coefficients(a0, a1, a2, a3, a4, *, session=None):
+def orthogonal_coefficients(f, basis, x, a, b, *, session=None):
     """
     `orthogonal_coefficients(f, basis, x, a, b)`: Fourier coefficients `<e_i, f> / <e_i, e_i>` of `f` in orthogonal `basis`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("orthogonal_coefficients", (a0, a1, a2, a3, a4), session)
+    return _apply("orthogonal_coefficients", (f, basis, x, a, b), session)
 
 
-def orthogonalize(a0, *, session=None):
+def orthogonalize(vecs, *, session=None):
     """
     `orthogonalize(vecs)`: Gram-Schmidt orthogonal basis from a list of vectors.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("orthogonalize", (a0,), session)
+    return _apply("orthogonalize", (vecs,), session)
 
 
 def orthographic(a0, a1, a2, a3, a4, a5, *, session=None):
@@ -49938,100 +49938,100 @@ def orthographic(a0, a1, a2, a3, a4, a5, *, session=None):
     return _apply("orthographic", (a0, a1, a2, a3, a4, a5), session)
 
 
-def orthonormalize(a0, *, session=None):
+def orthonormalize(vecs, *, session=None):
     """
     `orthonormalize(vecs)`: Gram-Schmidt orthonormal basis from a list of vectors.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("orthonormalize", (a0,), session)
+    return _apply("orthonormalize", (vecs,), session)
 
 
-def oscillatory_integral(a0, a1, a2, a3, a4, a5, a6, *, session=None):
+def oscillatory_integral(f, g, x, a, b, w, n, *, session=None):
     """
     `oscillatory_integral(f, g, x, a, b, w, n)`: `list(re, im)` of `int_a^b f(x) exp(i w g(x)) dx` by Levin collocation at `n` Chebyshev points.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("oscillatory_integral", (a0, a1, a2, a3, a4, a5, a6), session)
+    return _apply("oscillatory_integral", (f, g, x, a, b, w, n), session)
 
 
-def outer(a0, a1, *, session=None):
+def outer(u, v, *, session=None):
     """
     `outer(u, v)`: outer product matrix `u v^T` of vectors `u` and `v`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("outer", (a0, a1), session)
+    return _apply("outer", (u, v), session)
 
 
-def pacf(a0, a1, *, session=None):
+def pacf(x, max_lag, *, session=None):
     """
     `pacf(x, max_lag)`: the partial autocorrelation of `x` for lags `1..=max_lag`, by the Durbin–Levinson recursion. Partial autocorrelation function, from the Durbin–Levinson recursion. Returns `max_lag + 1` values with `result[0] = 1`; entry `k` is the last coefficient of the order-`k` autoregression fitted to the sample autocorrelations.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pacf", (a0, a1), session)
+    return _apply("pacf", (x, max_lag), session)
 
 
-def pareto(a0, a1, *, session=None):
+def pareto(scale, shape, *, session=None):
     """
     `pareto(scale, shape)`: Pareto distribution with minimum scale `scale` and shape parameter `shape`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pareto", (a0, a1), session)
+    return _apply("pareto", (scale, shape), session)
 
 
-def partition_function(a0, a1, *, session=None):
+def partition_function(energies, T, *, session=None):
     """
     `partition_function(energies, T)`: canonical partition function `sum_i exp(-E_i / (k_B T))` over energy levels `energies`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("partition_function", (a0, a1), session)
+    return _apply("partition_function", (energies, T), session)
 
 
-def partition_list(a0, *, session=None):
+def partition_list(n, *, session=None):
     """
     `partition_list(n)`: list of all integer partitions of `n` in non-increasing part order.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("partition_list", (a0,), session)
+    return _apply("partition_list", (n,), session)
 
 
-def partitions(a0, *, session=None):
+def partitions(n, *, session=None):
     """
     `partitions(n)`: integer partition function `p(n)`, counting ways to write `n` as a sum of positive integers.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("partitions", (a0,), session)
+    return _apply("partitions", (n,), session)
 
 
-def partitions_distinct(a0, *, session=None):
+def partitions_distinct(n, *, session=None):
     """
     `partitions_distinct(n)`: number of integer partitions of `n` into distinct positive parts.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("partitions_distinct", (a0,), session)
+    return _apply("partitions_distinct", (n,), session)
 
 
-def partitions_k(a0, a1, *, session=None):
+def partitions_k(n, k, *, session=None):
     """
     `partitions_k(n, k)`: number of integer partitions of `n` into exactly `k` positive parts.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("partitions_k", (a0, a1), session)
+    return _apply("partitions_k", (n, k), session)
 
 
-def partitions_max(a0, a1, *, session=None):
+def partitions_max(n, k, *, session=None):
     """
     `partitions_max(n, k)`: number of integer partitions of `n` whose parts are at most `k`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("partitions_max", (a0, a1), session)
+    return _apply("partitions_max", (n, k), session)
 
 
-def path(a0, a1, a2, a3, *, session=None):
+def path(g, t, t0, t1, *, session=None):
     """
     `path(g, t, t0, t1)`: parameterized contour `g(t)` as `t` runs from `t0` to `t1`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("path", (a0, a1, a2, a3), session)
+    return _apply("path", (g, t, t0, t1), session)
 
 
 def pauli_matrices(*, session=None):
@@ -50066,68 +50066,68 @@ def pauli_z(*, session=None):
     return _apply("pauli_z", (), session)
 
 
-def pde_classify(a0, a1, *, session=None):
+def pde_classify(pde, u, *, session=None):
     """
     `pde_classify(pde, u)`: classifies `pde` for unknown `u` by type (elliptic, parabolic, hyperbolic), order, dimension, and linearity.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_classify", (a0, a1), session)
+    return _apply("pde_classify", (pde, u), session)
 
 
-def pde_complete_integral(a0, a1, *, session=None):
+def pde_complete_integral(pde, u, *, session=None):
     """
     `pde_complete_integral(pde, u)`: complete integral `u(x, y) = ...` of a first-order PDE via Charpit's method.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_complete_integral", (a0, a1), session)
+    return _apply("pde_complete_integral", (pde, u), session)
 
 
-def pde_crum_kdv(a0, a1, *, session=None):
+def pde_crum_kdv(u, psis, *, session=None):
     """
     `pde_crum_kdv(u, psis)`: iterated Crum-Darboux transformation of KdV seed `u` using eigenfunctions `psis`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_crum_kdv", (a0, a1), session)
+    return _apply("pde_crum_kdv", (u, psis), session)
 
 
-def pde_darboux_kdv(a0, a1, *, session=None):
+def pde_darboux_kdv(u, psi, *, session=None):
     """
     `pde_darboux_kdv(u, psi)`: single Darboux-Bäcklund transformation `u - 2 d^2/dx^2 ln(psi)` for KdV.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_darboux_kdv", (a0, a1), session)
+    return _apply("pde_darboux_kdv", (u, psi), session)
 
 
-def pde_greens_ball(a0, a1, *, session=None):
+def pde_greens_ball(radius, dimension, *, session=None):
     """
     `pde_greens_ball(radius, dimension)`: Dirichlet Green's function for the negative Laplacian on a disk (`dimension = 2`) or ball (`dimension = 3`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_greens_ball", (a0, a1), session)
+    return _apply("pde_greens_ball", (radius, dimension), session)
 
 
-def pde_greens_ball_neumann(a0, a1, *, session=None):
+def pde_greens_ball_neumann(radius, dimension, *, session=None):
     """
     `pde_greens_ball_neumann(radius, dimension)`: zero-mean Neumann Green's function for the negative Laplacian on a disk (`dimension = 2`) or ball (`dimension = 3`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_greens_ball_neumann", (a0, a1), session)
+    return _apply("pde_greens_ball_neumann", (radius, dimension), session)
 
 
-def pde_greens_ball_robin(a0, a1, *, session=None):
+def pde_greens_ball_robin(radius, h, *, session=None):
     """
     `pde_greens_ball_robin(radius, h)`: Green's function for the negative Laplacian inside a three-dimensional ball with Robin coefficient `h`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_greens_ball_robin", (a0, a1), session)
+    return _apply("pde_greens_ball_robin", (radius, h), session)
 
 
-def pde_greens_exterior_robin(a0, a1, a2, *, session=None):
+def pde_greens_exterior_robin(radius, h, dimension, *, session=None):
     """
     `pde_greens_exterior_robin(radius, h, dimension)`: Green's function for the negative Laplacian outside a disk (`dimension = 2`) or ball (`dimension = 3`) with Robin coefficient `h`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_greens_exterior_robin", (a0, a1, a2), session)
+    return _apply("pde_greens_exterior_robin", (radius, h, dimension), session)
 
 
 def pde_greens_function(*args, session=None):
@@ -50138,28 +50138,28 @@ def pde_greens_function(*args, session=None):
     return _apply("pde_greens_function", args, session)
 
 
-def pde_greens_robin(a0, a1, *, session=None):
+def pde_greens_robin(dimension, h, *, session=None):
     """
     `pde_greens_robin(dimension, h)`: Green's function for the negative Laplacian on a half-space with Robin coefficient `h` (`dimension = 2` or `3`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_greens_robin", (a0, a1), session)
+    return _apply("pde_greens_robin", (dimension, h), session)
 
 
-def pde_hodograph(a0, a1, *, session=None):
+def pde_hodograph(sys, vars, *, session=None):
     """
     `pde_hodograph(sys, vars)`: derives the linear hodograph PDE `(lambda - mu) t_rs + lambda_r t_s - mu_s t_r = 0` for a 2x2 hyperbolic system.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_hodograph", (a0, a1), session)
+    return _apply("pde_hodograph", (sys, vars), session)
 
 
-def pde_hodograph_riemann(a0, *, session=None):
+def pde_hodograph_riemann(gamma, *, session=None):
     """
     `pde_hodograph_riemann(gamma)`: Riemann function for the Euler-Poisson-Darboux hodograph equation.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_hodograph_riemann", (a0,), session)
+    return _apply("pde_hodograph_riemann", (gamma,), session)
 
 
 def pde_hodograph_solution(*args, session=None):
@@ -50170,124 +50170,124 @@ def pde_hodograph_solution(*args, session=None):
     return _apply("pde_hodograph_solution", args, session)
 
 
-def pde_kdv_reflectionless(a0, a1, *, session=None):
+def pde_kdv_reflectionless(params, x_t, *, session=None):
     """
     `pde_kdv_reflectionless(params, x_t)`: KdV time evolution of the reflectionless potential `-N(N+1) kappa^2 sech^2(kappa x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_kdv_reflectionless", (a0, a1), session)
+    return _apply("pde_kdv_reflectionless", (params, x_t), session)
 
 
-def pde_kdv_scattering(a0, a1, a2, *, session=None):
+def pde_kdv_scattering(data, x, t, *, session=None):
     """
     `pde_kdv_scattering(data, x, t)`: numeric KdV inverse-scattering (Gelfand-Levitan-Marchenko) evaluation at `(x, t)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_kdv_scattering", (a0, a1, a2), session)
+    return _apply("pde_kdv_scattering", (data, x, t), session)
 
 
-def pde_kdv_soliton(a0, a1, *, session=None):
+def pde_kdv_soliton(kappas, x_t, *, session=None):
     """
     `pde_kdv_soliton(kappas, x_t)`: N-soliton Hirota tau-function solution `-2 d^2/dx^2 ln det(I + A)` of the KdV equation.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_kdv_soliton", (a0, a1), session)
+    return _apply("pde_kdv_soliton", (kappas, x_t), session)
 
 
-def pde_nls_soliton(a0, *, session=None):
+def pde_nls_soliton(params, *, session=None):
     """
     `pde_nls_soliton(params)`: bright soliton solution of the focusing nonlinear Schrodinger equation.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_nls_soliton", (a0,), session)
+    return _apply("pde_nls_soliton", (params,), session)
 
 
-def pde_order(a0, a1, *, session=None):
+def pde_order(pde, u, *, session=None):
     """
     `pde_order(pde, u)`: highest partial-derivative order of `u` appearing in `pde`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_order", (a0, a1), session)
+    return _apply("pde_order", (pde, u), session)
 
 
-def pde_poisson_integral(a0, a1, a2, *, session=None):
+def pde_poisson_integral(g, radius, dimension, *, session=None):
     """
     `pde_poisson_integral(g, radius, dimension)`: harmonic extension of `g(phi)` on a disk (`dimension = 2`) or `g(theta, phi)` on a ball (`dimension = 3`). The positive `radius` is measured in the same units as `r`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_poisson_integral", (a0, a1, a2), session)
+    return _apply("pde_poisson_integral", (g, radius, dimension), session)
 
 
-def pde_riemann_shallow_water(a0, a1, a2, a3, a4, *, session=None):
+def pde_riemann_shallow_water(hL, uL, hR, uR, g, *, session=None):
     """
     `pde_riemann_shallow_water(hL, uL, hR, uR, g)`: exact Riemann problem solution `list(h*, u*, left_wave, right_wave)` for 1D shallow-water equations.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_riemann_shallow_water", (a0, a1, a2, a3, a4), session)
+    return _apply("pde_riemann_shallow_water", (hL, uL, hR, uR, g), session)
 
 
-def pde_riemann_shallow_water_at(a0, a1, a2, a3, a4, a5, *, session=None):
+def pde_riemann_shallow_water_at(hL, uL, hR, uR, g, xi, *, session=None):
     """
     `pde_riemann_shallow_water_at(hL, uL, hR, uR, g, xi)`: self-similar shallow-water depth `h(x/t = xi)` from the Riemann solver.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_riemann_shallow_water_at", (a0, a1, a2, a3, a4, a5), session)
+    return _apply("pde_riemann_shallow_water_at", (hL, uL, hR, uR, g, xi), session)
 
 
-def pde_riemann_shallow_water_velocity(a0, a1, a2, a3, a4, a5, *, session=None):
+def pde_riemann_shallow_water_velocity(hL, uL, hR, uR, g, xi, *, session=None):
     """
     `pde_riemann_shallow_water_velocity(hL, uL, hR, uR, g, xi)`: self-similar shallow-water velocity `u(x/t = xi)` from the Riemann solver.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_riemann_shallow_water_velocity", (a0, a1, a2, a3, a4, a5), session)
+    return _apply("pde_riemann_shallow_water_velocity", (hL, uL, hR, uR, g, xi), session)
 
 
-def pde_separate(a0, a1, *, session=None):
+def pde_separate(pde, u, *, session=None):
     """
     `pde_separate(pde, u)`: separated-variables ansatz and decoupled ODEs for `pde` and unknown `u`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_separate", (a0, a1), session)
+    return _apply("pde_separate", (pde, u), session)
 
 
-def pde_similarity(a0, a1, a2, *, session=None):
+def pde_similarity(pde, u, generator, *, session=None):
     """
     `pde_similarity(pde, u, generator)`: similarity reduction `list(u = g F(z), ODE)` along a scaling/symmetry `generator`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_similarity", (a0, a1, a2), session)
+    return _apply("pde_similarity", (pde, u, generator), session)
 
 
-def pde_sine_gordon_soliton(a0, a1, *, session=None):
+def pde_sine_gordon_soliton(params, x_t, *, session=None):
     """
     `pde_sine_gordon_soliton(params, x_t)`: kink/antikink or breather soliton solution of the sine-Gordon equation.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_sine_gordon_soliton", (a0, a1), session)
+    return _apply("pde_sine_gordon_soliton", (params, x_t), session)
 
 
-def pde_symmetries(a0, a1, *, session=None):
+def pde_symmetries(pde, u, *, session=None):
     """
     `pde_symmetries(pde, u)`: Lie point symmetry infinitesimal generators of `pde` for unknown `u`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_symmetries", (a0, a1), session)
+    return _apply("pde_symmetries", (pde, u), session)
 
 
-def pde_traveling_wave(a0, a1, a2, *, session=None):
+def pde_traveling_wave(pde, u, c, *, session=None):
     """
     `pde_traveling_wave(pde, u, c)`: traveling-wave ansatz `u = F(x - c t)` and reduced ODE for speed `c`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pde_traveling_wave", (a0, a1, a2), session)
+    return _apply("pde_traveling_wave", (pde, u, c), session)
 
 
-def pdf(a0, a1, *, session=None):
+def pdf(d, x, *, session=None):
     """
     `pdf(d, x)`: probability density function (or probability mass function) of distribution `d` at point `x`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pdf", (a0, a1), session)
+    return _apply("pdf", (d, x), session)
 
 
 def pdsolve(*args, session=None):
@@ -50298,36 +50298,36 @@ def pdsolve(*args, session=None):
     return _apply("pdsolve", args, session)
 
 
-def pell(a0, *, session=None):
+def pell(D, *, session=None):
     """
     `pell(D)`: fundamental solution `list(x, y)` to Pell's equation `x^2 - D*y^2 = 1` for non-square `D > 0`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pell", (a0,), session)
+    return _apply("pell", (D,), session)
 
 
-def percentile(a0, a1, *, session=None):
+def percentile(xs, p, *, session=None):
     """
     `percentile(xs, p)`: `p`-th percentile (`quantile(xs, p / 100)`) of list `xs`. Computes the p-th percentile of a slice of data. # Arguments * `data` - A mutable slice of `f64` data points. * `p` - The desired percentile (e.g., 50.0 for median). # Returns The p-th percentile of the data (fractional `p` allowed), or NaN for empty data, data containing NaN, or `p` outside `0..=100`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("percentile", (a0, a1), session)
+    return _apply("percentile", (xs, p), session)
 
 
-def perfect_power(a0, *, session=None):
+def perfect_power(n, *, session=None):
     """
     `perfect_power(n)`: `list(b, e)` with maximal `e >= 1` such that `b^e = n` (for `n >= 2`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("perfect_power", (a0,), session)
+    return _apply("perfect_power", (n,), session)
 
 
-def period(a0, *, session=None):
+def period(sequence, *, session=None):
     """
     `period(sequence)`: minimal positive period of a repeating list `sequence`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("period", (a0,), session)
+    return _apply("period", (sequence,), session)
 
 
 def perm_compose(a0, a1, *, session=None):
@@ -50634,44 +50634,44 @@ def perm_sign(a0, *, session=None):
     return _apply("perm_sign", (a0,), session)
 
 
-def permutation_order(a0, *, session=None):
+def permutation_order(perm, *, session=None):
     """
     `permutation_order(perm)`: group order (LCM of disjoint cycle lengths) of permutation `perm`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("permutation_order", (a0,), session)
+    return _apply("permutation_order", (perm,), session)
 
 
-def permutation_rank(a0, *, session=None):
+def permutation_rank(perm, *, session=None):
     """
     `permutation_rank(perm)`: 0-based lexicographic rank (Lehmer code) of permutation `perm` of `1..=n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("permutation_rank", (a0,), session)
+    return _apply("permutation_rank", (perm,), session)
 
 
-def permutation_sign(a0, *, session=None):
+def permutation_sign(perm, *, session=None):
     """
     `permutation_sign(perm)`: parity sign (`1` for even, `-1` for odd) of permutation `perm`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("permutation_sign", (a0,), session)
+    return _apply("permutation_sign", (perm,), session)
 
 
-def permutation_unrank(a0, a1, *, session=None):
+def permutation_unrank(n, rank, *, session=None):
     """
     `permutation_unrank(n, rank)`: permutation of `1..=n` at 0-based lexicographic `rank`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("permutation_unrank", (a0, a1), session)
+    return _apply("permutation_unrank", (n, rank), session)
 
 
-def permutations(a0, a1, *, session=None):
+def permutations(n, k, *, session=None):
     """
     `permutations(n, k)`: number of `k`-permutations of `n` items, `n! / (n - k)!`. Computes the number of permutations `P(n, k) = n! / (n-k)!`. # Arguments * `n` - The total number of items. * `k` - The number of items to choose. # Returns The number of permutations as an `f64`. Returns `0.0` if `k > n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("permutations", (a0, a1), session)
+    return _apply("permutations", (n, k), session)
 
 
 def persistence(a0, a1, a2, a3, *, session=None):
@@ -50698,12 +50698,12 @@ def perspective(a0, a1, a2, a3, *, session=None):
     return _apply("perspective", (a0, a1, a2, a3), session)
 
 
-def pgcd(a0, a1, a2, *, session=None):
+def pgcd(p, q, var, *, session=None):
     """
     `pgcd(p, q, var)`: computes the polynomial greatest common divisor of `p` and `q` in `var`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pgcd", (a0, a1, a2), session)
+    return _apply("pgcd", (p, q, var), session)
 
 
 def pi(*, session=None):
@@ -50722,36 +50722,36 @@ def pid_tune(a0, a1, a2, a3, *, session=None):
     return _apply("pid_tune", (a0, a1, a2, a3), session)
 
 
-def pinv(a0, *, session=None):
+def pinv(A, *, session=None):
     """
     `pinv(A)`: Moore-Penrose pseudoinverse `A^+` of matrix `A`. Moore-Penrose pseudo-inverse through the SVD. # Errors As [`svd`].
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pinv", (a0,), session)
+    return _apply("pinv", (A,), session)
 
 
-def planck_law(a0, a1, *, session=None):
+def planck_law(nu, T, *, session=None):
     """
     `planck_law(nu, T)`: Planck blackbody spectral radiance at frequency `nu` and temperature `T`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("planck_law", (a0, a1), session)
+    return _apply("planck_law", (nu, T), session)
 
 
-def plasma_frequency(a0, a1, a2, a3, *, session=None):
+def plasma_frequency(n, e, eps, m, *, session=None):
     """
     `plasma_frequency(n, e, eps, m)`: plasma angular frequency `sqrt(n e^2 / (eps m))`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("plasma_frequency", (a0, a1, a2, a3), session)
+    return _apply("plasma_frequency", (n, e, eps, m), session)
 
 
-def point_charge_potential(a0, a1, *, session=None):
+def point_charge_potential(q, r, *, session=None):
     """
     `point_charge_potential(q, r)`: electrostatic potential `q / (4 pi epsilon_0 r)` of a point charge.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("point_charge_potential", (a0, a1), session)
+    return _apply("point_charge_potential", (q, r), session)
 
 
 def point_group(a0, *, session=None):
@@ -50898,164 +50898,164 @@ def point_group_vector_character(a0, *, session=None):
     return _apply("point_group_vector_character", (a0,), session)
 
 
-def poisson(a0, *, session=None):
+def poisson(rate, *, session=None):
     """
     `poisson(rate)`: Poisson distribution with rate (mean) parameter `rate`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("poisson", (a0,), session)
+    return _apply("poisson", (rate,), session)
 
 
-def poisson_bracket(a0, a1, a2, a3, *, session=None):
+def poisson_bracket(f, g, q, p, *, session=None):
     """
     `poisson_bracket(f, g, q, p)`: canonical Poisson bracket `{f, g} = (df/dq)(dg/dp) - (df/dp)(dg/dq)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("poisson_bracket", (a0, a1, a2, a3), session)
+    return _apply("poisson_bracket", (f, g, q, p), session)
 
 
-def poisson_fd(a0, a1, *, session=None):
+def poisson_fd(rhs, bc_val, *, session=None):
     """
     `poisson_fd(rhs, bc_val)`: finite-difference Poisson solver `-Delta u = rhs` on the unit domain with uniform Dirichlet boundary `bc_val`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("poisson_fd", (a0, a1), session)
+    return _apply("poisson_fd", (rhs, bc_val), session)
 
 
-def poisson_fd_bc(a0, a1, a2, *, session=None):
+def poisson_fd_bc(rhs, bc, bc_val, *, session=None):
     """
     `poisson_fd_bc(rhs, bc, bc_val)`: finite-difference Poisson solver `-Delta u = rhs` with per-face Dirichlet/Neumann boundary condition `bc`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("poisson_fd_bc", (a0, a1, a2), session)
+    return _apply("poisson_fd_bc", (rhs, bc, bc_val), session)
 
 
-def poles(a0, a1, *, session=None):
+def poles(f, z, *, session=None):
     """
     `poles(f, z)`: list of `list(p, order)` pairs for the poles of meromorphic `f(z)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("poles", (a0, a1), session)
+    return _apply("poles", (f, z), session)
 
 
-def polygamma(a0, a1, *, session=None):
+def polygamma(n, x, *, session=None):
     """
     `polygamma(n, x)`: `n`-th derivative of the digamma function `psi^(n)(x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("polygamma", (a0, a1), session)
+    return _apply("polygamma", (n, x), session)
 
 
-def polygon(a0, *, session=None):
+def polygon(vertices, *, session=None):
     """
     `polygon(vertices)`: closed polygonal contour through `list(z1, ..., zn)` in order.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("polygon", (a0,), session)
+    return _apply("polygon", (vertices,), session)
 
 
-def polylog(a0, a1, *, session=None):
+def polylog(s, z, *, session=None):
     """
     `polylog(s, z)`: polylogarithm `Li_s(z) = sum_{k=1}^infty z^k / k^s`. The polylogarithm `Li_s(z)` for real `s` and real `z`. Real on `z <= 1` (including the negative axis); for `z > 1` the principal value is complex in general and `NaN` is returned, except for non-positive integer `s`, where `Li_{-n}(z)` is the real rational function `z A_n(z)/(1-z)^(n+1)`. At `z = 1` the analytic continuation `ζ(s)` is returned (and `+∞` at the pole `s = 1`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("polylog", (a0, a1), session)
+    return _apply("polylog", (s, z), session)
 
 
-def polynomial_regression(a0, a1, a2, *, session=None):
+def polynomial_regression(xs, ys, degree, *, session=None):
     """
     `polynomial_regression(xs, ys, degree)`: polynomial least-squares fit returning coefficients `list(c0, c1, ..., cd)` up to degree `degree`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("polynomial_regression", (a0, a1, a2), session)
+    return _apply("polynomial_regression", (xs, ys, degree), session)
 
 
-def polynomial_system_roots(a0, *, session=None):
+def polynomial_system_roots(system, *, session=None):
     """
     `polynomial_system_roots(system)`: finite roots of a square polynomial system by total-degree homotopy continuation as `list(list(re, im), ...)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("polynomial_system_roots", (a0,), session)
+    return _apply("polynomial_system_roots", (system,), session)
 
 
-def pooled_t_test(a0, a1, *, session=None):
+def pooled_t_test(xs, ys, *, session=None):
     """
     `pooled_t_test(xs, ys)`: two-sample pooled t-test returning `list(statistic, p_value)` assuming equal population variances.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pooled_t_test", (a0, a1), session)
+    return _apply("pooled_t_test", (xs, ys), session)
 
 
-def position_operator(a0, *, session=None):
+def position_operator(x, *, session=None):
     """
     `position_operator(x)`: 1D position operator multiplying by `x`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("position_operator", (a0,), session)
+    return _apply("position_operator", (x,), session)
 
 
-def potential_energy_gravity_uniform(a0, a1, a2, *, session=None):
+def potential_energy_gravity_uniform(m, h, g, *, session=None):
     """
     `potential_energy_gravity_uniform(m, h, g)`: gravitational potential energy `m g h` in a uniform field.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("potential_energy_gravity_uniform", (a0, a1, a2), session)
+    return _apply("potential_energy_gravity_uniform", (m, h, g), session)
 
 
-def potential_energy_gravity_universal(a0, a1, a2, a3, *, session=None):
+def potential_energy_gravity_universal(m1, m2, r, G, *, session=None):
     """
     `potential_energy_gravity_universal(m1, m2, r, G)`: Newtonian gravitational potential energy `-G m1 m2 / r`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("potential_energy_gravity_universal", (a0, a1, a2, a3), session)
+    return _apply("potential_energy_gravity_universal", (m1, m2, r, G), session)
 
 
-def potential_energy_spring(a0, a1, *, session=None):
+def potential_energy_spring(k, x, *, session=None):
     """
     `potential_energy_spring(k, x)`: elastic potential energy `(1/2) k x^2` of a Hookean spring.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("potential_energy_spring", (a0, a1), session)
+    return _apply("potential_energy_spring", (k, x), session)
 
 
-def pow(a0, a1, *, session=None):
+def pow(base, exponent, *, session=None):
     """
     `pow(base, exponent)` raises `base` to `exponent` and is printed with `^`. For positive real bases, the scalar overload also accepts fractional exponents. The symbolic overload represents powers as terms and can preserve an exact expression such as `2^(1/2)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pow", (a0, a1), session)
+    return _apply("pow", (base, exponent), session)
 
 
-def power(a0, a1, *, session=None):
+def power(F, v, *, session=None):
     """
     `power(F, v)`: instantaneous mechanical power `F . v`. `p^k` for `k ≥ 0`, using direct composition for powers that need few compositions and cycle rotations for other powers.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("power", (a0, a1), session)
+    return _apply("power", (F, v), session)
 
 
-def power_branch(a0, a1, a2, *, session=None):
+def power_branch(z, w, k, *, session=None):
     """
     `power_branch(z, w, k)`: branch `k` of the complex power `exp(w * log_branch(z, k))`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("power_branch", (a0, a1, a2), session)
+    return _apply("power_branch", (z, w, k), session)
 
 
-def powmod(a0, a1, a2, *, session=None):
+def powmod(b, e, m, *, session=None):
     """
     `powmod(b, e, m)`: modular exponentiation `b^e mod m` for `e >= 0` and `m > 0`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("powmod", (a0, a1, a2), session)
+    return _apply("powmod", (b, e, m), session)
 
 
-def poynting_vector(a0, a1, *, session=None):
+def poynting_vector(E, B, *, session=None):
     """
     `poynting_vector(E, B)`: electromagnetic energy flux `(E x B) / mu_0`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("poynting_vector", (a0, a1), session)
+    return _apply("poynting_vector", (E, B), session)
 
 
 def presentation_abelianization(a0, a1, *, session=None):
@@ -51066,108 +51066,108 @@ def presentation_abelianization(a0, a1, *, session=None):
     return _apply("presentation_abelianization", (a0, a1), session)
 
 
-def pressure_from_helmholtz(a0, a1, *, session=None):
+def pressure_from_helmholtz(A, V, *, session=None):
     """
     `pressure_from_helmholtz(A, V)`: thermodynamic pressure `-dA/dV` from Helmholtz free energy `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pressure_from_helmholtz", (a0, a1), session)
+    return _apply("pressure_from_helmholtz", (A, V), session)
 
 
-def prevprime(a0, *, session=None):
+def prevprime(n, *, session=None):
     """
     `prevprime(n)`: largest prime strictly less than `n` (for `n > 2`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("prevprime", (a0,), session)
+    return _apply("prevprime", (n,), session)
 
 
-def prime_implicants(a0, *, session=None):
+def prime_implicants(formula, *, session=None):
     """
     `prime_implicants(formula)`: computes the list of prime implicants of propositional `formula`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("prime_implicants", (a0,), session)
+    return _apply("prime_implicants", (formula,), session)
 
 
-def prime_pi(a0, *, session=None):
+def prime_pi(n, *, session=None):
     """
     `prime_pi(n)`: prime-counting function `pi(n)`, the number of primes `<= n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("prime_pi", (a0,), session)
+    return _apply("prime_pi", (n,), session)
 
 
-def primes(a0, *, session=None):
+def primes(n, *, session=None):
     """
     `primes(n)`: list of all prime numbers `<= n`. Prime numbers strictly below `limit`; negative limits yield an empty list.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("primes", (a0,), session)
+    return _apply("primes", (n,), session)
 
 
-def primitive_root(a0, *, session=None):
+def primitive_root(n, *, session=None):
     """
     `primitive_root(n)`: smallest primitive root modulo `n`, if `(Z/nZ)^*` is cyclic. Returns the smallest positive primitive root modulo `n` if the multiplicative group $(\\mathbb{Z}/n\\mathbb{Z})^\\times$ is cyclic ($n \\in \\{2, 4, p^k, 2p^k\\}$ for an odd prime $p$), or `None` otherwise.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("primitive_root", (a0,), session)
+    return _apply("primitive_root", (n,), session)
 
 
-def probability_density(a0, *, session=None):
+def probability_density(psi, *, session=None):
     """
     `probability_density(psi)`: probability density `|psi|^2 = conj(psi) * psi`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("probability_density", (a0,), session)
+    return _apply("probability_density", (psi,), session)
 
 
-def product(a0, a1, a2, a3, *, session=None):
+def product(expr, k, lo, hi, *, session=None):
     """
     `product(expr, k, lo, hi)` multiplies the values of `expr` over a bound index `k` from `lo` through `hi`, inclusive. Small literal integer ranges substitute each index value. A factor independent of `k` can be raised to the number of terms. Symbolic bounds can reduce through factorials or a known finite-product formula. An unsupported request remains unevaluated.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("product", (a0, a1, a2, a3), session)
+    return _apply("product", (expr, k, lo, hi), session)
 
 
-def project(a0, a1, *, session=None):
+def project(u, v, *, session=None):
     """
     `project(u, v)`: orthogonal projection of vector `u` onto vector `v`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("project", (a0, a1), session)
+    return _apply("project", (u, v), session)
 
 
-def project_onto(a0, a1, a2, a3, a4, *, session=None):
+def project_onto(f, g, x, a, b, *, session=None):
     """
     `project_onto(f, g, x, a, b)`: orthogonal projection of `f` onto `g` in `L^2([a, b])`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("project_onto", (a0, a1, a2, a3, a4), session)
+    return _apply("project_onto", (f, g, x, a, b), session)
 
 
-def propagator(a0, a1, *, session=None):
+def propagator(p, m, *, session=None):
     """
     `propagator(p, m)`: Feynman scalar propagator `i / (p^2 - m^2 + i epsilon)` in momentum space.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("propagator", (a0, a1), session)
+    return _apply("propagator", (p, m), session)
 
 
-def proportion_z_test(a0, a1, a2, *, session=None):
+def proportion_z_test(k, n, p0, *, session=None):
     """
     `proportion_z_test(k, n, p0)`: two-sided one-sample z-test `list(statistic, p_value)` for proportion given `k` successes in `n` trials against null `p0`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("proportion_z_test", (a0, a1, a2), session)
+    return _apply("proportion_z_test", (k, n, p0), session)
 
 
-def pullback(a0, a1, a2, a3, *, session=None):
+def pullback(omega, vars, phi, params, *, session=None):
     """
     `pullback(omega, vars, phi, params)`: pullback `phi* omega` of form `omega(vars)` along map `phi(params)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("pullback", (a0, a1, a2, a3), session)
+    return _apply("pullback", (omega, vars, phi, params), session)
 
 
 def q_e(*, session=None):
@@ -51178,116 +51178,116 @@ def q_e(*, session=None):
     return _apply("q_e", (), session)
 
 
-def qcd_lagrangian(a0, a1, a2, a3, a4, *, session=None):
+def qcd_lagrangian(psibar, psi, G, m, gs, *, session=None):
     """
     `qcd_lagrangian(psibar, psi, G, m, gs)`: symbolic QCD Lagrangian density for quark field `psi` and gluon field `G`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("qcd_lagrangian", (a0, a1, a2, a3, a4), session)
+    return _apply("qcd_lagrangian", (psibar, psi, G, m, gs), session)
 
 
-def qed_lagrangian(a0, a1, a2, a3, a4, *, session=None):
+def qed_lagrangian(psibar, psi, A, m, e, *, session=None):
     """
     `qed_lagrangian(psibar, psi, A, m, e)`: symbolic QED Lagrangian density for Dirac spinor `psi` and gauge field `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("qed_lagrangian", (a0, a1, a2, a3, a4), session)
+    return _apply("qed_lagrangian", (psibar, psi, A, m, e), session)
 
 
-def qm_apply(a0, a1, *, session=None):
+def qm_apply(A, psi, *, session=None):
     """
     `qm_apply(A, psi)`: applies quantum operator `A` to wavefunction `psi`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("qm_apply", (a0, a1), session)
+    return _apply("qm_apply", (A, psi), session)
 
 
-def qp_eq(a0, a1, a2, a3, *, session=None):
+def qp_eq(Q, c, A, b, *, session=None):
     """
     `qp_eq(Q, c, A, b)`: solves the equality-constrained quadratic program `min 1/2 x^T Q x + c^T x` subject to `A x = b`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("qp_eq", (a0, a1, a2, a3), session)
+    return _apply("qp_eq", (Q, c, A, b), session)
 
 
-def qp_solve(a0, a1, a2, a3, a4, a5, *, session=None):
+def qp_solve(q, c, a, rel, b, bounds, *, session=None):
     """
     `qp_solve(q, c, a, rel, b, bounds)`: `list(x, objective, iterations, active)` minimising `0.5 x'Qx + c'x` subject to `a x (rel) b` and `bounds` (`list(list(lo, hi), ..)`, `inf` for no upper bound).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("qp_solve", (a0, a1, a2, a3, a4, a5), session)
+    return _apply("qp_solve", (q, c, a, rel, b, bounds), session)
 
 
-def qr(a0, *, session=None):
+def qr(A, *, session=None):
     """
     `qr(A)`: QR factorization `list(Q, R)` with orthogonal `Q` and upper triangular `R`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("qr", (a0,), session)
+    return _apply("qr", (A,), session)
 
 
-def qr_pivoted_diagonal(a0, *, session=None):
+def qr_pivoted_diagonal(a, *, session=None):
     """
     `qr_pivoted_diagonal(a)`: non-increasing absolute diagonal `|R_ii|` from column-pivoted QR of `a`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("qr_pivoted_diagonal", (a0,), session)
+    return _apply("qr_pivoted_diagonal", (a,), session)
 
 
-def qr_pivoted_permutation(a0, *, session=None):
+def qr_pivoted_permutation(a, *, session=None):
     """
     `qr_pivoted_permutation(a)`: 0-based column permutation vector `perm` from column-pivoted QR of `a`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("qr_pivoted_permutation", (a0,), session)
+    return _apply("qr_pivoted_permutation", (a,), session)
 
 
-def qr_pivoted_rank(a0, a1, *, session=None):
+def qr_pivoted_rank(a, tol, *, session=None):
     """
     `qr_pivoted_rank(a, tol)`: numerical rank of matrix `a` from column-pivoted QR diagonal entries above `tol * max(|R_ii|)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("qr_pivoted_rank", (a0, a1), session)
+    return _apply("qr_pivoted_rank", (a, tol), session)
 
 
-def quadratic_residues(a0, *, session=None):
+def quadratic_residues(n, *, session=None):
     """
     `quadratic_residues(n)`: sorted list of nonzero quadratic residues modulo `n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("quadratic_residues", (a0,), session)
+    return _apply("quadratic_residues", (n,), session)
 
 
-def quantile(a0, a1, *, session=None):
+def quantile(xs, p, *, session=None):
     """
     `quantile(xs, p)`: `p`-th quantile (interpolated order statistic, `p in [0, 1]`) of list `xs`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("quantile", (a0, a1), session)
+    return _apply("quantile", (xs, p), session)
 
 
-def quantile_hf(a0, a1, a2, *, session=None):
+def quantile_hf(data, p, kind, *, session=None):
     """
     `quantile_hf(data, p, kind)`: sample quantile at probability `p` in `[0, 1]` using Hyndman-Fan definition `kind` (1 to 9).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("quantile_hf", (a0, a1, a2), session)
+    return _apply("quantile_hf", (data, p, kind), session)
 
 
-def quantile_of(a0, a1, *, session=None):
+def quantile_of(d, p, *, session=None):
     """
     `quantile_of(d, p)`: quantile function (inverse CDF) of distribution `d` at probability `p`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("quantile_of", (a0, a1), session)
+    return _apply("quantile_of", (d, p), session)
 
 
-def quantity(a0, a1, *, session=None):
+def quantity(value, unit, *, session=None):
     """
     `quantity(value, unit)`: constructs a dimensional quantity pairing numeric or symbolic `value` with `unit`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("quantity", (a0, a1), session)
+    return _apply("quantity", (value, unit), session)
 
 
 def quat_conj(a0, *, session=None):
@@ -51362,84 +51362,84 @@ def quat_to_matrix(a0, *, session=None):
     return _apply("quat_to_matrix", (a0,), session)
 
 
-def quo(a0, a1, a2, *, session=None):
+def quo(p, q, var, *, session=None):
     """
     `quo(p, q, var)`: returns the polynomial quotient of `p` divided by `q` in `var`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("quo", (a0, a1, a2), session)
+    return _apply("quo", (p, q, var), session)
 
 
-def r_squared(a0, a1, *, session=None):
+def r_squared(actual, predicted, *, session=None):
     """
     `r_squared(actual, predicted)`: coefficient of determination `R^2 = 1 - SS_res / SS_tot` between `actual` and `predicted` lists.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("r_squared", (a0, a1), session)
+    return _apply("r_squared", (actual, predicted), session)
 
 
-def radical(a0, *, session=None):
+def radical(n, *, session=None):
     """
     `radical(n)`: radical `rad(n)`, the product of the distinct prime factors of `n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("radical", (a0,), session)
+    return _apply("radical", (n,), session)
 
 
-def radius_of_convergence(a0, a1, a2, *, session=None):
+def radius_of_convergence(f, z, a, *, session=None):
     """
     `radius_of_convergence(f, z, a)`: distance from `a` to the nearest singularity of `f(z)` (`oo` if entire).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("radius_of_convergence", (a0, a1, a2), session)
+    return _apply("radius_of_convergence", (f, z, a), session)
 
 
-def raise_index(a0, a1, *, session=None):
+def raise_index(W, g, *, session=None):
     """
     `raise_index(W, g)`: contravariant vector `g^ij W_j` obtained by raising index of `W` with inverse of metric `g`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("raise_index", (a0, a1), session)
+    return _apply("raise_index", (W, g), session)
 
 
-def randomized_singular_values(a0, a1, *, session=None):
+def randomized_singular_values(a, k, *, session=None):
     """
     `randomized_singular_values(a, k)`: top `k` singular values of dense matrix `a` via randomized SVD.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("randomized_singular_values", (a0, a1), session)
+    return _apply("randomized_singular_values", (a, k), session)
 
 
-def range_of(a0, *, session=None):
+def range_of(xs, *, session=None):
     """
     `range_of(xs)`: range `max(xs) - min(xs)` of list `xs`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("range_of", (a0,), session)
+    return _apply("range_of", (xs,), session)
 
 
-def rank(a0, *, session=None):
+def rank(A, *, session=None):
     """
     `rank(A)`: rank of matrix `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("rank", (a0,), session)
+    return _apply("rank", (A,), session)
 
 
-def rational_approx(a0, a1, a2, a3, *, session=None):
+def rational_approx(f, x, a, b, *, session=None):
     """
     `rational_approx(f, x, a, b)`: AAA barycentric rational approximant of `f(x)` on `[a, b]`, including evaluation at the selected interpolation sites.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("rational_approx", (a0, a1, a2, a3), session)
+    return _apply("rational_approx", (f, x, a, b), session)
 
 
-def ray(a0, a1, *, session=None):
+def ray(p, theta, *, session=None):
     """
     `ray(p, theta)`: half-line `{p + r * exp(I * theta) : r >= 0}` representing a branch cut.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ray", (a0, a1), session)
+    return _apply("ray", (p, theta), session)
 
 
 def ray_plane(a0, a1, a2, a3, *, session=None):
@@ -51466,60 +51466,60 @@ def ray_triangle(a0, a1, a2, a3, a4, *, session=None):
     return _apply("ray_triangle", (a0, a1, a2, a3, a4), session)
 
 
-def rayleigh(a0, *, session=None):
+def rayleigh(sigma, *, session=None):
     """
     `rayleigh(sigma)`: Rayleigh distribution with scale parameter `sigma`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("rayleigh", (a0,), session)
+    return _apply("rayleigh", (sigma,), session)
 
 
-def re(a0, *, session=None):
+def re(z, *, session=None):
     """
     `re(z)`: real part of complex number `z`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("re", (a0,), session)
+    return _apply("re", (z,), session)
 
 
-def real_integral(a0, a1, *, session=None):
+def real_integral(f, x, *, session=None):
     """
     `real_integral(f, x)`: real-valued antiderivative of `f` with respect to `x` using `ln(abs(...))` where appropriate.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("real_integral", (a0, a1), session)
+    return _apply("real_integral", (f, x), session)
 
 
-def real_qe(a0, a1, *, session=None):
+def real_qe(formula, vars, *, session=None):
     """
     `real_qe(formula, vars)`: eliminates quantifiers over `vars` from a first-order real polynomial `formula` via cylindrical algebraic decomposition.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("real_qe", (a0, a1), session)
+    return _apply("real_qe", (formula, vars), session)
 
 
-def real_root_intervals(a0, a1, *, session=None):
+def real_root_intervals(poly, var, *, session=None):
     """
     `real_root_intervals(poly, var)`: returns isolating rational intervals `[lo, hi]` for all real roots of `poly` in `var`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("real_root_intervals", (a0, a1), session)
+    return _apply("real_root_intervals", (poly, var), session)
 
 
-def reciprocal_lattice_vectors(a0, a1, a2, *, session=None):
+def reciprocal_lattice_vectors(a1, a2, a3, *, session=None):
     """
     `reciprocal_lattice_vectors(a1, a2, a3)`: reciprocal lattice basis `list(b1, b2, b3)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("reciprocal_lattice_vectors", (a0, a1, a2), session)
+    return _apply("reciprocal_lattice_vectors", (a1, a2, a3), session)
 
 
-def refine_quality(a0, a1, a2, a3, *, session=None):
+def refine_quality(points, triangles, min_angle, max_area, *, session=None):
     """
     `refine_quality(points, triangles, min_angle, max_area)`: `list(points, triangles)` after Ruppert-style circumcentre insertion until no triangle is below `min_angle` degrees or above `max_area`. Refines `triangles` until every triangle satisfies an angle and area bound. `min_angle_deg` is the smallest angle a triangle may have, and `max_area` the largest area it may have. New vertices are inserted at circumcentres (or at convex-hull edge midpoints when the circumcentre leaves the mesh), and the triangulation is rebuilt as a Delaunay mesh after every pass. # Errors Returns `Err` when fewer than three points are given, when a triangle index is out of range, when `min_angle_deg` is not in `(0, 60)`, or when `max_area` is not positive and finite.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("refine_quality", (a0, a1, a2, a3), session)
+    return _apply("refine_quality", (points, triangles, min_angle, max_area), session)
 
 
 def reflect(a0, a1, *, session=None):
@@ -51562,36 +51562,36 @@ def refract(a0, a1, a2, *, session=None):
     return _apply("refract", (a0, a1, a2), session)
 
 
-def relativistic_energy(a0, a1, *, session=None):
+def relativistic_energy(m, p, *, session=None):
     """
     `relativistic_energy(m, p)`: relativistic energy `sqrt((p c_0)^2 + (m c_0^2)^2)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("relativistic_energy", (a0, a1), session)
+    return _apply("relativistic_energy", (m, p), session)
 
 
-def relativistic_momentum(a0, a1, *, session=None):
+def relativistic_momentum(m, v, *, session=None):
     """
     `relativistic_momentum(m, v)`: relativistic momentum `gamma m v`. Relativistic momentum: p = γmv # Arguments * `mass` - Rest mass (kg) * `velocity` - Velocity (m/s)
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("relativistic_momentum", (a0, a1), session)
+    return _apply("relativistic_momentum", (m, v), session)
 
 
-def rem(a0, a1, a2, *, session=None):
+def rem(p, q, var, *, session=None):
     """
     `rem(p, q, var)`: returns the polynomial remainder of `p` divided by `q` in `var`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("rem", (a0, a1, a2), session)
+    return _apply("rem", (p, q, var), session)
 
 
-def rencontres(a0, a1, *, session=None):
+def rencontres(n, k, *, session=None):
     """
     `rencontres(n, k)`: rencontres number `D_{n, k}`, counting permutations of `n` elements with exactly `k` fixed points.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("rencontres", (a0, a1), session)
+    return _apply("rencontres", (n, k), session)
 
 
 def representation_decompose(a0, a1, *, session=None):
@@ -51610,76 +51610,76 @@ def representation_is_valid(a0, a1, *, session=None):
     return _apply("representation_is_valid", (a0, a1), session)
 
 
-def residuals(a0, a1, *, session=None):
+def residuals(xs, ys, *, session=None):
     """
     `residuals(xs, ys)`: residuals `y_i - f(x_i)` from simple linear regression on pairs `(xs, ys)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("residuals", (a0, a1), session)
+    return _apply("residuals", (xs, ys), session)
 
 
-def residue(a0, a1, a2, *, session=None):
+def residue(f, z, a, *, session=None):
     """
     `residue(f, z, a)` returns the coefficient of `(z - a)^(-1)` in `f(z)` near `a`. It returns zero at a regular point and for a removable singularity. It uses a pole calculation or a Laurent expansion and leaves a request unevaluated if the coefficient cannot be determined.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("residue", (a0, a1, a2), session)
+    return _apply("residue", (f, z, a), session)
 
 
-def restrict(a0, a1, a2, *, session=None):
+def restrict(formula, var, val, *, session=None):
     """
     `restrict(formula, var, val)`: cofactors `formula` by assigning Boolean constant `val` (`true`/`false`) to `var`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("restrict", (a0, a1, a2), session)
+    return _apply("restrict", (formula, var, val), session)
 
 
-def resultant(a0, a1, a2, *, session=None):
+def resultant(p, q, var, *, session=None):
     """
     `resultant(p, q, var)` computes the Sylvester resultant of the nonzero polynomials `p` and `q` in `var`. Coefficients may be exact rationals or expressions independent of `var`. A positive-degree common factor gives zero. The resultant of two nonzero constants is one.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("resultant", (a0, a1, a2), session)
+    return _apply("resultant", (p, q, var), session)
 
 
-def rewrite_with(a0, a1, a2, *, session=None):
+def rewrite_with(term, rules, vars, *, session=None):
     """
     `rewrite_with(term, rules, vars)`: normalizes `term` to a normal form by exhaustively applying the rewrite `rules` over `vars`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("rewrite_with", (a0, a1, a2), session)
+    return _apply("rewrite_with", (term, rules, vars), session)
 
 
-def rhat(a0, *, session=None):
+def rhat(chains, *, session=None):
     """
     `rhat(chains)`: the split Gelman–Rubin potential scale reduction of a list of chains of the same parameter; values near 1 indicate the chains have mixed. Split-Rhat potential scale reduction factor of several chains. Every chain is cut in half, the two halves are treated as independent chains, and the ratio of the pooled variance estimate to the mean within-chain variance is returned. Values near one indicate that the chains have mixed; values well above one indicate that they disagree. # Errors Returns an error for fewer than two chains, chains of different lengths, chains shorter than four draws, or a zero within-chain variance.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("rhat", (a0,), session)
+    return _apply("rhat", (chains,), session)
 
 
-def ricci(a0, a1, *, session=None):
+def ricci(g, vars, *, session=None):
     """
     `ricci(g, vars)`: Ricci curvature tensor `R_sn = R^r_srn` for metric `g` in `vars`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ricci", (a0, a1), session)
+    return _apply("ricci", (g, vars), session)
 
 
-def ricci_scalar(a0, a1, *, session=None):
+def ricci_scalar(g, vars, *, session=None):
     """
     `ricci_scalar(g, vars)`: scalar curvature `R = g^sn R_sn` for metric `g` in `vars`. Ricci scalar `R = g^{μν} R_{μν}` at `point`. # Errors Returns an error for an invalid or singular metric at a connection stencil point, or an unrepresentable stencil or result.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ricci_scalar", (a0, a1), session)
+    return _apply("ricci_scalar", (g, vars), session)
 
 
-def riemann(a0, a1, *, session=None):
+def riemann(g, vars, *, session=None):
     """
     `riemann(g, vars)`: Riemann curvature tensor `R^r_smn` for metric `g` in coordinates `vars`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("riemann", (a0, a1), session)
+    return _apply("riemann", (g, vars), session)
 
 
 def rips_filtration(a0, a1, a2, *, session=None):
@@ -51706,20 +51706,20 @@ def rips_persistence_diagram(a0, a1, a2, *, session=None):
     return _apply("rips_persistence_diagram", (a0, a1, a2), session)
 
 
-def rising(a0, a1, *, session=None):
+def rising(x, k, *, session=None):
     """
     `rising(x, k)`: rising factorial (Pochhammer symbol) `x * (x + 1) * ... * (x + k - 1)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("rising", (a0, a1), session)
+    return _apply("rising", (x, k), session)
 
 
-def root_branch(a0, a1, a2, *, session=None):
+def root_branch(z, n, k, *, session=None):
     """
     `root_branch(z, n, k)` gives `|z|^(1/n) * exp(I * (arg(z) + 2*pi*k) / n)`. For a positive integer degree `n`, integer indices that differ by a multiple of `n` select the same root.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("root_branch", (a0, a1, a2), session)
+    return _apply("root_branch", (z, n, k), session)
 
 
 def root_of(*args, session=None):
@@ -51786,36 +51786,36 @@ def rotation_axis_angle(a0, a1, *, session=None):
     return _apply("rotation_axis_angle", (a0, a1), session)
 
 
-def rotational_kinetic_energy(a0, a1, *, session=None):
+def rotational_kinetic_energy(inertia, w, *, session=None):
     """
     `rotational_kinetic_energy(inertia, w)`: rotational kinetic energy `(1/2) I w^2`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("rotational_kinetic_energy", (a0, a1), session)
+    return _apply("rotational_kinetic_energy", (inertia, w), session)
 
 
-def round(a0, *, session=None):
+def round(x, *, session=None):
     """
     `round(x)`: nearest integer to `x`, rounding half away from zero.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("round", (a0,), session)
+    return _apply("round", (x,), session)
 
 
-def rowspace(a0, *, session=None):
+def rowspace(A, *, session=None):
     """
     `rowspace(A)`: basis of the row space of matrix `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("rowspace", (a0,), session)
+    return _apply("rowspace", (A,), session)
 
 
-def rref(a0, *, session=None):
+def rref(A, *, session=None):
     """
     `rref(A)`: reduced row echelon form of matrix `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("rref", (a0,), session)
+    return _apply("rref", (A,), session)
 
 
 def rs_check(a0, a1, *, session=None):
@@ -51874,12 +51874,12 @@ def rsa_keygen(a0, a1, a2, *, session=None):
     return _apply("rsa_keygen", (a0, a1, a2), session)
 
 
-def rsolve(a0, a1, a2, *, session=None):
+def rsolve(equation, target, initial, *, session=None):
     """
     `rsolve(equation, target, initial)`: solve a linear recurrence `equation` for `target` given `initial` conditions.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("rsolve", (a0, a1, a2), session)
+    return _apply("rsolve", (equation, target, initial), session)
 
 
 def rsolve_z(*args, session=None):
@@ -51890,36 +51890,36 @@ def rsolve_z(*args, session=None):
     return _apply("rsolve_z", args, session)
 
 
-def sample_std(a0, *, session=None):
+def sample_std(xs, *, session=None):
     """
     `sample_std(xs)`: sample standard deviation of list `xs`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sample_std", (a0,), session)
+    return _apply("sample_std", (xs,), session)
 
 
-def sample_variance(a0, *, session=None):
+def sample_variance(xs, *, session=None):
     """
     `sample_variance(xs)`: sample variance `(1/(n-1)) sum (x_i - mean)^2` of list `xs`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sample_variance", (a0,), session)
+    return _apply("sample_variance", (xs,), session)
 
 
-def sat_model(a0, *, session=None):
+def sat_model(formula, *, session=None):
     """
     `sat_model(formula)`: returns one satisfying assignment for `formula` (or `false` if unsatisfiable).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sat_model", (a0,), session)
+    return _apply("sat_model", (formula,), session)
 
 
-def satisfiable(a0, *, session=None):
+def satisfiable(formula, *, session=None):
     """
     `satisfiable(formula)`: decides whether propositional `formula` has at least one satisfying assignment (`true` or `false`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("satisfiable", (a0,), session)
+    return _apply("satisfiable", (formula,), session)
 
 
 def sc(a0, *, session=None):
@@ -52298,28 +52298,28 @@ def sc_wedge(*args, session=None):
     return _apply("sc_wedge", args, session)
 
 
-def scalar_field_lagrangian(a0, a1, a2, *, session=None):
+def scalar_field_lagrangian(phi, m, x, *, session=None):
     """
     `scalar_field_lagrangian(phi, m, x)`: free real scalar field Lagrangian density `(1/2)(partial_mu phi)^2 - (1/2) m^2 phi^2`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("scalar_field_lagrangian", (a0, a1, a2), session)
+    return _apply("scalar_field_lagrangian", (phi, m, x), session)
 
 
-def scale_dist(a0, a1, *, session=None):
+def scale_dist(c, d, *, session=None):
     """
     `scale_dist(c, d)`: distribution of scaled random variable `c * X` where `X ~ d`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("scale_dist", (a0, a1), session)
+    return _apply("scale_dist", (c, d), session)
 
 
-def scale_factors(a0, a1, *, session=None):
+def scale_factors(sys, vars, *, session=None):
     """
     `scale_factors(sys, vars)`: Lamé scale factors `h_i = sqrt(g_ii)` of orthogonal coordinate system `sys` in `vars`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("scale_factors", (a0, a1), session)
+    return _apply("scale_factors", (sys, vars), session)
 
 
 def scaling(*args, session=None):
@@ -52346,100 +52346,100 @@ def scaling_3d(a0, a1, a2, *, session=None):
     return _apply("scaling_3d", (a0, a1, a2), session)
 
 
-def scattering_amplitude(a0, a1, a2, a3, *, session=None):
+def scattering_amplitude(psi_i, psi_f, V, x, *, session=None):
     """
     `scattering_amplitude(psi_i, psi_f, V, x)`: Born-approximation transition matrix element `<psi_f|V|psi_i>`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("scattering_amplitude", (a0, a1, a2, a3), session)
+    return _apply("scattering_amplitude", (psi_i, psi_f, V, x), session)
 
 
-def scattering_cross_section(a0, a1, a2, *, session=None):
+def scattering_cross_section(M, flux, dphi, *, session=None):
     """
     `scattering_cross_section(M, flux, dphi)`: differential cross section `|M|^2 / flux * dphi`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("scattering_cross_section", (a0, a1, a2), session)
+    return _apply("scattering_cross_section", (M, flux, dphi), session)
 
 
-def schroeder(a0, *, session=None):
+def schroeder(n, *, session=None):
     """
     `schroeder(n)`: `n`-th large Schroeder number, counting lattice paths from `(0, 0)` to `(n, n)` with steps `(1, 0)`, `(0, 1)`, `(1, 1)` not crossing `y = x`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("schroeder", (a0,), session)
+    return _apply("schroeder", (n,), session)
 
 
-def schwarzschild_metric(a0, a1, *, session=None):
+def schwarzschild_metric(M, coords, *, session=None):
     """
     `schwarzschild_metric(M, coords)`: Schwarzschild metric tensor in `(-, +, +, +)` signature for mass `M` and `coords = list(t, r, theta, phi)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("schwarzschild_metric", (a0, a1), session)
+    return _apply("schwarzschild_metric", (M, coords), session)
 
 
-def schwarzschild_radius(a0, *, session=None):
+def schwarzschild_radius(M, *, session=None):
     """
     `schwarzschild_radius(M)`: Schwarzschild event-horizon radius `2 G_N M / c_0^2`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("schwarzschild_radius", (a0,), session)
+    return _apply("schwarzschild_radius", (M,), session)
 
 
-def sde_levy_areas(a0, a1, a2, a3, *, session=None):
+def sde_levy_areas(seed, h, dw, terms, *, session=None):
     """
     `sde_levy_areas(seed, h, dw, terms)`: the `m*m` row-major iterated Ito integrals over one step, conditioned on the `m` increments `dw`, with a seeded Fourier bridge truncated at `terms` modes. Requires finite inputs and results, at most 4,194,304 output entries and 67,108,864 pair-mode terms.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sde_levy_areas", (a0, a1, a2, a3), session)
+    return _apply("sde_levy_areas", (seed, h, dw, terms), session)
 
 
-def sde_scheme_info(a0, *, session=None):
+def sde_scheme_info(name, *, session=None):
     """
     `sde_scheme_info(name)`: the metadata of one stochastic scheme as `list(strong_order, ito, commutative_only, adaptive, levy_areas)` — the strong order for commutative noise and four flags (1 or 0). Unknown names stay a request.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sde_scheme_info", (a0,), session)
+    return _apply("sde_scheme_info", (name,), session)
 
 
-def sde_wiener(a0, a1, a2, a3, *, session=None):
+def sde_wiener(seed, m, steps, h, *, session=None):
     """
     `sde_wiener(seed, m, steps, h)`: the `steps x m` matrix of seeded Brownian increments `dW[k][j] ~ N(0, h)`, reproducible bit for bit from `seed`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sde_wiener", (a0, a1, a2, a3), session)
+    return _apply("sde_wiener", (seed, m, steps, h), session)
 
 
-def sdp_solve(a0, a1, a2, a3, a4, a5, a6, *, session=None):
+def sdp_solve(c, f0, fs, a, rel, b, max_iter, *, session=None):
     """
     `sdp_solve(c, f0, fs, a, rel, b, max_iter)`: `list(x, objective, iterations, primal_residual, dual_residual, min_eigenvalue)` minimising `c . x` subject to `F_0 + sum x_i F_i >= 0` and the equality rows `a x = b`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sdp_solve", (a0, a1, a2, a3, a4, a5, a6), session)
+    return _apply("sdp_solve", (c, f0, fs, a, rel, b, max_iter), session)
 
 
-def sec(a0, *, session=None):
+def sec(x, *, session=None):
     """
     `sec(x)`: secant `1 / cos(x)` of angle `x` in radians.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sec", (a0,), session)
+    return _apply("sec", (x,), session)
 
 
-def sech(a0, *, session=None):
+def sech(x, *, session=None):
     """
     `sech(x)`: hyperbolic secant `1 / cosh(x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sech", (a0,), session)
+    return _apply("sech", (x,), session)
 
 
-def second_order_energy_correction(a0, a1, a2, a3, a4, *, session=None):
+def second_order_energy_correction(V, states, energies, n, x, *, session=None):
     """
     `second_order_energy_correction(V, states, energies, n, x)`: second-order Rayleigh-Schrodinger energy shift `sum_{m != n} |<m|V|n>|^2 / (E_n - E_m)` over basis `states` in variable `x` (1-based index `n`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("second_order_energy_correction", (a0, a1, a2, a3, a4), session)
+    return _apply("second_order_energy_correction", (V, states, energies, n, x), session)
 
 
 def shear(*args, session=None):
@@ -52466,36 +52466,36 @@ def shear_3d(a0, a1, a2, a3, a4, a5, *, session=None):
     return _apply("shear_3d", (a0, a1, a2, a3, a4, a5), session)
 
 
-def shi(a0, *, session=None):
+def shi(x, *, session=None):
     """
     `shi(x)`: hyperbolic sine integral `Shi(x) = int_0^x sinh(t)/t dt`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("shi", (a0,), session)
+    return _apply("shi", (x,), session)
 
 
-def shift_dist(a0, a1, *, session=None):
+def shift_dist(c, d, *, session=None):
     """
     `shift_dist(c, d)`: distribution of shifted random variable `X + c` where `X ~ d`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("shift_dist", (a0, a1), session)
+    return _apply("shift_dist", (c, d), session)
 
 
-def si(a0, *, session=None):
+def si(x, *, session=None):
     """
     `si(x)`: sine integral `Si(x) = int_0^x sin(t)/t dt`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("si", (a0,), session)
+    return _apply("si", (x,), session)
 
 
-def sigma(a0, a1, *, session=None):
+def sigma(n, k, *, session=None):
     """
     `sigma(n, k)`: sum of `k`-th powers of positive divisors `sigma_k(n)` of `n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sigma", (a0, a1), session)
+    return _apply("sigma", (n, k), session)
 
 
 def sigma_SB(*, session=None):
@@ -52506,12 +52506,12 @@ def sigma_SB(*, session=None):
     return _apply("sigma_SB", (), session)
 
 
-def sign(a0, *, session=None):
+def sign(x, *, session=None):
     """
     `sign(x)`: signum function (`-1` for `x < 0`, `0` at `0`, `1` for `x > 0`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sign", (a0,), session)
+    return _apply("sign", (x,), session)
 
 
 def similarity_dimension(a0, *, session=None):
@@ -52522,84 +52522,84 @@ def similarity_dimension(a0, *, session=None):
     return _apply("similarity_dimension", (a0,), session)
 
 
-def simplify_logic(a0, *, session=None):
+def simplify_logic(formula, *, session=None):
     """
     `simplify_logic(formula)`: simplifies propositional `formula` using Quine-McCluskey minimization.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("simplify_logic", (a0,), session)
+    return _apply("simplify_logic", (formula,), session)
 
 
-def simplify_radicals(a0, *, session=None):
+def simplify_radicals(expr, *, session=None):
     """
     `simplify_radicals(expr)`: simplifies radical expressions in `expr` by denesting nested roots and combining or rationalizing surds.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("simplify_radicals", (a0,), session)
+    return _apply("simplify_radicals", (expr,), session)
 
 
-def simplify_units(a0, *, session=None):
+def simplify_units(expr, *, session=None):
     """
     `simplify_units(expr)`: reduces a dimensional expression `expr` to coherent SI base units.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("simplify_units", (a0,), session)
+    return _apply("simplify_units", (expr,), session)
 
 
-def simplify_with_relations(a0, a1, a2, *, session=None):
+def simplify_with_relations(expr, relations, vars, *, session=None):
     """
     `simplify_with_relations(expr, relations, vars)`: simplifies `expr` modulo polynomial side `relations` over `vars`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("simplify_with_relations", (a0, a1, a2), session)
+    return _apply("simplify_with_relations", (expr, relations, vars), session)
 
 
-def sin(a0, *, session=None):
+def sin(x, *, session=None):
     """
     `sin(x)`: sine of angle `x` in radians.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sin", (a0,), session)
+    return _apply("sin", (x,), session)
 
 
-def sinc(a0, *, session=None):
+def sinc(x, *, session=None):
     """
     `sinc(x)`: normalized cardinal sine `sin(pi * x) / (pi * x)` with `sinc(0) = 1`. Computes the sinc function sinc(x) = sin(πx) / (πx).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sinc", (a0,), session)
+    return _apply("sinc", (x,), session)
 
 
-def singularity(a0, a1, a2, *, session=None):
+def singularity(f, z, a, *, session=None):
     """
     `singularity(f, z, a)`: classification of `f(z)` at `a` (`regular`, `removable`, `list(pole, m)`, or `essential`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("singularity", (a0, a1, a2), session)
+    return _apply("singularity", (f, z, a), session)
 
 
-def sinh(a0, *, session=None):
+def sinh(x, *, session=None):
     """
     `sinh(x)`: hyperbolic sine `(e^x - e^-x) / 2`. `sinh(x)` as a ball. # Errors Fails when an exponent leaves the representable range.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sinh", (a0,), session)
+    return _apply("sinh", (x,), session)
 
 
-def skewness(a0, *, session=None):
+def skewness(xs, *, session=None):
     """
     `skewness(xs)`: Pearson skewness `m3 / m2^(3/2)` of list `xs`. Computes the adjusted Fisher-Pearson sample skewness coefficient `G1` (the estimator used by Excel's `SKEW` and by `scipy.stats.skew(bias=False)`). With `g1 = m3 / m2^(3/2)` (central moments divided by `n`), `G1 = sqrt(n (n - 1)) / (n - 2) * g1`. Returns `NaN` for fewer than three points and `0.0` for constant data.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("skewness", (a0,), session)
+    return _apply("skewness", (xs,), session)
 
 
-def skewness_of(a0, *, session=None):
+def skewness_of(d, *, session=None):
     """
     `skewness_of(d)`: skewness (standardized 3rd central moment) of distribution `d`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("skewness_of", (a0,), session)
+    return _apply("skewness_of", (d,), session)
 
 
 def sl2_basis(*, session=None):
@@ -52610,12 +52610,12 @@ def sl2_basis(*, session=None):
     return _apply("sl2_basis", (), session)
 
 
-def sl_basis(a0, *, session=None):
+def sl_basis(n, *, session=None):
     """
     `sl_basis(n)`: standard traceless matrix basis of the special linear Lie algebra `sl(n)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sl_basis", (a0,), session)
+    return _apply("sl_basis", (n,), session)
 
 
 def sl_density(*args, session=None):
@@ -52658,28 +52658,28 @@ def sl_mode(*args, session=None):
     return _apply("sl_mode", args, session)
 
 
-def sl_neg_root(a0, a1, a2, a3, a4, *, session=None):
+def sl_neg_root(alpha1, beta1, alpha2, beta2, L, *, session=None):
     """
     `sl_neg_root(alpha1, beta1, alpha2, beta2, L)`: unique negative Sturm-Liouville eigenvalue root (if any) for Robin boundary conditions on `[0, L]`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sl_neg_root", (a0, a1, a2, a3, a4), session)
+    return _apply("sl_neg_root", (alpha1, beta1, alpha2, beta2, L), session)
 
 
-def sl_neg_root_n(a0, a1, a2, a3, a4, a5, *, session=None):
+def sl_neg_root_n(alpha1, beta1, alpha2, beta2, L, k, *, session=None):
     """
     `sl_neg_root_n(alpha1, beta1, alpha2, beta2, L, k)`: `k`-th negative Sturm-Liouville eigenvalue root on `[0, L]`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sl_neg_root_n", (a0, a1, a2, a3, a4, a5), session)
+    return _apply("sl_neg_root_n", (alpha1, beta1, alpha2, beta2, L, k), session)
 
 
-def sl_root(a0, a1, a2, a3, a4, a5, *, session=None):
+def sl_root(alpha1, beta1, alpha2, beta2, L, k, *, session=None):
     """
     `sl_root(alpha1, beta1, alpha2, beta2, L, k)`: `k`-th positive Sturm-Liouville eigenvalue root on `[0, L]` with general linear boundary conditions.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sl_root", (a0, a1, a2, a3, a4, a5), session)
+    return _apply("sl_root", (alpha1, beta1, alpha2, beta2, L, k), session)
 
 
 def sl_weight(*args, session=None):
@@ -52690,20 +52690,20 @@ def sl_weight(*args, session=None):
     return _apply("sl_weight", args, session)
 
 
-def smith(a0, *, session=None):
+def smith(A, *, session=None):
     """
     `smith(A)`: Smith normal form `list(S, U, V)` of integer matrix `A` with `U A V = S`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("smith", (a0,), session)
+    return _apply("smith", (A,), session)
 
 
-def smul(a0, a1, *, session=None):
+def smul(c, A, *, session=None):
     """
     `smul(c, A)`: scalar multiplication `c * A` of scalar `c` and matrix or vector `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("smul", (a0, a1), session)
+    return _apply("smul", (c, A), session)
 
 
 def so3_basis(*, session=None):
@@ -52714,44 +52714,44 @@ def so3_basis(*, session=None):
     return _apply("so3_basis", (), session)
 
 
-def so_basis(a0, *, session=None):
+def so_basis(n, *, session=None):
     """
     `so_basis(n)`: standard skew-symmetric matrix basis `E_ij - E_ji` of `so(n)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("so_basis", (a0,), session)
+    return _apply("so_basis", (n,), session)
 
 
-def sobolev_h1(a0, a1, a2, a3, *, session=None):
+def sobolev_h1(f, x, a, b, *, session=None):
     """
     `sobolev_h1(f, x, a, b)`: Sobolev `H^1` norm `sqrt(||f||_2^2 + ||f'||_2^2)` on `[a, b]`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sobolev_h1", (a0, a1, a2, a3), session)
+    return _apply("sobolev_h1", (f, x, a, b), session)
 
 
-def socp_solve(a0, a1, a2, a3, a4, a5, a6, *, session=None):
+def socp_solve(c, a, rel, b, cones, bounds, max_iter, *, session=None):
     """
     `socp_solve(c, a, rel, b, cones, bounds, max_iter)`: `list(x, objective, iterations, primal_residual, dual_residual, gap)` of a second-order cone program; each cone is `list(a, b, c, d)` standing for `||A x + b|| <= c . x + d`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("socp_solve", (a0, a1, a2, a3, a4, a5, a6), session)
+    return _apply("socp_solve", (c, a, rel, b, cones, bounds, max_iter), session)
 
 
-def solve(a0, a1, *, session=None):
+def solve(eq_or_system, var_or_vars, *, session=None):
     """
     `solve(eq_or_system, var_or_vars)`: symbolically solves an equation, inequality, or system for `var_or_vars`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("solve", (a0, a1), session)
+    return _apply("solve", (eq_or_system, var_or_vars), session)
 
 
-def solve_box(a0, a1, a2, *, session=None):
+def solve_box(system, vars, box_bounds, *, session=None):
     """
     `solve_box(system, vars, box_bounds)`: isolates all roots of `system` in `vars` within `box_bounds`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("solve_box", (a0, a1, a2), session)
+    return _apply("solve_box", (system, vars, box_bounds), session)
 
 
 def solve_burgers_equation(*args, session=None):
@@ -52762,28 +52762,28 @@ def solve_burgers_equation(*args, session=None):
     return _apply("solve_burgers_equation", args, session)
 
 
-def solve_complex(a0, a1, *, session=None):
+def solve_complex(poly, var, *, session=None):
     """
     `solve_complex(poly, var)`: finds all complex roots of polynomial `poly` in `var`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("solve_complex", (a0, a1), session)
+    return _apply("solve_complex", (poly, var), session)
 
 
-def solve_euler_lagrange(a0, a1, a2, *, session=None):
+def solve_euler_lagrange(L, y, x, *, session=None):
     """
     `solve_euler_lagrange(L, y, x)`: solves the Euler-Lagrange differential equation `euler_lagrange(L, y, x) = 0` for `y`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("solve_euler_lagrange", (a0, a1, a2), session)
+    return _apply("solve_euler_lagrange", (L, y, x), session)
 
 
-def solve_general(a0, a1, *, session=None):
+def solve_general(eq_or_system, var_or_vars, *, session=None):
     """
     `solve_general(eq_or_system, var_or_vars)`: solves an equation or system symbolically, including parameterized/underdetermined solution sets.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("solve_general", (a0, a1), session)
+    return _apply("solve_general", (eq_or_system, var_or_vars), session)
 
 
 def solve_heat_equation(*args, session=None):
@@ -52946,12 +52946,12 @@ def solve_second_order_pde(*args, session=None):
     return _apply("solve_second_order_pde", args, session)
 
 
-def solve_time_independent_schrodinger(a0, a1, a2, *, session=None):
+def solve_time_independent_schrodinger(H, psi, x, *, session=None):
     """
     `solve_time_independent_schrodinger(H, psi, x)`: returns `list(E, psi)` for eigenstate `psi` of `H`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("solve_time_independent_schrodinger", (a0, a1, a2), session)
+    return _apply("solve_time_independent_schrodinger", (H, psi, x), session)
 
 
 def solve_wave_equation(*args, session=None):
@@ -53002,196 +53002,196 @@ def solve_with_fourier_transform(*args, session=None):
     return _apply("solve_with_fourier_transform", args, session)
 
 
-def sp_add(a0, a1, *, session=None):
+def sp_add(A, B, *, session=None):
     """
     `sp_add(A, B)`: returns the sum `A + B` of two `sparse` matrices.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sp_add", (a0, a1), session)
+    return _apply("sp_add", (A, B), session)
 
 
-def sp_basis(a0, *, session=None):
+def sp_basis(n, *, session=None):
     """
     `sp_basis(n)`: standard symplectic matrix basis of `sp(2n)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sp_basis", (a0,), session)
+    return _apply("sp_basis", (n,), session)
 
 
-def sp_det(a0, *, session=None):
+def sp_det(A, *, session=None):
     """
     `sp_det(A)`: computes the exact determinant of a square `sparse` matrix `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sp_det", (a0,), session)
+    return _apply("sp_det", (A,), session)
 
 
-def sp_det_mod(a0, a1, *, session=None):
+def sp_det_mod(A, p, *, session=None):
     """
     `sp_det_mod(A, p)`: computes the determinant of integer `sparse` matrix `A` modulo prime `p`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sp_det_mod", (a0, a1), session)
+    return _apply("sp_det_mod", (A, p), session)
 
 
-def sp_diag(a0, *, session=None):
+def sp_diag(entries, *, session=None):
     """
     `sp_diag(entries)`: constructs a sparse diagonal matrix from a list of diagonal entries.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sp_diag", (a0,), session)
+    return _apply("sp_diag", (entries,), session)
 
 
-def sp_dims(a0, *, session=None):
+def sp_dims(sp, *, session=None):
     """
     `sp_dims(sp)`: returns `[rows, cols]` for a `sparse` matrix.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sp_dims", (a0,), session)
+    return _apply("sp_dims", (sp,), session)
 
 
-def sp_from_dense(a0, *, session=None):
+def sp_from_dense(mat, *, session=None):
     """
     `sp_from_dense(mat)`: converts a dense matrix (list of row lists) into a canonical `sparse` matrix.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sp_from_dense", (a0,), session)
+    return _apply("sp_from_dense", (mat,), session)
 
 
-def sp_identity(a0, *, session=None):
+def sp_identity(n, *, session=None):
     """
     `sp_identity(n)`: constructs the `n x n` sparse identity matrix.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sp_identity", (a0,), session)
+    return _apply("sp_identity", (n,), session)
 
 
-def sp_matmul(a0, a1, *, session=None):
+def sp_matmul(A, B, *, session=None):
     """
     `sp_matmul(A, B)`: returns the matrix product `A * B` of two `sparse` matrices.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sp_matmul", (a0, a1), session)
+    return _apply("sp_matmul", (A, B), session)
 
 
-def sp_matvec(a0, a1, *, session=None):
+def sp_matvec(A, v, *, session=None):
     """
     `sp_matvec(A, v)`: multiplies a `sparse` matrix `A` by a dense vector `v`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sp_matvec", (a0, a1), session)
+    return _apply("sp_matvec", (A, v), session)
 
 
-def sp_minpoly_mod(a0, a1, *, session=None):
+def sp_minpoly_mod(A, p, *, session=None):
     """
     `sp_minpoly_mod(A, p)`: computes the minimal polynomial coefficients of integer `sparse` matrix `A` modulo prime `p`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sp_minpoly_mod", (a0, a1), session)
+    return _apply("sp_minpoly_mod", (A, p), session)
 
 
-def sp_nnz(a0, *, session=None):
+def sp_nnz(sp, *, session=None):
     """
     `sp_nnz(sp)`: returns the number of nonzero entries in a `sparse` matrix.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sp_nnz", (a0,), session)
+    return _apply("sp_nnz", (sp,), session)
 
 
-def sp_nullspace(a0, *, session=None):
+def sp_nullspace(A, *, session=None):
     """
     `sp_nullspace(A)`: computes a basis for the right nullspace `{x : A * x = 0}` of a `sparse` matrix `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sp_nullspace", (a0,), session)
+    return _apply("sp_nullspace", (A,), session)
 
 
-def sp_rank(a0, *, session=None):
+def sp_rank(A, *, session=None):
     """
     `sp_rank(A)`: computes the exact rank of a `sparse` matrix `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sp_rank", (a0,), session)
+    return _apply("sp_rank", (A,), session)
 
 
-def sp_rank_mod(a0, a1, *, session=None):
+def sp_rank_mod(A, p, *, session=None):
     """
     `sp_rank_mod(A, p)`: computes the rank of integer `sparse` matrix `A` modulo prime `p`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sp_rank_mod", (a0, a1), session)
+    return _apply("sp_rank_mod", (A, p), session)
 
 
-def sp_scale(a0, a1, *, session=None):
+def sp_scale(scalar, A, *, session=None):
     """
     `sp_scale(scalar, A)`: scales a `sparse` matrix `A` by `scalar`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sp_scale", (a0, a1), session)
+    return _apply("sp_scale", (scalar, A), session)
 
 
-def sp_solve(a0, a1, *, session=None):
+def sp_solve(A, b, *, session=None):
     """
     `sp_solve(A, b)`: solves the square linear system `A * x = b` for a `sparse` matrix `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sp_solve", (a0, a1), session)
+    return _apply("sp_solve", (A, b), session)
 
 
-def sp_solve_general(a0, a1, *, session=None):
+def sp_solve_general(A, b, *, session=None):
     """
     `sp_solve_general(A, b)`: solves a general (possibly rectangular or rank-deficient) sparse linear system `A * x = b`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sp_solve_general", (a0, a1), session)
+    return _apply("sp_solve_general", (A, b), session)
 
 
-def sp_solve_mod(a0, a1, a2, *, session=None):
+def sp_solve_mod(A, b, p, *, session=None):
     """
     `sp_solve_mod(A, b, p)`: solves `A * x = b (mod p)` for integer `sparse` matrix `A` and prime `p`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sp_solve_mod", (a0, a1, a2), session)
+    return _apply("sp_solve_mod", (A, b, p), session)
 
 
-def sp_to_dense(a0, *, session=None):
+def sp_to_dense(sp, *, session=None):
     """
     `sp_to_dense(sp)`: converts a `sparse` matrix into a dense list of row lists.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sp_to_dense", (a0,), session)
+    return _apply("sp_to_dense", (sp,), session)
 
 
-def sp_transpose(a0, *, session=None):
+def sp_transpose(sp, *, session=None):
     """
     `sp_transpose(sp)`: returns the transpose of a `sparse` matrix.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sp_transpose", (a0,), session)
+    return _apply("sp_transpose", (sp,), session)
 
 
-def sparse(a0, a1, a2, *, session=None):
+def sparse(rows, cols, entries, *, session=None):
     """
     `sparse(rows, cols, entries)`: canonical sparse matrix constructor with dimensions `rows x cols` and sorted nonzero `[row, col, value]` triples.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sparse", (a0, a1, a2), session)
+    return _apply("sparse", (rows, cols, entries), session)
 
 
-def sparse_solve(a0, a1, a2, a3, *, session=None):
+def sparse_solve(entries, b, tol, method, *, session=None):
     """
     `sparse_solve(entries, b, tol, method)`: solve sparse `A x = b` from `(i, j, v)` triplets using `minres`, `fgmres`, `bicgstab_l`, or `idr_s`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sparse_solve", (a0, a1, a2, a3), session)
+    return _apply("sparse_solve", (entries, b, tol, method), session)
 
 
-def spectral(a0, *, session=None):
+def spectral(A, *, session=None):
     """
     `spectral(A)`: spectral decomposition `list(eigenvalues, projectors)` of diagonalizable matrix `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("spectral", (a0,), session)
+    return _apply("spectral", (A,), session)
 
 
 def spectral_analysis(a0, *, session=None):
@@ -53202,140 +53202,140 @@ def spectral_analysis(a0, *, session=None):
     return _apply("spectral_analysis", (a0,), session)
 
 
-def spherical_harmonic(a0, a1, a2, a3, *, session=None):
+def spherical_harmonic(l, m, theta, phi, *, session=None):
     """
     `spherical_harmonic(l, m, theta, phi)`: orthonormal spherical harmonic `Y_l^m(theta, phi)` with the Condon-Shortley phase as an explicit trigonometric expression.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("spherical_harmonic", (a0, a1, a2, a3), session)
+    return _apply("spherical_harmonic", (l, m, theta, phi), session)
 
 
-def spheroidal_eigen(a0, a1, a2, *, session=None):
+def spheroidal_eigen(m, n, gamma, *, session=None):
     """
     `spheroidal_eigen(m, n, gamma)`: numeric angular spheroidal eigenvalue `lambda_{mn}(gamma)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("spheroidal_eigen", (a0, a1, a2), session)
+    return _apply("spheroidal_eigen", (m, n, gamma), session)
 
 
-def spheroidal_mode(a0, a1, a2, a3, *, session=None):
+def spheroidal_mode(m, n, gamma, x, *, session=None):
     """
     `spheroidal_mode(m, n, gamma, x)`: normalized angular spheroidal wave function `S_{mn}(gamma, x)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("spheroidal_mode", (a0, a1, a2, a3), session)
+    return _apply("spheroidal_mode", (m, n, gamma, x), session)
 
 
-def spheroidal_radial(a0, a1, a2, a3, a4, *, session=None):
+def spheroidal_radial(kind, m, n, gamma, xi, *, session=None):
     """
     `spheroidal_radial(kind, m, n, gamma, xi)`: prolate (`kind > 0`) or oblate radial spheroidal wave function at `xi`. The kind, coordinate and `gamma` must be finite, and the degree and order must be integers with `0 <= m <= n <= 10000`. The radial coordinate is at least one for prolate and at least zero for oblate.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("spheroidal_radial", (a0, a1, a2, a3, a4), session)
+    return _apply("spheroidal_radial", (kind, m, n, gamma, xi), session)
 
 
-def spin_operator(a0, *, session=None):
+def spin_operator(sigma, *, session=None):
     """
     `spin_operator(sigma)`: spin-1/2 operator `(hbar / 2) * sigma`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("spin_operator", (a0,), session)
+    return _apply("spin_operator", (sigma,), session)
 
 
-def sqrt(a0, *, session=None):
+def sqrt(x, *, session=None):
     """
     `sqrt(x)`: principal square root of `x`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sqrt", (a0,), session)
+    return _apply("sqrt", (x,), session)
 
 
-def sqrt_branch(a0, a1, *, session=None):
+def sqrt_branch(z, k, *, session=None):
     """
     `sqrt_branch(z, k)` selects the principal square root for an even integer `k` and its negative for an odd integer `k`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sqrt_branch", (a0, a1), session)
+    return _apply("sqrt_branch", (z, k), session)
 
 
-def sqrtmod(a0, a1, *, session=None):
+def sqrtmod(a, p, *, session=None):
     """
     `sqrtmod(a, p)`: modular square root `r` satisfying `r^2 = a (mod p)` for prime `p`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sqrtmod", (a0, a1), session)
+    return _apply("sqrtmod", (a, p), session)
 
 
-def square_free_factors(a0, a1, *, session=None):
+def square_free_factors(poly, var, *, session=None):
     """
     `square_free_factors(poly, var)` decomposes a nonzero polynomial in the symbol `var` over the rationals. Returns `list(unit, list(list(factor, multiplicity), ...))`. The unit is the leading coefficient. Each factor is monic and square-free, and the factors are pairwise coprime and ordered by increasing multiplicity. A nonzero constant has an empty factor list. The zero polynomial and coefficients outside the rationals leave the request unevaluated.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("square_free_factors", (a0, a1), session)
+    return _apply("square_free_factors", (poly, var), session)
 
 
-def ss_transfer(a0, a1, a2, a3, *, session=None):
+def ss_transfer(a, b, c, d, *, session=None):
     """
     `ss_transfer(a, b, c, d)`: `list(num, den)`, the transfer function from the first input to the first output.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ss_transfer", (a0, a1, a2, a3), session)
+    return _apply("ss_transfer", (a, b, c, d), session)
 
 
-def standard_error(a0, *, session=None):
+def standard_error(xs, *, session=None):
     """
     `standard_error(xs)`: standard error of the mean `sample_std / sqrt(n)` of list `xs`. Computes the sample standard error of the mean (SEM = `std_dev` / sqrt(n)).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("standard_error", (a0,), session)
+    return _apply("standard_error", (xs,), session)
 
 
-def std(a0, *, session=None):
+def std(xs, *, session=None):
     """
     `std(xs)`: population standard deviation of list `xs`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("std", (a0,), session)
+    return _apply("std", (xs,), session)
 
 
-def std_of(a0, *, session=None):
+def std_of(d, *, session=None):
     """
     `std_of(d)`: standard deviation `sqrt(Var(X))` of distribution `d`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("std_of", (a0,), session)
+    return _apply("std_of", (d,), session)
 
 
-def stefan_boltzmann_law(a0, *, session=None):
+def stefan_boltzmann_law(T, *, session=None):
     """
     `stefan_boltzmann_law(T)`: blackbody total emissive power `sigma_SB T^4`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("stefan_boltzmann_law", (a0,), session)
+    return _apply("stefan_boltzmann_law", (T,), session)
 
 
-def stirling1(a0, a1, *, session=None):
+def stirling1(n, k, *, session=None):
     """
     `stirling1(n, k)`: unsigned Stirling number of the first kind `|s(n, k)|`, counting permutations of `n` elements with `k` cycles.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("stirling1", (a0, a1), session)
+    return _apply("stirling1", (n, k), session)
 
 
-def stirling2(a0, a1, *, session=None):
+def stirling2(n, k, *, session=None):
     """
     `stirling2(n, k)`: Stirling number of the second kind `S(n, k)`, counting partitions of an `n`-element set into `k` non-empty subsets.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("stirling2", (a0, a1), session)
+    return _apply("stirling2", (n, k), session)
 
 
-def stokes_theorem(a0, a1, a2, a3, a4, a5, a6, a7, *, session=None):
+def stokes_theorem(F, surface, u, v, u0, u1, v0, v1, *, session=None):
     """
     `stokes_theorem(F, surface, u, v, u0, u1, v0, v1)`: circulation of `F` around the boundary of `surface(u, v)` via Stokes' theorem.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("stokes_theorem", (a0, a1, a2, a3, a4, a5, a6, a7), session)
+    return _apply("stokes_theorem", (F, surface, u, v, u0, u1, v0, v1), session)
 
 
 def structure_constants(*args, session=None):
@@ -53346,36 +53346,36 @@ def structure_constants(*args, session=None):
     return _apply("structure_constants", args, session)
 
 
-def struve_h(a0, a1, *, session=None):
+def struve_h(nu, z, *, session=None):
     """
     `struve_h(nu, z)`: Struve function `H_nu(z)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("struve_h", (a0, a1), session)
+    return _apply("struve_h", (nu, z), session)
 
 
-def struve_l(a0, a1, *, session=None):
+def struve_l(nu, z, *, session=None):
     """
     `struve_l(nu, z)`: modified Struve function `L_nu(z)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("struve_l", (a0, a1), session)
+    return _apply("struve_l", (nu, z), session)
 
 
-def student_t(a0, *, session=None):
+def student_t(nu, *, session=None):
     """
     `student_t(nu)`: Student's t-distribution with `nu` degrees of freedom.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("student_t", (a0,), session)
+    return _apply("student_t", (nu,), session)
 
 
-def sturm_sequence(a0, a1, *, session=None):
+def sturm_sequence(poly, var, *, session=None):
     """
     `sturm_sequence(poly, var)` returns the Sturm chain of a univariate polynomial with exact rational coefficients. The output is a `list(...)` of polynomials in `var`. For a nonconstant polynomial the chain starts with the polynomial and its derivative, followed by successive negated nonzero remainders. A constant produces a singleton list, including `list(0)` for zero. For example, `sturm_sequence(x^2 - 2, x)` returns `list(x^2 - 2, 2*x, 2)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sturm_sequence", (a0, a1), session)
+    return _apply("sturm_sequence", (poly, var), session)
 
 
 def su2_basis(*, session=None):
@@ -53386,20 +53386,20 @@ def su2_basis(*, session=None):
     return _apply("su2_basis", (), session)
 
 
-def su_basis(a0, *, session=None):
+def su_basis(n, *, session=None):
     """
     `su_basis(n)`: standard skew-Hermitian traceless matrix basis of `su(n)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("su_basis", (a0,), session)
+    return _apply("su_basis", (n,), session)
 
 
-def sub(a0, a1, *, session=None):
+def sub(a, b, *, session=None):
     """
     `sub(a, b)`: the difference `a - b`. The engine's normal form has no subtraction node: this request is rewritten to `add(a, mul(-1, b))` and prints as `a - b`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sub", (a0, a1), session)
+    return _apply("sub", (a, b), session)
 
 
 def sum(*args, session=None):
@@ -53410,28 +53410,28 @@ def sum(*args, session=None):
     return _apply("sum", args, session)
 
 
-def sum_dist(a0, a1, *, session=None):
+def sum_dist(d1, d2, *, session=None):
     """
     `sum_dist(d1, d2)`: distribution of the sum `X + Y` of independent random variables `X ~ d1` and `Y ~ d2`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("sum_dist", (a0, a1), session)
+    return _apply("sum_dist", (d1, d2), session)
 
 
-def surface_integral(a0, a1, a2, a3, a4, a5, a6, a7, *, session=None):
+def surface_integral(f, r, u, v, u0, u1, v0, v1, *, session=None):
     """
     `surface_integral(f, r, u, v, u0, u1, v0, v1)`: scalar surface integral `int_{v0}^{v1} int_{u0}^{u1} f(r(u, v)) ||r_u x r_v|| du dv`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("surface_integral", (a0, a1, a2, a3, a4, a5, a6, a7), session)
+    return _apply("surface_integral", (f, r, u, v, u0, u1, v0, v1), session)
 
 
-def svd(a0, *, session=None):
+def svd(A, *, session=None):
     """
     `svd(A)`: singular value decomposition `list(U, S, V)` of matrix `A`. Thin singular-value decomposition using the bidiagonal SVD backend. Rank-deficient matrices retain orthonormal null-space columns. No Gram matrix is formed, so small singular values do not lose accuracy through squaring the condition number. # Errors Returns [`DenseError::Shape`] for inconsistent storage or non-finite input, and [`DenseError::NoConvergence`] if the backend does not converge.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("svd", (a0,), session)
+    return _apply("svd", (A,), session)
 
 
 def sym(*, session=None):
@@ -53450,172 +53450,172 @@ def symmetric_group(a0, *, session=None):
     return _apply("symmetric_group", (a0,), session)
 
 
-def syt_count(a0, *, session=None):
+def syt_count(shape, *, session=None):
     """
     `syt_count(shape)`: number of standard Young tableaux of `shape` via the hook-length formula.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("syt_count", (a0,), session)
+    return _apply("syt_count", (shape,), session)
 
 
-def t_test(a0, a1, *, session=None):
+def t_test(sample, mu, *, session=None):
     """
     `t_test(sample, mu)`: one-sample Student's t-test returning `list(statistic, p_value)` for `sample` against population mean `mu`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("t_test", (a0, a1), session)
+    return _apply("t_test", (sample, mu), session)
 
 
-def tan(a0, *, session=None):
+def tan(x, *, session=None):
     """
     `tan(x)`: tangent `sin(x) / cos(x)` of angle `x` in radians. `tan(x)` as a ball. # Errors Fails where the cosine interval contains zero, or for an argument beyond `2^20` in magnitude.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("tan", (a0,), session)
+    return _apply("tan", (x,), session)
 
 
-def tanh(a0, *, session=None):
+def tanh(x, *, session=None):
     """
     `tanh(x)`: hyperbolic tangent `sinh(x) / cosh(x)`. `tanh(x)` as a ball. # Errors Fails when an exponent leaves the representable range.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("tanh", (a0,), session)
+    return _apply("tanh", (x,), session)
 
 
-def tautology(a0, *, session=None):
+def tautology(formula, *, session=None):
     """
     `tautology(formula)`: decides whether propositional `formula` holds under all variable assignments (`true` or `false`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("tautology", (a0,), session)
+    return _apply("tautology", (formula,), session)
 
 
-def taylor(a0, a1, a2, a3, *, session=None):
+def taylor(f, x, a, n, *, session=None):
     """
     `taylor(f, x, a, n)`: Taylor polynomial of `f` about `x = a` up to degree `n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("taylor", (a0, a1, a2, a3), session)
+    return _apply("taylor", (f, x, a, n), session)
 
 
-def tensor_add(a0, a1, *, session=None):
+def tensor_add(A, B, *, session=None):
     """
     `tensor_add(A, B)`: componentwise sum `A + B` of tensors of the same shape.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("tensor_add", (a0, a1), session)
+    return _apply("tensor_add", (A, B), session)
 
 
-def tensor_contract(a0, a1, a2, *, session=None):
+def tensor_contract(t, i, j, *, session=None):
     """
     `tensor_contract(t, i, j)`: self-contraction (generalized trace) of tensor `t` over axes `i` and `j`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("tensor_contract", (a0, a1, a2), session)
+    return _apply("tensor_contract", (t, i, j), session)
 
 
-def tensor_decomposition(a0, a1, a2, *, session=None):
+def tensor_decomposition(T, hw1, hw2, *, session=None):
     """
     `tensor_decomposition(T, hw1, hw2)`: irreducible decomposition `list(list(hw, m), ...)` of `V(hw1) (x) V(hw2)` for type `T`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("tensor_decomposition", (a0, a1, a2), session)
+    return _apply("tensor_decomposition", (T, hw1, hw2), session)
 
 
-def tensor_inner(a0, a1, *, session=None):
+def tensor_inner(a, b, *, session=None):
     """
     `tensor_inner(a, b)`: Frobenius inner product of two tensors `a` and `b` of identical shape.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("tensor_inner", (a0, a1), session)
+    return _apply("tensor_inner", (a, b), session)
 
 
-def tensor_norm(a0, *, session=None):
+def tensor_norm(t, *, session=None):
     """
     `tensor_norm(t)`: Frobenius norm of tensor `t`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("tensor_norm", (a0,), session)
+    return _apply("tensor_norm", (t,), session)
 
 
-def tensor_outer(a0, a1, *, session=None):
+def tensor_outer(A, B, *, session=None):
     """
     `tensor_outer(A, B)`: outer (tensor) product `A (x) B` of tensors `A` and `B`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("tensor_outer", (a0, a1), session)
+    return _apply("tensor_outer", (A, B), session)
 
 
-def tensor_rank(a0, *, session=None):
+def tensor_rank(T, *, session=None):
     """
     `tensor_rank(T)`: rank (number of indices) of nested-list tensor `T`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("tensor_rank", (a0,), session)
+    return _apply("tensor_rank", (T,), session)
 
 
-def tensor_smul(a0, a1, *, session=None):
+def tensor_smul(c, T, *, session=None):
     """
     `tensor_smul(c, T)`: tensor `T` scaled componentwise by scalar `c`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("tensor_smul", (a0, a1), session)
+    return _apply("tensor_smul", (c, T), session)
 
 
-def tensordot(a0, a1, a2, a3, *, session=None):
+def tensordot(a, b, axes_a, axes_b, *, session=None):
     """
     `tensordot(a, b, axes_a, axes_b)`: tensor contraction of `a` and `b` along axis lists `axes_a` and `axes_b`. Contracts two tensors along the paired axes in `axes_a` and `axes_b`. The free axes of `a` precede the free axes of `b`, each in its original order. See [`tensordot_views`] for the shape and borrowing rules. # Errors Returns the axis and output shape errors of [`tensordot_views`].
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("tensordot", (a0, a1, a2, a3), session)
+    return _apply("tensordot", (a, b, axes_a, axes_b), session)
 
 
-def tf_bode(a0, a1, a2, *, session=None):
+def tf_bode(num, den, omega, *, session=None):
     """
     `tf_bode(num, den, omega)`: `list(magnitude_db, phase_deg)` of the frequency response at `omega`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("tf_bode", (a0, a1, a2), session)
+    return _apply("tf_bode", (num, den, omega), session)
 
 
-def tf_nyquist(a0, a1, a2, *, session=None):
+def tf_nyquist(num, den, omega, *, session=None):
     """
     `tf_nyquist(num, den, omega)`: `list(re, im)` of `G(i omega)` at `omega`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("tf_nyquist", (a0, a1, a2), session)
+    return _apply("tf_nyquist", (num, den, omega), session)
 
 
-def tf_poles(a0, a1, *, session=None):
+def tf_poles(num, den, *, session=None):
     """
     `tf_poles(num, den)`: the poles of the transfer function as `list(re, im)` pairs.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("tf_poles", (a0, a1), session)
+    return _apply("tf_poles", (num, den), session)
 
 
-def tf_state_space(a0, a1, *, session=None):
+def tf_state_space(num, den, *, session=None):
     """
     `tf_state_space(num, den)`: `list(a, b, c, d)`, the controllable canonical realisation of the transfer function `num(s)/den(s)` (descending powers).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("tf_state_space", (a0, a1), session)
+    return _apply("tf_state_space", (num, den), session)
 
 
-def time_dependent_schrodinger_equation(a0, a1, a2, *, session=None):
+def time_dependent_schrodinger_equation(H, psi, t, *, session=None):
     """
     `time_dependent_schrodinger_equation(H, psi, t)`: residual `i hbar d(psi)/dt - H psi`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("time_dependent_schrodinger_equation", (a0, a1, a2), session)
+    return _apply("time_dependent_schrodinger_equation", (H, psi, t), session)
 
 
-def time_independent_schrodinger_equation(a0, a1, a2, *, session=None):
+def time_independent_schrodinger_equation(H, psi, E, *, session=None):
     """
     `time_independent_schrodinger_equation(H, psi, E)`: residual `H psi - E psi`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("time_independent_schrodinger_equation", (a0, a1, a2), session)
+    return _apply("time_independent_schrodinger_equation", (H, psi, E), session)
 
 
 def tinkerbell_orbit(a0, a1, a2, a3, a4, a5, *, session=None):
@@ -53626,12 +53626,12 @@ def tinkerbell_orbit(a0, a1, a2, a3, a4, a5, *, session=None):
     return _apply("tinkerbell_orbit", (a0, a1, a2, a3, a4, a5), session)
 
 
-def to_cartesian(a0, a1, *, session=None):
+def to_cartesian(sys, vars, *, session=None):
     """
     `to_cartesian(sys, vars)`: Cartesian coordinates expressed in coordinate system `sys` (`cartesian`, `polar`, `cylindrical`, `spherical`) with variables `vars`. Inverse map to Cartesian: converts a point of `from` to Cartesian. # Errors Returns an error if `point` has the wrong number of components.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("to_cartesian", (a0, a1), session)
+    return _apply("to_cartesian", (sys, vars), session)
 
 
 def todd_coxeter(a0, a1, a2, *, session=None):
@@ -53650,36 +53650,36 @@ def todd_coxeter_index(a0, a1, a2, *, session=None):
     return _apply("todd_coxeter_index", (a0, a1, a2), session)
 
 
-def together(a0, *, session=None):
+def together(expr, *, session=None):
     """
     `together(expr)`: combines sums of rational expressions over a common denominator.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("together", (a0,), session)
+    return _apply("together", (expr,), session)
 
 
-def torque(a0, a1, *, session=None):
+def torque(r, F, *, session=None):
     """
     `torque(r, F)`: torque vector `r x F` about the origin.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("torque", (a0, a1), session)
+    return _apply("torque", (r, F), session)
 
 
-def totient(a0, *, session=None):
+def totient(n, *, session=None):
     """
     `totient(n)`: Euler's totient function `phi(n)`, counting integers in `[1, n]` coprime to `n`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("totient", (a0,), session)
+    return _apply("totient", (n,), session)
 
 
-def trace(a0, *, session=None):
+def trace(A, *, session=None):
     """
     `trace(A)`: trace `sum_i A_{ii}` of square matrix `A`. Computes the trace of a square sparse matrix. # Errors Returns an error if the matrix is not square.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("trace", (a0,), session)
+    return _apply("trace", (A,), session)
 
 
 def transform_covector(a0, a1, a2, a3, a4, *, session=None):
@@ -53746,20 +53746,20 @@ def translation_3d(a0, a1, a2, *, session=None):
     return _apply("translation_3d", (a0, a1, a2), session)
 
 
-def transpose(a0, *, session=None):
+def transpose(A, *, session=None):
     """
     `transpose(A)`: transpose `A^T` of matrix `A`. Transpose of a rectangular slice-of-rows matrix.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("transpose", (a0,), session)
+    return _apply("transpose", (A,), session)
 
 
-def trimmed_mean(a0, a1, *, session=None):
+def trimmed_mean(x, alpha, *, session=None):
     """
     `trimmed_mean(x, alpha)`: symmetric trimmed mean of `x`, discarding fraction `alpha` from each tail. Mean after discarding the fraction `trim` from each tail.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("trimmed_mean", (a0, a1), session)
+    return _apply("trimmed_mean", (x, alpha), session)
 
 
 def true(*, session=None):
@@ -53770,140 +53770,140 @@ def true(*, session=None):
     return _apply("true", (), session)
 
 
-def truth_table(a0, *, session=None):
+def truth_table(formula, *, session=None):
     """
     `truth_table(formula)`: returns the truth table of `formula` as a list of variable-assignment rows and outputs.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("truth_table", (a0,), session)
+    return _apply("truth_table", (formula,), session)
 
 
-def tt_dense(a0, *, session=None):
+def tt_dense(cores, *, session=None):
     """
     `tt_dense(cores)`: reconstruct dense tensor from a list of tensor-train cores.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("tt_dense", (a0,), session)
+    return _apply("tt_dense", (cores,), session)
 
 
-def tt_svd(a0, a1, a2, *, session=None):
+def tt_svd(t, tol, max_rank, *, session=None):
     """
     `tt_svd(t, tol, max_rank)`: tensor-train SVD of `t` returning `list(cores, error)`. Compress a finite, nonempty dense tensor with TT-SVD. Each split is assigned relative tolerance / sqrt(order - 1). A rank cap may prevent satisfying that tolerance; inspect `tolerance_met` and the returned truncation estimate. Zero tensors use bond rank one. A one-mode tensor is stored exactly. Input is normalized before decomposition to avoid squaring the input's scale in intermediate norm computations. # Errors Returns an error for invalid shape/options, non-finite input, SVD failure, allocation/size overflow or unrepresentable rescaling.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("tt_svd", (a0, a1, a2), session)
+    return _apply("tt_svd", (t, tol, max_rank), session)
 
 
-def tucker_dense(a0, a1, *, session=None):
+def tucker_dense(core, factors, *, session=None):
     """
     `tucker_dense(core, factors)`: reconstruct dense tensor from Tucker `core` and mode factor matrices.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("tucker_dense", (a0, a1), session)
+    return _apply("tucker_dense", (core, factors), session)
 
 
-def two_squares(a0, *, session=None):
+def two_squares(n, *, session=None):
     """
     `two_squares(n)`: representation `list(x, y)` with `x^2 + y^2 = n` for `n >= 0`, if one exists.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("two_squares", (a0,), session)
+    return _apply("two_squares", (n,), session)
 
 
-def uncertainty(a0, a1, a2, *, session=None):
+def uncertainty(A, psi, x, *, session=None):
     """
     `uncertainty(A, psi, x)`: standard deviation `sqrt(<A^2> - <A>^2)` in state `psi`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("uncertainty", (a0, a1, a2), session)
+    return _apply("uncertainty", (A, psi, x), session)
 
 
-def uniform(a0, a1, *, session=None):
+def uniform(a, b, *, session=None):
     """
     `uniform(a, b)`: continuous uniform distribution on the interval `[a, b]`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("uniform", (a0, a1), session)
+    return _apply("uniform", (a, b), session)
 
 
-def unify_expression(a0, *, session=None):
+def unify_expression(expr, *, session=None):
     """
     `unify_expression(expr)`: evaluates and simplifies a dimensional expression `expr` into a unified `quantity(value, unit)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("unify_expression", (a0,), session)
+    return _apply("unify_expression", (expr,), session)
 
 
-def vandermonde(a0, *, session=None):
+def vandermonde(nodes, *, session=None):
     """
     `vandermonde(nodes)`: square Vandermonde matrix `V_{ij} = nodes[i]^j`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("vandermonde", (a0,), session)
+    return _apply("vandermonde", (nodes,), session)
 
 
-def variance(a0, *, session=None):
+def variance(xs, *, session=None):
     """
     `variance(xs)`: population variance `(1/n) sum (x_i - mean)^2` of list `xs`. Computes the variance of a slice of f64 values (defaults to population variance). # Arguments * `data` - An immutable slice of `f64` data points. # Returns The variance of the data as an `f64`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("variance", (a0,), session)
+    return _apply("variance", (xs,), session)
 
 
-def variance_of(a0, *, session=None):
+def variance_of(d, *, session=None):
     """
     `variance_of(d)`: variance `Var(X) = E[(X - E[X])^2]` of distribution `d`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("variance_of", (a0,), session)
+    return _apply("variance_of", (d,), session)
 
 
-def variational_ground_state(a0, a1, a2, a3, *, session=None):
+def variational_ground_state(H, trial, x, a, *, session=None):
     """
     `variational_ground_state(H, trial, x, a)`: Rayleigh-Ritz ground-state estimate `list(a*, E(a*))` minimizing `E(a) = <trial|H|trial> / <trial|trial>` over `a > 0`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("variational_ground_state", (a0, a1, a2, a3), session)
+    return _apply("variational_ground_state", (H, trial, x, a), session)
 
 
-def velocity_addition(a0, a1, *, session=None):
+def velocity_addition(v, u, *, session=None):
     """
     `velocity_addition(v, u)`: relativistic collinear velocity addition `(v + u) / (1 + v u / c_0^2)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("velocity_addition", (a0, a1), session)
+    return _apply("velocity_addition", (v, u), session)
 
 
-def verify_definite_integral(a0, a1, a2, a3, a4, *, session=None):
+def verify_definite_integral(integrand, var, a, b, value, *, session=None):
     """
     `verify_definite_integral(integrand, var, a, b, value)`: numerically and symbolically checks whether the definite integral of `integrand` over `[a, b]` equals `value`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("verify_definite_integral", (a0, a1, a2, a3, a4), session)
+    return _apply("verify_definite_integral", (integrand, var, a, b, value), session)
 
 
-def verify_derivative(a0, a1, a2, *, session=None):
+def verify_derivative(f, x, g, *, session=None):
     """
     `verify_derivative(f, x, g)` checks whether `diff(f, x) == g`. An exact residual must be zero. Approximate residuals use the numerical tolerance.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("verify_derivative", (a0, a1, a2), session)
+    return _apply("verify_derivative", (f, x, g), session)
 
 
-def verify_integral(a0, a1, a2, *, session=None):
+def verify_integral(f, x, F, *, session=None):
     """
     `verify_integral(f, x, F)` checks whether `diff(F, x) == f`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("verify_integral", (a0, a1, a2), session)
+    return _apply("verify_integral", (f, x, F), session)
 
 
-def verify_inverse(a0, a1, *, session=None):
+def verify_inverse(A, B, *, session=None):
     """
     `verify_inverse(A, B)` checks whether the matrix product `A*B` equals the identity.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("verify_inverse", (a0, a1), session)
+    return _apply("verify_inverse", (A, B), session)
 
 
 def verify_limit(*args, session=None):
@@ -53914,12 +53914,12 @@ def verify_limit(*args, session=None):
     return _apply("verify_limit", args, session)
 
 
-def verify_maxwell_relation_helmholtz(a0, a1, a2, *, session=None):
+def verify_maxwell_relation_helmholtz(A, T, V, *, session=None):
     """
     `verify_maxwell_relation_helmholtz(A, T, V)`: mixed-partial symmetry check `d^2A/dTdV - d^2A/dVdT` for Helmholtz free energy `A`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("verify_maxwell_relation_helmholtz", (a0, a1, a2), session)
+    return _apply("verify_maxwell_relation_helmholtz", (A, T, V), session)
 
 
 def verify_ode_solution(a0, a1, a2, *, session=None):
@@ -53930,12 +53930,12 @@ def verify_ode_solution(a0, a1, a2, *, session=None):
     return _apply("verify_ode_solution", (a0, a1, a2), session)
 
 
-def verify_solution(a0, a1, *, session=None):
+def verify_solution(eq_or_expr, subst, *, session=None):
     """
     `verify_solution(eq_or_expr, subst)`: checks whether substituting `subst` into `eq_or_expr` satisfies the equation or expression (returns `true` or `false`).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("verify_solution", (a0, a1), session)
+    return _apply("verify_solution", (eq_or_expr, subst), session)
 
 
 def vietoris_rips(*args, session=None):
@@ -53978,188 +53978,188 @@ def volterra_to_ode(a0, a1, a2, a3, a4, a5, a6, *, session=None):
     return _apply("volterra_to_ode", (a0, a1, a2, a3, a4, a5, a6), session)
 
 
-def volume_element(a0, a1, *, session=None):
+def volume_element(g, vars, *, session=None):
     """
     `volume_element(g, vars)`: Riemannian volume density `sqrt(|det(g)|)` of metric `g` in `vars`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("volume_element", (a0, a1), session)
+    return _apply("volume_element", (g, vars), session)
 
 
-def volume_integral(a0, a1, a2, *, session=None):
+def volume_integral(f, vars, bounds, *, session=None):
     """
     `volume_integral(f, vars, bounds)`: iterated multiple integral of `f` over `vars` with `bounds = list(list(a, b), ...)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("volume_integral", (a0, a1, a2), session)
+    return _apply("volume_integral", (f, vars, bounds), session)
 
 
-def wave_fd(a0, a1, a2, a3, a4, a5, *, session=None):
+def wave_fd(c, u0, v0, bc_val, t_end, steps, *, session=None):
     """
     `wave_fd(c, u0, v0, bc_val, t_end, steps)`: finite-difference wave equation solver on the unit domain with uniform Dirichlet boundary `bc_val`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("wave_fd", (a0, a1, a2, a3, a4, a5), session)
+    return _apply("wave_fd", (c, u0, v0, bc_val, t_end, steps), session)
 
 
-def wave_fd_bc(a0, a1, a2, a3, a4, a5, a6, *, session=None):
+def wave_fd_bc(c, u0, v0, bc, bc_val, t_end, steps, *, session=None):
     """
     `wave_fd_bc(c, u0, v0, bc, bc_val, t_end, steps)`: finite-difference wave equation solver with per-face Dirichlet/Neumann boundary condition `bc`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("wave_fd_bc", (a0, a1, a2, a3, a4, a5, a6), session)
+    return _apply("wave_fd_bc", (c, u0, v0, bc, bc_val, t_end, steps), session)
 
 
-def wavedec(a0, a1, a2, *, session=None):
+def wavedec(x, wavelet, levels, *, session=None):
     """
     `wavedec(x, wavelet, levels)`: multilevel periodized discrete wavelet decomposition `list(a_L, d_L, ..., d_1)`. Multilevel decomposition: `[approximation_L, detail_L, ..., detail_1]`. Requires `2^levels` to divide the length, as before; use [`wavedec_with`] for the general case. # Errors [`WaveletError::TooManyLevels`] when `2^levels` does not divide the length, or the length is shorter than the filter at some level.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("wavedec", (a0, a1, a2), session)
+    return _apply("wavedec", (x, wavelet, levels), session)
 
 
-def wavelet_packet(a0, a1, a2, *, session=None):
+def wavelet_packet(x, wavelet, levels, *, session=None):
     """
     `wavelet_packet(x, wavelet, levels)`: equal-width leaf bands of a complete periodic wavelet packet tree, with each low child before its high sibling. Decomposes both the low and high branches of a periodic wavelet transform. Returns `2^levels` equally sized leaf bands in tree order, with each low child before its high sibling. For example, level two returns `LL`, `LH`, `HL`, `HH`. Level zero returns one band containing the input. # Errors [`WaveletError::TooManyLevels`] when the signal is empty or its length is incompatible with the requested depth.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("wavelet_packet", (a0, a1, a2), session)
+    return _apply("wavelet_packet", (x, wavelet, levels), session)
 
 
-def waverec(a0, a1, *, session=None):
+def waverec(coeffs, wavelet, *, session=None):
     """
     `waverec(coeffs, wavelet)`: reconstruct signal from a `wavedec` coefficient list. Inverse of [`wavedec`]. # Errors [`WaveletError::Shape`] for an inconsistent list.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("waverec", (a0, a1), session)
+    return _apply("waverec", (coeffs, wavelet), session)
 
 
-def weak_compositions(a0, a1, *, session=None):
+def weak_compositions(n, k, *, session=None):
     """
     `weak_compositions(n, k)`: number of weak compositions of `n` into `k` non-negative integer parts, `C(n + k - 1, k - 1)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("weak_compositions", (a0, a1), session)
+    return _apply("weak_compositions", (n, k), session)
 
 
-def webere(a0, a1, *, session=None):
+def webere(nu, x, *, session=None):
     """
     `webere(nu, x)`: Weber function `E_nu(x) = (1/pi) int_0^pi sin(nu*theta - x*sin(theta)) dtheta`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("webere", (a0, a1), session)
+    return _apply("webere", (nu, x), session)
 
 
-def wedge(a0, a1, *, session=None):
+def wedge(omega, eta, *, session=None):
     """
     `wedge(omega, eta)`: exterior (wedge) product `omega ^ eta` of differential forms. The wedge sum, gluing vertex `vk` of `K` to vertex `vl` of `L`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("wedge", (a0, a1), session)
+    return _apply("wedge", (omega, eta), session)
 
 
-def weibull(a0, a1, *, session=None):
+def weibull(shape, scale, *, session=None):
     """
     `weibull(shape, scale)`: Weibull distribution with shape parameter `shape` and scale parameter `scale`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("weibull", (a0, a1), session)
+    return _apply("weibull", (shape, scale), session)
 
 
-def weierstrass_e(a0, a1, a2, a3, *, session=None):
+def weierstrass_e(L, y, x, p, *, session=None):
     """
     `weierstrass_e(L, y, x, p)`: computes the Weierstrass excess function `E = L(x, y, p) - L(x, y, y') - (p - y') * dL/dy'`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("weierstrass_e", (a0, a1, a2, a3), session)
+    return _apply("weierstrass_e", (L, y, x, p), session)
 
 
-def weight_multiplicity(a0, a1, a2, *, session=None):
+def weight_multiplicity(T, hw, w, *, session=None):
     """
     `weight_multiplicity(T, hw, w)`: multiplicity of weight `w` in the irrep of type `T` with highest weight `hw`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("weight_multiplicity", (a0, a1, a2), session)
+    return _apply("weight_multiplicity", (T, hw, w), session)
 
 
-def welch_test(a0, a1, a2, *, session=None):
+def welch_test(xs, ys, delta, *, session=None):
     """
     `welch_test(xs, ys, delta)`: Welch's two-sample t-test returning `list(statistic, p_value)` for samples `xs` and `ys` with hypothesised difference `delta`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("welch_test", (a0, a1, a2), session)
+    return _apply("welch_test", (xs, ys, delta), session)
 
 
-def wien_peak_wavelength(a0, *, session=None):
+def wien_peak_wavelength(T, *, session=None):
     """
     `wien_peak_wavelength(T)`: Wien's displacement peak wavelength `b / T` in meters.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("wien_peak_wavelength", (a0,), session)
+    return _apply("wien_peak_wavelength", (T,), session)
 
 
-def wigner_3j(a0, a1, a2, a3, a4, a5, *, session=None):
+def wigner_3j(j1, j2, j3, m1, m2, m3, *, session=None):
     """
     `wigner_3j(j1, j2, j3, m1, m2, m3)`: exact Wigner 3j symbol computed from the corresponding Clebsch-Gordan coefficient (half-integers allowed).
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("wigner_3j", (a0, a1, a2, a3, a4, a5), session)
+    return _apply("wigner_3j", (j1, j2, j3, m1, m2, m3), session)
 
 
-def wilson_interval(a0, a1, a2, *, session=None):
+def wilson_interval(k, n, c, *, session=None):
     """
     `wilson_interval(k, n, c)`: Wilson score confidence interval `list(lo, hi)` for a binomial proportion at critical value `c`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("wilson_interval", (a0, a1, a2), session)
+    return _apply("wilson_interval", (k, n, c), session)
 
 
-def winding_number(a0, a1, *, session=None):
+def winding_number(p, C, *, session=None):
     """
     `winding_number(p, C)` returns the signed number of turns of the circle or closed polygon `C` around `p`. Counterclockwise turns are positive. Points outside a simple contour have winding number zero. A point on the boundary has no winding number and leaves the request unevaluated.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("winding_number", (a0, a1), session)
+    return _apply("winding_number", (p, C), session)
 
 
-def winsorized_mean(a0, a1, *, session=None):
+def winsorized_mean(x, alpha, *, session=None):
     """
     `winsorized_mean(x, alpha)`: symmetric Winsorized mean of `x`, clamping fraction `alpha` in each tail. Mean after replacing the lowest and highest fraction `trim` by the nearest retained values.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("winsorized_mean", (a0, a1), session)
+    return _apply("winsorized_mean", (x, alpha), session)
 
 
-def wkb_energy(a0, a1, a2, a3, *, session=None):
+def wkb_energy(c, nu, m, n, *, session=None):
     """
     `wkb_energy(c, nu, m, n)`: Bohr-Sommerfeld WKB energy level `n` for potential `V(x) = c |x|^nu` and mass `m`, in closed form via the beta function.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("wkb_energy", (a0, a1, a2, a3), session)
+    return _apply("wkb_energy", (c, nu, m, n), session)
 
 
-def work_constant_force(a0, a1, *, session=None):
+def work_constant_force(F, d, *, session=None):
     """
     `work_constant_force(F, d)`: mechanical work `F . d` by a constant force `F` over displacement `d`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("work_constant_force", (a0, a1), session)
+    return _apply("work_constant_force", (F, d), session)
 
 
-def work_isothermal_expansion(a0, a1, a2, a3, a4, *, session=None):
+def work_isothermal_expansion(n, R, T, V1, V2, *, session=None):
     """
     `work_isothermal_expansion(n, R, T, V1, V2)`: reversible isothermal ideal-gas work `n R T ln(V2 / V1)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("work_isothermal_expansion", (a0, a1, a2, a3, a4), session)
+    return _apply("work_isothermal_expansion", (n, R, T, V1, V2), session)
 
 
-def work_line_integral(a0, a1, a2, a3, a4, *, session=None):
+def work_line_integral(F, curve, t, a, b, *, session=None):
     """
     `work_line_integral(F, curve, t, a, b)`: line integral of force field `F` along `curve(t)` for `t in [a, b]`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("work_line_integral", (a0, a1, a2, a3, a4), session)
+    return _apply("work_line_integral", (F, curve, t, a, b), session)
 
 
 def xor(*args, session=None):
@@ -54170,76 +54170,76 @@ def xor(*args, session=None):
     return _apply("xor", args, session)
 
 
-def z_interval(a0, a1, a2, *, session=None):
+def z_interval(sample, sigma, level, *, session=None):
     """
     `z_interval(sample, sigma, level)`: confidence interval `list(lo, hi)` for the population mean with known standard deviation `sigma` at level `level`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("z_interval", (a0, a1, a2), session)
+    return _apply("z_interval", (sample, sigma, level), session)
 
 
-def z_test(a0, a1, a2, *, session=None):
+def z_test(sample, mu, sigma, *, session=None):
     """
     `z_test(sample, mu, sigma)`: one-sample z-test returning `list(statistic, p_value)` for `sample` against mean `mu` with known standard deviation `sigma`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("z_test", (a0, a1, a2), session)
+    return _apply("z_test", (sample, mu, sigma), session)
 
 
-def zeilberger(a0, a1, a2, *, session=None):
+def zeilberger(F, k, n, *, session=None):
     """
     `zeilberger(F, k, n)`: applies Zeilberger's creative telescoping to hypergeometric term `F(n, k)` over bound `k`, returning recurrence and certificate.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("zeilberger", (a0, a1, a2), session)
+    return _apply("zeilberger", (F, k, n), session)
 
 
-def zeros(a0, a1, *, session=None):
+def zeros(m, n, *, session=None):
     """
     `zeros(m, n)`: `m x n` zero matrix. Zero matrix with `rows` rows and `cols` columns.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("zeros", (a0, a1), session)
+    return _apply("zeros", (m, n), session)
 
 
-def zeros_of(a0, a1, *, session=None):
+def zeros_of(f, z, *, session=None):
     """
     `zeros_of(f, z)`: list of `list(q, order)` pairs for the zeros of `f(z)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("zeros_of", (a0, a1), session)
+    return _apply("zeros_of", (f, z), session)
 
 
-def zeta(a0, *, session=None):
+def zeta(s, *, session=None):
     """
     `zeta(s)`: Riemann zeta function `sum_{n=1}^infty n^{-s}`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("zeta", (a0,), session)
+    return _apply("zeta", (s,), session)
 
 
-def zigzag(a0, *, session=None):
+def zigzag(n, *, session=None):
     """
     `zigzag(n)`: `n`-th Euler zigzag (up/down) number, counting alternating permutations of `n` elements.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("zigzag", (a0,), session)
+    return _apply("zigzag", (n,), session)
 
 
-def zscores(a0, *, session=None):
+def zscores(xs, *, session=None):
     """
     `zscores(xs)`: z-score standardization `(x_i - mean) / std` of list `xs`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("zscores", (a0,), session)
+    return _apply("zscores", (xs,), session)
 
 
-def ztransform(a0, a1, a2, *, session=None):
+def ztransform(f, n, z, *, session=None):
     """
     `ztransform(f, n, z)`: unilateral Z-transform `sum_{n=0}^oo f(n) * z^(-n)`.
     Returns an unevaluated term; call ``Session.compute`` to reduce it.
     """
-    return _apply("ztransform", (a0, a1, a2), session)
+    return _apply("ztransform", (f, n, z), session)
 
 airy_ai = airyai
 """Alias of :func:`airyai`."""
