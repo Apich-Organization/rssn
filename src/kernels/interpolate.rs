@@ -68,37 +68,47 @@ use crate::kernels::polynomial::Polynomial;
 /// assert!((poly.eval(1.5) - 2.25).abs() < 1e-9);
 /// ```
 pub fn lagrange_interpolation(points: &[(f64, f64)]) -> Result<Polynomial, String> {
-    if points.is_empty() {
+    let n = points.len();
+    if n == 0 {
         return Ok(Polynomial { coeffs: vec![0.0] });
     }
-
-    let mut total_poly = Polynomial { coeffs: vec![0.0] };
-
-    for (j, (xj, yj)) in points.iter().enumerate() {
-        let mut basis_poly = Polynomial { coeffs: vec![1.0] };
-
-        for (i, (xi, _)) in points.iter().enumerate() {
-            if i == j {
-                continue;
-            }
-
-            let numerator = Polynomial {
-                coeffs: vec![1.0, -xi],
-            };
-
-            let denominator = xj - xi;
-
-            if denominator == 0.0 || denominator.is_nan() {
-                return Err(format!("Duplicate or non-finite x-coordinates found: {xj}"));
-            }
-
-            basis_poly = basis_poly * (numerator / denominator);
+    if n == 1 {
+        let (x0, y0) = points[0];
+        if !x0.is_finite() {
+            return Err(format!("Duplicate or non-finite x-coordinates found: {x0}"));
         }
-
-        total_poly = total_poly + (basis_poly * *yj);
+        return Ok(Polynomial { coeffs: vec![y0] });
     }
 
-    Ok(total_poly)
+    // O(n^2) Newton divided differences, validating every pair of x-coordinates.
+    let mut dd: Vec<f64> = points.iter().map(|&(_, y)| y).collect();
+    for k in 1..n {
+        for i in (k..n).rev() {
+            let x_i = points[i].0;
+            let denom = x_i - points[i - k].0;
+            if denom == 0.0 || denom.is_nan() {
+                return Err(format!(
+                    "Duplicate or non-finite x-coordinates found: {x_i}"
+                ));
+            }
+            dd[i] = (dd[i] - dd[i - 1]) / denom;
+        }
+    }
+
+    // Convert Newton form to ascending monomials via Horner in O(n^2), then reverse
+    // to match `Polynomial`'s descending-degree coefficient order.
+    let mut asc = vec![0.0; n];
+    asc[0] = dd[n - 1];
+    for k in (0..n - 1).rev() {
+        let xk = points[k].0;
+        for j in (1..n - k).rev() {
+            asc[j] = (-xk).mul_add(asc[j], asc[j - 1]);
+        }
+        asc[0] = (-xk).mul_add(asc[0], dd[k]);
+    }
+    asc.reverse();
+
+    Ok(Polynomial { coeffs: asc })
 }
 
 /// Creates a cubic spline interpolator for a given set of points.
@@ -204,16 +214,14 @@ pub fn cubic_spline_interpolation(
     let points_owned = points.to_vec();
 
     let spline = move |x: f64| -> f64 {
-        // 4. Find the correct interval
-        let mut i = 0;
-
-        for j in 0..points_owned.len() - 1 {
-            if x >= points_owned[j].0 && x <= points_owned[j + 1].0 {
-                i = j;
-
-                break;
-            }
-        }
+        // 4. Find the correct interval in O(log n) via binary search.
+        let last = points_owned.len() - 1;
+        let i = if x >= points_owned[0].0 && x <= points_owned[last].0 {
+            let idx = points_owned.partition_point(|&(px, _)| px <= x);
+            idx.saturating_sub(1).min(last - 1)
+        } else {
+            0
+        };
 
         let dx = x - points_owned[i].0;
 
