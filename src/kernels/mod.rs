@@ -6,6 +6,7 @@
 //! phase; the simulations in [`crate::sim`] call them directly.
 
 pub mod amg_general;
+pub mod analytic_continuation;
 /// Interpolation and approximation: splines, PCHIP, B-splines, Chebyshev, AAA, Pade.
 pub mod approx;
 pub mod autodiff;
@@ -14,7 +15,14 @@ pub mod bsr;
 pub mod calculus;
 pub mod combinatorics;
 pub mod complex;
+pub mod complex_ball;
+pub mod complex_coords;
+pub mod complex_dynamics;
+pub mod complex_roots;
+pub mod complex_transforms;
 pub mod computer_graphics;
+pub mod conformal;
+pub mod contour_deform;
 pub mod convergence;
 pub mod coordinates;
 pub mod dd;
@@ -178,6 +186,7 @@ pub mod random;
 pub mod real_roots;
 /// Bounded storage for reusable numerical plans and scratch buffers.
 pub mod reuse;
+pub mod riemann_hilbert;
 /// Robust statistics, quantiles and kernel density estimation.
 pub mod robust;
 pub mod rootfind;
@@ -221,6 +230,7 @@ pub mod sparse;
 pub mod sparse_exact;
 pub mod special;
 pub mod special_complex;
+pub mod special_complex_ext;
 pub mod special_ext;
 pub mod stats;
 #[allow(
@@ -247,9 +257,11 @@ pub mod stats;
     clippy::unnecessary_wraps
 )]
 pub mod stats_ext;
+pub mod steepest_descent;
 pub mod tensor;
 pub mod topology;
 pub mod transforms;
+pub mod univalent;
 pub mod vector;
 pub mod wavelets;
 

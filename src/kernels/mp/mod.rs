@@ -42,6 +42,7 @@
 //! accepts, and [`real::MAX_BITS`] caps what the tower can hold.
 
 pub mod ball;
+pub mod complex;
 pub mod consts;
 pub mod decimal;
 pub(crate) mod fixed;
@@ -50,6 +51,9 @@ pub mod parse;
 pub mod real;
 
 pub use ball::Ball;
+pub use complex::MpComplex;
+pub use complex::enclosure_complex_text;
+pub use complex::eval_complex_text;
 pub use decimal::MAX_DIGITS;
 pub use decimal::ball_to_decimal;
 pub use decimal::bits_for_digits;

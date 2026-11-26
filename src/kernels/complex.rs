@@ -371,6 +371,106 @@ impl Mobius {
     }
 }
 
+/// Numerical Wirtinger derivative `d/dz = 0.5 * (d/dx - i * d/dy)` by central
+/// finite differences with step `h`.
+pub fn wirtinger_dz_numeric<F>(
+    f: F,
+    z: Complex64,
+    h: f64,
+) -> Complex64
+where
+    F: Fn(Complex64) -> Complex64,
+{
+    let df_dx = (f(Complex64::new(z.re + h, z.im)) - f(Complex64::new(z.re - h, z.im))) / (2.0 * h);
+    let df_dy = (f(Complex64::new(z.re, z.im + h)) - f(Complex64::new(z.re, z.im - h))) / (2.0 * h);
+    0.5 * (df_dx - I * df_dy)
+}
+
+/// Numerical Wirtinger derivative `d/d(conj(z)) = 0.5 * (d/dx + i * d/dy)` by
+/// central finite differences with step `h`.
+pub fn wirtinger_dzbar_numeric<F>(
+    f: F,
+    z: Complex64,
+    h: f64,
+) -> Complex64
+where
+    F: Fn(Complex64) -> Complex64,
+{
+    let df_dx = (f(Complex64::new(z.re + h, z.im)) - f(Complex64::new(z.re - h, z.im))) / (2.0 * h);
+    let df_dy = (f(Complex64::new(z.re, z.im + h)) - f(Complex64::new(z.re, z.im - h))) / (2.0 * h);
+    0.5 * (df_dx + I * df_dy)
+}
+
+/// Checks the Cauchy-Riemann equations numerically at `z` via
+/// `|d/d(conj(z)) f(z)| <= tol`.
+pub fn check_cauchy_riemann_numeric<F>(
+    f: F,
+    z: Complex64,
+    h: f64,
+    tol: f64,
+) -> bool
+where
+    F: Fn(Complex64) -> Complex64,
+{
+    wirtinger_dzbar_numeric(f, z, h).norm() <= tol
+}
+
+/// Complex-step differentiation `Im(f(x + i*h)) / h` for real analytic
+/// functions, avoiding subtractive cancellation down to machine precision.
+pub fn complex_step_derivative<F>(
+    f: F,
+    x: f64,
+    h: f64,
+) -> f64
+where
+    F: Fn(Complex64) -> Complex64,
+{
+    f(Complex64::new(x, h)).im / h
+}
+
+/// Computes `f^(0)(z0), f^(1)(z0), ..., f^(max_order)(z0)` in one pass using
+/// Cauchy's integral formula discretized with an FFT (Lyness-Moler method) on
+/// `|z - z0| = radius` with `n_samples` equispaced nodes.
+#[must_use]
+pub fn cauchy_fft_derivatives<F>(
+    f: F,
+    z0: Complex64,
+    radius: f64,
+    max_order: usize,
+    n_samples: usize,
+) -> Vec<Complex64>
+where
+    F: Fn(Complex64) -> Complex64,
+{
+    let n = n_samples.max(max_order + 1).max(4);
+    let mut buffer = Vec::with_capacity(n);
+    for j in 0..n {
+        let theta = 2.0 * PI * (j as f64) / (n as f64);
+        let (s, c) = theta.sin_cos();
+        let z = z0 + Complex64::new(radius * c, radius * s);
+        let val = f(z);
+        buffer.push(rustfft::num_complex::Complex::new(val.re, val.im));
+    }
+    let mut planner = rustfft::FftPlanner::<f64>::new();
+    let fft = planner.plan_fft_forward(n);
+    fft.process(&mut buffer);
+
+    let mut out = Vec::with_capacity(max_order + 1);
+    let mut fact = 1.0_f64;
+    let mut r_pow = 1.0_f64;
+    let nf = n as f64;
+    for k in 0..=max_order {
+        if k > 0 {
+            fact *= k as f64;
+            r_pow *= radius;
+        }
+        let ck = buffer.get(k).copied().unwrap_or_default();
+        let deriv = Complex64::new(ck.re, ck.im) * (fact / (nf * r_pow));
+        out.push(deriv);
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
