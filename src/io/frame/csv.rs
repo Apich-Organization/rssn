@@ -4,6 +4,7 @@ use std::path::Path;
 
 use super::column::Column;
 use super::column::DType;
+use super::column::encode_hex;
 use super::dataframe::DataFrame;
 
 /// Options controlling CSV parsing and writing.
@@ -19,6 +20,11 @@ pub struct CsvOptions {
     pub infer_types: bool,
     /// Unquoted fields equal to one of these tokens are read as missing.
     pub null_values: Vec<String>,
+    /// Whether an integer column containing missing values stays `Nullable(Int)`.
+    ///
+    /// When `false`, integer columns with missing values are widened to
+    /// `Nullable(Float)`.
+    pub preserve_nullable_int: bool,
 }
 
 impl Default for CsvOptions {
@@ -33,6 +39,7 @@ impl Default for CsvOptions {
                 "NULL".to_string(),
                 "NA".to_string(),
             ],
+            preserve_nullable_int: true,
         }
     }
 }
@@ -98,7 +105,10 @@ pub fn read_csv_str(
             .get(column)
             .cloned()
             .ok_or_else(|| "missing column name".to_string())?;
-        columns.push((name, build_column(&tokens, opts.infer_types)?));
+        columns.push((
+            name,
+            build_column(&tokens, opts.infer_types, opts.preserve_nullable_int)?,
+        ));
     }
     DataFrame::new(columns)
 }
@@ -261,15 +271,14 @@ fn finish_field(field: &[u8]) -> Result<String, String> {
 fn build_column(
     tokens: &[Option<String>],
     infer_types: bool,
+    preserve_nullable_int: bool,
 ) -> Result<Column, String> {
     let has_null = tokens.iter().any(Option::is_none);
     let present: Vec<&str> = tokens.iter().filter_map(|token| token.as_deref()).collect();
     let dtype = if !infer_types || present.is_empty() {
         DType::Str
     } else if present.iter().all(|value| value.parse::<i64>().is_ok()) {
-        // A missing slot needs the floating representation, so an otherwise
-        // integral column becomes `Nullable(Float)`.
-        if has_null {
+        if has_null && !preserve_nullable_int {
             DType::Float
         } else {
             DType::Int
@@ -286,6 +295,7 @@ fn build_column(
     let mut floats = Vec::with_capacity(tokens.len());
     let mut booleans = Vec::with_capacity(tokens.len());
     let mut strings = Vec::with_capacity(tokens.len());
+    let mut bytes_vec = Vec::with_capacity(tokens.len());
     for token in tokens {
         mask.push(token.is_none());
         match dtype {
@@ -318,6 +328,16 @@ fn build_column(
                 })
             },
             | DType::Str => strings.push(token.clone().unwrap_or_default()),
+            | DType::Bytes => {
+                bytes_vec.push(
+                    token
+                        .as_deref()
+                        .map_or_else(Vec::new, |s| s.as_bytes().to_vec()),
+                )
+            },
+            | DType::List => {
+                return Err("csv cannot infer a list column; use JSON or Parquet".to_string());
+            },
         }
     }
     let base = match dtype {
@@ -325,6 +345,10 @@ fn build_column(
         | DType::Float => Column::Float(floats),
         | DType::Bool => Column::Bool(booleans),
         | DType::Str => Column::Str(strings),
+        | DType::Bytes => Column::Bytes(bytes_vec),
+        | DType::List => {
+            return Err("csv cannot infer a list column; use JSON or Parquet".to_string());
+        },
     };
     if has_null {
         Ok(Column::Nullable(Box::new(base), mask))
@@ -361,7 +385,84 @@ fn cell(
                 .map(|value| if *value { "true" } else { "false" }.to_string())
         },
         | Column::Str(values) => values.get(row).cloned(),
+        | Column::Bytes(values) => values.get(row).map(|bytes| encode_hex(bytes)),
+        | Column::List { values, offsets } => {
+            let start = offsets.get(row).copied().unwrap_or(0);
+            let end = offsets.get(row + 1).copied().unwrap_or(start);
+            let mut text = String::from("[");
+            for index in start..end {
+                if index > start {
+                    text.push(',');
+                }
+                text.push_str(&json_scalar(values, index));
+            }
+            text.push(']');
+            Some(text)
+        },
         | Column::Nullable(inner, _) => cell(inner, row),
+    }
+}
+
+/// Renders one element as a JSON literal, used for list cells in a CSV.
+fn json_scalar(
+    column: &Column,
+    row: usize,
+) -> String {
+    match column {
+        | Column::Int(values) => {
+            values
+                .get(row)
+                .map_or_else(|| "null".to_string(), |v| v.to_string())
+        },
+        | Column::Float(values) => {
+            values.get(row).map_or_else(
+                || "null".to_string(),
+                |value| {
+                    serde_json::Number::from_f64(*value)
+                        .map_or_else(|| "null".to_string(), |n| n.to_string())
+                },
+            )
+        },
+        | Column::Bool(values) => {
+            values.get(row).map_or_else(
+                || "null".to_string(),
+                |v| if *v { "true" } else { "false" }.to_string(),
+            )
+        },
+        | Column::Str(values) => {
+            values.get(row).map_or_else(
+                || "null".to_string(),
+                |value| serde_json::to_string(value).unwrap_or_else(|_| "\"\"".to_string()),
+            )
+        },
+        | Column::Bytes(values) => {
+            values.get(row).map_or_else(
+                || "null".to_string(),
+                |value| {
+                    serde_json::to_string(&encode_hex(value)).unwrap_or_else(|_| "\"\"".to_string())
+                },
+            )
+        },
+        | Column::List { values, offsets } => {
+            let start = offsets.get(row).copied().unwrap_or(0);
+            let end = offsets.get(row + 1).copied().unwrap_or(start);
+            let mut text = String::from("[");
+            for index in start..end {
+                if index > start {
+                    text.push(',');
+                }
+                text.push_str(&json_scalar(values, index));
+            }
+            text.push(']');
+            text
+        },
+        | Column::Nullable(inner, mask) => {
+            if mask.get(row).copied().unwrap_or(true) {
+                "null".to_string()
+            } else {
+                json_scalar(inner, row)
+            }
+        },
     }
 }
 
@@ -408,16 +509,39 @@ mod tests {
     }
 
     #[test]
-    fn blank_in_integer_column_becomes_nullable_float() {
+    fn blank_in_integer_column_preserves_nullable_int_by_default() {
         let text = "n,label\n1,a\n,b\n3,c\n";
         let frame = read_csv_str(text, &CsvOptions::default()).expect("parse");
         let column = frame.column("n").expect("column");
-        assert_eq!(column.dtype(), DType::Float);
+        assert_eq!(column.dtype(), DType::Int);
         assert!(column.is_nullable());
         assert!(column.is_null(1));
         assert_eq!(column.get_f64(0), Some(1.0));
         assert_eq!(column.get_f64(2), Some(3.0));
         assert_eq!(column.len(), 3);
+
+        let widen_opts = CsvOptions {
+            preserve_nullable_int: false,
+            ..CsvOptions::default()
+        };
+        let widened = read_csv_str(text, &widen_opts).expect("parse widened");
+        let wcol = widened.column("n").expect("column");
+        assert_eq!(wcol.dtype(), DType::Float);
+        assert!(wcol.is_nullable());
+        assert!(wcol.is_null(1));
+        assert_eq!(wcol.get_f64(0), Some(1.0));
+        assert_eq!(wcol.get_f64(2), Some(3.0));
+    }
+
+    #[test]
+    fn bytes_column_writes_hex_in_csv() {
+        let frame = DataFrame::new(vec![(
+            "raw".to_string(),
+            Column::Bytes(vec![vec![0x00, 0xab, 0xff], Vec::new()]),
+        )])
+        .expect("frame");
+        let text = write_csv(&frame, &CsvOptions::default());
+        assert_eq!(text, "raw\n00abff\n\"\"\n");
     }
 
     #[test]
@@ -447,12 +571,35 @@ mod tests {
     }
 
     #[test]
+    fn list_cells_are_written_as_json_arrays() {
+        let list = Column::new_list(
+            Column::Nullable(
+                Box::new(Column::Int(vec![1, 0, 3])),
+                vec![false, true, false],
+            ),
+            vec![0, 2, 3],
+        )
+        .expect("list");
+        let frame = DataFrame::new(vec![("xs".to_string(), list)]).expect("frame");
+        let text = write_csv(&frame, &CsvOptions::default());
+        // The comma inside the JSON array is quoted like any other cell.
+        assert_eq!(
+            text,
+            "xs
+\"[1,null]\"
+[3]
+"
+        );
+    }
+
+    #[test]
     fn custom_delimiter_and_no_header() {
         let options = CsvOptions {
             delimiter: b';',
             has_header: false,
             infer_types: true,
             null_values: vec![String::new()],
+            preserve_nullable_int: true,
         };
         let frame = read_csv_str("1;2\n3;4\n", &options).expect("parse");
         assert_eq!(frame.column_names(), vec!["col0", "col1"]);

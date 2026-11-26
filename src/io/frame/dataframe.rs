@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 use super::column::Column;
 use super::column::DType;
+use super::column::encode_hex;
 
 /// An aggregation applied by [`DataFrame::group_by_agg`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -50,6 +51,8 @@ enum Scalar {
     Float(f64),
     Bool(bool),
     Str(String),
+    Bytes(Vec<u8>),
+    List(Vec<Scalar>),
 }
 
 impl DataFrame {
@@ -514,6 +517,33 @@ fn take(
                     .collect(),
             )
         },
+        | Column::Bytes(values) => {
+            Column::Bytes(
+                rows.iter()
+                    .map(|&row| values.get(row).cloned().unwrap_or_default())
+                    .collect(),
+            )
+        },
+        | Column::List { values, offsets } => {
+            let mut flat = Vec::new();
+            let mut taken = Vec::with_capacity(rows.len() + 1);
+            taken.push(0usize);
+            for &row in rows {
+                let start = offsets.get(row).copied().unwrap_or(0);
+                let end = offsets
+                    .get(row + 1)
+                    .copied()
+                    .unwrap_or(start)
+                    .min(values.len());
+                let start = start.min(end);
+                flat.extend(start..end);
+                taken.push(flat.len());
+            }
+            Column::List {
+                values: Box::new(take(values, &flat)),
+                offsets: taken,
+            }
+        },
         | Column::Nullable(inner, mask) => {
             let taken_mask = rows
                 .iter()
@@ -549,6 +579,34 @@ fn concat_columns(
             let mut values = first.clone();
             values.extend_from_slice(second);
             Ok(Column::Str(values))
+        },
+        | (Column::Bytes(first), Column::Bytes(second)) => {
+            let mut values = first.clone();
+            values.extend_from_slice(second);
+            Ok(Column::Bytes(values))
+        },
+        | (
+            Column::List {
+                values: first,
+                offsets: first_offsets,
+            },
+            Column::List {
+                values: second,
+                offsets: second_offsets,
+            },
+        ) => {
+            let values = concat_columns(first, second)?;
+            let base = first.len();
+            let mut offsets = if first_offsets.is_empty() {
+                vec![0]
+            } else {
+                first_offsets.clone()
+            };
+            offsets.extend(second_offsets.iter().skip(1).map(|offset| offset + base));
+            Ok(Column::List {
+                values: Box::new(values),
+                offsets,
+            })
         },
         | (Column::Nullable(first, first_mask), Column::Nullable(second, second_mask)) => {
             let inner = concat_columns(first, second)?;
@@ -598,6 +656,24 @@ fn compare_values(
         },
         | Column::Bool(values) => compare_pairs(values.get(left), values.get(right)),
         | Column::Str(values) => compare_pairs(values.get(left), values.get(right)),
+        | Column::Bytes(values) => compare_pairs(values.get(left), values.get(right)),
+        | Column::List { values, offsets } => {
+            let left_start = offsets.get(left).copied().unwrap_or(0);
+            let left_end = offsets.get(left + 1).copied().unwrap_or(left_start);
+            let right_start = offsets.get(right).copied().unwrap_or(0);
+            let right_end = offsets.get(right + 1).copied().unwrap_or(right_start);
+            let mut first = left_start;
+            let mut second = right_start;
+            while first < left_end && second < right_end {
+                let order = compare_values(values, first, second);
+                if order != Ordering::Equal {
+                    return order;
+                }
+                first += 1;
+                second += 1;
+            }
+            (left_end.saturating_sub(left_start)).cmp(&right_end.saturating_sub(right_start))
+        },
         | Column::Nullable(inner, _) => compare_values(inner, left, right),
     }
 }
@@ -648,6 +724,23 @@ fn value_token(
         | Column::Bool(values) => format!("b{}", values.get(row).copied().unwrap_or(false)),
         | Column::Str(values) => {
             format!("s{}", values.get(row).map_or("", String::as_str))
+        },
+        | Column::Bytes(values) => {
+            format!(
+                "x{}",
+                values.get(row).map_or_else(String::new, |v| encode_hex(v))
+            )
+        },
+        | Column::List { values, offsets } => {
+            let start = offsets.get(row).copied().unwrap_or(0);
+            let end = offsets.get(row + 1).copied().unwrap_or(start);
+            let mut token = String::from("l[");
+            for index in start..end {
+                token.push_str(&value_token(values, index));
+                token.push(',');
+            }
+            token.push(']');
+            token
         },
         | Column::Nullable(inner, mask) => {
             if mask.get(row).copied().unwrap_or(true) {
@@ -817,6 +910,16 @@ fn scalar_at(
         | Column::Float(values) => values.get(row).map(|value| Scalar::Float(*value)),
         | Column::Bool(values) => values.get(row).map(|value| Scalar::Bool(*value)),
         | Column::Str(values) => values.get(row).map(|value| Scalar::Str(value.clone())),
+        | Column::Bytes(values) => values.get(row).map(|value| Scalar::Bytes(value.clone())),
+        | Column::List { values, offsets } => {
+            let start = offsets.get(row).copied()?;
+            let end = offsets.get(row + 1).copied()?;
+            let mut items = Vec::with_capacity(end.saturating_sub(start));
+            for index in start..end {
+                items.push(scalar_at(values, index)?);
+            }
+            Some(Scalar::List(items))
+        },
         | Column::Nullable(inner, mask) => {
             if mask.get(row).copied().unwrap_or(true) {
                 None
@@ -832,12 +935,16 @@ fn materialize(
     dtype: DType,
     scalars: &[Option<Scalar>],
 ) -> Result<Column, String> {
+    if dtype == DType::List {
+        return materialize_lists(scalars);
+    }
     let any_missing = scalars.iter().any(Option::is_none);
     let mut mask = Vec::with_capacity(scalars.len());
     let mut ints = Vec::with_capacity(scalars.len());
     let mut floats = Vec::with_capacity(scalars.len());
     let mut booleans = Vec::with_capacity(scalars.len());
     let mut strings = Vec::with_capacity(scalars.len());
+    let mut bytes_vec = Vec::with_capacity(scalars.len());
     for scalar in scalars {
         mask.push(scalar.is_none());
         match dtype {
@@ -867,6 +974,13 @@ fn materialize(
                     | _ => String::new(),
                 })
             },
+            | DType::Bytes => {
+                bytes_vec.push(match scalar {
+                    | Some(Scalar::Bytes(value)) => value.clone(),
+                    | _ => Vec::new(),
+                })
+            },
+            | DType::List => return materialize_lists(scalars),
         }
     }
     let base = match dtype {
@@ -874,11 +988,61 @@ fn materialize(
         | DType::Float => Column::Float(floats),
         | DType::Bool => Column::Bool(booleans),
         | DType::Str => Column::Str(strings),
+        | DType::Bytes => Column::Bytes(bytes_vec),
+        | DType::List => return materialize_lists(scalars),
     };
     if any_missing {
         Ok(Column::Nullable(Box::new(base), mask))
     } else {
         Ok(base)
+    }
+}
+
+/// Builds a list column out of aggregated scalar lists.
+fn materialize_lists(scalars: &[Option<Scalar>]) -> Result<Column, String> {
+    let mut offsets = Vec::with_capacity(scalars.len() + 1);
+    offsets.push(0usize);
+    let mut flat: Vec<Option<Scalar>> = Vec::new();
+    let mut mask = Vec::with_capacity(scalars.len());
+    for scalar in scalars {
+        match scalar {
+            | Some(Scalar::List(items)) => {
+                mask.push(false);
+                flat.extend(items.iter().cloned().map(Some));
+            },
+            | Some(_) => {
+                return Err("a list column cannot be built from non-list values".to_string());
+            },
+            | None => mask.push(true),
+        }
+        offsets.push(flat.len());
+    }
+    let element = flat
+        .iter()
+        .flatten()
+        .next()
+        .map_or(DType::Int, scalar_dtype);
+    let values = materialize(element, &flat)?;
+    let list = Column::List {
+        values: Box::new(values),
+        offsets,
+    };
+    if mask.iter().any(|&missing| missing) {
+        Ok(Column::Nullable(Box::new(list), mask))
+    } else {
+        Ok(list)
+    }
+}
+
+/// The logical type a scalar is stored as.
+fn scalar_dtype(scalar: &Scalar) -> DType {
+    match scalar {
+        | Scalar::Int(_) => DType::Int,
+        | Scalar::Float(_) => DType::Float,
+        | Scalar::Bool(_) => DType::Bool,
+        | Scalar::Str(_) => DType::Str,
+        | Scalar::Bytes(_) => DType::Bytes,
+        | Scalar::List(_) => DType::List,
     }
 }
 
@@ -1147,5 +1311,44 @@ mod tests {
                 .column_names()
                 .is_empty()
         );
+    }
+
+    #[test]
+    fn bytes_column_sort_group_join_and_concat() {
+        let frame = DataFrame::new(vec![
+            (
+                "k".to_string(),
+                Column::Bytes(vec![vec![0xff, 0x01], vec![0x00, 0x02], vec![0xff, 0x01]]),
+            ),
+            ("v".to_string(), Column::Int(vec![10, 20, 30])),
+        ])
+        .expect("frame");
+        let sorted = frame.sort_by("k", false).expect("sort");
+        assert_eq!(
+            sorted.column("k"),
+            Some(&Column::Bytes(vec![
+                vec![0x00, 0x02],
+                vec![0xff, 0x01],
+                vec![0xff, 0x01],
+            ]))
+        );
+        let grouped = frame.group_by_agg(&["k"], "v", Agg::Sum).expect("group");
+        assert_eq!(grouped.n_rows(), 2);
+        assert_eq!(grouped.column("sum_v"), Some(&Column::Int(vec![40, 20])));
+        let first_bytes = frame.group_by_agg(&["k"], "k", Agg::First).expect("first");
+        assert_eq!(
+            first_bytes.column("first_k"),
+            Some(&Column::Bytes(vec![vec![0xff, 0x01], vec![0x00, 0x02]]))
+        );
+        let right = DataFrame::new(vec![
+            ("k".to_string(), Column::Bytes(vec![vec![0x00, 0x02]])),
+            ("tag".to_string(), Column::Str(vec!["hit".to_string()])),
+        ])
+        .expect("right");
+        let joined = frame.inner_join(&right, "k").expect("join");
+        assert_eq!(joined.n_rows(), 1);
+        assert_eq!(joined.column("v"), Some(&Column::Int(vec![20])));
+        let doubled = frame.concat_rows(&frame).expect("concat");
+        assert_eq!(doubled.n_rows(), 6);
     }
 }

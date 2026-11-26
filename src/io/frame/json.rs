@@ -9,6 +9,7 @@ use serde_json::Value;
 
 use super::column::Column;
 use super::column::DType;
+use super::column::encode_hex;
 use super::dataframe::DataFrame;
 
 /// Reads a frame from JSON text.
@@ -30,7 +31,8 @@ pub fn read_json_str(text: &str) -> Result<DataFrame, String> {
     }
 }
 
-/// Writes a frame as JSON text: an array with one object per row.
+/// Writes a frame as JSON text: an array with one object per row, preserving
+/// the exact column order of `df`.
 ///
 /// # Errors
 ///
@@ -39,25 +41,71 @@ pub fn write_json(
     df: &DataFrame,
     pretty: bool,
 ) -> Result<String, String> {
+    let n_rows = df.n_rows();
+    if n_rows == 0 {
+        return Ok("[]".to_string());
+    }
     let names = df.column_names();
-    let mut rows = Vec::with_capacity(df.n_rows());
-    for row in 0..df.n_rows() {
-        let mut object = Map::new();
-        for name in &names {
-            let column = df
-                .column(name)
-                .ok_or_else(|| format!("unknown column `{name}`"))?;
-            object.insert((*name).to_string(), json_value(column, row)?);
-        }
-        rows.push(Value::Object(object));
+    let mut encoded_cols: Vec<(String, &Column)> = Vec::with_capacity(names.len());
+    for name in &names {
+        let column = df
+            .column(name)
+            .ok_or_else(|| format!("unknown column `{name}`"))?;
+        let key = serde_json::to_string(name).map_err(|error| error.to_string())?;
+        encoded_cols.push((key, column));
     }
-    let value = Value::Array(rows);
+    let mut out = String::new();
+    out.push('[');
     if pretty {
-        serde_json::to_string_pretty(&value)
-    } else {
-        serde_json::to_string(&value)
+        out.push('\n');
     }
-    .map_err(|error| error.to_string())
+    for row in 0..n_rows {
+        if row > 0 {
+            out.push(',');
+            if pretty {
+                out.push('\n');
+            }
+        }
+        if pretty {
+            out.push_str("  {");
+            if !encoded_cols.is_empty() {
+                out.push('\n');
+            }
+        } else {
+            out.push('{');
+        }
+        for (col_idx, (key, column)) in encoded_cols.iter().enumerate() {
+            if col_idx > 0 {
+                out.push(',');
+                if pretty {
+                    out.push('\n');
+                }
+            }
+            if pretty {
+                out.push_str("    ");
+                out.push_str(key);
+                out.push_str(": ");
+            } else {
+                out.push_str(key);
+                out.push(':');
+            }
+            write_json_cell(&mut out, column, row)?;
+        }
+        if pretty {
+            if !encoded_cols.is_empty() {
+                out.push('\n');
+                out.push_str("  ");
+            }
+            out.push('}');
+        } else {
+            out.push('}');
+        }
+    }
+    if pretty {
+        out.push('\n');
+    }
+    out.push(']');
+    Ok(out)
 }
 
 /// Reads a frame from a JSON file.
@@ -152,6 +200,9 @@ fn from_columns(object: &Map<String, Value>) -> Result<DataFrame, String> {
 fn json_column(values: &[Option<&Value>]) -> Result<Column, String> {
     let has_null = values.iter().any(Option::is_none);
     let present: Vec<&Value> = values.iter().filter_map(|value| *value).collect();
+    if !present.is_empty() && present.iter().all(|value| value.is_array()) {
+        return json_list_column(values);
+    }
     let dtype = if present.is_empty() {
         DType::Str
     } else if present
@@ -176,6 +227,7 @@ fn json_column(values: &[Option<&Value>]) -> Result<Column, String> {
     let mut floats = Vec::with_capacity(values.len());
     let mut booleans = Vec::with_capacity(values.len());
     let mut strings = Vec::with_capacity(values.len());
+    let mut bytes_vec = Vec::with_capacity(values.len());
     for value in values {
         mask.push(value.is_none());
         match dtype {
@@ -219,6 +271,17 @@ fn json_column(values: &[Option<&Value>]) -> Result<Column, String> {
                     | None => String::new(),
                 })
             },
+            | DType::Bytes => {
+                bytes_vec.push(match value {
+                    | Some(value) => {
+                        stringify(value)
+                            .ok_or_else(|| "unsupported json value in a bytes column".to_string())?
+                            .into_bytes()
+                    },
+                    | None => Vec::new(),
+                })
+            },
+            | DType::List => return Err("a json list column needs array values".to_string()),
         }
     }
     let base = match dtype {
@@ -226,11 +289,48 @@ fn json_column(values: &[Option<&Value>]) -> Result<Column, String> {
         | DType::Float => Column::Float(floats),
         | DType::Bool => Column::Bool(booleans),
         | DType::Str => Column::Str(strings),
+        | DType::Bytes => Column::Bytes(bytes_vec),
+        | DType::List => return Err("a json list column needs array values".to_string()),
     };
     if has_null {
         Ok(Column::Nullable(Box::new(base), mask))
     } else {
         Ok(base)
+    }
+}
+
+/// Builds a list column from JSON arrays, recursing for nested arrays.
+fn json_list_column(values: &[Option<&Value>]) -> Result<Column, String> {
+    let mut offsets = Vec::with_capacity(values.len() + 1);
+    offsets.push(0usize);
+    let mut flat: Vec<Option<&Value>> = Vec::new();
+    let mut mask = Vec::with_capacity(values.len());
+    for value in values {
+        match value {
+            | Some(Value::Array(items)) => {
+                mask.push(false);
+                flat.extend(items.iter().map(|item| {
+                    if item.is_null() {
+                        None
+                    } else {
+                        Some(item)
+                    }
+                }));
+            },
+            | Some(_) => return Err("json list column values must be arrays".to_string()),
+            | None => mask.push(true),
+        }
+        offsets.push(flat.len());
+    }
+    let inner = json_column(&flat)?;
+    let list = Column::List {
+        values: Box::new(inner),
+        offsets,
+    };
+    if mask.iter().any(|&missing| missing) {
+        Ok(Column::Nullable(Box::new(list), mask))
+    } else {
+        Ok(list)
     }
 }
 
@@ -244,41 +344,74 @@ fn stringify(value: &Value) -> Option<String> {
     }
 }
 
-/// Converts one frame cell into a JSON value.
-fn json_value(
+/// Appends one frame cell as a JSON value to `out`.
+fn write_json_cell(
+    out: &mut String,
     column: &Column,
     row: usize,
-) -> Result<Value, String> {
+) -> Result<(), String> {
     if column.is_null(row) {
-        return Ok(Value::Null);
+        out.push_str("null");
+        return Ok(());
     }
     match column {
         | Column::Int(values) => {
-            values
+            let value = values
                 .get(row)
-                .map(|value| Value::from(*value))
-                .ok_or_else(|| format!("row {row} is out of bounds"))
+                .ok_or_else(|| format!("row {row} is out of bounds"))?;
+            out.push_str(&value.to_string());
+            Ok(())
         },
         | Column::Float(values) => {
             let value = values
                 .get(row)
                 .copied()
                 .ok_or_else(|| format!("row {row} is out of bounds"))?;
-            Ok(Number::from_f64(value).map_or(Value::Null, Value::Number))
+            match Number::from_f64(value) {
+                | Some(number) => out.push_str(&number.to_string()),
+                | None => out.push_str("null"),
+            }
+            Ok(())
         },
         | Column::Bool(values) => {
-            values
+            let value = values
                 .get(row)
-                .map(|value| Value::Bool(*value))
-                .ok_or_else(|| format!("row {row} is out of bounds"))
+                .copied()
+                .ok_or_else(|| format!("row {row} is out of bounds"))?;
+            out.push_str(if value { "true" } else { "false" });
+            Ok(())
         },
         | Column::Str(values) => {
-            values
+            let value = values
                 .get(row)
-                .map(|value| Value::String(value.clone()))
-                .ok_or_else(|| format!("row {row} is out of bounds"))
+                .ok_or_else(|| format!("row {row} is out of bounds"))?;
+            let encoded = serde_json::to_string(value).map_err(|error| error.to_string())?;
+            out.push_str(&encoded);
+            Ok(())
         },
-        | Column::Nullable(inner, _) => json_value(inner, row),
+        | Column::Bytes(values) => {
+            let value = values
+                .get(row)
+                .ok_or_else(|| format!("row {row} is out of bounds"))?;
+            let encoded =
+                serde_json::to_string(&encode_hex(value)).map_err(|error| error.to_string())?;
+            out.push_str(&encoded);
+            Ok(())
+        },
+        | Column::Nullable(inner, _) => write_json_cell(out, inner, row),
+        | Column::List { values, offsets } => {
+            let start = offsets.get(row).copied().unwrap_or(0);
+            let end = offsets.get(row + 1).copied().unwrap_or(start);
+            out.push('[');
+            for index in start..end {
+                if index > start {
+                    out.push(',');
+                }
+                write_json_cell(out, values, index)?;
+            }
+            out.push(']');
+            Ok(())
+        },
     }
 }
 
@@ -359,7 +492,7 @@ mod tests {
     fn invalid_documents_are_rejected() {
         assert!(read_json_str("not json").is_err());
         assert!(read_json_str("42").is_err());
-        assert!(read_json_str(r#"[{"a":[1]}]"#).is_err());
+        assert!(read_json_str(r#"[{"a":{"b":1}}]"#).is_err());
         assert!(read_json_str(r#"{"a":[1],"b":[1,2]}"#).is_err());
     }
 
@@ -378,5 +511,33 @@ mod tests {
         let read = read_json_file(&path).expect("read");
         let _ = std::fs::remove_file(&path);
         assert_eq!(read.column("n"), frame.column("n"));
+    }
+
+    #[test]
+    fn write_json_preserves_column_order() {
+        let frame = DataFrame::new(vec![
+            ("zeta".to_string(), Column::Int(vec![1, 2])),
+            (
+                "alpha".to_string(),
+                Column::Str(vec!["a\"b".to_string(), "c".to_string()]),
+            ),
+            (
+                "mu".to_string(),
+                Column::Bytes(vec![vec![0x0a, 0xff], Vec::new()]),
+            ),
+        ])
+        .expect("frame");
+        let compact = write_json(&frame, false).expect("compact");
+        assert_eq!(
+            compact,
+            r#"[{"zeta":1,"alpha":"a\"b","mu":"0aff"},{"zeta":2,"alpha":"c","mu":""}]"#
+        );
+        let pretty = write_json(&frame, true).expect("pretty");
+        let pos_zeta = pretty.find("\"zeta\"").expect("zeta");
+        let pos_alpha = pretty.find("\"alpha\"").expect("alpha");
+        let pos_mu = pretty.find("\"mu\"").expect("mu");
+        assert!(pos_zeta < pos_alpha && pos_alpha < pos_mu);
+        let reparsed = read_json_str(&pretty).expect("reparse");
+        assert_eq!(reparsed.n_rows(), 2);
     }
 }

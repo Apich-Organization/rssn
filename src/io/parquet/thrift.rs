@@ -159,6 +159,10 @@ pub(super) struct ColumnMetaData {
     pub dictionary_page_offset: Option<i64>,
     /// Column statistics.
     pub statistics: Option<Statistics>,
+    /// Offset of the Bloom filter header in the file.
+    pub bloom_filter_offset: Option<i64>,
+    /// Length of the Bloom filter (header + bitset) in bytes.
+    pub bloom_filter_length: Option<i32>,
 }
 
 /// One column chunk inside a row group.
@@ -168,6 +172,49 @@ pub(super) struct ColumnChunk {
     pub file_offset: i64,
     /// Chunk metadata.
     pub meta_data: Option<ColumnMetaData>,
+    /// File offset of the `OffsetIndex`.
+    pub offset_index_offset: Option<i64>,
+    /// Byte length of the `OffsetIndex`.
+    pub offset_index_length: Option<i32>,
+    /// File offset of the `ColumnIndex`.
+    pub column_index_offset: Option<i64>,
+    /// Byte length of the `ColumnIndex`.
+    pub column_index_length: Option<i32>,
+}
+
+/// Location of a single data page within a column chunk.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct PageLocation {
+    /// File offset of the page header.
+    pub offset: i64,
+    /// Compressed byte size of the page (header + payload).
+    pub compressed_page_size: i32,
+    /// Index of the first row in this page within the row group.
+    pub first_row_index: i64,
+}
+
+/// Offset index for a column chunk.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct OffsetIndex {
+    /// Locations of all data pages in the column chunk.
+    pub page_locations: Vec<PageLocation>,
+    /// Optional unencoded byte-array data sizes per page.
+    pub unencoded_byte_array_data_bytes: Option<Vec<i64>>,
+}
+
+/// Column index (page-level min/max/null statistics) for a column chunk.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ColumnIndex {
+    /// Whether each page contains only null values.
+    pub null_pages: Vec<bool>,
+    /// Minimum values per page (PLAIN encoded).
+    pub min_values: Vec<Vec<u8>>,
+    /// Maximum values per page (PLAIN encoded).
+    pub max_values: Vec<Vec<u8>>,
+    /// Boundary order (`0` = UNORDERED, `1` = ASCENDING, `2` = DESCENDING).
+    pub boundary_order: i32,
+    /// Optional null count per page.
+    pub null_counts: Option<Vec<i64>>,
 }
 
 /// A row group.
@@ -211,17 +258,49 @@ pub(super) struct DataPageHeader {
     pub repetition_level_encoding: i32,
 }
 
+/// Header of a version-2 data page.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub(super) struct DataPageHeaderV2 {
+    /// Number of values, including missing ones.
+    pub num_values: i32,
+    /// Number of null values.
+    pub num_nulls: i32,
+    /// Number of rows.
+    pub num_rows: i32,
+    /// Value encoding code.
+    pub encoding: i32,
+    /// Length of the definition levels, in bytes.
+    pub definition_levels_byte_length: i32,
+    /// Length of the repetition levels, in bytes.
+    pub repetition_levels_byte_length: i32,
+    /// Whether the value section is compressed.
+    pub is_compressed: bool,
+}
+
+/// Header of a dictionary page.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub(super) struct DictionaryPageHeader {
+    /// Number of values in the dictionary.
+    pub num_values: i32,
+    /// Value encoding code (normally `PLAIN` or `PLAIN_DICTIONARY`).
+    pub encoding: i32,
+}
+
 /// Header preceding every page.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub(super) struct PageHeader {
-    /// Page type code: 0 is a data page.
+    /// Page type code: 0 is a data page, 2 is a dictionary page.
     pub type_: i32,
     /// Uncompressed payload size.
     pub uncompressed_page_size: i32,
     /// Compressed payload size.
     pub compressed_page_size: i32,
-    /// Data-page details, present for data pages.
+    /// Data-page details, present for version-1 data pages.
     pub data_page: Option<DataPageHeader>,
+    /// Version-2 data-page details, present for version-2 data pages.
+    pub data_page_v2: Option<DataPageHeaderV2>,
+    /// Dictionary-page details, present for dictionary pages.
+    pub dictionary_page: Option<DictionaryPageHeader>,
 }
 
 /// Encodes a [`FileMetaData`] value.
@@ -329,6 +408,22 @@ fn encode_column_chunk(
         write_field(out, &mut last, 3, T_STRUCT);
         encode_column_metadata(out, metadata);
     }
+    if let Some(value) = chunk.offset_index_offset {
+        write_field(out, &mut last, 4, T_I64);
+        write_zigzag(out, value);
+    }
+    if let Some(value) = chunk.offset_index_length {
+        write_field(out, &mut last, 5, T_I32);
+        write_zigzag(out, i64::from(value));
+    }
+    if let Some(value) = chunk.column_index_offset {
+        write_field(out, &mut last, 6, T_I64);
+        write_zigzag(out, value);
+    }
+    if let Some(value) = chunk.column_index_length {
+        write_field(out, &mut last, 7, T_I32);
+        write_zigzag(out, i64::from(value));
+    }
     out.push(0);
 }
 
@@ -368,7 +463,233 @@ fn encode_column_metadata(
         write_field(out, &mut last, 12, T_STRUCT);
         encode_statistics(out, statistics);
     }
+    if let Some(value) = metadata.bloom_filter_offset {
+        write_field(out, &mut last, 14, T_I64);
+        write_zigzag(out, value);
+    }
+    if let Some(value) = metadata.bloom_filter_length {
+        write_field(out, &mut last, 15, T_I32);
+        write_zigzag(out, i64::from(value));
+    }
     out.push(0);
+}
+
+/// Encodes a Parquet `BloomFilterHeader` (BLOCK, XXHASH, UNCOMPRESSED).
+pub(super) fn encode_bloom_filter_header(num_bytes: i32) -> Vec<u8> {
+    let mut out = Vec::new();
+    let mut last = 0i16;
+    // 1: numBytes (i32)
+    write_field(&mut out, &mut last, 1, T_I32);
+    write_zigzag(&mut out, i64::from(num_bytes));
+    // 2: algorithm (union struct { 1: BLOCK {} })
+    write_field(&mut out, &mut last, 2, T_STRUCT);
+    let mut inner = 0i16;
+    write_field(&mut out, &mut inner, 1, T_STRUCT);
+    out.push(0);
+    out.push(0);
+    // 3: hash (union struct { 1: XXHASH {} })
+    write_field(&mut out, &mut last, 3, T_STRUCT);
+    let mut inner = 0i16;
+    write_field(&mut out, &mut inner, 1, T_STRUCT);
+    out.push(0);
+    out.push(0);
+    // 4: compression (union struct { 1: UNCOMPRESSED {} })
+    write_field(&mut out, &mut last, 4, T_STRUCT);
+    let mut inner = 0i16;
+    write_field(&mut out, &mut inner, 1, T_STRUCT);
+    out.push(0);
+    out.push(0);
+    out.push(0);
+    out
+}
+
+/// Parses a Parquet `BloomFilterHeader` and returns `(num_bytes, header_byte_len)`.
+pub(super) fn parse_bloom_filter_header(buf: &[u8]) -> Result<(usize, usize), String> {
+    let mut decoder = Decoder::new(buf);
+    let mut num_bytes: Option<i32> = None;
+    let mut last = 0i16;
+    while let Some((id, kind)) = decoder.field_header(&mut last)? {
+        match id {
+            | 1 => {
+                expect(kind, T_I32)?;
+                num_bytes = Some(decoder.i32()?);
+            },
+            | _ => decoder.skip(kind)?,
+        }
+    }
+    let nb = num_bytes.ok_or_else(|| "BloomFilterHeader missing numBytes".to_owned())?;
+    let nb_usize =
+        usize::try_from(nb).map_err(|_| "negative BloomFilterHeader numBytes".to_owned())?;
+    Ok((nb_usize, decoder.pos()))
+}
+
+/// Encodes an [`OffsetIndex`].
+pub(super) fn encode_offset_index(index: &OffsetIndex) -> Vec<u8> {
+    let mut out = Vec::new();
+    let mut last = 0i16;
+    write_field(&mut out, &mut last, 1, T_LIST);
+    write_list(&mut out, T_STRUCT, index.page_locations.len());
+    for loc in &index.page_locations {
+        let mut inner = 0i16;
+        write_field(&mut out, &mut inner, 1, T_I64);
+        write_zigzag(&mut out, loc.offset);
+        write_field(&mut out, &mut inner, 2, T_I32);
+        write_zigzag(&mut out, i64::from(loc.compressed_page_size));
+        write_field(&mut out, &mut inner, 3, T_I64);
+        write_zigzag(&mut out, loc.first_row_index);
+        out.push(0);
+    }
+    if let Some(sizes) = &index.unencoded_byte_array_data_bytes {
+        write_field(&mut out, &mut last, 2, T_LIST);
+        write_list(&mut out, T_I64, sizes.len());
+        for &s in sizes {
+            write_zigzag(&mut out, s);
+        }
+    }
+    out.push(0);
+    out
+}
+
+/// Parses an [`OffsetIndex`].
+pub(super) fn parse_offset_index(buf: &[u8]) -> Result<OffsetIndex, String> {
+    let mut decoder = Decoder::new(buf);
+    let mut idx = OffsetIndex::default();
+    let mut last = 0i16;
+    while let Some((id, kind)) = decoder.field_header(&mut last)? {
+        match id {
+            | 1 => {
+                expect(kind, T_LIST)?;
+                let (elem, len) = decoder.list_header()?;
+                if elem != T_STRUCT {
+                    return Err("OffsetIndex page_locations must hold structs".to_owned());
+                }
+                for _ in 0..len {
+                    let mut loc = PageLocation::default();
+                    let mut inner_last = 0i16;
+                    while let Some((fid, fkind)) = decoder.field_header(&mut inner_last)? {
+                        match fid {
+                            | 1 => {
+                                expect(fkind, T_I64)?;
+                                loc.offset = decoder.i64()?;
+                            },
+                            | 2 => {
+                                expect(fkind, T_I32)?;
+                                loc.compressed_page_size = decoder.i32()?;
+                            },
+                            | 3 => {
+                                expect(fkind, T_I64)?;
+                                loc.first_row_index = decoder.i64()?;
+                            },
+                            | _ => decoder.skip(fkind)?,
+                        }
+                    }
+                    idx.page_locations.push(loc);
+                }
+            },
+            | 2 => {
+                expect(kind, T_LIST)?;
+                let (elem, len) = decoder.list_header()?;
+                if elem != T_I64 {
+                    return Err("unencoded_byte_array_data_bytes must hold i64".to_owned());
+                }
+                let mut sizes = Vec::with_capacity(len);
+                for _ in 0..len {
+                    sizes.push(decoder.i64()?);
+                }
+                idx.unencoded_byte_array_data_bytes = Some(sizes);
+            },
+            | _ => decoder.skip(kind)?,
+        }
+    }
+    Ok(idx)
+}
+
+/// Encodes a [`ColumnIndex`].
+pub(super) fn encode_column_index(index: &ColumnIndex) -> Vec<u8> {
+    let mut out = Vec::new();
+    let mut last = 0i16;
+    write_field(&mut out, &mut last, 1, T_LIST);
+    write_list(&mut out, T_BOOL_TRUE, index.null_pages.len());
+    for &b in &index.null_pages {
+        out.push(u8::from(b));
+    }
+    write_field(&mut out, &mut last, 2, T_LIST);
+    write_list(&mut out, T_BINARY, index.min_values.len());
+    for v in &index.min_values {
+        write_binary(&mut out, v);
+    }
+    write_field(&mut out, &mut last, 3, T_LIST);
+    write_list(&mut out, T_BINARY, index.max_values.len());
+    for v in &index.max_values {
+        write_binary(&mut out, v);
+    }
+    write_field(&mut out, &mut last, 4, T_I32);
+    write_zigzag(&mut out, i64::from(index.boundary_order));
+    if let Some(counts) = &index.null_counts {
+        write_field(&mut out, &mut last, 5, T_LIST);
+        write_list(&mut out, T_I64, counts.len());
+        for &c in counts {
+            write_zigzag(&mut out, c);
+        }
+    }
+    out.push(0);
+    out
+}
+
+/// Parses a [`ColumnIndex`].
+pub(super) fn parse_column_index(buf: &[u8]) -> Result<ColumnIndex, String> {
+    let mut decoder = Decoder::new(buf);
+    let mut idx = ColumnIndex::default();
+    let mut last = 0i16;
+    while let Some((id, kind)) = decoder.field_header(&mut last)? {
+        match id {
+            | 1 => {
+                expect(kind, T_LIST)?;
+                let (_, len) = decoder.list_header()?;
+                for _ in 0..len {
+                    idx.null_pages.push(decoder.byte()? != 0);
+                }
+            },
+            | 2 => {
+                expect(kind, T_LIST)?;
+                let (elem, len) = decoder.list_header()?;
+                if elem != T_BINARY {
+                    return Err("ColumnIndex min_values must hold binary".to_owned());
+                }
+                for _ in 0..len {
+                    idx.min_values.push(decoder.binary()?.to_vec());
+                }
+            },
+            | 3 => {
+                expect(kind, T_LIST)?;
+                let (elem, len) = decoder.list_header()?;
+                if elem != T_BINARY {
+                    return Err("ColumnIndex max_values must hold binary".to_owned());
+                }
+                for _ in 0..len {
+                    idx.max_values.push(decoder.binary()?.to_vec());
+                }
+            },
+            | 4 => {
+                expect(kind, T_I32)?;
+                idx.boundary_order = decoder.i32()?;
+            },
+            | 5 => {
+                expect(kind, T_LIST)?;
+                let (elem, len) = decoder.list_header()?;
+                if elem != T_I64 {
+                    return Err("ColumnIndex null_counts must hold i64".to_owned());
+                }
+                let mut counts = Vec::with_capacity(len);
+                for _ in 0..len {
+                    counts.push(decoder.i64()?);
+                }
+                idx.null_counts = Some(counts);
+            },
+            | _ => decoder.skip(kind)?,
+        }
+    }
+    Ok(idx)
 }
 
 /// Encodes statistics inline.
@@ -421,6 +742,42 @@ pub(super) fn encode_page_header(header: &PageHeader) -> Vec<u8> {
         write_zigzag(&mut out, i64::from(data.definition_level_encoding));
         write_field(&mut out, &mut inner, 4, T_I32);
         write_zigzag(&mut out, i64::from(data.repetition_level_encoding));
+        out.push(0);
+    }
+    if let Some(dict) = &header.dictionary_page {
+        write_field(&mut out, &mut last, 7, T_STRUCT);
+        let mut inner = 0i16;
+        write_field(&mut out, &mut inner, 1, T_I32);
+        write_zigzag(&mut out, i64::from(dict.num_values));
+        write_field(&mut out, &mut inner, 2, T_I32);
+        write_zigzag(&mut out, i64::from(dict.encoding));
+        out.push(0);
+    }
+    if let Some(data) = &header.data_page_v2 {
+        write_field(&mut out, &mut last, 8, T_STRUCT);
+        let mut inner = 0i16;
+        write_field(&mut out, &mut inner, 1, T_I32);
+        write_zigzag(&mut out, i64::from(data.num_values));
+        write_field(&mut out, &mut inner, 2, T_I32);
+        write_zigzag(&mut out, i64::from(data.num_nulls));
+        write_field(&mut out, &mut inner, 3, T_I32);
+        write_zigzag(&mut out, i64::from(data.num_rows));
+        write_field(&mut out, &mut inner, 4, T_I32);
+        write_zigzag(&mut out, i64::from(data.encoding));
+        write_field(&mut out, &mut inner, 5, T_I32);
+        write_zigzag(&mut out, i64::from(data.definition_levels_byte_length));
+        write_field(&mut out, &mut inner, 6, T_I32);
+        write_zigzag(&mut out, i64::from(data.repetition_levels_byte_length));
+        write_field(
+            &mut out,
+            &mut inner,
+            7,
+            if data.is_compressed {
+                T_BOOL_TRUE
+            } else {
+                T_BOOL_FALSE
+            },
+        );
         out.push(0);
     }
     out.push(0);
@@ -784,6 +1141,22 @@ fn parse_column_chunk(decoder: &mut Decoder<'_>) -> Result<ColumnChunk, String> 
                 expect(kind, T_STRUCT)?;
                 chunk.meta_data = Some(parse_column_metadata(decoder)?);
             },
+            | 4 => {
+                expect(kind, T_I64)?;
+                chunk.offset_index_offset = Some(decoder.i64()?);
+            },
+            | 5 => {
+                expect(kind, T_I32)?;
+                chunk.offset_index_length = Some(decoder.i32()?);
+            },
+            | 6 => {
+                expect(kind, T_I64)?;
+                chunk.column_index_offset = Some(decoder.i64()?);
+            },
+            | 7 => {
+                expect(kind, T_I32)?;
+                chunk.column_index_length = Some(decoder.i32()?);
+            },
             | _ => decoder.skip(kind)?,
         }
     }
@@ -849,6 +1222,14 @@ fn parse_column_metadata(decoder: &mut Decoder<'_>) -> Result<ColumnMetaData, St
             | 12 => {
                 expect(kind, T_STRUCT)?;
                 metadata.statistics = Some(parse_statistics(decoder)?);
+            },
+            | 14 => {
+                expect(kind, T_I64)?;
+                metadata.bloom_filter_offset = Some(decoder.i64()?);
+            },
+            | 15 => {
+                expect(kind, T_I32)?;
+                metadata.bloom_filter_length = Some(decoder.i32()?);
             },
             | _ => decoder.skip(kind)?,
         }
@@ -916,6 +1297,76 @@ fn parse_page_header(decoder: &mut Decoder<'_>) -> Result<PageHeader, String> {
             | 5 => {
                 expect(kind, T_STRUCT)?;
                 header.data_page = Some(parse_data_page_header(decoder)?);
+            },
+            | 7 => {
+                expect(kind, T_STRUCT)?;
+                header.dictionary_page = Some(parse_dictionary_page_header(decoder)?);
+            },
+            | 8 => {
+                expect(kind, T_STRUCT)?;
+                header.data_page_v2 = Some(parse_data_page_header_v2(decoder)?);
+            },
+            | _ => decoder.skip(kind)?,
+        }
+    }
+    Ok(header)
+}
+
+/// Parses a dictionary page header.
+fn parse_dictionary_page_header(decoder: &mut Decoder<'_>) -> Result<DictionaryPageHeader, String> {
+    let mut header = DictionaryPageHeader::default();
+    let mut last = 0i16;
+    while let Some((id, kind)) = decoder.field_header(&mut last)? {
+        match id {
+            | 1 => {
+                expect(kind, T_I32)?;
+                header.num_values = decoder.i32()?;
+            },
+            | 2 => {
+                expect(kind, T_I32)?;
+                header.encoding = decoder.i32()?;
+            },
+            | _ => decoder.skip(kind)?,
+        }
+    }
+    Ok(header)
+}
+
+/// Parses a version-2 data page header.
+fn parse_data_page_header_v2(decoder: &mut Decoder<'_>) -> Result<DataPageHeaderV2, String> {
+    let mut header = DataPageHeaderV2 {
+        is_compressed: true,
+        ..DataPageHeaderV2::default()
+    };
+    let mut last = 0i16;
+    while let Some((id, kind)) = decoder.field_header(&mut last)? {
+        match id {
+            | 1 => {
+                expect(kind, T_I32)?;
+                header.num_values = decoder.i32()?;
+            },
+            | 2 => {
+                expect(kind, T_I32)?;
+                header.num_nulls = decoder.i32()?;
+            },
+            | 3 => {
+                expect(kind, T_I32)?;
+                header.num_rows = decoder.i32()?;
+            },
+            | 4 => {
+                expect(kind, T_I32)?;
+                header.encoding = decoder.i32()?;
+            },
+            | 5 => {
+                expect(kind, T_I32)?;
+                header.definition_levels_byte_length = decoder.i32()?;
+            },
+            | 6 => {
+                expect(kind, T_I32)?;
+                header.repetition_levels_byte_length = decoder.i32()?;
+            },
+            | 7 => {
+                header.is_compressed = kind == T_BOOL_TRUE;
             },
             | _ => decoder.skip(kind)?,
         }
@@ -994,7 +1445,9 @@ mod tests {
                             min_value: Some(vec![1, 0, 0, 0, b'a']),
                             max_value: Some(vec![1, 0, 0, 0, b'z']),
                         }),
+                        ..Default::default()
                     }),
+                    ..Default::default()
                 }],
                 total_byte_size: 42,
                 num_rows: 3,
@@ -1024,11 +1477,29 @@ mod tests {
                 definition_level_encoding: 3,
                 repetition_level_encoding: 3,
             }),
+            data_page_v2: None,
+            dictionary_page: None,
         };
         let encoded = encode_page_header(&header);
         let (decoded, used) = decode_page_header(&encoded).expect("decode");
         assert_eq!(decoded, header);
         assert_eq!(used, encoded.len());
+
+        let dict_header = PageHeader {
+            type_: 2,
+            uncompressed_page_size: 32,
+            compressed_page_size: 32,
+            data_page: None,
+            data_page_v2: None,
+            dictionary_page: Some(DictionaryPageHeader {
+                num_values: 4,
+                encoding: 0,
+            }),
+        };
+        let encoded_dict = encode_page_header(&dict_header);
+        let (decoded_dict, used_dict) = decode_page_header(&encoded_dict).expect("decode dict");
+        assert_eq!(decoded_dict, dict_header);
+        assert_eq!(used_dict, encoded_dict.len());
     }
 
     #[test]

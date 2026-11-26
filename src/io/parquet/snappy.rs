@@ -1,8 +1,117 @@
-//! Snappy block-format decompression.
+//! Snappy block-format compression and decompression.
 //!
 //! Parquet stores Snappy-compressed pages as one block: a varint with the
-//! uncompressed length followed by literal and copy tags. Compression is not
-//! implemented because the writer always emits uncompressed pages.
+//! uncompressed length followed by literal and copy tags.
+
+use super::thrift::write_varint;
+
+/// Hash table bit width for LZ77 match finding.
+const HASH_BITS: u32 = 14;
+/// Hash table entry count.
+const HASH_SIZE: usize = 1 << HASH_BITS;
+
+/// Hashes four bytes at `input[pos..pos + 4]` into a table slot.
+fn hash4(
+    input: &[u8],
+    pos: usize,
+) -> usize {
+    let v = u32::from_le_bytes([input[pos], input[pos + 1], input[pos + 2], input[pos + 3]]);
+    (v.wrapping_mul(0x1e35_a7bd) >> (32 - HASH_BITS)) as usize
+}
+
+/// Appends a Snappy literal element to `out`.
+fn emit_literal(
+    out: &mut Vec<u8>,
+    literal: &[u8],
+) {
+    if literal.is_empty() {
+        return;
+    }
+    let n = literal.len() - 1;
+    if n < 60 {
+        out.push((n as u8) << 2);
+    } else if n <= 0xff {
+        out.push(60 << 2);
+        out.push(n as u8);
+    } else if n <= 0xffff {
+        out.push(61 << 2);
+        out.extend_from_slice(&(n as u16).to_le_bytes());
+    } else if n <= 0xff_ffff {
+        out.push(62 << 2);
+        out.push((n & 0xff) as u8);
+        out.push(((n >> 8) & 0xff) as u8);
+        out.push(((n >> 16) & 0xff) as u8);
+    } else {
+        out.push(63 << 2);
+        out.extend_from_slice(&(n as u32).to_le_bytes());
+    }
+    out.extend_from_slice(literal);
+}
+
+/// Appends one or more Snappy copy tags for `(offset, len)` to `out`.
+fn emit_copy(
+    out: &mut Vec<u8>,
+    offset: usize,
+    mut len: usize,
+) {
+    while len > 0 {
+        let chunk = len.min(64);
+        if (4..=11).contains(&chunk) && offset <= 2047 {
+            let tag = (((offset >> 8) as u8) << 5) | (((chunk - 4) as u8) << 2) | 1;
+            out.push(tag);
+            out.push((offset & 0xff) as u8);
+        } else if offset <= 65535 {
+            let tag = (((chunk - 1) as u8) << 2) | 2;
+            out.push(tag);
+            out.extend_from_slice(&(offset as u16).to_le_bytes());
+        } else {
+            let tag = (((chunk - 1) as u8) << 2) | 3;
+            out.push(tag);
+            out.extend_from_slice(&(offset as u32).to_le_bytes());
+        }
+        len -= chunk;
+    }
+}
+
+/// Compresses `input` into a single Snappy block.
+pub(crate) fn compress(input: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(input.len() / 2 + 16);
+    write_varint(&mut out, input.len() as u64);
+    if input.is_empty() {
+        return out;
+    }
+    let mut table = vec![usize::MAX; HASH_SIZE];
+    let mut next_emit = 0usize;
+    let mut ip = 0usize;
+    while ip + 4 <= input.len() {
+        let h = hash4(input, ip);
+        let candidate = table[h];
+        table[h] = ip;
+        if candidate != usize::MAX
+            && ip > candidate
+            && ip - candidate <= 65535
+            && input[candidate..candidate + 4] == input[ip..ip + 4]
+        {
+            emit_literal(&mut out, &input[next_emit..ip]);
+            let offset = ip - candidate;
+            let mut match_len = 4usize;
+            while ip + match_len < input.len()
+                && input[candidate + match_len] == input[ip + match_len]
+            {
+                match_len += 1;
+            }
+            emit_copy(&mut out, offset, match_len);
+            ip += match_len;
+            next_emit = ip;
+        } else {
+            ip += 1;
+        }
+    }
+    if next_emit < input.len() {
+        emit_literal(&mut out, &input[next_emit..]);
+    }
+    out
+}
 
 /// Reads a LEB128 varint from `bytes` starting at `start`.
 fn read_varint(
@@ -62,7 +171,7 @@ fn copy_back(
 ///
 /// Returns an error when the block is truncated, declares an impossible
 /// length, or contains an invalid tag.
-pub(super) fn decompress(input: &[u8]) -> Result<Vec<u8>, String> {
+pub(crate) fn decompress(input: &[u8]) -> Result<Vec<u8>, String> {
     let (declared, mut pos) = read_varint(input, 0)?;
     let expected = usize::try_from(declared)
         .map_err(|_| "snappy length does not fit in memory".to_string())?;
@@ -196,5 +305,39 @@ mod tests {
         block.push((2 - 1) << 2);
         block.extend_from_slice(b"ab");
         assert!(decompress(&block).is_err());
+    }
+
+    #[test]
+    fn compress_round_trip_various_inputs() {
+        // Empty, tiny, and short literal inputs.
+        for sample in [
+            &b""[..],
+            &b"a"[..],
+            &b"abc"[..],
+            &b"hello world"[..],
+            &b"abababababababababababab"[..],
+        ] {
+            let compressed = compress(sample);
+            assert_eq!(decompress(&compressed).expect("decompress"), sample);
+        }
+
+        // Long repetitive input should compress significantly.
+        let repeated = b"The quick brown fox jumps over the lazy dog. ".repeat(200);
+        let compressed = compress(&repeated);
+        assert!(compressed.len() < repeated.len() / 4);
+        assert_eq!(decompress(&compressed).expect("decompress"), repeated);
+
+        // Long non-repetitive literal (> 256 bytes to exercise 2-byte literal length).
+        let mut pseudo_random = Vec::with_capacity(4096);
+        let mut state = 0x1234_5678u32;
+        for _ in 0..4096 {
+            state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            pseudo_random.push((state >> 24) as u8);
+        }
+        let compressed_rand = compress(&pseudo_random);
+        assert_eq!(
+            decompress(&compressed_rand).expect("decompress"),
+            pseudo_random
+        );
     }
 }
