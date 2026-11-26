@@ -713,12 +713,22 @@ pub fn resample_poly(
     filters::resample_poly(samples, up, down)
 }
 
-/// Linear FIR/IIR digital filter (`a[0] * y[n] = sum_k b[k]*x[n-k] - sum_{k>=1} a[k]*y[n-k]`).
+/// Linear FIR/IIR digital filter (`a[0] * y[n] = sum_k b[k]*x[n-k] - sum_{k>=1} a[k]*y[n-k]`)
+/// evaluated via Direct Form II Transposed with pooled scratch state.
 #[must_use]
 pub fn lfilter(
     b: &[f64],
     a: &[f64],
     x: &[f64],
+) -> Vec<f64> {
+    lfilter_with_zi(b, a, x, None)
+}
+
+fn lfilter_with_zi(
+    b: &[f64],
+    a: &[f64],
+    x: &[f64],
+    zi: Option<&[f64]>,
 ) -> Vec<f64> {
     if x.is_empty() || b.is_empty() || a.is_empty() {
         return Vec::new();
@@ -727,32 +737,130 @@ pub fn lfilter(
     if a0 == 0.0 {
         return vec![f64::NAN; x.len()];
     }
-    let numerator: Vec<_> = b
-        .iter()
-        .take(x.len())
-        .map(|coefficient| coefficient / a0)
-        .collect();
-    let feedback: Vec<_> = a
-        .iter()
-        .skip(1)
-        .take(x.len() - 1)
-        .map(|coefficient| coefficient / a0)
-        .collect();
+    let order = b.len().max(a.len());
+    let mut b_norm = super::reuse::f64_scratch(order);
+    b_norm.clear();
+    for i in 0..order {
+        b_norm.push(b.get(i).copied().unwrap_or(0.0) / a0);
+    }
+    let mut a_norm = super::reuse::f64_scratch(order);
+    a_norm.clear();
+    for i in 0..order {
+        a_norm.push(a.get(i).copied().unwrap_or(0.0) / a0);
+    }
+    let state_len = order.saturating_sub(1);
+    let mut z = super::reuse::f64_scratch(state_len.max(1));
+    z.clear();
+    if let Some(init) = zi {
+        for i in 0..state_len {
+            z.push(init.get(i).copied().unwrap_or(0.0));
+        }
+    } else {
+        z.resize(state_len, 0.0);
+    }
+    let b0 = b_norm[0];
+
     let mut y = vec![0.0; x.len()];
-    for (n, &sample) in x.iter().enumerate() {
-        let mut acc = 0.0;
-        for (&tap, &input) in numerator
-            .iter()
-            .zip(std::iter::once(&sample).chain(x[..n].iter().rev()))
-        {
-            acc += tap * input;
+    if state_len == 0 {
+        for (dst, &sample) in y.iter_mut().zip(x) {
+            *dst = b0 * sample;
         }
-        for (&tap, &previous) in feedback.iter().zip(y[..n].iter().rev()) {
-            acc -= tap * previous;
+        return y;
+    }
+    for (dst, &sample) in y.iter_mut().zip(x) {
+        let yi = b0.mul_add(sample, z[0]);
+        *dst = yi;
+        for k in 0..state_len - 1 {
+            z[k] = b_norm[k + 1].mul_add(sample, (-a_norm[k + 1]).mul_add(yi, z[k + 1]));
         }
-        y[n] = acc;
+        z[state_len - 1] = b_norm[state_len].mul_add(sample, -a_norm[state_len] * yi);
     }
     y
+}
+
+/// Steady-state initial conditions `zi` for Direct Form II Transposed `lfilter`
+/// such that a constant unit step input produces zero startup transient.
+fn lfilter_zi(
+    b: &[f64],
+    a: &[f64],
+) -> Option<Vec<f64>> {
+    let a0 = a.first().copied()?;
+    if a0 == 0.0 {
+        return None;
+    }
+    let order = b.len().max(a.len());
+    let m = order.saturating_sub(1);
+    if m == 0 {
+        return Some(Vec::new());
+    }
+    let b_norm: Vec<f64> = (0..order)
+        .map(|i| b.get(i).copied().unwrap_or(0.0) / a0)
+        .collect();
+    let a_norm: Vec<f64> = (0..order)
+        .map(|i| a.get(i).copied().unwrap_or(0.0) / a0)
+        .collect();
+    // Solve (I - A_companion) * zi = b[1..] - a[1..] * b[0].
+    let mut mat = super::dense::Mat::identity(m);
+    for i in 0..m {
+        mat.set(i, 0, mat.at(i, 0) + a_norm[i + 1]);
+        if i + 1 < m {
+            mat.set(i, i + 1, mat.at(i, i + 1) - 1.0);
+        }
+    }
+    let rhs: Vec<f64> = (0..m)
+        .map(|i| b_norm[i + 1] - a_norm[i + 1] * b_norm[0])
+        .collect();
+    let lu = super::dense::lu_factor(&mat).ok()?;
+    let zi = lu.solve(&rhs);
+    zi.iter().all(|v| v.is_finite()).then_some(zi)
+}
+
+/// Zero-phase forward-backward digital filter (`filtfilt`) using odd-reflection
+/// edge padding (`padlen = 3 * (max(b.len(), a.len()) - 1)`) and steady-state
+/// initial conditions.
+///
+/// Applies [`lfilter`] forward and then backward to eliminate phase distortion.
+/// For signals shorter than or equal to the padding length, pads up to `x.len() - 1`.
+#[must_use]
+pub fn filtfilt(
+    b: &[f64],
+    a: &[f64],
+    x: &[f64],
+) -> Vec<f64> {
+    if x.is_empty() || b.is_empty() || a.is_empty() {
+        return Vec::new();
+    }
+    if x.len() == 1 {
+        let fwd = lfilter(b, a, x);
+        return lfilter(b, a, &fwd);
+    }
+    let ntaps = b.len().max(a.len());
+    let padlen = (3 * ntaps.saturating_sub(1)).min(x.len() - 1);
+    let mut ext = super::reuse::f64_scratch(x.len() + 2 * padlen);
+    ext.clear();
+    // Odd reflection at left boundary: 2 * x[0] - x[padlen..=1].
+    let x0 = x[0];
+    for i in (1..=padlen).rev() {
+        ext.push(2.0 * x0 - x[i]);
+    }
+    ext.extend_from_slice(x);
+    // Odd reflection at right boundary: 2 * x[n-1] - x[n-2..n-1-padlen].
+    let xn = x[x.len() - 1];
+    for i in 1..=padlen {
+        ext.push(2.0 * xn - x[x.len() - 1 - i]);
+    }
+    let zi_unit = lfilter_zi(b, a);
+    let zi_fwd: Option<Vec<f64>> = zi_unit
+        .as_ref()
+        .map(|z| z.iter().map(|&v| v * ext[0]).collect());
+    let mut fwd = lfilter_with_zi(b, a, &ext, zi_fwd.as_deref());
+    fwd.reverse();
+    let zi_bwd: Option<Vec<f64>> = zi_unit
+        .as_ref()
+        .map(|z| z.iter().map(|&v| v * fwd[0]).collect());
+    let mut bwd = lfilter_with_zi(b, a, &fwd, zi_bwd.as_deref());
+    bwd.reverse();
+    bwd[padlen..padlen + x.len()].to_vec()
 }
 
 fn poly_mul(
@@ -861,15 +969,63 @@ pub fn savgol_filter(
     }
     let half = window_len / 2;
     let n = x.len();
-    (0..n)
-        .map(|i| {
-            let mut sum = 0.0;
-            for (k, &ck) in coeffs.iter().enumerate() {
-                let idx = (i as isize + k as isize - half as isize)
-                    .clamp(0, n.saturating_sub(1) as isize) as usize;
-                sum += ck * x.get(idx).copied().unwrap_or(0.0);
-            }
-            sum
-        })
-        .collect()
+    let mut out = vec![0.0; n];
+    let left_end = half.min(n);
+    for i in 0..left_end {
+        let mut sum = 0.0;
+        for (k, &ck) in coeffs.iter().enumerate() {
+            let idx = (i as isize + k as isize - half as isize)
+                .clamp(0, n.saturating_sub(1) as isize) as usize;
+            sum += ck * x[idx];
+        }
+        out[i] = sum;
+    }
+    if n > 2 * half {
+        for i in half..n - half {
+            out[i] = super::simd::dot_f64(&coeffs, &x[i - half..i + half + 1]);
+        }
+    }
+    let right_start = n.saturating_sub(half).max(left_end);
+    for i in right_start..n {
+        let mut sum = 0.0;
+        for (k, &ck) in coeffs.iter().enumerate() {
+            let idx = (i as isize + k as isize - half as isize)
+                .clamp(0, n.saturating_sub(1) as isize) as usize;
+            sum += ck * x[idx];
+        }
+        out[i] = sum;
+    }
+    out
+}
+
+#[cfg(test)]
+mod filter_tests {
+    use super::*;
+
+    #[test]
+    fn filtfilt_preserves_constant_and_symmetry() {
+        // FIR unit-DC-gain filter preserves constants exactly.
+        let b = [0.25, 0.5, 0.25];
+        let a = [1.0];
+        let constant = vec![3.5; 32];
+        let out_const = filtfilt(&b, &a, &constant);
+        assert_eq!(out_const.len(), constant.len());
+        for &v in &out_const {
+            assert!((v - 3.5).abs() < 1e-12);
+        }
+
+        // IIR unit-DC-gain filter also preserves constants via steady-state zi.
+        let out_iir_const = filtfilt(&[0.2, 0.2, 0.2], &[1.0, -0.4], &constant);
+        for &v in &out_iir_const {
+            assert!((v - 3.5).abs() < 1e-11);
+        }
+
+        // Zero-phase property: symmetric pulse stays symmetric around its center.
+        let mut pulse = vec![0.0; 61];
+        pulse[30] = 1.0;
+        let y = filtfilt(&[0.2, 0.2, 0.2], &[1.0, -0.4], &pulse);
+        for i in 0..30 {
+            assert!((y[i] - y[60 - i]).abs() < 1e-11);
+        }
+    }
 }

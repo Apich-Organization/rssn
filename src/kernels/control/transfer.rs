@@ -98,6 +98,12 @@ fn poly_eval(
 impl TransferFunction {
     /// Builds a transfer function after trimming leading zero coefficients.
     ///
+    /// Improper rational functions (`deg(num) > deg(den)`, such as a pure
+    /// differentiator or PD controller) are permitted here so they can be used
+    /// in frequency-response and block-algebra calculations; use
+    /// [`TransferFunction::new_proper`] when a state-space realisation is
+    /// required.
+    ///
     /// # Errors
     /// Returns an error when the denominator is zero or when a coefficient is
     /// not finite.
@@ -119,6 +125,41 @@ impl TransferFunction {
             num
         };
         Ok(Self { num, den })
+    }
+
+    /// Builds a proper transfer function (`deg(num) <= deg(den)`) after
+    /// trimming leading zero coefficients.
+    ///
+    /// # Errors
+    /// Returns an error when [`TransferFunction::new`] fails or when the
+    /// numerator has higher degree than the denominator.
+    pub fn new_proper(
+        num: Vec<f64>,
+        den: Vec<f64>,
+    ) -> Result<Self, String> {
+        let tf = Self::new(num, den)?;
+        if !tf.is_proper() {
+            return Err("numerator must not have higher degree than denominator".to_string());
+        }
+        Ok(tf)
+    }
+
+    /// Whether the transfer function is proper (`deg(num) <= deg(den)`).
+    ///
+    /// A zero numerator is always proper.
+    pub fn is_proper(&self) -> bool {
+        let num = trim_leading(&self.num);
+        let den = trim_leading(&self.den);
+        !den.is_empty() && num.len() <= den.len()
+    }
+
+    /// Whether the transfer function is strictly proper (`deg(num) < deg(den)`).
+    ///
+    /// A zero numerator is always strictly proper.
+    pub fn is_strictly_proper(&self) -> bool {
+        let num = trim_leading(&self.num);
+        let den = trim_leading(&self.den);
+        !den.is_empty() && num.len() < den.len()
     }
 
     /// Order of the denominator (degree of `den`).
@@ -591,5 +632,91 @@ mod tests {
         let y = step_response(&g, &t).unwrap();
         assert!((y[0]).abs() < 1e-12);
         assert!((y[100] - (1.0 - (-1.0_f64).exp())).abs() < 1e-6);
+    }
+
+    #[test]
+    fn properness_helpers_and_new_proper() {
+        let strictly_proper = tf(vec![1.0], vec![1.0, 1.0]);
+        assert!(strictly_proper.is_proper());
+        assert!(strictly_proper.is_strictly_proper());
+        assert!(TransferFunction::new_proper(vec![1.0], vec![1.0, 1.0]).is_ok());
+
+        let biproper = TransferFunction::new_proper(vec![2.0, 1.0], vec![1.0, 1.0]).unwrap();
+        assert!(biproper.is_proper());
+        assert!(!biproper.is_strictly_proper());
+        let ss = biproper.to_state_space().unwrap();
+        assert!((ss.d[0][0] - 2.0).abs() < 1e-12);
+        let back = ss_to_tf(&ss).unwrap();
+        let s = Complex64::new(0.0, 3.0);
+        assert!((biproper.evaluate(s) - back[0].evaluate(s)).norm() < 1e-9);
+
+        let zero_tf = TransferFunction::new_proper(vec![0.0], vec![1.0]).unwrap();
+        assert!(zero_tf.is_proper());
+        assert!(zero_tf.is_strictly_proper());
+
+        // Improper transfer function is allowed by `new` (for Bode/Nyquist) but
+        // rejected by `new_proper` and `to_state_space`.
+        let improper = TransferFunction::new(vec![1.0, 0.0, 1.0], vec![1.0, 1.0]).unwrap();
+        assert!(!improper.is_proper());
+        assert!(!improper.is_strictly_proper());
+        assert!(TransferFunction::new_proper(vec![1.0, 0.0, 1.0], vec![1.0, 1.0]).is_err());
+        assert!(improper.to_state_space().is_err());
+    }
+
+    #[test]
+    fn nyquist_and_step_response_edge_cases() {
+        let g = tf(vec![1.0], vec![1.0, 1.0]);
+        let omega = [0.0, 0.5, 1.0, 2.0];
+        let pts = nyquist(&g, &omega).unwrap();
+        for (&w, &(re, im)) in omega.iter().zip(&pts) {
+            let denom = 1.0 + w * w;
+            assert!((re - 1.0 / denom).abs() < 1e-12);
+            assert!((im + w / denom).abs() < 1e-12);
+        }
+        assert!(nyquist(&g, &[-1.0]).is_err());
+        assert!(bode(&g, &[f64::NAN]).is_err());
+
+        // Empty and non-increasing time grids in step_response.
+        assert!(step_response(&g, &[]).unwrap().is_empty());
+        assert!(step_response(&g, &[0.0, 1.0, 1.0]).is_err());
+
+        // Biproper (2s + 1) / (s + 1) = 2 - 1/(s + 1) has step response 1 + exp(-t).
+        let biproper = tf(vec![2.0, 1.0], vec![1.0, 1.0]);
+        let t: Vec<f64> = (0..101).map(|i| i as f64 * 0.01).collect();
+        let y = step_response(&biproper, &t).unwrap();
+        assert!((y[0] - 2.0).abs() < 1e-12);
+        assert!((y[100] - (1.0 + (-1.0_f64).exp())).abs() < 1e-6);
+    }
+
+    #[test]
+    fn ss_to_tf_handles_static_and_mimo_models() {
+        let static_ss = StateSpace::continuous(
+            Vec::new(),
+            Vec::new(),
+            vec![Vec::new()],
+            vec![vec![3.0, -1.0]],
+        )
+        .unwrap();
+        let tfs = ss_to_tf(&static_ss).unwrap();
+        assert_eq!(tfs.len(), 2);
+        assert!((tfs[0].evaluate(Complex64::new(0.0, 1.0)).re - 3.0).abs() < 1e-12);
+        assert!((tfs[1].evaluate(Complex64::new(0.0, 1.0)).re + 1.0).abs() < 1e-12);
+
+        // 1-state, 2-input, 2-output system: x' = -x + [1, 2] u, y = [1; 3] x.
+        let mimo = StateSpace::continuous(
+            vec![vec![-1.0]],
+            vec![vec![1.0, 2.0]],
+            vec![vec![1.0], vec![3.0]],
+            vec![vec![0.0, 0.0], vec![0.0, 0.0]],
+        )
+        .unwrap();
+        let mimo_tfs = ss_to_tf(&mimo).unwrap();
+        assert_eq!(mimo_tfs.len(), 4);
+        let s = Complex64::new(1.0, 0.0);
+        // Output-major gains at s = 1: 1/2, 2/2, 3/2, 6/2.
+        let expected = [0.5, 1.0, 1.5, 3.0];
+        for (got, want) in mimo_tfs.iter().zip(expected) {
+            assert!((got.evaluate(s).re - want).abs() < 1e-12);
+        }
     }
 }

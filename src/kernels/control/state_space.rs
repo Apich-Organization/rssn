@@ -289,13 +289,12 @@ impl StateSpace {
         })
     }
 
-    /// Simulates the model from `x0` under the input sequence `u`.
+    /// Simulates a discrete-time model from `x0` under the input sequence `u`.
     ///
     /// The recursion `x[k+1] = A x[k] + B u[k]`, `y[k] = C x[k] + D u[k]` is
-    /// applied directly. Continuous-time trajectories are produced by the
-    /// time-grid integrators in [`crate::kernels::control::transfer`]; this
-    /// routine requires a sample time because the input sequence has no time
-    /// base of its own.
+    /// applied directly. For continuous-time models, use
+    /// [`StateSpace::simulate_continuous`] (with an explicit time grid) or
+    /// [`StateSpace::simulate_with_dt`] (with a uniform sample time).
     ///
     /// Returns the output at each input sample.
     ///
@@ -335,6 +334,115 @@ impl StateSpace {
             x = next;
         }
         Ok(out)
+    }
+
+    /// Simulates a continuous-time model on the strictly increasing time grid
+    /// `t` from initial state `x0` under piecewise-constant (zero-order-hold)
+    /// inputs `u`, where `u[k]` is held across `[t[k], t[k + 1])`.
+    ///
+    /// Each step uses exact zero-order-hold discretisation via
+    /// [`StateSpace::c2d_zoh`], caching `(Ad, Bd)` whenever consecutive step
+    /// sizes match within `1e-12` so uniform grids compute the matrix
+    /// exponential only once.
+    ///
+    /// Returns the output `y[k] = C x(t[k]) + D u[k]` at each grid point.
+    ///
+    /// # Errors
+    /// Returns an error when the model is discrete-time, when `x0` or `u`
+    /// dimensions are wrong, when `u.len() != t.len()`, when any entry is
+    /// non-finite, or when `t` is not strictly increasing.
+    pub fn simulate_continuous(
+        &self,
+        x0: &[f64],
+        u: &[Vec<f64>],
+        t: &[f64],
+    ) -> Result<Vec<Vec<f64>>, String> {
+        if self.dt.is_some() {
+            return Err("simulate_continuous requires a continuous-time model".to_string());
+        }
+        let n = self.n_states();
+        let m = self.n_inputs();
+        if x0.len() != n {
+            return Err("x0 must have n entries".to_string());
+        }
+        if x0.iter().any(|v| !v.is_finite()) {
+            return Err("x0 entries must be finite".to_string());
+        }
+        if u.len() != t.len() {
+            return Err("input sequence and time grid must have the same length".to_string());
+        }
+        if u.iter().any(|row| row.len() != m) {
+            return Err("each input sample must have m entries".to_string());
+        }
+        if u.iter().flatten().any(|v| !v.is_finite()) {
+            return Err("input entries must be finite".to_string());
+        }
+        if t.iter().any(|v| !v.is_finite()) {
+            return Err("time grid entries must be finite".to_string());
+        }
+        for k in 1..t.len() {
+            if !(t[k] > t[k - 1]) {
+                return Err("time grid must be strictly increasing".to_string());
+            }
+        }
+        let mut x = x0.to_vec();
+        let mut out = Vec::with_capacity(t.len());
+        let mut cached: Option<(f64, Vec<Vec<f64>>, Vec<Vec<f64>>)> = None;
+        for k in 0..t.len() {
+            let uk = &u[k];
+            let mut y = linalg::matvec(&self.c, &x);
+            let du = linalg::matvec(&self.d, uk);
+            for (i, v) in y.iter_mut().enumerate() {
+                *v += du.get(i).copied().unwrap_or(0.0);
+            }
+            out.push(y);
+            if k + 1 < t.len() {
+                let dt = t[k + 1] - t[k];
+                let reuse = cached.as_ref().is_some_and(|(prev_dt, _, _)| {
+                    (dt - *prev_dt).abs() <= 1e-12 * prev_dt.max(1.0)
+                });
+                if !reuse {
+                    let disc = self.c2d_zoh(dt)?;
+                    cached = Some((dt, disc.a, disc.b));
+                }
+                if let Some((_, ad, bd)) = cached.as_ref() {
+                    let mut next = linalg::matvec(ad, &x);
+                    let bu = linalg::matvec(bd, uk);
+                    for (i, v) in next.iter_mut().enumerate() {
+                        *v += bu.get(i).copied().unwrap_or(0.0);
+                    }
+                    x = next;
+                }
+            }
+        }
+        Ok(out)
+    }
+
+    /// Simulates either a continuous-time model (by zero-order-hold
+    /// discretisation at sample time `dt`) or a discrete-time model whose
+    /// sample time matches `dt`.
+    ///
+    /// # Errors
+    /// Returns an error when `dt` is not finite and positive, when a discrete
+    /// model's `dt` does not match the requested `dt`, or when [`StateSpace::c2d_zoh`]
+    /// or [`StateSpace::simulate`] fails.
+    pub fn simulate_with_dt(
+        &self,
+        x0: &[f64],
+        u: &[Vec<f64>],
+        dt: f64,
+    ) -> Result<Vec<Vec<f64>>, String> {
+        if !(dt.is_finite() && dt > 0.0) {
+            return Err("sample time must be positive".to_string());
+        }
+        if let Some(model_dt) = self.dt {
+            if (model_dt - dt).abs() > 1e-12 * model_dt.max(1.0) {
+                return Err("sample time does not match discrete model dt".to_string());
+            }
+            return self.simulate(x0, u);
+        }
+        let disc = self.c2d_zoh(dt)?;
+        disc.simulate(x0, u)
     }
 }
 
@@ -465,5 +573,130 @@ mod tests {
     fn continuous_simulation_needs_dt() {
         let ss = double_integrator();
         assert!(ss.simulate(&[0.0, 0.0], &[vec![1.0]]).is_err());
+    }
+
+    #[test]
+    fn simulate_continuous_matches_rc_decay_and_harmonic_oscillator() {
+        // First-order RC decay: x' = -2x, x(0) = 3 => y(t) = 3 exp(-2t).
+        let rc = StateSpace::continuous(
+            vec![vec![-2.0]],
+            vec![vec![1.0]],
+            vec![vec![1.0]],
+            vec![vec![0.0]],
+        )
+        .unwrap();
+        let t: Vec<f64> = (0..21).map(|i| i as f64 * 0.1).collect();
+        let u = vec![vec![0.0]; t.len()];
+        let y = rc.simulate_continuous(&[3.0], &u, &t).unwrap();
+        for (tk, yk) in t.iter().zip(&y) {
+            let expected = 3.0 * (-2.0 * tk).exp();
+            assert!(
+                (yk[0] - expected).abs() < 1e-12,
+                "t={tk}: got {}, want {expected}",
+                yk[0]
+            );
+        }
+
+        // Harmonic oscillator: x1' = x2, x2' = -x1, x(0) = [1, 0] => y(t) = cos(t).
+        let osc = StateSpace::continuous(
+            vec![vec![0.0, 1.0], vec![-1.0, 0.0]],
+            vec![vec![0.0], vec![1.0]],
+            vec![vec![1.0, 0.0]],
+            vec![vec![0.0]],
+        )
+        .unwrap();
+        let y_osc = osc.simulate_continuous(&[1.0, 0.0], &u, &t).unwrap();
+        for (tk, yk) in t.iter().zip(&y_osc) {
+            assert!(
+                (yk[0] - tk.cos()).abs() < 1e-11,
+                "t={tk}: got {}, want {}",
+                yk[0],
+                tk.cos()
+            );
+        }
+    }
+
+    #[test]
+    fn simulate_continuous_handles_non_uniform_grid_and_step_response() {
+        // Double integrator on a non-uniform grid with piecewise-constant input.
+        let ss = double_integrator();
+        let t = [0.0, 0.5, 1.5, 2.0];
+        let u = vec![vec![2.0], vec![-1.0], vec![0.0], vec![0.0]];
+        let y = ss.simulate_continuous(&[0.0, 0.0], &u, &t).unwrap();
+        assert!((y[0][0] - 0.0).abs() < 1e-12);
+        assert!((y[1][0] - 0.25).abs() < 1e-12);
+        assert!((y[2][0] - 0.75).abs() < 1e-12);
+        assert!((y[3][0] - 0.75).abs() < 1e-12);
+
+        // Compare continuous state-space step response against transfer::step_response.
+        let g = crate::kernels::control::transfer::TransferFunction::new(
+            vec![1.0],
+            vec![1.0, 3.0, 2.0],
+        )
+        .unwrap();
+        let g_ss = g.to_state_space().unwrap();
+        let dt = 0.02;
+        let grid: Vec<f64> = (0..101).map(|i| i as f64 * dt).collect();
+        let ones = vec![vec![1.0]; grid.len()];
+        let y_cont = g_ss.simulate_continuous(&[0.0, 0.0], &ones, &grid).unwrap();
+        let y_dt = g_ss.simulate_with_dt(&[0.0, 0.0], &ones, dt).unwrap();
+        let y_tf = crate::kernels::control::transfer::step_response(&g, &grid).unwrap();
+        for k in 0..grid.len() {
+            assert!((y_cont[k][0] - y_dt[k][0]).abs() < 1e-12);
+            assert!(
+                (y_cont[k][0] - y_tf[k]).abs() < 1e-6,
+                "k={k}: ss={}, tf={}",
+                y_cont[k][0],
+                y_tf[k]
+            );
+        }
+    }
+
+    #[test]
+    fn simulate_continuous_and_with_dt_validate_inputs() {
+        let ss = double_integrator();
+        // Empty time grid returns empty output.
+        assert!(
+            ss.simulate_continuous(&[0.0, 0.0], &[], &[])
+                .unwrap()
+                .is_empty()
+        );
+        // Mismatched lengths, non-increasing times, non-finite inputs.
+        assert!(
+            ss.simulate_continuous(&[0.0, 0.0], &[vec![1.0]], &[0.0, 1.0])
+                .is_err()
+        );
+        assert!(
+            ss.simulate_continuous(&[0.0, 0.0], &[vec![1.0], vec![1.0]], &[1.0, 1.0])
+                .is_err()
+        );
+        assert!(
+            ss.simulate_continuous(&[0.0, 0.0], &[vec![1.0], vec![1.0]], &[1.0, 0.5])
+                .is_err()
+        );
+        assert!(
+            ss.simulate_continuous(&[f64::NAN, 0.0], &[vec![1.0]], &[0.0])
+                .is_err()
+        );
+        assert!(ss.simulate_with_dt(&[0.0, 0.0], &[vec![1.0]], 0.0).is_err());
+        assert!(
+            ss.simulate_with_dt(&[0.0, 0.0], &[vec![1.0]], -0.1)
+                .is_err()
+        );
+
+        // Discrete model rejects simulate_continuous and mismatched dt, accepts matching dt.
+        let disc = ss.c2d_zoh(0.5).unwrap();
+        assert!(
+            disc.simulate_continuous(&[0.0, 0.0], &[vec![1.0]], &[0.0])
+                .is_err()
+        );
+        assert!(
+            disc.simulate_with_dt(&[0.0, 0.0], &[vec![1.0]], 0.25)
+                .is_err()
+        );
+        let y_disc = disc
+            .simulate_with_dt(&[0.0, 0.0], &[vec![1.0], vec![1.0]], 0.5)
+            .unwrap();
+        assert!((y_disc[1][0] - 0.125).abs() < 1e-12);
     }
 }
