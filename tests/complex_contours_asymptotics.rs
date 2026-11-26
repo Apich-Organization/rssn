@@ -220,4 +220,91 @@ fn symbolic_phase5_and_phase6_operators() {
 
     let sad = eval_sym("saddle_point_asymptotic(1, -z^2, z, 0, lam)");
     assert!(sad.contains("pi"), "unexpected saddle: {sad}");
+
+    // Regression tests for Phase 5 & 6 fixes
+    // 1. Hankel contour around [0, +inf): 1/(2*pi*i) * int_H (-t)^(-z) e^(-t) dt = 1/Gamma(z)
+    // `hankel_contour` runs above -> circle -> below, which is the negated orientation.
+    let hk = cd::hankel_contour(0.3, 18.0, 0.0, 0.05);
+    let z_hk = Complex64::new(0.5, 0.0);
+    let hk_val = cd::integrate_contour(&|t| (-t).powc(-z_hk) * (-t).exp(), &hk, 1e-8);
+    let want_hk =
+        -Complex64::new(0.0, 2.0 * PI) / rssn::kernels::special_complex::gamma_complex(z_hk);
+    assert!(
+        (hk_val - want_hk).norm() < 1e-4,
+        "hankel_contour: {hk_val} vs {want_hk}"
+    );
+
+    // 2. BranchRay deformation around cut at origin
+    let def_ray = cd::integrate_deformed(
+        &|z| Complex64::new(1.0, 0.0) / z,
+        Complex64::new(-1.0, -0.5),
+        Complex64::new(-1.0, 0.5),
+        &[],
+        &[cd::BranchRay {
+            origin: Complex64::new(0.0, 0.0),
+            angle: PI,
+        }],
+        0.2,
+        1e-8,
+    );
+    assert!(def_ray.is_finite());
+
+    // 3. Weierstrass chain continuation of sqrt(z) from z = 1 to z = 1.6 and z = 0.5
+    let mut sqrt_coeffs = vec![Complex64::new(1.0, 0.0)];
+    let mut c_k = 1.0_f64;
+    for k in 1..20 {
+        c_k *= (1.5 - k as f64) / (k as f64);
+        sqrt_coeffs.push(Complex64::new(c_k, 0.0));
+    }
+    let up_chain = [
+        Complex64::new(1.0, 0.0),
+        Complex64::new(1.3, 0.0),
+        Complex64::new(1.6, 0.0),
+    ];
+    let down_chain = [
+        Complex64::new(1.0, 0.0),
+        Complex64::new(0.75, 0.0),
+        Complex64::new(0.5, 0.0),
+    ];
+    let end_up = ac::weierstrass_chain_continue(&sqrt_coeffs, &up_chain).unwrap();
+    let end_down = ac::weierstrass_chain_continue(&sqrt_coeffs, &down_chain).unwrap();
+    assert!(
+        (end_up[0] - Complex64::new(1.6_f64.sqrt(), 0.0)).norm() < 1e-4,
+        "up chain: {}",
+        end_up[0]
+    );
+    assert!(
+        (end_down[0] - Complex64::new(0.5_f64.sqrt(), 0.0)).norm() < 1e-4,
+        "down chain: {}",
+        end_down[0]
+    );
+
+    // 4. Steepest descent with g(z0) = 0: int z^2 exp(-lambda * z^2) dz = sqrt(pi)/(2 * lambda^(3/2))
+    let sad0 = sd::find_saddle_point(
+        |z| -z * z,
+        |z| -2.0 * z,
+        |_| Complex64::new(-2.0, 0.0),
+        Complex64::new(0.1, 0.0),
+        1e-12,
+    )
+    .unwrap();
+    let est0 = sd::saddle_point_asymptotic_order2(|z| -z * z, |z| z * z, &sad0, 40.0);
+    let want0 = PI.sqrt() / (2.0 * 40.0_f64.powf(1.5));
+    assert!(
+        (est0.re - want0).abs() < 1e-6,
+        "g(z0)=0 saddle: {est0} vs {want0}"
+    );
+
+    // 5. Mittag-Leffler preserves polynomial part for improper rational z^2/(z - 1)
+    let ml_imp = eval_sym("mittag_leffler_expansion(z^2/(z - 1), z)");
+    assert!(
+        ml_imp.contains("z") && ml_imp.contains("1"),
+        "ML improper: {ml_imp}"
+    );
+
+    // 6. cauchy_pv rejects double pole 1/x^2
+    assert_eq!(
+        eval_sym("cauchy_pv(1/x^2, x, -1, 1, 0)"),
+        "cauchy_pv(1/x^2, x, -1, 1, 0)"
+    );
 }

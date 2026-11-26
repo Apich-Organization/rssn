@@ -182,4 +182,52 @@ fn symbolic_phase9_transforms_and_complex_risch() {
         !r2.contains("complex_risch_integrate") && !r2.contains("integral"),
         "got {r2}"
     );
+
+    // Regression tests for Phase 9 fixes
+    // 1. Abscissa-shifted Bromwich for RHP pole 1/(s - 5) -> exp(5*t)
+    let f_rhp = |s: Complex<f64>| Complex::new(1.0, 0.0) / (s - Complex::new(5.0, 0.0));
+    let t_val = 0.6_f64;
+    let inv_t =
+        rssn::kernels::complex_transforms::bromwich_talbot_shifted(f_rhp, t_val, 6.0, 32).unwrap();
+    let inv_w = rssn::kernels::complex_transforms::bromwich_weideman_parabola_shifted(
+        f_rhp, t_val, 6.0, 40,
+    )
+    .unwrap();
+    let want_e5 = (5.0 * t_val).exp();
+    assert!(
+        (inv_t.re - want_e5).abs() < 1e-8,
+        "talbot shifted: {inv_t} vs {want_e5}"
+    );
+    assert!(
+        (inv_w.re - want_e5).abs() < 1e-6,
+        "weideman shifted: {inv_w} vs {want_e5}"
+    );
+
+    // 2. Gaver-Stehfest caps m_even > 14
+    assert!(gaver_stehfest_inverse_laplace(|s| 1.0 / s, 1.0, 16).is_err());
+
+    // 3. Stieltjes transform of exp(-t) at z = 1: int_0^oo exp(-t)/(t+1) dt = e * E_1(1)
+    let stj = rssn::kernels::complex_transforms::stieltjes_transform(
+        |t| Complex::new((-t).exp(), 0.0),
+        Complex::new(1.0, 0.0),
+        30.0,
+        1e-9,
+    );
+    let want_stj = 1.0_f64.exp() * rssn::kernels::special::exp_integral_e1(1.0);
+    assert!(
+        (stj.re - want_stj).abs() < 1e-6,
+        "stieltjes: {stj} vs {want_stj}"
+    );
+
+    // 4. Symbolic Bromwich 1/sqrt(s) and repeated-pole complex_risch_integrate
+    let br_sqrt = eval_sym("bromwich_inverse_laplace(1/s^(1/2), s, t)");
+    assert!(
+        br_sqrt.contains("pi") && br_sqrt.contains("t"),
+        "bromwich 1/sqrt(s): {br_sqrt}"
+    );
+    let r_rep = eval_sym("complex_risch_integrate(1/(z^2 + 1)^2, z)");
+    assert!(
+        !r_rep.contains("complex_risch_integrate") && !r_rep.contains("integral"),
+        "repeated pole: {r_rep}"
+    );
 }

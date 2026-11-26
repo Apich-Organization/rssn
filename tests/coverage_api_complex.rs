@@ -557,3 +557,20 @@ fn operator_precedence_and_associativity() {
     assert!(s.parse("(1 + 2").is_err());
     assert!(s.parse("1 +").is_err());
 }
+
+#[test]
+fn value_complex_passes_through_session_call_value() {
+    use rssn::kernel::CallCtx;
+    use rssn::kernel::value::ComplexValue;
+    use rssn::kernel::value::Value;
+    let s = Session::new();
+    let ctx = CallCtx::new();
+    let z = Value::Complex(ComplexValue::Float { re: 1.0, im: 2.0 });
+    let c = s.call_value("conj", &[z.clone()], &ctx).unwrap();
+    assert!(!format!("{c:?}").is_empty());
+    let a = s.call_value("abs_sq", &[z], &ctx).unwrap();
+    assert!(
+        a.as_f64().is_some_and(|v| (v - 5.0).abs() < 1e-12),
+        "abs_sq(1+2i)={a:?}"
+    );
+}

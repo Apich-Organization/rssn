@@ -137,4 +137,43 @@ fn symbolic_phase10_dynamics_operators() {
 
     let bs = eval_sym("bottcher_series(c, z, 3)");
     assert!(bs.contains("c/(2*z)") || bs.contains("1/2*c/z"), "bs={bs}");
+
+    // Regression tests for Phase 10 fixes
+    // 1. Mandelbrot Green's potential G_M(c) = G_c(c) (fixes factor-of-2 bug)
+    let c_test = Complex::new(2.0, 0.0);
+    let (_, g_m) = mandelbrot_escape_time(c_test, 100, 1e10);
+    let (_, g_j) = julia_escape_time(c_test, c_test, 100, 1e10);
+    assert!((g_m - g_j).abs() < 1e-10, "g_m={g_m} vs g_j={g_j}");
+
+    // 2. external_ray_point does not overflow at n_steps = 15, r = 0.5
+    let ray15 = external_ray_point(Complex::new(-0.12, 0.74), 1.0 / 7.0, 0.5, 15).unwrap();
+    assert!(ray15.is_finite());
+
+    // 3. Period-2 points exclude period-1 fixed points
+    let p2 = find_periodic_points_quadratic(
+        Complex::new(-1.0, 0.0),
+        2,
+        &[Complex::new(0.05, 0.01), Complex::new(1.6, 0.01)],
+        40,
+        1e-12,
+    );
+    let phi_g = 0.5 * (1.0 + 5.0_f64.sqrt());
+    assert!(
+        p2.iter()
+            .all(|&p| (p - Complex::new(phi_g, 0.0)).norm() > 1e-3)
+    );
+
+    // 4. Newton fractal basin for z^3 - 1
+    let (root_n, _) = rssn::kernels::complex_dynamics::newton_fractal_basin(
+        |w| w.powi(3) - Complex::new(1.0, 0.0),
+        |w| 3.0 * w * w,
+        Complex::new(0.8, 0.2),
+        50,
+        1e-12,
+    )
+    .unwrap();
+    assert!((root_n - Complex::new(1.0, 0.0)).norm() < 1e-10);
+
+    // 5. Symbolic multiplier at period 10 (chain rule, no swell)
+    assert_eq!(eval_sym("multiplier(z^2 - 1, z, 0, 10)"), "0");
 }

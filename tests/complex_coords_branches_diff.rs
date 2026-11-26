@@ -157,6 +157,47 @@ fn symbolic_phase2_and_phase3_operators() {
     assert_eq!(eval_sym("is_entire(1/(z^2 + 1), z)"), "false");
     assert_eq!(eval_sym("is_meromorphic(conj(z), z)"), "false");
     assert_eq!(eval_sym("complex_diff(z^4, z, 2)"), "12*z^2");
+
+    // Regression tests for Phase 2 & 3 fixes
+    assert_eq!(eval_sym("branch_cut_jump(ln(-z), z, 2)"), "-2*I*pi");
+    assert_eq!(eval_sym("is_meromorphic(tan(z), z)"), "true");
+    assert_eq!(eval_sym("is_meromorphic(1/(z - I), z)"), "true");
+    assert_eq!(eval_sym("is_entire(2^z, z)"), "true");
+    assert_eq!(eval_sym("is_entire(sin(z)/z, z)"), "true");
+    assert_eq!(
+        eval_sym("cauchy_riemann_polar(r^2 * exp(2*I*theta), r, theta)"),
+        "list(0, 0)"
+    );
+    assert_eq!(
+        eval_sym("cauchy_riemann_polar(w^2, r, theta)"),
+        "list(0, 0)"
+    );
+    assert_eq!(eval_sym("cauchy_riemann_cartesian(x^2, x)"), "list(0, 0)");
+    assert_eq!(
+        eval_sym("reconstruct_holomorphic(x^2 - y^2, x, y)"),
+        "2*x*y*I + x^2 - y^2"
+    );
+    assert_eq!(
+        eval_sym("harmonic_conjugate(exp(x)*cos(y), x, y)"),
+        "exp(x)*sin(y)"
+    );
+
+    // sqrt_cut with non-zero theta0
+    let mut g = rssn::graph::Graph::new();
+    let eng = rssn::graph::Engine::install(&mut g, &[rssn::rules::complex::complex()]).unwrap();
+    let t = g.parse("sqrt_cut(1 + I, -pi)").unwrap();
+    eng.run(
+        &mut g,
+        &[t],
+        &rssn::graph::Env::symbolic(),
+        &rssn::graph::Saturate,
+        &rssn::graph::Budget::default(),
+    );
+    let val = g
+        .eval_complex(t, &std::collections::HashMap::new())
+        .unwrap();
+    let want = Complex64::new(1.0, 1.0).sqrt();
+    assert!((val - want).norm() < 1e-13, "sqrt_cut: {val} vs {want}");
 }
 
 #[test]

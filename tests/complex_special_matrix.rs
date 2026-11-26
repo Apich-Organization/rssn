@@ -289,3 +289,135 @@ fn wright_omega_and_session_operators() {
     }
     let _ = special_ext::elliptic_k(0.5);
 }
+
+#[test]
+fn adversarial_and_boundary_complex_special_functions() {
+    // Ei(10) on positive real axis (E_1(-10) near cut)
+    let ei10 = ext::exp_integral_ei_complex(Complex64::new(10.0, 0.0));
+    assert!(
+        (ei10.re - 2492.228_976_241_877_7).abs() < 1e-8 && ei10.im.abs() < 1e-10,
+        "Ei(10)={ei10}"
+    );
+
+    // Ci(-5) branch shift
+    let (_, ci_m5) = ext::sin_cos_integral_complex(Complex64::new(-5.0, 0.0));
+    let (_, ci_p5) = ext::sin_cos_integral_complex(Complex64::new(5.0, 0.0));
+    near(
+        ci_m5,
+        ci_p5 + Complex64::new(0.0, std::f64::consts::PI),
+        1e-12,
+        "Ci(-5) = Ci(5) + i*pi",
+    );
+
+    // Elliptic F(pi | 0.5) = 2*K(0.5)
+    let m = Complex64::new(0.5, 0.0);
+    near(
+        ext::elliptic_f_complex(Complex64::new(std::f64::consts::PI, 0.0), m),
+        2.0 * ext::elliptic_k_complex(m),
+        1e-12,
+        "F(pi | m) = 2*K(m)",
+    );
+
+    // Parabolic cylinder D_2(z) = (z^2 - 1) * exp(-z^2/4) at integer nu=2 and large z=12
+    let z_pc = Complex64::new(12.0, 0.5);
+    let exact_d2 = (z_pc * z_pc - 1.0) * (-0.25 * z_pc * z_pc).exp();
+    near(
+        ext::parabolic_cylinder_d_complex(Complex64::new(2.0, 0.0), z_pc),
+        exact_d2,
+        1e-12 * exact_d2.norm().max(1.0),
+        "D_2(12+0.5i)",
+    );
+
+    // Binomial(-3, 2) = 6
+    near(
+        ext::binomial_complex(Complex64::new(-3.0, 0.0), Complex64::new(2.0, 0.0)),
+        Complex64::new(6.0, 0.0),
+        1e-12,
+        "C(-3, 2) = 6",
+    );
+
+    // Polygamma reflection for n=3 at z = -0.3 + 0.4i
+    let z_pg = Complex64::new(-0.3, 0.4);
+    let p3_l = ext::polygamma_complex(3, z_pg);
+    let p3_r = ext::polygamma_complex(3, Complex64::new(1.0, 0.0) - z_pg);
+    assert!(p3_l.is_finite() && p3_r.is_finite());
+
+    // Large |Im(s)| Riemann zeta
+    let z_high = ext::riemann_zeta_complex(Complex64::new(0.5, 60.0));
+    assert!(z_high.is_finite() && z_high.norm() < 5.0);
+
+    // Scaled Bessel K_0 at Re(z) = 800 (no exp overflow)
+    let ke800 = ext::bessel_ke_complex(0.0, Complex64::new(800.0, 1.0));
+    assert!(ke800.is_finite() && ke800.norm() > 0.0);
+
+    // Mittag-Leffler E_{1,1}(z) = exp(z) and E_{2,1}(-z^2) = cos(z)
+    let z_ml = Complex64::new(0.7, -0.4);
+    near(
+        ext::mittag_leffler_complex(Complex64::new(1.0, 0.0), Complex64::new(1.0, 0.0), z_ml),
+        z_ml.exp(),
+        1e-12,
+        "E_{1,1}(z) = exp(z)",
+    );
+    near(
+        ext::mittag_leffler_complex(
+            Complex64::new(2.0, 0.0),
+            Complex64::new(1.0, 0.0),
+            -z_ml * z_ml,
+        ),
+        z_ml.cos(),
+        1e-12,
+        "E_{2,1}(-z^2) = cos(z)",
+    );
+
+    // ComplexBall special functions
+    let b = rssn::kernels::complex_ball::ComplexBall::new(Complex64::new(1.5, 0.5), 1e-4).unwrap();
+    assert!(
+        b.erf()
+            .unwrap()
+            .contains(rssn::kernels::fresnel::erf_complex(b.mid))
+    );
+    assert!(
+        b.gamma()
+            .unwrap()
+            .contains(rssn::kernels::special_complex::gamma_complex(b.mid))
+    );
+    assert!(
+        b.bessel_j(0.0)
+            .unwrap()
+            .contains(rssn::kernels::special_complex::bessel_j_complex(0.0, b.mid))
+    );
+
+    // MpComplex special functions
+    let (re_g, im_g) = rssn::kernels::mp::eval_complex_text("gamma(1 + I)", 25).unwrap();
+    assert!(!re_g.is_empty() && !im_g.is_empty());
+    let ((re_lo, re_hi), (im_lo, im_hi)) =
+        rssn::kernels::mp::enclosure_complex_text("erf(0.5 + 0.5*I) + erfc(0.5 + 0.5*I)", 25)
+            .unwrap();
+    let re_lo_f: f64 = re_lo.parse().unwrap();
+    let re_hi_f: f64 = re_hi.parse().unwrap();
+    let im_lo_f: f64 = im_lo.parse().unwrap();
+    let im_hi_f: f64 = im_hi.parse().unwrap();
+    assert!(re_lo_f <= 1.0 && 1.0 <= re_hi_f && (re_hi_f - re_lo_f) < 1e-20);
+    assert!(im_lo_f <= 0.0 && 0.0 <= im_hi_f && (im_hi_f - im_lo_f) < 1e-20);
+
+    // Graph::eval_complex on symbolic special ops
+    let mut g = rssn::graph::Graph::new();
+    let _eng = rssn::graph::Engine::install(
+        &mut g,
+        &[
+            rssn::rules::special::special(),
+            rssn::rules::complex::complex(),
+        ],
+    )
+    .unwrap();
+    let t = g.parse("gamma(1 + I)").unwrap();
+    let v = g
+        .eval_complex(t, &std::collections::HashMap::new())
+        .unwrap();
+    near(
+        v,
+        rssn::kernels::special_complex::gamma_complex(Complex64::new(1.0, 1.0)),
+        1e-12,
+        "eval_complex gamma(1+I)",
+    );
+}

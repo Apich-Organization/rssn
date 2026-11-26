@@ -377,4 +377,34 @@ fn symbolic_phase7_and_phase8_operators() {
     assert_eq!(eval_sym("is_conformal_at(z^2, z, 0)"), "0");
     assert_eq!(eval_sym("rouche_compare(3*z, z^5 + 1, z, 0, 1)"), "1");
     assert_eq!(eval_sym("cauchy_root_bound(z^3 - 2*z + 5, z)"), "6");
+
+    // Regression tests for Phase 7 fixes
+    // 1. Verified quadtree + Krawczyk root isolation for z^3 - 1 = 0
+    let balls = rssn::kernels::complex_roots::isolate_roots_verified(
+        &[
+            Complex::new(-1.0, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(1.0, 0.0),
+        ],
+        1e-6,
+    );
+    assert_eq!(balls.len(), 3, "expected 3 isolated root balls");
+
+    // 2. Delves-Lyness rejects poles inside disk
+    let pole_err = delves_lyness_roots(
+        |z| Complex::new(1.0, 0.0) / z,
+        |z| -Complex::new(1.0, 0.0) / (z * z),
+        Complex::new(0.0, 0.0),
+        1.0,
+        64,
+    );
+    assert!(pole_err.is_err());
+
+    // 3. solve_complex with complex coefficients: z^2 - I = 0
+    let sol_c = eval_sym("solve_complex(z^2 - I, z)");
+    assert!(
+        sol_c.contains("0.7071") && sol_c.contains("I"),
+        "solve_complex(z^2-I)={sol_c}"
+    );
 }

@@ -111,8 +111,7 @@ fn minimize_result_round_trips_with_a_native_fingerprint() {
     let codec = bincode_next::config::standard()
         .with_deterministic_bincode()
         .with_fingerprint();
-    let mut bytes =
-        bincode_next::encode_to_vec(&result, codec).unwrap_or_else(|e| panic!("{e}"));
+    let mut bytes = bincode_next::encode_to_vec(&result, codec).unwrap_or_else(|e| panic!("{e}"));
     let (decoded, read) =
         bincode_next::decode_from_slice(&bytes, codec).unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(result, decoded);

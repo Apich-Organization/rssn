@@ -302,4 +302,147 @@ fn session_phase1_operators_and_diagnostics() {
     let bad_ball = float_vec(vec![-1.0, 0.0, 0.1]);
     let err = session.apply_diag("cball_ln", &[bad_ball], &ctx);
     assert!(err.is_err());
+
+    // Concrete assertions for new cball_* and cinterval_* Session ops
+    let b = float_vec(vec![0.4, 0.3, 0.05]);
+    for op in [
+        "cball_asin",
+        "cball_acos",
+        "cball_atan",
+        "cball_asinh",
+        "cball_atanh",
+        "cball_conj",
+        "cball_abs",
+        "cball_arg",
+    ] {
+        let out = session.call_value(op, &[b.clone()], &ctx).unwrap();
+        assert!(matches!(out, Value::Tensor(_)), "{op} failed");
+    }
+    let powi_out = session
+        .call_value("cball_powi", &[b.clone(), Value::Float(3.0)], &ctx)
+        .unwrap();
+    assert!(matches!(powi_out, Value::Tensor(_)));
+    let rect = session
+        .call_value("cball_to_cinterval", &[b.clone()], &ctx)
+        .unwrap();
+    let back = session
+        .call_value("cinterval_to_cball", &[rect.clone()], &ctx)
+        .unwrap();
+    assert!(matches!(back, Value::Tensor(_)));
+    for op in [
+        "cinterval_tan",
+        "cinterval_sinh",
+        "cinterval_cosh",
+        "cinterval_tanh",
+        "cinterval_asin",
+        "cinterval_acos",
+        "cinterval_atan",
+    ] {
+        let out = session.call_value(op, &[rect.clone()], &ctx).unwrap();
+        assert!(matches!(out, Value::Tensor(_)), "{op} failed");
+    }
+}
+
+#[test]
+fn cball_wide_first_quadrant_ln_sqrt_and_inverse_trig() {
+    let wide = Cball::rectangle((0.1, 10.0), (0.1, 10.0));
+    let l = wide.ln().expect("first quadrant avoids (-inf, 0]");
+    let s = wide.sqrt().expect("first quadrant avoids (-inf, 0]");
+    for z in sample_rect(wide) {
+        let lz = z.ln();
+        assert!(l.re.contains(lz.re) && l.im.contains(lz.im), "ln at {z}");
+        let sz = z.sqrt();
+        assert!(s.re.contains(sz.re) && s.im.contains(sz.im), "sqrt at {z}");
+    }
+
+    let box_small = Cball::rectangle((0.2, 0.4), (0.1, 0.3));
+    let a_sin = box_small.asin().unwrap();
+    let a_cos = box_small.acos().unwrap();
+    let a_tan = box_small.atan().unwrap();
+    for z in sample_rect(box_small) {
+        assert!(a_sin.re.contains(z.asin().re) && a_sin.im.contains(z.asin().im));
+        assert!(a_cos.re.contains(z.acos().re) && a_cos.im.contains(z.acos().im));
+        assert!(a_tan.re.contains(z.atan().re) && a_tan.im.contains(z.atan().im));
+    }
+}
+
+#[test]
+fn complex_ball_recip_sqrt_jet_and_krawczyk_nd() {
+    // Recip and sqrt boundary containment at tight tolerance
+    let b = ComplexBall::new(Complex64::new(1.0, 0.5), 1e-6).unwrap();
+    let r = b.recip().unwrap();
+    let s = b.sqrt().unwrap();
+    for z in sample_disk(b) {
+        assert!(r.contains(Complex64::new(1.0, 0.0) / z));
+        assert!(s.contains(z.sqrt()));
+    }
+    assert!(ComplexBall::new(Complex64::new(f64::NAN, 0.0), 0.1).is_none());
+    assert!(!certify_rouche_circle(
+        |_| Some(ComplexBall::one()),
+        |_| Some(ComplexBall::point(0.5, 0.0)),
+        Complex64::new(f64::NAN, 0.0),
+        1.0,
+        16,
+    ));
+
+    // ComplexBallJet inverse trig
+    let z0 = ComplexBall::new(Complex64::new(0.3, 0.2), 1e-4).unwrap();
+    let j = ComplexBallJet::variable(z0);
+    let j_asin = j.asin().unwrap();
+    let exact_d_asin =
+        Complex64::new(1.0, 0.0) / (Complex64::new(1.0, 0.0) - z0.mid * z0.mid).sqrt();
+    assert!(j_asin.deriv.contains(exact_d_asin));
+    let j_atan = j.atan().unwrap();
+    let exact_d_atan = Complex64::new(1.0, 0.0) / (Complex64::new(1.0, 0.0) + z0.mid * z0.mid);
+    assert!(j_atan.deriv.contains(exact_d_atan));
+
+    // 2D Krawczyk: z0^2 - 1 = 0, z1 - z0 = 0 near (1, 1)
+    let box2 = [
+        ComplexBall::new(Complex64::new(1.01, 0.02), 0.1).unwrap(),
+        ComplexBall::new(Complex64::new(0.99, -0.01), 0.1).unwrap(),
+    ];
+    let cert = rssn::kernels::complex_ball::certify_root_nd(
+        |v| Some(vec![v[0].sqr() - ComplexBall::one(), v[1] - v[0]]),
+        |v| {
+            Some(vec![
+                vec![v[0].scale_real(2.0), ComplexBall::zero()],
+                vec![-ComplexBall::one(), ComplexBall::one()],
+            ])
+        },
+        &box2,
+    )
+    .expect("2D Krawczyk should certify (1, 1)");
+    assert!(cert[0].contains(Complex64::new(1.0, 0.0)));
+    assert!(cert[1].contains(Complex64::new(1.0, 0.0)));
+}
+
+#[test]
+fn mp_complex_edge_cases_and_sound_enclosures() {
+    // Integer powers of negative/zero bases
+    let (r1, i1) = mp::eval_complex_text("(-1)^2 + (-2)^3 + 0^2", 20).unwrap();
+    assert_eq!(r1, "-7");
+    assert_eq!(i1, "0");
+
+    // sqrt(0) and inverse trig at +-1
+    let (r2, i2) = mp::eval_complex_text("sqrt(0)", 20).unwrap();
+    assert_eq!(r2, "0");
+    assert_eq!(i2, "0");
+
+    let ((re3_lo, re3_hi), (im3_lo, im3_hi)) =
+        mp::enclosure_complex_text("asin(1) - pi/2", 25).unwrap();
+    let re3_lo_f: f64 = re3_lo.parse().unwrap();
+    let re3_hi_f: f64 = re3_hi.parse().unwrap();
+    let im3_lo_f: f64 = im3_lo.parse().unwrap();
+    let im3_hi_f: f64 = im3_hi.parse().unwrap();
+    assert!(re3_lo_f <= 0.0 && 0.0 <= re3_hi_f && (re3_hi_f - re3_lo_f) < 1e-20);
+    assert!(im3_lo_f <= 0.0 && 0.0 <= im3_hi_f && (im3_hi_f - im3_lo_f) < 1e-20);
+
+    // Outward-rounded decimal enclosure of 0.1
+    let ((re_lo, re_hi), _) = mp::enclosure_complex_text("0.1", 10).unwrap();
+    let lo_f: f64 = re_lo.parse().unwrap();
+    let hi_f: f64 = re_hi.parse().unwrap();
+    assert!(
+        lo_f <= 0.1 && 0.1 <= hi_f,
+        "enclosure [{re_lo}, {re_hi}] missed 0.1"
+    );
 }
