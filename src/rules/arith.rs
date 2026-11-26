@@ -10,11 +10,14 @@
 
 use std::collections::HashMap;
 
+use crate::graph::Arity;
 use crate::graph::Cx;
+use crate::graph::DimRule;
 use crate::graph::Graph;
 use crate::graph::Kernel;
 use crate::graph::NodeId;
 use crate::graph::Number;
+use crate::graph::OpDescriptor;
 use crate::graph::OpFlags;
 use crate::graph::OpId;
 use crate::graph::Outcome;
@@ -24,8 +27,11 @@ use crate::graph::Tier;
 use crate::graph::TreeWindow;
 use crate::graph::WindowPass;
 use crate::graph::op::core;
+use crate::graph::print::Infix;
 use crate::graph::rule::Installer;
 use crate::graph::window::CellId;
+use crate::kernel::signature::Signature;
+use crate::kernel::signature::TypeExpr;
 
 /// The arithmetic rule set. Every other set depends on it.
 #[must_use]
@@ -37,6 +43,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.kernel("arith/fold", Tier::Normalize, Fold);
     i.kernel("arith/float", Tier::Normalize, FloatContagion);
     i.kernel("arith/radical", Tier::Normalize, Radical);
+    let sugar = install_sugar(i)?;
+    i.kernel("arith/sugar", Tier::Normalize, sugar);
     i.pass(Collect);
     i.rewrites(
         Tier::Normalize,
@@ -61,6 +69,131 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "arith/pow-integer-factor: (?c * ?a) ^ ?n => ?c ^ ?n * ?a ^ ?n if number(?c), integer(?n)",
         ],
     )
+}
+
+/// Registers the named forms of subtraction, negation and quotient.
+///
+/// The engine's normal form has no `sub`, `neg` or arithmetic division node:
+/// `a - b` is `add(a, mul(-1, b))` and `a / b` is `mul(a, pow(b, -1))`, which
+/// is what the printer re-sugars. Registering the three names as *operators*
+/// means a host can ask for them by name — `rssn_term_apply("sub", ...)`, the
+/// parser, `Session::call_value` — and the [`Infix`] attribute makes an
+/// unevaluated request print the way it was written. One normalization step
+/// rewrites them to the canonical form, so no other rule set ever meets them.
+///
+/// The quotient is `divide`, not `div`: `div` is the divergence of a vector
+/// field in the `linalg` rule set, and two operators of one name and arity
+/// would make `div(F, vars)` ambiguous.
+fn install_sugar(i: &mut Installer<'_>) -> Result<Sugar, RuleError> {
+    let term = crate::kernel::infer::term;
+    let sub = i.op(OpDescriptor::new("sub", Arity::Fixed(2))
+        .flags(OpFlags::TRANSPARENT)
+        .cost(1)
+        .eval(|a| {
+            match a {
+                | [x, y] => x - y,
+                | _ => f64::NAN,
+            }
+        })
+        .doc(
+            "`sub(a, b)`: the difference `a - b`.\n\nThe engine's normal form has no \
+                 subtraction node: this request is rewritten to `add(a, mul(-1, b))` and \
+                 prints as `a - b`.",
+        )
+        .category("arith")
+        .since("3.0")
+        .signature(Signature::scalars(2, TypeExpr::Real))
+        .signature(Signature::new(vec![term(); 2], term())))?;
+    i.dim(sub, DimRule::Sum);
+    i.graph().ops_mut().set_attr(sub, Infix::Sub);
+
+    let neg = i.op(OpDescriptor::new("neg", Arity::Fixed(1))
+        .flags(OpFlags::TRANSPARENT)
+        .cost(1)
+        .eval(|a| {
+            match a {
+                | [x] => -x,
+                | _ => f64::NAN,
+            }
+        })
+        .doc("`neg(a)`: the negation `-a`.\n\nRewritten to `mul(-1, a)` and printed as `-a`.")
+        .category("arith")
+        .since("3.0")
+        .signature(Signature::scalars(1, TypeExpr::Real))
+        .signature(Signature::new(vec![term()], term())))?;
+    i.dim(neg, DimRule::Same(0));
+    i.graph().ops_mut().set_attr(neg, Infix::Neg);
+
+    let divide = i.op(OpDescriptor::new("divide", Arity::Fixed(2))
+        .flags(OpFlags::TRANSPARENT)
+        .cost(1)
+        .eval(|a| {
+            match a {
+                | [x, y] => x / y,
+                | _ => f64::NAN,
+            }
+        })
+        .doc(
+            "`divide(a, b)`: the quotient `a / b`.\n\nRewritten to `mul(a, pow(b, -1))` \
+                 and printed as `a/b`. The name is `divide` because `div` is the divergence \
+                 of a vector field.",
+        )
+        .category("arith")
+        .since("3.0")
+        .signature(Signature::scalars(2, TypeExpr::Real))
+        .signature(Signature::new(vec![term(); 2], term())))?;
+    i.dim(divide, DimRule::Quotient);
+    i.graph().ops_mut().set_attr(divide, Infix::Div);
+
+    Ok(Sugar { sub, neg, divide })
+}
+
+/// Rewrites the named infix forms to the canonical `add` / `mul` / `pow`
+/// nodes the rest of the engine works on.
+struct Sugar {
+    sub: OpId,
+    neg: OpId,
+    divide: OpId,
+}
+
+impl Kernel for Sugar {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.sub, self.neg, self.divide]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let graph = &mut *cx.graph;
+        let op = graph.op(node);
+        let children = graph.children(node).to_vec();
+        let minus_one = graph.num(Number::from(-1));
+        let canonical = match (op, children.as_slice()) {
+            | (op, [a, b]) if op == self.sub => {
+                let negated = graph.node(core::MUL, &[minus_one, *b]);
+                graph.node(core::ADD, &[*a, negated])
+            },
+            | (op, [a]) if op == self.neg => graph.node(core::MUL, &[minus_one, *a]),
+            | (op, [a, b]) if op == self.divide => {
+                let reciprocal = graph.node(core::POW, &[*b, minus_one]);
+                graph.node(core::MUL, &[*a, reciprocal])
+            },
+            | _ => return Outcome::Pass,
+        };
+        // Reduce the canonical form here rather than leaving it to the next
+        // pass: the window pass reads the *request* tree, and the canonical
+        // node is a sibling in the class, not a child of the request. A
+        // `divide` request would otherwise come back as `divide(a, b)` with
+        // its contents un-cancelled.
+        let reduced = cx.simplify(canonical);
+        Outcome::Equal(reduced)
+    }
+
+    fn revisit(&self) -> bool {
+        true
+    }
 }
 
 /// Folds sums, products and powers whose operands are all literal numbers,

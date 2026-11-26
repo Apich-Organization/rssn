@@ -25,6 +25,37 @@ pub(crate) const PREC_NEG: u8 = 3;
 pub(crate) const PREC_POW: u8 = 4;
 pub(crate) const PREC_ATOM: u8 = 5;
 
+/// How an operator that is *not* one of the canonical forms prints as infix.
+///
+/// The engine's normal form has no subtraction, negation or quotient node:
+/// `a - b` is `add(a, mul(-1, b))` and `a / b` is `mul(a, pow(b, -1))`, which
+/// is what [`Graph::display`] re-sugars. An operator may still be *named*
+/// (`sub`, `neg`, `divide`), and while such a request is unevaluated it has to
+/// print the way a caller wrote it. That is what this attribute is for: the
+/// printer reads it instead of hard-coding a name, so a rule set can add an
+/// infix operator without touching the kernel.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Infix {
+    /// `a - b`, at additive precedence.
+    Sub,
+    /// `-a`, at unary precedence.
+    Neg,
+    /// `a / b`, at multiplicative precedence.
+    Div,
+}
+
+impl Infix {
+    /// The precedence this form prints at.
+    #[must_use]
+    pub const fn precedence(self) -> u8 {
+        match self {
+            | Self::Sub => PREC_ADD,
+            | Self::Neg => PREC_NEG,
+            | Self::Div => PREC_MUL,
+        }
+    }
+}
+
 impl Graph {
     /// A total order on concrete terms that is independent of node ids:
     /// numbers, then symbols by name, then compound terms by operator name
@@ -158,6 +189,12 @@ impl Graph {
         min_prec: u8,
         out: &mut String,
     ) {
+        // A named infix operator (`sub`, `neg`, `divide`) prints as the form
+        // it stands for, so an unevaluated request reads as it was written.
+        if let Some(infix) = self.ops().attr::<Infix>(self.op(node)) {
+            self.write_infix(node, *infix, min_prec, out);
+            return;
+        }
         let prec = self.precedence(node);
         let parens = prec < min_prec;
         if parens {
@@ -247,7 +284,61 @@ impl Graph {
                     | _ => PREC_ATOM,
                 }
             },
-            | _ => PREC_ATOM,
+            | op => {
+                match self.ops().attr::<Infix>(op) {
+                    | Some(infix) => infix.precedence(),
+                    | None => PREC_ATOM,
+                }
+            },
+        }
+    }
+
+    /// Writes a named infix operator: `a - b`, `-a` or `a / b`.
+    fn write_infix(
+        &self,
+        node: NodeId,
+        infix: Infix,
+        min_prec: u8,
+        out: &mut String,
+    ) {
+        let prec = infix.precedence();
+        let parens = prec < min_prec;
+        if parens {
+            out.push('(');
+        }
+        match (infix, self.children(node)) {
+            | (Infix::Sub, [lhs, rhs]) => {
+                self.write_term(*lhs, PREC_ADD, out);
+                out.push_str(" - ");
+                self.write_term(*rhs, PREC_MUL, out);
+            },
+            | (Infix::Div, [lhs, rhs]) => {
+                self.write_term(*lhs, PREC_MUL, out);
+                out.push('/');
+                self.write_term(*rhs, PREC_POW, out);
+            },
+            | (Infix::Neg, [operand]) => {
+                out.push('-');
+                // `-x^2` is `-(x^2)`, so the operand keeps power precedence;
+                // a sum or product is parenthesised: `-(a + b)`.
+                self.write_term(*operand, PREC_NEG, out);
+            },
+            // A malformed node (wrong arity) falls back to the generic form
+            // rather than printing something unparseable.
+            | _ => {
+                out.push_str(&self.ops().get(self.op(node)).name);
+                out.push('(');
+                for (i, &child) in self.ordered_children(node).iter().enumerate() {
+                    if i > 0 {
+                        out.push_str(", ");
+                    }
+                    self.write_term(child, PREC_EQ, out);
+                }
+                out.push(')');
+            },
+        }
+        if parens {
+            out.push(')');
         }
     }
 
