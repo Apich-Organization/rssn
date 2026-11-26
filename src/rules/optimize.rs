@@ -275,32 +275,12 @@ fn leading_minors(h: &[Vec<f64>]) -> Vec<f64> {
         .collect()
 }
 
-/// Determinant by Gaussian elimination with partial pivoting.
-fn determinant(mut m: Vec<Vec<f64>>) -> f64 {
-    let n = m.len();
-    let mut det = 1.0;
-    for c in 0..n {
-        let Some(p) = (c..n).max_by(|&a, &b| m[a][c].abs().total_cmp(&m[b][c].abs())) else {
-            return 0.0;
-        };
-        if m[p][c].abs() < 1e-300 {
-            return 0.0;
-        }
-        if p != c {
-            m.swap(p, c);
-            det = -det;
-        }
-        det *= m[c][c];
-        for r in c + 1..n {
-            let f = m[r][c] / m[c][c];
-            #[allow(clippy::needless_range_loop)]
-            // index is used for more than one array / arithmetic; iterator form would not be clearer
-            for k in c..n {
-                m[r][k] -= f * m[c][k];
-            }
-        }
-    }
-    det
+/// Determinant via [`crate::kernels::dense::lu_factor`].
+fn determinant(m: Vec<Vec<f64>>) -> f64 {
+    let Ok(mat) = crate::kernels::dense::Mat::from_rows(&m) else {
+        return 0.0;
+    };
+    crate::kernels::dense::lu_factor(&mat).map_or(0.0, |lu| lu.det())
 }
 
 fn unconstrained(

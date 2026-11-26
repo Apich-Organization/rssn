@@ -1,84 +1,236 @@
-//! A comprehensive optimization module for solving various types of equations
-//! using multiple optimization algorithms from the argmin 0.11 library.
+//! Numerical optimization on the `basin` framework.
+//!
+//! [`minimize`] runs one of the solvers listed by [`SolverKind`] on a cost
+//! function with an optional analytic gradient and optional box bounds, and
+//! returns a plain [`MinimizeResult`]. A problem is described by [`FnProblem`],
+//! so a caller does not have to implement any trait.
+//!
+//! The wrapper covers the solver families `basin` provides:
+//!
+//! - **First order**: [`SolverKind::GradientDescent`],
+//!   [`SolverKind::NonlinearCg`], [`SolverKind::TrustRegion`],
+//!   [`SolverKind::ProjectedGradientDescent`] and [`SolverKind::Tnc`].
+//! - **Quasi-Newton**: [`SolverKind::Bfgs`] and [`SolverKind::Lbfgs`].
+//! - **Derivative free**: [`SolverKind::NelderMead`],
+//!   [`SolverKind::NelderMeadProjected`], [`SolverKind::Bobyqa`],
+//!   [`SolverKind::Newuoa`], [`SolverKind::Lincoa`], [`SolverKind::Cobyla`],
+//!   [`SolverKind::Direct`], [`SolverKind::Mads`] and [`SolverKind::Slsqp`].
+//! - **Global and stochastic**: [`SolverKind::CmaEs`], [`SolverKind::De`],
+//!   [`SolverKind::GlobalBestPso`], [`SolverKind::RandomSearch`],
+//!   [`SolverKind::SolisWets`], [`SolverKind::Ssga`] and
+//!   [`SolverKind::Gbnm`].
+//! - **Scalar**: [`SolverKind::Brent`] and [`SolverKind::GoldenSection`] for a
+//!   one-dimensional parameter.
+//!
+//! Box bounds belong to the problem, not the solver: a bounded solver reads
+//! them from the problem, an unbounded solver ignores them, and a solver that
+//! needs bounds but receives none fails with a clear error.
+//!
+//! `basin` is re-exported so a caller can reach a facility this wrapper does
+//! not wrap (least-squares solvers, robust losses, constrained blocks,
+//! observers, checkpointing).
 
-use std::f64::consts::PI;
+use std::sync::Arc;
 
-use argmin::core::ArgminFloat;
-use argmin::core::CostFunction;
-use argmin::core::Error;
-use argmin::core::Executor;
-use argmin::core::Gradient;
-use argmin::core::IterState;
-use argmin::core::OptimizationResult;
-use argmin::core::PopulationState;
-use argmin::core::Solver;
-use argmin::core::State;
-use argmin::solver::conjugategradient::NonlinearConjugateGradient;
-use argmin::solver::conjugategradient::beta::PolakRibierePlus;
-use argmin::solver::gradientdescent::SteepestDescent;
-use argmin::solver::linesearch::MoreThuenteLineSearch;
-use argmin::solver::particleswarm::ParticleSwarm;
-use argmin::solver::quasinewton::BFGS;
-use argmin_math::ArgminConj;
-use argmin_math::ArgminDot;
-use argmin_math::ArgminL2Norm;
-use argmin_math::ArgminMul;
-use argmin_math::ArgminScaledAdd;
-use argmin_math::ArgminSub;
-use ndarray::Array1;
-use ndarray::Array2;
-use ndarray::ArrayView1;
-use ndarray::ArrayViewMut1;
-use ndarray::linalg::general_mat_vec_mul;
-use rand_v09::rngs::StdRng as ParticleSwarmRng;
+use basin::Bfgs;
+use basin::BisectionRoot;
+use basin::Bobyqa;
+use basin::BoundedCmaEs;
+use basin::BoxBounds;
+use basin::Brent;
+use basin::BrentRoot;
+use basin::CmaEs;
+use basin::Cobyla;
+use basin::ConstraintDescription;
+use basin::ConstraintSet;
+use basin::Constraints;
+use basin::CostFunction;
+use basin::De;
+use basin::DenseMatrix;
+use basin::Direct;
+use basin::Executor;
+use basin::Gbnm;
+use basin::GlobalBestPso;
+use basin::GoldenSection;
+use basin::Gradient;
+use basin::GradientDescent;
+use basin::HalleyRoot;
+use basin::Lbfgs;
+use basin::Lbfgsb;
+use basin::Lincoa;
+use basin::Mads;
+use basin::NelderMead;
+use basin::NewtonRoot;
+use basin::Newuoa;
+use basin::NonlinearCg;
+use basin::PointState;
+use basin::PopulationProgress;
+use basin::ProjectedGradientDescent;
+use basin::RandomSearch;
+use basin::SecantRoot;
+use basin::Slsqp;
+use basin::SolisWets;
+use basin::Ssga;
+use basin::Tnc;
+use basin::Toms748Root;
 
-use crate::kernels::numeric_common::scale_product;
-use crate::kernels::reuse::f64_scratch;
+pub use basin;
 
-type P = Array1<f64>;
+/// Bound used for a side a caller leaves free.
+const UNBOUNDED: f64 = f64::MAX;
 
-type G = Array1<f64>;
+/// A cost function with an optional analytic gradient and box bounds.
+///
+/// Clones share their closures, so one problem can feed several runs.
+#[derive(Clone)]
+pub struct FnProblem {
+    cost: Arc<dyn Fn(&[f64]) -> Result<f64, String> + Send + Sync>,
+    gradient: Option<Arc<dyn Fn(&[f64]) -> Result<Vec<f64>, String> + Send + Sync>>,
+    set: ConstraintSet<BoxBounds<Vec<f64>>>,
+}
 
-type F = f64;
+impl FnProblem {
+    /// Builds a problem from a cost closure and an optional gradient closure.
+    ///
+    /// `bounds` is `(lower, upper)`; a free side uses [`f64::INFINITY`]. When
+    /// `bounds` is `None` every variable is free.
+    #[must_use]
+    pub fn new(
+        cost: impl Fn(&[f64]) -> f64 + Send + Sync + 'static,
+        gradient: Option<impl Fn(&[f64]) -> Vec<f64> + Send + Sync + 'static>,
+        dimension: usize,
+        bounds: Option<(Vec<f64>, Vec<f64>)>,
+    ) -> Self {
+        Self::try_new(
+            move |x| Ok(cost(x)),
+            gradient
+                .map(|gradient| move |x: &[f64]| -> Result<Vec<f64>, String> { Ok(gradient(x)) }),
+            dimension,
+            bounds,
+        )
+    }
 
-#[allow(dead_code)]
-type H = Array2<f64>;
+    /// Builds a problem from fallible closures.
+    #[must_use]
+    pub fn try_new(
+        cost: impl Fn(&[f64]) -> Result<f64, String> + Send + Sync + 'static,
+        gradient: Option<impl Fn(&[f64]) -> Result<Vec<f64>, String> + Send + Sync + 'static>,
+        dimension: usize,
+        bounds: Option<(Vec<f64>, Vec<f64>)>,
+    ) -> Self {
+        let (lower, upper) =
+            bounds.unwrap_or_else(|| (vec![-UNBOUNDED; dimension], vec![UNBOUNDED; dimension]));
+        Self {
+            cost: Arc::new(cost),
+            gradient: gradient.map(|gradient| {
+                let closure: Arc<dyn Fn(&[f64]) -> Result<Vec<f64>, String> + Send + Sync> =
+                    Arc::new(gradient);
+                closure
+            }),
+            set: ConstraintSet::default().with_bounds(BoxBounds::new(Some(lower), Some(upper))),
+        }
+    }
 
-#[allow(dead_code)]
-type BFGSState = IterState<P, G, (), H, (), F>;
+    /// Whether the problem carries an analytic gradient.
+    #[must_use]
+    pub const fn has_gradient(&self) -> bool {
+        self.gradient.is_some()
+    }
 
-type MThLineSearch = MoreThuenteLineSearch<P, G, F>;
+    /// The same closures over a different box.
+    #[must_use]
+    pub fn with_bounds(
+        &self,
+        lower: Vec<f64>,
+        upper: Vec<f64>,
+    ) -> Self {
+        Self {
+            cost: Arc::clone(&self.cost),
+            gradient: self.gradient.as_ref().map(Arc::clone),
+            set: ConstraintSet::default().with_bounds(BoxBounds::new(Some(lower), Some(upper))),
+        }
+    }
 
-/// Types of optimization problems supported
+    /// Cost and gradient at `x`.
+    ///
+    /// # Errors
+    /// Returns an error when the cost fails or the problem has no gradient.
+    pub fn value_and_gradient(
+        &self,
+        x: &[f64],
+    ) -> Result<(f64, Vec<f64>), String> {
+        let value = (self.cost)(x)?;
+        match &self.gradient {
+            | Some(gradient) => Ok((value, gradient(x)?)),
+            | None => Err("the problem has no analytic gradient".to_string()),
+        }
+    }
+}
+
+impl CostFunction for FnProblem {
+    type Error = String;
+    type Output = f64;
+    type Param = Vec<f64>;
+
+    fn cost(
+        &self,
+        param: &Vec<f64>,
+    ) -> Result<f64, String> {
+        (self.cost)(param)
+    }
+}
+
+impl Gradient for FnProblem {
+    type Gradient = Vec<f64>;
+
+    fn gradient(
+        &self,
+        param: &Vec<f64>,
+    ) -> Result<Vec<f64>, String> {
+        match &self.gradient {
+            | Some(gradient) => gradient(param),
+            | None => Err("this solver needs an analytic gradient".to_string()),
+        }
+    }
+}
+
+impl Constraints for FnProblem {
+    type Set = ConstraintSet<BoxBounds<Vec<f64>>>;
+
+    fn constraints(&self) -> <Self::Set as ConstraintDescription>::Borrowed<'_> {
+        self.set.borrowed()
+    }
+}
+
+/// The optimization problems the bundled test functions describe.
 #[derive(Debug, Clone, Copy)]
 pub enum ProblemType {
-    /// Rosenbrock function.
+    /// Rosenbrock's banana function.
     Rosenbrock,
-    /// Sphere function.
+    /// Sum of squares.
     Sphere,
-    /// Rastrigin function.
+    /// Rastrigin's multimodal function.
     Rastrigin,
-    /// Ackley function.
+    /// Ackley's multimodal function.
     Ackley,
-    /// Custom function provided by the user.
+    /// A function the caller supplies.
     Custom,
 }
 
-/// Configuration for optimization algorithms
+/// Iteration budget and convergence target for a run.
 #[derive(Debug, Clone)]
 pub struct OptimizationConfig {
     /// Maximum number of iterations.
     pub max_iters: u64,
-    /// Convergence tolerance.
+    /// Cost at or below which the run counts as converged.
     pub tolerance: f64,
-    /// Type of problem being solved.
+    /// Which test problem the configuration describes.
     pub problem_type: ProblemType,
-    /// Number of dimensions in the parameter space.
+    /// Number of variables.
     pub dimension: usize,
 }
 
 impl Default for OptimizationConfig {
-    /// Provides a default configuration for optimization algorithms.
     fn default() -> Self {
         Self {
             max_iters: 1000,
@@ -89,863 +241,959 @@ impl Default for OptimizationConfig {
     }
 }
 
-/// The chained Rosenbrock function, summed over adjacent coordinates.
-///
-/// Each pair `(x, y)` contributes `(a - x)^2 + b (y - x^2)^2`.
-pub struct Rosenbrock {
-    /// Target of the linear terms (usually 1.0).
-    pub a: f64,
-    /// Weight of the squared coupling residuals (usually 100.0).
-    pub b: f64,
+/// One `basin` solver, with the parameters that change its behaviour.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum SolverKind {
+    /// Steepest descent with a constant step.
+    GradientDescent {
+        /// Step length.
+        step: f64,
+    },
+    /// Dense BFGS quasi-Newton.
+    Bfgs,
+    /// Limited-memory BFGS.
+    Lbfgs,
+    /// Limited-memory BFGS clamped to the box bounds (needs bounds).
+    Lbfgsb,
+    /// Nonlinear conjugate gradients (Hager–Zhang line search).
+    NonlinearCg,
+    /// Nelder–Mead simplex.
+    NelderMead,
+    /// Nelder–Mead clamped to the box bounds.
+    NelderMeadProjected,
+    /// BOBYQA model-based trust region (needs bounds).
+    Bobyqa,
+    /// NEWUOA model-based trust region.
+    Newuoa,
+    /// LINCOA with linear constraints (needs bounds).
+    Lincoa,
+    /// COBYLA linear approximation (needs bounds).
+    Cobyla,
+    /// DIRECT deterministic global search (needs bounds).
+    Direct,
+    /// Mesh-adaptive direct search (needs bounds).
+    Mads,
+    /// Sequential least squares programming (needs bounds).
+    Slsqp,
+    /// Projected gradient descent (needs bounds).
+    ProjectedGradientDescent {
+        /// Step length.
+        alpha: f64,
+    },
+    /// Truncated Newton with bounds.
+    Tnc,
+    /// CMA-ES, a stochastic evolution strategy.
+    CmaEs {
+        /// Initial step size.
+        sigma: f64,
+    },
+    /// CMA-ES clamped to the box bounds (needs bounds).
+    BoundedCmaEs {
+        /// Initial step size.
+        sigma: f64,
+    },
+    /// Differential evolution.
+    De,
+    /// Global-best particle swarm (needs bounds).
+    GlobalBestPso,
+    /// Random search with `lambda` samples per iteration.
+    RandomSearch {
+        /// Samples per iteration.
+        lambda: usize,
+    },
+    /// Solis–Wets adaptive random search.
+    SolisWets,
+    /// Steady-state genetic algorithm.
+    Ssga,
+    /// Globalized and bounded Nelder–Mead.
+    Gbnm,
+    /// Brent's scalar minimiser (one variable).
+    Brent,
+    /// Golden-section scalar minimiser (one variable).
+    GoldenSection,
 }
 
-impl Default for Rosenbrock {
-    fn default() -> Self {
-        Self { a: 1.0, b: 100.0 }
-    }
-}
+impl SolverKind {
+    /// Every solver this wrapper exposes.
+    pub const ALL: [Self; 26] = [
+        Self::GradientDescent { step: 0.1 },
+        Self::Bfgs,
+        Self::Lbfgs,
+        Self::Lbfgsb,
+        Self::NonlinearCg,
+        Self::NelderMead,
+        Self::NelderMeadProjected,
+        Self::Bobyqa,
+        Self::Newuoa,
+        Self::Lincoa,
+        Self::Cobyla,
+        Self::Direct,
+        Self::Mads,
+        Self::Slsqp,
+        Self::ProjectedGradientDescent { alpha: 0.1 },
+        Self::Tnc,
+        Self::CmaEs { sigma: 0.3 },
+        Self::BoundedCmaEs { sigma: 0.3 },
+        Self::De,
+        Self::GlobalBestPso,
+        Self::RandomSearch { lambda: 10 },
+        Self::SolisWets,
+        Self::Ssga,
+        Self::Gbnm,
+        Self::Brent,
+        Self::GoldenSection,
+    ];
 
-// Returns a mantissa for the coupling residual and a factor whose square
-// restores its magnitude. Scaling before the fused difference preserves
-// finite weighted terms even when the unweighted residual is out of range.
-fn rescale_rosenbrock_residual(
-    x: f64,
-    y: f64,
-    residual: f64,
-) -> (f64, f64) {
-    const UP: f64 = f64::from_bits(1535_u64 << 52); // 2^512
-    const DOWN: f64 = f64::from_bits(511_u64 << 52); // 2^-512
-    const SMALL_X: f64 = f64::from_bits(573_u64 << 52); // 2^-450
-    const SMALL_Y: f64 = f64::from_bits(123_u64 << 52); // 2^-900
-    if residual.is_infinite() && x.is_finite() && y.is_finite() {
-        let scaled = x * DOWN;
-        (scaled.mul_add(-scaled, (y * DOWN) * DOWN), UP)
-    } else if residual.abs() < f64::MIN_POSITIVE
-        && x.abs() < SMALL_X
-        && y.abs() < SMALL_Y
-        && !crate::kernels::exact_eq(x, 0.0)
-    {
-        let scaled = x * UP;
-        (scaled.mul_add(-scaled, (y * UP) * UP), DOWN)
-    } else {
-        (residual, 1.0)
-    }
-}
-
-fn rosenbrock_scaled_product(
-    value: f64,
-    factors: &[f64],
-) -> f64 {
-    // The caller handles zero/non-finite factors before requesting scaling.
-    scale_product(value, factors, &[]).unwrap_or_else(|_| f64::INFINITY.copysign(value))
-}
-
-const ROSENBROCK_BOUNDED_SCALE: u64 = 1123_u64 << 52; // 2^100
-const ROSENBROCK_COST_THRESHOLD: f64 = f64::from_bits(173_u64 << 52); // 2^-850
-
-fn ordinary_rosenbrock_scale(value: f64) -> bool {
-    const LOWER: u64 = 923_u64 << 52; // 2^-100
-    let magnitude = value.to_bits() & 0x7fff_ffff_ffff_ffff;
-    magnitude == 0 || (LOWER..=ROSENBROCK_BOUNDED_SCALE).contains(&magnitude)
-}
-
-impl Rosenbrock {
-    fn cost_pairs<const SCALED: bool>(
-        &self,
-        param: &Array1<f64>,
-    ) -> f64 {
-        let term = |x: f64, y: f64| {
-            let linear = self.a - x;
-            let penalty = if SCALED {
-                self.pair_penalty(x, y)
-            } else {
-                self.b * x.mul_add(-x, y).powi(2)
-            };
-            linear.mul_add(linear, penalty)
-        };
-        param.as_slice().map_or_else(
-            || {
-                (0..param.len() - 1)
-                    .map(|i| term(param[i], param[i + 1]))
-                    .sum()
-            },
-            |values| values.windows(2).map(|pair| term(pair[0], pair[1])).sum(),
+    /// Whether the solver requires finite box bounds.
+    #[must_use]
+    pub const fn needs_bounds(self) -> bool {
+        matches!(
+            self,
+            Self::Lbfgsb
+                | Self::Bobyqa
+                | Self::Lincoa
+                | Self::Cobyla
+                | Self::Direct
+                | Self::Mads
+                | Self::Slsqp
+                | Self::ProjectedGradientDescent { .. }
+                | Self::GlobalBestPso
+                | Self::BoundedCmaEs { .. }
         )
     }
 
-    fn gradient_pairs<const SCALED: bool>(
-        &self,
-        param: &Array1<f64>,
-        gradient: &mut Vec<f64>,
-    ) {
-        let (a, b) = (self.a, self.b);
-        let weighted_residual = |x: f64, y: f64| b * x.mul_add(-x, y);
-        let left = |x: f64, weighted: f64| (-2.0_f64).mul_add(a - x, -4.0 * (x * weighted));
-        if !SCALED && let Some(values) = param.as_slice() {
-            // Each interior output is independent. Three shifted slices
-            // expose contiguous reads and a single disjoint output stream.
-            let end = values.len() - 1;
-            gradient.resize(values.len(), 0.0);
-            gradient[0] = left(values[0], weighted_residual(values[0], values[1]));
-            for (((entry, &x), &y), &z) in gradient[1..end]
-                .iter_mut()
-                .zip(&values[..end - 1])
-                .zip(&values[1..end])
-                .zip(&values[2..])
-            {
-                *entry = 2.0 * weighted_residual(x, y) + left(y, weighted_residual(y, z));
-            }
-            gradient[end] = 2.0 * weighted_residual(values[end - 1], values[end]);
-            return;
-        }
-        // Each interior coordinate receives the right derivative of the
-        // previous pair and the left derivative of the current one.
-        let mut previous = 0.0;
-        let mut derivative = |x, y| {
-            let (left, right) = if SCALED {
-                self.pair_derivatives(x, y)
-            } else {
-                let weighted = weighted_residual(x, y);
-                (left(x, weighted), 2.0 * weighted)
-            };
-            let value = previous + left;
-            previous = right;
-            value
-        };
-        if let Some(values) = param.as_slice() {
-            gradient.extend(values.windows(2).map(|pair| derivative(pair[0], pair[1])));
-        } else {
-            gradient.extend((0..param.len() - 1).map(|i| derivative(param[i], param[i + 1])));
-        }
-        gradient.push(previous);
-    }
-
-    #[inline]
-    fn pair_penalty(
-        &self,
-        x: f64,
-        y: f64,
-    ) -> f64 {
-        let residual = x.mul_add(-x, y);
-        let square = residual * residual;
-        if square.is_normal() || crate::kernels::exact_eq(residual, 0.0) {
-            return self.b * square;
-        }
-        self.scaled_penalty(x, y, residual)
-    }
-
-    #[cold]
-    fn scaled_penalty(
-        &self,
-        x: f64,
-        y: f64,
-        residual: f64,
-    ) -> f64 {
-        let (residual, scale) = rescale_rosenbrock_residual(x, y, residual);
-        if crate::kernels::exact_eq(scale, 1.0)
-            || !self.b.is_finite()
-            || crate::kernels::exact_eq(residual, 0.0)
-        {
-            (self.b * residual) * residual
-        } else {
-            let magnitude = residual.abs();
-            rosenbrock_scaled_product(self.b, &[magnitude, magnitude, scale, scale, scale, scale])
-        }
-    }
-
-    #[inline]
-    fn pair_derivatives(
-        &self,
-        x: f64,
-        y: f64,
-    ) -> (f64, f64) {
-        let residual = x.mul_add(-x, y);
-        let weighted = self.b * residual;
-        let mixed = x * weighted;
-        let (coupling, next) =
-            if weighted.is_normal() && (mixed.is_normal() || crate::kernels::exact_eq(x, 0.0)) {
-                (-4.0 * mixed, 2.0 * weighted)
-            } else {
-                self.scaled_derivatives(x, y, residual)
-            };
-        ((-2.0_f64).mul_add(self.a - x, coupling), next)
-    }
-
-    #[cold]
-    fn scaled_derivatives(
-        &self,
-        x: f64,
-        y: f64,
-        residual: f64,
-    ) -> (f64, f64) {
-        let (residual, scale) = rescale_rosenbrock_residual(x, y, residual);
-        if !residual.is_finite() || !x.is_finite() || !self.b.is_finite() {
-            let weighted = self.b * residual;
-            return (-4.0 * (x * weighted), 2.0 * weighted);
-        }
-        if crate::kernels::exact_eq(residual, 0.0) {
-            return (0.0, 0.0);
-        }
-        let signed = if residual.is_sign_negative() {
-            -self.b
-        } else {
-            self.b
-        };
-        let magnitude = residual.abs();
-        let right = rosenbrock_scaled_product(signed, &[2.0, magnitude, scale, scale]);
-        let left = if crate::kernels::exact_eq(x, 0.0) {
-            0.0
-        } else {
-            let weight = if x.is_sign_negative() {
-                signed
-            } else {
-                -signed
-            };
-            rosenbrock_scaled_product(weight, &[4.0, magnitude, x.abs(), scale, scale])
-        };
-        (left, right)
+    /// Whether the solver evaluates the analytic gradient.
+    #[must_use]
+    pub const fn needs_gradient(self) -> bool {
+        matches!(
+            self,
+            Self::GradientDescent { .. }
+                | Self::Bfgs
+                | Self::Lbfgs
+                | Self::NonlinearCg
+                | Self::ProjectedGradientDescent { .. }
+                | Self::Tnc
+        )
     }
 }
 
-impl CostFunction for Rosenbrock {
+/// Execution options for [`minimize`].
+#[derive(Debug, Clone)]
+pub struct MinimizeOptions {
+    /// Iteration budget.
+    pub max_iter: u64,
+    /// Cost at or below which the result is reported as converged.
+    pub tolerance: f64,
+    /// Seed for the stochastic solvers, so runs are reproducible.
+    pub seed: u64,
+    /// Box bounds `(lower, upper)`; `None` leaves every variable free.
+    pub bounds: Option<(Vec<f64>, Vec<f64>)>,
+}
+
+impl Default for MinimizeOptions {
+    fn default() -> Self {
+        Self {
+            max_iter: 1_000,
+            tolerance: 1e-6,
+            seed: 0,
+            bounds: None,
+        }
+    }
+}
+
+impl From<&OptimizationConfig> for MinimizeOptions {
+    fn from(config: &OptimizationConfig) -> Self {
+        Self {
+            max_iter: config.max_iters,
+            tolerance: config.tolerance,
+            seed: 0,
+            bounds: None,
+        }
+    }
+}
+
+/// What a run produced.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MinimizeResult {
+    /// Best parameter vector found.
+    pub x: Vec<f64>,
+    /// Cost at `x`.
+    pub cost: f64,
+    /// Iterations performed.
+    pub iterations: u64,
+    /// Cost evaluations performed.
+    pub cost_evals: u64,
+    /// Whether `cost` reached the requested tolerance.
+    pub converged: bool,
+}
+
+/// Runs `solver` on `problem` and converts the framework result.
+macro_rules! solve_with {
+    ($problem:expr, $solver:expr, $start:expr, $options:expr) => {{
+        let start: Vec<f64> = $start;
+        let result = Executor::from_start($problem, $solver, start)
+            .max_iter($options.max_iter)
+            .run()
+            .map_err(|error| error.to_string())?;
+        Ok(MinimizeResult {
+            x: result.param().clone(),
+            cost: result.cost(),
+            iterations: result.iter(),
+            cost_evals: result.cost_evals(),
+            converged: result.cost() <= $options.tolerance,
+        })
+    }};
+}
+
+/// A one-variable view of a [`FnProblem`], for the scalar solvers.
+struct ScalarView<'a> {
+    problem: &'a FnProblem,
+    set: ConstraintSet<BoxBounds<f64>>,
+}
+
+impl<'a> ScalarView<'a> {
+    fn new(
+        problem: &'a FnProblem,
+        start: f64,
+    ) -> Self {
+        let bounds = problem.set.bounds();
+        let lower = bounds
+            .lower()
+            .and_then(|values| values.first().copied())
+            .unwrap_or(-UNBOUNDED);
+        let upper = bounds
+            .upper()
+            .and_then(|values| values.first().copied())
+            .unwrap_or(UNBOUNDED);
+        // A scalar solver brackets inside its box, so a free variable gets a
+        // finite bracket around the start instead of the whole line.
+        let (lower, upper) = if lower <= -UNBOUNDED && upper >= UNBOUNDED {
+            let reach = 10.0 * start.abs().max(1.0);
+            (start - reach, start + reach)
+        } else {
+            (lower, upper)
+        };
+        Self {
+            problem,
+            set: ConstraintSet::default().with_bounds(BoxBounds::new(Some(lower), Some(upper))),
+        }
+    }
+}
+
+impl CostFunction for ScalarView<'_> {
+    type Error = String;
     type Output = f64;
-    type Param = Array1<f64>;
+    type Param = f64;
 
     fn cost(
         &self,
-        param: &Self::Param,
-    ) -> Result<Self::Output, Error> {
-        if param.len() < 2 {
-            return Err(Error::msg("Rosenbrock needs at least two coordinates"));
-        }
-        if crate::kernels::exact_eq(self.b, 0.0) {
-            return Ok(param
-                .iter()
-                .take(param.len() - 1)
-                .map(|x| (self.a - x).powi(2))
-                .sum());
-        }
-        // With this weight, even 2^64 subnormal square roundings
-        // contribute less than 2^-911 in total. At this cost cutoff they
-        // are below the precision of the ordinary result.
-        if self.b.abs() <= f64::from_bits(ROSENBROCK_BOUNDED_SCALE) {
-            let ordinary = self.cost_pairs::<false>(param);
-            if ordinary.is_finite() && ordinary.abs() >= ROSENBROCK_COST_THRESHOLD {
-                return Ok(ordinary);
-            }
-        }
-        Ok(self.cost_pairs::<true>(param))
+        x: &f64,
+    ) -> Result<f64, String> {
+        (self.problem.cost)(std::slice::from_ref(x))
     }
 }
 
-impl Gradient for Rosenbrock {
-    type Gradient = Array1<f64>;
-    type Param = Array1<f64>;
+impl Constraints for ScalarView<'_> {
+    type Set = ConstraintSet<BoxBounds<f64>>;
 
-    fn gradient(
-        &self,
-        param: &Self::Param,
-    ) -> Result<Self::Gradient, Error> {
-        let n = param.len();
-        if n < 2 {
-            return Err(Error::msg("Rosenbrock needs at least two coordinates"));
-        }
-        let mut gradient = Vec::with_capacity(n);
-        if crate::kernels::exact_eq(self.b, 0.0) {
-            gradient.extend(param.iter().take(n - 1).map(|x| -2.0 * (self.a - x)));
-            gradient.push(0.0);
-        } else {
-            // Nonzero inputs in range are multiples of 2^-152. Residuals
-            // are multiples of 2^-304, so the bounded nonzero products used
-            // for both gradient contributions stay in the normal range.
-            let ordinary = n >= 16
-                && ordinary_rosenbrock_scale(self.b)
-                && param.as_slice().map_or_else(
-                    || (0..n).fold(true, |ok, i| ok & ordinary_rosenbrock_scale(param[i])),
-                    |values| {
-                        values
-                            .iter()
-                            .fold(true, |ok, &x| ok & ordinary_rosenbrock_scale(x))
-                    },
-                );
-            if ordinary {
-                self.gradient_pairs::<false>(param, &mut gradient);
-            } else {
-                self.gradient_pairs::<true>(param, &mut gradient);
-            }
-        }
-        Ok(Array1::from_vec(gradient))
+    fn constraints(&self) -> <Self::Set as ConstraintDescription>::Borrowed<'_> {
+        self.set.borrowed()
     }
 }
 
-/// Sphere function optimization (convex function)
+/// Runs a solver whose initial state is a single point.
+macro_rules! solve_point {
+    ($problem:expr, $solver:expr, $start:expr, $options:expr) => {{
+        let start: Vec<f64> = $start;
+        let result = Executor::new($problem, $solver, PointState::new(start))
+            .max_iter($options.max_iter)
+            .run()
+            .map_err(|error| error.to_string())?;
+        Ok(MinimizeResult {
+            x: result.param().clone(),
+            cost: result.cost(),
+            iterations: result.iter(),
+            cost_evals: result.cost_evals(),
+            converged: result.cost() <= $options.tolerance,
+        })
+    }};
+}
+
+/// Runs a scalar solver whose initial state is a single number.
+macro_rules! solve_scalar {
+    ($problem:expr, $solver:expr, $start:expr, $options:expr) => {{
+        let start: f64 = $start;
+        let result = Executor::new($problem, $solver, PointState::new(start))
+            .max_iter($options.max_iter)
+            .run()
+            .map_err(|error| error.to_string())?;
+        Ok(MinimizeResult {
+            x: vec![*result.param()],
+            cost: result.cost(),
+            iterations: result.iter(),
+            cost_evals: result.cost_evals(),
+            converged: result.cost() <= $options.tolerance,
+        })
+    }};
+}
+
+/// Runs a population solver seeded with one member.
+macro_rules! solve_population {
+    ($problem:expr, $solver:expr, $start:expr, $options:expr) => {{
+        let _ = $start;
+        let state = PopulationProgress::empty();
+        let result = Executor::new($problem, $solver, state)
+            .require_evaluated_state()
+            .max_iter($options.max_iter)
+            .run_with_solver()
+            .map_err(|error| error.to_string())?
+            .into_result();
+        Ok(MinimizeResult {
+            x: result.param().clone(),
+            cost: result.cost(),
+            iterations: result.iter(),
+            cost_evals: result.cost_evals(),
+            converged: result.cost() <= $options.tolerance,
+        })
+    }};
+}
+
+/// Minimises `problem` with `kind`.
+///
+/// `start` is the initial point; a scalar solver ([`SolverKind::Brent`],
+/// [`SolverKind::GoldenSection`]) requires exactly one variable.
+///
+/// # Errors
+/// Returns an error when the problem has no gradient but the solver needs one,
+/// when the solver needs bounds and none were supplied, when a scalar solver
+/// receives more than one variable, or when the solver aborts.
+pub fn minimize(
+    problem: &FnProblem,
+    start: &[f64],
+    kind: SolverKind,
+    options: &MinimizeOptions,
+) -> Result<MinimizeResult, String> {
+    if start.is_empty() {
+        return Err("the initial point is empty".to_string());
+    }
+    if matches!(kind, SolverKind::Brent | SolverKind::GoldenSection) && start.len() != 1 {
+        return Err(format!(
+            "{kind:?} minimises one variable, but the start has {} entries",
+            start.len()
+        ));
+    }
+    if kind.needs_bounds() && options.bounds.is_none() {
+        return Err(format!("{kind:?} requires box bounds"));
+    }
+    if kind.needs_gradient() && !problem.has_gradient() {
+        return Err(format!("{kind:?} requires an analytic gradient"));
+    }
+    let problem = match &options.bounds {
+        | Some((lower, upper)) => problem.with_bounds(lower.clone(), upper.clone()),
+        | None => problem.clone(),
+    };
+    let x0 = start.to_vec();
+    match kind {
+        | SolverKind::GradientDescent { step } => {
+            solve_with!(problem, GradientDescent::new(step), x0, options)
+        },
+        | SolverKind::Bfgs => solve_with!(problem, Bfgs::new(), x0, options),
+        | SolverKind::Lbfgs => solve_with!(problem, Lbfgs::new(), x0, options),
+        | SolverKind::Lbfgsb => solve_with!(problem, Lbfgsb::new(), x0, options),
+        | SolverKind::NonlinearCg => solve_with!(problem, NonlinearCg::new(), x0, options),
+        | SolverKind::NelderMead => solve_with!(problem, NelderMead::new(), x0, options),
+        | SolverKind::NelderMeadProjected => {
+            solve_with!(problem, NelderMead::new().projected(), x0, options)
+        },
+        | SolverKind::Bobyqa => solve_with!(problem, Bobyqa::new(), x0, options),
+        | SolverKind::Newuoa => solve_with!(problem, Newuoa::new(), x0, options),
+        | SolverKind::Lincoa => solve_with!(problem, Lincoa::new(), x0, options),
+        | SolverKind::Cobyla => solve_with!(problem, Cobyla::new(), x0, options),
+        | SolverKind::Direct => solve_point!(problem, Direct::new(), x0, options),
+        | SolverKind::Mads => solve_with!(problem, Mads::new(), x0, options),
+        | SolverKind::Slsqp => solve_with!(problem, Slsqp::new(), x0, options),
+        | SolverKind::ProjectedGradientDescent { alpha } => {
+            solve_with!(problem, ProjectedGradientDescent::new(alpha), x0, options)
+        },
+        | SolverKind::Tnc => solve_with!(problem, Tnc::new(), x0, options),
+        | SolverKind::CmaEs { sigma } => {
+            solve_with!(
+                problem,
+                CmaEs::<Vec<f64>, DenseMatrix>::new(options.seed, sigma),
+                x0,
+                options
+            )
+        },
+        | SolverKind::BoundedCmaEs { sigma } => {
+            solve_with!(
+                problem,
+                BoundedCmaEs::<Vec<f64>, DenseMatrix>::new(options.seed, sigma),
+                x0,
+                options
+            )
+        },
+        | SolverKind::De => solve_population!(problem, De::new(options.seed), x0, options),
+        | SolverKind::GlobalBestPso => {
+            solve_population!(problem, GlobalBestPso::new(options.seed), x0, options)
+        },
+        | SolverKind::RandomSearch { lambda } => {
+            solve_population!(
+                problem,
+                RandomSearch::new(lambda, options.seed),
+                x0,
+                options
+            )
+        },
+        | SolverKind::SolisWets => {
+            solve_with!(problem, SolisWets::new(options.seed), x0, options)
+        },
+        | SolverKind::Ssga => solve_population!(problem, Ssga::new(options.seed), x0, options),
+        | SolverKind::Gbnm => solve_with!(problem, Gbnm::new(options.seed), x0, options),
+        | SolverKind::Brent => {
+            let scalar = ScalarView::new(&problem, x0[0]);
+            solve_scalar!(scalar, Brent::new(), x0[0], options)
+        },
+        | SolverKind::GoldenSection => {
+            let scalar = ScalarView::new(&problem, x0[0]);
+            solve_scalar!(scalar, GoldenSection::new(), x0[0], options)
+        },
+    }
+}
+
+/// A scalar root finder.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RootSolver {
+    /// Bisection on a sign-changing bracket.
+    Bisection,
+    /// Brent's method on a sign-changing bracket.
+    Brent,
+    /// Safeguarded secant iteration.
+    Secant,
+    /// TOMS Algorithm 748 (`k = 2`).
+    Toms748,
+    /// Safeguarded Newton iteration; uses a central difference when no
+    /// derivative is supplied.
+    Newton,
+    /// Safeguarded Halley iteration; uses central differences when no
+    /// derivatives are supplied.
+    Halley,
+}
+
+/// Options for [`find_root`].
+#[derive(Debug, Clone, Copy)]
+pub struct RootOptions {
+    /// Iteration budget.
+    pub max_iter: u64,
+    /// Absolute position tolerance.
+    pub tolerance: f64,
+}
+
+impl Default for RootOptions {
+    fn default() -> Self {
+        Self {
+            max_iter: 200,
+            tolerance: 1e-12,
+        }
+    }
+}
+
+/// What a root search produced.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RootReport {
+    /// The root the search settled on.
+    pub root: f64,
+    /// The function value at `root`.
+    pub residual: f64,
+    /// Iterations performed.
+    pub iterations: u64,
+    /// Function evaluations performed.
+    pub function_evals: u64,
+    /// Whether the solver's own convergence test passed.
+    pub converged: bool,
+}
+
+/// Central difference of a scalar function.
+fn central_difference(
+    f: &impl Fn(f64) -> f64,
+    x: f64,
+) -> f64 {
+    let h = 1e-6 * x.abs().max(1.0);
+    (f(x + h) - f(x - h)) / (2.0 * h)
+}
+
+/// Finds a root of `f` inside `bracket`.
+///
+/// `derivative` is used by [`RootSolver::Newton`] and
+/// [`RootSolver::Halley`]; when it is `None` a central difference stands in,
+/// and Halley's second derivative is differenced from the same source.
+///
+/// # Errors
+/// Returns an error when the bracket is not finite and ordered, when the
+/// endpoints do not bracket a sign change, or when the solver reports a
+/// non-convergent failure.
+pub fn find_root(
+    f: impl Fn(f64) -> f64,
+    derivative: Option<impl Fn(f64) -> f64>,
+    bracket: (f64, f64),
+    solver: RootSolver,
+    options: &RootOptions,
+) -> Result<RootReport, String> {
+    let (lower, upper) = bracket;
+    let call = |x: f64| Ok::<f64, String>(f(x));
+    let derivative_of = |x: f64| {
+        match &derivative {
+            | Some(derivative) => derivative(x),
+            | None => central_difference(&f, x),
+        }
+    };
+    let result = match solver {
+        | RootSolver::Bisection => {
+            BisectionRoot::new(lower, upper)
+                .with_max_iter(options.max_iter)
+                .with_absolute_position_tolerance(options.tolerance)
+                .solve(call)
+                .map_err(|error| format!("{error:?}"))?
+        },
+        | RootSolver::Brent => {
+            BrentRoot::new(lower, upper)
+                .with_max_iter(options.max_iter)
+                .with_absolute_position_tolerance(options.tolerance)
+                .solve(call)
+                .map_err(|error| format!("{error:?}"))?
+        },
+        | RootSolver::Secant => {
+            SecantRoot::new(lower, upper)
+                .with_max_iter(options.max_iter)
+                .with_absolute_position_tolerance(options.tolerance)
+                .solve(call)
+                .map_err(|error| format!("{error:?}"))?
+        },
+        | RootSolver::Toms748 => {
+            Toms748Root::new(lower, upper)
+                .with_max_iter(options.max_iter)
+                .with_absolute_position_tolerance(options.tolerance)
+                .solve(call)
+                .map_err(|error| format!("{error:?}"))?
+        },
+        | RootSolver::Newton => {
+            NewtonRoot::new(lower, upper)
+                .with_max_iter(options.max_iter)
+                .with_absolute_position_tolerance(options.tolerance)
+                .solve(
+                    |x: f64| Ok::<f64, String>(f(x)),
+                    |x: f64| Ok::<f64, String>(derivative_of(x)),
+                )
+                .map_err(|error| format!("{error:?}"))?
+        },
+        | RootSolver::Halley => {
+            let second = |x: f64| {
+                let h = 1e-4 * x.abs().max(1.0);
+                (derivative_of(x + h) - derivative_of(x - h)) / (2.0 * h)
+            };
+            HalleyRoot::new(lower, upper)
+                .with_max_iter(options.max_iter)
+                .with_absolute_position_tolerance(options.tolerance)
+                .solve(
+                    |x: f64| Ok::<f64, String>(f(x)),
+                    |x: f64| Ok::<f64, String>(derivative_of(x)),
+                    |x: f64| Ok::<f64, String>(second(x)),
+                )
+                .map_err(|error| format!("{error:?}"))?
+        },
+    };
+    Ok(RootReport {
+        root: result.root(),
+        residual: result.value(),
+        iterations: result.iterations(),
+        function_evals: result.function_evals(),
+        converged: result.converged(),
+    })
+}
+
+/// Rosenbrock's banana function.
+
+/// Rosenbrock's banana function `sum 100 (x[i+1] - x[i]^2)^2 + (1 - x[i])^2`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Rosenbrock;
+
+impl Rosenbrock {
+    /// The problem over `dimension` variables.
+    #[must_use]
+    pub fn problem(dimension: usize) -> FnProblem {
+        FnProblem::new(
+            |x| {
+                let mut total = 0.0;
+                for pair in x.windows(2) {
+                    let (a, b) = (pair[0], pair[1]);
+                    total += 100.0 * (b - a * a).powi(2) + (1.0 - a).powi(2);
+                }
+                total
+            },
+            Some(|x: &[f64]| {
+                let n = x.len();
+                let mut g = vec![0.0; n];
+                for i in 0..n.saturating_sub(1) {
+                    let (a, b) = (x[i], x[i + 1]);
+                    g[i] += -400.0 * a * (b - a * a) - 2.0 * (1.0 - a);
+                    g[i + 1] += 200.0 * (b - a * a);
+                }
+                g
+            }),
+            dimension.max(2),
+            None,
+        )
+    }
+
+    /// The function value at `x`.
+    #[must_use]
+    pub fn cost(x: &[f64]) -> f64 {
+        let mut total = 0.0;
+        for pair in x.windows(2) {
+            let (a, b) = (pair[0], pair[1]);
+            total += 100.0 * (b - a * a).powi(2) + (1.0 - a).powi(2);
+        }
+        total
+    }
+}
+
+/// The sphere function `sum x[i]^2`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Sphere;
 
-impl CostFunction for Sphere {
-    type Output = f64;
-    type Param = Array1<f64>;
+impl Sphere {
+    /// The problem over `dimension` variables.
+    #[must_use]
+    pub fn problem(dimension: usize) -> FnProblem {
+        FnProblem::new(
+            |x| x.iter().map(|value| value * value).sum(),
+            Some(|x: &[f64]| x.iter().map(|value| 2.0 * value).collect()),
+            dimension,
+            None,
+        )
+    }
 
-    fn cost(
-        &self,
-        param: &Self::Param,
-    ) -> Result<Self::Output, Error> {
-        Ok(param.iter().map(|&x| x * x).sum())
+    /// The function value at `x`.
+    #[must_use]
+    pub fn cost(x: &[f64]) -> f64 {
+        x.iter().map(|value| value * value).sum()
     }
 }
 
-impl Gradient for Sphere {
-    type Gradient = Array1<f64>;
-    type Param = Array1<f64>;
-
-    fn gradient(
-        &self,
-        param: &Self::Param,
-    ) -> Result<Self::Gradient, Error> {
-        Ok(param.iter().map(|&x| 2.0 * x).collect())
-    }
-}
-
-/// Rastrigin function optimization (multimodal function)
+/// Rastrigin's function `10 n + sum x[i]^2 - 10 cos(2 pi x[i])`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Rastrigin {
-    /// Parameter a (usually 10.0).
-    pub a: f64,
+    /// Number of variables the function is defined over.
+    pub dimension: usize,
 }
 
 impl Default for Rastrigin {
     fn default() -> Self {
-        Self { a: 10.0 }
+        Self { dimension: 2 }
     }
 }
 
-impl CostFunction for Rastrigin {
-    type Output = f64;
-    type Param = Array1<f64>;
+impl Rastrigin {
+    /// The problem over this instance's dimension.
+    #[must_use]
+    pub fn problem(&self) -> FnProblem {
+        FnProblem::new(
+            |x| {
+                let n = f64::from(u32::try_from(x.len()).unwrap_or(0));
+                10.0 * n
+                    + x.iter()
+                        .map(|value| {
+                            value * value - 10.0 * (2.0 * std::f64::consts::PI * value).cos()
+                        })
+                        .sum::<f64>()
+            },
+            Some(|x: &[f64]| {
+                x.iter()
+                    .map(|value| {
+                        2.0 * value
+                            + 20.0
+                                * std::f64::consts::PI
+                                * (2.0 * std::f64::consts::PI * value).sin()
+                    })
+                    .collect()
+            }),
+            self.dimension,
+            None,
+        )
+    }
 
-    fn cost(
-        &self,
-        param: &Self::Param,
-    ) -> Result<Self::Output, Error> {
-        let n = param.len() as f64;
-
-        let sum: f64 = param
-            .iter()
-            .map(|&x| x.mul_add(x, -(self.a * (2.0 * PI * x).cos())))
-            .sum();
-
-        Ok(self.a.mul_add(n, sum))
+    /// The function value at `x`.
+    #[must_use]
+    pub fn cost(x: &[f64]) -> f64 {
+        let n = f64::from(u32::try_from(x.len()).unwrap_or(0));
+        10.0 * n
+            + x.iter()
+                .map(|value| value * value - 10.0 * (2.0 * std::f64::consts::PI * value).cos())
+                .sum::<f64>()
     }
 }
 
-/// Linear regression problem optimization
-pub struct LinearRegression {
-    /// Feature matrix X.
-    pub x: Array2<f64>,
-    /// Target vector y.
-    pub y: Array1<f64>,
-}
-
-impl LinearRegression {
-    /// Creates a new `LinearRegression` problem instance.
-    ///
-    /// # Errors
-    /// Returns an error if the input data dimensions are mismatched or empty.
-    #[allow(clippy::suspicious_operation_groupings)]
-    pub fn new(
-        x: Array2<f64>,
-        y: Array1<f64>,
-    ) -> Result<Self, Error> {
-        if x.is_empty() || y.is_empty() || x.nrows() != y.len() {
-            return Err(Error::msg(
-                "Input data dimension \
-                 mismatch",
-            ));
-        }
-
-        Ok(Self { x, y })
-    }
-
-    /// Evaluates the half mean-squared residual and its coefficient gradient.
-    ///
-    /// The intercept is the first coefficient, followed by one slope per
-    /// column of `x`. Both outputs use the same residual evaluation.
-    ///
-    /// # Errors
-    /// Returns an error if the data are empty, the row and target counts
-    /// differ, or the coefficient count differs from `x.ncols() + 1`.
-    pub fn value_and_gradient(
-        &self,
-        param: &Array1<f64>,
-    ) -> Result<(f64, Array1<f64>), Error> {
-        self.with_residuals(param, |residuals| {
-            let cost = half_mean_square(residuals.iter().copied(), residuals.len());
-            (cost, self.gradient_from_residuals(residuals))
-        })
-    }
-
-    fn parameters<'p>(
-        &self,
-        param: &'p Array1<f64>,
-    ) -> Result<(f64, ArrayView1<'p, f64>), Error> {
-        if self.x.is_empty() || self.x.nrows() != self.y.len() {
-            return Err(Error::msg("invalid regression data shape"));
-        }
-        if param.len().checked_sub(1) != Some(self.x.ncols()) {
-            return Err(Error::msg(
-                "expected the intercept and one slope per feature column",
-            ));
-        }
-        Ok((param[0], param.slice(ndarray::s![1..])))
-    }
-
-    fn single_column_residuals(
-        &self,
-        intercept: f64,
-        slope: f64,
-    ) -> impl Iterator<Item = f64> + Clone + '_ {
-        self.x
-            .column(0)
-            .into_iter()
-            .zip(&self.y)
-            .map(move |(&x, &target)| regression_residual(x * slope, intercept, target))
-    }
-
-    fn with_row_buffer<T>(
-        &self,
-        evaluate: impl FnOnce(ArrayViewMut1<'_, f64>) -> T,
-    ) -> T {
-        const STACK_ROWS: usize = 64;
-        let n = self.y.len();
-        if n <= STACK_ROWS {
-            let mut storage = [0.0; STACK_ROWS];
-            evaluate(ArrayViewMut1::from(&mut storage[..n]))
-        } else {
-            let mut scratch = f64_scratch(n);
-            scratch.resize(n, 0.0);
-            evaluate(ArrayViewMut1::from(&mut scratch[..]))
-        }
-    }
-
-    fn with_residuals<T>(
-        &self,
-        param: &Array1<f64>,
-        evaluate: impl FnOnce(ArrayView1<'_, f64>) -> T,
-    ) -> Result<T, Error> {
-        let (intercept, slopes) = self.parameters(param)?;
-        Ok(self.with_row_buffer(|mut residuals| {
-            if slopes.len() == 1 {
-                for (entry, value) in residuals
-                    .iter_mut()
-                    .zip(self.single_column_residuals(intercept, slopes[0]))
-                {
-                    *entry = value;
-                }
-            } else {
-                general_mat_vec_mul(1.0, &self.x, &slopes, 0.0, &mut residuals);
-                for (prediction, &target) in residuals.iter_mut().zip(&self.y) {
-                    *prediction = regression_residual(*prediction, intercept, target);
-                }
-            }
-            evaluate(residuals.view())
-        }))
-    }
-
-    fn gradient_from_residuals(
-        &self,
-        residuals: ArrayView1<'_, f64>,
-    ) -> Array1<f64> {
-        let count = residuals.len() as f64;
-        let columns = self.x.ncols();
-        let mut gradient = Array1::zeros(columns + 1);
-        gradient[0] = residuals.sum();
-        if columns > 1
-            && residuals.len() >= 64
-            && let Some(matrix) = self.x.as_slice()
-            && let Some(coefficients) = gradient.as_slice_mut()
-        {
-            // Stream contiguous rows while keeping the order of terms in each
-            // column's dot product.
-            let slopes = &mut coefficients[1..];
-            for (row, &residual) in matrix.chunks_exact(columns).zip(&residuals) {
-                for (entry, &predictor) in slopes.iter_mut().zip(row) {
-                    *entry += predictor * residual;
-                }
-            }
-        } else {
-            general_mat_vec_mul(
-                1.0,
-                &self.x.t(),
-                &residuals,
-                0.0,
-                &mut gradient.slice_mut(ndarray::s![1..]),
-            );
-        }
-        gradient /= count;
-        if gradient.iter().any(|v| !v.is_finite()) {
-            // Normalize the terms before summing when the unscaled sum
-            // overflows, even though its mean can be finite.
-            if !gradient[0].is_finite() {
-                gradient[0] = residuals.iter().map(|r| r / count).sum();
-            }
-            for (entry, column) in gradient.iter_mut().skip(1).zip(self.x.columns()) {
-                if !entry.is_finite() {
-                    *entry = column
-                        .iter()
-                        .zip(&residuals)
-                        .map(|(x, r)| x * (r / count))
-                        .sum();
-                }
-            }
-        }
-        gradient
-    }
-}
-
-fn regression_residual(
-    prediction: f64,
-    intercept: f64,
-    target: f64,
-) -> f64 {
-    prediction + intercept - target
-}
-
-fn half_mean_square(
-    residuals: impl Iterator<Item = f64> + Clone,
-    count: usize,
-) -> f64 {
-    let count = count as f64;
-    let total: f64 = residuals.clone().map(|r| r * r).sum();
+/// Half the mean square of `residuals`, scaled when the raw sum overflows or
+/// underflows.
+fn half_mean_square(residuals: &[f64]) -> f64 {
+    let count = residuals.len() as f64;
+    let total: f64 = residuals.iter().map(|value| value * value).sum();
     if total.is_infinite() || (total > 0.0 && total < f64::MIN_POSITIVE * count) {
-        let scale = residuals.clone().map(f64::abs).fold(0.0, f64::max);
+        let scale = residuals
+            .iter()
+            .map(|value| value.abs())
+            .fold(0.0, f64::max);
         if scale.is_finite() && scale > 0.0 {
-            let scaled: f64 = residuals.map(|r| (r / scale).powi(2)).sum();
+            let scaled: f64 = residuals.iter().map(|value| (value / scale).powi(2)).sum();
             return (scale * (scaled / (2.0 * count))) * scale;
         }
     }
     total / (2.0 * count)
 }
 
-impl CostFunction for LinearRegression {
-    type Output = f64;
-    type Param = Array1<f64>;
+/// Ordinary least squares with an implied intercept, measured as half the
+/// mean squared residual (so its gradient is the mean residual times the
+/// design column).
+#[derive(Debug, Clone, PartialEq)]
+pub struct LinearRegression {
+    /// Predictors, one row per observation.
+    pub x: Vec<Vec<f64>>,
+    /// Responses, one per observation.
+    pub y: Vec<f64>,
+}
 
-    fn cost(
-        &self,
-        param: &Self::Param,
-    ) -> Result<Self::Output, Error> {
-        let (intercept, slopes) = self.parameters(param)?;
-        if slopes.len() == 1 {
-            let residuals = self.single_column_residuals(intercept, slopes[0]);
-            return Ok(half_mean_square(residuals, self.y.len()));
+impl LinearRegression {
+    /// Builds a least-squares problem from predictors and responses.
+    ///
+    /// # Errors
+    /// Returns an error when the row counts differ, the design is empty, or a
+    /// value is not finite.
+    pub fn new(
+        x: Vec<Vec<f64>>,
+        y: Vec<f64>,
+    ) -> Result<Self, String> {
+        if x.is_empty() || x.len() != y.len() {
+            return Err("predictors and responses must be non-empty and aligned".to_string());
         }
-        Ok(self.with_row_buffer(|mut predictions| {
-            general_mat_vec_mul(1.0, &self.x, &slopes, 0.0, &mut predictions);
-            let residuals = predictions
-                .iter()
-                .zip(&self.y)
-                .map(|(&prediction, &target)| regression_residual(prediction, intercept, target));
-            half_mean_square(residuals, self.y.len())
-        }))
+        let width = x[0].len();
+        if width == 0 || x.iter().any(|row| row.len() != width) {
+            return Err("predictor rows must share a non-zero width".to_string());
+        }
+        if x.iter().flatten().any(|value| !value.is_finite())
+            || y.iter().any(|value| !value.is_finite())
+        {
+            return Err("least-squares data must be finite".to_string());
+        }
+        Ok(Self { x, y })
     }
-}
 
-impl Gradient for LinearRegression {
-    type Gradient = Array1<f64>;
-    type Param = Array1<f64>;
+    /// Number of coefficients, including the intercept.
+    #[must_use]
+    pub fn coefficient_count(&self) -> usize {
+        self.x.first().map_or(0, |row| row.len() + 1)
+    }
 
-    fn gradient(
+    /// Residual vector at `beta`.
+    #[must_use]
+    pub fn residuals(
         &self,
-        param: &Self::Param,
-    ) -> Result<Self::Gradient, Error> {
-        self.with_residuals(param, |residuals| self.gradient_from_residuals(residuals))
+        beta: &[f64],
+    ) -> Vec<f64> {
+        self.x
+            .iter()
+            .zip(&self.y)
+            .map(|(row, response)| {
+                let mut fitted = beta.first().copied().unwrap_or(0.0);
+                for (value, coefficient) in row.iter().zip(beta.iter().skip(1)) {
+                    fitted += value * coefficient;
+                }
+                fitted - response
+            })
+            .collect()
+    }
+
+    /// Half the mean squared residual and its coefficient gradient.
+    ///
+    /// The intercept is the first coefficient, followed by one slope per
+    /// column of the design. Both outputs come from the same residual pass.
+    ///
+    /// # Errors
+    /// Returns an error when the design is empty, the row counts differ, or
+    /// the coefficient count is not `columns + 1`.
+    pub fn value_and_gradient(
+        &self,
+        beta: &[f64],
+    ) -> Result<(f64, Vec<f64>), String> {
+        if self.x.is_empty() || self.x.len() != self.y.len() {
+            return Err("invalid regression data shape".to_string());
+        }
+        if beta.len() != self.coefficient_count() {
+            return Err("expected the intercept and one slope per feature column".to_string());
+        }
+        let residuals = self.residuals(beta);
+        let cost = half_mean_square(&residuals);
+        let count = residuals.len() as f64;
+        let columns = self.x.first().map_or(0, Vec::len);
+        let mut gradient = vec![0.0; columns + 1];
+        gradient[0] = residuals.iter().sum();
+        for (row, &residual) in self.x.iter().zip(&residuals) {
+            for (entry, &predictor) in gradient.iter_mut().skip(1).zip(row) {
+                *entry += predictor * residual;
+            }
+        }
+        for entry in &mut gradient {
+            *entry /= count;
+        }
+        // Normalise term by term when the raw sum overflows but its mean does
+        // not.
+        if gradient.iter().any(|value| !value.is_finite()) {
+            if !gradient[0].is_finite() {
+                gradient[0] = residuals.iter().map(|value| value / count).sum();
+            }
+            for index in 0..columns {
+                if !gradient[index + 1].is_finite() {
+                    gradient[index + 1] = self
+                        .x
+                        .iter()
+                        .zip(&residuals)
+                        .map(|(row, value)| row[index] * (value / count))
+                        .sum();
+                }
+            }
+        }
+        Ok((cost, gradient))
+    }
+
+    /// The problem form used by [`minimize`].
+    #[must_use]
+    pub fn problem(&self) -> FnProblem {
+        let coefficients = self.coefficient_count();
+        let cost_model = self.clone();
+        let gradient_model = self.clone();
+        FnProblem::new(
+            move |beta| {
+                cost_model
+                    .value_and_gradient(beta)
+                    .map_or(f64::INFINITY, |(cost, _)| cost)
+            },
+            Some(move |beta: &[f64]| {
+                gradient_model
+                    .value_and_gradient(beta)
+                    .map_or_else(|_| vec![0.0; coefficients], |(_, gradient)| gradient)
+            }),
+            coefficients,
+            None,
+        )
     }
 }
 
-/// Main optimization solver
+/// The solver entry points the kernel ABI binds to.
 pub struct EquationOptimizer;
 
-// MoreThuenteLineSearch<Vector, ScaledVector, Scalar>
-type LineSearch = MoreThuenteLineSearch<Array1<f64>, Array1<f64>, f64>;
-
-// IterState<Vector, ScaledVector, Alpha, Direction, LineSearchState, Scalar>
-type GDIterState = IterState<Array1<f64>, Array1<f64>, (), (), (), f64>;
-
-// SteepestDescent<LineSearch>
-type GDOptimizer = SteepestDescent<LineSearch>;
-
-// OptimizationResult<CostFunction, Optimizer, IterState>
-type GDResult<C> = OptimizationResult<C, GDOptimizer, GDIterState>;
-
-// Result<OptimizationResult<...>, Error>
-type SolveResult<C, Error> = Result<GDResult<C>, Error>;
-
-type CGLineSearch<P, G, F> = MoreThuenteLineSearch<P, G, F>;
-
-type CGIterState<P, G, F> = IterState<P, G, (), (), (), F>;
-
-// Genuine nonlinear conjugate gradient with a nonnegative Polak–Ribière update.
-type CGOptimizer<P, G, F> =
-    NonlinearConjugateGradient<P, CGLineSearch<P, G, F>, PolakRibierePlus, F>;
-
-// OptimizationResult<CostFunction, Optimizer, IterState>
-type CGResult<C, P, G, F> = OptimizationResult<C, CGOptimizer<P, G, F>, CGIterState<P, G, F>>;
-
-type AutoSolveResult<C, P, G, F, Error> = Result<CGResult<C, P, G, F>, Error>;
-
-type Vector = Array1<f64>;
-
-type Scalar = f64;
-
-type HessianApprox = Array2<f64>;
-
-// 1. Line Search Type
-// MoreThuenteLineSearch<Vector, ScaledVector, Scalar>
-type BFGSLineSearch = MoreThuenteLineSearch<Vector, Vector, Scalar>;
-
-// IterState<Vector, ScaledVector, Alpha, Direction (HessianApprox), LineSearchState, Scalar>
-type BFGSIterState = IterState<Vector, Vector, (), HessianApprox, (), Scalar>;
-
-// 3. Optimizer Type
-// BFGS<LineSearch, Scalar>
-type BFGSOptimizer = BFGS<BFGSLineSearch, Scalar>;
-
-// OptimizationResult<CostFunction, Optimizer, IterState>
-type BFGSResult<C> = OptimizationResult<C, BFGSOptimizer, BFGSIterState>;
-
-type BFGSSolveResult<C, E> = Result<BFGSResult<C>, E>;
-
-type PsoVector = Array1<f64>;
-
-type PsoScalar = f64;
-
-type PsoRng = ParticleSwarmRng;
-
-// Particle<Vector, Scalar>
-type PsoParticle = argmin::solver::particleswarm::Particle<PsoVector, PsoScalar>;
-
-// PopulationState<ParticleType, Scalar>
-type PsoState = PopulationState<PsoParticle, PsoScalar>;
-
-// 3. Optimizer Type
-// ParticleSwarm<Vector, Scalar, Rng>
-type PsoOptimizer = ParticleSwarm<PsoVector, PsoScalar, PsoRng>;
-
-// OptimizationResult<CostFunction, Optimizer, IterState>
-type PsoResult<C> = OptimizationResult<C, PsoOptimizer, PsoState>;
-
-type PsoSolveResult<C, E> = Result<PsoResult<C>, E>;
-
 impl EquationOptimizer {
-    /// Solve using gradient descent
+    /// Minimises `problem` with steepest descent.
     ///
     /// # Errors
-    /// Returns an error if the optimization process fails to initialize or execute.
-    pub fn solve_with_gradient_descent<C>(
-        cost_function: C,
-        initial_param: Array1<f64>,
+    /// Propagates [`minimize`]'s errors.
+    pub fn solve_with_gradient_descent(
+        problem: &FnProblem,
+        initial: &[f64],
         config: &OptimizationConfig,
-    ) -> SolveResult<C, Error>
-    where
-        C: CostFunction<Param = Array1<f64>, Output = f64>
-            + Gradient<Param = Array1<f64>, Gradient = Array1<f64>>,
-    {
-        let linesearch = MoreThuenteLineSearch::new();
-
-        let solver = SteepestDescent::new(linesearch);
-
-        let res = Executor::new(cost_function, solver)
-            .configure(|state| {
-                state
-                    .param(initial_param)
-                    .max_iters(config.max_iters)
-                    .target_cost(config.tolerance)
-            })
-            .run()?;
-
-        Ok(res)
+    ) -> Result<MinimizeResult, String> {
+        minimize(
+            problem,
+            initial,
+            SolverKind::GradientDescent { step: 0.1 },
+            &MinimizeOptions::from(config),
+        )
     }
 
-    /// Automatically configures and solves a problem using the Conjugate Gradient method.
+    /// Minimises `problem` with nonlinear conjugate gradients.
     ///
     /// # Errors
-    /// Returns an error if the optimization process fails.
-    pub fn auto_solve_conjugate_gradient<C>(
-        cost_function: C,
-        init_param: P,
-        options: &OptimizationConfig,
-    ) -> AutoSolveResult<C, P, G, F, Error>
-    where
-        C: CostFunction<Param = P, Output = F> + Gradient<Param = P, Gradient = G>,
-        P: ArgminDot<P, F>
-            + ArgminScaledAdd<P, F, P>
-            + ArgminSub<P, P>
-            + ArgminConj
-            + ArgminMul<F, P>
-            + Clone
-            + std::fmt::Debug,
-        G: ArgminL2Norm<F>,
-        F: ArgminFloat + ArgminL2Norm<F>,
-    {
-        // Nonlinear CG only produces descent directions when the line search
-        // satisfies the strong Wolfe conditions with c2 < 1/2; the default
-        // c2 = 0.9 (meant for quasi-Newton methods) let Polak-Ribiere+ step
-        // into an ascent direction on curved valleys such as Rosenbrock's.
-        // Powell's orthogonality restart resets to steepest descent when
-        // successive gradients stop being nearly orthogonal.
-        let constant = |value: f64| {
-            <F as num_traits::FromPrimitive>::from_f64(value)
-                .ok_or_else(|| Error::msg("conjugate gradient: constant not representable"))
-        };
-        let linesearch: MThLineSearch =
-            MoreThuenteLineSearch::new().with_c(constant(1e-4)?, constant(0.1)?)?;
-
-        let solver = NonlinearConjugateGradient::new(linesearch, PolakRibierePlus::new())
-            .restart_orthogonality(constant(0.1)?);
-
-        let res = Executor::new(cost_function, solver)
-            .configure(|state| {
-                state
-                    .param(init_param)
-                    .max_iters(options.max_iters)
-                    .target_cost(options.tolerance)
-            })
-            .run()?;
-
-        Ok(res)
-    }
-
-    /// Solve using BFGS quasi-Newton method
-    ///
-    /// # Errors
-    /// Returns an error if the BFGS optimization fails.
-    pub fn solve_with_bfgs<C>(
-        cost_function: C,
-        initial_param: Array1<f64>,
+    /// Propagates [`minimize`]'s errors.
+    pub fn auto_solve_conjugate_gradient(
+        problem: &FnProblem,
+        initial: &[f64],
         config: &OptimizationConfig,
-    ) -> BFGSSolveResult<C, Error>
-    where
-        C: CostFunction<Param = Array1<f64>, Output = f64>
-            + Gradient<Param = Array1<f64>, Gradient = Array1<f64>>,
-    {
-        let linesearch = MoreThuenteLineSearch::new();
-
-        let solver = BFGS::new(linesearch);
-
-        let res = Executor::new(cost_function, solver)
-            .configure(|state| {
-                state
-                    .inv_hessian(Array2::eye(initial_param.len()))
-                    .param(initial_param)
-                    .max_iters(config.max_iters)
-                    .target_cost(config.tolerance)
-            })
-            .run()?;
-
-        Ok(res)
+    ) -> Result<MinimizeResult, String> {
+        minimize(
+            problem,
+            initial,
+            SolverKind::NonlinearCg,
+            &MinimizeOptions::from(config),
+        )
     }
 
-    /// Solve using particle swarm optimization (for non-differentiable functions)
+    /// Minimises `problem` with BFGS.
     ///
     /// # Errors
-    /// Returns an error if the PSO optimization fails.
-    pub fn solve_with_pso<C>(
-        cost_function: C,
-        bounds: (Array1<f64>, Array1<f64>),
+    /// Propagates [`minimize`]'s errors.
+    pub fn solve_with_bfgs(
+        problem: &FnProblem,
+        initial: &[f64],
         config: &OptimizationConfig,
-    ) -> PsoSolveResult<C, Error>
-    where
-        C: CostFunction<Param = Array1<f64>, Output = f64>,
-    {
-        let solver = ParticleSwarm::new(bounds, 40);
-
-        let res = Executor::new(cost_function, solver)
-            .configure(|state| {
-                state
-                    .max_iters(config.max_iters)
-                    .target_cost(config.tolerance)
-            })
-            .run()?;
-
-        Ok(res)
+    ) -> Result<MinimizeResult, String> {
+        minimize(
+            problem,
+            initial,
+            SolverKind::Bfgs,
+            &MinimizeOptions::from(config),
+        )
     }
 
-    /// Runs `solver` on `problem` with an `argmin` executor.
+    /// Minimises `problem` with a global-best particle swarm.
     ///
-    /// `problem` is any argmin problem type (the cost function / gradient
-    /// provider), not the parameter vector. `configure` receives the solver's
-    /// fresh state and returns it set up, e.g. `|s| s.param(x0).max_iters(100)`
-    /// for iterative solvers or `|s| s.max_iters(200)` for population solvers;
-    /// it is required because argmin's default iteration limit is unbounded.
+    /// `bounds` is `(lower, upper)`; the swarm needs a finite box.
     ///
     /// # Errors
-    /// Returns an error if the optimization process fails.
-    pub fn auto_solve<C, S, I, Cfg>(
-        problem: C,
-        solver: S,
-        configure: Cfg,
-    ) -> Result<OptimizationResult<C, S, I>, Error>
-    where
-        S: Solver<C, I>,
-        I: State,
-        Cfg: FnOnce(I) -> I,
-    {
-        Executor::new(problem, solver).configure(configure).run()
+    /// Propagates [`minimize`]'s errors.
+    pub fn solve_with_pso(
+        problem: &FnProblem,
+        bounds: (Vec<f64>, Vec<f64>),
+        config: &OptimizationConfig,
+    ) -> Result<MinimizeResult, String> {
+        let start = bounds.0.clone();
+        let mut options = MinimizeOptions::from(config);
+        options.bounds = Some(bounds);
+        minimize(problem, &start, SolverKind::GlobalBestPso, &options)
+    }
+
+    /// Runs any [`SolverKind`] on `problem`.
+    ///
+    /// # Errors
+    /// Propagates [`minimize`]'s errors.
+    pub fn auto_solve(
+        problem: &FnProblem,
+        initial: &[f64],
+        kind: SolverKind,
+        config: &OptimizationConfig,
+    ) -> Result<MinimizeResult, String> {
+        minimize(problem, initial, kind, &MinimizeOptions::from(config))
     }
 }
 
-/// Result analysis tools
+/// Labels a finished run from its cost.
 pub struct ResultAnalyzer;
 
 impl ResultAnalyzer {
-    /// Prints the optimization results to the console.
-    pub fn print_optimization_result<S: State<Param = Array1<f64>, Float = f64>>(state: &S) {
+    /// Prints a short report for `result`.
+    pub fn print_optimization_result(result: &MinimizeResult) {
         println!("Optimization Results:");
-
-        println!("  Converged: {}", state.get_best_cost() < 1e-4);
-
-        if let Some(best_param) = state.get_best_param() {
-            println!(
-                "  Best solution: \
-                 {best_param:?}"
-            );
-        } else {
-            println!(
-                "  Best solution: Not \
-                 available"
-            );
-        }
-
-        println!("  Best value: {:.6}", state.get_best_cost());
-
-        println!("  Iterations: {}", state.get_iter());
-
-        let func_counts = state.get_func_counts();
-
-        println!(
-            "  Function evaluations: \
-             {}",
-            func_counts.get("cost").unwrap_or(&0)
-        );
-
-        if let Some(grad_counts) = func_counts.get("gradient")
-            && *grad_counts > 0
-        {
-            println!(
-                "  Gradient \
-                     evaluations: \
-                     {grad_counts}"
-            );
-        }
+        println!("  Converged: {}", result.converged);
+        println!("  Best solution: {:?}", result.x);
+        println!("  Best value: {:.6}", result.cost);
+        println!("  Iterations: {}", result.iterations);
+        println!("  Function evaluations: {}", result.cost_evals);
     }
 
-    /// Analyzes the convergence state and returns a summary string.
-    pub fn analyze_convergence<S: State<Float = f64>>(state: &S) -> String {
-        let cost = state.get_best_cost();
-
-        if cost < 1e-6 {
+    /// Labels the convergence quality of `result`.
+    #[must_use]
+    pub fn analyze_convergence(result: &MinimizeResult) -> String {
+        if result.cost < 1e-6 {
             "Excellent convergence".to_string()
-        } else if cost < 1e-3 {
+        } else if result.cost < 1e-3 {
             "Good convergence".to_string()
-        } else if cost < 1e-1 {
+        } else if result.cost < 1e-1 {
             "Moderate convergence".to_string()
         } else {
             "Poor convergence".to_string()

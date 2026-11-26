@@ -8,8 +8,6 @@ pub mod codecs;
 /// Declarative dimensional relationships for numerical exports.
 pub mod dimensions;
 mod iterative;
-#[path = "numerical_abi/native_analysis/argmin.rs"]
-mod native_analysis_argmin;
 #[path = "numerical_abi/native_analysis/functional.rs"]
 mod native_analysis_functional;
 #[path = "numerical_abi/native_analysis/holonomic.rs"]
@@ -26,6 +24,8 @@ mod native_analysis_objects;
 mod native_analysis_ode;
 #[path = "numerical_abi/native_analysis/ode_common.rs"]
 pub(in crate::rules) mod native_analysis_ode_common;
+#[path = "numerical_abi/native_analysis/optimizer.rs"]
+mod native_analysis_optimizer;
 #[path = "numerical_abi/native_analysis/oscillatory.rs"]
 mod native_analysis_oscillatory;
 #[path = "numerical_abi/native_analysis/overlap_save.rs"]
@@ -653,7 +653,7 @@ fn install(
         native_analysis_oscillatory::install(i)?;
         native_analysis_pde::install(i)?;
         native_analysis_newton_cg::install(i)?;
-        native_analysis_argmin::install(i)?;
+        native_analysis_optimizer::install(i)?;
         native_analysis_ode_common::install(i)?;
         native_analysis_jacobian::install(i)?;
         native_analysis_functional::install(i)?;

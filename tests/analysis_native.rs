@@ -260,29 +260,27 @@ fn physical_wavelet_bands_roundtrip_without_rectangularizing_ragged_levels() {
 }
 #[test]
 fn nonlinear_conjugate_gradient_entry_uses_its_named_native_algorithm() {
-    use argmin::core::OptimizationResult;
-    use argmin::core::Solver;
-    use argmin::core::State;
-    fn solver_name<O, S, I: State>(result: &OptimizationResult<O, S, I>) -> &str
-    where
-        S: Solver<O, I>,
-    {
-        result.solver.name()
-    }
     let options = rssn::kernels::optimize::OptimizationConfig {
-        max_iters: 50,
+        max_iters: 200,
         tolerance: 1e-12,
         problem_type: rssn::kernels::optimize::ProblemType::Sphere,
         dimension: 2,
     };
     let result = rssn::kernels::optimize::EquationOptimizer::auto_solve_conjugate_gradient(
-        rssn::kernels::optimize::Sphere,
-        ndarray::Array1::from(vec![4.0, -3.0]),
+        &rssn::kernels::optimize::Sphere::problem(2),
+        &[4.0, -3.0],
         &options,
     )
     .unwrap();
-    assert_eq!(solver_name(&result), "Nonlinear Conjugate Gradient");
-    assert!(result.state.get_best_cost() < 1e-10);
+    // The sphere's minimum is the origin, so a solver that converged leaves a
+    // vanishing cost there; a mis-wired entry point would not.
+    assert!(result.cost < 1e-10, "cost {}", result.cost);
+    assert!(result.iterations > 0);
+    assert!(
+        result.x.iter().all(|value| value.abs() < 1e-5),
+        "{:?}",
+        result.x
+    );
 }
 
 fn integers(v: &[usize]) -> Value {

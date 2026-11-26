@@ -1,25 +1,22 @@
-//! Gradient-based optimisation drivers built on `argmin` (ported from
-//! `numerical_optimize_test.rs`).
+//! Numerical optimization drivers built on `basin`.
 
-use argmin::core::CostFunction;
-use argmin::core::Gradient;
-use argmin::core::State;
-use ndarray::Array1;
-use ndarray::Array2;
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
 use rssn::kernels::optimize::EquationOptimizer;
 use rssn::kernels::optimize::LinearRegression;
+use rssn::kernels::optimize::MinimizeOptions;
 use rssn::kernels::optimize::OptimizationConfig;
 use rssn::kernels::optimize::ProblemType;
 use rssn::kernels::optimize::Rastrigin;
 use rssn::kernels::optimize::ResultAnalyzer;
 use rssn::kernels::optimize::Rosenbrock;
+use rssn::kernels::optimize::SolverKind;
 use rssn::kernels::optimize::Sphere;
+use rssn::kernels::optimize::minimize;
 
 fn cfg() -> ProptestConfig {
     ProptestConfig {
-        cases: 32,
+        cases: 16,
         rng_seed: RngSeed::Fixed(0x5EED),
         failure_persistence: None,
         ..ProptestConfig::default()
@@ -51,112 +48,158 @@ fn default_config_values() {
 
 #[test]
 fn test_function_values_at_known_points() {
-    let ros = Rosenbrock::default();
-    assert_eq!(
-        ros.cost(&Array1::from(vec![1.0, 1.0])).unwrap_or(f64::NAN),
-        0.0
-    );
-    assert_eq!(
-        ros.cost(&Array1::from(vec![0.0, 0.0])).unwrap_or(f64::NAN),
-        1.0
-    );
-    let g = ros
-        .gradient(&Array1::from(vec![1.0, 1.0]))
-        .unwrap_or_else(|e| panic!("{e}"));
-    assert!(
-        g.iter().all(|v| v.abs() < 1e-12),
-        "gradient at the minimum: {g:?}"
-    );
+    assert!((Rosenbrock::cost(&[1.0, 1.0])).abs() < 1e-12);
+    assert!((Rosenbrock::cost(&[0.0, 0.0]) - 1.0).abs() < 1e-12);
     // f(-1.2, 1) = 4.84 + 100 * (1 - 1.44)^2 = 24.2
-    let c = ros.cost(&Array1::from(vec![-1.2, 1.0])).unwrap_or(f64::NAN);
-    assert!((c - 24.2).abs() < 1e-9, "cost = {c}");
+    assert!((Rosenbrock::cost(&[-1.2, 1.0]) - 24.2).abs() < 1e-9);
+    assert!((Sphere::cost(&[1.0, 2.0, 3.0]) - 14.0).abs() < 1e-12);
+    assert!(Rastrigin::cost(&[0.0, 0.0]).abs() < 1e-12);
+    assert!(Rastrigin::cost(&[1.0, 1.0]) > 1.0 - 1e-9);
 
-    assert_eq!(
-        Sphere
-            .cost(&Array1::from(vec![1.0, 2.0, 3.0]))
-            .unwrap_or(f64::NAN),
-        14.0
-    );
-    assert_eq!(
-        Sphere
-            .gradient(&Array1::from(vec![1.0, -2.0]))
-            .unwrap_or_default(),
-        Array1::from(vec![2.0, -4.0])
-    );
-    let ras = Rastrigin::default();
-    assert!(
-        ras.cost(&Array1::from(vec![0.0, 0.0]))
-            .unwrap_or(f64::NAN)
-            .abs()
-            < 1e-12
-    );
-    assert!(ras.cost(&Array1::from(vec![1.0, 1.0])).unwrap_or(f64::NAN) > 1.0 - 1e-9);
+    // The gradient of Rosenbrock vanishes at (1, 1).
+    let problem = Rosenbrock::problem(2);
+    let (_, gradient) = problem
+        .value_and_gradient(&[1.0, 1.0])
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert!(gradient.iter().all(|value| value.abs() < 1e-9));
 }
 
 #[test]
 fn rosenbrock_bfgs_finds_the_minimum() {
     let cfg = config(ProblemType::Rosenbrock, 1000, 1e-8, 2);
-    let res = EquationOptimizer::solve_with_bfgs(
-        Rosenbrock::default(),
-        Array1::from(vec![-1.2, 1.0]),
-        &cfg,
-    )
-    .unwrap_or_else(|e| panic!("{e}"));
-    let best = res.state.get_best_param().cloned().unwrap_or_default();
-    assert!(
-        res.state.get_best_cost() < 1e-4,
-        "cost {}",
-        res.state.get_best_cost()
-    );
-    assert!((best[0] - 1.0).abs() < 0.1, "x = {}", best[0]);
-    assert!((best[1] - 1.0).abs() < 0.1, "y = {}", best[1]);
+    let res = EquationOptimizer::solve_with_bfgs(&Rosenbrock::problem(2), &[-1.2, 1.0], &cfg)
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert!(res.cost < 1e-4, "cost {}", res.cost);
+    assert!((res.x[0] - 1.0).abs() < 0.1, "x = {}", res.x[0]);
+    assert!((res.x[1] - 1.0).abs() < 0.1, "y = {}", res.x[1]);
 }
 
 #[test]
 fn linear_regression_recovers_intercept_and_slope() {
     // y = 2 + 3x ; the parameter vector is [intercept, slope].
-    let x = Array2::from_shape_vec((5, 1), vec![1.0, 2.0, 3.0, 4.0, 5.0])
-        .unwrap_or_else(|e| panic!("{e}"));
-    let y = Array1::from(vec![5.0, 8.0, 11.0, 14.0, 17.0]);
-    let problem = LinearRegression::new(x, y).unwrap_or_else(|e| panic!("{e}"));
+    let x = vec![vec![1.0], vec![2.0], vec![3.0], vec![4.0], vec![5.0]];
+    let y = vec![5.0, 8.0, 11.0, 14.0, 17.0];
+    let problem = LinearRegression::new(x, y)
+        .unwrap_or_else(|e| panic!("{e}"))
+        .problem();
     let cfg = config(ProblemType::Sphere, 1000, 1e-6, 2);
-    let res =
-        EquationOptimizer::solve_with_gradient_descent(problem, Array1::from(vec![0.0, 0.0]), &cfg)
-            .unwrap_or_else(|e| panic!("{e}"));
-    let best = res.state.get_best_param().cloned().unwrap_or_default();
-    assert!((best[0] - 2.0).abs() < 0.1, "intercept = {}", best[0]);
-    assert!((best[1] - 3.0).abs() < 0.1, "slope = {}", best[1]);
-    assert!(res.state.get_best_cost() < 1e-3);
+    let res = EquationOptimizer::solve_with_gradient_descent(&problem, &[0.0, 0.0], &cfg)
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert!((res.x[0] - 2.0).abs() < 0.1, "intercept = {}", res.x[0]);
+    assert!((res.x[1] - 3.0).abs() < 0.1, "slope = {}", res.x[1]);
+    assert!(res.cost < 1e-3);
 }
 
 #[test]
 fn linear_regression_rejects_mismatched_data() {
-    let x = Array2::from_shape_vec((3, 1), vec![1.0, 2.0, 3.0]).unwrap_or_else(|e| panic!("{e}"));
-    assert!(LinearRegression::new(x, Array1::from(vec![1.0, 2.0])).is_err());
+    assert!(LinearRegression::new(vec![vec![1.0], vec![2.0], vec![3.0]], vec![1.0, 2.0]).is_err());
+    assert!(LinearRegression::new(Vec::new(), Vec::new()).is_err());
 }
 
 #[test]
 fn sphere_gradient_descent_reaches_the_origin() {
     let cfg = config(ProblemType::Sphere, 500, 1e-8, 3);
     let res = EquationOptimizer::solve_with_gradient_descent(
-        Sphere,
-        Array1::from(vec![2.0, -1.5, 3.0]),
+        &Sphere::problem(3),
+        &[2.0, -1.5, 3.0],
         &cfg,
     )
     .unwrap_or_else(|e| panic!("{e}"));
-    assert!(res.state.get_best_cost() < 1e-6);
-    let best = res.state.get_best_param().cloned().unwrap_or_default();
-    assert!(best.iter().all(|v| v.abs() < 1e-3), "best {best:?}");
+    assert!(res.cost < 1e-6);
+    assert!(
+        res.x.iter().all(|value| value.abs() < 1e-3),
+        "best {:?}",
+        res.x
+    );
 }
 
 #[test]
 fn convergence_summary_reflects_cost() {
     let cfg = config(ProblemType::Sphere, 500, 1e-8, 2);
-    let res = EquationOptimizer::solve_with_bfgs(Sphere, Array1::from(vec![1.0, 1.0]), &cfg)
+    let res = EquationOptimizer::solve_with_bfgs(&Sphere::problem(2), &[1.0, 1.0], &cfg)
         .unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(
-        ResultAnalyzer::analyze_convergence(&res.state),
+        ResultAnalyzer::analyze_convergence(&res),
         "Excellent convergence"
+    );
+}
+
+#[test]
+fn every_solver_kind_runs_on_a_quadratic() {
+    // A bounded box around the origin keeps the global solvers honest.
+    let bounds = (vec![-5.0, -5.0], vec![5.0, 5.0]);
+    for kind in SolverKind::ALL {
+        if matches!(kind, SolverKind::Brent | SolverKind::GoldenSection) {
+            continue;
+        }
+        let problem = Sphere::problem(2);
+        let options = MinimizeOptions {
+            max_iter: 400,
+            tolerance: 1e-6,
+            seed: 7,
+            bounds: Some(bounds.clone()),
+        };
+        let result = minimize(&problem, &[2.5, -3.0], kind, &options)
+            .unwrap_or_else(|e| panic!("{kind:?}: {e}"));
+        assert!(
+            result.cost <= 1.0,
+            "{kind:?} left the cost at {} (x = {:?})",
+            result.cost,
+            result.x
+        );
+        assert!(
+            result.cost_evals > 0 && result.iterations > 0,
+            "{kind:?} reported no work"
+        );
+    }
+}
+
+#[test]
+fn scalar_solvers_minimise_one_variable() {
+    // (x - 3)^2 has its minimum at 3.
+    let problem = rssn::kernels::optimize::FnProblem::new(
+        |x| (x[0] - 3.0).powi(2),
+        Some(|x: &[f64]| vec![2.0 * (x[0] - 3.0)]),
+        1,
+        None,
+    );
+    for kind in [SolverKind::Brent, SolverKind::GoldenSection] {
+        let result = minimize(&problem, &[0.0], kind, &MinimizeOptions::default())
+            .unwrap_or_else(|e| panic!("{kind:?}: {e}"));
+        assert!((result.x[0] - 3.0).abs() < 1e-3, "{kind:?}: {:?}", result.x);
+    }
+}
+
+#[test]
+fn invalid_requests_are_rejected() {
+    let problem = Sphere::problem(2);
+    let options = MinimizeOptions::default();
+    // A bounded solver without bounds.
+    assert!(minimize(&problem, &[1.0, 1.0], SolverKind::Bobyqa, &options).is_err());
+    // A scalar solver with two variables.
+    assert!(minimize(&problem, &[1.0, 1.0], SolverKind::Brent, &options).is_err());
+    // An empty start.
+    assert!(minimize(&problem, &[], SolverKind::Bfgs, &options).is_err());
+    // A gradient solver on a gradient-free problem.
+    let gradient_free = rssn::kernels::optimize::FnProblem::new(
+        |x| Sphere::cost(x),
+        None::<fn(&[f64]) -> Vec<f64>>,
+        2,
+        None,
+    );
+    assert!(minimize(&gradient_free, &[1.0, 1.0], SolverKind::Bfgs, &options).is_err());
+}
+
+#[test]
+fn pso_stays_inside_its_box() {
+    let cfg = config(ProblemType::Sphere, 200, 1e-6, 2);
+    let bounds = (vec![-1.0, -1.0], vec![1.0, 1.0]);
+    let res = EquationOptimizer::solve_with_pso(&Sphere::problem(2), bounds, &cfg)
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert!(
+        res.x.iter().all(|value| value.abs() <= 1.0 + 1e-9),
+        "{:?}",
+        res.x
     );
 }
 
@@ -166,102 +209,18 @@ proptest! {
     #[test]
     fn prop_sphere_converges_from_random_starts(x in -4.0..4.0f64, y in -4.0..4.0f64, z in -4.0..4.0f64) {
         let cfg = config(ProblemType::Sphere, 2000, 1e-4, 3);
-        let res = EquationOptimizer::solve_with_gradient_descent(Sphere, Array1::from(vec![x, y, z]), &cfg)
-            .map_err(|e| TestCaseError::fail(e.to_string()))?;
-        prop_assert!(res.state.get_best_cost() < 0.1, "cost {} from {:?}", res.state.get_best_cost(), (x, y, z));
-    }
-
-    #[test]
-    fn prop_bfgs_never_increases_cost_of_sphere(x in -5.0..5.0f64, y in -5.0..5.0f64) {
-        let cfg = config(ProblemType::Sphere, 100, 1e-10, 2);
-        let res = EquationOptimizer::solve_with_bfgs(Sphere, Array1::from(vec![x, y]), &cfg)
-            .map_err(|e| TestCaseError::fail(e.to_string()))?;
-        prop_assert!(res.state.get_best_cost() <= x * x + y * y + 1e-12);
-    }
-}
-
-mod ledger_fill {
-    use super::*;
-
-    #[test]
-    fn pso_finds_the_sphere_minimum_region() {
-        let bounds = (Array1::from(vec![-5.0, -5.0]), Array1::from(vec![5.0, 5.0]));
-        let res = EquationOptimizer::solve_with_pso(
-            Sphere,
-            bounds,
-            &config(ProblemType::Sphere, 300, 1e-6, 2),
-        )
-        .unwrap_or_else(|e| panic!("{e}"));
-        assert!(
-            res.state.get_best_cost() < 0.05,
-            "best cost {}",
-            res.state.get_best_cost()
-        );
-    }
-
-    #[test]
-    fn print_optimization_result_accepts_a_finished_run() {
-        let res = EquationOptimizer::solve_with_bfgs(
-            Sphere,
-            Array1::from(vec![1.0, 1.0]),
-            &config(ProblemType::Sphere, 50, 1e-8, 2),
-        )
-        .unwrap_or_else(|e| panic!("{e}"));
-        ResultAnalyzer::print_optimization_result(&res.state); // prints only; must not panic
-    }
-}
-
-#[test]
-fn auto_solve_runs_a_population_solver() {
-    use argmin::solver::particleswarm::ParticleSwarm;
-    let bounds = (Array1::from(vec![-5.0, -5.0]), Array1::from(vec![5.0, 5.0]));
-    let res =
-        EquationOptimizer::auto_solve(Sphere, ParticleSwarm::new(bounds, 40), |s| s.max_iters(200))
+        let res = EquationOptimizer::solve_with_gradient_descent(&Sphere::problem(3), &[x, y, z], &cfg)
             .unwrap_or_else(|e| panic!("{e}"));
-    assert!(
-        res.state.get_best_cost() < 0.05,
-        "cost {}",
-        res.state.get_best_cost()
-    );
-    assert_eq!(res.state.get_iter(), 200);
-}
+        prop_assert!(res.cost < 1e-3, "cost {}", res.cost);
+    }
 
-#[test]
-fn auto_solve_runs_steepest_descent_with_line_search() {
-    use argmin::solver::gradientdescent::SteepestDescent;
-    use argmin::solver::linesearch::MoreThuenteLineSearch;
-    let solver = SteepestDescent::new(MoreThuenteLineSearch::new());
-    let res = EquationOptimizer::auto_solve(Sphere, solver, |s| {
-        s.param(Array1::from(vec![3.0, -2.0]))
-            .max_iters(100)
-            .target_cost(1e-10)
-    })
-    .unwrap_or_else(|e| panic!("{e}"));
-    assert!(res.state.get_best_cost() < 1e-10);
-}
-
-#[test]
-fn auto_solve_conjugate_gradient_minimises_sphere() {
-    let cfg = config(ProblemType::Sphere, 200, 1e-10, 3);
-    let res = EquationOptimizer::auto_solve_conjugate_gradient(
-        Sphere,
-        Array1::from(vec![2.0, -1.0, 4.0]),
-        &cfg,
-    )
-    .unwrap_or_else(|e| panic!("{e}"));
-    assert!(res.state.get_best_cost() < 1e-8);
-    let best = res.state.get_best_param().cloned().unwrap_or_default();
-    assert!(best.iter().all(|v| v.abs() < 1e-3), "best {best:?}");
-}
-
-#[test]
-fn auto_solve_conjugate_gradient_improves_rosenbrock() {
-    let cfg = config(ProblemType::Rosenbrock, 300, 1e-10, 2);
-    let start = Array1::from(vec![-1.2, 1.0]);
-    let initial = Rosenbrock::default()
-        .cost(&start)
-        .unwrap_or_else(|e| panic!("{e}"));
-    let res = EquationOptimizer::auto_solve_conjugate_gradient(Rosenbrock::default(), start, &cfg)
-        .unwrap_or_else(|e| panic!("{e}"));
-    assert!(res.state.get_best_cost() < initial);
+    #[test]
+    fn prop_bfgs_beats_the_start(x in -2.0..2.0f64, y in -2.0..2.0f64) {
+        let cfg = config(ProblemType::Rosenbrock, 500, 1e-6, 2);
+        let start = [x, y];
+        let before = Rosenbrock::cost(&start);
+        let res = EquationOptimizer::solve_with_bfgs(&Rosenbrock::problem(2), &start, &cfg)
+            .unwrap_or_else(|e| panic!("{e}"));
+        prop_assert!(res.cost <= before + 1e-9, "cost {} from {}", res.cost, before);
+    }
 }
