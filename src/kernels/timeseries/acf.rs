@@ -6,8 +6,7 @@ pub(crate) fn mean_of(x: &[f64]) -> f64 {
     if x.is_empty() {
         return 0.0;
     }
-    let sum: f64 = x.iter().sum();
-    sum / x.len() as f64
+    crate::kernels::simd::sum_f64(x) / x.len() as f64
 }
 
 /// Sample autocorrelation function.
@@ -32,20 +31,23 @@ pub fn acf(
         return out;
     }
     let mean = mean_of(x);
-    let mut denominator = 0.0;
-    for value in x {
-        let deviation = value - mean;
-        denominator += deviation * deviation;
-    }
+    let mut centered = crate::kernels::reuse::f64_scratch(n);
+    centered.extend(x.iter().map(|&value| value - mean));
+    let denominator = crate::kernels::simd::norm2_sq_f64(&centered);
     if denominator <= 0.0 || !denominator.is_finite() {
         return out;
     }
-    for lag in 1..=limit {
-        let mut numerator = 0.0;
-        for t in lag..n {
-            numerator += (x[t] - mean) * (x[t - lag] - mean);
+    if limit >= 16 && n >= 256 {
+        let lags = crate::kernels::par::map_indexed(limit, 16, |idx| {
+            let lag = idx + 1;
+            crate::kernels::simd::dot_f64(&centered[lag..], &centered[..n - lag]) / denominator
+        });
+        out[1..].copy_from_slice(&lags);
+    } else {
+        for lag in 1..=limit {
+            let numerator = crate::kernels::simd::dot_f64(&centered[lag..], &centered[..n - lag]);
+            out[lag] = numerator / denominator;
         }
-        out[lag] = numerator / denominator;
     }
     out
 }
@@ -75,8 +77,11 @@ pub fn pacf(
         return out;
     }
 
-    let mut previous = vec![0.0; limit + 1];
+    let mut previous = crate::kernels::reuse::f64_scratch(limit + 1);
+    previous.resize(limit + 1, 0.0);
     previous[1] = r[1];
+    let mut next = crate::kernels::reuse::f64_scratch(limit + 1);
+    next.resize(limit + 1, 0.0);
     for order in 2..=limit {
         let mut numerator = r[order];
         let mut denominator = 1.0;
@@ -91,12 +96,12 @@ pub fn pacf(
         };
         out[order] = reflection;
 
-        let mut next = vec![0.0; limit + 1];
+        next[..=order].fill(0.0);
         for j in 1..order {
             next[j] = previous[j] - reflection * previous[order - j];
         }
         next[order] = reflection;
-        previous = next;
+        std::mem::swap(&mut previous, &mut next);
     }
     out
 }
@@ -115,11 +120,10 @@ pub fn difference(
         if current.len() < 2 {
             return Vec::new();
         }
-        let mut next = Vec::with_capacity(current.len() - 1);
-        for i in 1..current.len() {
-            next.push(current[i] - current[i - 1]);
+        for i in 0..(current.len() - 1) {
+            current[i] = current[i + 1] - current[i];
         }
-        current = next;
+        current.pop();
     }
     current
 }
@@ -271,5 +275,24 @@ mod tests {
         assert!(difference(&[], 1).is_empty());
         assert!(difference(&[1.0], 1).is_empty());
         assert_eq!(difference(&[1.0, 2.0], 0).len(), 2);
+    }
+
+    #[test]
+    fn acf_parallel_path_matches_direct_reference() {
+        let n = 320;
+        let max_lag = 28;
+        let x: Vec<f64> = (0..n)
+            .map(|i| (i as f64 * 0.17).sin() + 0.3 * (i as f64 * 0.05).cos())
+            .collect();
+        let got = acf(&x, max_lag);
+        assert_eq!(got.len(), max_lag + 1);
+        let mean = x.iter().sum::<f64>() / n as f64;
+        let denom: f64 = x.iter().map(|v| (v - mean).powi(2)).sum();
+        assert!(close(got[0], 1.0));
+        for lag in 1..=max_lag {
+            let num: f64 = (lag..n).map(|t| (x[t] - mean) * (x[t - lag] - mean)).sum();
+            let expected = num / denom;
+            assert!((got[lag] - expected).abs() < 1e-12, "lag {lag}");
+        }
     }
 }

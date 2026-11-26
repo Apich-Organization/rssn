@@ -213,6 +213,8 @@ pub mod sde_ext;
 /// Partial sums and accelerated infinite sums.
 pub mod series;
 pub mod signal;
+/// Runtime-dispatched SIMD BLAS-1 and complex-vector microkernels.
+pub mod simd;
 pub mod simplex_quadrature;
 pub mod solve;
 pub mod sparse;

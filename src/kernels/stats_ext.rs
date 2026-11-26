@@ -1277,12 +1277,18 @@ pub fn lasso(
     }
     let (xc, yc, x_mean, y_mean) = center_xy(rows, cols, x, y, fit_intercept)?;
     let n = rows as f64;
-    let mut col_sq_norms = vec![0.0; cols];
+    // Transpose centered design matrix once so every coordinate-descent pass
+    // accesses contiguous column slices with AVX2 dot/axpy.
+    let mut xt = vec![0.0; cols * rows];
     for r in 0..rows {
+        let row = &xc[r * cols..(r + 1) * cols];
         for c in 0..cols {
-            let v = xc[r * cols + c];
-            col_sq_norms[c] += v * v;
+            xt[c * rows + r] = row[c];
         }
+    }
+    let mut col_sq_norms = vec![0.0; cols];
+    for c in 0..cols {
+        col_sq_norms[c] = crate::kernels::simd::norm2_sq_f64(&xt[c * rows..(c + 1) * rows]);
     }
 
     finite(&col_sq_norms)?;
@@ -1297,21 +1303,16 @@ pub fn lasso(
             if norm_sq == 0.0 {
                 continue;
             }
+            let col = &xt[j * rows..(j + 1) * rows];
             let old_b = beta[j];
-            let mut rho = 0.0;
-            for r in 0..rows {
-                let xij = xc[r * cols + j];
-                rho += xij * (residual[r] + old_b * xij);
-            }
+            let rho = crate::kernels::simd::dot_f64(col, &residual) + old_b * norm_sq;
             let new_b = soft_threshold(rho / n, alpha) / (norm_sq / n);
             if !new_b.is_finite() {
                 return Err(StatsExtError::NotConverged);
             }
             let diff = new_b - old_b;
             if diff != 0.0 {
-                for r in 0..rows {
-                    residual[r] -= diff * xc[r * cols + j];
-                }
+                crate::kernels::simd::axpy_f64(-diff, col, &mut residual);
                 beta[j] = new_b;
                 max_delta = max_delta.max(diff.abs());
             }
@@ -1385,11 +1386,7 @@ pub fn logistic_regression(
             } else {
                 row
             };
-            let eta = values
-                .iter()
-                .zip(&coefficients)
-                .map(|(v, w)| v * w)
-                .sum::<f64>();
+            let eta = crate::kernels::simd::dot_f64(values, &coefficients);
             if !eta.is_finite() {
                 return Err(StatsExtError::NotConverged);
             }
@@ -1401,15 +1398,9 @@ pub fn logistic_regression(
             } else {
                 small_probability - target
             };
-            for (j, (grow, (hrow, xj))) in grad
-                .iter_mut()
-                .zip(hessian.data.chunks_exact_mut(p).zip(values))
-                .enumerate()
-            {
-                *grow += xj * error;
-                for (entry, xk) in hrow.iter_mut().zip(values).take(j + 1) {
-                    *entry += (weight * xj) * xk;
-                }
+            crate::kernels::simd::axpy_f64(error, values, &mut grad);
+            for (j, (hrow, &xj)) in hessian.data.chunks_exact_mut(p).zip(values).enumerate() {
+                crate::kernels::simd::axpy_f64(weight * xj, &values[..=j], &mut hrow[..=j]);
             }
         }
         // The Hessian is symmetric. The lower triangle is enough work for each row.
@@ -1419,7 +1410,9 @@ pub fn logistic_regression(
             }
             hessian.data[j * p + j] += 1e-8;
         }
-        let step = dense::solve(&hessian, &grad).map_err(map_fit_error)?;
+        let step = dense::cholesky_solve(&hessian, &grad)
+            .or_else(|_| dense::solve(&hessian, &grad))
+            .map_err(map_fit_error)?;
         let mut max_step = 0.0_f64;
         for (weight, update) in coefficients.iter_mut().zip(step) {
             *weight -= update;

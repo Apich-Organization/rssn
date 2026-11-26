@@ -279,36 +279,12 @@ pub fn numerical_jacobian(
     Ok(jacobian)
 }
 
-/// Determinant of a small square matrix by Gaussian elimination with partial
-/// pivoting (the Jacobians here are 2x2 or 3x3).
+/// Determinant of a small square matrix via [`super::dense::lu_factor`].
 fn determinant(matrix: &[Vec<f64>]) -> f64 {
-    let n = matrix.len();
-    let mut a: Vec<Vec<f64>> = matrix.to_vec();
-    let mut det = 1.0;
-    for col in 0..n {
-        let Some((pivot_row, _)) = (col..n)
-            .map(|row| (row, a[row][col].abs()))
-            .max_by(|x, y| x.1.total_cmp(&y.1))
-        else {
-            return 0.0;
-        };
-        if a[pivot_row][col] == 0.0 {
-            return 0.0;
-        }
-        if pivot_row != col {
-            a.swap(pivot_row, col);
-            det = -det;
-        }
-        let head = a[col][col];
-        det *= head;
-        for row in col + 1..n {
-            let factor = a[row][col] / head;
-            for c in col + 1..n {
-                a[row][c] -= factor * a[col][c];
-            }
-        }
-    }
-    det
+    let Ok(mat) = super::dense::Mat::from_rows(matrix) else {
+        return 0.0;
+    };
+    super::dense::lu_factor(&mat).map_or(0.0, |lu| lu.det())
 }
 
 /// Determinant of the Jacobian of the map `from -> to` at `at_point`.

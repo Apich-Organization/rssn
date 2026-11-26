@@ -192,7 +192,7 @@ pub fn median_exact(values: &mut [BigRational]) -> Result<BigRational, NumericEr
         / BigRational::from_integer(BigInt::from(2)))
 }
 
-/// The median of a float sample.
+/// The median of a float sample (runs in `O(n)` average time via selection).
 ///
 /// # Errors
 ///
@@ -200,12 +200,18 @@ pub fn median_exact(values: &mut [BigRational]) -> Result<BigRational, NumericEr
 /// [`NumericError::Domain`] for non-finite values.
 pub fn median(values: &mut [f64]) -> Result<f64, NumericError> {
     finite_range(values)?;
-    values.sort_by(f64::total_cmp);
     let len = values.len();
+    let mid = len / 2;
+    let (lower_part, upper_mid, _) = values.select_nth_unstable_by(mid, f64::total_cmp);
     if len % 2 == 1 {
-        return Ok(values[len / 2]);
+        return Ok(*upper_mid);
     }
-    Ok(f64::midpoint(values[len / 2 - 1], values[len / 2]))
+    let lower_mid = lower_part
+        .iter()
+        .copied()
+        .max_by(f64::total_cmp)
+        .unwrap_or(*upper_mid);
+    Ok(f64::midpoint(lower_mid, *upper_mid))
 }
 
 /// The `q`-quantile of a sorted exact sample, `0 ≤ q ≤ 1`.
@@ -261,7 +267,9 @@ pub fn quantile(
         return Ok(high);
     }
     let (rank, fraction) = type7_position(values.len(), q);
-    let mut sample = values.to_vec();
+    let mut sample = super::reuse::f64_scratch(values.len());
+    sample.clear();
+    sample.extend_from_slice(values);
     let (_, lower, upper) = sample.select_nth_unstable_by(rank, f64::total_cmp);
     if fraction == 0.0 {
         return Ok(*lower);

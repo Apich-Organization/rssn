@@ -2222,15 +2222,13 @@ pub fn f64_scratch(minimum: usize) -> Scratch<'static, f64> {
     global_pool().scratch_f64(minimum)
 }
 
-fn build_gauss_legendre_rule(n: usize) -> (Vec<f64>, Vec<f64>) {
+pub(crate) fn build_gauss_legendre_rule(n: usize) -> (Vec<f64>, Vec<f64>) {
     if n == 0 {
         return (Vec::new(), Vec::new());
     }
-    let mut x = vec![0.0; n];
-    let mut w = vec![0.0; n];
     let nf = n as f64;
     let half = n.div_ceil(2);
-    for i in 0..half {
+    let pairs = crate::kernels::par::map_indexed(half, 64, |i| {
         let mut z = if !n.is_multiple_of(2) && i == n / 2 {
             0.0
         } else {
@@ -2262,6 +2260,11 @@ fn build_gauss_legendre_rule(n: usize) -> (Vec<f64>, Vec<f64>) {
         }
         let dp = nf * (z * p1 - p0) / (z * z - 1.0);
         let wi = 2.0 / ((1.0 - z * z) * dp * dp);
+        (z, wi)
+    });
+    let mut x = vec![0.0; n];
+    let mut w = vec![0.0; n];
+    for (i, (z, wi)) in pairs.into_iter().enumerate() {
         let j = n.saturating_sub(1).saturating_sub(i);
         if let Some(slot) = x.get_mut(i) {
             *slot = if z == 0.0 { 0.0 } else { -z };
@@ -2489,13 +2492,65 @@ fn build_gauss_kronrod_rule(points: usize) -> (Vec<f64>, Vec<f64>) {
     (nodes, weights)
 }
 
-fn build_clenshaw_curtis_rule(n: usize) -> (Vec<f64>, Vec<f64>) {
+pub(crate) fn build_clenshaw_curtis_rule(n: usize) -> (Vec<f64>, Vec<f64>) {
     let n = n.max(2).div_ceil(2).saturating_mul(2);
     let len = n.saturating_add(1);
     let nf = n as f64;
     let half_n = n / 2;
     let mut x = vec![0.0; len];
     let mut w = vec![0.0; len];
+    if n >= 64 {
+        // Waldvogel's O(n log n) FFT algorithm for Clenshaw-Curtis weights.
+        for k in 0..=half_n {
+            let xk = if k == 0 {
+                1.0
+            } else if k == half_n {
+                0.0
+            } else {
+                (PI * (k as f64) / nf).cos()
+            };
+            let mirror = n.saturating_sub(k);
+            if let Some(slot) = x.get_mut(k) {
+                *slot = xk;
+            }
+            if let Some(slot) = x.get_mut(mirror) {
+                *slot = if xk == 0.0 { 0.0 } else { -xk };
+            }
+        }
+        let mut planner = FftPlanner::<f64>::new();
+        let fft = planner.plan_fft_forward(n);
+        let mut buf = vec![Complex64::new(0.0, 0.0); n];
+        if let Some(slot) = buf.get_mut(0) {
+            *slot = Complex64::new(1.0, 0.0);
+        }
+        for j in 1..half_n {
+            let jf = j as f64;
+            let val = -1.0 / (4.0 * jf * jf - 1.0);
+            if let Some(slot) = buf.get_mut(j) {
+                *slot = Complex64::new(val, 0.0);
+            }
+            if let Some(slot) = buf.get_mut(n.saturating_sub(j)) {
+                *slot = Complex64::new(val, 0.0);
+            }
+        }
+        if let Some(slot) = buf.get_mut(half_n) {
+            *slot = Complex64::new(-1.0 / (nf * nf - 1.0), 0.0);
+        }
+        let mut scratch = vec![Complex64::new(0.0, 0.0); fft.get_inplace_scratch_len()];
+        fft.process_with_scratch(&mut buf, &mut scratch);
+        for k in 0..=half_n {
+            let c = if k == 0 || k == n { 1.0 } else { 2.0 };
+            let wk = c * buf.get(k).map_or(0.0, |v| v.re) / nf;
+            let mirror = n.saturating_sub(k);
+            if let Some(slot) = w.get_mut(k) {
+                *slot = wk;
+            }
+            if let Some(slot) = w.get_mut(mirror) {
+                *slot = wk;
+            }
+        }
+        return (x, w);
+    }
     for k in 0..=half_n {
         let th = PI * (k as f64) / nf;
         let xk = if k == 0 {

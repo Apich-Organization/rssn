@@ -52,46 +52,11 @@ use crate::rules::poly::univariate::QPoly;
 /// Solves a square or overdetermined linear system over `Q` (columns =
 /// unknowns), `None` if inconsistent; free unknowns are set to zero.
 fn solve_q(
-    mut rows: Vec<Vec<BigRational>>,
-    mut rhs: Vec<BigRational>,
+    rows: Vec<Vec<BigRational>>,
+    rhs: Vec<BigRational>,
     n: usize,
 ) -> Option<Vec<BigRational>> {
-    let m = rows.len();
-    let mut pivots = Vec::new();
-    let mut r = 0;
-    for c in 0..n {
-        let Some(p) = (r..m).find(|&i| !rows[i][c].is_zero()) else {
-            continue;
-        };
-        rows.swap(r, p);
-        rhs.swap(r, p);
-        let lead = rows[r][c].clone();
-        for v in &mut rows[r] {
-            *v /= &lead;
-        }
-        rhs[r] /= &lead;
-        for i in 0..m {
-            if i != r && !rows[i][c].is_zero() {
-                let factor = rows[i][c].clone();
-                let pivot_row = rows[r].clone();
-                for (v, pv) in rows[i].iter_mut().zip(&pivot_row) {
-                    *v -= &factor * pv;
-                }
-                let pr = rhs[r].clone();
-                rhs[i] -= &factor * pr;
-            }
-        }
-        pivots.push(c);
-        r += 1;
-    }
-    if rhs[r..].iter().any(|v| !v.is_zero()) {
-        return None;
-    }
-    let mut x = vec![BigRational::zero(); n];
-    for (i, &c) in pivots.iter().enumerate() {
-        x[c] = rhs[i].clone();
-    }
-    Some(x)
+    crate::kernels::qlinalg::solve(&rows, n, &rhs)
 }
 
 impl Integrator<'_, '_> {

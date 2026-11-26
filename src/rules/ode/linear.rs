@@ -349,103 +349,12 @@ impl Hyper {
     }
 }
 
-/// Removes the common integer factor of a row of integers (a no-op otherwise).
-fn primitive_row(row: &mut [BigInt]) {
-    let mut common = BigInt::zero();
-    for v in row.iter() {
-        if v.is_zero() {
-            continue;
-        }
-        common = num_integer::Integer::gcd(&common, v);
-        if common.is_one() {
-            return;
-        }
-    }
-    if common > BigInt::one() {
-        for v in row.iter_mut() {
-            *v /= &common;
-        }
-    }
-}
-
-/// A basis of the nullspace of `rows` (exact, fraction-free elimination: the
-/// rows are made integral, combined with integer pivots and primitivised, so
-/// the rational entries do not grow during the elimination).
+/// A basis of the nullspace of `rows` over `Q`.
 pub(super) fn nullspace(
     rows: Vec<Vec<Q>>,
     columns: usize,
 ) -> Vec<Vec<Q>> {
-    let mut rows: Vec<Vec<BigInt>> = rows
-        .into_iter()
-        .map(|row| {
-            let common = row.iter().fold(BigInt::one(), |common, value| {
-                if value.denom().is_one() || value.denom() == &common {
-                    common
-                } else {
-                    num_integer::Integer::lcm(&common, value.denom())
-                }
-            });
-            if common.is_one() {
-                row.into_iter().map(|value| value.into_raw().0).collect()
-            } else {
-                row.into_iter()
-                    .map(|value| {
-                        let (numerator, denominator) = value.into_raw();
-                        numerator * (&common / denominator)
-                    })
-                    .collect()
-            }
-        })
-        .collect();
-    let mut pivots: Vec<usize> = Vec::new();
-    let mut r = 0;
-    for c in 0..columns {
-        let Some(found) = (r..rows.len()).find(|&i| {
-            rows.get(i)
-                .and_then(|row| row.get(c))
-                .is_some_and(|v| !v.is_zero())
-        }) else {
-            continue;
-        };
-        rows.swap(r, found);
-        let (above, lower) = rows.split_at_mut(r);
-        let Some((pivot_row, below)) = lower.split_first_mut() else {
-            break;
-        };
-        let Some(pivot) = pivot_row.get(c) else {
-            continue;
-        };
-        for row in above.iter_mut().chain(below) {
-            let Some(factor) = row.get(c).filter(|value| !value.is_zero()).cloned() else {
-                continue;
-            };
-            for (v, p) in row.iter_mut().zip(pivot_row.iter()) {
-                *v = &*v * pivot - &factor * p;
-            }
-            primitive_row(row);
-        }
-        primitive_row(pivot_row);
-        pivots.push(c);
-        r += 1;
-    }
-    let mut basis = Vec::new();
-    for free in (0..columns).filter(|c| !pivots.contains(c)) {
-        let mut vector = vec![Q::zero(); columns];
-        if let Some(slot) = vector.get_mut(free) {
-            *slot = Q::one();
-        }
-        for (row, &pivot) in pivots.iter().enumerate() {
-            if let Some(row) = rows.get(row)
-                && let Some(value) = row.get(free).filter(|v| !v.is_zero())
-                && let Some(scale) = row.get(pivot).filter(|v| !v.is_zero())
-                && let Some(slot) = vector.get_mut(pivot)
-            {
-                *slot = Q::new(-value, scale.clone());
-            }
-        }
-        basis.push(vector);
-    }
-    basis
+    crate::kernels::qlinalg::nullspace(&rows, columns)
 }
 
 /// `L(P E)/E` for `P = x^j`: `Σ_i a_i (D + ω)^i x^j`.

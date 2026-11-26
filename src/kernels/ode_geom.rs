@@ -98,36 +98,10 @@ fn evaluate(
 }
 
 fn solve_dense(
-    mut a: Vec<Vec<f64>>,
-    mut b: Vec<f64>,
+    a: Vec<Vec<f64>>,
+    b: Vec<f64>,
 ) -> Result<Vec<f64>, OdeGeomError> {
-    let n = b.len();
-    for column in 0..n {
-        let pivot = (column..n)
-            .max_by(|&i, &j| a[i][column].abs().total_cmp(&a[j][column].abs()))
-            .unwrap_or(column);
-        if a[pivot][column].abs() < 1e-300 || !a[pivot][column].is_finite() {
-            return Err(OdeGeomError::Singular);
-        }
-        a.swap(column, pivot);
-        b.swap(column, pivot);
-        for row in column + 1..n {
-            let factor = a[row][column] / a[column][column];
-            for k in column..n {
-                a[row][k] -= factor * a[column][k];
-            }
-            b[row] -= factor * b[column];
-        }
-    }
-    let mut x = vec![0.0; n];
-    for row in (0..n).rev() {
-        let tail: f64 = (row + 1..n).map(|k| a[row][k] * x[k]).sum();
-        x[row] = (b[row] - tail) / a[row][row];
-    }
-    if x.iter().any(|value| !value.is_finite()) {
-        return Err(OdeGeomError::Singular);
-    }
-    Ok(x)
+    crate::kernels::dense::solve_linear_rows(&a, &b).map_err(|_| OdeGeomError::Singular)
 }
 
 /// reversible systems.

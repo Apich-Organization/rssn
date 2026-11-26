@@ -157,6 +157,17 @@ pub fn tensordot_views(
     let b_mat = b_perm
         .to_shape((contracted_dim, free_dim_b))
         .map_err(|e| e.to_string())?;
+    if let (Some(a_slice), Some(b_slice)) = (a_mat.as_slice(), b_mat.as_slice()) {
+        let out = super::dense::optimized::matmul(
+            free_dim_a,
+            contracted_dim,
+            free_dim_b,
+            a_slice,
+            b_slice,
+        )
+        .map_err(|e| e.to_string())?;
+        return ArrayD::from_shape_vec(final_shape, out).map_err(|e| e.to_string());
+    }
     a_mat
         .dot(&b_mat)
         .into_shape_clone(final_shape)
@@ -198,12 +209,22 @@ pub fn outer_product(
             .to_string()
     })?;
 
-    let mut result_data = Vec::with_capacity(a.len() * b.len());
-
-    for val_a in a_flat {
-        for val_b in b_flat {
-            result_data.push(val_a * val_b);
-        }
+    let b_len = b_flat.len();
+    let total = a_flat
+        .len()
+        .checked_mul(b_len)
+        .ok_or_else(|| "Outer product output shape is too large.".to_string())?;
+    let mut result_data = vec![0.0; total];
+    if b_len > 0 && !a_flat.is_empty() {
+        let grain = if total >= 16_384 {
+            4
+        } else {
+            usize::MAX
+        };
+        super::par::for_chunks_mut(&mut result_data, b_len, grain, |row_idx, row| {
+            row.copy_from_slice(b_flat);
+            super::simd::scale_f64(a_flat[row_idx], row);
+        });
     }
 
     ArrayD::from_shape_vec(IxDyn(&new_shape), result_data).map_err(|e| e.to_string())
@@ -1095,10 +1116,10 @@ fn init_factors(
     rank: usize,
     seed: u64,
 ) -> Vec<Mat> {
-    use rand_v09::Rng;
-    use rand_v09::SeedableRng;
+    use rand::RngExt;
+    use rand::SeedableRng;
 
-    let mut rng = rand_v09::rngs::StdRng::seed_from_u64(seed);
+    let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
     shape
         .iter()
         .map(|&n| {

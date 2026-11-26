@@ -22,16 +22,18 @@ use std::alloc::Layout;
 use crate::kernels::krylov::IterResult;
 use crate::kernels::krylov::residual_ratio;
 use crate::kernels::random::Rng;
+use crate::kernels::reuse;
+use crate::kernels::simd;
 
 fn dot(
     a: &[f64],
     b: &[f64],
 ) -> f64 {
-    a.iter().zip(b).map(|(x, y)| x * y).sum()
+    simd::dot_f64(a, b)
 }
 
 fn nrm(a: &[f64]) -> f64 {
-    dot(a, a).sqrt()
+    simd::norm2_sq_f64(a).sqrt()
 }
 
 fn axpy(
@@ -39,8 +41,18 @@ fn axpy(
     x: &[f64],
     y: &mut [f64],
 ) {
-    for (yi, xi) in y.iter_mut().zip(x) {
-        *yi += alpha * xi;
+    simd::axpy_f64(alpha, x, y);
+}
+
+fn residual_into<A: Fn(&[f64], &mut [f64])>(
+    apply: &A,
+    b: &[f64],
+    x: &[f64],
+    out: &mut [f64],
+) {
+    apply(x, out);
+    for (o, &bi) in out.iter_mut().zip(b) {
+        *o = bi - *o;
     }
 }
 
@@ -49,9 +61,9 @@ fn residual<A: Fn(&[f64], &mut [f64])>(
     b: &[f64],
     x: &[f64],
 ) -> Vec<f64> {
-    let mut ax = vec![0.0; b.len()];
-    apply(x, &mut ax);
-    b.iter().zip(&ax).map(|(bi, ai)| bi - ai).collect()
+    let mut out = vec![0.0; b.len()];
+    residual_into(apply, b, x, &mut out);
+    out
 }
 
 /// MINRES for a symmetric (indefinite allowed) operator with an SPD
@@ -90,20 +102,30 @@ where
         };
     }
     let beta1 = beta1sq.sqrt();
-    let mut r1 = r0.clone();
-    let mut r2 = r0;
+    let pool = reuse::global_pool();
+    let mut r1 = pool.scratch_f64(n);
+    r1.resize(n, 0.0);
+    r1.copy_from_slice(&r0);
+    let mut r2 = pool.scratch_f64(n);
+    r2.resize(n, 0.0);
+    r2.copy_from_slice(&r0);
     let (mut oldb, mut beta) = (0.0, beta1);
     let (mut dbar, mut epsln, mut phibar) = (0.0, 0.0, beta1);
     let (mut cs, mut sn) = (-1.0, 0.0);
-    let mut w = vec![0.0; n];
-    let mut w2 = vec![0.0; n];
-    let mut v = vec![0.0; n];
+    let mut w = pool.scratch_f64(n);
+    w.resize(n, 0.0);
+    let mut w1 = pool.scratch_f64(n);
+    w1.resize(n, 0.0);
+    let mut w2 = pool.scratch_f64(n);
+    w2.resize(n, 0.0);
+    let mut v = pool.scratch_f64(n);
+    v.resize(n, 0.0);
     let mut itn = 0;
     while itn < max_iter {
         itn += 1;
         let s = 1.0 / beta;
-        for i in 0..n {
-            v[i] = s * y[i];
+        for (vi, &yi) in v.iter_mut().zip(&y) {
+            *vi = s * yi;
         }
         apply(&v, &mut y);
         if itn >= 2 {
@@ -111,7 +133,8 @@ where
         }
         let alfa = dot(&v, &y);
         axpy(-alfa / beta, &r2, &mut y);
-        r1 = std::mem::replace(&mut r2, y.clone());
+        std::mem::swap(&mut r1, &mut r2);
+        r2.copy_from_slice(&y);
         precond(&r2, &mut y);
         oldb = beta;
         let bsq = dot(&r2, &y);
@@ -126,16 +149,19 @@ where
         sn = beta / gamma;
         let phi = cs * phibar;
         phibar *= sn;
-        let w1 = std::mem::replace(&mut w2, std::mem::take(&mut w));
-        w = (0..n)
-            .map(|i| (v[i] - oldeps * w1[i] - delta * w2[i]) / gamma)
-            .collect();
+        std::mem::swap(&mut w1, &mut w2);
+        std::mem::swap(&mut w2, &mut w);
+        let inv_gamma = 1.0 / gamma;
+        for i in 0..n {
+            w[i] = (v[i] - oldeps * w1[i] - delta * w2[i]) * inv_gamma;
+        }
         axpy(phi, &w, &mut x);
         if phibar / beta1 <= tol || beta == 0.0 {
             break;
         }
     }
-    let res = nrm(&residual(&apply, b, &x)) / bn;
+    residual_into(&apply, b, &x, &mut v);
+    let res = nrm(&v) / bn;
     IterResult {
         x,
         residual: res,
@@ -247,9 +273,7 @@ where
             }
             rho0 = rho1;
             for i in 0..=j {
-                for q in 0..n {
-                    u[i][q] = r[i][q] - beta * u[i][q];
-                }
+                simd::axpby_f64(1.0, &r[i], -beta, &mut u[i]);
             }
             let (u_prefix, u_next) = u.split_at_mut(j + 1);
             if !op(&u_prefix[j], &mut u_next[0], &mut tmp) {
@@ -448,12 +472,23 @@ where
     }
     let mut om = 1.0;
     let mut f: Vec<f64> = p.iter().map(|pi| dot(pi, &r)).collect();
-    let mut t = vec![0.0; n];
-    let mut vv = vec![0.0; n];
+    let pool = reuse::global_pool();
+    let mut t = pool.scratch_f64(n);
+    t.resize(n, 0.0);
+    let mut vv = pool.scratch_f64(n);
+    vv.resize(n, 0.0);
+    let mut v = pool.scratch_f64(n);
+    v.resize(n, 0.0);
+    let mut uk = pool.scratch_f64(n);
+    uk.resize(n, 0.0);
+    let mut gk = pool.scratch_f64(n);
+    gk.resize(n, 0.0);
+    let mut c = vec![0.0; s];
     'outer: while nrm(&r) / bn > tol && mv < max_iter {
         for k in 0..s {
             // solve the lower triangular system M[k..,k..] c = f[k..]
-            let mut c = vec![0.0; s - k];
+            let len_c = s - k;
+            c[..len_c].fill(0.0);
             for i in k..s {
                 let mut sum = f[i];
                 for j in k..i {
@@ -464,25 +499,23 @@ where
                 }
                 c[i - k] = sum / m[i][i];
             }
-            let mut v = r.clone();
+            v.copy_from_slice(&r);
             for j in k..s {
                 axpy(-c[j - k], &g[j], &mut v);
             }
             precond(&v, &mut vv);
-            let mut uk = vec![0.0; n];
+            uk.fill(0.0);
             for j in k..s {
                 axpy(c[j - k], &u[j], &mut uk);
             }
             axpy(om, &vv, &mut uk);
             apply(&uk, &mut t);
             mv += 1;
-            let mut gk = t.clone();
+            gk.copy_from_slice(&t);
             for j in 0..k {
                 let alpha = dot(&p[j], &gk) / m[j][j];
-                let gj = g[j].clone();
-                axpy(-alpha, &gj, &mut gk);
-                let uj = u[j].clone();
-                axpy(-alpha, &uj, &mut uk);
+                axpy(-alpha, &g[j], &mut gk);
+                axpy(-alpha, &u[j], &mut uk);
             }
             for i in k..s {
                 m[i][k] = dot(&p[i], &gk);
@@ -493,8 +526,8 @@ where
             let beta = f[k] / m[k][k];
             axpy(-beta, &gk, &mut r);
             axpy(beta, &uk, &mut x);
-            g[k] = gk;
-            u[k] = uk;
+            g[k].copy_from_slice(&gk);
+            u[k].copy_from_slice(&uk);
             for i in k + 1..s {
                 f[i] -= beta * m[i][k];
             }
@@ -521,7 +554,8 @@ where
             f[i] = dot(&p[i], &r);
         }
     }
-    let res = nrm(&residual(&apply, b, &x)) / bn;
+    residual_into(&apply, b, &x, &mut t);
+    let res = nrm(&t) / bn;
     IterResult {
         x,
         residual: res,
@@ -584,47 +618,62 @@ where
     let m = restart.clamp(1, n.max(1));
     let bn = nrm(b).max(f64::MIN_POSITIVE);
     let mut x = x0.map_or_else(|| vec![0.0; n], <[f64]>::to_vec);
+    let pool = reuse::global_pool();
+    let mut r = pool.scratch_f64(n);
+    r.resize(n, 0.0);
+    let mut w = pool.scratch_f64(n);
+    w.resize(n, 0.0);
+    let mut v: Vec<Vec<f64>> = vec![vec![0.0; n]; m + 1];
+    let mut z: Vec<Vec<f64>> = vec![vec![0.0; n]; m];
+    let mut h = vec![vec![0.0; m]; m + 1];
+    let (mut cs, mut sn) = (vec![0.0; m], vec![0.0; m]);
+    let mut g = vec![0.0; m + 1];
+    let mut y = vec![0.0; m];
     let mut total = 0;
     let mut res;
     loop {
-        let r = residual(&apply, b, &x);
+        residual_into(&apply, b, &x, &mut r);
         let beta = nrm(&r);
         res = beta / bn;
         if res <= tol || total >= max_iter || beta == 0.0 {
             break;
         }
-        let mut v: Vec<Vec<f64>> = vec![r.iter().map(|e| e / beta).collect()];
-        let mut z: Vec<Vec<f64>> = Vec::new();
-        let mut h = vec![vec![0.0; m]; m + 1];
-        let (mut cs, mut sn) = (vec![0.0; m], vec![0.0; m]);
-        let mut g = vec![0.0; m + 1];
+        let inv_beta = 1.0 / beta;
+        for (vi, &ri) in v[0].iter_mut().zip(&*r) {
+            *vi = ri * inv_beta;
+        }
+        for row in &mut h {
+            row.fill(0.0);
+        }
+        cs.fill(0.0);
+        sn.fill(0.0);
+        g.fill(0.0);
         g[0] = beta;
         let mut used = 0;
         for j in 0..m {
-            let mut zj = vec![0.0; n];
-            precond(&v[j], &mut zj);
-            let mut w = vec![0.0; n];
-            apply(&zj, &mut w);
-            z.push(zj);
+            z[j].fill(0.0);
+            precond(&v[j], &mut z[j]);
+            w.fill(0.0);
+            apply(&z[j], &mut w);
             total += 1;
             for i in 0..=j {
                 h[i][j] = dot(&w, &v[i]);
-                let vi = v[i].clone();
-                axpy(-h[i][j], &vi, &mut w);
+                axpy(-h[i][j], &v[i], &mut w);
             }
             // reorthogonalise once for robustness
             for i in 0..=j {
                 let c = dot(&w, &v[i]);
                 h[i][j] += c;
-                let vi = v[i].clone();
-                axpy(-c, &vi, &mut w);
+                axpy(-c, &v[i], &mut w);
             }
             h[j + 1][j] = nrm(&w);
             if h[j + 1][j] > 0.0 {
-                let hn = h[j + 1][j];
-                v.push(w.iter().map(|e| e / hn).collect());
+                let inv_hn = 1.0 / h[j + 1][j];
+                for (vi, &wi) in v[j + 1].iter_mut().zip(&*w) {
+                    *vi = wi * inv_hn;
+                }
             } else {
-                v.push(vec![0.0; n]);
+                v[j + 1].fill(0.0);
             }
             for i in 0..j {
                 let t = cs[i] * h[i][j] + sn[i] * h[i + 1][j];
@@ -647,7 +696,7 @@ where
                 break;
             }
         }
-        let mut y = vec![0.0; used];
+        y[..used].fill(0.0);
         for i in (0..used).rev() {
             let mut s = g[i];
             for k in i + 1..used {
@@ -662,7 +711,8 @@ where
             break;
         }
     }
-    let res = nrm(&residual(&apply, b, &x)) / bn;
+    residual_into(&apply, b, &x, &mut r);
+    let res = nrm(&r) / bn;
     IterResult {
         x,
         residual: res,

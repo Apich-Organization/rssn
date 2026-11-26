@@ -549,56 +549,11 @@ fn omega(
 /// Gaussian elimination for `rows · p = rhs` (consistent, possibly
 /// overdetermined); `None` when inconsistent or underdetermined.
 fn solve_linear(
-    mut rows: Vec<Vec<Q>>,
-    mut rhs: Vec<Q>,
+    rows: Vec<Vec<Q>>,
+    rhs: Vec<Q>,
     unknowns: usize,
 ) -> Option<Vec<Q>> {
-    let m = rows.len();
-    let mut pivot_row = 0;
-    let mut pivots = Vec::new();
-    for col in 0..unknowns {
-        let found = (pivot_row..m).find(|&r| {
-            rows.get(r)
-                .is_some_and(|row| row.get(col).is_some_and(|v| !v.is_zero()))
-        })?;
-        rows.swap(pivot_row, found);
-        rhs.swap(pivot_row, found);
-        let pivot = rows.get(pivot_row)?.get(col)?.clone();
-        for v in rows.get_mut(pivot_row)?.iter_mut() {
-            *v /= &pivot;
-        }
-        *rhs.get_mut(pivot_row)? /= &pivot;
-        let prow = rows.get(pivot_row)?.clone();
-        let prhs = rhs.get(pivot_row)?.clone();
-        for r in 0..m {
-            if r == pivot_row {
-                continue;
-            }
-            let factor = rows.get(r)?.get(col)?.clone();
-            if factor.is_zero() {
-                continue;
-            }
-            for (v, p) in rows.get_mut(r)?.iter_mut().zip(&prow) {
-                *v -= &factor * p;
-            }
-            *rhs.get_mut(r)? -= &factor * &prhs;
-        }
-        pivots.push(col);
-        pivot_row += 1;
-    }
-    // Remaining rows must be consistent.
-    for r in pivot_row..m {
-        if !rhs.get(r)?.is_zero() {
-            return None;
-        }
-    }
-    Some(
-        pivots
-            .iter()
-            .enumerate()
-            .map(|(i, _)| rhs.get(i).cloned().unwrap_or_else(Q::zero))
-            .collect(),
-    )
+    crate::kernels::qlinalg::solve_unique(&rows, unknowns, &rhs)
 }
 
 /// Solutions of `a2 y'' + a1 y' + a0 y = 0` by Kovacic's cases 1 and 2: one

@@ -193,15 +193,49 @@ impl Mat {
         self.data[i * self.cols + j] = v;
     }
 
-    /// Transpose.
+    /// Transpose (cache-blocked in 32x32 tiles and parallelised for large matrices).
     #[must_use]
     pub fn transpose(&self) -> Self {
-        let mut t = Self::zeros(self.cols, self.rows);
-        for i in 0..self.rows {
-            for j in 0..self.cols {
-                t.data[j * self.rows + i] = self.data[i * self.cols + j];
-            }
+        const TILE: usize = 32;
+        let rows = self.rows;
+        let cols = self.cols;
+        let mut t = Self::zeros(cols, rows);
+        if rows == 0 || cols == 0 {
+            return t;
         }
+        if rows.saturating_mul(cols) < 4_096 {
+            for i in 0..rows {
+                let src_row = i * cols;
+                for j in 0..cols {
+                    t.data[j * rows + i] = self.data[src_row + j];
+                }
+            }
+            return t;
+        }
+        // Output matrix `t` has shape (cols, rows). Partition its rows (j in 0..cols)
+        // in blocks of TILE so each parallel chunk owns disjoint rows of `t`.
+        let grain = if rows.saturating_mul(cols) >= DENSE_PAR_WORK {
+            2
+        } else {
+            usize::MAX
+        };
+        let chunk_elems = TILE * rows;
+        super::par::for_chunks_mut(&mut t.data, chunk_elems, grain, |jb, dst_band| {
+            let j0 = jb * TILE;
+            let j_len = dst_band.len() / rows;
+            let mut i0 = 0;
+            while i0 < rows {
+                let i_end = (i0 + TILE).min(rows);
+                for j_off in 0..j_len {
+                    let j = j0 + j_off;
+                    let dst_row = j_off * rows;
+                    for i in i0..i_end {
+                        dst_band[dst_row + i] = self.data[i * cols + j];
+                    }
+                }
+                i0 += TILE;
+            }
+        });
         t
     }
 
@@ -702,6 +736,277 @@ pub fn qr(a: &Mat) -> (Mat, Mat) {
         });
     }
     (q, r)
+}
+
+/// Economy (thin) Householder QR: returns `(Q, R)` with `Q` of size `m x k` and
+/// `R` of size `k x n`, where `k = min(m, n)`.
+///
+/// Avoids materialising an `m x m` orthogonal matrix when `m >> n`.
+///
+/// # Errors
+/// Returns [`DenseError::Shape`] if `a` has inconsistent internal storage.
+pub fn qr_thin(a: &Mat) -> Result<(Mat, Mat), DenseError> {
+    if !a.has_valid_shape() {
+        return Err(DenseError::Shape);
+    }
+    let (m, n) = (a.rows, a.cols);
+    let k_dim = m.min(n);
+    if k_dim == 0 {
+        return Ok((Mat::zeros(m, 0), Mat::zeros(0, n)));
+    }
+    let mut r_full = a.clone();
+    let mut reflectors: Vec<(usize, Vec<f64>, f64)> = Vec::with_capacity(k_dim);
+    let pool = crate::kernels::reuse::global_pool();
+    let mut v = pool.scratch_f64(m);
+    v.resize(m, 0.0);
+    let mut weights = pool.scratch_f64(n.max(1));
+    weights.resize(n.max(1), 0.0);
+
+    for k in 0..n.min(m.saturating_sub(1)) {
+        let mut norm_sq = 0.0;
+        for i in k..m {
+            let val = r_full.data[i * n + k];
+            norm_sq += val * val;
+        }
+        let norm = norm_sq.sqrt();
+        if norm == 0.0 {
+            continue;
+        }
+        let alpha = if r_full.data[k * n + k] > 0.0 {
+            -norm
+        } else {
+            norm
+        };
+        v[..k].fill(0.0);
+        for i in k..m {
+            v[i] = r_full.data[i * n + k];
+        }
+        v[k] -= alpha;
+        let vn: f64 = v[k..m].iter().map(|x| x * x).sum();
+        if vn == 0.0 {
+            continue;
+        }
+        let grain = if (m - k).saturating_mul(n) >= DENSE_PAR_WORK_QR {
+            2
+        } else {
+            usize::MAX
+        };
+        super::par::map_indexed_into(n, grain, &mut weights, |j| {
+            let mut sum = 0.0;
+            for i in k..m {
+                sum += v[i] * r_full.data[i * n + j];
+            }
+            sum * 2.0 / vn
+        });
+        let (_upper, lower) = r_full.data.split_at_mut(k * n);
+        super::par::for_chunks_mut(lower, n, grain, |offset, row| {
+            let factor = v[k + offset];
+            for (slot, &weight) in row.iter_mut().zip(weights.iter()) {
+                *slot -= weight * factor;
+            }
+        });
+        reflectors.push((k, v[k..m].to_vec(), 2.0 / vn));
+    }
+
+    // Build thin Q (m x k_dim) by applying reflectors in reverse to I_{m x k_dim}.
+    let mut q = Mat::zeros(m, k_dim);
+    for i in 0..k_dim {
+        q.data[i * k_dim + i] = 1.0;
+    }
+    let mut col_dots = pool.scratch_f64(k_dim);
+    col_dots.resize(k_dim, 0.0);
+    for (k, ref_v, beta) in reflectors.into_iter().rev() {
+        let grain = if (m - k).saturating_mul(k_dim) >= DENSE_PAR_WORK_QR {
+            2
+        } else {
+            usize::MAX
+        };
+        super::par::map_indexed_into(k_dim, grain, &mut col_dots, |j| {
+            let mut sum = 0.0;
+            for (off, &vi) in ref_v.iter().enumerate() {
+                sum += vi * q.data[(k + off) * k_dim + j];
+            }
+            sum * beta
+        });
+        let (_upper, lower) = q.data.split_at_mut(k * k_dim);
+        super::par::for_chunks_mut(lower, k_dim, grain, |off, row| {
+            let vi = ref_v[off];
+            for (slot, &dot) in row.iter_mut().zip(col_dots.iter()) {
+                *slot -= vi * dot;
+            }
+        });
+    }
+
+    let r_thin = Mat {
+        rows: k_dim,
+        cols: n,
+        data: r_full.data[..k_dim * n].to_vec(),
+    };
+    Ok((q, r_thin))
+}
+
+/// Solves a dense square linear system `A x = b` given as row slices, checking
+/// that the solution is finite.
+///
+/// # Errors
+/// Returns [`DenseError::Shape`] for mismatched dimensions,
+/// [`DenseError::Singular`] if the matrix is singular or produces a non-finite
+/// solution, or [`DenseError::NonFinite`] if inputs contain NaN/Inf.
+pub fn solve_linear_rows(
+    rows: &[Vec<f64>],
+    rhs: &[f64],
+) -> Result<Vec<f64>, DenseError> {
+    let mat = Mat::from_rows(rows)?;
+    if mat.rows != mat.cols || mat.rows != rhs.len() {
+        return Err(DenseError::Shape);
+    }
+    if mat.rows == 0 {
+        return Ok(Vec::new());
+    }
+    if !mat.is_finite() || rhs.iter().any(|v| !v.is_finite()) {
+        return Err(DenseError::NonFinite);
+    }
+    let lu = lu_factor(&mat)?;
+    let x = lu.solve(rhs);
+    if x.iter().any(|v| !v.is_finite()) {
+        return Err(DenseError::Singular);
+    }
+    Ok(x)
+}
+
+/// Solves a general tridiagonal linear system in `O(n)` time via the Thomas algorithm:
+/// `sub[i - 1] * x[i - 1] + diag[i] * x[i] + sup[i] * x[i + 1] = rhs[i]`.
+///
+/// `diag` and `rhs` have length `n`; `sub` and `sup` have length `n.saturating_sub(1)`.
+///
+/// # Errors
+/// Returns [`DenseError::Shape`] for mismatched lengths,
+/// [`DenseError::NonFinite`] if any input is non-finite, or
+/// [`DenseError::Singular`] on a zero/non-finite pivot.
+pub fn solve_tridiagonal(
+    sub: &[f64],
+    diag: &[f64],
+    sup: &[f64],
+    rhs: &[f64],
+) -> Result<Vec<f64>, DenseError> {
+    let n = diag.len();
+    let expected_off = n.saturating_sub(1);
+    if rhs.len() != n || sub.len() != expected_off || sup.len() != expected_off {
+        return Err(DenseError::Shape);
+    }
+    if n == 0 {
+        return Ok(Vec::new());
+    }
+    if diag
+        .iter()
+        .chain(sub)
+        .chain(sup)
+        .chain(rhs)
+        .any(|v| !v.is_finite())
+    {
+        return Err(DenseError::NonFinite);
+    }
+    if diag[0] == 0.0 {
+        return Err(DenseError::Singular);
+    }
+    let mut cp = super::reuse::f64_scratch(n);
+    cp.resize(n, 0.0);
+    let mut dp = super::reuse::f64_scratch(n);
+    dp.resize(n, 0.0);
+
+    cp[0] = if n > 1 {
+        sup[0] / diag[0]
+    } else {
+        0.0
+    };
+    dp[0] = rhs[0] / diag[0];
+    if !cp[0].is_finite() || !dp[0].is_finite() {
+        return Err(DenseError::Singular);
+    }
+    for i in 1..n {
+        let denom = diag[i] - sub[i - 1] * cp[i - 1];
+        if denom == 0.0 || !denom.is_finite() {
+            return Err(DenseError::Singular);
+        }
+        cp[i] = if i + 1 < n {
+            sup[i] / denom
+        } else {
+            0.0
+        };
+        dp[i] = (rhs[i] - sub[i - 1] * dp[i - 1]) / denom;
+        if !cp[i].is_finite() || !dp[i].is_finite() {
+            return Err(DenseError::Singular);
+        }
+    }
+    let mut x = vec![0.0; n];
+    x[n - 1] = dp[n - 1];
+    for i in (0..n - 1).rev() {
+        x[i] = dp[i] - cp[i] * x[i + 1];
+    }
+    if x.iter().any(|v| !v.is_finite()) {
+        return Err(DenseError::Singular);
+    }
+    Ok(x)
+}
+
+/// Solves a symmetric positive-definite tridiagonal linear system in `O(n)` time
+/// via `LDL^T` factorisation.
+///
+/// `diag` and `rhs` have length `n`; `off` has length `n.saturating_sub(1)`.
+///
+/// # Errors
+/// Returns [`DenseError::Shape`] for mismatched lengths,
+/// [`DenseError::NonFinite`] if any input is non-finite, or
+/// [`DenseError::Singular`] if the matrix is not strictly positive definite.
+pub fn solve_spd_tridiagonal(
+    diag: &[f64],
+    off: &[f64],
+    rhs: &[f64],
+) -> Result<Vec<f64>, DenseError> {
+    let n = diag.len();
+    let expected_off = n.saturating_sub(1);
+    if rhs.len() != n || off.len() != expected_off {
+        return Err(DenseError::Shape);
+    }
+    if n == 0 {
+        return Ok(Vec::new());
+    }
+    if diag.iter().chain(off).chain(rhs).any(|v| !v.is_finite()) {
+        return Err(DenseError::NonFinite);
+    }
+    let mut d = super::reuse::f64_scratch(n);
+    d.clear();
+    d.extend_from_slice(diag);
+    let mut l = super::reuse::f64_scratch(expected_off);
+    l.clear();
+    l.extend_from_slice(off);
+    let mut x = rhs.to_vec();
+
+    for i in 1..n {
+        if d[i - 1] <= 0.0 {
+            return Err(DenseError::Singular);
+        }
+        let factor = l[i - 1] / d[i - 1];
+        d[i] -= factor * l[i - 1];
+        x[i] -= factor * x[i - 1];
+        l[i - 1] = factor;
+        if !d[i].is_finite() || !x[i].is_finite() || !factor.is_finite() {
+            return Err(DenseError::Singular);
+        }
+    }
+    if d[n - 1] <= 0.0 {
+        return Err(DenseError::Singular);
+    }
+    for i in 0..n {
+        x[i] /= d[i];
+    }
+    for i in (0..n - 1).rev() {
+        x[i] -= l[i] * x[i + 1];
+    }
+    if x.iter().any(|v| !v.is_finite()) {
+        return Err(DenseError::Singular);
+    }
+    Ok(x)
 }
 
 /// Least-squares solution of `min |A x - b|_2` (`m >= n`, full column rank) by QR.
@@ -2859,3 +3164,76 @@ pub mod optimized;
 pub mod exact;
 /// Sequential reference operations with stable row-major layouts.
 pub mod reference;
+
+#[cfg(test)]
+mod extra_tests {
+    use super::*;
+
+    #[test]
+    fn tiled_transpose_matches_naive_large() {
+        let rows = 97;
+        let cols = 131;
+        let data: Vec<f64> = (0..rows * cols).map(|i| (i as f64) * 0.125 - 7.0).collect();
+        let m = Mat { rows, cols, data };
+        let t = m.transpose();
+        assert_eq!(t.rows, cols);
+        assert_eq!(t.cols, rows);
+        for i in 0..rows {
+            for j in 0..cols {
+                assert_eq!(t.at(j, i).to_bits(), m.at(i, j).to_bits());
+            }
+        }
+    }
+
+    #[test]
+    fn qr_thin_reconstructs_tall_matrix() {
+        let m = 20;
+        let n = 5;
+        let data: Vec<f64> = (0..m * n)
+            .map(|k| ((k as f64) * 0.7).sin() + 0.1 * (k as f64))
+            .collect();
+        let a = Mat {
+            rows: m,
+            cols: n,
+            data,
+        };
+        let (q, r) = qr_thin(&a).unwrap();
+        assert_eq!((q.rows, q.cols), (m, n));
+        assert_eq!((r.rows, r.cols), (n, n));
+        let recon = q.matmul(&r).unwrap();
+        for (x, y) in recon.data.iter().zip(&a.data) {
+            assert!((x - y).abs() < 1e-11);
+        }
+        let qtq = q.transpose().matmul(&q).unwrap();
+        for i in 0..n {
+            for j in 0..n {
+                let target = if i == j { 1.0 } else { 0.0 };
+                assert!((qtq.at(i, j) - target).abs() < 1e-11);
+            }
+        }
+    }
+
+    #[test]
+    fn tridiagonal_solvers_agree_with_exact_solution() {
+        let sub = vec![-1.0, -1.0, -1.0, -1.0];
+        let diag = vec![4.0, 4.0, 4.0, 4.0, 4.0];
+        let sup = vec![-1.0, -1.0, -1.0, -1.0];
+        let x_true = vec![1.0, -2.0, 3.0, -4.0, 5.0];
+        let mut rhs = vec![0.0; 5];
+        for i in 0..5 {
+            rhs[i] = diag[i] * x_true[i];
+            if i > 0 {
+                rhs[i] += sub[i - 1] * x_true[i - 1];
+            }
+            if i + 1 < 5 {
+                rhs[i] += sup[i] * x_true[i + 1];
+            }
+        }
+        let x_gen = solve_tridiagonal(&sub, &diag, &sup, &rhs).unwrap();
+        let x_spd = solve_spd_tridiagonal(&diag, &sub, &rhs).unwrap();
+        for i in 0..5 {
+            assert!((x_gen[i] - x_true[i]).abs() < 1e-13);
+            assert!((x_spd[i] - x_true[i]).abs() < 1e-13);
+        }
+    }
+}

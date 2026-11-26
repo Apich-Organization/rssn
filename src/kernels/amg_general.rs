@@ -109,7 +109,7 @@ pub struct AmgGeneral {
 }
 
 fn norm2(v: &[f64]) -> f64 {
-    v.iter().map(|x| x * x).sum::<f64>().sqrt()
+    crate::kernels::simd::norm2_sq_f64(v).sqrt()
 }
 
 fn residual_into(
@@ -119,9 +119,7 @@ fn residual_into(
     work: &mut [f64],
 ) {
     a.matvec(x, work);
-    for (ax, rhs) in work.iter_mut().zip(b) {
-        *ax = rhs - *ax;
-    }
+    crate::kernels::simd::axpby_f64(1.0, b, -1.0, work);
 }
 
 /// Strong dependencies `S_i = {j != i : -a_ij >= theta max_k(-a_ik)}`.
@@ -203,22 +201,29 @@ fn cf_splitting(s: &[Vec<usize>]) -> Vec<Pt> {
         }
     }
     // second pass: strongly connected fine points must share a coarse point
+    let mut mark = crate::kernels::reuse::global_pool().scratch_usize(n);
+    // The pool guarantees capacity, not length.
+    mark.resize(n, 0);
+    mark.fill(0);
+    let mut epoch = 0_usize;
     for i in 0..n {
         if state[i] != Pt::Fine {
             continue;
         }
-        let ci: Vec<usize> = s[i]
-            .iter()
-            .copied()
-            .filter(|&j| state[j] == Pt::Coarse)
-            .collect();
+        epoch += 1;
+        for &j in &s[i] {
+            if state[j] == Pt::Coarse {
+                mark[j] = epoch;
+            }
+        }
         for &j in &s[i] {
             if state[j] != Pt::Fine {
                 continue;
             }
-            let shares = s[j].iter().any(|k| ci.contains(k));
+            let shares = s[j].iter().any(|&k| mark[k] == epoch);
             if !shares {
                 state[j] = Pt::Coarse;
+                mark[j] = epoch;
             }
         }
     }
@@ -236,17 +241,25 @@ fn direct_interpolation(
 ) -> Csr {
     let n = a.rows;
     let mut trip: Vec<(usize, usize, f64)> = Vec::new();
+    let mut mark = crate::kernels::reuse::global_pool().scratch_usize(n);
+    // The pool guarantees capacity, not length.
+    mark.resize(n, 0);
+    mark.fill(0);
+    let mut epoch = 0_usize;
     for i in 0..n {
         if state[i] == Pt::Coarse {
             trip.push((i, cidx[i], 1.0));
             continue;
         }
-        let ci: Vec<usize> = s[i]
-            .iter()
-            .copied()
-            .filter(|&j| state[j] == Pt::Coarse)
-            .collect();
-        if ci.is_empty() {
+        epoch += 1;
+        let mut has_coarse = false;
+        for &j in &s[i] {
+            if state[j] == Pt::Coarse {
+                mark[j] = epoch;
+                has_coarse = true;
+            }
+        }
+        if !has_coarse {
             continue;
         }
         let mut aii = 0.0;
@@ -259,12 +272,12 @@ fn direct_interpolation(
                 aii = v;
             } else if v < 0.0 {
                 sum_n += v;
-                if ci.contains(&j) {
+                if mark[j] == epoch {
                     sum_nc += v;
                 }
             } else {
                 sum_p += v;
-                if ci.contains(&j) {
+                if mark[j] == epoch {
                     sum_pc += v;
                 }
             }
@@ -284,7 +297,7 @@ fn direct_interpolation(
         }
         for k in a.indptr[i]..a.indptr[i + 1] {
             let j = a.indices[k];
-            if j == i || !ci.contains(&j) {
+            if j == i || mark[j] != epoch {
                 continue;
             }
             let v = a.values[k];

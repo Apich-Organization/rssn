@@ -64,7 +64,7 @@ pub fn mean(data: &[f64]) -> f64 {
     }
 
     let n = data.len() as f64;
-    let direct = data.iter().sum::<f64>() / n;
+    let direct = crate::kernels::simd::sum_f64(data) / n;
     if direct.is_finite() {
         return direct;
     }
@@ -162,9 +162,19 @@ pub fn median(data: &mut [f64]) -> f64 {
         return f64::NAN;
     }
 
-    let mut data_container = Data::new(data);
-
-    data_container.median()
+    let n = data.len();
+    let mid = n / 2;
+    let (_, upper, _) = data.select_nth_unstable_by(mid, f64::total_cmp);
+    let upper_val = *upper;
+    if n % 2 == 1 {
+        upper_val
+    } else {
+        let lower_val = data[..mid]
+            .iter()
+            .copied()
+            .fold(f64::NEG_INFINITY, f64::max);
+        f64::midpoint(lower_val, upper_val)
+    }
 }
 
 /// Computes the p-th percentile of a slice of data.
@@ -213,12 +223,7 @@ pub fn covariance(
 
     let n = data1.len() as f64;
 
-    data1
-        .iter()
-        .zip(data2.iter())
-        .map(|(&x, &y)| (x - mean1) * (y - mean2))
-        .sum::<f64>()
-        / (n - 1.0)
+    crate::kernels::simd::centered_stats_f64(data1, data2, mean1, mean2).0 / (n - 1.0)
 }
 
 /// Computes the Pearson correlation coefficient of two slices of data.
@@ -234,13 +239,14 @@ pub fn correlation(
     data1: &[f64],
     data2: &[f64],
 ) -> f64 {
-    let cov = covariance(data1, data2);
+    if data1.len() != data2.len() || data1.len() < 2 {
+        return f64::NAN;
+    }
 
-    let std_dev1 = std_dev(data1);
-
-    let std_dev2 = std_dev(data2);
-
-    cov / (std_dev1 * std_dev2)
+    let mean1 = mean(data1);
+    let mean2 = mean(data2);
+    let (cov, var1, var2) = crate::kernels::simd::centered_stats_f64(data1, data2, mean1, mean2);
+    cov / (var1 * var2).sqrt()
 }
 
 /// Represents a Normal (Gaussian) distribution.

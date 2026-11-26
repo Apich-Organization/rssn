@@ -385,6 +385,107 @@ pub fn bigint_mod_inverse(
     Some(t0)
 }
 
+fn mod_pos_bigint(
+    a: &BigInt,
+    m: &BigInt,
+) -> BigInt {
+    let r = a % m;
+    if r.is_negative() { r + m } else { r }
+}
+
+/// The Jacobi symbol `(a / n)` for odd positive arbitrary-precision `n`.
+///
+/// Returns `None` if `n <= 0` or `n` is even.
+#[must_use]
+pub fn jacobi_bigint(
+    a: &BigInt,
+    n: &BigInt,
+) -> Option<i32> {
+    if !n.is_positive() || !n.bit(0) {
+        return None;
+    }
+    let mut a = mod_pos_bigint(a, n);
+    let mut n = n.clone();
+    let mut result = 1_i32;
+    while !a.is_zero() {
+        while !a.bit(0) {
+            a >>= 1;
+            let residue = (&n % 8_u32).to_u32().unwrap_or(0);
+            if residue == 3 || residue == 5 {
+                result = -result;
+            }
+        }
+        std::mem::swap(&mut a, &mut n);
+        let a_mod4 = (&a % 4_u32).to_u32().unwrap_or(0);
+        let n_mod4 = (&n % 4_u32).to_u32().unwrap_or(0);
+        if a_mod4 == 3 && n_mod4 == 3 {
+            result = -result;
+        }
+        a = mod_pos_bigint(&a, &n);
+    }
+    Some(if n.is_one() { result } else { 0 })
+}
+
+/// Strong Lucas probable-prime test of an odd integer `n > 2` with Selfridge's
+/// parameters (`D` the first of `5, -7, 9, -11, ...` with Jacobi symbol `-1`,
+/// `P = 1`, `Q = (1 - D) / 4`): checks `U_d = 0` or `V_{d 2^r} = 0` for some
+/// `r < s`, where `n + 1 = d 2^s` with `d` odd.
+#[must_use]
+pub fn strong_lucas_bigint(n: &BigInt) -> bool {
+    if n <= &BigInt::from(2_u32) || !n.bit(0) {
+        return false;
+    }
+    let root = n.sqrt();
+    if &root * &root == *n {
+        return false;
+    }
+    let mut d: i64 = 5;
+    loop {
+        match jacobi_bigint(&BigInt::from(d), n) {
+            | Some(-1) => break,
+            | Some(0) if BigInt::from(d.abs()) != *n => return false,
+            | _ => {},
+        }
+        d = if d > 0 { -(d + 2) } else { -d + 2 };
+    }
+    let (d_big, q) = (BigInt::from(d), BigInt::from((1 - d) / 4));
+    let n1: BigInt = n + 1;
+    let shift = n1.trailing_zeros().unwrap_or(0);
+    let odd = &n1 >> shift;
+    let half = |x: BigInt| -> BigInt {
+        let x = mod_pos_bigint(&x, n);
+        if x.bit(0) {
+            (x + n) >> 1
+        } else {
+            x >> 1
+        }
+    };
+    let (mut u, mut v, mut qk) = (BigInt::one(), BigInt::one(), mod_pos_bigint(&q, n));
+    for i in (0..odd.bits().saturating_sub(1)).rev() {
+        u = &u * &v % n;
+        v = mod_pos_bigint(&(&v * &v - 2 * &qk), n);
+        qk = &qk * &qk % n;
+        if odd.bit(i) {
+            let next_u = half(&u + &v);
+            let next_v = half(&d_big * &u + &v);
+            u = next_u;
+            v = next_v;
+            qk = mod_pos_bigint(&(&qk * &q), n);
+        }
+    }
+    if u.is_zero() || v.is_zero() {
+        return true;
+    }
+    for _ in 1..shift {
+        v = mod_pos_bigint(&(&v * &v - 2 * &qk), n);
+        qk = &qk * &qk % n;
+        if v.is_zero() {
+            return true;
+        }
+    }
+    false
+}
+
 /// Floor integer square root `floor(sqrt(n))` for nonnegative `n`, or `None` for `n < 0`.
 #[must_use]
 pub fn bigint_isqrt(n: &BigInt) -> Option<BigInt> {

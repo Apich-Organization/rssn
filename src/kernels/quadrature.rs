@@ -522,95 +522,21 @@ pub fn sinh_sinh<F: Fn(f64) -> f64>(
     de_driver(&f, &map, 6.5, tol, 10)
 }
 
-/// Orders at or above this are worth caching: Newton's iteration on the
-/// Legendre recurrence costs `O(n^2)`, while a cache hit is a copy.
-const RULE_CACHE_MIN_ORDER: usize = 32;
-
-/// Orders above this are built on demand. The shared rule cache is bounded, so
-/// caching an unbounded order would only evict the entries callers reuse.
-const RULE_CACHE_MAX_ORDER: usize = 4096;
-
-/// Cache tags for the rules built here. `Custom` keeps them separate from the
-/// reuse pool's own Gauss-Legendre / Clenshaw-Curtis builders, whose node
-/// rounding differs; a hit must return the exact values this module computes.
-const GAUSS_LEGENDRE_CACHE_TAG: u64 = 0x474C_5255_4C45_0001;
-const CLENSHAW_CURTIS_CACHE_TAG: u64 = 0x4343_5255_4C45_0002;
-
 /// Node evaluations below which the parallel rules stay sequential.
 const RULE_EVAL_GRAIN: usize = 64;
-
-/// Returns a cached `n`-point rule, or a fresh one outside the cache range.
-///
-/// The cache key is `(tag, n)` and the builder is the same routine that would
-/// run uncached, so a hit is bit-identical to a fresh computation.
-fn cached_rule(
-    tag: u64,
-    n: usize,
-    build: impl FnOnce() -> (Vec<f64>, Vec<f64>),
-) -> (Vec<f64>, Vec<f64>) {
-    if n < RULE_CACHE_MIN_ORDER || n > RULE_CACHE_MAX_ORDER {
-        return build();
-    }
-    let rule = crate::kernels::reuse::global_pool().get_or_init_quadrature(
-        crate::kernels::reuse::QuadratureRuleKind::Custom(tag),
-        n,
-        || std::sync::Arc::new(build()),
-    );
-    let (nodes, weights) = &*rule;
-    (nodes.clone(), weights.clone())
-}
 
 /// Gauss-Legendre nodes and weights on `[-1, 1]` with `n` points
 /// (Newton iteration on the Legendre recurrence).
 ///
-/// Orders in `[32, 4096]` are cached and reused across calls.
+/// Orders up to `4096` are cached and reused across calls via
+/// [`crate::kernels::reuse::global_pool`].
 #[must_use]
 pub fn gauss_legendre_rule(n: usize) -> (Vec<f64>, Vec<f64>) {
     if n == 0 {
         return (Vec::new(), Vec::new());
     }
-    cached_rule(GAUSS_LEGENDRE_CACHE_TAG, n, || build_gauss_legendre_rule(n))
-}
-
-#[allow(clippy::single_call_fn)] // the cached and uncached paths share one builder
-fn build_gauss_legendre_rule(n: usize) -> (Vec<f64>, Vec<f64>) {
-    let mut x = vec![0.0; n];
-    let mut w = vec![0.0; n];
-    let nf = n as f64;
-    for i in 0..n.div_ceil(2) {
-        let mut z = (PI * (i as f64 + 0.75) / (nf + 0.5)).cos();
-        let mut dp = 0.0;
-        for _ in 0..100 {
-            let (mut p0, mut p1) = (1.0, z);
-            for k in 2..=n {
-                let kf = k as f64;
-                let p2 = ((2.0 * kf - 1.0) * z * p1 - (kf - 1.0) * p0) / kf;
-                p0 = p1;
-                p1 = p2;
-            }
-            dp = nf * (z * p1 - p0) / (z * z - 1.0);
-            let dz = p1 / dp;
-            z -= dz;
-            if dz.abs() <= 1e-15 * z.abs().max(1.0) {
-                break;
-            }
-        }
-        let wi = 2.0 / ((1.0 - z * z) * dp * dp);
-        let j = n.saturating_sub(1).saturating_sub(i);
-        if let Some(slot) = x.get_mut(i) {
-            *slot = -z;
-        }
-        if let Some(slot) = x.get_mut(j) {
-            *slot = z;
-        }
-        if let Some(slot) = w.get_mut(i) {
-            *slot = wi;
-        }
-        if let Some(slot) = w.get_mut(j) {
-            *slot = wi;
-        }
-    }
-    (x, w)
+    let rule = crate::kernels::reuse::global_pool().gauss_legendre_rule(n);
+    (rule.0.clone(), rule.1.clone())
 }
 
 /// `n`-point Gauss-Legendre quadrature of `f` on `[a, b]`.
@@ -620,12 +546,16 @@ pub fn gauss_legendre<F: Fn(f64) -> f64>(
     b: f64,
     n: usize,
 ) -> f64 {
-    let (x, w) = gauss_legendre_rule(n);
+    if n == 0 {
+        return 0.0;
+    }
+    let rule = crate::kernels::reuse::global_pool().gauss_legendre_rule(n);
+    let (x, w) = &*rule;
     let h = 0.5 * (b - a);
     let m = f64::midpoint(a, b);
     h * x
         .iter()
-        .zip(&w)
+        .zip(w)
         .map(|(&xi, &wi)| wi * f(m + h * xi))
         .sum::<f64>()
 }
@@ -642,13 +572,17 @@ pub fn gauss_legendre_par<F: Fn(f64) -> f64 + Sync>(
     b: f64,
     n: usize,
 ) -> f64 {
-    let (x, w) = gauss_legendre_rule(n);
+    if n == 0 {
+        return 0.0;
+    }
+    let rule = crate::kernels::reuse::global_pool().gauss_legendre_rule(n);
+    let (x, w) = &*rule;
     let h = 0.5 * (b - a);
     let m = f64::midpoint(a, b);
-    let values = crate::kernels::par::map_slice(&x, RULE_EVAL_GRAIN, |&xi| f(m + h * xi));
+    let values = crate::kernels::par::map_slice(x, RULE_EVAL_GRAIN, |&xi| f(m + h * xi));
     h * values
         .iter()
-        .zip(&w)
+        .zip(w)
         .map(|(&value, &wi)| wi * value)
         .sum::<f64>()
 }
@@ -656,34 +590,12 @@ pub fn gauss_legendre_par<F: Fn(f64) -> f64 + Sync>(
 /// Clenshaw-Curtis nodes and weights on `[-1, 1]` with `n + 1` points
 /// (`n` is rounded up to an even number, at least 2).
 ///
-/// Orders in `[32, 4096]` are cached and reused across calls.
+/// Orders up to `4096` are cached and reused across calls via
+/// [`crate::kernels::reuse::global_pool`].
 #[must_use]
 pub fn clenshaw_curtis_rule(n: usize) -> (Vec<f64>, Vec<f64>) {
-    let n = n.max(2).div_ceil(2) * 2;
-    cached_rule(CLENSHAW_CURTIS_CACHE_TAG, n, || {
-        build_clenshaw_curtis_rule(n)
-    })
-}
-
-#[allow(clippy::single_call_fn)] // the cached and uncached paths share one builder
-fn build_clenshaw_curtis_rule(n: usize) -> (Vec<f64>, Vec<f64>) {
-    let n = n.max(2).div_ceil(2) * 2;
-    let nf = n as f64;
-    let mut x = vec![0.0; n + 1];
-    let mut w = vec![0.0; n + 1];
-    for k in 0..=n {
-        let th = PI * k as f64 / nf;
-        x[k] = th.cos();
-        let mut s = 0.0;
-        for j in 1..=n / 2 {
-            let b = if j == n / 2 { 1.0 } else { 2.0 };
-            let jf = j as f64;
-            s += b * (2.0 * jf * th).cos() / (4.0 * jf * jf - 1.0);
-        }
-        let c = if k == 0 || k == n { 1.0 } else { 2.0 };
-        w[k] = c / nf * (1.0 - s);
-    }
-    (x, w)
+    let rule = crate::kernels::reuse::global_pool().clenshaw_curtis_rule(n);
+    (rule.0.clone(), rule.1.clone())
 }
 
 /// Clenshaw-Curtis quadrature of `f` on `[a, b]` with `n + 1` points.
@@ -693,12 +605,13 @@ pub fn clenshaw_curtis<F: Fn(f64) -> f64>(
     b: f64,
     n: usize,
 ) -> f64 {
-    let (x, w) = clenshaw_curtis_rule(n);
+    let rule = crate::kernels::reuse::global_pool().clenshaw_curtis_rule(n);
+    let (x, w) = &*rule;
     let h = 0.5 * (b - a);
     let m = f64::midpoint(a, b);
     h * x
         .iter()
-        .zip(&w)
+        .zip(w)
         .map(|(&xi, &wi)| wi * f(m + h * xi))
         .sum::<f64>()
 }
@@ -714,13 +627,14 @@ pub fn clenshaw_curtis_par<F: Fn(f64) -> f64 + Sync>(
     b: f64,
     n: usize,
 ) -> f64 {
-    let (x, w) = clenshaw_curtis_rule(n);
+    let rule = crate::kernels::reuse::global_pool().clenshaw_curtis_rule(n);
+    let (x, w) = &*rule;
     let h = 0.5 * (b - a);
     let m = f64::midpoint(a, b);
-    let values = crate::kernels::par::map_slice(&x, RULE_EVAL_GRAIN, |&xi| f(m + h * xi));
+    let values = crate::kernels::par::map_slice(x, RULE_EVAL_GRAIN, |&xi| f(m + h * xi));
     h * values
         .iter()
-        .zip(&w)
+        .zip(w)
         .map(|(&value, &wi)| wi * value)
         .sum::<f64>()
 }
@@ -3146,7 +3060,7 @@ mod rule_cache_and_parallel_tests {
     #[test]
     fn cached_rules_match_a_fresh_build_and_hit_the_cache() {
         let n = 96;
-        let fresh = build_gauss_legendre_rule(n);
+        let fresh = crate::kernels::reuse::build_gauss_legendre_rule(n);
         let first = gauss_legendre_rule(n);
         let second = gauss_legendre_rule(n);
         assert_eq!(bits(&first.0), bits(&fresh.0));
@@ -3154,7 +3068,7 @@ mod rule_cache_and_parallel_tests {
         assert_eq!(bits(&first.0), bits(&second.0));
         assert_eq!(bits(&first.1), bits(&second.1));
 
-        let fresh_cc = build_clenshaw_curtis_rule(96);
+        let fresh_cc = crate::kernels::reuse::build_clenshaw_curtis_rule(96);
         let cc_first = clenshaw_curtis_rule(96);
         let cc_second = clenshaw_curtis_rule(96);
         assert_eq!(bits(&cc_first.0), bits(&fresh_cc.0));

@@ -49,23 +49,38 @@ fn lin(
     r
 }
 
-fn scaled_identity_add(
-    a: &Mat,
-    c: f64,
-) -> Mat {
-    let mut r = a.clone();
-    for i in 0..r.rows {
-        r.set(i, i, r.at(i, i) + c);
-    }
-    r
-}
-
 /// Matrix 1-norm (maximum absolute column sum).
 #[must_use]
 pub fn norm1(a: &Mat) -> f64 {
-    (0..a.cols)
-        .map(|j| (0..a.rows).map(|i| a.at(i, j).abs()).sum::<f64>())
-        .fold(0.0, f64::max)
+    if a.rows == 0 || a.cols == 0 {
+        return 0.0;
+    }
+    let mut col_sums = super::reuse::f64_scratch(a.cols);
+    col_sums.resize(a.cols, 0.0);
+    for row in a.data.chunks_exact(a.cols) {
+        for (sum, &val) in col_sums.iter_mut().zip(row) {
+            *sum += val.abs();
+        }
+    }
+    col_sums.iter().copied().fold(0.0, f64::max)
+}
+
+fn axpy_mat(
+    dst: &mut Mat,
+    alpha: f64,
+    src: &Mat,
+) {
+    super::simd::axpy_f64(alpha, &src.data, &mut dst.data);
+}
+
+fn add_diag_in_place(
+    dst: &mut Mat,
+    c: f64,
+) {
+    for i in 0..dst.rows {
+        let idx = i * dst.cols + i;
+        dst.data[idx] += c;
+    }
 }
 
 const PADE3: [f64; 4] = [120.0, 60.0, 12.0, 1.0];
@@ -150,9 +165,9 @@ fn expm_inner(a: &Mat) -> Result<Mat, DenseError> {
         let mut v = Mat::zeros(n, n);
         for k in 0..=deg / 2 {
             if 2 * k < deg {
-                u_in = lin(&u_in, 1.0, &powers[k], c[2 * k + 1]);
+                axpy_mat(&mut u_in, c[2 * k + 1], &powers[k]);
             }
-            v = lin(&v, 1.0, &powers[k], c[2 * k]);
+            axpy_mat(&mut v, c[2 * k], &powers[k]);
         }
         Ok((mm(a, &u_in)?, v))
     };
@@ -171,25 +186,28 @@ fn expm_inner(a: &Mat) -> Result<Mat, DenseError> {
     } else {
         0
     };
-    let a_s = lin(a, 1.0 / 2f64.powi(s), a, 0.0);
+    let mut a_s = a.clone();
+    super::simd::scale_f64(1.0 / 2f64.powi(s), &mut a_s.data);
     let a2 = mm(&a_s, &a_s)?;
     let a4 = mm(&a2, &a2)?;
     let a6 = mm(&a4, &a2)?;
     let b = &PADE13;
     // U = A [ A6 (b13 A6 + b11 A4 + b9 A2) + b7 A6 + b5 A4 + b3 A2 + b1 I ]
-    let t1 = lin(&lin(&a6, b[13], &a4, b[11]), 1.0, &a2, b[9]);
+    let mut t1 = lin(&a6, b[13], &a4, b[11]);
+    axpy_mat(&mut t1, b[9], &a2);
     let mut inner = mm(&a6, &t1)?;
-    inner = lin(&inner, 1.0, &a6, b[7]);
-    inner = lin(&inner, 1.0, &a4, b[5]);
-    inner = lin(&inner, 1.0, &a2, b[3]);
-    inner = scaled_identity_add(&inner, b[1]);
+    axpy_mat(&mut inner, b[7], &a6);
+    axpy_mat(&mut inner, b[5], &a4);
+    axpy_mat(&mut inner, b[3], &a2);
+    add_diag_in_place(&mut inner, b[1]);
     let u = mm(&a_s, &inner)?;
-    let t2 = lin(&lin(&a6, b[12], &a4, b[10]), 1.0, &a2, b[8]);
+    let mut t2 = lin(&a6, b[12], &a4, b[10]);
+    axpy_mat(&mut t2, b[8], &a2);
     let mut v = mm(&a6, &t2)?;
-    v = lin(&v, 1.0, &a6, b[6]);
-    v = lin(&v, 1.0, &a4, b[4]);
-    v = lin(&v, 1.0, &a2, b[2]);
-    v = scaled_identity_add(&v, b[0]);
+    axpy_mat(&mut v, b[6], &a6);
+    axpy_mat(&mut v, b[4], &a4);
+    axpy_mat(&mut v, b[2], &a2);
+    add_diag_in_place(&mut v, b[0]);
     let mut r = pade_solve(&u, &v)?;
     for _ in 0..s {
         r = mm(&r, &r)?;
@@ -206,12 +224,16 @@ fn pade_solve(
     let num = lin(v, 1.0, u, 1.0);
     let lu = dense::lu_factor(&den)?;
     let n = num.rows;
+    let cols = super::par::map_indexed(n, 32, |j| {
+        let mut col = super::reuse::f64_scratch(n);
+        col.clear();
+        col.extend((0..n).map(|i| num.at(i, j)));
+        lu.solve(&col)
+    });
     let mut out = Mat::zeros(n, n);
-    for j in 0..n {
-        let col: Vec<f64> = (0..n).map(|i| num.at(i, j)).collect();
-        let x = lu.solve(&col);
-        for i in 0..n {
-            out.set(i, j, x[i]);
+    for (j, x) in cols.into_iter().enumerate() {
+        for (i, &val) in x.iter().enumerate() {
+            out.set(i, j, val);
         }
     }
     Ok(out)
@@ -388,29 +410,9 @@ pub fn sqrtm(a: &Mat) -> Result<Mat, DenseError> {
 }
 
 fn gauss_legendre_01(m: usize) -> (Vec<f64>, Vec<f64>) {
-    let mut x = vec![0.0; m];
-    let mut w = vec![0.0; m];
-    for i in 0..m {
-        let mut z = (std::f64::consts::PI * (i as f64 + 0.75) / (m as f64 + 0.5)).cos();
-        let mut dp = 1.0;
-        for _ in 0..100 {
-            let (mut p0, mut p1) = (1.0, z);
-            for k in 1..m {
-                let kf = k as f64;
-                let p2 = ((2.0 * kf + 1.0) * z * p1 - kf * p0) / (kf + 1.0);
-                p0 = p1;
-                p1 = p2;
-            }
-            dp = m as f64 * (z * p1 - p0) / (z * z - 1.0);
-            let dz = p1 / dp;
-            z -= dz;
-            if dz.abs() < 1e-16 {
-                break;
-            }
-        }
-        x[i] = 0.5 * (1.0 - z);
-        w[i] = 1.0 / ((1.0 - z * z) * dp * dp);
-    }
+    let rule = super::reuse::global_pool().gauss_legendre_rule(m);
+    let x = rule.0.iter().map(|&t| 0.5 * (t + 1.0)).collect();
+    let w = rule.1.iter().map(|&wt| 0.5 * wt).collect();
     (x, w)
 }
 

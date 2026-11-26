@@ -1098,45 +1098,14 @@ fn solve_rational(
     mut rows: Vec<Vec<Rat>>,
     columns: usize,
 ) -> Option<Vec<Rat>> {
-    let mut pivots: Vec<usize> = Vec::new();
-    let mut r = 0;
-    for column in 0..columns {
-        let Some(pivot) = (r..rows.len()).find(|&i| !rows[i][column].is_zero()) else {
-            continue;
-        };
-        rows.swap(r, pivot);
-        let lead = rows[r][column].clone();
-        for value in &mut rows[r] {
-            *value /= &lead;
+    let mut rhs = Vec::with_capacity(rows.len());
+    for row in &mut rows {
+        if row.len() != columns + 1 {
+            return None;
         }
-        for i in 0..rows.len() {
-            if i == r || rows[i][column].is_zero() {
-                continue;
-            }
-            let factor = rows[i][column].clone();
-            let pivot_row = rows[r].clone();
-            for (value, p) in rows[i].iter_mut().zip(&pivot_row) {
-                *value -= &factor * p;
-            }
-        }
-        pivots.push(column);
-        r += 1;
-        if r == rows.len() {
-            break;
-        }
+        rhs.push(row.pop()?);
     }
-    if rows.iter().any(|row| {
-        row.get(..columns)
-            .is_some_and(|lhs| lhs.iter().all(Rat::is_zero))
-            && row.get(columns).is_some_and(|rhs| !rhs.is_zero())
-    }) {
-        return None;
-    }
-    let mut solution = vec![Rat::zero(); columns];
-    for (i, &column) in pivots.iter().enumerate() {
-        solution[column] = rows[i][columns].clone();
-    }
-    Some(solution)
+    crate::kernels::qlinalg::solve(&rows, columns, &rhs)
 }
 
 /// The lower-degree coefficients of a Darboux polynomial whose leading form

@@ -137,22 +137,12 @@ fn rms(
 
 // ------------------------------------------------------------ Radau IIA
 
-/// Legendre polynomial `P_k(x)` by the three-term recurrence.
+/// Legendre polynomial `P_k(x)`, delegated to [`crate::kernels::special::legendre_p`].
 fn legendre(
     k: usize,
     x: f64,
 ) -> f64 {
-    let (mut p0, mut p1) = (1.0, x);
-    if k == 0 {
-        return 1.0;
-    }
-    for m in 1..k {
-        let mf = m as f64;
-        let p2 = ((2.0 * mf + 1.0) * x * p1 - mf * p0) / (mf + 1.0);
-        p0 = p1;
-        p1 = p2;
-    }
-    p1
+    crate::kernels::special::legendre_p(k as u32, x)
 }
 
 /// Tableau of the `s`-stage Radau IIA collocation method (order `2s - 1`)

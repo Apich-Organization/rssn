@@ -1695,37 +1695,11 @@ fn z_interval(
 
 /// Solves the square system `a x = b` over the rationals.
 fn solve_rational(
-    mut a: Vec<Vec<BigRational>>,
-    mut b: Vec<BigRational>,
+    a: Vec<Vec<BigRational>>,
+    b: Vec<BigRational>,
 ) -> Option<Vec<BigRational>> {
     let n = a.len();
-    for col in 0..n {
-        let pivot = (col..n).find(|&r| {
-            a.get(r)
-                .and_then(|row| row.get(col))
-                .is_some_and(|v| !v.is_zero())
-        })?;
-        a.swap(col, pivot);
-        b.swap(col, pivot);
-        let (pivot_row, pivot_rhs) = (a.get(col)?.clone(), b.get(col)?.clone());
-        let lead = pivot_row.get(col)?.clone();
-        for r in 0..n {
-            if r == col {
-                continue;
-            }
-            let factor = a.get(r)?.get(col)? / &lead;
-            if factor.is_zero() {
-                continue;
-            }
-            for (slot, above) in a.get_mut(r)?.iter_mut().zip(&pivot_row) {
-                *slot -= &factor * above;
-            }
-            *b.get_mut(r)? -= &factor * &pivot_rhs;
-        }
-    }
-    (0..n)
-        .map(|r| Some(b.get(r)?.clone() / a.get(r)?.get(r)?))
-        .collect()
+    crate::kernels::qlinalg::solve_unique(&a, n, &b)
 }
 
 /// Least-squares coefficients for the design matrix `rows` by the normal

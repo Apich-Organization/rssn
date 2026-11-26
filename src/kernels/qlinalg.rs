@@ -1303,11 +1303,31 @@ pub fn solve(
     cols: usize,
     b: &[Q],
 ) -> Option<Vec<Q>> {
+    solve_impl(m, cols, b, false)
+}
+
+/// Solves `m * x = b` over `Q` when the system has a unique solution (full
+/// column rank `cols`), returning `None` if inconsistent or underdetermined.
+#[must_use]
+pub fn solve_unique(
+    m: &[Vec<Q>],
+    cols: usize,
+    b: &[Q],
+) -> Option<Vec<Q>> {
+    solve_impl(m, cols, b, true)
+}
+
+fn solve_impl(
+    m: &[Vec<Q>],
+    cols: usize,
+    b: &[Q],
+    require_unique: bool,
+) -> Option<Vec<Q>> {
     if m.len() != b.len() || m.iter().any(|row| row.len() != cols) {
         return None;
     }
     Layout::array::<Q>(cols.checked_add(1)?).ok()?;
-    if b.iter().all(Zero::is_zero) {
+    if !require_unique && b.iter().all(Zero::is_zero) {
         return Some(zeros(cols));
     }
     // Fast Dixon p-adic lifting path for square full-rank systems of dimension >= 8
@@ -1362,6 +1382,9 @@ pub fn solve(
             }
         });
         pivots.push(c);
+    }
+    if require_unique && pivots.len() != cols {
+        return None;
     }
     // A dependent row has a zero coefficient block and must have zero RHS.
     if aug[pivots.len()..].iter().any(|row| !row[cols].is_zero()) {

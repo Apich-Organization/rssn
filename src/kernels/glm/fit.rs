@@ -115,27 +115,40 @@ pub fn fit(
     };
 
     // Starting means from the response, then one weighted least-squares step.
-    let mut mu0 = vec![0.0; n];
-    let mut eta0 = vec![0.0; n];
+    let mut mu0 = crate::kernels::reuse::f64_scratch(n);
+    mu0.resize(n, 0.0);
+    let mut eta0 = crate::kernels::reuse::f64_scratch(n);
+    eta0.resize(n, 0.0);
     for i in 0..n {
         let m = clamp_mean(family, starting_mean(family, y[i]));
         mu0[i] = m;
         eta0[i] = link(kind, m);
     }
-    let (start_weights, start_response) = working_arrays(kind, family, y, &mu0, &eta0, &prior);
-    let mut beta = weighted_least_squares(x, &start_response, &start_weights)?;
+    let mut work_weights = crate::kernels::reuse::f64_scratch(n);
+    work_weights.resize(n, 0.0);
+    let mut work_response = crate::kernels::reuse::f64_scratch(n);
+    work_response.resize(n, 0.0);
+    let mut wls_rhs = crate::kernels::reuse::f64_scratch(n);
+    wls_rhs.resize(n, 0.0);
+    working_arrays_into(
+        kind,
+        family,
+        y,
+        &mu0,
+        &eta0,
+        &prior,
+        &mut work_weights,
+        &mut work_response,
+    );
+    let mut beta = weighted_least_squares(x, &work_response, &work_weights, &mut wls_rhs)?;
 
     // A pathological starting point can overflow the inverse link; fall back
     // to the constant predictor given by the mean starting linear predictor.
     let initial = match evaluate(family, kind, x, &beta, y, &prior) {
         | Ok(state) => state,
         | Err(_) => {
-            let mut num = 0.0;
-            let mut den = 0.0;
-            for i in 0..n {
-                num += prior[i] * eta0[i];
-                den += prior[i];
-            }
+            let num = crate::kernels::simd::dot_f64(&prior, &eta0);
+            let den = crate::kernels::simd::sum_f64(&prior);
             let mut constant = vec![0.0; p];
             if den > 0.0 {
                 constant[0] = num / den;
@@ -151,8 +164,17 @@ pub fn fit(
 
     for _ in 0..max_iter {
         iterations += 1;
-        let (work_weights, work_response) = working_arrays(kind, family, y, &mu, &eta, &prior);
-        let proposal = weighted_least_squares(x, &work_response, &work_weights)?;
+        working_arrays_into(
+            kind,
+            family,
+            y,
+            &mu,
+            &eta,
+            &prior,
+            &mut work_weights,
+            &mut work_response,
+        );
+        let proposal = weighted_least_squares(x, &work_response, &work_weights, &mut wls_rhs)?;
 
         let mut step = 1.0;
         let mut accepted: Option<(Vec<f64>, Vec<f64>, Vec<f64>, f64)> = None;
@@ -193,12 +215,8 @@ pub fn fit(
     }
 
     // Intercept-only model, used for the null deviance.
-    let mut num = 0.0;
-    let mut den = 0.0;
-    for i in 0..n {
-        num += prior[i] * y[i];
-        den += prior[i];
-    }
+    let num = crate::kernels::simd::dot_f64(&prior, y);
+    let den = crate::kernels::simd::sum_f64(&prior);
     let grand_mean = clamp_mean(family, num / den);
     let mut null_deviance = 0.0;
     for i in 0..n {
@@ -246,18 +264,18 @@ pub fn fit(
 }
 
 /// Working weights `1 / (V(mu) g'(mu)²)` and working response
-/// `eta + (y - mu) g'(mu)` for the current mean.
-fn working_arrays(
+/// `eta + (y - mu) g'(mu)` for the current mean, written into caller scratch.
+fn working_arrays_into(
     kind: Link,
     family: Family,
     y: &[f64],
     mu: &[f64],
     eta: &[f64],
     prior: &[f64],
-) -> (Vec<f64>, Vec<f64>) {
+    work_weights: &mut [f64],
+    work_response: &mut [f64],
+) {
     let n = y.len();
-    let mut work_weights = vec![0.0; n];
-    let mut work_response = vec![0.0; n];
     for i in 0..n {
         let m = clamp_mean(family, mu[i]);
         let g_prime = link_derivative(kind, m);
@@ -266,7 +284,6 @@ fn working_arrays(
         work_weights[i] = (prior[i] / curvature).max(MIN_WORKING_WEIGHT);
         work_response[i] = eta[i] + (y[i] - m) * g_prime;
     }
-    (work_weights, work_response)
 }
 
 /// Solves `min Σ w_i (z_i - x_i'β)²` by scaling the design by `√w` and using a
@@ -275,12 +292,12 @@ fn weighted_least_squares(
     x: &[Vec<f64>],
     z: &[f64],
     work_weights: &[f64],
+    rhs: &mut [f64],
 ) -> Result<Vec<f64>, String> {
     let n = x.len();
     let k = x.first().map_or(0, Vec::len);
     let p = k + 1;
     let mut design = Mat::zeros(n, p);
-    let mut rhs = vec![0.0; n];
     for i in 0..n {
         let row = x.get(i).ok_or("missing design row")?;
         let wi = work_weights.get(i).copied().ok_or("missing weight")?;
@@ -292,7 +309,7 @@ fn weighted_least_squares(
         }
         rhs[i] = scale * z.get(i).copied().ok_or("missing working response")?;
     }
-    lstsq(&design, &rhs).map_err(|err| format!("weighted least squares failed: {err}"))
+    lstsq(&design, rhs).map_err(|err| format!("weighted least squares failed: {err}"))
 }
 
 /// Evaluates the linear predictor, mean and deviance for a coefficient vector.
@@ -306,16 +323,16 @@ fn evaluate(
 ) -> Result<(Vec<f64>, Vec<f64>, f64), String> {
     let n = y.len();
     let intercept = *beta.first().ok_or("coefficient vector is empty")?;
+    let slopes = &beta[1..];
     let mut mu = vec![0.0; n];
     let mut eta = vec![0.0; n];
     let mut deviance = 0.0;
     for i in 0..n {
         let row = x.get(i).ok_or("missing design row")?;
-        let mut linear = intercept;
-        for j in 0..row.len() {
-            let coefficient = *beta.get(j + 1).ok_or("coefficient index out of range")?;
-            linear += row[j] * coefficient;
+        if row.len() > slopes.len() {
+            return Err("coefficient index out of range".to_string());
         }
+        let linear = intercept + crate::kernels::simd::dot_f64(row, slopes);
         let raw = link_inverse(kind, linear);
         if !raw.is_finite() {
             return Err("linear predictor produced a non-finite mean".to_string());

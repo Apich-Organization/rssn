@@ -192,23 +192,10 @@ const LANCZOS: [f64; 9] = [
 
 /// Logarithm of the complex gamma function.
 ///
-/// Lanczos approximation with relative accuracy about `1e-15`. For
-/// `Re z < 1/2` the reflection formula is used, so the imaginary part is
-/// determined only modulo `2 pi`.
+/// Complex log-gamma function, delegating to [`super::special_complex::ln_gamma_complex`].
 #[must_use]
 pub fn ln_gamma_c(z: C) -> C {
-    if z.re < 0.5 {
-        // ln Gamma(z) = ln(pi / sin(pi z)) - ln Gamma(1 - z)
-        let s = (z * std::f64::consts::PI).sin();
-        return (C::new(std::f64::consts::PI, 0.0) / s).ln() - ln_gamma_c(ONE - z);
-    }
-    let z = z - 1.0;
-    let mut x = C::new(LANCZOS[0], 0.0);
-    for (i, g) in LANCZOS.iter().enumerate().skip(1) {
-        x += g / (z + i as f64);
-    }
-    let t = z + 7.5;
-    0.5 * (2.0 * std::f64::consts::PI).ln() + (z + 0.5) * t.ln() - t + x.ln()
+    super::special_complex::ln_gamma_complex(z)
 }
 
 /// The complex gamma function; poles (non-positive integers) give NaN.

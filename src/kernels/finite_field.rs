@@ -938,23 +938,44 @@ pub fn ntt_in_place_mont(
     while half_step < n {
         let step = half_step * 2;
         let stride = (n / 2) / half_step;
-        let mut base = 0usize;
-        while base < n {
-            for j in 0..half_step {
-                let w = roots[j * stride];
-                let u = values[base + j];
-                let v = mont.mul_mont(values[base + j + half_step], w);
-                values[base + j] = mont.add_mont(u, v);
-                values[base + j + half_step] = mont.sub_mont(u, v);
+        let num_blocks = n / step;
+        if n >= 16_384 && num_blocks >= 4 {
+            crate::kernels::par::for_chunks_mut(values, step, 4, |_, block| {
+                for j in 0..half_step {
+                    let w = roots[j * stride];
+                    let u = block[j];
+                    let v = mont.mul_mont(block[j + half_step], w);
+                    block[j] = mont.add_mont(u, v);
+                    block[j + half_step] = mont.sub_mont(u, v);
+                }
+            });
+        } else {
+            let mut base = 0usize;
+            while base < n {
+                for j in 0..half_step {
+                    let w = roots[j * stride];
+                    let u = values[base + j];
+                    let v = mont.mul_mont(values[base + j + half_step], w);
+                    values[base + j] = mont.add_mont(u, v);
+                    values[base + j + half_step] = mont.sub_mont(u, v);
+                }
+                base += step;
             }
-            base += step;
         }
         half_step = step;
     }
     if inverse {
         let n_inv_mont = plan.n_inv_mont;
-        for slot in values {
-            *slot = mont.mul_mont(*slot, n_inv_mont);
+        if n >= 16_384 {
+            crate::kernels::par::for_chunks_mut(values, 4096, 4, |_, chunk| {
+                for slot in chunk {
+                    *slot = mont.mul_mont(*slot, n_inv_mont);
+                }
+            });
+        } else {
+            for slot in values {
+                *slot = mont.mul_mont(*slot, n_inv_mont);
+            }
         }
     }
 }
@@ -992,8 +1013,15 @@ pub fn poly_mul_ntt_mod(
         fb[i] = mont.to_mont(c);
     }
 
-    ntt_in_place_mont(&mut fa, &plan, false);
-    ntt_in_place_mont(&mut fb, &plan, false);
+    if crate::execution::should_split(n, 4096) {
+        rayon::join(
+            || ntt_in_place_mont(&mut fa, &plan, false),
+            || ntt_in_place_mont(&mut fb, &plan, false),
+        );
+    } else {
+        ntt_in_place_mont(&mut fa, &plan, false);
+        ntt_in_place_mont(&mut fb, &plan, false);
+    }
 
     for i in 0..n {
         fa[i] = mont.mul_mont(fa[i], fb[i]);

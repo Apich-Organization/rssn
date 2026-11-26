@@ -64,47 +64,13 @@ fn check_grid(
     Ok(())
 }
 
-// LDLᵀ factorization with linear time and storage. Strictly increasing
-// knots make the natural and clamped systems symmetric positive definite.
+// LDLᵀ factorization with linear time and storage, backed by `dense::solve_spd_tridiagonal`.
 fn solve_symmetric_tridiagonal(
-    mut diagonal: Vec<f64>,
-    mut off: Vec<f64>,
-    mut rhs: Vec<f64>,
+    diagonal: Vec<f64>,
+    off: Vec<f64>,
+    rhs: Vec<f64>,
 ) -> Result<Vec<f64>, ApproxError> {
-    let n = diagonal.len();
-    if diagonal
-        .iter()
-        .chain(&off)
-        .chain(&rhs)
-        .any(|v| !v.is_finite())
-    {
-        return Err(ApproxError::Singular);
-    }
-    for i in 1..n {
-        if diagonal[i - 1] <= 0.0 {
-            return Err(ApproxError::Singular);
-        }
-        let factor = off[i - 1] / diagonal[i - 1];
-        diagonal[i] -= factor * off[i - 1];
-        rhs[i] -= factor * rhs[i - 1];
-        off[i - 1] = factor;
-        if !diagonal[i].is_finite() || !rhs[i].is_finite() || !factor.is_finite() {
-            return Err(ApproxError::Singular);
-        }
-    }
-    if diagonal[n - 1] <= 0.0 {
-        return Err(ApproxError::Singular);
-    }
-    for i in 0..n {
-        rhs[i] /= diagonal[i];
-    }
-    for i in (0..n - 1).rev() {
-        rhs[i] -= off[i] * rhs[i + 1];
-    }
-    if rhs.iter().any(|v| !v.is_finite()) {
-        return Err(ApproxError::Singular);
-    }
-    Ok(rhs)
+    super::dense::solve_spd_tridiagonal(&diagonal, &off, &rhs).map_err(|_| ApproxError::Singular)
 }
 
 /// Boundary condition of a cubic spline.

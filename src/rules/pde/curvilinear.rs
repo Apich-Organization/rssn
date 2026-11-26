@@ -423,31 +423,10 @@ fn hankel_whole_space(
     Some(cx.simplify(u))
 }
 
-/// The Gauss–Legendre nodes and weights on `[-1, 1]`.
+/// The Gauss–Legendre nodes and weights on `[-1, 1]`, backed by the shared reuse pool.
 pub(super) fn gauss_legendre(n: usize) -> Vec<(f64, f64)> {
-    let mut out = Vec::with_capacity(n);
-    for i in 0..n {
-        let mut x = (std::f64::consts::PI * (i as f64 + 0.75) / (n as f64 + 0.5)).cos();
-        let mut derivative = 1.0;
-        for _ in 0..100 {
-            let (mut p0, mut p1) = (1.0, x);
-            for k in 2..=n {
-                let kf = k as f64;
-                let p2 = ((2.0 * kf - 1.0) * x * p1 - (kf - 1.0) * p0) / kf;
-                p0 = p1;
-                p1 = p2;
-            }
-            let nf = n as f64;
-            derivative = nf * (x * p1 - p0) / (x * x - 1.0);
-            let step = p1 / derivative;
-            x -= step;
-            if step.abs() < 1e-15 {
-                break;
-            }
-        }
-        out.push((x, 2.0 / ((1.0 - x * x) * derivative * derivative)));
-    }
-    out
+    let rule = crate::kernels::reuse::global_pool().gauss_legendre_rule(n);
+    rule.0.iter().copied().zip(rule.1.iter().copied()).collect()
 }
 
 /// `P_l^m(x)` (no Condon–Shortley phase) for all `l ≤ lmax` at fixed `m`.

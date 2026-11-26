@@ -164,31 +164,9 @@ fn solve_tridiagonal(
     if n == 0 {
         return Ok(Vec::new());
     }
-    let mut cp = vec![0.0; n];
-    let mut dp = vec![0.0; n];
-    if b[0] == 0.0 {
-        return Err(InterpError::Singular);
-    }
-    cp[0] = c[0] / b[0];
-    dp[0] = d[0] / b[0];
-    for i in 1..n {
-        let denom = b[i] - a[i] * cp[i - 1];
-        if denom == 0.0 {
-            return Err(InterpError::Singular);
-        }
-        cp[i] = if i + 1 < n {
-            c[i] / denom
-        } else {
-            0.0
-        };
-        dp[i] = (d[i] - a[i] * dp[i - 1]) / denom;
-    }
-    let mut x = vec![0.0; n];
-    x[n - 1] = dp[n - 1];
-    for i in (0..n - 1).rev() {
-        x[i] = dp[i] - cp[i] * x[i + 1];
-    }
-    Ok(x)
+    let sub = if n > 1 { &a[1..n] } else { &[] };
+    let sup = if n > 1 { &c[..n - 1] } else { &[] };
+    super::dense::solve_tridiagonal(sub, b, sup, d).map_err(|_| InterpError::Singular)
 }
 
 /// Cubic spline interpolation with selectable boundary conditions

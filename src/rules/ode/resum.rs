@@ -151,29 +151,10 @@ pub(super) fn complex_roots(coefficients: &[Complex64]) -> Vec<Complex64> {
     z
 }
 
-/// Gauss–Legendre nodes and weights on `[-1, 1]` (Newton on `P_n`).
+/// Gauss–Legendre nodes and weights on `[-1, 1]`, backed by the shared reuse pool.
 fn gauss_legendre(n: usize) -> Vec<(f64, f64)> {
-    let mut out = Vec::new();
-    for i in 0..n {
-        let mut x = (std::f64::consts::PI * (i as f64 + 0.75) / (n as f64 + 0.5)).cos();
-        let mut derivative = 1.0;
-        for _ in 0..100 {
-            let (mut p0, mut p1) = (1.0, x);
-            for k in 2..=n {
-                let p2 = ((2 * k - 1) as f64 * x * p1 - (k - 1) as f64 * p0) / k as f64;
-                p0 = p1;
-                p1 = p2;
-            }
-            derivative = n as f64 * (x * p1 - p0) / (x * x - 1.0);
-            let step = p1 / derivative;
-            x -= step;
-            if step.abs() < 1e-15 {
-                break;
-            }
-        }
-        out.push((x, 2.0 / ((1.0 - x * x) * derivative * derivative)));
-    }
-    out
+    let rule = crate::kernels::reuse::global_pool().gauss_legendre_rule(n);
+    rule.0.iter().copied().zip(rule.1.iter().copied()).collect()
 }
 
 /// `∫_0^∞ e^{-s/v} P(s)/Q(s) ds` along the ray `arg s = alpha`.

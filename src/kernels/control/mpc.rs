@@ -54,7 +54,7 @@ fn dot(
     a: &[f64],
     b: &[f64],
 ) -> f64 {
-    a.iter().zip(b).map(|(x, y)| x * y).sum()
+    crate::kernels::simd::dot_f64(a, b)
 }
 
 /// Solves `min 0.5 x^T H x + f^T x` subject to `A x <= b` by a primal
@@ -103,9 +103,7 @@ fn solve_qp(
             return Err("the qp constraints are infeasible".to_string());
         }
         let step = (dot(&a[i], &x) - b[i]) / norm;
-        for j in 0..nv {
-            x[j] -= step * a[i][j];
-        }
+        crate::kernels::simd::axpy_f64(-step, &a[i], &mut x);
     }
     for (i, row) in a.iter().enumerate() {
         if dot(row, &x) - b[i] > 1e-7 {

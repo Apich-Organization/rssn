@@ -27,7 +27,6 @@
 use std::collections::BTreeMap;
 
 use num_rational::BigRational;
-use num_traits::One;
 use num_traits::Zero;
 
 use super::Problem;
@@ -74,46 +73,10 @@ fn power(
 
 /// The null space of a matrix over `Q` (rows of equal length).
 pub(super) fn null_space(
-    mut rows: Vec<Vec<BigRational>>,
+    rows: Vec<Vec<BigRational>>,
     columns: usize,
 ) -> Vec<Vec<BigRational>> {
-    let mut pivots: Vec<usize> = Vec::new();
-    let mut r = 0;
-    for c in 0..columns {
-        let Some(p) = (r..rows.len()).find(|&i| !rows[i][c].is_zero()) else {
-            continue;
-        };
-        rows.swap(r, p);
-        let lead = rows[r][c].clone();
-        for v in &mut rows[r] {
-            *v /= &lead;
-        }
-        for i in 0..rows.len() {
-            if i != r && !rows[i][c].is_zero() {
-                let factor = rows[i][c].clone();
-                let pivot_row = rows[r].clone();
-                for (v, p) in rows[i].iter_mut().zip(&pivot_row) {
-                    *v -= &factor * p;
-                }
-            }
-        }
-        pivots.push(c);
-        r += 1;
-        if r == rows.len() {
-            break;
-        }
-    }
-    let free: Vec<usize> = (0..columns).filter(|c| !pivots.contains(c)).collect();
-    free.iter()
-        .map(|&f| {
-            let mut v = vec![BigRational::zero(); columns];
-            v[f] = BigRational::one();
-            for (i, &p) in pivots.iter().enumerate() {
-                v[p] = -rows[i][f].clone();
-            }
-            v
-        })
-        .collect()
+    crate::kernels::qlinalg::nullspace(&rows, columns)
 }
 
 /// Solutions of a linear homogeneous identity `expr = 0` in the

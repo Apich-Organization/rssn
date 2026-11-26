@@ -101,11 +101,11 @@ fn dot(
     a: &[f64],
     b: &[f64],
 ) -> f64 {
-    a.iter().zip(b).map(|(x, y)| x * y).sum()
+    super::simd::dot_f64(a, b)
 }
 
 fn nrm(a: &[f64]) -> f64 {
-    dot(a, a).sqrt()
+    super::simd::norm2_sq_f64(a).sqrt()
 }
 
 /// Orthogonalises `w` against `v[..cnt]` (modified Gram–Schmidt twice) and
@@ -129,9 +129,7 @@ fn orthogonalise_into(
         for (direction, coefficient) in v.iter().zip(h.iter_mut()) {
             let c = dot(w, direction);
             *coefficient += c;
-            for (wq, vq) in w.iter_mut().zip(direction) {
-                *wq -= c * vq;
-            }
+            super::simd::axpy_f64(-c, direction, w);
         }
     }
 }

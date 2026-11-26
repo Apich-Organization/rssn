@@ -522,62 +522,9 @@ fn strong_probable_prime(
     false
 }
 
-/// Strong Lucas probable-prime test of the odd `n > 2` with Selfridge's
-/// parameters (`D` the first of `5, -7, 9, -11, ...` with Jacobi symbol
-/// `-1`, `P = 1`, `Q = (1 - D)/4`): `U_d = 0` or `V_{d 2^r} = 0` for some
-/// `r < s`, where `n + 1 = d 2^s` with `d` odd.
+/// Strong Lucas probable-prime test via [`crate::kernels::number_exact::strong_lucas_bigint`].
 fn strong_lucas(n: &BigInt) -> bool {
-    let root = n.sqrt();
-    if &root * &root == *n {
-        return false;
-    }
-    let mut d: i64 = 5;
-    loop {
-        match jacobi(&BigInt::from(d), n) {
-            | Some(-1) => break,
-            // A common factor with D: composite unless n is D itself.
-            | Some(0) if BigInt::from(d.abs()) != *n => return false,
-            | _ => {},
-        }
-        d = if d > 0 { -(d + 2) } else { -d + 2 };
-    }
-    let (d_big, q) = (BigInt::from(d), BigInt::from((1 - d) / 4));
-    let n1: BigInt = n + 1;
-    let s = n1.trailing_zeros().unwrap_or(0);
-    let m = &n1 >> s;
-    // Halving modulo the odd n.
-    let half = |x: BigInt| -> BigInt {
-        let x = mod_pos(&x, n);
-        if x.bit(0) {
-            (x + n) >> 1
-        } else {
-            x >> 1
-        }
-    };
-    let (mut u, mut v, mut qk) = (BigInt::one(), BigInt::one(), mod_pos(&q, n));
-    for i in (0..m.bits().saturating_sub(1)).rev() {
-        u = &u * &v % n;
-        v = mod_pos(&(&v * &v - 2 * &qk), n);
-        qk = &qk * &qk % n;
-        if m.bit(i) {
-            let next_u = half(&u + &v);
-            let next_v = half(&d_big * &u + &v);
-            u = next_u;
-            v = next_v;
-            qk = mod_pos(&(&qk * &q), n);
-        }
-    }
-    if u.is_zero() || v.is_zero() {
-        return true;
-    }
-    for _ in 1..s {
-        v = mod_pos(&(&v * &v - 2 * &qk), n);
-        qk = &qk * &qk % n;
-        if v.is_zero() {
-            return true;
-        }
-    }
-    false
+    crate::kernels::number_exact::strong_lucas_bigint(n)
 }
 
 /// The Baillie–PSW test: trial division by the primes below 100, a strong

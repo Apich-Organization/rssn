@@ -1354,19 +1354,6 @@ pub fn bessel_in_log_abs(
 // Coulomb wave functions
 // ============================================================================
 
-/// Bernoulli numbers `B_2, B_4, …`: the Stirling-series coefficients of
-/// [`complex_ln_gamma`].
-const STIRLING: [f64; 8] = [
-    1.0 / 6.0,
-    -1.0 / 30.0,
-    1.0 / 42.0,
-    -1.0 / 30.0,
-    5.0 / 66.0,
-    -691.0 / 2730.0,
-    7.0 / 6.0,
-    -3617.0 / 510.0,
-];
-
 /// Above this `ρ` the Coulomb functions use the large-`ρ` asymptotic
 /// expansion, provided the classically allowed condition
 /// `ρ ≥ 2|η| + 2` also holds.
@@ -1388,29 +1375,10 @@ fn coulomb_eta_in_range(eta: f64) -> bool {
     eta.is_finite() && eta.abs() <= COULOMB_ETA_MAX
 }
 
-/// `(ln Γ(z), arg Γ(z))` for complex `z`, by Stirling's series after
-/// shifting the argument to `Re z ≥ 16` (relative accuracy about `1e-15`).
-///
-/// Also used by [`polylog_complex`] through the complex Riemann zeta.
+/// Complex log-gamma function, delegating to [`super::special_complex::ln_gamma_complex`].
 #[must_use]
 pub(crate) fn complex_ln_gamma(z: Complex64) -> Complex64 {
-    let mut z = z;
-    let mut shift = Complex64::new(0.0, 0.0);
-    while z.re < 16.0 {
-        shift -= z.ln();
-        z += Complex64::new(1.0, 0.0);
-    }
-    let mut tail = Complex64::new(0.0, 0.0);
-    let mut power = z;
-    let square = z * z;
-    for (n, &coefficient) in STIRLING.iter().enumerate() {
-        let k = (n + 1) as f64;
-        tail += Complex64::new(coefficient / (2.0 * k * (2.0 * k - 1.0)), 0.0) / power;
-        power *= square;
-    }
-    shift + (z - Complex64::new(0.5, 0.0)) * z.ln() - z
-        + Complex64::new(0.5 * (2.0 * PI).ln(), 0.0)
-        + tail
+    super::special_complex::ln_gamma_complex(z)
 }
 
 /// The Coulomb normalising constant `C_l(η)` (DLMF 33.2.5),

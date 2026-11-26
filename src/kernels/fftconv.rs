@@ -125,10 +125,9 @@ fn convolution_fft_scaled(
     period: usize,
     used: usize,
 ) -> Vec<f64> {
-    let peak = |values: &[f64]| values.iter().fold(0.0_f64, |peak, val| peak.max(val.abs()));
-    let left_peak = peak(a);
-    let right_peak = peak(b);
-    if left_peak == 0.0 || right_peak == 0.0 {
+    let left_peak = crate::kernels::simd::linf_norm_f64(a);
+    let right_peak = crate::kernels::simd::linf_norm_f64(b);
+    if left_peak == 0.0 || right_peak == 0.0 || !left_peak.is_finite() || !right_peak.is_finite() {
         // Preserve non-finite propagation for inputs containing NaN or infinity.
         return convolution_fft(a, b, period, used);
     }
@@ -153,9 +152,8 @@ fn convolution_fft_scaled(
     forward.process_with_scratch(&mut left, &mut scratch);
     forward.process_with_scratch(&mut right, &mut scratch);
     let normalization = 1.0 / period as f64;
-    for (value, response) in left.iter_mut().zip(right.iter()) {
-        *value *= response * normalization;
-    }
+    crate::kernels::simd::complex_mul_in_place(&mut left, &right);
+    crate::kernels::simd::complex_scale_in_place(normalization, &mut left);
     inverse.process_with_scratch(&mut left, &mut scratch);
     left.iter().take(used).map(|value| value.re).collect()
 }
@@ -357,7 +355,7 @@ impl OverlapSavePlan {
                 let count = (n - left_pad).min(samples.len() - first);
                 let input = &samples[first..first + count];
                 let sample_scale = if scale_samples {
-                    let peak = input.iter().fold(0.0_f64, |peak, val| peak.max(val.abs()));
+                    let peak = crate::kernels::simd::linf_norm_f64(input);
                     fft_amplitude_scale(peak)
                 } else {
                     1.0
@@ -377,9 +375,7 @@ impl OverlapSavePlan {
                     }
                 }
                 self.forward.process_with_scratch(&mut buffer, &mut scratch);
-                for (value, response) in buffer.iter_mut().zip(&self.spectrum) {
-                    *value *= response;
-                }
+                crate::kernels::simd::complex_mul_in_place(&mut buffer, &self.spectrum);
                 self.inverse.process_with_scratch(&mut buffer, &mut scratch);
                 let factor = self.tap_scale * sample_scale;
                 let values = segment.iter_mut().zip(&buffer[self.overlap..]);

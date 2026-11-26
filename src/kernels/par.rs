@@ -226,25 +226,7 @@ fn dot_block(
     a: &[f64],
     b: &[f64],
 ) -> f64 {
-    let mut acc0 = 0.0_f64;
-    let mut acc1 = 0.0_f64;
-    let mut acc2 = 0.0_f64;
-    let mut acc3 = 0.0_f64;
-    let mut chunks_a = a.chunks_exact(4);
-    let mut chunks_b = b.chunks_exact(4);
-    for (ca, cb) in chunks_a.by_ref().zip(chunks_b.by_ref()) {
-        if let (&[a0, a1, a2, a3], &[b0, b1, b2, b3]) = (ca, cb) {
-            acc0 += a0 * b0;
-            acc1 += a1 * b1;
-            acc2 += a2 * b2;
-            acc3 += a3 * b3;
-        }
-    }
-    let mut tail = 0.0_f64;
-    for (x, y) in chunks_a.remainder().iter().zip(chunks_b.remainder()) {
-        tail += x * y;
-    }
-    ((acc0 + acc1) + (acc2 + acc3)) + tail
+    crate::kernels::simd::dot_f64(a, b)
 }
 
 #[allow(clippy::single_call_fn)]
@@ -263,11 +245,16 @@ fn norm2_scaled_fixed(
         |b_idx| {
             let lo = b_idx.saturating_mul(block);
             let hi = lo.saturating_add(block).min(n);
-            a.get(lo..hi).map_or(0.0, |slice| {
-                slice.iter().fold(0.0_f64, |m, value| m.max(value.abs()))
-            })
+            a.get(lo..hi)
+                .map_or(0.0, crate::kernels::simd::linf_norm_f64)
         },
-        f64::max,
+        |acc, value| {
+            if acc.is_nan() || value.is_nan() {
+                f64::NAN
+            } else {
+                acc.max(value)
+            }
+        },
     );
     if peak == 0.0 || !peak.is_finite() {
         return peak;

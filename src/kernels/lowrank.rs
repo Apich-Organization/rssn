@@ -121,11 +121,11 @@ fn dot(
     a: &[f64],
     b: &[f64],
 ) -> f64 {
-    a.iter().zip(b).map(|(x, y)| x * y).sum()
+    super::simd::dot_f64(a, b)
 }
 
 fn norm(a: &[f64]) -> f64 {
-    dot(a, a).sqrt()
+    super::simd::norm2_sq_f64(a).sqrt()
 }
 
 /// Orthonormalises `columns` in place by modified Gram-Schmidt with one
@@ -145,17 +145,13 @@ fn orthonormalize(
         for _ in 0..2 {
             for q in basis.iter().chain(&kept) {
                 let c = dot(q, &v);
-                for (x, y) in v.iter_mut().zip(q) {
-                    *x -= c * y;
-                }
+                super::simd::axpy_f64(-c, q, &mut v);
             }
         }
         let after = norm(&v);
         // What survives the projection must be more than rounding noise.
         if after > 1e-10 * before {
-            for x in &mut v {
-                *x /= after;
-            }
+            super::simd::scale_f64(after.recip(), &mut v);
             kept.push(v);
             indices.push(index);
         }
@@ -183,9 +179,7 @@ fn apply_householder(
     reflector: &[f64],
 ) {
     let projection = 2.0 * dot(reflector, column);
-    for (value, entry) in column.iter_mut().zip(reflector) {
-        *value -= projection * entry;
-    }
+    super::simd::axpy_f64(-projection, reflector, column);
 }
 
 /// A column-pivoted QR factorisation `A P = Q R`.

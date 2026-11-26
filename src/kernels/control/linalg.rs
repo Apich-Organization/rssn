@@ -93,7 +93,7 @@ pub fn matvec(
     x: &[f64],
 ) -> Vec<f64> {
     a.iter()
-        .map(|row| row.iter().zip(x).map(|(v, xv)| v * xv).sum())
+        .map(|row| crate::kernels::simd::dot_f64(row, x))
         .collect()
 }
 
@@ -108,9 +108,7 @@ pub fn add(
     }
     let mut out = zeros(a.len(), cols);
     for (i, row) in a.iter().enumerate() {
-        for (j, &v) in row.iter().enumerate() {
-            out[i][j] = v + b[i][j];
-        }
+        crate::kernels::simd::add_into_f64(row, &b[i], &mut out[i]);
     }
     Ok(out)
 }
@@ -126,9 +124,7 @@ pub fn sub(
     }
     let mut out = zeros(a.len(), cols);
     for (i, row) in a.iter().enumerate() {
-        for (j, &v) in row.iter().enumerate() {
-            out[i][j] = v - b[i][j];
-        }
+        crate::kernels::simd::sub_into_f64(row, &b[i], &mut out[i]);
     }
     Ok(out)
 }
@@ -142,7 +138,7 @@ pub fn solve(
     dense::solve(&ma, b).map_err(|e| e.to_string())
 }
 
-/// Solves `a x = b` for a matrix right-hand side, one column at a time.
+/// Solves `a x = b` for a matrix right-hand side, reusing a single LU factorization.
 pub fn solve_multi(
     a: &[Vec<f64>],
     b: &[Vec<f64>],
@@ -150,12 +146,20 @@ pub fn solve_multi(
     let n = a.len();
     let cols = b.first().map_or(0, Vec::len);
     let ma = to_mat(a)?;
+    let lu = dense::lu_factor(&ma).map_err(|e| e.to_string())?;
     let mut out = zeros(n, cols);
+    if n == 0 || cols == 0 {
+        return Ok(out);
+    }
+    let mut rhs = crate::kernels::reuse::f64_scratch(n);
+    let mut col = crate::kernels::reuse::f64_scratch(n);
+    rhs.resize(n, 0.0);
+    col.resize(n, 0.0);
     for j in 0..cols {
-        let rhs: Vec<f64> = (0..n)
-            .map(|i| b.get(i).and_then(|r| r.get(j)).copied().unwrap_or(0.0))
-            .collect();
-        let col = dense::solve(&ma, &rhs).map_err(|e| e.to_string())?;
+        for i in 0..n {
+            rhs[i] = b.get(i).and_then(|r| r.get(j)).copied().unwrap_or(0.0);
+        }
+        lu.solve_into(&rhs, &mut col).map_err(|e| e.to_string())?;
         for i in 0..n {
             out[i][j] = col[i];
         }
@@ -313,5 +317,26 @@ mod tests {
         // x(h) = 1 - exp(-h) for x' = -x + 1, x(0) = 0.
         let exact = 1.0 - (-0.01_f64).exp();
         assert!((x[0] - exact).abs() < 1e-9);
+    }
+
+    #[test]
+    fn solve_multi_reuses_lu_and_checks_errors() {
+        let a = vec![
+            vec![3.0, 1.0, -1.0],
+            vec![2.0, 4.0, 1.0],
+            vec![-1.0, 2.0, 5.0],
+        ];
+        let b = vec![vec![4.0, 1.0], vec![1.0, 2.0], vec![1.0, -3.0]];
+        let x = solve_multi(&a, &b).unwrap();
+        let ax = matmul(&a, &x).unwrap();
+        for i in 0..3 {
+            for j in 0..2 {
+                assert!((ax[i][j] - b[i][j]).abs() < 1e-11);
+            }
+        }
+        let singular = vec![vec![1.0, 2.0], vec![2.0, 4.0]];
+        assert!(solve_multi(&singular, &[vec![1.0], vec![2.0]]).is_err());
+        let bad_rhs = vec![vec![1.0], vec![f64::NAN], vec![0.0]];
+        assert!(solve_multi(&a, &bad_rhs).is_err());
     }
 }

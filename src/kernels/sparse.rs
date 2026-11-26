@@ -146,9 +146,7 @@ pub fn sp_mat_transpose_vec_mul_into(
     if matrix.nrows() != vector.len() || matrix.ncols() != result.len() {
         return Err(MATVEC_SHAPE_ERROR.into());
     }
-    for (slot, value) in result.iter_mut().zip(transpose_products(matrix, vector)) {
-        *slot = value;
-    }
+    transpose_products_into(matrix, vector, result);
     Ok(())
 }
 
@@ -201,22 +199,35 @@ fn transpose_column_product(
 /// Minimum columns per worker when `Aᵀ x` runs in parallel.
 const TRANSPOSE_GRAIN: usize = 64;
 
+fn transpose_products_into(
+    matrix: &SparseMat,
+    vector: &[f64],
+    result: &mut [f64],
+) {
+    let ncols = matrix.ncols();
+    let nnz = matrix.val().len();
+    let per_column = nnz / ncols.max(1);
+    if ncols >= TRANSPOSE_GRAIN && crate::execution::should_split_work(ncols, per_column.max(1)) {
+        crate::kernels::par::for_chunks_mut(result, TRANSPOSE_GRAIN, 2, |chunk_idx, chunk| {
+            let base = chunk_idx * TRANSPOSE_GRAIN;
+            for (offset, slot) in chunk.iter_mut().enumerate() {
+                *slot = transpose_column_product(matrix, vector, base + offset);
+            }
+        });
+    } else {
+        for (column, slot) in result.iter_mut().enumerate() {
+            *slot = transpose_column_product(matrix, vector, column);
+        }
+    }
+}
+
 fn transpose_products(
     matrix: &SparseMat,
     vector: &[f64],
 ) -> Vec<f64> {
-    let ncols = matrix.ncols();
-    let nnz: usize = live_column_spans(matrix).map(|span| span.len()).sum();
-    let per_column = nnz / ncols.max(1);
-    if ncols >= TRANSPOSE_GRAIN && crate::execution::should_split_work(ncols, per_column.max(1)) {
-        crate::kernels::par::map_indexed(ncols, TRANSPOSE_GRAIN, |column| {
-            transpose_column_product(matrix, vector, column)
-        })
-    } else {
-        (0..ncols)
-            .map(|column| transpose_column_product(matrix, vector, column))
-            .collect()
-    }
+    let mut result = vec![0.0; matrix.ncols()];
+    transpose_products_into(matrix, vector, &mut result);
+    result
 }
 
 /// Converts a dense `ndarray::Array` to a sparse matrix.
@@ -704,51 +715,44 @@ pub fn solve_conjugate_gradient(
         .to_string());
     }
 
-    let mut x = x0.cloned().unwrap_or_else(|| Array1::zeros(n));
+    let b_owned;
+    let b_slice: &[f64] = if let Some(s) = b.as_slice() {
+        s
+    } else {
+        b_owned = b.to_vec();
+        &b_owned
+    };
+    let x0_owned;
+    let x0_slice: Option<&[f64]> = match x0 {
+        | Some(init) => {
+            if let Some(s) = init.as_slice() {
+                Some(s)
+            } else {
+                x0_owned = init.to_vec();
+                Some(&x0_owned)
+            }
+        },
+        | None => None,
+    };
 
-    let mut r = b - &apply(a, &x)?;
-
-    let mut p = r.clone();
-
-    let mut rs_old = r.dot(&r);
-
-    if rs_old.sqrt() < tolerance {
-        return Ok(x);
-    }
-
-    for _ in 0..max_iter {
-        let ap = apply(a, &p)?;
-
-        let alpha = rs_old / p.dot(&ap);
-
-        x = &x + &(&p * alpha);
-
-        r = &r - &(&ap * alpha);
-
-        let rs_new = r.dot(&r);
-
-        if rs_new.sqrt() < tolerance {
-            break;
-        }
-
-        p = &r + &(&p * (rs_new / rs_old));
-
-        rs_old = rs_new;
-    }
-
-    Ok(x)
-}
-
-/// Applies the sparse matrix to a dense vector.
-fn apply(
-    a: &SparseMat,
-    x: &Array1<f64>,
-) -> Result<Array1<f64>, String> {
-    let dense = x
-        .as_slice()
-        .ok_or_else(|| "initial guess must be contiguous".to_string())?;
-
-    Ok(Array1::from_vec(sp_mat_vec_mul(a, dense)?))
+    let b_norm = crate::kernels::simd::norm2_sq_f64(b_slice).sqrt();
+    let rel_tol = if b_norm > 0.0 {
+        tolerance / b_norm
+    } else {
+        tolerance
+    };
+    let res = crate::kernels::krylov::cg(
+        |v, out| {
+            out.fill(0.0);
+            accumulate_matvec(a, v, out);
+        },
+        |r, z| z.copy_from_slice(r),
+        b_slice,
+        x0_slice,
+        rel_tol,
+        max_iter,
+    );
+    Ok(Array1::from_vec(res.x))
 }
 
 #[cfg(test)]

@@ -1075,93 +1075,9 @@ fn strong_probable_prime(
     false
 }
 
-/// Strong Lucas probable-prime test of the odd `n > 2` with Selfridge's
-/// parameters (`D` the first of `5, -7, 9, -11, ...` with Jacobi symbol
-/// `-1`, `P = 1`, `Q = (1 - D)/4`): `U_d = 0` or `V_{d 2^r} = 0` for some
-/// `r < s`, where `n + 1 = d 2^s` with `d` odd.
+/// Strong Lucas probable-prime test via [`super::number_exact::strong_lucas_bigint`].
 fn strong_lucas(n: &BigInt) -> bool {
-    let root = n.sqrt();
-    if &root * &root == *n {
-        return false;
-    }
-    let mut d: i64 = 5;
-    loop {
-        match jacobi_big(&BigInt::from(d), n) {
-            | -1 => break,
-            // A common factor with D: composite unless n is D itself.
-            | 0 if BigInt::from(d.abs()) != *n => return false,
-            | _ => {},
-        }
-        d = if d > 0 { -(d + 2) } else { -d + 2 };
-    }
-    let (d_big, q) = (BigInt::from(d), BigInt::from((1 - d) / 4));
-    let n1: BigInt = n + 1;
-    let shift = n1.trailing_zeros().unwrap_or(0);
-    let odd = &n1 >> shift;
-    // Halving modulo the odd n.
-    let half = |x: BigInt| -> BigInt {
-        let x = mod_pos(&x, n);
-        if x.bit(0) {
-            (x + n) >> 1
-        } else {
-            x >> 1
-        }
-    };
-    let (mut u, mut v, mut qk) = (BigInt::one(), BigInt::one(), mod_pos(&q, n));
-    for i in (0..odd.bits().saturating_sub(1)).rev() {
-        u = &u * &v % n;
-        v = mod_pos(&(&v * &v - 2 * &qk), n);
-        qk = &qk * &qk % n;
-        if odd.bit(i) {
-            let next_u = half(&u + &v);
-            let next_v = half(&d_big * &u + &v);
-            u = next_u;
-            v = next_v;
-            qk = mod_pos(&(&qk * &q), n);
-        }
-    }
-    if u.is_zero() || v.is_zero() {
-        return true;
-    }
-    for _ in 1..shift {
-        v = mod_pos(&(&v * &v - 2 * &qk), n);
-        qk = &qk * &qk % n;
-        if v.is_zero() {
-            return true;
-        }
-    }
-    false
-}
-
-/// The Jacobi symbol `(a/n)` for odd positive `n`, on arbitrary-precision
-/// integers (used only by the strong Lucas test above).
-fn jacobi_big(
-    a: &BigInt,
-    n: &BigInt,
-) -> i32 {
-    if !n.is_positive() || !n.bit(0) {
-        return 0;
-    }
-    let mut a = mod_pos(a, n);
-    let mut n = n.clone();
-    let mut result = 1_i32;
-    while !a.is_zero() {
-        while !a.bit(0) {
-            a >>= 1;
-            let residue = (&n % 8_u32).to_u32().unwrap_or(0);
-            if residue == 3 || residue == 5 {
-                result = -result;
-            }
-        }
-        std::mem::swap(&mut a, &mut n);
-        let a_mod4 = (&a % 4_u32).to_u32().unwrap_or(0);
-        let n_mod4 = (&n % 4_u32).to_u32().unwrap_or(0);
-        if a_mod4 == 3 && n_mod4 == 3 {
-            result = -result;
-        }
-        a = mod_pos(&a, &n);
-    }
-    if n.is_one() { result } else { 0 }
+    super::number_exact::strong_lucas_bigint(n)
 }
 
 /// A root `r` of `r^k = n` for some `k >= 2`, if `n` is a perfect power.

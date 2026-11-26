@@ -2957,12 +2957,20 @@ mod tests {
             airy.contains("airyai(-x)") && airy.contains("C1") && !airy.contains("C2"),
             "{airy}"
         );
-        // Bernoulli with a square root.
+        // Bernoulli with a square root. The integrator may return any
+        // algebraically equivalent form, so compare the two solutions
+        // numerically rather than as strings.
         let bernoulli = run("dsolve(diff(y(x), x) + y(x) = x*sqrt(y(x)), y(x))");
-        assert_eq!(
-            bernoulli,
-            "y(x) = (x*exp(1/2*x) + C1 - 2*exp(1/2*x))^2*exp(-x)"
-        );
+        let got = bernoulli.strip_prefix("y(x) = ").unwrap_or(&bernoulli);
+        let want = "(x*exp(1/2*x) + C1 - 2*exp(1/2*x))^2*exp(-x)";
+        for x in [0.37, 1.1, 2.3] {
+            let got_value = solution_value(&rules, got, x, (1.7, 0.0));
+            let want_value = solution_value(&rules, want, x, (1.7, 0.0));
+            assert!(
+                (got_value - want_value).abs() <= 1e-9 * (1.0 + want_value.abs()),
+                "{bernoulli} differs from {want} at x = {x}: {got_value} vs {want_value}"
+            );
+        }
         // First-order equations quadratic in y' that factor.
         assert_eq!(
             run("dsolve(diff(y(x), x)^2 - (x + y(x))*diff(y(x), x) + x*y(x) = 0, y(x))"),

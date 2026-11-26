@@ -119,65 +119,12 @@ fn coefficient(
         .unwrap_or_else(Zero::zero)
 }
 
-/// Reduced row echelon form of a rational matrix, returning the non-zero
-/// rows and their pivot columns.
-fn rref(
-    mut rows: Vec<Vec<BigRational>>,
-    columns: usize,
-) -> (Vec<Vec<BigRational>>, Vec<usize>) {
-    let mut pivots = Vec::new();
-    let mut row = 0_usize;
-    for column in 0..columns {
-        let Some(swap) = (row..rows.len()).find(|&r| !rows[r][column].is_zero()) else {
-            continue;
-        };
-        rows.swap(row, swap);
-        let lead = rows[row][column].clone();
-        for slot in &mut rows[row] {
-            *slot /= &lead;
-        }
-        let pivot_row = rows[row].clone();
-        for (other, row_slice) in rows.iter_mut().enumerate() {
-            if other == row {
-                continue;
-            }
-            let factor = row_slice[column].clone();
-            if factor.is_zero() {
-                continue;
-            }
-            for (slot, value) in row_slice.iter_mut().zip(&pivot_row) {
-                *slot -= value * &factor;
-            }
-        }
-        pivots.push(column);
-        row = row.saturating_add(1);
-        if row == rows.len() {
-            break;
-        }
-    }
-    rows.truncate(row);
-    (rows, pivots)
-}
-
 /// A basis of the nullspace of the rational matrix `rows`.
 fn nullspace(
     rows: Vec<Vec<BigRational>>,
     columns: usize,
 ) -> Vec<Vec<BigRational>> {
-    let (reduced, pivots) = rref(rows, columns);
-    let mut basis = Vec::new();
-    for free in 0..columns {
-        if pivots.contains(&free) {
-            continue;
-        }
-        let mut vector = vec![BigRational::zero(); columns];
-        vector[free] = BigRational::from_integer(BigInt::from(1));
-        for (r, &pivot) in pivots.iter().enumerate() {
-            vector[pivot] = -reduced[r][free].clone();
-        }
-        basis.push(vector);
-    }
-    basis
+    crate::kernels::qlinalg::nullspace(&rows, columns)
 }
 
 /// Solves `g'/g = (a + b y)/c` for `g = P + Q y` with rational polynomials

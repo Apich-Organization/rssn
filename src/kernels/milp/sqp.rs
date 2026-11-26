@@ -617,14 +617,14 @@ fn kkt(
 }
 
 fn norm(v: &[f64]) -> f64 {
-    v.iter().map(|x| x * x).sum::<f64>().sqrt()
+    crate::kernels::simd::norm2_sq_f64(v).sqrt()
 }
 
 fn dot(
     a: &[f64],
     b: &[f64],
 ) -> f64 {
-    a.iter().zip(b).map(|(x, y)| x * y).sum()
+    crate::kernels::simd::dot_f64(a, b)
 }
 
 #[cfg(test)]

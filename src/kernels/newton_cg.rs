@@ -583,9 +583,7 @@ fn boundary_point(
     };
     let extent = radius * distance;
     if extent.is_finite() {
-        for (z, w) in z.iter_mut().zip(w) {
-            *z += extent * *w;
-        }
+        crate::kernels::simd::axpy_f64(extent, w, z);
     } else {
         for ((z, u), w) in z.iter_mut().zip(u).zip(w) {
             *z = radius * (*u + distance * *w);
@@ -602,7 +600,7 @@ fn dot(
     a: &[f64],
     b: &[f64],
 ) -> f64 {
-    a.iter().zip(b).map(|(a, b)| a * b).sum()
+    crate::kernels::simd::dot_f64(a, b)
 }
 fn length(x: &[f64]) -> f64 {
     x.iter().fold(0.0_f64, |norm, x| norm.hypot(*x))

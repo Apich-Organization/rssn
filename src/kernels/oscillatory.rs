@@ -52,10 +52,13 @@ pub struct Oscillatory {
 }
 
 fn chebyshev_points(n: usize) -> Vec<f64> {
-    let top = (n - 1) as f64;
-    (0..n)
-        .map(|j| (std::f64::consts::PI * j as f64 / top).cos())
-        .collect()
+    if n <= 1 {
+        return vec![1.0; n];
+    }
+    super::reuse::global_pool()
+        .chebyshev_lobatto_nodes(n - 1)
+        .as_ref()
+        .clone()
 }
 
 // Trefethen's differentiation matrix on [-1, 1], with the negative

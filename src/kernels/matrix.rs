@@ -20,6 +20,7 @@ use std::ops::SubAssign;
 use faer::MatRef;
 use faer::Side;
 use faer::linalg::solvers::DenseSolveCore;
+use faer::linalg::solvers::Solve;
 use num_traits::One;
 use num_traits::ToPrimitive;
 use num_traits::Zero;
@@ -174,7 +175,7 @@ impl Field for f64 {
 
         // A (near-)zero pivot in U means A is singular; refuse to invert
         // with the same relative tolerance as the generic path.
-        let scale = matrix.data.iter().fold(0.0_f64, |m, v| m.max(v.abs()));
+        let scale = crate::kernels::simd::linf_norm_f64(&matrix.data);
 
         let tol = n as Self * Self::EPSILON * scale;
 
@@ -187,33 +188,8 @@ impl Field for f64 {
 
         let inv_t = lu.inverse();
 
-        // inv_t is (A^-1)^T in col-major.
-        // We need the data as Vec<f64>.
-        // Mat stores data in col-major. col_as_slice might help if contiguous.
-        // Mat is contiguous.
-
-        let mut data = vec![0.0; n * n];
-
-        // Copy data out.
-        // If Mat is standard, we can just copy.
-        // inv_t is Mat<f64>.
-
-        for j in 0..n {
-            for i in 0..n {
-                // inv_t(i, j)
-                data[i * n + j] = *inv_t.get(j, i);
-                // So we just need the buffer.
-            }
-        }
-
-        // Actually, we can just copy the slice if strictly contiguous.
-        // Mat::as_slice() gives column major slice.
-        // This slice corresponds exactly to row major data of the transpose of the matrix represented by Mat.
-        // inv_t represents (A^-1)^T.
-        // Its col-major data is Row-major data of ((A^-1)^T)^T = A^-1.
-        // Correct.
-
-        // So:
+        // `inv_t` represents `(A^-1)^T` in col-major order, which is identical
+        // to `A^-1` in row-major order.
         let mut data = Vec::with_capacity(n * n);
 
         for j in 0..n {
@@ -221,6 +197,42 @@ impl Field for f64 {
         }
 
         Some(Matrix::new(n, n, data).with_backend(matrix.backend))
+    }
+
+    fn faer_solve(
+        a: &Matrix<Self>,
+        b: &Matrix<Self>,
+    ) -> Option<Matrix<Self>> {
+        if a.rows != a.cols || a.rows != b.rows {
+            return None;
+        }
+        let n = a.rows;
+        let m = b.cols;
+        if n == 0 || m == 0 {
+            return Some(Matrix::new(n, m, Vec::new()).with_backend(a.backend));
+        }
+
+        // Row-major `a.data` viewed as col-major is `A^T`, so `.transpose()` is `A`.
+        let a_mat = MatRef::from_column_major_slice(&a.data, n, n).transpose();
+        let lu = a_mat.partial_piv_lu();
+
+        let scale = crate::kernels::simd::linf_norm_f64(&a.data);
+        let tol = n as Self * Self::EPSILON * scale;
+        let u = lu.U();
+        if (0..n).any(|i| u.get(i, i).abs().partial_cmp(&tol) != Some(std::cmp::Ordering::Greater))
+        {
+            return None;
+        }
+
+        let b_mat = MatRef::from_column_major_slice(&b.data, m, n).transpose();
+        let x_mat = lu.solve(b_mat);
+        let mut data = Vec::with_capacity(n * m);
+        for i in 0..n {
+            for j in 0..m {
+                data.push(*x_mat.get(i, j));
+            }
+        }
+        Some(Matrix::new(n, m, data).with_backend(a.backend))
     }
 
     fn faer_decompose(

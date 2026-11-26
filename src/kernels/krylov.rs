@@ -195,6 +195,202 @@ impl Csr {
         csr_matvec(self.rows, &self.indptr, &self.indices, &self.values, x, y);
     }
 
+    /// Returns the transpose `A^T` in CSR format with sorted column indices.
+    #[must_use]
+    pub fn transpose(&self) -> Self {
+        let mut cnt = vec![0usize; self.cols + 1];
+        for &c in &self.indices {
+            cnt[c + 1] += 1;
+        }
+        for i in 0..self.cols {
+            cnt[i + 1] += cnt[i];
+        }
+        let mut pos = cnt.clone();
+        let mut indices = vec![0usize; self.indices.len()];
+        let mut values = vec![0.0; self.values.len()];
+        for r in 0..self.rows {
+            for k in self.indptr[r]..self.indptr[r + 1] {
+                let c = self.indices[k];
+                indices[pos[c]] = r;
+                values[pos[c]] = self.values[k];
+                pos[c] += 1;
+            }
+        }
+        Self {
+            rows: self.cols,
+            cols: self.rows,
+            indptr: cnt,
+            indices,
+            values,
+        }
+    }
+
+    /// Sparse-matrix × dense-matrix product `C = A * B`, parallelised over output rows
+    /// and accelerated with SIMD row AXPY updates.
+    ///
+    /// # Errors
+    /// Returns an error if `self.cols != rhs.rows`.
+    pub fn spmm(
+        &self,
+        rhs: &super::dense::Mat,
+    ) -> Result<super::dense::Mat, String> {
+        if self.cols != rhs.rows {
+            return Err(format!(
+                "Csr::spmm dimension mismatch: {}x{} * {}x{}",
+                self.rows, self.cols, rhs.rows, rhs.cols
+            ));
+        }
+        let m = self.rows;
+        let k_cols = rhs.cols;
+        let mut out = super::dense::Mat::zeros(m, k_cols);
+        if m == 0 || k_cols == 0 || self.values.is_empty() {
+            return Ok(out);
+        }
+        let work = self.values.len().saturating_mul(k_cols);
+        let grain = if work >= SPMV_PAR_NNZ {
+            2
+        } else {
+            usize::MAX
+        };
+        super::par::for_chunks_mut(&mut out.data, k_cols, grain, |i, out_row| {
+            for idx in self.indptr[i]..self.indptr[i + 1] {
+                let col = self.indices[idx];
+                let val = self.values[idx];
+                let rhs_row = &rhs.data[col * k_cols..(col + 1) * k_cols];
+                super::simd::axpy_f64(val, rhs_row, out_row);
+            }
+        });
+        Ok(out)
+    }
+
+    /// Sparse-matrix × sparse-matrix product `C = A * B` in CSR format with sorted
+    /// column indices per row. Parallelises rows deterministically for large matrices.
+    ///
+    /// # Errors
+    /// Returns an error if `self.cols != other.rows`.
+    pub fn spgemm(
+        &self,
+        other: &Self,
+    ) -> Result<Self, String> {
+        if self.cols != other.rows {
+            return Err(format!(
+                "Csr::spgemm dimension mismatch: {}x{} * {}x{}",
+                self.rows, self.cols, other.rows, other.cols
+            ));
+        }
+        let m = self.rows;
+        let n = other.cols;
+        if m == 0 || n == 0 || self.values.is_empty() || other.values.is_empty() {
+            return Ok(Self {
+                rows: m,
+                cols: n,
+                indptr: vec![0; m + 1],
+                indices: Vec::new(),
+                values: Vec::new(),
+            });
+        }
+        let work = self.values.len().saturating_add(other.values.len());
+        if work < SPMV_PAR_NNZ || m < 64 {
+            let mut indptr = vec![0usize; m + 1];
+            let mut indices = Vec::new();
+            let mut values = Vec::new();
+            let mut acc = super::reuse::f64_scratch(n);
+            acc.resize(n, 0.0);
+            let mut flag = super::reuse::global_pool().scratch_usize(n);
+            flag.resize(n, usize::MAX);
+            let mut cols = super::reuse::global_pool().scratch_usize(64);
+            for i in 0..m {
+                cols.clear();
+                for ka in self.indptr[i]..self.indptr[i + 1] {
+                    let j = self.indices[ka];
+                    let av = self.values[ka];
+                    for kb in other.indptr[j]..other.indptr[j + 1] {
+                        let c = other.indices[kb];
+                        if flag[c] != i {
+                            flag[c] = i;
+                            acc[c] = 0.0;
+                            cols.push(c);
+                        }
+                        acc[c] += av * other.values[kb];
+                    }
+                }
+                cols.sort_unstable();
+                for &c in cols.iter() {
+                    indices.push(c);
+                    values.push(acc[c]);
+                }
+                indptr[i + 1] = indices.len();
+            }
+            return Ok(Self {
+                rows: m,
+                cols: n,
+                indptr,
+                indices,
+                values,
+            });
+        }
+
+        // Parallel row-block Gustavson SpGEMM: deterministic index-ordered assembly.
+        let block_rows = 64_usize;
+        let num_blocks = m.div_ceil(block_rows);
+        let block_results = super::par::map_indexed(num_blocks, 2, |b| {
+            let start = b * block_rows;
+            let end = (start + block_rows).min(m);
+            let mut acc = super::reuse::f64_scratch(n);
+            acc.resize(n, 0.0);
+            let mut flag = super::reuse::global_pool().scratch_usize(n);
+            flag.resize(n, usize::MAX);
+            let mut cols = super::reuse::global_pool().scratch_usize(64);
+            let mut b_counts = Vec::with_capacity(end - start);
+            let mut b_indices = Vec::new();
+            let mut b_values = Vec::new();
+            for i in start..end {
+                cols.clear();
+                for ka in self.indptr[i]..self.indptr[i + 1] {
+                    let j = self.indices[ka];
+                    let av = self.values[ka];
+                    for kb in other.indptr[j]..other.indptr[j + 1] {
+                        let c = other.indices[kb];
+                        if flag[c] != i {
+                            flag[c] = i;
+                            acc[c] = 0.0;
+                            cols.push(c);
+                        }
+                        acc[c] += av * other.values[kb];
+                    }
+                }
+                cols.sort_unstable();
+                b_counts.push(cols.len());
+                for &c in cols.iter() {
+                    b_indices.push(c);
+                    b_values.push(acc[c]);
+                }
+            }
+            (b_counts, b_indices, b_values)
+        });
+
+        let total_nnz: usize = block_results.iter().map(|(_, idx, _)| idx.len()).sum();
+        let mut indptr = Vec::with_capacity(m + 1);
+        indptr.push(0);
+        let mut indices = Vec::with_capacity(total_nnz);
+        let mut values = Vec::with_capacity(total_nnz);
+        for (b_counts, b_idx, b_val) in block_results {
+            for cnt in b_counts {
+                let prev = *indptr.last().unwrap_or(&0);
+                indptr.push(prev + cnt);
+            }
+            indices.extend_from_slice(&b_idx);
+            values.extend_from_slice(&b_val);
+        }
+        Ok(Self {
+            rows: m,
+            cols: n,
+            indptr,
+            indices,
+            values,
+        })
+    }
+
     /// Diagonal of the matrix.
     #[must_use]
     pub fn diagonal(&self) -> Vec<f64> {
@@ -795,6 +991,150 @@ where
 {
     iterative::solve(apply, precond, b, x0, tol, max_iter, iterative::Method::Cg)
         .unwrap_or_else(std::convert::identity)
+}
+
+/// Paige–Saunders LSQR solver for rectangular sparse least-squares systems
+/// `min_x ||A x - b||_2^2 + damp^2 ||x||_2^2`.
+///
+/// `apply(x, y)` computes `y = A x` (`x.len() == n`, `y.len() == m`) and
+/// `apply_t(u, v)` computes `v = A^T u` (`u.len() == m`, `v.len() == n`).
+pub fn lsqr<A, AT>(
+    apply: A,
+    apply_t: AT,
+    m: usize,
+    n: usize,
+    b: &[f64],
+    damp: f64,
+    tol: f64,
+    max_iter: usize,
+) -> IterResult
+where
+    A: Fn(&[f64], &mut [f64]),
+    AT: Fn(&[f64], &mut [f64]),
+{
+    if b.len() != m
+        || m == 0
+        || n == 0
+        || !damp.is_finite()
+        || !tol.is_finite()
+        || tol < 0.0
+        || b.iter().any(|v| !v.is_finite())
+    {
+        return IterResult {
+            x: vec![0.0; n],
+            residual: f64::INFINITY,
+            iterations: 0,
+            converged: false,
+        };
+    }
+
+    let mut u = super::reuse::f64_scratch(m);
+    u.clear();
+    u.extend_from_slice(b);
+    let b_norm = super::simd::norm2_sq_f64(&u).sqrt();
+    if b_norm == 0.0 {
+        return IterResult {
+            x: vec![0.0; n],
+            residual: 0.0,
+            iterations: 0,
+            converged: true,
+        };
+    }
+    let mut beta = b_norm;
+    super::simd::scale_f64(beta.recip(), &mut u);
+
+    let mut v = super::reuse::f64_scratch(n);
+    v.resize(n, 0.0);
+    apply_t(&u, &mut v);
+    let mut alpha = super::simd::norm2_sq_f64(&v).sqrt();
+    if alpha > 0.0 {
+        super::simd::scale_f64(alpha.recip(), &mut v);
+    }
+
+    let mut w = super::reuse::f64_scratch(n);
+    w.clear();
+    w.extend_from_slice(&v);
+    let mut x = vec![0.0; n];
+    let mut tmp_m = super::reuse::f64_scratch(m);
+    tmp_m.resize(m, 0.0);
+    let mut tmp_n = super::reuse::f64_scratch(n);
+    tmp_n.resize(n, 0.0);
+
+    let mut phi_bar = beta;
+    let mut rho_bar = alpha;
+    let mut anorm_sq = 0.0_f64;
+    let mut iterations = 0_usize;
+    let mut converged = false;
+
+    for iter in 1..=max_iter {
+        iterations = iter;
+
+        // Golub-Kahan bidiagonalisation step.
+        apply(&v, &mut tmp_m);
+        super::simd::axpby_f64(1.0, &tmp_m, -alpha, &mut u);
+        beta = super::simd::norm2_sq_f64(&u).sqrt();
+        if beta > 0.0 {
+            super::simd::scale_f64(beta.recip(), &mut u);
+        }
+        anorm_sq += alpha * alpha + beta * beta + damp * damp;
+
+        apply_t(&u, &mut tmp_n);
+        super::simd::axpby_f64(1.0, &tmp_n, -beta, &mut v);
+        alpha = super::simd::norm2_sq_f64(&v).sqrt();
+        if alpha > 0.0 {
+            super::simd::scale_f64(alpha.recip(), &mut v);
+        }
+
+        // Optional damping rotation.
+        let (rho_bar_1, psi_1) = if damp != 0.0 {
+            let r1 = rho_bar.hypot(damp);
+            let cs1 = rho_bar / r1;
+            let sn1 = damp / r1;
+            let p1 = sn1 * phi_bar;
+            phi_bar *= cs1;
+            (r1, p1)
+        } else {
+            (rho_bar, 0.0)
+        };
+        let _ = psi_1;
+
+        // Plane rotation to eliminate subdiagonal beta.
+        let rho = rho_bar_1.hypot(beta);
+        if rho == 0.0 || !rho.is_finite() {
+            break;
+        }
+        let c = rho_bar_1 / rho;
+        let s = beta / rho;
+        let theta = s * alpha;
+        rho_bar = -c * alpha;
+        let phi = c * phi_bar;
+        phi_bar *= s;
+
+        // Update solution x and search direction w.
+        super::simd::axpy_f64(phi / rho, &w, &mut x);
+        super::simd::axpby_f64(1.0, &v, -(theta / rho), &mut w);
+
+        let r_norm = phi_bar.abs();
+        let ar_norm = (phi_bar * alpha * c).abs();
+        let a_norm = anorm_sq.sqrt();
+        if r_norm <= tol * b_norm || (a_norm > 0.0 && ar_norm <= tol * a_norm * r_norm) {
+            converged = true;
+            break;
+        }
+    }
+
+    // Recompute true residual ||b - A x|| / ||b||.
+    apply(&x, &mut tmp_m);
+    for (r, &bi) in tmp_m.iter_mut().zip(b) {
+        *r = bi - *r;
+    }
+    let true_res = super::simd::norm2_sq_f64(&tmp_m).sqrt() / b_norm;
+    IterResult {
+        x,
+        residual: true_res,
+        iterations,
+        converged: converged || true_res <= tol,
+    }
 }
 
 /// The checked sparse solver also requires positive curvature and reports breakdowns.
@@ -1765,5 +2105,64 @@ mod tests {
             "gmres none={} ilu0={}, bicgstab none={} ilu0={}",
             g0.iterations, gp.iterations, b0.iterations, bp.iterations
         );
+    }
+
+    #[test]
+    fn csr_transpose_spmm_spgemm_and_lsqr() {
+        let a = Csr::from_triplets(
+            4,
+            3,
+            &[
+                (0, 0, 2.0),
+                (0, 1, -1.0),
+                (1, 0, 1.0),
+                (1, 1, 3.0),
+                (1, 2, 1.0),
+                (2, 1, -2.0),
+                (2, 2, 4.0),
+                (3, 0, 1.0),
+                (3, 2, 2.0),
+            ],
+        );
+        let at = a.transpose();
+        assert_eq!((at.rows, at.cols), (3, 4));
+        let ata = at.spgemm(&a).unwrap();
+        assert_eq!((ata.rows, ata.cols), (3, 3));
+
+        // Verify spmm against dense product.
+        let b_dense = super::super::dense::Mat {
+            rows: 3,
+            cols: 2,
+            data: vec![1.0, 2.0, 3.0, -1.0, 0.5, 4.0],
+        };
+        let c = a.spmm(&b_dense).unwrap();
+        assert_eq!((c.rows, c.cols), (4, 2));
+        for col in 0..2 {
+            let x: Vec<f64> = (0..3).map(|r| b_dense.at(r, col)).collect();
+            let mut y = vec![0.0; 4];
+            a.matvec(&x, &mut y);
+            for r in 0..4 {
+                assert!((c.at(r, col) - y[r]).abs() < 1e-13);
+            }
+        }
+
+        // Verify LSQR recovers exact solution of consistent overdetermined system.
+        let x_true = vec![1.5, -2.0, 0.75];
+        let mut rhs = vec![0.0; 4];
+        a.matvec(&x_true, &mut rhs);
+        let res = lsqr(
+            |x, y| a.matvec(x, y),
+            |u, v| at.matvec(u, v),
+            4,
+            3,
+            &rhs,
+            0.0,
+            1e-12,
+            50,
+        );
+        assert!(res.converged);
+        for (got, exp) in res.x.iter().zip(&x_true) {
+            assert!((got - exp).abs() < 1e-10);
+        }
     }
 }

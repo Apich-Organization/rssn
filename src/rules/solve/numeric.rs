@@ -72,37 +72,14 @@ impl Compiled_ {
 }
 
 fn solve_dense(
-    mut a: Vec<Vec<f64>>,
-    mut b: Vec<f64>,
+    a: Vec<Vec<f64>>,
+    b: Vec<f64>,
 ) -> Option<Vec<f64>> {
-    let n = b.len();
-    for col in 0..n {
-        let pivot = (col..n).max_by(|&i, &j| a[i][col].abs().total_cmp(&a[j][col].abs()))?;
-        if a[pivot][col].abs() < 1e-14 {
-            return None;
-        }
-        a.swap(col, pivot);
-        b.swap(col, pivot);
-        for row in col + 1..n {
-            let factor = a[row][col] / a[col][col];
-            let pivot_row = a[col].clone();
-            for (v, p) in a[row].iter_mut().zip(&pivot_row).skip(col) {
-                *v -= factor * p;
-            }
-            let v = b[col];
-            b[row] -= factor * v;
-        }
-    }
-    let mut x = vec![0.0; n];
-    for row in (0..n).rev() {
-        let tail: f64 = (row + 1..n).map(|k| a[row][k] * x[k]).sum();
-        x[row] = (b[row] - tail) / a[row][row];
-    }
-    x.iter().all(|v| v.is_finite()).then_some(x)
+    crate::kernels::dense::solve_linear_rows(&a, &b).ok()
 }
 
 fn norm(v: &[f64]) -> f64 {
-    v.iter().map(|x| x * x).sum::<f64>().sqrt()
+    crate::kernels::vector::norm(v)
 }
 
 /// One damped Newton / Gauss–Newton run.
