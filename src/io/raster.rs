@@ -31,6 +31,12 @@ pub use super::gif::decode_gif;
 pub use super::gif::encode_gif;
 pub use super::gif::read_gif_file;
 pub use super::gif::write_gif_file;
+pub use super::png::PngColorType;
+pub use super::png::PngImage;
+pub use super::png::decode_png;
+pub use super::png::encode_png;
+pub use super::png::read_png_file;
+pub use super::png::write_png_file;
 
 /// Rejects empty or inconsistent raster shapes before a file is touched.
 fn check_image(
@@ -158,6 +164,36 @@ pub fn write_ppm_file<P: AsRef<Path>>(
         format_args!("P6\n{width} {height}\n255\n"),
         samples.len(),
         |output| output.write_all(samples),
+    )
+}
+
+/// Writes a 16-bit RGB PPM (P6) file (big-endian `u16` per channel).
+///
+/// # Errors
+/// Fails for a zero dimension, a sample count other than `width * height * 3`,
+/// or when the file cannot be written.
+pub fn write_ppm16_file<P: AsRef<Path>>(
+    path: P,
+    width: usize,
+    height: usize,
+    samples: &[u16],
+) -> Result<(), String> {
+    check_image(width, height, samples.len(), 3)?;
+    write_image(
+        path.as_ref(),
+        format_args!("P6\n{width} {height}\n65535\n"),
+        samples.len().saturating_mul(2),
+        |output| {
+            let mut buf = Vec::with_capacity(samples.len().min(65_536) * 2);
+            for chunk in samples.chunks(65_536) {
+                buf.clear();
+                for &s in chunk {
+                    buf.extend_from_slice(&s.to_be_bytes());
+                }
+                output.write_all(&buf)?;
+            }
+            Ok(())
+        },
     )
 }
 

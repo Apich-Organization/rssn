@@ -2360,6 +2360,307 @@ pub fn plot_streamlines_3d(
     super::svg::write_svg_file(path, &svg)
 }
 
+/// Axis scale for 2D plots.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum AxisScale {
+    /// Linear axis.
+    #[default]
+    Linear,
+    /// Base-10 logarithmic axis (non-positive values are skipped).
+    Log10,
+}
+
+/// Renders 2D series with configurable linear or log10 X/Y axes.
+///
+/// # Errors
+/// Fails when `series` is empty or no valid points remain after axis scaling.
+pub fn render_series_2d_scaled_svg(
+    series: &[(String, Vec<(f64, f64)>)],
+    x_scale: AxisScale,
+    y_scale: AxisScale,
+) -> Result<String, String> {
+    if series.is_empty() {
+        return Err("series cannot be empty".to_owned());
+    }
+    let map_val = |v: f64, scale: AxisScale| -> Option<f64> {
+        if !v.is_finite() {
+            return None;
+        }
+        match scale {
+            | AxisScale::Linear => Some(v),
+            | AxisScale::Log10 => (v > 0.0).then(|| v.log10()),
+        }
+    };
+    let mapped: Vec<(String, Vec<(f64, f64)>)> = series
+        .iter()
+        .map(|(name, pts)| {
+            let mpts = pts
+                .iter()
+                .filter_map(|&(x, y)| Some((map_val(x, x_scale)?, map_val(y, y_scale)?)))
+                .collect();
+            (name.clone(), mpts)
+        })
+        .collect();
+    render_series_2d_svg(&mapped)
+}
+
+/// Plots 2D series with linear or log10 axes to an SVG file.
+///
+/// # Errors
+/// As [`render_series_2d_scaled_svg`], plus file I/O errors.
+pub fn plot_series_2d_scaled(
+    series: &[(String, Vec<(f64, f64)>)],
+    x_scale: AxisScale,
+    y_scale: AxisScale,
+    path: &Path,
+) -> Result<(), String> {
+    let svg = render_series_2d_scaled_svg(series, x_scale, y_scale)?;
+    super::svg::write_svg_file(path, &svg)
+}
+
+/// Renders a histogram of finite `values` into `bins` equal-width buckets as SVG.
+///
+/// # Errors
+/// Fails when `bins == 0` or `values` contains no finite numbers.
+pub fn render_histogram_svg(
+    values: &[f64],
+    bins: usize,
+) -> Result<String, String> {
+    if bins == 0 {
+        return Err("histogram bins must be positive".to_owned());
+    }
+    let finite: Vec<f64> = values.iter().copied().filter(|v| v.is_finite()).collect();
+    if finite.is_empty() {
+        return Err("histogram has no finite values".to_owned());
+    }
+    let mut lo = f64::INFINITY;
+    let mut hi = f64::NEG_INFINITY;
+    for &v in &finite {
+        lo = lo.min(v);
+        hi = hi.max(v);
+    }
+    if (hi - lo).abs() < 1e-15 {
+        lo -= 0.5;
+        hi += 0.5;
+    }
+    let mut counts = vec![0_usize; bins];
+    let span = hi - lo;
+    for &v in &finite {
+        let mut idx = (((v - lo) / span) * (bins as f64)).floor() as usize;
+        if idx >= bins {
+            idx = bins - 1;
+        }
+        counts[idx] += 1;
+    }
+    let max_count = counts.iter().copied().max().unwrap_or(1).max(1) as f64;
+    let w = WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
+    let h = HEIGHT - MARGIN_TOP - MARGIN_BOTTOM;
+    let bw = w / (bins as f64);
+    let mut svg = Svg::new();
+    for (i, &c) in counts.iter().enumerate() {
+        let bh = (c as f64 / max_count) * h;
+        let x = MARGIN_LEFT + (i as f64) * bw;
+        let y = MARGIN_TOP + h - bh;
+        svg.rect((x + 1.0, y), ((bw - 2.0).max(1.0), bh), "#1f77b4");
+    }
+    svg.line(
+        (MARGIN_LEFT, MARGIN_TOP + h),
+        (MARGIN_LEFT + w, MARGIN_TOP + h),
+        "#222",
+        1.0,
+    );
+    svg.line(
+        (MARGIN_LEFT, MARGIN_TOP),
+        (MARGIN_LEFT, MARGIN_TOP + h),
+        "#222",
+        1.0,
+    );
+    svg.text(
+        (MARGIN_LEFT, MARGIN_TOP + h + 16.0),
+        "middle",
+        &format!("{lo:.3}"),
+    );
+    svg.text(
+        (MARGIN_LEFT + w, MARGIN_TOP + h + 16.0),
+        "middle",
+        &format!("{hi:.3}"),
+    );
+    svg.text(
+        (MARGIN_LEFT - 8.0, MARGIN_TOP + 6.0),
+        "end",
+        &format!("{max_count:.0}"),
+    );
+    svg.text((MARGIN_LEFT - 8.0, MARGIN_TOP + h + 4.0), "end", "0");
+    Ok(svg.finish())
+}
+
+/// Writes a histogram SVG to `path`.
+///
+/// # Errors
+/// As [`render_histogram_svg`], plus file I/O errors.
+pub fn plot_histogram(
+    values: &[f64],
+    bins: usize,
+    path: &Path,
+) -> Result<(), String> {
+    let svg = render_histogram_svg(values, bins)?;
+    super::svg::write_svg_file(path, &svg)
+}
+
+/// Renders an error-bar plot `(x, y, yerr)` as SVG.
+///
+/// # Errors
+/// Fails when slices have mismatched lengths or no finite points.
+pub fn render_errorbar_svg(
+    x: &[f64],
+    y: &[f64],
+    yerr: &[f64],
+) -> Result<String, String> {
+    if x.len() != y.len() || x.len() != yerr.len() || x.is_empty() {
+        return Err("errorbar slices must be non-empty and equal length".to_owned());
+    }
+    let mut xmin = f64::INFINITY;
+    let mut xmax = f64::NEG_INFINITY;
+    let mut ymin = f64::INFINITY;
+    let mut ymax = f64::NEG_INFINITY;
+    for i in 0..x.len() {
+        if x[i].is_finite() && y[i].is_finite() {
+            let e = if yerr[i].is_finite() {
+                yerr[i].abs()
+            } else {
+                0.0
+            };
+            xmin = xmin.min(x[i]);
+            xmax = xmax.max(x[i]);
+            ymin = ymin.min(y[i] - e);
+            ymax = ymax.max(y[i] + e);
+        }
+    }
+    if !xmin.is_finite() {
+        return Err("errorbar has no finite points".to_owned());
+    }
+    let xspan = (xmax - xmin).max(1e-12);
+    let yspan = (ymax - ymin).max(1e-12);
+    let w = WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
+    let h = HEIGHT - MARGIN_TOP - MARGIN_BOTTOM;
+    let map_x = |vx: f64| MARGIN_LEFT + ((vx - xmin) / xspan) * w;
+    let map_y = |vy: f64| MARGIN_TOP + h - ((vy - ymin) / yspan) * h;
+
+    let mut svg = Svg::new();
+    svg.line(
+        (MARGIN_LEFT, MARGIN_TOP + h),
+        (MARGIN_LEFT + w, MARGIN_TOP + h),
+        "#222",
+        1.0,
+    );
+    svg.line(
+        (MARGIN_LEFT, MARGIN_TOP),
+        (MARGIN_LEFT, MARGIN_TOP + h),
+        "#222",
+        1.0,
+    );
+    for i in 0..x.len() {
+        if x[i].is_finite() && y[i].is_finite() {
+            let px = map_x(x[i]);
+            let py = map_y(y[i]);
+            if yerr[i].is_finite() {
+                let e = yerr[i].abs();
+                let y_lo = map_y(y[i] - e);
+                let y_hi = map_y(y[i] + e);
+                svg.line((px, y_lo), (px, y_hi), "#1f77b4", 1.5);
+                svg.line((px - 4.0, y_lo), (px + 4.0, y_lo), "#1f77b4", 1.5);
+                svg.line((px - 4.0, y_hi), (px + 4.0, y_hi), "#1f77b4", 1.5);
+            }
+            svg.rect((px - 2.5, py - 2.5), (5.0, 5.0), "#d62728");
+        }
+    }
+    Ok(svg.finish())
+}
+
+/// Writes an error-bar SVG to `path`.
+///
+/// # Errors
+/// As [`render_errorbar_svg`], plus file I/O errors.
+pub fn plot_errorbar(
+    x: &[f64],
+    y: &[f64],
+    yerr: &[f64],
+    path: &Path,
+) -> Result<(), String> {
+    let svg = render_errorbar_svg(x, y, yerr)?;
+    super::svg::write_svg_file(path, &svg)
+}
+
+/// Arranges multiple standalone SVG strings into a `rows x cols` grid SVG.
+///
+/// # Errors
+/// Fails when `rows == 0`, `cols == 0`, or `panels.is_empty()`.
+pub fn render_subplots_svg(
+    panels: &[&str],
+    rows: usize,
+    cols: usize,
+) -> Result<String, String> {
+    if rows == 0 || cols == 0 || panels.is_empty() {
+        return Err("subplots require positive rows, cols, and at least one panel".to_owned());
+    }
+    let total_w = WIDTH * (cols as f64);
+    let total_h = HEIGHT * (rows as f64);
+    let mut out = format!(
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{total_w}\" height=\"{total_h}\" viewBox=\"0 0 {total_w} {total_h}\">\n"
+    );
+    for (idx, panel) in panels.iter().take(rows * cols).enumerate() {
+        let r = idx / cols;
+        let c = idx % cols;
+        let tx = (c as f64) * WIDTH;
+        let ty = (r as f64) * HEIGHT;
+        let inner = panel
+            .find('>')
+            .and_then(|start| panel.rfind("</svg>").map(|end| &panel[start + 1..end]))
+            .unwrap_or(panel);
+        out.push_str(&format!(
+            "<g transform=\"translate({tx},{ty})\">{inner}</g>\n"
+        ));
+    }
+    out.push_str("</svg>\n");
+    Ok(out)
+}
+
+/// Renders a 2D scalar field as a PNG image using `colormap`.
+///
+/// # Errors
+/// Fails for an empty array, no finite values, or file I/O errors.
+pub fn plot_scalar_field_png(
+    data: &Array2<f64>,
+    colormap: super::colormap::Colormap,
+    path: &Path,
+) -> Result<(), String> {
+    let (rows, cols) = data.dim();
+    if rows == 0 || cols == 0 {
+        return Err("the array is empty".to_owned());
+    }
+    let range = extent(data.iter().copied()).ok_or("no finite values")?;
+    let mut rgb = Vec::with_capacity(rows * cols * 3);
+    for &value in data.iter() {
+        let (r, g, b) = if value.is_finite() {
+            colormap.sample_rgb(unit(value, range))
+        } else {
+            (0xdd, 0xdd, 0xdd)
+        };
+        rgb.push(r);
+        rgb.push(g);
+        rgb.push(b);
+    }
+    super::png::write_png_file(
+        path,
+        &super::png::PngImage {
+            width: cols as u32,
+            height: rows as u32,
+            color_type: super::png::PngColorType::Rgb8,
+            data: rgb,
+        },
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -50,6 +50,7 @@
 //!   a documented gap; GIF animation I/O is in [`gif`] and SVG parsing/I/O is
 //!   in [`svg`].
 
+pub mod colormap;
 /// Typed tabular data: columns, data frames, typed CSV and JSON.
 #[allow(
     clippy::missing_errors_doc,
@@ -186,22 +187,58 @@ pub mod netcdf;
 )]
 pub mod parquet;
 pub mod plot;
+pub mod png;
 pub mod pretty;
 pub mod raster;
+pub mod sim_vis;
 pub mod svg;
 pub mod typst;
+pub mod vtk;
+pub mod wav;
 
+pub use colormap::Colormap;
 pub use gif::GifAnimation;
+pub use gif::GifDisposal;
 pub use gif::GifFrame;
+pub use gif::GifPlotOptions;
 pub use gif::decode_gif;
+pub use gif::decode_gif_composited;
 pub use gif::encode_gif;
+pub use gif::encode_particles_gif;
+pub use gif::encode_scalar_field_gif;
+pub use gif::encode_series_animation_gif;
 pub use gif::read_gif_file;
 pub use gif::write_gif_file;
+pub use gif::write_particles_gif;
+pub use gif::write_scalar_field_gif;
+pub use gif::write_series_animation_gif;
+pub use png::PngColorType;
+pub use png::PngImage;
+pub use png::decode_png;
+pub use png::encode_png;
+pub use png::encode_png_with_metadata;
+pub use png::read_png_file;
+pub use png::write_png_file;
 pub use svg::SvgDocument;
 pub use svg::SvgElement;
 pub use svg::parse_svg;
 pub use svg::read_svg_file;
 pub use svg::write_svg_file;
+pub use vtk::VtkAttributeData;
+pub use vtk::VtkDataset;
+pub use vtk::VtkFile;
+pub use vtk::VtkFormat;
+pub use vtk::encode_vtk;
+pub use vtk::parse_vtk;
+pub use vtk::read_vtk;
+pub use vtk::write_vtk;
+pub use wav::WavData;
+pub use wav::WavSpec;
+pub use wav::decode_wav;
+pub use wav::encode_wav;
+pub use wav::read_wav_file;
+pub use wav::write_signal_wav;
+pub use wav::write_wav_file;
 
 use std::fs::File;
 use std::io::BufRead;
