@@ -264,9 +264,31 @@ pub fn cauchy_derivative<F>(
 where
     F: Fn(Complex64) -> Complex64,
 {
-    let factorial: f64 = (1..=order).map(f64::from).product();
-    let power = i32::try_from(order).unwrap_or(i32::MAX).saturating_add(1);
-    circle_integral(|w| f(w) / (w - z).powi(power), z, radius, n) * factorial / (2.0 * PI * I)
+    if !radius.is_finite() || radius <= 0.0 || n == 0 {
+        return Complex64::new(f64::NAN, f64::NAN);
+    }
+    // Compute n! / radius^n in log-space when order is large to avoid f64 overflow.
+    let n_f = n.max(1) as f64;
+    let mut sum = Complex64::new(0.0, 0.0);
+    let mut log_r_pow = 0.0_f64;
+    let mut log_fact = 0.0_f64;
+    for k in 1..=order {
+        log_fact += f64::from(k).ln();
+        log_r_pow += radius.ln();
+    }
+    let scale = (log_fact - log_r_pow).exp();
+    if !scale.is_finite() {
+        return Complex64::new(f64::NAN, f64::NAN);
+    }
+    let dtheta = 2.0 * PI / n_f;
+    for j in 0..n {
+        let theta = dtheta * (j as f64);
+        let (s, c) = theta.sin_cos();
+        let offset = Complex64::new(radius * c, radius * s);
+        let phase = Complex64::from_polar(1.0, -(f64::from(order) * theta));
+        sum += f(z + offset) * phase;
+    }
+    sum * (scale / n_f)
 }
 
 /// Newton's method for an analytic `f` with derivative `df`, from `z0`.
@@ -402,7 +424,7 @@ where
 }
 
 /// Checks the Cauchy-Riemann equations numerically at `z` via
-/// `|d/d(conj(z)) f(z)| <= tol`.
+/// `|d/d(conj(z)) f(z)| <= tol * (1 + |d/dz f(z)|)`.
 pub fn check_cauchy_riemann_numeric<F>(
     f: F,
     z: Complex64,
@@ -412,7 +434,58 @@ pub fn check_cauchy_riemann_numeric<F>(
 where
     F: Fn(Complex64) -> Complex64,
 {
-    wirtinger_dzbar_numeric(f, z, h).norm() <= tol
+    if !h.is_finite() || h <= 0.0 || !tol.is_finite() || tol < 0.0 {
+        return false;
+    }
+    let dzbar = wirtinger_dzbar_numeric(&f, z, h);
+    let dz = wirtinger_dz_numeric(&f, z, h);
+    dzbar.is_finite() && dz.is_finite() && dzbar.norm() <= tol * (1.0 + dz.norm())
+}
+
+/// Numerical complex Laplacian `4 * d^2 f / (dz d(conj(z))) = f_xx + f_yy`
+/// using central 2nd-order finite differences with step `h`.
+pub fn complex_laplacian_numeric<F>(
+    f: F,
+    z: Complex64,
+    h: f64,
+) -> Complex64
+where
+    F: Fn(Complex64) -> Complex64,
+{
+    if !h.is_finite() || h <= 0.0 {
+        return Complex64::new(f64::NAN, f64::NAN);
+    }
+    let f0 = f(z);
+    let fxx = (f(Complex64::new(z.re + h, z.im)) - 2.0 * f0 + f(Complex64::new(z.re - h, z.im)))
+        / (h * h);
+    let fyy = (f(Complex64::new(z.re, z.im + h)) - 2.0 * f0 + f(Complex64::new(z.re, z.im - h)))
+        / (h * h);
+    fxx + fyy
+}
+
+/// Numerical polar Cauchy-Riemann residual `(r * u_r - v_theta, u_theta + r * v_r)`
+/// at `(r, theta)`.
+pub fn cauchy_riemann_polar_numeric<F>(
+    f: F,
+    r: f64,
+    theta: f64,
+    h: f64,
+) -> (f64, f64)
+where
+    F: Fn(f64, f64) -> Complex64,
+{
+    if !h.is_finite() || h <= 0.0 {
+        return (f64::NAN, f64::NAN);
+    }
+    let fr_p = f(r + h, theta);
+    let fr_m = f(r - h, theta);
+    let ft_p = f(r, theta + h);
+    let ft_m = f(r, theta - h);
+    let ur = (fr_p.re - fr_m.re) / (2.0 * h);
+    let vr = (fr_p.im - fr_m.im) / (2.0 * h);
+    let ut = (ft_p.re - ft_m.re) / (2.0 * h);
+    let vt = (ft_p.im - ft_m.im) / (2.0 * h);
+    (r * ur - vt, ut + r * vr)
 }
 
 /// Complex-step differentiation `Im(f(x + i*h)) / h` for real analytic
@@ -443,6 +516,9 @@ where
     F: Fn(Complex64) -> Complex64,
 {
     let n = n_samples.max(max_order + 1).max(4);
+    if !radius.is_finite() || radius <= 0.0 {
+        return vec![Complex64::new(f64::NAN, f64::NAN); max_order + 1];
+    }
     let mut buffer = Vec::with_capacity(n);
     for j in 0..n {
         let theta = 2.0 * PI * (j as f64) / (n as f64);
@@ -456,16 +532,16 @@ where
     fft.process(&mut buffer);
 
     let mut out = Vec::with_capacity(max_order + 1);
-    let mut fact = 1.0_f64;
-    let mut r_pow = 1.0_f64;
     let nf = n as f64;
+    let ln_r = radius.ln();
+    let mut ln_fact = 0.0_f64;
     for k in 0..=max_order {
         if k > 0 {
-            fact *= k as f64;
-            r_pow *= radius;
+            ln_fact += (k as f64).ln();
         }
+        let scale = (ln_fact - (k as f64) * ln_r).exp() / nf;
         let ck = buffer.get(k).copied().unwrap_or_default();
-        let deriv = Complex64::new(ck.re, ck.im) * (fact / (nf * r_pow));
+        let deriv = Complex64::new(ck.re, ck.im) * scale;
         out.push(deriv);
     }
     out

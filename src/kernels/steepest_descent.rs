@@ -130,20 +130,20 @@ where
     let a = -0.5 * lambda * p2 * dir * dir;
     let gauss = dir * (PI / a).sqrt();
 
-    // Standard Laplace/saddle-point O(1/lambda) correction:
-    // 1 + (1/lambda) * [ -g2/(2*g0*p2) + g1*p3/(2*g0*p2^2) + p4/(8*p2^2) - 5*p3^2/(24*p2^3) ]
-    let corr = if g0.norm() > 1e-14 {
-        (-g2 / (2.0 * g0 * p2) + (g1 * p3) / (2.0 * g0 * p2 * p2) + p4 / (8.0 * p2 * p2)
-            - (5.0 * p3 * p3) / (24.0 * p2 * p2 * p2))
-            / lambda
-    } else {
-        Complex64::new(0.0, 0.0)
-    };
+    // Standard Laplace/saddle-point O(1/lambda) correction, or O(lambda^(-3/2)) when g(z0) == 0:
+    if g0.norm() <= 1e-14 {
+        let second_term = 0.5 * g2 / (-lambda * p2);
+        return (lambda * saddle.phi_val).exp() * gauss * second_term;
+    }
+    let corr = (-g2 / (2.0 * g0 * p2) + (g1 * p3) / (2.0 * g0 * p2 * p2) + p4 / (8.0 * p2 * p2)
+        - (5.0 * p3 * p3) / (24.0 * p2 * p2 * p2))
+        / lambda;
     g0 * (lambda * saddle.phi_val).exp() * gauss * (Complex64::new(1.0, 0.0) + corr)
 }
 
-/// Numerical integration along the steepest-descent tangent ray
-/// `z(s) = z0 + s * exp(i * steepest_angle)` for `s in [-half_len, half_len]`.
+/// Numerical integration along the **curved** steepest-descent path
+/// `Im(phi(z)) = Im(phi(z0))` with `Re(phi(z))` decreasing away from `z0`,
+/// traced via predictor-corrector projection onto the constant-phase level curve.
 #[must_use]
 pub fn steepest_descent_integrate<F, G>(
     phi: F,
@@ -158,11 +158,66 @@ where
     G: Fn(Complex64) -> Complex64,
 {
     let dir = Complex64::from_polar(1.0, saddle.steepest_angle);
-    let integrand = |s: f64| -> Complex64 {
-        let z = saddle.z0 + dir * s;
-        g(z) * (lambda * phi(z)).exp() * dir
+    let im0 = saddle.phi_val.im;
+    let trace_branch = |sign: f64| -> Complex64 {
+        let n_steps = 64_usize;
+        let ds = half_len / (n_steps as f64);
+        let mut pts = Vec::with_capacity(n_steps + 1);
+        pts.push(saddle.z0);
+        let mut z = saddle.z0;
+        let mut tangent = dir * sign;
+        for _ in 0..n_steps {
+            z += tangent * ds;
+            // Project onto Im(phi(z)) = im0 via 3 Newton steps perpendicular to grad(Im phi).
+            for _ in 0..4 {
+                let h = 1e-6 * (1.0 + z.norm());
+                let dp = (phi(z + h) - phi(z - h)) / (2.0 * h);
+                if dp.norm() < 1e-14 {
+                    break;
+                }
+                let err_im = phi(z).im - im0;
+                if err_im.abs() < 1e-13 {
+                    break;
+                }
+                // d/dt Im(phi(z + i * t / dp)) = Re(i * t) -> use z - i * err_im / dp
+                z -= Complex64::new(0.0, err_im) / dp;
+                tangent = -dp.conj() / dp.norm();
+                if (tangent.re * (dir.re * sign) + tangent.im * (dir.im * sign)) < 0.0 {
+                    tangent = -tangent;
+                }
+            }
+            pts.push(z);
+        }
+        // Composite trapezoidal/Simpson on the traced steepest-descent curve
+        let mut seg_sum = Complex64::new(0.0, 0.0);
+        for w in pts.windows(2) {
+            let a = w[0];
+            let b = w[1];
+            let re = gauss_kronrod_any(
+                |t| {
+                    let zt = a + (b - a) * t;
+                    (g(zt) * (lambda * phi(zt)).exp() * (b - a)).re
+                },
+                0.0,
+                1.0,
+                tol,
+                16,
+            )
+            .value;
+            let im = gauss_kronrod_any(
+                |t| {
+                    let zt = a + (b - a) * t;
+                    (g(zt) * (lambda * phi(zt)).exp() * (b - a)).im
+                },
+                0.0,
+                1.0,
+                tol,
+                16,
+            )
+            .value;
+            seg_sum += Complex64::new(re, im);
+        }
+        seg_sum
     };
-    let re = gauss_kronrod_any(|s| integrand(s).re, -half_len, half_len, tol, 24).value;
-    let im = gauss_kronrod_any(|s| integrand(s).im, -half_len, half_len, tol, 24).value;
-    Complex64::new(re, im)
+    trace_branch(1.0) - trace_branch(-1.0)
 }

@@ -231,19 +231,66 @@ pub fn borel_pade_resum(
         borel_coeffs.push(ck / fact);
     }
     let (p, q) = pade_approximant_complex(&borel_coeffs, pade_m, pade_n)?;
-    // Map t in [0, oo) to u in [0, 1) via t = u / (1 - u), dt = du / (1 - u)^2
-    let eval_laplace = |u: f64| -> Complex64 {
-        if u >= 1.0 - 1e-12 {
-            return ZERO;
-        }
-        let one_m_u = 1.0 - u;
-        let t = u / one_m_u;
-        let w = (-t).exp() / (one_m_u * one_m_u);
-        w * eval_pade_complex(&p, &q, z * t)
+    // Map t in [0, oo) along ray exp(i * ray_angle) to avoid poles on [0, oo).
+    let eval_ray = |ray_angle: f64| -> Complex64 {
+        let dir = Complex64::from_polar(1.0, ray_angle);
+        let eval_laplace = |u: f64| -> Complex64 {
+            if u >= 1.0 - 1e-12 {
+                return ZERO;
+            }
+            let one_m_u = 1.0 - u;
+            let s = u / one_m_u;
+            let t = dir * s;
+            let val = eval_pade_complex(&p, &q, z * t);
+            if !val.re.is_finite() || !val.im.is_finite() {
+                return ZERO;
+            }
+            let w = (-t).exp() * dir / (one_m_u * one_m_u);
+            w * val
+        };
+        let re = gauss_kronrod_any(|u| eval_laplace(u).re, 0.0, 1.0 - 1e-12, 1e-11, 24).value;
+        let im = gauss_kronrod_any(|u| eval_laplace(u).im, 0.0, 1.0 - 1e-12, 1e-11, 24).value;
+        Complex64::new(re, im)
     };
-    let re = gauss_kronrod_any(|u| eval_laplace(u).re, 0.0, 1.0 - 1e-12, 1e-11, 24).value;
-    let im = gauss_kronrod_any(|u| eval_laplace(u).im, 0.0, 1.0 - 1e-12, 1e-11, 24).value;
-    Some(Complex64::new(re, im))
+    let on_axis = eval_ray(0.0);
+    if on_axis.is_finite() {
+        return Some(on_axis);
+    }
+    let lateral = eval_ray(0.2);
+    lateral.is_finite().then_some(lateral)
+}
+
+/// Weierstrass power-series chain continuation: re-centers a Taylor series
+/// `sum c_k (z - a_0)^k` along a sequence of overlapping disk centers `centers = [a_0, a_1, ...]`
+/// and returns the Taylor coefficients around the final center `a_last`.
+#[must_use]
+pub fn weierstrass_chain_continue(
+    initial_coeffs: &[Complex64],
+    centers: &[Complex64],
+) -> Option<Vec<Complex64>> {
+    if initial_coeffs.is_empty() || centers.is_empty() {
+        return None;
+    }
+    let mut coeffs = initial_coeffs.to_vec();
+    let n = coeffs.len();
+    for win in centers.windows(2) {
+        let shift = win[1] - win[0];
+        let mut next = vec![ZERO; n];
+        // Re-center: c_new[j] = sum_{k=j}^{n-1} C(k, j) * c[k] * shift^{k - j}
+        for (j, slot) in next.iter_mut().enumerate() {
+            let mut acc = ZERO;
+            let mut binom = 1.0_f64;
+            let mut shift_pow = ONE;
+            for k in j..n {
+                acc += binom * *coeffs.get(k)? * shift_pow;
+                shift_pow *= shift;
+                binom *= ((k + 1) as f64) / ((k - j + 1) as f64);
+            }
+            *slot = acc;
+        }
+        coeffs = next;
+    }
+    Some(coeffs)
 }
 
 /// Linear homogeneous ODE `sum_{j=0}^r p_j(z) y^(j)(z) = 0` with polynomial
@@ -313,7 +360,7 @@ impl HolonomicOde {
         if max_b == 0.0 {
             return f64::INFINITY;
         }
-        (b0 / (b0 + max_b)).max(1e-4)
+        b0 / (b0 + max_b)
     }
 
     /// Expands `y(z0 + w) = sum_{n=0}^order a_n w^n` from `initial_state = [y(z0), y'(z0), ...]`.

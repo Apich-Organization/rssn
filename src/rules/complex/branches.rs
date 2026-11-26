@@ -263,7 +263,10 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ),
         (
             "asinh_branch",
-            ComplexEval(|a| Some(a.first()?.asinh() + I * TAU * *a.get(1)?)),
+            ComplexEval(|a| {
+                let k = a.get(1)?.re;
+                Some(I * k * PI + (-1_f64).powf(k) * a.first()?.asinh())
+            }),
         ),
         (
             "acosh_branch",
@@ -397,7 +400,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
                     }
                     Some(Complex64::from_polar(
                         z.norm().sqrt(),
-                        f64::midpoint(theta0, shifted + theta0) - 0.0,
+                        0.5 * (theta0 + shifted),
                     ))
                 })
             },
@@ -434,7 +437,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "branch/asin: asin_branch(?z, ?k) => ?k * pi + (-1)^?k * asin(?z) if integer(?k)",
             "branch/acos: acos_branch(?z, ?k, ?s) => 2 * ?k * pi + ?s * acos(?z)",
             "branch/atan: atan_branch(?z, ?k) => ?k * pi + atan(?z)",
-            "branch/asinh: asinh_branch(?z, ?k) => log_branch(?z + (?z^2 + 1)^(1/2), ?k)",
+            "branch/asinh: asinh_branch(?z, ?k) => I * ?k * pi + (-1)^?k * asinh(?z) if integer(?k)",
             "branch/acosh: acosh_branch(?z, ?k) => log_branch(?z + (?z^2 - 1)^(1/2), ?k)",
             "branch/atanh: atanh_branch(?z, ?k) => log_branch((1 + ?z) / (1 - ?z), ?k) / 2",
         ],

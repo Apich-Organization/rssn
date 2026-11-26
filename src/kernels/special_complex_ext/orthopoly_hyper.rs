@@ -7,7 +7,6 @@ use num_complex::Complex64;
 
 use crate::kernels::hypergeometric::hyp_u_cplx;
 use crate::kernels::hypergeometric::hyp1f1_cplx;
-use crate::kernels::special_complex::gamma_complex;
 
 const ZERO: Complex64 = Complex64::new(0.0, 0.0);
 const ONE: Complex64 = Complex64::new(1.0, 0.0);
@@ -255,7 +254,22 @@ pub fn wright_omega_complex(z: Complex64) -> Complex64 {
     }
     if z.re > 100.0 {
         let l = z.ln();
-        return z - l + l / z;
+        let mut w = z - l + l / z;
+        for _ in 0..8 {
+            let r = z - w - w.ln();
+            let wp1 = ONE + w;
+            let t = w * r;
+            let denom = wp1 * wp1 + 0.5 * t;
+            if denom.norm() < 1e-30 {
+                break;
+            }
+            let delta = (t * wp1) / denom;
+            w += delta;
+            if delta.norm() <= 1e-15 * (1.0 + w.norm()) {
+                break;
+            }
+        }
+        return w;
     }
     let mut w = if z.re < -2.0 {
         z.exp()
@@ -288,6 +302,17 @@ pub fn hyp0f1_complex(
     b: Complex64,
     z: Complex64,
 ) -> Complex64 {
+    if b.im == 0.0 && b.re <= 0.0 && (b.re - b.re.round()).abs() == 0.0 {
+        return Complex64::new(f64::NAN, f64::NAN);
+    }
+    if z.norm() > 25.0 && b.im == 0.0 {
+        // 0F1(; b; z) = Gamma(b) * (sqrt(z))^(1-b) * I_{b-1}(2*sqrt(z))
+        let two_sq = 2.0 * z.sqrt();
+        let nu = b.re - 1.0;
+        let i_val = crate::kernels::special_complex::bessel_i_complex(nu, two_sq);
+        let pref = crate::kernels::special_complex::gamma_complex(b) * z.sqrt().powc(ONE - b);
+        return pref * i_val;
+    }
     let mut sum = ONE;
     let mut term = ONE;
     for k in 1..300 {
@@ -323,19 +348,98 @@ pub fn whittaker_w_complex(
     (-0.5 * z).exp() * z.powc(mu + half) * hyp_u_cplx(mu - kappa + half, 2.0 * mu + ONE, z)
 }
 
-/// Parabolic cylinder function `D_nu(z)` via `1F1` connection formula (DLMF 12.7.12).
+/// Parabolic cylinder function `D_nu(z)` via asymptotic expansion for large `|z|`
+/// in `|arg(z)| < 3*pi/4` and `1F1` connection formula with `rgamma` elsewhere.
 #[must_use]
 pub fn parabolic_cylinder_d_complex(
     nu: Complex64,
     z: Complex64,
 ) -> Complex64 {
+    if z.norm() > 8.0 && z.arg().abs() < 0.72 * PI {
+        // DLMF 12.9.1: D_nu(z) ~ exp(-z^2/4) * z^nu * sum_{k>=0} (-1)^k (-nu)_{2k} / (k! (2 z^2)^k)
+        let z2 = z * z;
+        let inv_2z2 = 0.5 / z2;
+        let mut sum = ONE;
+        let mut term = ONE;
+        for k in 1..=25 {
+            let kf = k as f64;
+            let a1 = 2.0 * kf - 2.0 - nu;
+            let a2 = 2.0 * kf - 1.0 - nu;
+            let next_term = -term * a1 * a2 * inv_2z2 / kf;
+            if next_term.norm() > term.norm() && k > 2 {
+                break;
+            }
+            term = next_term;
+            sum += term;
+            if term.norm() <= 1e-16 * sum.norm() {
+                break;
+            }
+        }
+        return (-0.25 * z2).exp() * z.powc(nu) * sum;
+    }
     let z2 = z * z;
     let pref = Complex64::new(2.0, 0.0).powc(0.5 * nu) * (-0.25 * z2).exp();
     let sqrt_pi = PI.sqrt();
-    let t1 = (sqrt_pi / gamma_complex(0.5 * (ONE - nu)))
-        * hyp1f1_cplx(-0.5 * nu, Complex64::new(0.5, 0.0), 0.5 * z2);
-    let t2 = (2.0_f64.sqrt() * sqrt_pi / gamma_complex(-0.5 * nu))
+    let rg1 = crate::kernels::special_complex_ext::gamma_beta::rgamma_complex(0.5 * (ONE - nu));
+    let rg2 = crate::kernels::special_complex_ext::gamma_beta::rgamma_complex(-0.5 * nu);
+    let t1 = sqrt_pi * rg1 * hyp1f1_cplx(-0.5 * nu, Complex64::new(0.5, 0.0), 0.5 * z2);
+    let t2 = 2.0_f64.sqrt()
+        * sqrt_pi
+        * rg2
         * z
         * hyp1f1_cplx(0.5 * (ONE - nu), Complex64::new(1.5, 0.0), 0.5 * z2);
     pref * (t1 - t2)
+}
+
+/// Complex Mittag-Leffler function `E_{alpha, beta}(z) = sum_{k>=0} z^k / Gamma(alpha * k + beta)`
+/// for `Re(alpha) > 0`.
+#[must_use]
+pub fn mittag_leffler_complex(
+    alpha: Complex64,
+    beta: Complex64,
+    z: Complex64,
+) -> Complex64 {
+    if z == ZERO {
+        return crate::kernels::special_complex_ext::gamma_beta::rgamma_complex(beta);
+    }
+    if (alpha - ONE).norm() < 1e-14 && (beta - ONE).norm() < 1e-14 {
+        return z.exp();
+    }
+    let mut sum = ZERO;
+    for k in 0..250 {
+        let arg = alpha * (k as f64) + beta;
+        let rg = crate::kernels::special_complex_ext::gamma_beta::rgamma_complex(arg);
+        let term = z.powi(k) * rg;
+        sum += term;
+        if k > 5 && term.norm() <= 1e-15 * (1.0 + sum.norm()) {
+            break;
+        }
+    }
+    sum
+}
+
+/// Complex Legendre function of the second kind `Q_n(z)` for integer `n >= 0`
+/// off `[-1, 1]`, via forward recurrence from `Q_0(z) = 0.5 * ln((z + 1)/(z - 1))`.
+#[must_use]
+pub fn legendre_q_complex(
+    n: u32,
+    z: Complex64,
+) -> Complex64 {
+    let q0 = 0.5 * ((z + ONE) / (z - ONE)).ln();
+    if n == 0 {
+        return q0;
+    }
+    let q1 = z * q0 - ONE;
+    if n == 1 {
+        return q1;
+    }
+    let mut prev = q0;
+    let mut cur = q1;
+    for k in 1..n {
+        let kf = f64::from(k);
+        let next = ((2.0 * kf + 1.0) * z * cur - kf * prev) / (kf + 1.0);
+        prev = cur;
+        cur = next;
+    }
+    cur
 }

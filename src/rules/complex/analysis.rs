@@ -398,6 +398,156 @@ fn is_entire(
     true
 }
 
+/// Structural check for whether `term` is entire in `z_sym`.
+fn classify_entire(
+    graph: &Graph,
+    ops: Ops,
+    term: NodeId,
+    z_sym: SymbolId,
+) -> bool {
+    if !graph.depends_on(graph.find(term), z_sym) {
+        return true;
+    }
+    if graph.symbol_of(term) == Some(z_sym) {
+        return true;
+    }
+    let op = graph.op(term);
+    let children = graph.children(term);
+    match op {
+        | core::ADD => {
+            children
+                .iter()
+                .all(|&c| classify_entire(graph, ops, c, z_sym))
+        },
+        | core::MUL => {
+            if children.len() == 2 {
+                let is_inv_z = |n: NodeId| {
+                    graph.op(n) == core::POW
+                        && graph
+                            .children(n)
+                            .first()
+                            .copied()
+                            .and_then(|b| graph.symbol_of(b))
+                            == Some(z_sym)
+                        && graph
+                            .children(n)
+                            .get(1)
+                            .copied()
+                            .and_then(|e| graph.number_of(e))
+                            .is_some_and(|num| (num.to_f64() + 1.0).abs() < 1e-12)
+                };
+                let is_sin_or_sinh_z = |n: NodeId| {
+                    let op_name = graph.ops().get(graph.op(n)).name.as_ref();
+                    matches!(op_name, "sin" | "sinh")
+                        && graph
+                            .children(n)
+                            .first()
+                            .copied()
+                            .and_then(|b| graph.symbol_of(b))
+                            == Some(z_sym)
+                };
+                if (is_inv_z(children[0]) && is_sin_or_sinh_z(children[1]))
+                    || (is_inv_z(children[1]) && is_sin_or_sinh_z(children[0]))
+                {
+                    return true;
+                }
+            }
+            children
+                .iter()
+                .all(|&c| classify_entire(graph, ops, c, z_sym))
+        },
+        | core::POW => {
+            let Some(&base) = children.first() else {
+                return false;
+            };
+            let Some(&exp) = children.get(1) else {
+                return false;
+            };
+            if !graph.depends_on(graph.find(exp), z_sym)
+                && graph
+                    .number_of(exp)
+                    .is_some_and(|n| n.is_integer() && n.to_f64() >= 0.0)
+            {
+                return classify_entire(graph, ops, base, z_sym);
+            }
+            if !graph.depends_on(graph.find(base), z_sym)
+                && !graph.number_of(base).is_some_and(Number::is_zero)
+            {
+                return classify_entire(graph, ops, exp, z_sym);
+            }
+            false
+        },
+        | _ => {
+            let name = graph.ops().get(op).name.as_ref();
+            let entire_unary = matches!(
+                name,
+                "exp" | "sin" | "cos" | "sinh" | "cosh" | "erf" | "erfc" | "airyai" | "airybi"
+            );
+            entire_unary
+                && children
+                    .iter()
+                    .all(|&c| classify_entire(graph, ops, c, z_sym))
+        },
+    }
+}
+
+/// Structural check for whether `term` is meromorphic in `z_sym`.
+fn classify_meromorphic(
+    graph: &Graph,
+    ops: Ops,
+    term: NodeId,
+    z_sym: SymbolId,
+) -> bool {
+    if classify_entire(graph, ops, term, z_sym) {
+        return true;
+    }
+    let op = graph.op(term);
+    let children = graph.children(term);
+    match op {
+        | core::ADD | core::MUL => {
+            children
+                .iter()
+                .all(|&c| classify_meromorphic(graph, ops, c, z_sym))
+        },
+        | core::POW => {
+            let Some(&base) = children.first() else {
+                return false;
+            };
+            let Some(&exp) = children.get(1) else {
+                return false;
+            };
+            if !graph.depends_on(graph.find(exp), z_sym)
+                && graph.number_of(exp).is_some_and(Number::is_integer)
+            {
+                return classify_meromorphic(graph, ops, base, z_sym);
+            }
+            false
+        },
+        | _ => {
+            let name = graph.ops().get(op).name.as_ref();
+            let mero_unary = matches!(
+                name,
+                "tan"
+                    | "cot"
+                    | "sec"
+                    | "csc"
+                    | "tanh"
+                    | "coth"
+                    | "sech"
+                    | "csch"
+                    | "gamma"
+                    | "digamma"
+                    | "polygamma"
+                    | "zeta"
+            );
+            mero_unary
+                && children
+                    .iter()
+                    .all(|&c| classify_entire(graph, ops, c, z_sym))
+        },
+    }
+}
+
 /// `f` as a meromorphic quotient in `z`.
 fn quotient(
     graph: &mut Graph,
@@ -1186,11 +1336,41 @@ impl Analysis {
             | Request::ComplexLaplacian => {
                 let f = arg(0)?;
                 let z = arg(1)?;
-                let dzbar = self.wirtinger(cx, f, z, true)?;
-                let dz_dzbar = self.wirtinger(cx, dzbar, z, false)?;
-                let four = cx.graph.int(4);
-                let prod = build::mul(cx.graph, &[four, dz_dzbar]);
-                Some(cx.simplify(prod))
+                let zs = cx.graph.symbol_of(z)?;
+                let term = best(cx.graph, f)?;
+                let fresh = |graph: &mut Graph, name: &str| {
+                    let symbol = graph.interner_mut().fresh_symbol(name);
+                    graph.assume(symbol, Facts::REAL);
+                    symbol
+                };
+                let (xs, ys) = (fresh(cx.graph, "lx"), fresh(cx.graph, "ly"));
+                let (x, y) = (cx.graph.symbol_node(xs), cx.graph.symbol_node(ys));
+                let unit = cx.graph.node(self.ops.unit, &[]);
+                let iy = build::mul(cx.graph, &[unit, y]);
+                let w_plus = build::add(cx.graph, &[x, iy]);
+                let w_minus = build::sub(cx.graph, x, iy);
+                let conj_z = build::call(cx.graph, self.ops.conj, &[z]);
+                let g = cx.graph.substitute(term, conj_z, w_minus);
+                let g = cx.graph.substitute(g, z, w_plus);
+                let g = desugar(cx.graph, self.ops, g, &mut HashMap::new())?;
+                let g = cx.simplify(g);
+                let gx = derivative(cx.graph, g, x)?;
+                let gxx = derivative(cx.graph, gx, x)?;
+                let gy = derivative(cx.graph, g, y)?;
+                let gyy = derivative(cx.graph, gy, y)?;
+                let lap = build::add(cx.graph, &[gxx, gyy]);
+                let half = cx.graph.num(Number::fraction(1, 2)?);
+                let two = cx.graph.int(2);
+                let two_i = build::mul(cx.graph, &[two, unit]);
+                let sum_z = build::add(cx.graph, &[z, conj_z]);
+                let x_expr = build::mul(cx.graph, &[half, sum_z]);
+                let diff_z = build::sub(cx.graph, z, conj_z);
+                let two_i_inv = build::powi(cx.graph, two_i, -1);
+                let y_expr = build::mul(cx.graph, &[diff_z, two_i_inv]);
+                let back = cx.graph.substitute(lap, x, x_expr);
+                let back = cx.graph.substitute(back, y, y_expr);
+                let _ = zs;
+                Some(cx.simplify(back))
             },
             | Request::CauchyRiemannCartesian => self.cr_cartesian(cx, arg(0)?, arg(1)?),
             | Request::CauchyRiemannPolar => self.cr_polar(cx, arg(0)?, arg(1)?, arg(2)?),
@@ -1211,7 +1391,7 @@ impl Analysis {
                 let f = arg(0)?;
                 let z = arg(1)?;
                 let n = cx.graph.number_of(arg(2)?).and_then(Number::to_i64)?;
-                if n < 0 {
+                if !(0..=64).contains(&n) {
                     return None;
                 }
                 let analytic = self.check_analytic(cx, f, z)?;
@@ -1236,7 +1416,7 @@ impl Analysis {
         z: NodeId,
         bar: bool,
     ) -> Option<NodeId> {
-        let _ = cx.graph.symbol_of(z)?;
+        let zs = cx.graph.symbol_of(z)?;
         let term = best(cx.graph, f)?;
         let fresh = |graph: &mut Graph, name: &str| {
             let symbol = graph.interner_mut().fresh_symbol(name);
@@ -1244,6 +1424,12 @@ impl Analysis {
             symbol
         };
         let (xs, ys) = (fresh(cx.graph, "wx"), fresh(cx.graph, "wy"));
+        let free = cx.graph.free_symbols(cx.graph.find(term)).to_vec();
+        for s in free {
+            if s != zs {
+                cx.graph.assume(s, Facts::REAL);
+            }
+        }
         let (x, y) = (cx.graph.symbol_node(xs), cx.graph.symbol_node(ys));
         let unit = cx.graph.node(self.ops.unit, &[]);
         let iy = build::mul(cx.graph, &[unit, y]);
@@ -1284,8 +1470,8 @@ impl Analysis {
     ) -> Option<NodeId> {
         let _ = cx.graph.symbol_of(z)?;
         let term = best(cx.graph, f)?;
-        let xs = cx.graph.interner_mut().symbol("x");
-        let ys = cx.graph.interner_mut().symbol("y");
+        let xs = cx.graph.interner_mut().fresh_symbol("cr_x");
+        let ys = cx.graph.interner_mut().fresh_symbol("cr_y");
         cx.graph.assume(xs, Facts::REAL);
         cx.graph.assume(ys, Facts::REAL);
         let (x, y) = (cx.graph.symbol_node(xs), cx.graph.symbol_node(ys));
@@ -1319,18 +1505,34 @@ impl Analysis {
         cx.graph.assume(ts, Facts::REAL);
         let z_sym = cx.graph.interner_mut().symbol("z");
         let z_node = cx.graph.symbol_node(z_sym);
-        let target = if cx.graph.depends_on(cx.graph.find(term), z_sym) {
-            z_node
+        let g = if cx.graph.depends_on(cx.graph.find(term), z_sym) {
+            let unit = cx.graph.node(self.ops.unit, &[]);
+            let cos_t = build::call(cx.graph, self.ops.cos, &[theta]);
+            let sin_t = build::call(cx.graph, self.ops.sin, &[theta]);
+            let i_sin = build::mul(cx.graph, &[unit, sin_t]);
+            let cis_t = build::add(cx.graph, &[cos_t, i_sin]);
+            let polar_z = build::mul(cx.graph, &[r, cis_t]);
+            cx.graph.substitute(term, z_node, polar_z)
+        } else if cx.graph.depends_on(cx.graph.find(term), rs)
+            || cx.graph.depends_on(cx.graph.find(term), ts)
+        {
+            term
         } else {
-            r
+            // Substitute the first free symbol in `term` (e.g. `w^2` -> `(r*cis(theta))^2`).
+            let free = cx.graph.free_symbols(cx.graph.find(term)).to_vec();
+            if let Some(&var_sym) = free.first() {
+                let var_node = cx.graph.symbol_node(var_sym);
+                let unit = cx.graph.node(self.ops.unit, &[]);
+                let cos_t = build::call(cx.graph, self.ops.cos, &[theta]);
+                let sin_t = build::call(cx.graph, self.ops.sin, &[theta]);
+                let i_sin = build::mul(cx.graph, &[unit, sin_t]);
+                let cis_t = build::add(cx.graph, &[cos_t, i_sin]);
+                let polar_z = build::mul(cx.graph, &[r, cis_t]);
+                cx.graph.substitute(term, var_node, polar_z)
+            } else {
+                term
+            }
         };
-        let unit = cx.graph.node(self.ops.unit, &[]);
-        let cos_t = build::call(cx.graph, self.ops.cos, &[theta]);
-        let sin_t = build::call(cx.graph, self.ops.sin, &[theta]);
-        let i_sin = build::mul(cx.graph, &[unit, sin_t]);
-        let cis_t = build::add(cx.graph, &[cos_t, i_sin]);
-        let polar_z = build::mul(cx.graph, &[r, cis_t]);
-        let g = cx.graph.substitute(term, target, polar_z);
         let g = desugar(cx.graph, self.ops, g, &mut HashMap::new())?;
         let (u, v) = super::split(cx.graph, self.ops, g)?;
         let (u, v) = (cx.simplify(u), cx.simplify(v));
@@ -1352,6 +1554,10 @@ impl Analysis {
         x: NodeId,
         y: NodeId,
     ) -> Option<NodeId> {
+        let xs = cx.graph.symbol_of(x)?;
+        let ys = cx.graph.symbol_of(y)?;
+        cx.graph.assume(xs, Facts::REAL);
+        cx.graph.assume(ys, Facts::REAL);
         let u_best = best(cx.graph, u)?;
         let ux_raw = derivative(cx.graph, u_best, x)?;
         let ux = cx.simplify(ux_raw);
@@ -1377,6 +1583,9 @@ impl Analysis {
         let neg_uy = build::neg(cx.graph, uy);
         let rem_raw = build::sub(cx.graph, neg_uy, v1_x);
         let rem = cx.simplify(rem_raw);
+        if cx.graph.depends_on(cx.graph.find(rem), ys) {
+            return None;
+        }
         let v2_req = build::call(cx.graph, int_op, &[rem, x]);
         let v2 = cx.simplify(v2_req);
         if cx.graph.op(v2) == int_op {
@@ -1393,6 +1602,8 @@ impl Analysis {
         z: NodeId,
         entire_only: bool,
     ) -> Option<NodeId> {
+        let z_sym = cx.graph.symbol_of(z)?;
+        let term = best(cx.graph, f)?;
         let analytic = self.check_analytic(cx, f, z)?;
         if cx.graph.payload(analytic) != Some(&Payload::Bool(true)) {
             return Some(cx.graph.lit(Payload::Bool(false)));
@@ -1403,14 +1614,20 @@ impl Analysis {
         {
             return Some(cx.graph.lit(Payload::Bool(false)));
         }
-        let Some(q) = quotient(cx.graph, self.ops, f, z) else {
+        let is_ent = classify_entire(cx.graph, self.ops, term, z_sym);
+        if entire_only {
+            if is_ent {
+                return Some(cx.graph.lit(Payload::Bool(true)));
+            }
+            if let Some(q) = quotient(cx.graph, self.ops, f, z)
+                && let Some(poles) = poles_of(cx, self.ops, &q)
+            {
+                return Some(cx.graph.lit(Payload::Bool(poles.is_empty())));
+            }
             return Some(cx.graph.lit(Payload::Bool(false)));
-        };
-        if !entire_only {
-            return Some(cx.graph.lit(Payload::Bool(true)));
         }
-        let poles = poles_of(cx, self.ops, &q)?;
-        Some(cx.graph.lit(Payload::Bool(poles.is_empty())))
+        let is_mero = is_ent || classify_meromorphic(cx.graph, self.ops, term, z_sym);
+        Some(cx.graph.lit(Payload::Bool(is_mero)))
     }
 
     /// Cauchy–Riemann for `f(x + I y)`.

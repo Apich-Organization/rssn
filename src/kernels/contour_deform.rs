@@ -203,11 +203,18 @@ pub fn indented_semicircle_contour(
 
     let mut segs = Vec::new();
     let mut cur_x = -radius;
-    for p in poles {
-        if p - indent_r > cur_x {
+    for (idx, &p) in poles.iter().enumerate() {
+        let mut r_use = indent_r;
+        if p - r_use < cur_x {
+            r_use = (p - cur_x).max(0.0);
+        }
+        if let Some(&next_p) = poles.get(idx + 1) {
+            r_use = r_use.min(0.45 * (next_p - p));
+        }
+        if p - r_use > cur_x + 1e-14 {
             segs.push(ContourSegment::Line {
                 start: Complex64::new(cur_x, 0.0),
-                end: Complex64::new(p - indent_r, 0.0),
+                end: Complex64::new(p - r_use, 0.0),
             });
         }
         let (t0, t1) = if upper_half {
@@ -215,13 +222,15 @@ pub fn indented_semicircle_contour(
         } else {
             (-PI, 0.0)
         };
-        segs.push(ContourSegment::Arc {
-            center: Complex64::new(p, 0.0),
-            radius: indent_r,
-            theta0: t0,
-            theta1: t1,
-        });
-        cur_x = p + indent_r;
+        if r_use > 1e-14 {
+            segs.push(ContourSegment::Arc {
+                center: Complex64::new(p, 0.0),
+                radius: r_use,
+                theta0: t0,
+                theta1: t1,
+            });
+        }
+        cur_x = p + r_use;
     }
     if radius > cur_x {
         segs.push(ContourSegment::Line {
@@ -243,7 +252,9 @@ pub fn indented_semicircle_contour(
     segs
 }
 
-/// Open Hankel contour around `0` along `cut_angle`.
+/// Open Hankel contour around `0` avoiding the branch cut along `cut_angle`.
+/// Enters from `r_outer` along `cut_angle + gap`, wraps `2*pi - 2*gap` around
+/// the origin at `r_inner`, and exits to `r_outer` along `cut_angle - gap`.
 #[must_use]
 pub fn hankel_contour(
     r_inner: f64,
@@ -251,22 +262,80 @@ pub fn hankel_contour(
     cut_angle: f64,
     gap: f64,
 ) -> Vec<ContourSegment> {
-    let theta_below = cut_angle - gap;
     let theta_above = cut_angle + gap;
+    let theta_below_wrap = cut_angle + TAU - gap;
     vec![
         ContourSegment::Line {
-            start: Complex64::from_polar(r_outer, theta_below),
-            end: Complex64::from_polar(r_inner, theta_below),
+            start: Complex64::from_polar(r_outer, theta_above),
+            end: Complex64::from_polar(r_inner, theta_above),
         },
         ContourSegment::Arc {
             center: Complex64::new(0.0, 0.0),
             radius: r_inner,
-            theta0: theta_below,
-            theta1: theta_above,
+            theta0: theta_above,
+            theta1: theta_below_wrap,
         },
         ContourSegment::Line {
-            start: Complex64::from_polar(r_inner, theta_above),
-            end: Complex64::from_polar(r_outer, theta_above),
+            start: Complex64::from_polar(r_inner, theta_below_wrap),
+            end: Complex64::from_polar(r_outer, theta_below_wrap),
+        },
+    ]
+}
+
+/// Vertical Bromwich contour `c + i * y` for `y in [-y_max, y_max]`.
+#[must_use]
+pub fn bromwich_contour(
+    c: f64,
+    y_max: f64,
+) -> Vec<ContourSegment> {
+    vec![ContourSegment::Line {
+        start: Complex64::new(c, -y_max),
+        end: Complex64::new(c, y_max),
+    }]
+}
+
+/// Counterclockwise rectangular contour `[x0, x1] x [y0, y1]`.
+#[must_use]
+pub fn rectangular_contour(
+    x0: f64,
+    x1: f64,
+    y0: f64,
+    y1: f64,
+) -> Vec<ContourSegment> {
+    let p00 = Complex64::new(x0, y0);
+    let p10 = Complex64::new(x1, y0);
+    let p11 = Complex64::new(x1, y1);
+    let p01 = Complex64::new(x0, y1);
+    vec![
+        ContourSegment::Line { start: p00, end: p10 },
+        ContourSegment::Line { start: p10, end: p11 },
+        ContourSegment::Line { start: p11, end: p01 },
+        ContourSegment::Line { start: p01, end: p00 },
+    ]
+}
+
+/// Closed sector (wedge) contour from `0` to `radius`, along arc `0..angle`, and back to `0`.
+#[must_use]
+pub fn sector_contour(
+    radius: f64,
+    angle: f64,
+) -> Vec<ContourSegment> {
+    let p1 = Complex64::new(radius, 0.0);
+    let p2 = Complex64::from_polar(radius, angle);
+    vec![
+        ContourSegment::Line {
+            start: Complex64::new(0.0, 0.0),
+            end: p1,
+        },
+        ContourSegment::Arc {
+            center: Complex64::new(0.0, 0.0),
+            radius,
+            theta0: 0.0,
+            theta1: angle,
+        },
+        ContourSegment::Line {
+            start: p2,
+            end: Complex64::new(0.0, 0.0),
         },
     ]
 }
@@ -281,10 +350,22 @@ fn segment_hits_ray(
     let dir = Complex64::from_polar(1.0, ray.angle);
     // Solve a + t*d = origin + s*dir => cross(d, dir) * t = cross(origin - a, dir)
     let cross_dd = d.re * dir.im - d.im * dir.re;
-    if cross_dd.abs() < 1e-13 {
-        return false;
-    }
     let diff = ray.origin - a;
+    if cross_dd.abs() < 1e-13 {
+        // Collinear check: distance from ray.origin to line(a, b) < 1e-11
+        let len = d.norm();
+        if len == 0.0 {
+            return false;
+        }
+        let cross_line = (diff.re * d.im - diff.im * d.re).abs() / len;
+        if cross_line > 1e-11 {
+            return false;
+        }
+        // Overlap between segment [0, 1] and ray s >= 0
+        let proj_a = (a.re - ray.origin.re) * dir.re + (a.im - ray.origin.im) * dir.im;
+        let proj_b = (b.re - ray.origin.re) * dir.re + (b.im - ray.origin.im) * dir.im;
+        return proj_a.max(proj_b) >= 0.0;
+    }
     let t = (diff.re * dir.im - diff.im * dir.re) / cross_dd;
     let s = (diff.re * d.im - diff.im * d.re) / cross_dd;
     t > 0.0 && t < 1.0 && s >= 0.0
@@ -335,29 +416,43 @@ pub fn deform_path_around_obstacles(
 
     let mut segs = Vec::new();
     let mut cur = start;
+    let mut cur_proj = 0.0_f64;
     let line_angle = d.arg();
-    for (_proj, center, detour_right) in obstacles {
-        let entry_pt = center - unit * clearance;
-        let exit_pt = center + unit * clearance;
-        if (entry_pt - cur).norm() > 1e-12 && (entry_pt - start).norm() < (exit_pt - start).norm() {
-            segs.push(ContourSegment::Line {
-                start: cur,
-                end: entry_pt,
-            });
-            let t_entry = line_angle + PI;
-            let t_exit = if detour_right {
-                line_angle + TAU
-            } else {
-                line_angle
-            };
-            segs.push(ContourSegment::Arc {
-                center,
-                radius: clearance,
-                theta0: t_entry,
-                theta1: t_exit,
-            });
-            cur = exit_pt;
+    for (proj, center, detour_right) in obstacles {
+        let rel = center - start;
+        let perp = rel.re * unit.im - rel.im * unit.re;
+        let dx = (clearance * clearance - perp * perp).max(0.0).sqrt();
+        let p_in = (proj - dx).max(0.0);
+        let p_out = (proj + dx).min(len);
+        if p_in <= cur_proj + 1e-12 || p_out <= p_in + 1e-12 {
+            continue;
         }
+        let entry_pt = start + unit * p_in;
+        let exit_pt = start + unit * p_out;
+        segs.push(ContourSegment::Line {
+            start: cur,
+            end: entry_pt,
+        });
+        let a_in = (entry_pt - center).arg();
+        let mut a_out = (exit_pt - center).arg();
+        if detour_right {
+            while a_out <= a_in {
+                a_out += TAU;
+            }
+        } else {
+            while a_out >= a_in {
+                a_out -= TAU;
+            }
+        }
+        let _ = line_angle;
+        segs.push(ContourSegment::Arc {
+            center,
+            radius: clearance,
+            theta0: a_in,
+            theta1: a_out,
+        });
+        cur = exit_pt;
+        cur_proj = p_out;
     }
     if (end - cur).norm() > 1e-12 {
         segs.push(ContourSegment::Line { start: cur, end });

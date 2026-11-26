@@ -57,15 +57,14 @@ use basin::GradientDescent;
 use basin::HalleyRoot;
 use basin::IncumbentState;
 use basin::Lbfgs;
-use basin::line_search::MoreThuente;
 use basin::Lbfgsb;
 use basin::Lincoa;
 use basin::Mads;
 use basin::NelderMead;
 use basin::NewtonRoot;
-use basin::OptimizationResult;
 use basin::Newuoa;
 use basin::NonlinearCg;
+use basin::OptimizationResult;
 use basin::PointState;
 use basin::PopulationProgress;
 use basin::ProjectedGradientDescent;
@@ -76,6 +75,7 @@ use basin::SolisWets;
 use basin::Ssga;
 use basin::Tnc;
 use basin::Toms748Root;
+use basin::line_search::MoreThuente;
 
 pub use basin;
 
@@ -428,12 +428,7 @@ impl From<&OptimizationConfig> for MinimizeOptions {
 /// The fingerprint derives let a result cross the native ABI unchanged, the
 /// same way every other record RSSN publishes does.
 #[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    bincode_next::Encode,
-    bincode_next::Decode,
-    bincode_next::Fingerprint,
+    Debug, Clone, PartialEq, bincode_next::Encode, bincode_next::Decode, bincode_next::Fingerprint,
 )]
 pub struct MinimizeResult {
     /// Best parameter vector found.
@@ -456,9 +451,7 @@ pub struct MinimizeResult {
 /// A run whose costs are all infinite never establishes an incumbent, so the
 /// best-record accessors would panic; the final iterate is the honest answer
 /// there.
-fn best_point<S>(
-    result: &OptimizationResult<S>,
-) -> (S::Param, S::Float)
+fn best_point<S>(result: &OptimizationResult<S>) -> (S::Param, S::Float)
 where
     S: IncumbentState,
     S::Param: Clone,
@@ -705,43 +698,52 @@ pub fn minimize(
     let x0 = start.to_vec();
     match kind {
         | SolverKind::GradientDescent { step } => {
-            solve_with!(problem, stationary!(GradientDescent::new(step), options), x0, options)
+            solve_with!(
+                problem,
+                stationary!(GradientDescent::new(step), options),
+                x0,
+                options
+            )
         },
         // A shallow objective needs a long step: the More–Thuente search is
         // left free to take one, which the Wolfe search's default bound rules
         // out.
-        | SolverKind::Bfgs => solve_with!(
-            problem,
-            stationary!(
-                Bfgs::with_line_search(MoreThuente::new().stpmax(f64::MAX).maxfev(100)),
+        | SolverKind::Bfgs => {
+            solve_with!(
+                problem,
+                stationary!(
+                    Bfgs::with_line_search(MoreThuente::new().stpmax(f64::MAX).maxfev(100)),
+                    options
+                ),
+                x0,
                 options
-            ),
-            x0,
-            options
-        ),
-        | SolverKind::Lbfgs => solve_with!(
-            problem,
-            stationary!(Lbfgs::new().unbounded(), options),
-            x0,
-            options
-        ),
+            )
+        },
+        | SolverKind::Lbfgs => {
+            solve_with!(
+                problem,
+                stationary!(Lbfgs::new().unbounded(), options),
+                x0,
+                options
+            )
+        },
         // The bounded variant exposes no gradient test: its iterate is
         // projected onto the box, so a plain gradient norm says nothing.
         | SolverKind::Lbfgsb => solve_with!(problem, Lbfgsb::new(), x0, options),
         | SolverKind::NonlinearCg => {
-            solve_with!(problem, stationary!(NonlinearCg::new(), options), x0, options)
+            solve_with!(
+                problem,
+                stationary!(NonlinearCg::new(), options),
+                x0,
+                options
+            )
         },
         // Derivative-free, global and scalar families: no framework check, for
         // the reason recorded at `stationary!` — each keeps the tolerance test
         // its own algorithm defines.
         | SolverKind::NelderMead => solve_with!(problem, NelderMead::new(), x0, options),
         | SolverKind::NelderMeadProjected => {
-            solve_with!(
-                problem,
-                NelderMead::new().projected(),
-                x0,
-                options
-            )
+            solve_with!(problem, NelderMead::new().projected(), x0, options)
         },
         | SolverKind::Bobyqa => solve_with!(problem, Bobyqa::new(), x0, options),
         | SolverKind::Newuoa => solve_with!(problem, Newuoa::new(), x0, options),
@@ -782,12 +784,7 @@ pub fn minimize(
             solve_population!(problem, De::new(options.seed), x0, options)
         },
         | SolverKind::GlobalBestPso => {
-            solve_population!(
-                problem,
-                GlobalBestPso::new(options.seed),
-                x0,
-                options
-            )
+            solve_population!(problem, GlobalBestPso::new(options.seed), x0, options)
         },
         | SolverKind::RandomSearch { lambda } => {
             solve_population!(
@@ -798,12 +795,7 @@ pub fn minimize(
             )
         },
         | SolverKind::SolisWets => {
-            solve_with!(
-                problem,
-                SolisWets::new(options.seed),
-                x0,
-                options
-            )
+            solve_with!(problem, SolisWets::new(options.seed), x0, options)
         },
         | SolverKind::Ssga => {
             solve_population!(problem, Ssga::new(options.seed), x0, options)

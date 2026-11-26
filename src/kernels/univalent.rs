@@ -312,6 +312,13 @@ pub fn grunsky_matrix(
     }
     // Normalized coefficients b_k = a_k / a_1 for k >= 1 (b_1 = 1)
     let max_deg = 2 * order + 1;
+    if taylor_coeffs.len() <= max_deg {
+        return Err(format!(
+            "grunsky_matrix(order={order}) requires at least {} Taylor coefficients (got {})",
+            max_deg + 1,
+            taylor_coeffs.len()
+        ));
+    }
     let b = |k: usize| -> Complex<f64> {
         if k == 0 {
             Complex::new(0.0, 0.0)
@@ -422,7 +429,41 @@ pub fn check_grunsky_inequality(
             quad += g_ij * xi * xj;
         }
     }
-    Ok(quad.norm() <= norm2 + tol)
+    if quad.norm() > norm2 + tol {
+        return Ok(false);
+    }
+    // Also estimate spectral norm ||G||_2 via power iteration on G^* G
+    if m > 0 {
+        let mut v = vec![Complex::new(1.0 / (m as f64).sqrt(), 0.0); m];
+        let mut sigma_sq = 0.0_f64;
+        for _ in 0..24 {
+            let mut gv = vec![Complex::new(0.0, 0.0); m];
+            for i in 0..m {
+                for j in 0..m {
+                    gv[i] += grunsky[i][j] * v[j];
+                }
+            }
+            let mut ghgv = vec![Complex::new(0.0, 0.0); m];
+            for j in 0..m {
+                for i in 0..m {
+                    ghgv[j] += grunsky[i][j].conj() * gv[i];
+                }
+            }
+            let norm = ghgv.iter().map(|c| c.norm_sqr()).sum::<f64>().sqrt();
+            if norm < 1e-30 {
+                sigma_sq = 0.0;
+                break;
+            }
+            sigma_sq = norm;
+            for j in 0..m {
+                v[j] = ghgv[j] / norm;
+            }
+        }
+        if sigma_sq.sqrt() > 1.0 + tol {
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }
 
 /// Advances one RK4 step of the radial Loewner slit ODE
@@ -433,10 +474,27 @@ pub fn loewner_slit_step(
     dt: f64,
 ) -> Complex<f64> {
     let u = Complex::from_polar(1.0, driving_kappa);
+    if (u - w).norm() < 1e-12 {
+        return w;
+    }
     let rhs = |z: Complex<f64>| -> Complex<f64> { z * (u + z) / (u - z) };
     let k1 = rhs(w);
     let k2 = rhs(w + k1 * (0.5 * dt));
     let k3 = rhs(w + k2 * (0.5 * dt));
     let k4 = rhs(w + k3 * dt);
     w + (k1 + k2 * 2.0 + k3 * 2.0 + k4) * (dt / 6.0)
+}
+
+/// Checks Becker's sufficient univalence criterion `(1 - |z|^2) * |z * f''(z)/f'(z)| <= 1`.
+#[must_use]
+pub fn check_becker_univalence(
+    z: Complex<f64>,
+    df: Complex<f64>,
+    ddf: Complex<f64>,
+) -> bool {
+    let r2 = z.norm_sqr();
+    if r2 >= 1.0 || df.norm() < 1e-15 {
+        return false;
+    }
+    (1.0 - r2) * (z * ddf / df).norm() <= 1.0
 }

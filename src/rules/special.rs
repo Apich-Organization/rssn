@@ -871,7 +871,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         }
     }
     let op_named = |name: &str| registered.iter().find(|r| r.0 == name).map(|r| r.1);
-    // Complex-argument evaluation of erf, erfc and the Fresnel integrals.
+    // Complex-argument evaluation across the special function matrix.
+    use crate::kernels::special_complex;
+    use crate::kernels::special_complex_ext;
     for (name, eval) in [
         (
             "erf",
@@ -879,10 +881,11 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ),
         (
             "erfc",
-            crate::graph::ComplexEval(|a| {
-                a.first()
-                    .map(|&z| num_complex::Complex64::new(1.0, 0.0) - fresnel::erf_complex(z))
-            }),
+            crate::graph::ComplexEval(|a| a.first().map(|&z| special_complex_ext::erfc_complex(z))),
+        ),
+        (
+            "erfi",
+            crate::graph::ComplexEval(|a| a.first().map(|&z| special_complex_ext::erfi_complex(z))),
         ),
         (
             "fresnels",
@@ -898,6 +901,266 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
                 let z = a.first()?;
                 let (_, (re, im)) = fresnel::fresnel_sc_complex(z.re, z.im);
                 Some(num_complex::Complex64::new(re, im))
+            }),
+        ),
+        (
+            "gamma",
+            crate::graph::ComplexEval(|a| a.first().map(|&z| special_complex::gamma_complex(z))),
+        ),
+        (
+            "lgamma",
+            crate::graph::ComplexEval(|a| a.first().map(|&z| special_complex::ln_gamma_complex(z))),
+        ),
+        (
+            "digamma",
+            crate::graph::ComplexEval(|a| a.first().map(|&z| special_complex::digamma_complex(z))),
+        ),
+        (
+            "polygamma",
+            crate::graph::ComplexEval(|a| {
+                let n = a.first()?.re.round() as u32;
+                Some(special_complex_ext::polygamma_complex(n, *a.get(1)?))
+            }),
+        ),
+        (
+            "beta",
+            crate::graph::ComplexEval(|a| {
+                Some(special_complex_ext::beta_complex(*a.first()?, *a.get(1)?))
+            }),
+        ),
+        (
+            "zeta",
+            crate::graph::ComplexEval(|a| {
+                a.first()
+                    .map(|&z| special_complex_ext::riemann_zeta_complex(z))
+            }),
+        ),
+        (
+            "hurwitz_zeta",
+            crate::graph::ComplexEval(|a| {
+                Some(special_complex_ext::hurwitz_zeta_complex(
+                    *a.first()?,
+                    *a.get(1)?,
+                ))
+            }),
+        ),
+        (
+            "lambertw",
+            crate::graph::ComplexEval(|a| {
+                a.first().map(|&z| special_complex::lambert_w_complex(z, 0))
+            }),
+        ),
+        (
+            "lambertw_m1",
+            crate::graph::ComplexEval(|a| {
+                a.first()
+                    .map(|&z| special_complex::lambert_w_complex(z, -1))
+            }),
+        ),
+        (
+            "besselj",
+            crate::graph::ComplexEval(|a| {
+                Some(special_complex_ext::bessel_j_complex_order(
+                    *a.first()?,
+                    *a.get(1)?,
+                ))
+            }),
+        ),
+        (
+            "bessely",
+            crate::graph::ComplexEval(|a| {
+                Some(special_complex_ext::bessel_y_complex(
+                    a.first()?.re,
+                    *a.get(1)?,
+                ))
+            }),
+        ),
+        (
+            "besseli",
+            crate::graph::ComplexEval(|a| {
+                Some(special_complex_ext::bessel_i_complex_order(
+                    *a.first()?,
+                    *a.get(1)?,
+                ))
+            }),
+        ),
+        (
+            "besselk",
+            crate::graph::ComplexEval(|a| {
+                Some(special_complex_ext::bessel_k_complex(
+                    a.first()?.re,
+                    *a.get(1)?,
+                ))
+            }),
+        ),
+        (
+            "airyai",
+            crate::graph::ComplexEval(|a| {
+                a.first()
+                    .map(|&z| special_complex_ext::airy_ai_complex(z).0)
+            }),
+        ),
+        (
+            "airybi",
+            crate::graph::ComplexEval(|a| {
+                a.first()
+                    .map(|&z| special_complex_ext::airy_bi_complex(z).0)
+            }),
+        ),
+        (
+            "airyaiprime",
+            crate::graph::ComplexEval(|a| {
+                a.first()
+                    .map(|&z| special_complex_ext::airy_ai_complex(z).1)
+            }),
+        ),
+        (
+            "airybiprime",
+            crate::graph::ComplexEval(|a| {
+                a.first()
+                    .map(|&z| special_complex_ext::airy_bi_complex(z).1)
+            }),
+        ),
+        (
+            "si",
+            crate::graph::ComplexEval(|a| {
+                a.first()
+                    .map(|&z| special_complex_ext::sin_cos_integral_complex(z).0)
+            }),
+        ),
+        (
+            "ci",
+            crate::graph::ComplexEval(|a| {
+                a.first()
+                    .map(|&z| special_complex_ext::sin_cos_integral_complex(z).1)
+            }),
+        ),
+        (
+            "shi",
+            crate::graph::ComplexEval(|a| {
+                a.first()
+                    .map(|&z| special_complex_ext::sinh_cosh_integral_complex(z).0)
+            }),
+        ),
+        (
+            "chi",
+            crate::graph::ComplexEval(|a| {
+                a.first()
+                    .map(|&z| special_complex_ext::sinh_cosh_integral_complex(z).1)
+            }),
+        ),
+        (
+            "ei",
+            crate::graph::ComplexEval(|a| {
+                a.first()
+                    .map(|&z| special_complex_ext::exp_integral_ei_complex(z))
+            }),
+        ),
+        (
+            "li",
+            crate::graph::ComplexEval(|a| {
+                a.first()
+                    .map(|&z| special_complex_ext::log_integral_complex(z))
+            }),
+        ),
+        (
+            "polylog",
+            crate::graph::ComplexEval(|a| {
+                Some(crate::kernels::special_ext::polylog_complex(
+                    *a.first()?,
+                    *a.get(1)?,
+                ))
+            }),
+        ),
+        (
+            "lerch",
+            crate::graph::ComplexEval(|a| {
+                Some(special_complex_ext::lerch_phi_complex(
+                    *a.first()?,
+                    *a.get(1)?,
+                    *a.get(2)?,
+                ))
+            }),
+        ),
+        (
+            "chebyshevt",
+            crate::graph::ComplexEval(|a| {
+                let n = a.first()?.re.round() as u32;
+                Some(special_complex_ext::chebyshev_t_complex(n, *a.get(1)?))
+            }),
+        ),
+        (
+            "chebyshevu",
+            crate::graph::ComplexEval(|a| {
+                let n = a.first()?.re.round() as u32;
+                Some(special_complex_ext::chebyshev_u_complex(n, *a.get(1)?))
+            }),
+        ),
+        (
+            "legendrep",
+            crate::graph::ComplexEval(|a| {
+                let n = a.first()?.re.round() as u32;
+                Some(special_complex_ext::legendre_p_complex(n, *a.get(1)?))
+            }),
+        ),
+        (
+            "hermiteh",
+            crate::graph::ComplexEval(|a| {
+                let n = a.first()?.re.round() as u32;
+                Some(special_complex_ext::hermite_h_complex(n, *a.get(1)?))
+            }),
+        ),
+        (
+            "laguerrel",
+            crate::graph::ComplexEval(|a| {
+                let n = a.first()?.re.round() as u32;
+                Some(special_complex_ext::laguerre_l_complex(
+                    n,
+                    num_complex::Complex64::new(0.0, 0.0),
+                    *a.get(1)?,
+                ))
+            }),
+        ),
+        (
+            "ber",
+            crate::graph::ComplexEval(|a| {
+                Some(special_complex_ext::kelvin_complex(a.first()?.re, *a.get(1)?).0)
+            }),
+        ),
+        (
+            "bei",
+            crate::graph::ComplexEval(|a| {
+                Some(special_complex_ext::kelvin_complex(a.first()?.re, *a.get(1)?).1)
+            }),
+        ),
+        (
+            "ker",
+            crate::graph::ComplexEval(|a| {
+                Some(special_complex_ext::kelvin_complex(a.first()?.re, *a.get(1)?).2)
+            }),
+        ),
+        (
+            "kei",
+            crate::graph::ComplexEval(|a| {
+                Some(special_complex_ext::kelvin_complex(a.first()?.re, *a.get(1)?).3)
+            }),
+        ),
+        (
+            "angerj",
+            crate::graph::ComplexEval(|a| {
+                Some(special_complex_ext::anger_j_complex(
+                    a.first()?.re,
+                    *a.get(1)?,
+                ))
+            }),
+        ),
+        (
+            "webere",
+            crate::graph::ComplexEval(|a| {
+                Some(special_complex_ext::weber_e_complex(
+                    a.first()?.re,
+                    *a.get(1)?,
+                ))
             }),
         ),
     ] {

@@ -396,6 +396,106 @@ fn hyp2f1_complex(a: &[Data]) -> Option<Data> {
     ))
 }
 
+fn binomial_complex_op(a: &[Data]) -> Option<Data> {
+    pair(ext::binomial_complex(point(a, 0)?, point(a, 2)?))
+}
+
+fn reg_lower_gamma_complex_op(a: &[Data]) -> Option<Data> {
+    pair(ext::reg_lower_gamma_complex(point(a, 0)?, point(a, 2)?))
+}
+
+fn reg_upper_gamma_complex_op(a: &[Data]) -> Option<Data> {
+    pair(ext::reg_upper_gamma_complex(point(a, 0)?, point(a, 2)?))
+}
+
+fn reg_beta_complex_op(a: &[Data]) -> Option<Data> {
+    pair(ext::reg_beta_complex(
+        point(a, 0)?,
+        point(a, 2)?,
+        point(a, 4)?,
+    ))
+}
+
+fn spence_complex_op(a: &[Data]) -> Option<Data> {
+    pair(ext::spence_complex(point(a, 0)?))
+}
+
+fn bessel_ke_complex_op(a: &[Data]) -> Option<Data> {
+    pair(ext::bessel_ke_complex(scalar(a, 0)?, point(a, 1)?))
+}
+
+fn spherical_jn_complex_op(a: &[Data]) -> Option<Data> {
+    let n = scalar(a, 0)?.round() as i32;
+    pair(ext::spherical_jn_complex(n, point(a, 1)?))
+}
+
+fn spherical_yn_complex_op(a: &[Data]) -> Option<Data> {
+    let n = scalar(a, 0)?.round() as i32;
+    pair(ext::spherical_yn_complex(n, point(a, 1)?))
+}
+
+fn spherical_in_complex_op(a: &[Data]) -> Option<Data> {
+    let n = scalar(a, 0)?.round() as i32;
+    pair(ext::spherical_in_complex(n, point(a, 1)?))
+}
+
+fn spherical_kn_complex_op(a: &[Data]) -> Option<Data> {
+    let n = scalar(a, 0)?.round() as i32;
+    pair(ext::spherical_kn_complex(n, point(a, 1)?))
+}
+
+fn struve_h_complex_op(a: &[Data]) -> Option<Data> {
+    pair(ext::struve_h_complex(scalar(a, 0)?, point(a, 1)?))
+}
+
+fn struve_l_complex_op(a: &[Data]) -> Option<Data> {
+    pair(ext::struve_l_complex(scalar(a, 0)?, point(a, 1)?))
+}
+
+fn airy_gi_complex_op(a: &[Data]) -> Option<Data> {
+    pair(ext::airy_gi_complex(point(a, 0)?))
+}
+
+fn airy_hi_complex_op(a: &[Data]) -> Option<Data> {
+    pair(ext::airy_hi_complex(point(a, 0)?))
+}
+
+fn elliptic_f_complex_op(a: &[Data]) -> Option<Data> {
+    pair(ext::elliptic_f_complex(point(a, 0)?, point(a, 2)?))
+}
+
+fn elliptic_e_inc_complex_op(a: &[Data]) -> Option<Data> {
+    pair(ext::elliptic_e_inc_complex(point(a, 0)?, point(a, 2)?))
+}
+
+fn elliptic_pi_complex_op(a: &[Data]) -> Option<Data> {
+    pair(ext::elliptic_pi_complex(
+        point(a, 0)?,
+        point(a, 2)?,
+        point(a, 4)?,
+    ))
+}
+
+fn mittag_leffler_complex_op(a: &[Data]) -> Option<Data> {
+    pair(ext::mittag_leffler_complex(
+        point(a, 0)?,
+        point(a, 2)?,
+        point(a, 4)?,
+    ))
+}
+
+fn eisenstein_e4_complex_op(a: &[Data]) -> Option<Data> {
+    pair(ext::eisenstein_e4_complex(point(a, 0)?))
+}
+
+fn eisenstein_e6_complex_op(a: &[Data]) -> Option<Data> {
+    pair(ext::eisenstein_e6_complex(point(a, 0)?))
+}
+
+fn modular_lambda_complex_op(a: &[Data]) -> Option<Data> {
+    pair(ext::modular_lambda_complex(point(a, 0)?))
+}
+
 pub(super) const ENTRIES: &[Entry] = &[
     Entry {
         name: "lgamma_complex",
@@ -762,6 +862,132 @@ pub(super) const ENTRIES: &[Entry] = &[
         params: "ssssssss",
         eval: hyp2f1_complex,
         doc: "`hyp2f1_complex(ar, ai, br, bi, cr, ci, zr, zi)`: `list(re, im)` of `2F1(a, b; c; z)`.",
+    },
+    Entry {
+        name: "binomial_complex",
+        params: "ssss",
+        eval: binomial_complex_op,
+        doc: "`binomial_complex(nr, ni, kr, ki)`: `list(re, im)` of `C(n, k)`.",
+    },
+    Entry {
+        name: "reg_lower_gamma_complex",
+        params: "ssss",
+        eval: reg_lower_gamma_complex_op,
+        doc: "`reg_lower_gamma_complex(ar, ai, zr, zi)`: `list(re, im)` of `P(a, z)`.",
+    },
+    Entry {
+        name: "reg_upper_gamma_complex",
+        params: "ssss",
+        eval: reg_upper_gamma_complex_op,
+        doc: "`reg_upper_gamma_complex(ar, ai, zr, zi)`: `list(re, im)` of `Q(a, z)`.",
+    },
+    Entry {
+        name: "reg_beta_complex",
+        params: "ssssss",
+        eval: reg_beta_complex_op,
+        doc: "`reg_beta_complex(ar, ai, br, bi, zr, zi)`: `list(re, im)` of `I_z(a, b)`.",
+    },
+    Entry {
+        name: "spence_complex",
+        params: "ss",
+        eval: spence_complex_op,
+        doc: "`spence_complex(re, im)`: `list(re, im)` of `Li_2(1 - z)`.",
+    },
+    Entry {
+        name: "bessel_ke_complex",
+        params: "sss",
+        eval: bessel_ke_complex_op,
+        doc: "`bessel_ke_complex(nu, re, im)`: `list(re, im)` of `exp(z) * K_nu(z)`.",
+    },
+    Entry {
+        name: "spherical_jn_complex",
+        params: "sss",
+        eval: spherical_jn_complex_op,
+        doc: "`spherical_jn_complex(n, re, im)`: `list(re, im)` of `j_n(z)`.",
+    },
+    Entry {
+        name: "spherical_yn_complex",
+        params: "sss",
+        eval: spherical_yn_complex_op,
+        doc: "`spherical_yn_complex(n, re, im)`: `list(re, im)` of `y_n(z)`.",
+    },
+    Entry {
+        name: "spherical_in_complex",
+        params: "sss",
+        eval: spherical_in_complex_op,
+        doc: "`spherical_in_complex(n, re, im)`: `list(re, im)` of `i_n(z)`.",
+    },
+    Entry {
+        name: "spherical_kn_complex",
+        params: "sss",
+        eval: spherical_kn_complex_op,
+        doc: "`spherical_kn_complex(n, re, im)`: `list(re, im)` of `k_n(z)`.",
+    },
+    Entry {
+        name: "struve_h_complex",
+        params: "sss",
+        eval: struve_h_complex_op,
+        doc: "`struve_h_complex(nu, re, im)`: `list(re, im)` of `H_nu(z)`.",
+    },
+    Entry {
+        name: "struve_l_complex",
+        params: "sss",
+        eval: struve_l_complex_op,
+        doc: "`struve_l_complex(nu, re, im)`: `list(re, im)` of `L_nu(z)`.",
+    },
+    Entry {
+        name: "airy_gi_complex",
+        params: "ss",
+        eval: airy_gi_complex_op,
+        doc: "`airy_gi_complex(re, im)`: `list(re, im)` of Scorer `Gi(z)`.",
+    },
+    Entry {
+        name: "airy_hi_complex",
+        params: "ss",
+        eval: airy_hi_complex_op,
+        doc: "`airy_hi_complex(re, im)`: `list(re, im)` of Scorer `Hi(z)`.",
+    },
+    Entry {
+        name: "elliptic_f_complex",
+        params: "ssss",
+        eval: elliptic_f_complex_op,
+        doc: "`elliptic_f_complex(pr, pi, mr, mi)`: `list(re, im)` of `F(phi | m)`.",
+    },
+    Entry {
+        name: "elliptic_e_inc_complex",
+        params: "ssss",
+        eval: elliptic_e_inc_complex_op,
+        doc: "`elliptic_e_inc_complex(pr, pi, mr, mi)`: `list(re, im)` of `E(phi | m)`.",
+    },
+    Entry {
+        name: "elliptic_pi_complex",
+        params: "ssssss",
+        eval: elliptic_pi_complex_op,
+        doc: "`elliptic_pi_complex(nr, ni, pr, pi, mr, mi)`: `list(re, im)` of `Pi(n; phi | m)`.",
+    },
+    Entry {
+        name: "mittag_leffler_complex",
+        params: "ssssss",
+        eval: mittag_leffler_complex_op,
+        doc: "`mittag_leffler_complex(ar, ai, br, bi, zr, zi)`: `list(re, im)` of `E_{alpha, beta}(z)`.",
+    },
+    Entry {
+        name: "eisenstein_e4_complex",
+        params: "ss",
+        eval: eisenstein_e4_complex_op,
+        doc: "`eisenstein_e4_complex(re, im)`: `list(re, im)` of `E_4(tau)`.",
+    },
+    Entry {
+        name: "eisenstein_e6_complex",
+        params: "ss",
+        eval: eisenstein_e6_complex_op,
+        doc: "`eisenstein_e6_complex(re, im)`: `list(re, im)` of `E_6(tau)`.",
+    },
+    Entry {
+        name: "modular_lambda_complex",
+        params: "ss",
+        eval: modular_lambda_complex_op,
+        doc: "`modular_lambda_complex(re, im)`: `list(re, im)` of `lambda(tau)`.",
     },
 ];
 

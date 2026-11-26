@@ -310,14 +310,30 @@ pub fn algebraic_riemann_surface_hyperelliptic(roots: &[Complex64]) -> RiemannSu
 }
 
 /// Topological invariants for a superelliptic curve `w^n = prod_{k=1}^d (z - r_k)`
-/// assuming `n >= 2` and the `roots` are distinct.
+/// deduplicating roots within `1e-12` (so repeated roots do not inflate genus).
 #[must_use]
 pub fn algebraic_riemann_surface_superelliptic(
     roots: &[Complex64],
     n: usize,
 ) -> RiemannSurfaceInfo {
     let n = n.max(2);
-    let d = roots.len();
+    let mut distinct: Vec<Complex64> = Vec::with_capacity(roots.len());
+    for &r in roots {
+        if !distinct.iter().any(|&u| (u - r).norm() < 1e-12) {
+            distinct.push(r);
+        }
+    }
+    let d = distinct.len();
+    if d == 0 {
+        return RiemannSurfaceInfo {
+            degree: n,
+            branch_points: Vec::new(),
+            has_branch_at_infinity: false,
+            ramification_indices: Vec::new(),
+            monodromy_generators: Vec::new(),
+            genus: 0,
+        };
+    }
     let g_nd = gcd_usize(n, d);
     let inf_cycle_len = n / g_nd;
     let has_branch_at_infinity = inf_cycle_len > 1;
@@ -350,7 +366,7 @@ pub fn algebraic_riemann_surface_superelliptic(
 
     RiemannSurfaceInfo {
         degree: n,
-        branch_points: roots.to_vec(),
+        branch_points: distinct,
         has_branch_at_infinity,
         ramification_indices,
         monodromy_generators,
@@ -437,8 +453,9 @@ fn aberth_solve_fiber(
 }
 
 /// Tracks the `n` sheets of `P(z, w) = 0` along a closed loop `loop_pts`
-/// (from `loop_pts[0]` around and back to `loop_pts[0]`) and returns the
-/// induced monodromy permutation on `0..n`.
+/// (from `loop_pts[0]` around and back to `loop_pts[0]`) with adaptive
+/// step subdivision to prevent sheet collision, and returns the induced
+/// monodromy permutation on `0..n`.
 #[must_use]
 pub fn monodromy_around_loop(
     poly_coeffs_in_w: &[Vec<Complex64>],
@@ -447,13 +464,31 @@ pub fn monodromy_around_loop(
     let &z0 = loop_pts.first()?;
     let start_sheets = aberth_solve_fiber(poly_coeffs_in_w, z0)?;
     let n = start_sheets.len();
-    let mut tracked = start_sheets.clone();
+    // Verify fiber roots are distinct and converged.
+    for i in 0..n {
+        let (p, _) = eval_bivariate_and_dw(poly_coeffs_in_w, z0, *start_sheets.get(i)?);
+        if p.norm() > 1e-8 {
+            return None;
+        }
+        for j in (i + 1)..n {
+            if (*start_sheets.get(i)? - *start_sheets.get(j)?).norm() < 1e-6 {
+                return None;
+            }
+        }
+    }
 
-    for &zk in loop_pts.iter().skip(1).chain(std::iter::once(&z0)) {
-        for w in &mut tracked {
+    fn newton_step_fiber(
+        poly: &[Vec<Complex64>],
+        z: Complex64,
+        sheets: &[Complex64],
+    ) -> Option<Vec<Complex64>> {
+        let mut next = sheets.to_vec();
+        for w in &mut next {
+            let mut ok = false;
             for _ in 0..16 {
-                let (p, dp) = eval_bivariate_and_dw(poly_coeffs_in_w, zk, *w);
-                if p.norm() < 1e-12 {
+                let (p, dp) = eval_bivariate_and_dw(poly, z, *w);
+                if p.norm() < 1e-11 {
+                    ok = true;
                     break;
                 }
                 if dp.norm() < 1e-30 {
@@ -461,7 +496,60 @@ pub fn monodromy_around_loop(
                 }
                 *w -= p / dp;
             }
+            if !ok {
+                let (p, _) = eval_bivariate_and_dw(poly, z, *w);
+                if p.norm() > 1e-9 {
+                    return None;
+                }
+            }
         }
+        // Check sheet separation & jump distance.
+        for i in 0..next.len() {
+            for j in (i + 1)..next.len() {
+                if (next[i] - next[j]).norm() < 1e-7 {
+                    return None;
+                }
+            }
+        }
+        Some(next)
+    }
+
+    fn track_segment(
+        poly: &[Vec<Complex64>],
+        za: Complex64,
+        zb: Complex64,
+        sheets: &[Complex64],
+        depth: u32,
+    ) -> Option<Vec<Complex64>> {
+        if let Some(next) = newton_step_fiber(poly, zb, sheets) {
+            let max_move = next
+                .iter()
+                .zip(sheets.iter())
+                .map(|(a, b)| (*a - *b).norm())
+                .fold(0.0_f64, f64::max);
+            let mut min_sep = f64::INFINITY;
+            for i in 0..next.len() {
+                for j in (i + 1)..next.len() {
+                    min_sep = min_sep.min((next[i] - next[j]).norm());
+                }
+            }
+            if max_move <= 0.35 * min_sep || depth >= 10 {
+                return Some(next);
+            }
+        }
+        if depth >= 10 {
+            return None;
+        }
+        let mid = 0.5 * (za + zb);
+        let mid_sheets = track_segment(poly, za, mid, sheets, depth + 1)?;
+        track_segment(poly, mid, zb, &mid_sheets, depth + 1)
+    }
+
+    let mut tracked = start_sheets.clone();
+    let mut prev_z = z0;
+    for &zk in loop_pts.iter().skip(1).chain(std::iter::once(&z0)) {
+        tracked = track_segment(poly_coeffs_in_w, prev_z, zk, &tracked, 0)?;
+        prev_z = zk;
     }
 
     // Match each final tracked sheet to the closest starting sheet.
@@ -490,4 +578,20 @@ pub fn monodromy_around_loop(
         }
     }
     Some(perm)
+}
+
+/// Numerical branch-cut jump `lim_{eps -> 0+} (f(p + i*eps) - f(p - i*eps))`
+/// using Richardson extrapolation across `eps` and `eps / 2`.
+pub fn branch_cut_jump_numeric<F>(
+    f: F,
+    p: Complex64,
+) -> Complex64
+where
+    F: Fn(Complex64) -> Complex64,
+{
+    let eps1 = 1e-6;
+    let eps2 = 0.5e-6;
+    let j1 = f(Complex64::new(p.re, p.im + eps1)) - f(Complex64::new(p.re, p.im - eps1));
+    let j2 = f(Complex64::new(p.re, p.im + eps2)) - f(Complex64::new(p.re, p.im - eps2));
+    (4.0 * j2 - j1) / 3.0
 }

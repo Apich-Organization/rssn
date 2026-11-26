@@ -74,6 +74,39 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             reason: "needs elementary".into(),
         }
     })?;
+    {
+        let ops_mut = i.graph().ops_mut();
+        ops_mut.set_attr(
+            joukowsky,
+            crate::graph::ComplexEval(|a| {
+                let z = *a.first()?;
+                Some(0.5 * (z + Complex64::new(1.0, 0.0) / z))
+            }),
+        );
+        ops_mut.set_attr(
+            koebe,
+            crate::graph::ComplexEval(|a| {
+                let z = *a.first()?;
+                let omz = Complex64::new(1.0, 0.0) - z;
+                Some(z / (omz * omz))
+            }),
+        );
+        ops_mut.set_attr(
+            cayley,
+            crate::graph::ComplexEval(|a| {
+                let z = *a.first()?;
+                let iu = Complex64::new(0.0, 1.0);
+                Some((z - iu) / (z + iu))
+            }),
+        );
+        ops_mut.set_attr(
+            cross_ratio,
+            crate::graph::ComplexEval(|a| {
+                let (z1, z2, z3, z4) = (*a.first()?, *a.get(1)?, *a.get(2)?, *a.get(3)?);
+                Some(((z1 - z3) * (z2 - z4)) / ((z1 - z4) * (z2 - z3)))
+            }),
+        );
+    }
     i.kernel(
         "complex/conformal",
         Tier::Reduce,
@@ -265,7 +298,7 @@ impl ConformalKernel {
             return None;
         }
         let r = r_val.re;
-        let n_samples = 64_usize;
+        let n_samples = 256_usize;
         let mut min_diff = f64::INFINITY;
         let mut max_diff = f64::NEG_INFINITY;
         for j in 0..n_samples {
@@ -305,7 +338,7 @@ impl ConformalKernel {
         let mut cur = p_best;
         let mut coeffs = Vec::new();
         let mut fact = 1.0_f64;
-        for k in 0..=32_usize {
+        for k in 0..=64_usize {
             let at0 = cx.graph.substitute(cur, z, zero);
             let at0_s = cx.simplify(at0);
             let val = eval_complex(cx.graph, at0_s, &empty)?;
@@ -319,7 +352,7 @@ impl ConformalKernel {
             }
             cur = next;
             fact *= (k.saturating_add(1)) as f64;
-            if k == 32 {
+            if k == 64 {
                 return None;
             }
         }

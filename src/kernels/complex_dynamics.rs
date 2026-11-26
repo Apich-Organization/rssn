@@ -102,7 +102,23 @@ pub fn find_periodic_points_quadratic(
             z -= val / dval;
         }
         if converged && found.iter().all(|&prev| (prev - z).norm() > dedup_tol) {
-            found.push(z);
+            // Filter out primitive divisors d | p (d < p)
+            let mut is_lower_period = false;
+            for d in 1..p {
+                if p % d == 0 {
+                    let mut wd = z;
+                    for _ in 0..d {
+                        wd = wd * wd + c;
+                    }
+                    if (wd - z).norm() < dedup_tol {
+                        is_lower_period = true;
+                        break;
+                    }
+                }
+            }
+            if !is_lower_period {
+                found.push(z);
+            }
         }
     }
     found
@@ -128,13 +144,18 @@ fn quadratic_escape(
     (max_iter, 0.0)
 }
 
-/// Mandelbrot escape time and Green's potential $G_c(c)$ for $z_0 = 0, z_{n+1} = z_n^2 + c$.
+/// Mandelbrot escape time and Green's potential $G_c(c) = \lim 2^{-(n-1)} \ln|z_n|$ for $z_0 = 0, z_{n+1} = z_n^2 + c$.
 pub fn mandelbrot_escape_time(
     c: Complex<f64>,
     max_iter: usize,
     escape_radius: f64,
 ) -> (usize, f64) {
-    quadratic_escape(Complex::new(0.0, 0.0), c, max_iter, escape_radius)
+    let (n, g) = quadratic_escape(Complex::new(0.0, 0.0), c, max_iter, escape_radius);
+    if n == 0 || n >= max_iter {
+        (n, g)
+    } else {
+        (n, 2.0 * g)
+    }
 }
 
 /// Julia escape time and Green's potential $G_c(z_0)$ for $z_{n+1} = z_n^2 + c$.
@@ -155,17 +176,14 @@ pub fn bottcher_coordinate(
     n_iters: usize,
 ) -> Result<Complex<f64>, String> {
     let mut zn = z;
-    if zn.norm() <= 2.0_f64.max(c.norm() + 1.0) {
-        // Still allow if orbit escapes; check after loop
-    }
-    let mut prod = Complex::new(1.0, 0.0);
+    let mut ln_prod = Complex::new(0.0, 0.0);
     let mut weight = 0.5_f64;
     for _ in 0..n_iters {
         if zn.norm_sqr() < 1e-24 {
             return Err("Orbit hit 0 in Bottcher coordinate".to_string());
         }
-        let factor = (Complex::new(1.0, 0.0) + c / (zn * zn)).powf(weight);
-        prod *= factor;
+        let ratio = Complex::new(1.0, 0.0) + c / (zn * zn);
+        ln_prod += ratio.ln() * weight;
         zn = zn * zn + c;
         weight *= 0.5;
         if zn.norm() > 1e150 {
@@ -175,7 +193,7 @@ pub fn bottcher_coordinate(
     if zn.norm() <= 2.0 {
         return Err("Point is not clearly in the escaping basin of infinity".to_string());
     }
-    Ok(z * prod)
+    Ok(z * ln_prod.exp())
 }
 
 /// Computes Koenigs's linearizing coordinate
@@ -196,11 +214,21 @@ where
         return Err("Koenigs coordinate requires 0 < |lambda| < 1".to_string());
     }
     let mut w = z;
+    let mut scale = Complex::new(1.0, 0.0);
+    let mut prev = w - z0;
     for _ in 0..n_iters {
         w = f(w);
+        scale /= lambda;
+        if !scale.re.is_finite() || !scale.im.is_finite() || scale.norm() > 1e250 {
+            return Ok(prev);
+        }
+        let cur = scale * (w - z0);
+        if (cur - prev).norm() < 1e-13 * (1.0 + cur.norm()) {
+            return Ok(cur);
+        }
+        prev = cur;
     }
-    let scale = lambda.powi(-(n_iters as i32));
-    Ok(scale * (w - z0))
+    Ok(prev)
 }
 
 /// Estimates the Lyapunov exponent $\frac{1}{N} \sum_{n=\text{burn\_in}}^{\text{burn\_in}+N-1} \ln |f'(z_n)|$.
@@ -246,7 +274,9 @@ pub fn external_ray_point(
     if potential_r <= 0.0 || n_steps == 0 {
         return Err("potential_r and n_steps must be positive".to_string());
     }
-    let k = n_steps.min(30);
+    // Cap k so potential_r * 2^k <= 650 to prevent exp(r_top) overflow.
+    let max_k = ((650.0 / potential_r).log2().floor() as isize).max(1) as usize;
+    let k = n_steps.min(30).min(max_k);
     let r_top = potential_r * 2.0_f64.powi(k as i32);
     let theta_top = (theta_turns * 2.0_f64.powi(k as i32)).rem_euclid(1.0);
     // At large radius, phi_c(z) ≈ z
@@ -263,7 +293,7 @@ pub fn external_ray_point(
             -root
         };
     }
-    // Refine slightly with 4 Newton steps on bottcher_coordinate(z) = target
+    // Refine with 4 Newton steps using central derivative on bottcher_coordinate(z) = target
     let target = Complex::from_polar(potential_r.exp(), 2.0 * PI * theta_turns);
     for _ in 0..4 {
         let phi = bottcher_coordinate(z, c, 24)?;
@@ -271,11 +301,75 @@ pub fn external_ray_point(
         if err.norm() < 1e-12 {
             break;
         }
-        let h = 1e-6;
-        let dphi = (bottcher_coordinate(z + Complex::new(h, 0.0), c, 24)? - phi) / h;
+        let h = 1e-6 * (1.0 + z.norm());
+        let dphi = (bottcher_coordinate(z + Complex::new(h, 0.0), c, 24)?
+            - bottcher_coordinate(z - Complex::new(h, 0.0), c, 24)?)
+            / (2.0 * h);
         if dphi.norm() > 1e-14 {
             z -= err / dphi;
         }
     }
     Ok(z)
+}
+
+/// Evaluates Newton fractal basin convergence for `f(z) / df(z)` starting at `z0`,
+/// returning `(converged_root, iterations)`.
+pub fn newton_fractal_basin<F, DF>(
+    f: F,
+    df: DF,
+    z0: Complex<f64>,
+    max_iter: usize,
+    tol: f64,
+) -> Option<(Complex<f64>, usize)>
+where
+    F: Fn(Complex<f64>) -> Complex<f64>,
+    DF: Fn(Complex<f64>) -> Complex<f64>,
+{
+    let mut z = z0;
+    for iter in 0..max_iter {
+        let fz = f(z);
+        if fz.norm() < tol {
+            return Some((z, iter));
+        }
+        let dfz = df(z);
+        if dfz.norm() < 1e-14 {
+            return None;
+        }
+        z -= fz / dfz;
+    }
+    None
+}
+
+/// Checks if `c` lies inside the main cardioid or period-2 bulb of the Mandelbrot set.
+#[must_use]
+pub fn in_main_cardioid_or_period2_bulb(c: Complex<f64>) -> bool {
+    // Period-2 bulb: |c + 1| <= 1/4
+    if (c + Complex::new(1.0, 0.0)).norm_sqr() <= 0.0625 {
+        return true;
+    }
+    // Main cardioid: q = (x - 1/4)^2 + y^2; q * (q + (x - 1/4)) <= 1/4 * y^2
+    let x_m = c.re - 0.25;
+    let y2 = c.im * c.im;
+    let q = x_m * x_m + y2;
+    q * (q + x_m) <= 0.25 * y2
+}
+
+/// Mandelbrot distance estimator `d(c) ≈ |z_n| * ln|z_n| / |z'_n|` (returns `0.0` if bounded).
+#[must_use]
+pub fn mandelbrot_distance_estimator(
+    c: Complex<f64>,
+    max_iter: usize,
+) -> f64 {
+    let mut z = Complex::new(0.0, 0.0);
+    let mut dz = Complex::new(0.0, 0.0);
+    for _ in 0..max_iter {
+        dz = 2.0 * z * dz + Complex::new(1.0, 0.0);
+        z = z * z + c;
+        let r2 = z.norm_sqr();
+        if r2 > 1e16 {
+            let r = r2.sqrt();
+            return 2.0 * r * r.ln() / dz.norm().max(1e-30);
+        }
+    }
+    0.0
 }

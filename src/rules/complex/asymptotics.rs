@@ -19,6 +19,7 @@ use crate::graph::rule::Installer;
 use crate::rules::calculus::derivative;
 use crate::rules::calculus::laurent_expansion;
 use crate::rules::poly::best;
+use num_traits::Zero;
 
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let prin = i.op(
@@ -214,6 +215,61 @@ impl Asymptotics {
             let order_node = cx.graph.int(order + 1);
             if let Some(pp) = self.split_laurent(cx, f, z, p_node, order_node, true) {
                 parts.push(pp);
+            }
+        }
+        // Include polynomial quotient part if deg(numer) >= deg(denom)
+        let mut gens = crate::rules::poly::repr::Gens::default();
+        let gz = gens.index(cx.graph, z);
+        if let Some(r) = crate::rules::poly::ratio(
+            cx.graph,
+            &mut gens,
+            f,
+            crate::rules::poly::repr::Limits::default(),
+        ) {
+            if let (Some(num_u), Some(den_u)) =
+                (r.numer.univariate_in(gz), r.denom.univariate_in(gz))
+            {
+                if !den_u.is_empty() && num_u.len() >= den_u.len() {
+                    // Polynomial long division over Q when possible
+                    if let (Some(nq), Some(dq)) = (
+                        num_u
+                            .iter()
+                            .map(Number::to_rational)
+                            .collect::<Option<Vec<_>>>(),
+                        den_u
+                            .iter()
+                            .map(Number::to_rational)
+                            .collect::<Option<Vec<_>>>(),
+                    ) {
+                        let mut rem = nq;
+                        let d_deg = dq.len() - 1;
+                        let lead_d = dq[d_deg].clone();
+                        if !lead_d.is_zero() {
+                            let q_len = rem.len() - d_deg;
+                            let mut q_coeffs =
+                                vec![num_rational::BigRational::from_integer(0.into()); q_len];
+                            for k in (0..q_len).rev() {
+                                let c = &rem[k + d_deg] / &lead_d;
+                                q_coeffs[k] = c.clone();
+                                for j in 0..=d_deg {
+                                    let sub = &c * &dq[j];
+                                    rem[k + j] = &rem[k + j] - sub;
+                                }
+                            }
+                            for (k, qc) in q_coeffs.into_iter().enumerate() {
+                                if !qc.is_zero() {
+                                    let cn = cx.graph.num(Number::rat(qc));
+                                    if k == 0 {
+                                        parts.push(cn);
+                                    } else {
+                                        let zk = build::powi(cx.graph, z, k as i64);
+                                        parts.push(build::mul(cx.graph, &[cn, zk]));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         let sum = build::add(cx.graph, &parts);

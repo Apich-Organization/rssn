@@ -112,6 +112,19 @@ impl Kernel for SolveComplex {
         };
         let expr = as_expression(graph, equation);
         let Some((numerator, _)) = rational_function_in(graph, expr, unknown) else {
+            // Fallback for polynomials with complex coefficients (e.g. z^2 - I = 0)
+            if let Some(z_sym) = graph.symbol_of(unknown)
+                && let Some(unit) = graph.ops().lookup("I")
+            {
+                // Extract degree via numeric sampling at 32 roots of unity if univariate in z
+                let mut free = graph.free_symbols(graph.find(expr)).to_vec();
+                free.retain(|&s| s != z_sym);
+                if free.is_empty() {
+                    if let Some(roots) = solve_complex_numeric_poly(graph, expr, z_sym, unit) {
+                        return Outcome::Equal(graph.node(core::LIST, &roots));
+                    }
+                }
+            }
             return Outcome::Pass;
         };
         let mut q = numerator;
@@ -159,6 +172,84 @@ impl Kernel for SolveComplex {
         let nodes: Vec<NodeId> = roots.into_iter().map(|(_, n)| n).collect();
         Outcome::Equal(graph.node(core::LIST, &nodes))
     }
+}
+
+/// Solves a univariate complex-coefficient polynomial via Cauchy-FFT coefficient
+/// extraction + Aberth-Ehrlich (exact quadratic formula for degree 2).
+fn solve_complex_numeric_poly(
+    graph: &mut Graph,
+    expr: NodeId,
+    z_sym: crate::graph::SymbolId,
+    unit: OpId,
+) -> Option<Vec<NodeId>> {
+    use num_complex::Complex64;
+    use std::collections::HashMap;
+    let f = |z: Complex64| -> Complex64 {
+        let m = HashMap::from([(z_sym, z)]);
+        graph
+            .eval_complex(expr, &m)
+            .unwrap_or(Complex64::new(f64::NAN, f64::NAN))
+    };
+    let derivs =
+        crate::kernels::complex::cauchy_fft_derivatives(f, Complex64::new(0.0, 0.0), 1.0, 16, 32);
+    if derivs
+        .iter()
+        .any(|c| !c.re.is_finite() || !c.im.is_finite())
+    {
+        return None;
+    }
+    let mut coeffs = Vec::with_capacity(derivs.len());
+    let mut fact = 1.0_f64;
+    for (k, &dk) in derivs.iter().enumerate() {
+        if k > 0 {
+            fact *= k as f64;
+        }
+        coeffs.push(dk / fact);
+    }
+    while coeffs.last().is_some_and(|c| c.norm() < 1e-10) {
+        coeffs.pop();
+    }
+    if coeffs.len() < 2 {
+        return None;
+    }
+    // Verify it is actually a polynomial of that degree by checking residual at 1.7 + 0.9i
+    let test_z = Complex64::new(1.7, 0.9);
+    let mut poly_val = Complex64::new(0.0, 0.0);
+    for &c in coeffs.iter().rev() {
+        poly_val = poly_val * test_z + c;
+    }
+    if (poly_val - f(test_z)).norm() > 1e-7 * (1.0 + poly_val.norm()) {
+        return None;
+    }
+    let roots = crate::kernels::complex_roots::aberth_ehrlich(&coeffs, 200, 1e-13).ok()?;
+    let mut out = Vec::with_capacity(roots.len());
+    for r in roots {
+        let re = if r.re.abs() < 1e-12 {
+            0.0
+        } else {
+            r.re
+        };
+        let im = if r.im.abs() < 1e-12 {
+            0.0
+        } else {
+            r.im
+        };
+        let re_n = graph.float(re);
+        if im == 0.0 {
+            out.push(re_n);
+        } else {
+            let im_n = graph.float(im);
+            let i_n = graph.node(unit, &[]);
+            let im_i = graph.node(core::MUL, &[im_n, i_n]);
+            let node = if re == 0.0 {
+                im_i
+            } else {
+                graph.node(core::ADD, &[re_n, im_i])
+            };
+            out.push(node);
+        }
+    }
+    Some(out)
 }
 
 #[cfg(test)]

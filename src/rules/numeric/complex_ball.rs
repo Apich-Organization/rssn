@@ -98,6 +98,90 @@ pub(super) const ENTRIES: &[Entry] = &[
         doc: "`cball_tanh(z)`: complex hyperbolic tangent enclosure of `list(re, im, rad)`.",
     },
     Entry {
+        name: "cball_asin",
+        params: "v",
+        eval: cball_asin,
+        doc: "`cball_asin(z)`: principal inverse sine enclosure of `list(re, im, rad)`.",
+    },
+    Entry {
+        name: "cball_acos",
+        params: "v",
+        eval: cball_acos,
+        doc: "`cball_acos(z)`: principal inverse cosine enclosure of `list(re, im, rad)`.",
+    },
+    Entry {
+        name: "cball_atan",
+        params: "v",
+        eval: cball_atan,
+        doc: "`cball_atan(z)`: principal inverse tangent enclosure of `list(re, im, rad)`.",
+    },
+    Entry {
+        name: "cball_asinh",
+        params: "v",
+        eval: cball_asinh,
+        doc: "`cball_asinh(z)`: principal inverse hyperbolic sine enclosure of `list(re, im, rad)`.",
+    },
+    Entry {
+        name: "cball_acosh",
+        params: "v",
+        eval: cball_acosh,
+        doc: "`cball_acosh(z)`: principal inverse hyperbolic cosine enclosure of `list(re, im, rad)`.",
+    },
+    Entry {
+        name: "cball_atanh",
+        params: "v",
+        eval: cball_atanh,
+        doc: "`cball_atanh(z)`: principal inverse hyperbolic tangent enclosure of `list(re, im, rad)`.",
+    },
+    Entry {
+        name: "cball_conj",
+        params: "v",
+        eval: cball_conj,
+        doc: "`cball_conj(z)`: complex conjugate enclosure of `list(re, im, rad)`.",
+    },
+    Entry {
+        name: "cball_powi",
+        params: "vs",
+        eval: cball_powi,
+        doc: "`cball_powi(z, n)`: integer power enclosure `z^n` of `list(re, im, rad)`.",
+    },
+    Entry {
+        name: "cball_abs",
+        params: "v",
+        eval: cball_abs,
+        doc: "`cball_abs(z)`: modulus enclosure `|z|` as a complex ball `list(re, 0, rad)`.",
+    },
+    Entry {
+        name: "cball_arg",
+        params: "v",
+        eval: cball_arg,
+        doc: "`cball_arg(z)`: principal argument enclosure `arg(z)` as a complex ball `list(re, 0, rad)`.",
+    },
+    Entry {
+        name: "cball_contains",
+        params: "vv",
+        eval: cball_contains,
+        doc: "`cball_contains(b, pt)`: returns `1` if `pt` (`list(re, im, 0)` or `list(re, im, rad)`) lies in `b`, else `0`.",
+    },
+    Entry {
+        name: "cball_overlaps",
+        params: "vv",
+        eval: cball_overlaps,
+        doc: "`cball_overlaps(a, b)`: returns `1` if complex balls `a` and `b` overlap, else `0`.",
+    },
+    Entry {
+        name: "cball_to_cinterval",
+        params: "v",
+        eval: cball_to_cinterval,
+        doc: "`cball_to_cinterval(b)`: converts a complex ball `list(re, im, rad)` to a rectangular interval `list(re_lo, re_hi, im_lo, im_hi)`.",
+    },
+    Entry {
+        name: "cinterval_to_cball",
+        params: "v",
+        eval: cinterval_to_cball,
+        doc: "`cinterval_to_cball(rect)`: converts a rectangular complex interval `list(re_lo, re_hi, im_lo, im_hi)` to a complex ball `list(re, im, rad)`.",
+    },
+    Entry {
         name: "cinterval_add",
         params: "vv",
         eval: cinterval_add,
@@ -150,6 +234,60 @@ pub(super) const ENTRIES: &[Entry] = &[
         params: "v",
         eval: cinterval_cos,
         doc: "`cinterval_cos(z)`: complex cosine enclosure of `list(re_lo, re_hi, im_lo, im_hi)`.",
+    },
+    Entry {
+        name: "cinterval_tan",
+        params: "v",
+        eval: cinterval_tan,
+        doc: "`cinterval_tan(z)`: complex tangent enclosure of `list(re_lo, re_hi, im_lo, im_hi)`.",
+    },
+    Entry {
+        name: "cinterval_sinh",
+        params: "v",
+        eval: cinterval_sinh,
+        doc: "`cinterval_sinh(z)`: complex hyperbolic sine enclosure of `list(re_lo, re_hi, im_lo, im_hi)`.",
+    },
+    Entry {
+        name: "cinterval_cosh",
+        params: "v",
+        eval: cinterval_cosh,
+        doc: "`cinterval_cosh(z)`: complex hyperbolic cosine enclosure of `list(re_lo, re_hi, im_lo, im_hi)`.",
+    },
+    Entry {
+        name: "cinterval_tanh",
+        params: "v",
+        eval: cinterval_tanh,
+        doc: "`cinterval_tanh(z)`: complex hyperbolic tangent enclosure of `list(re_lo, re_hi, im_lo, im_hi)`.",
+    },
+    Entry {
+        name: "cinterval_pow",
+        params: "vv",
+        eval: cinterval_pow,
+        doc: "`cinterval_pow(a, b)`: principal complex power enclosure `a^b`.",
+    },
+    Entry {
+        name: "cinterval_asin",
+        params: "v",
+        eval: cinterval_asin,
+        doc: "`cinterval_asin(z)`: principal inverse sine enclosure of `list(re_lo, re_hi, im_lo, im_hi)`.",
+    },
+    Entry {
+        name: "cinterval_acos",
+        params: "v",
+        eval: cinterval_acos,
+        doc: "`cinterval_acos(z)`: principal inverse cosine enclosure of `list(re_lo, re_hi, im_lo, im_hi)`.",
+    },
+    Entry {
+        name: "cinterval_atan",
+        params: "v",
+        eval: cinterval_atan,
+        doc: "`cinterval_atan(z)`: principal inverse tangent enclosure of `list(re_lo, re_hi, im_lo, im_hi)`.",
+    },
+    Entry {
+        name: "cinterval_intersect",
+        params: "vv",
+        eval: cinterval_intersect,
+        doc: "`cinterval_intersect(a, b)`: intersection of two rectangular complex intervals.",
     },
 ];
 
@@ -395,4 +533,244 @@ fn cinterval_sin(args: &[Data]) -> Option<Data> {
 
 fn cinterval_cos(args: &[Data]) -> Option<Data> {
     encode_cball(decode_cball(args, 0)?.cos())
+}
+
+fn cball_asin(args: &[Data]) -> Option<Data> {
+    let a = decode_ball(args, 0)?;
+    let Some(res) = a.asin() else {
+        return bad(
+            0,
+            DiagKind::Domain,
+            format_args!("complex ball meets asin branch cut"),
+        );
+    };
+    encode_ball(res)
+}
+
+fn cball_acos(args: &[Data]) -> Option<Data> {
+    let a = decode_ball(args, 0)?;
+    let Some(res) = a.acos() else {
+        return bad(
+            0,
+            DiagKind::Domain,
+            format_args!("complex ball meets acos branch cut"),
+        );
+    };
+    encode_ball(res)
+}
+
+fn cball_atan(args: &[Data]) -> Option<Data> {
+    let a = decode_ball(args, 0)?;
+    let Some(res) = a.atan() else {
+        return bad(
+            0,
+            DiagKind::Domain,
+            format_args!("complex ball meets atan branch cut"),
+        );
+    };
+    encode_ball(res)
+}
+
+fn cball_asinh(args: &[Data]) -> Option<Data> {
+    let a = decode_ball(args, 0)?;
+    let Some(res) = a.asinh() else {
+        return bad(
+            0,
+            DiagKind::Domain,
+            format_args!("complex ball meets asinh branch cut"),
+        );
+    };
+    encode_ball(res)
+}
+
+fn cball_acosh(args: &[Data]) -> Option<Data> {
+    let a = decode_ball(args, 0)?;
+    let Some(res) = a.acosh() else {
+        return bad(
+            0,
+            DiagKind::Domain,
+            format_args!("complex ball meets acosh branch cut"),
+        );
+    };
+    encode_ball(res)
+}
+
+fn cball_atanh(args: &[Data]) -> Option<Data> {
+    let a = decode_ball(args, 0)?;
+    let Some(res) = a.atanh() else {
+        return bad(
+            0,
+            DiagKind::Domain,
+            format_args!("complex ball meets atanh branch cut"),
+        );
+    };
+    encode_ball(res)
+}
+
+fn cball_conj(args: &[Data]) -> Option<Data> {
+    encode_ball(decode_ball(args, 0)?.conj())
+}
+
+fn cball_powi(args: &[Data]) -> Option<Data> {
+    let a = decode_ball(args, 0)?;
+    let n_f = super::bridge::scalar(args, 1)?;
+    if !n_f.is_finite()
+        || n_f.fract() != 0.0
+        || n_f < f64::from(i32::MIN)
+        || n_f > f64::from(i32::MAX)
+    {
+        return bad(
+            1,
+            DiagKind::Domain,
+            format_args!("cball_powi requires an integer exponent"),
+        );
+    }
+    let Some(res) = a.powi(n_f as i32) else {
+        return bad(
+            0,
+            DiagKind::Domain,
+            format_args!("complex ball powi failed (zero base with negative exponent)"),
+        );
+    };
+    encode_ball(res)
+}
+
+fn cball_abs(args: &[Data]) -> Option<Data> {
+    let a = decode_ball(args, 0)?;
+    let Some(res) = a.abs_ball() else {
+        return bad(0, DiagKind::Domain, format_args!("non-finite complex ball"));
+    };
+    encode_ball(res)
+}
+
+fn cball_arg(args: &[Data]) -> Option<Data> {
+    let a = decode_ball(args, 0)?;
+    let Some(res) = a.arg_ball() else {
+        return bad(
+            0,
+            DiagKind::Domain,
+            format_args!("complex ball meets arg branch cut (-inf, 0]"),
+        );
+    };
+    encode_ball(res)
+}
+
+fn cball_contains(args: &[Data]) -> Option<Data> {
+    let a = decode_ball(args, 0)?;
+    let b = decode_ball(args, 1)?;
+    Some(Data::Scalar(
+        if b.inside_strictly(&a) || (b.rad == 0.0 && a.contains(b.mid)) {
+            1.0
+        } else {
+            0.0
+        },
+    ))
+}
+
+fn cball_overlaps(args: &[Data]) -> Option<Data> {
+    let a = decode_ball(args, 0)?;
+    let b = decode_ball(args, 1)?;
+    Some(Data::Scalar(if a.overlaps(&b) { 1.0 } else { 0.0 }))
+}
+
+fn cball_to_cinterval(args: &[Data]) -> Option<Data> {
+    encode_cball(decode_ball(args, 0)?.to_cball())
+}
+
+fn cinterval_to_cball(args: &[Data]) -> Option<Data> {
+    encode_ball(ComplexBall::from_cball(decode_cball(args, 0)?))
+}
+
+fn cinterval_tan(args: &[Data]) -> Option<Data> {
+    let a = decode_cball(args, 0)?;
+    let Some(res) = a.tan() else {
+        return bad(
+            0,
+            DiagKind::Domain,
+            format_args!("complex interval tangent denominator may contain zero"),
+        );
+    };
+    encode_cball(res)
+}
+
+fn cinterval_sinh(args: &[Data]) -> Option<Data> {
+    encode_cball(decode_cball(args, 0)?.sinh())
+}
+
+fn cinterval_cosh(args: &[Data]) -> Option<Data> {
+    encode_cball(decode_cball(args, 0)?.cosh())
+}
+
+fn cinterval_tanh(args: &[Data]) -> Option<Data> {
+    let a = decode_cball(args, 0)?;
+    let Some(res) = a.tanh() else {
+        return bad(
+            0,
+            DiagKind::Domain,
+            format_args!("complex interval tanh denominator may contain zero"),
+        );
+    };
+    encode_cball(res)
+}
+
+fn cinterval_pow(args: &[Data]) -> Option<Data> {
+    let a = decode_cball(args, 0)?;
+    let b = decode_cball(args, 1)?;
+    let Some(res) = a.powc(&b) else {
+        return bad(
+            0,
+            DiagKind::Domain,
+            format_args!("complex interval base meets logarithm branch cut"),
+        );
+    };
+    encode_cball(res)
+}
+
+fn cinterval_asin(args: &[Data]) -> Option<Data> {
+    let a = decode_cball(args, 0)?;
+    let Some(res) = a.asin() else {
+        return bad(
+            0,
+            DiagKind::Domain,
+            format_args!("complex interval meets asin branch cut"),
+        );
+    };
+    encode_cball(res)
+}
+
+fn cinterval_acos(args: &[Data]) -> Option<Data> {
+    let a = decode_cball(args, 0)?;
+    let Some(res) = a.acos() else {
+        return bad(
+            0,
+            DiagKind::Domain,
+            format_args!("complex interval meets acos branch cut"),
+        );
+    };
+    encode_cball(res)
+}
+
+fn cinterval_atan(args: &[Data]) -> Option<Data> {
+    let a = decode_cball(args, 0)?;
+    let Some(res) = a.atan() else {
+        return bad(
+            0,
+            DiagKind::Domain,
+            format_args!("complex interval meets atan branch cut"),
+        );
+    };
+    encode_cball(res)
+}
+
+fn cinterval_intersect(args: &[Data]) -> Option<Data> {
+    let a = decode_cball(args, 0)?;
+    let b = decode_cball(args, 1)?;
+    let Some(res) = a.intersect(&b) else {
+        return bad(
+            0,
+            DiagKind::Domain,
+            format_args!("complex intervals are disjoint"),
+        );
+    };
+    encode_cball(res)
 }

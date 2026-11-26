@@ -20,7 +20,6 @@
 use crate::backend::Intrinsic;
 use crate::backend::tape::Interval;
 use crate::backend::tape::Scalar;
-use crate::kernels::complex_ball::ComplexBall;
 use crate::kernels::rootfind::PolyTerm;
 use num_complex::Complex64 as Cx;
 use std::collections::HashMap;
@@ -299,16 +298,107 @@ impl Cball {
     }
 
     /// Rectangular enclosure of principal `ln(z)`. Returns `None` if the
-    /// enclosing disk meets the non-positive real axis `(-inf, 0]`.
+    /// rectangle meets the non-positive real axis `(-inf, 0]`.
     #[must_use]
     pub fn ln(&self) -> Option<Self> {
-        ComplexBall::from_cball(*self).ln().map(|b| b.to_cball())
+        if !self.is_finite() {
+            return None;
+        }
+        if self.re.lo <= 0.0 && self.im.lo <= 0.0 && self.im.hi >= 0.0 {
+            return None;
+        }
+        let r_lo = self.modulus_lower();
+        let r_hi = self.modulus_upper();
+        if r_lo <= 0.0 || !r_hi.is_finite() {
+            return None;
+        }
+        let re = Interval { lo: r_lo, hi: r_hi }.unary(Intrinsic::Ln);
+        let corners = [
+            (self.re.lo, self.im.lo),
+            (self.re.lo, self.im.hi),
+            (self.re.hi, self.im.lo),
+            (self.re.hi, self.im.hi),
+        ];
+        let mut a_min = f64::INFINITY;
+        let mut a_max = f64::NEG_INFINITY;
+        for (x, y) in corners {
+            let y_norm = if y == 0.0 { 0.0 } else { y };
+            let a = y_norm.atan2(x);
+            a_min = a_min.min(a);
+            a_max = a_max.max(a);
+        }
+        let im = Interval {
+            lo: a_min.next_down().next_down().max(-std::f64::consts::PI),
+            hi: a_max.next_up().next_up().min(std::f64::consts::PI),
+        };
+        Some(Self { re, im })
     }
 
     /// Rectangular enclosure of principal `sqrt(z)`.
+    /// Returns `None` if the rectangle crosses `(-inf, 0)` away from `0`.
     #[must_use]
     pub fn sqrt(&self) -> Option<Self> {
-        ComplexBall::from_cball(*self).sqrt().map(|b| b.to_cball())
+        if !self.is_finite() {
+            return None;
+        }
+        let contains_zero = self.re.contains(0.0) && self.im.contains(0.0);
+        if contains_zero {
+            let r_hi = self.modulus_upper();
+            let bound = r_hi.sqrt().next_up();
+            return Some(Self {
+                re: Interval { lo: 0.0, hi: bound },
+                im: Interval {
+                    lo: -bound,
+                    hi: bound,
+                },
+            });
+        }
+        if self.re.lo <= 0.0 && self.im.lo <= 0.0 && self.im.hi >= 0.0 {
+            return None;
+        }
+        let y_near = if self.im.contains(0.0) {
+            0.0
+        } else {
+            self.im.lo.abs().min(self.im.hi.abs())
+        };
+        let y_far = self.im.lo.abs().max(self.im.hi.abs());
+        let r_for_u_min = modulus_bound(self.re.lo.abs(), y_near, false);
+        let u_min_arg = if self.re.lo >= 0.0 {
+            (r_for_u_min + self.re.lo).next_down().max(0.0)
+        } else {
+            (r_for_u_min + self.re.lo).next_down().max(0.0)
+        };
+        let u_lo = (0.5 * u_min_arg)
+            .next_down()
+            .max(0.0)
+            .sqrt()
+            .next_down()
+            .max(0.0);
+        let r_for_u_max = modulus_bound(self.re.hi.abs(), y_far, true);
+        let u_max_arg = (r_for_u_max + self.re.hi).next_up().max(0.0);
+        let u_hi = (0.5 * u_max_arg).next_up().sqrt().next_up();
+
+        let corners = [
+            (self.re.lo, self.im.lo),
+            (self.re.lo, self.im.hi),
+            (self.re.hi, self.im.lo),
+            (self.re.hi, self.im.hi),
+        ];
+        let mut v_lo = f64::INFINITY;
+        let mut v_hi = f64::NEG_INFINITY;
+        for (x, y) in corners {
+            let y_norm = if y == 0.0 { 0.0 } else { y };
+            let z_sqrt = Cx::new(x, y_norm).sqrt();
+            v_lo = v_lo.min(z_sqrt.im);
+            v_hi = v_hi.max(z_sqrt.im);
+        }
+        Some(Self {
+            re: Interval { lo: u_lo, hi: u_hi },
+            im: Interval {
+                lo: v_lo.next_down().next_down(),
+                hi: v_hi.next_up().next_up(),
+            },
+        })
     }
 
     /// Rectangular enclosure of `sin(z)`.
@@ -392,6 +482,75 @@ impl Cball {
     ) -> Option<Self> {
         let l = self.ln()?;
         Some((*exponent * l).exp())
+    }
+
+    /// Rectangular enclosure of principal `asin(z) = -i * ln(i*z + sqrt(1 - z^2))`.
+    #[must_use]
+    pub fn asin(&self) -> Option<Self> {
+        let i_unit = Self::point(0.0, 1.0);
+        let one = Self::one();
+        let z2 = *self * *self;
+        let root = (one - z2).sqrt()?;
+        let l = (i_unit * *self + root).ln()?;
+        Some(Self {
+            re: l.im,
+            im: l.re.neg(),
+        })
+    }
+
+    /// Rectangular enclosure of principal `acos(z) = pi/2 - asin(z)`.
+    #[must_use]
+    pub fn acos(&self) -> Option<Self> {
+        let a = self.asin()?;
+        let half_pi = Interval {
+            lo: std::f64::consts::FRAC_PI_2.next_down(),
+            hi: std::f64::consts::FRAC_PI_2.next_up(),
+        };
+        Some(Self {
+            re: half_pi.sub(a.re),
+            im: a.im.neg(),
+        })
+    }
+
+    /// Rectangular enclosure of principal `atan(z) = (i/2) * ln((1 - i*z)/(1 + i*z))`.
+    #[must_use]
+    pub fn atan(&self) -> Option<Self> {
+        let i_unit = Self::point(0.0, 1.0);
+        let one = Self::one();
+        let iz = i_unit * *self;
+        let q = (one - iz).div(&(one + iz))?;
+        let l = q.ln()?;
+        let half = Interval::point(0.5);
+        Some(Self {
+            re: l.im.neg().mul(half),
+            im: l.re.mul(half),
+        })
+    }
+
+    /// Rectangular enclosure of principal `asinh(z) = ln(z + sqrt(z^2 + 1))`.
+    #[must_use]
+    pub fn asinh(&self) -> Option<Self> {
+        let one = Self::one();
+        let root = (*self * *self + one).sqrt()?;
+        (*self + root).ln()
+    }
+
+    /// Rectangular enclosure of principal `acosh(z) = ln(z + sqrt(z - 1) * sqrt(z + 1))`.
+    #[must_use]
+    pub fn acosh(&self) -> Option<Self> {
+        let one = Self::one();
+        let zp = (*self + one).sqrt()?;
+        let zm = (*self - one).sqrt()?;
+        (*self + zp * zm).ln()
+    }
+
+    /// Rectangular enclosure of principal `atanh(z) = 0.5 * ln((1 + z)/(1 - z))`.
+    #[must_use]
+    pub fn atanh(&self) -> Option<Self> {
+        let one = Self::one();
+        let q = (one + *self).div(&(one - *self))?;
+        let l = q.ln()?;
+        Some(l.times_real(0.5))
     }
 }
 

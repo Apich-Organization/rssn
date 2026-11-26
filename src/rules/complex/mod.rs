@@ -163,8 +163,12 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
                 let x = *a.first()?;
                 let y = *a.get(1)?;
                 let z = *a.get(2)?;
+                let denom = Complex64::new(1.0, 0.0) - z;
+                if denom.norm() < 1e-15 || !denom.is_finite() {
+                    return None;
+                }
                 let i_unit = Complex64::new(0.0, 1.0);
-                Some((x + i_unit * y) / (Complex64::new(1.0, 0.0) - z))
+                Some((x + i_unit * y) / denom)
             }),
         );
         ops.set_attr(
@@ -1046,7 +1050,7 @@ fn register_complex_evals(graph: &mut Graph) {
             ComplexEval(|a: &[Complex64]| a.first().map($f))
         };
     }
-    let table: [(&str, ComplexEval); 26] = [
+    let table: [(&str, ComplexEval); 29] = [
         ("I", ComplexEval(|_| Some(Complex64::new(0.0, 1.0)))),
         ("exp", unary!(|z: &Complex64| z.exp())),
         ("ln", unary!(|z: &Complex64| z.ln())),
@@ -1066,6 +1070,9 @@ fn register_complex_evals(graph: &mut Graph) {
         ("sec", unary!(|z: &Complex64| z.cos().inv())),
         ("csc", unary!(|z: &Complex64| z.sin().inv())),
         ("cot", unary!(|z: &Complex64| z.tan().inv())),
+        ("sech", unary!(|z: &Complex64| z.cosh().inv())),
+        ("csch", unary!(|z: &Complex64| z.sinh().inv())),
+        ("coth", unary!(|z: &Complex64| z.tanh().inv())),
         ("abs", unary!(|z: &Complex64| Complex64::new(z.norm(), 0.0))),
         ("re", unary!(|z: &Complex64| Complex64::new(z.re, 0.0))),
         ("im", unary!(|z: &Complex64| Complex64::new(z.im, 0.0))),

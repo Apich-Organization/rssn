@@ -49,6 +49,7 @@ pub(crate) mod fixed;
 pub mod funcs;
 pub mod parse;
 pub mod real;
+pub mod special_complex;
 
 pub use ball::Ball;
 pub use complex::MpComplex;

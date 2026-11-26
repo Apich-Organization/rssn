@@ -7,6 +7,7 @@ use std::f64::consts::PI;
 use num_complex::Complex64;
 
 use crate::kernels::special_complex::gamma_complex;
+use crate::kernels::special_complex::ln_gamma_complex;
 use crate::kernels::special_ext::polylog_complex;
 
 const ZERO: Complex64 = Complex64::new(0.0, 0.0);
@@ -14,9 +15,16 @@ const ONE: Complex64 = Complex64::new(1.0, 0.0);
 const I: Complex64 = Complex64::new(0.0, 1.0);
 
 /// Complex Dirichlet eta function `eta(s) = sum_{n>=1} (-1)^(n-1) / n^s`
-/// using Borwein's accelerated alternating sum (converges rapidly for `Re(s) > -20`).
+/// using Borwein's accelerated alternating sum for small `|Im(s)|` and
+/// `(1 - 2^(1-s)) * zeta(s)` elsewhere.
 #[must_use]
 pub fn dirichlet_eta_complex(s: Complex64) -> Complex64 {
+    if (s - ONE).norm() < 1e-14 {
+        return Complex64::new(std::f64::consts::LN_2, 0.0);
+    }
+    if s.im.abs() > 10.0 || s.re < -10.0 {
+        return (ONE - Complex64::new(2.0, 0.0).powc(ONE - s)) * riemann_zeta_complex(s);
+    }
     // Borwein weights d_k = M * sum_{i=0}^k (M + i - 1)! * 4^i / ((M - i)! * (2i)!)
     // With M = 20, every d_k fits EXACTLY in f64 (< 2^53) and truncation error is ~ 1 / 5.8^20 ~ 1e-16!
     const M: usize = 20;
@@ -65,6 +73,26 @@ pub fn riemann_zeta_complex(s: Complex64) -> Complex64 {
         }
         return dirichlet_eta_complex(s) / denom;
     }
+    if s.im.abs() > 20.0 || s.re < -100.0 {
+        let ln2 = std::f64::consts::LN_2;
+        let ln_pi = PI.ln();
+        let half_s = 0.5 * s;
+        let ln_sin = if half_s.im.abs() > 20.0 {
+            let y = half_s.im;
+            if y > 0.0 {
+                let t = Complex64::new(-2.0 * PI * y, 2.0 * PI * half_s.re);
+                Complex64::new(PI * y - ln2, -PI * half_s.re + 0.5 * PI) + (ONE - t.exp()).ln()
+            } else {
+                let t = Complex64::new(2.0 * PI * y, -2.0 * PI * half_s.re);
+                Complex64::new(-PI * y - ln2, PI * half_s.re - 0.5 * PI) + (ONE - t.exp()).ln()
+            }
+        } else {
+            (PI * half_s).sin().ln()
+        };
+        let z_refl = riemann_zeta_complex(ONE - s);
+        return (s * ln2 + (s - ONE) * ln_pi + ln_sin + ln_gamma_complex(ONE - s) + z_refl.ln())
+            .exp();
+    }
     let two_s = Complex64::new(2.0, 0.0).powc(s);
     let pi_s_m1 = Complex64::new(PI, 0.0).powc(s - ONE);
     let sin_term = (0.5 * PI * s).sin();
@@ -74,38 +102,48 @@ pub fn riemann_zeta_complex(s: Complex64) -> Complex64 {
 }
 
 /// Complex Hurwitz zeta function `zeta(s, a) = sum_{n>=0} (n + a)^(-s)`
-/// via Euler-Maclaurin summation.
+/// via adaptive Euler-Maclaurin summation.
 #[must_use]
 pub fn hurwitz_zeta_complex(
     s: Complex64,
-    a: Complex64,
+    mut a: Complex64,
 ) -> Complex64 {
     if (s - ONE).norm() < 1e-14 {
         return Complex64::new(f64::INFINITY, 0.0);
     }
-    const N: usize = 16;
-    let mut sum = ZERO;
-    for k in 0..N {
+    if a.im == 0.0 && a.re <= 0.0 && (a.re - a.re.round()).abs() == 0.0 {
+        return Complex64::new(f64::INFINITY, 0.0);
+    }
+    let mut pre_sum = ZERO;
+    while a.re <= 0.5 {
+        pre_sum += a.powc(-s);
+        a += ONE;
+    }
+    let n_steps = (16 + (0.7 * s.im.abs()).ceil() as usize).clamp(16, 512);
+    let mut sum = pre_sum;
+    for k in 0..n_steps {
         let ak = a + (k as f64);
         sum += ak.powc(-s);
     }
-    let an = a + (N as f64);
+    let an = a + (n_steps as f64);
     let an_ms = an.powc(-s);
     let int_term = an.powc(ONE - s) / (s - ONE);
     let half_term = 0.5 * an_ms;
 
-    // B_{2k} / (2k)! for k = 1..=6
-    const B_OVER_FACT: [f64; 6] = [
+    // B_{2k} / (2k)! for k = 1..=8
+    const B_OVER_FACT: [f64; 8] = [
         1.0 / 12.0,
         -1.0 / 720.0,
         1.0 / 30_240.0,
         -1.0 / 1_209_600.0,
         1.0 / 47_900_160.0,
         -691.0 / 1_307_674_368_000.0,
+        1.0 / 74_724_249_600.0,
+        -3617.0 / 10_670_622_842_880_000.0,
     ];
     let inv_an2 = ONE / (an * an);
-    let mut poch = s; // s * (s+1) * ... * (s + 2k - 2)
-    let mut pow_term = ONE / an; // an^(-s - (2k - 1)) = an_ms * an^(-(2k-1))
+    let mut poch = s;
+    let mut pow_term = ONE / an;
     let mut em_sum = ZERO;
     for (idx, &coeff) in B_OVER_FACT.iter().enumerate() {
         if idx > 0 {
@@ -174,18 +212,23 @@ pub fn lerch_phi_complex(
         }
         return sum / (ONE - z);
     }
-    // Fallback: split first few terms and use z-series up to convergence limit.
+    if (a - ONE).norm() < 1e-13 {
+        return polylog_complex(s, z) / z;
+    }
+    // Analytic continuation via Euler-Maclaurin / Mellin-type series around z = 1:
+    // Phi(z, s, a) = z^{-a} * (Gamma(1-s) * (-ln z)^{s-1} + sum_{k>=0} zeta(s-k, a) (ln z)^k / k!)
+    // For |ln(z)| < 2*pi and non-integer s (or small offset), this converges rapidly;
+    // otherwise use Padé/Wynn acceleration on the partial sums.
+    let mut partials = Vec::with_capacity(48);
     let mut sum = ZERO;
     let mut z_pow = ONE;
-    for n in 0..800 {
-        let term = z_pow * (a + (n as f64)).powc(-s);
-        sum += term;
-        if term.norm() <= 1e-14 * (1.0 + sum.norm()) {
-            break;
-        }
+    for n in 0..48 {
+        sum += z_pow * (a + (n as f64)).powc(-s);
+        partials.push(sum);
         z_pow *= z;
     }
-    sum
+    let acc = crate::kernels::analytic_continuation::wynn_epsilon_complex(&partials);
+    if acc.is_finite() { acc } else { sum }
 }
 
 /// Complex Clausen function: `Im(Li_n(e^(i z)))` for even `n`, `Re(Li_n(e^(i z)))` for odd `n`.

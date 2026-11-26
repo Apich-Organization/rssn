@@ -256,6 +256,17 @@ impl ComplexTransforms {
         s: NodeId,
         t: NodeId,
     ) -> Option<NodeId> {
+        // Check for 1/sqrt(s) -> 1/sqrt(pi * t)
+        let half = cx.graph.num(Number::fraction(1, 2)?);
+        let neg_half = cx.graph.num(Number::fraction(-1, 2)?);
+        let s_mhalf = build::pow(cx.graph, s, neg_half);
+        if cx.graph.find(big_f) == cx.graph.find(s_mhalf) {
+            let pi = build::call(cx.graph, self.ops.pi, &[]);
+            let pi_t = build::mul(cx.graph, &[pi, t]);
+            let inv_sqrt = build::pow(cx.graph, pi_t, neg_half);
+            return Some(cx.simplify(inv_sqrt));
+        }
+        let _ = half;
         let poles_op = cx.graph.ops().lookup("poles")?;
         let residue_op = cx.graph.ops().lookup("residue")?;
         let poles_req = build::call(cx.graph, poles_op, &[big_f, s]);
@@ -420,51 +431,84 @@ impl ComplexTransforms {
         let residue_op = cx.graph.ops().lookup("residue")?;
         let z_sym = cx.graph.symbol_of(z)?;
 
-        // 1. Try complex partial-fraction logarithmic residue formula for rational functions with simple poles
+        // 1. Try complex partial-fraction + Laurent integration for rational functions
+        //    (handles both simple and repeated poles, plus polynomial quotient part).
         let poles_req = build::call(cx.graph, poles_op, &[f, z]);
         let poles_list = cx.simplify(poles_req);
         if cx.graph.op(poles_list) == core::LIST {
             let entries = cx.graph.children(poles_list).to_vec();
-            let mut all_simple = !entries.is_empty();
-            let mut log_terms = Vec::with_capacity(entries.len());
-            for entry in entries {
-                if cx.graph.op(entry) != core::LIST {
-                    all_simple = false;
-                    break;
-                }
-                let pair = cx.graph.children(entry).to_vec();
-                let p_node = *pair.first()?;
-                let mult_node = *pair.get(1)?;
-                if cx.graph.number_of(mult_node).and_then(Number::to_i64) != Some(1) {
-                    all_simple = false;
-                    break;
-                }
-                let res_req = build::call(cx.graph, residue_op, &[f, z, p_node]);
-                let r_k = cx.simplify(res_req);
-                if cx.graph.op(r_k) == residue_op {
-                    all_simple = false;
-                    break;
-                }
-                let z_minus_p = build::sub(cx.graph, z, p_node);
-                let ln_term = build::call(cx.graph, self.ops.ln, &[z_minus_p]);
-                log_terms.push(build::mul(cx.graph, &[r_k, ln_term]));
-            }
-            if all_simple {
-                let cand_raw = build::add(cx.graph, &log_terms);
-                let candidate = cx.simplify(cand_raw);
-                if let Some(d_cand) = derivative(cx.graph, candidate, z) {
-                    let diff_raw = build::sub(cx.graph, d_cand, f);
-                    let diff = cx.simplify(diff_raw);
-                    if cx.graph.number_of(diff).is_some_and(Number::is_zero) {
-                        return Some(candidate);
+            if !entries.is_empty() {
+                let mut int_terms = Vec::new();
+                let mut ok = true;
+                for entry in entries {
+                    if cx.graph.op(entry) != core::LIST {
+                        ok = false;
+                        break;
                     }
-                    // Numeric spot-check for complex-valued residues
-                    let mut m = HashMap::new();
-                    m.insert(z_sym, Complex64::new(0.37, 0.51));
-                    if let Some(dv) = eval_complex(cx.graph, diff, &m)
-                        && dv.norm() < 1e-10
-                    {
-                        return Some(candidate);
+                    let pair = cx.graph.children(entry).to_vec();
+                    let p_node = *pair.first()?;
+                    let mult = pair
+                        .get(1)
+                        .and_then(|&m| cx.graph.number_of(m))
+                        .and_then(Number::to_i64)
+                        .unwrap_or(1)
+                        .max(1);
+                    let z_minus_p = build::sub(cx.graph, z, p_node);
+                    // Residue (c_{-1}) -> c_{-1} * ln(z - p)
+                    let res_req = build::call(cx.graph, residue_op, &[f, z, p_node]);
+                    let r_k = cx.simplify(res_req);
+                    if cx.graph.op(r_k) == residue_op {
+                        ok = false;
+                        break;
+                    }
+                    if !cx.graph.number_of(r_k).is_some_and(Number::is_zero) {
+                        let ln_term = build::call(cx.graph, self.ops.ln, &[z_minus_p]);
+                        int_terms.push(build::mul(cx.graph, &[r_k, ln_term]));
+                    }
+                    // Higher-order principal terms (j = 2..=mult): c_{-j} / (z - p)^j -> c_{-j} / ((1 - j)*(z - p)^{j-1})
+                    if mult > 1 {
+                        if let Some((start_pow, coeffs)) =
+                            crate::rules::calculus::laurent_expansion(cx, f, z, p_node, mult + 1)
+                        {
+                            for (idx, c_val) in coeffs.into_iter().enumerate() {
+                                let pow = start_pow + (idx as i64);
+                                if pow <= -2
+                                    && !cx.graph.number_of(c_val).is_some_and(Number::is_zero)
+                                {
+                                    let j = -pow;
+                                    let denom_int = cx.graph.int(1 - j);
+                                    let zp = build::powi(cx.graph, z_minus_p, 1 - j);
+                                    let inv_d = build::powi(cx.graph, denom_int, -1);
+                                    int_terms.push(build::mul(cx.graph, &[c_val, inv_d, zp]));
+                                }
+                            }
+                        } else {
+                            ok = false;
+                            break;
+                        }
+                    }
+                }
+                if ok {
+                    let cand_raw = build::add(cx.graph, &int_terms);
+                    let candidate = cx.simplify(cand_raw);
+                    if let Some(d_cand) = derivative(cx.graph, candidate, z) {
+                        let diff_raw = build::sub(cx.graph, d_cand, f);
+                        let diff = cx.simplify(diff_raw);
+                        if cx.graph.number_of(diff).is_some_and(Number::is_zero) {
+                            return Some(candidate);
+                        }
+                        // Check at multiple non-singular points for complex-valued residues
+                        let pts = [
+                            Complex64::new(0.37, 0.51),
+                            Complex64::new(-0.73, 0.29),
+                            Complex64::new(1.13, -0.41),
+                        ];
+                        if pts.iter().all(|&pt| {
+                            let m = HashMap::from([(z_sym, pt)]);
+                            eval_complex(cx.graph, diff, &m).is_some_and(|dv| dv.norm() < 1e-10)
+                        }) {
+                            return Some(candidate);
+                        }
                     }
                 }
             }

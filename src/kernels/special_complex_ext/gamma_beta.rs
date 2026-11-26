@@ -17,6 +17,38 @@ fn is_nonpos_int(z: Complex64) -> bool {
     z.im == 0.0 && z.re <= 0.0 && (z.re - z.re.round()).abs() == 0.0
 }
 
+/// Exp-safe `sin(pi * z) / pi` in log-space when `|Im(z)|` is large,
+/// returning `ln(sin(pi*z) / pi)`.
+fn ln_sin_pi_over_pi(z: Complex64) -> Complex64 {
+    let y = z.im;
+    if y.abs() <= 20.0 {
+        return ((PI * z).sin() / PI).ln();
+    }
+    // sin(pi*z) = (e^{i*pi*z} - e^{-i*pi*z}) / (2i)
+    if y > 0.0 {
+        let two_i_pz = Complex64::new(-2.0 * PI * y, 2.0 * PI * z.re);
+        let base = Complex64::new(PI * y - (2.0 * PI).ln(), -PI * z.re + 0.5 * PI);
+        base + (ONE - two_i_pz.exp()).ln()
+    } else {
+        let two_i_pz = Complex64::new(2.0 * PI * y, -2.0 * PI * z.re);
+        let base = Complex64::new(-PI * y - (2.0 * PI).ln(), PI * z.re - 0.5 * PI);
+        base + (ONE - two_i_pz.exp()).ln()
+    }
+}
+
+/// Exp-safe `cot(pi * z)`.
+fn cot_pi(z: Complex64) -> Complex64 {
+    let py = PI * z.im;
+    if py > 20.0 {
+        return Complex64::new(0.0, -1.0);
+    }
+    if py < -20.0 {
+        return Complex64::new(0.0, 1.0);
+    }
+    let pz = PI * z;
+    pz.cos() / pz.sin()
+}
+
 /// Reciprocal gamma function `1 / Gamma(z)`, which is entire on `C` with
 /// zeros at the non-positive integers.
 #[must_use]
@@ -28,14 +60,45 @@ pub fn rgamma_complex(z: Complex64) -> Complex64 {
         return ZERO;
     }
     if z.re < 0.5 {
+        if z.im.abs() > 20.0 || z.re < -150.0 {
+            return (ln_sin_pi_over_pi(z) + ln_gamma_complex(ONE - z)).exp();
+        }
         let s = (Complex64::new(PI, 0.0) * z).sin();
         return s * gamma_complex(ONE - z) / PI;
     }
     let g = gamma_complex(z);
     if g.re.is_infinite() || g.im.is_infinite() {
-        return ZERO;
+        return (-ln_gamma_complex(z)).exp();
     }
     ONE / g
+}
+
+/// Computes `d^n/dz^n (pi * cot(pi * z))` via polynomial recurrence in `t = cot(pi * z)`:
+/// `P_0(t) = t`, `P_{k+1}(t) = -pi * (1 + t^2) * P_k'(t)`.
+fn d_n_pi_cot_pi(
+    n: u32,
+    z: Complex64,
+) -> Complex64 {
+    let t = cot_pi(z);
+    // Represent P_k(t) as coefficients c[0] + c[1]*t + ... + c[k+1]*t^{k+1}.
+    let mut coeffs = vec![ZERO, ONE]; // t
+    for _ in 0..n {
+        let mut next = vec![ZERO; coeffs.len() + 1];
+        for (j, &cj) in coeffs.iter().enumerate().skip(1) {
+            let deriv_coeff = cj * (j as f64);
+            next[j - 1] += deriv_coeff;
+            next[j + 1] += deriv_coeff;
+        }
+        for c in &mut next {
+            *c *= -PI;
+        }
+        coeffs = next;
+    }
+    let mut val = ZERO;
+    for &c in coeffs.iter().rev() {
+        val = val * t + c;
+    }
+    PI * val
 }
 
 /// Complex polygamma function `psi^(n)(z) = d^n/dz^n digamma(z)`.
@@ -53,20 +116,12 @@ pub fn polygamma_complex(
     if is_nonpos_int(z) {
         return Complex64::new(f64::INFINITY, 0.0);
     }
-    // Reflection for Re(z) < 0.5: psi^(n)(1 - z) + (-1)^(n+1) psi^(n)(z) = (-1)^n d^n/dz^n (pi cot(pi z))
-    // Use finite-step recurrence on z + m for small Re(z), and for Re(z) < 0 use reflection for n=1,2
-    // or shift z -> 1-z for n=1: psi'(z) + psi'(1-z) = pi^2 / sin^2(pi z).
-    if z.re < 0.0 && n == 1 {
-        let sin_pz = (PI * z).sin();
-        let refl = Complex64::new(PI * PI, 0.0) / (sin_pz * sin_pz);
-        return refl - polygamma_complex(1, ONE - z);
-    }
-    if z.re < 0.0 && n == 2 {
-        let pz = PI * z;
-        let sin_pz = pz.sin();
-        let cos_pz = pz.cos();
-        let refl = Complex64::new(-2.0 * PI * PI * PI, 0.0) * cos_pz / (sin_pz * sin_pz * sin_pz);
-        return polygamma_complex(2, ONE - z) + refl;
+    // General reflection for Re(z) < 0:
+    // (-1)^n psi^(n)(1 - z) - psi^(n)(z) = d^n/dz^n (pi * cot(pi * z))
+    if z.re < 0.0 {
+        let sign_n = if n % 2 == 0 { 1.0 } else { -1.0 };
+        let refl = d_n_pi_cot_pi(n, z);
+        return sign_n * polygamma_complex(n, ONE - z) - refl;
     }
 
     let sign = if n % 2 == 1 { 1.0 } else { -1.0 };
@@ -75,9 +130,9 @@ pub fn polygamma_complex(
         fact *= f64::from(k);
     }
 
-    // Shift z right until |z| >= 10 and Re(z) >= 10.
+    // Shift z right until Re(z) >= 10.
     let mut sum = ZERO;
-    while z.re < 10.0 && z.norm() < 12.0 {
+    while z.re < 10.0 {
         sum += ONE / z.powi(i32::try_from(n + 1).unwrap_or(i32::MAX));
         z += ONE;
     }
@@ -138,7 +193,7 @@ pub fn beta_complex(
     if is_nonpos_int(a + b) {
         return ZERO;
     }
-    gamma_complex(a) * gamma_complex(b) * rgamma_complex(a + b)
+    ln_beta_complex(a, b).exp()
 }
 
 /// Complex Pochhammer symbol `(z)_w = Gamma(z + w) / Gamma(z)`.
@@ -158,7 +213,31 @@ pub fn pochhammer_complex(
         }
         return prod;
     }
-    gamma_complex(z + w) * rgamma_complex(z)
+    if is_nonpos_int(z) {
+        return if is_nonpos_int(z + w) {
+            // Ratio of residues (-1)^(n - m) * n! / m!
+            let n = (-z.re).round();
+            let m = (-(z + w).re).round();
+            let sign = if ((n - m).abs() as i64) % 2 == 0 {
+                1.0
+            } else {
+                -1.0
+            };
+            Complex64::new(
+                sign * (ln_gamma_complex(Complex64::new(n + 1.0, 0.0))
+                    - ln_gamma_complex(Complex64::new(m + 1.0, 0.0)))
+                .re
+                .exp(),
+                0.0,
+            )
+        } else {
+            ZERO
+        };
+    }
+    if is_nonpos_int(z + w) {
+        return Complex64::new(f64::INFINITY, 0.0);
+    }
+    (ln_gamma_complex(z + w) - ln_gamma_complex(z)).exp()
 }
 
 /// Complex binomial coefficient `C(n, k) = Gamma(n + 1) / (Gamma(k + 1) * Gamma(n - k + 1))`.
@@ -167,7 +246,26 @@ pub fn binomial_complex(
     n: Complex64,
     k: Complex64,
 ) -> Complex64 {
-    gamma_complex(n + ONE) * rgamma_complex(k + ONE) * rgamma_complex(n - k + ONE)
+    if k.im == 0.0 && k.re.fract() == 0.0 {
+        if k.re < 0.0 {
+            return ZERO;
+        }
+        if k.re <= 30.0 {
+            let m = k.re as usize;
+            let mut prod = ONE;
+            for j in 0..m {
+                prod *= (n - (j as f64)) / ((j + 1) as f64);
+            }
+            return prod;
+        }
+    }
+    if is_nonpos_int(k + ONE) || is_nonpos_int(n - k + ONE) {
+        return ZERO;
+    }
+    if is_nonpos_int(n + ONE) {
+        return Complex64::new(f64::INFINITY, 0.0);
+    }
+    (ln_gamma_complex(n + ONE) - ln_gamma_complex(k + ONE) - ln_gamma_complex(n - k + ONE)).exp()
 }
 
 /// Lower incomplete gamma function `gamma(a, z) = int_0^z t^(a-1) e^(-t) dt`.
@@ -179,7 +277,7 @@ pub fn lower_incomplete_gamma_complex(
     if z == ZERO {
         return ZERO;
     }
-    if z.norm() <= a.norm() + 2.0 || z.re < 0.0 && z.norm() < 15.0 {
+    if z.norm() <= a.norm() + 2.0 || (z.re < 0.0 && z.norm() < 22.0) {
         // Power series: z^a * exp(-z) * sum_{k>=0} z^k / (a * (a+1) * ... * (a+k))
         let mut term = ONE / a;
         let mut sum = term;
@@ -190,7 +288,7 @@ pub fn lower_incomplete_gamma_complex(
                 break;
             }
         }
-        z.powc(a) * (-z).exp() * sum
+        (a * z.ln() - z + sum.ln()).exp()
     } else {
         gamma_complex(a) - upper_incomplete_gamma_complex(a, z)
     }
@@ -205,12 +303,31 @@ pub fn upper_incomplete_gamma_complex(
     if z == ZERO {
         return gamma_complex(a);
     }
-    if z.norm() <= a.norm() + 2.0 || (z.re < 0.0 && z.im.abs() < 1.0 && z.norm() < 15.0) {
+    if z.norm() <= a.norm() + 2.0 || (z.re < 0.0 && z.norm() < 22.0) {
         return gamma_complex(a) - lower_incomplete_gamma_complex(a, z);
     }
+    // Asymptotic expansion when |z| >= 22 near (-inf, 0]: avoids divergent Legendre CF on cut.
+    if z.re < 0.0 && z.im.abs() < 4.0 {
+        let mut sum = ONE;
+        let mut term = ONE;
+        let mut best_sum = sum;
+        let mut min_term = f64::INFINITY;
+        for k in 1..=60 {
+            term *= (a - (k as f64)) / z;
+            let tn = term.norm();
+            if tn > min_term {
+                break;
+            }
+            min_term = tn;
+            sum += term;
+            best_sum = sum;
+            if tn <= 1e-16 * sum.norm() {
+                break;
+            }
+        }
+        return ((a - ONE) * z.ln() - z + best_sum.ln()).exp();
+    }
     // Legendre continued fraction via modified Lentz's method:
-    // Gamma(a, z) = z^a * exp(-z) * 1 / (z + (1 - a) / (1 + 1 / (z + (2 - a) / (1 + 2 / ...))))
-    // Equivalent form: b_0 = z + 1 - a, a_k = k * (a - k), b_k = z + 2k + 1 - a
     let tiny = 1e-30_f64;
     let mut b = z + ONE - a;
     let mut c = Complex64::new(1.0 / tiny, 0.0);
@@ -239,7 +356,7 @@ pub fn upper_incomplete_gamma_complex(
             break;
         }
     }
-    z.powc(a) * (-z).exp() * h
+    (a * z.ln() - z + h.ln()).exp()
 }
 
 /// Regularized lower incomplete gamma `P(a, z) = gamma(a, z) / Gamma(a)`.
@@ -248,6 +365,9 @@ pub fn reg_lower_gamma_complex(
     a: Complex64,
     z: Complex64,
 ) -> Complex64 {
+    if is_nonpos_int(a) {
+        return ONE;
+    }
     lower_incomplete_gamma_complex(a, z) * rgamma_complex(a)
 }
 
@@ -257,6 +377,9 @@ pub fn reg_upper_gamma_complex(
     a: Complex64,
     z: Complex64,
 ) -> Complex64 {
+    if is_nonpos_int(a) {
+        return ZERO;
+    }
     upper_incomplete_gamma_complex(a, z) * rgamma_complex(a)
 }
 
@@ -286,9 +409,50 @@ pub fn reg_beta_complex(
     incomplete_beta_complex(a, b, z) / beta_complex(a, b)
 }
 
+/// Complex log Barnes G-function `ln G(z)`.
+#[must_use]
+pub fn ln_barnes_g_complex(mut z: Complex64) -> Complex64 {
+    if z.re.is_nan() || z.im.is_nan() {
+        return Complex64::new(f64::NAN, f64::NAN);
+    }
+    if is_nonpos_int(z) {
+        return Complex64::new(f64::NEG_INFINITY, 0.0);
+    }
+    if z == ONE || z == Complex64::new(2.0, 0.0) {
+        return ZERO;
+    }
+    let mut ln_factor = ZERO;
+    while z.re < 8.0 {
+        ln_factor -= ln_gamma_complex(z);
+        z += ONE;
+    }
+    const ZETA_PRIME_MINUS_1: f64 = -0.165_421_143_700_450_92;
+    const LN_2PI: f64 = 1.837_877_066_409_345_3;
+    let w = z - ONE;
+    let ln_w = w.ln();
+    let w2 = w * w;
+    let mut ln_g =
+        0.5 * w2 * ln_w - 0.75 * w2 + 0.5 * w * LN_2PI - (1.0 / 12.0) * ln_w + ZETA_PRIME_MINUS_1;
+    let inv_w2 = ONE / w2;
+    let mut term_pow = inv_w2;
+    // B_{2k+2} / (2k * (2k+1) * (2k+2)) for k = 1..=5
+    const COEFFS: [f64; 5] = [
+        -1.0 / 720.0,
+        1.0 / 5040.0,
+        -1.0 / 10080.0,
+        1.0 / 11880.0,
+        -691.0 / 3_603_600.0,
+    ];
+    for &c in &COEFFS {
+        ln_g += c * term_pow;
+        term_pow *= inv_w2;
+    }
+    ln_g + ln_factor
+}
+
 /// Complex Barnes G-function `G(z)` satisfying `G(z + 1) = Gamma(z) * G(z)`, `G(1) = 1`.
 #[must_use]
-pub fn barnes_g_complex(mut z: Complex64) -> Complex64 {
+pub fn barnes_g_complex(z: Complex64) -> Complex64 {
     if z.re.is_nan() || z.im.is_nan() {
         return Complex64::new(f64::NAN, f64::NAN);
     }
@@ -298,32 +462,5 @@ pub fn barnes_g_complex(mut z: Complex64) -> Complex64 {
     if z == ONE || z == Complex64::new(2.0, 0.0) {
         return ONE;
     }
-    // Shift z right until Re(z) >= 8 using G(z) = G(z + 1) / Gamma(z).
-    let mut factor = ONE;
-    while z.re < 8.0 {
-        factor /= gamma_complex(z);
-        z += ONE;
-    }
-    // Asymptotic for ln G(z + 1):
-    // ln G(z + 1) ~ z^2/2 * ln(z) - 3/4 * z^2 + z/2 * ln(2*pi) - 1/12 * ln(z) + zeta'(-1)
-    //             + sum_{k>=1} B_{2k+2} / (2k * (2k+1) * (2k+2) * z^(2k))
-    // where zeta'(-1) = 1/12 - ln(A), Glaisher-Kinkelin A = 1.28242712910062263687534256886979.
-    const ZETA_PRIME_MINUS_1: f64 = -0.165_421_143_700_450_92;
-    const LN_2PI: f64 = 1.837_877_066_409_345_3;
-    let w = z - ONE; // G(z) = G(w + 1)
-    let ln_w = w.ln();
-    let w2 = w * w;
-    let mut ln_g =
-        0.5 * w2 * ln_w - 0.75 * w2 + 0.5 * w * LN_2PI - (1.0 / 12.0) * ln_w + ZETA_PRIME_MINUS_1;
-    let inv_w2 = ONE / w2;
-    let mut term_pow = inv_w2;
-    // k=1: B_4 / (2*3*4) = (-1/30)/24 = -1/720
-    ln_g += (-1.0 / 720.0) * term_pow;
-    term_pow *= inv_w2;
-    // k=2: B_6 / (4*5*6) = (1/42)/120 = 1/5040
-    ln_g += (1.0 / 5040.0) * term_pow;
-    term_pow *= inv_w2;
-    // k=3: B_8 / (6*7*8) = (-1/30)/336 = -1/10080
-    ln_g += (-1.0 / 10080.0) * term_pow;
-    ln_g.exp() * factor
+    ln_barnes_g_complex(z).exp()
 }

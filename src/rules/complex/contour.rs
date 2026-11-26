@@ -142,8 +142,17 @@ impl ContourExt {
         b: NodeId,
         pole: NodeId,
     ) -> Option<NodeId> {
-        // Handle simple rational functions of the form c / (x - pole) + smooth part
-        // by subtracting r / (x - pole) where r = residue(f, x, pole).
+        // Verify pole is a simple pole (residue != 0 and smooth has no pole at `pole`) and a < pole < b.
+        let (Some(a_v), Some(b_v), Some(p_v)) = (
+            cx.graph.number_of(a).map(Number::to_f64),
+            cx.graph.number_of(b).map(Number::to_f64),
+            cx.graph.number_of(pole).map(Number::to_f64),
+        ) else {
+            return None;
+        };
+        if !(a_v < p_v && p_v < b_v) {
+            return None;
+        }
         let residue_op = cx.graph.ops().lookup("residue")?;
         let int_op = cx.graph.ops().lookup("defint")?;
         let res_req = build::call(cx.graph, residue_op, &[f, x, pole]);
@@ -156,6 +165,16 @@ impl ContourExt {
         let sing = build::mul(cx.graph, &[r, x_m_p_inv]);
         let smooth_raw = build::sub(cx.graph, f, sing);
         let smooth = cx.simplify(smooth_raw);
+        // Reject higher-order poles where smooth still blows up at `pole`.
+        if let Some(xs) = cx.graph.symbol_of(x) {
+            let mut m = std::collections::HashMap::new();
+            m.insert(xs, Complex64::new(p_v + 1e-6, 0.0));
+            if let Some(v) = eval_complex(cx.graph, smooth, &m) {
+                if v.norm() > 1e8 {
+                    return None;
+                }
+            }
+        }
         let pv_sing = if cx.graph.number_of(r).is_some_and(Number::is_zero) {
             cx.graph.int(0)
         } else {
@@ -239,9 +258,7 @@ impl ContourExt {
                 24,
             )
             .value;
-            if (ans_val.re - num_val).abs() > 1e-2 * (1.0 + ans_val.norm())
-                || ans_val.im.abs() > 1e-6
-            {
+            if (ans_val.re - num_val).abs() > 1e-2 * (1.0 + ans_val.norm()) {
                 return None;
             }
         }

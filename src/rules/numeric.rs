@@ -366,7 +366,11 @@ fn bridge_dimension(name: &str) -> DimRule {
         | "rhat"
         | "effective_sample_size"
         | "geweke" => DimRule::Any,
-        | _ if name.starts_with("mp_") && name != "mp_ball" => DimRule::NonMetric,
+        | _ if name.starts_with("mp_")
+            && !matches!(name, "mp_ball" | "mp_complex_eval" | "mp_complex_ball") =>
+        {
+            DimRule::NonMetric
+        },
         // Statistics, optimisation, control and mesh operators return a
         // structured decomposition — coefficients, gains, orders, survival
         // curves, triangles — whose dimension follows from the request, not
@@ -403,7 +407,9 @@ fn bridge_dimension(name: &str) -> DimRule {
             || name == "nelson_aalen"
             || name == "log_rank"
             || name == "cox_fit"
-            || name == "mp_ball" =>
+            || name == "mp_ball"
+            || name == "mp_complex_eval"
+            || name == "mp_complex_ball" =>
         {
             DimRule::Container
         },

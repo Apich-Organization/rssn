@@ -112,18 +112,25 @@ impl ComplexDynamics {
         } else if op == self.mult {
             let (f, z, z0, p_node) = (*ch.first()?, *ch.get(1)?, *ch.get(2)?, *ch.get(3)?);
             let p = cx.graph.number_of(p_node).and_then(Number::to_i64)?;
-            if !(1..=8).contains(&p) {
+            if !(1..=32).contains(&p) {
                 return None;
             }
             let f_best = best(cx.graph, f)?;
-            let mut composed = f_best;
-            for _ in 1..p {
-                composed = cx.graph.substitute(f_best, z, composed);
-                composed = cx.simplify(composed);
+            let df = derivative(cx.graph, f_best, z)?;
+            let df_s = cx.simplify(df);
+            // Chain rule product: prod_{k=0}^{p-1} f'(z_k) where z_0 = z0, z_{k+1} = f(z_k)
+            let mut factors = Vec::with_capacity(p as usize);
+            let mut cur_z = z0;
+            for k in 0..p {
+                let df_at = cx.graph.substitute(df_s, z, cur_z);
+                factors.push(cx.simplify(df_at));
+                if k + 1 < p {
+                    let next_z = cx.graph.substitute(f_best, z, cur_z);
+                    cur_z = cx.simplify(next_z);
+                }
             }
-            let df = derivative(cx.graph, composed, z)?;
-            let at_z0 = cx.graph.substitute(df, z, z0);
-            Some(cx.simplify(at_z0))
+            let prod = build::mul(cx.graph, &factors);
+            Some(cx.simplify(prod))
         } else if op == self.attract {
             let (f, z, z0) = (*ch.first()?, *ch.get(1)?, *ch.get(2)?);
             let z_sym = cx.graph.symbol_of(z)?;

@@ -185,8 +185,24 @@ impl Kernel for BranchCutJump {
             let val = build::add(cx.graph, &[ap, b]);
             let val_s = cx.simplify(val);
             if cx.graph.number_of(val_s).is_some_and(|n| n.to_f64() < 0.0) {
-                let jump = build::mul(cx.graph, &[two, i_unit, pi]);
-                return Outcome::Equal(jump);
+                let a_s = cx.simplify(a);
+                let sign_factor = if let Some(a_num) = cx.graph.number_of(a_s).map(Number::to_f64) {
+                    if a_num > 0.0 {
+                        1_i64
+                    } else if a_num < 0.0 {
+                        -1_i64
+                    } else {
+                        0_i64
+                    }
+                } else {
+                    return Outcome::Pass;
+                };
+                if sign_factor == 0 {
+                    return Outcome::Equal(cx.graph.int(0));
+                }
+                let sf = cx.graph.int(sign_factor);
+                let jump = build::mul(cx.graph, &[sf, two, i_unit, pi]);
+                return Outcome::Equal(cx.simplify(jump));
             }
             if cx.graph.number_of(val_s).is_some_and(|n| n.to_f64() > 0.0) {
                 return Outcome::Equal(cx.graph.int(0));
@@ -206,6 +222,12 @@ impl Kernel for BranchCutJump {
                 | _ => None,
             }
         {
+            let Some(z_sym) = cx.graph.symbol_of(z) else {
+                return Outcome::Pass;
+            };
+            if cx.graph.depends_on(cx.graph.find(alpha), z_sym) {
+                return Outcome::Pass;
+            }
             let Some((a, b)) = linear_in(cx.graph, arg, z) else {
                 return Outcome::Pass;
             };
@@ -213,13 +235,29 @@ impl Kernel for BranchCutJump {
             let val = build::add(cx.graph, &[ap, b]);
             let val_s = cx.simplify(val);
             if cx.graph.number_of(val_s).is_some_and(|n| n.to_f64() < 0.0) {
-                // (-r)^alpha_above - (-r)^alpha_below = 2*I*sin(pi*alpha) * |val|^alpha
+                let a_s = cx.simplify(a);
+                let sign_factor = if let Some(a_num) = cx.graph.number_of(a_s).map(Number::to_f64) {
+                    if a_num > 0.0 {
+                        1_i64
+                    } else if a_num < 0.0 {
+                        -1_i64
+                    } else {
+                        0_i64
+                    }
+                } else {
+                    return Outcome::Pass;
+                };
+                if sign_factor == 0 {
+                    return Outcome::Equal(cx.graph.int(0));
+                }
+                let sf = cx.graph.int(sign_factor);
+                // (-r)^alpha_above - (-r)^alpha_below = sgn(a) * 2*I*sin(pi*alpha) * |val|^alpha
                 let neg_val = build::neg(cx.graph, val_s);
                 let mag_pow = build::pow(cx.graph, neg_val, alpha);
                 let pi_alpha = build::mul(cx.graph, &[pi, alpha]);
                 let sin_pa = build::call(cx.graph, self.ops.sin, &[pi_alpha]);
-                let jump = build::mul(cx.graph, &[two, i_unit, sin_pa, mag_pow]);
-                return Outcome::Equal(jump);
+                let jump = build::mul(cx.graph, &[sf, two, i_unit, sin_pa, mag_pow]);
+                return Outcome::Equal(cx.simplify(jump));
             }
             if cx.graph.number_of(val_s).is_some_and(|n| n.to_f64() > 0.0) {
                 return Outcome::Equal(cx.graph.int(0));

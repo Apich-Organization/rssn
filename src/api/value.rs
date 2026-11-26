@@ -1575,10 +1575,29 @@ fn term_of_value(
             if im == 0.0 {
                 return Ok(graph.float(re));
             }
-            Err(OpError::Unsupported {
-                backend: "term".to_owned(),
-                feature: "complex literals".to_owned(),
-            })
+            let unit_op = graph.ops().lookup("I").ok_or_else(|| {
+                OpError::Unsupported {
+                    backend: "term".to_owned(),
+                    feature: "complex literals (the `complex` rule set is not installed)"
+                        .to_owned(),
+                }
+            })?;
+            let unit = graph.node(unit_op, &[]);
+            let imag_part = if im == 1.0 {
+                unit
+            } else if im == -1.0 {
+                let neg_one = graph.int(-1);
+                graph.node(core::MUL, &[neg_one, unit])
+            } else {
+                let im_node = graph.float(im);
+                graph.node(core::MUL, &[im_node, unit])
+            };
+            if re == 0.0 {
+                Ok(imag_part)
+            } else {
+                let re_node = graph.float(re);
+                Ok(graph.node(core::ADD, &[re_node, imag_part]))
+            }
         },
         | Value::Tensor(tensor) => term_of_tensor(graph, tensor, session, None, definitions),
         | Value::Term(handle) => {

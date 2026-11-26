@@ -108,8 +108,26 @@ pub fn mobius_fixed_points(m: &Mobius) -> Vec<Complex<f64>> {
     let da = m.d - m.a;
     let disc = (da * da + m.c * m.b * 4.0).sqrt();
     let two_c = m.c * 2.0;
-    let z1 = (-da + disc) / two_c;
-    let z2 = (-da - disc) / two_c;
+    // Citardauq / stable quadratic roots avoiding cancellation
+    let b_plus = -da + disc;
+    let b_minus = -da - disc;
+    let (z1, z2) = if b_plus.norm() >= b_minus.norm() {
+        let r1 = b_plus / two_c;
+        let r2 = if r1.norm() > 1e-30 {
+            (-m.b / m.c) / r1
+        } else {
+            b_minus / two_c
+        };
+        (r1, r2)
+    } else {
+        let r1 = b_minus / two_c;
+        let r2 = if r1.norm() > 1e-30 {
+            (-m.b / m.c) / r1
+        } else {
+            b_plus / two_c
+        };
+        (r1, r2)
+    };
     if (z1 - z2).norm() < 1e-12 {
         vec![z1]
     } else {
@@ -176,16 +194,26 @@ where
     cr_ok && df.norm() > tol
 }
 
+/// Cayley transform $C(z) = \frac{z - i}{z + i}$ mapping the upper half-plane to the unit disk.
+pub fn cayley_transform(z: Complex<f64>) -> Complex<f64> {
+    let i_unit = Complex::new(0.0, 1.0);
+    (z - i_unit) / (z + i_unit)
+}
+
 /// Returns the local conformal magnification $|f'(z)|$ and rotation angle $\arg f'(z)$.
 pub fn conformal_scale_and_rotation<F>(
     f: &F,
     z: Complex<f64>,
-    _h: f64,
+    h: f64,
 ) -> (f64, f64)
 where
     F: Fn(Complex<f64>) -> Complex<f64>,
 {
-    let df = complex_derivative(f, z);
+    let df = if h.is_finite() && h > 0.0 {
+        crate::kernels::complex::wirtinger_dz_numeric(f, z, h)
+    } else {
+        complex_derivative(f, z)
+    };
     (df.norm(), df.arg())
 }
 
@@ -253,17 +281,23 @@ impl SchwarzChristoffelMap {
         a: f64,
         b: f64,
     ) -> Result<Complex<f64>, String> {
+        // Compound tanh-sinh-like / double-sin^2 substitution for acute endpoint singularities:
+        // x(u) = a + span * sin^2(pi/2 * sin^2(pi/2 * u)) clusters doubly near endpoints.
         let span = b - a;
         let res = integrate_complex_01(
             |u| {
-                let s = (0.5 * PI * u).sin();
-                let c = (0.5 * PI * u).cos();
-                let x = a + span * s * s;
-                let dx = span * PI * s * c;
-                self.integrand(Complex::new(x, 1e-12)) * dx
+                let s1 = (0.5 * PI * u).sin();
+                let c1 = (0.5 * PI * u).cos();
+                let v = s1 * s1;
+                let dv = PI * s1 * c1;
+                let s2 = (0.5 * PI * v).sin();
+                let c2 = (0.5 * PI * v).cos();
+                let x = a + span * s2 * s2;
+                let dx = span * PI * s2 * c2 * dv;
+                self.integrand(Complex::new(x, 1e-14)) * dx
             },
-            1e-9,
-            200,
+            1e-10,
+            400,
         );
         Ok(res)
     }
@@ -368,12 +402,8 @@ pub fn solve_sc_uhp(
         Ok((ratios, s0))
     };
 
+    let mut converged = m_free == 0;
     if m_free > 0 {
-        // Residual matches ratios[1..] against target_ratios[1..] (n-3 equations, since n=4 has 3 finite edges;
-        // actually for n vertices, prevertices x_0..x_{n-1} give n-1 finite edges and n-2 ratios!
-        // Wait: 1 scale fixes len0, leaving n-2 ratios, wait: 3 prevertices fixed -> n-3 free prevertices,
-        // and we have n-1 finite edges minus 1 scale = n-2 ratios, but 1 is redundant by polygon closure / angle sum!
-        // So the first m_free ratios of target_ratios[..m_free] suffice.)
         for _ in 0..max_iter {
             let xs = build_prevertices(&u);
             let (ratios, _) = eval_ratios(&xs)?;
@@ -389,6 +419,7 @@ pub fn solve_sc_uhp(
                 res.push(diff);
             }
             if norm2.sqrt() < tol {
+                converged = true;
                 break;
             }
             // Finite-difference Jacobian
@@ -434,6 +465,9 @@ pub fn solve_sc_uhp(
         }
         prevertices = build_prevertices(&u);
     }
+    if !converged {
+        return Err("Schwarz-Christoffel solver failed to converge within max_iter".to_string());
+    }
 
     let (_, s0) = eval_ratios(&prevertices)?;
     let v0 = *polygon_vertices
@@ -447,7 +481,8 @@ pub fn solve_sc_uhp(
         scale,
         shift: Complex::new(0.0, 0.0),
     };
-    let f_at_x0 = sc.eval(Complex::new(-1.0, 1e-10))?;
+    // Integrate from z0 = i to a point near x0 = -1 along an interior approach
+    let f_at_x0 = sc.eval(Complex::new(-1.0, 1e-6))?;
     sc.shift = v0 - f_at_x0;
     Ok(sc)
 }
@@ -610,6 +645,142 @@ fn solve_complex_linear(
     Ok(x)
 }
 
+/// Reusable Kerzman–Stein Szegő kernel and Riemann map solver for a smooth
+/// counterclockwise Jordan domain $\Omega$ parameterized by `gamma(t)` for $t \in [0, 2\pi]$.
+pub struct SzegoKerzmanSteinSolver {
+    pts: Vec<Complex<f64>>,
+    tangents: Vec<Complex<f64>>,
+    speeds: Vec<f64>,
+    dt: f64,
+    a: Complex<f64>,
+    s_boundary: Vec<Complex<f64>>,
+    s_aa: Complex<f64>,
+}
+
+impl SzegoKerzmanSteinSolver {
+    /// Solves $(I + A) S_a = \bar{H}_a$ once and caches the boundary Szegő kernel.
+    pub fn solve<F, DF>(
+        gamma: F,
+        dgamma: DF,
+        n_quad: usize,
+        a: Complex<f64>,
+    ) -> Result<Self, String>
+    where
+        F: Fn(f64) -> Complex<f64>,
+        DF: Fn(f64) -> Complex<f64>,
+    {
+        if n_quad < 16 {
+            return Err("n_quad must be at least 16".to_string());
+        }
+        let dt = 2.0 * PI / (n_quad as f64);
+        let mut pts = Vec::with_capacity(n_quad);
+        let mut tangents = Vec::with_capacity(n_quad);
+        let mut speeds = Vec::with_capacity(n_quad);
+        for j in 0..n_quad {
+            let t = (j as f64) * dt;
+            let p = gamma(t);
+            let dp = dgamma(t);
+            let sp = dp.norm();
+            if sp < 1e-14 {
+                return Err("Zero tangent speed on boundary".to_string());
+            }
+            pts.push(p);
+            tangents.push(dp / sp);
+            speeds.push(sp);
+        }
+
+        let two_pi_i = Complex::new(0.0, 2.0 * PI);
+        let mut mat = vec![vec![Complex::new(0.0, 0.0); n_quad]; n_quad];
+        let mut rhs = Vec::with_capacity(n_quad);
+
+        for i in 0..n_quad {
+            let zi = *pts.get(i).ok_or_else(|| "Index".to_string())?;
+            let ti = *tangents.get(i).ok_or_else(|| "Index".to_string())?;
+            let h_a_i = (ti / (zi - a)) / two_pi_i;
+            rhs.push(h_a_i.conj());
+            for j in 0..n_quad {
+                let ds_j = *speeds.get(j).ok_or_else(|| "Index".to_string())? * dt;
+                if i == j {
+                    if let Some(cell) = mat.get_mut(i).and_then(|r| r.get_mut(j)) {
+                        *cell = Complex::new(1.0, 0.0);
+                    }
+                } else {
+                    let zj = *pts.get(j).ok_or_else(|| "Index".to_string())?;
+                    let tj = *tangents.get(j).ok_or_else(|| "Index".to_string())?;
+                    let h_ij = (tj / (zj - zi)) / two_pi_i;
+                    let h_ji = (ti / (zi - zj)) / two_pi_i;
+                    let k_ij = h_ji.conj() - h_ij;
+                    if let Some(cell) = mat.get_mut(i).and_then(|r| r.get_mut(j)) {
+                        *cell = k_ij * ds_j;
+                    }
+                }
+            }
+        }
+
+        let s_boundary = solve_complex_linear(&mat, &rhs)?;
+        let mut solver = Self {
+            pts,
+            tangents,
+            speeds,
+            dt,
+            a,
+            s_boundary,
+            s_aa: Complex::new(0.0, 0.0),
+        };
+        solver.s_aa = solver.eval_szego(a);
+        Ok(solver)
+    }
+
+    /// Evaluates the Szegő kernel $S(w, a)$ at an interior point `w`.
+    #[must_use]
+    pub fn eval_szego(
+        &self,
+        w: Complex<f64>,
+    ) -> Complex<f64> {
+        let two_pi_i = Complex::new(0.0, 2.0 * PI);
+        let mut sum = Complex::new(0.0, 0.0);
+        for j in 0..self.pts.len() {
+            let zj = self.pts[j];
+            let tj = self.tangents[j];
+            let sj = self.s_boundary[j];
+            let ds_j = self.speeds[j] * self.dt;
+            sum += (sj * tj / (zj - w)) * ds_j;
+        }
+        sum / two_pi_i
+    }
+
+    /// Evaluates the Riemann map $f(z)$ and Szegő kernel $S(z, a)$ at `z`.
+    #[must_use]
+    pub fn eval_map(
+        &self,
+        z: Complex<f64>,
+    ) -> (Complex<f64>, Complex<f64>) {
+        let s_za = self.eval_szego(z);
+        let dir = z - self.a;
+        let integral_sq = integrate_complex_01(
+            |u| {
+                let w = self.a + dir * u;
+                let sw = self.eval_szego(w);
+                sw * sw * dir
+            },
+            1e-9,
+            128,
+        );
+        let riemann_map_z = (Complex::new(2.0 * PI, 0.0) / self.s_aa) * integral_sq;
+        (riemann_map_z, s_za)
+    }
+
+    /// Bergman kernel $K(z, a) = 4 \pi S(z, a)^2$ for simply-connected $\Omega$.
+    #[must_use]
+    pub fn eval_bergman(
+        &self,
+        z: Complex<f64>,
+    ) -> Complex<f64> {
+        let s = self.eval_szego(z);
+        4.0 * PI * s * s
+    }
+}
+
 /// Computes the Szegő kernel $S(\cdot, a)$ on the boundary of a smooth Jordan domain
 /// parameterized CCW by `gamma(t)` with derivative `dgamma(t)` for $t \in [0, 2\pi]$
 /// via the Kerzman–Stein integral equation $(I + A) S_a = \bar{H}_a$, and evaluates
@@ -625,88 +796,8 @@ where
     F: Fn(f64) -> Complex<f64>,
     DF: Fn(f64) -> Complex<f64>,
 {
-    if n_quad < 16 {
-        return Err("n_quad must be at least 16".to_string());
-    }
-    let dt = 2.0 * PI / (n_quad as f64);
-    let mut pts = Vec::with_capacity(n_quad);
-    let mut tangents = Vec::with_capacity(n_quad);
-    let mut speeds = Vec::with_capacity(n_quad);
-    for j in 0..n_quad {
-        let t = (j as f64) * dt;
-        let p = gamma(t);
-        let dp = dgamma(t);
-        let sp = dp.norm();
-        if sp < 1e-14 {
-            return Err("Zero tangent speed on boundary".to_string());
-        }
-        pts.push(p);
-        tangents.push(dp / sp);
-        speeds.push(sp);
-    }
-
-    // Cauchy-Szego kernel H(w, zeta) = 1 / (2*pi*i) * T(zeta) / (zeta - w)
-    // Kerzman-Stein kernel A(w, zeta) = H*(zeta, w) - H(w, zeta) = conj(H(w, zeta)) - H(w, zeta)?
-    // Specifically: H(z_i, z_j) = (1/(2*pi*i)) * T_j / (z_j - z_i), and
-    // A_{ij} = (conj(H_{ji}) - H_{ij}) * sqrt(ds_i * ds_j) in arc-length weights.
-    // Using unweighted Nystrom: A_{ij} = (conj(H(z_j, z_i)) - H(z_i, z_j)) * ds_j,
-    // where H(z_i, z_j) = (1/(2*pi*i)) * T_j / (z_j - z_i).
-    let two_pi_i = Complex::new(0.0, 2.0 * PI);
-    let mut mat = vec![vec![Complex::new(0.0, 0.0); n_quad]; n_quad];
-    let mut rhs = Vec::with_capacity(n_quad);
-
-    for i in 0..n_quad {
-        let zi = *pts.get(i).ok_or_else(|| "Index".to_string())?;
-        let ti = *tangents.get(i).ok_or_else(|| "Index".to_string())?;
-        let h_a_i = (ti / (zi - a)) / two_pi_i;
-        rhs.push(h_a_i.conj());
-        for j in 0..n_quad {
-            let ds_j = *speeds.get(j).ok_or_else(|| "Index".to_string())? * dt;
-            if i == j {
-                if let Some(cell) = mat.get_mut(i).and_then(|r| r.get_mut(j)) {
-                    *cell = Complex::new(1.0, 0.0);
-                }
-            } else {
-                let zj = *pts.get(j).ok_or_else(|| "Index".to_string())?;
-                let tj = *tangents.get(j).ok_or_else(|| "Index".to_string())?;
-                let h_ij = (tj / (zj - zi)) / two_pi_i;
-                let h_ji = (ti / (zi - zj)) / two_pi_i;
-                let k_ij = h_ji.conj() - h_ij;
-                if let Some(cell) = mat.get_mut(i).and_then(|r| r.get_mut(j)) {
-                    *cell = k_ij * ds_j;
-                }
-            }
-        }
-    }
-
-    let s_boundary = solve_complex_linear(&mat, &rhs)?;
-    // Reconstruct interior S(w, a) via Cauchy integral: S(w, a) = (1/(2*pi*i)) * int S(zeta, a) / (zeta - w) dzeta
-    let eval_szego = |w: Complex<f64>| -> Complex<f64> {
-        let mut sum = Complex::new(0.0, 0.0);
-        for j in 0..n_quad {
-            let zj = *pts.get(j).unwrap_or(&Complex::default());
-            let tj = *tangents.get(j).unwrap_or(&Complex::default());
-            let sj = *s_boundary.get(j).unwrap_or(&Complex::default());
-            let ds_j = *speeds.get(j).unwrap_or(&0.0) * dt;
-            sum += (sj * tj / (zj - w)) * ds_j;
-        }
-        sum / two_pi_i
-    };
-
-    let s_aa = eval_szego(a);
-    let s_za = eval_szego(z);
-    let dir = z - a;
-    let integral_sq = integrate_complex_01(
-        |u| {
-            let w = a + dir * u;
-            let sw = eval_szego(w);
-            sw * sw * dir
-        },
-        1e-9,
-        128,
-    );
-    let riemann_map_z = (Complex::new(2.0 * PI, 0.0) / s_aa) * integral_sq;
-    Ok((riemann_map_z, s_za))
+    let solver = SzegoKerzmanSteinSolver::solve(gamma, dgamma, n_quad, a)?;
+    Ok(solver.eval_map(z))
 }
 
 /// Exact Bergman kernel of the unit disk: $K_{\mathbb{D}}(z, w) = \frac{1}{\pi (1 - z \bar{w})^2}$.

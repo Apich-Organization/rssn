@@ -199,8 +199,7 @@ where
 }
 
 /// Solves the scalar Riemann–Hilbert problem $X^+(t) = G(t) X^-(t)$ on $(-1, 1)$
-/// with $X(\infty) = 1$ (assuming winding number $0$ and $G(\pm 1) = 1$) via
-/// $X(z) = \exp\left(\frac{1}{2\pi i} \int_{-1}^1 \frac{\ln G(t)}{t - z} \, dt\right)$.
+/// with $X(\infty) = 1$ via continuous phase unwrapping of $\ln G(t)$.
 pub fn scalar_rh_factorize_arc<F>(
     g: &F,
     z: Complex<f64>,
@@ -209,7 +208,43 @@ pub fn scalar_rh_factorize_arc<F>(
 where
     F: Fn(f64) -> Complex<f64>,
 {
-    cauchy_transform_arc(&|t| g(t).ln(), z, tol).exp()
+    // Sample [-1, 1] at 129 points to unwrap arg(G(t)) continuously
+    let n_grid = 128_usize;
+    let mut unwrapped_args = Vec::with_capacity(n_grid + 1);
+    let mut prev_arg = g(-1.0).arg();
+    unwrapped_args.push(prev_arg);
+    for k in 1..=n_grid {
+        let t = -1.0 + 2.0 * (k as f64) / (n_grid as f64);
+        let mut a = g(t).arg();
+        while a - prev_arg > PI {
+            a -= 2.0 * PI;
+        }
+        while a - prev_arg < -PI {
+            a += 2.0 * PI;
+        }
+        prev_arg = a;
+        unwrapped_args.push(a);
+    }
+    cauchy_transform_arc(
+        &|t| {
+            let gt = g(t);
+            let u = ((t + 1.0) * 0.5 * (n_grid as f64)).clamp(0.0, n_grid as f64);
+            let idx = (u.floor() as usize).min(n_grid - 1);
+            let frac = u - (idx as f64);
+            let ref_arg = unwrapped_args[idx] * (1.0 - frac) + unwrapped_args[idx + 1] * frac;
+            let mut a = gt.arg();
+            while a - ref_arg > PI {
+                a -= 2.0 * PI;
+            }
+            while a - ref_arg < -PI {
+                a += 2.0 * PI;
+            }
+            Complex::new(gt.norm().ln(), a)
+        },
+        z,
+        tol,
+    )
+    .exp()
 }
 
 /// Computes $n$-point Gauss–Legendre nodes and weights on $(-1, 1)$.

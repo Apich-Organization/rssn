@@ -198,7 +198,9 @@ pub fn durand_kerner(
             return Ok(roots);
         }
     }
-    Ok(roots)
+    Err(format!(
+        "Durand-Kerner failed to converge within {max_iter} iterations"
+    ))
 }
 
 /// Finds all roots of a polynomial with ascending coefficients using the Aberth–Ehrlich method.
@@ -257,7 +259,9 @@ pub fn aberth_ehrlich(
             return Ok(roots);
         }
     }
-    Ok(roots)
+    Err(format!(
+        "Durand-Kerner failed to converge within {max_iter} iterations"
+    ))
 }
 
 /// Finds a single root of a polynomial starting from `z0` via Laguerre's method.
@@ -298,7 +302,9 @@ pub fn laguerre_root(
             return Ok(z);
         }
     }
-    Ok(z)
+    Err(format!(
+        "Laguerre failed to converge within {max_iter} iterations"
+    ))
 }
 
 /// Finds a complex root of an arbitrary analytic function `f` using Muller's quadratic interpolation.
@@ -350,7 +356,9 @@ where
         z1 = z2;
         z2 = z3;
     }
-    Ok(z2)
+    Err(format!(
+        "Muller failed to converge within {max_iter} iterations"
+    ))
 }
 
 /// Finds a complex root using Halley's cubically convergent method.
@@ -384,7 +392,9 @@ where
             return Ok(z);
         }
     }
-    Ok(z)
+    Err(format!(
+        "Halley failed to converge within {max_iter} iterations"
+    ))
 }
 
 /// Computes power-sum moments $s_k = \frac{1}{2\pi i} \oint_{|z-c|=r} z^k \frac{f'(z)}{f(z)} dz$
@@ -471,6 +481,9 @@ where
         .first()
         .copied()
         .ok_or_else(|| "Missing s0".to_string())?;
+    if s0.im.abs() > 1e-2 || (s0.re - s0.re.round()).abs() > 1e-2 {
+        return Err(format!("Non-integer argument principle integral s0 = {s0}"));
+    }
     let count_signed = s0.re.round() as isize;
     if count_signed < 0 {
         return Err("Negative winding number indicates poles inside contour".to_string());
@@ -514,7 +527,22 @@ where
         poly.push(ek * sign);
     }
     let shifted_roots = aberth_ehrlich(&poly, 200, 1e-13)?;
-    Ok(shifted_roots.into_iter().map(|w| center + w).collect())
+    // Polish each root with Newton steps on f
+    let mut polished: Vec<Complex<f64>> = shifted_roots.into_iter().map(|w| center + w).collect();
+    for z in &mut polished {
+        for _ in 0..8 {
+            let fz = f(*z);
+            if fz.norm() < 1e-14 {
+                break;
+            }
+            let dfz = df(*z);
+            if dfz.norm() < 1e-14 {
+                break;
+            }
+            *z -= fz / dfz;
+        }
+    }
+    Ok(polished)
 }
 
 /// Checks Rouché's condition $|f(z)| > |g(z)|$ on $|z - \text{center}| = \text{radius}$.
@@ -542,8 +570,9 @@ where
     Ok(min_margin > 0.0)
 }
 
-/// Tracks a root of a 1D complex homotopy $H(z(t), t) = 0$ from $t = 0$ to $t = 1$
-/// starting from $z(0) = z_0$, using Euler predictor + Newton corrector.
+/// Tracks a root of a 1D complex homotopy `H(z(t), t) = 0` from `t = 0` to `t = 1`
+/// starting from `z(0) = z_0`, using adaptive-step RK4 predictor + Newton corrector
+/// with damped fallback near singular target roots (`t -> 1`).
 pub fn homotopy_track_1d<H, DHZ, DHT>(
     h: H,
     dh_dz: DHZ,
@@ -561,33 +590,136 @@ where
     if n_steps == 0 {
         return Err("n_steps must be positive".to_string());
     }
-    let dt = 1.0 / (n_steps as f64);
+    let mut dt = 1.0 / (n_steps as f64);
+    let min_dt = 1e-6;
+    let mut t = 0.0_f64;
     let mut z = z0;
-    for step in 0..n_steps {
-        let t = (step as f64) * dt;
-        let t_next = ((step.saturating_add(1)) as f64) * dt;
-        let hz = dh_dz(z, t);
-        if hz.norm() < 1e-14 {
-            return Err(format!("Singular Jacobian along homotopy at t = {t}"));
+    let mut guard = 0_usize;
+    while t < 1.0 - 1e-14 {
+        guard += 1;
+        if guard > 50_000 {
+            return Err("Homotopy step budget exceeded".to_string());
         }
-        // Predictor: dz/dt = -(dH/dt)/(dH/dz)
-        let dz_dt = -dh_dt(z, t) / hz;
-        z += dz_dt * dt;
-        // Corrector: Newton at t_next
-        for _ in 0..newton_iters {
-            let val = h(z, t_next);
+        let step = dt.min(1.0 - t);
+        let t_next = t + step;
+
+        // RK4 predictor for dz/dt = -(dH/dt)/(dH/dz)
+        let vel = |zz: Complex<f64>, tt: f64| -> Option<Complex<f64>> {
+            let hz = dh_dz(zz, tt);
+            if hz.norm() < 1e-14 {
+                None
+            } else {
+                Some(-dh_dt(zz, tt) / hz)
+            }
+        };
+        let z_pred = if let Some(k1) = vel(z, t)
+            && let Some(k2) = vel(z + 0.5 * step * k1, t + 0.5 * step)
+            && let Some(k3) = vel(z + 0.5 * step * k2, t + 0.5 * step)
+            && let Some(k4) = vel(z + step * k3, t_next)
+        {
+            z + (step / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
+        } else if t_next >= 0.99 {
+            z
+        } else if step > min_dt {
+            dt *= 0.5;
+            continue;
+        } else {
+            return Err(format!("Singular Jacobian along homotopy at t = {t}"));
+        };
+
+        // Newton corrector at t_next
+        let mut z_corr = z_pred;
+        let mut converged = false;
+        for _ in 0..newton_iters.max(6) {
+            let val = h(z_corr, t_next);
             if val.norm() < tol {
+                converged = true;
                 break;
             }
-            let dval = dh_dz(z, t_next);
+            let dval = dh_dz(z_corr, t_next);
             if dval.norm() < 1e-14 {
-                return Err(format!("Singular Jacobian in corrector at t = {t_next}"));
+                break;
             }
-            z -= val / dval;
+            z_corr -= val / dval;
+        }
+        if !converged && t_next < 1.0 - 1e-6 && step > min_dt {
+            dt *= 0.5;
+            continue;
+        }
+        z = z_corr;
+        t = t_next;
+        if converged && dt < 0.1 {
+            dt = (dt * 1.25).min(0.1);
         }
     }
-    if h(z, 1.0).norm() > tol.max(1e-6) {
+    if h(z, 1.0).norm() > tol.sqrt().max(1e-6) {
         return Err("Homotopy corrector failed to converge at t = 1".to_string());
     }
     Ok(z)
+}
+
+/// Verified root isolation for a complex polynomial inside `|Re(z)|, |Im(z)| <= R`
+/// using [`ComplexBall`] interval exclusion + quadtree subdivision + 1D Krawczyk certification.
+#[must_use]
+pub fn isolate_roots_verified(
+    coeffs: &[Complex<f64>],
+    tol: f64,
+) -> Vec<crate::kernels::complex_ball::ComplexBall> {
+    use crate::kernels::complex_ball::ComplexBall;
+    use crate::kernels::complex_ball::ComplexBallJet;
+    use crate::kernels::complex_ball::certify_root_1d;
+
+    let Some(bound) = cauchy_root_bound(coeffs) else {
+        return Vec::new();
+    };
+    let r = bound * 1.05;
+    let mut stack = vec![(Complex::new(0.0, 0.0), r * 2.0_f64.sqrt())];
+    let mut certified: Vec<ComplexBall> = Vec::new();
+    let mut iters = 0_usize;
+    while let Some((center, rad)) = stack.pop() {
+        iters += 1;
+        if iters > 20_000 {
+            break;
+        }
+        let Some(ball) = ComplexBall::new(center, rad) else {
+            continue;
+        };
+        // Evaluate polynomial over ball via Horner
+        let mut p_ball = ComplexBall::zero();
+        for &c in coeffs.iter().rev() {
+            p_ball = p_ball * ball + ComplexBall::of(c);
+        }
+        if !p_ball.contains_zero() {
+            continue;
+        }
+        if let Some(cert) = certify_root_1d(
+            |z_jet| {
+                let mut acc = ComplexBallJet::constant(ComplexBall::zero());
+                for &c in coeffs.iter().rev() {
+                    acc = acc
+                        .mul(&z_jet)
+                        .add(&ComplexBallJet::constant(ComplexBall::of(c)));
+                }
+                Some(acc)
+            },
+            ball,
+        ) {
+            if !certified.iter().any(|existing| existing.overlaps(&cert)) {
+                certified.push(cert);
+            }
+            continue;
+        }
+        if rad <= tol.max(1e-9) {
+            continue;
+        }
+        let half = 0.5 * rad;
+        let offset = 0.5 * rad / 2.0_f64.sqrt();
+        for (sx, sy) in [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)] {
+            stack.push((
+                Complex::new(center.re + sx * offset, center.im + sy * offset),
+                half * 1.05,
+            ));
+        }
+    }
+    certified
 }

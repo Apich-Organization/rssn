@@ -54,6 +54,20 @@ fn up_mul(
     }
 }
 
+/// Outward-rounded lower bound for non-negative `a * b`.
+#[inline]
+fn down_mul(
+    a: f64,
+    b: f64,
+) -> f64 {
+    let p = a * b;
+    if p.is_nan() || p <= 0.0 {
+        0.0
+    } else {
+        p.next_down().max(0.0)
+    }
+}
+
 /// Outward-rounded upper bound for `|z|` of a point `z`.
 #[inline]
 fn norm_upper(z: Complex64) -> f64 {
@@ -394,7 +408,7 @@ impl ComplexBall {
             return None;
         }
         let mid = Complex64::new(1.0, 0.0) / self.mid;
-        let denom = up_mul(m_norm_lo, d_min);
+        let denom = down_mul(m_norm_lo, d_min);
         if denom <= 0.0 || !denom.is_finite() {
             return None;
         }
@@ -413,12 +427,15 @@ impl ComplexBall {
         Some(self.mul_ball(&inv))
     }
 
-    /// Integer power `self^n`. Returns `None` if `n < 0` and `self` may contain zero.
+    /// Integer power `self^n`. Returns `None` if `!self.is_finite()` or if `n < 0` and `self` may contain zero.
     #[must_use]
     pub fn powi(
         &self,
         n: i32,
     ) -> Option<Self> {
+        if !self.is_finite() {
+            return None;
+        }
         if n == 0 {
             return Some(Self::one());
         }
@@ -506,7 +523,7 @@ impl ComplexBall {
             return None;
         }
         let mid = self.mid.sqrt();
-        let denom = up_mul(2.0, d_min.sqrt().next_down()).max(f64::MIN_POSITIVE);
+        let denom = down_mul(2.0, d_min.sqrt().next_down()).max(f64::MIN_POSITIVE);
         let rad = up_add(
             (self.rad / denom).next_up(),
             center_slack(mid, ELEM_ULP_SCALE),
@@ -733,6 +750,152 @@ impl ComplexBall {
         );
         Some(Self { mid, rad })
     }
+
+    /// Modulus ball `|z| + 0i` enclosing all `|w|` for `w in self`.
+    #[must_use]
+    pub fn abs_ball(&self) -> Option<Self> {
+        if !self.is_finite() {
+            return None;
+        }
+        let lo = self.modulus_lower();
+        let hi = self.modulus_upper();
+        let mid_re = f64::midpoint(lo, hi);
+        let rad = (hi - mid_re).abs().max((mid_re - lo).abs()).next_up();
+        Some(Self {
+            mid: Complex64::new(mid_re, 0.0),
+            rad: up_add(
+                rad,
+                center_slack(Complex64::new(mid_re, 0.0), ARITH_ULP_SCALE),
+            ),
+        })
+    }
+
+    /// Principal argument `arg(z) + 0i` in `(-pi, pi]`.
+    /// Returns `None` if the ball meets the non-positive real axis `(-inf, 0]`.
+    #[must_use]
+    pub fn arg_ball(&self) -> Option<Self> {
+        let l = self.ln()?;
+        Some(Self {
+            mid: Complex64::new(l.mid.im, 0.0),
+            rad: l.rad,
+        })
+    }
+
+    /// Complex secant `sec(z) = 1 / cos(z)`.
+    #[must_use]
+    pub fn sec(&self) -> Option<Self> {
+        self.cos().recip()
+    }
+
+    /// Complex cosecant `csc(z) = 1 / sin(z)`.
+    #[must_use]
+    pub fn csc(&self) -> Option<Self> {
+        self.sin().recip()
+    }
+
+    /// Complex cotangent `cot(z) = cos(z) / sin(z)`.
+    #[must_use]
+    pub fn cot(&self) -> Option<Self> {
+        self.cos().div_ball(&self.sin())
+    }
+
+    /// Complex hyperbolic secant `sech(z) = 1 / cosh(z)`.
+    #[must_use]
+    pub fn sech(&self) -> Option<Self> {
+        self.cosh().recip()
+    }
+
+    /// Complex hyperbolic cosecant `csch(z) = 1 / sinh(z)`.
+    #[must_use]
+    pub fn csch(&self) -> Option<Self> {
+        self.sinh().recip()
+    }
+
+    /// Complex hyperbolic cotangent `coth(z) = cosh(z) / sinh(z)`.
+    #[must_use]
+    pub fn coth(&self) -> Option<Self> {
+        self.cosh().div_ball(&self.sinh())
+    }
+
+    /// Complex error function enclosure `erf(z)` via midpoint evaluation + Lipschitz
+    /// derivative bound `|erf'(w)| = (2/sqrt(pi)) * |exp(-w^2)|`.
+    #[must_use]
+    pub fn erf(&self) -> Option<Self> {
+        if !self.is_finite() {
+            return None;
+        }
+        let mid = crate::kernels::fresnel::erf_complex(self.mid);
+        if !mid.is_finite() {
+            return None;
+        }
+        let w2 = self.sqr();
+        let neg_w2_re_hi = (-w2.mid.re + w2.rad).min(700.0);
+        let lip = (2.0 / std::f64::consts::PI.sqrt()) * neg_w2_re_hi.exp().next_up();
+        let rad = up_add(
+            up_mul(lip, self.rad),
+            center_slack(mid, 64.0 * f64::EPSILON),
+        );
+        Some(Self { mid, rad })
+    }
+
+    /// Complex log-gamma enclosure `ln(Gamma(z))` away from `(-inf, 0]`,
+    /// using `|psi(w)|` Lipschitz bound.
+    #[must_use]
+    pub fn ln_gamma(&self) -> Option<Self> {
+        if !self.is_finite() {
+            return None;
+        }
+        if self.mid.re <= 0.0 && self.mid.im.abs() <= self.rad {
+            return None;
+        }
+        let mid = crate::kernels::special_complex::ln_gamma_complex(self.mid);
+        if !mid.is_finite() {
+            return None;
+        }
+        let d_min = self.modulus_lower().max(1e-30);
+        let psi_mid = crate::kernels::special_complex::digamma_complex(self.mid);
+        let lip = up_add(norm_upper(psi_mid), self.rad / d_min);
+        let rad = up_add(
+            up_mul(lip, self.rad),
+            center_slack(mid, 128.0 * f64::EPSILON),
+        );
+        Some(Self { mid, rad })
+    }
+
+    /// Complex gamma enclosure `Gamma(z) = exp(ln_gamma(z))` away from `(-inf, 0]`.
+    #[must_use]
+    pub fn gamma(&self) -> Option<Self> {
+        Some(self.ln_gamma()?.exp())
+    }
+
+    /// Complex Bessel function `J_nu(z)` enclosure for real `nu >= 0`,
+    /// using `|J_nu'(w)| = 0.5 * |J_{nu-1}(w) - J_{nu+1}(w)|` Lipschitz bound.
+    #[must_use]
+    pub fn bessel_j(
+        &self,
+        nu: f64,
+    ) -> Option<Self> {
+        if !self.is_finite() || !nu.is_finite() {
+            return None;
+        }
+        if nu.fract() != 0.0 && self.mid.re <= 0.0 && self.mid.im.abs() <= self.rad {
+            return None;
+        }
+        let mid = crate::kernels::special_complex::bessel_j_complex(nu, self.mid);
+        if !mid.is_finite() {
+            return None;
+        }
+        let y_max = up_add(self.mid.im.abs(), self.rad).min(700.0);
+        let jm1 = crate::kernels::special_complex::bessel_j_complex(nu - 1.0, self.mid);
+        let jp1 = crate::kernels::special_complex::bessel_j_complex(nu + 1.0, self.mid);
+        let d_mid = 0.5 * (jm1 - jp1);
+        let lip = up_add(norm_upper(d_mid), y_max.cosh().next_up() * self.rad);
+        let rad = up_add(
+            up_mul(lip, self.rad),
+            center_slack(mid, 128.0 * f64::EPSILON),
+        );
+        Some(Self { mid, rad })
+    }
 }
 
 impl Add for ComplexBall {
@@ -928,6 +1091,93 @@ impl ComplexBallJet {
             val: self.val.cosh(),
             deriv: self.val.sinh() * self.deriv,
         }
+    }
+
+    /// Tangent.
+    #[must_use]
+    pub fn tan(&self) -> Option<Self> {
+        let val = self.val.tan()?;
+        let sec2 = self.val.cos().sqr().recip()?;
+        Some(Self {
+            val,
+            deriv: sec2 * self.deriv,
+        })
+    }
+
+    /// Hyperbolic tangent.
+    #[must_use]
+    pub fn tanh(&self) -> Option<Self> {
+        let val = self.val.tanh()?;
+        let sech2 = self.val.cosh().sqr().recip()?;
+        Some(Self {
+            val,
+            deriv: sech2 * self.deriv,
+        })
+    }
+
+    /// Complex power `self^exponent` for a constant exponent `c` or general jet.
+    #[must_use]
+    pub fn powc(
+        &self,
+        exponent: &Self,
+    ) -> Option<Self> {
+        let l = self.ln()?;
+        let prod = exponent.mul(&l);
+        Some(prod.exp())
+    }
+
+    /// Inverse sine.
+    #[must_use]
+    pub fn asin(&self) -> Option<Self> {
+        let val = self.val.asin()?;
+        let denom = (ComplexBall::one() - self.val.sqr()).sqrt()?;
+        let deriv = self.deriv.div_ball(&denom)?;
+        Some(Self { val, deriv })
+    }
+
+    /// Inverse cosine.
+    #[must_use]
+    pub fn acos(&self) -> Option<Self> {
+        let val = self.val.acos()?;
+        let denom = (ComplexBall::one() - self.val.sqr()).sqrt()?;
+        let deriv = (-self.deriv).div_ball(&denom)?;
+        Some(Self { val, deriv })
+    }
+
+    /// Inverse tangent.
+    #[must_use]
+    pub fn atan(&self) -> Option<Self> {
+        let val = self.val.atan()?;
+        let denom = ComplexBall::one() + self.val.sqr();
+        let deriv = self.deriv.div_ball(&denom)?;
+        Some(Self { val, deriv })
+    }
+
+    /// Inverse hyperbolic sine.
+    #[must_use]
+    pub fn asinh(&self) -> Option<Self> {
+        let val = self.val.asinh()?;
+        let denom = (self.val.sqr() + ComplexBall::one()).sqrt()?;
+        let deriv = self.deriv.div_ball(&denom)?;
+        Some(Self { val, deriv })
+    }
+
+    /// Inverse hyperbolic cosine.
+    #[must_use]
+    pub fn acosh(&self) -> Option<Self> {
+        let val = self.val.acosh()?;
+        let denom = (self.val.sqr() - ComplexBall::one()).sqrt()?;
+        let deriv = self.deriv.div_ball(&denom)?;
+        Some(Self { val, deriv })
+    }
+
+    /// Inverse hyperbolic tangent.
+    #[must_use]
+    pub fn atanh(&self) -> Option<Self> {
+        let val = self.val.atanh()?;
+        let denom = ComplexBall::one() - self.val.sqr();
+        let deriv = self.deriv.div_ball(&denom)?;
+        Some(Self { val, deriv })
     }
 }
 
@@ -1145,6 +1395,72 @@ where
     }
 }
 
+/// Multi-dimensional complex Krawczyk root certification for `F(z) = 0`.
+///
+/// Given a box `balls` (`[B_0, ..., B_{n-1}]`), midpoint evaluation `f_mid = F(m)`,
+/// and Jacobian enclosure `jac_box = J_F(B)` (evaluated over `balls`), computes
+/// `K(B) = m - R * f_mid + (I - R * J_F(B)) * (B - m)` where `R ~ J_F(m)^{-1}`.
+/// Returns `Some(K(B))` if every component `K(B)_i` lies strictly inside `B_i`.
+#[must_use]
+pub fn certify_root_nd<F, J>(
+    f_mid: F,
+    jac_box: J,
+    balls: &[ComplexBall],
+) -> Option<Vec<ComplexBall>>
+where
+    F: Fn(&[ComplexBall]) -> Option<Vec<ComplexBall>>,
+    J: Fn(&[ComplexBall]) -> Option<Vec<Vec<ComplexBall>>>,
+{
+    let n = balls.len();
+    if n == 0 || balls.iter().any(|b| !b.is_finite() || b.rad <= 0.0) {
+        return None;
+    }
+    let m: Vec<ComplexBall> = balls.iter().map(|b| ComplexBall::of(b.mid)).collect();
+    let fm = f_mid(&m)?;
+    if fm.len() != n {
+        return None;
+    }
+    let jm = jac_box(&m)?;
+    let jb = jac_box(balls)?;
+    if jm.len() != n || jb.len() != n {
+        return None;
+    }
+    // Invert midpoint Jacobian via solve_linear_ball on identity columns.
+    let mut r_mat = vec![vec![ComplexBall::zero(); n]; n];
+    for col in 0..n {
+        let mut e = vec![ComplexBall::zero(); n];
+        *e.get_mut(col)? = ComplexBall::one();
+        let sol = solve_linear_ball(&jm, &e)?;
+        for row in 0..n {
+            *r_mat.get_mut(row)?.get_mut(col)? = *sol.get(row)?;
+        }
+    }
+    let step = mat_vec_ball(&r_mat, &fm)?;
+    let rj = mat_mul_ball(&r_mat, &jb)?;
+    let delta: Vec<ComplexBall> = balls.iter().zip(m.iter()).map(|(b, mi)| *b - *mi).collect();
+    let mut c_mat = vec![vec![ComplexBall::zero(); n]; n];
+    for i in 0..n {
+        for j in 0..n {
+            let entry = *rj.get(i)?.get(j)?;
+            *c_mat.get_mut(i)?.get_mut(j)? = if i == j {
+                ComplexBall::one() - entry
+            } else {
+                -entry
+            };
+        }
+    }
+    let c_delta = mat_vec_ball(&c_mat, &delta)?;
+    let mut out = Vec::with_capacity(n);
+    for i in 0..n {
+        let ki = (*m.get(i)? - *step.get(i)?) + *c_delta.get(i)?;
+        if !ki.inside_strictly(balls.get(i)?) {
+            return None;
+        }
+        out.push(ki);
+    }
+    Some(out)
+}
+
 /// Certifies Rouché's theorem on the circle `|z - center| = radius` by covering
 /// the circle with `segments` overlapping [`ComplexBall`]s and checking
 /// `|g(B)|_upper < |f(B)|_lower` on every segment.
@@ -1160,7 +1476,12 @@ where
     F: Fn(ComplexBall) -> Option<ComplexBall>,
     G: Fn(ComplexBall) -> Option<ComplexBall>,
 {
-    if segments < 4 || !radius.is_finite() || radius <= 0.0 {
+    if !center.re.is_finite()
+        || !center.im.is_finite()
+        || segments < 4
+        || !radius.is_finite()
+        || radius <= 0.0
+    {
         return false;
     }
     let n_f = segments as f64;

@@ -134,14 +134,29 @@ pub fn bessel_k_complex(
     }
     let nu_abs = nu.abs();
     // For large |z|, use Hankel asymptotic expansion for K_nu(z) = sqrt(pi/(2z)) e^(-z) sum ...
-    if z.norm() > 12.0 + 1.5 * nu_abs && z.arg().abs() < PI - 0.15 {
+    if z.norm() > 12.0 + 1.5 * nu_abs {
+        if z.arg().abs() >= PI - 0.15 {
+            // Analytic continuation across (-inf, 0]: K_nu(z e^{+-i pi}) = e^{-+i pi nu} K_nu(z) -+ i pi I_nu(z)
+            let (z_refl, sgn) = if z.im >= 0.0 {
+                (-z, 1.0)
+            } else {
+                (-z, -1.0)
+            };
+            let phase = Complex64::from_polar(1.0, -sgn * nu_abs * PI);
+            return phase * bessel_k_complex(nu_abs, z_refl)
+                - sgn * I * PI * bessel_i_complex(nu_abs, z_refl);
+        }
         let mu = 4.0 * nu_abs * nu_abs;
         let eight_z = 8.0 * z;
         let mut sum = ONE;
         let mut term = ONE;
         for k in 1..=25 {
             let kf = k as f64;
-            term *= (mu - (2.0 * kf - 1.0) * (2.0 * kf - 1.0)) / (kf * eight_z);
+            let next_term = term * (mu - (2.0 * kf - 1.0) * (2.0 * kf - 1.0)) / (kf * eight_z);
+            if next_term.norm() > term.norm() && k > 2 {
+                break;
+            }
+            term = next_term;
             sum += term;
             if term.norm() < 1e-16 * sum.norm() {
                 break;
@@ -203,30 +218,63 @@ pub fn bessel_k_complex(
     sum1 + ln_term + sum2
 }
 
-/// Exponentially scaled `exp(z) * K_nu(z)`.
+/// Exponentially scaled `exp(z) * K_nu(z)` computed without `exp(z)` overflow for large `Re(z)`.
 #[must_use]
 pub fn bessel_ke_complex(
     nu: f64,
     z: Complex64,
 ) -> Complex64 {
+    if z == ZERO {
+        return Complex64::new(f64::NAN, f64::NAN);
+    }
+    let nu_abs = nu.abs();
+    if z.norm() > 12.0 + 1.5 * nu_abs && z.arg().abs() < PI - 0.15 {
+        let mu = 4.0 * nu_abs * nu_abs;
+        let eight_z = 8.0 * z;
+        let mut sum = ONE;
+        let mut term = ONE;
+        for k in 1..=25 {
+            let kf = k as f64;
+            let next_term = term * (mu - (2.0 * kf - 1.0) * (2.0 * kf - 1.0)) / (kf * eight_z);
+            if next_term.norm() > term.norm() && k > 2 {
+                break;
+            }
+            term = next_term;
+            sum += term;
+            if term.norm() < 1e-16 * sum.norm() {
+                break;
+            }
+        }
+        return (PI / (2.0 * z)).sqrt() * sum;
+    }
     z.exp() * bessel_k_complex(nu, z)
 }
 
 /// Complex Hankel function of the first kind `H_nu^(1)(z) = J_nu(z) + i * Y_nu(z)`.
+/// Uses `K_nu(-i*z)` connection in the upper half-plane (`Im(z) > 1.0`) to avoid cancellation.
 #[must_use]
 pub fn hankel_h1_complex(
     nu: f64,
     z: Complex64,
 ) -> Complex64 {
+    if z.im > 1.0 && z.norm() > 2.0 {
+        let phase = Complex64::from_polar(1.0, -0.5 * PI * nu);
+        return (2.0 / (PI * I)) * phase * bessel_k_complex(nu, -I * z);
+    }
     bessel_j_complex(nu, z) + I * bessel_y_complex(nu, z)
 }
 
 /// Complex Hankel function of the second kind `H_nu^(2)(z) = J_nu(z) - i * Y_nu(z)`.
+/// Uses `K_nu(i*z)` connection in the lower half-plane (`Im(z) < -1.0`) to avoid cancellation.
 #[must_use]
 pub fn hankel_h2_complex(
     nu: f64,
     z: Complex64,
 ) -> Complex64 {
+    if z.im < -1.0 && z.norm() > 2.0 {
+        let phase = Complex64::from_polar(1.0, 0.5 * PI * nu);
+        return -(2.0 / (PI * I)) * phase * bessel_k_complex(nu, I * z);
+    }
     bessel_j_complex(nu, z) - I * bessel_y_complex(nu, z)
 }
 
@@ -276,8 +324,8 @@ pub fn spherical_kn_complex(
 /// Bessel connection `(1/pi)*sqrt(z/3)*K_{1/3}(zeta)` / reflection for large `|z|`.
 #[must_use]
 pub fn airy_ai_complex(z: Complex64) -> (Complex64, Complex64) {
-    // Power series converges rapidly for |z| <= 6.
-    if z.norm() <= 6.0 {
+    // Power series converges rapidly for |z| <= 7.2 when Re(z) <= 2, or |z| <= 5.5 in RHP.
+    if z.norm() <= 5.5 || (z.re <= 1.0 && z.norm() <= 7.2) {
         return airy_series(z, true);
     }
     // Connection with K_{1/3}, K_{2/3}:
@@ -309,7 +357,7 @@ fn airy_ai_right_sector(z: Complex64) -> (Complex64, Complex64) {
 /// Complex Airy function `(Bi(z), Bi'(z))`.
 #[must_use]
 pub fn airy_bi_complex(z: Complex64) -> (Complex64, Complex64) {
-    if z.norm() <= 6.0 {
+    if z.norm() <= 6.5 {
         return airy_series(z, false);
     }
     // DLMF 9.2.11: Bi(z) = i * (e^{-2pi i/3} Ai(z e^{-2pi i/3}) - e^{2pi i/3} Ai(z e^{2pi i/3}))
@@ -396,34 +444,175 @@ pub fn kelvin_complex(
     (ber, bei, ker, kei)
 }
 
-/// Complex Struve function `H_nu(z)` via ascending power series.
+/// Complex Struve function `H_nu(z)` via ascending power series (using `rgamma`
+/// to handle negative half-integer `nu`) and large-`|z|` asymptotic expansion.
 #[must_use]
 pub fn struve_h_complex(
     nu: f64,
     z: Complex64,
 ) -> Complex64 {
+    if z.norm() > 25.0 + 1.5 * nu.abs() {
+        // DLMF 11.6.1: H_nu(z) ~ Y_nu(z) + (1/pi) * sum_{k>=0} Gamma(k + 1/2) / Gamma(nu + 1/2 - k) * (z/2)^(nu - 2k - 1)
+        let half_z = 0.5 * z;
+        let inv_hz2 = ONE / (half_z * half_z);
+        let mut sum = ZERO;
+        let mut term = crate::kernels::special_complex_ext::gamma_beta::rgamma_complex(
+            Complex64::new(nu + 0.5, 0.0),
+        ) * PI.sqrt();
+        for k in 0..16 {
+            if k > 0 {
+                let kf = k as f64;
+                let next_term = term * (kf - 0.5) * (nu + 0.5 - kf) * inv_hz2;
+                if next_term.norm() > term.norm() && k > 2 {
+                    break;
+                }
+                term = next_term;
+            }
+            sum += term;
+            if term.norm() <= 1e-16 * (1.0 + sum.norm()) {
+                break;
+            }
+        }
+        return bessel_y_complex(nu, z)
+            + (1.0 / PI) * half_z.powc(Complex64::new(nu - 1.0, 0.0)) * sum;
+    }
     let half_z = 0.5 * z;
     let half_z2 = half_z * half_z;
-    let mut denom1 = gamma_complex(Complex64::new(1.5, 0.0));
-    let mut denom2 = gamma_complex(Complex64::new(nu + 1.5, 0.0));
-    if denom1 == ZERO || denom2 == ZERO {
-        return Complex64::new(f64::NAN, f64::NAN);
+    let mut sum = ZERO;
+    let mut g1 = PI.sqrt() * 0.5; // Gamma(3/2)
+    let mut rg2 = crate::kernels::special_complex_ext::gamma_beta::rgamma_complex(Complex64::new(
+        nu + 1.5,
+        0.0,
+    ));
+    let mut z_pow = ONE;
+    for k in 0..150 {
+        if k > 0 {
+            let kf = k as f64;
+            g1 *= kf + 0.5;
+            rg2 /= nu + kf + 0.5;
+            z_pow *= -half_z2;
+        }
+        let term = z_pow * rg2 / g1;
+        sum += term;
+        if k > 4 && term.norm() <= 1e-16 * (1.0 + sum.norm()) {
+            break;
+        }
     }
-    let mut term = ONE / (denom1 * denom2);
-    let mut sum = term;
-    for k in 1..150 {
+    half_z.powc(Complex64::new(nu + 1.0, 0.0)) * sum
+}
+
+/// Scorer function `Hi(z) = (1/pi) * int_0^oo exp(-t^3/3 + z*t) dt`.
+#[must_use]
+pub fn airy_hi_complex(z: Complex64) -> Complex64 {
+    if z.norm() > 8.0 && z.arg().abs() > PI / 3.0 {
+        return airy_bi_complex(z).0 - airy_gi_complex(z);
+    }
+    let mut sum = ZERO;
+    let mut fact = 1.0_f64;
+    let mut z_pow = ONE;
+    let three_third = 3.0_f64.powf(1.0 / 3.0);
+    for k in 0..80 {
+        if k > 0 {
+            fact *= k as f64;
+            z_pow *= z;
+        }
+        let g = gamma_complex(Complex64::new((k as f64 + 1.0) / 3.0, 0.0));
+        let scale = 3.0_f64.powf((k as f64 - 2.0) / 3.0);
+        let term = g * scale * z_pow / fact;
+        sum += term;
+        if k > 6 && term.norm() <= 1e-16 * (1.0 + sum.norm()) {
+            break;
+        }
+    }
+    let _ = three_third;
+    sum / PI
+}
+
+/// Scorer function `Gi(z) = (1/pi) * int_0^oo sin(t^3/3 + z*t) dt = Bi(z) - Hi(z)`.
+#[must_use]
+pub fn airy_gi_complex(z: Complex64) -> Complex64 {
+    if z.norm() > 8.0 && z.arg().abs() > PI / 3.0 {
+        // DLMF 9.12.26: Gi(z) ~ 1/(pi*z) * sum_{k>=0} (3k)! / (3^k * k! * z^(3k))
+        let z3 = z * z * z;
+        let mut sum = ONE;
+        let mut term = ONE;
+        for k in 1..15 {
+            let kf = k as f64;
+            let next_term = term * (3.0 * kf - 2.0) * (3.0 * kf - 1.0) / z3;
+            if next_term.norm() > term.norm() {
+                break;
+            }
+            term = next_term;
+            sum += term;
+            if term.norm() <= 1e-16 * sum.norm() {
+                break;
+            }
+        }
+        return sum / (PI * z);
+    }
+    airy_bi_complex(z).0 - airy_hi_complex(z)
+}
+
+/// Complex-order Bessel function of the first kind `J_nu(z)` for `nu, z in C`.
+#[must_use]
+pub fn bessel_j_complex_order(
+    nu: Complex64,
+    z: Complex64,
+) -> Complex64 {
+    if nu.im == 0.0 {
+        return bessel_j_complex(nu.re, z);
+    }
+    if z == ZERO {
+        return if nu.re > 0.0 {
+            ONE * 0.0
+        } else {
+            Complex64::new(f64::NAN, f64::NAN)
+        };
+    }
+    let half_z = 0.5 * z;
+    let half_z2 = half_z * half_z;
+    let mut sum = crate::kernels::special_complex_ext::gamma_beta::rgamma_complex(nu + ONE);
+    let mut term = sum;
+    for k in 1..200 {
         let kf = k as f64;
-        denom1 *= kf + 0.5;
-        denom2 *= nu + kf + 0.5;
-        let sign = if k % 2 == 0 { 1.0 } else { -1.0 };
-        term = sign * half_z.powi(2 * k) / (denom1 * denom2);
+        term *= -half_z2 / (kf * (nu + kf));
         sum += term;
         if term.norm() <= 1e-16 * (1.0 + sum.norm()) {
             break;
         }
     }
-    let _ = half_z2;
-    half_z.powc(Complex64::new(nu + 1.0, 0.0)) * sum
+    half_z.powc(nu) * sum
+}
+
+/// Complex-order modified Bessel function of the first kind `I_nu(z)` for `nu, z in C`.
+#[must_use]
+pub fn bessel_i_complex_order(
+    nu: Complex64,
+    z: Complex64,
+) -> Complex64 {
+    if nu.im == 0.0 {
+        return bessel_i_complex(nu.re, z);
+    }
+    if z == ZERO {
+        return if nu.re > 0.0 {
+            ZERO
+        } else {
+            Complex64::new(f64::NAN, f64::NAN)
+        };
+    }
+    let half_z = 0.5 * z;
+    let half_z2 = half_z * half_z;
+    let mut sum = crate::kernels::special_complex_ext::gamma_beta::rgamma_complex(nu + ONE);
+    let mut term = sum;
+    for k in 1..200 {
+        let kf = k as f64;
+        term *= half_z2 / (kf * (nu + kf));
+        sum += term;
+        if term.norm() <= 1e-16 * (1.0 + sum.norm()) {
+            break;
+        }
+    }
+    half_z.powc(nu) * sum
 }
 
 /// Complex modified Struve function `L_nu(z) = -i * exp(-i*nu*pi/2) * H_nu(i*z)`.

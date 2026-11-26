@@ -162,10 +162,17 @@ pub fn elliptic_f_complex(
     phi: Complex64,
     m: Complex64,
 ) -> Complex64 {
-    let s = phi.sin();
-    let c = phi.cos();
+    let k_turn = (phi.re / PI).round();
+    let phi0 = Complex64::new(phi.re - k_turn * PI, phi.im);
+    let s = phi0.sin();
+    let c = phi0.cos();
     let s2 = s * s;
-    s * carlson_rf_complex(c * c, ONE - m * s2, ONE)
+    let base = s * carlson_rf_complex(c * c, ONE - m * s2, ONE);
+    if k_turn == 0.0 {
+        base
+    } else {
+        base + (2.0 * k_turn) * elliptic_k_complex(m)
+    }
 }
 
 /// Incomplete elliptic integral of the second kind `E(phi | m)`.
@@ -174,13 +181,21 @@ pub fn elliptic_e_inc_complex(
     phi: Complex64,
     m: Complex64,
 ) -> Complex64 {
-    let s = phi.sin();
-    let c = phi.cos();
+    let k_turn = (phi.re / PI).round();
+    let phi0 = Complex64::new(phi.re - k_turn * PI, phi.im);
+    let s = phi0.sin();
+    let c = phi0.cos();
     let s2 = s * s;
     let c2 = c * c;
     let one_m_ms2 = ONE - m * s2;
-    s * (carlson_rf_complex(c2, one_m_ms2, ONE)
-        - (m * s2 / 3.0) * carlson_rd_complex(c2, one_m_ms2, ONE))
+    let base = s
+        * (carlson_rf_complex(c2, one_m_ms2, ONE)
+            - (m * s2 / 3.0) * carlson_rd_complex(c2, one_m_ms2, ONE));
+    if k_turn == 0.0 {
+        base
+    } else {
+        base + (2.0 * k_turn) * elliptic_e_complex(m)
+    }
 }
 
 /// Incomplete elliptic integral of the third kind `Pi(n; phi | m)`.
@@ -190,13 +205,23 @@ pub fn elliptic_pi_complex(
     phi: Complex64,
     m: Complex64,
 ) -> Complex64 {
-    let s = phi.sin();
-    let c = phi.cos();
+    let k_turn = (phi.re / PI).round();
+    let phi0 = Complex64::new(phi.re - k_turn * PI, phi.im);
+    let s = phi0.sin();
+    let c = phi0.cos();
     let s2 = s * s;
     let c2 = c * c;
     let one_m_ms2 = ONE - m * s2;
-    s * (carlson_rf_complex(c2, one_m_ms2, ONE)
-        + (n * s2 / 3.0) * carlson_rj_complex(c2, one_m_ms2, ONE, ONE - n * s2))
+    let base = s
+        * (carlson_rf_complex(c2, one_m_ms2, ONE)
+            + (n * s2 / 3.0) * carlson_rj_complex(c2, one_m_ms2, ONE, ONE - n * s2));
+    if k_turn == 0.0 {
+        base
+    } else {
+        let complete = carlson_rf_complex(ZERO, ONE - m, ONE)
+            + (n / 3.0) * carlson_rj_complex(ZERO, ONE - m, ONE, ONE - n);
+        base + (2.0 * k_turn) * complete
+    }
 }
 
 /// Complex Jacobi elliptic functions `(sn(u | m), cn(u | m), dn(u | m))`
@@ -255,9 +280,35 @@ pub fn jacobi_theta_complex(
     z: Complex64,
     q: Complex64,
 ) -> Complex64 {
-    if q.norm() >= 1.0 {
+    if k == 0 || k > 4 || q.norm() >= 1.0 {
         return Complex64::new(f64::NAN, f64::NAN);
     }
+    // Jacobi imaginary transformation when |q| > 0.7 (Im(tau) small):
+    // tau = ln(q) / (i * pi), tau' = -1 / tau, q' = exp(i * pi * tau').
+    if q.norm() > 0.7 && q != ZERO {
+        let tau = q.ln() / (I * PI);
+        let tau_p = -ONE / tau;
+        let q_p = (I * PI * tau_p).exp();
+        if q_p.norm() < q.norm() {
+            let z_p = z * tau_p;
+            let pref = (-I * tau_p).sqrt() * (I * tau_p * z * z / PI).exp();
+            return match k {
+                | 1 => -I * pref * jacobi_theta_complex(1, z_p, q_p),
+                | 2 => pref * jacobi_theta_complex(4, z_p, q_p),
+                | 3 => pref * jacobi_theta_complex(3, z_p, q_p),
+                | 4 => pref * jacobi_theta_complex(2, z_p, q_p),
+                | _ => Complex64::new(f64::NAN, f64::NAN),
+            };
+        }
+    }
+    // Reduce z.re modulo pi (or 2*pi for theta_1, theta_2) to keep sin/cos accurate.
+    let z = if k <= 2 {
+        let n_turn = (z.re / (2.0 * PI)).round();
+        Complex64::new(z.re - n_turn * 2.0 * PI, z.im)
+    } else {
+        let n_turn = (z.re / PI).round();
+        Complex64::new(z.re - n_turn * PI, z.im)
+    };
     match k {
         | 1 => {
             // 2 q^(1/4) sum_{n>=0} (-1)^n q^{n(n+1)} sin((2n+1) z)
@@ -523,4 +574,85 @@ pub fn klein_j_complex(mut tau: Complex64) -> Complex64 {
     let num = (ONE - lam + lam * lam).powi(3);
     let den = lam * lam * (ONE - lam) * (ONE - lam);
     256.0 * num / den
+}
+
+/// Normalized Eisenstein series `E_4(tau) = 1 + 240 * sum_{n>=1} n^3 q^n / (1 - q^n)`
+/// with `q = exp(2*pi*i*tau)` for `Im(tau) > 0`.
+#[must_use]
+pub fn eisenstein_e4_complex(mut tau: Complex64) -> Complex64 {
+    if tau.im <= 0.0 || !tau.re.is_finite() || !tau.im.is_finite() {
+        return Complex64::new(f64::NAN, f64::NAN);
+    }
+    let mut factor = ONE;
+    for _ in 0..64 {
+        tau.re -= tau.re.round();
+        if tau.norm_sqr() >= 1.0 - 1e-12 {
+            break;
+        }
+        factor *= tau.powi(4);
+        tau = -ONE / tau;
+    }
+    let q = (2.0 * PI * I * tau).exp();
+    let mut sum = ZERO;
+    let mut qn = q;
+    for n in 1..60 {
+        let nf = n as f64;
+        let term = (nf * nf * nf) * qn / (ONE - qn);
+        sum += term;
+        if term.norm() < 1e-16 * (1.0 + sum.norm()) {
+            break;
+        }
+        qn *= q;
+    }
+    (ONE + 240.0 * sum) / factor
+}
+
+/// Normalized Eisenstein series `E_6(tau) = 1 - 504 * sum_{n>=1} n^5 q^n / (1 - q^n)`
+/// with `q = exp(2*pi*i*tau)` for `Im(tau) > 0`.
+#[must_use]
+pub fn eisenstein_e6_complex(mut tau: Complex64) -> Complex64 {
+    if tau.im <= 0.0 || !tau.re.is_finite() || !tau.im.is_finite() {
+        return Complex64::new(f64::NAN, f64::NAN);
+    }
+    let mut factor = ONE;
+    for _ in 0..64 {
+        tau.re -= tau.re.round();
+        if tau.norm_sqr() >= 1.0 - 1e-12 {
+            break;
+        }
+        factor *= tau.powi(6);
+        tau = -ONE / tau;
+    }
+    let q = (2.0 * PI * I * tau).exp();
+    let mut sum = ZERO;
+    let mut qn = q;
+    for n in 1..60 {
+        let nf = n as f64;
+        let term = nf.powi(5) * qn / (ONE - qn);
+        sum += term;
+        if term.norm() < 1e-16 * (1.0 + sum.norm()) {
+            break;
+        }
+        qn *= q;
+    }
+    (ONE - 504.0 * sum) / factor
+}
+
+/// Modular discriminant `Delta(tau) = (2*pi)^12 * eta(tau)^24` for `Im(tau) > 0`.
+#[must_use]
+pub fn modular_discriminant_complex(tau: Complex64) -> Complex64 {
+    let eta = dedekind_eta_complex(tau);
+    (2.0 * PI).powi(12) * eta.powi(24)
+}
+
+/// Modular lambda function `lambda(tau) = (theta_2(0, q) / theta_3(0, q))^4`, `q = exp(i*pi*tau)`.
+#[must_use]
+pub fn modular_lambda_complex(tau: Complex64) -> Complex64 {
+    if tau.im <= 0.0 || !tau.re.is_finite() || !tau.im.is_finite() {
+        return Complex64::new(f64::NAN, f64::NAN);
+    }
+    let q = (I * PI * tau).exp();
+    let t2 = jacobi_theta_complex(2, ZERO, q);
+    let t3 = jacobi_theta_complex(3, ZERO, q);
+    (t2 / t3).powi(4)
 }

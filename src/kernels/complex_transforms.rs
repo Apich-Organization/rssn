@@ -72,18 +72,19 @@ where
     val / (2.0 * PI)
 }
 
-/// Numerical Bromwich Laplace inversion using Weideman's optimal Talbot contour:
-/// $f(t) = \frac{1}{2\pi i} \int_{\Gamma} e^{s t} F(s) \, ds$ for $t > 0$.
-pub fn bromwich_talbot<F>(
+/// Numerical Bromwich Laplace inversion using Weideman's optimal Talbot contour
+/// shifted by abscissa `sigma` (so singularities with `Re(s) < sigma` are enclosed).
+pub fn bromwich_talbot_shifted<F>(
     big_f: F,
     t: f64,
+    sigma: f64,
     n_pts: usize,
 ) -> Result<Complex<f64>, String>
 where
     F: Fn(Complex<f64>) -> Complex<f64>,
 {
-    if t <= 0.0 || n_pts < 4 {
-        return Err("t must be positive and n_pts >= 4".to_string());
+    if t <= 0.0 || n_pts < 4 || !sigma.is_finite() {
+        return Err("t must be positive, sigma finite, and n_pts >= 4".to_string());
     }
     let nf = n_pts as f64;
     let a = 0.6407_f64;
@@ -102,11 +103,53 @@ where
                 0.5017 * (cot - at * csc * csc),
             )
         };
-        let s = Complex::new(re_part, 0.2645 * theta) * (nf / t);
+        let s = Complex::new(sigma, 0.0) + Complex::new(re_part, 0.2645 * theta) * (nf / t);
         let ds_dtheta = Complex::new(dre_part, 0.2645) * (nf / t);
         sum += (s * t).exp() * big_f(s) * ds_dtheta;
     }
     Ok(sum * dtheta / Complex::new(0.0, 2.0 * PI))
+}
+
+/// Numerical Bromwich Laplace inversion using Weideman's optimal Talbot contour:
+/// $f(t) = \frac{1}{2\pi i} \int_{\Gamma} e^{s t} F(s) \, ds$ for $t > 0$.
+pub fn bromwich_talbot<F>(
+    big_f: F,
+    t: f64,
+    n_pts: usize,
+) -> Result<Complex<f64>, String>
+where
+    F: Fn(Complex<f64>) -> Complex<f64>,
+{
+    bromwich_talbot_shifted(big_f, t, 0.0, n_pts)
+}
+
+/// Numerical Bromwich Laplace inversion using Weideman's parabolic contour
+/// shifted by abscissa `sigma`: $s(u) = \sigma + \mu (i u + 1)^2$.
+pub fn bromwich_weideman_parabola_shifted<F>(
+    big_f: F,
+    t: f64,
+    sigma: f64,
+    n_pts: usize,
+) -> Result<Complex<f64>, String>
+where
+    F: Fn(Complex<f64>) -> Complex<f64>,
+{
+    if t <= 0.0 || n_pts < 4 || !sigma.is_finite() {
+        return Err("t must be positive, sigma finite, and n_pts >= 4".to_string());
+    }
+    let half_n = n_pts / 2;
+    let half_f = half_n as f64;
+    let mu = (PI * half_f) / (12.0 * t);
+    let h = 3.0 / half_f;
+    let mut sum = Complex::new(0.0, 0.0);
+    for k in -(half_n as isize)..=(half_n as isize) {
+        let u = (k as f64) * h;
+        let w = Complex::new(1.0, u);
+        let s = Complex::new(sigma, 0.0) + w * w * mu;
+        let ds_du = Complex::new(0.0, 2.0 * mu) * w;
+        sum += (s * t).exp() * big_f(s) * ds_du;
+    }
+    Ok(sum * h / Complex::new(0.0, 2.0 * PI))
 }
 
 /// Numerical Bromwich Laplace inversion using Weideman's parabolic contour
@@ -119,25 +162,10 @@ pub fn bromwich_weideman_parabola<F>(
 where
     F: Fn(Complex<f64>) -> Complex<f64>,
 {
-    if t <= 0.0 || n_pts < 4 {
-        return Err("t must be positive and n_pts >= 4".to_string());
-    }
-    let half_n = n_pts / 2;
-    let half_f = half_n as f64;
-    let mu = (PI * half_f) / (12.0 * t);
-    let h = 3.0 / half_f;
-    let mut sum = Complex::new(0.0, 0.0);
-    for k in -(half_n as isize)..=(half_n as isize) {
-        let u = (k as f64) * h;
-        let w = Complex::new(1.0, u);
-        let s = w * w * mu;
-        let ds_du = Complex::new(0.0, 2.0 * mu) * w;
-        sum += (s * t).exp() * big_f(s) * ds_du;
-    }
-    Ok(sum * h / Complex::new(0.0, 2.0 * PI))
+    bromwich_weideman_parabola_shifted(big_f, t, 0.0, n_pts)
 }
 
-/// Gaver–Stehfest real-axis inverse Laplace transform for $t > 0$ (`m_even` typically 10..=16).
+/// Gaver–Stehfest real-axis inverse Laplace transform for $t > 0$ (`m_even` in `2..=14`).
 pub fn gaver_stehfest_inverse_laplace<F>(
     big_f: F,
     t: f64,
@@ -146,8 +174,8 @@ pub fn gaver_stehfest_inverse_laplace<F>(
 where
     F: Fn(f64) -> f64,
 {
-    if t <= 0.0 || m_even == 0 || m_even % 2 != 0 {
-        return Err("t must be positive and m_even must be a positive even integer".to_string());
+    if t <= 0.0 || m_even == 0 || m_even % 2 != 0 || m_even > 14 {
+        return Err("t must be positive and m_even must be an even integer in 2..=14".to_string());
     }
     let half = m_even / 2;
     let fact = |n: usize| -> f64 {
@@ -323,4 +351,18 @@ pub fn borel_transform_series(
         sum += an * t_pow_over_fact;
     }
     sum
+}
+
+/// Numerical Stieltjes transform `S[f](z) = int_0^{r_max} f(t) / (t + z) dt`
+/// for `z` off `(-inf, 0]`.
+pub fn stieltjes_transform<F>(
+    f: F,
+    z: Complex<f64>,
+    r_max: f64,
+    tol: f64,
+) -> Complex<f64>
+where
+    F: Fn(f64) -> Complex<f64>,
+{
+    integrate_complex_ab(|t| f(t) / (t + z), 0.0, r_max, tol, 400)
 }
