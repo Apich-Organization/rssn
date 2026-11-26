@@ -14,8 +14,15 @@ Release changes to the RSSN kernel, algorithms and embedding APIs. 本文记录 
 - Prepared scalar programs can take one measured column per input, each with its own unit. Large batches run on the active CPU pool in fixed, ordered blocks and honor the embedding cancellation scope.
 - Standard sessions share installed rules and their manifests until the global unit table changes. Per-session units, term graphs, native objects, and computation caches remain session-owned.
 - The C ABI captures the shared standard manifest and reuses its JSON encoding. Each call still returns a separately owned string.
+- The C ABI gains a host-callback surface: `rssn_callback_new` registers a C function with an explicit signature, `rssn_callback_new_for` copies the signature the operator declares at an argument position, `rssn_callback_signatures` lists what a position accepts, and `rssn_callback_free` retires a registration into a reusable slot. `rssn_value_call` now runs with the session's callback bank, so a `Value::Function` argument reaches the higher-order operators (`num_bfgs`, `num_brent`, the adaptive quadrature family, `num_bootstrap`, ...) from every binding instead of only from Rust. All 5411 operators are now reachable through the C ABI; the `backend_support.ffi` flag no longer excludes any of them. A callback reads its arguments as cells with the ordinary `rssn_value_*` readers, which now look through a `dyn`/`quantity` wrapper, and `rssn_value_new_bool`, `_new_complex`, `_new_record`, `_field_name` and `_tag` complete the readers and constructors it needs.
 - Native object bindings derive runtime arity from the signature's argument list. Dense value preflight checks bounds without allocating a traversal buffer.
 - Binary manifest, plugin and compute records use native bincode-next 3.2 traits. Signature and manifest bytes remain deterministic. Manifest verification reads the existing operator and unit tables in place and streams the canonical encoding into the hash. Compatibility tests compare the supported previous wire layouts with the native encoding. JSON and CBOR expose metadata to self-describing consumers.
+- `signatures.overlay.json` now holds exactly the operators whose rule set declares no signature. The entries that repeated a declared overload are gone: they were invisible to the manifest (a declaration wins) and they broke the bijection `tests/signature_overlay.rs` enforces, which now fails on an entry for an unregistered operator and on an entry the manifest never reads.
+- The manifest completes an operator's description from the rustdoc of the function behind it across generic type parameters and re-exported paths (`FdMode<F>::parallel`, `crate::sim::md_engine::FlexibleBarostat::energy`), so 551 more operators publish the description their implementation carries next to their family's contract sentence. `doc_path` names the function that supplied it, and an ambiguous path still resolves to nothing.
+- `category` is never empty: an operator whose registration names none is grouped under the rule set that registered it. `tests/manifest_completeness.rs` states the invariants a host relies on — name, rule set, category, documentation, cost, keys, overload sources, and typed-or-explained — for every operator in the manifest.
+- One shipped witness, `is_lie_algebra(sl_basis(4))`, no longer replays: the call answers `true` but takes 20.5 s against the miner's 20 s budget. It is dropped from `signatures.witnessed.json` rather than kept as evidence that cannot be reproduced, so `signature-mine --check` replays all 1047 witnesses of 727 operators. The overload it belonged to keeps its other witness.
+- Four operators now state a result sharper than their symbolic contract — `arg(term) -> float`, `boltzmann_entropy(term) -> real`, `pde_order(term, term) -> int`, `todd_coxeter_index(term, term, term) -> int` — as *refinements*, not overloads: their parameters are the contract's own, so a second overload would make every call ambiguous. `infer` ignores refinements by design (`infer.rs`); a host with a checked result channel reads them, which is the only way a caller who passes handles learns that `arg` answers with a float rather than a term. Each entry carries the call that produced it, and `signature-mine --check` replays all 1051 witnesses of 731 operators.
+- 132 operators whose handler builds one fixed `Value` kind on every success path now publish that result instead of only the symbolic contract: `graph_node_id(Obj<graph>, Int) -> Int`, `lie_rank(Symbol) -> Int`, `perm_group_is_abelian([[Int]]) -> Bool`, `gfp_divmod([Int], [Int], Int) -> [[Int]]`, `point_group_order(Symbol) -> Int`, `bdd_size([[Int]]) -> Int`, `crt([Int], [Int]) -> Int`, `pauli_x() -> [[Int]]`, `sc_homology_mod(Obj<simplicial_complex>, Int, Int) -> Int`. Every specific overload rests on two independent sources: the code path that builds the value, and a call the engine answered with that kind. A specific overload whose parameters would be indistinguishable from the symbolic contract is refused — that sharper result belongs in `refinements`, where it cannot make a call ambiguous — and an operator whose calls disagree with the code (it answers `false` on one path and a list on another) is left on the symbolic contract. The symbolic `(Term, …) -> Term` overload always stays last, so a call the operator does not accept still types as a term. Four of the 132 (`gf_inv`, `gfp_isirreducible`, `perm_order`, `perm_group_order`) state exactly the signature the Aevia bridge had curated by hand.
 
 ### Coverage: optimisation, statistics, control, meshes, data and precision
 
@@ -64,6 +71,7 @@ Release changes to the RSSN kernel, algorithms and embedding APIs. 本文记录 
 
 ### Numerical and symbolic algorithms
 
+- Add the Risch–Bronstein integrator over a tower of monomial extensions (`rules::calculus::risch`). A tower is built from the exponentials and logarithms of the integrand (`theta_i' = a_i*theta_i + b_i` over the field below it, with `x` as the first level), and integration at each level runs Hermite reduction for repeated factors, the logarithmic part from the rational roots of `res_theta(D, A - z*D'*theta')`, and a bounded monomial ansatz for the polynomial part solved by one linear system over `Q`. The exponential place `theta = 0` is integrated as negative powers rather than as a residue, which is what `∫ dx/e^x = -e^{-x}` needs. Answers are checked exactly (`p' = h`) and then numerically like every other antiderivative; an integral that needs an algebraic residue field, or a tower deeper than three levels, is left to the other methods.
 - Add stiff one-dimensional method-of-lines integration with time-dependent Dirichlet and Neumann boundaries, including measured callback programs for embedded hosts.
 - Correct finite-temperature XXZ stochastic series expansion sampling. The corrected update is reproducible for a fixed seed and changes the trajectories produced by earlier builds.
 - Add one-sided Welch spectral density, inverse STFT with overlap normalization, and polyphase FIR resampling. Add checked topological ordering and a nonrecursive strongly connected component API shared with symbolic graph operators.
@@ -117,6 +125,49 @@ Release changes to the RSSN kernel, algorithms and embedding APIs. 本文记录 
 - Boundary-element queries reuse already validated mesh and coefficient data and reject mixing interior and exterior solutions. Cut-cell callbacks retain the signs of subnormal distances. One-dimensional advection leaves its retained mesh intact if the measured output cannot be represented.
 - The parallel CPU device splits large one-row matrix products over output columns while preserving the reduction order. Real algebraic field embeddings generate successive powers in the quotient basis and eliminate independent rows in large exact solves.
 
+### Nested repetition, more encodings, compound data and nested groups
+
+- `io::parquet` nests lists to any depth in both directions. The reader rebuilds `list<list<...>>` from the repetition and definition levels one level at a time, and the writer shreds a nested `Column::List` into the three-level schema the format prescribes. A list of lists is no longer rejected.
+- `io::parquet` decodes `DELTA_BYTE_ARRAY` pages (prefix lengths plus suffixes), next to the delta, dictionary, byte-stream-split and RLE encodings it already handled.
+- `io::parquet` writes version-2 data pages on request (`WriteOptions::data_page_version`), which keeps the levels outside the compressed payload, for flat and nested columns alike.
+- `io::hdf5` reads compound datasets as one dataset per member (`/pair/a`, `/pair/b`): integer, floating-point and enumeration members become values, fixed-width strings become text, and members it cannot represent are skipped.
+- `io::hdf5` reads dense attribute storage: the attribute info message points at a fractal heap and a version-2 B-tree, and each attribute message is decoded from the heap. Attributes written either way come back the same.
+- `io::hdf5` writes nested groups: a dataset path such as `/a/b/temperature` creates every intermediate group, each with its own object header, local heap, group B-tree and symbol table nodes.
+- Attribute messages holding variable-length strings are resolved through the global heap instead of failing the file.
+- `tests/fixtures/` holds the binary fixtures the `io` tests read, together with the `generate.py` that reproduces them from `h5py`, `pyarrow` and `netCDF4`. No test is `#[ignore]`d for lack of a fixture.
+
+### Repeated Parquet fields and a fuller HDF5 reader
+
+- `io::parquet` reads and writes repeated fields. A `LIST`, a `MAP` and a bare repeated primitive all become `Column::List`, a flattened element column plus row offsets, so a null list, an empty list and a null element stay distinguishable. `MAP` is exposed as its `key` and `value` lists, one column each. The writer emits the three-level layout with correct definition and repetition levels for every combination of optional and required list and element.
+- `io::frame` gained `Column::List`: `slice`, `new_list`, `list_bounds`, `list_row`, `list_values`. JSON reads and writes nested arrays as list columns, CSV writes a list cell as a JSON array, and `take`, `concat`, `sort`, `group` and the row-key encoding handle lists. `DType::List` is the new logical type.
+- `io::hdf5` reads dense groups: fractal heap (`FRHP`), direct and indirect heap blocks including nested ones, the doubling table, and version-2 B-trees at any depth with the record-count and subtree-total field widths the format prescribes. A group of 5000 links opens.
+- `io::hdf5` reads enumerations, variable-length strings through the global heap, and fixed-width strings, and writes fixed-width string datasets. `Dataset` carries `strings` next to `data`, with `Dataset::new_numeric` and `Dataset::new_strings` constructors. Attribute messages are written in the version-3 layout the format specifies (nine-byte header, unpadded name and terminator) and read back from files written by the reference library.
+- `io::hdf5` skips a dataset whose datatype it cannot represent (compound, array, reference, chunked strings) instead of failing the whole file.
+
+### Wider optimization and distribution surface
+
+- `kernels::optimize` adds `find_root` over six bracketed scalar solvers (bisection, Brent, secant, TOMS 748, Newton, Halley, with central differences standing in for a missing derivative) and two more [`SolverKind`] entries: bounded L-BFGS (`Lbfgsb`) and bounded CMA-ES.
+- `kernels::distributions_ext::StatrsDistribution` exposes the whole `statrs` univariate family — 29 distributions from Bernoulli to Weibull — behind one enum with `pdf`, `cdf`, `sf`, `mean`, `variance`, `entropy` and a `from_name` factory. `kernels::distributions::Distribution` keeps the hand-written kernels the rule layer evaluates.
+- `kernels::special` adds `harmonic`, `inverse_beta_reg`, `multinomial` and `ln_binomial`.
+- `signatures.overlay.json` pins an overload for every operator that does not declare one: the audit reports 5411 of 5411 typed, with no operator left on a derived-only signature.
+- `io::netcdf` reads and writes `CDF` (64-bit data) alongside `CDF` and `CDF`. `numrecs` is a 32-bit count up to CDF-2 and 64-bit in CDF-5; dimension counts, name lengths, dimension identifiers, `vsize` and `begin` widen with the format. Files from all three formats open in the reference `netCDF4` library, and files it writes are read back here.
+
+### Optimizer migration and dependency refresh
+
+- `kernels::optimize` now runs on `basin` instead of `argmin`. `minimize` takes an `FnProblem` (cost closure, optional gradient closure, optional box bounds) and a `SolverKind`, and returns a plain `MinimizeResult`; `SolverKind` names 24 solvers across first-order (gradient descent, nonlinear CG, projected gradient, TNC), quasi-Newton (BFGS, L-BFGS), derivative-free (Nelder–Mead, BOBYQA, NEWUOA, LINCOA, COBYLA, DIRECT, MADS, SLSQP), global/stochastic (CMA-ES, differential evolution, global-best PSO, random search, Solis–Wets, steady-state GA, GBNM) and scalar (Brent, golden section) families. Box bounds are part of the problem, so a bounded solver reads them from `MinimizeOptions::bounds` and an unbounded one ignores them. `argmin` and its `argmin-math` shim are gone.
+- Dependencies moved to their current releases: `ndarray` 0.17, `ndarray-npy` 0.11, `rand` 0.10 (one version instead of two), `gif` 0.14, `roxmltree` 0.21, `pollster` 1, `syn` 3 (the codegen tools), Cranelift 0.138 and `wgpu` 30 (the GPU backend was ported to the new instance descriptor, pipeline-layout and error-scope APIs). `num-bigint` stays on 0.4 because `num-rational` 0.4 — the newest release — pins it and `BigRational` is `Ratio<BigInt>`.
+- `basin` is pulled in with default features off: the wrapper uses its plain `Vec<f64>` backend, so the optimizer adds no linear-algebra backend of its own.
+
+### Hardening and interoperability
+
+- `kernels::convex::socp` now stops on a scale-invariant merit (relative duality gap and residuals normalised by the data norms), keeps the best iterate instead of the last one, and ends a stalled run early instead of spending the remaining budget. The normal block is assembled into reused scratch, so an iteration no longer allocates once per variable. Large-data instances that could never reach an absolute `1e-10` gap now converge.
+- `io::parquet` writes dictionary pages with `RLE_DICTIONARY` data pages when a column chunk repeats values (`WriteOptions::use_dictionary`), and gains a gzip codec in both directions, backed by a fixed-Huffman DEFLATE encoder and the existing inflate decoder. The reader also accepts Data Page v2 headers, including the split level/value compression and the RLE boolean encoding that version-2 pages use. Round-trip files were read back with Apache Arrow, and Arrow-written files (v1 and v2 pages, Snappy, gzip, dictionary and plain encodings) were read back here.
+- `io::hdf5` writes object-header messages whose declared size includes the eight-byte padding the HDF5 library expects, and puts the sign-bit position in the float datatype message. Both the superblock-v0 and superblock-v2 writers now produce files that the HDF5 library itself opens, including numeric, fixed-length string and attribute data.
+- `kernels::meshgen::delaunay` caches each triangle's circumcircle and decides membership with a floating-point filter, falling back to the exact predicate only within its error bound. The result is unchanged, and the per-insertion scan no longer pays for an exact expansion at every triangle.
+- `io::parquet` reads and writes Zstandard and `LZ4_RAW` pages as well as Snappy and gzip, and exposes `DECIMAL` columns as `f64` divided by `10^scale` whatever their physical storage (`INT32`, `INT64`, `BYTE_ARRAY` or `FIXED_LEN_BYTE_ARRAY`). The LZ4 block codec is implemented here; Zstandard uses the reference `zstd` crate. Arrow-written files in every supported codec and both page versions are read back here, and Arrow reads the files written here.
+- `io::hdf5` reads dense new-style groups (a fractal heap indexed by a version-2 B-tree), enumerations (as their underlying integers) and variable-length strings (resolved through the global heap). Files written by h5py 3.16 with `libver="latest"` are read back, including a group with a thousand links.
+- `rules::calculus::risch` builds towers of up to five monomial extensions instead of three.
+
 ### Build and compatibility
 
 - Source builds require Rust 1.100 or newer. The default Rust artifact is an rlib. Build C libraries explicitly with their generated headers. C archives include English and Chinese instructions for linking directly from the extracted directory. [Build guide](docs/BUILDING.md)
@@ -132,6 +183,12 @@ Release changes to the RSSN kernel, algorithms and embedding APIs. 本文记录 
 - 符号化简的树窗口复用相交子图的抽取结果。编译后的 CPU 批处理按容量借用临时缓冲区，小任务顺序执行。同尺寸、同方向的并发 FFT 请求共享计划构建。
 - 列式计算带逐行读取被选中的来源列。预备的选列计算带可接收共用参考量的带量纲来源列，并保留结果的原始量纲。
 - 标准会话共享已安装规则和清单，直至全局单位表变动。会话的自定义单位、项图、原生对象及计算缓存各自独立。
+- `signatures.overlay.json` 现在只包含未声明签名的算子。重复声明签名的那批条目已移除：它们对清单不可见（声明优先），却破坏了 `tests/signature_overlay.rs` 的双向对应，该测试现在对未注册算子的条目和清单从不读取的条目都会失败。
+- 清单可跨泛型参数与再导出路径（`FdMode<F>::parallel`、`crate::sim::md_engine::FlexibleBarostat::energy`）找到算子背后的函数，因此另有 551 个算子在所属族的契约句之外发布其实现所记载的描述。`doc_path` 记录提供文本的函数；有歧义的路径仍然不解析。
+- `category` 不再为空：注册未指定类别的算子归入其规则集。`tests/manifest_completeness.rs` 为每个算子固化宿主依赖的不变量：名称、规则集、类别、说明、代价、键、重载来源，以及有类型或已解释。
+- 已发布的见证 `is_lie_algebra(sl_basis(4))` 不再可重放：该调用返回 `true`，但耗时 20.5 秒，超出挖掘器 20 秒预算。它已从 `signatures.witnessed.json` 中移除，而不是作为无法复现的证据保留；`signature-mine --check` 现在可重放 727 个算子的 1047 条见证。其所属重载保留另一条见证。
+- 四个算子现在声明比符号契约更精确的结果——`arg(term) -> float`、`boltzmann_entropy(term) -> real`、`pde_order(term, term) -> int`、`todd_coxeter_index(term, term, term) -> int`——以 *refinements* 而非重载的形式：它们的实参就是契约自身的实参，再加一个重载会让每次调用都产生歧义。`infer` 按设计忽略 refinements（`infer.rs`）；带结果检查通道的宿主会读取它们，这是传句柄的调用方得知 `arg` 返回浮点数而非项的唯一边界。每条都带有产生它的那次调用，`signature-mine --check` 可重放全部 1051 条见证、731 个算子。
+- 132 个算子的处理函数在每条成功路径上都构造同一种 `Value`，现在直接发布该结果类型，而不只是符号契约：`graph_node_id(Obj<graph>, Int) -> Int`、`lie_rank(Symbol) -> Int`、`perm_group_is_abelian([[Int]]) -> Bool`、`gfp_divmod([Int], [Int], Int) -> [[Int]]`、`point_group_order(Symbol) -> Int`、`bdd_size([[Int]]) -> Int`、`crt([Int], [Int]) -> Int`、`pauli_x() -> [[Int]]`、`sc_homology_mod(Obj<simplicial_complex>, Int, Int) -> Int`。每个具体重载都基于两个独立来源：构造该值的代码路径，以及一次引擎以该类型作答的调用。若某具体重载的实参无法与符号契约区分则不予采用——那种更精确的结果属于 `refinements`，在那里不会让调用产生歧义；若算子的实际调用与代码判定不符（一条路径返回 `false`、另一条返回列表），则保留符号契约。符号重载 `(Term, …) -> Term` 始终排在最后，因此算子不接受的调用仍以项定型。132 个之中有 4 个（`gf_inv`、`gfp_isirreducible`、`perm_order`、`perm_group_order`）正是 Aevia 桥接层此前手工整理出的签名。
 - C ABI 捕获共享的标准清单快照并复用 JSON 编码，每次调用仍返回独立所有权的字符串。
 - 二进制清单、插件消息和计算记录采用 bincode-next 3.2 原生编码。签名和清单保持确定性编码，校验清单时直接读取现有的算子表和单位表，逐段将规范编码传给哈希器。兼容性测试将支持的旧线格式与原生编码进行比较。JSON 与 CBOR 继续提供自描述元数据。
 
@@ -194,6 +251,49 @@ Release changes to the RSSN kernel, algorithms and embedding APIs. 本文记录 
 - `is_prime`（六份）、`mod_inv_u64`（五份）、同类型 `gcd`（四份）、`isqrt`（三份）与 Tonelli–Shanks（四份）合并为单一实现。合并过程中发现并修复了 `number_exact` 的一处真实错误：`crt([3, 5], [4, 9])` 曾返回 35 而非 23。
 - `Polynomial::compose` 改用双倍精度累加并只在最后舍入一次；两条求值路径（Horner 与 Brent–Kung）现在舍入到同一个 `f64`，原先相对偏差可达 3.6e-16。`mul_fft` 的误差量级（`O(log n)` 个 eps）写入文档，并有回归测试将其限制在 1e-11。
 - 基础内核提速：分块矩阵乘法 2.9–3.8 倍、QR 2.35–4.4 倍、LU 与 Cholesky 最高 2.1–2.4 倍；求积规则按 `(tag, 阶数)` 缓存（64 阶 105 us 降至 0.7 us，512 阶 18.5 ms 降至 1.9 us）；多项式乘法在 128 次时 3.01 倍。
+
+### 任意层嵌套、更多编码、复合类型与嵌套组
+
+- `io::parquet` 的列表读写都支持任意层嵌套。读取端按层从重复层级与定义层级逐层还原 `list<list<...>>`，写出端把嵌套的 `Column::List` 拆成规范要求的三级结构；不再拒绝"列表的列表"。
+- `io::parquet` 新增 `DELTA_BYTE_ARRAY` 页解码（前缀长度 + 后缀），与已有的 delta、字典、byte-stream-split、RLE 编码并列。
+- `io::parquet` 可按需写出第二版数据页（`WriteOptions::data_page_version`），层级不再参与压缩，扁平列与嵌套列都支持。
+- `io::hdf5` 把复合数据集按成员拆成多个数据集（`/pair/a`、`/pair/b`）：整数、浮点与枚举成员取值，定长字符串成员取文本，无法表示的成员跳过。
+- `io::hdf5` 支持稠密属性存储：属性信息消息指向 fractal heap 与第二版 B 树，逐个解出属性消息。两种存储方式写出的属性读回结果一致。
+- `io::hdf5` 支持写出嵌套组：`/a/b/temperature` 这样的路径会逐级创建中间组，每个组都有自己的对象头、局部堆、组 B 树与符号表节点。
+- 属性消息中的变长字符串经全局堆解析，不再让整个文件失败。
+- `tests/fixtures/` 存放 `io` 测试读取的二进制样例，并附带 `generate.py`，可用 `h5py`、`pyarrow` 与 `netCDF4` 重建。没有测试因为缺少样例而被 `#[ignore]`。
+
+### Parquet 重复字段与更完整的 HDF5 读取
+
+- `io::parquet` 支持读写重复字段。`LIST`、`MAP` 与裸重复原始类型都映射为 `Column::List`（扁平元素列加行偏移），因此空值列表、空列表与空值元素三者可区分。`MAP` 以 `key`、`value` 两列列表暴露。写出端按三级结构生成定义层级与重复层级，覆盖列表与元素的可选/必选四种组合。
+- `io::frame` 新增 `Column::List`：`slice`、`new_list`、`list_bounds`、`list_row`、`list_values`。JSON 读写嵌套数组为列表列，CSV 把列表单元格写成 JSON 数组，`take`、`concat`、排序、分组与行键编码都处理列表。新增逻辑类型 `DType::List`。
+- `io::hdf5` 支持稠密组：fractal heap（`FRHP`）、直接与间接堆块（含嵌套）、倍增表，以及任意深度的第二版 B 树（记录数字段与子树总数字段宽度按规范推导）。5000 个链接的组可正常打开。
+- `io::hdf5` 支持枚举、经全局堆的变长字符串与定长字符串，并可写出定长字符串数据集。`Dataset` 在 `data` 之外新增 `strings`，并提供 `Dataset::new_numeric` 与 `Dataset::new_strings` 构造器。属性消息按规范的第三版布局写出（九字节头、名称与终止符不加填充），也能读回参考实现写出的文件。
+- `io::hdf5` 对无法表示的数据类型（compound、array、reference、分块字符串）跳过该数据集，而不是让整个文件失败。
+
+### 更宽的优化与分布接口
+
+- `kernels::optimize` 新增 `find_root`，覆盖六种带区间的标量求根器（二分、Brent、割线、TOMS 748、Newton、Halley；缺导数时用中心差分代替），并新增两个 [`SolverKind`]：有界 L-BFGS（`Lbfgsb`）与有界 CMA-ES。
+- `kernels::distributions_ext::StatrsDistribution` 用一个枚举暴露 `statrs` 的全部一元分布族（从 Bernoulli 到 Weibull 共 29 个），提供 `pdf`、`cdf`、`sf`、`mean`、`variance`、`entropy` 与 `from_name` 工厂。`kernels::distributions::Distribution` 保留规则层使用的手写内核。
+- `kernels::special` 新增 `harmonic`、`inverse_beta_reg`、`multinomial` 与 `ln_binomial`。
+- `signatures.overlay.json` 为**每个未自行声明签名**的算子固定了重载：审计报告 5411/5411 已定型，不再有算子停留在派生签名上。
+- `io::netcdf` 在 `CDF`、`CDF` 之外支持读写 `CDF`（64 位数据）。`numrecs` 在 CDF-2 及以前是 32 位计数、CDF-5 为 64 位；维度计数、名称长度、维度标识、`vsize` 与 `begin` 随格式加宽。三种格式写出的文件都能被参考实现 `netCDF4` 打开，其写出的文件也能回读。
+
+### 优化器迁移与依赖刷新
+
+- `kernels::optimize` 由 `argmin` 迁移到 `basin`。`minimize` 接收 `FnProblem`（代价闭包、可选梯度闭包、可选盒约束）与 `SolverKind`，返回普通的 `MinimizeResult`；`SolverKind` 覆盖 24 个求解器：一阶（梯度下降、非线性共轭梯度、投影梯度、TNC）、拟牛顿（BFGS、L-BFGS）、无导数（Nelder–Mead、BOBYQA、NEWUOA、LINCOA、COBYLA、DIRECT、MADS、SLSQP）、全局/随机（CMA-ES、差分进化、全局最优 PSO、随机搜索、Solis–Wets、稳态遗传算法、GBNM）与标量（Brent、黄金分割）。盒约束属于问题本身：有界求解器从 `MinimizeOptions::bounds` 读取，无界求解器忽略。`argmin` 及其 `argmin-math` 垫片已移除。
+- 依赖升级到当前版本：`ndarray` 0.17、`ndarray-npy` 0.11、`rand` 0.10（只保留一个版本）、`gif` 0.14、`roxmltree` 0.21、`pollster` 1、`syn` 3（代码生成工具）、Cranelift 0.138 与 `wgpu` 30（GPU 后端已适配新的 instance descriptor、pipeline layout 与 error scope API）。`num-bigint` 保留 0.4：最新的 `num-rational` 0.4 固定依赖它，而 `BigRational` 就是 `Ratio<BigInt>`。
+- `basin` 以关闭默认特性的方式引入：封装层只使用其 `Vec<f64>` 后端，因此优化器不额外引入线性代数后端。
+
+### 加固与互操作
+
+- `kernels::convex::socp` 改用与量纲无关的收敛判据（相对对偶间隙，残差按数据范数归一），返回搜索过程中最优的迭代点而非最后一点，并在长期无进展时提前结束。法方程块复用暂存缓冲区，单次迭代不再按变量个数反复分配。数据量级较大的实例此前无法达到绝对 `1e-10` 间隙，现在可以正常收敛。
+- `io::parquet` 在列块重复值较多时写出字典页与 `RLE_DICTIONARY` 数据页（`WriteOptions::use_dictionary`），并新增 gzip 编解码（自实现定长 Huffman DEFLATE 编码，复用已有 inflate 解码）。读取端支持 Data Page v2 头，包括级别与数值分段压缩以及 v2 页使用的 RLE 布尔编码。写出的文件已用 Apache Arrow 回读校验，Arrow 写出的 v1/v2 页、Snappy、gzip、字典与 PLAIN 编码文件也已在本实现中回读。
+- `io::hdf5` 写出的对象头消息把八字节对齐填充计入声明长度，并在浮点数据类型消息中写入符号位位置。superblock v0 与 v2 两种写法的文件均可被 HDF5 库直接打开，包括数值、定长字符串与属性数据。
+- `kernels::meshgen::delaunay` 缓存每个三角形的外接圆，用浮点过滤判定包含关系，仅在误差范围内回退到精确谓词。结果与纯精确判定一致，逐点插入不再为每个三角形支付一次精确展开。
+- `io::parquet` 读写 Zstandard 与 `LZ4_RAW` 压缩页（原有 Snappy、gzip 之外），并把 `DECIMAL` 列按其物理存储（`INT32`、`INT64`、`BYTE_ARRAY`、`FIXED_LEN_BYTE_ARRAY`）统一暴露为除以 `10^scale` 的 `f64`。LZ4 块编解码在本模块实现，Zstandard 使用官方 `zstd` crate。Arrow 以各受支持编解码器、两种数据页版本写出的文件均可回读，本实现写出的文件也可由 Arrow 读取。
+- `io::hdf5` 支持稠密新式组（fractal heap + 版本 2 B 树）、枚举（按底层整数暴露）与变长字符串（经全局堆解析）。h5py 3.16 以 `libver="latest"` 写出的文件（含一个上千链接的组）可回读。
+- `rules::calculus::risch` 的塔深上限由 3 提升到 5 层。
 
 ### 构建与兼容性
 
