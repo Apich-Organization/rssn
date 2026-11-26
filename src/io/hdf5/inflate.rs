@@ -397,6 +397,17 @@ pub(crate) fn zlib_decompress(data: &[u8]) -> Result<Vec<u8>, String> {
     Ok(out)
 }
 
+/// Compresses `data` into a zlib stream (RFC 1950 + RFC 1951 + Adler-32).
+pub(crate) fn zlib_compress(data: &[u8]) -> Vec<u8> {
+    let compressed = crate::io::parquet::gzip::deflate_compress(data);
+    let mut out = Vec::with_capacity(compressed.len() + 6);
+    out.push(0x78);
+    out.push(0x9C);
+    out.extend_from_slice(&compressed);
+    out.extend_from_slice(&adler32(data).to_be_bytes());
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::adler32;
