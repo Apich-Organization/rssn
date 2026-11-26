@@ -44,6 +44,14 @@ pub struct RustDoc {
 struct Index {
     by_path: HashMap<&'static str, RustDoc>,
     by_name: HashMap<&'static str, Vec<RustDoc>>,
+    /// The same table keyed by [`normalized_path`], so a `rust_path` that
+    /// writes the generic arguments of the type it names still finds the
+    /// function (`FdMode<F>::parallel` against `FdMode::parallel`).
+    by_normalized: HashMap<String, RustDoc>,
+    /// The last two segments of every path (`Type::method`, `module::function`),
+    /// for a `rust_path` that names a public re-export instead of the module
+    /// the item is defined in.
+    by_suffix: HashMap<String, Vec<RustDoc>>,
 }
 
 fn index() -> &'static Index {
@@ -51,6 +59,8 @@ fn index() -> &'static Index {
     INDEX.get_or_init(|| {
         let mut by_path = HashMap::new();
         let mut by_name: HashMap<&'static str, Vec<RustDoc>> = HashMap::new();
+        let mut by_normalized = HashMap::new();
+        let mut by_suffix: HashMap<String, Vec<RustDoc>> = HashMap::new();
         for record in TABLE.split('\u{1e}') {
             let mut fields = record.splitn(3, '\u{1f}');
             let (Some(path), Some(name), Some(doc)) = (fields.next(), fields.next(), fields.next())
@@ -60,8 +70,19 @@ fn index() -> &'static Index {
             let entry = RustDoc { path, name, doc };
             by_path.insert(path, entry);
             by_name.entry(name).or_default().push(entry);
+            let normalized = normalized_path(path);
+            by_normalized.entry(normalized.clone()).or_insert(entry);
+            by_suffix
+                .entry(suffix_of(&normalized))
+                .or_default()
+                .push(entry);
         }
-        Index { by_path, by_name }
+        Index {
+            by_path,
+            by_name,
+            by_normalized,
+            by_suffix,
+        }
     })
 }
 
@@ -71,10 +92,89 @@ pub fn count() -> usize {
     index().by_path.len()
 }
 
+/// `path` without the generic arguments and lifetimes of its type segments:
+/// `crate::k::FdMode<F>::parallel` becomes `crate::k::FdMode::parallel`.
+///
+/// A `rust_path` is written the way a reader names the item, which includes
+/// the type parameters; the harvest records the item itself. Removing the
+/// arguments from both sides is what lets them meet.
+fn normalized_path(path: &str) -> String {
+    let mut out = String::with_capacity(path.len());
+    let mut depth = 0_usize;
+    for ch in path.chars() {
+        match ch {
+            | '<' => {
+                // `Foo::<T>` writes the arguments after the separator; the
+                // separator is part of the arguments, not of the path.
+                if depth == 0 && out.ends_with("::") {
+                    out.truncate(out.len() - 2);
+                }
+                depth += 1;
+            },
+            | '>' => depth = depth.saturating_sub(1),
+            | _ if depth > 0 => {},
+            | _ => out.push(ch),
+        }
+    }
+    out
+}
+
+/// The last two segments of a normalized path: `Type::method` or
+/// `module::function`.
+fn suffix_of(path: &str) -> String {
+    let mut segments: Vec<&str> = path.split("::").collect();
+    if segments.len() < 2 {
+        return path.to_owned();
+    }
+    let last = segments.pop().unwrap_or_default();
+    let previous = segments.pop().unwrap_or_default();
+    format!("{previous}::{last}")
+}
+
 /// The documentation of the function at `path` (`crate::a::b::f`).
+///
+/// A registration states the path a host would name the item by, which is not
+/// always the path the harvest recorded: it may carry the generic arguments of
+/// the type (`FdMode<F>::parallel`), or name the module that re-exports the
+/// item (`crate::sim::md_engine::FlexibleBarostat::energy` for a type defined
+/// in `md_cell`). Two fallbacks close that gap, and both require a *unique*
+/// candidate: a description that might belong to another function is worse
+/// than none, so an ambiguous path resolves to nothing.
 #[must_use]
 pub fn by_path(path: &str) -> Option<RustDoc> {
-    index().by_path.get(path).copied()
+    let index = index();
+    if let Some(entry) = index.by_path.get(path) {
+        return Some(*entry);
+    }
+    let normalized = normalized_path(path);
+    if let Some(entry) = index.by_normalized.get(&normalized) {
+        return Some(*entry);
+    }
+    if let Some(candidates) = index.by_suffix.get(&suffix_of(&normalized)) {
+        if let [one] = candidates.as_slice() {
+            return Some(*one);
+        }
+    }
+    // A free function defined in a submodule of the module the registration
+    // names (`crate::kernels::ode_geom::solve_adaptive_geometric` is defined in
+    // `ode_geom::adaptive`).
+    let mut segments: Vec<&str> = normalized.split("::").collect();
+    let name = segments.pop()?;
+    if segments.is_empty() {
+        return None;
+    }
+    let prefix = format!("{}::", segments.join("::"));
+    let candidates: Vec<RustDoc> = index
+        .by_name
+        .get(name)?
+        .iter()
+        .copied()
+        .filter(|entry| normalized_path(entry.path).starts_with(&prefix))
+        .collect();
+    match candidates.as_slice() {
+        | [one] => Some(*one),
+        | _ => None,
+    }
 }
 
 /// Whether `path` is a free function (not a method, not in a test module).
@@ -299,5 +399,50 @@ mod tests {
         assert_eq!(examples.len(), 1);
         assert_eq!(examples[0].input, "square(x)");
         assert_eq!(examples[0].output, "4");
+    }
+
+    #[test]
+    fn generic_arguments_and_lifetimes_are_not_part_of_the_path() {
+        assert_eq!(
+            normalized_path("crate::k::FdMode<F>::parallel"),
+            "crate::k::FdMode::parallel"
+        );
+        assert_eq!(
+            normalized_path("crate::k::Provider<'a, T>::eval"),
+            "crate::k::Provider::eval"
+        );
+        // `Foo::<T>` writes the arguments after the separator, which is part
+        // of the arguments: dropping the arguments must drop the separator.
+        assert_eq!(
+            normalized_path("crate::k::Foo::<T>::bar"),
+            "crate::k::Foo::bar"
+        );
+        assert_eq!(normalized_path("crate::k::plain"), "crate::k::plain");
+    }
+
+    #[test]
+    fn a_suffix_is_the_owner_and_the_name() {
+        assert_eq!(suffix_of("crate::a::b::Type::method"), "Type::method");
+        assert_eq!(suffix_of("crate::a::f"), "a::f");
+        assert_eq!(suffix_of("f"), "f");
+    }
+
+    #[test]
+    fn a_rust_path_with_generic_arguments_finds_the_method() {
+        // `FdMode<F>::parallel` is how the registration names it; the harvest
+        // records `FdMode::parallel`.
+        let doc = by_path("crate::kernels::jacobian::FdMode<F>::parallel")
+            .expect("the documented method behind a generic type");
+        assert_eq!(doc.path, "crate::kernels::jacobian::FdMode::parallel");
+        assert!(!doc.doc.trim().is_empty());
+    }
+
+    #[test]
+    fn a_reexported_rust_path_finds_the_defining_module() {
+        // `md_engine` re-exports `FlexibleBarostat` from `md_cell`; a
+        // registration may name either path.
+        let doc = by_path("crate::sim::md_engine::FlexibleBarostat::energy")
+            .expect("the documented method behind a re-exported type");
+        assert_eq!(doc.path, "crate::sim::md_cell::FlexibleBarostat::energy");
     }
 }

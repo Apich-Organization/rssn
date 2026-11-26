@@ -574,6 +574,11 @@ impl OpDescriptor {
     }
 
     /// The same descriptor, attributed to `rule_set` if it has no owner yet.
+    ///
+    /// The rule set is also the operator's default category: a host that
+    /// groups the manifest by domain needs a category for every operator, and
+    /// an operator that names none belongs to the family that registered it.
+    /// A registration that states a finer category keeps it.
     #[must_use]
     pub(crate) fn owned_by(
         mut self,
@@ -581,6 +586,9 @@ impl OpDescriptor {
     ) -> Self {
         if self.rule_set.is_empty() {
             self.rule_set = Arc::clone(rule_set);
+        }
+        if self.category.is_empty() {
+            self.category = Arc::clone(rule_set);
         }
         self
     }

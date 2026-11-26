@@ -19862,10 +19862,6 @@
         "support": 2,
         "witnesses": [
           {
-            "input": "is_lie_algebra(sl_basis(4))",
-            "output": "Bool"
-          },
-          {
             "input": "is_lie_algebra(list(list(list(0, 1), list(0, 0)), list(list(0, 0), list(1, 0))))",
             "output": "Bool"
           }
@@ -42498,6 +42494,163 @@
           }
         ],
         "refines": false
+      }
+    ],
+    "arg": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            }
+          ],
+          "ret": "float",
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "Expr"
+        ],
+        "result": "Float",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "arg(0.5 + I)",
+            "output": "Float"
+          }
+        ],
+        "refines": true
+      }
+    ],
+    "boltzmann_entropy": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            }
+          ],
+          "ret": "real",
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "Expr"
+        ],
+        "result": "Rat",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "boltzmann_entropy(exp(1/(2*k_B)))",
+            "output": "Rat"
+          }
+        ],
+        "refines": true
+      }
+    ],
+    "pde_order": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            },
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            }
+          ],
+          "ret": "int",
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "Expr",
+          "Expr"
+        ],
+        "result": "Int",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "pde_order(diff(u(x, y), x) + diff(u(x, y), y), u(x, y))",
+            "output": "Int"
+          }
+        ],
+        "refines": true
+      }
+    ],
+    "todd_coxeter_index": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            },
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            },
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            }
+          ],
+          "ret": "int",
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[Sym]",
+          "[[Sym]]~",
+          "[Never]"
+        ],
+        "result": "Int",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "todd_coxeter_index(list(a, b), list(list(a, a, a), list(b, b), list(a, b, a, b)), list())",
+            "output": "Int"
+          }
+        ],
+        "refines": true
       }
     ]
   }

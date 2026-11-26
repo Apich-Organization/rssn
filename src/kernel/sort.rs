@@ -1718,6 +1718,43 @@ mod tests {
         assert_eq!(Fact::parse(&fact.line()).as_ref(), Some(fact));
     }
 
+    /// Calls whose answer is sharper than the symbolic contract states.
+    ///
+    /// These cannot be published as overloads: their parameters are the
+    /// contract's own, so a second overload would make the call ambiguous.
+    /// They are `refinements`, which `infer` deliberately ignores and a typed
+    /// host reads instead — the only channel by which a result that is always
+    /// a float, a rational or an integer reaches a caller who passes handles.
+    ///
+    /// `signature-mine` derives a refinement from a call it watched, so the
+    /// calls have to run somewhere. This is that somewhere: every assertion is
+    /// the real answer, and the fact it leaves behind is what the miner turns
+    /// into `refines: true`.
+    #[test]
+    fn a_result_sharper_than_the_contract_is_recorded_as_a_fact() {
+        for (src, sort) in [
+            ("arg(0.5 + I)", Sort::Float),
+            ("boltzmann_entropy(exp(1/(2*k_B)))", Sort::Rational),
+            (
+                "pde_order(diff(u(x, y), x) + diff(u(x, y), y), u(x, y))",
+                Sort::Int,
+            ),
+            (
+                "todd_coxeter_index(list(a, b), list(list(a, a, a), list(b, b), list(a, b, a, b)), list())",
+                Sort::Int,
+            ),
+        ] {
+            let (g, root) = solved(&rules::standard(), src);
+            assert_eq!(sort_of_node(&g, root), Some(sort.clone()), "`{src}`");
+            let name = src.split('(').next().unwrap_or_default();
+            let fact = facts_of(&g)
+                .into_iter()
+                .find(|f| f.op == name)
+                .unwrap_or_else(|| panic!("no fact about `{name}`"));
+            assert_eq!(fact.result, sort, "`{src}`");
+        }
+    }
+
     #[test]
     fn an_unanswered_request_has_no_sort() {
         let (g, root) = solved(&[rules::calculus::calculus()], "integral(f(x)^g(x), x)");
