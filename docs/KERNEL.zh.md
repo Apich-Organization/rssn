@@ -31,6 +31,14 @@ assert!(!sin.overloads.is_empty());
 let key = &sin.keys[0];
 ```
 
+`OpInfo` 的每个字段对每个算子都有值，宿主生成接口时不必为缺口单独处理。注册未声明时有两类字段会取默认值：
+
+* `category` —— 宿主分组用的族名。注册可用 `.category(..)` 指定更细的类别，否则取规则集名，因此不会为空。
+* `doc`、`doc_source` 和 `doc_path` —— 说明文本、来源，以及提供 rustdoc 的函数（见 3b）。
+* `since` —— 算子出现的版本。注册未记录时为空；宿主应把空值读作"未记录"而非"未发布"，算子是否稳定由 `stability` 表示。
+
+`tests/manifest_completeness.rs` 固化这些不变量，任一算子违反即失败。
+
 ### 3. 签名推导
 
 注册信息足以推导可调用算子的基础签名。缺少专门类型的非叶算子有符号项签名。声明数值求值器的算子还可有数值签名。例如 `sin(0.5)` 可以折叠为数值，`sin(x)` 保持符号项。
@@ -44,6 +52,8 @@ let key = &sin.keys[0];
 | `OpFlags::LEAF` | 直接记录 `dynamic_reason` |
 
 `SignatureSource` 区分直接声明 `Declared`、人工覆盖 `Overlay`、推导 `Derived`、见证 `Witnessed` 和缺少静态签名 `None`。
+
+overlay 只作为未声明签名的算子的类型来源：声明优先，因此给已声明签名的算子再写 overlay 条目没有作用，还会在声明变化时与代码悄悄分叉。文件因此恰好包含清单报告为 `overlay` 来源的算子；两侧任一方向漂移（登记了不存在的算子，或清单从不读取的条目）都会让 `tests/signature_overlay.rs` 失败。
 
 ### 3a. 见证签名
 

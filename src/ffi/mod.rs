@@ -25,12 +25,26 @@
 //!    `rssn_manifest_json`) or as the two plain C structs [`RssnAnswer`] and
 //!    [`RssnTensor`]. Terms are `uint32_t` handles into one session, never
 //!    pointers to Rust objects. There are no per-operator entry points
-//!    (`rssn_diff`, `rssn_integral`, ...) and no way to pass a dynamic
-//!    [`Value`](crate::kernel::value::Value) across: a host that needs the
-//!    value ABI uses [`Session::call_value`](crate::api::Session::call_value)
-//!    from Rust, or the kernel plugin ABI, which exchanges `bincode-next`
-//!    buffers. A host that needs an operator by name builds the request with
-//!    `rssn_term_apply` and computes it.
+//!    (`rssn_diff`, `rssn_integral`, ...): a host that needs an operator by
+//!    name builds the request with `rssn_term_apply` and computes it.
+//!
+//!    A dynamic [`Value`](crate::kernel::value::Value) crosses through the
+//!    *value ABI* in [`value`]: a value is stored in a session-owned cell and
+//!    addressed by a `uint32_t` id, `rssn_value_call` runs an operator on cells
+//!    and returns a cell, and `rssn_value_to_term` / `_to_f64` / `_to_text` /
+//!    `_to_tensor` / `_json` read one. That is how an operator whose arguments
+//!    have no term form — a native object handle, a record — is called from C.
+//!
+//!    A host callback crosses through the *callback ABI* in [`callback`]: the
+//!    host registers a C function with `rssn_callback_new` (an explicit JSON
+//!    signature) or `rssn_callback_new_for` (the signature the operator
+//!    declares at that argument position), gets a cell holding a
+//!    `Value::Function`, and passes that cell like any other argument. The
+//!    callback receives its arguments as cells, so it reads them with the same
+//!    `rssn_value_*` readers. This is what makes the higher-order operators —
+//!    `num_bfgs`, `num_analysis_integrate_adaptive_scaled`, `num_bootstrap`,
+//!    ... — reachable from every binding instead of only from Rust, and it is
+//!    why `backend_support.ffi` is `true` for all 5411 operators.
 //! 2. **Two binary wire formats: single and batch compute.**
 //!    [`rssn_compute_bincode`] carries the same record as the JSON path (see
 //!    [`RssnComputeRecord`]) in the deterministic `bincode-next` encoding of
@@ -124,9 +138,11 @@
 // The C ABI necessarily dereferences raw pointers handed in by the caller.
 #![allow(unsafe_code)]
 
+mod callback;
 mod compute;
 mod manifest;
 mod term;
+mod value;
 
 use std::cell::RefCell;
 use std::ffi::CStr;
@@ -135,9 +151,11 @@ use std::os::raw::c_char;
 use std::panic::AssertUnwindSafe;
 use std::panic::catch_unwind;
 
+pub use callback::*;
 pub use compute::*;
 pub use manifest::*;
 pub use term::*;
+pub use value::*;
 
 use crate::api::ComputeError;
 
@@ -185,9 +203,17 @@ thread_local! {
     static LAST_ERROR: RefCell<CString> = RefCell::new(CString::default());
 }
 
-fn set_error(message: &str) {
+pub(crate) fn set_error(message: &str) {
     let text = CString::new(message.replace('\0', " ")).unwrap_or_default();
     LAST_ERROR.with(|e| *e.borrow_mut() = text);
+}
+
+/// The message of the last failed call on this thread (empty when none).
+///
+/// Used by [`callback`] to turn a host's `rssn_callback_fail` text into the
+/// `OpError::Host` message of the enclosing operator.
+pub(crate) fn last_error_text() -> String {
+    LAST_ERROR.with(|e| e.borrow().to_string_lossy().into_owned())
 }
 
 /// Records `message` and returns `status`.

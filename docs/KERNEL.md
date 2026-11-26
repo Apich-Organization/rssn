@@ -48,6 +48,23 @@ assert!(!sin.overloads.is_empty());
 let key = &sin.keys[0];                 // cache on (manifest_hash, key)
 ```
 
+Every field of an `OpInfo` is filled for every operator, because a host that
+generates an interface cannot special-case a hole. Two of them are filled by
+default when a registration says nothing:
+
+* `category` — the family a host groups operators by. A registration may name a
+  finer one (`.category(..)`); otherwise it is the rule set's name, so
+  `category` is never empty.
+* `doc`, `doc_source` and `doc_path` — the description, where it came from, and
+  the function whose rustdoc supplied it (next section).
+* `since` — the release an operator appeared in. It is empty when the
+  registration does not record one; a host must read an empty value as
+  "unrecorded", not as "unreleased", and `stability` is what says whether an
+  operator is settled.
+
+`tests/manifest_completeness.rs` states these invariants and fails on an
+operator that violates one.
+
 ### 3. Signature derivation
 
 A host generating typed bindings cannot work from names. Every non-leaf
@@ -70,6 +87,19 @@ signature came from: `Declared` (the rule set wrote it), `Overlay` (a human
 corrected it in `signatures.overlay.json`), `Derived` (the rules above),
 `Witnessed` (derived, plus overloads the engine was seen to satisfy; next
 section), or `None`.
+
+The overlay is the type source for operators whose rule set declares no
+signature, and only for those: a declared signature wins, so an overlay entry
+for an operator that already declares one would be dead weight that silently
+disagrees with the code the day the declaration changes. The file therefore
+holds exactly the operators the manifest reports as `overlay`-sourced, and
+`tests/signature_overlay.rs` fails when the two sets drift apart in either
+direction — an entry for an operator that is not registered, or an entry the
+manifest never reads.
+
+A registration that wrote its own description keeps it; the rustdoc is appended
+when that description is thin, so `doc_source` stays `declared` and
+`doc_path` stays empty only when the operator's own text is what a host reads.
 
 ### 3a. Witnessed signatures
 
@@ -128,6 +158,28 @@ the result it decodes. Overload sets stay unambiguous by construction: a
 witnessed signature is kept only when its parameter list is comparable with, or
 disjoint from, every other overload (`sort::coherent`), and the overload
 matcher breaks a tie between comparable overloads by pointwise dominance.
+
+### 3b. Documentation provenance
+
+`doc` is markdown, `doc_source` says where it came from, and `doc_path` names
+the public function whose rustdoc completed it. A registration states the
+function it exports in `rust_path`, which is the path a host would name the item
+by; the harvest records the path the item is *defined* at. Three cases bridge
+the two, and each requires a unique candidate — a description that might belong
+to another function is worse than none:
+
+1. the same path;
+2. the same path with the generic arguments of its types removed
+   (`FdMode<F>::parallel` against `FdMode::parallel`);
+3. the same last two segments, or the same name in a submodule of the named
+   module, when exactly one documented function matches — which is what makes a
+   `rust_path` that names a public re-export
+   (`crate::sim::md_engine::FlexibleBarostat::energy`) find the item defined in
+   `md_cell`.
+
+A registration that wrote its own description keeps it; the rustdoc is appended
+when that description is thin, so `doc_source` stays `declared` and
+`doc_path` stays empty only when the operator's own text is what a host reads.
 
 ### 4. Dynamic operator reasons
 

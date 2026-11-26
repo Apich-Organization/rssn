@@ -53,6 +53,28 @@ let result = session.call_ho(
 
 语言桥接保留浮点表示、闭包生存期、线程约束以及具体类型和量纲依据。每次调用可创建新的作用域内句柄。源语言中的持久回调对象应与仅在单个 RSSN 调用上下文内有效的原始句柄分开。
 
+## C 与各语言绑定
+
+C 宿主没有闭包可交出，因此 C ABI 改为注册一个普通函数指针（`src/ffi/callback.rs`）：
+
+```c
+typedef RssnStatus (*RssnCallbackFn)(void *user,
+                                     const struct RssnSession *session,
+                                     const uint32_t *args, size_t count,
+                                     uint32_t *out);
+```
+
+`args` 是 `count` 个存活的 cell，承载本次调用的实参；`out` 必须写入承载结果的 cell。两者都用现有的 `rssn_value_*` 读取器和构造器读写，回调因此不需要第二套 API。
+
+| 入口 | 作用 |
+|---|---|
+| `rssn_callback_new(session, signature_json, fn, user, out)` | 以显式的 `{"params": [...], "ret": ...}` 签名注册 `fn` |
+| `rssn_callback_new_for(session, op, index, fn, user, out)` | 复制算子 `op` 在第 `index` 个参数位置声明的签名 |
+| `rssn_callback_signatures(session, op, index, out_json)` | 列出该位置接受的签名（少数算子在同一位置声明多种函数类型） |
+| `rssn_callback_free(session, cell)` | 注销登记并留下可复用的槽位 |
+
+登记项存放在会话的回调库中，`rssn_value_call` 以该库的副本运行，所以承载 `Value::Function` 的 cell 就是普通实参。声明中出现量纲变量时按无量纲实例化：C 回调看到的是普通数值，这也正是引擎实际传给它的东西。三个语言绑定都建立在这一层之上，`bindings/examples/` 每种语言各有一个示例程序。
+
 ## 清单兼容性
 
 当前清单 API 版本为 2。算子元数据可含来源 `rust_path`，回调求值器标记为 `HostCallback`。解码前协商 API 版本，二进制记录增加字段会改变布局。读取较旧 JSON 时，可用默认值处理缺少的来源字段。来源信息描述适配器与 Rust 定义的关系。宿主应使用清单的签名、能力和后端字段选择实际可用路径。

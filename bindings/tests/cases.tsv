@@ -1,0 +1,39 @@
+# Cross-language conformance cases for the rssn bindings.
+#
+# One row per case, tab-separated; `#` starts a comment. The Python runner
+# (`bindings/tests/run_conformance.py --record`) fills the expectation
+# columns by running the engine; the Python, Julia and C++ runners then all
+# check the same file, so a wrapper that disagrees with the engine — or with
+# another wrapper — fails.
+#
+# columns: 1 name, 2 kind, 3 payload, 4 target, 5 tolerance, 6 bindings, 7 expect_text, 8 expect_value, 9 expect_status
+#
+name	kind	payload	target	tolerance	bindings	expect_text	expect_value	expect_status
+calculus.derivative	compute	diff(sin(x)*cos(x), x)	symbolic			cos(2*x)		ok
+calculus.derivative_numeric	compute	diff(sin(x)*cos(x), x)	numeric	1e-12	x=0	1	1.0	ok
+calculus.integral	compute	integral(x^2, x)	symbolic			1/3*x^3		ok
+calculus.definite	compute	defint(x^2, x, 0, 1)	symbolic			1/3		ok
+calculus.definite_numeric	compute	defint(x^2, x, 0, 1)	numeric	1e-12		0.3333333333333333	0.3333333333333333	ok
+calculus.limit	compute	limit(sin(x)/x, x, 0)	symbolic			1		ok
+calculus.sum	compute	sum(1/(k*(k+1)), k, 1, n)	symbolic			1 - 1/(n + 1)		ok
+algebra.expand	compute	expand((x+1)^3)	symbolic			x^3 + 3*x^2 + 3*x + 1		ok
+algebra.factor	compute	factor(x^2 - 1)	symbolic			(x - 1)*(x + 1)		ok
+algebra.solve	compute	solve(x^2 - 4, x)	symbolic			list(-2, 2)		ok
+number_theory.factorint	compute	factorint(360)	symbolic			list(list(2, 3), list(3, 2), list(5, 1))		ok
+number_theory.gcd	compute	gcd(12, 18)	symbolic			6		ok
+linear_algebra.det	compute	det(list(list(1, 2), list(3, 4)))	symbolic			-2		ok
+linear_algebra.matmul	compute	matmul(list(list(1,2),list(3,4)), list(list(0,1),list(1,0)))	symbolic			list(list(2, 1), list(4, 3))		ok
+numeric.pythagorean	compute	sin(x)^2 + cos(x)^2	numeric	1e-12	x=0.7	1	1.0	ok
+numeric.sqrt	compute	sqrt(x)	numeric	1e-12	x=2	1.4142135623730951	1.4142135623730951	ok
+simplify.ratio	simplify	(x^2 - 1)/(x - 1)	symbolic			x + 1		ok
+arith.sub	apply	sub			5,3	5 - 3		ok
+arith.neg	apply	neg			5	-5		ok
+arith.divide	apply	divide			6,3	6/3		ok
+callbacks.brent	callback	num_brent 1.0,2.0,1e-12,64				1.414213562		ok
+errors.parse	compute	sin(	symbolic					parse
+errors.unknown_operator	apply	definitely_not_an_operator			1			unknown_operator
+errors.not_numeric	compute	diff(x^2, x)	numeric	1e-12				not_numeric
+sim.ising	sim	ising {"width":4,"height":4,"temperature":2.0,"mc_steps":5,"seed":7}				magnetization,spins		ok
+sim.poisson_multigrid	sim	poisson_multigrid {"dim":2,"n":9,"sigma":0.0,"cycle":"v","tol":1e-8}				converged,convergence_factor,levels,max_error,residuals		ok
+manifest.hash	manifest						1139261357918084758	ok
+units.table	units						82	ok

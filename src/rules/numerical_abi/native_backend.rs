@@ -631,10 +631,13 @@ pub(super) fn install(installer: &mut Installer<'_>) -> Result<(), RuleError> {
             .purity(Purity::Effectful)
             .determinism(Determinism::EnvDependent)
             .thread_safety(ThreadSafety::SessionBound)
+            // Reachable from C: the session-owned handles these methods take
+            // and return cross the value ABI as opaque cells
+            // (`rssn_value_call`), which is exactly what they are.
             .backend(BackendSupport {
                 interpreter: true,
                 jit: false,
-                ffi: false,
+                ffi: true,
                 gpu: false,
             })
             .signature(signature)

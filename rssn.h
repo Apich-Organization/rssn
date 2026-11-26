@@ -109,7 +109,8 @@ typedef struct Ball Ball;
 typedef struct RssnConfig RssnConfig;
 
 /**
- * An rssn session: owns every term made through it. Opaque.
+ * An rssn session: owns every term and every dynamic value cell made
+ * through it. Opaque.
  */
 typedef struct RssnSession RssnSession;
 
@@ -121,6 +122,17 @@ typedef struct RssnSession RssnSession;
  * wavelet and `Nd` in the synthesis wavelet ([`Wavelet::vanishing_moments`]).
  */
 typedef struct Wavelet Wavelet;
+
+/**
+ * A host function rssn may call.
+ *
+ * See the [module documentation](self) for the contract of each argument.
+ */
+typedef enum RssnStatus (*RssnCallbackFn)(void *user,
+                                          const struct RssnSession *session,
+                                          const uint32_t *args,
+                                          size_t count,
+                                          uint32_t *out);
 
 /**
  * The result of `rssn_compute`.
@@ -189,6 +201,102 @@ extern "C" {
  * freed, and not used afterwards.
  */
 void rssn_bytes_free(uint8_t *data, size_t len);
+
+/**
+ * The number of live callbacks in `session`; a diagnostic for leak hunting.
+ *
+ * # Safety
+ * `session` must be a live session.
+ */
+size_t rssn_callback_count(const struct RssnSession *session);
+
+/**
+ * Records the message of a failed host callback.
+ *
+ * Call this from inside a callback before returning a non-`Ok` status: the
+ * text becomes the `OpError::Host` message, which the enclosing call reports
+ * through `rssn_last_error`. The string is copied; free nothing.
+ *
+ * # Safety
+ * `message` must be null or a NUL-terminated UTF-8 string.
+ */
+void rssn_callback_fail(const char *message);
+
+/**
+ * Releases the callback named by the cell `cell_id` and the cell itself.
+ *
+ * The registration and the cell are separate: freeing the cell keeps the
+ * callback alive (an operator may still hold it in a term it kept), so this
+ * call is the one to use when a host builds a fresh closure per iteration.
+ * Retiring an already-retired callback is not an error.
+ *
+ * # Safety
+ * `session` must be a live session.
+ */
+void rssn_callback_free(const struct RssnSession *session, uint32_t cell_id);
+
+/**
+ * Registers `function` with an explicit signature and writes a cell holding
+ * the callback to `*out`.
+ *
+ * `signature` is JSON: `{"params": ["real"], "ret": "real"}`. The `TypeExpr`
+ * spelling is the manifest's own; see the [module documentation](self).
+ * The callback must be concrete (no type parameters, no variadic tail, no
+ * dimension variables once instantiated) or registration fails with
+ * [`RssnStatus::InvalidArgument`].
+ *
+ * # Safety
+ * `session` must be a live session, `signature` a NUL-terminated string and
+ * `out` a valid pointer. `function` must be a function pointer that stays
+ * valid for as long as the session, and `user` must be safe to pass to it on
+ * the computing thread.
+ */
+enum RssnStatus rssn_callback_new(const struct RssnSession *session,
+                                  const char *signature,
+                                  RssnCallbackFn function,
+                                  void *user,
+                                  uint32_t *out);
+
+/**
+ * Registers `function` as the callback for argument `index` of operator `op`,
+ * taking the signature from the operator's own declaration.
+ *
+ * This is the call a binding should make: the engine already states that the
+ * argument is a `([real]) -> real` (or a tensor-to-tensor, record-to-bool,
+ * ...) function, so the host does not have to repeat it. Dimension variables
+ * in the declared type are instantiated as dimensionless.
+ *
+ * When the operator has several overloads with different function types at
+ * `index` (an objective and a gradient, say), the first one wins;
+ * [`rssn_callback_signatures`] lists them all so a host can register the
+ * others explicitly with [`rssn_callback_new`].
+ *
+ * # Safety
+ * As [`rssn_callback_new`], plus `op` must be a NUL-terminated string.
+ */
+enum RssnStatus rssn_callback_new_for(const struct RssnSession *session,
+                                      const char *op,
+                                      size_t index,
+                                      RssnCallbackFn function,
+                                      void *user,
+                                      uint32_t *out);
+
+/**
+ * Writes the JSON array of signatures a callback for argument `index` of `op`
+ * may be registered with; free it with `rssn_string_free`.
+ *
+ * Each element has the shape [`rssn_callback_new`] accepts, so a binding can
+ * iterate: register the first, retry with the next when the call reports a
+ * callback type mismatch. Dimension variables are already instantiated.
+ *
+ * # Safety
+ * `session` must be a live session, `op` a NUL-terminated string and `out` a
+ * valid pointer.
+ */
+enum RssnStatus rssn_callback_signatures(const struct RssnSession *session,
+                                         const char *op,
+                                         size_t index,
+                                         char **out);
 
 /**
  * Reduces `term` to the target of `config` (null means the defaults) and
@@ -637,6 +745,301 @@ char *rssn_term_to_string(const struct RssnSession *session, uint32_t term);
  * `session` must be a live session.
  */
 char *rssn_term_to_typst(const struct RssnSession *session, uint32_t term);
+
+/**
+ * Stores element `index` of `cell_id` as a new cell and writes its id to `*out`.
+ *
+ * # Safety
+ * `session` must be a live session and `out` a valid pointer.
+ */
+enum RssnStatus rssn_value_at(const struct RssnSession *session,
+                              uint32_t cell_id,
+                              size_t index,
+                              uint32_t *out);
+
+/**
+ * Calls the operator `op` with the `count` argument cells and stores the
+ * result as a new cell.
+ *
+ * This is [`Session::call_value`](crate::api::Session::call_value): the
+ * operator is resolved by name and argument count, an operator with a dynamic
+ * evaluator is run by it, and every other operator is built into a term and
+ * reduced. It is the only way to call an operator whose arguments have no
+ * term form — a native object handle, a record, a host callback — because
+ * those travel as cells and stay owned by the session.
+ *
+ * The call is symbolic, with the default budget and advisory dimensions.
+ * Convert the result with [`rssn_value_to_term`] and compute it with a
+ * configuration when a numeric target is wanted.
+ *
+ * # Safety
+ * `op` must be a NUL-terminated string, `args` must hold `count` cell ids
+ * (null is allowed only when `count` is 0), `session` must be a live session,
+ * and `out` a valid pointer.
+ */
+enum RssnStatus rssn_value_call(const struct RssnSession *session,
+                                const char *op,
+                                const uint32_t *args,
+                                size_t count,
+                                uint32_t *out);
+
+/**
+ * Calls the operator `op` and writes the result as JSON text.
+ *
+ * The JSON is the `serde` form of a value: a native object appears as
+ * `{"opaque": {...}}`, a tensor as `{"tensor": {"shape": [...], "data": [...]}}`.
+ * Free the string with `rssn_string_free`.
+ *
+ * # Safety
+ * As [`rssn_value_call`], plus `out_json` must be a valid pointer.
+ */
+enum RssnStatus rssn_value_call_json(const struct RssnSession *session,
+                                     const char *op,
+                                     const uint32_t *args,
+                                     size_t count,
+                                     char **out_json);
+
+/**
+ * The number of live cells in `session`; a diagnostic for leak hunting.
+ *
+ * # Safety
+ * `session` must be a live session.
+ */
+size_t rssn_value_count(const struct RssnSession *session);
+
+/**
+ * Writes the name of field `index` of a record to `*out` as a caller-owned
+ * string; free it with `rssn_string_free`.
+ *
+ * Together with [`rssn_value_len`] and [`rssn_value_at`] this reads a record
+ * without going through JSON: the length is the field count, the name is the
+ * label and `_at` is the value, all in declaration order.
+ *
+ * # Safety
+ * `session` must be a live session and `out` a valid pointer.
+ */
+enum RssnStatus rssn_value_field_name(const struct RssnSession *session,
+                                      uint32_t cell_id,
+                                      size_t index,
+                                      char **out);
+
+/**
+ * Releases a cell. A live session releases the rest with itself.
+ *
+ * # Safety
+ * `session` must be a live session.
+ */
+void rssn_value_free(const struct RssnSession *session, uint32_t cell_id);
+
+/**
+ * Writes the value in `cell_id` as JSON text; free it with `rssn_string_free`.
+ *
+ * # Safety
+ * `session` must be a live session and `out` a valid pointer.
+ */
+enum RssnStatus rssn_value_json(const struct RssnSession *session, uint32_t cell_id, char **out);
+
+/**
+ * Writes the kind code of the value in `cell_id` to `*out`.
+ *
+ * The codes are the declaration order of `ValueKind`: `0` int, `1` real,
+ * `2` float, `3` complex, `4` bool, `5` string, `6` symbol, `7` unit,
+ * `8` quantity, `9` tensor, `10` sparse, `11` record, `12` variant,
+ * `13` term, `14` function, `15` dyn, `16` opaque.
+ *
+ * # Safety
+ * `session` must be a live session and `out` a valid pointer.
+ */
+enum RssnStatus rssn_value_kind(const struct RssnSession *session, uint32_t cell_id, uint8_t *out);
+
+/**
+ * Writes the number of elements of `cell_id` (a tensor's length, a record's
+ * field count) to `*out`.
+ *
+ * # Safety
+ * `session` must be a live session and `out` a valid pointer.
+ */
+enum RssnStatus rssn_value_len(const struct RssnSession *session, uint32_t cell_id, size_t *out);
+
+/**
+ * Stores a truth value (`0` false, anything else true) and writes its cell id
+ * to `*out`.
+ *
+ * A `bool` has no numeric form an operator would accept in its place, so a
+ * host callback that answers a `Bool` parameter needs this constructor.
+ *
+ * # Safety
+ * `session` must be a live session and `out` a valid pointer.
+ */
+enum RssnStatus rssn_value_new_bool(const struct RssnSession *session, int value, uint32_t *out);
+
+/**
+ * Stores the complex number `re + im*i` and writes its cell id to `*out`.
+ *
+ * # Safety
+ * `session` must be a live session and `out` a valid pointer.
+ */
+enum RssnStatus rssn_value_new_complex(const struct RssnSession *session,
+                                       double re,
+                                       double im,
+                                       uint32_t *out);
+
+/**
+ * Stores the float `value` and writes its cell id to `*out`.
+ *
+ * # Safety
+ * `session` must be a live session and `out` a valid pointer.
+ */
+enum RssnStatus rssn_value_new_float(const struct RssnSession *session,
+                                     double value,
+                                     uint32_t *out);
+
+/**
+ * Stores the exact integer `value` and writes its cell id to `*out`.
+ *
+ * # Safety
+ * `session` must be a live session and `out` a valid pointer.
+ */
+enum RssnStatus rssn_value_new_int(const struct RssnSession *session, int64_t value, uint32_t *out);
+
+/**
+ * Stores a list of the `count` cells `cells` and writes its cell id to `*out`.
+ *
+ * The elements keep their individual kinds; a list of a float and a symbol is
+ * a rank-one tensor with a dynamic element type, which is what an operator
+ * with a `list(...)` parameter reads.
+ *
+ * # Safety
+ * `cells` must hold `count` cell ids (null is allowed only when `count` is 0),
+ * `session` must be a live session, and `out` a valid pointer.
+ */
+enum RssnStatus rssn_value_new_list(const struct RssnSession *session,
+                                    const uint32_t *cells,
+                                    size_t count,
+                                    uint32_t *out);
+
+/**
+ * Stores a record of the `count` fields `names[i]` / `cells[i]` and writes its
+ * cell id to `*out`.
+ *
+ * Field order is preserved; the kernel matches records by field name, so an
+ * operator's `record{energy: real, ...}` parameter is satisfied by the same
+ * names in any order. A name may not repeat.
+ *
+ * # Safety
+ * `names` must hold `count` NUL-terminated strings, `cells` must hold `count`
+ * live cell ids, `session` must be a live session, and `out` a valid pointer.
+ */
+enum RssnStatus rssn_value_new_record(const struct RssnSession *session,
+                                      const char *const *names,
+                                      const uint32_t *cells,
+                                      size_t count,
+                                      uint32_t *out);
+
+/**
+ * Stores the free symbol `name` and writes its cell id to `*out`.
+ *
+ * # Safety
+ * `session` must be a live session, `name` a NUL-terminated string, and
+ * `out` a valid pointer.
+ */
+enum RssnStatus rssn_value_new_symbol(const struct RssnSession *session,
+                                      const char *name,
+                                      uint32_t *out);
+
+/**
+ * Stores a dense `f64` tensor and writes its cell id to `*out`.
+ *
+ * # Safety
+ * `data` must hold `len` values, `shape` must hold `rank` extents whose
+ * product is `len`, `session` must be a live session, and `out` a valid
+ * pointer.
+ */
+enum RssnStatus rssn_value_new_tensor(const struct RssnSession *session,
+                                      const double *data,
+                                      size_t len,
+                                      const size_t *shape,
+                                      size_t rank,
+                                      uint32_t *out);
+
+/**
+ * Stores the term `handle` as a value and writes its cell id to `*out`.
+ *
+ * # Safety
+ * `session` must be a live session and `out` a valid pointer.
+ */
+enum RssnStatus rssn_value_new_term(const struct RssnSession *session,
+                                    uint32_t handle,
+                                    uint32_t *out);
+
+/**
+ * Stores the text `value` and writes its cell id to `*out`.
+ *
+ * # Safety
+ * `session` must be a live session, `value` a NUL-terminated string, and
+ * `out` a valid pointer.
+ */
+enum RssnStatus rssn_value_new_text(const struct RssnSession *session,
+                                    const char *value,
+                                    uint32_t *out);
+
+/**
+ * Writes the tag of a variant value to `*out` as a caller-owned string; free
+ * it with `rssn_string_free`.
+ *
+ * The payload is the value's elements: [`rssn_value_len`] and
+ * [`rssn_value_at`] read them.
+ *
+ * # Safety
+ * `session` must be a live session and `out` a valid pointer.
+ */
+enum RssnStatus rssn_value_tag(const struct RssnSession *session, uint32_t cell_id, char **out);
+
+/**
+ * Writes the numeric value of `cell_id` to `*out` when it has one.
+ *
+ * A dimensioned scalar (`dyn`) and a quantity are read as the number they
+ * carry; `rssn_value_kind` still says which wrapper it was.
+ *
+ * # Safety
+ * `session` must be a live session and `out` a valid pointer.
+ */
+enum RssnStatus rssn_value_to_f64(const struct RssnSession *session, uint32_t cell_id, double *out);
+
+/**
+ * Extracts `cell_id` as a dense `f64` array; release it with `rssn_tensor_free`.
+ *
+ * A tensor value is flattened row-major; a scalar value gives rank 0.
+ *
+ * # Safety
+ * `session` must be a live session and `out` a valid pointer.
+ */
+enum RssnStatus rssn_value_to_tensor(const struct RssnSession *session,
+                                     uint32_t cell_id,
+                                     struct RssnTensor *out);
+
+/**
+ * Stores the graph form of `cell_id` as a term and writes its handle to `*out`.
+ *
+ * Fails with [`RssnStatus::NoValue`] when the value has no term form — a
+ * native object, a record, a host callback. The manifest's `value_kinds` lists
+ * which kinds do, under `in_term_graph`.
+ *
+ * # Safety
+ * `session` must be a live session and `out` a valid pointer.
+ */
+enum RssnStatus rssn_value_to_term(const struct RssnSession *session,
+                                   uint32_t cell_id,
+                                   uint32_t *out);
+
+/**
+ * Writes the text of `cell_id` — a string, a symbol, or any value's display
+ * form — as a caller-owned string; free it with `rssn_string_free`.
+ *
+ * # Safety
+ * `session` must be a live session and `out` a valid pointer.
+ */
+enum RssnStatus rssn_value_to_text(const struct RssnSession *session, uint32_t cell_id, char **out);
 
 /**
  * The crate version, e.g. `"3.0.0-beta.1"`. Static; do not free.

@@ -88,6 +88,36 @@ A language bridge can create a fresh scoped callback handle for each kernel
 call; a persistent source-language callback object must remain distinct from
 RSSN's context-local raw handle.
 
+## From C, and from the language bindings
+
+A C host has no closure to hand over, so the C ABI registers a plain function
+pointer instead (`src/ffi/callback.rs`):
+
+```c
+typedef RssnStatus (*RssnCallbackFn)(void *user,
+                                     const struct RssnSession *session,
+                                     const uint32_t *args, size_t count,
+                                     uint32_t *out);
+```
+
+`args` are `count` live cell ids holding the arguments; `out` must be set to a
+cell holding the result. Both are read and written with the ordinary
+`rssn_value_*` readers and constructors, so a callback needs no second API.
+
+| Entry point | What it does |
+|---|---|
+| `rssn_callback_new(session, signature_json, fn, user, out)` | registers `fn` with an explicit `{"params": [...], "ret": ...}` signature |
+| `rssn_callback_new_for(session, op, index, fn, user, out)` | copies the signature `op` declares at argument `index` |
+| `rssn_callback_signatures(session, op, index, out_json)` | lists what `op` accepts there, for the few that declare more than one function type |
+| `rssn_callback_free(session, cell)` | retires a registration into a reusable slot |
+
+The registration lives in the session's callback bank, and `rssn_value_call`
+runs with a clone of that bank, so the cell holding the `Value::Function` is an
+ordinary argument. A declared signature that mentions a dimension variable is
+instantiated as dimensionless: a C callback sees plain numbers, which is what
+the engine passes it anyway. The three bindings build on exactly this surface;
+`bindings/examples/` has one program per language.
+
 ## Manifest compatibility
 
 The current manifest API version is 2. Operator metadata includes optional

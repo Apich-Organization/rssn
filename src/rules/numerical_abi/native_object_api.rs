@@ -685,10 +685,15 @@ pub(in crate::rules) fn install(
             .purity(Purity::Effectful)
             .determinism(Determinism::EnvDependent)
             .thread_safety(ThreadSafety::SessionBound)
+            // A binding whose arguments are session-owned handles is reachable
+            // from C through the value ABI (`rssn_value_call`), and one that
+            // takes a host callback is reachable through the callback ABI
+            // (`rssn_callback_new_for`), which registers a C function pointer
+            // as the `Value::Function` the operator expects.
             .backend(BackendSupport {
                 interpreter: true,
                 jit: false,
-                ffi: false,
+                ffi: true,
                 gpu: false,
             })
             .signature(s)

@@ -1,0 +1,9 @@
+# Python byte code and test caches
+__pycache__/
+*.py[cod]
+
+# The shared library copied into the package by a distribution build
+python/rssn/_lib/
+
+# CMake build trees created by the documented commands
+build/

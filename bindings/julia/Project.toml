@@ -1,0 +1,10 @@
+name = "RSSN"
+uuid = "6f2a1c3e-8b47-4c1a-9f3d-2b7e5c9a4d10"
+authors = ["The rssn developers"]
+version = "3.0.0"
+
+[deps]
+Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+
+[compat]
+julia = "1.9"

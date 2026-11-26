@@ -1073,3 +1073,234 @@ fn compute_all_bincode_matches_json_and_reports_per_request_status() {
         rssn_session_free(s);
     }
 }
+
+// ---------------------------------------------------------------------------
+// host callbacks
+// ---------------------------------------------------------------------------
+
+/// The callback the tests below register: `x -> x*x - 2`, the residual whose
+/// positive root is `sqrt(2)`.
+extern "C" fn square_minus_two(
+    _user: *mut std::ffi::c_void,
+    session: *const RssnSession,
+    args: *const u32,
+    count: usize,
+    out: *mut u32,
+) -> RssnStatus {
+    if session.is_null() || args.is_null() || out.is_null() || count != 1 {
+        return fail(
+            RssnStatus::InvalidArgument,
+            "square_minus_two wants exactly one argument",
+        );
+    }
+    let mut x = 0.0;
+    // SAFETY: the callback contract: `count` live argument cells, one session.
+    let status = unsafe { rssn_value_to_f64(session, *args, &raw mut x) };
+    if status != RssnStatus::Ok {
+        return status;
+    }
+    // SAFETY: as above; `out` is a valid pointer by the check above.
+    unsafe { rssn_value_new_float(session, x.mul_add(x, -2.0), out) }
+}
+
+/// A callback that always fails, to exercise the error path.
+extern "C" fn refuses(
+    _user: *mut std::ffi::c_void,
+    _session: *const RssnSession,
+    _args: *const u32,
+    _count: usize,
+    _out: *mut u32,
+) -> RssnStatus {
+    let message = c("the host refuses to evaluate");
+    // SAFETY: a NUL-terminated string that outlives the call.
+    unsafe { rssn_callback_fail(message.as_ptr()) };
+    RssnStatus::InvalidArgument
+}
+
+/// Stores `value` in a fresh cell of `session`.
+unsafe fn cell_of(
+    session: *const RssnSession,
+    value: f64,
+) -> u32 {
+    let mut cell = 0u32;
+    // SAFETY: the caller passes a live session.
+    assert_ok(unsafe { rssn_value_new_float(session, value, &raw mut cell) });
+    cell
+}
+
+/// Stores `value` in a fresh cell of `session`.
+unsafe fn int_cell_of(
+    session: *const RssnSession,
+    value: i64,
+) -> u32 {
+    let mut cell = 0u32;
+    // SAFETY: the caller passes a live session.
+    assert_ok(unsafe { rssn_value_new_int(session, value, &raw mut cell) });
+    cell
+}
+
+#[test]
+fn a_host_callback_reaches_a_higher_order_operator() {
+    let session = rssn_session_new();
+    assert!(!session.is_null(), "{}", last_error());
+
+    // The signature comes from the operator's own declaration:
+    // `num_brent(a, b, tolerance, iterations, f)`.
+    let mut callback = 0u32;
+    let op = c("num_brent");
+    assert_ok(unsafe {
+        rssn_callback_new_for(
+            session,
+            op.as_ptr(),
+            4,
+            square_minus_two,
+            std::ptr::null_mut(),
+            &raw mut callback,
+        )
+    });
+    assert_ne!(callback, 0);
+    assert_eq!(unsafe { rssn_callback_count(session) }, 1);
+
+    // SAFETY: a live session; the cells stay alive for the call.
+    let cells = unsafe {
+        [
+            cell_of(session, 1.0),
+            cell_of(session, 2.0),
+            cell_of(session, 1e-12),
+            int_cell_of(session, 64),
+            callback,
+        ]
+    };
+    let mut answer = 0u32;
+    // SAFETY: `cells` holds five live ids and `answer` is a valid pointer.
+    assert_ok(unsafe {
+        rssn_value_call(
+            session,
+            op.as_ptr(),
+            cells.as_ptr(),
+            cells.len(),
+            &raw mut answer,
+        )
+    });
+
+    // `num_brent` answers a record; its first field is the root.
+    let mut root_cell = 0u32;
+    // SAFETY: a live record cell and a valid out pointer.
+    assert_ok(unsafe { rssn_value_at(session, answer, 0, &raw mut root_cell) });
+    let mut root = 0.0;
+    // SAFETY: as above; `_to_f64` looks through the value's dimension wrapper.
+    assert_ok(unsafe { rssn_value_to_f64(session, root_cell, &raw mut root) });
+    assert!(
+        (root - std::f64::consts::SQRT_2).abs() < 1e-9,
+        "root = {root}"
+    );
+
+    // Retiring the callback empties the bank.
+    unsafe { rssn_callback_free(session, callback) };
+    assert_eq!(unsafe { rssn_callback_count(session) }, 0);
+    // SAFETY: the session is still live.
+    unsafe { rssn_session_free(session) };
+}
+
+#[test]
+fn an_explicit_signature_is_enough_to_register_a_callback() {
+    let session = rssn_session_new();
+    assert!(!session.is_null(), "{}", last_error());
+    let signature = c(r#"{"params": ["real"], "ret": "real"}"#);
+    let mut callback = 0u32;
+    // SAFETY: a live session, a NUL-terminated signature, a valid out pointer.
+    assert_ok(unsafe {
+        rssn_callback_new(
+            session,
+            signature.as_ptr(),
+            square_minus_two,
+            std::ptr::null_mut(),
+            &raw mut callback,
+        )
+    });
+    assert_ne!(callback, 0);
+
+    // A malformed signature is a status, never a panic.
+    let bad = c(r#"{"params": "real"}"#);
+    let mut ignored = 0u32;
+    // SAFETY: as above.
+    assert_status(
+        unsafe {
+            rssn_callback_new(
+                session,
+                bad.as_ptr(),
+                square_minus_two,
+                std::ptr::null_mut(),
+                &raw mut ignored,
+            )
+        },
+        RssnStatus::InvalidArgument,
+    );
+    // SAFETY: the session is still live.
+    unsafe { rssn_session_free(session) };
+}
+
+#[test]
+fn callback_signatures_are_listed_and_failures_propagate() {
+    let session = rssn_session_new();
+    assert!(!session.is_null(), "{}", last_error());
+    let op = c("num_brent");
+    let mut raw = std::ptr::null_mut();
+    // SAFETY: a live session, a NUL-terminated operator name, a valid pointer.
+    assert_ok(unsafe { rssn_callback_signatures(session, op.as_ptr(), 4, &raw mut raw) });
+    let listed: serde_json::Value = serde_json::from_str(&owned(raw)).expect("the list is JSON");
+    let first = &listed[0];
+    assert_eq!(first["params"][0], serde_json::json!("float"));
+    assert_eq!(first["ret"], serde_json::json!("float"));
+
+    // An operator with no function at that index lists nothing.
+    let integrate = c("num_integrate");
+    // SAFETY: as above.
+    assert_ok(unsafe { rssn_callback_signatures(session, integrate.as_ptr(), 0, &raw mut raw) });
+    assert_eq!(owned(raw), "[]");
+
+    // A callback that fails aborts the operator with the host's message.
+    let mut callback = 0u32;
+    // SAFETY: as above.
+    assert_ok(unsafe {
+        rssn_callback_new_for(
+            session,
+            op.as_ptr(),
+            4,
+            refuses,
+            std::ptr::null_mut(),
+            &raw mut callback,
+        )
+    });
+    // SAFETY: a live session; the cells stay alive for the call.
+    let cells = unsafe {
+        [
+            cell_of(session, 1.0),
+            cell_of(session, 2.0),
+            cell_of(session, 1e-12),
+            int_cell_of(session, 8),
+            callback,
+        ]
+    };
+    let mut answer = 0u32;
+    // SAFETY: five live ids and a valid out pointer.
+    assert_status(
+        unsafe {
+            rssn_value_call(
+                session,
+                op.as_ptr(),
+                cells.as_ptr(),
+                cells.len(),
+                &raw mut answer,
+            )
+        },
+        RssnStatus::InvalidArgument,
+    );
+    assert!(
+        last_error().contains("refuses"),
+        "the host message crosses: {}",
+        last_error()
+    );
+    // SAFETY: the session is still live.
+    unsafe { rssn_session_free(session) };
+}

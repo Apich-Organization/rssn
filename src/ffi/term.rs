@@ -12,8 +12,18 @@ use super::to_c;
 use crate::api::Session;
 use crate::api::Term;
 
-/// An rssn session: owns every term made through it. Opaque.
-pub struct RssnSession(pub(crate) Session);
+/// An rssn session: owns every term and every dynamic value cell made
+/// through it. Opaque.
+pub struct RssnSession {
+    pub(crate) session: Session,
+    /// The cells [`rssn_value_call`](super::rssn_value_call) and its siblings
+    /// hand out.
+    pub(crate) values: std::cell::RefCell<super::value::ValueBank>,
+    /// The host callbacks [`rssn_callback_new`](super::rssn_callback_new)
+    /// registered. A callback is reachable from the arguments of a value call
+    /// for as long as it is live in this bank.
+    pub(crate) callbacks: std::cell::RefCell<crate::kernel::CallbackBank>,
+}
 
 /// A dense numeric array extracted from a term, row-major.
 #[repr(C)]
@@ -36,7 +46,11 @@ pub struct RssnTensor {
 pub extern "C" fn rssn_session_new() -> *mut RssnSession {
     let mut session = std::ptr::null_mut();
     let _ = guard(|| {
-        session = Box::into_raw(Box::new(RssnSession(Session::new())));
+        session = Box::into_raw(Box::new(RssnSession {
+            session: Session::new(),
+            values: std::cell::RefCell::new(super::value::ValueBank::new()),
+            callbacks: std::cell::RefCell::new(crate::kernel::CallbackBank::new()),
+        }));
         RssnStatus::Ok
     });
     session
@@ -65,7 +79,7 @@ pub unsafe extern "C" fn rssn_session_free(session: *mut RssnSession) {
 pub unsafe fn borrow_session<'a>(session: *const RssnSession) -> Result<&'a Session, RssnStatus> {
     // SAFETY: caller contract.
     unsafe { session.as_ref() }
-        .map(|s| &s.0)
+        .map(|s| &s.session)
         .ok_or_else(|| fail(RssnStatus::NullArgument, "null session"))
 }
 

@@ -16,9 +16,16 @@ use std::collections::BTreeSet;
 
 /// An immutable signature snapshot alongside each registered host function.
 /// Cloning a bank retains the same entries without running host code.
+///
+/// Slots are positional: a [`CallbackRef`] is an index into this bank, so a
+/// retired slot is left in place as a tombstone instead of shifting the
+/// handles of the callbacks after it. [`CallbackBank::add`] reuses the first
+/// tombstone, which keeps a long-lived host (a REPL, a server, a loop that
+/// builds a fresh closure per iteration) from growing the bank without bound.
 #[derive(Clone, Debug, Default)]
 pub struct CallbackBank {
-    entries: Vec<std::sync::Arc<CallbackEntry>>,
+    entries: Vec<Option<std::sync::Arc<CallbackEntry>>>,
+    live: usize,
 }
 #[derive(Debug)]
 struct CallbackEntry {
@@ -29,19 +36,29 @@ impl CallbackBank {
     /// An empty callback bank.
     #[must_use]
     pub const fn new() -> Self {
-        Self { entries: Vec::new() }
+        Self {
+            entries: Vec::new(),
+            live: 0,
+        }
     }
 
-    /// Registered callback count.
+    /// Registered callback count; retired slots are not counted.
     #[must_use]
     pub const fn len(&self) -> usize {
-        self.entries.len()
+        self.live
     }
 
     /// Whether no callbacks are registered.
     #[must_use]
     pub const fn is_empty(&self) -> bool {
-        self.entries.is_empty()
+        self.live == 0
+    }
+
+    /// The number of slots, including retired ones. A handle is valid when it
+    /// is below this and [`CallbackBank::get`] returns a callback for it.
+    #[must_use]
+    pub fn slots(&self) -> usize {
+        self.entries.len()
     }
 
     /// The registered host object, without re-querying its signature.
@@ -50,7 +67,10 @@ impl CallbackBank {
         &self,
         index: usize,
     ) -> Option<&std::sync::Arc<dyn crate::kernel::plugin::HostCallback>> {
-        self.entries.get(index).map(|entry| &entry.callback)
+        self.entries
+            .get(index)
+            .and_then(Option::as_ref)
+            .map(|entry| &entry.callback)
     }
 
     /// The immutable signature captured at registration.
@@ -59,10 +79,18 @@ impl CallbackBank {
         &self,
         index: usize,
     ) -> Option<&Signature> {
-        self.entries.get(index).map(|entry| &entry.signature)
+        self.entries
+            .get(index)
+            .and_then(Option::as_ref)
+            .map(|entry| &entry.signature)
     }
 
     /// Snapshot and validate a host callback before assigning its handle.
+    ///
+    /// The returned handle names the slot, which is either the first retired
+    /// slot or a new one at the end. A retired slot's handle is never handed
+    /// out again while it is live, so a stale [`CallbackRef`] resolves to
+    /// nothing rather than to an unrelated function.
     ///
     /// # Errors
     /// Returns `Unsupported` for an unrepresentable signature and `Host` if
@@ -71,13 +99,40 @@ impl CallbackBank {
         &mut self,
         callback: std::sync::Arc<dyn crate::kernel::plugin::HostCallback>,
     ) -> Result<CallbackRef, OpError> {
-        let index = u32::try_from(self.entries.len())
-            .map_err(|_| OpError::Host("callback handle space exhausted".into()))?;
         let signature = callback.signature();
         validate_signature(&signature)?;
-        self.entries
-            .push(std::sync::Arc::new(CallbackEntry { callback, signature }));
+        let entry = std::sync::Arc::new(CallbackEntry { callback, signature });
+        if let Some(index) = self.entries.iter().position(Option::is_none) {
+            self.entries[index] = Some(entry);
+            self.live += 1;
+            return Ok(CallbackRef(u32::try_from(index).map_err(|_| {
+                OpError::Host("callback handle space exhausted".into())
+            })?));
+        }
+        let index = u32::try_from(self.entries.len())
+            .map_err(|_| OpError::Host("callback handle space exhausted".into()))?;
+        self.entries.push(Some(entry));
+        self.live += 1;
         Ok(CallbackRef(index))
+    }
+
+    /// Releases the callback in slot `index`, leaving a reusable tombstone.
+    ///
+    /// Returns `false` when the slot is out of range or already retired. A
+    /// handle that has been retired no longer resolves: [`CallbackBank::get`]
+    /// and [`CallbackBank::signature`] return `None` for it.
+    pub fn retire(
+        &mut self,
+        index: usize,
+    ) -> bool {
+        match self.entries.get_mut(index) {
+            | Some(slot @ Some(_)) => {
+                *slot = None;
+                self.live -= 1;
+                true
+            },
+            | _ => false,
+        }
     }
 }
 

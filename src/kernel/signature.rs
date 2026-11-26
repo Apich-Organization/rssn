@@ -1164,7 +1164,9 @@ pub struct BackendSupport {
     pub interpreter: bool,
     /// The Cranelift JIT (feature `jit`).
     pub jit: bool,
-    /// The C ABI.
+    /// The C ABI: `rssn_term_apply` for an operator whose arguments are terms,
+    /// or `rssn_value_call` for one that takes or returns a value with no term
+    /// form (a native object handle, a record, a host callback).
     pub ffi: bool,
     /// A GPU backend, when one is built.
     pub gpu: bool,

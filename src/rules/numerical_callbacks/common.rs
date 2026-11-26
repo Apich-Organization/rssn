@@ -138,10 +138,14 @@ pub(super) fn register<E: EvalDyn + 'static>(
         .purity(Purity::Effectful)
         .determinism(Determinism::EnvDependent)
         .thread_safety(ThreadSafety::SessionBound)
+        // Reachable from C: the host hands its function over with
+        // `rssn_callback_new_for` / `rssn_callback_new`, which register a C
+        // function pointer as a `Value::Function` the operator accepts like any
+        // other argument (see `src/ffi/callback.rs`).
         .backend(BackendSupport {
             interpreter: true,
             jit: false,
-            ffi: false,
+            ffi: true,
             gpu: false,
         })
         .higher_order()
