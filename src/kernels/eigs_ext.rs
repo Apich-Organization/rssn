@@ -75,22 +75,22 @@ fn rdot(
     a: &[f64],
     b: &[f64],
 ) -> f64 {
-    a.iter().zip(b).map(|(x, y)| x * y).sum()
+    crate::kernels::simd::dot_f64(a, b)
 }
 
 fn rnrm(a: &[f64]) -> f64 {
-    rdot(a, a).sqrt()
+    crate::kernels::simd::norm2_sq_f64(a).sqrt()
 }
 
 fn cdot(
     a: &[C],
     b: &[C],
 ) -> C {
-    a.iter().zip(b).map(|(x, y)| x.conj() * y).sum()
+    crate::kernels::simd::complex_dot_conj(a, b)
 }
 
 fn cnrm(a: &[C]) -> f64 {
-    a.iter().map(Complex64::norm_sqr).sum::<f64>().sqrt()
+    crate::kernels::simd::complex_norm2_sq(a).sqrt()
 }
 
 fn random_vec(
@@ -173,8 +173,12 @@ pub fn complex_schur(a: &[Vec<C>]) -> Option<Schur> {
         })
         .collect();
     // Householder reduction to Hessenberg form
+    let mut x: Vec<C> = Vec::with_capacity(n);
     for k in 0..n.saturating_sub(2) {
-        let mut x: Vec<C> = (k + 1..n).map(|i| h[i][k]).collect();
+        x.clear();
+        for row in h.iter().skip(k + 1) {
+            x.push(row[k]);
+        }
         let xn = cnrm(&x);
         if xn == 0.0 {
             continue;
@@ -189,9 +193,7 @@ pub fn complex_schur(a: &[Vec<C>]) -> Option<Schur> {
         if vn == 0.0 {
             continue;
         }
-        for e in &mut x {
-            *e /= vn;
-        }
+        crate::kernels::simd::complex_scale_in_place(1.0 / vn, &mut x);
         // H <- P H P with P = I - 2 v v^H acting on indices k+1..n
         for j in 0..n {
             let s: C = (0..x.len()).map(|i| x[i].conj() * h[k + 1 + i][j]).sum();
@@ -220,6 +222,7 @@ pub fn complex_schur(a: &[Vec<C>]) -> Option<Schur> {
     let mut hi = n.saturating_sub(1);
     let mut iter = 0usize;
     let mut total = 0usize;
+    let mut rots: Vec<(f64, C)> = Vec::with_capacity(n);
     while hi > 0 {
         total += 1;
         if total > 100 * n.max(10) {
@@ -259,7 +262,7 @@ pub fn complex_schur(a: &[Vec<C>]) -> Option<Schur> {
         for i in l..=hi {
             h[i][i] -= mu;
         }
-        let mut rots: Vec<(f64, C)> = Vec::with_capacity(hi - l);
+        rots.clear();
         for k in l..hi {
             let (c, s) = givens(h[k][k], h[k + 1][k]);
             rot_rows(&mut h, k, c, s, k);

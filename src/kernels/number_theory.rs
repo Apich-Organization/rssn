@@ -1132,19 +1132,22 @@ pub fn primes_sieve(limit: usize) -> Vec<usize> {
     const SEGMENT_BITS: usize = SEGMENT_BYTES * 8;
     const SEGMENT_SPAN: usize = SEGMENT_BITS * 2;
 
-    let mut scratch = crate::kernels::reuse::global_pool().scratch_bytes(SEGMENT_BYTES);
-    scratch.resize(SEGMENT_BYTES, 0);
+    let max_odd = limit - ((limit & 1) ^ 1);
+    if max_odd < 3 {
+        return primes;
+    }
+    let num_segments = (max_odd - 3) / SEGMENT_SPAN + 1;
 
-    let mut seg_low = 3_usize;
-    while seg_low <= limit {
-        let seg_high = seg_low
-            .saturating_add(SEGMENT_SPAN - 2)
-            .min(limit - ((limit & 1) ^ 1));
+    let sieve_segment = |seg_idx: usize, out: &mut Vec<usize>| {
+        let seg_low = 3_usize + seg_idx * SEGMENT_SPAN;
+        let seg_high = seg_low.saturating_add(SEGMENT_SPAN - 2).min(max_odd);
         if seg_high < seg_low {
-            break;
+            return;
         }
         let odd_count = (seg_high - seg_low) / 2 + 1;
         let used_bytes = odd_count.div_ceil(8);
+        let mut scratch = crate::kernels::reuse::global_pool().scratch_bytes(SEGMENT_BYTES);
+        scratch.resize(SEGMENT_BYTES, 0);
         scratch[..used_bytes].fill(0);
 
         for &p in base_primes.iter().skip(1) {
@@ -1184,7 +1187,7 @@ pub fn primes_sieve(limit: usize) -> Vec<usize> {
             while free != 0 {
                 let bit = free.trailing_zeros() as usize;
                 free &= free - 1;
-                primes.push(base_num + (bit << 1));
+                out.push(base_num + (bit << 1));
             }
         }
         let rem_bits = odd_count & 7;
@@ -1195,14 +1198,24 @@ pub fn primes_sieve(limit: usize) -> Vec<usize> {
             while free != 0 {
                 let bit = free.trailing_zeros() as usize;
                 free &= free - 1;
-                primes.push(base_num + (bit << 1));
+                out.push(base_num + (bit << 1));
             }
         }
+    };
 
-        let Some(next_low) = seg_low.checked_add(SEGMENT_SPAN) else {
-            break;
-        };
-        seg_low = next_low;
+    if crate::execution::should_split(num_segments, 4) {
+        let chunks = crate::kernels::par::map_indexed(num_segments, 4, |seg_idx| {
+            let mut local = Vec::new();
+            sieve_segment(seg_idx, &mut local);
+            local
+        });
+        for chunk in chunks {
+            primes.extend(chunk);
+        }
+    } else {
+        for seg_idx in 0..num_segments {
+            sieve_segment(seg_idx, &mut primes);
+        }
     }
 
     primes

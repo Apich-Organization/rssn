@@ -795,71 +795,22 @@ pub enum AmgError {
 }
 
 pub(crate) fn transpose(a: &Csr) -> Csr {
-    let mut cnt = vec![0usize; a.cols + 1];
-    for &c in &a.indices {
-        cnt[c + 1] += 1;
-    }
-    for i in 0..a.cols {
-        cnt[i + 1] += cnt[i];
-    }
-    let mut pos = cnt.clone();
-    let mut indices = vec![0usize; a.indices.len()];
-    let mut values = vec![0.0; a.values.len()];
-    for r in 0..a.rows {
-        for k in a.indptr[r]..a.indptr[r + 1] {
-            let c = a.indices[k];
-            indices[pos[c]] = r;
-            values[pos[c]] = a.values[k];
-            pos[c] += 1;
-        }
-    }
-    Csr {
-        rows: a.cols,
-        cols: a.rows,
-        indptr: cnt,
-        indices,
-        values,
-    }
+    a.transpose()
 }
 
 pub(crate) fn spgemm(
     a: &Csr,
     b: &Csr,
 ) -> Csr {
-    let mut indptr = vec![0usize; a.rows + 1];
-    let mut indices: Vec<usize> = Vec::new();
-    let mut values: Vec<f64> = Vec::new();
-    let mut acc = vec![0.0; b.cols];
-    let mut flag = vec![usize::MAX; b.cols];
-    for i in 0..a.rows {
-        let mut cols: Vec<usize> = Vec::new();
-        for ka in a.indptr[i]..a.indptr[i + 1] {
-            let j = a.indices[ka];
-            let av = a.values[ka];
-            for kb in b.indptr[j]..b.indptr[j + 1] {
-                let c = b.indices[kb];
-                if flag[c] != i {
-                    flag[c] = i;
-                    acc[c] = 0.0;
-                    cols.push(c);
-                }
-                acc[c] += av * b.values[kb];
-            }
+    a.spgemm(b).unwrap_or_else(|_| {
+        Csr {
+            rows: a.rows,
+            cols: b.cols,
+            indptr: vec![0; a.rows + 1],
+            indices: Vec::new(),
+            values: Vec::new(),
         }
-        cols.sort_unstable();
-        for c in cols {
-            indices.push(c);
-            values.push(acc[c]);
-        }
-        indptr[i + 1] = indices.len();
-    }
-    Csr {
-        rows: a.rows,
-        cols: b.cols,
-        indptr,
-        indices,
-        values,
-    }
+    })
 }
 
 /// Greedy aggregation on the strength graph; returns `(aggregate id per

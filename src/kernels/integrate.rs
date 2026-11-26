@@ -570,38 +570,7 @@ where
         return 0.0;
     }
 
-    let mid = f64::midpoint(a, b);
-
-    let half_len = (b - a) / 2.0;
-
-    // Nodes and weights for n=5 (from standard tables)
-    // x_i are for interval [-1, 1]
-    let nodes = [
-        0.0,
-        0.538_469_310_105_683_1,
-        -0.538_469_310_105_683_1,
-        0.906_179_845_938_664,
-        -0.906_179_845_938_664,
-    ];
-
-    let weights = [
-        0.568_888_888_888_889,
-        0.478_628_670_499_366_5,
-        0.478_628_670_499_366_5,
-        0.236_926_885_056_189_1,
-        0.236_926_885_056_189_1,
-    ];
-
-    let mut sum = 0.0;
-
-    for i in 0..5 {
-        // Transform x from [-1, 1] to [a, b]
-        let x = mid + half_len * nodes[i];
-
-        sum += weights[i] * f(x);
-    }
-
-    half_len * sum
+    crate::kernels::quadrature::gauss_legendre(f, a, b, 5)
 }
 
 /// Result of an adaptive quadrature: the estimate and an error bound

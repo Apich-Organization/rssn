@@ -2,9 +2,8 @@
 //!
 //! The discrete Fourier transform uses the convention
 //! `X_k = sum_j x_j exp(-2 pi i j k / n)`; its inverse divides by `n`.
-//! [`fft`] and [`ifft`] act in place. Power-of-two lengths use the scalar
-//! radix-2 implementation for compatibility with earlier RSSN results;
-//! other lengths share the runtime-selected plans in [`super::fft`].
+//! [`fft`] and [`ifft`] act in place using the runtime-selected SIMD plans
+//! and pooled scratch in [`super::fft`].
 //! [`fft_many_par`] and [`ifft_many_par`] schedule independent rows and
 //! preserve the results and order of the individual transforms.
 //!
@@ -24,95 +23,13 @@ use super::fft::transform_in_place;
 use super::reuse::PlanCache;
 use super::reuse::fft_scratch_for;
 
-/// The optimized, in-place, iterative Cooley-Tukey Fast Fourier Transform (FFT) algorithm.
+/// Computes the Fast Fourier Transform (FFT) of a sequence of complex numbers.
 ///
-/// This function operates directly on the slice, avoiding memory allocations and copies.
-/// It assumes the input slice length is a power of two; other lengths are
-/// handled by the public wrappers using shared FFT plans.
+/// Works at any length and leaves the length unchanged using a shared,
+/// runtime-selected SIMD FFT plan from [`super::fft`].
 ///
 /// # Arguments
 /// * `data` - A mutable slice of `Complex<f64>` representing the input sequence.
-fn fft_cooley_tukey_in_place(data: &mut [Complex<f64>]) {
-    let n = data.len();
-
-    if n <= 1 {
-        return;
-    }
-
-    let mut j = 0;
-
-    for i in 0..n {
-        if i < j {
-            data.swap(i, j);
-        }
-
-        let mut bit = n >> 1;
-
-        while j & bit != 0 {
-            j ^= bit;
-
-            bit >>= 1;
-        }
-
-        j ^= bit;
-    }
-
-    let mut len = 2;
-
-    while len <= n {
-        let half_len = len / 2;
-
-        let w_m = Complex::from_polar(1.0, -2.0 * PI / (len as f64));
-
-        for i in (0..n).step_by(len) {
-            let mut w = Complex::new(1.0, 0.0);
-
-            for k in 0..half_len {
-                let even_idx = i + k;
-
-                let odd_idx = i + k + half_len;
-
-                let t = w * data[odd_idx];
-
-                let u = data[even_idx];
-
-                data[even_idx] = u + t;
-
-                data[odd_idx] = u - t;
-
-                w *= w_m;
-            }
-        }
-
-        len *= 2;
-    }
-}
-
-/// The inverse radix-2 transform: `conj(fft(conj(x))) / n`, in place.
-///
-/// The input length must be a power of two.
-fn inverse_pow2_in_place(data: &mut [Complex<f64>]) {
-    for val in data.iter_mut() {
-        *val = val.conj();
-    }
-
-    fft_cooley_tukey_in_place(data);
-
-    let n_f64 = data.len() as f64;
-
-    for val in data.iter_mut() {
-        *val = val.conj() / n_f64;
-    }
-}
-
-/// Computes the Fast Fourier Transform (FFT) of a sequence of complex numbers.
-///
-/// Works at any length and leaves the length unchanged: a power-of-two `n` uses
-/// the scalar radix-2 kernel. Other lengths use a shared, runtime-selected
-/// FFT plan. Both paths compute the unpadded `n`-point DFT.
-///
-/// # Arguments
-/// * `data` - A mutable `Vec<Complex<f64>>` representing the input sequence.
 ///
 /// # Example
 /// ```rust
@@ -145,11 +62,7 @@ fn inverse_pow2_in_place(data: &mut [Complex<f64>]) {
 /// assert!((data[0].re - 3.0).abs() < 1e-12);
 /// ```
 pub fn fft(data: &mut [Complex<f64>]) {
-    if data.len().is_power_of_two() {
-        fft_cooley_tukey_in_place(data);
-    } else {
-        transform_in_place(data, false, Norm::Backward);
-    }
+    transform_in_place(data, false, Norm::Backward);
 }
 
 /// Computes the Inverse Fast Fourier Transform (IFFT).
@@ -182,11 +95,7 @@ pub fn ifft(data: &mut [Complex<f64>]) {
     if data.len() <= 1 {
         return;
     }
-    if data.len().is_power_of_two() {
-        inverse_pow2_in_place(data);
-    } else {
-        transform_in_place(data, true, Norm::Backward);
-    }
+    transform_in_place(data, true, Norm::Backward);
 }
 
 /// Computes the real-input FFT: the `n/2 + 1` non-redundant bins of the DFT of
