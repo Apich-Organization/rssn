@@ -17,8 +17,10 @@
 //! [`eval_value_and_jacobian_terms`] and [`values_and_jacobian_at_terms`]
 //! share the work when both outputs are needed.
 
+use crate::backend::Intrinsic;
 use crate::backend::tape::Interval;
 use crate::backend::tape::Scalar;
+use crate::kernels::complex_ball::ComplexBall;
 use crate::kernels::rootfind::PolyTerm;
 use num_complex::Complex64 as Cx;
 use std::collections::HashMap;
@@ -284,6 +286,112 @@ impl Cball {
             re: scaled(self.re),
             im: scaled(self.im),
         }
+    }
+
+    /// Rectangular enclosure of `exp(z)`.
+    #[must_use]
+    pub fn exp(&self) -> Self {
+        let ex = self.re.unary(Intrinsic::Exp);
+        Self {
+            re: ex.mul(self.im.unary(Intrinsic::Cos)),
+            im: ex.mul(self.im.unary(Intrinsic::Sin)),
+        }
+    }
+
+    /// Rectangular enclosure of principal `ln(z)`. Returns `None` if the
+    /// enclosing disk meets the non-positive real axis `(-inf, 0]`.
+    #[must_use]
+    pub fn ln(&self) -> Option<Self> {
+        ComplexBall::from_cball(*self).ln().map(|b| b.to_cball())
+    }
+
+    /// Rectangular enclosure of principal `sqrt(z)`.
+    #[must_use]
+    pub fn sqrt(&self) -> Option<Self> {
+        ComplexBall::from_cball(*self).sqrt().map(|b| b.to_cball())
+    }
+
+    /// Rectangular enclosure of `sin(z)`.
+    #[must_use]
+    pub fn sin(&self) -> Self {
+        Self {
+            re: self
+                .re
+                .unary(Intrinsic::Sin)
+                .mul(self.im.unary(Intrinsic::Cosh)),
+            im: self
+                .re
+                .unary(Intrinsic::Cos)
+                .mul(self.im.unary(Intrinsic::Sinh)),
+        }
+    }
+
+    /// Rectangular enclosure of `cos(z)`.
+    #[must_use]
+    pub fn cos(&self) -> Self {
+        Self {
+            re: self
+                .re
+                .unary(Intrinsic::Cos)
+                .mul(self.im.unary(Intrinsic::Cosh)),
+            im: self
+                .re
+                .unary(Intrinsic::Sin)
+                .mul(self.im.unary(Intrinsic::Sinh))
+                .neg(),
+        }
+    }
+
+    /// Rectangular enclosure of `tan(z) = sin(z) / cos(z)`.
+    #[must_use]
+    pub fn tan(&self) -> Option<Self> {
+        self.sin().div(&self.cos())
+    }
+
+    /// Rectangular enclosure of `sinh(z)`.
+    #[must_use]
+    pub fn sinh(&self) -> Self {
+        Self {
+            re: self
+                .re
+                .unary(Intrinsic::Sinh)
+                .mul(self.im.unary(Intrinsic::Cos)),
+            im: self
+                .re
+                .unary(Intrinsic::Cosh)
+                .mul(self.im.unary(Intrinsic::Sin)),
+        }
+    }
+
+    /// Rectangular enclosure of `cosh(z)`.
+    #[must_use]
+    pub fn cosh(&self) -> Self {
+        Self {
+            re: self
+                .re
+                .unary(Intrinsic::Cosh)
+                .mul(self.im.unary(Intrinsic::Cos)),
+            im: self
+                .re
+                .unary(Intrinsic::Sinh)
+                .mul(self.im.unary(Intrinsic::Sin)),
+        }
+    }
+
+    /// Rectangular enclosure of `tanh(z) = sinh(z) / cosh(z)`.
+    #[must_use]
+    pub fn tanh(&self) -> Option<Self> {
+        self.sinh().div(&self.cosh())
+    }
+
+    /// Rectangular enclosure of `self^exponent = exp(exponent * ln(self))`.
+    #[must_use]
+    pub fn powc(
+        &self,
+        exponent: &Self,
+    ) -> Option<Self> {
+        let l = self.ln()?;
+        Some((*exponent * l).exp())
     }
 }
 
