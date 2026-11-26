@@ -17,36 +17,10 @@ use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::kernels::par::for_chunks_mut;
 use crate::kernels::par::for_each_mut;
 use crate::kernels::reuse::fft_scratch_for;
 use crate::kernels::transforms::fft;
-use crate::kernels::transforms::fft_slice;
 use crate::kernels::transforms::ifft;
-use crate::kernels::transforms::ifft_slice;
-
-/// Transposes a 2D matrix represented as a flat Vec.
-pub(crate) fn transpose<T: Clone + Default + Send + Sync>(
-    data: &[T],
-    width: usize,
-    height: usize,
-) -> Vec<T> {
-    let mut transposed = vec![T::default(); width * height];
-
-    transposed
-        .par_iter_mut()
-        .enumerate()
-        .for_each(|(idx, val)| {
-            let i = idx / height;
-
-            let j = idx % height;
-
-            // transposed[i * height + j] comes from data[j * width + i]
-            *val = data[j * width + i].clone();
-        });
-
-    transposed
-}
 
 /// Performs a 2D FFT by applying 1D FFT along rows and then columns.
 pub fn fft2d(
@@ -54,13 +28,15 @@ pub fn fft2d(
     width: usize,
     height: usize,
 ) {
-    data.par_chunks_mut(width).for_each(fft_slice);
-
-    let mut transposed = transpose(data, width, height);
-
-    transposed.par_chunks_mut(height).for_each(fft_slice);
-
-    *data = transpose(&transposed, height, width);
+    if data.len() == width.saturating_mul(height) {
+        crate::kernels::fft::transform_axes_in_place(
+            data,
+            &[height, width],
+            &[0, 1],
+            false,
+            crate::kernels::fft::Norm::Backward,
+        );
+    }
 }
 
 /// Performs a 2D IFFT.
@@ -69,13 +45,15 @@ pub fn ifft2d(
     width: usize,
     height: usize,
 ) {
-    data.par_chunks_mut(width).for_each(ifft_slice);
-
-    let mut transposed = transpose(data, width, height);
-
-    transposed.par_chunks_mut(height).for_each(ifft_slice);
-
-    *data = transpose(&transposed, height, width);
+    if data.len() == width.saturating_mul(height) {
+        crate::kernels::fft::transform_axes_in_place(
+            data,
+            &[height, width],
+            &[0, 1],
+            true,
+            crate::kernels::fft::Norm::Backward,
+        );
+    }
 }
 
 /// Creates a 1D wavenumber grid for FFT.
@@ -272,68 +250,6 @@ pub fn simulate_2d_advection_diffusion_scenario() -> Vec<f64> {
     solve_advection_diffusion_2d(&initial_condition, &config)
 }
 
-/// Applies `f` to every z-column of a `[k * plane_size + i]` array in place.
-///
-/// The columns are gathered, transformed and scattered back to the same
-/// layout, so `fft3d` and `ifft3d` share one axis order (x fastest, then y, then z).
-fn transform_z_columns(
-    data: &mut [Complex<f64>],
-    plane_size: usize,
-    depth: usize,
-    f: fn(&mut [Complex<f64>]),
-) {
-    if plane_size == 0 || depth <= 1 {
-        return;
-    }
-    let data = &mut data[..plane_size * depth];
-    if plane_size == 1 {
-        f(data);
-        return;
-    }
-
-    let radix_two = depth.is_power_of_two();
-    if !radix_two && data.len() <= 16_384 && crate::execution::cpu_threads() > 1 {
-        // Keep the independent planned transforms on smaller parallel grids.
-        let columns: Vec<_> = (0..plane_size)
-            .into_par_iter()
-            .map(|i| {
-                let mut column: Vec<_> = (0..depth).map(|k| data[k * plane_size + i]).collect();
-                f(&mut column);
-                column
-            })
-            .collect();
-        for (i, column) in columns.iter().enumerate() {
-            for (k, &value) in column.iter().enumerate() {
-                data[k * plane_size + i] = value;
-            }
-        }
-        return;
-    }
-
-    let mut columns = fft_scratch_for(data.len());
-    columns.resize(data.len(), Complex::default());
-    // Planned transforms can do appreciable work even on a few short columns.
-    let gather_work = if radix_two {
-        2048usize
-    } else {
-        64usize
-    };
-    let gather_grain = gather_work.div_ceil(depth).max(2);
-    for_chunks_mut(&mut columns, depth, gather_grain, |i, column| {
-        for (value, &source) in column.iter_mut().zip(data[i..].iter().step_by(plane_size)) {
-            *value = source;
-        }
-        f(column);
-    });
-
-    let scatter_grain = 2048usize.div_ceil(plane_size).max(2);
-    for_chunks_mut(data, plane_size, scatter_grain, |k, plane| {
-        for (value, &source) in plane.iter_mut().zip(columns[k..].iter().step_by(depth)) {
-            *value = source;
-        }
-    });
-}
-
 /// Performs a 3D FFT.
 pub fn fft3d(
     data: &mut Vec<Complex<f64>>,
@@ -341,27 +257,15 @@ pub fn fft3d(
     height: usize,
     depth: usize,
 ) {
-    let plane_size = width * height;
-
-    data.par_chunks_mut(width).for_each(fft_slice);
-
-    let mut transposed_xy = vec![Complex::default(); data.len()];
-
-    for k in 0..depth {
-        let plane_slice = &data[k * plane_size..(k + 1) * plane_size];
-
-        let mut transposed_plane = transpose(plane_slice, width, height);
-
-        transposed_plane.par_chunks_mut(height).for_each(fft_slice);
-
-        let retransposed_plane = transpose(&transposed_plane, height, width);
-
-        transposed_xy[k * plane_size..(k + 1) * plane_size].copy_from_slice(&retransposed_plane);
+    if data.len() == depth.saturating_mul(height).saturating_mul(width) {
+        crate::kernels::fft::transform_axes_in_place(
+            data,
+            &[depth, height, width],
+            &[0, 1, 2],
+            false,
+            crate::kernels::fft::Norm::Backward,
+        );
     }
-
-    *data = transposed_xy;
-
-    transform_z_columns(data, plane_size, depth, fft);
 }
 
 /// Performs a 3D IFFT.
@@ -371,27 +275,15 @@ pub fn ifft3d(
     height: usize,
     depth: usize,
 ) {
-    let plane_size = width * height;
-
-    transform_z_columns(data, plane_size, depth, ifft);
-
-    let mut transposed_xy = vec![Complex::default(); data.len()];
-
-    for k in 0..depth {
-        let plane_slice = &data[k * plane_size..(k + 1) * plane_size];
-
-        let mut transposed_plane = transpose(plane_slice, width, height);
-
-        transposed_plane.par_chunks_mut(height).for_each(ifft_slice);
-
-        let retransposed_plane = transpose(&transposed_plane, height, width);
-
-        transposed_xy[k * plane_size..(k + 1) * plane_size].copy_from_slice(&retransposed_plane);
+    if data.len() == depth.saturating_mul(height).saturating_mul(width) {
+        crate::kernels::fft::transform_axes_in_place(
+            data,
+            &[depth, height, width],
+            &[0, 1, 2],
+            true,
+            crate::kernels::fft::Norm::Backward,
+        );
     }
-
-    *data = transposed_xy;
-
-    data.par_chunks_mut(width).for_each(ifft_slice);
 }
 
 /// Configuration for 3D advection-diffusion simulation.

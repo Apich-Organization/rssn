@@ -32,38 +32,13 @@
 use crate::kernels::exact_eq;
 use crate::kernels::numeric_common::scale_product;
 
-#[allow(clippy::needless_range_loop)] // row operations index two rows at once
-/// Solves `a x = b` in place by Gaussian elimination with partial
-/// pivoting; `None` for a (numerically) singular matrix.
+/// Solves `a x = b` by Gaussian elimination with partial pivoting;
+/// `None` for a (numerically) singular matrix.
 fn solve_dense(
-    mut a: Vec<Vec<f64>>,
-    mut b: Vec<f64>,
+    a: Vec<Vec<f64>>,
+    b: Vec<f64>,
 ) -> Option<Vec<f64>> {
-    let n = b.len();
-    for col in 0..n {
-        let pivot = (col..n).max_by(|&i, &j| a[i][col].abs().total_cmp(&a[j][col].abs()))?;
-        if a[pivot][col].abs() < 1e-300 {
-            return None;
-        }
-        a.swap(col, pivot);
-        b.swap(col, pivot);
-        for row in col + 1..n {
-            let factor = a[row][col] / a[col][col];
-            if factor == 0.0 {
-                continue;
-            }
-            for k in col..n {
-                a[row][k] -= factor * a[col][k];
-            }
-            b[row] -= factor * b[col];
-        }
-    }
-    let mut x = vec![0.0; n];
-    for row in (0..n).rev() {
-        let tail: f64 = (row + 1..n).map(|k| a[row][k] * x[k]).sum();
-        x[row] = (b[row] - tail) / a[row][row];
-    }
-    Some(x)
+    crate::kernels::dense::solve_linear_rows(&a, &b).ok()
 }
 
 /// The Jacobian `∂f/∂y` at `(t, y)` by central differences.

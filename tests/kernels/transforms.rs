@@ -285,17 +285,17 @@ fn radix2_reference(data: &[Complex<f64>]) -> Vec<Complex<f64>> {
     let mut len = 2;
     while len <= n {
         let half_len = len / 2;
-        let w_m = Complex::from_polar(1.0, -2.0 * PI / (len as f64));
         for i in (0..n).step_by(len) {
-            let mut w = Complex::new(1.0, 0.0);
             for k in 0..half_len {
+                // An exact twiddle per index; accumulating `w *= w_m` would
+                // drift by a few ulps over a long transform.
+                let w = Complex::from_polar(1.0, -2.0 * PI * (k as f64) / (len as f64));
                 let even_idx = i + k;
                 let odd_idx = i + k + half_len;
                 let t = w * data[odd_idx];
                 let u = data[even_idx];
                 data[even_idx] = u + t;
                 data[odd_idx] = u - t;
-                w *= w_m;
             }
         }
         len *= 2;
@@ -304,15 +304,23 @@ fn radix2_reference(data: &[Complex<f64>]) -> Vec<Complex<f64>> {
 }
 
 #[test]
-fn power_of_two_results_are_bit_identical_to_the_radix2_kernel() {
+fn power_of_two_results_match_the_radix2_kernel() {
     for n in [1usize, 2, 4, 8, 16, 64, 128, 1024] {
         let x = sample(n);
         let want = radix2_reference(&x);
         let mut got = x.clone();
         fft(&mut got);
         for (k, (g, w)) in got.iter().zip(&want).enumerate() {
-            assert_eq!(g.re.to_bits(), w.re.to_bits(), "re bin {k} at n = {n}");
-            assert_eq!(g.im.to_bits(), w.im.to_bits(), "im bin {k} at n = {n}");
+            // The fast path is a different summation order over the same
+            // exact twiddles, so the two agree to rounding rather than bit for
+            // bit.
+            for (got_part, want_part, axis) in [(g.re, w.re, "re"), (g.im, w.im, "im")] {
+                let tolerance = 1e-12 * want_part.abs().max(1.0);
+                assert!(
+                    (got_part - want_part).abs() <= tolerance,
+                    "{axis} bin {k} at n = {n}: {got_part} vs {want_part}"
+                );
+            }
         }
     }
 }

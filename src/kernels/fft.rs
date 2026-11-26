@@ -83,9 +83,9 @@ fn scale_transform(
 ) {
     let scale = scale_for(norm, inverse, count);
     if scale < 1.0 {
-        for value in data {
-            *value *= scale;
-        }
+        super::par::for_chunks_mut(data, 4_096, 4, |_, chunk| {
+            super::simd::complex_scale_in_place(scale, chunk);
+        });
     }
 }
 
@@ -592,4 +592,152 @@ pub fn ifftshift(input: &[Complex]) -> Vec<Complex> {
     let mut output = input.to_vec();
     output.rotate_left(input.len() / 2);
     output
+}
+
+/// Forward two-dimensional real-to-complex FFT of a row-major real matrix.
+///
+/// Output has shape `(rows, cols / 2 + 1)`.
+///
+/// # Errors
+/// Returns an error if the shape overflows or does not match the input length.
+pub fn rfft2(
+    input: &[f64],
+    rows: usize,
+    cols: usize,
+) -> Result<(Vec<Complex>, Vec<usize>), String> {
+    rfft_axes(input, &[rows, cols], &[0, 1])
+}
+
+/// Inverse two-dimensional complex-to-real FFT returning a `(rows, cols)` real matrix.
+///
+/// # Errors
+/// Returns an error if the input shape is inconsistent with `(rows, cols / 2 + 1)`.
+pub fn irfft2(
+    input: &[Complex],
+    rows: usize,
+    cols: usize,
+) -> Result<Vec<f64>, String> {
+    irfft_axes(input, &[rows, cols / 2 + 1], &[0, 1], cols).map(|(data, _)| data)
+}
+
+/// Forward N-dimensional real-to-complex FFT over every tensor axis.
+///
+/// # Errors
+/// Returns an error if `shape` is empty or does not match `input.len()`.
+pub fn rfftn(
+    input: &[f64],
+    shape: &[usize],
+) -> Result<(Vec<Complex>, Vec<usize>), String> {
+    let axes: Vec<usize> = (0..shape.len()).collect();
+    rfft_axes(input, shape, &axes)
+}
+
+/// Inverse N-dimensional complex-to-real FFT over every tensor axis.
+///
+/// `out_last` is the length of the last axis in the real output tensor.
+///
+/// # Errors
+/// Returns an error if `shape` is empty or does not match `input.len()`.
+pub fn irfftn(
+    input: &[Complex],
+    shape: &[usize],
+    out_last: usize,
+) -> Result<Vec<f64>, String> {
+    let axes: Vec<usize> = (0..shape.len()).collect();
+    irfft_axes(input, shape, &axes, out_last).map(|(data, _)| data)
+}
+
+fn shift_nd_inner(
+    input: &[Complex],
+    shape: &[usize],
+    inverse: bool,
+) -> Result<Vec<Complex>, String> {
+    let total = shape
+        .iter()
+        .try_fold(1usize, |acc, &d| acc.checked_mul(d))
+        .ok_or_else(|| "shape product overflows usize".to_string())?;
+    if total != input.len() {
+        return Err(format!(
+            "input length {} does not match shape product {}",
+            input.len(),
+            total
+        ));
+    }
+    if total == 0 || shape.is_empty() {
+        return Ok(input.to_vec());
+    }
+    let ndim = shape.len();
+    let mut strides = vec![1usize; ndim];
+    for i in (0..ndim - 1).rev() {
+        strides[i] = strides[i + 1] * shape[i + 1];
+    }
+    let shifts: Vec<usize> = shape
+        .iter()
+        .map(|&d| {
+            if inverse {
+                d.div_ceil(2)
+            } else {
+                d / 2
+            }
+        })
+        .collect();
+    let mut out = vec![Complex::ZERO; total];
+    for (idx, &val) in input.iter().enumerate() {
+        let mut rem = idx;
+        let mut dst = 0usize;
+        for ax in 0..ndim {
+            let coord = rem / strides[ax];
+            rem %= strides[ax];
+            let shifted = (coord + shifts[ax]) % shape[ax];
+            dst += shifted * strides[ax];
+        }
+        out[dst] = val;
+    }
+    Ok(out)
+}
+
+/// Centers the zero-frequency component along every axis of an N-D spectrum.
+///
+/// # Errors
+/// Returns an error if `shape` overflows or does not match `input.len()`.
+pub fn fftshift_nd(
+    input: &[Complex],
+    shape: &[usize],
+) -> Result<Vec<Complex>, String> {
+    shift_nd_inner(input, shape, false)
+}
+
+/// Undoes [`fftshift_nd`] along every axis of an N-D spectrum.
+///
+/// # Errors
+/// Returns an error if `shape` overflows or does not match `input.len()`.
+pub fn ifftshift_nd(
+    input: &[Complex],
+    shape: &[usize],
+) -> Result<Vec<Complex>, String> {
+    shift_nd_inner(input, shape, true)
+}
+
+#[cfg(test)]
+mod nd_tests {
+    use super::*;
+
+    #[test]
+    fn rfft2_and_fftshift_nd_roundtrip() {
+        let rows = 5;
+        let cols = 6;
+        let signal: Vec<f64> = (0..rows * cols)
+            .map(|i| ((i as f64) * 0.31).sin() + 0.25 * ((i as f64) * 0.73).cos())
+            .collect();
+        let (spec, shape) = rfft2(&signal, rows, cols).unwrap();
+        assert_eq!(shape, vec![rows, cols / 2 + 1]);
+        let rec = irfft2(&spec, rows, cols).unwrap();
+        for (a, b) in signal.iter().zip(&rec) {
+            assert!((a - b).abs() < 1e-12);
+        }
+
+        let shifted = fftshift_nd(&spec, &shape).unwrap();
+        let unshifted = ifftshift_nd(&shifted, &shape).unwrap();
+        assert_eq!(spec, unshifted);
+    }
 }

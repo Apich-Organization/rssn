@@ -30,7 +30,6 @@ use std::sync::Arc;
 
 use crate::kernels::dd::Dd;
 use crate::kernels::fftconv::Complex;
-use crate::kernels::fftconv::fft;
 use crate::kernels::numeric_common::scale_product;
 use crate::kernels::reuse::PlanCache;
 use crate::kernels::reuse::ScratchPool;
@@ -751,31 +750,21 @@ fn fft3(
     dims: [usize; 3],
     inverse: bool,
 ) {
-    let [n0, n1, n2] = dims;
-    let idx = |i: usize, j: usize, k: usize| (i * n1 + j) * n2 + k;
-    for i in 0..n0 {
-        for j in 0..n1 {
-            let line: Vec<Complex> = (0..n2).map(|k| data[idx(i, j, k)]).collect();
-            for (k, v) in fft(&line, inverse).into_iter().enumerate() {
-                data[idx(i, j, k)] = v;
-            }
-        }
-    }
-    for i in 0..n0 {
-        for k in 0..n2 {
-            let line: Vec<Complex> = (0..n1).map(|j| data[idx(i, j, k)]).collect();
-            for (j, v) in fft(&line, inverse).into_iter().enumerate() {
-                data[idx(i, j, k)] = v;
-            }
-        }
-    }
-    for j in 0..n1 {
-        for k in 0..n2 {
-            let line: Vec<Complex> = (0..n0).map(|i| data[idx(i, j, k)]).collect();
-            for (i, v) in fft(&line, inverse).into_iter().enumerate() {
-                data[idx(i, j, k)] = v;
-            }
-        }
+    let mut buf = crate::kernels::reuse::fft_scratch_for(data.len());
+    buf.clear();
+    buf.extend(
+        data.iter()
+            .map(|&(re, im)| num_complex::Complex64::new(re, im)),
+    );
+    crate::kernels::fft::transform_axes_in_place(
+        &mut buf,
+        &dims,
+        &[0, 1, 2],
+        inverse,
+        crate::kernels::fft::Norm::Backward,
+    );
+    for (dst, src) in data.iter_mut().zip(buf.iter()) {
+        *dst = (src.re, src.im);
     }
 }
 

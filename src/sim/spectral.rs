@@ -24,8 +24,6 @@ use crate::kernels::krylov::Csr;
 use crate::kernels::krylov::SparseOrdering;
 use crate::kernels::reuse::PlanCache;
 use crate::kernels::reuse::fft_scratch_for;
-use crate::kernels::transforms::fft_slice;
-use crate::kernels::transforms::ifft_slice;
 use crate::sim::boundary::BcValue;
 use crate::sim::boundary::BoundaryCondition;
 use crate::sim::boundary::Face;
@@ -47,28 +45,17 @@ pub fn fft_nd(
     if n.iter().any(|&m| !m.is_power_of_two()) || data.len() != n.iter().product::<usize>() {
         return Err("fft_nd needs power-of-two extents matching the data".into());
     }
-    let mut stride = 1;
-    for &len in n {
-        let outer = data.len() / (stride * len);
-        let mut line = vec![Complex::new(0.0, 0.0); len];
-        for o in 0..outer {
-            for s in 0..stride {
-                let base = o * stride * len + s;
-                for i in 0..len {
-                    line[i] = data[base + i * stride];
-                }
-                if inverse {
-                    ifft_slice(&mut line);
-                } else {
-                    fft_slice(&mut line);
-                }
-                for i in 0..len {
-                    data[base + i * stride] = line[i];
-                }
-            }
-        }
-        stride *= len;
-    }
+    // `n[0]` is the fastest-varying (stride 1) axis, so reverse `n` to match
+    // row-major shape convention of `kernels::fft::transform_axes_in_place`.
+    let rev_shape: Vec<usize> = n.iter().copied().rev().collect();
+    let axes: Vec<usize> = (0..rev_shape.len()).collect();
+    crate::kernels::fft::transform_axes_in_place(
+        data,
+        &rev_shape,
+        &axes,
+        inverse,
+        crate::kernels::fft::Norm::Backward,
+    );
     Ok(())
 }
 

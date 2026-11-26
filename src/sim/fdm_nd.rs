@@ -738,32 +738,17 @@ fn solve_tridiagonal(
     d: &[f64],
 ) -> Result<Vec<f64>, FdmError> {
     let n = b.len();
-    let mut c_star = vec![0.0; n];
-    let mut d_star = vec![0.0; n];
-    if b[0].abs() < 1e-300 || !b[0].is_finite() {
-        return Err(FdmError::Singular);
+    if n == 0 {
+        return Ok(Vec::new());
     }
-    c_star[0] = c[0] / b[0];
-    d_star[0] = d[0] / b[0];
-    for i in 1..n {
-        let denom = b[i] - a[i] * c_star[i - 1];
-        if denom.abs() < 1e-300 || !denom.is_finite() {
+    if n == 1 {
+        if b[0].abs() < 1e-300 || !b[0].is_finite() || !d[0].is_finite() {
             return Err(FdmError::Singular);
         }
-        if i < n - 1 {
-            c_star[i] = c[i] / denom;
-        }
-        d_star[i] = (d[i] - a[i] * d_star[i - 1]) / denom;
+        return Ok(vec![d[0] / b[0]]);
     }
-    let mut x = vec![0.0; n];
-    x[n - 1] = d_star[n - 1];
-    for i in (0..n - 1).rev() {
-        x[i] = d_star[i] - c_star[i] * x[i + 1];
-    }
-    if !x.iter().all(|v| v.is_finite()) {
-        return Err(FdmError::Singular);
-    }
-    Ok(x)
+    crate::kernels::dense::solve_tridiagonal(&a[1..n], b, &c[..n - 1], d)
+        .map_err(|_| FdmError::Singular)
 }
 
 /// Solves a periodic cyclic-tridiagonal system of size `n` with uniform diagonal

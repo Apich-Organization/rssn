@@ -24,30 +24,10 @@ pub(crate) fn solve_tridiagonal_system(
     d: &mut [f64],
 ) -> Vec<f64> {
     let n = b.len();
-
-    let mut c_prime = vec![0.0; n];
-
-    let mut x = vec![0.0; n];
-
-    c_prime[0] = c[0] / b[0];
-
-    d[0] /= b[0];
-
-    for i in 1..n {
-        let m = 1.0 / a[i - 1].mul_add(-c_prime[i - 1], b[i]);
-
-        c_prime[i] = if i < n - 1 { c[i] * m } else { 0.0 };
-
-        d[i] = a[i - 1].mul_add(-d[i - 1], d[i]) * m;
+    if n == 0 {
+        return Vec::new();
     }
-
-    x[n - 1] = d[n - 1];
-
-    for i in (0..n - 1).rev() {
-        x[i] = c_prime[i].mul_add(-x[i + 1], d[i]);
-    }
-
-    x
+    crate::kernels::dense::solve_tridiagonal(a, b, c, d).unwrap_or_else(|_| vec![0.0; n])
 }
 
 /// Complex version of tridiagonal solver for Schrödinger equation.

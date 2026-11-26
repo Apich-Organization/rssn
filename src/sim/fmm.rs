@@ -1272,22 +1272,9 @@ impl Default for PeriodicFmmOptions {
     }
 }
 
-/// Modified Bessel function `K_1(x)` (`x > 0`) from `K_1(x) = int_0^inf exp(-x cosh t) cosh t dt`
-/// by the trapezoidal rule (exponentially convergent).
+/// Modified Bessel function `K_1(x)` (`x > 0`), delegated to [`crate::kernels::special::bessel_k1`].
 fn bessel_k1(x: f64) -> f64 {
-    let h = 0.04;
-    let mut sum = 0.0;
-    let mut t = 0.0_f64;
-    loop {
-        let ch = t.cosh();
-        let term = (-x * ch).exp() * ch;
-        sum += if t == 0.0 { 0.5 * term } else { term };
-        if x * ch > 60.0 {
-            break;
-        }
-        t += h;
-    }
-    sum * h
+    crate::kernels::special::bessel_k1(x)
 }
 
 /// `F^(m)(q)` for `F(q) = erfc(alpha sqrt(q))/sqrt(q)`, `m = 0..=mmax`, by the upward recurrence of
