@@ -17,6 +17,13 @@ fn symbolic(c: &mut Criterion) {
     for (name, request) in [
         ("diff", "diff(sin(x)^3*exp(x^2), x)"),
         ("integral", "integral(x^2*exp(x), x)"),
+        // The Risch–Bronstein tower: a nested logarithm, and a repeated
+        // pole in an exponential extension.
+        (
+            "integral_tower_nested",
+            "integral(log(log(x))/(x*log(x)), x)",
+        ),
+        ("integral_tower_pole", "integral(1/(exp(x) + 1)^2, x)"),
         ("definite_integral", "defint(exp(-x^2), x, -oo, oo)"),
         ("gosper_sum", "sum(k*2^k, k, 0, n)"),
         ("solve_quadratic", "solve(x^2 - 5*x + 6, x)"),

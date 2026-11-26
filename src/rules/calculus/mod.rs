@@ -10,7 +10,7 @@
 //! | operator | value |
 //! |---|---|
 //! | `diff(f, x)`, `diffn(f, x, n)` | the derivative, and the `n`-th derivative for a literal `n` |
-//! | `integral(f, x)` | an antiderivative (table, substitution, parts, Risch–Norman) |
+//! | `integral(f, x)` | an antiderivative (table, substitution, parts, the Risch–Bronstein tower in `risch`, Risch–Norman) |
 //! | `defint(f, x, a, b)`, `real_integral(f, x)` | the definite integral (closed form, residues or quadrature) and the real antiderivative with `ln\|u\|` |
 //! | `limit(f, x, a)`, `limit(f, x, a, plus\|minus)` | the limit by continuity, l'Hôpital, Gruntz growth comparison and the numeric probe |
 //! | `taylor(f, x, a, n)`, `laurent(f, x, a, n)`, `fourier_series(f, x, L, n)` | expansions about `a` (also `asymptotic(f, x, n)`, the expansion in `1/x`) |
@@ -34,6 +34,7 @@ mod limits;
 mod multiseries;
 mod powerseries;
 mod recurrence;
+mod risch;
 pub(crate) use powerseries::laurent_expansion;
 mod gruntz;
 mod series;

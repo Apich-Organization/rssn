@@ -378,6 +378,9 @@ impl Integrator<'_, '_> {
         if let Some(found) = self.exp_substitution(f) {
             return Some(found);
         }
+        if let Some(found) = super::risch::integrate(self.cx, self.f, f, self.x) {
+            return Some(found);
+        }
         if let Some(found) = self.risch_norman(f) {
             return Some(found);
         }
