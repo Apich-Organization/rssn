@@ -25,6 +25,7 @@ export RSSN_LIB=/path/to/rssn.dll       # or librssn.so / librssn.dylib
 Or develop it into an environment:
 
 ```julia
+# not run: the installation step
 using Pkg; Pkg.develop(path = "bindings/julia"); using RSSN
 ```
 
@@ -54,6 +55,112 @@ platform loader path. `RSSN.libpath()` reports what it bound and
 Operators are *requests*: `diff(f, x)` builds the derivative, `compute(...)`
 reduces it. `apply(session, "name", args...)` reaches an operator by name.
 
+## Workflow: symbolic calculus
+
+```julia
+x = sym(session, "x")
+
+t = diff(sin(x) * cos(x), x)      # a request, not a result
+text(t)                           # "diff(cos(x)*sin(x), x)"
+compute(t).text                   # "cos(2*x)"
+
+compute(integral(x^2, x)).text                       # "1/3*x^3"
+compute(parse_term(session, "defint(x^2, x, 0, 1)")).text
+compute(parse_term(session, "taylor(sin(x), x, 0, 5)")).text
+compute(parse_term(session, "limit(sin(x)/x, x, 0)")).text
+simplify(session, "(x^2 - 1)/(x - 1)").text          # "x + 1"
+```
+
+A `Term` overloads the arithmetic operators and the `Base` functions, so a
+request reads like the mathematics:
+
+```julia
+x^2 + 2*x + 1        # a request; compute() gives "x^2 + 2*x + 1"
+sin(x); sqrt(x); exp(x); log(x); log(2, x); abs(x)
+```
+
+## Workflow: a numeric target
+
+```julia
+cfg = bind!(numeric!(Config(), 1e-12), "x", 0.5)
+answer = compute(diff(sin(x), x), cfg)
+answer.value          # 0.877582561890373
+answer.error          # the estimated absolute error
+
+eval_term(parse_term(session, "sin(x) + 1"), Dict("x" => 0.0))   # 1.0
+```
+
+`compute_all` runs several requests in parallel inside the library:
+
+```julia
+answers = compute_all(session, ["diff(x^3, x)", "integral(x^2, x)", "gcd(4, 6)"])
+compute_all(session, ["1 + 1", "diff(x^2, x)"], config = cfg, errors = :collect)
+```
+
+## Workflow: linear algebra and tensors
+
+```julia
+m = parse_term(session, "matmul(list(list(1,2),list(3,4)), list(list(0,1),list(1,0)))")
+tensor(compute(m).term)          # a 2x2 Matrix, row-major reading order
+
+compute(parse_term(session, "det(list(list(2,0),list(0,3)))")).text   # "6"
+compute(parse_term(session, "inverse(list(list(1,2),list(3,4)))")).text
+```
+
+## Workflow: a simulation
+
+```julia
+SCENARIO_NAMES                          # the 29 scenarios
+run_scenario("poisson_multigrid")       # the defaults
+result = run_scenario("ising", Dict("width" => 8, "height" => 8, "temperature" => 2.0,
+                                    "mc_steps" => 10, "seed" => 3))
+result["magnetization"]
+```
+
+## Workflow: dynamic values
+
+```julia
+backend = call_value(session, "num_backend_current")
+kind(backend)                                          # "opaque"
+text(call_value(session, "num_backend_name", backend)) # "interpreter"
+
+tape = call_value(session, "num_ad_tape_new", 16)
+v = call_value(session, "num_ad_tape_var", tape, 1.5)
+z = call_value(session, "num_ad_var_mul", call_value(session, "num_ad_var_sin", v), v)
+value(call_value(session, "num_ad_var_value", z))      # sin(1.5) * 1.5
+```
+
+## Workflow: units, constants and dimensions
+
+```julia
+unit("ft").dimension        # "Length"
+unit("metre").name          # "m"
+value(constant("c"))        # 2.99792458e8
+
+cfg = dimension!(dimension!(Config(), "x", "m"), "t", "s")
+dimension(diff(x^2, x), cfg)     # "Length"
+
+strict = dimension_mode!(dimension!(dimension!(Config(), "x", "m"), "y", "s"), "strict")
+try
+    compute(parse_term(session, "x + y"), strict)
+catch error
+    error.status    # "dimension": a dimension mismatch in `x + y`: Length vs Time
+end
+```
+
+## Workflow: finding an operator
+
+```julia
+print(op_help("diff"))            # the signature, arity, category and the engine's docs
+op_search("brent")                # [(name, first line of the doc), ...]
+op_search(category = "calculus", limit = 5)
+length(op_names())                # 5411
+```
+
+The documentation of every operator is generated from the kernel manifest into
+`OPERATOR_DOCS`, which is also what each function's docstring interpolates, so
+`?diff` and `op_help("diff")` read the same text.
+
 ## Names
 
 `using RSSN` brings in every operator whose name `Base` does not already export.
@@ -63,8 +170,8 @@ unqualified and nothing is ambiguous:
 
 ```julia
 sin(x)            # Base.sin(::Term)
-diff(f, x)        # Base.diff(::Term, ::Any)
-sum(...)          # Base.sum(::Term, ...)
+diff(x^2, x)      # Base.diff(::Term, ::Any)
+sum(x, 1)         # Base.sum(::Term, ...)
 ```
 
 The rest of the `Base` collisions keep their own meaning, so the operator is
@@ -105,6 +212,7 @@ operators (the quotient is `divide` because `div` is the divergence).
 ```sh
 export RSSN_LIB=/path/to/rssn.dll
 julia --project=bindings/julia bindings/julia/test/runtests.jl
+python bindings/tests/run_readme_examples.py julia   # every example in this file
 ```
 
 `test/runtests.jl` runs the cross-language table in `bindings/tests/cases.tsv`

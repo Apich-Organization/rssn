@@ -201,12 +201,29 @@ term_rational(ptr::Ptr{Cvoid}, numerator::Integer, denominator::Integer) =
 term_apply(ptr::Ptr{Cvoid}, op::AbstractString, args::Vector{UInt32}) =
     ccall(_sym(:rssn_term_apply), UInt32, (Ptr{Cvoid}, Cstring, Ptr{UInt32}, Csize_t),
           ptr, op, isempty(args) ? C_NULL : Base.pointer(args), length(args))
-term_eval(ptr::Ptr{Cvoid}, term::UInt32, names::Vector{String}, values::Vector{Float64},
-          out::Base.RefValue{Cdouble}) =
-    ccall(_sym(:rssn_term_eval), Cint,
-          (Ptr{Cvoid}, UInt32, Ptr{Cstring}, Ptr{Cdouble}, Csize_t, Ptr{Cdouble}),
-          ptr, term, isempty(names) ? C_NULL : Base.pointer(names),
-          isempty(values) ? C_NULL : Base.pointer(values), length(names), out)
+# `pointer()` on a `Vector{String}` points at the `String` objects, not at their
+# bytes, so the `const char *const *` arguments go through `cstring_vector`: each
+# element is converted to a `Cstring`, and the caller keeps the strings alive
+# across the call with `GC.@preserve`.
+function cstring_vector(strings::Vector{String})
+    labels = Vector{Cstring}(undef, length(strings))
+    for index in eachindex(strings)
+        labels[index] = Base.unsafe_convert(Cstring, Base.cconvert(Cstring, strings[index]))
+    end
+    return labels
+end
+
+function term_eval(ptr::Ptr{Cvoid}, term::UInt32, names::Vector{String},
+                   values::Vector{Float64}, out::Base.RefValue{Cdouble})
+    GC.@preserve names begin
+        labels = cstring_vector(names)
+        return ccall(_sym(:rssn_term_eval), Cint,
+                     (Ptr{Cvoid}, UInt32, Ptr{Cstring}, Ptr{Cdouble}, Csize_t,
+                      Ptr{Cdouble}),
+                     ptr, term, isempty(labels) ? C_NULL : Base.pointer(labels),
+                     isempty(values) ? C_NULL : Base.pointer(values), length(labels), out)
+    end
+end
 term_to_f64(ptr::Ptr{Cvoid}, term::UInt32, out::Base.RefValue{Cdouble}) =
     ccall(_sym(:rssn_term_to_f64), Cint, (Ptr{Cvoid}, UInt32, Ptr{Cdouble}),
           ptr, term, out)
@@ -315,11 +332,16 @@ value_new_bool(ptr::Ptr{Cvoid}, value::Bool, out::Base.RefValue{UInt32}) =
 value_new_complex(ptr::Ptr{Cvoid}, re::Real, im::Real, out::Base.RefValue{UInt32}) =
     ccall(_sym(:rssn_value_new_complex), Cint, (Ptr{Cvoid}, Cdouble, Cdouble, Ptr{UInt32}),
           ptr, re, im, out)
-value_new_record(ptr::Ptr{Cvoid}, names::Vector{String}, cells::Vector{UInt32},
-                 out::Base.RefValue{UInt32}) =
-    ccall(_sym(:rssn_value_new_record), Cint,
-          (Ptr{Cvoid}, Ptr{Cstring}, Ptr{UInt32}, Csize_t, Ptr{UInt32}),
-          ptr, names, cells, length(names), out)
+function value_new_record(ptr::Ptr{Cvoid}, names::Vector{String}, cells::Vector{UInt32},
+                          out::Base.RefValue{UInt32})
+    GC.@preserve names begin
+        labels = cstring_vector(names)
+        return ccall(_sym(:rssn_value_new_record), Cint,
+                     (Ptr{Cvoid}, Ptr{Cstring}, Ptr{UInt32}, Csize_t, Ptr{UInt32}),
+                     ptr, isempty(labels) ? C_NULL : Base.pointer(labels),
+                     isempty(cells) ? C_NULL : Base.pointer(cells), length(labels), out)
+    end
+end
 value_field_name(ptr::Ptr{Cvoid}, cell::UInt32, index::Integer, out::Base.RefValue{Ptr{UInt8}}) =
     ccall(_sym(:rssn_value_field_name), Cint, (Ptr{Cvoid}, UInt32, Csize_t, Ptr{Ptr{UInt8}}),
           ptr, cell, index, out)

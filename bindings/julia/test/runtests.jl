@@ -6,6 +6,7 @@
 # wrapper that disagrees with the engine — or with another wrapper — fails here.
 
 using Test
+using Printf
 
 const HERE = @__DIR__
 push!(LOAD_PATH, normpath(joinpath(HERE, "..", "src")))
@@ -80,6 +81,17 @@ function run_case(case)
         return (text = "", value = string(digest), status = "ok")
     elseif kind == "units"
         return (text = "", value = string(length(UNITS)), status = "ok")
+    elseif kind == "constants"
+        return (text = "", value = string(length(CONSTANTS)), status = "ok")
+    elseif kind == "value"
+        # The second ABI: an operator called with native objects. The display
+        # form is the engine's own, so it is stable across languages.
+        parts = split(case.payload, ' '; limit = 2)
+        arguments = length(parts) == 2 ?
+                    [numeric_literal(entry) for entry in split(parts[2], ',')
+                     if !isempty(strip(entry))] : Any[]
+        answer = call_value(default_session(), parts[1], arguments...)
+        return (text = text(answer), value = "", status = "ok")
     elseif kind == "sim"
         parts = split(case.payload, ' ', limit = 2)
         parameters = length(parts) == 2 ? RSSN.json_decode(parts[2]) : Dict{String, Any}()
@@ -97,6 +109,20 @@ function run_case(case)
             built = apply(session, case.payload, arguments...)
             return (text = text(built), value = "", status = "ok")
         end
+        if kind == "callback2"
+            # Two callbacks in one call: the objective and its gradient that
+            # `num_bfgs` declares, from the same start point every runner uses.
+            parts = split(case.payload, ' '; limit = 2)
+            arguments = isempty(strip(parts[2])) ? Any[] :
+                        [numeric_literal(entry) for entry in split(parts[2], ',')
+                         if !isempty(strip(entry))]
+            objective(point) = sum((x - 1.0)^2 for x in point)
+            gradient(point) = [2.0 * (x - 1.0) for x in point]
+            answer = call_value(session, parts[1], [3.0, -2.0], arguments...,
+                                objective, gradient)
+            coordinate = RSSN.value(answer[1][1])
+            return (text = @sprintf("%.10g", coordinate), value = "", status = "ok")
+        end
         if kind == "callback"
             # A higher-order operator: `<op> <args>`, with the same residual
             # `f(x) = x*x - 2` every runner uses. The first field of the answer
@@ -107,7 +133,7 @@ function run_case(case)
                          if !isempty(strip(entry))]
             answer = call_value(session, parts[1], arguments..., x -> x * x - 2)
             root = RSSN.value(answer[1])
-            return (text = string(round(root; sigdigits = 10)), value = "", status = "ok")
+            return (text = @sprintf("%.10g", root), value = "", status = "ok")
         end
         answer = kind == "simplify" ? simplify(session, case.payload) :
                  compute(term(session, case.payload), config_for(case))
@@ -220,6 +246,18 @@ end
     @test length(list) == 3
     @test isapprox(value(list[2]), 2.5)
 
+    # A record value: the ABI's `record` kind, which a dict builds.
+    record = value(session, Dict("a" => 1.0, "b" => "two"))
+    @test kind(record) == "record"
+    @test length(record) == 2
+    @test text(record[1]) == "1"
+    @test json(record)["record"]["fields"][2][1] == "b"
+
+    # Evaluation without any rule, in both spellings.
+    @test eval_term(parse_term(session, "sin(x) + 1"); x = 0.0) == 1.0
+    @test eval_term(parse_term(session, "sin(x) + 1"), Dict("x" => 0.0)) == 1.0
+    @test eval_term(parse_term(session, "2 + 3")) == 5.0
+
     # The handles are typed: a variable is not a gradient.
     @test_throws RssnError call_value(session, "num_ad_var_grad_in", x, x)
     close(session)
@@ -244,6 +282,34 @@ end
     @test unit_names()[1] isa String
     @test value(constant("c")) > 2.9e8
     @test constant("G_0").dimension == "Length^-2*Mass^-1*Time^3*Current^2"
+end
+
+@testset "the operator reference" begin
+    @test length(op_names()) == 5411
+    @test "diff" in op_names()
+    @test length(op_categories()) == 40
+    @test "calculus" in op_categories()
+    @test "numerical_matrix" in op_rule_sets()
+
+    # One operator, with its arity, category and the engine's own documentation.
+    text = op_help("diff")
+    @test occursin("diff", text)
+    @test occursin("calculus", text)
+    @test occursin("derivative", text)
+    @test_throws ArgumentError op_help("definitely_not_an_operator")
+
+    # A search over names and documentation.
+    matches = op_search("brent", limit = 3)
+    @test !isempty(matches)
+    @test all(pair -> pair isa Tuple{String, String}, matches)
+    @test any(pair -> pair[1] == "num_brent", op_search("brent", limit = 50))
+    @test all(pair -> NAMES[pair[1]] in BY_CATEGORY["calculus"],
+              op_search(category = "calculus", limit = 5))
+    @test isempty(op_search(rule_set = "no_such_rule_set"))
+
+    # The documentation table is the one the docstrings interpolate.
+    @test occursin("derivative", OPERATOR_DOCS["diff"])
+    @test occursin("host callbacks", OPERATOR_DOCS["num_brent"])
 end
 
 @testset "scenarios" begin

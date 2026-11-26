@@ -47,6 +47,118 @@ Operators are *requests*: `rssn.diff(f, x)` builds the derivative,
 operator by name; `Session.call` is the same function, matching the kernel ABI's
 vocabulary.
 
+## Workflow: symbolic calculus
+
+```python
+x = s.sym("x")
+
+t = rssn.diff(rssn.sin(x) * rssn.cos(x), x)   # a request, not a result
+str(t)                                        # 'diff(cos(x)*sin(x), x)'
+s.compute(t).text                             # 'cos(2*x)'
+
+s.compute(rssn.integral(x**2, x)).text                        # '1/3*x^3'
+s.compute("defint(x^2, x, 0, 1)").text                        # '1/3'
+s.compute("taylor(sin(x), x, 0, 5)").text                     # 'x - 1/6*x^3 + 1/120*x^5'
+s.compute("limit(sin(x)/x, x, 0)").text                       # '1'
+s.compute("sum(1/(k*(k+1)), k, 1, n)").text                   # '1 - 1/(n + 1)'
+s.simplify("(x^2 - 1)/(x - 1)").text                          # 'x + 1'
+```
+
+A `Term` overloads the arithmetic operators, so a request reads like the
+mathematics:
+
+```python
+x**2 + 2*x + 1        # a request; compute() gives 'x^2 + 2*x + 1'
+abs(x); rssn.sin(x); rssn.sqrt(x); rssn.exp(x); rssn.ln(x); rssn.log(2, x)
+```
+
+## Workflow: a numeric target
+
+```python
+cfg = rssn.Config().numeric(1e-12).bind("x", 0.5)
+answer = s.compute(rssn.diff(rssn.sin(x), x), cfg)
+answer.value          # 0.877582561890373
+answer.error          # the estimated absolute error
+
+s.eval("sin(x) + 1", {"x": 0.0})     # evaluation without running any rule
+```
+
+`compute_all` runs several requests in parallel inside the library:
+
+```python
+answers = s.compute_all(["diff(x^3, x)", "integral(x^2, x)", "gcd(4, 6)"])
+s.compute_all(["1 + 1", "diff(x^2, x)"], cfg, errors="collect")   # per-request failures
+```
+
+## Workflow: linear algebra and tensors
+
+```python
+m = s.parse("matmul(list(list(1,2),list(3,4)), list(list(0,1),list(1,0)))")
+s.compute(m).tensor()                  # a numpy array, row-major reading order
+
+s.compute("det(list(list(2,0),list(0,3)))").text        # '6'
+s.compute("inverse(list(list(1,2),list(3,4)))").text
+s.compute("eigenvals(list(list(2,0),list(0,3)))").text
+```
+
+## Workflow: a simulation
+
+```python
+rssn.sim.names()                                   # the 29 scenarios
+rssn.sim.defaults("poisson_multigrid")             # a starting point for the parameters
+
+result = rssn.sim.run("ising", {"width": 8, "height": 8, "temperature": 2.0,
+                                "mc_steps": 10, "seed": 3})
+result["magnetization"]
+```
+
+## Workflow: dynamic values
+
+Operators whose arguments or results are native objects go through the value
+ABI:
+
+```python
+backend = s.call_value("num_backend_current")
+backend.kind()                                     # 'opaque'
+s.call_value("num_backend_name", backend).text()   # 'interpreter'
+
+tape = s.call_value("num_ad_tape_new", 16)
+v = s.call_value("num_ad_tape_var", tape, 1.5)
+z = s.call_value("num_ad_var_mul", s.call_value("num_ad_var_sin", v), v)
+s.call_value("num_ad_var_value", z).float()        # sin(1.5) * 1.5
+
+grad = s.call_value("num_ad_var_backward", z)
+s.call_value("num_ad_var_grad_in", v, grad).float()   # cos(1.5)*1.5 + sin(1.5)
+```
+
+## Workflow: units, constants and dimensions
+
+```python
+rssn.units.get("ft").scale             # Fraction(381, 1250) -- exact
+rssn.units.get("m").dimension          # 'Length'
+rssn.constants.get("c").value()        # 299792458.0
+
+cfg = rssn.Config().dimension("x", "m").dimension("t", "s")
+s.dimension(rssn.diff(x**2, x), cfg)   # 'Length'
+
+strict = (rssn.Config().dimension("x", "m").dimension("y", "s")
+          .dimension_mode("strict"))
+try:
+    s.compute("x + y", strict)
+except rssn.RssnError as error:
+    error.status.name                  # 'dimension'
+    error                              # dimension mismatch in `x + y`: Length vs Time
+```
+
+## Workflow: finding an operator
+
+```python
+print(rssn.op_help("diff"))            # the signature, arity, category and docs
+rssn.op_search("brent")                # [(name, first line of the doc), ...]
+rssn.op_search(category="calculus", limit=5)
+len(rssn.op_names())                   # 5411
+```
+
 ## Notes
 
 - `import rssn` is the recommended form. `from rssn import *` also brings in the
@@ -85,4 +197,5 @@ vocabulary.
 export RSSN_LIB=/path/to/rssn.dll
 python -m unittest discover -s bindings/python/tests -v
 python bindings/tests/run_conformance.py     # the cross-language table
+python bindings/tests/run_readme_examples.py python   # every example in this file
 ```

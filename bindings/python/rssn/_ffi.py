@@ -295,8 +295,19 @@ def last_error() -> str:
     return message.decode("utf-8", "replace") if message else ""
 
 
+#: `c_uint32 * n` builds a new ctypes class on every call, which costs more than
+#: the call itself for the one- and two-argument operators that dominate. The
+#: classes are immutable, so they are cached by length.
+_HANDLE_TYPES: dict[int, type] = {}
+
+
 def as_handle_buffer(handles: list[int]) -> "ctypes.Array[c_uint32]":
-    return (c_uint32 * max(len(handles), 1))(*handles)
+    """The handles as the `uint32_t *` the ABI reads."""
+    length = len(handles) or 1
+    factory = _HANDLE_TYPES.get(length)
+    if factory is None:
+        factory = _HANDLE_TYPES[length] = c_uint32 * length
+    return factory(*handles)
 
 
 #: The cell id that means "no value".

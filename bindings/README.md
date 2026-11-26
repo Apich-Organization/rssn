@@ -1,6 +1,6 @@
-# rssn language bindings: Python, Julia, C++
+# rssn language bindings: Python, Julia, C++ and R
 
-Complete wrappers of rssn's embedding surface for three host languages, all
+Complete wrappers of rssn's embedding surface for four host languages, all
 built on one ABI and held to one conformance table.
 
 | Directory | Package | Entry point |
@@ -8,10 +8,11 @@ built on one ABI and held to one conformance table.
 | [`python/`](python/) | `rssn` (ctypes) | `import rssn` |
 | [`julia/`](julia/) | `RSSN` (ccall) | `using RSSN` |
 | [`cpp/`](cpp/) | `rssn::client` (header-only) | `#include "rssn/client.hpp"` |
+| [`r/`](r/) | `rssn` (`.Call`) | `library(rssn)` |
 | [`api/`](api/) | generated API description | `rssn_api.json` |
 | [`tools/`](tools/) | the two generators | `extract_api.py`, `generate.py` |
 | [`tests/`](tests/) | shared conformance suite | `cases.tsv` |
-| [`examples/`](examples/) | host callbacks, one program per language | `python/callbacks.py`, `julia/callbacks.jl`, `cpp/callbacks.cpp` |
+| [`examples/`](examples/) | host callbacks, one program per language | `python/callbacks.py`, `julia/callbacks.jl`, `cpp/callbacks.cpp`, `r/callbacks.R` |
 
 ## What "complete" covers
 
@@ -43,11 +44,14 @@ binding covers both layers:
   carrying the `RssnStatus` code.
 
 **The operator table, one function per operator.** `python/rssn/_ops.py`,
-`julia/src/ops.jl` and `cpp/include/rssn/ops.hpp` are generated from the kernel
-manifest: 5411 functions, each with the operator's own documentation and arity.
-Aliases are generated as forwarders. A name that is a keyword in the target
-language is mangled (`and_` in Python, `and_op` in C++); the original spelling
-stays reachable through `apply("and", ...)` and the `OPS` table.
+`julia/src/ops.jl`, `cpp/include/rssn/ops.hpp` and `r/R/ops.R` are generated
+from the kernel manifest: 5411 functions, each with the operator's own
+documentation and arity. Aliases are generated as forwarders. A name that is a
+keyword in the target language is mangled (`and_` in Python, `and_op` in C++,
+`rssn_and` in R); the original spelling stays reachable through
+`apply("and", ...)` and the `OPS` table. Parameters are named as the operator's
+own documentation names them (`diff(f, x)`), so keyword and named calls read
+like the engine's reference.
 
 `sub`, `neg` and `divide` are engine operators (the arithmetic quotient is
 `divide` because `div` is the divergence), so `x - 1`, `-x` and `x/2` are real
@@ -56,7 +60,16 @@ requests rather than sugar the wrappers assemble.
 **The data that travels with the manifest.** All 82 units with their exact
 rational scale (`numer/denom * pi^pi`), affine offset, aliases and category; all
 30 physical constants with exact value, dimension, unit and uncertainty; and the
-29 simulation scenarios with the parameters their request types read.
+29 simulation scenarios with the parameters their request types read. Each
+language gets its own idiom for them: `rssn.units.UNITS` and
+`rssn.constants.CONSTANTS` in Python, `UNITS` / `CONSTANTS` in Julia and R,
+`rssn::client::kUnits` / `kConstants` in C++.
+
+**The operator reference.** Python and Julia put the documentation on the
+function itself (a docstring each), C++ in the comment above it, and R in
+`OPERATORS`, a searchable data frame behind `op_help()` and `op_table()`: R
+functions have no docstring to introspect, so the table is the only place a
+running session can read the documentation from.
 
 ## Quick start
 
@@ -103,6 +116,17 @@ const auto answer = session.compute(diff(sin(x) * cos(x), x));
 std::cout << answer.text << "\n";                                       // cos(2*x)
 ```
 
+```r
+library(rssn)
+
+session <- rssn_session()
+x <- sym("x", session)
+
+compute(rssn_diff(sin(x) * cos(x), x))$text                             # "cos(2*x)"
+cfg <- rssn_config() |> cfg_numeric(1e-12) |> cfg_bind("x", 0)
+compute(rssn_diff(sin(x) * cos(x), x), cfg)$value                       # 1
+```
+
 ## Host callbacks
 
 189 operators are *higher-order*: they take a function and call it once per
@@ -132,6 +156,11 @@ auto f = rssn::client::Callback::for_argument(session.raw(), "num_brent", 4,
 auto answer = num_brent(1.0, 2.0, 1e-12, 64, f);
 ```
 
+```r
+call_value("num_brent", 1, 2, 1e-12, 64, function(x) x * x - 2)   # a function argument
+rssn_num_brent(1, 2, 1e-12, 64, function(x) x * x - 2)            # the generated facade
+```
+
 Three pieces make it work:
 
 - `rssn_callback_new_for(session, op, index, fn, user, out)` copies the
@@ -146,15 +175,19 @@ Three pieces make it work:
 A callback receives its arguments as cells and reads them with the ordinary
 `rssn_value_*` readers; it answers with a cell it built the same way. The
 wrappers do that conversion for you, so a Python callback gets `float` /
-`numpy` arrays / `dict`s and a Julia one gets `Float64` / arrays / `Dict`s.
+`numpy` arrays / `dict`s, a Julia one `Float64` / arrays / `Dict`s, and an R one
+`numeric` / arrays / named lists. In C++ a `Callback` must outlive the call it
+is passed to: destroying it retires the registration.
 
 ## Tests
 
-One table, three runners. `tests/cases.tsv` holds 27 cases — calculus, algebra,
-number theory, linear algebra, tensors, numeric binding, the three failure
-statuses, two simulations, the manifest hash and the unit count. The Python
-runner records the expectations; the Julia and C++ runners verify the same rows,
-so a wrapper that disagrees with the engine *or with another wrapper* fails.
+One table, four runners. `tests/cases.tsv` holds 56 cases — calculus, algebra,
+number theory, linear algebra, tensors, numeric targets, the value ABI, host
+callbacks (one function, and an objective with its gradient), the failure
+statuses, three simulations, the manifest hash, and the unit and constant
+counts. The Python runner records the expectations; the Julia, C++ and R runners
+verify the same rows, so a wrapper that disagrees with the engine *or with
+another wrapper* fails.
 
 ```sh
 export RSSN_LIB=$PWD/target-bindings/debug/rssn.dll     # or librssn.so
@@ -163,11 +196,21 @@ python bindings/tests/run_conformance.py                # verify
 python bindings/tests/run_conformance.py --record       # rewrite the expectations
 python -m unittest discover -s bindings/python/tests    # Python unit tests
 julia --project=bindings/julia bindings/julia/test/runtests.jl
+Rscript bindings/tests/run_conformance.R                # the R runner
+Rscript bindings/r/tests/test-rssn.R                    # R unit tests
 cmake -S bindings/cpp -B build/cpp -DRSSN_ROOT=$PWD       -DRSSN_LIBRARY=$PWD/target-bindings/debug/rssn.dll.lib
 cmake --build build/cpp && ctest --test-dir build/cpp --output-on-failure
 ```
 
-`bindings/tests/run_all.sh` runs all four in order.
+`bindings/tests/run_all.sh` runs all of them in order.
+
+The READMEs are part of the test surface: `run_readme_examples.py` extracts every
+fenced example from the four READMEs and runs it, so a workflow that stops
+working fails the suite instead of the reader. Python, Julia and R are evaluated
+block by block in one shared namespace (a block may use what an earlier one
+defined); a block that documents an installation step says `# not run` on its
+first line. C++ snippets are fragments, so `cpp/tests/workflow.cpp` holds the
+same workflows as one compiled program.
 
 Each language also has its own unit tests for the parts the table cannot see:
 `ctypes`/`ccall` marshalling, the exception mapping, the Julia JSON codec,
@@ -176,7 +219,7 @@ Python operator overloading, C++ RAII and move semantics.
 ## Regenerating the generated files
 
 ```
-target/manifest.json  ──extract_api.py──▶  api/rssn_api.json  ──generate.py──▶  10 files
+target/manifest.json  ──extract_api.py──▶  api/rssn_api.json  ──generate.py──▶  17 files
 ```
 
 ```sh
@@ -185,6 +228,11 @@ python bindings/tools/generate.py       # rewrite the operator facade, units, co
 python bindings/tools/extract_api.py --check   # exit 1 when stale
 python bindings/tools/generate.py --check      # exit 1 when stale
 ```
+
+The generated files are `python/rssn/{_ops,units,constants,scenarios}.py`,
+`julia/src/{ops,base_ext,exports,units,constants,scenarios}.jl`,
+`r/R/{ops,operators,units,constants,scenarios}.R` and
+`cpp/include/rssn/{ops,units,constants}.hpp`.
 
 `bindings/api/julia_base_names.txt` and `julia_base_functions.txt` are one-off
 scans of `names(Base)` (1.13) that the generator uses to decide which operator
@@ -225,6 +273,29 @@ session.
 **Failures are codes.** Every wrapper raises an exception carrying the
 `RssnStatus` code, and never parses the message to decide what happened — the
 engine does not promise wording.
+
+## Language notes
+
+**Python.** `import rssn` is the recommended form: `from rssn import *` would
+bring in the operators named after builtins (`abs`, `sum`, `pow`, `round`) and
+shadow them. A term overloads the arithmetic operators and `abs`.
+
+**Julia.** `using RSSN` brings in every operator whose name `Base` does not
+already export; the 46 that are mathematical `Base` functions (`sin`, `diff`,
+`sum`, ...) are added as methods on `Term`, so nothing is ambiguous. A
+higher-order operator takes a `do` block.
+
+**C++.** Header-only, C++17, RAII. `Term` is a `(RssnSession*, uint32_t)` pair,
+so it is copyable and cheap. A `Callback` owns its registration and must outlive
+the call it is passed to.
+
+**R.** The generated facade is prefixed (`rssn_diff`) so that `library(rssn)`
+masks nothing in base R, while `Ops` and `Math` group methods make `x^2`,
+`sin(x)` and `sqrt(x)` read naturally on a term. Failures are conditions of
+class `rssn_error` carrying `$status`. A session is a list holding an external
+pointer; a value is an environment with a finalizer, because the engine can
+reuse a freed cell id. The package has no dependencies: the JSON codec it needs
+is included.
 
 ## Known limits
 

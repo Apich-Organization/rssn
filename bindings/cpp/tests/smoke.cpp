@@ -14,7 +14,9 @@
 #include <vector>
 
 #include "rssn/client.hpp"
+#include "rssn/constants.hpp"
 #include "rssn/ops.hpp"
+#include "rssn/scenarios.hpp"
 #include "rssn/units.hpp"
 #include "rssn/value.hpp"
 
@@ -135,6 +137,29 @@ int main() {
 
     // Units and constants travel with the manifest.
     expect(lookup_unit("m") != nullptr, "metre is in the unit table");
+    expect(std::string(lookup_unit("metre")->name) == "m", "metre resolves to m");
+    expect(lookup_constant("c") != nullptr, "the speed of light is in the table");
+    expect(std::abs(constant_value(*lookup_constant("c")) - 299792458.0) < 1e-6,
+           "the speed of light is exact");
+
+    // The operator table answers a lookup by name.
+    const OpSpec* spec = op_spec("diff");
+    expect(spec != nullptr && spec->min_arity == 2 && spec->max_arity == 2,
+           "diff takes two arguments");
+    expect(op_spec("definitely_not_an_operator") == nullptr, "an unknown name is not registered");
+
+    // A simulation, and its catalog.
+    expect(lookup_scenario("ising") != nullptr, "ising is in the scenario catalog");
+    const std::string simulation = Session::run_scenario(
+        "poisson_multigrid", R"({"dim": 2, "n": 9, "tol": 1e-8})");
+    expect(simulation.find("converged") != std::string::npos, "the multigrid run converged");
+    bool simulation_raised = false;
+    try {
+        (void)Session::run_scenario("no_such_scenario");
+    } catch (const Error& error) {
+        simulation_raised = error.status() == Status::Simulation;
+    }
+    expect(simulation_raised, "an unknown scenario is a Simulation error");
 
     std::printf("%s\n", failures == 0 ? "all checks passed" : "FAILURES");
     return failures == 0 ? 0 : 1;

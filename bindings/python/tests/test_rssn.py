@@ -254,6 +254,38 @@ class FacadeTests(unittest.TestCase):
             session.close()
 
 
+class ReferenceTests(unittest.TestCase):
+    """The operator reference: the manifest's documentation, searchable."""
+
+    def test_op_help_prints_the_operator(self) -> None:
+        text = rssn.op_help("diff")
+        self.assertIn("rssn.diff(f, x", text)
+        self.assertIn("calculus", text)
+        self.assertIn("derivative", text)
+
+    def test_op_help_refuses_an_unknown_name(self) -> None:
+        with self.assertRaises(KeyError):
+            rssn.op_help("definitely_not_an_operator")
+
+    def test_op_search(self) -> None:
+        matches = rssn.op_search("brent", limit=3)
+        self.assertTrue(matches)
+        self.assertTrue(all(isinstance(pair, tuple) for pair in matches))
+        self.assertIn("num_brent", [name for name, _ in rssn.op_search("brent", limit=50)])
+
+    def test_op_search_filters(self) -> None:
+        calculus = rssn.op_search(category="calculus", limit=5)
+        self.assertTrue(calculus)
+        for name, _ in calculus:
+            self.assertIn(rssn.NAMES[name], rssn.BY_CATEGORY["calculus"])
+        self.assertEqual(rssn.op_search(rule_set="no_such_rule_set"), [])
+
+    def test_the_tables(self) -> None:
+        self.assertEqual(len(rssn.op_names()), 5411)
+        self.assertEqual(len(rssn.op_categories()), 40)
+        self.assertEqual(len(rssn.op_rule_sets()), 40)
+
+
 class ValueTests(unittest.TestCase):
     """The value ABI: operators whose arguments have no term form."""
 
@@ -296,6 +328,19 @@ class ValueTests(unittest.TestCase):
         self.assertEqual(values.kind(), "tensor")
         self.assertEqual(len(values), 3)
         self.assertAlmostEqual(values[1].float(), 2.5)
+
+    def test_a_dict_becomes_a_record(self) -> None:
+        record = rssn.Value.of(self.session, {"a": 1.0, "b": "two"})
+        self.assertEqual(record.kind(), "record")
+        self.assertEqual(len(record), 2)
+        self.assertEqual(record[0].text(), "1")
+        self.assertEqual(record.json()["record"]["fields"][1][0], "b")
+
+    def test_eval_term(self) -> None:
+        term = self.session.parse("sin(x) + 1")
+        self.assertAlmostEqual(self.session.eval("sin(x) + 1", {"x": 0.0}), 1.0)
+        self.assertAlmostEqual(float(self.session.parse("2 + 3")), 5.0)
+        self.assertIsNotNone(term)
 
     def test_typed_handle_is_checked(self) -> None:
         tape = self.session.call_value("num_ad_tape_new", 16)

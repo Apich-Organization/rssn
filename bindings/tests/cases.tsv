@@ -37,3 +37,31 @@ sim.ising	sim	ising {"width":4,"height":4,"temperature":2.0,"mc_steps":5,"seed":
 sim.poisson_multigrid	sim	poisson_multigrid {"dim":2,"n":9,"sigma":0.0,"cycle":"v","tol":1e-8}				converged,convergence_factor,levels,max_error,residuals		ok
 manifest.hash	manifest						1139261357918084758	ok
 units.table	units						82	ok
+calculus.derivative_second	compute	diff(diff(x^3, x), x)	symbolic			6*x		ok
+calculus.taylor	compute	taylor(sin(x), x, 0, 5)	symbolic			x - 1/6*x^3 + 1/120*x^5		ok
+calculus.sum_finite	compute	sum(k, k, 1, 10)	symbolic			55		ok
+algebra.expand_binomial	compute	expand((x+y)^2)	symbolic			x^2 + 2*x*y + y^2		ok
+algebra.factor_difference	compute	factor(x^2 - 4)	symbolic			(x - 2)*(x + 2)		ok
+algebra.solve_double_root	compute	solve(x^2 + 2*x + 1, x)	symbolic			list(-1)		ok
+number_theory.isprime	compute	isprime(97)	symbolic			true		ok
+linear_algebra.inverse	compute	inverse(list(list(1,2),list(3,4)))	symbolic			list(list(-2, 1), list(3/2, -1/2))		ok
+linear_algebra.trace	compute	trace(list(list(1,2),list(3,4)))	symbolic			5		ok
+linear_algebra.norm	compute	norm(list(3,4))	symbolic			5		ok
+simplify.pythagorean	simplify	sin(x)^2 + cos(x)^2	symbolic			1		ok
+numeric.trig	compute	sin(x)	numeric	1e-12	x=1	0.8414709848078965	0.8414709848078965	ok
+numeric.exp	compute	exp(x)	numeric	1e-12	x=1	2.718281828459045	2.718281828459045	ok
+numeric.polynomial	compute	x^3 - 2*x + 1	numeric	1e-12	x=1.5	1.375	1.375	ok
+arith.add	apply	add			2,3	5		ok
+arith.mul	apply	mul			2,3	6		ok
+arith.pow	apply	pow			2,3	2^3		ok
+value.bell	value	bell 10				115975		ok
+value.bigomega	value	bigomega 360				6		ok
+value.bessel_k0	value	bessel_k0 1.0				0.42102443824070834		ok
+value.bernoulli_number	value	bernoulli_number 10				5/66		ok
+value.fibonacci	value	fibonacci 30				832040		ok
+value.gcd	value	gcd 12,18				6		ok
+callbacks.bfgs	callback2	num_bfgs 1e-10,100,1000				1		ok
+sim.heat_nd	sim	heat_nd {"dim":2,"n":9,"t_end":0.01,"steps":5}				line,max_error,stats		ok
+sim.wave_nd	sim	wave_nd {"dim":2,"n":9,"c":1.0,"t_end":0.05}				max_error,steps		ok
+errors.unknown_scenario	sim	no_such_scenario {}						simulation
+constants.table	constants						30	ok

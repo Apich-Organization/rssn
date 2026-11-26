@@ -227,7 +227,11 @@ class Value:
     def _record(cls, session: "Session", fields: dict, out) -> "Value":
         """A record value from a dict of field name -> value."""
         names = [str(name).encode("utf-8") for name in fields]
-        cells = [cls.of(session, field).cell for field in fields.values()]
+        # The field values own their cells: a list comprehension of bare cells
+        # would let the temporary `Value`s be collected -- and their cells freed
+        # -- before the record is built.
+        members = [cls.of(session, field) for field in fields.values()]
+        cells = [member.cell for member in members]
         name_buffer = (ctypes.c_char_p * max(len(names), 1))(*names)
         cell_buffer = _ffi.as_handle_buffer(cells)
         check(

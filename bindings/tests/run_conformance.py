@@ -79,6 +79,20 @@ def run_case(row: dict[str, str]) -> dict[str, str]:
         result["expect_value"] = str(len(rssn.units.UNITS))
         return result
 
+    if kind == "constants":
+        result["expect_value"] = str(len(rssn.constants.CONSTANTS))
+        return result
+
+    if kind == "value":
+        # The second ABI: an operator called with native objects rather than
+        # terms. The display form is the engine's own, so it is stable across
+        # languages.
+        name, _, arguments = payload.partition(" ")
+        values = [_literal(entry) for entry in arguments.split(",") if entry.strip()]
+        answer = rssn.Session().call_value(name, *values)
+        result["expect_text"] = answer.text()
+        return result
+
     if kind == "sim":
         name, _, parameters = payload.partition(" ")
         output = rssn.sim.run(name, json.loads(parameters or "{}"))
@@ -89,12 +103,31 @@ def run_case(row: dict[str, str]) -> dict[str, str]:
     if kind == "callback":
         # A higher-order operator: the payload is `<op> <args>` and every runner
         # supplies the same residual `f(x) = x*x - 2`, so the row checks that the
-        # three wrappers hand a host callback over the same way. The first field
-        # of the answer record (the root) is the expectation.
+        # wrappers hand a host callback over the same way. The first field of the
+        # answer record (the root) is the expectation.
         name, _, arguments = payload.partition(" ")
         values = [_literal(entry) for entry in arguments.split(",") if entry.strip()]
         answer = rssn.Session().call_value(name, *values, lambda x: x * x - 2.0)
         result["expect_text"] = f"{float(answer[0]):.10g}"
+        return result
+
+    if kind == "callback2":
+        # Two callbacks in one call: an objective and its gradient, which is the
+        # shape `num_bfgs` declares. Every runner starts from the same point
+        # (3, -2) and minimises the same bowl, so the row checks that the two
+        # callbacks arrive in the right positions. The answer's first field is
+        # the point; its first coordinate is the expectation.
+        name, _, arguments = payload.partition(" ")
+        values = [_literal(entry) for entry in arguments.split(",") if entry.strip()]
+
+        def objective(point):
+            return float(sum((x - 1.0) ** 2 for x in point))
+
+        def gradient(point):
+            return [2.0 * (x - 1.0) for x in point]
+
+        answer = rssn.Session().call_value(name, [3.0, -2.0], *values, objective, gradient)
+        result["expect_text"] = f"{float(answer[0][0]):.10g}"
         return result
 
     session = rssn.Session()

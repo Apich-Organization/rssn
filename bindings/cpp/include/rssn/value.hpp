@@ -189,6 +189,12 @@ inline Value value_tensor(SessionHandle session, const std::vector<double>& data
     });
 }
 
+/// A rank-1 tensor of floats, which is what a callback returning a vector
+/// answers (`num_bfgs`'s gradient, say).
+inline Value value_numbers(SessionHandle session, const std::vector<double>& numbers) {
+    return value_tensor(session, numbers, {numbers.size()});
+}
+
 /// A record of the given fields, in order.
 inline Value value_record(SessionHandle session, const std::vector<std::string>& names,
                           const std::vector<Value>& fields) {

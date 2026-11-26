@@ -451,8 +451,25 @@ function compute_all_bincode(session::Session, requests,
     return take_bytes(out[], length[])
 end
 
-"""Evaluate a term numerically without running any rule."""
-function eval_term(term::Term, bindings::AbstractDict{<:AbstractString, <:Real} = Dict())
+"""
+    eval_term(term, bindings = Dict()) -> Float64
+    eval_term(term; x = 0.5, ...) -> Float64
+
+Evaluate a term numerically without running any rule.
+
+```julia
+eval_term(parse_term(session, "sin(x) + 1"), Dict("x" => 0.0))   # 1.0
+eval_term(parse_term(session, "sin(x) + 1"); x = 0.0)            # 1.0
+```
+"""
+function eval_term(term::Term; bindings...)
+    table = Dict{String, Float64}(string(key) => Float64(value)
+                                  for (key, value) in pairs(bindings))
+    return eval_term(term, table)
+end
+
+function eval_term(term::Term,
+                   bindings::AbstractDict{<:AbstractString, <:Real})
     names = String[String(name) for name in keys(bindings)]
     values = Float64[Float64(bindings[name]) for name in keys(bindings)]
     out = Ref{Cdouble}(0.0)

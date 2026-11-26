@@ -45,6 +45,9 @@ librssn.so
 *.txt
 *.csv
 *.npy
+
+# The C++ binding's build file: the `*.txt` rule above would swallow it.
+!bindings/cpp/CMakeLists.txt
 /tmp
 
 /node_modules

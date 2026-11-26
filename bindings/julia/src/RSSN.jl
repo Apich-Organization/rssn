@@ -48,6 +48,7 @@ include("exports.jl")
 include("units.jl")
 include("constants.jl")
 include("scenarios.jl")
+include("docs.jl")
 
 export
     # lifetime and configuration
@@ -56,7 +57,7 @@ export
     bypass_dimensions!, dimension!, define_base_dimension!,
     Assumption, DimensionMode,
     # terms
-    Term, Coercible, sym, integer, number, rational, parse_term, term, apply, text, latex,
+    Term, Coercible, NAMES, sym, integer, number, rational, parse_term, term, apply, text, latex,
     typst, pretty, value, tensor, to_float, handle,
     # computation
     Answer, compute, compute_all, simplify, compute_json, compute_bincode,
@@ -70,6 +71,9 @@ export
     manifest_json_string, manifest_hash,
     # simulations
     run_scenario, SCENARIO_NAMES, SCENARIO_PARAMS,
+    # the operator reference
+    op_help, op_search, op_names, op_categories, op_rule_sets, BY_CATEGORY,
+    OPERATOR_DOCS,
     # units and constants
     UnitDef, UNITS, UNIT_BY_ALIAS, unit, unit_names,
     PhysicalConstant, CONSTANTS, CONSTANT_BY_SYMBOL, constant,

@@ -105,6 +105,25 @@ function value(session::Session, x::AbstractString)
 end
 
 """
+    value(session, x::AbstractDict) -> Value
+
+A record value: the keys are the field names, in order. This is the kind a
+callback answers with when the operator declares a record-returning function,
+and what `json` shows as `{"record": {"fields": ...}}`.
+"""
+function value(session::Session, x::AbstractDict)
+    names = String[String(key) for key in keys(x)]
+    # The members own their cells: a comprehension of bare cells would let the
+    # temporary `Value`s be finalized -- and their cells freed -- before the
+    # record is built.
+    members = Value[value(session, element) for element in values(x)]
+    cells = UInt32[member.cell for member in members]
+    out = Ref{UInt32}(0)
+    _check(value_new_record(session.ptr, names, cells, out))
+    return Value(session, out[])
+end
+
+"""
     value(session, x::Union{AbstractArray, Tuple}) -> Value
 
 A rank-1 numeric vector becomes a list of its elements, which keeps each
@@ -121,7 +140,8 @@ function value(session::Session, x::Union{AbstractArray, Tuple})
         _check(value_new_tensor(session.ptr, data, shape, out))
         return Value(session, out[])
     end
-    cells = UInt32[value(session, element).cell for element in x]
+    members = Value[value(session, element) for element in x]
+    cells = UInt32[member.cell for member in members]
     out = Ref{UInt32}(0)
     _check(value_new_list(session.ptr, cells, out))
     return Value(session, out[])

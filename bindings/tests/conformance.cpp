@@ -17,6 +17,7 @@
 
 #include "rssn/callback.hpp"
 #include "rssn/client.hpp"
+#include "rssn/constants.hpp"
 #include "rssn/ops.hpp"
 #include "rssn/units.hpp"
 
@@ -130,6 +131,8 @@ int main(int argc, char** argv) {
                 value = std::to_string(Session::manifest_hash());
             } else if (entry.kind == "units") {
                 value = std::to_string(std::size(kUnits));
+            } else if (entry.kind == "constants") {
+                value = std::to_string(std::size(kConstants));
             } else if (entry.kind == "sim") {
                 const std::size_t space = entry.payload.find(' ');
                 const std::string name = entry.payload.substr(0, space);
@@ -185,6 +188,88 @@ int main(int argc, char** argv) {
                     const Term built =
                         session.apply(entry.payload.c_str(), arguments.data(), arguments.size());
                     text = built.text();
+                    if (text != entry.expect_text) {
+                        std::printf("FAIL %-32s text %s != %s\n", entry.name.c_str(),
+                                    text.c_str(), entry.expect_text.c_str());
+                        ++failures;
+                    } else {
+                        ++passed;
+                    }
+                    continue;
+                }
+                if (entry.kind == "value" || entry.kind == "callback2") {
+                    // The value ABI: an operator called with native objects.
+                    // `value` passes the numbers in the payload; `callback2`
+                    // starts from the point (3, -2) every runner uses and
+                    // appends the objective and the gradient `num_bfgs`
+                    // declares.
+                    const std::size_t space = entry.payload.find(' ');
+                    const std::string name = entry.payload.substr(0, space);
+                    std::vector<Value> values;
+                    if (entry.kind == "callback2") {
+                        values.push_back(session.value(std::vector<double>{3.0, -2.0}));
+                    }
+                    std::string remaining = space == std::string::npos
+                                                ? std::string()
+                                                : entry.payload.substr(space + 1);
+                    while (!remaining.empty()) {
+                        const std::size_t comma = remaining.find(',');
+                        const std::string literal = remaining.substr(0, comma);
+                        if (!literal.empty()) {
+                            const bool integral =
+                                literal.find('.') == std::string::npos &&
+                                literal.find('e') == std::string::npos &&
+                                literal.find('E') == std::string::npos;
+                            if (integral) {
+                                values.push_back(
+                                    session.value(static_cast<long long>(std::stoll(literal))));
+                            } else {
+                                values.push_back(session.value(std::stod(literal)));
+                            }
+                        }
+                        if (comma == std::string::npos) {
+                            break;
+                        }
+                        remaining = remaining.substr(comma + 1);
+                    }
+                    // The callbacks must outlive the call: a `Callback` retires
+                    // its registration when it is destroyed, and the cell it
+                    // handed over would no longer be live.
+                    Callback objective;
+                    Callback gradient;
+                    if (entry.kind == "callback2") {
+                        const std::size_t objective_index = values.size();
+                        objective = Callback::for_argument(
+                            session.raw(), name.c_str(), objective_index,
+                            [](SessionHandle handle, const std::vector<Value>& arguments) {
+                                double total = 0.0;
+                                for (std::size_t index = 0; index < arguments[0].size(); ++index) {
+                                    const double delta = arguments[0].at(index).as_f64() - 1.0;
+                                    total += delta * delta;
+                                }
+                                return value_number(handle, total);
+                            });
+                        gradient = Callback::for_argument(
+                            session.raw(), name.c_str(), objective_index + 1,
+                            [](SessionHandle handle, const std::vector<Value>& arguments) {
+                                std::vector<double> out;
+                                for (std::size_t index = 0; index < arguments[0].size(); ++index) {
+                                    out.push_back(2.0 * (arguments[0].at(index).as_f64() - 1.0));
+                                }
+                                return value_numbers(handle, out);
+                            });
+                        values.push_back(objective.value());
+                        values.push_back(gradient.value());
+                    }
+                    const Value answer =
+                        session.call_values(name.c_str(), values.data(), values.size());
+                    std::ostringstream formatted;
+                    if (entry.kind == "callback2") {
+                        formatted << std::setprecision(10) << answer.at(0).at(0).as_f64();
+                        text = formatted.str();
+                    } else {
+                        text = answer.text();
+                    }
                     if (text != entry.expect_text) {
                         std::printf("FAIL %-32s text %s != %s\n", entry.name.c_str(),
                                     text.c_str(), entry.expect_text.c_str());

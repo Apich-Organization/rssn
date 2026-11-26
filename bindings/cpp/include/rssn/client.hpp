@@ -462,6 +462,15 @@ public:
     /// Reduce `term` to the target of `config` (symbolic by default).
     Answer compute(const Term& term, const Config* config = nullptr) const;
 
+    /// Reduce infix text, parsed in **this** session.
+    ///
+    /// A bare `Term("x^2")` is parsed in the thread's default session, so
+    /// `session.compute("x^2")` would otherwise mix two sessions; this overload
+    /// is the one a string argument reaches, and it parses where it computes.
+    Answer compute(const char* text, const Config* config = nullptr) const {
+        return compute(parse(text), config);
+    }
+
     /// Reduce every term in `requests`; the first failure raises.
     std::vector<Answer> compute_all(const std::vector<Term>& requests,
                                     const Config* config = nullptr) const;
@@ -536,6 +545,18 @@ public:
 
     /// The crate version.
     static const char* version() { return rssn_version(); }
+
+    /// Run the simulation scenario `name` and answer its JSON result.
+    ///
+    /// `parameters` is a JSON object; `{}` selects the defaults of the
+    /// scenarios that have them. The catalog is `rssn::client::kScenarios`
+    /// (see `rssn/scenarios.hpp`), and a scenario that does not exist is an
+    /// `Error` with `Status::Simulation`.
+    static std::string run_scenario(const char* name, const char* parameters = "{}") {
+        char* out = nullptr;
+        detail::check(rssn_sim_run(name, parameters, &out));
+        return detail::take_string(out);
+    }
 
 private:
     Term wrap(std::uint32_t handle, Status hint) const {
