@@ -6,8 +6,8 @@ use crate::kernels::permgroup::{
     self,
 };
 use num_bigint::BigUint;
-use rand_v09::SeedableRng;
-use rand_v09::rngs::StdRng;
+use rand::SeedableRng;
+use rand::rngs::StdRng;
 use std::cell::Cell;
 use std::cell::RefCell;
 impl NativeType for Group {

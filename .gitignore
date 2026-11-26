@@ -297,3 +297,9 @@ fix_trap.py
 fix_brnz.py
 tidy.py
 .claude/worktrees/
+target-opt/
+
+# Ad-hoc manifest dumps written by local tooling.
+rssn-manifest.tmp.json
+target-bindings/
+build-bindings/

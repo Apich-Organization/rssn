@@ -36,8 +36,8 @@ use std::num::NonZeroUsize;
 use std::path::Path;
 
 use ndarray::Array2;
-use rand_v10::prelude::*;
-use rand_v10::rngs::StdRng;
+use rand::prelude::*;
+use rand::rngs::StdRng;
 use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;

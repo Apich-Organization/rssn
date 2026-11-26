@@ -34,9 +34,9 @@ use num_bigint::BigUint;
 use num_traits::One;
 use num_traits::ToPrimitive;
 use num_traits::Zero;
-use rand_v09::Rng;
-use rand_v09::SeedableRng;
-use rand_v09::rngs::StdRng;
+use rand::RngExt;
+use rand::SeedableRng;
+use rand::rngs::StdRng;
 use std::collections::HashMap;
 
 /// A permutation of `0..n`: `p[i]` is the image of `i`.

@@ -35,7 +35,7 @@
 //! unevaluated rather than answer wrongly.
 
 use num_bigint::BigInt;
-use rand_v09::SeedableRng;
+use rand::SeedableRng;
 
 use super::V;
 use super::def_doc;
@@ -326,7 +326,7 @@ fn perm_group_random_element(
 ) -> Option<V> {
     let group = read_group(cx.graph, *a.first()?)?;
     let seed = u64::try_from(idx(cx.graph, *a.get(1)?)?).ok()?;
-    let mut rng = rand_v09::rngs::StdRng::seed_from_u64(seed);
+    let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
     Some(perm_v(&group.random_element(&mut rng)))
 }
 

@@ -49,8 +49,8 @@
 //! [`crate::sim::symplectic`] (order 2-8 symplectic schemes, KS
 //! regularisation, rigid bodies) and [`crate::sim::spin_models`].
 
-use rand_v10::RngExt;
-use rand_v10::rng;
+use rand::RngExt;
+use rand::rng;
 use serde::Deserialize;
 use serde::Serialize;
 

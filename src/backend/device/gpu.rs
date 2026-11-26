@@ -97,13 +97,10 @@ pub struct WgpuDevice {
 /// Software rasterisers (CPU adapters) are included and marked in the name.
 #[must_use]
 pub fn probe() -> Vec<Arc<dyn Device>> {
-    let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
+    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
     let mut out: Vec<Arc<dyn Device>> = Vec::new();
-    for (n, adapter) in instance
-        .enumerate_adapters(wgpu::Backends::all())
-        .into_iter()
-        .enumerate()
-    {
+    let adapters = pollster::block_on(instance.enumerate_adapters(wgpu::Backends::all()));
+    for (n, adapter) in adapters.into_iter().enumerate() {
         if let Ok(device) = WgpuDevice::new(&adapter, n) {
             out.push(Arc::new(device));
         }
@@ -172,8 +169,8 @@ impl WgpuDevice {
         });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("rssn"),
-            bind_group_layouts: &[&layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(&layout)],
+            immediate_size: 0,
         });
         let software = matches!(ainfo.device_type, wgpu::DeviceType::Cpu);
         let info = DeviceInfo {
@@ -242,7 +239,7 @@ impl WgpuDevice {
             entry: "main".into(),
         };
         let source = ds::emit_wgsl_ds(&kernel.ir, &options)?;
-        self.device.push_error_scope(wgpu::ErrorFilter::Validation);
+        let scope = self.device.push_error_scope(wgpu::ErrorFilter::Validation);
         let module = self
             .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -259,7 +256,7 @@ impl WgpuDevice {
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
                 cache: None,
             });
-        if let Some(e) = pollster::block_on(self.device.pop_error_scope()) {
+        if let Some(e) = pollster::block_on(scope.pop()) {
             return Err(DeviceError::Backend(e.to_string()));
         }
         *slot = Some(pipeline.clone());
@@ -419,7 +416,10 @@ impl Device for WgpuDevice {
             .map_err(|e| DeviceError::Backend(e.to_string()))?
             .map_err(|e| DeviceError::Backend(e.to_string()))?;
         {
-            let view = staging.slice(..).get_mapped_range();
+            let view = staging
+                .slice(..)
+                .get_mapped_range()
+                .map_err(|e| DeviceError::Backend(format!("{e:?}")))?;
             let floats: &[f32] = bytemuck::cast_slice(&view);
             match dtype {
                 | Dtype::F32 => {
@@ -509,7 +509,7 @@ impl Device for WgpuDevice {
             entry: "main".into(),
         };
         let source = emit_wgsl(ir, &options)?;
-        self.device.push_error_scope(wgpu::ErrorFilter::Validation);
+        let scope = self.device.push_error_scope(wgpu::ErrorFilter::Validation);
         let module = self
             .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -526,7 +526,7 @@ impl Device for WgpuDevice {
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
                 cache: None,
             });
-        if let Some(e) = pollster::block_on(self.device.pop_error_scope()) {
+        if let Some(e) = pollster::block_on(scope.pop()) {
             return Err(DeviceError::Backend(e.to_string()));
         }
         let k = Arc::new(GpuKernel {
