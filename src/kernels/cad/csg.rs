@@ -2,8 +2,10 @@
 //!
 //! This is a direct port of the classic `csg.js` algorithm: each operand is
 //! turned into a BSP tree, the trees clip each other's polygons, and the
-//! surviving polygons are recombined. The result is a polygon soup that is
-//! welded and fan-triangulated into a [`Mesh`].
+//! surviving polygons are recombined. The result is fan-triangulated, welded,
+//! and passed through a conforming edge-splitting pass that eliminates
+//! T-junctions introduced by BSP plane splitting so the output [`Mesh`] is
+//! watertight and edge-manifold.
 //!
 //! # Limitations
 //!
@@ -11,14 +13,14 @@
 //!   self-intersecting input gives an undefined result rather than an error.
 //! * Splitting is recursive, so a mesh with many nearly coincident planes can
 //!   exhaust the stack.
-//! * The output keeps the T-junctions introduced by splitting, so it is closed
-//!   but not necessarily edge-manifold until [`super::repair::weld`] is run
-//!   with a tolerance.
+
+use std::collections::HashMap;
 
 use super::repair::weld;
 use super::types::Mesh;
 use super::types::cross;
 use super::types::dot;
+use super::types::edge_key;
 use super::types::length;
 use super::types::sub;
 
@@ -423,7 +425,8 @@ fn mesh_to_polygons(mesh: &Mesh) -> Result<Vec<Polygon>, String> {
     Ok(polygons)
 }
 
-/// Fan-triangulates `polygons` and welds the result.
+/// Fan-triangulates `polygons`, welds coincident vertices, and eliminates
+/// T-junctions so the resulting mesh is watertight and edge-manifold.
 fn polygons_to_mesh(polygons: &[Polygon]) -> Mesh {
     let mut vertices: Vec<[f64; 3]> = Vec::new();
     let mut triangles: Vec<[usize; 3]> = Vec::new();
@@ -441,14 +444,300 @@ fn polygons_to_mesh(polygons: &[Polygon]) -> Mesh {
         }
     }
 
-    let (welded, _) = weld(&Mesh { vertices, triangles }, 1e-9);
-    welded
+    let (welded, _) = weld(&Mesh { vertices, triangles }, EPS);
+    eliminate_t_junctions(welded)
+}
+
+/// Eliminates T-junctions by finding every vertex lying strictly in the
+/// interior of any triangle edge and retriangulating affected triangles in a
+/// conforming manner that preserves outward winding.
+fn eliminate_t_junctions(mut mesh: Mesh) -> Mesh {
+    if mesh.triangles.is_empty() || mesh.vertices.len() < 4 {
+        return mesh;
+    }
+
+    let mut min_pt = [f64::INFINITY; 3];
+    let mut max_pt = [f64::NEG_INFINITY; 3];
+    for v in &mesh.vertices {
+        for axis in 0..3 {
+            min_pt[axis] = min_pt[axis].min(v[axis]);
+            max_pt[axis] = max_pt[axis].max(v[axis]);
+        }
+    }
+    let diag = length(sub(max_pt, min_pt));
+    let tol = (diag * 1e-7).clamp(1e-9, 1e-6);
+    let tol_sq = tol * tol;
+
+    // Build a uniform spatial hash grid over all vertices once (splitting
+    // never adds new vertices).
+    let grid_dim = ((mesh.vertices.len() as f64).cbrt().ceil() as usize).clamp(4, 32);
+    let cell_size = (diag / grid_dim as f64).max(tol * 16.0);
+    let mut grid: HashMap<(i64, i64, i64), Vec<usize>> = HashMap::new();
+    for (idx, v) in mesh.vertices.iter().enumerate() {
+        let cell = (
+            (v[0] / cell_size).floor() as i64,
+            (v[1] / cell_size).floor() as i64,
+            (v[2] / cell_size).floor() as i64,
+        );
+        grid.entry(cell).or_default().push(idx);
+    }
+
+    const MAX_PASSES: usize = 8;
+    for _ in 0..MAX_PASSES {
+        let mut edge_cache: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
+        let mut new_triangles: Vec<[usize; 3]> = Vec::with_capacity(mesh.triangles.len());
+        let mut any_split = false;
+
+        for &tri in &mesh.triangles {
+            let [a, b, c] = tri;
+            let s_ab = edge_interior_splits(
+                a,
+                b,
+                &mesh.vertices,
+                &grid,
+                cell_size,
+                tol,
+                tol_sq,
+                &mut edge_cache,
+            );
+            let s_bc = edge_interior_splits(
+                b,
+                c,
+                &mesh.vertices,
+                &grid,
+                cell_size,
+                tol,
+                tol_sq,
+                &mut edge_cache,
+            );
+            let s_ca = edge_interior_splits(
+                c,
+                a,
+                &mesh.vertices,
+                &grid,
+                cell_size,
+                tol,
+                tol_sq,
+                &mut edge_cache,
+            );
+
+            if s_ab.is_empty() && s_bc.is_empty() && s_ca.is_empty() {
+                new_triangles.push(tri);
+                continue;
+            }
+
+            any_split = true;
+            let mut e0 = Vec::with_capacity(s_ab.len() + 2);
+            e0.push(a);
+            e0.extend_from_slice(&s_ab);
+            e0.push(b);
+
+            let mut e1 = Vec::with_capacity(s_bc.len() + 2);
+            e1.push(b);
+            e1.extend_from_slice(&s_bc);
+            e1.push(c);
+
+            let mut e2 = Vec::with_capacity(s_ca.len() + 2);
+            e2.push(c);
+            e2.extend_from_slice(&s_ca);
+            e2.push(a);
+
+            triangulate_subdivided_triangle(&e0, &e1, &e2, &mesh.vertices, &mut new_triangles);
+        }
+
+        mesh.triangles = new_triangles;
+        if !any_split {
+            break;
+        }
+    }
+
+    mesh
+}
+
+/// Returns all vertex indices strictly in the interior of directed edge `u -> v`,
+/// ordered by increasing parameter `t` from `u` to `v`.
+#[allow(clippy::too_many_arguments)]
+fn edge_interior_splits(
+    u: usize,
+    v: usize,
+    vertices: &[[f64; 3]],
+    grid: &HashMap<(i64, i64, i64), Vec<usize>>,
+    cell_size: f64,
+    tol: f64,
+    tol_sq: f64,
+    cache: &mut HashMap<(usize, usize), Vec<usize>>,
+) -> Vec<usize> {
+    let key = edge_key(u, v);
+    let forward = u == key.0;
+
+    let sorted = cache.entry(key).or_insert_with(|| {
+        let p = vertices[key.0];
+        let q = vertices[key.1];
+        let d = sub(q, p);
+        let len_sq = dot(d, d);
+        if len_sq <= tol_sq {
+            return Vec::new();
+        }
+        let seg_len = len_sq.sqrt();
+
+        let min_x = p[0].min(q[0]) - tol;
+        let max_x = p[0].max(q[0]) + tol;
+        let min_y = p[1].min(q[1]) - tol;
+        let max_y = p[1].max(q[1]) + tol;
+        let min_z = p[2].min(q[2]) - tol;
+        let max_z = p[2].max(q[2]) + tol;
+
+        let cx0 = (min_x / cell_size).floor() as i64;
+        let cx1 = (max_x / cell_size).floor() as i64;
+        let cy0 = (min_y / cell_size).floor() as i64;
+        let cy1 = (max_y / cell_size).floor() as i64;
+        let cz0 = (min_z / cell_size).floor() as i64;
+        let cz1 = (max_z / cell_size).floor() as i64;
+
+        let cell_count =
+            i128::from(cx1 - cx0 + 1) * i128::from(cy1 - cy0 + 1) * i128::from(cz1 - cz0 + 1);
+
+        let mut hits: Vec<(f64, usize)> = Vec::new();
+        let mut check_vertex = |w: usize| {
+            if w == key.0 || w == key.1 {
+                return;
+            }
+            let wp = vertices[w];
+            if wp[0] < min_x
+                || wp[0] > max_x
+                || wp[1] < min_y
+                || wp[1] > max_y
+                || wp[2] < min_z
+                || wp[2] > max_z
+            {
+                return;
+            }
+            let t = dot(sub(wp, p), d) / len_sq;
+            if t * seg_len <= tol || (1.0 - t) * seg_len <= tol {
+                return;
+            }
+            let proj = [p[0] + t * d[0], p[1] + t * d[1], p[2] + t * d[2]];
+            let diff = sub(wp, proj);
+            if dot(diff, diff) <= tol_sq {
+                hits.push((t, w));
+            }
+        };
+
+        if cell_count <= vertices.len() as i128 {
+            for cx in cx0..=cx1 {
+                for cy in cy0..=cy1 {
+                    for cz in cz0..=cz1 {
+                        if let Some(bucket) = grid.get(&(cx, cy, cz)) {
+                            for &w in bucket {
+                                check_vertex(w);
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            for w in 0..vertices.len() {
+                check_vertex(w);
+            }
+        }
+
+        hits.sort_by(|a, b| a.0.total_cmp(&b.0));
+        hits.dedup_by_key(|item| item.1);
+        hits.into_iter().map(|(_, w)| w).collect()
+    });
+
+    if forward {
+        sorted.clone()
+    } else {
+        sorted.iter().copied().rev().collect()
+    }
+}
+
+/// Conforming triangulation of a triangle `(e0[0], e1[0], e2[0])` whose three
+/// directed boundary chains `e0`, `e1`, `e2` may carry interior split vertices.
+fn triangulate_subdivided_triangle(
+    e0: &[usize],
+    e1: &[usize],
+    e2: &[usize],
+    vertices: &[[f64; 3]],
+    out: &mut Vec<[usize; 3]>,
+) {
+    let n0 = e0.len().saturating_sub(2);
+    let n1 = e1.len().saturating_sub(2);
+    let n2 = e2.len().saturating_sub(2);
+    let a = e0[0];
+    let b = e1[0];
+    let c = e2[0];
+
+    let push_if_valid = |tri: [usize; 3], out: &mut Vec<[usize; 3]>| {
+        if tri[0] == tri[1] || tri[1] == tri[2] || tri[2] == tri[0] {
+            return;
+        }
+        let area2 = length(cross(
+            sub(vertices[tri[1]], vertices[tri[0]]),
+            sub(vertices[tri[2]], vertices[tri[0]]),
+        ));
+        if area2 > 1e-14 {
+            out.push(tri);
+        }
+    };
+
+    if n0 == 0 && n1 == 0 && n2 == 0 {
+        push_if_valid([a, b, c], out);
+        return;
+    }
+
+    if n1 == 0 && n2 == 0 {
+        for i in 0..e0.len() - 1 {
+            push_if_valid([e0[i], e0[i + 1], c], out);
+        }
+        return;
+    }
+    if n0 == 0 && n2 == 0 {
+        for i in 0..e1.len() - 1 {
+            push_if_valid([a, e1[i], e1[i + 1]], out);
+        }
+        return;
+    }
+    if n0 == 0 && n1 == 0 {
+        for i in 0..e2.len() - 1 {
+            push_if_valid([e2[i], e2[i + 1], b], out);
+        }
+        return;
+    }
+
+    // Two or three edges are subdivided: split the edge with the most interior
+    // vertices at its midpoint and connect to the opposite corner.
+    if n0 >= n1 && n0 >= n2 {
+        let mid = e0.len() / 2;
+        let m = e0[mid];
+        let mc = [m, c];
+        let cm = [c, m];
+        triangulate_subdivided_triangle(&e0[..=mid], &mc, e2, vertices, out);
+        triangulate_subdivided_triangle(&e0[mid..], e1, &cm, vertices, out);
+    } else if n1 >= n0 && n1 >= n2 {
+        let mid = e1.len() / 2;
+        let m = e1[mid];
+        let ma = [m, a];
+        let am = [a, m];
+        triangulate_subdivided_triangle(e0, &e1[..=mid], &ma, vertices, out);
+        triangulate_subdivided_triangle(&am, &e1[mid..], e2, vertices, out);
+    } else {
+        let mid = e2.len() / 2;
+        let m = e2[mid];
+        let mb = [m, b];
+        let bm = [b, m];
+        triangulate_subdivided_triangle(e0, &bm, &e2[mid..], vertices, out);
+        triangulate_subdivided_triangle(&mb, e1, &e2[..=mid], vertices, out);
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::BoolOp;
     use super::boolean;
+    use crate::kernels::cad::repair::is_closed;
+    use crate::kernels::cad::repair::is_manifold;
     use crate::kernels::cad::repair::signed_volume;
     use crate::kernels::cad::types::Mesh;
 
@@ -541,9 +830,12 @@ mod tests {
 
         assert_ne!(union.triangles.len(), 0);
         assert!((signed_volume(&union) - 1.5).abs() < 1e-6);
+        assert!(
+            is_closed(&union),
+            "union should be watertight after T-junction elimination"
+        );
+        assert!(is_manifold(&union), "union should be edge-manifold");
 
-        // Splitting leaves T-junctions on the coplanar faces, so the result is
-        // closed geometrically but not edge-matched.
         let mut min = [f64::INFINITY; 3];
         let mut max = [f64::NEG_INFINITY; 3];
         for v in &union.vertices {
@@ -555,5 +847,49 @@ mod tests {
         assert!((max[0] - min[0] - 1.5).abs() < 1e-9);
         assert!((max[1] - min[1] - 1.0).abs() < 1e-9);
         assert!((max[2] - min[2] - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn boolean_operations_produce_watertight_manifold_meshes() {
+        let a = cube([0.0, 0.0, 0.0], 1.0);
+        let b = cube([0.5, 0.0, 0.0], 1.0);
+
+        for (op, expected_vol) in [
+            (BoolOp::Union, 1.5),
+            (BoolOp::Difference, 0.5),
+            (BoolOp::Intersection, 0.5),
+        ] {
+            let res = expect_ok(boolean(&a, &b, op));
+            assert!(is_closed(&res), "{op:?} result is not closed");
+            assert!(is_manifold(&res), "{op:?} result is not manifold");
+            assert!(
+                (signed_volume(&res) - expected_vol).abs() < 1e-6,
+                "{op:?} volume was {}, expected {expected_vol}",
+                signed_volume(&res)
+            );
+        }
+    }
+
+    #[test]
+    fn three_axis_offset_cubes_are_watertight_and_accurate() {
+        // Offsetting along all three axes creates T-junctions on every
+        // intersecting face during BSP splitting.
+        let a = cube([0.0, 0.0, 0.0], 1.0);
+        let b = cube([0.5, 0.5, 0.5], 1.0);
+        // Overlap is a 0.5 x 0.5 x 0.5 cube of volume 0.125.
+        for (op, expected_vol) in [
+            (BoolOp::Union, 1.875),
+            (BoolOp::Difference, 0.875),
+            (BoolOp::Intersection, 0.125),
+        ] {
+            let res = expect_ok(boolean(&a, &b, op));
+            assert!(is_closed(&res), "{op:?} 3D-offset result is not closed");
+            assert!(is_manifold(&res), "{op:?} 3D-offset result is not manifold");
+            assert!(
+                (signed_volume(&res) - expected_vol).abs() < 1e-6,
+                "{op:?} 3D-offset volume was {}, expected {expected_vol}",
+                signed_volume(&res)
+            );
+        }
     }
 }

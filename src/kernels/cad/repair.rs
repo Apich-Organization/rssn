@@ -1,16 +1,16 @@
-//! Mesh welding, orientation repair and hole filling.
+//! Mesh welding, orientation repair and optimal hole filling.
 //!
 //! [`weld`] merges vertices that coincide within a tolerance and drops the
 //! triangles that collapse. [`repair`] then makes the surface consistently
-//! oriented and closes every boundary loop with a triangle fan.
+//! oriented and closes every boundary loop using Liepa's (2003) minimum-weight
+//! dynamic-programming hole triangulation (with an ear-clipping fallback for
+//! very large loops).
 //!
 //! # Limitations
 //!
 //! * [`weld`] uses a uniform grid of cells of side `tolerance`, so its cost is
 //!   linear in the vertex count for a well-spread mesh and quadratic in the
 //!   worst case.
-//! * [`repair`] fills each boundary loop with a fan from its first vertex. A
-//!   large, highly non-convex hole therefore gets long, thin triangles.
 //! * A non-orientable surface (a Möbius strip) cannot be oriented; the pass
 //!   stops at the first inconsistency and reports the flips it made.
 
@@ -23,7 +23,9 @@ use super::types::cross;
 use super::types::dot;
 use super::types::edge_key;
 use super::types::length;
+use super::types::normalize;
 use super::types::sub;
+use super::types::triangle_normal;
 
 /// What [`repair`] changed in the mesh it was given.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -32,7 +34,7 @@ pub struct RepairReport {
     pub merged_vertices: usize,
     /// Triangles dropped because they collapsed to a segment or a point.
     pub removed_degenerate: usize,
-    /// Boundary loops closed with a triangle fan.
+    /// Boundary loops closed by optimal hole triangulation.
     pub filled_holes: usize,
     /// Triangles whose winding was reversed to match their neighbours.
     pub flipped: usize,
@@ -55,7 +57,7 @@ pub fn weld(
 ///
 /// The passes run in that order: coincident vertices are merged, triangles that
 /// collapse are dropped, the surface is oriented consistently, and every
-/// remaining boundary loop is closed with a fan.
+/// remaining boundary loop is closed using Liepa's minimum-weight triangulation.
 #[must_use]
 pub fn repair(
     mesh: &Mesh,
@@ -70,6 +72,12 @@ pub fn repair(
         flipped += welded.triangles.len();
     }
     let filled = fill_holes(&mut welded);
+    if filled > 0 && is_closed(&welded) && signed_volume(&welded) < 0.0 {
+        for t in &mut welded.triangles {
+            *t = [t[0], t[2], t[1]];
+        }
+        flipped += welded.triangles.len();
+    }
 
     (
         welded,
@@ -325,23 +333,31 @@ fn orient_consistently(mesh: &mut Mesh) -> usize {
     flipped
 }
 
-/// Closes every boundary loop with a triangle fan.
+/// Maximum boundary loop length solved by Liepa's `O(k^3)` DP before falling
+/// back to 2D ear-clipping.
+const DP_MAX_LOOP: usize = 128;
+
+/// Closes every boundary loop using Liepa's (2003) minimum-weight dynamic
+/// programming triangulation (or 2D ear-clipping for loops longer than 128
+/// vertices).
 ///
 /// Returns the number of loops that were filled.
 fn fill_holes(mesh: &mut Mesh) -> usize {
-    let mut directed: HashSet<(usize, usize)> = HashSet::new();
-    for t in &mesh.triangles {
+    let mut directed: HashMap<(usize, usize), Option<[f64; 3]>> = HashMap::new();
+    for &t in &mesh.triangles {
+        let normal = triangle_normal(mesh, t);
         for k in 0..3 {
-            directed.insert((t[k], t[(k + 1) % 3]));
+            directed.insert((t[k], t[(k + 1) % 3]), normal);
         }
     }
 
     // An unmatched edge `a -> b` of the surface is closed by a new triangle
-    // that runs `b -> a`, so the hole loop follows `b` to `a`.
-    let mut next: HashMap<usize, usize> = HashMap::new();
-    for &(a, b) in &directed {
-        if !directed.contains(&(b, a)) {
-            next.insert(b, a);
+    // that runs `b -> a`, so the hole loop follows `b` to `a`, and the
+    // adjacent existing face across `(b, a)` has normal `directed[(a, b)]`.
+    let mut next: HashMap<usize, (usize, Option<[f64; 3]>)> = HashMap::new();
+    for (&(a, b), &normal) in &directed {
+        if !directed.contains_key(&(b, a)) {
+            next.insert(b, (a, normal));
         }
     }
     if next.is_empty() {
@@ -359,11 +375,13 @@ fn fill_holes(mesh: &mut Mesh) -> usize {
         }
 
         let mut ring = vec![start];
+        let mut adj_normals: Vec<Option<[f64; 3]>> = Vec::new();
         let mut current = start;
         let mut closed = false;
         let mut guard = 0;
 
-        while let Some(&following) = next.get(&current) {
+        while let Some(&(following, adj_normal)) = next.get(&current) {
+            adj_normals.push(adj_normal);
             if following == start {
                 closed = true;
                 break;
@@ -383,13 +401,319 @@ fn fill_holes(mesh: &mut Mesh) -> usize {
             continue;
         }
 
-        for i in 1..ring.len() - 1 {
-            mesh.triangles.push([ring[0], ring[i], ring[i + 1]]);
+        if ring.len() == 3 {
+            mesh.triangles.push([ring[0], ring[1], ring[2]]);
+        } else if ring.len() <= DP_MAX_LOOP {
+            triangulate_hole_dp(&mesh.vertices, &ring, &adj_normals, &mut mesh.triangles);
+        } else {
+            triangulate_hole_ear_clipping(&mesh.vertices, &ring, &mut mesh.triangles);
         }
         filled += 1;
     }
 
     filled
+}
+
+/// Newell's method average outward normal for an ordered 3D polygon loop.
+fn newell_normal(
+    vertices: &[[f64; 3]],
+    ring: &[usize],
+) -> [f64; 3] {
+    let mut n = [0.0; 3];
+    let k = ring.len();
+    for i in 0..k {
+        let a = vertices[ring[i]];
+        let b = vertices[ring[(i + 1) % k]];
+        n[0] += (a[1] - b[1]) * (a[2] + b[2]);
+        n[1] += (a[2] - b[2]) * (a[0] + b[0]);
+        n[2] += (a[0] - b[0]) * (a[1] + b[1]);
+    }
+    normalize(n)
+}
+
+/// Dihedral angle in `[0, pi]` between two unit normals.
+fn dihedral_angle(
+    n1: [f64; 3],
+    n2: [f64; 3],
+) -> f64 {
+    dot(n1, n2).clamp(-1.0, 1.0).acos()
+}
+
+/// Lexicographic DP cost for Liepa's (2003) hole triangulation:
+/// 1. Minimize worst dihedral / inversion / degeneracy penalty.
+/// 2. Minimize total patch surface area.
+/// 3. Break flat ties by minimizing worst triangle aspect ratio.
+#[derive(Clone, Copy, Debug)]
+struct HoleWeight {
+    max_angle: f64,
+    area: f64,
+    max_aspect: f64,
+}
+
+impl HoleWeight {
+    const INF: Self = Self {
+        max_angle: f64::INFINITY,
+        area: f64::INFINITY,
+        max_aspect: f64::INFINITY,
+    };
+    const ZERO: Self = Self {
+        max_angle: 0.0,
+        area: 0.0,
+        max_aspect: 1.0,
+    };
+
+    fn is_better(
+        &self,
+        other: &Self,
+        area_eps: f64,
+    ) -> bool {
+        if self.max_angle + 1e-9 < other.max_angle {
+            return true;
+        }
+        if other.max_angle + 1e-9 < self.max_angle {
+            return false;
+        }
+        if self.area + area_eps < other.area {
+            return true;
+        }
+        if other.area + area_eps < self.area {
+            return false;
+        }
+        self.max_aspect < other.max_aspect
+    }
+}
+
+/// Liepa's (2003) minimum-weight dynamic-programming hole triangulation.
+fn triangulate_hole_dp(
+    vertices: &[[f64; 3]],
+    ring: &[usize],
+    adj_normals: &[Option<[f64; 3]>],
+    out: &mut Vec<[usize; 3]>,
+) {
+    let k = ring.len();
+    let loop_normal = newell_normal(vertices, ring);
+    let has_loop_normal = length(loop_normal) > 0.5;
+
+    // Estimate perimeter scale for tie-breaking area epsilon.
+    let mut perim_sum = 0.0;
+    for i in 0..k {
+        perim_sum += length(sub(vertices[ring[(i + 1) % k]], vertices[ring[i]]));
+    }
+    let area_eps = (perim_sum * perim_sum * 1e-12).max(1e-12);
+
+    let mut dp_weight = vec![HoleWeight::INF; k * k];
+    let mut dp_split = vec![0_usize; k * k];
+    let mut dp_normal: Vec<Option<[f64; 3]>> = vec![None; k * k];
+
+    for i in 0..k - 1 {
+        dp_weight[i * k + (i + 1)] = HoleWeight::ZERO;
+    }
+
+    for span in 2..k {
+        for i in 0..(k - span) {
+            let j = i + span;
+            let a = vertices[ring[i]];
+            let c = vertices[ring[j]];
+
+            let mut best_w = HoleWeight::INF;
+            let mut best_m = i + 1;
+            let mut best_n: Option<[f64; 3]> = None;
+
+            for m in (i + 1)..j {
+                let b = vertices[ring[m]];
+                let cr = cross(sub(b, a), sub(c, a));
+                let area2 = length(cr);
+                let area = 0.5 * area2;
+
+                let (tri_angle, tri_aspect, tri_normal) = if area2 <= 1e-14 {
+                    (100.0, 1e9, None)
+                } else {
+                    let n = [cr[0] / area2, cr[1] / area2, cr[2] / area2];
+                    let mut angle = 0.0_f64;
+
+                    if has_loop_normal {
+                        let align = dot(n, loop_normal);
+                        if align < -1e-6 {
+                            angle = angle.max(2.0 * std::f64::consts::PI + (1.0 - align));
+                        }
+                    }
+
+                    let n_im = if m == i + 1 {
+                        adj_normals[i]
+                    } else {
+                        dp_normal[i * k + m]
+                    };
+                    if let Some(nb) = n_im {
+                        angle = angle.max(dihedral_angle(n, nb));
+                    }
+
+                    let n_mj = if j == m + 1 {
+                        adj_normals[m]
+                    } else {
+                        dp_normal[m * k + j]
+                    };
+                    if let Some(nb) = n_mj {
+                        angle = angle.max(dihedral_angle(n, nb));
+                    }
+
+                    if i == 0 && j == k - 1 {
+                        if let Some(nb) = adj_normals[k - 1] {
+                            angle = angle.max(dihedral_angle(n, nb));
+                        }
+                    }
+
+                    let p = length(sub(b, a)) + length(sub(c, b)) + length(sub(a, c));
+                    let aspect = (p * p) / (4.0 * 3.0_f64.sqrt() * area);
+                    (angle, aspect, Some(n))
+                };
+
+                let w_im = dp_weight[i * k + m];
+                let w_mj = dp_weight[m * k + j];
+                let cand = HoleWeight {
+                    max_angle: tri_angle.max(w_im.max_angle).max(w_mj.max_angle),
+                    area: area + w_im.area + w_mj.area,
+                    max_aspect: tri_aspect.max(w_im.max_aspect).max(w_mj.max_aspect),
+                };
+
+                if cand.is_better(&best_w, area_eps) {
+                    best_w = cand;
+                    best_m = m;
+                    best_n = tri_normal;
+                }
+            }
+
+            dp_weight[i * k + j] = best_w;
+            dp_split[i * k + j] = best_m;
+            dp_normal[i * k + j] = best_n;
+        }
+    }
+
+    reconstruct_dp_triangles(ring, &dp_split, k, 0, k - 1, out);
+}
+
+/// Recursively emits triangles from Liepa's DP split table.
+fn reconstruct_dp_triangles(
+    ring: &[usize],
+    split: &[usize],
+    k: usize,
+    i: usize,
+    j: usize,
+    out: &mut Vec<[usize; 3]>,
+) {
+    if j <= i + 1 {
+        return;
+    }
+    let m = split[i * k + j];
+    out.push([ring[i], ring[m], ring[j]]);
+    reconstruct_dp_triangles(ring, split, k, i, m, out);
+    reconstruct_dp_triangles(ring, split, k, m, j, out);
+}
+
+/// 2D ear-clipping fallback for very large boundary loops (`k > 128`).
+fn triangulate_hole_ear_clipping(
+    vertices: &[[f64; 3]],
+    ring: &[usize],
+    out: &mut Vec<[usize; 3]>,
+) {
+    let mut n = newell_normal(vertices, ring);
+    if length(n) < 0.5 {
+        n = [0.0, 0.0, 1.0];
+    }
+    let ref_vec = if n[0].abs() < 0.9 {
+        [1.0, 0.0, 0.0]
+    } else {
+        [0.0, 1.0, 0.0]
+    };
+    let u = normalize(cross(ref_vec, n));
+    let v = cross(n, u);
+    let origin = vertices[ring[0]];
+
+    let mut poly: Vec<(usize, [f64; 2])> = ring
+        .iter()
+        .map(|&idx| {
+            let rel = sub(vertices[idx], origin);
+            (idx, [dot(rel, u), dot(rel, v)])
+        })
+        .collect();
+
+    let cross2 = |a: [f64; 2], b: [f64; 2], c: [f64; 2]| -> f64 {
+        (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+    };
+
+    let point_in_tri = |p: [f64; 2], a: [f64; 2], b: [f64; 2], c: [f64; 2]| -> bool {
+        let c1 = cross2(a, b, p);
+        let c2 = cross2(b, c, p);
+        let c3 = cross2(c, a, p);
+        c1 >= -1e-12 && c2 >= -1e-12 && c3 >= -1e-12
+    };
+
+    while poly.len() > 3 {
+        let len = poly.len();
+        let mut best_ear: Option<(usize, f64)> = None;
+
+        for i in 0..len {
+            let prev = poly[(i + len - 1) % len].1;
+            let curr = poly[i].1;
+            let next = poly[(i + 1) % len].1;
+            let area2 = cross2(prev, curr, next);
+            if area2 <= 1e-12 {
+                continue;
+            }
+
+            let mut empty = true;
+            for j in 0..len {
+                if j == i || j == (i + len - 1) % len || j == (i + 1) % len {
+                    continue;
+                }
+                if point_in_tri(poly[j].1, prev, curr, next) {
+                    empty = false;
+                    break;
+                }
+            }
+            if !empty {
+                continue;
+            }
+
+            let d0 = ((curr[0] - prev[0]).hypot(curr[1] - prev[1]))
+                + ((next[0] - curr[0]).hypot(next[1] - curr[1]))
+                + ((prev[0] - next[0]).hypot(prev[1] - next[1]));
+            let quality = area2 / (d0 * d0).max(1e-18);
+            if best_ear.is_none_or(|(_, q)| quality > q) {
+                best_ear = Some((i, quality));
+            }
+        }
+
+        let ear_idx = match best_ear {
+            | Some((idx, _)) => idx,
+            | None => {
+                (0..len)
+                    .max_by(|&a, &b| {
+                        let ca = cross2(
+                            poly[(a + len - 1) % len].1,
+                            poly[a].1,
+                            poly[(a + 1) % len].1,
+                        );
+                        let cb = cross2(
+                            poly[(b + len - 1) % len].1,
+                            poly[b].1,
+                            poly[(b + 1) % len].1,
+                        );
+                        ca.total_cmp(&cb)
+                    })
+                    .unwrap_or(0)
+            },
+        };
+
+        let prev_id = poly[(ear_idx + len - 1) % len].0;
+        let curr_id = poly[ear_idx].0;
+        let next_id = poly[(ear_idx + 1) % len].0;
+        out.push([prev_id, curr_id, next_id]);
+        poly.remove(ear_idx);
+    }
+
+    if poly.len() == 3 {
+        out.push([poly[0].0, poly[1].0, poly[2].0]);
+    }
 }
 
 #[cfg(test)]
@@ -530,5 +854,110 @@ mod tests {
         assert_eq!(repaired.triangles.len(), 0);
         assert_eq!(report, RepairReport::default());
         assert!(!is_closed(&Mesh::default()));
+    }
+
+    /// Builds an extruded prism with a closed bottom and side walls and an open
+    /// top face, leaving a single non-convex hole on `z = 1`.
+    fn open_top_prism(
+        profile: &[[f64; 2]],
+        bottom_tris: &[[usize; 3]],
+    ) -> Mesh {
+        let n = profile.len();
+        let mut vertices = Vec::with_capacity(2 * n);
+        for &[x, y] in profile {
+            vertices.push([x, y, 0.0]);
+        }
+        for &[x, y] in profile {
+            vertices.push([x, y, 1.0]);
+        }
+
+        let mut triangles = Vec::with_capacity(bottom_tris.len() + 2 * n);
+        triangles.extend_from_slice(bottom_tris);
+        for i in 0..n {
+            let j = (i + 1) % n;
+            let b0 = i;
+            let b1 = j;
+            let t0 = n + i;
+            let t1 = n + j;
+            triangles.push([b0, b1, t1]);
+            triangles.push([b0, t1, t0]);
+        }
+
+        Mesh::new(vertices, triangles)
+    }
+
+    #[test]
+    fn repair_fills_non_convex_l_shaped_hole_without_inversions() {
+        let profile = [
+            [0.0, 0.0],
+            [2.0, 0.0],
+            [2.0, 1.0],
+            [1.0, 1.0],
+            [1.0, 2.0],
+            [0.0, 2.0],
+        ];
+        let bottom = [[0, 2, 1], [0, 3, 2], [0, 4, 3], [0, 5, 4]];
+        let open = open_top_prism(&profile, &bottom);
+        let initial_tris = open.triangles.len();
+        assert!(!is_closed(&open));
+
+        let (repaired, report) = repair(&open, 1e-9);
+        assert_eq!(report.filled_holes, 1);
+        assert!(is_closed(&repaired), "L-shaped hole was not closed");
+        assert!(is_manifold(&repaired), "repaired L-prism is not manifold");
+        assert!(
+            (signed_volume(&repaired) - 3.0).abs() < 1e-12,
+            "volume was {}",
+            signed_volume(&repaired)
+        );
+
+        // Every triangle added to close the L-shaped hole must be non-degenerate
+        // and face strictly upward (+z).
+        for &t in &repaired.triangles[initial_tris..] {
+            let n = super::triangle_normal(&repaired, t)
+                .expect("hole-fill triangle must not be degenerate");
+            assert!(n[2] > 0.999, "inverted hole-fill triangle normal: {n:?}");
+        }
+    }
+
+    #[test]
+    fn repair_fills_non_convex_c_shaped_hole_without_inversions() {
+        let profile = [
+            [0.0, 0.0],
+            [3.0, 0.0],
+            [3.0, 1.0],
+            [1.0, 1.0],
+            [1.0, 2.0],
+            [3.0, 2.0],
+            [3.0, 3.0],
+            [0.0, 3.0],
+        ];
+        let bottom = [
+            [0, 2, 1],
+            [0, 3, 2],
+            [0, 4, 3],
+            [0, 7, 4],
+            [7, 5, 4],
+            [7, 6, 5],
+        ];
+        let open = open_top_prism(&profile, &bottom);
+        let initial_tris = open.triangles.len();
+        assert!(!is_closed(&open));
+
+        let (repaired, report) = repair(&open, 1e-9);
+        assert_eq!(report.filled_holes, 1);
+        assert!(is_closed(&repaired), "C-shaped hole was not closed");
+        assert!(is_manifold(&repaired), "repaired C-prism is not manifold");
+        assert!(
+            (signed_volume(&repaired) - 7.0).abs() < 1e-12,
+            "volume was {}",
+            signed_volume(&repaired)
+        );
+
+        for &t in &repaired.triangles[initial_tris..] {
+            let n = super::triangle_normal(&repaired, t)
+                .expect("hole-fill triangle must not be degenerate");
+            assert!(n[2] > 0.999, "inverted hole-fill triangle normal: {n:?}");
+        }
     }
 }
