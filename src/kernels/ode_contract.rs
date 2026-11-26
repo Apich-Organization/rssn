@@ -369,4 +369,60 @@ mod tests {
         assert!(scaled_ratio(1.0, 0.0).is_infinite());
         assert!(scaled_ratio(f64::NAN, 1.0).is_nan());
     }
+
+    #[test]
+    fn validate_problem_rejects_invalid_inputs() {
+        let opts = OdeOptions::default();
+        assert_eq!(validate_problem(0.0, 1.0, &[1.0], &opts, &[]), Ok(()));
+        assert_eq!(
+            validate_problem(f64::NAN, 1.0, &[1.0], &opts, &[]),
+            Err(OdeError::Invalid)
+        );
+        assert_eq!(
+            validate_problem(1.0, 1.0, &[1.0], &opts, &[]),
+            Err(OdeError::Invalid)
+        );
+        assert_eq!(
+            validate_problem(0.0, 1.0, &[], &opts, &[]),
+            Err(OdeError::Invalid)
+        );
+        assert_eq!(
+            validate_problem(0.0, 1.0, &[f64::INFINITY], &opts, &[]),
+            Err(OdeError::Invalid)
+        );
+
+        let mut zero_tol = opts;
+        zero_tol.rtol = 0.0;
+        zero_tol.atol = 0.0;
+        assert_eq!(
+            validate_problem(0.0, 1.0, &[1.0], &zero_tol, &[]),
+            Err(OdeError::Invalid)
+        );
+
+        let mut bad_steps = opts;
+        bad_steps.max_steps = 0;
+        assert_eq!(
+            validate_problem(0.0, 1.0, &[1.0], &bad_steps, &[]),
+            Err(OdeError::Invalid)
+        );
+
+        let mut bad_h = opts;
+        bad_h.hmin = 2.0;
+        bad_h.hmax = 1.0;
+        assert_eq!(
+            validate_problem(0.0, 1.0, &[1.0], &bad_h, &[]),
+            Err(OdeError::Invalid)
+        );
+    }
+
+    #[test]
+    fn checked_rhs_poisons_unwritten_outputs_with_nan() {
+        let rhs = checked_rhs(|_t, y, dy| {
+            dy[0] = -y[0];
+        });
+        let mut dy = [0.0, 0.0];
+        rhs(0.0, &[1.0, 2.0], &mut dy);
+        assert_eq!(dy[0], -1.0);
+        assert!(dy[1].is_nan());
+    }
 }
