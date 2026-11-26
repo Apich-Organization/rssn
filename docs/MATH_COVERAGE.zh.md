@@ -241,6 +241,14 @@
 | 有限和递推拟合与额外下标验证 | `src/rules/calculus/recurrence.rs` |
 | 直接 Taylor 和 Laurent 级数组合 | `src/rules/calculus/powerseries.rs`、`tests/symbolic_power_series.rs` |
 | 复数根的分支与整数周期 | `src/rules/complex/branches.rs`、`tests/symbolic_complex_branches.rs` |
+| 复球、矩形复区间与任意精度复数算术 | `src/kernels/complex_ball.rs`、`src/kernels/ball.rs`、`src/kernels/mp/complex.rs`、`src/kernels/mp/special_complex.rs`、`tests/complex_ball_and_mp.rs` |
+| 复坐标系、黎曼曲面拓扑、Wirtinger 导数与调和共轭 | `src/kernels/complex_coords.rs`、`src/rules/complex/riemann.rs`、`src/rules/complex/analysis.rs`、`tests/complex_coords_branches_diff.rs` |
+| 全矩阵复特殊函数（`f64`、`MpComplex`、`ComplexBall`） | `src/kernels/special_complex.rs`、`src/kernels/special_complex_ext/`、`tests/complex_special_matrix.rs` |
+| 特殊围道、自适应变形、Laurent/Padé/Borel、完整微分方程延拓与最速下降法 | `src/kernels/contour_deform.rs`、`src/kernels/analytic_continuation.rs`、`src/kernels/steepest_descent.rs`、`tests/complex_contours_asymptotics.rs` |
+| 经验证的复根隔离、辐角原理、Rouché 定理与 1D 同伦延拓 | `src/kernels/complex_roots.rs`、`src/rules/solve/complex_roots.rs`、`tests/complex_roots_conformal_univalent.rs` |
+| 共形映射、Schwarz–Christoffel、Szegő/Bergman 核与单叶函数理论 | `src/kernels/conformal.rs`、`src/kernels/univalent.rs`、`src/rules/complex/conformal.rs`、`tests/complex_roots_conformal_univalent.rs` |
+| 复积分变换、Riemann–Hilbert 求解器与 Risch–Bronstein 复数域扩展 | `src/kernels/complex_transforms.rs`、`src/kernels/riemann_hilbert.rs`、`src/rules/complex/transforms.rs`、`tests/complex_transforms_rh_risch.rs` |
+| 复动力系统、Böttcher/Koenigs 坐标、外部射线与 Newton 吸引盆 | `src/kernels/complex_dynamics.rs`、`src/rules/complex/dynamics.rs`、`tests/complex_dynamics.rs` |
 | 有限群同构见证与自同构 | `src/rules/discrete/group_theory.rs`、`tests/symbolic_group_isomorphisms.rs` |
 | 群呈示与 Todd–Coxeter 陪集作用 | `src/rules/discrete/perm_groups.rs`、`tests/symbolic_presented_groups.rs` |
 | 并行构造 Cayley 表 | `src/rules/discrete/perm_groups.rs`、`tests/symbolic_cayley_tables.rs` |

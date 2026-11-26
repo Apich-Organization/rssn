@@ -245,6 +245,14 @@ The typed numerical ABI additionally exposes checked records, tensors and sessio
 | Finite-sum recurrence fit and held-out checks | `src/rules/calculus/recurrence.rs` |
 | Direct Taylor and Laurent composition | `src/rules/calculus/powerseries.rs`, `tests/symbolic_power_series.rs` |
 | Complex root branches and integer periods | `src/rules/complex/branches.rs`, `tests/symbolic_complex_branches.rs` |
+| Complex ball, rectangular `Cball` and arbitrary-precision `MpComplex` | `src/kernels/complex_ball.rs`, `src/kernels/ball.rs`, `src/kernels/mp/complex.rs`, `src/kernels/mp/special_complex.rs`, `tests/complex_ball_and_mp.rs`, `tests/complex_interval_ball.rs` |
+| Complex coordinates, Riemann surfaces, Wirtinger & harmonic conjugates | `src/kernels/complex_coords.rs`, `src/rules/complex/riemann.rs`, `src/rules/complex/analysis.rs`, `tests/complex_coords_branches_diff.rs` |
+| Full-matrix complex special functions (`f64`, `MpComplex`, `ComplexBall`) | `src/kernels/special_complex.rs`, `src/kernels/special_complex_ext/`, `tests/complex_special_matrix.rs` |
+| Special contours, path deformation, Laurent/Padé/Borel, holonomic ODE & steepest descent | `src/kernels/contour_deform.rs`, `src/kernels/analytic_continuation.rs`, `src/kernels/steepest_descent.rs`, `tests/complex_contours_asymptotics.rs` |
+| Verified complex root isolation, argument principle, Rouché & 1D homotopy | `src/kernels/complex_roots.rs`, `src/rules/solve/complex_roots.rs`, `tests/complex_roots_conformal_univalent.rs` |
+| Conformal mapping, Schwarz–Christoffel, Szegő/Bergman kernels & univalent theory | `src/kernels/conformal.rs`, `src/kernels/univalent.rs`, `src/rules/complex/conformal.rs`, `tests/complex_roots_conformal_univalent.rs` |
+| Complex integral transforms, Riemann–Hilbert & complex Risch–Bronstein | `src/kernels/complex_transforms.rs`, `src/kernels/riemann_hilbert.rs`, `src/rules/complex/transforms.rs`, `tests/complex_transforms_rh_risch.rs` |
+| Complex dynamical systems, Böttcher/Koenigs, external rays & Newton basins | `src/kernels/complex_dynamics.rs`, `src/rules/complex/dynamics.rs`, `tests/complex_dynamics.rs` |
 | Finite-group isomorphism witnesses and automorphisms | `src/rules/discrete/group_theory.rs`, `tests/symbolic_group_isomorphisms.rs` |
 | Presented groups and Todd–Coxeter actions | `src/rules/discrete/perm_groups.rs`, `tests/symbolic_presented_groups.rs` |
 | Parallel Cayley table construction | `src/rules/discrete/perm_groups.rs`, `tests/symbolic_cayley_tables.rs` |
