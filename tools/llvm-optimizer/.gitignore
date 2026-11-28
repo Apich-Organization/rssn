@@ -1,0 +1,8 @@
+/build*/
+/bench/target/
+!/bench/Cargo.lock
+!/bench/de/Cargo.lock
+/bench/de/target/
+!/bench/zstd-io/Cargo.lock
+/bench/zstd-io/target/
+!/CMakeLists.txt
