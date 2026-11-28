@@ -73,7 +73,8 @@ MemoryModel::FrameObject MemoryModel::inspect(const AllocaInst &Root) {
 }
 
 bool MemoryModel::inaccessibleAt(const LoadInst &L, const CallBase &Call) {
-  const auto *Root = dyn_cast<AllocaInst>(getUnderlyingObject(L.getPointerOperand()));
+  const auto *Root =
+      dyn_cast<AllocaInst>(getUnderlyingObject(L.getPointerOperand()));
   if (!Root)
     return false;
   auto [It, New] = Frames.try_emplace(Root);
@@ -101,8 +102,8 @@ bool MemoryModel::unchanged(const LoadInst &L, ArrayRef<Instruction *> Code,
     if (I->isAtomic() || volatileAccess(*I))
       return false;
     if (auto *Call = dyn_cast<CallBase>(I)) {
-      if (Call->isInlineAsm() || Call->isConvergent() || Call->hasOperandBundles() ||
-          Call->hasFnAttr(Attribute::ReturnsTwice))
+      if (Call->isInlineAsm() || Call->isConvergent() ||
+          Call->hasOperandBundles() || Call->hasFnAttr(Attribute::ReturnsTwice))
         return false;
       if (isa<IntrinsicInst>(Call)) {
         // In particular do not bypass stackrestore, lifetime or coroutine
@@ -114,8 +115,8 @@ bool MemoryModel::unchanged(const LoadInst &L, ArrayRef<Instruction *> Code,
         const bool Regular = Call->doesNotThrow() &&
                              Call->hasFnAttr(Attribute::NoFree) &&
                              Call->hasFnAttr(Attribute::NoSync);
-        if ((!Regular || (I->mayWriteToMemory() &&
-                          isModSet(AA.getModRefInfo(I, Loc)))) &&
+        if ((!Regular ||
+             (I->mayWriteToMemory() && isModSet(AA.getModRefInfo(I, Loc)))) &&
             !inaccessibleAt(L, *Call))
           return false;
         continue;

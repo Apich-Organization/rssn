@@ -5,8 +5,8 @@
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
-#include "llvm/Analysis/VectorUtils.h"
 #include "llvm/Analysis/ValueTracking.h"
+#include "llvm/Analysis/VectorUtils.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Module.h"
@@ -48,9 +48,11 @@ bool isScalarLibmCut(const Instruction &I) {
     return false;
   const StringRef Name = Callee->getName();
   return ((Name == "pow" && Call->arg_size() == 2) ||
-          ((Name == "exp" || Name == "exp2" || Name == "expm1" || Name == "log") &&
+          ((Name == "exp" || Name == "exp2" || Name == "expm1" ||
+            Name == "log") &&
            Call->arg_size() == 1)) &&
-         all_of(Call->args(), [](const Use &U) { return U->getType()->isDoubleTy(); });
+         all_of(Call->args(),
+                [](const Use &U) { return U->getType()->isDoubleTy(); });
 }
 
 namespace {
@@ -95,7 +97,8 @@ bool collect(Instruction &I, BasicBlock &B, const BlockPressure &P,
 }
 
 int arithmeticLatency(const Instruction &I, const TargetTransformInfo &TTI) {
-  const auto Cost = TTI.getInstructionCost(&I, TargetTransformInfo::TCK_Latency);
+  const auto Cost =
+      TTI.getInstructionCost(&I, TargetTransformInfo::TCK_Latency);
   if (I.getOpcode() == Instruction::FDiv)
     return Cost.isValid() ? std::clamp<int64_t>(Cost.getValue(), 4, 24) : 12;
   return Cost.isValid() ? std::clamp<int64_t>(Cost.getValue(), 1, 12) : 4;
@@ -153,8 +156,8 @@ void evaluate(BasicBlock &B, const Liveness &Live, const BlockPressure &Old,
     });
   }
   const int Gain = Before.callCost(Liveness::CallLimit) -
-                   After.callCost(Liveness::CallLimit) -
-                   Outputs - (PathLatency + 3) / 4;
+                   After.callCost(Liveness::CallLimit) - Outputs -
+                   (PathLatency + 3) / 4;
   if (Gain > Best.Gain)
     Best = {Old.Code[Cut], std::move(Order), Gain, Saved};
 }
@@ -193,7 +196,8 @@ struct Guard {
   MDNode *Weights;
 };
 
-std::optional<Guard> findGuard(SelectInst &Select, const TargetLibraryInfo &TLI) {
+std::optional<Guard> findGuard(SelectInst &Select,
+                               const TargetLibraryInfo &TLI) {
   auto *VT = dyn_cast<FixedVectorType>(Select.getType());
   if (!VT || !VT->getElementType()->isDoubleTy())
     return std::nullopt;
@@ -210,7 +214,8 @@ std::optional<Guard> findGuard(SelectInst &Select, const TargetLibraryInfo &TLI)
 
   for (unsigned Edge = 1; Edge <= 2; ++Edge) {
     auto *Call = dyn_cast<IntrinsicInst>(Select.getOperand(Edge));
-    if (!Call || !Call->hasOneUse() || Call->getParent() != Select.getParent() ||
+    if (!Call || !Call->hasOneUse() ||
+        Call->getParent() != Select.getParent() ||
         !Call->comesBefore(&Select) || Call->isConvergent() ||
         Call->hasOperandBundles() || !Call->doesNotAccessMemory() ||
         !Call->hasFnAttr(Attribute::Speculatable))
@@ -300,8 +305,8 @@ bool guardVectorLibm(Function &F, FunctionAnalysisManager &AM, bool Transform) {
       return OptimizationRemarkAnalysis(PassName, "UniformVectorGuard", S)
              << NV("Function", F.getName()) << " "
              << NV("Action", Transform ? "guarded" : "candidate") << " "
-             << NV("Libm", G->Call->getCalledFunction()->getName())
-             << " with " << NV("ScalarLanes", G->Lanes) << " scalarized lanes";
+             << NV("Libm", G->Call->getCalledFunction()->getName()) << " with "
+             << NV("ScalarLanes", G->Lanes) << " scalarized lanes";
     });
     Plans.push_back(*G);
   }
@@ -348,13 +353,14 @@ bool guardVectorLibm(Function &F, FunctionAnalysisManager &AM, bool Transform) {
 
 } // namespace
 
-PreservedAnalyses LibmPressurePass::run(Function &F, FunctionAnalysisManager &AM) {
+PreservedAnalyses LibmPressurePass::run(Function &F,
+                                        FunctionAnalysisManager &AM) {
   const Triple &T = F.getParent()->getTargetTriple();
   const bool SysV = T.isOSLinux() && T.getEnvironment() != Triple::GNUX32;
   const bool Win64 = T.isWindowsMSVCEnvironment();
   if (!F.getName().contains(Filter) || (!SysV && !Win64) ||
-      T.getArch() != Triple::x86_64 ||
-      F.isDeclaration() || F.hasOptNone() || F.hasOptSize() || F.hasMinSize() ||
+      T.getArch() != Triple::x86_64 || F.isDeclaration() || F.hasOptNone() ||
+      F.hasOptSize() || F.hasMinSize() ||
       F.hasFnAttribute(Attribute::StrictFP) || F.hasGC())
     return PreservedAnalyses::all();
 
@@ -379,7 +385,8 @@ PreservedAnalyses LibmPressurePass::run(Function &F, FunctionAnalysisManager &AM
   for (BasicBlock &B : F) {
     if (!LI.getLoopFor(&B) || B.isEHPad() || !any_of(B, isScalarLibmCut))
       continue;
-    for (unsigned J = 0; J < 4 && Changes < MaxRuns && Trials < MaxTrials; ++J) {
+    for (unsigned J = 0; J < 4 && Changes < MaxRuns && Trials < MaxTrials;
+         ++J) {
       Choice Plan = choose(B, Live, TTI, Trials);
       if (!Plan.Cut)
         break;

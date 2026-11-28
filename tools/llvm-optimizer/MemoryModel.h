@@ -11,7 +11,7 @@ class AllocaInst;
 class CallBase;
 class Instruction;
 class LoadInst;
-}
+} // namespace llvm
 
 namespace rssn {
 

@@ -47,8 +47,8 @@ std::optional<Restore> getRestore(MachineInstr &MI, const MachineFrameInfo &MFI,
                                   const TargetRegisterInfo &TRI,
                                   const MachineRegisterInfo &MRI) {
   if (MI.isBundled() || MI.getFlags() || MI.peekDebugInstrNum() ||
-      MI.getNumExplicitDefs() != 1 ||
-      MI.mayStore() || MI.isTerminator() || MI.hasUnmodeledSideEffects())
+      MI.getNumExplicitDefs() != 1 || MI.mayStore() || MI.isTerminator() ||
+      MI.hasUnmodeledSideEffects())
     return std::nullopt;
   const MachineOperand &Def = MI.getOperand(0);
   if (!Def.isReg() || !Def.getReg().isPhysical() || Def.getSubReg() ||
@@ -98,7 +98,8 @@ std::optional<Restore> getRestore(MachineInstr &MI, const MachineFrameInfo &MFI,
   if (MFI.isFixedObjectIndex(FI) && MFI.isImmutableObjectIndex(FI) &&
       !MFI.isAliasedObjectIndex(FI))
     return Restore{&MI, Reg, Source::IncomingArgument, 2};
-  if (!MFI.isSpillSlotObjectIndex(FI) || MFI.isStatepointSpillSlotObjectIndex(FI))
+  if (!MFI.isSpillSlotObjectIndex(FI) ||
+      MFI.isStatepointSpillSlotObjectIndex(FI))
     return std::nullopt;
   // A folded wide transfer adds predictable traffic in addition to the load.
   return Restore{&MI, Reg, Source::SpillSlot, Bytes > 16 ? 3u : 2u};
@@ -117,8 +118,8 @@ bool crossesStore(const Restore &R, ArrayRef<const MachineInstr *> Stores,
     for (const MachineMemOperand *Mem : Store->memoperands()) {
       if (!Mem->isStore())
         continue;
-      if (const auto *Other =
-              dyn_cast_or_null<FixedStackPseudoSourceValue>(Mem->getPseudoValue())) {
+      if (const auto *Other = dyn_cast_or_null<FixedStackPseudoSourceValue>(
+              Mem->getPseudoValue())) {
         const int FI = Other->getFrameIndex();
         // Distinct local frame objects occupy disjoint storage here.
         if (FI == Load->getFrameIndex() ||
@@ -135,8 +136,8 @@ bool crossesStore(const Restore &R, ArrayRef<const MachineInstr *> Stores,
 }
 
 SmallVector<Restore, 8> collectRecipes(MachineBasicBlock &From,
-                                      MachineBasicBlock &To,
-                                      MachineBasicBlock *Other) {
+                                       MachineBasicBlock &To,
+                                       MachineBasicBlock *Other) {
   auto &MF = *From.getParent();
   const auto &TII = *MF.getSubtarget().getInstrInfo();
   const auto &TRI = *MF.getSubtarget().getRegisterInfo();
@@ -181,10 +182,11 @@ struct Group {
 enum class Placement { Destination, Fallthrough, Detached };
 
 bool sameRecipes(ArrayRef<Restore> A, ArrayRef<Restore> B) {
-  return A.size() == B.size() && llvm::equal(A, B, [](const Restore &L, const Restore &R) {
-    return L.Kind == R.Kind && L.Cost == R.Cost &&
-           L.Instruction->isIdenticalTo(*R.Instruction);
-  });
+  return A.size() == B.size() &&
+         llvm::equal(A, B, [](const Restore &L, const Restore &R) {
+           return L.Kind == R.Kind && L.Cost == R.Cost &&
+                  L.Instruction->isIdenticalTo(*R.Instruction);
+         });
 }
 
 SmallVector<Group, 8> findGroups(MachineFunction &MF) {
@@ -205,8 +207,8 @@ SmallVector<Group, 8> findGroups(MachineFunction &MF) {
       // destination is private to this predecessor.
       const bool Private = To->pred_size() == 1;
       if (To == &B || (!Private && To == Fallthrough) ||
-          (Private && B.succ_size() != 2) ||
-          To->isEHPad() || To->isEHFuncletEntry() || To->hasAddressTaken() ||
+          (Private && B.succ_size() != 2) || To->isEHPad() ||
+          To->isEHFuncletEntry() || To->hasAddressTaken() ||
           (To != Taken && To != Else && To != Fallthrough))
         continue;
       MachineBasicBlock *Other = nullptr;
@@ -249,10 +251,9 @@ const Function *knownCallee(const MachineInstr &MI, const TargetInstrInfo &TII,
     const auto &Displacement = MI.getOperand(3);
     const auto &Segment = MI.getOperand(4);
     if (!Base.isReg() || !Base.getReg().isPhysical() ||
-        StringRef(TRI.getName(Base.getReg())) != "RIP" ||
-        !Scale.isImm() || Scale.getImm() != 1 || !Index.isReg() ||
-        Index.getReg() || !Segment.isReg() || Segment.getReg() ||
-        !MI.hasOneMemOperand())
+        StringRef(TRI.getName(Base.getReg())) != "RIP" || !Scale.isImm() ||
+        Scale.getImm() != 1 || !Index.isReg() || Index.getReg() ||
+        !Segment.isReg() || Segment.getReg() || !MI.hasOneMemOperand())
       return nullptr;
     const auto *Memory = (*MI.memoperands_begin())->getPseudoValue();
     if (!Memory || !Memory->isGOT() ||
@@ -279,9 +280,8 @@ bool canPlaceBefore(MachineBasicBlock &Destination,
   if (Previous.isEndSection() || !Previous.sameSection(&Destination))
     return false;
   const auto Last = Previous.getLastNonDebugInstr(/*SkipPseudoOp=*/false);
-  if (Last != Previous.end() && Last->isBarrier() &&
-      !Last->isInlineAsm() && !TII.isPredicated(*Last) &&
-      !Previous.getLogicalFallThrough())
+  if (Last != Previous.end() && Last->isBarrier() && !Last->isInlineAsm() &&
+      !TII.isPredicated(*Last) && !Previous.getLogicalFallThrough())
     return true;
   if (!Previous.succ_empty())
     return false;
@@ -374,7 +374,8 @@ public:
   EdgeRestorePass() : MachineFunctionPass(ID) {}
 
   StringRef getPassName() const override {
-    return Transform ? "RSSN machine edge restores" : "RSSN machine edge restore report";
+    return Transform ? "RSSN machine edge restores"
+                     : "RSSN machine edge restore report";
   }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
@@ -392,8 +393,8 @@ public:
     const auto &MFI = MF.getFrameInfo();
     const char *Filter = std::getenv("RSSN_SPILL_FILTER");
     if (MF.getTarget().getTargetTriple().getArch() != Triple::x86_64 ||
-        (Filter && !F.getName().contains(Filter)) ||
-        F.hasOptNone() || F.hasOptSize() || F.hasMinSize() || MF.hasEHFunclets() ||
+        (Filter && !F.getName().contains(Filter)) || F.hasOptNone() ||
+        F.hasOptSize() || F.hasMinSize() || MF.hasEHFunclets() ||
         !Properties.hasNoVRegs() || !Properties.hasNoPHIs() ||
         !Properties.hasTracksLiveness() || MFI.getStackSize() ||
         MFI.hasVarSizedObjects() || MFI.hasOpaqueSPAdjustment() || MF.empty() ||
@@ -409,7 +410,8 @@ public:
     auto &BFI = getAnalysis<MachineBlockFrequencyInfoWrapperPass>().getMBFI();
     if (!BFI.getEntryFreq().getFrequency())
       return false;
-    auto &BPI = getAnalysis<MachineBranchProbabilityInfoWrapperPass>().getMBPI();
+    auto &BPI =
+        getAnalysis<MachineBranchProbabilityInfoWrapperPass>().getMBPI();
     auto &ORE = getAnalysis<MachineOptimizationRemarkEmitterPass>().getORE();
     const auto &TII = *MF.getSubtarget().getInstrInfo();
     struct Plan {
@@ -423,22 +425,24 @@ public:
       const double Gain = selectEdges(G, Where, BFI, BPI);
       if (G.Inputs.empty())
         continue;
-      const size_t Removed = (G.Inputs.size() - 1) * G.Inputs.front().Recipes.size();
-      if ((G.Inputs.size() == 1 && Where == Placement::Destination && Gain > 0) ||
+      const size_t Removed =
+          (G.Inputs.size() - 1) * G.Inputs.front().Recipes.size();
+      if ((G.Inputs.size() == 1 && Where == Placement::Destination &&
+           Gain > 0) ||
           (Removed > (Where == Placement::Detached ? 1u : 0u) &&
            (Where != Placement::Detached || Anchor != Layout.end())))
         Choices.push_back({Gain, &G, Where});
     }
-    llvm::stable_sort(Choices, [](const auto &L, const auto &R) {
-      return L.Gain > R.Gain;
-    });
+    llvm::stable_sort(
+        Choices, [](const auto &L, const auto &R) { return L.Gain > R.Gain; });
     SmallPtrSet<MachineBasicBlock *, 16> Used;
     SmallPtrSet<MachineBasicBlock *, 8> RewrittenDestinations;
     bool Changed = false;
     for (const Plan &Choice : Choices) {
       Group *G = Choice.Candidate;
       if (RewrittenDestinations.contains(G->Destination) ||
-          any_of(G->Inputs, [&](const Edge &E) { return Used.contains(E.From); }) ||
+          any_of(G->Inputs,
+                 [&](const Edge &E) { return Used.contains(E.From); }) ||
           (Choice.Where == Placement::Fallthrough &&
            !canPlaceBefore(*G->Destination, TII)))
         continue;
@@ -448,17 +452,21 @@ public:
       ORE.emit([&] {
         using NV = DiagnosticInfoOptimizationBase::Argument;
         return MachineOptimizationRemarkAnalysis(
-                   PassName, "SharedRestores", G->Inputs.front().Recipes.front().Instruction)
+                   PassName, "SharedRestores",
+                   G->Inputs.front().Recipes.front().Instruction)
                << NV("Function", F.getName()) << ", "
-               << (G->Inputs.size() == 1 ? (Transform ? "sank " : "can sink ")
-                                         : (Transform ? "shared " : "can share "))
-               << NV("Recipes", G->Inputs.front().Recipes.size()) << " restores on "
-               << NV("Edges", G->Inputs.size())
-               << (G->Inputs.size() == 1 ? " incoming edge, " : " incoming edges, ")
-               << (Choice.Where == Placement::Destination ? "in destination"
+               << (G->Inputs.size() == 1
+                       ? (Transform ? "sank " : "can sink ")
+                       : (Transform ? "shared " : "can share "))
+               << NV("Recipes", G->Inputs.front().Recipes.size())
+               << " restores on " << NV("Edges", G->Inputs.size())
+               << (G->Inputs.size() == 1 ? " incoming edge, "
+                                         : " incoming edges, ")
+               << (Choice.Where == Placement::Destination   ? "in destination"
                    : Choice.Where == Placement::Fallthrough ? "on fallthrough"
                                                             : "with extra jump")
-               << ", estimated gain " << NV("Gain", static_cast<float>(Choice.Gain));
+               << ", estimated gain "
+               << NV("Gain", static_cast<float>(Choice.Gain));
       });
       if (Transform) {
         MachineBasicBlock &InsertionAnchor =
@@ -473,9 +481,10 @@ public:
 
 template <bool Transform> char EdgeRestorePass<Transform>::ID = 0;
 
-RegisterPass<EdgeRestorePass<true>> Transform(
-    PassName, "RSSN machine edge restores", false, false);
-RegisterPass<EdgeRestorePass<false>> Report(
-    "rssn-edge-restore-report", "RSSN machine edge restore report", false, true);
+RegisterPass<EdgeRestorePass<true>>
+    Transform(PassName, "RSSN machine edge restores", false, false);
+RegisterPass<EdgeRestorePass<false>> Report("rssn-edge-restore-report",
+                                            "RSSN machine edge restore report",
+                                            false, true);
 
 } // namespace

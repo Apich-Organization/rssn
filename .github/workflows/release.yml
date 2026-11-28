@@ -111,7 +111,7 @@ jobs:
           python-version: '3.13'
           architecture: ${{ runner.arch == 'ARM64' && 'arm64' || 'x64' }}
       - name: Python wheel tooling
-        run: python -m pip install "setuptools>=77" wheel
+        run: python -m pip install "setuptools>=77" wheel clang-format==23.1.5
       - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
         with:
           bazelisk-cache: true

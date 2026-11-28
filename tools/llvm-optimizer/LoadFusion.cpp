@@ -96,7 +96,7 @@ bool fitsPressure(const Pack &Pack, BasicBlock &B, const Liveness &Live,
     return true;
   const Pressure Added = Live.weight(Pointer);
   SmallVector<const Instruction *, 16> Removed(Pack.Reads.begin(),
-                                                Pack.Reads.end());
+                                               Pack.Reads.end());
   append_range(Removed, drop_begin(Pack.Chain));
   for (unsigned K = LastPointer->second; K <= Insert; ++K) {
     Pressure New = P.Before[K];
@@ -125,24 +125,29 @@ bool profitable(const Pack &P, Type *Ty, const TargetTransformInfo &TTI) {
   if (!TTI.isTypeLegal(Ty) || TTI.getRegUsageForType(Ty) != 1)
     return false;
   const Align Alignment = P.Reads.front()->getAlign();
-  const auto WideRate = TTI.getMemoryOpCost(Instruction::Load, Ty, Alignment, 0);
-  const auto WideSize = TTI.getMemoryOpCost(
-      Instruction::Load, Ty, Alignment, 0, TargetTransformInfo::TCK_CodeSize);
+  const auto WideRate =
+      TTI.getMemoryOpCost(Instruction::Load, Ty, Alignment, 0);
+  const auto WideSize = TTI.getMemoryOpCost(Instruction::Load, Ty, Alignment, 0,
+                                            TargetTransformInfo::TCK_CodeSize);
   const auto WideLatency = TTI.getMemoryOpCost(
       Instruction::Load, Ty, Alignment, 0, TargetTransformInfo::TCK_Latency);
   InstructionCost NarrowRate, NarrowSize, AssemblyRate, AssemblyLatency;
   InstructionCost MaxLoadLatency;
   for (const LoadInst *L : P.Reads) {
-    NarrowRate += TTI.getInstructionCost(L, TargetTransformInfo::TCK_RecipThroughput);
+    NarrowRate +=
+        TTI.getInstructionCost(L, TargetTransformInfo::TCK_RecipThroughput);
     NarrowSize += TTI.getInstructionCost(L, TargetTransformInfo::TCK_CodeSize);
-    const auto Latency = TTI.getInstructionCost(L, TargetTransformInfo::TCK_Latency);
+    const auto Latency =
+        TTI.getInstructionCost(L, TargetTransformInfo::TCK_Latency);
     if (!Latency.isValid())
       return false;
     MaxLoadLatency = std::max(MaxLoadLatency, Latency);
   }
   for (const Instruction *I : P.Chain) {
-    AssemblyRate += TTI.getInstructionCost(I, TargetTransformInfo::TCK_RecipThroughput);
-    AssemblyLatency += TTI.getInstructionCost(I, TargetTransformInfo::TCK_Latency);
+    AssemblyRate +=
+        TTI.getInstructionCost(I, TargetTransformInfo::TCK_RecipThroughput);
+    AssemblyLatency +=
+        TTI.getInstructionCost(I, TargetTransformInfo::TCK_Latency);
   }
   const auto OldRate = NarrowRate + AssemblyRate;
   const auto OldPath = MaxLoadLatency + AssemblyLatency;
@@ -202,7 +207,7 @@ struct PackedOperation {
 };
 
 std::optional<PackedOperation> compatibleOperation(ArrayRef<Lane> Lanes,
-                                                    const BlockPressure &P) {
+                                                   const BlockPressure &P) {
   const Lane &First = *min_element(Lanes, [](const Lane &A, const Lane &B) {
     return A.UsePoint < B.UsePoint;
   });
@@ -227,13 +232,16 @@ std::optional<PackedOperation> compatibleOperation(ArrayRef<Lane> Lanes,
   return PackedOperation{Prototype, Common, Side};
 }
 
-InstructionCost packedOperationCost(const PackedOperation &Op, FixedVectorType *Ty,
+InstructionCost packedOperationCost(const PackedOperation &Op,
+                                    FixedVectorType *Ty,
                                     const TargetTransformInfo &TTI,
                                     TargetTransformInfo::TargetCostKind Kind) {
-  InstructionCost Cost = TTI.getArithmeticInstrCost(Op.First->getOpcode(), Ty, Kind);
+  InstructionCost Cost =
+      TTI.getArithmeticInstrCost(Op.First->getOpcode(), Ty, Kind);
   if (!isa<Constant>(Op.Common)) {
     Cost += TTI.getVectorInstrCost(Instruction::InsertElement, Ty, Kind, 0);
-    Cost += TTI.getShuffleCost(TargetTransformInfo::SK_Broadcast, Ty, Ty, {}, Kind);
+    Cost +=
+        TTI.getShuffleCost(TargetTransformInfo::SK_Broadcast, Ty, Ty, {}, Kind);
   }
   return Cost;
 }
@@ -242,8 +250,8 @@ InstructionCost packedOperationCost(const PackedOperation &Op, FixedVectorType *
 // projection briefly coexists with the carrier if some later lane still needs
 // it. At a call, independent scalar spill pairs are traded for one vector pair.
 int laneGain(ArrayRef<Lane> Lanes, FixedVectorType *Ty, unsigned Anchor,
-             const PackedOperation &Op, const BlockPressure &P, const Liveness &Live,
-             const TargetTransformInfo &TTI) {
+             const PackedOperation &Op, const BlockPressure &P,
+             const Liveness &Live, const TargetTransformInfo &TTI) {
   const Pressure Carrier = Live.typeWeight(Ty);
   if (Carrier.SIMD != 1 || !TTI.isTypeLegal(Ty))
     return 0;
@@ -290,7 +298,7 @@ int laneGain(ArrayRef<Lane> Lanes, FixedVectorType *Ty, unsigned Anchor,
     Gain += P.Before[K].congestion(Live.Limit) - New.congestion(Live.Limit);
     if (P.Calls.test(K))
       Gain += CallWeight * (P.Through[K].callCost(Liveness::CallLimit) -
-                           Through.callCost(Liveness::CallLimit));
+                            Through.callCost(Liveness::CallLimit));
 
     if (K == VectorUse && !isa<Constant>(Op.Common)) {
       // Account for the transient broadcast register before the vector op.
@@ -309,9 +317,11 @@ int laneGain(ArrayRef<Lane> Lanes, FixedVectorType *Ty, unsigned Anchor,
   const Align Alignment = Lanes.front().Read->getAlign();
   auto NewRate = TTI.getMemoryOpCost(Instruction::Load, Ty, Alignment, 0);
   auto NewSize = TTI.getMemoryOpCost(Instruction::Load, Ty, Alignment, 0,
-                                    TargetTransformInfo::TCK_CodeSize);
-  NewRate += packedOperationCost(Op, Ty, TTI, TargetTransformInfo::TCK_RecipThroughput);
-  NewSize += packedOperationCost(Op, Ty, TTI, TargetTransformInfo::TCK_CodeSize);
+                                     TargetTransformInfo::TCK_CodeSize);
+  NewRate += packedOperationCost(Op, Ty, TTI,
+                                 TargetTransformInfo::TCK_RecipThroughput);
+  NewSize +=
+      packedOperationCost(Op, Ty, TTI, TargetTransformInfo::TCK_CodeSize);
   const auto PackedLatency =
       packedOperationCost(Op, Ty, TTI, TargetTransformInfo::TCK_Latency);
   const auto ScalarLatency =
@@ -324,21 +334,25 @@ int laneGain(ArrayRef<Lane> Lanes, FixedVectorType *Ty, unsigned Anchor,
   int Scheduling = 2 * AddedLatency;
   for (auto [Index, L] : enumerate(Lanes)) {
     const unsigned LaneNo = Index;
-    OldRate += TTI.getInstructionCost(L.Read, TargetTransformInfo::TCK_RecipThroughput) +
-               TTI.getInstructionCost(L.Use, TargetTransformInfo::TCK_RecipThroughput);
-    OldSize += TTI.getInstructionCost(L.Read, TargetTransformInfo::TCK_CodeSize) +
-               TTI.getInstructionCost(L.Use, TargetTransformInfo::TCK_CodeSize);
+    OldRate +=
+        TTI.getInstructionCost(L.Read,
+                               TargetTransformInfo::TCK_RecipThroughput) +
+        TTI.getInstructionCost(L.Use, TargetTransformInfo::TCK_RecipThroughput);
+    OldSize +=
+        TTI.getInstructionCost(L.Read, TargetTransformInfo::TCK_CodeSize) +
+        TTI.getInstructionCost(L.Use, TargetTransformInfo::TCK_CodeSize);
     SmallVector<std::tuple<Value *, User *, int>, 4> Users;
     for (User *User : L.Use->users())
       Users.emplace_back(L.Use, User, LaneNo);
     NewRate += TTI.getVectorInstrCost(Instruction::ExtractElement, Ty,
                                       TargetTransformInfo::TCK_RecipThroughput,
                                       LaneNo, L.Use, Users);
-    NewSize += TTI.getVectorInstrCost(Instruction::ExtractElement, Ty,
-                                      TargetTransformInfo::TCK_CodeSize, LaneNo);
-    const auto Latency = TTI.getVectorInstrCost(Instruction::ExtractElement, Ty,
-                                                TargetTransformInfo::TCK_Latency,
-                                                LaneNo);
+    NewSize +=
+        TTI.getVectorInstrCost(Instruction::ExtractElement, Ty,
+                               TargetTransformInfo::TCK_CodeSize, LaneNo);
+    const auto Latency =
+        TTI.getVectorInstrCost(Instruction::ExtractElement, Ty,
+                               TargetTransformInfo::TCK_Latency, LaneNo);
     if (!Latency.isValid())
       return 0;
     Scheduling += 2 * std::clamp<int64_t>(Latency.getValue(), 0, 16);
@@ -349,14 +363,15 @@ int laneGain(ArrayRef<Lane> Lanes, FixedVectorType *Ty, unsigned Anchor,
     return 0;
   const auto RateDelta = NewRate - OldRate;
   const auto SizeDelta = NewSize - OldSize;
-  return Gain - Scheduling - 8 * RateDelta.getValue() - 2 * SizeDelta.getValue();
+  return Gain - Scheduling - 8 * RateDelta.getValue() -
+         2 * SizeDelta.getValue();
 }
 
 } // namespace
 
 bool tryFusePackedLoads(BasicBlock &B, Liveness &Live,
-                        const TargetTransformInfo &TTI,
-                        MemoryModel &Memory, Changes &Result) {
+                        const TargetTransformInfo &TTI, MemoryModel &Memory,
+                        Changes &Result) {
   SmallVector<Instruction *, 64> Code;
   DenseMap<const Instruction *, unsigned> Positions;
   for (Instruction &I : B) {
@@ -375,9 +390,8 @@ bool tryFusePackedLoads(BasicBlock &B, Liveness &Live,
         !Element->isIntegerTy(32) && !Element->isIntegerTy(64))
       continue;
     // A vector that is immediately scalarized offers no packed consumer.
-    if (all_of(Final->users(), [](const User *U) {
-          return isa<ExtractElementInst>(U);
-        }))
+    if (all_of(Final->users(),
+               [](const User *U) { return isa<ExtractElementInst>(U); }))
       continue;
 
     Pack P;
@@ -391,13 +405,15 @@ bool tryFusePackedLoads(BasicBlock &B, Liveness &Live,
       continue;
     }
 
-    if (any_of(P.Chain, [&](const Instruction *I) { return I->getParent() != &B; }) ||
-        any_of(P.Reads, [&](const LoadInst *L) {
-          return L->getParent() != &B || !L->hasOneUse() || !L->isSimple() ||
-                 L->getPointerAddressSpace() != 0 || !harmlessMetadata(*L) ||
-                 Positions.lookup(L) >= Point ||
-                 Point - Positions.lookup(L) > MaxPackWindow;
-        }) ||
+    if (any_of(P.Chain,
+               [&](const Instruction *I) { return I->getParent() != &B; }) ||
+        any_of(P.Reads,
+               [&](const LoadInst *L) {
+                 return L->getParent() != &B || !L->hasOneUse() ||
+                        !L->isSimple() || L->getPointerAddressSpace() != 0 ||
+                        !harmlessMetadata(*L) || Positions.lookup(L) >= Point ||
+                        Point - Positions.lookup(L) > MaxPackWindow;
+               }) ||
         !contiguous(P, Ty) || !profitable(P, Ty, TTI) ||
         !fitsPressure(P, B, Live, P.Reads.front()->getPointerOperand(), Point))
       continue;
@@ -409,7 +425,8 @@ bool tryFusePackedLoads(BasicBlock &B, Liveness &Live,
 
     // Put the wide load at the old packed value's definition. It has exactly
     // the same result live range, and all old lanes and partial packs die.
-    auto *Wide = buildWideLoad(P.Reads, Ty, *Final, Final->getName() + ".rssn.wide");
+    auto *Wide =
+        buildWideLoad(P.Reads, Ty, *Final, Final->getName() + ".rssn.wide");
     // Successors see a different SSA identity with the same type and
     // edge-level lifetime until liveness is rebuilt after this prepass.
     Live.rebind(*Final, *Wide);
@@ -427,8 +444,8 @@ bool tryFusePackedLoads(BasicBlock &B, Liveness &Live,
 }
 
 bool tryFuseLaneLoads(BasicBlock &B, Liveness &Live,
-                     const TargetTransformInfo &TTI, MemoryModel &Memory,
-                     Changes &Result) {
+                      const TargetTransformInfo &TTI, MemoryModel &Memory,
+                      Changes &Result) {
   if (!any_of(B, isCallPressurePoint))
     return false;
   BlockPressure P(B, Live);
@@ -446,7 +463,8 @@ bool tryFuseLaneLoads(BasicBlock &B, Liveness &Live,
     const unsigned Start = Call > MaxPackWindow ? Call - MaxPackWindow : 0;
     for (unsigned K = Start; K < Call; ++K) {
       auto *L = dyn_cast<LoadInst>(P.Code[K]);
-      if (!L || !L->hasOneUse() || !simpleLoad(*L, Live) || !harmlessMetadata(*L))
+      if (!L || !L->hasOneUse() || !simpleLoad(*L, Live) ||
+          !harmlessMetadata(*L))
         continue;
       Type *Scalar = L->getType();
       if (!Scalar->isDoubleTy() && !Scalar->isFloatTy())
@@ -473,7 +491,8 @@ bool tryFuseLaneLoads(BasicBlock &B, Liveness &Live,
       unsigned Anchor = First.DefPoint;
       for (unsigned K = 1; K < Count; ++K) {
         int64_t Offset;
-        if (AddOverflow(Key.first.second, static_cast<int64_t>(K * Stride), Offset))
+        if (AddOverflow(Key.first.second, static_cast<int64_t>(K * Stride),
+                        Offset))
           break;
         const auto It = ByAddress.find({{Key.first.first, Offset}, Scalar});
         if (It == ByAddress.end())
@@ -517,15 +536,17 @@ bool tryFuseLaneLoads(BasicBlock &B, Liveness &Live,
   SmallVector<LoadInst *, 4> Reads;
   for (const Lane &L : Best)
     Reads.push_back(L.Read);
-  auto *Wide = buildWideLoad(Reads, BestType, *P.Code[BestAnchor], "rssn.carrier");
+  auto *Wide =
+      buildWideLoad(Reads, BestType, *P.Code[BestAnchor], "rssn.carrier");
   IRBuilder<> Packed(BestOp->First);
   Packed.setFastMathFlags(BestOp->First->getFastMathFlags());
-  Value *Common = Packed.CreateVectorSplat(Best.size(), BestOp->Common, "rssn.splat");
+  Value *Common =
+      Packed.CreateVectorSplat(Best.size(), BestOp->Common, "rssn.splat");
   Value *Left = BestOp->Side ? Common : Wide;
   Value *Right = BestOp->Side ? Wide : Common;
   Value *Vector = Packed.CreateBinOp(
-      static_cast<Instruction::BinaryOps>(BestOp->First->getOpcode()),
-      Left, Right, "rssn.packed");
+      static_cast<Instruction::BinaryOps>(BestOp->First->getOpcode()), Left,
+      Right, "rssn.packed");
 
   for (auto [I, L] : enumerate(Best)) {
     IRBuilder<> Builder(L.Use);

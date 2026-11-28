@@ -18,10 +18,12 @@ class LibmPressurePass : public llvm::PassInfoMixin<LibmPressurePass> {
   std::string Filter;
 
 public:
-  LibmPressurePass(bool Transform, llvm::StringRef Filter, bool TrialCones = false)
+  LibmPressurePass(bool Transform, llvm::StringRef Filter,
+                   bool TrialCones = false)
       : Transform(Transform), TrialCones(TrialCones), Filter(Filter.str()) {}
 
-  llvm::PreservedAnalyses run(llvm::Function &F, llvm::FunctionAnalysisManager &AM);
+  llvm::PreservedAnalyses run(llvm::Function &F,
+                              llvm::FunctionAnalysisManager &AM);
 };
 
 } // namespace rssn

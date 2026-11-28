@@ -70,13 +70,15 @@ bool signatureAttrs(AttributeSet Attrs, unsigned I, Type *Return) {
         Attribute::Returned, Attribute::ImmArg})
     if (Attrs.hasAttribute(K))
       return false;
-  return !Attrs.hasAttribute(Attribute::StructRet) || (I == 0 && Return->isVoidTy());
+  return !Attrs.hasAttribute(Attribute::StructRet) ||
+         (I == 0 && Return->isVoidTy());
 }
 
 Layout layout(const Function &F) {
   Layout L;
   if (F.isVarArg() || F.hasFnAttribute(Attribute::AllocSize) ||
-      (!F.getReturnType()->isVoidTy() && bank(F.getReturnType()) == Bank::Unknown))
+      (!F.getReturnType()->isVoidTy() &&
+       bank(F.getReturnType()) == Bank::Unknown))
     L.Supported = false;
   for (const Argument &A : F.args()) {
     if (!signatureAttrs(F.getAttributes().getParamAttrs(A.getArgNo()),
@@ -134,7 +136,8 @@ bool ordinaryLeaf(const Function &F) {
         if (isa<DbgInfoIntrinsic>(II) || II->isLifetimeStartOrEnd() ||
             ID == Intrinsic::assume ||
             ((ID == Intrinsic::fshl || ID == Intrinsic::fshr) &&
-             (II->getType()->isIntegerTy(32) || II->getType()->isIntegerTy(64))))
+             (II->getType()->isIntegerTy(32) ||
+              II->getType()->isIntegerTy(64))))
           continue;
         return false;
       }
@@ -156,7 +159,8 @@ bool likelySiblingCall(const CallInst &C) {
 
 bool collectSites(Function &F, SmallVectorImpl<CallInst *> &Sites,
                   ArrayRef<StringRef> Assembly) {
-  if (any_of(Assembly, [&](StringRef Asm) { return Asm.contains(F.getName()); }))
+  if (any_of(Assembly,
+             [&](StringRef Asm) { return Asm.contains(F.getName()); }))
     return false;
   for (Use &U : F.uses()) {
     auto *C = dyn_cast<CallInst>(U.getUser());
@@ -164,9 +168,9 @@ bool collectSites(Function &F, SmallVectorImpl<CallInst *> &Sites,
         C->getCallingConv() != F.getCallingConv() || C->isMustTailCall() ||
         likelySiblingCall(*C) || !C->doesNotThrow() || C->hasOperandBundles() ||
         C->isConvergent() || C->hasFnAttr(Attribute::AllocSize) ||
-        C->hasFnAttr(Attribute::ReturnsTwice) || C->getFunction()->hasOptNone() ||
-        C->getFunction()->hasOptSize() || C->getFunction()->hasMinSize() ||
-        !canUseSSE(*C->getFunction()))
+        C->hasFnAttr(Attribute::ReturnsTwice) ||
+        C->getFunction()->hasOptNone() || C->getFunction()->hasOptSize() ||
+        C->getFunction()->hasMinSize() || !canUseSSE(*C->getFunction()))
       return false;
     for (unsigned I = 0; I < C->arg_size(); ++I) {
       const auto Attrs = C->getAttributes().getParamAttrs(I);
@@ -240,8 +244,8 @@ void reportIndirectScalarFields(Function &F, FunctionAnalysisManager &FAM,
     return;
   BitVector Sources(F.arg_size());
   for (const Argument &A : F.args()) {
-    if (!A.getType()->isPointerTy() || A.getType()->getPointerAddressSpace() != 0 ||
-        !A.onlyReadsMemory())
+    if (!A.getType()->isPointerTy() ||
+        A.getType()->getPointerAddressSpace() != 0 || !A.onlyReadsMemory())
       continue;
     auto Attrs = F.getAttributes().getParamAttrs(A.getArgNo());
     if (capturesNothing(Attrs.getCaptureInfo()))
@@ -261,14 +265,17 @@ void reportIndirectScalarFields(Function &F, FunctionAnalysisManager &FAM,
     for (Instruction &I : B) {
       const auto *Read = dyn_cast<LoadInst>(&I);
       if (!Read || !Read->isSimple() || Read->use_empty() ||
-          Read->getType()->isPointerTy() || bank(Read->getType()) == Bank::Unknown)
+          Read->getType()->isPointerTy() ||
+          bank(Read->getType()) == Bank::Unknown)
         continue;
       const auto *Pointer = dyn_cast<LoadInst>(Read->getPointerOperand());
-      if (!Pointer || !Pointer->isSimple() || Pointer->getType()->getPointerAddressSpace() != 0)
+      if (!Pointer || !Pointer->isSimple() ||
+          Pointer->getType()->getPointerAddressSpace() != 0)
         continue;
       int64_t Offset;
-      const auto *A = dyn_cast<Argument>(GetPointerBaseWithConstantOffset(
-          Pointer->getPointerOperand(), Offset, DL, /*AllowNonInbounds=*/false));
+      const auto *A = dyn_cast<Argument>(
+          GetPointerBaseWithConstantOffset(Pointer->getPointerOperand(), Offset,
+                                           DL, /*AllowNonInbounds=*/false));
       if (!A || !Sources.test(A->getArgNo()))
         continue;
       Fields.insert({A->getArgNo(), Offset});
@@ -284,13 +291,16 @@ void reportIndirectScalarFields(Function &F, FunctionAnalysisManager &FAM,
   double Hot = 0;
   for (const Use &U : F.uses()) {
     auto *Call = dyn_cast<CallInst>(U.getUser());
-    if (!Call || !Call->isCallee(&U) || Call->getFunctionType() != F.getFunctionType())
+    if (!Call || !Call->isCallee(&U) ||
+        Call->getFunctionType() != F.getFunctionType())
       continue;
     ++Sites;
     Hot = std::max(Hot, Costs.tripsPerEntry(*Call));
     for (unsigned Arg : Used.set_bits()) {
-      const auto *Root = dyn_cast<AllocaInst>(getUnderlyingObject(Call->getArgOperand(Arg)));
-      if (Root && Root->isStaticAlloca() && Root->getFunction() == Call->getFunction()) {
+      const auto *Root =
+          dyn_cast<AllocaInst>(getUnderlyingObject(Call->getArgOperand(Arg)));
+      if (Root && Root->isStaticAlloca() &&
+          Root->getFunction() == Call->getFunction()) {
         ++CallerStack;
         break;
       }
@@ -303,9 +313,10 @@ void reportIndirectScalarFields(Function &F, FunctionAnalysisManager &FAM,
     using NV = ore::NV;
     return OptimizationRemarkAnalysis(RemarkName, "IndirectScalarFields", &F)
            << NV("Function", F.getName()) << " indirect scalar fields "
-           << NV("Fields", Fields.size()) << ", scalar loads " << NV("Loads", Reads)
-           << ", direct sites " << NV("Sites", Sites) << ", caller stack environments "
-           << NV("StackSites", CallerStack) << ", peak site frequency per caller entry "
+           << NV("Fields", Fields.size()) << ", scalar loads "
+           << NV("Loads", Reads) << ", direct sites " << NV("Sites", Sites)
+           << ", caller stack environments " << NV("StackSites", CallerStack)
+           << ", peak site frequency per caller entry "
            << NV("PeakFrequency", static_cast<float>(Hot));
   });
 }
@@ -381,8 +392,8 @@ struct Traffic {
 
 std::optional<Traffic> estimate(const Layout &L, unsigned RequiredReads,
                                 ArrayRef<CallInst *> Sites, Model &M) {
-  const int Registers = std::max(0, static_cast<int>(L.GP) -
-                                     static_cast<int>(RegCallVolatileGP));
+  const int Registers =
+      std::max(0, static_cast<int>(L.GP) - static_cast<int>(RegCallVolatileGP));
   Traffic T{Registers};
   DenseMap<const Function *, double> Gains;
   for (CallInst *C : Sites) {
@@ -390,11 +401,11 @@ std::optional<Traffic> estimate(const Layout &L, unsigned RequiredReads,
     if (!Live)
       return std::nullopt;
     T.MaxLiveGP = std::max(T.MaxLiveGP, Live->GP);
-    const int Lost = std::clamp(
-        Live->GP - (PreservedGPBudget - Registers), 0, Registers);
-    const int PerCall =
-        StackArgumentAccess * (static_cast<int>(L.UsedStackGP + RequiredReads)) -
-        CrossCallSpillPair * Lost - forwardedShuffleCost(*C);
+    const int Lost =
+        std::clamp(Live->GP - (PreservedGPBudget - Registers), 0, Registers);
+    const int PerCall = StackArgumentAccess *
+                            (static_cast<int>(L.UsedStackGP + RequiredReads)) -
+                        CrossCallSpillPair * Lost - forwardedShuffleCost(*C);
     const double Weight = M.tripsPerEntry(*C);
     T.WorstSite = std::min(T.WorstSite, PerCall);
     Gains[C->getFunction()] += Weight * PerCall;
@@ -435,14 +446,15 @@ PreservedAnalyses CallABIPass::run(Module &M, ModuleAnalysisManager &AM) {
   unsigned Applied = 0;
   for (Function &F : M) {
     if (!F.getName().contains(Filter) || F.isDeclaration() ||
-        !F.hasLocalLinkage() || F.hasComdat() || !originalConvention(F.getCallingConv()) ||
-        F.arg_size() <= SysVGP || F.hasOptNone() || F.hasOptSize() || F.hasMinSize() ||
-        F.hasGC() || F.hasFnAttribute(Attribute::Naked) ||
+        !F.hasLocalLinkage() || F.hasComdat() ||
+        !originalConvention(F.getCallingConv()) || F.arg_size() <= SysVGP ||
+        F.hasOptNone() || F.hasOptSize() || F.hasMinSize() || F.hasGC() ||
+        F.hasFnAttribute(Attribute::Naked) ||
         F.hasFnAttribute(Attribute::ReturnsTwice))
       continue;
     const Layout L = layout(F);
-    if (!L.Supported || L.GP <= SysVGP || L.GP > RegCallGP ||
-        L.SSE > 8 || !L.UsedStackGP || !canUseSSE(F))
+    if (!L.Supported || L.GP <= SysVGP || L.GP > RegCallGP || L.SSE > 8 ||
+        !L.UsedStackGP || !canUseSSE(F))
       continue;
 
     const char *Reason = "eligible";
@@ -456,7 +468,8 @@ PreservedAnalyses CallABIPass::run(Module &M, ModuleAnalysisManager &AM) {
     } else if (!Costs.simdHeadroom(F)) {
       Reason = "SIMD save risk or unmodeled callee";
     } else {
-      RequiredReads = requiredStackReads(F, FAM.getResult<DominatorTreeAnalysis>(F));
+      RequiredReads =
+          requiredStackReads(F, FAM.getResult<DominatorTreeAnalysis>(F));
       Traffic = estimate(L, RequiredReads, Sites, Costs);
       if (!Traffic)
         Reason = "caller liveness unavailable";
@@ -483,10 +496,13 @@ PreservedAnalyses CallABIPass::run(Module &M, ModuleAnalysisManager &AM) {
              << NV("Sites", Sites.size()) << ", result " << NV("Result", Reason)
              << ", estimated extra CSR "
              << NV("ExtraCSR", Traffic ? Traffic->ExtraCSR : 0)
-             << ", max live GP " << NV("LiveGP", Traffic ? Traffic->MaxLiveGP : 0)
-             << ", worst direct site " << NV("WorstSite", Traffic ? Traffic->WorstSite : 0)
+             << ", max live GP "
+             << NV("LiveGP", Traffic ? Traffic->MaxLiveGP : 0)
+             << ", worst direct site "
+             << NV("WorstSite", Traffic ? Traffic->WorstSite : 0)
              << ", min caller score "
-             << NV("Score", Traffic ? static_cast<float>(Traffic->MinGain) : 0.0f);
+             << NV("Score",
+                   Traffic ? static_cast<float>(Traffic->MinGain) : 0.0f);
     });
   }
   return Applied ? PreservedAnalyses::none() : PreservedAnalyses::all();

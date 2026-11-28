@@ -31,7 +31,8 @@ bool exactFP(const Instruction &I) {
          !I.getMetadata(LLVMContext::MD_nofpclass);
 }
 
-Value *compareAgainst(Value *V, FCmpInst::Predicate Pred, const APFloat &Bound) {
+Value *compareAgainst(Value *V, FCmpInst::Predicate Pred,
+                      const APFloat &Bound) {
   const auto *Cmp = dyn_cast<FCmpInst>(V);
   if (!Cmp || !exactFP(*Cmp))
     return nullptr;
@@ -49,7 +50,8 @@ Value *compareAgainst(Value *V, FCmpInst::Predicate Pred, const APFloat &Bound) 
 Value *finiteInput(Value *V) {
   if (auto *Class = dyn_cast<IntrinsicInst>(V);
       Class && Class->getIntrinsicID() == Intrinsic::is_fpclass)
-    return cast<ConstantInt>(Class->getArgOperand(1))->getZExtValue() == fcFinite
+    return cast<ConstantInt>(Class->getArgOperand(1))->getZExtValue() ==
+                   fcFinite
                ? Class->getArgOperand(0)
                : nullptr;
   const APFloat Infinity = APFloat::getInf(APFloat::IEEEdouble());
@@ -63,7 +65,7 @@ Value *finiteInput(Value *V) {
 }
 
 std::optional<Test> findTest(Value *V, unsigned Opcode,
-                              function_ref<Value *(Value *)> Decode) {
+                             function_ref<Value *(Value *)> Decode) {
   auto *Bin = dyn_cast<BinaryOperator>(V);
   if (!Bin || Bin->getOpcode() != Opcode)
     return std::nullopt;
@@ -155,13 +157,15 @@ std::optional<Plan> planGuards(CondBrInst &First, const Loop &L) {
   }
   auto *Scale = dyn_cast<BinaryOperator>(Near);
   ConstantFP *Factor = nullptr;
-  auto *Bound = Subtract ? dyn_cast<ConstantFP>(Subtract->getOperand(0)) : nullptr;
+  auto *Bound =
+      Subtract ? dyn_cast<ConstantFP>(Subtract->getOperand(0)) : nullptr;
   if (!Subtract || Subtract->getOpcode() != Instruction::FSub ||
-      Subtract->getOperand(1) != Near || !exactFP(*Subtract) ||
-      !Scale || !exactFP(*Scale) ||
+      Subtract->getOperand(1) != Near || !exactFP(*Subtract) || !Scale ||
+      !exactFP(*Scale) ||
       !match(Scale, m_c_FMul(m_Specific(Distance), m_ConstantFP(Factor))) ||
       !positiveFinite(Factor) || !positiveFinite(Bound) ||
-      compareAgainst(IsZero->Other, FCmpInst::FCMP_OGE, Bound->getValueAPF()) != Node)
+      compareAgainst(IsZero->Other, FCmpInst::FCMP_OGE, Bound->getValueAPF()) !=
+          Node)
     return std::nullopt;
 
   return Plan{&First, Last, Node, Finite->Input, IsZero->Other, Positive, {}};
@@ -177,7 +181,8 @@ void planExpSink(Plan &P, const DominatorTree &DT) {
   auto *Add = Ratio ? dyn_cast<BinaryOperator>(Ratio->getOperand(1)) : nullptr;
   if (!Ratio || Ratio->getOpcode() != Instruction::FDiv ||
       !isa<ConstantFP>(Ratio->getOperand(0)) || !Add || !Add->hasOneUse() ||
-      !match(Add, m_c_FAdd(m_Intrinsic<Intrinsic::exp>(m_Value()), m_ConstantFP())))
+      !match(Add,
+             m_c_FAdd(m_Intrinsic<Intrinsic::exp>(m_Value()), m_ConstantFP())))
     return;
   auto *Exp = dyn_cast<IntrinsicInst>(Add->getOperand(0));
   if (!Exp)
@@ -205,15 +210,16 @@ void apply(const Plan &P) {
   IRBuilder<> Direction(P.Node);
   // A previously skipped node can now reach this select. Both endpoint
   // choices fail for a nonpositive distance, even when the selector is poison.
-  P.Node->setCondition(Direction.CreateFreeze(P.Node->getCondition(),
-                                               "endpoint.direction"));
+  P.Node->setCondition(
+      Direction.CreateFreeze(P.Node->getCondition(), "endpoint.direction"));
   auto *OldFirst = cast<Instruction>(P.First->getCondition());
   auto *OldLast = cast<Instruction>(P.Last->getCondition());
   P.First->setCondition(Valid);
   P.Last->setCondition(P.UpperBoundTest);
   // The conditions and the populations reaching each test have changed.
   P.First->setMetadata(LLVMContext::MD_prof, nullptr);
-  P.First->getSuccessor(0)->getTerminator()->setMetadata(LLVMContext::MD_prof, nullptr);
+  P.First->getSuccessor(0)->getTerminator()->setMetadata(LLVMContext::MD_prof,
+                                                         nullptr);
   P.Last->setMetadata(LLVMContext::MD_prof, nullptr);
   RecursivelyDeleteTriviallyDeadInstructions(OldFirst);
   RecursivelyDeleteTriviallyDeadInstructions(OldLast);
@@ -227,9 +233,10 @@ void apply(const Plan &P) {
 } // namespace
 
 PreservedAnalyses FPEndpointGuardsPass::run(Function &F,
-                                           FunctionAnalysisManager &AM) {
+                                            FunctionAnalysisManager &AM) {
   if (!F.getName().contains(Filter) || F.isDeclaration() || F.hasOptNone() ||
-      F.hasOptSize() || F.hasMinSize() || F.hasFnAttribute(Attribute::StrictFP) ||
+      F.hasOptSize() || F.hasMinSize() ||
+      F.hasFnAttribute(Attribute::StrictFP) ||
       F.getDenormalMode(APFloat::IEEEdouble()) != DenormalMode::getIEEE() ||
       F.size() > 1024 || F.getInstructionCount() > 24000)
     return PreservedAnalyses::all();

@@ -79,11 +79,11 @@ bool reachesLibm(const Instruction &Start) {
 
 bool stackArgument(const Argument &A) {
   const Function &F = *A.getParent();
-  if (A.getArgNo() < 4 ||
-      F.getCallingConv() != CallingConv::C ||
+  if (A.getArgNo() < 4 || F.getCallingConv() != CallingConv::C ||
       (!F.getReturnType()->isVoidTy() && !F.getReturnType()->isDoubleTy()))
     return false;
-  return win64ScalarStackSlots(*F.getFunctionType(), F.getAttributes()).has_value();
+  return win64ScalarStackSlots(*F.getFunctionType(), F.getAttributes())
+      .has_value();
 }
 
 Instruction *placement(Value &V, ArrayRef<Instruction *> Users,
@@ -125,8 +125,8 @@ std::optional<Plan> plan(Value &V, const DominatorTree &DT, const LoopInfo &LI,
   const auto *A = dyn_cast<Argument>(&V);
   const auto *Def = dyn_cast<Instruction>(&V);
   constexpr unsigned ComputedOps[] = {Instruction::FAdd, Instruction::FSub,
-                                       Instruction::FMul, Instruction::FDiv,
-                                       Instruction::FNeg};
+                                      Instruction::FMul, Instruction::FDiv,
+                                      Instruction::FNeg};
   if (A ? !stackArgument(*A)
         : !Def || !is_contained(ComputedOps, Def->getOpcode()))
     return std::nullopt;
@@ -147,7 +147,11 @@ std::optional<Plan> plan(Value &V, const DominatorTree &DT, const LoopInfo &LI,
   const auto &Home = Blocks.find(Insert->getParent())->second;
   // One setup transfer (or an integer load of an incoming stack argument)
   // and one save/restore at entry and exit if a new GPR is used.
-  Plan P{&V, Insert, Home.Frequency + 2.0, {}, BitVector(NumPoints),
+  Plan P{&V,
+         Insert,
+         Home.Frequency + 2.0,
+         {},
+         BitVector(NumPoints),
          BitVector(NumPoints)};
   SmallPtrSet<const BasicBlock *, 4> Hot;
   constexpr unsigned NoCut = std::numeric_limits<unsigned>::max();
@@ -178,7 +182,8 @@ std::optional<Plan> plan(Value &V, const DominatorTree &DT, const LoopInfo &LI,
     if (!DT.dominates(Insert->getParent(), B))
       continue;
     const auto &BP = Info.P;
-    const unsigned Start = B == Insert->getParent() ? BP.Positions.lookup(Insert) : 0;
+    const unsigned Start =
+        B == Insert->getParent() ? BP.Positions.lookup(Insert) : 0;
     for (unsigned I = Start, End = BP.Code.size(); I != End; ++I) {
       if (BP.isLiveBefore(&V, I))
         P.AsInteger.set(Info.Offset + I);
@@ -203,7 +208,8 @@ double evaluate(const Plan &P, ArrayRef<Pressure> Before,
   for (const Site &S : P.Sites) {
     Score -= S.Frequency; // VMOVQ at each rewritten consumer.
     if (S.Cut < Across.size() && P.AcrossCall.test(S.Cut) &&
-        Across[S.Cut].PreservableSIMD - static_cast<int>(Moved[S.Cut]) > PreservedXMM)
+        Across[S.Cut].PreservableSIMD - static_cast<int>(Moved[S.Cut]) >
+            PreservedXMM)
       // The estimate distinguishes a reload into a libm argument register
       // from a source that may fold into an ordinary FP operation.
       Score += S.Frequency * (isScalarLibmCut(*S.Consumer) ? 3 : 2);
@@ -217,7 +223,8 @@ void moveToIntegerBank(const Plan &P) {
   if (!isGuaranteedNotToBeUndefOrPoison(Scalar))
     Scalar = Entry.CreateFreeze(Scalar, "fp.bank.defined");
   Value *Bits = Entry.CreateBitCast(Scalar, Entry.getInt64Ty(), "fp.bank.bits");
-  auto *FT = FunctionType::get(Entry.getDoubleTy(), {Entry.getInt64Ty()}, false);
+  auto *FT =
+      FunctionType::get(Entry.getDoubleTy(), {Entry.getInt64Ty()}, false);
   // A bare round-trip bitcast is eliminated before register allocation.
   // This input constraint preserves the integer interval up to its consumer.
   InlineAsm *Restore = InlineAsm::get(FT, "vmovq $1, $0", "=x,r", false);
@@ -233,11 +240,13 @@ void moveToIntegerBank(const Plan &P) {
 
 } // namespace
 
-PreservedAnalyses FPRegisterBankPass::run(Function &F, FunctionAnalysisManager &AM) {
+PreservedAnalyses FPRegisterBankPass::run(Function &F,
+                                          FunctionAnalysisManager &AM) {
   const Triple &T = F.getParent()->getTargetTriple();
   if (T.getArch() != Triple::x86_64 || !T.isWindowsMSVCEnvironment() ||
       !F.getName().contains(Filter) || F.isDeclaration() || F.hasOptNone() ||
-      F.hasOptSize() || F.hasMinSize() || F.hasFnAttribute(Attribute::StrictFP) ||
+      F.hasOptSize() || F.hasMinSize() ||
+      F.hasFnAttribute(Attribute::StrictFP) ||
       F.hasFnAttribute(Attribute::NoImplicitFloat) || !Liveness::supports(F))
     return PreservedAnalyses::all();
   const auto &TTI = AM.getResult<TargetIRAnalysis>(F);
@@ -245,9 +254,12 @@ PreservedAnalyses FPRegisterBankPass::run(Function &F, FunctionAnalysisManager &
           .getKnownMinValue() < 256)
     return PreservedAnalyses::all();
   const auto &LI = AM.getResult<LoopAnalysis>(F);
-  if (LI.empty() || llvm::count_if(F, [&](const BasicBlock &B) {
-        return LI.getLoopFor(&B) && any_of(B, isScalarLibmCut);
-      }) < 2 || any_of(F, [](const BasicBlock &B) {
+  if (LI.empty() ||
+      llvm::count_if(F,
+                     [&](const BasicBlock &B) {
+                       return LI.getLoopFor(&B) && any_of(B, isScalarLibmCut);
+                     }) < 2 ||
+      any_of(F, [](const BasicBlock &B) {
         return B.isEHPad() || !all_of(B, supportedCut);
       }))
     return PreservedAnalyses::all();
@@ -260,10 +272,13 @@ PreservedAnalyses FPRegisterBankPass::run(Function &F, FunctionAnalysisManager &
   const auto &BFI = AM.getResult<BlockFrequencyAnalysis>(F);
   const double Entry = std::max<uint64_t>(1, BFI.getEntryFreq().getFrequency());
   for (BasicBlock &B : F) {
-    auto &Info = Blocks.try_emplace(
-        &B, Block{BlockPressure(B, Live, /*IncludeScalarLibm=*/true),
-                  static_cast<unsigned>(Before.size()),
-                  BFI.getBlockFreq(&B).getFrequency() / Entry}).first->second;
+    auto &Info =
+        Blocks
+            .try_emplace(
+                &B, Block{BlockPressure(B, Live, /*IncludeScalarLibm=*/true),
+                          static_cast<unsigned>(Before.size()),
+                          BFI.getBlockFreq(&B).getFrequency() / Entry})
+            .first->second;
     append_range(Before, Info.P.Before);
     append_range(Across, Info.P.Through);
   }
@@ -293,7 +308,8 @@ PreservedAnalyses FPRegisterBankPass::run(Function &F, FunctionAnalysisManager &
     for (auto [Index, P] : enumerate(Plans)) {
       if (is_contained(Chosen, Index))
         continue;
-      const double Score = evaluate(P, Before, Across, GP, Moved, Live.Limit.GP);
+      const double Score =
+          evaluate(P, Before, Across, GP, Moved, Live.Limit.GP);
       if (Score > BestScore) {
         BestScore = Score;
         Best = Index;
@@ -312,9 +328,11 @@ PreservedAnalyses FPRegisterBankPass::run(Function &F, FunctionAnalysisManager &
       return OptimizationRemarkAnalysis(PassName, "FPRegisterBank", P.Insert)
              << NV("Function", F.getName()) << " "
              << NV("Action", Transform ? "carried" : "can carry") << " one "
-             << NV("Source", isa<Argument>(P.Scalar) ? "stack argument" : "FP temporary")
+             << NV("Source",
+                   isa<Argument>(P.Scalar) ? "stack argument" : "FP temporary")
              << " in the GPR bank across " << NV("Calls", P.AcrossCall.count())
-             << " calls, restoring it at " << NV("Uses", P.Sites.size()) << " uses";
+             << " calls, restoring it at " << NV("Uses", P.Sites.size())
+             << " uses";
     });
   }
   if (!Transform || Chosen.empty())

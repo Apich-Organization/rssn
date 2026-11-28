@@ -59,13 +59,13 @@ int callCost(const Pressure &Need, CallPressureABI ABI) {
 }
 
 bool isPlacementCandidate(Instruction &I, const DominatorTree &DT,
-                           AssumptionCache &AC) {
+                          AssumptionCache &AC) {
   if (I.use_empty() || I.hasNUsesOrMore(MaxUses))
     return false;
   constexpr unsigned IntegerOps[] = {
-      Instruction::Add, Instruction::Sub, Instruction::Mul, Instruction::And,
-      Instruction::Or,  Instruction::Xor, Instruction::Shl, Instruction::LShr,
-      Instruction::AShr};
+      Instruction::Add, Instruction::Sub,  Instruction::Mul,
+      Instruction::And, Instruction::Or,   Instruction::Xor,
+      Instruction::Shl, Instruction::LShr, Instruction::AShr};
   if (!isa<ICmpInst, GetElementPtrInst, BitCastInst, ZExtInst, SExtInst,
            TruncInst, ShuffleVectorInst, InsertElementInst>(I) &&
       !(I.getType()->isIntOrIntVectorTy() &&
@@ -151,7 +151,8 @@ Placements requiredMoves(const PlacementPlan &Plan, const DominatorTree &DT) {
   for (const auto &[I, Dest] : Plan.Moves) {
     // A modeled comparison can stay in place if the actual move of an
     // operand will still dominate it. Keep it in a joint move otherwise.
-    if (Plan.BackendCompares.contains(I) && none_of(I->operand_values(), [&](Value *V) {
+    if (Plan.BackendCompares.contains(I) &&
+        none_of(I->operand_values(), [&](Value *V) {
           const auto *NewDef = Plan.Moves.lookup(dyn_cast<Instruction>(V));
           return NewDef && !DT.dominates(NewDef, I->getParent());
         }))
@@ -182,10 +183,9 @@ BlockSchedules buildSchedules(const Placements &Planned) {
 }
 
 double preservationPressure(Function &F, const Liveness &Live,
-                             const BlockFrequencyInfo &BFI,
-                             const DominatorTree &DT,
-                             const BlockSchedules &Blocks,
-                             CallPressureABI ABI) {
+                            const BlockFrequencyInfo &BFI,
+                            const DominatorTree &DT,
+                            const BlockSchedules &Blocks, CallPressureABI ABI) {
   const double Entry = std::max<uint64_t>(1, BFI.getEntryFreq().getFrequency());
   double Cost = 0;
   for (BasicBlock &B : F) {
@@ -208,8 +208,9 @@ double preservationPressure(Function &F, const Liveness &Live,
 PreservedAnalyses LoopPreheaderPressurePass::run(Function &F,
                                                  FunctionAnalysisManager &AM) {
   const auto ABI = preheaderABI(*F.getParent());
-  if (!ABI || !F.getName().contains(Filter) || F.isDeclaration() || F.hasOptNone() ||
-      F.hasOptSize() || F.hasMinSize() || F.hasGC() || !Liveness::supports(F))
+  if (!ABI || !F.getName().contains(Filter) || F.isDeclaration() ||
+      F.hasOptNone() || F.hasOptSize() || F.hasMinSize() || F.hasGC() ||
+      !Liveness::supports(F))
     return PreservedAnalyses::all();
   const auto &LI = AM.getResult<LoopAnalysis>(F);
   if (LI.empty())
@@ -253,7 +254,9 @@ PreservedAnalyses LoopPreheaderPressurePass::run(Function &F,
            << NV("Placements", Moves.size()) << ", estimated call pressure "
            << NV("Before", static_cast<float>(*Original)) << " -> "
            << NV("After", static_cast<float>(*New)) << ", "
-           << (Apply ? "applied" : Eligible ? "eligible" : "rejected")
+           << (Apply      ? "applied"
+               : Eligible ? "eligible"
+                          : "rejected")
            << ", backend-local branch comparisons "
            << NV("BackendCompares", Plan.BackendCompares.size());
   });

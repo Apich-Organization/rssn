@@ -77,8 +77,8 @@ std::optional<Plan> buildPlan(Instruction &Root, BasicBlock &Preheader,
     return std::nullopt;
   Plan P;
   Inputs Leaves;
-  if (!collect(Root, *Root.getParent(), P.Ops, Leaves) ||
-      P.Ops.size() < 2 || Leaves.size() < 2)
+  if (!collect(Root, *Root.getParent(), P.Ops, Leaves) || P.Ops.size() < 2 ||
+      Leaves.size() < 2)
     return std::nullopt;
 
   for (Instruction *I : ArrayRef(P.Ops).drop_back())
@@ -154,7 +154,8 @@ bool evaluate(Plan &P, Function &F, const Baseline &Before,
       Code = Late;
     BlockPressure Pk(B, Live, /*IncludeScalarLibm=*/true, Code);
     if (&B == &Dest && any_of(Pk.Before, [&](Pressure Point) {
-          return Point.SIMD > std::max(Before.PeakSIMD.lookup(&B), Live.Limit.SIMD);
+          return Point.SIMD >
+                 std::max(Before.PeakSIMD.lookup(&B), Live.Limit.SIMD);
         }))
       return false;
     const double Frequency = BFI.getBlockFreq(&B).getFrequency();
@@ -162,7 +163,8 @@ bool evaluate(Plan &P, Function &F, const Baseline &Before,
       const Instruction &Call = *Pk.Code[Site];
       const Pressure Old = Before.AtCall.lookup(&Call);
       const Pressure New = Pk.Through[Site];
-      const int Saved = spillCost(Call, Old, Win64) - spillCost(Call, New, Win64);
+      const int Saved =
+          spillCost(Call, Old, Win64) - spillCost(Call, New, Win64);
       if (Saved < 0)
         return false;
       if (Saved > 0) {
@@ -178,7 +180,8 @@ bool evaluate(Plan &P, Function &F, const Baseline &Before,
   if (EntryFreq > ExitFreq) {
     InstructionCost Cost = 0;
     for (Instruction *I : P.Ops)
-      Cost += TTI.getInstructionCost(I, TargetTransformInfo::TCK_RecipThroughput);
+      Cost +=
+          TTI.getInstructionCost(I, TargetTransformInfo::TCK_RecipThroughput);
     if (!Cost.isValid())
       return false;
     P.Score -= (EntryFreq - ExitFreq) * std::max<int64_t>(1, Cost.getValue());
@@ -194,7 +197,8 @@ PreservedAnalyses LoopExitCompressionPass::run(Function &F,
   if (T.getArch() != Triple::x86_64 ||
       (!Win64 && (!T.isOSLinux() || T.isX32())) ||
       !F.getName().contains(Filter) || F.isDeclaration() || F.hasOptNone() ||
-      F.hasOptSize() || F.hasMinSize() || F.hasFnAttribute(Attribute::StrictFP) ||
+      F.hasOptSize() || F.hasMinSize() ||
+      F.hasFnAttribute(Attribute::StrictFP) ||
       F.hasFnAttribute(Attribute::NoImplicitFloat) || !Liveness::supports(F))
     return PreservedAnalyses::all();
 
@@ -245,12 +249,15 @@ PreservedAnalyses LoopExitCompressionPass::run(Function &F,
     return PreservedAnalyses::all();
   AM.getResult<OptimizationRemarkEmitterAnalysis>(F).emit([&] {
     using NV = ore::NV;
-    return OptimizationRemarkAnalysis(PassName, "PackedLiveness", Best->Ops.back())
+    return OptimizationRemarkAnalysis(PassName, "PackedLiveness",
+                                      Best->Ops.back())
            << NV("Function", F.getName()) << " "
            << NV("Action", Transform ? "moved" : "can move") << " "
-           << NV("Ops", Best->Ops.size()) << " exit operations before the loop, "
+           << NV("Ops", Best->Ops.size())
+           << " exit operations before the loop, "
            << NV("Calls", Best->ImprovedCalls) << " improved call sites, up to "
-           << NV("MaxReduction", Best->MaxReduction) << " fewer live SIMD values";
+           << NV("MaxReduction", Best->MaxReduction)
+           << " fewer live SIMD values";
   });
   if (!Transform)
     return PreservedAnalyses::all();

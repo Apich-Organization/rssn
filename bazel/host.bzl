@@ -75,6 +75,7 @@ def _host_impl(ctx):
         "CFLAGS_aarch64_unknown_linux_gnu",
         "CFLAGS_x86_64_pc_windows_msvc",
         "CXX",
+        "CLANG_FORMAT",
         "HOME",
         "INCLUDE",
         "LIB",

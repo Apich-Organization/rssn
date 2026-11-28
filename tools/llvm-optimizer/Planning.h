@@ -41,8 +41,8 @@ bool trySink(BlockPressure &P, const Liveness &Live,
              llvm::DenseSet<const llvm::Instruction *> &Moved, Changes &Result,
              unsigned RewriteBudget, unsigned PlanWidth);
 bool tryFuseLaneLoads(llvm::BasicBlock &B, Liveness &Live,
-                     const llvm::TargetTransformInfo &TTI,
-                     MemoryModel &Memory, Changes &Result);
+                      const llvm::TargetTransformInfo &TTI, MemoryModel &Memory,
+                      Changes &Result);
 bool tryFusePackedLoads(llvm::BasicBlock &B, Liveness &Live,
                         const llvm::TargetTransformInfo &TTI,
                         MemoryModel &Memory, Changes &Result);

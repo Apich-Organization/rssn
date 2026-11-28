@@ -37,8 +37,8 @@ IntrinsicInst *pureMath(Value *V, Intrinsic::ID ID) {
       !I->doesNotAccessMemory() || !I->hasFnAttr(Attribute::Speculatable) ||
       I->hasFnAttr(Attribute::StrictFP) || I->isConvergent() ||
       I->hasOperandBundles() || I->isMustTailCall() ||
-      I->hasRetAttr(Attribute::NoFPClass) || I->paramHasAttr(0, Attribute::NoFPClass) ||
-      !exactFP(*I))
+      I->hasRetAttr(Attribute::NoFPClass) ||
+      I->paramHasAttr(0, Attribute::NoFPClass) || !exactFP(*I))
     return nullptr;
   return I;
 }
@@ -68,17 +68,20 @@ std::optional<Chain> matchChain(Instruction &Start, const Loop &L) {
   Value *Node = Log->getArgOperand(0);
   Value *Offset = nullptr;
   const auto *Add = dyn_cast<Instruction>(Node);
-  if (!Add || !exactFP(*Add) || !match(Add, m_c_FAdd(m_SpecificFP(1.0), m_Value(Offset))) ||
+  if (!Add || !exactFP(*Add) ||
+      !match(Add, m_c_FAdd(m_SpecificFP(1.0), m_Value(Offset))) ||
       !pureMath(Offset, Intrinsic::exp))
     return std::nullopt;
 
   Instruction *Mul = uniqueNext(*Log);
   Value *C = nullptr;
-  if (!Mul || !exactFP(*Mul) || !match(Mul, m_c_FMul(m_Specific(Log), m_Value(C))) ||
+  if (!Mul || !exactFP(*Mul) ||
+      !match(Mul, m_c_FMul(m_Specific(Log), m_Value(C))) ||
       !L.isLoopInvariant(C) || L.isLoopInvariant(Node))
     return std::nullopt;
   Instruction *Sub = uniqueNext(*Mul);
-  if (!Sub || !exactFP(*Sub) || !match(Sub, m_FSub(m_Specific(Mul), m_Specific(Node))))
+  if (!Sub || !exactFP(*Sub) ||
+      !match(Sub, m_FSub(m_Specific(Mul), m_Specific(Node))))
     return std::nullopt;
   IntrinsicInst *Exp = pureMath(uniqueNext(*Sub), Intrinsic::exp);
   if (!Exp || Exp->use_empty())
@@ -88,18 +91,23 @@ std::optional<Chain> matchChain(Instruction &Start, const Loop &L) {
 
 bool excludesUnit(const Chain &C, const DataLayout &DL) {
   const auto *One = ConstantFP::get(C.Node->getType(), 1.0);
-  if (isImpliedByDomCondition(CmpInst::FCMP_OEQ, C.Node, One, C.Log, DL) == false)
+  if (isImpliedByDomCondition(CmpInst::FCMP_OEQ, C.Node, One, C.Log, DL) ==
+      false)
     return true;
   const auto *Pred = C.Log->getParent()->getSinglePredecessor();
-  const auto *Branch = Pred ? dyn_cast<CondBrInst>(Pred->getTerminator()) : nullptr;
-  const auto *Cmp = Branch ? dyn_cast<ICmpInst>(Branch->getCondition()) : nullptr;
+  const auto *Branch =
+      Pred ? dyn_cast<CondBrInst>(Pred->getTerminator()) : nullptr;
+  const auto *Cmp =
+      Branch ? dyn_cast<ICmpInst>(Branch->getCondition()) : nullptr;
   if (!Cmp)
     return false;
   for (const Value *V : Cmp->operand_values()) {
     const auto *Bits = dyn_cast<BitCastInst>(V);
-    if (Bits && Bits->getOperand(0) == C.Node && Bits->getType()->isIntegerTy(64)) {
+    if (Bits && Bits->getOperand(0) == C.Node &&
+        Bits->getType()->isIntegerTy(64)) {
       const auto *Key = ConstantInt::get(Bits->getType(), OneBits);
-      if (isImpliedByDomCondition(CmpInst::ICMP_EQ, Bits, Key, C.Log, DL) == false)
+      if (isImpliedByDomCondition(CmpInst::ICMP_EQ, Bits, Key, C.Log, DL) ==
+          false)
         return true;
     }
   }
@@ -130,7 +138,7 @@ Cache materialize(const Group &G, const DominatorTree &DT) {
   // Retain the math intrinsic. The cloned argument has the same rounding
   // as the original expression at log(1) and uses the runtime's exp result.
   Value *AtUnit = B.CreateFSub(B.CreateFMul(Safe, Zero),
-                              ConstantFP::get(B.getDoubleTy(), 1.0));
+                               ConstantFP::get(B.getDoubleTy(), 1.0));
   Value *Result = B.CreateUnaryIntrinsic(Intrinsic::exp, AtUnit, nullptr,
                                          "unit.log.cached");
   Value *Key = B.CreateSelect(Finite, B.getInt64(OneBits), B.getInt64(0),
@@ -141,7 +149,8 @@ Cache materialize(const Group &G, const DominatorTree &DT) {
 void specialize(const Chain &C, const Cache &K, Value *Skip, Value *Node) {
   BasicBlock *Head = C.Log->getParent();
   IRBuilder<> B(C.Log);
-  Instruction *Jump = SplitBlockAndInsertIfThen(B.CreateNot(Skip), C.Log, false);
+  Instruction *Jump =
+      SplitBlockAndInsertIfThen(B.CreateNot(Skip), C.Log, false);
   Jump->getParent()->setName("unit.log.evaluate");
   C.Log->setArgOperand(0, Node);
   C.Subtract->setOperand(1, Node);
@@ -168,10 +177,11 @@ struct Rewrite {
 
 } // namespace
 
-PreservedAnalyses LibmUnitLogPass::run(Function &F, FunctionAnalysisManager &AM) {
+PreservedAnalyses LibmUnitLogPass::run(Function &F,
+                                       FunctionAnalysisManager &AM) {
   if (!F.getName().contains(Filter) || F.isDeclaration() || F.hasOptNone() ||
-      F.hasOptSize() || F.hasMinSize() || F.hasFnAttribute(Attribute::StrictFP) ||
-      F.hasGC() ||
+      F.hasOptSize() || F.hasMinSize() ||
+      F.hasFnAttribute(Attribute::StrictFP) || F.hasGC() ||
       F.getDenormalMode(APFloat::IEEEdouble()) != DenormalMode::getIEEE() ||
       F.size() > 1024 || F.getInstructionCount() > 24000)
     return PreservedAnalyses::all();
@@ -197,7 +207,8 @@ PreservedAnalyses LibmUnitLogPass::run(Function &F, FunctionAnalysisManager &AM)
         continue;
       auto [G, New] = Groups.try_emplace(C->Coefficient, Group{Preheader, {}});
       if (!New)
-        G->second.Setup = DT.findNearestCommonDominator(G->second.Setup, Preheader);
+        G->second.Setup =
+            DT.findNearestCommonDominator(G->second.Setup, Preheader);
       G->second.Chains.push_back(*C);
       ++Count;
       break;
@@ -224,10 +235,12 @@ PreservedAnalyses LibmUnitLogPass::run(Function &F, FunctionAnalysisManager &AM)
       continue;
     ORE.emit([&] {
       using NV = ore::NV;
-      return OptimizationRemarkAnalysis(PassName, "UnitLogChain", G.Setup->getTerminator())
+      return OptimizationRemarkAnalysis(PassName, "UnitLogChain",
+                                        G.Setup->getTerminator())
              << NV("Function", F.getName()) << " "
-             << NV("Action", Transform ? "cached" : "can cache") << " a unit-node result for "
-             << NV("Chains", G.Chains.size()) << " log/exp chains";
+             << NV("Action", Transform ? "cached" : "can cache")
+             << " a unit-node result for " << NV("Chains", G.Chains.size())
+             << " log/exp chains";
     });
     if (!Transform)
       continue;
@@ -245,16 +258,18 @@ PreservedAnalyses LibmUnitLogPass::run(Function &F, FunctionAnalysisManager &AM)
         // A frozen undef can have any bits, so this branch cannot rely
         // on the impossible sentinel from the defined case above.
         Node = B.CreateFreeze(Node, "unit.log.node");
-        Skip = B.CreateAnd(K.Finite, B.CreateFCmpOEQ(
-                                        Node, ConstantFP::get(B.getDoubleTy(), 1.0)),
-                           "unit.log.match");
+        Skip = B.CreateAnd(
+            K.Finite,
+            B.CreateFCmpOEQ(Node, ConstantFP::get(B.getDoubleTy(), 1.0)),
+            "unit.log.match");
       }
       Rewrites.push_back({&C, K, Skip, Node});
     }
   }
   for (const Rewrite &R : Rewrites)
     specialize(*R.Site, R.Values, R.Skip, R.Node);
-  return Rewrites.empty() ? PreservedAnalyses::all() : PreservedAnalyses::none();
+  return Rewrites.empty() ? PreservedAnalyses::all()
+                          : PreservedAnalyses::none();
 }
 
 } // namespace rssn

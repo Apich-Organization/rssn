@@ -136,9 +136,8 @@ Pressure Liveness::typeWeight(Type *Ty) const {
   const auto Load = TTI.getMemoryOpCost(Instruction::Load, Ty, Align(16), 0);
   const auto Store = TTI.getMemoryOpCost(Instruction::Store, Ty, Align(16), 0);
   const auto Pair = Load + Store;
-  const int Operations = Pair.isValid()
-                             ? std::clamp<int64_t>(Pair.getValue(), 2, 256)
-                             : 2 * Parts;
+  const int Operations =
+      Pair.isValid() ? std::clamp<int64_t>(Pair.getValue(), 2, 256) : 2 * Parts;
   const uint64_t Bytes = DL.getTypeStoreSize(Ty).getFixedValue();
   const int Transfer = std::min<uint64_t>(128, divideCeil(Bytes, 16));
   // A full-width YMM/ZMM value cannot survive a Win64 call in a single
@@ -149,12 +148,20 @@ Pressure Liveness::typeWeight(Type *Ty) const {
   // Wider or legalized AArch64 values have no dependable preserved carrier.
   if (AArch64) {
     const bool Fits = Bytes <= 8 && (!Vector || TTI.isTypeLegal(Ty));
-    return {0, Registers, Spill, Fits ? Registers : 0,
-            Fits ? 0 : Registers, Fits ? 0 : Spill};
+    return {0,
+            Registers,
+            Spill,
+            Fits ? Registers : 0,
+            Fits ? 0 : Registers,
+            Fits ? 0 : Spill};
   }
   const bool NativeWide = Bytes > 16 && TTI.isTypeLegal(Ty);
-  return {0, Registers, Spill, Bytes <= 16 ? Registers : 0,
-          NativeWide ? Registers : 0, NativeWide ? Spill : 0};
+  return {0,
+          Registers,
+          Spill,
+          Bytes <= 16 ? Registers : 0,
+          NativeWide ? Registers : 0,
+          NativeWide ? Spill : 0};
 }
 
 void Liveness::track(const Value &V) {
@@ -226,9 +233,8 @@ bool Liveness::compute(Function &F, ArrayRef<Schedule> Trial) {
       if (Def != N)
         S.Kill.set(Def);
     };
-    auto Override = find_if(Trial, [&](const Schedule &Order) {
-      return Order.Block == &B;
-    });
+    auto Override = find_if(
+        Trial, [&](const Schedule &Order) { return Order.Block == &B; });
     if (Override == Trial.end()) {
       for (Instruction &I : B)
         Account(I);
@@ -282,14 +288,16 @@ std::optional<unsigned> win64ScalarStackSlots(const FunctionType &Ty,
       (!Ty.getReturnType()->isVoidTy() && !win64SlotScalar(Ty.getReturnType())))
     return std::nullopt;
   constexpr Attribute::AttrKind Special[] = {
-      Attribute::InReg, Attribute::Nest, Attribute::ByVal, Attribute::ByRef,
-      Attribute::InAlloca, Attribute::Preallocated, Attribute::StructRet,
-      Attribute::SwiftSelf, Attribute::SwiftError, Attribute::SwiftAsync};
+      Attribute::InReg,     Attribute::Nest,      Attribute::ByVal,
+      Attribute::ByRef,     Attribute::InAlloca,  Attribute::Preallocated,
+      Attribute::StructRet, Attribute::SwiftSelf, Attribute::SwiftError,
+      Attribute::SwiftAsync};
   for (auto [I, Param] : enumerate(Ty.params())) {
     if (!win64SlotScalar(Param))
       return std::nullopt;
     const AttributeSet Set = Attrs.getParamAttrs(I);
-    if (any_of(Special, [&](Attribute::AttrKind K) { return Set.hasAttribute(K); }))
+    if (any_of(Special,
+               [&](Attribute::AttrKind K) { return Set.hasAttribute(K); }))
       return std::nullopt;
   }
   const unsigned Count = Ty.getNumParams();
@@ -331,12 +339,13 @@ static bool isAAPCS64CallPressurePoint(const Instruction &I) {
        Call->getCallingConv() != CallingConv::Fast))
     return false;
   // A scalable argument or return can select the SVE PCS implicitly.
-  return !Call->getType()->isScalableTy() && none_of(Call->args(), [](const Use &U) {
-    return U->getType()->isScalableTy();
-  });
+  return !Call->getType()->isScalableTy() &&
+         none_of(Call->args(),
+                 [](const Use &U) { return U->getType()->isScalableTy(); });
 }
 
-static bool isExplicitCallPressurePoint(const Instruction &I, CallPressureABI ABI) {
+static bool isExplicitCallPressurePoint(const Instruction &I,
+                                        CallPressureABI ABI) {
   switch (ABI) {
   case CallPressureABI::SysV:
     return isCallPressurePoint(I);

@@ -41,7 +41,8 @@ struct Pack {
 bool isFieldLoad(const LoadInst &L) {
   if (!L.isSimple() || L.getPointerAddressSpace() != 0 ||
       (!L.getType()->isIntegerTy(8) && !L.getType()->isIntegerTy(16) &&
-       !L.getType()->isIntegerTy(32)) || L.use_empty())
+       !L.getType()->isIntegerTy(32)) ||
+      L.use_empty())
     return false;
   SmallVector<std::pair<unsigned, MDNode *>, 4> Metadata;
   L.getAllMetadataOtherThanDebugLoc(Metadata);
@@ -59,10 +60,12 @@ bool isFourByteRecord(const Value *Base, const DataLayout &DL) {
   const auto *GEP = dyn_cast<GEPOperator>(Base);
   return GEP && GEP->getNumIndices() == 1 &&
          !isa<Constant>(GEP->idx_begin()->get()) &&
-         DL.getTypeAllocSize(GEP->getSourceElementType()) == TypeSize::getFixed(4);
+         DL.getTypeAllocSize(GEP->getSourceElementType()) ==
+             TypeSize::getFixed(4);
 }
 
-bool hasDependentRecordReads(ArrayRef<Pack> Packs, ArrayRef<Instruction *> Code) {
+bool hasDependentRecordReads(ArrayRef<Pack> Packs,
+                             ArrayRef<Instruction *> Code) {
   SmallPtrSet<const LoadInst *, 32> Fields;
   for (const Pack &P : Packs)
     if (P.WholeRecord)
@@ -71,7 +74,8 @@ bool hasDependentRecordReads(ArrayRef<Pack> Packs, ArrayRef<Instruction *> Code)
 
   SmallPtrSet<const Value *, 32> FromField;
   for (const Instruction *I : Code) {
-    if (const auto *Load = dyn_cast<LoadInst>(I); Load && Fields.contains(Load)) {
+    if (const auto *Load = dyn_cast<LoadInst>(I);
+        Load && Fields.contains(Load)) {
       if (FromField.contains(Load->getPointerOperand()))
         return true;
       FromField.insert(Load);
@@ -95,8 +99,7 @@ std::optional<Pack> identifyPack(ArrayRef<Field> Fields,
   int64_t Expected = Low.Offset;
   for (const Field &F : Fields) {
     const int64_t Width = F.Load->getType()->getIntegerBitWidth() / 8;
-    if (F.Offset != Expected ||
-        AddOverflow(Expected, Width, Expected))
+    if (F.Offset != Expected || AddOverflow(Expected, Width, Expected))
       return std::nullopt;
   }
   if (Expected - Low.Offset != Bytes)
@@ -109,8 +112,9 @@ std::optional<Pack> identifyPack(ArrayRef<Field> Fields,
     return std::nullopt;
   unsigned Fast = 0;
   if (Low.Load->getAlign() < Align(Bytes) &&
-      (!TTI.allowsMisalignedMemoryAccesses(Low.Load->getContext(), 8 * Bytes,
-                                           0, Low.Load->getAlign(), &Fast) || !Fast))
+      (!TTI.allowsMisalignedMemoryAccesses(Low.Load->getContext(), 8 * Bytes, 0,
+                                           Low.Load->getAlign(), &Fast) ||
+       !Fast))
     return std::nullopt;
   for (unsigned K = First->Position; K <= Last->Position; ++K) {
     const Instruction &I = *Code[K];
@@ -125,24 +129,27 @@ std::optional<Pack> identifyPack(ArrayRef<Field> Fields,
 }
 
 void packLoads(const Pack &Plan) {
-  const auto First = std::min_element(Plan.Fields.begin(), Plan.Fields.end(),
+  const auto First = std::min_element(
+      Plan.Fields.begin(), Plan.Fields.end(),
       [](const Field &A, const Field &B) { return A.Position < B.Position; });
   LoadInst *Low = Plan.Fields.front().Load;
   IRBuilder<> B(First->Load);
   auto *Bytes = FixedVectorType::get(B.getInt8Ty(), Plan.Bytes);
   // An integer wide load would make poison in one field observable in an
   // unrelated field. Keep byte lanes independent until the field is extracted.
-  auto *Wide = B.CreateAlignedLoad(Bytes, Low->getPointerOperand(), Low->getAlign(),
-                                   "scalar.pack");
+  auto *Wide = B.CreateAlignedLoad(Bytes, Low->getPointerOperand(),
+                                   Low->getAlign(), "scalar.pack");
   if (all_of(Plan.Fields, [](const Field &F) {
         return F.Load->hasMetadata(LLVMContext::MD_noundef);
       }))
-    Wide->setMetadata(LLVMContext::MD_noundef, Low->getMetadata(LLVMContext::MD_noundef));
+    Wide->setMetadata(LLVMContext::MD_noundef,
+                      Low->getMetadata(LLVMContext::MD_noundef));
 
   for (const Field &F : Plan.Fields) {
     B.SetInsertPoint(F.Load);
     B.SetCurrentDebugLocation(F.Load->getDebugLoc());
-    const auto Offset = static_cast<unsigned>(F.Offset - Plan.Fields.front().Offset);
+    const auto Offset =
+        static_cast<unsigned>(F.Offset - Plan.Fields.front().Offset);
     const unsigned Count = F.Load->getType()->getIntegerBitWidth() / 8;
     Value *Extract;
     if (Count == 1) {
@@ -162,7 +169,8 @@ void packLoads(const Pack &Plan) {
 
 } // namespace
 
-PreservedAnalyses ScalarLoadPackPass::run(Function &F, FunctionAnalysisManager &AM) {
+PreservedAnalyses ScalarLoadPackPass::run(Function &F,
+                                          FunctionAnalysisManager &AM) {
   const Triple &T = F.getParent()->getTargetTriple();
   if (T.getArch() != Triple::x86_64 ||
       (!T.isOSWindows() && (!T.isOSLinux() || T.isX32())) ||
@@ -190,22 +198,25 @@ PreservedAnalyses ScalarLoadPackPass::run(Function &F, FunctionAnalysisManager &
       Code.push_back(&I);
       if (auto *L = dyn_cast<LoadInst>(&I); L && isFieldLoad(*L))
         if (auto A = accessAddress(*L))
-          ByBase[A->first].push_back({L, A->second, static_cast<unsigned>(Position)});
+          ByBase[A->first].push_back(
+              {L, A->second, static_cast<unsigned>(Position)});
     }
     SmallVector<Pack, 8> Hits;
     for (auto &[Base, Fields] : ByBase) {
       if (Fields.size() < MinFields || Fields.size() > MaxAliases)
         continue;
       const bool FourByteRecord = isFourByteRecord(Base, DL);
-      sort(Fields, [](const Field &A, const Field &B) { return A.Offset < B.Offset; });
+      sort(Fields,
+           [](const Field &A, const Field &B) { return A.Offset < B.Offset; });
       for (unsigned First = 0; First + MinFields <= Fields.size();) {
         const bool WholeRecord = FourByteRecord && Fields[First].Offset == 0;
         const unsigned Bytes = T.isOSWindows() && !WholeRecord ? 8 : 4;
         bool Packed = false;
         const unsigned Remaining = Fields.size() - First;
-        for (unsigned Count = MinFields; Count <= std::min(Remaining, MaxFields); ++Count) {
-          if (auto P = identifyPack(ArrayRef(Fields).slice(First, Count), Code, DT, Memory,
-                                    TTI, Bytes, WholeRecord)) {
+        for (unsigned Count = MinFields;
+             Count <= std::min(Remaining, MaxFields); ++Count) {
+          if (auto P = identifyPack(ArrayRef(Fields).slice(First, Count), Code,
+                                    DT, Memory, TTI, Bytes, WholeRecord)) {
             Hits.push_back(std::move(*P));
             First += Count;
             Packed = true;
@@ -243,25 +254,31 @@ PreservedAnalyses ScalarLoadPackPass::run(Function &F, FunctionAnalysisManager &
     // A four-byte load replaces two memory operations with field extraction.
     // When a field feeds the address of a later entry, extraction can lengthen
     // this serial chain. Require pressure across the field reads to justify it.
-    const bool DependentReads = RecordReads && hasDependentRecordReads(Hits, Code);
-    const bool RecordProfitable = !DependentReads || RecordGP > 2 * Budget * RecordReads;
+    const bool DependentReads =
+        RecordReads && hasDependentRecordReads(Hits, Code);
+    const bool RecordProfitable =
+        !DependentReads || RecordGP > 2 * Budget * RecordReads;
     ORE.emit([&] {
       using NV = ore::NV;
-      auto Remark = OptimizationRemarkAnalysis(PassName, "ScalarLoadPack", B.getTerminator())
-             << NV("Function", F.getName()) << " " << NV("Action", Transform ? "can pack" : "found")
-             << " " << NV("Loads", Reads) << " scalar loads into " << NV("Packs", Hits.size())
-             << " packs";
+      auto Remark = OptimizationRemarkAnalysis(PassName, "ScalarLoadPack",
+                                               B.getTerminator())
+                    << NV("Function", F.getName()) << " "
+                    << NV("Action", Transform ? "can pack" : "found") << " "
+                    << NV("Loads", Reads) << " scalar loads into "
+                    << NV("Packs", Hits.size()) << " packs";
       const unsigned Bytes = Hits.front().Bytes;
       if (all_of(Hits, [Bytes](const Pack &P) { return P.Bytes == Bytes; }))
         Remark << " of " << NV("BytesPerPack", Bytes) << " bytes";
       else
         Remark << " of mixed widths";
-      Remark << ", GP pressure " << NV("Peak", Peak)
-             << " / " << NV("Budget", Live->Limit.GP);
+      Remark << ", GP pressure " << NV("Peak", Peak) << " / "
+             << NV("Budget", Live->Limit.GP);
       if (RecordReads)
-        Remark << ", four-byte records have mean GP " << NV("RecordGP", RecordGP / RecordReads)
-               << " (" << (DependentReads ? "dependent reads, " : "independent reads, ")
-               << (RecordProfitable ? "eligible" : "below rewrite threshold") << ")";
+        Remark << ", four-byte records have mean GP "
+               << NV("RecordGP", RecordGP / RecordReads) << " ("
+               << (DependentReads ? "dependent reads, " : "independent reads, ")
+               << (RecordProfitable ? "eligible" : "below rewrite threshold")
+               << ")";
       return Remark;
     });
     if (!Transform || Peak < Budget)

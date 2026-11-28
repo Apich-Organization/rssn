@@ -34,8 +34,9 @@ IntrinsicInst *pureMath(Value *V, Intrinsic::ID ID) {
   auto *I = dyn_cast_or_null<IntrinsicInst>(V);
   if (!I || I->getIntrinsicID() != ID || !I->getType()->isDoubleTy() ||
       !I->doesNotAccessMemory() || !I->hasFnAttr(Attribute::Speculatable) ||
-      I->hasFnAttr(Attribute::StrictFP) || I->isConvergent() || I->isMustTailCall() ||
-      I->hasOperandBundles() || I->hasRetAttr(Attribute::NoFPClass) ||
+      I->hasFnAttr(Attribute::StrictFP) || I->isConvergent() ||
+      I->isMustTailCall() || I->hasOperandBundles() ||
+      I->hasRetAttr(Attribute::NoFPClass) ||
       I->paramHasAttr(0, Attribute::NoFPClass) || !exactFP(*I))
     return nullptr;
   return I;
@@ -51,7 +52,7 @@ Instruction *nextDebugFree(Instruction &I) {
 struct Shape {
   Value *Node;
   Value *Coefficient;
-  Value *Scale; // Null when the subtraction uses the node directly.
+  Value *Scale;  // Null when the subtraction uses the node directly.
   Value *Offset; // Optional second subtraction after the linear decay.
   IntrinsicInst *Log;
   BinaryOperator *Product;
@@ -76,7 +77,8 @@ std::optional<Shape> parseScore(Value *V, const Loop &L) {
     Sub = Inner;
   }
   auto *Product = dyn_cast<BinaryOperator>(Sub->getOperand(0));
-  if (!Product || !exactFP(*Product) || Product->getOpcode() != Instruction::FMul)
+  if (!Product || !exactFP(*Product) ||
+      Product->getOpcode() != Instruction::FMul)
     return std::nullopt;
   auto *Log = pureMath(Product->getOperand(0), Intrinsic::log);
   Value *Coefficient = Product->getOperand(1);
@@ -100,7 +102,8 @@ std::optional<Shape> parseScore(Value *V, const Loop &L) {
   if (Log->getParent() != B || Product->getParent() != B ||
       (Decay && Decay->getParent() != B) || L.isLoopInvariant(Node))
     return std::nullopt;
-  return Shape{Node, Coefficient, Scale, Offset, Log, Product, Decay, Sub, Shift};
+  return Shape{Node,    Coefficient, Scale, Offset, Log,
+               Product, Decay,       Sub,   Shift};
 }
 
 // A valid weight proves the same, defined raw exp value was finite and
@@ -110,13 +113,15 @@ std::optional<Shape> parseScore(Value *V, const Loop &L) {
 bool validNode(const Shape &S, BasicBlock &At, const DominatorTree &DT) {
   Value *Raw = S.Node;
   if (auto *Add = dyn_cast<Instruction>(S.Node);
-      Add && exactFP(*Add) && match(Add, m_c_FAdd(m_SpecificFP(1.0), m_Value(Raw)))) {
+      Add && exactFP(*Add) &&
+      match(Add, m_c_FAdd(m_SpecificFP(1.0), m_Value(Raw)))) {
     if (!pureMath(Raw, Intrinsic::exp))
       return false;
   } else if (!pureMath(Raw, Intrinsic::exp)) {
     return false;
   }
-  if (!isGuaranteedNotToBeUndefOrPoison(Raw, nullptr, At.getTerminator(), &DT) ||
+  if (!isGuaranteedNotToBeUndefOrPoison(Raw, nullptr, At.getTerminator(),
+                                        &DT) ||
       Raw->getNumUses() > 16)
     return false;
   constexpr unsigned Invalid = fcNan | fcInf | fcZero;
@@ -130,7 +135,8 @@ bool validNode(const Shape &S, BasicBlock &At, const DominatorTree &DT) {
       if (auto *Class = dyn_cast<IntrinsicInst>(TestUse);
           Class && Class->getIntrinsicID() == Intrinsic::is_fpclass &&
           Class->getArgOperand(0) == Weight &&
-          (cast<ConstantInt>(Class->getArgOperand(1))->getZExtValue() & Invalid) == Invalid)
+          (cast<ConstantInt>(Class->getArgOperand(1))->getZExtValue() &
+           Invalid) == Invalid)
         Test = Class;
       else if (auto *Bits = dyn_cast<BitCastInst>(TestUse))
         Test = findNonfiniteOrZeroTest(*Bits);
@@ -139,7 +145,9 @@ bool validNode(const Shape &S, BasicBlock &At, const DominatorTree &DT) {
       auto *Branch = dyn_cast<CondBrInst>(*Test->user_begin());
       if (Branch && Branch->getCondition() == Test &&
           Branch->getSuccessor(0) != Branch->getSuccessor(1) &&
-          DT.dominates(BasicBlockEdge(Branch->getParent(), Branch->getSuccessor(1)), &At))
+          DT.dominates(
+              BasicBlockEdge(Branch->getParent(), Branch->getSuccessor(1)),
+              &At))
         return true;
     }
   }
@@ -160,7 +168,8 @@ bool isPositiveTest(Value *V, Value *Node) {
   if (!Cmp || !exactFP(*Cmp))
     return false;
   const bool Swapped = Cmp->getOperand(1) == Node;
-  const auto Predicate = Swapped ? Cmp->getSwappedPredicate() : Cmp->getPredicate();
+  const auto Predicate =
+      Swapped ? Cmp->getSwappedPredicate() : Cmp->getPredicate();
   return (Predicate == FCmpInst::FCMP_OGT || Predicate == FCmpInst::FCMP_UGT) &&
          Cmp->getOperand(Swapped ? 1 : 0) == Node &&
          match(Cmp->getOperand(Swapped ? 0 : 1), m_SpecificFP(0.0));
@@ -187,11 +196,15 @@ std::optional<Site> existingCutoff(CondBrInst &Branch, const Loop &L,
   auto *Failure = Branch.getSuccessor(0);
   if (!S || !S->Scale || !Gate || Branch.getSuccessor(1) == Failure ||
       Gate->getSuccessor(0) != B || Gate->getSuccessor(1) != Failure ||
-      !isPositiveTest(Gate->getCondition(), S->Node) || !validNode(*S, *Prev, DT))
+      !isPositiveTest(Gate->getCondition(), S->Node) ||
+      !validNode(*S, *Prev, DT))
     return std::nullopt;
-  if (!all_of(Failure->phis(), [&](const PHINode &Phi) {
-        return Phi.getIncomingValueForBlock(Prev) == Phi.getIncomingValueForBlock(B);
-      }) || !all_of(*B, [](const Instruction &I) {
+  if (!all_of(Failure->phis(),
+              [&](const PHINode &Phi) {
+                return Phi.getIncomingValueForBlock(Prev) ==
+                       Phi.getIncomingValueForBlock(B);
+              }) ||
+      !all_of(*B, [](const Instruction &I) {
         return I.isTerminator() || isa<DbgInfoIntrinsic>(I) ||
                (!I.mayReadOrWriteMemory() && isSafeToSpeculativelyExecute(&I));
       }))
@@ -216,7 +229,8 @@ std::optional<Site> zeroNumerator(Instruction &I, const Loop &L,
     Corridor.push_back(S->Shift);
   Corridor.push_back(Exp);
   for (unsigned J = 0; J + 1 < Corridor.size(); ++J)
-    if (!Corridor[J]->hasOneUse() || nextDebugFree(*Corridor[J]) != Corridor[J + 1])
+    if (!Corridor[J]->hasOneUse() ||
+        nextDebugFree(*Corridor[J]) != Corridor[J + 1])
       return std::nullopt;
   return Site{*S, ExpZeroCutoff, L.getLoopPreheader(), nullptr, nullptr, Exp};
 }
@@ -244,8 +258,9 @@ Value *buildCutoff(const Group &G, const DominatorTree &DT) {
   Value *C = defined(B, G.Coefficient, DT);
   Value *A = G.Scale ? defined(B, G.Scale, DT) : One;
   Value *Offset = G.Offset ? defined(B, G.Offset, DT) : Zero;
-  Value *Valid = B.CreateAnd(B.createIsFPClass(C, fcFinite),
-                             B.createIsFPClass(A, fcPosNormal | fcPosSubnormal));
+  Value *Valid =
+      B.CreateAnd(B.createIsFPClass(C, fcFinite),
+                  B.createIsFPClass(A, fcPosNormal | fcPosSubnormal));
   Value *PositiveC = B.CreateSelect(B.CreateFCmpOGT(C, Zero), C, Zero);
   // For finite x >= 1, log(x) is in [0, 1024]. Its rounded product with C
   // is at most 1024*max(C, 0). Subtracting a negative offset can add at most
@@ -254,10 +269,10 @@ Value *buildCutoff(const Group &G, const DominatorTree &DT) {
   Value *Margin = B.CreateFMul(PositiveC, ConstantFP::get(Double, 2048.0));
   if (G.Offset) {
     Valid = B.CreateAnd(Valid, B.createIsFPClass(Offset, fcFinite));
-    Value *OffsetIncrease =
-        B.CreateSelect(B.CreateFCmpOLT(Offset, Zero), B.CreateFNeg(Offset), Zero);
-    Margin = B.CreateFAdd(Margin, B.CreateFMul(OffsetIncrease,
-                                                ConstantFP::get(Double, 2.0)));
+    Value *OffsetIncrease = B.CreateSelect(B.CreateFCmpOLT(Offset, Zero),
+                                           B.CreateFNeg(Offset), Zero);
+    Margin = B.CreateFAdd(
+        Margin, B.CreateFMul(OffsetIncrease, ConstantFP::get(Double, 2.0)));
   }
   Value *Target = B.CreateFAdd(Margin, ConstantFP::get(Double, G.Limit + 1.0));
   Value *Cut = G.Scale ? B.CreateFDiv(Target, A) : Target;
@@ -270,14 +285,16 @@ Value *buildCutoff(const Group &G, const DominatorTree &DT) {
       S.Score.Shift->replaceUsesOfWith(G.Offset, Offset);
   }
   // A disabled or overflowing cutoff is unreachable for a proven finite x.
-  return B.CreateSelect(Valid, Cut, ConstantFP::getInfinity(Double), "exp.tail.cutoff");
+  return B.CreateSelect(Valid, Cut, ConstantFP::getInfinity(Double),
+                        "exp.tail.cutoff");
 }
 
 void applyCutoff(const Site &S, Value *Cutoff) {
   if (S.NodeGuard) {
     IRBuilder<> B(S.NodeGuard);
     auto *Old = cast<Instruction>(S.NodeGuard->getCondition());
-    S.NodeGuard->setCondition(B.CreateFCmpOLT(S.Score.Node, Cutoff, "exp.tail.keep"));
+    S.NodeGuard->setCondition(
+        B.CreateFCmpOLT(S.Score.Node, Cutoff, "exp.tail.keep"));
     for (Instruction *I : {S.NodeGuard, S.ScoreGuard}) {
       I->setMetadata(LLVMContext::MD_prof, nullptr);
       I->setMetadata(LLVMContext::MD_unpredictable, nullptr);
@@ -295,7 +312,8 @@ void applyCutoff(const Site &S, Value *Cutoff) {
                                  C.Log->getIterator());
   Result->setDebugLoc(S.ZeroableExp->getDebugLoc());
   S.ZeroableExp->replaceAllUsesWith(Result);
-  Instruction *Slow[] = {C.Log, C.Product, C.Decay, C.Subtract, C.Shift, S.ZeroableExp};
+  Instruction *Slow[] = {C.Log,      C.Product, C.Decay,
+                         C.Subtract, C.Shift,   S.ZeroableExp};
   for (Instruction *I : Slow) {
     if (!I)
       continue;
@@ -308,13 +326,15 @@ void applyCutoff(const Site &S, Value *Cutoff) {
 
 } // namespace
 
-PreservedAnalyses LibmTailCutoffPass::run(Function &F, FunctionAnalysisManager &AM) {
+PreservedAnalyses LibmTailCutoffPass::run(Function &F,
+                                          FunctionAnalysisManager &AM) {
   const Triple &T = F.getParent()->getTargetTriple();
   if (T.getArch() != Triple::x86_64 ||
       (!T.isWindowsMSVCEnvironment() && (!T.isOSLinux() || T.isX32())) ||
       !F.getName().contains(Filter) || F.isDeclaration() || F.hasOptNone() ||
-      F.hasOptSize() || F.hasMinSize() || F.hasFnAttribute(Attribute::StrictFP) ||
-      F.hasGC() || F.getDenormalMode(APFloat::IEEEdouble()) != DenormalMode::getIEEE() ||
+      F.hasOptSize() || F.hasMinSize() ||
+      F.hasFnAttribute(Attribute::StrictFP) || F.hasGC() ||
+      F.getDenormalMode(APFloat::IEEEdouble()) != DenormalMode::getIEEE() ||
       F.size() > 1024 || F.getInstructionCount() > 24000)
     return PreservedAnalyses::all();
   const auto &LI = AM.getResult<LoopAnalysis>(F);
@@ -328,8 +348,12 @@ PreservedAnalyses LibmTailCutoffPass::run(Function &F, FunctionAnalysisManager &
              G.Offset == S.Score.Offset && G.Limit == S.Limit;
     });
     if (G == Groups.end()) {
-      Groups.push_back({S.Score.Coefficient, S.Score.Scale, S.Score.Offset,
-                        S.Limit, S.Preheader, {}});
+      Groups.push_back({S.Score.Coefficient,
+                        S.Score.Scale,
+                        S.Score.Offset,
+                        S.Limit,
+                        S.Preheader,
+                        {}});
       G = std::prev(Groups.end());
     }
     if (G->Setup)
@@ -339,7 +363,8 @@ PreservedAnalyses LibmTailCutoffPass::run(Function &F, FunctionAnalysisManager &
   unsigned Count = 0;
   for (BasicBlock &B : F) {
     const auto *L = LI.getLoopFor(&B);
-    if (!L || !L->getLoopPreheader() || B.isEHPad() || !DT.isReachableFromEntry(&B))
+    if (!L || !L->getLoopPreheader() || B.isEHPad() ||
+        !DT.isReachableFromEntry(&B))
       continue;
     bool Found = false;
     if (auto *Term = dyn_cast<CondBrInst>(B.getTerminator()))
@@ -366,7 +391,8 @@ PreservedAnalyses LibmTailCutoffPass::run(Function &F, FunctionAnalysisManager &
     if (G.Sites.size() < 2 || !G.Setup || G.Setup->isEHPad())
       continue;
     Instruction *Insert = G.Setup->getTerminator();
-    if (!DT.dominates(G.Coefficient, Insert) || (G.Scale && !DT.dominates(G.Scale, Insert)) ||
+    if (!DT.dominates(G.Coefficient, Insert) ||
+        (G.Scale && !DT.dominates(G.Scale, Insert)) ||
         (G.Offset && !DT.dominates(G.Offset, Insert)))
       continue;
     double Frequency = 0;
@@ -378,8 +404,9 @@ PreservedAnalyses LibmTailCutoffPass::run(Function &F, FunctionAnalysisManager &
       using NV = ore::NV;
       return OptimizationRemarkAnalysis(PassName, "EarlyTailCutoff", Insert)
              << NV("Function", F.getName()) << " "
-             << NV("Action", Transform ? "placed" : "can place") << " a shared cutoff before "
-             << NV("Sites", G.Sites.size()) << " log chains";
+             << NV("Action", Transform ? "placed" : "can place")
+             << " a shared cutoff before " << NV("Sites", G.Sites.size())
+             << " log chains";
     });
     if (Transform)
       Work.emplace_back(&G, buildCutoff(G, DT));

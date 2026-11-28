@@ -73,8 +73,8 @@ findBlockEntryOrigins(const MachineFunction &MF) {
   while (!Worklist.empty()) {
     const auto *Block = Worklist.pop_back_val();
     auto Local = LastLocalCall.find(Block);
-    const CallOrigin Out = Local == LastLocalCall.end() ? Entry.lookup(Block)
-                                                       : Local->second;
+    const CallOrigin Out =
+        Local == LastLocalCall.end() ? Entry.lookup(Block) : Local->second;
     for (const MachineBasicBlock *Successor : Block->successors())
       mergeInto(Successor, Out);
   }
@@ -130,7 +130,8 @@ const FixedStackPseudoSourceValue *frameSource(const MachineMemOperand &MMO) {
   return dyn_cast_or_null<FixedStackPseudoSourceValue>(MMO.getPseudoValue());
 }
 
-MemoryKind classify(const MachineMemOperand &MMO, const MachineFrameInfo &Frame) {
+MemoryKind classify(const MachineMemOperand &MMO,
+                    const MachineFrameInfo &Frame) {
   const auto *PSV = MMO.getPseudoValue();
   if (const auto *Slot = frameSource(MMO)) {
     const int FI = Slot->getFrameIndex();
@@ -154,8 +155,8 @@ const MachineInstr *findConstantRecipe(const MachineInstr &Store, Register Reg,
                                        const TargetInstrInfo &TII,
                                        const TargetRegisterInfo &TRI) {
   unsigned Remaining = 64;
-  for (const MachineInstr &MI : reverse(make_range(
-           Store.getParent()->instr_begin(), Store.getIterator()))) {
+  for (const MachineInstr &MI : reverse(
+           make_range(Store.getParent()->instr_begin(), Store.getIterator()))) {
     if (MI.isDebugInstr() || MI.isCFIInstruction())
       continue;
     if (!Remaining-- || MI.isCall() || MI.isBundled() ||
@@ -170,13 +171,16 @@ const MachineInstr *findConstantRecipe(const MachineInstr &Store, Register Reg,
     const auto *PSV = (*MI.memoperands_begin())->getPseudoValue();
     const StringRef Opcode = TII.getName(MI.getOpcode());
     if (MI.mayLoad() && PSV && PSV->isConstantPool() &&
-        (TII.isTriviallyReMaterializable(MI) || Opcode.starts_with("VPBROADCAST") ||
+        (TII.isTriviallyReMaterializable(MI) ||
+         Opcode.starts_with("VPBROADCAST") ||
          Opcode.starts_with("VBROADCAST") || Opcode.starts_with("VMOVDDUP")) &&
-        any_of(MI.uses(), [](const MachineOperand &Op) { return Op.isCPI(); }) &&
+        any_of(MI.uses(),
+               [](const MachineOperand &Op) { return Op.isCPI(); }) &&
         none_of(MI.uses(), [&](const MachineOperand &Op) {
           return Op.isRegMask() ||
                  (Op.isReg() && Op.getReg() &&
-                  (!Op.isUse() || StringRef(TRI.getName(Op.getReg())) != "RIP"));
+                  (!Op.isUse() ||
+                   StringRef(TRI.getName(Op.getReg())) != "RIP"));
         }))
       return &MI;
     return nullptr;
@@ -184,7 +188,8 @@ const MachineInstr *findConstantRecipe(const MachineInstr &Store, Register Reg,
   return nullptr;
 }
 
-void reportConstantSpills(MachineFunction &MF, MachineOptimizationRemarkEmitter &ORE) {
+void reportConstantSpills(MachineFunction &MF,
+                          MachineOptimizationRemarkEmitter &ORE) {
   // Limit the dominance proof to ordinary entries and control-flow edges.
   if (MF.getTarget().getTargetTriple().getArch() != Triple::x86_64 ||
       any_of(MF, [](const MachineBasicBlock &BB) {
@@ -215,7 +220,8 @@ void reportConstantSpills(MachineFunction &MF, MachineOptimizationRemarkEmitter 
 
       for (int FI : Indices) {
         auto &Access = Slots[FI];
-        const auto *MMO = MI.hasOneMemOperand() ? *MI.memoperands_begin() : nullptr;
+        const auto *MMO =
+            MI.hasOneMemOperand() ? *MI.memoperands_begin() : nullptr;
         const auto *Slot = MMO ? frameSource(*MMO) : nullptr;
         if (Indices.size() != 1 || MI.isBundled() || !Slot ||
             Slot->getFrameIndex() != FI || MI.hasOrderedMemoryRef() ||
@@ -246,7 +252,8 @@ void reportConstantSpills(MachineFunction &MF, MachineOptimizationRemarkEmitter 
     const Register Reg = TII.isStoreToStackSlot(*Access.Store, StoredIndex);
     if (!Reg || StoredIndex != FI)
       continue;
-    const MachineInstr *Recipe = findConstantRecipe(*Access.Store, Reg, TII, TRI);
+    const MachineInstr *Recipe =
+        findConstantRecipe(*Access.Store, Reg, TII, TRI);
     if (!Recipe)
       continue;
     if (!DomTree)
@@ -257,15 +264,18 @@ void reportConstantSpills(MachineFunction &MF, MachineOptimizationRemarkEmitter 
                  !DomTree->dominates(Access.Store, Load);
         }))
       continue;
-    const unsigned Direct = count_if(Access.Loads, [&](const MachineInstr *Load) {
-      int Index = 0;
-      return TII.isLoadFromStackSlot(*Load, Index) && Index == FI;
-    });
+    const unsigned Direct =
+        count_if(Access.Loads, [&](const MachineInstr *Load) {
+          int Index = 0;
+          return TII.isLoadFromStackSlot(*Load, Index) && Index == FI;
+        });
     ORE.emit([&] {
       using NV = DiagnosticInfoOptimizationBase::Argument;
-      return MachineOptimizationRemarkAnalysis(PassName, "ConstantSpill", Access.Store)
-             << NV("Function", MF.getName()) << " constant spill slot " << NV("FrameIndex", FI)
-             << ", " << NV("SlotBytes", Frame.getObjectSize(FI)) << " bytes from "
+      return MachineOptimizationRemarkAnalysis(PassName, "ConstantSpill",
+                                               Access.Store)
+             << NV("Function", MF.getName()) << " constant spill slot "
+             << NV("FrameIndex", FI) << ", "
+             << NV("SlotBytes", Frame.getObjectSize(FI)) << " bytes from "
              << NV("Recipe", TII.getName(Recipe->getOpcode())) << ", "
              << NV("Reads", Access.Loads.size()) << " reads ("
              << NV("DirectReads", Direct) << " direct reloads)";
@@ -304,8 +314,8 @@ public:
     const MachineFrameInfo &Frame = MF.getFrameInfo();
     auto &ORE = getAnalysis<MachineOptimizationRemarkEmitterPass>().getORE();
     const char *Detail = std::getenv("RSSN_MACHINE_STACK_DETAIL");
-    const bool ReportCalls = Detail && StringRef(Detail) == "1" &&
-                             ORE.allowExtraAnalysis(PassName);
+    const bool ReportCalls =
+        Detail && StringRef(Detail) == "1" && ORE.allowExtraAnalysis(PassName);
     const auto Entry = ReportCalls
                            ? findBlockEntryOrigins(MF)
                            : DenseMap<const MachineBasicBlock *, CallOrigin>();
@@ -348,15 +358,17 @@ public:
       return MachineOptimizationRemarkAnalysis(PassName, "StackTraffic",
                                                F.getSubprogram(), &MF.front())
              << NV("Function", F.getName()) << ", calls " << NV("Calls", Calls)
-             << ", spill reads " << NV("SpillReads", Spill.Count)
-             << " (" << NV("SpillAfterCall", Spill.AfterCall) << " after calls, "
+             << ", spill reads " << NV("SpillReads", Spill.Count) << " ("
+             << NV("SpillAfterCall", Spill.AfterCall) << " after calls, "
              << NV("SpillWide", Spill.Wide) << " wider than 8 bytes, "
              << NV("SpillKnownBytes", Spill.KnownBytes) << " known bytes)"
              << ", spill writes " << NV("SpillWrites", SpillWrites)
-             << ", immutable fixed-stack reads " << NV("FixedReads", Fixed.Count)
-             << " (" << NV("FixedAfterCall", Fixed.AfterCall) << " after calls)"
+             << ", immutable fixed-stack reads "
+             << NV("FixedReads", Fixed.Count) << " ("
+             << NV("FixedAfterCall", Fixed.AfterCall) << " after calls)"
              << ", constant-pool reads " << NV("ConstantReads", Constant.Count)
-             << " (" << NV("ConstantAfterCall", Constant.AfterCall) << " after calls)";
+             << " (" << NV("ConstantAfterCall", Constant.AfterCall)
+             << " after calls)";
     });
     if (ReportCalls) {
       for (const MachineBasicBlock &Block : MF) {
@@ -370,26 +382,38 @@ public:
             continue;
           ORE.emit([&] {
             const auto &[Spill, Fixed, Constant] = Found->second;
-            return MachineOptimizationRemarkAnalysis(PassName, "CallTraffic", &MI)
-                   << NV("Function", MF.getName()) << " bb." << NV("Block", Block.getNumber())
-                   << " call " << NV("CallIndex", CallIndex) << " " << NV("Callee", calleeName(MI))
-                   << ", spill reads " << NV("SpillReads", Spill.Count)
-                   << " (" << NV("SpillAcrossBlocks", Spill.AfterCall) << " across blocks, "
-                   << NV("SpillWide", Spill.Wide) << " wider than 8 bytes, "
+            return MachineOptimizationRemarkAnalysis(PassName, "CallTraffic",
+                                                     &MI)
+                   << NV("Function", MF.getName()) << " bb."
+                   << NV("Block", Block.getNumber()) << " call "
+                   << NV("CallIndex", CallIndex) << " "
+                   << NV("Callee", calleeName(MI)) << ", spill reads "
+                   << NV("SpillReads", Spill.Count) << " ("
+                   << NV("SpillAcrossBlocks", Spill.AfterCall)
+                   << " across blocks, " << NV("SpillWide", Spill.Wide)
+                   << " wider than 8 bytes, "
                    << NV("SpillKnownBytes", Spill.KnownBytes) << " known bytes)"
-                   << ", immutable fixed-stack reads " << NV("FixedReads", Fixed.Count)
-                   << " (" << NV("FixedAcrossBlocks", Fixed.AfterCall) << " across blocks)"
-                   << ", constant-pool reads " << NV("ConstantReads", Constant.Count)
-                   << " (" << NV("ConstantAcrossBlocks", Constant.AfterCall) << " across blocks)";
+                   << ", immutable fixed-stack reads "
+                   << NV("FixedReads", Fixed.Count) << " ("
+                   << NV("FixedAcrossBlocks", Fixed.AfterCall)
+                   << " across blocks)"
+                   << ", constant-pool reads "
+                   << NV("ConstantReads", Constant.Count) << " ("
+                   << NV("ConstantAcrossBlocks", Constant.AfterCall)
+                   << " across blocks)";
           });
         }
       }
       ORE.emit([&] {
-        return MachineOptimizationRemarkAnalysis(PassName, "AmbiguousCallTraffic",
+        return MachineOptimizationRemarkAnalysis(PassName,
+                                                 "AmbiguousCallTraffic",
                                                  F.getSubprogram(), &MF.front())
-               << NV("Function", MF.getName()) << " ambiguous call origins, spill reads "
-               << NV("SpillReads", Ambiguous.Spill.Count) << ", immutable fixed-stack reads "
-               << NV("FixedReads", Ambiguous.Fixed.Count) << ", constant-pool reads "
+               << NV("Function", MF.getName())
+               << " ambiguous call origins, spill reads "
+               << NV("SpillReads", Ambiguous.Spill.Count)
+               << ", immutable fixed-stack reads "
+               << NV("FixedReads", Ambiguous.Fixed.Count)
+               << ", constant-pool reads "
                << NV("ConstantReads", Ambiguous.Constant.Count);
       });
       reportConstantSpills(MF, ORE);
@@ -399,7 +423,7 @@ public:
 };
 
 char StackTrafficPass::ID = 0;
-RegisterPass<StackTrafficPass> StackTraffic(
-    PassName, "RSSN machine stack traffic report", false, true);
+RegisterPass<StackTrafficPass>
+    StackTraffic(PassName, "RSSN machine stack traffic report", false, true);
 
 } // namespace

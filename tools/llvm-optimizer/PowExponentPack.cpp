@@ -55,27 +55,31 @@ struct PackingCosts {
   double Reload;
 };
 
-std::optional<PackingCosts> packingCosts(const TargetTransformInfo &TTI, LLVMContext &C) {
+std::optional<PackingCosts> packingCosts(const TargetTransformInfo &TTI,
+                                         LLVMContext &C) {
   auto *Double = Type::getDoubleTy(C);
   auto *VT = FixedVectorType::get(Double, 2);
   const auto Kind = TargetTransformInfo::TCK_RecipThroughput;
-  const auto Insert = TTI.getVectorInstrCost(Instruction::InsertElement, VT, Kind, 0) +
-                      TTI.getVectorInstrCost(Instruction::InsertElement, VT, Kind, 1);
+  const auto Insert =
+      TTI.getVectorInstrCost(Instruction::InsertElement, VT, Kind, 0) +
+      TTI.getVectorInstrCost(Instruction::InsertElement, VT, Kind, 1);
   const auto High = TTI.getShuffleCost(TargetTransformInfo::SK_PermuteSingleSrc,
-                                      VT, VT, {1, 1}, Kind);
-  const auto Read = TTI.getMemoryOpCost(Instruction::Load, Double, Align(8), 0, Kind);
+                                       VT, VT, {1, 1}, Kind);
+  const auto Read =
+      TTI.getMemoryOpCost(Instruction::Load, Double, Align(8), 0, Kind);
   if (!Insert.isValid() || !High.isValid() || !Read.isValid())
     return std::nullopt;
   // An estimated dependent scalar reload has both issue and latency costs.
-  return PackingCosts{static_cast<double>(std::max<int64_t>(2, Insert.getValue())),
-                      static_cast<double>(std::max<int64_t>(1, High.getValue())),
-                      2.0 * std::max<int64_t>(1, Read.getValue())};
+  return PackingCosts{
+      static_cast<double>(std::max<int64_t>(2, Insert.getValue())),
+      static_cast<double>(std::max<int64_t>(1, High.getValue())),
+      2.0 * std::max<int64_t>(1, Read.getValue())};
 }
 
 bool scalarPow(const Instruction &I) {
   const auto *II = dyn_cast<IntrinsicInst>(&I);
-  return II && II->getIntrinsicID() == Intrinsic::pow &&
-         isScalarLibmCut(I) && !II->hasApproxFunc();
+  return II && II->getIntrinsicID() == Intrinsic::pow && isScalarLibmCut(I) &&
+         !II->hasApproxFunc();
 }
 
 bool endsWindow(const Instruction &I) {
@@ -114,7 +118,8 @@ MapVector<Exponents, Windows> collectWindows(Function &F, const LoopInfo &LI) {
         continue;
       if (I.isTerminator())
         break;
-      if (scalarPow(I) && L->isLoopInvariant(cast<CallInst>(I).getArgOperand(1))) {
+      if (scalarPow(I) &&
+          L->isLoopInvariant(cast<CallInst>(I).getArgOperand(1))) {
         auto *Next = cast<IntrinsicInst>(&I);
         if (Previous)
           Add(Previous, Next);
@@ -138,7 +143,8 @@ MapVector<Exponents, Windows> collectWindows(Function &F, const LoopInfo &LI) {
 }
 
 std::optional<Plan> planPair(Exponents Values, MutableArrayRef<Window> Sites,
-                             const DominatorTree &DT, const BlockFrequencyInfo &BFI) {
+                             const DominatorTree &DT,
+                             const BlockFrequencyInfo &BFI) {
   if (Sites.size() < 2 || Sites.size() > 32)
     return std::nullopt;
   BasicBlock *Materialize = Sites.front().Preheader;
@@ -168,8 +174,12 @@ std::optional<Plan> planPair(Exponents Values, MutableArrayRef<Window> Sites,
         return std::nullopt;
     }
   }
-  return Plan{Values, Insert, Sites, {},
-              static_cast<double>(BFI.getBlockFreq(Materialize).getFrequency())};
+  return Plan{
+      Values,
+      Insert,
+      Sites,
+      {},
+      static_cast<double>(BFI.getBlockFreq(Materialize).getFrequency())};
 }
 
 bool liveThrough(Exponents E, const BlockPressure &P, const Liveness &Live,
@@ -215,15 +225,18 @@ CallBudget measureCuts(MutableArrayRef<Plan> Plans, const Liveness &Live,
 
   CallBudget Budget;
   for (const auto &[B, Sites] : Blocks) {
-    BlockPressure P(*B, Live, /*IncludeScalarLibm=*/true, {}, CallPressureABI::Win64);
+    BlockPressure P(*B, Live, /*IncludeScalarLibm=*/true, {},
+                    CallPressureABI::Win64);
     for (const auto &[W, Call, Bit] : Sites) {
-      const Exponents E{W->First->getArgOperand(1), W->Second->getArgOperand(1)};
+      const Exponents E{W->First->getArgOperand(1),
+                        W->Second->getArgOperand(1)};
       const unsigned Point = P.Positions.lookup(Call);
       if (!P.Calls.test(Point))
         continue;
       if (liveThrough(E, P, Live, *B, Point))
         W->SharedCuts |= Bit;
-      const int Excess = P.Through[Point].PreservableSIMD - Pressure::Win64PreservedXMM;
+      const int Excess =
+          P.Through[Point].PreservableSIMD - Pressure::Win64PreservedXMM;
       if (Excess <= 0 || !Budget.try_emplace(Call, Excess).second)
         continue;
       for (Plan &Candidate : Plans)
@@ -238,8 +251,9 @@ CallBudget measureCuts(MutableArrayRef<Plan> Plans, const Liveness &Live,
 double score(const Plan &P, const CallBudget &Budget, PackingCosts Costs) {
   double Gain = -Costs.Setup * P.SetupFrequency - P.BypassedLowUses;
   for (const Window &W : P.Uses) {
-    const bool SavesReload = ((W.SharedCuts & 1U) && Budget.lookup(W.First) > 0) ||
-                             ((W.SharedCuts & 2U) && Budget.lookup(W.Second) > 0);
+    const bool SavesReload =
+        ((W.SharedCuts & 1U) && Budget.lookup(W.First) > 0) ||
+        ((W.SharedCuts & 2U) && Budget.lookup(W.Second) > 0);
     // Both calls can share the same carrier reload. Credit at most one scalar
     // reload per window, and charge the high-lane shuffle at every use.
     Gain += W.Frequency * ((SavesReload ? Costs.Reload : 0) - Costs.HighLane);
@@ -250,8 +264,10 @@ double score(const Plan &P, const CallBudget &Budget, PackingCosts Costs) {
 unsigned assignMasks(MutableArrayRef<Plan> Plans) {
   DenseMap<Value *, unsigned> Values;
   for (Plan &P : Plans) {
-    const unsigned A = Values.try_emplace(P.Values.first, Values.size()).first->second;
-    const unsigned B = Values.try_emplace(P.Values.second, Values.size()).first->second;
+    const unsigned A =
+        Values.try_emplace(P.Values.first, Values.size()).first->second;
+    const unsigned B =
+        Values.try_emplace(P.Values.second, Values.size()).first->second;
     if (Values.size() > MaxValues)
       return 0;
     P.Mask = (1U << A) | (1U << B);
@@ -288,8 +304,8 @@ SmallVector<unsigned, 6> bestMatching(ArrayRef<Plan> Plans, unsigned States) {
   return Selected;
 }
 
-SmallVector<unsigned, 6> choosePairs(MutableArrayRef<Plan> Plans, CallBudget Budget,
-                                     PackingCosts Costs) {
+SmallVector<unsigned, 6> choosePairs(MutableArrayRef<Plan> Plans,
+                                     CallBudget Budget, PackingCosts Costs) {
   SmallVector<unsigned, 6> Selected;
   const unsigned States = assignMasks(Plans);
   if (States <= 1)
@@ -302,8 +318,10 @@ SmallVector<unsigned, 6> choosePairs(MutableArrayRef<Plan> Plans, CallBudget Bud
     const auto Matching = bestMatching(Plans, States);
     if (Matching.empty())
       break;
-    const unsigned Index = *std::max_element(Matching.begin(), Matching.end(),
-        [&](unsigned A, unsigned B) { return Plans[A].Score < Plans[B].Score; });
+    const unsigned Index = *std::max_element(
+        Matching.begin(), Matching.end(), [&](unsigned A, unsigned B) {
+          return Plans[A].Score < Plans[B].Score;
+        });
     Selected.push_back(Index);
     const Plan &P = Plans[Index];
     Used |= P.Mask;
@@ -321,15 +339,16 @@ SmallVector<unsigned, 6> choosePairs(MutableArrayRef<Plan> Plans, CallBudget Bud
 void pack(const Plan &P) {
   IRBuilder<> Entry(P.Insert);
   auto *VT = FixedVectorType::get(Entry.getDoubleTy(), 2);
-  Value *Carrier = Entry.CreateInsertElement(PoisonValue::get(VT), P.Values.first,
-                                             uint64_t(0));
+  Value *Carrier = Entry.CreateInsertElement(PoisonValue::get(VT),
+                                             P.Values.first, uint64_t(0));
   Carrier = Entry.CreateInsertElement(Carrier, P.Values.second, uint64_t(1));
   Carrier = Entry.CreateFreeze(Carrier, "pow.exponents");
   auto *Signature = FunctionType::get(VT, {VT}, false);
   // Keep the register-class constraint at each consuming call. SelectionDAG
   // can otherwise split an insert/extract-only value back into scalar ranges.
   InlineAsm *Low = InlineAsm::get(Signature, "", "=x,0", false);
-  InlineAsm *High = InlineAsm::get(Signature, "vunpckhpd $1, $1, $0", "=x,x", false);
+  InlineAsm *High =
+      InlineAsm::get(Signature, "vunpckhpd $1, $1, $0", "=x,x", false);
   SmallPtrSet<IntrinsicInst *, 16> Rewritten;
   for (const Window &W : P.Uses) {
     for (auto [Call, Assembly] :
@@ -337,22 +356,26 @@ void pack(const Plan &P) {
       if (!Rewritten.insert(Call).second)
         continue;
       IRBuilder<> AtCall(Call);
-      auto *Register = AtCall.CreateCall(Assembly, {Carrier}, "pow.exponent.reg");
+      auto *Register =
+          AtCall.CreateCall(Assembly, {Carrier}, "pow.exponent.reg");
       Register->setDoesNotAccessMemory();
       Register->setDoesNotThrow();
       Register->addFnAttr(Attribute::WillReturn);
-      Call->setArgOperand(1, AtCall.CreateExtractElement(Register, uint64_t(0)));
+      Call->setArgOperand(1,
+                          AtCall.CreateExtractElement(Register, uint64_t(0)));
     }
   }
 }
 
 } // namespace
 
-PreservedAnalyses PowExponentPackPass::run(Function &F, FunctionAnalysisManager &AM) {
+PreservedAnalyses PowExponentPackPass::run(Function &F,
+                                           FunctionAnalysisManager &AM) {
   const Triple &T = F.getParent()->getTargetTriple();
   if (T.getArch() != Triple::x86_64 || !T.isWindowsMSVCEnvironment() ||
       !F.getName().contains(Filter) || F.isDeclaration() || F.hasOptNone() ||
-      F.hasOptSize() || F.hasMinSize() || F.hasFnAttribute(Attribute::StrictFP) ||
+      F.hasOptSize() || F.hasMinSize() ||
+      F.hasFnAttribute(Attribute::StrictFP) ||
       F.hasFnAttribute(Attribute::NoImplicitFloat) || !Liveness::supports(F))
     return PreservedAnalyses::all();
   const auto &TTI = AM.getResult<TargetIRAnalysis>(F);
@@ -392,7 +415,8 @@ PreservedAnalyses PowExponentPackPass::run(Function &F, FunctionAnalysisManager 
       return OptimizationRemarkAnalysis(PassName, "PackedExponents", P.Insert)
              << NV("Function", F.getName()) << " "
              << NV("Action", Transform ? "packed" : "can pack")
-             << " two pow exponents at " << NV("Windows", P.Uses.size()) << " windows"
+             << " two pow exponents at " << NV("Windows", P.Uses.size())
+             << " windows"
              << ", cross-edge windows " << NV("CrossEdge", CrossEdge)
              << ", overlapping calls " << NV("SharedCuts", Shared);
     });

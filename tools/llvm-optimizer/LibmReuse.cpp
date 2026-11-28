@@ -44,7 +44,8 @@ std::optional<ExpInput> matchInput(Value *V) {
     return std::nullopt;
   auto *II = dyn_cast<IntrinsicInst>(Call);
   if (II ? II->getIntrinsicID() != Intrinsic::sinh
-         : (Call->isNoBuiltin() || !Call->getCalledFunction()->isDeclaration() ||
+         : (Call->isNoBuiltin() ||
+            !Call->getCalledFunction()->isDeclaration() ||
             Call->getCalledFunction()->getName() != "sinh"))
     return std::nullopt;
 
@@ -108,7 +109,8 @@ ReusePlan planReuse(IntrinsicInst &First, IntrinsicInst &Second,
     const ConstantFP *FirstConstant, *SecondConstant;
     unsigned FirstIndex, SecondIndex;
     auto *A = constantConsumer(*Plan.Available, FirstConstant, FirstIndex);
-    auto *B = constantConsumer(*Plan.Recompute.back(), SecondConstant, SecondIndex);
+    auto *B =
+        constantConsumer(*Plan.Recompute.back(), SecondConstant, SecondIndex);
     if (!A || !B || A->getOpcode() != B->getOpcode() ||
         FirstConstant != SecondConstant || FirstIndex != SecondIndex ||
         B->getParent() != Second.getParent() || !DT.dominates(A, &Second))
@@ -134,13 +136,15 @@ void reuseExp(const ReusePlan &Plan) {
   Value *Different = Check.CreateICmpNE(SavedBits, CurrentBits, "exp.differs");
 
   BasicBlock *Head = Second.getParent();
-  MDNode *Weights =
-      MDBuilder(Second.getContext()).createBranchWeights(1, 15, /*IsExpected=*/true);
-  Instruction *Jump = SplitBlockAndInsertIfThen(Different, &Second, false, Weights);
+  MDNode *Weights = MDBuilder(Second.getContext())
+                        .createBranchWeights(1, 15, /*IsExpected=*/true);
+  Instruction *Jump =
+      SplitBlockAndInsertIfThen(Different, &Second, false, Weights);
   BasicBlock *Evaluate = Jump->getParent();
   Evaluate->setName("exp.recompute");
   Instruction *Last = Plan.Recompute.back();
-  auto *Result = PHINode::Create(Last->getType(), 2, "exp.reuse", Second.getIterator());
+  auto *Result =
+      PHINode::Create(Last->getType(), 2, "exp.reuse", Second.getIterator());
   Result->setDebugLoc(Last->getDebugLoc());
   Last->replaceAllUsesWith(Result);
   for (Instruction *I : Plan.Recompute) {
@@ -158,8 +162,8 @@ PreservedAnalyses LibmReusePass::run(Function &F, FunctionAnalysisManager &AM) {
   if (!F.getName().contains(Filter) || T.getArch() != Triple::x86_64 ||
       (!T.isWindowsMSVCEnvironment() && (!T.isOSLinux() || T.isX32())) ||
       F.isDeclaration() || F.hasOptNone() || F.hasOptSize() || F.hasMinSize() ||
-      F.hasFnAttribute(Attribute::StrictFP) || F.hasGC() ||
-      F.size() > 1024 || F.getInstructionCount() > 24000)
+      F.hasFnAttribute(Attribute::StrictFP) || F.hasGC() || F.size() > 1024 ||
+      F.getInstructionCount() > 24000)
     return PreservedAnalyses::all();
   const auto &LI = AM.getResult<LoopAnalysis>(F);
   if (LI.empty())
@@ -218,8 +222,7 @@ PreservedAnalyses LibmReusePass::run(Function &F, FunctionAnalysisManager &AM) {
     ORE.emit([&] {
       using NV = ore::NV;
       return OptimizationRemarkAnalysis(PassName, "MirroredExp", Second)
-             << NV("Function", F.getName()) << " "
-             << NV("Action", Action)
+             << NV("Function", F.getName()) << " " << NV("Action", Action)
              << " reuse of scalar exp on the opposite-sign path with "
              << NV("ConsumerSteps", Plan.Recompute.size() - 1)
              << " matched consumers";

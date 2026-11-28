@@ -137,6 +137,8 @@ jobs:
         with:
           bazelisk-cache: true
           repository-cache: true
+      - name: C++ formatter
+        run: python3 -m pip install clang-format==23.1.5
       - name: Verify operator contracts, generated bindings and headers
         run: bazel test //:api_generator_test //:contracts_test //:headers_check_test
 
@@ -198,6 +200,8 @@ jobs:
         with:
           bazelisk-cache: true
           repository-cache: true
+      - name: C++ formatter
+        run: python3 -m pip install clang-format==23.1.5
       - name: Run all bindings against one Bazel-built library
         run: bazel test //:bindings_check_test //:bindings_test
 

@@ -28,7 +28,8 @@ constexpr unsigned MaxSites = 16;
 constexpr unsigned MaxClassNodes = 24;
 
 bool excludesUnconditionalClasses(Value *Input, FPClassTest Excluded,
-                                  const DataLayout &DL, const TargetLibraryInfo &TLI) {
+                                  const DataLayout &DL,
+                                  const TargetLibraryInfo &TLI) {
   SmallVector<Value *, 8> Pending{Input};
   SmallPtrSet<Value *, 16> Seen;
   // A loop-carried phi can retain any preceding iteration's value. Follow
@@ -45,7 +46,8 @@ bool excludesUnconditionalClasses(Value *Input, FPClassTest Excluded,
     } else if (auto *Select = dyn_cast<SelectInst>(V)) {
       Pending.push_back(Select->getTrueValue());
       Pending.push_back(Select->getFalseValue());
-    } else if (!computeKnownFPClass(V, DL, Excluded, &TLI).isKnownNever(Excluded)) {
+    } else if (!computeKnownFPClass(V, DL, Excluded, &TLI)
+                    .isKnownNever(Excluded)) {
       return false;
     }
   }
@@ -58,12 +60,14 @@ struct ClassTest {
 };
 
 std::optional<ClassTest> loopClassTest(CondBrInst &Branch, const Loop &L,
-                                      const DominatorTree &DT, AssumptionCache &AC,
-                                      const TargetLibraryInfo &TLI) {
+                                       const DominatorTree &DT,
+                                       AssumptionCache &AC,
+                                       const TargetLibraryInfo &TLI) {
   auto *Test = dyn_cast<IntrinsicInst>(Branch.getCondition());
   if (!Test || Test->getIntrinsicID() != Intrinsic::is_fpclass ||
       !Test->hasOneUse() || Test->hasOperandBundles() || Test->isConvergent() ||
-      Test->hasFnAttr(Attribute::StrictFP) || Test->paramHasAttr(0, Attribute::NoFPClass) ||
+      Test->hasFnAttr(Attribute::StrictFP) ||
+      Test->paramHasAttr(0, Attribute::NoFPClass) ||
       Test->getMetadata(LLVMContext::MD_nofpclass))
     return std::nullopt;
   const auto Mask = static_cast<FPClassTest>(
@@ -78,8 +82,9 @@ std::optional<ClassTest> loopClassTest(CondBrInst &Branch, const Loop &L,
   // InstCombine may have trimmed the original mask using a sign proof.
   // Recover the cheaper symmetric test only if the added classes are absent.
   const DataLayout &DL = Test->getDataLayout();
-  if (Added && !computeKnownFPClass(Input, DL, Added, &TLI, &AC, Test, &DT)
-                    .isKnownNever(Added) &&
+  if (Added &&
+      !computeKnownFPClass(Input, DL, Added, &TLI, &AC, Test, &DT)
+           .isKnownNever(Added) &&
       !excludesUnconditionalClasses(Input, Added, DL, TLI))
     return std::nullopt;
   return ClassTest{Test, Symmetric == NonfiniteOrZero};
@@ -94,7 +99,8 @@ Value *buildFiniteNonzeroTest(IRBuilder<> &B, Value *Weight, bool Invalid) {
   Value *Span = B.CreateSub(Magnitude, B.getInt64(2));
   return B.CreateICmp(Invalid ? ICmpInst::ICMP_UGE : ICmpInst::ICMP_ULT, Span,
                       B.getInt64(FiniteNonzeroEnd),
-                      Invalid ? "weight.zero.or.nonfinite" : "weight.nonzero.finite");
+                      Invalid ? "weight.zero.or.nonfinite"
+                              : "weight.nonzero.finite");
 }
 
 ICmpInst *findNonfiniteOrZeroTest(BitCastInst &Bits) {
@@ -111,17 +117,20 @@ ICmpInst *findNonfiniteOrZeroTest(BitCastInst &Bits) {
     return nullptr;
   auto *Cmp = dyn_cast<ICmpInst>(*Span->user_begin());
   if (!Cmp || Cmp->getPredicate() != ICmpInst::ICMP_UGE ||
-      Cmp->getOperand(0) != Span || !match(Cmp->getOperand(1), m_SpecificInt(FiniteNonzeroEnd)))
+      Cmp->getOperand(0) != Span ||
+      !match(Cmp->getOperand(1), m_SpecificInt(FiniteNonzeroEnd)))
     return nullptr;
   return Cmp;
 }
 
-PreservedAnalyses FPClassIntervalPass::run(Function &F, FunctionAnalysisManager &AM) {
+PreservedAnalyses FPClassIntervalPass::run(Function &F,
+                                           FunctionAnalysisManager &AM) {
   const Triple &T = F.getParent()->getTargetTriple();
   if (T.getArch() != Triple::x86_64 ||
       (!T.isWindowsMSVCEnvironment() && (!T.isOSLinux() || T.isX32())) ||
       !F.getName().contains(Filter) || F.isDeclaration() || F.hasOptNone() ||
-      F.hasOptSize() || F.hasMinSize() || F.hasFnAttribute(Attribute::StrictFP) ||
+      F.hasOptSize() || F.hasMinSize() ||
+      F.hasFnAttribute(Attribute::StrictFP) ||
       F.getDenormalMode(APFloat::IEEEdouble()) != DenormalMode::getIEEE() ||
       F.size() > 1024 || F.getInstructionCount() > 24000)
     return PreservedAnalyses::all();
@@ -146,14 +155,16 @@ PreservedAnalyses FPClassIntervalPass::run(Function &F, FunctionAnalysisManager 
         return OptimizationRemarkAnalysis(PassName, "FiniteNonzeroClass", Test)
                << NV("Function", F.getName()) << " "
                << NV("Action", Transform ? "compacted" : "can compact")
-               << " a finite nonzero class check into one unsigned interval, mask "
-               << NV("Mask", cast<ConstantInt>(Test->getArgOperand(1))->getZExtValue())
+               << " a finite nonzero class check into one unsigned interval, "
+                  "mask "
+               << NV("Mask",
+                     cast<ConstantInt>(Test->getArgOperand(1))->getZExtValue())
                << ", loop depth " << NV("LoopDepth", L->getLoopDepth());
       });
       if (Transform) {
         IRBuilder<> Builder(Test);
-        Branch->setCondition(
-            buildFiniteNonzeroTest(Builder, Test->getArgOperand(0), Class->Invalid));
+        Branch->setCondition(buildFiniteNonzeroTest(
+            Builder, Test->getArgOperand(0), Class->Invalid));
         RecursivelyDeleteTriviallyDeadInstructions(Test);
         if (++Applied == MaxSites)
           break;

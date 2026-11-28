@@ -44,6 +44,8 @@
 | `bazel run //:refresh_bindings_from_manifest -- --manifest manifest.json` | 用已链接的 RSSN 产物清单刷新各语言接口 |
 | `bazel run //:refresh_witness` | 采集测试轨迹并更新 `signatures.witnessed.json` |
 
+C++ 头文件和绑定的生成与校验使用 clang-format 23.1.5。若该工具不在 `PATH` 中，可设置 `CLANG_FORMAT` 或传入 `--repo_env=CLANG_FORMAT=/path/to/clang-format`。
+
 绑定集成测试使用带 NumPy 的 Python、Julia、带开发头文件的 R、CMake 和 C++ 编译器。R 包安装在构建缓存中，所有语言都使用同一个指定的库文件。加上 `--config=release` 可测试优化后的 cdylib。只需全特性开发版动态库时，可运行 `bazel build //:ffi_dev`。
 
 如果 R 环境提供独立的 C++ 工具链，可用 `--repo_env=CXX=/path/to/c++` 选择与待测库兼容的编译器。

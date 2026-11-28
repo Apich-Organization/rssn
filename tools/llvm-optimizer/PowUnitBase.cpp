@@ -34,10 +34,11 @@ bool exactFP(const Instruction &I) {
 
 IntrinsicInst *purePow(Value *V) {
   auto *I = dyn_cast<IntrinsicInst>(V);
-  if (!I || I->getIntrinsicID() != Intrinsic::pow || !I->getType()->isDoubleTy() ||
-      !I->hasOneUse() || !I->doesNotAccessMemory() ||
-      !I->hasFnAttr(Attribute::Speculatable) || I->hasFnAttr(Attribute::StrictFP) ||
-      I->hasOperandBundles() || I->isMustTailCall() || I->isConvergent() ||
+  if (!I || I->getIntrinsicID() != Intrinsic::pow ||
+      !I->getType()->isDoubleTy() || !I->hasOneUse() ||
+      !I->doesNotAccessMemory() || !I->hasFnAttr(Attribute::Speculatable) ||
+      I->hasFnAttr(Attribute::StrictFP) || I->hasOperandBundles() ||
+      I->isMustTailCall() || I->isConvergent() ||
       I->hasRetAttr(Attribute::NoFPClass) ||
       I->paramHasAttr(0, Attribute::NoFPClass) ||
       I->paramHasAttr(1, Attribute::NoFPClass) || !exactFP(*I))
@@ -81,7 +82,8 @@ std::optional<Chain> matchChain(IntrinsicInst &First, const Loop &L,
     return std::nullopt;
   // Early CSE can share 1-t between both halves of a quadrature loop or
   // with an endpoint check. Leave such a definition in place.
-  const bool MoveFirstBase = FirstBase->getParent() == B && FirstBase->hasOneUse();
+  const bool MoveFirstBase =
+      FirstBase->getParent() == B && FirstBase->hasOneUse();
   Instruction *Start = MoveFirstBase ? cast<Instruction>(FirstBase) : &First;
 
   auto *Multiply = dyn_cast<BinaryOperator>(*First.user_begin());
@@ -92,8 +94,12 @@ std::optional<Chain> matchChain(IntrinsicInst &First, const Loop &L,
       !L.isLoopInvariant(First.getArgOperand(1)))
     return std::nullopt;
 
-  Chain C{Node, Initial, Preheader,
-          {{&First, MoveFirstBase ? FirstBase : nullptr, nullptr, nullptr, Multiply}}, {}};
+  Chain C{Node,
+          Initial,
+          Preheader,
+          {{&First, MoveFirstBase ? FirstBase : nullptr, nullptr, nullptr,
+            Multiply}},
+          {}};
   while (C.Factors.size() < MaxPowers && Multiply->hasOneUse()) {
     auto *Next = dyn_cast<BinaryOperator>(*Multiply->user_begin());
     Value *Other = nullptr;
@@ -107,9 +113,8 @@ std::optional<Chain> matchChain(IntrinsicInst &First, const Loop &L,
     Value *RHS = nullptr, *Coefficient = nullptr;
     auto *Base = unitMinus(*Pow, RHS);
     auto *Scaled = dyn_cast_or_null<BinaryOperator>(RHS);
-    if (!Base || Base->getParent() != B || !Base->hasOneUse() ||
-        !Scaled || Scaled->getParent() != B || !Scaled->hasOneUse() ||
-        !exactFP(*Scaled) ||
+    if (!Base || Base->getParent() != B || !Base->hasOneUse() || !Scaled ||
+        Scaled->getParent() != B || !Scaled->hasOneUse() || !exactFP(*Scaled) ||
         !match(Scaled, m_c_FMul(m_Specific(Node), m_Value(Coefficient))) ||
         !L.isLoopInvariant(Coefficient))
       break;
@@ -211,11 +216,13 @@ Value *buildCutoff(const Group &G, MapVector<Value *, Value *> &Frozen,
   Value *Exponent = B.CreateSub(B.getInt64(1991), Largest);
   Value *Bits = B.CreateShl(Exponent, 52);
   Value *Exclusive = B.CreateAdd(Bits, B.getInt64(1));
-  Value *Valid = B.CreateAnd(Ordered, B.CreateICmpULT(Largest, B.getInt64(1991)));
+  Value *Valid =
+      B.CreateAnd(Ordered, B.CreateICmpULT(Largest, B.getInt64(1991)));
   return B.CreateSelect(Valid, Exclusive, B.getInt64(0), "pow.unit.cutoff");
 }
 
-void specialize(const Chain &C, Value *Cutoff, const MapVector<Value *, Value *> &Frozen) {
+void specialize(const Chain &C, Value *Cutoff,
+                const MapVector<Value *, Value *> &Frozen) {
   Instruction *Start = C.Region.front();
   IRBuilder<> Check(Start);
   Value *Node = C.GuardedNode;
@@ -258,7 +265,8 @@ void specialize(const Chain &C, Value *Cutoff, const MapVector<Value *, Value *>
   }
 
   auto *Last = C.Factors.back().Multiply;
-  auto *Result = PHINode::Create(Last->getType(), 2, "pow.unit.result", Start->getIterator());
+  auto *Result = PHINode::Create(Last->getType(), 2, "pow.unit.result",
+                                 Start->getIterator());
   Result->setDebugLoc(Last->getDebugLoc());
   Last->replaceAllUsesWith(Result);
   for (Instruction *I : C.Region) {
@@ -276,9 +284,11 @@ void specialize(const Chain &C, Value *Cutoff, const MapVector<Value *, Value *>
 
 } // namespace
 
-PreservedAnalyses PowUnitBasePass::run(Function &F, FunctionAnalysisManager &AM) {
+PreservedAnalyses PowUnitBasePass::run(Function &F,
+                                       FunctionAnalysisManager &AM) {
   if (!F.getName().contains(Filter) || F.isDeclaration() || F.hasOptNone() ||
-      F.hasOptSize() || F.hasMinSize() || F.hasFnAttribute(Attribute::StrictFP) ||
+      F.hasOptSize() || F.hasMinSize() ||
+      F.hasFnAttribute(Attribute::StrictFP) ||
       F.getDenormalMode(APFloat::IEEEdouble()) != DenormalMode::getIEEE() ||
       F.size() > 1024 || F.getInstructionCount() > 24000)
     return PreservedAnalyses::all();
@@ -300,7 +310,8 @@ PreservedAnalyses PowUnitBasePass::run(Function &F, FunctionAnalysisManager &AM)
       if (!Candidate)
         continue;
       auto Inputs = setupInputs(*Candidate);
-      auto G = find_if(Groups, [&](const Group &Group) { return Group.Inputs == Inputs; });
+      auto G = find_if(
+          Groups, [&](const Group &Group) { return Group.Inputs == Inputs; });
       if (G == Groups.end()) {
         BasicBlock *Preheader = Candidate->Preheader;
         Groups.push_back({std::move(Inputs), {}, Preheader});
@@ -322,7 +333,9 @@ PreservedAnalyses PowUnitBasePass::run(Function &F, FunctionAnalysisManager &AM)
   SmallVector<Group *, 4> Selected;
   for (Group &G : Groups) {
     if (!G.Setup || G.Setup->isEHPad() || G.Chains.size() < 2 ||
-        !all_of(G.Inputs, [&](Value *V) { return DT.dominates(V, G.Setup->getTerminator()); }))
+        !all_of(G.Inputs, [&](Value *V) {
+          return DT.dominates(V, G.Setup->getTerminator());
+        }))
       continue;
     const double SetupFreq = BFI.getBlockFreq(G.Setup).getFrequency();
     double Visits = 0;
@@ -332,11 +345,13 @@ PreservedAnalyses PowUnitBasePass::run(Function &F, FunctionAnalysisManager &AM)
       continue;
     ORE.emit([&] {
       using NV = ore::NV;
-      return OptimizationRemarkAnalysis(PassName, "UnitPowerBases", G.Setup->getTerminator())
+      return OptimizationRemarkAnalysis(PassName, "UnitPowerBases",
+                                        G.Setup->getTerminator())
              << NV("Function", F.getName()) << " "
              << NV("Action", Transform ? "guarded" : "can guard") << " "
-             << NV("Powers", G.Chains.front().Factors.size()) << " powers per node in "
-             << NV("Chains", G.Chains.size()) << " blocks with one shared unit-base cutoff";
+             << NV("Powers", G.Chains.front().Factors.size())
+             << " powers per node in " << NV("Chains", G.Chains.size())
+             << " blocks with one shared unit-base cutoff";
     });
     Selected.push_back(&G);
   }
@@ -355,7 +370,8 @@ PreservedAnalyses PowUnitBasePass::run(Function &F, FunctionAnalysisManager &AM)
     Rewrite &R = Rewrites.back();
     R.Cutoff = buildCutoff(*G, R.Inputs, DT);
     for (Chain &C : G->Chains) {
-      IRBuilder<> B(C.PrefixPow ? cast<Instruction>(C.PrefixPow) : C.Region.front());
+      IRBuilder<> B(C.PrefixPow ? cast<Instruction>(C.PrefixPow)
+                                : C.Region.front());
       C.GuardedNode = defined(B, C.Node, DT);
     }
   }

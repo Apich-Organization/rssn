@@ -6,8 +6,8 @@
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/Module.h"
 #include "llvm/IR/IntrinsicInst.h"
+#include "llvm/IR/Module.h"
 
 using namespace llvm;
 
@@ -131,8 +131,8 @@ void reuseLoads(SwitchInst &Switch, const Reuse &Plan) {
     B.SetInsertPoint(L);
     auto *Ty = cast<IntegerType>(L->getType());
     auto *PartTy = B.getByteNTy(Ty->getBitWidth());
-    auto *PartsTy = FixedVectorType::get(
-        PartTy, WideTy->getBitWidth() / Ty->getBitWidth());
+    auto *PartsTy =
+        FixedVectorType::get(PartTy, WideTy->getBitWidth() / Ty->getBitWidth());
     auto *Parts = B.CreateBitCast(Read, PartsTy, "switch.parts");
     auto *Low = B.CreateExtractElement(Parts, B.getInt32(0), "switch.low");
     auto *Part = B.CreateBitCast(Low, Ty, "switch.narrow");
@@ -144,7 +144,7 @@ void reuseLoads(SwitchInst &Switch, const Reuse &Plan) {
 } // namespace
 
 PreservedAnalyses SwitchLoadReusePass::run(Function &F,
-                                            FunctionAnalysisManager &AM) {
+                                           FunctionAnalysisManager &AM) {
   const Module &M = *F.getParent();
   if (M.getTargetTriple().getArch() != Triple::x86_64 ||
       !M.getDataLayout().isLittleEndian() || !F.getName().contains(Filter) ||

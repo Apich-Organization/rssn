@@ -5,7 +5,8 @@
 #include <string>
 
 namespace rssn {
-class LoopExitCompressionPass : public llvm::PassInfoMixin<LoopExitCompressionPass> {
+class LoopExitCompressionPass
+    : public llvm::PassInfoMixin<LoopExitCompressionPass> {
   bool Transform;
   std::string Filter;
 

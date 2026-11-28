@@ -254,7 +254,10 @@ fn headers(_root: &Path) -> Result<(), Box<dyn std::error::Error>> {
 fn headers(root: &Path) -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed=cbindgen.toml");
     for (name, bindings) in header_generation::generate(root)? {
-        bindings.write_to_file(root.join(name));
+        fs::write(
+            root.join(name),
+            header_generation::header_bytes(name, &bindings)?,
+        )?;
     }
     Ok(())
 }

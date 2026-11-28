@@ -72,8 +72,8 @@ class Liveness {
 public:
   static constexpr unsigned MaxBlockSize = 4096;
   static bool supports(const llvm::Function &F);
-  // A trial can change instruction placement while preserving the CFG and PHI edges.
-  // Each original instruction must occur once in the resulting schedule.
+  // A trial can change instruction placement while preserving the CFG and PHI
+  // edges. Each original instruction must occur once in the resulting schedule.
   struct Schedule {
     const llvm::BasicBlock *Block;
     llvm::ArrayRef<llvm::Instruction *> Code;

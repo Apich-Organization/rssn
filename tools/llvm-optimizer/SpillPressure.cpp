@@ -1,16 +1,16 @@
 #include "CallABI.h"
+#include "FPClassInterval.h"
+#include "FPEndpointGuards.h"
+#include "FPRegisterBank.h"
 #include "LibmPressure.h"
 #include "LibmReuse.h"
 #include "LibmTailCutoff.h"
 #include "LibmUnitLog.h"
-#include "FPClassInterval.h"
-#include "FPEndpointGuards.h"
-#include "FPRegisterBank.h"
 #include "LoopExitCompression.h"
 #include "LoopPreheaderPressure.h"
+#include "Planning.h"
 #include "PowExponentPack.h"
 #include "PowUnitBase.h"
-#include "Planning.h"
 #include "ScalarLoadPack.h"
 #include "SwitchLoadReuse.h"
 #include "llvm/ADT/DenseSet.h"
@@ -74,12 +74,12 @@ bool cheapPure(const Instruction &I, const Liveness &Live,
   default:
     return false;
   }
-  if (!modeled(Live.weight(&I)) ||
-      any_of(I.operands(), [&](const Use &U) {
+  if (!modeled(Live.weight(&I)) || any_of(I.operands(), [&](const Use &U) {
         return !isa<Constant>(U) && !modeled(Live.weight(U.get()));
       }))
     return false;
-  auto Cost = TTI.getInstructionCost(&I, TargetTransformInfo::TCK_RecipThroughput);
+  auto Cost =
+      TTI.getInstructionCost(&I, TargetTransformInfo::TCK_RecipThroughput);
   return Cost.isValid() && Cost <= 1;
 }
 
@@ -92,8 +92,9 @@ bool simpleLoad(const LoadInst &L, const Liveness &Live) {
 std::optional<AddressKey> accessAddress(const LoadInst &Load) {
   const DataLayout &DL = Load.getDataLayout();
   APInt Offset(DL.getIndexSizeInBits(Load.getPointerAddressSpace()), 0);
-  const Value *Base = Load.getPointerOperand()
-                          ->stripAndAccumulateInBoundsConstantOffsets(DL, Offset);
+  const Value *Base =
+      Load.getPointerOperand()->stripAndAccumulateInBoundsConstantOffsets(
+          DL, Offset);
   if (!Offset.isSignedIntN(64))
     return std::nullopt;
   return AddressKey{Base, Offset.getSExtValue()};
@@ -129,7 +130,7 @@ bool mergeFits(const LoadInst &First, const LoadInst &Second,
     if (New.worsens(P.Through[K], Liveness::CallLimit))
       return false;
     Area += CallWeight * (New.callCost(Liveness::CallLimit) -
-                         P.Through[K].callCost(Liveness::CallLimit));
+                          P.Through[K].callCost(Liveness::CallLimit));
   }
   // After the second definition, overlapping copies collapse to one value.
   const unsigned OverlapEnd =
@@ -140,14 +141,15 @@ bool mergeFits(const LoadInst &First, const LoadInst &Second,
     New -= Added;
     Area += New.congestion(Live.Limit) - P.Before[K].congestion(Live.Limit);
   }
-  const auto Saved = TTI.getInstructionCost(&Second,
-                                           TargetTransformInfo::TCK_RecipThroughput);
+  const auto Saved =
+      TTI.getInstructionCost(&Second, TargetTransformInfo::TCK_RecipThroughput);
   return Saved.isValid() &&
          Area <= 8 * std::clamp<int64_t>(Saved.getValue(), 1, 16);
 }
 
 bool tryMergeLoads(BlockPressure &P, const Liveness &Live,
-                   const TargetTransformInfo &TTI, MemoryModel &Memory, Changes &Result) {
+                   const TargetTransformInfo &TTI, MemoryModel &Memory,
+                   Changes &Result) {
   DenseMap<std::pair<AddressKey, Type *>, LoadInst *> Previous;
   for (auto [K, I] : enumerate(P.Code)) {
     auto *Later = dyn_cast<LoadInst>(I);
@@ -199,7 +201,8 @@ bool collectDestinations(Instruction &I, const LoopInfo &LI,
     if (B == I.getParent() || B->isEHPad() ||
         LI.getLoopFor(I.getParent()) != LI.getLoopFor(B))
       return false;
-    auto It = find_if(Dests, [B](const Destination &D) { return D.Block == B; });
+    auto It =
+        find_if(Dests, [B](const Destination &D) { return D.Block == B; });
     if (It == Dests.end()) {
       if (Dests.size() == 3)
         return false;
@@ -274,7 +277,8 @@ bool tryCrossBlock(Function &F, const Liveness &Live,
       for (unsigned K = Def + 1; K < P.Code.size(); ++K) {
         Pressure After = P.Before[K];
         After -= W;
-        Gain += P.Before[K].congestion(Live.Limit) - After.congestion(Live.Limit);
+        Gain +=
+            P.Before[K].congestion(Live.Limit) - After.congestion(Live.Limit);
         if (P.Calls.test(K)) {
           After = P.Through[K];
           After -= W;
@@ -283,14 +287,18 @@ bool tryCrossBlock(Function &F, const Liveness &Live,
         }
       }
       SmallVector<Instruction *, 3> Insertions;
-      const auto Size = TTI.getInstructionCost(I, TargetTransformInfo::TCK_CodeSize);
-      const auto Rate = TTI.getInstructionCost(I, TargetTransformInfo::TCK_RecipThroughput);
+      const auto Size =
+          TTI.getInstructionCost(I, TargetTransformInfo::TCK_CodeSize);
+      const auto Rate =
+          TTI.getInstructionCost(I, TargetTransformInfo::TCK_RecipThroughput);
       const auto ExtraCost = Size + Rate;
       const unsigned Copies = Dests.size() - 1;
       if ((Copies && (!ExtraCost.isValid() || ExtraCost > 4)) ||
           !findInsertions(*I, Dests, Live, BFI, Insertions, Gain) ||
           Gain < 6 + static_cast<int>(Copies) *
-                         (ExtraCost.isValid() ? std::max<int64_t>(2, ExtraCost.getValue()) : 0))
+                         (ExtraCost.isValid()
+                              ? std::max<int64_t>(2, ExtraCost.getValue())
+                              : 0))
         continue;
 
       salvageDebugInfo(*I);
@@ -375,14 +383,17 @@ void reportWin64Pressure(Function &F, FunctionAnalysisManager &AM,
         S.Hot->printAsOperand(ResultOS, false, F.getParent());
       return OptimizationRemarkAnalysis(PassName, "Win64CallPressure", S.Hot)
              << NV("Function", F.getName()) << " Win64 " << NV("Kind", Kind)
-             << " sites " << NV("Sites", S.Sites) << ", over preservation budget "
-             << NV("OverBudget", S.OverBudget) << ", at selected site GP "
-             << NV("GP", S.AtHot.GP) << " / " << NV("PreservedGP", Pressure::Win64PreservedGP)
-             << ", XMM-sized " << NV("XMM", S.AtHot.PreservableSIMD) << " / "
-             << NV("PreservedXMM", Pressure::Win64PreservedXMM) << ", native wide SIMD "
-             << NV("NativeWide", S.AtHot.VolatileSIMD) << ", unclassified SIMD peak "
-             << NV("Unclassified", S.Unknown) << ", callee "
-             << NV("Callee", Callee ? Callee->getName() : StringRef("<indirect>"))
+             << " sites " << NV("Sites", S.Sites)
+             << ", over preservation budget " << NV("OverBudget", S.OverBudget)
+             << ", at selected site GP " << NV("GP", S.AtHot.GP) << " / "
+             << NV("PreservedGP", Pressure::Win64PreservedGP) << ", XMM-sized "
+             << NV("XMM", S.AtHot.PreservableSIMD) << " / "
+             << NV("PreservedXMM", Pressure::Win64PreservedXMM)
+             << ", native wide SIMD " << NV("NativeWide", S.AtHot.VolatileSIMD)
+             << ", unclassified SIMD peak " << NV("Unclassified", S.Unknown)
+             << ", callee "
+             << NV("Callee",
+                   Callee ? Callee->getName() : StringRef("<indirect>"))
              << ", IR result " << NV("IRResult", ResultName);
     });
   };
@@ -395,16 +406,19 @@ void reportWin64ArgumentSlots(Function &F, FunctionAnalysisManager &AM,
   if (F.getCallingConv() == CallingConv::C ||
       F.getCallingConv() == CallingConv::Fast ||
       F.getCallingConv() == CallingConv::Win64) {
-    const auto Slots = win64ScalarStackSlots(*F.getFunctionType(), F.getAttributes());
+    const auto Slots =
+        win64ScalarStackSlots(*F.getFunctionType(), F.getAttributes());
     if (Slots && *Slots)
       ORE.emit([&] {
         using NV = ore::NV;
-        const unsigned Used = count_if(drop_begin(F.args(), 4), [](const Argument &A) {
-          return !A.use_empty();
-        });
-        return OptimizationRemarkAnalysis(PassName, "Win64IncomingStackSlots", &F)
-               << NV("Function", F.getName()) << " Win64 incoming scalar stack slots "
-               << NV("Slots", *Slots) << ", used parameters " << NV("Used", Used);
+        const unsigned Used =
+            count_if(drop_begin(F.args(), 4),
+                     [](const Argument &A) { return !A.use_empty(); });
+        return OptimizationRemarkAnalysis(PassName, "Win64IncomingStackSlots",
+                                          &F)
+               << NV("Function", F.getName())
+               << " Win64 incoming scalar stack slots " << NV("Slots", *Slots)
+               << ", used parameters " << NV("Used", Used);
       });
   }
   const auto &BFI = AM.getResult<BlockFrequencyAnalysis>(F);
@@ -423,8 +437,8 @@ void reportWin64ArgumentSlots(Function &F, FunctionAnalysisManager &AM,
       const auto &Call = cast<CallInst>(I);
       if (Call.arg_size() <= 4)
         continue;
-      const auto Slots = win64ScalarStackSlots(*Call.getFunctionType(),
-                                               Call.getAttributes());
+      const auto Slots =
+          win64ScalarStackSlots(*Call.getFunctionType(), Call.getAttributes());
       if (!Slots || *Slots == 0)
         continue;
       ++StackCallSites;
@@ -440,11 +454,14 @@ void reportWin64ArgumentSlots(Function &F, FunctionAnalysisManager &AM,
     ORE.emit([&] {
       using NV = ore::NV;
       const Function *Callee = HotStackCall->getCalledFunction();
-      return OptimizationRemarkAnalysis(PassName, "Win64OutgoingStackSlots", HotStackCall)
-             << NV("Function", F.getName()) << " Win64 calls with scalar stack slots "
+      return OptimizationRemarkAnalysis(PassName, "Win64OutgoingStackSlots",
+                                        HotStackCall)
+             << NV("Function", F.getName())
+             << " Win64 calls with scalar stack slots "
              << NV("Sites", StackCallSites) << ", at selected site slots "
              << NV("Slots", HotStackSlots) << ", callee "
-             << NV("Callee", Callee ? Callee->getName() : StringRef("<indirect>"));
+             << NV("Callee",
+                   Callee ? Callee->getName() : StringRef("<indirect>"));
     });
 }
 
@@ -479,8 +496,8 @@ public:
       reportWin64Pressure(F, AM, *Live, ORE);
       return PreservedAnalyses::all();
     }
-    const bool WantRemarks = ORE.allowExtraAnalysis(PassName) ||
-                             RunMode == Mode::Report;
+    const bool WantRemarks =
+        ORE.allowExtraAnalysis(PassName) || RunMode == Mode::Report;
     Summary Before;
     if (WantRemarks)
       Before = summarize(F, *Live);
@@ -512,16 +529,16 @@ public:
         DenseSet<const Instruction *> Moved;
         unsigned BlockChanges = 0;
         while (BlockChanges < MaxBlockChanges && Total < MaxLocalChanges) {
-          const unsigned Previous = Result.Sunk + Result.LoadsSunk +
-                                    Result.LoadsMerged;
-          const unsigned Budget = std::min(MaxBlockChanges - BlockChanges,
-                                           MaxLocalChanges - Total);
+          const unsigned Previous =
+              Result.Sunk + Result.LoadsSunk + Result.LoadsMerged;
+          const unsigned Budget =
+              std::min(MaxBlockChanges - BlockChanges, MaxLocalChanges - Total);
           BlockPressure P(B, *Live);
           if (!tryMergeLoads(P, *Live, TTI, Memory, Result) &&
               !trySink(P, *Live, TTI, Memory, Moved, Result, Budget, PlanWidth))
             break;
-          const unsigned Applied = Result.Sunk + Result.LoadsSunk +
-                                   Result.LoadsMerged - Previous;
+          const unsigned Applied =
+              Result.Sunk + Result.LoadsSunk + Result.LoadsMerged - Previous;
           BlockChanges += Applied;
           Total += Applied;
         }
@@ -539,7 +556,8 @@ public:
       if (F.size() > 1) {
         auto &DT = AM.getResult<DominatorTreeAnalysis>(F);
         auto &LI = AM.getResult<LoopAnalysis>(F);
-        if (any_of(F, [&](BasicBlock &B) { return !Live->liveOut(B).none(); })) {
+        if (any_of(F,
+                   [&](BasicBlock &B) { return !Live->liveOut(B).none(); })) {
           auto &BFI = AM.getResult<BlockFrequencyAnalysis>(F);
           for (unsigned K = 0; K < MaxCrossChanges; ++K) {
             if (!tryCrossBlock(F, *Live, TTI, DT, LI, BFI, Result))
@@ -563,8 +581,9 @@ public:
                << NV("SIMDPeakBefore", Before.Peak.SIMD) << " -> "
                << NV("SIMDPeakAfter", After.Peak.SIMD) << ", over-limit points "
                << NV("ExcessBefore", Before.ExcessPoints) << " -> "
-               << NV("ExcessAfter", After.ExcessPoints) << ", SIMD live through "
-               << NV("CallSites", Before.CallSites) << " call sites "
+               << NV("ExcessAfter", After.ExcessPoints)
+               << ", SIMD live through " << NV("CallSites", Before.CallSites)
+               << " call sites "
                << NV("SIMDCallsBefore", Before.SIMDThroughCalls) << " -> "
                << NV("SIMDCallsAfter", After.SIMDThroughCalls) << ", sunk "
                << NV("Sunk", Result.Sunk) << ", delayed loads "
@@ -574,12 +593,13 @@ public:
                << NV("Copies", Result.Copies) << ", congestion "
                << NV("CongestionBefore", Before.Congestion) << " -> "
                << NV("CongestionAfter", After.Congestion) << ", SIMD call cost "
-               << NV("SIMDCallCostBefore", Before.SIMDSpillThroughCalls) << " -> "
-               << NV("SIMDCallCostAfter", After.SIMDSpillThroughCalls)
+               << NV("SIMDCallCostBefore", Before.SIMDSpillThroughCalls)
+               << " -> " << NV("SIMDCallCostAfter", After.SIMDSpillThroughCalls)
                << ", joint plans " << NV("MotionGroups", Result.MotionGroups)
                << ", joint members " << NV("GroupMembers", Result.GroupMembers)
                << ", fused packs " << NV("PacksFused", Result.PacksFused)
-               << ", lane groups " << NV("LaneGroupsFused", Result.LaneGroupsFused)
+               << ", lane groups "
+               << NV("LaneGroupsFused", Result.LaneGroupsFused)
                << ", source loads fused " << NV("ReadsFused", Result.ReadsFused)
                << ", private call boundaries "
                << NV("PrivateBoundaries", PrivateBoundaries)
@@ -652,54 +672,69 @@ void registerPasses(PassBuilder &PB) {
   PB.registerPipelineParsingCallback(
       [Filter](StringRef Name, ModulePassManager &MPM,
                ArrayRef<PassBuilder::PipelineElement> Inner) {
-        if (!Inner.empty() || (Name != "rssn-call-abi" &&
-                               Name != "rssn-call-abi-report"))
+        if (!Inner.empty() ||
+            (Name != "rssn-call-abi" && Name != "rssn-call-abi-report"))
           return false;
         MPM.addPass(CallABIPass(Name == "rssn-call-abi", Filter));
         return true;
       });
   PB.registerPipelineParsingCallback(
       [Filter, Width](StringRef Name, FunctionPassManager &FPM,
-               ArrayRef<PassBuilder::PipelineElement> Inner) {
+                      ArrayRef<PassBuilder::PipelineElement> Inner) {
         if (!Inner.empty())
           return false;
         if (Name == PassName)
           FPM.addPass(SpillPressurePass(Mode::Transform, Filter, Width));
         else if (Name == "rssn-spill-pressure-report")
           FPM.addPass(SpillPressurePass(Mode::Report, Filter, Width));
-        else if (Name == "rssn-libm-pressure" || Name == "rssn-libm-pressure-report" ||
+        else if (Name == "rssn-libm-pressure" ||
+                 Name == "rssn-libm-pressure-report" ||
                  Name == "rssn-libm-cone-trial")
-          FPM.addPass(LibmPressurePass(Name != "rssn-libm-pressure-report", Filter,
-                                       Name == "rssn-libm-cone-trial"));
+          FPM.addPass(LibmPressurePass(Name != "rssn-libm-pressure-report",
+                                       Filter, Name == "rssn-libm-cone-trial"));
         else if (Name == "rssn-libm-reuse" || Name == "rssn-libm-reuse-report")
           FPM.addPass(LibmReusePass(Name == "rssn-libm-reuse", Filter));
-        else if (Name == "rssn-libm-tail-cutoff" || Name == "rssn-libm-tail-cutoff-report")
-          FPM.addPass(LibmTailCutoffPass(Name == "rssn-libm-tail-cutoff", Filter));
-        else if (Name == "rssn-libm-unit-log" || Name == "rssn-libm-unit-log-report")
+        else if (Name == "rssn-libm-tail-cutoff" ||
+                 Name == "rssn-libm-tail-cutoff-report")
+          FPM.addPass(
+              LibmTailCutoffPass(Name == "rssn-libm-tail-cutoff", Filter));
+        else if (Name == "rssn-libm-unit-log" ||
+                 Name == "rssn-libm-unit-log-report")
           FPM.addPass(LibmUnitLogPass(Name == "rssn-libm-unit-log", Filter));
-        else if (Name == "rssn-pow-exponent-pack" || Name == "rssn-pow-exponent-pack-report")
-          FPM.addPass(PowExponentPackPass(Name == "rssn-pow-exponent-pack", Filter));
+        else if (Name == "rssn-pow-exponent-pack" ||
+                 Name == "rssn-pow-exponent-pack-report")
+          FPM.addPass(
+              PowExponentPackPass(Name == "rssn-pow-exponent-pack", Filter));
         else if (Name == "rssn-loop-exit-compression" ||
                  Name == "rssn-loop-exit-compression-report")
-          FPM.addPass(LoopExitCompressionPass(Name == "rssn-loop-exit-compression", Filter));
+          FPM.addPass(LoopExitCompressionPass(
+              Name == "rssn-loop-exit-compression", Filter));
         else if (Name == "rssn-loop-preheader-pressure" ||
                  Name == "rssn-loop-preheader-pressure-report")
           FPM.addPass(LoopPreheaderPressurePass(
               Name == "rssn-loop-preheader-pressure", Filter));
         else if (Name == "rssn-fp-endpoint-guards" ||
                  Name == "rssn-fp-endpoint-guards-report")
-          FPM.addPass(FPEndpointGuardsPass(Name == "rssn-fp-endpoint-guards", Filter));
-        else if (Name == "rssn-fp-class-interval" || Name == "rssn-fp-class-interval-report")
-          FPM.addPass(FPClassIntervalPass(Name == "rssn-fp-class-interval", Filter));
-        else if (Name == "rssn-scalar-load-pack" || Name == "rssn-scalar-load-pack-report")
-          FPM.addPass(ScalarLoadPackPass(Name == "rssn-scalar-load-pack", Filter));
+          FPM.addPass(
+              FPEndpointGuardsPass(Name == "rssn-fp-endpoint-guards", Filter));
+        else if (Name == "rssn-fp-class-interval" ||
+                 Name == "rssn-fp-class-interval-report")
+          FPM.addPass(
+              FPClassIntervalPass(Name == "rssn-fp-class-interval", Filter));
+        else if (Name == "rssn-scalar-load-pack" ||
+                 Name == "rssn-scalar-load-pack-report")
+          FPM.addPass(
+              ScalarLoadPackPass(Name == "rssn-scalar-load-pack", Filter));
         else if (Name == "rssn-switch-load-reuse" ||
                  Name == "rssn-switch-load-reuse-report")
-          FPM.addPass(SwitchLoadReusePass(Name == "rssn-switch-load-reuse", Filter));
+          FPM.addPass(
+              SwitchLoadReusePass(Name == "rssn-switch-load-reuse", Filter));
         else if (Name == "rssn-fp-register-bank" ||
                  Name == "rssn-fp-register-bank-report")
-          FPM.addPass(FPRegisterBankPass(Name == "rssn-fp-register-bank", Filter));
-        else if (Name == "rssn-pow-unit-base" || Name == "rssn-pow-unit-base-report")
+          FPM.addPass(
+              FPRegisterBankPass(Name == "rssn-fp-register-bank", Filter));
+        else if (Name == "rssn-pow-unit-base" ||
+                 Name == "rssn-pow-unit-base-report")
           FPM.addPass(PowUnitBasePass(Name == "rssn-pow-unit-base", Filter));
         else
           return false;
@@ -723,8 +758,8 @@ void registerPasses(PassBuilder &PB) {
   const Mode PowUnit = libmMode("RSSN_POW_UNIT_BASE");
   auto Add = [Auto, ABI, Libm, LibmReuse, LibmTailCutoff, LibmUnitLog,
               ExponentPack, ExitCompression, PreheaderPressure, EndpointGuards,
-              ClassInterval, LoadPack, SwitchReuse, FPBank, PowUnit, Filter, Width](
-                 ModulePassManager &MPM, OptimizationLevel Level) {
+              ClassInterval, LoadPack, SwitchReuse, FPBank, PowUnit, Filter,
+              Width](ModulePassManager &MPM, OptimizationLevel Level) {
     if (Level != OptimizationLevel::O3)
       return;
     if (ABI != Mode::Off)
@@ -760,12 +795,11 @@ void registerPasses(PassBuilder &PB) {
       MPM.addPass(createModuleToFunctionPassAdaptor(
           LoopExitCompressionPass(ExitCompression == Mode::Transform, Filter)));
     if (PreheaderPressure != Mode::Off)
-      MPM.addPass(createModuleToFunctionPassAdaptor(
-          LoopPreheaderPressurePass(PreheaderPressure == Mode::Transform,
-                                    Filter)));
+      MPM.addPass(createModuleToFunctionPassAdaptor(LoopPreheaderPressurePass(
+          PreheaderPressure == Mode::Transform, Filter)));
     if (Auto != Mode::Off)
-      MPM.addPass(
-          createModuleToFunctionPassAdaptor(SpillPressurePass(Auto, Filter, Width)));
+      MPM.addPass(createModuleToFunctionPassAdaptor(
+          SpillPressurePass(Auto, Filter, Width)));
     if (FPBank != Mode::Off)
       MPM.addPass(createModuleToFunctionPassAdaptor(
           FPRegisterBankPass(FPBank == Mode::Transform, Filter)));
@@ -786,16 +820,16 @@ void registerPasses(PassBuilder &PB) {
       LibmUnitLog == Mode::Off && ExponentPack == Mode::Off &&
       ExitCompression == Mode::Off && PreheaderPressure == Mode::Off &&
       EndpointGuards == Mode::Off && ClassInterval == Mode::Off &&
-      LoadPack == Mode::Off && SwitchReuse == Mode::Off && FPBank == Mode::Off &&
-      PowUnit == Mode::Off)
+      LoadPack == Mode::Off && SwitchReuse == Mode::Off &&
+      FPBank == Mode::Off && PowUnit == Mode::Off)
     return;
-  PB.registerOptimizerLastEPCallback(
-      [Add](ModulePassManager &MPM, OptimizationLevel Level,
-            ThinOrFullLTOPhase Phase) {
-        if (Phase == ThinOrFullLTOPhase::None ||
-            Phase == ThinOrFullLTOPhase::ThinLTOPostLink)
-          Add(MPM, Level);
-      });
+  PB.registerOptimizerLastEPCallback([Add](ModulePassManager &MPM,
+                                           OptimizationLevel Level,
+                                           ThinOrFullLTOPhase Phase) {
+    if (Phase == ThinOrFullLTOPhase::None ||
+        Phase == ThinOrFullLTOPhase::ThinLTOPostLink)
+      Add(MPM, Level);
+  });
   PB.registerFullLinkTimeOptimizationLastEPCallback(Add);
 }
 
@@ -805,7 +839,8 @@ void registerPasses(PassBuilder &PB) {
 #if defined(_WIN32)
 extern "C" __declspec(dllexport) PassPluginLibraryInfo
 #else
-extern "C" LLVM_ATTRIBUTE_WEAK LLVM_ATTRIBUTE_VISIBILITY_DEFAULT PassPluginLibraryInfo
+extern "C" LLVM_ATTRIBUTE_WEAK
+    LLVM_ATTRIBUTE_VISIBILITY_DEFAULT PassPluginLibraryInfo
 #endif
 llvmGetPassPluginInfo() {
   return {LLVM_PLUGIN_API_VERSION, "RssnLLVMOptimizer", "0.1",

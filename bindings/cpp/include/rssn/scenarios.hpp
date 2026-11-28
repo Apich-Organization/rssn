@@ -13,9 +13,9 @@ namespace client {
 /// `field:type[=default]` separated by `;`. `Session::run_scenario()` takes
 /// the name and a JSON object of those parameters.
 struct ScenarioDef {
-    const char* name;
-    const char* group;
-    const char* params;
+  const char *name;
+  const char *group;
+  const char *params;
 };
 
 /// Every scenario of the engine's catalog, in catalog order.
@@ -23,43 +23,76 @@ inline constexpr ScenarioDef kScenarios[] = {
     {"fdtd", "fixed", ""},
     {"geodesic", "fixed", ""},
     {"gpe", "fixed", ""},
-    {"ising", "fixed", "params:ising_statistical::IsingParameters; seed:int|null"},
+    {"ising", "fixed",
+     "params:ising_statistical::IsingParameters; seed:int|null"},
     {"elasticity", "fixed", ""},
     {"lid_driven_cavity", "fixed", ""},
-    {"channel_flow", "fixed", "nx:int; ny:int; re:float; dt:float; n_iter:int; obstacle_mask:nested list"},
-    {"schrodinger", "fixed", "params:schrodinger_quantum::SchrodingerParameters; initial_psi:list[Complex<f64>]"},
-    {"ising_wolff", "fixed", "width:int; height:int; temperature:float; thermalisation:int; sweeps:int; seed:int|null"},
+    {"channel_flow", "fixed",
+     "nx:int; ny:int; re:float; dt:float; n_iter:int; obstacle_mask:nested "
+     "list"},
+    {"schrodinger", "fixed",
+     "params:schrodinger_quantum::SchrodingerParameters; "
+     "initial_psi:list[Complex<f64>]"},
+    {"ising_wolff", "fixed",
+     "width:int; height:int; temperature:float; thermalisation:int; "
+     "sweeps:int; seed:int|null"},
     {"sod_shock_tube", "fixed", "cells:int; t:float; limiter:str|null"},
-    {"kepler_symplectic", "fixed", "q:list[float]; p:list[float]; dt:float; steps:int; order:int|null"},
-    {"poisson_multigrid", "engine", "dim:int=2; n:int=33; sigma:float=0.0; cycle:str='v'; tol:float=1e-10"},
-    {"heat_nd", "engine", "dim:int=2; n:int=33; alpha:float=1.0; t_end:float=0.05; steps:int=50; theta:float=0.5; bc:str='dirichlet'; adaptive_tol:float|null"},
+    {"kepler_symplectic", "fixed",
+     "q:list[float]; p:list[float]; dt:float; steps:int; order:int|null"},
+    {"poisson_multigrid", "engine",
+     "dim:int=2; n:int=33; sigma:float=0.0; cycle:str='v'; tol:float=1e-10"},
+    {"heat_nd", "engine",
+     "dim:int=2; n:int=33; alpha:float=1.0; t_end:float=0.05; steps:int=50; "
+     "theta:float=0.5; bc:str='dirichlet'; adaptive_tol:float|null"},
     {"wave_nd", "engine", "dim:int=2; n:int=41; c:float=1.0; t_end:float=0.4"},
-    {"euler_fv", "engine", "dim:int=1; n:int=100; t_end:float=0.2; recon:str='weno5'; riemann:str='hllc'; gamma:float=1.4"},
-    {"dg_conservation", "engine", "law:str='advection'; ne:int=20; p:int=3; t_end:float=0.5; limiter:bool=false"},
-    {"acoustics_pml", "engine", "dim:int=2; n:int=80; pml_cells:int=10; t_end:float=1.4; sigma:float=0.04; absorbing:bool=true"},
+    {"euler_fv", "engine",
+     "dim:int=1; n:int=100; t_end:float=0.2; recon:str='weno5'; "
+     "riemann:str='hllc'; gamma:float=1.4"},
+    {"dg_conservation", "engine",
+     "law:str='advection'; ne:int=20; p:int=3; t_end:float=0.5; "
+     "limiter:bool=false"},
+    {"acoustics_pml", "engine",
+     "dim:int=2; n:int=80; pml_cells:int=10; t_end:float=1.4; "
+     "sigma:float=0.04; absorbing:bool=true"},
     {"yee_fdtd", "engine", "dim:int=2; n:int=60; steps:int=120; pml:bool=true"},
-    {"navier_stokes_mac", "engine", "case:str='cavity'; dim:int=2; n:int=32; re:float=100.0; t_end:float=5.0; dt:float=0.01"},
-    {"split_step", "engine", "dim:int=1; n:int=64; len:float=16.0; g:float=0.0; mode:str='ground_state'; dt:float=0.05; steps:int=2000"},
+    {"navier_stokes_mac", "engine",
+     "case:str='cavity'; dim:int=2; n:int=32; re:float=100.0; t_end:float=5.0; "
+     "dt:float=0.01"},
+    {"split_step", "engine",
+     "dim:int=1; n:int=64; len:float=16.0; g:float=0.0; "
+     "mode:str='ground_state'; dt:float=0.05; steps:int=2000"},
     {"fem_simplex", "engine", "dim:int=2; degree:int=1; n:int=8"},
-    {"elasticity_fem", "engine", "dim:int=2; degree:int=2; length_cells:int=20; young:float=1000.0; poisson:float=0.3; load:float=1.0"},
-    {"bem_laplace", "engine", "subdivisions:int=2; problem:str='interior'; method:str='aca'"},
+    {"elasticity_fem", "engine",
+     "dim:int=2; degree:int=2; length_cells:int=20; young:float=1000.0; "
+     "poisson:float=0.3; load:float=1.0"},
+    {"bem_laplace", "engine",
+     "subdivisions:int=2; problem:str='interior'; method:str='aca'"},
     {"sph", "engine", "t_end:float=0.2; grad_h:bool=false; gamma:float=1.4"},
-    {"dpd", "engine", "dim:int=3; box_len:float=6.0; density:float=3.0; steps:int=400; dt:float=0.04; a:float=25.0; seed:int=1"},
-    {"md_lj", "engine", "dim:int=3; cells:int=6; density:float=0.8; temperature:float=1.0; steps:int=200; dt:float=0.004; thermostat:str='nve'; seed:int=1"},
-    {"spin_model", "engine", "dim:int=2; n:int=16; beta:float=0.5; sweeps:int=200; model:str='ising'; update:str='wolff'; seed:int=1"},
+    {"dpd", "engine",
+     "dim:int=3; box_len:float=6.0; density:float=3.0; steps:int=400; "
+     "dt:float=0.04; a:float=25.0; seed:int=1"},
+    {"md_lj", "engine",
+     "dim:int=3; cells:int=6; density:float=0.8; temperature:float=1.0; "
+     "steps:int=200; dt:float=0.004; thermostat:str='nve'; seed:int=1"},
+    {"spin_model", "engine",
+     "dim:int=2; n:int=16; beta:float=0.5; sweeps:int=200; model:str='ising'; "
+     "update:str='wolff'; seed:int=1"},
     {"nbody_gravity", "engine", ""},
-    {"kerr_geodesic", "engine", "mass:float=1.0; spin:float=0.5; charge:float=0.0; radius:float=10.0; prograde:bool=true; step:float=0.5; steps:int=400"},
+    {"kerr_geodesic", "engine",
+     "mass:float=1.0; spin:float=0.5; charge:float=0.0; radius:float=10.0; "
+     "prograde:bool=true; step:float=0.5; steps:int=400"},
 };
 
 /// The scenario with this name, or nullptr.
-inline const ScenarioDef* lookup_scenario(const char* name) {
-    for (const ScenarioDef& scenario : kScenarios) {
-        if (std::strcmp(scenario.name, name) == 0) return &scenario;
-    }
-    return nullptr;
+inline const ScenarioDef *lookup_scenario(const char *name) {
+  for (const ScenarioDef &scenario : kScenarios) {
+    if (std::strcmp(scenario.name, name) == 0)
+      return &scenario;
+  }
+  return nullptr;
 }
 
-}  // namespace client
-}  // namespace rssn
+} // namespace client
+} // namespace rssn
 
-#endif  // RSSN_CLIENT_SCENARIOS_HPP
+#endif // RSSN_CLIENT_SCENARIOS_HPP

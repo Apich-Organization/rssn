@@ -19,11 +19,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     for (name, bindings) in headers::generate(&root)? {
         let path = root.join(name);
+        let generated = headers::header_bytes(name, &bindings)?;
         if action == "--write" {
-            bindings.write_to_file(path);
+            std::fs::write(path, generated)?;
         } else {
-            let mut generated = Vec::new();
-            bindings.write(&mut generated);
             let expected = String::from_utf8(generated)?.replace("\r\n", "\n");
             if std::fs::read_to_string(&path)?.replace("\r\n", "\n") != expected {
                 return Err(format!(

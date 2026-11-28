@@ -8,7 +8,7 @@
 namespace rssn {
 
 llvm::Value *buildFiniteNonzeroTest(llvm::IRBuilder<> &B, llvm::Value *Input,
-                                   bool Invalid);
+                                    bool Invalid);
 llvm::ICmpInst *findNonfiniteOrZeroTest(llvm::BitCastInst &Bits);
 
 class FPClassIntervalPass : public llvm::PassInfoMixin<FPClassIntervalPass> {
@@ -20,7 +20,7 @@ public:
       : Transform(Transform), Filter(Filter.str()) {}
 
   llvm::PreservedAnalyses run(llvm::Function &F,
-                             llvm::FunctionAnalysisManager &AM);
+                              llvm::FunctionAnalysisManager &AM);
 };
 
 } // namespace rssn

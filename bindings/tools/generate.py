@@ -23,6 +23,8 @@ argument, or with another parameter of the same operator falls back too.
 from __future__ import annotations
 
 import argparse
+import subprocess
+import os
 import json
 import keyword
 import re
@@ -1707,6 +1709,12 @@ def main(argv: list[str] | None = None) -> int:
     for relative, emitter in OUTPUTS.items():
         path = BINDINGS / relative
         text = emitter(api)
+        if path.suffix == ".hpp":
+            text = subprocess.run(
+                [os.environ.get("CLANG_FORMAT", "clang-format"), "--style=LLVM",
+                 f"--assume-filename={path.name}"],
+                input=text, encoding="utf-8", stdout=subprocess.PIPE, check=True,
+            ).stdout
         if args.check:
             current = path.read_text(encoding="utf-8") if path.exists() else ""
             if current != text:

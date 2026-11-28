@@ -14,7 +14,7 @@ public:
       : Transform(Transform), Filter(Filter.str()) {}
 
   llvm::PreservedAnalyses run(llvm::Function &F,
-                             llvm::FunctionAnalysisManager &AM);
+                              llvm::FunctionAnalysisManager &AM);
 };
 } // namespace rssn
 #endif

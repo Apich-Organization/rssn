@@ -44,6 +44,8 @@ Use Bazel 7.7.1 through Bazelisk, Python 3.11 or later, and the Rust toolchain s
 | `bazel run //:refresh_bindings_from_manifest -- --manifest manifest.json` | Refresh the facades from an already linked RSSN build's manifest |
 | `bazel run //:refresh_witness` | Collect a fresh test trace and mine `signatures.witnessed.json` |
 
+Header and binding regeneration and their checks use clang-format 23.1.5. Set `CLANG_FORMAT` or pass `--repo_env=CLANG_FORMAT=/path/to/clang-format` if it is outside `PATH`.
+
 The binding integration test needs Python with NumPy, Julia, R with development headers, and CMake with a C++ compiler. It installs the R package into the build state and passes the same explicit library file to every suite. Add `--config=release` to exercise the optimized cdylib. For a machine without the full language toolchain, `bazel build //:ffi_dev` supplies the all-feature development cdylib.
 
 When R is installed in an environment with a separate C++ toolchain, select a

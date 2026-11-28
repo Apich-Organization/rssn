@@ -1,6 +1,6 @@
 #include "Planning.h"
-#include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/MapVector.h"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/Transforms/Utils/Local.h"
 
@@ -49,8 +49,8 @@ int excessIncrease(Pressure New, Pressure Old, Pressure Limit) {
          std::max(0, New.SIMD - std::max(Old.SIMD, Limit.SIMD));
 }
 
-void addInterval(MutableArrayRef<Pressure> Events, unsigned Base, unsigned Begin,
-                 unsigned End, Pressure Weight, bool Add) {
+void addInterval(MutableArrayRef<Pressure> Events, unsigned Base,
+                 unsigned Begin, unsigned End, Pressure Weight, bool Add) {
   Begin = std::max(Base, Begin);
   if (Begin > End)
     return;
@@ -72,21 +72,22 @@ bool independent(const Motion &A, const Motion &B, const BlockPressure &P) {
       return V == Y.Def || (Y.Address && V == Y.Address);
     };
     return fromOther(P.Code[X.NewPoint]) ||
-           any_of(X.source().operands(), [&](const Use &U) {
-             return fromOther(U.get());
-           });
+           any_of(X.source().operands(),
+                  [&](const Use &U) { return fromOther(U.get()); });
   };
   return !touches(A, B) && !touches(B, A);
 }
 
 Evaluation evaluate(const Plan &Members, const BlockPressure &P,
                     const Liveness &Live) {
-  const unsigned Begin = (*min_element(Members, [](auto *A, auto *B) {
-                            return A->Start < B->Start;
-                          }))->Start + 1;
+  const unsigned Begin =
+      (*min_element(Members,
+                    [](auto *A, auto *B) { return A->Start < B->Start; }))
+          ->Start +
+      1;
   const unsigned End = (*max_element(Members, [](auto *A, auto *B) {
-                          return A->NewPoint < B->NewPoint;
-                        }))->NewPoint;
+                         return A->NewPoint < B->NewPoint;
+                       }))->NewPoint;
   if (End - Begin >= MaxWindow)
     return {-1, 1};
 
@@ -141,7 +142,7 @@ Evaluation evaluate(const Plan &Members, const BlockPressure &P,
       CallNew += CallDelta;
       E.Overflow += excessIncrease(CallNew, CallOld, Liveness::CallLimit);
       E.Gain += CallWeight * (CallOld.callCost(Liveness::CallLimit) -
-                             CallNew.callCost(Liveness::CallLimit));
+                              CallNew.callCost(Liveness::CallLimit));
     }
 
     // Replay the actual insertion order at a shared gap. Multiple definitions
@@ -186,8 +187,10 @@ int exposedLatency(const BlockPressure &P, unsigned At, unsigned FirstUse,
 }
 
 int targetLatency(const Instruction &I, const TargetTransformInfo &TTI) {
-  const auto Latency = TTI.getInstructionCost(&I, TargetTransformInfo::TCK_Latency);
-  const auto Rate = TTI.getInstructionCost(&I, TargetTransformInfo::TCK_RecipThroughput);
+  const auto Latency =
+      TTI.getInstructionCost(&I, TargetTransformInfo::TCK_Latency);
+  const auto Rate =
+      TTI.getInstructionCost(&I, TargetTransformInfo::TCK_RecipThroughput);
   const int Default = isa<LoadInst>(I) ? 4 : 1;
   if (!Latency.isValid() || !Rate.isValid())
     return Default;
@@ -215,11 +218,11 @@ void addRecipes(BlockPressure &P, const Liveness &Live,
     if (Load ? !simpleLoad(*Load, Live) : !cheapPure(*I, Live, TTI))
       continue;
 
-    auto *Addr = Load ? dyn_cast<GetElementPtrInst>(Load->getPointerOperand())
-                      : nullptr;
-    if (Addr && (!Addr->hasOneUse() || Addr->getParent() != I->getParent() ||
-                 Def - P.Positions.lookup(Addr) > 8 ||
-                 !cheapPure(*Addr, Live, TTI)))
+    auto *Addr =
+        Load ? dyn_cast<GetElementPtrInst>(Load->getPointerOperand()) : nullptr;
+    if (Addr &&
+        (!Addr->hasOneUse() || Addr->getParent() != I->getParent() ||
+         Def - P.Positions.lookup(Addr) > 8 || !cheapPure(*Addr, Live, TTI)))
       Addr = nullptr;
 
     const int Latency = targetLatency(*I, TTI);
@@ -236,13 +239,14 @@ void addRecipes(BlockPressure &P, const Liveness &Live,
         continue;
       const int Extra = exposedLatency(P, Insert, Use, *I, Latency) -
                         exposedLatency(P, Def + 1, Use, *I, Latency);
-      const int Bucket = CrossesCall ? LastCall : -2 - static_cast<int>(Def / 64);
+      const int Bucket =
+          CrossesCall ? LastCall : -2 - static_cast<int>(Def / 64);
       if (Addr) {
         Recipes.push_back({I, Addr, Def, Insert, P.Positions.lookup(Addr),
                            Bucket, 4 * std::max(0, Extra)});
       }
-      Recipes.push_back({I, nullptr, Def, Insert, Def, Bucket,
-                         4 * std::max(0, Extra)});
+      Recipes.push_back(
+          {I, nullptr, Def, Insert, Def, Bucket, 4 * std::max(0, Extra)});
       if (Recipes.size() >= MaxRecipes)
         return;
     }
@@ -268,11 +272,13 @@ void consider(Plan &Best, Evaluation &BestScore, const Plan &Candidate,
   }
 }
 
-void extendPool(ArrayRef<PoolEntry> Pool, unsigned Limit, const BlockPressure &P,
-                const Liveness &Live, Plan &Best, Evaluation &BestScore) {
+void extendPool(ArrayRef<PoolEntry> Pool, unsigned Limit,
+                const BlockPressure &P, const Liveness &Live, Plan &Best,
+                Evaluation &BestScore) {
   SmallVector<BeamEntry, MaxPool> Beam;
   for (auto [I, Entry] : enumerate(Pool))
-    Beam.push_back({Plan{Entry.Recipe}, Entry.Score, static_cast<unsigned>(I + 1)});
+    Beam.push_back(
+        {Plan{Entry.Recipe}, Entry.Score, static_cast<unsigned>(I + 1)});
   for (unsigned Depth = 2; Depth <= Limit && !Beam.empty(); ++Depth) {
     SmallVector<BeamEntry, 32> Next;
     for (const auto &Partial : Beam) {
