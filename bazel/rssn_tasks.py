@@ -302,7 +302,10 @@ def plugin_build(build):
     source = build.root / "tools/llvm-optimizer"
     cache = build.state / "cmake"
     host_flags = []
-    if import_library := build.config["env"].get("RSSN_LLVM_IMPORT_LIBRARY"):
+    import_library = build.config["env"].get("RSSN_LLVM_IMPORT_LIBRARY")
+    if build.config["windows"] and (not import_library or not Path(import_library).is_file()):
+        raise ValueError("set --repo_env=RSSN_LLVM_IMPORT_LIBRARY=/path/to/host-llvm.lib for this rustc")
+    if import_library:
         host_flags.append(f"-DRSSN_LLVM_IMPORT_LIBRARY={import_library}")
     build.run([
         "cmake", "-S", source, "-B", cache, "-DCMAKE_BUILD_TYPE=Release",

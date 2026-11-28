@@ -88,7 +88,7 @@ jobs:
   ffi:
     name: C libraries (${{ matrix.target }})
     needs: verify
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ fromJSON(vars.RSSN_RELEASE_RUNNERS || '{}')[matrix.rust_target] || matrix.os }}
     timeout-minutes: 180
     strategy:
       fail-fast: false
@@ -112,7 +112,10 @@ jobs:
           repository-cache: true
       - name: System dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev zstd
+      - name: LLVM SDK decompressor
+        if: runner.os == 'macOS'
+        run: command -v zstd || brew install zstd
       - name: Build and verify the FFI package (Unix)
         if: runner.os != 'Windows'
         env:
@@ -122,7 +125,7 @@ jobs:
           RSSN_LLVM_CONFIG: ${{ fromJSON(vars.RSSN_RELEASE_LLVM_CONFIGS || '{}')[matrix.rust_target] || vars.RSSN_LLVM_CONFIG }}
         shell: bash
         run: |
-          flags=(--config=release-max --define=rust_target=${{ matrix.rust_target }})
+          flags=(--config=release-max --repo_env=RSSN_FETCH_LLVM_SDK=1 --define=rust_target=${{ matrix.rust_target }})
           for variable in RSSN_TARGET_ENV RUSTC CARGO RSSN_LLVM_CONFIG; do
             if [[ -n "${!variable:-}" ]]; then flags+=("--repo_env=$variable=${!variable}"); fi
           done
@@ -168,6 +171,7 @@ jobs:
         with:
           path: dist
           merge-multiple: true
+          pattern: "rssn-{linux-*,windows-*,macos-*}"
       - name: Prepare release notes
         env:
           NIGHTLY: ${{ needs.verify.outputs.nightly }}

@@ -149,7 +149,7 @@ class Build:
         if settings["workflow"] != "llvm-build":
             # Changing SDK selection alone must not duplicate development and
             # header caches. Release Cargo units key on the plugin digest.
-            for name in ("CMAKE_GENERATOR", "RSSN_LLVM_CONFIG", "RSSN_LLVM_IMPORT_LIBRARY"):
+            for name in ("CMAKE_GENERATOR", "RSSN_FETCH_LLVM_SDK", "RSSN_LLVM_CONFIG", "RSSN_LLVM_IMPORT_LIBRARY"):
                 tools.pop(name, None)
             if target_environment:
                 tools["target_environment"] = target_environment

@@ -81,8 +81,8 @@ The scheduled run also collects these reports. Criterion saves an artifact and
 the timing workloads write to the job log.
 
 Enable `llvm_benchmarks` to run the paired callback, lane, ABI, RustFFT, zstd
-decoding, doubleFast and FSE workloads. The Linux CI job installs the pinned
-LLVM SDK when no `RSSN_LLVM_CONFIG` override is configured. It also builds the
+decoding, doubleFast and FSE workloads. Bazel installs the pinned Linux LLVM SDK for CI when no
+`RSSN_LLVM_CONFIG` override is configured. It also builds the
 libm counting probes, validates the paired outputs and uploads timing JSON and
 build logs. The Win64 study and four-way zstd I/O comparison take inputs
 described in their study documentation.
@@ -126,8 +126,13 @@ exports used by the plugin, set `--repo_env=RUSTC=/absolute/path/to/rustc` to a
 compatible compiler and optionally set `CARGO` to its Cargo executable. CI accepts
 SDK and compiler paths through the JSON maps `RSSN_RELEASE_LLVM_CONFIGS`,
 `RSSN_RELEASE_LLVM_IMPORT_LIBRARIES`, `RSSN_RELEASE_RUSTCS` and `RSSN_RELEASE_CARGOS`,
-keyed by the Rust target triple. The SDK and compiler must be installed on the
-runner. CI also accepts the existing shared `RSSN_RUSTC` and `RSSN_CARGO` paths.
+keyed by the Rust target triple. Release CI enables
+`--repo_env=RSSN_FETCH_LLVM_SDK=1` on Unix. With LLVM 23.1.5, Bazel can fetch a
+checksum-pinned SDK on Linux x86-64, Linux Arm64, and macOS Arm64. For Intel
+macOS or Windows, provide the matching SDK and any required toolchain paths.
+Use the optional `RSSN_RELEASE_RUNNERS` JSON map to select prepared runners
+for those Rust triples. CI also accepts the shared `RSSN_RUSTC` and `RSSN_CARGO`
+paths. An explicit `RSSN_LLVM_CONFIG` takes precedence over the download.
 
 ```sh
 bazel test --repo_env=RSSN_LLVM_CONFIG=/path/to/llvm-config //:llvm_optimizer_test //:release_pass_test

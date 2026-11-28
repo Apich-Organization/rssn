@@ -75,7 +75,7 @@
 手动触发时也可以启用 `benchmark_reports`。Criterion 结果保存为工件，其他计时报表写入任务日志。
 
 启用 `llvm_benchmarks` 可运行回调、lanes、ABI、RustFFT、zstd 解码、doubleFast 和 FSE
-的配对用例。Linux CI 在未指定 `RSSN_LLVM_CONFIG` 时会安装固定版本的 LLVM SDK。该任务
+的配对用例。Linux CI 未指定 `RSSN_LLVM_CONFIG` 时，由 Bazel 安装固定版本的 LLVM SDK。该任务
 还会构建 libm 调用计数探针、校验对照组输出，并上传 JSON 计时报表和构建日志。Win64 研究
 及四组 zstd I/O 对照的输入见各自研究文档。
 
@@ -97,6 +97,11 @@ bazel run //:package_ffi -- --dist-dir dist
 ### LLVM 优化插件
 
 LLVM 插件需要 CMake、C++ 编译器和与 `rustc -vV` 完整版本一致的宿主 LLVM SDK。Bazel 自动查找对应的 `llvm-config-<主版本>`，也接受显式路径。Windows 构建机通过 `--repo_env=RSSN_LLVM_IMPORT_LIBRARY=/path/to/host-llvm.lib` 提供加载进程的 LLVM C++ 导入库。若官方 rustc 缺少插件所需的 LLVM 导出，可通过 `--repo_env=RUSTC=/absolute/path/to/rustc` 指定兼容编译器，并用 `CARGO` 指定对应的 Cargo。CI 通过按 Rust 三元组索引的 JSON 映射读取运行器上已安装的工具链路径，变量为 `RSSN_RELEASE_LLVM_CONFIGS`、`RSSN_RELEASE_LLVM_IMPORT_LIBRARIES`、`RSSN_RELEASE_RUSTCS` 和 `RSSN_RELEASE_CARGOS`。原有共享路径 `RSSN_RUSTC` 与 `RSSN_CARGO` 仍可用。
+
+Unix 发布 CI 使用 `--repo_env=RSSN_FETCH_LLVM_SDK=1`。LLVM 23.1.5 对应的 Linux x86-64、
+Linux Arm64 和 macOS Arm64 SDK 由 Bazel 下载并校验。Intel macOS 和 Windows 需要提供匹配的
+SDK 和所需工具链路径。可用 `RSSN_RELEASE_RUNNERS` JSON 映射按 Rust 三元组选择已配置的运行器。
+显式的 `RSSN_LLVM_CONFIG` 优先于下载。
 
 ```sh
 bazel test --repo_env=RSSN_LLVM_CONFIG=/path/to/llvm-config //:llvm_optimizer_test //:release_pass_test
