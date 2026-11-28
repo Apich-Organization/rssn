@@ -20,6 +20,8 @@ Use Bazel 7.7.1 through Bazelisk, Python 3.11 or later, and the Rust toolchain s
 | `bazel run //:llvm_benchmark -- --help` | Run the LLVM callback, lanes, ABI and RustFFT study with the Bazel-built optimizer |
 | `bazel run //:llvm_benchmark_build -- --help` | Build the LLVM study harnesses for a selected profile and toolchain |
 | `bazel run //:llvm_benchmark_compare -- --help` | Compare prebuilt study binaries with matched inputs |
+| `bazel run //:llvm_c_benchmark_build -- zstd --help` | Build the decoder, doubleFast, FSE or Win64 Appell and Lerch study harness |
+| `bazel run //:llvm_benchmark_ci -- --help` | Run the x86-64 Linux LLVM benchmark job |
 | `bazel test //:test` | Default Rust suite and generated contracts |
 | `bazel test //:rust_minimal_test` | Rust tests with default features disabled |
 | `bazel test //:integration_test` | Rust features, contracts, headers, witness replay and all four bindings |
@@ -77,6 +79,12 @@ Linux CI exercises Criterion in test mode. Set the `benchmark_reports` input
 when dispatching CI to collect Criterion results and all nine timing workloads.
 The scheduled run also collects these reports. Criterion saves an artifact and
 the timing workloads write to the job log.
+
+Enable `llvm_benchmarks` on a runner with the matching LLVM SDK to run paired
+callback, lane, ABI, RustFFT, zstd decoding and doubleFast workloads. The job
+also builds the FSE replay and libm counting probes. The benchmark job checks
+outputs for agreement and records timing data. The FSE replay, Win64 study and
+four-way zstd I/O comparison take inputs described in their study documentation.
 
 ## FFI distribution
 

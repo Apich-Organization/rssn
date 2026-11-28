@@ -91,11 +91,10 @@ done
 可在计时之外编译调用计数探针。每组以 `small 1` 的计数减去 `small 0` 的计数，扣除两个进程都会执行的预热。
 
 ```bash
-cc -shared -fPIC -O2 tools/llvm-optimizer/bench/de/count_exp.c -ldl -o "$study/count_exp.so"
+bazel run //:llvm_benchmark_build -- count-exp --out-dir "$study"
 for mode in off transform; do
   for rounds in 0 1; do
- \
-      bazel run //:llvm_benchmark_compare -- run "$study/$mode/release/rssn-de-study" \
+    bazel run //:llvm_benchmark_compare -- run "$study/$mode/release/rssn-de-study" \
       --env "LD_PRELOAD=$study/count_exp.so" -- small "$rounds"
   done
 done
@@ -168,45 +167,16 @@ pass 枚举同一基本块内的相邻标量 `pow`，只接受跨多个静态窗
 
 ### 复现 PE 运行验证
 
-将上文的 Windows fat LTO 构建中的 `target-cpu` 改为 `x86-64-v3`。以下命令依赖匹配的 LLVM SDK、`clang`、`lld-link` 和 MinGW 的 `libkernel32.a`。将 `kernel32_lib` 指向该库。运行时可用已配置的 Wine 或 Windows。
+使用匹配的 LLVM SDK、Clang、LLD 和 Rust 的 MSVC 目标。Bazel 生成 fat LTO IR、提取内核，并链接四个 DLL 和运行器。已有同版本 Win64 IR 时，可通过 `--ir` 复用。Windows 可直接运行，在 Linux 上可使用已配置的 Wine。
 
 ```bash
-win_ir=$(find "$study/win/x86_64-pc-windows-msvc/release" -name rssn_de_study.ll -print -quit)
-"$llvm_bin/llvm-extract" -S --recursive --func=rssn_de_appell "$win_ir" -o "$study/appell.ll"
-clang --target=x86_64-pc-windows-msvc -O2 -ffreestanding \
-  -c tools/llvm-optimizer/bench/de/win_appell.c -o "$study/runner.obj"
-printf 'int _fltused;\n' | clang --target=x86_64-pc-windows-msvc -x c -c - -o "$study/fltused.obj"
-cat > "$study/math.def" <<'EOF'
-LIBRARY api-ms-win-crt-math-l1-1-0.dll
-EXPORTS
-cosh
-exp
-exp2
-pow
-sin
-sinh
-EOF
-"$llvm_bin/llvm-dlltool" -m i386:x86-64 -d "$study/math.def" -l "$study/math.lib"
-
-for variant in base pack reuse both; do
-  case "$variant" in
-    base) passes=verify ;;
-    pack) passes='function(rssn-pow-exponent-pack)' ;;
-    reuse) passes='function(rssn-libm-reuse)' ;;
-    both) passes='function(rssn-libm-reuse,rssn-pow-exponent-pack)' ;;
-  esac
-  "$llvm_bin/opt" -mcpu=x86-64-v3 -load-pass-plugin="$plugin" -S -verify-each \
-    "-passes=$passes" "$study/appell.ll" -o "$study/$variant.ll"
-  "$llvm_bin/llc" -O3 -mcpu=x86-64-v3 -verify-machineinstrs -filetype=obj \
-    "$study/$variant.ll" -o "$study/$variant.obj"
-  lld-link /dll /noentry /nodefaultlib /export:rssn_de_appell \
-    "/out:$study/$variant.dll" "$study/$variant.obj" "$study/fltused.obj" "$study/math.lib"
-done
-lld-link /entry:mainCRTStartup /subsystem:console /nodefaultlib \
-  "/out:$study/appell-suite.exe" "$study/runner.obj" "$kernel32_lib"
-RSSN_WIN_ROUNDS=120 RSSN_WIN_PAIRS=24 bazel run //:llvm_benchmark_compare -- \
-  run "$study/appell-suite.exe" --runner wine
+bazel run --define=rust_target=x86_64-pc-windows-msvc //:llvm_c_benchmark_build -- \
+  win-appell --out-dir "$study/pe"
+bazel run //:llvm_benchmark_compare -- run "$study/pe/appell-suite.exe" --runner wine \
+  --env RSSN_WIN_ROUNDS=120 --env RSSN_WIN_PAIRS=24
 ```
+
+可用重复的 `--variant NAME=PASSES` 为同一内核指定两组或四组管线，其中固定使用 `base=verify`。对于 Lerch，使用 `--kernel lerch-small`、`lerch-positive` 或 `lerch-negative`。DLL 名称与运行器的实验开关对应。
 
 输出每行依次为版本、墙钟纳秒、线程 CPU 纳秒和位级哈希。每四行形成一组，版本顺序随组次轮换。
 
@@ -344,7 +314,7 @@ Linux 计数确认，每轮四组真实 Appell 输入的 `pow` 调用从 40,412 
 
 Linux 在同一份 IR 上交错执行 27 对、每个样本 70 轮，线程时间来自 `CLOCK_THREAD_CPUTIME_ID`，样本哈希为 `097d449b72b480b3`。Wine 10.0 使用与交付 DLL 同名的 CRT math 导入，四个 AVX2 PE 变体交错执行 24 组、每个样本 130 轮，样本哈希为 `00830d95dc58007b`。机器未独占。Wine 线程计时约以 10 ms 为单位变化。这里验证的是重建的真实内核，AVX-512 完成了静态机器码对照。编译选项默认关闭。
 
-在正常 rustc fat LTO 构建中设置 `RSSN_POW_UNIT_BASE=transform RSSN_SPILL_FILTER=rssn_de_appell`。PE 复现用上面的构建步骤，把 `pack` 替换为 `unit`，单独管线为 `function(rssn-pow-unit-base)`，组合管线为 `function(rssn-libm-reuse,rssn-pow-unit-base)`，运行时设置 `RSSN_WIN_POW_UNIT_BASE=1`。Linux 计数将前文的 `count_exp.c` 探针用 `-DRSSN_COUNT_POW=1` 编译，输出总 `pow` 次数和单位底数次数，用 `appell 1` 减去 `appell 0` 扣除预热。
+在正常 rustc fat LTO 构建中设置 `RSSN_POW_UNIT_BASE=transform RSSN_SPILL_FILTER=rssn_de_appell`。PE 复现用上面的构建步骤，把 `pack` 替换为 `unit`，单独管线为 `function(rssn-pow-unit-base)`，组合管线为 `function(rssn-libm-reuse,rssn-pow-unit-base)`，运行时设置 `RSSN_WIN_POW_UNIT_BASE=1`。Linux 计数用 `bazel run //:llvm_benchmark_build -- count-exp --mode pow --out-dir "$study"` 构建探针，输出总 `pow` 次数和单位底数次数，用 `appell 1` 减去 `appell 0` 扣除预热。
 
 ### 共享单位底数与跨目标验证
 
@@ -413,7 +383,7 @@ Win64 由相同 MSVC AVX2 配置重建并用 Windows `opt.exe` 和 `llc.exe` 验
 
 Linux 交错运行 27 对、每个样本 430 轮，哈希为 `352298e232fa8ce9`。Wine 10.0 用与交付 DLL 同名的 CRT math 导入，四个 AVX2 PE 变体交错运行 28 组、每个样本 420 轮，哈希为 `4ef68b2189bcb06e`。机器未独占，Wine 线程计时约以 10 ms 为单位变化。另运行了 260 组浮点边界对照，覆盖舍入临界值、非有限系数、带符号零和信号 NaN。正常 Win64 rustc fat LTO 入口命中四条链，生成的 IR 和 COFF 通过验证。
 
-复现时以 `RSSN_LIBM_UNIT_LOG=transform RSSN_SPILL_FILTER=rssn_de_small` 走正常 rustc。PE 运行器以 `-DRSSN_WIN_LERCH_SMALL=1` 构建，导出 `rssn_de_small`，生成 `base`、`unit-log`、`endpoint` 和 `both`。后两项分别使用 `function(rssn-fp-endpoint-guards)` 和 `function(rssn-libm-unit-log,rssn-fp-endpoint-guards)`，运行时设置 `RSSN_WIN_LIBM_UNIT_LOG=1`。Linux 调用计数用 `-DRSSN_COUNT_LOG=1` 构建 `count_exp.c`，输出依次为 `exp`、`log`、`log(1.0)` 次数。
+复现时以 `RSSN_LIBM_UNIT_LOG=transform RSSN_SPILL_FILTER=rssn_de_small` 走正常 rustc。PE 运行器以 `-DRSSN_WIN_LERCH_SMALL=1` 构建，导出 `rssn_de_small`，生成 `base`、`unit-log`、`endpoint` 和 `both`。后两项分别使用 `function(rssn-fp-endpoint-guards)` 和 `function(rssn-libm-unit-log,rssn-fp-endpoint-guards)`，运行时设置 `RSSN_WIN_LIBM_UNIT_LOG=1`。Linux 调用计数用 `bazel run //:llvm_benchmark_build -- count-exp --mode log --out-dir "$study"` 构建探针，输出依次为 `exp`、`log`、`log(1.0)` 次数。
 
 ### ARM 目标与 Rust 单位节点复用
 
@@ -511,7 +481,15 @@ Wine 10.0 每条路径运行 24 组交错样本，每个样本 450 轮，正阶�
 
 Linux 和 Wine 样本哈希分别为 `c68f6e29c95dc76a` 和 `1cb96381fbf0300d`，对应不同的轮数。Wine 10.0 用与交付 DLL 同名的 CRT math 导入，线程计时约以 10 ms 为单位变化。运行器均固定在单个允许的逻辑 CPU 上，机器未独占。Linux 和 Win64 的独立运行器都从各自同一份 fat LTO IR 链接基线与改写版，双方都把冷 `panic_bounds_check` 调用替换为 trap 以免引入 Rust panic 运行时。正常 Linux rustc fat LTO 构建保留原 panic 路径，复核了调用计数和输出。正常 Win64 rustc fat LTO 构建也保留原 panic 路径，在负阶、正阶和小参数上各命中四处，通过 IR 校验并生成 COFF。AVX-512 仅用于静态对照。
 
-复现时设置 `RSSN_SPILL_FILTER=rssn_de_negative`，切换 `RSSN_LIBM_TAIL_CUTOFF=off/transform`，每种模式使用独立的 `CARGO_TARGET_DIR`，使用上文 Rust 运行器的 `negative` 子命令。独立 PE 对照用 `llvm-extract --func=rssn_de_negative --rfunc='gamma_numerical$|statrs8function5gamma(8ln_gamma|5gamma)$'` 保留积分器和实际 Gamma 实现。运行器加 `-DRSSN_WIN_LERCH_NEGATIVE=1`，导出 `rssn_de_negative`。math 导入为 `cosh exp expm1 log pow sin sinh`。DLL 命名为 `base.dll` 和 `tail.dll`，切换管线 `verify` 与 `function(rssn-libm-tail-cutoff),verify`。运行时设置 `RSSN_WIN_LIBM_TAIL_CUTOFF=1 RSSN_WIN_VARIANTS=2`。Linux 调用总数可用 `-DRSSN_COUNT_LOG=1` 编译前文探针复核。
+复现时设置 `RSSN_SPILL_FILTER=rssn_de_negative`，切换 `RSSN_LIBM_TAIL_CUTOFF=off/transform`，每种模式使用独立的 `--out-dir`，使用上文 Rust 运行器的 `negative` 子命令。独立 PE 对照用 `--kernel lerch-negative` 提取并导出 `rssn_de_negative`，同时保留积分器和实际 Gamma 实现。Linux 调用总数可用 `count-exp --mode log` 探针复核。
+
+```bash
+bazel run --define=rust_target=x86_64-pc-windows-msvc //:llvm_c_benchmark_build -- \
+  win-appell --out-dir "$study/pe-negative" --kernel lerch-negative \
+  --variant base=verify --variant 'tail=function(rssn-libm-tail-cutoff),verify'
+bazel run //:llvm_benchmark_compare -- run "$study/pe-negative/appell-suite.exe" --runner wine \
+  --env RSSN_WIN_LIBM_TAIL_CUTOFF=1 --env RSSN_WIN_VARIANTS=2
+```
 
 ## 合并有限非零类别的区间检查
 

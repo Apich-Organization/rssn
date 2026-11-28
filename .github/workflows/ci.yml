@@ -14,6 +14,10 @@ name: CI
         description: Collect full RSSN benchmark reports
         type: boolean
         default: false
+      llvm_benchmarks:
+        description: Run the LLVM benchmarks on an x86-64 Linux runner with the matching LLVM SDK
+        type: boolean
+        default: false
   workflow_call:
   schedule:
     - cron: '17 7 * * 1'
@@ -246,14 +250,51 @@ jobs:
           path: ${{ runner.temp }}/rssn-criterion
           if-no-files-found: error
 
+  llvm-benchmarks:
+    name: LLVM benchmarks (Linux x86-64)
+    if: github.event_name == 'workflow_dispatch' && inputs.llvm_benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
+        with:
+          bazelisk-cache: true
+          repository-cache: true
+      - name: System dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++
+      - name: Run the LLVM benchmark suite
+        shell: bash
+        env:
+          RUSTC: ${{ fromJSON(vars.RSSN_RELEASE_RUSTCS || '{}')['x86_64-unknown-linux-gnu'] || vars.RSSN_RUSTC }}
+          CARGO: ${{ fromJSON(vars.RSSN_RELEASE_CARGOS || '{}')['x86_64-unknown-linux-gnu'] || vars.RSSN_CARGO }}
+          RSSN_LLVM_CONFIG: ${{ fromJSON(vars.RSSN_RELEASE_LLVM_CONFIGS || '{}')['x86_64-unknown-linux-gnu'] || vars.RSSN_LLVM_CONFIG }}
+        run: |
+          flags=(--define=rssn_jobs=2)
+          for variable in RUSTC CARGO RSSN_LLVM_CONFIG; do
+            if [[ -n "${!variable:-}" ]]; then flags+=("--repo_env=$variable=${!variable}"); fi
+          done
+          bazel run "${flags[@]}" //:llvm_benchmark_ci -- --reports-dir "$RUNNER_TEMP/rssn-llvm-benchmarks"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: rssn-llvm-benchmarks
+          path: ${{ runner.temp }}/rssn-llvm-benchmarks/*/results.json
+          if-no-files-found: error
+
   ci-success:
     name: CI success
     if: always()
-    needs: [fmt, clippy, test, contracts, ffi, bindings, docs, benchmarks]
+    needs: [fmt, clippy, test, contracts, ffi, bindings, docs, benchmarks, llvm-benchmarks]
     runs-on: ubuntu-latest
     steps:
       - name: Require every job to have succeeded
         env:
           JOB_RESULTS: ${{ toJSON(needs) }}
         run: |
-          jq -e 'all(.[]; .result == "success")' <<< "$JOB_RESULTS"
+          jq -e 'all(to_entries[];
+            .value.result == "success" or (.key == "llvm-benchmarks" and .value.result == "skipped"))' <<< "$JOB_RESULTS"

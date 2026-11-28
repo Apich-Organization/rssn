@@ -333,9 +333,261 @@ def llvm_benchmark(build, args):
                  "--cargo", build.cargo_exe, *llvm_env, *args, cwd=caller)
 
 
+C_BENCHMARKS = ("zstd", "zstd-fse", "win-appell")
+
+
+def llvm_benchmark_environment(parser, entries):
+    overrides = {}
+    for entry in entries:
+        key, equals, value = entry.partition("=")
+        if not equals or not re.fullmatch(r"[A-Z][A-Z0-9_]*", key):
+            parser.error("--env expects NAME=VALUE")
+        overrides[key] = value
+    return overrides
+
+
+def llvm_zstd_sources(build, bench):
+    with (build.root / "Cargo.lock").open("rb") as lock:
+        locked = next(pkg["version"] for pkg in tomllib.load(lock)["package"] if pkg["name"] == "zstd-sys")
+    # Use Cargo's configured registry or source replacement for the locked
+    # research package, without resolving the full RSSN workspace.
+    build.need_rust()
+    manifest = bench / "zstd-io/Cargo.toml"
+    result = build.run([build.cargo_exe, "metadata", "--locked", "--format-version", "1",
+                        "--manifest-path", manifest, "--filter-platform", build.target],
+                       env={"RUSTC": str(build.rustc_exe)}, capture_output=True, text=True)
+    package = next(pkg for pkg in json.loads(result.stdout)["packages"] if pkg["name"] == "zstd-sys")
+    if package["version"] != locked:
+        raise ValueError(f"LLVM zstd study pins {package['version']}, but the RSSN workspace pins {locked}")
+    return Path(package["manifest_path"]).parent / "zstd/lib"
+
+
+def llvm_zstd_benchmark(build, options, bench, library, out, tool_env, clang):
+    if options.case == "zstd-fse":
+        unit = library / "common/fse_decompress.c"
+        optimization = "rssn-scalar-load-pack"
+        function = "FSE_decompress_wksp_bmi2"
+    elif options.study == "double-fast":
+        unit = library / "compress/zstd_double_fast.c"
+        optimization = "rssn-switch-load-reuse"
+        function = "ZSTD_fillDoubleHashTable"
+    else:
+        unit = library / "decompress/zstd_decompress_block.c"
+        optimization = "rssn-scalar-load-pack"
+        function = "ZSTD_decompressSequences"
+    if not unit.is_file():
+        raise ValueError(f"{library} is missing the zstd C source {unit.name}")
+
+    # The selected unit is compiled to O3 IR once. Both versions share the
+    # same archive and the exact same harness object.
+    include = ["-I", library, "-I", library / "common"]
+    exe_suffix = ".exe" if build.target.endswith("-windows-gnu") else ""
+    target_flags = [f"--target={build.target}"]
+    compile_flags = [*target_flags, "-O3", "-DNDEBUG", f"-march={options.cpu}",
+                     "-DZSTD_DISABLE_ASM=1", "-DZSTD_LIB_DEPRECATED=0", *include, *options.cflag]
+    base = out / "base.ll"
+    transformed = out / "transform.ll"
+    build.run([clang, *compile_flags, "-S", "-emit-llvm", unit, "-o", base], env=tool_env)
+    build.run([build.sdk_tool("opt"), f"-load-pass-plugin={build.plugin}", f"-passes=function({optimization}),verify",
+               f"-pass-remarks-analysis={optimization}", "-S", base, "-o", transformed],
+              env={**tool_env, "RSSN_SPILL_MODE": "off", "RSSN_SPILL_FILTER": function})
+
+    # Recreate the archive from exact members so an earlier run cannot leave
+    # a second copy of the studied translation unit in the link.
+    archive = out / "libcommon.a"
+    with tempfile.TemporaryDirectory(dir=out) as staging:
+        objects = []
+        for source in sorted(path for family in ("common", "compress", "decompress")
+                             for path in (library / family).glob("*.c") if path != unit):
+            obj = Path(staging) / f"{source.stem}.o"
+            namespace = ["-DXXH_NAMESPACE=ZSTD_"] if source.stem == "xxhash" else []
+            build.run([clang, *compile_flags, *namespace, "-ffunction-sections", "-fdata-sections",
+                       "-c", source, "-o", obj], env=tool_env)
+            objects.append(obj)
+        new_archive = Path(staging) / archive.name
+        build.run([build.sdk_tool("llvm-ar"), "rcs", new_archive, *objects], env=tool_env)
+        new_archive.replace(archive)
+
+    harness = out / "harness.o"
+    build.run([clang, *target_flags, "-O2", *include, *options.cflag, "-c",
+               bench / f"{options.case}.c", "-o", harness], env=tool_env)
+    link_flags = ["-no-pie"] if not exe_suffix else []
+    for name, ir in (("base", base), ("transform", transformed)):
+        obj = out / f"{name}.o"
+        build.run([build.sdk_tool("llc"), "-O3", "-verify-machineinstrs", "-filetype=obj", ir, "-o", obj],
+                  env=tool_env)
+        build.run([clang, *target_flags, *options.cflag, *link_flags, harness, obj, archive,
+                   "-o", out / (name + exe_suffix)], env=tool_env)
+
+
+def llvm_windows_benchmark(build, parser, options, bench, caller, out, tool_env, clang):
+    symbols = {
+        "appell": "rssn_de_appell",
+        "lerch-small": "rssn_de_small",
+        "lerch-positive": "rssn_de_positive",
+        "lerch-negative": "rssn_de_negative",
+    }
+    symbol = symbols[options.kernel]
+    recipes = options.variant or [
+        "base=verify",
+        "pack=function(rssn-pow-exponent-pack)",
+        "reuse=function(rssn-libm-reuse)",
+        "both=function(rssn-libm-reuse,rssn-pow-exponent-pack)",
+    ]
+    if options.kernel != "appell" and not options.variant:
+        parser.error("Lerch runner variants require --variant NAME=PASSES")
+    if build.target != "x86_64-pc-windows-msvc":
+        parser.error("win-appell requires --define=rust_target=x86_64-pc-windows-msvc")
+    variants = {}
+    for recipe in recipes:
+        name, equals, passes = recipe.partition("=")
+        if not equals or not passes or not re.fullmatch(r"[a-z][a-z0-9-]*", name) or name in variants:
+            parser.error("--variant expects a unique NAME=PASSES")
+        variants[name] = passes
+    if variants.get("base") != "verify" or len(variants) not in (2, 4):
+        parser.error("provide two or four variants including base=verify")
+
+    lld_link = options.lld_link or build.sdk_tool("lld-link")
+    target = f"--target={build.target}"
+    define = [] if options.kernel == "appell" else [f"-DRSSN_WIN_{options.kernel.upper().replace('-', '_')}=1"]
+    work = out / "work"
+    work.mkdir(exist_ok=True)
+    if options.ir:
+        source = (caller / options.ir).resolve(strict=True)
+    else:
+        source = work / "full.ll"
+        llvm_benchmark_build(build, [
+            "de", "--out-dir", str(work / "cargo"), f"--rustflag=-Ctarget-cpu={options.cpu}",
+            *[f"--env={entry}" for entry in options.env],
+            "--", f"--emit=llvm-ir={source},link", "-Zno-link",
+        ])
+    extract = work / "kernel.ll"
+    dependencies = []
+    if options.kernel == "lerch-negative":
+        dependencies = ["--rfunc=gamma_numerical$|statrs8function5gamma(8ln_gamma|5gamma)$"]
+    build.run([build.sdk_tool("llvm-extract"), "-S", "--recursive", f"--func={symbol}",
+               *dependencies, source, "-o", extract], env=tool_env)
+    runner = work / "runner.obj"
+    build.run([clang, target, "-O2", "-ffreestanding", *define, "-c", bench / "de/win_appell.c",
+               "-o", runner], env=tool_env)
+    fltused = work / "fltused.obj"
+    build.run([clang, target, "-x", "c", "-c", "-", "-o", fltused],
+              env=tool_env, input=b"int _fltused;\n")
+
+    for library in ("math", "kernel32"):
+        build.run([build.sdk_tool("llvm-dlltool"), "-m", "i386:x86-64",
+                   "-d", bench / "de" / f"{library}.def", "-l", work / f"{library}.lib"], env=tool_env)
+    for name, passes in variants.items():
+        ir = out / f"{name}.ll"
+        obj = out / f"{name}.obj"
+        build.run([build.sdk_tool("opt"), f"-mcpu={options.cpu}", f"-load-pass-plugin={build.plugin}",
+                   "-S", "-verify-each", f"-passes={passes}", extract, "-o", ir], env=tool_env)
+        build.run([build.sdk_tool("llc"), "-O3", f"-mcpu={options.cpu}", "-verify-machineinstrs", "-filetype=obj",
+                   ir, "-o", obj], env=tool_env)
+        build.run([lld_link, "/dll", "/noentry", "/nodefaultlib", f"/export:{symbol}",
+                   f"/out:{out / (name + '.dll')}", obj, fltused, work / "math.lib"], env=tool_env)
+    build.run([lld_link, "/entry:mainCRTStartup", "/subsystem:console", "/nodefaultlib",
+               f"/out:{out / 'appell-suite.exe'}", runner, work / "kernel32.lib"], env=tool_env)
+
+
+def llvm_c_benchmark_build(build, args):
+    parser = argparse.ArgumentParser(description="Build paired LLVM C research benchmarks")
+    cases = parser.add_subparsers(dest="case", required=True)
+    for case in C_BENCHMARKS:
+        harness = cases.add_parser(case)
+        harness.add_argument("--out-dir", required=True, type=Path)
+        harness.add_argument("--env", action="append", default=[], metavar="NAME=VALUE")
+        harness.add_argument("--clang", help="Clang command when installed separately from the LLVM SDK")
+        harness.add_argument("--cpu", default="x86-64-v3", help="LLVM x86-64 CPU level")
+        if case == "win-appell":
+            harness.add_argument("--ir", type=Path, help="use existing Win64 fat LTO IR for the DE study")
+            harness.add_argument("--kernel", choices=("appell", "lerch-small", "lerch-positive", "lerch-negative"),
+                                 default="appell")
+            harness.add_argument("--variant", action="append", metavar="NAME=PASSES")
+            harness.add_argument("--lld-link", help="COFF linker when installed separately from the LLVM SDK")
+        else:
+            harness.add_argument("--zstd-lib", type=Path, help="zstd/lib from the locked zstd-sys dependency")
+            harness.add_argument("--cflag", action="append", default=[], help="Extra compiler and linker argument")
+            if case == "zstd":
+                harness.add_argument("--study", choices=("decode", "double-fast"), default="decode")
+    options = parser.parse_args(args)
+    if not build.config["sdk_info"].get("bindir"):
+        parser.error("set --repo_env=RSSN_LLVM_CONFIG=/path/to/llvm-config for the matching LLVM SDK")
+    caller = Path(build.env.get("BUILD_WORKING_DIRECTORY", str(build.workspace)))
+    bench = build.root / "tools/llvm-optimizer/bench"
+    out = (caller / options.out_dir).resolve()
+    overrides = llvm_benchmark_environment(parser, options.env)
+    tool_env = {**build.llvm_loader_env(), **overrides}
+    clang = options.clang or build.sdk_tool("clang")
+    out.mkdir(parents=True, exist_ok=True)
+    if options.case == "win-appell":
+        llvm_windows_benchmark(build, parser, options, bench, caller, out, tool_env, clang)
+    else:
+        native_linux = build.target == build.rust_host and build.target.startswith("x86_64-") and "-linux-" in build.target
+        windows_gnu = options.case == "zstd" and build.target == "x86_64-pc-windows-gnu"
+        if not (native_linux or windows_gnu):
+            parser.error("zstd C studies require x86-64 Linux or a Windows GNU target for the zstd harness")
+        library = (caller / options.zstd_lib).resolve() if options.zstd_lib else llvm_zstd_sources(build, bench)
+        llvm_zstd_benchmark(build, options, bench, library, out, tool_env, clang)
+
+
+def llvm_count_exp_build(build, args):
+    parser = argparse.ArgumentParser(description="Build a Linux libm call-counting preload probe")
+    parser.add_argument("--out-dir", required=True, type=Path)
+    parser.add_argument("--env", action="append", default=[], metavar="NAME=VALUE")
+    parser.add_argument("--mode", choices=("exp", "pow", "log"), default="exp")
+    options = parser.parse_args(args)
+    build.assert_native()
+    if "-linux-" not in build.target:
+        parser.error("the libm preload probe requires Linux")
+    caller = Path(build.env.get("BUILD_WORKING_DIRECTORY", str(build.workspace)))
+    out = (caller / options.out_dir).resolve()
+    overrides = llvm_benchmark_environment(parser, options.env)
+    out.mkdir(parents=True, exist_ok=True)
+    mode_define = {"exp": [], "pow": ["-DRSSN_COUNT_POW=1"], "log": ["-DRSSN_COUNT_LOG=1"]}
+    probe = {"exp": "count_exp", "pow": "count_pow", "log": "count_exp_log"}[options.mode]
+    source = build.root / "tools/llvm-optimizer/bench/de/count_exp.c"
+    build.run([overrides.get("CC") or build.env.get("CC") or "cc", "-shared", "-fPIC", "-O2", *mode_define[options.mode],
+               source, "-ldl", "-o", out / f"{probe}.so"], env=overrides)
+
+
+def llvm_benchmark_ci(build, args):
+    parser = argparse.ArgumentParser(description="Run the Linux LLVM benchmark suite")
+    parser.add_argument("--reports-dir", required=True, type=Path)
+    options = parser.parse_args(args)
+    build.assert_native()
+    if not (build.target.startswith("x86_64-") and "-linux-" in build.target):
+        parser.error("the LLVM CI suite requires x86-64 Linux")
+    caller = Path(build.env.get("BUILD_WORKING_DIRECTORY", str(build.workspace)))
+    reports = (caller / options.reports_dir).resolve()
+    llvm_benchmark(build, ["--suite", "all", "--pairs", "3", "--work-dir", str(reports)])
+
+    rssn = build.root
+    fixtures = rssn / "tests/fixtures"
+    hdf5 = fixtures / "hdf5/filters_plugins.h5"
+    dictionary = reports / "sample.dict"
+    with (fixtures / "hdf5/dense_nested.h5").open("rb") as source:
+        source.seek(-65536, os.SEEK_END)
+        dictionary.write_bytes(source.read())
+    compare = rssn / "tools/llvm-optimizer/bench/compare.py"
+    for name, build_args, workload in (
+        ("decode", ["zstd"], ["100", fixtures / "parquet/codec_zstd.parquet", hdf5]),
+        ("double-fast", ["zstd", "--study", "double-fast"], ["--compress-min4", "100", hdf5, dictionary]),
+    ):
+        out = reports / name
+        llvm_c_benchmark_build(build, [*build_args, "--out-dir", str(out)])
+        build.python(compare, "pair", out / "base", out / "transform", "--pairs", "3", "--", *workload)
+    llvm_c_benchmark_build(build, ["zstd-fse", "--out-dir", str(reports / "fse")])
+    for mode in ("exp", "pow", "log"):
+        llvm_count_exp_build(build, ["--mode", mode, "--out-dir", str(reports / "libm")])
+
+
 def llvm_benchmark_build(build, args):
+    if args and args[0] == "count-exp":
+        llvm_count_exp_build(build, args[1:])
+        return
     parser = argparse.ArgumentParser(description="Build an LLVM research benchmark")
-    parser.add_argument("case", choices=("example", "de", "zstd-io", "lanes", "tape"))
+    parser.add_argument("case", choices=("example", "de", "zstd-io", "lanes", "tape", "count-exp"))
     parser.add_argument("--out-dir", required=True, type=Path)
     parser.add_argument("--profile", choices=("dev", "release"), default="release")
     parser.add_argument("--example", default="numeric_kernels")
@@ -354,12 +606,7 @@ def llvm_benchmark_build(build, args):
     caller = Path(build.env.get("BUILD_WORKING_DIRECTORY", str(build.workspace)))
     out = (caller / options.out_dir).resolve()
     out.mkdir(parents=True, exist_ok=True)
-    overrides = {}
-    for entry in options.env:
-        key, equals, value = entry.partition("=")
-        if not equals or not re.fullmatch(r"[A-Z][A-Z0-9_]*", key):
-            parser.error("--env expects NAME=VALUE")
-        overrides[key] = value
+    overrides = llvm_benchmark_environment(parser, options.env)
     env = {"RUSTC_BOOTSTRAP": "1", "RUSTC": str(build.rustc_exe),
            "CARGO_BUILD_BUILD_DIR": str(out),
            "CARGO_ENCODED_RUSTFLAGS": "\x1f".join(options.rustflag), **overrides}
@@ -603,8 +850,12 @@ def dispatch(build, workflow, args):
         build.cargo(["publish", *flags], cwd=build.checkout("rssn"), target=False)
     elif workflow == "llvm-benchmark":
         llvm_benchmark(build, args)
+    elif workflow == "llvm-benchmark-ci":
+        llvm_benchmark_ci(build, args)
     elif workflow == "llvm-benchmark-build":
         llvm_benchmark_build(build, args)
+    elif workflow == "llvm-c-benchmark-build":
+        llvm_c_benchmark_build(build, args)
     elif workflow == "llvm-benchmark-compare":
         caller = Path(build.env.get("BUILD_WORKING_DIRECTORY", str(build.workspace)))
         build.python(build.root / "tools/llvm-optimizer/bench/compare.py", *args, cwd=caller)

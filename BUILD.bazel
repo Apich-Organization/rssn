@@ -114,9 +114,27 @@ scientific_run(
     ]
 ]
 
+scientific_run(
+    name = "llvm_c_benchmark_build",
+    plugin = ":llvm_optimizer",
+    rssn = ":llvm_research_sources",
+    scope = "llvm-c-benchmark",
+    tags = ["manual"],
+    workflow = "llvm-c-benchmark-build",
+)
+
 config_setting(
     name = "optimized",
     values = {"compilation_mode": "opt"},
+)
+
+scientific_run(
+    name = "llvm_benchmark_ci",
+    plugin = ":llvm_optimizer",
+    rssn = ":llvm_research_sources",
+    scope = "llvm-benchmark-ci",
+    tags = ["manual"],
+    workflow = "llvm-benchmark-ci",
 )
 
 config_setting(

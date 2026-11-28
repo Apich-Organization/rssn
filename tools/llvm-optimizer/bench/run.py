@@ -169,25 +169,30 @@ def fft_build(args, root, mode):
     return target_dir / "release" / TARGET, stack_counts(asm, "7rustfft")
 
 
-def probe(binary, arguments):
-    nanos, digest = subprocess.check_output(
-        [binary, *map(str, arguments)], text=True
+def probe(binary, arguments, runner=()):
+    nanos, digest, *metadata = subprocess.check_output(
+        [*runner, binary, *map(str, arguments)], text=True
     ).split()
-    return int(nanos), digest
+    # The FSE replay reports the number of headers after the output hash.
+    if metadata and (len(metadata) != 1 or not metadata[0].isdigit()):
+        raise ValueError("unexpected benchmark sample format")
+    return int(nanos), (digest, *metadata)
 
 
-def measure(baseline, experiment, arguments, pairs):
-    warm_base, reference = probe(baseline, arguments)
-    warm_experiment, checksum = probe(experiment, arguments)
+def measure(baseline, experiment, arguments, pairs, runner=()):
+    warm_base, reference = probe(baseline, arguments, runner)
+    warm_experiment, checksum = probe(experiment, arguments, runner)
     if checksum != reference or min(warm_base, warm_experiment) <= 0:
         raise RuntimeError("warm-up outputs differ or the sample is too short")
     timings = []
     for i in range(pairs):
         binaries = [baseline, experiment] if i % 2 == 0 else [experiment, baseline]
-        observations = [probe(binary, arguments) for binary in binaries]
+        observations = [probe(binary, arguments, runner) for binary in binaries]
         if {checksum for _, checksum in observations} != {reference}:
             raise RuntimeError(f"bitwise output mismatch in pair {i + 1}")
         a, b = [elapsed for elapsed, _ in observations]
+        if min(a, b) <= 0:
+            raise RuntimeError(f"pair {i + 1} is too short")
         timings.append((a, b) if i % 2 == 0 else (b, a))
 
     ratios = [b / a for a, b in timings]
@@ -200,7 +205,7 @@ def measure(baseline, experiment, arguments, pairs):
         "median_pass_ns": statistics.median(b for _, b in timings),
         "paired_runtime_change_pct": 100 * (statistics.median(ratios) - 1),
         "bootstrap_95_pct": [100 * (boot[i] - 1) for i in (100, 3899)],
-        "checksum": reference,
+        "checksum": reference[0],
         "samples_ns": timings,
     }
 
