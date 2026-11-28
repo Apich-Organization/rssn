@@ -1,4 +1,5 @@
-use std::{hint::black_box, time::Instant};
+use std::hint::black_box;
+use std::time::Instant;
 
 #[cfg(any(target_os = "linux", windows))]
 #[path = "../../device-lanes/clock.rs"]
@@ -11,7 +12,10 @@ mod clock {
     }
 }
 
-use rssn_de_study::{rssn_de_appell, rssn_de_negative, rssn_de_positive, rssn_de_small};
+use rssn_de_study::rssn_de_appell;
+use rssn_de_study::rssn_de_negative;
+use rssn_de_study::rssn_de_positive;
+use rssn_de_study::rssn_de_small;
 
 type Kernel = extern "C" fn(f64, f64, f64) -> f64;
 type Case = (f64, f64, f64);
@@ -41,33 +45,39 @@ fn main() {
     }
 
     let (kernel, data): (Kernel, &[Case]) = match case.as_str() {
-        | "small" => (
-            rssn_de_small,
-            &[
-                (-2.934, 0.09, 1.0),
-                (0.999, 0.001, 0.001),
-                (-1234.0, 0.1, 1.2),
-                (0.9999999, 0.12, 1.0),
-            ],
-        ),
-        | "positive" => (
-            rssn_de_positive,
-            &[
-                (-2.934, 0.805, 1.0),
-                (0.999, 0.805, 1.0),
-                (-6.5, 0.5, 1.7),
-                (0.999, 0.15, 0.001),
-            ],
-        ),
-        | "negative" => (
-            rssn_de_negative,
-            &[
-                (-1.0, -0.25, 1.0),
-                (0.95, -0.5, 1.2),
-                (-4.0, -3.5, 0.7),
-                (0.99, -2.25, 1.7),
-            ],
-        ),
+        | "small" => {
+            (
+                rssn_de_small,
+                &[
+                    (-2.934, 0.09, 1.0),
+                    (0.999, 0.001, 0.001),
+                    (-1234.0, 0.1, 1.2),
+                    (0.9999999, 0.12, 1.0),
+                ],
+            )
+        },
+        | "positive" => {
+            (
+                rssn_de_positive,
+                &[
+                    (-2.934, 0.805, 1.0),
+                    (0.999, 0.805, 1.0),
+                    (-6.5, 0.5, 1.7),
+                    (0.999, 0.15, 0.001),
+                ],
+            )
+        },
+        | "negative" => {
+            (
+                rssn_de_negative,
+                &[
+                    (-1.0, -0.25, 1.0),
+                    (0.95, -0.5, 1.2),
+                    (-4.0, -3.5, 0.7),
+                    (0.99, -2.25, 1.7),
+                ],
+            )
+        },
         | _ => panic!("unknown case"),
     };
     let kernel = black_box(kernel);
@@ -85,7 +95,11 @@ fn measure<T: Copy>(
     }
     let mut hash = 0_u64;
     let wall_start = Instant::now();
-    let cpu_start = if thread_cpu { clock::now() } else { 0 };
+    let cpu_start = if thread_cpu {
+        clock::now()
+    } else {
+        0
+    };
     for _ in 0..rounds {
         for &args in black_box(data) {
             let bits = kernel(args).to_bits();

@@ -1,13 +1,14 @@
 #![allow(dead_code, unused_imports)]
 mod io;
-use io::{frame::Column, hdf5, parquet};
-use std::{
-    collections::hash_map::DefaultHasher,
-    hash::{Hash, Hasher},
-    hint::black_box,
-    path::Path,
-    time::Duration,
-};
+use io::frame::Column;
+use io::hdf5;
+use io::parquet;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::Hash;
+use std::hash::Hasher;
+use std::hint::black_box;
+use std::path::Path;
+use std::time::Duration;
 
 fn time() -> Duration {
     let mut ts = std::mem::MaybeUninit::<libc::timespec>::uninit();

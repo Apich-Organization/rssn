@@ -1,5 +1,7 @@
-use rustfft::{FftPlanner, num_complex::Complex64};
-use std::{hint::black_box, time::Instant};
+use rustfft::FftPlanner;
+use rustfft::num_complex::Complex64;
+use std::hint::black_box;
+use std::time::Instant;
 
 fn main() {
     let mut args = std::env::args().skip(1);
