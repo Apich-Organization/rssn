@@ -65,7 +65,11 @@ def _cargo_artifact_impl(ctx):
     settings["outputs"] = {k: f.path for k, f in outputs.items()}
     ctx.actions.write(spec, json.encode(settings))
     srcs = ctx.files.rssn + ctx.files.aevia + ctx.files.data + [
-        ctx.file._runner, ctx.file._tasks, ctx.file._config, ctx.file._wrapper, spec,
+        ctx.file._runner,
+        ctx.file._tasks,
+        ctx.file._config,
+        ctx.file._wrapper,
+        spec,
     ]
     if ctx.file.plugin:
         srcs.append(ctx.file.plugin)
@@ -93,6 +97,7 @@ def _workflow_impl(ctx):
     ctx.actions.write(spec, json.encode(settings))
     executable = ctx.actions.declare_file(ctx.label.name + (".bat" if WINDOWS else ".sh"))
     spec_key = _runfile(ctx, spec)
+
     # A minimal bootstrap locates the manifest or symlink tree for both run and test.
     bootstrap = _runfile(ctx, ctx.file._bootstrap)
     if WINDOWS:
@@ -107,7 +112,12 @@ def _workflow_impl(ctx):
         )
     ctx.actions.write(executable, content, is_executable = True)
     files = ctx.files.rssn + ctx.files.aevia + ctx.files.data + [
-        spec, ctx.file._runner, ctx.file._tasks, ctx.file._config, ctx.file._bootstrap, ctx.file._wrapper,
+        spec,
+        ctx.file._runner,
+        ctx.file._tasks,
+        ctx.file._config,
+        ctx.file._bootstrap,
+        ctx.file._wrapper,
     ]
     if ctx.file.plugin:
         files.append(ctx.file.plugin)
@@ -125,7 +135,6 @@ _BOOTSTRAP_COMMAND = "; ".join([
     "value = value.replace(chr(92)+'s',' ').replace(chr(92)+'n',chr(10)).replace(chr(92)+'b',chr(92)) if entry and entry.startswith(' ') else value",
     "runpy.run_path(value, run_name='__main__')",
 ])
-
 
 _attrs = {
     "aevia": attr.label(),

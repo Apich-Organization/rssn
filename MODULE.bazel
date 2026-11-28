@@ -1,4 +1,7 @@
-module(name = "rssn", version = "3.0.0-beta.1")
+module(
+    name = "rssn",
+    version = "3.0.0-beta.1",
+)
 
 bazel_dep(name = "platforms", version = "0.0.10")
 

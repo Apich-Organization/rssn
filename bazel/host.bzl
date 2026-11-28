@@ -91,6 +91,7 @@ def _host_impl(ctx):
             result = ctx.execute([str(sdk), "--" + option])
             if result.return_code == 0:
                 sdk_info[option] = result.stdout.strip()
+
     # CMake uses the default module suffix (.so on ELF and Darwin, .dll on Windows).
     plugin_filename = "RssnLLVMOptimizer.dll" if windows else "RssnLLVMOptimizer.so"
     target_env = {}
