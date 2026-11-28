@@ -74,9 +74,10 @@
 常规 Linux CI 以测试模式执行 Criterion。定时任务会收集 Criterion 结果和全部九项计时报表，
 手动触发时也可以启用 `benchmark_reports`。Criterion 结果保存为工件，其他计时报表写入任务日志。
 
-运行器安装匹配的 LLVM SDK 后，可以通过 `llvm_benchmarks` 运行回调、lanes、ABI、RustFFT、
-zstd 解码和 doubleFast 的配对用例。该任务还会构建 FSE 回放与 libm 调用计数探针，校验对照组
-输出一致性并记录耗时。FSE 回放、Win64 研究及四组 zstd I/O 对照的输入见各自研究文档。
+启用 `llvm_benchmarks` 可运行回调、lanes、ABI、RustFFT、zstd 解码、doubleFast 和 FSE
+的配对用例。Linux CI 在未指定 `RSSN_LLVM_CONFIG` 时会安装固定版本的 LLVM SDK。该任务
+还会构建 libm 调用计数探针、校验对照组输出，并上传 JSON 计时报表和构建日志。Win64 研究
+及四组 zstd I/O 对照的输入见各自研究文档。
 
 ## FFI 分发
 

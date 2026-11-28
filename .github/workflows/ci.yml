@@ -15,7 +15,7 @@ name: CI
         type: boolean
         default: false
       llvm_benchmarks:
-        description: Run the LLVM benchmarks on an x86-64 Linux runner with the matching LLVM SDK
+        description: Run the LLVM benchmarks with the matching x86-64 Linux SDK
         type: boolean
         default: false
   workflow_call:
@@ -253,7 +253,7 @@ jobs:
   llvm-benchmarks:
     name: LLVM benchmarks (Linux x86-64)
     if: github.event_name == 'workflow_dispatch' && inputs.llvm_benchmarks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -267,7 +267,7 @@ jobs:
           bazelisk-cache: true
           repository-cache: true
       - name: System dependencies
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++ zstd
       - name: Run the LLVM benchmark suite
         shell: bash
         env:
@@ -275,16 +275,34 @@ jobs:
           CARGO: ${{ fromJSON(vars.RSSN_RELEASE_CARGOS || '{}')['x86_64-unknown-linux-gnu'] || vars.RSSN_CARGO }}
           RSSN_LLVM_CONFIG: ${{ fromJSON(vars.RSSN_RELEASE_LLVM_CONFIGS || '{}')['x86_64-unknown-linux-gnu'] || vars.RSSN_LLVM_CONFIG }}
         run: |
+          if [[ -z "$RSSN_LLVM_CONFIG" ]]; then
+            # Keep the official Linux SDK pinned to the rustc toolchain above.
+            version=23.1.5
+            archive="LLVM-$version-Linux-X64.tar.zst"
+            sdk="$RUNNER_TEMP/rssn-llvm-sdk"
+            curl --fail --silent --show-error --location --retry 3 \
+              "https://github.com/llvm/llvm-project/releases/download/llvmorg-$version/$archive" \
+              --output "$RUNNER_TEMP/$archive"
+            printf '%s  %s\n' c3107384835f788768f614db610e87fba7077f125ca950eb02a78bab0a308065 \
+              "$RUNNER_TEMP/$archive" | sha256sum --check
+            mkdir -p "$sdk"
+            tar --zstd -xf "$RUNNER_TEMP/$archive" -C "$sdk" --strip-components=1
+            rm "$RUNNER_TEMP/$archive"
+            RSSN_LLVM_CONFIG="$sdk/bin/llvm-config"
+          fi
           flags=(--define=rssn_jobs=2)
           for variable in RUSTC CARGO RSSN_LLVM_CONFIG; do
             if [[ -n "${!variable:-}" ]]; then flags+=("--repo_env=$variable=${!variable}"); fi
           done
           bazel run "${flags[@]}" //:llvm_benchmark_ci -- --reports-dir "$RUNNER_TEMP/rssn-llvm-benchmarks"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ !cancelled() }}
         with:
           name: rssn-llvm-benchmarks
-          path: ${{ runner.temp }}/rssn-llvm-benchmarks/*/results.json
-          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/rssn-llvm-benchmarks/*/results.json
+            ${{ runner.temp }}/rssn-llvm-benchmarks/*/*.log
+          if-no-files-found: warn
 
   ci-success:
     name: CI success

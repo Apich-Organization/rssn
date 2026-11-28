@@ -569,15 +569,16 @@ def llvm_benchmark_ci(build, args):
     with (fixtures / "hdf5/dense_nested.h5").open("rb") as source:
         source.seek(-65536, os.SEEK_END)
         dictionary.write_bytes(source.read())
-    compare = rssn / "tools/llvm-optimizer/bench/compare.py"
+    bench = rssn / "tools/llvm-optimizer/bench"
     for name, build_args, workload in (
         ("decode", ["zstd"], ["100", fixtures / "parquet/codec_zstd.parquet", hdf5]),
         ("double-fast", ["zstd", "--study", "double-fast"], ["--compress-min4", "100", hdf5, dictionary]),
+        ("fse", ["zstd-fse"], [bench / "fixtures/zstd-fse.hex", "25000"]),
     ):
         out = reports / name
         llvm_c_benchmark_build(build, [*build_args, "--out-dir", str(out)])
-        build.python(compare, "pair", out / "base", out / "transform", "--pairs", "3", "--", *workload)
-    llvm_c_benchmark_build(build, ["zstd-fse", "--out-dir", str(reports / "fse")])
+        build.python(bench / "compare.py", "pair", out / "base", out / "transform", "--pairs", "3",
+                     "--output", out / "results.json", "--", *workload)
     for mode in ("exp", "pow", "log"):
         llvm_count_exp_build(build, ["--mode", mode, "--out-dir", str(reports / "libm")])
 

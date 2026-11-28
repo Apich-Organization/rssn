@@ -80,11 +80,12 @@ when dispatching CI to collect Criterion results and all nine timing workloads.
 The scheduled run also collects these reports. Criterion saves an artifact and
 the timing workloads write to the job log.
 
-Enable `llvm_benchmarks` on a runner with the matching LLVM SDK to run paired
-callback, lane, ABI, RustFFT, zstd decoding and doubleFast workloads. The job
-also builds the FSE replay and libm counting probes. The benchmark job checks
-outputs for agreement and records timing data. The FSE replay, Win64 study and
-four-way zstd I/O comparison take inputs described in their study documentation.
+Enable `llvm_benchmarks` to run the paired callback, lane, ABI, RustFFT, zstd
+decoding, doubleFast and FSE workloads. The Linux CI job installs the pinned
+LLVM SDK when no `RSSN_LLVM_CONFIG` override is configured. It also builds the
+libm counting probes, validates the paired outputs and uploads timing JSON and
+build logs. The Win64 study and four-way zstd I/O comparison take inputs
+described in their study documentation.
 
 ## FFI distribution
 

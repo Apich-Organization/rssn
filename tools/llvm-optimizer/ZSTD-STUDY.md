@@ -109,10 +109,14 @@ Wine Win64 A/B 将四个重建解码器装入同一进程交错调用 21 组，�
 
 用于计数和回放的源码为 [断点脚本](analysis/zstd_entropy.gdb) 和 [FSE 回放程序](bench/zstd-fse.c)。用未剥离符号的 Linux `zstd-io` 入口及 `rounds=0` 捕获头部，每个场景恰好读取一次。将以 `FSE ` 开头的行去重后写入 `headers.txt`。基准以从同一份 IR 生成的两份 `fse_decompress.o` 和相同的 zstd 对象库链接回放程序。比较器逐组检查输出哈希和头部数。
 
+CI 回放使用 [固定 FSE 头部](bench/fixtures/zstd-fse.hex)。它来自跟踪的
+`tests/fixtures/parquet/codec_zstd.parquet`，从文件偏移 178 起取 70 字节。
+断点捕获的输出容量为 255，最大表对数为 6。
+
 ```bash
 bazel run //:llvm_c_benchmark_build -- zstd-fse --out-dir "$study/fse"
 bazel run //:llvm_benchmark_compare -- pair "$study/fse/base" "$study/fse/transform" \
-  --pairs 23 -- "$study/headers.txt" 25000
+  --pairs 23 -- tools/llvm-optimizer/bench/fixtures/zstd-fse.hex 25000
 ```
 
 在最终策略下 FSE 输出 IR 与直接通过 verifier 的基线一致，回放的回退由测试中的依赖链用例覆盖。

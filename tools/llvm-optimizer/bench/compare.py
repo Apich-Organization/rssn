@@ -21,6 +21,7 @@ def main():
     pair.add_argument("experiment", type=Path)
     pair.add_argument("--pairs", type=int, default=11)
     pair.add_argument("--runner", help="run both executables through a program such as Wine")
+    pair.add_argument("--output", type=Path, help="also write the JSON result to this file")
 
     zstd = modes.add_parser("zstd-io", help="compare four complete I/O variants")
     zstd.add_argument("study", type=Path)
@@ -44,7 +45,10 @@ def main():
             parser.error("--pairs must be at least 3")
         result = measure(options.baseline.resolve(strict=True), options.experiment.resolve(strict=True),
                          workload, options.pairs, [options.runner] if options.runner else ())
-        print(json.dumps(result))
+        report = json.dumps(result)
+        if options.output is not None:
+            options.output.write_text(report + "\n", encoding="utf-8")
+        print(report)
     elif options.mode == "zstd-io":
         if workload:
             parser.error("zstd-io takes a study directory and --groups")
