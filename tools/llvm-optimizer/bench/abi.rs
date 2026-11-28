@@ -1,4 +1,5 @@
-use std::{hint::black_box, time::Instant};
+use std::hint::black_box;
+use std::time::Instant;
 
 // Three fat slices and two scalars are the same shape as the observed
 // stack-parameter case, with a small leaf body to isolate the call boundary.

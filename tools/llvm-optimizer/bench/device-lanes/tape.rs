@@ -14,14 +14,14 @@ mod cancellation {
 }
 mod kernels {
     pub mod reuse {
-        use std::{
-            cell::RefCell,
-            ops::{Deref, DerefMut},
-        };
+        use std::cell::RefCell;
+        use std::ops::Deref;
+        use std::ops::DerefMut;
         thread_local! {static V: RefCell<Vec<f64>>=const {RefCell::new(Vec::new())};}
         pub(crate) struct Hold(Vec<f64>);
         impl Deref for Hold {
             type Target = Vec<f64>;
+
             fn deref(&self) -> &Self::Target {
                 &self.0
             }
@@ -123,18 +123,20 @@ fn main() {
         | "everything" => everything(),
         | "smooth" => smooth(),
         | "powi" => power_program(&[-3, 11]),
-        | "control" => Tape {
-            insts: vec![
-                Inst::Input(0),
-                Inst::Input(1),
-                Inst::Mul(0, 0),
-                Inst::Mul(1, 1),
-                Inst::Add(2, 3),
-            ],
-            args: vec![],
-            inputs: 2,
-            params: 0,
-            outputs: vec![4],
+        | "control" => {
+            Tape {
+                insts: vec![
+                    Inst::Input(0),
+                    Inst::Input(1),
+                    Inst::Mul(0, 0),
+                    Inst::Mul(1, 1),
+                    Inst::Add(2, 3),
+                ],
+                args: vec![],
+                inputs: 2,
+                params: 0,
+                outputs: vec![4],
+            }
         },
         | _ => panic!("unknown case"),
     };

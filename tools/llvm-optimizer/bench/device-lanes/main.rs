@@ -103,27 +103,31 @@ fn main() {
     let ir = match a[1].as_str() {
         | "everything" => everything(),
         | "smooth" => smooth(),
-        | "powi" => KernelIr {
-            ops: vec![
-                KernelOp::Input(0),
-                KernelOp::Input(1),
-                KernelOp::PowI(0, -3),
-                KernelOp::PowI(1, 11),
-                KernelOp::Add(2, 3),
-            ],
-            inputs: 2,
-            outputs: vec![4],
+        | "powi" => {
+            KernelIr {
+                ops: vec![
+                    KernelOp::Input(0),
+                    KernelOp::Input(1),
+                    KernelOp::PowI(0, -3),
+                    KernelOp::PowI(1, 11),
+                    KernelOp::Add(2, 3),
+                ],
+                inputs: 2,
+                outputs: vec![4],
+            }
         },
-        | "control" => KernelIr {
-            ops: vec![
-                KernelOp::Input(0),
-                KernelOp::Input(1),
-                KernelOp::Mul(0, 0),
-                KernelOp::Mul(1, 1),
-                KernelOp::Add(2, 3),
-            ],
-            inputs: 2,
-            outputs: vec![4],
+        | "control" => {
+            KernelIr {
+                ops: vec![
+                    KernelOp::Input(0),
+                    KernelOp::Input(1),
+                    KernelOp::Mul(0, 0),
+                    KernelOp::Mul(1, 1),
+                    KernelOp::Add(2, 3),
+                ],
+                inputs: 2,
+                outputs: vec![4],
+            }
         },
         | _ => unreachable!(),
     };
