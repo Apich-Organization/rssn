@@ -101,7 +101,7 @@ let config = Config::new()
 
 ## 12. 运行物理量示例
 
-在仓库根目录运行 `cargo run --locked --example units_and_dimensions`。示例演示单位换算及建议模式和严格模式的诊断差异。[示例源码](../examples/units_and_dimensions.rs)
+在仓库根目录运行 `bazel run //:example -- units_and_dimensions`。示例演示单位换算及建议模式和严格模式的诊断差异。[示例源码](../examples/units_and_dimensions.rs)
 
 ## 13. 结构化结果与适用范围
 

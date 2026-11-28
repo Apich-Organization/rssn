@@ -549,7 +549,8 @@ impl Polynomial {
     ///
     /// # Errors
     /// Returns an error if `xs` and `ys` have different lengths, are empty,
-    /// contain non-finite values, or contain duplicate `x` nodes.
+    /// contain non-finite values or duplicate `x` nodes, or if the weights
+    /// or result cannot be represented reliably in Float.
     pub fn interpolate_barycentric_eval(
         xs: &[f64],
         ys: &[f64],
@@ -564,49 +565,47 @@ impl Polynomial {
         if !x.is_finite() || xs.iter().chain(ys.iter()).any(|v| !v.is_finite()) {
             return Err("barycentric evaluation requires finite inputs".to_string());
         }
-        let n = xs.len();
-        if n == 1 {
-            return Ok(ys[0]);
+        let weights = super::barycentric::weights(xs)?;
+        // Only an exact abscissa match skips the interpolation. An absolute
+        // epsilon would classify every distinct subnormal node as the first.
+        if let Some(index) = xs.iter().position(|&node| super::exact_eq(node, x)) {
+            return Ok(ys[index]);
         }
-
-        // Normalize node spacing to avoid overflow/underflow in weight products.
-        let min_x = xs.iter().copied().fold(f64::INFINITY, f64::min);
-        let max_x = xs.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-        let span = (max_x - min_x).max(1.0);
-        let inv_scale = 4.0 / span;
-
-        let mut weights = vec![1.0_f64; n];
-        for i in 0..n {
-            let xi = xs[i];
-            let mut prod = 1.0_f64;
-            for (j, &xj) in xs.iter().enumerate() {
-                if i == j {
-                    continue;
-                }
-                let diff = (xi - xj) * inv_scale;
-                if diff == 0.0 {
-                    return Err("barycentric interpolation nodes must be distinct".to_string());
-                }
-                prod *= diff;
+        // Use the distance to the nearest node as a common term scale.
+        // When only some raw differences overflow, use a common half scale
+        // across all distances so ratios remain consistent.
+        let half_scale = xs.iter().any(|&node| !(x - node).is_finite());
+        let distance = |node| {
+            if half_scale {
+                0.5 * x - 0.5 * node
+            } else {
+                x - node
             }
-            if prod == 0.0 || !prod.is_finite() {
-                return Err("barycentric weight overflowed or underflowed".to_string());
-            }
-            weights[i] = 1.0 / prod;
+        };
+        let nearest = xs
+            .iter()
+            .copied()
+            .map(|node| distance(node).abs())
+            .fold(f64::INFINITY, f64::min);
+        if nearest == 0.0 {
+            return Err("barycentric query distances exceed Float range".into());
         }
-
-        let mut numer = 0.0_f64;
-        let mut denom = 0.0_f64;
-        for i in 0..n {
-            let diff = x - xs[i];
-            if diff.abs() <= f64::EPSILON * xs[i].abs().max(1.0) {
-                return Ok(ys[i]);
-            }
-            let term = weights[i] / diff;
-            numer = term.mul_add(ys[i], numer);
-            denom += term;
+        let y_scale = ys.iter().copied().map(f64::abs).fold(0.0, f64::max);
+        if y_scale == 0.0 {
+            return Ok(0.0);
         }
-        Ok(numer / denom)
+        let mut numer = Dd::from_f64(0.0);
+        let mut denom = Dd::from_f64(0.0);
+        for ((&node, &value), &weight) in xs.iter().zip(ys).zip(weights.iter()) {
+            let term = weight * (nearest / distance(node));
+            numer += Dd::from_f64(term) * Dd::from_f64(value / y_scale);
+            denom += Dd::from_f64(term);
+        }
+        let value = (numer / denom).to_f64() * y_scale;
+        if !value.is_finite() {
+            return Err("barycentric interpolation result exceeds Float range".into());
+        }
+        Ok(value)
     }
 
     /// Computes the polynomial composition $P(\text{inner}(x))$ where `self` is $P$.
@@ -671,15 +670,21 @@ impl Polynomial {
         if exp == 1 {
             return self.clone();
         }
-        let mut result = Self::new(vec![1.0]);
+        let zeros = exp.trailing_zeros();
         let mut base = self.clone();
-        while exp > 0 {
+        for _ in 0..zeros {
+            base = &base * &base;
+        }
+        exp >>= zeros;
+        if exp == 1 {
+            return base;
+        }
+        let mut result = base.clone();
+        while exp > 1 {
+            exp >>= 1;
+            base = &base * &base;
             if exp & 1 == 1 {
                 result = &result * &base;
-            }
-            exp >>= 1;
-            if exp > 0 {
-                base = &base * &base;
             }
         }
         result

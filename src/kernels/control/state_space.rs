@@ -139,21 +139,45 @@ impl StateSpace {
     /// Returns an empty vector for a static model or when the eigensolver
     /// fails.
     pub fn poles(&self) -> Vec<Complex64> {
-        if self.n_states() == 0 {
-            return Vec::new();
-        }
-        linalg::eigenvalues(&self.a).unwrap_or_default()
+        self.try_poles().unwrap_or_default()
     }
 
     /// Whether the model is asymptotically stable.
     ///
     /// A continuous model is stable when every pole has negative real part; a
-    /// discrete model when every pole lies inside the unit circle.
+    /// discrete model when every pole lies inside the unit circle. The
+    /// predicate is false when a complete finite spectrum is unavailable.
     pub fn is_stable(&self) -> bool {
-        let poles = self.poles();
-        if poles.is_empty() {
-            return true;
+        self.try_is_stable().unwrap_or(false)
+    }
+
+    /// Checks asymptotic stability and reports failure to compute finite poles.
+    ///
+    /// # Errors
+    /// Returns an error if any state lacks a finite pole from the eigensolver.
+    pub fn try_is_stable(&self) -> Result<bool, String> {
+        Ok(self.poles_are_stable(&self.try_poles()?))
+    }
+
+    /// Computes a finite eigenvalue for each state of the model.
+    ///
+    /// # Errors
+    /// Returns an error if the eigensolver fails or a pole is not finite.
+    pub fn try_poles(&self) -> Result<Vec<Complex64>, String> {
+        if self.n_states() == 0 {
+            return Ok(Vec::new());
         }
+        let poles = linalg::eigenvalues(&self.a)?;
+        if poles.len() != self.n_states() || poles.iter().any(|p| !p.is_finite()) {
+            return Err("the state-space eigensolver did not return every finite pole".into());
+        }
+        Ok(poles)
+    }
+
+    fn poles_are_stable(
+        &self,
+        poles: &[Complex64],
+    ) -> bool {
         match self.dt {
             | Some(_) => poles.iter().all(|p| p.norm() < 1.0),
             | None => poles.iter().all(|p| p.re < 0.0),

@@ -198,28 +198,31 @@ impl Csr {
     /// Returns the transpose `A^T` in CSR format with sorted column indices.
     #[must_use]
     pub fn transpose(&self) -> Self {
-        let mut cnt = vec![0usize; self.cols + 1];
-        for &c in &self.indices {
-            cnt[c + 1] += 1;
+        let mut indptr = vec![0usize; self.cols + 1];
+        for &column in &self.indices {
+            indptr[column + 1] += 1;
         }
         for i in 0..self.cols {
-            cnt[i + 1] += cnt[i];
+            indptr[i + 1] += indptr[i];
         }
-        let mut pos = cnt.clone();
         let mut indices = vec![0usize; self.indices.len()];
         let mut values = vec![0.0; self.values.len()];
-        for r in 0..self.rows {
-            for k in self.indptr[r]..self.indptr[r + 1] {
-                let c = self.indices[k];
-                indices[pos[c]] = r;
-                values[pos[c]] = self.values[k];
-                pos[c] += 1;
+        for row in 0..self.rows {
+            for k in self.indptr[row]..self.indptr[row + 1] {
+                let column = self.indices[k];
+                let offset = indptr[column];
+                indices[offset] = row;
+                values[offset] = self.values[k];
+                indptr[column] += 1;
             }
         }
+        // The cursor of column c is now that column's exclusive end.
+        indptr.rotate_right(1);
+        indptr[0] = 0;
         Self {
             rows: self.cols,
             cols: self.rows,
-            indptr: cnt,
+            indptr,
             indices,
             values,
         }
@@ -289,98 +292,35 @@ impl Csr {
                 values: Vec::new(),
             });
         }
-        let work = self.values.len().saturating_add(other.values.len());
-        if work < SPMV_PAR_NNZ || m < 64 {
-            let mut indptr = vec![0usize; m + 1];
-            let mut indices = Vec::new();
-            let mut values = Vec::new();
-            let mut acc = super::reuse::f64_scratch(n);
-            acc.resize(n, 0.0);
-            let mut flag = super::reuse::global_pool().scratch_usize(n);
-            flag.resize(n, usize::MAX);
-            let mut cols = super::reuse::global_pool().scratch_usize(64);
-            for i in 0..m {
-                cols.clear();
-                for ka in self.indptr[i]..self.indptr[i + 1] {
-                    let j = self.indices[ka];
-                    let av = self.values[ka];
-                    for kb in other.indptr[j]..other.indptr[j + 1] {
-                        let c = other.indices[kb];
-                        if flag[c] != i {
-                            flag[c] = i;
-                            acc[c] = 0.0;
-                            cols.push(c);
-                        }
-                        acc[c] += av * other.values[kb];
-                    }
-                }
-                cols.sort_unstable();
-                for &c in cols.iter() {
-                    indices.push(c);
-                    values.push(acc[c]);
-                }
-                indptr[i + 1] = indices.len();
-            }
-            return Ok(Self {
-                rows: m,
-                cols: n,
-                indptr,
-                indices,
-                values,
-            });
+        let work = self.indices.iter().fold(0usize, |total, &row| {
+            total.saturating_add(other.indptr[row + 1] - other.indptr[row])
+        });
+        let workers = crate::execution::effective_threads();
+        if work < SPMV_PAR_NNZ || m < 64 || workers <= 1 {
+            return Ok(self.spgemm_rows(other, 0, m));
         }
 
-        // Parallel row-block Gustavson SpGEMM: deterministic index-ordered assembly.
-        let block_rows = 64_usize;
-        let num_blocks = m.div_ceil(block_rows);
-        let block_results = super::par::map_indexed(num_blocks, 2, |b| {
-            let start = b * block_rows;
-            let end = (start + block_rows).min(m);
-            let mut acc = super::reuse::f64_scratch(n);
-            acc.resize(n, 0.0);
-            let mut flag = super::reuse::global_pool().scratch_usize(n);
-            flag.resize(n, usize::MAX);
-            let mut cols = super::reuse::global_pool().scratch_usize(64);
-            let mut b_counts = Vec::with_capacity(end - start);
-            let mut b_indices = Vec::new();
-            let mut b_values = Vec::new();
-            for i in start..end {
-                cols.clear();
-                for ka in self.indptr[i]..self.indptr[i + 1] {
-                    let j = self.indices[ka];
-                    let av = self.values[ka];
-                    for kb in other.indptr[j]..other.indptr[j + 1] {
-                        let c = other.indices[kb];
-                        if flag[c] != i {
-                            flag[c] = i;
-                            acc[c] = 0.0;
-                            cols.push(c);
-                        }
-                        acc[c] += av * other.values[kb];
-                    }
-                }
-                cols.sort_unstable();
-                b_counts.push(cols.len());
-                for &c in cols.iter() {
-                    b_indices.push(c);
-                    b_values.push(acc[c]);
-                }
-            }
-            (b_counts, b_indices, b_values)
+        // Give each worker a few deterministic blocks, retaining one pooled
+        // column workspace for all rows in a block.
+        let block_rows = m.div_ceil(workers.saturating_mul(2)).max(64);
+        let block_count = m.div_ceil(block_rows);
+        if !crate::execution::should_split(block_count, 2) {
+            return Ok(self.spgemm_rows(other, 0, m));
+        }
+        let results = super::par::map_indexed(block_count, 2, |block| {
+            let start = block * block_rows;
+            self.spgemm_rows(other, start, (start + block_rows).min(m))
         });
-
-        let total_nnz: usize = block_results.iter().map(|(_, idx, _)| idx.len()).sum();
+        let total_nnz: usize = results.iter().map(|block| block.indices.len()).sum();
         let mut indptr = Vec::with_capacity(m + 1);
         indptr.push(0);
         let mut indices = Vec::with_capacity(total_nnz);
         let mut values = Vec::with_capacity(total_nnz);
-        for (b_counts, b_idx, b_val) in block_results {
-            for cnt in b_counts {
-                let prev = *indptr.last().unwrap_or(&0);
-                indptr.push(prev + cnt);
-            }
-            indices.extend_from_slice(&b_idx);
-            values.extend_from_slice(&b_val);
+        for block in results {
+            let offset = indices.len();
+            indptr.extend(block.indptr.into_iter().skip(1).map(|end| offset + end));
+            indices.extend(block.indices);
+            values.extend(block.values);
         }
         Ok(Self {
             rows: m,
@@ -389,6 +329,51 @@ impl Csr {
             indices,
             values,
         })
+    }
+
+    fn spgemm_rows(
+        &self,
+        other: &Self,
+        start: usize,
+        end: usize,
+    ) -> Self {
+        let n = other.cols;
+        let mut indptr = Vec::with_capacity(end - start + 1);
+        indptr.push(0);
+        let mut indices = Vec::new();
+        let mut values = Vec::new();
+        let mut acc = super::reuse::f64_scratch(n);
+        acc.resize(n, 0.0);
+        let mut flag = super::reuse::global_pool().scratch_usize(n);
+        flag.resize(n, usize::MAX);
+        let mut cols = super::reuse::global_pool().scratch_usize(64);
+        for i in start..end {
+            cols.clear();
+            for ka in self.indptr[i]..self.indptr[i + 1] {
+                let row = self.indices[ka];
+                let av = self.values[ka];
+                for kb in other.indptr[row]..other.indptr[row + 1] {
+                    let column = other.indices[kb];
+                    if flag[column] != i {
+                        flag[column] = i;
+                        acc[column] = 0.0;
+                        cols.push(column);
+                    }
+                    acc[column] += av * other.values[kb];
+                }
+            }
+            cols.sort_unstable();
+            indices.extend_from_slice(&cols);
+            values.extend(cols.iter().map(|&column| acc[column]));
+            indptr.push(indices.len());
+        }
+        Self {
+            rows: end - start,
+            cols: n,
+            indptr,
+            indices,
+            values,
+        }
     }
 
     /// Diagonal of the matrix.
@@ -993,8 +978,26 @@ where
         .unwrap_or_else(std::convert::identity)
 }
 
+fn normalize_lsqr(
+    values: &mut [f64],
+    norm: f64,
+) {
+    let reciprocal = norm.recip();
+    if reciprocal.is_finite() {
+        super::simd::scale_f64(reciprocal, values);
+    } else {
+        for value in values {
+            *value /= norm;
+        }
+    }
+}
+
 /// Paige–Saunders LSQR solver for rectangular sparse least-squares systems
 /// `min_x ||A x - b||_2^2 + damp^2 ||x||_2^2`.
+///
+/// Convergence is checked with an independently recomputed residual or
+/// normal-equation residual. The reported residual is relative to the
+/// original, unaugmented system.
 ///
 /// `apply(x, y)` computes `y = A x` (`x.len() == n`, `y.len() == m`) and
 /// `apply_t(u, v)` computes `v = A^T u` (`u.len() == m`, `v.len() == n`).
@@ -1035,7 +1038,7 @@ where
     let mut u = super::reuse::f64_scratch(m);
     u.clear();
     u.extend_from_slice(b);
-    let b_norm = super::simd::norm2_sq_f64(&u).sqrt();
+    let b_norm = super::vector::norm_serial(&u);
     if b_norm == 0.0 {
         return IterResult {
             x: vec![0.0; n],
@@ -1044,16 +1047,31 @@ where
             converged: true,
         };
     }
+    if !b_norm.is_finite() {
+        return IterResult {
+            x: vec![0.0; n],
+            residual: f64::INFINITY,
+            iterations: 0,
+            converged: false,
+        };
+    }
     let mut beta = b_norm;
-    super::simd::scale_f64(beta.recip(), &mut u);
+    normalize_lsqr(&mut u, beta);
 
     let mut v = super::reuse::f64_scratch(n);
     v.resize(n, 0.0);
     apply_t(&u, &mut v);
-    let mut alpha = super::simd::norm2_sq_f64(&v).sqrt();
-    if alpha > 0.0 {
-        super::simd::scale_f64(alpha.recip(), &mut v);
+    let mut alpha = super::vector::norm_serial(&v);
+    if alpha == 0.0 || !alpha.is_finite() {
+        // Zero satisfies the original normal equations when A^T b is zero.
+        return IterResult {
+            x: vec![0.0; n],
+            residual: 1.0,
+            iterations: 0,
+            converged: alpha == 0.0,
+        };
     }
+    normalize_lsqr(&mut v, alpha);
 
     let mut w = super::reuse::f64_scratch(n);
     w.clear();
@@ -1068,7 +1086,31 @@ where
     let mut rho_bar = alpha;
     let mut anorm_sq = 0.0_f64;
     let mut iterations = 0_usize;
-    let mut converged = false;
+    let mut damp_residual = 0.0_f64;
+    let certificate = |x: &[f64], ax: &mut [f64], normal: &mut [f64], a_norm: f64| {
+        apply(x, ax);
+        let relative = residual_ratio(b, ax).unwrap_or(f64::INFINITY);
+        if relative <= tol && damp == 0.0 {
+            return (relative, true);
+        }
+        if !relative.is_finite() {
+            return (relative, false);
+        }
+        for (residual, &observed) in ax.iter_mut().zip(b) {
+            *residual = observed - *residual;
+        }
+        let residual_norm = super::vector::norm_serial(ax);
+        apply_t(ax, normal);
+        let damping_square = damp * damp;
+        if damping_square != 0.0 {
+            super::simd::axpy_f64(-damping_square, x, normal);
+        }
+        let normal_norm = super::vector::norm_serial(normal);
+        let scale = a_norm * residual_norm + damping_square * super::vector::norm_serial(x);
+        let converged = normal_norm.is_finite()
+            && (normal_norm == 0.0 || (scale.is_finite() && normal_norm <= tol * scale));
+        (relative, converged)
+    };
 
     for iter in 1..=max_iter {
         iterations = iter;
@@ -1076,31 +1118,30 @@ where
         // Golub-Kahan bidiagonalisation step.
         apply(&v, &mut tmp_m);
         super::simd::axpby_f64(1.0, &tmp_m, -alpha, &mut u);
-        beta = super::simd::norm2_sq_f64(&u).sqrt();
+        beta = super::vector::norm_serial(&u);
         if beta > 0.0 {
-            super::simd::scale_f64(beta.recip(), &mut u);
+            normalize_lsqr(&mut u, beta);
         }
         anorm_sq += alpha * alpha + beta * beta + damp * damp;
 
         apply_t(&u, &mut tmp_n);
         super::simd::axpby_f64(1.0, &tmp_n, -beta, &mut v);
-        alpha = super::simd::norm2_sq_f64(&v).sqrt();
+        alpha = super::vector::norm_serial(&v);
         if alpha > 0.0 {
-            super::simd::scale_f64(alpha.recip(), &mut v);
+            normalize_lsqr(&mut v, alpha);
         }
 
-        // Optional damping rotation.
-        let (rho_bar_1, psi_1) = if damp == 0.0 {
-            (rho_bar, 0.0)
+        // Optional damping rotation contributes to the augmented residual.
+        let rho_bar_1 = if damp == 0.0 {
+            rho_bar
         } else {
             let r1 = rho_bar.hypot(damp);
             let cs1 = rho_bar / r1;
             let sn1 = damp / r1;
-            let p1 = sn1 * phi_bar;
+            damp_residual = damp_residual.hypot(sn1 * phi_bar);
             phi_bar *= cs1;
-            (r1, p1)
+            r1
         };
-        let _ = psi_1;
 
         // Plane rotation to eliminate subdiagonal beta.
         let rho = rho_bar_1.hypot(beta);
@@ -1118,26 +1159,28 @@ where
         super::simd::axpy_f64(phi / rho, &w, &mut x);
         super::simd::axpby_f64(1.0, &v, -(theta / rho), &mut w);
 
-        let r_norm = phi_bar.abs();
+        let r_norm = phi_bar.hypot(damp_residual);
         let ar_norm = (phi_bar * alpha * c).abs();
         let a_norm = anorm_sq.sqrt();
         if r_norm <= tol * b_norm || (a_norm > 0.0 && ar_norm <= tol * a_norm * r_norm) {
-            converged = true;
-            break;
+            let (residual, converged) = certificate(&x, &mut tmp_m, &mut tmp_n, a_norm);
+            if converged {
+                return IterResult {
+                    x,
+                    residual,
+                    iterations,
+                    converged,
+                };
+            }
         }
     }
 
-    // Recompute true residual ||b - A x|| / ||b||.
-    apply(&x, &mut tmp_m);
-    for (r, &bi) in tmp_m.iter_mut().zip(b) {
-        *r = bi - *r;
-    }
-    let true_res = super::simd::norm2_sq_f64(&tmp_m).sqrt() / b_norm;
+    let (residual, converged) = certificate(&x, &mut tmp_m, &mut tmp_n, anorm_sq.sqrt());
     IterResult {
         x,
-        residual: true_res,
+        residual,
         iterations,
-        converged: converged || true_res <= tol,
+        converged,
     }
 }
 

@@ -1,7 +1,9 @@
 //! Source-derived composable codecs for reviewed, concrete kernel functions.
 use quote::ToTokens;
+use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::path::Path;
+use std::path::PathBuf;
 use syn::FnArg;
 use syn::Item;
 use syn::ReturnType;
@@ -169,6 +171,21 @@ fn output(
     }
     Ok((qualify(ty, module, complex_alias), false))
 }
+fn parsed_source(
+    cache: &mut BTreeMap<PathBuf, syn::File>,
+    path: PathBuf,
+) -> Result<&syn::File, String> {
+    use std::collections::btree_map::Entry;
+    match cache.entry(path) {
+        | Entry::Occupied(entry) => Ok(entry.into_mut()),
+        | Entry::Vacant(entry) => {
+            let source = std::fs::read_to_string(entry.key()).map_err(|error| error.to_string())?;
+            let file = syn::parse_file(&source).map_err(|error| error.to_string())?;
+            Ok(entry.insert(file))
+        },
+    }
+}
+
 /// Generate codec bindings. Rust checks each generated call and codec trait;
 /// policies supply names and dimensions, never duplicate Rust signatures.
 pub fn generate(
@@ -181,6 +198,7 @@ pub fn generate(
     let mut names = BTreeSet::new();
     let mut paths = BTreeSet::new();
     let mut rows = Vec::new();
+    let mut parsed = BTreeMap::new();
     for (line, text) in policy.lines().enumerate() {
         if text.trim().is_empty() || text.starts_with('#') {
             continue;
@@ -220,13 +238,13 @@ pub fn generate(
             .get(*dimension)
             .ok_or_else(|| format!("{path} has unknown dimensional policy {dimension}"))?;
         let module = parts[2];
-        let public_modules = std::fs::read_to_string(root.join(format!("src/{}/mod.rs", parts[1])))
-            .map_err(|e| e.to_string())?;
-        let module_items = syn::parse_file(&public_modules).map_err(|e| e.to_string())?;
+        let module_items =
+            parsed_source(&mut parsed, root.join(format!("src/{}/mod.rs", parts[1])))?;
         if !module_items.items.iter().any(|item| matches!(item,Item::Mod(m) if m.ident == module && matches!(m.vis,Visibility::Public(_)) && !m.attrs.iter().any(|a| a.path().is_ident("cfg") || a.path().is_ident("cfg_attr")))) { return Err(format!("{path} parent is not an unconditional public numerical module")); }
-        let source = std::fs::read_to_string(root.join(format!("src/{}/{module}.rs", parts[1])))
-            .map_err(|e| e.to_string())?;
-        let file = syn::parse_file(&source).map_err(|e| e.to_string())?;
+        let file = parsed_source(
+            &mut parsed,
+            root.join(format!("src/{}/{module}.rs", parts[1])),
+        )?;
         let functions: Vec<_> = file
             .items
             .iter()

@@ -1,10 +1,16 @@
 //! Complex root localization, bounds, polynomial solvers, argument principle,
 //! Delves-Lyness, Rouché theorem checks, and 1D complex homotopy continuation.
 
+use crate::kernels::complex_ball::ComplexBall;
+use crate::kernels::complex_ball::ComplexBallJet;
+use crate::kernels::complex_ball::certify_root_1d;
 use num_complex::Complex;
 use std::f64::consts::PI;
 
-fn eval_poly_and_deriv(
+use super::reuse::Scratch;
+use super::reuse::global_pool;
+
+fn eval_poly_and_deriv<const DERIVATIVES: u8>(
     coeffs: &[Complex<f64>],
     z: Complex<f64>,
 ) -> (Complex<f64>, Complex<f64>, Complex<f64>) {
@@ -12,8 +18,12 @@ fn eval_poly_and_deriv(
     let mut dp = Complex::new(0.0, 0.0);
     let mut ddp = Complex::new(0.0, 0.0);
     for &c in coeffs.iter().rev() {
-        ddp = ddp * z + dp * 2.0;
-        dp = dp * z + p;
+        if DERIVATIVES > 1 {
+            ddp = ddp * z + dp * 2.0;
+        }
+        if DERIVATIVES > 0 {
+            dp = dp * z + p;
+        }
         p = p * z + c;
     }
     (p, dp, ddp)
@@ -228,7 +238,7 @@ fn initial_circle_guesses(c: &[Complex<f64>]) -> Vec<Complex<f64>> {
     let center = if n >= 1 {
         let c_n = c.get(n).copied().unwrap_or(Complex::new(1.0, 0.0));
         let c_n1 = c.get(n.saturating_sub(1)).copied().unwrap_or_default();
-        -c_n1 / (c_n * (n as f64))
+        -divide(c_n1, c_n) / (n as f64)
     } else {
         Complex::new(0.0, 0.0)
     };
@@ -240,174 +250,370 @@ fn initial_circle_guesses(c: &[Complex<f64>]) -> Vec<Complex<f64>> {
         .collect()
 }
 
-/// Finds all roots of a polynomial with ascending coefficients using the Durand–Kerner method.
+/// Scales by the largest coefficient component without changing the roots.
+/// Returns an error when the polynomial is zero or scaling loses a coefficient.
+pub(crate) fn normalized_coefficients(
+    coeffs: &[Complex<f64>]
+) -> Result<Scratch<'static, Complex<f64>>, String> {
+    let c = trim_leading_zeros(coeffs);
+    if c.is_empty() || c.iter().any(|coefficient| !coefficient.is_finite()) {
+        return Err("expected a nonzero polynomial with finite coefficients".into());
+    }
+    let scale = c
+        .iter()
+        .map(|c| c.re.abs().max(c.im.abs()))
+        .fold(0.0_f64, f64::max);
+    let mut normalized = global_pool().scratch_complex64(c.len());
+    for &coefficient in c {
+        let scaled = coefficient / scale;
+        if lost_component(coefficient, scaled) {
+            return Err("coefficient range exceeds normalized binary64 precision".into());
+        }
+        normalized.push(scaled);
+    }
+    Ok(normalized)
+}
+
+fn lost_component(
+    original: Complex<f64>,
+    scaled: Complex<f64>,
+) -> bool {
+    (original.re != 0.0 && scaled.re == 0.0) || (original.im != 0.0 && scaled.im == 0.0)
+}
+
+fn divide(
+    numerator: Complex<f64>,
+    denominator: Complex<f64>,
+) -> Complex<f64> {
+    let scale = denominator.re.abs().max(denominator.im.abs());
+    (numerator / scale) / (denominator / scale)
+}
+
+/// Computes a coefficientwise relative backward error by Horner recurrence.
+/// For |z| > 1 it evaluates p(z)/z^n via the reversed polynomial.
+pub(crate) fn backward_error(
+    coeffs: &[Complex<f64>],
+    z: Complex<f64>,
+) -> f64 {
+    if !z.is_finite() {
+        return f64::NAN;
+    }
+    let zero = Complex::new(0.0, 0.0);
+    let Some(start) = coeffs.iter().position(|&coefficient| coefficient != zero) else {
+        return f64::NAN;
+    };
+    if z == zero && start > 0 {
+        return 0.0;
+    }
+    let coeffs = &coeffs[start..];
+    let reversed = z.norm() > 1.0;
+    let argument = if reversed {
+        divide(Complex::new(1.0, 0.0), z)
+    } else {
+        z
+    };
+    let decay = argument.norm();
+    let mut value = zero;
+    let mut magnitude = 0.0_f64;
+    let evaluate = |&coefficient: &Complex<f64>| {
+        value = value * argument + coefficient;
+        magnitude = magnitude * decay + coefficient.norm();
+    };
+    if reversed {
+        coeffs.iter().for_each(evaluate);
+    } else {
+        coeffs.iter().rev().for_each(evaluate);
+    }
+    value.norm() / magnitude
+}
+
+fn validate_iteration(
+    max_iter: usize,
+    tol: f64,
+) -> Result<(), String> {
+    if max_iter == 0 || !tol.is_finite() || tol <= 0.0 {
+        return Err("expected a positive iteration count and finite positive tolerance".into());
+    }
+    Ok(())
+}
+
+#[derive(Clone, Copy)]
+enum SimultaneousMethod {
+    DurandKerner,
+    AberthEhrlich,
+}
+
+impl SimultaneousMethod {
+    fn correction(
+        self,
+        monic: &[Complex<f64>],
+        roots: &[Complex<f64>],
+        i: usize,
+    ) -> Option<Complex<f64>> {
+        let zi = roots[i];
+        let (value, derivative, _) = match self {
+            | Self::DurandKerner => eval_poly_and_deriv::<0>(monic, zi),
+            | Self::AberthEhrlich => eval_poly_and_deriv::<1>(monic, zi),
+        };
+        if value == Complex::new(0.0, 0.0) {
+            return Some(value);
+        }
+        let neighbors = roots
+            .iter()
+            .enumerate()
+            .filter_map(|(j, &root)| (i != j).then_some(zi - root));
+        match self {
+            | Self::DurandKerner => {
+                let denominator: Complex<f64> = neighbors.product();
+                (denominator != Complex::new(0.0, 0.0)).then(|| divide(value, denominator))
+            },
+            | Self::AberthEhrlich => {
+                if derivative == Complex::new(0.0, 0.0) {
+                    return None;
+                }
+                let w = divide(value, derivative);
+                let sum = neighbors
+                    .map(|diff| divide(Complex::new(1.0, 0.0), diff))
+                    .sum::<Complex<f64>>();
+                let denominator = Complex::new(1.0, 0.0) - w * sum;
+                (denominator != Complex::new(0.0, 0.0)).then(|| divide(w, denominator))
+            },
+        }
+    }
+}
+
+fn quadratic_roots(
+    coefficients: &[Complex<f64>],
+    tol: f64,
+) -> Option<[Complex<f64>; 2]> {
+    let [constant, linear, quadratic] = *coefficients else {
+        return None;
+    };
+    let discriminant = (linear * linear - (4.0 * quadratic) * constant).sqrt();
+    let plus = linear + discriminant;
+    let minus = linear - discriminant;
+    let q = -0.5
+        * if plus.norm() >= minus.norm() {
+            plus
+        } else {
+            minus
+        };
+    let roots = [divide(q, quadratic), divide(constant, q)];
+    roots
+        .iter()
+        .all(|&root| backward_error(coefficients, root) <= tol)
+        .then_some(roots)
+}
+
+fn simultaneous_roots(
+    coeffs: &[Complex<f64>],
+    max_iter: usize,
+    tol: f64,
+    method: SimultaneousMethod,
+) -> Result<Vec<Complex<f64>>, String> {
+    validate_iteration(max_iter, tol)?;
+    let coefficients = normalized_coefficients(coeffs)?;
+    let n = coefficients.len() - 1;
+    let zero = Complex::new(0.0, 0.0);
+    let zero_count = coefficients.iter().take_while(|&&c| c == zero).count();
+    let (leading, lower) = coefficients[zero_count..]
+        .split_last()
+        .ok_or("missing leading coefficient")?;
+    if lower.is_empty() {
+        return Ok(vec![zero; zero_count]);
+    }
+    if lower.len() == 1 {
+        let root = -divide(lower[0], *leading);
+        if !root.is_finite() {
+            return Err("linear root is outside binary64 range".into());
+        }
+        let mut roots = vec![zero; n];
+        roots[zero_count] = root;
+        return Ok(roots);
+    }
+    if let Some(quadratic) = quadratic_roots(&coefficients[zero_count..], tol) {
+        let mut roots = vec![zero; zero_count];
+        roots.extend(quadratic);
+        return Ok(roots);
+    }
+    let mut monic = global_pool().scratch_complex64(lower.len() + 1);
+    monic.extend(lower.iter().map(|&c| divide(c, *leading)));
+    monic.push(Complex::new(1.0, 0.0));
+    if monic.iter().any(|c| !c.is_finite())
+        || lower
+            .iter()
+            .zip(monic.iter())
+            .any(|(&c, &m)| c != zero && m == zero)
+    {
+        return Err("monic polynomial is outside binary64 range".into());
+    }
+    let mut roots = initial_circle_guesses(&monic);
+    for sweep in 0..max_iter {
+        if sweep.is_multiple_of(16) && crate::cancellation::is_cancelled() {
+            return Err("polynomial root iteration cancelled".into());
+        }
+        let mut max_step = 0.0_f64;
+        let mut stalled = false;
+        for i in 0..roots.len() {
+            let Some(delta) = method.correction(&monic, &roots, i) else {
+                stalled = true;
+                continue;
+            };
+            let next = roots[i] - delta;
+            let step = delta.norm();
+            if !next.is_finite() || !step.is_finite() {
+                return Err("polynomial root iteration left binary64 range".into());
+            }
+            max_step = max_step.max(step);
+            roots[i] = next;
+        }
+        if max_step <= tol
+            && roots
+                .iter()
+                .all(|&root| backward_error(&monic, root) <= tol)
+        {
+            roots.resize(n, zero);
+            return Ok(roots);
+        }
+        if stalled && max_step == 0.0 {
+            return Err("polynomial root iteration stalled above the residual tolerance".into());
+        }
+    }
+    Err(format!(
+        "polynomial roots did not converge within {max_iter} iterations"
+    ))
+}
+
+/// Finds approximate roots with multiplicities from ascending coefficients using Durand–Kerner.
 ///
 /// # Errors
 ///
-/// Returns an error for an empty coefficient slice or when the iterations fail to converge.
+/// Returns an error for an empty or zero polynomial, invalid controls, nonfinite iterates,
+/// cancellation, or failure to converge. A nonzero constant has no roots.
 pub fn durand_kerner(
     coeffs: &[Complex<f64>],
     max_iter: usize,
     tol: f64,
 ) -> Result<Vec<Complex<f64>>, String> {
-    let c = trim_leading_zeros(coeffs);
-    let n = c.len().saturating_sub(1);
-    if n == 0 {
-        return Ok(Vec::new());
-    }
-    let cn = c
-        .last()
-        .copied()
-        .ok_or_else(|| "Empty coefficients".to_string())?;
-    let monic: Vec<Complex<f64>> = c.iter().map(|&v| v / cn).collect();
-    let mut roots = initial_circle_guesses(&monic);
-    for _ in 0..max_iter {
-        let mut max_step = 0.0_f64;
-        for i in 0..n {
-            let zi = *roots.get(i).ok_or_else(|| "Index error".to_string())?;
-            let (p_val, _, _) = eval_poly_and_deriv(&monic, zi);
-            let mut denom = Complex::new(1.0, 0.0);
-            for (j, &zj) in roots.iter().enumerate() {
-                if i != j {
-                    denom *= zi - zj;
-                }
-            }
-            if denom.norm() < 1e-30 {
-                continue;
-            }
-            let delta = p_val / denom;
-            max_step = max_step.max(delta.norm());
-            if let Some(slot) = roots.get_mut(i) {
-                *slot = zi - delta;
-            }
-        }
-        if max_step < tol {
-            return Ok(roots);
-        }
-    }
-    Err(format!(
-        "Durand-Kerner failed to converge within {max_iter} iterations"
-    ))
+    simultaneous_roots(coeffs, max_iter, tol, SimultaneousMethod::DurandKerner)
 }
 
-/// Finds all roots of a polynomial with ascending coefficients using the Aberth–Ehrlich method.
+/// Finds approximate roots with multiplicities from ascending coefficients using Aberth–Ehrlich.
 ///
 /// # Errors
 ///
-/// Returns an error for an empty coefficient slice or when the iterations fail to converge.
+/// Returns an error for an empty or zero polynomial, invalid controls, nonfinite iterates,
+/// cancellation, or failure to converge. A nonzero constant has no roots.
 pub fn aberth_ehrlich(
     coeffs: &[Complex<f64>],
     max_iter: usize,
     tol: f64,
 ) -> Result<Vec<Complex<f64>>, String> {
-    let c = trim_leading_zeros(coeffs);
-    let n = c.len().saturating_sub(1);
-    if n == 0 {
-        return Ok(Vec::new());
-    }
-    let cn = c
-        .last()
-        .copied()
-        .ok_or_else(|| "Empty coefficients".to_string())?;
-    let monic: Vec<Complex<f64>> = c.iter().map(|&v| v / cn).collect();
-    let mut roots = initial_circle_guesses(&monic);
-    for _ in 0..max_iter {
-        let mut max_step = 0.0_f64;
-        for i in 0..n {
-            let zi = *roots.get(i).ok_or_else(|| "Index error".to_string())?;
-            let (p_val, dp_val, _) = eval_poly_and_deriv(&monic, zi);
-            if p_val.norm() < tol * 1e-3 {
-                continue;
-            }
-            if dp_val.norm() < 1e-30 {
-                if let Some(slot) = roots.get_mut(i) {
-                    *slot = zi + Complex::new(1e-5, 1.3e-5);
-                }
-                continue;
-            }
-            let w = p_val / dp_val;
-            let mut sum_inv = Complex::new(0.0, 0.0);
-            for (j, &zj) in roots.iter().enumerate() {
-                if i != j {
-                    let diff = zi - zj;
-                    if diff.norm() > 1e-30 {
-                        sum_inv += Complex::new(1.0, 0.0) / diff;
-                    }
-                }
-            }
-            let denom = Complex::new(1.0, 0.0) - w * sum_inv;
-            let delta = if denom.norm() > 1e-30 {
-                w / denom
-            } else {
-                w
-            };
-            max_step = max_step.max(delta.norm());
-            if let Some(slot) = roots.get_mut(i) {
-                *slot = zi - delta;
-            }
-        }
-        if max_step < tol {
-            return Ok(roots);
-        }
-    }
-    Err(format!(
-        "Durand-Kerner failed to converge within {max_iter} iterations"
-    ))
+    simultaneous_roots(coeffs, max_iter, tol, SimultaneousMethod::AberthEhrlich)
 }
 
-/// Finds a single root of a polynomial starting from `z0` via Laguerre's method.
+/// Finds an approximate root of an ascending polynomial starting from `z0` via Laguerre's method.
+/// `tol` controls the relative backward error of the returned candidate.
 ///
 /// # Errors
 ///
-/// Returns an error for a constant polynomial, a vanishing Laguerre denominator, or nonconvergence.
+/// Returns an error for a constant or zero polynomial, invalid controls, nonfinite iterates,
+/// cancellation, a vanishing Laguerre denominator, or failure to converge.
 pub fn laguerre_root(
     coeffs: &[Complex<f64>],
     z0: Complex<f64>,
     max_iter: usize,
     tol: f64,
 ) -> Result<Complex<f64>, String> {
-    let c = trim_leading_zeros(coeffs);
-    let n = c.len().saturating_sub(1);
-    if n == 0 {
-        return Err("Constant polynomial has no roots".to_string());
+    validate_iteration(max_iter, tol)?;
+    let c = normalized_coefficients(coeffs)?;
+    let n = c.len() - 1;
+    if n == 0 || !z0.is_finite() {
+        return Err("Laguerre requires a nonconstant polynomial and a finite seed".into());
+    }
+    if n == 1 {
+        let root = -divide(c[0], c[1]);
+        if root.is_finite() && backward_error(&c, root) <= tol {
+            return Ok(root);
+        }
+        return Err("linear root exceeds binary64 range or requested tolerance".into());
     }
     let n_f = n as f64;
     let mut z = z0;
-    for _ in 0..max_iter {
-        let (p, dp, ddp) = eval_poly_and_deriv(c, z);
-        if p.norm() < tol {
+    for step in 0..max_iter {
+        if step.is_multiple_of(16) && crate::cancellation::is_cancelled() {
+            return Err("Laguerre iteration cancelled".into());
+        }
+        if backward_error(&c, z) <= tol {
             return Ok(z);
         }
-        let g = dp / p;
+        let (p, dp, ddp) = eval_poly_and_deriv::<2>(&c, z);
+        let g = divide(dp, p);
         let g_squared = g * g;
-        let h = g_squared - ddp / p;
+        let h = g_squared - divide(ddp, p);
         let disc = ((n_f - 1.0) * (n_f * h - g_squared)).sqrt();
-        let d_plus = g + disc;
-        let d_minus = g - disc;
-        let denom = if d_plus.norm() >= d_minus.norm() {
-            d_plus
+        let plus = g + disc;
+        let minus = g - disc;
+        let denominator = if plus.norm() >= minus.norm() {
+            plus
         } else {
-            d_minus
+            minus
         };
-        if denom.norm() < 1e-30 {
-            return Err("Laguerre denominator vanished".to_string());
+        if denominator == Complex::new(0.0, 0.0) || !denominator.is_finite() {
+            return Err("Laguerre denominator vanished or exceeded binary64 range".into());
         }
-        let a = Complex::new(n_f, 0.0) / denom;
-        z -= a;
-        if a.norm() < tol {
-            return Ok(z);
-        }
+        z -= divide(Complex::new(n_f, 0.0), denominator);
+    }
+    if backward_error(&c, z) <= tol {
+        return Ok(z);
     }
     Err(format!(
-        "Laguerre failed to converge within {max_iter} iterations"
+        "Laguerre did not converge within {max_iter} iterations"
     ))
 }
 
-/// Finds a complex root of an arbitrary analytic function `f` using Muller's quadratic interpolation.
+fn checked_sample(z: Complex<f64>) -> Result<Complex<f64>, String> {
+    z.is_finite()
+        .then_some(z)
+        .ok_or_else(|| "root callback returned a nonfinite value".into())
+}
+
+fn root_iteration_options(
+    max_iter: usize,
+    tol: f64,
+) -> Result<(), String> {
+    if max_iter == 0 || !tol.is_finite() || tol <= 0.0 {
+        Err("expected a positive iteration bound and finite positive residual tolerance".into())
+    } else {
+        Ok(())
+    }
+}
+
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "common scaling uses finite floats and a checked nonzero scale"
+)]
+fn rescale_root_samples(values: [Complex<f64>; 3]) -> [Complex<f64>; 3] {
+    let scale = values
+        .iter()
+        .fold(0.0_f64, |bound, z| bound.max(z.re.abs()).max(z.im.abs()));
+    if scale > 0.0 {
+        values.map(|z| z / scale)
+    } else {
+        values
+    }
+}
+
+/// Finds a complex root of an analytic function using Muller's quadratic interpolation.
 ///
 /// # Errors
 ///
-/// Returns an error if the interpolation denominator vanishes or the iterations fail to converge.
+/// Rejects invalid iteration parameters or seeds, singular interpolation,
+/// nonfinite callback values, cancellation or failure to meet the residual tolerance.
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "Muller interpolation operates on finite complex samples and checks singular updates"
+)]
 pub fn muller_root<F>(
     f: F,
     mut z0: Complex<f64>,
@@ -419,42 +625,62 @@ pub fn muller_root<F>(
 where
     F: Fn(Complex<f64>) -> Complex<f64>,
 {
+    root_iteration_options(max_iter, tol)?;
+    if [z0, z1, z2].iter().any(|point| !point.is_finite()) {
+        return Err("Muller seeds must be finite".into());
+    }
+    if crate::cancellation::is_cancelled() {
+        return Err("Muller solve cancelled".into());
+    }
+    let mut f0 = checked_sample(f(z0))?;
+    let mut f1 = checked_sample(f(z1))?;
+    let mut f2 = checked_sample(f(z2))?;
+    if f2.norm() <= tol {
+        return Ok(z2);
+    }
+    let zero = Complex::new(0.0, 0.0);
     for _ in 0..max_iter {
-        let f0 = f(z0);
-        let f1 = f(z1);
-        let f2 = f(z2);
-        if f2.norm() < tol {
-            return Ok(z2);
+        if crate::cancellation::is_cancelled() {
+            return Err("Muller solve cancelled".into());
         }
         let h1 = z1 - z0;
         let h2 = z2 - z1;
-        if h1.norm() < 1e-30 || h2.norm() < 1e-30 {
-            return Ok(z2);
+        let span = z2 - z0;
+        if h1 == zero || h2 == zero || span == zero {
+            return Err("Muller interpolation needs distinct points".into());
         }
-        let d1 = (f1 - f0) / h1;
-        let d2 = (f2 - f1) / h2;
-        let a = (d2 - d1) / (h2 + h1);
-        let b = a * h2 + d2;
-        let c = f2;
-        let rad = (b * b - a * c * 4.0).sqrt();
-        let den_plus = b + rad;
-        let den_minus = b - rad;
+        // A common value scale preserves the interpolation step while keeping
+        // the discriminant away from avoidable overflow and underflow.
+        let [a, b, c] = rescale_root_samples([f0, f1, f2]);
+        let d1 = divide(b - a, h1);
+        let d2 = divide(c - b, h2);
+        let quadratic = divide(d2 - d1, span);
+        let linear = quadratic * h2 + d2;
+        let rad = (linear * linear - quadratic * c * 4.0).sqrt();
+        let den_plus = linear + rad;
+        let den_minus = linear - rad;
         let den = if den_plus.norm() >= den_minus.norm() {
             den_plus
         } else {
             den_minus
         };
-        if den.norm() < 1e-30 {
-            return Err("Muller denominator vanished".to_string());
+        if den == zero || !den.is_finite() {
+            return Err("Muller denominator is singular".into());
         }
-        let dz = -c * 2.0 / den;
-        let z3 = z2 + dz;
-        if dz.norm() < tol {
-            return Ok(z3);
+        let next = z2 - divide(2.0 * c, den);
+        if !next.is_finite() || next == z2 {
+            return Err("Muller update stagnated above the residual tolerance".into());
         }
         z0 = z1;
         z1 = z2;
-        z2 = z3;
+        z2 = next;
+        f0 = f1;
+        f1 = f2;
+        // The two previous samples are already available after shifting.
+        f2 = checked_sample(f(next))?;
+        if f2.norm() <= tol {
+            return Ok(next);
+        }
     }
     Err(format!(
         "Muller failed to converge within {max_iter} iterations"
@@ -465,7 +691,12 @@ where
 ///
 /// # Errors
 ///
-/// Returns an error if the iterations fail to converge.
+/// Rejects invalid iteration parameters, singular updates, nonfinite callback
+/// values, cancellation or failure to meet the residual tolerance.
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "Halley iteration operates on finite complex samples and checks singular updates"
+)]
 pub fn halley_root<F, DF, DDF>(
     f: F,
     df: DF,
@@ -479,26 +710,62 @@ where
     DF: Fn(Complex<f64>) -> Complex<f64>,
     DDF: Fn(Complex<f64>) -> Complex<f64>,
 {
-    for _ in 0..max_iter {
-        let fz = f(z);
-        if fz.norm() < tol {
-            return Ok(z);
-        }
-        let dfz = df(z);
-        let ddfz = ddf(z);
-        let denom = dfz * dfz * 2.0 - fz * ddfz;
-        if denom.norm() < 1e-30 {
-            return Err("Halley denominator vanished".to_string());
-        }
-        let dz = (fz * dfz * 2.0) / denom;
-        z -= dz;
-        if dz.norm() < tol {
-            return Ok(z);
-        }
+    root_iteration_options(max_iter, tol)?;
+    if !z.is_finite() {
+        return Err("Halley seed must be finite".into());
     }
-    Err(format!(
-        "Halley failed to converge within {max_iter} iterations"
-    ))
+    if crate::cancellation::is_cancelled() {
+        return Err("Halley solve cancelled".into());
+    }
+    let zero = Complex::new(0.0, 0.0);
+    let mut fz = checked_sample(f(z))?;
+    for _ in 0..max_iter {
+        if fz.norm() <= tol {
+            return Ok(z);
+        }
+        if crate::cancellation::is_cancelled() {
+            return Err("Halley solve cancelled".into());
+        }
+        let [f0, f1, f2] =
+            rescale_root_samples([fz, checked_sample(df(z))?, checked_sample(ddf(z))?]);
+        let den = f1 * f1 * 2.0 - f0 * f2;
+        if den == zero || !den.is_finite() {
+            return Err("Halley denominator is singular".into());
+        }
+        let next = z - divide(f0 * f1 * 2.0, den);
+        if !next.is_finite() || next == z {
+            return Err("Halley update stagnated above the residual tolerance".into());
+        }
+        z = next;
+        fz = checked_sample(f(z))?;
+    }
+    if fz.norm() <= tol {
+        Ok(z)
+    } else {
+        Err(format!(
+            "Halley failed to converge within {max_iter} iterations"
+        ))
+    }
+}
+
+pub(crate) fn validate_circle(
+    center: Complex<f64>,
+    radius: f64,
+    samples: usize,
+) -> Result<(), String> {
+    if !center.is_finite() || !radius.is_finite() || radius <= 0.0 || samples < 8 {
+        return Err(
+            "expected a finite circle of positive radius and at least eight samples".into(),
+        );
+    }
+    if [center.re, center.im].into_iter().any(|coordinate| {
+        let lower = coordinate - radius;
+        let upper = coordinate + radius;
+        !(lower.is_finite() && upper.is_finite() && lower < coordinate && coordinate < upper)
+    }) {
+        return Err("circle radius does not resolve around this center in binary64".into());
+    }
+    Ok(())
 }
 
 /// Computes power-sum moments $`s_k` = \frac{1}{2\pi i} \oint_{|z-c|=r} z^k \frac{f'(z)}{f(z)} dz$
@@ -506,7 +773,8 @@ where
 ///
 /// # Errors
 ///
-/// Returns an error for an invalid radius or sample count, or if the function is nearly zero on the circle.
+/// Returns an error for invalid circle geometry, insufficient samples, cancellation,
+/// a near-zero function value on the circle, or a nonfinite callback or moment.
 pub fn argument_principle_moments<F, DF>(
     f: F,
     df: DF,
@@ -519,29 +787,78 @@ where
     F: Fn(Complex<f64>) -> Complex<f64>,
     DF: Fn(Complex<f64>) -> Complex<f64>,
 {
-    if radius <= 0.0 || n_samples < 8 {
-        return Err("Invalid circle radius or sample count".to_string());
+    validate_circle(center, radius, n_samples)?;
+    let Some(count) = max_moment.checked_add(1) else {
+        return Err("moment order exceeds addressable capacity".into());
+    };
+    if count.saturating_mul(n_samples) > 33_554_432 {
+        return Err("moment grid exceeds the work limit".into());
     }
-    let mut moments = vec![Complex::new(0.0, 0.0); max_moment.saturating_add(1)];
+    let mut moments = vec![Complex::new(0.0, 0.0); count];
+    visit_circle_weights(f, df, center, radius, n_samples, |_, z, weight| {
+        add_moment_sample(&mut moments, z, weight);
+    })?;
+    if moments.iter().any(|moment| !moment.is_finite()) {
+        return Err("circle moments are outside binary64 range".into());
+    }
+    Ok(moments)
+}
+
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "the moment recurrence uses finite IEEE complex values and checks the resulting moments"
+)]
+fn add_moment_sample(
+    moments: &mut [Complex<f64>],
+    z: Complex<f64>,
+    weight: Complex<f64>,
+) {
+    let mut z_pow = Complex::new(1.0, 0.0);
+    for slot in moments {
+        *slot += weight * z_pow;
+        z_pow *= z;
+    }
+}
+
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "fixed quadrature indices fit in usize and finite complex results are checked by callers"
+)]
+fn visit_circle_weights(
+    f: impl Fn(Complex<f64>) -> Complex<f64>,
+    df: impl Fn(Complex<f64>) -> Complex<f64>,
+    center: Complex<f64>,
+    radius: f64,
+    n_samples: usize,
+    mut sample: impl FnMut(Complex<f64>, Complex<f64>, Complex<f64>),
+) -> Result<(), String> {
     let n_f = n_samples as f64;
     for j in 0..n_samples {
+        if j.is_multiple_of(64) && crate::cancellation::is_cancelled() {
+            return Err("circle sampling cancelled".into());
+        }
         let theta = 2.0 * PI * (j as f64) / n_f;
         let offset = Complex::from_polar(radius, theta);
         let z = center + offset;
+        if !z.is_finite() {
+            return Err("circle sample is outside binary64 range".into());
+        }
         let fz = f(z);
+        if !fz.is_finite() {
+            return Err("circle callback returned a nonfinite function value".into());
+        }
         if fz.norm() < 1e-14 {
             return Err("Function has a zero/near-zero on the integration circle".to_string());
         }
-        let log_deriv = df(z) / fz;
+        let log_deriv = divide(df(z), fz);
+        if !log_deriv.is_finite() {
+            return Err("circle callback returned a nonfinite logarithmic derivative".into());
+        }
         // dz = i * offset * dtheta, divided by (2 * pi * i) -> offset / n_samples
         let weight = log_deriv * offset / n_f;
-        let mut z_pow = Complex::new(1.0, 0.0);
-        for slot in &mut moments {
-            *slot += weight * z_pow;
-            z_pow *= z;
-        }
+        sample(offset, z, weight);
     }
-    Ok(moments)
+    Ok(())
 }
 
 /// Computes the argument principle winding number `(Z - P) = \text{round}(\text{Re}(s_0))`.
@@ -565,13 +882,16 @@ where
         .first()
         .copied()
         .ok_or_else(|| "Missing moment".to_string())?;
-    if s0.im.abs() > 1e-2 {
+    let integral = s0.re.round();
+    if !s0.is_finite() || (s0 - integral).norm() > 1e-2 {
         return Err(format!(
-            "Non-integer winding number imaginary part: {}",
-            s0.im
+            "argument principle estimate is not near an integer: {s0}"
         ));
     }
-    Ok(s0.re.round() as isize)
+    if integral < isize::MIN as f64 || integral >= -(isize::MIN as f64) {
+        return Err("winding estimate exceeds signed integer range".into());
+    }
+    Ok(integral as isize)
 }
 
 /// Finds zeros of an analytic function in a disk using Delves–Lyness localization.
@@ -582,6 +902,10 @@ where
 /// # Errors
 ///
 /// Returns an error when moment evaluation or the polynomial solve fails, or the winding number is invalid.
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "moment indexing uses checked and saturating sizes and complex arithmetic propagates numeric failures"
+)]
 pub fn delves_lyness_roots<F, DF>(
     f: F,
     df: DF,
@@ -593,31 +917,39 @@ where
     F: Fn(Complex<f64>) -> Complex<f64>,
     DF: Fn(Complex<f64>) -> Complex<f64>,
 {
-    let s0_vec = argument_principle_moments(&f, &df, center, radius, 0, n_samples)?;
-    let s0 = s0_vec
-        .first()
-        .copied()
-        .ok_or_else(|| "Missing s0".to_string())?;
-    if s0.im.abs() > 1e-2 || (s0.re - s0.re.round()).abs() > 1e-2 {
+    // Keep one sample of each callback per point, and form moments only
+    // after the sampled winding establishes the degree of the polynomial.
+    validate_circle(center, radius, n_samples)?;
+    if n_samples > 1_048_576 {
+        return Err("circle grid exceeds the sampling budget".into());
+    }
+    let pool = global_pool();
+    let mut coordinates = pool.scratch_complex64(n_samples);
+    let mut weights = pool.scratch_complex64(n_samples);
+    let mut s0 = Complex::new(0.0, 0.0);
+    visit_circle_weights(&f, &df, center, radius, n_samples, |offset, _, weight| {
+        coordinates.push(offset / radius);
+        weights.push(weight);
+        s0 += weight;
+    })?;
+    let rounded = s0.re.round();
+    if !s0.is_finite() || (s0 - rounded).norm() > 1e-2 {
         return Err(format!("Non-integer argument principle integral s0 = {s0}"));
     }
-    let count_signed = s0.re.round() as isize;
-    if count_signed < 0 {
-        return Err("Negative winding number indicates poles inside contour".to_string());
+    if rounded < 0.0 {
+        return Err("Negative winding number indicates poles inside contour".into());
     }
-    let n = count_signed as usize;
+    let n = rounded as usize;
     if n == 0 {
         return Ok(Vec::new());
     }
-    // Shift origin to center for numerical stability of moments
-    let shifted_moments = argument_principle_moments(
-        |w| f(center + w),
-        |w| df(center + w),
-        Complex::new(0.0, 0.0),
-        radius,
-        n,
-        n_samples,
-    )?;
+    if n > 4096 || n.saturating_mul(n_samples) > 33_554_432 {
+        return Err("root moment grid exceeds the work limit".into());
+    }
+    let mut shifted_moments = vec![Complex::new(0.0, 0.0); n.saturating_add(1)];
+    for (&point, &weight) in coordinates.iter().zip(weights.iter()) {
+        add_moment_sample(&mut shifted_moments, point, weight);
+    }
     // Newton identities: k * e_k = sum_{j=1}^k (-1)^{j-1} * e_{k-j} * s_j
     let mut e = vec![Complex::new(0.0, 0.0); n.saturating_add(1)];
     if let Some(e0) = e.first_mut() {
@@ -645,28 +977,39 @@ where
     }
     let shifted_roots = aberth_ehrlich(&poly, 200, 1e-13)?;
     // Polish each root with Newton steps on f
-    let mut polished: Vec<Complex<f64>> = shifted_roots.into_iter().map(|w| center + w).collect();
+    let mut polished: Vec<Complex<f64>> = shifted_roots
+        .into_iter()
+        .map(|w| center + radius * w)
+        .collect();
     for z in &mut polished {
         for _ in 0..8 {
-            let fz = f(*z);
+            if crate::cancellation::is_cancelled() {
+                return Err("Delves–Lyness refinement cancelled".into());
+            }
+            let fz = checked_sample(f(*z))?;
             if fz.norm() < 1e-14 {
                 break;
             }
-            let dfz = df(*z);
-            if dfz.norm() < 1e-14 {
+            let dfz = checked_sample(df(*z))?;
+            if dfz == Complex::new(0.0, 0.0) {
                 break;
             }
-            *z -= fz / dfz;
+            let next = *z - divide(fz, dfz);
+            if !next.is_finite() || next == *z || (next - center).norm() >= radius {
+                break;
+            }
+            *z = next;
         }
     }
     Ok(polished)
 }
 
-/// Checks Rouché's condition $|f(z)| > |g(z)|$ on $|z - \text{center}| = \text{radius}$.
+/// Samples Rouché's condition $|f(z)| > |g(z)|$ on $|z - \text{center}| = \text{radius}$.
 ///
 /// # Errors
 ///
-/// Returns an error for an invalid circle radius or sample count.
+/// The result describes the sampled points.
+/// Returns an error for invalid geometry, insufficient samples, cancellation, or a nonfinite sample.
 pub fn rouche_check_circle<F, G>(
     f: F,
     g: G,
@@ -678,17 +1021,31 @@ where
     F: Fn(Complex<f64>) -> Complex<f64>,
     G: Fn(Complex<f64>) -> Complex<f64>,
 {
-    if radius <= 0.0 || n_samples < 8 {
-        return Err("Invalid circle radius or sample count".to_string());
-    }
-    let mut min_margin = f64::INFINITY;
+    validate_circle(center, radius, n_samples)?;
+    let mut dominates = true;
     for j in 0..n_samples {
+        if j.is_multiple_of(64) && crate::cancellation::is_cancelled() {
+            return Err("circle sampling cancelled".into());
+        }
         let theta = 2.0 * PI * (j as f64) / (n_samples as f64);
         let z = center + Complex::from_polar(radius, theta);
-        let margin = f(z).norm() - g(z).norm();
-        min_margin = min_margin.min(margin);
+        if !z.is_finite() {
+            return Err("circle sample is outside binary64 range".into());
+        }
+        let left = f(z);
+        let right = g(z);
+        if !left.is_finite() || !right.is_finite() {
+            return Err("Rouché callback returned a nonfinite sample".into());
+        }
+        let scale = left
+            .re
+            .abs()
+            .max(left.im.abs())
+            .max(right.re.abs())
+            .max(right.im.abs());
+        dominates &= scale > 0.0 && (left / scale).norm() > (right / scale).norm();
     }
-    Ok(min_margin > 0.0)
+    Ok(dominates)
 }
 
 /// Tracks a complex homotopy root from `t = 0` to `t = 1`.
@@ -699,6 +1056,10 @@ where
 /// # Errors
 ///
 /// Returns an error for a zero step count, a singular Jacobian, or failure to reach and correct the endpoint within the step budget.
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "the bounded predictor and corrector use checked floating-point values"
+)]
 pub fn homotopy_track_1d<H, DHZ, DHT>(
     h: H,
     dh_dz: DHZ,
@@ -713,29 +1074,38 @@ where
     DHZ: Fn(Complex<f64>, f64) -> Complex<f64>,
     DHT: Fn(Complex<f64>, f64) -> Complex<f64>,
 {
-    if n_steps == 0 {
-        return Err("n_steps must be positive".to_string());
+    root_iteration_options(newton_iters, tol)?;
+    if n_steps == 0 || !z0.is_finite() {
+        return Err("homotopy needs a finite seed and a positive step count".into());
+    }
+    if crate::cancellation::is_cancelled() {
+        return Err("homotopy cancelled".into());
+    }
+    if checked_sample(h(z0, 0.0))?.norm() > tol {
+        return Err("initial homotopy point fails the residual tolerance".into());
     }
     let mut dt = 1.0 / (n_steps as f64);
     let min_dt = 1e-6;
     let mut t = 0.0_f64;
     let mut z = z0;
-    let mut guard = 0_usize;
-    while t < 1.0 - 1e-14 {
-        guard += 1;
-        if guard > 50_000 {
-            return Err("Homotopy step budget exceeded".to_string());
+    for _ in 0..50_000 {
+        if crate::cancellation::is_cancelled() {
+            return Err("homotopy cancelled".into());
+        }
+        if t >= 1.0 {
+            return Ok(z);
         }
         let step = dt.min(1.0 - t);
-        let t_next = t + step;
+        let t_next = (t + step).min(1.0);
 
         // RK4 predictor for dz/dt = -(dH/dt)/(dH/dz)
         let vel = |zz: Complex<f64>, tt: f64| -> Option<Complex<f64>> {
             let hz = dh_dz(zz, tt);
-            if hz.norm() < 1e-14 {
+            if !hz.is_finite() || hz == Complex::new(0.0, 0.0) {
                 None
             } else {
-                Some(-dh_dt(zz, tt) / hz)
+                let direction = divide(-dh_dt(zz, tt), hz);
+                direction.is_finite().then_some(direction)
             }
         };
         let z_pred = if let Some(k1) = vel(z, t)
@@ -756,21 +1126,27 @@ where
         // Newton corrector at t_next
         let mut z_corr = z_pred;
         let mut converged = false;
-        for _ in 0..newton_iters.max(6) {
-            let val = h(z_corr, t_next);
+        for _ in 0..newton_iters {
+            let val = checked_sample(h(z_corr, t_next))?;
             if val.norm() < tol {
                 converged = true;
                 break;
             }
-            let dval = dh_dz(z_corr, t_next);
-            if dval.norm() < 1e-14 {
+            let dval = checked_sample(dh_dz(z_corr, t_next))?;
+            if dval == Complex::new(0.0, 0.0) {
                 break;
             }
-            z_corr -= val / dval;
+            z_corr -= divide(val, dval);
         }
-        if !converged && t_next < 1.0 - 1e-6 && step > min_dt {
-            dt *= 0.5;
-            continue;
+        if !converged {
+            converged = checked_sample(h(z_corr, t_next))?.norm() <= tol;
+            if !converged {
+                if step > min_dt {
+                    dt *= 0.5;
+                    continue;
+                }
+                return Err(format!("homotopy correction failed at t = {t_next}"));
+            }
         }
         z = z_corr;
         t = t_next;
@@ -778,69 +1154,162 @@ where
             dt = (dt * 1.25).min(0.1);
         }
     }
-    if h(z, 1.0).norm() > tol.sqrt().max(1e-6) {
-        return Err("Homotopy corrector failed to converge at t = 1".to_string());
+    if t >= 1.0 {
+        Ok(z)
+    } else {
+        Err("Homotopy step budget exceeded".into())
     }
-    Ok(z)
 }
 
-/// Verified root isolation for a complex polynomial inside `|Re(z)|, |Im(z)| <= R`
-/// using [`ComplexBall`](crate::kernels::complex_ball::ComplexBall) interval exclusion,
-/// quadtree subdivision, and 1D Krawczyk certification.
+// Scaling only by a power of two preserves the encoded polynomial. A
+// round-trip check detects lost subnormal components before certification.
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::single_call_fn,
+    reason = "finitely bounded scaling uses a nonzero power of two and verifies round-trip exactness"
+)]
+fn exact_enclosure_coefficients(coeffs: &[Complex<f64>]) -> Option<Scratch<'static, Complex<f64>>> {
+    let max_component = coeffs.iter().fold(0.0_f64, |scale, value| {
+        scale.max(value.re.abs()).max(value.im.abs())
+    });
+    let scale_bits = max_component.to_bits() & 0x7ff0_0000_0000_0000;
+    let scale = f64::from_bits(scale_bits).max(f64::MIN_POSITIVE);
+    let mut verification = global_pool().scratch_complex64(coeffs.len());
+    for &coefficient in coeffs {
+        let value = coefficient / scale;
+        let recovered = value * scale;
+        if recovered.re.to_bits() != coefficient.re.to_bits()
+            || recovered.im.to_bits() != coefficient.im.to_bits()
+        {
+            return None;
+        }
+        verification.push(value);
+    }
+    Some(verification)
+}
+
+fn enclosure_jet(
+    point: ComplexBallJet,
+    coeffs: &[Complex<f64>],
+) -> ComplexBallJet {
+    coeffs.iter().rev().fold(
+        ComplexBallJet::constant(ComplexBall::zero()),
+        |value, &coefficient| {
+            value
+                .mul(&point)
+                .add(&ComplexBallJet::constant(ComplexBall::of(coefficient)))
+        },
+    )
+}
+
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::single_call_fn,
+    reason = "binary64 guesses only propose disks; Krawczyk verifies every accepted certificate"
+)]
+fn seeded_certificates(
+    coeffs: &[Complex<f64>],
+    tol: f64,
+) -> Vec<ComplexBall> {
+    let Ok(guesses) = aberth_ehrlich(coeffs, 256, 1e-13) else {
+        return Vec::new();
+    };
+    let degree = guesses.len();
+    let mut certified = Vec::with_capacity(degree);
+    for guess in guesses {
+        if crate::cancellation::is_cancelled() {
+            break;
+        }
+        let mut radius = tol.max(32.0 * f64::EPSILON * guess.norm().max(1.0));
+        for _ in 0..8 {
+            let Some(disk) = ComplexBall::new(guess, radius) else {
+                break;
+            };
+            if let Some(proven) = certify_root_1d(|jet| Some(enclosure_jet(jet, coeffs)), disk) {
+                if !certified
+                    .iter()
+                    .any(|existing: &ComplexBall| existing.overlaps(&proven))
+                {
+                    certified.push(proven);
+                }
+                break;
+            }
+            radius *= 2.0;
+        }
+    }
+    certified
+}
+
+/// Certifies disjoint disks, each isolating a simple root of the supplied complex polynomial.
+///
+/// Coefficients are in ascending order. The result can be partial if some roots
+/// are multiple or too near each other, the precision or search limit is reached,
+/// or evaluation is cancelled.
 #[must_use]
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "numeric candidate disks are accepted only after verified interval checks"
+)]
 pub fn isolate_roots_verified(
     coeffs: &[Complex<f64>],
     tol: f64,
-) -> Vec<crate::kernels::complex_ball::ComplexBall> {
-    use crate::kernels::complex_ball::ComplexBall;
-    use crate::kernels::complex_ball::ComplexBallJet;
-    use crate::kernels::complex_ball::certify_root_1d;
-
-    let Some(bound) = cauchy_root_bound(coeffs) else {
+) -> Vec<ComplexBall> {
+    let coeffs = trim_leading_zeros(coeffs);
+    if coeffs.len() < 2
+        || coeffs.iter().any(|coefficient| !coefficient.is_finite())
+        || !tol.is_finite()
+        || tol <= 0.0
+        || crate::cancellation::is_cancelled()
+    {
         return Vec::new();
+    }
+    let degree = coeffs.len() - 1;
+    let exact = exact_enclosure_coefficients(coeffs);
+    let coeffs = exact.as_deref().map_or(coeffs, Vec::as_slice);
+    let mut certified = if degree <= 256 {
+        seeded_certificates(coeffs, tol)
+    } else {
+        Vec::new()
     };
-    let r = bound * 1.05;
-    let mut stack = vec![(Complex::new(0.0, 0.0), r * 2.0_f64.sqrt())];
-    let mut certified: Vec<ComplexBall> = Vec::new();
-    let mut iters = 0_usize;
-    while let Some((center, rad)) = stack.pop() {
-        iters += 1;
-        if iters > 20_000 {
+    if certified.len() == degree {
+        return certified;
+    }
+    let Some(bound) = cauchy_root_bound(coeffs) else {
+        return certified;
+    };
+    let radius = bound * 1.05 * 2.0_f64.sqrt();
+    let mut stack = vec![(Complex::new(0.0, 0.0), radius)];
+    for _ in 0..20_000 {
+        if crate::cancellation::is_cancelled() {
             break;
         }
-        let Some(ball) = ComplexBall::new(center, rad) else {
+        let Some((center, radius)) = stack.pop() else {
+            break;
+        };
+        let Some(ball) = ComplexBall::new(center, radius) else {
             continue;
         };
-        // Evaluate polynomial over ball via Horner
         let mut p_ball = ComplexBall::zero();
-        for &c in coeffs.iter().rev() {
-            p_ball = p_ball * ball + ComplexBall::of(c);
+        for &coefficient in coeffs.iter().rev() {
+            p_ball = p_ball * ball + ComplexBall::of(coefficient);
         }
         if !p_ball.contains_zero() {
             continue;
         }
-        if let Some(cert) = certify_root_1d(
-            |z_jet| {
-                let mut acc = ComplexBallJet::constant(ComplexBall::zero());
-                for &c in coeffs.iter().rev() {
-                    acc = acc
-                        .mul(&z_jet)
-                        .add(&ComplexBallJet::constant(ComplexBall::of(c)));
+        if let Some(proven) = certify_root_1d(|jet| Some(enclosure_jet(jet, coeffs)), ball) {
+            if !certified.iter().any(|existing| existing.overlaps(&proven)) {
+                certified.push(proven);
+                if certified.len() == degree {
+                    break;
                 }
-                Some(acc)
-            },
-            ball,
-        ) {
-            if !certified.iter().any(|existing| existing.overlaps(&cert)) {
-                certified.push(cert);
             }
             continue;
         }
-        if rad <= tol.max(1e-9) {
+        if radius <= tol.max(1e-9) {
             continue;
         }
-        let half = 0.5 * rad;
-        let offset = 0.5 * rad / 2.0_f64.sqrt();
+        let half = 0.5 * radius;
+        let offset = half / 2.0_f64.sqrt();
         for (sx, sy) in [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)] {
             stack.push((
                 Complex::new(center.re + sx * offset, center.im + sy * offset),

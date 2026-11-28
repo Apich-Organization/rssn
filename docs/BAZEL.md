@@ -10,12 +10,25 @@ Use Bazel 7.7.1 through Bazelisk, Python 3.11 or later, and the Rust toolchain s
 | --- | --- |
 | `bazel build //:rustlib` | Development Rust library |
 | `bazel run //:check` | Workspace type checking without linking test binaries |
+| `bazel test //:fmt_test` / `bazel run //:fmt` | Check or format Rust sources using nightly rustfmt |
+| `bazel test //:docs_test` | Check documentation, then build and run the functional examples |
+| `bazel run //:example -- quickstart` | Run a Rust example with an optional `--profile` |
+| `bazel run //:benchmark -- --help` | List timing workloads and benchmark arguments |
+| `bazel run //:benchmark -- engine -- polynomials` | Run the named benchmark with its arguments |
+| `bazel run //:benchmark -- engine -- economy_qr` | Measure thin QR on four fixed shapes with a single worker |
+| `bazel run //:benchmark_ci -- --help` | Run the Criterion smoke suite or collect all RSSN timing reports |
+| `bazel run //:llvm_benchmark -- --help` | Run the LLVM callback, lanes, ABI and RustFFT study with the Bazel-built optimizer |
+| `bazel run //:llvm_benchmark_build -- --help` | Build the LLVM study harnesses for a selected profile and toolchain |
+| `bazel run //:llvm_benchmark_compare -- --help` | Compare prebuilt study binaries with matched inputs |
+| `bazel run //:llvm_c_benchmark_build -- zstd --help` | Build the decoder, doubleFast, FSE or Win64 Appell and Lerch study harness |
+| `bazel run //:llvm_benchmark_ci -- --help` | Run the x86-64 Linux LLVM benchmark job |
 | `bazel test //:test` | Default Rust suite and generated contracts |
 | `bazel test //:rust_minimal_test` | Rust tests with default features disabled |
 | `bazel test //:integration_test` | Rust features, contracts, headers, witness replay and all four bindings |
 | `bazel test //:clippy_test` | Strict Clippy across the full-feature workspace and all Rust targets |
 | `bazel test //:ffi_native_clients_test` | Run native C and C++ client tests with static linkage on Linux and shared linkage on macOS and Windows |
 | `bazel test //:rust_all_features_test` | Full-feature Rust tests, including the GPU tests the host can run |
+| `bazel test --define=rssn_bounded_tests=1 //:rust_all_features_test` | Run the full suite in groups of two integration binaries and reclaim their executables after each group |
 | `bazel test //:rust_all_features_test --test_arg=--batches=4` | Run the full Rust suite in groups of four integration binaries and reclaim their cache space after each group |
 | `bazel test //:rust_ignored_test //:witness_test` | Long numerical regressions and replay of the checked-in signatures |
 | `bazel test //:bindings_check_test //:bindings_test` | API and Python, Julia, R and C++ tests against the same all-feature cdylib |
@@ -36,6 +49,44 @@ The binding integration test needs Python with NumPy, Julia, R with development 
 When R is installed in an environment with a separate C++ toolchain, select a
 compiler compatible with the supplied library using `--repo_env=CXX=/path/to/c++`.
 
+Run a timing workload with `bazel run //:benchmark -- NAME`.
+
+| Name | Workload |
+| --- | --- |
+| `backends` | Batch execution through the reference interpreter, tape and JIT |
+| `engine-timing` | End-to-end symbolic requests with the `tools` profile |
+| `extract` | Expression extraction and reachable-class traversal |
+| `eval-cost` | Cold and cached evaluation cost |
+| `cp-als` | Rank-three tensor decomposition and sweep cost |
+| `groebner-elimination` | Block elimination and lexicographic Gröbner bases |
+| `fft-plans` | Forward transforms at composite and power-of-two sizes |
+| `parallel-kernels` | One-worker and parallel execution across numerical kernels |
+| `parallel-sim` | One-worker and parallel execution across simulation kernels |
+
+The timing examples use the `tools` profile by default. Test-backed reports
+use the `test` profile with one test executing at a time. Set
+`RAYON_NUM_THREADS` to choose the number of workers for the parallel side. For
+example, run `RAYON_NUM_THREADS=4 bazel run //:benchmark -- parallel-kernels`.
+
+To compare the same benchmark across two checkouts, use an absolute
+`CRITERION_HOME` shared by both. Save the first revision with
+`bazel run //:benchmark -- engine -- economy_qr --save-baseline before`
+and compare the second with
+`bazel run //:benchmark -- engine -- economy_qr --baseline before`.
+Keep the same Rust toolchain and machine for the two runs.
+
+Linux CI exercises Criterion in test mode. Set the `benchmark_reports` input
+when dispatching CI to collect Criterion results and all nine timing workloads.
+The scheduled run also collects these reports. Criterion saves an artifact and
+the timing workloads write to the job log.
+
+Enable `llvm_benchmarks` to run the paired callback, lane, ABI, RustFFT, zstd
+decoding, doubleFast and FSE workloads. Bazel installs the pinned Linux LLVM SDK for CI when no
+`RSSN_LLVM_CONFIG` override is configured. It also builds the
+libm counting probes, validates the paired outputs and uploads timing JSON and
+build logs. The Win64 study and four-way zstd I/O comparison take inputs
+described in their study documentation.
+
 ## FFI distribution
 
 ```sh
@@ -45,10 +96,13 @@ bazel run //:package_ffi -- --dist-dir dist
 
 `//:ffi_distribution` builds both libraries in one rustc invocation and places
 them under `bazel-bin/ffi_distribution/ffi/`. It enables every Cargo feature and
-loads the LLVM optimizer. The default
-`scripts/build_ffi.sh` and `scripts/build_ffi.ps1` distribution commands use these
-targets. The archive contains the libraries, generated headers, examples and
-documentation, with a companion SHA-256 file.
+loads the LLVM optimizer. The archive contains the libraries, generated
+headers, examples and documentation, with a companion SHA-256 file.
+
+For development, `bazel build //:ffi_distribution_dev` builds both libraries
+under `bazel-bin/ffi_distribution_dev/ffi/`. Run
+`bazel run //:package_ffi_dev -- --dist-dir dist` to package these libraries
+with generated headers. The default archive name ends in `-dev.tar.gz`.
 
 CI uses `--config=release-max` for O3, unwind semantics, fat LTO and one codegen
 unit. Its baseline is x86-64-v3 (including AVX2 and FMA) on x86-64 and Advanced
@@ -76,8 +130,13 @@ exports used by the plugin, set `--repo_env=RUSTC=/absolute/path/to/rustc` to a
 compatible compiler and optionally set `CARGO` to its Cargo executable. CI accepts
 SDK and compiler paths through the JSON maps `RSSN_RELEASE_LLVM_CONFIGS`,
 `RSSN_RELEASE_LLVM_IMPORT_LIBRARIES`, `RSSN_RELEASE_RUSTCS` and `RSSN_RELEASE_CARGOS`,
-keyed by the Rust target triple. The SDK and compiler must be installed on the
-runner. CI also accepts the existing shared `RSSN_RUSTC` and `RSSN_CARGO` paths.
+keyed by the Rust target triple. Release CI enables
+`--repo_env=RSSN_FETCH_LLVM_SDK=1` on Unix. With LLVM 23.1.5, Bazel can fetch a
+checksum-pinned SDK on Linux x86-64, Linux Arm64, and macOS Arm64. For Intel
+macOS or Windows, provide the matching SDK and any required toolchain paths.
+Use the optional `RSSN_RELEASE_RUNNERS` JSON map to select prepared runners
+for those Rust triples. CI also accepts the shared `RSSN_RUSTC` and `RSSN_CARGO`
+paths. An explicit `RSSN_LLVM_CONFIG` takes precedence over the download.
 
 ```sh
 bazel test --repo_env=RSSN_LLVM_CONFIG=/path/to/llvm-config //:llvm_optimizer_test //:release_pass_test
@@ -87,9 +146,8 @@ bazel run --config=release-max --repo_env=RSSN_LLVM_CONFIG=/path/to/llvm-config 
 ```
 
 `//:ffi` builds the dynamic library and its import library where applicable.
-`//:ffi_static` builds the static archive. `//:ffi_distribution_llvm` is an alias
-for `//:ffi_distribution`. `//:package_ffi_llvm` retains the `-llvm` archive suffix
-for existing callers. Use `//:package_ffi_portable` for an explicit plugin-free build.
+`//:ffi_static` builds the static archive. Use `//:package_ffi_portable`
+for an explicit plugin-free build.
 The host plugin is a Rust action input passed to target rustc
 with `-Zllvm-plugins`. The standalone Rust library uses its O3 pipeline with
 LTO off so the pass runs during the library build. The optional optimizer

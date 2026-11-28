@@ -481,3 +481,154 @@ fn dyadic_operators_declare_typed_dimensionless_contracts_and_native_paths() {
         );
     }
 }
+
+#[test]
+fn dyadic_conversions_keep_exact_bits_and_bound_inputs() {
+    let session = Session::new();
+    let context = CallCtx::new();
+    let call = |name, args: &[Value]| session.call_value(name, args, &context);
+    assert_eq!(
+        call("num_mp_real_zero", &[Value::int(9)]).unwrap(),
+        dyadic(0, 0, 9)
+    );
+    assert_eq!(
+        call("num_mp_real_one", &[Value::int(9)]).unwrap(),
+        dyadic(256, -8, 9)
+    );
+    let wide = (BigInt::from(1) << 80_usize) + 1_u32;
+    assert_eq!(
+        call(
+            "num_mp_real_from_bigint",
+            &[Value::int(wide.clone()), Value::int(81), mode("nearest")]
+        )
+        .unwrap(),
+        dyadic(wide.clone(), 0, 81)
+    );
+    assert_eq!(
+        call("num_mp_real_from_i64", &[Value::int(-11), Value::int(3)]).unwrap(),
+        dyadic(-6, 1, 3)
+    );
+    for (mantissa, sign) in [(-1, -1), (0, 0), (1, 1)] {
+        assert_eq!(
+            call("num_mp_real_sign", &[dyadic(mantissa, 0, 1)]).unwrap(),
+            Value::int(sign)
+        );
+    }
+    for (name, args) in [
+        ("num_mp_real_zero", vec![Value::int(0)]),
+        ("num_mp_real_one", vec![Value::int(MAX_BITS + 1)]),
+        (
+            "num_mp_real_from_i64",
+            vec![Value::int(wide), Value::int(81)],
+        ),
+        (
+            "num_mp_real_from_bigint",
+            vec![
+                Value::int(BigInt::from(1) << (2 * MAX_BITS)),
+                Value::int(81),
+                mode("nearest"),
+            ],
+        ),
+        (
+            "num_mp_real_from_f64",
+            vec![Value::Float(f64::INFINITY), Value::int(53)],
+        ),
+    ] {
+        assert!(
+            matches!(call(name, &args), Err(OpError::Domain(_))),
+            "{name}"
+        );
+    }
+}
+
+#[test]
+fn dyadic_binary64_conversion_rounds_subnormals_and_overflow_ties() {
+    let session = Session::new();
+    let context = CallCtx::new();
+    let to_float = |value| session.call_value("num_mp_real_to_f64", &[value], &context);
+
+    // Round trips across the binary64 exponent range, including the normal/subnormal boundary.
+    for exponent in 0..2047_u64 {
+        for fraction in [1, (1_u64 << 52) - 1] {
+            for sign in [0, 1_u64 << 63] {
+                let bits = sign | (exponent << 52) | fraction;
+                let exact = session
+                    .call_value(
+                        "num_mp_real_from_f64",
+                        &[Value::Float(f64::from_bits(bits)), Value::int(53)],
+                        &context,
+                    )
+                    .unwrap();
+                assert_eq!(to_float(exact).unwrap().as_f64().unwrap().to_bits(), bits);
+            }
+        }
+    }
+    for (mantissa, exponent, precision, expected) in [
+        (-1_i64, -1075, 1, 1_u64 << 63),
+        (3, -1075, 2, 2),
+        ((1_i64 << 53) - 1, -1075, 53, f64::MIN_POSITIVE.to_bits()),
+        ((1_i64 << 54) - 2, 970, 54, f64::MAX.to_bits()),
+    ] {
+        assert_eq!(
+            to_float(dyadic(mantissa, exponent, precision))
+                .unwrap()
+                .as_f64()
+                .unwrap()
+                .to_bits(),
+            expected
+        );
+    }
+    assert!(matches!(
+        to_float(dyadic((1_i64 << 54) - 1, 970, 54)),
+        Err(OpError::Domain(_))
+    ));
+}
+
+#[test]
+fn ball_arithmetic_encloses_mixed_sign_corners_and_rejects_bad_records() {
+    let session = Session::new();
+    let context = CallCtx::new();
+    let left = ball(dyadic(1, 0, 1), dyadic(1, 1, 1));
+    let right = ball(dyadic(-3, 0, 2), dyadic(1, 0, 1));
+    for (name, minimum, maximum) in [
+        ("num_mp_ball_add", -5, 1),
+        ("num_mp_ball_sub", 1, 7),
+        ("num_mp_ball_mul", -12, 4),
+    ] {
+        let result = session
+            .call_value(
+                name,
+                &[left.clone(), right.clone(), Value::int(3)],
+                &context,
+            )
+            .unwrap();
+        let midpoint = exact_dyadic(field(&result, "midpoint"));
+        let radius = exact_dyadic(field(&result, "radius"));
+        assert_eq!(
+            field(field(&result, "midpoint"), "precision"),
+            &Value::int(3)
+        );
+        assert!(
+            &midpoint - &radius <= BigRational::from_integer(minimum.into()),
+            "{name}"
+        );
+        assert!(
+            &midpoint + &radius >= BigRational::from_integer(maximum.into()),
+            "{name}"
+        );
+        assert!(
+            session
+                .call_value(name, &[result, right.clone(), Value::int(5)], &context)
+                .is_ok(),
+            "{name}"
+        );
+        let malformed = ball(dyadic(0, 0, 1), dyadic(-1, 0, 1));
+        assert!(
+            matches!(
+                session.call_value(name, &[left.clone(), malformed, Value::int(3)], &context),
+                Err(OpError::Domain(_))
+            ),
+            "{name}"
+        );
+    }
+}

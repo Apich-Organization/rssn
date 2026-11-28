@@ -5,7 +5,7 @@
 Bazel builds release archives and runs Rust, binding and generator workflows.
 The [RSSN Bazel guide](BAZEL.md) lists the targets and toolchain settings.
 
-Ordinary `cargo build` and downstream Rust builds use the Rust library (`rlib`).
+`bazel build //:rustlib` builds the Rust library (`rlib`) used by downstream crates.
 `cargo check` emits Rust metadata for type checking. Build the C static and
 shared libraries explicitly when preparing C artifacts.
 
@@ -52,9 +52,8 @@ alongside the code that uses them.
 `signatures.witnessed.json` (the signatures mined from the test corpus, see
 [KERNEL.md](KERNEL.md)) is required in exactly the same way: the build fails with a
 message naming the file when it is missing, so two builds of the same sources
-cannot produce different manifests. Collect a fresh test trace with
-`RSSN_SORT_TRACE=sorts.tsv cargo test --lib`, then regenerate the table with
-`cargo run --profile tools --bin signature-mine -- sorts.tsv`. Operators without
+cannot produce different manifests. Run `bazel run //:refresh_witness` to
+collect a fresh test trace and regenerate the table. Operators without
 a witness keep their declared, derived, or overlay signatures.
 
 Build metadata honors `SOURCE_DATE_EPOCH`, `VERGEN_IDEMPOTENT`, and explicit
@@ -74,8 +73,8 @@ toolchain and worker count for both revisions. Save a baseline with the first
 command on the earlier revision. Run the second on the revised kernels.
 
 ```sh
-RAYON_NUM_THREADS=4 cargo bench --locked --bench engine -- polynomials --save-baseline before
-RAYON_NUM_THREADS=4 cargo bench --locked --bench engine -- polynomials --baseline before
+RAYON_NUM_THREADS=4 bazel run //:benchmark -- engine -- polynomials --save-baseline before
+RAYON_NUM_THREADS=4 bazel run //:benchmark -- engine -- polynomials --baseline before
 ```
 
 Use the `fixed_prefix_scan` group to compare one-block scans with fixed

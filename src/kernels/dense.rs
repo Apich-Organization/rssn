@@ -660,186 +660,226 @@ pub(crate) fn solve_cholesky_factor_in_place(
     }
 }
 
-/// Householder QR: returns `(Q, R)` with `Q` of size `m x m`, `R` of size `m x n`.
+fn qr_scaled_copy(a: &Mat) -> (Mat, Vec<f64>) {
+    let mut r = a.clone();
+    let requires_scale = |value: f64| {
+        let magnitude = value.abs();
+        magnitude > 0.0 && magnitude.is_finite() && !(1.0e-140..=1.0e140).contains(&magnitude)
+    };
+    if r.cols == 0 || !r.data.iter().copied().any(requires_scale) {
+        return (r, Vec::new());
+    }
+    // Positive column scaling leaves the reflectors unchanged in exact
+    // arithmetic and preserves small independent columns beside large ones.
+    let mut scales = vec![0.0_f64; r.cols];
+    for row in r.data.chunks_exact(r.cols) {
+        for (scale, value) in scales.iter_mut().zip(row) {
+            *scale = scale.max(value.abs());
+        }
+    }
+    for scale in &mut scales {
+        if !requires_scale(*scale) {
+            *scale = 1.0;
+        }
+    }
+    for row in r.data.chunks_exact_mut(r.cols) {
+        for (value, &scale) in row.iter_mut().zip(&scales) {
+            *value /= scale;
+        }
+    }
+    (r, scales)
+}
+
+fn qr_restore_scale(
+    r: &mut Mat,
+    scales: &[f64],
+) {
+    if !scales.is_empty() {
+        for row in r.data.chunks_exact_mut(r.cols) {
+            for (value, &scale) in row.iter_mut().zip(scales) {
+                *value *= scale;
+            }
+        }
+    }
+}
+
+fn qr_reflector(
+    r: &Mat,
+    k: usize,
+    tail: &mut [f64],
+) -> Option<f64> {
+    let mut square = 0.0;
+    for (value, row) in tail
+        .iter_mut()
+        .zip(r.data[k * r.cols..].chunks_exact(r.cols))
+    {
+        *value = row[k];
+        square += *value * *value;
+    }
+    if !square.is_normal() {
+        // Even a scaled column may have a subnormal tail after earlier
+        // reflectors remove most of its energy.
+        let peak = tail.iter().copied().map(f64::abs).fold(0.0, f64::max);
+        if peak == 0.0 {
+            return None;
+        }
+        if peak.is_finite() {
+            square = 0.0;
+            for value in &mut *tail {
+                *value /= peak;
+                square += *value * *value;
+            }
+        }
+    }
+    let magnitude = square.sqrt();
+    tail[0] -= if tail[0] > 0.0 {
+        -magnitude
+    } else {
+        magnitude
+    };
+    let square: f64 = tail.iter().map(|value| value * value).sum();
+    (square != 0.0).then_some(square)
+}
+
+const fn qr_grain(
+    rows: usize,
+    cols: usize,
+) -> usize {
+    if rows.saturating_mul(cols) >= DENSE_PAR_WORK_QR {
+        2
+    } else {
+        usize::MAX
+    }
+}
+
+fn qr_apply_left(
+    matrix: &mut Mat,
+    k: usize,
+    reflector: &[f64],
+    projections: &mut Vec<f64>,
+    scale_projection: impl Fn(f64) -> f64 + Sync,
+) {
+    let columns = matrix.cols;
+    let grain = qr_grain(reflector.len(), columns);
+    let lower = &mut matrix.data[k * columns..];
+    if crate::execution::should_split(columns, grain) {
+        super::par::map_indexed_into(columns, grain, projections, |column| {
+            let mut sum = 0.0;
+            for (&value, row) in reflector.iter().zip(lower.chunks_exact(columns)) {
+                sum += value * row[column];
+            }
+            scale_projection(sum)
+        });
+    } else {
+        // Visiting rows in order preserves the per-column sum while streaming
+        // the panel through contiguous memory.
+        projections.resize(columns, 0.0);
+        projections.fill(0.0);
+        for (&value, row) in reflector.iter().zip(lower.chunks_exact(columns)) {
+            for (sum, &entry) in projections.iter_mut().zip(row) {
+                *sum += value * entry;
+            }
+        }
+        for sum in &mut *projections {
+            *sum = scale_projection(*sum);
+        }
+    }
+    super::par::for_chunks_mut(lower, columns, grain, |index, row| {
+        let factor = reflector[index];
+        for (slot, &projection) in row.iter_mut().zip(projections.iter()) {
+            *slot -= projection * factor;
+        }
+    });
+}
+
+/// Householder QR: returns (Q, R) with Q of size m × m and R of size m × n.
 #[must_use]
 pub fn qr(a: &Mat) -> (Mat, Mat) {
     let (m, n) = (a.rows, a.cols);
-    let mut r = a.clone();
+    let (mut r, scales) = qr_scaled_copy(a);
     let mut q = Mat::identity(m);
     let pool = crate::kernels::reuse::global_pool();
     let mut v = pool.scratch_f64(m);
     v.resize(m, 0.0);
-    let mut weights = pool.scratch_f64(n.max(1));
-    weights.resize(n.max(1), 0.0);
+    let mut projections = pool.scratch_f64(n);
     for k in 0..n.min(m.saturating_sub(1)) {
-        let mut norm = 0.0;
-        for i in k..m {
-            norm += r.data[i * n + k] * r.data[i * n + k];
-        }
-        let norm = norm.sqrt();
-        if norm == 0.0 {
+        let tail = &mut v[k..];
+        let Some(square) = qr_reflector(&r, k, tail) else {
             continue;
-        }
-        let alpha = if r.data[k * n + k] > 0.0 {
-            -norm
-        } else {
-            norm
         };
-        // The reflector is zero above row `k`; clear the reused buffer so the
-        // full-length sums below see the same terms as a fresh allocation.
-        v[..k].fill(0.0);
-        for i in k..m {
-            v[i] = r.data[i * n + k];
-        }
-        v[k] -= alpha;
-        let vn: f64 = v.iter().map(|x| x * x).sum();
-        if vn == 0.0 {
-            continue;
-        }
-        let grain = if (m - k).saturating_mul(n) >= DENSE_PAR_WORK_QR {
-            2
-        } else {
-            usize::MAX
-        };
-        // Every column of `R` is updated by its own scalar `2 v^T r_j / v^T v`,
-        // computed from the pre-update matrix exactly as the column-by-column
-        // loop did. Materialising the scalars first lets the rows be updated in
-        // parallel while each entry sees the identical single subtraction.
-        super::par::map_indexed_into(n, grain, &mut weights, |j| {
-            let mut sum = 0.0;
-            for i in k..m {
-                sum += v[i] * r.data[i * n + j];
-            }
-            sum * 2.0 / vn
-        });
-        let (_upper, lower) = r.data.split_at_mut(k * n);
-        super::par::for_chunks_mut(lower, n, grain, |offset, row| {
-            let factor = v[k + offset];
-            for (slot, &weight) in row.iter_mut().zip(weights.iter()) {
-                *slot -= weight * factor;
-            }
-        });
-        // Each row of `Q` projects onto the reflector independently, and the
-        // projection keeps the serial `j = k..m` order.
+        qr_apply_left(&mut r, k, tail, &mut projections, |sum| sum * 2.0 / square);
+        let grain = qr_grain(m - k, n);
         super::par::for_chunks_mut(&mut q.data, m, grain, |_, row| {
             let mut sum = 0.0;
-            for j in k..m {
-                sum += row[j] * v[j];
+            for (&entry, &value) in row[k..].iter().zip(tail.iter()) {
+                sum += entry * value;
             }
-            let factor = sum * 2.0 / vn;
-            for (slot, &reflector) in row[k..].iter_mut().zip(&v[k..]) {
-                *slot -= factor * reflector;
+            let factor = sum * 2.0 / square;
+            for (slot, &value) in row[k..].iter_mut().zip(tail.iter()) {
+                *slot -= factor * value;
             }
         });
     }
+    qr_restore_scale(&mut r, &scales);
     (q, r)
 }
 
-/// Economy (thin) Householder QR: returns `(Q, R)` with `Q` of size `m x k` and
-/// `R` of size `k x n`, where `k = min(m, n)`.
+/// Economy Householder QR returns Q of size m × k and R of size k × n,
+/// where k is the minimum of m and n.
 ///
-/// Avoids materialising an `m x m` orthogonal matrix when `m >> n`.
+/// Avoids materialising an m × m orthogonal matrix when m is much larger than n.
 ///
 /// # Errors
-/// Returns [`DenseError::Shape`] if `a` has inconsistent internal storage.
+/// Returns [`DenseError::Shape`] for inconsistent storage, or [`DenseError::NonFinite`]
+/// for nonfinite input or unrepresentable factors.
 pub fn qr_thin(a: &Mat) -> Result<(Mat, Mat), DenseError> {
     if !a.has_valid_shape() {
         return Err(DenseError::Shape);
+    }
+    if !a.is_finite() {
+        return Err(DenseError::NonFinite);
     }
     let (m, n) = (a.rows, a.cols);
     let k_dim = m.min(n);
     if k_dim == 0 {
         return Ok((Mat::zeros(m, 0), Mat::zeros(0, n)));
     }
-    let mut r_full = a.clone();
-    let mut reflectors: Vec<(usize, Vec<f64>, f64)> = Vec::with_capacity(k_dim);
+    let (mut r, scales) = qr_scaled_copy(a);
     let pool = crate::kernels::reuse::global_pool();
     let mut v = pool.scratch_f64(m);
     v.resize(m, 0.0);
-    let mut weights = pool.scratch_f64(n.max(1));
-    weights.resize(n.max(1), 0.0);
-
-    for k in 0..n.min(m.saturating_sub(1)) {
-        let mut norm_sq = 0.0;
-        for i in k..m {
-            let val = r_full.data[i * n + k];
-            norm_sq += val * val;
-        }
-        let norm = norm_sq.sqrt();
-        if norm == 0.0 {
+    let mut projections = pool.scratch_f64(n);
+    let reflector_count = n.min(m.saturating_sub(1));
+    let reflector_entries =
+        m * reflector_count - reflector_count * reflector_count.saturating_sub(1) / 2;
+    let mut offsets = Vec::with_capacity(reflector_count);
+    let mut reflectors = pool.scratch_f64(reflector_entries);
+    reflectors.clear();
+    for k in 0..reflector_count {
+        let tail = &mut v[k..];
+        let Some(square) = qr_reflector(&r, k, tail) else {
             continue;
-        }
-        let alpha = if r_full.data[k * n + k] > 0.0 {
-            -norm
-        } else {
-            norm
         };
-        v[..k].fill(0.0);
-        for i in k..m {
-            v[i] = r_full.data[i * n + k];
-        }
-        v[k] -= alpha;
-        let vn: f64 = v[k..m].iter().map(|x| x * x).sum();
-        if vn == 0.0 {
-            continue;
-        }
-        let grain = if (m - k).saturating_mul(n) >= DENSE_PAR_WORK_QR {
-            2
-        } else {
-            usize::MAX
-        };
-        super::par::map_indexed_into(n, grain, &mut weights, |j| {
-            let mut sum = 0.0;
-            for i in k..m {
-                sum += v[i] * r_full.data[i * n + j];
-            }
-            sum * 2.0 / vn
-        });
-        let (_upper, lower) = r_full.data.split_at_mut(k * n);
-        super::par::for_chunks_mut(lower, n, grain, |offset, row| {
-            let factor = v[k + offset];
-            for (slot, &weight) in row.iter_mut().zip(weights.iter()) {
-                *slot -= weight * factor;
-            }
-        });
-        reflectors.push((k, v[k..m].to_vec(), 2.0 / vn));
+        qr_apply_left(&mut r, k, tail, &mut projections, |sum| sum * 2.0 / square);
+        offsets.push((k, reflectors.len(), 2.0 / square));
+        reflectors.extend_from_slice(tail);
     }
 
-    // Build thin Q (m x k_dim) by applying reflectors in reverse to I_{m x k_dim}.
     let mut q = Mat::zeros(m, k_dim);
     for i in 0..k_dim {
         q.data[i * k_dim + i] = 1.0;
     }
-    let mut col_dots = pool.scratch_f64(k_dim);
-    col_dots.resize(k_dim, 0.0);
-    for (k, ref_v, beta) in reflectors.into_iter().rev() {
-        let grain = if (m - k).saturating_mul(k_dim) >= DENSE_PAR_WORK_QR {
-            2
-        } else {
-            usize::MAX
-        };
-        super::par::map_indexed_into(k_dim, grain, &mut col_dots, |j| {
-            let mut sum = 0.0;
-            for (off, &vi) in ref_v.iter().enumerate() {
-                sum += vi * q.data[(k + off) * k_dim + j];
-            }
-            sum * beta
-        });
-        let (_upper, lower) = q.data.split_at_mut(k * k_dim);
-        super::par::for_chunks_mut(lower, k_dim, grain, |off, row| {
-            let vi = ref_v[off];
-            for (slot, &dot) in row.iter_mut().zip(col_dots.iter()) {
-                *slot -= vi * dot;
-            }
-        });
+    for (k, offset, beta) in offsets.into_iter().rev() {
+        let tail = &reflectors[offset..offset + m - k];
+        qr_apply_left(&mut q, k, tail, &mut projections, |sum| sum * beta);
     }
-
-    let r_thin = Mat {
-        rows: k_dim,
-        cols: n,
-        data: r_full.data[..k_dim * n].to_vec(),
-    };
-    Ok((q, r_thin))
+    r.rows = k_dim;
+    r.data.truncate(k_dim * n);
+    qr_restore_scale(&mut r, &scales);
+    if !q.is_finite() || !r.is_finite() {
+        return Err(DenseError::NonFinite);
+    }
+    Ok((q, r))
 }
 
 /// Solves a dense square linear system `A x = b` given as row slices, checking

@@ -6,50 +6,56 @@ exports_files(["Cargo.toml"])
 
 filegroup(
     name = "sources",
-    srcs = glob([
-        ".cargo/**",
-        "Cargo.*",
-        "build.rs",
-        "buildsrc/**",
-        "src/**",
-        "tests/**",
-        "examples/**",
-        "benches/**",
-        "tools/rssn-api-*/**",
-        "bindings/**",
-        "scripts/**",
-        "docs/**",
-        "*.json",
-        "*.h",
-        "*.hpp",
-        "*.toml",
-        "*.html",
-        "*.md",
-        "LICENSE",
-    ], exclude = [
-        "**/.git/**",
-        "**/__pycache__/**",
-        "**/target/**",
-        "**/*.pyc",
-    ]),
+    srcs = glob(
+        [
+            ".cargo/**",
+            "Cargo.*",
+            "build.rs",
+            "buildsrc/**",
+            "src/**",
+            "tests/**",
+            "examples/**",
+            "benches/**",
+            "tools/rssn-api-*/**",
+            "bindings/**",
+            "scripts/**",
+            "docs/**",
+            "*.json",
+            "*.h",
+            "*.hpp",
+            "*.toml",
+            "*.html",
+            "*.md",
+            "LICENSE",
+        ],
+        exclude = [
+            "**/.git/**",
+            "**/__pycache__/**",
+            "**/target/**",
+            "**/*.pyc",
+        ],
+    ),
 )
 
 filegroup(
     name = "llvm_sources",
-    srcs = glob([
-        "tools/llvm-optimizer/**/*.cpp",
-        "tools/llvm-optimizer/**/*.cc",
-        "tools/llvm-optimizer/**/*.cxx",
-        "tools/llvm-optimizer/**/*.h",
-        "tools/llvm-optimizer/**/*.inc",
-        "tools/llvm-optimizer/**/*.cmake",
-        "tools/llvm-optimizer/**/CMakeLists.txt",
-    ], exclude = [
-        "tools/llvm-optimizer/analysis/**",
-        "tools/llvm-optimizer/bench/**",
-        "tools/llvm-optimizer/build*/**",
-        "tools/llvm-optimizer/tests/**",
-    ]),
+    srcs = glob(
+        [
+            "tools/llvm-optimizer/**/*.cpp",
+            "tools/llvm-optimizer/**/*.cc",
+            "tools/llvm-optimizer/**/*.cxx",
+            "tools/llvm-optimizer/**/*.h",
+            "tools/llvm-optimizer/**/*.inc",
+            "tools/llvm-optimizer/**/*.cmake",
+            "tools/llvm-optimizer/**/CMakeLists.txt",
+        ],
+        exclude = [
+            "tools/llvm-optimizer/analysis/**",
+            "tools/llvm-optimizer/bench/**",
+            "tools/llvm-optimizer/build*/**",
+            "tools/llvm-optimizer/tests/**",
+        ],
+    ),
 )
 
 filegroup(
@@ -62,6 +68,61 @@ filegroup(
     ]),
 )
 
+filegroup(
+    name = "llvm_benchmark_sources",
+    srcs = glob(
+        [
+            "tools/llvm-optimizer/bench/**",
+            "tools/llvm-optimizer/tests/fusion.ll",
+        ],
+        exclude = [
+            "**/target/**",
+            "**/__pycache__/**",
+            "**/*.pyc",
+        ],
+    ),
+)
+
+filegroup(
+    name = "llvm_research_sources",
+    srcs = [
+        ":llvm_benchmark_sources",
+        ":sources",
+    ],
+)
+
+scientific_run(
+    name = "llvm_benchmark",
+    plugin = ":llvm_optimizer",
+    rssn = ":llvm_benchmark_sources",
+    scope = "llvm-benchmark",
+    tags = ["manual"],
+    workflow = "llvm-benchmark",
+)
+
+[
+    scientific_run(
+        name = name,
+        rssn = ":llvm_research_sources",
+        scope = "llvm-research",
+        tags = ["manual"],
+        workflow = workflow,
+    )
+    for name, workflow in [
+        ("llvm_benchmark_build", "llvm-benchmark-build"),
+        ("llvm_benchmark_compare", "llvm-benchmark-compare"),
+    ]
+]
+
+scientific_run(
+    name = "llvm_c_benchmark_build",
+    plugin = ":llvm_optimizer",
+    rssn = ":llvm_research_sources",
+    scope = "llvm-c-benchmark",
+    tags = ["manual"],
+    workflow = "llvm-c-benchmark-build",
+)
+
 config_setting(
     name = "optimized",
     values = {"compilation_mode": "opt"},
@@ -69,284 +130,512 @@ config_setting(
 
 config_setting(
     name = "release_distribution",
-    values = {"compilation_mode": "opt"},
     define_values = {
         "rssn_cpu_baseline": "distribution",
         "rssn_codegen_units": "1",
         "rssn_lto": "fat",
     },
+    values = {"compilation_mode": "opt"},
+)
+
+scientific_run(
+    name = "llvm_benchmark_ci",
+    plugin = ":llvm_optimizer",
+    rssn = ":llvm_research_sources",
+    scope = "llvm-benchmark-ci",
+    tags = ["manual"],
+    workflow = "llvm-benchmark-ci",
+)
+
+config_setting(
+    name = "bounded_rust_tests",
+    define_values = {"rssn_bounded_tests": "1"},
 )
 
 cargo_artifact(
     name = "llvm_optimizer",
-    workflow = "llvm-build",
-    rssn = ":llvm_sources",
-    outputs = [LLVM_PLUGIN_OUTPUT],
     mnemonic = "LLVM",
+    outputs = [LLVM_PLUGIN_OUTPUT],
     progress = "Building the host LLVM pass",
+    rssn = ":llvm_sources",
     tags = ["manual"],
+    workflow = "llvm-build",
 )
 
 cargo_artifact(
     name = "release_pass_gate",
-    workflow = "release-pass-test",
+    mnemonic = "ReleaseProbe",
+    outputs = ["release-pass.ok"],
+    plugin = ":llvm_optimizer",
+    progress = "Verifying the release LLVM pipeline for",
     rssn = ":llvm_test_sources",
     scope = "release-probe",
-    plugin = ":llvm_optimizer",
-    outputs = ["release-pass.ok"],
-    mnemonic = "ReleaseProbe",
-    progress = "Verifying the release LLVM pipeline for",
     tags = ["manual"],
+    workflow = "release-pass-test",
 )
 
 cargo_artifact(
     name = "rustlib",
-    workflow = "rustlib",
-    rssn = ":sources",
     outputs = ["librssn.rlib"],
-    plugin = select({":optimized": ":llvm_optimizer", "//conditions:default": None}),
+    plugin = select({
+        ":optimized": ":llvm_optimizer",
+        "//conditions:default": None,
+    }),
+    rssn = ":sources",
+    workflow = "rustlib",
 )
 
 [
     cargo_artifact(
         name = name,
-        workflow = "ffi",
-        arguments = [kind],
-        rssn = ":sources",
-        outputs = ["ffi"],
-        directories = ["ffi"],
-        plugin = plugin,
+        arguments = [kind] + (["dev"] if name == "ffi_distribution_dev" else []),
         data = [":release_pass_gate"] if name == "ffi_distribution" else [],
+        directories = ["ffi"],
+        outputs = ["ffi"],
+        plugin = plugin,
+        rssn = ":sources",
         tags = ["manual"],
+        workflow = "ffi",
     )
     for name, kind, plugin in [
         ("ffi", "shared", ":llvm_optimizer"),
         ("ffi_static", "static", ":llvm_optimizer"),
         ("ffi_distribution", "both", ":llvm_optimizer"),
         ("ffi_distribution_portable", "both", None),
-        ("ffi_dev", "shared", select({":optimized": ":llvm_optimizer", "//conditions:default": None})),
-        ("ffi_static_dev", "static", select({":optimized": ":llvm_optimizer", "//conditions:default": None})),
+        ("ffi_distribution_dev", "both", None),
+        (
+            "ffi_dev",
+            "shared",
+            select({
+                ":optimized": ":llvm_optimizer",
+                "//conditions:default": None,
+            }),
+        ),
+        (
+            "ffi_static_dev",
+            "static",
+            select({
+                ":optimized": ":llvm_optimizer",
+                "//conditions:default": None,
+            }),
+        ),
     ]
 ]
 
 cargo_artifact(
     name = "manifest",
-    workflow = "manifest",
-    rssn = ":sources",
     outputs = ["manifest.json"],
-    plugin = select({":optimized": ":llvm_optimizer", "//conditions:default": None}),
+    plugin = select({
+        ":optimized": ":llvm_optimizer",
+        "//conditions:default": None,
+    }),
+    rssn = ":sources",
     tags = ["manual"],
-)
-
-alias(
-    name = "ffi_distribution_llvm",
-    actual = ":ffi_distribution",
+    workflow = "manifest",
 )
 
 scientific_test(
     name = "api_generator_test",
-    workflow = "rust-tests",
-    rssn = ":sources",
-    scope = "generated-sources",
-    arguments = ["-p", "rssn-api-model", "-p", "rssn-api-gen"],
-    tags = ["local"],
     size = "medium",
     timeout = "long",
+    arguments = [
+        "-p",
+        "rssn-api-model",
+        "-p",
+        "rssn-api-gen",
+    ],
+    rssn = ":sources",
+    scope = "generated-sources",
+    tags = ["local"],
+    workflow = "rust-tests",
 )
 
 [
     scientific_test(
         name = name,
-        workflow = "rust-tests",
-        rssn = ":sources",
-        arguments = arguments,
-        plugin = select({":optimized": ":llvm_optimizer", "//conditions:default": None}),
-        tags = tags + ["local"],
         size = "enormous",
         timeout = "eternal",
+        arguments = arguments,
+        plugin = select({
+            ":optimized": ":llvm_optimizer",
+            "//conditions:default": None,
+        }),
+        rssn = ":sources",
+        tags = tags + ["local"],
+        workflow = "rust-tests",
     )
     for name, arguments, tags in [
-        ("rust_tests", ["--workspace"], []),
-        ("rust_minimal_test", ["--workspace", "--no-default-features"], ["manual"]),
-        ("rust_all_features_test", ["--workspace", "--all-features"], ["manual", "gpu"]),
-        ("rust_ignored_test", ["--workspace", "--all-features", "--", "--ignored", "--test-threads=1"], ["manual"]),
+        (
+            "rust_tests",
+            ["--workspace"],
+            [],
+        ),
+        (
+            "rust_minimal_test",
+            [
+                "--workspace",
+                "--no-default-features",
+            ],
+            ["manual"],
+        ),
+        (
+            "rust_all_features_test",
+            [
+                "--workspace",
+                "--all-features",
+            ] + select({
+                ":bounded_rust_tests": ["--batches=2"],
+                "//conditions:default": [],
+            }),
+            [
+                "manual",
+                "gpu",
+            ],
+        ),
+        (
+            "modular_context_test",
+            [
+                "--all-features",
+                "--test",
+                "modular_context_abi",
+            ],
+            ["manual"],
+        ),
+        (
+            "rust_ignored_test",
+            [
+                "--workspace",
+                "--all-features",
+                "--",
+                "--ignored",
+                "--test-threads=1",
+            ],
+            ["manual"],
+        ),
     ]
 ]
 
 [
     scientific_test(
         name = name,
-        workflow = workflow,
+        size = "large",
+        timeout = "eternal",
+        data = data,
         rssn = sources,
         scope = {
             "bindings": "bindings",
             "bindings-check": "bindings",
             "generated-sources-check": "generated-sources",
             "headers-check": "headers",
-        }.get(workflow, "llvm-tests" if workflow.startswith("llvm-test") else ""),
-        data = data,
+            "fmt-check": "format",
+            "docs": "docs",
+            "rustdoc": "docs",
+            "rust-examples": "docs",
+        }.get(
+            workflow,
+            "llvm-tests" if workflow.startswith("llvm-test") else "",
+        ),
         tags = tags + ["local"],
-        size = "large",
-        timeout = "eternal",
+        workflow = workflow,
     )
     for name, workflow, sources, data, tags in [
-        ("clippy_test", "clippy", ":sources", [], ["manual"]),
+        (
+            "clippy_test",
+            "clippy",
+            ":sources",
+            [],
+            ["manual"],
+        ),
+        (
+            "fmt_test",
+            "fmt-check",
+            ":sources",
+            [],
+            ["manual"],
+        ),
+        (
+            "docs_test",
+            "docs",
+            ":sources",
+            [],
+            ["manual"],
+        ),
+        (
+            "rustdoc_test",
+            "rustdoc",
+            ":sources",
+            [],
+            ["manual"],
+        ),
+        (
+            "rust_examples_test",
+            "rust-examples",
+            ":sources",
+            [],
+            ["manual"],
+        ),
         ("contracts_test", "contracts", ":sources", [], []),
-        ("generated_sources_check_test", "generated-sources-check", ":sources", [], ["manual"]),
-        ("headers_check_test", "headers-check", ":sources", [], ["manual"]),
-        ("witness_test", "witness", ":sources", [], ["manual"]),
-        ("llvm_optimizer_test", "llvm-test", ":llvm_test_sources", [":llvm_optimizer"], ["manual"]),
-        ("llvm_optimizer_tools_test", "llvm-test-tools", ":llvm_test_sources", [":llvm_optimizer"], ["manual"]),
-        ("llvm_optimizer_rustc_test", "llvm-test-rustc", ":llvm_test_sources", [":llvm_optimizer"], ["manual"]),
-        ("bindings_check_test", "bindings-check", ":sources", [":ffi_dev"], ["manual"]),
-        ("bindings_test", "bindings", ":sources", [":ffi_dev"], ["manual", "external"]),
+        (
+            "generated_sources_check_test",
+            "generated-sources-check",
+            ":sources",
+            [],
+            ["manual"],
+        ),
+        (
+            "headers_check_test",
+            "headers-check",
+            ":sources",
+            [],
+            ["manual"],
+        ),
+        (
+            "witness_test",
+            "witness",
+            ":sources",
+            [],
+            ["manual"],
+        ),
+        (
+            "llvm_optimizer_test",
+            "llvm-test",
+            ":llvm_test_sources",
+            [":llvm_optimizer"],
+            ["manual"],
+        ),
+        (
+            "llvm_optimizer_tools_test",
+            "llvm-test-tools",
+            ":llvm_test_sources",
+            [":llvm_optimizer"],
+            ["manual"],
+        ),
+        (
+            "llvm_optimizer_rustc_test",
+            "llvm-test-rustc",
+            ":llvm_test_sources",
+            [":llvm_optimizer"],
+            ["manual"],
+        ),
+        (
+            "bindings_check_test",
+            "bindings-check",
+            ":sources",
+            [":ffi_dev"],
+            ["manual"],
+        ),
+        (
+            "bindings_test",
+            "bindings",
+            ":sources",
+            [":ffi_dev"],
+            [
+                "manual",
+                "external",
+            ],
+        ),
     ]
 ]
 
 [
     scientific_run(
         name = "refresh_" + item,
-        workflow = "refresh-" + item,
+        data = [":manifest"] if item == "bindings" else [],
         rssn = ":sources",
         scope = "headers" if item == "headers" else "",
-        data = [":manifest"] if item == "bindings" else [],
         tags = ["manual"],
+        workflow = "refresh-" + item,
     )
-    for item in ["contracts", "headers", "witness", "bindings"]
+    for item in [
+        "contracts",
+        "headers",
+        "witness",
+        "bindings",
+    ]
 ]
 
 test_suite(
     name = "test",
-    tests = [":rust_tests", ":contracts_test"],
+    tests = [
+        ":contracts_test",
+        ":rust_tests",
+    ],
 )
 
 scientific_run(
     name = "refresh_bindings_from_manifest",
-    workflow = "refresh-bindings-from-manifest",
     rssn = ":sources",
     scope = "bindings",
     tags = ["manual"],
+    workflow = "refresh-bindings-from-manifest",
+)
+
+scientific_run(
+    name = "refresh_bindings_from_manifest",
+    rssn = ":sources",
+    scope = "bindings",
+    tags = ["manual"],
+    workflow = "refresh-bindings-from-manifest",
 )
 
 scientific_run(
     name = "check",
+    rssn = ":sources",
     workflow = "check",
-    rssn = ":sources",
-)
-
-cargo_artifact(
-    name = "headers",
-    workflow = "headers",
-    rssn = ":sources",
-    scope = "headers",
-    outputs = ["rssn.h", "rssn.hpp"],
-    mnemonic = "Headers",
-    progress = "Generating C and C++ headers",
-    tags = ["manual"],
 )
 
 [
     scientific_run(
         name = name,
-        workflow = "package-ffi",
+        rssn = ":sources",
+        scope = "format" if name == "fmt" else "",
+        tags = ["manual"],
+        workflow = name,
+    )
+    for name in ("fmt", "example", "benchmark", "benchmark_ci", "signature_audit", "doc_audit")
+]
+
+scientific_run(
+    name = "publish_crate",
+    rssn = ":sources",
+    scope = "crate-release",
+    tags = ["manual"],
+    workflow = "publish-crate",
+)
+
+cargo_artifact(
+    name = "headers",
+    mnemonic = "Headers",
+    outputs = [
+        "rssn.h",
+        "rssn.hpp",
+    ],
+    progress = "Generating C and C++ headers",
+    rssn = ":sources",
+    scope = "headers",
+    tags = ["manual"],
+    workflow = "headers",
+)
+
+[
+    scientific_run(
+        name = name,
         arguments = arguments,
+        data = [
+            distribution,
+            ":headers",
+        ],
         rssn = ":sources",
         scope = "sdk",
-        data = [distribution, ":headers"],
+        tags = ["manual"],
         target_compatible_with = select({
             ":release_distribution": [],
             "//conditions:default": ["@platforms//:incompatible"],
         }) if name == "release_ffi" else [],
-        tags = ["manual"],
+        workflow = "package-ffi",
     )
     for name, distribution, arguments in [
         ("package_ffi", ":ffi_distribution", []),
-        ("package_ffi_llvm", ":ffi_distribution", ["llvm"]),
+        (
+            "package_ffi_dev",
+            ":ffi_distribution_dev",
+            ["dev"],
+        ),
         ("package_ffi_portable", ":ffi_distribution_portable", []),
-        ("release_ffi", ":ffi_distribution", ["validate"]),
+        (
+            "release_ffi",
+            ":ffi_distribution",
+            ["validate"],
+        ),
     ]
 ]
 
 [
     scientific_run(
         name = name,
-        workflow = workflow,
         rssn = ":sources",
         scope = "bindings" if workflow.startswith("bindings-") else "sdk",
         tags = ["manual"],
+        workflow = workflow,
     )
     for name, workflow in [
         ("package_ffi_from_binaries", "package-ffi-from-binaries"),
         ("ffi_native_clients_from_library", "ffi-native-clients-from-library"),
         ("bindings_from_library", "bindings-from-library"),
-        ("bindings_legacy", "bindings-legacy"),
     ]
 ]
 
 scientific_run(
-    name = "ffi_legacy_dev",
-    workflow = "ffi-legacy-dev",
-    rssn = ":sources",
-    tags = ["manual"],
-)
-
-scientific_run(
     name = "ffi_package_smoke",
-    workflow = "ffi-package-smoke",
     rssn = ":sources",
     scope = "sdk",
     tags = ["manual"],
+    workflow = "ffi-package-smoke",
 )
 
 scientific_test(
     name = "ffi_native_clients_test",
-    workflow = "ffi-native-clients",
-    rssn = ":sources",
-    scope = "sdk",
-    data = select({
-        "@platforms//os:linux": [":ffi_static_dev"],
-        "//conditions:default": [":ffi_dev"],
-    }),
+    size = "large",
+    timeout = "eternal",
     arguments = select({
         "@platforms//os:linux": ["static"],
         "//conditions:default": ["shared"],
     }),
-    size = "large",
-    timeout = "eternal",
-    tags = ["manual", "local"],
+    data = select({
+        "@platforms//os:linux": [":ffi_static_dev"],
+        "//conditions:default": [":ffi_dev"],
+    }),
+    rssn = ":sources",
+    scope = "sdk",
+    tags = [
+        "local",
+        "manual",
+    ],
+    workflow = "ffi-native-clients",
 )
 
 # Validate native optimization remarks and compile the same probe for cross targets.
 scientific_test(
     name = "release_pass_test",
-    workflow = "release-pass-test",
+    size = "medium",
+    plugin = ":llvm_optimizer",
     rssn = ":llvm_test_sources",
     scope = "release-probe",
-    plugin = ":llvm_optimizer",
-    tags = ["local", "manual"],
-    size = "medium",
+    tags = [
+        "local",
+        "manual",
+    ],
+    workflow = "release-pass-test",
 )
 
 scientific_test(
     name = "release_policy_test",
-    workflow = "release-policy-test",
+    size = "small",
     rssn = ":llvm_test_sources",
     scope = "release-policy",
+    tags = [
+        "local",
+        "manual",
+    ],
     target_compatible_with = select({
         ":release_distribution": [],
         "//conditions:default": ["@platforms//:incompatible"],
     }),
-    size = "small",
-    tags = ["local", "manual"],
+    workflow = "release-policy-test",
 )
 
 scientific_test(
     name = "gpu_test",
-    workflow = "gpu-test",
-    rssn = ":sources",
-    tags = ["local", "manual", "gpu", "no-cache"],
     size = "large",
     timeout = "eternal",
+    rssn = ":sources",
+    tags = [
+        "gpu",
+        "local",
+        "manual",
+        "no-cache",
+    ],
+    workflow = "gpu-test",
 )
 
 test_suite(
@@ -354,11 +643,11 @@ test_suite(
     tags = ["manual"],
     tests = [
         ":api_generator_test",
-        ":test",
-        ":rust_all_features_test",
         ":bindings_check_test",
         ":bindings_test",
         ":headers_check_test",
+        ":rust_all_features_test",
+        ":test",
         ":witness_test",
     ],
 )

@@ -45,6 +45,7 @@ use crate::kernels::special::bernoulli_number;
 use crate::kernels::special::digamma_numerical;
 use crate::kernels::special::gamma_numerical;
 use crate::kernels::special::ln_gamma_numerical;
+use crate::kernels::special_complex_ext::zeta_polylog::bernoulli_poly_complex;
 
 /// Carlson's symmetric elliptic integral `R_F(x, y, z)`.
 /// Arguments must be finite and non-negative, with at most one zero;
@@ -2024,26 +2025,6 @@ fn polylog_series(
     sum
 }
 
-/// `B_n(x)` for a complex `x`, from the Bernoulli numbers.
-#[allow(clippy::single_call_fn)]
-fn bernoulli_polynomial(
-    n: u32,
-    x: Complex64,
-) -> Complex64 {
-    let mut sum = Complex64::new(0.0, 0.0);
-    let mut binomial = 1.0_f64;
-    let mut power = Complex64::new(1.0, 0.0);
-    // B_n(x) = Σ_{j=0}^n C(n, j) B_{n-j} x^j.
-    for j in 0..=n {
-        sum += Complex64::new(binomial * bernoulli_number(n - j), 0.0) * power;
-        if j < n {
-            binomial *= f64::from(n - j) / f64::from(j + 1);
-            power *= x;
-        }
-    }
-    sum
-}
-
 /// `Li_n(z)` for a positive integer `n` and `|z| > 1/2`.
 ///
 /// For `|z| <= 6/5` the logarithmic expansion
@@ -2051,7 +2032,11 @@ fn bernoulli_polynomial(
 /// (`μ = ln z`, `|μ| < 2π`) converges quickly; beyond it Kummer's relation
 /// `Li_n(z) + (-1)^n Li_n(1/z) = -(2πi)^n/n! B_n(1/2 + ln(-z)/(2πi))`
 /// reduces the argument to the unit disk.
-#[allow(clippy::single_call_fn, clippy::float_cmp)]
+#[allow(
+    clippy::single_call_fn,
+    clippy::float_cmp,
+    clippy::arithmetic_side_effects
+)]
 fn polylog_positive_integer(
     n: u32,
     z: Complex64,
@@ -2115,7 +2100,7 @@ fn polylog_positive_integer(
         factorial *= f64::from(k);
     }
     #[allow(clippy::cast_possible_wrap)]
-    let leading = -(i_two_pi.powi(n as i32) * bernoulli_polynomial(n, theta) / factorial);
+    let leading = -(i_two_pi.powi(n as i32) * bernoulli_poly_complex(n, theta) / factorial);
     let sign = if n.is_multiple_of(2) {
         1.0
     } else {

@@ -156,6 +156,43 @@ impl FnProblem {
         }
     }
 
+    /// Retains the objective, gradient and bounds while checking each evaluation.
+    pub(crate) fn with_oracle_guard(
+        &self,
+        guard: impl Fn(&[f64]) -> Result<(), String> + Send + Sync + 'static,
+    ) -> Self {
+        let guard = Arc::new(guard);
+        let value_guard = Arc::clone(&guard);
+        let objective = Arc::clone(&self.cost);
+        let cost = Arc::new(move |point: &[f64]| {
+            value_guard(point)?;
+            let value = objective(point)?;
+            if value.is_finite() {
+                Ok(value)
+            } else {
+                Err("optimizer objective is nonfinite".into())
+            }
+        });
+        let gradient = self.gradient.as_ref().map(|gradient| {
+            let gradient = Arc::clone(gradient);
+            let closure: Arc<GradientFn> = Arc::new(move |point: &[f64]| {
+                guard(point)?;
+                let values = gradient(point)?;
+                if values.len() == point.len() && values.iter().all(|value| value.is_finite()) {
+                    Ok(values)
+                } else {
+                    Err("optimizer gradient has the wrong shape or is nonfinite".into())
+                }
+            });
+            closure
+        });
+        Self {
+            cost,
+            gradient,
+            set: self.set.clone(),
+        }
+    }
+
     /// Cost and gradient at `x`.
     ///
     /// # Errors
@@ -375,6 +412,7 @@ impl SolverKind {
             Self::GradientDescent { .. }
                 | Self::Bfgs
                 | Self::Lbfgs
+                | Self::Lbfgsb
                 | Self::NonlinearCg
                 | Self::ProjectedGradientDescent { .. }
                 | Self::Tnc
@@ -672,15 +710,19 @@ macro_rules! projected {
 /// Returns an error when the problem has no gradient but the solver needs one,
 /// when the solver needs bounds and none were supplied, when a scalar solver
 /// receives more than one variable, or when the solver aborts.
+#[allow(
+    clippy::too_many_lines,
+    reason = "The exhaustive dispatch keeps each native solver with its basin configuration"
+)]
 pub fn minimize(
     problem: &FnProblem,
     start: &[f64],
     kind: SolverKind,
     options: &MinimizeOptions,
 ) -> Result<MinimizeResult, String> {
-    if start.is_empty() {
+    let Some(&first) = start.first() else {
         return Err("the initial point is empty".to_string());
-    }
+    };
     if matches!(kind, SolverKind::Brent | SolverKind::GoldenSection) && start.len() != 1 {
         return Err(format!(
             "{kind:?} minimises one variable, but the start has {} entries",
@@ -806,12 +848,12 @@ pub fn minimize(
             solve_with!(problem, Gbnm::new(options.seed), x0, options)
         },
         | SolverKind::Brent => {
-            let scalar = ScalarView::new(&problem, x0[0]);
-            solve_scalar!(scalar, Brent::new(), x0[0], options)
+            let scalar = ScalarView::new(&problem, first);
+            solve_scalar!(scalar, Brent::new(), first, options)
         },
         | SolverKind::GoldenSection => {
-            let scalar = ScalarView::new(&problem, x0[0]);
-            solve_scalar!(scalar, GoldenSection::new(), x0[0], options)
+            let scalar = ScalarView::new(&problem, first);
+            solve_scalar!(scalar, GoldenSection::new(), first, options)
         },
     }
 }
@@ -868,15 +910,6 @@ pub struct RootReport {
     pub converged: bool,
 }
 
-/// Central difference of a scalar function.
-fn central_difference(
-    f: &impl Fn(f64) -> f64,
-    x: f64,
-) -> f64 {
-    let h = 1e-6 * x.abs().max(1.0);
-    (f(x + h) - f(x - h)) / (2.0 * h)
-}
-
 /// Finds a root of `f` inside `bracket`.
 ///
 /// `derivative` is used by [`RootSolver::Newton`] and
@@ -900,7 +933,10 @@ pub fn find_root(
     let derivative_of = move |x: f64| {
         match &derivative {
             | Some(derivative) => derivative(x),
-            | None => central_difference(f, x),
+            | None => {
+                let step = 1e-6 * x.abs().max(1.0);
+                (f(x + step) - f(x - step)) / (2.0 * step)
+            },
         }
     };
     let result = match solver {
@@ -978,23 +1014,19 @@ impl Rosenbrock {
     #[must_use]
     pub fn problem(dimension: usize) -> FnProblem {
         FnProblem::new(
-            |x| {
-                let mut total = 0.0;
-                for pair in x.windows(2) {
-                    let (a, b) = (pair[0], pair[1]);
-                    total += 100.0 * (b - a * a).powi(2) + (1.0 - a).powi(2);
-                }
-                total
-            },
+            Self::cost,
             Some(|x: &[f64]| {
-                let n = x.len();
-                let mut g = vec![0.0; n];
-                for i in 0..n.saturating_sub(1) {
-                    let (a, b) = (x[i], x[i + 1]);
-                    g[i] += -400.0 * a * (b - a * a) - 2.0 * (1.0 - a);
-                    g[i + 1] += 200.0 * (b - a * a);
+                let mut gradient = Vec::with_capacity(x.len());
+                let mut previous = 0.0;
+                for &[a, b] in x.array_windows() {
+                    let difference = b - a * a;
+                    gradient.push(previous + (-400.0 * a * difference - 2.0 * (1.0 - a)));
+                    previous = 0.0 + 200.0 * difference;
                 }
-                g
+                if !x.is_empty() {
+                    gradient.push(previous);
+                }
+                gradient
             }),
             dimension.max(2),
             None,
@@ -1005,8 +1037,7 @@ impl Rosenbrock {
     #[must_use]
     pub fn cost(x: &[f64]) -> f64 {
         let mut total = 0.0;
-        for pair in x.windows(2) {
-            let (a, b) = (pair[0], pair[1]);
+        for &[a, b] in x.array_windows() {
             total += 100.0 * (b - a * a).powi(2) + (1.0 - a).powi(2);
         }
         total
@@ -1022,7 +1053,7 @@ impl Sphere {
     #[must_use]
     pub fn problem(dimension: usize) -> FnProblem {
         FnProblem::new(
-            |x| x.iter().map(|value| value * value).sum(),
+            Self::cost,
             Some(|x: &[f64]| x.iter().map(|value| 2.0 * value).collect()),
             dimension,
             None,
@@ -1054,15 +1085,7 @@ impl Rastrigin {
     #[must_use]
     pub fn problem(&self) -> FnProblem {
         FnProblem::new(
-            |x| {
-                let n = f64::from(u32::try_from(x.len()).unwrap_or(0));
-                10.0 * n
-                    + x.iter()
-                        .map(|value| {
-                            value * value - 10.0 * (2.0 * std::f64::consts::PI * value).cos()
-                        })
-                        .sum::<f64>()
-            },
+            Self::cost,
             Some(|x: &[f64]| {
                 x.iter()
                     .map(|value| {
@@ -1131,7 +1154,7 @@ impl LinearRegression {
         if x.is_empty() || x.len() != y.len() {
             return Err("predictors and responses must be non-empty and aligned".to_string());
         }
-        let width = x[0].len();
+        let width = x.first().map_or(0, Vec::len);
         if width == 0 || x.iter().any(|row| row.len() != width) {
             return Err("predictor rows must share a non-zero width".to_string());
         }
@@ -1146,7 +1169,7 @@ impl LinearRegression {
     /// Number of coefficients, including the intercept.
     #[must_use]
     pub fn coefficient_count(&self) -> usize {
-        self.x.first().map_or(0, |row| row.len() + 1)
+        self.x.first().map_or(0, |row| row.len().saturating_add(1))
     }
 
     /// Residual vector at `beta`.
@@ -1180,62 +1203,85 @@ impl LinearRegression {
         &self,
         beta: &[f64],
     ) -> Result<(f64, Vec<f64>), String> {
+        self.validate_coefficients(beta)?;
+        let residuals = self.residuals(beta);
+        Ok((
+            half_mean_square(&residuals),
+            self.gradient_from_residuals(&residuals),
+        ))
+    }
+
+    /// Half the mean squared residual without evaluating the gradient.
+    pub(crate) fn loss(
+        &self,
+        beta: &[f64],
+    ) -> Result<f64, String> {
+        self.validate_coefficients(beta)?;
+        Ok(half_mean_square(&self.residuals(beta)))
+    }
+
+    fn validate_coefficients(
+        &self,
+        beta: &[f64],
+    ) -> Result<(), String> {
         if self.x.is_empty() || self.x.len() != self.y.len() {
             return Err("invalid regression data shape".to_string());
         }
         if beta.len() != self.coefficient_count() {
             return Err("expected the intercept and one slope per feature column".to_string());
         }
-        let residuals = self.residuals(beta);
-        let cost = half_mean_square(&residuals);
+        Ok(())
+    }
+
+    fn gradient_from_residuals(
+        &self,
+        residuals: &[f64],
+    ) -> Vec<f64> {
         let count = residuals.len() as f64;
         let columns = self.x.first().map_or(0, Vec::len);
-        let mut gradient = vec![0.0; columns + 1];
-        gradient[0] = residuals.iter().sum();
-        for (row, &residual) in self.x.iter().zip(&residuals) {
-            for (entry, &predictor) in gradient.iter_mut().skip(1).zip(row) {
+        let mut gradient = vec![0.0; columns.saturating_add(1)];
+        let [intercept, slopes @ ..] = gradient.as_mut_slice() else {
+            return gradient;
+        };
+        *intercept = residuals.iter().sum::<f64>() / count;
+        if !intercept.is_finite() {
+            *intercept = residuals.iter().map(|value| value / count).sum();
+        }
+        for (row, &residual) in self.x.iter().zip(residuals) {
+            for (entry, &predictor) in slopes.iter_mut().zip(row) {
                 *entry += predictor * residual;
             }
         }
-        for entry in &mut gradient {
+        for (index, entry) in slopes.iter_mut().enumerate() {
             *entry /= count;
-        }
-        // Normalise term by term when the raw sum overflows but its mean does
-        // not.
-        if gradient.iter().any(|value| !value.is_finite()) {
-            if !gradient[0].is_finite() {
-                gradient[0] = residuals.iter().map(|value| value / count).sum();
-            }
-            for index in 0..columns {
-                if !gradient[index + 1].is_finite() {
-                    gradient[index + 1] = self
-                        .x
-                        .iter()
-                        .zip(&residuals)
-                        .map(|(row, value)| row[index] * (value / count))
-                        .sum();
-                }
+            // In the overflow case, divide each residual before multiplying.
+            if !entry.is_finite() {
+                *entry = self
+                    .x
+                    .iter()
+                    .zip(residuals)
+                    .filter_map(|(row, value)| {
+                        row.get(index).map(|predictor| predictor * (value / count))
+                    })
+                    .sum();
             }
         }
-        Ok((cost, gradient))
+        gradient
     }
 
     /// The problem form used by [`minimize`].
     #[must_use]
     pub fn problem(&self) -> FnProblem {
         let coefficients = self.coefficient_count();
-        let cost_model = self.clone();
-        let gradient_model = self.clone();
+        let cost_model = Arc::new(self.clone());
+        let gradient_model = Arc::clone(&cost_model);
         FnProblem::new(
-            move |beta| {
-                cost_model
-                    .value_and_gradient(beta)
-                    .map_or(f64::INFINITY, |(cost, _)| cost)
-            },
+            move |beta| cost_model.loss(beta).unwrap_or(f64::INFINITY),
             Some(move |beta: &[f64]| {
-                gradient_model
-                    .value_and_gradient(beta)
-                    .map_or_else(|_| vec![0.0; coefficients], |(_, gradient)| gradient)
+                gradient_model.validate_coefficients(beta).map_or_else(
+                    |_| vec![0.0; coefficients],
+                    |()| gradient_model.gradient_from_residuals(&gradient_model.residuals(beta)),
+                )
             }),
             coefficients,
             None,

@@ -18,6 +18,9 @@ use crate::kernels::reuse::Scratch;
 use crate::kernels::reuse::fft_scratch_for;
 use crate::kernels::reuse::global_pool;
 
+#[path = "complex_differentiation.rs"]
+pub(crate) mod differentiation;
+
 const I: Complex64 = Complex64::new(0.0, 1.0);
 
 /// The point at angle `2 pi k / n` on the circle `|z - center| = radius`.
@@ -409,9 +412,7 @@ pub fn wirtinger_dz_numeric<F>(
 where
     F: Fn(Complex64) -> Complex64,
 {
-    let df_dx = (f(Complex64::new(z.re + h, z.im)) - f(Complex64::new(z.re - h, z.im))) / (2.0 * h);
-    let df_dy = (f(Complex64::new(z.re, z.im + h)) - f(Complex64::new(z.re, z.im - h))) / (2.0 * h);
-    0.5 * (df_dx - I * df_dy)
+    differentiation::wirtinger(f, z, h.abs()).map_or(differentiation::NAN, |value| value.dz)
 }
 
 /// Numerical Wirtinger derivative `d/d(conj(z)) = 0.5 * (d/dx + i * d/dy)` by
@@ -424,9 +425,7 @@ pub fn wirtinger_dzbar_numeric<F>(
 where
     F: Fn(Complex64) -> Complex64,
 {
-    let df_dx = (f(Complex64::new(z.re + h, z.im)) - f(Complex64::new(z.re - h, z.im))) / (2.0 * h);
-    let df_dy = (f(Complex64::new(z.re, z.im + h)) - f(Complex64::new(z.re, z.im - h))) / (2.0 * h);
-    0.5 * (df_dx + I * df_dy)
+    differentiation::wirtinger(f, z, h.abs()).map_or(differentiation::NAN, |value| value.dzbar)
 }
 
 /// Checks the Cauchy-Riemann equations numerically at `z` via
@@ -443,9 +442,7 @@ where
     if !h.is_finite() || h <= 0.0 || !tol.is_finite() || tol < 0.0 {
         return false;
     }
-    let dzbar = wirtinger_dzbar_numeric(&f, z, h);
-    let dz = wirtinger_dz_numeric(&f, z, h);
-    dzbar.is_finite() && dz.is_finite() && dzbar.norm() <= tol * (1.0 + dz.norm())
+    differentiation::wirtinger(f, z, h).is_some_and(|value| value.residual(1.0) <= tol)
 }
 
 /// Numerical complex Laplacian `4 * d^2 f / (dz d(conj(z))) = f_xx + f_yy`
@@ -458,19 +455,11 @@ pub fn complex_laplacian_numeric<F>(
 where
     F: Fn(Complex64) -> Complex64,
 {
-    if !h.is_finite() || h <= 0.0 {
-        return Complex64::new(f64::NAN, f64::NAN);
-    }
-    let f0 = f(z);
-    let fxx = (f(Complex64::new(z.re + h, z.im)) - 2.0 * f0 + f(Complex64::new(z.re - h, z.im)))
-        / (h * h);
-    let fyy = (f(Complex64::new(z.re, z.im + h)) - 2.0 * f0 + f(Complex64::new(z.re, z.im - h)))
-        / (h * h);
-    fxx + fyy
+    differentiation::laplacian(f, z, h).unwrap_or(differentiation::NAN)
 }
 
 /// Numerical polar Cauchy-Riemann residual `(r * u_r - v_theta, u_theta + r * v_r)`
-/// at `(r, theta)`.
+/// at `(r, theta)`. The finite radial stencil must remain nonnegative.
 pub fn cauchy_riemann_polar_numeric<F>(
     f: F,
     r: f64,
@@ -480,18 +469,7 @@ pub fn cauchy_riemann_polar_numeric<F>(
 where
     F: Fn(f64, f64) -> Complex64,
 {
-    if !h.is_finite() || h <= 0.0 {
-        return (f64::NAN, f64::NAN);
-    }
-    let fr_p = f(r + h, theta);
-    let fr_m = f(r - h, theta);
-    let ft_p = f(r, theta + h);
-    let ft_m = f(r, theta - h);
-    let ur = (fr_p.re - fr_m.re) / (2.0 * h);
-    let vr = (fr_p.im - fr_m.im) / (2.0 * h);
-    let ut = (ft_p.re - ft_m.re) / (2.0 * h);
-    let vt = (ft_p.im - ft_m.im) / (2.0 * h);
-    (r * ur - vt, ut + r * vr)
+    differentiation::polar(f, r, theta, h, h).unwrap_or((f64::NAN, f64::NAN))
 }
 
 /// Complex-step differentiation `Im(f(x + i*h)) / h` for real analytic
@@ -504,7 +482,7 @@ pub fn complex_step_derivative<F>(
 where
     F: Fn(Complex64) -> Complex64,
 {
-    f(Complex64::new(x, h)).im / h
+    differentiation::complex_step(f, x, h).unwrap_or(f64::NAN)
 }
 
 /// Samples a circle counter-clockwise and returns its unnormalised spectrum.

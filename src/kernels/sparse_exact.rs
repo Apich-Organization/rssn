@@ -253,7 +253,11 @@ impl Gfp {
         a: u64,
         b: u64,
     ) -> u64 {
-        self.reducer.mul(a, b)
+        if self.p <= 1 {
+            0
+        } else {
+            self.reducer.mul(a, b)
+        }
     }
 
     /// `(a + b) mod p`.
@@ -264,7 +268,11 @@ impl Gfp {
         a: u64,
         b: u64,
     ) -> u64 {
-        self.reducer.add(a, b)
+        if self.p <= 1 {
+            0
+        } else {
+            self.reducer.add(a, b)
+        }
     }
 
     /// `(a - b) mod p`.
@@ -275,7 +283,11 @@ impl Gfp {
         a: u64,
         b: u64,
     ) -> u64 {
-        self.reducer.sub(a, b)
+        if self.p <= 1 {
+            0
+        } else {
+            self.reducer.sub(a, b)
+        }
     }
 
     /// `a^e mod p`.
@@ -337,9 +349,8 @@ impl Gfp {
     }
 
     /// Batch modular inversion of non-zero elements in `values` modulo `p`
-    /// using Montgomery's trick: 1 extended GCD plus `3(k - 1)` modular
-    /// multiplications, all division-free, leasing its prefix-product
-    /// workspace from [`crate::kernels::reuse::global_pool`].
+    /// using Montgomery's trick. The output buffer holds prefix products
+    /// until the reverse pass replaces them with the corresponding inverses.
     ///
     /// Returns `None` if `p <= 1` or any element is divisible by `p`.
     #[must_use]
@@ -350,34 +361,27 @@ impl Gfp {
         if self.p <= 1 {
             return None;
         }
-        let n = values.len();
-        if n == 0 {
+        if values.is_empty() {
             return Some(Vec::new());
         }
-        let mut out = vec![0_u64; n];
-        let mut prefix = crate::kernels::reuse::global_pool().scratch_usize(n);
-        prefix.resize(n, 0);
-        // Prefix products in the standard domain: the Barrett reducer needs no
-        // representation change, so the powers of `R` the Montgomery version
-        // had to cancel do not arise.
+        // These products already have canonical operands. Reuse the wide reduction
+        // directly while keeping the Barrett residue contract at the input boundary.
+        let product = |a, b| self.reducer.reduce_u128(u128::from(a) * u128::from(b));
+        let mut out = Vec::with_capacity(values.len());
         let mut running = 1_u64;
-        for (i, &v) in values.iter().enumerate() {
-            let r = if v >= self.p { v % self.p } else { v };
-            if r == 0 {
+        for &value in values {
+            let residue = self.reducer.reduce_u64(value);
+            if residue == 0 {
                 return None;
             }
-            prefix[i] = running as usize;
-            running = self.reducer.mul(running, r);
+            out.push(running);
+            running = product(running, residue);
         }
-        let mut inv_acc = self.inv(running)?;
-        for i in (0..n).rev() {
-            let r = if values[i] >= self.p {
-                values[i] % self.p
-            } else {
-                values[i]
-            };
-            out[i] = self.reducer.mul(inv_acc, prefix[i] as u64);
-            inv_acc = self.reducer.mul(inv_acc, r);
+        let mut inverse = self.inv(running)?;
+        for (prefix, &value) in out.iter_mut().zip(values).rev() {
+            let residue = self.reducer.reduce_u64(value);
+            *prefix = product(inverse, *prefix);
+            inverse = product(inverse, residue);
         }
         Some(out)
     }
@@ -553,10 +557,11 @@ pub fn reduce_rational_matrix_mod_p(
     if nnz == 0 {
         return Some(SparseMat::zeros(matrix.rows, matrix.cols));
     }
+    // Residues can occupy all 64 bits, independently of the host's index width.
     let pool = crate::kernels::reuse::global_pool();
-    let mut denoms = pool.scratch_usize(nnz);
-    let mut numer_residues = pool.scratch_usize(nnz);
-    let mut prefix = pool.scratch_usize(nnz);
+    let mut denoms = pool.scratch_i64(nnz);
+    let mut numer_residues = pool.scratch_i64(nnz);
+    let mut prefix = pool.scratch_i64(nnz);
     denoms.clear();
     numer_residues.clear();
     prefix.clear();
@@ -566,7 +571,7 @@ pub fn reduce_rational_matrix_mod_p(
     for row in &matrix.data {
         for (_, q) in row {
             let num_r = field.reduce(q.numer());
-            numer_residues.push(num_r as usize);
+            numer_residues.push(num_r.cast_signed());
             if q.is_integer() {
                 denoms.push(1);
                 prefix.push(0);
@@ -580,9 +585,9 @@ pub fn reduce_rational_matrix_mod_p(
                     prefix.push(0);
                 } else {
                     has_nontrivial = true;
-                    prefix.push(running as usize);
+                    prefix.push(running.cast_signed());
                     running = field.mul_mod(running, den_r);
-                    denoms.push(den_r as usize);
+                    denoms.push(den_r.cast_signed());
                 }
             }
         }
@@ -591,11 +596,13 @@ pub fn reduce_rational_matrix_mod_p(
     if has_nontrivial {
         let mut inv_acc = field.inv(running)?;
         for idx in (0..nnz).rev() {
-            let d = denoms[idx] as u64;
+            let d = denoms[idx].cast_unsigned();
             if d > 1 {
-                let d_inv = field.mul_mod(inv_acc, prefix[idx] as u64);
+                let d_inv = field.mul_mod(inv_acc, prefix[idx].cast_unsigned());
                 inv_acc = field.mul_mod(inv_acc, d);
-                numer_residues[idx] = field.mul_mod(numer_residues[idx] as u64, d_inv) as usize;
+                numer_residues[idx] = field
+                    .mul_mod(numer_residues[idx].cast_unsigned(), d_inv)
+                    .cast_signed();
             }
         }
     }
@@ -605,7 +612,7 @@ pub fn reduce_rational_matrix_mod_p(
     for row in &matrix.data {
         let mut out_row = Vec::with_capacity(row.len());
         for &(col, _) in row {
-            let val = numer_residues[flat_idx] as u64;
+            let val = numer_residues[flat_idx].cast_unsigned();
             flat_idx += 1;
             if val != 0 {
                 out_row.push((col, val));
@@ -1658,8 +1665,15 @@ pub fn det_rational(matrix: &SparseMat<BigRational>) -> Option<BigRational> {
         return Some(BigRational::one());
     }
     let (integer, scales) = integer_rows(matrix);
+    let det = det_over_integers(&integer)?;
+    let scale: BigInt = scales.iter().product();
+    Some(BigRational::new(det, scale))
+}
+
+/// Exact modular determinant of a square integer matrix.
+fn det_over_integers(integer: &SparseMat<BigInt>) -> Option<BigInt> {
     if integer.data.iter().any(Vec::is_empty) {
-        return Some(BigRational::zero());
+        return Some(BigInt::zero());
     }
     // |det| <= product of the row norms.
     let bound: BigInt = integer
@@ -1688,7 +1702,7 @@ pub fn det_rational(matrix: &SparseMat<BigRational>) -> Option<BigRational> {
             crate::kernels::par::map_indexed(num_primes, 2, |idx| {
                 let p = primes[idx];
                 let mut field = Gfp::new(p);
-                let reduced = reduce_matrix(&integer, field);
+                let reduced = reduce_matrix(integer, field);
                 det(&mut field, &reduced)
             })
         } else {
@@ -1696,7 +1710,7 @@ pub fn det_rational(matrix: &SparseMat<BigRational>) -> Option<BigRational> {
                 .iter()
                 .map(|&p| {
                     let mut field = Gfp::new(p);
-                    let reduced = reduce_matrix(&integer, field);
+                    let reduced = reduce_matrix(integer, field);
                     det(&mut field, &reduced)
                 })
                 .collect()
@@ -1720,8 +1734,7 @@ pub fn det_rational(matrix: &SparseMat<BigRational>) -> Option<BigRational> {
     if &residue * BigInt::from(2) > modulus {
         residue -= &modulus;
     }
-    let scale: BigInt = scales.iter().product();
-    Some(BigRational::new(residue, scale))
+    Some(residue)
 }
 
 /// Rational reconstruction: the fraction `n / d` with `n = a d (mod m)` and
@@ -1783,40 +1796,36 @@ impl ModularFactor {
         })
     }
 
-    /// `A^-1 b mod p`.
+    /// Apply the row operations to `rhs` and overwrite `solution` with `A^-1 b mod p`.
     fn solve(
         &self,
-        b: &[u64],
-    ) -> Vec<u64> {
+        rhs: &mut [u64],
+        solution: &mut [u64],
+    ) {
         let mut dom = self.field;
-        let pool = crate::kernels::reuse::global_pool();
-        let mut r = pool.scratch_usize(b.len());
-        r.clear();
-        r.extend(b.iter().map(|&v| v as usize));
         for &(target, index, factor) in &self.echelon.ops {
-            let source = r[self.echelon.pivots[index].0] as u64;
+            let source = rhs[self.echelon.pivots[index].0];
             if source != 0 {
                 let scaled = dom.mul(&factor, &source);
-                let cur = r[target] as u64;
-                r[target] = dom.sub(&cur, &scaled) as usize;
+                let cur = rhs[target];
+                rhs[target] = dom.sub(&cur, &scaled);
             }
         }
-        let mut x = vec![0_u64; self.n];
+        solution.fill(0);
         for k in (0..self.echelon.pivots.len()).rev() {
             let (pr, pc) = self.echelon.pivots[k];
-            let mut acc = r[pr] as u64;
+            let mut acc = rhs[pr];
             for &(j, v) in &self.echelon.rows[k] {
                 if j != pc && j < self.n {
-                    let xj = x[j];
+                    let xj = solution[j];
                     if xj != 0 {
                         let term = dom.mul(&v, &xj);
                         acc = dom.sub(&acc, &term);
                     }
                 }
             }
-            x[pc] = dom.mul(&acc, &self.pivot_invs[k]);
+            solution[pc] = dom.mul(&acc, &self.pivot_invs[k]);
         }
-        x
     }
 }
 
@@ -1952,9 +1961,21 @@ pub fn solve_dixon_multi(
         return Some(vec![Vec::new(); rhs.len()]);
     }
     let (integer, scales) = integer_rows(matrix);
-    let (field, factor) = word_primes().take(4).find_map(|p| {
-        let field = Gfp::new(p);
-        ModularFactor::new(&reduce_matrix(&integer, field), field).map(|f| (field, f))
+    let factor_at = |prime| {
+        let field = Gfp::new(prime);
+        ModularFactor::new(&reduce_matrix(&integer, field), field).map(|factor| (field, factor))
+    };
+    let (field, factor) = word_primes().take(4).find_map(factor_at).or_else(|| {
+        // A nonsingular rational matrix can be singular at all trial primes.
+        // Its exact determinant distinguishes that case from singularity.
+        let determinant = det_over_integers(&integer)?;
+        if determinant.is_zero() {
+            return None;
+        }
+        let compatible = word_primes()
+            .skip(4)
+            .find(|&prime| Gfp::new(prime).reduce(&determinant) != 0)?;
+        factor_at(compatible)
     })?;
     let p = BigInt::from(field.p);
 
@@ -1984,8 +2005,8 @@ pub fn solve_dixon_multi(
             .collect();
         let limit = &hadamard_sq_4 * norm_bound(int_rhs.iter());
 
-        let pool = crate::kernels::reuse::global_pool();
-        let mut res_mod_p = pool.scratch_usize(n);
+        let mut modular_rhs = vec![0_u64; n];
+        let mut digits = vec![0_u64; n];
         let mut residual = int_rhs.clone();
         let mut lifted = vec![BigInt::zero(); n];
         let mut product = Vec::with_capacity(n);
@@ -1994,9 +2015,10 @@ pub fn solve_dixon_multi(
         let mut step = 0_usize;
 
         loop {
-            res_mod_p.clear();
-            res_mod_p.extend(residual.iter().map(|v| field.reduce(v) as usize));
-            let digits = factor.solve(&res_mod_p.iter().map(|&v| v as u64).collect::<Vec<u64>>());
+            for (residue, value) in modular_rhs.iter_mut().zip(&residual) {
+                *residue = field.reduce(value);
+            }
+            factor.solve(&mut modular_rhs, &mut digits);
             csr.mul_digits(&digits, &mut product);
             for ((r, ax), (x, &d)) in residual
                 .iter_mut()
@@ -2212,7 +2234,6 @@ fn verifies(
         sum == BigRational::from(want.clone())
     })
 }
-
 
 // ---------------------------------------------------------------------------
 // Black-box methods over a prime field
@@ -2873,7 +2894,11 @@ mod tests {
         let mut dom = field;
         assert_eq!(a.matvec(&mut dom, &x).unwrap(), b);
         // The same solution as the factorisation gives (it is unique).
-        let direct = ModularFactor::new(&a, field).unwrap().solve(&b);
+        let mut rhs = b;
+        let mut direct = vec![0; rhs.len()];
+        ModularFactor::new(&a, field)
+            .unwrap()
+            .solve(&mut rhs, &mut direct);
         assert_eq!(x, direct);
         // The polynomial found annihilates the matrix: m(A) e = 0 for a
         // vector with every coordinate set.

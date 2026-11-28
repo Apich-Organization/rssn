@@ -27,6 +27,21 @@ pub enum Link {
     ComplementaryLogLog,
 }
 
+impl Link {
+    pub(crate) fn named(name: &str) -> Option<Self> {
+        match name {
+            | "identity" => Some(Self::Identity),
+            | "log" => Some(Self::Log),
+            | "logit" => Some(Self::Logit),
+            | "probit" => Some(Self::Probit),
+            | "inverse" => Some(Self::Inverse),
+            | "loglog" | "log_log" => Some(Self::LogLog),
+            | "cloglog" | "complementary_loglog" => Some(Self::ComplementaryLogLog),
+            | _ => None,
+        }
+    }
+}
+
 /// Standard normal probability density at `z`.
 #[must_use]
 fn normal_density(z: f64) -> f64 {
@@ -74,7 +89,7 @@ pub fn link(
         | Link::Probit => normal_quantile(mu),
         | Link::Inverse => 1.0 / mu,
         | Link::LogLog => -(-mu.ln()).ln(),
-        | Link::ComplementaryLogLog => (-(1.0 - mu).ln()).ln(),
+        | Link::ComplementaryLogLog => (-(-mu).ln_1p()).ln(),
     }
 }
 
@@ -88,18 +103,22 @@ pub fn link_inverse(
     match kind {
         | Link::Identity => eta,
         | Link::Log => eta.exp(),
-        | Link::Logit => 1.0 / (1.0 + (-eta).exp()),
+        | Link::Logit if eta >= 0.0 => 1.0 / (1.0 + (-eta).exp()),
+        | Link::Logit => {
+            let positive = eta.exp();
+            positive / (1.0 + positive)
+        },
         | Link::Probit => normal_cdf(eta),
         | Link::Inverse => 1.0 / eta,
         | Link::LogLog => (-(-eta).exp()).exp(),
-        | Link::ComplementaryLogLog => 1.0 - (-eta.exp()).exp(),
+        | Link::ComplementaryLogLog => -(-eta.exp()).exp_m1(),
     }
 }
 
 /// Evaluates the derivative `g'(mu) = d eta / d mu`.
 ///
-/// The derivative is always positive on the interior of the mean space, so
-/// the working weights `1 / (V(mu) g'(mu)²)` stay positive.
+/// The reciprocal link has a negative derivative. IRLS uses the square of the
+/// derivative in its working weights `1 / (V(mu) g'(mu)²)`.
 #[must_use]
 pub fn link_derivative(
     kind: Link,
@@ -115,7 +134,7 @@ pub fn link_derivative(
         },
         | Link::Inverse => -1.0 / (mu * mu),
         | Link::LogLog => -1.0 / (mu * mu.ln()),
-        | Link::ComplementaryLogLog => -1.0 / ((1.0 - mu) * (1.0 - mu).ln()),
+        | Link::ComplementaryLogLog => -1.0 / ((1.0 - mu) * (-mu).ln_1p()),
     }
 }
 
@@ -162,6 +181,21 @@ mod tests {
                 "{kind:?}: numeric {numeric} analytic {analytic}"
             );
         }
+    }
+
+    #[test]
+    fn probability_links_keep_representable_left_tails() {
+        let predictor: f64 = -710.0;
+        let tiny = predictor.exp();
+        assert!(tiny > 0.0);
+        assert_eq!(link_inverse(Link::Logit, predictor), tiny);
+        assert_eq!(link_inverse(Link::ComplementaryLogLog, predictor), tiny);
+        assert!((link(Link::ComplementaryLogLog, tiny) - predictor).abs() < 1e-12);
+
+        let mean: f64 = 1e-20;
+        assert_eq!(link(Link::ComplementaryLogLog, mean), mean.ln());
+        let derivative = link_derivative(Link::ComplementaryLogLog, mean);
+        assert!((derivative * mean - 1.0).abs() < f64::EPSILON);
     }
 
     #[test]

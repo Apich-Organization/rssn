@@ -11,11 +11,13 @@
 //!
 //! * The operands must be closed and consistently oriented; an open or
 //!   self-intersecting input gives an undefined result rather than an error.
-//! * Splitting is recursive, so a mesh with many nearly coincident planes can
-//!   exhaust the stack.
+//! * Splitting and mesh conformance enforce bounded work, stack depth and output.
 
 use std::collections::HashMap;
+use std::collections::HashSet;
 
+use super::repair::closed_signed_volume;
+use super::repair::topology;
 use super::repair::weld;
 use super::types::Mesh;
 use super::types::cross;
@@ -26,6 +28,59 @@ use super::types::sub;
 
 /// The distance below which a vertex counts as lying on a splitting plane.
 const EPS: f64 = 1e-9;
+const MAX_BSP_DEPTH: usize = 64;
+const MAX_POLYGON_VERTICES: usize = 128;
+const MAX_OUTPUT_VERTICES: usize = 8_192;
+const MAX_WORK: usize = 64 * 1024 * 1024;
+
+const MAX_SPLIT_VERTICES: usize = 1 << 20;
+const MAX_CHECKED_ROWS: usize = 1_024;
+
+struct Work {
+    units: usize,
+    split_vertices: usize,
+}
+
+impl Work {
+    const fn new() -> Self {
+        Self {
+            units: MAX_WORK,
+            split_vertices: MAX_SPLIT_VERTICES,
+        }
+    }
+
+    fn charge(
+        &mut self,
+        units: usize,
+    ) -> Result<(), String> {
+        self.units = self
+            .units
+            .checked_sub(units)
+            .ok_or_else(|| "CSG work budget exceeded".to_string())?;
+        Ok(())
+    }
+
+    fn split(
+        &mut self,
+        poly: &Polygon,
+    ) -> Result<(), String> {
+        let vertices = poly.vertices.len();
+        if vertices > MAX_POLYGON_VERTICES {
+            return Err("CSG polygon exceeds the per-polygon vertex budget".into());
+        }
+        // Classification emits at most two intersections and one existing
+        // vertex per edge, even if round-off perturbs the classifications.
+        self.split_vertices = self
+            .split_vertices
+            .checked_sub(vertices.saturating_mul(3))
+            .ok_or_else(|| "CSG polygon subdivision exceeds the allocation budget".to_string())?;
+        self.charge(vertices)
+    }
+}
+
+fn checkpoint() -> Result<(), String> {
+    crate::cancellation::checkpoint().map_err(|failure| failure.to_string())
+}
 
 /// The Boolean operation [`boolean`] performs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -54,14 +109,12 @@ impl Plane {
     ) -> Option<Self> {
         let n = cross(sub(b, a), sub(c, a));
         let len = length(n);
-        if len <= 1e-14 {
+        if !len.is_finite() || len <= 1e-14 {
             return None;
         }
         let normal = [n[0] / len, n[1] / len, n[2] / len];
-        Some(Self {
-            normal,
-            w: dot(normal, a),
-        })
+        let w = dot(normal, a);
+        w.is_finite().then_some(Self { normal, w })
     }
 
     /// Reverses the plane's orientation.
@@ -200,46 +253,58 @@ struct Node {
 }
 
 impl Node {
-    /// Builds a tree from `polygons`.
-    fn from_polygons(polygons: Vec<Polygon>) -> Self {
-        let mut node = Node::default();
-        node.build(polygons);
-        node
+    /// Builds a tree from the input polygons.
+    fn from_polygons(
+        polygons: Vec<Polygon>,
+        work: &mut Work,
+    ) -> Result<Self, String> {
+        let mut node = Self::default();
+        node.build(polygons, 0, work)?;
+        Ok(node)
     }
 
     /// Reverses the solid represented by the tree.
     fn invert(&mut self) {
-        for poly in &mut self.polygons {
-            poly.flip();
+        let mut pending = vec![self];
+        while let Some(node) = pending.pop() {
+            for poly in &mut node.polygons {
+                poly.flip();
+            }
+            if let Some(plane) = &mut node.plane {
+                plane.flip();
+            }
+            std::mem::swap(&mut node.front, &mut node.back);
+            if let Some(front) = &mut node.front {
+                pending.push(front);
+            }
+            if let Some(back) = &mut node.back {
+                pending.push(back);
+            }
         }
-        if let Some(plane) = &mut self.plane {
-            plane.flip();
-        }
-        if let Some(front) = &mut self.front {
-            front.invert();
-        }
-        if let Some(back) = &mut self.back {
-            back.invert();
-        }
-        std::mem::swap(&mut self.front, &mut self.back);
     }
 
-    /// Returns the parts of `polygons` that lie outside the solid.
+    /// Returns the parts of the input polygons outside the solid.
     fn clip_polygons(
         &self,
         polygons: Vec<Polygon>,
-    ) -> Vec<Polygon> {
+        work: &mut Work,
+    ) -> Result<Vec<Polygon>, String> {
         let Some(plane) = &self.plane else {
-            return polygons;
+            return Ok(polygons);
         };
+        if polygons.is_empty() {
+            return Ok(polygons);
+        }
+        checkpoint()?;
 
-        let mut front: Vec<Polygon> = Vec::new();
-        let mut back: Vec<Polygon> = Vec::new();
+        let mut front = Vec::new();
+        let mut back = Vec::new();
+        let mut coplanar_front = Vec::new();
+        let mut coplanar_back = Vec::new();
+        let mut front_part = Vec::new();
+        let mut back_part = Vec::new();
         for poly in &polygons {
-            let mut coplanar_front = Vec::new();
-            let mut coplanar_back = Vec::new();
-            let mut front_part = Vec::new();
-            let mut back_part = Vec::new();
+            work.split(poly)?;
             plane.split(
                 poly,
                 &mut coplanar_front,
@@ -247,104 +312,113 @@ impl Node {
                 &mut front_part,
                 &mut back_part,
             );
-            front.extend(coplanar_front);
-            front.extend(front_part);
-            back.extend(coplanar_back);
-            back.extend(back_part);
+            front.append(&mut coplanar_front);
+            front.append(&mut front_part);
+            back.append(&mut coplanar_back);
+            back.append(&mut back_part);
         }
-
         let mut front = match &self.front {
-            | Some(node) => node.clip_polygons(front),
+            | Some(node) => node.clip_polygons(front, work)?,
             | None => front,
         };
-        let back = match &self.back {
-            | Some(node) => node.clip_polygons(back),
-            | None => Vec::new(),
-        };
-
-        front.extend(back);
-        front
+        if let Some(node) = &self.back {
+            front.extend(node.clip_polygons(back, work)?);
+        }
+        Ok(front)
     }
 
-    /// Removes the parts of this solid that lie inside `other`.
+    /// Removes the parts of this solid inside the other solid.
     fn clip_to(
         &mut self,
-        other: &Node,
-    ) {
-        let polygons = std::mem::take(&mut self.polygons);
-        self.polygons = other.clip_polygons(polygons);
-        if let Some(front) = &mut self.front {
-            front.clip_to(other);
+        other: &Self,
+        work: &mut Work,
+    ) -> Result<(), String> {
+        let mut pending = vec![self];
+        while let Some(node) = pending.pop() {
+            let polygons = std::mem::take(&mut node.polygons);
+            node.polygons = other.clip_polygons(polygons, work)?;
+            if let Some(back) = &mut node.back {
+                pending.push(back);
+            }
+            if let Some(front) = &mut node.front {
+                pending.push(front);
+            }
         }
-        if let Some(back) = &mut self.back {
-            back.clip_to(other);
-        }
+        Ok(())
     }
 
-    /// Every polygon held anywhere in the tree.
-    fn all_polygons(&self) -> Vec<Polygon> {
-        let mut out = self.polygons.clone();
-        if let Some(front) = &self.front {
-            out.extend(front.all_polygons());
+    /// Collects polygons in the tree in front-before-back order.
+    fn all_polygons(
+        &self,
+        work: &mut Work,
+    ) -> Result<Vec<Polygon>, String> {
+        let mut pending = vec![self];
+        let mut out = Vec::new();
+        let mut vertices = 0usize;
+        while let Some(node) = pending.pop() {
+            for poly in &node.polygons {
+                vertices = vertices.saturating_add(poly.vertices.len());
+                if vertices > MAX_OUTPUT_VERTICES {
+                    return Err("CSG polygon output exceeds the vertex budget".into());
+                }
+                work.split(poly)?;
+                out.push(poly.clone());
+            }
+            if let Some(back) = &node.back {
+                pending.push(back);
+            }
+            if let Some(front) = &node.front {
+                pending.push(front);
+            }
         }
-        if let Some(back) = &self.back {
-            out.extend(back.all_polygons());
-        }
-        out
+        Ok(out)
     }
 
-    /// Adds `polygons` to the tree.
+    /// Adds polygons to the existing partition.
     fn build(
         &mut self,
         polygons: Vec<Polygon>,
-    ) {
-        if polygons.is_empty() {
-            return;
-        }
-        if self.plane.is_none() {
-            self.plane = Some(polygons[0].plane.clone());
-        }
-        let Some(plane) = self.plane.clone() else {
-            return;
+        depth: usize,
+        work: &mut Work,
+    ) -> Result<(), String> {
+        let Some(first) = polygons.first() else {
+            return Ok(());
         };
-
-        let mut front: Vec<Polygon> = Vec::new();
-        let mut back: Vec<Polygon> = Vec::new();
-
+        if depth >= MAX_BSP_DEPTH {
+            return Err("CSG BSP depth exceeds the stack budget".into());
+        }
+        checkpoint()?;
+        let plane = self
+            .plane
+            .get_or_insert_with(|| first.plane.clone())
+            .clone();
+        let mut front = Vec::new();
+        let mut back = Vec::new();
+        let mut coplanar_front = Vec::new();
+        let mut coplanar_back = Vec::new();
         for poly in &polygons {
-            let mut coplanar_front = Vec::new();
-            let mut coplanar_back = Vec::new();
-            let mut front_part = Vec::new();
-            let mut back_part = Vec::new();
+            work.split(poly)?;
             plane.split(
                 poly,
                 &mut coplanar_front,
                 &mut coplanar_back,
-                &mut front_part,
-                &mut back_part,
+                &mut front,
+                &mut back,
             );
-            self.polygons.extend(coplanar_front);
-            self.polygons.extend(coplanar_back);
-            front.extend(front_part);
-            back.extend(back_part);
+            self.polygons.append(&mut coplanar_front);
+            self.polygons.append(&mut coplanar_back);
         }
-
         if !front.is_empty() {
-            if self.front.is_none() {
-                self.front = Some(Box::new(Node::default()));
-            }
-            if let Some(node) = &mut self.front {
-                node.build(front);
-            }
+            self.front
+                .get_or_insert_with(Box::default)
+                .build(front, depth + 1, work)?;
         }
         if !back.is_empty() {
-            if self.back.is_none() {
-                self.back = Some(Box::new(Node::default()));
-            }
-            if let Some(node) = &mut self.back {
-                node.build(back);
-            }
+            self.back
+                .get_or_insert_with(Box::default)
+                .build(back, depth + 1, work)?;
         }
+        Ok(())
     }
 }
 
@@ -352,55 +426,186 @@ impl Node {
 ///
 /// # Errors
 ///
-/// Returns `Err` when a mesh has no non-degenerate triangle, so that no solid
-/// can be built from it.
+/// Returns `Err` when an operand has no non-degenerate triangles or when the
+/// bounded Boolean calculation cannot resolve the input.
 pub fn boolean(
     a: &Mesh,
     b: &Mesh,
     op: BoolOp,
 ) -> Result<Mesh, String> {
+    let mut work = Work::new();
+    if a.triangles.len().saturating_add(b.triangles.len()) > MAX_OUTPUT_VERTICES {
+        return Err("CSG operands exceed the triangle budget".into());
+    }
     let polygons_a = mesh_to_polygons(a)?;
     let polygons_b = mesh_to_polygons(b)?;
 
-    let mut node_a = Node::from_polygons(polygons_a);
-    let mut node_b = Node::from_polygons(polygons_b);
+    let mut node_a = Node::from_polygons(polygons_a, &mut work)?;
+    let mut node_b = Node::from_polygons(polygons_b, &mut work)?;
 
     match op {
         | BoolOp::Union => {
-            node_a.clip_to(&node_b);
-            node_b.clip_to(&node_a);
+            node_a.clip_to(&node_b, &mut work)?;
+            node_b.clip_to(&node_a, &mut work)?;
             node_b.invert();
-            node_b.clip_to(&node_a);
+            node_b.clip_to(&node_a, &mut work)?;
             node_b.invert();
-            node_a.build(node_b.all_polygons());
+            node_a.build(node_b.all_polygons(&mut work)?, 0, &mut work)?;
         },
         | BoolOp::Difference => {
             node_a.invert();
-            node_a.clip_to(&node_b);
-            node_b.clip_to(&node_a);
+            node_a.clip_to(&node_b, &mut work)?;
+            node_b.clip_to(&node_a, &mut work)?;
             node_b.invert();
-            node_b.clip_to(&node_a);
+            node_b.clip_to(&node_a, &mut work)?;
             node_b.invert();
-            node_a.build(node_b.all_polygons());
+            node_a.build(node_b.all_polygons(&mut work)?, 0, &mut work)?;
             node_a.invert();
         },
         | BoolOp::Intersection => {
             node_a.invert();
-            node_b.clip_to(&node_a);
+            node_b.clip_to(&node_a, &mut work)?;
             node_b.invert();
-            node_a.clip_to(&node_b);
-            node_b.clip_to(&node_a);
-            node_a.build(node_b.all_polygons());
+            node_a.clip_to(&node_b, &mut work)?;
+            node_b.clip_to(&node_a, &mut work)?;
+            node_a.build(node_b.all_polygons(&mut work)?, 0, &mut work)?;
             node_a.invert();
         },
     }
 
-    let polygons = node_a.all_polygons();
+    let polygons = node_a.all_polygons(&mut work)?;
     if polygons.is_empty() {
         return Ok(Mesh::default());
     }
 
-    Ok(polygons_to_mesh(&polygons))
+    polygons_to_mesh(&polygons, &mut work)
+}
+
+/// Validates and conditions the native convex CSG specialization. Both
+/// operands share a unit-scale frame, while results use the original frame.
+pub(crate) fn boolean_checked(
+    a: &Mesh,
+    b: &Mesh,
+    operation: BoolOp,
+) -> Result<Mesh, String> {
+    let mut lower = [f64::INFINITY; 3];
+    let mut upper = [f64::NEG_INFINITY; 3];
+    for mesh in [a, b] {
+        if mesh.triangles.is_empty()
+            || mesh.vertices.len().max(mesh.triangles.len()) > MAX_CHECKED_ROWS
+        {
+            return Err("checked CSG needs two nonempty meshes within the row budget".into());
+        }
+        for vertex in &mesh.vertices {
+            for ((lo, hi), value) in lower.iter_mut().zip(&mut upper).zip(vertex) {
+                if !value.is_finite() {
+                    return Err("CSG vertices must be finite".into());
+                }
+                *lo = lo.min(*value);
+                *hi = hi.max(*value);
+            }
+        }
+        if !topology(mesh).oriented {
+            return Err("checked CSG requires closed consistently wound operands".into());
+        }
+    }
+    let extent = sub(upper, lower).into_iter().fold(0.0_f64, f64::max);
+    if !(extent.is_finite() && extent > 0.0) {
+        return Err("CSG shared coordinate extent is outside numerical range".into());
+    }
+    let normalize = |mesh: &Mesh| {
+        Mesh::new(
+            mesh.vertices
+                .iter()
+                .map(|vertex| sub(*vertex, lower).map(|value| value / extent))
+                .collect(),
+            mesh.triangles.clone(),
+        )
+    };
+    let a = normalize(a);
+    let b = normalize(b);
+    check_convex(&a)?;
+    check_convex(&b)?;
+    let mut result = boolean(&a, &b, operation)?;
+    if !result.triangles.is_empty() && !topology(&result).oriented {
+        return Err("CSG output is not a closed consistently wound surface".into());
+    }
+    for vertex in &mut result.vertices {
+        for (value, origin) in vertex.iter_mut().zip(lower) {
+            *value = value.mul_add(extent, origin);
+            if !value.is_finite() {
+                return Err("CSG coordinates are outside Float range".into());
+            }
+        }
+    }
+    Ok(result)
+}
+
+fn check_convex(mesh: &Mesh) -> Result<(), String> {
+    // Oriented topology has already verified that each edge has two faces.
+    // Index their adjacency to reject multiple coincident or disconnected shells.
+    let mut edge_faces = HashMap::new();
+    let mut neighbours = vec![[0; 3]; mesh.triangles.len()];
+    let mut used = vec![false; mesh.vertices.len()];
+    for (face, &[a, b, c]) in mesh.triangles.iter().enumerate() {
+        for (slot, (left, right)) in [(a, b), (b, c), (c, a)].into_iter().enumerate() {
+            used[left] = true;
+            if let Some((other, other_slot)) =
+                edge_faces.insert(edge_key(left, right), (face, slot))
+            {
+                neighbours[face][slot] = other;
+                neighbours[other][other_slot] = face;
+            }
+        }
+    }
+    let mut visited = vec![false; mesh.triangles.len()];
+    visited[0] = true;
+    let mut pending = vec![0];
+    while let Some(face) = pending.pop() {
+        for &other in &neighbours[face] {
+            if !visited[other] {
+                visited[other] = true;
+                pending.push(other);
+            }
+        }
+    }
+    if used.contains(&false) || visited.contains(&false) {
+        return Err("checked CSG requires a single connected shell without unused vertices".into());
+    }
+
+    let unique: HashSet<_> = mesh
+        .vertices
+        .iter()
+        .map(|vertex| {
+            vertex.map(|value| {
+                if value.abs() <= 0.0 {
+                    0
+                } else {
+                    value.to_bits()
+                }
+            })
+        })
+        .collect();
+    if unique.len() != mesh.vertices.len() || closed_signed_volume(mesh) <= EPS * EPS {
+        return Err(
+            "checked CSG requires distinct vertices and outward-wound nonzero volume".into(),
+        );
+    }
+    for &[a, b, c] in &mesh.triangles {
+        checkpoint()?;
+        let Some(plane) = Plane::from_points(mesh.vertices[a], mesh.vertices[b], mesh.vertices[c])
+        else {
+            return Err("checked CSG requires non-degenerate triangles in the shared frame".into());
+        };
+        if mesh
+            .vertices
+            .iter()
+            .any(|vertex| dot(plane.normal, *vertex) - plane.w > EPS * 4.0)
+        {
+            return Err("checked CSG requires convex operands".into());
+        }
+    }
+    Ok(())
 }
 
 /// Converts the triangles of `mesh` into polygons.
@@ -427,7 +632,10 @@ fn mesh_to_polygons(mesh: &Mesh) -> Result<Vec<Polygon>, String> {
 
 /// Fan-triangulates `polygons`, welds coincident vertices, and eliminates
 /// T-junctions so the resulting mesh is watertight and edge-manifold.
-fn polygons_to_mesh(polygons: &[Polygon]) -> Mesh {
+fn polygons_to_mesh(
+    polygons: &[Polygon],
+    work: &mut Work,
+) -> Result<Mesh, String> {
     let mut vertices: Vec<[f64; 3]> = Vec::new();
     let mut triangles: Vec<[usize; 3]> = Vec::new();
 
@@ -444,18 +652,26 @@ fn polygons_to_mesh(polygons: &[Polygon]) -> Mesh {
         }
     }
 
+    if vertices.len() > MAX_OUTPUT_VERTICES || triangles.len() > MAX_OUTPUT_VERTICES {
+        return Err("CSG output exceeds the vertex or triangle budget".into());
+    }
+    // A poor weld grid can compare every pair. Bound the worst case before welding.
+    work.charge(vertices.len().saturating_mul(vertices.len()) / 2)?;
     let (welded, _) = weld(&Mesh { vertices, triangles }, EPS);
-    eliminate_t_junctions(welded)
+    eliminate_t_junctions(welded, work)
 }
 
 /// Eliminates T-junctions by finding every vertex lying strictly in the
 /// interior of any triangle edge and retriangulating affected triangles in a
 /// conforming manner that preserves outward winding.
-fn eliminate_t_junctions(mut mesh: Mesh) -> Mesh {
+fn eliminate_t_junctions(
+    mut mesh: Mesh,
+    work: &mut Work,
+) -> Result<Mesh, String> {
     const MAX_PASSES: usize = 8;
 
     if mesh.triangles.is_empty() || mesh.vertices.len() < 4 {
-        return mesh;
+        return Ok(mesh);
     }
 
     let mut min_pt = [f64::INFINITY; 3];
@@ -485,6 +701,13 @@ fn eliminate_t_junctions(mut mesh: Mesh) -> Mesh {
     }
 
     for _ in 0..MAX_PASSES {
+        checkpoint()?;
+        work.charge(
+            mesh.triangles
+                .len()
+                .saturating_mul(mesh.vertices.len())
+                .saturating_mul(3),
+        )?;
         let mut edge_cache: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
         let mut new_triangles: Vec<[usize; 3]> = Vec::with_capacity(mesh.triangles.len());
         let mut any_split = false;
@@ -543,6 +766,15 @@ fn eliminate_t_junctions(mut mesh: Mesh) -> Mesh {
             e2.extend_from_slice(&s_ca);
             e2.push(a);
 
+            if new_triangles
+                .len()
+                .saturating_add(e0.len())
+                .saturating_add(e1.len())
+                .saturating_add(e2.len())
+                > MAX_OUTPUT_VERTICES
+            {
+                return Err("CSG conformance exceeds the triangle budget".into());
+            }
             triangulate_subdivided_triangle(&e0, &e1, &e2, &mesh.vertices, &mut new_triangles);
         }
 
@@ -552,7 +784,7 @@ fn eliminate_t_junctions(mut mesh: Mesh) -> Mesh {
         }
     }
 
-    mesh
+    Ok(mesh)
 }
 
 /// Returns all vertex indices strictly in the interior of directed edge `u -> v`,
@@ -595,8 +827,10 @@ fn edge_interior_splits(
         let cz0 = (min_z / cell_size).floor() as i64;
         let cz1 = (max_z / cell_size).floor() as i64;
 
-        let cell_count =
-            i128::from(cx1 - cx0 + 1) * i128::from(cy1 - cy0 + 1) * i128::from(cz1 - cz0 + 1);
+        let extent = |lo, hi| i128::from(hi) - i128::from(lo) + 1;
+        let cell_count = extent(cx0, cx1)
+            .saturating_mul(extent(cy0, cy1))
+            .saturating_mul(extent(cz0, cz1));
 
         let mut hits: Vec<(f64, usize)> = Vec::new();
         let mut check_vertex = |w: usize| {
@@ -737,6 +971,7 @@ fn triangulate_subdivided_triangle(
 mod tests {
     use super::BoolOp;
     use super::boolean;
+    use super::boolean_checked;
     use crate::kernels::cad::repair::is_closed;
     use crate::kernels::cad::repair::is_manifold;
     use crate::kernels::cad::repair::signed_volume;
@@ -747,6 +982,88 @@ mod tests {
             | Ok(value) => value,
             | Err(message) => panic!("unexpected error: {message}"),
         }
+    }
+
+    #[test]
+    fn adversarial_bsp_planes_stop_on_a_small_stack() {
+        let rejection = std::thread::Builder::new()
+            .stack_size(128 * 1024)
+            .spawn(|| {
+                let vertices: Vec<_> = (0..128)
+                    .flat_map(|index| {
+                        let z = f64::from(index);
+                        [[0.0, 0.0, z], [1.0, 0.0, z], [0.0, 1.0, z]]
+                    })
+                    .collect();
+                let triangles = (0..128)
+                    .map(|index| [3 * index, 3 * index + 1, 3 * index + 2])
+                    .collect();
+                boolean(
+                    &Mesh::new(vertices, triangles),
+                    &cube([0.0; 3], 1.0),
+                    BoolOp::Union,
+                )
+            })
+            .unwrap()
+            .join()
+            .unwrap();
+        let message = rejection.unwrap_err();
+        assert!(message.contains("depth"), "{message}");
+    }
+
+    #[test]
+    fn checked_convex_boolean_preserves_scale_and_translation() {
+        for (origin, size) in [(1e12, 4.0_f64), (0.0, 1e-9_f64)] {
+            let a = cube([origin; 3], size);
+            let b = cube([origin + size / 2.0, origin, origin], size);
+            for (op, volume_fraction) in [
+                (BoolOp::Union, 1.5),
+                (BoolOp::Intersection, 0.5),
+                (BoolOp::Difference, 0.5),
+            ] {
+                let result = expect_ok(boolean_checked(&a, &b, op));
+                let volume = signed_volume(&result);
+                assert!(
+                    (volume / size.powi(3) - volume_fraction).abs() < 1e-12,
+                    "{origin}, {size}, {op:?}: {volume}"
+                );
+            }
+            let disjoint = cube([origin + size * 2.0, origin, origin], size);
+            assert_eq!(
+                expect_ok(boolean_checked(&a, &disjoint, BoolOp::Intersection)).triangles,
+                [] as [[usize; 3]; 0],
+            );
+        }
+    }
+
+    #[test]
+    fn checked_convex_boolean_rejects_invalid_shells() {
+        let outward = cube([0.0; 3], 1.0);
+        let mut open = outward.clone();
+        open.triangles.pop();
+        assert!(boolean_checked(&outward, &open, BoolOp::Union).is_err());
+        let mut inward = outward.clone();
+        for tri in &mut inward.triangles {
+            tri.swap(0, 1);
+        }
+        assert!(boolean_checked(&outward, &inward, BoolOp::Union).is_err());
+        let mut concave = outward.clone();
+        concave.vertices[0] = [0.25; 3];
+        assert!(
+            boolean_checked(&outward, &concave, BoolOp::Union)
+                .unwrap_err()
+                .contains("convex")
+        );
+        let mut disconnected = outward.clone();
+        disconnected.vertices.extend(cube([3.0; 3], 1.0).vertices);
+        disconnected
+            .triangles
+            .extend(outward.triangles.iter().map(|tri| tri.map(|i| i + 8)));
+        assert!(
+            boolean_checked(&outward, &disconnected, BoolOp::Union)
+                .unwrap_err()
+                .contains("connected")
+        );
     }
 
     fn cube(

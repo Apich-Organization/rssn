@@ -607,6 +607,108 @@ fn native_scalar_preflight(
 ) -> Result<(), OpError> {
     native_discrete_preflight(name, args)?;
     match name {
+        | "num_complex_surface_hyperelliptic" | "num_complex_surface_superelliptic" => {
+            let shape = native_tensor_shape(&args[0])?;
+            if !matches!(shape, [roots] if *roots <= 256) {
+                return Err(OpError::BudgetExceeded);
+            }
+            if name == "num_complex_surface_superelliptic" && !(2..=128).contains(&native_count(args,1)?) {
+                return Err(OpError::Domain("superelliptic covering degree needs 2 through 128".into()));
+            }
+        },
+        | "num_complex_surface_monodromy_checked" => {
+            let polynomial = native_tensor_shape(&args[0])?;
+            let path = native_tensor_shape(&args[1])?;
+            let work = native_count(args,2)?;
+            if !matches!(polynomial, [rows,columns] if (2..=17).contains(rows) && (1..=64).contains(columns))
+                || !matches!(path, [points] if (2..=1024).contains(points))
+                || !(1..=4096).contains(&work)
+            {
+                return Err(OpError::BudgetExceeded);
+            }
+            crate::cancellation::checkpoint()?;
+        },
+        | "num_contour_deform_checked" => contour_deformation_preflight(args)?,
+        | "num_conformal_bergman_polynomial_basis" => {
+            let shape = native_tensor_shape(&args[0])?;
+            native_budget(shape, 1_048_576)?;
+            crate::cancellation::checkpoint()?;
+        },
+        | "num_conformal_szego_prepare_sampled" => {
+            let points = native_tensor_shape(&args[0])?;
+            let velocity = native_tensor_shape(&args[1])?;
+            if !matches!(points, [n] if (16..=192).contains(n)) || points != velocity {
+                return Err(OpError::Domain("Szegő preparation needs two matching rank-one tensors with 16 to 192 samples".into()));
+            }
+            crate::cancellation::checkpoint()?;
+        },
+        | "num_conformal_szego_evaluate" | "num_conformal_szego_evaluate_map" | "num_conformal_szego_evaluate_bergman" => {
+            const FIELDS: &[&str] = &["points", "weights", "center"];
+            let points = native_tensor_shape(model_field(&args[0], "points", FIELDS)?)?;
+            let weights = native_tensor_shape(model_field(&args[0], "weights", FIELDS)?)?;
+            if !matches!(points, [n] if (16..=192).contains(n)) || points != weights {
+                return Err(OpError::Domain("prepared Szegő quadrature needs matching rank-one tensors with 16 to 192 entries".into()));
+            }
+            crate::cancellation::checkpoint()?;
+        },
+        | "num_conformal_schwarz_christoffel_solve" => {
+            let shape = native_tensor_shape(&args[0])?;
+            let [vertices] = shape else {
+                return Err(OpError::Domain("Schwarz–Christoffel polygon needs rank one".into()));
+            };
+            let iterations = native_count(args, 1)?;
+            if *vertices > 24 || iterations > 128 {
+                return Err(OpError::BudgetExceeded);
+            }
+            crate::cancellation::checkpoint()?;
+        },
+        | "num_conformal_schwarz_christoffel_evaluate" => {
+            let panels = native_count(args, 3)?;
+            let Value::Record(map) = &args[0] else {
+                return Err(OpError::Domain("expected a prepared Schwarz–Christoffel map".into()));
+            };
+            let Some((_, prevertices)) = map.fields.iter().find(|(name, _)| name == "prevertices") else {
+                return Err(OpError::Domain("Schwarz–Christoffel map needs prevertices".into()));
+            };
+            let Some((_, angles)) = map.fields.iter().find(|(name, _)| name == "interior_angles_pi") else {
+                return Err(OpError::Domain("Schwarz–Christoffel map needs interior angles".into()));
+            };
+            let prevertices = native_tensor_shape(prevertices)?;
+            let angles = native_tensor_shape(angles)?;
+            if !matches!(prevertices, [_]) || prevertices != angles {
+                return Err(OpError::Domain("Schwarz–Christoffel vectors must have the same length".into()));
+            }
+            if panels > 4096 || prevertices.iter().any(|&count| count > 256) {
+                return Err(OpError::BudgetExceeded);
+            }
+            native_budget(&[prevertices[0].max(1), panels], 262_144)?;
+            crate::cancellation::checkpoint()?;
+        },
+        | "num_univalent_bieberbach" | "num_univalent_hankel" | "num_univalent_grunsky_matrix" => {
+            native_tensor_shape(&args[0])?;
+            let (index, limit) = match name {
+                | "num_univalent_hankel" => (Some(1), 256),
+                | "num_univalent_grunsky_matrix" => (Some(1), 92),
+                | _ => (None, 0),
+            };
+            if let Some(index) = index
+                && native_count(args, index)? > limit
+            {
+                return Err(OpError::BudgetExceeded);
+            }
+            crate::cancellation::checkpoint()?;
+        },
+        | "num_univalent_grunsky_check" => {
+            let shape = native_tensor_shape(&args[0])?;
+            if !matches!(shape, [rows, columns] if rows == columns) {
+                return Err(OpError::Domain("Grunsky matrix needs a square shape".into()));
+            }
+            let test_shape = native_tensor_shape(&args[1])?;
+            if shape.iter().chain(test_shape).any(|&extent| extent > 1024) {
+                return Err(OpError::BudgetExceeded);
+            }
+            crate::cancellation::checkpoint()?;
+        },
         | "num_number_exact_bigint_crt_garner"
         | "num_number_ext_batch_mod_pow"
         | "num_number_ext_crt_bigint" => {

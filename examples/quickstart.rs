@@ -1,6 +1,6 @@
 //! A tour of the compute API: one entry point, two target phases.
 //!
-//! Run with `cargo run --release --example quickstart`.
+//! Run with `bazel run //:example -- --profile release quickstart`.
 
 use rssn::api::*;
 use rssn::graph::Facts;

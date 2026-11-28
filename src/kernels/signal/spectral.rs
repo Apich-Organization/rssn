@@ -145,21 +145,34 @@ pub(super) fn zoom_fft(
     let half_step = step * 0.5;
     let kernel = zoom_kernel(samples.len(), bins, size, half_step)?;
     let mut input = complex_zeros(size)?;
-    for (index, (value, &sample)) in input.iter_mut().zip(samples).enumerate() {
-        let cycles = product_cycles(start, index as f64) + chirp_cycles(half_step, index);
-        *value = sample * Complex64::from_polar(1.0, -TAU * cycles);
+    if start == 0.0 && !kernel.chirps.is_empty() {
+        for ((value, sample), chirp) in input.iter_mut().zip(samples).zip(&kernel.chirps) {
+            *value = sample * chirp;
+        }
+    } else {
+        for (index, (value, &sample)) in input.iter_mut().zip(samples).enumerate() {
+            let cycles = product_cycles(start, index as f64) + chirp_cycles(half_step, index);
+            *value = sample * Complex64::from_polar(1.0, -TAU * cycles);
+        }
     }
     let mut scratch = fft_scratch_for(kernel.scratch_len);
     scratch.resize(kernel.scratch_len, Complex64::ZERO);
     kernel
         .forward
         .process_with_scratch(&mut input, &mut scratch);
-    let reciprocal_size = 1.0 / size as f64;
-    for (data, response) in input.iter_mut().zip(&kernel.response) {
-        *data *= response * reciprocal_size;
+    let spectrum = input.iter_mut().zip(&kernel.response);
+    if size <= ZOOM_CACHE_LIMIT {
+        for (data, response) in spectrum {
+            *data *= response;
+        }
+    } else {
+        let reciprocal_size = 1.0 / size as f64;
+        for (data, response) in spectrum {
+            *data *= response * reciprocal_size;
+        }
     }
     let inverse = Arc::clone(&kernel.inverse);
-    drop(kernel);
+    let cached_phases = (!kernel.chirps.is_empty()).then_some(kernel);
     inverse.process_with_scratch(&mut input, &mut scratch);
     drop(scratch);
     input
@@ -167,7 +180,12 @@ pub(super) fn zoom_fft(
         .take(bins)
         .enumerate()
         .map(|(bin, value)| {
-            let output = value * Complex64::from_polar(1.0, -TAU * chirp_cycles(half_step, bin));
+            let phase = cached_phases
+                .as_ref()
+                .and_then(|plan| plan.chirps.get(bin))
+                .copied()
+                .unwrap_or_else(|| chirp(half_step, bin));
+            let output = value * phase;
             if output.re.is_finite() && output.im.is_finite() {
                 Ok(output)
             } else {
@@ -176,6 +194,10 @@ pub(super) fn zoom_fft(
         })
         .collect()
 }
+
+const ZOOM_CACHE_LIMIT: usize = 65_536;
+// Eight cached tables can retain at most four MiB of modulation factors.
+const ZOOM_CHIRP_LIMIT: usize = 32_768;
 
 #[derive(PartialEq, Eq)]
 struct ZoomKey {
@@ -186,6 +208,7 @@ struct ZoomKey {
 
 struct ZoomKernel {
     response: Vec<Complex64>,
+    chirps: Vec<Complex64>,
     forward: Arc<dyn Fft<f64>>,
     inverse: Arc<dyn Fft<f64>>,
     scratch_len: usize,
@@ -204,11 +227,25 @@ fn zoom_kernel(
     static KERNELS: PlanCache<ZoomKey, ZoomKernel> = PlanCache::new(8);
     let build = || {
         let mut response = complex_zeros(size)?;
+        let chirp_len = bins.max(sample_count);
+        let mut chirps = Vec::new();
+        if size <= ZOOM_CACHE_LIMIT
+            && chirp_len <= ZOOM_CHIRP_LIMIT
+            && chirps.try_reserve_exact(chirp_len).is_ok()
+        {
+            chirps.extend((0..chirp_len).map(|index| chirp(half_step, index)));
+        }
+        let response_chirp = |index| {
+            chirps.get(index).map_or_else(
+                || Complex64::from_polar(1.0, TAU * chirp_cycles(half_step, index)),
+                Complex64::conj,
+            )
+        };
         for (bin, value) in response.iter_mut().take(bins).enumerate() {
-            *value = Complex64::from_polar(1.0, TAU * chirp_cycles(half_step, bin));
+            *value = response_chirp(bin);
         }
         for (offset, value) in response.iter_mut().rev().take(sample_count - 1).enumerate() {
-            *value = Complex64::from_polar(1.0, TAU * chirp_cycles(half_step, offset + 1));
+            *value = response_chirp(offset + 1);
         }
 
         let forward = fft_plan(size, FftDirection::Forward);
@@ -219,14 +256,21 @@ fn zoom_kernel(
         let mut scratch = fft_scratch_for(scratch_len);
         scratch.resize(scratch_len, Complex64::ZERO);
         forward.process_with_scratch(&mut response, &mut scratch);
+        if size <= ZOOM_CACHE_LIMIT {
+            let reciprocal_size = 1.0 / size as f64;
+            for value in &mut response {
+                *value *= reciprocal_size;
+            }
+        }
         Ok(Arc::new(ZoomKernel {
             response,
+            chirps,
             forward,
             inverse,
             scratch_len,
         }))
     };
-    if size <= 65_536 {
+    if size <= ZOOM_CACHE_LIMIT {
         KERNELS.try_get_or_insert_with(
             ZoomKey {
                 sample_count,
@@ -238,6 +282,17 @@ fn zoom_kernel(
     } else {
         build()
     }
+}
+
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "the reduced phase is finite and bounded"
+)]
+fn chirp(
+    half_step: f64,
+    index: usize,
+) -> Complex64 {
+    Complex64::from_polar(1.0, -TAU * chirp_cycles(half_step, index))
 }
 
 fn chirp_cycles(

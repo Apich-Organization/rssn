@@ -1,6 +1,6 @@
 //! Prints the typed scenario catalog (`rssn::sim::schema`) as JSON.
 //!
-//! `cargo run --profile tools --example scenario_catalog -- --bless` re-runs
+//! `bazel run //:example -- --profile tools scenario_catalog -- --bless` re-runs
 //! every scenario on its defaults or example and rewrites
 //! `src/sim/scenario_results.json`, the witnessed result shapes.
 

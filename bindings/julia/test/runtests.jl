@@ -453,6 +453,13 @@ if get(RSSN.json_decode(manifest_json_string())["features"], "npy", false)
                 end
             end
             @test_throws RssnError decode_npy(session, UInt8[0x93, 0x4e])
+
+            extent = UInt(typemax(Int)) + 1
+            header = "{'descr': '<f8', 'fortran_order': False, 'shape': ($extent, 0), }"
+            header *= " " ^ mod(-11 - ncodeunits(header), 64) * "\n"
+            oversized = vcat(UInt8[0x93, 0x4e, 0x55, 0x4d, 0x50, 0x59,
+                                   0x01, 0x00, ncodeunits(header), 0x00], codeunits(header))
+            @test_throws ArgumentError decode_npy(session, oversized)
         finally
             close(session)
         end

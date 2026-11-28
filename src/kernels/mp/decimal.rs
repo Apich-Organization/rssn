@@ -12,16 +12,21 @@
 use num_bigint::BigInt;
 use num_bigint::BigUint;
 use num_integer::Integer;
-use num_traits::Signed;
+use num_traits::One;
 use num_traits::Zero;
 use std::cmp::Ordering;
 
 use super::ball::Ball;
+use super::real::MAX_EXP;
 use super::real::Real;
 use super::real::Round;
 
 /// Largest number of significant decimal digits an operator accepts.
 pub const MAX_DIGITS: usize = 10_000;
+
+/// The input limits cover fixed-point formatting of the entire dyadic range.
+const MAX_DECIMAL_POWER: u64 = 100_000;
+pub(crate) const MAX_DECIMAL_TEXT: usize = 100_000;
 
 /// Bits that hold `digits` decimal digits, with guard bits.
 #[must_use]
@@ -47,68 +52,37 @@ fn increment_magnitude(
     }
 }
 
-/// Rounds `numerator / denominator` in `mode` for a positive denominator.
-fn round_ratio(
-    numerator: &BigInt,
-    denominator: &BigUint,
-    negative: bool,
-    mode: Round,
-) -> BigInt {
-    if denominator.is_zero() {
-        return BigInt::zero();
-    }
-    let magnitude = numerator.magnitude();
-    let (quotient, rest) = magnitude.div_rem(denominator);
-    let twice = &rest << 1_u32;
-    let up = increment_magnitude(
-        mode,
-        negative,
-        !rest.is_zero(),
-        twice.cmp(denominator),
-        quotient.bit(0),
-    );
-    let quotient = if up {
-        quotient + BigUint::from(1_u32)
-    } else {
-        quotient
-    };
-    BigInt::from_biguint(
-        if negative {
-            num_bigint::Sign::Minus
-        } else {
-            num_bigint::Sign::Plus
-        },
-        quotient,
-    )
+pub(super) fn power_of_five(power: u64) -> Result<BigUint, String> {
+    let power = u32::try_from(power).map_err(|_| "exponent out of range".to_string())?;
+    Ok(BigUint::from(5_u32).pow(power))
 }
 
-/// `round(|x| * 10^k)` as an integer, ties to even.
-fn round_scaled(
+/// Exact nonnegative ratio for `|x| * 10^k`.
+fn scaled_ratio(
     x: &Real,
     k: i64,
-    mode: Round,
-) -> Result<BigInt, String> {
-    let mantissa = x.mantissa().abs();
-    let mut numerator = mantissa;
-    let mut denominator = BigUint::from(1_u32);
+) -> Result<(BigUint, BigUint), String> {
+    let mut numerator = x.mantissa().magnitude().clone();
+    let mut denominator = BigUint::one();
+    let five = power_of_five(k.unsigned_abs())?;
     if k >= 0 {
-        numerator *= BigInt::from(10_u32).pow(u32::try_from(k).unwrap_or(0));
+        numerator *= five;
     } else {
-        denominator = BigUint::from(10_u32).pow(u32::try_from(-k).unwrap_or(0));
+        denominator = five;
     }
-    let exponent = x.exponent();
+    let exponent = x.exponent() + k;
     if exponent >= 0 {
-        numerator <<= usize::try_from(exponent).unwrap_or(0);
+        numerator <<= exponent.unsigned_abs();
     } else {
-        denominator <<= usize::try_from(-exponent).unwrap_or(0);
+        denominator <<= exponent.unsigned_abs();
     }
-    Ok(round_ratio(&numerator, &denominator, x.sign() < 0, mode))
+    Ok((numerator, denominator))
 }
 
 /// `x` as decimal text with `digits` significant digits, correctly rounded.
 ///
 /// # Errors
-/// Fails for fewer than one digit or when an exponent leaves the range.
+/// Fails when an exponent leaves the range.
 pub fn to_decimal(
     x: &Real,
     digits: usize,
@@ -119,7 +93,7 @@ pub fn to_decimal(
 /// `x` as decimal text with `digits` significant digits, rounded in `mode`.
 ///
 /// # Errors
-/// Fails for fewer than one digit or when an exponent leaves the range.
+/// Fails when an exponent leaves the range.
 pub fn to_decimal_in(
     x: &Real,
     digits: usize,
@@ -130,31 +104,54 @@ pub fn to_decimal_in(
         return Ok("0".to_string());
     }
     let negative = x.sign() < 0;
-    let magnitude = x.abs();
-    let top = magnitude.floor_log2().unwrap_or(0);
-    // A first estimate of the number of integer digits, corrected below.
-    let mut place = (top as f64 * std::f64::consts::LOG10_2).floor() as i64 + 1;
+    let mut place = estimated_exponent(x).unwrap_or(0) + 1;
     let wanted = i64::try_from(digits).unwrap_or(i64::MAX);
-    let mut text = String::new();
-    for _ in 0..4 {
-        let scaled = round_scaled(x, wanted - place, mode)?;
-        let rendered = scaled.magnitude().to_string();
-        let length = i64::try_from(rendered.len()).unwrap_or(i64::MAX);
-        if length > wanted {
-            place = place.saturating_add(length - wanted);
+    let (mut numerator, mut denominator) = scaled_ratio(x, wanted - place)?;
+    loop {
+        let (quotient, rest) = numerator.div_rem(&denominator);
+        if quotient.is_zero() {
+            numerator *= 10_u32;
+            place -= 1;
             continue;
         }
-        if length < wanted {
-            place = place.saturating_sub(wanted - length);
+        let mut text = quotient.to_str_radix(10);
+        let length = i64::try_from(text.len()).unwrap_or(i64::MAX);
+        if length != wanted {
+            // Correct the initial exponent estimate without recomputing 10^k.
+            let difference = length - wanted;
+            let factor = BigUint::from(10_u32).pow(
+                u32::try_from(difference.unsigned_abs())
+                    .map_err(|_| "exponent out of range".to_string())?,
+            );
+            if difference > 0 {
+                denominator *= factor;
+            } else {
+                numerator *= factor;
+            }
+            place += difference;
             continue;
         }
-        text = render(&rendered, place);
-        break;
+        if increment_magnitude(
+            mode,
+            negative,
+            !rest.is_zero(),
+            (&rest << 1_u32).cmp(&denominator),
+            quotient.bit(0),
+        ) {
+            text = (quotient + 1_u32).to_str_radix(10);
+            if text.len() > digits {
+                // Rounding across a decade produces exactly 10^digits.
+                text.truncate(digits);
+                place += 1;
+            }
+        }
+        return Ok(format_signed(render(&text, place), negative));
     }
-    if text.is_empty() {
-        return Err("could not place the decimal point".to_string());
-    }
-    Ok(format_signed(text, negative))
+}
+
+fn estimated_exponent(x: &Real) -> Option<i64> {
+    let top = x.floor_log2()?;
+    Some((top as f64 * std::f64::consts::LOG10_2).floor() as i64)
 }
 
 fn format_signed(
@@ -210,28 +207,106 @@ pub fn from_decimal(
     text: &str,
     prec: u32,
 ) -> Result<Real, String> {
-    let (signed, power) = decimal_parts(text)?;
-    // value * 10^power = value * 5^power * 2^power
-    if power >= 0 {
-        let five = BigInt::from(5_u32).pow(u32::try_from(power).unwrap_or(0));
-        Real::rounded(signed * five, power, prec, Round::NearestEven)
-    } else {
-        let five = BigInt::from(5_u32).pow(u32::try_from(-power).unwrap_or(0));
-        let numerator = Real::rounded(signed, power, prec.saturating_add(32), Round::NearestEven)?;
-        let denominator = Real::from_bigint(five, prec.saturating_add(32), Round::NearestEven)?;
-        numerator.div(&denominator, prec, Round::NearestEven)
-    }
+    from_decimal_in(text, prec, Round::NearestEven)
 }
 
-fn decimal_parts(text: &str) -> Result<(BigInt, i64), String> {
-    let (negative, digits, power) = decimal_digits(text)?;
-    let value = BigInt::parse_bytes(digits.as_bytes(), 10)
-        .ok_or_else(|| "malformed mantissa".to_string())?;
-    Ok((if negative { -value } else { value }, power))
+/// Rounds an exact decimal to binary precision in the requested mode.
+///
+/// # Errors
+/// Fails on malformed text or when an input or result exceeds the limits.
+pub fn from_decimal_in(
+    text: &str,
+    prec: u32,
+    mode: Round,
+) -> Result<Real, String> {
+    DecimalRatio::parse(text)?.rounded(prec, mode)
+}
+
+/// An exact decimal as a signed integer, a positive denominator and a
+/// power of two. Keeping the common binary scale avoids rounding operands.
+struct DecimalRatio {
+    mantissa: BigInt,
+    denominator: BigUint,
+    exponent: i64,
+}
+
+impl DecimalRatio {
+    fn parse(text: &str) -> Result<Self, String> {
+        let (negative, digits, exponent) = decimal_digits(text)?;
+        let digits = digits.trim_start_matches('0');
+        if digits.is_empty() {
+            return Ok(Self {
+                mantissa: BigInt::zero(),
+                denominator: BigUint::one(),
+                exponent: 0,
+            });
+        }
+        let significant = digits.trim_end_matches('0');
+        let trailing = i64::try_from(digits.len() - significant.len())
+            .map_err(|_| "exponent out of range".to_string())?;
+        let exponent = exponent + trailing;
+        let mut mantissa = BigInt::parse_bytes(significant.as_bytes(), 10)
+            .ok_or_else(|| "malformed mantissa".to_string())?;
+        if negative {
+            mantissa = -mantissa;
+        }
+        let five = power_of_five(exponent.unsigned_abs())?;
+        let denominator = if exponent >= 0 {
+            mantissa *= BigInt::from(five);
+            BigUint::one()
+        } else {
+            five
+        };
+        Ok(Self {
+            mantissa,
+            denominator,
+            exponent,
+        })
+    }
+
+    fn rounded(
+        &self,
+        prec: u32,
+        mode: Round,
+    ) -> Result<Real, String> {
+        if self.denominator.is_one() {
+            return Real::rounded(self.mantissa.clone(), self.exponent, prec, mode);
+        }
+        Real::rounded_ratio(&self.mantissa, &self.denominator, self.exponent, prec, mode)
+    }
+
+    fn distance(
+        &self,
+        value: &Real,
+        prec: u32,
+    ) -> Result<Real, String> {
+        let exponent = self.exponent.min(value.exponent());
+        let left = &self.mantissa << (self.exponent - exponent).unsigned_abs();
+        let right = (value.mantissa() << (value.exponent() - exponent).unsigned_abs())
+            * BigInt::from(self.denominator.clone());
+        let distance = BigInt::from((left - right).magnitude().clone());
+        let round = |bits| {
+            Real::rounded_ratio(
+                &distance,
+                &self.denominator,
+                exponent,
+                bits,
+                Round::TowardPositive,
+            )
+        };
+        // The distance from a representable nearest midpoint is at most
+        // one ulp there. At the exponent floor, a coarser radius preserves it.
+        round(prec)
+            .or_else(|_| round(1))
+            .or_else(|_| Real::rounded(1.into(), -MAX_EXP, 1, Round::TowardPositive))
+    }
 }
 
 /// Parses sign, mantissa digits and their decimal power without rounding.
 fn decimal_digits(text: &str) -> Result<(bool, String, i64), String> {
+    if text.len() > MAX_DECIMAL_TEXT {
+        return Err("decimal text is too long".to_string());
+    }
     let trimmed = text.trim();
     if trimmed.is_empty() {
         return Err("empty number".to_string());
@@ -244,7 +319,7 @@ fn decimal_digits(text: &str) -> Result<(bool, String, i64), String> {
         | Some(at) => (&body[..at], Some(&body[at + 1..])),
         | None => (body, None),
     };
-    let mut digits = String::new();
+    let mut digits = String::with_capacity(mantissa_text.len());
     let mut fraction = 0_i64;
     let mut seen_point = false;
     for character in mantissa_text.chars() {
@@ -275,7 +350,7 @@ fn decimal_digits(text: &str) -> Result<(bool, String, i64), String> {
     let power = exponent
         .checked_sub(fraction)
         .ok_or_else(|| "exponent out of range".to_string())?;
-    if power.unsigned_abs() > u64::try_from(MAX_DIGITS).unwrap_or(u64::MAX) * 4 {
+    if power.unsigned_abs() > MAX_DECIMAL_POWER {
         return Err("exponent out of range".to_string());
     }
     Ok((negative, digits, power))
@@ -288,6 +363,10 @@ pub(super) fn round_decimal(
     mode: Round,
 ) -> Result<String, String> {
     let (negative, source, power) = decimal_digits(text)?;
+    // The decimal text-only rounding route has a smaller legacy limit.
+    if power.unsigned_abs() > 4 * MAX_DIGITS as u64 {
+        return Err("exponent out of range".to_string());
+    }
     let significant = source.trim_start_matches('0');
     if significant.is_empty() {
         return Ok("0".to_string());
@@ -329,53 +408,18 @@ pub(super) fn round_decimal(
     Ok(format_signed(render(&rounded, place), negative))
 }
 
-pub(super) fn enclose_decimal(
+/// Encloses an exact decimal in a dyadic ball whose midpoint has `prec` bits.
+///
+/// # Errors
+/// Fails on malformed text or when an input or result exceeds the limits.
+pub fn enclose_decimal(
     text: &str,
     prec: u32,
 ) -> Result<Ball, String> {
-    let (signed, power) = decimal_parts(text)?;
-    if signed.is_zero() {
-        return Ok(Ball::point(Real::zero(prec)));
-    }
-    let work = prec.saturating_add(32);
-    let five = BigInt::from(5_u32).pow(u32::try_from(power.unsigned_abs()).unwrap_or(0));
-    let (lower, upper) = if power >= 0 {
-        let mantissa = signed * five;
-        (
-            Real::rounded(mantissa.clone(), power, work, Round::TowardNegative)?,
-            Real::rounded(mantissa, power, work, Round::TowardPositive)?,
-        )
-    } else {
-        let negative = signed.is_negative();
-        let numerator_low = Real::rounded(signed.clone(), power, work, Round::TowardNegative)?;
-        let numerator_high = Real::rounded(signed, power, work, Round::TowardPositive)?;
-        let denominator_low = Real::from_bigint(five.clone(), work, Round::TowardNegative)?;
-        let denominator_high = Real::from_bigint(five, work, Round::TowardPositive)?;
-        // Both operands have equal mantissa widths, so the directed division
-        // never has to truncate the numerator before the integer quotient.
-        // A negative numerator reverses which denominator supplies each bound.
-        let (lower_den, upper_den) = if negative {
-            (&denominator_low, &denominator_high)
-        } else {
-            (&denominator_high, &denominator_low)
-        };
-        (
-            numerator_low.div(lower_den, work, Round::TowardNegative)?,
-            numerator_high.div(upper_den, work, Round::TowardPositive)?,
-        )
-    };
-    let midpoint = lower
-        .add(&upper, work, Round::NearestEven)?
-        .scale_pow2(-1)?
-        .with_precision(prec, Round::NearestEven)?;
-    let below = midpoint.sub(&lower, prec, Round::AwayFromZero)?.abs();
-    let above = upper.sub(&midpoint, prec, Round::AwayFromZero)?.abs();
-    let radius = if below.cmp_value(&above) >= 0 {
-        below
-    } else {
-        above
-    };
-    Ball::new(midpoint, radius)
+    let decimal = DecimalRatio::parse(text)?;
+    let mid = decimal.rounded(prec, Round::NearestEven)?;
+    let rad = decimal.distance(&mid, prec)?;
+    Ball::new(mid, rad)
 }
 
 /// The digits `ball` pins down, or an error when its radius straddles a
@@ -387,6 +431,9 @@ pub fn ball_to_decimal(
     ball: &Ball,
     digits: usize,
 ) -> Result<String, String> {
+    if ball.rad.is_zero() {
+        return to_decimal(&ball.mid, digits);
+    }
     let working = bits_for_digits(digits).saturating_add(64);
     let (low, high) = ball.endpoints(working)?;
     let lower = to_decimal(&low, digits)?;
@@ -402,22 +449,51 @@ pub fn ball_to_decimal(
 /// The decimal exponent of `x`, `floor(log10(|x|))`, or `None` for zero.
 #[must_use]
 pub fn decimal_exponent(x: &Real) -> Option<i64> {
-    let top = x.floor_log2()?;
-    let estimate = (top as f64 * std::f64::consts::LOG10_2).floor() as i64;
-    let scaled = round_scaled(&x.abs(), -estimate, Round::NearestEven).ok()?;
-    let length = i64::try_from(scaled.magnitude().to_string().len()).unwrap_or(1);
-    Some(estimate.saturating_add(length).saturating_sub(1))
+    let mut estimate = estimated_exponent(x)?;
+    loop {
+        let (numerator, denominator) = scaled_ratio(x, -estimate).ok()?;
+        let truncated = numerator / denominator;
+        if !truncated.is_zero() {
+            let digits = i64::try_from(truncated.to_str_radix(10).len()).ok()?;
+            return Some(estimate + digits - 1);
+        }
+        estimate -= 1;
+    }
 }
 
-/// The number of significant decimal digits `x` needs to be exact, capped at
-/// [`MAX_DIGITS`].
+/// The number of significant digits of the terminating decimal for `x`,
+/// capped at [`MAX_DIGITS`]. Zero has one significant digit.
 #[must_use]
 pub fn significant_digits(x: &Real) -> usize {
-    let Some(top) = x.floor_log2() else {
+    let magnitude = x.mantissa().magnitude();
+    if magnitude.is_zero() {
         return 1;
+    }
+    let exponent = x.exponent();
+    let decimal_mantissa = if exponent < 0 {
+        let denominator_bits = exponent.unsigned_abs();
+        let cancelled = magnitude
+            .trailing_zeros()
+            .unwrap_or(0)
+            .min(denominator_bits);
+        let power = denominator_bits - cancelled;
+        // The numerator is odd when a denominator remains. Multiplication
+        // by 5^power contributes no decimal trailing zeros, and 5^2 > 10.
+        if power >= 2 * MAX_DIGITS as u64 {
+            return MAX_DIGITS;
+        }
+        let Ok(five) = power_of_five(power) else {
+            return MAX_DIGITS;
+        };
+        (magnitude >> cancelled) * five
+    } else {
+        magnitude << exponent.unsigned_abs()
     };
-    let bits = (top as f64 * std::f64::consts::LOG10_2).abs().ceil() as usize + 2;
-    bits.min(MAX_DIGITS).max(1)
+    decimal_mantissa
+        .to_str_radix(10)
+        .trim_end_matches('0')
+        .len()
+        .min(MAX_DIGITS)
 }
 
 #[cfg(test)]

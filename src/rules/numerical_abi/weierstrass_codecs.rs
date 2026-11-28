@@ -1,6 +1,5 @@
 // Strongly typed calls over the existing dimensionless Weierstrass kernels.
 use crate::kernels::special_complex_ext::elliptic_modular as weierstrass;
-use num_complex::Complex64;
 
 struct WeierstrassInvariants {
     g2: Complex64,
@@ -11,6 +10,10 @@ record!(WeierstrassInvariants {
     g3: Complex64
 });
 
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "calculates the complex lattice ratio"
+)]
 fn weierstrass_lattice_ratio(
     omega1: Complex64,
     omega2: Complex64,
@@ -27,6 +30,11 @@ fn weierstrass_lattice_ratio(
     Ok(ratio)
 }
 
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::single_call_fn,
+    reason = "isolates the lattice pole check"
+)]
 fn weierstrass_centered_point(
     z: Complex64,
     omega1: Complex64,
@@ -80,4 +88,41 @@ binding!(
         let (g2, g3) = super::weierstrass::weierstrass_invariants_complex(omega1, omega2);
         Ok(super::WeierstrassInvariants {g2, g3})
     }
+);
+
+binding!(
+    weierstrass_sigma,
+    "num_weierstrass_sigma_complex",
+    "numerical_special",
+    "Weierstrass sigma for dimensionless complex z and two nonzero, non-collinear half-periods. Sigma vanishes at lattice points and its derivative at zero is one.",
+    "crate::kernels::special_complex_ext::elliptic_modular::weierstrass_sigma_complex",
+    DimensionPolicy::Dimensionless,
+    (z: num_complex::Complex64, omega1: num_complex::Complex64, omega2: num_complex::Complex64) -> num_complex::Complex64,
+    |z: num_complex::Complex64, omega1: num_complex::Complex64, omega2: num_complex::Complex64| {
+        super::weierstrass::weierstrass_sigma_complex(z, omega1, omega2)
+    }
+);
+
+binding!(
+    weierstrass_zeta,
+    "num_weierstrass_zeta_complex",
+    "numerical_special",
+    "Weierstrass zeta for dimensionless complex z and two nonzero, non-collinear half-periods. Lattice poles return a domain error.",
+    "crate::kernels::special_complex_ext::elliptic_modular::weierstrass_zeta_complex",
+    DimensionPolicy::Dimensionless,
+    (z: num_complex::Complex64, omega1: num_complex::Complex64, omega2: num_complex::Complex64) -> num_complex::Complex64,
+    |z: num_complex::Complex64, omega1: num_complex::Complex64, omega2: num_complex::Complex64| {
+        super::weierstrass::weierstrass_zeta_complex(z, omega1, omega2)
+    }
+);
+
+binding!(
+    complex_modular_discriminant,
+    "num_weierstrass_modular_discriminant_complex",
+    "numerical_special",
+    "Discriminant (2*pi)^12 * eta(tau)^24 for a dimensionless tau in the open upper half-plane.",
+    "crate::kernels::special_complex_ext::elliptic_modular::modular_discriminant_complex",
+    DimensionPolicy::Dimensionless,
+    (tau: num_complex::Complex64) -> num_complex::Complex64,
+    |tau: num_complex::Complex64| { super::weierstrass::modular_discriminant_complex(tau) }
 );

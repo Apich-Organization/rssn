@@ -46,12 +46,12 @@ exclude = [
 
 [lib]
 # Rust consumers only need an rlib. Build C distribution artifacts explicitly
-# with scripts/build_ffi.sh; otherwise every downstream Rust build also links
-# the shared library and bundles all dependencies into a static archive.
+# with bazel build //:ffi_distribution. Linking the shared library and bundling
+# dependencies into a static archive are separate from normal Rust builds.
 crate-type = ["rlib"]
 
 # Reports how much of the operator table is typed. Named with a hyphen so
-# that the documented invocation is `cargo run --bin signature-audit`; the
+# that the documented invocation is `bazel run //:signature_audit`; the
 # file is `signature_audit.rs` because a Rust module cannot have one.
 [[bin]]
 name = "signature-audit"

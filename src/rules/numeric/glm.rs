@@ -44,32 +44,6 @@ reviewed_entries! {
     ),
 }
 
-/// The family named by `text`.
-fn family_named(text: &str) -> Option<Family> {
-    match text {
-        | "gaussian" | "normal" => Some(Family::Gaussian),
-        | "poisson" => Some(Family::Poisson),
-        | "binomial" => Some(Family::Binomial),
-        | "gamma" => Some(Family::Gamma),
-        | "inverse_gaussian" | "inverse-gaussian" => Some(Family::InverseGaussian),
-        | _ => None,
-    }
-}
-
-/// The link named by `text`.
-fn link_named(text: &str) -> Option<Link> {
-    match text {
-        | "identity" => Some(Link::Identity),
-        | "log" => Some(Link::Log),
-        | "logit" => Some(Link::Logit),
-        | "probit" => Some(Link::Probit),
-        | "inverse" => Some(Link::Inverse),
-        | "loglog" | "log_log" => Some(Link::LogLog),
-        | "cloglog" | "complementary_loglog" => Some(Link::ComplementaryLogLog),
-        | _ => None,
-    }
-}
-
 /// The design matrix at `at`.
 fn design(
     args: &[Data],
@@ -96,7 +70,7 @@ fn glm_fit(args: &[Data]) -> Option<Data> {
     let y = vector(args, 1)?;
     let family_text = name(args, 2)?;
     let link_text = name(args, 3)?;
-    let Some(family) = family_named(family_text) else {
+    let Some(family) = Family::named(family_text) else {
         return bad(
             2,
             DiagKind::Domain,
@@ -106,7 +80,7 @@ fn glm_fit(args: &[Data]) -> Option<Data> {
             ),
         );
     };
-    let Some(link) = link_named(link_text) else {
+    let Some(link) = Link::named(link_text) else {
         return bad(
             3,
             DiagKind::Domain,
@@ -188,7 +162,7 @@ fn glm_predict(args: &[Data]) -> Option<Data> {
     let x = design(args, 0)?;
     let beta = vector(args, 1)?;
     let link_text = name(args, 2)?;
-    let Some(link) = link_named(link_text) else {
+    let Some(link) = Link::named(link_text) else {
         return bad(
             2,
             DiagKind::Domain,

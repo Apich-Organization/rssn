@@ -1,6 +1,6 @@
 //! Reading and writing the tabular and scientific file formats.
 //!
-//! Run with `cargo run --locked --example io_formats`.
+//! Run with `bazel run //:example -- io_formats`.
 //!
 //! The example writes a small file in each format, reads it back and prints
 //! what came out. The files land in the system temporary directory, so they can

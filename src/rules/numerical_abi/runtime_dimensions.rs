@@ -45,7 +45,7 @@ pub(in crate::rules) fn expression(dim: &Dimension) -> Result<DimExpr, OpError> 
         | _ => DimExpr::Mul(parts),
     })
 }
-fn dimension(value: &Value) -> Result<Dimension, OpError> {
+pub(super) fn dimension(value: &Value) -> Result<Dimension, OpError> {
     fn schema_dimension(ty: &TypeExpr) -> Result<Dimension, OpError> {
         match ty {
             | TypeExpr::Dim(_, d) | TypeExpr::Point(d) => canonical(d),

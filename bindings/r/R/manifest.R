@@ -7,7 +7,7 @@
 MANIFEST_META <- list(
     rssn_version = "3.0.0-beta.1",
     api_version = "2",
-    manifest_hash = "94282c0a4fc0fb28b026a480f7e63714d1f4c8d1eb6f8e0cc9e8240280697bf5",
+    manifest_hash = "8739e7d920179399084394f0e502c7d7715e116655c3c4f3c4cdc3637293bf02",
     features = list("dynamic_call" = TRUE, "plugin_abi" = 1L, "jit" = TRUE, "jit_branch" = TRUE, "jit_index" = TRUE, "parallel_symbolic" = TRUE, "exact_units" = TRUE, "affine_units" = TRUE, "user_base_dimensions" = TRUE, "structured_results" = TRUE, "higher_order" = TRUE, "sde" = TRUE, "plugin_kinds" = c("in-process", "cdylib"), "devices" = c("cpu", "cpu-parallel", "gpu-wgpu"), "npy" = TRUE),
     rule_sets = c("arith", "calculus", "combinatorics", "complex", "cse", "discrete", "elementary", "functional", "geometric_algebra", "geometry", "holonomic", "lie", "lie_structure", "linalg", "logic", "number_theory", "numeric", "numerical_callback", "numerical_matrix", "numerical_special", "numerical_stats", "numerical_vector", "ode", "optimize", "pde", "physics", "physics_quantum", "poly", "radicals", "rewriting", "sde", "solve", "sparse_symbolic", "special", "stats", "transforms", "units", "variational", "verify"),
     base_dimensions = c("Amount", "Current", "Length", "Luminosity", "Mass", "Temperature", "Time"),

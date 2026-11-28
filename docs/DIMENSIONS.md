@@ -101,7 +101,7 @@ Algorithms that operate on ordinary `f64` storage use the caller's coherent valu
 
 ## 12. Run a quantity example
 
-Run `cargo run --locked --example units_and_dimensions` from the repository root. The example shows unit conversion and the diagnostic difference between Advisory and Strict modes. [Example source](../examples/units_and_dimensions.rs)
+Run `bazel run //:example -- units_and_dimensions` from the repository root. The example shows unit conversion and the diagnostic difference between Advisory and Strict modes. [Example source](../examples/units_and_dimensions.rs)
 
 ## 13. Structured results and domain boundaries
 

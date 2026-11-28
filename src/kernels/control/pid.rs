@@ -49,6 +49,31 @@ pub struct Pid {
     pub tf: Option<f64>,
 }
 
+pub(crate) fn validate_gains(pid: &Pid) -> Result<(), String> {
+    if ![pid.kp, pid.ki, pid.kd].into_iter().all(f64::is_finite) {
+        return Err("PID gains must be finite".into());
+    }
+    if pid.tf.is_some_and(|tau| !(tau.is_finite() && tau > 0.0)) {
+        return Err("the derivative filter time constant must be finite and positive".into());
+    }
+    Ok(())
+}
+
+fn update_derivative(
+    pid: &Pid,
+    previous: f64,
+    delta: f64,
+    dt: f64,
+) -> f64 {
+    if pid.kd == 0.0 {
+        return 0.0;
+    }
+    let Some(tau) = pid.tf else { return delta / dt };
+    let scale = tau.max(dt);
+    let normalized_tau = tau / scale;
+    (normalized_tau * previous + delta / scale) / (normalized_tau + dt / scale)
+}
+
 /// First-order-plus-dead-time model identified from a step response.
 struct Fopdt {
     gain: f64,
@@ -192,38 +217,43 @@ pub fn pid_response(
     t: &[f64],
     setpoint: f64,
 ) -> Result<Vec<f64>, String> {
+    validate_gains(pid)?;
+    if !setpoint.is_finite() || t.iter().any(|sample| !sample.is_finite()) {
+        return Err("PID time and setpoint must be finite".into());
+    }
     let ss = plant.to_state_space()?;
-    let n = ss.n_states();
-    let mut x = vec![0.0; n];
-    let mut out = vec![0.0; t.len()];
+    let mut x = vec![0.0; ss.n_states()];
+    let mut out = Vec::with_capacity(t.len());
     if t.is_empty() {
         return Ok(out);
     }
-    let mut y_prev = 0.0_f64;
-    let mut integral = 0.0_f64;
-    let mut filtered = 0.0_f64;
+    let mut y_prev = 0.0;
+    let mut integral = 0.0;
+    let mut filtered = 0.0;
     let mut error_prev = setpoint;
-    for k in 1..t.len() {
-        let h = t[k] - t[k - 1];
-        if h.partial_cmp(&0.0) != Some(std::cmp::Ordering::Greater) {
-            return Err("time vector must be strictly increasing".to_string());
+    out.push(y_prev);
+    for pair in t.windows(2) {
+        let dt = pair[1] - pair[0];
+        if !(dt.is_finite() && dt > 0.0) {
+            return Err("time vector must have finite, strictly positive increments".into());
         }
         let error = setpoint - y_prev;
-        integral += error * h;
-        let raw = (error - error_prev) / h;
-        filtered = match pid.tf {
-            | Some(tf) if tf > 0.0 => {
-                let alpha = tf / (tf + h);
-                alpha * filtered + (1.0 - alpha) * raw
-            },
-            | _ => raw,
-        };
+        if pid.ki != 0.0 {
+            integral += error * dt;
+        }
+        filtered = update_derivative(pid, filtered, error - error_prev, dt);
         let u = pid.kp * error + pid.ki * integral + pid.kd * filtered;
-        x = linalg::rk4_linear(&ss.a, &ss.b, &x, &[u], h);
+        if !u.is_finite() {
+            return Err("PID control signal is outside Float range".into());
+        }
+        x = linalg::rk4_linear(&ss.a, &ss.b, &x, &[u], dt);
         let cx = linalg::matvec(&ss.c, &x);
         let du = ss.d.first().and_then(|r| r.first()).copied().unwrap_or(0.0);
         y_prev = cx.first().copied().unwrap_or(0.0) + du * u;
-        out[k] = y_prev;
+        if !y_prev.is_finite() || x.iter().any(|state| !state.is_finite()) {
+            return Err("PID plant response is outside Float range".into());
+        }
+        out.push(y_prev);
         error_prev = error;
     }
     Ok(out)
@@ -232,43 +262,54 @@ pub fn pid_response(
 /// Simulates a positional PID over an error sequence with optional output
 /// limits and conditional-integration anti-windup.
 ///
-/// Returns the control signal at each sample.
+/// A configured derivative filter is applied to the finite difference.
+/// Returns an empty vector when
+/// the time step, configuration or numerical result is invalid.
 pub fn simulate_pid(
     pid: &Pid,
     error: &[f64],
     dt: f64,
     u_limits: Option<(f64, f64)>,
 ) -> Vec<f64> {
-    let mut out = Vec::with_capacity(error.len());
-    if error.is_empty() || dt.partial_cmp(&0.0) != Some(std::cmp::Ordering::Greater) {
-        return out;
+    simulate_pid_checked(pid, error, dt, u_limits).unwrap_or_default()
+}
+
+pub(crate) fn simulate_pid_checked(
+    pid: &Pid,
+    errors: &[f64],
+    dt: f64,
+    limits: Option<(f64, f64)>,
+) -> Result<Vec<f64>, String> {
+    validate_gains(pid)?;
+    if !(dt.is_finite() && dt > 0.0) || errors.iter().any(|error| !error.is_finite()) {
+        return Err("PID errors and time step must be finite, with a positive time step".into());
     }
-    let mut integral = 0.0_f64;
-    let mut previous = error[0];
-    for (k, &e) in error.iter().enumerate() {
-        let derivative = if k == 0 {
-            0.0
-        } else {
-            (e - previous) / dt
-        };
-        let mut u = pid.kp * e + pid.ki * integral + pid.kd * derivative;
-        let mut saturated = false;
-        if let Some((lo, hi)) = u_limits {
-            if u > hi {
-                u = hi;
-                saturated = e > 0.0;
-            } else if u < lo {
-                u = lo;
-                saturated = e < 0.0;
-            }
-        }
-        out.push(u);
-        if !saturated {
-            integral += e * dt;
-        }
-        previous = e;
+    if limits.is_some_and(|(lo, hi)| !(lo.is_finite() && hi.is_finite() && lo <= hi)) {
+        return Err("PID output limits must be finite and ordered".into());
     }
-    out
+    let mut output = Vec::with_capacity(errors.len());
+    let mut integral = 0.0;
+    let mut filtered = 0.0;
+    let mut previous = errors.first().copied().unwrap_or(0.0);
+    for &error in errors {
+        filtered = update_derivative(pid, filtered, error - previous, dt);
+        let requested = pid.kp * error + pid.ki * integral + pid.kd * filtered;
+        if !requested.is_finite() {
+            return Err("PID control signal is outside Float range".into());
+        }
+        let delivered = limits.map_or(requested, |(lo, hi)| requested.clamp(lo, hi));
+        output.push(delivered);
+        // Freeze the integrator only if it would drive saturation farther.
+        let direction = pid.ki * error;
+        if pid.ki != 0.0
+            && !((requested > delivered && direction > 0.0)
+                || (requested < delivered && direction < 0.0))
+        {
+            integral += error * dt;
+        }
+        previous = error;
+    }
+    Ok(output)
 }
 
 #[cfg(test)]

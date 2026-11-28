@@ -52,15 +52,16 @@ def ir_build(args, root, suite, ir, runner, symbol):
     source = root / f"{suite}.ll"
     base = root / f"{suite}-off.ll"
     optimized = root / f"{suite}-transform.ll"
+    tool_env = os.environ | args.llvm_env
     environment = dict(
-        os.environ,
+        tool_env,
         RSSN_SPILL_MODE="off",
         RSSN_SPILL_FILTER="",
         RSSN_SPILL_ABI="off",
         RSSN_SPILL_PLAN_WIDTH=str(args.plan_width),
     )
     source.write_text(ir)
-    build([args.opt, "-mcpu=native", "-passes=default<O3>", "-S", source, "-o", base])
+    build([args.opt, "-mcpu=native", "-passes=default<O3>", "-S", source, "-o", base], env=tool_env)
     build(
         [
             args.opt,
@@ -83,8 +84,8 @@ def ir_build(args, root, suite, ir, runner, symbol):
         asm = binary.with_suffix(".s")
         obj = binary.with_suffix(".o")
         opts = [args.llc, "-mcpu=native", "-O3", ir]
-        build([*opts, "-o", asm])
-        build([*opts, "-filetype=obj", "-o", obj])
+        build([*opts, "-o", asm], env=tool_env)
+        build([*opts, "-filetype=obj", "-o", obj], env=tool_env)
         build([args.cc, "-O3", BENCH / runner, obj, "-o", binary])
         return binary, stack_counts(asm, symbol)
 
@@ -131,6 +132,7 @@ def abi_build(args, root, mode):
 
 def fft_build(args, root, mode):
     target_dir = root / f"rustfft-{mode}"
+    asm = root / f"rustfft-{mode}.s"
     flags = [
         "-Ctarget-cpu=native",
         f"-Zllvm-plugins={args.plugin}",
@@ -148,6 +150,7 @@ def fft_build(args, root, mode):
         RSSN_SPILL_ABI="off",
         RSSN_SPILL_PLAN_WIDTH=str(args.plan_width),
         CARGO_TARGET_DIR=str(target_dir),
+        CARGO_BUILD_BUILD_DIR=str(target_dir),
         CARGO_BUILD_JOBS=str(args.jobs),
         CARGO_ENCODED_RUSTFLAGS="\x1f".join(flags),
     )
@@ -161,30 +164,35 @@ def fft_build(args, root, mode):
     ]
     if args.offline:
         command.append("--offline")
-    build([*command, "--", "--emit=asm,link"], env=env, log=root / f"rustfft-{mode}.log")
-    (asm,) = (target_dir / "release").rglob("rssn_spill_rustfft_bench*.s")
+    # Cargo may store intermediate outputs in a separate build directory.
+    build([*command, "--", f"--emit=asm={asm},link"], env=env, log=root / f"rustfft-{mode}.log")
     return target_dir / "release" / TARGET, stack_counts(asm, "7rustfft")
 
 
-def probe(binary, arguments):
-    nanos, digest = subprocess.check_output(
-        [binary, *map(str, arguments)], text=True
+def probe(binary, arguments, runner=()):
+    nanos, digest, *metadata = subprocess.check_output(
+        [*runner, binary, *map(str, arguments)], text=True
     ).split()
-    return int(nanos), digest
+    # The FSE replay reports the number of headers after the output hash.
+    if metadata and (len(metadata) != 1 or not metadata[0].isdigit()):
+        raise ValueError("unexpected benchmark sample format")
+    return int(nanos), (digest, *metadata)
 
 
-def measure(baseline, experiment, arguments, pairs):
-    warm_base, reference = probe(baseline, arguments)
-    warm_experiment, checksum = probe(experiment, arguments)
+def measure(baseline, experiment, arguments, pairs, runner=()):
+    warm_base, reference = probe(baseline, arguments, runner)
+    warm_experiment, checksum = probe(experiment, arguments, runner)
     if checksum != reference or min(warm_base, warm_experiment) <= 0:
         raise RuntimeError("warm-up outputs differ or the sample is too short")
     timings = []
     for i in range(pairs):
         binaries = [baseline, experiment] if i % 2 == 0 else [experiment, baseline]
-        observations = [probe(binary, arguments) for binary in binaries]
+        observations = [probe(binary, arguments, runner) for binary in binaries]
         if {checksum for _, checksum in observations} != {reference}:
             raise RuntimeError(f"bitwise output mismatch in pair {i + 1}")
         a, b = [elapsed for elapsed, _ in observations]
+        if min(a, b) <= 0:
+            raise RuntimeError(f"pair {i + 1} is too short")
         timings.append((a, b) if i % 2 == 0 else (b, a))
 
     ratios = [b / a for a, b in timings]
@@ -197,7 +205,7 @@ def measure(baseline, experiment, arguments, pairs):
         "median_pass_ns": statistics.median(b for _, b in timings),
         "paired_runtime_change_pct": 100 * (statistics.median(ratios) - 1),
         "bootstrap_95_pct": [100 * (boot[i] - 1) for i in (100, 3899)],
-        "checksum": reference,
+        "checksum": reference[0],
         "samples_ns": timings,
     }
 
@@ -210,21 +218,24 @@ def main():
     parser.add_argument("--work-dir", type=Path, default=BENCH.parent / "build-bench")
     parser.add_argument("--opt", default="opt-23")
     parser.add_argument("--llc", default="llc-23")
+    parser.add_argument("--llvm-env", action="append", default=[], help=argparse.SUPPRESS)
     parser.add_argument("--rustc", default="rustc")
     parser.add_argument("--cargo", default="cargo")
     parser.add_argument("--cc", default="cc")
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--jobs", type=int, default=1)
-    parser.add_argument("--cpu", type=int, default=min(os.sched_getaffinity(0)))
+    cpus = os.sched_getaffinity(0) if hasattr(os, "sched_getaffinity") else ()
+    parser.add_argument("--cpu", type=int, default=min(cpus) if cpus else None)
     parser.add_argument("--pairs", type=int, default=11)
     parser.add_argument("--plan-width", type=int, choices=range(1, 5), default=4)
     parser.add_argument("--fft-rounds", type=int, default=24000)
     parser.add_argument("--callback-rounds", type=int, default=4000000)
     parser.add_argument("--abi-rounds", type=int, default=60000000)
     args = parser.parse_args()
+    args.llvm_env = dict(setting.split("=", 1) for setting in args.llvm_env)
     if min(args.jobs, args.fft_rounds, args.callback_rounds, args.abi_rounds) < 1 or args.pairs < 3:
         parser.error("positive jobs and rounds and at least 3 pairs are required")
-    if args.cpu not in os.sched_getaffinity(0):
+    if args.cpu is not None and args.cpu not in cpus:
         parser.error("--cpu must be in the current process affinity mask")
     args.plugin = args.plugin.resolve(strict=True)
     args.work_dir.mkdir(parents=True, exist_ok=True)
@@ -266,7 +277,8 @@ def main():
         }
         setups.extend((name, baseline[0], experiment[0], opts) for name, opts in cases)
 
-    os.sched_setaffinity(0, {args.cpu})
+    if args.cpu is not None:
+        os.sched_setaffinity(0, {args.cpu})
     results = {
         "cpu": args.cpu,
         "plan_width": args.plan_width,

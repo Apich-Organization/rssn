@@ -140,9 +140,8 @@ typing judgement. The module
    listed separately in the manifest and taking no part in resolution.
 
 ```text
-RSSN_SORT_TRACE=sorts.tsv cargo test --lib       # the test suite is the corpus
-cargo run --profile tools --bin signature-mine -- sorts.tsv
-cargo run --profile tools --bin signature-mine -- --check   # replay the shipped table
+bazel run //:refresh_witness   # collect the corpus and regenerate the table
+bazel test //:witness_test      # replay the checked-in witnesses
 ```
 
 The required `signatures.witnessed.json` table is generated and versioned. The
@@ -195,7 +194,7 @@ Every operator is either typed or explained. The explanation is a
 | `opaque_payload` | it carries host data the kernel does not interpret |
 | `not_yet_specified` | a declaration is missing; the audit treats this as a defect |
 
-`cargo run --locked --bin signature-audit` reports the live operator counts by
+The signature audit in `bazel test //:contracts_test --test_output=all` reports the live operator counts by
 signature source. Its exit status is nonzero if an operator has neither a
 signature nor an accepted reason.
 
@@ -458,6 +457,82 @@ order in both inputs. The next power of two of a nonempty result length
 must divide `p - 1`. An empty input yields an empty tensor for a valid
 prime. This value operator applies the standard native tensor size limit.
 
+Use `num_finite_field_ntt_plan(modulus, length)` to validate an odd prime
+and a power-of-two length that divides `modulus - 1`. The portable result
+contains `modulus` and `length`. Pass it to
+`num_finite_field_ntt_transform(values, plan, inverse)` with an equally
+long tensor of unsigned 64-bit coefficients. The forward transform uses
+the root derived from the smallest positive generator, and the inverse
+divides by the length in the field. Both calls use ordinary residues.
+Cached twiddles stay internal and a reconstructed plan is revalidated
+on use. Length must fit the native value budget.
+
+### Survival curves and Cox regression
+
+`num_survival_kaplan_meier(time, event, confidence)` returns event times,
+at-risk and event counts, probabilities, Greenwood variance and log-log
+confidence bounds. The time tensor may carry a physical dimension.
+`num_survival_median(curve)` returns the first time at which the curve
+drops to one-half or below, or an empty option when it never does.
+
+`num_survival_fit_cox(time, event, covariates, ties, max_iterations, tolerance)`
+fits the partial likelihood on dimensionless covariate rows without an
+intercept. Censored observations remain in their time's risk set.
+Use `"breslow"` or `"efron"` for ties. The fitted record contains the
+coefficients and convergence diagnostics. Pass it to
+`num_survival_predict_cox(fit, covariates)` for relative hazards. Prediction
+requires the same column order and count as the design.
+
+### Rectangular CSR operations
+
+`num_csr_transpose` preserves the dimension of stored values.
+`num_csr_matmul_sparse` and `num_csr_matmul_dense` multiply the
+dimensions of both inputs. A structural CSR record contains `rows`,
+`cols`, `indptr`, `indices`, and `values`. Column indices are zero-based
+and strictly increasing per row.
+
+`num_csr_lsqr(matrix, rhs, damping, tolerance, max_iterations)` solves
+rectangular least squares. The damping coefficient carries the same
+dimension as the stored entries and the solution has RHS dimensions
+divided by the matrix entry dimension. The return value contains the
+solution, unaugmented relative residual, iteration count and convergence
+flag. A least-squares optimum can have a nonzero residual.
+
+### Sparse sequential quadratic programming
+
+`num_sqp_solve(initial, shape, tolerance, trust_radius, max_iterations,
+max_evaluations, evaluate, hessian)` solves a normalized nonlinear
+program with typed callbacks. The evaluation packet holds the objective,
+gradient, constraints and sparse Jacobian at one point. The Hessian callback
+receives the point and both multiplier vectors and returns the upper
+triangle of the Lagrangian Hessian. Sparse entry records contain zero-based
+`rows`, `columns` and `values` tensors. Equality constraint rows precede
+inequalities in the form `g(x) <= 0`.
+
+Normalize decision variables, the objective and constraint functions before
+building these callbacks. The solver calls the evaluation callback once
+per consecutive point and shares the work budget across evaluation and
+Hessian calls. It reports the final point, multipliers, KKT residual,
+convergence and callback counts. The `num_sqp_oracle_*` operators let callers
+inspect each typed oracle component before solving.
+The callback interface accepts up to 128 coordinates and 128 constraints
+with up to 16,384 triplets per sparse record.
+
+### Exact decimal exchange
+
+Use `num_mp_decimal_from_text(text, precision)` to round a decimal literal
+directly to a dyadic with ties to even. The `from_text_in` variant takes a
+rounding mode. Use `num_mp_decimal_to_text(value, digits)` to format an exact
+dyadic and `to_text_in` for directed formatting. Digit arguments accept
+1 to 10,000 significant digits. The decimal parse and enclosure routes accept
+up to 100,000 bytes and a signed decimal scale within ±100,000 before removing
+trailing zeros. A result outside the binary exponent range gives a domain error.
+
+`num_mp_decimal_enclose` returns a dyadic ball that contains the exact input.
+`num_mp_decimal_format_ball` returns text when both endpoints round to the
+same result. The text-only `num_mp_decimal_round_text` accepts a decimal scale
+within ±40,000 and rounds without a binary conversion.
+
 ### Exact binary multiprecision values
 
 `num_mp_real_round(mantissa, exponent, precision, mode)` returns a
@@ -471,20 +546,46 @@ mantissas up to 65,536 bits. Input and normalised exponents have magnitude
 at most 262,144. Valid rounding modes are `nearest` (ties to even),
 `zero`, `away`, `up` and `down`.
 
+Use `num_mp_real_exp(value, precision)` for an exact dyadic input and
+`num_mp_ball_exp(interval, precision)` for a closed dyadic interval. Both
+return a dimensionless dyadic ball encompassing the result. The midpoint
+has the requested bit precision, and the radius includes rounding and
+series error. Exponents outside the supported range give a domain error.
+
+Use `num_mp_real_zero` and `num_mp_real_one` for constants at a specified
+precision. `num_mp_real_from_i64` rounds a signed 64-bit integer to nearest-even.
+`num_mp_real_from_bigint` also accepts wider integers and an explicit rounding
+mode. `num_mp_real_from_f64` rounds a finite binary64 input to the requested
+precision, with both signed zeros represented by the same dyadic zero.
+`num_mp_real_to_f64` rounds directly to binary64 with ties to even. It preserves
+subnormals and signed underflow to zero and reports overflow as a domain error.
+`num_mp_real_sign` returns -1, 0 or 1 from the exact mantissa.
+
 `num_mp_real_compare(left, right)` returns -1, 0 or 1 for exact order
 across precisions. `num_mp_real_add`, `num_mp_real_sub`, `num_mp_real_mul` and
 `num_mp_real_div` accept `(left, right, precision, mode)` and round the
 exact result once. Division rejects a zero divisor. Keep the record
 fields as integers when passing a result back through the value API.
 
-`num_mp_ball_div(left, right, precision)` encloses the quotients of two
-closed intervals written as `{midpoint, radius}`. Both fields are exact
+`num_mp_ball_add`, `num_mp_ball_sub`, `num_mp_ball_mul` and `num_mp_ball_div`
+accept `(left, right, precision)` and enclose the sums, differences, products
+and quotients of two closed intervals written as `{midpoint, radius}`. Both fields are exact
 dyadic records as above, with `radius` nonnegative. The record denotes
 `[midpoint - radius, midpoint + radius]`. The requested precision sets
 the midpoint precision. The radius may use a different precision to
 preserve the enclosure. The divisor interval must exclude zero, including
 at its endpoints. Exponents outside the representable range give a domain
 error.
+
+A complex rectangle is a dimensionless record `{real, imag}` whose two
+fields are closed dyadic intervals. Use `num_mp_complex_new` to combine
+two intervals, `num_mp_complex_point` for exact coordinates, or
+`num_mp_complex_from_real` to lift an interval with zero imaginary part.
+Addition, subtraction, multiplication, division, reciprocal, squared
+magnitude and signed integer power use the same precision range as real
+interval arithmetic. Squared magnitude returns a dyadic interval.
+Division, reciprocal and negative powers report a domain error when the
+divisor enclosure includes the origin.
 
 ### Time-series statistics, reconstruction, and state-space models
 
@@ -511,6 +612,19 @@ of the corresponding state or observations.
 `num_timeseries_kalman_smooth(y, f, h, q, r, x0, p0)` returns one
 smoothed state mean per observation in time order. The solve requires a
 positive-definite predicted covariance at each backward step.
+
+### Directed roots for exact dyadics and intervals
+
+`num_mp_real_cbrt_in(value, precision, rounding)` rounds an exact real
+cube root, including negative inputs. `num_mp_real_cbrt` and
+`num_mp_real_hypot` give dyadic intervals enclosing the cube root and the
+Euclidean norm of two exact dyadics. Use `num_mp_ball_sqrt` for the
+square roots of a closed interval wholly in the nonnegative real numbers.
+
+`num_mp_real_limits()` reports the supported bit precision and binary
+exponent range. Dyadic and interval accessors preserve the exact integer
+fields. Use `num_mp_real_rounding_mode(rounding)` to obtain the canonical
+spelling of a supported rounding mode.
 
 ### Measured state-space simulation
 
@@ -555,6 +669,174 @@ Registration refuses an operator that declares neither a signature nor a
 `DynamicReason`: a plugin cannot make the manifest incomplete. It also refuses
 a name that clashes with an existing operator of a different shape; adding an
 overload of the same name requires `.overload()` on the descriptor.
+
+## Certified complex rectangle functions
+
+`num_mp_complex_abs(value, precision)` returns a closed dyadic interval
+for the modulus of a complex rectangle. `num_mp_complex_exp` returns a
+rectangle enclosing the exponential when the imaginary midpoint is
+within ±2^20 radians. `num_mp_complex_ln` returns a rectangle enclosing
+the principal logarithm and rejects an input that touches the
+non-positive real axis. Arithmetic outside the exponent or precision
+limits returns an error.
+
+The circular operators `num_mp_complex_sin`, `num_mp_complex_cos` and
+`num_mp_complex_tan` and their hyperbolic counterparts
+`num_mp_complex_sinh`, `num_mp_complex_cosh` and `num_mp_complex_tanh`
+also take and return dyadic rectangles. The circular operators reduce the
+real midpoint and the hyperbolic operators reduce the imaginary midpoint.
+These angle reductions support ±2^20 radians. Tangents return a domain
+error when the computed denominator rectangle includes zero. On the
+imaginary axis for tangent and the real axis for hyperbolic tangent, the
+bounded real hyperbolic tangent route handles large finite inputs.
+
+`num_mp_complex_sqrt` encloses the principal root. On the negative real
+axis the result has positive imaginary part. An input rectangle that
+straddles the cut may enclose roots with both signs of the imaginary part.
+`num_mp_complex_pow` takes a base and an exponent rectangle. A point
+exponent that is an exact real integer uses the signed 64-bit integer
+route, including zero. The general case computes the principal value via
+the certified logarithm and exponential. Its base must avoid the
+non-positive real axis, and the exponential angle range still applies.
+
+The `num_mp_complex_{asin,acos,atan,asinh,acosh,atanh}` operators enclose
+principal inverse functions of dimensionless dyadic rectangles. Asin and
+acos include both endpoints for real intervals in [-1, 1], and asinh
+includes the corresponding imaginary endpoints. Acosh includes the point
+1 and rejects rectangles that meet the real axis below 1. Atan and atanh
+reject rectangles that meet their respective imaginary and real cuts,
+including their branch points. Operations return a domain error when an
+intermediate enclosure reaches a singularity or exceeds the exponent range.
+
+Use `num_mp_expression_enclose(text, precision)` when you need an exact
+dyadic midpoint and outward radius from the bounded arithmetic parser.
+The precision argument is a bit count. For example,
+`sqrt(81) + hypot(3, 4) + cbrt(-8)` encloses the exact value 12.
+Invalid syntax, unsafe operand intervals and out-of-range exponents
+return domain errors.
+
+`num_mp_ball_lipschitz(interval, mapped_midpoint, bound, precision)`
+propagates the input radius through a supplied nonnegative Lipschitz
+bound and encloses rounding of the mapped midpoint. The caller supplies
+the exact image of the input midpoint and a bound that holds throughout
+the interval.
+
+The typed `num_mp_complex_erf` and `num_mp_complex_erfc` operators
+enclose the image of a closed dimensionless dyadic rectangle. The Taylor
+series uses a uniform geometric remainder bound. In the right sector
+`Re(z) >= |Im(z)|`, the complementary function can use the first-omitted-term
+bound for the asymptotic expansion to retain the small positive-real tail.
+Very wide inputs or insufficient series budgets produce domain errors.
+See [DLMF §7.6](https://dlmf.nist.gov/7.6) and
+[DLMF §7.12](https://dlmf.nist.gov/7.12).
+
+## Certified real trigonometry
+
+`num_mp_real_sin`, `num_mp_real_cos` and `num_mp_real_tan` enclose the
+trigonometric values of an exact dyadic angle in radians. The maximum
+supported magnitude is 2^20 radians. Use `num_mp_real_sin_cos` for both
+sine and cosine with one argument reduction. The matching `num_mp_ball_*`
+operators take a closed angle interval whose midpoint is within the
+supported range. Tangent returns a domain error when the computed cosine
+enclosure includes zero.
+
+`num_mp_complex_bessel_j(value, order, precision)` encloses principal Bessel J
+over dyadic rectangles in both arguments. Exact signed integer orders of
+magnitude at most 512 admit either side of the negative real axis. General
+orders require a nonnegative real part throughout the order rectangle, at
+most 512 requested bits, and an argument disjoint from the non-positive real
+cut. At the exact origin, zero order gives one and orders with strictly
+positive real part or nonzero exact integer order give zero. All other
+arguments must satisfy `abs(Re(value)) + abs(Im(value)) <= 256` throughout
+their rectangle. Use the returned radius to check how operand uncertainty
+affects the result. The power-series tail and Stirling normalization use
+outward bounds from [DLMF §10.2](https://dlmf.nist.gov/10.2#E2) and
+[DLMF §5.11](https://dlmf.nist.gov/5.11.ii).
+
+The typed gamma family uses the same certified Stirling expansion as
+Bessel J. `num_mp_complex_gamma` and `num_mp_complex_digamma` accept
+dyadic rectangles that avoid the non-positive integer poles.
+`num_mp_complex_log_gamma` instead uses the analytic continuation real
+on positive arguments and excludes the entire non-positive real axis.
+All three accept at most 1024 requested bits. An exhausted recurrence
+budget returns an error. Gamma of a supported positive integer uses the
+exact factorial before outward rounding.
+
+The typed zeta and polylogarithm operators return outward dyadic
+enclosures. Use `num_mp_complex_riemann_zeta(order, precision)` with a
+rectangle excluding the pole at one. The bounded Euler–Maclaurin path
+supports real parts at least -32 and modulus at most 256. Integer orders
+with closed formulas, including the negative even zeros, can use a
+direct route. `num_mp_complex_polylog(value, order, precision)` requires
+the whole argument rectangle strictly inside the unit disk and real order
+at least -256. An exhausted series budget returns an error. Both accept
+up to 512 requested bits. Their certified tails use the expansions in
+[DLMF §25.2](https://dlmf.nist.gov/25.2#E9) and
+[DLMF §25.12](https://dlmf.nist.gov/25.12#E10).
+
+## Certified real hyperbolic functions
+
+`num_mp_real_sinh`, `num_mp_real_cosh` and `num_mp_real_tanh` return
+outward dyadic enclosures for exact real inputs. Their `num_mp_ball_*`
+variants accept closed intervals. The cosine variant includes the minimum
+of one if the interval crosses zero. The tangent preserves a finite
+enclosure for large finite inputs as the function approaches ±1.
+
+## Certified principal angles
+
+`num_mp_real_atan` and `num_mp_ball_atan` enclose the inverse tangent of
+an exact real value or a closed real interval. `num_mp_real_atan2(y, x, precision)`
+encloses the principal angle in (-π, π]. The origin is outside its domain,
+and the negative real axis has angle +π. The rectangle adapter
+`num_mp_ball_atan2` rejects a box containing the origin or touching the
+negative real axis unless the box lies wholly on that axis. The complex
+rectangle argument adapter `num_mp_complex_arg` excludes the non-positive
+real axis, including boxes wholly on the cut.
+
+## Certified inverse sine and cosine
+
+`num_mp_real_asin` and `num_mp_real_acos` enclose the principal inverse
+sine and cosine of exact real dyadics in [-1, 1], including both
+endpoints. The corresponding `num_mp_ball_*` variants enclose closed
+intervals contained in that domain. They return domain errors when any
+part of the input interval lies outside [-1, 1]. At one, inverse cosine
+returns an exact zero-radius zero.
+
+## Certified real powers
+
+`num_mp_real_powi` and `num_mp_ball_powi` enclose powers with a signed
+64-bit integer exponent. An exponent of zero gives one. Negative powers
+reject base intervals containing zero. The rational variants
+`num_mp_real_pow_ratio` and `num_mp_ball_pow_ratio` accept a signed
+64-bit numerator and a positive 32-bit denominator. For a negative base
+the reduced denominator must be odd.
+
+`num_mp_real_pow` and `num_mp_ball_pow` take dyadic exponents. A
+non-integer exponent on a nonzero real base requires a positive base. If
+the interval exponent varies, the base interval must be strictly positive.
+
+## Real logarithms and binary exponential
+
+`num_mp_real_ln`, `num_mp_real_log2`, `num_mp_real_log10` and
+`num_mp_real_exp2` return outward dyadic enclosures of exact real inputs.
+The corresponding `num_mp_ball_*` operations accept closed dyadic
+intervals. The logarithms require strictly positive inputs, including
+both endpoints of an interval. The binary exponential preserves exact
+powers of two when the input is an integer and the result is representable.
+
+`num_mp_real_scale_decimal(value, exponent, precision)` scales a dyadic
+by a signed integral power of ten and rounds the exact result once.
+`num_mp_real_scale_decimal_in` accepts an explicit rounding direction.
+
+## Multiprecision numerical constants
+
+`num_mp_real_const_named(name, precision)` returns a certified nearest-even
+dyadic for a mathematical constant. The names are `pi`, `tau`, `e`,
+`ln2`, `sqrt2` and `phi`. Use `num_mp_real_const_enclose` to retain an
+outward interval. `num_mp_real_const_pi_scaled(bits)` returns the exact
+integer floor of π × 2^bits for 0 to 32,768 fractional bits. The name
+catalogs report exactly which constants and expression functions the
+multiprecision parser accepts.
 
 ## Physical constants
 
@@ -703,6 +985,29 @@ the current session. The scope releases native objects created by the action
 on return or unwind. Earlier objects are still available, and local handles
 must stay inside the action.
 
+## Measured CAD meshes
+
+`num_cad_mesh_new` accepts measured Cartesian vertices and zero-based exact
+triangle indices in separate three-column tensors. Mesh queries share a
+cached edge-incidence summary. Signed volume has dimension `Length³` and
+requires a closed consistently wound surface. Welding and repair accept a
+length tolerance, return new meshes and report what changed.
+
+`num_cad_mesh_boolean` combines two connected, outward-wound convex shells
+with `union`, `difference`, or `intersection`. The result is a new measured
+mesh. Empty intersections return an empty mesh. The operation returns an
+error for unsupported geometry or exhausted work limits. In Aevia, use
+`Rssn_Cad.mesh_boolean` with the same three operation names.
+
+The STL operations accept and return in-memory ASCII text or byte tensors.
+Pass the positive length represented by one coordinate unit in the file. A read model may repeat vertices across
+triangles. Weld the mesh before examining topology. Release each handle
+with `num_native_release`.
+
+`num_cad_step_read_text` reads bounded planar STEP solids with straight
+`LINE` edges and returns a tensor of mesh handles. Declared STEP length units
+are converted to metres. Unitless coordinates are interpreted in metres.
+
 ## The C ABI
 
 ```c
@@ -731,6 +1036,28 @@ summarised in [ARCHITECTURE.md](../ARCHITECTURE.md#c-interface).
   so two builds for different micro-architectures, or with different operator
   semantics, never share machine code.
 
+## Prepared modular arithmetic
+
+`num_modular_montgomery_new(modulus)` prepares an odd unsigned 64-bit modulus
+greater than one. `num_modular_barrett_new(modulus)` also supports even moduli.
+Both constructors reuse the same Rust reducer throughout the lifetime of a
+session-owned handle. Use the `_new_prime` constructors when you need to check
+primality. Barrett supports the prime 2.
+
+The scalar operators accept exact unsigned words and return integer residues.
+An inverse or quotient returns `None` when the denominator is not coprime to
+the modulus. A bad input, wrong reducer type or stale handle returns an error.
+Montgomery encoded-word operations require inputs below that plan's modulus.
+Convert with `num_modular_montgomery_to_mont` or its 128-bit counterpart and
+convert the answer back with `num_modular_montgomery_from_mont`. Pass the same
+plan that encoded your residues. Raw Montgomery reduction accepts a u128 below
+`modulus * 2^64`. Barrett reduction supports the full u128 range.
+
+An immutable reducer retains a few machine words in the session's bounded
+native-object storage. Keep its handle for repeated calculations and release it
+with `num_native_release` when finished. Language bindings can find these methods
+in the live manifest and use the same native-object ABI.
+
 ## Adding an operator
 
 For numerical functions supported by the composable codecs, add a Rust source
@@ -753,3 +1080,88 @@ and tensor shape before the native method runs.
 3. Add `.doc(..)`, `.category(..)` and `.since(..)` — the manifest is the
    documentation a host reads.
 4. Run `bazel test //:contracts_test` and the operator tests.
+
+## Prepared transfer functions
+
+`num_control_transfer_new` prepares a normalized continuous-time SISO model
+from finite numerator and denominator coefficient vectors in descending powers
+of the Laplace variable. Use `_new_proper` when you need a state-space step
+response. The native handle can be reused for frequency evaluation, zeros,
+stability, series, parallel and negative feedback connections. Pole and zero
+queries reuse results within that handle's session.
+
+Choose a common reference time and express both coefficients and samples in
+that scale before calling the ABI. Coefficients, frequency, time and response
+are dimensionless normalized values at this boundary. An absent margin on the
+internal log-frequency grid is `None`, while a pole or numerical failure
+produces a checked error. Magnitude margin is in dB and phase margin is in
+degrees. Release a handle with `num_native_release` when finished.
+
+## Normalized PID and identification
+
+`num_control_pid_response` uses a proper prepared transfer model and a
+normalized time grid. `num_control_simulate_pid` accepts sampled error, a
+positive interval and optional ordered output limits. Both use parallel gains
+`kp`, `ki`, `kd` and an optional positive `filter_time`. Scope the gains and
+samples to the same reference time and error scales. Output saturation freezes
+the integrator when its next contribution would push it farther past the bound.
+
+`num_control_era` fits a discrete single-input model from normalized input
+samples and a sample-by-output tensor. The first input sample must be nonzero.
+Call `num_control_era_matrices` to inspect the fitted A, B and C matrices.
+`num_control_impulse_response` starts at a zero first sample and returns one
+column per output. The model has no direct feedthrough. Release it with
+`num_native_release`.
+
+## Prepared discrete MPC
+
+`num_control_mpc_prepare` takes normalized discrete A and B matrices, a
+positive sample time, and a record of horizons, diagonal weights and optional
+component bounds. Input weights must be positive. The prepared handle stores
+the prediction maps, Hessian and constraint rows, which are reused across
+`num_control_mpc_closed_loop` calls. Each sample shifts the constraints to the
+current state. An infeasible or non-finite solve returns an error.
+
+The native route limits matrix size, horizons and rollout work. Each
+trajectory includes the initial state. Release the plan with
+`num_native_release` when finished.
+
+### Finite numerical transforms
+
+The `num_transform_*_checked` exports report a value, an absolute error
+estimate, `converged`, and the actual evaluation count. The Mellin, inverse
+Mellin, Hilbert, Hankel and Stieltjes callbacks use dimensionless transformed
+coordinates and retain the callback amplitude dimension. For scales with
+physical units, normalize the coordinates and apply the analytic scale factor
+to the result. Adaptive error estimates cover only the finite interval.
+Laplace contours and Gaver–Stehfest compare two resolutions, so their error
+estimate is empirical. Expose analytic callbacks on the entire chosen contour
+and choose shifts to the right of the relevant singularities.
+
+Mellin–Barnes uses a pole-free vertical segment. Meijer G additionally requires
+the vertical line to separate the two numerator pole families. Both finite
+estimates exclude the omitted contour tails.
+The Borel polynomial preserves the common coefficient dimension and expects
+a dimensionless series argument.
+
+## Verified complex disks
+
+Complex disks use `[real, imaginary, radius]` on the last tensor axis. The
+special-function operators `num_complex_disk_erf`, `num_complex_disk_gamma`,
+`num_complex_disk_log_gamma` and `num_complex_disk_bessel_j` take normalized
+coordinates and return an optional enclosure of the entire input disk.
+An enclosure that reaches a pole, crosses a branch cut, or exceeds the
+supported finite range can produce `None`.
+
+Root certification uses `num_complex_disk_certify_root` for a scalar jet
+and `num_complex_disk_certify_system` for a normalized box of up to 64
+disks. Supply enclosure callbacks for the full disk or box, including the
+derivative or Jacobian. The scalar test needs two callback invocations,
+and the system test needs three. The optional result contains a certified
+root enclosure when the Krawczyk test succeeds.
+
+`num_complex_disk_certify_rouche` proves the strict inequality
+`|g(z)| < |f(z)|` along a circle. Both analytic callbacks enclose their
+images over each arc-covering disk. Use 4 to 4,096 arcs and a budget of at
+least two callback invocations per arc. `false` means the test did not
+establish the inequality.

@@ -40,6 +40,7 @@ use crate::graph::RuleError;
 use crate::graph::Tier;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
+use crate::kernels::complex_coords;
 
 const I: Complex64 = Complex64::new(0.0, 1.0);
 
@@ -370,51 +371,25 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let eval = match name {
             | "arg_branch" => {
                 ComplexEval(|a| {
-                    let z = *a.first()?;
-                    let theta0 = a.get(1)?.re;
-                    let mut shifted = (z.arg() - theta0).rem_euclid(TAU);
-                    if shifted == 0.0 {
-                        shifted = TAU;
-                    }
-                    Some(Complex64::new(theta0 + shifted, 0.0))
-                })
-            },
-            | "log_cut" => {
-                ComplexEval(|a| {
-                    let z = *a.first()?;
-                    let theta0 = a.get(1)?.re;
-                    let mut shifted = (z.arg() - theta0).rem_euclid(TAU);
-                    if shifted == 0.0 {
-                        shifted = TAU;
-                    }
-                    Some(Complex64::new(z.norm().ln(), theta0 + shifted))
-                })
-            },
-            | "sqrt_cut" => {
-                ComplexEval(|a| {
-                    let z = *a.first()?;
-                    let theta0 = a.get(1)?.re;
-                    let mut shifted = (z.arg() - theta0).rem_euclid(TAU);
-                    if shifted == 0.0 {
-                        shifted = TAU;
-                    }
-                    Some(Complex64::from_polar(
-                        z.norm().sqrt(),
-                        f64::midpoint(theta0, shifted),
+                    Some(Complex64::new(
+                        complex_coords::arg_branch(*a.first()?, a.get(1)?.re),
+                        0.0,
                     ))
                 })
             },
+            | "log_cut" => {
+                ComplexEval(|a| Some(complex_coords::log_cut(*a.first()?, a.get(1)?.re)))
+            },
+            | "sqrt_cut" => {
+                ComplexEval(|a| Some(complex_coords::sqrt_cut(*a.first()?, a.get(1)?.re)))
+            },
             | _ => {
                 ComplexEval(|a| {
-                    let z = *a.first()?;
-                    let w = *a.get(1)?;
-                    let theta0 = a.get(2)?.re;
-                    let mut shifted = (z.arg() - theta0).rem_euclid(TAU);
-                    if shifted == 0.0 {
-                        shifted = TAU;
-                    }
-                    let log_z = Complex64::new(z.norm().ln(), theta0 + shifted);
-                    Some((w * log_z).exp())
+                    Some(complex_coords::pow_cut(
+                        *a.first()?,
+                        *a.get(1)?,
+                        a.get(2)?.re,
+                    ))
                 })
             },
         };

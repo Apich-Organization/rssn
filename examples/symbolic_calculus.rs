@@ -1,7 +1,7 @@
 //! Symbolic calculus end to end: differentiate, integrate, take a limit,
 //! expand a series — then ask the same requests for numbers.
 //!
-//! Run with `cargo run --release --example symbolic_calculus`.
+//! Run with `bazel run //:example -- --profile release symbolic_calculus`.
 
 use rssn::api::*;
 

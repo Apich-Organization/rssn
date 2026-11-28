@@ -25,6 +25,30 @@ pub const MAX_BITS: u32 = 1 << 15;
 /// Largest magnitude of the binary exponent.
 pub const MAX_EXP: i64 = 1 << 18;
 
+/// Bounds for a normalized finite dyadic.
+#[derive(Clone, Copy, Debug)]
+pub struct RealLimits {
+    /// The minimum significand precision in bits.
+    pub min_precision: u32,
+    /// The maximum significand precision in bits.
+    pub max_precision: u32,
+    /// The smallest supported binary exponent.
+    pub min_exponent: i64,
+    /// The largest supported binary exponent.
+    pub max_exponent: i64,
+}
+
+/// Numeric limits of the dyadic format used by the multiprecision kernel.
+#[must_use]
+pub const fn limits() -> RealLimits {
+    RealLimits {
+        min_precision: 1,
+        max_precision: MAX_BITS,
+        min_exponent: -MAX_EXP,
+        max_exponent: MAX_EXP,
+    }
+}
+
 /// How a value that is not representable at the target precision is rounded.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Round {
@@ -384,46 +408,67 @@ impl Real {
         prec: u32,
         mode: Round,
     ) -> Result<(Self, bool), String> {
-        if other.mant.is_zero() {
+        Self::rounded_ratio_with_inexact(
+            self.mant.magnitude(),
+            other.mant.magnitude(),
+            self.exp - other.exp,
+            self.sign() != other.sign(),
+            prec,
+            mode,
+        )
+    }
+
+    /// Rounds a signed integer divided by an unsigned integer, times a power of two.
+    pub(super) fn rounded_ratio(
+        numerator: &BigInt,
+        denominator: &BigUint,
+        exponent: i64,
+        prec: u32,
+        mode: Round,
+    ) -> Result<Self, String> {
+        Self::rounded_ratio_with_inexact(
+            numerator.magnitude(),
+            denominator,
+            exponent,
+            numerator.sign() == Sign::Minus,
+            prec,
+            mode,
+        )
+        .map(|(value, _)| value)
+    }
+
+    fn rounded_ratio_with_inexact(
+        numerator: &BigUint,
+        denominator: &BigUint,
+        exponent: i64,
+        negative: bool,
+        prec: u32,
+        mode: Round,
+    ) -> Result<(Self, bool), String> {
+        if denominator.is_zero() {
             return Err("division by zero".to_string());
         }
-        if self.mant.is_zero() {
+        if numerator.is_zero() {
             return Ok((Self::zero(prec), false));
         }
-        let negative = self.sign() != other.sign();
-        // Scale the numerator so the integer quotient carries `prec + 8`
-        // significant bits; the remainder then only has to say "not exact".
-        let numerator_bits = i64::try_from(self.mant.magnitude().bits()).unwrap_or(i64::MAX);
-        let denominator_bits = i64::try_from(other.mant.magnitude().bits()).unwrap_or(i64::MAX);
+        // Carry extra bits in the quotient and preserve a sticky remainder.
+        let numerator_bits = i64::try_from(numerator.bits()).unwrap_or(i64::MAX);
+        let denominator_bits = i64::try_from(denominator.bits()).unwrap_or(i64::MAX);
         let want = i64::from(prec.clamp(1, MAX_BITS)) + 8;
         let shift = want + denominator_bits - numerator_bits;
-        let (numerator, mut exponent, discarded) = if shift >= 0 {
-            (
-                self.mant.magnitude() << usize::try_from(shift).unwrap_or(0),
-                self.exp
-                    .checked_sub(shift)
-                    .ok_or_else(|| "exponent out of range".to_string())?,
-                false,
-            )
+        let (numerator, discarded) = if shift >= 0 {
+            (numerator << shift.unsigned_abs(), false)
         } else {
             let right_shift = shift.unsigned_abs();
-            let discarded = self
-                .mant
-                .magnitude()
+            let discarded = numerator
                 .trailing_zeros()
                 .is_some_and(|zeros| zeros < right_shift);
-            (
-                self.mant.magnitude() >> right_shift,
-                self.exp
-                    .checked_add(-shift)
-                    .ok_or_else(|| "exponent out of range".to_string())?,
-                discarded,
-            )
+            (numerator >> right_shift, discarded)
         };
-        exponent = exponent
-            .checked_sub(other.exp)
+        let exponent = exponent
+            .checked_sub(shift)
             .ok_or_else(|| "exponent out of range".to_string())?;
-        let (quotient, remainder) = numerator.div_rem(other.mant.magnitude());
+        let (quotient, remainder) = numerator.div_rem(denominator);
         // A nonzero remainder or discarded numerator bits put the exact
         // quotient strictly between `q` and `q + 1`. Using `2q + 1` at the next
         // exponent preserves that rounding decision in every mode.
@@ -461,49 +506,208 @@ impl Real {
         prec: u32,
         mode: Round,
     ) -> Result<Self, String> {
+        self.sqrt_with_inexact(prec, mode).map(|(value, _)| value)
+    }
+
+    pub(super) fn sqrt_with_inexact(
+        &self,
+        prec: u32,
+        mode: Round,
+    ) -> Result<(Self, bool), String> {
         if self.sign() < 0 {
             return Err("square root of a negative number".to_string());
         }
-        if self.mant.is_zero() {
-            return Ok(Self::zero(prec));
-        }
-        let want = prec.clamp(1, MAX_BITS);
-        // An even exponent makes the root's exponent integral; scaling the
-        // mantissa to `2 * want + 8` bits gives the integer square root
-        // enough guard bits for one correct rounding.
-        let mut exponent = self.exp;
-        let mut magnitude = self.mant.magnitude().clone();
-        if exponent % 2 != 0 {
-            magnitude <<= 1_u32;
-            exponent -= 1;
-        }
-        let target = 2 * u64::from(want) + 8;
-        // The exponent must stay even for `sqrt(m * 2^e) = sqrt(m) 2^(e/2)`
-        // to hold, so the scaling shift is rounded up to an even number.
-        let shift = target.saturating_sub(magnitude.bits());
-        let shift = shift + (shift % 2);
-        magnitude <<= usize::try_from(shift).unwrap_or(0);
-        let exponent = exponent
-            .checked_sub(i64::try_from(shift).unwrap_or(i64::MAX))
-            .ok_or_else(|| "exponent out of range".to_string())?;
-        let root = magnitude.sqrt();
-        let exact = &root * &root == magnitude;
-        let (magnitude, exponent) = if exact {
-            (root, exponent / 2)
-        } else {
-            (
-                (root << 1_u32) + BigUint::from(1_u32),
-                (exponent / 2)
-                    .checked_sub(1)
-                    .ok_or_else(|| "exponent out of range".to_string())?,
-            )
-        };
-        Self::rounded(
-            BigInt::from_biguint(Sign::Plus, magnitude),
-            exponent,
-            want,
+        Self::rounded_root(self.mant.magnitude(), self.exp, 2, Sign::Plus, prec, mode)
+    }
+
+    /// The cube root, rounded once to `prec` bits in the requested direction.
+    ///
+    /// # Errors
+    /// Fails when the result exponent is outside the representable range.
+    pub fn cbrt(
+        &self,
+        prec: u32,
+        mode: Round,
+    ) -> Result<Self, String> {
+        self.cbrt_with_inexact(prec, mode).map(|(value, _)| value)
+    }
+
+    pub(super) fn cbrt_with_inexact(
+        &self,
+        prec: u32,
+        mode: Round,
+    ) -> Result<(Self, bool), String> {
+        Self::rounded_root(
+            self.mant.magnitude(),
+            self.exp,
+            3,
+            self.mant.sign(),
+            prec,
             mode,
         )
+    }
+
+    pub(super) fn hypot_with_inexact(
+        &self,
+        other: &Self,
+        prec: u32,
+        mode: Round,
+    ) -> Result<(Self, bool), String> {
+        let (magnitude, exponent) = self.hypot_representation(other, prec)?;
+        Self::rounded_with_inexact(BigInt::from(magnitude), exponent, prec, mode)
+    }
+
+    /// Directed bounds for the normalized hypot significand and its scale.
+    /// Keeping the scale separate supports logarithms of large and tiny norms.
+    pub(super) fn scaled_hypot_bounds(
+        &self,
+        other: &Self,
+        prec: u32,
+    ) -> Result<(Self, Self, i64), String> {
+        let (magnitude, exponent) = self.hypot_representation(other, prec)?;
+        if magnitude.is_zero() {
+            return Err("logarithm of a zero modulus".into());
+        }
+        let normalized = 1 - i64::try_from(magnitude.bits()).map_err(|error| error.to_string())?;
+        let shift = exponent - normalized;
+        let magnitude = BigInt::from(magnitude);
+        Ok((
+            Self::rounded(magnitude.clone(), normalized, prec, Round::TowardNegative)?,
+            Self::rounded(magnitude, normalized, prec, Round::TowardPositive)?,
+            shift,
+        ))
+    }
+
+    fn hypot_representation(
+        &self,
+        other: &Self,
+        prec: u32,
+    ) -> Result<(BigUint, i64), String> {
+        if self.is_zero() || other.is_zero() {
+            let nonzero = if self.is_zero() {
+                other
+            } else {
+                self
+            };
+            return Ok((nonzero.mant.magnitude().clone(), nonzero.exp));
+        }
+        let exponent = self.exp.min(other.exp);
+        let square = |value: &Self| {
+            value.mant.magnitude().pow(2) << (2 * (value.exp - exponent)).unsigned_abs()
+        };
+        let sum = square(self) + square(other);
+        Self::root_representation(&sum, 2 * exponent, 2, prec)
+    }
+
+    /// Square root of half a sum of nonnegative dyadics, with an
+    /// independent binary scale on the first term.
+    pub(super) fn sqrt_half_sum_scaled(
+        &self,
+        scale: i64,
+        other: &Self,
+        prec: u32,
+        mode: Round,
+    ) -> Result<Self, String> {
+        let first_exponent = self.exp + scale;
+        let exponent = first_exponent.min(other.exp);
+        let magnitude = (self.mant.magnitude() << (first_exponent - exponent).unsigned_abs())
+            + (other.mant.magnitude() << (other.exp - exponent).unsigned_abs());
+        Self::rounded_root(&magnitude, exponent - 1, 2, Sign::Plus, prec, mode)
+            .map(|(value, _)| value)
+    }
+
+    fn rounded_root(
+        magnitude: &BigUint,
+        exponent: i64,
+        degree: u32,
+        sign: Sign,
+        prec: u32,
+        mode: Round,
+    ) -> Result<(Self, bool), String> {
+        let (magnitude, exponent) = Self::root_representation(magnitude, exponent, degree, prec)?;
+        Self::rounded_with_inexact(BigInt::from_biguint(sign, magnitude), exponent, prec, mode)
+    }
+
+    /// Outward square root bounds for 1 - self², sharing one integer root.
+    pub(super) fn unit_complement_sqrt(
+        &self,
+        prec: u32,
+    ) -> Result<(Self, Self), String> {
+        let prec = prec.clamp(1, MAX_BITS);
+        let Some(top) = self.floor_log2() else {
+            let one = Self::one(prec);
+            return Ok((one.clone(), one));
+        };
+        if top >= 0 {
+            if top == 0 && self.mant.trailing_zeros() == Some(u64::from(self.prec - 1)) {
+                return Ok((Self::zero(prec), Self::zero(prec)));
+            }
+            return Err("inverse trigonometric input outside [-1, 1]".into());
+        }
+        if 2 * (top + 1) <= -i64::from(prec) {
+            // For tiny x, 1 - sqrt(1 - x²) <= x². The exact root is
+            // between one and its predecessor at this precision.
+            let predecessor = (BigInt::from(1) << prec) - 1_u32;
+            return Ok((
+                Self::rounded(predecessor, -i64::from(prec), prec, Round::TowardNegative)?,
+                Self::one(prec),
+            ));
+        }
+        // For 0 < |x| <= 1, the raw exponent of x² is non-positive.
+        let exponent = 2 * self.exp;
+        let unit = BigUint::from(1_u32) << exponent.unsigned_abs();
+        let magnitude = unit - self.mant.magnitude().pow(2);
+        let (root, exponent) = Self::root_representation(&magnitude, exponent, 2, prec)?;
+        let root = BigInt::from(root);
+        Ok((
+            Self::rounded(root.clone(), exponent, prec, Round::TowardNegative)?,
+            Self::rounded(root, exponent, prec, Round::TowardPositive)?,
+        ))
+    }
+
+    fn root_representation(
+        magnitude: &BigUint,
+        exponent: i64,
+        degree: u32,
+        prec: u32,
+    ) -> Result<(BigUint, i64), String> {
+        if magnitude.is_zero() {
+            return Ok((BigUint::zero(), 0));
+        }
+        let want = prec.clamp(1, MAX_BITS);
+        let degree_i = i64::from(degree);
+        let remainder = exponent.rem_euclid(degree_i);
+        let target = (i64::from(want) + 4) * degree_i;
+        let bits = i64::try_from(magnitude.bits()).map_err(|e| e.to_string())?;
+        // Keep the internal exponent a multiple of the degree so it can be
+        // divided exactly. Use enough leading bits for one final rounding.
+        let exponent_step = (bits + remainder - target).div_euclid(degree_i) * degree_i;
+        let shift = remainder - exponent_step;
+        let mut exponent = (exponent - shift) / degree_i;
+        let (scaled, discarded) = if shift >= 0 {
+            (magnitude << shift.unsigned_abs(), false)
+        } else {
+            let dropped = shift.unsigned_abs();
+            // The floor of the real root agrees with the root of this
+            // truncated integer. Dropped bits still affect exactness.
+            (
+                magnitude >> dropped,
+                magnitude
+                    .trailing_zeros()
+                    .is_some_and(|zeros| zeros < dropped),
+            )
+        };
+        let root = scaled.nth_root(degree);
+        let exact = !discarded && root.pow(degree) == scaled;
+        let magnitude = if exact {
+            root
+        } else {
+            // Any interior point between successive integer roots has
+            // the same rounding decision after the guard bits disappear.
+            exponent -= 1;
+            (root << 1_u32) + 1_u32
+        };
+        Ok((magnitude, exponent))
     }
 
     /// `self * 2^k`, exact.
@@ -589,6 +793,15 @@ impl Real {
         let mask =
             (BigUint::from(1_u32) << usize::try_from(drop).unwrap_or(0)) - BigUint::from(1_u32);
         (self.mant.magnitude() & mask).is_zero()
+    }
+
+    /// Converts an already-verified integer exponent to the supported range.
+    pub(super) fn integer_exponent(&self) -> Result<i64, String> {
+        if self.floor_log2().is_some_and(|top| top > 63) {
+            return Err("integer exponent out of signed 64-bit range".into());
+        }
+        i64::try_from(self.trunc_to_bigint()?)
+            .map_err(|_| "integer exponent out of signed 64-bit range".into())
     }
 
     /// The value truncated toward zero to an integer.

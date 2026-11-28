@@ -77,9 +77,13 @@ pub fn hmc(
         proposed: 0,
     };
     let eps = opts.step_size;
+    let mut momentum = vec![0.0; dim];
+    let mut position = state.clone();
     for iteration in 0..total {
-        let mut momentum: Vec<f64> = (0..dim).map(|_| rng.normal()).collect();
-        let mut position = state.clone();
+        for value in &mut momentum {
+            *value = rng.normal();
+        }
+        position.copy_from_slice(&state);
         let mut grad = gradient(&position)?;
         let kinetic: f64 = 0.5 * momentum.iter().map(|p| p * p).sum::<f64>();
         let energy_old = -current_log + kinetic;
@@ -107,7 +111,7 @@ pub fn hmc(
         // A NaN energy difference fails the comparison and rejects the move.
         let log_u = rng.next_f64().max(f64::MIN_POSITIVE).ln();
         if log_u < energy_old - energy_new {
-            state = position;
+            std::mem::swap(&mut state, &mut position);
             current_log = proposed_log;
             chain.accepted += 1;
         }

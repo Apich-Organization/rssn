@@ -1,5 +1,8 @@
-//! Steepest-descent and saddle-point asymptotic methods for oscillatory and
-//! exponential contour integrals `I(lambda) = int_C g(z) exp(lambda * phi(z)) dz`.
+//! Saddle-point asymptotics and finite complex contour integration.
+#![allow(
+    clippy::arithmetic_side_effects,
+    reason = "the floating-point phase formulas check finite values and the work counts are fixed"
+)]
 
 use std::f64::consts::FRAC_PI_2;
 use std::f64::consts::PI;
@@ -7,9 +10,16 @@ use std::f64::consts::PI;
 use num_complex::Complex64;
 
 use crate::kernels::complex::cauchy_fft_derivatives;
-use crate::kernels::integrate::gauss_kronrod_any;
+use crate::kernels::contour_deform::ContourSegment;
+use crate::kernels::contour_deform::integrate_contour_checked;
+use crate::kernels::quadrature::GkRule;
+use crate::kernels::quadrature::gk_panel_complex;
 
-/// Non-degenerate or higher-order saddle point `phi'(z0) = 0`.
+const ZERO: Complex64 = Complex64::new(0.0, 0.0);
+const NAN: Complex64 = Complex64::new(f64::NAN, f64::NAN);
+const STEPS: usize = 64;
+
+/// Critical point of the phase `phi` in `g(z) exp(lambda * phi(z))`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SaddlePoint {
     /// Saddle point location `z0`.
@@ -18,27 +28,27 @@ pub struct SaddlePoint {
     pub phi_val: Complex64,
     /// Second derivative `phi''(z0)`.
     pub phi_d2: Complex64,
-    /// Steepest-descent direction angle `theta` where `Re(e^(2 i theta) phi''(z0)) < 0`.
+    /// Directed tangent angle in radians for local steepest descent.
     pub steepest_angle: f64,
-    /// Degeneracy order (`2` for a simple non-degenerate saddle).
+    /// Two for a simple saddle, three when the quadratic term vanishes.
     pub degeneracy: usize,
 }
 
-fn orient_steepest_angle(f2: Complex64) -> f64 {
-    if f2.norm() <= 1e-12 {
-        return 0.0;
-    }
-    let mut theta = 0.5 * (PI - f2.arg());
-    while theta > FRAC_PI_2 {
-        theta -= PI;
-    }
-    while theta <= -FRAC_PI_2 {
-        theta += PI;
-    }
-    theta
+fn quotient(
+    numerator: Complex64,
+    denominator: Complex64,
+) -> Complex64 {
+    let scale = denominator.re.abs().max(denominator.im.abs());
+    (numerator / scale) / (denominator / scale)
 }
 
-/// Locates a saddle point `phi'(z0) = 0` from `z_guess` via Newton's method.
+fn unit(z: Complex64) -> Complex64 {
+    let scaled = z / z.re.abs().max(z.im.abs());
+    scaled / scaled.norm()
+}
+
+/// Locates a saddle point by Newton iteration, verifying the phase derivative.
+/// Returns `None` on invalid values, cancellation or failure to meet the tolerance.
 #[must_use]
 pub fn find_saddle_point<F, D1, D2>(
     phi: F,
@@ -52,42 +62,89 @@ where
     D1: Fn(Complex64) -> Complex64,
     D2: Fn(Complex64) -> Complex64,
 {
+    if !z_guess.is_finite() || !tol.is_finite() || tol <= 0.0 {
+        return None;
+    }
     let mut z = z_guess;
-    for _ in 0..80 {
-        let f1 = dphi(z);
-        if f1.norm() <= tol {
-            let f2 = d2phi(z);
-            return Some(SaddlePoint {
-                z0: z,
-                phi_val: phi(z),
-                phi_d2: f2,
-                steepest_angle: orient_steepest_angle(f2),
-                degeneracy: if f2.norm() > 1e-10 { 2 } else { 3 },
-            });
-        }
-        let f2 = d2phi(z);
-        if f2.norm() < 1e-30 {
+    for _ in 0..=80 {
+        if crate::cancellation::is_cancelled() {
             return None;
         }
-        let step = f1 / f2;
-        z -= step;
-        if step.norm() <= tol * (1.0 + z.norm()) {
-            let f2_fin = d2phi(z);
+        let slope = dphi(z);
+        let curvature = d2phi(z);
+        if !slope.is_finite() || !curvature.is_finite() {
+            return None;
+        }
+        if slope.norm() <= tol {
+            let phase = phi(z);
+            if !phase.is_finite() {
+                return None;
+            }
+            let nondegenerate = curvature != ZERO;
+            let mut angle = if nondegenerate {
+                0.5 * (PI - curvature.arg())
+            } else {
+                0.0
+            };
+            if angle > FRAC_PI_2 {
+                angle -= PI;
+            }
             return Some(SaddlePoint {
                 z0: z,
-                phi_val: phi(z),
-                phi_d2: f2_fin,
-                steepest_angle: orient_steepest_angle(f2_fin),
-                degeneracy: 2,
+                phi_val: phase,
+                phi_d2: curvature,
+                steepest_angle: angle,
+                degeneracy: if nondegenerate { 2 } else { 3 },
             });
         }
+        if curvature == ZERO {
+            return None;
+        }
+        let next = z - quotient(slope, curvature);
+        if !next.is_finite() || next == z {
+            return None;
+        }
+        z = next;
     }
     None
 }
 
-/// Leading-order saddle-point approximation:
-/// `g(z0) * exp(lambda * phi(z0)) * sqrt(2*pi / (-lambda * phi''(z0)))`
-/// with branch oriented along `saddle.steepest_angle`.
+fn descending_tangent(
+    saddle: &SaddlePoint,
+    lambda: f64,
+) -> Option<Complex64> {
+    if !lambda.is_finite()
+        || lambda <= 0.0
+        || !saddle.z0.is_finite()
+        || !saddle.phi_val.is_finite()
+        || !saddle.phi_d2.is_finite()
+        || !saddle.steepest_angle.is_finite()
+        || saddle.degeneracy != 2
+    {
+        return None;
+    }
+    let direction = Complex64::from_polar(1.0, saddle.steepest_angle);
+    let decay = -unit(saddle.phi_d2) * direction * direction;
+    (decay.re > 0.0).then_some(direction)
+}
+
+fn gaussian(
+    saddle: &SaddlePoint,
+    lambda: f64,
+) -> Complex64 {
+    let Some(direction) = descending_tangent(saddle, lambda) else {
+        return NAN;
+    };
+    let phase = -unit(saddle.phi_d2) * direction * direction;
+    // Take square roots before combining the two positive scales. In
+    // particular, lambda * |phi''| need not be representable by itself.
+    let rho = saddle.phi_d2.re.abs().max(saddle.phi_d2.im.abs());
+    let width =
+        (2.0 * PI).sqrt() / lambda.sqrt() / rho.sqrt() / (saddle.phi_d2 / rho).norm().sqrt();
+    direction * width / phase.sqrt()
+}
+
+/// Leading oriented Gaussian term at a simple saddle. Invalid geometry gives NaN.
 #[must_use]
 pub fn saddle_point_leading<G>(
     g: G,
@@ -97,14 +154,16 @@ pub fn saddle_point_leading<G>(
 where
     G: Fn(Complex64) -> Complex64,
 {
-    let dir = Complex64::from_polar(1.0, saddle.steepest_angle);
-    let a = -0.5 * lambda * saddle.phi_d2 * dir * dir; // Re(a) > 0
-    let gauss = dir * (PI / a).sqrt();
-    g(saddle.z0) * (lambda * saddle.phi_val).exp() * gauss
+    let factor = gaussian(saddle, lambda);
+    if !factor.is_finite() || crate::cancellation::is_cancelled() {
+        return NAN;
+    }
+    g(saddle.z0) * (lambda * saddle.phi_val).exp() * factor
 }
 
-/// Second-order saddle-point approximation including the `O(1/lambda)` term,
-/// using Cauchy-FFT derivatives of `phi` (to order 4) and `g` (to order 2) at `z0`.
+/// Oriented Gaussian term and first inverse-`lambda` correction.
+/// Uses circular Cauchy samples for the third and fourth phase derivatives
+/// and first and second amplitude derivatives.
 #[must_use]
 pub fn saddle_point_asymptotic_order2<F, G>(
     phi: F,
@@ -116,35 +175,93 @@ where
     F: Fn(Complex64) -> Complex64,
     G: Fn(Complex64) -> Complex64,
 {
-    let r = 0.1_f64.min(0.25 * (1.0 + saddle.z0.norm()));
-    let p_der = cauchy_fft_derivatives(phi, saddle.z0, r, 4, 32);
-    let g_der = cauchy_fft_derivatives(g, saddle.z0, r, 2, 32);
-    let g0 = g_der.first().copied().unwrap_or_default();
-    let g1 = g_der.get(1).copied().unwrap_or_default();
-    let g2 = g_der.get(2).copied().unwrap_or_default();
-    let p2 = p_der.get(2).copied().unwrap_or(saddle.phi_d2);
-    let p3 = p_der.get(3).copied().unwrap_or_default();
-    let p4 = p_der.get(4).copied().unwrap_or_default();
-
-    let dir = Complex64::from_polar(1.0, saddle.steepest_angle);
-    let a = -0.5 * lambda * p2 * dir * dir;
-    let gauss = dir * (PI / a).sqrt();
-
-    // Standard Laplace/saddle-point O(1/lambda) correction, or O(lambda^(-3/2)) when g(z0) == 0:
-    if g0.norm() <= 1e-14 {
-        let second_term = 0.5 * g2 / (-lambda * p2);
-        return (lambda * saddle.phi_val).exp() * gauss * second_term;
+    let factor = gaussian(saddle, lambda);
+    if !factor.is_finite() || crate::cancellation::is_cancelled() {
+        return NAN;
     }
-    let corr = (-g2 / (2.0 * g0 * p2) + (g1 * p3) / (2.0 * g0 * p2 * p2) + p4 / (8.0 * p2 * p2)
-        - (5.0 * p3 * p3) / (24.0 * p2 * p2 * p2))
-        / lambda;
-    g0 * (lambda * saddle.phi_val).exp() * gauss * (Complex64::new(1.0, 0.0) + corr)
+    let radius = 0.1;
+    if saddle.z0.re + radius <= saddle.z0.re || saddle.z0.im + radius <= saddle.z0.im {
+        return NAN;
+    }
+    let p = cauchy_fft_derivatives(phi, saddle.z0, radius, 4, 32);
+    let g_derivatives = cauchy_fft_derivatives(&g, saddle.z0, radius, 2, 32);
+    let ([_, _, _, p3, p4], [_, g1, g2]) = (p.as_slice(), g_derivatives.as_slice()) else {
+        return NAN;
+    };
+    let g0 = g(saddle.z0);
+    // DLMF 2.4.16 under p = -phi. Keep the correction linear in g
+    // and its derivatives, including the mixed term when g(z0) vanishes.
+    let c3 = quotient(*p3, saddle.phi_d2);
+    let c4 = quotient(*p4, saddle.phi_d2);
+    let numerator = -0.5 * *g2 + 0.5 * *g1 * c3 + g0 * (0.125 * c4 - (5.0 / 24.0) * c3 * c3);
+    let correction = quotient(numerator, saddle.phi_d2) / lambda;
+    (g0 + correction) * (lambda * saddle.phi_val).exp() * factor
 }
 
-/// Integrates numerically along a curved steepest-descent path.
+#[allow(
+    clippy::single_call_fn,
+    reason = "construct the two oriented phase branches independently of quadrature"
+)]
+fn trace_descent(
+    phi: &impl Fn(Complex64) -> Complex64,
+    saddle: &SaddlePoint,
+    direction: Complex64,
+    half_len: f64,
+) -> Option<Vec<Complex64>> {
+    let ds = half_len / STEPS as f64;
+    let mut points = Vec::with_capacity(STEPS + 1);
+    let mut point = saddle.z0;
+    let mut tangent = direction;
+    let mut last_real = saddle.phi_val.re;
+    let phase_tol = 1e-12 * saddle.phi_val.norm().max(1.0);
+    points.push(point);
+    for _ in 0..STEPS {
+        if crate::cancellation::is_cancelled() {
+            return None;
+        }
+        let mut next = point + tangent * ds;
+        if !next.is_finite() || next == point {
+            return None;
+        }
+        let mut accepted = false;
+        for _ in 0..8 {
+            let phase = phi(next);
+            if !phase.is_finite() {
+                return None;
+            }
+            let h = f64::EPSILON.cbrt() * (1.0 + next.re.abs());
+            let slope = (phi(next + h) - phi(next - h)) / (2.0 * h);
+            if slope == ZERO || !slope.is_finite() {
+                return None;
+            }
+            let residual = phase.im - saddle.phi_val.im;
+            if residual.abs() <= phase_tol {
+                if phase.re > last_real + phase_tol {
+                    return None;
+                }
+                last_real = phase.re;
+                tangent = -unit(slope).conj();
+                accepted = true;
+                break;
+            }
+            next -= quotient(Complex64::new(0.0, residual), slope);
+            if !next.is_finite() {
+                return None;
+            }
+        }
+        if !accepted {
+            return None;
+        }
+        point = next;
+        points.push(point);
+    }
+    Some(points)
+}
+
+/// Integrates along two traced constant-phase branches of a simple saddle.
 ///
-/// Traces `Im(phi(z)) = Im(phi(z0))` by predictor-corrector projection onto the constant-phase
-/// curve, with `Re(phi(z))` decreasing away from `z0`.
+/// The finite path extends approximately `half_len` in each direction.
+/// Returns NaN on invalid geometry, branch projection failure or nonconvergence.
 #[must_use]
 pub fn steepest_descent_integrate<F, G>(
     phi: F,
@@ -158,67 +275,76 @@ where
     F: Fn(Complex64) -> Complex64,
     G: Fn(Complex64) -> Complex64,
 {
-    let dir = Complex64::from_polar(1.0, saddle.steepest_angle);
-    let im0 = saddle.phi_val.im;
-    let trace_branch = |sign: f64| -> Complex64 {
-        let n_steps = 64_usize;
-        let ds = half_len / (n_steps as f64);
-        let mut pts = Vec::with_capacity(n_steps + 1);
-        pts.push(saddle.z0);
-        let mut z = saddle.z0;
-        let mut tangent = dir * sign;
-        for _ in 0..n_steps {
-            z += tangent * ds;
-            // Project onto Im(phi(z)) = im0 via 3 Newton steps perpendicular to grad(Im phi).
-            for _ in 0..4 {
-                let h = 1e-6 * (1.0 + z.norm());
-                let dp = (phi(z + h) - phi(z - h)) / (2.0 * h);
-                if dp.norm() < 1e-14 {
-                    break;
-                }
-                let err_im = phi(z).im - im0;
-                if err_im.abs() < 1e-13 {
-                    break;
-                }
-                // d/dt Im(phi(z + i * t / dp)) = Re(i * t) -> use z - i * err_im / dp
-                z -= Complex64::new(0.0, err_im) / dp;
-                tangent = -dp.conj() / dp.norm();
-                if (tangent.re * (dir.re * sign) + tangent.im * (dir.im * sign)) < 0.0 {
-                    tangent = -tangent;
-                }
-            }
-            pts.push(z);
-        }
-        // Composite trapezoidal/Simpson on the traced steepest-descent curve
-        let mut seg_sum = Complex64::new(0.0, 0.0);
-        for w in pts.windows(2) {
-            let a = w[0];
-            let b = w[1];
-            let re = gauss_kronrod_any(
-                |t| {
-                    let zt = a + (b - a) * t;
-                    (g(zt) * (lambda * phi(zt)).exp() * (b - a)).re
-                },
-                0.0,
-                1.0,
-                tol,
-                16,
-            )
-            .value;
-            let im = gauss_kronrod_any(
-                |t| {
-                    let zt = a + (b - a) * t;
-                    (g(zt) * (lambda * phi(zt)).exp() * (b - a)).im
-                },
-                0.0,
-                1.0,
-                tol,
-                16,
-            )
-            .value;
-            seg_sum += Complex64::new(re, im);
-        }
-        seg_sum
+    let Some(direction) = descending_tangent(saddle, lambda) else {
+        return NAN;
     };
-    trace_branch(1.0) - trace_branch(-1.0)
+    if !half_len.is_finite()
+        || half_len <= 0.0
+        || !tol.is_finite()
+        || tol <= 0.0
+        || crate::cancellation::is_cancelled()
+    {
+        return NAN;
+    }
+    let actual = phi(saddle.z0);
+    if !actual.is_finite()
+        || (actual - saddle.phi_val).norm() > 1e-12 * saddle.phi_val.norm().max(1.0)
+    {
+        return NAN;
+    }
+    let Some(negative) = trace_descent(&phi, saddle, -direction, half_len) else {
+        return NAN;
+    };
+    let Some(positive) = trace_descent(&phi, saddle, direction, half_len) else {
+        return NAN;
+    };
+    let segments: Vec<_> = negative
+        .windows(2)
+        .rev()
+        .filter_map(|pair| {
+            let [end, start] = *pair else { return None };
+            Some(ContourSegment::Line { start, end })
+        })
+        .chain(positive.windows(2).filter_map(|pair| {
+            let [start, end] = *pair else { return None };
+            Some(ContourSegment::Line { start, end })
+        }))
+        .collect();
+    let evaluate = |z| g(z) * (lambda * phi(z)).exp();
+    // For a resolved trace, reuse the shared complex panel's samples and
+    // error estimates directly. Refine through the adaptive contour engine
+    // only when this partition misses the requested absolute tolerance.
+    let mut integral = ZERO;
+    let mut rounding = ZERO;
+    let mut error = 0.0;
+    for segment in &segments {
+        if crate::cancellation::is_cancelled() {
+            return NAN;
+        }
+        let &ContourSegment::Line { start, end } = segment else {
+            return NAN;
+        };
+        let delta = end - start;
+        let (estimate, errors, _) = gk_panel_complex(0.0, 1.0, GkRule::G7K15, |t| {
+            evaluate(start + t * delta) * delta
+        });
+        if !estimate.is_finite() || !errors[0].is_finite() || !errors[1].is_finite() {
+            return NAN;
+        }
+        let adjusted = estimate - rounding;
+        let next = integral + adjusted;
+        rounding = (next - integral) - adjusted;
+        integral = next;
+        error += errors[0].hypot(errors[1]);
+    }
+    if error <= tol && integral.is_finite() {
+        return integral;
+    }
+    integrate_contour_checked(evaluate, &segments, tol, 4096).map_or(NAN, |result| {
+        if result.converged {
+            result.value
+        } else {
+            NAN
+        }
+    })
 }

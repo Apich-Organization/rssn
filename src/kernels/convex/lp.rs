@@ -75,6 +75,10 @@ pub struct LpSolution {
 /// Returns an error string when the dimensions disagree, when any input entry
 /// is not finite, when `max_iter` is zero, or when the simplex exceeds
 /// `max_iter` pivots.
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "floating coordinate shifts are checked by the simplex input validation"
+)]
 pub fn solve_lp(
     p: &LpProblem,
     max_iter: usize,
@@ -85,52 +89,51 @@ pub fn solve_lp(
     }
 
     // A finite upper bound below its lower bound is an immediate infeasibility.
-    for j in 0..n {
-        if let Some(u) = p.upper[j] {
-            if u < p.lower[j] {
-                return Ok(infeasible_solution());
-            }
-        }
+    let finite_upper = p
+        .upper
+        .iter()
+        .zip(&p.lower)
+        .enumerate()
+        .filter_map(|(j, (&upper, &lower))| upper.map(|upper| (j, upper, lower)));
+    if finite_upper.clone().any(|(_, upper, lower)| upper < lower) {
+        return Ok(infeasible_solution(0));
     }
 
-    let m = p.a.len();
-    let mut rows: Vec<Vec<f64>> = Vec::with_capacity(m + n);
-    let mut rhs: Vec<f64> = Vec::with_capacity(m + n);
-    let mut senses: Vec<Relation> = Vec::with_capacity(m + n);
+    let capacity = p.a.len().saturating_add(finite_upper.clone().count());
+    let mut rows = Vec::with_capacity(capacity);
+    let mut rhs = Vec::with_capacity(capacity);
+    let mut mapped = Vec::with_capacity(capacity);
 
     // Shift the rows into the non-negative variables `y = x - lower`.
-    for i in 0..m {
-        let row = p.a[i].clone();
-        let shifted = p.b[i] - dot(&row, &p.lower);
-        rows.push(row);
+    for ((row, &value), &sense) in p.a.iter().zip(&p.b).zip(&p.rel) {
+        let shifted = value - dot(row, &p.lower);
+        rows.push(row.clone());
         rhs.push(shifted);
-        senses.push(p.rel[i]);
+        mapped.push(map_relation(sense));
     }
 
     // One `y_j <= upper_j - lower_j` row per finite upper bound.
-    for j in 0..n {
-        if let Some(u) = p.upper[j] {
-            let mut row = vec![0.0; n];
-            row[j] = 1.0;
-            rows.push(row);
-            rhs.push(u - p.lower[j]);
-            senses.push(Relation::Le);
+    for (j, upper, lower) in finite_upper {
+        let mut row = vec![0.0; n];
+        if let Some(pivot) = row.get_mut(j) {
+            *pivot = 1.0;
         }
+        rows.push(row);
+        rhs.push(upper - lower);
+        mapped.push(crate::kernels::optim::Relation::Le);
     }
-
-    let mapped: Vec<crate::kernels::optim::Relation> =
-        senses.iter().map(|r| map_relation(*r)).collect();
 
     let result =
         simplex_with_max_iter(&p.c, &rows, &mapped, &rhs, Pricing::SteepestEdge, max_iter)?;
 
     match result.status {
         | OptLpStatus::Optimal { x, value: _ } => {
-            let mut x_full = Vec::with_capacity(n);
-            for j in 0..n {
-                let y = x.get(j).copied().unwrap_or(0.0);
-                x_full.push(p.lower[j] + y);
-            }
+            let x_full = p
+                .lower
+                .iter()
+                .zip(x)
+                .map(|(lower, y)| lower + y)
+                .collect::<Vec<_>>();
             let objective = dot(&p.c, &x_full);
             Ok(LpSolution {
                 status: LpStatus::Optimal,
@@ -139,7 +142,7 @@ pub fn solve_lp(
                 iterations: result.iterations,
             })
         },
-        | OptLpStatus::Infeasible => Ok(infeasible_solution()),
+        | OptLpStatus::Infeasible => Ok(infeasible_solution(result.iterations)),
         | OptLpStatus::Unbounded => {
             Ok(LpSolution {
                 status: LpStatus::Unbounded,
@@ -151,12 +154,12 @@ pub fn solve_lp(
     }
 }
 
-fn infeasible_solution() -> LpSolution {
+const fn infeasible_solution(iterations: usize) -> LpSolution {
     LpSolution {
         status: LpStatus::Infeasible,
         x: Vec::new(),
         objective: f64::NAN,
-        iterations: 0,
+        iterations,
     }
 }
 

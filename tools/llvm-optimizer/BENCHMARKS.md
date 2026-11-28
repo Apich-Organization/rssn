@@ -1,5 +1,10 @@
 # 寄存器压力 pass 的 A/B
 
+通过 `bazel run //:llvm_benchmark_ci -- --reports-dir /path/to/reports` 运行 Linux CI 的基准组合。
+Rust 配对基准及其构建日志保存在 `ab-*` 子目录，zstd 解码、doubleFast 和 FSE 回放的配对结果分别写入
+`decode/results.json`、`double-fast/results.json` 和 `fse/results.json`。单独运行 `//:llvm_benchmark_compare` 的
+`pair` 模式时，可使用 `--output FILE` 同时保存终端中的 JSON 结果。
+
 ## ABI 与私有栈对象
 
 在同一 Linux x86-64 主机上使用 rustc 1.100.0、LLVM 23.1.5。真实 Rust ABI 微基准由三个切片、一个标志、一个整数步进参数组成。两组均经 rustc fat LTO，LLVM IR 中保留了 Rust 生成的 `captures(none)`、`noalias` 和切片长度范围。压力 pass 在这组 A/B 中关闭，仅切换本地 ABI 模块。

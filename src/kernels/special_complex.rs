@@ -202,7 +202,7 @@ fn scaled_log(z: Complex64) -> Complex64 {
 }
 
 /// Reciprocal for a finite nonzero argument, without squaring its magnitude.
-fn scaled_reciprocal(z: Complex64) -> Complex64 {
+pub(super) fn scaled_reciprocal(z: Complex64) -> Complex64 {
     let scale = z.re.abs().max(z.im.abs());
     if (1e-150..=1e150).contains(&scale) {
         return 1.0 / z;
@@ -424,6 +424,10 @@ fn unit_pi_half(x: f64) -> Complex64 {
 
 /// Half the sum of the two Hankel expansions (DLMF 10.17.5), with the
 /// additional phase `order_rotation * πν/2` applied before exponential scaling.
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "the Hankel recurrence uses floating-point arithmetic and a fixed order budget"
+)]
 fn bessel_j_asymptotic(
     nu: f64,
     mut z: Complex64,
@@ -431,36 +435,13 @@ fn bessel_j_asymptotic(
 ) -> Complex64 {
     if z.re < 0.0 {
         // Continue from the corresponding lip of the cut into the right half plane.
-        let side = if z.im == 0.0 {
-            1.0
-        } else {
-            z.im.signum()
-        };
+        let side = z.im.signum();
         order_rotation += 2.0 * side;
         z = -z;
     }
     let inverse = scaled_reciprocal(z);
     let order_square = 0.5 * nu * nu;
-    let one = Complex64::new(1.0, 0.0);
-    let (mut p, mut q) = (one, one);
-    let (mut term_p, mut term_q) = (one, one);
-    let mut last = f64::INFINITY;
-    for k in 1..80 {
-        let kf = f64::from(k);
-        let factor = ((order_square - 0.5 * (kf - 0.5).powi(2)) / kf) * inverse;
-        term_p *= factor * I;
-        term_q *= factor * -I;
-        let mag = term_p.norm().max(term_q.norm());
-        if mag > last {
-            break;
-        }
-        last = mag;
-        p += term_p;
-        q += term_q;
-        if mag < 1e-17 {
-            break;
-        }
-    }
+    let (p, q) = hankel_series(|kf| ((order_square - 0.5 * (kf - 0.5).powi(2)) / kf) * inverse);
     let prefactor = (inverse * (0.5 / PI)).sqrt();
     let order = nu % 4.0;
     if z.re == 0.0 {
@@ -482,6 +463,64 @@ fn bessel_j_asymptotic(
     let h1 = prefactor * phase * unit_pi_half((order_rotation - 1.0) * order) * p;
     let h2 = prefactor * phase.conj() * unit_pi_half((order_rotation + 1.0) * order) * q;
     scale_real_exponential(h1, -z.im) + scale_real_exponential(h2, z.im)
+}
+
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "bounded floating-point asymptotic expansions do not use integer arithmetic beyond fixed loop counts"
+)]
+fn hankel_series(factor_at: impl Fn(f64) -> Complex64) -> (Complex64, Complex64) {
+    let one = Complex64::new(1.0, 0.0);
+    let (mut p, mut q) = (one, one);
+    let (mut term_p, mut term_q) = (one, one);
+    let mut last = f64::INFINITY;
+    for k in 1..80 {
+        let kf = f64::from(k);
+        let factor = factor_at(kf);
+        term_p *= factor * I;
+        term_q *= factor * -I;
+        let mag = term_p.norm().max(term_q.norm());
+        if mag > last {
+            break;
+        }
+        last = mag;
+        p += term_p;
+        q += term_q;
+        if mag < 1e-17 {
+            break;
+        }
+    }
+    (p, q)
+}
+
+/// Hankel expansion for complex order, with branch rotations folded into the
+/// exponential scale before computing either Hankel contribution.
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "bounded floating-point asymptotic expansions do not use integer arithmetic beyond fixed loop counts"
+)]
+pub(super) fn bessel_j_asymptotic_complex_order(
+    nu: Complex64,
+    mut z: Complex64,
+    mut order_rotation: f64,
+) -> Complex64 {
+    if z.re < 0.0 {
+        order_rotation += 2.0 * z.im.signum();
+        z = -z;
+    }
+    let inverse = scaled_reciprocal(z);
+    let order_square = 0.5 * nu * nu;
+    let (p, q) = hankel_series(|kf| ((order_square - 0.5 * (kf - 0.5).powi(2)) / kf) * inverse);
+    let prefactor = (inverse * (0.5 / PI)).sqrt();
+    let real_phase = unit_complex(z.re) * unit_complex(-std::f64::consts::FRAC_PI_4);
+    let upper_turns = order_rotation - 1.0;
+    let lower_turns = order_rotation + 1.0;
+    let phase = |turns| unit_pi_half(turns * (nu.re % 4.0));
+    let scale = std::f64::consts::FRAC_PI_2 * nu.im;
+    let h1 = prefactor * real_phase * phase(upper_turns) * p;
+    let h2 = prefactor * real_phase.conj() * phase(lower_turns) * q;
+    scale_real_exponential(h1, -z.im - upper_turns * scale)
+        + scale_real_exponential(h2, z.im - lower_turns * scale)
 }
 
 /// Ascending series `(z/2)^ν Σ (±(z/2)²)^k / (k! Γ(k + ν + 1))` for orders

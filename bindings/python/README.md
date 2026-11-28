@@ -118,7 +118,8 @@ s.compute("eigenvals(list(list(2,0),list(0,3)))").text
 ## Workflow: NumPy arrays
 
 When the loaded library provides the NumPy codec, use bytes for the payload
-and read the decoded value as a tensor. The codec works without installing
+and read the decoded value as a tensor. Encode real samples in row-major
+order. Complex samples raise `TypeError`. The codec works without installing
 NumPy for Python.
 
 ```python

@@ -1,7 +1,7 @@
 //! Compiling a closed form through the `Backend` trait, calling it, and
 //! taking its gradient from the tape.
 //!
-//! Run with `cargo run --release --example compile_expression`.
+//! Run with `bazel run //:example -- --profile release compile_expression`.
 
 use std::sync::Mutex;
 

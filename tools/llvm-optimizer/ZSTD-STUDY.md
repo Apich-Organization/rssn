@@ -32,39 +32,18 @@ Linux 交错比较 23 对，页面和大文件分别每样本 25,000 和 260 轮
 
 ## 复现
 
-在仓库根目录设置 `zstd_lib` 为锁定的 `zstd-sys` 包下的 `zstd/lib`，`clang`、`llvm_bin` 为匹配 rustc 的 LLVM 23.1.5 工具，`plugin` 为构建后的插件。
+在仓库根目录使用与 rustc 匹配的 LLVM SDK。Bazel 构建插件，从锁定的研究清单解析 `zstd-sys` 源码，并为两组链接同一份 zstd 对象库。已有源码时可用 `--zstd-lib` 指向同版本的 `zstd/lib`。
 
 ```bash
 study=$(mktemp -d)
-flags=(-O3 -DNDEBUG -march=x86-64-v3 -DZSTD_DISABLE_ASM=1 -DZSTD_LIB_DEPRECATED=0
-       -I"$zstd_lib" -I"$zstd_lib/common")
-for unit in "$zstd_lib"/{common,compress,decompress}/*.c; do
-  name=$(basename "$unit" .c)
-  case "$name" in
-    zstd_decompress_block) continue ;;
-    xxhash) extra=(-DXXH_NAMESPACE=ZSTD_) ;;
-    *) extra=() ;;
-  esac
-  "$clang" "${flags[@]}" "${extra[@]}" -ffunction-sections -fdata-sections \
-    -c "$unit" -o "$study/$name.o"
-done
-"$llvm_bin/llvm-ar" rcs "$study/libcommon.a" "$study/"*.o
-"$clang" "${flags[@]}" -S -emit-llvm "$zstd_lib/decompress/zstd_decompress_block.c" \
-  -o "$study/base.ll"
-RSSN_SPILL_FILTER=ZSTD_decompressSequences "$llvm_bin/opt" \
-  -load-pass-plugin="$plugin" -passes='function(rssn-scalar-load-pack),verify' \
-  -pass-remarks-analysis=rssn-scalar-load-pack -S "$study/base.ll" -o "$study/packed.ll"
-for version in base packed; do
-  "$llvm_bin/llc" -O3 -verify-machineinstrs -filetype=obj "$study/$version.ll" \
-    -o "$study/decode-$version.o"
-  cc -O2 -no-pie -I"$zstd_lib" tools/llvm-optimizer/bench/zstd.c \
-    "$study/decode-$version.o" "$study/libcommon.a" -o "$study/$version"
-  "$study/$version" 100 tests/fixtures/parquet/codec_zstd.parquet \
-    tests/fixtures/hdf5/filters_plugins.h5
-done
+bazel run //:llvm_c_benchmark_build -- zstd --out-dir "$study"
+bazel run //:llvm_benchmark_compare -- pair "$study/base" "$study/transform" --pairs 23 -- \
+  100 tests/fixtures/parquet/codec_zstd.parquet tests/fixtures/hdf5/filters_plugins.h5
 ```
 
-加上 `tests/fixtures/hdf5/dense_nested.h5` 参数即可纳入较大负载。正常 C 编译可用 `RSSN_SPILL_MODE=off RSSN_SCALAR_LOAD_PACK=transform` 与 `clang -O3 -fpass-plugin="$plugin"`。该插件入口同样支持报告模式。现有 `zstd-sys` 使用独立的 C 构建步骤，Rust 的 `-Zllvm-plugins` 只会用于 Rust 编译动作。使用此 pass 处理 zstd 时，将 C 编译选项纳入 Cargo C 工具链或后续 Bazel 的 C/C++ action。
+加上 `tests/fixtures/hdf5/dense_nested.h5` 参数即可纳入较大负载。Windows GNU 对照使用 `--define=rust_target=x86_64-pc-windows-gnu` 和相应的 Clang 链接环境。生成的文件为 `base.exe` 和 `transform.exe`，在 Wine 下比较时为 `pair` 加上 `--runner wine`。
+
+正常 C 编译可用 `RSSN_SPILL_MODE=off RSSN_SCALAR_LOAD_PACK=transform` 与 `clang -O3 -fpass-plugin="$plugin"`。该插件入口同样支持报告模式。现有 `zstd-sys` 使用独立的 C 构建步骤，Rust 的 `-Zllvm-plugins` 用于 Rust 编译动作。下文的 `zstd-io` 用例为 C 依赖单独设置编译参数。
 
 ## RSSN 的 Parquet 和 HDF5 读取入口
 
@@ -85,22 +64,21 @@ A/B 使用现有 PyArrow 和 h5py fixture，以及 RSSN writer 生成的两组�
 
 ### 复现完整入口 A/B
 
-在源码修改前后各构建一次 pass 关闭版和打开版，保存为 `old-off`、`old-transform`、`new-off`、`new-transform`。基线应包含同一份 harness 和同一组生产模块，仅撤销 Parquet 与 HDF5 的上下文复用修改。为四次构建使用各自的 `CARGO_TARGET_DIR`，因为 `cc` 无法感知插件的模式环境变量。
+在源码修改前后各构建一次 pass 关闭版和打开版，保存为 `old-off`、`old-transform`、`new-off`、`new-transform`。基线应包含同一份 harness 和同一组生产模块，仅撤销 Parquet 与 HDF5 的上下文复用修改。用 `--out-dir` 为四次构建指定独立目录，因为 `cc` 无法感知插件的模式环境变量。
 
 ```bash
-export CC="$clang"
-export CFLAGS="-march=x86-64-v3 -fpass-plugin=$plugin -Rpass-analysis=rssn-scalar-load-pack"
-export RUSTFLAGS="-Ctarget-cpu=x86-64-v3"
-export RSSN_SPILL_MODE=off RSSN_SPILL_FILTER=ZSTD_decompressSequences
-RSSN_SCALAR_LOAD_PACK="$mode" CARGO_TARGET_DIR="$target_dir" cargo build \
-  --release --locked --manifest-path tools/llvm-optimizer/bench/zstd-io/Cargo.toml
+bazel run //:llvm_benchmark_build -- zstd-io --out-dir "$target_dir" \
+  --env "CC=$clang" --rustflag=-Ctarget-cpu=x86-64-v3 \
+  --env "CFLAGS=-march=x86-64-v3 -fpass-plugin=$plugin -Rpass-analysis=rssn-scalar-load-pack" \
+  --env RSSN_SPILL_MODE=off --env RSSN_SPILL_FILTER=ZSTD_decompressSequences \
+  --env "RSSN_SCALAR_LOAD_PACK=$mode"
 cp "$target_dir/release/rssn-io-codec-study" "$study/$variant"
 ```
 
 ```bash
-"$study/new-off" generate "$study/generated.parquet"
-"$study/new-off" generate-hdf5 "$study/generated.h5"
-taskset -c "$cpu" python3 tools/llvm-optimizer/bench/zstd-io/compare.py "$study"
+bazel run //:llvm_benchmark_compare -- run "$study/new-off" -- generate "$study/generated.parquet"
+bazel run //:llvm_benchmark_compare -- run "$study/new-off" -- generate-hdf5 "$study/generated.h5"
+bazel run //:llvm_benchmark_compare -- --cpu "$cpu" zstd-io "$study"
 ```
 
 ## 通用候选与分析开销
@@ -129,7 +107,19 @@ Win64 只在基址由一个动态 GEP 索引得到、元素分配大小恰好为
 
 Wine Win64 A/B 将四个重建解码器装入同一进程交错调用 21 组，基线和变体共享压缩器及其他 zstd 对象。保留在最终策略中的仅 Huffman X2 改写，在八个原始页和 chunk 上变化 **+1.85%**，95% 区间 **0.00% 至 +3.77%**。加入 level 3 编码的 `dense_nested.h5` 后变化 **−1.05%**，区间 **−4.30% 至 0.00%**。共享基线的输出哈希分别为 `dfdebb2e332b6efe` 和 `683487f5beb4982e`。Linux 在原生汇编启用和运行时禁用两种配置下，也未测出清晰的完整帧收益。当前证据支持保留分析和 opt-in 改写，尚无依据在默认 release 开启。
 
-用于计数和回放的源码为 [断点脚本](analysis/zstd_entropy.gdb) 和 [FSE 回放程序](bench/zstd-fse.c)。用未剥离符号的 Linux `zstd-io` 入口及 `rounds=0` 捕获头部，每个场景恰好读取一次。取以 `FSE ` 开头的行并去重。使用两份由同一 LLVM 23.1.5 IR 生成的 `fse_decompress.o` 与相同的 `libzstd.a` 链接回放程序，固定单个逻辑 CPU，每组轮换执行次序。在最终策略下 FSE 输出 IR 与直接通过 verifier 的基线一致，回放的回退由测试中的依赖链用例覆盖。
+用于计数和回放的源码为 [断点脚本](analysis/zstd_entropy.gdb) 和 [FSE 回放程序](bench/zstd-fse.c)。用未剥离符号的 Linux `zstd-io` 入口及 `rounds=0` 捕获头部，每个场景恰好读取一次。将以 `FSE ` 开头的行去重后写入 `headers.txt`。基准以从同一份 IR 生成的两份 `fse_decompress.o` 和相同的 zstd 对象库链接回放程序。比较器逐组检查输出哈希和头部数。
+
+CI 回放使用 [固定 FSE 头部](bench/fixtures/zstd-fse.hex)。它来自跟踪的
+`tests/fixtures/parquet/codec_zstd.parquet`，从文件偏移 178 起取 70 字节。
+断点捕获的输出容量为 255，最大表对数为 6。
+
+```bash
+bazel run //:llvm_c_benchmark_build -- zstd-fse --out-dir "$study/fse"
+bazel run //:llvm_benchmark_compare -- pair "$study/fse/base" "$study/fse/transform" \
+  --pairs 23 -- tools/llvm-optimizer/bench/fixtures/zstd-fse.hex 25000
+```
+
+在最终策略下 FSE 输出 IR 与直接通过 verifier 的基线一致，回放的回退由测试中的依赖链用例覆盖。
 
 ## doubleFast 短哈希与长哈希共用读取
 
@@ -141,23 +131,13 @@ Clang 23.1.5 的 O3 IR 在 `ZSTD_fillDoubleHashTable` 的两个循环里保留�
 
 这个合并使用 LLVM 23 的 `b64` 等字节类型保留局部 poison。窄读取先从原始字节中投影，再转成整数。直接截断 `i64` 会把无关高位的 poison 传播到窄结果。早期 `<8 x i8>` 原型虽保留语义，却产生了 `vmovq` 和 `vmovd`。最终方案用 `bitcast b64 to <2 x b32>` 再取 lane 0，重建的 Linux 和 Win64 都用同一 GPR 的低 32 位计算窄哈希。两个候选各从五条静态宽读取和一条窄读取合并为一次宽读取。Win64 分配后的 MIR 由内存操作数乘法 `IMUL32rmi` 变为寄存器版本 `IMUL32rri`。整个函数的静态指令数在 Linux 从 243 降到 239，在 Win64 从 257 降到 253。Win64 整函数仍有一条 spill 和一条 reload，Linux 重建没有相应标注。报表模式与关闭模式输出相同 IR，IR 和机器指令 verifier 均通过。 [LLVM poison 语义](https://llvm.org/docs/LangRef.html#poison-values) · [LLVM 字节类型](https://blog.llvm.org/posts/2025-08-29-gsoc-byte-type/)
 
-开关为 `RSSN_SWITCH_LOAD_REUSE=off|report|transform`，默认关闭。跟随 zstd-sys C 编译动作使用 Clang 23 的 `-fpass-plugin`，可用 `-Rpass-analysis=rssn-switch-load-reuse` 验证是否命中。显式对照从一份 O3 IR 切换 pass，另链接相同的库对象。先按前文建立 zstd C 对象库，但把 `zstd_double_fast.o` 留给 A/B，并确保库包含未改写的 `zstd_decompress_block.o`。然后运行：
+开关为 `RSSN_SWITCH_LOAD_REUSE=off|report|transform`，默认关闭。跟随 zstd-sys C 编译动作使用 Clang 23 的 `-fpass-plugin`，可用 `-Rpass-analysis=rssn-switch-load-reuse` 验证是否命中。显式对照从一份 O3 IR 切换 pass，另链接相同的库对象。选择 `double-fast` 后，构建入口只改写 `zstd_double_fast.c`。
 
 ```bash
-"$clang" "${flags[@]}" -S -emit-llvm \
-  "$zstd_lib/compress/zstd_double_fast.c" -o "$study/dfast-off.ll"
-RSSN_SPILL_MODE=off "$llvm_bin/opt" -load-pass-plugin="$plugin" \
-  -passes='function(rssn-switch-load-reuse),verify' -S \
-  "$study/dfast-off.ll" -o "$study/dfast-transform.ll"
+bazel run //:llvm_c_benchmark_build -- zstd --study double-fast --out-dir "$study/dfast"
 tail -c 65536 tests/fixtures/hdf5/dense_nested.h5 > "$study/sample.dict"
-for mode in off transform; do
-  "$llvm_bin/llc" -O3 -verify-machineinstrs -filetype=obj \
-    "$study/dfast-$mode.ll" -o "$study/dfast-$mode.o"
-  cc -O2 -no-pie -I"$zstd_lib" tools/llvm-optimizer/bench/zstd.c \
-    "$study/dfast-$mode.o" "$study/libcommon.a" -o "$study/dfast-$mode"
-  "$study/dfast-$mode" --compress-min4 2500 \
-    tests/fixtures/hdf5/filters_plugins.h5 "$study/sample.dict"
-done
+bazel run //:llvm_benchmark_compare -- pair "$study/dfast/base" "$study/dfast/transform" --pairs 17 -- \
+  --compress-min4 2500 tests/fixtures/hdf5/filters_plugins.h5 "$study/sample.dict"
 ```
 
 `--compress` 保留 level 3 的压缩参数，并可附带原始字典。无字典的大文件对照没有进入表初始化，默认参数的原始字典输入进入初始化时 `minMatch=5`。定向对照以真实 HDF5 fixture 为输入，用另一个 HDF5 fixture 的最后 64 KiB 作为 raw prefix，并显式设置 doubleFast 和 `minMatch=4`。GDB 确认这组进入目标分支。各样本在计时窗口外逐字节校验解压结果，A/B 进一步比较编码后帧的哈希。
@@ -196,10 +176,8 @@ Wine 的定向结果接近 10 ms 线程计时粒度，区间触及零。其余�
 
 ```bash
 tail -c 65536 tests/fixtures/hdf5/dense_nested.h5 > "$study/sample.dict"
-"$study/base" --decode-cold-dict 700 \
-  tests/fixtures/hdf5/dense_order.h5 "$study/sample.dict"
-"$study/packed" --decode-cold-dict 700 \
-  tests/fixtures/hdf5/dense_order.h5 "$study/sample.dict"
+bazel run //:llvm_benchmark_compare -- pair "$study/base" "$study/transform" --pairs 18 -- \
+  --decode-cold-dict 700 tests/fixtures/hdf5/dense_order.h5 "$study/sample.dict"
 ```
 
 Linux 原始页面还试了把字节投影推迟到各字段的第一次使用。在同批 12 组数据中，这仍比向量载体慢 **20.69%**，区间 **+19.02% 至 +23.98%**。另在单独构建中撤除 FSE 依赖链门槛，强制处理两组已捕获 Huffman 权重头部。原始字节载体相对未合并在 RSSN 页头部上慢 **9.27%** [**+7.15%, +13.02%**]，在 42 个较大文件的头部上快 **5.54%** [**−9.64%, −2.26%**]。后者相对向量载体为 **−1.69%** [**−10.06%, +2.38%**]。生产选择沿用向量载体和依赖链门槛，原始字节载体继续用于上一节已经单独验证的分支共用读取。

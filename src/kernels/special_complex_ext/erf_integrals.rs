@@ -11,6 +11,8 @@ use crate::kernels::fresnel::faddeeva_w;
 use crate::kernels::fresnel::fresnel_sc_complex;
 use crate::kernels::special_ext::polylog_complex;
 
+use crate::kernels::special_complex::scaled_reciprocal;
+
 const ZERO: Complex64 = Complex64::new(0.0, 0.0);
 const ONE: Complex64 = Complex64::new(1.0, 0.0);
 const I: Complex64 = Complex64::new(0.0, 1.0);
@@ -126,8 +128,9 @@ pub fn exp_integral_e1_complex(z: Complex64) -> Complex64 {
     if z == ZERO {
         return Complex64::new(f64::INFINITY, 0.0);
     }
+    let magnitude = z.norm();
     let near_neg_cut = z.re < 0.0 && z.im.abs() < 4.0;
-    if z.norm() <= 4.0 || (near_neg_cut && z.norm() <= 20.0) {
+    if magnitude <= 4.0 || (near_neg_cut && magnitude <= 20.0) {
         // E_1(z) = -gamma - ln(z) - sum_{k>=1} (-1)^k z^k / (k * k!)
         let mut sum = ZERO;
         let mut term = ONE;
@@ -145,7 +148,7 @@ pub fn exp_integral_e1_complex(z: Complex64) -> Complex64 {
     if near_neg_cut {
         // Optimal-truncation asymptotic series for |z| > 20 near (-inf, 0]:
         // E_1(z) ~ exp(-z)/z * sum_{k=0}^{N} (-1)^k k! / z^k +/- i*pi (for Im(z) >= 0 vs < 0)
-        let n_opt = (z.norm().floor() as usize).clamp(10, 40);
+        let n_opt = (magnitude.floor() as usize).clamp(10, 40);
         let mut sum = ONE;
         let mut term = ONE;
         for k in 1..=n_opt {
@@ -155,40 +158,52 @@ pub fn exp_integral_e1_complex(z: Complex64) -> Complex64 {
                 break;
             }
         }
-        let branch = if z.im >= 0.0 {
+        let branch = if z.im.is_sign_positive() {
             -I * PI
         } else {
             I * PI
         };
         return (-z).exp() / z * sum + branch;
     }
-    // Continued fraction for |z| > 4 off the negative real axis:
-    // E_1(z) = exp(-z) * 1 / (z + 1 - 1^2 / (z + 3 - 2^2 / (z + 5 - ...)))
-    let tiny = 1e-30_f64;
-    let mut b = z + 1.0;
-    let mut c = Complex64::new(1.0 / tiny, 0.0);
-    let mut d = if b.norm() < tiny {
-        Complex64::new(1.0 / tiny, 0.0)
-    } else {
-        ONE / b
+    exp_integral_fraction(1, z)
+}
+
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "modified Lentz recurrence has fixed iteration and conservative near-zero guards"
+)]
+fn exp_integral_fraction(
+    n: u32,
+    z: Complex64,
+) -> Complex64 {
+    // DLMF 8.19(vii), shared by E1 and general integer orders.
+    // The first inverse-power term is sufficient at this scale even for
+    // the largest representable u32 order. Do not square the magnitude.
+    if z.re.abs().max(z.im.abs()) > 1e40 {
+        return (-z).exp() * scaled_reciprocal(z);
+    }
+    let tiny = 1e-30;
+    let clamp = |value: Complex64| {
+        if value.norm_sqr() < tiny * tiny {
+            Complex64::new(tiny, 0.0)
+        } else {
+            value
+        }
     };
+    let order = f64::from(n);
+    let mut b = z + order;
+    let mut c = Complex64::new(1.0 / tiny, 0.0);
+    let mut d = ONE / clamp(b);
     let mut h = d;
     for k in 1..400 {
         let kf = f64::from(k);
-        let an = -kf * kf;
+        let an = -kf * (order + kf - 1.0);
         b += 2.0;
-        d = an * d + b;
-        if d.norm() < tiny {
-            d = Complex64::new(tiny, 0.0);
-        }
-        c = b + an / c;
-        if c.norm() < tiny {
-            c = Complex64::new(tiny, 0.0);
-        }
-        d = ONE / d;
-        let del = d * c;
-        h *= del;
-        if (del - ONE).norm() < 1e-15 {
+        d = ONE / clamp(an * d + b);
+        c = clamp(b + an / c);
+        let delta = d * c;
+        h *= delta;
+        if (delta - ONE).norm_sqr() < 1e-30 {
             break;
         }
     }
@@ -197,12 +212,16 @@ pub fn exp_integral_e1_complex(z: Complex64) -> Complex64 {
 
 /// Generalized complex exponential integral `E_n(z)`.
 #[must_use]
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "the finite recurrence evaluates floating-point complex values and nonzero divisors"
+)]
 pub fn exp_integral_en_complex(
     n: u32,
     z: Complex64,
 ) -> Complex64 {
     if n == 0 {
-        return (-z).exp() / z;
+        return (-z).exp() * scaled_reciprocal(z);
     }
     if z == ZERO {
         return if n == 1 {
@@ -214,38 +233,10 @@ pub fn exp_integral_en_complex(
     if n == 1 {
         return exp_integral_e1_complex(z);
     }
-    // Lentz continued fraction for |z| > n off (-inf, 0]:
-    if z.norm() > f64::from(n) && !(z.re < 0.0 && z.im.abs() < 4.0) {
-        let tiny = 1e-30_f64;
-        let nf = f64::from(n);
-        let mut b = z + nf;
-        let mut c = Complex64::new(1.0 / tiny, 0.0);
-        let mut d = if b.norm() < tiny {
-            Complex64::new(1.0 / tiny, 0.0)
-        } else {
-            ONE / b
-        };
-        let mut h = d;
-        for k in 1..400 {
-            let kf = f64::from(k);
-            let an = -kf * (nf + kf - 1.0);
-            b += 2.0;
-            d = an * d + b;
-            if d.norm() < tiny {
-                d = Complex64::new(tiny, 0.0);
-            }
-            c = b + an / c;
-            if c.norm() < tiny {
-                c = Complex64::new(tiny, 0.0);
-            }
-            d = ONE / d;
-            let del = d * c;
-            h *= del;
-            if (del - ONE).norm() < 1e-15 {
-                break;
-            }
-        }
-        return (-z).exp() * h;
+    // Positive-real, large orders use the same continued fraction. Its
+    // denominator is well separated from zero and no order-sized loop is needed.
+    if (z.norm() > f64::from(n) && !(z.re < 0.0 && z.im.abs() < 4.0)) || (z.re >= 0.0 && n >= 32) {
+        return exp_integral_fraction(n, z);
     }
     let mut val = exp_integral_e1_complex(z);
     let exp_mz = (-z).exp();

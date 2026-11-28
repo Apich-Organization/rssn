@@ -3,9 +3,26 @@
 //! Includes scalar Cauchy and Plemelj–Sokhotski integrals, scalar arc factorization, and Olver’s
 //! spectral collocation solver for `2 × 2` matrix problems on `(-1, 1)`.
 
-use crate::kernels::integrate::gauss_kronrod_any;
+use crate::kernels::complex_scalar::Complex as ScalarComplex;
 use num_complex::Complex;
 use std::f64::consts::PI;
+
+#[path = "riemann_hilbert_scalar.rs"]
+pub(crate) mod scalar;
+
+pub(crate) use scalar::ScalarRhError;
+pub(crate) use scalar::cauchy_transform_arc_checked;
+pub(crate) use scalar::plemelj_boundary_values_checked;
+pub(crate) use scalar::scalar_factorization_checked;
+
+fn complex_quotient(
+    numerator: Complex<f64>,
+    denominator: Complex<f64>,
+) -> Complex<f64> {
+    let value = ScalarComplex::new(numerator.re, numerator.im)
+        .div(ScalarComplex::new(denominator.re, denominator.im));
+    Complex::new(value.re, value.im)
+}
 
 /// 2x2 complex matrix for Riemann–Hilbert jump problems.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -116,33 +133,47 @@ impl Matrix2 {
         }
     }
 
-    /// Matrix inverse.
+    /// Matrix inverse with row equilibration. Returns `None` for a numerically
+    /// singular normalized matrix or when its inverse is outside binary64 range.
     #[must_use]
     pub fn inv(self) -> Option<Self> {
-        let det = self.m[0] * self.m[3] - self.m[1] * self.m[2];
+        let [a, b, c, d] = self.m;
+        let [upper, lower] = [[a, b], [c, d]].map(|row| {
+            row.into_iter()
+                .flat_map(|z| [z.re.abs(), z.im.abs()])
+                .fold(0.0_f64, f64::max)
+        });
+        if upper == 0.0 || lower == 0.0 || self.m.iter().any(|z| !z.is_finite()) {
+            return None;
+        }
+        let [a, b, c, d] = [a / upper, b / upper, c / lower, d / lower];
+        let det = a * d - b * c;
         if det.norm() < 1e-15 {
             return None;
         }
-        Some(Self {
-            m: [
-                self.m[3] / det,
-                -self.m[1] / det,
-                -self.m[2] / det,
-                self.m[0] / det,
-            ],
-        })
+        let m = [
+            complex_quotient(d, det) / upper,
+            complex_quotient(-b, det) / lower,
+            complex_quotient(-c, det) / upper,
+            complex_quotient(a, det) / lower,
+        ];
+        m.iter().all(|z| z.is_finite()).then_some(Self { m })
     }
 
     /// Frobenius norm of the 2x2 matrix.
     #[must_use]
     pub fn norm(self) -> f64 {
-        (self.m[0].norm_sqr() + self.m[1].norm_sqr() + self.m[2].norm_sqr() + self.m[3].norm_sqr())
-            .sqrt()
+        let squared = self.m.iter().map(Complex::norm_sqr).sum::<f64>();
+        if squared.is_normal() {
+            squared.sqrt()
+        } else {
+            self.m.iter().fold(0.0_f64, |size, z| size.hypot(z.norm()))
+        }
     }
 }
 
-/// Evaluates the scalar Cauchy transform $C\[\phi\](z) = \frac{1}{2\pi i} \int_{-1}^1 \frac{\phi(t)}{t - z} \, dt$
-/// for $z \notin [-1, 1]$.
+/// Evaluates the scalar Cauchy transform on the normalized arc, at a point off `[-1, 1]`.
+/// Returns complex NaN when the estimate fails or does not meet `tol`.
 pub fn cauchy_transform_arc<F>(
     phi: &F,
     z: Complex<f64>,
@@ -151,31 +182,16 @@ pub fn cauchy_transform_arc<F>(
 where
     F: Fn(f64) -> Complex<f64>,
 {
-    let re = gauss_kronrod_any(
-        |t| (phi(t) / (Complex::new(t, 0.0) - z)).re,
-        -1.0,
-        1.0,
-        tol,
-        300,
-    )
-    .value;
-    let im = gauss_kronrod_any(
-        |t| (phi(t) / (Complex::new(t, 0.0) - z)).im,
-        -1.0,
-        1.0,
-        tol,
-        300,
-    )
-    .value;
-    Complex::new(re, im) / Complex::new(0.0, 2.0 * PI)
+    cauchy_transform_arc_checked(phi, z, tol, scalar::DEFAULT_PANELS)
+        .ok()
+        .filter(|result| result.converged)
+        .map_or(Complex::new(f64::NAN, f64::NAN), |result| result.value)
 }
 
-/// Computes the Plemelj–Sokhotski boundary limits $(C_+\[\phi\](x), C_-\[\phi\](x))$
-/// on $x \in (-1, 1)$ via singularity subtraction: $C_+ - C_- = \phi(x)$.
+/// Computes the Plemelj boundary limits on the open arc. Their jump is `phi(x)`.
 ///
 /// # Errors
-///
-/// Returns an error if the evaluation point lies outside the open interval `(-1, 1)`.
+/// Rejects invalid inputs, nonfinite results, or failure to meet the absolute tolerance.
 pub fn plemelj_boundary_values<F>(
     phi: &F,
     x: f64,
@@ -184,47 +200,19 @@ pub fn plemelj_boundary_values<F>(
 where
     F: Fn(f64) -> Complex<f64>,
 {
-    if x.abs() >= 1.0 {
-        return Err("x must lie strictly inside (-1, 1)".to_string());
+    let result = plemelj_boundary_values_checked(phi, x, tol, scalar::DEFAULT_PANELS)
+        .map_err(|error| error.to_string())?;
+    if result.converged {
+        Ok((result.upper, result.lower))
+    } else {
+        Err("Plemelj quadrature did not meet its absolute tolerance".into())
     }
-    let px = phi(x);
-    let diff_re = gauss_kronrod_any(
-        |t: f64| {
-            let dt = t - x;
-            if dt.abs() < 1e-12 {
-                0.0
-            } else {
-                ((phi(t) - px) / dt).re
-            }
-        },
-        -1.0,
-        1.0,
-        tol,
-        300,
-    )
-    .value;
-    let diff_im = gauss_kronrod_any(
-        |t: f64| {
-            let dt = t - x;
-            if dt.abs() < 1e-12 {
-                0.0
-            } else {
-                ((phi(t) - px) / dt).im
-            }
-        },
-        -1.0,
-        1.0,
-        tol,
-        300,
-    )
-    .value;
-    let pv = Complex::new(diff_re, diff_im) + px * ((1.0 - x) / (1.0 + x)).ln();
-    let cauchy_pv = pv / Complex::new(0.0, 2.0 * PI);
-    Ok((cauchy_pv + px * 0.5, cauchy_pv - px * 0.5))
 }
 
-/// Solves the scalar Riemann–Hilbert problem $X^+(t) = G(t) X^-(t)$ on $(-1, 1)$
-/// with $X(\infty) = 1$ via continuous phase unwrapping of $\ln G(t)$.
+/// Factors a nonzero scalar jump on `(-1, 1)` with normalization at infinity.
+///
+/// The phase starts at the principal value at `-1`. The phase mesh must resolve the jump.
+/// Returns complex NaN when the estimate fails or does not meet `tol`.
 pub fn scalar_rh_factorize_arc<F>(
     g: &F,
     z: Complex<f64>,
@@ -233,110 +221,18 @@ pub fn scalar_rh_factorize_arc<F>(
 where
     F: Fn(f64) -> Complex<f64>,
 {
-    // Sample [-1, 1] at 129 points to unwrap arg(G(t)) continuously
-    let n_grid = 128_usize;
-    let mut unwrapped_args = Vec::with_capacity(n_grid + 1);
-    let mut prev_arg = g(-1.0).arg();
-    unwrapped_args.push(prev_arg);
-    for k in 1..=n_grid {
-        let t = -1.0 + 2.0 * (k as f64) / (n_grid as f64);
-        let mut a = g(t).arg();
-        while a - prev_arg > PI {
-            a -= 2.0 * PI;
-        }
-        while a - prev_arg < -PI {
-            a += 2.0 * PI;
-        }
-        prev_arg = a;
-        unwrapped_args.push(a);
-    }
-    cauchy_transform_arc(
-        &|t| {
-            let gt = g(t);
-            let u = (f64::midpoint(t, 1.0) * (n_grid as f64)).clamp(0.0, n_grid as f64);
-            let idx = (u.floor() as usize).min(n_grid - 1);
-            let frac = u - (idx as f64);
-            let ref_arg = unwrapped_args[idx] * (1.0 - frac) + unwrapped_args[idx + 1] * frac;
-            let mut a = gt.arg();
-            while a - ref_arg > PI {
-                a -= 2.0 * PI;
-            }
-            while a - ref_arg < -PI {
-                a += 2.0 * PI;
-            }
-            Complex::new(gt.norm().ln(), a)
-        },
-        z,
-        tol,
-    )
-    .exp()
-}
-
-/// Computes $n$-point Gauss–Legendre nodes and weights on $(-1, 1)$.
-fn gauss_legendre_nodes_weights(n: usize) -> (Vec<f64>, Vec<f64>) {
-    let mut nodes = vec![0.0_f64; n];
-    let mut weights = vec![0.0_f64; n];
-    let m = n.div_ceil(2);
-    for i in 0..m {
-        let mut z = (PI * ((i as f64) + 0.75) / ((n as f64) + 0.5)).cos();
-        let mut dp = 0.0_f64;
-        for _ in 0..40 {
-            let mut p1 = 1.0_f64;
-            let mut p2 = 0.0_f64;
-            for j in 1..=n {
-                let p3 = p2;
-                p2 = p1;
-                let jf = j as f64;
-                p1 = ((2.0 * jf - 1.0) * z * p2 - (jf - 1.0) * p3) / jf;
-            }
-            dp = (n as f64) * (z * p1 - p2) / (z * z - 1.0);
-            let z_next = z - p1 / dp;
-            if (z_next - z).abs() < 1e-15 {
-                z = z_next;
-                break;
-            }
-            z = z_next;
-        }
-        let w = 2.0 / ((1.0 - z * z) * dp * dp);
-        if let Some(slot) = nodes.get_mut(i) {
-            *slot = -z;
-        }
-        if let Some(slot) = nodes.get_mut(n - 1 - i) {
-            *slot = z;
-        }
-        if let Some(slot) = weights.get_mut(i) {
-            *slot = w;
-        }
-        if let Some(slot) = weights.get_mut(n - 1 - i) {
-            *slot = w;
-        }
-    }
-    (nodes, weights)
-}
-
-/// Barycentric weights for distinct nodes `x`.
-fn barycentric_weights(x: &[f64]) -> Vec<f64> {
-    let n = x.len();
-    let mut bw = vec![1.0_f64; n];
-    for j in 0..n {
-        let xj = *x.get(j).unwrap_or(&0.0);
-        let mut prod = 1.0_f64;
-        for (k, &xk) in x.iter().enumerate() {
-            if k != j {
-                prod *= xj - xk;
-            }
-        }
-        if let Some(slot) = bw.get_mut(j) {
-            *slot = 1.0 / prod;
-        }
-    }
-    bw
+    scalar_factorization_checked(g, z, tol, 128, scalar::DEFAULT_PANELS)
+        .ok()
+        .filter(|result| result.estimate.converged)
+        .map_or(Complex::new(f64::NAN, f64::NAN), |result| {
+            result.estimate.value
+        })
 }
 
 /// Barycentric differentiation matrix for arbitrary distinct nodes `x`.
-fn barycentric_diff_matrix(x: &[f64]) -> Vec<Vec<f64>> {
+fn barycentric_diff_matrix(x: &[f64]) -> Result<Vec<Vec<f64>>, String> {
     let n = x.len();
-    let bw = barycentric_weights(x);
+    let bw = super::barycentric::weights(x)?;
     let mut d = vec![vec![0.0_f64; n]; n];
     for i in 0..n {
         let xi = *x.get(i).unwrap_or(&0.0);
@@ -357,7 +253,7 @@ fn barycentric_diff_matrix(x: &[f64]) -> Vec<Vec<f64>> {
             *cell = -row_sum;
         }
     }
-    d
+    Ok(d)
 }
 
 /// Solution to a 2x2 matrix Riemann–Hilbert problem $Y^+(t) = Y^-(t) G(t)$ on $(-1, 1)$
@@ -378,14 +274,21 @@ impl MatrixRhSolution {
         &self,
         x: f64,
     ) -> Matrix2 {
-        let bw = barycentric_weights(&self.nodes);
+        if let Some((_, &value)) = self
+            .nodes
+            .iter()
+            .zip(&self.density)
+            .find(|(node, _)| (x - **node).abs() < 1e-14)
+        {
+            return value;
+        }
+        let Ok(bw) = super::barycentric::weights(&self.nodes) else {
+            return Matrix2::zero().scale(Complex::new(f64::NAN, f64::NAN));
+        };
         let mut num = Matrix2::zero();
         let mut den = 0.0_f64;
         for ((&xj, &bj), &uj) in self.nodes.iter().zip(bw.iter()).zip(self.density.iter()) {
             let diff = x - xj;
-            if diff.abs() < 1e-14 {
-                return uj;
-            }
             let w = bj / diff;
             den += w;
             num = num.add(uj.scale(Complex::new(w, 0.0)));
@@ -410,8 +313,11 @@ impl MatrixRhSolution {
                 .zip(self.weights.iter())
                 .zip(self.density.iter())
             {
-                let factor = Complex::new(w, 0.0) / (Complex::new(t, 0.0) - z);
-                acc = acc.add(u.sub(u_x).scale(factor));
+                let difference = u.sub(u_x);
+                if difference != Matrix2::zero() {
+                    let factor = complex_quotient(Complex::new(w, 0.0), Complex::new(t, 0.0) - z);
+                    acc = acc.add(difference.scale(factor));
+                }
             }
             // int_{-1}^1 dt/(t - z) = ln(1 - z) - ln(-1 - z)
             let log_jump = (Complex::new(1.0, 0.0) - z).ln() - (Complex::new(-1.0, 0.0) - z).ln();
@@ -425,7 +331,7 @@ impl MatrixRhSolution {
             .zip(self.weights.iter())
             .zip(self.density.iter())
         {
-            let factor = Complex::new(w, 0.0) / (Complex::new(t, 0.0) - z);
+            let factor = complex_quotient(Complex::new(w, 0.0), Complex::new(t, 0.0) - z);
             acc = acc.add(u.scale(factor));
         }
         Matrix2::identity().add(acc.scale(Complex::new(1.0, 0.0) / two_pi_i))
@@ -451,8 +357,9 @@ where
     if n_nodes < 4 {
         return Err("n_nodes must be >= 4".to_string());
     }
-    let (nodes, weights) = gauss_legendre_nodes_weights(n_nodes);
-    let diff = barycentric_diff_matrix(&nodes);
+    let plan = super::reuse::global_pool().gauss_legendre_rule(n_nodes);
+    let (nodes, weights) = plan.as_ref();
+    let diff = barycentric_diff_matrix(nodes)?;
     let two_pi_i = Complex::new(0.0, 2.0 * PI);
 
     // Build scalar C_- matrix of size n_nodes x n_nodes:
@@ -493,10 +400,17 @@ where
     // Row 0 of U (u_00, u_01) and Row 1 of U (u_10, u_11) decouple!
     // For each row r in {0, 1} of U:
     // [u_{r,0}(x_i), u_{r,1}(x_i)] - sum_m C_{i,m} [u_{r,0}(x_m), u_{r,1}(x_m)] * K_i = [K_{r,0}(x_i), K_{r,1}(x_i)].
-    let k_mats: Vec<Matrix2> = nodes
-        .iter()
-        .map(|&x| jump_g(x).sub(Matrix2::identity()))
-        .collect();
+    let mut k_mats = Vec::with_capacity(n_nodes);
+    for &x in nodes {
+        if crate::cancellation::is_cancelled() {
+            return Err("Riemann–Hilbert solve cancelled".into());
+        }
+        let jump = jump_g(x);
+        if jump.m.iter().any(|z| !z.is_finite()) {
+            return Err("Riemann–Hilbert jump is nonfinite".into());
+        }
+        k_mats.push(jump.sub(Matrix2::identity()));
+    }
 
     let dim = 2 * n_nodes;
     let mut sys = vec![vec![Complex::new(0.0, 0.0); dim]; dim];
@@ -533,119 +447,73 @@ where
         }
     }
 
-    let mut rhs_row0 = vec![Complex::new(0.0, 0.0); dim];
-    let mut rhs_row1 = vec![Complex::new(0.0, 0.0); dim];
-    for (i, ki) in k_mats.iter().enumerate() {
-        if let Some(s) = rhs_row0.get_mut(2 * i) {
-            *s = ki.m[0];
-        }
-        if let Some(s) = rhs_row0.get_mut(2 * i + 1) {
-            *s = ki.m[1];
-        }
-        if let Some(s) = rhs_row1.get_mut(2 * i) {
-            *s = ki.m[2];
-        }
-        if let Some(s) = rhs_row1.get_mut(2 * i + 1) {
-            *s = ki.m[3];
-        }
-    }
-
-    let sol0 = solve_linear_c(&sys, &rhs_row0)?;
-    let sol1 = solve_linear_c(&sys, &rhs_row1)?;
-    let mut density = Vec::with_capacity(n_nodes);
-    for i in 0..n_nodes {
-        let u00 = *sol0.get(2 * i).ok_or_else(|| "Index".to_string())?;
-        let u01 = *sol0.get(2 * i + 1).ok_or_else(|| "Index".to_string())?;
-        let u10 = *sol1.get(2 * i).ok_or_else(|| "Index".to_string())?;
-        let u11 = *sol1.get(2 * i + 1).ok_or_else(|| "Index".to_string())?;
-        density.push(Matrix2::new(u00, u01, u10, u11));
-    }
-
+    let rhs = k_mats
+        .iter()
+        .flat_map(|k| [[k.m[0], k.m[2]], [k.m[1], k.m[3]]])
+        .collect();
+    let solved = solve_linear_c(sys, rhs)?;
+    let (pairs, _) = solved.as_chunks::<2>();
+    let density = pairs
+        .iter()
+        .map(|[first, second]| Matrix2::new(first[0], second[0], first[1], second[1]))
+        .collect();
     Ok(MatrixRhSolution {
-        nodes,
-        weights,
+        nodes: nodes.clone(),
+        weights: weights.clone(),
         density,
     })
 }
 
+// Eliminate the common coefficient system once, updating both right-hand sides.
 fn solve_linear_c(
-    a: &[Vec<Complex<f64>>],
-    b: &[Complex<f64>],
-) -> Result<Vec<Complex<f64>>, String> {
-    let n = b.len();
-    let mut mat = a.to_vec();
-    let mut rhs = b.to_vec();
-    for col in 0..n {
-        let mut piv = col;
-        let mut max_v = mat
-            .get(col)
-            .and_then(|r| r.get(col))
-            .map_or(0.0, |c| c.norm());
-        for row in (col + 1)..n {
-            let v = mat
-                .get(row)
-                .and_then(|r| r.get(col))
-                .map_or(0.0, |c| c.norm());
-            if v > max_v {
-                max_v = v;
-                piv = row;
-            }
+    mut matrix: Vec<Vec<Complex<f64>>>,
+    mut rhs: Vec<[Complex<f64>; 2]>,
+) -> Result<Vec<[Complex<f64>; 2]>, String> {
+    for col in 0..matrix.len() {
+        if crate::cancellation::is_cancelled() {
+            return Err("Riemann–Hilbert solve cancelled".into());
         }
-        if max_v < 1e-14 {
-            return Err("Singular matrix in RH collocation solver".to_string());
+        let (pivot, magnitude) = matrix
+            .iter()
+            .enumerate()
+            .skip(col)
+            .map(|(index, row)| (index, row[col].norm()))
+            .max_by(|(a, va), (b, vb)| va.total_cmp(vb).then_with(|| b.cmp(a)))
+            .unwrap_or((col, 0.0));
+        if !magnitude.is_finite() || magnitude < 1e-14 {
+            return Err("Riemann–Hilbert collocation pivot is singular or nonfinite".into());
         }
-        if piv != col {
-            mat.swap(col, piv);
-            rhs.swap(col, piv);
-        }
-        let diag = mat
-            .get(col)
-            .and_then(|r| r.get(col))
-            .copied()
-            .unwrap_or_else(|| Complex::new(1.0, 0.0));
-        for row in (col + 1)..n {
-            let factor = mat
-                .get(row)
-                .and_then(|r| r.get(col))
-                .copied()
-                .unwrap_or_default()
-                / diag;
-            for k in col..n {
-                let p_val = mat
-                    .get(col)
-                    .and_then(|r| r.get(k))
-                    .copied()
-                    .unwrap_or_default();
-                if let Some(cell) = mat.get_mut(row).and_then(|r| r.get_mut(k)) {
-                    *cell -= factor * p_val;
-                }
+        matrix.swap(col, pivot);
+        rhs.swap(col, pivot);
+        let (top, remaining) = matrix.split_at_mut(col + 1);
+        let pivot_row = &top[col];
+        let (top_rhs, remaining_rhs) = rhs.split_at_mut(col + 1);
+        let [first, second] = top_rhs[col];
+        let pivot_value = pivot_row[col];
+        for (row, current) in remaining.iter_mut().zip(remaining_rhs) {
+            let factor = complex_quotient(row[col], pivot_value);
+            for (entry, &value) in row[col + 1..].iter_mut().zip(&pivot_row[col + 1..]) {
+                *entry -= factor * value;
             }
-            let rhs_col = rhs.get(col).copied().unwrap_or_default();
-            if let Some(r_slot) = rhs.get_mut(row) {
-                *r_slot -= factor * rhs_col;
-            }
+            current[0] -= factor * first;
+            current[1] -= factor * second;
         }
     }
-    let mut x = vec![Complex::new(0.0, 0.0); n];
-    for i in (0..n).rev() {
-        let mut sum = rhs.get(i).copied().unwrap_or_default();
-        for j in (i + 1)..n {
-            let a_ij = mat
-                .get(i)
-                .and_then(|r| r.get(j))
-                .copied()
-                .unwrap_or_default();
-            let x_j = x.get(j).copied().unwrap_or_default();
-            sum -= a_ij * x_j;
+    for (index, row) in matrix.iter().enumerate().rev() {
+        let (current, following) = rhs.split_at_mut(index + 1);
+        let [mut first, mut second] = current[index];
+        for (&entry, &[x, y]) in row[index + 1..].iter().zip(following.iter()) {
+            first -= entry * x;
+            second -= entry * y;
         }
-        let diag = mat
-            .get(i)
-            .and_then(|r| r.get(i))
-            .copied()
-            .unwrap_or_else(|| Complex::new(1.0, 0.0));
-        if let Some(slot) = x.get_mut(i) {
-            *slot = sum / diag;
+        let solved = [
+            complex_quotient(first, row[index]),
+            complex_quotient(second, row[index]),
+        ];
+        if solved.iter().any(|z| !z.is_finite()) {
+            return Err("Riemann–Hilbert density is outside the finite binary64 range".into());
         }
+        current[index] = solved;
     }
-    Ok(x)
+    Ok(rhs)
 }

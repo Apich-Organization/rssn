@@ -220,18 +220,8 @@ pub fn constrained_delaunay_2d(
     segments: &[(usize, usize)],
 ) -> Result<Vec<[usize; 3]>, String> {
     validate(points)?;
-    let (_pts, sub_segments) = preprocess_segments(points, segments, false)?;
-    let mut triangles = delaunay_2d(points)?;
-
-    for &(u, v) in &sub_segments {
-        insert_segment(points, &mut triangles, u, v);
-    }
-
-    let fixed: HashSet<(usize, usize)> =
-        sub_segments.iter().map(|&(u, v)| edge_key(u, v)).collect();
-    lawson(points, &mut triangles, &fixed);
-
-    Ok(triangles)
+    let (_, sub_segments) = preprocess_segments(points, segments, false, usize::MAX)?;
+    enforce_constraints(points, &sub_segments)
 }
 
 /// Constrained Delaunay triangulation of `points` and `segments`, returning
@@ -252,22 +242,39 @@ pub fn constrained_delaunay_2d_mesh(
     points: &[[f64; 2]],
     segments: &[(usize, usize)],
 ) -> Result<TriMesh2, String> {
-    validate(points)?;
-    let (pts, sub_segments) = preprocess_segments(points, segments, true)?;
-    let mut triangles = delaunay_2d(&pts)?;
+    constrained_delaunay_bounded(points, segments, usize::MAX)
+}
 
-    for &(u, v) in &sub_segments {
-        insert_segment(&pts, &mut triangles, u, v);
+pub(crate) fn constrained_delaunay_bounded(
+    points: &[[f64; 2]],
+    segments: &[(usize, usize)],
+    vertex_budget: usize,
+) -> Result<TriMesh2, String> {
+    if points.len() > vertex_budget {
+        return Err("constrained Delaunay vertex budget exceeded".into());
     }
+    validate(points)?;
+    let (points, sub_segments) = preprocess_segments(points, segments, true, vertex_budget)?;
+    let triangles = enforce_constraints(&points, &sub_segments)?;
+    Ok(TriMesh2 { points, triangles })
+}
 
-    let fixed: HashSet<(usize, usize)> =
-        sub_segments.iter().map(|&(u, v)| edge_key(u, v)).collect();
-    lawson(&pts, &mut triangles, &fixed);
-
-    Ok(TriMesh2 {
-        points: pts,
-        triangles,
-    })
+fn enforce_constraints(
+    points: &[[f64; 2]],
+    constraints: &[(usize, usize)],
+) -> Result<Vec<[usize; 3]>, String> {
+    let mut triangles = delaunay_2d(points)?;
+    for &(u, v) in constraints {
+        crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
+        insert_segment(points, &mut triangles, u, v);
+    }
+    let fixed: HashSet<_> = constraints.iter().map(|&(u, v)| edge_key(u, v)).collect();
+    lawson(points, &mut triangles, &fixed);
+    let edges = build_adjacency(&triangles);
+    if fixed.iter().any(|edge| !edges.contains_key(edge)) {
+        return Err("constrained Delaunay could not retain every input constraint".into());
+    }
+    Ok(triangles)
 }
 
 /// Preprocesses constraint segments by splitting segments at existing collinear
@@ -276,6 +283,7 @@ fn preprocess_segments(
     points: &[[f64; 2]],
     segments: &[(usize, usize)],
     allow_steiner: bool,
+    vertex_budget: usize,
 ) -> Result<(Vec<[f64; 2]>, Vec<(usize, usize)>), String> {
     for &(u, v) in segments {
         if u >= points.len() || v >= points.len() {
@@ -346,6 +354,9 @@ fn preprocess_segments(
         let mut any_crossing = false;
 
         for i in 0..segs.len() {
+            if i.is_multiple_of(16) {
+                crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
+            }
             let (a, b) = segs[i];
             for j in (i + 1)..segs.len() {
                 let (c, d) = segs[j];
@@ -361,7 +372,8 @@ fn preprocess_segments(
                     }
                     any_crossing = true;
                     let inter = segment_intersection(pts[a], pts[b], pts[c], pts[d]);
-                    let idx = find_or_insert_vertex(&mut pts, inter, pt_tol2);
+                    let idx = find_or_insert_vertex(&mut pts, inter, pt_tol2, vertex_budget)
+                        .ok_or("constrained Delaunay vertex budget exceeded")?;
                     if idx != a && idx != b {
                         splits[i].push(idx);
                     }
@@ -469,15 +481,19 @@ fn find_or_insert_vertex(
     pts: &mut Vec<[f64; 2]>,
     p: [f64; 2],
     tol2: f64,
-) -> usize {
+    vertex_budget: usize,
+) -> Option<usize> {
     for (idx, &q) in pts.iter().enumerate() {
         if distance2(q, p) <= tol2 {
-            return idx;
+            return Some(idx);
         }
     }
     let idx = pts.len();
+    if idx >= vertex_budget {
+        return None;
+    }
     pts.push(p);
-    idx
+    Some(idx)
 }
 
 /// Rejects inputs the triangulation cannot handle.

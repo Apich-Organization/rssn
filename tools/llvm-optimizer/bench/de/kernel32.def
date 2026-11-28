@@ -1,0 +1,12 @@
+LIBRARY KERNEL32.dll
+EXPORTS
+ExitProcess
+GetCurrentThread
+GetEnvironmentVariableA
+GetProcAddress
+GetStdHandle
+GetThreadTimes
+LoadLibraryA
+QueryPerformanceCounter
+QueryPerformanceFrequency
+WriteFile

@@ -2,10 +2,10 @@
 //! documentation, and reports coverage grouped by `rule_set`.
 //!
 //! ```text
-//! cargo run --bin doc_gen_check                  # human-readable report (fails if any op lacks doc)
-//! cargo run --bin doc_gen_check -- --summary     # per-rule-set summary only
-//! cargo run --bin doc_gen_check -- --json        # structured JSON report
-//! cargo run --bin doc_gen_check -- --allow-missing # exit 0 even when docs are missing
+//! bazel run //:doc_audit                  # human-readable report (fails if any op lacks doc)
+//! bazel run //:doc_audit -- --summary     # per-rule-set summary only
+//! bazel run //:doc_audit -- --json        # structured JSON report
+//! bazel run //:doc_audit -- --allow-missing # exit 0 even when docs are missing
 //! ```
 //!
 //! The exit status is `0` when every operator has non-empty documentation (or

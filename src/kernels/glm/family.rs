@@ -21,6 +21,19 @@ pub enum Family {
     InverseGaussian,
 }
 
+impl Family {
+    pub(crate) fn named(name: &str) -> Option<Self> {
+        match name {
+            | "gaussian" | "normal" => Some(Self::Gaussian),
+            | "poisson" => Some(Self::Poisson),
+            | "binomial" => Some(Self::Binomial),
+            | "gamma" => Some(Self::Gamma),
+            | "inverse_gaussian" | "inverse-gaussian" => Some(Self::InverseGaussian),
+            | _ => None,
+        }
+    }
+}
+
 /// The variance function `V(mu)` of the family.
 #[must_use]
 pub fn variance(

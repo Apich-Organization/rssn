@@ -21,6 +21,14 @@ crate::kernels::combinatorics::permutations	num_combinatorics_permutations	numer
 crate::kernels::combinatorics::rising_factorial	num_combinatorics_rising_factorial	numerical_special	Dimensionless
 crate::kernels::combinatorics::solve_recurrence_numerical	num_combinatorics_solve_recurrence_numerical	numerical_special	Dimensionless
 crate::kernels::combinatorics::stirling_second	num_combinatorics_stirling_second	numerical_special	Dimensionless
+crate::kernels::complex_coords::chordal_distance	num_complex_coords_chordal_distance	numerical_special	Dimensionless
+crate::kernels::complex_coords::cis	num_complex_coords_cis	numerical_special	Dimensionless
+crate::kernels::complex_coords::spherical_metric_factor	num_complex_coords_spherical_metric_factor	numerical_special	Dimensionless
+crate::kernels::conformal::cayley_transform	num_conformal_cayley_transform	numerical_special	Dimensionless
+crate::kernels::conformal::cross_ratio	num_conformal_cross_ratio	numerical_special	Dimensionless
+crate::kernels::conformal::joukowsky	num_conformal_joukowsky	numerical_special	Dimensionless
+crate::kernels::conformal::karman_trefftz	num_conformal_karman_trefftz	numerical_special	Dimensionless
+crate::kernels::conformal::koebe_map	num_conformal_koebe_map	numerical_special	Dimensionless
 crate::kernels::convergence::aitken_acceleration	num_convergence_aitken_acceleration	numerical_vector	Preserve
 crate::kernels::convergence::richardson_extrapolation	num_convergence_richardson_extrapolation	numerical_vector	Preserve
 crate::kernels::convergence::richardson_extrapolation_with	num_convergence_richardson_extrapolation_with	numerical_vector	Preserve

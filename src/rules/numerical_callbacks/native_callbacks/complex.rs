@@ -26,6 +26,7 @@ use crate::kernel::signature::RepExpr;
 use crate::kernel::value::ComplexValue;
 use crate::kernel::value::DynValue;
 use crate::kernels::complex as native;
+use crate::rules::numerical_abi::codecs::Arg;
 use num_complex::Complex64;
 use num_traits::ToPrimitive;
 #[derive(Clone, Copy)]
@@ -38,14 +39,14 @@ enum Method {
     Newton,
     Cauchy,
 }
-fn complex_type(d: DimExpr) -> TypeExpr {
+pub(super) fn complex_type(d: DimExpr) -> TypeExpr {
     if d == DimExpr::Dimless {
         TypeExpr::Complex
     } else {
         TypeExpr::Dim(Box::new(TypeExpr::Complex), d)
     }
 }
-fn dimension(t: &TypeExpr) -> Result<DimExpr, OpError> {
+pub(super) fn dimension(t: &TypeExpr) -> Result<DimExpr, OpError> {
     match t {
         | TypeExpr::Complex => Ok(DimExpr::Dimless),
         | TypeExpr::Dim(inner, d) if matches!(inner.as_ref(), TypeExpr::Complex) => {
@@ -55,7 +56,7 @@ fn dimension(t: &TypeExpr) -> Result<DimExpr, OpError> {
         | _ => Err(super::domain("callback requires a concrete complex scalar")),
     }
 }
-fn value(
+pub(super) fn value(
     z: Complex64,
     d: DimExpr,
 ) -> Value {
@@ -69,25 +70,14 @@ fn value(
         })
     }
 }
-fn decode(
+pub(super) fn decode(
     v: &Value,
     d: &DimExpr,
     index: usize,
     ctx: &CallCtx<'_>,
 ) -> Result<Complex64, OpError> {
-    fn payload(v: &Value) -> Result<Complex64, OpError> {
-        match v {
-            | Value::Dyn(v) => payload(&v.value),
-            | Value::Complex(v) => {
-                let (re, im) = v.to_f64();
-                Ok(Complex64::new(super::finite(re)?, super::finite(im)?))
-            },
-            | _ => Err(super::domain("complex argument payload is malformed")),
-        }
-    }
     equal(&dimension(&ctx.value_type(v)?)?, d)?;
-    let _ = index;
-    payload(v)
+    <Complex64 as Arg>::decode(v, index)
 }
 impl Method {
     const fn start(self) -> usize {
@@ -330,7 +320,33 @@ impl EvalDyn for Method {
         Ok(value(z, dim))
     }
 }
+#[path = "dynamics.rs"]
+mod dynamics;
+
+#[path = "root_contours.rs"]
+mod root_contours;
+
+#[path = "complex_fft_batch.rs"]
+mod fft_batch;
+#[path = "conformal_stencil.rs"]
+mod stencil;
+
+#[path = "univalent_callbacks.rs"]
+mod univalent;
+
+#[path = "conformal_szego.rs"]
+mod szego;
+
+#[path = "branch_jump.rs"]
+mod branch_jump;
+
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
+    branch_jump::install(i)?;
+    szego::install(i)?;
+    stencil::install(i)?;
+    univalent::install(i)?;
+    fft_batch::install(i)?;
+    root_contours::install(i)?;
     for (name, path, m) in [
         ("circle_integral", "circle_integral", Method::Circle),
         ("contour_integral", "contour_integral", Method::Contour),
@@ -354,5 +370,5 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             m,
         )?;
     }
-    Ok(())
+    dynamics::install(i)
 }

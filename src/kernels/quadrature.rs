@@ -176,6 +176,33 @@ pub fn gk_panel<F: Fn(f64) -> f64>(
     })
 }
 
+/// One complex panel with shared nodes and independent component error estimates.
+pub(crate) fn gk_panel_complex(
+    a: f64,
+    b: f64,
+    rule: GkRule,
+    evaluate: impl Fn(f64) -> num_complex::Complex64,
+) -> (num_complex::Complex64, [f64; 2], usize) {
+    let mut imaginary = [0.0; 21];
+    let (re, re_error, calls) = gk::panel_with(a, b, rule, |nodes, real| {
+        for ((out_real, out_imaginary), &node) in real.iter_mut().zip(&mut imaginary).zip(nodes) {
+            let value = evaluate(node);
+            *out_real = value.re;
+            *out_imaginary = value.im;
+        }
+    });
+    let (im, im_error, _) = gk::panel_with(a, b, rule, |_, values| {
+        for (value, sampled) in values.iter_mut().zip(imaginary) {
+            *value = sampled;
+        }
+    });
+    (
+        num_complex::Complex64::new(re, im),
+        [re_error, im_error],
+        calls,
+    )
+}
+
 /// [`gk_panel`] with the `2n - 1` node evaluations done in parallel.
 ///
 /// The panel's arithmetic is identical to the serial rule. Parallel evaluation
@@ -532,6 +559,53 @@ pub fn sinh_sinh<F: Fn(f64) -> f64>(
 /// Node evaluations below which the parallel rules stay sequential.
 const RULE_EVAL_GRAIN: usize = 64;
 
+// Compute the half-width without overflowing for finite endpoints of opposite sign.
+fn rule_interval(
+    a: f64,
+    b: f64,
+) -> (f64, f64) {
+    let width = b - a;
+    let half = if width.is_finite() || !a.is_finite() || !b.is_finite() {
+        0.5 * width
+    } else {
+        0.5 * b - 0.5 * a
+    };
+    (f64::midpoint(a, b), half)
+}
+
+fn evaluate_fixed_rule<F: Fn(f64) -> f64>(
+    f: F,
+    a: f64,
+    b: f64,
+    rule: &(Vec<f64>, Vec<f64>),
+) -> f64 {
+    let (nodes, weights) = rule;
+    let (middle, half) = rule_interval(a, b);
+    half * nodes
+        .iter()
+        .zip(weights)
+        .map(|(&node, &weight)| weight * f(middle + half * node))
+        .sum::<f64>()
+}
+
+fn evaluate_fixed_rule_par<F: Fn(f64) -> f64 + Sync>(
+    f: F,
+    a: f64,
+    b: f64,
+    rule: &(Vec<f64>, Vec<f64>),
+) -> f64 {
+    let (nodes, weights) = rule;
+    if !crate::execution::should_split(nodes.len(), RULE_EVAL_GRAIN) {
+        return evaluate_fixed_rule(f, a, b, rule);
+    }
+    let (middle, half) = rule_interval(a, b);
+    let mut terms = crate::kernels::reuse::global_pool().scratch_f64(nodes.len());
+    crate::kernels::par::map_indexed_into(nodes.len(), RULE_EVAL_GRAIN, &mut terms, |index| {
+        weights[index] * f(middle + half * nodes[index])
+    });
+    half * terms.iter().copied().sum::<f64>()
+}
+
 /// Gauss-Legendre nodes and weights on `[-1, 1]` with `n` points
 /// (Newton iteration on the Legendre recurrence).
 ///
@@ -557,20 +631,12 @@ pub fn gauss_legendre<F: Fn(f64) -> f64>(
         return 0.0;
     }
     let rule = crate::kernels::reuse::global_pool().gauss_legendre_rule(n);
-    let (x, w) = &*rule;
-    let h = 0.5 * (b - a);
-    let m = f64::midpoint(a, b);
-    h * x
-        .iter()
-        .zip(w)
-        .map(|(&xi, &wi)| wi * f(m + h * xi))
-        .sum::<f64>()
+    evaluate_fixed_rule(f, a, b, &rule)
 }
 
 /// [`gauss_legendre`] with the `n` node evaluations spread over the pool.
 ///
-/// The node values are independent and are collected in node order, and the
-/// weighted terms are still summed in that order, so the value is bit-identical
+/// The weighted terms are independent and summed in node order, so the value is bit-identical
 /// to [`gauss_legendre`] for every thread count. Most useful when one
 /// evaluation of `f` is expensive.
 pub fn gauss_legendre_par<F: Fn(f64) -> f64 + Sync>(
@@ -583,15 +649,7 @@ pub fn gauss_legendre_par<F: Fn(f64) -> f64 + Sync>(
         return 0.0;
     }
     let rule = crate::kernels::reuse::global_pool().gauss_legendre_rule(n);
-    let (x, w) = &*rule;
-    let h = 0.5 * (b - a);
-    let m = f64::midpoint(a, b);
-    let values = crate::kernels::par::map_slice(x, RULE_EVAL_GRAIN, |&xi| f(m + h * xi));
-    h * values
-        .iter()
-        .zip(w)
-        .map(|(&value, &wi)| wi * value)
-        .sum::<f64>()
+    evaluate_fixed_rule_par(f, a, b, &rule)
 }
 
 /// Clenshaw-Curtis nodes and weights on `[-1, 1]` with `n + 1` points
@@ -613,19 +671,12 @@ pub fn clenshaw_curtis<F: Fn(f64) -> f64>(
     n: usize,
 ) -> f64 {
     let rule = crate::kernels::reuse::global_pool().clenshaw_curtis_rule(n);
-    let (x, w) = &*rule;
-    let h = 0.5 * (b - a);
-    let m = f64::midpoint(a, b);
-    h * x
-        .iter()
-        .zip(w)
-        .map(|(&xi, &wi)| wi * f(m + h * xi))
-        .sum::<f64>()
+    evaluate_fixed_rule(f, a, b, &rule)
 }
 
 /// [`clenshaw_curtis`] with the node evaluations spread over the pool.
 ///
-/// Node values are collected in node order and the weighted terms are summed
+/// Weighted terms are collected in node order and summed
 /// in that order, so the value is bit-identical to [`clenshaw_curtis`] for
 /// every thread count.
 pub fn clenshaw_curtis_par<F: Fn(f64) -> f64 + Sync>(
@@ -635,15 +686,7 @@ pub fn clenshaw_curtis_par<F: Fn(f64) -> f64 + Sync>(
     n: usize,
 ) -> f64 {
     let rule = crate::kernels::reuse::global_pool().clenshaw_curtis_rule(n);
-    let (x, w) = &*rule;
-    let h = 0.5 * (b - a);
-    let m = f64::midpoint(a, b);
-    let values = crate::kernels::par::map_slice(x, RULE_EVAL_GRAIN, |&xi| f(m + h * xi));
-    h * values
-        .iter()
-        .zip(w)
-        .map(|(&value, &wi)| wi * value)
-        .sum::<f64>()
+    evaluate_fixed_rule_par(f, a, b, &rule)
 }
 
 /// Romberg integration with Richardson extrapolation of the trapezoid rule.

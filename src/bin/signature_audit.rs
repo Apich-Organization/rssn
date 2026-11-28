@@ -2,9 +2,9 @@
 //! operator is neither typed nor explained.
 //!
 //! ```text
-//! cargo run --bin signature-audit            # human-readable report
-//! cargo run --bin signature-audit -- --json  # the whole manifest as JSON
-//! cargo run --bin signature-audit -- --quiet # only failures, exit code only
+//! bazel run //:signature_audit            # human-readable report
+//! bazel run //:signature_audit -- --json  # the whole manifest as JSON
+//! bazel run //:signature_audit -- --quiet # only failures, exit code only
 //! ```
 //!
 //! # Why this is a binary and not only a test

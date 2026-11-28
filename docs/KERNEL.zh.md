@@ -66,9 +66,8 @@ overlay 只作为未声明签名的算子的类型来源：声明优先，因此
 5. 只有实参签名与其他重载可比较或不相交的候选才保留。同一实参签名下更精确的结果单独记录为 `refinements`，不参与重载选择。
 
 ```text
-RSSN_SORT_TRACE=sorts.tsv cargo test --lib
-cargo run --profile tools --bin signature-mine -- sorts.tsv
-cargo run --profile tools --bin signature-mine -- --check
+bazel run //:refresh_witness
+bazel test //:witness_test
 ```
 
 生成的 `signatures.witnessed.json` 随源码保存。清单用 `signature_source` 和 `overload_sources` 记录来源，用 `witnesses` 提供可重放调用。见证不证明对所有实参都能求出同类结果，宿主还要验证解码结果。两个可比较的重载同时匹配时，逐参数比较其具体程度。
@@ -84,11 +83,22 @@ cargo run --profile tools --bin signature-mine -- --check
 | `opaque_payload` | 携带内核不解释的宿主数据 |
 | `not_yet_specified` | 缺失声明，覆盖检查报错 |
 
-`cargo run --locked --bin signature-audit` 按签名来源汇总当前算子。若算子既无签名也无获认可的原因，命令返回非零退出码。
+`bazel test //:contracts_test --test_output=all` 中的签名审计按签名来源汇总当前算子。若算子既无签名也无获认可的原因，命令返回非零退出码。
 
 ### 5. 确定性
 
 相同的算子表、规则集合和构建能力生成逐字节一致的清单。清单对各列表排序去重，不包含进程内编号、指针或时间戳。计算 `manifest_hash` 时，将该字段置零后以确定性二进制编码计算 BLAKE3。宿主可用 `(manifest_hash, OpKey, target)` 作为缓存键。
+
+## 预计算模算术
+
+`num_modular_montgomery_new(modulus)` 接受大于 1 的奇数无符号 64 位模数，
+`num_modular_barrett_new(modulus)` 也支持偶数模数。`_new_prime` 构造函数会检查素性。
+运算使用精确整数，支持输入范围内的 64 位与 128 位数据。求逆或除法在分母与模数
+不互素时返回 `None`，参数超出范围、句柄类型不符或已释放时返回错误。
+
+Montgomery 编码运算要求输入小于对应的模数。应使用同一个计划转换、运算和解码，
+原始 REDC 接受小于 `modulus * 2^64` 的无符号整数。Barrett 支持整个无符号 128 位范围。
+计划是会话所属的不可变对象，可重复使用。完成后调用 `num_native_release` 释放。
 
 ## 动态调用与重载选择
 
@@ -263,6 +273,62 @@ JSON 沿用清单的量纲格式。为带单位名称的值添加量纲之前，
 两个输入的系数排列方向须一致。非空结果的长度向上取到最近的二次幂后，必须整除
 `p - 1`。模数有效时，空输入返回空张量。值接口使用通用的原生张量长度上限。
 
+`num_finite_field_ntt_plan(modulus, length)` 验证奇素数和整除
+`modulus - 1` 的二次幂长度，并返回仅含 `modulus` 和 `length` 的记录。
+`num_finite_field_ntt_transform(values, plan, inverse)` 接受等长的普通
+无符号 64 位整数张量。正变换使用由最小正生成元得到的根，逆变换在域中
+除以长度。恢复的记录会在调用时重新验证，长度受原生值预算限制。
+
+### 生存曲线与 Cox 回归
+
+`num_survival_kaplan_meier(time, event, confidence)` 返回事件时间、风险
+人数、事件次数、生存概率、Greenwood 方差和 log-log 置信界。若时间
+带量纲，`num_survival_median(curve)` 保留该量纲。曲线未达到一半时
+返回空选项。
+
+`num_survival_fit_cox(time, event, covariates, ties, max_iterations, tolerance)`
+接受无量纲、无截距的协变量。可用 `"breslow"` 或 `"efron"` 处理并列
+事件；删失观测仍在对应时刻的风险集中。将拟合记录传给
+`num_survival_predict_cox(fit, covariates)` 可获取相对危险度。预测时
+必须与原拟合保持列数和列顺序一致。
+
+### 矩形 CSR 运算
+
+`num_csr_transpose` 保留条目量纲。`num_csr_matmul_sparse` 和
+`num_csr_matmul_dense` 的结果条目量纲是两个输入的乘积。CSR 记录包含
+`rows`、`cols`、`indptr`、`indices` 和 `values`，列下标从零开始并
+在每行严格递增。
+
+`num_csr_lsqr(matrix, rhs, damping, tolerance, max_iterations)`
+求解矩形最小二乘问题。阻尼系数与矩阵条目同量纲，解的量纲为右端项除以
+矩阵条目量纲。结果包括解、原系统相对残差、迭代次数和收敛状态。最优
+最小二乘解可以具有非零残差。
+
+### 稀疏序列二次规划
+
+`num_sqp_solve` 使用带类型的求值和 Hessian 回调求解归一化非线性规划。
+求值记录包含目标值、梯度、约束值和稀疏 Jacobian。Hessian 回调接受迭代
+点和两组乘子，返回 Lagrangian Hessian 的上三角。稀疏记录由零起点的
+`rows`、`columns` 和 `values` 张量组成。约束先列等式，再列形式为
+`g(x) <= 0` 的不等式。
+
+回调使用归一化变量、目标和约束。同一个连续访问的点只求值一次，两个
+回调共享预算。结果包括迭代点、乘子、KKT 残差、收敛状态和调用次数。
+还可用 `num_sqp_oracle_*` 单独检查各回调分量。
+回调接口最多接受 128 个坐标、128 个约束以及每个稀疏记录 16,384 个三元组。
+
+### 精确十进制交换
+
+`num_mp_decimal_from_text(text, precision)` 将十进制字面量直接舍入为二进制值，
+等距时取偶。`from_text_in` 可指定舍入模式。`num_mp_decimal_to_text(value, digits)`
+按有效位数格式化精确二进制值，`to_text_in` 可指定格式化方向。有效位数范围为
+1 至 10,000。十进制解析和包络接口接受至多 100,000 字节的文本，去掉尾零前
+的十进制尺度须在 ±100,000 内。结果超过二进制指数范围时返回定义域错误。
+
+`num_mp_decimal_enclose` 返回包含精确输入的二进制区间。
+`num_mp_decimal_format_ball` 只在两个端点舍入结果相同时返回文本。
+`num_mp_decimal_round_text` 直接舍入十进制文本，接受 ±40,000 内的十进制尺度。
+
 ### 精确二进制多精度值
 
 `num_mp_real_round(mantissa, exponent, precision, mode)` 返回无量纲记录
@@ -274,16 +340,35 @@ JSON 沿用清单的量纲格式。为带单位名称的值添加量纲之前，
 输入和规格化后的指数绝对值均不得超过 262,144。舍入模式为
 `nearest`（等距取偶）、`zero`、`away`、`up` 和 `down`。
 
+用 `num_mp_real_exp(value, precision)` 计算精确二进制输入的指数函数，
+或用 `num_mp_ball_exp(interval, precision)` 计算闭二进制区间上的指数函数。
+两者均返回无量纲二进制区间。中点采用请求精度，半径包含舍入和级数误差。
+指数超出支持范围时返回定义域错误。
+
+用 `num_mp_real_zero` 和 `num_mp_real_one` 创建指定精度的常量。
+`num_mp_real_from_i64` 对有符号 64 位整数按等距取偶舍入。
+`num_mp_real_from_bigint` 支持更宽的整数及显式舍入模式。
+`num_mp_real_from_f64` 把有限 binary64 值舍入到请求精度，两个有符号零均变为
+同一规格化零值。`num_mp_real_to_f64` 直接按等距取偶舍入至 binary64，保留次正规数
+和下溢零的符号，溢出时返回定义域错误。`num_mp_real_sign` 从精确尾数返回 -1、0 或 1。
+
 `num_mp_real_compare(left, right)` 可精确比较不同精度的值，返回 -1、0 或 1。
 `num_mp_real_add`、`num_mp_real_sub`、`num_mp_real_mul` 和 `num_mp_real_div` 接收
 `(left, right, precision, mode)`，对精确结果只舍入一次。除法拒绝零除数。
 通过值接口再次传入结果时，保持记录字段为整数。
 
-`num_mp_ball_div(left, right, precision)` 返回两个闭区间相除的包络。
+`num_mp_ball_add`、`num_mp_ball_sub`、`num_mp_ball_mul` 和 `num_mp_ball_div` 均接收
+`(left, right, precision)`，依次返回两闭区间的和、差、积及商的包络。
 `{midpoint, radius}` 的两个字段都是上述精确二进制记录，`radius` 非负。
 该记录表示 `[midpoint - radius, midpoint + radius]`。请求精度决定中点的精度，
 半径可以采用不同精度以保持包络。除数区间不得含零，包括端点为零的情况。
 指数超出可表示范围时返回定义域错误。
+
+复数矩形是无量纲的 `{real, imag}` 记录，两个字段均为闭二进制区间。
+可用 `num_mp_complex_new` 组合两个区间，用 `num_mp_complex_point` 创建精确坐标，
+或用 `num_mp_complex_from_real` 将实区间嵌入虚部为零的矩形。
+加、减、乘、除、倒数、模平方和有符号整数幂沿用实区间算术的精度范围。
+模平方返回二进制区间。除数包络含原点时，除法、倒数和负整数幂返回定义域错误。
 
 ### 时序统计、重建与状态空间模型
 
@@ -304,6 +389,17 @@ JSON 沿用清单的量纲格式。为带单位名称的值添加量纲之前，
 `num_timeseries_kalman_smooth(y, f, h, q, r, x0, p0)` 按时间顺序返回每条观测的
 平滑状态均值。反向求解每一步都需要正定的预测协方差。
 
+### 精确二进制值与区间的定向求根
+
+`num_mp_real_cbrt_in(value, precision, rounding)` 按指定方向舍入实立方根，
+支持负输入。`num_mp_real_cbrt` 和 `num_mp_real_hypot` 分别返回实立方根
+和两个精确二进制值的欧几里得范数的包络。
+`num_mp_ball_sqrt` 返回非负闭区间上平方根的包络。
+
+`num_mp_real_limits()` 返回支持的位精度和二进制指数范围。二进制值和区间
+的读取算子保留精确整数字段。`num_mp_real_rounding_mode(rounding)` 返回
+受支持舍入模式的标准拼写。
+
 ### 带量纲状态空间仿真
 
 `num_control_c2d_zoh(a, b, c, d, dt)` 在零阶保持下离散化连续模型，
@@ -320,6 +416,127 @@ JSON 沿用清单的量纲格式。为带单位名称的值添加量纲之前，
 ## 插件
 
 插件通过 `Registry` 注册算子与重写规则。`SimplePlugin` 接收一段注册函数，向 `Registry::register_op` 提供 `OpDescriptor`，并可用 `register_rewrites` 设置规则和重写层级。每个注册算子需要签名或 `DynamicReason`。同名但形状不兼容的注册失败。为同一算子增加签名时使用描述符的 `.overload()`。[Rust 插件示例](KERNEL.md#plugins)
+
+## 复数矩形函数的可靠包络
+
+`num_mp_complex_abs(value, precision)` 返回包住复数矩形模长的闭二进制区间。
+当虚部中点位于 ±2^20 弧度以内时，`num_mp_complex_exp` 返回包住复指数的矩形。
+`num_mp_complex_ln` 返回复对数主值的矩形包络。输入接触非正实轴时返回定义域错误。
+计算超出指数或精度上限时返回错误。
+
+`num_mp_complex_sin`、`num_mp_complex_cos`、`num_mp_complex_tan` 及双曲变体
+`num_mp_complex_sinh`、`num_mp_complex_cosh`、`num_mp_complex_tanh` 同样接受并
+返回二进制矩形。三角函数对实部中点约化角度，双曲函数对虚部中点约化角度，范围为
+±2^20 弧度。计算得到的分母矩形包含零时，正切返回定义域错误。纯虚输入的正切与纯实
+输入的双曲正切调用实数双曲正切，可以处理较大的有限参数。
+
+`num_mp_complex_sqrt` 包住主平方根。负实轴上的主平方根具有正虚部。
+横跨支割线的输入矩形可能返回含有两种虚部符号的包络。
+`num_mp_complex_pow` 接受底数和指数矩形。指数为精确实整数单点时使用有符号 64 位
+整数幂，包括零次幂。其余情形通过可靠复对数和复指数计算主值，底数必须避开非正实轴，
+并满足复指数的角度范围。
+
+`num_mp_complex_{asin,acos,atan,asinh,acosh,atanh}` 返回无量纲二进制矩形上
+复反函数主值的包络。对 [-1, 1] 内的实区间，反正弦和反余弦包含两个端点。
+反双曲正弦包含对应的虚轴端点。反双曲余弦包含点 1，输入矩形与实轴上小于 1
+的部分相交时返回定义域错误。反正切和反双曲正切遇到各自的虚轴和实轴支割线或
+分支点时返回同类错误。计算中的包络触及奇点或超出指数范围时也返回定义域错误。
+
+需要取得算术表达式的精确二进制中点和向外舍入半径时，可调用
+`num_mp_expression_enclose(text, precision)`。精度参数以位为单位。
+例如，`sqrt(81) + hypot(3, 4) + cbrt(-8)` 的准确结果是 12。
+语法错误、无法认证的定义域和超出范围的指数会返回定义域错误。
+
+`num_mp_ball_lipschitz(interval, mapped_midpoint, bound, precision)`
+用调用方提供的非负 Lipschitz 界传播输入半径，并纳入映射中点的舍入误差。
+调用方应提供输入中点的精确像，并确保给出的界在整个区间成立。
+
+带类型的 `num_mp_complex_erf` 和 `num_mp_complex_erfc` 返回无量纲二进制
+闭矩形的像的包络。泰勒级数对整个矩形使用统一的几何余项界。在
+`Re(z) >= |Im(z)|` 的右侧扇形中，余误差函数可用渐近展开的首个遗漏项
+控制误差，从而保留正实轴上的小尾值。输入过宽或级数预算不足时返回定义域错误。
+参见 [DLMF §7.6](https://dlmf.nist.gov/7.6) 和 [DLMF §7.12](https://dlmf.nist.gov/7.12)。
+
+`num_mp_complex_bessel_j(value, order, precision)` 返回复 Bessel J 主分支
+在两个二进制矩形操作数上的包络。绝对值不超过 512 的精确整数阶允许负实
+轴参数。一般阶的整个矩形必须满足实部非负，精度上限为 512 位，且参数
+矩形必须避开非正实轴。在原点，零阶返回一，非零精确整数阶或实部严格为
+正的阶返回零。其余参数的整个矩形必须满足
+`abs(Re(value)) + abs(Im(value)) <= 256`。可根据输出半径判断输入不确定
+度带来的影响。
+
+复 gamma 系列与 Bessel J 共用带严格余项界的 Stirling 展开。
+`num_mp_complex_gamma` 和 `num_mp_complex_digamma` 支持避开所有非正整数
+极点的二进制矩形。`num_mp_complex_log_gamma` 沿正实轴取实值并解析延拓，
+因此不接受包含非正实轴的矩形。三种接口的输入精度上限均为 1024 位，
+递推预算耗尽时返回错误。可直接计算的正整数阶 gamma 先求精确阶乘，再
+向外舍入。
+
+`num_mp_complex_riemann_zeta(order, precision)` 返回 zeta 的外向包络，
+阶矩形必须避开一点的极点。Euler–Maclaurin 路径要求实部至少为 -32，
+模至多为 256。具有闭式的整数阶可直接求值。
+`num_mp_complex_polylog(value, order, precision)` 要求完整参数矩形严格
+位于单位圆盘内，阶的实部至少为 -256。两种接口的精度上限均为 512 位，
+预算耗尽时返回错误。
+
+## 实数三角函数的可靠包络
+
+`num_mp_real_sin`、`num_mp_real_cos` 和 `num_mp_real_tan` 返回精确二进制
+弧度角的三角函数包络。支持的角度绝对值上限为 2^20 弧度。
+`num_mp_real_sin_cos` 只做一次范围缩减，同时得到正弦和余弦的包络。
+对应的 `num_mp_ball_*` 算子接受中点位于支持范围内的闭角度区间。
+计算出的余弦包络含零时，正切返回定义域错误。
+
+## 实数双曲函数的可靠包络
+
+`num_mp_real_sinh`、`num_mp_real_cosh` 和 `num_mp_real_tanh`
+为精确实输入返回外向二进制包络。对应的 `num_mp_ball_*` 算子接受闭区间。
+区间跨越零时，双曲余弦保留最小值 1；双曲正切在大有限输入下接近 ±1 时
+仍返回有限包络。
+
+## 主辐角的可靠包络
+
+`num_mp_real_atan` 和 `num_mp_ball_atan` 分别返回实值或闭区间的反正切包络。
+`num_mp_real_atan2(y, x, precision)` 返回 (-π, π] 内主辐角的包络，
+原点超出定义域，负实轴上的点取 +π。矩形接口 `num_mp_ball_atan2` 拒绝含原点
+的矩形，也拒绝接触负实轴但并非全在轴上的矩形。复数矩形接口
+`num_mp_complex_arg` 拒绝触及非正实轴的矩形。
+
+## 反正弦与反余弦的可靠包络
+
+`num_mp_real_asin` 和 `num_mp_real_acos` 为 [-1, 1] 内的精确实值
+返回主值包络，包括两个端点。对应的 `num_mp_ball_*` 变体接受完全位于
+该定义域内的闭区间，区间有任何一部分超出 [-1, 1] 时返回定义域错误。
+输入为 1 时，反余弦返回零半径的精确零。
+
+## 实数幂的可靠包络
+
+`num_mp_real_powi` 和 `num_mp_ball_powi` 接受有符号 64 位整数指数。
+指数为零时返回 1，负指数拒绝含零的底数区间。分数幂接口
+`num_mp_real_pow_ratio` 和 `num_mp_ball_pow_ratio` 接受有符号 64 位分子
+和正的 32 位分母。负底数要求约分后的分母为奇数。
+
+`num_mp_real_pow` 和 `num_mp_ball_pow` 接受二进制指数。非零底数采用
+非整数指数时，底数须为正。指数区间包含多个值时，底数区间须严格为正。
+
+## 实对数与二进制指数
+
+`num_mp_real_ln`、`num_mp_real_log2`、`num_mp_real_log10` 和
+`num_mp_real_exp2` 返回精确实输入的外向二进制包络。
+对应的 `num_mp_ball_*` 算子接受闭二进制区间。对数要求输入严格为正，
+区间的两个端点也须为正。输入为整数且结果可表示时，二进制指数返回精确的二次幂。
+
+`num_mp_real_scale_decimal(value, exponent, precision)` 将二进制值乘以
+十的有符号整数次幂，只对精确结果舍入一次。
+`num_mp_real_scale_decimal_in` 接受指定的舍入方向。
+
+## 多精度数学常数
+
+`num_mp_real_const_named(name, precision)` 对数学常数按等距取偶返回经过
+验证的二进制值。支持 `pi`、`tau`、`e`、`ln2`、`sqrt2` 和 `phi`。
+可用 `num_mp_real_const_enclose` 保留外向包络。
+`num_mp_real_const_pi_scaled(bits)` 返回 π × 2^bits 的精确整数下取整，
+小数位数范围为 0 至 32,768。名称列表与多精度解析器支持的常数及表达式函数一致。
 
 ## 物理常数
 
@@ -374,6 +591,24 @@ let config = Config::new().dimension_term("x", DimExpr::base("Currency"));
 
 Rust 宿主可用 `Session::with_native_object_scope` 在当前会话运行临时操作。该操作返回或发生栈展开时，作用域释放本次创建的原生对象。已有对象仍可使用，作用域内创建的句柄须在该操作内使用。
 
+## 带量纲的 CAD 网格
+
+`num_cad_mesh_new` 使用两个三列张量，分别存放带长度量纲的顶点坐标和从零开始的整数
+三角形索引。拓扑查询重用缓存的边关联统计。有符号体积的量纲为 `Length³`，要求网格闭合
+且面朝向一致。焊接与修复接受带量纲的容差，返回新网格和变更统计。
+
+`num_cad_mesh_boolean` 对两个连通、面朝外的凸壳求并集、差集或交集。操作参数
+分别为 `union`、`difference` 和 `intersection`。结果为新的带量纲网格，相离实体的
+交集为空网格。不支持的几何或超出工作量限制时返回错误。Aevia 中可用
+`Rssn_Cad.mesh_boolean` 调用。
+
+STL 入口使用内存中的文本或字节张量。STL 自身没有单位，请提供一个坐标单位所代表的
+长度。从 STL 读出的三角形可能各自保存顶点。查询拓扑前应先焊接，使用完毕后调用
+`num_native_release` 释放句柄。
+
+`num_cad_step_read_text` 读取有工作量上限的平面 STEP 实体，边使用 `LINE` 几何，
+结果是网格句柄张量。通过 STEP 长度单位转换为米，未声明单位时按米解释。
+
 ## C ABI
 
 ```c
@@ -399,3 +634,64 @@ uint64_t hash = rssn_manifest_hash();
 2. 给出 `Signature` 或 `DynamicReason`，并声明量纲规则。
 3. 填写 `.doc(..)`、`.category(..)` 和 `.since(..)`。这些字段随清单提供给宿主。
 4. 运行 `bazel test //:contracts_test` 和该算子的测试。
+
+## 预计算传递函数
+
+`num_control_transfer_new` 接受按降幂排列的分子和分母系数，创建连续时间单输入、
+单输出模型。需要阶跃响应时可用 `_new_proper` 检查分子次数是否不超过分母次数。模型可复用于
+频率求值、稳定性分析以及串联、并联与负反馈，重复查询极点和零点会重用会话内缓存。
+
+调用前选择统一的参考时间，按该参考量归一化系数、频率及采样时间。ABI 在此使用
+无量纲数值。内部对数网格上没有相应交越频率时，裕量为 `None`。遇到奇点或数值
+失败时返回错误。增益裕量以 dB 表示，相位裕量以度表示。用完可调用 `num_native_release`。
+
+## 归一化 PID 与系统辨识
+
+`num_control_pid_response` 使用已准备的传递函数和归一化时间网格。
+`num_control_simulate_pid` 接受误差采样、正时间步长与可选输出范围。两者使用并联增益
+`kp`、`ki`、`kd` 及可选的正滤波时间 `filter_time`。当积分项会使输出进一步越过限幅时，
+积分保持不变。
+
+`num_control_era` 根据归一化的输入采样和逐采样、逐输出排列的张量辨识离散单输入模型。
+第一个输入采样须非零。`num_control_era_matrices` 返回 A、B、C，
+`num_control_impulse_response` 返回逐输出脉冲响应，首行是零。模型无直接馈通，使用结束后
+通过 `num_native_release` 释放。
+
+## 预计算离散模型预测控制
+
+`num_control_mpc_prepare` 读取归一化的离散 A、B 矩阵、正采样间隔，以及包含预测与控制时域、
+对角权重和可选分量限值的配置。输入权重须为正。计划可重复用于 `num_control_mpc_closed_loop`，
+以复用预测矩阵、Hessian 和约束行。每一步会按当前状态更新约束的右侧项。
+
+原生接口限制矩阵尺寸、时域及轨迹计算量。无可行解或结果非有限时返回错误。
+轨迹包含初态。使用结束后调用 `num_native_release`。
+
+### 有限区间数值变换
+
+`num_transform_*_checked` 返回数值、绝对误差估计、收敛状态和实际求值次数。
+Mellin、逆 Mellin、Hilbert、Hankel 和 Stieltjes 的回调坐标无量纲，结果保留
+回调振幅的量纲。物理坐标需要显式归一化，再按变换公式还原尺度。
+自适应误差只覆盖给定的有限区间。Laplace 轮廓和 Gaver–Stehfest 则比较
+两种分辨率，给出经验误差。平移参数应位于相关奇点右侧。
+
+Mellin–Barnes 的有限垂直积分线段不能经过极点。Meijer G 的积分线还须分开两组分子极点。
+误差估计不含截掉的积分尾部。Borel 多项式保留系数的共同量纲，
+自变量须无量纲。
+
+## 经验证的复数圆盘
+
+复数圆盘的张量末轴为 `[实部, 虚部, 半径]`。特殊函数
+`num_complex_disk_erf`、`num_complex_disk_gamma`、
+`num_complex_disk_log_gamma` 和 `num_complex_disk_bessel_j` 接收无量纲坐标，
+并返回覆盖整个输入圆盘的可选包络。碰到极点、跨越分支割线或超出有限计算范围时，
+结果可能为 `None`。
+
+标量求根认证 `num_complex_disk_certify_root` 使用一阶 Jet。系统求根认证
+`num_complex_disk_certify_system` 接收最多 64 个圆盘所成的无量纲复数盒。
+回调需在整个圆盘或盒上包络函数和导数或 Jacobian。标量认证需要调用两次，
+系统认证需要调用三次。Krawczyk 检验成功时，返回包络内存在唯一根。
+
+`num_complex_disk_certify_rouche` 检验圆周上是否处处满足
+`|g(z)| < |f(z)|`。调用方提供解析函数，并由回调包络覆盖各段圆弧的整个
+圆盘上的函数值。接口接收 4 到 4,096 段圆弧，每段至少预留两次回调。
+返回 `false` 表示给定包络未能建立该不等式。

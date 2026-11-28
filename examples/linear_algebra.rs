@@ -1,7 +1,7 @@
 //! Matrices two ways: exactly, through the symbolic `linalg` operators, and
 //! in floating point, through `kernels::dense`.
 //!
-//! Run with `cargo run --release --example linear_algebra`.
+//! Run with `bazel run //:example -- --profile release linear_algebra`.
 
 use rssn::api::*;
 use rssn::kernels::dense::Mat;

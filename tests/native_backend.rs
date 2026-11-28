@@ -467,3 +467,80 @@ fn native_compiled_rejects_wrong_units_budgets_stale_and_foreign_handles() {
     .unwrap();
     assert!(call(&session, "num_backend_arity", &[program]).is_err());
 }
+
+#[test]
+fn fixed_quadrature_and_compensated_sum_preserve_units_and_budget() {
+    let session = Session::new();
+    let length = DimExpr::Base("Length".into());
+    let time = DimExpr::Base("Time".into());
+    let input = scalar(&session, 2.0, length.clone(), true);
+    let output = scalar(&session, 3.0, time.clone(), true);
+    let program = |budget| {
+        call(
+            &session,
+            "num_backend_compile_current",
+            &[
+                Value::String("x*x".into()),
+                vector(vec![Value::String("x".into())], TypeExpr::String),
+                vector(
+                    vec![input.clone()],
+                    TypeExpr::Opaque("rssn/native/backend-scalar/v1".into()),
+                ),
+                output.clone(),
+                Value::int(budget),
+            ],
+        )
+        .unwrap()
+    };
+    let integrate = |name, upper, order, witness: DimExpr, handle| {
+        call(
+            &session,
+            name,
+            &[
+                measured(0.0, length.clone()),
+                measured(upper, length.clone()),
+                Value::int(order),
+                measured(1.0, witness),
+                handle,
+            ],
+        )
+    };
+    let full = program(4096_u64);
+    for name in [
+        "num_analysis_gauss_legendre_parallel",
+        "num_analysis_clenshaw_curtis_parallel",
+    ] {
+        let result = integrate(name, 2.0, 31_u64, time.clone(), full.clone()).unwrap();
+        assert!((numeric(&result) - 2.0).abs() < 1e-13);
+        let Value::Dyn(measured_result) = result else {
+            panic!("expected measured integral")
+        };
+        assert_eq!(
+            measured_result.dim,
+            DimExpr::Mul(vec![length.clone(), time.clone()])
+        );
+        assert!(integrate(name, 2.0, 31, length.clone(), full.clone()).is_err());
+        assert!(integrate(name, 2.0, 4097, time.clone(), full.clone()).is_err());
+        let bounded = program(8);
+        assert!(integrate(name, 2.0, 31, time.clone(), bounded.clone()).is_err());
+        let zero = integrate(name, 0.0, 31, time.clone(), bounded).unwrap();
+        assert_eq!(numeric(&zero).to_bits(), 0);
+    }
+    let samples = vector(
+        [1e16, 1.0, -1e16]
+            .map(|value| measured(value, length.clone()))
+            .to_vec(),
+        TypeExpr::Float.with_dim(length.clone()),
+    );
+    let sum = call(
+        &session,
+        "num_analysis_sum_compensated",
+        &[samples, Value::int(3), Value::int(1)],
+    )
+    .unwrap();
+    let Value::Dyn(sum) = sum else {
+        panic!("expected measured sum")
+    };
+    assert_eq!(sum.dim, length);
+    assert_eq!(numeric(&sum.value).to_bits(), 1.0_f64.to_bits());
+}

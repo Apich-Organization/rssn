@@ -457,6 +457,34 @@ class NpyTests(unittest.TestCase):
             with self.assertRaises(rssn.RssnError):
                 session.decode_npy(b"truncated")
 
+    def test_complex_samples_are_rejected(self) -> None:
+        if not rssn.manifest()["features"].get("npy"):
+            self.skipTest("this build lacks the NumPy codec")
+        with rssn.Session() as session:
+            with self.assertRaisesRegex(TypeError, "requires real samples"):
+                session.encode_npy((1,), [1 + 2j])
+            self.assertEqual(session.value_count(), 0)
+
+    def test_numpy_scalar_types_do_not_lose_imaginary_parts(self) -> None:
+        if not rssn.manifest()["features"].get("npy"):
+            self.skipTest("this build lacks the NumPy codec")
+        try:
+            import numpy as np
+        except ImportError:
+            self.skipTest("NumPy is not installed")
+
+        with rssn.Session() as session:
+            for sample in (np.complex64(1 + 2j), np.complex128(1 + 0j)):
+                with self.subTest(dtype=sample.dtype), self.assertRaisesRegex(
+                    TypeError, "requires real samples"
+                ):
+                    session.encode_npy((1,), iter([sample]))
+            values = np.array([1.25, -0.0], dtype=np.float32)
+            with session.decode_npy(session.encode_npy(values.shape, values)) as decoded:
+                np.testing.assert_array_equal(decoded.tensor(), values)
+                np.testing.assert_array_equal(np.signbit(decoded.tensor()), np.signbit(values))
+            self.assertEqual(session.value_count(), 0)
+
     def test_read_fortran_order_float32(self) -> None:
         if not rssn.manifest()["features"].get("npy"):
             self.skipTest("this build lacks the NumPy codec")

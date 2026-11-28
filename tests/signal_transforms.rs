@@ -165,6 +165,26 @@ fn zoom_fft_matches_direct_complex_sums_at_arbitrary_frequencies() {
 }
 
 #[test]
+fn zoom_fft_preserves_phase_and_normalization_across_cache_sizes() {
+    for len in [257, 32_769, 65_536] {
+        let index = len / 3;
+        let pulse = Complex64::new(0.75, -0.25);
+        let mut samples = vec![Complex64::ZERO; len];
+        samples[index] = pulse;
+        let step = -1.0 / 256.0;
+        for start in [0.0, 1.0 / 32.0] {
+            let spectrum = signal::zoom_fft(&samples, start, step, 7).unwrap();
+            assert_eq!(spectrum.len(), 7);
+            for (bin, actual) in spectrum.into_iter().enumerate() {
+                let cycles = ((start + bin as f64 * step) * index as f64).rem_euclid(1.0);
+                let expected = pulse * Complex64::from_polar(1.0, -TAU * cycles);
+                close_complex(actual, expected);
+            }
+        }
+    }
+}
+
+#[test]
 fn concurrent_zoom_grids_with_the_same_fft_extent_keep_separate_kernels() {
     let samples: Vec<_> = (0..11)
         .map(|n| Complex64::new(f64::from(n).sin(), f64::from(n).cos()))

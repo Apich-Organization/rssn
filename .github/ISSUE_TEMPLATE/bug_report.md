@@ -28,7 +28,7 @@ A minimal, reproducible example is key to fixing bugs quickly.
         // ...
     }
     ```
-4.  The command used to execute the code (e.g., `cargo run --release --features jit`)
+4.  The command used to execute the code (e.g., `bazel run //:example -- --profile release quickstart`)
 
 ### 📝 Expected Behavior
 

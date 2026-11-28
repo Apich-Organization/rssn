@@ -4,7 +4,7 @@
 
 发布构建、测试和生成操作的入口见 [Bazel 构建指南](BAZEL.zh.md)。
 
-普通的 `cargo build` 和下游 Rust 构建使用 Rust `rlib`。`cargo check` 生成用于类型检查的 Rust 元数据。在 Linux 上，可用 Rust 工具链运行以下命令，刷新 cbindgen 头文件并构建 C 静态库和共享库。
+`bazel build //:rustlib` 生成 Rust `rlib`。`bazel run //:check` 执行工作区类型检查。在 Linux 上，可用 Rust 工具链运行以下命令，刷新 cbindgen 头文件并构建 C 静态库和共享库。
 
 ```sh
 bazel run //:refresh_headers
@@ -19,7 +19,7 @@ cc -I. examples/c/smoke.c bazel-bin/ffi_distribution/ffi/librssn.a -lm -lpthread
 
 独立头文件目标通过 cbindgen 生成头文件，只需编译生成工具。Cargo 的 `DEV=1` 与 `dev-headers` 组合仍可使用。
 
-`signatures.overlay.json` 和 `signatures.witnessed.json` 都是必需的源码文件，源码归档与 Cargo 包也必须包含它们。构建会原样复制 overlay，缺少文件直接报错，签名无效则在构建内核清单时报错。手写覆盖应与使用它的代码一起更新。见证表根据实际调用生成。修改算子后，用 `RSSN_SORT_TRACE=sorts.tsv cargo test --lib` 收集新的测试调用，再运行 `cargo run --profile tools --bin signature-mine -- sorts.tsv` 更新。无见证的算子仍具有其直接声明、覆盖或推导的签名。[签名生成规则](KERNEL.zh.md#3a-见证签名)
+`signatures.overlay.json` 和 `signatures.witnessed.json` 都是必需的源码文件，源码归档与 Cargo 包也必须包含它们。构建会原样复制 overlay，缺少文件直接报错，签名无效则在构建内核清单时报错。手写覆盖应与使用它的代码一起更新。见证表根据实际调用生成。修改算子后，用 `bazel run //:refresh_witness` 收集新的测试调用并更新见证表。无见证的算子仍具有其直接声明、覆盖或推导的签名。[签名生成规则](KERNEL.zh.md#3a-见证签名)
 
 构建元数据支持 `SOURCE_DATE_EPOCH`、`VERGEN_IDEMPOTENT` 和显式 `VERGEN_*` 覆盖。Linux 可从 `/etc/os-release`、`/proc` 与 `uname` 查询主机信息。相应来源或 Git 不可用时，缺失值显示为 `unknown`。CPU 数取自 Rust 可用并行度，可能反映容器配额。跨宿主复现元数据时同时设置 `VERGEN_IDEMPOTENT=1` 与 `SOURCE_DATE_EPOCH`，并按需要为归档来源设置 `VERGEN_*`。
 
@@ -31,8 +31,8 @@ cc -I. examples/c/smoke.c bazel-bin/ffi_distribution/ffi/librssn.a -lm -lpthread
 再在新版运行第二条命令。
 
 ```sh
-RAYON_NUM_THREADS=4 cargo bench --locked --bench engine -- polynomials --save-baseline before
-RAYON_NUM_THREADS=4 cargo bench --locked --bench engine -- polynomials --baseline before
+RAYON_NUM_THREADS=4 bazel run //:benchmark -- engine -- polynomials --save-baseline before
+RAYON_NUM_THREADS=4 bazel run //:benchmark -- engine -- polynomials --baseline before
 ```
 
 使用 `fixed_prefix_scan` 基准组可比较单块扫描与每块 256 个元素的扫描。

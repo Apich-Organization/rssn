@@ -1,7 +1,7 @@
 # RSSN examples · 示例
 
-Run a Rust example with `cargo run --locked --example NAME` from the repository root.
-在仓库根目录运行 `cargo run --locked --example NAME`。
+Run a Rust example with `bazel run //:example -- NAME` from the repository root.
+在仓库根目录运行 `bazel run //:example -- NAME`。
 
 | Example | What it exercises · 内容 |
 |---|---|
@@ -22,8 +22,8 @@ Use the `tools` profile for timing. The backend comparison also needs `jit`.
 计时示例使用 `tools` 配置，后端对比还需要启用 `jit`。
 
 ```sh
-cargo run --locked --profile tools --example engine_timing
-cargo run --locked --profile tools --features jit --example backend_timing
+bazel run //:example -- --profile tools engine_timing
+bazel run //:example -- --profile tools backend_timing
 ```
 
 The [build guide](../docs/BUILDING.md) specifies features and the C toolchain.

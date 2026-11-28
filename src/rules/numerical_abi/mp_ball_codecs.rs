@@ -137,3 +137,36 @@ binding!(
         interval.endpoints(precision.0).map(|(lower, upper)| super::MpBallBounds { lower, upper }).map_err(OpError::Domain)
     }
 );
+
+binding!(
+    mp_ball_add, "num_mp_ball_add", "numerical_special",
+    "`num_mp_ball_add(left, right, precision)` encloses every sum of two dyadic intervals. Precision sets the midpoint bit width; the radius includes midpoint rounding.",
+    "crate::kernels::mp::ball::Ball::add", DimensionPolicy::Dimensionless,
+    (left: crate::kernels::mp::Ball, right: crate::kernels::mp::Ball, precision: super::MpRealPrecision)
+        -> Result<crate::kernels::mp::Ball, OpError>,
+    |left: crate::kernels::mp::Ball, right: crate::kernels::mp::Ball, precision: super::MpRealPrecision| {
+        left.add(&right, precision.0).map_err(OpError::Domain)
+    }
+);
+
+binding!(
+    mp_ball_sub, "num_mp_ball_sub", "numerical_special",
+    "`num_mp_ball_sub(left, right, precision)` encloses every difference of two dyadic intervals. Precision sets the midpoint bit width; the radius includes midpoint rounding.",
+    "crate::kernels::mp::ball::Ball::sub", DimensionPolicy::Dimensionless,
+    (left: crate::kernels::mp::Ball, right: crate::kernels::mp::Ball, precision: super::MpRealPrecision)
+        -> Result<crate::kernels::mp::Ball, OpError>,
+    |left: crate::kernels::mp::Ball, right: crate::kernels::mp::Ball, precision: super::MpRealPrecision| {
+        left.sub(&right, precision.0).map_err(OpError::Domain)
+    }
+);
+
+binding!(
+    mp_ball_mul, "num_mp_ball_mul", "numerical_special",
+    "`num_mp_ball_mul(left, right, precision)` encloses every product of two dyadic intervals. Precision sets the midpoint bit width; the radius includes midpoint rounding.",
+    "crate::kernels::mp::ball::Ball::mul", DimensionPolicy::Dimensionless,
+    (left: crate::kernels::mp::Ball, right: crate::kernels::mp::Ball, precision: super::MpRealPrecision)
+        -> Result<crate::kernels::mp::Ball, OpError>,
+    |left: crate::kernels::mp::Ball, right: crate::kernels::mp::Ball, precision: super::MpRealPrecision| {
+        left.mul(&right, precision.0).map_err(OpError::Domain)
+    }
+);

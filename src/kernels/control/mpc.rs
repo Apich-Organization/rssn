@@ -5,13 +5,9 @@
 //! over the control horizon. The resulting dense quadratic program is solved
 //! by a primal active-set method with a Bland-style anti-cycling tie-break.
 //!
-//! # Complexity
-//!
-//! The cost is documented as `O(horizon * n_u^3)` per step: linear in the
-//! prediction horizon and independent of the state dimension in the
-//! factorisation, because the states have been eliminated before the
-//! factorisation.
-
+//! Condensation builds state and input prediction maps from the discrete
+//! model and horizon. A closed-loop rollout reuses those maps, the Hessian
+//! and the constraint rows, solving a shifted QP at each state.
 use super::linalg;
 use super::state_space::StateSpace;
 
@@ -80,12 +76,25 @@ fn solve_qp(
     if a.iter().any(|row| row.len() != nv) || b.len() != a.len() {
         return Err("the qp constraints have inconsistent dimensions".to_string());
     }
+    if h.iter()
+        .chain(a)
+        .flatten()
+        .chain(f)
+        .chain(b)
+        .any(|value| !value.is_finite())
+    {
+        return Err("the condensed QP contains non-finite data".into());
+    }
     let mut x = vec![0.0; nv];
     for _ in 0..500 {
+        check_cancelled()?;
         let mut worst = 0.0_f64;
         let mut worst_index = None;
         for (i, row) in a.iter().enumerate() {
             let violation = dot(row, &x) - b[i];
+            if !violation.is_finite() {
+                return Err("QP feasibility projection is outside Float range".into());
+            }
             if violation > worst {
                 worst = violation;
                 worst_index = Some(i);
@@ -99,8 +108,8 @@ fn solve_qp(
             | None => break,
         };
         let norm = dot(&a[i], &a[i]);
-        if norm <= 1e-300 {
-            return Err("the qp constraints are infeasible".to_string());
+        if !norm.is_finite() || norm <= 1e-300 {
+            return Err("the qp constraint cannot be resolved at this scale".into());
         }
         let step = (dot(&a[i], &x) - b[i]) / norm;
         crate::kernels::simd::axpy_f64(-step, &a[i], &mut x);
@@ -118,6 +127,7 @@ fn solve_qp(
     }
     let mut iterations = 0;
     for _ in 0..1000 {
+        check_cancelled()?;
         iterations += 1;
         let mut g = vec![0.0; nv];
         for i in 0..nv {
@@ -125,6 +135,9 @@ fn solve_qp(
             for j in 0..nv {
                 g[i] += h[i][j] * x[j];
             }
+        }
+        if g.iter().any(|value| !value.is_finite()) {
+            return Err("the QP gradient is outside Float range".into());
         }
         let k = active.len();
         let size = nv + k;
@@ -154,6 +167,9 @@ fn solve_qp(
                 continue;
             },
         };
+        if solution.iter().any(|value| !value.is_finite()) {
+            return Err("the QP KKT solution is outside Float range".into());
+        }
         let p: Vec<f64> = solution[..nv].to_vec();
         let lambda: Vec<f64> = solution[nv..].to_vec();
         let p_norm = p.iter().fold(0.0_f64, |m, &v| m.max(v.abs()));
@@ -167,6 +183,14 @@ fn solve_qp(
                 }
             }
             if worst >= -1e-9 {
+                if x.iter().any(|value| !value.is_finite())
+                    || a.iter().zip(b).any(|(row, &bound)| {
+                        let violation = dot(row, &x) - bound;
+                        !violation.is_finite() || violation > 1e-7
+                    })
+                {
+                    return Err("the QP candidate is non-finite or infeasible".into());
+                }
                 return Ok((x, iterations));
             }
             if let Some(t) = worst_pos {
@@ -180,6 +204,9 @@ fn solve_qp(
                     continue;
                 }
                 let slope = dot(&a[i], &p);
+                if !slope.is_finite() {
+                    return Err("the QP constraint direction is outside Float range".into());
+                }
                 if slope > 1e-12 {
                     let t = (b[i] - dot(&a[i], &x)) / slope;
                     if t < alpha - 1e-12 {
@@ -214,204 +241,333 @@ fn solve_qp(
     Err("the qp active-set iteration did not converge".to_string())
 }
 
-/// Extracts the discrete `(A, B)` pair or reports that the model is
-/// continuous.
-fn discrete_pair(ss: &StateSpace) -> Result<(Vec<Vec<f64>>, Vec<Vec<f64>>), String> {
-    if ss.dt.is_none() {
-        return Err("mpc requires a discrete-time model".to_string());
+#[derive(Clone, Copy)]
+enum Bound {
+    Control(f64),
+    StateUpper { index: usize, limit: f64 },
+    StateLower { index: usize, limit: f64 },
+}
+
+impl Bound {
+    fn shifted(
+        self,
+        base: &[f64],
+    ) -> f64 {
+        match self {
+            | Self::Control(limit) => limit,
+            | Self::StateUpper { index, limit } => limit - base[index],
+            | Self::StateLower { index, limit } => base[index] - limit,
+        }
     }
-    Ok((ss.a.clone(), ss.b.clone()))
+}
+
+fn check_limits(
+    low: Option<&[f64]>,
+    high: Option<&[f64]>,
+    size: usize,
+) -> Result<(), String> {
+    if [low, high]
+        .into_iter()
+        .flatten()
+        .any(|values| values.len() != size || values.iter().any(|value| !value.is_finite()))
+        || low
+            .zip(high)
+            .is_some_and(|(low, high)| low.iter().zip(high).any(|(lo, hi)| lo > hi))
+    {
+        return Err("MPC bounds must be finite, ordered vectors of the model dimensions".into());
+    }
+    Ok(())
+}
+
+fn check_cancelled() -> Result<(), String> {
+    crate::cancellation::checkpoint().map_err(|failure| failure.to_string())
+}
+
+/// State and input prediction maps and the invariant QP matrices.
+pub(crate) struct CondensedMpc {
+    a: Vec<Vec<f64>>,
+    b: Vec<Vec<f64>>,
+    horizon: usize,
+    q: Vec<f64>,
+    r: Vec<f64>,
+    state_map: Vec<Vec<f64>>,
+    input_map: Vec<Vec<f64>>,
+    input_transpose: Vec<Vec<f64>>,
+    hessian: Vec<Vec<f64>>,
+    constraints: Vec<Vec<f64>>,
+    bounds: Vec<Bound>,
+}
+
+impl CondensedMpc {
+    pub(crate) fn new(
+        ss: &StateSpace,
+        opts: &MpcOptions,
+    ) -> Result<Self, String> {
+        if !ss.dt.is_some_and(|dt| dt.is_finite() && dt > 0.0) {
+            return Err("MPC requires a finite positive discrete sample time".into());
+        }
+        let n = ss.a.len();
+        let nu = ss.b.first().map_or(0, Vec::len);
+        if n == 0
+            || nu == 0
+            || ss.b.len() != n
+            || ss.a.iter().any(|row| row.len() != n)
+            || ss.b.iter().any(|row| row.len() != nu)
+            || ss
+                .a
+                .iter()
+                .chain(&ss.b)
+                .flatten()
+                .any(|value| !value.is_finite())
+        {
+            return Err("MPC state and control matrix shapes or values are invalid".into());
+        }
+        let horizon = opts.horizon;
+        let moves = opts.control_horizon;
+        if !(1..=horizon).contains(&moves) {
+            return Err("the control horizon must lie in 1..=horizon".into());
+        }
+        if opts.q.len() != n
+            || opts.r.len() != nu
+            || opts
+                .q
+                .iter()
+                .chain(&opts.r)
+                .any(|weight| !(weight.is_finite() && *weight >= 0.0))
+        {
+            return Err("MPC needs finite, nonnegative weights for each state and input".into());
+        }
+        check_limits(opts.u_min.as_deref(), opts.u_max.as_deref(), nu)?;
+        check_limits(opts.x_min.as_deref(), opts.x_max.as_deref(), n)?;
+        let rows = n
+            .checked_mul(horizon)
+            .ok_or_else(|| "MPC prediction dimensions overflow".to_string())?;
+        let variables = nu
+            .checked_mul(moves)
+            .ok_or_else(|| "MPC control dimensions overflow".to_string())?;
+        let mut powers = Vec::with_capacity(horizon);
+        let mut blocks = Vec::with_capacity(horizon);
+        let mut power = linalg::identity(n);
+        for _ in 0..horizon {
+            check_cancelled()?;
+            blocks.push(linalg::matmul(&power, &ss.b)?);
+            power = linalg::matmul(&ss.a, &power)?;
+            powers.push(power.clone());
+        }
+        let state_map: Vec<_> = powers.into_iter().flatten().collect();
+        let mut input_map = vec![vec![0.0; variables]; rows];
+        for i in 1..=horizon {
+            for j in 0..moves.min(i) {
+                let block = &blocks[i - 1 - j];
+                for (r, entries) in block.iter().enumerate() {
+                    let column = j * nu;
+                    input_map[(i - 1) * n + r][column..column + nu].copy_from_slice(entries);
+                }
+            }
+        }
+        let input_transpose = linalg::transpose(&input_map);
+        let weighted: Vec<Vec<_>> = input_map
+            .iter()
+            .enumerate()
+            .map(|(row, values)| values.iter().map(|value| value * opts.q[row % n]).collect())
+            .collect();
+        let mut hessian = linalg::matmul(&input_transpose, &weighted)?;
+        for (i, row) in hessian.iter_mut().enumerate() {
+            for value in row.iter_mut() {
+                *value *= 2.0;
+            }
+            row[i] += 2.0 * opts.r[i % nu];
+        }
+        let mut constraints = Vec::new();
+        let mut bounds = Vec::new();
+        for (side, limits) in [(1.0, &opts.u_max), (-1.0, &opts.u_min)] {
+            if let Some(limits) = limits {
+                for step in 0..moves {
+                    for (input, &limit) in limits.iter().enumerate() {
+                        let mut row = vec![0.0; variables];
+                        row[step * nu + input] = side;
+                        constraints.push(row);
+                        bounds.push(Bound::Control(side * limit));
+                    }
+                }
+            }
+        }
+        for (upper, limits) in [(true, &opts.x_max), (false, &opts.x_min)] {
+            if let Some(limits) = limits {
+                for (index, row) in input_map.iter().enumerate() {
+                    let limit = limits[index % n];
+                    if upper {
+                        constraints.push(row.clone());
+                        bounds.push(Bound::StateUpper { index, limit });
+                    } else {
+                        constraints.push(row.iter().map(|&value| -value).collect());
+                        bounds.push(Bound::StateLower { index, limit });
+                    }
+                }
+            }
+        }
+        if state_map
+            .iter()
+            .chain(&input_map)
+            .chain(&hessian)
+            .flatten()
+            .any(|value| !value.is_finite())
+        {
+            return Err("MPC prediction matrices are outside Float range".into());
+        }
+        Ok(Self {
+            a: ss.a.clone(),
+            b: ss.b.clone(),
+            horizon,
+            q: opts.q.clone(),
+            r: opts.r.clone(),
+            state_map,
+            input_map,
+            input_transpose,
+            hessian,
+            constraints,
+            bounds,
+        })
+    }
+
+    fn check_state(
+        &self,
+        state: &[f64],
+        reference: &[f64],
+    ) -> Result<(), String> {
+        let n = self.a.len();
+        if state.len() != n
+            || reference.len() != n
+            || state
+                .iter()
+                .chain(reference)
+                .any(|value| !value.is_finite())
+        {
+            return Err("state and reference must be finite vectors of the state dimension".into());
+        }
+        Ok(())
+    }
+
+    fn solve(
+        &self,
+        state: &[f64],
+        reference: &[f64],
+    ) -> Result<(Vec<f64>, Vec<f64>, usize), String> {
+        check_cancelled()?;
+        let n = self.a.len();
+        let base = linalg::matvec(&self.state_map, state);
+        let weighted: Vec<_> = base
+            .iter()
+            .enumerate()
+            .map(|(i, &value)| self.q[i % n] * (value - reference[i % n]))
+            .collect();
+        let mut gradient = linalg::matvec(&self.input_transpose, &weighted);
+        for value in &mut gradient {
+            *value *= 2.0;
+        }
+        let shifted: Vec<_> = self
+            .bounds
+            .iter()
+            .map(|bound| bound.shifted(&base))
+            .collect();
+        let (moves, iterations) = solve_qp(&self.hessian, &gradient, &self.constraints, &shifted)?;
+        Ok((base, moves, iterations))
+    }
+
+    fn step(
+        &self,
+        state: &[f64],
+        reference: &[f64],
+    ) -> Result<MpcStep, String> {
+        self.check_state(state, reference)?;
+        let (base, moves, iterations) = self.solve(state, reference)?;
+        let n = self.a.len();
+        let nu = self.r.len();
+        let controlled = linalg::matvec(&self.input_map, &moves);
+        let mut predicted_states = Vec::with_capacity(self.horizon);
+        let mut objective = 0.0;
+        for (open, actuated) in base.chunks_exact(n).zip(controlled.chunks_exact(n)) {
+            let predicted: Vec<_> = open
+                .iter()
+                .zip(actuated)
+                .map(|(unforced, forced)| unforced + forced)
+                .collect();
+            for (i, value) in predicted.iter().enumerate() {
+                let delta = value - reference[i];
+                objective += self.q[i] * delta * delta;
+            }
+            predicted_states.push(predicted);
+        }
+        for (i, &value) in moves.iter().enumerate() {
+            objective += self.r[i % nu] * value * value;
+        }
+        if !objective.is_finite()
+            || predicted_states
+                .iter()
+                .flatten()
+                .any(|value| !value.is_finite())
+        {
+            return Err("MPC prediction is outside Float range".into());
+        }
+        Ok(MpcStep {
+            u: moves[..nu].to_vec(),
+            predicted_states,
+            objective,
+            iterations,
+        })
+    }
+
+    pub(crate) fn closed_loop(
+        &self,
+        initial: &[f64],
+        reference: &[f64],
+        steps: usize,
+    ) -> Result<Vec<Vec<f64>>, String> {
+        self.check_state(initial, reference)?;
+        let capacity = steps
+            .checked_add(1)
+            .ok_or_else(|| "MPC trajectory length overflow".to_string())?;
+        let mut trajectory = Vec::with_capacity(capacity);
+        let mut state = initial.to_vec();
+        trajectory.push(state.clone());
+        let nu = self.r.len();
+        for _ in 0..steps {
+            let (_, moves, _) = self.solve(&state, reference)?;
+            let ax = linalg::matvec(&self.a, &state);
+            let bu = linalg::matvec(&self.b, &moves[..nu]);
+            for (value, (open, actuated)) in state.iter_mut().zip(ax.into_iter().zip(bu)) {
+                *value = open + actuated;
+            }
+            if state.iter().any(|value| !value.is_finite()) {
+                return Err("MPC trajectory is outside Float range".into());
+            }
+            trajectory.push(state.clone());
+        }
+        Ok(trajectory)
+    }
 }
 
 /// Computes one MPC step.
 ///
-/// The quadratic program is condensed: the predicted states are eliminated
-/// with the prediction matrices, leaving only the control moves over the
-/// control horizon. Moves beyond the control horizon are held at zero.
+/// The state trajectory is eliminated before solving the control moves.
+/// Moves beyond the control horizon are held at zero.
 ///
 /// # Errors
-/// Returns an error for a continuous model, inconsistent option lengths, or a
-/// failed quadratic program.
+/// Returns an error for invalid data, an unsupported model, or a failed QP.
 pub fn mpc_step(
     ss: &StateSpace,
     x0: &[f64],
     reference: &[f64],
     opts: &MpcOptions,
 ) -> Result<MpcStep, String> {
-    let (a, b) = discrete_pair(ss)?;
-    let n = a.len();
-    let nu = b.first().map_or(0, Vec::len);
-    if nu == 0 {
-        return Err("the model must have at least one input".to_string());
-    }
-    if x0.len() != n {
-        return Err("x0 must have n entries".to_string());
-    }
-    if reference.len() != n {
-        return Err("reference must have n entries".to_string());
-    }
-    let big_n = opts.horizon;
-    let nc = opts.control_horizon;
-    if big_n == 0 {
-        return Err("the horizon must be positive".to_string());
-    }
-    if nc == 0 || nc > big_n {
-        return Err("the control horizon must lie in 1..=horizon".to_string());
-    }
-    if opts.q.len() != n {
-        return Err("q must have n entries".to_string());
-    }
-    if opts.r.len() != nu {
-        return Err("r must have nu entries".to_string());
-    }
-    let mut powers: Vec<Vec<Vec<f64>>> = Vec::with_capacity(big_n + 1);
-    powers.push(linalg::identity(n));
-    for k in 1..=big_n {
-        let previous = &powers[k - 1];
-        powers.push(linalg::matmul(&a, previous)?);
-    }
-    let rows = n * big_n;
-    let cols = nu * nc;
-    let mut sx = vec![vec![0.0; n]; rows];
-    for i in 1..=big_n {
-        for r in 0..n {
-            for c in 0..n {
-                sx[(i - 1) * n + r][c] = powers[i][r][c];
-            }
-        }
-    }
-    let mut su = vec![vec![0.0; cols]; rows];
-    for i in 1..=big_n {
-        for j in 0..nc.min(i) {
-            let block = linalg::matmul(&powers[i - 1 - j], &b)?;
-            for r in 0..n {
-                for c in 0..nu {
-                    su[(i - 1) * n + r][j * nu + c] = block[r][c];
-                }
-            }
-        }
-    }
-    let base = linalg::matvec(&sx, x0);
-    let mut error = vec![0.0; rows];
-    for i in 0..big_n {
-        for s in 0..n {
-            error[i * n + s] = base[i * n + s] - reference[s];
-        }
-    }
-    let mut weighted = vec![0.0; rows];
-    for i in 0..rows {
-        weighted[i] = opts.q[i % n] * error[i];
-    }
-    let su_t = linalg::transpose(&su);
-    let mut f = linalg::matvec(&su_t, &weighted);
-    for value in &mut f {
-        *value *= 2.0;
-    }
-    let mut qsu = su.clone();
-    for i in 0..rows {
-        let w = opts.q[i % n];
-        for j in 0..cols {
-            qsu[i][j] *= w;
-        }
-    }
-    let hq = linalg::matmul(&su_t, &qsu)?;
-    let mut h = vec![vec![0.0; cols]; cols];
-    for i in 0..cols {
-        for j in 0..cols {
-            h[i][j] = 2.0 * hq[i][j];
-        }
-        h[i][i] += 2.0 * opts.r[i % nu];
-    }
-    let mut a_rows: Vec<Vec<f64>> = Vec::new();
-    let mut b_rhs: Vec<f64> = Vec::new();
-    if let Some(umax) = &opts.u_max {
-        if umax.len() != nu {
-            return Err("u_max must have nu entries".to_string());
-        }
-        for j in 0..nc {
-            for c in 0..nu {
-                let mut row = vec![0.0; cols];
-                row[j * nu + c] = 1.0;
-                a_rows.push(row);
-                b_rhs.push(umax[c]);
-            }
-        }
-    }
-    if let Some(umin) = &opts.u_min {
-        if umin.len() != nu {
-            return Err("u_min must have nu entries".to_string());
-        }
-        for j in 0..nc {
-            for c in 0..nu {
-                let mut row = vec![0.0; cols];
-                row[j * nu + c] = -1.0;
-                a_rows.push(row);
-                b_rhs.push(-umin[c]);
-            }
-        }
-    }
-    if let Some(xmax) = &opts.x_max {
-        if xmax.len() != n {
-            return Err("x_max must have n entries".to_string());
-        }
-        for i in 0..big_n {
-            for s in 0..n {
-                a_rows.push(su[i * n + s].clone());
-                b_rhs.push(xmax[s] - base[i * n + s]);
-            }
-        }
-    }
-    if let Some(xmin) = &opts.x_min {
-        if xmin.len() != n {
-            return Err("x_min must have n entries".to_string());
-        }
-        for i in 0..big_n {
-            for s in 0..n {
-                let row: Vec<f64> = su[i * n + s].iter().map(|&v| -v).collect();
-                a_rows.push(row);
-                b_rhs.push(-(xmin[s] - base[i * n + s]));
-            }
-        }
-    }
-    let (uvec, iterations) = solve_qp(&h, &f, &a_rows, &b_rhs)?;
-    let su_u = linalg::matvec(&su, &uvec);
-    let mut predicted = Vec::with_capacity(big_n);
-    for i in 0..big_n {
-        let mut xi = vec![0.0; n];
-        for s in 0..n {
-            xi[s] = base[i * n + s] + su_u[i * n + s];
-        }
-        predicted.push(xi);
-    }
-    let mut objective = 0.0;
-    for xi in &predicted {
-        for s in 0..n {
-            let d = xi[s] - reference[s];
-            objective += opts.q[s] * d * d;
-        }
-    }
-    for j in 0..nc {
-        for c in 0..nu {
-            let u = uvec[j * nu + c];
-            objective += opts.r[c] * u * u;
-        }
-    }
-    let u = uvec[..nu].to_vec();
-    Ok(MpcStep {
-        u,
-        predicted_states: predicted,
-        objective,
-        iterations,
-    })
+    CondensedMpc::new(ss, opts)?.step(x0, reference)
 }
 
-/// Runs the MPC controller in closed loop for `steps` samples.
-///
-/// Returns the state trajectory including the initial state, so the result has
-/// `steps + 1` entries.
+/// Runs the MPC controller in closed loop for `steps` samples. Condensation is
+/// shared by all steps. The result starts with the initial state.
 ///
 /// # Errors
-/// As [`mpc_step`].
+/// As [`mpc_step`], or when the trajectory exceeds the finite Float range.
 pub fn mpc_closed_loop(
     ss: &StateSpace,
     x0: &[f64],
@@ -419,20 +575,7 @@ pub fn mpc_closed_loop(
     steps: usize,
     opts: &MpcOptions,
 ) -> Result<Vec<Vec<f64>>, String> {
-    let (a, b) = discrete_pair(ss)?;
-    let mut x = x0.to_vec();
-    let mut trajectory = Vec::with_capacity(steps + 1);
-    trajectory.push(x.clone());
-    for _ in 0..steps {
-        let step = mpc_step(ss, &x, reference, opts)?;
-        let ax = linalg::matvec(&a, &x);
-        let bu = linalg::matvec(&b, &step.u);
-        for (i, value) in x.iter_mut().enumerate() {
-            *value = ax[i] + bu.get(i).copied().unwrap_or(0.0);
-        }
-        trajectory.push(x.clone());
-    }
-    Ok(trajectory)
+    CondensedMpc::new(ss, opts)?.closed_loop(x0, reference, steps)
 }
 
 #[cfg(test)]

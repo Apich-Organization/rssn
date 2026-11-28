@@ -400,7 +400,7 @@ SEXP C_rssn_load(SEXP candidates) {
     }
     if (handle == NULL) {
         Rf_error("no rssn shared library found; set RSSN_LIB to the library file or its directory, "
-                 "or build one with `bash scripts/build_ffi.sh`");
+                 "or build one with `bazel build //:ffi_dev`");
     }
 
     rssn_api next = {0};

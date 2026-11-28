@@ -19,23 +19,24 @@ use super::ball::Ball;
 use super::consts;
 use super::decimal;
 use super::funcs;
+use super::real::MAX_BITS;
 use super::real::Real;
 use super::real::Round;
 
 /// Longest expression text accepted.
-const MAX_TEXT: usize = 4096;
+pub(crate) const MAX_EXPRESSION_TEXT: usize = 4096;
 /// Deepest parenthesised nesting accepted.
 const MAX_DEPTH: usize = 64;
 /// Most tokens accepted.
 const MAX_TOKENS: usize = 2048;
 
 /// One lexical token.
-#[derive(Clone, Debug, PartialEq)]
-enum Token {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Token<'a> {
     /// A decimal literal, as written.
-    Number(String),
+    Number(&'a str),
     /// An identifier: a constant or a function name.
-    Name(String),
+    Name(&'a str),
     /// `+`
     Plus,
     /// `-`
@@ -55,80 +56,55 @@ enum Token {
 }
 
 /// Splits `text` into tokens.
-fn tokenize(text: &str) -> Result<Vec<Token>, String> {
+fn tokenize(text: &str) -> Result<Vec<Token<'_>>, String> {
+    if text.len() > MAX_EXPRESSION_TEXT {
+        return Err("the expression is too long".to_string());
+    }
     let mut tokens = Vec::new();
-    let characters: Vec<char> = text.chars().collect();
-    let mut at = 0;
-    while at < characters.len() {
-        let character = characters[at];
-        match character {
-            | ' ' | '\t' | '\n' | '\r' => at += 1,
-            | '+' => {
-                tokens.push(Token::Plus);
-                at += 1;
-            },
-            | '-' => {
-                tokens.push(Token::Minus);
-                at += 1;
-            },
-            | '*' => {
-                tokens.push(Token::Star);
-                at += 1;
-            },
-            | '/' => {
-                tokens.push(Token::Slash);
-                at += 1;
-            },
-            | '^' => {
-                tokens.push(Token::Caret);
-                at += 1;
-            },
-            | '(' => {
-                tokens.push(Token::Open);
-                at += 1;
-            },
-            | ')' => {
-                tokens.push(Token::Close);
-                at += 1;
-            },
-            | ',' => {
-                tokens.push(Token::Comma);
-                at += 1;
-            },
+    let mut characters = text.char_indices().peekable();
+    let digit = |&(_, c): &(usize, char)| c.is_ascii_digit();
+    while let Some((start, character)) = characters.next() {
+        let token = match character {
+            | ' ' | '\t' | '\n' | '\r' => continue,
+            | '+' => Token::Plus,
+            | '-' => Token::Minus,
+            | '*' => Token::Star,
+            | '/' => Token::Slash,
+            | '^' => Token::Caret,
+            | '(' => Token::Open,
+            | ')' => Token::Close,
+            | ',' => Token::Comma,
             | '0'..='9' | '.' => {
-                let start = at;
-                while at < characters.len()
-                    && (characters[at].is_ascii_digit() || characters[at] == '.')
+                while characters
+                    .next_if(|&(_, c)| c.is_ascii_digit() || c == '.')
+                    .is_some()
+                {}
+                if characters
+                    .peek()
+                    .is_some_and(|&(_, c)| c == 'e' || c == 'E')
                 {
-                    at += 1;
-                }
-                if at < characters.len() && (characters[at] == 'e' || characters[at] == 'E') {
-                    let save = at;
-                    at += 1;
-                    if at < characters.len() && (characters[at] == '+' || characters[at] == '-') {
-                        at += 1;
-                    }
-                    let digits_start = at;
-                    while at < characters.len() && characters[at].is_ascii_digit() {
-                        at += 1;
-                    }
-                    if at == digits_start {
-                        at = save;
+                    let mut exponent = characters.clone();
+                    exponent.next();
+                    exponent.next_if(|&(_, c)| c == '+' || c == '-');
+                    if exponent.next_if(digit).is_some() {
+                        while exponent.next_if(digit).is_some() {}
+                        characters = exponent;
                     }
                 }
-                tokens.push(Token::Number(characters[start..at].iter().collect()));
+                let end = characters.peek().map_or(text.len(), |&(index, _)| index);
+                Token::Number(&text[start..end])
             },
             | _ if character.is_alphabetic() || character == '_' => {
-                let start = at;
-                while at < characters.len()
-                    && (characters[at].is_alphanumeric() || characters[at] == '_')
-                {
-                    at += 1;
-                }
-                tokens.push(Token::Name(characters[start..at].iter().collect()));
+                while characters
+                    .next_if(|&(_, c)| c.is_alphanumeric() || c == '_')
+                    .is_some()
+                {}
+                let end = characters.peek().map_or(text.len(), |&(index, _)| index);
+                Token::Name(&text[start..end])
             },
             | _ => return Err(format!("`{character}` is not allowed in an expression")),
-        }
+        };
+        tokens.push(token);
         if tokens.len() > MAX_TOKENS {
             return Err("the expression has too many tokens".to_string());
         }
@@ -139,19 +115,12 @@ fn tokenize(text: &str) -> Result<Vec<Token>, String> {
     Ok(tokens)
 }
 
-fn expression_tokens(text: &str) -> Result<Vec<Token>, String> {
-    if text.len() > MAX_TEXT {
-        return Err("the expression is too long".to_string());
-    }
-    tokenize(text)
-}
-
 /// Handles plain decimal expressions without losing exact rounding ties.
 pub(super) fn round_literal(
     text: &str,
     digits: usize,
 ) -> Result<Option<String>, String> {
-    match expression_tokens(text)?.as_slice() {
+    match tokenize(text)?.as_slice() {
         | [Token::Number(literal)] | [Token::Plus, Token::Number(literal)] => {
             decimal::round_decimal(literal, digits, Round::NearestEven).map(Some)
         },
@@ -164,28 +133,41 @@ pub(super) fn round_literal(
 
 /// A cursor over the tokens.
 struct Parser<'a> {
-    tokens: &'a [Token],
+    tokens: &'a [Token<'a>],
     at: usize,
     depth: usize,
     prec: u32,
 }
 
-impl Parser<'_> {
+impl<'a> Parser<'a> {
     /// The next token, without consuming it.
-    fn peek(&self) -> Option<&Token> {
+    fn peek(&self) -> Option<&Token<'a>> {
         self.tokens.get(self.at)
     }
 
     /// Consumes the next token when it is `wanted`.
     fn eat(
         &mut self,
-        wanted: &Token,
+        wanted: &Token<'_>,
     ) -> bool {
         if self.peek() == Some(wanted) {
             self.at += 1;
             return true;
         }
         false
+    }
+
+    fn nested<T>(
+        &mut self,
+        parse: impl FnOnce(&mut Self) -> Result<T, String>,
+    ) -> Result<T, String> {
+        if self.depth >= MAX_DEPTH {
+            return Err("the expression nests too deeply".into());
+        }
+        self.depth += 1;
+        let result = parse(self);
+        self.depth -= 1;
+        result
     }
 
     /// Parses a sum or difference.
@@ -220,58 +202,51 @@ impl Parser<'_> {
     fn power(&mut self) -> Result<Ball, String> {
         let base = self.unary()?;
         if self.eat(&Token::Caret) {
-            let exponent = self.power()?;
-            let value = funcs::pow(&base.mid, &exponent.mid, self.prec)?;
-            return widen(value, &base, &exponent, self.prec);
+            let exponent = self.nested(Self::power)?;
+            return funcs::pow_ball(&base, &exponent, self.prec);
         }
         Ok(base)
     }
 
     /// Parses a unary sign.
     fn unary(&mut self) -> Result<Ball, String> {
-        if self.eat(&Token::Minus) {
-            return Ok(self.unary()?.neg());
+        let mut negative = false;
+        loop {
+            if self.eat(&Token::Minus) {
+                negative = !negative;
+            } else if !self.eat(&Token::Plus) {
+                break;
+            }
         }
-        if self.eat(&Token::Plus) {
-            return self.unary();
-        }
-        self.primary()
+        let value = self.primary()?;
+        Ok(if negative {
+            value.neg()
+        } else {
+            value
+        })
     }
 
     /// Parses a literal, a name, a call or a parenthesised expression.
     fn primary(&mut self) -> Result<Ball, String> {
         let token = self
             .peek()
-            .cloned()
+            .copied()
             .ok_or_else(|| "the expression ends early".to_string())?;
         match token {
             | Token::Number(text) => {
                 self.at += 1;
-                decimal::enclose_decimal(&text, self.prec)
+                decimal::enclose_decimal(text, self.prec)
             },
             | Token::Name(name) => {
                 self.at += 1;
                 if self.eat(&Token::Open) {
-                    let mut arguments = vec![self.expression()?];
-                    while self.eat(&Token::Comma) {
-                        arguments.push(self.expression()?);
-                    }
-                    if !self.eat(&Token::Close) {
-                        return Err("missing `)`".to_string());
-                    }
-                    return call(&name, &arguments, self.prec);
+                    return self.nested(|parser| parser.function(name));
                 }
-                let value = consts::named(&name, self.prec)?;
-                Ok(Ball::point(value))
+                consts::named_ball(name, self.prec)
             },
             | Token::Open => {
                 self.at += 1;
-                self.depth += 1;
-                if self.depth > MAX_DEPTH {
-                    return Err("the expression nests too deeply".to_string());
-                }
-                let value = self.expression()?;
-                self.depth -= 1;
+                let value = self.nested(Self::expression)?;
                 if !self.eat(&Token::Close) {
                     return Err("missing `)`".to_string());
                 }
@@ -280,42 +255,28 @@ impl Parser<'_> {
             | _ => Err("expected a number, a name or `(`".to_string()),
         }
     }
-}
 
-/// Widens `value` by the radii of its operands, which `pow` cannot see.
-fn widen(
-    value: Ball,
-    base: &Ball,
-    exponent: &Ball,
-    prec: u32,
-) -> Result<Ball, String> {
-    let inner = prec.saturating_add(16);
-    let relative = base
-        .rad
-        .div(&base.mid.abs(), inner, super::real::Round::AwayFromZero)
-        .unwrap_or_else(|_| base.rad.clone());
-    let factor = exponent
-        .mid
-        .abs()
-        .mul(&relative, inner, super::real::Round::AwayFromZero)?;
-    let bound = funcs::exp(&factor, inner)?;
-    let scaled = value.mul(&Ball::point(bound.mid), inner)?;
-    let absolute = exponent
-        .rad
-        .mul(&value.mid.abs(), inner, super::real::Round::AwayFromZero)?;
-    let extra = funcs::exp(&absolute, inner)?;
-    Ok(Ball {
-        mid: scaled
-            .mid
-            .with_precision(prec, super::real::Round::NearestEven)?,
-        rad: scaled.rad.add(
-            &extra
-                .mid
-                .sub(&Real::one(inner), inner, super::real::Round::AwayFromZero)?,
-            prec,
-            super::real::Round::AwayFromZero,
-        )?,
-    })
+    fn function(
+        &mut self,
+        name: &str,
+    ) -> Result<Ball, String> {
+        let first = self.expression()?;
+        let second = if self.eat(&Token::Comma) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+        if self.eat(&Token::Comma) {
+            return Err(format!("`{name}` accepts at most two arguments"));
+        }
+        if !self.eat(&Token::Close) {
+            return Err("missing `)`".into());
+        }
+        match second {
+            | Some(second) => call(name, &[first, second], self.prec),
+            | None => call(name, &[first], self.prec),
+        }
+    }
 }
 
 /// Applies the named function to `arguments`.
@@ -331,43 +292,33 @@ fn call(
             Err(format!("`{name}` takes {count} arguments"))
         }
     };
-    let first = || {
-        arguments
-            .first()
-            .map(|ball| ball.mid.clone())
-            .ok_or_else(|| format!("`{name}` needs an argument"))
-    };
     match name {
         | "exp" => {
             want(1)?;
-            funcs::map(&arguments[0], &funcs::exp, true, prec)
+            funcs::exp_ball(&arguments[0], prec)
         },
         | "ln" | "log" => {
             want(1)?;
             if name == "log" {
-                return funcs::map(&arguments[0], &funcs::log10, true, prec);
+                return funcs::log10_ball(&arguments[0], prec);
             }
-            funcs::map(&arguments[0], &funcs::ln, true, prec)
+            funcs::ln_ball(&arguments[0], prec)
         },
         | "log2" => {
             want(1)?;
-            funcs::map(&arguments[0], &funcs::log2, true, prec)
+            funcs::log2_ball(&arguments[0], prec)
         },
         | "log10" => {
             want(1)?;
-            funcs::map(&arguments[0], &funcs::log10, true, prec)
+            funcs::log10_ball(&arguments[0], prec)
         },
         | "sqrt" => {
             want(1)?;
-            let root = first()?.sqrt(prec, super::real::Round::NearestEven)?;
-            Ok(Ball {
-                mid: root,
-                rad: super::fixed::units(4, prec.saturating_add(8))?,
-            })
+            arguments[0].sqrt(prec)
         },
         | "cbrt" => {
             want(1)?;
-            funcs::cbrt(&first()?, prec)
+            arguments[0].map_monotone(&Real::cbrt, true, prec)
         },
         | "abs" => {
             want(1)?;
@@ -375,55 +326,55 @@ fn call(
         },
         | "sin" => {
             want(1)?;
-            funcs::map(&arguments[0], &funcs::sin, false, prec)
+            funcs::sin_ball(&arguments[0], prec)
         },
         | "cos" => {
             want(1)?;
-            funcs::map(&arguments[0], &funcs::cos, false, prec)
+            funcs::cos_ball(&arguments[0], prec)
         },
         | "tan" => {
             want(1)?;
-            funcs::map(&arguments[0], &funcs::tan, true, prec)
+            funcs::tan_ball(&arguments[0], prec)
         },
         | "asin" => {
             want(1)?;
-            funcs::map(&arguments[0], &funcs::asin, true, prec)
+            funcs::asin_ball(&arguments[0], prec)
         },
         | "acos" => {
             want(1)?;
-            funcs::map(&arguments[0], &funcs::acos, false, prec)
+            funcs::acos_ball(&arguments[0], prec)
         },
         | "atan" => {
             want(1)?;
-            funcs::map(&arguments[0], &funcs::atan, true, prec)
+            funcs::atan_ball(&arguments[0], prec)
         },
         | "atan2" => {
             want(2)?;
-            funcs::atan2(&arguments[0].mid, &arguments[1].mid, prec)
+            funcs::atan2_ball(&arguments[0], &arguments[1], prec)
         },
         | "sinh" => {
             want(1)?;
-            funcs::map(&arguments[0], &funcs::sinh, true, prec)
+            funcs::sinh_ball(&arguments[0], prec)
         },
         | "cosh" => {
             want(1)?;
-            funcs::map(&arguments[0], &funcs::cosh, false, prec)
+            funcs::cosh_ball(&arguments[0], prec)
         },
         | "tanh" => {
             want(1)?;
-            funcs::map(&arguments[0], &funcs::tanh, true, prec)
+            funcs::tanh_ball(&arguments[0], prec)
         },
         | "exp2" => {
             want(1)?;
-            funcs::map(&arguments[0], &funcs::exp2, true, prec)
+            funcs::exp2_ball(&arguments[0], prec)
         },
         | "hypot" => {
             want(2)?;
-            funcs::hypot(&arguments[0].mid, &arguments[1].mid, prec)
+            funcs::hypot_ball(&arguments[0], &arguments[1], prec)
         },
         | "pow" => {
             want(2)?;
-            funcs::pow(&arguments[0].mid, &arguments[1].mid, prec)
+            funcs::pow_ball(&arguments[0], &arguments[1], prec)
         },
         | _ => Err(format!("unknown function `{name}`")),
     }
@@ -438,34 +389,18 @@ pub fn evaluate(
     text: &str,
     prec: u32,
 ) -> Result<Ball, String> {
-    let tokens = expression_tokens(text)?;
+    let tokens = tokenize(text)?;
     let mut parser = Parser {
         tokens: &tokens,
         at: 0,
         depth: 0,
-        prec: prec.saturating_add(32),
+        prec: prec.saturating_add(32).min(MAX_BITS),
     };
     let value = parser.expression()?;
     if parser.at != tokens.len() {
         return Err("trailing text after the expression".to_string());
     }
-    let mid = value.mid.with_precision(prec, Round::NearestEven)?;
-    // A shorter radius can represent smaller exponents. Retain an outward
-    // bound even when the displacement is too small at the target precision.
-    let displacement = value
-        .mid
-        .sub(&mid, prec, Round::AwayFromZero)
-        .or_else(|_| value.mid.sub(&mid, 1, Round::AwayFromZero))?
-        .abs();
-    let rad = if displacement.is_zero() {
-        value.rad
-    } else {
-        value
-            .rad
-            .add(&displacement, prec, Round::TowardPositive)
-            .or_else(|_| value.rad.add(&displacement, 1, Round::TowardPositive))?
-    };
-    Ok(Ball { mid, rad })
+    value.rounded_midpoint(prec)
 }
 
 /// The names [`evaluate`] accepts as functions, for diagnostics and help.

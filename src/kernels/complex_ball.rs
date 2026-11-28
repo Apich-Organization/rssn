@@ -19,6 +19,11 @@ use num_complex::Complex64;
 use crate::backend::tape::Interval;
 use crate::kernels::ball::Cball;
 
+#[path = "complex_ball_analytic.rs"]
+mod analytic;
+#[path = "complex_ball_special.rs"]
+mod special;
+
 /// Conservative relative ulp slack for elementary complex operations.
 const ELEM_ULP_SCALE: f64 = 16.0 * f64::EPSILON;
 /// Conservative relative ulp slack for basic complex arithmetic.
@@ -66,6 +71,15 @@ fn down_mul(
     } else {
         p.next_down().max(0.0)
     }
+}
+
+/// Lower bound on the distance of two finite centers, including subtraction rounding.
+fn distance_lower(
+    a: Complex64,
+    b: Complex64,
+) -> f64 {
+    let axis = |x: f64, y: f64| (x - y).abs().next_down().max(0.0);
+    norm_lower(Complex64::new(axis(a.re, b.re), axis(a.im, b.im)))
 }
 
 /// Outward-rounded upper bound for `|z|` of a point `z`.
@@ -225,23 +239,33 @@ impl ComplexBall {
         }
     }
 
+    /// Center of the closed disk.
+    #[must_use]
+    pub const fn center(&self) -> Complex64 {
+        self.mid
+    }
+
+    /// Nonnegative radius of the closed disk.
+    #[must_use]
+    pub const fn radius(&self) -> f64 {
+        self.rad
+    }
+
     /// Whether center and radius are finite.
     #[must_use]
     pub const fn is_finite(&self) -> bool {
         self.mid.re.is_finite() && self.mid.im.is_finite() && self.rad.is_finite()
     }
 
-    /// Whether `z` lies in this closed disk (checked with outward tolerance on `|z - mid|`).
+    /// Whether a finite `z` may lie in this closed disk.
+    ///
+    /// A roundoff-sized uncertainty at the boundary counts as possible membership.
     #[must_use]
     pub fn contains(
         &self,
         z: Complex64,
     ) -> bool {
-        if !self.is_finite() {
-            return true;
-        }
-        let diff = Complex64::new(z.re - self.mid.re, z.im - self.mid.im);
-        norm_lower(diff) <= self.rad
+        z.is_finite() && (!self.is_finite() || distance_lower(z, self.mid) <= self.rad)
     }
 
     /// Whether `0` may lie in this disk.
@@ -271,7 +295,7 @@ impl ComplexBall {
         up_add(norm_upper(self.mid), self.rad)
     }
 
-    /// Whether two balls intersect.
+    /// Whether two balls may intersect.
     #[must_use]
     pub fn overlaps(
         &self,
@@ -280,8 +304,7 @@ impl ComplexBall {
         if !self.is_finite() || !other.is_finite() {
             return true;
         }
-        let diff = Complex64::new(self.mid.re - other.mid.re, self.mid.im - other.mid.im);
-        norm_lower(diff) <= up_add(self.rad, other.rad)
+        distance_lower(self.mid, other.mid) <= up_add(self.rad, other.rad)
     }
 
     /// Whether `self` lies strictly in the interior of `outer`.
@@ -293,8 +316,18 @@ impl ComplexBall {
         if !self.is_finite() || !outer.is_finite() {
             return false;
         }
-        let diff = Complex64::new(self.mid.re - outer.mid.re, self.mid.im - outer.mid.im);
-        let dist_up = up_add(norm_upper(diff), center_slack(diff, ARITH_ULP_SCALE));
+        let axis = |x: f64, y: f64| {
+            let distance = (x - y).abs();
+            if distance > 0.0 {
+                distance.next_up()
+            } else {
+                0.0
+            }
+        };
+        let dist_up = norm_upper(Complex64::new(
+            axis(self.mid.re, outer.mid.re),
+            axis(self.mid.im, outer.mid.im),
+        ));
         up_add(dist_up, self.rad) < outer.rad
     }
 
@@ -309,6 +342,10 @@ impl ComplexBall {
 
     /// Negation `-self`.
     #[must_use]
+    #[allow(
+        clippy::arithmetic_side_effects,
+        reason = "negation is exact for finite complex coordinates"
+    )]
     pub fn neg_ball(&self) -> Self {
         Self {
             mid: -self.mid,
@@ -318,6 +355,10 @@ impl ComplexBall {
 
     /// Addition `self + other`.
     #[must_use]
+    #[allow(
+        clippy::arithmetic_side_effects,
+        reason = "the disk radius includes a bound for midpoint rounding"
+    )]
     pub fn add_ball(
         &self,
         other: &Self,
@@ -347,6 +388,10 @@ impl ComplexBall {
 
     /// Multiplication `self * other`.
     #[must_use]
+    #[allow(
+        clippy::arithmetic_side_effects,
+        reason = "the disk radius includes a bound for midpoint rounding"
+    )]
     pub fn mul_ball(
         &self,
         other: &Self,
@@ -363,15 +408,19 @@ impl ComplexBall {
         let term1 = up_mul(a_up, other.rad);
         let term2 = up_mul(b_up, self.rad);
         let term3 = up_mul(self.rad, other.rad);
-        let rad = up_add(
-            up_add(up_add(term1, term2), term3),
-            center_slack(mid, ARITH_ULP_SCALE),
-        );
+        // Each component forms two rounded products, which can cancel. Bound
+        // their combined error using the operand norms before cancellation.
+        let product_slack = up_add(up_mul(up_mul(a_up, ARITH_ULP_SCALE), b_up), SUBNORMAL_SLACK);
+        let rad = up_add(up_add(up_add(term1, term2), term3), product_slack);
         Self { mid, rad }
     }
 
     /// Multiplication by a real scalar `s`.
     #[must_use]
+    #[allow(
+        clippy::arithmetic_side_effects,
+        reason = "the disk radius includes a bound for midpoint rounding"
+    )]
     pub fn scale_real(
         &self,
         s: f64,
@@ -407,14 +456,16 @@ impl ComplexBall {
         if m_norm_lo <= 0.0 {
             return None;
         }
-        let mid = Complex64::new(1.0, 0.0) / self.mid;
-        let denom = down_mul(m_norm_lo, d_min);
-        if denom <= 0.0 || !denom.is_finite() {
-            return None;
+        // The outward rectangular point division scales extreme binary64
+        // magnitudes before squaring. Enclose its center-rounding error first.
+        let mut inverse = Self::from_cball(Cball::one().div(&Cball::of(self.mid))?);
+        if self.rad > 0.0 {
+            // |1/z - 1/mid| <= rad / (|mid| * min |z|). Divide in two
+            // stages to avoid underflow or overflow of the denominator product.
+            let rad_prop = ((self.rad / d_min).next_up() / m_norm_lo).next_up();
+            inverse.rad = up_add(inverse.rad, rad_prop);
         }
-        let rad_prop = (self.rad / denom).next_up();
-        let rad = up_add(rad_prop, center_slack(mid, ARITH_ULP_SCALE));
-        Some(Self { mid, rad })
+        Some(inverse)
     }
 
     /// Division `self / other`. Returns `None` if `other` cannot be separated from zero.
@@ -784,117 +835,67 @@ impl ComplexBall {
     /// Complex secant `sec(z) = 1 / cos(z)`.
     #[must_use]
     pub fn sec(&self) -> Option<Self> {
-        self.cos().recip()
+        analytic::sin_cos(*self).1.recip()
     }
 
     /// Complex cosecant `csc(z) = 1 / sin(z)`.
     #[must_use]
     pub fn csc(&self) -> Option<Self> {
-        self.sin().recip()
+        analytic::sin_cos(*self).0.recip()
     }
 
     /// Complex cotangent `cot(z) = cos(z) / sin(z)`.
     #[must_use]
     pub fn cot(&self) -> Option<Self> {
-        self.cos().div_ball(&self.sin())
+        let (sin, cos) = analytic::sin_cos(*self);
+        cos.div_ball(&sin)
     }
 
     /// Complex hyperbolic secant `sech(z) = 1 / cosh(z)`.
     #[must_use]
     pub fn sech(&self) -> Option<Self> {
-        self.cosh().recip()
+        analytic::sinh_cosh(*self).1.recip()
     }
 
     /// Complex hyperbolic cosecant `csch(z) = 1 / sinh(z)`.
     #[must_use]
     pub fn csch(&self) -> Option<Self> {
-        self.sinh().recip()
+        analytic::sinh_cosh(*self).0.recip()
     }
 
     /// Complex hyperbolic cotangent `coth(z) = cosh(z) / sinh(z)`.
     #[must_use]
     pub fn coth(&self) -> Option<Self> {
-        self.cosh().div_ball(&self.sinh())
+        let (sinh, cosh) = analytic::sinh_cosh(*self);
+        cosh.div_ball(&sinh)
     }
 
-    /// Complex error function enclosure `erf(z)` via midpoint evaluation + Lipschitz
-    /// derivative bound `|erf'(w)| = (2/sqrt(pi)) * |exp(-w^2)|`.
+    /// Encloses the complex error function using a bounded series or an integral bound.
     #[must_use]
     pub fn erf(&self) -> Option<Self> {
-        if !self.is_finite() {
-            return None;
-        }
-        let mid = crate::kernels::fresnel::erf_complex(self.mid);
-        if !mid.is_finite() {
-            return None;
-        }
-        let w2 = self.sqr();
-        let neg_w2_re_hi = (-w2.mid.re + w2.rad).min(700.0);
-        let lip = (2.0 / std::f64::consts::PI.sqrt()) * neg_w2_re_hi.exp().next_up();
-        let rad = up_add(
-            up_mul(lip, self.rad),
-            center_slack(mid, 64.0 * f64::EPSILON),
-        );
-        Some(Self { mid, rad })
+        special::erf(*self)
     }
 
-    /// Complex log-gamma enclosure `ln(Gamma(z))` away from `(-inf, 0]`,
-    /// using `|psi(w)|` Lipschitz bound.
+    /// Encloses the principal log-gamma function away from the nonpositive real cut.
     #[must_use]
     pub fn ln_gamma(&self) -> Option<Self> {
-        if !self.is_finite() {
-            return None;
-        }
-        if self.mid.re <= 0.0 && self.mid.im.abs() <= self.rad {
-            return None;
-        }
-        let mid = crate::kernels::special_complex::ln_gamma_complex(self.mid);
-        if !mid.is_finite() {
-            return None;
-        }
-        let d_min = self.modulus_lower().max(1e-30);
-        let psi_mid = crate::kernels::special_complex::digamma_complex(self.mid);
-        let lip = up_add(norm_upper(psi_mid), self.rad / d_min);
-        let rad = up_add(
-            up_mul(lip, self.rad),
-            center_slack(mid, 128.0 * f64::EPSILON),
-        );
-        Some(Self { mid, rad })
+        special::ln_gamma(*self)
     }
 
-    /// Complex gamma enclosure `Gamma(z) = exp(ln_gamma(z))` away from `(-inf, 0]`.
+    /// Encloses the complex gamma function through the principal log-gamma enclosure.
     #[must_use]
     pub fn gamma(&self) -> Option<Self> {
-        Some(self.ln_gamma()?.exp())
+        let result = analytic::exp(special::ln_gamma(*self)?);
+        result.is_finite().then_some(result)
     }
 
-    /// Complex Bessel function `J_nu(z)` enclosure for real `nu >= 0`,
-    /// using `|J_nu'(w)| = 0.5 * |J_{nu-1}(w) - J_{nu+1}(w)|` Lipschitz bound.
+    /// Encloses the principal Bessel function J for nonnegative real or negative integral order.
     #[must_use]
     pub fn bessel_j(
         &self,
         nu: f64,
     ) -> Option<Self> {
-        if !self.is_finite() || !nu.is_finite() {
-            return None;
-        }
-        if nu.fract() != 0.0 && self.mid.re <= 0.0 && self.mid.im.abs() <= self.rad {
-            return None;
-        }
-        let mid = crate::kernels::special_complex::bessel_j_complex(nu, self.mid);
-        if !mid.is_finite() {
-            return None;
-        }
-        let y_max = up_add(self.mid.im.abs(), self.rad).min(700.0);
-        let jm1 = crate::kernels::special_complex::bessel_j_complex(nu - 1.0, self.mid);
-        let jp1 = crate::kernels::special_complex::bessel_j_complex(nu + 1.0, self.mid);
-        let d_mid = 0.5 * (jm1 - jp1);
-        let lip = up_add(norm_upper(d_mid), y_max.cosh().next_up() * self.rad);
-        let rad = up_add(
-            up_mul(lip, self.rad),
-            center_slack(mid, 128.0 * f64::EPSILON),
-        );
-        Some(Self { mid, rad })
+        special::bessel_j(nu, *self)
     }
 }
 
@@ -948,6 +949,10 @@ pub struct ComplexBallJet {
     pub deriv: ComplexBall,
 }
 
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "forward derivatives use outward-rounded disk arithmetic"
+)]
 impl ComplexBallJet {
     /// Independent variable `z` with derivative `1`.
     #[must_use]
@@ -1033,7 +1038,7 @@ impl ComplexBallJet {
     /// Exponential.
     #[must_use]
     pub fn exp(&self) -> Self {
-        let val = self.val.exp();
+        let val = analytic::exp(self.val);
         Self {
             val,
             deriv: val * self.deriv,
@@ -1043,7 +1048,7 @@ impl ComplexBallJet {
     /// Principal logarithm.
     #[must_use]
     pub fn ln(&self) -> Option<Self> {
-        let val = self.val.ln()?;
+        let val = analytic::ln(self.val)?;
         let deriv = self.deriv.div_ball(&self.val)?;
         Some(Self { val, deriv })
     }
@@ -1051,7 +1056,7 @@ impl ComplexBallJet {
     /// Principal square root.
     #[must_use]
     pub fn sqrt(&self) -> Option<Self> {
-        let val = self.val.sqrt()?;
+        let val = analytic::sqrt(self.val)?;
         let two_val = val.scale_real(2.0);
         let deriv = self.deriv.div_ball(&two_val)?;
         Some(Self { val, deriv })
@@ -1060,58 +1065,62 @@ impl ComplexBallJet {
     /// Sine.
     #[must_use]
     pub fn sin(&self) -> Self {
+        let (sin, cos) = analytic::sin_cos(self.val);
         Self {
-            val: self.val.sin(),
-            deriv: self.val.cos() * self.deriv,
+            val: sin,
+            deriv: cos * self.deriv,
         }
     }
 
     /// Cosine.
     #[must_use]
     pub fn cos(&self) -> Self {
+        let (sin, cos) = analytic::sin_cos(self.val);
         Self {
-            val: self.val.cos(),
-            deriv: (-self.val.sin()) * self.deriv,
+            val: cos,
+            deriv: -sin * self.deriv,
         }
     }
 
     /// Hyperbolic sine.
     #[must_use]
     pub fn sinh(&self) -> Self {
+        let (sinh, cosh) = analytic::sinh_cosh(self.val);
         Self {
-            val: self.val.sinh(),
-            deriv: self.val.cosh() * self.deriv,
+            val: sinh,
+            deriv: cosh * self.deriv,
         }
     }
 
     /// Hyperbolic cosine.
     #[must_use]
     pub fn cosh(&self) -> Self {
+        let (sinh, cosh) = analytic::sinh_cosh(self.val);
         Self {
-            val: self.val.cosh(),
-            deriv: self.val.sinh() * self.deriv,
+            val: cosh,
+            deriv: sinh * self.deriv,
         }
     }
 
     /// Tangent.
     #[must_use]
     pub fn tan(&self) -> Option<Self> {
-        let val = self.val.tan()?;
-        let sec2 = self.val.cos().sqr().recip()?;
+        let (numerator, denominator) = analytic::sin_cos(self.val);
+        let inverse = denominator.recip()?;
         Some(Self {
-            val,
-            deriv: sec2 * self.deriv,
+            val: numerator * inverse,
+            deriv: inverse.sqr() * self.deriv,
         })
     }
 
     /// Hyperbolic tangent.
     #[must_use]
     pub fn tanh(&self) -> Option<Self> {
-        let val = self.val.tanh()?;
-        let sech2 = self.val.cosh().sqr().recip()?;
+        let (numerator, denominator) = analytic::sinh_cosh(self.val);
+        let inverse = denominator.recip()?;
         Some(Self {
-            val,
-            deriv: sech2 * self.deriv,
+            val: numerator * inverse,
+            deriv: inverse.sqr() * self.deriv,
         })
     }
 
@@ -1129,8 +1138,7 @@ impl ComplexBallJet {
     /// Inverse sine.
     #[must_use]
     pub fn asin(&self) -> Option<Self> {
-        let val = self.val.asin()?;
-        let denom = (ComplexBall::one() - self.val.sqr()).sqrt()?;
+        let (val, denom) = analytic::asin(self.val)?;
         let deriv = self.deriv.div_ball(&denom)?;
         Some(Self { val, deriv })
     }
@@ -1138,8 +1146,7 @@ impl ComplexBallJet {
     /// Inverse cosine.
     #[must_use]
     pub fn acos(&self) -> Option<Self> {
-        let val = self.val.acos()?;
-        let denom = (ComplexBall::one() - self.val.sqr()).sqrt()?;
+        let (val, denom) = analytic::acos(self.val)?;
         let deriv = (-self.deriv).div_ball(&denom)?;
         Some(Self { val, deriv })
     }
@@ -1147,8 +1154,7 @@ impl ComplexBallJet {
     /// Inverse tangent.
     #[must_use]
     pub fn atan(&self) -> Option<Self> {
-        let val = self.val.atan()?;
-        let denom = ComplexBall::one() + self.val.sqr();
+        let (val, denom) = analytic::atan(self.val)?;
         let deriv = self.deriv.div_ball(&denom)?;
         Some(Self { val, deriv })
     }
@@ -1156,8 +1162,7 @@ impl ComplexBallJet {
     /// Inverse hyperbolic sine.
     #[must_use]
     pub fn asinh(&self) -> Option<Self> {
-        let val = self.val.asinh()?;
-        let denom = (self.val.sqr() + ComplexBall::one()).sqrt()?;
+        let (val, denom) = analytic::asinh(self.val)?;
         let deriv = self.deriv.div_ball(&denom)?;
         Some(Self { val, deriv })
     }
@@ -1165,8 +1170,7 @@ impl ComplexBallJet {
     /// Inverse hyperbolic cosine.
     #[must_use]
     pub fn acosh(&self) -> Option<Self> {
-        let val = self.val.acosh()?;
-        let denom = (self.val.sqr() - ComplexBall::one()).sqrt()?;
+        let (val, denom) = analytic::acosh(self.val)?;
         let deriv = self.deriv.div_ball(&denom)?;
         Some(Self { val, deriv })
     }
@@ -1174,8 +1178,7 @@ impl ComplexBallJet {
     /// Inverse hyperbolic tangent.
     #[must_use]
     pub fn atanh(&self) -> Option<Self> {
-        let val = self.val.atanh()?;
-        let denom = ComplexBall::one() - self.val.sqr();
+        let (val, denom) = analytic::atanh(self.val)?;
         let deriv = self.deriv.div_ball(&denom)?;
         Some(Self { val, deriv })
     }
@@ -1183,6 +1186,10 @@ impl ComplexBallJet {
 
 /// Matrix-vector product over [`ComplexBall`].
 #[must_use]
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "matrix products use outward-rounded disk arithmetic"
+)]
 pub fn mat_vec_ball(
     a: &[Vec<ComplexBall>],
     x: &[ComplexBall],
@@ -1204,6 +1211,10 @@ pub fn mat_vec_ball(
 
 /// Matrix-matrix product over [`ComplexBall`].
 #[must_use]
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "matrix products use outward-rounded disk arithmetic"
+)]
 pub fn mat_mul_ball(
     a: &[Vec<ComplexBall>],
     b: &[Vec<ComplexBall>],
@@ -1236,18 +1247,16 @@ pub fn mat_mul_ball(
     Some(out)
 }
 
-/// Solves `A x = b` over [`ComplexBall`] with verified enclosure via midpoint
-/// Gaussian elimination and Krawczyk/Rump residual certification.
-#[must_use]
-pub fn solve_linear_ball(
-    a: &[Vec<ComplexBall>],
-    b: &[ComplexBall],
-) -> Option<Vec<ComplexBall>> {
-    let n = b.len();
-    if n == 0 || a.len() != n || a.iter().any(|r| r.len() != n) {
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "this approximate inverse is subsequently enclosed and checked by disk arithmetic"
+)]
+fn midpoint_inverse(a: &[Vec<ComplexBall>]) -> Option<Vec<Vec<Complex64>>> {
+    let n = a.len();
+    if n == 0 || a.iter().any(|row| row.len() != n) {
         return None;
     }
-    // Build midpoint matrix and right-hand side.
+    // Factor the midpoint matrix once.
     let mut lu: Vec<Vec<Complex64>> = a
         .iter()
         .map(|row| row.iter().map(|c| c.mid).collect())
@@ -1305,6 +1314,26 @@ pub fn solve_linear_ball(
             }
         }
     }
+
+    Some(inv_mid)
+}
+
+/// Solves `A x = b` over [`ComplexBall`] with verified enclosure via midpoint
+/// Gaussian elimination and Krawczyk/Rump residual certification.
+#[must_use]
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "matrix contractions use outward-rounded disk arithmetic and finite denominators"
+)]
+pub fn solve_linear_ball(
+    a: &[Vec<ComplexBall>],
+    b: &[ComplexBall],
+) -> Option<Vec<ComplexBall>> {
+    let n = b.len();
+    if n == 0 || a.len() != n || a.iter().any(|r| r.len() != n) {
+        return None;
+    }
+    let inv_mid = midpoint_inverse(a)?;
 
     // Approximate solution x_0 = R * b.mid.
     let mut x0 = Vec::with_capacity(n);
@@ -1370,6 +1399,10 @@ pub fn solve_linear_ball(
 /// `K(B) = m - f(m)/f'(m) + (1 - f'(B)/f'(m)) * (B - m)`.
 /// Returns `Some(K(B))` if `K(B)` lies strictly inside `ball`.
 #[must_use]
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "Krawczyk containment is evaluated with outward-rounded disk arithmetic"
+)]
 pub fn certify_root_1d<F>(
     f_jet: F,
     ball: ComplexBall,
@@ -1377,7 +1410,7 @@ pub fn certify_root_1d<F>(
 where
     F: Fn(ComplexBallJet) -> Option<ComplexBallJet>,
 {
-    if !ball.is_finite() || ball.rad <= 0.0 {
+    if crate::cancellation::is_cancelled() || !ball.is_finite() || ball.rad <= 0.0 {
         return None;
     }
     let m = ComplexBall::of(ball.mid);
@@ -1386,7 +1419,10 @@ where
     let step = jm.val.div_ball(&jm.deriv)?;
     let ratio = jb.deriv.div_ball(&jm.deriv)?;
     let contraction = ComplexBall::one() - ratio;
-    let delta = ball - m;
+    let delta = ComplexBall {
+        mid: Complex64::new(0.0, 0.0),
+        rad: ball.rad,
+    };
     let k = (m - step) + contraction * delta;
     if k.inside_strictly(&ball) {
         Some(k)
@@ -1402,6 +1438,10 @@ where
 /// `K(B) = m - R * f_mid + (I - R * J_F(B)) * (B - m)` where `R ~ J_F(m)^{-1}`.
 /// Returns `Some(K(B))` if every component `K(B)_i` lies strictly inside `B_i`.
 #[must_use]
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "Krawczyk containment is evaluated with outward-rounded disk arithmetic"
+)]
 pub fn certify_root_nd<F, J>(
     f_mid: F,
     jac_box: J,
@@ -1412,7 +1452,10 @@ where
     J: Fn(&[ComplexBall]) -> Option<Vec<Vec<ComplexBall>>>,
 {
     let n = balls.len();
-    if n == 0 || balls.iter().any(|b| !b.is_finite() || b.rad <= 0.0) {
+    if crate::cancellation::is_cancelled()
+        || n == 0
+        || balls.iter().any(|b| !b.is_finite() || b.rad <= 0.0)
+    {
         return None;
     }
     let m: Vec<ComplexBall> = balls.iter().map(|b| ComplexBall::of(b.mid)).collect();
@@ -1425,19 +1468,24 @@ where
     if jm.len() != n || jb.len() != n {
         return None;
     }
-    // Invert midpoint Jacobian via solve_linear_ball on identity columns.
-    let mut r_mat = vec![vec![ComplexBall::zero(); n]; n];
-    for col in 0..n {
-        let mut e = vec![ComplexBall::zero(); n];
-        *e.get_mut(col)? = ComplexBall::one();
-        let sol = solve_linear_ball(&jm, &e)?;
-        for row in 0..n {
-            *r_mat.get_mut(row)?.get_mut(col)? = *sol.get(row)?;
-        }
-    }
+    // An approximate inverse is enough. Strict Krawczyk inclusion
+    // bounds the contraction in the box's weighted maximum norm.
+    // Factor once, and use each computed binary64 entry as an exact point.
+    let r_mat: Vec<Vec<ComplexBall>> = midpoint_inverse(&jm)?
+        .into_iter()
+        .map(|row| row.into_iter().map(ComplexBall::of).collect())
+        .collect();
     let step = mat_vec_ball(&r_mat, &fm)?;
     let rj = mat_mul_ball(&r_mat, &jb)?;
-    let delta: Vec<ComplexBall> = balls.iter().zip(m.iter()).map(|(b, mi)| *b - *mi).collect();
+    let delta: Vec<ComplexBall> = balls
+        .iter()
+        .map(|b| {
+            ComplexBall {
+                mid: Complex64::new(0.0, 0.0),
+                rad: b.rad,
+            }
+        })
+        .collect();
     let mut c_mat = vec![vec![ComplexBall::zero(); n]; n];
     for i in 0..n {
         for j in 0..n {
@@ -1465,6 +1513,10 @@ where
 /// the circle with `segments` overlapping [`ComplexBall`]s and checking
 /// `|g(B)|_upper < |f(B)|_lower` on every segment.
 #[must_use]
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "circle covering bounds use outward-rounded disk arithmetic"
+)]
 pub fn certify_rouche_circle<F, G>(
     f: F,
     g: G,
@@ -1484,21 +1536,36 @@ where
     {
         return false;
     }
-    let n_f = segments as f64;
-    let half_angle = std::f64::consts::PI / n_f;
-    // Chord midpoint distance to arc endpoints is 2 * R * sin(half_angle / 2)
-    // and we use center at arc midpoint with covering radius R * 2 * sin(half_angle / 2).next_up().
-    let seg_rad = up_mul(up_mul(radius, 2.0), (0.5 * half_angle).sin().next_up());
-    let seg_rad = up_add(seg_rad, up_mul(radius, ELEM_ULP_SCALE));
-
-    for k in 0..segments {
-        let theta = (2.0 * std::f64::consts::PI * (k as f64 + 0.5)) / n_f;
-        let (s, c) = theta.sin_cos();
-        let pt = Complex64::new(center.re + radius * c, center.im + radius * s);
-        let ball = ComplexBall {
-            mid: pt,
-            rad: up_add(seg_rad, center_slack(pt, ELEM_ULP_SCALE)),
-        };
+    // The midpoint of each arc differs from its endpoints by at most
+    // R*pi/segments (arc length). Use one rigorous initial unit direction
+    // and advance with its square instead of trusting approximate libm
+    // centres independently for every arc.
+    let pi = std::f64::consts::PI;
+    let pi_disk = ComplexBall {
+        mid: Complex64::new(0.0, pi),
+        rad: pi.next_up() - pi,
+    };
+    let count = segments as f64;
+    let n = ComplexBall {
+        mid: Complex64::new(count, 0.0),
+        rad: count.next_up() - count,
+    };
+    let Some(half_angle) = pi_disk.div_ball(&n) else {
+        return false;
+    };
+    let mut phase = analytic::exp(half_angle);
+    let advance = phase.sqr();
+    let span = up_mul(radius, half_angle.modulus_upper());
+    for _ in 0..segments {
+        if crate::cancellation::is_cancelled() {
+            return false;
+        }
+        let mut ball = ComplexBall::of(center) + phase.scale_real(radius);
+        ball.rad = up_add(ball.rad, span);
+        if !ball.is_finite() {
+            return false;
+        }
+        phase = phase * advance;
         let Some(fb) = f(ball) else {
             return false;
         };

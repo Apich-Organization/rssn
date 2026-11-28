@@ -83,9 +83,15 @@ pub fn find_periodic_points_quadratic(
     let mut found: Vec<Complex<f64>> = Vec::new();
     let dedup_tol = (tol * 1e3).max(1e-7);
     for &seed in seeds {
+        if crate::cancellation::is_cancelled() {
+            break;
+        }
         let mut z = seed;
         let mut converged = false;
-        for _ in 0..max_iter {
+        for step in 0..max_iter {
+            if step.is_multiple_of(64) && crate::cancellation::is_cancelled() {
+                return found;
+            }
             let mut w = z;
             let mut dw = Complex::new(1.0, 0.0);
             for _ in 0..p {
@@ -93,6 +99,9 @@ pub fn find_periodic_points_quadratic(
                 w = w * w + c;
             }
             let val = w - z;
+            if !val.is_finite() || !dw.is_finite() {
+                break;
+            }
             if val.norm() < tol {
                 converged = true;
                 break;
@@ -126,20 +135,36 @@ pub fn find_periodic_points_quadratic(
     found
 }
 
+fn log_modulus(z: Complex<f64>) -> f64 {
+    let scale = z.re.abs().max(z.im.abs());
+    if scale > 0.0 {
+        scale.ln() + (z / scale).norm().ln()
+    } else {
+        f64::NEG_INFINITY
+    }
+}
+
 fn quadratic_escape(
     z_start: Complex<f64>,
     c: Complex<f64>,
     max_iter: usize,
     escape_radius: f64,
 ) -> (usize, f64) {
-    let r2 = escape_radius * escape_radius;
     let mut z = z_start;
+    let radius_squared = escape_radius * escape_radius;
+    let use_squared_radius = radius_squared.is_finite();
     for n in 0..max_iter {
-        let n2 = z.norm_sqr();
-        if n2 > r2 {
-            let log_z = 0.5 * n2.ln();
-            let green = log_z * 2.0_f64.powi(-(n as i32));
-            return (n, green);
+        if !z.is_finite() || (n.is_multiple_of(64) && crate::cancellation::is_cancelled()) {
+            return (n, f64::NAN);
+        }
+        let crossed = if use_squared_radius {
+            z.norm_sqr() > radius_squared
+        } else {
+            z.norm() > escape_radius
+        };
+        if crossed {
+            let scale = i32::try_from(n).map_or(0.0, |n| 2.0_f64.powi(-n));
+            return (n, log_modulus(z) * scale);
         }
         z = z * z + c;
     }
@@ -172,6 +197,29 @@ pub fn julia_escape_time(
     quadratic_escape(z0, c, max_iter, escape_radius)
 }
 
+pub(crate) fn quadratic_exterior_radius(c: Complex<f64>) -> f64 {
+    // sqrt(2) * sqrt(max(|re(c)|, |im(c)|)) bounds sqrt(|c|)
+    // without squaring a large coefficient or requiring |c| to fit f64.
+    (c.re.abs().max(c.im.abs()).sqrt() * std::f64::consts::SQRT_2 + 1.0).max(2.0)
+}
+
+fn divided_by(
+    z: Complex<f64>,
+    divisor: Complex<f64>,
+) -> Complex<f64> {
+    let scale = divisor.re.abs().max(divisor.im.abs());
+    let unit = divisor / scale;
+    let reciprocal = unit.conj() / unit.norm_sqr();
+    let scaled = z / scale;
+    if scaled.is_finite() {
+        scaled * reciprocal
+    } else {
+        // Halve before scaling when the quotient can fit after rotation even
+        // though a numerator component divided by the divisor scale does not.
+        ((z * 0.5 / scale) * reciprocal) * 2.0
+    }
+}
+
 /// Computes Böttcher's coordinate `\phi_c(z) = z \prod_{n=0}^{N-1} (1 + c / z_n^2)^{2^{-(n+1)}}`
 /// in the basin of infinity of `f_c(z) = z^2 + c`, satisfying `\phi_c(z^2 + c) = \phi_c(z)^2`.
 ///
@@ -183,25 +231,40 @@ pub fn bottcher_coordinate(
     c: Complex<f64>,
     n_iters: usize,
 ) -> Result<Complex<f64>, String> {
+    if !z.is_finite() || !c.is_finite() || n_iters == 0 {
+        return Err("Bottcher coordinate requires finite inputs and a positive step count".into());
+    }
+    let escape = quadratic_exterior_radius(c);
     let mut zn = z;
     let mut ln_prod = Complex::new(0.0, 0.0);
     let mut weight = 0.5_f64;
     for _ in 0..n_iters {
-        if zn.norm_sqr() < 1e-24 {
+        if crate::cancellation::is_cancelled() {
+            return Err("Bottcher coordinate was cancelled".into());
+        }
+        if zn.norm() < 1e-12 {
             return Err("Orbit hit 0 in Bottcher coordinate".to_string());
         }
-        let ratio = Complex::new(1.0, 0.0) + c / (zn * zn);
+        let ratio = Complex::new(1.0, 0.0) + divided_by(divided_by(c, zn), zn);
         ln_prod += ratio.ln() * weight;
-        zn = zn * zn + c;
-        weight *= 0.5;
-        if zn.norm() > 1e150 {
+        if zn.norm() > 1e150_f64.max(escape) {
             break;
         }
+        zn = zn * zn + c;
+        if !zn.is_finite() {
+            return Err("Bottcher orbit is outside the finite binary64 range".into());
+        }
+        weight *= 0.5;
     }
-    if zn.norm() <= 2.0 {
+    if zn.norm() <= escape {
         return Err("Point is not clearly in the escaping basin of infinity".to_string());
     }
-    Ok(z * ln_prod.exp())
+    let coordinate = z * ln_prod.exp();
+    if coordinate.is_finite() {
+        Ok(coordinate)
+    } else {
+        Err("Bottcher coordinate is not finite".into())
+    }
 }
 
 /// Computes the Koenigs coordinate of an attracting fixed point.
@@ -212,7 +275,8 @@ pub fn bottcher_coordinate(
 ///
 /// # Errors
 ///
-/// Returns an error if the multiplier does not satisfy `0 < |lambda| < 1`.
+/// Returns an error for an invalid multiplier, nonfinite orbit, or unrepresentable coordinate.
+/// If a power of the multiplier underflows to zero, returns the last representable estimate.
 pub fn koenigs_coordinate<F>(
     f: F,
     z0: Complex<f64>,
@@ -223,26 +287,43 @@ pub fn koenigs_coordinate<F>(
 where
     F: Fn(Complex<f64>) -> Complex<f64>,
 {
-    let lam_n = lambda.norm();
-    if lam_n <= 0.0 || lam_n >= 1.0 {
-        return Err("Koenigs coordinate requires 0 < |lambda| < 1".to_string());
+    let magnitude = lambda.norm();
+    if !(z0.is_finite() && z.is_finite() && 0.0 < magnitude && magnitude < 1.0) {
+        return Err("Koenigs coordinate requires finite points and 0 < |lambda| < 1".into());
     }
+    let zero = Complex::new(0.0, 0.0);
     let mut w = z;
-    let mut scale = Complex::new(1.0, 0.0);
+    let mut denominator = Complex::new(1.0, 0.0);
     let mut prev = w - z0;
     for _ in 0..n_iters {
-        w = f(w);
-        scale /= lambda;
-        if !scale.re.is_finite() || !scale.im.is_finite() || scale.norm() > 1e250 {
-            return Ok(prev);
+        denominator *= lambda;
+        if denominator == zero {
+            break;
         }
-        let cur = scale * (w - z0);
-        if (cur - prev).norm() < 1e-13 * (1.0 + cur.norm()) {
+        w = f(w);
+        if !w.is_finite() {
+            return Err("Koenigs orbit is outside the finite binary64 range".into());
+        }
+        let displacement = w - z0;
+        let cur = if displacement.is_finite() {
+            divided_by(displacement, denominator)
+        } else {
+            divided_by(w * 0.5 - z0 * 0.5, denominator) * 2.0
+        };
+        if !cur.is_finite() {
+            return Err("Koenigs coordinate is outside the finite binary64 range".into());
+        }
+        let scale = cur.re.abs().max(cur.im.abs());
+        if (cur - prev).norm() < 1e-13 * (1.0 + scale) {
             return Ok(cur);
         }
         prev = cur;
     }
-    Ok(prev)
+    if prev.is_finite() {
+        Ok(prev)
+    } else {
+        Err("Koenigs coordinate is outside the finite binary64 range".into())
+    }
 }
 
 /// Estimates the Lyapunov exponent $\frac{1}{N} \sum_{n=\text{burn\_in}}^{\text{burn\_in}+N-1} \ln |f'(`z_n`)|$.
@@ -295,8 +376,17 @@ pub fn external_ray_point(
     potential_r: f64,
     n_steps: usize,
 ) -> Result<Complex<f64>, String> {
-    if potential_r <= 0.0 || n_steps == 0 {
-        return Err("potential_r and n_steps must be positive".to_string());
+    if !c.is_finite()
+        || !theta_turns.is_finite()
+        || !potential_r.is_finite()
+        || potential_r <= 0.0
+        || potential_r > 325.0
+        || n_steps == 0
+    {
+        return Err(
+            "external ray requires finite coordinates, positive steps and a potential in (0, 325]"
+                .into(),
+        );
     }
     // Cap k so potential_r * 2^k <= 650 to prevent exp(r_top) overflow.
     let max_k = ((650.0 / potential_r).log2().floor() as isize).max(1) as usize;
@@ -333,7 +423,11 @@ pub fn external_ray_point(
             z -= err / dphi;
         }
     }
-    Ok(z)
+    if z.is_finite() {
+        Ok(z)
+    } else {
+        Err("external ray point is not finite".into())
+    }
 }
 
 /// Evaluates Newton fractal basin convergence for `f(z) / df(z)` starting at `z0`,
@@ -351,15 +445,25 @@ where
 {
     let mut z = z0;
     for iter in 0..max_iter {
+        if !z.is_finite() {
+            return None;
+        }
         let fz = f(z);
+        if !fz.is_finite() {
+            return None;
+        }
         if fz.norm() < tol {
             return Some((z, iter));
         }
         let dfz = df(z);
-        if dfz.norm() < 1e-14 {
+        if !dfz.is_finite() || dfz.norm() < 1e-14 {
             return None;
         }
-        z -= fz / dfz;
+        let correction = divided_by(fz, dfz);
+        if !correction.is_finite() {
+            return None;
+        }
+        z -= correction;
     }
     None
 }
@@ -367,6 +471,9 @@ where
 /// Checks if `c` lies inside the main cardioid or period-2 bulb of the Mandelbrot set.
 #[must_use]
 pub fn in_main_cardioid_or_period2_bulb(c: Complex<f64>) -> bool {
+    if !c.is_finite() || c.re.abs() > 2.0 || c.im.abs() > 2.0 {
+        return false;
+    }
     // Period-2 bulb: |c + 1| <= 1/4
     if (c + Complex::new(1.0, 0.0)).norm_sqr() <= 0.0625 {
         return true;
@@ -378,7 +485,10 @@ pub fn in_main_cardioid_or_period2_bulb(c: Complex<f64>) -> bool {
     q * (q + x_m) <= 0.25 * y2
 }
 
-/// Mandelbrot distance estimator `d(c) ≈ |z_n| * ln|z_n| / |z'_n|` (returns `0.0` if bounded).
+/// Mandelbrot distance estimate `d(c) ≈ 2 |z_n| ln|z_n| / |z'_n|`.
+///
+/// Returns zero when no iterate crosses the estimator threshold within the
+/// budget and NaN if the estimate cannot be represented.
 #[must_use]
 pub fn mandelbrot_distance_estimator(
     c: Complex<f64>,
@@ -386,13 +496,27 @@ pub fn mandelbrot_distance_estimator(
 ) -> f64 {
     let mut z = Complex::new(0.0, 0.0);
     let mut dz = Complex::new(0.0, 0.0);
-    for _ in 0..max_iter {
+    for step in 0..max_iter {
+        if step.is_multiple_of(64) && crate::cancellation::is_cancelled() {
+            return f64::NAN;
+        }
         dz = 2.0 * z * dz + Complex::new(1.0, 0.0);
         z = z * z + c;
-        let r2 = z.norm_sqr();
-        if r2 > 1e16 {
-            let r = r2.sqrt();
-            return 2.0 * r * r.ln() / dz.norm().max(1e-30);
+        if !z.is_finite() {
+            return f64::NAN;
+        }
+        if z.norm_sqr() > 1e16 {
+            if !dz.is_finite() {
+                return f64::NAN;
+            }
+            let log_r = log_modulus(z);
+            let derivative = log_modulus(dz).max(1e-30_f64.ln());
+            let value = ((2.0 * log_r).ln() + log_r - derivative).exp();
+            return if value.is_finite() && value > 0.0 {
+                value
+            } else {
+                f64::NAN
+            };
         }
     }
     0.0

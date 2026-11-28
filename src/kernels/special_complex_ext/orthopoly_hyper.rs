@@ -8,6 +8,8 @@ use num_complex::Complex64;
 use crate::kernels::hypergeometric::hyp_u_cplx;
 use crate::kernels::hypergeometric::hyp1f1_cplx;
 
+use crate::kernels::special_complex::scaled_reciprocal;
+
 const ZERO: Complex64 = Complex64::new(0.0, 0.0);
 const ONE: Complex64 = Complex64::new(1.0, 0.0);
 const I: Complex64 = Complex64::new(0.0, 1.0);
@@ -78,42 +80,43 @@ pub fn chebyshev_t_complex(
     n: u32,
     z: Complex64,
 ) -> Complex64 {
-    if n == 0 {
-        return ONE;
-    }
-    if n == 1 {
-        return z;
-    }
-    let mut t0 = ONE;
-    let mut t1 = z;
-    for _ in 2..=n {
-        let next = 2.0 * z * t1 - t0;
-        t0 = t1;
-        t1 = next;
-    }
-    t1
+    chebyshev_complex(n, z, z)
 }
 
 /// Complex Chebyshev polynomial of the second kind `U_n(z)`.
 #[must_use]
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "initial value for the Chebyshev recurrence"
+)]
 pub fn chebyshev_u_complex(
     n: u32,
     z: Complex64,
 ) -> Complex64 {
+    chebyshev_complex(n, z, 2.0 * z)
+}
+
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "complex polynomial recurrence"
+)]
+fn chebyshev_complex(
+    n: u32,
+    z: Complex64,
+    first: Complex64,
+) -> Complex64 {
     if n == 0 {
         return ONE;
     }
-    if n == 1 {
-        return 2.0 * z;
-    }
-    let mut u0 = ONE;
-    let mut u1 = 2.0 * z;
+    let double_z = 2.0 * z;
+    let mut prev = ONE;
+    let mut current = first;
     for _ in 2..=n {
-        let next = 2.0 * z * u1 - u0;
-        u0 = u1;
-        u1 = next;
+        let next = double_z * current - prev;
+        prev = current;
+        current = next;
     }
-    u1
+    current
 }
 
 /// Complex physicists' Hermite polynomial `H_n(z)`.
@@ -164,6 +167,10 @@ pub fn laguerre_l_complex(
 
 /// Complex Jacobi polynomial `P_n^(alpha, beta)(z)`.
 #[must_use]
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "complex polynomial recurrence"
+)]
 pub fn jacobi_p_complex(
     n: u32,
     alpha: Complex64,
@@ -178,11 +185,17 @@ pub fn jacobi_p_complex(
     if n == 1 {
         return p1;
     }
+    let ab = alpha + beta;
     for k in 2..=n {
         let kf = f64::from(k);
-        let ab = alpha + beta;
         let two_k_ab = 2.0 * kf + ab;
-        let c1 = 2.0 * kf * (kf + ab) * (two_k_ab - 2.0);
+        let degree_sum = kf + ab;
+        let leading_factor = two_k_ab - 2.0;
+        let tolerance = 16.0 * f64::EPSILON * (2.0 * kf + ab.norm());
+        if degree_sum.norm() <= tolerance || leading_factor.norm() <= tolerance {
+            return jacobi_binomial_sum(n, alpha, beta, z);
+        }
+        let c1 = 2.0 * kf * degree_sum * leading_factor;
         let c2 = (two_k_ab - 1.0) * (alpha * alpha - beta * beta + two_k_ab * (two_k_ab - 2.0) * z);
         let c3 = 2.0 * (kf - 1.0 + alpha) * (kf - 1.0 + beta) * two_k_ab;
         let next = (c2 * p1 - c3 * p0) / c1;
@@ -190,6 +203,48 @@ pub fn jacobi_p_complex(
         p1 = next;
     }
     p1
+}
+
+// DLMF 18.5.8 remains defined when the three-term recurrence has a
+// vanishing leading coefficient. Use homogeneous Horner evaluation with
+// the smaller of (z - 1)/2 and (z + 1)/2 as the explicit power.
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::single_call_fn,
+    reason = "keeps the singular recurrence fallback separate"
+)]
+fn jacobi_binomial_sum(
+    n: u32,
+    mut alpha: Complex64,
+    mut beta: Complex64,
+    mut z: Complex64,
+) -> Complex64 {
+    let reflected = z.re < 0.0;
+    if reflected {
+        std::mem::swap(&mut alpha, &mut beta);
+        z = -z;
+    }
+    let minus = 0.5 * (z - ONE);
+    let plus = 0.5 * (z + ONE);
+    let mut alpha_coefficients = vec![ONE];
+    let mut alpha_coefficient = ONE;
+    for k in 1..=n {
+        alpha_coefficient *= (f64::from(n - k + 1) + alpha) / f64::from(k);
+        alpha_coefficients.push(alpha_coefficient);
+    }
+    let mut beta_coefficient = ONE;
+    let mut minus_power = ONE;
+    let mut result = ZERO;
+    for (k, alpha_coefficient) in (0..=n).zip(alpha_coefficients.into_iter().rev()) {
+        result = result * plus + alpha_coefficient * beta_coefficient * minus_power;
+        beta_coefficient *= (f64::from(n - k) + beta) / (f64::from(k) + 1.0);
+        minus_power *= minus;
+    }
+    if reflected && n % 2 == 1 {
+        -result
+    } else {
+        result
+    }
 }
 
 /// Complex Gegenbauer (ultraspherical) polynomial `C_n^(lambda)(z)`.
@@ -218,6 +273,10 @@ pub fn gegenbauer_c_complex(
 
 /// Complex spherical harmonic `Y_l^m(theta, phi)`.
 #[must_use]
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "normalized complex harmonic recurrence"
+)]
 pub fn spherical_harmonic_complex(
     l: u32,
     m: i32,
@@ -228,13 +287,36 @@ pub fn spherical_harmonic_complex(
     if m_abs > l {
         return ZERO;
     }
-    let mut fact_ratio = 1.0_f64;
-    for k in (l - m_abs + 1)..=(l + m_abs) {
-        fact_ratio /= f64::from(k);
+    let z = theta.cos();
+    let sin_theta = (ONE - z * z).sqrt();
+    // Keep the associated polynomial normalized at every degree. Computing
+    // P_l^m and the inverse factorial ratio separately can overflow and
+    // underflow even when their product is near one.
+    let mut diagonal = ONE / (4.0 * PI).sqrt();
+    for order in 1..=m_abs {
+        let twice_order = 2.0 * f64::from(order);
+        diagonal *= -((twice_order + 1.0) / twice_order).sqrt() * sin_theta;
     }
-    let norm = ((2.0 * f64::from(l) + 1.0) / (4.0 * PI) * fact_ratio).sqrt();
-    let plm = assoc_legendre_p_complex(l, m_abs, theta.cos());
-    let val = norm * plm * (I * f64::from(m) * phi).exp();
+    let polar = if l == m_abs {
+        diagonal
+    } else {
+        let mut prev = diagonal;
+        let mut current = (2.0 * f64::from(m_abs) + 3.0).sqrt() * z * diagonal;
+        let mf = f64::from(m_abs);
+        for degree in (m_abs + 1)..l {
+            let k = f64::from(degree) + 1.0;
+            let denominator = (k - mf) * (k + mf);
+            let a = (((2.0 * k + 1.0) * (2.0 * k - 1.0)) / denominator).sqrt();
+            let b = (((2.0 * k + 1.0) / (2.0 * k - 3.0)) * ((k - 1.0 - mf) * (k - 1.0 + mf))
+                / denominator)
+                .sqrt();
+            let next = a * z * current - b * prev;
+            prev = current;
+            current = next;
+        }
+        current
+    };
+    let val = polar * (I * f64::from(m) * phi).exp();
     if m < 0 && m_abs % 2 == 1 {
         -val
     } else {
@@ -418,28 +500,98 @@ pub fn mittag_leffler_complex(
     sum
 }
 
-/// Complex Legendre function of the second kind `Q_n(z)` for integer `n >= 0`
-/// off `[-1, 1]`, via forward recurrence from `Q_0(z) = 0.5 * ln((z + 1)/(z - 1))`.
+/// Principal complex Legendre function of the second kind `Q_n(z)` for integer degree.
+/// The signed imaginary zero selects the upper or lower boundary value of the cut `[-1, 1]`.
 #[must_use]
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "the bounded recurrence handles floating-point branch selection and normalizes the minimal solution"
+)]
 pub fn legendre_q_complex(
     n: u32,
     z: Complex64,
 ) -> Complex64 {
-    let q0 = 0.5 * ((z + ONE) / (z - ONE)).ln();
+    if !z.is_finite() || (z.im == 0.0 && (z.re.abs() - 1.0).abs() == 0.0) {
+        return Complex64::new(f64::NAN, f64::NAN);
+    }
+    if z.norm_sqr() >= 16.0 {
+        return legendre_q_inverse_series(n, z);
+    }
+    let plus = Complex64::new(z.re + 1.0, z.im);
+    let minus = Complex64::new(z.re - 1.0, z.im);
+    let q0 = 0.5 * (plus.ln() - minus.ln());
     if n == 0 {
         return q0;
     }
-    let q1 = z * q0 - ONE;
-    if n == 1 {
-        return q1;
+    let root = plus.sqrt() * minus.sqrt();
+    let first = z + root;
+    let second = z - root;
+    let dominant = if first.norm_sqr() > second.norm_sqr() {
+        first
+    } else {
+        second
+    };
+    let decay = dominant.norm().ln();
+    if f64::from(n) * decay > 4.0 {
+        // Backward continued fractions select the minimal Q solution away
+        // from the cut, where forward recurrence amplifies the dominant P.
+        let padding = (24.0 / decay).ceil().clamp(8.0, 32_768.0) as u32;
+        let end = n.saturating_add(padding);
+        let mut ratio = ONE / dominant;
+        let mut product = ONE;
+        for k in (1..=end).rev() {
+            let kf = f64::from(k);
+            ratio = kf / ((2.0 * kf + 1.0) * z - (kf + 1.0) * ratio);
+            if k <= n {
+                product *= ratio;
+            }
+        }
+        return q0 * product;
     }
-    let mut prev = q0;
-    let mut cur = q1;
+    let mut previous = q0;
+    let mut current = z * q0 - ONE;
     for k in 1..n {
         let kf = f64::from(k);
-        let next = ((2.0 * kf + 1.0) * z * cur - kf * prev) / (kf + 1.0);
-        prev = cur;
-        cur = next;
+        let next = ((2.0 * kf + 1.0) * z * current - kf * previous) / (kf + 1.0);
+        previous = current;
+        current = next;
     }
-    cur
+    current
+}
+
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::single_call_fn,
+    reason = "a separate inverse-power regime avoids overflow and cancellation in the recurrence"
+)]
+fn legendre_q_inverse_series(
+    n: u32,
+    z: Complex64,
+) -> Complex64 {
+    // DLMF 14.3.7 for integral degree and zero order, analytically
+    // continued off the cut. The explicit power preserves the parity at -z.
+    let inverse = scaled_reciprocal(z);
+    let mut leading = inverse;
+    for k in 1..=n {
+        let kf = f64::from(k);
+        leading *= (kf / (2.0 * kf + 1.0)) * inverse;
+        if leading == ZERO {
+            return ZERO;
+        }
+    }
+    let square = inverse * inverse;
+    let degree = f64::from(n);
+    let mut term = leading;
+    let mut sum = term;
+    for k in 1..=2048 {
+        let kf = f64::from(k);
+        let ratio =
+            ((0.5 * (degree - 1.0) + kf) * (0.5 * degree + kf)) / ((degree + 0.5 + kf) * kf);
+        term *= square * ratio;
+        sum += term;
+        if ratio * square.norm() < 0.5 && term.norm() <= f64::EPSILON * sum.norm() {
+            return sum;
+        }
+    }
+    Complex64::new(f64::NAN, f64::NAN)
 }

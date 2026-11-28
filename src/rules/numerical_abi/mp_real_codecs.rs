@@ -333,3 +333,66 @@ binding!(
         value.scale_pow2(shift).map_err(OpError::Domain)
     }
 );
+
+binding!(
+    mp_real_zero, "num_mp_real_zero", "numerical_special",
+    "`num_mp_real_zero(precision)` returns canonical zero at the requested bit precision.",
+    "crate::kernels::mp::real::Real::zero", DimensionPolicy::Dimensionless,
+    (precision: super::MpRealPrecision) -> crate::kernels::mp::Real,
+    |precision: super::MpRealPrecision| { crate::kernels::mp::Real::zero(precision.0) }
+);
+
+binding!(
+    mp_real_one, "num_mp_real_one", "numerical_special",
+    "`num_mp_real_one(precision)` returns the exact number one at the requested bit precision.",
+    "crate::kernels::mp::real::Real::one", DimensionPolicy::Dimensionless,
+    (precision: super::MpRealPrecision) -> crate::kernels::mp::Real,
+    |precision: super::MpRealPrecision| { crate::kernels::mp::Real::one(precision.0) }
+);
+
+binding!(
+    mp_real_from_i64, "num_mp_real_from_i64", "numerical_special",
+    "`num_mp_real_from_i64(value, precision)` converts an integer in the signed 64-bit range, rounded to the requested bit precision with ties to even.",
+    "crate::kernels::mp::real::Real::from_i64", DimensionPolicy::Dimensionless,
+    (value: i64, precision: super::MpRealPrecision) -> Result<crate::kernels::mp::Real, OpError>,
+    |value: i64, precision: super::MpRealPrecision| {
+        crate::kernels::mp::Real::from_i64(value, precision.0).map_err(OpError::Domain)
+    }
+);
+
+binding!(
+    mp_real_from_bigint, "num_mp_real_from_bigint", "numerical_special",
+    "`num_mp_real_from_bigint(value, precision, mode)` converts a signed integer up to 65536 bits in magnitude, rounded once to the requested bit precision and mode.",
+    "crate::kernels::mp::real::Real::from_bigint", DimensionPolicy::Dimensionless,
+    (value: super::MpRealInputMantissa, precision: super::MpRealPrecision, mode: crate::kernels::mp::Round)
+        -> Result<crate::kernels::mp::Real, OpError>,
+    |value: super::MpRealInputMantissa, precision: super::MpRealPrecision, mode: crate::kernels::mp::Round| {
+        crate::kernels::mp::Real::from_bigint(value.0, precision.0, mode).map_err(OpError::Domain)
+    }
+);
+
+binding!(
+    mp_real_from_f64, "num_mp_real_from_f64", "numerical_special",
+    "`num_mp_real_from_f64(value, precision)` rounds a finite binary64 value to the requested bit precision with ties to even. Both signed zeros give the canonical dyadic zero.",
+    "crate::kernels::mp::real::Real::from_f64", DimensionPolicy::Dimensionless,
+    (value: f64, precision: super::MpRealPrecision) -> Result<crate::kernels::mp::Real, OpError>,
+    |value: f64, precision: super::MpRealPrecision| {
+        crate::kernels::mp::Real::from_f64(value, precision.0).map_err(OpError::Domain)
+    }
+);
+
+binding!(
+    mp_real_to_f64, "num_mp_real_to_f64", "numerical_special",
+    "`num_mp_real_to_f64(value)` rounds a dyadic directly to binary64 with ties to even. Subnormal and signed-zero results are preserved. Overflow is a domain error.",
+    "crate::kernels::mp::real::Real::to_f64", DimensionPolicy::Dimensionless,
+    (value: crate::kernels::mp::Real) -> f64,
+    |value: crate::kernels::mp::Real| { value.to_f64() }
+);
+
+binding!(
+    mp_real_sign, "num_mp_real_sign", "numerical_special",
+    "`num_mp_real_sign(value)` returns -1, 0 or 1 for a negative, zero or positive dyadic.",
+    "crate::kernels::mp::real::Real::sign", DimensionPolicy::Dimensionless,
+    (value: crate::kernels::mp::Real) -> i32,
+    |value: crate::kernels::mp::Real| { i32::from(value.sign()) }
+);

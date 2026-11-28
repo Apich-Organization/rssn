@@ -127,7 +127,7 @@ LIR 是指令带批处理、CPU 内核和语言前端共用的 CPU 中间表示�
 | `KernelIr` | `device::native::lower` 把行循环、折叠和内核索引语义转换为 CPU 设备执行的 LIR。 |
 | Aevia Core IR | 符合条件的纯标量 `@jit` 函数用 LIR 执行分支、带检查的 `Int` 运算、递归，以及受步数预算约束的自尾调用。 |
 
-[后端计时示例](../examples/backend_timing.rs) 在 100,000 行数据上比较参考解释器、指令带逐行和分列执行，以及 Cranelift 的两种模式。可用 `cargo run --profile tools --features jit --example backend_timing` 测量当前机器上的执行时间。
+[后端计时示例](../examples/backend_timing.rs) 在 100,000 行数据上比较参考解释器、指令带逐行和分列执行，以及 Cranelift 的两种模式。可用 `bazel run //:example -- --profile tools backend_timing` 测量当前机器上的执行时间。
 
 ## GPU 源代码目标与精度
 

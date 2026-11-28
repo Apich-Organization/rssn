@@ -4,6 +4,11 @@ use crate::kernels::dense::Mat;
 use crate::kernels::dense::lu_factor;
 use crate::kernels::dense::solve;
 use crate::kernels::distributions::Distribution;
+use crate::kernels::reuse::Scratch;
+use crate::kernels::reuse::f64_scratch;
+use crate::kernels::survival::common::group_end;
+use crate::kernels::survival::common::time_order;
+use std::ops::Range;
 
 /// Handling of tied event times in the Cox partial likelihood.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -35,10 +40,96 @@ pub struct CoxFit {
     pub concordance: f64,
 }
 
-/// One event time: the indices of the tied events and of the risk set.
-struct Block {
-    events: Vec<usize>,
-    risk: Vec<usize>,
+/// One distinct observation time in descending order.
+struct TimeGroup {
+    rows: Range<usize>,
+    events: usize,
+}
+
+struct RiskOrder {
+    indices: Vec<usize>,
+    groups: Vec<TimeGroup>,
+}
+
+impl RiskOrder {
+    fn new(
+        time: &[f64],
+        event: &[bool],
+    ) -> Self {
+        let indices = time_order(time, true);
+        let mut groups = Vec::new();
+        let mut start = 0;
+        while start < indices.len() {
+            let end = group_end(time, &indices, start);
+            let events = indices[start..end].iter().filter(|&&i| event[i]).count();
+            groups.push(TimeGroup {
+                rows: start..end,
+                events,
+            });
+            start = end;
+        }
+        Self { indices, groups }
+    }
+}
+
+/// Risk and observed-event weighted moments. The lower triangle suffices
+/// because the information matrix is symmetric.
+struct Moments {
+    weight: f64,
+    first: Scratch<'static, f64>,
+    second: Scratch<'static, f64>,
+}
+
+impl Moments {
+    fn new(dimensions: usize) -> Self {
+        let cells = dimensions * dimensions;
+        let mut first = f64_scratch(dimensions);
+        let mut second = f64_scratch(cells);
+        first.resize(dimensions, 0.0);
+        second.resize(cells, 0.0);
+        Self {
+            weight: 0.0,
+            first,
+            second,
+        }
+    }
+
+    fn reset(&mut self) {
+        self.weight = 0.0;
+        self.first.fill(0.0);
+        self.second.fill(0.0);
+    }
+
+    fn rescale(
+        &mut self,
+        factor: f64,
+    ) {
+        self.weight *= factor;
+        for value in self.first.iter_mut().chain(self.second.iter_mut()) {
+            *value *= factor;
+        }
+    }
+
+    fn add(
+        &mut self,
+        row: &[f64],
+        weight: f64,
+    ) {
+        self.weight += weight;
+        for (a, ((first, second), &value)) in self
+            .first
+            .iter_mut()
+            .zip(self.second.chunks_exact_mut(row.len()))
+            .zip(row)
+            .enumerate()
+        {
+            let scaled = weight * value;
+            *first += scaled;
+            for (cell, &value) in second.iter_mut().zip(row).take(a + 1) {
+                *cell += scaled * value;
+            }
+        }
+    }
 }
 
 /// Dot product of two equally long slices.
@@ -82,9 +173,12 @@ fn validate(
         return Err("all observations are censored".to_string());
     }
     for j in 0..p {
-        let column: Vec<f64> = x.iter().map(|row| row[j]).collect();
-        let mean = column.iter().sum::<f64>() / n as f64;
-        let variance = column.iter().map(|v| (v - mean) * (v - mean)).sum::<f64>() / n as f64;
+        let mean = x.iter().map(|row| row[j]).sum::<f64>() / n as f64;
+        let variance = x
+            .iter()
+            .map(|row| (row[j] - mean) * (row[j] - mean))
+            .sum::<f64>()
+            / n as f64;
         if !variance.is_finite() || variance <= 0.0 {
             return Err("a covariate column has zero variance".to_string());
         }
@@ -92,117 +186,83 @@ fn validate(
     Ok(p)
 }
 
-/// Builds one block per distinct event time.
-#[allow(clippy::float_cmp)] // exact comparison groups tied observation times
-fn blocks(
-    time: &[f64],
-    event: &[bool],
-) -> Vec<Block> {
-    let n = time.len();
-    let mut times: Vec<f64> = time
-        .iter()
-        .copied()
-        .zip(event.iter().copied())
-        .filter(|pair| pair.1)
-        .map(|pair| pair.0)
-        .collect();
-    times.sort_unstable_by(f64::total_cmp);
-    times.dedup();
-    times
-        .iter()
-        .map(|&t| {
-            Block {
-                events: (0..n).filter(|&i| event[i] && time[i] == t).collect(),
-                risk: (0..n).filter(|&i| time[i] >= t).collect(),
-            }
-        })
-        .collect()
-}
-
 /// Log partial likelihood, gradient and observed information at `beta`.
 ///
-/// The exponentials are shifted by the largest linear predictor of each risk
-/// set so that the accumulation cannot overflow; the shift cancels from the
-/// ratios and is added back to the log likelihood.
+/// The descending time sweep extends a scaled risk set once per observation.
+/// At each event the numerator uses eta minus the current shift, as does the
+/// denominator. This cancels the exponent scaling without adding it twice.
 fn evaluate(
     beta: &[f64],
     x: &[Vec<f64>],
-    blocks: &[Block],
-    p: usize,
+    event: &[bool],
+    order: &RiskOrder,
     ties: Ties,
 ) -> (f64, Vec<f64>, Mat) {
-    let eta: Vec<f64> = x.iter().map(|row| dot(row, beta)).collect();
+    let p = beta.len();
+    let mut eta = f64_scratch(x.len());
+    eta.extend(x.iter().map(|row| dot(row, beta)));
     let mut loglik = 0.0;
     let mut grad = vec![0.0; p];
     let mut info = Mat::zeros(p, p);
-    let mut s1 = vec![0.0; p];
-    let mut s2 = vec![0.0; p * p];
-    let mut d1 = vec![0.0; p];
-    let mut d2 = vec![0.0; p * p];
-    for block in blocks {
-        let shift = block
-            .risk
-            .iter()
-            .map(|&i| eta[i])
-            .fold(f64::NEG_INFINITY, f64::max);
-        let mut s0 = 0.0;
-        s1.fill(0.0);
-        s2.fill(0.0);
-        d1.fill(0.0);
-        d2.fill(0.0);
-        let mut d0 = 0.0;
-        for &i in &block.risk {
-            let w = (eta[i] - shift).exp();
-            s0 += w;
+    if eta.iter().any(|value| !value.is_finite()) {
+        return (f64::NEG_INFINITY, grad, info);
+    }
+
+    let mut shift = f64::NEG_INFINITY;
+    let mut risk = Moments::new(p);
+    let mut removed = Moments::new(p);
+    for group in &order.groups {
+        let rows = &order.indices[group.rows.clone()];
+        let next_shift = rows.iter().map(|&i| eta[i]).fold(shift, f64::max);
+        if next_shift > shift {
+            risk.rescale((shift - next_shift).exp());
+            shift = next_shift;
+        }
+        removed.reset();
+        for &i in rows {
+            let scaled = eta[i] - shift;
+            let weight = scaled.exp();
             let row = &x[i];
-            for a in 0..p {
-                s1[a] += w * row[a];
-                for b in 0..p {
-                    s2[a * p + b] += w * row[a] * row[b];
+            risk.add(row, weight);
+            if event[i] {
+                loglik += scaled;
+                for (gradient, &value) in grad.iter_mut().zip(row) {
+                    *gradient += value;
+                }
+                if ties == Ties::Efron && group.events > 1 {
+                    removed.add(row, weight);
                 }
             }
         }
-        for &i in &block.events {
-            let w = (eta[i] - shift).exp();
-            d0 += w;
-            let row = &x[i];
-            for a in 0..p {
-                d1[a] += w * row[a];
-                for b in 0..p {
-                    d2[a * p + b] += w * row[a] * row[b];
-                }
-            }
+        if group.events == 0 {
+            continue;
         }
-        let count = block.events.len();
+        let (count, multiplicity) = match ties {
+            | Ties::Breslow => (1, group.events as f64),
+            | Ties::Efron => (group.events, 1.0),
+        };
         for l in 0..count {
-            let frac = match ties {
-                | Ties::Breslow => 0.0,
-                | Ties::Efron => l as f64 / count as f64,
-            };
-            let denom = s0 - frac * d0;
+            let frac = l as f64 / group.events as f64;
+            let denom = risk.weight - frac * removed.weight;
             if !denom.is_finite() || denom <= 0.0 {
-                // Not reachable for valid input; force the step to be rejected.
-                loglik = f64::NEG_INFINITY;
-                continue;
+                return (f64::NEG_INFINITY, grad, info);
             }
-            loglik -= denom.ln();
+            loglik -= multiplicity * denom.ln();
             for a in 0..p {
-                let num = s1[a] - frac * d1[a];
-                grad[a] -= num / denom;
-                for b in 0..p {
-                    let num2 = s2[a * p + b] - frac * d2[a * p + b];
-                    let value = info.at(a, b) + num2 / denom
-                        - num * (s1[b] - frac * d1[b]) / (denom * denom);
-                    info.set(a, b, value);
+                let mean_a = (risk.first[a] - frac * removed.first[a]) / denom;
+                grad[a] -= multiplicity * mean_a;
+                for b in 0..=a {
+                    let cell = a * p + b;
+                    let mean_b = (risk.first[b] - frac * removed.first[b]) / denom;
+                    let cross = (risk.second[cell] - frac * removed.second[cell]) / denom;
+                    info.data[cell] += multiplicity * (cross - mean_a * mean_b);
                 }
             }
         }
-        loglik += block.events.iter().map(|&i| eta[i]).sum::<f64>() + count as f64 * shift;
-        for &i in &block.events {
-            let row = &x[i];
-            for a in 0..p {
-                grad[a] += row[a];
-            }
+    }
+    for a in 0..p {
+        for b in 0..a {
+            info.data[b * p + a] = info.data[a * p + b];
         }
     }
     (loglik, grad, info)
@@ -282,28 +342,25 @@ pub fn cox_fit(
     if !tol.is_finite() || tol <= 0.0 {
         return Err("tol must be positive and finite".to_string());
     }
-    let blocks = blocks(time, event);
+    let order = RiskOrder::new(time, event);
     let mut beta = vec![0.0; p];
-    let (mut loglik, _, _) = evaluate(&beta, x, &blocks, p, ties);
+    let (mut loglik, mut grad, mut info) = evaluate(&beta, x, event, &order, ties);
     let mut converged = false;
     let mut iterations = 0usize;
+    let mut candidate = beta.clone();
     for iter in 0..max_iter {
         iterations = iter + 1;
-        let (current, grad, info) = evaluate(&beta, x, &blocks, p, ties);
-        loglik = current;
         let delta = solve(&info, &grad)
             .map_err(|_| "the observed information matrix is singular".to_string())?;
         let mut step = 1.0;
         let mut improved = false;
-        let mut candidate = beta.clone();
-        let mut candidate_loglik = current;
         for _ in 0..40 {
             for ((value, b), d) in candidate.iter_mut().zip(&beta).zip(&delta) {
                 *value = b + step * d;
             }
-            let (ll, _, _) = evaluate(&candidate, x, &blocks, p, ties);
-            if ll.is_finite() && ll >= current - 1e-12 {
-                candidate_loglik = ll;
+            let (ll, next_grad, next_info) = evaluate(&candidate, x, event, &order, ties);
+            if ll.is_finite() && ll >= loglik - 1e-12 {
+                (loglik, grad, info) = (ll, next_grad, next_info);
                 improved = true;
                 break;
             }
@@ -313,15 +370,13 @@ pub fn cox_fit(
             break;
         }
         let largest = delta.iter().map(|d| (step * d).abs()).fold(0.0, f64::max);
-        beta = candidate;
-        loglik = candidate_loglik;
+        std::mem::swap(&mut beta, &mut candidate);
         if largest < tol {
             converged = true;
             break;
         }
     }
 
-    let (_, _, info) = evaluate(&beta, x, &blocks, p, ties);
     let factors =
         lu_factor(&info).map_err(|_| "the observed information matrix is singular".to_string())?;
     let inverse = factors.inverse();
@@ -384,6 +439,54 @@ pub fn cox_predict_coefficients(
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn likelihood_uses_the_same_shift_in_the_numerator_and_risk_set() {
+        use super::RiskOrder;
+        use super::evaluate;
+        let time = [1.0, 2.0, 2.0, 3.0, 4.0, 4.0, 6.0, 7.0, 7.0, 9.0];
+        let events = [
+            true, true, true, false, true, false, true, false, true, true,
+        ];
+        let x = vec![
+            vec![0.0, 1.0],
+            vec![1.0, 2.0],
+            vec![2.0, 0.0],
+            vec![0.0, -1.0],
+            vec![1.0, 0.0],
+            vec![2.0, 1.0],
+            vec![0.0, 0.0],
+            vec![1.0, -1.0],
+            vec![2.0, 2.0],
+            vec![1.0, 3.0],
+        ];
+        let shifted: Vec<_> = x.iter().map(|row| vec![row[0] + 2048.0, row[1]]).collect();
+        let order = RiskOrder::new(&time, &events);
+        for (mode, expected_beta, expected_likelihood, expected_initial) in [
+            (
+                Ties::Breslow,
+                [-0.27517606604866644372059, 0.031559968384268934300931],
+                -10.877790367190200294744,
+                -11.744243680987878631446,
+            ),
+            (
+                Ties::Efron,
+                [-0.25949199911000958383773, 0.033591004225876807569548],
+                -10.771430701428489793319,
+                -11.605101320096243214325,
+            ),
+        ] {
+            let finish = |rows: &[Vec<f64>]| evaluate(&[0.5, -0.25], rows, &events, &order, mode).0;
+            assert!((finish(&x) - expected_initial).abs() < 2e-12);
+            assert!((finish(&shifted) - expected_initial).abs() < 2e-12);
+            let fitted = cox_fit(&x, &time, &events, mode, 30, 1e-10).expect("fit");
+            assert!(fitted.converged);
+            assert!((fitted.loglik - expected_likelihood).abs() < 2e-12);
+            for (observed, expected) in fitted.beta.iter().zip(expected_beta) {
+                assert!((observed - expected).abs() < 2e-10);
+            }
+        }
+    }
     use super::Ties;
     use super::concordance;
     use super::cox_fit;

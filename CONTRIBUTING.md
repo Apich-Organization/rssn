@@ -25,18 +25,18 @@ Tests sit next to the code they test; cross-module tests live in `tests/`.
 ## Getting started
 
 1. **Install Rust.** The crate uses edition 2024 and needs the toolchain in `rust-version` of `Cargo.toml` (currently 1.100) or newer; install it with [rustup](https://rustup.rs/).
-2. **Fork and clone.**
+2. **Install Bazel and clone.** Install Bazel or Bazelisk, then clone your fork.
    ```bash
    git clone https://github.com/YOUR-USERNAME/rssn.git
    cd rssn
    ```
 3. **Build and test.** The symbolic suite runs thousands of nested engine runs; the test profile is already optimised (`opt-level = 1`), but expect the first build to take a while.
    ```bash
-   cargo test
+   bazel test //:rust_tests
    ```
-   Useful narrower runs: `cargo test --lib graph::dim`, `cargo test --test dimensions`, `cargo test --lib rules::calculus`. Optional features have their own tests: `cargo test --features jit`, `cargo test --features plugin-cdylib`, `cargo test --features gpu-wgpu --lib backend::device` (executes on a GPU when an adapter exists).
+   Use `bazel test //:rust_tests --test_arg=--test --test_arg=dimensions` for one integration target. `//:rust_all_features_test` exercises every feature and `//:gpu_test` requires a working wgpu adapter.
 
-   Some runs are long (building the library's unit tests takes 10 to 20 minutes, `cargo test --test sim` about 25); use `cargo check --lib --tests` while editing and a filter while testing, as described in [README.md](README.md#testing).
+   Building the library's unit tests takes 10 to 20 minutes on one development machine. Use `bazel run //:check -- --lib --tests` for a compile check and a test filter for focused runs. [Test commands](README.md#testing)
 
 ## Development workflow
 
@@ -50,7 +50,7 @@ Tests sit next to the code they test; cross-module tests live in `tests/`.
    * Public items need doc comments. Follow the surrounding file's conventions (rustfmt settings are in `rustfmt.toml`).
 4. **Run the checks** before opening a pull request:
    ```bash
-   cargo +nightly fmt --all
+   bazel run //:fmt
    bazel test //:clippy_test //:rust_all_features_test
    ```
    and, when you touched the corresponding area:

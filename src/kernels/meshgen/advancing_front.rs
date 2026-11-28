@@ -42,6 +42,17 @@ pub fn advancing_front_2d(
     boundary: &[[f64; 2]],
     spacing: f64,
 ) -> Result<TriMesh2, String> {
+    advancing_front_bounded(boundary, spacing, usize::MAX)
+}
+
+pub(crate) fn advancing_front_bounded(
+    boundary: &[[f64; 2]],
+    spacing: f64,
+    vertex_budget: usize,
+) -> Result<TriMesh2, String> {
+    if boundary.len() > vertex_budget {
+        return Err("advancing-front vertex budget exceeded".into());
+    }
     if boundary.len() < 3 {
         return Err("at least three boundary points are required".to_string());
     }
@@ -75,7 +86,7 @@ pub fn advancing_front_2d(
         loop_points.reverse();
     }
 
-    let mut points = resample(&loop_points, spacing);
+    let mut points = resample(&loop_points, spacing, vertex_budget)?;
     if points.len() < 3 {
         return Err("boundary is too short for the requested spacing".to_string());
     }
@@ -87,11 +98,14 @@ pub fn advancing_front_2d(
     let mut queue: VecDeque<usize> = (0..front.len()).collect();
     let mut stuck: Vec<u32> = vec![0; front.len()];
 
-    let max_steps = 100 * front.len() + 10_000;
+    let max_steps = front.len().saturating_mul(100).saturating_add(10_000);
     let mut steps = 0_usize;
 
     while let Some(edge) = queue.pop_front() {
         steps += 1;
+        if steps.is_multiple_of(64) {
+            crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
+        }
         if steps > max_steps {
             break;
         }
@@ -114,6 +128,9 @@ pub fn advancing_front_2d(
         };
 
         let c = points.len();
+        if c >= vertex_budget {
+            return Err("advancing-front vertex budget exceeded".into());
+        }
         points.push(apex);
         triangles.push([a, b, c]);
 
@@ -137,22 +154,36 @@ pub fn advancing_front_2d(
 fn resample(
     loop_points: &[[f64; 2]],
     spacing: f64,
-) -> Vec<[f64; 2]> {
+    vertex_budget: usize,
+) -> Result<Vec<[f64; 2]>, String> {
     let n = loop_points.len();
-    let mut out: Vec<[f64; 2]> = Vec::new();
-
-    for i in 0..n {
-        let p = loop_points[i];
-        let q = loop_points[(i + 1) % n];
-        let length = distance2(p, q).sqrt();
-        let steps = (length / spacing).round().max(1.0) as usize;
-        for j in 0..steps {
-            let t = j as f64 / steps as f64;
+    let mut count = Vec::with_capacity(n);
+    let mut total = 0_usize;
+    let edges = loop_points
+        .iter()
+        .copied()
+        .zip(loop_points.iter().copied().cycle().skip(1));
+    for (p, q) in edges.clone() {
+        let length = (q[0] - p[0]).hypot(q[1] - p[1]);
+        let intervals = (length / spacing).round().max(1.0);
+        if !intervals.is_finite() || intervals >= usize::MAX as f64 {
+            return Err("advancing-front vertex budget exceeded".into());
+        }
+        let intervals = intervals as usize;
+        total = total
+            .checked_add(intervals)
+            .filter(|&count| count <= vertex_budget)
+            .ok_or("advancing-front vertex budget exceeded")?;
+        count.push(intervals);
+    }
+    let mut out = Vec::with_capacity(total);
+    for ((p, q), intervals) in edges.zip(count) {
+        for j in 0..intervals {
+            let t = j as f64 / intervals as f64;
             out.push([p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])]);
         }
     }
-
-    out
+    Ok(out)
 }
 
 /// Tries to place a new vertex over the front edge `a`-`b`.
@@ -243,7 +274,16 @@ fn valid_apex(
         if segments_cross(pa, candidate, pu, pv) || segments_cross(pb, candidate, pu, pv) {
             return false;
         }
-        if point_segment_distance(candidate, pu, pv) <= 0.25 * spacing {
+        let margin = 0.25 * spacing;
+        let bbox_dist = |i| {
+            let lo = f64::min(pu[i], pv[i]);
+            let hi = f64::max(pu[i], pv[i]);
+            f64::max(lo - candidate[i], candidate[i] - hi)
+        };
+        if bbox_dist(0) <= margin
+            && bbox_dist(1) <= margin
+            && point_segment_distance(candidate, pu, pv) <= margin
+        {
             return false;
         }
     }

@@ -14,6 +14,46 @@ def _rust_tool(ctx, name, override, windows):
                     return executable
     return ctx.which(name)
 
+# Official LLVM release SDKs for hosted Unix release jobs. The selected
+# compiler's LLVM version, operating system and architecture determine the asset.
+_SDK_ASSETS = {
+    ("23.1.5", "linux", "x86_64"): ("Linux-X64", "c3107384835f788768f614db610e87fba7077f125ca950eb02a78bab0a308065"),
+    ("23.1.5", "linux", "aarch64"): ("Linux-ARM64", "830ceb70edf63849ce66e97bf85310a3bf2bdd04c860a9f2fa4ef1560e290cef"),
+    ("23.1.5", "mac os x", "aarch64"): ("macOS-ARM64", "503de30ef90311e0b143623801b19af2250adac6d69faed65ad0051170202e3b"),
+}
+
+def _release_sdk(ctx, llvm_version):
+    arch = ctx.os.arch
+    if arch == "amd64":
+        arch = "x86_64"
+    if arch == "arm64":
+        arch = "aarch64"
+    asset = _SDK_ASSETS.get((llvm_version, ctx.os.name, arch))
+    if not asset:
+        return None
+    platform, sha256 = asset
+    filename = "LLVM-%s-%s.tar.zst" % (llvm_version, platform)
+    tar = ctx.which("tar")
+    if not tar or not ctx.which("zstd"):
+        fail("Install tar and zstd to fetch the LLVM SDK, or set RSSN_LLVM_CONFIG")
+    archive = ctx.path(filename)
+    ctx.download(
+        url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-%s/%s" % (llvm_version, filename),
+        sha256 = sha256,
+        output = archive,
+    )
+    root = ctx.path("sdk")
+    ctx.file("sdk/.bazel-sdk")
+    extract = ctx.execute([str(tar), "--use-compress-program=zstd", "-xf", str(archive), "-C", str(root)], timeout = 900)
+    if extract.return_code:
+        fail("Could not extract %s: %s" % (filename, extract.stderr))
+    ctx.delete(archive)
+    for directory in [root] + root.readdir():
+        config = directory.get_child("bin").get_child("llvm-config")
+        if config.exists:
+            return config
+    fail("The pinned LLVM SDK %s does not contain bin/llvm-config" % filename)
+
 def _host_impl(ctx):
     env = {name: ctx.getenv(name) for name in [
         "ANDROID_NDK_HOME",
@@ -43,6 +83,7 @@ def _host_impl(ctx):
         "MACOSX_DEPLOYMENT_TARGET",
         "PATH",
         "PYTHON",
+        "RSSN_FETCH_LLVM_SDK",
         "RSSN_LLVM_CONFIG",
         "RSSN_LLVM_IMPORT_LIBRARY",
         "RSSN_TARGET_ENV",
@@ -84,13 +125,17 @@ def _host_impl(ctx):
         if line.startswith("LLVM version: "):
             llvm_version = line[len("LLVM version: "):]
     llvm_major = llvm_version.split(".")[0]
-    sdk = env["RSSN_LLVM_CONFIG"] or (ctx.which("llvm-config-" + llvm_major) if llvm_major else None) or ctx.which("llvm-config")
+    sdk = env["RSSN_LLVM_CONFIG"]
+    if not sdk and env["RSSN_FETCH_LLVM_SDK"] == "1":
+        sdk = _release_sdk(ctx, llvm_version)
+    sdk = sdk or (ctx.which("llvm-config-" + llvm_major) if llvm_major else None) or ctx.which("llvm-config")
     sdk_info = {}
     if sdk:
         for option in ["version", "includedir", "bindir", "libdir", "cxxflags"]:
             result = ctx.execute([str(sdk), "--" + option])
             if result.return_code == 0:
                 sdk_info[option] = result.stdout.strip()
+
     # CMake uses the default module suffix (.so on ELF and Darwin, .dll on Windows).
     plugin_filename = "RssnLLVMOptimizer.dll" if windows else "RssnLLVMOptimizer.so"
     target_env = {}

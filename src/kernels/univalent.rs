@@ -4,9 +4,24 @@
 //! Koebe growth, distortion and rotation bounds, Schwarzian derivatives, the Nehari criterion,
 //! Grunsky matrices, and the Loewner slit equation.
 
-use crate::kernels::complex::cauchy_fft_derivatives;
+use crate::kernels::complex::circle_spectrum;
+use crate::kernels::complex_roots::validate_circle;
+use crate::kernels::complex_scalar::Complex as ScaledComplex;
+use crate::kernels::reuse::Scratch;
+use crate::kernels::reuse::fft_scratch_for;
+use crate::kernels::reuse::global_pool;
+
 use num_complex::Complex;
 use std::f64::consts::PI;
+
+fn stable_divide(
+    value: Complex<f64>,
+    divisor: Complex<f64>,
+) -> Complex<f64> {
+    let quotient =
+        ScaledComplex::new(value.re, value.im).div(ScaledComplex::new(divisor.re, divisor.im));
+    Complex::new(quotient.re, quotient.im)
+}
 
 /// Sharp radius of starlikeness for the class $\mathcal{S}$: $\tanh(\pi / 4) \approx 0.65579$.
 pub const S_RADIUS_OF_STARLIKENESS: f64 = 0.655_794_202_632_672_4;
@@ -21,17 +36,17 @@ pub fn check_bieberbach_de_branges(
     taylor_coeffs: &[Complex<f64>],
     tol: f64,
 ) -> bool {
-    let a1 = match taylor_coeffs.get(1) {
-        | Some(v) if v.norm() > 1e-15 => *v,
-        | _ => return false,
-    };
-    let a1_norm = a1.norm();
-    for (n, an) in taylor_coeffs.iter().enumerate().skip(2) {
-        if (an.norm() / a1_norm) > (n as f64) + tol {
-            return false;
-        }
+    if !tol.is_finite() || tol < 0.0 || taylor_coeffs.iter().any(|z| !z.is_finite()) {
+        return false;
     }
-    true
+    let Some(&a1) = taylor_coeffs.get(1).filter(|z| **z != Complex::default()) else {
+        return false;
+    };
+    taylor_coeffs
+        .iter()
+        .enumerate()
+        .skip(2)
+        .all(|(n, &coefficient)| stable_divide(coefficient, a1).norm() <= n as f64 + tol)
 }
 
 /// Computes the Fekete–Szegő functional $|`a_3` - \mu `a_2^2`|$.
@@ -57,70 +72,57 @@ pub fn hankel_determinant(
     if q == 0 {
         return Ok(Complex::new(1.0, 0.0));
     }
-    let needed = n.saturating_add(2 * q.saturating_sub(1));
-    if coeffs.len() <= needed {
-        return Err("Insufficient coefficients for requested Hankel determinant".to_string());
+    let last = q - 1;
+    let needed = last.checked_mul(2).and_then(|degree| n.checked_add(degree));
+    let Some(needed) = needed.filter(|&degree| degree < coeffs.len()) else {
+        return Err("Insufficient coefficients for requested Hankel determinant".into());
+    };
+    if coeffs[n..=needed].iter().any(|value| !value.is_finite()) {
+        return Err("Hankel coefficients must be finite".into());
     }
-    let mut mat = vec![vec![Complex::new(0.0, 0.0); q]; q];
-    for i in 0..q {
-        for j in 0..q {
-            let val = *coeffs.get(n + i + j).ok_or_else(|| "Index".to_string())?;
-            if let Some(cell) = mat.get_mut(i).and_then(|r| r.get_mut(j)) {
-                *cell = val;
+    let elements = q.checked_mul(q).ok_or("Hankel matrix size overflow")?;
+    let mut matrix = fft_scratch_for(elements);
+    for offset in 0..q {
+        matrix.extend_from_slice(&coeffs[(n + offset)..(n + offset + q)]);
+    }
+    let mut determinant = Complex::from(1.0);
+    for column in 0..q {
+        crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
+        let pivot = (column..q)
+            .max_by(|&i, &j| {
+                matrix[i * q + column]
+                    .norm()
+                    .total_cmp(&matrix[j * q + column].norm())
+            })
+            .ok_or("Missing Hankel pivot")?;
+        let diagonal = matrix[pivot * q + column];
+        if diagonal == Complex::default() {
+            return Ok(Complex::default());
+        }
+        if column != pivot {
+            for j in column..q {
+                matrix.swap(column * q + j, pivot * q + j);
+            }
+            determinant = -determinant;
+        }
+        determinant *= diagonal;
+        let (above, below) = matrix.split_at_mut((column + 1) * q);
+        let pivot_row = &above[(column * q)..];
+        for row in below.chunks_exact_mut(q) {
+            let factor = stable_divide(row[column], diagonal);
+            for (cell, &pivot_value) in row[(column + 1)..]
+                .iter_mut()
+                .zip(&pivot_row[(column + 1)..])
+            {
+                *cell -= factor * pivot_value;
             }
         }
     }
-    // Gaussian elimination with partial pivoting for determinant
-    let mut det = Complex::new(1.0, 0.0);
-    for col in 0..q {
-        let mut piv = col;
-        let mut max_v = mat
-            .get(col)
-            .and_then(|r| r.get(col))
-            .map_or(0.0, |c| c.norm());
-        for row in (col + 1)..q {
-            let v = mat
-                .get(row)
-                .and_then(|r| r.get(col))
-                .map_or(0.0, |c| c.norm());
-            if v > max_v {
-                max_v = v;
-                piv = row;
-            }
-        }
-        if max_v < 1e-15 {
-            return Ok(Complex::new(0.0, 0.0));
-        }
-        if piv != col {
-            mat.swap(col, piv);
-            det = -det;
-        }
-        let diag = mat
-            .get(col)
-            .and_then(|r| r.get(col))
-            .copied()
-            .unwrap_or_default();
-        det *= diag;
-        for row in (col + 1)..q {
-            let factor = mat
-                .get(row)
-                .and_then(|r| r.get(col))
-                .copied()
-                .unwrap_or_default()
-                / diag;
-            for k in (col + 1)..q {
-                let p_val = mat
-                    .get(col)
-                    .and_then(|r| r.get(k))
-                    .copied()
-                    .unwrap_or_default();
-                if let Some(cell) = mat.get_mut(row).and_then(|r| r.get_mut(k)) {
-                    *cell -= factor * p_val;
-                }
-            }
-        }
+    if determinant.is_finite() {
+        Ok(determinant)
+    } else {
+        Err("Hankel determinant exceeds Float range".into())
     }
-    Ok(det)
 }
 
 /// Koebe growth theorem bounds for $f \in \mathcal{S}$ at $|z| = r \in [0, 1)$:
@@ -166,6 +168,9 @@ pub fn koebe_rotation_bound(r: f64) -> Option<f64> {
     }
 }
 
+pub(crate) const SCHWARZIAN_SAMPLES: usize = 64;
+pub(crate) const RADIUS_ITERATIONS: usize = 40;
+
 /// Computes the Schwarzian derivative $\{f, z\} = \frac{f'''(z)}{f'(z)} - \frac{3}{2} \left(\frac{f''(z)}{f'(z)}\right)^2$
 /// using Cauchy–FFT derivatives on a circle of radius `h`.
 ///
@@ -180,15 +185,30 @@ pub fn schwarzian_derivative_numeric<F>(
 where
     F: Fn(Complex<f64>) -> Complex<f64>,
 {
-    let derivs = cauchy_fft_derivatives(f, z, h, 3, 64);
-    let f1 = *derivs.get(1).ok_or_else(|| "Missing f'".to_string())?;
-    let f2 = *derivs.get(2).ok_or_else(|| "Missing f''".to_string())?;
-    let f3 = *derivs.get(3).ok_or_else(|| "Missing f'''".to_string())?;
-    if f1.norm() < 1e-14 {
-        return Err("Critical point f'(z) = 0 in Schwarzian derivative".to_string());
+    validate_circle(z, h, SCHWARZIAN_SAMPLES)?;
+    crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
+    let spectrum = circle_spectrum(f, z, h, SCHWARZIAN_SAMPLES);
+    let [f0, f1, f2, f3, ..] = spectrum.as_slice() else {
+        return Err("Schwarzian spectrum lost four low coefficients".into());
+    };
+    if ![f0, f1, f2, f3].into_iter().all(|value| value.is_finite()) {
+        return Err("Schwarzian callback samples and Fourier coefficients must be finite".into());
     }
-    let ratio = f2 / f1;
-    Ok(f3 / f1 - ratio * ratio * 1.5)
+    let scale = |v: &Complex<f64>| v.re.abs().max(v.im.abs());
+    if scale(f1) <= (64.0 * f64::EPSILON) * scale(f0).max(scale(f2)).max(scale(f3)) {
+        return Err(
+            "Critical or numerically unresolved first derivative in Schwarzian stencil".into(),
+        );
+    }
+    let second = stable_divide(*f2, *f1);
+    let third = stable_divide(*f3, *f1);
+    // Both derivative ratios carry two inverse powers of the circle radius here.
+    let value = (((third - second * second) * 6.0) / h) / h;
+    if value.is_finite() {
+        Ok(value)
+    } else {
+        Err("Schwarzian derivative exceeds Float range".into())
+    }
 }
 
 /// Checks Nehari's sufficient univalence criterion $(1 - |z|^2)^2 |\{f, z\}| \le 2$
@@ -206,24 +226,86 @@ pub fn check_nehari_univalence<F>(
 where
     F: Fn(Complex<f64>) -> Complex<f64>,
 {
-    if n_angles == 0 {
-        return Err("n_angles must be positive".to_string());
+    if n_angles == 0 || sample_radii.is_empty() || !h.is_finite() || h <= 0.0 {
+        return Err(
+            "Nehari grid needs nonempty angle/radius samples and a positive finite step".into(),
+        );
     }
     for &r in sample_radii {
-        if !(0.0..1.0).contains(&r) {
-            return Err("Sample radius must be in (0, 1)".to_string());
+        if !(0.0..1.0).contains(&r) || r + h >= 1.0 {
+            return Err("Every Nehari sampling circle must fit in the open unit disk".into());
         }
-        let weight = (1.0 - r * r).powi(2);
-        for j in 0..n_angles {
-            let theta = 2.0 * PI * (j as f64) / (n_angles as f64);
-            let z = Complex::from_polar(r, theta);
-            let s = schwarzian_derivative_numeric(f, z, h)?;
-            if weight * s.norm() > 2.0 + 1e-9 {
+    }
+    let directions = AngularGrid::new(n_angles);
+    for &r in sample_radii {
+        let weight = (1.0 - r) * (1.0 + r);
+        for direction in directions.directions() {
+            let z = r * direction;
+            let value = schwarzian_derivative_numeric(f, z, h)?;
+            if weight * weight * value.norm() > 2.0 + 1e-9 {
                 return Ok(false);
             }
         }
     }
     Ok(true)
+}
+
+enum AngularGrid {
+    Cached(std::sync::Arc<[Complex<f64>]>),
+    Local(Scratch<'static, Complex<f64>>),
+}
+
+impl AngularGrid {
+    fn new(count: usize) -> Self {
+        if count.is_power_of_two() && count <= 65_536 {
+            Self::Cached(global_pool().unit_roots(count))
+        } else {
+            let mut storage = fft_scratch_for(count);
+            storage.extend((0..count).map(|index| {
+                Complex::from_polar(1.0, std::f64::consts::TAU * (index as f64) / (count as f64))
+                    .conj()
+            }));
+            Self::Local(storage)
+        }
+    }
+
+    fn directions(&self) -> impl Iterator<Item = Complex<f64>> + '_ {
+        let roots = match self {
+            | Self::Cached(roots) => roots.as_ref(),
+            | Self::Local(roots) => roots.as_slice(),
+        };
+        roots.iter().map(Complex::conj)
+    }
+}
+
+fn radius_by_bisection(
+    maximum: f64,
+    count: usize,
+    positive: impl Fn(Complex<f64>) -> Option<bool>,
+) -> Option<f64> {
+    if count == 0 || !(0.0..=1.0).contains(&maximum) {
+        return None;
+    }
+    let directions = AngularGrid::new(count);
+    let mut low = 0.0;
+    let mut high = maximum;
+    for _ in 0..RADIUS_ITERATIONS {
+        crate::cancellation::checkpoint().ok()?;
+        let middle = f64::midpoint(low, high);
+        let mut holds = true;
+        for direction in directions.directions() {
+            if !positive(middle * direction)? {
+                holds = false;
+                break;
+            }
+        }
+        if holds {
+            low = middle;
+        } else {
+            high = middle;
+        }
+    }
+    Some(low)
 }
 
 /// Numerically estimates the radius of starlikeness $\sup \{ r \in (0, r_{\max}] : \text{Re}(z f'(z)/f(z)) > 0 \text{ on } |z|=r \}$
@@ -238,35 +320,19 @@ where
     F: Fn(Complex<f64>) -> Complex<f64>,
     DF: Fn(Complex<f64>) -> Complex<f64>,
 {
-    let is_starlike_on_r = |r: f64| -> bool {
-        if r <= 0.0 {
-            return true;
+    radius_by_bisection(r_max, n_angles, |z| {
+        let denominator = f(z);
+        let numerator = df(z);
+        if !denominator.is_finite() || !numerator.is_finite() {
+            return None;
         }
-        for j in 0..n_angles {
-            let theta = 2.0 * PI * (j as f64) / (n_angles as f64);
-            let z = Complex::from_polar(r, theta);
-            let fz = f(z);
-            if fz.norm() < 1e-14 {
-                return false;
-            }
-            let val = z * df(z) / fz;
-            if val.re <= 0.0 {
-                return false;
-            }
+        if denominator == Complex::default() {
+            return Some(false);
         }
-        true
-    };
-    let mut lo = 0.0_f64;
-    let mut hi = r_max;
-    for _ in 0..40 {
-        let mid = f64::midpoint(lo, hi);
-        if is_starlike_on_r(mid) {
-            lo = mid;
-        } else {
-            hi = mid;
-        }
-    }
-    lo
+        let criterion = z * stable_divide(numerator, denominator);
+        criterion.is_finite().then_some(criterion.re > 0.0)
+    })
+    .unwrap_or(f64::NAN)
 }
 
 /// Numerically estimates the radius of convexity $\sup \{ r \in (0, r_{\max}] : 1 + \text{Re}(z f''(z)/f'(z)) > 0 \text{ on } |z|=r \}$
@@ -281,35 +347,19 @@ where
     DF: Fn(Complex<f64>) -> Complex<f64>,
     DDF: Fn(Complex<f64>) -> Complex<f64>,
 {
-    let is_convex_on_r = |r: f64| -> bool {
-        if r <= 0.0 {
-            return true;
+    radius_by_bisection(r_max, n_angles, |z| {
+        let denominator = df(z);
+        let numerator = ddf(z);
+        if !denominator.is_finite() || !numerator.is_finite() {
+            return None;
         }
-        for j in 0..n_angles {
-            let theta = 2.0 * PI * (j as f64) / (n_angles as f64);
-            let z = Complex::from_polar(r, theta);
-            let dfz = df(z);
-            if dfz.norm() < 1e-14 {
-                return false;
-            }
-            let val = 1.0 + (z * ddf(z) / dfz).re;
-            if val <= 0.0 {
-                return false;
-            }
+        if denominator == Complex::default() {
+            return Some(false);
         }
-        true
-    };
-    let mut lo = 0.0_f64;
-    let mut hi = r_max;
-    for _ in 0..40 {
-        let mid = f64::midpoint(lo, hi);
-        if is_convex_on_r(mid) {
-            lo = mid;
-        } else {
-            hi = mid;
-        }
-    }
-    lo
+        let criterion = z * stable_divide(numerator, denominator);
+        criterion.is_finite().then_some(1.0 + criterion.re > 0.0)
+    })
+    .unwrap_or(f64::NAN)
 }
 
 /// Computes the Grunsky matrix of a Taylor series.
@@ -328,112 +378,77 @@ pub fn grunsky_matrix(
     if order == 0 {
         return Ok(Vec::new());
     }
-    if taylor_coeffs.len() < 2 {
-        return Err("Need at least a_0, a_1 coefficients".to_string());
-    }
-    let a1 = *taylor_coeffs
-        .get(1)
-        .ok_or_else(|| "Missing a_1".to_string())?;
-    if a1.norm() < 1e-15 {
-        return Err("a_1 must be non-zero".to_string());
-    }
-    // Normalized coefficients b_k = a_k / a_1 for k >= 1 (b_1 = 1)
-    let max_deg = 2 * order + 1;
-    if taylor_coeffs.len() <= max_deg {
-        return Err(format!(
-            "grunsky_matrix(order={order}) requires at least {} Taylor coefficients (got {})",
-            max_deg + 1,
-            taylor_coeffs.len()
-        ));
-    }
-    let b = |k: usize| -> Complex<f64> {
-        if k == 0 {
-            Complex::new(0.0, 0.0)
-        } else {
-            taylor_coeffs.get(k).copied().unwrap_or_default() / a1
-        }
+    let required = order
+        .checked_mul(2)
+        .and_then(|degree| degree.checked_add(2));
+    let Some(required) = required.filter(|&needed| needed <= taylor_coeffs.len()) else {
+        return Err("Grunsky series needs at least 2 * order + 2 Taylor coefficients".into());
     };
-
-    // Difference quotient Q(z, w) = (f(z) - f(w)) / (z - w) = sum_{p,q >= 0} q_{p,q} z^p w^q
-    // where q_{p,q} = b_{p+q+1}
-    // Write Q(z, w) = 1 + R(z, w) where R has no constant term (q_{0,0} = b_1 = 1).
-    let sz = order + 1;
-    let mut r_mat = vec![vec![Complex::new(0.0, 0.0); sz]; sz];
-    for p in 0..sz {
-        for q in 0..sz {
-            if p == 0 && q == 0 {
-                continue;
-            }
-            if p + q < max_deg
-                && let Some(cell) = r_mat.get_mut(p).and_then(|r| r.get_mut(q))
-            {
-                *cell = b(p + q + 1);
-            }
-        }
+    let a1 = taylor_coeffs[1];
+    if a1 == Complex::default() || taylor_coeffs[..required].iter().any(|v| !v.is_finite()) {
+        return Err("Grunsky coefficients must be finite with a nonzero linear term".into());
+    }
+    let mut normalized = fft_scratch_for(required - 1);
+    normalized.push(Complex::from(1.0));
+    normalized.extend(
+        taylor_coeffs[2..required]
+            .iter()
+            .map(|&v| stable_divide(v, a1)),
+    );
+    if normalized.iter().any(|v| !v.is_finite()) {
+        return Err("Normalized Grunsky coefficient exceeds Float range".into());
     }
 
-    // ln(1 + R) = sum_{k=1}^{2*order} (-1)^{k-1} R^k / k truncated to degree (order, order)
-    let mut log_mat = vec![vec![Complex::new(0.0, 0.0); sz]; sz];
-    let mut r_pow = r_mat.clone();
-    for k in 1..=(2 * order) {
-        let coeff = (if k % 2 == 1 { 1.0 } else { -1.0 }) / (k as f64);
-        for p in 0..sz {
-            for q in 0..sz {
-                let v = r_pow
-                    .get(p)
-                    .and_then(|r| r.get(q))
-                    .copied()
-                    .unwrap_or_default();
-                if let Some(cell) = log_mat.get_mut(p).and_then(|r| r.get_mut(q)) {
-                    *cell += v * coeff;
-                }
-            }
-        }
-        // Multiply r_pow = r_pow * r_mat truncated to sz x sz
-        let mut next = vec![vec![Complex::new(0.0, 0.0); sz]; sz];
-        for p1 in 0..sz {
-            for q1 in 0..sz {
-                let v1 = r_pow
-                    .get(p1)
-                    .and_then(|r| r.get(q1))
-                    .copied()
-                    .unwrap_or_default();
-                if v1.norm() == 0.0 {
-                    continue;
-                }
-                for p2 in 0..(sz - p1) {
-                    for q2 in 0..(sz - q1) {
-                        let v2 = r_mat
-                            .get(p2)
-                            .and_then(|r| r.get(q2))
-                            .copied()
-                            .unwrap_or_default();
-                        if let Some(cell) = next.get_mut(p1 + p2).and_then(|r| r.get_mut(q1 + q2)) {
-                            *cell += v1 * v2;
-                        }
-                    }
-                }
-            }
-        }
-        r_pow = next;
-    }
-
-    // G_{m,n} = sqrt(m*n) * (-log_mat[m][n]) for 1 <= m, n <= order
-    let mut g = vec![vec![Complex::new(0.0, 0.0); order]; order];
+    // Q=(f(z)-f(w))/(z-w), with Q[p,q]=normalized[p+q] and Q[0,0]=1.
+    // Solve Q*F=z*Q_z for F=z*(log Q)_z by increasing row and column.
+    let width = order + 1;
+    let elements = width
+        .checked_mul(width)
+        .ok_or("Grunsky matrix size overflow")?;
+    let mut derivative = fft_scratch_for(elements);
+    derivative.resize(elements, Complex::default());
     for m in 1..=order {
-        for n in 1..=order {
-            let c_mn = -log_mat
-                .get(m)
-                .and_then(|r| r.get(n))
-                .copied()
-                .unwrap_or_default();
-            let scale = ((m * n) as f64).sqrt();
-            if let Some(cell) = g.get_mut(m - 1).and_then(|r| r.get_mut(n - 1)) {
-                *cell = c_mn * scale;
+        crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
+        let (above, rest) = derivative.split_at_mut(m * width);
+        let output = &mut rest[..width];
+        let m_float = m as f64;
+        for n in 0..width {
+            let left: Complex<f64> = output[..n]
+                .iter()
+                .rev()
+                .zip(&normalized[1..=n])
+                .map(|(&coefficient, &weight)| coefficient * weight)
+                .sum();
+            let mut value = m_float * normalized[m + n] - left;
+            for (p, row) in above.chunks_exact(width).rev().take(m - 1).enumerate() {
+                let first = p + 1;
+                let product: Complex<f64> = row[..=n]
+                    .iter()
+                    .rev()
+                    .zip(&normalized[first..=(first + n)])
+                    .map(|(&coefficient, &weight)| coefficient * weight)
+                    .sum();
+                value -= product;
             }
+            if !value.is_finite() {
+                return Err("Grunsky recurrence exceeds Float range".into());
+            }
+            output[n] = value;
         }
     }
-    Ok(g)
+    // F[m,n] = m*[log Q][m,n]. The mathematical result is symmetric.
+    let mut result = vec![vec![Complex::default(); order]; order];
+    for m in 1..=order {
+        for n in m..=order {
+            let value = -(n as f64 / m as f64).sqrt() * derivative[m * width + n];
+            if !value.is_finite() {
+                return Err("Grunsky matrix exceeds Float range".into());
+            }
+            result[m - 1][n - 1] = value;
+            result[n - 1][m - 1] = value;
+        }
+    }
+    Ok(result)
 }
 
 /// Verifies the Grunsky inequality $\left|\sum_{m,n=1}^M G_{m,n} `x_m` `x_n\right`| \le \sum_{m=1}^M |`x_m|^2` + \text{tol}$.
@@ -450,34 +465,60 @@ pub fn check_grunsky_inequality(
     if test_vec.len() != m {
         return Err("Vector length must match Grunsky matrix dimension".to_string());
     }
-    let mut quad = Complex::new(0.0, 0.0);
-    let mut norm2 = 0.0_f64;
-    for (i, &xi) in test_vec.iter().enumerate() {
-        norm2 += xi.norm_sqr();
-        let row = grunsky.get(i).ok_or_else(|| "Row".to_string())?;
-        for (j, &xj) in test_vec.iter().enumerate() {
-            let g_ij = *row.get(j).ok_or_else(|| "Col".to_string())?;
-            quad += g_ij * xi * xj;
-        }
+    if !tol.is_finite()
+        || tol < 0.0
+        || test_vec.iter().any(|v| !v.is_finite())
+        || grunsky
+            .iter()
+            .any(|row| row.len() != m || row.iter().any(|v| !v.is_finite()))
+    {
+        return Err("Grunsky check needs a finite square matrix, finite test vector and nonnegative tolerance".into());
     }
-    if quad.norm() > norm2 + tol {
+    let vector_scale = test_vec.iter().fold(1.0_f64, |scale, value| {
+        scale.max(value.re.abs()).max(value.im.abs())
+    });
+    let mut normalized = fft_scratch_for(m);
+    normalized.extend(test_vec.iter().map(|&value| value / vector_scale));
+    let norm2: f64 = normalized.iter().map(Complex::norm_sqr).sum();
+    let quad: Complex<f64> = grunsky
+        .iter()
+        .zip(normalized.iter())
+        .map(|(row, &xi)| {
+            let product: Complex<f64> = row
+                .iter()
+                .zip(normalized.iter())
+                .map(|(&value, &xj)| value * xj)
+                .sum();
+            xi * product
+        })
+        .sum();
+    if !quad.is_finite() {
+        return Ok(false);
+    }
+    if quad.norm() > norm2 + (tol / vector_scale) / vector_scale {
         return Ok(false);
     }
     // Also estimate spectral norm ||G||_2 via power iteration on G^* G
     if m > 0 {
-        let mut v = vec![Complex::new(1.0 / (m as f64).sqrt(), 0.0); m];
+        let mut v = fft_scratch_for(m);
+        v.resize(m, Complex::new(1.0 / (m as f64).sqrt(), 0.0));
+        let mut gv = fft_scratch_for(m);
+        let mut ghgv = fft_scratch_for(m);
+        ghgv.resize(m, Complex::default());
         let mut sigma_sq = 0.0_f64;
         for _ in 0..24 {
-            let mut gv = vec![Complex::new(0.0, 0.0); m];
-            for i in 0..m {
-                for j in 0..m {
-                    gv[i] += grunsky[i][j] * v[j];
-                }
-            }
-            let mut ghgv = vec![Complex::new(0.0, 0.0); m];
-            for j in 0..m {
-                for i in 0..m {
-                    ghgv[j] += grunsky[i][j].conj() * gv[i];
+            crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
+            gv.clear();
+            gv.extend(grunsky.iter().map(|row| {
+                row.iter()
+                    .zip(v.iter())
+                    .map(|(&entry, &vj)| entry * vj)
+                    .sum::<Complex<f64>>()
+            }));
+            ghgv.fill(Complex::default());
+            for (row, &gvi) in grunsky.iter().zip(gv.iter()) {
+                for (entry, &gij) in ghgv.iter_mut().zip(row) {
+                    *entry += gij.conj() * gvi;
                 }
             }
             let norm = ghgv
@@ -485,13 +526,16 @@ pub fn check_grunsky_inequality(
                 .map(num_complex::Complex::norm_sqr)
                 .sum::<f64>()
                 .sqrt();
+            if !norm.is_finite() {
+                return Ok(false);
+            }
             if norm < 1e-30 {
                 sigma_sq = 0.0;
                 break;
             }
             sigma_sq = norm;
-            for j in 0..m {
-                v[j] = ghgv[j] / norm;
+            for (slot, &value) in v.iter_mut().zip(ghgv.iter()) {
+                *slot = value / norm;
             }
         }
         if sigma_sq.sqrt() > 1.0 + tol {
@@ -513,12 +557,30 @@ pub fn loewner_slit_step(
     if (u - w).norm() < 1e-12 {
         return w;
     }
-    let rhs = |z: Complex<f64>| -> Complex<f64> { z * (u + z) / (u - z) };
-    let k1 = rhs(w);
-    let k2 = rhs(w + k1 * (0.5 * dt));
-    let k3 = rhs(w + k2 * (0.5 * dt));
-    let k4 = rhs(w + k3 * dt);
-    w + (k1 + k2 * 2.0 + k3 * 2.0 + k4) * (dt / 6.0)
+    loewner_step_checked(w, driving_kappa, dt).unwrap_or(Complex::new(f64::NAN, f64::NAN))
+}
+
+pub(crate) fn loewner_step_checked(
+    w: Complex<f64>,
+    driving_kappa: f64,
+    dt: f64,
+) -> Option<Complex<f64>> {
+    let u = Complex::from_polar(1.0, driving_kappa);
+    let rhs = |z: Complex<f64>| {
+        let divisor = u - z;
+        if divisor.norm() < 1e-12 {
+            return None;
+        }
+        let result = z * stable_divide(u + z, divisor);
+        result.is_finite().then_some(result)
+    };
+    let half_step = 0.5 * dt;
+    let k1 = rhs(w)?;
+    let k2 = rhs(w + k1 * half_step)?;
+    let k3 = rhs(w + k2 * half_step)?;
+    let k4 = rhs(w + k3 * dt)?;
+    let result = w + (k1 + k2 * 2.0 + k3 * 2.0 + k4) * (dt / 6.0);
+    result.is_finite().then_some(result)
 }
 
 /// Checks Becker's sufficient univalence criterion `(1 - |z|^2) * |z * f''(z)/f'(z)| <= 1`.
@@ -529,8 +591,13 @@ pub fn check_becker_univalence(
     ddf: Complex<f64>,
 ) -> bool {
     let r2 = z.norm_sqr();
-    if r2 >= 1.0 || df.norm() < 1e-15 {
+    if r2 >= 1.0
+        || !z.is_finite()
+        || !df.is_finite()
+        || !ddf.is_finite()
+        || df == Complex::default()
+    {
         return false;
     }
-    (1.0 - r2) * (z * ddf / df).norm() <= 1.0
+    (1.0 - r2) * (z * stable_divide(ddf, df)).norm() <= 1.0
 }
