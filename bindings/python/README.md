@@ -1,5 +1,7 @@
 # rssn for Python
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 `ctypes` bindings for the rssn C ABI, plus one function per registered
 operator. No dependencies; numpy is used for tensors when it is installed.
 

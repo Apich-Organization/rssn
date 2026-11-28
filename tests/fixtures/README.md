@@ -1,5 +1,7 @@
 # Test fixtures
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 Small binary files that the `io::hdf5` and `io::parquet` tests read. They are
 checked in so `cargo test` needs no extra tooling: the tests are ordinary
 tests, not `#[ignore]`d ones.

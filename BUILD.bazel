@@ -55,6 +55,7 @@ filegroup(
             "tools/llvm-optimizer/build*/**",
             "tools/llvm-optimizer/tests/**",
         ],
+        allow_empty = True,
     ),
 )
 

@@ -1,5 +1,7 @@
 # Binding examples
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 ## Host callbacks
 
 One program per language, all doing the same thing: hand a function of that

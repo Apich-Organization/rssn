@@ -1,5 +1,7 @@
 # rssn language bindings: Python, Julia, C++ and R
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 Complete wrappers of rssn's embedding surface for four host languages, all
 built on one ABI and held to one conformance table.
 

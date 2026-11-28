@@ -113,13 +113,13 @@ ndarray = { version = "0.17", features = ["serde"] }
 statrs = { version = "0.19", default-features = false, features = ["std"] }
 # Numerical optimization. `basin` runs on plain `Vec<f64>` so it adds no
 # linear-algebra backend of its own.
-basin = { version = "3.5", default-features = false }
+basin = { version = "3.6", default-features = false }
 rustfft = "6.4"
 # Zstandard for Parquet pages; the reference implementation, not a reimplementation.
 zstd = { version = "0.14", default-features = false }
-brotli = { version = "8", default-features = false, features = ["std"] }
+brotli = { version = "9", default-features = false, features = ["std"] }
 once_cell = "1.21"
-rayon = "1.11"
+rayon = "1.12"
 rand = { version = "0.10", features = ["std_rng"] }
 num-complex = { version = "0.4", features = ["serde"] }
 # `num-rational` 0.4 is the newest release and pins `num-bigint` 0.4, so the
@@ -196,7 +196,7 @@ full = ["jit", "npy", "gpu-wgpu", "plugin-cdylib"]
 
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }
-proptest = "1.9"
+proptest = "1.12"
 assert_approx_eq = "1.1"
 
 [[bench]]

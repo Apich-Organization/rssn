@@ -65,6 +65,11 @@ def lock(directory):
 
 
 def command(args, cwd, env, *, check=True, **kwargs):
+    args = list(args)
+    if os.name == "nt" and args:
+        head = Path(args[0])
+        if not head.suffix and not head.is_absolute():
+            args[0] = shutil.which(str(args[0]), path=env.get("PATH") if env else None) or args[0]
     print("+ " + subprocess.list2cmdline([str(arg) for arg in args]), flush=True)
     return subprocess.run(args, cwd=cwd, env=env, check=check, **kwargs)
 

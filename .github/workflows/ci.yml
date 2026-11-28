@@ -141,6 +141,10 @@ jobs:
         run: python3 -m pip install clang-format==23.1.5
       - name: Verify operator contracts, generated bindings and headers
         run: bazel test //:api_generator_test //:contracts_test //:headers_check_test
+      - name: Install cargo-about
+        run: cargo install --locked cargo-about@0.9.3
+      - name: Verify third-party license attributions
+        run: cargo fetch --locked && python3 scripts/check_attributions.py
 
   ffi:
     name: C and C++ API (${{ matrix.os }})

@@ -1,5 +1,7 @@
 # Contributing to rssn
 
+[English](CONTRIBUTING.md) | [简体中文](CONTRIBUTING.zh-CN.md)
+
 Thank you for considering a contribution to **rssn**. Bug fixes, new algorithms, performance work, tests and documentation are all welcome, and so are small things like typos. If you have an idea, open an issue first and we will be happy to discuss it.
 
 ## Where things live

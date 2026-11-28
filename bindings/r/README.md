@@ -1,5 +1,7 @@
 # rssn for R
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 An R package over the rssn C ABI: a computer algebra system, numerical kernels
 and physics simulations behind one small API.  No package dependencies -- the
 JSON codec the value and simulation entry points need is included, and the

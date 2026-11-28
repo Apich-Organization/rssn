@@ -1,5 +1,7 @@
 # rssn for C++
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 A header-only RAII layer over the rssn C ABI, plus one function per registered
 operator. C++17, no dependencies beyond the standard library and `rssn.h`.
 

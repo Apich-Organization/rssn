@@ -1,5 +1,7 @@
 # RSSN source binding generation
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 The source generator builds without the RSSN library, even if the checked-in
 fragments are missing or invalid. From the RSSN repository root:
 

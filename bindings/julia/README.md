@@ -1,5 +1,7 @@
 # rssn for Julia
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 `ccall` bindings for the rssn C ABI, plus one function per registered operator.
 No package dependencies: the JSON codec the simulation entry point needs is
 included.

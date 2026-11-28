@@ -1,4 +1,4 @@
 # Preserve verbatim upstream notice bytes, including their line endings.
 ATTRIBUTIONS.md -text -whitespace
-# Bash reads the test driver's shebang and keywords literally.
-bindings/tests/*.sh text eol=lf
+# Normalize all text files to LF across platforms.
+* text=auto eol=lf
