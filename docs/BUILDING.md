@@ -2,42 +2,41 @@
 
 [中文](BUILDING.zh.md)
 
+Bazel builds release archives and runs Rust, binding and generator workflows.
+The [RSSN Bazel guide](BAZEL.md) lists the targets and toolchain settings.
+
 Ordinary `cargo build` and downstream Rust builds use the Rust library (`rlib`).
 `cargo check` emits Rust metadata for type checking. Build the C static and
 shared libraries explicitly when preparing C artifacts.
 
-On Linux, build the C libraries and refresh the checked-in cbindgen headers with the following commands.
+On Linux, run these commands to refresh the checked-in cbindgen headers and
+build the libraries using the Rust toolchain.
 
 ```sh
-DEV=1 bash scripts/build_ffi.sh --features dev-headers
-cc -I. examples/c/smoke.c target/ffi/librssn.a -lm -lpthread -ldl -o smoke
+bazel run //:refresh_headers
+bazel build //:ffi_distribution
+cc -I. examples/c/smoke.c bazel-bin/ffi_distribution/ffi/librssn.a -lm -lpthread -ldl -o smoke
 ./smoke
 ```
 
-The script invokes `cargo rustc --lib --crate-type staticlib,cdylib`. Static and shared libraries are placed under the selected target and profile
-directory. The default `ffi` profile inherits the release optimizations and
-enables unwinding, so guarded C entry points can report unwinding Rust panics
-as `RssnStatus::Panic`. Set `RSSN_FFI_PROFILE=dev` for a development C build in
-`debug`. The scripts accept `CARGO_TARGET_DIR` and Cargo options such as
-`--features jit`, `--target`, `--locked`, and `--offline`. C linker flags
-vary by platform.
+The default FFI distribution includes the Cranelift JIT, NumPy `.npy` I/O and
+wgpu. It uses a generic target CPU and unwind semantics so guarded C entries
+can return `RssnStatus::Panic`. FFT planning can still select CPU instructions
+at runtime. C linker flags vary by platform.
 
-Use `bash scripts/build_ffi.sh --package` or
-`scripts/build_ffi.ps1 -Package` on Windows to assemble a native archive with
-its headers, examples, bilingual guides, and checksum.
+Run `bazel run //:package_ffi` or `bash scripts/build_ffi.sh --package`.
+On Windows, use `scripts/build_ffi.ps1 -Package`. The archive contains the
+libraries, generated headers, examples and bilingual guides, with a companion
+SHA-256 file. The release uses all features, fat LTO and the LLVM optimizer.
+Configure the host's matching LLVM SDK before building. Set `RSSN_FFI_PROFILE=dev`
+to stage local development libraries under `target/debug` through Bazel.
+Use `bazel run --config=release-max //:release_ffi` to package the native SDK
+and four language bindings and run the packaged client tests before publishing.
+The `--llvm-overlay` and `-LlvmOverlay` wrapper flags retain the `-llvm` archive suffix.
 
-The checkout configures `target-cpu=native` as the general Cargo build default.
-For `x86_64-pc-windows-msvc`, Cargo selects the target-specific stack linker flags.
-The release workflow sets `RUSTFLAGS="-C target-cpu=generic"` for the
-distributed archives. Use that setting when building a redistributable archive
-or targeting another machine. FFT planning can still select CPU instructions
-at runtime.
-
-Migration: C consumers previously using `cargo build --release` to obtain
-`librssn.a` or a shared library should use this explicit distribution command.
-Rust callers continue using ordinary Cargo commands. Merely enabling a Cargo
-feature does not change the crate type. Header generation remains opt-in via
-`DEV=1`; use the existing headers when regeneration is unnecessary.
+The checkout configures `target-cpu=native` for direct Cargo development builds.
+The Bazel `//:refresh_headers` target invokes cbindgen independently of the
+Rust library.
 
 The normal build script uses only the Rust standard library. Header generation
 requires the optional `dev-headers` feature as well as `DEV=1`; this keeps
@@ -66,7 +65,44 @@ available parallelism and may reflect a container quota. For reproducible
 metadata across hosts, set `VERGEN_IDEMPOTENT=1` with `SOURCE_DATE_EPOCH`, and
 supply explicit `VERGEN_*` values for any desired archive provenance.
 
+## Numerical benchmarks
+
+The `polynomials` benchmark group measures both Lagrange input layouts and
+compares scalar Horner evaluation with the batch kernel on the same points.
+Use the same benchmark source, Cargo target directory, feature flags, Rust
+toolchain and worker count for both revisions. Save a baseline with the first
+command on the earlier revision. Run the second on the revised kernels.
+
+```sh
+RAYON_NUM_THREADS=4 cargo bench --locked --bench engine -- polynomials --save-baseline before
+RAYON_NUM_THREADS=4 cargo bench --locked --bench engine -- polynomials --baseline before
+```
+
+Use the `fixed_prefix_scan` group to compare one-block scans with fixed
+256-element blocks. Use the same worker count and baseline flags.
+
+The `numerical_codec_dispatch` group measures repeated value calls on an
+already constructed session. The `mesh_triangle_areas` group uses the same
+cells with execution capped at one or four workers. Mesh timings exclude pool
+setup. Use the same benchmark source and execution settings on both revisions.
+
+The `special_combinatorics` group covers balanced and unbalanced log
+coefficients, binomial overflow and multinomial partitions. The
+`beta_quantiles` group covers an interior probability, an upper-tail
+probability and an analytic tiny-tail case. Use the same baseline protocol.
+
+The `finite_field_ntt` group measures the same prime's cold generator
+setup and cached lookup, and polynomial convolutions at two input sizes
+with warm plans. The cold case clears the process-local reuse pool before
+each timed iteration. Keep the worker count fixed for comparisons.
+
+The `kalman_history` group measures forward filtering and smoothed means
+for one fixed model at three observation counts. Compare revisions with
+the same benchmark source and fixed worker count.
+
 ## Distribution channels
+
+The reusable CI workflow verifies the generated language bindings against an all-features Linux build and runs Python, Julia, R and C++ against that same shared library. The release workflow requires that CI result, including for nightly builds.
 
 Push a version tag that matches `Cargo.toml` to start the versioned release workflow. The workflow tests the tagged commit and uploads the checksummed C archives to a draft. Publishing the draft locks its tag and assets and creates a GitHub release attestation. Check the package version and SHA-256 file against the archive before linking. With authenticated GitHub CLI, verify the downloaded archive with `gh release verify-asset TAG ARCHIVE --repo Apich-Organization/rssn`.
 

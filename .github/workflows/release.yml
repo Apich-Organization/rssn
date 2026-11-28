@@ -86,66 +86,89 @@ jobs:
     uses: ./.github/workflows/ci.yml
 
   ffi:
-    name: C libraries (${{ matrix.target }})
+    name: Native SDK and four bindings (${{ matrix.target }})
     needs: verify
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 90
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-latest, target: linux-x86_64, rust_target: x86_64-unknown-linux-gnu }
+          - { os: ubuntu-24.04, target: linux-x86_64, rust_target: x86_64-unknown-linux-gnu }
           - { os: ubuntu-24.04-arm, target: linux-aarch64, rust_target: aarch64-unknown-linux-gnu }
           - { os: windows-latest, target: windows-x86_64, rust_target: x86_64-pc-windows-msvc }
           - { os: windows-11-arm, target: windows-aarch64, rust_target: aarch64-pc-windows-msvc }
           - { os: macos-15-intel, target: macos-x86_64, rust_target: x86_64-apple-darwin }
           - { os: macos-latest, target: macos-aarch64, rust_target: aarch64-apple-darwin }
-    env:
-      # Distribution binaries must not depend on the CPU of the build host
-      # (.cargo/config.toml selects `native` for local development).
-      RUSTFLAGS: "-C target-cpu=generic"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           targets: ${{ matrix.rust_target }}
-      - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
-          key: ${{ matrix.target }}
+          python-version: '3.13'
+          architecture: ${{ runner.arch == 'ARM64' && 'arm64' || 'x64' }}
+      - name: Python wheel tooling
+        run: python -m pip install "setuptools>=77" wheel
+      - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
+        with:
+          bazelisk-cache: true
+          repository-cache: true
       - name: System dependencies
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
-      - name: Build and package FFI libraries (Unix)
+      - uses: julia-actions/setup-julia@da908477b5db94c10ffce8cfea9f2b3b9d5db687 # v3.0.3
+        if: matrix.target == 'linux-x86_64'
+        with:
+          version: '1.10.14'
+      - name: R binding build tools
+        if: matrix.target == 'linux-x86_64'
+        run: sudo apt-get install -y r-base-core r-base-dev
+      - name: Build and verify the FFI package (Unix)
         if: runner.os != 'Windows'
+        env:
+          RSSN_TARGET_ENV: ${{ vars.RSSN_TARGET_ENV }}
+          RUSTC: ${{ fromJSON(vars.RSSN_RELEASE_RUSTCS || '{}')[matrix.rust_target] || vars.RSSN_RUSTC }}
+          CARGO: ${{ fromJSON(vars.RSSN_RELEASE_CARGOS || '{}')[matrix.rust_target] || vars.RSSN_CARGO }}
+          RSSN_LLVM_CONFIG: ${{ fromJSON(vars.RSSN_RELEASE_LLVM_CONFIGS || '{}')[matrix.rust_target] || vars.RSSN_LLVM_CONFIG }}
         shell: bash
         run: |
-          bash scripts/build_ffi.sh \
-            --target "${{ matrix.rust_target }}" \
-            --profile ffi --package --locked \
-            --dist-name "rssn-${{ needs.verify.outputs.distribution }}-${{ matrix.target }}"
-      - name: Build and package FFI libraries (Windows)
+          flags=(--config=release-max --define=rust_target=${{ matrix.rust_target }} "--repo_env=PYTHON=$(command -v python)")
+          for variable in RSSN_TARGET_ENV RUSTC CARGO RSSN_LLVM_CONFIG; do
+            if [[ -n "${!variable:-}" ]]; then flags+=("--repo_env=$variable=${!variable}"); fi
+          done
+          bazel run "${flags[@]}" //:release_ffi -- --dist-name 'rssn-${{ needs.verify.outputs.distribution }}-${{ matrix.target }}'
+      - name: Build and verify the FFI package (Windows)
         if: runner.os == 'Windows'
+        env:
+          RSSN_TARGET_ENV: ${{ vars.RSSN_TARGET_ENV }}
+          RUSTC: ${{ fromJSON(vars.RSSN_RELEASE_RUSTCS || '{}')[matrix.rust_target] || vars.RSSN_RUSTC }}
+          CARGO: ${{ fromJSON(vars.RSSN_RELEASE_CARGOS || '{}')[matrix.rust_target] || vars.RSSN_CARGO }}
+          RSSN_LLVM_CONFIG: ${{ fromJSON(vars.RSSN_RELEASE_LLVM_CONFIGS || '{}')[matrix.rust_target] || vars.RSSN_LLVM_CONFIG }}
+          RSSN_LLVM_IMPORT_LIBRARY: ${{ fromJSON(vars.RSSN_RELEASE_LLVM_IMPORT_LIBRARIES || '{}')[matrix.rust_target] || vars.RSSN_LLVM_IMPORT_LIBRARY }}
         shell: pwsh
         run: |
-          scripts/build_ffi.ps1 `
-            -Target "${{ matrix.rust_target }}" `
-            -Profile ffi `
-            -Package `
-            -CargoArgs @('--locked') `
-            -DistName "rssn-${{ needs.verify.outputs.distribution }}-${{ matrix.target }}"
+          $BazelFlags = @('--config=release-max', '--define=rust_target=${{ matrix.rust_target }}', "--repo_env=PYTHON=$((Get-Command python).Source)")
+          foreach ($Variable in @('RSSN_TARGET_ENV', 'RUSTC', 'CARGO', 'RSSN_LLVM_CONFIG', 'RSSN_LLVM_IMPORT_LIBRARY')) {
+            $Value = [Environment]::GetEnvironmentVariable($Variable)
+            if ($Value) { $BazelFlags += "--repo_env=$Variable=$Value" }
+          }
+          bazel run @BazelFlags //:release_ffi -- --dist-name 'rssn-${{ needs.verify.outputs.distribution }}-${{ matrix.target }}'
+          exit $LASTEXITCODE
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: rssn-${{ matrix.target }}
           if-no-files-found: error
           path: |
             dist/*.tar.gz
+            dist/*.whl
             dist/*.sha256
 
   github-release:
     name: GitHub release
     needs: [verify, quality, ffi]
-    if: ${{ !inputs.dry_run }}
     concurrency:
       group: release-publish-${{ needs.verify.outputs.tag }}
       cancel-in-progress: false
@@ -158,6 +181,21 @@ jobs:
         with:
           path: dist
           merge-multiple: true
+          pattern: rssn-*
+      - name: Verify release assets
+        env:
+          DISTRIBUTION: ${{ needs.verify.outputs.distribution }}
+        run: |
+          cd dist
+          for asset in *.tar.gz *.whl; do test -f "$asset.sha256"; done
+          sha256sum --check --strict ./*.sha256
+          for target in linux-{x86_64,aarch64} windows-{x86_64,aarch64} macos-{x86_64,aarch64}; do
+            stem="rssn-${DISTRIBUTION}-${target}"
+            for suffix in '' -cpp -julia -r; do test -f "${stem}${suffix}.tar.gz"; done
+          done
+          shopt -s nullglob
+          wheels=(rssn-*.whl)
+          test "${#wheels[@]}" -eq 6
       - name: Prepare release notes
         env:
           NIGHTLY: ${{ needs.verify.outputs.nightly }}
@@ -170,6 +208,7 @@ jobs:
               --version "$RELEASE_VERSION" --output release_notes.md
           fi
       - name: Create the draft release
+        if: ${{ !inputs.dry_run }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}

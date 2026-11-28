@@ -1,5 +1,5 @@
 # Continuous integration. The same structure is used by the aevia repository:
-# fmt -> clippy -> test (matrix) -> contracts -> docs, summarised by one
+# Formatting, lint, test, contract, FFI, binding and documentation jobs share one
 # `ci-success` job so branch protection needs a single required check.
 
 name: CI
@@ -50,10 +50,13 @@ jobs:
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           components: clippy
-      - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
+      - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
+        with:
+          bazelisk-cache: true
+          repository-cache: true
       - name: System dependencies
         run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
-      - run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
+      - run: bazel test //:clippy_test
 
   test:
     name: test (${{ matrix.os }}, ${{ matrix.features }})
@@ -65,9 +68,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-latest, features: full, args: "--all-features" }
-          - { os: windows-latest, features: full, args: "--all-features" }
-          - { os: macos-latest, features: default, args: "--no-default-features" }
+          - { os: ubuntu-latest, features: full, test_target: "//:rust_all_features_test" }
+          - { os: windows-latest, features: full, test_target: "//:rust_all_features_test" }
+          - { os: macos-latest, features: minimal, test_target: "//:rust_minimal_test" }
+          - { os: macos-latest, features: default, test_target: "//:rust_tests" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
@@ -77,11 +81,15 @@ jobs:
       - name: System dependencies
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev libvulkan1 mesa-vulkan-drivers
+      - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
+        with:
+          bazelisk-cache: true
+          repository-cache: true
       - name: Run the workspace tests
         env:
           # MSVC otherwise writes a large PDB for every linked test.
           _LINK_: ${{ runner.os == 'Windows' && '/DEBUG:NONE' || '' }}
-        run: cargo test --locked --workspace ${{ matrix.args }}
+        run: bazel test --test_env=_LINK_ ${{ matrix.test_target }}
       - name: Require wgpu compute execution on software Vulkan
         if: runner.os == 'Linux'
         shell: bash
@@ -91,16 +99,10 @@ jobs:
           test -s "$VK_DRIVER_FILES"
           export XDG_RUNTIME_DIR="$RUNNER_TEMP/rssn-vulkan"
           install -d -m 700 "$XDG_RUNTIME_DIR"
-          cargo test --locked --workspace --all-features --lib gpu_ -- --nocapture 2>&1 |
-            tee "$RUNNER_TEMP/rssn-vulkan.log"
-          if grep -Fq 'no wgpu adapter; skipping' "$RUNNER_TEMP/rssn-vulkan.log"; then
-            echo 'A wgpu runtime test skipped despite the installed software adapter'
-            exit 1
-          fi
-          grep -F 'gpu test device:' "$RUNNER_TEMP/rssn-vulkan.log"
+          bazel test --test_env=VK_DRIVER_FILES --test_env=XDG_RUNTIME_DIR //:gpu_test
       - name: Run long numerical regressions
         if: runner.os == 'Linux' && github.event_name == 'schedule' && github.event.schedule == '17 7 * * 1'
-        run: cargo test --locked --workspace --all-features -- --ignored --test-threads=1
+        run: bazel test //:rust_ignored_test
 
   contracts:
     name: contracts (signature audit, generated bindings)
@@ -114,16 +116,12 @@ jobs:
       - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
       - name: System dependencies
         run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
-      - name: Every operator is typed or explained
-        run: cargo run --locked --bin signature-audit
-      - name: Every operator has documentation
-        run: cargo run --locked --bin doc_gen_check
-      - name: Generated numerical bindings are current
-        run: |
-          cargo run --locked -p rssn-api-gen -- --bindings-check
-          cargo run --locked -p rssn-api-gen -- --structured-check
-          cargo run --locked -p rssn-api-gen -- --codecs-check
-          cargo run --locked -p rssn-api-gen -- --contracts-check
+      - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
+        with:
+          bazelisk-cache: true
+          repository-cache: true
+      - name: Verify operator contracts, generated bindings and headers
+        run: bazel test //:api_generator_test //:contracts_test //:headers_check_test
 
   ffi:
     name: C and C++ API (${{ matrix.os }})
@@ -142,23 +140,13 @@ jobs:
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
-      - name: Regenerate headers, link both C interfaces and run them on Linux
-        if: runner.os == 'Linux'
-        run: |
-          DEV=1 bash scripts/build_ffi.sh --profile dev --locked --features dev-headers
-          git diff --exit-code -- rssn.h rssn.hpp
-          cc -I. examples/c/smoke.c target/debug/librssn.a -lm -lpthread -ldl -o target/debug/ffi-smoke
-          c++ -std=c++17 -I. tests/ffi/headers.cpp target/debug/librssn.a -lm -lpthread -ldl -o target/debug/ffi-headers
-          target/debug/ffi-smoke
-          target/debug/ffi-headers
-      - name: Link and run C and C++ clients on macOS
-        if: runner.os == 'macOS'
-        run: |
-          bash scripts/build_ffi.sh --profile dev --locked
-          cc -I. examples/c/smoke.c target/debug/librssn.dylib -Wl,-rpath,@loader_path -o target/debug/ffi-smoke
-          c++ -std=c++17 -I. tests/ffi/headers.cpp target/debug/librssn.dylib -Wl,-rpath,@loader_path -o target/debug/ffi-headers
-          target/debug/ffi-smoke
-          target/debug/ffi-headers
+      - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
+        with:
+          bazelisk-cache: true
+          repository-cache: true
+      - name: Link and run C and C++ clients
+        if: runner.os != 'Windows'
+        run: bazel test //:ffi_native_clients_test
       - name: Link and run C and C++ clients on Windows
         if: runner.os == 'Windows'
         shell: pwsh
@@ -167,15 +155,34 @@ jobs:
           $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
           if ($LASTEXITCODE -ne 0 -or !$vs) { throw 'Visual Studio C++ tools were not found' }
           & "$vs/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
-          & scripts/build_ffi.ps1 -Profile dev -CargoArgs @('--locked')
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cl /nologo /utf-8 /I. examples/c/smoke.c /link target/debug/rssn.dll.lib /OUT:target/debug/ffi-smoke.exe
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cl /nologo /utf-8 /std:c++17 /I. tests/ffi/headers.cpp /link target/debug/rssn.dll.lib /OUT:target/debug/ffi-headers.exe
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & target/debug/ffi-smoke.exe
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & target/debug/ffi-headers.exe
+          bazel test //:ffi_native_clients_test
+          exit $LASTEXITCODE
+
+  bindings:
+    name: Python, Julia, R and C++ binding contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
+        with:
+          key: bindings-all-features
+      - uses: julia-actions/setup-julia@da908477b5db94c10ffce8cfea9f2b3b9d5db687 # v3.0.3
+        with:
+          version: '1.10.14'
+      - name: Install host dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake fontconfig libfontconfig1-dev python-is-python3 python3-numpy r-base-core r-base-dev
+      - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
+        with:
+          bazelisk-cache: true
+          repository-cache: true
+      - name: Run all bindings against one Bazel-built library
+        run: bazel test //:bindings_check_test //:bindings_test
 
   docs:
     name: documentation and examples
@@ -203,10 +210,21 @@ jobs:
             "target/debug/examples/$example"
           done
 
+  release-policy:
+    name: Release target CPU and optimization policy
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
+      - run: bazel test --config=release-max //:release_policy_test
+
   ci-success:
     name: CI success
     if: always()
-    needs: [fmt, clippy, test, contracts, ffi, docs]
+    needs: [fmt, clippy, test, contracts, ffi, bindings, docs, release-policy]
     runs-on: ubuntu-latest
     steps:
       - name: Require every job to have succeeded

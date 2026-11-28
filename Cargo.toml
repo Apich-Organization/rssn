@@ -87,7 +87,8 @@ debug = false
 [profile.release]
 lto = true
 codegen-units = 1
-panic = "abort"
+# Numerical callback interruptions must return typed errors to callers.
+panic = "unwind"
 opt-level = 3
 strip = true
 debug = false
@@ -118,7 +119,6 @@ rustfft = "6.4"
 zstd = { version = "0.14", default-features = false }
 brotli = { version = "8", default-features = false, features = ["std"] }
 once_cell = "1.21"
-ndarray-npy = { version = "0.11", optional = true }
 rayon = "1.11"
 rand = { version = "0.10", features = ["std_rng"] }
 num-complex = { version = "0.4", features = ["serde"] }
@@ -142,7 +142,7 @@ blake3 = "1.8"
 # arbitrary code in the host process.
 libloading = { version = "0.9", optional = true }
 # GPU execution through wgpu (`rssn::backend::device::gpu`, feature `gpu-wgpu`).
-# Opt-in; off by default so the default build never compiles the GPU stack.
+# Enabled by default. Device discovery and initialization happen on demand.
 # Each platform compiles only the backend it can use.
 wgpu = { version = "30", optional = true, default-features = false, features = ["wgsl"] }
 
@@ -179,20 +179,20 @@ features = ["std", "sparse-linalg", "rayon"]
 cbindgen = { version = "0.29", optional = true }
 
 [features]
-default = []
+default = ["jit", "npy", "gpu-wgpu"]
 # Regenerate checked-in C/C++ headers when combined with DEV=1.
 dev-headers = ["dep:cbindgen"]
 # Cranelift JIT backend (`rssn::backend::jit`).
 jit = ["dep:cranelift-codegen", "dep:cranelift-frontend", "dep:cranelift-jit", "dep:cranelift-module", "dep:cranelift-native"]
 # Reading and writing `.npy` files in `rssn::io`.
-npy = ["dep:ndarray-npy"]
+npy = []
 # Loading plugins from shared libraries (`rssn::kernel::cdylib`). Off by
 # default: a cdylib runs arbitrary code in the host process with no sandbox.
 plugin-cdylib = ["dep:libloading"]
 # GPU device through wgpu: WGSL kernels, f32 arithmetic and double-single
 # (about 48-bit) emulation of f64 (`docs/BACKENDS.md`).
 gpu-wgpu = ["dep:wgpu", "dep:pollster", "dep:bytemuck"]
-full = ["npy", "jit", "plugin-cdylib"]
+full = ["jit", "npy", "gpu-wgpu", "plugin-cdylib"]
 
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }

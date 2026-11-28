@@ -1,0 +1,10 @@
+package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "host.bzl",
+    "rules.bzl",
+    "runner.py",
+    "bootstrap.py",
+    "rustc_wrapper.rs",
+    "rssn_tasks.py",
+])

@@ -48,6 +48,10 @@ librssn.so
 
 # The C++ binding's build file: the `*.txt` rule above would swallow it.
 !bindings/cpp/CMakeLists.txt
+!tests/ffi/package/CMakeLists.txt
+# These scans are inputs to the generated Julia facade.
+!bindings/api/julia_base_names.txt
+!bindings/api/julia_base_functions.txt
 /tmp
 
 /node_modules
@@ -306,3 +310,8 @@ target-opt/
 rssn-manifest.tmp.json
 target-bindings/
 build-bindings/
+
+# Bazel outputs and workstation configuration
+/.bazel-cache/
+/.bazelrc.local
+/bazel-*

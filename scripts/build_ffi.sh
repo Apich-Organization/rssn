@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Explicit distribution build for rssn C/C++ FFI libraries; keeps ordinary Cargo
-# dependency builds lean.
+# Compatibility entry point for the RSSN Bazel FFI targets.
 set -euo pipefail
 
 rssn_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -10,6 +9,7 @@ package=false
 dist_name=""
 dist_dir="$rssn_root/dist"
 version=""
+llvm_overlay=false
 cargo_args=()
 
 while (($# > 0)); do
@@ -24,6 +24,10 @@ while (($# > 0)); do
             ;;
         --package)
             package=true
+            shift
+            ;;
+        --llvm-overlay)
+            llvm_overlay=true
             shift
             ;;
         --dist-name)
@@ -46,94 +50,43 @@ while (($# > 0)); do
     esac
 done
 
-cmd=(
-    cargo rustc
-    --manifest-path "$rssn_root/Cargo.toml"
-    --lib
-    --profile "$profile"
-    --crate-type staticlib,cdylib
-)
-if [[ -n "$target" ]]; then
-    cmd+=(--target "$target")
-fi
-if ((${#cargo_args[@]} > 0)); then
-    cmd+=("${cargo_args[@]}")
-fi
+bazel_executable=$(command -v bazel || command -v bazelisk) || {
+    printf 'Install Bazel or Bazelisk to build FFI libraries.\n' >&2
+    exit 2
+}
+bazel_flags=()
+for variable in RSSN_TARGET_ENV RUSTC CARGO RSSN_LLVM_CONFIG RSSN_LLVM_IMPORT_LIBRARY; do
+    if [[ -n "${!variable:-}" ]]; then bazel_flags+=("--repo_env=$variable=${!variable}"); fi
+done
+if [[ -n "$target" ]]; then bazel_flags+=("--define=rust_target=$target"); fi
+if [[ "$dist_dir" != /* ]]; then dist_dir="$PWD/$dist_dir"; fi
+cd "$rssn_root"
 
-"${cmd[@]}"
-
-if [[ "$package" != true ]]; then
-    exit 0
-fi
-
+dist_flags=(--dist-dir "$dist_dir")
+if [[ -n "$dist_name" ]]; then dist_flags+=(--dist-name "$dist_name"); fi
+if [[ -n "$version" ]]; then dist_flags+=(--version "$version"); fi
 case "$profile" in
-    dev|test) artifact_profile=debug ;;
-    bench) artifact_profile=release ;;
-    *) artifact_profile="$profile" ;;
+    ffi|release)
+        for arg in "${cargo_args[@]}"; do
+            case "$arg" in
+                --locked|--all-features) ;;
+                *) printf 'Unsupported release Cargo argument %s.\n' "$arg" >&2; exit 2 ;;
+            esac
+        done
+        if [[ "$package" == true ]]; then
+            archive_target=//:package_ffi
+            if [[ "$llvm_overlay" == true ]]; then archive_target=//:package_ffi_llvm; fi
+            exec "$bazel_executable" run "${bazel_flags[@]}" "$archive_target" -- "${dist_flags[@]}"
+        fi
+        exec "$bazel_executable" build "${bazel_flags[@]}" //:ffi_distribution
+        ;;
+    dev|test)
+        if [[ "$llvm_overlay" == true ]]; then
+            printf 'The LLVM option requires profile ffi or release.\n' >&2
+            exit 2
+        fi
+        if [[ "$package" == true ]]; then dist_flags+=(--package); fi
+        exec "$bazel_executable" run "${bazel_flags[@]}" //:ffi_legacy_dev -- --profile "$profile" "${dist_flags[@]}" "${cargo_args[@]}"
+        ;;
+    *) printf 'Use profile ffi, release, dev, or test.\n' >&2; exit 2 ;;
 esac
-artifact_root="${CARGO_TARGET_DIR:-$rssn_root/target}"
-if [[ -n "$target" ]]; then
-    artifact_dir="$artifact_root/$target/$artifact_profile"
-else
-    artifact_dir="$artifact_root/$artifact_profile"
-fi
-
-if [[ -z "$dist_name" ]]; then
-    if [[ -z "$version" ]]; then
-        version="$(sed -n '/^\[package\]/,/^\[/{s/^version = "\(.*\)"$/\1/p}' "$rssn_root/Cargo.toml" | head -n1)"
-    fi
-    target_label="${target:-host}"
-    dist_name="rssn-${version:-0.0.0}-${target_label}"
-fi
-
-stage_dir="$dist_dir/$dist_name"
-rm -rf "$stage_dir"
-mkdir -p "$stage_dir"
-
-copied=0
-for lib in librssn.a librssn.so librssn.dylib rssn.dll rssn.dll.lib rssn.lib; do
-    if [[ -f "$artifact_dir/$lib" ]]; then
-        cp "$artifact_dir/$lib" "$stage_dir/"
-        copied=$((copied + 1))
-    fi
-done
-
-if ((copied == 0)); then
-    echo "error: no FFI library artifacts found in $artifact_dir" >&2
-    exit 1
-fi
-
-for doc in rssn.h rssn.hpp LICENSE ARCHITECTURE.md \
-    ATTRIBUTIONS.md CHANGELOG.md CODE_OF_CONDUCT.md CONTRIBUTING.md SECURITY.md; do
-    cp "$rssn_root/$doc" "$stage_dir/"
-done
-cp "$rssn_root"/scripts/ffi-package/README*.md "$stage_dir/"
-mkdir -p "$stage_dir/docs" "$stage_dir/examples/c"
-cp "$rssn_root"/docs/*.md "$stage_dir/docs/"
-cp "$rssn_root"/examples/README.md "$rssn_root"/examples/*.rs "$stage_dir/examples/"
-cp "$rssn_root"/examples/c/*.c "$stage_dir/examples/c/"
-
-# Source links in the shared guides refer to files outside the C archive.
-source_ref=v0.3
-if [[ -e "$rssn_root/.git" ]] && revision=$(git -C "$rssn_root" rev-parse --verify HEAD 2>/dev/null); then
-    source_ref="$revision"
-fi
-source_repository=https://github.com/Apich-Organization/rssn
-for doc in "$stage_dir"/*.md "$stage_dir"/docs/*.md "$stage_dir"/examples/*.md; do
-    sed -E \
-        -e "s#@RSSN_SOURCE@#$source_repository/tree/$source_ref#g" \
-        -e "s#(\]\()(\.\./)?((src|tools)/[^[:space:])]+)#\1$source_repository/blob/$source_ref/\3#g" \
-        -e "s~\]\(README\.md#testing\)~]($source_repository/blob/$source_ref/README.md#testing)~g" \
-        "$doc" > "$doc.rendered"
-    mv "$doc.rendered" "$doc"
-done
-
-(
-    cd "$dist_dir"
-    tar -czf "${dist_name}.tar.gz" "$dist_name"
-    if command -v sha256sum >/dev/null 2>&1; then
-        sha256sum "${dist_name}.tar.gz" > "${dist_name}.tar.gz.sha256"
-    else
-        shasum -a 256 "${dist_name}.tar.gz" > "${dist_name}.tar.gz.sha256"
-    fi
-)
