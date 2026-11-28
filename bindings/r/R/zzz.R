@@ -73,7 +73,8 @@ rssn_library_candidates <- function() {
         if (file.exists(file.path(root, "rssn.h"))) {
             candidates <- c(candidates, root)
             if (file.exists(file.path(root, "MODULE.bazel"))) {
-                targets <- c("ffi_distribution", "ffi", "ffi_distribution_portable", "ffi_dev")
+                targets <- c("ffi_distribution", "ffi", "ffi_distribution_portable",
+                             "ffi_dev", "ffi_distribution_dev")
                 candidates <- c(candidates, file.path(root, "bazel-bin", targets, "ffi"))
             }
         }

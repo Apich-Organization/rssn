@@ -2,11 +2,11 @@
 #
 # The client is two headers plus the generated operator facade; it links against
 # the rssn C library, which the repository builds with
-# `bash scripts/build_ffi.sh`.
+# `bazel build //:ffi_distribution`.
 #
 #   cmake -S bindings/cpp -B build/cpp \
 #         -DRSSN_ROOT=<repo> \
-#         -DRSSN_LIBRARY=<repo>/target/ffi/librssn.a
+#         -DRSSN_LIBRARY=<repo>/bazel-bin/ffi_distribution/ffi/librssn.a
 #   cmake --build build/cpp
 #   ctest --test-dir build/cpp --output-on-failure
 #
@@ -58,7 +58,7 @@ if(NOT RSSN_LIBRARY)
     else()
         list(APPEND rssn_search "${RSSN_ROOT}")
         if(EXISTS "${RSSN_ROOT}/MODULE.bazel")
-            foreach(target ffi_distribution ffi ffi_distribution_portable ffi_dev ffi_static ffi_static_dev)
+            foreach(target ffi_distribution ffi ffi_distribution_portable ffi_dev ffi_distribution_dev ffi_static ffi_static_dev)
                 list(APPEND rssn_search "${RSSN_ROOT}/bazel-bin/${target}/ffi")
             endforeach()
         endif()
@@ -85,7 +85,7 @@ if(RSSN_LIBRARY)
 endif()
 if(NOT RSSN_LIBRARY OR NOT EXISTS "${RSSN_LIBRARY}" OR IS_DIRECTORY "${RSSN_LIBRARY}")
     message(FATAL_ERROR
-        "RSSN library for this C++ toolchain not found. Build it with scripts/build_ffi.sh, "
+        "RSSN library for this C++ toolchain not found. Build it with bazel build //:ffi_dev, "
         "set RSSN_LIB to the shared library or its directory, or pass -DRSSN_LIBRARY=<link library>.")
 endif()
 message(STATUS "RSSN link library: ${RSSN_LIBRARY}")

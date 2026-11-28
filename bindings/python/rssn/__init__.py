@@ -4,7 +4,7 @@ rssn is a computer algebra system, a set of numerical kernels and a physics
 simulation engine behind one small API. This package binds its C ABI
 (`rssn.h`), so it needs a shared library: set `RSSN_LIB` to `rssn.dll` /
 `librssn.so` / `librssn.dylib`, or build one in a source checkout with
-`bash scripts/build_ffi.sh`.
+`bazel build //:ffi_dev`.
 
     >>> import rssn
     >>> s = rssn.Session()

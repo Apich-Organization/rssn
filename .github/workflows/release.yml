@@ -242,7 +242,11 @@ jobs:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
       - name: System dependencies
         run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
+      - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
+        with:
+          bazelisk-cache: true
+          repository-cache: true
       - name: Publish
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish --locked
+        run: bazel run //:publish_crate

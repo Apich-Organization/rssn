@@ -38,7 +38,8 @@ function _candidate_paths()
     if here == joinpath(root, "bindings", "julia", "src") && isfile(joinpath(root, "rssn.h"))
         push!(paths, joinpath(root, libname()))
         if isfile(joinpath(root, "MODULE.bazel"))
-            for target in ("ffi_distribution", "ffi", "ffi_distribution_portable", "ffi_dev")
+            for target in ("ffi_distribution", "ffi", "ffi_distribution_portable",
+                           "ffi_dev", "ffi_distribution_dev")
                 push!(paths, joinpath(root, "bazel-bin", target, "ffi", libname()))
             end
         end
@@ -79,7 +80,7 @@ function libpath()
             if isempty(_LIB[])
                 isempty(requested) || error("cannot load the RSSN shared library at $(repr(requested))")
                 error("cannot load the RSSN shared library. Set RSSN_LIB to the library file or its " *
-                      "directory, or build it with `bash scripts/build_ffi.sh`.")
+                      "directory, or build it with `bazel build //:ffi_dev`.")
             end
         end
         return _LIB[]

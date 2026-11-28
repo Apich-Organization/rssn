@@ -10,12 +10,18 @@
 | --- | --- |
 | `bazel build //:rustlib` | 开发用 Rust 库 |
 | `bazel run //:check` | 工作区类型检查，省去测试可执行文件的链接 |
+| `bazel test //:fmt_test` / `bazel run //:fmt` | 检查或格式化 Rust 源码，使用 nightly rustfmt |
+| `bazel test //:docs_test` | 检查文档，再构建示例并执行功能示例 |
+| `bazel run //:example -- quickstart` | 运行 Rust 示例，可用 `--profile` 选择配置 |
+| `bazel run //:benchmark -- engine -- polynomials` | 运行指定基准并向其传递参数 |
 | `bazel test //:test` | 默认 Rust 测试和生成契约检查 |
 | `bazel test //:rust_minimal_test` | 关闭默认特性后运行 Rust 测试 |
 | `bazel test //:integration_test` | Rust 全特性、契约、头文件、见证重放及四语言绑定测试 |
 | `bazel test //:clippy_test` | 对全特性工作区的全部 Rust 目标执行严格 Clippy |
 | `bazel test //:ffi_native_clients_test` | 运行原生 C、C++ 客户端测试，Linux 使用静态库，macOS 和 Windows 使用动态库 |
 | `bazel test //:rust_all_features_test` | 全特性 Rust 测试，包括构建机可执行的 GPU 测试 |
+| `bazel test --define=rssn_bounded_tests=1 //:rust_all_features_test` | 逐个运行 RSSN 集成测试程序，运行下一批前回收已生成的测试文件 |
+| `bazel test //:rust_all_features_test --test_arg=--batches=4` | 每批运行四个集成测试程序并回收其缓存空间，仍执行全量测试 |
 | `bazel test //:rust_ignored_test //:witness_test` | 耗时数值回归和已签入见证表的重放 |
 | `bazel test //:bindings_check_test //:bindings_test` | 针对同一个全特性 cdylib 检查 API 以及 Python、Julia、R、C++ 绑定 |
 | `bazel run //:bindings_from_library -- --library /path/to/librssn.so` | 校验生成的绑定并测试已有 cdylib |
@@ -27,6 +33,7 @@
 | `bazel test //:headers_check_test` | 校验生成的 C 和 C++ 头文件 |
 | `bazel run //:refresh_contracts` | 刷新本机接口契约、绑定和编解码器 |
 | `bazel run //:refresh_bindings` | 基于新内核清单刷新语言绑定接口 |
+| `bazel run //:refresh_bindings_from_manifest -- --manifest manifest.json` | 用已链接的 RSSN 产物清单刷新各语言接口 |
 | `bazel run //:refresh_witness` | 采集测试轨迹并更新 `signatures.witnessed.json` |
 
 绑定集成测试使用带 NumPy 的 Python、Julia、带开发头文件的 R、CMake 和 C++ 编译器。R 包安装在构建缓存中，所有语言都使用同一个指定的库文件。加上 `--config=release` 可测试优化后的 cdylib。只需全特性开发版动态库时，可运行 `bazel build //:ffi_dev`。
@@ -40,7 +47,9 @@ bazel build //:ffi_distribution
 bazel run //:package_ffi -- --dist-dir dist
 ```
 
-`//:ffi_distribution` 在一次 rustc 调用中生成静态库与动态库。产物位于 `bazel-bin/ffi_distribution/ffi/`。默认使用全部 Cargo 特性并加载 LLVM 插件。`scripts/build_ffi.sh` 与 `scripts/build_ffi.ps1` 的分发入口转发到这些目标。归档包含库、生成的头文件、示例和文档，并附有 SHA-256 校验文件。
+`//:ffi_distribution` 在一次 rustc 调用中生成静态库与动态库。产物位于 `bazel-bin/ffi_distribution/ffi/`。默认使用全部 Cargo 特性并加载 LLVM 插件。归档包含库、生成的头文件、示例和文档，并附有 SHA-256 校验文件。
+
+开发时用 `bazel build //:ffi_distribution_dev` 在 `bazel-bin/ffi_distribution_dev/ffi/` 生成两种库，或用 `bazel run //:package_ffi_dev -- --dist-dir dist` 将开发版库和生成的头文件一起打包。默认归档名以 `-dev.tar.gz` 结尾。
 
 分发构建默认使用 O3、栈展开、通用 CPU 参数、fat LTO 和单 CGU。i686 目标使用 rustc 提供的 SSE2 基线。Bazel 依赖 `//:release_pass_gate` 先运行发布版 LLVM 探针，再构建两种库。`//:release_ffi` 打包后解包并运行 C、C++ 和 Python 客户端测试，通过后才把归档写入分发目录。检查已有归档可用 `bazel run //:ffi_package_smoke -- --archive /path/to/rssn.tar.gz`。
 
@@ -57,7 +66,7 @@ bazel build --repo_env=RSSN_LLVM_CONFIG=/path/to/llvm-config //:ffi //:ffi_stati
 bazel run --repo_env=RSSN_LLVM_CONFIG=/path/to/llvm-config //:release_ffi -- --dist-dir dist
 ```
 
-`//:ffi` 构建动态库和适用平台的导入库。`//:ffi_static` 构建静态库。`//:ffi_distribution_llvm` 是 `//:ffi_distribution` 的兼容别名。`//:package_ffi_llvm` 保留归档名的 `-llvm` 后缀。`//:package_ffi_portable` 可显式构建无插件的对照包。插件是 Rust action 的声明输入，经 `-Zllvm-plugins` 传给目标 rustc。单独输出的 Rust 库关闭 LTO，使插件直接在其 O3 流水线运行。各 pass 根据目标平台和函数选择是否应用。
+`//:ffi` 构建动态库和适用平台的导入库。`//:ffi_static` 构建静态库。`//:package_ffi_portable` 可显式构建无插件的对照包。插件是 Rust action 的声明输入，经 `-Zllvm-plugins` 传给目标 rustc。单独输出的 Rust 库关闭 LTO，使插件直接在其 O3 流水线运行。各 pass 根据目标平台和函数选择是否应用。
 
 为 Windows MSVC、Linux GNU 或 musl、FreeBSD 目标构建 FFI 分发包时，可用 `--define=rssn_llvm_standalone=1` 让 SDK 的 `opt` 在 LTO 后的 bitcode 上运行插件。Windows 构建机使用匹配 SDK 的 LLVM 导入库。Bazel 继续启用全特性、fat LTO 和单 CGU，通过 `llc` 生成替换对象，最后用 Cargo 原有链接参数调用 rustc。ELF 路线生成位置无关对象以构建共享库。给 `//:release_pass_test` 传入同一参数可检查共享库、静态库、适用平台的导入库以及 Cargo 依赖跟踪。
 

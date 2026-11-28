@@ -5,7 +5,7 @@
 Bazel builds release archives and runs Rust, binding and generator workflows.
 The [RSSN Bazel guide](BAZEL.md) lists the targets and toolchain settings.
 
-Ordinary `cargo build` and downstream Rust builds use the Rust library (`rlib`).
+`bazel build //:rustlib` builds the Rust library (`rlib`) used by downstream crates.
 `cargo check` emits Rust metadata for type checking. Build the C static and
 shared libraries explicitly when preparing C artifacts.
 
@@ -24,14 +24,16 @@ wgpu. It uses a generic target CPU and unwind semantics so guarded C entries
 can return `RssnStatus::Panic`. FFT planning can still select CPU instructions
 at runtime. C linker flags vary by platform.
 
-Run `bazel run //:package_ffi` or `bash scripts/build_ffi.sh --package`.
-On Windows, use `scripts/build_ffi.ps1 -Package`. The archive contains the
-libraries, generated headers, examples and bilingual guides, with a companion
-SHA-256 file. The release uses all features, fat LTO and the LLVM optimizer.
-Configure the host's matching LLVM SDK before building. Set `RSSN_FFI_PROFILE=dev`
-to stage local development libraries under `target/debug` through Bazel.
-Use `bazel run //:release_ffi` to run the packaged client tests before publishing.
-The `--llvm-overlay` and `-LlvmOverlay` wrapper flags retain the `-llvm` archive suffix.
+Run `bazel run //:release_ffi` to package the release and test the packaged
+clients before publishing. The archive contains the libraries, generated
+headers, examples and bilingual guides, with a companion SHA-256 file.
+The release uses all features, fat LTO and the LLVM optimizer. Configure the
+host's matching LLVM SDK before building.
+
+For development, `bazel build //:ffi_distribution_dev` produces both libraries
+under `bazel-bin/ffi_distribution_dev/ffi/`.
+`bazel run //:package_ffi_dev` packages the development libraries with generated
+headers and adds a `-dev` suffix to the default archive name.
 
 The checkout configures `target-cpu=native` for direct Cargo development builds.
 The Bazel `//:refresh_headers` target invokes cbindgen independently of the
@@ -51,9 +53,8 @@ alongside the code that uses them.
 `signatures.witnessed.json` (the signatures mined from the test corpus, see
 [KERNEL.md](KERNEL.md)) is required in exactly the same way: the build fails with a
 message naming the file when it is missing, so two builds of the same sources
-cannot produce different manifests. Collect a fresh test trace with
-`RSSN_SORT_TRACE=sorts.tsv cargo test --lib`, then regenerate the table with
-`cargo run --profile tools --bin signature-mine -- sorts.tsv`. Operators without
+cannot produce different manifests. Run `bazel run //:refresh_witness` to
+collect a fresh test trace and regenerate the table. Operators without
 a witness keep their declared, derived, or overlay signatures.
 
 Build metadata honors `SOURCE_DATE_EPOCH`, `VERGEN_IDEMPOTENT`, and explicit
@@ -73,8 +74,8 @@ toolchain and worker count for both revisions. Save a baseline with the first
 command on the earlier revision. Run the second on the revised kernels.
 
 ```sh
-RAYON_NUM_THREADS=4 cargo bench --locked --bench engine -- polynomials --save-baseline before
-RAYON_NUM_THREADS=4 cargo bench --locked --bench engine -- polynomials --baseline before
+RAYON_NUM_THREADS=4 bazel run //:benchmark -- engine -- polynomials --save-baseline before
+RAYON_NUM_THREADS=4 bazel run //:benchmark -- engine -- polynomials --baseline before
 ```
 
 Use the `fixed_prefix_scan` group to compare one-block scans with fixed

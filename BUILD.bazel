@@ -67,6 +67,11 @@ config_setting(
     values = {"compilation_mode": "opt"},
 )
 
+config_setting(
+    name = "bounded_rust_tests",
+    define_values = {"rssn_bounded_tests": "1"},
+)
+
 cargo_artifact(
     name = "llvm_optimizer",
     workflow = "llvm-build",
@@ -101,7 +106,7 @@ cargo_artifact(
     cargo_artifact(
         name = name,
         workflow = "ffi",
-        arguments = [kind],
+        arguments = [kind] + (["dev"] if name == "ffi_distribution_dev" else []),
         rssn = ":sources",
         outputs = ["ffi"],
         directories = ["ffi"],
@@ -114,6 +119,7 @@ cargo_artifact(
         ("ffi_static", "static", ":llvm_optimizer"),
         ("ffi_distribution", "both", ":llvm_optimizer"),
         ("ffi_distribution_portable", "both", None),
+        ("ffi_distribution_dev", "both", None),
         ("ffi_dev", "shared", select({":optimized": ":llvm_optimizer", "//conditions:default": None})),
         ("ffi_static_dev", "static", select({":optimized": ":llvm_optimizer", "//conditions:default": None})),
     ]
@@ -126,11 +132,6 @@ cargo_artifact(
     outputs = ["manifest.json"],
     plugin = select({":optimized": ":llvm_optimizer", "//conditions:default": None}),
     tags = ["manual"],
-)
-
-alias(
-    name = "ffi_distribution_llvm",
-    actual = ":ffi_distribution",
 )
 
 scientific_test(
@@ -158,7 +159,15 @@ scientific_test(
     for name, arguments, tags in [
         ("rust_tests", ["--workspace"], []),
         ("rust_minimal_test", ["--workspace", "--no-default-features"], ["manual"]),
-        ("rust_all_features_test", ["--workspace", "--all-features"], ["manual", "gpu"]),
+        (
+            "rust_all_features_test",
+            ["--workspace", "--all-features"] + select({
+                ":bounded_rust_tests": ["--batches=2"],
+                "//conditions:default": [],
+            }),
+            ["manual", "gpu"],
+        ),
+        ("modular_context_test", ["--all-features", "--test", "modular_context_abi"], ["manual"]),
         ("rust_ignored_test", ["--workspace", "--all-features", "--", "--ignored", "--test-threads=1"], ["manual"]),
     ]
 ]
@@ -173,6 +182,10 @@ scientific_test(
             "bindings-check": "bindings",
             "generated-sources-check": "generated-sources",
             "headers-check": "headers",
+            "fmt-check": "format",
+            "docs": "docs",
+            "rustdoc": "docs",
+            "rust-examples": "docs",
         }.get(workflow, "llvm-tests" if workflow.startswith("llvm-test") else ""),
         data = data,
         tags = tags + ["local"],
@@ -181,6 +194,10 @@ scientific_test(
     )
     for name, workflow, sources, data, tags in [
         ("clippy_test", "clippy", ":sources", [], ["manual"]),
+        ("fmt_test", "fmt-check", ":sources", [], ["manual"]),
+        ("docs_test", "docs", ":sources", [], ["manual"]),
+        ("rustdoc_test", "rustdoc", ":sources", [], ["manual"]),
+        ("rust_examples_test", "rust-examples", ":sources", [], ["manual"]),
         ("contracts_test", "contracts", ":sources", [], []),
         ("generated_sources_check_test", "generated-sources-check", ":sources", [], ["manual"]),
         ("headers_check_test", "headers-check", ":sources", [], ["manual"]),
@@ -211,9 +228,36 @@ test_suite(
 )
 
 scientific_run(
+    name = "refresh_bindings_from_manifest",
+    workflow = "refresh-bindings-from-manifest",
+    rssn = ":sources",
+    scope = "bindings",
+    tags = ["manual"],
+)
+
+scientific_run(
     name = "check",
     workflow = "check",
     rssn = ":sources",
+)
+
+[
+    scientific_run(
+        name = name,
+        workflow = name,
+        rssn = ":sources",
+        scope = "format" if name == "fmt" else "",
+        tags = ["manual"],
+    )
+    for name in ("fmt", "example", "benchmark", "signature_audit", "doc_audit")
+]
+
+scientific_run(
+    name = "publish_crate",
+    workflow = "publish-crate",
+    rssn = ":sources",
+    scope = "crate-release",
+    tags = ["manual"],
 )
 
 cargo_artifact(
@@ -239,7 +283,7 @@ cargo_artifact(
     )
     for name, distribution, arguments in [
         ("package_ffi", ":ffi_distribution", []),
-        ("package_ffi_llvm", ":ffi_distribution", ["llvm"]),
+        ("package_ffi_dev", ":ffi_distribution_dev", ["dev"]),
         ("package_ffi_portable", ":ffi_distribution_portable", []),
         ("release_ffi", ":ffi_distribution", ["validate"]),
     ]
@@ -257,16 +301,8 @@ cargo_artifact(
         ("package_ffi_from_binaries", "package-ffi-from-binaries"),
         ("ffi_native_clients_from_library", "ffi-native-clients-from-library"),
         ("bindings_from_library", "bindings-from-library"),
-        ("bindings_legacy", "bindings-legacy"),
     ]
 ]
-
-scientific_run(
-    name = "ffi_legacy_dev",
-    workflow = "ffi-legacy-dev",
-    rssn = ":sources",
-    tags = ["manual"],
-)
 
 scientific_run(
     name = "ffi_package_smoke",

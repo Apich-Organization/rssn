@@ -28,12 +28,8 @@ The client needs `rssn.h` on the include path (the repository root) and the C
 library:
 
 ```sh
-bash scripts/build_ffi.sh --profile dev
-export RSSN_LIB="$PWD/target/debug"
-
-cmake -S bindings/cpp -B build/cpp
-cmake --build build/cpp --config Release
-ctest --test-dir build/cpp -C Release --output-on-failure
+bazel build //:ffi_dev
+bazel test //:ffi_native_clients_test
 ```
 
 Or by hand:

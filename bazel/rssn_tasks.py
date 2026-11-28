@@ -22,6 +22,45 @@ GENERATED = [
 ]
 
 
+def format_sources(build, check):
+    command = ["rustup", "run", "nightly", "cargo", "fmt", "--all"]
+    if check:
+        build.run([*command, "--check"])
+    else:
+        with build.refresh(("rssn/**/*.rs",)):
+            build.run(command)
+
+
+def run_cargo_target(build, workflow, args):
+    parser = argparse.ArgumentParser(description=f"Run an RSSN {workflow}")
+    parser.add_argument("name")
+    parser.add_argument("--profile")
+    # The inner separator passes application or benchmark flags through as-is.
+    separator = args.index("--") if "--" in args else len(args)
+    options, target_args = parser.parse_known_args(args[:separator])
+    target_args.extend(args[separator + 1:])
+    build.assert_runnable()
+    command = ["run", "--example"] if workflow == "example" else ["bench", "--bench"]
+    profile = ["--profile", options.profile] if options.profile else []
+    build.cargo([*command, options.name, *profile, *(["--", *target_args] if target_args else [])])
+
+
+def rustdoc(build):
+    build.python("scripts/check_doc_editions.py")
+    build.cargo(["doc", "--workspace", "--no-deps", "--all-features"])
+
+
+def rust_examples(build):
+    build.assert_native()
+    build.cargo(["build", "--examples"])
+    directory = build.cargo_output("debug") / "examples"
+    suffix = ".exe" if "windows" in build.target else ""
+    timings = {"backend_timing", "engine_timing"}
+    for source in sorted((build.root / "examples").glob("*.rs")):
+        if source.stem not in timings:
+            build.run([directory / (source.stem + suffix)])
+
+
 def generate_contracts(build, mode):
     for family in ("contracts", "structured", "bindings", "codecs"):
         build.tool("rssn-api-gen", f"--{family}-{mode}", project="rssn")
@@ -37,7 +76,7 @@ def library_names(target):
     return "librssn.so", "librssn.a", []
 
 
-def ffi(build, kind):
+def ffi(build, kind, profile=None):
     shared, static, imports = library_names(build.target)
     types, files = {
         "shared": ("cdylib", [shared, *imports]),
@@ -46,12 +85,11 @@ def ffi(build, kind):
     }[kind]
     # One rustc invocation when both C artifacts are requested. The shared-only
     # consumers never pay to assemble or copy the static archive.
-    profile = None
     overrides = None
     if kind == "both":
-        profile = "release" if build.release else "ffi"
+        profile = profile or ("release" if build.release else "ffi")
         flags = ["--profile", profile, "--all-features"]
-        if not build.release:
+        if profile == "ffi":
             overrides = {
                 "CARGO_PROFILE_FFI_LTO": build.lto,
                 "CARGO_PROFILE_FFI_CODEGEN_UNITS": build.codegen_units,
@@ -61,7 +99,7 @@ def ffi(build, kind):
         flags = build.profile(["--all-features"])
     late_ffi = (build.root / "src/lib.rs", *files) if build.standalone_llvm else None
     build.cargo(["rustc", "--lib", *flags, "--crate-type", types], env=overrides, late_ffi=late_ffi)
-    build.copy_artifacts("ffi", build.cargo_output(profile), files)
+    build.copy_artifacts("ffi", build.cargo_output("debug" if profile == "dev" else profile), files)
 
 
 # Portable SDK sources and their examples. Native binaries are already
@@ -105,7 +143,7 @@ SDK_PACKAGE_FILES = (
 )
 
 
-def package_ffi(build, args, *, artifacts=None, headers=None, from_binaries=False):
+def package_ffi(build, args, *, from_binaries=False):
     parser = argparse.ArgumentParser(description="Package the Bazel-built RSSN C distribution")
     parser.add_argument("--dist-name")
     parser.add_argument("--dist-dir", type=Path, default=build.workspace / "dist")
@@ -119,14 +157,14 @@ def package_ffi(build, args, *, artifacts=None, headers=None, from_binaries=Fals
     if from_binaries:
         artifacts = (caller / options.native_dir).resolve()
         headers = [(caller / options.headers_dir / name).resolve() for name in ("rssn.h", "rssn.hpp")]
+    else:
+        artifacts, *headers = build.extra
     sources = build.root
     version = options.version or tomllib.loads((sources / "Cargo.toml").read_text(encoding="utf-8"))["package"]["version"]
-    suffix = "-llvm" if build.settings["build"] == ["llvm"] else ""
+    suffix = "-dev" if build.settings["build"] == ["dev"] else ""
     name = options.dist_name or f"rssn-{version}-{build.target}{suffix}"
     if name in (".", "..") or not re.fullmatch(r"[A-Za-z0-9_.+-]+", name):
         raise ValueError(f"invalid distribution name: {name!r}")
-    if artifacts is None:
-        artifacts, *headers = build.extra
     shared, static, imports = library_names(build.target)
     entries = {library: artifacts / library for library in [shared, static, *imports]}
     entries.update({header.name: header for header in headers})
@@ -206,38 +244,6 @@ def verify_ffi_package(build, archive):
 
 def test_ffi_clients(build, directory, linkage):
     verify_ffi_clients(build, f"-DRSSN_LIBRARY_DIR={directory}", f"-DRSSN_LINKAGE={linkage}")
-
-
-def legacy_ffi_dev(build, args):
-    parser = argparse.ArgumentParser(description="Build the development FFI package for legacy clients")
-    parser.add_argument("--profile", choices=("dev", "test"), required=True)
-    parser.add_argument("--package", action="store_true")
-    parser.add_argument("--dist-dir")
-    parser.add_argument("--dist-name")
-    parser.add_argument("--version")
-    options, cargo_args = parser.parse_known_args(args)
-    build.cargo(["rustc", "--lib", "--profile", options.profile,
-                 "--crate-type", "staticlib,cdylib", *cargo_args])
-    source = build.cargo_output("debug")
-    root = build.workspace / Path(build.env.get("CARGO_TARGET_DIR", "target"))
-    if build.settings["target"]:
-        root /= build.target
-    root /= "debug"
-    root.mkdir(parents=True, exist_ok=True)
-    shared, static, imports = library_names(build.target)
-    names = (shared, static, *imports)
-    with tempfile.TemporaryDirectory(dir=root) as temp:
-        for name in names:
-            shutil.copy2(source / name, Path(temp) / name)
-        for name in names:
-            (Path(temp) / name).replace(root / name)
-    if options.package:
-        package_args = []
-        for name in ("dist_dir", "dist_name", "version"):
-            if value := getattr(options, name):
-                package_args.extend(("--" + name.replace("_", "-"), value))
-        package_ffi(build, package_args, artifacts=root,
-                    headers=[build.root / "rssn.h", build.root / "rssn.hpp"])
 
 
 def plugin_build(build):
@@ -363,8 +369,8 @@ def release_pass_test(build):
             build.cargo(["test", "--release"], cwd=root)
 
 
-def binding_suites(build, root, env, *, require_all, has_r):
-    print(f"library: {env.get('RSSN_LIB') or 'automatic discovery'}", flush=True)
+def binding_suites(build, root, env):
+    print(f"library: {env['RSSN_LIB']}", flush=True)
     python_root = root / "bindings/python"
     python = build.config["python"]
     julia = ["julia", "--project=bindings/julia"]
@@ -378,31 +384,25 @@ def binding_suites(build, root, env, *, require_all, has_r):
     build.python("bindings/examples/python/exact_tensor.py", cwd=root, env={**env, "PYTHONPATH": python_path})
     build.run([*julia, "bindings/examples/julia/exact_tensor.jl"], cwd=root, env=env)
 
-    readmes = ["python", "julia"]
-    if has_r:
-        build.run(["Rscript", "bindings/tests/run_conformance.R"], cwd=root, env=env)
-        with tempfile.TemporaryDirectory(dir=build.scratch) as temporary:
-            names_file = Path(temporary) / "operators.txt"
-            with names_file.open("wb") as output:
-                build.run([
-                    python, "-c", 'import rssn; print("\\n".join(op["name"] for op in rssn.manifest()["ops"]))',
-                ], cwd=python_root, env=env, stdout=output)
-            build.run(["Rscript", "bindings/r/tests/test-rssn.R"], cwd=root,
-                      env={**env, "RSSN_CONFORMANCE_OP_NAMES": str(names_file)})
-        for script in ("bindings/r/tests/test-json.R", "bindings/r/tests/test-surface.R",
-                       "bindings/examples/r/exact_tensor.R"):
-            build.run(["Rscript", script], cwd=root, env=env)
-        readmes.append("r")
-    else:
-        print("R suite skipped. Install R and the rssn package to include it.", flush=True)
+    build.run(["Rscript", "bindings/tests/run_conformance.R"], cwd=root, env=env)
+    with tempfile.TemporaryDirectory(dir=build.scratch) as temporary:
+        names_file = Path(temporary) / "operators.txt"
+        with names_file.open("wb") as output:
+            build.run([
+                python, "-c", r'import rssn; print("\n".join(op["name"] for op in rssn.manifest()["ops"]))',
+            ], cwd=python_root, env=env, stdout=output)
+        build.run(["Rscript", "bindings/r/tests/test-rssn.R"], cwd=root,
+                  env={**env, "RSSN_CONFORMANCE_OP_NAMES": str(names_file)})
+    for script in ("bindings/r/tests/test-json.R", "bindings/r/tests/test-surface.R",
+                   "bindings/examples/r/exact_tensor.R"):
+        build.run(["Rscript", script], cwd=root, env=env)
 
-    cmake_root = build.state / ("cpp-release" if require_all else "cpp-local")
-    cmake_options = ["-U", "RSSN_LIBRARY"] if require_all else []
-    build.run(["cmake", "-S", "bindings/cpp", "-B", cmake_root, *cmake_options], cwd=root, env=env)
+    cmake_root = build.state / "cpp-release"
+    build.run(["cmake", "-S", "bindings/cpp", "-B", cmake_root, "-U", "RSSN_LIBRARY"], cwd=root, env=env)
     build.run(["cmake", "--build", cmake_root, "--config", "Release"], cwd=root, env=env)
     build.run(["ctest", "--test-dir", cmake_root, "-C", "Release", "--output-on-failure"], cwd=root, env=env)
-    build.python("bindings/tests/run_readme_examples.py", *readmes, cwd=root, env=env)
-    print("all four language suites passed" if has_r else "Python, Julia and C++ suites passed (R skipped)")
+    build.python("bindings/tests/run_readme_examples.py", "python", "julia", "r", cwd=root, env=env)
+    print("all four language suites passed")
 
 
 def bindings(build, check_only, library=None):
@@ -425,26 +425,7 @@ def bindings(build, check_only, library=None):
         r_source = Path(temporary) / "rssn"
         shutil.copytree(build.root / "bindings/r", r_source)
         build.run(["R", "CMD", "INSTALL", f"--library={r_library}", r_source], env=env)
-    binding_suites(build, build.root, env, require_all=True, has_r=True)
-
-
-def legacy_bindings(build, args):
-    build.assert_native()
-    parser = argparse.ArgumentParser(description="Run binding suites from a source checkout")
-    parser.add_argument("--require-all", action="store_true")
-    options = parser.parse_args(args)
-    root = build.checkout("rssn")
-    library = build.env.get("RSSN_LIB")
-    if options.require_all and (not library or not (root / library).is_file()):
-        parser.error("set RSSN_LIB to the shared library file for all four bindings")
-    env = {"RSSN_LIB": str(root / library)} if library and (root / library).exists() else {}
-    rscript = shutil.which("Rscript", path=build.env.get("PATH"))
-    has_r = bool(rscript and build.run([
-        rscript, "-e", 'quit(status = if (requireNamespace("rssn", quietly = TRUE)) 0L else 1L)',
-    ], cwd=root, env=env, check=False).returncode == 0)
-    if options.require_all and not has_r:
-        parser.error("install R and the rssn package from bindings/r for full conformance")
-    binding_suites(build, root, env, require_all=options.require_all, has_r=has_r)
+    binding_suites(build, build.root, env)
 
 
 def manifest(build):
@@ -454,9 +435,18 @@ def manifest(build):
     path.write_bytes(result.stdout)
 
 
-def refresh_bindings(build, args):
+def refresh_bindings(build, args, *, from_manifest=False):
     build.assert_native()
-    (manifest_file,) = build.extra
+    parser = argparse.ArgumentParser(description="Regenerate the RSSN language bindings")
+    parser.add_argument("--check", action="store_true")
+    if from_manifest:
+        parser.add_argument("--manifest", required=True, type=Path)
+    options = parser.parse_args(args)
+    if from_manifest:
+        caller = Path(build.env.get("BUILD_WORKING_DIRECTORY", str(build.workspace)))
+        manifest_file = (caller / options.manifest).resolve()
+    else:
+        (manifest_file,) = build.extra
     # Binding generator chooses these output paths itself. Keep the transient
     # API description in the build mirror, and publish the generated veneers.
     patterns = [
@@ -466,11 +456,32 @@ def refresh_bindings(build, args):
     ]
     with build.refresh(patterns):
         build.python("bindings/tools/extract_api.py", "--manifest", manifest_file)
-        build.python("bindings/tools/generate.py", *args)
+        build.python("bindings/tools/generate.py", *(["--check"] if options.check else []))
 
 
 def dispatch(build, workflow, args):
-    if workflow == "llvm-build":
+    if workflow in ("fmt", "fmt-check"):
+        format_sources(build, workflow == "fmt-check")
+    elif workflow in ("example", "benchmark"):
+        run_cargo_target(build, workflow, args)
+    elif workflow in ("signature_audit", "doc_audit"):
+        build.assert_runnable()
+        tool = "signature-audit" if workflow == "signature_audit" else "doc_gen_check"
+        build.tool(tool, *args, binary=True)
+    elif workflow in ("docs", "rustdoc"):
+        rustdoc(build)
+        if workflow == "docs":
+            rust_examples(build)
+    elif workflow == "rust-examples":
+        rust_examples(build)
+    elif workflow == "publish-crate":
+        parser = argparse.ArgumentParser(description="Publish the checked-out RSSN crate")
+        parser.add_argument("--dry-run", action="store_true")
+        options = parser.parse_args(args)
+        # Cargo uses the checkout's Git metadata and package inclusion rules.
+        flags = ["--dry-run"] if options.dry_run else []
+        build.cargo(["publish", *flags], cwd=build.checkout("rssn"), target=False)
+    elif workflow == "llvm-build":
         plugin_build(build)
     elif workflow in ("llvm-test", "llvm-test-tools", "llvm-test-rustc"):
         llvm_test(build, {"llvm-test": "all", "llvm-test-tools": "ir", "llvm-test-rustc": "rustc"}[workflow])
@@ -481,7 +492,7 @@ def dispatch(build, workflow, args):
             result.parent.mkdir(parents=True, exist_ok=True)
             result.write_text("LLVM release probe passed\n", encoding="utf-8")
     elif workflow == "ffi":
-        ffi(build, build.settings["build"][0])
+        ffi(build, *build.settings["build"])
     elif workflow in ("package-ffi", "package-ffi-from-binaries"):
         package_ffi(build, args, from_binaries=workflow == "package-ffi-from-binaries")
     elif workflow == "ffi-package-smoke":
@@ -501,8 +512,6 @@ def dispatch(build, workflow, args):
         options = parser.parse_args(args)
         caller = Path(build.env.get("BUILD_WORKING_DIRECTORY", str(build.workspace)))
         test_ffi_clients(build, (caller / options.library_dir).resolve(), options.linkage)
-    elif workflow == "ffi-legacy-dev":
-        legacy_ffi_dev(build, args)
     elif workflow == "rustlib":
         # Whole-program LTO is deferred for a standalone rlib. Use the ordinary
         # O3 pipeline so this artifact already contains the plugin's machine code.
@@ -520,7 +529,7 @@ def dispatch(build, workflow, args):
         options = build.settings["build"]
         if build.release:
             options = [*build.profile(), *[option for option in options if option != "--all-features"]]
-        build.cargo(["test", *options, *args])
+        build.rust_workspace_tests(options, args)
     elif workflow == "gpu-test":
         build.assert_native()
         result = build.cargo([
@@ -540,8 +549,6 @@ def dispatch(build, workflow, args):
         build.tool("doc_gen_check", binary=True)
     elif workflow in ("bindings", "bindings-check"):
         bindings(build, workflow == "bindings-check")
-    elif workflow == "bindings-legacy":
-        legacy_bindings(build, args)
     elif workflow == "bindings-from-library":
         parser = argparse.ArgumentParser(description="Check and test bindings against an existing RSSN library")
         parser.add_argument("--library", type=Path, required=True)
@@ -565,8 +572,8 @@ def dispatch(build, workflow, args):
         else:
             with build.refresh(["rssn/rssn.h", "rssn/rssn.hpp"]):
                 build.cargo([*command, "--write"])
-    elif workflow == "refresh-bindings":
-        refresh_bindings(build, args)
+    elif workflow in ("refresh-bindings", "refresh-bindings-from-manifest"):
+        refresh_bindings(build, args, from_manifest=workflow.endswith("-from-manifest"))
     elif workflow == "witness":
         build.assert_native()
         build.cargo(["run", "--profile", "tools", "--bin", "signature-mine", "--", "--check"])

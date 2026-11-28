@@ -319,10 +319,8 @@ bazel test //:bindings_check_test //:bindings_test
 bazel run //:bindings_from_library -- --library /path/to/librssn.so
 ```
 
-`bindings/tests/run_all.sh` forwards legacy checkout invocations to Bazel.
-Without `--require-all`, it can run with Python, Julia and C++ when the R package
-is missing. In an extracted SDK, use the individual runners above with
-`RSSN_LIB` set to the shared library at the archive root.
+In an extracted SDK, run the individual clients above with `RSSN_LIB` set to
+the shared library at the archive root.
 
 The READMEs are part of the test surface: `run_readme_examples.py` extracts every
 fenced example from the four READMEs and runs it, so a workflow that stops
@@ -346,28 +344,22 @@ Pass a returned key to `call_key` to select one overload.
 ## Regenerating the generated files
 
 ```
-target/manifest.json  ──extract_api.py──▶  api/rssn_api.json  ──generate.py──▶  language facades
+manifest.json  ──extract_api.py──▶  api/rssn_api.json  ──generate.py──▶  language facades
 ```
 
 ```sh
-mkdir -p target
-cargo run --locked --bin signature-audit -- --json > target/manifest.json
-python bindings/tools/extract_api.py --manifest target/manifest.json
-python bindings/tools/generate.py       # rewrite the operator facade, units, constants
-python bindings/tools/extract_api.py --check   # exit 1 when stale
-python bindings/tools/generate.py --check      # exit 1 when stale
+bazel build //:manifest
+bazel run //:refresh_bindings
+bazel test //:bindings_check_test
 ```
 
-To regenerate from a release artifact and save the same kernel manifest for
-Aevia, point the extractor at the built shared library.
+The first command writes `bazel-bin/manifest/manifest.json`. To regenerate
+bindings using a manifest exported by a release artifact, pass that JSON file
+directly.
 
 ```sh
-python bindings/tools/extract_api.py --library /path/to/librssn.so --write-manifest target/manifest.json
-python bindings/tools/generate.py
+bazel run //:refresh_bindings_from_manifest -- --manifest /path/to/manifest.json
 ```
-
-`--output PATH` writes the binding API description to a staging location. It
-can also be combined with `--check` to compare an existing staged description.
 
 The generated files are `python/rssn/{_ops,units,constants,scenarios}.py`,
 `julia/src/{ops,base_ext,exports,units,constants,scenarios}.jl`,
@@ -461,15 +453,14 @@ These are the C ABI's limits, documented in `src/ffi/mod.rs`, not the wrappers':
 
 ## Build notes
 
-`cargo build` produces a Rust `rlib`. `bazel build //:ffi_distribution`
+`bazel build //:rustlib` produces a Rust `rlib`. `bazel build //:ffi_distribution`
 builds the static and shared libraries with all Cargo features, the LLVM
 optimizer and fat LTO under `bazel-bin/ffi_distribution/ffi`. Use
-`//:ffi_distribution_portable` for the distribution without the optimizer
-or `//:ffi_dev` for a development shared library. The compatibility script's
-`RSSN_FFI_PROFILE=dev` path invokes Bazel and copies the artifacts to
-`target/debug`, or to `target/<triple>/debug` when a target is specified.
-Set `CARGO_TARGET_DIR` to choose a different compatibility output directory.
+`//:ffi_distribution_portable` for a plugin-free distribution.
+`//:ffi_dev` builds the development shared library.
+`//:ffi_distribution_dev` builds the development shared and static libraries
+under `bazel-bin/ffi_distribution_dev/ffi`.
 
-The wrappers never call Cargo themselves. They load `rssn.dll` / `librssn.so` /
+The language bindings load `rssn.dll` / `librssn.so` /
 `librssn.dylib` from `RSSN_LIB`, from `rssn/_lib/`, from a checkout's build
 directories, or from the platform loader path.

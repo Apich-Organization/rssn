@@ -128,7 +128,8 @@ def _candidate_dirs() -> list[str]:
         dirs.append(_REPO)
         if os.path.isfile(os.path.join(_REPO, "MODULE.bazel")):
             dirs.extend(os.path.join(_REPO, "bazel-bin", target, "ffi")
-                        for target in ("ffi_distribution", "ffi", "ffi_distribution_portable", "ffi_dev"))
+                        for target in ("ffi_distribution", "ffi", "ffi_distribution_portable",
+                                       "ffi_dev", "ffi_distribution_dev"))
     for profile in ("debug", "ffi", "release"):
         dirs.append(os.path.join(_REPO, "target", profile))
         dirs.append(os.path.join(_REPO, "target-bindings", profile))
@@ -312,7 +313,7 @@ def load(path: str | os.PathLike[str] | None = None) -> ctypes.CDLL:
         raise OSError(f"cannot load the RSSN shared library at {requested!r}: {last_error}") from last_error
     raise FileNotFoundError(
         "no rssn shared library found: set RSSN_LIB to the library file or its directory, "
-        "or build one with `bash scripts/build_ffi.sh`"
+        "or build one with `bazel build //:ffi_dev`"
     ) from last_error
 
 

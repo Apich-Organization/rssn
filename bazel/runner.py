@@ -319,6 +319,96 @@ class Build:
             options.append("--timings")
         return command([self.cargo_exe, subcommand, *options, *rest], cwd or (self.mirror / project if project else self.root), local, **kwargs)
 
+    def rust_workspace_tests(self, options, arguments, *, env=None):
+        # Test settings are encoded in Bazel's workflow, while --test_arg
+        # arrives separately. The bounded mode accepts either entrypoint.
+        flags = [*options, *arguments]
+        batches = [flag for flag in flags if flag.startswith("--batches=")]
+        if not batches:
+            self.cargo(["test", *flags], env=env)
+            return
+        if len(batches) != 1:
+            raise ValueError("Pass --batches once")
+        batch = batches[0]
+        flags.remove(batch)
+        self.bounded_rust_tests(flags, int(batch.removeprefix("--batches=")))
+
+    def bounded_rust_tests(self, options, batch_size):
+        """Run the full workspace with bounded test-executable storage."""
+        if options != ["--workspace", "--all-features"] or self.release:
+            raise ValueError("--batches is available on //:rust_all_features_test in the test profile")
+        if not 1 <= batch_size <= 16:
+            raise ValueError("--batches must be between 1 and 16")
+        self.need_rust()
+        graph = self.run(
+            [self.cargo_exe, "metadata", "--locked", "--no-deps", "--format-version", "1"],
+            capture_output=True, text=True, env={"RUSTC": str(self.rustc_exe)},
+        )
+        metadata = json.loads(graph.stdout)
+        members = set(metadata["workspace_members"])
+        targets = [target for package in metadata["packages"] if package["id"] in members
+                   for target in package["targets"]]
+        integration = sorted({target["name"] for target in targets
+                              if target["kind"] == ["test"] and target["test"]})
+        examples = sorted({target["name"] for target in targets if target["kind"] == ["example"]})
+        unit_binaries = sorted({target["name"] for target in targets
+                                if target["kind"] == ["bin"] and target["test"]})
+        successful = True
+        target_dir = self.target_dir.resolve()
+
+        def run(subcommand, flags, *, discard_example=False):
+            nonlocal successful
+            result = self.cargo(
+                [subcommand, *options, "--message-format=json-render-diagnostics", *flags],
+                stdout=subprocess.PIPE, text=True, check=False,
+                env={"CARGO_INCREMENTAL": "0"},
+            )
+            for line in result.stdout.splitlines():
+                try:
+                    event = json.loads(line)
+                except json.JSONDecodeError:
+                    print(line)
+                    continue
+                if not isinstance(event, dict):
+                    continue
+                if event.get("reason") == "compiler-message":
+                    if rendered := event["message"].get("rendered"):
+                        print(rendered, end="")
+                    continue
+                if event.get("reason") != "compiler-artifact":
+                    continue
+                executable = event.get("executable")
+                if not executable:
+                    continue
+                if not (event["profile"]["test"] or discard_example and event["target"]["kind"] == ["example"]):
+                    # One of the integration tests may run a normal package binary.
+                    continue
+                # The compiler can leave both its hashed output and a hard link
+                # named after the target. Remove only the exact executable inode.
+                installed = Path(executable).resolve()
+                if not installed.is_relative_to(target_dir):
+                    raise ValueError(f"Unexpected test executable outside the Bazel cache: {installed}")
+                if installed.is_file():
+                    for name in set(event["filenames"]) | {executable}:
+                        path = Path(name).resolve()
+                        if (path != installed and path.is_relative_to(target_dir)
+                                and path.exists() and path.samefile(installed)):
+                            path.unlink()
+                    installed.unlink()
+            successful = result.returncode == 0 and successful
+
+        for start in range(0, len(integration), batch_size):
+            tests = integration[start:start + batch_size]
+            run("test", ["--no-fail-fast", *[arg for name in tests for arg in ("--test", name)]])
+        run("test", ["--no-fail-fast", "--lib", *[arg for name in unit_binaries for arg in ("--bin", name)]])
+        run("test", ["--no-fail-fast", "--doc"])
+        for start in range(0, len(examples), batch_size):
+            group = examples[start:start + batch_size]
+            run("build", ["--profile", "test", *[arg for name in group for arg in ("--example", name)]],
+                discard_example=True)
+        if not successful:
+            raise subprocess.CalledProcessError(1, f"{self.project} Rust test batches")
+
     def python(self, script, *args, env=None, cwd=None):
         return command([self.config["python"], script, *args], cwd or self.root, dict(self.env, **(env or {})))
 

@@ -7,7 +7,7 @@ physics simulations behind one small API.
 
 The package binds the C ABI in `rssn.h`, so it needs a shared library: set
 `RSSN_LIB` to `rssn.dll` / `librssn.so` / `librssn.dylib`, or build one in a
-source checkout with `bash scripts/build_ffi.sh`.
+source checkout with `bazel build //:ffi_dev`.
 
 ```julia
 using RSSN

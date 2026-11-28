@@ -38,7 +38,11 @@ jobs:
         with:
           toolchain: nightly
           components: rustfmt
-      - run: cargo +nightly fmt --all --check
+      - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
+        with:
+          bazelisk-cache: true
+          repository-cache: true
+      - run: bazel test //:fmt_test
 
   clippy:
     name: clippy
@@ -196,19 +200,11 @@ jobs:
       - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
       - name: System dependencies
         run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
-      - run: python3 scripts/check_doc_editions.py
-      - run: cargo doc --locked --workspace --no-deps --all-features
-      - name: Build every Rust example and run the functional examples
-        run: |
-          cargo build --locked --examples
-          for path in examples/*.rs; do
-            example="${path##*/}"
-            example="${example%.rs}"
-            case "$example" in
-              backend_timing|engine_timing) continue ;;
-            esac
-            "target/debug/examples/$example"
-          done
+      - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
+        with:
+          bazelisk-cache: true
+          repository-cache: true
+      - run: bazel test //:docs_test
 
   ci-success:
     name: CI success

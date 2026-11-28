@@ -10,12 +10,18 @@ Use Bazel 7.7.1 through Bazelisk, Python 3.11 or later, and the Rust toolchain s
 | --- | --- |
 | `bazel build //:rustlib` | Development Rust library |
 | `bazel run //:check` | Workspace type checking without linking test binaries |
+| `bazel test //:fmt_test` / `bazel run //:fmt` | Check or format Rust sources using nightly rustfmt |
+| `bazel test //:docs_test` | Check documentation, then build and run the functional examples |
+| `bazel run //:example -- quickstart` | Run a Rust example with an optional `--profile` |
+| `bazel run //:benchmark -- engine -- polynomials` | Run the named benchmark with its arguments |
 | `bazel test //:test` | Default Rust suite and generated contracts |
 | `bazel test //:rust_minimal_test` | Rust tests with default features disabled |
 | `bazel test //:integration_test` | Rust features, contracts, headers, witness replay and all four bindings |
 | `bazel test //:clippy_test` | Strict Clippy across the full-feature workspace and all Rust targets |
 | `bazel test //:ffi_native_clients_test` | Run native C and C++ client tests with static linkage on Linux and shared linkage on macOS and Windows |
 | `bazel test //:rust_all_features_test` | Full-feature Rust tests, including the GPU tests the host can run |
+| `bazel test --define=rssn_bounded_tests=1 //:rust_all_features_test` | Run each RSSN integration binary separately and reclaim its generated executables before the next group |
+| `bazel test //:rust_all_features_test --test_arg=--batches=4` | Run the full Rust suite in groups of four integration binaries and reclaim their cache space after each group |
 | `bazel test //:rust_ignored_test //:witness_test` | Long numerical regressions and replay of the checked-in signatures |
 | `bazel test //:bindings_check_test //:bindings_test` | API and Python, Julia, R and C++ tests against the same all-feature cdylib |
 | `bazel run //:bindings_from_library -- --library /path/to/librssn.so` | Check generated bindings and exercise an existing cdylib |
@@ -27,6 +33,7 @@ Use Bazel 7.7.1 through Bazelisk, Python 3.11 or later, and the Rust toolchain s
 | `bazel test //:headers_check_test` | Check the generated C and C++ headers |
 | `bazel run //:refresh_contracts` | Refresh native contracts, bindings and codecs |
 | `bazel run //:refresh_bindings` | Refresh the language binding facades with a fresh manifest |
+| `bazel run //:refresh_bindings_from_manifest -- --manifest manifest.json` | Refresh the facades from an already linked RSSN build's manifest |
 | `bazel run //:refresh_witness` | Collect a fresh test trace and mine `signatures.witnessed.json` |
 
 The binding integration test needs Python with NumPy, Julia, R with development headers, and CMake with a C++ compiler. It installs the R package into the build state and passes the same explicit library file to every suite. Add `--config=release` to exercise the optimized cdylib. For a machine without the full language toolchain, `bazel build //:ffi_dev` supplies the all-feature development cdylib.
@@ -43,10 +50,13 @@ bazel run //:package_ffi -- --dist-dir dist
 
 `//:ffi_distribution` builds both libraries in one rustc invocation and places
 them under `bazel-bin/ffi_distribution/ffi/`. It enables every Cargo feature and
-loads the LLVM optimizer. The default
-`scripts/build_ffi.sh` and `scripts/build_ffi.ps1` distribution commands use these
-targets. The archive contains the libraries, generated headers, examples and
-documentation, with a companion SHA-256 file.
+loads the LLVM optimizer. The archive contains the libraries, generated
+headers, examples and documentation, with a companion SHA-256 file.
+
+For development, `bazel build //:ffi_distribution_dev` builds both libraries
+under `bazel-bin/ffi_distribution_dev/ffi/`. Run
+`bazel run //:package_ffi_dev -- --dist-dir dist` to package these libraries
+with generated headers. The default archive name ends in `-dev.tar.gz`.
 
 The distribution profile defaults to O3, generic CPU flags, unwind semantics,
 fat LTO and one codegen unit. The i686 targets retain Rust's SSE2-capable target
@@ -81,9 +91,8 @@ bazel run --repo_env=RSSN_LLVM_CONFIG=/path/to/llvm-config //:release_ffi -- --d
 ```
 
 `//:ffi` builds the dynamic library and its import library where applicable.
-`//:ffi_static` builds the static archive. `//:ffi_distribution_llvm` is an alias
-for `//:ffi_distribution`. `//:package_ffi_llvm` retains the `-llvm` archive suffix
-for existing callers. Use `//:package_ffi_portable` for an explicit plugin-free build.
+`//:ffi_static` builds the static archive. Use `//:package_ffi_portable`
+for an explicit plugin-free build.
 The host plugin is a Rust action input passed to target rustc
 with `-Zllvm-plugins`. The standalone Rust library uses its O3 pipeline with
 LTO off so the pass runs during the library build. The optional optimizer
