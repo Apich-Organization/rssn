@@ -1,0 +1,91 @@
+# Cross-language conformance cases for the rssn bindings.
+#
+# One row per case, tab-separated; `#` starts a comment. The Python runner
+# (`bindings/tests/run_conformance.py --record`) fills the expectation
+# columns by running the engine; the Python, Julia and C++ runners then all
+# check the same file, so a wrapper that disagrees with the engine — or with
+# another wrapper — fails.
+#
+# The manifest row expects 1 when the ABI hash matches the current build's JSON.
+#
+# columns: 1 name, 2 kind, 3 payload, 4 target, 5 tolerance, 6 bindings, 7 expect_text, 8 expect_value, 9 expect_status
+#
+name	kind	payload	target	tolerance	bindings	expect_text	expect_value	expect_status
+calculus.derivative	compute	diff(sin(x)*cos(x), x)	symbolic			cos(2*x)		ok
+calculus.derivative_numeric	compute	diff(sin(x)*cos(x), x)	numeric	1e-12	x=0	1	1.0	ok
+calculus.integral	compute	integral(x^2, x)	symbolic			1/3*x^3		ok
+calculus.definite	compute	defint(x^2, x, 0, 1)	symbolic			1/3		ok
+calculus.definite_numeric	compute	defint(x^2, x, 0, 1)	numeric	1e-12		0.3333333333333333	0.3333333333333333	ok
+calculus.limit	compute	limit(sin(x)/x, x, 0)	symbolic			1		ok
+calculus.sum	compute	sum(1/(k*(k+1)), k, 1, n)	symbolic			1 - 1/(n + 1)		ok
+algebra.expand	compute	expand((x+1)^3)	symbolic			x^3 + 3*x^2 + 3*x + 1		ok
+algebra.factor	compute	factor(x^2 - 1)	symbolic			(x - 1)*(x + 1)		ok
+algebra.solve	compute	solve(x^2 - 4, x)	symbolic			list(-2, 2)		ok
+number_theory.factorint	compute	factorint(360)	symbolic			list(list(2, 3), list(3, 2), list(5, 1))		ok
+number_theory.gcd	compute	gcd(12, 18)	symbolic			6		ok
+linear_algebra.det	compute	det(list(list(1, 2), list(3, 4)))	symbolic			-2		ok
+linear_algebra.matmul	compute	matmul(list(list(1,2),list(3,4)), list(list(0,1),list(1,0)))	symbolic			list(list(2, 1), list(4, 3))		ok
+numeric.pythagorean	compute	sin(x)^2 + cos(x)^2	numeric	1e-12	x=0.7	1	1.0	ok
+numeric.sqrt	compute	sqrt(x)	numeric	1e-12	x=2	1.4142135623730951	1.4142135623730951	ok
+complex.modulus_squared	compute	abs_sq(3 + 4*I)	symbolic			25		ok
+simplify.ratio	simplify	(x^2 - 1)/(x - 1)	symbolic			x + 1		ok
+arith.sub	apply	sub			5,3	5 - 3		ok
+arith.neg	apply	neg			5	-5		ok
+arith.divide	apply	divide			6,3	6/3		ok
+callbacks.brent	callback	num_brent 1.0,2.0,1e-12,64				1.414213562		ok
+errors.parse	compute	sin(	symbolic					parse
+errors.unknown_operator	apply	definitely_not_an_operator			1			unknown_operator
+errors.not_numeric	compute	diff(x^2, x)	numeric	1e-12				not_numeric
+sim.ising	sim	ising {"width":4,"height":4,"temperature":2.0,"mc_steps":5,"seed":7}				magnetization,spins		ok
+sim.poisson_multigrid	sim	poisson_multigrid {"dim":2,"n":9,"sigma":0.0,"cycle":"v","tol":1e-8}				converged,convergence_factor,levels,max_error,residuals		ok
+manifest.hash	manifest						1	ok
+units.table	units						82	ok
+calculus.derivative_second	compute	diff(diff(x^3, x), x)	symbolic			6*x		ok
+calculus.taylor	compute	taylor(sin(x), x, 0, 5)	symbolic			x - 1/6*x^3 + 1/120*x^5		ok
+calculus.sum_finite	compute	sum(k, k, 1, 10)	symbolic			55		ok
+algebra.expand_binomial	compute	expand((x+y)^2)	symbolic			x^2 + 2*x*y + y^2		ok
+algebra.factor_difference	compute	factor(x^2 - 4)	symbolic			(x - 2)*(x + 2)		ok
+algebra.solve_double_root	compute	solve(x^2 + 2*x + 1, x)	symbolic			list(-1)		ok
+number_theory.isprime	compute	isprime(97)	symbolic			true		ok
+linear_algebra.inverse	compute	inverse(list(list(1,2),list(3,4)))	symbolic			list(list(-2, 1), list(3/2, -1/2))		ok
+linear_algebra.trace	compute	trace(list(list(1,2),list(3,4)))	symbolic			5		ok
+linear_algebra.norm	compute	norm(list(3,4))	symbolic			5		ok
+simplify.pythagorean	simplify	sin(x)^2 + cos(x)^2	symbolic			1		ok
+numeric.trig	compute	sin(x)	numeric	1e-12	x=1	0.8414709848078965	0.8414709848078965	ok
+numeric.exp	compute	exp(x)	numeric	1e-12	x=1	2.718281828459045	2.718281828459045	ok
+numeric.polynomial	compute	x^3 - 2*x + 1	numeric	1e-12	x=1.5	1.375	1.375	ok
+arith.add	apply	add			2,3	5		ok
+arith.mul	apply	mul			2,3	6		ok
+arith.pow	apply	pow			2,3	2^3		ok
+value.bell	value	bell 10				115975		ok
+value.bigomega	value	bigomega 360				6		ok
+value.bessel_k0	value	bessel_k0 1.0				0.42102443824070834		ok
+value.bernoulli_number	value	bernoulli_number 10				5/66		ok
+value.fibonacci	value	fibonacci 30				832040		ok
+value.gcd	value	gcd 12,18				6		ok
+callbacks.bfgs	callback2	num_bfgs 1e-10,100,1000				1		ok
+sim.heat_nd	sim	heat_nd {"dim":2,"n":9,"t_end":0.01,"steps":5}				line,max_error,stats		ok
+sim.wave_nd	sim	wave_nd {"dim":2,"n":9,"c":1.0,"t_end":0.05}				max_error,steps		ok
+errors.unknown_scenario	sim	no_such_scenario {}						simulation
+constants.table	constants						30	ok
+contract.alias	op_info	airy_ai				airyai		ok
+contract.mesh_dimensions	op_info	num_meshgen_tetra_volumes	container			num_meshgen_tetra_volumes		ok
+contract.exact_wide_gcd	keyed_integer	num_number_theory_gcd_u128			79228162514264337593543950336,237684487542793012780631851008	79228162514264337593543950336		ok
+errors.stale_operator_key	stale_integer_key	num_number_theory_gcd_u128			12,18			unknown_operator
+errors.unknown_operator_contract	op_info	no_such_rssn_operator_contract						unknown_operator
+contract.zero_phase_filter	op_info	num_signal_filtfilt	container			num_signal_filtfilt		ok
+contract.multinomial	op_info	num_multinomial	dimensionless			num_multinomial		ok
+value.inverse_regularized_beta	value	num_inverse_beta_reg 2.0,2.0,0.5				0.5		ok
+contract.sharp_cauchy_root_bound	op_info	num_cauchy_sharp_root_bound	dimensionless			num_cauchy_sharp_root_bound		ok
+contract.koebe_growth	op_info	num_koebe_growth_bounds	dimensionless			num_koebe_growth_bounds		ok
+contract.ntt_product	op_info	num_finite_field_poly_mul_ntt_mod	dimensionless			num_finite_field_poly_mul_ntt_mod		ok
+contract.extended_gcd	op_info	num_number_theory_extended_gcd_u64	dimensionless			num_number_theory_extended_gcd_u64		ok
+value.prime_generator	value	num_finite_field_primitive_root_prime 18446744069414584321				7		ok
+contract.timeseries_integrate	op_info	num_timeseries_integrate				num_timeseries_integrate		ok
+contract.kalman_filter	op_info	num_timeseries_kalman_filter	container			num_timeseries_kalman_filter		ok
+contract.kalman_smooth	op_info	num_timeseries_kalman_smooth	container			num_timeseries_kalman_smooth		ok
+contract.rolling_moments	op_info	num_timeseries_rolling_moments	container			num_timeseries_rolling_moments		ok
+value.bigint_gcd_by_key	keyed_integer	num_number_exact_bigint_gcd			-2041694201525630780780247644590609268736,5104235503814076951950619111476523171840	1020847100762815390390123822295304634368		ok
+contract.bigint_crt	op_info	num_number_ext_crt_bigint	dimensionless			num_number_ext_crt_bigint		ok
+contract.exact_smith	op_info	num_native_qlinalg_smith_normal_form	container			num_native_qlinalg_smith_normal_form		ok
+contract.exact_dixon	op_info	num_native_qlinalg_solve_dixon	container			num_native_qlinalg_solve_dixon		ok

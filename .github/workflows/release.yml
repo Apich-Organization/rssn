@@ -1,0 +1,248 @@
+# Version tags prepare an immutable release draft. Nightly runs publish one
+# prerelease per UTC day after all required checks and builds pass.
+
+name: Release
+
+"on":
+  push:
+    tags: ['v[0-9]*']
+  schedule:
+    - cron: '43 2 * * *'
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "Release channel"
+        type: choice
+        options: [versioned, nightly]
+        default: versioned
+      version:
+        description: "Release version (e.g. 3.0.0-beta.1); defaults to Cargo.toml version if empty"
+        type: string
+        required: false
+        default: ""
+      dry_run:
+        description: "Build the artifacts without creating a release or publishing"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_TOOLCHAIN: "1.100.0"
+
+jobs:
+  verify:
+    name: Resolve release version
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      distribution: ${{ steps.version.outputs.distribution }}
+      nightly: ${{ steps.version.outputs.nightly }}
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          version=$(sed -n '/^\[package\]/,/^\[/{s/^version = "\(.*\)"$/\1/p}' Cargo.toml)
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::invalid Cargo.toml release version"
+            exit 1
+          fi
+          if [ -n "$INPUT_VERSION" ] && [ "${INPUT_VERSION#v}" != "$version" ]; then
+            echo "::error::the requested version must match Cargo.toml ($version)"
+            exit 1
+          fi
+          nightly=false
+          if [[ "$GITHUB_EVENT_NAME" == schedule || "$CHANNEL" == nightly ]]; then
+            nightly=true
+            tag="nightly-$(date -u +%F)"
+            distribution="$tag"
+            pre=true
+          else
+            tag="v$version"
+            distribution="$version"
+            case "$version" in *-*) pre=true ;; *) pre=false ;; esac
+            python3 scripts/extract_changelog.py --required --version "$version" >/dev/null
+          fi
+          if [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" != "refs/tags/$tag" ]]; then
+            echo "::error::The pushed tag must match $tag"
+            exit 1
+          fi
+          {
+            echo "version=$version"
+            echo "distribution=$distribution"
+            echo "tag=$tag"
+            echo "nightly=$nightly"
+            echo "prerelease=$pre"
+          } >> "$GITHUB_OUTPUT"
+
+  quality:
+    uses: ./.github/workflows/ci.yml
+
+  ffi:
+    name: C libraries (${{ matrix.target }})
+    needs: verify
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, target: linux-x86_64, rust_target: x86_64-unknown-linux-gnu }
+          - { os: ubuntu-24.04-arm, target: linux-aarch64, rust_target: aarch64-unknown-linux-gnu }
+          - { os: windows-latest, target: windows-x86_64, rust_target: x86_64-pc-windows-msvc }
+          - { os: windows-11-arm, target: windows-aarch64, rust_target: aarch64-pc-windows-msvc }
+          - { os: macos-15-intel, target: macos-x86_64, rust_target: x86_64-apple-darwin }
+          - { os: macos-latest, target: macos-aarch64, rust_target: aarch64-apple-darwin }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          targets: ${{ matrix.rust_target }}
+      - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
+        with:
+          bazelisk-cache: true
+          repository-cache: true
+      - name: System dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
+      - name: Build and verify the FFI package (Unix)
+        if: runner.os != 'Windows'
+        env:
+          RSSN_TARGET_ENV: ${{ vars.RSSN_TARGET_ENV }}
+          RUSTC: ${{ fromJSON(vars.RSSN_RELEASE_RUSTCS || '{}')[matrix.rust_target] || vars.RSSN_RUSTC }}
+          CARGO: ${{ fromJSON(vars.RSSN_RELEASE_CARGOS || '{}')[matrix.rust_target] || vars.RSSN_CARGO }}
+          RSSN_LLVM_CONFIG: ${{ fromJSON(vars.RSSN_RELEASE_LLVM_CONFIGS || '{}')[matrix.rust_target] || vars.RSSN_LLVM_CONFIG }}
+        shell: bash
+        run: |
+          flags=(--config=release-max --define=rust_target=${{ matrix.rust_target }})
+          for variable in RSSN_TARGET_ENV RUSTC CARGO RSSN_LLVM_CONFIG; do
+            if [[ -n "${!variable:-}" ]]; then flags+=("--repo_env=$variable=${!variable}"); fi
+          done
+          bazel run "${flags[@]}" //:release_ffi -- --dist-name 'rssn-${{ needs.verify.outputs.distribution }}-${{ matrix.target }}'
+      - name: Build and verify the FFI package (Windows)
+        if: runner.os == 'Windows'
+        env:
+          RSSN_TARGET_ENV: ${{ vars.RSSN_TARGET_ENV }}
+          RUSTC: ${{ fromJSON(vars.RSSN_RELEASE_RUSTCS || '{}')[matrix.rust_target] || vars.RSSN_RUSTC }}
+          CARGO: ${{ fromJSON(vars.RSSN_RELEASE_CARGOS || '{}')[matrix.rust_target] || vars.RSSN_CARGO }}
+          RSSN_LLVM_CONFIG: ${{ fromJSON(vars.RSSN_RELEASE_LLVM_CONFIGS || '{}')[matrix.rust_target] || vars.RSSN_LLVM_CONFIG }}
+          RSSN_LLVM_IMPORT_LIBRARY: ${{ fromJSON(vars.RSSN_RELEASE_LLVM_IMPORT_LIBRARIES || '{}')[matrix.rust_target] || vars.RSSN_LLVM_IMPORT_LIBRARY }}
+        shell: pwsh
+        run: |
+          $BazelFlags = @('--config=release-max', '--define=rust_target=${{ matrix.rust_target }}')
+          foreach ($Variable in @('RSSN_TARGET_ENV', 'RUSTC', 'CARGO', 'RSSN_LLVM_CONFIG', 'RSSN_LLVM_IMPORT_LIBRARY')) {
+            $Value = [Environment]::GetEnvironmentVariable($Variable)
+            if ($Value) { $BazelFlags += "--repo_env=$Variable=$Value" }
+          }
+          bazel run @BazelFlags //:release_ffi -- --dist-name 'rssn-${{ needs.verify.outputs.distribution }}-${{ matrix.target }}'
+          exit $LASTEXITCODE
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: rssn-${{ matrix.target }}
+          if-no-files-found: error
+          path: |
+            dist/*.tar.gz
+            dist/*.sha256
+
+  github-release:
+    name: GitHub release
+    needs: [verify, quality, ffi]
+    if: ${{ !inputs.dry_run }}
+    concurrency:
+      group: release-publish-${{ needs.verify.outputs.tag }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Prepare release notes
+        env:
+          NIGHTLY: ${{ needs.verify.outputs.nightly }}
+          RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          if [[ "$NIGHTLY" == true ]]; then
+            printf 'Daily build from commit `%s`.\n' "$GITHUB_SHA" > release_notes.md
+          else
+            python3 scripts/extract_changelog.py --required \
+              --version "$RELEASE_VERSION" --output release_notes.md
+          fi
+      - name: Create the draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.verify.outputs.tag }}
+          NIGHTLY: ${{ needs.verify.outputs.nightly }}
+          PRERELEASE: ${{ needs.verify.outputs.prerelease }}
+        run: |
+          tag="$TAG"
+          ref="refs/tags/$tag"
+          git check-ref-format "$ref"
+          if [[ "$(git rev-parse HEAD)" != "$GITHUB_SHA" ]]; then
+            echo "::error::Release checkout does not match the workflow commit $GITHUB_SHA"
+            exit 1
+          fi
+          remote_refs=$(git ls-remote --tags origin "$ref" "$ref^{}")
+          tag_commit=$(awk -v ref="$ref" '
+            $2 == ref { tag = $1 }
+            $2 == (ref "^{}") { peeled = $1 }
+            END { print peeled ? peeled : tag }
+          ' <<< "$remote_refs")
+          flags=(--target "$GITHUB_SHA")
+          if [[ -n "$tag_commit" ]]; then
+            if [[ "$tag_commit" != "$GITHUB_SHA" ]]; then
+              echo "::error::Tag $tag points to $tag_commit, expected $GITHUB_SHA"
+              exit 1
+            fi
+            flags+=(--verify-tag)
+          fi
+          existing_targets=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" |
+            jq -r --arg tag "$tag" '.[] | select(.tag_name == $tag) | .target_commitish')
+          if [[ -n "$existing_targets" ]]; then
+            if [[ -z "$tag_commit" ]] && grep -Fqxv "$GITHUB_SHA" <<< "$existing_targets"; then
+              echo "::error::An existing release or draft for $tag has a different or unpinned target"
+            else
+              echo "::error::A release or draft already exists for $tag"
+            fi
+            exit 1
+          fi
+          if [[ "$PRERELEASE" == "true" ]]; then flags+=(--prerelease --latest=false); fi
+          gh release create "$tag" dist/* \
+            --title "rssn $tag" \
+            --draft \
+            --notes-file release_notes.md \
+            "${flags[@]}"
+          if [[ "$NIGHTLY" == true ]]; then
+            gh release edit "$tag" --draft=false --latest=false
+            gh release verify "$tag"
+          fi
+
+  publish:
+    name: Publish to crates.io
+    needs: [verify, github-release]
+    if: ${{ !inputs.dry_run && needs.verify.outputs.nightly != 'true' }}
+    runs-on: ubuntu-latest
+    environment: crates-io
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - name: System dependencies
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
+      - name: Publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish --locked

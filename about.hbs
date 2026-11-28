@@ -1,0 +1,16 @@
+# Third-Party Licenses and Attributions
+
+This project, rssn, utilizes third-party software components, each governed by its respective license.
+
+{{#each packages}}
+## {{name}} ({{version}})
+**License:** {{license}}
+**Repository:** {{repository}}
+**Copyright:** {{copyright}}
+
+{{#if license_file}}
+The full text of the license is provided below:
+{{license_file}}
+{{/if}}
+---
+{{/each}}

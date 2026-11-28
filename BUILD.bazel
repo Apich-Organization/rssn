@@ -1,0 +1,329 @@
+load("//bazel:rules.bzl", "LLVM_PLUGIN_OUTPUT", "cargo_artifact", "scientific_run", "scientific_test")
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files(["Cargo.toml"])
+
+filegroup(
+    name = "sources",
+    srcs = glob([
+        ".cargo/**",
+        "Cargo.*",
+        "build.rs",
+        "buildsrc/**",
+        "src/**",
+        "tests/**",
+        "examples/**",
+        "benches/**",
+        "tools/rssn-api-*/**",
+        "bindings/**",
+        "scripts/**",
+        "docs/**",
+        "*.json",
+        "*.h",
+        "*.hpp",
+        "*.toml",
+        "*.html",
+        "*.md",
+        "LICENSE",
+    ], exclude = [
+        "**/.git/**",
+        "**/__pycache__/**",
+        "**/target/**",
+        "**/*.pyc",
+    ]),
+)
+
+filegroup(
+    name = "llvm_sources",
+    srcs = glob([
+        "tools/llvm-optimizer/**/*.cpp",
+        "tools/llvm-optimizer/**/*.cc",
+        "tools/llvm-optimizer/**/*.cxx",
+        "tools/llvm-optimizer/**/*.h",
+        "tools/llvm-optimizer/**/*.inc",
+        "tools/llvm-optimizer/**/*.cmake",
+        "tools/llvm-optimizer/**/CMakeLists.txt",
+    ], exclude = [
+        "tools/llvm-optimizer/analysis/**",
+        "tools/llvm-optimizer/bench/**",
+        "tools/llvm-optimizer/build*/**",
+        "tools/llvm-optimizer/tests/**",
+    ]),
+)
+
+filegroup(
+    name = "llvm_test_sources",
+    srcs = glob([
+        "tools/llvm-optimizer/tests/*.ll",
+        "tools/llvm-optimizer/tests/*.mir",
+        "tools/llvm-optimizer/tests/*.py",
+        "tools/llvm-optimizer/bench/callback_ir.py",
+    ]),
+)
+
+config_setting(
+    name = "optimized",
+    values = {"compilation_mode": "opt"},
+)
+
+cargo_artifact(
+    name = "llvm_optimizer",
+    workflow = "llvm-build",
+    rssn = ":llvm_sources",
+    outputs = [LLVM_PLUGIN_OUTPUT],
+    mnemonic = "LLVM",
+    progress = "Building the host LLVM pass",
+    tags = ["manual"],
+)
+
+cargo_artifact(
+    name = "release_pass_gate",
+    workflow = "release-pass-test",
+    rssn = ":llvm_test_sources",
+    scope = "release-probe",
+    plugin = ":llvm_optimizer",
+    outputs = ["release-pass.ok"],
+    mnemonic = "ReleaseProbe",
+    progress = "Verifying the release LLVM pipeline for",
+    tags = ["manual"],
+)
+
+cargo_artifact(
+    name = "rustlib",
+    workflow = "rustlib",
+    rssn = ":sources",
+    outputs = ["librssn.rlib"],
+    plugin = select({":optimized": ":llvm_optimizer", "//conditions:default": None}),
+)
+
+[
+    cargo_artifact(
+        name = name,
+        workflow = "ffi",
+        arguments = [kind],
+        rssn = ":sources",
+        outputs = ["ffi"],
+        directories = ["ffi"],
+        plugin = plugin,
+        data = [":release_pass_gate"] if name == "ffi_distribution" else [],
+        tags = ["manual"],
+    )
+    for name, kind, plugin in [
+        ("ffi", "shared", ":llvm_optimizer"),
+        ("ffi_static", "static", ":llvm_optimizer"),
+        ("ffi_distribution", "both", ":llvm_optimizer"),
+        ("ffi_distribution_portable", "both", None),
+        ("ffi_dev", "shared", select({":optimized": ":llvm_optimizer", "//conditions:default": None})),
+        ("ffi_static_dev", "static", select({":optimized": ":llvm_optimizer", "//conditions:default": None})),
+    ]
+]
+
+cargo_artifact(
+    name = "manifest",
+    workflow = "manifest",
+    rssn = ":sources",
+    outputs = ["manifest.json"],
+    plugin = select({":optimized": ":llvm_optimizer", "//conditions:default": None}),
+    tags = ["manual"],
+)
+
+alias(
+    name = "ffi_distribution_llvm",
+    actual = ":ffi_distribution",
+)
+
+scientific_test(
+    name = "api_generator_test",
+    workflow = "rust-tests",
+    rssn = ":sources",
+    scope = "generated-sources",
+    arguments = ["-p", "rssn-api-model", "-p", "rssn-api-gen"],
+    tags = ["local"],
+    size = "medium",
+    timeout = "long",
+)
+
+[
+    scientific_test(
+        name = name,
+        workflow = "rust-tests",
+        rssn = ":sources",
+        arguments = arguments,
+        plugin = select({":optimized": ":llvm_optimizer", "//conditions:default": None}),
+        tags = tags + ["local"],
+        size = "enormous",
+        timeout = "eternal",
+    )
+    for name, arguments, tags in [
+        ("rust_tests", ["--workspace"], []),
+        ("rust_minimal_test", ["--workspace", "--no-default-features"], ["manual"]),
+        ("rust_all_features_test", ["--workspace", "--all-features"], ["manual", "gpu"]),
+        ("rust_ignored_test", ["--workspace", "--all-features", "--", "--ignored", "--test-threads=1"], ["manual"]),
+    ]
+]
+
+[
+    scientific_test(
+        name = name,
+        workflow = workflow,
+        rssn = sources,
+        scope = {
+            "bindings": "bindings",
+            "bindings-check": "bindings",
+            "generated-sources-check": "generated-sources",
+            "headers-check": "headers",
+        }.get(workflow, "llvm-tests" if workflow.startswith("llvm-test") else ""),
+        data = data,
+        tags = tags + ["local"],
+        size = "large",
+        timeout = "eternal",
+    )
+    for name, workflow, sources, data, tags in [
+        ("clippy_test", "clippy", ":sources", [], ["manual"]),
+        ("contracts_test", "contracts", ":sources", [], []),
+        ("generated_sources_check_test", "generated-sources-check", ":sources", [], ["manual"]),
+        ("headers_check_test", "headers-check", ":sources", [], ["manual"]),
+        ("witness_test", "witness", ":sources", [], ["manual"]),
+        ("llvm_optimizer_test", "llvm-test", ":llvm_test_sources", [":llvm_optimizer"], ["manual"]),
+        ("llvm_optimizer_tools_test", "llvm-test-tools", ":llvm_test_sources", [":llvm_optimizer"], ["manual"]),
+        ("llvm_optimizer_rustc_test", "llvm-test-rustc", ":llvm_test_sources", [":llvm_optimizer"], ["manual"]),
+        ("bindings_check_test", "bindings-check", ":sources", [":ffi_dev"], ["manual"]),
+        ("bindings_test", "bindings", ":sources", [":ffi_dev"], ["manual", "external"]),
+    ]
+]
+
+[
+    scientific_run(
+        name = "refresh_" + item,
+        workflow = "refresh-" + item,
+        rssn = ":sources",
+        scope = "headers" if item == "headers" else "",
+        data = [":manifest"] if item == "bindings" else [],
+        tags = ["manual"],
+    )
+    for item in ["contracts", "headers", "witness", "bindings"]
+]
+
+test_suite(
+    name = "test",
+    tests = [":rust_tests", ":contracts_test"],
+)
+
+scientific_run(
+    name = "check",
+    workflow = "check",
+    rssn = ":sources",
+)
+
+cargo_artifact(
+    name = "headers",
+    workflow = "headers",
+    rssn = ":sources",
+    scope = "headers",
+    outputs = ["rssn.h", "rssn.hpp"],
+    mnemonic = "Headers",
+    progress = "Generating C and C++ headers",
+    tags = ["manual"],
+)
+
+[
+    scientific_run(
+        name = name,
+        workflow = "package-ffi",
+        arguments = arguments,
+        rssn = ":sources",
+        scope = "sdk",
+        data = [distribution, ":headers"],
+        tags = ["manual"],
+    )
+    for name, distribution, arguments in [
+        ("package_ffi", ":ffi_distribution", []),
+        ("package_ffi_llvm", ":ffi_distribution", ["llvm"]),
+        ("package_ffi_portable", ":ffi_distribution_portable", []),
+        ("release_ffi", ":ffi_distribution", ["validate"]),
+    ]
+]
+
+[
+    scientific_run(
+        name = name,
+        workflow = workflow,
+        rssn = ":sources",
+        scope = "bindings" if workflow.startswith("bindings-") else "sdk",
+        tags = ["manual"],
+    )
+    for name, workflow in [
+        ("package_ffi_from_binaries", "package-ffi-from-binaries"),
+        ("ffi_native_clients_from_library", "ffi-native-clients-from-library"),
+        ("bindings_from_library", "bindings-from-library"),
+        ("bindings_legacy", "bindings-legacy"),
+    ]
+]
+
+scientific_run(
+    name = "ffi_legacy_dev",
+    workflow = "ffi-legacy-dev",
+    rssn = ":sources",
+    tags = ["manual"],
+)
+
+scientific_run(
+    name = "ffi_package_smoke",
+    workflow = "ffi-package-smoke",
+    rssn = ":sources",
+    scope = "sdk",
+    tags = ["manual"],
+)
+
+scientific_test(
+    name = "ffi_native_clients_test",
+    workflow = "ffi-native-clients",
+    rssn = ":sources",
+    scope = "sdk",
+    data = select({
+        "@platforms//os:linux": [":ffi_static_dev"],
+        "//conditions:default": [":ffi_dev"],
+    }),
+    arguments = select({
+        "@platforms//os:linux": ["static"],
+        "//conditions:default": ["shared"],
+    }),
+    size = "large",
+    timeout = "eternal",
+    tags = ["manual", "local"],
+)
+
+# Validate native optimization remarks and compile the same probe for cross targets.
+scientific_test(
+    name = "release_pass_test",
+    workflow = "release-pass-test",
+    rssn = ":llvm_test_sources",
+    scope = "release-probe",
+    plugin = ":llvm_optimizer",
+    tags = ["local", "manual"],
+    size = "medium",
+)
+
+scientific_test(
+    name = "gpu_test",
+    workflow = "gpu-test",
+    rssn = ":sources",
+    tags = ["local", "manual", "gpu", "no-cache"],
+    size = "large",
+    timeout = "eternal",
+)
+
+test_suite(
+    name = "integration_test",
+    tags = ["manual"],
+    tests = [
+        ":api_generator_test",
+        ":test",
+        ":rust_all_features_test",
+        ":bindings_check_test",
+        ":bindings_test",
+        ":headers_check_test",
+        ":witness_test",
+    ],
+)

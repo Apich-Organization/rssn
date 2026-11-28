@@ -1,0 +1,215 @@
+[workspace]
+resolver = "3"
+members = ["tools/rssn-api-model", "tools/rssn-api-gen"]
+default-members = ["."]
+
+[workspace.package]
+version = "3.0.0-beta.1"
+edition = "2024"
+rust-version = "1.100.0"
+license = "Apache-2.0"
+repository = "https://github.com/Apich-Organization/rssn"
+
+[package]
+name = "rssn"
+version = "3.0.0-beta.1"
+edition = "2024"
+rust-version = "1.100.0"
+authors = ["The rssn developers"]
+description = "A comprehensive scientific computing library for Rust, aiming for feature parity with NumPy and SymPy."
+license = "Apache-2.0"
+repository = "https://github.com/Apich-Organization/rssn"
+readme = "README.md"
+
+keywords = [
+    "scientific-computing",
+    "symbolic-math",
+    "numerical-analysis",
+    "physics-simulation",
+    "optimization",
+]
+categories = [
+    "science",
+    "mathematics",
+    "data-structures",
+    "simulation",
+    "algorithms",
+]
+exclude = [
+    "doc/*",
+    ".gitea/*",
+    ".github/*",
+    ".vscode/*",
+    ".idea/*",
+    "certificates/*",
+]
+
+[lib]
+# Rust consumers only need an rlib. Build C distribution artifacts explicitly
+# with scripts/build_ffi.sh; otherwise every downstream Rust build also links
+# the shared library and bundles all dependencies into a static archive.
+crate-type = ["rlib"]
+
+# Reports how much of the operator table is typed. Named with a hyphen so
+# that the documented invocation is `cargo run --bin signature-audit`; the
+# file is `signature_audit.rs` because a Rust module cannot have one.
+[[bin]]
+name = "signature-audit"
+path = "src/bin/signature_audit.rs"
+doc = false
+test = false
+
+# Turns sort traces into `signatures.witnessed.json` (`rssn::kernel::sort`).
+[[bin]]
+name = "signature-mine"
+path = "src/bin/signature_mine.rs"
+doc = false
+test = false
+
+[profile.dev]
+lto = false
+opt-level = 0
+debug = true
+incremental = true
+
+# The symbolic test suite runs thousands of nested engine runs and numeric
+# integrations; unoptimised builds make it several times slower.
+[profile.test]
+opt-level = 1
+
+# For offline tools that run the engine thousands of times (`signature-mine`):
+# optimised enough to be quick, without the link-time cost of `release`.
+[profile.tools]
+inherits = "dev"
+opt-level = 1
+debug = false
+
+[profile.release]
+lto = true
+codegen-units = 1
+# Numerical callback interruptions must return typed errors to callers.
+panic = "unwind"
+opt-level = 3
+strip = true
+debug = false
+debug-assertions = false
+overflow-checks = false
+incremental = true
+
+# C exports translate caught Rust panics into RssnStatus::Panic.
+[profile.ffi]
+inherits = "release"
+panic = "unwind"
+
+[dependencies]
+cranelift-codegen = { version = "0.138", optional = true }
+cranelift-frontend = { version = "0.138", optional = true }
+cranelift-jit = { version = "0.138", optional = true }
+cranelift-module = { version = "0.138", optional = true }
+cranelift-native = { version = "0.138", optional = true }
+ndarray = { version = "0.17", features = ["serde"] }
+# Only the distribution and special-function surface: the default features
+# add `nalgebra` integration and sampling, neither of which this crate uses.
+statrs = { version = "0.19", default-features = false, features = ["std"] }
+# Numerical optimization. `basin` runs on plain `Vec<f64>` so it adds no
+# linear-algebra backend of its own.
+basin = { version = "3.5", default-features = false }
+rustfft = "6.4"
+# Zstandard for Parquet pages; the reference implementation, not a reimplementation.
+zstd = { version = "0.14", default-features = false }
+brotli = { version = "8", default-features = false, features = ["std"] }
+once_cell = "1.21"
+rayon = "1.11"
+rand = { version = "0.10", features = ["std_rng"] }
+num-complex = { version = "0.4", features = ["serde"] }
+# `num-rational` 0.4 is the newest release and pins `num-bigint` 0.4, so the
+# pair moves together; `BigRational` is `Ratio<BigInt>` and the two must agree.
+num-bigint = { version = "0.4", features = ["serde"] }
+num-rational = { version = "0.4", features = ["serde"] }
+num-traits = "0.2"
+num-integer = "0.1"
+serde = { version = "1.0", features = ["derive", "rc"] }
+serde_json = "1.0"
+gif = "0.14"
+roxmltree = "0.21"
+# Every byte RSSN writes or reads goes through `bincode-next`: it is ours, it
+# has a frozen bincode format and a frozen high-speed CBOR encoder, and it is
+# the only wire format the kernel ABI and the manifest are allowed to use.
+bincode-next = { version = "3.2", features = ["serde"] }
+# Stable, collision-resistant digests for manifests and operator keys.
+blake3 = "1.8"
+# Loading a plugin from a shared library (`plugin-cdylib`). Opt-in: it runs
+# arbitrary code in the host process.
+libloading = { version = "0.9", optional = true }
+# GPU execution through wgpu (`rssn::backend::device::gpu`, feature `gpu-wgpu`).
+# Enabled by default. Device discovery and initialization happen on demand.
+# Each platform compiles only the backend it can use.
+wgpu = { version = "30", optional = true, default-features = false, features = ["wgsl"] }
+
+pollster = { version = "1", optional = true }
+bytemuck = { version = "1", optional = true }
+
+[target.'cfg(target_os = "windows")'.dependencies.wgpu]
+version = "30"
+optional = true
+default-features = false
+features = ["wgsl", "vulkan", "dx12"]
+
+[target.'cfg(target_os = "macos")'.dependencies.wgpu]
+version = "30"
+optional = true
+default-features = false
+features = ["wgsl", "metal"]
+
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies.wgpu]
+version = "30"
+optional = true
+default-features = false
+features = ["wgsl", "vulkan"]
+
+[dependencies.faer]
+version = "0.24"
+default-features = false
+# No `rand`: nothing here draws a random `faer` matrix, and the feature pulls
+# a second `rand` generation into the tree.
+features = ["std", "sparse-linalg", "rayon"]
+
+[build-dependencies]
+# Only the explicit header workflow compiles cbindgen and its dependency graph.
+cbindgen = { version = "0.29", optional = true }
+
+[features]
+default = ["jit", "npy", "gpu-wgpu"]
+# Regenerate checked-in C/C++ headers when combined with DEV=1.
+dev-headers = ["dep:cbindgen"]
+# Cranelift JIT backend (`rssn::backend::jit`).
+jit = ["dep:cranelift-codegen", "dep:cranelift-frontend", "dep:cranelift-jit", "dep:cranelift-module", "dep:cranelift-native"]
+# Reading and writing `.npy` files in `rssn::io`.
+npy = []
+# Loading plugins from shared libraries (`rssn::kernel::cdylib`). Off by
+# default: a cdylib runs arbitrary code in the host process with no sandbox.
+plugin-cdylib = ["dep:libloading"]
+# GPU device through wgpu: WGSL kernels, f32 arithmetic and double-single
+# (about 48-bit) emulation of f64 (`docs/BACKENDS.md`).
+gpu-wgpu = ["dep:wgpu", "dep:pollster", "dep:bytemuck"]
+full = ["jit", "npy", "gpu-wgpu", "plugin-cdylib"]
+
+[dev-dependencies]
+criterion = { version = "0.8", features = ["html_reports"] }
+proptest = "1.9"
+assert_approx_eq = "1.1"
+
+[[bench]]
+name = "engine"
+harness = false
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--html-in-header", "doc-header.html"]
+
+[lints.clippy]
+empty_line_after_doc_comments = "allow"
+
+[lints.rust]
+# Allowed here because of kani.
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(has_foo)'] }

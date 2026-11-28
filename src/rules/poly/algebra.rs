@@ -1,0 +1,1961 @@
+//! Real algebraic geometry and ideal-theoretic requests.
+//!
+//! | operator | meaning |
+//! |---|---|
+//! | `count_real_roots(p, x)` / `count_real_roots(p, x, a, b)` | distinct real roots (in `(a, b]`), by Sturm sequences |
+//! | `real_root_intervals(p, x)` | disjoint exact isolating intervals `list(a, b)`, `a = b` for rational roots |
+//! | `sturm_sequence(p, x)` | the Sturm chain |
+//! | `square_free_factors(p, x)` | leading coefficient and monic factors grouped by multiplicity over `Q` |
+//! | `resultant(p, q, x)`, `discriminant(p, x)` | exact rational remainder sequence or fraction-free (Bareiss) elimination of the Sylvester matrix |
+//! | `leading_term(p, vars)`, `leading_coeff(p, vars)`, `leading_monomial(p, vars)` | with respect to an order (optional third argument `lex`, `grlex`, `grevlex`; default `lex`) |
+//! | `normal_form(p, polys, vars)` | remainder of `p` modulo the Gröbner basis of `polys` (`grevlex`) |
+//! | `ideal_member(p, polys, vars)` | whether `p` lies in the ideal |
+//! | `simplify_with_relations(e, relations, vars)` | numerator and denominator of `e` reduced modulo the relations |
+//! | `cad(polys, vars)` | sample points of the cells of a cylindrical algebraic decomposition of `R^n` sign-invariant for `polys` (any number of variables: projection by leading and all other coefficients, discriminants and pairwise resultants, then lifting over each sample) |
+//! | `expand_trig(e)` | sines, cosines and tangents of sums and integer multiples expanded |
+
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
+
+use num_bigint::BigInt;
+use num_integer::Integer;
+use num_rational::BigRational;
+use num_traits::One;
+use num_traits::Signed;
+use num_traits::Zero;
+
+use super::groebner;
+use super::groebner::GPoly;
+use super::groebner::GroebnerLimits;
+use super::groebner::Order;
+use super::multifactor;
+use super::repr::Gens;
+use super::repr::Limits;
+use super::repr::Poly;
+use super::repr::from_term;
+use super::repr::to_term;
+use super::univariate;
+use super::univariate::QPoly;
+use super::univariate::ZPoly;
+use crate::execution;
+use crate::graph::Arity;
+use crate::graph::Cx;
+use crate::graph::DimRule;
+use crate::graph::Graph;
+use crate::graph::Kernel;
+use crate::graph::NodeId;
+use crate::graph::Number;
+use crate::graph::OpDescriptor;
+use crate::graph::OpFlags;
+use crate::graph::OpId;
+use crate::graph::Outcome;
+use crate::graph::Payload;
+use crate::graph::RuleError;
+use crate::graph::Tier;
+use crate::graph::dim::DimCtx;
+use crate::graph::dim::DimError;
+use crate::graph::dim::DimTerm;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
+use crate::kernel::TypeExpr;
+use crate::kernel::infer::term;
+use crate::kernel::signature::Signature;
+use crate::kernels::par;
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum Request {
+    CountRealRoots,
+    RootIntervals,
+    Sturm,
+    SquareFree,
+    Resultant,
+    Discriminant,
+    LeadingTerm,
+    LeadingCoeff,
+    LeadingMonomial,
+    NormalForm,
+    IdealMember,
+    WithRelations,
+    Cad,
+    ExpandTrig,
+}
+
+pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
+    let identity = |a: &[f64]| a.first().copied().unwrap_or(f64::NAN);
+    for (name, arity, request, doc) in [
+        (
+            "count_real_roots",
+            Arity::Variadic,
+            Request::CountRealRoots,
+            "`count_real_roots(poly, var, [a, b])`: counts distinct real roots of `poly` in `var` (globally or in `(a, b]`) using Sturm's theorem.",
+        ),
+        (
+            "real_root_intervals",
+            Arity::Fixed(2),
+            Request::RootIntervals,
+            "`real_root_intervals(poly, var)`: returns isolating rational intervals `[lo, hi]` for all real roots of `poly` in `var`.",
+        ),
+        (
+            "sturm_sequence",
+            Arity::Fixed(2),
+            Request::Sturm,
+            "`sturm_sequence(poly, var)` returns the Sturm chain of a univariate polynomial with exact rational coefficients.\n\nThe output is a `list(...)` of polynomials in `var`. For a nonconstant polynomial the chain starts with the polynomial and its derivative, followed by successive negated nonzero remainders.\n\nA constant produces a singleton list, including `list(0)` for zero. For example, `sturm_sequence(x^2 - 2, x)` returns `list(x^2 - 2, 2*x, 2)`.",
+        ),
+        (
+            "square_free_factors",
+            Arity::Fixed(2),
+            Request::SquareFree,
+            "`square_free_factors(poly, var)` decomposes a nonzero polynomial in the symbol `var` over the rationals.\n\nReturns `list(unit, list(list(factor, multiplicity), ...))`. The unit is the leading coefficient. Each factor is monic and square-free, and the factors are pairwise coprime and ordered by increasing multiplicity.\n\nA nonzero constant has an empty factor list. The zero polynomial and coefficients outside the rationals leave the request unevaluated.",
+        ),
+        (
+            "resultant",
+            Arity::Fixed(3),
+            Request::Resultant,
+            "`resultant(p, q, var)` computes the Sylvester resultant of the nonzero polynomials `p` and `q` in `var`.\n\nCoefficients may be exact rationals or expressions independent of `var`.\n\nA positive-degree common factor gives zero. The resultant of two nonzero constants is one.",
+        ),
+        (
+            "discriminant",
+            Arity::Fixed(2),
+            Request::Discriminant,
+            "`discriminant(poly, var)` computes the discriminant of a positive-degree polynomial in `var`.\n\nCoefficients may be exact rationals or expressions independent of `var`.\n\nThe discriminant is one for a linear polynomial and zero when the polynomial has a repeated root.",
+        ),
+        (
+            "leading_term",
+            Arity::Variadic,
+            Request::LeadingTerm,
+            "`leading_term(poly, vars, [order])`: returns the leading term of multivariate `poly` over `vars` under monomial `order`.",
+        ),
+        (
+            "leading_coeff",
+            Arity::Variadic,
+            Request::LeadingCoeff,
+            "`leading_coeff(poly, vars, [order])`: returns the leading coefficient of multivariate `poly` over `vars` under monomial `order`.",
+        ),
+        (
+            "leading_monomial",
+            Arity::Variadic,
+            Request::LeadingMonomial,
+            "`leading_monomial(poly, vars, [order])`: returns the leading monomial of multivariate `poly` over `vars` under monomial `order`.",
+        ),
+        (
+            "normal_form",
+            Arity::Fixed(3),
+            Request::NormalForm,
+            "`normal_form(poly, basis, vars)`: reduces `poly` modulo a Groebner `basis` over `vars`.",
+        ),
+        (
+            "ideal_member",
+            Arity::Fixed(3),
+            Request::IdealMember,
+            "`ideal_member(poly, generators, vars)`: decides whether `poly` belongs to the polynomial ideal generated by `generators` over `vars` (`true` or `false`).",
+        ),
+        (
+            "simplify_with_relations",
+            Arity::Fixed(3),
+            Request::WithRelations,
+            "`simplify_with_relations(expr, relations, vars)`: simplifies `expr` modulo polynomial side `relations` over `vars`.",
+        ),
+        (
+            "cad",
+            Arity::Fixed(2),
+            Request::Cad,
+            "`cad(polys, vars)`: computes a cylindrical algebraic decomposition sample-point cell list for `polys` over `vars`.",
+        ),
+        (
+            "expand_trig",
+            Arity::Fixed(1),
+            Request::ExpandTrig,
+            "`expand_trig(expr)`: expands trigonometric functions of sums and integer multiples into polynomials in `sin` and `cos`.",
+        ),
+    ] {
+        let mut desc = OpDescriptor::new(name, arity)
+            .flags(OpFlags::HEAVY)
+            .cost(100)
+            .doc(doc);
+        if request == Request::ExpandTrig {
+            desc = desc.eval(identity);
+        }
+        if request == Request::SquareFree {
+            desc = desc
+                .signature(Signature::new(vec![term(), TypeExpr::Symbol], term()))
+                .example(
+                    "square_free_factors(-6*x^2*(x^2+1)^3,x)",
+                    "list(-6, list(list(x, 2), list(x^2 + 1, 3)))",
+                );
+        }
+        let op = i.op(desc)?;
+        let rule = match request {
+            // A count is a pure number and does not constrain the polynomial.
+            | Request::CountRealRoots => DimRule::Custom(super::dimensionless_value),
+            // Isolating intervals and Sturm chains are lists of numbers and
+            // rational polynomials: the kernel only reduces when the
+            // coefficients are rational, which forces a dimensionless
+            // polynomial.
+            | Request::RootIntervals | Request::Sturm | Request::SquareFree => {
+                DimRule::Custom(super::dimensionless_value)
+            },
+            // The cells live in the space of the listed variables.
+            | Request::Cad => DimRule::Same(1),
+            // Res_x(p, q) = lc(p)^n lc(q)^m up to a unit; the coefficient
+            // dimensions follow from dim(p), dim(q) and dim(x).
+            | Request::Resultant => DimRule::Custom(dim_resultant),
+            | Request::Discriminant => DimRule::Custom(dim_discriminant),
+            // The leading term is one of the terms of p, so it has p's
+            // dimension; a monic gcd or a normal-form remainder is equal to a
+            // combination of its arguments and keeps the first one's dimension.
+            | Request::LeadingTerm
+            | Request::NormalForm
+            | Request::WithRelations
+            | Request::ExpandTrig => DimRule::Same(0),
+            | Request::LeadingCoeff => DimRule::Custom(dim_leading_coeff),
+            | Request::LeadingMonomial => DimRule::Custom(dim_leading_monomial),
+            // `ideal_member` is a predicate.
+            | Request::IdealMember => DimRule::NonMetric,
+        };
+        i.dim(op, rule);
+        i.kernel(
+            &format!("poly/{name}"),
+            Tier::Reduce,
+            Algebra { op, request },
+        );
+    }
+    Ok(())
+}
+
+/// Highest power of the symbol `x` in `node`, when `node` is a polynomial
+/// expression in `x`; `None` when `x` occurs in a non-polynomial position
+/// (inside a function, or under a negative or symbolic power).
+fn degree_in(
+    graph: &Graph,
+    node: NodeId,
+    x: NodeId,
+    depth: usize,
+) -> Option<u32> {
+    if depth > 256 {
+        return None;
+    }
+    if graph.find(node) == graph.find(x) {
+        return Some(1);
+    }
+    if graph.number_of(node).is_some() {
+        return Some(0);
+    }
+    let op = graph.op(node);
+    if op == core::ADD {
+        let mut best = 0_u32;
+        for &child in graph.children(node) {
+            best = best.max(degree_in(graph, child, x, depth + 1)?);
+        }
+        return Some(best);
+    }
+    if op == core::MUL {
+        let mut total = 0_u32;
+        for &child in graph.children(node) {
+            total = total.checked_add(degree_in(graph, child, x, depth + 1)?)?;
+        }
+        return Some(total);
+    }
+    if op == core::POW {
+        let &[base, exponent] = graph.children(node) else {
+            return None;
+        };
+        let exponent = graph
+            .number_of(exponent)
+            .and_then(Number::to_i64)
+            .and_then(|e| u32::try_from(e).ok())?;
+        return degree_in(graph, base, x, depth + 1)?.checked_mul(exponent);
+    }
+    // Any other expression is a coefficient when it does not involve `x`.
+    let symbol = graph.symbol_of(x)?;
+    (!graph.depends_on(graph.find(node), symbol)).then_some(0)
+}
+
+/// `d^exponent` for an integer exponent.
+fn integer_power(
+    dimension: &DimTerm,
+    exponent: i64,
+) -> DimTerm {
+    dimension.pow(&BigRational::from_integer(BigInt::from(exponent)))
+}
+
+/// `resultant(p, q, x)`: `dim(p)^deg(q) * dim(q)^deg(p) / dim(x)^(deg(p) deg(q))`.
+#[allow(clippy::unnecessary_wraps)] // `DimRule::Custom` signature
+fn dim_resultant(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let &[p, q, x] = ctx.graph.children(ctx.node) else {
+        return Ok(ctx.any());
+    };
+    let (Some(dp), Some(dq), Some(dx)) = (args.first(), args.get(1), args.get(2)) else {
+        return Ok(ctx.any());
+    };
+    let (Some(m), Some(n)) = (degree_in(ctx.graph, p, x, 0), degree_in(ctx.graph, q, x, 0)) else {
+        return Ok(ctx.any());
+    };
+    let mut result = integer_power(dp, i64::from(n)).mul(&integer_power(dq, i64::from(m)));
+    if m != 0 && n != 0 {
+        let exponent = -i64::from(m) * i64::from(n);
+        result = result.mul(&integer_power(dx, exponent));
+    }
+    Ok(result)
+}
+
+/// `discriminant(p, x)`: `dim(p)^(2n-2) / dim(x)^(n(n-1))` for degree `n`.
+#[allow(clippy::unnecessary_wraps)] // `DimRule::Custom` signature
+fn dim_discriminant(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let &[p, x] = ctx.graph.children(ctx.node) else {
+        return Ok(ctx.any());
+    };
+    let (Some(dp), Some(dx)) = (args.first(), args.get(1)) else {
+        return Ok(ctx.any());
+    };
+    let Some(n) = degree_in(ctx.graph, p, x, 0) else {
+        return Ok(ctx.any());
+    };
+    if n == 0 {
+        return Ok(ctx.any());
+    }
+    let n = i64::from(n);
+    Ok(integer_power(dp, 2 * n - 2).mul(&integer_power(dx, -n * (n - 1))))
+}
+
+/// The single symbol `vars` denotes, if `vars` is a symbol or a one-element
+/// list of symbols.
+fn univariate_variable(
+    graph: &Graph,
+    vars: NodeId,
+) -> Option<NodeId> {
+    if graph.symbol_of(vars).is_some() {
+        return Some(vars);
+    }
+    if graph.op(vars) == core::LIST
+        && let [only] = graph.children(vars)
+        && graph.symbol_of(*only).is_some()
+    {
+        return Some(*only);
+    }
+    None
+}
+
+/// `leading_coeff(p, x)`: `dim(p) / dim(x)^deg(p)`.
+///
+/// For a multivariate order the monomial is not known from the term alone;
+/// the coefficient is reported with the polynomial's dimension, which is
+/// exact when the variables are dimensionless (the setting of a Gröbner
+/// basis computation).
+#[allow(clippy::unnecessary_wraps)] // `DimRule::Custom` signature
+fn dim_leading_coeff(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let &[p, vars, ..] = ctx.graph.children(ctx.node) else {
+        return Ok(ctx.any());
+    };
+    let (Some(dp), Some(dx)) = (args.first(), args.get(1)) else {
+        return Ok(ctx.any());
+    };
+    let Some(x) = univariate_variable(ctx.graph, vars) else {
+        return Ok(dp.clone());
+    };
+    let Some(n) = degree_in(ctx.graph, p, x, 0) else {
+        return Ok(ctx.any());
+    };
+    Ok(dp.mul(&integer_power(dx, -i64::from(n))))
+}
+
+/// `leading_monomial(p, x)`: `dim(x)^deg(p)`.
+///
+/// For a multivariate order the monomial is reported as dimensionless, which
+/// is exact when the variables are dimensionless.
+#[allow(clippy::unnecessary_wraps)] // `DimRule::Custom` signature
+fn dim_leading_monomial(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let &[p, vars, ..] = ctx.graph.children(ctx.node) else {
+        return Ok(ctx.any());
+    };
+    let Some(dx) = args.get(1) else {
+        return Ok(ctx.any());
+    };
+    let Some(x) = univariate_variable(ctx.graph, vars) else {
+        return Ok(DimTerm::dimensionless());
+    };
+    let Some(n) = degree_in(ctx.graph, p, x, 0) else {
+        return Ok(ctx.any());
+    };
+    Ok(integer_power(dx, i64::from(n)))
+}
+
+struct Algebra {
+    op: OpId,
+    request: Request,
+}
+
+impl Kernel for Algebra {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.op]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let args = cx.graph.children(node).to_vec();
+        let graph = &mut *cx.graph;
+        let result = match (self.request, args.as_slice()) {
+            | (Request::CountRealRoots, &[p, x]) => {
+                count_real_roots(graph, p, x, None).map(|n| (graph.int(n), false))
+            },
+            | (Request::CountRealRoots, &[p, x, a, b]) => {
+                count_real_roots(graph, p, x, Some((a, b))).map(|n| (graph.int(n), false))
+            },
+            | (Request::RootIntervals, &[p, x]) => {
+                root_intervals_term(graph, p, x).map(|t| (t, true))
+            },
+            | (Request::Sturm, &[p, x]) => sturm_term(graph, p, x).map(|t| (t, true)),
+            | (Request::SquareFree, &[p, x]) => {
+                square_free_factors_term(graph, p, x).map(|t| (t, true))
+            },
+            | (Request::Resultant, &[p, q, x]) => {
+                resultant_term(graph, p, q, x).map(|t| (t, false))
+            },
+            | (Request::Discriminant, &[p, x]) => {
+                discriminant_term(graph, p, x).map(|t| (t, false))
+            },
+            | (
+                Request::LeadingTerm | Request::LeadingCoeff | Request::LeadingMonomial,
+                &[p, vars, ref rest @ ..],
+            ) if rest.len() <= 1 => {
+                leading(graph, self.request, p, vars, rest.first().copied()).map(|t| (t, false))
+            },
+            | (Request::NormalForm, &[p, polys, vars]) => {
+                normal_form_term(graph, p, polys, vars).map(|t| (t, false))
+            },
+            | (Request::IdealMember, &[p, polys, vars]) => {
+                normal_form_term(graph, p, polys, vars)
+                    .map(|t| graph.as_number(t).is_some_and(Number::is_zero))
+                    .map(|b| (graph.lit(Payload::Bool(b)), false))
+            },
+            | (Request::WithRelations, &[e, relations, vars]) => {
+                with_relations(graph, e, relations, vars).map(|t| (t, false))
+            },
+            | (Request::Cad, &[polys, vars]) => cad(graph, polys, vars).map(|t| (t, true)),
+            | (Request::ExpandTrig, &[e]) => {
+                let term = super::best(graph, e);
+                term.and_then(|t| expand_trig(graph, t, 0)).map(|t| {
+                    let expanded = super::expand_form(graph, t).unwrap_or(t);
+                    (expanded, true)
+                })
+            },
+            | _ => None,
+        };
+        match result {
+            | Some((t, true)) => Outcome::Pinned(t),
+            | Some((t, false)) => Outcome::Equal(t),
+            | None => Outcome::Pass,
+        }
+    }
+
+    fn revisit(&self) -> bool {
+        true
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Sturm sequences
+
+/// `p` as a univariate polynomial over `Q` in the symbol `x`.
+fn univariate_q(
+    graph: &mut Graph,
+    p: NodeId,
+    x: NodeId,
+) -> Option<QPoly> {
+    let (numer, denom) = super::rational_function_in(graph, p, x)?;
+    // Constant denominators only.
+    match denom.as_slice() {
+        | [c] if !c.is_zero() => Some(numer.iter().map(|a| a / c).collect()),
+        | _ => None,
+    }
+}
+
+fn square_free_factors_term(
+    graph: &mut Graph,
+    p: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    graph.symbol_of(x)?;
+    let coefficients = univariate_q(graph, p, x)?;
+    let leading = coefficients
+        .last()
+        .filter(|coefficient| !coefficient.is_zero())?;
+    let mut factors = Vec::new();
+    for (factor, multiplicity) in univariate::square_free(&coefficients) {
+        let factor = qpoly_term(graph, &factor, x);
+        let multiplicity = graph.int(i64::from(multiplicity));
+        factors.push(graph.node(core::LIST, &[factor, multiplicity]));
+    }
+    let factors = graph.node(core::LIST, &factors);
+    let unit = graph.num(Number::rat(leading.clone()));
+    Some(graph.node(core::LIST, &[unit, factors]))
+}
+
+/// The exact Sturm chain `p, p', -rem(p_{i-1}, p_i), ...` over `Q` (unscaled,
+/// for `sturm_sequence(p, x)`).
+fn sturm_chain(p: &[BigRational]) -> Vec<QPoly> {
+    let mut chain: Vec<QPoly> = vec![p.to_vec(), univariate::derivative(p)];
+    while chain.last().is_some_and(|q| !q.is_empty()) {
+        let n = chain.len();
+        let Some((_, rem)) = univariate::divrem(&chain[n - 2], &chain[n - 1]) else {
+            break;
+        };
+        if rem.is_empty() {
+            break;
+        }
+        chain.push(rem.iter().map(|c| -c).collect());
+    }
+    chain.retain(|q| !q.is_empty());
+    chain
+}
+
+/// Fraction-free positive-multiplier pseudo-remainder in `Z[x]`: computes a
+/// strictly positive integer multiple of `rem_Q(a, b)` without creating rationals.
+fn prem_pos_z(
+    a: &[BigInt],
+    b: &[BigInt],
+) -> Option<ZPoly> {
+    let lead = b.last()?;
+    if lead.is_zero() {
+        return None;
+    }
+    let mut a_len = a.len();
+    while a_len > 0 && a[a_len - 1].is_zero() {
+        a_len -= 1;
+    }
+    if a_len < b.len() {
+        return Some(a[..a_len].to_vec());
+    }
+    let abs_lead = lead.abs();
+    let lead_neg = lead.is_negative();
+    let q_len = a_len - b.len() + 1;
+    let mut rem: ZPoly = a[..a_len].to_vec();
+    for k in (0..q_len).rev() {
+        let top = rem[k + b.len() - 1].clone();
+        if top.is_zero() {
+            continue;
+        }
+        let g = top.gcd(&abs_lead);
+        let step = &abs_lead / &g;
+        let mut factor = &top / &g;
+        if lead_neg {
+            factor = -factor;
+        }
+        if !step.is_one() {
+            for r in &mut rem[..k + b.len() - 1] {
+                *r *= &step;
+            }
+        }
+        rem[k + b.len() - 1] = BigInt::zero();
+        for j in 0..(b.len() - 1) {
+            if !b[j].is_zero() {
+                rem[k + j] -= &factor * &b[j];
+            }
+        }
+    }
+    rem.truncate(b.len() - 1);
+    while rem.last().is_some_and(Zero::is_zero) {
+        rem.pop();
+    }
+    Some(rem)
+}
+
+/// Primitive integer Sturm chain over `Z[x]` where each polynomial is scaled by a
+/// positive rational content factor so that all coefficients are coprime integers
+/// and every sign at $x \in \mathbb{Q} \cup \{\pm\infty\}$ is identical to [`sturm_chain`].
+fn primitive_sturm_chain(p: &[BigRational]) -> Vec<ZPoly> {
+    let normalize_pos_z = |mut ints: ZPoly| -> ZPoly {
+        while ints.last().is_some_and(Zero::is_zero) {
+            ints.pop();
+        }
+        if ints.is_empty() {
+            return Vec::new();
+        }
+        let content = ints.iter().fold(BigInt::zero(), |acc, c| acc.gcd(c));
+        if content.is_zero() || content.is_one() {
+            ints
+        } else {
+            ints.into_iter().map(|c| c / &content).collect()
+        }
+    };
+    let normalize_pos_q = |q: &[BigRational]| -> ZPoly {
+        if q.is_empty() {
+            return Vec::new();
+        }
+        let den_lcm = q.iter().fold(BigInt::one(), |acc, c| acc.lcm(c.denom()));
+        let ints: ZPoly = q.iter().map(|c| (c * &den_lcm).to_integer()).collect();
+        normalize_pos_z(ints)
+    };
+    let p0 = normalize_pos_q(p);
+    let p1 = normalize_pos_q(&univariate::derivative(p));
+    let mut chain: Vec<ZPoly> = vec![p0, p1];
+    while chain.last().is_some_and(|q| !q.is_empty()) {
+        let n = chain.len();
+        let Some(rem) = prem_pos_z(&chain[n - 2], &chain[n - 1]) else {
+            break;
+        };
+        if rem.is_empty() {
+            break;
+        }
+        let neg_rem: ZPoly = rem.into_iter().map(|c| -c).collect();
+        chain.push(normalize_pos_z(neg_rem));
+    }
+    chain.retain(|q| !q.is_empty());
+    chain
+}
+
+/// Sign of an integer polynomial `q` at rational `x = num / den` (`den > 0`) via
+/// fraction-free homogeneous Horner evaluation, or at `±∞` for `None`.
+fn sign_at_z(
+    q: &[BigInt],
+    at: Option<&BigRational>,
+    positive: bool,
+) -> i32 {
+    let sign_z = |v: &BigInt| {
+        if v.is_zero() {
+            0
+        } else if v.is_positive() {
+            1
+        } else {
+            -1
+        }
+    };
+    match at {
+        | Some(x) => {
+            if q.is_empty() {
+                return 0;
+            }
+            let num = x.numer();
+            let den = x.denom();
+            if den.is_one() {
+                let val = q.iter().rev().fold(BigInt::zero(), |acc, c| acc * num + c);
+                return sign_z(&val);
+            }
+            // Homogeneous Horner: evaluate sum_{k=0}^d c_k num^k den^(d - k)
+            // Since den > 0, den^d > 0 so the sign is preserved without rational divisions!
+            let mut acc = BigInt::zero();
+            let mut den_pow = BigInt::one();
+            for (i, c) in q.iter().rev().enumerate() {
+                if i == 0 {
+                    acc.clone_from(c);
+                } else {
+                    den_pow *= den;
+                    acc = acc * num + c * &den_pow;
+                }
+            }
+            sign_z(&acc)
+        },
+        | None => {
+            let lead = q.last().map_or(0, sign_z);
+            let odd = q.len().is_multiple_of(2);
+            if positive || !odd {
+                lead
+            } else {
+                -lead
+            }
+        },
+    }
+}
+
+fn variations_z(
+    chain: &[ZPoly],
+    at: Option<&BigRational>,
+    positive: bool,
+) -> usize {
+    let mut count = 0_usize;
+    let mut prev_sign = 0_i32;
+    for q in chain {
+        let s = sign_at_z(q, at, positive);
+        if s != 0 {
+            if prev_sign != 0 && prev_sign != s {
+                count += 1;
+            }
+            prev_sign = s;
+        }
+    }
+    count
+}
+
+/// Distinct real roots of `p` in `(a, b]` (`None` ends are infinite).
+fn sturm_count_z(
+    chain: &[ZPoly],
+    a: Option<&BigRational>,
+    b: Option<&BigRational>,
+) -> usize {
+    variations_z(chain, a, false).saturating_sub(variations_z(chain, b, true))
+}
+
+/// An interval endpoint.
+enum End {
+    Finite(BigRational),
+    Infinite,
+}
+
+impl End {
+    const fn value(&self) -> Option<&BigRational> {
+        match self {
+            | Self::Finite(r) => Some(r),
+            | Self::Infinite => None,
+        }
+    }
+}
+
+fn endpoint(
+    graph: &Graph,
+    e: NodeId,
+) -> Option<End> {
+    if let Some(r) = graph.number_of(e).and_then(Number::to_rational) {
+        return Some(End::Finite(r));
+    }
+    let v = graph.eval(e, &crate::graph::Env::numeric(0.0))?;
+    v.is_infinite().then_some(End::Infinite)
+}
+
+fn count_real_roots(
+    graph: &mut Graph,
+    p: NodeId,
+    x: NodeId,
+    interval: Option<(NodeId, NodeId)>,
+) -> Option<i64> {
+    let q = univariate_q(graph, p, x)?;
+    if q.len() < 2 {
+        return None;
+    }
+    let chain = primitive_sturm_chain(&q);
+    let (a, b) = match interval {
+        | Some((a, b)) => (endpoint(graph, a)?, endpoint(graph, b)?),
+        | None => (End::Infinite, End::Infinite),
+    };
+    i64::try_from(sturm_count_z(&chain, a.value(), b.value())).ok()
+}
+
+/// Exact isolating intervals of the distinct real roots, ascending.
+pub(crate) fn isolate(q: &[BigRational]) -> Vec<(BigRational, BigRational)> {
+    if q.len() < 2 {
+        return Vec::new();
+    }
+    let chain = primitive_sturm_chain(q);
+    // Cauchy bound.
+    let lead = q.last().cloned().unwrap_or_else(BigRational::one);
+    let bound = q
+        .iter()
+        .rev()
+        .skip(1)
+        .map(|c| (c / &lead).abs())
+        .fold(BigRational::zero(), |m, c| if c > m { c } else { m })
+        + BigRational::one();
+    let rational = univariate::rational_roots(q);
+    let mut out = Vec::new();
+    let mut stack = vec![(-bound.clone(), bound)];
+    let mut work = 0_u32;
+    while let Some((a, b)) = stack.pop() {
+        work += 1;
+        if work > 100_000 {
+            break;
+        }
+        match sturm_count_z(&chain, Some(&a), Some(&b)) {
+            | 0 => {},
+            | 1 => {
+                match rational.iter().find(|r| **r > a && **r <= b) {
+                    | Some(r) => out.push((r.clone(), r.clone())),
+                    | None => out.push((a, b)),
+                }
+            },
+            | _ => {
+                let mid = (&a + &b) / BigRational::from_integer(BigInt::from(2));
+                stack.push((a, mid.clone()));
+                stack.push((mid, b));
+            },
+        }
+    }
+    out.sort_by(|x, y| x.0.cmp(&y.0));
+    out
+}
+
+/// Shrinks an isolating interval of `q` to width below `width`.
+fn refine(
+    q: &[BigRational],
+    (mut a, mut b): (BigRational, BigRational),
+    width: &BigRational,
+) -> (BigRational, BigRational) {
+    let two = BigRational::from_integer(BigInt::from(2));
+    let chain = primitive_sturm_chain(q);
+    let Some(p0) = chain.first() else {
+        return (a, b);
+    };
+    for _ in 0..200 {
+        if &b - &a <= *width {
+            break;
+        }
+        let mid = (&a + &b) / &two;
+        if sign_at_z(p0, Some(&mid), true) == 0 {
+            return (mid.clone(), mid);
+        }
+        if sturm_count_z(&chain, Some(&a), Some(&mid)) == 1 {
+            b = mid;
+        } else {
+            a = mid;
+        }
+    }
+    (a, b)
+}
+
+fn root_intervals_term(
+    graph: &mut Graph,
+    p: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    let q = univariate_q(graph, p, x)?;
+    let items: Vec<NodeId> = isolate(&q)
+        .into_iter()
+        .map(|(a, b)| {
+            let (a, b) = (graph.num(Number::rat(a)), graph.num(Number::rat(b)));
+            graph.node(core::LIST, &[a, b])
+        })
+        .collect();
+    Some(graph.node(core::LIST, &items))
+}
+
+fn qpoly_term(
+    graph: &mut Graph,
+    q: &[BigRational],
+    x: NodeId,
+) -> NodeId {
+    let mut gens = Gens::default();
+    let gx = gens.index(graph, x);
+    let numbers: Vec<Number> = q.iter().cloned().map(Number::rat).collect();
+    to_term(graph, &gens, &Poly::from_univariate(gx, &numbers))
+}
+
+fn sturm_term(
+    graph: &mut Graph,
+    p: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    let q = univariate_q(graph, p, x)?;
+    let items: Vec<NodeId> = sturm_chain(&q)
+        .iter()
+        .map(|s| qpoly_term(graph, s, x))
+        .collect();
+    Some(graph.node(core::LIST, &items))
+}
+
+// ---------------------------------------------------------------------------
+// Resultants
+
+const CAP: usize = 200_000;
+
+fn bareiss_row(
+    row: &mut [Poly],
+    pivot: &[Poly],
+    previous: &Poly,
+    column: usize,
+) -> Option<()> {
+    let (head, tail) = row.split_at_mut_checked(column + 1)?;
+    let entry = head.last_mut()?;
+    let pivot_value = pivot.get(column)?;
+    for (value, pivot_entry) in tail.iter_mut().zip(pivot.get(column + 1..)?) {
+        let a = value.mul(pivot_value, CAP)?;
+        let b = entry.mul(pivot_entry, CAP)?;
+        *value = a.sub(&b).div_exact(previous, CAP)?;
+    }
+    *entry = Poly::zero();
+    Some(())
+}
+
+/// Estimates the scalar products in the two polynomial multiplications of
+/// each trailing entry. Sparse Sylvester rows can stay cheap even when the
+/// matrix has enough rows for the CPU pool.
+fn bareiss_row_work(
+    rows: &[Vec<Poly>],
+    pivot: &[Poly],
+    column: usize,
+) -> usize {
+    let tail_size = |row: &[Poly]| {
+        row[column + 1..]
+            .iter()
+            .fold(0_usize, |terms, entry| terms.saturating_add(entry.len()))
+    };
+    let (pivot_terms, pivot_tail_terms) = (pivot[column].len(), tail_size(pivot));
+    rows.iter().fold(0, |work, row| {
+        work.saturating_add(pivot_terms.saturating_mul(tail_size(row)))
+            .saturating_add(pivot_tail_terms.saturating_mul(row[column].len()))
+    })
+}
+
+/// The determinant of a square matrix of polynomials by Bareiss'
+/// fraction-free elimination.
+fn bareiss(mut m: Vec<Vec<Poly>>) -> Option<Poly> {
+    const ROW_GRAIN: usize = 8;
+    let n = m.len();
+    if n == 0 {
+        return Some(Poly::constant(Number::from(1)));
+    }
+    let mut sign = false;
+    let mut previous = Poly::constant(Number::from(1));
+    for k in 0..n.saturating_sub(1) {
+        if m[k][k].is_zero() {
+            let swap = (k + 1..n).find(|&r| !m[r][k].is_zero());
+            match swap {
+                | Some(r) => {
+                    m.swap(k, r);
+                    sign = !sign;
+                },
+                | None => return Some(Poly::zero()),
+            }
+        }
+        let (processed, rows) = m.split_at_mut_checked(k + 1)?;
+        let pivot = processed.last()?;
+        if crate::execution::should_split(rows.len(), ROW_GRAIN)
+            && bareiss_row_work(rows, pivot, k) >= 1024
+        {
+            let failed = AtomicBool::new(false);
+            par::for_each_mut(rows, ROW_GRAIN, |_, row| {
+                if !failed.load(Ordering::Relaxed)
+                    && bareiss_row(row, pivot, &previous, k).is_none()
+                {
+                    failed.store(true, Ordering::Relaxed);
+                }
+            });
+            if failed.into_inner() {
+                return None;
+            }
+        } else {
+            for row in rows {
+                bareiss_row(row, pivot, &previous, k)?;
+            }
+        }
+        previous = pivot.get(k)?.clone();
+    }
+    let det = m[n - 1][n - 1].clone();
+    Some(if sign { det.neg() } else { det })
+}
+
+/// Exact Sylvester resultant over $\mathbb{Q}[x]$ via Collins' Modular Resultant
+/// and Chinese Remainder reconstruction (with parallel prime evaluation on large
+/// degree products), completely eliminating rational PRS GCD swell.
+pub(crate) fn modular_resultant_q(
+    p: &[BigRational],
+    q: &[BigRational],
+) -> Option<BigRational> {
+    let trim_q = |poly: &[BigRational]| -> QPoly {
+        let mut out = poly.to_vec();
+        while out.last().is_some_and(Zero::is_zero) {
+            out.pop();
+        }
+        out
+    };
+    let (p_trim, q_trim) = (trim_q(p), trim_q(q));
+    if p_trim.is_empty() || q_trim.is_empty() {
+        return None;
+    }
+    let m = p_trim.len() - 1;
+    let n = q_trim.len() - 1;
+    if m == 0 && n == 0 {
+        return Some(BigRational::one());
+    }
+    if m == 0 {
+        return Some(num_traits::pow(p_trim[0].clone(), n));
+    }
+    if n == 0 {
+        return Some(num_traits::pow(q_trim[0].clone(), m));
+    }
+
+    let (cp, zp) = univariate::primitive(&p_trim);
+    let (cq, zq) = univariate::primitive(&q_trim);
+    let scale = num_traits::pow(cp, n) * num_traits::pow(cq, m);
+
+    let lc_p = zp.last()?;
+    let lc_q = zq.last()?;
+    let bound_bits = multifactor::hadamard_resultant_bound_bits(&zp, &zq);
+    let needed_primes = bound_bits.div_ceil(30).max(2);
+
+    // Collect admissible 31-bit primes not dividing lc(zp) or lc(zq).
+    let mut primes = Vec::with_capacity(needed_primes);
+    let mut prime_idx = 0_usize;
+    while primes.len() < needed_primes {
+        let pr = multifactor::nth_word_prime(prime_idx);
+        prime_idx += 1;
+        let pr_big = BigInt::from(pr);
+        if !lc_p.mod_floor(&pr_big).is_zero() && !lc_q.mod_floor(&pr_big).is_zero() {
+            primes.push(pr);
+        }
+    }
+
+    let eval_prime = |index: usize| -> (u64, u64) {
+        let pr = primes[index];
+        let ap = multifactor::fp_reduce_z(&zp, pr);
+        let bp = multifactor::fp_reduce_z(&zq, pr);
+        (pr, multifactor::resultant_fp(&ap, &bp, pr))
+    };
+
+    let work_per_prime = (m + n) * (m + n);
+    let residues: Vec<(u64, u64)> = if execution::should_split_work(primes.len(), work_per_prime) {
+        par::map_indexed(primes.len(), 2, eval_prime)
+    } else {
+        (0..primes.len()).map(eval_prime).collect()
+    };
+
+    let mut crt_acc = vec![BigInt::zero()];
+    let mut crt_mod = BigInt::zero();
+    for (pr, res_p) in residues {
+        multifactor::crt_step_poly(&mut crt_acc, &mut crt_mod, &[res_p], pr);
+    }
+    let half = &crt_mod >> 1;
+    let res_z = multifactor::symmetric_mod(crt_acc.first()?, &crt_mod, &half);
+    Some(scale * BigRational::from_integer(res_z))
+}
+
+/// `res_x(p, q)` from coefficient lists in `x` (ascending).
+fn resultant(
+    p: &[Poly],
+    q: &[Poly],
+) -> Option<Poly> {
+    let (m, n) = (p.len().checked_sub(1)?, q.len().checked_sub(1)?);
+    if m == 0 && n == 0 {
+        return Some(Poly::constant(Number::from(1)));
+    }
+    let exact_scalar = |poly: &[Poly]| -> Option<QPoly> {
+        poly.iter()
+            .map(|c| c.as_constant()?.to_rational())
+            .collect()
+    };
+    if let (Some(p), Some(q)) = (exact_scalar(p), exact_scalar(q)) {
+        return modular_resultant_q(&p, &q).map(|value| Poly::constant(Number::rat(value)));
+    }
+    let size = m + n;
+    let mut rows = Vec::with_capacity(size);
+    for shift in 0..n {
+        let mut row = vec![Poly::zero(); size];
+        for (k, c) in p.iter().rev().enumerate() {
+            row[shift + k] = c.clone();
+        }
+        rows.push(row);
+    }
+    for shift in 0..m {
+        let mut row = vec![Poly::zero(); size];
+        for (k, c) in q.iter().rev().enumerate() {
+            row[shift + k] = c.clone();
+        }
+        rows.push(row);
+    }
+    bareiss(rows)
+}
+
+/// Shared generators and the coefficient lists of `p` and `q` in `x`.
+fn in_x(
+    graph: &mut Graph,
+    terms: &[NodeId],
+    x: NodeId,
+) -> Option<(Gens, u32, Vec<Vec<Poly>>)> {
+    let mut gens = Gens::default();
+    let gx = gens.index(graph, x);
+    let mut out = Vec::new();
+    let symbol = graph.symbol_of(x);
+    for &t in terms {
+        let t = super::best(graph, t)?;
+        let p = from_term(graph, &mut gens, t, Limits::default())?;
+        if let Some(symbol) = symbol {
+            for other in p.support().into_iter().filter(|&other| other != gx) {
+                if graph.depends_on(graph.find(gens.node(other)?), symbol) {
+                    return None;
+                }
+            }
+        }
+        let mut coefficients = p.coefficients_in(gx);
+        while coefficients.last().is_some_and(Poly::is_zero) {
+            coefficients.pop();
+        }
+        out.push(coefficients);
+    }
+    Some((gens, gx, out))
+}
+
+fn resultant_term(
+    graph: &mut Graph,
+    p: NodeId,
+    q: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    let (gens, _, polys) = in_x(graph, &[p, q], x)?;
+    let r = resultant(polys.first()?, polys.get(1)?)?;
+    Some(to_term(graph, &gens, &r))
+}
+
+/// `disc_x(p) = (-1)^(n(n-1)/2) res(p, p') / lc(p)`.
+fn discriminant(
+    p: &[Poly],
+    gx: u32,
+) -> Option<Poly> {
+    let n = p.len().checked_sub(1)?;
+    if n == 0 {
+        return None;
+    }
+    let mut derivative = Vec::with_capacity(n);
+    for (k, c) in p.iter().enumerate().skip(1) {
+        derivative.push(c.scale(&Number::from(i64::try_from(k).ok()?)));
+    }
+    let _ = gx;
+    let r = resultant(p, &derivative)?;
+    let lead = p.last()?;
+    let d = r.div_exact(lead, CAP)?;
+    Some(if (n * (n - 1) / 2) % 2 == 1 {
+        d.neg()
+    } else {
+        d
+    })
+}
+
+fn discriminant_term(
+    graph: &mut Graph,
+    p: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    let (gens, gx, polys) = in_x(graph, &[p], x)?;
+    let d = discriminant(polys.first()?, gx)?;
+    Some(to_term(graph, &gens, &d))
+}
+
+// ---------------------------------------------------------------------------
+// Monomial orders and ideals
+
+fn order_of(
+    graph: &Graph,
+    order: Option<NodeId>,
+) -> Option<Order> {
+    let Some(order) = order else {
+        return Some(Order::Lex);
+    };
+    match graph.interner().symbol_name(graph.symbol_of(order)?) {
+        | "lex" => Some(Order::Lex),
+        | "grlex" => Some(Order::GradedLex),
+        | "grevlex" => Some(Order::GradedRevLex),
+        | _ => None,
+    }
+}
+
+fn leading(
+    graph: &mut Graph,
+    request: Request,
+    p: NodeId,
+    vars: NodeId,
+    order: Option<NodeId>,
+) -> Option<NodeId> {
+    let order = order_of(graph, order)?;
+    let list = graph.node(core::LIST, &[p]);
+    let (polys, gens) = super::to_groebner(graph, list, vars, order)?;
+    let poly = polys.first()?;
+    let Some((mono, coeff)) = poly.leading() else {
+        return Some(graph.int(0));
+    };
+    let (mono, coeff) = (mono.clone(), coeff.clone());
+    let term = match request {
+        | Request::LeadingCoeff => return Some(graph.num(Number::rat(coeff))),
+        | Request::LeadingMonomial => GPoly::new(vec![(mono, BigRational::one())], order),
+        | _ => GPoly::new(vec![(mono, coeff)], order),
+    };
+    Some(super::from_groebner(graph, &gens, &term))
+}
+
+fn normal_form_term(
+    graph: &mut Graph,
+    p: NodeId,
+    polys: NodeId,
+    vars: NodeId,
+) -> Option<NodeId> {
+    if graph.op(polys) != core::LIST {
+        return None;
+    }
+    let order = Order::GradedRevLex;
+    let mut all = vec![p];
+    all.extend_from_slice(graph.children(polys));
+    let list = graph.node(core::LIST, &all);
+    let (converted, gens) = super::to_groebner(graph, list, vars, order)?;
+    let (target, relations) = converted.split_first()?;
+    let basis = groebner::groebner(relations, order, GroebnerLimits::default())?;
+    let reduced = groebner::reduce(target, &basis, order);
+    Some(super::from_groebner(graph, &gens, &reduced))
+}
+
+fn with_relations(
+    graph: &mut Graph,
+    e: NodeId,
+    relations: NodeId,
+    vars: NodeId,
+) -> Option<NodeId> {
+    let term = super::best(graph, e)?;
+    let mut gens = Gens::default();
+    let r = super::ratio(graph, &mut gens, term, Limits::default())?;
+    let numer = to_term(graph, &gens, &r.numer);
+    let denom = to_term(graph, &gens, &r.denom);
+    let numer = normal_form_term(graph, numer, relations, vars)?;
+    let denom = normal_form_term(graph, denom, relations, vars)?;
+    if graph.as_number(denom).is_some_and(Number::is_zero) {
+        return None;
+    }
+    let minus_one = graph.int(-1);
+    let inverse = graph.node(core::POW, &[denom, minus_one]);
+    Some(graph.node(core::MUL, &[numer, inverse]))
+}
+
+// ---------------------------------------------------------------------------
+// Cylindrical algebraic decomposition
+
+/// Sample points of a sign-invariant decomposition of `R` for the
+/// univariate polynomials `qs`: every root, and a rational point in every
+/// open interval between consecutive roots. Roots that are not rational
+/// are given to within `1e-15`.
+fn cad_line(qs: &[QPoly]) -> Vec<Number> {
+    // Square-free product of the non-constant polynomials, so one Sturm
+    // chain isolates every root of every polynomial.
+    let mut product: QPoly = vec![BigRational::one()];
+    for q in qs.iter().filter(|q| q.len() >= 2) {
+        let g = univariate::gcd(&product, q);
+        let (part, _) = univariate::divrem(q, &g).unwrap_or_default();
+        product = univariate::mul(&product, &part);
+    }
+    let width = BigRational::new(BigInt::one(), BigInt::from(10_u64.pow(15)));
+    let roots: Vec<(BigRational, BigRational)> = isolate(&product)
+        .into_iter()
+        .map(|iv| refine(&product, iv, &width))
+        .collect();
+    let one = BigRational::one();
+    let two = BigRational::from_integer(BigInt::from(2));
+    let mut samples = Vec::new();
+    match (roots.first(), roots.last()) {
+        | (Some(first), Some(last)) => {
+            samples.push(Number::rat(first.0.floor() - &one));
+            for (i, (a, b)) in roots.iter().enumerate() {
+                samples.push(if a == b {
+                    Number::rat(a.clone())
+                } else {
+                    Number::Float(Number::rat((a + b) / &two).to_f64())
+                });
+                if let Some(next) = roots.get(i + 1) {
+                    samples.push(Number::rat((b + &next.0) / &two));
+                }
+            }
+            samples.push(Number::rat(last.1.ceil() + &one));
+        },
+        | _ => samples.push(Number::from(0)),
+    }
+    samples
+}
+
+fn cad(
+    graph: &mut Graph,
+    polys: NodeId,
+    vars: NodeId,
+) -> Option<NodeId> {
+    if graph.op(polys) != core::LIST || graph.op(vars) != core::LIST {
+        return None;
+    }
+    let ps = graph.children(polys).to_vec();
+    let vs = graph.children(vars).to_vec();
+    match vs.as_slice() {
+        | &[x] => {
+            let qs = ps
+                .iter()
+                .map(|&p| univariate_q(graph, p, x))
+                .collect::<Option<Vec<_>>>()?;
+            let items: Vec<NodeId> = cad_line(&qs).into_iter().map(|n| graph.num(n)).collect();
+            Some(graph.node(core::LIST, &items))
+        },
+        | &[x, y] => cad_plane(graph, &ps, x, y),
+        | _ => cad_space(graph, &ps, &vs),
+    }
+}
+
+/// `p` with the generators in `point` replaced by rational values.
+fn eval_partial(
+    p: &Poly,
+    point: &[(u32, BigRational)],
+) -> Option<Poly> {
+    let mut out = Poly::zero();
+    for (mono, coeff) in p.terms() {
+        let mut c = coeff.to_rational()?;
+        let mut rest = Vec::new();
+        for &(g, e) in mono {
+            match point.iter().find(|(h, _)| *h == g) {
+                | Some((_, v)) => c *= num_traits::pow(v.clone(), usize::try_from(e).ok()?),
+                | None => rest.push((g, e)),
+            }
+        }
+        out = out.add(&Poly::monomial(rest, Number::rat(c)));
+    }
+    Some(out)
+}
+
+/// The projection of `polys` along the generator `y`: every coefficient
+/// in `y`, the discriminants and the pairwise resultants (`McCallum`'s
+/// set, with the full coefficient sets for safety), without constants
+/// and duplicates. Polynomials free of `y` pass through.
+fn project(
+    polys: &[Poly],
+    y: u32,
+) -> Option<Vec<Poly>> {
+    let mut out: Vec<Poly> = Vec::new();
+    let mut push = |q: Poly| {
+        if q.as_constant().is_none() && !out.contains(&q) && !out.contains(&q.neg()) {
+            out.push(q);
+        }
+    };
+    let coefficient_lists: Vec<Vec<Poly>> = polys
+        .iter()
+        .map(|p| {
+            let mut c = p.coefficients_in(y);
+            while c.last().is_some_and(Poly::is_zero) {
+                c.pop();
+            }
+            c
+        })
+        .collect();
+    for (i, cs) in coefficient_lists.iter().enumerate() {
+        if cs.len() <= 1 {
+            if let Some(c) = cs.first() {
+                push(c.clone());
+            }
+            continue;
+        }
+        for c in cs {
+            push(c.clone());
+        }
+        if cs.len() >= 3 {
+            push(discriminant(cs, y)?);
+        }
+        for other in coefficient_lists.iter().skip(i + 1) {
+            if other.len() >= 2 {
+                push(resultant(cs, other)?);
+            }
+        }
+    }
+    Some(out)
+}
+
+/// Sample points (one per cell) of a CAD of `R^n`, the generators in
+/// `order` (the last one lifted last).
+fn cad_samples(
+    polys: &[Poly],
+    order: &[u32],
+) -> Option<Vec<Vec<Number>>> {
+    let (&y, base) = order.split_last()?;
+    let fibre_samples = |point: &[(u32, BigRational)]| -> Option<Vec<Number>> {
+        let mut fibres = Vec::with_capacity(polys.len());
+        for p in polys {
+            let q = eval_partial(p, point)?;
+            let mut coefficients: QPoly = if q.is_zero() {
+                Vec::new()
+            } else {
+                q.univariate_in(y)?
+                    .iter()
+                    .map(Number::to_rational)
+                    .collect::<Option<_>>()?
+            };
+            while coefficients.last().is_some_and(Zero::is_zero) {
+                coefficients.pop();
+            }
+            fibres.push(coefficients);
+        }
+        Some(cad_line(&fibres))
+    };
+    if base.is_empty() {
+        return Some(fibre_samples(&[])?.into_iter().map(|v| vec![v]).collect());
+    }
+    let projection = project(polys, y)?;
+    let base_samples = cad_samples(&projection, base)?;
+    if base_samples.len() > 100_000 {
+        return None;
+    }
+    let lift_sample = |sample: &Vec<Number>| -> Result<Vec<Vec<Number>>, ()> {
+        let point: Vec<(u32, BigRational)> = base
+            .iter()
+            .zip(sample)
+            .map(|(&g, v)| {
+                Some((
+                    g,
+                    v.to_rational()
+                        .or_else(|| BigRational::from_float(v.to_f64()))?,
+                ))
+            })
+            .collect::<Option<_>>()
+            .ok_or(())?;
+        let ys = fibre_samples(&point).ok_or(())?;
+        Ok(ys
+            .into_iter()
+            .map(|value| {
+                let mut cell = sample.clone();
+                cell.push(value);
+                cell
+            })
+            .collect())
+    };
+    let lifted: Vec<Vec<Vec<Number>>> =
+        if execution::should_split_work(base_samples.len(), polys.len().saturating_mul(64)) {
+            par::try_map_indexed(base_samples.len(), 2, |index| {
+                lift_sample(base_samples.get(index).ok_or(())?)
+            })
+            .ok()?
+        } else {
+            base_samples
+                .iter()
+                .map(lift_sample)
+                .collect::<Result<Vec<_>, _>>()
+                .ok()?
+        };
+    let mut cells = Vec::new();
+    for chunk in lifted {
+        cells.extend(chunk);
+        if cells.len() > 100_000 {
+            return None;
+        }
+    }
+    Some(cells)
+}
+
+fn cad_space(
+    graph: &mut Graph,
+    ps: &[NodeId],
+    vs: &[NodeId],
+) -> Option<NodeId> {
+    let mut gens = Gens::default();
+    let order: Vec<u32> = vs.iter().map(|&v| gens.index(graph, v)).collect();
+    let mut polys = Vec::with_capacity(ps.len());
+    for &t in ps {
+        let t = super::best(graph, t)?;
+        let p = from_term(graph, &mut gens, t, Limits::default())?;
+        if p.support().iter().any(|g| !order.contains(g)) {
+            return None;
+        }
+        polys.push(p);
+    }
+    let cells = cad_samples(&polys, &order)?;
+    let items: Vec<NodeId> = cells
+        .into_iter()
+        .map(|c| {
+            let coordinates: Vec<NodeId> = c.into_iter().map(|v| graph.num(v)).collect();
+            graph.node(core::LIST, &coordinates)
+        })
+        .collect();
+    Some(graph.node(core::LIST, &items))
+}
+
+/// Collins projection onto `x` (leading coefficients and discriminants in
+/// `y`, pairwise resultants), a decomposition of the `x` line, and lifting
+/// over each sample.
+fn cad_plane(
+    graph: &mut Graph,
+    ps: &[NodeId],
+    x: NodeId,
+    y: NodeId,
+) -> Option<NodeId> {
+    let (gens, gy, polys) = in_x(graph, ps, y)?;
+    let gx = gens.find(graph, x);
+    let as_x = |p: &Poly| -> Option<QPoly> {
+        if p.is_zero() {
+            return Some(Vec::new());
+        }
+        match gx {
+            | Some(g) => {
+                p.univariate_in(g)?
+                    .iter()
+                    .map(Number::to_rational)
+                    .collect()
+            },
+            | None => Some(vec![p.as_constant()?.to_rational()?]),
+        }
+    };
+    let mut projection: Vec<QPoly> = Vec::new();
+    for (i, p) in polys.iter().enumerate() {
+        if p.len() >= 2 {
+            projection.push(as_x(p.last()?)?);
+            if p.len() >= 3 {
+                projection.push(as_x(&discriminant(p, gy)?)?);
+            }
+        }
+        for q in polys.iter().skip(i + 1) {
+            if p.len() >= 2 && q.len() >= 2 {
+                projection.push(as_x(&resultant(p, q)?)?);
+            }
+        }
+    }
+    let xs_samples = cad_line(&projection);
+    let polys_q: Vec<Vec<QPoly>> = polys
+        .iter()
+        .map(|p| p.iter().map(as_x).collect::<Option<Vec<_>>>())
+        .collect::<Option<Vec<_>>>()?;
+    let lift_x = |xs: &Number| -> Result<(Number, Vec<Number>), ()> {
+        let at = xs
+            .to_rational()
+            .or_else(|| BigRational::from_float(xs.to_f64()))
+            .ok_or(())?;
+        // Each polynomial at x = xs, as a univariate polynomial in y.
+        let mut fibres = Vec::with_capacity(polys_q.len());
+        for p in &polys_q {
+            let mut q: QPoly = Vec::with_capacity(p.len());
+            for cq in p {
+                q.push(univariate::eval(cq, &at));
+            }
+            while q.last().is_some_and(Zero::is_zero) {
+                q.pop();
+            }
+            fibres.push(q);
+        }
+        Ok((xs.clone(), cad_line(&fibres)))
+    };
+    let lifted: Vec<(Number, Vec<Number>)> =
+        if execution::should_split_work(xs_samples.len(), polys_q.len().saturating_mul(64)) {
+            par::try_map_indexed(xs_samples.len(), 2, |index| {
+                lift_x(xs_samples.get(index).ok_or(())?)
+            })
+            .ok()?
+        } else {
+            xs_samples
+                .iter()
+                .map(lift_x)
+                .collect::<Result<Vec<_>, _>>()
+                .ok()?
+        };
+    let mut cells = Vec::new();
+    for (xs, ys_list) in lifted {
+        for ys in ys_list {
+            let (a, b) = (graph.num(xs.clone()), graph.num(ys));
+            cells.push(graph.node(core::LIST, &[a, b]));
+        }
+    }
+    Some(graph.node(core::LIST, &cells))
+}
+
+// ---------------------------------------------------------------------------
+// Trigonometric expansion
+
+/// Trigonometric functions of sums and integer multiples expanded in the
+/// concrete term `e` (for the equation solver).
+pub(crate) fn expand_trig_term(
+    graph: &mut Graph,
+    e: NodeId,
+) -> Option<NodeId> {
+    expand_trig(graph, e, 0)
+}
+
+/// An isolating interval of `q` shrunk below `width`.
+pub(crate) fn refine_interval(
+    q: &[BigRational],
+    interval: (BigRational, BigRational),
+    width: &BigRational,
+) -> (BigRational, BigRational) {
+    refine(q, interval, width)
+}
+
+fn expand_trig(
+    graph: &mut Graph,
+    e: NodeId,
+    depth: u32,
+) -> Option<NodeId> {
+    if depth > 40 {
+        return None;
+    }
+    let ops = (
+        graph.ops().lookup("sin"),
+        graph.ops().lookup("cos"),
+        graph.ops().lookup("tan"),
+    );
+    let (Some(sin), Some(cos), Some(tan)) = ops else {
+        return None;
+    };
+    let op = graph.op(e);
+    let children = graph.children(e).to_vec();
+    let expanded: Vec<NodeId> = children
+        .iter()
+        .map(|&c| expand_trig(graph, c, depth + 1))
+        .collect::<Option<Vec<_>>>()?;
+    if op != sin && op != cos && op != tan {
+        return Some(if expanded == children {
+            e
+        } else {
+            graph.try_node(op, &expanded)?
+        });
+    }
+    let &[arg] = expanded.as_slice() else {
+        return Some(e);
+    };
+    // Split the argument into a + b, or n*x with integer n >= 2.
+    let split = if graph.op(arg) == core::ADD {
+        let parts = graph.children(arg).to_vec();
+        let (first, rest) = parts.split_first()?;
+        let rest = if rest.len() == 1 {
+            rest[0]
+        } else {
+            graph.node(core::ADD, rest)
+        };
+        Some((*first, rest))
+    } else if graph.op(arg) == core::MUL {
+        let parts = graph.children(arg).to_vec();
+        let n = parts
+            .iter()
+            .find_map(|&p| graph.number_of(p).and_then(Number::to_i64));
+        match n {
+            | Some(n) if (2..=24).contains(&n) => {
+                let others: Vec<NodeId> = parts
+                    .iter()
+                    .copied()
+                    .filter(|&p| graph.number_of(p).is_none())
+                    .collect();
+                let rest_number: Vec<NodeId> = parts
+                    .iter()
+                    .copied()
+                    .filter(|&p| graph.number_of(p).is_some_and(|v| v.to_i64() != Some(n)))
+                    .collect();
+                let mut unit_parts = others;
+                unit_parts.extend(rest_number);
+                let unit = if unit_parts.len() == 1 {
+                    unit_parts[0]
+                } else {
+                    graph.node(core::MUL, &unit_parts)
+                };
+                let m = graph.int(n - 1);
+                let rest = graph.node(core::MUL, &[m, unit]);
+                Some((rest, unit))
+            },
+            | _ => None,
+        }
+    } else {
+        None
+    };
+    let Some((a, b)) = split else {
+        return Some(graph.node(op, &[arg]));
+    };
+    let parts = |graph: &mut Graph, t: NodeId| -> Option<(NodeId, NodeId)> {
+        let s = graph.node(sin, &[t]);
+        let c = graph.node(cos, &[t]);
+        Some((
+            expand_trig(graph, s, depth + 1)?,
+            expand_trig(graph, c, depth + 1)?,
+        ))
+    };
+    let (sa, ca) = parts(graph, a)?;
+    let (sb, cb) = parts(graph, b)?;
+    let minus_one = graph.int(-1);
+    let sin_sum = {
+        let x = graph.node(core::MUL, &[sa, cb]);
+        let y = graph.node(core::MUL, &[ca, sb]);
+        graph.node(core::ADD, &[x, y])
+    };
+    let cos_sum = {
+        let x = graph.node(core::MUL, &[ca, cb]);
+        let y = graph.node(core::MUL, &[minus_one, sa, sb]);
+        graph.node(core::ADD, &[x, y])
+    };
+    Some(if op == sin {
+        sin_sum
+    } else if op == cos {
+        cos_sum
+    } else {
+        let inverse = graph.node(core::POW, &[cos_sum, minus_one]);
+        graph.node(core::MUL, &[sin_sum, inverse])
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::rules::testing::reduce_with;
+    use crate::rules::testing::simplify;
+
+    fn run(src: &str) -> String {
+        simplify(&crate::rules::standard(), src)
+    }
+
+    #[test]
+    fn sturm_counts_and_isolation() {
+        assert_eq!(run("count_real_roots(x^3 - 2*x, x)"), "3");
+        assert_eq!(run("count_real_roots(x^4 + 1, x)"), "0");
+        assert_eq!(run("count_real_roots((x - 1)^2*(x + 2), x)"), "2");
+        assert_eq!(run("count_real_roots(x^3 - 2*x, x, 0, 10)"), "1");
+        assert_eq!(run("count_real_roots(x^5 - x - 1, x, -oo, oo)"), "1");
+        assert_eq!(
+            run("real_root_intervals(x^2 - 4, x)"),
+            "list(list(-2, -2), list(2, 2))"
+        );
+        let intervals = run("real_root_intervals(x^2 - 2, x)");
+        assert!(intervals.starts_with("list(list(-"), "{intervals}");
+        assert_eq!(
+            run("sturm_sequence(x^3 - 2*x, x)"),
+            "list(x^3 - 2*x, 3*x^2 - 2, 4/3*x, 2)"
+        );
+    }
+
+    #[test]
+    fn resultants_and_discriminants() {
+        assert_eq!(run("discriminant(a*x^2 + b*x + c, x)"), "b^2 - 4*a*c");
+        assert_eq!(run("resultant(x^2 - 1, x - 1, x)"), "0");
+        assert_eq!(run("resultant(x^2 + y^2 - 1, x - y, x)"), "2*y^2 - 1");
+        assert_eq!(run("discriminant(x^3 + p*x + q, x)"), "-4*p^3 - 27*q^2");
+    }
+
+    #[test]
+    fn leading_terms_and_ideals() {
+        assert_eq!(
+            run("leading_term(3*x*y^2 + 2*x^2 + y, list(x, y))"),
+            "2*x^2"
+        );
+        assert_eq!(
+            run("leading_term(3*x*y^2 + 2*x^2 + y, list(x, y), grlex)"),
+            "3*x*y^2"
+        );
+        assert_eq!(
+            run("leading_coeff(3*x*y^2 + 2*x^2 + y, list(x, y), grlex)"),
+            "3"
+        );
+        assert_eq!(
+            run("leading_monomial(3*x*y^2 + 2*x^2 + y, list(x, y), grlex)"),
+            "x*y^2"
+        );
+        assert_eq!(
+            run("ideal_member(x^3 - x*y^2, list(x^2 - y^2), list(x, y))"),
+            "true"
+        );
+        assert_eq!(
+            run("ideal_member(x + y, list(x^2 - y^2), list(x, y))"),
+            "false"
+        );
+        assert_eq!(
+            run("normal_form(x^2, list(x^2 + y^2 - 1), list(x, y))"),
+            "1 - y^2"
+        );
+        assert_eq!(
+            run("simplify_with_relations(x^2 + y^2 + 3, list(x^2 + y^2 - 1), list(x, y))"),
+            "4"
+        );
+        assert_eq!(
+            run(
+                "simplify_with_relations((x^2 + y^2)/(x^4 + 2*x^2*y^2 + y^4), list(x^2 + y^2 - 1), list(x, y))"
+            ),
+            "1"
+        );
+    }
+
+    #[test]
+    fn cylindrical_decomposition() {
+        // Roots ±1 and the three open intervals.
+        assert_eq!(run("cad(list(x^2 - 1), list(x))"), "list(-2, -1, 0, 1, 2)");
+        // The unit circle: 3 cylinders over the open intervals and 2 over
+        // the sections x = ±1, each split by the circle.
+        let (cells, reduced) = reduce_with(
+            &crate::rules::standard(),
+            "cad(list(x^2 + y^2 - 1), list(x, y))",
+            &[],
+        );
+        assert!(reduced, "{cells}");
+        assert_eq!(
+            cells.matches("list(").count() - 1,
+            1 + 1 + 3 + 1 + 5 + 1 + 3 + 1 + 1 - 4,
+            "{cells}"
+        );
+    }
+
+    #[test]
+    fn cylindrical_decomposition_in_three_variables() {
+        let rules = crate::rules::standard();
+        // The unit sphere: every sample is inside, on or outside, and all
+        // three occur; the cells over the poles are found.
+        let (cells, reduced) =
+            reduce_with(&rules, "cad(list(x^2 + y^2 + z^2 - 1), list(x, y, z))", &[]);
+        assert!(reduced, "{cells}");
+        let points: Vec<Vec<f64>> = cells
+            .trim_start_matches("list(")
+            .trim_end_matches(')')
+            .split("), list(")
+            .map(|c| {
+                c.trim_start_matches("list(")
+                    .trim_end_matches(')')
+                    .split(", ")
+                    .map(|v| {
+                        v.parse::<f64>()
+                            .unwrap_or_else(|_| crate::rules::testing::eval(&rules, v, &[]))
+                    })
+                    .collect()
+            })
+            .collect();
+        assert!(points.iter().all(|p| p.len() == 3), "{cells}");
+        let signs: Vec<i32> = points
+            .iter()
+            .map(|p| {
+                let v = p[0] * p[0] + p[1] * p[1] + p[2] * p[2] - 1.0;
+                if v.abs() < 1e-9 {
+                    0
+                } else if v < 0.0 {
+                    -1
+                } else {
+                    1
+                }
+            })
+            .collect();
+        assert!(
+            signs.contains(&-1) && signs.contains(&0) && signs.contains(&1),
+            "{cells}"
+        );
+        assert!(
+            points
+                .iter()
+                .any(|p| (p[0] - 1.0).abs() < 1e-12 && p[1].abs() < 1e-12 && p[2].abs() < 1e-12),
+            "{cells}"
+        );
+        // Two planes meeting along a line: every sign combination of
+        // (x - z, y + z) is realised.
+        let (cells, reduced) = reduce_with(&rules, "cad(list(x - z, y + z), list(x, y, z))", &[]);
+        assert!(reduced, "{cells}");
+        assert!(cells.matches("list(").count() >= 9, "{cells}");
+    }
+
+    #[test]
+    fn trig_expansion() {
+        assert_eq!(
+            run("expand_trig(sin(a + b))"),
+            "cos(a)*sin(b) + cos(b)*sin(a)"
+        );
+        assert_eq!(run("expand_trig(cos(2*x))"), "cos(x)^2 - sin(x)^2");
+        let triple = run("expand_trig(sin(3*x))");
+        let rules = crate::rules::standard();
+        let at = crate::rules::testing::eval(&rules, &triple, &[("x", 0.7)]);
+        assert!((at - (2.1_f64).sin()).abs() < 1e-12, "{triple}");
+    }
+
+    #[test]
+    fn modular_resultant_matches_rational_prs_and_edges() {
+        use super::*;
+
+        let rat = |n: i64, d: i64| BigRational::new(BigInt::from(n), BigInt::from(d));
+        let p = vec![rat(1, 3), rat(-5, 2), rat(7, 6), rat(4, 1), rat(-3, 5)];
+        let q = vec![rat(-2, 7), rat(3, 1), rat(-1, 4), rat(5, 3)];
+        assert_eq!(modular_resultant_q(&p, &q), univariate::resultant(&p, &q));
+        assert_eq!(modular_resultant_q(&q, &p), univariate::resultant(&q, &p));
+
+        // Swapped odd degrees (deg 1 vs deg 3) and shared factor.
+        let lin = vec![rat(-1, 1), rat(3, 2)];
+        let cub = vec![rat(-2, 1), rat(0, 1), rat(1, 3), rat(5, 1)];
+        assert_eq!(
+            modular_resultant_q(&lin, &cub),
+            univariate::resultant(&lin, &cub)
+        );
+        let prod_q = univariate::mul(&lin, &cub);
+        assert_eq!(
+            modular_resultant_q(&lin, &prod_q),
+            Some(BigRational::zero())
+        );
+
+        // High-degree polynomials where rational PRS would suffer severe swell.
+        let mut a: QPoly = vec![BigRational::one()];
+        let mut b: QPoly = vec![BigRational::one()];
+        for k in 1_i64..=10 {
+            a = univariate::mul(&a, &[rat(-k, 1), rat(2 * k + 1, 1)]);
+            b = univariate::mul(&b, &[rat(k + 2, 3), rat(3 * k - 1, 2)]);
+        }
+        assert_eq!(modular_resultant_q(&a, &b), univariate::resultant(&a, &b));
+
+        // Constant and zero edges.
+        assert_eq!(
+            modular_resultant_q(&[rat(3, 1)], &cub),
+            univariate::resultant(&[rat(3, 1)], &cub)
+        );
+        assert_eq!(modular_resultant_q(&[], &cub), None);
+    }
+
+    #[test]
+    fn primitive_sturm_chain_matches_exact_sturm_variations() {
+        use super::*;
+
+        let rat = |n: i64, d: i64| BigRational::new(BigInt::from(n), BigInt::from(d));
+        // (x - 1/3)^2 * (x + 5/2) * (x^2 - 2) * (x^2 + 1)
+        let f1 = [rat(-1, 3), rat(1, 1)];
+        let f2 = [rat(5, 2), rat(1, 1)];
+        let f3 = [rat(-2, 1), rat(0, 1), rat(1, 1)];
+        let f4 = [rat(1, 1), rat(0, 1), rat(1, 1)];
+        let mut p = univariate::mul(&f1, &f1);
+        p = univariate::mul(&p, &f2);
+        p = univariate::mul(&p, &f3);
+        p = univariate::mul(&p, &f4);
+
+        let chain_q = sturm_chain(&p);
+        let chain_z = primitive_sturm_chain(&p);
+        let sign_q = |q: &[BigRational], at: Option<&BigRational>, pos: bool| -> i32 {
+            match at {
+                | Some(x) => {
+                    let v = univariate::eval(q, x);
+                    if v.is_zero() {
+                        0
+                    } else if v.is_positive() {
+                        1
+                    } else {
+                        -1
+                    }
+                },
+                | None => {
+                    let lead = q.last().map_or(0, |v| {
+                        if v.is_zero() {
+                            0
+                        } else if v.is_positive() {
+                            1
+                        } else {
+                            -1
+                        }
+                    });
+                    if pos || !q.len().is_multiple_of(2) {
+                        lead
+                    } else {
+                        -lead
+                    }
+                },
+            }
+        };
+        let vars_q = |at: Option<&BigRational>, pos: bool| -> usize {
+            let mut count = 0_usize;
+            let mut prev = 0_i32;
+            for q in &chain_q {
+                let s = sign_q(q, at, pos);
+                if s != 0 {
+                    if prev != 0 && prev != s {
+                        count += 1;
+                    }
+                    prev = s;
+                }
+            }
+            count
+        };
+
+        for pt in [None, Some(rat(-3, 1)), Some(rat(1, 3)), Some(rat(3, 2))] {
+            for pos in [false, true] {
+                assert_eq!(
+                    variations_z(&chain_z, pt.as_ref(), pos),
+                    vars_q(pt.as_ref(), pos)
+                );
+            }
+        }
+        assert_eq!(sturm_count_z(&chain_z, None, None), 4);
+    }
+
+    #[test]
+    fn cad_is_deterministic_across_thread_counts() {
+        let rules = crate::rules::standard();
+        for src in [
+            "cad(list(x^2 + y^2 - 1, x - y), list(x, y))",
+            "cad(list(x^2 + y^2 + z^2 - 1), list(x, y, z))",
+        ] {
+            let seq = crate::execution::with_scoped_pool(Some(1), || simplify(&rules, src));
+            let par = crate::execution::with_scoped_pool(Some(4), || simplify(&rules, src));
+            assert_eq!(seq, par, "CAD mismatch for {src}");
+        }
+    }
+}

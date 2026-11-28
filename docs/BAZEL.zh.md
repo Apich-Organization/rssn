@@ -1,0 +1,103 @@
+# 用 Bazel 构建 RSSN
+
+[English](BAZEL.md)
+
+如果安装的命令名是 `bazelisk`，可用它替换示例中的 `bazel`。Windows 上请将 Bazel 输出根目录放在 NTFS 卷，例如 `bazelisk --output_user_root=D:/bz build //:headers`。
+
+使用 Bazelisk 启动 Bazel 7.7.1，并安装 Python 3.11 或更新版本及 `Cargo.toml` 指定的 Rust 工具链。Bazel 和 Cargo 共用 `Cargo.lock`。RSSN 模块也向 Aevia 提供源文件、工作流规则和 LLVM 插件。
+
+| 命令 | 产物或检查 |
+| --- | --- |
+| `bazel build //:rustlib` | 开发用 Rust 库 |
+| `bazel run //:check` | 工作区类型检查，省去测试可执行文件的链接 |
+| `bazel test //:test` | 默认 Rust 测试和生成契约检查 |
+| `bazel test //:rust_minimal_test` | 关闭默认特性后运行 Rust 测试 |
+| `bazel test //:integration_test` | Rust 全特性、契约、头文件、见证重放及四语言绑定测试 |
+| `bazel test //:clippy_test` | 对全特性工作区的全部 Rust 目标执行严格 Clippy |
+| `bazel test //:ffi_native_clients_test` | 运行原生 C、C++ 客户端测试，Linux 使用静态库，macOS 和 Windows 使用动态库 |
+| `bazel test //:rust_all_features_test` | 全特性 Rust 测试，包括构建机可执行的 GPU 测试 |
+| `bazel test //:rust_ignored_test //:witness_test` | 耗时数值回归和已签入见证表的重放 |
+| `bazel test //:bindings_check_test //:bindings_test` | 针对同一个全特性 cdylib 检查 API 以及 Python、Julia、R、C++ 绑定 |
+| `bazel run //:bindings_from_library -- --library /path/to/librssn.so` | 校验生成的绑定并测试已有 cdylib |
+| `bazel test //:generated_sources_check_test` | 检查契约、结构化规则、绑定和编解码器的生成结果 |
+| `bazel test //:api_generator_test` | 测试源码模型与生成器，无需链接 RSSN |
+| `bazel build //:manifest` | 在 `bazel-bin/manifest/` 生成内核清单 JSON |
+| `bazel build //:headers` | 在 `bazel-bin/headers/` 生成 C 和 C++ 头文件 |
+| `bazel run //:refresh_headers` | 重新生成检出的 `rssn.h` 和 `rssn.hpp`，无需编译 libRSSN |
+| `bazel test //:headers_check_test` | 校验生成的 C 和 C++ 头文件 |
+| `bazel run //:refresh_contracts` | 刷新本机接口契约、绑定和编解码器 |
+| `bazel run //:refresh_bindings` | 基于新内核清单刷新语言绑定接口 |
+| `bazel run //:refresh_witness` | 采集测试轨迹并更新 `signatures.witnessed.json` |
+
+绑定集成测试使用带 NumPy 的 Python、Julia、带开发头文件的 R、CMake 和 C++ 编译器。R 包安装在构建缓存中，所有语言都使用同一个指定的库文件。加上 `--config=release` 可测试优化后的 cdylib。只需全特性开发版动态库时，可运行 `bazel build //:ffi_dev`。
+
+如果 R 环境提供独立的 C++ 工具链，可用 `--repo_env=CXX=/path/to/c++` 选择与待测库兼容的编译器。
+
+## FFI 分发
+
+```sh
+bazel build //:ffi_distribution
+bazel run //:package_ffi -- --dist-dir dist
+```
+
+`//:ffi_distribution` 在一次 rustc 调用中生成静态库与动态库。产物位于 `bazel-bin/ffi_distribution/ffi/`。默认使用全部 Cargo 特性并加载 LLVM 插件。`scripts/build_ffi.sh` 与 `scripts/build_ffi.ps1` 的分发入口转发到这些目标。归档包含库、生成的头文件、示例和文档，并附有 SHA-256 校验文件。
+
+分发构建默认使用 O3、栈展开、通用 CPU 参数、fat LTO 和单 CGU。i686 目标使用 rustc 提供的 SSE2 基线。Bazel 依赖 `//:release_pass_gate` 先运行发布版 LLVM 探针，再构建两种库。`//:release_ffi` 打包后解包并运行 C、C++ 和 Python 客户端测试，通过后才把归档写入分发目录。检查已有归档可用 `bazel run //:ffi_package_smoke -- --archive /path/to/rssn.tar.gz`。
+
+`//:package_ffi_from_binaries` 接收 `--native-dir` 和 `--headers-dir`，对配套的已有产物执行相同的打包验证。
+
+### LLVM 优化插件
+
+LLVM 插件需要 CMake、C++ 编译器和与 `rustc -vV` 完整版本一致的宿主 LLVM SDK。Bazel 自动查找对应的 `llvm-config-<主版本>`，也接受显式路径。Windows 构建机通过 `--repo_env=RSSN_LLVM_IMPORT_LIBRARY=/path/to/host-llvm.lib` 提供加载进程的 LLVM C++ 导入库。若官方 rustc 缺少插件所需的 LLVM 导出，可通过 `--repo_env=RUSTC=/absolute/path/to/rustc` 指定兼容编译器，并用 `CARGO` 指定对应的 Cargo。CI 通过按 Rust 三元组索引的 JSON 映射读取运行器上已安装的工具链路径，变量为 `RSSN_RELEASE_LLVM_CONFIGS`、`RSSN_RELEASE_LLVM_IMPORT_LIBRARIES`、`RSSN_RELEASE_RUSTCS` 和 `RSSN_RELEASE_CARGOS`。原有共享路径 `RSSN_RUSTC` 与 `RSSN_CARGO` 仍可用。
+
+```sh
+bazel test --repo_env=RSSN_LLVM_CONFIG=/path/to/llvm-config //:llvm_optimizer_test //:release_pass_test
+bazel build --config=release --repo_env=RSSN_LLVM_CONFIG=/path/to/llvm-config //:rustlib
+bazel build --repo_env=RSSN_LLVM_CONFIG=/path/to/llvm-config //:ffi //:ffi_static
+bazel run --repo_env=RSSN_LLVM_CONFIG=/path/to/llvm-config //:release_ffi -- --dist-dir dist
+```
+
+`//:ffi` 构建动态库和适用平台的导入库。`//:ffi_static` 构建静态库。`//:ffi_distribution_llvm` 是 `//:ffi_distribution` 的兼容别名。`//:package_ffi_llvm` 保留归档名的 `-llvm` 后缀。`//:package_ffi_portable` 可显式构建无插件的对照包。插件是 Rust action 的声明输入，经 `-Zllvm-plugins` 传给目标 rustc。单独输出的 Rust 库关闭 LTO，使插件直接在其 O3 流水线运行。各 pass 根据目标平台和函数选择是否应用。
+
+为 Windows MSVC、Linux GNU 或 musl、FreeBSD 目标构建 FFI 分发包时，可用 `--define=rssn_llvm_standalone=1` 让 SDK 的 `opt` 在 LTO 后的 bitcode 上运行插件。Windows 构建机使用匹配 SDK 的 LLVM 导入库。Bazel 继续启用全特性、fat LTO 和单 CGU，通过 `llc` 生成替换对象，最后用 Cargo 原有链接参数调用 rustc。ELF 路线生成位置无关对象以构建共享库。给 `//:release_pass_test` 传入同一参数可检查共享库、静态库、适用平台的导入库以及 Cargo 依赖跟踪。
+
+```sh
+bazel test --config=release-max --define=rust_target=x86_64-pc-windows-msvc --define=rssn_llvm_standalone=1 //:release_pass_test
+bazel run --config=release-max --define=rust_target=x86_64-pc-windows-msvc --define=rssn_llvm_standalone=1 //:release_ffi -- --dist-dir dist
+```
+
+### 交叉编译
+
+通过 `--define=rust_target=<三元组>` 选择目标，并安装对应 Rust 标准库、原生链接器、C 工具链和目标 SDK。可选的插件在构建机运行。通过 `--repo_env=RSSN_TARGET_ENV=/absolute/path/to/toolchains.json` 提供按 Rust 三元组索引的环境变量文件，Bazel 将它作为配置输入。以下示例从 Linux 交叉编译 AArch64：
+
+```json
+{
+  "aarch64-unknown-linux-gnu": {
+    "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER": "/usr/bin/aarch64-linux-gnu-gcc",
+    "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER": "/usr/bin/qemu-aarch64 -L /usr/aarch64-linux-gnu",
+    "CC_aarch64_unknown_linux_gnu": "/usr/bin/aarch64-linux-gnu-gcc",
+    "AR_aarch64_unknown_linux_gnu": "/usr/bin/aarch64-linux-gnu-ar"
+  }
+}
+```
+
+```sh
+bazel build --config=release-max --define=rust_target=aarch64-unknown-linux-gnu \
+  --repo_env=RSSN_TARGET_ENV=/absolute/path/to/toolchains.json //:ffi_distribution
+```
+
+为 Windows MSVC、macOS、FreeBSD 或其他 Rust 目标使用对应的 Cargo `_LINKER` 和 `_RUNNER` 变量。目标工具链可提供 C/C++ 编译器、归档工具、sysroot、`PKG_CONFIG_*`、Windows 的 `INCLUDE` 和 `LIB` 或 macOS 的 `SDKROOT`。交叉发布探针可以只编译和链接。Rust 测试也可以通过配置的 runner 执行。绑定集成测试应在能原生加载对应库的目标系统运行。本机开发目标无需 LLVM SDK。
+
+## 缓存与计时
+
+Bazel 分别跟踪声明的项目输入、Cargo 清单与锁文件、LLVM 插件。Rust action 在稳定的本地源码镜像中委托 Cargo 调度 rustc。未变化的文件保留修改时间，删除的输入从镜像移除；因此源码编辑触发重新执行时仍能复用 Cargo 指纹、第三方构建结果和开发版 CGU 增量缓存。工具链配置是本地状态键的一部分。插件路径包含库文件和优化设置的摘要，任一项变化都将使依赖它的 Cargo 产物失效。分发构建使用通用 CPU 参数和确定性 RSSN 元数据。
+
+本地状态默认位于 `.bazel-cache/`。Windows 可用 `--repo_env=BAZEL_SCI_CACHE=C:/b/r` 设置较短的绝对路径。可另用 `--disk_cache` 保留 Bazel action 产物。有现成编译器缓存时可传入 `--repo_env=RSSN_SCCACHE=/path/to/sccache`。原位更换工具链或 SDK 后，在计时前运行 `bazel sync --configure`。这些 action 使用构建机的本地工具链。
+
+在同一机器、工具链、输入和目标上比较发布配置。测冷构建时采用独立缓存目录，测热构建时沿用缓存和原命令。`--define=rssn_timings=1` 将 Cargo 报告保存在输出中指示的位置。`--profile=/path/to/profile.gz` 记录 Bazel action 与调度耗时。`--define=rssn_jobs=N` 单独调整 Cargo 和 CMake 并行任务数。`--define=rssn_frontend_threads=4` 可比较 RSSN 的并行前端，包装器仅给 RSSN 的 rustc 调用附加 `-Zthreads`，并使用单独的 Cargo 缓存。
+
+- `--config=release` 使用 ThinLTO 和 16 个 CGU。
+- `--config=release-local` 关闭 LTO 并保留 O3。LLVM 目标仍使用优化插件。
+- `--config=release-max` 使用 fat LTO 和单 CGU。受控实验可以用 `--define=rssn_lto` 和 `--define=rssn_codegen_units` 单独覆盖。
+
+这些对比适用于链接产物。Bazel 发布配置独立于兼容 Cargo 发布配置。评估工作负载的数值一致性和运行时间后再调整分发配置。

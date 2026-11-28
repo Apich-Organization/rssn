@@ -1,0 +1,112 @@
+# Contributing to rssn
+
+Thank you for considering a contribution to **rssn**. Bug fixes, new algorithms, performance work, tests and documentation are all welcome, and so are small things like typos. If you have an idea, open an issue first and we will be happy to discuss it.
+
+## Where things live
+
+Read [ARCHITECTURE.md](ARCHITECTURE.md) first; it explains how the pieces fit. In short:
+
+| You want to… | Look in |
+|---|---|
+| add or fix a symbolic identity, solver or integrator | `src/rules/<domain>` (rewrites, definitions and kernels of one `RuleSet`) |
+| add or fix a plain numerical algorithm | `src/kernels` (no terms involved; rules and users both call it) |
+| add or fix a simulation, solver for fields or particles | `src/sim` |
+| change the engine itself (store, scheduler, extraction, facts) | `src/graph` |
+| change dimensions or units | `src/graph/dim*.rs` (inference) and `src/dim` (unit table, constants, unit systems); design in [docs/DIMENSIONS.md](docs/DIMENSIONS.md) |
+| change what a host sees: manifest, signatures, dynamic calls, plugins | `src/kernel` and `src/api/value.rs`; contract in [docs/KERNEL.md](docs/KERNEL.md) |
+| change the C interface | `src/ffi`; see [docs/BUILDING.md](docs/BUILDING.md) for headers |
+| change parsing/printing, LaTeX, Typst, plots | `src/io` |
+| change compiled evaluation or the JIT | `src/backend` |
+| share CPU dispatch policy, temporary buffers or immutable plans | `src/execution.rs`, `src/kernels/par.rs` and `src/kernels/reuse.rs` |
+| generated numerical bindings | `tools/rssn-api-gen` ([README](tools/rssn-api-gen/README.md)) |
+
+Tests sit next to the code they test; cross-module tests live in `tests/`.
+
+## Getting started
+
+1. **Install Rust.** The crate uses edition 2024 and needs the toolchain in `rust-version` of `Cargo.toml` (currently 1.100) or newer; install it with [rustup](https://rustup.rs/).
+2. **Fork and clone.**
+   ```bash
+   git clone https://github.com/YOUR-USERNAME/rssn.git
+   cd rssn
+   ```
+3. **Build and test.** The symbolic suite runs thousands of nested engine runs; the test profile is already optimised (`opt-level = 1`), but expect the first build to take a while.
+   ```bash
+   cargo test
+   ```
+   Useful narrower runs: `cargo test --lib graph::dim`, `cargo test --test dimensions`, `cargo test --lib rules::calculus`. Optional features have their own tests: `cargo test --features jit`, `cargo test --features plugin-cdylib`, `cargo test --features gpu-wgpu --lib backend::device` (executes on a GPU when an adapter exists).
+
+   Some runs are long (building the library's unit tests takes 10 to 20 minutes, `cargo test --test sim` about 25); use `cargo check --lib --tests` while editing and a filter while testing, as described in [README.md](README.md#testing).
+
+## Development workflow
+
+1. **Create a feature branch** from `main`:
+   ```bash
+   git checkout -b feature/my-new-feature
+   ```
+2. **Write your code, and tests for it.** A new rewrite rule is automatically checked numerically by `rules::tests::no_standard_rewrite_is_refuted`; add identity tests for the behaviour you rely on.
+3. **Follow the style rules.**
+   * `src/lib.rs` denies a strict clippy set (`pedantic`, `nursery`, `unwrap_used`, `expect_used`, `indexing_slicing`, `arithmetic_side_effects`, `missing_docs`, …) and documents the few deliberate exceptions. New code must satisfy it; a local `#[allow]` needs a comment saying why.
+   * Public items need doc comments. Follow the surrounding file's conventions (rustfmt settings are in `rustfmt.toml`).
+4. **Run the checks** before opening a pull request:
+   ```bash
+   cargo +nightly fmt --all
+   bazel test //:clippy_test //:rust_all_features_test
+   ```
+   and, when you touched the corresponding area:
+   ```bash
+   bazel test //:api_generator_test //:contracts_test //:headers_check_test
+   bazel test //:bindings_check_test //:bindings_test
+   ```
+5. **Commit and push.** Use a clear message, for example `feat(calculus): add Hermite reduction for algebraic integrands`.
+6. **Open a pull request** against `main` of `Apich-Organization/rssn` with a description of what changed and why.
+
+### Adding an operator
+
+For a plain Rust numerical function supported by the codecs, put the algorithm
+and its tests in the relevant `src/kernels` or `src/sim` module. Use the existing
+`num_<family>_<operation>` namespace spelling for a new ABI export and keep
+published names and keys stable. Register the Rust path and dimensional
+contract in `codec-policy.tsv`. Generated overloads use the Rust signature,
+and the same dimensional policy drives runtime decoding and result units.
+[Binding generation](tools/rssn-api-gen/README.md)
+
+Use direct registration for a symbolic rule, host callback or native object.
+
+1. Register it in a rule set's install function (`Installer::op`).
+2. Give it a dimension rule (`i.dim(op, rule)`); the coverage scanner in `graph::dim` fails the build otherwise.
+3. Declare a `Signature`, or a `DynamicReason` if it cannot have one. Add `.doc(..)`, `.category(..)` and `.since(..)`; the manifest is the documentation a host reads.
+4. Run `bazel test //:contracts_test` and the operator tests.
+
+`signatures.overlay.json` supplies reviewed corrections to inferred signatures. `signatures.witnessed.json` contains signatures mined from the test corpus. Keep both files with the sources so `build.rs` can load them. When new or changed inferred signatures need witnesses, run `bazel run //:refresh_witness` to collect a fresh trace and regenerate the table. Codec-generated numerical operators carry declared signatures. [Kernel signature sources](docs/KERNEL.md#3a-witnessed-signatures)
+
+### Changing the C interface
+
+`rssn.h` and `rssn.hpp` are generated by cbindgen and checked in. Regenerate them with `bazel run //:refresh_headers` and commit the result together with the Rust change.
+
+## CI/CD
+
+RSSN has the following workflows in `.github/workflows`.
+
+| Workflow | Runs on | What it does |
+|---|---|---|
+| `ci.yml` | pushes to `main` or `v0.3`, pull requests, manual dispatch, weekly, release gate | Nightly rustfmt, strict Clippy, all-feature tests on Linux and Windows, default-feature tests on macOS, generated contracts, C and C++ clients on each host, Rust examples and rustdoc. Linux also requires actual wgpu compute execution through a software Vulkan adapter. The weekly Linux run covers the long numerical regressions. The required branch check is `CI success`. |
+| `security.yml` | `main` and `v0.3`, pull requests, weekly | CodeQL, dependency review (pull requests), RustSec advisories. |
+| `release.yml` | version tag, daily build, manual dispatch | Runs CI on the release commit and builds the C archive matrix. Version tags prepare a draft, and nightly builds publish a new dated prerelease. The versioned crates.io job uses the `crates-io` environment. `dry_run` builds without publishing. |
+
+Everything CI checks can be run locally with the commands in the workflow above.
+
+## Help wanted: an idiomatic C++ wrapper
+
+`rssn.hpp` contains the raw declarations of the C ABI. We would welcome a small, header-only C++ layer on top of it:
+
+* RAII owners for the three heap kinds: sessions (`rssn_session_new`/`rssn_session_free`), configurations (`rssn_config_new`/`rssn_config_free`) and returned strings, byte buffers and tensors (`rssn_string_free`, `rssn_bytes_free`, `rssn_tensor_free`). Terms are plain `uint32_t` handles that are only valid in the session that made them.
+* A thin `Term` value type with operator overloads built on `rssn_term_apply`, and a `compute` wrapper over `rssn_compute`.
+* Error handling that turns an `RssnStatus` other than OK, together with `rssn_last_error`, into exceptions or an `expected`-style result.
+* A small CMake example. [examples/c/smoke.c](examples/c/smoke.c) is a complete C client to start from, and [docs/BUILDING.md](docs/BUILDING.md) explains how to build the static and shared libraries.
+
+Open an issue if you would like to lead this.
+
+## Acknowledgements
+
+Contributors are credited in release notes and on the GitHub page. We value every contribution, from fixing typos to implementing new solvers.
