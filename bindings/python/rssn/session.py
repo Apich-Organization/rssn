@@ -8,6 +8,7 @@ import json
 import operator
 import threading
 from collections.abc import Mapping
+from numbers import Complex, Real
 from typing import Any, Iterable, cast
 
 from . import _ffi
@@ -295,11 +296,14 @@ class Session:
             return selected.text()
 
     def encode_npy(self, shape: Iterable[int], values: Iterable[float]) -> bytes:
-        """Encode row-major samples as a NumPy float64 array in memory."""
+        """Encode real row-major samples as a NumPy float64 array in memory."""
         from .value import Value
 
         extents = tuple(operator.index(size) for size in shape)
         samples = list(values)
+        # NumPy complex scalars can cast to float by dropping their imaginary part.
+        if any(isinstance(sample, Complex) and not isinstance(sample, Real) for sample in samples):
+            raise TypeError("NumPy encoding requires real samples")
         with Value.tensor_cells(self, extents, (len(extents),),
                                 exemplar=None if extents else 0) as dimensions:
             with Value._dense(self, samples, (len(samples),), ctypes.c_uint32()) as data:
