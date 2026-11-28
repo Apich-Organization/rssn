@@ -109,7 +109,7 @@ pub(super) fn triangle_normal(
 }
 
 /// Whether every triangle index addresses a vertex of `mesh`.
-pub(super) fn indices_valid(mesh: &Mesh) -> bool {
+pub(crate) fn indices_valid(mesh: &Mesh) -> bool {
     let n = mesh.vertices.len();
     mesh.triangles
         .iter()

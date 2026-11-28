@@ -121,21 +121,32 @@ fn deconvolve(
     if u.len() != y.len() {
         return Err("input and output must have the same length".to_string());
     }
-    if u[0] == 0.0 {
-        return Err("the first input sample must be nonzero".to_string());
+    let initial = u[0];
+    if initial == 0.0 {
+        return Err("the first input sample must be nonzero".into());
     }
-    let samples = y.len();
-    let mut h = vec![vec![0.0; outputs]; samples];
-    for k in 0..samples {
-        let mut value = y[k].clone();
-        for j in 0..k {
-            let factor = u[k - j];
-            for c in 0..outputs {
-                value[c] -= h[j][c] * factor;
+    if u.iter()
+        .chain(y.iter().flatten())
+        .any(|sample| !sample.is_finite())
+    {
+        return Err("input and output samples must be finite".into());
+    }
+    let mut h = y.to_vec();
+    for k in 0..h.len() {
+        let (prior, remaining) = h.split_at_mut(k);
+        let row = &mut remaining[0];
+        for (earlier, &factor) in prior.iter().zip(u.iter().take(k + 1).rev()) {
+            if factor != 0.0 {
+                for (value, &past) in row.iter_mut().zip(earlier) {
+                    *value -= past * factor;
+                }
             }
         }
-        for c in 0..outputs {
-            h[k][c] = value[c] / u[0];
+        for value in row {
+            *value /= initial;
+            if !value.is_finite() {
+                return Err("deconvolved response is outside Float range".into());
+            }
         }
     }
     Ok(h)
@@ -157,20 +168,19 @@ pub fn era(
     order: usize,
 ) -> Result<EraModel, String> {
     if order == 0 {
-        return Err("order must be positive".to_string());
+        return Err("order must be positive".into());
+    }
+    if order > y.len().saturating_sub(1) / 2 {
+        return Err("not enough samples for the requested order".into());
     }
     let h = deconvolve(y, u)?;
     let samples = h.len();
     let outputs = h[0].len();
     let rows_blocks = order;
-    if samples < 2 * order + 1 {
-        return Err("not enough samples for the requested order".to_string());
-    }
     let cols = samples - rows_blocks - 1;
-    if cols < order {
-        return Err("not enough samples for the requested order".to_string());
-    }
-    let h0_rows = outputs * rows_blocks;
+    let h0_rows = outputs
+        .checked_mul(rows_blocks)
+        .ok_or_else(|| "Hankel row count overflowed".to_string())?;
     let mut h0 = vec![vec![0.0; cols]; h0_rows];
     let mut h1 = vec![vec![0.0; cols]; h0_rows];
     for i in 0..rows_blocks {
@@ -188,7 +198,11 @@ pub fn era(
     }
     let singular: Vec<f64> = decomposition.s[..order].to_vec();
     let largest = singular.first().copied().unwrap_or(0.0);
-    if singular.iter().any(|&v| v <= 1e-12 * largest.max(1.0)) {
+    if largest <= 0.0
+        || singular
+            .iter()
+            .any(|&v| !v.is_finite() || v / largest <= 1e-12)
+    {
         return Err("the hankel matrix has rank below the requested order".to_string());
     }
     let sqrt_s: Vec<f64> = singular.iter().map(|v| v.sqrt()).collect();
@@ -231,14 +245,23 @@ pub fn era(
             c[r][i] = u_n.at(r, i) * sqrt_s[i];
         }
     }
+    if a.iter()
+        .chain(&b)
+        .chain(&c)
+        .flatten()
+        .any(|value| !value.is_finite())
+    {
+        return Err("realised state-space matrices are outside Float range".into());
+    }
     Ok(EraModel { a, b, c, order })
 }
 
-/// Impulse response of a realised model, `h[0] = 0` and
-/// `h[k] = C A^{k-1} B`.
+/// First-input impulse response of a realised model, `h[0] = 0` and
+/// `h[k] = C A^{k-1} B[:,0]`.
 ///
 /// # Errors
-/// Returns an error when the model has no inputs.
+/// Returns an error when the model has no inputs, the matrices disagree on
+/// shape, or the result exceeds the finite Float range.
 pub fn impulse_response(
     model: &EraModel,
     steps: usize,
@@ -246,18 +269,38 @@ pub fn impulse_response(
     let outputs = model.c.len();
     let inputs = model.b.first().map_or(0, Vec::len);
     if inputs == 0 {
-        return Err("the model must have at least one input".to_string());
+        return Err("the model must have at least one input".into());
     }
-    let mut out = vec![vec![0.0; outputs]; steps];
+    let order = model.order;
+    if model.a.len() != order
+        || model.b.len() != order
+        || model.a.iter().chain(&model.c).any(|row| row.len() != order)
+        || model.b.iter().any(|row| row.len() != inputs)
+        || model
+            .a
+            .iter()
+            .chain(&model.b)
+            .chain(&model.c)
+            .flatten()
+            .any(|value| !value.is_finite())
+    {
+        return Err("the realised model has invalid or non-finite matrices".into());
+    }
+    let mut out = Vec::with_capacity(steps);
     if steps == 0 {
         return Ok(out);
     }
-    let mut excitation = vec![0.0; inputs];
-    excitation[0] = 1.0;
-    let mut state = linalg::matvec(&model.b, &excitation);
+    out.push(vec![0.0; outputs]);
+    let mut state: Vec<_> = model.b.iter().map(|row| row[0]).collect();
     for k in 1..steps {
-        out[k] = linalg::matvec(&model.c, &state);
-        state = linalg::matvec(&model.a, &state);
+        let sample = linalg::matvec(&model.c, &state);
+        if sample.iter().any(|value| !value.is_finite()) {
+            return Err("impulse response is outside Float range".into());
+        }
+        out.push(sample);
+        if k + 1 < steps {
+            state = linalg::matvec(&model.a, &state);
+        }
     }
     Ok(out)
 }

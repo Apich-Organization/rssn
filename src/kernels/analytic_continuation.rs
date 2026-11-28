@@ -5,7 +5,11 @@
 use num_complex::Complex64;
 
 use crate::kernels::complex::circle_spectrum;
-use crate::kernels::integrate::gauss_kronrod_any;
+use crate::kernels::complex_roots::aberth_ehrlich;
+use crate::kernels::complex_scalar::Complex;
+use crate::kernels::contour_deform::ContourSegment;
+use crate::kernels::contour_deform::integrate_segment_checked;
+use crate::kernels::reuse::global_pool;
 
 const ZERO: Complex64 = Complex64::new(0.0, 0.0);
 const ONE: Complex64 = Complex64::new(1.0, 0.0);
@@ -13,6 +17,10 @@ const ONE: Complex64 = Complex64::new(1.0, 0.0);
 /// Extracts Laurent coefficients `c_k` for `k in -neg_order..=pos_order` around
 /// `center` on the circle `|z - center| = radius` using a single FFT.
 #[must_use]
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "sample count bounds all indices and floating normalization does not panic"
+)]
 pub fn laurent_coeffs_fft<F>(
     f: F,
     center: Complex64,
@@ -24,16 +32,39 @@ pub fn laurent_coeffs_fft<F>(
 where
     F: Fn(Complex64) -> Complex64,
 {
-    let min_n = (neg_order + pos_order + 2).max(8);
-    let n = n_samples.max(min_n);
-    let buffer = circle_spectrum(f, center, radius, n);
+    let Some(min_n) = neg_order
+        .checked_add(pos_order)
+        .and_then(|order| order.checked_add(2))
+    else {
+        return Vec::new();
+    };
+    let n = n_samples.max(min_n).max(8);
+    if !center.is_finite()
+        || !radius.is_finite()
+        || radius <= 0.0
+        || i32::try_from(n).is_err()
+        || crate::cancellation::is_cancelled()
+    {
+        return Vec::new();
+    }
+    let sample = |point| {
+        if crate::cancellation::is_cancelled() {
+            Complex64::new(f64::NAN, f64::NAN)
+        } else {
+            f(point)
+        }
+    };
+    let buffer = circle_spectrum(sample, center, radius, n);
+    if buffer.iter().any(|value| !value.is_finite()) {
+        return Vec::new();
+    }
 
     let nf = n as f64;
     let mut out = Vec::with_capacity(neg_order + pos_order + 1);
     for k in -(neg_order as i32)..=(pos_order as i32) {
         let idx = k.rem_euclid(n as i32) as usize;
         let ck = buffer.get(idx).copied().unwrap_or_default();
-        let coeff = ck / (nf * radius.powi(k));
+        let coeff = (ck / nf) / radius.powi(k);
         out.push((k, coeff));
     }
     out
@@ -105,7 +136,7 @@ pub fn pade_approximant_complex(
     m: usize,
     n: usize,
 ) -> Option<(Vec<Complex64>, Vec<Complex64>)> {
-    if taylor_coeffs.len() <= m + n {
+    if taylor_coeffs.len() <= m.checked_add(n)? {
         return None;
     }
     let mut q = vec![ONE];
@@ -156,7 +187,11 @@ pub fn eval_pade_complex(
         }
         acc
     };
-    horner(p) / horner(q)
+    let numerator = horner(p);
+    let denominator = horner(q);
+    let ratio =
+        Complex::new(numerator.re, numerator.im).div(Complex::new(denominator.re, denominator.im));
+    Complex64::new(ratio.re, ratio.im)
 }
 
 /// Wynn's epsilon algorithm for accelerating convergence of complex sequences.
@@ -192,55 +227,127 @@ pub fn wynn_epsilon_complex(partial_sums: &[Complex64]) -> Complex64 {
     best
 }
 
-/// Borel-Padé resummation of a divergent asymptotic series `sum_{k>=0} c_k z^k`
-/// via Borel transform `B(t) = sum (c_k / k!) t^k`, Padé `[m/n]` approximant,
-/// and Laplace integral `int_0^oo e^(-t) B(z * t) dt`.
+// Divide complex values without squaring an extreme denominator first.
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "nonfinite complex quotients are checked by the caller"
+)]
+fn complex_ratio(
+    numerator: Complex64,
+    denominator: Complex64,
+) -> Complex64 {
+    let scale = denominator.re.abs().max(denominator.im.abs());
+    (numerator / scale) / (denominator / scale)
+}
+
+/// Borel–Padé resummation using a Laplace integral of the rational Borel transform.
+///
+/// A positive-axis pole selects the upper lateral integral. Returns `None`
+/// when the Padé model or the integration cannot be resolved in binary64.
 #[must_use]
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "coefficient orders and quadrature are bounded; complex failures propagate as nonfinite status"
+)]
 pub fn borel_pade_resum(
     coeffs: &[Complex64],
     z: Complex64,
     pade_m: usize,
     pade_n: usize,
 ) -> Option<Complex64> {
-    if coeffs.len() <= pade_m + pade_n {
+    let used = pade_m.checked_add(pade_n)?.checked_add(1)?;
+    if used > 171 || !z.is_finite() || crate::cancellation::is_cancelled() {
         return None;
     }
-    let mut borel_coeffs = Vec::with_capacity(coeffs.len());
-    let mut fact = 1.0_f64;
-    for (k, &ck) in coeffs.iter().enumerate() {
+    let coeffs = coeffs.get(..used)?;
+    if coeffs.iter().any(|coefficient| !coefficient.is_finite()) {
+        return None;
+    }
+    if z == ZERO {
+        return coeffs.first().copied();
+    }
+    let mut borel = global_pool().scratch_complex64(used);
+    let mut fact = 1.0;
+    for (k, &coefficient) in coeffs.iter().enumerate() {
         if k > 0 {
             fact *= k as f64;
         }
-        borel_coeffs.push(ck / fact);
+        borel.push(coefficient / fact);
     }
-    let (p, q) = pade_approximant_complex(&borel_coeffs, pade_m, pade_n)?;
-    // Map t in [0, oo) along ray exp(i * ray_angle) to avoid poles on [0, oo).
-    let eval_ray = |ray_angle: f64| -> Complex64 {
-        let dir = Complex64::from_polar(1.0, ray_angle);
-        let eval_laplace = |u: f64| -> Complex64 {
-            if u >= 1.0 - 1e-12 {
-                return ZERO;
-            }
-            let one_m_u = 1.0 - u;
-            let s = u / one_m_u;
-            let t = dir * s;
-            let val = eval_pade_complex(&p, &q, z * t);
-            if !val.re.is_finite() || !val.im.is_finite() {
-                return ZERO;
-            }
-            let w = (-t).exp() * dir / (one_m_u * one_m_u);
-            w * val
-        };
-        let re = gauss_kronrod_any(|u| eval_laplace(u).re, 0.0, 1.0 - 1e-12, 1e-11, 24).value;
-        let im = gauss_kronrod_any(|u| eval_laplace(u).im, 0.0, 1.0 - 1e-12, 1e-11, 24).value;
-        Complex64::new(re, im)
+    let (p, mut q) = pade_approximant_complex(&borel, pade_m, pade_n)?;
+    while q.len() > 1 && q.last() == Some(&ZERO) {
+        q.pop();
+    }
+    let Some(p_degree) = p.iter().rposition(|&coefficient| coefficient != ZERO) else {
+        return Some(ZERO);
     };
-    let on_axis = eval_ray(0.0);
-    if on_axis.is_finite() {
-        return Some(on_axis);
+    let p = p.get(..=p_degree)?;
+    let degree_delta = p_degree as f64 + 1.0 - q.len() as f64;
+    let direction = borel_direction(&q, z)?;
+    let evaluate = |u: Complex64| {
+        let remaining = 1.0 - u.re;
+        let t = direction * (u.re / remaining);
+        let argument = z * t;
+        let (value, exponent) = if argument.norm() > 1.0 {
+            // Reverse the polynomials at large arguments and combine their net
+            // power with the Laplace exponent before either can overflow.
+            let inverse = complex_ratio(ONE, argument);
+            let reverse = |polynomial: &[Complex64]| {
+                polynomial
+                    .iter()
+                    .fold(ZERO, |sum, coefficient| sum * inverse + coefficient)
+            };
+            (
+                complex_ratio(reverse(p), reverse(&q)),
+                degree_delta * argument.ln() - t,
+            )
+        } else {
+            (eval_pade_complex(p, &q, argument), -t)
+        };
+        direction * exponent.exp() * value / (remaining * remaining)
+    };
+    let segment = ContourSegment::Line {
+        start: ZERO,
+        end: ONE,
+    };
+    let result = integrate_segment_checked(evaluate, segment, 1e-11, 4096).ok()?;
+    (result.converged && result.value.is_finite()).then_some(result.value)
+}
+
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::single_call_fn,
+    reason = "select a pole-free lateral direction before the finite integration"
+)]
+fn borel_direction(
+    denominator: &[Complex64],
+    z: Complex64,
+) -> Option<Complex64> {
+    if denominator.len() < 2 {
+        return Some(ONE);
     }
-    let lateral = eval_ray(0.2);
-    lateral.is_finite().then_some(lateral)
+    let poles = aberth_ehrlich(denominator, 256, 1e-12).ok()?;
+    let mut axial = false;
+    let mut angle = 0.2_f64;
+    for root in poles {
+        let pole = complex_ratio(root, z);
+        if !pole.is_finite() {
+            return None;
+        }
+        if pole.re > 0.0 {
+            let pole_angle = pole.arg();
+            if pole_angle.abs() <= 1e-10 {
+                axial = true;
+            } else if pole_angle > 0.0 {
+                angle = angle.min(0.5 * pole_angle);
+            }
+        }
+    }
+    Some(if axial {
+        Complex64::from_polar(1.0, angle)
+    } else {
+        ONE
+    })
 }
 
 /// Continues a Taylor series along a chain of overlapping disks.
@@ -248,6 +355,10 @@ pub fn borel_pade_resum(
 /// The series `sum c_k (z - a_0)^k` is re-centered at each successive point in `centers`,
 /// returning the coefficients at the last center.
 #[must_use]
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "complex coordinate differences use the supplied floating-point scale"
+)]
 pub fn weierstrass_chain_continue(
     initial_coeffs: &[Complex64],
     centers: &[Complex64],
@@ -256,23 +367,17 @@ pub fn weierstrass_chain_continue(
         return None;
     }
     let mut coeffs = initial_coeffs.to_vec();
+    if centers.len() == 1 {
+        return Some(coeffs);
+    }
     let n = coeffs.len();
-    for win in centers.windows(2) {
-        let shift = win[1] - win[0];
-        let mut next = vec![ZERO; n];
-        // Re-center: c_new[j] = sum_{k=j}^{n-1} C(k, j) * c[k] * shift^{k - j}
-        for (j, slot) in next.iter_mut().enumerate() {
-            let mut acc = ZERO;
-            let mut binom = 1.0_f64;
-            let mut shift_pow = ONE;
-            for k in j..n {
-                acc += binom * *coeffs.get(k)? * shift_pow;
-                shift_pow *= shift;
-                binom *= ((k + 1) as f64) / ((k - j + 1) as f64);
-            }
-            *slot = acc;
-        }
-        coeffs = next;
+    let mut next = vec![ZERO; n];
+    for window in centers.windows(2) {
+        let &[previous, center] = window else {
+            return None;
+        };
+        translate_into(&coeffs, center - previous, &mut next);
+        std::mem::swap(&mut coeffs, &mut next);
     }
     Some(coeffs)
 }
@@ -291,131 +396,306 @@ impl HolonomicOde {
     pub const fn order(&self) -> usize {
         self.coeffs.len().saturating_sub(1)
     }
+}
 
-    /// Evaluates polynomial `p_j(z)` shifted to `w = z - z0` (Taylor coefficients around `z0`).
-    fn shifted_poly(
-        poly: &[Complex64],
-        z0: Complex64,
-    ) -> Vec<Complex64> {
-        let deg = poly.len();
-        let mut out = vec![ZERO; deg];
-        for (k, &ck) in poly.iter().enumerate() {
-            // ck * (z0 + w)^k
-            let mut binom = 1.0_f64;
-            for j in 0..=k {
-                let term = ck * binom * z0.powi((k - j) as i32);
-                if let Some(slot) = out.get_mut(j) {
-                    *slot += term;
-                }
-                if j < k {
-                    binom *= ((k - j) as f64) / ((j + 1) as f64);
-                }
-            }
-        }
-        out
-    }
+/// A step evaluates all continued solution columns against one shifted polynomial
+/// table. Falling factorial factors do not depend on the path or basis column.
+struct TaylorPlan {
+    order: usize,
+    degree: usize,
+    cutoff: usize,
+    falling: Vec<Vec<f64>>,
+}
 
-    /// Estimates the distance from `z0` to the nearest root of the leading coefficient `p_r(z)`.
-    fn nearest_singularity_dist(
-        &self,
-        z0: Complex64,
-    ) -> f64 {
-        let Some(lead) = self.coeffs.last() else {
-            return f64::INFINITY;
-        };
-        let mut deg = lead.len().saturating_sub(1);
-        while deg > 0 && lead.get(deg).is_some_and(|c| c.norm() == 0.0) {
-            deg -= 1;
-        }
-        if deg == 0 {
-            return f64::INFINITY;
-        }
-        // Shift p_r(z0 + w) = sum b_k w^k; Cauchy root lower bound: |b_0| / (|b_0| + max |b_k|)
-        let shifted = Self::shifted_poly(lead, z0);
-        let b0 = shifted.first().map_or(0.0, |c| c.norm());
-        if b0 == 0.0 {
-            return 0.0;
-        }
-        let max_b = shifted
-            .iter()
-            .skip(1)
-            .map(|c| c.norm())
-            .fold(0.0_f64, f64::max);
-        if max_b == 0.0 {
-            return f64::INFINITY;
-        }
-        b0 / (b0 + max_b)
-    }
-
-    /// Expands `y(z0 + w) = sum_{n=0}^order a_n w^n` from `initial_state = [y(z0), y'(z0), ...]`.
-    fn local_taylor(
-        &self,
-        z0: Complex64,
-        initial_state: &[Complex64],
-        taylor_order: usize,
-    ) -> Option<Vec<Complex64>> {
-        let r = self.order();
-        if r == 0 || initial_state.len() != r {
-            return None;
-        }
-        let shifted: Vec<Vec<Complex64>> = self
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "a bounded Taylor table and finite floating-point recurrence handle every accepted step"
+)]
+impl TaylorPlan {
+    #[allow(
+        clippy::single_call_fn,
+        reason = "bounds and precomputes the Taylor recurrence before any path is stepped"
+    )]
+    fn new(
+        ode: &HolonomicOde,
+        order: usize,
+    ) -> Option<Self> {
+        let degree = ode.order();
+        let max_power = ode
             .coeffs
             .iter()
-            .map(|p| Self::shifted_poly(p, z0))
-            .collect();
-        let lead0 = shifted.last()?.first().copied()?;
-        if lead0.norm() < 1e-30 {
+            .filter_map(|polynomial| {
+                polynomial
+                    .iter()
+                    .rposition(|&coefficient| coefficient != ZERO)
+            })
+            .max()
+            .unwrap_or(0);
+        // A polynomial factor can delay the next nonzero Taylor term by
+        // its degree plus derivative order. Cover that recurrence width
+        // both in the expansion and in the tail comparison.
+        let recurrence_width = max_power.checked_add(degree)?.checked_add(1)?;
+        let order = order.max(recurrence_width.checked_mul(2)?.checked_add(6)?);
+        let cutoff = order.saturating_sub(recurrence_width.max(4));
+        if degree == 0
+            || degree > 64
+            || order > 512
+            || ode.coeffs.iter().flatten().any(|value| !value.is_finite())
+            || ode.coeffs.last()?.iter().all(|&value| value == ZERO)
+        {
             return None;
         }
-
-        let mut a = vec![ZERO; taylor_order + 1];
-        let mut fact = 1.0_f64;
-        for k in 0..r {
-            if k > 0 {
-                fact *= k as f64;
-            }
-            if let Some(slot) = a.get_mut(k) {
-                *slot = *initial_state.get(k)? / fact;
-            }
-        }
-
-        // Solve for a_{n + r} from coefficient of w^n in sum_{j=0}^r p_j(z0 + w) y^(j)(z0 + w) = 0
-        for n in 0..=taylor_order.saturating_sub(r) {
-            let mut rhs = ZERO;
-            for (j, pj) in shifted.iter().enumerate() {
-                for (m, &pjm) in pj.iter().enumerate() {
-                    if m > n {
-                        break;
-                    }
-                    let k = n - m; // index in y^(j), corresponding to a_{k + j}
-                    if j == r && m == 0 {
-                        continue;
-                    }
-                    let idx = k + j;
-                    if let Some(&akj) = a.get(idx) {
-                        // falling factorial (k+j)! / k!
-                        let mut fall = 1.0_f64;
-                        for f in (k + 1)..=(k + j) {
-                            fall *= f as f64;
+        let falling = (0..=order)
+            .map(|n| {
+                let mut product = 1.0;
+                (0..=degree)
+                    .map(|derivative| {
+                        if derivative > 0 {
+                            product *= n.saturating_sub(derivative - 1) as f64;
                         }
-                        rhs += pjm * fall * akj;
-                    }
+                        product
+                    })
+                    .collect()
+            })
+            .collect();
+        Some(Self {
+            order,
+            degree,
+            cutoff,
+            falling,
+        })
+    }
+
+    fn expand(
+        &self,
+        shifted: &[Vec<Complex64>],
+        state: &[Complex64],
+        series: &mut [Complex64],
+    ) -> Option<()> {
+        let lead = *shifted.last()?.first()?;
+        if lead == ZERO || !lead.is_finite() {
+            return None;
+        }
+        let lead_scale = lead.re.abs().max(lead.im.abs());
+        let normalized_lead = lead / lead_scale;
+        let inverse = normalized_lead.conj() / normalized_lead.norm_sqr();
+        for (j, (slot, &initial)) in series.iter_mut().zip(state).enumerate() {
+            *slot = initial / self.falling.get(j)?.get(j)?;
+        }
+        for n in 0..=(self.order - self.degree) {
+            let mut rhs = ZERO;
+            for (j, polynomial) in shifted.iter().enumerate() {
+                let start = usize::from(j == self.degree);
+                for (m, &coefficient) in polynomial.iter().enumerate().take(n + 1).skip(start) {
+                    let k = n - m + j;
+                    let falling = *self.falling.get(k)?.get(j)?;
+                    rhs += coefficient * falling * *series.get(k)?;
                 }
             }
-            let mut fall_r = 1.0_f64;
-            for f in (n + 1)..=(n + r) {
-                fall_r *= f as f64;
+            let k = n + self.degree;
+            let factor = *self.falling.get(k)?.get(self.degree)?;
+            let value = -(rhs / lead_scale) * inverse / factor;
+            if !value.is_finite() {
+                return None;
             }
-            if let Some(slot) = a.get_mut(n + r) {
-                *slot = -rhs / (lead0 * fall_r);
-            }
+            *series.get_mut(k)? = value;
         }
-        Some(a)
+        Some(())
+    }
+
+    fn evaluate(
+        &self,
+        series: &[Complex64],
+        step: Complex64,
+        powers: &[f64],
+        state: &mut [Complex64],
+    ) -> Option<bool> {
+        let mut accurate = true;
+        let max_component = |z: Complex64| z.re.abs().max(z.im.abs());
+        let cutoff = self.cutoff + 1;
+        let (low, high) = series.split_at_checked(cutoff)?;
+        let reference = series.iter().take(state.len()).enumerate().try_fold(
+            f64::MIN_POSITIVE,
+            |largest, (j, value)| {
+                Some(largest.max(max_component(*value) * self.falling.get(j)?.get(j)?))
+            },
+        )?;
+        // Accumulate the tail from its highest degree, then continue the
+        // same Horner chain through the lower polynomial.
+        for (j, slot) in state.iter_mut().enumerate() {
+            let mut full = ZERO;
+            for (k, &coefficient) in high.iter().enumerate().rev() {
+                full = full * step + coefficient * *self.falling.get(cutoff + k)?.get(j)?;
+            }
+            let tail = max_component(full) * powers.get(cutoff - j)?;
+            for (k, &coefficient) in low.iter().enumerate().skip(j).rev() {
+                full = full * step + coefficient * *self.falling.get(k)?.get(j)?;
+            }
+            if !full.is_finite() || !tail.is_finite() {
+                return Some(false);
+            }
+            let tolerance = 1.4e-13 * max_component(full).max(reference);
+            accurate &= tail <= tolerance;
+            *slot = full;
+        }
+        Some(accurate)
     }
 }
 
-/// Analytically continues `[y, y', ..., y^(r-1)]` of a [`HolonomicOde`] along
-/// the polygonal `path` using adaptive local Taylor series steps.
+#[allow(
+    clippy::single_call_fn,
+    reason = "compute only the final leading polynomial when validating the endpoint"
+)]
+fn translate_polynomial(
+    polynomial: &[Complex64],
+    center: Complex64,
+) -> Vec<Complex64> {
+    let mut shifted = vec![ZERO; polynomial.len()];
+    translate_into(polynomial, center, &mut shifted);
+    shifted
+}
+
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "the fixed coefficient slice bounds the reverse Horner shift"
+)]
+fn translate_into(
+    polynomial: &[Complex64],
+    center: Complex64,
+    shifted: &mut [Complex64],
+) {
+    shifted.fill(ZERO);
+    for (degree, &coefficient) in polynomial.iter().rev().enumerate() {
+        for j in (1..=degree).rev() {
+            if let (Some(&previous), Some(&value)) = (shifted.get(j - 1), shifted.get(j))
+                && let Some(slot) = shifted.get_mut(j)
+            {
+                *slot = value * center + previous;
+            }
+        }
+        if let Some(first) = shifted.first_mut() {
+            *first = *first * center + coefficient;
+        }
+    }
+}
+
+fn singularity_bound(leading: &[Complex64]) -> Option<f64> {
+    let (&constant, tail) = leading.split_first()?;
+    let base = constant.norm();
+    if base == 0.0 || !base.is_finite() {
+        return None;
+    }
+    let max_tail = tail
+        .iter()
+        .map(|coefficient| coefficient.norm())
+        .fold(0.0_f64, f64::max);
+    let bound = if max_tail == 0.0 {
+        f64::INFINITY
+    } else if tail.iter().skip(1).all(|&coefficient| coefficient == ZERO) {
+        base / max_tail
+    } else {
+        // Reverse-polynomial Cauchy bound avoids computing any roots.
+        1.0 / (1.0 + max_tail / base)
+    };
+    (bound > 0.0).then_some(bound)
+}
+
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "finite Taylor steps are bounded by a shared path budget and checked endpoints"
+)]
+fn continue_columns(
+    ode: &HolonomicOde,
+    path: &[Complex64],
+    states: &mut [Vec<Complex64>],
+    taylor_order: usize,
+) -> Option<()> {
+    let plan = TaylorPlan::new(ode, taylor_order)?;
+    if path.is_empty()
+        || path.iter().any(|point| !point.is_finite())
+        || states
+            .iter()
+            .any(|state| state.len() != plan.degree || state.iter().any(|value| !value.is_finite()))
+    {
+        return None;
+    }
+    let mut series = vec![vec![ZERO; plan.order + 1]; states.len()];
+    let mut next_states = vec![vec![ZERO; plan.degree]; states.len()];
+    let mut shifted: Vec<_> = ode
+        .coeffs
+        .iter()
+        .map(|polynomial| vec![ZERO; polynomial.len()])
+        .collect();
+    let mut powers = vec![1.0; plan.cutoff + 2];
+    for window in path.windows(2) {
+        let &[mut center, target] = window else {
+            return None;
+        };
+        for _ in 0..10_000 {
+            if crate::cancellation::is_cancelled() {
+                return None;
+            }
+            if center == target {
+                break;
+            }
+            let remaining = target - center;
+            let distance = remaining.norm();
+            if !distance.is_finite() || distance <= 0.0 {
+                return None;
+            }
+            for (polynomial, output) in ode.coeffs.iter().zip(&mut shifted) {
+                translate_into(polynomial, center, output);
+            }
+            let limit = 0.45 * singularity_bound(shifted.last()?)?;
+            let mut fraction = (limit / distance).min(1.0);
+            for (state, out) in states.iter().zip(&mut series) {
+                plan.expand(&shifted, state, out)?;
+            }
+            let mut accepted = None;
+            for _ in 0..60 {
+                let step = remaining * fraction;
+                let next_center = if fraction < 1.0 {
+                    center + step
+                } else {
+                    target
+                };
+                if next_center == center || !next_center.is_finite() {
+                    return None;
+                }
+                let shift = next_center - center;
+                let step_norm = shift.norm();
+                let mut power = 1.0;
+                for value in &mut powers {
+                    *value = power;
+                    power *= step_norm;
+                }
+                let mut accurate = true;
+                for (coefficients, out) in series.iter().zip(&mut next_states) {
+                    accurate &= plan.evaluate(coefficients, shift, &powers, out)?;
+                }
+                if accurate {
+                    accepted = Some(next_center);
+                    break;
+                }
+                fraction *= 0.5;
+            }
+            center = accepted?;
+            for (slot, evaluated) in states.iter_mut().zip(&mut next_states) {
+                std::mem::swap(slot, evaluated);
+            }
+        }
+        if center != target {
+            return None;
+        }
+    }
+    // Single-point paths and the final endpoint also need an ordinary center.
+    singularity_bound(&translate_polynomial(ode.coeffs.last()?, *path.last()?))?;
+    Some(())
+}
+
+/// Continues the derivative state `[y, y', ..., y^(r-1)]` along a polygonal path.
+/// Returns `None` for an invalid ODE, a singular path, cancellation or failed
+/// Taylor refinement.
 #[must_use]
 pub fn continue_holonomic_along_path(
     ode: &HolonomicOde,
@@ -423,58 +703,13 @@ pub fn continue_holonomic_along_path(
     initial_state: &[Complex64],
     taylor_order: usize,
 ) -> Option<Vec<Complex64>> {
-    let r = ode.order();
-    if path.is_empty() || initial_state.len() != r {
-        return None;
-    }
-    let mut state = initial_state.to_vec();
-    let order = taylor_order.max(r + 8);
-
-    for win in path.windows(2) {
-        let mut cur = win[0];
-        let target = win[1];
-        let mut steps = 0_usize;
-        while (target - cur).norm() > 1e-14 {
-            steps += 1;
-            if steps > 10_000 {
-                return None;
-            }
-            let dist = ode.nearest_singularity_dist(cur);
-            if dist <= 1e-12 {
-                return None;
-            }
-            let rem = target - cur;
-            let max_step = (0.45 * dist).min(rem.norm());
-            let step = if rem.norm() <= max_step {
-                rem
-            } else {
-                rem * (max_step / rem.norm())
-            };
-            let coeffs = ode.local_taylor(cur, &state, order)?;
-            // Evaluate y^(j)(cur + step) for j = 0..r
-            let mut next_state = vec![ZERO; r];
-            for (j, slot) in next_state.iter_mut().enumerate() {
-                let mut val = ZERO;
-                let mut w_pow = ONE;
-                for (n, &an) in coeffs.iter().enumerate().skip(j) {
-                    let mut fall = 1.0_f64;
-                    for f in (n - j + 1)..=n {
-                        fall *= f as f64;
-                    }
-                    val += fall * an * w_pow;
-                    w_pow *= step;
-                }
-                *slot = val;
-            }
-            state = next_state;
-            cur += step;
-        }
-    }
-    Some(state)
+    let mut state = [initial_state.to_vec()];
+    continue_columns(ode, path, &mut state, taylor_order)?;
+    state.into_iter().next()
 }
 
-/// Computes the `r x r` monodromy matrix of a [`HolonomicOde`] around the
-/// closed loop `loop_pts` (closing back to `loop_pts[0]`).
+/// Computes the monodromy matrix by continuing the identity basis around the
+/// supplied loop, closing it at its first point.
 #[must_use]
 pub fn holonomic_monodromy_matrix(
     ode: &HolonomicOde,
@@ -482,31 +717,24 @@ pub fn holonomic_monodromy_matrix(
     taylor_order: usize,
 ) -> Option<Vec<Vec<Complex64>>> {
     let r = ode.order();
+    if r == 0 || r > 64 {
+        return None;
+    }
     let &first = loop_pts.first()?;
     let mut closed = loop_pts.to_vec();
-    if (closed.last().copied()? - first).norm() > 1e-12 {
+    if closed.last() != Some(&first) {
         closed.push(first);
     }
-    let mut cols = Vec::with_capacity(r);
-    for j in 0..r {
-        let mut e = vec![ZERO; r];
-        if let Some(slot) = e.get_mut(j) {
-            *slot = ONE;
-        }
-        cols.push(continue_holonomic_along_path(
-            ode,
-            &closed,
-            &e,
-            taylor_order,
-        )?);
+    let mut identity = vec![vec![ZERO; r]; r];
+    for (i, column) in identity.iter_mut().enumerate() {
+        *column.get_mut(i)? = ONE;
     }
-    let mut mat = vec![vec![ZERO; r]; r];
-    for (j, col) in cols.iter().enumerate() {
-        for (i, &val) in col.iter().enumerate() {
-            if let Some(cell) = mat.get_mut(i).and_then(|row| row.get_mut(j)) {
-                *cell = val;
-            }
+    continue_columns(ode, &closed, &mut identity, taylor_order)?;
+    let mut matrix = vec![vec![ZERO; r]; r];
+    for (row, out) in matrix.iter_mut().enumerate() {
+        for (slot, column) in out.iter_mut().zip(&identity) {
+            *slot = *column.get(row)?;
         }
     }
-    Some(mat)
+    Some(matrix)
 }

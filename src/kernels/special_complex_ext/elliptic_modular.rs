@@ -8,39 +8,33 @@ use std::f64::consts::PI;
 
 use num_complex::Complex64;
 
+#[path = "weierstrass_series.rs"]
+mod weierstrass_series;
+
 const ZERO: Complex64 = Complex64::new(0.0, 0.0);
 const ONE: Complex64 = Complex64::new(1.0, 0.0);
 const I: Complex64 = Complex64::new(0.0, 1.0);
 
+// The public kernels share one scaled duplication implementation. The checked
+// ABI further validates branch and singularity constraints before dispatch.
+#[path = "carlson_complex.rs"]
+pub(crate) mod carlson_complex;
+
+pub(crate) fn carlson_same_branch(
+    left: Complex64,
+    right: Complex64,
+) -> bool {
+    left == right && (left.re >= 0.0 || left.im.is_sign_negative() == right.im.is_sign_negative())
+}
+
 /// Complex Carlson symmetric elliptic integral `R_F(x, y, z)`.
 #[must_use]
 pub fn carlson_rf_complex(
-    mut x: Complex64,
-    mut y: Complex64,
-    mut z: Complex64,
+    x: Complex64,
+    y: Complex64,
+    z: Complex64,
 ) -> Complex64 {
-    for _ in 0..80 {
-        let sx = x.sqrt();
-        let sy = y.sqrt();
-        let sz = z.sqrt();
-        let lam = sx * sy + sy * sz + sz * sx;
-        x = 0.25 * (x + lam);
-        y = 0.25 * (y + lam);
-        z = 0.25 * (z + lam);
-        let a = (x + y + z) / 3.0;
-        let dx = (a - x) / a;
-        let dy = (a - y) / a;
-        let dz = (a - z) / a;
-        if dx.norm().max(dy.norm()).max(dz.norm()) < 1e-4 {
-            let dx_dy = dx * dy;
-            let e2 = dx_dy - dz * dz;
-            let e3 = dx_dy * dz;
-            let poly = ONE - e2 / 10.0 + e3 / 14.0 + e2 * e2 / 24.0 - 3.0 * e2 * e3 / 44.0;
-            return poly / a.sqrt();
-        }
-    }
-    let a = (x + y + z) / 3.0;
-    ONE / a.sqrt()
+    carlson_complex::first_kind([x, y, z]).unwrap_or(carlson_complex::NAN)
 }
 
 /// Complex Carlson degenerate integral `R_C(x, y) = R_F(x, y, y)`.
@@ -49,44 +43,17 @@ pub fn carlson_rc_complex(
     x: Complex64,
     y: Complex64,
 ) -> Complex64 {
-    carlson_rf_complex(x, y, y)
+    carlson_complex::first_kind([x, y, y]).unwrap_or(carlson_complex::NAN)
 }
 
 /// Complex Carlson symmetric elliptic integral `R_D(x, y, z)`.
 #[must_use]
 pub fn carlson_rd_complex(
-    mut x: Complex64,
-    mut y: Complex64,
-    mut z: Complex64,
+    x: Complex64,
+    y: Complex64,
+    z: Complex64,
 ) -> Complex64 {
-    let mut sum = ZERO;
-    let mut fac = ONE;
-    for _ in 0..80 {
-        let sx = x.sqrt();
-        let sy = y.sqrt();
-        let sz = z.sqrt();
-        let lam = sx * sy + sy * sz + sz * sx;
-        sum += fac / (sz * (z + lam));
-        fac *= 0.25;
-        x = 0.25 * (x + lam);
-        y = 0.25 * (y + lam);
-        z = 0.25 * (z + lam);
-        let a = (x + y + 3.0 * z) / 5.0;
-        let dx = (a - x) / a;
-        let dy = (a - y) / a;
-        let dz = (a - z) / a;
-        if dx.norm().max(dy.norm()).max(dz.norm()) < 1e-4 {
-            let ea = dx * dy;
-            let eb = dz * dz;
-            let ec = ea - eb;
-            let ed = ea - 6.0 * eb;
-            let ee = ed + ec + ec;
-            let poly = ONE + (-3.0 / 14.0) * ed + (1.0 / 6.0) * ee * dz + (9.0 / 88.0) * ed * ed
-                - (9.0 / 22.0) * dz * dz * ec;
-            return 3.0 * sum + fac * poly / (a * a.sqrt());
-        }
-    }
-    3.0 * sum
+    carlson_complex::third_kind_degenerate([x, y, z]).unwrap_or(carlson_complex::NAN)
 }
 
 /// Complex Carlson symmetric elliptic integral `R_G(x, y, z)`.
@@ -96,88 +63,18 @@ pub fn carlson_rg_complex(
     y: Complex64,
     z: Complex64,
 ) -> Complex64 {
-    let principal_sqrt = |value: Complex64| {
-        let root = crate::kernels::complex_scalar::Complex::new(value.re, value.im).sqrt();
-        Complex64::new(root.re, root.im)
-    };
-    let (x, mut y, mut z) = if y == ZERO {
-        (y, x, z)
-    } else if z == ZERO {
-        (z, x, y)
-    } else {
-        (x, y, z)
-    };
-    if x == ZERO {
-        // DLMF 19.20.4. Two zeros are allowed for R_G but not R_F or R_D.
-        if y == ZERO {
-            return 0.5 * principal_sqrt(z);
-        }
-        if z == ZERO {
-            return 0.5 * principal_sqrt(y);
-        }
-        // The equal-argument limit also retains the selected signed side of
-        // the negative real axis through the principal square root.
-        if y == z && y.im.is_sign_negative() == z.im.is_sign_negative() {
-            return (PI / 4.0) * principal_sqrt(z);
-        }
-        // For one zero, keep the larger nonzero magnitude in the R_D
-        // denominator and preserve each argument's original branch side.
-        if y.norm() > z.norm() {
-            std::mem::swap(&mut y, &mut z);
-        }
-    }
-    // DLMF 19.21.10 uses the product of the principal square roots.
-    let roots = if x == ZERO {
-        ZERO
-    } else {
-        principal_sqrt(x) * principal_sqrt(y) / principal_sqrt(z)
-    };
-    0.5 * (z * carlson_rf_complex(x, y, z) - (x - z) * (y - z) * carlson_rd_complex(x, y, z) / 3.0
-        + roots)
+    carlson_complex::second_kind([x, y, z]).unwrap_or(carlson_complex::NAN)
 }
 
 /// Complex Carlson symmetric elliptic integral `R_J(x, y, z, p)`.
 #[must_use]
 pub fn carlson_rj_complex(
-    mut x: Complex64,
-    mut y: Complex64,
-    mut z: Complex64,
-    mut p: Complex64,
+    x: Complex64,
+    y: Complex64,
+    z: Complex64,
+    p: Complex64,
 ) -> Complex64 {
-    let mut sum = ZERO;
-    let mut fac = ONE;
-    let delta = (p - x) * (p - y) * (p - z);
-    for _ in 0..80 {
-        let sx = x.sqrt();
-        let sy = y.sqrt();
-        let sz = z.sqrt();
-        let sp = p.sqrt();
-        let lam = sx * sy + sy * sz + sz * sx;
-        let d = (sp + sx) * (sp + sy) * (sp + sz);
-        let e = fac * fac * fac * delta / (d * d);
-        sum += fac * carlson_rc_complex(ONE, ONE + e) / d;
-        fac *= 0.25;
-        x = 0.25 * (x + lam);
-        y = 0.25 * (y + lam);
-        z = 0.25 * (z + lam);
-        p = 0.25 * (p + lam);
-        let a = (x + y + z + 2.0 * p) / 5.0;
-        let dx = (a - x) / a;
-        let dy = (a - y) / a;
-        let dz = (a - z) / a;
-        let dp = (a - p) / a;
-        if dx.norm().max(dy.norm()).max(dz.norm()).max(dp.norm()) < 1e-4 {
-            let ea = dx * (dy + dz) + dy * dz;
-            let eb = dx * dy * dz;
-            let ec = dp * dp;
-            let ed = ea - 3.0 * ec;
-            let ee = eb + 2.0 * dp * (ea - ec);
-            let poly =
-                ONE - 3.0 * ed / 14.0 + ee / 6.0 + 9.0 * ed * ed / 88.0 - 3.0 * eb * dp / 11.0;
-            return 3.0 * sum + fac * poly / (a * a.sqrt());
-        }
-    }
-    3.0 * sum
+    carlson_complex::third_kind([x, y, z, p]).unwrap_or(carlson_complex::NAN)
 }
 
 /// Complete elliptic integral of the first kind `K(m)` for complex parameter `m`.
@@ -424,21 +321,6 @@ fn jacobi_theta1_prime(
     2.0 * q.powc(Complex64::new(0.25, 0.0)) * sum
 }
 
-fn jacobi_theta1_triple_prime_zero(q: Complex64) -> Complex64 {
-    let mut sum = ZERO;
-    for n in 0..80 {
-        let sign = if n % 2 == 0 { -1.0 } else { 1.0 };
-        let m = f64::from(2 * n + 1);
-        let q_pow = q.powi(n * (n + 1));
-        let term = sign * m * m * m * q_pow;
-        sum += term;
-        if term.norm() < 1e-16 * (1.0 + sum.norm()) {
-            break;
-        }
-    }
-    2.0 * q.powc(Complex64::new(0.25, 0.0)) * sum
-}
-
 /// Normalizes half-periods `(omega1, omega2)` so `Im(omega2 / omega1) > 0` and
 /// returns `(tau, q, pi / (2 * omega1))`.
 fn weierstrass_params(
@@ -525,14 +407,7 @@ pub fn weierstrass_zeta_complex(
     omega1: Complex64,
     omega2: Complex64,
 ) -> Complex64 {
-    let (_, q, scale) = weierstrass_params(omega1, omega2);
-    let w = scale * z;
-    let t1 = jacobi_theta_complex(1, w, q);
-    let t1p = jacobi_theta1_prime(w, q);
-    let t1p0 = jacobi_theta1_prime(ZERO, q);
-    let t1ppp0 = jacobi_theta1_triple_prime_zero(q);
-    let eta1 = -(scale / 6.0) * (t1ppp0 / t1p0);
-    (eta1 / scale) * w + scale * (t1p / t1)
+    weierstrass_series::zeta(z, omega1, omega2)
 }
 
 /// Weierstrass sigma function `sigma(z; omega1, omega2)`.
@@ -542,14 +417,7 @@ pub fn weierstrass_sigma_complex(
     omega1: Complex64,
     omega2: Complex64,
 ) -> Complex64 {
-    let (_, q, scale) = weierstrass_params(omega1, omega2);
-    let w = scale * z;
-    let t1 = jacobi_theta_complex(1, w, q);
-    let t1p0 = jacobi_theta1_prime(ZERO, q);
-    let t1ppp0 = jacobi_theta1_triple_prime_zero(q);
-    let eta1 = -(scale / 6.0) * (t1ppp0 / t1p0);
-    let quad = (0.5 * eta1 / (scale * scale)) * w * w;
-    (quad.exp() / scale) * (t1 / t1p0)
+    weierstrass_series::sigma(z, omega1, omega2)
 }
 
 /// Dedekind eta function `eta(tau)` on the upper half-plane `Im(tau) > 0`

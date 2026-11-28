@@ -56,10 +56,28 @@ const SURFACE_GRID: usize = 12;
 /// when there is no closed shell, or when an entity reference is undefined or
 /// malformed.
 pub fn read_step(bytes: &[u8]) -> Result<Vec<Mesh>, String> {
+    read_step_impl(bytes, false)
+}
+
+/// Bounded interop route for planar B-reps with straight edges.
+pub(crate) fn read_planar_step(bytes: &[u8]) -> Result<Vec<Mesh>, String> {
+    if bytes.len() > 262_144 {
+        return Err("STEP text exceeds the native input budget".into());
+    }
+    read_step_impl(bytes, true)
+}
+
+fn read_step_impl(
+    bytes: &[u8],
+    planar_only: bool,
+) -> Result<Vec<Mesh>, String> {
     let text =
         std::str::from_utf8(bytes).map_err(|_| "step file is not valid utf-8".to_string())?;
 
     let records = split_statements(text);
+    if planar_only && records.len() > 2048 {
+        return Err("STEP record count exceeds the native input budget".into());
+    }
     let start = records
         .iter()
         .position(|record| record.trim().eq_ignore_ascii_case("DATA"))
@@ -74,6 +92,7 @@ pub fn read_step(bytes: &[u8]) -> Result<Vec<Mesh>, String> {
     let mut placements: HashMap<usize, Axis2PlacementRaw> = HashMap::new();
     let mut vertex_points: HashMap<usize, usize> = HashMap::new();
     let mut curves: HashMap<usize, CurveGeom> = HashMap::new();
+    let mut straight_curves = HashSet::new();
     let mut surfaces: HashMap<usize, SurfaceGeom> = HashMap::new();
     let mut edge_curves: HashMap<usize, EdgeCurve> = HashMap::new();
     let mut oriented_edges: HashMap<usize, (usize, bool)> = HashMap::new();
@@ -123,6 +142,9 @@ pub fn read_step(bytes: &[u8]) -> Result<Vec<Mesh>, String> {
                         if let Some(point_id) = args.get(1).and_then(|a| parse_reference(a)) {
                             vertex_points.insert(id, point_id);
                         }
+                    },
+                    | "LINE" if planar_only => {
+                        straight_curves.insert(id);
                     },
                     | "CIRCLE" => {
                         let placement = args.get(1).and_then(|a| parse_reference(a));
@@ -338,6 +360,9 @@ pub fn read_step(bytes: &[u8]) -> Result<Vec<Mesh>, String> {
 
     // Determine length unit scale factor (metres per file unit; 1.0 when unitless).
     let unit_scale = resolve_unit_scale(&si_length_units, &measure_with_units, &conversion_units);
+    if planar_only && !(unit_scale.is_finite() && unit_scale > 0.0) {
+        return Err("STEP defines an invalid coordinate length unit".into());
+    }
     if (unit_scale - 1.0).abs() > 0.0 {
         for pt in points.values_mut() {
             pt[0] *= unit_scale;
@@ -382,28 +407,33 @@ pub fn read_step(bytes: &[u8]) -> Result<Vec<Mesh>, String> {
         advanced_faces: &advanced_faces,
     };
 
-    let mut meshes = Vec::new();
-    if !solid_breps.is_empty() {
-        for shell_id in solid_breps {
-            let faces = closed_shells
-                .get(&shell_id)
-                .ok_or_else(|| format!("closed shell #{shell_id} is undefined"))?;
-            meshes.push(build_shell(&context, faces)?);
+    let shells = if solid_breps.is_empty() {
+        if closed_shells.is_empty() {
+            return Err("step file contains no closed shell".to_string());
         }
-        return Ok(meshes);
+        let mut shells: Vec<_> = closed_shells.iter().collect();
+        shells.sort_by_key(|(id, faces)| (faces.first().copied().unwrap_or(usize::MAX), **id));
+        shells
+            .into_iter()
+            .map(|(_, faces)| faces)
+            .collect::<Vec<_>>()
+    } else {
+        solid_breps
+            .into_iter()
+            .map(|shell_id| {
+                closed_shells
+                    .get(&shell_id)
+                    .ok_or_else(|| format!("closed shell #{shell_id} is undefined"))
+            })
+            .collect::<Result<Vec<_>, _>>()?
+    };
+    if planar_only {
+        check_planar_work(&context, &shells, &straight_curves)?;
     }
-
-    if closed_shells.is_empty() {
-        return Err("step file contains no closed shell".to_string());
-    }
-
-    let mut shells: Vec<&Vec<usize>> = closed_shells.values().collect();
-    shells.sort_by_key(|faces| faces.first().copied().unwrap_or(usize::MAX));
-    for faces in shells {
-        meshes.push(build_shell(&context, faces)?);
-    }
-
-    Ok(meshes)
+    shells
+        .into_iter()
+        .map(|faces| build_shell(&context, faces))
+        .collect()
 }
 
 /// Reads every solid in the STEP file at `path`.
@@ -579,6 +609,74 @@ impl Context<'_> {
 // ---------------------------------------------------------------------------
 // Shell & face tessellation
 // ---------------------------------------------------------------------------
+
+fn check_planar_work(
+    context: &Context<'_>,
+    shells: &[&Vec<usize>],
+    straight_curves: &HashSet<usize>,
+) -> Result<(), String> {
+    let face_count = shells.iter().map(|faces| faces.len()).sum::<usize>();
+    if shells.len() > 16 || face_count > 256 {
+        return Err("STEP shell or face count exceeds the native work budget".into());
+    }
+    if context
+        .points
+        .values()
+        .flatten()
+        .any(|value| !value.is_finite() || value.abs() > 1e60)
+    {
+        return Err("STEP coordinates are out of finite CAD range".into());
+    }
+    let mut work = 0usize;
+    for &face_id in shells.iter().flat_map(|faces| faces.iter()) {
+        let face = context
+            .advanced_faces
+            .get(&face_id)
+            .ok_or_else(|| format!("advanced face #{face_id} is undefined"))?;
+        if !face
+            .surface
+            .and_then(|surface| context.surfaces.get(&surface))
+            .is_some_and(|surface| matches!(surface, SurfaceGeom::Plane))
+        {
+            return Err("bounded STEP input requires each face to refer to a plane".into());
+        }
+        let mut corners = face.bounds.len().saturating_mul(2);
+        for &bound_id in &face.bounds {
+            let bound = context
+                .face_bounds
+                .get(&bound_id)
+                .ok_or_else(|| format!("face bound #{bound_id} is undefined"))?;
+            let edges = context
+                .edge_loops
+                .get(&bound.loop_id)
+                .ok_or_else(|| format!("edge loop #{} is undefined", bound.loop_id))?;
+            corners = corners.saturating_add(edges.len());
+            if !(3..=96).contains(&edges.len()) || corners > 96 {
+                return Err("STEP face loop exceeds the native triangulation budget".into());
+            }
+            for oriented_id in edges {
+                let (edge_id, _) = context
+                    .oriented_edges
+                    .get(oriented_id)
+                    .ok_or_else(|| format!("oriented edge #{oriented_id} is undefined"))?;
+                let edge = context
+                    .edge_curves
+                    .get(edge_id)
+                    .ok_or_else(|| format!("edge curve #{edge_id} is undefined"))?;
+                if !edge.geom.is_some_and(|geometry| {
+                    straight_curves.contains(&geometry) && !context.curves.contains_key(&geometry)
+                }) {
+                    return Err("bounded STEP input requires LINE edge geometry".into());
+                }
+            }
+        }
+        work = work.saturating_add(corners.saturating_pow(3));
+        if work > 1 << 22 {
+            return Err("STEP triangulation exceeds the native work budget".into());
+        }
+    }
+    Ok(())
+}
 
 /// Tessellates every face of `faces` into one mesh.
 fn build_shell(
@@ -908,19 +1006,17 @@ fn expand_knots(
     degree: usize,
     n_ctrl: usize,
 ) -> Vec<f64> {
-    let mut flat = Vec::new();
-    if multiplicities.len() == knots.len() && !knots.is_empty() {
-        for (&mult, &k) in multiplicities.iter().zip(knots.iter()) {
-            for _ in 0..mult {
-                flat.push(k);
-            }
-        }
-    }
-    if flat.len() == n_ctrl + degree + 1 {
-        return flat;
-    }
-
     let m = n_ctrl + degree + 1;
+    let expanded_len = multiplicities
+        .iter()
+        .try_fold(0usize, |len, &copies| len.checked_add(copies));
+    if multiplicities.len() == knots.len() && expanded_len == Some(m) {
+        return multiplicities
+            .iter()
+            .zip(knots)
+            .flat_map(|(&copies, &knot)| std::iter::repeat_n(knot, copies))
+            .collect();
+    }
     let mut uniform = Vec::with_capacity(m);
     let internal = n_ctrl.saturating_sub(degree + 1);
     uniform.resize(degree + 1, 0.0);
@@ -2404,6 +2500,14 @@ fn parse_bspline_surface_complex(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn malformed_knot_multiplicities_use_the_uniform_fallback() {
+        assert_eq!(
+            super::expand_knots(&[usize::MAX, 2], &[0.0, 1.0], 1, 2),
+            [0.0, 0.0, 1.0, 1.0]
+        );
+    }
+
     use super::read_step;
     use crate::kernels::cad::types::Mesh;
     use crate::kernels::cad::types::cross;

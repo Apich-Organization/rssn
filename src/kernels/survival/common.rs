@@ -30,34 +30,56 @@ pub(super) fn check_inputs(
     Ok(time.len())
 }
 
+/// Indices ordered by observed time. Original indices break exact ties.
+pub(super) fn time_order(
+    time: &[f64],
+    descending: bool,
+) -> Vec<usize> {
+    let mut order: Vec<_> = (0..time.len()).collect();
+    order.sort_unstable_by(|&a, &b| {
+        let comparison = time[a].total_cmp(&time[b]);
+        let comparison = if descending {
+            comparison.reverse()
+        } else {
+            comparison
+        };
+        comparison.then(a.cmp(&b))
+    });
+    order
+}
+
+/// Finds the exclusive end of the time group beginning at `start`.
+#[allow(clippy::float_cmp)] // exact comparison groups tied observation times
+pub(super) fn group_end(
+    time: &[f64],
+    order: &[usize],
+    start: usize,
+) -> usize {
+    let t = time[order[start]];
+    start
+        + order[start..]
+            .iter()
+            .take_while(|&&index| time[index] == t)
+            .count()
+}
+
 /// Builds the risk table over the distinct times at which at least one event
 /// occurred.
 ///
 /// Subjects censored at a time `t` still count towards the risk set of `t`,
 /// which is the usual convention of the Kaplan-Meier and Nelson-Aalen
 /// estimators.
-#[allow(clippy::float_cmp)] // exact comparison groups tied observation times
 pub(super) fn risk_table(
     time: &[f64],
     event: &[bool],
 ) -> Vec<RiskRow> {
     let n = time.len();
-    let mut order: Vec<usize> = (0..n).collect();
-    order.sort_unstable_by(|&a, &b| time[a].total_cmp(&time[b]));
+    let order = time_order(time, false);
     let mut rows = Vec::new();
     let mut start = 0usize;
     while start < n {
-        let Some(&first) = order.get(start) else {
-            break;
-        };
-        let t = time[first];
-        let mut end = start;
-        while end < n {
-            match order.get(end) {
-                | Some(&k) if time[k] == t => end += 1,
-                | _ => break,
-            }
-        }
+        let t = time[order[start]];
+        let end = group_end(time, &order, start);
         let mut events = 0usize;
         for &k in &order[start..end] {
             if event.get(k).copied().unwrap_or(false) {

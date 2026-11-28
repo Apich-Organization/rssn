@@ -993,6 +993,11 @@ pub(super) fn segments_cross(
     c: [f64; 2],
     d: [f64; 2],
 ) -> bool {
+    if (0..2).any(|axis| {
+        a[axis].max(b[axis]) < c[axis].min(d[axis]) || c[axis].max(d[axis]) < a[axis].min(b[axis])
+    }) {
+        return false;
+    }
     let o1 = orient2d(a, b, c);
     let o2 = orient2d(a, b, d);
     let o3 = orient2d(c, d, a);

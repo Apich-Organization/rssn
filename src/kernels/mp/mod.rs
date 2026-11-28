@@ -55,9 +55,11 @@ pub mod consts;
 pub mod decimal;
 pub(crate) mod fixed;
 pub mod funcs;
+mod logarithms;
 pub mod parse;
 pub mod real;
 pub mod special_complex;
+mod trigonometry;
 
 pub use ball::Ball;
 pub use complex::MpComplex;

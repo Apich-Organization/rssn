@@ -1876,9 +1876,8 @@ pub fn simplex_with(
 /// total pivot budget across Phase I and Phase II.
 ///
 /// # Errors
-/// Returns an error string when the total number of pivots across Phase I and
-/// Phase II would exceed `max_iter` before optimality, infeasibility, or
-/// unboundedness is determined.
+/// Returns an error for malformed or nonfinite input, cancellation, or when
+/// reaching a decision would require more than `max_iter` pivots.
 pub fn simplex_with_max_iter(
     c: &[f64],
     a: &[Vec<f64>],
@@ -1897,7 +1896,7 @@ pub fn simplex_with_max_iter(
                 bland_pivots: bland_n.get(),
             })
         },
-        | Err(()) => Err("iteration limit exceeded".to_string()),
+        | Err(error) => Err(error.to_owned()),
     }
 }
 
@@ -1906,6 +1905,30 @@ enum PhaseOutcome {
     Optimal,
     Unbounded,
     LimitExceeded,
+    Cancelled,
+}
+
+fn tableau_pivot(
+    tableau: &mut [Vec<f64>],
+    row: usize,
+    column: usize,
+) {
+    let (before, current) = tableau.split_at_mut(row);
+    if let Some((pivot, after)) = current.split_first_mut()
+        && let Some(&entry) = pivot.get(column)
+    {
+        for value in pivot.iter_mut() {
+            *value /= entry;
+        }
+        for other in before.iter_mut().chain(after.iter_mut()) {
+            if let Some(&factor) = other.get(column) {
+                super::simd::axpy_f64(-factor, pivot, other);
+                if let Some(value) = other.get_mut(column) {
+                    *value = 0.0;
+                }
+            }
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1918,9 +1941,22 @@ fn simplex_core(
     max_iter: Option<usize>,
     iters: &std::cell::Cell<usize>,
     bland_n: &std::cell::Cell<usize>,
-) -> Result<LpStatus, ()> {
+) -> Result<LpStatus, &'static str> {
     let n = c.len();
     let m = a.len();
+    if rel.len() != m || b.len() != m || a.iter().any(|row| row.len() != n) {
+        return Err("linear program shape mismatch");
+    }
+    if c.iter()
+        .chain(b)
+        .chain(a.iter().flatten())
+        .any(|x| !x.is_finite())
+    {
+        return Err("linear program coefficients must be finite");
+    }
+    if crate::cancellation::is_cancelled() {
+        return Err("linear program cancelled");
+    }
     // Normalise so that b >= 0.
     let mut rows: Vec<(Vec<f64>, Relation, f64)> = (0..m)
         .map(|i| {
@@ -1989,6 +2025,9 @@ fn simplex_core(
         let mut last_obj = rc[total];
         let mut phase_iters = 0usize;
         loop {
+            if crate::cancellation::is_cancelled() {
+                return PhaseOutcome::Cancelled;
+            }
             let use_bland = pricing == Pricing::Bland || degenerate_run >= stall_limit;
             let entering = if use_bland {
                 (0..limit).find(|&j| rc[j] < -eps)
@@ -2016,18 +2055,6 @@ fn simplex_core(
             let Some(e) = entering else {
                 return PhaseOutcome::Optimal;
             };
-            if let Some(budget) = max_iter {
-                if iters.get() >= budget {
-                    return PhaseOutcome::LimitExceeded;
-                }
-            } else if phase_iters >= 50_000 {
-                return PhaseOutcome::Optimal;
-            }
-            phase_iters += 1;
-            iters.set(iters.get() + 1);
-            if use_bland {
-                bland_n.set(bland_n.get() + 1);
-            }
             let mut best: Option<(usize, f64)> = None;
             for i in 0..m {
                 if t[i][e] > eps {
@@ -2046,21 +2073,21 @@ fn simplex_core(
             let Some((r, _)) = best else {
                 return PhaseOutcome::Unbounded;
             };
-            let p = t[r][e];
-            for j in 0..=total {
-                t[r][j] /= p;
-            }
-            for i in 0..m {
-                if i != r && t[i][e] != 0.0 {
-                    let fct = t[i][e];
-                    for j in 0..=total {
-                        t[i][j] -= fct * t[r][j];
-                    }
+            if let Some(budget) = max_iter {
+                if iters.get() >= budget {
+                    return PhaseOutcome::LimitExceeded;
                 }
+            } else if phase_iters >= 50_000 {
+                return PhaseOutcome::Optimal;
             }
-            let fct = rc[e];
-            for j in 0..=total {
-                rc[j] -= fct * t[r][j];
+            phase_iters += 1;
+            iters.set(iters.get() + 1);
+            if use_bland {
+                bland_n.set(bland_n.get() + 1);
+            }
+            tableau_pivot(t, r, e);
+            if let Some((factor, pivot)) = rc.get(e).copied().zip(t.get(r)) {
+                super::simd::axpy_f64(-factor, pivot, &mut rc);
             }
             basis[r] = e;
             // rc[total] tracks minus the objective: reset the stall counter on strict progress
@@ -2077,8 +2104,10 @@ fn simplex_core(
         for v in &mut c1[n + nslack..] {
             *v = 1.0;
         }
-        if run(&mut t, &mut basis, &c1, total) == PhaseOutcome::LimitExceeded {
-            return Err(());
+        match run(&mut t, &mut basis, &c1, total) {
+            | PhaseOutcome::LimitExceeded => return Err("iteration limit exceeded"),
+            | PhaseOutcome::Cancelled => return Err("linear program cancelled"),
+            | PhaseOutcome::Optimal | PhaseOutcome::Unbounded => {},
         }
         let infeas: f64 = (0..m)
             .filter(|&i| basis[i] >= n + nslack)
@@ -2092,18 +2121,14 @@ fn simplex_core(
             if basis[i] >= n + nslack
                 && let Some(e) = (0..n + nslack).find(|&j| t[i][j].abs() > eps)
             {
-                let p = t[i][e];
-                for j in 0..=total {
-                    t[i][j] /= p;
+                if crate::cancellation::is_cancelled() {
+                    return Err("linear program cancelled");
                 }
-                for k in 0..m {
-                    if k != i && t[k][e] != 0.0 {
-                        let fct = t[k][e];
-                        for j in 0..=total {
-                            t[k][j] -= fct * t[i][j];
-                        }
-                    }
+                if max_iter.is_some_and(|budget| iters.get() >= budget) {
+                    return Err("iteration limit exceeded");
                 }
+                iters.set(iters.get().saturating_add(1));
+                tableau_pivot(&mut t, i, e);
                 basis[i] = e;
             }
         }
@@ -2113,7 +2138,8 @@ fn simplex_core(
     match run(&mut t, &mut basis, &c2, n + nslack) {
         | PhaseOutcome::Optimal => {},
         | PhaseOutcome::Unbounded => return Ok(LpStatus::Unbounded),
-        | PhaseOutcome::LimitExceeded => return Err(()),
+        | PhaseOutcome::LimitExceeded => return Err("iteration limit exceeded"),
+        | PhaseOutcome::Cancelled => return Err("linear program cancelled"),
     }
     let mut x = vec![0.0; n];
     for i in 0..m {

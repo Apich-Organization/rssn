@@ -10,7 +10,9 @@
 //! same decimal text.
 
 use num_bigint::BigInt;
+use num_traits::Zero;
 
+use super::real::MAX_BITS;
 use super::real::MAX_EXP;
 use super::real::Real;
 use super::real::Round;
@@ -37,6 +39,74 @@ impl Ball {
             return Err("a radius cannot be negative".to_string());
         }
         Ok(Self { mid, rad })
+    }
+
+    /// Encloses exact integer bounds sharing a power-of-two exponent.
+    pub(super) fn from_scaled_bounds(
+        lower: BigInt,
+        upper: BigInt,
+        exponent: i64,
+        prec: u32,
+    ) -> Result<Self, String> {
+        // Round the average of the exact working endpoints once.
+        let mid = Real::rounded(&lower + &upper, exponent - 1, prec, Round::NearestEven)?;
+        let common = exponent.min(mid.exponent());
+        let endpoint_shift = (exponent - common).unsigned_abs();
+        let centre = mid.mantissa() << (mid.exponent() - common).unsigned_abs();
+        let radius = (&centre - (lower << endpoint_shift)).max((upper << endpoint_shift) - centre);
+        if radius.is_zero() {
+            return Ok(Self::point(mid));
+        }
+
+        // At the exponent floor use a coarser radius, rounded up. The midpoint
+        // retains the precision requested by the caller.
+        let available = common + i64::try_from(radius.bits()).map_err(|e| e.to_string())? + MAX_EXP;
+        let rad = if available <= 0 {
+            Real::rounded(BigInt::from(1), -MAX_EXP, 1, Round::TowardPositive)?
+        } else {
+            let radius_prec = prec.clamp(1, u32::try_from(available).unwrap_or(u32::MAX));
+            Real::rounded(radius, common, radius_prec, Round::TowardPositive)?
+        };
+        Self::new(mid, rad)
+    }
+
+    /// Encloses two ordered, exact dyadic bounds.
+    pub(super) fn from_bounds(
+        lower: Real,
+        upper: Real,
+        prec: u32,
+    ) -> Result<Self, String> {
+        if lower.cmp_value(&upper) > 0 {
+            return Err("interval bounds are out of order".into());
+        }
+        let exponent = lower.exponent().min(upper.exponent());
+        Self::from_scaled_bounds(
+            lower.mantissa() << (lower.exponent() - exponent).unsigned_abs(),
+            upper.mantissa() << (upper.exponent() - exponent).unsigned_abs(),
+            exponent,
+            prec,
+        )
+    }
+
+    /// Rounds the midpoint and retains an outward radius.
+    pub(super) fn rounded_midpoint(
+        self,
+        prec: u32,
+    ) -> Result<Self, String> {
+        let mid = self.mid.with_precision(prec, Round::NearestEven)?;
+        let displacement = self
+            .mid
+            .sub(&mid, prec, Round::AwayFromZero)
+            .or_else(|_| self.mid.sub(&mid, 1, Round::AwayFromZero))?
+            .abs();
+        if displacement.is_zero() {
+            return Self::new(mid, self.rad);
+        }
+        let rad = self
+            .rad
+            .add(&displacement, prec, Round::TowardPositive)
+            .or_else(|_| self.rad.add(&displacement, 1, Round::TowardPositive))?;
+        Self::new(mid, rad)
     }
 
     /// The degenerate ball holding exactly `mid`.
@@ -232,50 +302,118 @@ impl Ball {
         increasing: bool,
         prec: u32,
     ) -> Result<Self, String> {
-        let inner = prec.saturating_add(16);
-        let (lower, upper) = self.endpoints(inner)?;
-        let mid = f(&self.mid, inner, Round::NearestEven)?;
-        let (low, high) = if increasing {
-            (
-                f(&lower, inner, Round::TowardNegative)?,
-                f(&upper, inner, Round::TowardPositive)?,
-            )
+        let inner = (prec.saturating_add(16))
+            .max(self.mid.precision())
+            .max(self.rad.precision())
+            .min(MAX_BITS);
+        let (lower, upper) = self.outward_endpoints(inner)?;
+        let (first, last) = if increasing {
+            (&lower, &upper)
         } else {
-            (
-                f(&upper, inner, Round::TowardNegative)?,
-                f(&lower, inner, Round::TowardPositive)?,
-            )
+            (&upper, &lower)
         };
-        let below = mid.sub(&low, inner, Round::AwayFromZero)?;
-        let above = high.sub(&mid, inner, Round::AwayFromZero)?;
-        let rad = if below.cmp_value(&above) >= 0 {
-            below
-        } else {
-            above
-        };
-        Ok(Self {
-            mid: mid.with_precision(prec, Round::NearestEven)?,
-            rad: rad.add(&slack(&mid, prec)?, prec, Round::AwayFromZero)?,
-        })
+        let low = f(first, inner, Round::TowardNegative)?;
+        let high = f(last, inner, Round::TowardPositive)?;
+        Self::from_bounds(low, high, prec)
     }
 
-    /// Widens the radius by a Lipschitz bound of the function applied to the
-    /// midpoint.
+    /// Encloses a mapped interval given the exact image of its midpoint
+    /// and a nonnegative Lipschitz bound on the input interval.
     ///
     /// # Errors
-    /// Fails when an exponent leaves the range.
+    /// Fails for a negative bound, an invalid input radius, or an
+    /// unrepresentable exponent.
     pub fn lipschitz(
         &self,
         mid: Real,
         bound: &Real,
         prec: u32,
     ) -> Result<Self, String> {
-        let rad = self.rad.mul(bound, prec, Round::AwayFromZero)?.add(
-            &slack(&mid, prec)?,
-            prec,
-            Round::AwayFromZero,
-        )?;
-        Ok(Self { mid, rad })
+        if bound.sign() < 0 || self.rad.sign() < 0 {
+            return Err("Lipschitz bound and input radius must be nonnegative".into());
+        }
+        let rad = self
+            .rad
+            .mul(bound, prec, Round::TowardPositive)
+            .or_else(|_| self.rad.mul(bound, 1, Round::TowardPositive))?;
+        Self::new(mid, rad)?.rounded_midpoint(prec)
+    }
+
+    /// An outward dyadic enclosure of the square roots in the interval.
+    ///
+    /// # Errors
+    /// Fails if the interval includes negative values or an exponent leaves
+    /// the representable range.
+    pub fn sqrt(
+        &self,
+        prec: u32,
+    ) -> Result<Self, String> {
+        let (mid, inexact) = self.mid.sqrt_with_inexact(prec, Round::NearestEven)?;
+        if self.rad.is_zero() {
+            let rad = midpoint_rounding(&mid, inexact)?;
+            return Self::new(mid, rad);
+        }
+        let inner = prec.saturating_add(16);
+        let (lower, upper) = self.endpoints(inner)?;
+        let lower = lower.sqrt(inner, Round::TowardNegative)?;
+        let upper = upper.sqrt(inner, Round::TowardPositive)?;
+        let below = mid.sub(&lower, prec, Round::TowardPositive)?;
+        let above = upper.sub(&mid, prec, Round::TowardPositive)?;
+        let rad = if below.cmp_value(&above) >= 0 {
+            below
+        } else {
+            above
+        };
+        Self::new(mid, rad)
+    }
+
+    /// Outward endpoints preserving point and exponent-floor values.
+    pub(super) fn outward_endpoints(
+        &self,
+        prec: u32,
+    ) -> Result<(Real, Real), String> {
+        if self.rad.sign() < 0 {
+            return Err("a radius cannot be negative".into());
+        }
+        if self.rad.is_zero() {
+            return Ok((self.mid.clone(), self.mid.clone()));
+        }
+        let lower = self
+            .mid
+            .sub(&self.rad, prec, Round::TowardNegative)
+            .or_else(|_| self.mid.sub(&self.rad, 1, Round::TowardNegative))?;
+        let upper = self
+            .mid
+            .add(&self.rad, prec, Round::TowardPositive)
+            .or_else(|_| self.mid.add(&self.rad, 1, Round::TowardPositive))?;
+        Ok((lower, upper))
+    }
+
+    /// The nearest and farthest nonnegative endpoints in the absolute image.
+    pub(super) fn absolute_endpoints(
+        &self,
+        prec: u32,
+    ) -> Result<(Real, Real), String> {
+        let (lower, upper) = self.outward_endpoints(prec)?;
+        Ok(Self::absolute_bounds(&lower, &upper, prec))
+    }
+
+    pub(super) fn absolute_bounds(
+        lower: &Real,
+        upper: &Real,
+        prec: u32,
+    ) -> (Real, Real) {
+        let lower_abs = lower.abs();
+        let upper_abs = upper.abs();
+        let (mut near, far) = if lower_abs.cmp_value(&upper_abs) <= 0 {
+            (lower_abs, upper_abs)
+        } else {
+            (upper_abs, lower_abs)
+        };
+        if lower.sign() <= 0 && upper.sign() >= 0 {
+            near = Real::zero(prec);
+        }
+        (near, far)
     }
 
     /// The two endpoints, `mid - rad` and `mid + rad`.
@@ -294,7 +432,7 @@ impl Ball {
 }
 
 /// Outward bound for the rounding error of an exact midpoint operation.
-fn midpoint_rounding(
+pub(super) fn midpoint_rounding(
     mid: &Real,
     inexact: bool,
 ) -> Result<Real, String> {
@@ -309,38 +447,6 @@ fn midpoint_rounding(
     Ok(unit
         .with_precision(prec, Round::TowardPositive)
         .unwrap_or(unit))
-}
-
-/// One unit in the last place of `value` at precision `prec`, a bound on the
-/// error of rounding `value` to `prec` bits.
-fn slack(
-    value: &Real,
-    prec: u32,
-) -> Result<Real, String> {
-    // No rounding, no error: a value that is exactly representable at the
-    // target precision contributes nothing to the radius. Without this an
-    // exact cancellation (`exp(0) - exp(0)`) would carry a spurious radius
-    // that stops a later rendering from certifying the digits of zero.
-    let width = value.precision();
-    if value.is_zero() || width <= prec {
-        return Ok(Real::zero(1));
-    }
-    let dropped = u64::from(width - prec);
-    if value
-        .mantissa()
-        .magnitude()
-        .trailing_zeros()
-        .is_some_and(|zeros| zeros >= dropped)
-    {
-        return Ok(Real::zero(1));
-    }
-    match value.floor_log2() {
-        | None => Real::rounded(BigInt::from(1), -i64::from(prec), 1, Round::AwayFromZero),
-        | Some(top) => {
-            let exponent = top.saturating_sub(i64::from(prec)).saturating_add(1);
-            Real::rounded(BigInt::from(1), exponent, 1, Round::AwayFromZero)
-        },
-    }
 }
 
 #[cfg(test)]

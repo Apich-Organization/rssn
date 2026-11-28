@@ -1,83 +1,130 @@
 //! Elementary functions over the arbitrary-precision reals.
 //!
-//! Every function returns a [`Ball`], not a bare [`Real`]: the midpoint is the
-//! computed value and the radius bounds the truncation of the series plus the
-//! rounding of each division. The series are the classical ones, evaluated in
-//! fixed point at `prec + 32` fractional bits (more when an argument has a
-//! large exponent, because the reduction loses that many bits):
+//! Functions return a computed midpoint and radius as a [`Ball`]. The exact
+//! dyadic and interval exponential use directed bounds throughout. The other
+//! series estimates use fixed point with at least 32 guard bits:
 //!
-//! * `exp` reduces by `k ln 2` and sums `r^j / j!`;
-//! * `ln` writes `x = m 2^e` with `m` in `[1, 2)` and sums `2 atanh(z)`,
-//!   `z = (m - 1)/(m + 1) <= 1/3`;
-//! * `sin` and `cos` reduce modulo `2 pi` and sum their Taylor series;
-//! * `atan` halves the angle with `x / (1 + sqrt(1 + x^2))` until the Taylor
-//!   series converges quickly.
+//! * `exp` scales by an exact power of two, bounds its Taylor series, and
+//!   restores the range by outward squaring;
+//! * `ln` writes `x = m 2^e` with `m` in `[3/4, 3/2)` and bounds
+//!   `2 atanh((m - 1)/(m + 1))`;
+//! * `sin` and `cos` share certified quarter-turn reduction and Taylor bounds;
+//! * `atan` and `atan2` use exact ratios and outward quadrant corrections.
 //!
-//! In every series the multiplier has magnitude below one, so an error of `k`
-//! units of `2^-s` stays below `k` units: the error count is simply three
-//! units per term plus the first omitted term. The cost is quadratic in the
-//! precision (no binary splitting), which is why the operator surface caps the
-//! digit count: a few thousand digits take about a second, twenty take
-//! microseconds.
+//! The series use direct summation and the operator surface caps the working
+//! precision.
 
 use num_bigint::BigInt;
-use num_traits::Signed;
+use num_integer::Integer;
 
 use super::ball::Ball;
 use super::consts;
 use super::fixed::Fx;
-use super::fixed::units;
+use super::logarithms;
+use super::real::MAX_BITS;
+use super::real::MAX_EXP;
 use super::real::Real;
 use super::real::Round;
+use super::trigonometry;
 
-/// Largest magnitude whose sine or cosine is reduced exactly enough.
-const MAX_TRIG_ARGUMENT: i64 = 1 << 20;
+mod hyperbolic;
+mod inverse_sine;
+mod inverse_tangent;
+mod powers;
 
-/// Turns a fixed-point result and its error count into a ball.
-fn finish(
-    value: Fx,
-    error: u64,
+/// Outward integer endpoints with a shared power-of-two exponent.
+struct ScaledBounds {
+    lower: BigInt,
+    upper: BigInt,
+    exponent: i64,
+}
+
+/// Bounds exp(r) for 0 <= r <= 1/2 using one positive fixed-point series.
+fn exp_reduced(
+    r: &Real,
+    scale: u32,
+) -> Result<(BigInt, BigInt), String> {
+    let reduced = Fx::from_real_trunc(r, scale);
+    let mut term = Fx::one(scale);
+    let mut sum = term.clone();
+    // Each step at least halves the integer term, so this loop has a fixed bound.
+    for j in 1..=i64::from(scale) + 1 {
+        // For positive integers the two floors have the same effect as one
+        // floor after dividing by 2^scale * j.
+        term = term.mul(&reduced).div_i64(j);
+        if term.is_zero() {
+            // Let q = 2^-scale. For the truncated input each term loses at
+            // most q from flooring, and propagates at most half the previous
+            // error. Thus every term error is at most 2q. The omitted tail
+            // is at most 4q and truncating r contributes at most 2q because
+            // exp(r) < 2 throughout [0, 1/2].
+            let upper = &sum.v + (2 * j + 4);
+            return Ok((sum.v, upper));
+        }
+        sum = sum.add(&term);
+    }
+    Err("exponential series did not converge".to_string())
+}
+
+fn exp_bounds(
+    x: &Real,
+    prec: u32,
+) -> Result<ScaledBounds, String> {
+    let Some(top) = x.floor_log2() else {
+        return Ok(ScaledBounds {
+            lower: BigInt::from(1),
+            upper: BigInt::from(1),
+            exponent: 0,
+        });
+    };
+    // e > 2. A magnitude beyond this threshold cannot be exponentiated
+    // within the representable range at any supported precision.
+    let limit = (MAX_EXP + i64::from(MAX_BITS)).ilog2() + 1;
+    if top >= i64::from(limit) {
+        return Err("exponential exponent out of range".to_string());
+    }
+    let squarings = u32::try_from((top + 2).max(0)).map_err(|e| e.to_string())?;
+    let reduced = x.abs().scale_pow2(-i64::from(squarings))?;
+    // Each squaring can double the relative interval width. Keep those
+    // guard bits even when the requested precision is MAX_BITS.
+    let scale = prec.clamp(1, MAX_BITS) + squarings + 32;
+    let (mut lower, mut upper) = exp_reduced(&reduced, scale)?;
+    if x.sign() < 0 {
+        let numerator = BigInt::from(1) << (2 * scale);
+        (lower, upper) = (&numerator / upper, numerator.div_ceil(&lower));
+    }
+
+    let mut exponent = -i64::from(scale);
+    for _ in 0..squarings {
+        let lower_squared = &lower * &lower;
+        let upper_squared = &upper * &upper;
+        // Normalize the upper endpoint after each square to keep the
+        // integer sizes bounded. Both endpoints use the same power of two.
+        let shift = upper_squared.bits().saturating_sub(u64::from(scale) + 1);
+        lower = lower_squared >> shift;
+        upper = ((upper_squared - 1_i32) >> shift) + 1;
+        exponent = 2 * exponent + i64::try_from(shift).map_err(|e| e.to_string())?;
+    }
+    Ok(ScaledBounds {
+        lower,
+        upper,
+        exponent,
+    })
+}
+
+fn exp_enclosure(
+    bounds: ScaledBounds,
     prec: u32,
 ) -> Result<Ball, String> {
-    let mid = value.to_real(prec.saturating_add(16))?;
-    let rad = units(error.saturating_add(4), value.s)?;
-    Ball::new(mid.with_precision(prec, Round::NearestEven)?, rad)
+    let ScaledBounds {
+        lower,
+        upper,
+        exponent,
+    } = bounds;
+    Ball::from_scaled_bounds(lower, upper, exponent, prec)
 }
 
-/// The guard bits a reduction needs for an argument of magnitude `2^top`.
-fn guard(
-    prec: u32,
-    top: i64,
-) -> u32 {
-    let extra = u32::try_from(top.max(0)).unwrap_or(u32::MAX).min(1 << 20);
-    prec.saturating_add(32).saturating_add(extra)
-}
-
-/// `round(x / divisor)` as an integer, corrected so the remainder is small.
-fn reduce(
-    x: &Fx,
-    divisor: &Fx,
-) -> BigInt {
-    if divisor.v == BigInt::from(0) {
-        return BigInt::from(0);
-    }
-    let numerator = &x.v << usize::try_from(x.s).unwrap_or(0);
-    let denominator = &divisor.v << usize::try_from(divisor.s).unwrap_or(0);
-    let (quotient, remainder) = num_integer::Integer::div_rem(&numerator, &denominator);
-    let twice = &remainder.abs() << 1_u32;
-    let magnitude = denominator.abs();
-    if twice >= magnitude {
-        if x.v.sign() == num_bigint::Sign::Minus {
-            quotient - BigInt::from(1)
-        } else {
-            quotient + BigInt::from(1)
-        }
-    } else {
-        quotient
-    }
-}
-
-/// `exp(x)` as a ball.
+/// An outward dyadic enclosure of the exponential of an exact real input.
 ///
 /// # Errors
 /// Fails when an exponent leaves the representable range.
@@ -85,451 +132,370 @@ pub fn exp(
     x: &Real,
     prec: u32,
 ) -> Result<Ball, String> {
-    if x.is_zero() {
-        return Ok(Ball::point(Real::one(prec)));
-    }
-    let top = x.floor_log2().unwrap_or(0);
-    let s = guard(prec, top);
-    let ln2 = consts::ln2(s.saturating_add(64))?;
-    let x_fx = Fx::from_real_trunc(x, s);
-    let ln2_fx = Fx::from_real_trunc(&ln2, s);
-    let k = reduce(&x_fx, &ln2_fx);
-    let Ok(shift_count) = i64::try_from(k.clone()) else {
-        return Err("exponent out of range".to_string());
-    };
-    let scaled_ln2 = ln2_fx.mul(&Fx::from_i64(shift_count, s));
-    let reduced = x_fx.sub(&scaled_ln2);
-    let mut term = Fx::one(s);
-    let mut sum = term.clone();
-    let mut j: i64 = 1;
-    loop {
-        term = term.mul(&reduced).div_i64(j);
-        if term.is_zero() {
-            break;
-        }
-        sum = sum.add(&term);
-        j = j.saturating_add(1);
-        if j > 1_000_000 {
-            return Err("series did not converge".to_string());
-        }
-    }
-    let scaled = sum.scale_pow2(i64::try_from(k).unwrap_or(i64::MAX));
-    let count = u64::try_from(j).unwrap_or(u64::MAX);
-    finish(Fx { v: scaled.v, s }, 3 * count + 8, prec)
+    exp_enclosure(exp_bounds(x, prec)?, prec)
 }
 
-/// `ln(x)` as a ball, for `x > 0`.
+/// An outward dyadic enclosure of the exponential of a closed interval.
 ///
 /// # Errors
-/// Fails for a non-positive operand or when an exponent leaves the range.
+/// Fails when a required endpoint or result exponent is out of range.
+pub fn exp_ball(
+    value: &Ball,
+    prec: u32,
+) -> Result<Ball, String> {
+    if value.rad.is_zero() {
+        return exp(&value.mid, prec);
+    }
+    let working = prec.max(value.mid.precision()).max(value.rad.precision());
+    let (left, right) = value.endpoints(working)?;
+    let left = exp_bounds(&left, prec)?;
+    let right = exp_bounds(&right, prec)?;
+    let exponent = left.exponent.min(right.exponent);
+    exp_enclosure(
+        ScaledBounds {
+            lower: left.lower << (left.exponent - exponent).unsigned_abs(),
+            upper: right.upper << (right.exponent - exponent).unsigned_abs(),
+            exponent,
+        },
+        prec,
+    )
+}
+
+/// A certified outward enclosure of the natural logarithm of `x`.
+///
+/// # Errors
+/// Fails for a non-positive operand or when a result exponent is out of range.
 pub fn ln(
     x: &Real,
     prec: u32,
 ) -> Result<Ball, String> {
-    if x.cmp_value(&Real::one(x.precision())) == 0 {
-        return Ok(Ball::point(Real::zero(prec)));
-    }
-    if x.sign() <= 0 {
-        return Err("logarithm of a non-positive number".to_string());
-    }
-    let Some(top) = x.floor_log2() else {
-        return Err("logarithm of a non-positive number".to_string());
-    };
-    let s = guard(prec, top);
-    // m in [1, 2): divide by 2^floor(log2 x), not by the mantissa's exponent.
-    let mantissa = x.scale_pow2(-top)?;
-    let m = Fx::from_real_trunc(&mantissa, s);
-    let one = Fx::one(s);
-    let z = m.sub(&one).div(&m.add(&one));
-    let z2 = z.mul(&z);
-    let mut power = z.clone();
-    let mut sum = z;
-    let mut k: i64 = 1;
-    loop {
-        power = power.mul(&z2);
-        let term = power.div_i64(2 * k + 1);
-        if term.is_zero() {
-            break;
-        }
-        sum = sum.add(&term);
-        k = k.saturating_add(1);
-        if k > 1_000_000 {
-            return Err("series did not converge".to_string());
-        }
-    }
-    let log_m = sum.scale_pow2(1);
-    let ln2 = consts::ln2(s.saturating_add(64))?;
-    let ln2_fx = Fx::from_real_trunc(&ln2, s);
-    let from_exponent = ln2_fx.mul(&Fx::from_i64(top, s));
-    let total = log_m.add(&from_exponent);
-    let count = u64::try_from(k).unwrap_or(u64::MAX);
-    finish(total, 3 * count + 8, prec)
+    logarithms::ln(x, prec)
 }
 
-/// `sin(x)` as a ball.
+/// A certified natural logarithm enclosure over a positive closed interval.
 ///
 /// # Errors
-/// Fails for an argument beyond `2^20` in magnitude, where the reduction
-/// would need more bits than the exponent range allows, or when an exponent
-/// leaves the range.
+/// Fails when the interval includes zero or negatives, or on exponent overflow.
+pub fn ln_ball(
+    value: &Ball,
+    prec: u32,
+) -> Result<Ball, String> {
+    map(value, &ln, true, prec)
+}
+
+/// A certified outward enclosure of `sin(x)`.
+///
+/// # Errors
+/// Fails for an argument magnitude greater than 2^20 or an unsupported exponent.
 pub fn sin(
     x: &Real,
     prec: u32,
 ) -> Result<Ball, String> {
-    if x.is_zero() {
-        return Ok(Ball::point(Real::zero(prec)));
-    }
-    let (reduced, _s) = reduce_mod_two_pi(x, prec)?;
-    let mut term = reduced.clone();
-    let mut sum = reduced.clone();
-    let mut j: i64 = 1;
-    let square = reduced.mul(&reduced);
-    loop {
-        term = term.mul(&square).div_i64(2 * j).div_i64(2 * j + 1).neg();
-        if term.is_zero() {
-            break;
-        }
-        sum = sum.add(&term);
-        j = j.saturating_add(1);
-        if j > 1_000_000 {
-            return Err("series did not converge".to_string());
-        }
-    }
-    let count = u64::try_from(j).unwrap_or(u64::MAX);
-    finish(sum, 3 * count + 8, prec)
+    trigonometry::point(x, prec, true)
 }
 
-/// `cos(x)` as a ball.
+/// A certified outward enclosure of `cos(x)`.
 ///
 /// # Errors
-/// Fails for an argument beyond `2^20` in magnitude or when an exponent
-/// leaves the range.
+/// Fails for an argument magnitude greater than 2^20 or an unsupported exponent.
 pub fn cos(
     x: &Real,
     prec: u32,
 ) -> Result<Ball, String> {
-    if x.is_zero() {
-        return Ok(Ball::point(Real::one(prec)));
-    }
-    let (reduced, s) = reduce_mod_two_pi(x, prec)?;
-    let square = reduced.mul(&reduced);
-    let mut term = Fx::one(s);
-    let mut sum = term.clone();
-    let mut j: i64 = 1;
-    loop {
-        term = term.mul(&square).div_i64(2 * j - 1).div_i64(2 * j).neg();
-        if term.is_zero() {
-            break;
-        }
-        sum = sum.add(&term);
-        j = j.saturating_add(1);
-        if j > 1_000_000 {
-            return Err("series did not converge".to_string());
-        }
-    }
-    let count = u64::try_from(j).unwrap_or(u64::MAX);
-    finish(sum, 3 * count + 8, prec)
+    trigonometry::point(x, prec, false)
 }
 
-/// Reduces `x` modulo `2 pi` into `(-pi, pi]`.
-fn reduce_mod_two_pi(
-    x: &Real,
-    prec: u32,
-) -> Result<(Fx, u32), String> {
-    let top = x.floor_log2().unwrap_or(0);
-    if top > MAX_TRIG_ARGUMENT {
-        return Err("trigonometric argument is too large".to_string());
-    }
-    let s = guard(prec, top);
-    let pi = consts::pi(s.saturating_add(64))?;
-    let two_pi = pi.scale_pow2(1)?;
-    let x_fx = Fx::from_real_trunc(x, s);
-    let period = Fx::from_real_trunc(&two_pi, s);
-    let k = reduce(&x_fx, &period);
-    let reduced = x_fx.sub(&Fx::from_i64(1, s).mul(&period).mul(&Fx { v: k, s }));
-    Ok((reduced, s))
+/// Outward sine and cosine enclosures sharing one argument reduction.
+#[derive(Clone, Debug)]
+pub struct SinCos {
+    /// The sine enclosure.
+    pub sin: Ball,
+    /// The cosine enclosure.
+    pub cos: Ball,
 }
 
-/// `tan(x)` as a ball.
+/// Computes both sine and cosine with one certified argument reduction.
 ///
 /// # Errors
-/// Fails where the cosine interval contains zero, or for an argument beyond
-/// `2^20` in magnitude.
+/// Fails for an argument magnitude greater than 2^20 or an unsupported exponent.
+pub fn sin_cos(
+    x: &Real,
+    prec: u32,
+) -> Result<SinCos, String> {
+    let (sin, cos) = trigonometry::pair(x, prec)?;
+    Ok(SinCos { sin, cos })
+}
+
+/// Fused sine and cosine enclosures of a closed interval.
+pub(super) fn sin_cos_ball(
+    value: &Ball,
+    prec: u32,
+) -> Result<SinCos, String> {
+    let (sin, cos) = trigonometry::interval_pair(value, prec)?;
+    Ok(SinCos { sin, cos })
+}
+
+/// A certified sine enclosure over a closed interval.
+///
+/// # Errors
+/// Fails if the midpoint magnitude exceeds 2^20 or an exponent is unsupported.
+pub fn sin_ball(
+    value: &Ball,
+    prec: u32,
+) -> Result<Ball, String> {
+    trigonometry::interval(value, prec, true)
+}
+
+/// A certified cosine enclosure over a closed interval.
+///
+/// # Errors
+/// Fails if the midpoint magnitude exceeds 2^20 or an exponent is unsupported.
+pub fn cos_ball(
+    value: &Ball,
+    prec: u32,
+) -> Result<Ball, String> {
+    trigonometry::interval(value, prec, false)
+}
+
+/// A certified outward enclosure of `tan(x)`.
+///
+/// # Errors
+/// Fails if the cosine enclosure intersects zero, the argument magnitude
+/// exceeds 2^20, or a result exponent is unsupported.
 pub fn tan(
     x: &Real,
     prec: u32,
 ) -> Result<Ball, String> {
-    if x.is_zero() {
-        return Ok(Ball::point(Real::zero(prec)));
-    }
-    let sine = sin(x, prec.saturating_add(16))?;
-    let cosine = cos(x, prec.saturating_add(16))?;
-    sine.div(&cosine, prec)
+    trigonometry::tan(x, prec)
 }
 
-/// `atan(x)` as a ball.
+/// A certified tangent enclosure over a closed interval.
 ///
 /// # Errors
-/// Fails when an exponent leaves the representable range.
+/// Fails if the cosine enclosure intersects zero, the midpoint magnitude
+/// exceeds 2^20, or a result exponent is unsupported.
+pub fn tan_ball(
+    value: &Ball,
+    prec: u32,
+) -> Result<Ball, String> {
+    trigonometry::tan_interval(value, prec)
+}
+
+/// A certified outward enclosure of the real inverse tangent.
+///
+/// # Errors
+/// Fails when a result exponent is outside the representable range.
 pub fn atan(
     x: &Real,
     prec: u32,
 ) -> Result<Ball, String> {
-    if x.is_zero() {
-        return Ok(Ball::point(Real::zero(prec)));
-    }
-    let top = x.floor_log2().unwrap_or(0);
-    let s = guard(prec, top);
-    let (value, count) = atan_fixed(x, s)?;
-    finish(value, count, prec)
+    inverse_tangent::point(x, &Real::one(1), prec)
 }
 
-/// `atan` in fixed point at scale `s`, with its error count.
-fn atan_fixed(
-    x: &Real,
-    s: u32,
-) -> Result<(Fx, u64), String> {
-    let negative = x.sign() < 0;
-    let magnitude = x.abs();
-    let one = Fx::one(s);
-    let mut value = Fx::from_real_trunc(&magnitude, s);
-    let mut invert = false;
-    if !value.abs_lt(&one) {
-        invert = true;
-        value = one.div(&value);
-    }
-    let mut halvings: u32 = 0;
-    let threshold = Fx::from_i64(1, s).div_i64(16);
-    let mut error: u64 = 4;
-    while !value.abs_lt(&threshold) && halvings < 64 {
-        let square = value.mul(&value);
-        let root = one.add(&square).sqrt();
-        value = value.div(&one.add(&root));
-        halvings = halvings.saturating_add(1);
-        error = error.saturating_add(4);
-    }
-    let square = value.mul(&value);
-    let mut power = value.clone();
-    let mut sum = value;
-    let mut j: i64 = 1;
-    loop {
-        power = power.mul(&square);
-        let term = power.div_i64(2 * j + 1);
-        if term.is_zero() {
-            break;
-        }
-        sum = if j % 2 == 1 {
-            sum.sub(&term)
-        } else {
-            sum.add(&term)
-        };
-        j = j.saturating_add(1);
-        if j > 1_000_000 {
-            return Err("series did not converge".to_string());
-        }
-    }
-    error = error.saturating_add(3 * u64::try_from(j).unwrap_or(u64::MAX));
-    let mut result = sum.scale_pow2(i64::from(halvings));
-    if invert {
-        let half_pi = consts::pi(s.saturating_add(64))?.scale_pow2(-1)?;
-        let half_pi_fx = Fx::from_real_trunc(&half_pi, s);
-        result = half_pi_fx.sub(&result);
-        error = error.saturating_add(2);
-    }
-    if negative {
-        result = result.neg();
-    }
-    Ok((result, error))
-}
-
-/// `asin(x)` as a ball, for `|x| <= 1`.
+/// A certified inverse tangent enclosure over a closed dyadic interval.
 ///
 /// # Errors
-/// Fails outside `[-1, 1]` or when an exponent leaves the range.
+/// Fails when a required endpoint or result exponent is outside the range.
+pub fn atan_ball(
+    x: &Ball,
+    prec: u32,
+) -> Result<Ball, String> {
+    inverse_tangent::rectangle(x, &Ball::point(Real::one(1)), prec)
+}
+
+/// A certified inverse sine enclosure of an exact dyadic.
+///
+/// # Errors
+/// Fails for inputs outside [-1, 1] or when a result exponent is out of range.
 pub fn asin(
     x: &Real,
     prec: u32,
 ) -> Result<Ball, String> {
-    if x.is_zero() {
-        return Ok(Ball::point(Real::zero(prec)));
-    }
-    let one = Real::one(prec.saturating_add(32));
-    if x.abs().cmp_value(&one) > 0 {
-        return Err("arcsine of a number outside [-1, 1]".to_string());
-    }
-    if x.abs().cmp_value(&one) == 0 {
-        let half_pi = consts::pi(prec.saturating_add(32))?.scale_pow2(-1)?;
-        let value = if x.sign() < 0 {
-            half_pi.neg()
-        } else {
-            half_pi
-        };
-        return Ok(Ball::point(value.with_precision(prec, Round::NearestEven)?));
-    }
-    let inner = prec.saturating_add(32);
-    let square = x.mul(x, inner, Round::NearestEven)?;
-    let rest = one.sub(&square, inner, Round::NearestEven)?;
-    let root = rest.sqrt(inner, Round::NearestEven)?;
-    let ratio = x.div(&root, inner, Round::NearestEven)?;
-    atan(&ratio, prec)
+    inverse_sine::Function::Asin.point(x, prec)
 }
 
-/// `acos(x)` as a ball, for `|x| <= 1`.
+/// A certified inverse sine enclosure over a closed real interval.
 ///
 /// # Errors
-/// Fails outside `[-1, 1]` or when an exponent leaves the range.
+/// Fails if any part of the interval is outside [-1, 1] or a required exponent
+/// is out of range.
+pub fn asin_ball(
+    x: &Ball,
+    prec: u32,
+) -> Result<Ball, String> {
+    inverse_sine::Function::Asin.interval(x, prec)
+}
+
+/// A certified inverse cosine enclosure of an exact dyadic.
+///
+/// # Errors
+/// Fails for inputs outside [-1, 1] or when a result exponent is out of range.
 pub fn acos(
     x: &Real,
     prec: u32,
 ) -> Result<Ball, String> {
-    let inner = prec.saturating_add(32);
-    let half_pi = consts::pi(inner)?.scale_pow2(-1)?;
-    let arc = asin(x, inner)?;
-    let mid = half_pi.sub(&arc.mid, inner, Round::NearestEven)?;
-    Ball::new(
-        mid.with_precision(prec, Round::NearestEven)?,
-        arc.rad.add(&units(4, inner)?, prec, Round::AwayFromZero)?,
-    )
+    inverse_sine::Function::Acos.point(x, prec)
 }
 
-/// `sinh(x)` as a ball.
+/// A certified inverse cosine enclosure over a closed real interval.
 ///
 /// # Errors
-/// Fails when an exponent leaves the representable range.
+/// Fails if any part of the interval is outside [-1, 1] or a required exponent
+/// is out of range.
+pub fn acos_ball(
+    x: &Ball,
+    prec: u32,
+) -> Result<Ball, String> {
+    inverse_sine::Function::Acos.interval(x, prec)
+}
+
+/// An outward enclosure of the hyperbolic sine of an exact dyadic.
+///
+/// # Errors
+/// Fails when a result exponent is outside the representable range.
 pub fn sinh(
     x: &Real,
     prec: u32,
 ) -> Result<Ball, String> {
-    if x.is_zero() {
-        return Ok(Ball::point(Real::zero(prec)));
-    }
-    let inner = prec.saturating_add(16);
-    let positive = exp(x, inner)?;
-    let negative = exp(&x.neg(), inner)?;
-    positive
-        .sub(&negative, inner)?
-        .div(&Ball::point(Real::from_i64(2, inner)?), prec)
+    hyperbolic::Function::Sinh.point(x, prec)
 }
 
-/// `cosh(x)` as a ball.
+/// An outward hyperbolic sine enclosure over a closed interval.
 ///
 /// # Errors
-/// Fails when an exponent leaves the representable range.
+/// Fails when an endpoint or result exponent is outside the representable range.
+pub fn sinh_ball(
+    x: &Ball,
+    prec: u32,
+) -> Result<Ball, String> {
+    hyperbolic::Function::Sinh.interval(x, prec)
+}
+
+/// An outward enclosure of the hyperbolic cosine of an exact dyadic.
+///
+/// # Errors
+/// Fails when a result exponent is outside the representable range.
 pub fn cosh(
     x: &Real,
     prec: u32,
 ) -> Result<Ball, String> {
-    if x.is_zero() {
-        return Ok(Ball::point(Real::one(prec)));
-    }
-    let inner = prec.saturating_add(16);
-    let positive = exp(x, inner)?;
-    let negative = exp(&x.neg(), inner)?;
-    positive
-        .add(&negative, inner)?
-        .div(&Ball::point(Real::from_i64(2, inner)?), prec)
+    hyperbolic::Function::Cosh.point(x, prec)
 }
 
-/// `tanh(x)` as a ball.
+/// An outward hyperbolic cosine enclosure over a closed interval.
 ///
 /// # Errors
-/// Fails when an exponent leaves the representable range.
+/// Fails when an endpoint or result exponent is outside the representable range.
+pub fn cosh_ball(
+    x: &Ball,
+    prec: u32,
+) -> Result<Ball, String> {
+    hyperbolic::Function::Cosh.interval(x, prec)
+}
+
+/// An outward enclosure of the hyperbolic tangent of an exact dyadic.
+///
+/// # Errors
+/// Fails when a result exponent is outside the representable range.
 pub fn tanh(
     x: &Real,
     prec: u32,
 ) -> Result<Ball, String> {
-    if x.is_zero() {
-        return Ok(Ball::point(Real::zero(prec)));
-    }
-    let inner = prec.saturating_add(16);
-    let doubled = x.scale_pow2(1)?;
-    let positive = exp(&doubled, inner)?;
-    let one = Ball::point(Real::one(inner));
-    let numerator = positive.sub(&one, inner)?;
-    let denominator = positive.add(&one, inner)?;
-    numerator.div(&denominator, prec)
+    hyperbolic::Function::Tanh.point(x, prec)
 }
 
-/// `x^y` as a ball.
+/// An outward hyperbolic tangent enclosure over a closed interval.
 ///
 /// # Errors
-/// Fails for a negative base with a non-integer exponent, or when an exponent
-/// leaves the representable range.
+/// Fails when an endpoint or result exponent is outside the representable range.
+pub fn tanh_ball(
+    x: &Ball,
+    prec: u32,
+) -> Result<Ball, String> {
+    hyperbolic::Function::Tanh.interval(x, prec)
+}
+
+/// A certified real power of exact dyadic operands.
+///
+/// # Errors
+/// Fails for negative bases with non-integer exponents, zero with a negative
+/// exponent, integer exponents outside signed 64-bit range, or exponent overflow.
 pub fn pow(
     x: &Real,
     y: &Real,
     prec: u32,
 ) -> Result<Ball, String> {
-    if y.is_zero() {
-        return Ok(Ball::point(Real::one(prec)));
-    }
-    if x.is_zero() {
-        if y.sign() < 0 {
-            return Err("zero to a negative power".to_string());
-        }
-        return Ok(Ball::point(Real::zero(prec)));
-    }
-    if y.is_integer() {
-        let Some(exponent) = y.trunc_to_bigint().ok().and_then(|v| i64::try_from(v).ok()) else {
-            return Err("integer exponent out of range".to_string());
-        };
-        if exponent.unsigned_abs() <= 1 << 20 {
-            return integer_power(x, exponent, prec);
-        }
-    }
-    if x.sign() < 0 {
-        return Err("a negative base needs an integer exponent".to_string());
-    }
-    let inner = prec.saturating_add(32);
-    let logarithm = ln(x, inner)?;
-    let product = logarithm.mul(&Ball::point(y.clone()), inner)?;
-    exp(&product.mid, inner).and_then(|ball| {
-        // The radius of the product widens the exponent, which widens the
-        // result by exp(radius).
-        let widening = exp(&product.rad, inner)?;
-        let scaled = ball.mul(&widening, inner)?;
-        Ok(Ball {
-            mid: scaled.mid.with_precision(prec, Round::NearestEven)?,
-            rad: scaled
-                .rad
-                .add(&units(4, inner)?, prec, Round::AwayFromZero)?,
-        })
-    })
+    powers::point(x, y, prec)
 }
 
-/// `x^n` for an integer `n` by squaring.
-fn integer_power(
+/// A certified power over closed real base and exponent intervals.
+///
+/// # Errors
+/// Non-integer or varying exponents require a strictly positive base interval.
+/// Integral point exponents use the domain of [`powi_ball`].
+pub fn pow_ball(
+    x: &Ball,
+    y: &Ball,
+    prec: u32,
+) -> Result<Ball, String> {
+    powers::interval(x, y, prec)
+}
+
+/// An outward power enclosure for an exact signed integer exponent.
+///
+/// # Errors
+/// Fails for zero with a negative exponent or when a result exponent is outside
+/// the representable range. Exponent zero returns one.
+pub fn powi(
     x: &Real,
     n: i64,
     prec: u32,
 ) -> Result<Ball, String> {
-    let inner = prec.saturating_add(16);
-    let mut result = Real::one(inner);
-    let mut base = if n < 0 {
-        Real::one(inner).div(x, inner, Round::NearestEven)?
-    } else {
-        x.with_precision(inner, Round::NearestEven)?
-    };
-    let mut exponent = n.unsigned_abs();
-    let mut error: u64 = 2;
-    while exponent > 0 {
-        if exponent & 1 == 1 {
-            result = result.mul(&base, inner, Round::NearestEven)?;
-            error = error.saturating_add(2);
-        }
-        exponent >>= 1;
-        if exponent > 0 {
-            base = base.mul(&base, inner, Round::NearestEven)?;
-            error = error.saturating_add(2);
-        }
-    }
-    Ok(Ball {
-        mid: result.with_precision(prec, Round::NearestEven)?,
-        rad: units(error, inner)?,
-    })
+    powers::integer(x, n, prec)
 }
 
-/// The cube root as a ball.
+/// An outward signed integer power enclosure over a closed real interval.
+///
+/// # Errors
+/// Fails when a negative exponent meets zero or an endpoint exponent is outside
+/// the representable range.
+pub fn powi_ball(
+    x: &Ball,
+    n: i64,
+    prec: u32,
+) -> Result<Ball, String> {
+    powers::integer_interval(x, n, prec)
+}
+
+/// An outward power enclosure for a reduced exact rational exponent.
+///
+/// # Errors
+/// Fails for a zero denominator, zero base with a negative exponent, negative
+/// base with an even reduced denominator, or exponent overflow.
+pub fn pow_ratio(
+    x: &Real,
+    numerator: i64,
+    denominator: u32,
+    prec: u32,
+) -> Result<Ball, String> {
+    powers::Rational::reduce(numerator, denominator)?.point(x, prec)
+}
+
+/// An outward rational power enclosure over a closed real interval.
+///
+/// # Errors
+/// Fails for a zero denominator, negative input with an even reduced denominator,
+/// zero input with a negative exponent, or an exponent outside the range.
+pub fn pow_ratio_ball(
+    x: &Ball,
+    numerator: i64,
+    denominator: u32,
+    prec: u32,
+) -> Result<Ball, String> {
+    powers::Rational::reduce(numerator, denominator)?.interval(x, prec)
+}
+
+/// An outward dyadic enclosure of the real cube root.
 ///
 /// # Errors
 /// Fails when an exponent leaves the representable range.
@@ -537,205 +503,240 @@ pub fn cbrt(
     x: &Real,
     prec: u32,
 ) -> Result<Ball, String> {
-    if x.is_zero() {
-        return Ok(Ball::point(Real::zero(prec)));
-    }
-    let negative = x.sign() < 0;
-    let target = x.abs();
-    let inner = prec.saturating_add(32);
-    let guess = target.to_f64().cbrt();
-    let mut value = if guess.is_finite() && guess > 0.0 {
-        Real::from_f64(guess, inner)?
-    } else {
-        Real::one(inner)
-    };
-    let three = Real::from_i64(3, inner)?;
-    let two = Real::from_i64(2, inner)?;
-    for _ in 0..200 {
-        let square = value.mul(&value, inner, Round::NearestEven)?;
-        let quotient = target.div(&square, inner, Round::NearestEven)?;
-        let doubled = value.mul(&two, inner, Round::NearestEven)?;
-        let next = doubled.add(&quotient, inner, Round::NearestEven)?.div(
-            &three,
-            inner,
-            Round::NearestEven,
-        )?;
-        let delta = next.sub(&value, inner, Round::NearestEven)?.abs();
-        value = next;
-        if delta.sign() == 0 {
-            break;
-        }
-        if let (Some(a), Some(b)) = (delta.floor_log2(), value.floor_log2())
-            && b - a > i64::from(inner)
-        {
-            break;
-        }
-    }
-    let mid = if negative {
-        value.neg()
-    } else {
-        value
-    };
-    Ok(Ball {
-        mid: mid.with_precision(prec, Round::NearestEven)?,
-        rad: units(8, inner)?,
-    })
+    let (mid, inexact) = x.cbrt_with_inexact(prec, Round::NearestEven)?;
+    let rad = super::ball::midpoint_rounding(&mid, inexact)?;
+    Ball::new(mid, rad)
 }
 
-/// `sqrt(a^2 + b^2)` as a ball.
+/// An outward dyadic enclosure of `sqrt(a^2 + b^2)`.
 ///
 /// # Errors
-/// Fails when an exponent leaves the representable range.
+/// Fails when the result exponent leaves the representable range.
 pub fn hypot(
     a: &Real,
     b: &Real,
     prec: u32,
 ) -> Result<Ball, String> {
-    let inner = prec.saturating_add(32);
-    let left = a.mul(a, inner, Round::NearestEven)?;
-    let right = b.mul(b, inner, Round::NearestEven)?;
-    let sum = left.add(&right, inner, Round::NearestEven)?;
-    let root = sum.sqrt(inner, Round::NearestEven)?;
-    Ok(Ball {
-        mid: root.with_precision(prec, Round::NearestEven)?,
-        rad: units(6, inner)?,
-    })
+    let (mid, inexact) = a.hypot_with_inexact(b, prec, Round::NearestEven)?;
+    let rad = super::ball::midpoint_rounding(&mid, inexact)?;
+    Ball::new(mid, rad)
 }
 
-/// `log2(x)` as a ball, for `x > 0`.
+/// A certified outward enclosure of the binary logarithm of `x`.
 ///
 /// # Errors
-/// Fails for a non-positive operand or when an exponent leaves the range.
+/// Fails for a non-positive operand or when a result exponent is out of range.
 pub fn log2(
     x: &Real,
     prec: u32,
 ) -> Result<Ball, String> {
-    let inner = prec.saturating_add(32);
-    let numerator = ln(x, inner)?;
-    let denominator = Ball::point(consts::ln2(inner)?);
-    numerator.div(&denominator, prec)
+    logarithms::log2(x, prec)
 }
 
-/// `log10(x)` as a ball, for `x > 0`.
+/// A certified binary logarithm enclosure over a positive closed interval.
 ///
 /// # Errors
-/// Fails for a non-positive operand or when an exponent leaves the range.
+/// Fails when the interval includes zero or negatives, or on exponent overflow.
+pub fn log2_ball(
+    value: &Ball,
+    prec: u32,
+) -> Result<Ball, String> {
+    map(value, &log2, true, prec)
+}
+
+/// A certified outward enclosure of the decimal logarithm of `x`.
+///
+/// # Errors
+/// Fails for a non-positive operand or when a result exponent is out of range.
 pub fn log10(
     x: &Real,
     prec: u32,
 ) -> Result<Ball, String> {
-    let inner = prec.saturating_add(32);
-    let ten = Real::from_i64(10, inner)?;
-    let numerator = ln(x, inner)?;
-    let denominator = ln(&ten, inner)?;
-    numerator.div(&denominator, prec)
+    logarithms::log10(x, prec)
 }
 
-/// `atan2(y, x)` as a ball, with the quadrant resolved.
+/// A certified decimal logarithm enclosure over a positive closed interval.
 ///
 /// # Errors
-/// Fails when both operands are zero or an exponent leaves the range.
+/// Fails when the interval includes zero or negatives, or on exponent overflow.
+pub fn log10_ball(
+    value: &Ball,
+    prec: u32,
+) -> Result<Ball, String> {
+    map(value, &log10, true, prec)
+}
+
+/// The certified principal angle of `(x, y)` in `(-pi, pi]`.
+///
+/// # Errors
+/// Fails at the origin or when a result exponent is outside the range.
 pub fn atan2(
     y: &Real,
     x: &Real,
     prec: u32,
 ) -> Result<Ball, String> {
-    if x.is_zero() && y.is_zero() {
-        return Err("atan2 of two zeros".to_string());
-    }
-    let inner = prec.saturating_add(32);
-    if x.sign() == 0 {
-        let half_pi = consts::pi(inner)?.scale_pow2(-1)?;
-        let value = if y.sign() < 0 {
-            half_pi.neg()
-        } else {
-            half_pi
-        };
-        return Ok(Ball::point(value.with_precision(prec, Round::NearestEven)?));
-    }
-    let base = atan(&y.div(x, inner, Round::NearestEven)?, inner)?;
-    if x.sign() > 0 {
-        return Ok(Ball {
-            mid: base.mid.with_precision(prec, Round::NearestEven)?,
-            rad: base.rad.add(&units(4, inner)?, prec, Round::AwayFromZero)?,
-        });
-    }
-    let pi = consts::pi(inner)?;
-    let shifted = if y.sign() >= 0 {
-        base.mid.add(&pi, inner, Round::NearestEven)?
-    } else {
-        base.mid.sub(&pi, inner, Round::NearestEven)?
-    };
-    Ok(Ball {
-        mid: shifted.with_precision(prec, Round::NearestEven)?,
-        rad: base.rad.add(&units(4, inner)?, prec, Round::AwayFromZero)?,
-    })
+    inverse_tangent::point(y, x, prec)
 }
 
-/// The ball of a function applied to a ball, for a monotone function.
+/// The principal-angle enclosure of a closed rectangle with coordinates
+/// `x` and `y`. A rectangle lying wholly on the negative real axis has
+/// angle +pi under the point convention.
 ///
 /// # Errors
-/// Fails when the function fails on either endpoint.
+/// Fails if the rectangle contains the origin or intersects the negative
+/// real axis without lying wholly on it, or an exponent is out of range.
+pub fn atan2_ball(
+    y: &Ball,
+    x: &Ball,
+    prec: u32,
+) -> Result<Ball, String> {
+    inverse_tangent::rectangle(y, x, prec)
+}
+
+/// Encloses the image of a closed interval under a monotone function.
+///
+/// The caller supplies both the monotonic direction and outward point
+/// enclosures for the function.
+///
+/// # Errors
+/// Fails when a point enclosure fails, an interval is invalid, or an
+/// exponent leaves the representable range.
 pub fn map(
     value: &Ball,
     function: &dyn Fn(&Real, u32) -> Result<Ball, String>,
     increasing: bool,
     prec: u32,
 ) -> Result<Ball, String> {
-    let inner = prec.saturating_add(24);
-    value
-        .map_monotone(
-            &|argument, working, _mode| function(argument, working).map(|ball| ball.mid),
-            increasing,
-            inner,
-        )
-        .and_then(|mapped| {
-            let widening = function(&value.mid, inner)?;
-            Ok(Ball {
-                mid: mapped.mid.with_precision(prec, Round::NearestEven)?,
-                rad: mapped.rad.add(&widening.rad, inner, Round::AwayFromZero)?,
-            })
-        })
+    if value.rad.is_zero() {
+        let mapped = function(&value.mid, prec)?;
+        return Ball::new(mapped.mid, mapped.rad);
+    }
+    let working = prec
+        .saturating_add(40)
+        .max(value.mid.precision())
+        .max(value.rad.precision())
+        .min(MAX_BITS);
+    let (lower, upper) = value.outward_endpoints(working)?;
+    let (first, last) = if increasing {
+        (&lower, &upper)
+    } else {
+        (&upper, &lower)
+    };
+    let first = function(first, working)?;
+    let last = function(last, working)?;
+    if first.rad.sign() < 0 || last.rad.sign() < 0 {
+        return Err("a function enclosure radius cannot be negative".into());
+    }
+    let lower = first
+        .mid
+        .sub(&first.rad, working, Round::TowardNegative)
+        .or_else(|_| first.mid.sub(&first.rad, 1, Round::TowardNegative))?;
+    let upper = last
+        .mid
+        .add(&last.rad, working, Round::TowardPositive)
+        .or_else(|_| last.mid.add(&last.rad, 1, Round::TowardPositive))?;
+    Ball::from_bounds(lower, upper, prec)
 }
 
-/// `2^x`, a convenience over [`exp`].
+pub(super) fn hypot_ball(
+    a: &Ball,
+    b: &Ball,
+    prec: u32,
+) -> Result<Ball, String> {
+    if a.rad.is_zero() && b.rad.is_zero() {
+        return hypot(&a.mid, &b.mid, prec);
+    }
+    let working = prec.saturating_add(16).min(MAX_BITS);
+    let (a_near, a_far) = a.absolute_endpoints(working)?;
+    let (b_near, b_far) = b.absolute_endpoints(working)?;
+    let lower = a_near
+        .hypot_with_inexact(&b_near, working, Round::TowardNegative)?
+        .0;
+    let upper = a_far
+        .hypot_with_inexact(&b_far, working, Round::TowardPositive)?
+        .0;
+    Ball::from_bounds(lower, upper, prec)
+}
+
+/// A certified outward enclosure of `2^x`.
 ///
 /// # Errors
-/// Fails when an exponent leaves the representable range.
+/// Fails when a result exponent is outside the representable range.
 pub fn exp2(
     x: &Real,
     prec: u32,
 ) -> Result<Ball, String> {
-    let inner = prec.saturating_add(16);
-    let scaled = x.mul(&consts::ln2(inner)?, inner, Round::NearestEven)?;
-    exp(&scaled, prec)
+    let Some(top) = x.floor_log2() else {
+        return Ok(Ball::point(Real::one(prec)));
+    };
+    if top >= i64::from((MAX_EXP + i64::from(MAX_BITS)).ilog2() + 1) {
+        return Err("binary exponential exponent out of range".into());
+    }
+    if x.is_integer() {
+        let exponent = i64::try_from(x.trunc_to_bigint()?).map_err(|e| e.to_string())?;
+        return Real::rounded(1.into(), exponent, prec, Round::NearestEven).map(Ball::point);
+    }
+    if top < -i64::from(prec.clamp(1, MAX_BITS) + 4) {
+        // The derivative of 2^t has magnitude at most 2 on [-1, 1].
+        let radius = Real::rounded(1.into(), top + 2, 1, Round::TowardPositive)?;
+        return Ball::new(Real::one(prec), radius);
+    }
+    let inner = prec.saturating_add(32);
+    let ln2 = consts::named_ball("ln2", inner)?;
+    let argument = Ball::point(x.clone()).mul(&ln2, inner)?;
+    exp_ball(&argument, prec)
 }
 
-/// `x * 10^n` for an integer `n`, exact up to the target precision.
+/// A certified binary exponential enclosure over a closed interval.
 ///
 /// # Errors
-/// Fails when an exponent leaves the representable range.
+/// Fails when a required endpoint or result exponent is out of range.
+pub fn exp2_ball(
+    value: &Ball,
+    prec: u32,
+) -> Result<Ball, String> {
+    map(value, &exp2, true, prec)
+}
+
+/// `x * 10^n` rounded once to the target precision with ties to even.
+///
+/// # Errors
+/// Fails when an exponent is outside the representable range.
 pub fn scale_decimal(
     x: &Real,
     n: i64,
     prec: u32,
 ) -> Result<Real, String> {
-    if n == 0 {
-        return x.with_precision(prec, Round::NearestEven);
+    scale_decimal_in(x, n, prec, Round::NearestEven)
+}
+
+/// `x * 10^n` rounded once in the requested direction.
+///
+/// # Errors
+/// Fails when an exponent is outside the representable range.
+pub fn scale_decimal_in(
+    x: &Real,
+    n: i64,
+    prec: u32,
+    mode: Round,
+) -> Result<Real, String> {
+    if x.is_zero() {
+        return Ok(Real::zero(prec));
     }
-    let factor = if n >= 0 {
-        BigInt::from(10_u32).pow(u32::try_from(n).unwrap_or(0))
-    } else {
-        BigInt::from(1)
-    };
+    if n == 0 {
+        return x.with_precision(prec, mode);
+    }
+    // 10 > 2^3. Beyond this scale no two nonzero representable dyadics
+    // can differ by a factor as large as the requested power of ten.
+    let scale_limit = (2 * MAX_EXP + i64::from(MAX_BITS)).unsigned_abs() / 3 + 1;
+    if n.unsigned_abs() > scale_limit {
+        return Err("decimal scaling exponent out of range".into());
+    }
+    let five = super::decimal::power_of_five(n.unsigned_abs())?;
+    let exponent = x.exponent() + n;
     if n >= 0 {
-        Real::from_bigint(factor, prec, Round::NearestEven)?.mul(x, prec, Round::NearestEven)
+        Real::rounded(x.mantissa() * BigInt::from(five), exponent, prec, mode)
     } else {
-        let divisor = Real::from_bigint(
-            BigInt::from(10_u32).pow(u32::try_from(-n).unwrap_or(0)),
-            prec.saturating_add(8),
-            Round::NearestEven,
-        )?;
-        x.div(&divisor, prec, Round::NearestEven)
+        Real::rounded_ratio(x.mantissa(), &five, exponent, prec, mode)
     }
 }

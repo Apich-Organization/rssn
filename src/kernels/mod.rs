@@ -11,6 +11,7 @@ pub mod analytic_continuation;
 pub mod approx;
 pub mod autodiff;
 pub mod ball;
+mod barycentric;
 pub mod bsr;
 pub mod calculus;
 pub mod combinatorics;

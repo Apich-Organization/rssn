@@ -12,7 +12,6 @@ use super::funcs;
 use super::real::Real;
 use super::real::Round;
 use num_bigint::BigInt;
-use num_traits::ToPrimitive;
 
 /// Maximum expression length accepted by [`eval_complex_text`].
 const MAX_TEXT: usize = 4096;
@@ -31,19 +30,6 @@ pub struct MpComplex {
     pub im: Ball,
 }
 
-/// Real `Ball` square root for a non-negative enclosure.
-fn ball_sqrt(
-    x: &Ball,
-    prec: u32,
-) -> Result<Ball, String> {
-    let inner = prec.saturating_add(16);
-    let low = x.mid.sub(&x.rad, inner, Round::TowardNegative)?;
-    if low.sign() < 0 {
-        return Err("square root of a real ball that may be negative".to_string());
-    }
-    x.map_monotone(&|v, p, r| v.sqrt(p, r), true, prec)
-}
-
 /// Conservative 1-ulp bound for `value` at precision `prec`.
 fn ulp_bound(
     value: &Real,
@@ -56,59 +42,179 @@ fn ulp_bound(
     Real::rounded(BigInt::from(1), exponent, 1, Round::AwayFromZero)
 }
 
-/// Half-pi as a rigorous `Ball` enclosure.
+/// Halves an enclosure and rounds outward to the requested precision.
+fn half_ball(
+    value: &Ball,
+    prec: u32,
+) -> Result<Ball, String> {
+    let half = Real::one(1).scale_pow2(-1)?;
+    value.mul(&Ball::point(half), prec)
+}
+
 fn half_pi_ball(prec: u32) -> Result<Ball, String> {
-    let inner = prec.saturating_add(16);
-    let pi = consts::pi(inner)?;
-    let half_pi = pi.scale_pow2(-1)?;
-    let mid = half_pi.with_precision(prec, Round::NearestEven)?;
-    let rad = ulp_bound(&mid, prec)?;
-    Ball::new(mid, rad)
+    let pi = consts::named_ball("pi", prec.saturating_add(16).min(MAX_BITS))?;
+    half_ball(&pi, prec)
 }
 
-/// Sound `Ball` enclosure for `sin` or `cos` using `|f'(t)| <= 1`.
-fn ball_unit_lipschitz(
-    x: &Ball,
-    f: &dyn Fn(&Real, u32) -> Result<Ball, String>,
-    prec: u32,
-) -> Result<Ball, String> {
-    let inner = prec.saturating_add(16);
-    let v = f(&x.mid, inner)?;
-    let mid = v.mid.with_precision(prec, Round::NearestEven)?;
-    let rad = v.rad.add(&x.rad, prec, Round::AwayFromZero)?.add(
-        &ulp_bound(&mid, prec)?,
-        prec,
-        Round::AwayFromZero,
-    )?;
-    Ball::new(mid, rad)
+/// Shared factors in the circular and hyperbolic rectangle identities.
+struct RectangleTrig {
+    circular: funcs::SinCos,
+    sinh: Ball,
+    cosh: Ball,
 }
 
-/// Sound `Ball` enclosure for `cosh` using Mean Value Theorem `|cosh'(t)| <= sinh(|mid| + rad)`.
-fn ball_cosh(
-    x: &Ball,
+impl RectangleTrig {
+    fn new(
+        angle: &Ball,
+        real: &Ball,
+        precision: u32,
+    ) -> Result<Self, String> {
+        let working = precision.saturating_add(16).min(MAX_BITS);
+        Ok(Self {
+            circular: funcs::sin_cos_ball(angle, working)?,
+            sinh: funcs::sinh_ball(real, working)?,
+            cosh: funcs::cosh_ball(real, working)?,
+        })
+    }
+
+    fn sin(
+        &self,
+        precision: u32,
+    ) -> Result<MpComplex, String> {
+        Ok(MpComplex {
+            re: self.circular.sin.mul(&self.cosh, precision)?,
+            im: self.circular.cos.mul(&self.sinh, precision)?,
+        })
+    }
+
+    fn cos(
+        &self,
+        precision: u32,
+    ) -> Result<MpComplex, String> {
+        Ok(MpComplex {
+            re: self.circular.cos.mul(&self.cosh, precision)?,
+            im: self.circular.sin.mul(&self.sinh, precision)?.neg(),
+        })
+    }
+
+    fn sinh(
+        &self,
+        precision: u32,
+    ) -> Result<MpComplex, String> {
+        let sin = self.sin(precision)?;
+        Ok(MpComplex {
+            re: sin.im,
+            im: sin.re,
+        })
+    }
+
+    fn cosh(
+        &self,
+        precision: u32,
+    ) -> Result<MpComplex, String> {
+        let cos = self.cos(precision)?;
+        Ok(MpComplex {
+            re: cos.re,
+            im: cos.im.neg(),
+        })
+    }
+}
+
+fn is_zero_ball(value: &Ball) -> bool {
+    value.mid.is_zero() && value.rad.is_zero()
+}
+
+/// A directed bound for sqrt((hypot(x, y) + x) / 2) with x, y >= 0.
+fn sqrt_large_component(
+    x: &Real,
+    y: &Real,
     prec: u32,
-) -> Result<Ball, String> {
-    let inner = prec.saturating_add(24);
-    let c = funcs::cosh(&x.mid, inner)?;
-    let mid = c.mid.with_precision(prec, Round::NearestEven)?;
-    let rad = if x.rad.is_zero() {
-        c.rad.with_precision(prec, Round::AwayFromZero)?.add(
-            &ulp_bound(&mid, prec)?,
-            prec,
-            Round::AwayFromZero,
-        )?
+    mode: Round,
+) -> Result<Real, String> {
+    if y.is_zero() {
+        return x.sqrt(prec, mode);
+    }
+    let (lower, upper, scale) = x.scaled_hypot_bounds(y, prec)?;
+    let norm = if mode == Round::TowardNegative {
+        lower
     } else {
-        let abs_hi = x.mid.abs().add(&x.rad, inner, Round::AwayFromZero)?;
-        let s = funcs::sinh(&abs_hi, inner)?;
-        let lip = s.mid.add(&s.rad, inner, Round::AwayFromZero)?;
-        let prop = lip.mul(&x.rad, inner, Round::AwayFromZero)?;
-        c.rad.add(&prop, prec, Round::AwayFromZero)?.add(
-            &ulp_bound(&mid, prec)?,
-            prec,
-            Round::AwayFromZero,
-        )?
+        upper
     };
-    Ball::new(mid, rad)
+    norm.sqrt_half_sum_scaled(scale, x, prec, mode)
+}
+
+/// A directed bound for sqrt((hypot(x, y) + x) / 2) with y >= 0.
+fn sqrt_component(
+    x: &Real,
+    y: &Real,
+    prec: u32,
+    mode: Round,
+) -> Result<Real, String> {
+    if x.sign() >= 0 {
+        return sqrt_large_component(x, y, prec, mode);
+    }
+    if y.is_zero() {
+        return Ok(Real::zero(prec));
+    }
+    // For negative x, use y / (2 sqrt((hypot(x, y) - x) / 2)).
+    // This avoids cancellation and reverses the denominator's rounding.
+    let denominator_round = if mode == Round::TowardNegative {
+        Round::TowardPositive
+    } else {
+        Round::TowardNegative
+    };
+    let denominator = sqrt_large_component(&x.neg(), y, prec, denominator_round)?.scale_pow2(1)?;
+    y.div(&denominator, prec, mode)
+}
+
+/// Squares an interval using its nearest and farthest points from zero.
+fn squared_coordinate_bounds(
+    value: &Ball,
+    prec: u32,
+) -> Result<(Real, Real), String> {
+    let (near, far) = value.absolute_endpoints(prec)?;
+    let low = near.mul(&near, prec, Round::TowardNegative)?;
+    let high = far.mul(&far, prec, Round::TowardPositive)?;
+    Ok((low, high))
+}
+
+/// Evaluates ln(hypot(x, y)) with the norm's binary scale kept separate.
+fn log_hypot(
+    x: &Real,
+    y: &Real,
+    prec: u32,
+) -> Result<Ball, String> {
+    let (lower, upper, scale) = x.scaled_hypot_bounds(y, prec)?;
+    let normalized = funcs::ln_ball(&Ball::from_bounds(lower, upper, prec)?, prec)?;
+    if scale == 0 {
+        return Ok(normalized);
+    }
+    let ln2 = consts::named_ball("ln2", prec)?;
+    let shift = Ball::point(Real::from_i64(scale, 20)?);
+    normalized.add(&ln2.mul(&shift, prec)?, prec)
+}
+
+/// Divides a ball by positive bounds without rounding the divisor to a ball.
+fn divide_by_positive_bounds(
+    numerator: &Ball,
+    lower: &Real,
+    upper: &Real,
+    prec: u32,
+) -> Result<Ball, String> {
+    let (lo, hi) = numerator.endpoints(prec)?;
+    let lo_divisor = if lo.sign() < 0 {
+        lower
+    } else {
+        upper
+    };
+    let hi_divisor = if hi.sign() > 0 {
+        lower
+    } else {
+        upper
+    };
+    let lo = lo.div(lo_divisor, prec, Round::TowardNegative)?;
+    let hi = hi.div(hi_divisor, prec, Round::TowardPositive)?;
+    Ball::from_bounds(lo, hi, prec)
 }
 
 impl MpComplex {
@@ -240,27 +346,37 @@ impl MpComplex {
     /// Division `self / other`.
     ///
     /// # Errors
-    /// Fails if `|other|^2` contains zero or an exponent leaves the range.
+    /// Fails if the divisor contains the origin or an exponent leaves the range.
     pub fn div(
         &self,
         other: &Self,
         prec: u32,
     ) -> Result<Self, String> {
-        let denom = other.abs_sq(prec)?;
-        if denom.contains_zero() {
+        if other.re.contains_zero() && other.im.contains_zero() {
             return Err("complex division by an enclosure containing zero".to_string());
         }
+        let inner = prec.saturating_add(16);
         let num = self.mul(&other.conj(), prec)?;
+        if other.re.rad.is_zero() && other.im.rad.is_zero() {
+            let denom = other.abs_sq(inner)?;
+            return Ok(Self {
+                re: num.re.div(&denom, prec)?,
+                im: num.im.div(&denom, prec)?,
+            });
+        }
+        // A midpoint and radius can lose a small positive lower bound when the
+        // upper bound is large. Keep the directed endpoints through division.
+        let (lower, upper) = other.abs_squared_bounds(inner)?;
         Ok(Self {
-            re: num.re.div(&denom, prec)?,
-            im: num.im.div(&denom, prec)?,
+            re: divide_by_positive_bounds(&num.re, &lower, &upper, prec)?,
+            im: divide_by_positive_bounds(&num.im, &lower, &upper, prec)?,
         })
     }
 
     /// Reciprocal `1 / self`.
     ///
     /// # Errors
-    /// Fails if `|self|^2` contains zero or an exponent leaves the range.
+    /// Fails if the rectangle contains the origin or an exponent leaves the range.
     pub fn recip(
         &self,
         prec: u32,
@@ -276,24 +392,25 @@ impl MpComplex {
         &self,
         prec: u32,
     ) -> Result<Ball, String> {
-        let r2 = self.re.mul(&self.re, prec)?;
-        let i2 = self.im.mul(&self.im, prec)?;
-        let sum = r2.add(&i2, prec)?;
-        // Clamp any negative lower endpoint due to outward rounding to >= 0.
-        let inner = prec.saturating_add(8);
-        let lo = sum.mid.sub(&sum.rad, inner, Round::TowardNegative)?;
-        if lo.sign() < 0 {
-            let hi = sum.mid.add(&sum.rad, inner, Round::TowardPositive)?;
-            let mid_raw = hi.scale_pow2(-1)?;
-            let mid = mid_raw.with_precision(prec, Round::NearestEven)?;
-            let rad = mid_raw.with_precision(prec, Round::AwayFromZero)?.add(
-                &ulp_bound(&mid, prec)?,
-                prec,
-                Round::AwayFromZero,
-            )?;
-            return Ball::new(mid, rad);
+        if self.re.rad.is_zero() && self.im.rad.is_zero() {
+            let real = self.re.mul(&self.re, prec)?;
+            let imag = self.im.mul(&self.im, prec)?;
+            return real.add(&imag, prec);
         }
-        Ok(sum)
+        let (lower, upper) = self.abs_squared_bounds(prec)?;
+        Ball::from_bounds(lower, upper, prec)
+    }
+
+    fn abs_squared_bounds(
+        &self,
+        prec: u32,
+    ) -> Result<(Real, Real), String> {
+        let (real_low, real_high) = squared_coordinate_bounds(&self.re, prec)?;
+        let (imag_low, imag_high) = squared_coordinate_bounds(&self.im, prec)?;
+        Ok((
+            real_low.add(&imag_low, prec, Round::TowardNegative)?,
+            real_high.add(&imag_high, prec, Round::TowardPositive)?,
+        ))
     }
 
     /// Modulus `|self| = sqrt(re^2 + im^2)`.
@@ -304,10 +421,15 @@ impl MpComplex {
         &self,
         prec: u32,
     ) -> Result<Ball, String> {
-        let h = funcs::hypot(&self.re.mid, &self.im.mid, prec)?;
-        let extra = self.re.rad.add(&self.im.rad, prec, Round::AwayFromZero)?;
-        let rad = h.rad.add(&extra, prec, Round::AwayFromZero)?;
-        Ball::new(h.mid, rad)
+        if self.re.rad.is_zero() && self.im.rad.is_zero() {
+            return funcs::hypot(&self.re.mid, &self.im.mid, prec);
+        }
+        let inner = prec.saturating_add(16);
+        let (real_near, real_far) = self.re.absolute_endpoints(inner)?;
+        let (imag_near, imag_far) = self.im.absolute_endpoints(inner)?;
+        let (lower, _) = real_near.hypot_with_inexact(&imag_near, inner, Round::TowardNegative)?;
+        let (upper, _) = real_far.hypot_with_inexact(&imag_far, inner, Round::TowardPositive)?;
+        Ball::from_bounds(lower, upper, prec)
     }
 
     /// Principal argument `arg(self) = atan2(im, re)` in `(-pi, pi]`.
@@ -318,40 +440,27 @@ impl MpComplex {
         &self,
         prec: u32,
     ) -> Result<Ball, String> {
-        let inner = prec.saturating_add(16);
-        let r = self.abs(inner)?;
-        let d_min = r.mid.sub(&r.rad, inner, Round::TowardZero)?;
-        if d_min.sign() <= 0 {
-            return Err("argument of an enclosure containing zero".to_string());
+        if self.im.contains_zero() && self.re.mid.sign() <= 0 {
+            return Err("argument of an enclosure meeting the non-positive real axis".into());
         }
-        let re_hi = self
-            .re
-            .mid
-            .add(&self.re.rad, inner, Round::TowardPositive)?;
-        if re_hi.sign() <= 0 && self.im.contains_zero() {
-            return Err("argument of an enclosure crossing the branch cut".to_string());
-        }
-        let a = funcs::atan2(&self.im.mid, &self.re.mid, prec)?;
-        let r_sum = self.re.rad.add(&self.im.rad, inner, Round::AwayFromZero)?;
-        let lip = r_sum.div(&d_min, prec, Round::AwayFromZero)?;
-        let rad = a.rad.add(&lip, prec, Round::AwayFromZero)?;
-        Ball::new(a.mid, rad)
+        funcs::atan2_ball(&self.im, &self.re, prec)
     }
 
     /// Complex exponential `exp(x + i*y) = exp(x) * (cos(y) + i*sin(y))`.
     ///
     /// # Errors
-    /// Fails if an exponent leaves the range.
+    /// Fails when an exponent leaves the range or the imaginary midpoint
+    /// lies outside the certified trigonometric range.
     pub fn exp(
         &self,
         prec: u32,
     ) -> Result<Self, String> {
-        let ex = funcs::map(&self.re, &funcs::exp, true, prec)?;
-        let cy = funcs::map(&self.im, &funcs::cos, false, prec)?;
-        let sy = funcs::map(&self.im, &funcs::sin, false, prec)?;
+        let inner = prec.saturating_add(16);
+        let ex = funcs::exp_ball(&self.re, inner)?;
+        let trig = funcs::sin_cos_ball(&self.im, inner)?;
         Ok(Self {
-            re: ex.mul(&cy, prec)?,
-            im: ex.mul(&sy, prec)?,
+            re: ex.mul(&trig.cos, prec)?,
+            im: ex.mul(&trig.sin, prec)?,
         })
     }
 
@@ -363,63 +472,70 @@ impl MpComplex {
         &self,
         prec: u32,
     ) -> Result<Self, String> {
-        let r = self.abs(prec)?;
-        if r.contains_zero() {
-            return Err("logarithm of an enclosure containing zero".to_string());
+        if self.re.contains_zero() && self.im.contains_zero() {
+            return Err("logarithm of an enclosure containing zero".into());
         }
-        let re = funcs::map(&r, &funcs::ln, true, prec)?;
         let im = self.arg(prec)?;
+        let inner = prec.saturating_add(16);
+        let (real_near, real_far) = self.re.absolute_endpoints(inner)?;
+        let (imag_near, imag_far) = self.im.absolute_endpoints(inner)?;
+        let low = log_hypot(&real_near, &imag_near, inner)?;
+        let lower = low.mid.sub(&low.rad, inner, Round::TowardNegative)?;
+        let high = if real_near.cmp_value(&real_far) == 0 && imag_near.cmp_value(&imag_far) == 0 {
+            low
+        } else {
+            log_hypot(&real_far, &imag_far, inner)?
+        };
+        let upper = high.mid.add(&high.rad, inner, Round::TowardPositive)?;
+        let re = Ball::from_bounds(lower, upper, prec)?;
         Ok(Self { re, im })
     }
 
     /// Principal complex square root `sqrt(z)`.
     ///
+    /// The negative real axis has the positive imaginary root. A rectangle
+    /// straddling the branch cut can return both signs of the imaginary part.
+    ///
     /// # Errors
-    /// Fails if the enclosure crosses the negative real axis `(-inf, 0)`.
+    /// Fails when an intermediate or result exponent is out of range.
     pub fn sqrt(
         &self,
         prec: u32,
     ) -> Result<Self, String> {
-        if self.re.mid.is_zero()
-            && self.re.rad.is_zero()
-            && self.im.mid.is_zero()
-            && self.im.rad.is_zero()
-        {
-            return Ok(Self::zero(prec));
+        if self.re.rad.is_zero() && is_zero_ball(&self.im) {
+            let root = Ball::point(self.re.mid.abs()).sqrt(prec)?;
+            return if self.re.mid.sign() < 0 {
+                Ok(Self::new(Ball::point(Real::zero(prec)), root))
+            } else {
+                Ok(Self::from_real(root))
+            };
         }
-        let inner = prec.saturating_add(16);
-        let r = self.abs(inner)?;
-        if self.re.contains_zero() && self.im.contains_zero() {
-            let r_hi = r.mid.add(&r.rad, inner, Round::TowardPositive)?;
-            if r_hi.is_zero() {
-                return Ok(Self::zero(prec));
-            }
-            let bound = r_hi.sqrt(prec, Round::AwayFromZero)?;
-            let zero = Real::zero(prec);
-            return Ok(Self {
-                re: Ball::new(zero.clone(), bound.clone())?,
-                im: Ball::new(zero, bound)?,
-            });
-        }
-        let re_lo = self
-            .re
-            .mid
-            .sub(&self.re.rad, inner, Round::TowardNegative)?;
-        if re_lo.sign() > 0 {
-            // Right half-plane: u = sqrt((r + re) / 2), v = im / (2 * u).
-            let r_plus_re = r.add(&self.re, inner)?;
-            let half_sum = Ball::new(r_plus_re.mid.scale_pow2(-1)?, r_plus_re.rad.scale_pow2(-1)?)?;
-            let u = ball_sqrt(&half_sum, prec)?;
-            let two_u = Ball::new(u.mid.scale_pow2(1)?, u.rad.scale_pow2(1)?)?;
-            let v = self.im.div(&two_u, prec)?;
-            return Ok(Self { re: u, im: v });
-        }
-        let l = self.ln(inner)?;
-        let half_l = Self {
-            re: Ball::new(l.re.mid.scale_pow2(-1)?, l.re.rad.scale_pow2(-1)?)?,
-            im: Ball::new(l.im.mid.scale_pow2(-1)?, l.im.rad.scale_pow2(-1)?)?,
+        let inner = prec.saturating_add(16).min(MAX_BITS);
+        let (x_lo, x_hi) = self.re.outward_endpoints(inner)?;
+        let (y_lo, y_hi) = self.im.outward_endpoints(inner)?;
+        let (near, far) = Ball::absolute_bounds(&y_lo, &y_hi, inner);
+        // hypot(x, y) + x increases in x and in |y|. The imaginary
+        // magnitude uses the same formula at -x.
+        let u_lo = sqrt_component(&x_lo, &near, inner, Round::TowardNegative)?;
+        let u_hi = sqrt_component(&x_hi, &far, inner, Round::TowardPositive)?;
+        let v_hi = sqrt_component(&x_lo.neg(), &far, inner, Round::TowardPositive)?;
+        let (v_lo, v_hi) = if y_lo.sign() >= 0 {
+            (
+                sqrt_component(&x_hi.neg(), &near, inner, Round::TowardNegative)?,
+                v_hi,
+            )
+        } else if y_hi.sign() < 0 {
+            (
+                v_hi.neg(),
+                sqrt_component(&x_hi.neg(), &near, inner, Round::TowardNegative)?.neg(),
+            )
+        } else {
+            (v_hi.neg(), v_hi)
         };
-        half_l.exp(prec)
+        Ok(Self::new(
+            Ball::from_bounds(u_lo, u_hi, prec)?,
+            Ball::from_bounds(v_lo, v_hi, prec)?,
+        ))
     }
 
     /// Integer power `self^n` via binary exponentiation (exact at `n = 0` and for non-positive real bases).
@@ -476,33 +592,16 @@ impl MpComplex {
     /// otherwise computes `exp(w * ln(self))`.
     ///
     /// # Errors
-    /// Fails if `self` meets the logarithm cut or an exponent overflows.
+    /// Fails when an exact integer exponent does not fit a signed 64-bit
+    /// integer, a non-integer power requires a logarithm on its branch cut,
+    /// or a required exponent leaves the representable range.
     pub fn pow(
         &self,
         w: &Self,
         prec: u32,
     ) -> Result<Self, String> {
-        if w.im.mid.is_zero() && w.im.rad.is_zero() && w.re.rad.is_zero() {
-            if w.re.mid.is_zero() {
-                return Ok(Self::one(prec));
-            }
-            let mant = w.re.mid.mantissa();
-            let e = w.re.mid.exponent();
-            let int_val = if e >= 0 {
-                u32::try_from(e)
-                    .ok()
-                    .and_then(|shift| mant.to_i64()?.checked_shl(shift))
-            } else {
-                let shift = e.unsigned_abs();
-                if mant.trailing_zeros().is_some_and(|tz| tz >= shift) {
-                    (mant >> shift).to_i64()
-                } else {
-                    None
-                }
-            };
-            if let Some(n) = int_val {
-                return self.powi(n, prec);
-            }
+        if is_zero_ball(&w.im) && w.re.rad.is_zero() && w.re.mid.is_integer() {
+            return self.powi(w.re.mid.integer_exponent()?, prec);
         }
         let inner = prec.saturating_add(16);
         let l = self.ln(inner)?;
@@ -513,234 +612,249 @@ impl MpComplex {
     /// Complex sine `sin(x + i*y) = sin(x)cosh(y) + i*cos(x)sinh(y)`.
     ///
     /// # Errors
-    /// Fails if an exponent leaves the range.
+    /// Fails when the real midpoint exceeds the certified trigonometric
+    /// range in magnitude or a required exponent is out of range.
     pub fn sin(
         &self,
         prec: u32,
     ) -> Result<Self, String> {
-        let sx = ball_unit_lipschitz(&self.re, &funcs::sin, prec)?;
-        let cx = ball_unit_lipschitz(&self.re, &funcs::cos, prec)?;
-        let sy = funcs::map(&self.im, &funcs::sinh, true, prec)?;
-        let cy = ball_cosh(&self.im, prec)?;
-        Ok(Self {
-            re: sx.mul(&cy, prec)?,
-            im: cx.mul(&sy, prec)?,
-        })
+        RectangleTrig::new(&self.re, &self.im, prec)?.sin(prec)
     }
 
     /// Complex cosine `cos(x + i*y) = cos(x)cosh(y) - i*sin(x)sinh(y)`.
     ///
     /// # Errors
-    /// Fails if an exponent leaves the range.
+    /// Fails when the real midpoint exceeds the certified trigonometric
+    /// range in magnitude or a required exponent is out of range.
     pub fn cos(
         &self,
         prec: u32,
     ) -> Result<Self, String> {
-        let sx = ball_unit_lipschitz(&self.re, &funcs::sin, prec)?;
-        let cx = ball_unit_lipschitz(&self.re, &funcs::cos, prec)?;
-        let sy = funcs::map(&self.im, &funcs::sinh, true, prec)?;
-        let cy = ball_cosh(&self.im, prec)?;
-        Ok(Self {
-            re: cx.mul(&cy, prec)?,
-            im: sx.mul(&sy, prec)?.neg(),
-        })
+        RectangleTrig::new(&self.re, &self.im, prec)?.cos(prec)
     }
 
     /// Complex tangent `tan(z) = sin(z) / cos(z)`.
     ///
     /// # Errors
-    /// Fails if `cos(z)` contains zero or an exponent leaves the range.
+    /// Fails when the cosine enclosure includes zero, the real midpoint
+    /// exceeds the certified trigonometric range in magnitude, or an
+    /// intermediate or result exponent is out of range.
     pub fn tan(
         &self,
         prec: u32,
     ) -> Result<Self, String> {
-        let inner = prec.saturating_add(16);
-        self.sin(inner)?.div(&self.cos(inner)?, prec)
+        if is_zero_ball(&self.im) {
+            return Ok(Self::from_real(funcs::tan_ball(&self.re, prec)?));
+        }
+        if is_zero_ball(&self.re) {
+            return Ok(Self::new(
+                Ball::point(Real::zero(prec)),
+                funcs::tanh_ball(&self.im, prec)?,
+            ));
+        }
+        let inner = prec.saturating_add(16).min(MAX_BITS);
+        let factors = RectangleTrig::new(&self.re, &self.im, inner)?;
+        factors.sin(inner)?.div(&factors.cos(inner)?, prec)
     }
 
     /// Complex hyperbolic sine `sinh(x + i*y) = sinh(x)cos(y) + i*cosh(x)sin(y)`.
     ///
     /// # Errors
-    /// Fails if an exponent leaves the range.
+    /// Fails when the imaginary midpoint exceeds the certified trigonometric
+    /// range in magnitude or a required exponent is out of range.
     pub fn sinh(
         &self,
         prec: u32,
     ) -> Result<Self, String> {
-        let sx = funcs::map(&self.re, &funcs::sinh, true, prec)?;
-        let cx = ball_cosh(&self.re, prec)?;
-        let sy = ball_unit_lipschitz(&self.im, &funcs::sin, prec)?;
-        let cy = ball_unit_lipschitz(&self.im, &funcs::cos, prec)?;
-        Ok(Self {
-            re: sx.mul(&cy, prec)?,
-            im: cx.mul(&sy, prec)?,
-        })
+        RectangleTrig::new(&self.im, &self.re, prec)?.sinh(prec)
     }
 
     /// Complex hyperbolic cosine `cosh(x + i*y) = cosh(x)cos(y) + i*sinh(x)sin(y)`.
     ///
     /// # Errors
-    /// Fails if an exponent leaves the range.
+    /// Fails when the imaginary midpoint exceeds the certified trigonometric
+    /// range in magnitude or a required exponent is out of range.
     pub fn cosh(
         &self,
         prec: u32,
     ) -> Result<Self, String> {
-        let sx = funcs::map(&self.re, &funcs::sinh, true, prec)?;
-        let cx = ball_cosh(&self.re, prec)?;
-        let sy = ball_unit_lipschitz(&self.im, &funcs::sin, prec)?;
-        let cy = ball_unit_lipschitz(&self.im, &funcs::cos, prec)?;
-        Ok(Self {
-            re: cx.mul(&cy, prec)?,
-            im: sx.mul(&sy, prec)?,
-        })
+        RectangleTrig::new(&self.im, &self.re, prec)?.cosh(prec)
     }
 
     /// Complex hyperbolic tangent `tanh(z) = sinh(z) / cosh(z)`.
     ///
     /// # Errors
-    /// Fails if `cosh(z)` contains zero or an exponent leaves the range.
+    /// Fails when the hyperbolic cosine enclosure includes zero, the
+    /// imaginary midpoint exceeds the certified trigonometric range in
+    /// magnitude, or an intermediate or result exponent is out of range.
     pub fn tanh(
         &self,
         prec: u32,
     ) -> Result<Self, String> {
-        let inner = prec.saturating_add(16);
-        self.sinh(inner)?.div(&self.cosh(inner)?, prec)
+        if is_zero_ball(&self.im) {
+            return Ok(Self::from_real(funcs::tanh_ball(&self.re, prec)?));
+        }
+        if is_zero_ball(&self.re) {
+            return Ok(Self::new(
+                Ball::point(Real::zero(prec)),
+                funcs::tan_ball(&self.im, prec)?,
+            ));
+        }
+        let inner = prec.saturating_add(16).min(MAX_BITS);
+        let factors = RectangleTrig::new(&self.im, &self.re, inner)?;
+        factors.sinh(inner)?.div(&factors.cosh(inner)?, prec)
     }
 
-    /// Principal inverse sine `asin(z) = -i * ln(i*z + sqrt(1 - z^2))`.
+    /// Multiplies a rectangle by i without rounded arithmetic.
+    fn times_i(&self) -> Self {
+        Self::new(self.im.neg(), self.re.clone())
+    }
+
+    fn into_times_neg_i(self) -> Self {
+        Self::new(self.im, self.re.neg())
+    }
+
+    fn touches_outer_real_cuts(
+        &self,
+        prec: u32,
+    ) -> Result<bool, String> {
+        if !self.im.contains_zero() {
+            return Ok(false);
+        }
+        let (lower, upper) = self.re.outward_endpoints(prec)?;
+        let one = Real::one(1);
+        Ok(lower.cmp_value(&one.neg()) <= 0 || upper.cmp_value(&one) >= 0)
+    }
+
+    /// Principal inverse sine of a closed rectangle.
     ///
     /// # Errors
-    /// Fails if the expression crosses a branch cut.
+    /// Fails when the rectangle touches the real cuts to the left of -1
+    /// or right of 1, including their endpoints for non-real rectangles,
+    /// or a required exponent is out of range. Real intervals in [-1, 1]
+    /// include both endpoints.
     pub fn asin(
         &self,
         prec: u32,
     ) -> Result<Self, String> {
-        let inner = prec.saturating_add(24);
-        let i_unit = Self::i(inner);
-        let iz = i_unit.mul(self, inner)?;
-        let z2 = self.mul(self, inner)?;
-        let root = Self::one(inner).sub(&z2, inner)?.sqrt(inner)?;
-        let l = iz.add(&root, inner)?.ln(inner)?;
-        Self {
-            re: l.im,
-            im: l.re.neg(),
+        if is_zero_ball(&self.im) {
+            return Ok(Self::from_real(funcs::asin_ball(&self.re, prec)?));
         }
-        .mul(&Self::one(prec), prec)
+        let inner = prec.saturating_add(24).min(MAX_BITS);
+        if self.touches_outer_real_cuts(inner)? {
+            return Err("complex inverse sine rectangle meets a real branch cut".into());
+        }
+        let iz = self.times_i();
+        let square = self.mul(self, inner)?;
+        let root = Self::one(inner).sub(&square, inner)?.sqrt(inner)?;
+        // Both logarithm arguments have positive real part off the cuts
+        // and are reciprocals. Choose the sign that adds the magnitude
+        // of the imaginary midpoint to the root's real part.
+        if self.im.mid.sign() > 0 {
+            Ok(root.sub(&iz, inner)?.ln(prec)?.times_i())
+        } else {
+            Ok(root.add(&iz, inner)?.ln(prec)?.into_times_neg_i())
+        }
     }
 
-    /// Principal inverse cosine `acos(z) = pi/2 - asin(z)`.
+    /// Principal inverse cosine of a closed rectangle.
     ///
     /// # Errors
-    /// Fails if the expression crosses a branch cut.
+    /// Fails on the same cuts and exponent limits as [Self::asin].
     pub fn acos(
         &self,
         prec: u32,
     ) -> Result<Self, String> {
-        let inner = prec.saturating_add(16);
-        let a = self.asin(inner)?;
-        let hp = Self::from_real(half_pi_ball(inner)?);
-        hp.sub(&a, prec)
+        if is_zero_ball(&self.im) {
+            return Ok(Self::from_real(funcs::acos_ball(&self.re, prec)?));
+        }
+        let inner = prec.saturating_add(16).min(MAX_BITS);
+        let angle = self.asin(inner)?;
+        Self::from_real(half_pi_ball(inner)?).sub(&angle, prec)
     }
 
-    /// Principal inverse tangent `atan(z) = (i/2) * ln((1 - i*z) / (1 + i*z))`.
+    /// Principal inverse tangent of a closed rectangle.
     ///
     /// # Errors
-    /// Fails if the expression crosses a branch cut.
+    /// Fails if the rectangle touches the imaginary axis at or beyond
+    /// either of ±i, or a required exponent is out of range.
     pub fn atan(
         &self,
         prec: u32,
     ) -> Result<Self, String> {
-        let inner = prec.saturating_add(24);
-        let i_unit = Self::i(inner);
-        let iz = i_unit.mul(self, inner)?;
-        let one = Self::one(inner);
-        let num = one.sub(&iz, inner)?;
-        let den = one.add(&iz, inner)?;
-        let l = num.div(&den, inner)?.ln(inner)?;
-        // (i/2) * (a + i b) = (-b/2) + i (a/2)
-        let re = Ball::new(l.im.neg().mid.scale_pow2(-1)?, l.im.rad.scale_pow2(-1)?)?;
-        let im = Ball::new(l.re.mid.scale_pow2(-1)?, l.re.rad.scale_pow2(-1)?)?;
-        let re_mid = re.mid.with_precision(prec, Round::NearestEven)?;
-        let re_rad = re.rad.with_precision(prec, Round::AwayFromZero)?.add(
-            &ulp_bound(&re_mid, prec)?,
-            prec,
-            Round::AwayFromZero,
-        )?;
-        let im_mid = im.mid.with_precision(prec, Round::NearestEven)?;
-        let im_rad = im.rad.with_precision(prec, Round::AwayFromZero)?.add(
-            &ulp_bound(&im_mid, prec)?,
-            prec,
-            Round::AwayFromZero,
-        )?;
-        Ok(Self {
-            re: Ball::new(re_mid, re_rad)?,
-            im: Ball::new(im_mid, im_rad)?,
-        })
+        if is_zero_ball(&self.im) {
+            return Ok(Self::from_real(funcs::atan_ball(&self.re, prec)?));
+        }
+        Ok(self.times_i().atanh(prec)?.into_times_neg_i())
     }
 
-    /// Principal inverse hyperbolic sine `asinh(z) = ln(z + sqrt(z^2 + 1))`.
+    /// Principal inverse hyperbolic sine of a closed rectangle.
     ///
     /// # Errors
-    /// Fails if the expression crosses a branch cut.
+    /// Fails if the rectangle meets an imaginary branch cut or a required
+    /// exponent is out of range. Imaginary intervals from -i to i include
+    /// the endpoints.
     pub fn asinh(
         &self,
         prec: u32,
     ) -> Result<Self, String> {
-        let inner = prec.saturating_add(24);
-        let z2_plus_1 = self.mul(self, inner)?.add(&Self::one(inner), inner)?;
-        let root = z2_plus_1.sqrt(inner)?;
-        self.add(&root, inner)?.ln(prec)
+        Ok(self.times_i().asin(prec)?.into_times_neg_i())
     }
 
-    /// Principal inverse hyperbolic cosine `acosh(z) = ln(z + sqrt(z - 1) * sqrt(z + 1))`.
+    /// Principal inverse hyperbolic cosine of a closed rectangle.
     ///
     /// # Errors
-    /// Fails if the expression crosses a branch cut.
+    /// Fails if the rectangle meets the real axis below one or a required
+    /// exponent is out of range. One is included.
     pub fn acosh(
         &self,
         prec: u32,
     ) -> Result<Self, String> {
-        let inner = prec.saturating_add(24);
+        let inner = prec.saturating_add(24).min(MAX_BITS);
+        if self.im.contains_zero() {
+            let (lower, _) = self.re.outward_endpoints(inner)?;
+            if lower.cmp_value(&Real::one(1)) < 0 {
+                return Err(
+                    "complex inverse hyperbolic cosine rectangle meets its real branch cut".into(),
+                );
+            }
+        }
         let one = Self::one(inner);
-        let zp = self.add(&one, inner)?.sqrt(inner)?;
-        let zm = self.sub(&one, inner)?.sqrt(inner)?;
-        let prod = zp.mul(&zm, inner)?;
-        self.add(&prod, inner)?.ln(prec)
+        let plus = self.add(&one, inner)?.sqrt(inner)?;
+        let minus = self.sub(&one, inner)?.sqrt(inner)?;
+        self.add(&plus.mul(&minus, inner)?, inner)?.ln(prec)
     }
 
-    /// Principal inverse hyperbolic tangent `atanh(z) = 0.5 * ln((1 + z) / (1 - z))`.
+    /// Principal inverse hyperbolic tangent of a closed rectangle.
     ///
     /// # Errors
-    /// Fails if the expression crosses a branch cut.
+    /// Fails if the rectangle touches either real cut at or beyond ±1,
+    /// or a required exponent is out of range.
     pub fn atanh(
         &self,
         prec: u32,
     ) -> Result<Self, String> {
-        let inner = prec.saturating_add(24);
+        if is_zero_ball(&self.re) {
+            let angle = funcs::atan_ball(&self.im, prec)?;
+            return Ok(Self::new(Ball::point(Real::zero(prec)), angle));
+        }
+        let inner = prec.saturating_add(24).min(MAX_BITS);
+        if self.touches_outer_real_cuts(inner)? {
+            return Err(
+                "complex inverse hyperbolic tangent rectangle meets a real branch cut".into(),
+            );
+        }
         let one = Self::one(inner);
-        let q = one.add(self, inner)?.div(&one.sub(self, inner)?, inner)?;
-        let l = q.ln(inner)?;
-        let re_mid =
-            l.re.mid
-                .scale_pow2(-1)?
-                .with_precision(prec, Round::NearestEven)?;
-        let re_rad =
-            l.re.rad
-                .scale_pow2(-1)?
-                .with_precision(prec, Round::AwayFromZero)?
-                .add(&ulp_bound(&re_mid, prec)?, prec, Round::AwayFromZero)?;
-        let im_mid =
-            l.im.mid
-                .scale_pow2(-1)?
-                .with_precision(prec, Round::NearestEven)?;
-        let im_rad =
-            l.im.rad
-                .scale_pow2(-1)?
-                .with_precision(prec, Round::AwayFromZero)?
-                .add(&ulp_bound(&im_mid, prec)?, prec, Round::AwayFromZero)?;
-        Ok(Self {
-            re: Ball::new(re_mid, re_rad)?,
-            im: Ball::new(im_mid, im_rad)?,
-        })
+        // Off the cuts, (1+z)/(1-z) has the sign of Im(z) in its
+        // imaginary part. The difference of principal arguments is in
+        // (-pi, pi), so this form avoids dividing interval rectangles.
+        let plus = one.add(self, inner)?.ln(inner)?;
+        let minus = one.sub(self, inner)?.ln(inner)?;
+        let difference = plus.sub(&minus, inner)?;
+        Ok(Self::new(
+            half_ball(&difference.re, prec)?,
+            half_ball(&difference.im, prec)?,
+        ))
     }
 }
 

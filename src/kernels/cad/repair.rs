@@ -65,14 +65,14 @@ pub fn repair(
 ) -> (Mesh, RepairReport) {
     let (mut welded, merged, removed) = weld_impl(mesh, tolerance);
     let mut flipped = orient_consistently(&mut welded);
-    if is_closed(&welded) && signed_volume(&welded) < 0.0 {
+    if is_closed(&welded) && closed_signed_volume(&welded) < 0.0 {
         for t in &mut welded.triangles {
             *t = [t[0], t[2], t[1]];
         }
         flipped += welded.triangles.len();
     }
     let filled = fill_holes(&mut welded);
-    if filled > 0 && is_closed(&welded) && signed_volume(&welded) < 0.0 {
+    if filled > 0 && is_closed(&welded) && closed_signed_volume(&welded) < 0.0 {
         for t in &mut welded.triangles {
             *t = [t[0], t[2], t[1]];
         }
@@ -90,72 +90,104 @@ pub fn repair(
     )
 }
 
-/// Whether every undirected edge of `mesh` is shared by exactly two triangles.
+/// Whether every undirected edge belongs to exactly two faces of a valid mesh.
 #[must_use]
 pub fn is_closed(mesh: &Mesh) -> bool {
-    if mesh.triangles.is_empty() {
-        return false;
-    }
-
-    let mut counts: HashMap<(usize, usize), usize> = HashMap::new();
-    for t in &mesh.triangles {
-        for k in 0..3 {
-            *counts.entry(edge_key(t[k], t[(k + 1) % 3])).or_insert(0) += 1;
-        }
-    }
-
-    counts.values().all(|&count| count == 2)
+    topology(mesh).closed
 }
 
 /// Whether `mesh` is edge-manifold: no edge is shared by more than two
 /// triangles and no triangle repeats a vertex.
 #[must_use]
 pub fn is_manifold(mesh: &Mesh) -> bool {
-    if !super::types::indices_valid(mesh) {
-        return false;
-    }
-
-    let mut counts: HashMap<(usize, usize), usize> = HashMap::new();
-    for t in &mesh.triangles {
-        if t[0] == t[1] || t[1] == t[2] || t[2] == t[0] {
-            return false;
-        }
-        for k in 0..3 {
-            *counts.entry(edge_key(t[k], t[(k + 1) % 3])).or_insert(0) += 1;
-        }
-    }
-
-    counts.values().all(|&count| count <= 2)
-}
-
-/// The signed volume enclosed by `mesh`, positive for outward-facing normals.
-#[must_use]
-pub fn signed_volume(mesh: &Mesh) -> f64 {
-    let mut total = 0.0;
-    for t in &mesh.triangles {
-        let (Some(a), Some(b), Some(c)) = (
-            mesh.vertices.get(t[0]),
-            mesh.vertices.get(t[1]),
-            mesh.vertices.get(t[2]),
-        ) else {
-            continue;
-        };
-        total += dot(*a, cross(*b, *c));
-    }
-    total / 6.0
+    topology(mesh).manifold
 }
 
 /// The Euler characteristic `V - E + F` of `mesh`.
 #[must_use]
 pub fn euler_characteristic(mesh: &Mesh) -> i64 {
-    let mut edges: HashSet<(usize, usize)> = HashSet::new();
-    for t in &mesh.triangles {
-        for k in 0..3 {
-            edges.insert(edge_key(t[k], t[(k + 1) % 3]));
+    topology(mesh).euler
+}
+
+#[derive(Default)]
+struct EdgeIncidence {
+    faces: usize,
+    direction: i64,
+}
+
+pub(crate) struct Topology {
+    pub(crate) closed: bool,
+    pub(crate) manifold: bool,
+    pub(crate) oriented: bool,
+    pub(crate) euler: i64,
+}
+
+/// Reads the shared edge incidence once, so callers can retain the scalar summary.
+pub(crate) fn topology(mesh: &Mesh) -> Topology {
+    let mut edges: HashMap<_, EdgeIncidence> = HashMap::new();
+    let mut valid_faces = true;
+    for &[a, b, c] in &mesh.triangles {
+        valid_faces &= a != b
+            && b != c
+            && a != c
+            && a < mesh.vertices.len()
+            && b < mesh.vertices.len()
+            && c < mesh.vertices.len();
+        for (start, end) in [(a, b), (b, c), (c, a)] {
+            let incidence = edges.entry(edge_key(start, end)).or_default();
+            incidence.faces += 1;
+            incidence.direction += if start <= end { 1 } else { -1 };
         }
     }
+    let mut closed = valid_faces && !edges.is_empty();
+    let mut manifold = valid_faces;
+    let mut oriented = true;
+    for incidence in edges.values() {
+        closed &= incidence.faces == 2;
+        manifold &= incidence.faces <= 2;
+        oriented &= incidence.direction == 0;
+    }
+    Topology {
+        closed,
+        manifold,
+        oriented: closed && oriented,
+        euler: mesh.vertices.len() as i64 - edges.len() as i64 + mesh.triangles.len() as i64,
+    }
+}
 
-    mesh.vertices.len() as i64 - edges.len() as i64 + mesh.triangles.len() as i64
+/// The signed volume enclosed by `mesh`, positive for outward-facing normals.
+#[must_use]
+pub fn signed_volume(mesh: &Mesh) -> f64 {
+    if topology(mesh).oriented {
+        closed_signed_volume(mesh)
+    } else {
+        volume_about(mesh, [0.0; 3])
+    }
+}
+
+pub(crate) fn closed_signed_volume(mesh: &Mesh) -> f64 {
+    // Translating a closed surface preserves volume and avoids cancellation
+    // between large coordinates when a small solid is far from the origin.
+    volume_about(mesh, mesh.vertices.first().copied().unwrap_or([0.0; 3]))
+}
+
+fn volume_about(
+    mesh: &Mesh,
+    origin: [f64; 3],
+) -> f64 {
+    crate::kernels::par::sum_kahan_fixed(mesh.triangles.len(), 1024, 8192, |index| {
+        let Some(&[a, b, c]) = mesh.triangles.get(index) else {
+            return 0.0;
+        };
+        let (Some(a), Some(b), Some(c)) = (
+            mesh.vertices.get(a),
+            mesh.vertices.get(b),
+            mesh.vertices.get(c),
+        ) else {
+            return 0.0;
+        };
+        dot(sub(*a, origin), cross(sub(*b, origin), sub(*c, origin)))
+    }) / 6.0
 }
 
 /// Welds vertices, returning the mesh, the merged count and the dropped count.
@@ -189,13 +221,26 @@ fn weld_impl(
             'search: for dx in -1_i64..=1 {
                 for dy in -1_i64..=1 {
                     for dz in -1_i64..=1 {
-                        let Some(list) = grid.get(&(base.0 + dx, base.1 + dy, base.2 + dz)) else {
+                        let (Some(x), Some(y), Some(z)) = (
+                            base.0.checked_add(dx),
+                            base.1.checked_add(dy),
+                            base.2.checked_add(dz),
+                        ) else {
+                            continue;
+                        };
+                        let Some(list) = grid.get(&(x, y, z)) else {
                             continue;
                         };
                         for &index in list {
                             let q = vertices[index];
                             let d = [q[0] - v[0], q[1] - v[1], q[2] - v[2]];
-                            if dot(d, d) <= limit {
+                            let in_range = if limit.is_normal() {
+                                dot(d, d) <= limit
+                            } else {
+                                let scaled = d.map(|delta| delta / tol);
+                                dot(scaled, scaled) <= 1.0
+                            };
+                            if in_range {
                                 found = Some(index);
                                 break 'search;
                             }
@@ -239,11 +284,7 @@ fn weld_impl(
         if a == b || b == c || c == a {
             continue;
         }
-        if length(cross(
-            sub(vertices[b], vertices[a]),
-            sub(vertices[c], vertices[a]),
-        )) <= 1e-14
-        {
+        if degenerate_triangle(vertices[a], vertices[b], vertices[c]) {
             continue;
         }
         triangles.push([a, b, c]);
@@ -253,6 +294,26 @@ fn weld_impl(
     let removed = mesh.triangles.len().saturating_sub(triangles.len());
 
     (Mesh { vertices, triangles }, merged, removed)
+}
+
+fn degenerate_triangle(
+    a: [f64; 3],
+    b: [f64; 3],
+    c: [f64; 3],
+) -> bool {
+    // The sine of the angle between edges is independent of coordinate units.
+    // Scale each vector before forming products so tiny triangles stay valid.
+    let scaled = |edge: [f64; 3]| {
+        let scale = edge.into_iter().map(f64::abs).fold(0.0_f64, f64::max);
+        if scale > 0.0 && scale.is_finite() {
+            edge.map(|component| component / scale)
+        } else {
+            [0.0; 3]
+        }
+    };
+    let left = scaled(sub(b, a));
+    let right = scaled(sub(c, a));
+    length(cross(left, right)) <= 1e-14
 }
 
 /// The direction in which `t` traverses the edge `key`.
@@ -356,8 +417,9 @@ fn fill_holes(mesh: &mut Mesh) -> usize {
     // adjacent existing face across `(b, a)` has normal `directed[(a, b)]`.
     let mut next: HashMap<usize, (usize, Option<[f64; 3]>)> = HashMap::new();
     for (&(a, b), &normal) in &directed {
-        if !directed.contains_key(&(b, a)) {
-            next.insert(b, (a, normal));
+        if !directed.contains_key(&(b, a)) && next.insert(b, (a, normal)).is_some() {
+            // Pinched boundary vertices do not determine a unique loop.
+            return 0;
         }
     }
     if next.is_empty() {
@@ -401,6 +463,7 @@ fn fill_holes(mesh: &mut Mesh) -> usize {
             continue;
         }
 
+        let first_new_face = mesh.triangles.len();
         if ring.len() == 3 {
             mesh.triangles.push([ring[0], ring[1], ring[2]]);
         } else if ring.len() <= DP_MAX_LOOP {
@@ -408,7 +471,11 @@ fn fill_holes(mesh: &mut Mesh) -> usize {
         } else {
             triangulate_hole_ear_clipping(&mesh.vertices, &ring, &mut mesh.triangles);
         }
-        filled += 1;
+        if mesh.triangles.len() - first_new_face == ring.len() - 2 {
+            filled += 1;
+        } else {
+            mesh.triangles.truncate(first_new_face);
+        }
     }
 
     filled

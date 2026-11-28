@@ -1265,13 +1265,7 @@ pub fn spline(
 /// Grid values are row-major, with the first axis varying fastest. Construction
 /// validates the data once and each finite query is clamped to the grid.
 #[derive(Debug)]
-pub struct BilinearGrid<'grid> {
-    xs: &'grid [f64],
-    ys: &'grid [f64],
-    grid: &'grid [f64],
-    x_bounds: (f64, f64),
-    y_bounds: (f64, f64),
-}
+pub struct BilinearGrid<'grid>(BilinearGridData<&'grid [f64]>);
 
 impl<'grid> BilinearGrid<'grid> {
     /// Prepares a grid using the same validation as [`interp2`].
@@ -1283,18 +1277,49 @@ impl<'grid> BilinearGrid<'grid> {
         ys: &'grid [f64],
         grid: &'grid [f64],
     ) -> Result<Self, InterpError> {
-        let x_bounds = checked_grid_axis(xs)?;
-        let y_bounds = checked_grid_axis(ys)?;
-        if grid.iter().any(|v| !v.is_finite()) {
+        BilinearGridData::new(xs, ys, grid).map(Self)
+    }
+
+    /// Returns one clamped interpolant without rescanning the grid.
+    ///
+    /// # Errors
+    /// Rejects non-finite coordinates.
+    pub fn eval(
+        &self,
+        x: f64,
+        y: f64,
+    ) -> Result<f64, InterpError> {
+        self.0.eval(x, y)
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct BilinearGridData<S> {
+    xs: S,
+    ys: S,
+    grid: S,
+    x_bounds: (f64, f64),
+    y_bounds: (f64, f64),
+}
+
+impl<S: AsRef<[f64]>> BilinearGridData<S> {
+    pub(crate) fn new(
+        xs: S,
+        ys: S,
+        grid: S,
+    ) -> Result<Self, InterpError> {
+        let x_bounds = checked_grid_axis(xs.as_ref())?;
+        let y_bounds = checked_grid_axis(ys.as_ref())?;
+        if grid.as_ref().iter().any(|v| !v.is_finite()) {
             return Err(InterpError::Domain(
                 "grid and queries must be finite".into(),
             ));
         }
-        let (nx, ny) = (xs.len(), ys.len());
-        if nx.checked_mul(ny) != Some(grid.len()) {
+        let (nx, ny) = (xs.as_ref().len(), ys.as_ref().len());
+        if nx.checked_mul(ny) != Some(grid.as_ref().len()) {
             return Err(InterpError::ShapeMismatch(format!(
                 "interp2 needs a {ny}x{nx} grid, found {} values",
-                grid.len()
+                grid.as_ref().len()
             )));
         }
         if nx < 2 || ny < 2 {
@@ -1311,11 +1336,7 @@ impl<'grid> BilinearGrid<'grid> {
         })
     }
 
-    /// Returns one clamped interpolant without rescanning the grid.
-    ///
-    /// # Errors
-    /// Rejects non-finite coordinates.
-    pub fn eval(
+    pub(crate) fn eval(
         &self,
         x: f64,
         y: f64,
@@ -1327,7 +1348,14 @@ impl<'grid> BilinearGrid<'grid> {
         }
         let x = x.clamp(self.x_bounds.0, self.x_bounds.1);
         let y = y.clamp(self.y_bounds.0, self.y_bounds.1);
-        evaluate_bilinear(self.xs, self.ys, self.grid, x, y).map_err(InterpError::Domain)
+        evaluate_bilinear(self.xs.as_ref(), self.ys.as_ref(), self.grid.as_ref(), x, y)
+            .map_err(InterpError::Domain)
+    }
+}
+
+impl BilinearGridData<Vec<f64>> {
+    pub(crate) fn capacity(&self) -> usize {
+        self.xs.capacity() + self.ys.capacity() + self.grid.capacity()
     }
 }
 

@@ -1,408 +1,634 @@
-//! Numerical methods for complex integral transforms.
-//!
-//! Includes Mellin and inverse Mellin transforms, Talbot, Weideman and Gaver–Stehfest Laplace
-//! inversion, Mellin–Barnes integration, the Meijer G-function, and Hilbert, Hankel, and Borel
-//! transforms.
+//! Checked finite integral transforms and inverse Laplace quadrature.
+#![allow(
+    clippy::arithmetic_side_effects,
+    reason = "floating-point formulas are checked for nonfinite estimates, with bounded order and panel counts"
+)]
 
-use crate::kernels::integrate::gauss_kronrod_any;
-use crate::kernels::special_complex;
-use crate::kernels::special_complex::gamma_complex;
-use num_complex::Complex;
 use std::f64::consts::PI;
+use std::f64::consts::TAU;
 
-fn integrate_complex_ab<F>(
-    f: F,
+use num_complex::Complex64 as C;
+
+use crate::kernels::contour_deform::ContourIntegral;
+use crate::kernels::contour_deform::ContourQuadratureError;
+use crate::kernels::contour_deform::ContourSegment;
+use crate::kernels::contour_deform::integrate_contour_checked;
+use crate::kernels::contour_deform::integrate_segment_checked;
+use crate::kernels::special_complex::bessel_j_complex;
+use crate::kernels::special_complex::ln_gamma_complex;
+
+const NAN: C = C::new(f64::NAN, f64::NAN);
+const ONE: C = C::new(1.0, 0.0);
+const ZERO: C = C::new(0.0, 0.0);
+const DEFAULT_PANELS: usize = 400;
+const FACTORIAL: [f64; 15] = [
+    1.0,
+    1.0,
+    2.0,
+    6.0,
+    24.0,
+    120.0,
+    720.0,
+    5040.0,
+    40320.0,
+    362880.0,
+    3628800.0,
+    39916800.0,
+    479001600.0,
+    6227020800.0,
+    87178291200.0,
+];
+const BOREL_SCALE: f64 = 1.0 / (1_u64 << 32) as f64;
+
+type CheckedIntegral = Result<ContourIntegral, ContourQuadratureError>;
+
+fn on_interval(
+    f: impl Fn(f64) -> C,
     a: f64,
     b: f64,
     tol: f64,
-    max_evals: usize,
-) -> Complex<f64>
-where
-    F: Fn(f64) -> Complex<f64>,
-{
-    let re = gauss_kronrod_any(|t| f(t).re, a, b, tol, max_evals).value;
-    let im = gauss_kronrod_any(|t| f(t).im, a, b, tol, max_evals).value;
-    Complex::new(re, im)
+    panels: usize,
+) -> CheckedIntegral {
+    if !a.is_finite() || !b.is_finite() || a >= b {
+        return Err(ContourQuadratureError::InvalidGeometry);
+    }
+    integrate_segment_checked(
+        |t| f(t.re),
+        ContourSegment::Line {
+            start: C::new(a, 0.0),
+            end: C::new(b, 0.0),
+        },
+        tol,
+        panels,
+    )
 }
 
-/// Numerical Mellin transform `\mathcal{M}[f](s) = \int_0^\infty x^{s-1} f(x) \, dx`
-/// via the substitution `x = e^u` (`u \in [-L, L]`).
-pub fn mellin_transform<F>(
-    f: F,
-    s: Complex<f64>,
+pub(crate) fn mellin_checked(
+    f: impl Fn(f64) -> C,
+    s: C,
     log_bound: f64,
     tol: f64,
-) -> Complex<f64>
-where
-    F: Fn(f64) -> Complex<f64>,
-{
-    integrate_complex_ab(
-        |u| {
-            let x = u.exp();
-            (s * u).exp() * f(x)
-        },
+    panels: usize,
+) -> CheckedIntegral {
+    if !(s.is_finite() && log_bound > 0.0 && log_bound.exp().is_finite()) {
+        return Err(ContourQuadratureError::InvalidGeometry);
+    }
+    on_interval(
+        |u| (s * u).exp() * f(u.exp()),
         -log_bound,
         log_bound,
         tol,
-        400,
+        panels,
     )
 }
 
-/// Numerical inverse Mellin transform
-/// $f(x) = \frac{1}{2\pi i} \int_{c - i T}^{c + i T} x^{-s} F(s) \, ds$.
-pub fn inverse_mellin_transform<F>(
-    big_f: F,
-    x: Complex<f64>,
+/// Estimates the Mellin transform on `[exp(-log_bound), exp(log_bound)]`.
+pub fn mellin_transform<F: Fn(f64) -> C>(
+    f: F,
+    s: C,
+    log_bound: f64,
+    tol: f64,
+) -> C {
+    mellin_checked(f, s, log_bound, tol, DEFAULT_PANELS).map_or(NAN, |r| r.value)
+}
+
+pub(crate) fn inverse_mellin_checked(
+    f: impl Fn(C) -> C,
+    x: C,
     c: f64,
     t_max: f64,
     tol: f64,
-) -> Complex<f64>
-where
-    F: Fn(Complex<f64>) -> Complex<f64>,
-{
-    let ln_x = x.ln();
-    let val = integrate_complex_ab(
+    panels: usize,
+) -> CheckedIntegral {
+    if !x.is_finite() || x == ZERO || !c.is_finite() {
+        return Err(ContourQuadratureError::InvalidGeometry);
+    }
+    let log_x = x.ln();
+    on_interval(
         |t| {
-            let s = Complex::new(c, t);
-            (-s * ln_x).exp() * big_f(s)
+            let s = C::new(c, t);
+            (-s * log_x).exp() * f(s) / TAU
         },
         -t_max,
         t_max,
         tol,
-        400,
-    );
-    val / (2.0 * PI)
+        panels,
+    )
 }
 
-/// Numerical Bromwich Laplace inversion using Weideman's optimal Talbot contour
-/// shifted by abscissa `sigma` (so singularities with `Re(s) < sigma` are enclosed).
-///
-/// # Errors
-///
-/// Returns an error if time is nonpositive, the shift is non-finite, or there are fewer than four quadrature points.
-pub fn bromwich_talbot_shifted<F>(
-    big_f: F,
-    t: f64,
-    sigma: f64,
-    n_pts: usize,
-) -> Result<Complex<f64>, String>
-where
-    F: Fn(Complex<f64>) -> Complex<f64>,
-{
-    if t <= 0.0 || n_pts < 4 || !sigma.is_finite() {
-        return Err("t must be positive, sigma finite, and n_pts >= 4".to_string());
-    }
-    let nf = n_pts as f64;
-    let a = 0.6407_f64;
-    let dtheta = 2.0 * PI / nf;
-    let mut sum = Complex::new(0.0, 0.0);
-    for k in 0..n_pts {
-        let theta = -PI + ((k as f64) + 0.5) * dtheta;
-        let (re_part, dre_part) = if theta.abs() < 1e-12 {
-            (-0.6122 + 0.5017 / a, 0.0)
-        } else {
-            let at = a * theta;
-            let cot = 1.0 / at.tan();
-            let csc = 1.0 / at.sin();
-            (
-                -0.6122 + 0.5017 * theta * cot,
-                0.5017 * (cot - at * csc * csc),
-            )
-        };
-        let s = Complex::new(sigma, 0.0) + Complex::new(re_part, 0.2645 * theta) * (nf / t);
-        let ds_dtheta = Complex::new(dre_part, 0.2645) * (nf / t);
-        sum += (s * t).exp() * big_f(s) * ds_dtheta;
-    }
-    Ok(sum * dtheta / Complex::new(0.0, 2.0 * PI))
+/// Estimates inverse Mellin on the vertical line segment `c + i[-t_max, t_max]`.
+pub fn inverse_mellin_transform<F: Fn(C) -> C>(
+    f: F,
+    x: C,
+    c: f64,
+    t_max: f64,
+    tol: f64,
+) -> C {
+    inverse_mellin_checked(f, x, c, t_max, tol, DEFAULT_PANELS).map_or(NAN, |r| r.value)
 }
 
-/// Numerical Bromwich Laplace inversion using Weideman's optimal Talbot contour:
-/// $f(t) = \frac{1}{2\pi i} \int_{\Gamma} e^{s t} F(s) \, ds$ for $t > 0$.
-///
-/// # Errors
-///
-/// Returns an error if time is nonpositive or there are fewer than four quadrature points.
-pub fn bromwich_talbot<F>(
-    big_f: F,
-    t: f64,
-    n_pts: usize,
-) -> Result<Complex<f64>, String>
-where
-    F: Fn(Complex<f64>) -> Complex<f64>,
-{
-    bromwich_talbot_shifted(big_f, t, 0.0, n_pts)
+#[derive(Clone, Copy)]
+pub(crate) enum LaplaceContour {
+    Talbot,
+    Parabola,
 }
 
-/// Numerical Bromwich Laplace inversion using Weideman's parabolic contour
-/// shifted by abscissa `sigma`: $s(u) = \sigma + \mu (i u + 1)^2$.
-///
-/// # Errors
-///
-/// Returns an error if time is nonpositive, the shift is non-finite, or there are fewer than four quadrature points.
-pub fn bromwich_weideman_parabola_shifted<F>(
-    big_f: F,
-    t: f64,
-    sigma: f64,
-    n_pts: usize,
-) -> Result<Complex<f64>, String>
-where
-    F: Fn(Complex<f64>) -> Complex<f64>,
-{
-    if t <= 0.0 || n_pts < 4 || !sigma.is_finite() {
-        return Err("t must be positive, sigma finite, and n_pts >= 4".to_string());
-    }
-    let half_n = n_pts / 2;
-    let half_f = half_n as f64;
-    let mu = (PI * half_f) / (12.0 * t);
-    let h = 3.0 / half_f;
-    let mut sum = Complex::new(0.0, 0.0);
-    for k in -(half_n as isize)..=(half_n as isize) {
-        let u = (k as f64) * h;
-        let w = Complex::new(1.0, u);
-        let s = Complex::new(sigma, 0.0) + w * w * mu;
-        let ds_du = Complex::new(0.0, 2.0 * mu) * w;
-        sum += (s * t).exp() * big_f(s) * ds_du;
-    }
-    Ok(sum * h / Complex::new(0.0, 2.0 * PI))
-}
-
-/// Numerical Bromwich Laplace inversion using Weideman's parabolic contour
-/// $s(u) = \mu (i u + 1)^2$ ($u \in \mathbb{R}$) for $t > 0$.
-///
-/// # Errors
-///
-/// Returns an error if time is nonpositive or there are fewer than four quadrature points.
-pub fn bromwich_weideman_parabola<F>(
-    big_f: F,
-    t: f64,
-    n_pts: usize,
-) -> Result<Complex<f64>, String>
-where
-    F: Fn(Complex<f64>) -> Complex<f64>,
-{
-    bromwich_weideman_parabola_shifted(big_f, t, 0.0, n_pts)
-}
-
-/// Gaver–Stehfest real-axis inverse Laplace transform for $t > 0$ (`m_even` in `2..=14`).
-///
-/// # Errors
-///
-/// Returns an error if time is nonpositive or the order is not even and in `2..=14`.
-pub fn gaver_stehfest_inverse_laplace<F>(
-    big_f: F,
-    t: f64,
-    m_even: usize,
-) -> Result<f64, String>
-where
-    F: Fn(f64) -> f64,
-{
-    if t <= 0.0 || m_even == 0 || !m_even.is_multiple_of(2) || m_even > 14 {
-        return Err("t must be positive and m_even must be an even integer in 2..=14".to_string());
-    }
-    let half = m_even / 2;
-    let fact = |n: usize| -> f64 {
-        let mut p = 1.0_f64;
-        for i in 2..=n {
-            p *= i as f64;
+impl LaplaceContour {
+    pub(crate) const fn samples(
+        self,
+        n: usize,
+    ) -> usize {
+        match self {
+            | Self::Talbot => n,
+            | Self::Parabola => n / 2 * 2 + 1,
         }
-        p
+    }
+}
+
+fn compensated_add<T>(
+    sum: &mut T,
+    correction: &mut T,
+    term: T,
+) where
+    T: Copy + std::ops::Sub<Output = T> + std::ops::Add<Output = T>,
+{
+    let adjusted = term - *correction;
+    let next = *sum + adjusted;
+    *correction = (next - *sum) - adjusted;
+    *sum = next;
+}
+
+pub(crate) fn invert_laplace(
+    f: impl Fn(C) -> C,
+    t: f64,
+    sigma: f64,
+    n: usize,
+    contour: LaplaceContour,
+) -> Result<C, String> {
+    if !t.is_finite() || t <= 0.0 || !sigma.is_finite() || n < 4 {
+        return Err("t must be finite and positive, sigma finite, and n_pts >= 4".into());
+    }
+    let shift = sigma * t;
+    let n_f = n as f64;
+    let (width, start, scale) = match contour {
+        | LaplaceContour::Talbot => (TAU / n_f, -PI + PI / n_f, n_f),
+        | LaplaceContour::Parabola => {
+            let half = (n / 2) as f64;
+            (3.0 / half, -3.0, PI * half / 12.0)
+        },
     };
-    let ln2_t = 2.0_f64.ln() / t;
-    let mut sum = 0.0_f64;
-    for k in 1..=m_even {
-        let j_min = k.div_ceil(2);
-        let j_max = k.min(half);
-        let mut v_k = 0.0_f64;
-        for j in j_min..=j_max {
-            let num = (j as f64).powi(half as i32) * fact(2 * j);
-            let den = fact(half - j) * fact(j) * fact(j - 1) * fact(k - j) * fact(2 * j - k);
-            let sign = if (k + half).is_multiple_of(2) {
-                1.0
-            } else {
-                -1.0
-            };
-            v_k += sign * num / den;
+    let factor = C::new(0.0, -width / TAU);
+    let mut sum = ZERO;
+    let mut correction = ZERO;
+    for k in 0..contour.samples(n) {
+        if crate::cancellation::is_cancelled() {
+            return Err("Laplace inversion cancelled".into());
         }
-        sum += v_k * big_f((k as f64) * ln2_t);
+        let u = (k as f64).mul_add(width, start);
+        let (position, tangent) = match contour {
+            | LaplaceContour::Talbot => {
+                const A: f64 = 0.6407;
+                const B: f64 = 0.5017;
+                let (ratio, slope) = if u.abs() < 1.0e-4 {
+                    // Taylor limits of u cot(Au) and its derivative at zero.
+                    let au = A * u;
+                    let square = au * au;
+                    (
+                        (1.0 - square / 3.0 - square * square / 45.0) / A,
+                        -u * A * (2.0 / 3.0 + 4.0 * square / 45.0),
+                    )
+                } else {
+                    let (sin, cos) = (A * u).sin_cos();
+                    let cot = cos / sin;
+                    let sin_squared = sin * sin;
+                    (u * cot, cot - (A * u) / sin_squared)
+                };
+                (
+                    C::new(B.mul_add(ratio, -0.6122), 0.2645 * u),
+                    C::new(B * slope, 0.2645),
+                )
+            },
+            | LaplaceContour::Parabola => {
+                let w = C::new(1.0, u);
+                (w * w, C::new(0.0, 2.0) * w)
+            },
+        };
+        let z = position * scale + shift;
+        let s = z / t;
+        if !s.is_finite() {
+            return Err("Laplace contour leaves binary64 range".into());
+        }
+        let value = f(s);
+        let term = z.exp() * (value * (scale / t)) * tangent;
+        if !term.is_finite() {
+            return Err("Laplace contour produced a nonfinite integrand".into());
+        }
+        compensated_add(&mut sum, &mut correction, term);
     }
-    Ok(ln2_t * sum)
+    let value = sum * factor;
+    if !value.is_finite() {
+        return Err("Laplace inversion leaves binary64 range".into());
+    }
+    Ok(value)
 }
 
-/// Evaluates a Mellin–Barnes integral.
+/// Inverts Laplace along the optimized truncated Talbot contour shifted by `sigma`.
 ///
-/// Evaluates a Mellin–Barnes integral
-/// `\frac{1}{2\pi i} \int_{c - iT}^{c + iT} \frac{\prod \Gamma(\alpha_j + s) \prod \Gamma(\beta_j - s)}{\prod \Gamma(\gamma_j + s) \prod \Gamma(\delta_j - s)} z^{-s} \, ds`
-/// along a slightly tilted/vertical contour `\text{Re}(s) = c`.
+/// # Errors
+/// Rejects invalid or nonfinite inputs, nonfinite evaluations and cancellation.
+pub fn bromwich_talbot_shifted<F: Fn(C) -> C>(
+    f: F,
+    t: f64,
+    sigma: f64,
+    n_pts: usize,
+) -> Result<C, String> {
+    invert_laplace(f, t, sigma, n_pts, LaplaceContour::Talbot)
+}
+
+/// Inverts Laplace with the unshifted truncated Talbot contour.
+///
+/// # Errors
+/// Rejects invalid or nonfinite inputs, nonfinite evaluations and cancellation.
+pub fn bromwich_talbot<F: Fn(C) -> C>(
+    f: F,
+    t: f64,
+    n_pts: usize,
+) -> Result<C, String> {
+    bromwich_talbot_shifted(f, t, 0.0, n_pts)
+}
+
+/// Inverts Laplace on Weideman's parabolic contour shifted by `sigma`.
+///
+/// # Errors
+/// Rejects invalid or nonfinite inputs, nonfinite evaluations and cancellation.
+pub fn bromwich_weideman_parabola_shifted<F: Fn(C) -> C>(
+    f: F,
+    t: f64,
+    sigma: f64,
+    n_pts: usize,
+) -> Result<C, String> {
+    invert_laplace(f, t, sigma, n_pts, LaplaceContour::Parabola)
+}
+
+/// Inverts Laplace on Weideman's unshifted parabolic contour.
+///
+/// # Errors
+/// Rejects invalid or nonfinite inputs, nonfinite evaluations and cancellation.
+pub fn bromwich_weideman_parabola<F: Fn(C) -> C>(
+    f: F,
+    t: f64,
+    n_pts: usize,
+) -> Result<C, String> {
+    bromwich_weideman_parabola_shifted(f, t, 0.0, n_pts)
+}
+
+/// Gaver–Stehfest real-axis inverse Laplace transform with even order 2 through 14.
+///
+/// # Errors
+/// Rejects invalid or nonfinite inputs, nonfinite evaluations and cancellation.
+pub fn gaver_stehfest_inverse_laplace<F: Fn(f64) -> f64>(
+    f: F,
+    t: f64,
+    order: usize,
+) -> Result<f64, String> {
+    if !t.is_finite() || t <= 0.0 || !(2..=14).contains(&order) || !order.is_multiple_of(2) {
+        return Err(
+            "t must be finite and positive and order must be an even integer in 2..=14".into(),
+        );
+    }
+
+    let fact = |n: usize| FACTORIAL.get(n).copied().unwrap_or(f64::NAN);
+    let half = order / 2;
+    let ln2_t = std::f64::consts::LN_2 / t;
+    let mut sum = 0.0;
+    let mut correction = 0.0;
+    for k in 1..=order {
+        if crate::cancellation::is_cancelled() {
+            return Err("Stehfest inversion cancelled".into());
+        }
+        let mut weight = 0.0;
+        for j in k.div_ceil(2)..=k.min(half) {
+            weight += (j as f64).powi(half as i32) * fact(2 * j)
+                / (fact(half - j) * fact(j) * fact(j - 1) * fact(k - j) * fact(2 * j - k));
+        }
+        let s = (k as f64) * ln2_t;
+        if !s.is_finite() {
+            return Err("Stehfest sample leaves binary64 range".into());
+        }
+        let term = weight * f(s);
+        if !term.is_finite() {
+            return Err("Stehfest inversion produced a nonfinite integrand".into());
+        }
+        let term = if (k + half).is_multiple_of(2) {
+            term
+        } else {
+            -term
+        };
+        compensated_add(&mut sum, &mut correction, term);
+    }
+    let value = ln2_t * sum;
+    if !value.is_finite() {
+        return Err("Stehfest inversion leaves binary64 range".into());
+    }
+    Ok(value)
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct MellinBarnes<'a> {
+    pub(crate) num_plus: &'a [C],
+    pub(crate) num_minus: &'a [C],
+    pub(crate) den_plus: &'a [C],
+    pub(crate) den_minus: &'a [C],
+}
+
+fn gamma_pole(real: f64) -> bool {
+    real <= 0.0 && real.fract() == 0.0
+}
+
+impl MellinBarnes<'_> {
+    pub(crate) fn integrate(
+        self,
+        z: C,
+        c: f64,
+        t_max: f64,
+        tol: f64,
+        panels: usize,
+    ) -> CheckedIntegral {
+        let Self {
+            num_plus,
+            num_minus,
+            den_plus,
+            den_minus,
+        } = self;
+        if !z.is_finite()
+            || z == ZERO
+            || !c.is_finite()
+            || num_plus
+                .iter()
+                .any(|x| !x.is_finite() || (x.im.abs() <= t_max && gamma_pole(x.re + c)))
+            || num_minus
+                .iter()
+                .any(|x| !x.is_finite() || (x.im.abs() <= t_max && gamma_pole(x.re - c)))
+            || den_plus.iter().chain(den_minus).any(|x| !x.is_finite())
+        {
+            return Err(ContourQuadratureError::InvalidGeometry);
+        }
+        let log_z = z.ln();
+        on_interval(
+            |t| {
+                let s = C::new(c, t);
+                let mut exponent = -s * log_z;
+                for &a in num_plus {
+                    exponent += ln_gamma_complex(a + s);
+                }
+                for &b in num_minus {
+                    exponent += ln_gamma_complex(b - s);
+                }
+                for arg in den_plus
+                    .iter()
+                    .map(|x| x + s)
+                    .chain(den_minus.iter().map(|x| x - s))
+                {
+                    // A denominator Gamma pole is a zero of the entire integrand.
+                    if arg.im == 0.0 && gamma_pole(arg.re) {
+                        return ZERO;
+                    }
+                    exponent -= ln_gamma_complex(arg);
+                }
+                exponent.exp() / TAU
+            },
+            -t_max,
+            t_max,
+            tol,
+            panels,
+        )
+    }
+}
+
+/// Estimates a truncated Mellin–Barnes integral on a pole-free vertical segment.
 #[allow(clippy::too_many_arguments)]
 #[must_use]
 pub fn mellin_barnes_integral(
-    num_plus: &[Complex<f64>],
-    num_minus: &[Complex<f64>],
-    den_plus: &[Complex<f64>],
-    den_minus: &[Complex<f64>],
-    z: Complex<f64>,
+    num_plus: &[C],
+    num_minus: &[C],
+    den_plus: &[C],
+    den_minus: &[C],
+    z: C,
     c: f64,
     t_max: f64,
     tol: f64,
-) -> Complex<f64> {
-    let ln_z = z.ln();
-    let val = integrate_complex_ab(
-        |t| {
-            let s = Complex::new(c, t);
-            let mut num = Complex::new(1.0, 0.0);
-            for &a in num_plus {
-                num *= gamma_complex(a + s);
-            }
-            for &b in num_minus {
-                num *= gamma_complex(b - s);
-            }
-            let mut den = Complex::new(1.0, 0.0);
-            for &g in den_plus {
-                den *= gamma_complex(g + s);
-            }
-            for &d in den_minus {
-                den *= gamma_complex(d - s);
-            }
-            (num / den) * (-s * ln_z).exp()
-        },
-        -t_max,
-        t_max,
-        tol,
-        500,
-    );
-    val / (2.0 * PI)
+) -> C {
+    MellinBarnes {
+        num_plus,
+        num_minus,
+        den_plus,
+        den_minus,
+    }
+    .integrate(z, c, t_max, tol, DEFAULT_PANELS)
+    .map_or(NAN, |estimate| estimate.value)
 }
 
-/// Evaluates the Meijer G-function.
-///
-/// Evaluates the Meijer G-function
-/// $G_{p,q}^{m,n}\left(z \middle| \begin{smallmatrix} `a_1,\dots,a_p` \\ `b_1,\dots,b_q` \end{smallmatrix}\right)$
-/// via its Mellin–Barnes contour representation along $\text{Re}(s) = c$.
-///
-/// # Errors
-///
-/// Returns an error if the numerator indices exceed the lengths of their respective parameter lists.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "The public signature follows the four Meijer G parameter groups and the contour parameters"
-)]
-pub fn meijer_g(
-    a: &[Complex<f64>],
-    b: &[Complex<f64>],
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn meijer_checked(
+    a: &[C],
+    b: &[C],
     m: usize,
     n: usize,
-    z: Complex<f64>,
+    z: C,
     c: f64,
     t_max: f64,
     tol: f64,
-) -> Result<Complex<f64>, String> {
-    if m > b.len() || n > a.len() {
-        return Err("Invalid Meijer G indices (m <= q and n <= p required)".to_string());
+    panels: usize,
+) -> CheckedIntegral {
+    let (b0, b1) = b
+        .split_at_checked(m)
+        .ok_or(ContourQuadratureError::InvalidGeometry)?;
+    let (a0, a1) = a
+        .split_at_checked(n)
+        .ok_or(ContourQuadratureError::InvalidGeometry)?;
+    let num_minus: Vec<_> = a0.iter().map(|a| ONE - a).collect();
+    if b0.iter().any(|b| b.re + c <= 0.0) || num_minus.iter().any(|a| a.re - c <= 0.0) {
+        return Err(ContourQuadratureError::InvalidGeometry);
     }
-    let one = Complex::new(1.0, 0.0);
-    // Standard convention: int (prod_{j=1}^m Gamma(b_j - s) prod_{j=1}^n Gamma(1 - a_j + s)) /
-    // (prod_{j=m+1}^q Gamma(1 - b_j + s) prod_{j=n+1}^p Gamma(a_j - s)) * z^s ds / (2*pi*i)
-    // Using s -> -s: z^{-s} with:
-    // num_plus: b_j (j < m), num_minus: 1 - a_j (j < n),
-    // den_plus: 1 - b_j (j >= m), den_minus: a_j (j >= n).
-    let num_plus: Vec<Complex<f64>> = b.iter().take(m).copied().collect();
-    let num_minus: Vec<Complex<f64>> = a.iter().take(n).map(|&ak| one - ak).collect();
-    let den_plus: Vec<Complex<f64>> = b.iter().skip(m).map(|&bk| one - bk).collect();
-    let den_minus: Vec<Complex<f64>> = a.iter().skip(n).copied().collect();
-    Ok(mellin_barnes_integral(
-        &num_plus, &num_minus, &den_plus, &den_minus, z, c, t_max, tol,
-    ))
+    let den_plus: Vec<_> = b1.iter().map(|b| ONE - b).collect();
+    MellinBarnes {
+        num_plus: b0,
+        num_minus: &num_minus,
+        den_plus: &den_plus,
+        den_minus: a1,
+    }
+    .integrate(z, c, t_max, tol, panels)
 }
 
-/// Numerical Hilbert transform $\mathcal{H}\[f\](x) = \frac{1}{\pi} \text{PV} \int_{-L}^L \frac{f(t)}{x - t} \, dt$
-/// using singularity subtraction on $[-L, L]$.
+/// Estimates Meijer G using its finite, pole-separating Mellin–Barnes contour.
 ///
 /// # Errors
-///
-/// Returns an error if the evaluation point lies outside the open integration interval.
-pub fn hilbert_transform_real<F>(
-    f: F,
-    x: f64,
-    bound_l: f64,
+/// Rejects invalid indices or contours, failed quadrature and cancellation.
+#[allow(clippy::too_many_arguments)]
+pub fn meijer_g(
+    a: &[C],
+    b: &[C],
+    m: usize,
+    n: usize,
+    z: C,
+    c: f64,
+    t_max: f64,
     tol: f64,
-) -> Result<f64, String>
-where
-    F: Fn(f64) -> f64,
-{
-    if x.abs() >= bound_l {
-        return Err("Evaluation point x must lie strictly inside (-L, L)".to_string());
-    }
-    let fx = f(x);
-    let smooth_int = gauss_kronrod_any(
-        |t: f64| {
-            let dt = x - t;
-            if dt.abs() < 1e-12 {
-                0.0
-            } else {
-                (f(t) - fx) / dt
-            }
-        },
-        -bound_l,
-        bound_l,
-        tol,
-        400,
-    )
-    .value;
-    let pv_const = fx * ((bound_l + x) / (bound_l - x)).ln();
-    Ok((smooth_int + pv_const) / PI)
+) -> Result<C, String> {
+    meijer_checked(a, b, m, n, z, c, t_max, tol, DEFAULT_PANELS)
+        .map(|estimate| estimate.value)
+        .map_err(|error| error.to_string())
 }
 
-/// Numerical Hankel transform of order `nu`:
-/// `\mathcal{H}_\nu[f](k) = \int_0^{R_{\max}} f(r) J_\nu(k r) r \, dr`.
-pub fn hankel_transform<F>(
+pub(crate) fn hilbert_checked(
+    f: impl Fn(f64) -> f64,
+    x: f64,
+    bound: f64,
+    tol: f64,
+    panels: usize,
+) -> CheckedIntegral {
+    if !bound.is_finite() || !x.is_finite() || x.abs() >= bound {
+        return Err(ContourQuadratureError::InvalidGeometry);
+    }
+    if crate::cancellation::is_cancelled() {
+        return Err(crate::kernels::quadrature::GkError::Cancelled.into());
+    }
+    let x0 = x / bound;
+    let fx = f(x);
+    if !fx.is_finite() {
+        return Err(ContourQuadratureError::InvalidGeometry);
+    }
+    let pv_const = (fx / PI) * (x0.ln_1p() - (-x0).ln_1p());
+    if !pv_const.is_finite() {
+        return Err(ContourQuadratureError::InvalidGeometry);
+    }
+    let split = C::new(x0, 0.0);
+    let mut estimate = integrate_contour_checked(
+        |u| {
+            let sample = u.re * bound;
+            let offset = x0 - u.re;
+            let v = if offset == 0.0 {
+                0.0
+            } else {
+                (f(sample) - fx) / offset / PI
+            };
+            C::new(v, 0.0)
+        },
+        &[
+            ContourSegment::Line {
+                start: -ONE,
+                end: split,
+            },
+            ContourSegment::Line {
+                start: split,
+                end: ONE,
+            },
+        ],
+        tol,
+        panels,
+    )?;
+    estimate.value.re += pv_const;
+    estimate.evaluations += 1;
+    if !estimate.value.is_finite() {
+        return Err(ContourQuadratureError::InvalidGeometry);
+    }
+    Ok(estimate)
+}
+
+/// Estimates a finite Hilbert transform by subtracting the removable singularity.
+///
+/// # Errors
+/// Rejects invalid bounds or nonfinite estimates.
+pub fn hilbert_transform_real<F: Fn(f64) -> f64>(
+    f: F,
+    x: f64,
+    bound: f64,
+    tol: f64,
+) -> Result<f64, String> {
+    hilbert_checked(f, x, bound, tol, DEFAULT_PANELS)
+        .map(|estimate| estimate.value.re)
+        .map_err(|error| error.to_string())
+}
+
+pub(crate) fn hankel_checked(
+    f: impl Fn(f64) -> C,
+    nu: f64,
+    k: f64,
+    r_max: f64,
+    tol: f64,
+    panels: usize,
+) -> CheckedIntegral {
+    if !nu.is_finite() || !k.is_finite() {
+        return Err(ContourQuadratureError::InvalidGeometry);
+    }
+    on_interval(
+        |r| f(r) * bessel_j_complex(nu, C::new(k * r, 0.0)) * r,
+        0.0,
+        r_max,
+        tol,
+        panels,
+    )
+}
+
+/// Estimates the truncated Hankel transform on the finite interval `[0, r_max]`.
+pub fn hankel_transform<F: Fn(f64) -> C>(
     f: F,
     nu: f64,
     k: f64,
     r_max: f64,
     tol: f64,
-) -> Complex<f64>
-where
-    F: Fn(f64) -> Complex<f64>,
-{
-    integrate_complex_ab(
-        |r| {
-            let j_val = special_complex::bessel_j_complex(nu, Complex::new(k * r, 0.0));
-            f(r) * j_val * r
-        },
-        0.0,
-        r_max,
-        tol,
-        400,
-    )
+) -> C {
+    hankel_checked(f, nu, k, r_max, tol, DEFAULT_PANELS).map_or(NAN, |estimate| estimate.value)
 }
 
-/// Evaluates the truncated Borel transform `B[a](t) = \sum_{n=0}^{N-1} \frac{a_n}{n!} t^n`.
+/// Evaluates the truncated Borel transform `sum(a_n t^n / n!)`.
 #[must_use]
 pub fn borel_transform_series(
-    coeffs: &[Complex<f64>],
-    t: Complex<f64>,
-) -> Complex<f64> {
-    let mut sum = Complex::new(0.0, 0.0);
-    let mut t_pow_over_fact = Complex::new(1.0, 0.0);
-    for (n, &an) in coeffs.iter().enumerate() {
-        if n > 0 {
-            t_pow_over_fact *= t / (n as f64);
-        }
-        sum += an * t_pow_over_fact;
+    coeffs: &[C],
+    t: C,
+) -> C {
+    let Some((last, coefficients)) = coeffs.split_last() else {
+        return ZERO;
+    };
+    // In the backwards recurrence the divisions telescope to n!. The large
+    // coefficients enter before division, avoiding an underflowed t^n/n!.
+    let evaluate = |scale: f64| {
+        coefficients
+            .iter()
+            .enumerate()
+            .rev()
+            .fold(*last * scale, |sum, (n, coeff)| {
+                *coeff * scale + (t / ((n + 1) as f64)) * sum
+            })
+    };
+    let direct = evaluate(1.0);
+    if direct.is_finite() {
+        return direct;
     }
-    sum
+    // An intermediate sum can overflow even when a subsequent multiplication
+    // shrinks it. Retry with an exact power-of-two coefficient scale.
+    evaluate(BOREL_SCALE) / BOREL_SCALE
 }
 
-/// Numerical Stieltjes transform `S[f](z) = int_0^{r_max} f(t) / (t + z) dt`
-/// for `z` off `(-inf, 0]`.
-pub fn stieltjes_transform<F>(
-    f: F,
-    z: Complex<f64>,
+pub(crate) fn stieltjes_checked(
+    f: impl Fn(f64) -> C,
+    z: C,
     r_max: f64,
     tol: f64,
-) -> Complex<f64>
-where
-    F: Fn(f64) -> Complex<f64>,
-{
-    integrate_complex_ab(|t| f(t) / (t + z), 0.0, r_max, tol, 400)
+    panels: usize,
+) -> CheckedIntegral {
+    if !z.is_finite() || (z.im == 0.0 && z.re <= 0.0) {
+        return Err(ContourQuadratureError::InvalidGeometry);
+    }
+    on_interval(|t| f(t) / (t + z), 0.0, r_max, tol, panels)
+}
+
+/// Estimates the finite Stieltjes transform off the principal cut `(-∞, 0]`.
+pub fn stieltjes_transform<F: Fn(f64) -> C>(
+    f: F,
+    z: C,
+    r_max: f64,
+    tol: f64,
+) -> C {
+    stieltjes_checked(f, z, r_max, tol, DEFAULT_PANELS).map_or(NAN, |estimate| estimate.value)
 }

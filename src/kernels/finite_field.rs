@@ -781,14 +781,21 @@ fn build_ntt_plan(
     if !(modulus - 1).is_multiple_of(len_u64) {
         return None;
     }
-    let group = super::number_theory::odd_prime_generator(modulus)?;
-    let mont = group.mont;
     let log_len = len.trailing_zeros();
-
-    let g_mont = mont.to_mont(group.root);
-    let omega_mont = mont.pow_mont(g_mont, (modulus - 1) / len_u64);
-    let omega_inv = mont.inv(mont.from_mont(omega_mont))?;
-    let omega_inv_mont = mont.to_mont(omega_inv);
+    let (mont, omega_mont) = if len <= 2 {
+        if !is_prime_u64(modulus) {
+            return None;
+        }
+        let mont = MontgomeryPrimeField::new(modulus)?;
+        // These plans only store the zero-th twiddle power [1].
+        (mont, mont.one_mont())
+    } else {
+        let group = super::number_theory::odd_prime_generator(modulus)?;
+        let mont = group.mont;
+        let g_mont = mont.to_mont(group.root);
+        (mont, mont.pow_mont(g_mont, (modulus - 1) / len_u64))
+    };
+    let omega_inv_mont = mont.pow_mont(omega_mont, len_u64 - 1);
 
     let half = (len / 2).max(1);
     let mut roots_mont = Vec::with_capacity(half);
@@ -802,7 +809,8 @@ fn build_ntt_plan(
         cur_inv = mont.mul_mont(cur_inv, omega_inv_mont);
     }
 
-    let n_inv = mont.inv(len_u64)?;
+    // n * ((p-1)/n) = -1 mod p.
+    let n_inv = modulus - (modulus - 1) / len_u64;
     let n_inv_mont = mont.to_mont(n_inv);
 
     let mut bit_rev = vec![0usize; len];
@@ -825,7 +833,9 @@ fn build_ntt_plan(
 }
 
 /// Looks up or constructs a cached [`NttPrimePlan`] for `(modulus, len)` in
-/// [`crate::kernels::reuse::global_pool`]'s named plan cache `"finite_field_ntt_plan"`.
+/// the shared [`crate::kernels::reuse::global_pool`].
+///
+/// Larger plans use a separate cache to preserve the small-plan working set.
 ///
 /// Returns `None` if `modulus` is not an odd prime, `len` is not a power of two,
 /// or `len` does not divide `modulus - 1`.
@@ -834,8 +844,13 @@ pub fn ntt_plan(
     modulus: u64,
     len: usize,
 ) -> Option<Arc<NttPrimePlan>> {
+    let (cache_name, capacity) = if len <= 32_768 {
+        ("finite_field_ntt_plan", 64)
+    } else {
+        ("finite_field_ntt_large_plan", 4)
+    };
     let cache = crate::kernels::reuse::global_pool()
-        .named_plan_cache::<(u64, usize), NttPrimePlan>("finite_field_ntt_plan", 64);
+        .named_plan_cache::<(u64, usize), NttPrimePlan>(cache_name, capacity);
     cache
         .try_get_or_insert_with((modulus, len), || {
             build_ntt_plan(modulus, len).map(Arc::new).ok_or(())
@@ -875,32 +890,57 @@ pub fn ntt_in_place_mont(
     } else {
         &plan.roots_mont
     };
-    let mut half_step = 1usize;
+    let mut half_step = if n == 2 {
+        let u = values[0];
+        let v = values[1];
+        values[0] = mont.add_mont(u, v);
+        values[1] = mont.sub_mont(u, v);
+        2
+    } else {
+        // Fuse the first two radix-two layers. Only one of the four output
+        // lanes needs a non-identity twiddle, and each lane loads once.
+        let quarter_turn = roots[n / 4];
+        let first_layers = |_: usize, group: &mut [u64]| {
+            for block in group.as_chunks_mut::<4>().0 {
+                let even_a = mont.add_mont(block[0], block[1]);
+                let odd_a = mont.sub_mont(block[0], block[1]);
+                let even_b = mont.add_mont(block[2], block[3]);
+                let odd_b = mont.mul_mont(mont.sub_mont(block[2], block[3]), quarter_turn);
+                block[0] = mont.add_mont(even_a, even_b);
+                block[1] = mont.add_mont(odd_a, odd_b);
+                block[2] = mont.sub_mont(even_a, even_b);
+                block[3] = mont.sub_mont(odd_a, odd_b);
+            }
+        };
+        if n >= 16_384 {
+            crate::kernels::par::for_chunks_mut(values, 4096, 4, first_layers);
+        } else {
+            first_layers(0, values);
+        }
+        4
+    };
     while half_step < n {
         let step = half_step * 2;
         let stride = (n / 2) / half_step;
-        let num_blocks = n / step;
-        if n >= 16_384 && num_blocks >= 4 {
-            crate::kernels::par::for_chunks_mut(values, step, 4, |_, block| {
-                for j in 0..half_step {
-                    let w = roots[j * stride];
-                    let u = block[j];
-                    let v = mont.mul_mont(block[j + half_step], w);
-                    block[j] = mont.add_mont(u, v);
-                    block[j + half_step] = mont.sub_mont(u, v);
-                }
-            });
+        let butterfly = |_: usize, block: &mut [u64]| {
+            let (low, high) = block.split_at_mut(half_step);
+            let u = low[0];
+            let v = high[0];
+            // Every stage uses the identity for its zero-th twiddle.
+            low[0] = mont.add_mont(u, v);
+            high[0] = mont.sub_mont(u, v);
+            for j in 1..half_step {
+                let u = low[j];
+                let v = mont.mul_mont(high[j], roots[j * stride]);
+                low[j] = mont.add_mont(u, v);
+                high[j] = mont.sub_mont(u, v);
+            }
+        };
+        if n >= 16_384 && n / step >= 4 {
+            crate::kernels::par::for_chunks_mut(values, step, 4, butterfly);
         } else {
-            let mut base = 0usize;
-            while base < n {
-                for j in 0..half_step {
-                    let w = roots[j * stride];
-                    let u = values[base + j];
-                    let v = mont.mul_mont(values[base + j + half_step], w);
-                    values[base + j] = mont.add_mont(u, v);
-                    values[base + j + half_step] = mont.sub_mont(u, v);
-                }
-                base += step;
+            for block in values.chunks_exact_mut(step) {
+                butterfly(0, block);
             }
         }
         half_step = step;
@@ -939,6 +979,8 @@ pub fn poly_mul_ntt_mod(
     b: &[u64],
     modulus: u64,
 ) -> Option<Vec<u64>> {
+    static RHS: crate::kernels::reuse::ScratchPool<u64> =
+        crate::kernels::reuse::ScratchPool::new(8, 4 * 1024 * 1024);
     if a.is_empty() || b.is_empty() {
         return Some(Vec::new());
     }
@@ -947,14 +989,13 @@ pub fn poly_mul_ntt_mod(
     let plan = ntt_plan(modulus, n)?;
     let mont = plan.mont;
 
-    let mut fa = vec![0u64; n];
-    let mut fb = vec![0u64; n];
-    for (i, &c) in a.iter().enumerate() {
-        fa[i] = mont.to_mont(c);
-    }
-    for (i, &c) in b.iter().enumerate() {
-        fb[i] = mont.to_mont(c);
-    }
+    let mut fa = Vec::with_capacity(n);
+    fa.extend(a.iter().map(|&coefficient| mont.to_mont(coefficient)));
+    fa.resize(n, 0);
+    let mut fb = RHS.checkout_for(n);
+    fb.clear();
+    fb.extend(b.iter().map(|&coefficient| mont.to_mont(coefficient)));
+    fb.resize(n, 0);
 
     if crate::execution::should_split(n, 4096) {
         rayon::join(

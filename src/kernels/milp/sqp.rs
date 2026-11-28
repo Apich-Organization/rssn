@@ -134,13 +134,18 @@ pub fn solve_sqp(
     let n = x0.len();
     let n_eq = oracle.n_eq();
     let n_ineq = oracle.n_ineq();
-    let n_con = n_eq + n_ineq;
-    let tol = if opts.tol > 0.0 {
+    let n_con = n_eq
+        .checked_add(n_ineq)
+        .ok_or("constraint count overflows")?;
+    if n == 0 || x0.iter().any(|value| !value.is_finite()) {
+        return Err("SQP requires a nonempty finite initial vector".into());
+    }
+    let tol = if opts.tol.is_finite() && opts.tol > 0.0 {
         opts.tol
     } else {
         1e-8
     };
-    let trust = if opts.trust_radius > 0.0 {
+    let trust = if opts.trust_radius.is_finite() && opts.trust_radius > 0.0 {
         opts.trust_radius
     } else {
         1e3
@@ -151,6 +156,7 @@ pub fn solve_sqp(
     let mut mult_ineq = vec![0.0; n_ineq];
     let mut iterations = 0usize;
     let mut kkt_residual = kkt(oracle, &x, &mult_eq, &mult_ineq)?;
+    let mut trial = x.clone();
 
     for _ in 0..opts.max_iter {
         if kkt_residual < tol {
@@ -167,8 +173,13 @@ pub fn solve_sqp(
         let jac = oracle.jacobian(&x);
         let rows = build_rows(&jac, n_con, n)?;
         let h = oracle.hessian(&x, &mult_eq, &mult_ineq);
-        if h.n != n {
-            return Err("hessian size does not match the iterate".to_string());
+        if h.n != n
+            || h.rows.len() != h.cols.len()
+            || h.rows.len() != h.vals.len()
+            || h.rows.iter().chain(&h.cols).any(|&index| index >= n)
+            || h.vals.iter().any(|value| !value.is_finite())
+        {
+            return Err("invalid Hessian shape, indices or nonfinite entry".into());
         }
 
         let (mut p, lam_eq, lam_ineq) =
@@ -176,6 +187,17 @@ pub fn solve_sqp(
 
         // Trust region.
         let pn = norm(&p);
+        if pn <= tol {
+            // A feasible stationary point can need a multiplier update even
+            // when there is no merit-decreasing primal step.
+            let residual = kkt(oracle, &x, &lam_eq, &lam_ineq)?;
+            if residual < tol {
+                mult_eq = lam_eq;
+                mult_ineq = lam_ineq;
+                kkt_residual = residual;
+                break;
+            }
+        }
         if pn > trust {
             let s = trust / pn;
             for v in &mut p {
@@ -183,18 +205,51 @@ pub fn solve_sqp(
             }
         }
 
-        // Backtracking line search on the L1 merit function.
-        let pen = 1.0 + max_multiplier(&lam_eq, &lam_ineq);
-        let merit0 = merit(oracle, &x, pen);
+        // Compare merit changes to the model's predicted decrease. A
+        // constant added to the objective cannot change this acceptance test.
+        let objective = oracle.objective(&x);
+        let violation = constraint_violation(&cvals, n_eq);
+        let penalty = 1.0 + max_multiplier(&lam_eq, &lam_ineq);
+        let linearized_violation = rows
+            .iter()
+            .zip(&cvals)
+            .enumerate()
+            .map(|(i, (row, &value))| {
+                let trial = value
+                    + row
+                        .iter()
+                        .map(|&(column, entry)| entry * p[column])
+                        .sum::<f64>();
+                if i < n_eq {
+                    trial.abs()
+                } else {
+                    trial.max(0.0)
+                }
+            })
+            .sum::<f64>();
+        let predicted = dot(&g, &p) + penalty * (linearized_violation - violation);
+        if !objective.is_finite() || !predicted.is_finite() || predicted >= 0.0 {
+            break;
+        }
+
         let mut alpha = 1.0;
-        let mut trial = x.clone();
         let mut accepted = false;
         for _ in 0..30 {
-            trial = x.iter().zip(&p).map(|(xi, pi)| xi + alpha * pi).collect();
-            let mt = merit(oracle, &trial, pen);
-            if mt <= merit0 - 1e-4 * alpha * merit0.abs().max(1e-12) {
-                accepted = true;
-                break;
+            for ((candidate, &current), &direction) in trial.iter_mut().zip(&x).zip(&p) {
+                *candidate = current + alpha * direction;
+            }
+            let value = oracle.objective(&trial);
+            let constraints = oracle.constraints(&trial);
+            if constraints.len() != n_con {
+                return Err("oracle returned inconsistent trial constraint dimensions".into());
+            }
+            if value.is_finite() && constraints.iter().all(|value| value.is_finite()) {
+                let change = (value - objective)
+                    + penalty * (constraint_violation(&constraints, n_eq) - violation);
+                if change <= 1e-4 * alpha * predicted {
+                    accepted = true;
+                    break;
+                }
             }
             alpha *= 0.5;
         }
@@ -202,16 +257,20 @@ pub fn solve_sqp(
             break;
         }
 
-        x = trial;
+        std::mem::swap(&mut x, &mut trial);
         mult_eq = lam_eq;
         mult_ineq = lam_ineq;
         iterations += 1;
         kkt_residual = kkt(oracle, &x, &mult_eq, &mult_ineq)?;
     }
 
+    let objective = oracle.objective(&x);
+    if !objective.is_finite() {
+        return Err("SQP objective returned a nonfinite value".into());
+    }
     Ok(SqpResult {
-        objective: oracle.objective(&x),
         x,
+        objective,
         mult_eq,
         mult_ineq,
         iterations,
@@ -423,11 +482,12 @@ fn solve_eq_qp(
         rz = rz_new;
     }
 
-    // Multipliers from the final stationarity residual.
+    // Recover multipliers for the unshifted Lagrangian. The numerical
+    // shift used in the projected CG subproblem is not part of the KKT equations.
     let lambda = if k == 0 {
         Vec::new()
     } else {
-        let hp = hvec(&p);
+        let hp = sym_matvec(h, &p);
         let gg: Vec<f64> = (0..n).map(|i| hp[i] + g[i]).collect();
         let mut au = vec![0.0; k];
         for (idx, &ai) in active.iter().enumerate() {
@@ -478,21 +538,20 @@ fn project(
 /// Factors a small dense matrix, retrying with a diagonal shift.
 fn factor_small(a: &[Vec<f64>]) -> Result<Lu, String> {
     let mat = Mat::from_rows(a).map_err(|e| e.to_string())?;
-    match dense::lu_factor(&mat) {
-        | Ok(lu) => Ok(lu),
-        | Err(_) => {
-            let mut ar = a.to_vec();
-            let mut scale = 1.0f64;
-            for (i, row) in ar.iter().enumerate() {
-                scale = scale.max(row[i].abs());
-            }
-            for (i, row) in ar.iter_mut().enumerate() {
-                row[i] += 1e-10 * scale;
-            }
-            let mat2 = Mat::from_rows(&ar).map_err(|e| e.to_string())?;
-            dense::lu_factor(&mat2).map_err(|_| "singular qp working set".to_string())
-        },
+    if let Ok(lu) = dense::lu_factor(&mat) {
+        return Ok(lu);
     }
+
+    let mut shifted = a.to_vec();
+    let mut scale = 1.0f64;
+    for (i, row) in shifted.iter().enumerate() {
+        scale = scale.max(row[i].abs());
+    }
+    for (i, row) in shifted.iter_mut().enumerate() {
+        row[i] += 1e-10 * scale;
+    }
+    let matrix = Mat::from_rows(&shifted).map_err(|error| error.to_string())?;
+    dense::lu_factor(&matrix).map_err(|_| "singular qp working set".to_string())
 }
 
 /// Sparse symmetric matrix–vector product, summing duplicate entries.
@@ -524,9 +583,7 @@ fn build_rows(
     n_con: usize,
     n: usize,
 ) -> Result<Vec<Vec<(usize, f64)>>, String> {
-    if jac.rows_n != n_con || jac.cols_n != n {
-        return Err("jacobian has the wrong shape".to_string());
-    }
+    validate_jacobian(jac, n_con, n)?;
     let mut rows = vec![Vec::new(); n_con];
     for t in 0..jac.rows.len() {
         let r = jac.rows[t];
@@ -539,24 +596,36 @@ fn build_rows(
     Ok(rows)
 }
 
-/// L1 merit function `f + pen * (sum |eq| + sum max(0, ineq))`.
-fn merit(
-    oracle: &dyn NlpOracle,
-    x: &[f64],
-    pen: f64,
-) -> f64 {
-    let f = oracle.objective(x);
-    let c = oracle.constraints(x);
-    let neq = oracle.n_eq();
-    let mut v = 0.0;
-    for (i, ci) in c.iter().enumerate() {
-        if i < neq {
-            v += ci.abs();
-        } else {
-            v += ci.max(0.0);
-        }
+fn validate_jacobian(
+    jac: &SparseMat,
+    rows: usize,
+    cols: usize,
+) -> Result<(), String> {
+    if jac.rows_n != rows
+        || jac.cols_n != cols
+        || jac.rows.len() != jac.cols.len()
+        || jac.rows.len() != jac.vals.len()
+        || jac.rows.iter().any(|&row| row >= rows)
+        || jac.cols.iter().any(|&col| col >= cols)
+        || jac.vals.iter().any(|value| !value.is_finite())
+    {
+        return Err("invalid Jacobian shape, indices or nonfinite entry".into());
     }
-    f + pen * v
+    Ok(())
+}
+
+fn constraint_violation(
+    constraints: &[f64],
+    equalities: usize,
+) -> f64 {
+    constraints[..equalities]
+        .iter()
+        .map(|value| value.abs())
+        .sum::<f64>()
+        + constraints[equalities..]
+            .iter()
+            .map(|&value| value.max(0.0))
+            .sum::<f64>()
 }
 
 fn max_multiplier(
@@ -570,7 +639,7 @@ fn max_multiplier(
     m
 }
 
-/// KKT residual: stationarity inf-norm plus constraint violation.
+/// KKT residual from stationarity, feasibility and complementarity.
 fn kkt(
     oracle: &dyn NlpOracle,
     x: &[f64],
@@ -582,10 +651,14 @@ fn kkt(
     let jac = oracle.jacobian(x);
     let n_eq = oracle.n_eq();
     let n_ineq = oracle.n_ineq();
-    let n_con = n_eq + n_ineq;
-    if g.len() != x.len() || c.len() != n_con || jac.rows_n != n_con || jac.cols_n != x.len() {
-        return Err("oracle returned inconsistent dimensions".to_string());
+    let n_con = n_eq
+        .checked_add(n_ineq)
+        .ok_or("constraint count overflows")?;
+    if g.len() != x.len() || c.len() != n_con || g.iter().chain(&c).any(|value| !value.is_finite())
+    {
+        return Err("oracle returned inconsistent dimensions or nonfinite values".into());
     }
+    validate_jacobian(&jac, n_con, x.len())?;
     let mut mu = vec![0.0; n_con];
     for i in 0..n_eq {
         mu[i] = mult_eq.get(i).copied().unwrap_or(0.0);
@@ -610,7 +683,10 @@ fn kkt(
         if i < n_eq {
             viol = viol.max(c[i].abs());
         } else {
-            viol = viol.max(c[i].max(0.0));
+            viol = viol
+                .max(c[i].max(0.0))
+                .max((-mu[i]).max(0.0))
+                .max((c[i] * mu[i]).abs());
         }
     }
     Ok(stat + viol)
@@ -629,6 +705,101 @@ fn dot(
 
 #[cfg(test)]
 mod tests {
+
+    struct OffsetQuadratic {
+        offset: f64,
+        malformed_hessian: bool,
+    }
+
+    impl NlpOracle for OffsetQuadratic {
+        fn objective(
+            &self,
+            x: &[f64],
+        ) -> f64 {
+            self.offset + (x[0] - 3.0) * (x[0] - 3.0)
+        }
+
+        fn gradient(
+            &self,
+            x: &[f64],
+        ) -> Vec<f64> {
+            vec![2.0 * (x[0] - 3.0)]
+        }
+
+        fn hessian(
+            &self,
+            _: &[f64],
+            _: &[f64],
+            _: &[f64],
+        ) -> SparseSym {
+            let vals = if self.malformed_hessian {
+                vec![]
+            } else {
+                vec![2.0]
+            };
+            SparseSym {
+                n: 1,
+                rows: vec![0],
+                cols: vec![0],
+                vals,
+            }
+        }
+
+        fn constraints(
+            &self,
+            _: &[f64],
+        ) -> Vec<f64> {
+            vec![]
+        }
+
+        fn jacobian(
+            &self,
+            _: &[f64],
+        ) -> SparseMat {
+            SparseMat {
+                rows_n: 0,
+                cols_n: 1,
+                rows: vec![],
+                cols: vec![],
+                vals: vec![],
+            }
+        }
+
+        fn n_eq(&self) -> usize {
+            0
+        }
+
+        fn n_ineq(&self) -> usize {
+            0
+        }
+    }
+
+    #[test]
+    fn line_search_is_invariant_under_an_objective_offset() {
+        let options = SqpOptions {
+            max_iter: 30,
+            tol: 1e-9,
+            trust_radius: 10.0,
+        };
+        for offset in [0.0, 1e9, -1e9] {
+            let objective = OffsetQuadratic {
+                offset,
+                malformed_hessian: false,
+            };
+            let result = solve_sqp(&objective, &[0.0], &options).unwrap();
+            assert!((result.x[0] - 3.0).abs() < 1e-8);
+            assert!(result.kkt_residual < 1e-9);
+        }
+        let malformed = OffsetQuadratic {
+            offset: 0.0,
+            malformed_hessian: true,
+        };
+        assert!(
+            solve_sqp(&malformed, &[0.0], &options)
+                .unwrap_err()
+                .contains("Hessian")
+        );
+    }
     use super::*;
 
     /// Hock–Schittkowski 1 style unconstrained problem: `(x0-1)^2 + x1^2`.

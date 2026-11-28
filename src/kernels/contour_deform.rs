@@ -8,7 +8,19 @@ use std::f64::consts::TAU;
 
 use num_complex::Complex64;
 
-use crate::kernels::integrate::gauss_kronrod_any;
+#[path = "contour_quadrature.rs"]
+mod checked;
+#[path = "contour_obstacles.rs"]
+mod obstacles;
+pub use checked::ContourIntegral;
+pub use checked::ContourQuadratureError;
+pub use checked::cauchy_principal_value_checked;
+pub use checked::integrate_contour_checked;
+pub use checked::integrate_segment_checked;
+pub use checked::residue_at_infinity_checked;
+pub(crate) use obstacles::DeformationError;
+pub(crate) use obstacles::MAX_OBSTACLES;
+pub(crate) use obstacles::deformation_checked;
 
 const I: Complex64 = Complex64::new(0.0, 1.0);
 
@@ -44,6 +56,15 @@ pub struct BranchRay {
     pub angle: f64,
 }
 
+fn legacy_tolerance(tolerance: f64) -> f64 {
+    // The historical tolerance applied to each scalar component.
+    if tolerance.is_finite() && tolerance >= 0.0 {
+        (2.0 * tolerance.min(f64::MAX * 0.5)).max(f64::MIN_POSITIVE)
+    } else {
+        tolerance
+    }
+}
+
 /// Integrates `f(z)` along a single [`ContourSegment`] using adaptive Gauss-Kronrod.
 pub fn integrate_segment<F>(
     f: &F,
@@ -53,38 +74,13 @@ pub fn integrate_segment<F>(
 where
     F: Fn(Complex64) -> Complex64,
 {
-    match seg {
-        | ContourSegment::Line { start, end } => {
-            let dz = end - start;
-            if dz.norm() == 0.0 {
-                return Complex64::new(0.0, 0.0);
-            }
-            let re = gauss_kronrod_any(|t| (f(start + dz * t) * dz).re, 0.0, 1.0, tol, 24).value;
-            let im = gauss_kronrod_any(|t| (f(start + dz * t) * dz).im, 0.0, 1.0, tol, 24).value;
-            Complex64::new(re, im)
-        },
-        | ContourSegment::Arc {
-            center,
-            radius,
-            theta0,
-            theta1,
-        } => {
-            let dtheta = theta1 - theta0;
-            if dtheta.abs() == 0.0 || radius <= 0.0 {
-                return Complex64::new(0.0, 0.0);
-            }
-            let eval_integrand = |t: f64| {
-                let theta = theta0 + dtheta * t;
-                let dir = Complex64::from_polar(1.0, theta);
-                let z = center + radius * dir;
-                let dz_dt = I * radius * dtheta * dir;
-                f(z) * dz_dt
-            };
-            let re = gauss_kronrod_any(|t| eval_integrand(t).re, 0.0, 1.0, tol, 24).value;
-            let im = gauss_kronrod_any(|t| eval_integrand(t).im, 0.0, 1.0, tol, 24).value;
-            Complex64::new(re, im)
-        },
+    if let ContourSegment::Arc { radius, .. } = seg
+        && radius <= 0.0
+    {
+        return Complex64::ZERO;
     }
+    integrate_segment_checked(f, seg, legacy_tolerance(tol), 24)
+        .map_or(Complex64::new(f64::NAN, f64::NAN), |result| result.value)
 }
 
 /// Integrates `f(z)` along a sequence of [`ContourSegment`]s.
@@ -343,39 +339,11 @@ pub fn sector_contour(
     ]
 }
 
-/// Checks if segment `[a, b]` intersects ray `origin + r * exp(i * angle)` (`r >= 0`).
-fn segment_hits_ray(
-    a: Complex64,
-    b: Complex64,
-    ray: BranchRay,
-) -> bool {
-    let d = b - a;
-    let dir = Complex64::from_polar(1.0, ray.angle);
-    // Solve a + t*d = origin + s*dir => cross(d, dir) * t = cross(origin - a, dir)
-    let cross_dd = d.re * dir.im - d.im * dir.re;
-    let diff = ray.origin - a;
-    if cross_dd.abs() < 1e-13 {
-        // Collinear check: distance from ray.origin to line(a, b) < 1e-11
-        let len = d.norm();
-        if len == 0.0 {
-            return false;
-        }
-        let cross_line = (diff.re * d.im - diff.im * d.re).abs() / len;
-        if cross_line > 1e-11 {
-            return false;
-        }
-        // Overlap between segment [0, 1] and ray s >= 0
-        let proj_a = (a.re - ray.origin.re) * dir.re + (a.im - ray.origin.im) * dir.im;
-        let proj_b = (b.re - ray.origin.re) * dir.re + (b.im - ray.origin.im) * dir.im;
-        return proj_a.max(proj_b) >= 0.0;
-    }
-    let t = (diff.re * dir.im - diff.im * dir.re) / cross_dd;
-    let s = (diff.re * d.im - diff.im * d.re) / cross_dd;
-    t > 0.0 && t < 1.0 && s >= 0.0
-}
-
-/// Deforms the straight path `[start, end]` around nearby `poles` and crossed
-/// `BranchRay`s by inserting circular detour arcs of radius `clearance`.
+/// Returns an oriented path avoiding the supplied branch rays and maintaining
+/// the given distance from poles.
+///
+/// A direct path is reused when it is clear. An empty result means that
+/// the bounded construction could not verify a path.
 #[must_use]
 pub fn deform_path_around_obstacles(
     start: Complex64,
@@ -384,87 +352,13 @@ pub fn deform_path_around_obstacles(
     cuts: &[BranchRay],
     clearance: f64,
 ) -> Vec<ContourSegment> {
-    let d = end - start;
-    let len = d.norm();
-    if len == 0.0 || clearance <= 0.0 {
-        return vec![ContourSegment::Line { start, end }];
-    }
-    let unit = d / len;
-    let mut obstacles: Vec<(f64, Complex64, bool)> = Vec::new();
-
-    for &p in poles {
-        let rel = p - start;
-        let proj = rel.re * unit.re + rel.im * unit.im;
-        let perp = rel.re * unit.im - rel.im * unit.re;
-        if proj > 0.0 && proj < len && perp.abs() < clearance {
-            obstacles.push((proj, p, perp >= 0.0));
-        }
-    }
-    for &ray in cuts {
-        if segment_hits_ray(start, end, ray) {
-            let rel = ray.origin - start;
-            let proj = (rel.re * unit.re + rel.im * unit.im)
-                .clamp(clearance, (len - clearance).max(clearance));
-            // Detour around the branch point origin on the side opposite the ray direction.
-            let dir = Complex64::from_polar(1.0, ray.angle);
-            let side = (dir.re * unit.im - dir.im * unit.re) < 0.0;
-            obstacles.push((proj, ray.origin, side));
-        }
-    }
-
-    if obstacles.is_empty() {
-        return vec![ContourSegment::Line { start, end }];
-    }
-    obstacles.sort_by(|a, b| a.0.total_cmp(&b.0));
-
-    let mut segs = Vec::new();
-    let mut cur = start;
-    let mut cur_proj = 0.0_f64;
-    let line_angle = d.arg();
-    for (proj, center, detour_right) in obstacles {
-        let rel = center - start;
-        let perp = rel.re * unit.im - rel.im * unit.re;
-        let dx = (clearance * clearance - perp * perp).max(0.0).sqrt();
-        let p_in = (proj - dx).max(0.0);
-        let p_out = (proj + dx).min(len);
-        if p_in <= cur_proj + 1e-12 || p_out <= p_in + 1e-12 {
-            continue;
-        }
-        let entry_pt = start + unit * p_in;
-        let exit_pt = start + unit * p_out;
-        segs.push(ContourSegment::Line {
-            start: cur,
-            end: entry_pt,
-        });
-        let a_in = (entry_pt - center).arg();
-        let mut a_out = (exit_pt - center).arg();
-        if detour_right {
-            while a_out <= a_in {
-                a_out += TAU;
-            }
-        } else {
-            while a_out >= a_in {
-                a_out -= TAU;
-            }
-        }
-        let _ = line_angle;
-        segs.push(ContourSegment::Arc {
-            center,
-            radius: clearance,
-            theta0: a_in,
-            theta1: a_out,
-        });
-        cur = exit_pt;
-        cur_proj = p_out;
-    }
-    if (end - cur).norm() > 1e-12 {
-        segs.push(ContourSegment::Line { start: cur, end });
-    }
-    segs
+    deformation_checked(start, end, poles, cuts, clearance).unwrap_or_default()
 }
 
-/// Integrates `f(z)` from `start` to `end` along an automatically deformed path
-/// avoiding `poles` and `cuts` by at least `clearance`.
+/// Integrates an automatically deformed contour from `start` to `end`.
+///
+/// Returns complex NaN if the geometry cannot be verified or quadrature does
+/// not converge. The numerical ABI also exposes checked error and work data.
 pub fn integrate_deformed<F>(
     f: &F,
     start: Complex64,
@@ -477,8 +371,17 @@ pub fn integrate_deformed<F>(
 where
     F: Fn(Complex64) -> Complex64,
 {
-    let segs = deform_path_around_obstacles(start, end, poles, cuts, clearance);
-    integrate_contour(f, &segs, tol)
+    let nan = Complex64::new(f64::NAN, f64::NAN);
+    let Ok(path) = deformation_checked(start, end, poles, cuts, clearance) else {
+        return nan;
+    };
+    integrate_contour_checked(f, &path, tol, 4096).map_or(nan, |estimate| {
+        if estimate.converged {
+            estimate.value
+        } else {
+            nan
+        }
+    })
 }
 
 /// Numerical residue at infinity: `Res_{z=oo} f(z) = -1/(2*pi*i) * oint_{|z|=R} f(z) dz`.
@@ -518,34 +421,9 @@ where
     interior.sort_by(f64::total_cmp);
     interior.dedup_by(|x, y| (*x - *y).abs() < 1e-12);
 
-    if interior.is_empty() {
-        let re = gauss_kronrod_any(|x| f(x).re, a, b, tol, 24).value;
-        let im = gauss_kronrod_any(|x| f(x).im, a, b, tol, 24).value;
-        return Complex64::new(re, im);
-    }
-
-    let mut total = Complex64::new(0.0, 0.0);
-    let mut cur = a;
-    for (idx, &p) in interior.iter().enumerate() {
-        let right_bound = interior
-            .get(idx + 1)
-            .map_or(b, |&next| f64::midpoint(p, next));
-        let delta = (p - cur).min(right_bound - p);
-        if p - delta > cur {
-            let re = gauss_kronrod_any(|x| f(x).re, cur, p - delta, tol, 24).value;
-            let im = gauss_kronrod_any(|x| f(x).im, cur, p - delta, tol, 24).value;
-            total += Complex64::new(re, im);
-        }
-        // Symmetric folded integral on [0, delta]
-        let re_fold = gauss_kronrod_any(|t| (f(p + t) + f(p - t)).re, 0.0, delta, tol, 24).value;
-        let im_fold = gauss_kronrod_any(|t| (f(p + t) + f(p - t)).im, 0.0, delta, tol, 24).value;
-        total += Complex64::new(re_fold, im_fold);
-        cur = p + delta;
-    }
-    if b > cur {
-        let re = gauss_kronrod_any(|x| f(x).re, cur, b, tol, 24).value;
-        let im = gauss_kronrod_any(|x| f(x).im, cur, b, tol, 24).value;
-        total += Complex64::new(re, im);
-    }
-    total
+    let panels = 24_usize
+        .saturating_mul(2_usize.saturating_mul(interior.len()).saturating_add(1))
+        .min(4096);
+    cauchy_principal_value_checked(f, a, b, &interior, legacy_tolerance(tol), panels)
+        .map_or(Complex64::new(f64::NAN, f64::NAN), |result| result.value)
 }

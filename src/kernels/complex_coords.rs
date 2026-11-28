@@ -8,7 +8,8 @@ use std::f64::consts::TAU;
 
 use num_complex::Complex64;
 
-/// Polar coordinates `(r, theta)` with `r = |z|` and `theta = arg(z) in (-pi, pi]`.
+/// Polar coordinates `(r, theta)` with `r = |z|` and the signed principal angle.
+/// On the negative real axis, signed zero distinguishes the two lips at ±π.
 #[must_use]
 pub fn to_polar(z: Complex64) -> (f64, f64) {
     (z.norm(), z.arg())
@@ -16,7 +17,10 @@ pub fn to_polar(z: Complex64) -> (f64, f64) {
 
 /// Reconstructs `r * exp(i * theta)`.
 #[must_use]
-pub fn from_polar(r: f64, theta: f64) -> Complex64 {
+pub fn from_polar(
+    r: f64,
+    theta: f64,
+) -> Complex64 {
     Complex64::from_polar(r, theta)
 }
 
@@ -37,28 +41,32 @@ pub const fn abs_sq(z: Complex64) -> f64 {
 /// Complex signum `z / |z|`, or `0` if `z == 0`.
 #[must_use]
 pub fn sign_complex(z: Complex64) -> Complex64 {
-    let r = z.norm();
-    if r == 0.0 || !r.is_finite() {
-        if z.re.is_infinite() || z.im.is_infinite() {
-            let re = if z.re.is_infinite() {
+    let magnitude = z.norm();
+    if magnitude.is_normal() {
+        return z / magnitude;
+    }
+    let scale = z.re.abs().max(z.im.abs());
+    let direction = if z.is_finite() && scale > 0.0 {
+        // Normalize before dividing by the norm. The true norm may be more
+        // than Float::MAX, or be rounded coarsely in the subnormal range.
+        z / scale
+    } else if z.re.is_infinite() || z.im.is_infinite() {
+        Complex64::new(
+            if z.re.is_infinite() {
                 z.re.signum()
             } else {
                 0.0
-            };
-            let im = if z.im.is_infinite() {
+            },
+            if z.im.is_infinite() {
                 z.im.signum()
             } else {
                 0.0
-            };
-            let dir = Complex64::new(re, im);
-            let n = dir.norm();
-            if n > 0.0 {
-                return dir / n;
-            }
-        }
+            },
+        )
+    } else {
         return Complex64::new(0.0, 0.0);
-    }
-    z / r
+    };
+    direction / direction.norm()
 }
 
 /// Stereographic projection from `C` to the unit Riemann sphere `S^2`.
@@ -87,7 +95,11 @@ pub fn to_riemann_sphere(z: Complex64) -> (f64, f64, f64) {
 /// Inverse stereographic projection from `S^2` to `C`.
 /// Returns `None` at the north pole `(0, 0, 1)` (infinity).
 #[must_use]
-pub fn from_riemann_sphere(x: f64, y: f64, z: f64) -> Option<Complex64> {
+pub fn from_riemann_sphere(
+    x: f64,
+    y: f64,
+    z: f64,
+) -> Option<Complex64> {
     if !x.is_finite() || !y.is_finite() || !z.is_finite() {
         return None;
     }
@@ -104,7 +116,10 @@ pub fn from_riemann_sphere(x: f64, y: f64, z: f64) -> Option<Complex64> {
 /// `2 * |z1 - z2| / sqrt((1 + |z1|^2) * (1 + |z2|^2))`.
 /// Overflow-safe for large moduli.
 #[must_use]
-pub fn chordal_distance(z1: Complex64, z2: Complex64) -> f64 {
+pub fn chordal_distance(
+    z1: Complex64,
+    z2: Complex64,
+) -> f64 {
     let p1 = to_riemann_sphere(z1);
     let p2 = to_riemann_sphere(z2);
     let dx = p1.0 - p2.0;
@@ -131,7 +146,10 @@ pub fn spherical_metric_factor(z: Complex64) -> f64 {
     2.0 / (1.0 + abs_sq(z))
 }
 
-fn divide_chart_coordinates(numerator: Complex64, denominator: Complex64) -> Option<Complex64> {
+fn divide_chart_coordinates(
+    numerator: Complex64,
+    denominator: Complex64,
+) -> Option<Complex64> {
     use crate::kernels::complex_scalar::Complex;
 
     if denominator == Complex64::new(0.0, 0.0) {
@@ -187,7 +205,13 @@ pub(crate) fn poincare_disk_gap(z: Complex64) -> f64 {
     clippy::single_call_fn,
     reason = "keeps compensated work off the ordinary chart path"
 )]
-fn disk_gap_near_circle(z: Complex64, re_sq: f64, im_sq: f64, norm_sq: f64, gap: f64) -> f64 {
+fn disk_gap_near_circle(
+    z: Complex64,
+    re_sq: f64,
+    im_sq: f64,
+    norm_sq: f64,
+    gap: f64,
+) -> f64 {
     use crate::kernels::dd::Dd;
 
     // A nonzero component next to an exact unit component is exterior,
@@ -224,7 +248,10 @@ fn disk_gap_near_circle(z: Complex64, re_sq: f64, im_sq: f64, norm_sq: f64, gap:
 
 /// Hyperbolic distance in the Poincaré unit disk `|z| < 1`.
 #[must_use]
-pub fn poincare_disk_distance(z1: Complex64, z2: Complex64) -> Option<f64> {
+pub fn poincare_disk_distance(
+    z1: Complex64,
+    z2: Complex64,
+) -> Option<f64> {
     let gap1 = poincare_disk_gap(z1);
     let gap2 = poincare_disk_gap(z2);
     if !(gap1 > 0.0 && gap2 > 0.0) {
@@ -238,7 +265,10 @@ pub fn poincare_disk_distance(z1: Complex64, z2: Complex64) -> Option<f64> {
 
 /// Hyperbolic distance in the upper half-plane `Im(z) > 0`.
 #[must_use]
-pub fn uhp_distance(z1: Complex64, z2: Complex64) -> Option<f64> {
+pub fn uhp_distance(
+    z1: Complex64,
+    z2: Complex64,
+) -> Option<f64> {
     if !z1.is_finite() || !z2.is_finite() || z1.im <= 0.0 || z2.im <= 0.0 {
         return None;
     }
@@ -270,7 +300,10 @@ pub fn uhp_distance(z1: Complex64, z2: Complex64) -> Option<f64> {
 
 /// Argument of `z` in `(theta0, theta0 + 2*pi]`, placing the branch cut along ray `theta0`.
 #[must_use]
-pub fn arg_branch(z: Complex64, theta0: f64) -> f64 {
+pub fn arg_branch(
+    z: Complex64,
+    theta0: f64,
+) -> f64 {
     let a = z.arg();
     let mut shifted = (a - theta0).rem_euclid(TAU);
     if shifted == 0.0 {
@@ -281,44 +314,64 @@ pub fn arg_branch(z: Complex64, theta0: f64) -> f64 {
 
 /// Logarithm `ln|z| + i * arg_branch(z, theta0)` with branch cut along ray `theta0`.
 #[must_use]
-pub fn log_cut(z: Complex64, theta0: f64) -> Complex64 {
+pub fn log_cut(
+    z: Complex64,
+    theta0: f64,
+) -> Complex64 {
     Complex64::new(z.norm().ln(), arg_branch(z, theta0))
 }
 
 /// Square root `sqrt(|z|) * cis(arg_branch(z, theta0) / 2)` with branch cut along ray `theta0`.
 #[must_use]
-pub fn sqrt_cut(z: Complex64, theta0: f64) -> Complex64 {
+pub fn sqrt_cut(
+    z: Complex64,
+    theta0: f64,
+) -> Complex64 {
     Complex64::from_polar(z.norm().sqrt(), 0.5 * arg_branch(z, theta0))
 }
 
 /// Complex power `exp(w * log_cut(z, theta0))` with branch cut along ray `theta0`.
 #[must_use]
-pub fn pow_cut(z: Complex64, w: Complex64, theta0: f64) -> Complex64 {
+pub fn pow_cut(
+    z: Complex64,
+    w: Complex64,
+    theta0: f64,
+) -> Complex64 {
     (w * log_cut(z, theta0)).exp()
 }
 
+// Keeping the wrapped angle and the integer number of turns separate avoids
+// reducing an ever larger accumulated angle after each sample.
+fn phase_sequence(samples: &[Complex64]) -> impl Iterator<Item = f64> + '_ {
+    let mut previous = 0.0;
+    let mut turns = 0.0_f64;
+    samples.iter().enumerate().map(move |(index, point)| {
+        let angle = point.arg();
+        let delta = angle - previous;
+        if index != 0 {
+            if delta <= -PI {
+                turns += 1.0;
+            } else if delta > PI {
+                turns -= 1.0;
+            }
+        }
+        if angle.is_nan() {
+            turns = f64::NAN;
+        }
+        previous = angle;
+        if turns == 0.0 {
+            angle
+        } else {
+            turns.mul_add(TAU, angle)
+        }
+    })
+}
+
 /// Unwraps the phase `arg(samples[k])` continuously along a sampled path.
+/// The increment convention is `(-π, π]`.
 #[must_use]
 pub fn unwrap_phase(samples: &[Complex64]) -> Vec<f64> {
-    let mut out = Vec::with_capacity(samples.len());
-    let Some(&first) = samples.first() else {
-        return out;
-    };
-    let mut prev = first.arg();
-    out.push(prev);
-    for &z in samples.iter().skip(1) {
-        let raw = z.arg();
-        let mut delta = raw - (prev.rem_euclid(TAU));
-        while delta <= -PI {
-            delta += TAU;
-        }
-        while delta > PI {
-            delta -= TAU;
-        }
-        prev += delta;
-        out.push(prev);
-    }
-    out
+    phase_sequence(samples).collect()
 }
 
 /// Tracks a continuous branch of `z^(1/n)` along `points` starting on `initial_branch`.
@@ -328,16 +381,29 @@ pub fn analytic_continuation_root(
     n: u32,
     initial_branch: i32,
 ) -> Vec<Complex64> {
-    if n == 0 || points.is_empty() {
+    if n == 0 {
         return Vec::new();
     }
-    let phases = unwrap_phase(points);
-    let nf = f64::from(n);
-    let offset = TAU * f64::from(initial_branch);
+    if n == 1 {
+        return points.to_vec();
+    }
+    let degree = f64::from(n);
+    let inv_degree = degree.recip();
+    let branch = i64::from(initial_branch).rem_euclid(i64::from(n));
+    let offset = TAU * f64::from(u32::try_from(branch).unwrap_or_default()) * inv_degree;
     points
         .iter()
-        .zip(phases.iter())
-        .map(|(z, &phi)| Complex64::from_polar(z.norm().powf(1.0 / nf), (phi + offset) / nf))
+        .zip(phase_sequence(points))
+        .map(|(&point, phase)| {
+            let magnitude = point.norm();
+            let scale = point.re.abs().max(point.im.abs());
+            let radius = if magnitude.is_normal() || !point.is_finite() || scale == 0.0 {
+                magnitude.powf(inv_degree)
+            } else {
+                scale.powf(inv_degree) * (point / scale).norm().powf(inv_degree)
+            };
+            Complex64::from_polar(radius, phase.mul_add(inv_degree, offset))
+        })
         .collect()
 }
 
@@ -358,15 +424,6 @@ pub struct RiemannSurfaceInfo {
     pub genus: usize,
 }
 
-const fn gcd_usize(mut a: usize, mut b: usize) -> usize {
-    while b != 0 {
-        let t = a % b;
-        a = b;
-        b = t;
-    }
-    a
-}
-
 /// Topological invariants for a hyperelliptic curve `w^2 = prod_{k=1}^d (z - r_k)`
 /// assuming the `roots` are distinct.
 #[must_use]
@@ -374,8 +431,12 @@ pub fn algebraic_riemann_surface_hyperelliptic(roots: &[Complex64]) -> RiemannSu
     algebraic_riemann_surface_superelliptic(roots, 2)
 }
 
-/// Topological invariants for a superelliptic curve `w^n = prod_{k=1}^d (z - r_k)`
-/// deduplicating roots within `1e-12` (so repeated roots do not inflate genus).
+/// Topological invariants for a superelliptic curve `w^n = prod_{k=1}^d (z - r_k)`.
+///
+/// Roots within `1e-12` count once when computing the genus.
+/// The generators use positive local loops, including a loop in the coordinate
+/// `1/z` at infinity. The finite permutations followed by the infinity
+/// permutation compose to the identity.
 #[must_use]
 pub fn algebraic_riemann_surface_superelliptic(
     roots: &[Complex64],
@@ -384,7 +445,10 @@ pub fn algebraic_riemann_surface_superelliptic(
     let n = n.max(2);
     let mut distinct: Vec<Complex64> = Vec::with_capacity(roots.len());
     for &r in roots {
-        if !distinct.iter().any(|&u| (u - r).norm() < 1e-12) {
+        if !distinct.iter().any(|&u| {
+            let difference = (u - r) / 1e-12;
+            difference.norm_sqr() < 1.0
+        }) {
             distinct.push(r);
         }
     }
@@ -399,7 +463,7 @@ pub fn algebraic_riemann_surface_superelliptic(
             genus: 0,
         };
     }
-    let g_nd = gcd_usize(n, d);
+    let g_nd = num_integer::gcd(n, d);
     let inf_cycle_len = n / g_nd;
     let has_branch_at_infinity = inf_cycle_len > 1;
 
@@ -418,8 +482,13 @@ pub fn algebraic_riemann_surface_superelliptic(
         total_ramification = total_ramification.saturating_add(n.saturating_sub(g_nd));
 
         let mut inf_perm = vec![0_usize; n];
+        let shift = (n - d % n) % n;
         for (idx, slot) in inf_perm.iter_mut().enumerate() {
-            *slot = (idx + d) % n;
+            *slot = if idx < n - shift {
+                idx + shift
+            } else {
+                idx - (n - shift)
+            };
         }
         monodromy_generators.push(inf_perm);
     }
@@ -439,218 +508,272 @@ pub fn algebraic_riemann_surface_superelliptic(
     }
 }
 
-/// Evaluates `P(z, w) = sum_{j=0}^n c_j(z) w^j` and `dP/dw(z, w)`, where
-/// `poly_coeffs_in_w[j]` is `[a_0, a_1, ...]` for `c_j(z) = sum_k a_k z^k`.
-fn eval_bivariate_and_dw(
-    poly_coeffs_in_w: &[Vec<Complex64>],
+fn fiber_coefficients(
+    polynomials: &[Vec<Complex64>],
     z: Complex64,
-    w: Complex64,
-) -> (Complex64, Complex64) {
-    let eval_c = |coeffs: &[Complex64]| -> Complex64 {
-        let mut acc = Complex64::new(0.0, 0.0);
-        for &c in coeffs.iter().rev() {
-            acc = acc * z + c;
-        }
-        acc
-    };
-    let mut p_val = Complex64::new(0.0, 0.0);
-    let mut dp_val = Complex64::new(0.0, 0.0);
-    for (j, coeffs) in poly_coeffs_in_w.iter().enumerate().rev() {
-        let cj = eval_c(coeffs);
-        if j < poly_coeffs_in_w.len().saturating_sub(1) {
-            dp_val = dp_val * w + p_val;
-        }
-        p_val = p_val * w + cj;
-    }
-    (p_val, dp_val)
-}
-
-/// Solves univariate `P(z, w) = 0` for `w` via Aberth-Ehrlich.
-fn aberth_solve_fiber(poly_coeffs_in_w: &[Vec<Complex64>], z: Complex64) -> Option<Vec<Complex64>> {
-    let deg = poly_coeffs_in_w.len().checked_sub(1)?;
-    if deg == 0 {
+) -> Option<crate::kernels::reuse::Scratch<'static, Complex64>> {
+    let mut coefficients = crate::kernels::reuse::fft_scratch_for(polynomials.len());
+    coefficients.extend(polynomials.iter().map(|row| {
+        row.iter()
+            .rev()
+            .fold(Complex64::ZERO, |tail, &term| tail * z + term)
+    }));
+    let scale = coefficients.iter().fold(0.0_f64, |acc, value| {
+        acc.max(value.re.abs()).max(value.im.abs())
+    });
+    if !scale.is_finite() || scale <= 0.0 || coefficients.iter().any(|value| !value.is_finite()) {
         return None;
     }
-    let mut roots = Vec::with_capacity(deg);
-    for k in 0..deg {
-        let angle = TAU * (k as f64 + 0.13) / (deg as f64);
-        roots.push(Complex64::from_polar(1.5 + 0.1 * (k as f64), angle));
+    for coefficient in coefficients.iter_mut() {
+        *coefficient /= scale;
     }
-    for _ in 0..120 {
-        let mut max_step = 0.0_f64;
-        for i in 0..deg {
-            let &wi = roots.get(i)?;
-            let (p, dp) = eval_bivariate_and_dw(poly_coeffs_in_w, z, wi);
-            if p.norm() < 1e-13 {
-                continue;
-            }
-            if dp.norm() < 1e-30 {
-                continue;
-            }
-            let ratio = p / dp;
-            let mut sum_inv = Complex64::new(0.0, 0.0);
-            for (j, &wj) in roots.iter().enumerate() {
-                if i != j {
-                    let diff = wi - wj;
-                    if diff.norm() > 1e-30 {
-                        sum_inv += Complex64::new(1.0, 0.0) / diff;
-                    }
-                }
-            }
-            let denom = Complex64::new(1.0, 0.0) - ratio * sum_inv;
-            if denom.norm() < 1e-30 {
-                continue;
-            }
-            let delta = ratio / denom;
-            if let Some(slot) = roots.get_mut(i) {
-                *slot -= delta;
-            }
-            max_step = max_step.max(delta.norm());
-        }
-        if max_step < 1e-13 {
-            break;
-        }
+    if coefficients
+        .last()
+        .is_none_or(|&value| value == Complex64::ZERO)
+    {
+        return None;
     }
-    Some(roots)
+    Some(coefficients)
 }
 
-/// Returns the monodromy permutation of `P(z, w) = 0` along a closed loop.
+fn fiber_value(
+    coefficients: &[Complex64],
+    w: Complex64,
+) -> Option<(Complex64, Complex64, f64)> {
+    let radius = w.norm();
+    let mut value = Complex64::ZERO;
+    let mut derivative = Complex64::ZERO;
+    let mut bound: f64 = 0.0;
+    for &term in coefficients.iter().rev() {
+        derivative = derivative * w + value;
+        value = value * w + term;
+        bound = bound.mul_add(radius, term.norm());
+    }
+    (value.is_finite() && derivative.is_finite() && bound.is_finite())
+        .then_some((value, derivative, bound))
+}
+
+fn tracking_divide(
+    a: Complex64,
+    b: Complex64,
+) -> Complex64 {
+    use crate::kernels::complex_scalar::Complex;
+    let ratio = Complex::new(a.re, a.im).div(Complex::new(b.re, b.im));
+    Complex64::new(ratio.re, ratio.im)
+}
+
+fn minimum_separation(roots: &[Complex64]) -> f64 {
+    roots
+        .iter()
+        .enumerate()
+        .map(|(i, root)| {
+            roots
+                .iter()
+                .skip(i + 1)
+                .map(|other| (other - root).norm())
+                .fold(f64::INFINITY, f64::min)
+        })
+        .fold(f64::INFINITY, f64::min)
+}
+
+fn continue_fiber(
+    coefficients: &[Complex64],
+    roots: &[Complex64],
+) -> Option<Vec<Complex64>> {
+    if let [constant, linear, quadratic] = coefficients
+        && *linear == Complex64::ZERO
+        && let [old_first, old_second] = roots
+    {
+        let root = tracking_divide(-constant, *quadratic).sqrt();
+        if !root.is_finite() {
+            return None;
+        }
+        let direct = (root - old_first).norm_sqr() + (-root - old_second).norm_sqr();
+        let reverse = (-root - old_first).norm_sqr() + (root - old_second).norm_sqr();
+        return if direct <= reverse {
+            Some(vec![root, -root])
+        } else {
+            Some(vec![-root, root])
+        };
+    }
+    let mut next = roots.to_vec();
+    for root in &mut next {
+        for _ in 0..16 {
+            let (p, dp, bound) = fiber_value(coefficients, *root)?;
+            if p.norm() <= 1e-13 * bound {
+                break;
+            }
+            if dp == Complex64::ZERO {
+                return None;
+            }
+            *root -= tracking_divide(p, dp);
+        }
+        let (p, _, bound) = fiber_value(coefficients, *root)?;
+        if p.norm() > 1e-11 * bound {
+            return None;
+        }
+    }
+    Some(next)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum MonodromyError {
+    Inputs,
+    Resolution,
+    Budget,
+    Cancelled,
+}
+
+fn track_fiber_segment(
+    poly: &[Vec<Complex64>],
+    start: Complex64,
+    end: Complex64,
+    sheets: &[Complex64],
+    depth: u32,
+    budget: &mut usize,
+) -> Result<Vec<Complex64>, MonodromyError> {
+    if crate::cancellation::is_cancelled() {
+        return Err(MonodromyError::Cancelled);
+    }
+    *budget = budget.checked_sub(1).ok_or(MonodromyError::Budget)?;
+    if let Some(coefficients) = fiber_coefficients(poly, end)
+        && let Some(next) = continue_fiber(&coefficients, sheets)
+    {
+        let max_move = next
+            .iter()
+            .zip(sheets)
+            .map(|(a, b)| (a - b).norm())
+            .fold(0.0_f64, f64::max);
+        let min_sep = minimum_separation(&next).min(minimum_separation(sheets));
+        let extent = next
+            .iter()
+            .map(|value| value.norm())
+            .fold(1.0_f64, f64::max);
+        if min_sep > 128.0 * f64::EPSILON * extent && max_move <= 0.35 * min_sep {
+            return Ok(next);
+        }
+    }
+    if depth >= 12 {
+        return Err(MonodromyError::Resolution);
+    }
+    let middle = Complex64::new(start.re.midpoint(end.re), start.im.midpoint(end.im));
+    if middle == start || middle == end {
+        return Err(MonodromyError::Resolution);
+    }
+    let halfway = track_fiber_segment(poly, start, middle, sheets, depth + 1, budget)?;
+    track_fiber_segment(poly, middle, end, &halfway, depth + 1, budget)
+}
+
+/// Returns the numerical monodromy permutation of `P(z,w)=0` along a closed
+/// piecewise-linear loop.
 ///
-/// Tracks the `n` sheets from `loop_pts[0]` around the loop and back, subdividing steps
-/// adaptively to prevent sheet collisions. The permutation acts on `0..n`.
+/// The final vertex is connected to the first one. Unresolved fibers, poles
+/// and exhausted subdivision return `None`.
 #[must_use]
 pub fn monodromy_around_loop(
     poly_coeffs_in_w: &[Vec<Complex64>],
     loop_pts: &[Complex64],
 ) -> Option<Vec<usize>> {
-    fn newton_step_fiber(
-        poly: &[Vec<Complex64>],
-        z: Complex64,
-        sheets: &[Complex64],
-    ) -> Option<Vec<Complex64>> {
-        let mut next = sheets.to_vec();
-        for w in &mut next {
-            let mut ok = false;
-            for _ in 0..16 {
-                let (p, dp) = eval_bivariate_and_dw(poly, z, *w);
-                if p.norm() < 1e-11 {
-                    ok = true;
-                    break;
-                }
-                if dp.norm() < 1e-30 {
-                    return None;
-                }
-                *w -= p / dp;
-            }
-            if !ok {
-                let (p, _) = eval_bivariate_and_dw(poly, z, *w);
-                if p.norm() > 1e-9 {
-                    return None;
-                }
-            }
-        }
-        // Check sheet separation & jump distance.
-        for i in 0..next.len() {
-            for j in (i + 1)..next.len() {
-                if (next[i] - next[j]).norm() < 1e-7 {
-                    return None;
-                }
-            }
-        }
-        Some(next)
-    }
+    let budget = loop_pts.len().saturating_mul(64).min(1_000_000);
+    monodromy_checked(poly_coeffs_in_w, loop_pts, budget).ok()
+}
 
-    fn track_segment(
-        poly: &[Vec<Complex64>],
-        za: Complex64,
-        zb: Complex64,
-        sheets: &[Complex64],
-        depth: u32,
-    ) -> Option<Vec<Complex64>> {
-        if let Some(next) = newton_step_fiber(poly, zb, sheets) {
-            let max_move = next
+pub(crate) fn monodromy_checked(
+    polynomial: &[Vec<Complex64>],
+    path: &[Complex64],
+    mut budget: usize,
+) -> Result<Vec<usize>, MonodromyError> {
+    if polynomial.len() < 2
+        || path.len() < 2
+        || path.iter().any(|z| !z.is_finite())
+        || polynomial.iter().flatten().any(|a| !a.is_finite())
+    {
+        return Err(MonodromyError::Inputs);
+    }
+    let start = path[0];
+    let first = fiber_coefficients(polynomial, start).ok_or(MonodromyError::Resolution)?;
+    let mut initial = crate::kernels::complex_roots::aberth_ehrlich(&first, 160, 1e-13)
+        .map_err(|_| MonodromyError::Resolution)?;
+    let extent = initial
+        .iter()
+        .map(|value| value.norm())
+        .fold(1.0_f64, f64::max);
+    if initial.len() + 1 != polynomial.len()
+        || minimum_separation(&initial) <= 128.0 * f64::EPSILON * extent
+    {
+        return Err(MonodromyError::Resolution);
+    }
+    initial.sort_by(|a, b| a.re.total_cmp(&b.re).then_with(|| a.im.total_cmp(&b.im)));
+    let mut tracked = initial.clone();
+    let mut previous = start;
+    for next in path.iter().skip(1).copied().chain(std::iter::once(start)) {
+        if previous == next {
+            continue;
+        }
+        let middle = Complex64::new(previous.re.midpoint(next.re), previous.im.midpoint(next.im));
+        tracked = track_fiber_segment(polynomial, previous, middle, &tracked, 0, &mut budget)?;
+        tracked = track_fiber_segment(polynomial, middle, next, &tracked, 0, &mut budget)?;
+        previous = next;
+    }
+    let mut used = vec![false; initial.len()];
+    let separation = minimum_separation(&initial);
+    tracked
+        .into_iter()
+        .map(|end| {
+            let (index, error) = initial
                 .iter()
-                .zip(sheets.iter())
-                .map(|(a, b)| (*a - *b).norm())
-                .fold(0.0_f64, f64::max);
-            let mut min_sep = f64::INFINITY;
-            for i in 0..next.len() {
-                for j in (i + 1)..next.len() {
-                    min_sep = min_sep.min((next[i] - next[j]).norm());
-                }
+                .enumerate()
+                .map(|(i, &value)| (i, (value - end).norm()))
+                .min_by(|(_, a), (_, b)| a.total_cmp(b))
+                .ok_or(MonodromyError::Resolution)?;
+            if used[index] || error > (1e-9 * extent).min(0.25 * separation) {
+                return Err(MonodromyError::Resolution);
             }
-            if max_move <= 0.35 * min_sep || depth >= 10 {
-                return Some(next);
-            }
-        }
-        if depth >= 10 {
-            return None;
-        }
-        let mid = 0.5 * (za + zb);
-        let mid_sheets = track_segment(poly, za, mid, sheets, depth + 1)?;
-        track_segment(poly, mid, zb, &mid_sheets, depth + 1)
-    }
-
-    let &z0 = loop_pts.first()?;
-    let start_sheets = aberth_solve_fiber(poly_coeffs_in_w, z0)?;
-    let n = start_sheets.len();
-    // Verify fiber roots are distinct and converged.
-    for i in 0..n {
-        let (p, _) = eval_bivariate_and_dw(poly_coeffs_in_w, z0, *start_sheets.get(i)?);
-        if p.norm() > 1e-8 {
-            return None;
-        }
-        for j in (i + 1)..n {
-            if (*start_sheets.get(i)? - *start_sheets.get(j)?).norm() < 1e-6 {
-                return None;
-            }
-        }
-    }
-
-    let mut tracked = start_sheets.clone();
-    let mut prev_z = z0;
-    for &zk in loop_pts.iter().skip(1).chain(std::iter::once(&z0)) {
-        tracked = track_segment(poly_coeffs_in_w, prev_z, zk, &tracked, 0)?;
-        prev_z = zk;
-    }
-
-    // Match each final tracked sheet to the closest starting sheet.
-    let mut perm = vec![0_usize; n];
-    let mut used = vec![false; n];
-    for (i, &wt) in tracked.iter().enumerate() {
-        let mut best_j = 0;
-        let mut best_d = f64::INFINITY;
-        for (j, &ws) in start_sheets.iter().enumerate() {
-            if !used.get(j).copied().unwrap_or(true) {
-                let d = (wt - ws).norm();
-                if d < best_d {
-                    best_d = d;
-                    best_j = j;
-                }
-            }
-        }
-        if best_d > 1e-3 {
-            return None;
-        }
-        if let Some(u) = used.get_mut(best_j) {
-            *u = true;
-        }
-        if let Some(p) = perm.get_mut(i) {
-            *p = best_j;
-        }
-    }
-    Some(perm)
+            used[index] = true;
+            Ok(index)
+        })
+        .collect()
 }
 
 /// Numerical branch-cut jump `lim_{eps -> 0+} (f(p + i*eps) - f(p - i*eps))`
 /// using Richardson extrapolation across `eps` and `eps / 2`.
-pub fn branch_cut_jump_numeric<F>(f: F, p: Complex64) -> Complex64
+pub fn branch_cut_jump_numeric<F>(
+    f: F,
+    p: Complex64,
+) -> Complex64
 where
     F: Fn(Complex64) -> Complex64,
 {
-    let eps1 = 1e-6;
-    let eps2 = 0.5e-6;
-    let j1 = f(Complex64::new(p.re, p.im + eps1)) - f(Complex64::new(p.re, p.im - eps1));
-    let j2 = f(Complex64::new(p.re, p.im + eps2)) - f(Complex64::new(p.re, p.im - eps2));
-    (4.0 * j2 - j1) / 3.0
+    branch_jump_checked(f, p, Complex64::new(0.0, 1e-6))
+        .unwrap_or(Complex64::new(f64::NAN, f64::NAN))
+}
+
+pub(crate) fn branch_jump_checked(
+    f: impl Fn(Complex64) -> Complex64,
+    point: Complex64,
+    normal_offset: Complex64,
+) -> Option<Complex64> {
+    let half_offset = 0.5 * normal_offset;
+    let points = [
+        point + normal_offset,
+        point - normal_offset,
+        point + half_offset,
+        point - half_offset,
+    ];
+    if !point.is_finite()
+        || points.iter().any(|&v| !v.is_finite() || v == point)
+        || points
+            .iter()
+            .enumerate()
+            .any(|(i, value)| points.iter().skip(i + 1).any(|other| other == value))
+    {
+        return None;
+    }
+    let [above, below, above_half, below_half] = points.map(f);
+    let full = above - below;
+    let half = above_half - below_half;
+    // A general analytic lip has a first-order normal term. Two grids remove
+    // that term without assuming an even expansion across the cut.
+    let estimate = half + (half - full);
+    estimate.is_finite().then_some(estimate)
 }

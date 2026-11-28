@@ -6,7 +6,9 @@
 //! companion matrix, so complex-conjugate roots are handled without a separate
 //! complex root finder.
 
+use crate::kernels::complex_scalar::Complex;
 use num_complex::Complex64;
+use std::sync::LazyLock;
 
 use super::linalg;
 use super::state_space::StateSpace;
@@ -21,12 +23,18 @@ pub struct TransferFunction {
 }
 
 /// Removes leading zero coefficients.
-fn trim_leading(coeffs: &[f64]) -> Vec<f64> {
-    let start = coeffs.iter().position(|&c| c != 0.0);
-    match start {
-        | Some(i) => coeffs[i..].to_vec(),
-        | None => Vec::new(),
-    }
+fn trim_leading(coeffs: &[f64]) -> &[f64] {
+    let start = coeffs
+        .iter()
+        .position(|&c| c != 0.0)
+        .unwrap_or(coeffs.len());
+    &coeffs[start..]
+}
+
+fn trim_owned(mut coeffs: Vec<f64>) -> Vec<f64> {
+    let leading = coeffs.len() - trim_leading(&coeffs).len();
+    coeffs.drain(..leading);
+    coeffs
 }
 
 /// Polynomial product in descending coefficients.
@@ -65,24 +73,43 @@ fn poly_add(
 }
 
 /// Roots of a polynomial given in descending coefficients.
-fn poly_roots(coeffs: &[f64]) -> Vec<Complex64> {
+fn poly_roots(coeffs: &[f64]) -> Result<Vec<Complex64>, String> {
     let c = trim_leading(coeffs);
-    if c.len() <= 1 {
-        return Vec::new();
+    let [lead, rest @ ..] = c else {
+        return Ok(Vec::new());
+    };
+    match rest {
+        | [] => return Ok(Vec::new()),
+        | [constant] => {
+            let root = -constant / lead;
+            if root.is_finite() {
+                return Ok(vec![Complex64::new(root, 0.0)]);
+            }
+            return Err("polynomial root falls outside Float range".to_owned());
+        },
+        | _ => {},
     }
-    let n = c.len() - 1;
-    let lead = c[0];
-    if lead == 0.0 {
-        return Vec::new();
+    let n = rest.len();
+    let first_row = rest.iter().map(|&c| -c / lead).collect::<Vec<_>>();
+    if first_row.iter().any(|c| !c.is_finite()) {
+        return Err("normalized polynomial coefficients fall outside Float range".to_owned());
     }
-    let mut companion = vec![vec![0.0; n]; n];
-    for j in 0..n {
-        companion[0][j] = -c[j + 1] / lead;
-    }
+    let mut companion = Vec::with_capacity(n);
+    companion.push(first_row);
     for i in 1..n {
-        companion[i][i - 1] = 1.0;
+        let mut row = vec![0.0; n];
+        row[i - 1] = 1.0;
+        companion.push(row);
     }
-    linalg::eigenvalues(&companion).unwrap_or_default()
+    let roots = linalg::eigenvalues(&companion)?;
+    if roots.len() != n
+        || roots
+            .iter()
+            .any(|root| !root.re.is_finite() || !root.im.is_finite())
+    {
+        return Err("polynomial eigensolver did not return all finite roots".to_owned());
+    }
+    Ok(roots)
 }
 
 /// Evaluates a polynomial with complex argument by Horner's rule.
@@ -114,11 +141,11 @@ impl TransferFunction {
         if num.iter().chain(&den).any(|v| !v.is_finite()) {
             return Err("coefficients must be finite".to_string());
         }
-        let den = trim_leading(&den);
+        let den = trim_owned(den);
         if den.is_empty() {
             return Err("denominator must be nonzero".to_string());
         }
-        let num = trim_leading(&num);
+        let num = trim_owned(num);
         let num = if num.is_empty() {
             vec![0.0]
         } else {
@@ -169,18 +196,25 @@ impl TransferFunction {
 
     /// Poles: roots of the denominator.
     pub fn poles(&self) -> Vec<Complex64> {
+        self.poles_checked().unwrap_or_default()
+    }
+
+    pub(crate) fn poles_checked(&self) -> Result<Vec<Complex64>, String> {
         poly_roots(&self.den)
     }
 
     /// Zeros: roots of the numerator (empty for a zero numerator).
     pub fn zeros(&self) -> Vec<Complex64> {
+        self.zeros_checked().unwrap_or_default()
+    }
+
+    pub(crate) fn zeros_checked(&self) -> Result<Vec<Complex64>, String> {
         poly_roots(&self.num)
     }
 
-    /// Whether every pole has negative real part.
+    /// Whether all poles can be computed and have negative real part.
     pub fn is_stable(&self) -> bool {
-        let poles = self.poles();
-        poles.iter().all(|p| p.re < 0.0)
+        self.poles_checked().is_ok_and(|poles| stable_poles(&poles))
     }
 
     /// Evaluates `G(s)` at a complex frequency.
@@ -190,7 +224,21 @@ impl TransferFunction {
     ) -> Complex64 {
         let numerator = poly_eval(&self.num, s);
         let denominator = poly_eval(&self.den, s);
-        numerator / denominator
+        let ratio = Complex::new(numerator.re, numerator.im)
+            .div(Complex::new(denominator.re, denominator.im));
+        Complex64::new(ratio.re, ratio.im)
+    }
+
+    pub(crate) fn evaluate_checked(
+        &self,
+        s: Complex64,
+    ) -> Result<Complex64, String> {
+        let response = self.evaluate(s);
+        if response.re.is_finite() && response.im.is_finite() {
+            Ok(response)
+        } else {
+            Err("transfer response is singular or outside Float range".to_owned())
+        }
     }
 
     /// Converts to a continuous-time state-space model in controllable
@@ -203,10 +251,9 @@ impl TransferFunction {
         if self.num.len() > self.den.len() {
             return Err("numerator must not have higher degree than denominator".to_string());
         }
-        let lead = self.den[0];
-        if lead == 0.0 {
+        let Some(lead) = self.den.first().copied().filter(|&c| c != 0.0) else {
             return Err("denominator must be nonzero".to_string());
-        }
+        };
         let n = self.den.len() - 1;
         let den: Vec<f64> = self.den.iter().map(|c| c / lead).collect();
         let mut num = vec![0.0; n + 1];
@@ -232,6 +279,10 @@ impl TransferFunction {
         }
         StateSpace::continuous(a, b, c, vec![vec![direct]])
     }
+}
+
+pub(crate) fn stable_poles(poles: &[Complex64]) -> bool {
+    poles.iter().all(|pole| pole.re < 0.0)
 }
 
 /// Converts a state-space model to one transfer function per input/output
@@ -371,13 +422,7 @@ pub fn bode(
         phase.push(g.arg().to_degrees());
     }
     for i in 1..phase.len() {
-        let previous = phase[i - 1];
-        while phase[i] - previous > 180.0 {
-            phase[i] -= 360.0;
-        }
-        while phase[i] - previous < -180.0 {
-            phase[i] += 360.0;
-        }
+        phase[i] = unwrap_phase(phase[i], phase[i - 1]);
     }
     Ok((magnitude, phase))
 }
@@ -401,21 +446,39 @@ pub fn nyquist(
     Ok(out)
 }
 
-/// Evaluates the phase in degrees, unwrapped to lie within 180 degrees of
-/// `reference`.
+/// Unwraps a phase in degrees to lie within 180 degrees of `reference`.
+fn unwrap_phase(
+    mut phase: f64,
+    reference: f64,
+) -> f64 {
+    while phase - reference > 180.0 {
+        phase -= 360.0;
+    }
+    while phase - reference < -180.0 {
+        phase += 360.0;
+    }
+    phase
+}
+
 fn phase_near(
     tf: &TransferFunction,
     w: f64,
     reference: f64,
-) -> f64 {
-    let mut p = tf.evaluate(Complex64::new(0.0, w)).arg().to_degrees();
-    while p - reference > 180.0 {
-        p -= 360.0;
+) -> Result<f64, String> {
+    let phase = tf
+        .evaluate_checked(Complex64::new(0.0, w))?
+        .arg()
+        .to_degrees();
+    Ok(unwrap_phase(phase, reference))
+}
+
+fn crossover_magnitude(response: Complex64) -> Result<f64, String> {
+    let magnitude = response.norm();
+    if magnitude.is_finite() {
+        Ok(magnitude)
+    } else {
+        Err("loop magnitude is outside Float range".to_owned())
     }
-    while p - reference < -180.0 {
-        p += 360.0;
-    }
-    p
 }
 
 /// Gain and phase margins of a loop transfer function.
@@ -431,27 +494,19 @@ pub fn gain_margin_phase_margin(
     tf: &TransferFunction
 ) -> Result<(Option<f64>, Option<f64>), String> {
     const POINTS: usize = 601;
-    let (lo, hi) = (-3.0_f64, 3.0_f64);
-    let mut grid = Vec::with_capacity(POINTS);
-    for i in 0..POINTS {
-        let frac = i as f64 / (POINTS - 1) as f64;
-        grid.push(10.0_f64.powf(lo + (hi - lo) * frac));
-    }
+    static GRID: LazyLock<[f64; POINTS]> = LazyLock::new(|| {
+        std::array::from_fn(|i| 10.0_f64.powf(-3.0 + 6.0 * i as f64 / (POINTS - 1) as f64))
+    });
+    let grid = &*GRID;
     let mut phase = Vec::with_capacity(POINTS);
     let mut magnitude = Vec::with_capacity(POINTS);
-    for &w in &grid {
-        let g = tf.evaluate(Complex64::new(0.0, w));
+    for &w in grid {
+        let g = tf.evaluate_checked(Complex64::new(0.0, w))?;
         phase.push(g.arg().to_degrees());
-        magnitude.push(g.norm());
+        magnitude.push(crossover_magnitude(g)?);
     }
     for i in 1..phase.len() {
-        let previous = phase[i - 1];
-        while phase[i] - previous > 180.0 {
-            phase[i] -= 360.0;
-        }
-        while phase[i] - previous < -180.0 {
-            phase[i] += 360.0;
-        }
+        phase[i] = unwrap_phase(phase[i], phase[i - 1]);
     }
     let mut gain_margin = None;
     for i in 0..POINTS - 1 {
@@ -461,7 +516,7 @@ pub fn gain_margin_phase_margin(
             let mut p_left = phase[i];
             for _ in 0..100 {
                 let mid = f64::midpoint(left, right);
-                let p_mid = phase_near(tf, 10.0_f64.powf(mid), p_left);
+                let p_mid = phase_near(tf, 10.0_f64.powf(mid), p_left)?;
                 if p_mid + 180.0 > 0.0 {
                     left = mid;
                     p_left = p_mid;
@@ -470,7 +525,7 @@ pub fn gain_margin_phase_margin(
                 }
             }
             let w = 10.0_f64.powf(f64::midpoint(left, right));
-            let mag = tf.evaluate(Complex64::new(0.0, w)).norm();
+            let mag = crossover_magnitude(tf.evaluate_checked(Complex64::new(0.0, w))?)?;
             if mag > 0.0 {
                 gain_margin = Some(-20.0 * mag.log10());
             }
@@ -484,7 +539,9 @@ pub fn gain_margin_phase_margin(
             let mut right = grid[i + 1].log10();
             for _ in 0..100 {
                 let mid = f64::midpoint(left, right);
-                let mag = tf.evaluate(Complex64::new(0.0, 10.0_f64.powf(mid))).norm();
+                let mag = crossover_magnitude(
+                    tf.evaluate_checked(Complex64::new(0.0, 10.0_f64.powf(mid)))?,
+                )?;
                 if mag > 1.0 {
                     left = mid;
                 } else {
@@ -492,7 +549,7 @@ pub fn gain_margin_phase_margin(
                 }
             }
             let w = 10.0_f64.powf(f64::midpoint(left, right));
-            let p = phase_near(tf, w, phase[i]);
+            let p = phase_near(tf, w, phase[i])?;
             phase_margin = Some(180.0 + p);
             break;
         }
@@ -506,12 +563,16 @@ pub fn gain_margin_phase_margin(
 /// Runge-Kutta on each interval `t[k+1] - t[k]`.
 ///
 /// # Errors
-/// Returns an error when the time grid is not strictly increasing or the
-/// conversion fails.
+/// Returns an error when the time grid or its increments are not finite, the
+/// grid is not strictly increasing, the conversion fails, or integration
+/// exceeds the finite range.
 pub fn step_response(
     tf: &TransferFunction,
     t: &[f64],
 ) -> Result<Vec<f64>, String> {
+    if t.iter().any(|time| !time.is_finite()) {
+        return Err("time vector must be finite".to_owned());
+    }
     let ss = tf.to_state_space()?;
     let n = ss.n_states();
     let mut x = vec![0.0; n];
@@ -520,13 +581,17 @@ pub fn step_response(
         return Ok(out);
     }
     out.push(output_scalar(&ss, &x, 1.0));
-    for k in 1..t.len() {
-        let h = t[k] - t[k - 1];
-        if h.partial_cmp(&0.0) != Some(std::cmp::Ordering::Greater) {
-            return Err("time vector must be strictly increasing".to_string());
+    for pair in t.windows(2) {
+        let h = pair[1] - pair[0];
+        if !(h.is_finite() && h > 0.0) {
+            return Err("time vector must have finite, strictly positive increments".to_owned());
         }
         x = linalg::rk4_linear(&ss.a, &ss.b, &x, &[1.0], h);
-        out.push(output_scalar(&ss, &x, 1.0));
+        let sample = output_scalar(&ss, &x, 1.0);
+        if !sample.is_finite() {
+            return Err("step response is outside Float range".to_owned());
+        }
+        out.push(sample);
     }
     Ok(out)
 }

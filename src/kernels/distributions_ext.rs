@@ -8,6 +8,10 @@
 //! Each query returns `Result` because a distribution whose parameters are
 //! invalid, or a point outside the support, has no answer to give.
 
+use std::cell::Cell;
+use std::sync::Arc;
+
+use crate::kernels::reuse::global_pool;
 use statrs::distribution as sd;
 use statrs::distribution::Continuous;
 use statrs::distribution::ContinuousCDF;
@@ -235,6 +239,46 @@ fn error(what: &str) -> String {
     format!("invalid {what} distribution parameters")
 }
 
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "normalizes weights whose sum would overflow"
+)]
+fn prepare_categorical(weights: &[f64]) -> Option<sd::Categorical> {
+    if weights
+        .iter()
+        .any(|weight| !weight.is_finite() || *weight < 0.0)
+    {
+        return None;
+    }
+    let max = weights.iter().copied().fold(0.0, f64::max);
+    if max == 0.0 {
+        return None;
+    }
+    if max > f64::MAX / weights.len() as f64 || max < f64::MIN_POSITIVE {
+        let normalized = weights
+            .iter()
+            .map(|weight| weight / max)
+            .collect::<Vec<_>>();
+        sd::Categorical::new(&normalized).ok()
+    } else {
+        sd::Categorical::new(weights).ok()
+    }
+}
+
+fn cached_categorical(weights: &[f64]) -> Arc<Option<sd::Categorical>> {
+    if weights.len() <= 256 {
+        let key = weights.iter().map(|w| w.to_bits()).collect::<Vec<_>>();
+        global_pool()
+            .named_plan_cache::<Vec<u64>, Option<sd::Categorical>>(
+                "distribution.statrs.categorical",
+                16,
+            )
+            .get_or_insert_with(key, || Arc::new(prepare_categorical(weights)))
+    } else {
+        Arc::new(prepare_categorical(weights))
+    }
+}
+
 /// The continuous family, dispatched with one macro so every query shares the
 /// same constructor list.
 macro_rules! continuous {
@@ -341,7 +385,11 @@ macro_rules! discrete {
                 $body
             },
             | StatrsDistribution::Categorical { weights } => {
-                let $d = sd::Categorical::new(weights).map_err(|_| error("categorical"))?;
+                let retained = cached_categorical(weights);
+                let $d = retained
+                    .as_ref()
+                    .as_ref()
+                    .ok_or_else(|| error("categorical"))?;
                 $body
             },
             | StatrsDistribution::Geometric { p } => {
@@ -484,7 +532,11 @@ macro_rules! moments {
                 $body
             },
             | StatrsDistribution::Categorical { weights } => {
-                let $d = sd::Categorical::new(weights).map_err(|_| error("categorical"))?;
+                let retained = cached_categorical(weights);
+                let $d = retained
+                    .as_ref()
+                    .as_ref()
+                    .ok_or_else(|| error("categorical"))?;
                 $body
             },
             | StatrsDistribution::DiscreteUniform { lo, hi } => {
@@ -555,7 +607,9 @@ impl StatrsDistribution {
         name: &str,
         params: &[f64],
     ) -> Result<Self, String> {
+        let used = Cell::new(0);
         let p = |index: usize| -> Result<f64, String> {
+            used.set(used.get().max(index.saturating_add(1)));
             params
                 .get(index)
                 .copied()
@@ -563,21 +617,25 @@ impl StatrsDistribution {
         };
         let u = |index: usize| -> Result<u64, String> {
             let value = p(index)?;
-            if value < 0.0 || value.fract() != 0.0 {
+            if !(0.0..18_446_744_073_709_551_616.0).contains(&value) || value.fract() != 0.0 {
                 return Err(format!(
-                    "{name} parameter {index} must be a non-negative integer"
+                    "{name} parameter {index} must fit an unsigned 64-bit integer"
                 ));
             }
             Ok(value as u64)
         };
         let i = |index: usize| -> Result<i64, String> {
             let value = p(index)?;
-            if value.fract() != 0.0 {
-                return Err(format!("{name} parameter {index} must be an integer"));
+            if !(-9_223_372_036_854_775_808.0..9_223_372_036_854_775_808.0).contains(&value)
+                || value.fract() != 0.0
+            {
+                return Err(format!(
+                    "{name} parameter {index} must fit a signed 64-bit integer"
+                ));
             }
             Ok(value as i64)
         };
-        Ok(match name {
+        let distribution = match name {
             | "normal" => {
                 Self::Normal {
                     mu: p(0)?,
@@ -672,7 +730,15 @@ impl StatrsDistribution {
             | "negative-binomial" => Self::NegativeBinomial { r: p(0)?, p: p(1)? },
             | "poisson" => Self::Poisson { lambda: p(0)? },
             | other => return Err(format!("unknown distribution `{other}`")),
-        })
+        };
+        if name != "categorical" && params.len() != used.get() {
+            return Err(format!(
+                "{name} expects {} parameters, got {}",
+                used.get(),
+                params.len()
+            ));
+        }
+        Ok(distribution)
     }
 
     /// The density (continuous) or mass (discrete) at `x`.

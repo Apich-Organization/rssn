@@ -3,10 +3,19 @@
 //! and Bergman kernel utilities.
 
 use crate::kernels::complex::Mobius;
-use crate::kernels::complex::check_cauchy_riemann_numeric;
 use crate::kernels::complex::complex_derivative;
+use crate::kernels::complex::differentiation;
 use crate::kernels::complex_scalar::Complex as ScalarComplex;
+use crate::kernels::contour_deform::ContourIntegral;
+use crate::kernels::contour_deform::ContourQuadratureError;
+use crate::kernels::contour_deform::ContourSegment;
+use crate::kernels::contour_deform::integrate_segment_checked;
+use crate::kernels::dense::solve_linear_rows;
+use crate::kernels::geometry::segment_intersection_2d;
 use crate::kernels::integrate::gauss_kronrod_any;
+use crate::kernels::quadrature::GkError;
+use crate::kernels::quadrature::GkRule;
+use crate::kernels::quadrature::gk_panel_complex;
 use num_complex::Complex;
 use std::f64::consts::PI;
 
@@ -21,7 +30,11 @@ pub fn cross_ratio(
     ((z1 - z3) * (z2 - z4)) / ((z1 - z4) * (z2 - z3))
 }
 
-fn mobius_to_01inf(z1: Complex<f64>, z2: Complex<f64>, z3: Complex<f64>) -> Mobius {
+fn mobius_to_01inf(
+    z1: Complex<f64>,
+    z2: Complex<f64>,
+    z3: Complex<f64>,
+) -> Mobius {
     // T(z) = ((z - z1)(z2 - z3)) / ((z - z3)(z2 - z1))
     let k1 = z2 - z3;
     let k2 = z2 - z1;
@@ -33,11 +46,47 @@ fn mobius_to_01inf(z1: Complex<f64>, z2: Complex<f64>, z3: Complex<f64>) -> Mobi
     }
 }
 
+// A common binary scale preserves exact Float values until the result crosses
+// a binary64 endpoint. Splitting the exponent keeps every multiplier finite.
+fn scale_power_two(
+    mut value: Complex<f64>,
+    mut exponent: i32,
+) -> Complex<f64> {
+    while exponent != 0 {
+        let shift = exponent.clamp(-512, 512);
+        value *= 2.0_f64.powi(shift);
+        exponent -= shift;
+    }
+    value
+}
+
+fn projective_exponent(value: Complex<f64>) -> i32 {
+    value.re.abs().max(value.im.abs()).log2().floor() as i32
+}
+
+fn projective_chart(points: [Complex<f64>; 3]) -> Result<([Complex<f64>; 3], i32), String> {
+    if points.iter().any(|v| !v.is_finite()) {
+        return Err("Möbius points must be finite".into());
+    }
+    let extent = points
+        .iter()
+        .fold(0.0_f64, |acc, v| acc.max(v.re.abs()).max(v.im.abs()));
+    if extent <= 0.0 {
+        return Err("Möbius points must be distinct".into());
+    }
+    let exponent = projective_exponent(Complex::from(extent));
+    let [a, b, c] = points.map(|v| scale_power_two(v, -exponent));
+    if a == b || b == c || a == c {
+        return Err("Möbius points must remain distinct in the normalized chart".into());
+    }
+    Ok(([a, b, c], exponent))
+}
+
 /// Constructs the unique Möbius transformation mapping `(z1, z2, z3) -> (w1, w2, w3)`.
 ///
 /// # Errors
 ///
-/// Returns an error if the source triple or the target triple contains repeated points.
+/// Rejects nonfinite or repeated points and coefficients outside the representable projective range.
 pub fn mobius_from_three_points(
     z1: Complex<f64>,
     z2: Complex<f64>,
@@ -46,16 +95,38 @@ pub fn mobius_from_three_points(
     w2: Complex<f64>,
     w3: Complex<f64>,
 ) -> Result<Mobius, String> {
-    if (z1 - z2).norm() < 1e-14 || (z2 - z3).norm() < 1e-14 || (z1 - z3).norm() < 1e-14 {
-        return Err("Source points must be distinct".to_string());
+    let ([a, b, c], source) = projective_chart([z1, z2, z3])?;
+    let ([x, y, z], target) = projective_chart([w1, w2, w3])?;
+    let chart = mobius_to_01inf(x, y, z)
+        .inverse()
+        .compose(&mobius_to_01inf(a, b, c));
+    let coeffs = [chart.a, chart.b, chart.c, chart.d];
+    let exponents = [target, source + target, 0, source];
+    let (minimum, maximum) = coeffs
+        .iter()
+        .zip(exponents)
+        .filter(|(v, _)| **v != Complex::default())
+        .map(|(&v, exponent)| projective_exponent(v) + exponent)
+        .fold((i32::MAX, i32::MIN), |(lo, hi), exp| {
+            (lo.min(exp), hi.max(exp))
+        });
+    // Choose a common power-of-two projective factor that leaves headroom
+    // for the subsequent complex products. Intersect all four exponent ranges.
+    let lower = maximum.saturating_sub(1016);
+    let upper = minimum.saturating_add(1070);
+    if maximum == i32::MIN || lower > upper {
+        return Err("Möbius coefficients exceed the binary64 projective range".into());
     }
-    if (w1 - w2).norm() < 1e-14 || (w2 - w3).norm() < 1e-14 || (w1 - w3).norm() < 1e-14 {
-        return Err("Target points must be distinct".to_string());
-    }
-    let tz = mobius_to_01inf(z1, z2, z3);
-    let tw = mobius_to_01inf(w1, w2, w3);
-    let tw_inv = tw.inverse();
-    Ok(tw_inv.compose(&tz))
+    let common = 0_i32.clamp(lower, upper);
+    let [(a, ea), (b, eb), (c, ec), (d, ed)] =
+        std::array::from_fn(|i| (coeffs[i], exponents[i] - common));
+    let result = Mobius::new(
+        scale_power_two(a, ea),
+        scale_power_two(b, eb),
+        scale_power_two(c, ec),
+        scale_power_two(d, ed),
+    );
+    Ok(result)
 }
 
 /// Classification of a non-singular Möbius transformation.
@@ -73,17 +144,46 @@ pub enum MobiusClass {
     Loxodromic,
 }
 
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "normalizes the projective representative"
+)]
+fn normalize_mobius(m: &Mobius) -> Option<Mobius> {
+    let coefficients = [m.a, m.b, m.c, m.d];
+    if coefficients.iter().any(|z| !z.is_finite()) {
+        return None;
+    }
+    let scale = coefficients
+        .iter()
+        .fold(0.0_f64, |max, z| max.max(z.re.abs()).max(z.im.abs()));
+    (scale > 0.0).then(|| Mobius::new(m.a / scale, m.b / scale, m.c / scale, m.d / scale))
+}
+
+fn divide_projective(
+    a: Complex<f64>,
+    b: Complex<f64>,
+) -> Complex<f64> {
+    let value = ScalarComplex::new(a.re, a.im).div(ScalarComplex::new(b.re, b.im));
+    Complex::new(value.re, value.im)
+}
+
 /// Classifies a Möbius transformation by its normalized trace squared $\tau = (a+d)^2 / (ad-bc)$.
 ///
 /// # Errors
 ///
 /// Returns an error for a degenerate transformation.
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "forms the projective trace invariant"
+)]
 pub fn classify_mobius(m: &Mobius) -> Result<MobiusClass, String> {
+    let m = normalize_mobius(m).ok_or_else(|| "Invalid Möbius coefficients".to_owned())?;
     let det = m.a * m.d - m.b * m.c;
     if det.norm() < 1e-15 {
         return Err("Degenerate Möbius transformation".to_string());
     }
-    if m.b.norm() < 1e-12 && m.c.norm() < 1e-12 && (m.a - m.d).norm() < 1e-12 {
+    let zero = Complex::new(0.0, 0.0);
+    if m.b == zero && m.c == zero && m.a == m.d {
         return Ok(MobiusClass::Identity);
     }
     let tr = m.a + m.d;
@@ -104,50 +204,55 @@ pub fn classify_mobius(m: &Mobius) -> Result<MobiusClass, String> {
 
 /// Returns the finite fixed points of $m(z) = z$, i.e. roots of $c z^2 + (d - a) z - b = 0$.
 #[must_use]
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "solves the complex fixed-point equation"
+)]
 pub fn mobius_fixed_points(m: &Mobius) -> Vec<Complex<f64>> {
-    if m.c.norm() < 1e-14 {
-        let diff = m.d - m.a;
-        if diff.norm() < 1e-14 {
-            return Vec::new();
-        }
-        return vec![m.b / diff];
-    }
-    let da = m.d - m.a;
-    let disc = (da * da + m.c * m.b * 4.0).sqrt();
-    let two_c = m.c * 2.0;
-    // Citardauq / stable quadratic roots avoiding cancellation
-    let b_plus = -da + disc;
-    let b_minus = -da - disc;
-    let (z1, z2) = if b_plus.norm() >= b_minus.norm() {
-        let r1 = b_plus / two_c;
-        let r2 = if r1.norm() > 1e-30 {
-            (-m.b / m.c) / r1
-        } else {
-            b_minus / two_c
-        };
-        (r1, r2)
-    } else {
-        let r1 = b_minus / two_c;
-        let r2 = if r1.norm() > 1e-30 {
-            (-m.b / m.c) / r1
-        } else {
-            b_plus / two_c
-        };
-        (r1, r2)
+    let Some(m) = normalize_mobius(m) else {
+        return Vec::new();
     };
-    if (z1 - z2).norm() < 1e-12 {
-        vec![z1]
-    } else {
-        vec![z1, z2]
+    let zero = Complex::new(0.0, 0.0);
+    let d_minus_a = m.d - m.a;
+    if m.c == zero {
+        return if d_minus_a == zero {
+            Vec::new()
+        } else {
+            vec![divide_projective(m.b, d_minus_a)]
+        };
     }
+    let half_difference = 0.5 * d_minus_a;
+    let discriminant = (half_difference * half_difference + m.c * m.b).sqrt();
+    if discriminant == zero {
+        return vec![divide_projective(-half_difference, m.c)];
+    }
+    let plus = -half_difference + discriminant;
+    let minus = -half_difference - discriminant;
+    let numerator = if plus.norm() >= minus.norm() {
+        plus
+    } else {
+        minus
+    };
+    // The product of the two roots is -b/c. Divide by the stable
+    // numerator directly so a tiny c does not overflow an intermediate.
+    vec![
+        divide_projective(numerator, m.c),
+        divide_projective(-m.b, numerator),
+    ]
 }
 
 /// Unit disk automorphism $f(z) = e^{i\theta} \frac{z - \alpha}{1 - \bar{\alpha} z}$ for $|\alpha| < 1$.
 ///
 /// # Errors
 ///
-/// Returns an error if the translation parameter lies on or outside the unit circle.
-pub fn disk_automorphism(alpha: Complex<f64>, theta: f64) -> Result<Mobius, String> {
+/// Returns an error if an argument is nonfinite or the translation lies on or outside the unit circle.
+pub fn disk_automorphism(
+    alpha: Complex<f64>,
+    theta: f64,
+) -> Result<Mobius, String> {
+    if !alpha.is_finite() || !theta.is_finite() {
+        return Err("Disk automorphism requires finite arguments".into());
+    }
     if alpha.norm() >= 1.0 {
         return Err("Disk automorphism requires |alpha| < 1".to_string());
     }
@@ -185,7 +290,11 @@ pub fn joukowsky_inverse(w: Complex<f64>) -> (Complex<f64>, Complex<f64>) {
     // root before undoing the scaling so the smaller one survives even
     // if the larger one overflows.
     let plus_is_larger = plus.re.abs().max(plus.im.abs()) >= minus.re.abs().max(minus.im.abs());
-    let large = if plus_is_larger { plus } else { minus };
+    let large = if plus_is_larger {
+        plus
+    } else {
+        minus
+    };
     let inverse = ScalarComplex::new(large.re, large.im).recip();
     let small = Complex::new(inverse.re, inverse.im) * reciprocal_scale;
     let large = large * scale;
@@ -199,7 +308,10 @@ pub fn joukowsky_inverse(w: Complex<f64>) -> (Complex<f64>, Complex<f64>) {
 /// `karman_trefftz(z, exponent)` evaluates the Kármán–Trefftz map with principal complex powers.
 /// For exponent `n`, the map is `n * ((z+1)^n + (z-1)^n) / ((z+1)^n - (z-1)^n)`.
 #[must_use]
-pub fn karman_trefftz(z: Complex<f64>, n: f64) -> Complex<f64> {
+pub fn karman_trefftz(
+    z: Complex<f64>,
+    n: f64,
+) -> Complex<f64> {
     let zp = (z + Complex::new(1.0, 0.0)).powf(n);
     let zm = (z - Complex::new(1.0, 0.0)).powf(n);
     Complex::new(n, 0.0) * (zp + zm) / (zp - zm)
@@ -213,13 +325,20 @@ pub fn koebe_map(z: Complex<f64>) -> Complex<f64> {
 }
 
 /// Numerically verifies conformality at `z`: Cauchy–Riemann holds and $|f'(z)| > \text{tol}$.
-pub fn is_conformal_numeric<F>(f: &F, z: Complex<f64>, h: f64, tol: f64) -> bool
+pub fn is_conformal_numeric<F>(
+    f: &F,
+    z: Complex<f64>,
+    h: f64,
+    tol: f64,
+) -> bool
 where
     F: Fn(Complex<f64>) -> Complex<f64>,
 {
-    let cr_ok = check_cauchy_riemann_numeric(f, z, h, tol);
-    let df = complex_derivative(f, z);
-    cr_ok && df.norm() > tol
+    if !tol.is_finite() || tol < 0.0 {
+        return false;
+    }
+    differentiation::wirtinger(f, z, h)
+        .is_some_and(|value| value.residual(1.0) <= tol && value.dz.norm() > tol)
 }
 
 /// `cayley_transform(z)` returns the Möbius map `(z - i) / (z + i)`.
@@ -230,7 +349,11 @@ pub fn cayley_transform(z: Complex<f64>) -> Complex<f64> {
 }
 
 /// Returns the local conformal magnification $|f'(z)|$ and rotation angle $\arg f'(z)$.
-pub fn conformal_scale_and_rotation<F>(f: &F, z: Complex<f64>, h: f64) -> (f64, f64)
+pub fn conformal_scale_and_rotation<F>(
+    f: &F,
+    z: Complex<f64>,
+    h: f64,
+) -> (f64, f64)
 where
     F: Fn(Complex<f64>) -> Complex<f64>,
 {
@@ -242,7 +365,53 @@ where
     (df.norm(), df.arg())
 }
 
-fn integrate_complex_01<F>(f: F, tol: f64, max_evals: usize) -> Complex<f64>
+fn integrate_pure_segment(
+    evaluator: impl Fn(Complex<f64>) -> Complex<f64>,
+    start: Complex<f64>,
+    end: Complex<f64>,
+    tolerance: f64,
+    panels: usize,
+) -> Result<ContourIntegral, ContourQuadratureError> {
+    let segment = ContourSegment::Line { start, end };
+    let delta = end - start;
+    if !delta.is_finite()
+        || delta == Complex::default()
+        || !(1..=4096).contains(&panels)
+        || !tolerance.is_finite()
+        || tolerance <= 0.0
+        || crate::cancellation::is_cancelled()
+    {
+        return integrate_segment_checked(evaluator, segment, tolerance, panels);
+    }
+    let (value, [re_error, im_error], calls) = gk_panel_complex(0.0, 1.0, GkRule::G7K15, |t| {
+        evaluator(start + delta * t) * delta
+    });
+    if crate::cancellation::is_cancelled() {
+        return Err(GkError::Cancelled.into());
+    }
+    let error = re_error.hypot(im_error);
+    if !value.is_finite() || !error.is_finite() {
+        return Err(GkError::NonFiniteEstimate.into());
+    }
+    let converged = re_error <= tolerance * 0.5 && im_error <= tolerance * 0.5;
+    if converged || panels == 1 {
+        return Ok(ContourIntegral {
+            value,
+            error,
+            evaluations: calls,
+            converged,
+        });
+    }
+    let mut refined = integrate_segment_checked(evaluator, segment, tolerance, panels - 1)?;
+    refined.evaluations += calls;
+    Ok(refined)
+}
+
+fn integrate_complex_01<F>(
+    f: F,
+    tol: f64,
+    max_evals: usize,
+) -> Complex<f64>
 where
     F: Fn(f64) -> Complex<f64>,
 {
@@ -266,7 +435,10 @@ pub struct SchwarzChristoffelMap {
 }
 
 impl SchwarzChristoffelMap {
-    fn integrand(&self, zeta: Complex<f64>) -> Complex<f64> {
+    fn integrand(
+        &self,
+        zeta: Complex<f64>,
+    ) -> Complex<f64> {
         let mut prod = Complex::new(1.0, 0.0);
         for (&xk, &alpha) in self.prevertices.iter().zip(self.interior_angles_pi.iter()) {
             let diff = zeta - Complex::new(xk, 0.0);
@@ -276,26 +448,67 @@ impl SchwarzChristoffelMap {
         prod
     }
 
-    /// Evaluates the Schwarz–Christoffel integral from $`z_0` = i$ to $z$ (with $\text{Im}(z) > 0$).
-    ///
+    /// Evaluates the Schwarz–Christoffel integral from `z₀ = i` to a point
+    /// in the open upper half-plane using a common complex sample grid.
     /// # Errors
-    ///
-    /// This method currently returns `Ok` for every evaluation.
-    pub fn eval(&self, z: Complex<f64>) -> Result<Complex<f64>, String> {
-        let z0 = Complex::new(0.0, 1.0);
-        let dir = z - z0;
-        let integral = integrate_complex_01(
-            |t| {
-                let zeta = z0 + dir * t;
-                self.integrand(zeta) * dir
-            },
-            1e-10,
-            200,
-        );
-        Ok(self.shift + self.scale * integral)
+    /// Rejects malformed parameters, nonfinite results, cancellation, or a
+    /// quadrature estimate that misses the default tolerance.
+    pub fn eval(
+        &self,
+        z: Complex<f64>,
+    ) -> Result<Complex<f64>, String> {
+        let coefficient_scale = self.scale.re.abs().max(self.scale.im.abs()).max(1e-100);
+        let result = self.eval_checked(z, 1e-10 * coefficient_scale, 128)?;
+        if result.converged {
+            Ok(result.value)
+        } else {
+            Err("Schwarz–Christoffel integration did not meet the default tolerance".into())
+        }
     }
 
-    fn segment_integral(&self, a: f64, b: f64) -> Complex<f64> {
+    pub(crate) fn eval_checked(
+        &self,
+        z: Complex<f64>,
+        tolerance: f64,
+        panels: usize,
+    ) -> Result<ContourIntegral, String> {
+        if !z.is_finite()
+            || z.im <= 0.0
+            || !self.scale.is_finite()
+            || self.scale == Complex::default()
+            || !self.shift.is_finite()
+            || self.prevertices.len() != self.interior_angles_pi.len()
+            || self.prevertices.iter().any(|x| !x.is_finite())
+            || self.prevertices.windows(2).any(|pair| pair[0] >= pair[1])
+            || self
+                .interior_angles_pi
+                .iter()
+                .any(|&angle| !(angle > 0.0 && angle < 2.0))
+        {
+            return Err("Schwarz–Christoffel evaluation requires ordered finite prevertices, interior angle factors in (0,2), a finite nonzero scale, and an interior point".into());
+        }
+
+        let start = Complex::new(0.0, 1.0);
+        let mut estimate = integrate_pure_segment(
+            |point| self.scale * self.integrand(point),
+            start,
+            z,
+            tolerance,
+            panels,
+        )
+        .map_err(|error| error.to_string())?;
+        estimate.value += self.shift;
+        if !estimate.value.is_finite() {
+            return Err("Schwarz–Christoffel value exceeds Float range".into());
+        }
+        Ok(estimate)
+    }
+
+    fn segment_integral(
+        &self,
+        a: f64,
+        b: f64,
+    ) -> Complex<f64> {
         // Compound tanh-sinh-like / double-sin^2 substitution for acute endpoint singularities:
         // x(u) = a + span * sin^2(pi/2 * sin^2(pi/2 * u)) clusters doubly near endpoints.
         let span = b - a;
@@ -319,32 +532,50 @@ impl SchwarzChristoffelMap {
 
 fn polygon_interior_angles_pi(vertices: &[Complex<f64>]) -> Result<Vec<f64>, String> {
     let n = vertices.len();
-    if n < 3 {
-        return Err("Polygon must have at least 3 vertices".to_string());
-    }
-    let mut alphas = Vec::with_capacity(n);
+    let mut angles = Vec::with_capacity(n);
+    let edge = |i: usize| {
+        let a = vertices[i];
+        let b = vertices[(i + 1) % n];
+        ([a.re, a.im], [b.re, b.im])
+    };
+    let mut area_twice = 0.0;
     for i in 0..n {
-        let prev = *vertices
-            .get((i + n - 1) % n)
-            .ok_or_else(|| "Index".to_string())?;
-        let curr = *vertices.get(i).ok_or_else(|| "Index".to_string())?;
-        let next = *vertices
-            .get((i + 1) % n)
-            .ok_or_else(|| "Index".to_string())?;
-        let v_in = curr - prev;
-        let v_out = next - curr;
-        // Exterior turning angle for CCW polygon
-        let turn = (v_out / v_in).arg();
-        let alpha = 1.0 - turn / PI;
-        alphas.push(alpha);
+        crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
+        let prev = vertices[(i + n - 1) % n];
+        let curr = vertices[i];
+        let next = vertices[(i + 1) % n];
+        let incoming = curr - prev;
+        let outgoing = next - curr;
+        if incoming == Complex::default() || outgoing == Complex::default() {
+            return Err("Schwarz–Christoffel polygon has a repeated edge endpoint".into());
+        }
+        area_twice += curr.re * next.im - curr.im * next.re;
+        let angle = 1.0 - divide_projective(outgoing, incoming).arg() / PI;
+        if !angle.is_finite() || angle <= 0.0 || angle >= 2.0 {
+            return Err("Schwarz–Christoffel polygon has an unresolved interior angle".into());
+        }
+        angles.push(angle);
+        let (a, b) = edge(i);
+        for j in (i + 2)..n {
+            if i == 0 && j + 1 == n {
+                continue;
+            }
+            let (c, d) = edge(j);
+            if segment_intersection_2d(a, b, c, d).is_some() {
+                return Err("Schwarz–Christoffel polygon edges intersect".into());
+            }
+        }
     }
-    Ok(alphas)
+    if !(area_twice.is_finite() && area_twice > 0.0) {
+        return Err("Schwarz–Christoffel polygon needs positive counterclockwise area".into());
+    }
+    Ok(angles)
 }
 
 /// Solves for the prevertices of a Schwarz–Christoffel map.
 ///
 /// Maps the upper half-plane to the simple counterclockwise polygon `polygon_vertices`. Fixes
-/// the first three prevertices at `(-1, 0, 1)` and finds the remaining `n - 3` by damped Newton
+/// the first, second and last prevertices at `(-1, 0, 1)` and finds the remaining `n - 3` by damped Newton
 /// iteration.
 ///
 /// # Errors
@@ -356,10 +587,24 @@ pub fn solve_sc_uhp(
     tol: f64,
 ) -> Result<SchwarzChristoffelMap, String> {
     let n = polygon_vertices.len();
-    if n < 3 {
-        return Err("Need at least 3 polygon vertices".to_string());
+    if n < 3 || !tol.is_finite() || tol <= 0.0 || polygon_vertices.iter().any(|v| !v.is_finite()) {
+        return Err(
+            "Schwarz–Christoffel solve needs a finite polygon and positive finite tolerance".into(),
+        );
     }
-    let alphas = polygon_interior_angles_pi(polygon_vertices)?;
+    let origin = polygon_vertices[0];
+    let extent = polygon_vertices
+        .iter()
+        .fold(0.0_f64, |acc, v| acc.max(v.re.abs()).max(v.im.abs()));
+    if extent <= 0.0 {
+        return Err("Schwarz–Christoffel polygon has zero extent".into());
+    }
+    let local_origin = origin / extent;
+    let polygon_vertices: Vec<_> = polygon_vertices
+        .iter()
+        .map(|&v| v / extent - local_origin)
+        .collect();
+    let alphas = polygon_interior_angles_pi(&polygon_vertices)?;
     let mut prevertices = Vec::with_capacity(n);
     prevertices.push(-1.0);
     prevertices.push(0.0);
@@ -417,14 +662,21 @@ pub fn solve_sc_uhp(
             segs.push(sc.segment_integral(a, b));
         }
         let s0 = *segs.first().ok_or_else(|| "Missing seg".to_string())?;
-        let s0_norm = s0.norm().max(1e-15);
+        let s0_norm = s0.norm();
+        if s0_norm <= 0.0 || !s0_norm.is_finite() {
+            return Err("Schwarz–Christoffel reference edge integral is degenerate".into());
+        }
         let ratios: Vec<f64> = segs.iter().skip(1).map(|s| s.norm() / s0_norm).collect();
+        if ratios.iter().any(|ratio| !ratio.is_finite()) {
+            return Err("Schwarz–Christoffel side length ratio exceeds Float range".into());
+        }
         Ok((ratios, s0))
     };
 
     let mut converged = m_free == 0;
     if m_free > 0 {
         for _ in 0..max_iter {
+            crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
             let xs = build_prevertices(&u);
             let (ratios, _) = eval_ratios(&xs)?;
             let mut res = Vec::with_capacity(m_free);
@@ -460,7 +712,7 @@ pub fn solve_sc_uhp(
                     }
                 }
             }
-            let delta = solve_real_linear(&jac, &res)?;
+            let delta = solve_linear_rows(&jac, &res).map_err(|error| error.to_string())?;
             let mut alpha_step = 1.0_f64;
             while alpha_step > 1e-4 {
                 let u_try: Vec<f64> = u
@@ -494,7 +746,7 @@ pub fn solve_sc_uhp(
         .first()
         .ok_or_else(|| "Index".to_string())?;
     let v1 = *polygon_vertices.get(1).ok_or_else(|| "Index".to_string())?;
-    let scale = (v1 - v0) / s0;
+    let scale = divide_projective(v1 - v0, s0);
     let mut sc = SchwarzChristoffelMap {
         prevertices,
         interior_angles_pi: alphas,
@@ -503,322 +755,26 @@ pub fn solve_sc_uhp(
     };
     // Integrate from z0 = i to a point near x0 = -1 along an interior approach
     let f_at_x0 = sc.eval(Complex::new(-1.0, 1e-6))?;
-    sc.shift = v0 - f_at_x0;
-    Ok(sc)
-}
-
-fn solve_real_linear(a: &[Vec<f64>], b: &[f64]) -> Result<Vec<f64>, String> {
-    let n = b.len();
-    let mut mat = a.to_vec();
-    let mut rhs = b.to_vec();
-    for col in 0..n {
-        let mut piv = col;
-        let mut max_v = mat
-            .get(col)
-            .and_then(|r| r.get(col))
-            .copied()
-            .unwrap_or(0.0)
-            .abs();
-        for row in (col + 1)..n {
-            let v = mat
-                .get(row)
-                .and_then(|r| r.get(col))
-                .copied()
-                .unwrap_or(0.0)
-                .abs();
-            if v > max_v {
-                max_v = v;
-                piv = row;
-            }
-        }
-        if max_v < 1e-14 {
-            return Err("Singular Jacobian in SC solver".to_string());
-        }
-        if piv != col {
-            mat.swap(col, piv);
-            rhs.swap(col, piv);
-        }
-        let diag = mat
-            .get(col)
-            .and_then(|r| r.get(col))
-            .copied()
-            .unwrap_or(1.0);
-        for row in (col + 1)..n {
-            let factor = mat
-                .get(row)
-                .and_then(|r| r.get(col))
-                .copied()
-                .unwrap_or(0.0)
-                / diag;
-            for k in col..n {
-                let p_val = mat.get(col).and_then(|r| r.get(k)).copied().unwrap_or(0.0);
-                if let Some(cell) = mat.get_mut(row).and_then(|r| r.get_mut(k)) {
-                    *cell -= factor * p_val;
-                }
-            }
-            let rhs_col = *rhs.get(col).unwrap_or(&0.0);
-            if let Some(r_slot) = rhs.get_mut(row) {
-                *r_slot -= factor * rhs_col;
-            }
-        }
-    }
-    let mut x = vec![0.0_f64; n];
-    for i in (0..n).rev() {
-        let mut sum = *rhs.get(i).unwrap_or(&0.0);
-        for j in (i + 1)..n {
-            let a_ij = mat.get(i).and_then(|r| r.get(j)).copied().unwrap_or(0.0);
-            let x_j = *x.get(j).unwrap_or(&0.0);
-            sum -= a_ij * x_j;
-        }
-        let diag = mat.get(i).and_then(|r| r.get(i)).copied().unwrap_or(1.0);
-        if let Some(slot) = x.get_mut(i) {
-            *slot = sum / diag;
-        }
-    }
-    Ok(x)
-}
-
-fn solve_complex_linear(
-    a: &[Vec<Complex<f64>>],
-    b: &[Complex<f64>],
-) -> Result<Vec<Complex<f64>>, String> {
-    let n = b.len();
-    let mut mat = a.to_vec();
-    let mut rhs = b.to_vec();
-    for col in 0..n {
-        let mut piv = col;
-        let mut max_v = mat
-            .get(col)
-            .and_then(|r| r.get(col))
-            .map_or(0.0, |c| c.norm());
-        for row in (col + 1)..n {
-            let v = mat
-                .get(row)
-                .and_then(|r| r.get(col))
-                .map_or(0.0, |c| c.norm());
-            if v > max_v {
-                max_v = v;
-                piv = row;
-            }
-        }
-        if max_v < 1e-14 {
-            return Err("Singular complex linear system".to_string());
-        }
-        if piv != col {
-            mat.swap(col, piv);
-            rhs.swap(col, piv);
-        }
-        let diag = mat
-            .get(col)
-            .and_then(|r| r.get(col))
-            .copied()
-            .unwrap_or_else(|| Complex::new(1.0, 0.0));
-        for row in (col + 1)..n {
-            let factor = mat
-                .get(row)
-                .and_then(|r| r.get(col))
-                .copied()
-                .unwrap_or_default()
-                / diag;
-            for k in col..n {
-                let p_val = mat
-                    .get(col)
-                    .and_then(|r| r.get(k))
-                    .copied()
-                    .unwrap_or_default();
-                if let Some(cell) = mat.get_mut(row).and_then(|r| r.get_mut(k)) {
-                    *cell -= factor * p_val;
-                }
-            }
-            let rhs_col = rhs.get(col).copied().unwrap_or_default();
-            if let Some(r_slot) = rhs.get_mut(row) {
-                *r_slot -= factor * rhs_col;
-            }
-        }
-    }
-    let mut x = vec![Complex::new(0.0, 0.0); n];
-    for i in (0..n).rev() {
-        let mut sum = rhs.get(i).copied().unwrap_or_default();
-        for j in (i + 1)..n {
-            let a_ij = mat
-                .get(i)
-                .and_then(|r| r.get(j))
-                .copied()
-                .unwrap_or_default();
-            let x_j = x.get(j).copied().unwrap_or_default();
-            sum -= a_ij * x_j;
-        }
-        let diag = mat
-            .get(i)
-            .and_then(|r| r.get(i))
-            .copied()
-            .unwrap_or_else(|| Complex::new(1.0, 0.0));
-        if let Some(slot) = x.get_mut(i) {
-            *slot = sum / diag;
-        }
-    }
-    Ok(x)
-}
-
-/// Reusable Kerzman–Stein Szegő kernel and Riemann map solver for a smooth
-/// counterclockwise Jordan domain $\Omega$ parameterized by `gamma(t)` for $t \in [0, 2\pi]$.
-pub struct SzegoKerzmanSteinSolver {
-    pts: Vec<Complex<f64>>,
-    tangents: Vec<Complex<f64>>,
-    speeds: Vec<f64>,
-    dt: f64,
-    a: Complex<f64>,
-    s_boundary: Vec<Complex<f64>>,
-    s_aa: Complex<f64>,
-}
-
-impl SzegoKerzmanSteinSolver {
-    /// Solves $(I + A) `S_a` = \bar{H}_a$ once and caches the boundary Szegő kernel.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error for fewer than 16 quadrature nodes, a vanishing boundary tangent, or a failed linear solve.
-    pub fn solve<F, DF>(
-        gamma: F,
-        dgamma: DF,
-        n_quad: usize,
-        a: Complex<f64>,
-    ) -> Result<Self, String>
-    where
-        F: Fn(f64) -> Complex<f64>,
-        DF: Fn(f64) -> Complex<f64>,
-    {
-        if n_quad < 16 {
-            return Err("n_quad must be at least 16".to_string());
-        }
-        let dt = 2.0 * PI / (n_quad as f64);
-        let mut pts = Vec::with_capacity(n_quad);
-        let mut tangents = Vec::with_capacity(n_quad);
-        let mut speeds = Vec::with_capacity(n_quad);
-        for j in 0..n_quad {
-            let t = (j as f64) * dt;
-            let p = gamma(t);
-            let dp = dgamma(t);
-            let sp = dp.norm();
-            if sp < 1e-14 {
-                return Err("Zero tangent speed on boundary".to_string());
-            }
-            pts.push(p);
-            tangents.push(dp / sp);
-            speeds.push(sp);
-        }
-
-        let two_pi_i = Complex::new(0.0, 2.0 * PI);
-        let mut mat = vec![vec![Complex::new(0.0, 0.0); n_quad]; n_quad];
-        let mut rhs = Vec::with_capacity(n_quad);
-
-        for i in 0..n_quad {
-            let zi = *pts.get(i).ok_or_else(|| "Index".to_string())?;
-            let ti = *tangents.get(i).ok_or_else(|| "Index".to_string())?;
-            let h_a_i = (ti / (zi - a)) / two_pi_i;
-            rhs.push(h_a_i.conj());
-            for j in 0..n_quad {
-                let ds_j = *speeds.get(j).ok_or_else(|| "Index".to_string())? * dt;
-                if i == j {
-                    if let Some(cell) = mat.get_mut(i).and_then(|r| r.get_mut(j)) {
-                        *cell = Complex::new(1.0, 0.0);
-                    }
-                } else {
-                    let zj = *pts.get(j).ok_or_else(|| "Index".to_string())?;
-                    let tj = *tangents.get(j).ok_or_else(|| "Index".to_string())?;
-                    let h_ij = (tj / (zj - zi)) / two_pi_i;
-                    let h_ji = (ti / (zi - zj)) / two_pi_i;
-                    let k_ij = h_ji.conj() - h_ij;
-                    if let Some(cell) = mat.get_mut(i).and_then(|r| r.get_mut(j)) {
-                        *cell = k_ij * ds_j;
-                    }
-                }
-            }
-        }
-
-        let s_boundary = solve_complex_linear(&mat, &rhs)?;
-        let mut solver = Self {
-            pts,
-            tangents,
-            speeds,
-            dt,
-            a,
-            s_boundary,
-            s_aa: Complex::new(0.0, 0.0),
-        };
-        solver.s_aa = solver.eval_szego(a);
-        Ok(solver)
-    }
-
-    /// Evaluates the Szegő kernel $S(w, a)$ at an interior point `w`.
-    #[must_use]
-    pub fn eval_szego(&self, w: Complex<f64>) -> Complex<f64> {
-        let two_pi_i = Complex::new(0.0, 2.0 * PI);
-        let mut sum = Complex::new(0.0, 0.0);
-        for j in 0..self.pts.len() {
-            let zj = self.pts[j];
-            let tj = self.tangents[j];
-            let sj = self.s_boundary[j];
-            let ds_j = self.speeds[j] * self.dt;
-            sum += (sj * tj / (zj - w)) * ds_j;
-        }
-        sum / two_pi_i
-    }
-
-    /// Evaluates the Riemann map $f(z)$ and Szegő kernel $S(z, a)$ at `z`.
-    #[must_use]
-    pub fn eval_map(&self, z: Complex<f64>) -> (Complex<f64>, Complex<f64>) {
-        let s_za = self.eval_szego(z);
-        let dir = z - self.a;
-        let integral_sq = integrate_complex_01(
-            |u| {
-                let w = self.a + dir * u;
-                let sw = self.eval_szego(w);
-                sw * sw * dir
-            },
-            1e-9,
-            128,
-        );
-        let riemann_map_z = (Complex::new(2.0 * PI, 0.0) / self.s_aa) * integral_sq;
-        (riemann_map_z, s_za)
-    }
-
-    /// Bergman kernel $K(z, a) = 4 \pi S(z, a)^2$ for simply-connected $\Omega$.
-    #[must_use]
-    pub fn eval_bergman(&self, z: Complex<f64>) -> Complex<f64> {
-        let s = self.eval_szego(z);
-        4.0 * PI * s * s
+    sc.scale *= extent;
+    sc.shift = origin + (v0 - f_at_x0) * extent;
+    if sc.scale.is_finite() && sc.shift.is_finite() && sc.scale != Complex::default() {
+        Ok(sc)
+    } else {
+        Err("Schwarz–Christoffel physical parameters exceed Float range".into())
     }
 }
 
-/// Computes a Riemann map of a smooth Jordan domain.
-///
-/// Computes the Szegő kernel `S(\cdot, a)` on the boundary of a smooth Jordan domain
-/// parameterized CCW by `gamma(t)` with derivative `dgamma(t)` for `t \in [0, 2\pi]`
-/// via the Kerzman–Stein integral equation `(I + A) S_a = \bar{H}_a`, and evaluates
-/// the Riemann map `f(z) = \frac{2\pi}{S(a,a)} \int_a^z S(\zeta, a)^2 d\zeta` at `z`.
-///
-/// # Errors
-///
-/// Returns an error if the boundary data or integral-equation solve is invalid.
-pub fn szego_kerzman_stein_map<F, DF>(
-    gamma: F,
-    dgamma: DF,
-    n_quad: usize,
-    a: Complex<f64>,
-    z: Complex<f64>,
-) -> Result<(Complex<f64>, Complex<f64>), String>
-where
-    F: Fn(f64) -> Complex<f64>,
-    DF: Fn(f64) -> Complex<f64>,
-{
-    let solver = SzegoKerzmanSteinSolver::solve(gamma, dgamma, n_quad, a)?;
-    Ok(solver.eval_map(z))
-}
+#[path = "conformal_szego.rs"]
+mod szego;
+pub use szego::SzegoKerzmanSteinSolver;
+pub use szego::szego_kerzman_stein_map;
 
 /// Exact Bergman kernel of the unit disk: $K_{\mathbb{D}}(z, w) = \frac{1}{\pi (1 - z \bar{w})^2}$.
 #[must_use]
-pub fn bergman_kernel_disk(z: Complex<f64>, w: Complex<f64>) -> Complex<f64> {
+pub fn bergman_kernel_disk(
+    z: Complex<f64>,
+    w: Complex<f64>,
+) -> Complex<f64> {
     let denom = Complex::new(1.0, 0.0) - z * w.conj();
     Complex::new(1.0 / PI, 0.0) / (denom * denom)
 }
@@ -831,16 +787,27 @@ pub fn bergman_kernel_polynomial_basis(
     z: Complex<f64>,
     w: Complex<f64>,
 ) -> Complex<f64> {
-    let eval_p = |coeffs: &[Complex<f64>], x: Complex<f64>| -> Complex<f64> {
-        let mut acc = Complex::new(0.0, 0.0);
-        for &c in coeffs.iter().rev() {
-            acc = acc * x + c;
-        }
-        acc
-    };
-    let mut sum = Complex::new(0.0, 0.0);
-    for poly in orthonormal_polys {
-        sum += eval_p(poly, z) * eval_p(poly, w).conj();
+    if z == w {
+        let sum = orthonormal_polys
+            .iter()
+            .map(|coefficients| {
+                coefficients
+                    .iter()
+                    .rev()
+                    .fold(Complex::<f64>::default(), |tail, &term| tail * z + term)
+                    .norm_sqr()
+            })
+            .sum();
+        return Complex::new(sum, 0.0);
     }
-    sum
+    orthonormal_polys
+        .iter()
+        .map(|coefficients| {
+            let (a, b) = coefficients.iter().rev().fold(
+                (Complex::<f64>::default(), Complex::<f64>::default()),
+                |(left, right), &term| (left * z + term, right * w + term),
+            );
+            a * b.conj()
+        })
+        .sum()
 }

@@ -1,14 +1,19 @@
 //! Complex Bessel Y/K, Hankel H1/H2, spherical Bessel, Airy Ai/Bi (and
 //! derivatives), Kelvin, Struve, Anger, and Weber functions.
 
+use std::f64::consts::FRAC_1_SQRT_2;
 use std::f64::consts::PI;
 
 use num_complex::Complex64;
 
+use crate::kernels::contour_deform::ContourSegment;
+use crate::kernels::contour_deform::integrate_segment_checked;
 use crate::kernels::integrate::gauss_kronrod_any;
 use crate::kernels::special_complex::bessel_i_complex;
+use crate::kernels::special_complex::bessel_j_asymptotic_complex_order;
 use crate::kernels::special_complex::bessel_j_complex;
 use crate::kernels::special_complex::gamma_complex;
+use crate::kernels::special_complex::ln_gamma_complex;
 
 const ZERO: Complex64 = Complex64::new(0.0, 0.0);
 const ONE: Complex64 = Complex64::new(1.0, 0.0);
@@ -139,7 +144,7 @@ pub fn bessel_k_complex(
     if z.norm() > 12.0 + 1.5 * nu_abs {
         if z.arg().abs() >= PI - 0.15 {
             // Analytic continuation across (-inf, 0]: K_nu(z e^{+-i pi}) = e^{-+i pi nu} K_nu(z) -+ i pi I_nu(z)
-            let (z_refl, sgn) = if z.im >= 0.0 {
+            let (z_refl, sgn) = if z.im.is_sign_positive() {
                 (-z, 1.0)
             } else {
                 (-z, -1.0)
@@ -432,26 +437,60 @@ fn airy_series(
 
 /// Complex Kelvin functions `(ber_nu(z), bei_nu(z), ker_nu(z), kei_nu(z))`.
 #[must_use]
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "phases and continuations use IEEE complex arithmetic"
+)]
 pub fn kelvin_complex(
     nu: f64,
     z: Complex64,
 ) -> (Complex64, Complex64, Complex64, Complex64) {
-    let e34 = Complex64::from_polar(1.0, 0.75 * PI);
-    let em34 = e34.conj();
-    let e14 = Complex64::from_polar(1.0, 0.25 * PI);
-    let em14 = e14.conj();
-    let j_p = bessel_j_complex(nu, z * e34);
-    let j_m = bessel_j_complex(nu, z * em34);
-    let ber = 0.5 * (j_p + j_m);
-    let bei = -0.5 * I * (j_p - j_m);
-
-    let k_p = bessel_k_complex(nu, z * e14);
-    let k_m = bessel_k_complex(nu, z * em14);
-    let phase_p = Complex64::from_polar(1.0, -0.5 * nu * PI);
-    let phase_m = Complex64::from_polar(1.0, 0.5 * nu * PI);
-    let ker = 0.5 * (phase_p * k_p + phase_m * k_m);
-    let kei = -0.5 * I * (phase_p * k_p - phase_m * k_m);
-    (ber, bei, ker, kei)
+    let e34 = Complex64::new(-FRAC_1_SQRT_2, FRAC_1_SQRT_2);
+    let e14 = Complex64::new(FRAC_1_SQRT_2, FRAC_1_SQRT_2);
+    let phase = Complex64::from_polar(1.0, -0.5 * nu * PI);
+    let angle = z.arg();
+    let j_rotated = |rotation: Complex64, turn: f64| {
+        let point = z * rotation;
+        let sheet = angle + turn - point.arg();
+        let value = bessel_j_complex(nu, point);
+        if sheet.abs() > PI {
+            Complex64::from_polar(1.0, sheet.signum() * 2.0 * PI * nu) * value
+        } else {
+            value
+        }
+    };
+    let k_rotated = |rotation: Complex64, turn: f64| {
+        let point = z * rotation;
+        let expected = angle + turn;
+        if (expected - point.arg()).abs() > PI {
+            // DLMF 10.34.2 at m=±1 continues continuously along the rotation.
+            let side = expected.signum();
+            let reflected = -point;
+            Complex64::from_polar(1.0, -side * PI * nu) * bessel_k_complex(nu, reflected)
+                - I * PI * side * bessel_i_complex(nu, reflected)
+        } else {
+            bessel_k_complex(nu, point)
+        }
+    };
+    let j_plus = j_rotated(e34, 0.75 * PI);
+    let k_plus = phase * k_rotated(e14, 0.25 * PI);
+    if z.im == 0.0 && z.re >= 0.0 {
+        // The negative rotations are complex conjugates on the positive real axis.
+        return (
+            j_plus.re.into(),
+            j_plus.im.into(),
+            k_plus.re.into(),
+            k_plus.im.into(),
+        );
+    }
+    let j_minus = j_rotated(e34.conj(), -0.75 * PI);
+    let k_minus = phase.conj() * k_rotated(e14.conj(), -0.25 * PI);
+    (
+        0.5 * (j_plus + j_minus),
+        -0.5 * I * (j_plus - j_minus),
+        0.5 * (k_plus + k_minus),
+        -0.5 * I * (k_plus - k_minus),
+    )
 }
 
 /// Complex Struve function `H_nu(z)` via ascending power series (using `rgamma`
@@ -563,7 +602,7 @@ pub fn airy_gi_complex(z: Complex64) -> Complex64 {
     airy_bi_complex(z).0 - airy_hi_complex(z)
 }
 
-/// Complex-order Bessel function of the first kind `J_nu(z)` for `nu, z in C`.
+/// Complex-order Bessel function of the first kind `J_nu(z)` on the principal branch.
 #[must_use]
 pub fn bessel_j_complex_order(
     nu: Complex64,
@@ -572,29 +611,10 @@ pub fn bessel_j_complex_order(
     if nu.im == 0.0 {
         return bessel_j_complex(nu.re, z);
     }
-    if z == ZERO {
-        return if nu.re > 0.0 {
-            ONE * 0.0
-        } else {
-            Complex64::new(f64::NAN, f64::NAN)
-        };
-    }
-    let half_z = 0.5 * z;
-    let half_z2 = half_z * half_z;
-    let mut sum = crate::kernels::special_complex_ext::gamma_beta::rgamma_complex(nu + ONE);
-    let mut term = sum;
-    for k in 1..200 {
-        let kf = f64::from(k);
-        term *= -half_z2 / (kf * (nu + kf));
-        sum += term;
-        if term.norm() <= 1e-16 * (1.0 + sum.norm()) {
-            break;
-        }
-    }
-    half_z.powc(nu) * sum
+    bessel_order(nu, z, false)
 }
 
-/// Complex-order modified Bessel function of the first kind `I_nu(z)` for `nu, z in C`.
+/// Complex-order modified Bessel function `I_nu(z)` on the principal branch.
 #[must_use]
 pub fn bessel_i_complex_order(
     nu: Complex64,
@@ -603,26 +623,87 @@ pub fn bessel_i_complex_order(
     if nu.im == 0.0 {
         return bessel_i_complex(nu.re, z);
     }
-    if z == ZERO {
-        return if nu.re > 0.0 {
-            ZERO
-        } else {
-            Complex64::new(f64::NAN, f64::NAN)
-        };
+    bessel_order(nu, z, true)
+}
+
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "the floating-point series preserves error status and uses a finite term budget"
+)]
+fn bessel_order(
+    nu: Complex64,
+    z: Complex64,
+    modified: bool,
+) -> Complex64 {
+    if !nu.is_finite() || !z.is_finite() || crate::cancellation::is_cancelled() {
+        return NAN;
     }
-    let half_z = 0.5 * z;
-    let half_z2 = half_z * half_z;
-    let mut sum = crate::kernels::special_complex_ext::gamma_beta::rgamma_complex(nu + ONE);
-    let mut term = sum;
-    for k in 1..200 {
+    if z == ZERO {
+        return if nu.re > 0.0 { ZERO } else { NAN };
+    }
+    let magnitude = z.norm();
+    if magnitude >= 17.0 && magnitude > 0.5 * nu.norm_sqr() {
+        if modified {
+            // Rotate I into J in the right half-plane while preserving the
+            // principal argument and selecting the corresponding cut lip.
+            let side = z.im.signum();
+            return bessel_j_asymptotic_complex_order(nu, (-side * I) * z, side);
+        }
+        return bessel_j_asymptotic_complex_order(nu, z, 0.0);
+    }
+    // DLMF 10.2.2 and 10.25.2 differ only in the sign of the series ratio.
+    // Compute each seed with the power and reciprocal gamma in one exponential.
+    let half = 0.5 * z;
+    let logarithm = z.ln() - std::f64::consts::LN_2;
+    let square = if modified {
+        half * half
+    } else {
+        -half * half
+    };
+    let order_power = nu * logarithm;
+    let mut term = (order_power - ln_gamma_complex(nu + ONE)).exp();
+    let mut sum = term;
+    let mut residual = ZERO;
+    // A nearly zero denominator occurs close to a negative integer order. Restart
+    // that term with its analytic coefficient, bypassing division by a tiny number.
+    let near_integer = (-nu.re).round();
+    let restart = if (1.0..=512.0).contains(&near_integer) && (nu + near_integer).norm_sqr() < 1e-8
+    {
+        near_integer as u32
+    } else {
+        0
+    };
+    for k in 1..=512 {
         let kf = f64::from(k);
-        term *= half_z2 / (kf * (nu + kf));
-        sum += term;
-        if term.norm() <= 1e-16 * (1.0 + sum.norm()) {
-            break;
+        if k == restart {
+            let mut log_power = (nu + 2.0 * kf) * logarithm;
+            if !modified && k % 2 == 1 {
+                log_power += I * PI;
+            }
+            term = (log_power
+                - ln_gamma_complex(nu + (kf + 1.0))
+                - ln_gamma_complex(Complex64::new(kf + 1.0, 0.0)).re)
+                .exp();
+        } else {
+            term *= square / (kf * (nu + kf));
+        }
+        let corrected = term - residual;
+        let next = sum + corrected;
+        residual = (next - sum) - corrected;
+        sum = next;
+        let next_index = kf + 1.0;
+        if k >= restart
+            && term.norm() <= f64::EPSILON * sum.norm()
+            && square.norm() <= 0.5 * next_index * (nu + next_index).norm()
+            && next_index + nu.re > 0.0
+        {
+            return sum;
+        }
+        if !sum.is_finite() {
+            return NAN;
         }
     }
-    half_z.powc(nu) * sum
+    NAN
 }
 
 /// Complex modified Struve function `L_nu(z) = -i * exp(-i*nu*pi/2) * H_nu(i*z)`.
@@ -640,23 +721,7 @@ pub fn anger_j_complex(
     nu: f64,
     z: Complex64,
 ) -> Complex64 {
-    let re = gauss_kronrod_any(
-        |t| (Complex64::new(nu * t, 0.0) - z * t.sin()).cos().re,
-        0.0,
-        PI,
-        1e-12,
-        12,
-    )
-    .value;
-    let im = gauss_kronrod_any(
-        |t| (Complex64::new(nu * t, 0.0) - z * t.sin()).cos().im,
-        0.0,
-        PI,
-        1e-12,
-        12,
-    )
-    .value;
-    Complex64::new(re / PI, im / PI)
+    anger_weber(nu, z, f64::cos, Complex64::cos)
 }
 
 /// Complex Weber function `E_nu(z) = (1/pi) * int_0^pi sin(nu*t - z*sin(t)) dt`.
@@ -665,21 +730,45 @@ pub fn weber_e_complex(
     nu: f64,
     z: Complex64,
 ) -> Complex64 {
-    let re = gauss_kronrod_any(
-        |t| (Complex64::new(nu * t, 0.0) - z * t.sin()).sin().re,
-        0.0,
-        PI,
-        1e-12,
-        12,
-    )
-    .value;
-    let im = gauss_kronrod_any(
-        |t| (Complex64::new(nu * t, 0.0) - z * t.sin()).sin().im,
-        0.0,
-        PI,
-        1e-12,
-        12,
-    )
-    .value;
-    Complex64::new(re / PI, im / PI)
+    anger_weber(nu, z, f64::sin, Complex64::sin)
+}
+
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "the integrand uses finite math and the shared quadrature bounds its work"
+)]
+fn anger_weber(
+    nu: f64,
+    z: Complex64,
+    real_wave: fn(f64) -> f64,
+    wave: fn(Complex64) -> Complex64,
+) -> Complex64 {
+    if !nu.is_finite() || !z.is_finite() || crate::cancellation::is_cancelled() {
+        return NAN;
+    }
+    let phase = |theta: f64| wave(Complex64::new(nu * theta, 0.0) - z * theta.sin());
+    let panels = ((nu.abs() + z.re.abs()).ceil() as usize).clamp(24, 4096);
+    if z.im == 0.0 {
+        // For real arguments the imaginary component vanishes identically.
+        let result = gauss_kronrod_any(
+            |t| real_wave(nu * t - z.re * t.sin()),
+            0.0,
+            PI,
+            1e-12,
+            panels,
+        );
+        return Complex64::new(result.value / PI, 0.0);
+    }
+    let tolerance = 1e-12 * z.im.abs().exp();
+    let segment = ContourSegment::Line {
+        start: ZERO,
+        end: PI.into(),
+    };
+    integrate_segment_checked(|t| phase(t.re), segment, tolerance, panels).map_or(NAN, |result| {
+        if result.converged {
+            result.value / PI
+        } else {
+            NAN
+        }
+    })
 }

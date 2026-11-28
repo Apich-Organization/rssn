@@ -7,6 +7,7 @@ use std::f64::consts::PI;
 use num_complex::Complex64;
 
 use crate::kernels::quadrature::exp_sinh;
+use crate::kernels::special::bernoulli_number;
 use crate::kernels::special_complex::gamma_complex;
 use crate::kernels::special_complex::ln_gamma_complex;
 use crate::kernels::special_ext::polylog_complex;
@@ -348,33 +349,23 @@ pub fn clausen_complex(
 
 /// Complex Bernoulli polynomial `B_n(z)`.
 #[must_use]
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "complex polynomial summation"
+)]
 pub fn bernoulli_poly_complex(
     n: u32,
     z: Complex64,
 ) -> Complex64 {
-    // Use recurrence / explicit binomial sum with Bernoulli numbers B_k.
-    let n_usize = n as usize;
-    let mut b = vec![0.0_f64; n_usize + 1];
-    b[0] = 1.0;
-    for m in 1..=n_usize {
-        let mut s = 0.0_f64;
-        let mut binom = 1.0_f64;
-        for k in 0..m {
-            s += binom * b.get(k).copied().unwrap_or(0.0) / ((m - k + 1) as f64);
-            binom *= ((m - k) as f64) / ((k + 1) as f64);
-        }
-        if let Some(slot) = b.get_mut(m) {
-            *slot = -s;
-        }
-    }
-    let mut sum = ZERO;
-    let mut binom = 1.0_f64;
-    for k in 0..=n_usize {
-        let bk = b.get(k).copied().unwrap_or(0.0);
-        let power = i32::try_from(n_usize - k).unwrap_or(0);
-        sum += binom * bk * z.powi(power);
-        if k < n_usize {
-            binom *= ((n_usize - k) as f64) / ((k + 1) as f64);
+    let mut sum = Complex64::new(0.0, 0.0);
+    let mut binomial = 1.0_f64;
+    let mut power = Complex64::new(1.0, 0.0);
+    // B_n(x) = Σ_{j=0}^n C(n, j) B_{n-j} x^j.
+    for j in 0..=n {
+        sum += Complex64::new(binomial * bernoulli_number(n - j), 0.0) * power;
+        if j < n {
+            binomial *= f64::from(n - j) / f64::from(j + 1);
+            power *= z;
         }
     }
     sum
