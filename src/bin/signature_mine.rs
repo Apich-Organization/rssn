@@ -1,18 +1,13 @@
 //! Mines `signatures.witnessed.json` from sort traces.
 //!
 //! ```text
-//! # 1. record: run any workload with tracing on (the test suite is the corpus)
-//! RSSN_SORT_TRACE=/tmp/sorts.tsv cargo test --lib
-//! # 2. mine: cluster, replay every witness, write the table
-//! cargo run --profile tools --bin signature-mine -- /tmp/sorts.tsv
-//! cargo run --profile tools --bin signature-mine -- --check   # replay the shipped table
+//! bazel run //:refresh_witness
+//! bazel test //:witness_test   # replay the shipped table
 //! ```
 //!
-//! The first step costs nothing to maintain: every operator that has a test
-//! is exercised with real arguments, and the engine logs the sort of each
-//! request next to the sort of its answer. The second step keeps only what a
-//! fresh engine reproduces, so the table can be regenerated at any time and a
-//! stale entry cannot survive. See `rssn::kernel::sort` for the design.
+//! The refresh workflow records the sorts of requests and answers while the
+//! test suite exercises the operators. It keeps only the answers that a fresh
+//! engine reproduces. See `rssn::kernel::sort` for the design.
 //!
 //! Exit status: `0` on success, `1` when `--check` finds a witness that no
 //! longer replays, `2` when the tool could not run.

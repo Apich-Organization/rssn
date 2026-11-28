@@ -131,7 +131,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::io::Error::new(
             error.kind(),
             format!(
-                "required source file signatures.witnessed.json: {error}; restore it from Git or regenerate it with `cargo run --profile tools --bin signature-mine`"
+                "required source file signatures.witnessed.json: {error}; restore it from Git or regenerate it with `bazel run //:refresh_witness`"
             ),
         )
     })?;

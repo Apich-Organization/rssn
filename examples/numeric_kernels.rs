@@ -1,7 +1,7 @@
 //! The numeric side on its own: quadrature, root finding, an ODE
 //! integration, a minimisation and a real FFT.
 //!
-//! Run with `cargo run --release --example numeric_kernels`.
+//! Run with `bazel run //:example -- --profile release numeric_kernels`.
 
 use std::f64::consts::PI;
 

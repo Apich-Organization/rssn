@@ -11,11 +11,8 @@ Usage, from the repository root:
     python bindings/tools/extract_api.py
     python bindings/tools/extract_api.py --check   # exit 1 if the file is stale
 
-The manifest is read from `bindings/api/manifest.json` when it exists, else
-from `target/manifest.json`. Refresh the copy with
-
-    mkdir -p target
-    cargo run --locked --bin signature-audit -- --json > target/manifest.json
+The manifest defaults to the explicit snapshot in `bindings/api/manifest.json`
+or to the output of `bazel build //:manifest`.
 
 `--manifest` overrides the input path. Use `--library` to read the JSON
 manifest from a built RSSN shared library directly. `--write-manifest`
@@ -385,7 +382,7 @@ def main(argv: list[str] | None = None) -> int:
 
     manifest_path = args.manifest
     if manifest_path is None and args.library is None:
-        candidates = (API_DIR / "manifest.json", ROOT / "target" / "manifest.json")
+        candidates = (API_DIR / "manifest.json", ROOT / "bazel-bin" / "manifest" / "manifest.json")
         manifest_path = next((candidate for candidate in candidates if candidate.is_file()), None)
         if manifest_path is None:
             parser.error("no kernel manifest found; use --manifest or --library")

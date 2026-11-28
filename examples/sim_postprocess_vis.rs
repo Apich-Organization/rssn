@@ -1,6 +1,6 @@
 //! Simulation post-processing and visualization example.
 //!
-//! Run with `cargo run --locked --example sim_postprocess_vis`.
+//! Run with `bazel run //:example -- sim_postprocess_vis`.
 //!
 //! Solves a 2D heat diffusion problem on a structured grid and exports:
 //! - Chunked, deflate-compressed HDF5 snapshot archive

@@ -1,7 +1,7 @@
 //! Differential equations: one ODE with initial conditions and one PDE with
 //! boundary conditions, each checked at a point against its closed form.
 //!
-//! Run with `cargo run --release --example ode_pde`.
+//! Run with `bazel run //:example -- --profile release ode_pde`.
 
 use rssn::api::*;
 

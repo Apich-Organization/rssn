@@ -1,5 +1,5 @@
 //! Times end-to-end symbolic requests (the `benches/engine.rs` set) without
-//! criterion's LTO build: `cargo run --profile tools --example engine_timing`.
+//! criterion's LTO build: `bazel run //:example -- --profile tools engine_timing`.
 
 use rssn::api::Config;
 use rssn::api::Session;

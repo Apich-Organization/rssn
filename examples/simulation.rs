@@ -1,7 +1,7 @@
 //! Running simulations by name with JSON parameters — the same entry point
 //! the C interface exposes as `rssn_sim_run`.
 //!
-//! Run with `cargo run --release --example simulation`.
+//! Run with `bazel run //:example -- --profile release simulation`.
 
 use rssn::sim::scenario;
 

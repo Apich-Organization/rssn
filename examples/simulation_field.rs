@@ -1,7 +1,7 @@
 //! Two field solvers from `sim`: a 1-D acoustic pulse on a rigid box, and a
 //! 1-D Yee FDTD pulse, each checked against what physics says must happen.
 //!
-//! Run with `cargo run --release --example simulation_field`.
+//! Run with `bazel run //:example -- --profile release simulation_field`.
 
 use rssn::sim::acoustics::Acoustics;
 use rssn::sim::acoustics::AcousticsConfig;

@@ -1,7 +1,7 @@
 //! Units and dimensions: exact unit arithmetic, inference over an ordinary
 //! expression, and the strict mode that turns a mismatch into an error.
 //!
-//! Run with `cargo run --release --example units_and_dimensions`.
+//! Run with `bazel run //:example -- --profile release units_and_dimensions`.
 
 use rssn::api::*;
 use rssn::graph::DimensionMode;

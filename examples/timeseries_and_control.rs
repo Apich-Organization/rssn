@@ -1,6 +1,6 @@
 //! Time-series analysis, state-space control, and generalised linear models.
 //!
-//! Run with `cargo run --locked --example timeseries_and_control`.
+//! Run with `bazel run //:example -- timeseries_and_control`.
 
 use rssn::kernels::control::StateSpace;
 use rssn::kernels::control::mpc::MpcOptions;

@@ -1,7 +1,7 @@
 //! Solving: a polynomial, a system, and an inequality. The answer is a term
 //! like any other, so it can be read back as data or evaluated.
 //!
-//! Run with `cargo run --release --example solve_equations`.
+//! Run with `bazel run //:example -- --profile release solve_equations`.
 
 use rssn::api::*;
 
