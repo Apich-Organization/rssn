@@ -1,6 +1,8 @@
-//! Complex Carlson symmetric elliptic integrals, complete/incomplete elliptic
-//! integrals, Jacobi elliptic functions, Jacobi theta functions, Weierstrass
-//! elliptic functions, and modular forms (Dedekind eta, Klein j-invariant).
+//! Complex elliptic integrals, functions, and modular forms.
+//!
+//! Includes Carlson symmetric integrals, complete and incomplete elliptic integrals, Jacobi
+//! elliptic and theta functions, Weierstrass functions, the Dedekind eta function, and the Klein
+//! j-invariant.
 
 use std::f64::consts::PI;
 
@@ -30,8 +32,9 @@ pub fn carlson_rf_complex(
         let dy = (a - y) / a;
         let dz = (a - z) / a;
         if dx.norm().max(dy.norm()).max(dz.norm()) < 1e-4 {
-            let e2 = dx * dy - dz * dz;
-            let e3 = dx * dy * dz;
+            let dx_dy = dx * dy;
+            let e2 = dx_dy - dz * dz;
+            let e3 = dx_dy * dz;
             let poly = ONE - e2 / 10.0 + e3 / 14.0 + e2 * e2 / 24.0 - 3.0 * e2 * e3 / 44.0;
             return poly / a.sqrt();
         }
@@ -93,11 +96,44 @@ pub fn carlson_rg_complex(
     y: Complex64,
     z: Complex64,
 ) -> Complex64 {
-    if z == ZERO {
-        return 0.5 * (x + y) * carlson_rf_complex(x, y, ZERO);
+    let principal_sqrt = |value: Complex64| {
+        let root = crate::kernels::complex_scalar::Complex::new(value.re, value.im).sqrt();
+        Complex64::new(root.re, root.im)
+    };
+    let (x, mut y, mut z) = if y == ZERO {
+        (y, x, z)
+    } else if z == ZERO {
+        (z, x, y)
+    } else {
+        (x, y, z)
+    };
+    if x == ZERO {
+        // DLMF 19.20.4. Two zeros are allowed for R_G but not R_F or R_D.
+        if y == ZERO {
+            return 0.5 * principal_sqrt(z);
+        }
+        if z == ZERO {
+            return 0.5 * principal_sqrt(y);
+        }
+        // The equal-argument limit also retains the selected signed side of
+        // the negative real axis through the principal square root.
+        if y == z && y.im.is_sign_negative() == z.im.is_sign_negative() {
+            return (PI / 4.0) * principal_sqrt(z);
+        }
+        // For one zero, keep the larger nonzero magnitude in the R_D
+        // denominator and preserve each argument's original branch side.
+        if y.norm() > z.norm() {
+            std::mem::swap(&mut y, &mut z);
+        }
     }
+    // DLMF 19.21.10 uses the product of the principal square roots.
+    let roots = if x == ZERO {
+        ZERO
+    } else {
+        principal_sqrt(x) * principal_sqrt(y) / principal_sqrt(z)
+    };
     0.5 * (z * carlson_rf_complex(x, y, z) - (x - z) * (y - z) * carlson_rd_complex(x, y, z) / 3.0
-        + (x * y / z).sqrt())
+        + roots)
 }
 
 /// Complex Carlson symmetric elliptic integral `R_J(x, y, z, p)`.
@@ -231,6 +267,8 @@ pub fn jacobi_elliptic_complex(
     u: Complex64,
     m: Complex64,
 ) -> (Complex64, Complex64, Complex64) {
+    const MAX_N: usize = 16;
+
     if m == ZERO {
         return (u.sin(), u.cos(), ONE);
     }
@@ -239,7 +277,6 @@ pub fn jacobi_elliptic_complex(
         let sech = ONE / u.cosh();
         return (th, sech, sech);
     }
-    const MAX_N: usize = 16;
     let mut a = [ZERO; MAX_N];
     let mut c = [ZERO; MAX_N];
     a[0] = ONE;
@@ -315,8 +352,8 @@ pub fn jacobi_theta_complex(
             let mut sum = ZERO;
             for n in 0..80 {
                 let sign = if n % 2 == 0 { 1.0 } else { -1.0 };
-                let q_pow = q.powi((n * (n + 1)) as i32);
-                let term = sign * q_pow * ((2 * n + 1) as f64 * z).sin();
+                let q_pow = q.powi(n * (n + 1));
+                let term = sign * q_pow * (f64::from(2 * n + 1) * z).sin();
                 sum += term;
                 if term.norm() < 1e-16 * (1.0 + sum.norm()) {
                     break;
@@ -328,8 +365,8 @@ pub fn jacobi_theta_complex(
             // 2 q^(1/4) sum_{n>=0} q^{n(n+1)} cos((2n+1) z)
             let mut sum = ZERO;
             for n in 0..80 {
-                let q_pow = q.powi((n * (n + 1)) as i32);
-                let term = q_pow * ((2 * n + 1) as f64 * z).cos();
+                let q_pow = q.powi(n * (n + 1));
+                let term = q_pow * (f64::from(2 * n + 1) * z).cos();
                 sum += term;
                 if term.norm() < 1e-16 * (1.0 + sum.norm()) {
                     break;
@@ -341,8 +378,8 @@ pub fn jacobi_theta_complex(
             // 1 + 2 sum_{n>=1} q^{n^2} cos(2 n z)
             let mut sum = ONE;
             for n in 1..80 {
-                let q_pow = q.powi((n * n) as i32);
-                let term = 2.0 * q_pow * ((2 * n) as f64 * z).cos();
+                let q_pow = q.powi(n * n);
+                let term = 2.0 * q_pow * (f64::from(2 * n) * z).cos();
                 sum += term;
                 if term.norm() < 1e-16 * (1.0 + sum.norm()) {
                     break;
@@ -355,8 +392,8 @@ pub fn jacobi_theta_complex(
             let mut sum = ONE;
             for n in 1..80 {
                 let sign = if n % 2 == 0 { 1.0 } else { -1.0 };
-                let q_pow = q.powi((n * n) as i32);
-                let term = 2.0 * sign * q_pow * ((2 * n) as f64 * z).cos();
+                let q_pow = q.powi(n * n);
+                let term = 2.0 * sign * q_pow * (f64::from(2 * n) * z).cos();
                 sum += term;
                 if term.norm() < 1e-16 * (1.0 + sum.norm()) {
                     break;
@@ -376,8 +413,8 @@ fn jacobi_theta1_prime(
     let mut sum = ZERO;
     for n in 0..80 {
         let sign = if n % 2 == 0 { 1.0 } else { -1.0 };
-        let m = (2 * n + 1) as f64;
-        let q_pow = q.powi((n * (n + 1)) as i32);
+        let m = f64::from(2 * n + 1);
+        let q_pow = q.powi(n * (n + 1));
         let term = sign * m * q_pow * (m * z).cos();
         sum += term;
         if term.norm() < 1e-16 * (1.0 + sum.norm()) {
@@ -391,8 +428,8 @@ fn jacobi_theta1_triple_prime_zero(q: Complex64) -> Complex64 {
     let mut sum = ZERO;
     for n in 0..80 {
         let sign = if n % 2 == 0 { -1.0 } else { 1.0 };
-        let m = (2 * n + 1) as f64;
-        let q_pow = q.powi((n * (n + 1)) as i32);
+        let m = f64::from(2 * n + 1);
+        let q_pow = q.powi(n * (n + 1));
         let term = sign * m * m * m * q_pow;
         sum += term;
         if term.norm() < 1e-16 * (1.0 + sum.norm()) {
@@ -571,8 +608,10 @@ pub fn klein_j_complex(mut tau: Complex64) -> Complex64 {
     let t2 = jacobi_theta_complex(2, ZERO, q);
     let t3 = jacobi_theta_complex(3, ZERO, q);
     let lam = (t2 / t3).powi(4);
-    let num = (ONE - lam + lam * lam).powi(3);
-    let den = lam * lam * (ONE - lam) * (ONE - lam);
+    let lam_squared = lam * lam;
+    let complementary = ONE - lam;
+    let num = (complementary + lam_squared).powi(3);
+    let den = lam_squared * complementary * complementary;
     256.0 * num / den
 }
 
@@ -596,7 +635,7 @@ pub fn eisenstein_e4_complex(mut tau: Complex64) -> Complex64 {
     let mut sum = ZERO;
     let mut qn = q;
     for n in 1..60 {
-        let nf = n as f64;
+        let nf = f64::from(n);
         let term = (nf * nf * nf) * qn / (ONE - qn);
         sum += term;
         if term.norm() < 1e-16 * (1.0 + sum.norm()) {
@@ -627,7 +666,7 @@ pub fn eisenstein_e6_complex(mut tau: Complex64) -> Complex64 {
     let mut sum = ZERO;
     let mut qn = q;
     for n in 1..60 {
-        let nf = n as f64;
+        let nf = f64::from(n);
         let term = nf.powi(5) * qn / (ONE - qn);
         sum += term;
         if term.norm() < 1e-16 * (1.0 + sum.norm()) {

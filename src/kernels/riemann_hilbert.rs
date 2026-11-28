@@ -1,7 +1,7 @@
-//! Riemann–Hilbert problem (RHP) solvers:
-//! scalar Cauchy/Plemelj–Sokhotski integrals, scalar arc factorization,
-//! and Olver's Chebyshev/Gauss–Legendre spectral collocation solver for
-//! 2x2 matrix Riemann–Hilbert problems on (-1, 1).
+//! Numerical solvers for Riemann–Hilbert problems.
+//!
+//! Includes scalar Cauchy and Plemelj–Sokhotski integrals, scalar arc factorization, and Olver’s
+//! spectral collocation solver for `2 × 2` matrix problems on `(-1, 1)`.
 
 use crate::kernels::integrate::gauss_kronrod_any;
 use num_complex::Complex;
@@ -16,6 +16,7 @@ pub struct Matrix2 {
 
 impl Matrix2 {
     /// Identity 2x2 matrix.
+    #[must_use]
     pub const fn identity() -> Self {
         let one = Complex::new(1.0, 0.0);
         let zero = Complex::new(0.0, 0.0);
@@ -25,12 +26,14 @@ impl Matrix2 {
     }
 
     /// Zero 2x2 matrix.
+    #[must_use]
     pub const fn zero() -> Self {
         let z = Complex::new(0.0, 0.0);
         Self { m: [z, z, z, z] }
     }
 
     /// Matrix from 4 complex entries `[m00, m01, m10, m11]`.
+    #[must_use]
     pub const fn new(
         m00: Complex<f64>,
         m01: Complex<f64>,
@@ -43,6 +46,11 @@ impl Matrix2 {
     }
 
     /// Matrix addition.
+    #[must_use]
+    #[expect(
+        clippy::should_implement_trait,
+        reason = "Explicit matrix methods are part of the borrowed-operand API"
+    )]
     pub fn add(
         self,
         other: Self,
@@ -58,6 +66,11 @@ impl Matrix2 {
     }
 
     /// Matrix subtraction.
+    #[must_use]
+    #[expect(
+        clippy::should_implement_trait,
+        reason = "Explicit matrix methods are part of the borrowed-operand API"
+    )]
     pub fn sub(
         self,
         other: Self,
@@ -73,6 +86,11 @@ impl Matrix2 {
     }
 
     /// Matrix multiplication.
+    #[must_use]
+    #[expect(
+        clippy::should_implement_trait,
+        reason = "Explicit matrix methods are part of the borrowed-operand API"
+    )]
     pub fn mul(
         self,
         other: Self,
@@ -88,6 +106,7 @@ impl Matrix2 {
     }
 
     /// Scalar multiplication.
+    #[must_use]
     pub fn scale(
         self,
         s: Complex<f64>,
@@ -98,6 +117,7 @@ impl Matrix2 {
     }
 
     /// Matrix inverse.
+    #[must_use]
     pub fn inv(self) -> Option<Self> {
         let det = self.m[0] * self.m[3] - self.m[1] * self.m[2];
         if det.norm() < 1e-15 {
@@ -114,13 +134,14 @@ impl Matrix2 {
     }
 
     /// Frobenius norm of the 2x2 matrix.
+    #[must_use]
     pub fn norm(self) -> f64 {
         (self.m[0].norm_sqr() + self.m[1].norm_sqr() + self.m[2].norm_sqr() + self.m[3].norm_sqr())
             .sqrt()
     }
 }
 
-/// Evaluates the scalar Cauchy transform $C[\phi](z) = \frac{1}{2\pi i} \int_{-1}^1 \frac{\phi(t)}{t - z} \, dt$
+/// Evaluates the scalar Cauchy transform $C\[\phi\](z) = \frac{1}{2\pi i} \int_{-1}^1 \frac{\phi(t)}{t - z} \, dt$
 /// for $z \notin [-1, 1]$.
 pub fn cauchy_transform_arc<F>(
     phi: &F,
@@ -131,7 +152,7 @@ where
     F: Fn(f64) -> Complex<f64>,
 {
     let re = gauss_kronrod_any(
-        &|t| (phi(t) / (Complex::new(t, 0.0) - z)).re,
+        |t| (phi(t) / (Complex::new(t, 0.0) - z)).re,
         -1.0,
         1.0,
         tol,
@@ -139,7 +160,7 @@ where
     )
     .value;
     let im = gauss_kronrod_any(
-        &|t| (phi(t) / (Complex::new(t, 0.0) - z)).im,
+        |t| (phi(t) / (Complex::new(t, 0.0) - z)).im,
         -1.0,
         1.0,
         tol,
@@ -149,8 +170,12 @@ where
     Complex::new(re, im) / Complex::new(0.0, 2.0 * PI)
 }
 
-/// Computes the Plemelj–Sokhotski boundary limits $(C_+[\phi](x), C_-[\phi](x))$
+/// Computes the Plemelj–Sokhotski boundary limits $(C_+\[\phi\](x), C_-\[\phi\](x))$
 /// on $x \in (-1, 1)$ via singularity subtraction: $C_+ - C_- = \phi(x)$.
+///
+/// # Errors
+///
+/// Returns an error if the evaluation point lies outside the open interval `(-1, 1)`.
 pub fn plemelj_boundary_values<F>(
     phi: &F,
     x: f64,
@@ -164,7 +189,7 @@ where
     }
     let px = phi(x);
     let diff_re = gauss_kronrod_any(
-        &|t: f64| {
+        |t: f64| {
             let dt = t - x;
             if dt.abs() < 1e-12 {
                 0.0
@@ -179,7 +204,7 @@ where
     )
     .value;
     let diff_im = gauss_kronrod_any(
-        &|t: f64| {
+        |t: f64| {
             let dt = t - x;
             if dt.abs() < 1e-12 {
                 0.0
@@ -228,7 +253,7 @@ where
     cauchy_transform_arc(
         &|t| {
             let gt = g(t);
-            let u = ((t + 1.0) * 0.5 * (n_grid as f64)).clamp(0.0, n_grid as f64);
+            let u = (f64::midpoint(t, 1.0) * (n_grid as f64)).clamp(0.0, n_grid as f64);
             let idx = (u.floor() as usize).min(n_grid - 1);
             let frac = u - (idx as f64);
             let ref_arg = unwrapped_args[idx] * (1.0 - frac) + unwrapped_args[idx + 1] * frac;
@@ -251,7 +276,7 @@ where
 fn gauss_legendre_nodes_weights(n: usize) -> (Vec<f64>, Vec<f64>) {
     let mut nodes = vec![0.0_f64; n];
     let mut weights = vec![0.0_f64; n];
-    let m = (n + 1) / 2;
+    let m = n.div_ceil(2);
     for i in 0..m {
         let mut z = (PI * ((i as f64) + 0.75) / ((n as f64) + 0.5)).cos();
         let mut dp = 0.0_f64;
@@ -344,7 +369,7 @@ pub struct MatrixRhSolution {
     pub nodes: Vec<f64>,
     /// Quadrature weights on $(-1, 1)$.
     pub weights: Vec<f64>,
-    /// Nodal jump density $U(x_j) = Y^+(x_j) - Y^-(x_j)$.
+    /// Nodal jump density $`U(x_j)` = `Y^+(x_j)` - Y^-(x_j)$.
     pub density: Vec<Matrix2>,
 }
 
@@ -370,6 +395,7 @@ impl MatrixRhSolution {
 
     /// Evaluates $Y(z) = I + \frac{1}{2\pi i} \int_{-1}^1 \frac{U(t)}{t - z} \, dt$ off the arc,
     /// using singularity subtraction near `[-1, 1]` for high accuracy up to the boundary.
+    #[must_use]
     pub fn eval(
         &self,
         z: Complex<f64>,
@@ -406,9 +432,15 @@ impl MatrixRhSolution {
     }
 }
 
+/// Solves a two-by-two matrix Riemann–Hilbert problem on `(-1, 1)`.
+///
 /// Solves the 2x2 matrix Riemann–Hilbert problem $Y^+(t) = Y^-(t) G(t)$ on $(-1, 1)$
 /// with $Y(\infty) = I$ (assuming $G(\pm 1) = I$) via spectral collocation on `n_nodes`
-/// Gauss–Legendre nodes using the singular integral equation $U - C_-[U](G - I) = G - I$.
+/// Gauss–Legendre nodes using the singular integral equation $U - C_-\[U\](G - I) = G - I$.
+///
+/// # Errors
+///
+/// Returns an error for fewer than four collocation nodes or when the collocation system cannot be assembled or solved.
 pub fn solve_matrix_rh_chebyshev<F>(
     jump_g: F,
     n_nodes: usize,
@@ -437,10 +469,10 @@ where
                 .get(i)
                 .and_then(|r| r.get(m))
                 .ok_or_else(|| "Index".to_string())?;
-            let off = if i != m {
-                wm / (xm - xi)
-            } else {
+            let off = if i == m {
                 0.0
+            } else {
+                wm / (xm - xi)
             };
             let entry = Complex::new(off + wi * d_im, 0.0) / two_pi_i;
             if let Some(cell) = c_minus.get_mut(i).and_then(|r| r.get_mut(m)) {
@@ -548,14 +580,12 @@ fn solve_linear_c(
         let mut max_v = mat
             .get(col)
             .and_then(|r| r.get(col))
-            .map(|c| c.norm())
-            .unwrap_or(0.0);
+            .map_or(0.0, |c| c.norm());
         for row in (col + 1)..n {
             let v = mat
                 .get(row)
                 .and_then(|r| r.get(col))
-                .map(|c| c.norm())
-                .unwrap_or(0.0);
+                .map_or(0.0, |c| c.norm());
             if v > max_v {
                 max_v = v;
                 piv = row;
@@ -572,7 +602,7 @@ fn solve_linear_c(
             .get(col)
             .and_then(|r| r.get(col))
             .copied()
-            .unwrap_or(Complex::new(1.0, 0.0));
+            .unwrap_or_else(|| Complex::new(1.0, 0.0));
         for row in (col + 1)..n {
             let factor = mat
                 .get(row)
@@ -590,7 +620,7 @@ fn solve_linear_c(
                     *cell -= factor * p_val;
                 }
             }
-            let rhs_col = *rhs.get(col).unwrap_or(&Complex::default());
+            let rhs_col = rhs.get(col).copied().unwrap_or_default();
             if let Some(r_slot) = rhs.get_mut(row) {
                 *r_slot -= factor * rhs_col;
             }
@@ -598,21 +628,21 @@ fn solve_linear_c(
     }
     let mut x = vec![Complex::new(0.0, 0.0); n];
     for i in (0..n).rev() {
-        let mut sum = *rhs.get(i).unwrap_or(&Complex::default());
+        let mut sum = rhs.get(i).copied().unwrap_or_default();
         for j in (i + 1)..n {
             let a_ij = mat
                 .get(i)
                 .and_then(|r| r.get(j))
                 .copied()
                 .unwrap_or_default();
-            let x_j = *x.get(j).unwrap_or(&Complex::default());
+            let x_j = x.get(j).copied().unwrap_or_default();
             sum -= a_ij * x_j;
         }
         let diag = mat
             .get(i)
             .and_then(|r| r.get(i))
             .copied()
-            .unwrap_or(Complex::new(1.0, 0.0));
+            .unwrap_or_else(|| Complex::new(1.0, 0.0));
         if let Some(slot) = x.get_mut(i) {
             *slot = sum / diag;
         }

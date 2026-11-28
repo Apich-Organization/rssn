@@ -174,7 +174,11 @@ fn point_in_circumcircle(
     let dx = p[0] - ux;
     let dy = p[1] - uy;
     let d2 = dx * dx + dy * dy;
-    let magnitude = (d2 + r2 + ux * ux + uy * uy + p[0] * p[0] + p[1] * p[1]).max(1.0);
+    let ux_squared = ux * ux;
+    let uy_squared = uy * uy;
+    let px_squared = p[0] * p[0];
+    let py_squared = p[1] * p[1];
+    let magnitude = (d2 + r2 + ux_squared + uy_squared + px_squared + py_squared).max(1.0);
     let tolerance = 1e-10 * magnitude;
     if d2 < r2 - tolerance {
         return true;
@@ -185,7 +189,8 @@ fn point_in_circumcircle(
     incircle_sos(points, t[0], t[1], t[2], index)
 }
 
-/// Incremental Delaunay triangulation of `points`.///
+/// Incremental Delaunay triangulation of `points`.
+///
 /// This is the incremental entry point of the same Bowyer–Watson insertion
 /// used by [`delaunay_2d`]: points are inserted one at a time into the growing
 /// triangulation, and each insertion only re-triangulates the cavity of

@@ -269,6 +269,54 @@ fn cpu_devices_are_bit_identical_to_the_reference() {
 }
 
 #[test]
+fn cpu_integer_power_preserves_scalar_order_and_tail() {
+    let exponents = [i32::MIN, -17, -3, -2, -1, 0, 1, 2, 3, 16, 127, i32::MAX];
+    let mut instructions = vec![Inst::Input(0)];
+    instructions.extend(exponents.map(|exponent| Inst::PowI(0, exponent)));
+    let outputs = (1..=u32::try_from(exponents.len()).unwrap()).collect();
+    let program = tape(instructions, 1, 0, outputs);
+    let ir = KernelIr::from_tape(&program).unwrap();
+    let rows = crate::backend::tape::COLUMN_BLOCK + 19;
+    let (mut xs, _) = sample(rows);
+    // Repeat edge values after the lane boundary so both implementations
+    // handle them, including the final incomplete group.
+    let edge = [
+        -0.0,
+        0.0,
+        f64::from_bits(1),
+        f64::MAX,
+        f64::NEG_INFINITY,
+        f64::INFINITY,
+        f64::from_bits(0x7ff8_0000_0000_1234),
+        -1.0,
+    ];
+    xs[..edge.len()].copy_from_slice(&edge);
+    xs[rows - edge.len()..].copy_from_slice(&edge);
+    let got = map_columns(&CpuDevice::sequential(), &ir, &[&xs], &[]).unwrap();
+    let mut tape_out = vec![vec![0.0; rows]; exponents.len()];
+    let mut output_slices: Vec<_> = tape_out.iter_mut().map(Vec::as_mut_slice).collect();
+    // The tape supplies a NaN for a missing input row.
+    let present = rows - 3;
+    program.eval_columns(&[&xs[..present]], &[], &mut output_slices);
+    for ((device_column, tape_column), exponent) in got.iter().zip(&tape_out).zip(exponents) {
+        let values = device_column.iter().zip(tape_column).zip(&xs);
+        for (row, ((&device, &tape), &x)) in values.enumerate() {
+            let expected = crate::backend::tape::int_pow(x, exponent);
+            assert!(
+                same(device, expected),
+                "device row {row}, exponent {exponent}, input {x}"
+            );
+            let input = if row < present { x } else { f64::NAN };
+            let expected = crate::backend::tape::int_pow(input, exponent);
+            assert!(
+                same(tape, expected),
+                "tape row {row}, exponent {exponent}, input {input}"
+            );
+        }
+    }
+}
+
+#[test]
 fn launch_checks_sizes_and_ownership() {
     let ir = everything();
     let d = CpuDevice::sequential();
@@ -1558,7 +1606,7 @@ mod gpu_tests {
             dev.info().max_buffer_elems,
             (limits
                 .max_buffer_size
-                .min(u64::from(limits.max_storage_buffer_binding_size))
+                .min(limits.max_storage_buffer_binding_size)
                 / 8) as usize
         );
         assert!(dev.info().emulated_f64 && dev.info().dtypes.contains(&Dtype::F64));

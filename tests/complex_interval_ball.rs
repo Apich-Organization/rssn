@@ -214,11 +214,9 @@ fn fused_evaluation_encloses_nondyadic_products_and_irregular_rows() {
             assert_eq!(point_jacobian, jacobian_at_terms(&system, &point));
             for (row, equation) in system.iter().enumerate() {
                 assert_encloses(values[row], &exact_row(equation, &point, None));
-                for column in 0..point.len() {
-                    assert_encloses(
-                        jacobian[row][column],
-                        &exact_row(equation, &point, Some(column)),
-                    );
+                assert_eq!(jacobian[row].len(), point.len());
+                for (column, &slope) in jacobian[row].iter().enumerate() {
+                    assert_encloses(slope, &exact_row(equation, &point, Some(column)));
                 }
             }
         }
@@ -248,11 +246,9 @@ fn full_unsigned_exponents_and_roots_do_not_require_coordinate_division() {
     let (boxes, slopes) = eval_value_and_jacobian_terms(&system, &point.map(Cball::of));
     for (row, equation) in system.iter().enumerate() {
         assert_encloses(boxes[row], &exact_row(equation, &point, None));
-        for column in 0..2 {
-            assert_encloses(
-                slopes[row][column],
-                &exact_row(equation, &point, Some(column)),
-            );
+        assert_eq!(slopes[row].len(), point.len());
+        for (column, &slope) in slopes[row].iter().enumerate() {
+            assert_encloses(slope, &exact_row(equation, &point, Some(column)));
         }
     }
     assert_eq!(Cball::zero().powi(exponent), Cball::zero());

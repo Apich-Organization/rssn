@@ -18,6 +18,40 @@ fn cfg() -> ProptestConfig {
 }
 
 #[test]
+fn lagrange_layouts_share_finite_differences_and_preserve_coefficient_conventions() {
+    use rssn::kernels::polynomial::Polynomial;
+
+    let nodes = [-f64::MAX, f64::MAX];
+    let pair = lagrange_interpolation(&[(nodes[0], nodes[0]), (nodes[1], nodes[1])]).unwrap();
+    assert_eq!(pair.coeffs, [1.0, 0.0]);
+    assert_eq!(
+        Polynomial::interpolate_lagrange(&nodes, &nodes).unwrap(),
+        pair
+    );
+
+    assert_eq!(lagrange_interpolation(&[]).unwrap().coeffs, [0.0]);
+    assert!(Polynomial::interpolate_lagrange(&[], &[]).is_err());
+    let nodes = [1.0, -1.0, 0.0];
+    let values = [3.0; 3];
+    let points: Vec<_> = nodes.into_iter().zip(values).collect();
+    assert_eq!(
+        lagrange_interpolation(&points).unwrap().coeffs,
+        [0.0, 0.0, 3.0]
+    );
+    assert_eq!(
+        Polynomial::interpolate_lagrange(&nodes, &values)
+            .unwrap()
+            .coeffs,
+        [3.0]
+    );
+    assert!(lagrange_interpolation(&[(1.0, f64::NAN)]).is_err());
+    // The finite slope cannot be converted to a finite intercept.
+    let points = [(1.0, f64::MAX), (2.0, 0.0)];
+    assert!(lagrange_interpolation(&points).is_err());
+    assert!(Polynomial::interpolate_lagrange(&[1.0, 2.0], &[f64::MAX, 0.0]).is_err());
+}
+
+#[test]
 fn lagrange_quadratic_value() {
     let poly = lagrange_interpolation(&[(0.0, 0.0), (1.0, 1.0), (2.0, 4.0)])
         .unwrap_or_else(|e| panic!("{e}"));

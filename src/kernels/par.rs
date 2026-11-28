@@ -271,21 +271,19 @@ fn norm2_scaled_fixed(
                 let mut acc1 = 0.0_f64;
                 let mut acc2 = 0.0_f64;
                 let mut acc3 = 0.0_f64;
-                let mut chunks = slice.chunks_exact(4);
-                for chunk in chunks.by_ref() {
-                    if let &[x0, x1, x2, x3] = chunk {
-                        let s0 = x0 / peak;
-                        let s1 = x1 / peak;
-                        let s2 = x2 / peak;
-                        let s3 = x3 / peak;
-                        acc0 += s0 * s0;
-                        acc1 += s1 * s1;
-                        acc2 += s2 * s2;
-                        acc3 += s3 * s3;
-                    }
+                let (chunks, chunk_tail) = slice.as_chunks::<4>();
+                for &[x0, x1, x2, x3] in chunks {
+                    let s0 = x0 / peak;
+                    let s1 = x1 / peak;
+                    let s2 = x2 / peak;
+                    let s3 = x3 / peak;
+                    acc0 += s0 * s0;
+                    acc1 += s1 * s1;
+                    acc2 += s2 * s2;
+                    acc3 += s3 * s3;
                 }
                 let mut tail = 0.0_f64;
-                for &x in chunks.remainder() {
+                for &x in chunk_tail {
                     let s = x / peak;
                     tail += s * s;
                 }
@@ -451,9 +449,10 @@ pub fn for_each_mut<T, F>(
     }
 }
 
-/// Runs `f(row_start, strip)` over disjoint contiguous row-strips of a row-major `rows x cols`
-/// buffer, where each strip holds up to `block_rows` rows (`strip.len() / cols` rows) and
-/// `row_start` is the 0-based index of the first row in the strip.
+/// Runs `f(row_start, strip)` over disjoint strips of a row-major buffer.
+///
+/// The buffer has `rows × cols` elements. Each strip holds up to `block_rows` rows and
+/// `row_start` is the zero-based row index of its first row.
 ///
 /// Processes `usable_rows = (data.len() / cols).min(rows)` complete rows sequentially when
 /// there are fewer than `grain` strips (or fewer than 2).
@@ -630,7 +629,12 @@ pub fn prefix_sum_f64_fixed(
         }
         acc
     };
-    let mut block_sums: Vec<f64> = if split {
+    if nb == 1 {
+        scan_block((&mut out, data));
+        return out;
+    }
+    let mut block_sums = super::reuse::f64_scratch(nb);
+    if split {
         let cancellation = crate::cancellation::current();
         out.par_chunks_mut(block)
             .zip(data.par_chunks(block))
@@ -638,18 +642,16 @@ pub fn prefix_sum_f64_fixed(
                 || crate::cancellation::install_optional(cancellation.clone()),
                 |_, pair| scan_block(pair),
             )
-            .collect()
+            .collect_into_vec(&mut block_sums);
     } else {
-        out.chunks_mut(block)
-            .zip(data.chunks(block))
-            .map(scan_block)
-            .collect()
-    };
-    if nb <= 1 {
-        return out;
+        block_sums.extend(
+            out.chunks_mut(block)
+                .zip(data.chunks(block))
+                .map(scan_block),
+        );
     }
     let mut prefix = 0.0_f64;
-    for slot in &mut block_sums {
+    for slot in block_sums.as_mut_slice() {
         let block_total = *slot;
         *slot = prefix;
         prefix += block_total;
@@ -657,7 +659,7 @@ pub fn prefix_sum_f64_fixed(
     let apply_offset = |(dst, &offset): (&mut [f64], &f64)| {
         if offset != 0.0 {
             for out_slot in dst {
-                *out_slot = offset + *out_slot;
+                *out_slot += offset;
             }
         }
     };
@@ -1057,7 +1059,7 @@ mod tests {
 
     #[test]
     fn prefix_sum_f64_fixed_is_bit_identical_and_matches_block_scan() {
-        assert!(prefix_sum_f64_fixed(&[], 4, 0).is_empty());
+        assert_eq!(prefix_sum_f64_fixed(&[], 4, 0), [] as [f64; 0]);
         assert_eq!(prefix_sum_f64_fixed(&[3.5], 4, 0), vec![3.5]);
         assert_eq!(
             prefix_sum_f64_fixed(&[-0.0], 4, 0)

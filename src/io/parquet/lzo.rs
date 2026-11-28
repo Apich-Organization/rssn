@@ -354,11 +354,9 @@ pub(super) fn decompress_lzo1x(
             if dist > out.len() {
                 return Err("LZO1X match references before start of output".to_owned());
             }
-            let mut src = out.len() - dist;
-            for _ in 0..m_len {
+            for src in (out.len() - dist..).take(m_len) {
                 let b = out[src];
                 out.push(b);
-                src += 1;
             }
             if tail > 0 {
                 let end = ip + tail;

@@ -2,10 +2,9 @@
 //! acceleration, Borel-Padé resummation, and D-finite (holonomic) ODE analytic
 //! continuation with monodromy matrices.
 
-use std::f64::consts::TAU;
-
 use num_complex::Complex64;
 
+use crate::kernels::complex::circle_spectrum;
 use crate::kernels::integrate::gauss_kronrod_any;
 
 const ZERO: Complex64 = Complex64::new(0.0, 0.0);
@@ -27,23 +26,14 @@ where
 {
     let min_n = (neg_order + pos_order + 2).max(8);
     let n = n_samples.max(min_n);
-    let mut buffer = Vec::with_capacity(n);
-    for j in 0..n {
-        let theta = TAU * (j as f64) / (n as f64);
-        let z = center + Complex64::from_polar(radius, theta);
-        let val = f(z);
-        buffer.push(rustfft::num_complex::Complex::new(val.re, val.im));
-    }
-    let mut planner = rustfft::FftPlanner::<f64>::new();
-    let fft = planner.plan_fft_forward(n);
-    fft.process(&mut buffer);
+    let buffer = circle_spectrum(f, center, radius, n);
 
     let nf = n as f64;
     let mut out = Vec::with_capacity(neg_order + pos_order + 1);
     for k in -(neg_order as i32)..=(pos_order as i32) {
         let idx = k.rem_euclid(n as i32) as usize;
         let ck = buffer.get(idx).copied().unwrap_or_default();
-        let coeff = Complex64::new(ck.re, ck.im) / (nf * radius.powi(k));
+        let coeff = ck / (nf * radius.powi(k));
         out.push((k, coeff));
     }
     out
@@ -170,42 +160,35 @@ pub fn eval_pade_complex(
 }
 
 /// Wynn's epsilon algorithm for accelerating convergence of complex sequences.
+///
+/// Returns the last finite even-column estimate, or the last input if no
+/// estimate is available. An empty sequence returns zero.
 #[must_use]
 pub fn wynn_epsilon_complex(partial_sums: &[Complex64]) -> Complex64 {
-    let n = partial_sums.len();
-    if n == 0 {
+    let Some(&last) = partial_sums.last() else {
         return ZERO;
+    };
+    if partial_sums.len() < 2 {
+        return last;
     }
-    if n == 1 {
-        return partial_sums[0];
-    }
-    let mut prev = vec![ZERO; n + 1];
-    let mut curr = partial_sums.to_vec();
-    let mut best = *curr.last().unwrap_or(&ZERO);
-    for k in 1..n {
-        let len = n - k;
-        let mut next = vec![ZERO; len];
-        for i in 0..len {
-            let diff =
-                curr.get(i + 1).copied().unwrap_or(ZERO) - curr.get(i).copied().unwrap_or(ZERO);
-            if diff.norm() < 1e-30 {
-                return curr.get(i).copied().unwrap_or(best);
+    let mut best = last;
+    let mut work = crate::kernels::reuse::fft_scratch_for(partial_sums.len().saturating_mul(2));
+    work.resize(partial_sums.len(), ZERO);
+    work.extend_from_slice(partial_sums);
+    let (previous, current) = work.split_at_mut(partial_sums.len());
+    super::convergence::wynn_epsilon_columns(
+        previous,
+        current,
+        |delta| {
+            let small = delta.re.abs() < 1e-30 && delta.im.abs() < 1e-30 && delta.norm() < 1e-30;
+            (!small).then(|| ONE / delta)
+        },
+        |value| {
+            if value.is_finite() {
+                best = value;
             }
-            let val = prev.get(i + 1).copied().unwrap_or(ZERO) + ONE / diff;
-            if let Some(slot) = next.get_mut(i) {
-                *slot = val;
-            }
-        }
-        if k % 2 == 0
-            && let Some(&last) = next.last()
-            && last.re.is_finite()
-            && last.im.is_finite()
-        {
-            best = last;
-        }
-        prev = curr;
-        curr = next;
-    }
+        },
+    );
     best
 }
 
@@ -260,9 +243,10 @@ pub fn borel_pade_resum(
     lateral.is_finite().then_some(lateral)
 }
 
-/// Weierstrass power-series chain continuation: re-centers a Taylor series
-/// `sum c_k (z - a_0)^k` along a sequence of overlapping disk centers `centers = [a_0, a_1, ...]`
-/// and returns the Taylor coefficients around the final center `a_last`.
+/// Continues a Taylor series along a chain of overlapping disks.
+///
+/// The series `sum c_k (z - a_0)^k` is re-centered at each successive point in `centers`,
+/// returning the coefficients at the last center.
 #[must_use]
 pub fn weierstrass_chain_continue(
     initial_coeffs: &[Complex64],
@@ -304,7 +288,7 @@ pub struct HolonomicOde {
 impl HolonomicOde {
     /// Order `r` of the differential equation.
     #[must_use]
-    pub fn order(&self) -> usize {
+    pub const fn order(&self) -> usize {
         self.coeffs.len().saturating_sub(1)
     }
 

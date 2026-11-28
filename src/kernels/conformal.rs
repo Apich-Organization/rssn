@@ -9,7 +9,8 @@ use crate::kernels::integrate::gauss_kronrod_any;
 use num_complex::Complex;
 use std::f64::consts::PI;
 
-/// Computes the cross ratio $(z_1, z_2; z_3, z_4) = \frac{(z_1 - z_3)(z_2 - z_4)}{(z_1 - z_4)(z_2 - z_3)}$.
+/// Computes the cross ratio `(z_1, z_2; z_3, z_4) = \frac{(z_1 - z_3)(z_2 - z_4)}{(z_1 - z_4)(z_2 - z_3)}`.
+#[must_use]
 pub fn cross_ratio(
     z1: Complex<f64>,
     z2: Complex<f64>,
@@ -36,6 +37,10 @@ fn mobius_to_01inf(
 }
 
 /// Constructs the unique Möbius transformation mapping `(z1, z2, z3) -> (w1, w2, w3)`.
+///
+/// # Errors
+///
+/// Returns an error if the source triple or the target triple contains repeated points.
 pub fn mobius_from_three_points(
     z1: Complex<f64>,
     z2: Complex<f64>,
@@ -72,6 +77,10 @@ pub enum MobiusClass {
 }
 
 /// Classifies a Möbius transformation by its normalized trace squared $\tau = (a+d)^2 / (ad-bc)$.
+///
+/// # Errors
+///
+/// Returns an error for a degenerate transformation.
 pub fn classify_mobius(m: &Mobius) -> Result<MobiusClass, String> {
     let det = m.a * m.d - m.b * m.c;
     if det.norm() < 1e-15 {
@@ -97,6 +106,7 @@ pub fn classify_mobius(m: &Mobius) -> Result<MobiusClass, String> {
 }
 
 /// Returns the finite fixed points of $m(z) = z$, i.e. roots of $c z^2 + (d - a) z - b = 0$.
+#[must_use]
 pub fn mobius_fixed_points(m: &Mobius) -> Vec<Complex<f64>> {
     if m.c.norm() < 1e-14 {
         let diff = m.d - m.a;
@@ -136,6 +146,10 @@ pub fn mobius_fixed_points(m: &Mobius) -> Vec<Complex<f64>> {
 }
 
 /// Unit disk automorphism $f(z) = e^{i\theta} \frac{z - \alpha}{1 - \bar{\alpha} z}$ for $|\alpha| < 1$.
+///
+/// # Errors
+///
+/// Returns an error if the translation parameter lies on or outside the unit circle.
 pub fn disk_automorphism(
     alpha: Complex<f64>,
     theta: f64,
@@ -153,17 +167,20 @@ pub fn disk_automorphism(
 }
 
 /// Joukowsky airfoil transformation $J(z) = \frac{1}{2}(z + 1/z)$.
+#[must_use]
 pub fn joukowsky(z: Complex<f64>) -> Complex<f64> {
     (z + Complex::new(1.0, 0.0) / z) * 0.5
 }
 
 /// Two branches of the inverse Joukowsky map $w \pm \sqrt{w^2 - 1}$.
+#[must_use]
 pub fn joukowsky_inverse(w: Complex<f64>) -> (Complex<f64>, Complex<f64>) {
     let rad = (w * w - Complex::new(1.0, 0.0)).sqrt();
     (w + rad, w - rad)
 }
 
-/// Kármán–Trefftz transformation $K_n(z) = n \frac{(z+1)^n + (z-1)^n}{(z+1)^n - (z-1)^n}$.
+/// Kármán–Trefftz transformation $`K_n(z)` = n \frac{(z+1)^n + (z-1)^n}{(z+1)^n - (z-1)^n}$.
+#[must_use]
 pub fn karman_trefftz(
     z: Complex<f64>,
     n: f64,
@@ -174,6 +191,7 @@ pub fn karman_trefftz(
 }
 
 /// Koebe function $k(z) = \frac{z}{(1 - z)^2}$.
+#[must_use]
 pub fn koebe_map(z: Complex<f64>) -> Complex<f64> {
     let one_m_z = Complex::new(1.0, 0.0) - z;
     z / (one_m_z * one_m_z)
@@ -195,6 +213,7 @@ where
 }
 
 /// Cayley transform $C(z) = \frac{z - i}{z + i}$ mapping the upper half-plane to the unit disk.
+#[must_use]
 pub fn cayley_transform(z: Complex<f64>) -> Complex<f64> {
     let i_unit = Complex::new(0.0, 1.0);
     (z - i_unit) / (z + i_unit)
@@ -225,22 +244,22 @@ fn integrate_complex_01<F>(
 where
     F: Fn(f64) -> Complex<f64>,
 {
-    let re = gauss_kronrod_any(&|t| f(t).re, 0.0, 1.0, tol, max_evals).value;
-    let im = gauss_kronrod_any(&|t| f(t).im, 0.0, 1.0, tol, max_evals).value;
+    let re = gauss_kronrod_any(|t| f(t).re, 0.0, 1.0, tol, max_evals).value;
+    let im = gauss_kronrod_any(|t| f(t).im, 0.0, 1.0, tol, max_evals).value;
     Complex::new(re, im)
 }
 
 /// Schwarz–Christoffel map from the upper half-plane $\mathbb{H}^+$ to a polygon:
-/// $f(z) = \text{shift} + \text{scale} \int_{z_0}^z \prod_{k=1}^m (\zeta - x_k)^{\alpha_k - 1} d\zeta$.
+/// $f(z) = \text{shift} + \text{scale} \int_{`z_0}^z` \prod_{k=1}^m (\zeta - `x_k)^{\alpha_k` - 1} d\zeta$.
 #[derive(Debug, Clone)]
 pub struct SchwarzChristoffelMap {
-    /// Prevertices $x_1 < x_2 < \dots < x_m$ on the real axis.
+    /// Prevertices $`x_1` < `x_2` < \dots < `x_m`$ on the real axis.
     pub prevertices: Vec<f64>,
-    /// Interior angle factors $\alpha_k \in (0, 2)$ (so exponent is $\alpha_k - 1$).
+    /// Interior angle factors `\alpha_k \in (0, 2)` (so exponent is `\alpha_k - 1`).
     pub interior_angles_pi: Vec<f64>,
     /// Complex scaling factor $C$.
     pub scale: Complex<f64>,
-    /// Additive offset $f(z_0)$ at basepoint $z_0 = i$.
+    /// Additive offset $`f(z_0)`$ at basepoint $`z_0` = i$.
     pub shift: Complex<f64>,
 }
 
@@ -258,7 +277,11 @@ impl SchwarzChristoffelMap {
         prod
     }
 
-    /// Evaluates the Schwarz–Christoffel integral from $z_0 = i$ to $z$ (with $\text{Im}(z) > 0$).
+    /// Evaluates the Schwarz–Christoffel integral from $`z_0` = i$ to $z$ (with $\text{Im}(z) > 0$).
+    ///
+    /// # Errors
+    ///
+    /// This method currently returns `Ok` for every evaluation.
     pub fn eval(
         &self,
         z: Complex<f64>,
@@ -280,11 +303,11 @@ impl SchwarzChristoffelMap {
         &self,
         a: f64,
         b: f64,
-    ) -> Result<Complex<f64>, String> {
+    ) -> Complex<f64> {
         // Compound tanh-sinh-like / double-sin^2 substitution for acute endpoint singularities:
         // x(u) = a + span * sin^2(pi/2 * sin^2(pi/2 * u)) clusters doubly near endpoints.
         let span = b - a;
-        let res = integrate_complex_01(
+        integrate_complex_01(
             |u| {
                 let s1 = (0.5 * PI * u).sin();
                 let c1 = (0.5 * PI * u).cos();
@@ -298,8 +321,7 @@ impl SchwarzChristoffelMap {
             },
             1e-10,
             400,
-        );
-        Ok(res)
+        )
     }
 }
 
@@ -327,9 +349,15 @@ fn polygon_interior_angles_pi(vertices: &[Complex<f64>]) -> Result<Vec<f64>, Str
     Ok(alphas)
 }
 
-/// Solves the Schwarz–Christoffel parameter problem from the upper half-plane to a simple
-/// counterclockwise polygon `polygon_vertices`. Fixes the first three prevertices at
-/// $(-1, 0, 1)$ and solves for the remaining $n - 3$ prevertices via damped Newton iteration.
+/// Solves for the prevertices of a Schwarz–Christoffel map.
+///
+/// Maps the upper half-plane to the simple counterclockwise polygon `polygon_vertices`. Fixes
+/// the first three prevertices at `(-1, 0, 1)` and finds the remaining `n - 3` by damped Newton
+/// iteration.
+///
+/// # Errors
+///
+/// Returns an error for an invalid polygon or when the quadrature or Newton solve fails.
 pub fn solve_sc_uhp(
     polygon_vertices: &[Complex<f64>],
     max_iter: usize,
@@ -394,7 +422,7 @@ pub fn solve_sc_uhp(
         for i in 0..n.saturating_sub(1) {
             let a = *xs.get(i).ok_or_else(|| "Index".to_string())?;
             let b = *xs.get(i + 1).ok_or_else(|| "Index".to_string())?;
-            segs.push(sc.segment_integral(a, b)?);
+            segs.push(sc.segment_integral(a, b));
         }
         let s0 = *segs.first().ok_or_else(|| "Missing seg".to_string())?;
         let s0_norm = s0.norm().max(1e-15);
@@ -573,14 +601,12 @@ fn solve_complex_linear(
         let mut max_v = mat
             .get(col)
             .and_then(|r| r.get(col))
-            .map(|c| c.norm())
-            .unwrap_or(0.0);
+            .map_or(0.0, |c| c.norm());
         for row in (col + 1)..n {
             let v = mat
                 .get(row)
                 .and_then(|r| r.get(col))
-                .map(|c| c.norm())
-                .unwrap_or(0.0);
+                .map_or(0.0, |c| c.norm());
             if v > max_v {
                 max_v = v;
                 piv = row;
@@ -597,7 +623,7 @@ fn solve_complex_linear(
             .get(col)
             .and_then(|r| r.get(col))
             .copied()
-            .unwrap_or(Complex::new(1.0, 0.0));
+            .unwrap_or_else(|| Complex::new(1.0, 0.0));
         for row in (col + 1)..n {
             let factor = mat
                 .get(row)
@@ -615,7 +641,7 @@ fn solve_complex_linear(
                     *cell -= factor * p_val;
                 }
             }
-            let rhs_col = *rhs.get(col).unwrap_or(&Complex::default());
+            let rhs_col = rhs.get(col).copied().unwrap_or_default();
             if let Some(r_slot) = rhs.get_mut(row) {
                 *r_slot -= factor * rhs_col;
             }
@@ -623,21 +649,21 @@ fn solve_complex_linear(
     }
     let mut x = vec![Complex::new(0.0, 0.0); n];
     for i in (0..n).rev() {
-        let mut sum = *rhs.get(i).unwrap_or(&Complex::default());
+        let mut sum = rhs.get(i).copied().unwrap_or_default();
         for j in (i + 1)..n {
             let a_ij = mat
                 .get(i)
                 .and_then(|r| r.get(j))
                 .copied()
                 .unwrap_or_default();
-            let x_j = *x.get(j).unwrap_or(&Complex::default());
+            let x_j = x.get(j).copied().unwrap_or_default();
             sum -= a_ij * x_j;
         }
         let diag = mat
             .get(i)
             .and_then(|r| r.get(i))
             .copied()
-            .unwrap_or(Complex::new(1.0, 0.0));
+            .unwrap_or_else(|| Complex::new(1.0, 0.0));
         if let Some(slot) = x.get_mut(i) {
             *slot = sum / diag;
         }
@@ -658,7 +684,11 @@ pub struct SzegoKerzmanSteinSolver {
 }
 
 impl SzegoKerzmanSteinSolver {
-    /// Solves $(I + A) S_a = \bar{H}_a$ once and caches the boundary Szegő kernel.
+    /// Solves $(I + A) `S_a` = \bar{H}_a$ once and caches the boundary Szegő kernel.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for fewer than 16 quadrature nodes, a vanishing boundary tangent, or a failed linear solve.
     pub fn solve<F, DF>(
         gamma: F,
         dgamma: DF,
@@ -781,10 +811,16 @@ impl SzegoKerzmanSteinSolver {
     }
 }
 
-/// Computes the Szegő kernel $S(\cdot, a)$ on the boundary of a smooth Jordan domain
-/// parameterized CCW by `gamma(t)` with derivative `dgamma(t)` for $t \in [0, 2\pi]$
-/// via the Kerzman–Stein integral equation $(I + A) S_a = \bar{H}_a$, and evaluates
-/// the Riemann map $f(z) = \frac{2\pi}{S(a,a)} \int_a^z S(\zeta, a)^2 d\zeta$ at `z`.
+/// Computes a Riemann map of a smooth Jordan domain.
+///
+/// Computes the Szegő kernel `S(\cdot, a)` on the boundary of a smooth Jordan domain
+/// parameterized CCW by `gamma(t)` with derivative `dgamma(t)` for `t \in [0, 2\pi]`
+/// via the Kerzman–Stein integral equation `(I + A) S_a = \bar{H}_a`, and evaluates
+/// the Riemann map `f(z) = \frac{2\pi}{S(a,a)} \int_a^z S(\zeta, a)^2 d\zeta` at `z`.
+///
+/// # Errors
+///
+/// Returns an error if the boundary data or integral-equation solve is invalid.
 pub fn szego_kerzman_stein_map<F, DF>(
     gamma: F,
     dgamma: DF,
@@ -801,6 +837,7 @@ where
 }
 
 /// Exact Bergman kernel of the unit disk: $K_{\mathbb{D}}(z, w) = \frac{1}{\pi (1 - z \bar{w})^2}$.
+#[must_use]
 pub fn bergman_kernel_disk(
     z: Complex<f64>,
     w: Complex<f64>,
@@ -809,8 +846,9 @@ pub fn bergman_kernel_disk(
     Complex::new(1.0 / PI, 0.0) / (denom * denom)
 }
 
-/// Evaluates a Bergman kernel expansion $K(z, w) = \sum_{k=0}^M \phi_k(z) \overline{\phi_k(w)}$
+/// Evaluates a Bergman kernel expansion `K(z, w) = \sum_{k=0}^M \phi_k(z) \overline{\phi_k(w)}`
 /// from a list of orthonormal polynomial basis vectors (each in ascending power coefficients).
+#[must_use]
 pub fn bergman_kernel_polynomial_basis(
     orthonormal_polys: &[Vec<Complex<f64>>],
     z: Complex<f64>,

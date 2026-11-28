@@ -953,32 +953,32 @@ fn materialize(
                     | Some(Scalar::Int(value)) => *value,
                     | Some(Scalar::Float(value)) => *value as i64,
                     | _ => 0,
-                })
+                });
             },
             | DType::Float => {
                 floats.push(match scalar {
                     | Some(Scalar::Float(value)) => *value,
                     | Some(Scalar::Int(value)) => *value as f64,
                     | _ => 0.0,
-                })
+                });
             },
             | DType::Bool => {
                 booleans.push(match scalar {
                     | Some(Scalar::Bool(value)) => *value,
                     | _ => false,
-                })
+                });
             },
             | DType::Str => {
                 strings.push(match scalar {
                     | Some(Scalar::Str(value)) => value.clone(),
                     | _ => String::new(),
-                })
+                });
             },
             | DType::Bytes => {
                 bytes_vec.push(match scalar {
                     | Some(Scalar::Bytes(value)) => value.clone(),
                     | _ => Vec::new(),
-                })
+                });
             },
             | DType::List => return materialize_lists(scalars),
         }
@@ -1305,11 +1305,9 @@ mod tests {
             ])
             .is_err()
         );
-        assert!(
-            DataFrame::new(Vec::new())
-                .expect("empty")
-                .column_names()
-                .is_empty()
+        assert_eq!(
+            DataFrame::new(Vec::new()).expect("empty").column_names(),
+            [] as [&str; 0],
         );
     }
 

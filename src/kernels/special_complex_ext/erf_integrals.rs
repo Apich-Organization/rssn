@@ -14,7 +14,7 @@ use crate::kernels::special_ext::polylog_complex;
 const ZERO: Complex64 = Complex64::new(0.0, 0.0);
 const ONE: Complex64 = Complex64::new(1.0, 0.0);
 const I: Complex64 = Complex64::new(0.0, 1.0);
-const EULER_GAMMA: f64 = 0.577_215_664_901_532_9;
+use std::f64::consts::EULER_GAMMA;
 
 /// Complex complementary error function `erfc(z) = 1 - erf(z)`.
 #[must_use]
@@ -56,7 +56,7 @@ pub fn dawson_complex(z: Complex64) -> Complex64 {
         let mut term = z;
         let mut sum = term;
         for k in 1..40 {
-            term *= -2.0 * z2 / ((2 * k + 1) as f64);
+            term *= -2.0 * z2 / f64::from(2 * k + 1);
             sum += term;
             if term.norm() <= 1e-16 * (1.0 + sum.norm()) {
                 break;
@@ -71,7 +71,7 @@ pub fn dawson_complex(z: Complex64) -> Complex64 {
         let mut term = 0.5 / z;
         let mut sum = term;
         for k in 1..15 {
-            term *= ((2 * k - 1) as f64) * inv_2z2;
+            term *= f64::from(2 * k - 1) * inv_2z2;
             sum += term;
             if term.norm() <= 1e-16 * sum.norm() {
                 break;
@@ -96,7 +96,7 @@ pub fn fresnel_fg_complex(z: Complex64) -> (Complex64, Complex64) {
         let mut f_term = ONE;
         let mut g_term = ONE;
         for k in 1..=8 {
-            let m = (4 * k) as f64;
+            let m = f64::from(4 * k);
             f_term *= -(m - 3.0) * (m - 1.0) * inv_piz2_sq;
             g_term *= -(m - 1.0) * (m + 1.0) * inv_piz2_sq;
             f_sum += f_term;
@@ -132,7 +132,7 @@ pub fn exp_integral_e1_complex(z: Complex64) -> Complex64 {
         let mut sum = ZERO;
         let mut term = ONE;
         for k in 1..250 {
-            let kf = k as f64;
+            let kf = f64::from(k);
             term *= -z / kf;
             let add = term / kf;
             sum += add;
@@ -174,7 +174,7 @@ pub fn exp_integral_e1_complex(z: Complex64) -> Complex64 {
     };
     let mut h = d;
     for k in 1..400 {
-        let kf = k as f64;
+        let kf = f64::from(k);
         let an = -kf * kf;
         b += 2.0;
         d = an * d + b;
@@ -227,7 +227,7 @@ pub fn exp_integral_en_complex(
         };
         let mut h = d;
         for k in 1..400 {
-            let kf = k as f64;
+            let kf = f64::from(k);
             let an = -kf * (nf + kf - 1.0);
             b += 2.0;
             d = an * d + b;
@@ -290,8 +290,8 @@ pub fn sin_cos_integral_complex(z: Complex64) -> (Complex64, Complex64) {
         let mut si_term = z;
         let mut si = si_term;
         for k in 1..150 {
-            let kf = (2 * k + 1) as f64;
-            si_term *= -z2 / ((2 * k) as f64 * kf);
+            let kf = f64::from(2 * k + 1);
+            si_term *= -z2 / (f64::from(2 * k) * kf);
             let add = si_term / kf;
             si += add;
             if add.norm() <= 1e-16 * (1.0 + si.norm()) {
@@ -301,8 +301,8 @@ pub fn sin_cos_integral_complex(z: Complex64) -> (Complex64, Complex64) {
         let mut ci_sum = ZERO;
         let mut ci_term = ONE;
         for k in 1..150 {
-            let kf = (2 * k) as f64;
-            ci_term *= -z2 / ((2 * k - 1) as f64 * kf);
+            let kf = f64::from(2 * k);
+            ci_term *= -z2 / (f64::from(2 * k - 1) * kf);
             let add = ci_term / kf;
             ci_sum += add;
             if add.norm() <= 1e-16 * (1.0 + ci_sum.norm()) {

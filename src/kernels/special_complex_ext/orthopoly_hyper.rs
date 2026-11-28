@@ -316,7 +316,7 @@ pub fn hyp0f1_complex(
     let mut sum = ONE;
     let mut term = ONE;
     for k in 1..300 {
-        let kf = k as f64;
+        let kf = f64::from(k);
         term *= z / (kf * (b + (kf - 1.0)));
         sum += term;
         if term.norm() <= 1e-16 * (1.0 + sum.norm()) {
@@ -362,7 +362,7 @@ pub fn parabolic_cylinder_d_complex(
         let mut sum = ONE;
         let mut term = ONE;
         for k in 1..=25 {
-            let kf = k as f64;
+            let kf = f64::from(k);
             let a1 = 2.0 * kf - 2.0 - nu;
             let a2 = 2.0 * kf - 1.0 - nu;
             let next_term = -term * a1 * a2 * inv_2z2 / kf;
@@ -407,7 +407,7 @@ pub fn mittag_leffler_complex(
     }
     let mut sum = ZERO;
     for k in 0..250 {
-        let arg = alpha * (k as f64) + beta;
+        let arg = alpha * f64::from(k) + beta;
         let rg = crate::kernels::special_complex_ext::gamma_beta::rgamma_complex(arg);
         let term = z.powi(k) * rg;
         sum += term;

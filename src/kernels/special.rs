@@ -1357,21 +1357,19 @@ pub fn binomial(
     }
 
     let k = k.min(n - k);
-    if k <= 2_000 {
-        // Multiplicative formula: exact intermediate values, no overflow
-        // before the result itself overflows.
-        let mut result = 1.0_f64;
-        for i in 1..=k {
-            result *= ((n - k + i) as f64) / (i as f64);
-        }
-        return result;
+    // Each factor (n - k + i) / i is at least 2 for i <= k <= n/2.
+    if k >= 1_024 {
+        return f64::INFINITY;
     }
-    // Huge k: through log-gamma (relative accuracy about n ln n * eps).
-    let (nf, kf) = (n as f64, k as f64);
-    (ln_gamma_numerical(nf + 1.0)
-        - ln_gamma_numerical(kf + 1.0)
-        - ln_gamma_numerical(nf - kf + 1.0))
-    .exp()
+    let rest = n - k;
+    let mut result = 1.0_f64;
+    for i in 1..=k {
+        result *= ((rest + i) as f64) / (i as f64);
+        if !result.is_finite() {
+            break;
+        }
+    }
+    result
 }
 
 /// Computes the Riemann zeta function ζ(s) for real `s`.
@@ -3567,7 +3565,7 @@ mod cache_and_batch_tests {
             "the table must not depend on its build order"
         );
         assert!(
-            cache.stats().hits >= before + 1,
+            cache.stats().hits > before,
             "the second pass must be served by the table cache"
         );
     }
@@ -3582,8 +3580,9 @@ mod cache_and_batch_tests {
 
     #[test]
     fn batch_entry_points_match_the_scalar_functions_bit_for_bit() {
+        type BatchCase = (Vec<f64>, fn(f64) -> f64);
         let inputs: Vec<f64> = (-40..=40).map(|k| f64::from(k) * 0.137).collect();
-        let cases: [(Vec<f64>, fn(f64) -> f64); 8] = [
+        let cases: [BatchCase; 8] = [
             (gamma_batch(&inputs), gamma_numerical),
             (ln_gamma_batch(&inputs), ln_gamma_numerical),
             (digamma_batch(&inputs), digamma_numerical),
@@ -3608,49 +3607,198 @@ mod cache_and_batch_tests {
     }
 }
 
-/// The `n`-th harmonic number `sum_{k=1..n} 1/k`.
+/// The `n`-th harmonic number `sum_{k=1..n} 1/k`, with `H_0 = 0`.
 #[must_use]
 pub fn harmonic(n: u64) -> f64 {
+    use std::sync::Arc;
+    use std::sync::OnceLock;
+
+    const SMALL_LIMIT: usize = 16;
+    // Hold one compensated table so each lookup avoids the shared cache lock
+    // and nearby inputs never create separate entries.
+    static SMALL_HARMONICS: OnceLock<Arc<Vec<f64>>> = OnceLock::new();
+
+    if n < 2 {
+        return n as f64;
+    }
+    if let Ok(index) = usize::try_from(n)
+        && index <= SMALL_LIMIT
+    {
+        let table = SMALL_HARMONICS
+            .get_or_init(|| crate::kernels::reuse::global_pool().harmonic_table(SMALL_LIMIT));
+        return table[index];
+    }
     statrs::function::harmonic::harmonic(n)
 }
 
-/// The inverse of the regularized incomplete beta function in its probability
-/// argument: the `x` with `I_x(a, b) = p`.
+/// The inverse of the regularized incomplete beta function.
+///
+/// Returns the `x` in `[0, 1]` such that `I_x(a, b) = p`. Endpoints and
+/// the one-unit-shape cases use their analytic values. Other cases bracket
+/// the quantile in binary64. Reflection gives the upper-tail probability
+/// directly from the forward kernel when `x > 0.5`.
 ///
 /// # Errors
-/// Returns an error when `a` or `b` is not positive or `p` lies outside
-/// `[0, 1]`.
+/// The shapes must be finite and positive, and the probability must lie in
+/// `[0, 1]`. A nonrepresentable forward evaluation returns an error.
 pub fn inverse_beta_reg(
     a: f64,
     b: f64,
     p: f64,
 ) -> Result<f64, String> {
-    if !(a > 0.0) || !(b > 0.0) {
-        return Err("inverse_beta_reg needs positive shape parameters".to_string());
+    use crate::kernels::exact_eq;
+
+    if !a.is_finite() || !b.is_finite() || a <= 0.0 || b <= 0.0 {
+        return Err("inverse_beta_reg needs finite positive shape parameters".into());
     }
     if !(0.0..=1.0).contains(&p) {
-        return Err("inverse_beta_reg needs a probability in [0, 1]".to_string());
+        return Err("inverse_beta_reg needs a probability in [0, 1]".into());
     }
-    Ok(statrs::function::beta::inv_beta_reg(a, b, p))
+    if p <= 0.0 || p >= 1.0 || (exact_eq(a, 1.0) && exact_eq(b, 1.0)) {
+        return Ok(p);
+    }
+    if exact_eq(a, b) && exact_eq(p, 0.5) {
+        return Ok(0.5);
+    }
+    if exact_eq(a, 1.0) {
+        return Ok(-((-p).ln_1p() / b).exp_m1());
+    }
+    if exact_eq(b, 1.0) {
+        return Ok((p.ln() / a).exp());
+    }
+    if !(a + b).is_finite() {
+        return Err("inverse_beta_reg shape sum exceeds the forward kernel's range".into());
+    }
+
+    let upper_tail = p > 0.5;
+    let target = if upper_tail { 1.0 - p } else { p };
+    let mut lower = 0.0_f64.to_bits();
+    let mut upper = 1.0_f64.to_bits();
+    let mut lower_error = p;
+    let mut upper_error = 1.0 - p;
+
+    // Positive f64 bit patterns are ordered by value. The interval from
+    // zero to one has fewer than 2^62 patterns, even with subnormals.
+    while upper.saturating_sub(lower) > 1 {
+        let mid = u64::midpoint(lower, upper);
+        let x = f64::from_bits(mid);
+        let reflected = x > 0.5;
+        let (shape_a, shape_b, point) = if reflected {
+            (b, a, 1.0 - x)
+        } else {
+            (a, b, x)
+        };
+        let raw = statrs::function::beta::checked_beta_reg(shape_a, shape_b, point)
+            .map_err(|error| error.to_string())?;
+        if !(0.0..=1.0).contains(&raw) {
+            return Err(
+                "inverse_beta_reg could not evaluate the requested probability tail".into(),
+            );
+        }
+        let tail = if reflected == upper_tail {
+            raw
+        } else {
+            1.0 - raw
+        };
+        let error = (tail - target).abs();
+        if error <= 0.0 {
+            return Ok(x);
+        }
+        if (tail < target) == upper_tail {
+            upper = mid;
+            upper_error = error;
+        } else {
+            lower = mid;
+            lower_error = error;
+        }
+    }
+    Ok(f64::from_bits(if lower_error <= upper_error {
+        lower
+    } else {
+        upper
+    }))
 }
 
 /// The multinomial coefficient `n! / (k_1! ... k_m!)`.
 ///
 /// # Panics
-/// Panics when the parts do not sum to `n`, as `statrs` does.
+/// Panics if the parts do not sum to `n`. Use [`checked_multinomial`] for
+/// externally supplied parts.
 #[must_use]
+#[expect(
+    clippy::expect_used,
+    reason = "preserves the panicking Rust entry point"
+)]
 pub fn multinomial(
     n: u64,
     parts: &[u64],
 ) -> f64 {
-    statrs::function::factorial::multinomial(n, parts)
+    checked_multinomial(n, parts).expect("multinomial parts must sum to n")
+}
+
+/// Computes a floating-point multinomial coefficient as a product of binomials.
+///
+/// Returns `None` if the parts do not sum to `n`, and `Some(infinity)` when
+/// the coefficient overflows. Zero parts and the empty partition of zero
+/// have no effect on the product.
+#[must_use]
+pub fn checked_multinomial(
+    n: u64,
+    parts: &[u64],
+) -> Option<f64> {
+    let mut remaining = n;
+    let mut result = 1.0_f64;
+    for &part in parts {
+        let rest = remaining.checked_sub(part)?;
+        if part != 0 && rest != 0 && result.is_finite() {
+            result *= binomial(remaining, part);
+        }
+        remaining = rest;
+    }
+    (remaining == 0).then(|| result.round())
 }
 
 /// The logarithm of the binomial coefficient `ln C(n, k)`.
+///
+/// For a small reduced `k`, sum the logarithms of the multiplicative
+/// factors. Otherwise combine the leading Stirling terms algebraically
+/// and add the corrections. Both paths avoid subtracting nearly equal
+/// log-factorials for large, unbalanced inputs.
+///
+/// Returns negative infinity when `k > n`.
 #[must_use]
 pub fn ln_binomial(
     n: u64,
     k: u64,
 ) -> f64 {
-    statrs::function::factorial::ln_binomial(n, k)
+    const LN_2_PI: f64 = 1.837_877_066_409_345_3;
+    let Some(complement) = n.checked_sub(k) else {
+        return f64::NEG_INFINITY;
+    };
+    let k = k.min(complement);
+    if k == 0 {
+        return 0.0;
+    }
+    if k == 1 {
+        return (n as f64).ln();
+    }
+    let rest = n.saturating_sub(k);
+    if k <= 32 {
+        return (1..=k).map(|j| (rest as f64 / j as f64).ln_1p()).sum();
+    }
+    let (n, k, rest) = (n as f64, k as f64, rest as f64);
+    let log_ratio = (k / rest).ln_1p();
+    let leading = rest.mul_add(log_ratio, k * (n / k).ln());
+    let scale = 0.5 * (LN_2_PI + k.ln() - log_ratio);
+    leading - scale + stirling_correction(n) - stirling_correction(k) - stirling_correction(rest)
+}
+
+fn stirling_correction(n: f64) -> f64 {
+    // DLMF 5.11.1. Every argument on this branch is at least 33.
+    let reciprocal = n.recip();
+    let square = reciprocal * reciprocal;
+    let last = square.mul_add(1.0 / 1_188.0, -1.0 / 1_680.0);
+    let middle = square.mul_add(last, 1.0 / 1_260.0);
+    let inner = square.mul_add(middle, -1.0 / 360.0);
+    reciprocal * square.mul_add(inner, 1.0 / 12.0)
 }

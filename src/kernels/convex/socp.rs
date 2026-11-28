@@ -504,7 +504,7 @@ fn compute_nt_scaling(
                 s_bar[k] = sb[k] / sqrt_ds;
                 y_bar[k] = yb[k] / sqrt_dy;
             }
-            let gamma = (0.5 * (1.0 + dot(&s_bar, &y_bar))).max(1.0).sqrt();
+            let gamma = f64::midpoint(1.0, dot(&s_bar, &y_bar)).max(1.0).sqrt();
             let inv_2g = 0.5 / gamma;
             let mut w_bar = vec![0.0; b.dim];
             w_bar[0] = inv_2g * (s_bar[0] + y_bar[0]);
@@ -950,11 +950,9 @@ fn validate(p: &SocpProblem) -> Result<usize, String> {
     if p.lower.iter().any(|v| !v.is_finite()) {
         return Err("lower bounds must be finite".to_string());
     }
-    for u in &p.upper {
-        if let Some(v) = u {
-            if !v.is_finite() {
-                return Err("upper bounds must be finite when present".to_string());
-            }
+    for v in p.upper.iter().flatten() {
+        if !v.is_finite() {
+            return Err("upper bounds must be finite when present".to_string());
         }
     }
     for row in &p.a {
@@ -1024,8 +1022,8 @@ mod tests {
     #[test]
     fn robust_least_squares() {
         // min ||A x - b||_2 as an SOCP; the least-squares residual is 1/sqrt(3).
-        let a_mat = vec![vec![1.0, 0.0], vec![0.0, 1.0], vec![1.0, 1.0]];
-        let b_vec = vec![1.0, 2.0, 4.0];
+        let a_mat = [vec![1.0, 0.0], vec![0.0, 1.0], vec![1.0, 1.0]];
+        let b_vec = [1.0, 2.0, 4.0];
         // Rows of the cone map: [A, 0] acting on (x0, x1, t).
         let mut rows = Vec::new();
         for r in 0..3 {

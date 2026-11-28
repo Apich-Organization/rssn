@@ -11,7 +11,7 @@
 //! - `32004`: LZ4 (HDF5-LZ4 block-framed plugin)
 //! - `32015`: Zstandard
 
-use std::io::Cursor;
+use std::io;
 
 use super::inflate;
 use crate::io::parquet::lz4;
@@ -19,7 +19,7 @@ use crate::io::parquet::snappy;
 
 /// One entry of an HDF5 filter pipeline.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Filter {
+pub struct Filter {
     /// HDF5 filter identifier.
     pub(crate) id: u16,
     /// Client data values for the filter.
@@ -27,25 +27,58 @@ pub(crate) struct Filter {
 }
 
 /// Filter ID constants.
-pub(crate) const FILTER_DEFLATE: u16 = 1;
-pub(crate) const FILTER_SHUFFLE: u16 = 2;
-pub(crate) const FILTER_FLETCHER32: u16 = 3;
-pub(crate) const FILTER_SZIP: u16 = 4;
-pub(crate) const FILTER_NBIT: u16 = 5;
-pub(crate) const FILTER_SCALEOFFSET: u16 = 6;
-pub(crate) const FILTER_BLOSC: u16 = 32001;
-pub(crate) const FILTER_LZ4: u16 = 32004;
-pub(crate) const FILTER_ZSTD: u16 = 32015;
+pub const FILTER_DEFLATE: u16 = 1;
+pub const FILTER_SHUFFLE: u16 = 2;
+pub const FILTER_FLETCHER32: u16 = 3;
+pub const FILTER_SZIP: u16 = 4;
+pub const FILTER_NBIT: u16 = 5;
+pub const FILTER_SCALEOFFSET: u16 = 6;
+pub const FILTER_BLOSC: u16 = 32001;
+pub const FILTER_LZ4: u16 = 32004;
+pub const FILTER_ZSTD: u16 = 32015;
 
 // -------------------------------------------------------------------------
 // Forward & reverse pipeline
 // -------------------------------------------------------------------------
 
+/// Decoder state scoped to assembling one dataset's chunks.
+#[derive(Default)]
+pub(super) struct FilterDecoder {
+    zstd: Option<zstd::zstd_safe::DCtx<'static>>,
+}
+
+impl FilterDecoder {
+    fn decode_zstd(
+        &mut self,
+        payload: &[u8],
+    ) -> io::Result<Vec<u8>> {
+        let context = match &mut self.zstd {
+            | Some(context) => context,
+            | empty @ None => {
+                empty.insert(zstd::zstd_safe::DCtx::try_create().ok_or_else(|| {
+                    io::Error::other("zstd could not allocate a decompression context")
+                })?)
+            },
+        };
+        // The chunk slice is already a BufRead. The size of its first frame
+        // is only a reservation hint, as the chunk may contain more frames.
+        let mut output = Vec::new();
+        let reserve = zstd::decompressed_size(payload)
+            .unwrap_or(0)
+            .min(32 * 1024 * 1024);
+        let _ = output.try_reserve(usize::try_from(reserve).unwrap_or(0));
+        let mut stream = zstd::stream::read::Decoder::with_context(payload, context);
+        io::copy(&mut stream, &mut output)?;
+        Ok(output)
+    }
+}
+
 /// Applies the reverse of a filter pipeline to `data` (decoding).
-pub(crate) fn apply_filters(
+pub(super) fn apply_filters(
     data: Vec<u8>,
     filters: &[Filter],
     mask: u32,
+    decoder: &mut FilterDecoder,
 ) -> Result<Vec<u8>, String> {
     let mut current = data;
     for (index, filter) in filters.iter().enumerate().rev() {
@@ -65,7 +98,8 @@ pub(crate) fn apply_filters(
             | FILTER_BLOSC => blosc_decode(&current)?,
             | FILTER_LZ4 => hdf5_lz4_decode(&current)?,
             | FILTER_ZSTD => {
-                zstd::stream::decode_all(Cursor::new(&current))
+                decoder
+                    .decode_zstd(&current)
                     .map_err(|e| format!("HDF5 zstd filter decode failed: {e}"))?
             },
             | other => return Err(format!("unsupported HDF5 filter {other}")),
@@ -75,7 +109,7 @@ pub(crate) fn apply_filters(
 }
 
 /// Applies the forward filter pipeline to `data` (encoding).
-pub(crate) fn apply_filters_encode(
+pub fn apply_filters_encode(
     data: Vec<u8>,
     filters: &[Filter],
 ) -> Result<Vec<u8>, String> {
@@ -109,7 +143,7 @@ pub(crate) fn apply_filters_encode(
 // -------------------------------------------------------------------------
 
 /// Applies byte-shuffle to `data` with element width `element`.
-pub(crate) fn shuffle(
+pub fn shuffle(
     data: &[u8],
     element: usize,
 ) -> Result<Vec<u8>, String> {
@@ -136,7 +170,7 @@ pub(crate) fn shuffle(
 }
 
 /// Reverses byte-shuffle on `data` with element width `element`.
-pub(crate) fn unshuffle(
+pub fn unshuffle(
     data: &[u8],
     element: usize,
 ) -> Result<Vec<u8>, String> {
@@ -168,7 +202,7 @@ pub(crate) fn unshuffle(
 // -------------------------------------------------------------------------
 
 /// Computes the HDF5 Fletcher-32 checksum (`H5_checksum_fletcher32`).
-pub(crate) fn fletcher32(data: &[u8]) -> u32 {
+pub fn fletcher32(data: &[u8]) -> u32 {
     let mut sum1: u32 = 0xffff;
     let mut sum2: u32 = 0xffff;
     let mut len = data.len() / 2;
@@ -185,7 +219,7 @@ pub(crate) fn fletcher32(data: &[u8]) -> u32 {
         sum1 = (sum1 & 0xffff) + (sum1 >> 16);
         sum2 = (sum2 & 0xffff) + (sum2 >> 16);
     }
-    if data.len() % 2 != 0 {
+    if !data.len().is_multiple_of(2) {
         sum1 += u32::from(data[pos]) << 8;
         sum2 += sum1;
         sum1 = (sum1 & 0xffff) + (sum1 >> 16);
@@ -418,11 +452,9 @@ fn blosclz_decompress(
                 return Err("blosclz back-reference before start of output".to_owned());
             }
             len += 2;
-            let mut src = out.len() - ofs;
-            for _ in 0..len {
+            for src in (out.len() - ofs..).take(len) {
                 let b = out[src];
                 out.push(b);
-                src += 1;
             }
         }
         if out.len() >= expected {
@@ -514,8 +546,7 @@ fn blosc_decode(data: &[u8]) -> Result<Vec<u8>, String> {
         let block_end = bstarts.get(b_idx + 1).copied().unwrap_or(cbytes);
         let first_csize = data
             .get(cur..cur + 4)
-            .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as usize)
-            .unwrap_or(0);
+            .map_or(0, |b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as usize);
         let is_split = maybe_split && cur + 4 + first_csize < block_end;
         let block_raw = if is_split {
             let nstreams = typesize;
@@ -601,7 +632,6 @@ fn blosc_encode(
         comp_req.min(5)
     };
     let comp_fmt = match comp_id {
-        | 1 | 2 => 1_u8,
         | 3 => 2_u8,
         | 4 => 3_u8,
         | 5 => 4_u8,
@@ -638,7 +668,6 @@ fn blosc_encode(
             block.to_vec()
         };
         let compressed = match comp_id {
-            | 1 | 2 => lz4::compress(&prepared),
             | 3 => snappy::compress(&prepared),
             | 4 => inflate::zlib_compress(&prepared),
             | 5 => {
@@ -1171,15 +1200,11 @@ fn szip_decode(
         let id = id as u32;
         let mut mapped = Vec::with_capacity(ppb);
         if id == 0 {
-            let Ok(fs) = reader.read_bits(1) else {
+            // Consume the zero-block option bit before emitting the block.
+            if reader.read_bits(1).is_err() {
                 break;
-            };
-            if fs == 0 {
-                mapped.resize(ppb, 0);
-            } else {
-                // Zero-block run (4 bits + 1, or 5 bits)
-                mapped.resize(ppb, 0);
             }
+            mapped.resize(ppb, 0);
         } else if id == all_ones_id {
             for _ in 0..ppb {
                 let Ok(v) = reader.read_bits(bpp as u32) else {
@@ -1191,10 +1216,7 @@ fn szip_decode(
             let k = id - 1;
             for _ in 0..ppb {
                 let mut q = 0_u32;
-                loop {
-                    let Ok(bit) = reader.read_bits(1) else {
-                        break;
-                    };
+                while let Ok(bit) = reader.read_bits(1) {
                     if bit == 0 {
                         break;
                     }
@@ -1222,7 +1244,7 @@ fn szip_decode(
                             if sigma % 2 == 0 {
                                 prev.wrapping_add(sigma / 2)
                             } else {
-                                prev.wrapping_sub((sigma + 1) / 2)
+                                prev.wrapping_sub(sigma.div_ceil(2))
                             }
                         } else if prev <= xmax / 2 {
                             sigma
@@ -1289,7 +1311,7 @@ mod tests {
         ];
         let encoded = apply_filters_encode(raw.clone(), &filters).unwrap();
         assert!(encoded.len() < raw.len());
-        let decoded = apply_filters(encoded, &filters, 0).unwrap();
+        let decoded = apply_filters(encoded, &filters, 0, &mut FilterDecoder::default()).unwrap();
         assert_eq!(decoded, raw);
     }
 
@@ -1318,9 +1340,39 @@ mod tests {
             },
         ] {
             let encoded = apply_filters_encode(raw.clone(), std::slice::from_ref(&filter)).unwrap();
-            let decoded = apply_filters(encoded, std::slice::from_ref(&filter), 0).unwrap();
+            let decoded = apply_filters(
+                encoded,
+                std::slice::from_ref(&filter),
+                0,
+                &mut FilterDecoder::default(),
+            )
+            .unwrap();
             assert_eq!(decoded, raw, "failed for filter {}", filter.id);
         }
+    }
+
+    #[test]
+    fn zstd_chunk_decoder_resets_between_streams() {
+        let filters = [Filter {
+            id: FILTER_ZSTD,
+            client: vec![],
+        }];
+        let mut decoder = FilterDecoder::default();
+        let known = zstd::bulk::compress(b"first", 3).unwrap();
+        let mut encoder = zstd::stream::Encoder::new(Vec::new(), 3).unwrap();
+        encoder.include_contentsize(false).unwrap();
+        io::Write::write_all(&mut encoder, b"second").unwrap();
+        let unknown = encoder.finish().unwrap();
+        assert!(zstd::decompressed_size(&unknown).is_none());
+        let concatenated = [known.as_slice(), unknown.as_slice()].concat();
+        let masked = apply_filters(known.clone(), &filters, 1, &mut decoder).unwrap();
+        assert_eq!(masked, known);
+        let output = apply_filters(concatenated, &filters, 0, &mut decoder).unwrap();
+        assert_eq!(output, b"firstsecond");
+        let incomplete = known[..known.len() - 1].to_vec();
+        assert!(apply_filters(incomplete, &filters, 0, &mut decoder).is_err());
+        let output = apply_filters(unknown, &filters, 0, &mut decoder).unwrap();
+        assert_eq!(output, b"second");
     }
 
     #[test]
@@ -1335,7 +1387,13 @@ mod tests {
         };
         let enc_nbit = apply_filters_encode(raw.clone(), std::slice::from_ref(&nbit)).unwrap();
         assert_eq!(enc_nbit.len(), (128 * 12) / 8);
-        let dec_nbit = apply_filters(enc_nbit, std::slice::from_ref(&nbit), 0).unwrap();
+        let dec_nbit = apply_filters(
+            enc_nbit,
+            std::slice::from_ref(&nbit),
+            0,
+            &mut FilterDecoder::default(),
+        )
+        .unwrap();
         assert_eq!(dec_nbit, raw);
 
         // Scale-offset: int32
@@ -1344,7 +1402,13 @@ mod tests {
             client: vec![2, 0, 128, 0, 4, 0, 1],
         };
         let enc_so = apply_filters_encode(raw.clone(), std::slice::from_ref(&so)).unwrap();
-        let dec_so = apply_filters(enc_so, std::slice::from_ref(&so), 0).unwrap();
+        let dec_so = apply_filters(
+            enc_so,
+            std::slice::from_ref(&so),
+            0,
+            &mut FilterDecoder::default(),
+        )
+        .unwrap();
         assert_eq!(dec_so, raw);
 
         // Szip: 32-bit LE, ppb=16
@@ -1353,7 +1417,13 @@ mod tests {
             client: vec![SZIP_NN_OPTION_MASK | SZIP_LSB_OPTION_MASK, 16, 32, 128],
         };
         let enc_szip = apply_filters_encode(raw.clone(), std::slice::from_ref(&szip)).unwrap();
-        let dec_szip = apply_filters(enc_szip, std::slice::from_ref(&szip), 0).unwrap();
+        let dec_szip = apply_filters(
+            enc_szip,
+            std::slice::from_ref(&szip),
+            0,
+            &mut FilterDecoder::default(),
+        )
+        .unwrap();
         assert_eq!(dec_szip, raw);
     }
 }

@@ -47,7 +47,7 @@ pub enum VtkAttributeData {
 }
 
 impl VtkAttributeData {
-    fn len(&self) -> usize {
+    const fn len(&self) -> usize {
         match self {
             | Self::Scalars { values, .. } => values.len(),
             | Self::Vectors { values, .. } => values.len(),
@@ -102,7 +102,7 @@ pub enum VtkDataset {
 impl VtkDataset {
     /// Number of points in the dataset.
     #[must_use]
-    pub fn num_points(&self) -> usize {
+    pub const fn num_points(&self) -> usize {
         match self {
             | Self::StructuredPoints { dims, .. } => {
                 dims[0].saturating_mul(dims[1]).saturating_mul(dims[2])
@@ -403,7 +403,7 @@ struct VtkParser<'a> {
 }
 
 impl<'a> VtkParser<'a> {
-    fn new(buf: &'a [u8]) -> Self {
+    const fn new(buf: &'a [u8]) -> Self {
         Self { buf, pos: 0 }
     }
 
@@ -427,7 +427,7 @@ impl<'a> VtkParser<'a> {
             .map_err(|_| "VTK header line is not valid UTF-8".to_owned())
     }
 
-    fn skip_ws(&mut self) {
+    const fn skip_ws(&mut self) {
         while self.pos < self.buf.len() && self.buf[self.pos].is_ascii_whitespace() {
             self.pos += 1;
         }
@@ -531,8 +531,8 @@ impl<'a> VtkParser<'a> {
                     .get(self.pos..self.pos + needed)
                     .ok_or_else(|| "VTK binary integer payload truncated".to_owned())?;
                 self.pos += needed;
-                for c in slice.chunks_exact(4) {
-                    out.push(i32::from_be_bytes(c.try_into().unwrap()));
+                for c in slice.as_chunks::<4>().0 {
+                    out.push(i32::from_be_bytes(*c));
                 }
                 if self.buf.get(self.pos) == Some(&b'\n') {
                     self.pos += 1;
@@ -655,7 +655,7 @@ pub fn parse_vtk(bytes: &[u8]) -> Result<VtkFile, String> {
                     p.pos += 1;
                 }
                 let flat = p.read_scalars(format, &dtype, n * 3)?;
-                points = flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+                points = flat.as_chunks::<3>().0.to_vec();
             },
             | "VERTICES" | "LINES" | "POLYGONS" | "CELLS" => {
                 let n: usize = p
@@ -755,7 +755,7 @@ pub fn parse_vtk(bytes: &[u8]) -> Result<VtkFile, String> {
                     p.pos += 1;
                 }
                 let flat = p.read_scalars(format, &dtype, count * 3)?;
-                let values = flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+                let values = flat.as_chunks::<3>().0.to_vec();
                 let attr = VtkAttributeData::Vectors { name, values };
                 if is_pt {
                     point_data.push(attr);
@@ -772,10 +772,7 @@ pub fn parse_vtk(bytes: &[u8]) -> Result<VtkFile, String> {
                     p.pos += 1;
                 }
                 let flat = p.read_scalars(format, &dtype, count * 9)?;
-                let values = flat
-                    .chunks_exact(9)
-                    .map(|c| c.try_into().unwrap())
-                    .collect();
+                let values = flat.as_chunks::<9>().0.to_vec();
                 let attr = VtkAttributeData::Tensors { name, values };
                 if is_pt {
                     point_data.push(attr);

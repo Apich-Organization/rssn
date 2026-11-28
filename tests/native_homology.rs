@@ -76,9 +76,7 @@ fn retained_projective_plane_chains_have_exact_torsion_and_checked_session_ident
             rssn::kernel::signature::Determinism::EnvDependent
         );
         assert!(info.backend_support.interpreter);
-        assert!(
-            !info.backend_support.jit && !info.backend_support.ffi && !info.backend_support.gpu
-        );
+        assert!(!info.backend_support.jit && info.backend_support.ffi && !info.backend_support.gpu);
         assert!(
             info.overloads[0]
                 .effects

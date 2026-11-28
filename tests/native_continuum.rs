@@ -626,7 +626,11 @@ fn native_bem_aca_matches_dense_and_reports_real_compression() {
     let aca_value = call(&session, "num_grid_bem_eval3", &[aca.clone(), eval_point]);
     assert!((scalar(&dense_value) - 0.6).abs() < 0.04);
     assert!((scalar(&dense_value) - scalar(&aca_value)).abs() < 1e-6);
-    let ratio = call(&session, "num_grid_bem_compression", &[aca.clone()]);
+    let ratio = call(
+        &session,
+        "num_grid_bem_compression",
+        std::slice::from_ref(&aca),
+    );
     assert!(
         (0.0..1.0).contains(&scalar(&ratio)),
         "compression {ratio:?}"

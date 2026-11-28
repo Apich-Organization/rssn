@@ -6,12 +6,19 @@
 //! Hannan–Rissanen / conditional-sum-of-squares ARIMA fit, [`holtwinters`]
 //! exponential smoothing, and [`kalman`] linear Gaussian state-space filtering
 //! and smoothing.
+//!
+//! [`acf`]: mod@crate::kernels::timeseries::acf
+//! [`ar`]: crate::kernels::timeseries::ar
+//! [`arima`]: crate::kernels::timeseries::arima
+//! [`holtwinters`]: crate::kernels::timeseries::holtwinters
+//! [`kalman`]: crate::kernels::timeseries::kalman
 
 pub mod acf;
 pub mod ar;
 pub mod arima;
 pub mod holtwinters;
 pub mod kalman;
+pub mod rolling;
 
 pub use acf::acf;
 pub use acf::difference;

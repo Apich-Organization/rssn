@@ -5,6 +5,10 @@
 //! a [`Chain`] of post-burn-in, thinned draws together with the target log
 //! density at each draw; [`diagnostics`] holds the usual mixing and convergence
 //! measures.
+//!
+//! [`Pcg32`]: crate::kernels::mcmc::Pcg32
+//! [`Chain`]: crate::kernels::mcmc::Chain
+//! [`diagnostics`]: crate::kernels::mcmc::diagnostics
 
 pub mod chain;
 pub mod diagnostics;

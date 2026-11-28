@@ -8,6 +8,8 @@ use super::SignalError;
 use super::framed::evaluate_polyphase;
 use super::kaiser_window;
 use crate::kernels::par;
+use crate::kernels::reuse::Scratch;
+use crate::kernels::reuse::f64_scratch;
 
 /// Errors from checked filter design, filtering and convolution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -222,4 +224,191 @@ pub(super) fn resample_poly(
         *value *= up as f64;
     }
     evaluate_polyphase(x, &taps, up, down, delay, len).map_err(FilterError::from)
+}
+
+struct DirectForm {
+    numerator: Scratch<'static, f64>,
+    denominator: Scratch<'static, f64>,
+}
+
+impl DirectForm {
+    fn new(
+        b: &[f64],
+        a: &[f64],
+    ) -> Self {
+        let width = b.len().max(a.len());
+        let leading = a[0];
+        let normalize = |values: &[f64]| {
+            let mut normalized = f64_scratch(width);
+            normalized.clear();
+            normalized.extend(values.iter().map(|value| value / leading));
+            normalized.resize(width, 0.0 / leading);
+            normalized
+        };
+        Self {
+            numerator: normalize(b),
+            denominator: normalize(a),
+        }
+    }
+
+    fn apply<'a>(
+        &self,
+        samples: impl Iterator<Item = &'a mut f64>,
+        state: &mut [f64],
+    ) {
+        let b0 = self.numerator[0];
+        let Some(last) = state.len().checked_sub(1) else {
+            for sample in samples {
+                *sample *= b0;
+            }
+            return;
+        };
+        for sample in samples {
+            let input = *sample;
+            let output = b0.mul_add(input, state[0]);
+            *sample = output;
+            for k in 0..last {
+                state[k] = self.numerator[k + 1].mul_add(
+                    input,
+                    (-self.denominator[k + 1]).mul_add(output, state[k + 1]),
+                );
+            }
+            state[last] =
+                self.numerator[last + 1].mul_add(input, -self.denominator[last + 1] * output);
+        }
+    }
+
+    fn steady_state(
+        &self,
+        state: &mut [f64],
+    ) -> bool {
+        if state.is_empty() {
+            return true;
+        }
+        let width = self.numerator.len();
+        let sum_a = par::sum_kahan_fixed(width, 256, usize::MAX, |i| self.denominator[i]);
+        let sum_b = par::sum_kahan_fixed(width, 256, usize::MAX, |i| self.numerator[i]);
+        let gain = sum_b / sum_a;
+        // At unit input and output H(1), the transposed filter state is a
+        // reverse cumulative sum of b[k] - H(1)*a[k]. This solves the
+        // companion system in linear time without a dense matrix.
+        let mut next = 0.0;
+        for (k, slot) in state.iter_mut().enumerate().rev() {
+            next += (-self.denominator[k + 1]).mul_add(gain, self.numerator[k + 1]);
+            *slot = next;
+        }
+        gain.is_finite() && state.iter().all(|value| value.is_finite())
+    }
+}
+
+pub(super) fn lfilter(
+    b: &[f64],
+    a: &[f64],
+    x: &[f64],
+) -> Vec<f64> {
+    if b.is_empty() || a.is_empty() || x.is_empty() {
+        return Vec::new();
+    }
+    if a[0] == 0.0 {
+        return vec![f64::NAN; x.len()];
+    }
+    let filter = DirectForm::new(b, a);
+    let mut result = x.to_vec();
+    let state_len = filter.numerator.len().saturating_sub(1);
+    let mut state = f64_scratch(state_len);
+    state.clear();
+    state.resize(state_len, 0.0);
+    filter.apply(result.iter_mut(), &mut state);
+    result
+}
+
+pub(super) fn filtfilt(
+    b: &[f64],
+    a: &[f64],
+    x: &[f64],
+    checked: bool,
+) -> Result<Vec<f64>, FilterError> {
+    if b.is_empty() || a.is_empty() || a[0] == 0.0 {
+        return Err(FilterError::InvalidParameters);
+    }
+    if checked && b.iter().chain(a).chain(x).any(|value| !value.is_finite()) {
+        return Err(SignalError::NonFiniteInput.into());
+    }
+    if x.is_empty() {
+        return Ok(Vec::new());
+    }
+    let filter = DirectForm::new(b, a);
+    if checked
+        && filter
+            .numerator
+            .iter()
+            .chain(filter.denominator.iter())
+            .any(|value| !value.is_finite())
+    {
+        return Err(SignalError::NonFiniteResult.into());
+    }
+    let state_len = filter.numerator.len().saturating_sub(1);
+    let mut steady = f64_scratch(state_len);
+    steady.clear();
+    steady.resize(state_len, 0.0);
+    if !filter.steady_state(&mut steady) {
+        if checked {
+            return Err(FilterError::InvalidParameters);
+        }
+        steady.fill(0.0);
+    }
+    let pad = state_len.saturating_mul(3).min(x.len() - 1);
+    let extended_len = pad
+        .checked_mul(2)
+        .and_then(|extra| extra.checked_add(x.len()))
+        .ok_or(SignalError::OutputSize)?;
+    let mut result = Vec::new();
+    result
+        .try_reserve_exact(extended_len)
+        .map_err(|_| SignalError::OutputSize)?;
+    let first = x[0];
+    let last = x[x.len() - 1];
+    result.extend(
+        x[..=pad]
+            .iter()
+            .skip(1)
+            .rev()
+            .map(|&sample| first.mul_add(2.0, -sample)),
+    );
+    result.extend_from_slice(x);
+    result.extend(
+        x[x.len() - 1 - pad..x.len() - 1]
+            .iter()
+            .rev()
+            .map(|&sample| last.mul_add(2.0, -sample)),
+    );
+
+    let mut state = f64_scratch(state_len);
+    state.clear();
+    let forward_scale = result[0];
+    state.extend(steady.iter().map(|value| value * forward_scale));
+    filter.apply(result.iter_mut(), &mut state);
+    if checked
+        && (result.iter().any(|value| !value.is_finite())
+            || state.iter().any(|value| !value.is_finite()))
+    {
+        return Err(SignalError::NonFiniteResult.into());
+    }
+    let backward_scale = result[extended_len - 1];
+    state
+        .iter_mut()
+        .zip(steady.iter())
+        .for_each(|(slot, &value)| *slot = value * backward_scale);
+    filter.apply(result.iter_mut().rev(), &mut state);
+    if checked
+        && (result.iter().any(|value| !value.is_finite())
+            || state.iter().any(|value| !value.is_finite()))
+    {
+        return Err(SignalError::NonFiniteResult.into());
+    }
+    if pad != 0 {
+        result.copy_within(pad..pad + x.len(), 0);
+        result.truncate(x.len());
+    }
+    Ok(result)
 }

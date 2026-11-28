@@ -97,6 +97,28 @@ pub fn matvec(
         .collect()
 }
 
+/// Writes `left * x + right * u` into a reusable destination.
+///
+/// The left matrix determines the result length. Missing right rows contribute
+/// zero, and each dot product truncates to the shared length of its operands.
+pub(super) fn sum_matvec_into(
+    left: &[Vec<f64>],
+    x: &[f64],
+    right: &[Vec<f64>],
+    u: &[f64],
+    out: &mut Vec<f64>,
+) {
+    out.clear();
+    out.extend(left.iter().map(|row| crate::kernels::simd::dot_f64(row, x)));
+    let (paired, missing) = out.split_at_mut(left.len().min(right.len()));
+    for (value, row) in paired.iter_mut().zip(right) {
+        *value += crate::kernels::simd::dot_f64(row, u);
+    }
+    for value in missing {
+        *value += 0.0;
+    }
+}
+
 /// Element-wise sum of two matrices of equal shape.
 pub fn add(
     a: &[Vec<f64>],
@@ -203,7 +225,7 @@ pub fn rank_rel(a: &[Vec<f64>]) -> Result<usize, String> {
     let ma = to_mat(a)?;
     let sv = dense::svd(&ma).map_err(|e| e.to_string())?;
     let smax = sv.s.first().copied().unwrap_or(0.0);
-    if !(smax > 0.0) {
+    if smax.partial_cmp(&0.0) != Some(std::cmp::Ordering::Greater) {
         return Ok(0);
     }
     let tol = 1e-9 * smax;
@@ -246,12 +268,9 @@ pub fn rk4_linear(
     h: f64,
 ) -> Vec<f64> {
     let f = |state: &[f64]| {
-        let ax = matvec(a, state);
-        let bu = matvec(b, u);
-        ax.iter()
-            .enumerate()
-            .map(|(i, &v)| v + bu.get(i).copied().unwrap_or(0.0))
-            .collect::<Vec<f64>>()
+        let mut values = Vec::with_capacity(a.len());
+        sum_matvec_into(a, state, b, u, &mut values);
+        values
     };
     let k1 = f(x);
     let x2: Vec<f64> = x

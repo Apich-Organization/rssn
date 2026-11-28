@@ -2600,6 +2600,8 @@ pub fn render_subplots_svg(
     rows: usize,
     cols: usize,
 ) -> Result<String, String> {
+    use std::fmt::Write as _;
+
     if rows == 0 || cols == 0 || panels.is_empty() {
         return Err("subplots require positive rows, cols, and at least one panel".to_owned());
     }
@@ -2617,9 +2619,7 @@ pub fn render_subplots_svg(
             .find('>')
             .and_then(|start| panel.rfind("</svg>").map(|end| &panel[start + 1..end]))
             .unwrap_or(panel);
-        out.push_str(&format!(
-            "<g transform=\"translate({tx},{ty})\">{inner}</g>\n"
-        ));
+        let _ = writeln!(out, "<g transform=\"translate({tx},{ty})\">{inner}</g>");
     }
     out.push_str("</svg>\n");
     Ok(out)
@@ -2640,7 +2640,7 @@ pub fn plot_scalar_field_png(
     }
     let range = extent(data.iter().copied()).ok_or("no finite values")?;
     let mut rgb = Vec::with_capacity(rows * cols * 3);
-    for &value in data.iter() {
+    for &value in data {
         let (r, g, b) = if value.is_finite() {
             colormap.sample_rgb(unit(value, range))
         } else {

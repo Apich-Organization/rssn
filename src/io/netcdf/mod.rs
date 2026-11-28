@@ -28,6 +28,15 @@
 //!
 //! Every length, count and offset read from a file is checked against the
 //! buffer before use, and arrays are capped at 64 MiB and 2^32 elements.
+//!
+//! [`NcType::Char`]: crate::io::netcdf::NcType::Char
+//! [`Variable::data`]: crate::io::netcdf::Variable::data
+//! [`Variable::as_string`]: crate::io::netcdf::Variable::as_string
+//! [`Variable::as_strings`]: crate::io::netcdf::Variable::as_strings
+//! [`write_netcdf`]: crate::io::netcdf::write_netcdf
+//! [`write_netcdf_with_format`]: crate::io::netcdf::write_netcdf_with_format
+//! [`to_bytes`]: crate::io::netcdf::to_bytes
+//! [`to_bytes_with_format`]: crate::io::netcdf::to_bytes_with_format
 
 use std::path::Path;
 
@@ -195,9 +204,7 @@ impl Variable {
             for &b in &bytes[..take] {
                 data.push(f64::from(b));
             }
-            for _ in take..str_len {
-                data.push(0.0);
-            }
+            data.extend(std::iter::repeat_n(0.0, str_len - take));
         }
         Self {
             name: name.into(),
@@ -1002,7 +1009,7 @@ fn put_name(
 ) {
     put_count(out, u64::try_from(name.len()).unwrap_or(0), wide);
     out.extend_from_slice(name.as_bytes());
-    while out.len() % 4 != 0 {
+    while !out.len().is_multiple_of(4) {
         out.push(0);
     }
 }
@@ -1043,7 +1050,7 @@ fn put_attribute(
     out.extend_from_slice(&code.to_be_bytes());
     put_count(out, u64::try_from(count).unwrap_or(0), wide);
     out.extend_from_slice(&body);
-    while out.len() % 4 != 0 {
+    while !out.len().is_multiple_of(4) {
         out.push(0);
     }
 }
@@ -1210,11 +1217,7 @@ fn compute_begins(
         if record {
             begins[index] = record_start.saturating_add(record_offset);
             let bytes = u64::try_from(encoded[index].len()).unwrap_or(0);
-            let slab = if numrecs == 0 {
-                bytes
-            } else {
-                bytes / numrecs
-            };
+            let slab = bytes.checked_div(numrecs).unwrap_or(bytes);
             record_offset = record_offset.saturating_add(align4(slab));
         }
     }
@@ -1508,7 +1511,7 @@ mod tests {
             assert_eq!(left.data, right.data);
         }
         // The record count is 64-bit from CDF-2 on.
-        assert_eq!(bytes.len() > 8, true);
+        assert!(bytes.len() > 8);
     }
 
     #[test]

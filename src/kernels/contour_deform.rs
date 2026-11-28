@@ -1,6 +1,7 @@
-//! Numerical contour integration, standard complex contours (keyhole,
-//! dogbone, indented semicircle, Hankel), Cauchy principal value, residue at
-//! infinity, and adaptive singularity/branch-cut contour deformation.
+//! Numerical contour integration and deformation.
+//!
+//! Includes keyhole, dogbone, indented semicircle, and Hankel contours, Cauchy principal values,
+//! residues at infinity, and adaptive deformation around singularities and branch cuts.
 
 use std::f64::consts::PI;
 use std::f64::consts::TAU;
@@ -253,6 +254,8 @@ pub fn indented_semicircle_contour(
 }
 
 /// Open Hankel contour around `0` avoiding the branch cut along `cut_angle`.
+///
+///
 /// Enters from `r_outer` along `cut_angle + gap`, wraps `2*pi - 2*gap` around
 /// the origin at `r_inner`, and exits to `r_outer` along `cut_angle - gap`.
 #[must_use]
@@ -524,7 +527,9 @@ where
     let mut total = Complex64::new(0.0, 0.0);
     let mut cur = a;
     for (idx, &p) in interior.iter().enumerate() {
-        let right_bound = interior.get(idx + 1).map_or(b, |&next| 0.5 * (p + next));
+        let right_bound = interior
+            .get(idx + 1)
+            .map_or(b, |&next| f64::midpoint(p, next));
         let delta = (p - cur).min(right_bound - p);
         if p - delta > cur {
             let re = gauss_kronrod_any(|x| f(x).re, cur, p - delta, tol, 24).value;

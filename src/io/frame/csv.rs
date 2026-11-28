@@ -307,7 +307,7 @@ fn build_column(
                             .map_err(|_| format!("`{value}` is not an integer"))?
                     },
                     | None => 0,
-                })
+                });
             },
             | DType::Float => {
                 floats.push(match token {
@@ -317,7 +317,7 @@ fn build_column(
                             .map_err(|_| format!("`{value}` is not a number"))?
                     },
                     | None => 0.0,
-                })
+                });
             },
             | DType::Bool => {
                 booleans.push(match token {
@@ -325,7 +325,7 @@ fn build_column(
                         parse_bool(value).ok_or_else(|| format!("`{value}` is not a boolean"))?
                     },
                     | None => false,
-                })
+                });
             },
             | DType::Str => strings.push(token.clone().unwrap_or_default()),
             | DType::Bytes => {
@@ -333,7 +333,7 @@ fn build_column(
                     token
                         .as_deref()
                         .map_or_else(Vec::new, |s| s.as_bytes().to_vec()),
-                )
+                );
             },
             | DType::List => {
                 return Err("csv cannot infer a list column; use JSON or Parquet".to_string());
@@ -412,7 +412,7 @@ fn json_scalar(
         | Column::Int(values) => {
             values
                 .get(row)
-                .map_or_else(|| "null".to_string(), |v| v.to_string())
+                .map_or_else(|| "null".to_string(), std::string::ToString::to_string)
         },
         | Column::Float(values) => {
             values.get(row).map_or_else(

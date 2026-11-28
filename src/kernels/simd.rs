@@ -13,40 +13,18 @@
 use num_complex::Complex64;
 
 #[inline]
+#[cfg(target_arch = "x86_64")]
 fn has_avx2_fma() -> bool {
-    #[cfg(all(
-        target_arch = "x86_64",
-        target_feature = "avx2",
-        target_feature = "fma"
-    ))]
-    {
-        true
-    }
-    #[cfg(all(
-        target_arch = "x86_64",
-        not(all(target_feature = "avx2", target_feature = "fma"))
-    ))]
-    {
+    cfg!(all(target_feature = "avx2", target_feature = "fma")) || {
         let simd = crate::execution::host_environment().simd();
         simd.avx2 && simd.fma
-    }
-    #[cfg(not(target_arch = "x86_64"))]
-    {
-        false
     }
 }
 
 #[inline]
 #[cfg(target_arch = "aarch64")]
 fn has_neon() -> bool {
-    #[cfg(target_feature = "neon")]
-    {
-        true
-    }
-    #[cfg(not(target_feature = "neon"))]
-    {
-        crate::execution::host_environment().simd().neon
-    }
+    cfg!(target_feature = "neon") || crate::execution::host_environment().simd().neon
 }
 
 /// Computes the dot product `sum_i a[i] * b[i]` over `0..a.len().min(b.len())`.
@@ -520,7 +498,7 @@ pub fn centered_stats_f64(
 pub(crate) mod scalar {
     use num_complex::Complex64;
 
-    pub(crate) fn dot_f64(
+    pub fn dot_f64(
         a: &[f64],
         b: &[f64],
     ) -> f64 {
@@ -528,79 +506,79 @@ pub(crate) mod scalar {
         let mut s1 = 0.0_f64;
         let mut s2 = 0.0_f64;
         let mut s3 = 0.0_f64;
-        let mut ac = a.chunks_exact(4);
-        let mut bc = b.chunks_exact(4);
-        for (xa, xb) in (&mut ac).zip(&mut bc) {
+        let (a_chunks, a_tail) = a.as_chunks::<4>();
+        let (b_chunks, b_tail) = b.as_chunks::<4>();
+        for (xa, xb) in a_chunks.iter().zip(b_chunks) {
             s0 = xa[0].mul_add(xb[0], s0);
             s1 = xa[1].mul_add(xb[1], s1);
             s2 = xa[2].mul_add(xb[2], s2);
             s3 = xa[3].mul_add(xb[3], s3);
         }
         let mut total = (s0 + s1) + (s2 + s3);
-        for (&xa, &xb) in ac.remainder().iter().zip(bc.remainder()) {
+        for (&xa, &xb) in a_tail.iter().zip(b_tail) {
             total = xa.mul_add(xb, total);
         }
         total
     }
 
-    pub(crate) fn sum_f64(x: &[f64]) -> f64 {
+    pub fn sum_f64(x: &[f64]) -> f64 {
         let mut s0 = 0.0_f64;
         let mut s1 = 0.0_f64;
         let mut s2 = 0.0_f64;
         let mut s3 = 0.0_f64;
-        let mut chunks = x.chunks_exact(4);
-        for c in &mut chunks {
+        let (chunks, chunk_tail) = x.as_chunks::<4>();
+        for c in chunks {
             s0 += c[0];
             s1 += c[1];
             s2 += c[2];
             s3 += c[3];
         }
         let mut total = (s0 + s1) + (s2 + s3);
-        for &v in chunks.remainder() {
+        for &v in chunk_tail {
             total += v;
         }
         total
     }
 
-    pub(crate) fn norm2_sq_f64(x: &[f64]) -> f64 {
+    pub fn norm2_sq_f64(x: &[f64]) -> f64 {
         let mut s0 = 0.0_f64;
         let mut s1 = 0.0_f64;
         let mut s2 = 0.0_f64;
         let mut s3 = 0.0_f64;
-        let mut chunks = x.chunks_exact(4);
-        for c in &mut chunks {
+        let (chunks, chunk_tail) = x.as_chunks::<4>();
+        for c in chunks {
             s0 = c[0].mul_add(c[0], s0);
             s1 = c[1].mul_add(c[1], s1);
             s2 = c[2].mul_add(c[2], s2);
             s3 = c[3].mul_add(c[3], s3);
         }
         let mut total = (s0 + s1) + (s2 + s3);
-        for &v in chunks.remainder() {
+        for &v in chunk_tail {
             total = v.mul_add(v, total);
         }
         total
     }
 
-    pub(crate) fn l1_norm_f64(x: &[f64]) -> f64 {
+    pub fn l1_norm_f64(x: &[f64]) -> f64 {
         let mut s0 = 0.0_f64;
         let mut s1 = 0.0_f64;
         let mut s2 = 0.0_f64;
         let mut s3 = 0.0_f64;
-        let mut chunks = x.chunks_exact(4);
-        for c in &mut chunks {
+        let (chunks, chunk_tail) = x.as_chunks::<4>();
+        for c in chunks {
             s0 += c[0].abs();
             s1 += c[1].abs();
             s2 += c[2].abs();
             s3 += c[3].abs();
         }
         let mut total = (s0 + s1) + (s2 + s3);
-        for &v in chunks.remainder() {
+        for &v in chunk_tail {
             total += v.abs();
         }
         total
     }
 
-    pub(crate) fn linf_norm_f64(x: &[f64]) -> f64 {
+    pub fn linf_norm_f64(x: &[f64]) -> f64 {
         let mut best = 0.0_f64;
         for &v in x {
             let a = v.abs();
@@ -614,7 +592,7 @@ pub(crate) mod scalar {
         best
     }
 
-    pub(crate) fn axpy_f64(
+    pub fn axpy_f64(
         alpha: f64,
         x: &[f64],
         y: &mut [f64],
@@ -624,7 +602,7 @@ pub(crate) mod scalar {
         }
     }
 
-    pub(crate) fn axpby_f64(
+    pub fn axpby_f64(
         alpha: f64,
         x: &[f64],
         beta: f64,
@@ -635,7 +613,7 @@ pub(crate) mod scalar {
         }
     }
 
-    pub(crate) fn scale_f64(
+    pub fn scale_f64(
         alpha: f64,
         x: &mut [f64],
     ) {
@@ -644,7 +622,7 @@ pub(crate) mod scalar {
         }
     }
 
-    pub(crate) fn add_into_f64(
+    pub fn add_into_f64(
         a: &[f64],
         b: &[f64],
         out: &mut [f64],
@@ -654,7 +632,7 @@ pub(crate) mod scalar {
         }
     }
 
-    pub(crate) fn sub_into_f64(
+    pub fn sub_into_f64(
         a: &[f64],
         b: &[f64],
         out: &mut [f64],
@@ -664,7 +642,7 @@ pub(crate) mod scalar {
         }
     }
 
-    pub(crate) fn hadamard_mul_into_f64(
+    pub fn hadamard_mul_into_f64(
         a: &[f64],
         b: &[f64],
         out: &mut [f64],
@@ -674,7 +652,7 @@ pub(crate) mod scalar {
         }
     }
 
-    pub(crate) fn complex_mul_into(
+    pub fn complex_mul_into(
         a: &[Complex64],
         b: &[Complex64],
         out: &mut [Complex64],
@@ -684,7 +662,7 @@ pub(crate) mod scalar {
         }
     }
 
-    pub(crate) fn complex_mul_conj_into(
+    pub fn complex_mul_conj_into(
         a: &[Complex64],
         b: &[Complex64],
         out: &mut [Complex64],
@@ -694,7 +672,7 @@ pub(crate) mod scalar {
         }
     }
 
-    pub(crate) fn complex_mul_in_place(
+    pub fn complex_mul_in_place(
         a: &mut [Complex64],
         b: &[Complex64],
     ) {
@@ -703,7 +681,7 @@ pub(crate) mod scalar {
         }
     }
 
-    pub(crate) fn complex_dot_conj(
+    pub fn complex_dot_conj(
         a: &[Complex64],
         b: &[Complex64],
     ) -> Complex64 {
@@ -716,7 +694,7 @@ pub(crate) mod scalar {
         Complex64::new(re, im)
     }
 
-    pub(crate) fn min_max_f64(x: &[f64]) -> (f64, f64) {
+    pub fn min_max_f64(x: &[f64]) -> (f64, f64) {
         let mut lo = x[0];
         let mut hi = x[0];
         if lo.is_nan() {
@@ -736,7 +714,7 @@ pub(crate) mod scalar {
         (lo, hi)
     }
 
-    pub(crate) fn centered_stats_f64(
+    pub fn centered_stats_f64(
         a: &[f64],
         b: &[f64],
         mean_a: f64,

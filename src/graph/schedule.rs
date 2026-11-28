@@ -1362,15 +1362,17 @@ impl Engine {
                     if todo.len() >= 2
                         && crate::execution::should_split(work, ENGINE_PAR_MIN_CANDIDATES)
                     {
+                        let backend = crate::backend::worker_context();
                         todo.par_iter()
                             .map_init(
                                 || {
                                     (
+                                        backend.enter(),
                                         crate::cancellation::install_optional(cancellation.clone()),
                                         super::pattern::MatchScratch::default(),
                                     )
                                 },
-                                |(_, scratch), &(i, rw, ref nodes)| {
+                                |(_, _, scratch), &(i, rw, ref nodes)| {
                                     let times = states_ro.get(i).map_or(0, |s| s.times_banned);
                                     search_rewrite_with_scratch(
                                         frozen,
@@ -1536,10 +1538,18 @@ impl Engine {
                                 }
                             }
                             let cancellation = crate::cancellation::current();
+                            let backend = crate::backend::worker_context();
                             let completed: Vec<_> = jobs
                                 .into_par_iter()
                                 .map_init(
-                                    || crate::cancellation::install_optional(cancellation.clone()),
+                                    || {
+                                        (
+                                            backend.enter(),
+                                            crate::cancellation::install_optional(
+                                                cancellation.clone(),
+                                            ),
+                                        )
+                                    },
                                     |_, (idx, work)| {
                                         (!crate::cancellation::is_cancelled())
                                             .then(|| (idx, work.run()))

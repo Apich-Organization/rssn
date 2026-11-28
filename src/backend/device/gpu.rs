@@ -26,6 +26,7 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
+use wgpu::DeviceType;
 
 use super::Buffer;
 use super::CompiledKernel;
@@ -84,6 +85,7 @@ impl CompiledKernel for GpuKernel {
 /// One wgpu adapter as a [`Device`].
 pub struct WgpuDevice {
     info: DeviceInfo,
+    adapter_type: DeviceType,
     uid: u64,
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -93,19 +95,35 @@ pub struct WgpuDevice {
     late_error: Arc<Mutex<Option<String>>>,
 }
 
-/// Every usable wgpu adapter, as devices `gpu:wgpu:0`, `gpu:wgpu:1`, ...
-/// Software rasterisers (CPU adapters) are included and marked in the name.
+/// Usable wgpu adapters in device preference order.
+///
+/// Device IDs keep the original wgpu enumeration ordinal. Adapters in the
+/// same class keep their enumeration order. Software adapters are marked in
+/// their names.
 #[must_use]
 pub fn probe() -> Vec<Arc<dyn Device>> {
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
-    let mut out: Vec<Arc<dyn Device>> = Vec::new();
     let adapters = pollster::block_on(instance.enumerate_adapters(wgpu::Backends::all()));
-    for (n, adapter) in adapters.into_iter().enumerate() {
-        if let Ok(device) = WgpuDevice::new(&adapter, n) {
-            out.push(Arc::new(device));
-        }
+    let mut devices = adapters
+        .into_iter()
+        .enumerate()
+        .filter_map(|(ordinal, adapter)| WgpuDevice::new(&adapter, ordinal).ok().map(Arc::new))
+        .collect::<Vec<_>>();
+    devices.sort_by_key(|device| adapter_priority(device.adapter_type));
+    devices
+        .into_iter()
+        .map(|device| device as Arc<dyn Device>)
+        .collect()
+}
+
+const fn adapter_priority(kind: DeviceType) -> u8 {
+    match kind {
+        | DeviceType::DiscreteGpu => 0,
+        | DeviceType::IntegratedGpu => 1,
+        | DeviceType::Other => 2,
+        | DeviceType::VirtualGpu => 3,
+        | DeviceType::Cpu => 4,
     }
-    out
 }
 
 const fn storage_entry(
@@ -172,7 +190,7 @@ impl WgpuDevice {
             bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
-        let software = matches!(ainfo.device_type, wgpu::DeviceType::Cpu);
+        let software = ainfo.device_type == DeviceType::Cpu;
         let info = DeviceInfo {
             id: format!("gpu:wgpu:{ordinal}"),
             name: format!(
@@ -200,16 +218,17 @@ impl WgpuDevice {
             max_buffer_elems: usize::try_from(
                 limits
                     .max_buffer_size
-                    .min(u64::from(limits.max_storage_buffer_binding_size))
+                    .min(limits.max_storage_buffer_binding_size)
                     / element_bytes(Dtype::F64),
             )
             .unwrap_or(usize::MAX),
-            unified_memory: matches!(ainfo.device_type, wgpu::DeviceType::Cpu),
+            unified_memory: software,
             deterministic: true,
             emulated_f64: true,
         };
         Ok(Self {
             info,
+            adapter_type: ainfo.device_type,
             uid: next_uid(),
             device,
             queue,
@@ -656,5 +675,26 @@ impl Device for WgpuDevice {
             .poll(wgpu::PollType::wait_indefinitely())
             .map_err(|e| DeviceError::Backend(format!("{e:?}")))?;
         self.take_late_error()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::DeviceType;
+    use super::adapter_priority;
+
+    #[test]
+    fn adapter_priority_preserves_ordinals_and_order_within_a_class() {
+        let mut usable = [
+            (0, DeviceType::Cpu),
+            (2, DeviceType::IntegratedGpu),
+            (3, DeviceType::VirtualGpu),
+            (4, DeviceType::IntegratedGpu),
+            (5, DeviceType::DiscreteGpu),
+            (7, DeviceType::Other),
+            (8, DeviceType::Cpu),
+        ];
+        usable.sort_by_key(|&(_, kind)| adapter_priority(kind));
+        assert_eq!(usable.map(|(ordinal, _)| ordinal), [5, 2, 4, 7, 3, 0, 8]);
     }
 }

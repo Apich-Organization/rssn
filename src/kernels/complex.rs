@@ -7,10 +7,16 @@
 
 use std::cmp::Ordering;
 use std::f64::consts::PI;
+use std::f64::consts::TAU;
 
 use num_complex::Complex64;
 use serde::Deserialize;
 use serde::Serialize;
+
+use crate::kernels::fft;
+use crate::kernels::reuse::Scratch;
+use crate::kernels::reuse::fft_scratch_for;
+use crate::kernels::reuse::global_pool;
 
 const I: Complex64 = Complex64::new(0.0, 1.0);
 
@@ -501,6 +507,30 @@ where
     f(Complex64::new(x, h)).im / h
 }
 
+/// Samples a circle counter-clockwise and returns its unnormalised spectrum.
+pub(crate) fn circle_spectrum(
+    f: impl Fn(Complex64) -> Complex64,
+    center: Complex64,
+    radius: f64,
+    n: usize,
+) -> Scratch<'static, Complex64> {
+    let mut samples = fft_scratch_for(n);
+    // A power-of-two length permits the cache's division to move ahead of the
+    // multiplication without rounding the sample angle differently.
+    if n.is_power_of_two() && n <= 65_536 {
+        let roots = global_pool().unit_roots(n);
+        samples.extend(roots.iter().map(|root| f(center + radius * root.conj())));
+    } else {
+        samples.extend((0..n).map(|k| {
+            let angle = TAU * (k as f64) / (n as f64);
+            let (sin, cos) = angle.sin_cos();
+            f(center + Complex64::new(radius * cos, radius * sin))
+        }));
+    }
+    fft::transform_in_place(&mut samples, false, fft::Norm::Backward);
+    samples
+}
+
 /// Computes `f^(0)(z0), f^(1)(z0), ..., f^(max_order)(z0)` in one pass using
 /// Cauchy's integral formula discretized with an FFT (Lyness-Moler method) on
 /// `|z - z0| = radius` with `n_samples` equispaced nodes.
@@ -519,17 +549,7 @@ where
     if !radius.is_finite() || radius <= 0.0 {
         return vec![Complex64::new(f64::NAN, f64::NAN); max_order + 1];
     }
-    let mut buffer = Vec::with_capacity(n);
-    for j in 0..n {
-        let theta = 2.0 * PI * (j as f64) / (n as f64);
-        let (s, c) = theta.sin_cos();
-        let z = z0 + Complex64::new(radius * c, radius * s);
-        let val = f(z);
-        buffer.push(rustfft::num_complex::Complex::new(val.re, val.im));
-    }
-    let mut planner = rustfft::FftPlanner::<f64>::new();
-    let fft = planner.plan_fft_forward(n);
-    fft.process(&mut buffer);
+    let buffer = circle_spectrum(f, z0, radius, n);
 
     let mut out = Vec::with_capacity(max_order + 1);
     let nf = n as f64;
@@ -541,8 +561,7 @@ where
         }
         let scale = (ln_fact - (k as f64) * ln_r).exp() / nf;
         let ck = buffer.get(k).copied().unwrap_or_default();
-        let deriv = Complex64::new(ck.re, ck.im) * scale;
-        out.push(deriv);
+        out.push(ck * scale);
     }
     out
 }
@@ -550,6 +569,42 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn circular_fft_samples_in_order_and_recovers_polynomial_derivatives() {
+        use std::cell::RefCell;
+
+        let center = Complex64::new(0.25, -0.125);
+        let radius = 0.75;
+        for count in [31, 32] {
+            let points = RefCell::new(Vec::new());
+            let derivatives = cauchy_fft_derivatives(
+                |z| {
+                    points.borrow_mut().push(z);
+                    z * z + 3.0 * z + 5.0
+                },
+                center,
+                radius,
+                3,
+                count,
+            );
+            let points = points.into_inner();
+            assert_eq!(points.len(), count);
+            for (k, actual) in points.into_iter().enumerate() {
+                let angle = TAU * k as f64 / count as f64;
+                let expected = center + Complex64::from_polar(radius, angle);
+                assert!((actual - expected).norm() < 1e-15);
+            }
+            for (actual, expected) in derivatives.into_iter().zip([
+                center * center + 3.0 * center + 5.0,
+                2.0 * center + 3.0,
+                Complex64::new(2.0, 0.0),
+                Complex64::ZERO,
+            ]) {
+                assert!((actual - expected).norm() < 1e-12);
+            }
+        }
+    }
 
     fn close(
         a: Complex64,

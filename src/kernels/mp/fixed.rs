@@ -19,7 +19,7 @@ use super::real::Round;
 
 /// An integer scaled by `2^-s`.
 #[derive(Clone, Debug)]
-pub(crate) struct Fx {
+pub struct Fx {
     /// The scaled integer: the value is `v * 2^-s`.
     pub(crate) v: BigInt,
     /// The number of fractional bits.
@@ -180,7 +180,7 @@ impl Fx {
 
     /// The square root truncated toward zero; adds one unit of error.
     pub(crate) fn sqrt(&self) -> Self {
-        debug_assert!(self.v.sign() != num_bigint::Sign::Minus);
+        debug_assert_ne!(self.v.sign(), num_bigint::Sign::Minus);
         // sqrt(v * 2^-s) = sqrt(v * 2^s) * 2^-s
         let scaled = self.v.magnitude() << usize::try_from(self.s).unwrap_or(0);
         Self {
@@ -194,7 +194,7 @@ impl Fx {
 ///
 /// # Errors
 /// Fails when the exponent leaves the representable range.
-pub(crate) fn ulp(s: u32) -> Result<Real, String> {
+pub fn ulp(s: u32) -> Result<Real, String> {
     Real::rounded(BigInt::from(1), -i64::from(s), 1, Round::TowardZero)
 }
 
@@ -202,7 +202,7 @@ pub(crate) fn ulp(s: u32) -> Result<Real, String> {
 ///
 /// # Errors
 /// Fails when the exponent leaves the representable range.
-pub(crate) fn units(
+pub fn units(
     count: u64,
     s: u32,
 ) -> Result<Real, String> {

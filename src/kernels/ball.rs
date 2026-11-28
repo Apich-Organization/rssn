@@ -363,11 +363,7 @@ impl Cball {
         };
         let y_far = self.im.lo.abs().max(self.im.hi.abs());
         let r_for_u_min = modulus_bound(self.re.lo.abs(), y_near, false);
-        let u_min_arg = if self.re.lo >= 0.0 {
-            (r_for_u_min + self.re.lo).next_down().max(0.0)
-        } else {
-            (r_for_u_min + self.re.lo).next_down().max(0.0)
-        };
+        let u_min_arg = (r_for_u_min + self.re.lo).next_down().max(0.0);
         let u_lo = (0.5 * u_min_arg)
             .next_down()
             .max(0.0)

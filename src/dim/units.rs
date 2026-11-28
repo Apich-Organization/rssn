@@ -1297,6 +1297,11 @@ pub(crate) fn dim_to_expr(dim: &Dim) -> DimExpr {
     }
 }
 
+/// Canonical form of a concrete physical dimension expression.
+pub(crate) fn canonical_dimension_expression(dim: &DimExpr) -> Result<DimExpr, DimError> {
+    expr_to_dim(dim).map(|dim| dim_to_expr(&dim))
+}
+
 /// The internal `Dim` of a type-level dimension expression.
 ///
 /// # Errors

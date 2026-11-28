@@ -6,7 +6,7 @@
 use std::io::Cursor;
 use std::path::Path;
 
-/// GIF89a frame disposal method.
+/// `GIF89a` frame disposal method.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum GifDisposal {
     /// No disposal specified.
@@ -64,7 +64,7 @@ pub struct GifFrame {
 impl GifFrame {
     /// Creates a full-origin (`left = 0, top = 0, dispose = Any`) RGBA frame.
     #[must_use]
-    pub fn new(
+    pub const fn new(
         width: u16,
         height: u16,
         delay_cs: u16,
@@ -91,7 +91,7 @@ pub struct GifAnimation {
     pub height: u16,
     /// Number of animation loops (`0` means infinite looping).
     pub loop_count: u16,
-    /// Optional GIF89a comment extension text.
+    /// Optional `GIF89a` comment extension text.
     pub comment: Option<String>,
     /// Ordered sequence of frames.
     pub frames: Vec<GifFrame>,
@@ -100,7 +100,7 @@ pub struct GifAnimation {
 impl GifAnimation {
     /// Creates a [`GifAnimation`] without a comment extension.
     #[must_use]
-    pub fn new(
+    pub const fn new(
         width: u16,
         height: u16,
         loop_count: u16,
@@ -193,18 +193,19 @@ pub fn encode_gif(anim: &GifAnimation) -> Result<Vec<u8>, String> {
         }
     }
 
-    if let Some(comment) = &anim.comment {
-        if !comment.is_empty() && out.last().copied() == Some(0x3B) {
-            out.pop();
-            out.push(0x21);
-            out.push(0xFE);
-            for chunk in comment.as_bytes().chunks(255) {
-                out.push(chunk.len() as u8);
-                out.extend_from_slice(chunk);
-            }
-            out.push(0x00);
-            out.push(0x3B);
+    if let Some(comment) = &anim.comment
+        && !comment.is_empty()
+        && out.last().copied() == Some(0x3B)
+    {
+        out.pop();
+        out.push(0x21);
+        out.push(0xFE);
+        for chunk in comment.as_bytes().chunks(255) {
+            out.push(chunk.len() as u8);
+            out.extend_from_slice(chunk);
         }
+        out.push(0x00);
+        out.push(0x3B);
     }
 
     Ok(out)
@@ -414,7 +415,7 @@ pub fn encode_scalar_field_gif(
         let mut lo = f64::INFINITY;
         let mut hi = f64::NEG_INFINITY;
         for f in frames {
-            for &v in f.iter() {
+            for &v in f {
                 if v.is_finite() {
                     lo = lo.min(v);
                     hi = hi.max(v);
@@ -504,6 +505,10 @@ fn set_pixel(
     }
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "The rasterizer takes an image with dimensions, two endpoints and a color"
+)]
 fn draw_line(
     rgba: &mut [u8],
     width: usize,

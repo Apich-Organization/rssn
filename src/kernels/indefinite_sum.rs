@@ -20,6 +20,8 @@
 //! The [`PolynomialAntidifference`] compiles the polynomial formula for repeated
 //! evaluations and nearby intervals. Indefinite products follow from
 //! `Π f = exp Σ ln f`.
+//!
+//! [`PolynomialAntidifference`]: crate::kernels::indefinite_sum::PolynomialAntidifference
 
 use super::exact_eq;
 use super::numeric_common::scaled_difference;

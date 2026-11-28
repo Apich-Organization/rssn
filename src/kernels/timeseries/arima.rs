@@ -374,7 +374,7 @@ mod tests {
 
     #[test]
     fn invalid_orders_are_rejected() {
-        let x: Vec<f64> = (0..50).map(|t| t as f64).collect();
+        let x: Vec<f64> = (0..50).map(f64::from).collect();
         assert!(arima_fit(&x, 7, 0, 0).is_err());
         assert!(arima_fit(&x, 0, 0, 5).is_err());
         assert!(arima_fit(&[], 1, 0, 0).is_err());

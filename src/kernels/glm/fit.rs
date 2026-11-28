@@ -58,7 +58,7 @@ const MIN_WORKING_WEIGHT: f64 = 1e-12;
 /// rate); when `None` every observation weighs one.
 ///
 /// Convergence is declared when `max |Δβ| / (1 + |β|) < tol`. Each step is
-/// halved up to [`MAX_HALVINGS`] times while the deviance would increase.
+/// halved up to `MAX_HALVINGS` times while the deviance would increase.
 ///
 /// # Errors
 /// Returns a lowercase message when the design and response disagree in

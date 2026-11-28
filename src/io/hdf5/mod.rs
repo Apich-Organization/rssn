@@ -39,6 +39,7 @@ pub use writer::write_hdf5_bytes_with_options;
 pub use writer::write_hdf5_with_options;
 
 use filters::Filter;
+use filters::FilterDecoder;
 use filters::apply_filters;
 
 use std::path::Path;
@@ -798,7 +799,9 @@ impl DType {
     /// Byte width of one element.
     const fn size(self) -> usize {
         match self {
-            | Self::Int { size, .. } | Self::Float { size, .. } | Self::Str { size } => size,
+            | Self::Int { size, .. }
+            | Self::Float { size, .. }
+            | Self::Str { size }
             | Self::Enum { size, .. } => size,
             | Self::VlenStr | Self::VlenNumeric { .. } => 16,
             | Self::Other { .. } => 0,
@@ -1251,8 +1254,7 @@ fn datatype_length(data: &[u8]) -> Result<usize, String> {
     let class = data.first().ok_or("empty datatype message")? & 0x0f;
     match class {
         | 0 | 1 => Ok(12),
-        | 2 | 3 => Ok(8),
-        | 7 => Ok(8),
+        | 2 | 3 | 7 => Ok(8),
         | 9 => {
             let base = datatype_length(data.get(8..).ok_or("truncated vlen datatype")?)?;
             Ok(8 + base)
@@ -1306,7 +1308,7 @@ fn parse_compound_members(
             },
             | _ => {
                 // Version 3 sizes the offset from the element size.
-                let width = (usize::BITS - total_size.saturating_sub(1).leading_zeros()) as usize;
+                let width = total_size.saturating_sub(1).bit_width() as usize;
                 let width = width.div_ceil(8).clamp(1, 8);
                 let offset = to_usize(read_uint(data, pos, width)?, "compound member offset")?;
                 pos += width;
@@ -1780,8 +1782,8 @@ fn collect_links(
                     if debug {
                         eprintln!(
                             "dropped link id {} bytes {}",
-                            id.iter().map(|b| format!("{b:02x}")).collect::<String>(),
-                            bytes.iter().map(|b| format!("{b:02x}")).collect::<String>()
+                            hex_encode(&id),
+                            hex_encode(&bytes)
                         );
                     }
                 },
@@ -1789,6 +1791,15 @@ fn collect_links(
         }
     }
     Ok(links)
+}
+
+fn hex_encode(bytes: &[u8]) -> String {
+    use std::fmt::Write as _;
+    let mut hex = String::with_capacity(bytes.len().saturating_mul(2));
+    for byte in bytes {
+        let _ = write!(hex, "{byte:02x}");
+    }
+    hex
 }
 
 /// A fractal heap header (`FRHP`).
@@ -1901,7 +1912,7 @@ fn fractal_heap_object(
             "fractal heap identifier type {kind} (huge or tiny object) is not supported"
         ));
     }
-    let offset = read_le(&id[1..1 + heap.off_size]);
+    let offset = read_le(&id[1..=heap.off_size]);
     let length = read_le(&id[1 + heap.off_size..1 + heap.off_size + heap.len_size]);
     let length = usize::try_from(length).map_err(|_| "heap object is too large".to_owned())?;
     let (block_addr, block_start) = locate_heap_block(reader, &heap, offset)?;
@@ -2049,7 +2060,7 @@ fn rows_for_block(
 
 /// Bytes needed to hold a value of `bits` bits, or an integer of that size.
 fn bytes_for_bits(bits: usize) -> usize {
-    (bits / 8 + usize::from(bits % 8 != 0)).clamp(1, 32)
+    (bits / 8 + usize::from(!bits.is_multiple_of(8))).clamp(1, 32)
 }
 
 /// Bytes needed to store a count up to `value`.
@@ -2129,7 +2140,6 @@ fn walk_v2_btree(
                 root,
                 tree_depth,
                 root_count,
-                node_size,
                 record_size,
                 &widths,
                 out,
@@ -2160,7 +2170,6 @@ fn walk_v2_node(
     addr: u64,
     depth: usize,
     records: usize,
-    node_size: usize,
     record_size: usize,
     widths: &BtreeWidths,
     out: &mut Vec<Vec<u8>>,
@@ -2208,7 +2217,6 @@ fn walk_v2_node(
                     child,
                     depth.saturating_sub(1),
                     count,
-                    node_size,
                     record_size,
                     widths,
                     out,
@@ -2498,12 +2506,13 @@ fn assemble_chunks(
     let strides = strides_of(shape);
     let mut out = vec![0_u8; total_bytes];
     let chunk_elems = to_usize(element_count(chunk_shape)?, "chunk element count")?;
+    let mut filter_decoder = FilterDecoder::default();
     for chunk in chunks {
         if chunk.addr == u64::MAX || chunk.size == 0 {
             continue;
         }
         let raw = reader.bytes(chunk.addr, chunk.size)?;
-        let filtered = apply_filters(raw.to_vec(), filters, chunk.mask)?;
+        let filtered = apply_filters(raw.to_vec(), filters, chunk.mask, &mut filter_decoder)?;
         for flat in 0..chunk_elems {
             let src0 = flat * elem_size;
             let Some(src_slice) = filtered.get(src0..src0 + elem_size) else {
@@ -3181,7 +3190,7 @@ fn resolve_soft_links_in_file(file: &mut H5File) {
             if let Some(ds) = file.datasets.iter().find(|d| d.path == cur) {
                 if !file.datasets.iter().any(|d| d.path == *link_path) {
                     let mut cloned = ds.clone();
-                    cloned.path = link_path.clone();
+                    cloned.path.clone_from(link_path);
                     extra_datasets.push(cloned);
                 }
                 break;
@@ -3559,7 +3568,7 @@ fn object_header_v1(messages: &[(u16, Vec<u8>)]) -> Result<Vec<u8>, String> {
 fn object_header_len(messages: &[(u16, Vec<u8>)]) -> usize {
     let body: usize = messages
         .iter()
-        .map(|(_, data)| 8 + (data.len() + 7) / 8 * 8)
+        .map(|(_, data)| 8 + data.len().div_ceil(8) * 8)
         .sum();
     16 + body
 }
@@ -3654,8 +3663,7 @@ fn encode_dataset_data(dataset: &Dataset) -> Result<Vec<u8>, String> {
         let bytes = value.as_bytes();
         if bytes.len() > width {
             return Err(format!(
-                "string {:?} does not fit the dataset width {width}",
-                value
+                "string {value:?} does not fit the dataset width {width}"
             ));
         }
         out.extend_from_slice(bytes);
@@ -4475,7 +4483,7 @@ mod tests {
             .expect("string dataset");
         assert_eq!(text.h5_type, H5Type::Str);
         assert_eq!(text.strings, vec!["alpha", "", "gamma"]);
-        assert!(text.data.is_empty());
+        assert_eq!(text.data, [] as [f64; 0]);
 
         let wrong = Dataset::new_strings("/bad", vec![2], vec!["one".to_owned()]);
         assert!(write_hdf5_bytes(&[wrong], &[]).is_err());
@@ -4612,7 +4620,7 @@ mod tests {
                 format!("/extra{index}"),
                 vec![2],
                 H5Type::I64,
-                vec![index as f64, -1.0],
+                vec![f64::from(index), -1.0],
             ));
         }
         let attributes = vec![(
@@ -4883,7 +4891,7 @@ mod tests {
         while pos + 8 <= messages.len() {
             let size = u16::from_le_bytes([messages[pos + 2], messages[pos + 3]]);
             count += 1;
-            pos += 8 + (usize::from(size) + 7) / 8 * 8;
+            pos += 8 + usize::from(size).div_ceil(8) * 8;
         }
         let mut out = Vec::new();
         out.push(1);

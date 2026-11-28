@@ -434,7 +434,9 @@ fn native_weighted_graph_operators_keep_dimensions_and_manifest_shapes() {
     assert_eq!(arcs.shape, [4, 2]);
     assert!(
         arcs.data
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .all(|edge| number(&edge[0]) < number(&edge[1]))
     );
 

@@ -93,7 +93,7 @@ fn dense_rhs_shapes_and_empty_matrices_are_checked_before_factoring() {
         col_idx: &[],
         values: &[],
     };
-    assert!(lu_solve_many(&empty, &[], 5).unwrap().is_empty());
+    assert_eq!(lu_solve_many(&empty, &[], 5).unwrap(), [] as [f64; 0]);
     assert_eq!(solve_auto_many(&empty, &[], 5), Ok((Vec::new(), "LU")));
     assert_eq!(
         cholesky_solve_many(&empty, &[], 5),

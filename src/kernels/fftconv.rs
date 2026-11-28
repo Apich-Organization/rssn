@@ -165,11 +165,45 @@ pub(super) fn convolve_direct(
     if a.is_empty() || b.is_empty() {
         return Vec::new();
     }
+    if b.len() <= 16 && a.len() >= 64 {
+        return convolve_short_filter(a, b);
+    }
     let mut output = vec![0.0; a.len() + b.len() - 1];
     for (offset, &x) in a.iter().enumerate() {
         for (coefficient, &y) in output.iter_mut().skip(offset).zip(b) {
             *coefficient += x * y;
         }
+    }
+    output
+}
+
+// Keep this loop separate from the small-input path.
+#[inline(never)]
+fn convolve_short_filter(
+    a: &[f64],
+    b: &[f64],
+) -> Vec<f64> {
+    // Sweep the long input contiguously for each short filter tap. A
+    // descending tap index preserves the ascending a index at each output.
+    // Keep the multiplication separate and include zero taps so rounding
+    // and the local influence of non-finite inputs match the direct loop.
+    const TILE: usize = 2_048;
+    let mut output = vec![0.0; a.len() + b.len() - 1];
+    let accumulate = |block: usize, chunk: &mut [f64]| {
+        let start = block * TILE;
+        let first_tap = start.saturating_sub(a.len() - 1);
+        for (offset, &y) in b.iter().enumerate().skip(first_tap).rev() {
+            let input_start = start.saturating_sub(offset);
+            let output_start = offset.saturating_sub(start);
+            for (coefficient, &x) in chunk[output_start..].iter_mut().zip(&a[input_start..]) {
+                *coefficient += x * y;
+            }
+        }
+    };
+    if output.len() <= TILE {
+        accumulate(0, &mut output);
+    } else {
+        par::for_chunks_mut(&mut output, TILE, 16, accumulate);
     }
     output
 }

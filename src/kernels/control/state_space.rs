@@ -318,20 +318,14 @@ impl StateSpace {
             return Err("a sample time is required to simulate a continuous model".to_string());
         }
         let mut x = x0.to_vec();
+        let mut next = Vec::with_capacity(n);
         let mut out = Vec::with_capacity(u.len());
         for uk in u {
-            let mut y = linalg::matvec(&self.c, &x);
-            let du = linalg::matvec(&self.d, uk);
-            for (i, v) in y.iter_mut().enumerate() {
-                *v += du.get(i).copied().unwrap_or(0.0);
-            }
+            let mut y = Vec::with_capacity(self.c.len());
+            linalg::sum_matvec_into(&self.c, &x, &self.d, uk, &mut y);
             out.push(y);
-            let mut next = linalg::matvec(&self.a, &x);
-            let bu = linalg::matvec(&self.b, uk);
-            for (i, v) in next.iter_mut().enumerate() {
-                *v += bu.get(i).copied().unwrap_or(0.0);
-            }
-            x = next;
+            linalg::sum_matvec_into(&self.a, &x, &self.b, uk, &mut next);
+            std::mem::swap(&mut x, &mut next);
         }
         Ok(out)
     }
@@ -342,8 +336,8 @@ impl StateSpace {
     ///
     /// Each step uses exact zero-order-hold discretisation via
     /// [`StateSpace::c2d_zoh`], caching `(Ad, Bd)` whenever consecutive step
-    /// sizes match within `1e-12` so uniform grids compute the matrix
-    /// exponential only once.
+    /// sizes match to a relative tolerance of `1e-12`. Uniform grids compute
+    /// the matrix exponential only once.
     ///
     /// Returns the output `y[k] = C x(t[k]) + D u[k]` at each grid point.
     ///
@@ -381,37 +375,31 @@ impl StateSpace {
             return Err("time grid entries must be finite".to_string());
         }
         for k in 1..t.len() {
-            if !(t[k] > t[k - 1]) {
+            if t[k].partial_cmp(&t[k - 1]) != Some(std::cmp::Ordering::Greater) {
                 return Err("time grid must be strictly increasing".to_string());
             }
         }
         let mut x = x0.to_vec();
+        let mut next = Vec::with_capacity(n);
         let mut out = Vec::with_capacity(t.len());
         let mut cached: Option<(f64, Vec<Vec<f64>>, Vec<Vec<f64>>)> = None;
         for k in 0..t.len() {
             let uk = &u[k];
-            let mut y = linalg::matvec(&self.c, &x);
-            let du = linalg::matvec(&self.d, uk);
-            for (i, v) in y.iter_mut().enumerate() {
-                *v += du.get(i).copied().unwrap_or(0.0);
-            }
+            let mut y = Vec::with_capacity(self.c.len());
+            linalg::sum_matvec_into(&self.c, &x, &self.d, uk, &mut y);
             out.push(y);
             if k + 1 < t.len() {
                 let dt = t[k + 1] - t[k];
-                let reuse = cached.as_ref().is_some_and(|(prev_dt, _, _)| {
-                    (dt - *prev_dt).abs() <= 1e-12 * prev_dt.max(1.0)
-                });
+                let reuse = cached
+                    .as_ref()
+                    .is_some_and(|(prev_dt, _, _)| same_sample_time(dt, *prev_dt));
                 if !reuse {
                     let disc = self.c2d_zoh(dt)?;
                     cached = Some((dt, disc.a, disc.b));
                 }
                 if let Some((_, ad, bd)) = cached.as_ref() {
-                    let mut next = linalg::matvec(ad, &x);
-                    let bu = linalg::matvec(bd, uk);
-                    for (i, v) in next.iter_mut().enumerate() {
-                        *v += bu.get(i).copied().unwrap_or(0.0);
-                    }
-                    x = next;
+                    linalg::sum_matvec_into(ad, &x, bd, uk, &mut next);
+                    std::mem::swap(&mut x, &mut next);
                 }
             }
         }
@@ -420,7 +408,7 @@ impl StateSpace {
 
     /// Simulates either a continuous-time model (by zero-order-hold
     /// discretisation at sample time `dt`) or a discrete-time model whose
-    /// sample time matches `dt`.
+    /// sample time matches `dt` to a relative tolerance of `1e-12`.
     ///
     /// # Errors
     /// Returns an error when `dt` is not finite and positive, when a discrete
@@ -436,7 +424,7 @@ impl StateSpace {
             return Err("sample time must be positive".to_string());
         }
         if let Some(model_dt) = self.dt {
-            if (model_dt - dt).abs() > 1e-12 * model_dt.max(1.0) {
+            if !same_sample_time(model_dt, dt) {
                 return Err("sample time does not match discrete model dt".to_string());
             }
             return self.simulate(x0, u);
@@ -444,6 +432,19 @@ impl StateSpace {
         let disc = self.c2d_zoh(dt)?;
         disc.simulate(x0, u)
     }
+}
+
+// Dividing by the larger duration avoids an absolute tolerance floor and
+// keeps the comparison meaningful even for subnormal sample times.
+fn same_sample_time(
+    left: f64,
+    right: f64,
+) -> bool {
+    left.is_finite()
+        && right.is_finite()
+        && left > 0.0
+        && right > 0.0
+        && (left - right).abs() / left.max(right) <= 1e-12
 }
 
 /// Coefficients of the order-six Pade approximant of the exponential.
@@ -512,6 +513,60 @@ mod tests {
             vec![vec![0.0]],
         )
         .unwrap()
+    }
+
+    #[test]
+    fn discrete_simulation_keeps_ragged_row_and_nan_semantics() {
+        let model = StateSpace {
+            a: vec![vec![0.0, 1.0, f64::NAN], vec![2.0]],
+            b: vec![vec![2.0, 3.0]],
+            c: vec![vec![1.0], vec![0.0, 1.0, f64::NAN], vec![]],
+            d: vec![vec![4.0]],
+            dt: Some(1.0),
+        };
+        let output = model
+            .simulate(&[1.0, 2.0], &[vec![3.0, 5.0], vec![f64::NAN, 1.0]])
+            .unwrap();
+        assert_eq!(output[0], [13.0, 2.0, 0.0]);
+        assert!(output[1][0].is_nan());
+        assert_eq!(&output[1][1..], [2.0, 0.0]);
+
+        let error = model.simulate(&[1.0, 2.0], &[vec![3.0]]).unwrap_err();
+        assert_eq!(error, "each input sample must have m entries");
+    }
+
+    #[test]
+    fn simulation_handles_static_and_autonomous_models() {
+        let static_model =
+            StateSpace::continuous(vec![], vec![], vec![vec![]], vec![vec![-2.0]]).unwrap();
+        let samples = [vec![3.0], vec![-4.0]];
+        let times = [0.0, 0.5];
+        let expected = [vec![-6.0], vec![8.0]];
+        assert_eq!(
+            static_model
+                .simulate_continuous(&[], &samples, &times)
+                .unwrap(),
+            expected
+        );
+        assert_eq!(
+            static_model.simulate_with_dt(&[], &samples, 0.5).unwrap(),
+            expected
+        );
+
+        let autonomous =
+            StateSpace::continuous(vec![vec![-1.0]], vec![vec![]], vec![], vec![]).unwrap();
+        let samples = [vec![], vec![]];
+        let expected: [Vec<f64>; 2] = [vec![], vec![]];
+        assert_eq!(
+            autonomous
+                .simulate_continuous(&[1.0], &samples, &times)
+                .unwrap(),
+            expected
+        );
+        assert_eq!(
+            autonomous.simulate_with_dt(&[1.0], &samples, 0.5).unwrap(),
+            expected
+        );
     }
 
     #[test]
@@ -585,7 +640,7 @@ mod tests {
             vec![vec![0.0]],
         )
         .unwrap();
-        let t: Vec<f64> = (0..21).map(|i| i as f64 * 0.1).collect();
+        let t: Vec<f64> = (0..21).map(|i| f64::from(i) * 0.1).collect();
         let u = vec![vec![0.0]; t.len()];
         let y = rc.simulate_continuous(&[3.0], &u, &t).unwrap();
         for (tk, yk) in t.iter().zip(&y) {
@@ -617,6 +672,45 @@ mod tests {
     }
 
     #[test]
+    fn subpicosecond_sample_times_are_compared_relatively() {
+        // An unforced RC circuit with time constant 1 ps satisfies
+        // y(t) = exp(-t / 1 ps). The adjacent intervals here are 0.1 and 0.8 ps.
+        let tau = 1e-12;
+        let model = StateSpace::continuous(
+            vec![vec![-1.0 / tau]],
+            vec![vec![1.0]],
+            vec![vec![1.0]],
+            vec![vec![0.0]],
+        )
+        .unwrap();
+        let times = [0.0, 1e-13, 9e-13];
+        let zero_input = vec![vec![0.0]; times.len()];
+        let output = model
+            .simulate_continuous(&[1.0], &zero_input, &times)
+            .unwrap();
+        for (&time, sample) in times.iter().zip(&output) {
+            let expected = (-time / tau).exp();
+            assert!(
+                (sample[0] - expected).abs() < 1e-12,
+                "t={time}: got {}, want {expected}",
+                sample[0]
+            );
+        }
+
+        let discrete = model.c2d_zoh(times[1]).unwrap();
+        let error = discrete
+            .simulate_with_dt(&[1.0], &zero_input, times[2] - times[1])
+            .unwrap_err();
+        assert_eq!(error, "sample time does not match discrete model dt");
+        assert_eq!(
+            discrete
+                .simulate_with_dt(&[1.0], &zero_input, times[1].next_up())
+                .unwrap(),
+            discrete.simulate(&[1.0], &zero_input).unwrap(),
+        );
+    }
+
+    #[test]
     fn simulate_continuous_handles_non_uniform_grid_and_step_response() {
         // Double integrator on a non-uniform grid with piecewise-constant input.
         let ss = double_integrator();
@@ -636,7 +730,7 @@ mod tests {
         .unwrap();
         let g_ss = g.to_state_space().unwrap();
         let dt = 0.02;
-        let grid: Vec<f64> = (0..101).map(|i| i as f64 * dt).collect();
+        let grid: Vec<f64> = (0..101).map(|i| f64::from(i) * dt).collect();
         let ones = vec![vec![1.0]; grid.len()];
         let y_cont = g_ss.simulate_continuous(&[0.0, 0.0], &ones, &grid).unwrap();
         let y_dt = g_ss.simulate_with_dt(&[0.0, 0.0], &ones, dt).unwrap();
@@ -656,10 +750,9 @@ mod tests {
     fn simulate_continuous_and_with_dt_validate_inputs() {
         let ss = double_integrator();
         // Empty time grid returns empty output.
-        assert!(
-            ss.simulate_continuous(&[0.0, 0.0], &[], &[])
-                .unwrap()
-                .is_empty()
+        assert_eq!(
+            ss.simulate_continuous(&[0.0, 0.0], &[], &[]).unwrap(),
+            [] as [Vec<f64>; 0],
         );
         // Mismatched lengths, non-increasing times, non-finite inputs.
         assert!(

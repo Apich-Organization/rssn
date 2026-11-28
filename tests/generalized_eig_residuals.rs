@@ -133,7 +133,7 @@ fn complex_pencil(
             }
         },
         |x, y| {
-            for (x, y) in x.chunks_exact(2).zip(y.chunks_exact_mut(2)) {
+            for (x, y) in x.as_chunks::<2>().0.iter().zip(y.as_chunks_mut::<2>().0) {
                 y[0] = scale * x[0];
                 y[1] = (2.0 * scale) * x[1];
             }

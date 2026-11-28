@@ -154,7 +154,7 @@ fn levin_plan_solves_independent_amplitude_fields_after_releasing_phase_programs
     );
     call("num_backend_release", &[phase]);
     call("num_backend_release", &[derivative]);
-    let nodes = call("num_analysis_levin_plan_nodes", &[plan.clone()]);
+    let nodes = call("num_analysis_levin_plan_nodes", std::slice::from_ref(&plan));
     let Value::Tensor(nodes) = nodes else {
         panic!("expected measured Levin nodes")
     };

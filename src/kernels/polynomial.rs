@@ -85,27 +85,21 @@ fn mul_schoolbook_add(
 ) {
     for (i, &c1) in a.iter().enumerate() {
         let dst = &mut out[i..i + b.len()];
-        let mut b_chunks = b.chunks_exact(4);
-        let mut dst_chunks = dst.chunks_exact_mut(4);
-        for (dc, bc) in dst_chunks.by_ref().zip(b_chunks.by_ref()) {
-            if let ([d0, d1, d2, d3], &[b0, b1, b2, b3]) = (dc, bc) {
-                *d0 += c1 * b0;
-                *d1 += c1 * b1;
-                *d2 += c1 * b2;
-                *d3 += c1 * b3;
-            }
+        let (b_chunks, b_tail) = b.as_chunks::<4>();
+        let (dst_chunks, dst_tail) = dst.as_chunks_mut::<4>();
+        for ([d0, d1, d2, d3], &[b0, b1, b2, b3]) in dst_chunks.iter_mut().zip(b_chunks) {
+            *d0 += c1 * b0;
+            *d1 += c1 * b1;
+            *d2 += c1 * b2;
+            *d3 += c1 * b3;
         }
-        for (d, &c2) in dst_chunks
-            .into_remainder()
-            .iter_mut()
-            .zip(b_chunks.remainder())
-        {
+        for (d, &c2) in dst_tail.iter_mut().zip(b_tail) {
             *d += c1 * c2;
         }
     }
 }
 
-fn karatsuba_scratch_len(max_len: usize) -> usize {
+const fn karatsuba_scratch_len(max_len: usize) -> usize {
     max_len.saturating_mul(8).saturating_add(128)
 }
 
@@ -220,31 +214,25 @@ fn eval_into(
     xs: &[f64],
     out: &mut [f64],
 ) {
-    let mut x_chunks = xs.chunks_exact(4);
-    let mut out_chunks = out.chunks_exact_mut(4);
-    for (oc, xc) in out_chunks.by_ref().zip(x_chunks.by_ref()) {
-        if let ([o0, o1, o2, o3], &[x0, x1, x2, x3]) = (oc, xc) {
-            let mut acc0 = 0.0_f64;
-            let mut acc1 = 0.0_f64;
-            let mut acc2 = 0.0_f64;
-            let mut acc3 = 0.0_f64;
-            for &c in coeffs {
-                acc0 = acc0.mul_add(x0, c);
-                acc1 = acc1.mul_add(x1, c);
-                acc2 = acc2.mul_add(x2, c);
-                acc3 = acc3.mul_add(x3, c);
-            }
-            *o0 = acc0;
-            *o1 = acc1;
-            *o2 = acc2;
-            *o3 = acc3;
+    let (x_chunks, x_tail) = xs.as_chunks::<4>();
+    let (out_chunks, out_tail) = out.as_chunks_mut::<4>();
+    for ([o0, o1, o2, o3], &[x0, x1, x2, x3]) in out_chunks.iter_mut().zip(x_chunks) {
+        let mut acc0 = 0.0_f64;
+        let mut acc1 = 0.0_f64;
+        let mut acc2 = 0.0_f64;
+        let mut acc3 = 0.0_f64;
+        for &c in coeffs {
+            acc0 = acc0.mul_add(x0, c);
+            acc1 = acc1.mul_add(x1, c);
+            acc2 = acc2.mul_add(x2, c);
+            acc3 = acc3.mul_add(x3, c);
         }
+        *o0 = acc0;
+        *o1 = acc1;
+        *o2 = acc2;
+        *o3 = acc3;
     }
-    for (o, &x) in out_chunks
-        .into_remainder()
-        .iter_mut()
-        .zip(x_chunks.remainder())
-    {
+    for (o, &x) in out_tail.iter_mut().zip(x_tail) {
         *o = coeffs.iter().fold(0.0, |acc, &c| acc.mul_add(x, c));
     }
 }
@@ -281,6 +269,63 @@ fn trim_leading_tol(
         | Some(idx) => coeffs[idx..].to_vec(),
         | None => vec![0.0],
     }
+}
+
+/// Converts the Newton divided differences into descending monomials. Both
+/// public input layouts use this kernel and retain their own zero conventions.
+pub(super) fn lagrange_coefficients(
+    node: impl Fn(usize) -> f64,
+    ordinates: impl ExactSizeIterator<Item = f64>,
+) -> Result<Vec<f64>, String> {
+    let n = ordinates.len();
+    if n == 0 {
+        return Ok(vec![0.0]);
+    }
+    let mut differences = reuse::f64_scratch(n);
+    for (i, value) in ordinates.enumerate() {
+        if !node(i).is_finite() || !value.is_finite() {
+            return Err("interpolation points must be finite".into());
+        }
+        differences.push(value);
+    }
+    for order in 1..n {
+        for i in (order..n).rev() {
+            let (left, right) = (node(i - order), node(i));
+            let width = right - left;
+            if width == 0.0 {
+                return Err("interpolation nodes must be distinct".into());
+            }
+            let (previous, current) = (differences[i - 1], differences[i]);
+            let delta = current - previous;
+            differences[i] = if delta.is_finite() && width.is_finite() {
+                delta / width
+            } else {
+                // Halving both differences keeps opposite f64 extremes in range.
+                let half_delta =
+                    crate::kernels::numeric_common::scaled_difference(current, previous, 2.0);
+                let half_width =
+                    crate::kernels::numeric_common::scaled_difference(right, left, 2.0);
+                half_delta / half_width
+            };
+            if !differences[i].is_finite() {
+                return Err("interpolation divided difference overflowed".into());
+            }
+        }
+    }
+    let mut coefficients = vec![0.0; n];
+    coefficients[0] = differences[n - 1];
+    for k in (0..n - 1).rev() {
+        let minus_node = -node(k);
+        for j in (1..n - k).rev() {
+            coefficients[j] = minus_node.mul_add(coefficients[j], coefficients[j - 1]);
+        }
+        coefficients[0] = minus_node.mul_add(coefficients[0], differences[k]);
+    }
+    if coefficients.iter().any(|c| !c.is_finite()) {
+        return Err("interpolation power-basis coefficient overflowed".into());
+    }
+    coefficients.reverse();
+    Ok(coefficients)
 }
 
 impl Polynomial {
@@ -457,7 +502,7 @@ impl Polynomial {
         Self { coeffs }
     }
 
-    /// Builds the monic polynomial $\prod_{i} (x - r_i)$ from its roots using a
+    /// Builds the monic polynomial $\prod_{i} (x - `r_i`)$ from its roots using a
     /// balanced divide-and-conquer subproduct tree.
     #[must_use]
     pub fn from_roots(roots: &[f64]) -> Self {
@@ -483,7 +528,8 @@ impl Polynomial {
     ///
     /// # Errors
     /// Returns an error if `xs` and `ys` have different lengths, are empty,
-    /// contain non-finite values, or contain duplicate `x` nodes.
+    /// contain non-finite values or duplicate `x` nodes, or the divided differences
+    /// or power-basis coefficients overflow.
     pub fn interpolate_lagrange(
         xs: &[f64],
         ys: &[f64],
@@ -494,42 +540,8 @@ impl Polynomial {
         if xs.len() != ys.len() {
             return Err("xs and ys must have the same length".to_string());
         }
-        if xs.iter().chain(ys.iter()).any(|v| !v.is_finite()) {
-            return Err("interpolation points must be finite".to_string());
-        }
-        let n = xs.len();
-        let mut dd = ys.to_vec();
-        for j in 1..n {
-            for i in (j..n).rev() {
-                let dx = xs[i] - xs[i - j];
-                if dx == 0.0 {
-                    return Err("interpolation nodes must be distinct".to_string());
-                }
-                dd[i] = (dd[i] - dd[i - 1]) / dx;
-                if !dd[i].is_finite() {
-                    return Err("interpolation divided difference overflowed".to_string());
-                }
-            }
-        }
-
-        // Convert Newton form: P(x) = (...((dd[n-1]*(x - xs[n-2]) + dd[n-2])*(x - xs[n-3]) + ...)+ dd[0])
-        // Maintain descending-degree coefficients.
-        let mut coeffs = vec![dd[n - 1]];
-        for i in (0..n - 1).rev() {
-            let xi = xs[i];
-            let mut next = vec![0.0; coeffs.len() + 1];
-            for (k, &c) in coeffs.iter().enumerate() {
-                next[k] += c;
-                next[k + 1] -= c * xi;
-            }
-            if let Some(constant) = next.last_mut() {
-                *constant += dd[i];
-            }
-            coeffs = next;
-        }
-        Ok(Self {
-            coeffs: trim_leading_zeros(coeffs),
-        })
+        let coefficients = lagrange_coefficients(|i| xs[i], ys.iter().copied())?;
+        Ok(Self::new(trim_leading_zeros(coefficients)))
     }
 
     /// Evaluates the Lagrange interpolating polynomial through `(xs[i], ys[i])`
@@ -601,7 +613,7 @@ impl Polynomial {
     ///
     /// The arithmetic runs in double-double and the result is rounded to `f64`
     /// once, at the end. Composition is ill-conditioned whenever the
-    /// intermediate terms $c_k Q(x)^k$ are much larger than the result: a `f64`
+    /// intermediate terms $`c_k` Q(x)^k$ are much larger than the result: a `f64`
     /// Horner and a `f64` Brent-Kung composition then disagree in the last
     /// digits, not because either is wrong but because they round at different
     /// points. Carrying the same two algorithms over [`Dd`] drops the
@@ -992,7 +1004,7 @@ impl Add for Polynomial {
             let mut long = rhs.coeffs;
             let offset = long.len() - self.coeffs.len();
             for (slot, &value) in long[offset..].iter_mut().zip(&self.coeffs) {
-                *slot = value + *slot;
+                *slot += value;
             }
             Self { coeffs: long }
         }
@@ -1063,10 +1075,6 @@ impl Mul<&Polynomial> for &Polynomial {
 /// Schoolbook is the right choice here: the composition needs the product to be
 /// accurate, not fast, and a Karatsuba split would re-associate the sums for no
 /// measurable gain at these degrees.
-#[expect(
-    clippy::single_call_fn,
-    reason = "one multiplication kernel shared by both composition strategies"
-)]
 fn dd_poly_mul(
     a: &[Dd],
     b: &[Dd],
@@ -1114,9 +1122,12 @@ fn dd_trim(mut coeffs: Vec<Dd>) -> Vec<Dd> {
 }
 
 /// Horner composition `P(Q)`, both given constant-term first.
-#[expect(
-    clippy::single_call_fn,
-    reason = "one of the two composition strategies"
+#[cfg_attr(
+    not(test),
+    expect(
+        clippy::single_call_fn,
+        reason = "one of the two composition strategies"
+    )
 )]
 fn compose_horner_dd(
     p_asc: &[f64],
@@ -1138,9 +1149,12 @@ fn compose_horner_dd(
 /// Writes `P(y) = sum_j P_j(y) * (y^m)^j` with `m = ceil(sqrt(deg P + 1))`, so
 /// the number of polynomial multiplications falls from `deg P` to about
 /// `2 * sqrt(deg P)`.
-#[expect(
-    clippy::single_call_fn,
-    reason = "one of the two composition strategies"
+#[cfg_attr(
+    not(test),
+    expect(
+        clippy::single_call_fn,
+        reason = "one of the two composition strategies"
+    )
 )]
 fn compose_brent_kung_dd(
     p_asc: &[f64],
@@ -1279,7 +1293,7 @@ mod tests {
             let sb = a.mul_schoolbook(&b);
             let ka = a.mul_karatsuba(&b);
             let fft = a.mul_fft(&b);
-            let auto = a.clone() * b.clone();
+            let auto = a * b;
 
             assert_eq!(sb.coeffs.len(), na + nb - 1);
             assert_eq!(ka.coeffs.len(), sb.coeffs.len());
@@ -1322,7 +1336,9 @@ mod tests {
     #[test]
     fn eval_batch_is_bit_identical_to_single_eval_across_thread_pools() {
         let p = sample_poly(120, 777);
-        let xs: Vec<f64> = (0..513).map(|i| -2.0 + 4.0 * (i as f64) / 512.0).collect();
+        let xs: Vec<f64> = (0..513)
+            .map(|i| -2.0 + 4.0 * f64::from(i) / 512.0)
+            .collect();
         let expected: Vec<f64> = xs.iter().map(|&x| p.eval(x)).collect();
 
         let serial = crate::execution::with_scoped_pool(Some(1), || p.eval_batch(&xs));
@@ -1384,7 +1400,7 @@ mod tests {
             let a = sample_poly(na, (na as u64) * 13 + 3);
             let b = sample_poly(nb, (nb as u64) * 29 + 5);
             let oracle = a.mul_schoolbook(&b);
-            let auto = a.clone() * b.clone();
+            let auto = a * b;
             assert_eq!(auto.coeffs.len(), na + nb - 1, "length for ({na}, {nb})");
             for i in 0..oracle.coeffs.len() {
                 let reference = oracle.coeffs[i];
@@ -1404,7 +1420,7 @@ mod tests {
         // parallel path is exercised rather than the single-chunk fallback.
         let p = sample_poly(201, 424_242);
         let xs: Vec<f64> = (0..4096)
-            .map(|i| -3.0 + 6.0 * (i as f64) / 4095.0)
+            .map(|i| -3.0 + 6.0 * f64::from(i) / 4095.0)
             .collect();
         let expected: Vec<f64> = xs.iter().map(|&x| p.eval(x)).collect();
 
@@ -1463,7 +1479,7 @@ mod tests {
                 assert_eq!(composed.degree(), deg * inner.degree());
             }
             for step in 0..40 {
-                let x = -1.9 + 3.8 * (step as f64) / 39.0;
+                let x = -1.9 + 3.8 * f64::from(step) / 39.0;
                 let got = composed.eval(x);
                 let expected = outer.eval(inner.eval(x));
                 let scale = expected.abs().max(1.0);

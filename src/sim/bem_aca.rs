@@ -493,7 +493,7 @@ mod product_tests {
                         k: 0,
                         u: Vec::new(),
                         v: Vec::new(),
-                    })
+                    });
                 },
             }
         }
@@ -520,7 +520,7 @@ mod product_tests {
     #[test]
     fn chunk_fold_order_is_worker_independent_under_cancellation() {
         let matrix = HMatrix::new(
-            (0..16 * PRODUCT_CHUNK + 1)
+            (0..=(16 * PRODUCT_CHUNK))
                 .map(|index| {
                     let value = if index % PRODUCT_CHUNK == 0 {
                         [1e16, -1e16, 1.0, 2.0, -1.5]

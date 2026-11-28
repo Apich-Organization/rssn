@@ -132,28 +132,104 @@ pub fn spherical_metric_factor(z: Complex64) -> f64 {
     2.0 / (1.0 + abs_sq(z))
 }
 
+fn divide_chart_coordinates(
+    numerator: Complex64,
+    denominator: Complex64,
+) -> Option<Complex64> {
+    use crate::kernels::complex_scalar::Complex;
+
+    if denominator == Complex64::new(0.0, 0.0) {
+        return None;
+    }
+    let numerator = Complex::new(numerator.re, numerator.im);
+    let denominator = Complex::new(denominator.re, denominator.im);
+    let quotient = numerator.div(denominator);
+    Some(Complex64::new(quotient.re, quotient.im))
+}
+
 /// Cayley transform mapping the upper half-plane `{ Im(z) > 0 }` to the unit disk `{ |w| < 1 }`:
 /// `w = (z - i) / (z + i)`. Returns `None` at `z = -i`.
 #[must_use]
 pub fn uhp_to_disk(z: Complex64) -> Option<Complex64> {
     let i = Complex64::new(0.0, 1.0);
-    let denom = z + i;
-    if denom.norm() == 0.0 {
-        return None;
-    }
-    Some((z - i) / denom)
+    divide_chart_coordinates(z - i, z + i)
 }
 
 /// Inverse Cayley transform mapping the unit disk `{ |w| < 1 }` to the upper half-plane:
 /// `z = i * (1 + w) / (1 - w)`. Returns `None` at `w = 1`.
 #[must_use]
 pub fn disk_to_uhp(w: Complex64) -> Option<Complex64> {
-    let i = Complex64::new(0.0, 1.0);
-    let denom = Complex64::new(1.0, 0.0) - w;
-    if denom.norm() == 0.0 {
-        return None;
+    let one = Complex64::new(1.0, 0.0);
+    let denominator = one - w;
+    let denominator_sq = abs_sq(denominator);
+    if denominator_sq.is_normal() {
+        // The imaginary numerator is the signed radial gap. Computing it
+        // through the chart predicate retains the side of the unit circle.
+        return Some(Complex64::new(
+            (-2.0 * w.im) / denominator_sq,
+            poincare_disk_gap(w) / denominator_sq,
+        ));
     }
-    Some(i * (Complex64::new(1.0, 0.0) + w) / denom)
+    let i = Complex64::new(0.0, 1.0);
+    divide_chart_coordinates(i * (one + w), denominator)
+}
+
+/// Signed radial gap `1 - |z|²` for the open-disk chart.
+pub(crate) fn poincare_disk_gap(z: Complex64) -> f64 {
+    let re_sq = z.re * z.re;
+    let im_sq = z.im * z.im;
+    let norm_sq = re_sq + im_sq;
+    let gap = 1.0 - norm_sq;
+    if gap.abs() < 1.0 / 256.0 {
+        return disk_gap_near_circle(z, re_sq, im_sq, norm_sq, gap);
+    }
+    gap
+}
+
+#[cold]
+#[allow(
+    clippy::single_call_fn,
+    reason = "keeps compensated work off the ordinary chart path"
+)]
+fn disk_gap_near_circle(
+    z: Complex64,
+    re_sq: f64,
+    im_sq: f64,
+    norm_sq: f64,
+    gap: f64,
+) -> f64 {
+    use crate::kernels::dd::Dd;
+
+    // A nonzero component next to an exact unit component is exterior,
+    // even when its square is too small for binary64.
+    let unit_bits = 1.0_f64.to_bits();
+    if (re_sq.to_bits() == unit_bits && im_sq == 0.0 && z.im != 0.0)
+        || (im_sq.to_bits() == unit_bits && re_sq == 0.0 && z.re != 0.0)
+    {
+        return -f64::from_bits(1);
+    }
+
+    // Near one, 1 - norm_sq is exact. Retain the two product errors and
+    // the error of adding the squares as a short nonoverlapping expansion.
+    let norm_error = re_sq.min(im_sq) - (norm_sq - re_sq.max(im_sq));
+    let errors = [
+        -norm_error,
+        -z.re.mul_add(z.re, -re_sq),
+        -z.im.mul_add(z.im, -im_sq),
+    ];
+    let mut expansion = [gap, 0.0, 0.0, 0.0];
+    for (length, mut carry) in (1..).zip(errors) {
+        let (previous, next) = expansion.split_at_mut(length);
+        for limb in previous {
+            let sum = Dd::from_parts(carry, *limb);
+            *limb = sum.lo;
+            carry = sum.hi;
+        }
+        if let Some(limb) = next.first_mut() {
+            *limb = carry;
+        }
+    }
+    expansion.into_iter().sum()
 }
 
 /// Hyperbolic distance in the Poincaré unit disk `|z| < 1`.
@@ -162,15 +238,15 @@ pub fn poincare_disk_distance(
     z1: Complex64,
     z2: Complex64,
 ) -> Option<f64> {
-    if abs_sq(z1) >= 1.0 || abs_sq(z2) >= 1.0 {
+    let gap1 = poincare_disk_gap(z1);
+    let gap2 = poincare_disk_gap(z2);
+    if !(gap1 > 0.0 && gap2 > 0.0) {
         return None;
     }
-    let denom = Complex64::new(1.0, 0.0) - z1.conj() * z2;
-    let rho = ((z1 - z2) / denom).norm();
-    if rho >= 1.0 {
-        return None;
-    }
-    Some(2.0 * rho.atanh())
+    // sinh(d/2) retains separation when the pseudohyperbolic ratio
+    // would round to 1 for two interior points near opposite edges.
+    let ratio = (z1 - z2).norm() / (gap1.sqrt() * gap2.sqrt());
+    Some(2.0 * ratio.asinh())
 }
 
 /// Hyperbolic distance in the upper half-plane `Im(z) > 0`.
@@ -179,12 +255,33 @@ pub fn uhp_distance(
     z1: Complex64,
     z2: Complex64,
 ) -> Option<f64> {
-    if z1.im <= 0.0 || z2.im <= 0.0 {
+    if !z1.is_finite() || !z2.is_finite() || z1.im <= 0.0 || z2.im <= 0.0 {
         return None;
     }
-    let diff = z1 - z2;
-    let arg = 1.0 + abs_sq(diff) / (2.0 * z1.im * z2.im);
-    Some(arg.max(1.0).acosh())
+    let separation = (z1 - z2).norm();
+    let ratio = separation / (z1.im.sqrt() * z2.im.sqrt());
+    if ratio <= f64::EPSILON.sqrt() {
+        // The cubic correction to 2*asinh(ratio/2) is below rounding error.
+        return Some(ratio);
+    }
+    if ratio.is_finite() {
+        return Some(2.0 * (0.5 * ratio).asinh());
+    }
+    // Use the logarithm of the ratio if the separation or the ratio
+    // itself overflowed. Quartering leaves room for both component
+    // differences and for their hypotenuse.
+    let log_separation = if separation.is_finite() {
+        separation.ln()
+    } else {
+        (0.25 * z1 - 0.25 * z2).norm().ln() + 2.0 * std::f64::consts::LN_2
+    };
+    let log_ratio = log_separation - z1.im.ln().midpoint(z2.im.ln());
+    Some(if log_ratio > 40.0 {
+        // At this scale, 2*asinh(exp(log_ratio)/2) rounds as 2*log_ratio.
+        2.0 * log_ratio
+    } else {
+        2.0 * (0.5 * log_ratio.exp()).asinh()
+    })
 }
 
 /// Argument of `z` in `(theta0, theta0 + 2*pi]`, placing the branch cut along ray `theta0`.
@@ -452,31 +549,15 @@ fn aberth_solve_fiber(
     Some(roots)
 }
 
-/// Tracks the `n` sheets of `P(z, w) = 0` along a closed loop `loop_pts`
-/// (from `loop_pts[0]` around and back to `loop_pts[0]`) with adaptive
-/// step subdivision to prevent sheet collision, and returns the induced
-/// monodromy permutation on `0..n`.
+/// Returns the monodromy permutation of `P(z, w) = 0` along a closed loop.
+///
+/// Tracks the `n` sheets from `loop_pts[0]` around the loop and back, subdividing steps
+/// adaptively to prevent sheet collisions. The permutation acts on `0..n`.
 #[must_use]
 pub fn monodromy_around_loop(
     poly_coeffs_in_w: &[Vec<Complex64>],
     loop_pts: &[Complex64],
 ) -> Option<Vec<usize>> {
-    let &z0 = loop_pts.first()?;
-    let start_sheets = aberth_solve_fiber(poly_coeffs_in_w, z0)?;
-    let n = start_sheets.len();
-    // Verify fiber roots are distinct and converged.
-    for i in 0..n {
-        let (p, _) = eval_bivariate_and_dw(poly_coeffs_in_w, z0, *start_sheets.get(i)?);
-        if p.norm() > 1e-8 {
-            return None;
-        }
-        for j in (i + 1)..n {
-            if (*start_sheets.get(i)? - *start_sheets.get(j)?).norm() < 1e-6 {
-                return None;
-            }
-        }
-    }
-
     fn newton_step_fiber(
         poly: &[Vec<Complex64>],
         z: Complex64,
@@ -544,6 +625,23 @@ pub fn monodromy_around_loop(
         let mid_sheets = track_segment(poly, za, mid, sheets, depth + 1)?;
         track_segment(poly, mid, zb, &mid_sheets, depth + 1)
     }
+
+    let &z0 = loop_pts.first()?;
+    let start_sheets = aberth_solve_fiber(poly_coeffs_in_w, z0)?;
+    let n = start_sheets.len();
+    // Verify fiber roots are distinct and converged.
+    for i in 0..n {
+        let (p, _) = eval_bivariate_and_dw(poly_coeffs_in_w, z0, *start_sheets.get(i)?);
+        if p.norm() > 1e-8 {
+            return None;
+        }
+        for j in (i + 1)..n {
+            if (*start_sheets.get(i)? - *start_sheets.get(j)?).norm() < 1e-6 {
+                return None;
+            }
+        }
+    }
+
 
     let mut tracked = start_sheets.clone();
     let mut prev_z = z0;

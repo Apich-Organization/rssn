@@ -998,6 +998,10 @@ where
 ///
 /// `apply(x, y)` computes `y = A x` (`x.len() == n`, `y.len() == m`) and
 /// `apply_t(u, v)` computes `v = A^T u` (`u.len() == m`, `v.len() == n`).
+#[expect(
+    clippy::too_many_arguments,
+    reason = "The solver accepts independent matrix and transpose actions with separate dimensions and stopping criteria"
+)]
 pub fn lsqr<A, AT>(
     apply: A,
     apply_t: AT,
@@ -1086,15 +1090,15 @@ where
         }
 
         // Optional damping rotation.
-        let (rho_bar_1, psi_1) = if damp != 0.0 {
+        let (rho_bar_1, psi_1) = if damp == 0.0 {
+            (rho_bar, 0.0)
+        } else {
             let r1 = rho_bar.hypot(damp);
             let cs1 = rho_bar / r1;
             let sn1 = damp / r1;
             let p1 = sn1 * phi_bar;
             phi_bar *= cs1;
             (r1, p1)
-        } else {
-            (rho_bar, 0.0)
         };
         let _ = psi_1;
 

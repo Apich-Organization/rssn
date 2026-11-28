@@ -159,7 +159,7 @@ impl SplitBlockBloomFilter {
             ));
         }
         let mut blocks = Vec::with_capacity(bytes.len() / 32);
-        for chunk in bytes.chunks_exact(32) {
+        for chunk in bytes.as_chunks::<32>().0 {
             let mut block = [0_u32; 8];
             for (i, slot) in block.iter_mut().enumerate() {
                 let off = i * 4;

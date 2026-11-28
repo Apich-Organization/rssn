@@ -28,8 +28,13 @@
 use std::cell::RefCell;
 use std::fmt;
 use std::sync::Arc;
+use std::sync::OnceLock;
 use std::sync::RwLock;
 
+pub(crate) mod access;
+pub use access::SourceAccess;
+pub use access::gpu_allowed;
+pub use access::restrict_to_source;
 /// Checked forward/reverse differentiation of elementary expressions.
 pub mod autodiff;
 pub mod device;
@@ -82,6 +87,14 @@ impl std::error::Error for BackendError {}
 
 /// A term compiled to a function `f64^n -> f64`.
 pub trait Compiled: Send + Sync {
+    /// The executable's retained allocation, including storage it owns.
+    ///
+    /// Backends without a bound return `None`. A detached program needs a
+    /// bound before another native object can reserve storage for it.
+    fn retained_bytes(&self) -> Option<usize> {
+        None
+    }
+
     /// Number of inputs.
     fn arity(&self) -> usize;
 
@@ -365,6 +378,28 @@ impl CompiledMulti for TapeFunction {
 }
 
 impl Compiled for TapeFunction {
+    fn retained_bytes(&self) -> Option<usize> {
+        let instructions = self
+            .tape
+            .insts
+            .capacity()
+            .checked_mul(size_of::<tape::Inst>())?;
+        let arguments = self
+            .tape
+            .args
+            .capacity()
+            .checked_mul(size_of::<tape::Reg>())?;
+        let outputs = self
+            .tape
+            .outputs
+            .capacity()
+            .checked_mul(size_of::<tape::Reg>())?;
+        size_of::<Self>()
+            .checked_add(instructions)?
+            .checked_add(arguments)?
+            .checked_add(outputs)
+    }
+
     fn arity(&self) -> usize {
         self.tape.inputs
     }
@@ -389,8 +424,46 @@ impl Compiled for TapeFunction {
 
 /// Turns closed-form terms into executable functions.
 pub trait Backend: Send + Sync {
+    /// The backend instance's retained allocation, when bounded.
+    ///
+    /// This excludes allocations retained individually by compiled functions.
+    fn retained_bytes(&self) -> Option<usize> {
+        None
+    }
+
     /// Name for diagnostics.
     fn name(&self) -> &'static str;
+
+    /// Canonical selector for this backend, including a concrete device ID.
+    fn selector(&self) -> &str {
+        self.name()
+    }
+
+    /// Whether this backend may execute on a GPU.
+    ///
+    /// Unclassified host backends are treated conservatively. Implementations
+    /// that execute solely on CPUs can return `false`.
+    fn uses_gpu(&self) -> bool {
+        true
+    }
+
+    /// Whether session-owned compilation may reserve memory for this executor.
+    /// Unbounded custom backends are kept out of the portable value ABI.
+    #[doc(hidden)]
+    fn native_program_budget(&self) -> Option<NativeProgramBudget> {
+        None
+    }
+
+    /// Compiles a scalar subject to the limits of [`Self::native_program_budget`].
+    #[doc(hidden)]
+    fn compile_native(
+        &self,
+        graph: &Graph,
+        root: NodeId,
+        inputs: &[SymbolId],
+    ) -> Result<Box<dyn Compiled>, BackendError> {
+        self.compile(graph, root, inputs)
+    }
 
     /// Compiles the concrete term `root` as a function of `inputs`, in that
     /// order.
@@ -423,6 +496,25 @@ pub trait Backend: Send + Sync {
     }
 }
 
+/// Limits for compiled expressions retained by the portable value ABI.
+#[doc(hidden)]
+#[derive(Clone, Copy)]
+pub struct NativeProgramBudget {
+    /// Maximum number of lowered instructions.
+    pub instructions: usize,
+    /// Reservation for the executor beyond the retained graph and tape.
+    pub extra_bytes: usize,
+}
+
+pub(crate) const NATIVE_TAPE_BUDGET: NativeProgramBudget = NativeProgramBudget {
+    instructions: 4096,
+    extra_bytes: 0,
+};
+pub(crate) const NATIVE_CODE_BUDGET: NativeProgramBudget = NativeProgramBudget {
+    instructions: 512,
+    extra_bytes: 4_194_304,
+};
+
 type Shared = Arc<dyn Backend>;
 
 static DEFAULT_BACKEND: RwLock<Option<Shared>> = RwLock::new(None);
@@ -431,24 +523,158 @@ thread_local! {
     static SCOPED_BACKEND: RefCell<Option<Shared>> = const { RefCell::new(None) };
 }
 
-/// The backend numeric kernels compile with: the innermost
-/// [`with_backend`] scope, else the process default ([`set_default`]),
-/// else the [`Interpreter`].
-#[must_use]
-pub fn current() -> Shared {
-    if let Some(b) = SCOPED_BACKEND.with(|s| s.borrow().clone()) {
-        return b;
-    }
-    if let Some(b) = DEFAULT_BACKEND.read().ok().and_then(|g| g.clone()) {
-        return b;
-    }
-    Arc::new(Interpreter)
+fn interpreter() -> Shared {
+    static BACKEND: OnceLock<Shared> = OnceLock::new();
+    BACKEND.get_or_init(|| Arc::new(Interpreter)).clone()
 }
 
-/// Sets the process-wide default backend (`None` restores the interpreter).
+#[cfg(feature = "jit")]
+fn jit_available() -> bool {
+    static AVAILABLE: OnceLock<bool> = OnceLock::new();
+    *AVAILABLE.get_or_init(|| cranelift_native::builder().is_ok())
+}
+
+fn automatic() -> Shared {
+    static AUTOMATIC: OnceLock<Shared> = OnceLock::new();
+    AUTOMATIC
+        .get_or_init(|| {
+            #[cfg(feature = "jit")]
+            if jit_available() {
+                return Arc::new(jit::TieredBackend::default());
+            }
+            interpreter()
+        })
+        .clone()
+}
+
+/// Returns the backend numeric kernels compile with.
+///
+/// A thread scope takes priority over a process override, then the automatic
+/// choice. On supported JIT hosts this starts with the CPU tape and compiles
+/// hot programs in the background.
+#[must_use]
+pub fn current() -> Shared {
+    let allow_gpu = access::gpu_allowed();
+    let allowed = |backend: &&Shared| allow_gpu || !backend.uses_gpu();
+    SCOPED_BACKEND
+        .with(|scope| scope.borrow().as_ref().filter(allowed).cloned())
+        .or_else(|| {
+            DEFAULT_BACKEND
+                .read()
+                .ok()
+                .and_then(|slot| slot.as_ref().filter(allowed).cloned())
+        })
+        .unwrap_or_else(automatic)
+}
+
+fn cpu_backend(parallel: bool) -> Shared {
+    static SEQUENTIAL: OnceLock<Shared> = OnceLock::new();
+    static PARALLEL: OnceLock<Shared> = OnceLock::new();
+    let slot = if parallel {
+        &PARALLEL
+    } else {
+        &SEQUENTIAL
+    };
+    slot.get_or_init(|| {
+        let device = if parallel {
+            device::CpuDevice::parallel()
+        } else {
+            device::CpuDevice::sequential()
+        };
+        Arc::new(device::DeviceBackend::requiring_device(Arc::new(device)))
+    })
+    .clone()
+}
+
+/// Lists selectors supported by this build and its discovered devices.
+/// The first call may initialize the GPU device registry.
+#[must_use]
+pub fn available() -> Vec<String> {
+    let mut names = vec!["auto".into(), "interpreter".into()];
+    #[cfg(feature = "jit")]
+    if jit_available() {
+        names.extend(["tiered".into(), "cranelift".into()]);
+    }
+    names.extend(
+        device::registry_for_source()
+            .list()
+            .into_iter()
+            .map(|info| info.id)
+            .filter(|id| {
+                !matches!(
+                    id.as_str(),
+                    "auto" | "interpreter" | "tiered" | "cranelift" | "jit" | "gpu"
+                )
+            }),
+    );
+    names
+}
+
+/// Resolves `auto`, `interpreter`, `tiered`, `cranelift`, a CPU selector,
+/// or a device ID from [`available`]. `jit` is an alias for `cranelift`.
+/// `gpu` picks the first discovered `wgpu` adapter.
+///
+/// # Errors
+/// Returns [`BackendError::Codegen`] when the requested backend is unavailable.
+pub fn named(selector: &str) -> Result<Shared, BackendError> {
+    match selector {
+        | "auto" => return Ok(automatic()),
+        | "interpreter" => return Ok(interpreter()),
+        | "cpu" => return Ok(cpu_backend(false)),
+        | "cpu-parallel" => return Ok(cpu_backend(true)),
+        #[cfg(feature = "jit")]
+        | "tiered" if jit_available() => return Ok(Arc::new(jit::TieredBackend::default())),
+        #[cfg(feature = "jit")]
+        | "cranelift" | "jit" if jit_available() => {
+            return Ok(Arc::new(jit::CraneliftBackend::uncached()));
+        },
+        | _ => {},
+    }
+    if !access::gpu_allowed() && !access::is_host_selector(selector) {
+        return Err(BackendError::Codegen(
+            "permission denied: the `gpu` capability is not granted here".into(),
+        ));
+    }
+    let selected: Option<Arc<dyn device::Device>> = match selector {
+        | "gpu" => device::registry().first_of(&device::DeviceKind::Gpu(device::GpuApi::Wgpu)),
+        | "tiered" | "cranelift" | "jit" => None,
+        | id => device::registry().get(id),
+    };
+    selected
+        .map(|d| Arc::new(device::DeviceBackend::requiring_device(d)) as Shared)
+        .ok_or_else(|| BackendError::Codegen(format!("backend `{selector}` is unavailable")))
+}
+
+/// Sets the process-wide default backend. `None` restores automatic selection.
 pub fn set_default(backend: Option<Shared>) {
     if let Ok(mut slot) = DEFAULT_BACKEND.write() {
         *slot = backend;
+    }
+}
+
+/// Sets the process default to a named backend and returns its canonical selector.
+/// `auto` clears the process override. Thread scopes retain priority.
+///
+/// # Errors
+/// Returns [`BackendError::Codegen`] when the requested backend is unavailable.
+pub fn select_default(selector: &str) -> Result<String, BackendError> {
+    let selected = named(selector)?;
+    let name = selected.selector().to_owned();
+    set_default((selector != "auto").then_some(selected));
+    Ok(name)
+}
+
+struct ScopedBackend(Option<Shared>);
+
+impl ScopedBackend {
+    fn install(backend: Option<Shared>) -> Self {
+        Self(SCOPED_BACKEND.with(|scope| scope.replace(backend)))
+    }
+}
+
+impl Drop for ScopedBackend {
+    fn drop(&mut self) {
+        SCOPED_BACKEND.with(|scope| *scope.borrow_mut() = self.0.take());
     }
 }
 
@@ -457,10 +683,36 @@ pub fn with_backend<R>(
     backend: Shared,
     f: impl FnOnce() -> R,
 ) -> R {
-    let previous = SCOPED_BACKEND.with(|s| s.replace(Some(backend)));
-    let result = f();
-    SCOPED_BACKEND.with(|s| *s.borrow_mut() = previous);
-    result
+    let _scope = ScopedBackend::install(Some(backend));
+    f()
+}
+
+/// The caller's explicit override and source grant, carried into worker jobs.
+pub(crate) struct WorkerContext {
+    backend: Option<Shared>,
+    source_gpu: Option<bool>,
+}
+
+/// Restores the worker's previous backend and source scopes after a job.
+pub(crate) struct WorkerScope {
+    _backend: ScopedBackend,
+    _source: Option<SourceAccess>,
+}
+
+impl WorkerContext {
+    pub(crate) fn enter(&self) -> WorkerScope {
+        WorkerScope {
+            _backend: ScopedBackend::install(self.backend.clone()),
+            _source: self.source_gpu.map(restrict_to_source),
+        }
+    }
+}
+
+pub(crate) fn worker_context() -> WorkerContext {
+    WorkerContext {
+        backend: SCOPED_BACKEND.with(|scope| scope.borrow().clone()),
+        source_gpu: access::source_gpu_grant(),
+    }
 }
 
 /// Compiles `root` with the [current] backend.
@@ -496,6 +748,18 @@ struct Tape {
 }
 
 impl Backend for Interpreter {
+    fn uses_gpu(&self) -> bool {
+        false
+    }
+
+    fn native_program_budget(&self) -> Option<NativeProgramBudget> {
+        Some(NATIVE_TAPE_BUDGET)
+    }
+
+    fn retained_bytes(&self) -> Option<usize> {
+        Some(size_of::<Self>())
+    }
+
     fn name(&self) -> &'static str {
         "interpreter"
     }
@@ -587,6 +851,14 @@ impl Tape {
 }
 
 impl Compiled for Tape {
+    fn retained_bytes(&self) -> Option<usize> {
+        let instructions = self.instrs.capacity().checked_mul(size_of::<Instr>())?;
+        let arguments = self.args.capacity().checked_mul(size_of::<u32>())?;
+        size_of::<Self>()
+            .checked_add(instructions)?
+            .checked_add(arguments)
+    }
+
     fn arity(&self) -> usize {
         self.arity
     }
@@ -648,6 +920,62 @@ mod tests {
         let root = g.parse(src).unwrap_or_else(|e| panic!("{e}"));
         let inputs = vec![g.interner_mut().symbol("x"), g.interner_mut().symbol("y")];
         (g, root, inputs)
+    }
+
+    #[test]
+    fn restricted_source_skips_a_preselected_gpu_without_probing() {
+        struct TestGpu;
+
+        impl Backend for TestGpu {
+            fn name(&self) -> &'static str {
+                "accelerator-with-an-arbitrary-id"
+            }
+
+            fn uses_gpu(&self) -> bool {
+                true
+            }
+
+            fn compile(
+                &self,
+                _: &Graph,
+                _: NodeId,
+                _: &[SymbolId],
+            ) -> Result<Box<dyn Compiled>, BackendError> {
+                Err(BackendError::Codegen(
+                    "test device is discovery-only".into(),
+                ))
+            }
+        }
+
+        with_backend(Arc::new(TestGpu), || {
+            assert!(current().uses_gpu());
+            {
+                let _source = restrict_to_source(false);
+                assert!(!current().uses_gpu());
+                assert!(named("accelerator-with-an-arbitrary-id").is_err());
+                assert!(named("cpu").is_ok());
+            }
+            assert!(current().uses_gpu());
+        });
+    }
+
+    #[test]
+    fn worker_context_carries_override_and_keeps_the_narrower_grant() {
+        let selected: Shared = Arc::new(Interpreter);
+        let context = with_backend(Arc::clone(&selected), || {
+            let _source = restrict_to_source(true);
+            worker_context()
+        });
+        let worker = std::thread::spawn(move || {
+            let _restricted = restrict_to_source(false);
+            let _worker = context.enter();
+            assert!(!gpu_allowed());
+            assert!(Arc::ptr_eq(&current(), &selected));
+        });
+        assert!(
+            worker.join().is_ok(),
+            "worker should keep its narrowed scope"
+        );
     }
 
     #[test]

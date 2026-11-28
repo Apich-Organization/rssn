@@ -84,6 +84,18 @@ fn dense_shapes_and_full_exponent_range() {
 }
 
 #[test]
+fn frobenius_norm_covers_vector_tails_and_rescaling() {
+    for scale in [1.0, 1e300, 1e-300] {
+        let mut entries = [0.0; 19];
+        entries[0] = 3.0 * scale;
+        entries[1] = 4.0 * scale;
+        entries[18] = 12.0 * scale;
+        assert!((m(&[&entries]).norm_fro() / scale - 13.0).abs() < 4e-15);
+    }
+    assert!(m(&[&[f64::NAN, f64::INFINITY]]).norm_fro().is_nan());
+}
+
+#[test]
 fn cholesky_factor() {
     let a = m(&[
         &[4.0, 12.0, -16.0],
@@ -423,7 +435,7 @@ mod source_leaf_contracts {
         let rhs = [5.0, -6.0, -4.0];
         for solve in [reference::solve, optimized::solve] {
             let x = solve(3, 3, &a, &rhs).unwrap();
-            for (row, want) in a.chunks_exact(3).zip(rhs) {
+            for (row, want) in a.as_chunks::<3>().0.iter().zip(rhs) {
                 let got = row.iter().zip(&x).map(|(a, b)| a * b).sum::<f64>();
                 assert!((got - want).abs() < 1e-12);
             }
@@ -459,7 +471,9 @@ mod source_leaf_contracts {
             let (q, r) = qr(3, 2, &a).unwrap();
             assert_eq!(r.len(), r_rows * 2);
             let q_prefix: Vec<_> = q
-                .chunks_exact(3)
+                .as_chunks::<3>()
+                .0
+                .iter()
                 .flat_map(|row| row[..r_rows].iter().copied())
                 .collect();
             let rebuilt = reference::matmul(3, r_rows, 2, &q_prefix, &r);

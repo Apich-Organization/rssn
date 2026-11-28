@@ -116,7 +116,7 @@ fn dimensional_rational_boundary_preserves_alias_ambiguity_and_arena_errors() {
         factors: vec![("Length".to_owned(), "1".to_owned()); 2],
         ..Dimension::default()
     };
-    let duplicate = DimTerm::from_dimension(&duplicate, &mut arena).unwrap();
+    let duplicate = DimTerm::from_dimension(&duplicate, &arena).unwrap();
     assert!(DimExpr::try_from_term(&duplicate, &arena).is_err());
 }
 
@@ -178,8 +178,7 @@ mod session_value {
         assert_eq!(*quantity.value, Value::Int(BigInt::from(3)));
         let error = session
             .term_of(&wrapped(DimExpr::base("Time")))
-            .err()
-            .expect("conflicting dimension");
+            .expect_err("conflicting dimension");
         assert!(
             matches!(error, OpError::Domain(reason) if reason == "dynamic dimension conflicts with term dimension")
         );

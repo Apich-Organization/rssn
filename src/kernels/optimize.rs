@@ -8,7 +8,7 @@
 //! The wrapper covers the solver families `basin` provides:
 //!
 //! - **First order**: [`SolverKind::GradientDescent`],
-//!   [`SolverKind::NonlinearCg`], [`SolverKind::TrustRegion`],
+//!   [`SolverKind::NonlinearCg`],
 //!   [`SolverKind::ProjectedGradientDescent`] and [`SolverKind::Tnc`].
 //! - **Quasi-Newton**: [`SolverKind::Bfgs`] and [`SolverKind::Lbfgs`].
 //! - **Derivative free**: [`SolverKind::NelderMead`],
@@ -82,13 +82,16 @@ pub use basin;
 /// Bound used for a side a caller leaves free.
 const UNBOUNDED: f64 = f64::MAX;
 
+type Objective = dyn Fn(&[f64]) -> Result<f64, String> + Send + Sync;
+type GradientFn = dyn Fn(&[f64]) -> Result<Vec<f64>, String> + Send + Sync;
+
 /// A cost function with an optional analytic gradient and box bounds.
 ///
 /// Clones share their closures, so one problem can feed several runs.
 #[derive(Clone)]
 pub struct FnProblem {
-    cost: Arc<dyn Fn(&[f64]) -> Result<f64, String> + Send + Sync>,
-    gradient: Option<Arc<dyn Fn(&[f64]) -> Result<Vec<f64>, String> + Send + Sync>>,
+    cost: Arc<Objective>,
+    gradient: Option<Arc<GradientFn>>,
     set: ConstraintSet<BoxBounds<Vec<f64>>>,
 }
 
@@ -126,8 +129,7 @@ impl FnProblem {
         Self {
             cost: Arc::new(cost),
             gradient: gradient.map(|gradient| {
-                let closure: Arc<dyn Fn(&[f64]) -> Result<Vec<f64>, String> + Send + Sync> =
-                    Arc::new(gradient);
+                let closure: Arc<GradientFn> = Arc::new(gradient);
                 closure
             }),
             set: ConstraintSet::default().with_bounds(BoxBounds::new(Some(lower), Some(upper))),
@@ -893,11 +895,12 @@ pub fn find_root(
     options: &RootOptions,
 ) -> Result<RootReport, String> {
     let (lower, upper) = bracket;
+    let f = &f;
     let call = |x: f64| Ok::<f64, String>(f(x));
-    let derivative_of = |x: f64| {
+    let derivative_of = move |x: f64| {
         match &derivative {
             | Some(derivative) => derivative(x),
-            | None => central_difference(&f, x),
+            | None => central_difference(f, x),
         }
     };
     let result = match solver {

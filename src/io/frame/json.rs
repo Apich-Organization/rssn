@@ -96,10 +96,8 @@ pub fn write_json(
                 out.push('\n');
                 out.push_str("  ");
             }
-            out.push('}');
-        } else {
-            out.push('}');
         }
+        out.push('}');
     }
     if pretty {
         out.push('\n');
@@ -239,7 +237,7 @@ fn json_column(values: &[Option<&Value>]) -> Result<Column, String> {
                             .ok_or_else(|| "expected an integer json value".to_string())?
                     },
                     | None => 0,
-                })
+                });
             },
             | DType::Float => {
                 floats.push(match value {
@@ -249,7 +247,7 @@ fn json_column(values: &[Option<&Value>]) -> Result<Column, String> {
                             .ok_or_else(|| "expected a numeric json value".to_string())?
                     },
                     | None => 0.0,
-                })
+                });
             },
             | DType::Bool => {
                 booleans.push(match value {
@@ -259,7 +257,7 @@ fn json_column(values: &[Option<&Value>]) -> Result<Column, String> {
                             .ok_or_else(|| "expected a boolean json value".to_string())?
                     },
                     | None => false,
-                })
+                });
             },
             | DType::Str => {
                 strings.push(match value {
@@ -269,7 +267,7 @@ fn json_column(values: &[Option<&Value>]) -> Result<Column, String> {
                         })?
                     },
                     | None => String::new(),
-                })
+                });
             },
             | DType::Bytes => {
                 bytes_vec.push(match value {
@@ -279,7 +277,7 @@ fn json_column(values: &[Option<&Value>]) -> Result<Column, String> {
                             .into_bytes()
                     },
                     | None => Vec::new(),
-                })
+                });
             },
             | DType::List => return Err("a json list column needs array values".to_string()),
         }

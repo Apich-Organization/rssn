@@ -687,14 +687,19 @@ impl DeviceRegistry {
     /// `gpu-wgpu`, every adapter wgpu finds; none is not an error).
     #[must_use]
     pub fn new() -> Self {
-        let r = Self::empty();
-        let _ = r.register(Arc::new(CpuDevice::sequential()));
-        let _ = r.register(Arc::new(CpuDevice::parallel()));
+        let r = Self::cpu_only();
         #[cfg(feature = "gpu-wgpu")]
         for device in gpu::probe() {
             let _ = r.register(device);
         }
         r
+    }
+
+    pub(crate) fn cpu_only() -> Self {
+        let registry = Self::empty();
+        let _ = registry.register(Arc::new(CpuDevice::sequential()));
+        let _ = registry.register(Arc::new(CpuDevice::parallel()));
+        registry
     }
 
     /// A registry with no devices.
@@ -769,10 +774,17 @@ impl DeviceRegistry {
     /// any registered device.
     #[must_use]
     pub fn default_device(&self) -> Option<Arc<dyn Device>> {
+        self.default_allowed_device(true)
+    }
+
+    pub(crate) fn default_allowed_device(
+        &self,
+        allow_gpu: bool,
+    ) -> Option<Arc<dyn Device>> {
         let guard = self.devices.read().ok()?;
         guard
             .iter()
-            .find(|d| matches!(d.info().kind, DeviceKind::Gpu(_)))
+            .find(|d| allow_gpu && matches!(d.info().kind, DeviceKind::Gpu(_)))
             .or_else(|| {
                 guard
                     .iter()
@@ -780,7 +792,7 @@ impl DeviceRegistry {
                     .filter(|_| crate::execution::cpu_threads() > 1)
             })
             .or_else(|| guard.iter().find(|d| d.info().kind == DeviceKind::Cpu))
-            .or_else(|| guard.first())
+            .or_else(|| guard.first().filter(|_| allow_gpu))
             .cloned()
     }
 }
@@ -790,6 +802,15 @@ impl DeviceRegistry {
 pub fn registry() -> &'static DeviceRegistry {
     static REGISTRY: OnceLock<DeviceRegistry> = OnceLock::new();
     REGISTRY.get_or_init(DeviceRegistry::new)
+}
+
+pub(crate) fn registry_for_source() -> &'static DeviceRegistry {
+    static CPU_REGISTRY: OnceLock<DeviceRegistry> = OnceLock::new();
+    if super::access::gpu_allowed() {
+        registry()
+    } else {
+        CPU_REGISTRY.get_or_init(DeviceRegistry::cpu_only)
+    }
 }
 
 /// The device kinds this *build* can offer, as [`DeviceKind::tag`]s.
@@ -970,13 +991,24 @@ pub fn ensemble_rk4(
 #[derive(Clone)]
 pub struct DeviceBackend {
     device: Arc<dyn Device>,
+    require_device: bool,
 }
 
 impl DeviceBackend {
     /// A backend executing on `device`.
     #[must_use]
     pub fn new(device: Arc<dyn Device>) -> Self {
-        Self { device }
+        Self {
+            device,
+            require_device: false,
+        }
+    }
+
+    pub(super) fn requiring_device(device: Arc<dyn Device>) -> Self {
+        Self {
+            device,
+            require_device: true,
+        }
     }
 }
 
@@ -1150,6 +1182,31 @@ impl Compiled for SingleOutput {
 }
 
 impl Backend for DeviceBackend {
+    fn uses_gpu(&self) -> bool {
+        !matches!(
+            self.device.info().kind,
+            DeviceKind::Cpu | DeviceKind::CpuParallel
+        )
+    }
+
+    fn selector(&self) -> &str {
+        &self.device.info().id
+    }
+
+    fn native_program_budget(&self) -> Option<super::NativeProgramBudget> {
+        if !self.require_device {
+            return None;
+        }
+        match self.device.info().kind {
+            | DeviceKind::Custom(_) => None,
+            | DeviceKind::Gpu(_) => Some(super::NATIVE_CODE_BUDGET),
+            | DeviceKind::Cpu | DeviceKind::CpuParallel if cfg!(feature = "jit") => {
+                Some(super::NATIVE_CODE_BUDGET)
+            },
+            | DeviceKind::Cpu | DeviceKind::CpuParallel => Some(super::NATIVE_TAPE_BUDGET),
+        }
+    }
+
     fn name(&self) -> &'static str {
         "device"
     }
@@ -1182,6 +1239,12 @@ impl Backend for DeviceBackend {
             });
         let boxed: Box<dyn CompiledMulti> = match program {
             | Ok(p) => Box::new(p),
+            | Err(error) if self.require_device => {
+                return Err(BackendError::Codegen(format!(
+                    "{}: {error}",
+                    self.selector()
+                )));
+            },
             | Err(_) => Box::new(TapeFunction::from_tape(t)),
         };
         Ok(boxed)

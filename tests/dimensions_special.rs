@@ -107,7 +107,7 @@ fn logarithmic_bessel_k_remains_finite_when_the_value_underflows() {
     let logarithm = session
         .call_value("num_special_ln_bessel_k", &arguments, &ctx)
         .unwrap();
-    assert!((logarithm.as_f64().unwrap() - (-1003.228_086_286_846_3)).abs() < 1e-12);
+    assert!((logarithm.as_f64().unwrap() - (-1_003.228_086_286_846_3)).abs() < 1e-12);
     let measured = Value::Dyn(DynValue {
         value: Box::new(Value::Float(1000.0)),
         dim: DimExpr::base("Length"),
@@ -674,6 +674,19 @@ fn expanded_part_dimensions(source: &str) -> Vec<String> {
         .collect()
 }
 
+#[test]
+fn polar_coordinates_keep_the_input_dimension_on_the_radius() {
+    let source = "to_polar(quantity(3 + 4*I, m))";
+    assert_eq!(dimension(source, &[]), "non-metric");
+    assert_eq!(dimension_advisory(source, &[]), ("non-metric".into(), 0));
+    assert_eq!(
+        dimension_advisory("to_polar(z)", &[("z", "m")]),
+        ("non-metric".into(), 0)
+    );
+    assert_eq!(dimension("abs(z)", &[("z", "m")]), "Length");
+    assert_eq!(dimension("arg(z)", &[("z", "m")]), "1");
+}
+
 /// Structured decompositions are non-scalar containers, not mixed scalar
 /// lists: Advisory mode reports their dimension without a `MixedList`
 /// finding, and the parts keep the documented dimensions.
@@ -830,4 +843,111 @@ fn homogeneous_matrix_functions_carry_their_degree() {
             "`{source}`: unexpected error {error}"
         );
     }
+}
+
+#[test]
+fn interval_and_disk_adapters_share_the_dimensionless_contract() {
+    use rssn::kernel::signature::DimRuleInfo;
+    use rssn::kernel::signature::TypeExpr;
+
+    let session = Session::new();
+    let manifest = session.manifest();
+    for (prefix, operators) in [
+        (
+            "cball_",
+            &[
+                "abs",
+                "acos",
+                "acosh",
+                "add",
+                "arg",
+                "asin",
+                "asinh",
+                "atan",
+                "atanh",
+                "conj",
+                "contains",
+                "cos",
+                "cosh",
+                "div",
+                "exp",
+                "ln",
+                "mul",
+                "overlaps",
+                "pow",
+                "powi",
+                "sin",
+                "sinh",
+                "sqrt",
+                "sub",
+                "tan",
+                "tanh",
+                "to_cinterval",
+            ][..],
+        ),
+        (
+            "cinterval_",
+            &[
+                "acos",
+                "acosh",
+                "add",
+                "asin",
+                "asinh",
+                "atan",
+                "atanh",
+                "cos",
+                "cosh",
+                "div",
+                "exp",
+                "intersect",
+                "ln",
+                "mul",
+                "pow",
+                "sin",
+                "sinh",
+                "sqrt",
+                "sub",
+                "tan",
+                "tanh",
+                "to_cball",
+            ][..],
+        ),
+    ] {
+        for suffix in operators {
+            let name = format!("{prefix}{suffix}");
+            assert!(
+                manifest.op(&name).is_some(),
+                "missing public operator {name}"
+            );
+        }
+    }
+    for op in &manifest.ops {
+        if !op.name.starts_with("cball_") && !op.name.starts_with("cinterval_") {
+            continue;
+        }
+        assert_eq!(op.dim_rule, Some(DimRuleInfo::Dimensionless), "{}", op.name);
+        assert!(
+            op.overloads.iter().any(|overload| {
+                !matches!(overload.ret, TypeExpr::Dyn(_))
+                    && overload
+                        .params
+                        .iter()
+                        .all(|param| !matches!(param, TypeExpr::Dyn(_)))
+            }),
+            "missing typed overload for {}",
+            op.name
+        );
+    }
+    for request in [
+        "cball_abs(list(3, 4, 0))",
+        "cball_contains(list(3, 4, 0.1), list(3, 4, 0))",
+        "cinterval_cosh(list(1, 1, 0, 0))",
+        "cinterval_to_cball(list(1, 2, 3, 4))",
+    ] {
+        assert_eq!(dimension(request, &[]), "1");
+    }
+    assert!(matches!(
+        strict_error("cball_conj(list(x, x, x))", &[("x", "m")]),
+        ComputeError::Dimension(_)
+    ));
 }

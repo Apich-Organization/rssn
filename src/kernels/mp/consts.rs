@@ -3,7 +3,7 @@
 //! Each constant is computed once at the highest precision requested so far
 //! and then rounded to the precision a caller asks for, so a run that uses
 //! many digits pays for them once. The computations are classical integer
-//! series, evaluated in the fixed-point type of [`super::fixed`]:
+//! series, evaluated in the fixed-point type of `super::fixed`:
 //!
 //! * `pi` by Machin's formula `16 atan(1/5) - 4 atan(1/239)`;
 //! * `ln 2` by `2 atanh(1/3)`;
@@ -43,13 +43,18 @@ impl Cache {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         let wanted = match guard.as_ref() {
-            | Some(cached) if cached.precision() >= prec => return Ok(cached.clone()),
+            | Some(cached) if cached.precision() >= prec => {
+                let value = cached.clone();
+                drop(guard);
+                return value.with_precision(prec, Round::NearestEven);
+            },
             | Some(cached) => prec.max(cached.precision().saturating_mul(2)),
             | None => prec,
         }
         .min(MAX_BITS);
         let value = compute(wanted.saturating_add(64))?;
         *guard = Some(value.clone());
+        drop(guard);
         value.with_precision(prec, Round::NearestEven)
     }
 }
@@ -239,14 +244,55 @@ pub const fn names() -> &'static [&'static str] {
     &["pi", "e", "tau", "ln2", "sqrt2", "phi"]
 }
 
-/// `pi` as a [`BigInt`] numerator over `2^prec`, used by the trigonometric
-/// reduction.
+/// A fixed-point approximation to `pi` as a [`BigInt`] numerator over `2^prec`.
+///
+/// The constant is evaluated with guard bits before scaling and truncating.
 ///
 /// # Errors
 /// Fails when an exponent leaves the range.
 pub fn pi_scaled(prec: u32) -> Result<BigInt, String> {
     let s = prec.saturating_add(64);
     let value = pi(s)?;
-    let scaled = value.scale_pow2(i64::from(s))?;
+    let scaled = value.scale_pow2(i64::from(prec))?;
     scaled.trunc_to_bigint()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cell::Cell;
+
+    #[test]
+    fn warm_cache_returns_the_requested_precision_without_recomputing() -> Result<(), String> {
+        let cache = Cache {
+            slot: OnceLock::new(),
+        };
+        let computations = Cell::new(0_u32);
+        let compute = |precision| {
+            computations.set(computations.get().saturating_add(1));
+            machin(precision)
+        };
+
+        let cold = cache.get(8, &compute)?;
+        assert_eq!(cold.precision(), 8);
+        assert_eq!(computations.get(), 1);
+
+        let wide = cache.get(256, &compute)?;
+        assert_eq!(wide.precision(), 256);
+        assert_eq!(computations.get(), 2);
+
+        let warm = cache.get(8, &compute)?;
+        assert_eq!(warm.precision(), cold.precision());
+        assert_eq!(warm.mantissa(), cold.mantissa());
+        assert_eq!(warm.exponent(), cold.exponent());
+        assert_eq!(cache.get(256, &compute)?.mantissa(), wide.mantissa());
+        assert_eq!(computations.get(), 2);
+        Ok(())
+    }
+
+    #[test]
+    fn pi_scaled_uses_the_requested_fractional_bits() -> Result<(), String> {
+        assert_eq!(pi_scaled(8)?, BigInt::from(804));
+        Ok(())
+    }
 }

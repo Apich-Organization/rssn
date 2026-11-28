@@ -1307,11 +1307,12 @@ fn yee_source_owns_its_charged_program_after_original_handle_release() {
             Value::int(2),
             Value::int(5),
             Value::Float(0.0),
-            wave,
+            wave.clone(),
             Value::int(10),
             Value::int(1000),
         ],
     );
+    call("num_backend_release", &[wave]);
     call("num_analysis_yee_step", std::slice::from_ref(&solver));
     let sample = call(sample_name, &[solver.clone(), Value::int(0)]);
     let Value::Variant(sample) = sample else {
@@ -1693,8 +1694,8 @@ fn native_jump_batch_preserves_stream_order_and_rolls_back_on_error() {
     );
     assert!(call(batch, &[overflows, batched_stream.clone(), Value::int(2)]).is_err());
     assert_eq!(
-        call(next, &[batched_stream.clone()]).unwrap(),
-        call(next, &[scalar_stream.clone()]).unwrap()
+        call(next, std::slice::from_ref(&batched_stream)).unwrap(),
+        call(next, std::slice::from_ref(&scalar_stream)).unwrap()
     );
     let out = call(
         batch,

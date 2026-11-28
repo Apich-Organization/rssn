@@ -1,6 +1,8 @@
-//! Complex integral transforms: Mellin & inverse Mellin, Bromwich Laplace inversion
-//! (Talbot, Weideman parabola, Gaver–Stehfest), Mellin–Barnes integrals, Meijer G,
-//! Hilbert transform, Hankel transform, and Borel transform.
+//! Numerical methods for complex integral transforms.
+//!
+//! Includes Mellin and inverse Mellin transforms, Talbot, Weideman and Gaver–Stehfest Laplace
+//! inversion, Mellin–Barnes integration, the Meijer G-function, and Hilbert, Hankel, and Borel
+//! transforms.
 
 use crate::kernels::integrate::gauss_kronrod_any;
 use crate::kernels::special_complex;
@@ -18,13 +20,13 @@ fn integrate_complex_ab<F>(
 where
     F: Fn(f64) -> Complex<f64>,
 {
-    let re = gauss_kronrod_any(&|t| f(t).re, a, b, tol, max_evals).value;
-    let im = gauss_kronrod_any(&|t| f(t).im, a, b, tol, max_evals).value;
+    let re = gauss_kronrod_any(|t| f(t).re, a, b, tol, max_evals).value;
+    let im = gauss_kronrod_any(|t| f(t).im, a, b, tol, max_evals).value;
     Complex::new(re, im)
 }
 
-/// Numerical Mellin transform $\mathcal{M}[f](s) = \int_0^\infty x^{s-1} f(x) \, dx$
-/// via the substitution $x = e^u$ ($u \in [-L, L]$).
+/// Numerical Mellin transform `\mathcal{M}[f](s) = \int_0^\infty x^{s-1} f(x) \, dx`
+/// via the substitution `x = e^u` (`u \in [-L, L]`).
 pub fn mellin_transform<F>(
     f: F,
     s: Complex<f64>,
@@ -74,6 +76,10 @@ where
 
 /// Numerical Bromwich Laplace inversion using Weideman's optimal Talbot contour
 /// shifted by abscissa `sigma` (so singularities with `Re(s) < sigma` are enclosed).
+///
+/// # Errors
+///
+/// Returns an error if time is nonpositive, the shift is non-finite, or there are fewer than four quadrature points.
 pub fn bromwich_talbot_shifted<F>(
     big_f: F,
     t: f64,
@@ -112,6 +118,10 @@ where
 
 /// Numerical Bromwich Laplace inversion using Weideman's optimal Talbot contour:
 /// $f(t) = \frac{1}{2\pi i} \int_{\Gamma} e^{s t} F(s) \, ds$ for $t > 0$.
+///
+/// # Errors
+///
+/// Returns an error if time is nonpositive or there are fewer than four quadrature points.
 pub fn bromwich_talbot<F>(
     big_f: F,
     t: f64,
@@ -125,6 +135,10 @@ where
 
 /// Numerical Bromwich Laplace inversion using Weideman's parabolic contour
 /// shifted by abscissa `sigma`: $s(u) = \sigma + \mu (i u + 1)^2$.
+///
+/// # Errors
+///
+/// Returns an error if time is nonpositive, the shift is non-finite, or there are fewer than four quadrature points.
 pub fn bromwich_weideman_parabola_shifted<F>(
     big_f: F,
     t: f64,
@@ -154,6 +168,10 @@ where
 
 /// Numerical Bromwich Laplace inversion using Weideman's parabolic contour
 /// $s(u) = \mu (i u + 1)^2$ ($u \in \mathbb{R}$) for $t > 0$.
+///
+/// # Errors
+///
+/// Returns an error if time is nonpositive or there are fewer than four quadrature points.
 pub fn bromwich_weideman_parabola<F>(
     big_f: F,
     t: f64,
@@ -166,6 +184,10 @@ where
 }
 
 /// Gaver–Stehfest real-axis inverse Laplace transform for $t > 0$ (`m_even` in `2..=14`).
+///
+/// # Errors
+///
+/// Returns an error if time is nonpositive or the order is not even and in `2..=14`.
 pub fn gaver_stehfest_inverse_laplace<F>(
     big_f: F,
     t: f64,
@@ -174,7 +196,7 @@ pub fn gaver_stehfest_inverse_laplace<F>(
 where
     F: Fn(f64) -> f64,
 {
-    if t <= 0.0 || m_even == 0 || m_even % 2 != 0 || m_even > 14 {
+    if t <= 0.0 || m_even == 0 || !m_even.is_multiple_of(2) || m_even > 14 {
         return Err("t must be positive and m_even must be an even integer in 2..=14".to_string());
     }
     let half = m_even / 2;
@@ -188,13 +210,13 @@ where
     let ln2_t = 2.0_f64.ln() / t;
     let mut sum = 0.0_f64;
     for k in 1..=m_even {
-        let j_min = (k + 1) / 2;
+        let j_min = k.div_ceil(2);
         let j_max = k.min(half);
         let mut v_k = 0.0_f64;
         for j in j_min..=j_max {
             let num = (j as f64).powi(half as i32) * fact(2 * j);
             let den = fact(half - j) * fact(j) * fact(j - 1) * fact(k - j) * fact(2 * j - k);
-            let sign = if (k + half) % 2 == 0 {
+            let sign = if (k + half).is_multiple_of(2) {
                 1.0
             } else {
                 -1.0
@@ -206,10 +228,13 @@ where
     Ok(ln2_t * sum)
 }
 
+/// Evaluates a Mellin–Barnes integral.
+///
 /// Evaluates a Mellin–Barnes integral
-/// $\frac{1}{2\pi i} \int_{c - iT}^{c + iT} \frac{\prod \Gamma(\alpha_j + s) \prod \Gamma(\beta_j - s)}{\prod \Gamma(\gamma_j + s) \prod \Gamma(\delta_j - s)} z^{-s} \, ds$
-/// along a slightly tilted/vertical contour $\text{Re}(s) = c$.
+/// `\frac{1}{2\pi i} \int_{c - iT}^{c + iT} \frac{\prod \Gamma(\alpha_j + s) \prod \Gamma(\beta_j - s)}{\prod \Gamma(\gamma_j + s) \prod \Gamma(\delta_j - s)} z^{-s} \, ds`
+/// along a slightly tilted/vertical contour `\text{Re}(s) = c`.
 #[allow(clippy::too_many_arguments)]
+#[must_use]
 pub fn mellin_barnes_integral(
     num_plus: &[Complex<f64>],
     num_minus: &[Complex<f64>],
@@ -248,9 +273,19 @@ pub fn mellin_barnes_integral(
     val / (2.0 * PI)
 }
 
+/// Evaluates the Meijer G-function.
+///
 /// Evaluates the Meijer G-function
-/// $G_{p,q}^{m,n}\left(z \middle| \begin{smallmatrix} a_1,\dots,a_p \\ b_1,\dots,b_q \end{smallmatrix}\right)$
+/// $G_{p,q}^{m,n}\left(z \middle| \begin{smallmatrix} `a_1,\dots,a_p` \\ `b_1,\dots,b_q` \end{smallmatrix}\right)$
 /// via its Mellin–Barnes contour representation along $\text{Re}(s) = c$.
+///
+/// # Errors
+///
+/// Returns an error if the numerator indices exceed the lengths of their respective parameter lists.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "The public signature follows the four Meijer G parameter groups and the contour parameters"
+)]
 pub fn meijer_g(
     a: &[Complex<f64>],
     b: &[Complex<f64>],
@@ -279,8 +314,12 @@ pub fn meijer_g(
     ))
 }
 
-/// Numerical Hilbert transform $\mathcal{H}[f](x) = \frac{1}{\pi} \text{PV} \int_{-L}^L \frac{f(t)}{x - t} \, dt$
+/// Numerical Hilbert transform $\mathcal{H}\[f\](x) = \frac{1}{\pi} \text{PV} \int_{-L}^L \frac{f(t)}{x - t} \, dt$
 /// using singularity subtraction on $[-L, L]$.
+///
+/// # Errors
+///
+/// Returns an error if the evaluation point lies outside the open integration interval.
 pub fn hilbert_transform_real<F>(
     f: F,
     x: f64,
@@ -295,7 +334,7 @@ where
     }
     let fx = f(x);
     let smooth_int = gauss_kronrod_any(
-        &|t: f64| {
+        |t: f64| {
             let dt = x - t;
             if dt.abs() < 1e-12 {
                 0.0
@@ -314,7 +353,7 @@ where
 }
 
 /// Numerical Hankel transform of order `nu`:
-/// $\mathcal{H}_\nu[f](k) = \int_0^{R_{\max}} f(r) J_\nu(k r) r \, dr$.
+/// `\mathcal{H}_\nu[f](k) = \int_0^{R_{\max}} f(r) J_\nu(k r) r \, dr`.
 pub fn hankel_transform<F>(
     f: F,
     nu: f64,
@@ -337,7 +376,8 @@ where
     )
 }
 
-/// Evaluates the truncated Borel transform $B[a](t) = \sum_{n=0}^{N-1} \frac{a_n}{n!} t^n$.
+/// Evaluates the truncated Borel transform `B[a](t) = \sum_{n=0}^{N-1} \frac{a_n}{n!} t^n`.
+#[must_use]
 pub fn borel_transform_series(
     coeffs: &[Complex<f64>],
     t: Complex<f64>,

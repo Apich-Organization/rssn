@@ -566,7 +566,9 @@ fn value_complex_passes_through_session_call_value() {
     let s = Session::new();
     let ctx = CallCtx::new();
     let z = Value::Complex(ComplexValue::Float { re: 1.0, im: 2.0 });
-    let c = s.call_value("conj", &[z.clone()], &ctx).unwrap();
+    let c = s
+        .call_value("conj", std::slice::from_ref(&z), &ctx)
+        .unwrap();
     assert!(!format!("{c:?}").is_empty());
     let a = s.call_value("abs_sq", &[z], &ctx).unwrap();
     assert!(

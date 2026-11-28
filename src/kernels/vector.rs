@@ -292,12 +292,18 @@ pub fn dot_product(
     Ok(simd::dot_f64(v1, v2))
 }
 
-fn norm_parts(values: impl Iterator<Item = f64> + Clone) -> (Option<f64>, f64) {
-    let squares = values.clone().map(|x| x * x).sum::<f64>();
+fn norm_parts(values: &[f64]) -> (Option<f64>, f64) {
+    let squares = simd::norm2_sq_f64(values);
     if squares.is_normal() || squares.is_nan() {
         return (None, squares.sqrt());
     }
-    let scale = values.clone().map(f64::abs).fold(0.0, f64::max);
+    rescaled_norm_parts(values.iter().copied(), simd::linf_norm_f64(values))
+}
+
+fn rescaled_norm_parts(
+    values: impl Iterator<Item = f64>,
+    scale: f64,
+) -> (Option<f64>, f64) {
     if scale == 0.0 || scale.is_infinite() {
         return (None, scale);
     }
@@ -310,6 +316,12 @@ fn norm_parts(values: impl Iterator<Item = f64> + Clone) -> (Option<f64>, f64) {
     (Some(scale), squares.sqrt())
 }
 
+/// Euclidean norm using the serial SIMD path, with rescaling for extreme input.
+pub(super) fn norm_serial(values: &[f64]) -> f64 {
+    let (scale, length) = norm_parts(values);
+    scale.map_or(length, |scale| scale * length)
+}
+
 /// Computes the Euclidean norm ($`L_2`$ norm) of a vector.
 ///
 /// Formula: $||\mathbf{v}||_2 = \sqrt{\sum_{i=1}^n `v_i^2`}$
@@ -318,12 +330,7 @@ pub fn norm(v: &[f64]) -> f64 {
     if v.len() >= VECTOR_PAR_CHUNK * VECTOR_PAR_GRAIN {
         return par::norm2_fixed(v, VECTOR_PAR_CHUNK, VECTOR_PAR_GRAIN);
     }
-    let squares = simd::norm2_sq_f64(v);
-    if squares.is_normal() || squares.is_nan() {
-        return squares.sqrt();
-    }
-    let (scale, length) = norm_parts(v.iter().copied());
-    scale.unwrap_or(1.0) * length
+    norm_serial(v)
 }
 
 /// Computes the Manhattan norm ($`L_1`$ norm) of a vector.
@@ -395,7 +402,7 @@ pub fn normalize_into(
 }
 
 fn normalized(v: &[f64]) -> Result<impl Iterator<Item = f64> + '_, String> {
-    let (scale, length) = norm_parts(v.iter().copied());
+    let (scale, length) = norm_parts(v);
     if length == 0.0 {
         return Err("Cannot normalize a zero vector.".into());
     }
@@ -445,16 +452,22 @@ pub fn distance(
     v2: &[f64],
 ) -> Result<f64, String> {
     same_length(v1, v2)?;
-    let (scale, length) = norm_parts(v1.iter().zip(v2).map(|(a, b)| a - b));
-    Ok(scale.unwrap_or(1.0) * length)
+    let differences = v1.iter().zip(v2).map(|(a, b)| a - b);
+    let squares = differences.clone().map(|x| x * x).sum::<f64>();
+    if squares.is_normal() || squares.is_nan() {
+        return Ok(squares.sqrt());
+    }
+    let scale = differences.clone().map(f64::abs).fold(0.0, f64::max);
+    let (scale, length) = rescaled_norm_parts(differences, scale);
+    Ok(scale.map_or(length, |scale| scale * length))
 }
 
 fn direction_cosine(
     v1: &[f64],
     v2: &[f64],
 ) -> Option<f64> {
-    let (scale1, length1) = norm_parts(v1.iter().copied());
-    let (scale2, length2) = norm_parts(v2.iter().copied());
+    let (scale1, length1) = norm_parts(v1);
+    let (scale2, length2) = norm_parts(v2);
     if length1 == 0.0 || length2 == 0.0 {
         return None;
     }
@@ -712,8 +725,8 @@ mod tests {
     #[test]
     fn large_vector_dot_and_norm_match_scalar() {
         let n = 40_000;
-        let a: Vec<f64> = (0..n).map(|i| ((i as f64) * 0.01).sin()).collect();
-        let b: Vec<f64> = (0..n).map(|i| ((i as f64) * 0.02).cos()).collect();
+        let a: Vec<f64> = (0..n).map(|i| (f64::from(i) * 0.01).sin()).collect();
+        let b: Vec<f64> = (0..n).map(|i| (f64::from(i) * 0.02).cos()).collect();
         let expected_dot: f64 = a.iter().zip(&b).map(|(x, y)| x * y).sum();
         let got_dot = dot_product(&a, &b).unwrap();
         assert!((got_dot - expected_dot).abs() < 1e-9);

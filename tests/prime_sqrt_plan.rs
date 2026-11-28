@@ -4,7 +4,10 @@ use rssn::kernels::number_theory::PrimeSqrtPlan;
 use rssn::kernels::number_theory::sqrt_mod_prime;
 
 fn trial_prime(n: u64) -> bool {
-    n >= 2 && (2..).take_while(|&d| d <= n / d).all(|d| n % d != 0)
+    n >= 2
+        && (2..)
+            .take_while(|&d| d <= n / d)
+            .all(|d| !n.is_multiple_of(d))
 }
 
 fn reference_square(

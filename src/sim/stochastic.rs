@@ -40,6 +40,8 @@
 //! Fixed and adaptive commutative paths use the language LCG/Box-Muller stream;
 //! area paths use the kernel xoshiro stream. Seeds reproduce results within a
 //! build. Ensemble member seeds depend only on (seed,index).
+//!
+//! [`JumpPath`]: crate::sim::stochastic::JumpPath
 
 mod adaptive_ext;
 

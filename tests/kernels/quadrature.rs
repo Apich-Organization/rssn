@@ -30,6 +30,7 @@ use rssn::kernels::quadrature::quasi_monte_carlo;
 use rssn::kernels::quadrature::romberg;
 use rssn::kernels::quadrature::sinh_sinh;
 use rssn::kernels::quadrature::tanh_sinh;
+use rssn::kernels::quadrature::tanh_sinh_with_levels;
 
 #[test]
 fn gk_smooth_both_rules() {
@@ -203,6 +204,29 @@ fn tanh_sinh_singular_and_smooth() {
     assert!((r.value - 1.0).abs() < 1e-12);
     let r = tanh_sinh(|x| x, 1.0, 0.0, 1e-12);
     assert!((r.value + 0.5).abs() < 1e-12);
+}
+
+#[test]
+fn tanh_sinh_visits_center_then_positive_and_negative_nodes() {
+    let seen = std::cell::RefCell::new(Vec::new());
+    let result = tanh_sinh_with_levels(
+        |x| {
+            seen.borrow_mut().push(x);
+            1.0
+        },
+        0.0,
+        1.0,
+        1e-14,
+        0,
+    );
+    let seen = seen.into_inner();
+    assert_eq!(seen[0].to_bits(), 0.5f64.to_bits());
+    assert!(seen.len() >= 3);
+    assert!(0.5 < seen[1] && seen[1] < 1.0);
+    assert!(0.0 < seen[2] && seen[2] < 0.5);
+    assert!(seen.iter().all(|&x| 0.0 < x && x < 1.0));
+    assert_eq!(result.evaluations, 13);
+    assert!(!result.converged);
 }
 
 #[test]

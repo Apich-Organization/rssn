@@ -38,7 +38,7 @@
 //! | Capability | 1-D | 2-D | 3-D | Boundaries | Initial data |
 //! |---|---|---|---|---|---|
 //! | `Particle3D` N-body / `simulate_n_body` | no | no | yes | open | user particles |
-//! | Schroedinger solvers | `solve_1d_schrodinger` | `solve_2d_schrodinger` | `solve_3d_schrodinger` | Dirichlet | user wavefunction |
+//! | Schroedinger solvers | `solve_1d_schrodinger` | `solve_2d_schrodinger` | `solve_3d_schrodinger` | Dirichlet | none |
 //! | Heat / wave 1-D | yes | no | no | Dirichlet / fixed ends | user profile |
 //! | Projectile, oscillators | yes (ODEs) | planar | no | open | user |
 //!
@@ -304,6 +304,8 @@ pub fn simulate_ising_model(
 /// This function discretizes the 1D Schrödinger equation on a grid, transforming it into
 /// an eigenvalue problem for the Hamiltonian matrix. The eigenvalues correspond to energy
 /// levels, and the eigenvectors correspond to the wave functions.
+/// All supplied grid points are unknowns, including the range endpoints.
+/// The stencil assumes zero values one grid spacing beyond each endpoint.
 /// Assumes `hbar = 1` and `m = 1`.
 ///
 /// # Arguments
@@ -365,18 +367,32 @@ pub fn solve_1d_schrodinger(
     hamiltonian.jacobi_eigen_decomposition(2000, 1e-12)
 }
 
+fn set_schrodinger_edge(
+    hamiltonian: &mut Matrix<f64>,
+    first: usize,
+    second: usize,
+    weight: f64,
+) {
+    *hamiltonian.get_mut(first, second) = weight;
+    *hamiltonian.get_mut(second, first) = weight;
+}
+
 /// Solves the 2D time-independent Schrödinger equation `Hψ = Eψ` on a rectangular grid.
 ///
 /// This function discretizes the 2D Schrödinger equation using a 5-point Laplacian
 /// finite-difference stencil, converting it into a large eigenvalue problem.
-/// Dirichlet boundary conditions (`ψ=0`) are enforced by setting a large potential at boundary points.
+/// Homogeneous Dirichlet conditions are imposed at the supplied grid boundary.
+/// Interior modes have zero boundary coefficients. The full grid shape is
+/// retained with separate boundary modes at the diagonal values `1e12 + V`.
+/// Assumes `hbar = 1` and `m = 1`.
 /// Warning: For large grids, this dense matrix approach can be very slow and memory-intensive.
 ///
 /// # Arguments
-/// * `potential` - The potential `V(x,y)` as a function of the coordinates.
-/// * `var_x`, `var_y` - The independent variables (e.g., "x", "y").
+/// * `potential_fn` - The potential `V(x,y)` as a function of the coordinates.
 /// * `ranges` - The spatial ranges `(x_min, x_max, y_min, y_max)`.
 /// * `grid` - The number of grid points `(nx, ny)` in each direction (including boundaries).
+///
+/// Eigenvectors are columns. Grid rows vary `y` fastest.
 ///
 /// # Returns
 /// A `Result` containing a tuple `(eigenvalues, eigenvectors_matrix)`,
@@ -419,7 +435,7 @@ pub fn solve_2d_schrodinger(
         }
     }
 
-    let mut h_data = vec![0.0_f64; n * n];
+    let mut hamiltonian = Matrix::new(n, n, vec![0.0_f64; n * n]);
 
     let fx = -0.5 / (dx * dx);
 
@@ -432,32 +448,23 @@ pub fn solve_2d_schrodinger(
             let idx = ix * ny + iy;
 
             if ix == 0 || ix == nx - 1 || iy == 0 || iy == ny - 1 {
-                h_data[idx * n + idx] = large + potential[idx];
+                *hamiltonian.get_mut(idx, idx) = large + potential[idx];
 
                 continue;
             }
 
-            h_data[idx * n + idx] = (-2.0f64).mul_add(fx + fy, potential[idx]);
+            *hamiltonian.get_mut(idx, idx) = (-2.0f64).mul_add(fx + fy, potential[idx]);
 
-            let idx_left = (ix - 1) * ny + iy;
-
-            let idx_right = (ix + 1) * ny + iy;
-
-            h_data[idx * n + idx_left] = fx;
-
-            h_data[idx * n + idx_right] = fx;
-
-            let idx_down = ix * ny + (iy - 1);
-
-            let idx_up = ix * ny + (iy + 1);
-
-            h_data[idx * n + idx_down] = fy;
-
-            h_data[idx * n + idx_up] = fy;
+            // Boundary values are fixed at zero. Write each interior
+            // edge once in both directions for the symmetric Jacobi solver.
+            if ix < nx - 2 {
+                set_schrodinger_edge(&mut hamiltonian, idx, idx + ny, fx);
+            }
+            if iy < ny - 2 {
+                set_schrodinger_edge(&mut hamiltonian, idx, idx + 1, fy);
+            }
         }
     }
-
-    let hamiltonian = Matrix::new(n, n, h_data);
 
     hamiltonian.jacobi_eigen_decomposition(5000, 1e-10)
 }
@@ -466,15 +473,19 @@ pub fn solve_2d_schrodinger(
 ///
 /// This function discretizes the 3D Schrödinger equation using a 7-point Laplacian
 /// finite-difference stencil, converting it into a large eigenvalue problem.
-/// Dirichlet boundary conditions (`ψ=0`) are enforced by setting a large potential at boundary points.
+/// Homogeneous Dirichlet conditions are imposed at the supplied grid boundary.
+/// Interior modes have zero boundary coefficients. The full grid shape is
+/// retained with separate boundary modes at the diagonal values `1e12 + V`.
+/// Assumes `hbar = 1` and `m = 1`.
 /// Warning: For large grids, this dense matrix approach can be extremely slow and memory-intensive.
 /// Consider smaller grids or sparse/iterative methods for higher performance.
 ///
 /// # Arguments
-/// * `potential` - The potential `V(x,y,z)` as a function of the coordinates.
-/// * `var_x`, `var_y`, `var_z` - The independent variables (e.g., "x", "y", "z").
+/// * `potential_fn` - The potential `V(x,y,z)` as a function of the coordinates.
 /// * `ranges` - The spatial ranges `(x_min, x_max, y_min, y_max, z_min, z_max)`.
 /// * `grid` - The number of grid points `(nx, ny, nz)` in each direction (including boundaries).
+///
+/// Eigenvectors are columns. Grid rows vary `z` fastest.
 ///
 /// # Returns
 /// A `Result` containing a tuple `(eigenvalues, eigenvectors_matrix)`,
@@ -534,7 +545,7 @@ pub fn solve_3d_schrodinger(
         }
     }
 
-    let mut h_data = vec![0.0_f64; n * n];
+    let mut hamiltonian = Matrix::new(n, n, vec![0.0_f64; n * n]);
 
     let fx = -0.5 / (dx * dx);
 
@@ -550,41 +561,25 @@ pub fn solve_3d_schrodinger(
                 let idx = (ix * ny + iy) * nz + iz;
 
                 if ix == 0 || ix == nx - 1 || iy == 0 || iy == ny - 1 || iz == 0 || iz == nz - 1 {
-                    h_data[idx * n + idx] = large + potential[idx];
+                    *hamiltonian.get_mut(idx, idx) = large + potential[idx];
 
                     continue;
                 }
 
-                h_data[idx * n + idx] = (-2.0f64).mul_add(fx + fy + fz, potential[idx]);
+                *hamiltonian.get_mut(idx, idx) = (-2.0f64).mul_add(fx + fy + fz, potential[idx]);
 
-                let idx_xm = ((ix - 1) * ny + iy) * nz + iz;
-
-                let idx_xp = ((ix + 1) * ny + iy) * nz + iz;
-
-                let idx_ym = (ix * ny + (iy - 1)) * nz + iz;
-
-                let idx_yp = (ix * ny + (iy + 1)) * nz + iz;
-
-                let idx_zm = (ix * ny + iy) * nz + (iz - 1);
-
-                let idx_zp = (ix * ny + iy) * nz + (iz + 1);
-
-                h_data[idx * n + idx_xm] = fx;
-
-                h_data[idx * n + idx_xp] = fx;
-
-                h_data[idx * n + idx_ym] = fy;
-
-                h_data[idx * n + idx_yp] = fy;
-
-                h_data[idx * n + idx_zm] = fz;
-
-                h_data[idx * n + idx_zp] = fz;
+                if ix < nx - 2 {
+                    set_schrodinger_edge(&mut hamiltonian, idx, idx + ny * nz, fx);
+                }
+                if iy < ny - 2 {
+                    set_schrodinger_edge(&mut hamiltonian, idx, idx + nz, fy);
+                }
+                if iz < nz - 2 {
+                    set_schrodinger_edge(&mut hamiltonian, idx, idx + 1, fz);
+                }
             }
         }
     }
-
-    let hamiltonian = Matrix::new(n, n, h_data);
 
     hamiltonian.jacobi_eigen_decomposition(5000, 1e-10)
 }

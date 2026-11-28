@@ -190,11 +190,9 @@ fn validate(p: &LpProblem) -> Result<usize, String> {
     if p.lower.iter().any(|v| !v.is_finite()) {
         return Err("lower bounds must be finite".to_string());
     }
-    for u in &p.upper {
-        if let Some(v) = u {
-            if !v.is_finite() {
-                return Err("upper bounds must be finite when present".to_string());
-            }
+    for v in p.upper.iter().flatten() {
+        if !v.is_finite() {
+            return Err("upper bounds must be finite when present".to_string());
         }
     }
     for row in &p.a {

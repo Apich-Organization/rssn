@@ -21,7 +21,7 @@ pub(crate) fn solve_tridiagonal_system(
     a: &[f64],
     b: &[f64],
     c: &[f64],
-    d: &mut [f64],
+    d: &[f64],
 ) -> Vec<f64> {
     let n = b.len();
     if n == 0 {
@@ -211,7 +211,7 @@ pub fn solve_heat_equation_1d_cn_tridiagonal(
 
         d[n - 1] = 0.0;
 
-        u = solve_tridiagonal_system(&a, &b, &c, &mut d);
+        u = solve_tridiagonal_system(&a, &b, &c, &d);
     }
 
     u

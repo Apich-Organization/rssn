@@ -704,7 +704,7 @@ mod tests {
             &self,
             x: &[f64],
         ) -> f64 {
-            0.5 * (x[0] * x[0] + x[1] * x[1]) - self.a * (x[0] + x[1]) + self.b
+            f64::midpoint(x[0] * x[0], x[1] * x[1]) - self.a * (x[0] + x[1]) + self.b
         }
 
         fn gradient(
@@ -990,7 +990,7 @@ mod tests {
         };
         let r = solve_sqp(&oracle, &x0, &opts).unwrap();
         let max_err = r.x.iter().fold(0.0f64, |acc, v| acc.max((v - 1.0).abs()));
-        assert!(max_err < 1e-5, "max error = {}", max_err);
+        assert!(max_err < 1e-5, "max error = {max_err}");
         assert!(r.kkt_residual < 1e-5);
     }
 }

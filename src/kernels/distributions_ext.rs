@@ -738,7 +738,7 @@ impl StatrsDistribution {
     /// Returns an error when the parameters are invalid or the mean is
     /// infinite.
     pub fn mean(&self) -> Result<f64, String> {
-        let value = moments!(self, |d| Ok(d.mean().map_or(f64::NAN, |v| v)))?;
+        let value = moments!(self, |d| Ok(d.mean().unwrap_or(f64::NAN)))?;
         if value.is_finite() {
             Ok(value)
         } else {
@@ -752,7 +752,7 @@ impl StatrsDistribution {
     /// Returns an error when the parameters are invalid or the variance is
     /// infinite.
     pub fn variance(&self) -> Result<f64, String> {
-        let value = moments!(self, |d| Ok(d.variance().map_or(f64::NAN, |v| v)))?;
+        let value = moments!(self, |d| Ok(d.variance().unwrap_or(f64::NAN)))?;
         if value.is_finite() {
             Ok(value)
         } else {
@@ -765,7 +765,7 @@ impl StatrsDistribution {
     /// # Errors
     /// Returns an error when the parameters are invalid.
     pub fn entropy(&self) -> Result<f64, String> {
-        let value = moments!(self, |d| Ok(d.entropy().map_or(f64::NAN, |v| v)))?;
+        let value = moments!(self, |d| Ok(d.entropy().unwrap_or(f64::NAN)))?;
         if value.is_finite() {
             Ok(value)
         } else {

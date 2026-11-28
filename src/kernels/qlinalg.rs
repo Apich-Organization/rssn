@@ -133,7 +133,7 @@ use crate::kernels::modular::Montgomery;
 /// the whole exponentiation is `mul_mont` and needs no conversion.
 #[inline]
 #[must_use]
-fn mont_inverse(
+const fn mont_inverse(
     mont: Montgomery,
     a_mont: u64,
 ) -> u64 {
@@ -143,7 +143,7 @@ fn mont_inverse(
 /// Deterministic Miller-Rabin primality test; see
 /// [`crate::kernels::number_theory::is_prime_miller_rabin`].
 #[must_use]
-fn is_prime_u64(n: u64) -> bool {
+const fn is_prime_u64(n: u64) -> bool {
     crate::kernels::number_theory::is_prime_miller_rabin(n)
 }
 
@@ -180,10 +180,10 @@ fn bigint_mod_u64(
         return r as u64;
     }
     let (sign, digits) = val.to_u64_digits();
-    let p128 = p as u128;
+    let p128 = u128::from(p);
     let mut rem = 0_u128;
     for &limb in digits.iter().rev() {
-        rem = ((rem << 64) | (limb as u128)) % p128;
+        rem = ((rem << 64) | u128::from(limb)) % p128;
     }
     let r = rem as u64;
     if sign == Sign::Minus && r != 0 {
@@ -475,7 +475,7 @@ fn garner_crt_signed(
     for i in 0..k {
         let pi = primes[i];
         let mut acc = residues[i];
-        let p128 = pi as u128;
+        let p128 = u128::from(pi);
         for j in 0..i {
             let pj_mod_pi = primes[j] % pi;
             let inv = mod_inv_u64(pj_mod_pi, pi).unwrap_or(1);
@@ -484,7 +484,7 @@ fn garner_crt_signed(
             } else {
                 acc + pi - (v[j] % pi)
             };
-            acc = (((diff as u128) * (inv as u128)) % p128) as u64;
+            acc = ((u128::from(diff) * u128::from(inv)) % p128) as u64;
         }
         v[i] = acc;
     }
@@ -654,7 +654,7 @@ pub fn rref(
                 if i == r || row[c].is_zero() {
                     return;
                 }
-                let f = std::mem::replace(&mut row[c], Q::zero());
+                let f = std::mem::take(&mut row[c]);
                 if f.is_one() {
                     for &(col_idx, ref y) in pivot_pairs {
                         row[col_idx] -= y;
@@ -852,7 +852,7 @@ pub fn solve_dixon(
 /// Multi-RHS Dixon $p$-adic lifting solver for $A X = B$ where $A \in \mathbb{Q}^{n \times n}$
 /// and $B \in \mathbb{Q}^{n \times r}$.
 ///
-/// Clears each row $[A_i \mid B_i]$ by its common denominator LCM to obtain an integer
+/// Clears each row $[`A_i` \mid `B_i`]$ by its common denominator LCM to obtain an integer
 /// system $\tilde{A} X = \tilde{B}$, inverts $\tilde{A} \bmod p$ once in $O(n^3)$
 /// 62-bit Montgomery arithmetic, lifts $p$-adic digits, reconstructs $X \in \mathbb{Q}^{n \times r}$,
 /// and certifies $\tilde{A} X = \tilde{B}$ exactly.
@@ -959,7 +959,7 @@ fn solve_dixon_dense_multi(
     let p_big = BigInt::from(p);
 
     // Hadamard bound on bits of Cramér determinants: 2 * n * (max_row_bits + log2(n)/2)
-    let log2_n = (usize::BITS - n.leading_zeros()) as usize;
+    let log2_n = n.bit_width() as usize;
     let cramer_bits = 2 * n * (max_row_bits + log2_n + 2) + 64;
     let max_steps = cramer_bits.div_ceil(61).max(2);
 
@@ -1033,14 +1033,14 @@ fn solve_dixon_dense_multi(
                 let mut sum = 0_u128;
                 for (&a_ij, &r_j) in inv_row.iter().zip(r_mod_p.iter()) {
                     if a_ij != 0 && r_j != 0 {
-                        sum += (a_ij as u128) * (r_j.cast_unsigned() as u128);
+                        sum += u128::from(a_ij) * u128::from(r_j.cast_unsigned());
                         // Prevent u128 overflow when n > 4
                         if sum >= (1_u128 << 124) {
-                            sum %= p as u128;
+                            sum %= u128::from(p);
                         }
                     }
                 }
-                d_k[i] = ((sum % (p as u128)) as u64).cast_signed();
+                d_k[i] = ((sum % u128::from(p)) as u64).cast_signed();
             }
             for (xi, &di_signed) in x_col.iter_mut().zip(d_k.iter()) {
                 let di = di_signed.cast_unsigned();
@@ -1056,7 +1056,7 @@ fn solve_dixon_dense_multi(
                     for &(j, a_ij) in row_sparse {
                         let dj = d_k[j];
                         if dj != 0 {
-                            acc_i128 += (a_ij as i128) * (dj as i128);
+                            acc_i128 += i128::from(a_ij) * i128::from(dj);
                             count += 1;
                             // 4 * 2^124 = 2^126 < i128::MAX
                             if count == 4 {
@@ -1441,13 +1441,7 @@ pub fn matmul(
 }
 
 /// Alias for [`matmul`]: the product of two exact rational matrices.
-#[must_use]
-pub fn mul(
-    a: &[Vec<Q>],
-    b: &[Vec<Q>],
-) -> QMat {
-    matmul(a, b)
-}
+pub use self::matmul as mul;
 
 /// The product of a matrix and a vector.
 #[must_use]
@@ -1511,10 +1505,7 @@ pub fn inverse(m: &[Vec<Q>]) -> Option<QMat> {
 }
 
 /// Alias for [`inverse`]: the inverse of a square matrix.
-#[must_use]
-pub fn inv(m: &[Vec<Q>]) -> Option<QMat> {
-    inverse(m)
-}
+pub use self::inverse as inv;
 
 // ---------------------------------------------------------------------------
 // Exact Determinants: Closed-form (n <= 4), Bareiss (n <= 14), Modular CRT (n > 14)
@@ -1619,15 +1610,15 @@ pub fn det_bareiss(m: &[Vec<BigInt>]) -> BigInt {
     if sign < 0 { -last } else { last }
 }
 
-/// Computes an upper bound on $\log_2(2 |\det A| + 2)$ using Hadamard's inequality:
-/// $|\det A| \le \prod_{i=1}^n \|A_{i,*}\|_2$.
+/// Computes an upper bound on `\log_2(2 |\det A| + 2)` using Hadamard's inequality:
+/// `|\det A| \le \prod_{i=1}^n \|A_{i,*}\|_2`.
 #[must_use]
 fn hadamard_bit_bound(m: &[Vec<BigInt>]) -> usize {
     let n = m.len();
     if n == 0 {
         return 1;
     }
-    let log2_n = (usize::BITS - n.leading_zeros()) as usize;
+    let log2_n = n.bit_width() as usize;
     let mut total_bits = 2_usize;
     for row in m {
         let mut max_bits = 0_usize;
@@ -1641,7 +1632,7 @@ fn hadamard_bit_bound(m: &[Vec<BigInt>]) -> usize {
         if nnz == 0 {
             return 0;
         }
-        let log2_nnz = (usize::BITS - nnz.leading_zeros()) as usize;
+        let log2_nnz = nnz.bit_width() as usize;
         // log2(||row||_2) <= max_bits + ceil(log2(nnz) / 2)
         total_bits = total_bits.saturating_add(max_bits + log2_nnz.div_ceil(2).min(log2_n));
     }
@@ -1729,17 +1720,12 @@ pub fn det(m: &[Vec<Q>]) -> Q {
     Q::new(int_det * scale_num, scale_den)
 }
 
-/// Determinant of a square matrix whose rows can be overwritten.
-pub(crate) fn det_in_place(a: &mut [Vec<Q>]) -> Q {
-    det(a)
-}
-
 // ---------------------------------------------------------------------------
 // Characteristic Polynomial (Faddeev-LeVerrier & Modular Hessenberg CRT)
 // ---------------------------------------------------------------------------
 
 /// Faddeev-LeVerrier over $\mathbb{Z}$ for `a_int`, returning `[a_0, ..., a_{n-1}]`
-/// where $\det(\mu I - A_{\text{int}}) = \mu^n + \sum_{k=0}^{n-1} a_k \mu^k$.
+/// where $\det(\mu I - A_{\text{int}}) = \mu^n + \sum_{k=0}^{n-1} `a_k` \mu^k$.
 #[must_use]
 fn charpoly_faddeev_int(a_int: &[Vec<BigInt>]) -> Vec<BigInt> {
     let n = a_int.len();
@@ -1784,12 +1770,12 @@ fn charpoly_faddeev_int(a_int: &[Vec<BigInt>]) -> Vec<BigInt> {
     a_coeffs
 }
 
-/// Computes an upper bound on $\log_2(2 |a_k| + 2)$ for every coefficient $a_k$ of
-/// $\det(\mu I - A_{\text{int}})$ using Hadamard bounds on principal minors.
+/// Computes an upper bound on `\log_2(2 |a_k| + 2)` for every coefficient `a_k` of
+/// `\det(\mu I - A_{\text{int}})` using Hadamard bounds on principal minors.
 #[must_use]
 fn charpoly_hadamard_bit_bound(a_int: &[Vec<BigInt>]) -> usize {
     let n = a_int.len();
-    let log2_n = (usize::BITS - n.leading_zeros()) as usize;
+    let log2_n = n.bit_width() as usize;
     let mut total_bits = n.saturating_add(6);
     for row in a_int {
         let mut max_bits = 0_usize;
@@ -1801,16 +1787,17 @@ fn charpoly_hadamard_bit_bound(a_int: &[Vec<BigInt>]) -> usize {
             }
         }
         if nnz > 0 {
-            let log2_nnz = (usize::BITS - nnz.leading_zeros()) as usize;
+            let log2_nnz = nnz.bit_width() as usize;
             total_bits = total_bits.saturating_add(max_bits + log2_nnz.div_ceil(2).min(log2_n));
         }
     }
     total_bits
 }
 
-/// Characteristic polynomial $\det(\lambda I - A)$ of a square matrix $A \in \mathbb{Q}^{n \times n}$,
-/// returned as coefficients $[c_0, c_1, \dots, c_n]$ from constant term $c_0$ to leading
-/// coefficient $c_n = 1$ ($\sum_{k=0}^n c_k \lambda^k$).
+/// Computes the characteristic polynomial of a square rational matrix.
+///
+/// Returns the coefficients of $\det(\lambda I - A)$ in ascending powers, from the constant term
+/// `c_0` to the leading coefficient `c_n = 1`.
 #[must_use]
 pub fn charpoly(m: &[Vec<Q>]) -> Option<Vec<Q>> {
     let n = m.len();
@@ -2098,14 +2085,12 @@ pub fn hermite_normal_form_with_transform(
     (h, u.unwrap_or_else(|| int_identity(rows)))
 }
 
+type IntegerMatrix = Vec<Vec<BigInt>>;
+
 fn smith_normal_form_impl(
     m: &[Vec<BigInt>],
     track_uv: bool,
-) -> (
-    Option<Vec<Vec<BigInt>>>,
-    Vec<Vec<BigInt>>,
-    Option<Vec<Vec<BigInt>>>,
-) {
+) -> (Option<IntegerMatrix>, IntegerMatrix, Option<IntegerMatrix>) {
     let rows = m.len();
     let cols = m.first().map_or(0, Vec::len);
     if m.iter().any(|r| r.len() != cols) {
@@ -2254,9 +2239,9 @@ fn smith_normal_form_impl(
     (u, d, v)
 }
 
-/// Computes the non-zero diagonal invariant factors $[d_1, d_2, \dots, d_r]$
+/// Computes the non-zero diagonal invariant factors $[`d_1`, `d_2`, \dots, `d_r`]$
 /// of the Smith Normal Form of an integer matrix over $\mathbb{Z}$, with
-/// $d_i > 0$ and $d_1 \mid d_2 \mid \dots \mid d_r$.
+/// $`d_i` > 0$ and $`d_1` \mid `d_2` \mid \dots \mid `d_r`$.
 #[must_use]
 pub fn smith_normal_form_diag(m: &[Vec<BigInt>]) -> Vec<BigInt> {
     let (_, d, _) = smith_normal_form_impl(m, false);
@@ -2269,10 +2254,15 @@ pub fn smith_normal_form_diag(m: &[Vec<BigInt>]) -> Vec<BigInt> {
         .collect()
 }
 
-/// Computes the Smith Normal Form $(U, D, V)$ of an integer matrix $A$ over $\mathbb{Z}$,
-/// satisfying $U A V = D$ with $U, V$ unimodular and non-negative diagonal invariant factors
-/// $d_1 \mid d_2 \mid \dots \mid d_r$ in $D$.
+/// Computes the Smith normal form $(U, D, V)$ of an integer matrix.
+///
+/// The factors satisfy $U A V = D$ with $U$ and $V$ unimodular. The nonnegative diagonal factors
+/// of `D` satisfy `d_1 \mid d_2 \mid \dots \mid d_r`.
 #[must_use]
+#[expect(
+    clippy::type_complexity,
+    reason = "The public signature exposes the three integer matrices to source-derived bindings"
+)]
 pub fn smith_normal_form(
     m: &[Vec<BigInt>]
 ) -> (Vec<Vec<BigInt>>, Vec<Vec<BigInt>>, Vec<Vec<BigInt>>) {
@@ -2300,7 +2290,7 @@ pub fn reduce_mod(
         if v[p].is_zero() {
             continue;
         }
-        let f = std::mem::replace(&mut v[p], Q::zero());
+        let f = std::mem::take(&mut v[p]);
         for (x, y) in v.iter_mut().zip(row).skip(p + 1) {
             if !y.is_zero() {
                 *x -= &f * y;
@@ -2548,9 +2538,9 @@ mod tests {
                             -1_i64
                         };
                         if i == j {
-                            q(big_base + (i as i64) * 97)
+                            q(big_base + i64::from(i) * 97)
                         } else {
-                            q(sign * (big_base / 17 + ((i * 13 + j * 7) as i64)))
+                            q(sign * (big_base / 17 + i64::from(i * 13 + j * 7)))
                         }
                     })
                     .collect()
@@ -2559,8 +2549,8 @@ mod tests {
         let x_expected: Vec<Q> = (0..n)
             .map(|i| {
                 Q::new(
-                    BigInt::from((i as i64) - 5),
-                    BigInt::from((i % 3 + 2) as i64),
+                    BigInt::from(i64::from(i) - 5),
+                    BigInt::from(i64::from(i % 3 + 2)),
                 )
             })
             .collect();

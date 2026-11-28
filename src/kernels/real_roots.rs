@@ -3,6 +3,9 @@
 //! [`find_roots`] uses a Cauchy bound for the complete search. Use
 //! [`find_roots_in`] when a finite interval is already known. Both use a
 //! floating Sturm chain for the interior of each interval.
+//!
+//! [`find_roots`]: crate::kernels::real_roots::find_roots
+//! [`find_roots_in`]: crate::kernels::real_roots::find_roots_in
 
 use crate::kernels::polynomial::Polynomial;
 use num_rational::BigRational;

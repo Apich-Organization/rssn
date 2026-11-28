@@ -813,7 +813,7 @@ impl JitFunction {
         let arg_slice = point.get_mut(..self.inputs).unwrap_or(&mut []);
         let mut value = [f64::NAN];
         for (row, slot) in out.iter_mut().enumerate() {
-            if row & 255 == 0 && crate::cancellation::is_cancelled() {
+            if row.is_multiple_of(256) && crate::cancellation::is_cancelled() {
                 return;
             }
             for (arg, column) in arg_slice.iter_mut().zip(columns) {
@@ -978,6 +978,8 @@ impl CompiledMulti for JitFunction {
         params: &[f64],
         out: &mut [&mut [f64]],
     ) {
+        use rayon::prelude::*;
+
         let rows = out.iter().map(|o| o.len()).min().unwrap_or(0);
         if rows == 0 || crate::cancellation::is_cancelled() {
             return;
@@ -1011,7 +1013,6 @@ impl CompiledMulti for JitFunction {
             }
             return;
         }
-        use rayon::prelude::*;
         let block_rows = super::BATCH_PAR_ROWS;
         let n_chunks = rows.div_ceil(block_rows);
         let mut chunk_cols: Vec<Vec<&mut [f64]>> = (0..n_chunks)
@@ -1075,7 +1076,7 @@ impl JitFunction {
         let arg_slice = point.get_mut(..self.inputs).unwrap_or(&mut []);
         let out_slice = values.get_mut(..self.outputs).unwrap_or(&mut []);
         for row in 0..rows {
-            if row & 255 == 0 && crate::cancellation::is_cancelled() {
+            if row.is_multiple_of(256) && crate::cancellation::is_cancelled() {
                 return;
             }
             let src_row = row_offset.saturating_add(row);
@@ -1227,6 +1228,7 @@ type CompilationCache = RwLock<crate::graph::id::FastMap<u64, Vec<(ProgramKey, C
 pub struct CraneliftBackend {
     cache: CompilationCache,
     key_extra: u64,
+    uncached: bool,
 }
 
 impl CraneliftBackend {
@@ -1236,6 +1238,15 @@ impl CraneliftBackend {
         Self::default()
     }
 
+    // The portable ABI accounts for every program in its owning session.
+    // Once that handle is released, a process default must not retain it.
+    pub(super) fn uncached() -> Self {
+        Self {
+            uncached: true,
+            ..Self::default()
+        }
+    }
+
     /// A backend whose cache keys are mixed with `key_extra`.
     ///
     /// Pass [`target_key`] combined with the manifest hash:
@@ -1243,8 +1254,8 @@ impl CraneliftBackend {
     #[must_use]
     pub fn with_key(key_extra: u64) -> Self {
         Self {
-            cache: RwLock::new(crate::graph::id::FastMap::default()),
             key_extra,
+            ..Self::default()
         }
     }
 
@@ -1297,6 +1308,9 @@ impl CraneliftBackend {
         &self,
         tape: &Tape,
     ) -> Result<Arc<JitFunction>, BackendError> {
+        if self.uncached {
+            return JitFunction::compile(tape).map(Arc::new);
+        }
         let bucket_key = self.cache_key(tape);
         let hit = if let Ok(cache) = self.cache.read() {
             let found = cache.get(&bucket_key).and_then(|entries| {
@@ -1396,6 +1410,14 @@ pub fn target_key() -> u64 {
 }
 
 impl Backend for CraneliftBackend {
+    fn uses_gpu(&self) -> bool {
+        false
+    }
+
+    fn native_program_budget(&self) -> Option<super::NativeProgramBudget> {
+        self.uncached.then_some(super::NATIVE_CODE_BUDGET)
+    }
+
     fn name(&self) -> &'static str {
         "cranelift"
     }
@@ -1422,9 +1444,10 @@ impl Backend for CraneliftBackend {
     }
 }
 
-/// Tiered execution: interpret the tape at first, compile to machine code
-/// on a shared pool of at most four background workers after `threshold`
-/// calls, then switch. A function stays interpreted if compilation fails.
+/// Starts with the interpreter and switches to compiled code.
+///
+/// Compilation begins after `threshold` calls on a shared pool of up to four background workers.
+/// A function stays interpreted if compilation fails.
 #[derive(Clone, Copy, Debug)]
 pub struct TieredBackend {
     /// Calls (or batch rows) before compilation starts.
@@ -1546,7 +1569,7 @@ impl Compiled for Tiered {
         let mut values = crate::kernels::reuse::f64_scratch(self.tape.insts.len());
         let mut value = [f64::NAN];
         for (row, slot) in out.iter_mut().enumerate() {
-            if row & 255 == 0 && crate::cancellation::is_cancelled() {
+            if row.is_multiple_of(256) && crate::cancellation::is_cancelled() {
                 return;
             }
             for (arg, column) in point.iter_mut().zip(columns) {
@@ -1559,6 +1582,30 @@ impl Compiled for Tiered {
 }
 
 impl Backend for TieredBackend {
+    fn uses_gpu(&self) -> bool {
+        false
+    }
+
+    fn native_program_budget(&self) -> Option<super::NativeProgramBudget> {
+        Some(super::NativeProgramBudget {
+            instructions: super::NATIVE_TAPE_BUDGET.instructions,
+            extra_bytes: super::NATIVE_CODE_BUDGET.extra_bytes,
+        })
+    }
+
+    fn compile_native(
+        &self,
+        graph: &Graph,
+        root: NodeId,
+        inputs: &[SymbolId],
+    ) -> Result<Box<dyn Compiled>, BackendError> {
+        let tape = super::tape::lower(graph, &[root], inputs, &[])?.optimise();
+        if tape.insts.len() > super::NATIVE_CODE_BUDGET.instructions {
+            return Ok(Box::new(super::TapeFunction::from_tape(tape)));
+        }
+        Ok(Box::new(Tiered::new(tape, self.threshold)))
+    }
+
     fn name(&self) -> &'static str {
         "tiered"
     }

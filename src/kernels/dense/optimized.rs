@@ -226,7 +226,7 @@ pub fn matmul(
         return Ok(out);
     }
     let parallelism = if !cfg!(miri) && output_len.saturating_mul(inner) >= super::DENSE_PAR_FLOPS {
-        match crate::execution::cpu_threads() {
+        match crate::execution::effective_threads() {
             | 1 => Par::Seq,
             | threads => Par::rayon(threads),
         }

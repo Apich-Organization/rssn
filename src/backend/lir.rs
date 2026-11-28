@@ -1289,7 +1289,7 @@ impl Interp<'_> {
         } else {
             scratch = INTERPRETER_REGISTERS.checkout_for(f.regs.len());
             scratch.extend(f.regs.iter().map(|&t| Slot::zero(t)));
-            &mut *scratch
+            &mut scratch
         };
         let mut block = 0_usize;
         let mut incoming: Vec<Slot> = args.to_vec();

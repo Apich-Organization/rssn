@@ -115,7 +115,7 @@ fn png_gif_wav_vtk_and_sim_vis_round_trip() {
         std::fs::create_dir_all(&vdir).unwrap();
         plot_scalar_field_png(&field, Colormap::Viridis, &vdir.join("rssn_field.png")).unwrap();
         write_scalar_field_gif(
-            &vdir.join("rssn_anim.gif"),
+            vdir.join("rssn_anim.gif"),
             &frames,
             &GifPlotOptions {
                 scale: 2,
@@ -123,9 +123,9 @@ fn png_gif_wav_vtk_and_sim_vis_round_trip() {
             },
         )
         .unwrap();
-        write_signal_wav(&vdir.join("rssn_tone.wav"), &signal, 16_000).unwrap();
+        write_signal_wav(vdir.join("rssn_tone.wav"), &signal, 16_000).unwrap();
         write_vtk(
-            &vdir.join("rssn_bin.vtk"),
+            vdir.join("rssn_bin.vtk"),
             &VtkFile {
                 title: "Verify Binary".to_owned(),
                 format: VtkFormat::Binary,

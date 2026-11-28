@@ -9,7 +9,7 @@
 //! 3. Each point is located in `O(1)` average steps by a visibility walk over
 //!    the tetrahedron-to-tetrahedron adjacency graph, and its Bowyer–Watson
 //!    cavity is discovered by local BFS using exact adaptive-precision
-//!    [`super::util::insphere_sos`] predicates with Simulation of Simplicity
+//!    `super::util::insphere_sos` predicates with Simulation of Simplicity
 //!    (SoS) tie-breaking for cospherical configurations.
 
 use std::collections::HashMap;
@@ -583,7 +583,7 @@ mod tests {
             }
         }
         let tets = expect_ok(delaunay_3d(&points));
-        assert!(!tets.is_empty());
+        assert_ne!(tets, [] as [[usize; 4]; 0]);
 
         for t in &tets {
             assert!(orient3d(points[t[0]], points[t[1]], points[t[2]], points[t[3]]) > 0.0);

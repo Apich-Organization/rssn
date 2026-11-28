@@ -920,7 +920,7 @@ mod pooled_rank_tests {
             .sum();
         let ranks = reference_ranks(&[&left, &right]);
         let n = ranks.len() as f64;
-        let mean_rank = (n + 1.0) * 0.5;
+        let mean_rank = f64::midpoint(n, 1.0);
         let centered_squares: f64 = ranks.iter().map(|rank| (rank - mean_rank).powi(2)).sum();
         let pairs = (left.len() * right.len()) as f64;
         let variance = pairs * centered_squares / (n * (n - 1.0));
@@ -974,7 +974,7 @@ mod pooled_rank_tests {
         ];
         let ranks = reference_ranks(&groups);
         let n = ranks.len() as f64;
-        let mean = (n + 1.0) * 0.5;
+        let mean = f64::midpoint(n, 1.0);
         let spread: f64 = ranks.iter().map(|rank| (rank - mean).powi(2)).sum();
         let mut start = 0usize;
         let mut between = 0.0;

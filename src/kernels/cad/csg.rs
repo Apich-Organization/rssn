@@ -452,6 +452,8 @@ fn polygons_to_mesh(polygons: &[Polygon]) -> Mesh {
 /// interior of any triangle edge and retriangulating affected triangles in a
 /// conforming manner that preserves outward winding.
 fn eliminate_t_junctions(mut mesh: Mesh) -> Mesh {
+    const MAX_PASSES: usize = 8;
+
     if mesh.triangles.is_empty() || mesh.vertices.len() < 4 {
         return mesh;
     }
@@ -482,7 +484,6 @@ fn eliminate_t_junctions(mut mesh: Mesh) -> Mesh {
         grid.entry(cell).or_default().push(idx);
     }
 
-    const MAX_PASSES: usize = 8;
     for _ in 0..MAX_PASSES {
         let mut edge_cache: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
         let mut new_triangles: Vec<[usize; 3]> = Vec::with_capacity(mesh.triangles.len());

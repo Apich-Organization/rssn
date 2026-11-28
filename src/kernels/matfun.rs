@@ -411,7 +411,7 @@ pub fn sqrtm(a: &Mat) -> Result<Mat, DenseError> {
 
 fn gauss_legendre_01(m: usize) -> (Vec<f64>, Vec<f64>) {
     let rule = super::reuse::global_pool().gauss_legendre_rule(m);
-    let x = rule.0.iter().map(|&t| 0.5 * (t + 1.0)).collect();
+    let x = rule.0.iter().map(|&t| f64::midpoint(t, 1.0)).collect();
     let w = rule.1.iter().map(|&wt| 0.5 * wt).collect();
     (x, w)
 }

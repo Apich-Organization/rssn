@@ -5,6 +5,12 @@
 //! mapping the linear predictor to the mean, and the fitting loop in
 //! [`fit`], which returns a [`GlmFit`]. [`predict`] applies a fitted model to
 //! new covariates.
+//!
+//! [`Family`]: crate::kernels::glm::Family
+//! [`Link`]: crate::kernels::glm::Link
+//! [`fit`]: fn@crate::kernels::glm::fit
+//! [`GlmFit`]: crate::kernels::glm::GlmFit
+//! [`predict`]: fn@crate::kernels::glm::predict
 
 pub mod family;
 pub mod fit;

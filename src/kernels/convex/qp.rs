@@ -100,7 +100,7 @@ pub fn solve_qp(
     let mut q_orig = vec![vec![0.0; n]; n];
     for i in 0..n {
         for j in 0..n {
-            q_orig[i][j] = 0.5 * (p.q[i][j] + p.q[j][i]);
+            q_orig[i][j] = f64::midpoint(p.q[i][j], p.q[j][i]);
         }
     }
 
@@ -576,11 +576,9 @@ fn validate(p: &QpProblem) -> Result<usize, String> {
     if p.lower.iter().any(|v| !v.is_finite()) {
         return Err("lower bounds must be finite".to_string());
     }
-    for u in &p.upper {
-        if let Some(v) = u {
-            if !v.is_finite() {
-                return Err("upper bounds must be finite when present".to_string());
-            }
+    for v in p.upper.iter().flatten() {
+        if !v.is_finite() {
+            return Err("upper bounds must be finite when present".to_string());
         }
     }
     for row in &p.a {

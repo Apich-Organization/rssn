@@ -32,7 +32,7 @@
 //!
 //! # Parallelism and determinism
 //!
-//! Every kernel keeps the arithmetic order of the sequential reference: only
+//! The parallel kernels keep the arithmetic order of the sequential reference: only
 //! the independent outer loop (a row, a column, a row block) is handed to
 //! `kernels::par`, and each entry is still accumulated over the same index in
 //! the same direction. A reduction never changes association, so the results
@@ -337,28 +337,10 @@ impl Mat {
         Ok(out)
     }
 
-    /// Frobenius norm.
+    /// Frobenius norm with a serial SIMD reduction and scaling at extreme magnitudes.
     #[must_use]
     pub fn norm_fro(&self) -> f64 {
-        let sum = self.data.iter().map(|v| v * v).sum::<f64>();
-        if sum.is_normal() || sum.is_nan() {
-            return sum.sqrt();
-        }
-        // The squares can overflow or underflow even when the norm fits in f64.
-        let scale = self
-            .data
-            .iter()
-            .fold(0.0_f64, |m, value| m.max(value.abs()));
-        if scale == 0.0 || !scale.is_finite() {
-            return scale;
-        }
-        scale
-            * self
-                .data
-                .iter()
-                .map(|v| (v / scale).powi(2))
-                .sum::<f64>()
-                .sqrt()
+        super::vector::norm_serial(&self.data)
     }
 }
 
@@ -646,21 +628,36 @@ pub fn cholesky_solve(
         return Err(DenseError::Shape);
     }
     let l = cholesky(a)?;
-    let n = a.rows;
-    let mut y = b.to_vec();
-    for i in 0..n {
+    let mut solution = b.to_vec();
+    solve_cholesky_factor_in_place(&l, &mut solution);
+    Ok(solution)
+}
+
+/// Solves `L x = rhs` with a Cholesky factor from a shape-checked system.
+pub(crate) fn solve_cholesky_lower_in_place(
+    l: &Mat,
+    rhs: &mut [f64],
+) {
+    for i in 0..l.rows {
         for k in 0..i {
-            y[i] -= l.at(i, k) * y[k];
+            rhs[i] -= l.at(i, k) * rhs[k];
         }
-        y[i] /= l.at(i, i);
+        rhs[i] /= l.at(i, i);
     }
-    for i in (0..n).rev() {
-        for k in i + 1..n {
-            y[i] -= l.at(k, i) * y[k];
+}
+
+/// Solves `L L^T x = rhs` in caller-owned storage using a retained factor.
+pub(crate) fn solve_cholesky_factor_in_place(
+    l: &Mat,
+    rhs: &mut [f64],
+) {
+    solve_cholesky_lower_in_place(l, rhs);
+    for i in (0..l.rows).rev() {
+        for k in i + 1..l.rows {
+            rhs[i] -= l.at(k, i) * rhs[k];
         }
-        y[i] /= l.at(i, i);
+        rhs[i] /= l.at(i, i);
     }
-    Ok(y)
 }
 
 /// Householder QR: returns `(Q, R)` with `Q` of size `m x m`, `R` of size `m x n`.
@@ -974,31 +971,28 @@ pub fn solve_spd_tridiagonal(
     if diag.iter().chain(off).chain(rhs).any(|v| !v.is_finite()) {
         return Err(DenseError::NonFinite);
     }
-    let mut d = super::reuse::f64_scratch(n);
-    d.clear();
-    d.extend_from_slice(diag);
-    let mut l = super::reuse::f64_scratch(expected_off);
-    l.clear();
-    l.extend_from_slice(off);
-    let mut x = rhs.to_vec();
-
-    for i in 1..n {
-        if d[i - 1] <= 0.0 {
-            return Err(DenseError::Singular);
-        }
-        let factor = l[i - 1] / d[i - 1];
-        d[i] -= factor * l[i - 1];
-        x[i] -= factor * x[i - 1];
-        l[i - 1] = factor;
-        if !d[i].is_finite() || !x[i].is_finite() || !factor.is_finite() {
-            return Err(DenseError::Singular);
-        }
-    }
-    if d[n - 1] <= 0.0 {
+    let mut pivot = diag[0];
+    let mut forward_rhs = rhs[0];
+    if pivot <= 0.0 {
         return Err(DenseError::Singular);
     }
-    for i in 0..n {
-        x[i] /= d[i];
+    let mut l = super::reuse::f64_scratch(expected_off);
+    l.clear();
+    let mut x = Vec::with_capacity(n);
+    x.push(forward_rhs / pivot);
+
+    // Only the latest diagonal and unscaled right-hand side feed the
+    // next row. Store the scaled solution and the lower factor for the
+    // backward pass without keeping a separate diagonal buffer.
+    for (i, &coefficient) in off.iter().enumerate() {
+        let factor = coefficient / pivot;
+        pivot = diag[i + 1] - factor * coefficient;
+        forward_rhs = rhs[i + 1] - factor * forward_rhs;
+        if pivot <= 0.0 || !pivot.is_finite() || !forward_rhs.is_finite() || !factor.is_finite() {
+            return Err(DenseError::Singular);
+        }
+        l.push(factor);
+        x.push(forward_rhs / pivot);
     }
     for i in (0..n - 1).rev() {
         x[i] -= l[i] * x[i + 1];
@@ -1586,9 +1580,7 @@ pub fn eigenvalues(a: &Mat) -> Result<Vec<(f64, f64)>, DenseError> {
         }
         if i != m {
             for j in m - 1..=n {
-                let t = h[i * ld + j];
-                h[i * ld + j] = h[m * ld + j];
-                h[m * ld + j] = t;
+                h.swap(i * ld + j, m * ld + j);
             }
             for j in 1..=n {
                 h.swap(j * ld + i, j * ld + m);
@@ -3218,7 +3210,7 @@ mod extra_tests {
         let sub = vec![-1.0, -1.0, -1.0, -1.0];
         let diag = vec![4.0, 4.0, 4.0, 4.0, 4.0];
         let sup = vec![-1.0, -1.0, -1.0, -1.0];
-        let x_true = vec![1.0, -2.0, 3.0, -4.0, 5.0];
+        let x_true = [1.0, -2.0, 3.0, -4.0, 5.0];
         let mut rhs = vec![0.0; 5];
         for i in 0..5 {
             rhs[i] = diag[i] * x_true[i];

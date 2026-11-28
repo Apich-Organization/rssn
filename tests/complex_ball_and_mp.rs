@@ -315,7 +315,9 @@ fn session_phase1_operators_and_diagnostics() {
         "cball_abs",
         "cball_arg",
     ] {
-        let out = session.call_value(op, &[b.clone()], &ctx).unwrap();
+        let out = session
+            .call_value(op, std::slice::from_ref(&b), &ctx)
+            .unwrap();
         assert!(matches!(out, Value::Tensor(_)), "{op} failed");
     }
     let powi_out = session
@@ -323,10 +325,10 @@ fn session_phase1_operators_and_diagnostics() {
         .unwrap();
     assert!(matches!(powi_out, Value::Tensor(_)));
     let rect = session
-        .call_value("cball_to_cinterval", &[b.clone()], &ctx)
+        .call_value("cball_to_cinterval", std::slice::from_ref(&b), &ctx)
         .unwrap();
     let back = session
-        .call_value("cinterval_to_cball", &[rect.clone()], &ctx)
+        .call_value("cinterval_to_cball", std::slice::from_ref(&rect), &ctx)
         .unwrap();
     assert!(matches!(back, Value::Tensor(_)));
     for op in [
@@ -338,8 +340,68 @@ fn session_phase1_operators_and_diagnostics() {
         "cinterval_acos",
         "cinterval_atan",
     ] {
-        let out = session.call_value(op, &[rect.clone()], &ctx).unwrap();
+        let out = session
+            .call_value(op, std::slice::from_ref(&rect), &ctx)
+            .unwrap();
         assert!(matches!(out, Value::Tensor(_)), "{op} failed");
+    }
+}
+
+#[test]
+fn rectangular_inverse_hyperbolic_adapters_enclose_values_and_report_domain_errors() {
+    let session = Session::new();
+    let ctx = CallCtx::new();
+
+    for (operator, input, on_cut, evaluate) in [
+        (
+            "cinterval_asinh",
+            [-0.4, -0.2, 0.1, 0.3],
+            [-0.05, 0.05, 1.2, 1.3],
+            Complex64::asinh as fn(Complex64) -> Complex64,
+        ),
+        (
+            "cinterval_acosh",
+            [1.5, 2.0, -0.1, 0.1],
+            [-0.5, -0.4, -0.01, 0.01],
+            Complex64::acosh,
+        ),
+        (
+            "cinterval_atanh",
+            [1.3, 1.31, -0.08, -0.07],
+            [1.5, 1.6, -0.01, 0.01],
+            Complex64::atanh,
+        ),
+    ] {
+        let [lo, hi, ilo, ihi] = input;
+        let result = session
+            .call_value(operator, &[float_vec(input.to_vec())], &ctx)
+            .unwrap();
+        let Value::Tensor(result) = result else {
+            panic!("expected rectangular bounds from {operator}");
+        };
+        assert_eq!(result.shape, [4]);
+        let bounds: Vec<_> = result
+            .data
+            .iter()
+            .map(|value| value.as_f64().expect("a real interval bound"))
+            .collect();
+        let [rlo, rhi, qlo, qhi] = bounds.as_slice() else {
+            unreachable!("the four bounds were checked above");
+        };
+        let output = Cball::rectangle((*rlo, *rhi), (*qlo, *qhi));
+        for sample in sample_rect(Cball::rectangle((lo, hi), (ilo, ihi))) {
+            let expected = evaluate(sample);
+            assert!(
+                output.re.contains(expected.re) && output.im.contains(expected.im),
+                "{operator} at {sample}: {expected} is outside {output:?}"
+            );
+        }
+        let error = session
+            .apply_diag(operator, &[float_vec(on_cut.to_vec())], &ctx)
+            .unwrap_err();
+        assert_eq!(error.kind, rssn::kernel::DiagKind::Domain);
+        assert_eq!(error.arg, Some(0));
+        assert!(error.message.contains("cannot enclose principal"));
     }
 }
 

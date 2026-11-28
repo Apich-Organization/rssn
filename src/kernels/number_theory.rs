@@ -4,7 +4,7 @@
 //! Montgomery modular arithmetic, deterministic primality testing (`u64` and
 //! `u128` Miller–Rabin and Baillie–PSW), factorisation (trial division plus
 //! Montgomery Pollard–Brent rho), Jacobi/Legendre symbols, arithmetic
-//! functions ($\phi$, $\lambda$, $\tau$, $\sigma_k$, divisors, primitive
+//! functions (`\phi`, `\lambda`, `\tau`, `\sigma_k`, divisors, primitive
 //! roots), square roots modulo a prime (Tonelli–Shanks) and discrete
 //! logarithms for prime or composite moduli.
 //!
@@ -54,9 +54,7 @@ pub const fn gcd(
     while b != 0 {
         b >>= b.trailing_zeros();
         if a > b {
-            let t = a;
-            a = b;
-            b = t;
+            std::mem::swap(&mut a, &mut b);
         }
         b -= a;
     }
@@ -91,9 +89,7 @@ pub const fn gcd_u128(
             return (gcd(a as u64, b as u64) as u128) << shift;
         }
         if a > b {
-            let t = a;
-            a = b;
-            b = t;
+            std::mem::swap(&mut a, &mut b);
         }
         b -= a;
     }
@@ -141,9 +137,7 @@ pub const fn mul_mod_u128(
         return prod % m;
     }
     if a < b {
-        let t = a;
-        a = b;
-        b = t;
+        std::mem::swap(&mut a, &mut b);
     }
     let mut res = 0_u128;
     while b != 0 {
@@ -381,9 +375,7 @@ pub const fn jacobi_symbol(
                 result = -result;
             }
         }
-        let t = a_u;
-        a_u = n_u;
-        n_u = t;
+        std::mem::swap(&mut a_u, &mut n_u);
         if (a_u & 3) == 3 && (n_u & 3) == 3 {
             result = -result;
         }
@@ -401,10 +393,21 @@ pub const fn legendre_symbol(
     a: u64,
     p: u64,
 ) -> i32 {
-    if p < 3 || !is_prime_miller_rabin(p) {
-        return 0;
+    match legendre_symbol_checked(a, p) {
+        | Some(symbol) => symbol,
+        | None => 0,
     }
-    jacobi_symbol(a as i128, p)
+}
+
+/// Distinguishes invalid denominators from a legitimate zero Legendre symbol.
+pub(crate) const fn legendre_symbol_checked(
+    a: u64,
+    p: u64,
+) -> Option<i32> {
+    if p < 3 || !is_prime_miller_rabin(p) {
+        return None;
+    }
+    Some(jacobi_symbol(a as i128, p))
 }
 
 /// Deterministic Baillie–PSW primality test over `u64` (strong base-2 Miller–Rabin
@@ -497,7 +500,7 @@ pub const fn is_prime_bpsw(n: u64) -> bool {
     let mut u_m = one_m;
     let mut v_m = one_m;
     let mut qk_m = q_m;
-    let top_bit = 63 - odd_lucas.leading_zeros();
+    let top_bit = odd_lucas.ilog2();
     let mut bit = top_bit;
     while bit > 0 {
         bit -= 1;
@@ -540,16 +543,19 @@ pub const fn is_prime_bpsw(n: u64) -> bool {
 /// test (Baillie–PSW) for values above `u64::MAX`.
 #[must_use]
 pub fn is_prime_u128(n: u128) -> bool {
+    const SMALL_PRIMES: [u128; 30] = [
+        3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89,
+        97, 101, 103, 107, 109, 113, 127,
+    ];
+
+    const MR_BASES: [u128; 13] = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41];
+
     if n <= u128::from(u64::MAX) {
         return is_prime_miller_rabin(n as u64);
     }
     if (n & 1) == 0 {
         return false;
     }
-    const SMALL_PRIMES: [u128; 30] = [
-        3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89,
-        97, 101, 103, 107, 109, 113, 127,
-    ];
     for p in SMALL_PRIMES {
         if n.is_multiple_of(p) {
             return false;
@@ -557,7 +563,6 @@ pub fn is_prime_u128(n: u128) -> bool {
     }
     let s = (n - 1).trailing_zeros();
     let d = (n - 1) >> s;
-    const MR_BASES: [u128; 13] = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41];
     for base in MR_BASES {
         let mut x = mod_pow_u128(base, d, n);
         if x != 1 && x != n - 1 {
@@ -587,7 +592,7 @@ const fn isqrt_u128(n: u128) -> u128 {
     let shift = (128 - n.leading_zeros()).div_ceil(2);
     let mut x = 1_u128 << shift;
     loop {
-        let next = (x + n / x) >> 1;
+        let next = u128::midpoint(x, n / x);
         if next >= x {
             return x;
         }
@@ -704,7 +709,7 @@ fn strong_lucas_u128(n: u128) -> bool {
     let mut u = 1_u128;
     let mut v = 1_u128;
     let mut qk = q_mod;
-    let top_bit = 127 - odd_lucas.leading_zeros();
+    let top_bit = odd_lucas.ilog2();
     for bit in (0..top_bit).rev() {
         u = mul_mod_u128(u, v, n);
         let v_sq = mul_mod_u128(v, v, n);
@@ -849,7 +854,7 @@ pub fn divisors(n: u64) -> Vec<u64> {
     divs
 }
 
-/// Returns the number of positive divisors $\tau(n) = \sigma_0(n)$ (`divisor_count(0) = 0`).
+/// Returns the number of positive divisors `\tau(n) = \sigma_0(n)` (`divisor_count(0) = 0`).
 #[must_use]
 pub fn divisor_count(n: u64) -> u64 {
     if n == 0 {
@@ -870,8 +875,8 @@ pub fn divisor_count(n: u64) -> u64 {
     total
 }
 
-/// Returns the sum of the $k$-th powers of the positive divisors of `n`,
-/// $\sigma_k(n) = \sum_{d \mid n} d^k$, saturating at `u128::MAX` (`divisor_sigma(0, _) = 0`).
+/// Returns the sum of the `k`-th powers of the positive divisors of `n`,
+/// `\sigma_k(n) = \sum_{d \mid n} d^k`, saturating at `u128::MAX` (`divisor_sigma(0, _) = 0`).
 #[must_use]
 pub fn divisor_sigma(
     n: u64,
@@ -905,6 +910,78 @@ pub fn divisor_sigma(
     total
 }
 
+/// Cached data shared by primitive-root queries and NTT plans of all lengths.
+#[derive(Clone, Copy)]
+pub(crate) struct OddPrimeGenerator {
+    pub(crate) mont: MontU64,
+    pub(crate) root: u64,
+}
+
+pub(crate) fn odd_prime_generator(modulus: u64) -> Option<OddPrimeGenerator> {
+    if modulus < 3 || modulus.is_multiple_of(2) {
+        return None;
+    }
+    let cache = super::reuse::global_pool()
+        .named_plan_cache::<u64, Option<OddPrimeGenerator>>("odd_prime_generator", 64);
+    // Compositeness is a stable result too. Sharing it avoids repeating
+    // primality checks when successive NTT lengths use the same modulus.
+    *cache.get_or_insert_with(modulus, || {
+        std::sync::Arc::new(build_prime_generator(modulus))
+    })
+}
+
+fn build_prime_generator(modulus: u64) -> Option<OddPrimeGenerator> {
+    if !is_prime_miller_rabin(modulus) {
+        return None;
+    }
+    let mont = MontU64::new_prime(modulus);
+    let exponents = primitive_root_exponents(modulus - 1, modulus, false);
+    let root = find_generator(2..modulus, &exponents, modulus, Some(mont))?;
+    Some(OddPrimeGenerator { mont, root })
+}
+
+// For p^k or 2*p^k the distinct primes dividing the group order
+// are those dividing p - 1, plus p when k > 1.
+fn primitive_root_exponents(
+    order: u64,
+    prime: u64,
+    higher_power: bool,
+) -> Vec<u64> {
+    let mut factors = factorize(prime - 1);
+    factors.dedup();
+    if higher_power {
+        factors.push(prime);
+    }
+    for factor in &mut factors {
+        *factor = order / *factor;
+    }
+    factors
+}
+
+fn find_generator(
+    mut candidates: impl Iterator<Item = u64>,
+    exponents: &[u64],
+    modulus: u64,
+    mont: Option<MontU64>,
+) -> Option<u64> {
+    if let Some(mont) = mont {
+        let one = mont.one_mont();
+        candidates.find(|&candidate| {
+            let base = mont.to_mont(candidate);
+            exponents
+                .iter()
+                .all(|&power| mont.pow_mont(base, power) != one)
+        })
+    } else {
+        let barrett = super::modular::Barrett::new(modulus)?;
+        candidates.find(|&candidate| {
+            exponents
+                .iter()
+                .all(|&power| barrett.pow(candidate, power) != 1)
+        })
+    }
+}
+
 /// Returns the smallest positive primitive root modulo `n` if the multiplicative
 /// group $(\mathbb{Z}/n\mathbb{Z})^\times$ is cyclic ($n \in \{2, 4, p^k, 2p^k\}$
 /// for an odd prime $p$), or `None` otherwise.
@@ -919,45 +996,23 @@ pub fn primitive_root(n: u64) -> Option<u64> {
     if n == 4 {
         return Some(3);
     }
-    let odd_part = if (n & 1) == 0 { n >> 1 } else { n };
-    if (odd_part & 1) == 0 {
+    if let Some(group) = odd_prime_generator(n) {
+        return Some(group.root);
+    }
+    let even = n.is_multiple_of(2);
+    let odd_part = if even { n >> 1 } else { n };
+    if odd_part.is_multiple_of(2) {
         return None;
     }
     let factors = factorize(odd_part);
-    let p = *factors.first()?;
-    if factors.last() != Some(&p) {
+    let &prime = factors.first()?;
+    if factors.last() != Some(&prime) {
         return None;
     }
-    let k = factors.len();
-    let phi_n = (odd_part / p) * (p - 1);
-    let mut prime_divs = factorize(p - 1);
-    if k > 1 {
-        prime_divs.push(p);
-    }
-    prime_divs.sort_unstable();
-    prime_divs.dedup();
-
-    let mont = MontU64::new(n);
-    for g in 2..n {
-        if g.is_multiple_of(p) || ((n & 1) == 0 && (g & 1) == 0) {
-            continue;
-        }
-        let is_generator = if let Some(m) = mont {
-            let g_m = m.to_mont(g);
-            let one_m = m.one();
-            prime_divs
-                .iter()
-                .all(|&q| m.pow_mont(g_m, phi_n / q) != one_m)
-        } else {
-            prime_divs
-                .iter()
-                .all(|&q| mod_pow(u128::from(g), phi_n / q, n) != 1)
-        };
-        if is_generator {
-            return Some(g);
-        }
-    }
-    None
+    let order = (odd_part / prime) * (prime - 1);
+    let exponents = primitive_root_exponents(order, prime, factors.len() > 1);
+    let units = (2..n).filter(|&g| !(g.is_multiple_of(prime) || even && g.is_multiple_of(2)));
+    find_generator(units, &exponents, n, MontU64::new(n))
 }
 
 /// Pollard–Brent rho: a non-trivial factor of the odd composite `n` using
@@ -1083,7 +1138,7 @@ pub const fn isqrt(n: u64) -> u64 {
     let shift = (64 - n.leading_zeros()).div_ceil(2);
     let mut r = 1_u64 << shift;
     loop {
-        let next = (r + n / r) >> 1;
+        let next = u64::midpoint(r, n / r);
         if next >= r {
             return r;
         }
@@ -1102,6 +1157,13 @@ pub const fn isqrt(n: u64) -> u64 {
 /// (`limit` near `usize::MAX`) instead of aborting.
 #[must_use]
 pub fn primes_sieve(limit: usize) -> Vec<usize> {
+    // 32 KiB L1-resident odd-only bit-packed segment (covers 524,288 integers per segment).
+    const SEGMENT_BYTES: usize = 32 * 1024;
+
+    const SEGMENT_BITS: usize = SEGMENT_BYTES * 8;
+
+    const SEGMENT_SPAN: usize = SEGMENT_BITS * 2;
+
     if limit < 2 {
         return Vec::new();
     }
@@ -1127,10 +1189,6 @@ pub fn primes_sieve(limit: usize) -> Vec<usize> {
     let root = isqrt(limit as u64) as usize;
     let base_primes = crate::kernels::reuse::global_pool().prime_sieve_cache(root);
 
-    // 32 KiB L1-resident odd-only bit-packed segment (covers 524,288 integers per segment).
-    const SEGMENT_BYTES: usize = 32 * 1024;
-    const SEGMENT_BITS: usize = SEGMENT_BYTES * 8;
-    const SEGMENT_SPAN: usize = SEGMENT_BITS * 2;
 
     let max_odd = limit - ((limit & 1) ^ 1);
     if max_odd < 3 {
@@ -1738,8 +1796,8 @@ mod tests {
 
     #[test]
     fn primes_sieve_uses_cache_and_segmented_sieve_above_one_million() {
-        assert!(primes_sieve(0).is_empty());
-        assert!(primes_sieve(1).is_empty());
+        assert_eq!(primes_sieve(0), [] as [usize; 0]);
+        assert_eq!(primes_sieve(1), [] as [usize; 0]);
         assert_eq!(primes_sieve(2), vec![2]);
         let small = primes_sieve(100);
         assert_eq!(small.len(), 25);

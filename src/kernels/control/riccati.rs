@@ -24,7 +24,7 @@ fn symmetrise(m: &mut [Vec<f64>]) {
     let n = m.len();
     for i in 0..n {
         for j in i + 1..n {
-            let avg = 0.5 * (m[i][j] + m[j][i]);
+            let avg = f64::midpoint(m[i][j], m[j][i]);
             m[i][j] = avg;
             m[j][i] = avg;
         }
@@ -494,7 +494,7 @@ mod tests {
         let q = vec![vec![1.0]];
         let r = vec![vec![1.0]];
         let p = dare(&a, &b, &q, &r).unwrap();
-        let golden = 0.5 * (1.0 + 5.0_f64.sqrt());
+        let golden = f64::midpoint(1.0, 5.0_f64.sqrt());
         assert!((p[0][0] - golden).abs() < 1e-9);
     }
 

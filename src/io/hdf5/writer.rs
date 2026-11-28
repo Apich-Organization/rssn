@@ -449,7 +449,7 @@ fn prepare_dataset_payload(
     };
 
     let rank = dataset.shape.len();
-    if rank == 0 || chunk_dims.len() != rank || chunk_dims.iter().any(|&d| d == 0) {
+    if rank == 0 || chunk_dims.len() != rank || chunk_dims.contains(&0) {
         return Err(format!(
             "dataset {} has invalid chunk_dims {:?} for shape {:?}",
             dataset.path, chunk_dims, dataset.shape
@@ -661,33 +661,6 @@ fn write_v0_extended_hdf5(
     attributes: &[(String, Vec<Attribute>)],
     options: &H5WriteOptions,
 ) -> Result<Vec<u8>, String> {
-    let mut prepared = Vec::with_capacity(datasets.len());
-    let mut vlen_raws = Vec::with_capacity(datasets.len());
-    for ds in datasets {
-        let (p, v) = prepare_dataset_payload(ds, dataset_opts_for(options, &ds.path), 0)?;
-        prepared.push(p);
-        vlen_raws.push(v);
-    }
-
-    // Build group tree
-    let mut groups: Vec<ExtGroupPlan> = vec![ExtGroupPlan {
-        path: "/".to_owned(),
-        children: Vec::new(),
-        entries: Vec::new(),
-        heap: Vec::new(),
-        nodes: Vec::new(),
-        root_index: 0,
-        snod_count: 1,
-        header_len: 0,
-        header_addr: 0,
-        heap_addr: 0,
-        btree_addr: 0,
-        snod_addr: 0,
-    }];
-    let mut group_index: BTreeMap<String, usize> = BTreeMap::new();
-    group_index.insert("/".to_owned(), 0);
-    let mut dataset_paths = Vec::with_capacity(datasets.len());
-
     fn ensure_v0_parent(
         groups: &mut Vec<ExtGroupPlan>,
         group_index: &mut BTreeMap<String, usize>,
@@ -726,6 +699,47 @@ fn write_v0_extended_hdf5(
         let full = format!("{cur}/{}", segments[segments.len() - 1]);
         Ok((parent, full))
     }
+
+    enum DsLayoutAddr {
+        Contiguous {
+            header_addr: u64,
+            data_addr: u64,
+            gcol_addr: Option<u64>,
+        },
+        Chunked {
+            header_addr: u64,
+            btree_addr: u64,
+            chunk_addrs: Vec<u64>,
+        },
+    }
+
+    let mut prepared = Vec::with_capacity(datasets.len());
+    let mut vlen_raws = Vec::with_capacity(datasets.len());
+    for ds in datasets {
+        let (p, v) = prepare_dataset_payload(ds, dataset_opts_for(options, &ds.path), 0)?;
+        prepared.push(p);
+        vlen_raws.push(v);
+    }
+
+    // Build group tree
+    let mut groups: Vec<ExtGroupPlan> = vec![ExtGroupPlan {
+        path: "/".to_owned(),
+        children: Vec::new(),
+        entries: Vec::new(),
+        heap: Vec::new(),
+        nodes: Vec::new(),
+        root_index: 0,
+        snod_count: 1,
+        header_len: 0,
+        header_addr: 0,
+        heap_addr: 0,
+        btree_addr: 0,
+        snod_addr: 0,
+    }];
+    let mut group_index: BTreeMap<String, usize> = BTreeMap::new();
+    group_index.insert("/".to_owned(), 0);
+    let mut dataset_paths = Vec::with_capacity(datasets.len());
+
 
     for (pos, ds) in datasets.iter().enumerate() {
         let (parent, full) = ensure_v0_parent(&mut groups, &mut group_index, &ds.path)?;
@@ -878,18 +892,6 @@ fn write_v0_extended_hdf5(
         pos += (g.snod_count * SNOD_SIZE) as u64;
     }
 
-    enum DsLayoutAddr {
-        Contiguous {
-            header_addr: u64,
-            data_addr: u64,
-            gcol_addr: Option<u64>,
-        },
-        Chunked {
-            header_addr: u64,
-            btree_addr: u64,
-            chunk_addrs: Vec<u64>,
-        },
-    }
 
     let mut ds_addrs = Vec::with_capacity(datasets.len());
     for (i, payload) in prepared.iter_mut().enumerate() {
@@ -958,7 +960,7 @@ fn write_v0_extended_hdf5(
                     | ExtChild::Group(t) => Some(groups[*t].header_addr),
                     | ExtChild::Dataset(t) => {
                         Some(match &ds_addrs[*t] {
-                            | DsLayoutAddr::Contiguous { header_addr, .. } => *header_addr,
+                            | DsLayoutAddr::Contiguous { header_addr, .. }
                             | DsLayoutAddr::Chunked { header_addr, .. } => *header_addr,
                         })
                     },
@@ -1321,14 +1323,6 @@ fn write_dense_hdf5(
     attributes: &[(String, Vec<Attribute>)],
     options: &H5WriteOptions,
 ) -> Result<Vec<u8>, String> {
-    let mut prepared = Vec::with_capacity(datasets.len());
-    let mut vlen_raws = Vec::with_capacity(datasets.len());
-    for ds in datasets {
-        let (p, v) = prepare_dataset_payload(ds, dataset_opts_for(options, &ds.path), 0)?;
-        prepared.push(p);
-        vlen_raws.push(v);
-    }
-
     struct DenseGroup {
         path: String,
         children: Vec<ExtChild>,
@@ -1343,24 +1337,6 @@ fn write_dense_hdf5(
         btlf: Vec<u8>,
         header_len: usize,
     }
-
-    let mut groups: Vec<DenseGroup> = vec![DenseGroup {
-        path: "/".to_owned(),
-        children: Vec::new(),
-        header_addr: 0,
-        frhp_addr: 0,
-        fhdb_addr: 0,
-        bthd_addr: 0,
-        btlf_addr: 0,
-        frhp: Vec::new(),
-        fhdb: Vec::new(),
-        bthd: Vec::new(),
-        btlf: Vec::new(),
-        header_len: 0,
-    }];
-    let mut group_index: BTreeMap<String, usize> = BTreeMap::new();
-    group_index.insert("/".to_owned(), 0);
-    let mut dataset_paths = Vec::with_capacity(datasets.len());
 
     fn ensure_dense_parent(
         groups: &mut Vec<DenseGroup>,
@@ -1400,6 +1376,47 @@ fn write_dense_hdf5(
         let full = format!("{cur}/{}", segments[segments.len() - 1]);
         Ok((parent, full))
     }
+
+    enum DsAddr {
+        Contiguous {
+            header_addr: u64,
+            data_addr: u64,
+            gcol_addr: Option<u64>,
+        },
+        Chunked {
+            header_addr: u64,
+            btree_addr: u64,
+            chunk_addrs: Vec<u64>,
+        },
+    }
+
+    let mut prepared = Vec::with_capacity(datasets.len());
+    let mut vlen_raws = Vec::with_capacity(datasets.len());
+    for ds in datasets {
+        let (p, v) = prepare_dataset_payload(ds, dataset_opts_for(options, &ds.path), 0)?;
+        prepared.push(p);
+        vlen_raws.push(v);
+    }
+
+
+    let mut groups: Vec<DenseGroup> = vec![DenseGroup {
+        path: "/".to_owned(),
+        children: Vec::new(),
+        header_addr: 0,
+        frhp_addr: 0,
+        fhdb_addr: 0,
+        bthd_addr: 0,
+        btlf_addr: 0,
+        frhp: Vec::new(),
+        fhdb: Vec::new(),
+        bthd: Vec::new(),
+        btlf: Vec::new(),
+        header_len: 0,
+    }];
+    let mut group_index: BTreeMap<String, usize> = BTreeMap::new();
+    group_index.insert("/".to_owned(), 0);
+    let mut dataset_paths = Vec::with_capacity(datasets.len());
+
 
     for (pos, ds) in datasets.iter().enumerate() {
         let (parent, full) = ensure_dense_parent(&mut groups, &mut group_index, &ds.path)?;
@@ -1538,18 +1555,6 @@ fn write_dense_hdf5(
         groups[idx].btlf_addr = btlf_addr;
     }
 
-    enum DsAddr {
-        Contiguous {
-            header_addr: u64,
-            data_addr: u64,
-            gcol_addr: Option<u64>,
-        },
-        Chunked {
-            header_addr: u64,
-            btree_addr: u64,
-            chunk_addrs: Vec<u64>,
-        },
-    }
     let mut ds_addrs = Vec::with_capacity(datasets.len());
     for (i, payload) in prepared.iter_mut().enumerate() {
         pos = align8(pos);
@@ -1620,7 +1625,7 @@ fn write_dense_hdf5(
                     | ExtChild::Dataset(di) => {
                         let name = dataset_paths[*di].rsplit('/').next().unwrap_or("");
                         let addr = match &ds_addrs[*di] {
-                            | DsAddr::Contiguous { header_addr, .. } => *header_addr,
+                            | DsAddr::Contiguous { header_addr, .. }
                             | DsAddr::Chunked { header_addr, .. } => *header_addr,
                         };
                         link_message_hard(name, addr)

@@ -183,9 +183,7 @@ fn pressure_rebuild_refreshes_changed_links_and_failed_builds_keep_density() {
 
     // Restoring the coefficients must discard the temporary cellwise gauges.
     solver.set_density(&original).unwrap();
-    for u in &mut solver.u[0] {
-        *u = 0.04;
-    }
+    solver.u[0].fill(0.04);
     solver.step().unwrap();
     assert_projected(&solver);
     assert_eq!(solver.p[4], 0.0);

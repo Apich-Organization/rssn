@@ -15,7 +15,7 @@ fn partial_rhs(
 ) {
     for (row, (value, state)) in output.iter_mut().zip(input).enumerate() {
         if row % 7 != 4 {
-            *value = state.mul_add(*state, time) + *value;
+            *value += state.mul_add(*state, time);
         }
     }
 }

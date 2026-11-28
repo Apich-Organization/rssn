@@ -58,7 +58,7 @@ pub struct WavData {
 impl WavData {
     /// Creates a [`WavData`] without extensible channel mask or metadata.
     #[must_use]
-    pub fn new(
+    pub const fn new(
         spec: WavSpec,
         samples: Vec<f64>,
     ) -> Self {
@@ -80,15 +80,18 @@ pub fn encode_wav(wav: &WavData) -> Result<Vec<u8>, String> {
     if wav.spec.channels == 0 || wav.spec.sample_rate == 0 {
         return Err("WAV channels and sample_rate must be positive".to_owned());
     }
-    if wav.samples.len() % usize::from(wav.spec.channels) != 0 {
+    if !wav
+        .samples
+        .len()
+        .is_multiple_of(usize::from(wav.spec.channels))
+    {
         return Err("WAV sample count must be a multiple of channels".to_owned());
     }
     let bps: usize = match (wav.spec.bits_per_sample, wav.spec.is_float) {
         | (8, false) => 1,
         | (16, false) => 2,
         | (24, false) => 3,
-        | (32, false) => 4,
-        | (32, true) => 4,
+        | (32, _) => 4,
         | (64, true) => 8,
         | _ => {
             return Err(format!(
@@ -230,7 +233,7 @@ pub fn encode_wav(wav: &WavData) -> Result<Vec<u8>, String> {
         },
         | _ => unreachable!(),
     }
-    if data_bytes % 2 != 0 {
+    if !data_bytes.is_multiple_of(2) {
         body.push(0);
     }
 
@@ -373,12 +376,16 @@ pub fn decode_wav(bytes: &[u8]) -> Result<WavData, String> {
                 .collect()
         },
         | (16, false) => {
-            data.chunks_exact(2)
-                .map(|c| f64::from(i16::from_le_bytes([c[0], c[1]])) / 32768.0)
+            data.as_chunks::<2>()
+                .0
+                .iter()
+                .map(|c| f64::from(i16::from_le_bytes(*c)) / 32768.0)
                 .collect()
         },
         | (24, false) => {
-            data.chunks_exact(3)
+            data.as_chunks::<3>()
+                .0
+                .iter()
                 .map(|c| {
                     let sign = if (c[2] & 0x80) != 0 {
                         0xFF
@@ -391,18 +398,24 @@ pub fn decode_wav(bytes: &[u8]) -> Result<WavData, String> {
                 .collect()
         },
         | (32, false) => {
-            data.chunks_exact(4)
-                .map(|c| f64::from(i32::from_le_bytes([c[0], c[1], c[2], c[3]])) / 2_147_483_648.0)
+            data.as_chunks::<4>()
+                .0
+                .iter()
+                .map(|c| f64::from(i32::from_le_bytes(*c)) / 2_147_483_648.0)
                 .collect()
         },
         | (32, true) => {
-            data.chunks_exact(4)
-                .map(|c| f64::from(f32::from_le_bytes([c[0], c[1], c[2], c[3]])))
+            data.as_chunks::<4>()
+                .0
+                .iter()
+                .map(|c| f64::from(f32::from_le_bytes(*c)))
                 .collect()
         },
         | (64, true) => {
-            data.chunks_exact(8)
-                .map(|c| f64::from_le_bytes(c.try_into().unwrap()))
+            data.as_chunks::<8>()
+                .0
+                .iter()
+                .map(|c| f64::from_le_bytes(*c))
                 .collect()
         },
         | _ => {

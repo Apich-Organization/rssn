@@ -261,43 +261,70 @@ fn richardson_correction_rounds_to_zero(
 ///
 /// Returns the accelerated estimates: the first entry is the last element of
 /// the sequence itself, and each further entry is the last element of the
-/// next even epsilon column, so later entries are higher-order estimates of
-/// the limit. Estimates that are not finite are dropped, and the process
-/// stops when two consecutive values coincide (exact convergence).
+/// next even epsilon column. Non-finite estimates are dropped. A repeated
+/// even-column value supplies a final estimate, and a repeated auxiliary
+/// value ends the recurrence without adding an estimate.
 #[must_use]
 pub fn wynn_epsilon(sequence: &[f64]) -> Vec<f64> {
-    let Some(&first) = sequence.last() else {
+    let Some(&last) = sequence.last() else {
         return Vec::new();
     };
-    let mut estimates = vec![first];
-    let mut previous = vec![0.0_f64; sequence.len() + 1];
-    let mut current: Vec<f64> = sequence.to_vec();
-    // `even` tells whether `current` is an even epsilon column, which holds
-    // estimates of the limit; odd columns are auxiliary.
+    let mut estimates = vec![last];
+    if sequence.len() < 2 {
+        return estimates;
+    }
+    let mut work = super::reuse::f64_scratch(sequence.len().saturating_mul(2));
+    work.resize(sequence.len(), 0.0);
+    work.extend_from_slice(sequence);
+    let (previous, current) = work.split_at_mut(sequence.len());
+    wynn_epsilon_columns(
+        previous,
+        current,
+        |delta| (delta != 0.0).then(|| 1.0 / delta),
+        |value| {
+            if value.is_finite() {
+                estimates.push(value);
+            }
+        },
+    );
+    estimates
+}
+
+/// Visits the last estimate in each even column of Wynn's epsilon table.
+/// `previous` starts as the zero auxiliary column and `current` as the input.
+pub(super) fn wynn_epsilon_columns<'a, T>(
+    mut previous: &'a mut [T],
+    mut current: &'a mut [T],
+    reciprocal: impl Fn(T) -> Option<T>,
+    mut estimate: impl FnMut(T),
+) where
+    T: Copy + std::ops::Add<Output = T> + std::ops::Sub<Output = T>,
+{
     let mut even = true;
     while current.len() > 1 {
-        let mut next = Vec::with_capacity(current.len() - 1);
-        for i in 0..current.len() - 1 {
-            let delta = current[i + 1] - current[i];
-            if delta == 0.0 {
+        let mut slots = previous.iter_mut();
+        let Some(mut slot) = slots.next() else {
+            return;
+        };
+        // The next column only reads the previous column from one position
+        // to the right, so writing from the left reuses its storage safely.
+        for (&[left, right], before) in current.array_windows::<2>().zip(slots) {
+            let Some(inverse) = reciprocal(right - left) else {
                 if even {
-                    estimates.push(current[i + 1]);
+                    estimate(right);
                 }
-                return estimates;
-            }
-            next.push(previous[i + 1] + 1.0 / delta);
+                return;
+            };
+            *slot = *before + inverse;
+            slot = before;
         }
-        previous = current;
-        current = next;
+        previous = previous.split_at_mut(current.len().saturating_sub(1)).0;
+        std::mem::swap(&mut previous, &mut current);
         even = !even;
-        if even
-            && let Some(&last) = current.last()
-            && last.is_finite()
-        {
-            estimates.push(last);
+        if even && let Some(&last) = current.last() {
+            estimate(last);
         }
     }
-    estimates
 }
 
 /// Remainder estimates `omega_n` of the Levin-type transformations.
@@ -969,10 +996,13 @@ mod tests {
         assert_eq!(profile.first().copied(), Some(1.0));
         assert_eq!(profile.get(1).copied(), Some(f64::INFINITY));
         assert!(profile.last().is_some_and(|v| v.is_finite()));
-        assert!(levin_condition_numbers(&singular, V, 1.0).is_empty());
+        assert_eq!(levin_condition_numbers(&singular, V, 1.0), [] as [f64; 0]);
         assert!(levin_condition_number(&singular, V, 1.0).is_infinite());
         assert!(levin_condition_number(&singular, T, 0.0).is_infinite());
-        assert!(levin_condition_numbers(&singular, T, f64::NAN).is_empty());
+        assert_eq!(
+            levin_condition_numbers(&singular, T, f64::NAN),
+            [] as [f64; 0]
+        );
 
         let incomplete = [1.0, 0.0, 0.5];
         assert_eq!(levin_condition_numbers(&incomplete, T, 1.0), [1.0]);

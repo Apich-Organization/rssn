@@ -31,7 +31,7 @@ fn compute(
 ) -> Svd {
     randomized_svd(
         &|x, y| {
-            for (out, row) in y.iter_mut().zip(matrix.data.chunks_exact(COLS)) {
+            for (out, row) in y.iter_mut().zip(matrix.data.as_chunks::<COLS>().0) {
                 *out = scale * row.iter().zip(x).map(|(a, x)| a * x).sum::<f64>();
             }
         },

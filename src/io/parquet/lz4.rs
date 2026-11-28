@@ -61,7 +61,7 @@ fn write_sequence(
 }
 
 /// Compresses `input` into one LZ4 block.
-pub(crate) fn compress(input: &[u8]) -> Vec<u8> {
+pub fn compress(input: &[u8]) -> Vec<u8> {
     let len = input.len();
     let mut out = Vec::with_capacity(len / 2 + 16);
     if len == 0 {
@@ -70,7 +70,7 @@ pub(crate) fn compress(input: &[u8]) -> Vec<u8> {
     // Short inputs are emitted as a single literal run: a match would violate
     // the trailing-literal rules.
     if len < MATCH_SAFETY {
-        let token = ((len.min(15) as u8) << 4) | 0;
+        let token = (len.min(15) as u8) << 4;
         out.push(token);
         if len >= 15 {
             write_length(&mut out, len - 15);
@@ -114,7 +114,7 @@ pub(crate) fn compress(input: &[u8]) -> Vec<u8> {
 
     // Trailing literals (always at least `LAST_LITERALS` bytes).
     let tail = &input[anchor..];
-    let token = ((tail.len().min(15) as u8) << 4) | 0;
+    let token = (tail.len().min(15) as u8) << 4;
     out.push(token);
     if tail.len() >= 15 {
         write_length(&mut out, tail.len() - 15);
@@ -182,7 +182,7 @@ pub(super) fn decompress_hadoop(
 }
 
 /// Decompresses one LZ4 block into exactly `expected` bytes.
-pub(crate) fn decompress(
+pub fn decompress(
     input: &[u8],
     expected: usize,
 ) -> Result<Vec<u8>, String> {
@@ -291,7 +291,7 @@ mod tests {
         let data = vec![7u8; 100];
         let packed = compress(&data);
         assert!(decompress(&packed, 50).is_err());
-        let mut bad = packed.clone();
+        let mut bad = packed;
         bad.truncate(bad.len() / 2);
         assert!(decompress(&bad, data.len()).is_err());
     }

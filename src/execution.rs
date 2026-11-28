@@ -15,6 +15,10 @@ thread_local! {
 }
 
 /// Runtime-detected CPU SIMD instruction-set capabilities.
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "Host diagnostics report each independent SIMD capability"
+)]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct SimdSupport {
     /// x86/`x86_64` AVX-512 Foundation (`avx512f`).

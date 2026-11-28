@@ -101,26 +101,37 @@ impl Real {
         prec: u32,
         mode: Round,
     ) -> Result<Self, String> {
+        Self::rounded_with_inexact(mant, exp, prec, mode).map(|(value, _)| value)
+    }
+
+    fn rounded_with_inexact(
+        mant: BigInt,
+        exp: i64,
+        prec: u32,
+        mode: Round,
+    ) -> Result<(Self, bool), String> {
         let prec = prec.clamp(1, MAX_BITS);
         if mant.is_zero() {
-            return Ok(Self { mant, exp: 0, prec });
+            return Ok((Self { mant, exp: 0, prec }, false));
         }
         let negative = mant.sign() == Sign::Minus;
         let mut magnitude = mant.magnitude().clone();
         let mut exponent = exp;
         let bits = magnitude.bits();
         let width = u64::from(prec);
+        let mut inexact = false;
         if bits > width {
             let shift = bits - width;
             let kept = &magnitude >> shift;
             let rest = &magnitude - (&kept << shift);
+            inexact = !rest.is_zero();
             let half = BigUint::from(1_u32) << usize::try_from(shift - 1).unwrap_or(0);
             let up = match mode {
                 | Round::NearestEven => rest > half || (rest == half && kept.bit(0)),
                 | Round::TowardZero => false,
-                | Round::AwayFromZero => !rest.is_zero(),
-                | Round::TowardPositive => !negative && !rest.is_zero(),
-                | Round::TowardNegative => negative && !rest.is_zero(),
+                | Round::AwayFromZero => inexact,
+                | Round::TowardPositive => !negative && inexact,
+                | Round::TowardNegative => negative && inexact,
             };
             magnitude = if up {
                 kept + BigUint::from(1_u32)
@@ -146,7 +157,7 @@ impl Real {
         if exponent.unsigned_abs() > MAX_EXP.unsigned_abs() {
             return Err("exponent out of range".to_string());
         }
-        Ok(Self {
+        let value = Self {
             mant: BigInt::from_biguint(
                 if negative {
                     Sign::Minus
@@ -157,7 +168,8 @@ impl Real {
             ),
             exp: exponent,
             prec,
-        })
+        };
+        Ok((value, inexact))
     }
 
     /// The exact value of an `f64` at precision `prec`.
@@ -277,11 +289,21 @@ impl Real {
         prec: u32,
         mode: Round,
     ) -> Result<Self, String> {
+        self.add_with_inexact(other, prec, mode)
+            .map(|(value, _)| value)
+    }
+
+    pub(super) fn add_with_inexact(
+        &self,
+        other: &Self,
+        prec: u32,
+        mode: Round,
+    ) -> Result<(Self, bool), String> {
         if self.mant.is_zero() {
-            return other.with_precision(prec, mode);
+            return Self::rounded_with_inexact(other.mant.clone(), other.exp, prec, mode);
         }
         if other.mant.is_zero() {
-            return self.with_precision(prec, mode);
+            return Self::rounded_with_inexact(self.mant.clone(), self.exp, prec, mode);
         }
         let (high, low) = if self.exp >= other.exp {
             (self, other)
@@ -294,7 +316,7 @@ impl Real {
         }
         let aligned = &high.mant << usize::try_from(shift).unwrap_or(0);
         let sum = aligned + &low.mant;
-        Self::rounded(sum, low.exp, prec, mode)
+        Self::rounded_with_inexact(sum, low.exp, prec, mode)
     }
 
     /// The difference, rounded once to `prec` bits.
@@ -320,15 +342,25 @@ impl Real {
         prec: u32,
         mode: Round,
     ) -> Result<Self, String> {
+        self.mul_with_inexact(other, prec, mode)
+            .map(|(value, _)| value)
+    }
+
+    pub(super) fn mul_with_inexact(
+        &self,
+        other: &Self,
+        prec: u32,
+        mode: Round,
+    ) -> Result<(Self, bool), String> {
         if self.mant.is_zero() || other.mant.is_zero() {
-            return Ok(Self::zero(prec));
+            return Ok((Self::zero(prec), false));
         }
         let product = &self.mant * &other.mant;
         let exponent = self
             .exp
             .checked_add(other.exp)
             .ok_or_else(|| "exponent out of range".to_string())?;
-        Self::rounded(product, exponent, prec, mode)
+        Self::rounded_with_inexact(product, exponent, prec, mode)
     }
 
     /// The quotient, rounded once to `prec` bits.
@@ -341,11 +373,22 @@ impl Real {
         prec: u32,
         mode: Round,
     ) -> Result<Self, String> {
+        self.div_with_inexact(other, prec, mode)
+            .map(|(value, _)| value)
+    }
+
+    /// Returns the rounded quotient and whether its exact value differs.
+    pub(super) fn div_with_inexact(
+        &self,
+        other: &Self,
+        prec: u32,
+        mode: Round,
+    ) -> Result<(Self, bool), String> {
         if other.mant.is_zero() {
             return Err("division by zero".to_string());
         }
         if self.mant.is_zero() {
-            return Ok(Self::zero(prec));
+            return Ok((Self::zero(prec), false));
         }
         let negative = self.sign() != other.sign();
         // Scale the numerator so the integer quotient carries `prec + 8`
@@ -354,29 +397,37 @@ impl Real {
         let denominator_bits = i64::try_from(other.mant.magnitude().bits()).unwrap_or(i64::MAX);
         let want = i64::from(prec.clamp(1, MAX_BITS)) + 8;
         let shift = want + denominator_bits - numerator_bits;
-        let (numerator, mut exponent) = if shift >= 0 {
+        let (numerator, mut exponent, discarded) = if shift >= 0 {
             (
                 self.mant.magnitude() << usize::try_from(shift).unwrap_or(0),
                 self.exp
                     .checked_sub(shift)
                     .ok_or_else(|| "exponent out of range".to_string())?,
+                false,
             )
         } else {
+            let right_shift = shift.unsigned_abs();
+            let discarded = self
+                .mant
+                .magnitude()
+                .trailing_zeros()
+                .is_some_and(|zeros| zeros < right_shift);
             (
-                self.mant.magnitude() >> usize::try_from(-shift).unwrap_or(0),
+                self.mant.magnitude() >> right_shift,
                 self.exp
                     .checked_add(-shift)
                     .ok_or_else(|| "exponent out of range".to_string())?,
+                discarded,
             )
         };
         exponent = exponent
             .checked_sub(other.exp)
             .ok_or_else(|| "exponent out of range".to_string())?;
         let (quotient, remainder) = numerator.div_rem(other.mant.magnitude());
-        // A nonzero remainder puts the true value strictly between `q` and
-        // `q + 1`; `2q + 1` at the next exponent reproduces that decision
-        // exactly for every rounding mode.
-        let (magnitude, exponent) = if remainder.is_zero() {
+        // A nonzero remainder or discarded numerator bits put the exact
+        // quotient strictly between `q` and `q + 1`. Using `2q + 1` at the next
+        // exponent preserves that rounding decision in every mode.
+        let (magnitude, exponent) = if remainder.is_zero() && !discarded {
             (quotient, exponent)
         } else {
             (
@@ -386,7 +437,7 @@ impl Real {
                     .ok_or_else(|| "exponent out of range".to_string())?,
             )
         };
-        Self::rounded(
+        Self::rounded_with_inexact(
             BigInt::from_biguint(
                 if negative {
                     Sign::Minus
@@ -472,7 +523,11 @@ impl Real {
         }
         Ok(Self {
             mant: self.mant.clone(),
-            exp: exponent,
+            exp: if self.is_zero() {
+                0
+            } else {
+                exponent
+            },
             prec: self.prec,
         })
     }
@@ -551,7 +606,10 @@ impl Real {
         if drop >= self.mant.magnitude().bits() {
             return Ok(BigInt::from(0));
         }
-        Ok(&self.mant >> usize::try_from(drop).unwrap_or(0))
+        Ok(BigInt::from_biguint(
+            self.mant.sign(),
+            self.mant.magnitude() >> drop,
+        ))
     }
 
     /// The value as an `f64`, rounded to nearest-even.
@@ -658,5 +716,24 @@ impl Real {
             },
             magnitude,
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn trunc_to_bigint_discards_fractional_bits_toward_zero() {
+        for (mantissa, expected) in [(-15, -3), (-16, -4), (-1, 0), (15, 3)] {
+            let Ok(value) = Real::rounded(BigInt::from(mantissa), -2, 8, Round::NearestEven) else {
+                panic!("the dyadic test value must be exactly representable");
+            };
+            assert_eq!(
+                value.trunc_to_bigint(),
+                Ok(BigInt::from(expected)),
+                "{mantissa} / 4"
+            );
+        }
     }
 }

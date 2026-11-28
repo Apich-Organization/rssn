@@ -1058,6 +1058,160 @@ mod strengthened {
         }
     }
 
+    fn assert_embedded_dirichlet_spectrum<const DIM: usize>(
+        shape: [usize; DIM],
+        step: [f64; DIM],
+        interior_potential: f64,
+        boundary_potential: impl Fn([usize; DIM]) -> f64,
+        energies: Vec<f64>,
+        vectors: Matrix<f64>,
+    ) {
+        let count: usize = shape.iter().product();
+        assert_eq!(energies.len(), count);
+        assert_eq!((vectors.rows(), vectors.cols()), (count, count));
+        assert!(vectors.is_orthogonal(1e-10));
+
+        let strides: [usize; DIM] = std::array::from_fn(|axis| shape[axis + 1..].iter().product());
+        let coordinates = |index| std::array::from_fn(|axis| (index / strides[axis]) % shape[axis]);
+        let boundary = |point: [usize; DIM]| {
+            point
+                .iter()
+                .zip(shape)
+                .any(|(&j, length)| j == 0 || j == length - 1)
+        };
+        let mut physical_energies = Vec::new();
+        for (mode, &energy) in energies.iter().enumerate() {
+            let point = coordinates(mode);
+            if boundary(point) {
+                // The extra mode in this slot belongs entirely to its boundary node.
+                assert_eq!(energy, 1e12 + boundary_potential(point));
+                for row in 0..count {
+                    assert_eq!(
+                        vectors.get(row, mode).abs(),
+                        f64::from(u8::from(row == mode)),
+                        "boundary mode {mode}, row {row}"
+                    );
+                }
+                continue;
+            }
+
+            physical_energies.push(energy);
+            for row in 0..count {
+                let point = coordinates(row);
+                let component = *vectors.get(row, mode);
+                if boundary(point) {
+                    assert_eq!(component, 0.0, "physical mode {mode}, boundary row {row}");
+                    continue;
+                }
+                let mut action = interior_potential * component;
+                for (axis, (&delta, &stride)) in step.iter().zip(&strides).enumerate() {
+                    let negative = if point[axis] > 1 {
+                        *vectors.get(row - stride, mode)
+                    } else {
+                        0.0
+                    };
+                    let positive = if point[axis] + 2 < shape[axis] {
+                        *vectors.get(row + stride, mode)
+                    } else {
+                        0.0
+                    };
+                    action += (component - 0.5 * (negative + positive)) / (delta * delta);
+                }
+                assert!(
+                    (action - energy * component).abs() < 1e-8,
+                    "mode {mode}, interior row {row}: Hψ={action}, Eψ={}",
+                    energy * component
+                );
+            }
+        }
+
+        // Products of the one-axis discrete sine modes give sums of the
+        // tridiagonal kinetic eigenvalues on this rectangular interior.
+        let expected = shape.into_iter().zip(step).fold(
+            vec![interior_potential],
+            |partial, (length, delta)| {
+                partial
+                    .into_iter()
+                    .flat_map(|energy| {
+                        (1..length - 1).map(move |mode| {
+                            let phase = PI * mode as f64 / (length - 1) as f64;
+                            energy + (1.0 - phase.cos()) / (delta * delta)
+                        })
+                    })
+                    .collect()
+            },
+        );
+        let physical_energies = sorted(physical_energies);
+        let expected = sorted(expected);
+        assert_eq!(physical_energies.len(), expected.len());
+        for (got, want) in physical_energies.into_iter().zip(expected) {
+            assert!((got - want).abs() < 1e-8, "energy {got}, expected {want}");
+        }
+    }
+
+    #[test]
+    fn schrodinger_2d_dirichlet_modes_and_boundary_slots() {
+        let step = [0.5, 1.0];
+        let offset = 2.75;
+        let boundary_potential = |[ix, iy]: [usize; 2]| 10.0 + ix as f64 + 5.0 * iy as f64;
+        for shape in [[3, 3], [4, 5]] {
+            let x_max = (shape[0] - 1) as f64 * step[0];
+            let y_max = (shape[1] - 1) as f64 * step[1];
+            let potential = |x: f64, y: f64| {
+                if x == 0.0 || x == x_max || y == 0.0 || y == y_max {
+                    10.0 + 2.0 * x + 5.0 * y
+                } else {
+                    offset
+                }
+            };
+            let (energies, vectors) =
+                solve_2d_schrodinger(potential, (0.0, x_max, 0.0, y_max), (shape[0], shape[1]))
+                    .unwrap_or_else(|e| panic!("{e}"));
+            assert_embedded_dirichlet_spectrum(
+                shape,
+                step,
+                offset,
+                boundary_potential,
+                energies,
+                vectors,
+            );
+        }
+    }
+
+    #[test]
+    fn schrodinger_3d_dirichlet_modes_and_boundary_slots() {
+        let step = [0.25, 0.5, 1.0];
+        let offset = -0.75;
+        let boundary_potential =
+            |[ix, iy, iz]: [usize; 3]| 100.0 + ix as f64 + 5.0 * iy as f64 + 20.0 * iz as f64;
+        for shape in [[3, 3, 3], [4, 3, 5]] {
+            let x_max = (shape[0] - 1) as f64 * step[0];
+            let y_max = (shape[1] - 1) as f64 * step[1];
+            let z_max = (shape[2] - 1) as f64 * step[2];
+            let potential = |x: f64, y: f64, z: f64| {
+                if x == 0.0 || x == x_max || y == 0.0 || y == y_max || z == 0.0 || z == z_max {
+                    100.0 + 4.0 * x + 10.0 * y + 20.0 * z
+                } else {
+                    offset
+                }
+            };
+            let (energies, vectors) = solve_3d_schrodinger(
+                potential,
+                (0.0, x_max, 0.0, y_max, 0.0, z_max),
+                (shape[0], shape[1], shape[2]),
+            )
+            .unwrap_or_else(|e| panic!("{e}"));
+            assert_embedded_dirichlet_spectrum(
+                shape,
+                step,
+                offset,
+                boundary_potential,
+                energies,
+                vectors,
+            );
+        }
+    }
+
     #[test]
     fn heat_equation_matches_the_decaying_sine_mode() {
         // u_t = alpha u_xx, u(x,0) = sin(pi x), u(0)=u(1)=0  =>  u = exp(-alpha pi^2 t) sin(pi x)

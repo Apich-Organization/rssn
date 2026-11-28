@@ -198,10 +198,10 @@ pub fn solve_sdp(
         iterations = it + 1;
 
         // Adaptive rho every fifty iterations.
-        if iterations % 50 == 0 {
+        if iterations.is_multiple_of(50) {
             if primal_residual > 10.0 * dual_residual {
                 rho *= 2.0;
-                for row in y.iter_mut() {
+                for row in &mut y {
                     for v in row.iter_mut() {
                         *v *= 0.5;
                     }
@@ -211,7 +211,7 @@ pub fn solve_sdp(
                 }
             } else if dual_residual > 10.0 * primal_residual {
                 rho *= 0.5;
-                for row in y.iter_mut() {
+                for row in &mut y {
                     for v in row.iter_mut() {
                         *v *= 2.0;
                     }
@@ -270,9 +270,7 @@ fn solve_x_update(
     for i in 0..m {
         rhs[i] = -d[i];
     }
-    for r in 0..me {
-        rhs[m + r] = b[r];
-    }
+    rhs[m..(me + m)].copy_from_slice(&b[..me]);
     let mat = Mat::from_rows(&k).map_err(|e| e.to_string())?;
     match dense::solve(&mat, &rhs) {
         | Ok(sol) => Ok(sol[0..m].to_vec()),
@@ -316,7 +314,7 @@ fn project_psd(s: &[Vec<f64>]) -> Vec<Vec<f64>> {
     let mut a = vec![vec![0.0; n]; n];
     for i in 0..n {
         for j in 0..n {
-            a[i][j] = 0.5 * (s[i][j] + s[j][i]);
+            a[i][j] = f64::midpoint(s[i][j], s[j][i]);
         }
     }
     let (vals, vecs) = jacobi_eigen(&mut a);

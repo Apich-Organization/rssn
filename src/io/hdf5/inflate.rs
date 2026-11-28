@@ -179,7 +179,6 @@ fn fixed_tables() -> Result<(Huffman, Huffman), String> {
     let mut lit = [0_u8; 288];
     for (sym, slot) in lit.iter_mut().enumerate() {
         *slot = match sym {
-            | 0..=143 => 8,
             | 144..=255 => 9,
             | 256..=279 => 7,
             | _ => 8,
@@ -224,21 +223,15 @@ fn dynamic_tables(br: &mut BitReader<'_>) -> Result<(Huffman, Huffman), String> 
                     .copied()
                     .ok_or_else(|| "repeat code with no previous length".to_owned())?;
                 let repeat = 3 + br.take(2)? as usize;
-                for _ in 0..repeat {
-                    lengths.push(prev);
-                }
+                lengths.extend(std::iter::repeat_n(prev, repeat));
             },
             | 17 => {
                 let repeat = 3 + br.take(3)? as usize;
-                for _ in 0..repeat {
-                    lengths.push(0);
-                }
+                lengths.extend(std::iter::repeat_n(0, repeat));
             },
             | 18 => {
                 let repeat = 11 + br.take(7)? as usize;
-                for _ in 0..repeat {
-                    lengths.push(0);
-                }
+                lengths.extend(std::iter::repeat_n(0, repeat));
             },
             | _ => return Err("invalid code-length symbol".to_owned()),
         }
@@ -324,7 +317,7 @@ fn huffman_block(
 }
 
 /// Decompresses a raw DEFLATE stream (no zlib wrapper).
-pub(crate) fn inflate(data: &[u8]) -> Result<Vec<u8>, String> {
+pub fn inflate(data: &[u8]) -> Result<Vec<u8>, String> {
     let mut br = BitReader::new(data);
     let mut out = Vec::new();
     loop {
@@ -365,7 +358,7 @@ fn adler32(data: &[u8]) -> u32 {
 /// # Errors
 /// Returns an error for a malformed header, a preset dictionary, a corrupt
 /// deflate stream, a checksum mismatch, or output beyond 64 MiB.
-pub(crate) fn zlib_decompress(data: &[u8]) -> Result<Vec<u8>, String> {
+pub fn zlib_decompress(data: &[u8]) -> Result<Vec<u8>, String> {
     if data.len() < 6 {
         return Err("zlib stream is too short".to_owned());
     }
@@ -398,7 +391,7 @@ pub(crate) fn zlib_decompress(data: &[u8]) -> Result<Vec<u8>, String> {
 }
 
 /// Compresses `data` into a zlib stream (RFC 1950 + RFC 1951 + Adler-32).
-pub(crate) fn zlib_compress(data: &[u8]) -> Vec<u8> {
+pub fn zlib_compress(data: &[u8]) -> Vec<u8> {
     let compressed = crate::io::parquet::gzip::deflate_compress(data);
     let mut out = Vec::with_capacity(compressed.len() + 6);
     out.push(0x78);

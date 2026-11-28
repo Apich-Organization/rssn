@@ -16,8 +16,9 @@
 //! should not parse the printable message, and [`DimError::is_blocking`]
 //! says whether Strict mode turns it into a hard error. Rules that are not
 //! data-expressible are [`DimRule::Custom`] functions in this module:
-//! `matexp` (a dimensionless product) and the complex-analysis family, which
-//! lives on a dimensionless complex plane (`dimensionless_complex_variable`).
+//! `matexp` (a dimensionless product) and complex analysis. Normalized contours
+//! use dimensionless variables, while derivatives and metric transforms
+//! derive their dimensions from the coordinates.
 //!
 //! `docs/DIMENSIONS.md` documents the dimension contracts. The
 //! standard rule set's rewrites are dimension-checked by
@@ -1681,7 +1682,7 @@ pub fn default_rule(name: &str) -> Option<DimRule> {
         | "abs" | "re" | "im" | "conj" | "floor" | "ceil" | "round" | "trunc" | "limit"
         | "taylor" | "laurent" | "fourier_series" | "convert" | "unify_expression"
         | "simplify_units" => DimRule::Same(0),
-        | "sign" | "arg" | "exp" | "ln" | "log" | "sin" | "cos" | "tan" | "cot" | "sec" | "csc"
+        | "sign" | "exp" | "ln" | "log" | "sin" | "cos" | "tan" | "cot" | "sec" | "csc"
         | "asin" | "acos" | "atan" | "acot" | "asec" | "acsc" | "sinh" | "cosh" | "tanh"
         | "coth" | "sech" | "csch" | "asinh" | "acosh" | "atanh" | "acoth" | "asech"
         | "acsch" | "erf" | "erfc" | "erfi" | "fresnels" | "fresnelc" | "erfcinv" | "gamma"
@@ -1689,7 +1690,7 @@ pub fn default_rule(name: &str) -> Option<DimRule> {
         | "sinc" | "besselj" | "bessely" | "besseli" | "besselk" | "airy_ai" | "airy_bi"
         | "airy_aip" | "airy_bip" | "pi" | "e" | "true_pi" | "euler_gamma" | "i"
         | "golden_ratio" => DimRule::Dimensionless,
-        | "atan2" => DimRule::Angle,
+        | "arg" | "atan2" => DimRule::Angle,
         | "list" | "tensor" | "vector" | "matrix" => DimRule::List,
         | "eq" | "lt" | "le" | "gt" | "ge" | "ne" => DimRule::Compare,
         | "and" | "or" | "xor" | "not" | "implies" | "iff" | "true" | "false" | "converges"
@@ -1708,12 +1709,70 @@ pub fn default_rule(name: &str) -> Option<DimRule> {
         // contour results carry the dimension of the function they analyse;
         // branches/curves/singularity sets are not scalars; winding numbers,
         // zero/pole counts and verification verdicts are pure numbers or
-        // verdicts. A contour lives in a dimensionless complex plane: **every**
-        // operator that consumes a complex variable checks that it is
-        // dimensionless (`dimensionless_complex_variable` via the `Custom`
-        // rules below), while `continue_along`/`mobius_apply`/`residue` keep
-        // the function's dimension and `cauchy_derivative` divides by `z`.
+        // verdicts. Normalized contours check that their complex variables
+        // are dimensionless. Metric coordinates carry their dimensions into
+        // derivatives, principal values, and transforms.
         | "I" => DimRule::Dimensionless,
+        | "complex_expand" | "mittag_leffler_expansion" => DimRule::Same(0),
+        | "abs_sq" => DimRule::Square,
+        | "cis"
+        | "arg_branch"
+        | "log_cut"
+        | "pow_cut"
+        | "riemann_genus"
+        | "bottcher_series"
+        | "to_riemann_sphere"
+        | "from_riemann_sphere"
+        | "chordal_distance"
+        | "joukowsky"
+        | "koebe"
+        | "cayley_transform"
+        | "meijer_g"
+        | "mellin_barnes_to_meijer_g" => {
+            // to_riemann_sphere produces a vector with dimensionless entries.
+            DimRule::Dimensionless
+        },
+        | "sign_complex" => DimRule::Custom(|_, _| Ok(DimTerm::dimensionless())),
+        | "to_polar" => DimRule::Container,
+        | "from_polar" => {
+            DimRule::Family {
+                result: FamilySource::Argument(0),
+                same: &[],
+                dimensionless: &[1],
+            }
+        },
+        | "sqrt_cut" => DimRule::Custom(sqrt_cut_dimension),
+        | "arc" => DimRule::Custom(arc_dimension),
+        | "residue_at_infinity" => DimRule::Custom(residue_dimension),
+        | "residue_real_integral" | "complex_risch_integrate" => DimRule::Integral { f: 0, x: 1 },
+        | "residue_trig_integral" => DimRule::Custom(residue_dimension),
+        | "branch_cut_jump" => DimRule::Custom(branch_cut_jump_dimension),
+        | "cauchy_pv" => DimRule::Custom(cauchy_pv_dimension),
+        | "laurent_principal_part" | "laurent_analytic_part" => {
+            DimRule::Custom(laurent_part_dimension)
+        },
+        | "saddle_point_asymptotic" => DimRule::Custom(saddle_dimension),
+        | "cross_ratio" => DimRule::Custom(cross_ratio_dimension),
+        | "schwarzian_derivative" => {
+            DimRule::Custom(|_, args| Ok(inverse_square(&dim_at(args, 1))))
+        },
+        | "cauchy_root_bound" => DimRule::Custom(cauchy_root_bound_dimension),
+        | "is_conformal_at" => DimRule::Custom(conformal_at_dimension),
+        | "rouche_compare" => DimRule::Custom(rouche_dimension),
+        | "mellin_transform" | "inverse_mellin_transform" => DimRule::Custom(mellin_dimension),
+        | "bromwich_inverse_laplace" => DimRule::Custom(bromwich_dimension),
+        | "hilbert_transform" => DimRule::Custom(hilbert_dimension),
+        | "orbit_iterate" => DimRule::Custom(orbit_dimension),
+        | "multiplier" | "is_attracting_fixed_point" => DimRule::Custom(periodic_map_dimension),
+        | "wirtinger_dz" | "wirtinger_dzbar" => DimRule::Diff { f: 0, x: 1 },
+        | "complex_diff" => DimRule::DiffN { f: 0, x: 1, n: 2 },
+        | "complex_laplacian" => {
+            DimRule::Custom(|_, args| Ok(dim_at(args, 0).mul(&inverse_square(&dim_at(args, 1)))))
+        },
+        | "cauchy_riemann_cartesian" => DimRule::Container,
+        | "cauchy_riemann_polar" => DimRule::Custom(polar_cr_dimension),
+        | "harmonic_conjugate" | "reconstruct_holomorphic" => DimRule::Custom(harmonic_dimension),
+        | "is_meromorphic" | "is_entire" => DimRule::Custom(check_analytic_dimension),
         // Branch wrappers are complex-plane functions (`log_branch(z, k) =
         // ln|z| + I(arg z + 2 pi k)`, ...): every argument, including the
         // branch index, is a pure number and the value is one. `Same(0)` used
@@ -1810,23 +1869,10 @@ fn dimensionless_complex_variable(
     args: &[DimTerm],
     variable: usize,
 ) -> Result<(DimTerm, DimTerm), DimError> {
-    let function = args.first().cloned().unwrap_or_else(DimTerm::any);
-    let variable_dimension = args.get(variable).cloned().unwrap_or_else(DimTerm::any);
-    if variable_dimension.is_any()
-        || variable_dimension.has_unknown()
-        || variable_dimension.is_dimensionless()
-    {
-        return Ok((function, variable_dimension));
-    }
-    Err(DimError::NonDimensionless {
-        op: ctx.graph.ops().get(ctx.graph.op(ctx.node)).name.to_string(),
-        argument: ctx
-            .graph
-            .children(ctx.node)
-            .get(variable)
-            .map_or_else(String::new, |&child| ctx.graph.display(child)),
-        found: variable_dimension.describe(ctx.arena),
-    })
+    Ok((
+        dim_at(args, 0),
+        dimensionless_argument(ctx, args, variable)?,
+    ))
 }
 
 /// `contour_integral`, `cauchy_integral` and
@@ -1936,6 +1982,199 @@ fn radius_of_convergence_dimension(
     let (_function, variable) = dimensionless_complex_variable(ctx, args, 1)?;
     Ok(variable)
 }
+
+fn dim_at(
+    args: &[DimTerm],
+    index: usize,
+) -> DimTerm {
+    args.get(index).cloned().unwrap_or_else(DimTerm::any)
+}
+
+fn agree_with(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+    reference: usize,
+    indices: &[usize],
+) -> Result<DimTerm, DimError> {
+    let reference = dim_at(args, reference);
+    for &index in indices {
+        ctx.require_compatible(&reference, &dim_at(args, index))?;
+    }
+    Ok(reference)
+}
+
+fn dimensionless_argument(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+    index: usize,
+) -> Result<DimTerm, DimError> {
+    let dimension = dim_at(args, index);
+    if dimension.is_any() || dimension.has_unknown() || dimension.is_dimensionless() {
+        return Ok(dimension);
+    }
+    Err(DimError::NonDimensionless {
+        op: ctx.graph.ops().get(ctx.graph.op(ctx.node)).name.to_string(),
+        argument: ctx
+            .graph
+            .children(ctx.node)
+            .get(index)
+            .map_or_else(String::new, |&child| ctx.graph.display(child)),
+        found: dimension.describe(ctx.arena),
+    })
+}
+
+fn require_dimensionless_arguments(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+    indices: &[usize],
+) -> Result<(), DimError> {
+    for &index in indices {
+        dimensionless_argument(ctx, args, index)?;
+    }
+    Ok(())
+}
+
+fn sqrt_cut_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    require_dimensionless_arguments(ctx, args, &[1])?;
+    let half = BigRational::new(BigInt::one(), BigInt::from(2));
+    Ok(dim_at(args, 0).pow(&half))
+}
+
+fn arc_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    agree_with(ctx, args, 0, &[1])?;
+    require_dimensionless_arguments(ctx, args, &[2, 3])?;
+    Ok(DimTerm::non_metric())
+}
+
+fn branch_cut_jump_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    require_dimensionless_arguments(ctx, args, &[1, 2])?;
+    Ok(dim_at(args, 0))
+}
+
+fn cauchy_pv_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let variable = agree_with(ctx, args, 1, &[2, 3, 4])?;
+    Ok(dim_at(args, 0).mul(&variable))
+}
+
+fn laurent_part_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    agree_with(ctx, args, 1, &[2])?;
+    require_dimensionless_arguments(ctx, args, &[3])?;
+    Ok(dim_at(args, 0))
+}
+
+fn saddle_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let variable = agree_with(ctx, args, 2, &[3])?;
+    // The phase appears inside exp(lambda * phi); the result scales like g dz.
+    let phase = dim_at(args, 1).mul(&dim_at(args, 4));
+    ctx.require_compatible(&phase, &DimTerm::dimensionless())?;
+    Ok(dim_at(args, 0).mul(&variable))
+}
+
+fn cross_ratio_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    agree_with(ctx, args, 0, &[1, 2, 3])?;
+    Ok(DimTerm::dimensionless())
+}
+
+fn inverse_square(dimension: &DimTerm) -> DimTerm {
+    dimension.pow(&BigRational::from_integer(BigInt::from(-2)))
+}
+
+fn conformal_at_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    agree_with(ctx, args, 1, &[2])?;
+    Ok(DimTerm::dimensionless())
+}
+
+fn rouche_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    agree_with(ctx, args, 0, &[1])?;
+    agree_with(ctx, args, 2, &[3, 4])?;
+    Ok(DimTerm::dimensionless())
+}
+
+fn mellin_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    require_dimensionless_arguments(ctx, args, &[1, 2])?;
+    Ok(dim_at(args, 0))
+}
+
+fn bromwich_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let frequency = dim_at(args, 1);
+    ctx.require_compatible(&frequency.mul(&dim_at(args, 2)), &DimTerm::dimensionless())?;
+    Ok(dim_at(args, 0).mul(&frequency))
+}
+
+fn hilbert_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    agree_with(ctx, args, 1, &[2])?;
+    Ok(dim_at(args, 0))
+}
+
+fn orbit_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    require_dimensionless_arguments(ctx, args, &[3])?;
+    agree_with(ctx, args, 0, &[1, 2])
+}
+
+fn periodic_map_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    orbit_dimension(ctx, args)?;
+    Ok(DimTerm::dimensionless())
+}
+
+fn polar_cr_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    require_dimensionless_arguments(ctx, args, &[2])?;
+    Ok(DimTerm::container())
+}
+
+fn harmonic_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    agree_with(ctx, args, 1, &[2])?;
+    Ok(dim_at(args, 0))
+}
+
+complex_variable_rule!(cauchy_root_bound_dimension, 1, DimTerm::dimensionless());
 
 #[cfg(test)]
 mod tests {
@@ -2371,6 +2610,100 @@ mod tests {
                     .iter()
                     .any(|error| matches!(error, DimError::NonDimensionless { .. })),
                 "`{source}`: {:?}",
+                outcome.errors
+            );
+        }
+    }
+
+    #[test]
+    fn complex_analysis_preserves_metric_dimensions() {
+        for (source, declarations, expected) in [
+            ("abs_sq(z)", &[("z", "m")][..], "Length^2"),
+            ("sqrt_cut(z, 0)", &[("z", "m^2")][..], "Length"),
+            (
+                "from_polar(r, theta)",
+                &[("r", "m"), ("theta", "1")][..],
+                "Length",
+            ),
+            ("sign_complex(z)", &[("z", "m")][..], "1"),
+            (
+                "wirtinger_dz(f, z)",
+                &[("f", "m"), ("z", "s")][..],
+                "Length/Time",
+            ),
+            (
+                "complex_diff(f, z, 2)",
+                &[("f", "m"), ("z", "s")][..],
+                "Length/Time^2",
+            ),
+            (
+                "complex_laplacian(f, z)",
+                &[("f", "m"), ("z", "s")][..],
+                "Length/Time^2",
+            ),
+            (
+                "cauchy_pv(f, x, a, b, p)",
+                &[("f", "m/s"), ("x", "s"), ("p", "s")][..],
+                "Length",
+            ),
+            (
+                "hilbert_transform(f, x, y)",
+                &[("f", "m"), ("x", "s"), ("y", "s")][..],
+                "Length",
+            ),
+            (
+                "bromwich_inverse_laplace(F, z, t)",
+                &[("F", "m*s"), ("z", "1/s"), ("t", "s")][..],
+                "Length",
+            ),
+            (
+                "mellin_transform(f, x, z)",
+                &[("f", "m"), ("x", "1"), ("z", "1")][..],
+                "Length",
+            ),
+            (
+                "cross_ratio(a, b, c, d)",
+                &[("a", "m"), ("b", "m"), ("c", "m"), ("d", "m")][..],
+                "1",
+            ),
+        ] {
+            let outcome = dimension_of(source, declarations);
+            assert!(outcome.errors.is_empty(), "{source}: {:?}", outcome.errors);
+            assert_eq!(outcome.dimension.to_string(), expected, "{source}");
+        }
+    }
+
+    #[test]
+    fn complex_analysis_rejects_incompatible_coordinates() {
+        for (source, declarations) in [
+            ("sqrt_cut(z, theta)", &[("z", "m^2"), ("theta", "s")][..]),
+            ("hilbert_transform(f, x, y)", &[("x", "s"), ("y", "m")][..]),
+            (
+                "orbit_iterate(f, z, p, 2)",
+                &[("f", "m"), ("z", "s"), ("p", "s")][..],
+            ),
+            (
+                "rouche_compare(f, g, z, 0, r)",
+                &[("f", "s"), ("g", "m"), ("z", "m"), ("r", "m")][..],
+            ),
+            (
+                "bromwich_inverse_laplace(F, z, t)",
+                &[("z", "m"), ("t", "s")][..],
+            ),
+            (
+                "saddle_point_asymptotic(f, phi, z, 0, lambda)",
+                &[("phi", "m"), ("lambda", "s")][..],
+            ),
+        ] {
+            let outcome = dimension_of(source, declarations);
+            assert!(
+                outcome.errors.iter().any(|error| {
+                    matches!(
+                        error,
+                        DimError::Mismatch { .. } | DimError::NonDimensionless { .. }
+                    )
+                }),
+                "{source}: {:?}",
                 outcome.errors
             );
         }

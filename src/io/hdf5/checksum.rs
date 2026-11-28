@@ -71,7 +71,7 @@ const fn final_mix(
 }
 
 /// Computes the HDF5 Jenkins `lookup3` checksum (`hashlittle` with `initval = 0`).
-pub(crate) fn lookup3(data: &[u8]) -> u32 {
+pub fn lookup3(data: &[u8]) -> u32 {
     let mut length = data.len();
     let initval = 0xdead_beef_u32.wrapping_add(length as u32);
     let mut a = initval;

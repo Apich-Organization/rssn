@@ -496,7 +496,7 @@ impl Domain for Barrett {
         a: &u64,
         b: &u64,
     ) -> u64 {
-        Barrett::add(*self, *a, *b)
+        Self::add(*self, *a, *b)
     }
 
     #[inline]
@@ -505,7 +505,7 @@ impl Domain for Barrett {
         a: &u64,
         b: &u64,
     ) -> u64 {
-        Barrett::sub(*self, *a, *b)
+        Self::sub(*self, *a, *b)
     }
 
     #[inline]
@@ -514,7 +514,7 @@ impl Domain for Barrett {
         a: &u64,
         b: &u64,
     ) -> u64 {
-        Barrett::mul(*self, *a, *b)
+        Self::mul(*self, *a, *b)
     }
 
     #[inline]
@@ -522,7 +522,7 @@ impl Domain for Barrett {
         &mut self,
         a: &u64,
     ) -> u64 {
-        Barrett::neg(*self, *a)
+        Self::neg(*self, *a)
     }
 
     #[inline]
@@ -531,7 +531,7 @@ impl Domain for Barrett {
         a: &u64,
         b: &u64,
     ) -> Option<u64> {
-        Barrett::div(*self, *a, *b)
+        Self::div(*self, *a, *b)
     }
 }
 
@@ -1787,7 +1787,7 @@ impl ModularFactor {
     fn solve(
         &self,
         b: &[u64],
-    ) -> Option<Vec<u64>> {
+    ) -> Vec<u64> {
         let mut dom = self.field;
         let pool = crate::kernels::reuse::global_pool();
         let mut r = pool.scratch_usize(b.len());
@@ -1816,7 +1816,7 @@ impl ModularFactor {
             }
             x[pc] = dom.mul(&acc, &self.pivot_invs[k]);
         }
-        Some(x)
+        x
     }
 }
 
@@ -1929,10 +1929,10 @@ pub fn solve_dixon(
     sols.pop()
 }
 
-/// Solves a square non-singular rational system `A X = B` for multiple
-/// right-hand sides `rhs` simultaneously by Dixon's `p`-adic lifting,
-/// sharing a single modular factorization of `A` and a single flat CSR
-/// workspace across all right-hand side columns.
+/// Solves a square nonsingular rational system with multiple right-hand sides.
+///
+/// Dixon’s `p`-adic lifting shares one modular factorization of `A` and one flat CSR workspace
+/// across all columns of `rhs`.
 ///
 /// Returns `None` when `matrix` is not square, any vector in `rhs` does not
 /// have length `matrix.rows`, or `matrix` is singular.
@@ -1996,8 +1996,7 @@ pub fn solve_dixon_multi(
         loop {
             res_mod_p.clear();
             res_mod_p.extend(residual.iter().map(|v| field.reduce(v) as usize));
-            let digits =
-                factor.solve(&res_mod_p.iter().map(|&v| v as u64).collect::<Vec<u64>>())?;
+            let digits = factor.solve(&res_mod_p.iter().map(|&v| v as u64).collect::<Vec<u64>>());
             csr.mul_digits(&digits, &mut product);
             for ((r, ax), (x, &d)) in residual
                 .iter_mut()
@@ -2104,37 +2103,40 @@ impl MontgomeryCsr {
         }
         let cols = &self.col_idx[start..end];
         let vals = &self.val_mont[start..end];
-        if let Some(m) = self.mont {
-            // For p < 2^62, each product is < 2^124, so up to 16 products fit in u128 (< 2^128).
-            // Chunking by 16 and taking redc or modulo p*2^64 avoids all overflow and hardware division!
-            let mut total = 0_u64;
-            for (c_chunk, v_chunk) in cols.chunks(16).zip(vals.chunks(16)) {
+        self.mont.map_or_else(
+            || {
+                let p = u128::from(self.field.p);
                 let mut sum = 0_u128;
-                for (&c, &v) in c_chunk.iter().zip(v_chunk) {
-                    sum += (v as u128) * (x[c] as u128);
+                for (&c, &v) in cols.iter().zip(vals) {
+                    sum = (sum + u128::from(v) * (x[c] as u128)) % p;
                 }
-                // Split 128-bit sum into low 64 bits and high 64 bits:
-                // redc(lo) + hi mod p = sum * R^{-1} mod p.
-                let lo = (sum as u64) as u128;
-                let hi = (sum >> 64) as u64;
-                let red_lo = m.redc(lo);
-                let red_hi = if hi >= m.modulus() {
-                    hi % m.modulus()
-                } else {
-                    hi
-                };
-                let chunk_val = m.add_mont(red_lo, red_hi);
-                total = m.add_mont(total, chunk_val);
-            }
-            total as usize
-        } else {
-            let p = self.field.p as u128;
-            let mut sum = 0_u128;
-            for (&c, &v) in cols.iter().zip(vals) {
-                sum = (sum + (v as u128) * (x[c] as u128)) % p;
-            }
-            (sum as u64) as usize
-        }
+                (sum as u64) as usize
+            },
+            |m| {
+                // For p < 2^62, each product is < 2^124, so up to 16 products fit in u128 (< 2^128).
+                // Chunking by 16 and taking redc or modulo p*2^64 avoids all overflow and hardware division!
+                let mut total = 0_u64;
+                for (c_chunk, v_chunk) in cols.chunks(16).zip(vals.chunks(16)) {
+                    let mut sum = 0_u128;
+                    for (&c, &v) in c_chunk.iter().zip(v_chunk) {
+                        sum += u128::from(v) * (x[c] as u128);
+                    }
+                    // Split 128-bit sum into low 64 bits and high 64 bits:
+                    // redc(lo) + hi mod p = sum * R^{-1} mod p.
+                    let lo = u128::from(sum as u64);
+                    let hi = (sum >> 64) as u64;
+                    let red_lo = m.redc(lo);
+                    let red_hi = if hi >= m.modulus() {
+                        hi % m.modulus()
+                    } else {
+                        hi
+                    };
+                    let chunk_val = m.add_mont(red_lo, red_hi);
+                    total = m.add_mont(total, chunk_val);
+                }
+                total as usize
+            },
+        )
     }
 
     fn spmv_into(
@@ -2159,37 +2161,40 @@ impl MontgomeryCsr {
         u: &[u64],
         w: &[usize],
     ) -> u64 {
-        if let Some(m) = self.mont {
-            // u is in standard domain, w is instandard domain (< p).
-            // Delayed u128 accumulation with chunks of 16, single reduction per chunk!
-            let mut total = 0_u64;
-            for (u_chunk, w_chunk) in u.chunks(16).zip(w.chunks(16)) {
-                let mut sum = 0_u128;
-                for (&ui, &wi) in u_chunk.iter().zip(w_chunk) {
-                    sum += (ui as u128) * (wi as u128);
+        self.mont.map_or_else(
+            || {
+                let mut dom = self.field;
+                let mut acc = 0_u64;
+                for (&a, &b) in u.iter().zip(w) {
+                    let term = dom.mul(&a, &(b as u64));
+                    acc = dom.add(&acc, &term);
                 }
-                let lo = (sum as u64) as u128;
-                let hi = (sum >> 64) as u64;
-                let red_lo = m.redc(lo);
-                let red_hi = if hi >= m.modulus() {
-                    hi % m.modulus()
-                } else {
-                    hi
-                };
-                // chunk_val = sum * R^{-1} mod p; we convert back via mul_mont(..., r2_mod_p) at the end!
-                let chunk_val = m.add_mont(red_lo, red_hi);
-                total = m.add_mont(total, chunk_val);
-            }
-            m.mul_mont(total, m.r2_mod())
-        } else {
-            let mut dom = self.field;
-            let mut acc = 0_u64;
-            for (&a, &b) in u.iter().zip(w) {
-                let term = dom.mul(&a, &(b as u64));
-                acc = dom.add(&acc, &term);
-            }
-            acc
-        }
+                acc
+            },
+            |m| {
+                // u is in standard domain, w is instandard domain (< p).
+                // Delayed u128 accumulation with chunks of 16, single reduction per chunk!
+                let mut total = 0_u64;
+                for (u_chunk, w_chunk) in u.chunks(16).zip(w.chunks(16)) {
+                    let mut sum = 0_u128;
+                    for (&ui, &wi) in u_chunk.iter().zip(w_chunk) {
+                        sum += u128::from(ui) * (wi as u128);
+                    }
+                    let lo = u128::from(sum as u64);
+                    let hi = (sum >> 64) as u64;
+                    let red_lo = m.redc(lo);
+                    let red_hi = if hi >= m.modulus() {
+                        hi % m.modulus()
+                    } else {
+                        hi
+                    };
+                    // chunk_val = sum * R^{-1} mod p; we convert back via mul_mont(..., r2_mod_p) at the end!
+                    let chunk_val = m.add_mont(red_lo, red_hi);
+                    total = m.add_mont(total, chunk_val);
+                }
+                m.mul_mont(total, m.r2_mod())
+            },
+        )
     }
 }
 
@@ -2242,9 +2247,9 @@ pub fn berlekamp_massey(
                 let end = (k + 16).min(bound + 1);
                 let mut sum = 0_u128;
                 for idx in k..end {
-                    sum += (c[idx] as u128) * ((sequence[i - idx] % field.p) as u128);
+                    sum += u128::from(c[idx]) * u128::from(sequence[i - idx] % field.p);
                 }
-                let lo = (sum as u64) as u128;
+                let lo = u128::from(sum as u64);
                 let hi = (sum >> 64) as u64;
                 let red_lo = m.redc(lo);
                 let red_hi = if hi >= m.modulus() {
@@ -2868,7 +2873,7 @@ mod tests {
         let mut dom = field;
         assert_eq!(a.matvec(&mut dom, &x).unwrap(), b);
         // The same solution as the factorisation gives (it is unique).
-        let direct = ModularFactor::new(&a, field).unwrap().solve(&b).unwrap();
+        let direct = ModularFactor::new(&a, field).unwrap().solve(&b);
         assert_eq!(x, direct);
         // The polynomial found annihilates the matrix: m(A) e = 0 for a
         // vector with every coordinate set.

@@ -315,7 +315,7 @@ fn sampled_trajectory_retains_only_stride_points_and_the_reached_end() {
             )
             .unwrap();
             let mut expected: Vec<_> = full.iter().step_by(stride).copied().collect();
-            if (full.len() - 1) % stride != 0 {
+            if !(full.len() - 1).is_multiple_of(stride) {
                 expected.push(*full.last().unwrap());
             }
             assert_eq!(sampled, expected);

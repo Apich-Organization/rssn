@@ -706,14 +706,29 @@ fn scan_substitution(
 
 /// Whether two inferred dimensions can be the same value's dimension.
 ///
-/// `Any` (the literal zero, an order term) unifies with everything, which is
-/// the documented polymorphic-zero behaviour; every other dimension must be
-/// exactly equal.
+/// `Any` unifies with everything. A structured result may expand to a list
+/// whose own element dimension is scalar, such as polar coordinates of a
+/// dimensionless value. A predicate's non-metric dimension does not have this
+/// exemption.
 fn scan_compatible(
-    left: &rssn::graph::Dimension,
-    right: &rssn::graph::Dimension,
+    graph: &rssn::graph::Graph,
+    left: (rssn::graph::NodeId, &rssn::graph::Dimension),
+    right: (rssn::graph::NodeId, &rssn::graph::Dimension),
 ) -> bool {
-    left.any || right.any || left == right
+    use rssn::graph::DimRule;
+    use rssn::graph::op::core;
+
+    left.1.any
+        || right.1.any
+        || left.1 == right.1
+        || [(left.0, right.0), (right.0, left.0)]
+            .into_iter()
+            .any(|(structured, literal)| {
+                matches!(
+                    graph.dim_rule(graph.op(structured)),
+                    Some(DimRule::Container)
+                ) && graph.op(literal) == core::LIST
+            })
 }
 
 /// Every declarative rewrite of `rules::standard()` is instantiated under
@@ -802,7 +817,11 @@ fn per_rewrite_random_dimension_scan() {
                 samples_right_restricted = samples_right_restricted.saturating_add(1);
                 continue;
             }
-            if scan_compatible(&left_outcome.dimension, &right_outcome.dimension) {
+            if scan_compatible(
+                &graph,
+                (left, &left_outcome.dimension),
+                (right, &right_outcome.dimension),
+            ) {
                 samples_checked = samples_checked.saturating_add(1);
                 exercised = true;
             } else {

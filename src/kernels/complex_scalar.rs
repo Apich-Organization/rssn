@@ -402,7 +402,7 @@ mod tests {
     fn square_root_scales_an_overflowing_modulus_and_a_subnormal_input() {
         let large = f64::MAX;
         let radius = large.sqrt();
-        let root_half_diag = ((2.0_f64.sqrt() + 1.0) * 0.5).sqrt();
+        let root_half_diag = f64::midpoint(2.0_f64.sqrt(), 1.0).sqrt();
         let offset_half_diag = ((2.0_f64.sqrt() - 1.0) * 0.5).sqrt();
         let z = Complex::new(large, -large).sqrt();
         assert!(z.re.to_bits().abs_diff((radius * root_half_diag).to_bits()) <= 2);

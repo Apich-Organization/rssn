@@ -45,9 +45,9 @@ fn prepared_mesh_owns_geometry_and_evaluates_new_callbacks_in_order() {
             28
         };
         assert_eq!(first_calls.len(), quadrature_calls + boundary_points);
-        for row in first_calls[..quadrature_calls].chunks_exact(3) {
+        for row in first_calls[..quadrature_calls].as_chunks::<3>().0 {
             let (_, x, y) = row[0];
-            assert_eq!(row, [(0, x, y), (1, x, y), (2, x, y)]);
+            assert_eq!(*row, [(0, x, y), (1, x, y), (2, x, y)]);
         }
         assert!(
             first_calls[quadrature_calls..]

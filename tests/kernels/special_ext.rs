@@ -915,10 +915,10 @@ fn bessel_i_log_abs_preserves_underflowed_values_and_tiny_logs() {
     for (n, x, expected) in [
         (0, 1e-20, 2.5e-41),
         (0, 710.0, 705.798_605_162_281_3),
-        (1000, 20.0, -3609.443_190_373_611_3),
+        (1000, 20.0, -3_609.443_190_373_611_3),
         (2000, 1000.0, -655.978_167_150_033_7),
         (8192, 5450.0, 32.096_240_246_102_31),
-        (8000, 8192.0, 4527.059_762_526_437),
+        (8000, 8192.0, 4_527.059_762_526_437),
     ] {
         let actual = bessel_in_log_abs(n, x);
         assert!(
@@ -1419,6 +1419,21 @@ fn lerch_reference_values() {
     // Outside the range.
     assert!(lerch(2.0, 1.5, 0.5).is_nan());
     assert!(lerch(0.5, 1.5, -0.5).is_nan());
+}
+
+#[test]
+fn lerch_negative_order_with_slowly_decaying_tail() {
+    // mpmath references at 60 decimal digits. Small a keeps the tail relevant.
+    for (z, s, a, expected) in [
+        (0.995, -0.35, 0.0125, 1_134.686_918_589_57_f64),
+        (-4096.0, -1.25, 0.025, 0.009_873_371_768_013_359_f64),
+    ] {
+        let actual = lerch(z, s, a);
+        assert!(
+            (actual - expected).abs() <= 5e-12 * expected.abs(),
+            "{actual} vs {expected}"
+        );
+    }
 }
 
 // ---------------------------------------------------------------------

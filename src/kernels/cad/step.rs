@@ -722,10 +722,9 @@ fn sample_edge_loop(
             let sampled_pts = edge
                 .geom
                 .and_then(|gid| context.curves.get(&gid))
-                .map(|geom| {
+                .map_or_default(|geom| {
                     sample_curve_interior(context, geom, start_coord, end_coord, edge.same_sense)
-                })
-                .unwrap_or_default();
+                });
             let mut ids = Vec::with_capacity(sampled_pts.len());
             for pt in sampled_pts {
                 let idx = vertices.len();
@@ -924,15 +923,11 @@ fn expand_knots(
     let m = n_ctrl + degree + 1;
     let mut uniform = Vec::with_capacity(m);
     let internal = n_ctrl.saturating_sub(degree + 1);
-    for _ in 0..=degree {
-        uniform.push(0.0);
-    }
+    uniform.resize(degree + 1, 0.0);
     for i in 1..=internal {
         uniform.push(i as f64 / (internal + 1) as f64);
     }
-    for _ in 0..=degree {
-        uniform.push(1.0);
-    }
+    uniform.extend(std::iter::repeat_n(1.0, degree + 1));
     uniform
 }
 
@@ -1056,10 +1051,9 @@ fn tessellate_planar_face(
     };
 
     let mut outer_2d: Vec<(usize, [f64; 2])> = outer_ring.iter().map(|&i| project(i)).collect();
-    let mut reversed_for_2d = false;
-    if signed_area_2d(&outer_2d) < 0.0 {
+    let reversed_for_2d = signed_area_2d(&outer_2d) < 0.0;
+    if reversed_for_2d {
         outer_2d.reverse();
-        reversed_for_2d = true;
     }
 
     let mut holes_2d: Vec<Vec<(usize, [f64; 2])>> = Vec::with_capacity(holes.len());
@@ -1594,8 +1588,8 @@ impl ResolvedSurface {
                 let v_max = v_knots[ctrl[0].len()];
 
                 // Coarse grid search for initial (u, v).
-                let mut best_u = 0.5 * (u_min + u_max);
-                let mut best_v = 0.5 * (v_min + v_max);
+                let mut best_u = f64::midpoint(u_min, u_max);
+                let mut best_v = f64::midpoint(v_min, v_max);
                 let mut best_d2 = f64::INFINITY;
                 let samples = 12_usize;
                 for iu in 0..=samples {
@@ -1638,7 +1632,8 @@ impl ResolvedSurface {
                     let c = dot(sv, sv) + 1e-8;
                     let g0 = dot(su, r);
                     let g1 = dot(sv, r);
-                    let det = a * c - b * b;
+                    let b_squared = b * b;
+                    let det = a * c - b_squared;
                     if det.abs() <= 1e-18 {
                         break;
                     }

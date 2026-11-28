@@ -55,7 +55,9 @@ use crate::kernels::polynomial::Polynomial;
 /// A `Result` containing a `Polynomial` struct representing the interpolating polynomial.
 ///
 /// # Errors
-/// Returns an error if duplicate x-coordinates are found among the input points.
+/// Returns an error for repeated coordinates, nonfinite samples, or overflowing
+/// divided differences or power-basis coefficients. Empty input returns zero.
+/// For nonempty input the polynomial retains one coefficient per sample.
 ///
 /// # Example
 /// ```rust
@@ -68,47 +70,9 @@ use crate::kernels::polynomial::Polynomial;
 /// assert!((poly.eval(1.5) - 2.25).abs() < 1e-9);
 /// ```
 pub fn lagrange_interpolation(points: &[(f64, f64)]) -> Result<Polynomial, String> {
-    let n = points.len();
-    if n == 0 {
-        return Ok(Polynomial { coeffs: vec![0.0] });
-    }
-    if n == 1 {
-        let (x0, y0) = points[0];
-        if !x0.is_finite() {
-            return Err(format!("Duplicate or non-finite x-coordinates found: {x0}"));
-        }
-        return Ok(Polynomial { coeffs: vec![y0] });
-    }
-
-    // O(n^2) Newton divided differences, validating every pair of x-coordinates.
-    let mut dd: Vec<f64> = points.iter().map(|&(_, y)| y).collect();
-    for k in 1..n {
-        for i in (k..n).rev() {
-            let x_i = points[i].0;
-            let denom = x_i - points[i - k].0;
-            if denom == 0.0 || denom.is_nan() {
-                return Err(format!(
-                    "Duplicate or non-finite x-coordinates found: {x_i}"
-                ));
-            }
-            dd[i] = (dd[i] - dd[i - 1]) / denom;
-        }
-    }
-
-    // Convert Newton form to ascending monomials via Horner in O(n^2), then reverse
-    // to match `Polynomial`'s descending-degree coefficient order.
-    let mut asc = vec![0.0; n];
-    asc[0] = dd[n - 1];
-    for k in (0..n - 1).rev() {
-        let xk = points[k].0;
-        for j in (1..n - k).rev() {
-            asc[j] = (-xk).mul_add(asc[j], asc[j - 1]);
-        }
-        asc[0] = (-xk).mul_add(asc[0], dd[k]);
-    }
-    asc.reverse();
-
-    Ok(Polynomial { coeffs: asc })
+    let coefficients =
+        super::polynomial::lagrange_coefficients(|i| points[i].0, points.iter().map(|&(_, y)| y))?;
+    Ok(Polynomial::new(coefficients))
 }
 
 /// Creates a cubic spline interpolator for a given set of points.
@@ -830,25 +794,8 @@ fn evaluate_multilinear<'grid, const CHECK_QUERY: bool>(
         if CHECK_QUERY {
             check_grid_coordinate(axis, coordinate)?;
         }
-        let interval = axis
-            .partition_point(|&node| node <= coordinate)
-            .saturating_sub(1)
-            .min(axis.len() - 2);
-        let &[lower, upper] = axis
-            .get(interval..)
-            .and_then(|tail| tail.first_chunk::<2>())
-            .ok_or_else(|| "the query point lies outside the grid".to_string())?;
-        let width = upper - lower;
-        let (from_lower, from_upper, width) = if width.is_finite() {
-            (coordinate - lower, upper - coordinate, width)
-        } else {
-            scaled_grid_interval_distances(lower, upper, coordinate)
-        };
-        *cell = MultilinearCell {
-            stride,
-            fraction: from_lower.min(from_upper) / width,
-            starts_at_upper: from_upper < from_lower,
-        };
+        let (interval, located) = locate_grid_cell(axis, coordinate, stride)?;
+        *cell = located;
         base += interval * stride;
         stride *= axis.len();
     }
@@ -867,23 +814,92 @@ fn interpolate_cell(
     let Some((cell, lower_axes)) = cells.split_last() else {
         return values.get(base).copied().unwrap_or(f64::NAN);
     };
-    let upper_index = base + cell.stride;
+    sample_grid_axis(cell, base, |index| {
+        interpolate_cell(lower_axes, values, index)
+    })
+}
+
+#[inline]
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "the checked shape bounds the upper index and the weights are convex"
+)]
+fn sample_grid_axis(
+    cell: &MultilinearCell,
+    base: usize,
+    mut read: impl FnMut(usize) -> f64,
+) -> f64 {
+    let upper = base + cell.stride;
     let (near, far) = if cell.starts_at_upper {
-        (upper_index, base)
+        (upper, base)
     } else {
-        (base, upper_index)
+        (base, upper)
     };
-    let anchor = interpolate_cell(lower_axes, values, near);
+    let anchor = read(near);
     if cell.fraction <= 0.0 {
         return anchor;
     }
-    let other = interpolate_cell(lower_axes, values, far);
+    let other = read(far);
     let difference = other - anchor;
     if difference.is_finite() {
         cell.fraction.mul_add(difference, anchor)
     } else {
         (1.0 - cell.fraction).mul_add(anchor, cell.fraction * other)
     }
+}
+
+#[inline]
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "each checked axis has at least two nodes and the query was validated or clamped"
+)]
+fn locate_grid_cell(
+    axis: &[f64],
+    coordinate: f64,
+    stride: usize,
+) -> Result<(usize, MultilinearCell), String> {
+    let interval = axis
+        .partition_point(|&node| node <= coordinate)
+        .saturating_sub(1)
+        .min(axis.len() - 2);
+    let &[lower, upper] = axis
+        .get(interval..)
+        .and_then(|tail| tail.first_chunk::<2>())
+        .ok_or_else(|| "the query point lies outside the grid".to_string())?;
+    let width = upper - lower;
+    let (from_lower, from_upper, width) = if width.is_finite() {
+        (coordinate - lower, upper - coordinate, width)
+    } else {
+        scaled_grid_interval_distances(lower, upper, coordinate)
+    };
+    let cell = MultilinearCell {
+        stride,
+        fraction: from_lower.min(from_upper) / width,
+        starts_at_upper: from_upper < from_lower,
+    };
+    Ok((interval, cell))
+}
+
+/// Evaluates a validated two-dimensional grid with clamped coordinates.
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "checked grid dimensions bound the offsets"
+)]
+pub(super) fn evaluate_bilinear(
+    xs: &[f64],
+    ys: &[f64],
+    values: &[f64],
+    x: f64,
+    y: f64,
+) -> Result<f64, String> {
+    let (column, x_cell) = locate_grid_cell(xs, x, 1)?;
+    let (row, y_cell) = locate_grid_cell(ys, y, xs.len())?;
+    let base = row * xs.len() + column;
+    Ok(sample_grid_axis(&y_cell, base, |row| {
+        sample_grid_axis(&x_cell, row, |index| {
+            values.get(index).copied().unwrap_or(f64::NAN)
+        })
+    }))
 }
 
 fn multilinear_at<'grid>(

@@ -66,11 +66,11 @@ fn check_grid(
 
 // LDLᵀ factorization with linear time and storage, backed by `dense::solve_spd_tridiagonal`.
 fn solve_symmetric_tridiagonal(
-    diagonal: Vec<f64>,
-    off: Vec<f64>,
-    rhs: Vec<f64>,
+    diagonal: &[f64],
+    off: &[f64],
+    rhs: &[f64],
 ) -> Result<Vec<f64>, ApproxError> {
-    super::dense::solve_spd_tridiagonal(&diagonal, &off, &rhs).map_err(|_| ApproxError::Singular)
+    super::dense::solve_spd_tridiagonal(diagonal, off, rhs).map_err(|_| ApproxError::Singular)
 }
 
 /// Boundary condition of a cubic spline.
@@ -165,7 +165,7 @@ impl CubicSpline {
                 r[0] = 3.0 * ((y[1] - y[0]) / h[0] - left);
                 r[n - 1] = 3.0 * (right - (y[n - 1] - y[n - 2]) / h[n - 2]);
             }
-            solve_symmetric_tridiagonal(diagonal, off, r)?
+            solve_symmetric_tridiagonal(&diagonal, &off, &r)?
         };
         let mut b = vec![0.0; n];
         let mut d = vec![0.0; n];
@@ -1311,24 +1311,69 @@ pub fn pade(
     m: usize,
     n: usize,
 ) -> Result<(Vec<f64>, Vec<f64>), ApproxError> {
-    if c.len() < m + n + 1 {
-        return Err(ApproxError::Invalid);
-    }
-    let cc = |i: isize| if i < 0 { 0.0 } else { c[i as usize] };
-    let mut q = vec![1.0];
-    if n > 0 {
-        let mut a = Mat::zeros(n, n);
-        let mut b = vec![0.0; n];
-        for i in 0..n {
-            for j in 0..n {
-                a.set(i, j, cc((m + i) as isize - j as isize));
-            }
-            b[i] = -cc((m + i + 1) as isize);
+    pade_coefficients(c, m, n, -0.0).map_err(|error| {
+        match error {
+            | PadeError::Solve(_) => ApproxError::Singular,
+            | _ => ApproxError::Invalid,
         }
-        q.extend(dense::solve(&a, &b).map_err(|_| ApproxError::Singular)?);
+    })
+}
+
+pub(super) enum PadeError {
+    DegreeOverflow,
+    TooFewCoefficients(usize),
+    WorkspaceTooLarge,
+    Solve(dense::DenseError),
+}
+
+pub(super) fn pade_coefficients(
+    coeffs: &[f64],
+    m: usize,
+    n: usize,
+    numerator_zero: f64,
+) -> Result<(Vec<f64>, Vec<f64>), PadeError> {
+    let required = m
+        .checked_add(n)
+        .and_then(|degree| degree.checked_add(1))
+        .ok_or(PadeError::DegreeOverflow)?;
+    if coeffs.len() < required {
+        return Err(PadeError::TooFewCoefficients(required));
     }
-    let p: Vec<f64> = (0..=m)
-        .map(|k| (0..=k.min(n)).map(|j| q[j] * cc((k - j) as isize)).sum())
+
+    let mut q = Vec::new();
+    q.try_reserve_exact(n + 1)
+        .map_err(|_| PadeError::WorkspaceTooLarge)?;
+    q.push(1.0);
+    if n > 0 {
+        let cells = n.checked_mul(n).ok_or(PadeError::WorkspaceTooLarge)?;
+        let mut data = Vec::new();
+        data.try_reserve_exact(cells)
+            .map_err(|_| PadeError::WorkspaceTooLarge)?;
+        for (row, k) in (m + 1..required).enumerate() {
+            // Discard the coefficient on the right-hand side and read the
+            // previous ones in descending order. Negative indices are zero.
+            data.extend(coeffs[..k].iter().rev().take(n).copied());
+            data.resize((row + 1) * n, 0.0);
+        }
+        let matrix = Mat {
+            rows: n,
+            cols: n,
+            data,
+        };
+        let mut rhs = f64_scratch(n);
+        rhs.extend(coeffs[m + 1..required].iter().map(|&value| -value));
+        q.resize(n + 1, 0.0);
+        dense::lu_factor(&matrix)
+            .and_then(|factors| factors.solve_into(&rhs, &mut q[1..]))
+            .map_err(PadeError::Solve)?;
+    }
+    // Keep each entry point's initial summation sign for exact zero.
+    let p = (0..=m)
+        .map(|k| {
+            q.iter()
+                .zip(coeffs[..=k].iter().rev())
+                .fold(numerator_zero, |sum, (&b, &a)| sum + b * a)
+        })
         .collect();
     Ok((p, q))
 }

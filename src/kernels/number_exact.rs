@@ -426,6 +426,8 @@ pub fn jacobi_bigint(
     Some(if n.is_one() { result } else { 0 })
 }
 
+/// Applies the strong Lucas probable-prime test with Selfridge’s parameters.
+///
 /// Strong Lucas probable-prime test of an odd integer `n > 2` with Selfridge's
 /// parameters (`D` the first of `5, -7, 9, -11, ...` with Jacobi symbol `-1`,
 /// `P = 1`, `Q = (1 - D) / 4`): checks `U_d = 0` or `V_{d 2^r} = 0` for some

@@ -799,6 +799,8 @@ impl Tape {
         params: &[f64],
         out: &mut [&mut [f64]],
     ) {
+        use rayon::prelude::*;
+
         const PAR_BLOCK: usize = COLUMN_BLOCK * 16;
         const PAR_WORK_THRESHOLD: usize = 65_536;
         let rows = out.iter().map(|o| o.len()).min().unwrap_or(0);
@@ -830,7 +832,6 @@ impl Tape {
             }
             return;
         }
-        use rayon::prelude::*;
         let n_chunks = rows.div_ceil(PAR_BLOCK);
         let mut chunk_cols: Vec<Vec<&mut [f64]>> = (0..n_chunks)
             .map(|_| Vec::with_capacity(out.len()))
@@ -921,9 +922,7 @@ impl Tape {
                     | Inst::Mul(a, b) => eval_binary_slice(dst, src(a), src(b), |x, y| x * y),
                     | Inst::Div(a, b) => eval_binary_slice(dst, src(a), src(b), |x, y| x / y),
                     | Inst::Neg(a) => eval_unary_slice(dst, src(a), |x| -x),
-                    | Inst::PowI(a, k) => {
-                        eval_unary_slice(dst, src(a), |x| <f64 as Scalar>::powi(x, k));
-                    },
+                    | Inst::PowI(a, k) => eval_powi_slice(dst, src(a), k),
                     | Inst::PowF(a, b) => {
                         eval_binary_slice(dst, src(a), src(b), <f64 as Scalar>::powf);
                     },
@@ -1281,6 +1280,56 @@ pub trait Scalar: Copy + FromExtern {
 
 /// Rows per block of [`Tape::eval_columns`].
 pub const COLUMN_BLOCK: usize = 256;
+
+/// Shares the exponent control flow across eight rows while retaining each
+/// row's square-and-multiply order from [`int_pow`].
+#[inline]
+pub(super) fn eval_powi_slice(
+    dst: &mut [f64],
+    src: &[f64],
+    exponent: i32,
+) {
+    debug_assert_eq!(dst.len(), src.len());
+    let magnitude = exponent.unsigned_abs();
+    if magnitude == 0 {
+        dst.fill(1.0);
+        return;
+    }
+
+    let (inputs, input_tail) = src.as_chunks::<8>();
+    let (outputs, output_tail) = dst.as_chunks_mut::<8>();
+    let initial_squares = magnitude.trailing_zeros();
+    let remaining = magnitude >> initial_squares;
+    for (xs, ys) in inputs.iter().zip(outputs) {
+        let mut power = *xs;
+        for _ in 0..initial_squares {
+            for value in &mut power {
+                *value *= *value;
+            }
+        }
+        // The first set bit initializes the accumulator without multiplying by 1.
+        let mut result = power;
+        let mut bits = remaining >> 1;
+        while bits != 0 {
+            for value in &mut power {
+                *value *= *value;
+            }
+            if bits & 1 != 0 {
+                for (value, factor) in result.iter_mut().zip(power) {
+                    *value *= factor;
+                }
+            }
+            bits >>= 1;
+        }
+        if exponent < 0 {
+            result = result.map(|value| 1.0 / value);
+        }
+        *ys = result;
+    }
+    for (dst, &src) in output_tail.iter_mut().zip(input_tail) {
+        *dst = int_pow(src, exponent);
+    }
+}
 
 #[inline]
 fn eval_unary_slice(

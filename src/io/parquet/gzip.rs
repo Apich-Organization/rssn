@@ -252,7 +252,7 @@ fn crc32(data: &[u8]) -> u32 {
 }
 
 /// Compresses `data` into a raw DEFLATE stream (single fixed-Huffman block).
-pub(crate) fn deflate_compress(data: &[u8]) -> Vec<u8> {
+pub fn deflate_compress(data: &[u8]) -> Vec<u8> {
     let mut writer = BitWriter::new();
     writer.put(1, 1); // BFINAL
     writer.put(1, 2); // BTYPE = 01, fixed Huffman
@@ -382,7 +382,7 @@ mod tests {
         let mut bad_magic = packed.clone();
         bad_magic[0] = 0;
         assert!(decompress(&bad_magic).is_err());
-        let mut bad_crc = packed.clone();
+        let mut bad_crc = packed;
         let len = bad_crc.len();
         bad_crc[len - 8] ^= 0xff;
         assert!(decompress(&bad_crc).is_err());

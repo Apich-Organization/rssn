@@ -2172,14 +2172,15 @@ fn polylog_log_expansion(
 /// * positive integer `s`: the logarithmic (Bernoulli/Hurwitz) continuation
 ///   for `|z| <= 3/2` and Kummer's inversion relation beyond, so every `z` is
 ///   covered;
+/// * real `s >= -15.5` and real `z < 1` outside the series' fast region:
+///   the same continuation as [`lerch`] with `a = 1`;
 /// * other `s`: the logarithmic expansion about `z = 1` for `|ln z| < 4.5`
 ///   (the expansion is valid for `|ln z| < 2π`, but `ζ(s-k)` overflows
 ///   `f64` before it converges near that bound);
 /// * `z = 1`: `ζ(s)` (the analytic continuation, as in `mpmath`).
 ///
-/// Outside the stated domain (non-integer `s` with `|ln z| >= 4.5`) the
-/// result is `NaN + NaN i`. Accuracy is about `1e-13` for moderate
-/// parameters.
+/// Outside the stated domain the result is `NaN + NaN i`. Accuracy is about
+/// `1e-13` for moderate parameters.
 #[must_use]
 #[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
 pub fn polylog_complex(
@@ -2229,6 +2230,19 @@ pub fn polylog_complex(
     if z.norm() <= 0.5 || (s.re > 40.0 && z.norm() <= 1.0) {
         // For large Re s the terms z^k / k^s decay fast even on |z| <= 1.
         return polylog_series(s, z);
+    }
+    if s.im == 0.0
+        && s.re >= -15.5
+        && s.re.is_finite()
+        && z.im == 0.0
+        && z.re.abs() > 0.5
+        && z.re < 1.0
+        && z.re.is_finite()
+    {
+        let real = z.re * lerch(z.re, s.re, 1.0);
+        if real.is_finite() {
+            return Complex64::new(real, 0.0);
+        }
     }
     if s.norm() > 1e5 {
         // The logarithmic expansion needs zeta(s - k) for many k: not
@@ -2338,10 +2352,10 @@ fn lerch_nonpositive_integer(
 /// `Φ = 1/Γ(s) ∫_0^∞ t^(s-1) e^(-a t)/(1 - z e^(-t)) dt`
 /// is evaluated by double-exponential quadrature, which covers `z < 0`
 /// (`|z| > 1` included) as well as `z ↑ 1`. Non-positive integer `s` use the
-/// rational form `(z d/dz + a)^n 1/(1-z)`. At `z = 1` the analytic
-/// continuation `ζ(s, a)` is returned; `z > 1` and non-positive non-integer
-/// `s` with `|z| > 9/10` are outside the implemented range (`NaN`). Accuracy
-/// is about `1e-13` for moderate parameters.
+/// rational form `(z d/dz + a)^n 1/(1-z)`. Non-integer orders in
+/// `[-15.5, 0)` use an Euler integral with the order shifted above zero.
+/// At `z = 1` the analytic continuation `ζ(s, a)` is returned. Outside
+/// the implemented range the result is `NaN`.
 #[must_use]
 #[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
 pub fn lerch(
@@ -2362,6 +2376,9 @@ pub fn lerch(
             crate::kernels::special::hurwitz_zeta(s, a)
         };
     }
+    if s == 0.0 {
+        return (1.0 - z).recip();
+    }
     if z.abs() <= 0.9 {
         let mut sum = 0.0;
         let mut z_power = 1.0;
@@ -2377,6 +2394,9 @@ pub fn lerch(
         }
         return sum;
     }
+    if s > 0.0 && s < 0.125 && a.is_finite() && z.is_finite() {
+        return lerch_small_positive_order(z, s, a);
+    }
     if s > 0.0 {
         // 1/Γ(s) ∫_0^∞ t^(s-1) e^(-a t) / (1 - z e^(-t)) dt, with the
         // power written through its logarithm so that large `t` cannot
@@ -2389,19 +2409,120 @@ pub fn lerch(
             if log_value < -745.0 {
                 return 0.0;
             }
-            log_value.exp() / (1.0 - z * (-t).exp())
+            log_value.exp() / lerch_denominator(z, t)
         };
         let quadrature = crate::kernels::quadrature::exp_sinh(integrand, 0.0, 1e-15);
         return quadrature.value / gamma_numerical(s);
     }
-    if s <= 0.0 && s.fract() == 0.0 {
+    if s < 0.0 && s.fract() == 0.0 {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let n = (-s) as usize;
         if n <= 64 {
             return lerch_nonpositive_integer(z, n, a);
         }
     }
+    if (-15.5..0.0).contains(&s) && a.is_finite() && z.is_finite() {
+        return lerch_negative_order(z, s, a);
+    }
     f64::NAN
+}
+
+fn lerch_denominator(
+    z: f64,
+    t: f64,
+) -> f64 {
+    if z > 0.0 {
+        (1.0 - z) - z * (-t).exp_m1()
+    } else {
+        1.0 - z * (-t).exp()
+    }
+}
+
+/// Subtract the endpoint value on the first panel. For small positive orders,
+/// the mass of the Euler integral is concentrated below the smallest positive
+/// argument of the exp-sinh rule.
+#[allow(clippy::single_call_fn)]
+fn lerch_small_positive_order(
+    z: f64,
+    s: f64,
+    a: f64,
+) -> f64 {
+    // In the variable x = a*t, integrate the constant endpoint term exactly
+    // against x^(s-1). Using Gamma(1+s) keeps that term finite as s tends to 0.
+    let endpoint = (1.0 - z).recip();
+    let near = crate::kernels::quadrature::tanh_sinh(
+        |x| {
+            let t = x / a;
+            let difference = (-x).exp_m1() + (z * endpoint) * (-t).exp_m1();
+            x.powf(s - 1.0) * (difference / lerch_denominator(z, t))
+        },
+        0.0,
+        1.0,
+        1e-14,
+    );
+    let tail_integrand = |x: f64| ((s - 1.0) * x.ln() - x).exp() / lerch_denominator(z, x / a);
+    // The exp-sinh map can round several distinct nodes to its lower bound.
+    let at_unit = tail_integrand(1.0);
+    let tail = crate::kernels::quadrature::exp_sinh(
+        move |x| {
+            if crate::kernels::exact_eq(x, 1.0) {
+                at_unit
+            } else {
+                tail_integrand(x)
+            }
+        },
+        1.0,
+        1e-14,
+    );
+    let scale = (-s * a.ln() - ln_gamma_numerical(1.0 + s)).exp();
+    scale * (endpoint + s * (near.value + tail.value))
+}
+
+/// Integrate by parts to move the order into `[0.5, 1.5)`. With
+/// `u = 1/(1 - z*exp(-t))`, applying `-d/dt` to `exp(-a*t) * u * P(u)`
+/// replaces `P` by `(a - 1 + u)P + u(u - 1)P'`.
+#[allow(clippy::single_call_fn)]
+fn lerch_negative_order(
+    z: f64,
+    s: f64,
+    a: f64,
+) -> f64 {
+    let shifts = (0.5 - s).ceil();
+    let order = s + shifts;
+    let mut coefficients = [0.0; 17];
+    coefficients[0] = 1.0;
+    for degree in 1..=shifts as usize {
+        for k in (1..=degree).rev() {
+            let k_float = k as f64;
+            coefficients[k] = (a - 1.0 - k_float) * coefficients[k] + k_float * coefficients[k - 1];
+        }
+        coefficients[0] *= a - 1.0;
+    }
+    let coefficients = &coefficients[..=shifts as usize];
+    let log_gamma = ln_gamma_numerical(order);
+    let unit_polynomial = coefficients.iter().rfold(0.0, |p, &c| p + c);
+    // exp(-38) is below 2^-54, so expm1(-t) has rounded to -1 here.
+    // For z < -1, bound |z| by 2^exponent_bound and use e > 2 to
+    // keep |z|*exp(-t) below the same margin. At 746, exp(-t) is zero.
+    let unit_cutoff = if z < -1.0 {
+        #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+        let exponent_bound = ((z.to_bits() >> 52) & 0x7ff) as i32 - 1022;
+        (38.0 + f64::from(exponent_bound)).min(746.0)
+    } else {
+        38.0
+    };
+    // Keep the scalar coefficients in the integrand's environment by value.
+    let integrand = move |t: f64| {
+        let log_weight = (order - 1.0) * t.ln() - a * t - log_gamma;
+        let (u, polynomial) = if t >= unit_cutoff {
+            (1.0, unit_polynomial)
+        } else {
+            let u = lerch_denominator(z, t).recip();
+            (u, coefficients.iter().rfold(0.0, |p, &c| p * u + c))
+        };
+        log_weight.exp() * u * polynomial
+    };
+    crate::kernels::quadrature::exp_sinh(integrand, 0.0, 1e-15).value
 }
 
 // ============================================================================
@@ -2492,11 +2613,22 @@ pub fn appell_f1(
         return series(a, b1, b2, c, x, y);
     }
     if c > a && a > 0.0 {
+        let scale_exponent = 1.0_f64.max(x.abs()).max(y.abs()).to_bits() >> 52;
+        // For finite coefficients the largest biased exponent E bounds
+        // |k| < 2^(E-1022). With t <= 2^(968-E), the rounded product has
+        // magnitude at most 2^-54 and 1 - k*t rounds to 1, ties to even.
+        // The bound has biased exponent 1991-E. A nonpositive encoded
+        // exponent gives a zero cutoff, including for infinite coefficients.
+        let unit_base_limit = 1991_u64.saturating_sub(scale_exponent) << 52;
         let integrand = |t: f64| {
             if t <= 0.0 || t >= 1.0 {
                 return 0.0;
             }
-            t.powf(a - 1.0)
+            let leading = t.powf(a - 1.0);
+            if t.to_bits() <= unit_base_limit {
+                return leading;
+            }
+            leading
                 * (1.0 - t).powf(c - a - 1.0)
                 * (1.0 - x * t).powf(-b1)
                 * (1.0 - y * t).powf(-b2)

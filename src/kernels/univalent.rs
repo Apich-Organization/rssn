@@ -1,6 +1,8 @@
-//! Univalent function theory ($\mathcal{S}$ class), Bieberbach–de Branges conjecture checks,
-//! Fekete–Szegő functional, Hankel determinants, Koebe growth/distortion/rotation theorems,
-//! Schwarzian derivative, Nehari univalence criterion, Grunsky matrix, and Loewner slit ODE.
+//! Numerical methods for the theory of univalent functions.
+//!
+//! Includes Bieberbach–de Branges checks, the Fekete–Szegő functional, Hankel determinants,
+//! Koebe growth, distortion and rotation bounds, Schwarzian derivatives, the Nehari criterion,
+//! Grunsky matrices, and the Loewner slit equation.
 
 use crate::kernels::complex::cauchy_fft_derivatives;
 use num_complex::Complex;
@@ -12,8 +14,9 @@ pub const S_RADIUS_OF_STARLIKENESS: f64 = 0.655_794_202_632_672_4;
 /// Sharp radius of convexity for the class $\mathcal{S}$: $2 - \sqrt{3} \approx 0.26795$.
 pub const S_RADIUS_OF_CONVEXITY: f64 = 0.267_949_192_431_122_7;
 
-/// Checks the Bieberbach–de Branges necessary condition $|a_n / a_1| \le n$ ($n \ge 2$)
-/// for a normalized univalent function $f(z) = a_1 z + a_2 z^2 + \dots$ (with `coeffs[k]` = $a_k$).
+/// Checks the Bieberbach–de Branges necessary condition $|`a_n` / `a_1`| \le n$ ($n \ge 2$)
+/// for a normalized univalent function $f(z) = `a_1` z + `a_2` z^2 + \dots$ (with `coeffs[k]` = $`a_k`$).
+#[must_use]
 pub fn check_bieberbach_de_branges(
     taylor_coeffs: &[Complex<f64>],
     tol: f64,
@@ -31,7 +34,8 @@ pub fn check_bieberbach_de_branges(
     true
 }
 
-/// Computes the Fekete–Szegő functional $|a_3 - \mu a_2^2|$.
+/// Computes the Fekete–Szegő functional $|`a_3` - \mu `a_2^2`|$.
+#[must_use]
 pub fn fekete_szego_functional(
     a2: Complex<f64>,
     a3: Complex<f64>,
@@ -40,7 +44,11 @@ pub fn fekete_szego_functional(
     (a3 - mu * a2 * a2).norm()
 }
 
-/// Computes the $q \times q$ Hankel determinant $H_q(n) = \det [c_{n + i + j}]_{i,j=0}^{q-1}$.
+/// Computes the $q \times q$ Hankel determinant $`H_q(n)` = \det [c_{n + i + j}]_{i,j=0}^{q-1}$.
+///
+/// # Errors
+///
+/// Returns an error if the supplied series has too few coefficients for the requested determinant.
 pub fn hankel_determinant(
     coeffs: &[Complex<f64>],
     q: usize,
@@ -69,14 +77,12 @@ pub fn hankel_determinant(
         let mut max_v = mat
             .get(col)
             .and_then(|r| r.get(col))
-            .map(|c| c.norm())
-            .unwrap_or(0.0);
+            .map_or(0.0, |c| c.norm());
         for row in (col + 1)..q {
             let v = mat
                 .get(row)
                 .and_then(|r| r.get(col))
-                .map(|c| c.norm())
-                .unwrap_or(0.0);
+                .map_or(0.0, |c| c.norm());
             if v > max_v {
                 max_v = v;
                 piv = row;
@@ -119,6 +125,7 @@ pub fn hankel_determinant(
 
 /// Koebe growth theorem bounds for $f \in \mathcal{S}$ at $|z| = r \in [0, 1)$:
 /// $\frac{r}{(1+r)^2} \le |f(z)| \le \frac{r}{(1-r)^2}$.
+#[must_use]
 pub fn koebe_growth_bounds(r: f64) -> Option<(f64, f64)> {
     if !(0.0..1.0).contains(&r) {
         return None;
@@ -130,6 +137,7 @@ pub fn koebe_growth_bounds(r: f64) -> Option<(f64, f64)> {
 
 /// Koebe distortion theorem bounds for $f \in \mathcal{S}$ at $|z| = r \in [0, 1)$:
 /// $\frac{1-r}{(1+r)^3} \le |f'(z)| \le \frac{1+r}{(1-r)^3}$.
+#[must_use]
 pub fn koebe_distortion_bounds(r: f64) -> Option<(f64, f64)> {
     if !(0.0..1.0).contains(&r) {
         return None;
@@ -139,8 +147,11 @@ pub fn koebe_distortion_bounds(r: f64) -> Option<(f64, f64)> {
     Some((lo, hi))
 }
 
+/// Returns Goluzin’s sharp rotation bound on the circle of radius `r`.
+///
 /// Goluzin's sharp rotation theorem bound on $|\arg f'(z)|$ for $f \in \mathcal{S}$ at $|z| = r \in [0, 1)$:
 /// $4 \arcsin(r)$ for $r \le 1/\sqrt{2}$, and $\pi + \ln\frac{r^2}{1 - r^2}$ for $1/\sqrt{2} < r < 1$.
+#[must_use]
 pub fn koebe_rotation_bound(r: f64) -> Option<f64> {
     if !(0.0..1.0).contains(&r) {
         return None;
@@ -149,12 +160,18 @@ pub fn koebe_rotation_bound(r: f64) -> Option<f64> {
     if r <= thresh {
         Some(4.0 * r.asin())
     } else {
-        Some(PI + (r * r / (1.0 - r * r)).ln())
+        let complement = (-r).mul_add(r, 1.0);
+        let twice_square_minus_one = (r + r).mul_add(r, -1.0);
+        Some(PI + (twice_square_minus_one / complement).ln_1p())
     }
 }
 
 /// Computes the Schwarzian derivative $\{f, z\} = \frac{f'''(z)}{f'(z)} - \frac{3}{2} \left(\frac{f''(z)}{f'(z)}\right)^2$
 /// using Cauchy–FFT derivatives on a circle of radius `h`.
+///
+/// # Errors
+///
+/// Returns an error when derivative evaluation fails or the first derivative vanishes.
 pub fn schwarzian_derivative_numeric<F>(
     f: &F,
     z: Complex<f64>,
@@ -176,6 +193,10 @@ where
 
 /// Checks Nehari's sufficient univalence criterion $(1 - |z|^2)^2 |\{f, z\}| \le 2$
 /// across sample radii in $(0, 1)$ and `n_angles` angles per radius.
+///
+/// # Errors
+///
+/// Returns an error for invalid sample radii, a zero angular sample count, or failed Schwarzian evaluation.
 pub fn check_nehari_univalence<F>(
     f: &F,
     sample_radii: &[f64],
@@ -238,7 +259,7 @@ where
     let mut lo = 0.0_f64;
     let mut hi = r_max;
     for _ in 0..40 {
-        let mid = 0.5 * (lo + hi);
+        let mid = f64::midpoint(lo, hi);
         if is_starlike_on_r(mid) {
             lo = mid;
         } else {
@@ -281,7 +302,7 @@ where
     let mut lo = 0.0_f64;
     let mut hi = r_max;
     for _ in 0..40 {
-        let mid = 0.5 * (lo + hi);
+        let mid = f64::midpoint(lo, hi);
         if is_convex_on_r(mid) {
             lo = mid;
         } else {
@@ -291,9 +312,15 @@ where
     lo
 }
 
+/// Computes the Grunsky matrix of a Taylor series.
+///
 /// Computes the $M \times M$ Grunsky matrix $G_{m,n} = \sqrt{mn} \, c_{m,n}$ for $1 \le m, n \le M$
-/// from the Taylor coefficients $f(z) = z + a_2 z^2 + \dots$ (`taylor_coeffs[k]` = $a_k$, $a_1 = 1$),
+/// from the Taylor coefficients $f(z) = z + `a_2` z^2 + \dots$ (`taylor_coeffs[k]` = $`a_k`$, $`a_1` = 1$),
 /// defined via $\ln \frac{f(z) - f(\zeta)}{z - \zeta} = -\sum_{m,n \ge 1} c_{m,n} z^m \zeta^n$.
+///
+/// # Errors
+///
+/// Returns an error when the Taylor coefficients are missing, have a zero linear term, or do not reach the requested order.
 pub fn grunsky_matrix(
     taylor_coeffs: &[Complex<f64>],
     order: usize,
@@ -337,10 +364,10 @@ pub fn grunsky_matrix(
             if p == 0 && q == 0 {
                 continue;
             }
-            if p + q + 1 <= max_deg {
-                if let Some(cell) = r_mat.get_mut(p).and_then(|r| r.get_mut(q)) {
-                    *cell = b(p + q + 1);
-                }
+            if p + q < max_deg
+                && let Some(cell) = r_mat.get_mut(p).and_then(|r| r.get_mut(q))
+            {
+                *cell = b(p + q + 1);
             }
         }
     }
@@ -409,7 +436,11 @@ pub fn grunsky_matrix(
     Ok(g)
 }
 
-/// Verifies the Grunsky inequality $\left|\sum_{m,n=1}^M G_{m,n} x_m x_n\right| \le \sum_{m=1}^M |x_m|^2 + \text{tol}$.
+/// Verifies the Grunsky inequality $\left|\sum_{m,n=1}^M G_{m,n} `x_m` `x_n\right`| \le \sum_{m=1}^M |`x_m|^2` + \text{tol}$.
+///
+/// # Errors
+///
+/// Returns an error if the supplied vector length does not match the matrix dimension.
 pub fn check_grunsky_inequality(
     grunsky: &[Vec<Complex<f64>>],
     test_vec: &[Complex<f64>],
@@ -449,7 +480,11 @@ pub fn check_grunsky_inequality(
                     ghgv[j] += grunsky[i][j].conj() * gv[i];
                 }
             }
-            let norm = ghgv.iter().map(|c| c.norm_sqr()).sum::<f64>().sqrt();
+            let norm = ghgv
+                .iter()
+                .map(num_complex::Complex::norm_sqr)
+                .sum::<f64>()
+                .sqrt();
             if norm < 1e-30 {
                 sigma_sq = 0.0;
                 break;
@@ -468,6 +503,7 @@ pub fn check_grunsky_inequality(
 
 /// Advances one RK4 step of the radial Loewner slit ODE
 /// $\frac{dw}{dt} = w \frac{e^{i\kappa} + w}{e^{i\kappa} - w}$ with constant driving `driving_kappa` over `dt`.
+#[must_use]
 pub fn loewner_slit_step(
     w: Complex<f64>,
     driving_kappa: f64,

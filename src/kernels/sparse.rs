@@ -716,21 +716,23 @@ pub fn solve_conjugate_gradient(
     }
 
     let b_owned;
-    let b_slice: &[f64] = if let Some(s) = b.as_slice() {
-        s
-    } else {
-        b_owned = b.to_vec();
-        &b_owned
+    let b_slice: &[f64] = match b.as_slice() {
+        | Some(slice) => slice,
+        | None => {
+            b_owned = b.to_vec();
+            &b_owned
+        },
     };
     let x0_owned;
     let x0_slice: Option<&[f64]> = match x0 {
         | Some(init) => {
-            if let Some(s) = init.as_slice() {
-                Some(s)
-            } else {
-                x0_owned = init.to_vec();
-                Some(&x0_owned)
-            }
+            Some(match init.as_slice() {
+                | Some(slice) => slice,
+                | None => {
+                    x0_owned = init.to_vec();
+                    &x0_owned
+                },
+            })
         },
         | None => None,
     };
@@ -947,7 +949,7 @@ mod tests {
     #[test]
     pub fn small_spmv_is_thread_count_independent() {
         let mat = banded(32, 32, 3);
-        let x: Vec<f64> = (0..32).map(|i| 1.0 + (i % 4) as f64).collect();
+        let x: Vec<f64> = (0..32).map(|i| 1.0 + f64::from(i % 4)).collect();
         let serial = with_scoped_pool(Some(1), || sp_mat_vec_mul(&mat, &x).unwrap_or_default());
         for workers in [2usize, 4] {
             let parallel = with_scoped_pool(Some(workers), || {

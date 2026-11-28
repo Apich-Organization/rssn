@@ -305,7 +305,7 @@ impl Column {
 }
 
 /// Encodes a byte slice as lowercase hexadecimal.
-pub(crate) fn encode_hex(bytes: &[u8]) -> String {
+pub fn encode_hex(bytes: &[u8]) -> String {
     const HEX: &[u8; 16] = b"0123456789abcdef";
     let mut out = String::with_capacity(bytes.len().saturating_mul(2));
     for &byte in bytes {
@@ -382,7 +382,7 @@ mod tests {
         assert_eq!(tail.list_bounds(1), Some((0, 2)));
         assert_eq!(tail.list_row(1), Some(Column::Int(vec![3, 4])));
 
-        let nested = Column::Nullable(Box::new(list.clone()), vec![false, true, false]);
+        let nested = Column::Nullable(Box::new(list), vec![false, true, false]);
         assert_eq!(nested.len(), 3);
         assert_eq!(nested.list_bounds(1), None);
         assert_eq!(nested.list_bounds(0), Some((0, 2)));

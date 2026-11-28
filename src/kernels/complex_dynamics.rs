@@ -1,6 +1,7 @@
-//! Complex dynamics: orbits, periodic point classification & multipliers,
-//! quadratic periodic points, Mandelbrot & Julia escape-time / Green's potential,
-//! Böttcher & Koenigs linearization coordinates, Lyapunov exponents, and external rays.
+//! Numerical methods for complex dynamics.
+//!
+//! Includes orbits and periodic-point multipliers, Mandelbrot and Julia escape times and
+//! potentials, Böttcher and Koenigs coordinates, Lyapunov exponents, and external rays.
 
 use num_complex::Complex;
 use std::f64::consts::PI;
@@ -18,7 +19,7 @@ pub enum FixedPointKind {
     Repelling,
 }
 
-/// Computes the forward orbit $[z_0, f(z_0), \dots, f^{\circ n}(z_0)]$.
+/// Computes the forward orbit $[`z_0`, `f(z_0)`, \dots, f^{\circ `n}(z_0)`]$.
 pub fn orbit<F>(
     f: F,
     z0: Complex<f64>,
@@ -37,7 +38,7 @@ where
     pts
 }
 
-/// Computes the multiplier $\lambda = \prod_{k=0}^{p-1} f'(z_k)$ along a period-`p` orbit
+/// Computes the multiplier $\lambda = \prod_{k=0}^{p-1} f'(`z_k`)$ along a period-`p` orbit
 /// starting at `z0`, and classifies the periodic point.
 pub fn classify_periodic_point<F, DF>(
     f: F,
@@ -68,8 +69,9 @@ where
     (mult, kind)
 }
 
-/// Finds periodic points of $f_c(z) = z^2 + c$ of period `period` by running Newton's method
-/// on $f_c^{\circ p}(z) - z = 0$ from the provided initial `seeds`, deduplicating within `tol * 1e3`.
+/// Finds periodic points of $`f_c(z)` = z^2 + c$ of period `period` by running Newton's method
+/// on $`f_c^{\circ` p}(z) - z = 0$ from the provided initial `seeds`, deduplicating within `tol * 1e3`.
+#[must_use]
 pub fn find_periodic_points_quadratic(
     c: Complex<f64>,
     period: usize,
@@ -105,7 +107,7 @@ pub fn find_periodic_points_quadratic(
             // Filter out primitive divisors d | p (d < p)
             let mut is_lower_period = false;
             for d in 1..p {
-                if p % d == 0 {
+                if p.is_multiple_of(d) {
                     let mut wd = z;
                     for _ in 0..d {
                         wd = wd * wd + c;
@@ -144,7 +146,8 @@ fn quadratic_escape(
     (max_iter, 0.0)
 }
 
-/// Mandelbrot escape time and Green's potential $G_c(c) = \lim 2^{-(n-1)} \ln|z_n|$ for $z_0 = 0, z_{n+1} = z_n^2 + c$.
+/// Mandelbrot escape time and Green's potential `G_c(c) = \lim 2^{-(n-1)} \ln|z_n|` for `z_0 = 0, z_{n+1} = z_n^2 + c`.
+#[must_use]
 pub fn mandelbrot_escape_time(
     c: Complex<f64>,
     max_iter: usize,
@@ -158,7 +161,8 @@ pub fn mandelbrot_escape_time(
     }
 }
 
-/// Julia escape time and Green's potential $G_c(z_0)$ for $z_{n+1} = z_n^2 + c$.
+/// Julia escape time and Green's potential $`G_c(z_0)`$ for $z_{n+1} = `z_n^2` + c$.
+#[must_use]
 pub fn julia_escape_time(
     z0: Complex<f64>,
     c: Complex<f64>,
@@ -168,8 +172,12 @@ pub fn julia_escape_time(
     quadratic_escape(z0, c, max_iter, escape_radius)
 }
 
-/// Computes Böttcher's coordinate $\phi_c(z) = z \prod_{n=0}^{N-1} (1 + c / z_n^2)^{2^{-(n+1)}}$
-/// in the basin of infinity of $f_c(z) = z^2 + c$, satisfying $\phi_c(z^2 + c) = \phi_c(z)^2$.
+/// Computes Böttcher's coordinate `\phi_c(z) = z \prod_{n=0}^{N-1} (1 + c / z_n^2)^{2^{-(n+1)}}`
+/// in the basin of infinity of `f_c(z) = z^2 + c`, satisfying `\phi_c(z^2 + c) = \phi_c(z)^2`.
+///
+/// # Errors
+///
+/// Returns an error if the orbit hits zero or does not clearly escape to infinity.
 pub fn bottcher_coordinate(
     z: Complex<f64>,
     c: Complex<f64>,
@@ -196,9 +204,15 @@ pub fn bottcher_coordinate(
     Ok(z * ln_prod.exp())
 }
 
+/// Computes the Koenigs coordinate of an attracting fixed point.
+///
 /// Computes Koenigs's linearizing coordinate
-/// $\psi(z) = \lim_{n\to\infty} \lambda^{-n} (f^{\circ n}(z) - z_0)$ near an attracting
-/// fixed point $z_0$ ($0 < |\lambda| < 1$), satisfying $\psi(f(z)) = \lambda \psi(z)$.
+/// $\psi(z) = \lim_{n\to\infty} \lambda^{-n} (f^{\circ n}(z) - `z_0`)$ near an attracting
+/// fixed point $`z_0`$ ($0 < |\lambda| < 1$), satisfying $\psi(f(z)) = \lambda \psi(z)$.
+///
+/// # Errors
+///
+/// Returns an error if the multiplier does not satisfy `0 < |lambda| < 1`.
 pub fn koenigs_coordinate<F>(
     f: F,
     z0: Complex<f64>,
@@ -231,7 +245,11 @@ where
     Ok(prev)
 }
 
-/// Estimates the Lyapunov exponent $\frac{1}{N} \sum_{n=\text{burn\_in}}^{\text{burn\_in}+N-1} \ln |f'(z_n)|$.
+/// Estimates the Lyapunov exponent $\frac{1}{N} \sum_{n=\text{burn\_in}}^{\text{burn\_in}+N-1} \ln |f'(`z_n`)|$.
+///
+/// # Errors
+///
+/// Returns an error for a zero step count or a zero or non-finite derivative along the orbit.
 pub fn lyapunov_exponent<F, DF>(
     f: F,
     df: DF,
@@ -262,9 +280,15 @@ where
     Ok(sum / (n_steps as f64))
 }
 
-/// Traces a point on the external ray of $f_c(z) = z^2 + c$ at angle `theta_turns` $\in [0, 1)$
-/// and Green potential `potential_r > 0`, satisfying $\phi_c(z) = e^{r + 2\pi i \theta}$,
-/// by stepping inward from a large radius $R_0 = e^{2^k r}$ via $k$ square-root continuations.
+/// Traces a point on a quadratic map’s external ray.
+///
+/// Traces a point on the external ray of `f_c(z) = z^2 + c` at angle `theta_turns` `\in [0, 1)`
+/// and Green potential `potential_r > 0`, satisfying `\phi_c(z) = e^{r + 2\pi i \theta}`,
+/// by stepping inward from a large radius `R_0 = e^{2^k r}` via `k` square-root continuations.
+///
+/// # Errors
+///
+/// Returns an error for a nonpositive potential, a zero step count, or failed Böttcher coordinate evaluation.
 pub fn external_ray_point(
     c: Complex<f64>,
     theta_turns: f64,

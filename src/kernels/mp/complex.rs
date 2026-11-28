@@ -8,7 +8,6 @@ use super::consts;
 use super::decimal::ball_to_decimal;
 use super::decimal::bits_for_digits;
 use super::decimal::from_decimal;
-use super::decimal::to_decimal_in;
 use super::funcs;
 use super::real::Real;
 use super::real::Round;
@@ -1117,17 +1116,9 @@ pub fn enclosure_complex_text(
     let digits = digits.clamp(1, MAX_DIGITS);
     let prec = bits_for_digits(digits).saturating_add(96).min(MAX_BITS);
     let z = parse_and_eval(text, prec)?;
-    let (re_lo, re_hi) = z.re.endpoints(prec)?;
-    let (im_lo, im_hi) = z.im.endpoints(prec)?;
     Ok((
-        (
-            to_decimal_in(&re_lo, digits, Round::TowardNegative)?,
-            to_decimal_in(&re_hi, digits, Round::TowardPositive)?,
-        ),
-        (
-            to_decimal_in(&im_lo, digits, Round::TowardNegative)?,
-            to_decimal_in(&im_hi, digits, Round::TowardPositive)?,
-        ),
+        super::enclosure_bounds_text(&z.re, prec, digits)?,
+        super::enclosure_bounds_text(&z.im, prec, digits)?,
     ))
 }
 
@@ -1139,9 +1130,23 @@ mod tests {
     fn euler_identity_to_thirty_digits() {
         let ((re_lo, re_hi), (im_lo, im_hi)) =
             enclosure_complex_text("exp(I * pi)", 30).unwrap_or_else(|e| panic!("{e}"));
-        assert_eq!(re_lo, "-1");
-        assert_eq!(re_hi, "-1");
-        assert!(im_lo.starts_with('-') || im_lo == "0", "{im_lo} .. {im_hi}");
+        // Directed decimal rounding must enclose the exact value even when
+        // neither endpoint can be rendered as that value.
+        let prec = 256;
+        let decimal = |text: &str| from_decimal(text, prec).unwrap_or_else(|e| panic!("{e}"));
+        let width_limit = decimal("2e-29");
+        let minus_one = Real::from_i64(-1, prec).unwrap_or_else(|e| panic!("{e}"));
+        for (lo, hi, expected) in [(re_lo, re_hi, minus_one), (im_lo, im_hi, Real::zero(prec))] {
+            let (lower, upper) = (decimal(&lo), decimal(&hi));
+            assert!(
+                lower.cmp_value(&expected) <= 0 && upper.cmp_value(&expected) >= 0,
+                "{lo} .. {hi}"
+            );
+            let width = upper
+                .sub(&lower, prec, Round::TowardPositive)
+                .unwrap_or_else(|e| panic!("{e}"));
+            assert!(width.cmp_value(&width_limit) < 0, "{lo} .. {hi}");
+        }
 
         let (re, im) = eval_complex_text("exp(I * pi / 3)", 30).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(re, "0.5");

@@ -18,21 +18,32 @@ pub fn predict(
     x: &[Vec<f64>],
     kind: Link,
 ) -> Result<Vec<f64>, String> {
-    let Some(intercept) = fit.beta.first().copied() else {
+    predict_coefficients(&fit.beta, x, kind)
+}
+
+/// Predicts response means from an intercept followed by fitted coefficients.
+///
+/// # Errors
+/// Fails on an empty coefficient vector, a mismatched row, or a non-finite mean.
+pub fn predict_coefficients(
+    coefficients: &[f64],
+    x: &[Vec<f64>],
+    kind: Link,
+) -> Result<Vec<f64>, String> {
+    let Some((&intercept, slopes)) = coefficients.split_first() else {
         return Err("fit has no coefficients".to_string());
     };
-    let slopes = fit.beta.len() - 1;
     let mut out = Vec::with_capacity(x.len());
     for (i, row) in x.iter().enumerate() {
-        if row.len() != slopes {
+        if row.len() != slopes.len() {
             return Err(format!(
-                "row {i} has {} entries but the model expects {slopes}",
-                row.len()
+                "row {i} has {} entries but the model expects {}",
+                row.len(),
+                slopes.len(),
             ));
         }
         let mut linear = intercept;
-        for (j, value) in row.iter().enumerate() {
-            let coefficient = fit.beta.get(j + 1).copied().unwrap_or(0.0);
+        for (value, coefficient) in row.iter().zip(slopes) {
             linear += value * coefficient;
         }
         let mean = link_inverse(kind, linear);

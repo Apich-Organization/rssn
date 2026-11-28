@@ -59,7 +59,11 @@ fn transform(
     input
 }
 
-pub(super) fn transform_in_place(
+/// Applies a one-dimensional FFT to an existing complex buffer.
+///
+/// Uses the direction and normalization conventions of the allocating FFT
+/// functions. Empty and singleton inputs are left unchanged.
+pub fn transform_in_place(
     data: &mut [Complex],
     inverse: bool,
     norm: Norm,
@@ -148,11 +152,17 @@ fn check_shape(
     if shape_len(shape) != Some(len) {
         return Err(format!("the shape {shape:?} does not match {len} elements"));
     }
+    check_axes(shape.len(), axes)
+}
+
+fn check_axes(
+    rank: usize,
+    axes: &[usize],
+) -> Result<(), String> {
     for (position, axis) in axes.iter().enumerate() {
-        if *axis >= shape.len() {
+        if *axis >= rank {
             return Err(format!(
-                "axis {axis} is out of range for a tensor of rank {}",
-                shape.len()
+                "axis {axis} is out of range for a tensor of rank {rank}"
             ));
         }
         if axes[..position].contains(axis) {
@@ -178,6 +188,23 @@ pub fn fft_axes(
 ) -> Result<Vec<Complex>, String> {
     check_shape(input.len(), shape, axes)?;
     Ok(transform_axes(input.to_vec(), shape, axes, inverse, norm))
+}
+
+/// Applies the selected-direction FFT to an existing row-major complex buffer.
+///
+/// # Errors
+/// As for an allocating axis transform. Validation completes before the
+/// buffer is modified.
+pub fn fft_axes_in_place(
+    data: &mut [Complex],
+    shape: &[usize],
+    axes: &[usize],
+    inverse: bool,
+    norm: Norm,
+) -> Result<(), String> {
+    check_shape(data.len(), shape, axes)?;
+    transform_axes_in_place(data, shape, axes, inverse, norm);
+    Ok(())
 }
 
 fn transform_axes(
@@ -339,6 +366,11 @@ pub fn rfft_axes(
     if input.is_empty() {
         return Ok((Vec::new(), out_shape));
     }
+    if input.len() == shape[last] {
+        // All other extents are one. Reuse the packed real transform and
+        // its cached twiddles for a single lane.
+        return Ok((rfft(input), out_shape));
+    }
     let mut complex: Vec<_> = input
         .iter()
         .map(|&value| Complex::new(value, 0.0))
@@ -390,6 +422,18 @@ pub fn irfft_axes(
     if total == 0 {
         return Ok((Vec::new(), full_shape));
     }
+    if total == n_last {
+        let plan = super::transforms::IrfftPlan::new(n_last)
+            .map_err(|_| "tensor is too large".to_string())?;
+        let mut samples = Vec::new();
+        samples
+            .try_reserve_exact(n_last)
+            .map_err(|_| "tensor is too large".to_string())?;
+        samples.resize(n_last, 0.0);
+        plan.apply_into(input, &mut samples)
+            .map_err(|_| "tensor shape disagrees with inverse FFT plan".to_string())?;
+        return Ok((samples, full_shape));
+    }
     let mut full = Vec::new();
     full.try_reserve_exact(total)
         .map_err(|_| "tensor is too large".to_string())?;
@@ -431,41 +475,67 @@ pub fn shift_permutation(
     inverse: bool,
 ) -> Result<Vec<usize>, String> {
     let total = shape_len(shape).ok_or_else(|| "tensor shape overflows usize".to_string())?;
-    check_shape(total, shape, axes)?;
-    let rank = shape.len();
+    check_axes(shape.len(), axes)?;
     let mut out = Vec::new();
     out.try_reserve_exact(total)
         .map_err(|_| "tensor is too large".to_string())?;
-    let mut coordinate = vec![0usize; rank];
-    for slot in 0..total {
-        let mut rest = slot;
-        for axis in (0..rank).rev() {
-            coordinate[axis] = rest % shape[axis];
-            rest /= shape[axis];
-        }
-        let mut source = 0usize;
-        for axis in 0..rank {
-            let extent = shape[axis];
-            let mut at = coordinate[axis];
-            if axes.contains(&axis) {
-                // `fftshift` rolls by n/2 (zero frequency to the middle);
-                // `ifftshift` is its inverse.
-                let by = if inverse {
-                    extent - extent / 2
-                } else {
-                    extent / 2
-                };
-                at = if at >= by {
-                    at - by
-                } else {
-                    extent - (by - at)
-                };
-            }
-            source = source * extent + at;
-        }
-        out.push(source);
-    }
+    out.extend(0..total);
+    roll_axes(&mut out, shape, axes, inverse);
     Ok(out)
+}
+
+/// Shifts zero frequency along the selected axes of a row-major buffer.
+///
+/// Forward shifts roll each axis to the right by half its length, rounded
+/// down. Inverse shifts roll left by the same amount.
+///
+/// # Errors
+/// Returns an error for a shape that disagrees with the buffer, or for
+/// repeated or out-of-range axes. The buffer is left unchanged on error.
+pub fn shift_axes_in_place<T: Send>(
+    data: &mut [T],
+    shape: &[usize],
+    axes: &[usize],
+    inverse: bool,
+) -> Result<(), String> {
+    check_shape(data.len(), shape, axes)?;
+    roll_axes(data, shape, axes, inverse);
+    Ok(())
+}
+
+fn roll_axes<T: Send>(
+    data: &mut [T],
+    shape: &[usize],
+    axes: &[usize],
+    inverse: bool,
+) {
+    if data.is_empty() || axes.is_empty() {
+        return;
+    }
+    let mut inner = 1;
+    for (axis, &extent) in shape.iter().enumerate().rev() {
+        let block_len = inner * extent;
+        if extent > 1 && axes.contains(&axis) {
+            let offset = (extent / 2) * inner;
+            let roll = |_: usize, blocks: &mut [T]| {
+                for block in blocks.chunks_exact_mut(block_len) {
+                    if inverse {
+                        block.rotate_left(offset);
+                    } else {
+                        block.rotate_right(offset);
+                    }
+                }
+            };
+            // Group neighboring blocks to avoid scheduling tiny rotations.
+            if data.len() >= 262_144 {
+                let chunk_len = block_len * (32_768 / block_len).max(1);
+                par::for_chunks_mut(data, chunk_len, 4, roll);
+            } else {
+                roll(0, data);
+            }
+        }
+        inner = block_len;
+    }
 }
 
 /// The non-negative sample frequencies of a length-`n` real transform,
@@ -652,47 +722,14 @@ fn shift_nd_inner(
     shape: &[usize],
     inverse: bool,
 ) -> Result<Vec<Complex>, String> {
-    let total = shape
-        .iter()
-        .try_fold(1usize, |acc, &d| acc.checked_mul(d))
-        .ok_or_else(|| "shape product overflows usize".to_string())?;
-    if total != input.len() {
-        return Err(format!(
-            "input length {} does not match shape product {}",
-            input.len(),
-            total
-        ));
-    }
-    if total == 0 || shape.is_empty() {
-        return Ok(input.to_vec());
-    }
-    let ndim = shape.len();
-    let mut strides = vec![1usize; ndim];
-    for i in (0..ndim - 1).rev() {
-        strides[i] = strides[i + 1] * shape[i + 1];
-    }
-    let shifts: Vec<usize> = shape
-        .iter()
-        .map(|&d| {
-            if inverse {
-                d.div_ceil(2)
-            } else {
-                d / 2
-            }
-        })
-        .collect();
-    let mut out = vec![Complex::ZERO; total];
-    for (idx, &val) in input.iter().enumerate() {
-        let mut rem = idx;
-        let mut dst = 0usize;
-        for ax in 0..ndim {
-            let coord = rem / strides[ax];
-            rem %= strides[ax];
-            let shifted = (coord + shifts[ax]) % shape[ax];
-            dst += shifted * strides[ax];
-        }
-        out[dst] = val;
-    }
+    check_shape(input.len(), shape, &[])?;
+    let mut out = input.to_vec();
+    roll_axes(
+        &mut out,
+        shape,
+        &(0..shape.len()).collect::<Vec<_>>(),
+        inverse,
+    );
     Ok(out)
 }
 
@@ -721,6 +758,113 @@ pub fn ifftshift_nd(
 #[cfg(test)]
 mod nd_tests {
     use super::*;
+
+    #[test]
+    fn shifts_agree_on_odd_even_and_partial_axes() {
+        let input: Vec<_> = (0..12).map(|i| Complex::new(f64::from(i), -1.0)).collect();
+        let expected = [10, 11, 6, 7, 8, 9, 4, 5, 0, 1, 2, 3];
+        let shape = [2, 3, 2];
+        let axes = [1, 0];
+        assert_eq!(shift_permutation(&shape, &axes, false).unwrap(), expected);
+        let mut shifted = input.clone();
+        shift_axes_in_place(&mut shifted, &shape, &axes, false).unwrap();
+        assert_eq!(shifted, expected.map(|i| input[i]));
+        shift_axes_in_place(&mut shifted, &shape, &axes, true).unwrap();
+        assert_eq!(shifted, input);
+        assert_eq!(
+            fftshift_nd(&input, &shape).unwrap(),
+            [11, 10, 7, 6, 9, 8, 5, 4, 1, 0, 3, 2].map(|i| input[i])
+        );
+    }
+
+    #[test]
+    fn shift_handles_empty_and_invalid_shapes_before_mutating() {
+        let mut values = [1, 2, 3, 4];
+        assert!(shift_axes_in_place(&mut values, &[2, 2], &[0, 0], false).is_err());
+        assert!(shift_axes_in_place(&mut values, &[2, 2], &[2], false).is_err());
+        assert!(shift_axes_in_place(&mut values, &[3, 2], &[1], false).is_err());
+        assert_eq!(values, [1, 2, 3, 4]);
+        assert!(shift_permutation(&[usize::MAX, 2], &[1], false).is_err());
+        assert_eq!(
+            shift_permutation(&[usize::MAX, 2, 0], &[0], false).unwrap(),
+            Vec::<usize>::new()
+        );
+        assert_eq!(
+            fftshift_nd(&[], &[usize::MAX, 2, 0]).unwrap(),
+            Vec::<Complex>::new()
+        );
+    }
+
+    #[test]
+    fn large_parallel_shift_matches_row_and_plane_offsets() {
+        let shape = [4, 257, 256];
+        let [planes, rows, cols] = shape;
+        let mut actual = (0..planes * rows * cols).collect::<Vec<_>>();
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(2)
+            .build()
+            .unwrap()
+            .install(|| shift_axes_in_place(&mut actual, &shape, &[0, 2, 1], false).unwrap());
+        for (destination, source) in actual.into_iter().enumerate() {
+            let col = destination % cols;
+            let row = destination / cols % rows;
+            let plane = destination / (cols * rows);
+            let expected = (((plane + planes.div_ceil(2)) % planes * rows
+                + (row + rows.div_ceil(2)) % rows)
+                * cols)
+                + (col + cols.div_ceil(2)) % cols;
+            assert_eq!(source, expected);
+        }
+    }
+
+    #[test]
+    fn in_place_axes_checks_inputs_and_honors_normalization() {
+        let shape = [2, 3];
+        let mut samples = [Complex::ZERO; 6];
+        samples[0] = Complex::new(2.0, 3.0);
+        let original = samples;
+        assert!(fft_axes_in_place(&mut samples, &shape, &[0, 2], false, Norm::Forward).is_err());
+        assert_eq!(samples, original);
+
+        fft_axes_in_place(&mut samples, &shape, &[1, 0], false, Norm::Forward).unwrap();
+        for bin in samples {
+            assert!((bin - original[0] / 6.0).norm() < 1e-12);
+        }
+        fft_axes_in_place(&mut samples, &shape, &[0, 1], true, Norm::Forward).unwrap();
+        for (sample, expected) in samples.into_iter().zip(original) {
+            assert!((sample - expected).norm() < 1e-12);
+        }
+    }
+
+    #[test]
+    fn single_real_lane_matches_complex_reference_for_odd_and_even_lengths() {
+        for len in [1, 2, 7, 16] {
+            let shape = [1, len, 1];
+            let signal = (0..len).map(|i| (i as f64 * 0.3).sin()).collect::<Vec<_>>();
+            let embedded = signal
+                .iter()
+                .map(|&x| Complex::new(x, 0.0))
+                .collect::<Vec<_>>();
+            let reference = fft(&embedded);
+            let (bins, half_shape) = rfft_axes(&signal, &shape, &[2, 0, 1]).unwrap();
+            assert_eq!(half_shape, [1, len / 2 + 1, 1]);
+            assert_eq!(bins.len(), len / 2 + 1);
+            for (bin, expected) in bins.iter().zip(reference) {
+                assert!((*bin - expected).norm() < 1e-12);
+            }
+            let (recovered, recovered_shape) =
+                irfft_axes(&bins, &half_shape, &[2, 0, 1], len).unwrap();
+            assert_eq!(recovered_shape, shape);
+            for (&sample, expected) in recovered.iter().zip(signal) {
+                assert!((sample - expected).abs() < 1e-12);
+            }
+        }
+
+        let (samples, shape) =
+            irfft_axes(&[Complex::new(f64::MAX, 0.0); 3], &[3], &[0], 4).unwrap();
+        assert_eq!(shape, [4]);
+        assert_eq!(samples, [f64::MAX, 0.0, 0.0, 0.0]);
+    }
 
     #[test]
     fn rfft2_and_fftshift_nd_roundtrip() {

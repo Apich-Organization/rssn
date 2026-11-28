@@ -40,6 +40,14 @@
 //! cost is quadratic in the precision: twenty digits take microseconds, a few
 //! thousand take about a second. [`decimal::MAX_DIGITS`] caps what an operator
 //! accepts, and [`real::MAX_BITS`] caps what the tower can hold.
+//!
+//! [`real`]: crate::kernels::mp::real
+//! [`funcs`]: crate::kernels::mp::funcs
+//! [`Ball`]: crate::kernels::mp::Ball
+//! [`decimal`]: crate::kernels::mp::decimal
+//! [`parse`]: crate::kernels::mp::parse
+//! [`decimal::MAX_DIGITS`]: crate::kernels::mp::decimal::MAX_DIGITS
+//! [`real::MAX_BITS`]: crate::kernels::mp::real::MAX_BITS
 
 pub mod ball;
 pub mod complex;
@@ -83,9 +91,8 @@ pub fn round_named(name: &str) -> Result<Round, String> {
 
 /// Evaluates decimal expression `text` to `digits` significant digits.
 ///
-/// The precision is raised until the enclosure pins the digits, which is the
-/// Ziv strategy: a result is never returned with a digit the radius does not
-/// certify.
+/// Plain decimal literals are rounded directly. Other expressions use
+/// progressively higher precision until the enclosure pins the digits.
 ///
 /// # Errors
 /// Fails on malformed text, a domain error, or when the digits cannot be
@@ -95,6 +102,9 @@ pub fn eval_text(
     digits: usize,
 ) -> Result<String, String> {
     let digits = digits.clamp(1, MAX_DIGITS);
+    if let Some(value) = parse::round_literal(text, digits)? {
+        return Ok(value);
+    }
     let mut prec = bits_for_digits(digits).saturating_add(64);
     let mut last = String::new();
     for _ in 0..5 {
@@ -109,7 +119,7 @@ pub fn eval_text(
 }
 
 /// Evaluates decimal expression `text` to a rigorous enclosure at `digits`
-/// significant digits, as `(low, high)`.
+/// significant digits, rounded outward, as `(low, high)`.
 ///
 /// # Errors
 /// Fails on malformed text, a domain error, or when an exponent leaves the
@@ -121,8 +131,19 @@ pub fn enclosure_text(
     let digits = digits.clamp(1, MAX_DIGITS);
     let prec = bits_for_digits(digits).saturating_add(96).min(MAX_BITS);
     let ball = parse::evaluate(text, prec)?;
-    let (low, high) = ball.endpoints(prec)?;
-    Ok((to_decimal(&low, digits)?, to_decimal(&high, digits)?))
+    enclosure_bounds_text(&ball, prec, digits)
+}
+
+fn enclosure_bounds_text(
+    ball: &Ball,
+    precision: u32,
+    digits: usize,
+) -> Result<(String, String), String> {
+    let (low, high) = ball.endpoints(precision)?;
+    Ok((
+        to_decimal_in(&low, digits, Round::TowardNegative)?,
+        to_decimal_in(&high, digits, Round::TowardPositive)?,
+    ))
 }
 
 /// A constant by name, to `digits` significant digits.
@@ -213,10 +234,7 @@ pub fn round_text(
     digits: usize,
     mode: Round,
 ) -> Result<String, String> {
-    let digits = digits.clamp(1, MAX_DIGITS);
-    let prec = bits_for_digits(digits).saturating_add(64);
-    let value = from_decimal(text, prec)?;
-    to_decimal_in(&value, digits, mode)
+    decimal::round_decimal(text, digits, mode)
 }
 
 /// The number of significant decimal digits a literal carries.
@@ -334,6 +352,71 @@ mod tests {
     }
 
     #[test]
+    fn decimal_rounding_reads_past_a_binary_halfway_approximation() {
+        let above_half = format!("1.25{}1", "0".repeat(120));
+        let below_half = format!("1.24{}9", "9".repeat(120));
+        assert_eq!(
+            super::round_text(&above_half, 2, Round::NearestEven).unwrap(),
+            "1.3"
+        );
+        assert_eq!(
+            super::round_text(&below_half, 2, Round::NearestEven).unwrap(),
+            "1.2"
+        );
+        assert_eq!(
+            super::round_text(&format!("-{above_half}"), 2, Round::NearestEven).unwrap(),
+            "-1.3"
+        );
+
+        for (mode, positive, negative) in [
+            (Round::NearestEven, "1.2", "-1.2"),
+            (Round::TowardZero, "1.2", "-1.2"),
+            (Round::AwayFromZero, "1.3", "-1.3"),
+            (Round::TowardPositive, "1.3", "-1.2"),
+            (Round::TowardNegative, "1.2", "-1.3"),
+        ] {
+            assert_eq!(super::round_text("1.2500", 2, mode).unwrap(), positive);
+            assert_eq!(super::round_text("-1.2500", 2, mode).unwrap(), negative);
+        }
+        assert_eq!(
+            super::round_text("1.35", 2, Round::NearestEven).unwrap(),
+            "1.4"
+        );
+        assert_eq!(
+            super::round_text("-1.35", 2, Round::NearestEven).unwrap(),
+            "-1.4"
+        );
+        assert_eq!(
+            super::round_text("9.95", 2, Round::NearestEven).unwrap(),
+            "10"
+        );
+        assert_eq!(
+            super::round_text("1.2995", 4, Round::NearestEven).unwrap(),
+            "1.3"
+        );
+        assert_eq!(
+            super::round_text("000.000125e2", 2, Round::TowardPositive).unwrap(),
+            "0.013"
+        );
+        assert_eq!(
+            super::round_text("-0", 1, Round::AwayFromZero).unwrap(),
+            "0"
+        );
+    }
+
+    #[test]
+    fn exact_literal_evaluation_obeys_the_expression_grammar() {
+        assert_eq!(super::eval_text(" + 0.15 ", 1).unwrap(), "0.2");
+        assert_eq!(super::eval_text("-0.15", 1).unwrap(), "-0.2");
+        assert_eq!(super::eval_text("0.15e-2", 1).unwrap(), "0.002");
+        assert_eq!(super::eval_text("1 + 2", 1).unwrap(), "3");
+        for malformed in ["1 2", "1_2", "1.2.3", "0.15e", "1e40001"] {
+            assert!(super::eval_text(malformed, 1).is_err(), "{malformed}");
+        }
+        assert!(super::eval_text(&"1".repeat(4097), 1).is_err());
+    }
+
+    #[test]
     fn narrowing_to_a_double_is_correctly_rounded() {
         assert_eq!(super::to_float_text("0.1").unwrap(), 0.1);
         assert_eq!(super::to_float_text("1e-400").unwrap(), 0.0);
@@ -365,6 +448,26 @@ mod tests {
         assert!(super::compare_text(&low, "3.141592653589793238462643").unwrap() <= 0);
         assert!(super::compare_text(&high, "3.141592653589793238462643").unwrap() >= 0);
         assert!(super::compare_text(&low, &high).unwrap() <= 0);
+    }
+
+    #[test]
+    fn decimal_enclosures_round_each_endpoint_outward() {
+        for (expression, lower, upper) in [
+            ("1/3", "0.3", "0.4"),
+            ("-1/3", "-0.4", "-0.3"),
+            ("9.99", "9", "10"),
+            ("-9.99", "-10", "-9"),
+        ] {
+            let bounds = super::enclosure_text(expression, 1).unwrap();
+            assert_eq!(bounds, (lower.to_owned(), upper.to_owned()), "{expression}");
+        }
+        assert_eq!(
+            super::enclosure_complex_text("(1-I)/3", 1).unwrap(),
+            (
+                ("0.3".to_owned(), "0.4".to_owned()),
+                ("-0.4".to_owned(), "-0.3".to_owned())
+            )
+        );
     }
 
     #[test]

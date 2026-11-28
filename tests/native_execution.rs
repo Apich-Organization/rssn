@@ -770,7 +770,9 @@ fn native_equatorial_model_keeps_kerr_horizon_checks_and_sampled_units() {
     assert_eq!(sampled.shape, vec![(rows - 2) / 7 + 2, 2]);
     let expected = fixed
         .data
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .enumerate()
         .filter(|(i, _)| i % 7 == 0 || i + 1 == rows)
         .flat_map(|(_, row)| row.iter().cloned())

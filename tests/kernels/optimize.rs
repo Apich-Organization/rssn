@@ -250,7 +250,7 @@ fn invalid_requests_are_rejected() {
     assert!(minimize(&problem, &[], SolverKind::Bfgs, &options).is_err());
     // A gradient solver on a gradient-free problem.
     let gradient_free = rssn::kernels::optimize::FnProblem::new(
-        |x| Sphere::cost(x),
+        Sphere::cost,
         None::<fn(&[f64]) -> Vec<f64>>,
         2,
         None,

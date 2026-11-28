@@ -91,7 +91,7 @@ fn identify_fopdt(plant: &TransferFunction) -> Result<Fopdt, String> {
     };
     let samples = 2001;
     let t: Vec<f64> = (0..samples)
-        .map(|i| horizon * i as f64 / (samples - 1) as f64)
+        .map(|i| horizon * f64::from(i) / f64::from(samples - 1))
         .collect();
     let y = step_response(plant, &t)?;
     let tail: f64 = y.iter().rev().take(5).sum::<f64>() / 5.0;
@@ -104,7 +104,7 @@ fn identify_fopdt(plant: &TransferFunction) -> Result<Fopdt, String> {
     let t63 = crossing_time(&t, &normalised, 0.632)
         .ok_or_else(|| "the plant does not reach 63.2% of its final value".to_string())?;
     let tau = 1.5 * (t63 - t28);
-    if !(tau > 0.0) {
+    if tau.partial_cmp(&0.0) != Some(std::cmp::Ordering::Greater) {
         return Err("the identified time constant is not positive".to_string());
     }
     let theta = (t63 - tau).max(1e-3 * tau);
@@ -205,7 +205,7 @@ pub fn pid_response(
     let mut error_prev = setpoint;
     for k in 1..t.len() {
         let h = t[k] - t[k - 1];
-        if !(h > 0.0) {
+        if h.partial_cmp(&0.0) != Some(std::cmp::Ordering::Greater) {
             return Err("time vector must be strictly increasing".to_string());
         }
         let error = setpoint - y_prev;
@@ -240,7 +240,7 @@ pub fn simulate_pid(
     u_limits: Option<(f64, f64)>,
 ) -> Vec<f64> {
     let mut out = Vec::with_capacity(error.len());
-    if error.is_empty() || !(dt > 0.0) {
+    if error.is_empty() || dt.partial_cmp(&0.0) != Some(std::cmp::Ordering::Greater) {
         return out;
     }
     let mut integral = 0.0_f64;
@@ -350,7 +350,7 @@ mod tests {
             kd: 0.1,
             tf: Some(0.01),
         };
-        let t: Vec<f64> = (0..501).map(|i| i as f64 * 0.02).collect();
+        let t: Vec<f64> = (0..501).map(|i| f64::from(i) * 0.02).collect();
         let y = pid_response(&pid, &plant, &t, 1.0).unwrap();
         assert!((y.last().copied().unwrap() - 1.0).abs() < 0.05);
     }

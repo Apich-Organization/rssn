@@ -53,9 +53,12 @@ fn assert_reference(
     let mut reference = ReferenceStream(seed);
     let mut output = [0.0; 74];
     distribution.fill_marks(&mut stream, &mut output).unwrap();
-    for pair in output.chunks_exact(2) {
+    for pair in output.as_chunks::<2>().0 {
         let expected = next_mark(&mut reference);
-        assert_eq!(pair, distribution.sample(&mut scalar_stream).unwrap());
+        assert_eq!(
+            pair.as_slice(),
+            distribution.sample(&mut scalar_stream).unwrap()
+        );
         for (&a, e) in pair.iter().zip(expected) {
             assert!((a - e).abs() <= 8.0e-15 * e.abs().max(1.0), "{a} vs {e}");
         }
@@ -143,7 +146,7 @@ fn uniform_crossing_the_float_range_has_finite_marks_and_the_correct_mean() {
     wide.fill_marks(&mut stream, &mut sampled).unwrap();
     assert_eq!(sampled[0], -limit); // The first LCG draw for seed zero is exactly zero.
     let mut reference = ReferenceStream(0);
-    for mark in sampled.chunks_exact(2) {
+    for mark in sampled.as_chunks::<2>().0 {
         assert!(mark[0].is_finite() && mark[1].is_finite());
         assert!((mark[0] / limit - (2.0 * reference.uniform() - 1.0)).abs() < 4.0e-16);
         assert!((mark[1] / limit - (1.5 * reference.uniform() - 1.0)).abs() < 4.0e-16);

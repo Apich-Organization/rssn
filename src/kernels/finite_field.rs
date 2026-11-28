@@ -208,7 +208,6 @@ pub(crate) use crate::kernels::modular::sub_mod_raw;
 #[must_use]
 #[expect(
     clippy::indexing_slicing,
-    clippy::arithmetic_side_effects,
     reason = "prefix and output buffers are sized to values.len() and loop indices stay in 0..n"
 )]
 pub fn batch_inverse_into(
@@ -273,7 +272,6 @@ pub fn batch_inverse_mod(
 #[must_use]
 #[expect(
     clippy::indexing_slicing,
-    clippy::arithmetic_side_effects,
     reason = "prefix buffer and output vector have length values.len() and indices are in 0..n"
 )]
 pub fn batch_inverse_skip_zeros(
@@ -341,21 +339,16 @@ fn slice_add_mod_seq(
 ) {
     let n = a.len().min(b.len()).min(out.len());
     let (a, b, out) = (&a[..n], &b[..n], &mut out[..n]);
-    let mut ca = a.chunks_exact(4);
-    let mut cb = b.chunks_exact(4);
-    let mut co = out.chunks_exact_mut(4);
-    for ((xa, xb), yo) in ca.by_ref().zip(cb.by_ref()).zip(co.by_ref()) {
+    let (a_chunks, a_tail) = a.as_chunks::<4>();
+    let (b_chunks, b_tail) = b.as_chunks::<4>();
+    let (out_chunks, out_tail) = out.as_chunks_mut::<4>();
+    for ((xa, xb), yo) in a_chunks.iter().zip(b_chunks).zip(out_chunks) {
         yo[0] = barrett.add(xa[0], xb[0]);
         yo[1] = barrett.add(xa[1], xb[1]);
         yo[2] = barrett.add(xa[2], xb[2]);
         yo[3] = barrett.add(xa[3], xb[3]);
     }
-    for ((&xa, &xb), yo) in ca
-        .remainder()
-        .iter()
-        .zip(cb.remainder())
-        .zip(co.into_remainder())
-    {
+    for ((&xa, &xb), yo) in a_tail.iter().zip(b_tail).zip(out_tail) {
         *yo = barrett.add(xa, xb);
     }
 }
@@ -409,21 +402,16 @@ fn slice_sub_mod_seq(
 ) {
     let n = a.len().min(b.len()).min(out.len());
     let (a, b, out) = (&a[..n], &b[..n], &mut out[..n]);
-    let mut ca = a.chunks_exact(4);
-    let mut cb = b.chunks_exact(4);
-    let mut co = out.chunks_exact_mut(4);
-    for ((xa, xb), yo) in ca.by_ref().zip(cb.by_ref()).zip(co.by_ref()) {
+    let (a_chunks, a_tail) = a.as_chunks::<4>();
+    let (b_chunks, b_tail) = b.as_chunks::<4>();
+    let (out_chunks, out_tail) = out.as_chunks_mut::<4>();
+    for ((xa, xb), yo) in a_chunks.iter().zip(b_chunks).zip(out_chunks) {
         yo[0] = barrett.sub(xa[0], xb[0]);
         yo[1] = barrett.sub(xa[1], xb[1]);
         yo[2] = barrett.sub(xa[2], xb[2]);
         yo[3] = barrett.sub(xa[3], xb[3]);
     }
-    for ((&xa, &xb), yo) in ca
-        .remainder()
-        .iter()
-        .zip(cb.remainder())
-        .zip(co.into_remainder())
-    {
+    for ((&xa, &xb), yo) in a_tail.iter().zip(b_tail).zip(out_tail) {
         *yo = barrett.sub(xa, xb);
     }
 }
@@ -483,28 +471,28 @@ fn slice_scale_mod_seq(
         return;
     }
     if s == 1 {
-        let mut ca = a.chunks_exact(4);
-        let mut co = out.chunks_exact_mut(4);
-        for (xa, yo) in ca.by_ref().zip(co.by_ref()) {
+        let (a_chunks, a_tail) = a.as_chunks::<4>();
+        let (out_chunks, out_tail) = out.as_chunks_mut::<4>();
+        for (xa, yo) in a_chunks.iter().zip(out_chunks) {
             yo[0] = barrett.reduce_u64(xa[0]);
             yo[1] = barrett.reduce_u64(xa[1]);
             yo[2] = barrett.reduce_u64(xa[2]);
             yo[3] = barrett.reduce_u64(xa[3]);
         }
-        for (&xa, yo) in ca.remainder().iter().zip(co.into_remainder()) {
+        for (&xa, yo) in a_tail.iter().zip(out_tail) {
             *yo = barrett.reduce_u64(xa);
         }
         return;
     }
-    let mut ca = a.chunks_exact(4);
-    let mut co = out.chunks_exact_mut(4);
-    for (xa, yo) in ca.by_ref().zip(co.by_ref()) {
+    let (a_chunks, a_tail) = a.as_chunks::<4>();
+    let (out_chunks, out_tail) = out.as_chunks_mut::<4>();
+    for (xa, yo) in a_chunks.iter().zip(out_chunks) {
         yo[0] = barrett.mul(xa[0], s);
         yo[1] = barrett.mul(xa[1], s);
         yo[2] = barrett.mul(xa[2], s);
         yo[3] = barrett.mul(xa[3], s);
     }
-    for (&xa, yo) in ca.remainder().iter().zip(co.into_remainder()) {
+    for (&xa, yo) in a_tail.iter().zip(out_tail) {
         *yo = barrett.mul(xa, s);
     }
 }
@@ -566,23 +554,23 @@ fn slice_axpy_mod_seq(
         return;
     }
     if alpha_red == 1 {
-        let mut cx = x.chunks_exact(4);
-        let mut cy = y.chunks_exact_mut(4);
-        for (xx, yy) in cx.by_ref().zip(cy.by_ref()) {
+        let (x_chunks, x_tail) = x.as_chunks::<4>();
+        let (y_chunks, y_tail) = y.as_chunks_mut::<4>();
+        for (xx, yy) in x_chunks.iter().zip(y_chunks) {
             yy[0] = barrett.add(yy[0], xx[0]);
             yy[1] = barrett.add(yy[1], xx[1]);
             yy[2] = barrett.add(yy[2], xx[2]);
             yy[3] = barrett.add(yy[3], xx[3]);
         }
-        for (&xx, yy) in cx.remainder().iter().zip(cy.into_remainder()) {
+        for (&xx, yy) in x_tail.iter().zip(y_tail) {
             *yy = barrett.add(*yy, xx);
         }
         return;
     }
     let a128 = u128::from(alpha_red);
-    let mut cx = x.chunks_exact(4);
-    let mut cy = y.chunks_exact_mut(4);
-    for (xx, yy) in cx.by_ref().zip(cy.by_ref()) {
+    let (x_chunks, x_tail) = x.as_chunks::<4>();
+    let (y_chunks, y_tail) = y.as_chunks_mut::<4>();
+    for (xx, yy) in x_chunks.iter().zip(y_chunks) {
         let y0 = u128::from(barrett.reduce_u64(yy[0]));
         let y1 = u128::from(barrett.reduce_u64(yy[1]));
         let y2 = u128::from(barrett.reduce_u64(yy[2]));
@@ -596,7 +584,7 @@ fn slice_axpy_mod_seq(
         yy[2] = barrett.reduce_u128(y2 + a128 * x2);
         yy[3] = barrett.reduce_u128(y3 + a128 * x3);
     }
-    for (&xx, yy) in cx.remainder().iter().zip(cy.into_remainder()) {
+    for (&xx, yy) in x_tail.iter().zip(y_tail) {
         let yv = u128::from(barrett.reduce_u64(*yy));
         let xv = u128::from(barrett.reduce_u64(xx));
         *yy = barrett.reduce_u128(yv + a128 * xv);
@@ -657,10 +645,10 @@ fn dot_mod_block(
     let (a, b) = (&a[..n], &b[..n]);
     let can_fuse_four = barrett.modulus() < (1u64 << 62);
     let mut acc = 0u64;
-    let mut ca = a.chunks_exact(4);
-    let mut cb = b.chunks_exact(4);
+    let (a_chunks, a_tail) = a.as_chunks::<4>();
+    let (b_chunks, b_tail) = b.as_chunks::<4>();
     if can_fuse_four {
-        for (xa, xb) in ca.by_ref().zip(cb.by_ref()) {
+        for (xa, xb) in a_chunks.iter().zip(b_chunks) {
             let a0 = u128::from(barrett.reduce_u64(xa[0]));
             let a1 = u128::from(barrett.reduce_u64(xa[1]));
             let a2 = u128::from(barrett.reduce_u64(xa[2]));
@@ -673,7 +661,7 @@ fn dot_mod_block(
             acc = barrett.add(acc, barrett.reduce_u128(sum4));
         }
     } else {
-        for (xa, xb) in ca.by_ref().zip(cb.by_ref()) {
+        for (xa, xb) in a_chunks.iter().zip(b_chunks) {
             let p0 = barrett.mul(xa[0], xb[0]);
             let p1 = barrett.mul(xa[1], xb[1]);
             let p2 = barrett.mul(xa[2], xb[2]);
@@ -681,7 +669,7 @@ fn dot_mod_block(
             acc = barrett.add(acc, barrett.add(barrett.add(p0, p1), barrett.add(p2, p3)));
         }
     }
-    for (&xa, &xb) in ca.remainder().iter().zip(cb.remainder()) {
+    for (&xa, &xb) in a_tail.iter().zip(b_tail) {
         acc = barrett.add(acc, barrett.mul(xa, xb));
     }
     acc
@@ -704,6 +692,8 @@ pub fn dot_mod(
     b: &[u64],
     modulus: u64,
 ) -> u64 {
+    const BLOCK: usize = 4_096;
+
     let n = a.len().min(b.len());
     if n == 0 {
         return 0;
@@ -712,7 +702,6 @@ pub fn dot_mod(
         return 0;
     };
     let (a, b) = (&a[..n], &b[..n]);
-    const BLOCK: usize = 4_096;
     if crate::execution::should_split_work(n, 4) {
         let nb = n.div_ceil(BLOCK);
         let block_sums = crate::kernels::par::map_indexed(nb, 2, |blk| {
@@ -735,64 +724,16 @@ pub fn dot_mod(
 /// because callers in this module were written against it.
 pub use crate::kernels::number_theory::is_prime_miller_rabin as is_prime_u64;
 
-/// Finds the smallest positive primitive root modulo an odd prime `modulus`.
+/// Finds the smallest positive primitive root modulo a prime `modulus`.
 ///
-/// Returns `None` if `modulus` is not prime (`modulus == 2` returns `Some(1)`).
+/// The root and Montgomery context for an odd prime are cached by modulus.
+/// Returns `None` if the modulus is composite, zero or one.
 #[must_use]
-#[expect(
-    clippy::arithmetic_side_effects,
-    clippy::indexing_slicing,
-    reason = "p >= 3 is prime, and at most 16 distinct prime factors can divide a 64-bit integer"
-)]
 pub fn primitive_root_prime(modulus: u64) -> Option<u64> {
     if modulus == 2 {
         return Some(1);
     }
-    if !is_prime_u64(modulus) {
-        return None;
-    }
-    let mont = MontgomeryPrimeField::new(modulus)?;
-    let phi = modulus - 1;
-    let mut factors = [0u64; 16];
-    let mut nf = 0usize;
-    let mut m = phi;
-    if (m & 1) == 0 {
-        factors[nf] = 2;
-        nf += 1;
-        while (m & 1) == 0 {
-            m >>= 1;
-        }
-    }
-    let mut d = 3u64;
-    while d.saturating_mul(d) <= m {
-        if m.is_multiple_of(d) {
-            factors[nf] = d;
-            nf += 1;
-            while m.is_multiple_of(d) {
-                m /= d;
-            }
-        }
-        d += 2;
-    }
-    if m > 1 {
-        factors[nf] = m;
-        nf += 1;
-    }
-    let one_mont = mont.one_mont();
-    for g in 2..modulus {
-        let g_mont = mont.to_mont(g);
-        let mut ok = true;
-        for &q in &factors[..nf] {
-            if mont.pow_mont(g_mont, phi / q) == one_mont {
-                ok = false;
-                break;
-            }
-        }
-        if ok {
-            return Some(g);
-        }
-    }
-    None
+    super::number_theory::odd_prime_generator(modulus).map(|group| group.root)
 }
 
 /// Reusable, immutable Number-Theoretic Transform (NTT) plan for power-of-two
@@ -840,11 +781,11 @@ fn build_ntt_plan(
     if !(modulus - 1).is_multiple_of(len_u64) {
         return None;
     }
-    let mont = MontgomeryPrimeField::new(modulus)?;
-    let g = primitive_root_prime(modulus)?;
+    let group = super::number_theory::odd_prime_generator(modulus)?;
+    let mont = group.mont;
     let log_len = len.trailing_zeros();
 
-    let g_mont = mont.to_mont(g);
+    let g_mont = mont.to_mont(group.root);
     let omega_mont = mont.pow_mont(g_mont, (modulus - 1) / len_u64);
     let omega_inv = mont.inv(mont.from_mont(omega_mont))?;
     let omega_inv_mont = mont.to_mont(omega_inv);
@@ -983,9 +924,11 @@ pub fn ntt_in_place_mont(
 /// Multiplies two polynomials `a` and `b` modulo an NTT-friendly prime `modulus`
 /// using cached [`NttPrimePlan`] tables from [`crate::kernels::reuse::global_pool`].
 ///
-/// Both inputs and the returned product have length `a.len() + b.len() - 1` (or
-/// empty if either input is empty), independent of coefficient ordering (ascending
-/// or descending). Returns `None` if no power-of-two NTT plan exists for `(modulus, n)`.
+/// Inputs are in the same coefficient order (ascending or descending) and
+/// the product follows that order. Its length is `a.len() + b.len() - 1`,
+/// or zero if either input is empty. A nonempty product requires an odd
+/// prime modulus and the next power-of-two transform length to divide
+/// `modulus - 1`. Returns `None` if these conditions fail.
 #[must_use]
 #[expect(
     clippy::indexing_slicing,
@@ -1023,17 +966,17 @@ pub fn poly_mul_ntt_mod(
         ntt_in_place_mont(&mut fb, &plan, false);
     }
 
-    for i in 0..n {
-        fa[i] = mont.mul_mont(fa[i], fb[i]);
-    }
+    super::par::for_each_mut(&mut fa, 16_384, |i, coefficient| {
+        *coefficient = mont.mul_mont(*coefficient, fb[i]);
+    });
+    drop(fb);
 
     ntt_in_place_mont(&mut fa, &plan, true);
-
-    let mut out = Vec::with_capacity(out_len);
-    for &c_mont in &fa[..out_len] {
-        out.push(mont.from_mont(c_mont));
-    }
-    Some(out)
+    fa.truncate(out_len);
+    super::par::for_each_mut(&mut fa, 16_384, |_, coefficient| {
+        *coefficient = mont.from_mont(*coefficient);
+    });
+    Some(fa)
 }
 
 impl Add for PrimeFieldElement {
@@ -1535,7 +1478,7 @@ mod tests {
         }
 
         // A zero element causes batch_inverse_mod to return None.
-        let mut with_zero = values.clone();
+        let mut with_zero = values;
         with_zero[17] = 0;
         with_zero[99] = p;
         assert!(batch_inverse_mod(&with_zero, p).is_none());

@@ -17,20 +17,15 @@ fn large_order_and_argument_do_not_overflow_the_integrand() {
             800.0,
             400.0,
             5.595_652_515_000_873e111,
-            257.308_935_281_967_87,
+            257.308_935_281_967_9,
         ),
         (
             1000.0,
             1000.0,
-            1.298_180_251_466_700_9e-233,
+            1.298_180_251_466_701e-233,
             -536.241_363_190_353_7,
         ),
-        (
-            0.5,
-            700.0,
-            4.670_609_799_936_133_5e-306,
-            -703.049_748_814_877,
-        ),
+        (0.5, 700.0, 4.670_609_799_936_134e-306, -703.049_748_814_877),
         (
             0.5,
             1e-300,
@@ -87,7 +82,7 @@ fn half_order_and_zero_order_have_independent_limits() {
     }
     // Corrections to K0(x) ~ -ln(x/2) - EulerGamma vanish at these inputs.
     for x in [f64::from_bits(1), 1e-300, 1e-130] {
-        let expected = LN_2 - x.ln() - 0.577_215_664_901_532_9;
+        let expected = LN_2 - x.ln() - std::f64::consts::EULER_GAMMA;
         let actual = bessel_k0(x);
         assert!((actual / expected - 1.0).abs() < 5e-14);
     }

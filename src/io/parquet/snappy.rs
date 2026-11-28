@@ -74,7 +74,7 @@ fn emit_copy(
 }
 
 /// Compresses `input` into a single Snappy block.
-pub(crate) fn compress(input: &[u8]) -> Vec<u8> {
+pub fn compress(input: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(input.len() / 2 + 16);
     write_varint(&mut out, input.len() as u64);
     if input.is_empty() {
@@ -171,7 +171,7 @@ fn copy_back(
 ///
 /// Returns an error when the block is truncated, declares an impossible
 /// length, or contains an invalid tag.
-pub(crate) fn decompress(input: &[u8]) -> Result<Vec<u8>, String> {
+pub fn decompress(input: &[u8]) -> Result<Vec<u8>, String> {
     let (declared, mut pos) = read_varint(input, 0)?;
     let expected = usize::try_from(declared)
         .map_err(|_| "snappy length does not fit in memory".to_string())?;

@@ -26,6 +26,94 @@ fn near(
     );
 }
 
+fn assert_carlson_rg_permutations(
+    [x, y, z]: [Complex64; 3],
+    expected: Complex64,
+    tolerance: f64,
+) {
+    for [a, b, c] in [
+        [x, y, z],
+        [x, z, y],
+        [y, x, z],
+        [y, z, x],
+        [z, x, y],
+        [z, y, x],
+    ] {
+        near(
+            ext::carlson_rg_complex(a, b, c),
+            expected,
+            tolerance,
+            "Carlson R_G",
+        );
+    }
+}
+
+#[test]
+fn carlson_rg_zero_parameters_follow_the_exact_limits() {
+    let zero = Complex64::new(0.0, 0.0);
+    let one = Complex64::new(1.0, 0.0);
+    let z = Complex64::new(2.0, 3.0);
+    for (argument, expected) in [
+        ([one, one, zero], Complex64::new(PI / 4.0, 0.0)),
+        ([z, z, zero], (PI / 4.0) * z.sqrt()),
+        ([z, zero, zero], 0.5 * z.sqrt()),
+        ([zero, zero, zero], zero),
+    ] {
+        assert_carlson_rg_permutations(argument, expected, 1e-15);
+    }
+    near(
+        ext::elliptic_e_complex(zero),
+        Complex64::new(PI / 2.0, 0.0),
+        1e-15,
+        "E(0)",
+    );
+    near(ext::elliptic_e_complex(one), one, 1e-15, "E(1)");
+    for sign in [-1.0_f64, 1.0] {
+        let cut = Complex64::new(-1.0, 0.0_f64.copysign(sign));
+        assert_carlson_rg_permutations(
+            [cut, cut, zero],
+            Complex64::new(0.0, sign * PI / 4.0),
+            1e-15,
+        );
+        assert_carlson_rg_permutations([cut, zero, zero], Complex64::new(0.0, sign * 0.5), 1e-15);
+    }
+
+    // The factor of one half acts on the root, after the subnormal input is scaled.
+    let smallest = f64::from_bits(1);
+    let result = ext::carlson_rg_complex(Complex64::new(0.0, smallest), zero, zero);
+    let component = 0.5 * smallest.sqrt() * std::f64::consts::FRAC_1_SQRT_2;
+    assert!((result.re / component - 1.0).abs() <= 2.0 * f64::EPSILON);
+    assert!((result.im / component - 1.0).abs() <= 2.0 * f64::EPSILON);
+}
+
+#[test]
+fn carlson_rg_permutations_match_the_defining_integral() {
+    let zero = Complex64::new(0.0, 0.0);
+    let one = Complex64::new(1.0, 0.0);
+    // Independent quadrature of DLMF 19.16.2_5, with separate shifted square roots.
+    for (args, expected) in [
+        (
+            [Complex64::new(1.0, 0.4), Complex64::new(3.0, -0.7), zero],
+            Complex64::new(1.097_946_806_798_013_6, -0.022_302_029_297_672_13),
+        ),
+        (
+            [Complex64::new(-1.0, 0.07), Complex64::new(2.0, 0.5), zero],
+            Complex64::new(0.546_644_444_162_021_3, 0.332_204_453_516_196_76),
+        ),
+        (
+            [Complex64::new(-1.0, 0.1), Complex64::new(-1.0, -0.1), zero],
+            Complex64::new(-1.192_068_147_045_497_5, 0.0),
+        ),
+        (
+            [Complex64::new(-1.0, 0.1), Complex64::new(-1.0, 0.1), one],
+            Complex64::new(0.229_368_399_633_498_2, 0.567_058_829_970_660_7),
+        ),
+    ] {
+        assert_carlson_rg_permutations(args, expected, 4e-13);
+        assert_carlson_rg_permutations(args.map(|z| z.conj()), expected.conj(), 4e-13);
+    }
+}
+
 #[test]
 fn gamma_beta_incomplete_and_barnes_g_identities() {
     let z = Complex64::new(0.4, 0.7);
@@ -291,11 +379,21 @@ fn wright_omega_and_session_operators() {
 }
 
 #[test]
+fn complex_bessel_integer_series_reject_unrepresentable_orders() {
+    let z = Complex64::new(0.0, std::f64::consts::PI);
+    for order in [172.0, 1e8, -1e308, f64::INFINITY] {
+        assert!(ext::bessel_y_complex(order, z).is_nan());
+        assert!(ext::bessel_k_complex(order, z).is_nan());
+        assert!(ext::bessel_ke_complex(order, z).is_nan());
+    }
+}
+
+#[test]
 fn adversarial_and_boundary_complex_special_functions() {
     // Ei(10) on positive real axis (E_1(-10) near cut)
     let ei10 = ext::exp_integral_ei_complex(Complex64::new(10.0, 0.0));
     assert!(
-        (ei10.re - 2492.228_976_241_877_7).abs() < 1e-8 && ei10.im.abs() < 1e-10,
+        (ei10.re - 2_492.228_976_241_877_7).abs() < 1e-8 && ei10.im.abs() < 1e-10,
         "Ei(10)={ei10}"
     );
 

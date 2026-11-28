@@ -45,7 +45,9 @@ fn periodic_multielement_plan_conserves_the_quadrature_mean() {
         .map(|i| ((i * 11 % 29) as f64 - 9.0) / 16.0)
         .collect();
     let sum = |u: &[f64]| {
-        u.chunks_exact(4)
+        u.as_chunks::<4>()
+            .0
+            .iter()
             .map(|cell| (cell[0] + 5.0 * cell[1] + 5.0 * cell[2] + cell[3]) / 24.0)
             .sum::<f64>()
     };

@@ -1,7 +1,10 @@
 //! Linear Gaussian state-space filtering and Rauch–Tung–Striebel smoothing.
 
+use crate::kernels::dense::DenseError;
 use crate::kernels::dense::Mat;
-use crate::kernels::dense::lu_factor;
+use crate::kernels::dense::cholesky;
+use crate::kernels::dense::solve_cholesky_factor_in_place;
+use crate::kernels::dense::solve_cholesky_lower_in_place;
 
 /// The output of a Kalman filter pass.
 #[derive(Debug, Clone, PartialEq)]
@@ -25,6 +28,32 @@ struct FilterRun {
     loglik: f64,
 }
 
+struct KalmanModel {
+    transition: Mat,
+    observation: Mat,
+    process_cov: Mat,
+    noise_cov: Mat,
+    p0: Mat,
+}
+
+impl KalmanModel {
+    fn from_rows(
+        transition: &[Vec<f64>],
+        observation: &[Vec<f64>],
+        process_cov: &[Vec<f64>],
+        noise_cov: &[Vec<f64>],
+        p0: &[Vec<f64>],
+    ) -> Result<Self, String> {
+        Ok(Self {
+            transition: from_rows(transition, "transition")?,
+            observation: from_rows(observation, "observation")?,
+            process_cov: covariance_from_rows(process_cov, "process covariance")?,
+            noise_cov: covariance_from_rows(noise_cov, "noise covariance")?,
+            p0: covariance_from_rows(p0, "initial covariance")?,
+        })
+    }
+}
+
 /// Builds a matrix from rows, mapping the shape error to a message.
 fn from_rows(
     rows: &[Vec<f64>],
@@ -46,196 +75,322 @@ fn to_rows(matrix: &Mat) -> Vec<Vec<f64>> {
     rows
 }
 
-/// Entry-wise sum of two equally shaped matrices.
+/// Adds two equally shaped matrices, reusing the left allocation.
 fn add(
-    a: &Mat,
+    mut a: Mat,
     b: &Mat,
 ) -> Result<Mat, String> {
     if a.rows != b.rows || a.cols != b.cols {
         return Err("matrix shapes differ in an addition".to_string());
     }
-    let mut out = Mat::zeros(a.rows, a.cols);
-    for i in 0..a.rows {
-        for j in 0..a.cols {
-            out.set(i, j, a.at(i, j) + b.at(i, j));
-        }
+    for (left, &right) in a.data.iter_mut().zip(&b.data) {
+        *left += right;
     }
-    Ok(out)
+    Ok(a)
 }
 
-/// Entry-wise difference of two equally shaped matrices.
-fn sub(
+/// Reuses the dense product and attaches the failing step to its error.
+fn multiply(
     a: &Mat,
     b: &Mat,
+    stage: &str,
 ) -> Result<Mat, String> {
-    if a.rows != b.rows || a.cols != b.cols {
-        return Err("matrix shapes differ in a subtraction".to_string());
-    }
-    let mut out = Mat::zeros(a.rows, a.cols);
+    a.matmul(b).map_err(|err| format!("{stage} failed: {err}"))
+}
+
+fn symmetrise(a: &mut Mat) {
     for i in 0..a.rows {
-        for j in 0..a.cols {
-            out.set(i, j, a.at(i, j) - b.at(i, j));
+        for j in (i + 1)..a.rows {
+            let mean = a.at(i, j).midpoint(a.at(j, i));
+            a.set(i, j, mean);
+            a.set(j, i, mean);
         }
     }
-    Ok(out)
 }
 
-/// Symmetrises a square matrix, damping the drift of the update formulas.
-fn symmetrise(a: &Mat) -> Mat {
-    let n = a.rows;
-    let mut out = a.clone();
-    for i in 0..n {
-        for j in (i + 1)..n {
-            let mean = 0.5 * a.at(i, j) + 0.5 * a.at(j, i);
-            out.set(i, j, mean);
-            out.set(j, i, mean);
+fn covariance_from_rows(
+    rows: &[Vec<f64>],
+    name: &str,
+) -> Result<Mat, String> {
+    let mut cov = from_rows(rows, name)?;
+    if cov.rows != cov.cols || !cov.is_finite() {
+        return Err(format!("{name} must be square and finite"));
+    }
+    let mut deviations = crate::kernels::reuse::f64_scratch(cov.rows);
+    for i in 0..cov.rows {
+        let variance = cov.at(i, i);
+        if variance < 0.0 {
+            return Err(format!("{name} has a negative variance"));
+        }
+        deviations.push(variance.sqrt());
+    }
+
+    // Check the correlation matrix so a large variance cannot mask an
+    // invalid covariance among small components. A diagonal perturbation
+    // only on this validation copy admits singular PSD matrices and lets
+    // the same checked Cholesky factorization reject negative directions.
+    let tolerance = 16.0 * f64::EPSILON * cov.rows as f64;
+    let mut correlations = None;
+    for i in 0..cov.rows {
+        for j in (i + 1)..cov.rows {
+            let a = cov.at(i, j);
+            let b = cov.at(j, i);
+            if (a - b).abs() > 16.0 * f64::EPSILON * a.abs().max(b.abs()) {
+                return Err(format!("{name} must be symmetric"));
+            }
+            let mean = a.midpoint(b);
+            cov.set(i, j, mean);
+            cov.set(j, i, mean);
+            if mean == 0.0 {
+                continue;
+            }
+            let large = deviations[i].max(deviations[j]);
+            let small = deviations[i].min(deviations[j]);
+            if small == 0.0 {
+                return Err(format!("{name} must be positive semidefinite"));
+            }
+            let correlation = (mean / large) / small;
+            if correlation.abs() > 1.0 + tolerance {
+                return Err(format!("{name} must be positive semidefinite"));
+            }
+            let matrix = correlations.get_or_insert_with(|| {
+                let mut matrix = Mat::identity(cov.rows);
+                for k in 0..cov.rows {
+                    matrix.set(k, k, 1.0 + tolerance);
+                }
+                matrix
+            });
+            matrix.set(i, j, correlation);
+            matrix.set(j, i, correlation);
         }
     }
-    out
+    if let Some(correlations) = correlations {
+        cholesky(&correlations).map_err(|error| {
+            match error {
+                | DenseError::Singular => format!("{name} must be positive semidefinite"),
+                | other => format!("could not validate {name}: {other}"),
+            }
+        })?;
+    }
+    Ok(cov)
 }
 
-/// Runs the prediction and update steps, keeping full covariance matrices.
+/// Applies the same factored right solve to each independent row.
+fn solve_gain(
+    mut cross: Mat,
+    factor: &Mat,
+) -> Mat {
+    let cols = cross.cols;
+    super::super::par::for_chunks_mut(&mut cross.data, cols, 32, |_, row| {
+        solve_cholesky_factor_in_place(factor, row);
+    });
+    cross
+}
+
+/// Joseph covariance update, using the gain from the factored innovation.
+fn posterior_covariance(
+    gain: &Mat,
+    observation: &Mat,
+    prior: &Mat,
+    noise: &Mat,
+) -> Result<Mat, String> {
+    const UPDATE: &str = "covariance update";
+    let single_observation = gain.cols == 1;
+    let mut complement = if single_observation {
+        let mut complement = Mat::zeros(gain.rows, observation.cols);
+        for (row, &weight) in complement
+            .data
+            .chunks_exact_mut(observation.cols)
+            .zip(&gain.data)
+        {
+            for (entry, &coefficient) in row.iter_mut().zip(&observation.data) {
+                *entry = -weight * coefficient;
+            }
+        }
+        complement
+    } else {
+        let mut complement = multiply(gain, observation, UPDATE)?;
+        for value in &mut complement.data {
+            *value = -*value;
+        }
+        complement
+    };
+    for i in 0..complement.rows {
+        complement.set(i, i, 1.0 + complement.at(i, i));
+    }
+    let mut covariance = multiply(
+        &multiply(&complement, prior, UPDATE)?,
+        &complement.transpose(),
+        UPDATE,
+    )?;
+    if single_observation {
+        // K R K' is a scaled outer product when the measurement is scalar.
+        let variance = noise.at(0, 0);
+        for (row, &weight) in covariance
+            .data
+            .chunks_exact_mut(covariance.cols)
+            .zip(&gain.data)
+        {
+            let scaled_weight = weight * variance;
+            if scaled_weight != 0.0 {
+                for (entry, &other_weight) in row.iter_mut().zip(&gain.data) {
+                    *entry += scaled_weight * other_weight;
+                }
+            }
+        }
+    } else {
+        let from_noise = multiply(&multiply(gain, noise, UPDATE)?, &gain.transpose(), UPDATE)?;
+        covariance = add(covariance, &from_noise)?;
+    }
+    symmetrise(&mut covariance);
+    Ok(covariance)
+}
+
+/// Runs the prediction and update steps. Only the smoother needs the
+/// predicted covariance history.
 fn run_filter(
     y: &[Vec<f64>],
-    transition: &Mat,
-    observation: &Mat,
-    process_cov: &Mat,
-    noise_cov: &Mat,
+    model: &KalmanModel,
     x0: &[f64],
-    p0: &Mat,
+    for_smoothing: bool,
 ) -> Result<FilterRun, String> {
+    let KalmanModel {
+        transition,
+        observation,
+        process_cov,
+        noise_cov,
+        p0,
+    } = model;
     let state = x0.len();
-    if state == 0 {
-        return Err("initial state is empty".to_string());
+    if state == 0 || x0.iter().any(|value| !value.is_finite()) {
+        return Err("initial state must be nonempty and finite".to_string());
     }
-    if transition.rows != state || transition.cols != state {
-        return Err("transition matrix must be square with the state dimension".to_string());
+    if transition.rows != state || transition.cols != state || !transition.is_finite() {
+        return Err("transition must be finite and square with the state dimension".to_string());
     }
-    if process_cov.rows != state || process_cov.cols != state {
-        return Err("process covariance must match the state dimension".to_string());
-    }
-    if p0.rows != state || p0.cols != state {
-        return Err("initial covariance must match the state dimension".to_string());
-    }
-    if observation.cols != state {
-        return Err("observation matrix must have one column per state".to_string());
+    if process_cov.rows != state || p0.rows != state {
+        return Err("process and initial covariances must match the state dimension".to_string());
     }
     let measured = observation.rows;
-    if measured == 0 {
-        return Err("observation matrix has no rows".to_string());
+    if observation.cols != state || measured == 0 || !observation.is_finite() {
+        return Err("observation matrix must be finite and have one column per state".to_string());
     }
-    if noise_cov.rows != measured || noise_cov.cols != measured {
-        return Err("noise covariance must be square with the observation dimension".to_string());
+    if noise_cov.rows != measured {
+        return Err("noise covariance must match the observation dimension".to_string());
     }
     if y.is_empty() {
         return Err("observation sequence is empty".to_string());
     }
     for (t, row) in y.iter().enumerate() {
-        if row.len() != measured {
+        if row.len() != measured || row.iter().any(|v| !v.is_finite()) {
             return Err(format!(
-                "observation {t} does not match the observation dimension"
+                "observation {t} has the wrong size or a non-finite value"
             ));
-        }
-        if row.iter().any(|v| !v.is_finite()) {
-            return Err(format!("observation {t} contains a non-finite value"));
         }
     }
 
-    let identity = Mat::identity(state);
     let h_transpose = observation.transpose();
     let f_transpose = transition.transpose();
-
-    let mut predicted_state = transition.matvec(x0);
-    let mut predicted_cov = add(
-        &transition
-            .matmul(p0)
-            .and_then(|m| m.matmul(&f_transpose))
-            .map_err(|err| format!("state prediction failed: {err}"))?,
-        process_cov,
-    )?;
-
-    let mut filtered = Vec::with_capacity(y.len());
+    let mut filtered: Vec<Vec<f64>> = Vec::with_capacity(y.len());
     let mut predicted = Vec::with_capacity(y.len());
-    let mut filtered_cov = Vec::with_capacity(y.len());
-    let mut predicted_covariances = Vec::with_capacity(y.len());
+    let mut filtered_cov: Vec<Mat> = Vec::with_capacity(y.len());
+    let mut predicted_cov = if for_smoothing {
+        Vec::with_capacity(y.len())
+    } else {
+        Vec::new()
+    };
+    let mut innovation = crate::kernels::reuse::f64_scratch(measured);
+    innovation.resize(measured, 0.0);
     let mut loglik = 0.0;
+    let gaussian_constant = measured as f64 * (2.0 * std::f64::consts::PI).ln();
 
     for row in y {
-        predicted.push(predicted_state.clone());
-        predicted_covariances.push(predicted_cov.clone());
-
-        let projected = observation.matvec(&predicted_state);
-        let innovation: Vec<f64> = row
-            .iter()
-            .zip(projected.iter())
-            .map(|(observed, expected)| observed - expected)
-            .collect();
-
-        let innovation_cov = add(
-            &observation
-                .matmul(&predicted_cov)
-                .and_then(|m| m.matmul(&h_transpose))
-                .map_err(|err| format!("innovation covariance failed: {err}"))?,
-            noise_cov,
-        )?;
-        let factor = lu_factor(&innovation_cov)
-            .map_err(|err| format!("innovation covariance is singular: {err}"))?;
-        let determinant = factor.det();
-        if determinant <= 0.0 || !determinant.is_finite() {
-            return Err("innovation covariance is not positive definite".to_string());
-        }
-        let innovation_inverse = factor.inverse();
-
-        let gain = predicted_cov
-            .matmul(&h_transpose)
-            .and_then(|m| m.matmul(&innovation_inverse))
-            .map_err(|err| format!("kalman gain failed: {err}"))?;
-
-        let correction = gain.matvec(&innovation);
-        let filtered_state: Vec<f64> = predicted_state
-            .iter()
-            .zip(correction.iter())
-            .map(|(prior, delta)| prior + delta)
-            .collect();
-
-        let gain_observation = gain
-            .matmul(observation)
-            .map_err(|err| format!("covariance update failed: {err}"))?;
-        let complement = sub(&identity, &gain_observation)?;
-        let updated_cov = symmetrise(
-            &complement
-                .matmul(&predicted_cov)
-                .map_err(|err| format!("covariance update failed: {err}"))?,
-        );
-
-        let mut quadratic = 0.0;
-        for i in 0..measured {
-            for j in 0..measured {
-                quadratic += innovation[i] * innovation_inverse.at(i, j) * innovation[j];
-            }
-        }
-        loglik -= 0.5
-            * (measured as f64 * (2.0 * std::f64::consts::PI).ln() + determinant.ln() + quadratic);
-
-        filtered.push(filtered_state.clone());
-        filtered_cov.push(updated_cov.clone());
-
-        predicted_state = transition.matvec(&filtered_state);
-        predicted_cov = add(
-            &transition
-                .matmul(&updated_cov)
-                .and_then(|m| m.matmul(&f_transpose))
-                .map_err(|err| format!("state prediction failed: {err}"))?,
+        const PREDICT: &str = "state prediction";
+        let prior_state = filtered.last().map_or(x0, Vec::as_slice);
+        let prior_cov = filtered_cov.last().unwrap_or(p0);
+        let predicted_state = transition.matvec(prior_state);
+        let mut predicted_matrix = add(
+            multiply(
+                &multiply(transition, prior_cov, PREDICT)?,
+                &f_transpose,
+                PREDICT,
+            )?,
             process_cov,
         )?;
-        predicted_cov = symmetrise(&predicted_cov);
+        symmetrise(&mut predicted_matrix);
+
+        observation.matvec_into(&predicted_state, &mut innovation);
+        for (error, &observed) in innovation.iter_mut().zip(row) {
+            *error = observed - *error;
+        }
+
+        let cross = multiply(
+            &predicted_matrix,
+            &h_transpose,
+            "state/observation covariance",
+        )?;
+        let mut innovation_cov = add(
+            multiply(observation, &cross, "innovation covariance")?,
+            noise_cov,
+        )?;
+        symmetrise(&mut innovation_cov);
+        let factor =
+            cholesky(&innovation_cov).map_err(|err| format!("innovation covariance: {err}"))?;
+
+        let (mut filtered_state, updated_cov) = if state == 1 && measured == 1 {
+            let innovation_std = factor.at(0, 0);
+            // Scale both operands by the innovation deviation so a gain
+            // outside binary64 does not overflow an in-range correction.
+            let correction = (cross.at(0, 0) / innovation_std) * (innovation[0] / innovation_std);
+
+            // In the scalar case P_updated = P_prior R / S. Taking the
+            // ratio of deviations avoids both subtracting 1 - K H and
+            // underflowing R / S before multiplication by P_prior.
+            let ratio = noise_cov.at(0, 0).sqrt() / innovation_std;
+            let mut covariance = Mat::zeros(1, 1);
+            covariance.set(0, 0, ratio * (ratio * predicted_matrix.at(0, 0)));
+            (vec![correction], covariance)
+        } else {
+            let gain = solve_gain(cross, &factor);
+            let covariance =
+                posterior_covariance(&gain, observation, &predicted_matrix, noise_cov)?;
+            (gain.matvec(&innovation), covariance)
+        };
+        for (estimate, &prior) in filtered_state.iter_mut().zip(&predicted_state) {
+            *estimate += prior;
+        }
+
+        if !for_smoothing {
+            // L^-1 innovation supplies the quadratic form. The logs of
+            // the diagonal give the log determinant of the covariance.
+            solve_cholesky_lower_in_place(&factor, &mut innovation);
+            let log_sqrt_det = (0..measured).map(|i| factor.at(i, i).ln()).sum::<f64>();
+            // Apply the Gaussian half-factor before squaring so a finite
+            // likelihood survives when the unscaled squared norm overflows.
+            crate::kernels::simd::scale_f64(std::f64::consts::FRAC_1_SQRT_2, &mut innovation);
+            let half_quadratic = crate::kernels::simd::norm2_sq_f64(&innovation);
+            loglik -= 0.5 * gaussian_constant + log_sqrt_det + half_quadratic;
+        }
+        if !loglik.is_finite()
+            || !updated_cov.is_finite()
+            || filtered_state.iter().any(|value| !value.is_finite())
+        {
+            return Err("filter update produced a non-finite result".to_string());
+        }
+
+        filtered.push(filtered_state);
+        filtered_cov.push(updated_cov);
+        predicted.push(predicted_state);
+        if for_smoothing {
+            predicted_cov.push(predicted_matrix);
+        }
     }
 
     Ok(FilterRun {
         filtered,
         predicted,
         filtered_cov,
-        predicted_cov: predicted_covariances,
+        predicted_cov,
         loglik,
     })
 }
@@ -247,9 +402,9 @@ fn run_filter(
 /// `x_0 ~ N(x0, p0)`.
 ///
 /// # Errors
-/// Returns a lowercase message when a matrix has the wrong shape, the
-/// observation sequence is empty or has rows of the wrong length, a value is
-/// not finite, or the innovation covariance is not positive definite.
+/// Returns a diagnostic for invalid shapes, non-finite data, nonsymmetric
+/// or indefinite model covariances and an innovation covariance that is not
+/// positive definite. Model covariances may be positive semidefinite.
 pub fn kalman_filter(
     y: &[Vec<f64>],
     transition: &[Vec<f64>],
@@ -259,21 +414,8 @@ pub fn kalman_filter(
     x0: &[f64],
     p0: &[Vec<f64>],
 ) -> Result<KalmanResult, String> {
-    let transition = from_rows(transition, "transition")?;
-    let observation = from_rows(observation, "observation")?;
-    let process_cov = from_rows(process_cov, "process covariance")?;
-    let noise_cov = from_rows(noise_cov, "noise covariance")?;
-    let p0 = from_rows(p0, "initial covariance")?;
-
-    let run = run_filter(
-        y,
-        &transition,
-        &observation,
-        &process_cov,
-        &noise_cov,
-        x0,
-        &p0,
-    )?;
+    let model = KalmanModel::from_rows(transition, observation, process_cov, noise_cov, p0)?;
+    let run = run_filter(y, &model, x0, false)?;
 
     Ok(KalmanResult {
         filtered: run.filtered,
@@ -301,75 +443,37 @@ pub fn kalman_smooth(
     x0: &[f64],
     p0: &[Vec<f64>],
 ) -> Result<Vec<Vec<f64>>, String> {
-    let transition = from_rows(transition, "transition")?;
-    let observation = from_rows(observation, "observation")?;
-    let process_cov = from_rows(process_cov, "process covariance")?;
-    let noise_cov = from_rows(noise_cov, "noise covariance")?;
-    let p0 = from_rows(p0, "initial covariance")?;
+    let model = KalmanModel::from_rows(transition, observation, process_cov, noise_cov, p0)?;
+    let run = run_filter(y, &model, x0, true)?;
 
-    let run = run_filter(
-        y,
-        &transition,
-        &observation,
-        &process_cov,
-        &noise_cov,
-        x0,
-        &p0,
-    )?;
+    let f_transpose = model.transition.transpose();
+    let mut smoothed = run.filtered;
+    let mut difference = crate::kernels::reuse::f64_scratch(x0.len());
+    difference.resize(x0.len(), 0.0);
+    let mut correction = crate::kernels::reuse::f64_scratch(x0.len());
+    correction.resize(x0.len(), 0.0);
 
-    let f_transpose = transition.transpose();
-    let mut smoothed = run.filtered.clone();
-    let mut covariances = run.filtered_cov.clone();
-
+    // The mean recursion uses each original filtered covariance. There
+    // is no need to construct the smoothed covariance sequence.
     for t in (0..y.len().saturating_sub(1)).rev() {
-        let next_predicted_cov = run
-            .predicted_cov
-            .get(t + 1)
-            .ok_or("predicted covariance index out of range")?;
-        let factor = lu_factor(next_predicted_cov)
-            .map_err(|err| format!("predicted covariance is singular: {err}"))?;
-        let inverse = factor.inverse();
-
-        let gain = covariances
-            .get(t)
-            .ok_or("filtered covariance index out of range")?
-            .matmul(&f_transpose)
-            .and_then(|m| m.matmul(&inverse))
-            .map_err(|err| format!("smoother gain failed: {err}"))?;
-
-        let next_smoothed = smoothed.get(t + 1).ok_or("smoothed index out of range")?;
-        let next_predicted = run
-            .predicted
-            .get(t + 1)
-            .ok_or("predicted state index out of range")?;
-        let difference: Vec<f64> = next_smoothed
-            .iter()
-            .zip(next_predicted.iter())
-            .map(|(smoothed_value, predicted_value)| smoothed_value - predicted_value)
-            .collect();
-        let correction = gain.matvec(&difference);
-
-        let current = smoothed.get(t).ok_or("smoothed index out of range")?;
-        smoothed[t] = current
-            .iter()
-            .zip(correction.iter())
-            .map(|(value, delta)| value + delta)
-            .collect();
-
-        let covariance_gap = sub(
-            covariances
-                .get(t + 1)
-                .ok_or("covariance index out of range")?,
-            next_predicted_cov,
-        )?;
-        let updated = add(
-            covariances.get(t).ok_or("covariance index out of range")?,
-            &gain
-                .matmul(&covariance_gap)
-                .and_then(|m| m.matmul(&gain.transpose()))
-                .map_err(|err| format!("covariance smoothing failed: {err}"))?,
-        )?;
-        covariances[t] = symmetrise(&updated);
+        let factor = cholesky(&run.predicted_cov[t + 1])
+            .map_err(|err| format!("predicted covariance: {err}"))?;
+        let cross = multiply(&run.filtered_cov[t], &f_transpose, "smoother gain")?;
+        let gain = solve_gain(cross, &factor);
+        for ((delta, &posterior), &prediction) in difference
+            .iter_mut()
+            .zip(&smoothed[t + 1])
+            .zip(&run.predicted[t + 1])
+        {
+            *delta = posterior - prediction;
+        }
+        gain.matvec_into(&difference, &mut correction);
+        for (mean, &delta) in smoothed[t].iter_mut().zip(correction.iter()) {
+            *mean += delta;
+        }
+        if smoothed[t].iter().any(|value| !value.is_finite()) {
+            return Err("smoothing update produced a non-finite result".to_string());
+        }
     }
 
     Ok(smoothed)
@@ -470,7 +574,7 @@ mod tests {
         let noise_cov = vec![vec![0.5]];
         let x0 = vec![0.0, 1.0];
         let p0 = vec![vec![1.0, 0.0], vec![0.0, 1.0]];
-        let y: Vec<Vec<f64>> = (1..=6).map(|t| vec![t as f64]).collect();
+        let y: Vec<Vec<f64>> = (1..=6).map(|t| vec![f64::from(t)]).collect();
 
         let result = kalman_filter(
             &y,

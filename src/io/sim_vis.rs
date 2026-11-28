@@ -265,9 +265,11 @@ pub fn export_particles_vtk<P: AsRef<Path>>(
     write_vtk_polydata_points(path, positions, scalars)
 }
 
-/// Inspects a [`crate::sim::scenario::run`] JSON result and automatically writes
-/// SVG / PNG / GIF visualizations for any 1D numeric vectors, 2D matrices, or
-/// 2D time-series snapshot arrays found in the top-level object.
+/// Writes visualizations for a JSON simulation result.
+///
+/// The top-level object returned by [`crate::sim::scenario::run`] may contain 1D numeric
+/// vectors, 2D matrices, and 2D time-series snapshots. These produce SVG, PNG, and GIF files,
+/// respectively.
 ///
 /// Returns the list of generated file paths.
 ///
@@ -313,7 +315,9 @@ pub fn visualize_scenario_json(
                 if cols > 0 && arr.iter().all(|r| r.as_array().map_or(0, Vec::len) == cols) {
                     let flat: Vec<f64> = arr
                         .iter()
-                        .flat_map(|r| r.as_array().unwrap().iter().filter_map(Value::as_f64))
+                        .filter_map(Value::as_array)
+                        .flatten()
+                        .filter_map(Value::as_f64)
                         .collect();
                     if flat.len() == rows * cols {
                         let m = Array2::from_shape_vec((rows, cols), flat)
@@ -339,13 +343,14 @@ pub fn visualize_scenario_json(
                 })
             {
                 let mut frames = Vec::with_capacity(arr.len());
-                for frame in arr {
-                    let r_arr = frame.as_array().unwrap();
+                for r_arr in arr.iter().filter_map(Value::as_array) {
                     let rows = r_arr.len();
                     let cols = r_arr[0].as_array().map_or(0, Vec::len);
                     let flat: Vec<f64> = r_arr
                         .iter()
-                        .flat_map(|r| r.as_array().unwrap().iter().filter_map(Value::as_f64))
+                        .filter_map(Value::as_array)
+                        .flatten()
+                        .filter_map(Value::as_f64)
                         .collect();
                     if flat.len() == rows * cols {
                         frames.push(

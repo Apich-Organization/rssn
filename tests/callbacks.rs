@@ -468,7 +468,7 @@ fn manifest_provenance_effects_api_version_and_binary_layout_are_explicit() {
     assert!(
         op.higher_order
             && op.backend_support.interpreter
-            && !op.backend_support.ffi
+            && op.backend_support.ffi
             && !op.backend_support.jit
     );
     let bytes = manifest.to_bytes().unwrap();

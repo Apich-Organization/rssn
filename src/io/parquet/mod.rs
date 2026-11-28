@@ -36,6 +36,10 @@
 //!   representation.
 //! - The deprecated Hadoop LZ4 framing (codec 5) is rejected; the `LZ4_RAW`
 //!   codec (7) that current writers emit is supported.
+//!
+//! [`WriteOptions::use_dictionary`]: crate::io::parquet::WriteOptions::use_dictionary
+//! [`WriteOptions::compression`]: crate::io::parquet::WriteOptions::compression
+//! [`Column::List`]: crate::io::frame::Column::List
 
 pub mod bloom;
 pub(crate) mod gzip;
@@ -291,8 +295,7 @@ impl Decoded {
         match self {
             | Decoded::Bool(items) => items.len(),
             | Decoded::I32(items) => items.len(),
-            | Decoded::I64(items) => items.len(),
-            | Decoded::Int96(items) => items.len(),
+            | Decoded::I64(items) | Decoded::Int96(items) => items.len(),
             | Decoded::F32(items) => items.len(),
             | Decoded::F64(items) => items.len(),
             | Decoded::Str(items) => items.len(),
@@ -445,7 +448,7 @@ pub fn write_parquet_bytes_with_options(
     file.extend_from_slice(MAGIC);
 
     let rg_ranges: Vec<Range<usize>> = if rows == 0 {
-        vec![0..0]
+        std::iter::once(0..0).collect()
     } else {
         let mut ranges = Vec::new();
         let mut start = 0usize;
@@ -764,6 +767,7 @@ pub fn read_parquet_bytes(bytes: &[u8]) -> Result<(Schema, Vec<Column>), String>
     let leaves = parse_schema(&metadata)?;
     let mut chunks: Vec<Vec<Column>> = vec![Vec::new(); leaves.len()];
     let mut total_rows = 0usize;
+    let mut page_decoder = PageDecoder::default();
     for row_group in &metadata.row_groups {
         if row_group.num_rows < 0 || row_group.num_rows > MAX_ROWS as i64 {
             return Err("row group declares an impossible row count".to_string());
@@ -791,7 +795,13 @@ pub fn read_parquet_bytes(bytes: &[u8]) -> Result<(Schema, Vec<Column>), String>
                     leaf.field.name
                 ));
             }
-            let column = read_column_chunk(bytes, chunk_metadata, leaf, metadata_start)?;
+            let column = read_column_chunk(
+                bytes,
+                chunk_metadata,
+                leaf,
+                metadata_start,
+                &mut page_decoder,
+            )?;
             if column.len() != rows {
                 return Err(format!(
                     "column `{}` has {} values but its row group has {rows} rows",
@@ -1514,7 +1524,7 @@ fn extract_selected(
                 values.push(
                     bool_at(column, row)
                         .ok_or_else(|| format!("column `{}` is not boolean", field.name))?,
-                )
+                );
             },
             | Decoded::I32(values) => {
                 let value = int_at(column, row)
@@ -1530,33 +1540,33 @@ fn extract_selected(
                 values.push(
                     int_at(column, row)
                         .ok_or_else(|| format!("column `{}` is not integral", field.name))?,
-                )
+                );
             },
             | Decoded::Int96(values) => {
                 values.push(
                     int_at(column, row)
                         .ok_or_else(|| format!("column `{}` is not integral", field.name))?,
-                )
+                );
             },
             | Decoded::F32(values) => {
                 values.push(
                     float_at(column, row)
                         .ok_or_else(|| format!("column `{}` is not numeric", field.name))?
                         as f32,
-                )
+                );
             },
             | Decoded::F64(values) => {
                 values.push(
                     float_at(column, row)
                         .ok_or_else(|| format!("column `{}` is not numeric", field.name))?,
-                )
+                );
             },
             | Decoded::Str(values) => {
                 values.push(
                     str_at(column, row)
                         .ok_or_else(|| format!("column `{}` is not a string", field.name))?
                         .to_string(),
-                )
+                );
             },
             | Decoded::RawBytes(values) => {
                 let slice = bytes_at(column, row)
@@ -1845,7 +1855,7 @@ fn write_list_column_chunk(
     let mut value_indices: Vec<usize> = Vec::new();
     let mut row_entries: Vec<usize> = Vec::with_capacity(range.len());
     let value_level = leaf_value_level(&specs);
-    for row in range.clone() {
+    for row in range {
         let before = entries.len();
         let bounds = if column.is_null(row) {
             None
@@ -2066,12 +2076,7 @@ fn build_bloom_filter_for_decoded(values: &Decoded) -> SplitBlockBloomFilter {
                 bf.insert_i32(x);
             }
         },
-        | Decoded::I64(v) => {
-            for &x in v {
-                bf.insert_i64(x);
-            }
-        },
-        | Decoded::Int96(v) => {
+        | Decoded::I64(v) | Decoded::Int96(v) => {
             for &x in v {
                 bf.insert_i64(x);
             }
@@ -2135,7 +2140,7 @@ fn write_column_chunk_ext(
         };
 
     let page_ranges: Vec<Range<usize>> = if rows == 0 {
-        vec![range.start..range.start]
+        std::iter::once(range.start..range.start).collect()
     } else {
         let mut pages = Vec::new();
         let mut start = range.start;
@@ -2403,12 +2408,33 @@ fn compress_payload(
     }
 }
 
+/// Reuses the Zstandard context for independent pages in a single file read.
+#[derive(Default)]
+struct PageDecoder {
+    zstd: Option<zstd::bulk::Decompressor<'static>>,
+}
+
+impl PageDecoder {
+    fn decompress_zstd(
+        &mut self,
+        payload: &[u8],
+        expected: usize,
+    ) -> std::io::Result<Vec<u8>> {
+        let decoder = match &mut self.zstd {
+            | Some(decoder) => decoder,
+            | empty @ None => empty.insert(zstd::bulk::Decompressor::new()?),
+        };
+        decoder.decompress(payload, expected)
+    }
+}
+
 /// Decompresses a page payload according to `codec` and validates its length.
 fn decompress_page(
     payload: &[u8],
     codec: i32,
     uncompressed_size: i32,
     field_name: &str,
+    page_decoder: &mut PageDecoder,
 ) -> Result<Vec<u8>, String> {
     let expected = usize::try_from(uncompressed_size)
         .map_err(|_| format!("column `{field_name}` has a negative uncompressed page size"))?;
@@ -2425,7 +2451,8 @@ fn decompress_page(
             out
         },
         | CODEC_ZSTD => {
-            zstd::bulk::decompress(payload, expected)
+            page_decoder
+                .decompress_zstd(payload, expected)
                 .map_err(|error| format!("column `{field_name}` zstd page: {error}"))?
         },
         | CODEC_LZ4_RAW => lz4::decompress(payload, expected)?,
@@ -2476,6 +2503,7 @@ fn read_dictionary_page(
     limit: usize,
     codec: i32,
     leaf: &LeafInfo,
+    page_decoder: &mut PageDecoder,
 ) -> Result<(Decoded, usize), String> {
     if pos >= limit || pos >= bytes.len() {
         return Err(format!(
@@ -2519,6 +2547,7 @@ fn read_dictionary_page(
         codec,
         header.uncompressed_page_size,
         &leaf.field.name,
+        page_decoder,
     )?;
     let dict_hdr = header.dictionary_page.ok_or_else(|| {
         format!(
@@ -2549,6 +2578,7 @@ fn read_column_chunk(
     metadata: &ColumnMetaData,
     leaf: &LeafInfo,
     limit: usize,
+    page_decoder: &mut PageDecoder,
 ) -> Result<Column, String> {
     let total = usize::try_from(metadata.num_values)
         .map_err(|_| format!("column `{}` has a negative value count", leaf.field.name))?;
@@ -2562,8 +2592,7 @@ fn read_column_chunk(
         return Ok(empty_column(leaf));
     }
 
-    let mut dictionary: Option<Decoded> = None;
-    if let Some(dict_offset) = metadata.dictionary_page_offset {
+    let mut dictionary = if let Some(dict_offset) = metadata.dictionary_page_offset {
         if dict_offset < 4 {
             return Err(format!(
                 "column `{}` has an invalid dictionary page offset",
@@ -2576,9 +2605,12 @@ fn read_column_chunk(
                 leaf.field.name
             )
         })?;
-        let (dict, _) = read_dictionary_page(bytes, dpos, limit, metadata.codec, leaf)?;
-        dictionary = Some(dict);
-    }
+        let (dict, _) =
+            read_dictionary_page(bytes, dpos, limit, metadata.codec, leaf, page_decoder)?;
+        Some(dict)
+    } else {
+        None
+    };
 
     if metadata.data_page_offset < 4 {
         return Err(format!(
@@ -2648,6 +2680,7 @@ fn read_column_chunk(
                 metadata.codec,
                 header.uncompressed_page_size,
                 &leaf.field.name,
+                page_decoder,
             )?;
             let mut dict = new_decoded(leaf, dict_count);
             append_plain_values(&mut dict, leaf, &data, dict_count)?;
@@ -2676,6 +2709,7 @@ fn read_column_chunk(
                 metadata.codec,
                 header.uncompressed_page_size,
                 &leaf.field.name,
+                page_decoder,
             )?;
             page_values = usize::try_from(page.num_values)
                 .map_err(|_| format!("column `{}` has a negative page count", leaf.field.name))?;
@@ -2687,30 +2721,32 @@ fn read_column_chunk(
                     leaf.field.name
                 ));
             }
-            let mut reps = vec![0u32; page_values];
-            if leaf.max_rep_level > 0 {
+            let reps = if leaf.max_rep_level > 0 {
                 let (level_data, next) = read_level_section(&data, 0, &leaf.field.name)?;
                 offset = next;
-                reps = decode_levels(
+                decode_levels(
                     level_data,
                     leaf.max_rep_level,
                     page_values,
                     "repetition",
                     &leaf.field.name,
-                )?;
-            }
-            let mut defs = vec![0u32; page_values];
-            if leaf.max_def_level > 0 {
+                )?
+            } else {
+                vec![0u32; page_values]
+            };
+            let defs = if leaf.max_def_level > 0 {
                 let (level_data, next) = read_level_section(&data, offset, &leaf.field.name)?;
                 offset = next;
-                defs = decode_levels(
+                decode_levels(
                     level_data,
                     leaf.max_def_level,
                     page_values,
                     "definition",
                     &leaf.field.name,
-                )?;
-            }
+                )?
+            } else {
+                vec![0u32; page_values]
+            };
             page_nulls = defs
                 .iter()
                 .map(|&level| level < leaf.max_def_level)
@@ -2788,7 +2824,13 @@ fn read_column_chunk(
                     .ok_or_else(|| "page level lengths exceed the page size".to_string())?;
                 let expected = i32::try_from(expected)
                     .map_err(|_| "page value section is too large".to_string())?;
-                decompress_page(value_bytes, metadata.codec, expected, &leaf.field.name)?
+                decompress_page(
+                    value_bytes,
+                    metadata.codec,
+                    expected,
+                    &leaf.field.name,
+                    page_decoder,
+                )?
             } else {
                 value_bytes.to_vec()
             };
@@ -3917,6 +3959,33 @@ mod tests {
             let (read_schema, read_columns) = read_parquet_bytes(&bytes).expect("read compressed");
             assert_eq!(read_schema, schema);
             assert_columns_match(&columns, &read_columns);
+        }
+    }
+
+    #[test]
+    fn zstd_reads_independent_pages_across_row_groups() {
+        let schema = Schema {
+            fields: vec![Field {
+                name: "labels".into(),
+                physical: Physical::ByteArray,
+                optional: false,
+            }],
+        };
+        let values = vec![Column::Str(
+            (0..257).map(|i| format!("label-{}", i % 7)).collect(),
+        )];
+        for data_page_version in [1, 2] {
+            let options = WriteOptions {
+                compression: Compression::Zstd,
+                max_page_rows: 17,
+                max_row_group_rows: 91,
+                data_page_version,
+                ..Default::default()
+            };
+            let bytes = write_parquet_bytes_with_options(&schema, &values, &options).unwrap();
+            let (actual_schema, actual_values) = read_parquet_bytes(&bytes).unwrap();
+            assert_eq!(actual_schema, schema);
+            assert_eq!(actual_values, values);
         }
     }
 

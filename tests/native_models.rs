@@ -157,6 +157,119 @@ fn linear_chebyshev_roots_and_constant_polynomial_remainders_are_valid_models() 
 }
 
 #[test]
+fn measured_polynomial_fit_composition_and_batch_preserve_axis_and_ordinate_units() {
+    use rssn::kernel::signature::DimExpr;
+    use rssn::kernel::value::DynValue;
+
+    let session = Session::new();
+    let length = DimExpr::base("Length");
+    let time = DimExpr::base("Time");
+    let mass = DimExpr::base("Mass");
+    let scalar = |value, dim: &DimExpr| {
+        Value::Dyn(DynValue {
+            dim: dim.clone(),
+            value: Box::new(Value::Float(value)),
+        })
+    };
+    let samples = |xs: &[f64], dim: &DimExpr| {
+        Value::Tensor(TensorValue {
+            shape: vec![xs.len()],
+            elem: TypeExpr::Float.with_dim(dim.clone()),
+            data: xs.iter().copied().map(Value::Float).collect(),
+        })
+    };
+    // outer(length) = 3 * length + 1 in mass units.
+    let outer = call(
+        &session,
+        "num_polynomial_model_interpolate_lagrange",
+        &[
+            samples(&[0.0, 2.0], &length),
+            samples(&[1.0, 7.0], &mass),
+            scalar(2.0, &length),
+        ],
+    )
+    .unwrap();
+    // inner(time) = 2 * time in length units, with a different coordinate scale.
+    let inner = call(
+        &session,
+        "num_polynomial_model_new",
+        &[samples(&[8.0, 0.0], &length), scalar(4.0, &time)],
+    )
+    .unwrap();
+    let composed = call(
+        &session,
+        "num_polynomial_model_compose",
+        &[outer.clone(), inner.clone()],
+    )
+    .unwrap();
+    let name = "num_polynomial_model_eval_batch";
+    for points in [
+        vec![],
+        vec![3.0, -1.0, 0.0],
+        (0..257).map(f64::from).collect(),
+    ] {
+        let Value::Tensor(result) =
+            call(&session, name, &[composed.clone(), samples(&points, &time)]).unwrap()
+        else {
+            panic!("expected an ordinate tensor");
+        };
+        assert_eq!(result.elem, TypeExpr::Float.with_dim(mass.clone()));
+        assert_eq!(result.shape, [points.len()]);
+        for (value, x) in result.data.iter().zip(points) {
+            let Value::Dyn(measured) = value else {
+                panic!("expected a measured ordinate")
+            };
+            assert_eq!(measured.dim, mass);
+            assert_eq!(measured.value.as_f64(), Some(6.0 * x + 1.0));
+        }
+    }
+    assert!(call(&session, name, &[composed, samples(&[1.0], &length)]).is_err());
+    assert!(call(&session, "num_polynomial_model_compose", &[inner, outer]).is_err());
+}
+
+#[test]
+fn monic_polynomial_at_the_degree_limit_can_be_reopened_and_evaluated() {
+    let session = Session::new();
+    let samples = |x: &[f64]| {
+        Value::Tensor(TensorValue::of(
+            vec![x.len()],
+            x.iter().copied().map(Value::Float).collect(),
+            TypeExpr::Float,
+        ))
+    };
+    let make = |roots: &[f64]| {
+        call(
+            &session,
+            "num_polynomial_model_from_roots",
+            &[samples(roots), Value::Float(2.0)],
+        )
+    };
+    let polynomial = make(&[0.0; 128]).unwrap();
+    let at = |model, x| {
+        call(
+            &session,
+            "num_polynomial_model_eval",
+            &[model, Value::Float(x)],
+        )
+        .unwrap()
+    };
+    assert!((at(polynomial, 2.0).as_f64().unwrap() - 1.0).abs() < 1e-12);
+    assert!(make(&[0.0; 129]).is_err());
+    let repeated = make(&[2.0, 2.0]).unwrap();
+    assert_eq!(at(repeated.clone(), 2.0).as_f64(), Some(0.0));
+    assert_eq!(at(repeated.clone(), 4.0).as_f64(), Some(1.0));
+    for name in ["mul_schoolbook", "mul_karatsuba", "mul_fft"] {
+        let product = call(
+            &session,
+            &format!("num_polynomial_model_{name}"),
+            &[repeated.clone(), repeated.clone()],
+        )
+        .unwrap();
+        assert!((at(product, 6.0).as_f64().unwrap() - 16.0).abs() < 1e-11);
+    }
+}
+
+#[test]
 fn checked_polynomial_division_binds_the_new_method_and_keeps_finite_remainders() {
     let session = Session::new();
     let polynomial = |coefficients: &[f64]| {

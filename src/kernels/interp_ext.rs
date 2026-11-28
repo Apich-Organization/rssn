@@ -11,7 +11,7 @@ use crate::kernels::dense::{
     self,
 };
 use crate::kernels::geometry;
-use crate::kernels::interpolate::scaled_grid_interval_distances;
+use crate::kernels::interpolate::evaluate_bilinear;
 
 pub(super) mod shape_preserving;
 
@@ -107,6 +107,24 @@ fn validate_1d(
         }
     }
     Ok(())
+}
+
+fn checked_grid_axis(axis: &[f64]) -> Result<(f64, f64), InterpError> {
+    let (&first, tail) = axis.split_first().ok_or(InterpError::Empty)?;
+    if axis.iter().any(|node| !node.is_finite()) {
+        return Err(InterpError::Domain(
+            "interpolation data must be finite".into(),
+        ));
+    }
+    if axis
+        .windows(2)
+        .any(|pair| matches!(pair, &[lower, upper] if lower >= upper))
+    {
+        return Err(InterpError::Domain(
+            "knots must be strictly increasing".into(),
+        ));
+    }
+    Ok((first, tail.last().copied().unwrap_or(first)))
 }
 
 fn find_segment(
@@ -1131,42 +1149,26 @@ pub fn pade(
     m: usize,
     n: usize,
 ) -> Result<(Vec<f64>, Vec<f64>), InterpError> {
-    if coeffs.len() < m + n + 1 {
-        return Err(InterpError::Domain(format!(
-            "Padé [{m}/{n}] needs at least {} coefficients, got {}",
-            m + n + 1,
-            coeffs.len()
-        )));
-    }
-    let mut q = vec![0.0; n + 1];
-    q[0] = 1.0;
-    if n > 0 {
-        let mut mat = vec![0.0; n * n];
-        let mut rhs = vec![0.0; n];
-        for row in 0..n {
-            let k = m + 1 + row;
-            rhs[row] = -coeffs[k];
-            for col in 0..n {
-                let idx = k as isize - (col as isize + 1);
-                mat[row * n + col] = if idx >= 0 {
-                    coeffs[idx as usize]
-                } else {
-                    0.0
-                };
-            }
+    approx::pade_coefficients(coeffs, m, n, 0.0).map_err(|error| {
+        match error {
+            | approx::PadeError::DegreeOverflow => {
+                InterpError::Domain(format!("Padé [{m}/{n}] coefficient count exceeds usize"))
+            },
+            | approx::PadeError::TooFewCoefficients(required) => {
+                InterpError::Domain(format!(
+                    "Padé [{m}/{n}] needs at least {required} coefficients, got {}",
+                    coeffs.len(),
+                ))
+            },
+            | approx::PadeError::WorkspaceTooLarge => {
+                InterpError::Domain(format!("Padé [{m}/{n}] workspace is too large"))
+            },
+            | approx::PadeError::Solve(DenseError::Singular) => InterpError::Singular,
+            | approx::PadeError::Solve(error) => {
+                InterpError::Domain(format!("dense solve failed: {error:?}"))
+            },
         }
-        let q_tail = solve_flat(n, &mat, &rhs)?;
-        q[1..=n].copy_from_slice(&q_tail);
-    }
-    let mut p = vec![0.0; m + 1];
-    for k in 0..=m {
-        let mut s = 0.0;
-        for j in 0..=k.min(n) {
-            s += q[j] * coeffs[k - j];
-        }
-        p[k] = s;
-    }
-    Ok((p, q))
+    })
 }
 
 /// Evaluates a rational function `P(x) / Q(x)` with ascending-power coefficients.
@@ -1258,10 +1260,82 @@ pub fn spline(
     cubic_spline(xs, ys, x, SplineBc::Natural)
 }
 
+/// A validated borrowed rectilinear grid for repeated bilinear queries.
+///
+/// Grid values are row-major, with the first axis varying fastest. Construction
+/// validates the data once and each finite query is clamped to the grid.
+#[derive(Debug)]
+pub struct BilinearGrid<'grid> {
+    xs: &'grid [f64],
+    ys: &'grid [f64],
+    grid: &'grid [f64],
+    x_bounds: (f64, f64),
+    y_bounds: (f64, f64),
+}
+
+impl<'grid> BilinearGrid<'grid> {
+    /// Prepares a grid using the same validation as [`interp2`].
+    ///
+    /// # Errors
+    /// Rejects empty, non-finite or unordered axes and invalid grid storage.
+    pub fn new(
+        xs: &'grid [f64],
+        ys: &'grid [f64],
+        grid: &'grid [f64],
+    ) -> Result<Self, InterpError> {
+        let x_bounds = checked_grid_axis(xs)?;
+        let y_bounds = checked_grid_axis(ys)?;
+        if grid.iter().any(|v| !v.is_finite()) {
+            return Err(InterpError::Domain(
+                "grid and queries must be finite".into(),
+            ));
+        }
+        let (nx, ny) = (xs.len(), ys.len());
+        if nx.checked_mul(ny) != Some(grid.len()) {
+            return Err(InterpError::ShapeMismatch(format!(
+                "interp2 needs a {ny}x{nx} grid, found {} values",
+                grid.len()
+            )));
+        }
+        if nx < 2 || ny < 2 {
+            return Err(InterpError::Domain(
+                "interp2 needs at least two points per axis".into(),
+            ));
+        }
+        Ok(Self {
+            xs,
+            ys,
+            grid,
+            x_bounds,
+            y_bounds,
+        })
+    }
+
+    /// Returns one clamped interpolant without rescanning the grid.
+    ///
+    /// # Errors
+    /// Rejects non-finite coordinates.
+    pub fn eval(
+        &self,
+        x: f64,
+        y: f64,
+    ) -> Result<f64, InterpError> {
+        if !x.is_finite() || !y.is_finite() {
+            return Err(InterpError::Domain(
+                "grid and queries must be finite".into(),
+            ));
+        }
+        let x = x.clamp(self.x_bounds.0, self.x_bounds.1);
+        let y = y.clamp(self.y_bounds.0, self.y_bounds.1);
+        evaluate_bilinear(self.xs, self.ys, self.grid, x, y).map_err(InterpError::Domain)
+    }
+}
+
 /// Bilinear interpolation on a rectilinear grid.
 ///
 /// `grid` is `ny × nx` in row-major order, with `xs` varying fastest.
 /// Finite coordinates outside the grid are clamped to its edges.
+/// Use [`BilinearGrid`] to reuse validation across a series of queries.
 ///
 /// # Errors
 ///
@@ -1274,57 +1348,7 @@ pub fn interp2(
     x: f64,
     y: f64,
 ) -> Result<f64, InterpError> {
-    validate_1d(xs, xs)?;
-    validate_1d(ys, ys)?;
-    if !x.is_finite() || !y.is_finite() || grid.iter().any(|v| !v.is_finite()) {
-        return Err(InterpError::Domain(
-            "grid and queries must be finite".into(),
-        ));
-    }
-
-    let (nx, ny) = (xs.len(), ys.len());
-    if nx.checked_mul(ny) != Some(grid.len()) {
-        return Err(InterpError::ShapeMismatch(format!(
-            "interp2 needs a {ny}x{nx} grid, found {} values",
-            grid.len()
-        )));
-    }
-    if nx < 2 || ny < 2 {
-        return Err(InterpError::Domain(
-            "interp2 needs at least two points per axis".to_string(),
-        ));
-    }
-    let locate = |axis: &[f64], value: f64| -> (usize, f64) {
-        let last = axis.len() - 1;
-        if value <= axis[0] {
-            return (0, 0.0);
-        }
-        if value >= axis[last] {
-            return (last - 1, 1.0);
-        }
-        for index in 0..last {
-            let lower = axis[index];
-            let upper = axis[index + 1];
-            if value >= lower && value <= upper {
-                let width = upper - lower;
-                let fraction = if width.is_finite() {
-                    (value - lower) / width
-                } else {
-                    let (from_lower, _, width) =
-                        scaled_grid_interval_distances(lower, upper, value);
-                    from_lower / width
-                };
-                return (index, fraction);
-            }
-        }
-        (last - 1, 1.0)
-    };
-    let (column, fx) = locate(xs, x);
-    let (row, fy) = locate(ys, y);
-    let at = |row: usize, column: usize| grid[row * nx + column];
-    let low = at(row, column) * (1.0 - fx) + at(row, column + 1) * fx;
-    let high = at(row + 1, column) * (1.0 - fx) + at(row + 1, column + 1) * fx;
-    Ok(low * (1.0 - fy) + high * fy)
+    BilinearGrid::new(xs, ys, grid)?.eval(x, y)
 }
 
 /// The coefficients of the least-squares polynomial of `degree`, ascending.
@@ -1516,5 +1540,24 @@ pub fn chebyshev_fit(
         let mut out = vec![0.0; count];
         out[0] = total[0];
         Ok(out)
+    }
+}
+
+#[cfg(test)]
+mod bilinear_tests {
+    use super::BilinearGrid;
+    use super::interp2;
+
+    #[test]
+    fn retains_the_small_weight_at_a_clamped_grid_endpoint() {
+        let xs = [-1.0, 0.0];
+        let ys = [0.0, 1.0];
+        let values = [1e308, 0.0, 1e308, 0.0];
+        let prepared = BilinearGrid::new(&xs, &ys, &values).unwrap();
+        let query = -1e-310;
+        let actual = interp2(&xs, &ys, &values, query, 0.5).unwrap();
+        assert!((actual - 0.01).abs() < 1e-15);
+        assert_eq!(prepared.eval(query, 0.5).unwrap(), actual);
+        assert_eq!(prepared.eval(0.2, -0.2).unwrap(), 0.0);
     }
 }

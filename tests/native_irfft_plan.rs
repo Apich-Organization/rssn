@@ -286,7 +286,10 @@ fn manifest_maps_the_checked_plan_methods_and_binds_one_shared_dimension() {
         assert_eq!(op.signature_source, SignatureSource::Declared);
         assert_eq!(op.rust_path.as_deref(), Some(path));
         assert_eq!(op.overloads.len(), 1);
-        assert_eq!(op.overloads[0].params, [opaque.clone()]);
+        assert_eq!(
+            op.overloads[0].params.as_slice(),
+            std::slice::from_ref(&opaque)
+        );
         assert_eq!(op.overloads[0].ret, TypeExpr::Int);
     }
     assert_eq!(

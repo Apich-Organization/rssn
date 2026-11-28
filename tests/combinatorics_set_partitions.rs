@@ -21,7 +21,7 @@ fn stirling_by_surjections(
     let mut numerator = BigInt::from(0);
     for j in 0..=k {
         let term = BigInt::from(choose(k, j)) * BigInt::from(j).pow(n);
-        if (k - j) % 2 == 0 {
+        if (k - j).is_multiple_of(2) {
             numerator += term;
         } else {
             numerator -= term;

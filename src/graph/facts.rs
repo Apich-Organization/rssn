@@ -314,7 +314,7 @@ impl Graph {
                 }
                 if all_signed {
                     facts = facts
-                        | if neg_flips % 2 == 0 {
+                        | if neg_flips.is_multiple_of(2) {
                             Facts::NONNEGATIVE
                         } else {
                             Facts::NONPOSITIVE

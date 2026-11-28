@@ -326,12 +326,12 @@ fn dense_rhs_covers_exact_cancellation_shape_errors_and_empty_extents() {
         a.matmul_dense(&x, 3),
         Err(BsrError::ShapeMismatch(_))
     ));
-    assert!(a.matmul_dense(&[], 0).unwrap().is_empty());
+    assert_eq!(a.matmul_dense(&[], 0).unwrap(), [] as [f64; 0]);
     let no_input_rows = Bsr::zeros(2, 0, 2, 1).unwrap();
     assert_eq!(no_input_rows.matmul_dense(&[], 3).unwrap(), [0.0; 6]);
     assert!(no_input_rows.matmul_dense(&[], usize::MAX).is_err());
     let no_output_rows = Bsr::zeros(0, 3, 2, 3).unwrap();
-    assert!(no_output_rows.matmul_dense(&x, 2).unwrap().is_empty());
+    assert_eq!(no_output_rows.matmul_dense(&x, 2).unwrap(), [] as [f64; 0]);
 }
 
 #[test]

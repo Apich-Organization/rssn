@@ -128,21 +128,6 @@ pub fn difference(
     current
 }
 
-/// Adds one cumulative-sum level, seeded by `start`.
-fn integrate_once(
-    x: &[f64],
-    start: f64,
-) -> Vec<f64> {
-    let mut out = Vec::with_capacity(x.len() + 1);
-    out.push(start);
-    let mut running = start;
-    for value in x {
-        running += value;
-        out.push(running);
-    }
-    out
-}
-
 /// Inverse of [`difference`].
 ///
 /// `initial` holds the first `initial.len()` values of the undifferenced
@@ -161,27 +146,28 @@ pub fn integrate(
         return Vec::new();
     }
 
-    // Seeds are Δʲy₀ for j = 0..order-1, taken from the leading values.
-    let mut level = initial.to_vec();
-    let mut seeds = Vec::with_capacity(order);
-    if let Some(first) = level.first().copied() {
-        seeds.push(first);
-    }
+    let mut out = Vec::with_capacity(d.len() + order);
+    out.extend_from_slice(initial);
+    out.extend_from_slice(d);
+    let mut level = crate::kernels::reuse::f64_scratch(order);
+    level.extend_from_slice(initial);
+
+    // Store Δʲy₀ in slot j, then reconstruct each difference level in
+    // place. The running sums have the same order as the original scan.
     for step in 1..order {
         for i in 0..(order - step) {
             level[i] = level[i + 1] - level[i];
         }
-        if let Some(first) = level.first().copied() {
-            seeds.push(first);
+        out[step] = level[0];
+    }
+    for step in (0..order).rev() {
+        let mut running = out[step];
+        for value in &mut out[step + 1..] {
+            running += *value;
+            *value = running;
         }
     }
-
-    let mut current = d.to_vec();
-    for step in (0..order).rev() {
-        let seed = seeds.get(step).copied().unwrap_or(0.0);
-        current = integrate_once(&current, seed);
-    }
-    current
+    out
 }
 
 #[cfg(test)]
@@ -210,7 +196,7 @@ mod tests {
 
     #[test]
     fn acf_handles_short_and_constant_series() {
-        assert!(acf(&[], 3).is_empty());
+        assert_eq!(acf(&[], 3), [] as [f64; 0]);
         let constant = acf(&[2.0, 2.0, 2.0], 5);
         assert_eq!(constant.len(), 3);
         assert!(close(constant[0], 1.0));
@@ -272,8 +258,8 @@ mod tests {
 
     #[test]
     fn difference_of_a_short_series_is_empty() {
-        assert!(difference(&[], 1).is_empty());
-        assert!(difference(&[1.0], 1).is_empty());
+        assert_eq!(difference(&[], 1), [] as [f64; 0]);
+        assert_eq!(difference(&[1.0], 1), [] as [f64; 0]);
         assert_eq!(difference(&[1.0, 2.0], 0).len(), 2);
     }
 

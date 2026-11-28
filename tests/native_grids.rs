@@ -866,7 +866,13 @@ fn sampled_dirichlet_wave_restores_displacements_at_signed_steps() {
     };
     assert_eq!(values.shape, [4, 9]);
     assert_eq!(values.elem, TypeExpr::Float.with_dim(temperature.clone()));
-    for (row, center) in values.data.chunks_exact(9).zip([9.0, 8.0, 7.0, 6.5]) {
+    for (row, center) in values
+        .data
+        .as_chunks::<9>()
+        .0
+        .iter()
+        .zip([9.0, 8.0, 7.0, 6.5])
+    {
         assert!((number(&row[4]) - center).abs() < 1e-12);
         assert!(
             row.iter()

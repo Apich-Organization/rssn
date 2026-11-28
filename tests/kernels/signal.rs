@@ -77,6 +77,97 @@ fn convolve_is_polynomial_multiplication() {
 }
 
 #[test]
+fn short_convolution_matches_exact_dyadic_coefficients() {
+    // Every coefficient fits in i64 and divides by a power of two, so the
+    // integer oracle tests exact values rather than a tolerance.
+    for (length, width) in [
+        (64, 1),
+        (259, 8),
+        (2_048, 16),
+        (2_049, 2),
+        (32_768, 8),
+        (33_011, 16),
+    ] {
+        let left: Vec<i64> = (0..length).map(|i| (i * 47) % 67 - 33).collect();
+        let taps: Vec<i64> = (0..width).map(|i| (i * 29) % 37 - 18).collect();
+        let samples: Vec<_> = left.iter().map(|&x| x as f64 / 16.0).collect();
+        let filter: Vec<_> = taps.iter().map(|&x| x as f64 / 32.0).collect();
+        for reverse in [false, true] {
+            let values = if reverse {
+                cross_correlation(&samples, &filter)
+            } else {
+                convolve(&samples, &filter)
+            };
+            assert_eq!(values.len(), left.len() + taps.len() - 1);
+            for (k, value) in values.into_iter().enumerate() {
+                let exact: i64 = taps
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(j, &tap)| {
+                        let offset = if reverse {
+                            taps.len() - 1 - j
+                        } else {
+                            j
+                        };
+                        left.get(k.checked_sub(offset)?).map(|&x| x * tap)
+                    })
+                    .sum();
+                assert_eq!(value, exact as f64 / 512.0, "coefficient {k}");
+            }
+        }
+    }
+}
+
+#[test]
+fn short_convolution_keeps_legacy_float_order_and_non_finite_locality() {
+    let mut samples = vec![-0.0; 32_771];
+    let half_sqrt_epsilon = 2.0_f64.powi(-27);
+    samples[2_047] = 1.0;
+    samples[2_048] = 1.0 + half_sqrt_epsilon;
+    samples[4_095] = f64::INFINITY;
+    samples[8_191] = f64::NEG_INFINITY;
+    samples[16_383] = f64::NAN;
+    samples[24_575] = f64::MAX;
+    samples[24_576] = f64::MAX;
+    samples[32_768] = f64::from_bits(1);
+    let taps = [1.0 - half_sqrt_epsilon, -1.0, -0.0, 2.0, -2.0, 0.5];
+    let mut expected = vec![0.0; samples.len() + taps.len() - 1];
+    for (i, &x) in samples.iter().enumerate() {
+        for (j, &y) in taps.iter().enumerate() {
+            expected[i + j] += x * y;
+        }
+    }
+
+    // This coefficient would change if a fused multiply-add were introduced.
+    assert_eq!(expected[2_048].to_bits(), 0.0f64.to_bits());
+    assert!((1.0 + half_sqrt_epsilon).mul_add(taps[0], -1.0) < 0.0);
+    for threads in [1, 4] {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap();
+        let values = pool.install(|| convolve(&samples, &taps));
+        assert_eq!(values.len(), expected.len());
+        for (k, (&value, &want)) in values.iter().zip(&expected).enumerate() {
+            if want.is_nan() {
+                assert!(value.is_nan(), "coefficient {k} with {threads} workers");
+            } else {
+                assert_eq!(
+                    value.to_bits(),
+                    want.to_bits(),
+                    "coefficient {k} with {threads} workers"
+                );
+            }
+        }
+        assert_eq!(values[4_094].to_bits(), 0.0f64.to_bits());
+        assert_eq!(values[4_095], f64::INFINITY);
+        assert_eq!(values[4_096], f64::NEG_INFINITY);
+        assert!(values[4_097].is_nan());
+        assert_eq!(values[4_101].to_bits(), 0.0f64.to_bits());
+    }
+}
+
+#[test]
 fn cross_correlation_known_result() {
     // v reversed is [0.5, 1, 0]; convolving with a = [1, 2, 3].
     let result = cross_correlation(&[1.0, 2.0, 3.0], &[0.0, 1.0, 0.5]);

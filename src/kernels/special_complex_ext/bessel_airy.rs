@@ -13,16 +13,20 @@ use crate::kernels::special_complex::gamma_complex;
 const ZERO: Complex64 = Complex64::new(0.0, 0.0);
 const ONE: Complex64 = Complex64::new(1.0, 0.0);
 const I: Complex64 = Complex64::new(0.0, 1.0);
-const EULER_GAMMA: f64 = 0.577_215_664_901_532_9;
+const NAN: Complex64 = Complex64::new(f64::NAN, f64::NAN);
+// The integer series initializes its finite sum with (n - 1)! in f64.
+const MAX_FACTORIAL_ORDER: f64 = 171.0;
+use std::f64::consts::EULER_GAMMA;
 
 /// Complex Bessel function of the second kind `Y_nu(z)` for real order `nu`.
+/// Returns NaN if the integer series would start with an overflowing factorial.
 #[must_use]
 pub fn bessel_y_complex(
     nu: f64,
     z: Complex64,
 ) -> Complex64 {
-    if z == ZERO {
-        return Complex64::new(f64::NAN, f64::NAN);
+    if z == ZERO || !nu.is_finite() {
+        return NAN;
     }
     let nu_round = nu.round();
     if (nu - nu_round).abs() > 1e-10 {
@@ -30,40 +34,33 @@ pub fn bessel_y_complex(
         let c = (nu * PI).cos();
         return (bessel_j_complex(nu, z) * c - bessel_j_complex(-nu, z)) / s;
     }
-    let n = nu_round as i32;
-    let n_abs = n.unsigned_abs();
-    let sign = if n < 0 && (n_abs % 2 == 1) {
+    let order = nu_round.abs();
+    let sign = if nu_round < 0.0 && nu_round % 2.0 != 0.0 {
         -1.0
     } else {
         1.0
     };
 
     // For large |z|, use Hankel asymptotic expansion for Y_n(z).
-    if z.norm() > 25.0 + 1.5 * f64::from(n_abs) {
-        let chi = z - (0.5 * f64::from(n_abs) + 0.25) * PI;
-        let nf = f64::from(n_abs);
-        let mu = 4.0 * nf * nf;
+    if z.norm() > 25.0 + 1.5 * order {
+        let chi = z - (0.5 * order + 0.25) * PI;
+        let mu = 4.0 * order * order;
         let eight_z = 8.0 * z;
         let mut p = ONE;
         let mut q = ZERO;
         let mut term = ONE;
         for k in 1..=12 {
-            let kf = k as f64;
+            let kf = f64::from(k);
             let num = mu - (2.0 * kf - 1.0) * (2.0 * kf - 1.0);
             term *= num / (kf * eight_z);
+            let s = if (k / 2) % 2 == 0 {
+                1.0
+            } else {
+                -1.0
+            };
             if k % 2 == 1 {
-                let s = if (k / 2) % 2 == 0 {
-                    1.0
-                } else {
-                    -1.0
-                };
                 q += s * term;
             } else {
-                let s = if (k / 2) % 2 == 0 {
-                    1.0
-                } else {
-                    -1.0
-                };
                 p += s * term;
             }
             if term.norm() < 1e-16 {
@@ -75,6 +72,10 @@ pub fn bessel_y_complex(
     }
 
     // DLMF 10.8.1 ascending series for integer n >= 0:
+    if order > MAX_FACTORIAL_ORDER {
+        return NAN;
+    }
+    let n_abs = order as u32;
     let half_z = 0.5 * z;
     let half_z2 = half_z * half_z;
     let j_n = bessel_j_complex(f64::from(n_abs), z);
@@ -107,7 +108,7 @@ pub fn bessel_y_complex(
     let mut term2 = ONE / fact_nk;
     let mut sum2 = term2 * (h_k + h_nk);
     for k in 1..80 {
-        let kf = k as f64;
+        let kf = f64::from(k);
         h_k += 1.0 / kf;
         h_nk += 1.0 / (f64::from(n_abs) + kf);
         term2 *= -half_z2 / (kf * (f64::from(n_abs) + kf));
@@ -124,13 +125,14 @@ pub fn bessel_y_complex(
 }
 
 /// Complex modified Bessel function of the second kind `K_nu(z)` for real order `nu`.
+/// Returns NaN if the integer series would start with an overflowing factorial.
 #[must_use]
 pub fn bessel_k_complex(
     nu: f64,
     z: Complex64,
 ) -> Complex64 {
-    if z == ZERO {
-        return Complex64::new(f64::NAN, f64::NAN);
+    if z == ZERO || !nu.is_finite() {
+        return NAN;
     }
     let nu_abs = nu.abs();
     // For large |z|, use Hankel asymptotic expansion for K_nu(z) = sqrt(pi/(2z)) e^(-z) sum ...
@@ -151,7 +153,7 @@ pub fn bessel_k_complex(
         let mut sum = ONE;
         let mut term = ONE;
         for k in 1..=25 {
-            let kf = k as f64;
+            let kf = f64::from(k);
             let next_term = term * (mu - (2.0 * kf - 1.0) * (2.0 * kf - 1.0)) / (kf * eight_z);
             if next_term.norm() > term.norm() && k > 2 {
                 break;
@@ -173,6 +175,9 @@ pub fn bessel_k_complex(
         return (0.5 * PI / s) * (bessel_i_complex(-nu_abs, z) - bessel_i_complex(nu_abs, z));
     }
     // Integer n >= 0: use small-order series (DLMF 10.31.1) for |z| <= 25.
+    if nu_round > MAX_FACTORIAL_ORDER {
+        return NAN;
+    }
     let n = nu_round as u32;
     let half_z = 0.5 * z;
     let half_z2 = half_z * half_z;
@@ -202,7 +207,7 @@ pub fn bessel_k_complex(
     let mut term2 = ONE / fact_nk;
     let mut sum2 = term2 * (h_k + h_nk);
     for k in 1..80 {
-        let kf = k as f64;
+        let kf = f64::from(k);
         h_k += 1.0 / kf;
         h_nk += 1.0 / (f64::from(n) + kf);
         term2 *= half_z2 / (kf * (f64::from(n) + kf));
@@ -212,20 +217,25 @@ pub fn bessel_k_complex(
             break;
         }
     }
-    let sign_n = if n % 2 == 0 { 1.0 } else { -1.0 };
+    let sign_n = if n.is_multiple_of(2) {
+        1.0
+    } else {
+        -1.0
+    };
     sum2 *= sign_n * 0.5 * half_z.powi(n as i32);
     let ln_term = -sign_n * half_z.ln() * i_n;
     sum1 + ln_term + sum2
 }
 
 /// Exponentially scaled `exp(z) * K_nu(z)` computed without `exp(z)` overflow for large `Re(z)`.
+/// Returns NaN if the integer series would start with an overflowing factorial.
 #[must_use]
 pub fn bessel_ke_complex(
     nu: f64,
     z: Complex64,
 ) -> Complex64 {
-    if z == ZERO {
-        return Complex64::new(f64::NAN, f64::NAN);
+    if z == ZERO || !nu.is_finite() {
+        return NAN;
     }
     let nu_abs = nu.abs();
     if z.norm() > 12.0 + 1.5 * nu_abs && z.arg().abs() < PI - 0.15 {
@@ -234,7 +244,7 @@ pub fn bessel_ke_complex(
         let mut sum = ONE;
         let mut term = ONE;
         for k in 1..=25 {
-            let kf = k as f64;
+            let kf = f64::from(k);
             let next_term = term * (mu - (2.0 * kf - 1.0) * (2.0 * kf - 1.0)) / (kf * eight_z);
             if next_term.norm() > term.norm() && k > 2 {
                 break;
@@ -396,7 +406,7 @@ fn airy_series(
     let mut term_f = ONE;
     let mut term_g = z;
     for k in 1..40 {
-        let k3 = (3 * k) as f64;
+        let k3 = f64::from(3 * k);
         let term_fp = term_f * z * z / (k3 - 1.0);
         fp += term_fp;
         term_f = term_fp * z / k3;
@@ -461,7 +471,7 @@ pub fn struve_h_complex(
         ) * PI.sqrt();
         for k in 0..16 {
             if k > 0 {
-                let kf = k as f64;
+                let kf = f64::from(k);
                 let next_term = term * (kf - 0.5) * (nu + 0.5 - kf) * inv_hz2;
                 if next_term.norm() > term.norm() && k > 2 {
                     break;
@@ -487,7 +497,7 @@ pub fn struve_h_complex(
     let mut z_pow = ONE;
     for k in 0..150 {
         if k > 0 {
-            let kf = k as f64;
+            let kf = f64::from(k);
             g1 *= kf + 0.5;
             rg2 /= nu + kf + 0.5;
             z_pow *= -half_z2;
@@ -510,14 +520,14 @@ pub fn airy_hi_complex(z: Complex64) -> Complex64 {
     let mut sum = ZERO;
     let mut fact = 1.0_f64;
     let mut z_pow = ONE;
-    let three_third = 3.0_f64.powf(1.0 / 3.0);
+    let three_third = 3.0_f64.cbrt();
     for k in 0..80 {
         if k > 0 {
-            fact *= k as f64;
+            fact *= f64::from(k);
             z_pow *= z;
         }
-        let g = gamma_complex(Complex64::new((k as f64 + 1.0) / 3.0, 0.0));
-        let scale = 3.0_f64.powf((k as f64 - 2.0) / 3.0);
+        let g = gamma_complex(Complex64::new((f64::from(k) + 1.0) / 3.0, 0.0));
+        let scale = 3.0_f64.powf((f64::from(k) - 2.0) / 3.0);
         let term = g * scale * z_pow / fact;
         sum += term;
         if k > 6 && term.norm() <= 1e-16 * (1.0 + sum.norm()) {
@@ -537,7 +547,7 @@ pub fn airy_gi_complex(z: Complex64) -> Complex64 {
         let mut sum = ONE;
         let mut term = ONE;
         for k in 1..15 {
-            let kf = k as f64;
+            let kf = f64::from(k);
             let next_term = term * (3.0 * kf - 2.0) * (3.0 * kf - 1.0) / z3;
             if next_term.norm() > term.norm() {
                 break;
@@ -574,7 +584,7 @@ pub fn bessel_j_complex_order(
     let mut sum = crate::kernels::special_complex_ext::gamma_beta::rgamma_complex(nu + ONE);
     let mut term = sum;
     for k in 1..200 {
-        let kf = k as f64;
+        let kf = f64::from(k);
         term *= -half_z2 / (kf * (nu + kf));
         sum += term;
         if term.norm() <= 1e-16 * (1.0 + sum.norm()) {
@@ -605,7 +615,7 @@ pub fn bessel_i_complex_order(
     let mut sum = crate::kernels::special_complex_ext::gamma_beta::rgamma_complex(nu + ONE);
     let mut term = sum;
     for k in 1..200 {
-        let kf = k as f64;
+        let kf = f64::from(k);
         term *= half_z2 / (kf * (nu + kf));
         sum += term;
         if term.norm() <= 1e-16 * (1.0 + sum.norm()) {

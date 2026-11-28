@@ -20,123 +20,206 @@ fn eval_poly_and_deriv(
 }
 
 fn trim_leading_zeros(coeffs: &[Complex<f64>]) -> &[Complex<f64>] {
-    let mut end = coeffs.len();
-    while end > 0 {
-        if let Some(c) = coeffs.get(end.saturating_sub(1)) {
-            if c.norm() > 0.0 {
-                break;
-            }
-        }
-        end = end.saturating_sub(1);
+    coeffs
+        .iter()
+        .rposition(|c| c.re != 0.0 || c.im != 0.0)
+        .map_or(&[], |degree| &coeffs[..=degree])
+}
+
+fn finite_polynomial(coeffs: &[Complex<f64>]) -> Option<(Complex<f64>, &[Complex<f64>])> {
+    let (&leading, lower) = trim_leading_zeros(coeffs).split_last()?;
+    if lower.is_empty()
+        || lower
+            .iter()
+            .chain(std::iter::once(&leading))
+            .any(|c| !c.re.is_finite() || !c.im.is_finite())
+    {
+        return None;
     }
-    coeffs.get(..end).unwrap_or(&[])
+    Some((leading, lower))
+}
+
+/// Computes a log-magnitude even when the complex norm would overflow or
+/// round to a subnormal with fewer significant bits.
+fn log2_magnitude(coefficient: Complex<f64>) -> f64 {
+    let scale = coefficient.re.abs().max(coefficient.im.abs());
+    if scale == 0.0 {
+        return f64::NEG_INFINITY;
+    }
+    scale.log2()
+        + (coefficient.re / scale)
+            .hypot(coefficient.im / scale)
+            .log2()
 }
 
 /// Classic Cauchy upper bound on the modulus of all roots of
-/// $p(z) = \sum_{k=0}^n c_k z^k$ (ascending coefficients):
-/// $R = 1 + \max_{0 \le k < n} |c_k / c_n|$.
+/// $p(z) = \sum_{k=0}^n `c_k` z^k$ (ascending coefficients):
+/// $R = 1 + \max_{0 \le k < n} |`c_k` / `c_n`|$.
+#[must_use]
 pub fn cauchy_root_bound(coeffs: &[Complex<f64>]) -> Option<f64> {
-    let c = trim_leading_zeros(coeffs);
-    if c.len() <= 1 {
-        return None;
+    let (leading, lower) = finite_polynomial(coeffs)?;
+    let leading_norm = leading.norm();
+    let largest = lower.iter().map(|c| c.norm()).fold(0.0, f64::max);
+    if largest == 0.0 {
+        return Some(1.0);
     }
-    let cn = c.last()?.norm();
-    if cn == 0.0 {
-        return None;
-    }
-    let mut max_ratio = 0.0_f64;
-    for ck in c.iter().take(c.len().saturating_sub(1)) {
-        max_ratio = max_ratio.max(ck.norm() / cn);
-    }
-    Some(1.0 + max_ratio)
+    let ratio = if leading_norm.is_normal() && largest.is_normal() {
+        largest / leading_norm
+    } else {
+        let max_log = lower
+            .iter()
+            .copied()
+            .map(log2_magnitude)
+            .fold(f64::NEG_INFINITY, f64::max);
+        (max_log - log2_magnitude(leading)).exp2()
+    };
+    Some(1.0 + ratio)
 }
 
-/// Sharp Cauchy root bound solving $|c_n| R^n = \sum_{k=0}^{n-1} |c_k| R^k$ via bisection.
+/// Computes the sharp Cauchy radius, the positive solution of
+/// $|`c_n`| R^n = \sum_{k=0}^{n-1} |`c_k`| R^k$ for a non-monomial polynomial.
+/// Coefficients are ascending. A monomial has radius zero.
+#[must_use]
 pub fn cauchy_sharp_root_bound(coeffs: &[Complex<f64>]) -> Option<f64> {
-    let c = trim_leading_zeros(coeffs);
-    if c.len() <= 1 {
-        return None;
-    }
-    let cn = c.last()?.norm();
-    if cn == 0.0 {
-        return None;
-    }
-    let mut hi = cauchy_root_bound(c)?;
-    let mut lo = 0.0_f64;
-    let eval_g = |r: f64| -> f64 {
-        let mut sum = 0.0_f64;
-        let mut r_pow = 1.0_f64;
-        for ck in c.iter().take(c.len().saturating_sub(1)) {
-            sum += ck.norm() * r_pow;
-            r_pow *= r;
-        }
-        cn * r_pow - sum
-    };
-    if eval_g(0.0) >= 0.0 {
+    let (leading, lower) = finite_polynomial(coeffs)?;
+    let degree = lower.len();
+    let mut magnitudes = super::reuse::f64_scratch(degree);
+    magnitudes.clear();
+    magnitudes.extend(lower.iter().map(|c| c.norm()));
+    let lower_max = super::simd::linf_norm_f64(&magnitudes);
+    if lower_max == 0.0 {
         return Some(0.0);
     }
-    while eval_g(hi) < 0.0 {
-        hi *= 2.0;
+    let leading_norm = leading.norm();
+    let scale = lower_max.max(leading_norm);
+    let normalized_leading = leading_norm / scale;
+    // In the ordinary case, compute norms once and evaluate only a
+    // reciprocal Horner recurrence during the search (no powers of R).
+    if leading_norm.is_normal()
+        && normalized_leading.is_normal()
+        && magnitudes.iter_mut().all(|m| {
+            let normalized = *m / scale;
+            let representable = *m == 0.0 || (m.is_normal() && normalized.is_normal());
+            *m = normalized;
+            representable
+        })
+    {
+        return Some(bracket_positive_radius(|radius| {
+            let reciprocal = radius.recip();
+            let sum = if reciprocal.is_normal() {
+                magnitudes.iter().fold(0.0, |acc, m| (acc + m) * reciprocal)
+            } else {
+                magnitudes.iter().fold(0.0, |acc, m| (acc + m) / radius)
+            };
+            sum <= normalized_leading
+        }));
     }
-    for _ in 0..80 {
-        let mid = 0.5 * (lo + hi);
-        if eval_g(mid) >= 0.0 {
-            hi = mid;
+    // A common linear scale would lose nonzero coefficients. Keep
+    // log-magnitude ratios and sum only terms small enough to fit.
+    let leading_log = log2_magnitude(leading);
+    magnitudes.clear();
+    magnitudes.extend(lower.iter().map(|&c| log2_magnitude(c) - leading_log));
+    Some(bracket_positive_radius(|radius| {
+        let log_radius = radius.log2();
+        let mut sum = 0.0;
+        for (power, &log_ratio) in (1..=degree).zip(magnitudes.iter().rev()) {
+            let exponent = (-(power as f64)).mul_add(log_radius, log_ratio);
+            if exponent > 0.0 {
+                return false;
+            }
+            sum += exponent.exp2();
+            if sum > 1.0 {
+                return false;
+            }
+        }
+        true
+    }))
+}
+
+fn bracket_positive_radius(contains: impl Fn(f64) -> bool) -> f64 {
+    if !contains(f64::MAX) {
+        return f64::INFINITY;
+    }
+    // Bit patterns order the nonnegative binary64 values. Searching them
+    // brackets the root to adjacent floats even across extreme exponents.
+    let mut lower = 0;
+    let mut upper = f64::MAX.to_bits();
+    while upper - lower > 1 {
+        let mid = u64::midpoint(lower, upper);
+        if contains(f64::from_bits(mid)) {
+            upper = mid;
         } else {
-            lo = mid;
+            lower = mid;
         }
     }
-    Some(hi)
+    f64::from_bits(upper)
 }
 
 /// Fujiwara upper bound on the modulus of all polynomial roots:
 /// $R = 2 \max_{1 \le k \le n} \left|\frac{c_{n-k}}{c_n}\right|^{1/k}$ with factor $1/2$ on $k=n$.
+#[must_use]
 pub fn fujiwara_root_bound(coeffs: &[Complex<f64>]) -> Option<f64> {
-    let c = trim_leading_zeros(coeffs);
-    let n = c.len().checked_sub(1)?;
-    if n == 0 {
-        return None;
-    }
-    let cn = c.last()?.norm();
-    if cn == 0.0 {
-        return None;
-    }
-    let mut m = 0.0_f64;
-    for k in 1..=n {
-        let idx = n.saturating_sub(k);
-        let ck = c.get(idx)?.norm();
-        let mut ratio = ck / cn;
-        if k == n {
-            ratio *= 0.5;
+    let (leading, lower) = finite_polynomial(coeffs)?;
+    let degree = lower.len();
+    let leading_norm = leading.norm();
+    let mut leading_log = None;
+    let mut bound = 0.0_f64;
+    for (offset, &coefficient) in lower.iter().rev().enumerate() {
+        let norm = coefficient.norm();
+        if norm == 0.0 {
+            continue;
         }
-        let term = ratio.powf(1.0 / (k as f64));
-        m = m.max(term);
+        let k = offset + 1;
+        let ratio = norm / leading_norm;
+        let normal = leading_norm.is_normal() && norm.is_normal() && ratio.is_normal();
+        let discount = if k == degree { 0.5 } else { 1.0 };
+        let discounted = ratio * discount;
+        let term = if normal && k == 1 {
+            if degree == 1 {
+                ratio
+            } else {
+                2.0 * ratio
+            }
+        } else if normal && discounted.is_normal() {
+            2.0 * discounted.powf((k as f64).recip())
+        } else {
+            let base_log = if normal {
+                ratio.log2()
+            } else {
+                log2_magnitude(coefficient)
+                    - *leading_log.get_or_insert_with(|| log2_magnitude(leading))
+            };
+            let log_discount = if k == degree { 1.0 } else { 0.0 };
+            (1.0 + (base_log - log_discount) / k as f64)
+                .exp2()
+                .max(f64::from_bits(1))
+        };
+        bound = bound.max(term);
     }
-    Some(2.0 * m)
+    Some(bound)
 }
 
 /// Eneström–Kakeya annulus bounds $(r_{\min}, r_{\max})$ for a polynomial
-/// with strictly positive real ascending coefficients $a_0, \dots, a_n > 0$.
+/// with strictly positive real ascending coefficients $`a_0`, \dots, `a_n` > 0$.
+#[must_use]
 pub fn enestrom_kakeya_bounds(real_positive_coeffs: &[f64]) -> Option<(f64, f64)> {
-    if real_positive_coeffs.len() < 2 {
+    let (&first, remaining) = real_positive_coeffs.split_first()?;
+    if remaining.is_empty() || !first.is_finite() || first <= 0.0 {
         return None;
     }
-    if real_positive_coeffs
-        .iter()
-        .any(|&a| a <= 0.0 || !a.is_finite())
-    {
-        return None;
+    let mut previous = first;
+    let mut lower = f64::INFINITY;
+    let mut upper = f64::from_bits(1);
+    for &coefficient in remaining {
+        if !coefficient.is_finite() || coefficient <= 0.0 {
+            return None;
+        }
+        let ratio = previous / coefficient;
+        lower = lower.min(ratio.min(f64::MAX));
+        upper = upper.max(ratio);
+        previous = coefficient;
     }
-    let mut r_min = f64::INFINITY;
-    let mut r_max = 0.0_f64;
-    for pair in real_positive_coeffs.windows(2) {
-        let a_k = *pair.first()?;
-        let a_k1 = *pair.get(1)?;
-        let q = a_k / a_k1;
-        r_min = r_min.min(q);
-        r_max = r_max.max(q);
-    }
-    Some((r_min, r_max))
+    Some((lower, upper))
 }
 
 fn initial_circle_guesses(c: &[Complex<f64>]) -> Vec<Complex<f64>> {
@@ -158,6 +241,10 @@ fn initial_circle_guesses(c: &[Complex<f64>]) -> Vec<Complex<f64>> {
 }
 
 /// Finds all roots of a polynomial with ascending coefficients using the Durand–Kerner method.
+///
+/// # Errors
+///
+/// Returns an error for an empty coefficient slice or when the iterations fail to converge.
 pub fn durand_kerner(
     coeffs: &[Complex<f64>],
     max_iter: usize,
@@ -204,6 +291,10 @@ pub fn durand_kerner(
 }
 
 /// Finds all roots of a polynomial with ascending coefficients using the Aberth–Ehrlich method.
+///
+/// # Errors
+///
+/// Returns an error for an empty coefficient slice or when the iterations fail to converge.
 pub fn aberth_ehrlich(
     coeffs: &[Complex<f64>],
     max_iter: usize,
@@ -265,6 +356,10 @@ pub fn aberth_ehrlich(
 }
 
 /// Finds a single root of a polynomial starting from `z0` via Laguerre's method.
+///
+/// # Errors
+///
+/// Returns an error for a constant polynomial, a vanishing Laguerre denominator, or nonconvergence.
 pub fn laguerre_root(
     coeffs: &[Complex<f64>],
     z0: Complex<f64>,
@@ -284,8 +379,9 @@ pub fn laguerre_root(
             return Ok(z);
         }
         let g = dp / p;
-        let h = g * g - ddp / p;
-        let disc = ((n_f - 1.0) * (n_f * h - g * g)).sqrt();
+        let g_squared = g * g;
+        let h = g_squared - ddp / p;
+        let disc = ((n_f - 1.0) * (n_f * h - g_squared)).sqrt();
         let d_plus = g + disc;
         let d_minus = g - disc;
         let denom = if d_plus.norm() >= d_minus.norm() {
@@ -308,6 +404,10 @@ pub fn laguerre_root(
 }
 
 /// Finds a complex root of an arbitrary analytic function `f` using Muller's quadratic interpolation.
+///
+/// # Errors
+///
+/// Returns an error if the interpolation denominator vanishes or the iterations fail to converge.
 pub fn muller_root<F>(
     f: F,
     mut z0: Complex<f64>,
@@ -362,6 +462,10 @@ where
 }
 
 /// Finds a complex root using Halley's cubically convergent method.
+///
+/// # Errors
+///
+/// Returns an error if the iterations fail to converge.
 pub fn halley_root<F, DF, DDF>(
     f: F,
     df: DF,
@@ -397,8 +501,12 @@ where
     ))
 }
 
-/// Computes power-sum moments $s_k = \frac{1}{2\pi i} \oint_{|z-c|=r} z^k \frac{f'(z)}{f(z)} dz$
+/// Computes power-sum moments $`s_k` = \frac{1}{2\pi i} \oint_{|z-c|=r} z^k \frac{f'(z)}{f(z)} dz$
 /// for $k = 0, \dots, \text{max\_moment}$ using the periodic trapezoidal rule.
+///
+/// # Errors
+///
+/// Returns an error for an invalid radius or sample count, or if the function is nearly zero on the circle.
 pub fn argument_principle_moments<F, DF>(
     f: F,
     df: DF,
@@ -436,7 +544,11 @@ where
     Ok(moments)
 }
 
-/// Computes the argument principle winding number $(Z - P) = \text{round}(\text{Re}(s_0))$.
+/// Computes the argument principle winding number `(Z - P) = \text{round}(\text{Re}(s_0))`.
+///
+/// # Errors
+///
+/// Returns an error when moment evaluation fails or the winding estimate is too far from an integer.
 pub fn argument_principle_winding<F, DF>(
     f: F,
     df: DF,
@@ -462,9 +574,14 @@ where
     Ok(s0.re.round() as isize)
 }
 
-/// Delves–Lyness root localization inside $|z - \text{center}| < \text{radius}$ for an
-/// analytic function without poles inside the disk. Uses argument principle moments,
-/// Newton's identities to form the monic polynomial, and Aberth–Ehrlich to extract all zeros.
+/// Finds zeros of an analytic function in a disk using Delves–Lyness localization.
+///
+/// Uses argument-principle moments, Newton’s identities to form the monic polynomial, and
+/// Aberth–Ehrlich iteration to extract its zeros. The function must be pole-free in the disk.
+///
+/// # Errors
+///
+/// Returns an error when moment evaluation or the polynomial solve fails, or the winding number is invalid.
 pub fn delves_lyness_roots<F, DF>(
     f: F,
     df: DF,
@@ -546,6 +663,10 @@ where
 }
 
 /// Checks Rouché's condition $|f(z)| > |g(z)|$ on $|z - \text{center}| = \text{radius}$.
+///
+/// # Errors
+///
+/// Returns an error for an invalid circle radius or sample count.
 pub fn rouche_check_circle<F, G>(
     f: F,
     g: G,
@@ -570,9 +691,14 @@ where
     Ok(min_margin > 0.0)
 }
 
-/// Tracks a root of a 1D complex homotopy `H(z(t), t) = 0` from `t = 0` to `t = 1`
-/// starting from `z(0) = z_0`, using adaptive-step RK4 predictor + Newton corrector
-/// with damped fallback near singular target roots (`t -> 1`).
+/// Tracks a complex homotopy root from `t = 0` to `t = 1`.
+///
+/// Starts at `z(0) = z_0` for `H(z(t), t) = 0`, using an adaptive RK4 predictor and Newton
+/// corrector with damping near a singular target.
+///
+/// # Errors
+///
+/// Returns an error for a zero step count, a singular Jacobian, or failure to reach and correct the endpoint within the step budget.
 pub fn homotopy_track_1d<H, DHZ, DHT>(
     h: H,
     dh_dz: DHZ,
@@ -659,7 +785,8 @@ where
 }
 
 /// Verified root isolation for a complex polynomial inside `|Re(z)|, |Im(z)| <= R`
-/// using [`ComplexBall`] interval exclusion + quadtree subdivision + 1D Krawczyk certification.
+/// using [`ComplexBall`](crate::kernels::complex_ball::ComplexBall) interval exclusion,
+/// quadtree subdivision, and 1D Krawczyk certification.
 #[must_use]
 pub fn isolate_roots_verified(
     coeffs: &[Complex<f64>],

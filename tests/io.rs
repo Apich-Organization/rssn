@@ -779,9 +779,11 @@ fn large_rasters_preserve_bytes_through_chunk_and_row_boundaries() {
     let body = encoded.strip_prefix(header).expect("PGM header");
     assert_eq!(body.len(), samples.len() * 2);
     assert!(
-        body.chunks_exact(2)
+        body.as_chunks::<2>()
+            .0
+            .iter()
             .zip(samples)
-            .all(|(bytes, value)| bytes == value.to_be_bytes())
+            .all(|(bytes, value)| *bytes == value.to_be_bytes())
     );
 
     let ppm = Tmp::new("ppm_stream", "ppm");

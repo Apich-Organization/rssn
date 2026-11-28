@@ -361,13 +361,23 @@ pub fn cox_predict(
     fit: &CoxFit,
     x: &[Vec<f64>],
 ) -> Result<Vec<f64>, String> {
-    let p = fit.beta.len();
+    cox_predict_coefficients(&fit.beta, x)
+}
+
+/// Predicts relative hazards from fitted log-hazard coefficients.
+///
+/// # Errors
+/// Fails when an observation has a different number of columns than the model.
+pub fn cox_predict_coefficients(
+    coefficients: &[f64],
+    x: &[Vec<f64>],
+) -> Result<Vec<f64>, String> {
     let mut out = Vec::with_capacity(x.len());
     for row in x {
-        if row.len() != p {
+        if row.len() != coefficients.len() {
             return Err("each row needs one entry per coefficient".to_string());
         }
-        out.push(dot(row, &fit.beta).exp());
+        out.push(dot(row, coefficients).exp());
     }
     Ok(out)
 }

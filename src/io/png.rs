@@ -1,7 +1,6 @@
 //! Complete pure-Rust PNG image encoder and decoder.
 //!
-//! Uses [`crate::io::hdf5::inflate`] for zlib compression/decompression and
-//! supports:
+//! Uses zlib compression and supports:
 //! - Grayscale (8/16-bit), Grayscale+Alpha (8/16-bit), RGB (8/16-bit), RGBA (8/16-bit),
 //!   and Indexed (`PLTE` + optional `tRNS`) color types
 //! - Non-interlaced and Adam7 interlaced (`interlace = 1`) decoding
@@ -93,6 +92,10 @@ fn crc32(data: &[u8]) -> u32 {
     !crc
 }
 
+#[expect(
+    clippy::trivially_copy_pass_by_ref,
+    reason = "PNG chunk tags are static four-byte string literals"
+)]
 fn push_chunk(
     out: &mut Vec<u8>,
     tag: &[u8; 4],
@@ -260,7 +263,7 @@ fn unfilter_pass(
                 | 0 => encoded[x],
                 | 1 => encoded[x].wrapping_add(a),
                 | 2 => encoded[x].wrapping_add(b),
-                | 3 => encoded[x].wrapping_add(((u16::from(a) + u16::from(b)) / 2) as u8),
+                | 3 => encoded[x].wrapping_add(u16::midpoint(u16::from(a), u16::from(b)) as u8),
                 | 4 => encoded[x].wrapping_add(paeth(a, b, c)),
                 | other => return Err(format!("unsupported PNG filter {other}")),
             };
@@ -337,7 +340,9 @@ pub fn decode_png(bytes: &[u8]) -> Result<PngImage, String> {
                 }
                 palette = Some(
                     payload
-                        .chunks_exact(3)
+                        .as_chunks::<3>()
+                        .0
+                        .iter()
                         .map(|c| [c[0], c[1], c[2]])
                         .collect(),
                 );
@@ -429,22 +434,25 @@ pub fn decode_png(bytes: &[u8]) -> Result<PngImage, String> {
         | (16, 6) => (PngColorType::Rgba16, pixel_bytes),
         | (8, 3) => {
             let pal = palette.ok_or("indexed PNG missing PLTE chunk")?;
-            if let Some(alpha) = trns {
-                let mut rgba = Vec::with_capacity(w * h * 4);
-                for &idx in &pixel_bytes {
-                    let rgb = pal.get(usize::from(idx)).copied().unwrap_or([0, 0, 0]);
-                    let a = alpha.get(usize::from(idx)).copied().unwrap_or(255);
-                    rgba.extend_from_slice(&[rgb[0], rgb[1], rgb[2], a]);
-                }
-                (PngColorType::Rgba8, rgba)
-            } else {
-                let mut rgb_out = Vec::with_capacity(w * h * 3);
-                for &idx in &pixel_bytes {
-                    let rgb = pal.get(usize::from(idx)).copied().unwrap_or([0, 0, 0]);
-                    rgb_out.extend_from_slice(&rgb);
-                }
-                (PngColorType::Rgb8, rgb_out)
-            }
+            trns.map_or_else(
+                || {
+                    let mut rgb_out = Vec::with_capacity(w * h * 3);
+                    for &idx in &pixel_bytes {
+                        let rgb = pal.get(usize::from(idx)).copied().unwrap_or([0, 0, 0]);
+                        rgb_out.extend_from_slice(&rgb);
+                    }
+                    (PngColorType::Rgb8, rgb_out)
+                },
+                |alpha| {
+                    let mut rgba = Vec::with_capacity(w * h * 4);
+                    for &idx in &pixel_bytes {
+                        let rgb = pal.get(usize::from(idx)).copied().unwrap_or([0, 0, 0]);
+                        let a = alpha.get(usize::from(idx)).copied().unwrap_or(255);
+                        rgba.extend_from_slice(&[rgb[0], rgb[1], rgb[2], a]);
+                    }
+                    (PngColorType::Rgba8, rgba)
+                },
+            )
         },
         | _ => {
             return Err(format!(

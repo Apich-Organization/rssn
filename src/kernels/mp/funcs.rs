@@ -143,7 +143,7 @@ pub fn ln(
     let z = m.sub(&one).div(&m.add(&one));
     let z2 = z.mul(&z);
     let mut power = z.clone();
-    let mut sum = z.clone();
+    let mut sum = z;
     let mut k: i64 = 1;
     loop {
         power = power.mul(&z2);
@@ -310,7 +310,7 @@ fn atan_fixed(
     }
     let square = value.mul(&value);
     let mut power = value.clone();
-    let mut sum = value.clone();
+    let mut sum = value;
     let mut j: i64 = 1;
     loop {
         power = power.mul(&square);
@@ -483,7 +483,7 @@ pub fn pow(
     let inner = prec.saturating_add(32);
     let logarithm = ln(x, inner)?;
     let product = logarithm.mul(&Ball::point(y.clone()), inner)?;
-    exp(&product.mid, inner).map(|ball| ball).and_then(|ball| {
+    exp(&product.mid, inner).and_then(|ball| {
         // The radius of the product widens the exponent, which widens the
         // result by exp(radius).
         let widening = exp(&product.rad, inner)?;

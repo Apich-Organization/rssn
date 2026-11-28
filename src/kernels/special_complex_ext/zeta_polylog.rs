@@ -6,6 +6,7 @@ use std::f64::consts::PI;
 
 use num_complex::Complex64;
 
+use crate::kernels::quadrature::exp_sinh;
 use crate::kernels::special_complex::gamma_complex;
 use crate::kernels::special_complex::ln_gamma_complex;
 use crate::kernels::special_ext::polylog_complex;
@@ -19,15 +20,16 @@ const I: Complex64 = Complex64::new(0.0, 1.0);
 /// `(1 - 2^(1-s)) * zeta(s)` elsewhere.
 #[must_use]
 pub fn dirichlet_eta_complex(s: Complex64) -> Complex64 {
+    // Borwein weights d_k = M * sum_{i=0}^k (M + i - 1)! * 4^i / ((M - i)! * (2i)!)
+    // With M = 20, every d_k fits EXACTLY in f64 (< 2^53) and truncation error is ~ 1 / 5.8^20 ~ 1e-16!
+    const M: usize = 20;
+
     if (s - ONE).norm() < 1e-14 {
         return Complex64::new(std::f64::consts::LN_2, 0.0);
     }
     if s.im.abs() > 10.0 || s.re < -10.0 {
         return (ONE - Complex64::new(2.0, 0.0).powc(ONE - s)) * riemann_zeta_complex(s);
     }
-    // Borwein weights d_k = M * sum_{i=0}^k (M + i - 1)! * 4^i / ((M - i)! * (2i)!)
-    // With M = 20, every d_k fits EXACTLY in f64 (< 2^53) and truncation error is ~ 1 / 5.8^20 ~ 1e-16!
-    const M: usize = 20;
     let mut d = [0.0_f64; M + 1];
     let mut acc = 0.0_f64;
     // Term i=0: (M-1)! / M! = 1/M, * M = 1.
@@ -55,6 +57,8 @@ pub fn dirichlet_eta_complex(s: Complex64) -> Complex64 {
 }
 
 /// Complex Riemann zeta function `zeta(s)` over the entire complex plane.
+///
+///
 /// Uses `eta(s) / (1 - 2^(1 - s))` for `Re(s) >= 0.5`, and the functional
 /// equation `zeta(s) = 2^s * pi^(s - 1) * sin(pi * s / 2) * Gamma(1 - s) * zeta(1 - s)`
 /// for `Re(s) < 0.5`.
@@ -108,6 +112,18 @@ pub fn hurwitz_zeta_complex(
     s: Complex64,
     mut a: Complex64,
 ) -> Complex64 {
+    // B_{2k} / (2k)! for k = 1..=8
+    const B_OVER_FACT: [f64; 8] = [
+        1.0 / 12.0,
+        -1.0 / 720.0,
+        1.0 / 30_240.0,
+        -1.0 / 1_209_600.0,
+        1.0 / 47_900_160.0,
+        -691.0 / 1_307_674_368_000.0,
+        1.0 / 74_724_249_600.0,
+        -3617.0 / 10_670_622_842_880_000.0,
+    ];
+
     if (s - ONE).norm() < 1e-14 {
         return Complex64::new(f64::INFINITY, 0.0);
     }
@@ -130,17 +146,6 @@ pub fn hurwitz_zeta_complex(
     let int_term = an.powc(ONE - s) / (s - ONE);
     let half_term = 0.5 * an_ms;
 
-    // B_{2k} / (2k)! for k = 1..=8
-    const B_OVER_FACT: [f64; 8] = [
-        1.0 / 12.0,
-        -1.0 / 720.0,
-        1.0 / 30_240.0,
-        -1.0 / 1_209_600.0,
-        1.0 / 47_900_160.0,
-        -691.0 / 1_307_674_368_000.0,
-        1.0 / 74_724_249_600.0,
-        -3617.0 / 10_670_622_842_880_000.0,
-    ];
     let inv_an2 = ONE / (an * an);
     let mut poch = s;
     let mut pow_term = ONE / an;
@@ -157,23 +162,36 @@ pub fn hurwitz_zeta_complex(
 }
 
 /// Complex Lerch transcendent `Phi(z, s, a) = sum_{n>=0} z^n / (n + a)^s`.
+///
+/// For positive real parts of `s` and `a`, the Euler integral continues the
+/// series outside the unit disk. On the real cut `z > 1`, the value is the
+/// limit from below, as for [`polylog_complex`].
 #[must_use]
 pub fn lerch_phi_complex(
     z: Complex64,
     s: Complex64,
     a: Complex64,
 ) -> Complex64 {
+    if z == ONE {
+        return hurwitz_zeta_complex(s, a);
+    }
+    if s == ZERO {
+        return ONE / (ONE - z);
+    }
     if z == ZERO {
         return a.powc(-s);
     }
-    if z == ONE {
-        return hurwitz_zeta_complex(s, a);
+    if z.im == 0.0 && s.im == 0.0 && a.im == 0.0 && z.re < 1.0 && a.re > 0.0 {
+        let real = crate::kernels::special_ext::lerch(z.re, s.re, a.re);
+        if !real.is_nan() {
+            return Complex64::new(real, 0.0);
+        }
     }
     if z.norm() < 0.9 {
         let mut sum = ZERO;
         let mut z_pow = ONE;
         for n in 0..400 {
-            let term = z_pow * (a + (n as f64)).powc(-s);
+            let term = z_pow * (a + f64::from(n)).powc(-s);
             sum += term;
             if term.norm() <= 1e-15 * (1.0 + sum.norm()) {
                 break;
@@ -181,6 +199,18 @@ pub fn lerch_phi_complex(
             z_pow *= z;
         }
         return sum;
+    }
+    if a == ONE {
+        let reduced = polylog_complex(s, z) / z;
+        if reduced.is_finite() {
+            return reduced;
+        }
+    }
+    if s.re > 0.0 && a.re > 0.0 && z.is_finite() && s.is_finite() && a.is_finite() {
+        let integral = lerch_euler_complex(z, s, a);
+        if integral.is_finite() {
+            return integral;
+        }
     }
     // Euler series transformation for |z| >= 0.9 off [1, +inf):
     // sum_{n>=0} z^n u_n = (1/(1-z)) sum_{k>=0} (z/(z-1))^k (-1)^k Delta^k u_0
@@ -212,23 +242,90 @@ pub fn lerch_phi_complex(
         }
         return sum / (ONE - z);
     }
-    if (a - ONE).norm() < 1e-13 {
-        return polylog_complex(s, z) / z;
-    }
-    // Analytic continuation via Euler-Maclaurin / Mellin-type series around z = 1:
-    // Phi(z, s, a) = z^{-a} * (Gamma(1-s) * (-ln z)^{s-1} + sum_{k>=0} zeta(s-k, a) (ln z)^k / k!)
-    // For |ln(z)| < 2*pi and non-integer s (or small offset), this converges rapidly;
-    // otherwise use Padé/Wynn acceleration on the partial sums.
+    // The remaining orders and shifts use Wynn acceleration on the partial sums.
     let mut partials = Vec::with_capacity(48);
     let mut sum = ZERO;
     let mut z_pow = ONE;
     for n in 0..48 {
-        sum += z_pow * (a + (n as f64)).powc(-s);
+        sum += z_pow * (a + f64::from(n)).powc(-s);
         partials.push(sum);
         z_pow *= z;
     }
     let acc = crate::kernels::analytic_continuation::wynn_epsilon_complex(&partials);
     if acc.is_finite() { acc } else { sum }
+}
+
+// The Euler integral initially follows a unit-slope ray on the side opposite
+// the pole log(z). The contour then approaches a horizontal line, keeping the
+// weight bounded for complex shifts with positive real part. On the positive
+// real cut the upper contour selects the limit from below.
+// Euler representation: NIST DLMF 25.14.5.
+#[allow(clippy::single_call_fn)]
+fn lerch_euler_complex(
+    z: Complex64,
+    s: Complex64,
+    a: Complex64,
+) -> Complex64 {
+    let direction = if z.re > 0.0 {
+        if z.im > 0.0 { -1.0 } else { 1.0 }
+    } else {
+        0.0
+    };
+    // Integration by parts raises the endpoint power by one. It also avoids
+    // the slow convergence of the original Euler integral for small Re(s).
+    let by_parts = s.re < 1.0;
+    let (order, log_gamma) = if by_parts {
+        (s, ln_gamma_complex(s + ONE))
+    } else {
+        (s - ONE, ln_gamma_complex(s))
+    };
+    let integrand = |x: f64| {
+        if x <= 0.0 {
+            return ZERO;
+        }
+        let inv = (1.0 + x).recip();
+        let y = direction * (x * inv);
+        let t = Complex64::new(x, y);
+        let log_weight = order * t.ln() - a * t - log_gamma;
+        if log_weight.re < -745.0 {
+            return ZERO;
+        }
+        let e = (-x).exp();
+        let (sin, cos) = y.sin_cos();
+        let q = z * Complex64::new(e * cos, -e * sin);
+        let denominator = if x < 0.5 {
+            // Preserve the small difference from 1 at the endpoint.
+            let half_sin = (0.5 * y).sin();
+            let em1 = Complex64::new((-x).exp_m1() - 2.0 * e * half_sin * half_sin, -e * sin);
+            (ONE - z) - z * em1
+        } else {
+            ONE - q
+        };
+        let dt = Complex64::new(1.0, direction * inv * inv);
+        let weight = log_weight.exp() * dt;
+        let scale = denominator.re.abs().max(denominator.im.abs());
+        // Complex division squares the denominator norm. Reduce it first
+        // when q would overflow that intermediate.
+        let (weight, q, denominator) = if scale > 1e150 {
+            (
+                weight.unscale(scale),
+                q.unscale(scale),
+                denominator.unscale(scale),
+            )
+        } else {
+            (weight, q, denominator)
+        };
+        let value = weight / denominator;
+        if by_parts {
+            value * (a + q / denominator)
+        } else {
+            value
+        }
+    };
+    Complex64::new(
+        exp_sinh(|x| integrand(x).re, 0.0, 2e-14).value,
+        exp_sinh(|x| integrand(x).im, 0.0, 2e-14).value,
+    )
 }
 
 /// Complex Clausen function: `Im(Li_n(e^(i z)))` for even `n`, `Re(Li_n(e^(i z)))` for odd `n`.
@@ -242,7 +339,7 @@ pub fn clausen_complex(
     let s_c = Complex64::new(f64::from(n), 0.0);
     let lp = polylog_complex(s_c, eiz);
     let lm = polylog_complex(s_c, e_miz);
-    if n % 2 == 0 {
+    if n.is_multiple_of(2) {
         -0.5 * I * (lp - lm)
     } else {
         0.5 * (lp + lm)

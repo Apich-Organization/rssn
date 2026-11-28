@@ -34,13 +34,6 @@ use crate::kernels::numeric_common::scale_product;
 
 /// Solves `a x = b` by Gaussian elimination with partial pivoting;
 /// `None` for a (numerically) singular matrix.
-fn solve_dense(
-    a: Vec<Vec<f64>>,
-    b: Vec<f64>,
-) -> Option<Vec<f64>> {
-    crate::kernels::dense::solve_linear_rows(&a, &b).ok()
-}
-
 /// The Jacobian `∂f/∂y` at `(t, y)` by central differences.
 fn jacobian<F>(
     f: &F,
@@ -513,7 +506,8 @@ where
             return Some(z);
         }
         let jac = jacobian(g, 0.0, &z);
-        let delta = solve_dense(jac, r.iter().map(|v| -v).collect())?;
+        let residual: Vec<_> = r.iter().map(|v| -v).collect();
+        let delta = crate::kernels::dense::solve_linear_rows(&jac, &residual).ok()?;
         for (zi, di) in z.iter_mut().zip(&delta) {
             *zi += di;
         }
@@ -614,14 +608,14 @@ where
         if f0.len() != n || f0.iter().any(|v| !v.is_finite()) {
             return None;
         }
-        let k1 = solve_dense(w.clone(), f0)?;
+        let k1 = crate::kernels::dense::solve_linear_rows(&w, &f0).ok()?;
         let y_mid: Vec<f64> = y.iter().zip(&k1).map(|(yi, ki)| yi + h * ki).collect();
         let f1 = f(t + h, &y_mid);
         if f1.len() != n || f1.iter().any(|v| !v.is_finite()) {
             return None;
         }
         let rhs: Vec<f64> = f1.iter().zip(&k1).map(|(fi, ki)| fi - 2.0 * ki).collect();
-        let k2 = solve_dense(w, rhs)?;
+        let k2 = crate::kernels::dense::solve_linear_rows(&w, &rhs).ok()?;
         let next: Vec<f64> = y
             .iter()
             .zip(&k1)

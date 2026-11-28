@@ -74,7 +74,7 @@ fn sod_preserves_the_wave_solution_under_common_thermodynamic_scaling() {
         (
             -0.5,
             0.602_937_696_498_180_7,
-            0.569_346_630_516_602_9,
+            0.569_346_630_516_603,
             0.492_471_851_553_222_5,
         ),
         (

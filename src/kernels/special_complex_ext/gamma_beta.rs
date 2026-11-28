@@ -2,6 +2,7 @@
 //! Pochhammer, binomial, and Barnes G functions.
 
 use std::f64::consts::PI;
+use std::f64::consts::TAU;
 
 use num_complex::Complex64;
 
@@ -9,6 +10,7 @@ use crate::kernels::hypergeometric::hyp2f1_cplx;
 use crate::kernels::special_complex::digamma_complex;
 use crate::kernels::special_complex::gamma_complex;
 use crate::kernels::special_complex::ln_gamma_complex;
+use crate::kernels::special_ext::polylog_complex;
 
 const ZERO: Complex64 = Complex64::new(0.0, 0.0);
 const ONE: Complex64 = Complex64::new(1.0, 0.0);
@@ -107,6 +109,18 @@ pub fn polygamma_complex(
     n: u32,
     mut z: Complex64,
 ) -> Complex64 {
+    // Asymptotic expansion:
+    // psi^(n)(z) ~ (-1)^(n+1) * [ (n-1)!/z^n + n!/(2 z^(n+1)) + sum_{k>=1} B_{2k}/(2k)! * (2k+n-1)! / z^(2k+n) ]
+    // B_2 = 1/6, B_4 = -1/30, B_6 = 1/42, B_8 = -1/30, B_10 = 5/66, B_12 = -691/2730.
+    const BERNOULLI_EVEN: [f64; 6] = [
+        1.0 / 6.0,
+        -1.0 / 30.0,
+        1.0 / 42.0,
+        -1.0 / 30.0,
+        5.0 / 66.0,
+        -691.0 / 2730.0,
+    ];
+
     if z.re.is_nan() || z.im.is_nan() {
         return Complex64::new(f64::NAN, f64::NAN);
     }
@@ -119,7 +133,11 @@ pub fn polygamma_complex(
     // General reflection for Re(z) < 0:
     // (-1)^n psi^(n)(1 - z) - psi^(n)(z) = d^n/dz^n (pi * cot(pi * z))
     if z.re < 0.0 {
-        let sign_n = if n % 2 == 0 { 1.0 } else { -1.0 };
+        let sign_n = if n.is_multiple_of(2) {
+            1.0
+        } else {
+            -1.0
+        };
         let refl = d_n_pi_cot_pi(n, z);
         return sign_n * polygamma_complex(n, ONE - z) - refl;
     }
@@ -137,17 +155,6 @@ pub fn polygamma_complex(
         z += ONE;
     }
 
-    // Asymptotic expansion:
-    // psi^(n)(z) ~ (-1)^(n+1) * [ (n-1)!/z^n + n!/(2 z^(n+1)) + sum_{k>=1} B_{2k}/(2k)! * (2k+n-1)! / z^(2k+n) ]
-    // B_2 = 1/6, B_4 = -1/30, B_6 = 1/42, B_8 = -1/30, B_10 = 5/66, B_12 = -691/2730.
-    const BERNOULLI_EVEN: [f64; 6] = [
-        1.0 / 6.0,
-        -1.0 / 30.0,
-        1.0 / 42.0,
-        -1.0 / 30.0,
-        5.0 / 66.0,
-        -691.0 / 2730.0,
-    ];
     let inv_z = ONE / z;
     let inv_z2 = inv_z * inv_z;
     let nf = f64::from(n);
@@ -161,7 +168,7 @@ pub fn polygamma_complex(
         let k = (idx + 1) as f64;
         let two_k = 2.0 * k;
         if idx == 0 {
-            ratio = (nf + 1.0) / 2.0;
+            ratio = f64::midpoint(nf, 1.0);
         } else {
             ratio *= (two_k + nf - 2.0) * (two_k + nf - 1.0) / ((two_k - 1.0) * two_k);
         }
@@ -282,7 +289,7 @@ pub fn lower_incomplete_gamma_complex(
         let mut term = ONE / a;
         let mut sum = term;
         for k in 1..400 {
-            term *= z / (a + (k as f64));
+            term *= z / (a + f64::from(k));
             sum += term;
             if term.norm() <= 1e-16 * sum.norm() {
                 break;
@@ -313,7 +320,7 @@ pub fn upper_incomplete_gamma_complex(
         let mut best_sum = sum;
         let mut min_term = f64::INFINITY;
         for k in 1..=60 {
-            term *= (a - (k as f64)) / z;
+            term *= (a - f64::from(k)) / z;
             let tn = term.norm();
             if tn > min_term {
                 break;
@@ -338,7 +345,7 @@ pub fn upper_incomplete_gamma_complex(
     };
     let mut h = d;
     for k in 1..400 {
-        let kf = k as f64;
+        let kf = f64::from(k);
         let an = -kf * (kf - a);
         b += 2.0;
         d = an * d + b;
@@ -409,11 +416,32 @@ pub fn reg_beta_complex(
     incomplete_beta_complex(a, b, z) / beta_complex(a, b)
 }
 
-/// Complex log Barnes G-function `ln G(z)`.
+/// Analytic logarithm of the Barnes G-function, real on the positive axis.
+/// Signed imaginary zero selects the side of the non-positive real cut.
+/// Non-positive integers give negative infinity.
 #[must_use]
 pub fn ln_barnes_g_complex(mut z: Complex64) -> Complex64 {
-    if z.re.is_nan() || z.im.is_nan() {
-        return Complex64::new(f64::NAN, f64::NAN);
+    const ZETA_PRIME_MINUS_1: f64 = -0.165_421_143_700_450_92;
+    const LN_2PI: f64 = 1.837_877_066_409_345_3;
+    const SHIFT_TARGET: f64 = 8.0;
+    const MAX_SHIFTS: usize = 16;
+    const NAN: Complex64 = Complex64::new(f64::NAN, f64::NAN);
+
+    // DLMF 5.17.5 reduced by Stirling's expansion of w*log(Gamma(w + 1)).
+    // The coefficient of w^(-2k) is B_{2k+2} / (4k(k+1)).
+    const COEFFS: [f64; 8] = [
+        -1.0 / 240.0,
+        1.0 / 1008.0,
+        -1.0 / 1440.0,
+        1.0 / 1056.0,
+        -691.0 / 327_600.0,
+        1.0 / 144.0,
+        -3617.0 / 114_240.0,
+        43_867.0 / 229_824.0,
+    ];
+
+    if !z.re.is_finite() || !z.im.is_finite() {
+        return NAN;
     }
     if is_nonpos_int(z) {
         return Complex64::new(f64::NEG_INFINITY, 0.0);
@@ -421,28 +449,54 @@ pub fn ln_barnes_g_complex(mut z: Complex64) -> Complex64 {
     if z == ONE || z == Complex64::new(2.0, 0.0) {
         return ZERO;
     }
-    let mut ln_factor = ZERO;
-    while z.re < 8.0 {
-        ln_factor -= ln_gamma_complex(z);
-        z += ONE;
-    }
-    const ZETA_PRIME_MINUS_1: f64 = -0.165_421_143_700_450_92;
-    const LN_2PI: f64 = 1.837_877_066_409_345_3;
-    let w = z - ONE;
+    let ln_factor = if z.re <= -SHIFT_TARGET {
+        // Kinkelin reflection for N = 1 - z in the upper half-plane.
+        // Subtracting the left asymptotic series leaves only
+        // N*log(1 - q) - i*Li_2(q)/(2*pi), where q = exp(2*pi*i*N).
+        let height = z.im.abs();
+        let log_radius = -TAU * height;
+        let radius = log_radius.exp();
+        // Reduce the real part before multiplying by 2*pi, also when
+        // 1 - Re(z) would round away a fractional part.
+        let phase = -TAU * (z.re - z.re.round());
+        let (sin, cos) = phase.sin_cos();
+        let q = radius * Complex64::new(cos, sin);
+        let sin_half = (0.5 * phase).sin();
+        let one_minus_q = Complex64::new(
+            -log_radius.exp_m1() + 2.0 * radius * sin_half * sin_half,
+            -q.im,
+        );
+        let dilog = polylog_complex(Complex64::new(2.0, 0.0), q);
+        let correction = Complex64::new(1.0 - z.re, height) * one_minus_q.ln()
+            + Complex64::new(dilog.im / TAU, -dilog.re / TAU);
+        if z.im.is_sign_negative() {
+            correction
+        } else {
+            correction.conj()
+        }
+    } else {
+        let mut recurrence = ZERO;
+        for _ in 0..MAX_SHIFTS {
+            if z.re >= SHIFT_TARGET {
+                break;
+            }
+            let next = z.re + 1.0;
+            if next <= z.re {
+                return NAN;
+            }
+            recurrence -= ln_gamma_complex(z);
+            // Updating the real component preserves the signed cut side.
+            z.re = next;
+        }
+        recurrence
+    };
+    let w = z - 1.0;
     let ln_w = w.ln();
     let w2 = w * w;
     let mut ln_g =
         0.5 * w2 * ln_w - 0.75 * w2 + 0.5 * w * LN_2PI - (1.0 / 12.0) * ln_w + ZETA_PRIME_MINUS_1;
     let inv_w2 = ONE / w2;
     let mut term_pow = inv_w2;
-    // B_{2k+2} / (2k * (2k+1) * (2k+2)) for k = 1..=5
-    const COEFFS: [f64; 5] = [
-        -1.0 / 720.0,
-        1.0 / 5040.0,
-        -1.0 / 10080.0,
-        1.0 / 11880.0,
-        -691.0 / 3_603_600.0,
-    ];
     for &c in &COEFFS {
         ln_g += c * term_pow;
         term_pow *= inv_w2;

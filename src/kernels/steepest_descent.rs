@@ -141,9 +141,10 @@ where
     g0 * (lambda * saddle.phi_val).exp() * gauss * (Complex64::new(1.0, 0.0) + corr)
 }
 
-/// Numerical integration along the **curved** steepest-descent path
-/// `Im(phi(z)) = Im(phi(z0))` with `Re(phi(z))` decreasing away from `z0`,
-/// traced via predictor-corrector projection onto the constant-phase level curve.
+/// Integrates numerically along a curved steepest-descent path.
+///
+/// Traces `Im(phi(z)) = Im(phi(z0))` by predictor-corrector projection onto the constant-phase
+/// curve, with `Re(phi(z))` decreasing away from `z0`.
 #[must_use]
 pub fn steepest_descent_integrate<F, G>(
     phi: F,

@@ -23,6 +23,10 @@ use crate::kernels::transforms::fft;
 use crate::kernels::transforms::ifft;
 
 /// Performs a 2D FFT by applying 1D FFT along rows and then columns.
+#[expect(
+    clippy::ptr_arg,
+    reason = "The established Rust API is callable through a function pointer taking a mutable vector"
+)]
 pub fn fft2d(
     data: &mut Vec<Complex<f64>>,
     width: usize,
@@ -40,6 +44,10 @@ pub fn fft2d(
 }
 
 /// Performs a 2D IFFT.
+#[expect(
+    clippy::ptr_arg,
+    reason = "The established Rust API is callable through a function pointer taking a mutable vector"
+)]
 pub fn ifft2d(
     data: &mut Vec<Complex<f64>>,
     width: usize,
@@ -251,6 +259,10 @@ pub fn simulate_2d_advection_diffusion_scenario() -> Vec<f64> {
 }
 
 /// Performs a 3D FFT.
+#[expect(
+    clippy::ptr_arg,
+    reason = "The established Rust API is callable through a function pointer taking a mutable vector"
+)]
 pub fn fft3d(
     data: &mut Vec<Complex<f64>>,
     width: usize,
@@ -269,6 +281,10 @@ pub fn fft3d(
 }
 
 /// Performs a 3D IFFT.
+#[expect(
+    clippy::ptr_arg,
+    reason = "The established Rust API is callable through a function pointer taking a mutable vector"
+)]
 pub fn ifft3d(
     data: &mut Vec<Complex<f64>>,
     width: usize,

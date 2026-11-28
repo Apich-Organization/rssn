@@ -1091,22 +1091,20 @@ pub(super) fn is_hull_edge(
 /// The area of every triangle in `triangles`.
 ///
 /// Triangles whose indices do not address `points` are reported as `0.0`.
+/// Large batches use the current execution pool and preserve input order.
 #[must_use]
 pub fn triangle_areas(
     points: &[[f64; 2]],
     triangles: &[[usize; 3]],
 ) -> Vec<f64> {
     let n = points.len();
-    triangles
-        .iter()
-        .map(|t| {
-            if t[0] < n && t[1] < n && t[2] < n {
-                triangle_area(points[t[0]], points[t[1]], points[t[2]])
-            } else {
-                0.0
-            }
-        })
-        .collect()
+    crate::kernels::par::map_slice(triangles, 4_096, |t| {
+        if t[0] < n && t[1] < n && t[2] < n {
+            triangle_area(points[t[0]], points[t[1]], points[t[2]])
+        } else {
+            0.0
+        }
+    })
 }
 
 /// The smallest angle in degrees over all `triangles`.

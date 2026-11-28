@@ -460,7 +460,7 @@ pub fn gain_margin_phase_margin(
             let mut right = grid[i + 1].log10();
             let mut p_left = phase[i];
             for _ in 0..100 {
-                let mid = 0.5 * (left + right);
+                let mid = f64::midpoint(left, right);
                 let p_mid = phase_near(tf, 10.0_f64.powf(mid), p_left);
                 if p_mid + 180.0 > 0.0 {
                     left = mid;
@@ -469,7 +469,7 @@ pub fn gain_margin_phase_margin(
                     right = mid;
                 }
             }
-            let w = 10.0_f64.powf(0.5 * (left + right));
+            let w = 10.0_f64.powf(f64::midpoint(left, right));
             let mag = tf.evaluate(Complex64::new(0.0, w)).norm();
             if mag > 0.0 {
                 gain_margin = Some(-20.0 * mag.log10());
@@ -483,7 +483,7 @@ pub fn gain_margin_phase_margin(
             let mut left = grid[i].log10();
             let mut right = grid[i + 1].log10();
             for _ in 0..100 {
-                let mid = 0.5 * (left + right);
+                let mid = f64::midpoint(left, right);
                 let mag = tf.evaluate(Complex64::new(0.0, 10.0_f64.powf(mid))).norm();
                 if mag > 1.0 {
                     left = mid;
@@ -491,7 +491,7 @@ pub fn gain_margin_phase_margin(
                     right = mid;
                 }
             }
-            let w = 10.0_f64.powf(0.5 * (left + right));
+            let w = 10.0_f64.powf(f64::midpoint(left, right));
             let p = phase_near(tf, w, phase[i]);
             phase_margin = Some(180.0 + p);
             break;
@@ -522,7 +522,7 @@ pub fn step_response(
     out.push(output_scalar(&ss, &x, 1.0));
     for k in 1..t.len() {
         let h = t[k] - t[k - 1];
-        if !(h > 0.0) {
+        if h.partial_cmp(&0.0) != Some(std::cmp::Ordering::Greater) {
             return Err("time vector must be strictly increasing".to_string());
         }
         x = linalg::rk4_linear(&ss.a, &ss.b, &x, &[1.0], h);
@@ -565,7 +565,7 @@ mod tests {
     fn poles_and_zeros_of_second_order() {
         let g = tf(vec![1.0, 2.0], vec![1.0, 3.0, 2.0]);
         let mut poles: Vec<f64> = g.poles().iter().map(|p| p.re).collect();
-        poles.sort_by(|a, b| a.total_cmp(b));
+        poles.sort_by(f64::total_cmp);
         assert!((poles[0] + 2.0).abs() < 1e-9);
         assert!((poles[1] + 1.0).abs() < 1e-9);
         assert!((g.zeros()[0].re + 2.0).abs() < 1e-9);
@@ -628,7 +628,7 @@ mod tests {
     #[test]
     fn step_response_of_first_order() {
         let g = tf(vec![1.0], vec![1.0, 1.0]);
-        let t: Vec<f64> = (0..101).map(|i| i as f64 * 0.01).collect();
+        let t: Vec<f64> = (0..101).map(|i| f64::from(i) * 0.01).collect();
         let y = step_response(&g, &t).unwrap();
         assert!((y[0]).abs() < 1e-12);
         assert!((y[100] - (1.0 - (-1.0_f64).exp())).abs() < 1e-6);
@@ -677,12 +677,12 @@ mod tests {
         assert!(bode(&g, &[f64::NAN]).is_err());
 
         // Empty and non-increasing time grids in step_response.
-        assert!(step_response(&g, &[]).unwrap().is_empty());
+        assert_eq!(step_response(&g, &[]).unwrap(), [] as [f64; 0]);
         assert!(step_response(&g, &[0.0, 1.0, 1.0]).is_err());
 
         // Biproper (2s + 1) / (s + 1) = 2 - 1/(s + 1) has step response 1 + exp(-t).
         let biproper = tf(vec![2.0, 1.0], vec![1.0, 1.0]);
-        let t: Vec<f64> = (0..101).map(|i| i as f64 * 0.01).collect();
+        let t: Vec<f64> = (0..101).map(|i| f64::from(i) * 0.01).collect();
         let y = step_response(&biproper, &t).unwrap();
         assert!((y[0] - 2.0).abs() < 1e-12);
         assert!((y[100] - (1.0 + (-1.0_f64).exp())).abs() < 1e-6);

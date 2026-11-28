@@ -119,8 +119,8 @@ mod tests {
             sum += z;
             sum_sq += z * z;
         }
-        let mean = sum / n as f64;
-        let variance = sum_sq / n as f64 - mean * mean;
+        let mean = sum / f64::from(n);
+        let variance = sum_sq / f64::from(n) - mean * mean;
         assert!(mean.abs() < 0.03, "mean = {mean}");
         assert!((variance - 1.0).abs() < 0.05, "variance = {variance}");
     }

@@ -624,7 +624,9 @@ mod geometric_time_grid {
         .unwrap();
         // Each RK4 trial makes three four-stage calls and two endpoint calls.
         let trial_bounds: Vec<_> = rhs_times[1..]
-            .chunks_exact(14)
+            .as_chunks::<14>()
+            .0
+            .iter()
             .map(|trial| (trial[0], trial[3]))
             .collect();
         assert_eq!(

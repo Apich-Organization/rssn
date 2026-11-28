@@ -51,7 +51,7 @@ use super::kernel::gather_slot;
 use super::kernel::select_is_true;
 use super::next_uid;
 use crate::backend::Intrinsic;
-use crate::backend::tape::int_pow;
+use crate::backend::tape::eval_powi_slice;
 use crate::graph::id::FastMap;
 
 /// Rows per register block.
@@ -637,13 +637,13 @@ impl CpuDevice {
                 .get_or_init(|| super::native::NativeKernel::compile(&k.ir, &k.analysis))
                 .as_ref()
         {
-            let resolved_lens: &[usize] = if let Some(l) = lens {
-                l
-            } else if ir.inputs <= uniform_lens_stack.len() {
-                &uniform_lens_stack[..ir.inputs]
-            } else {
-                uniform_lens_heap.resize(ir.inputs, rows);
-                &uniform_lens_heap
+            let resolved_lens: &[usize] = match lens {
+                | Some(lens) => lens,
+                | None if ir.inputs <= uniform_lens_stack.len() => &uniform_lens_stack[..ir.inputs],
+                | None => {
+                    uniform_lens_heap.resize(ir.inputs, rows);
+                    &uniform_lens_heap
+                },
             };
             let offsets = column_offsets(resolved_lens);
             let inputs: Vec<&[f64]> = offsets
@@ -663,13 +663,13 @@ impl CpuDevice {
         if elementwise {
             run_range(ir, input, rows, params, cols, parallel);
         } else {
-            let resolved_lens: &[usize] = if let Some(l) = lens {
-                l
-            } else if ir.inputs <= uniform_lens_stack.len() {
-                &uniform_lens_stack[..ir.inputs]
-            } else {
-                uniform_lens_heap.resize(ir.inputs, rows);
-                &uniform_lens_heap
+            let resolved_lens: &[usize] = match lens {
+                | Some(lens) => lens,
+                | None if ir.inputs <= uniform_lens_stack.len() => &uniform_lens_stack[..ir.inputs],
+                | None => {
+                    uniform_lens_heap.resize(ir.inputs, rows);
+                    &uniform_lens_heap
+                },
             };
             let offsets = column_offsets(resolved_lens);
             let view = Columns {
@@ -820,7 +820,7 @@ fn run_rows_chunk(
     let mut out = crate::kernels::reuse::f64_scratch(ir.outputs.len());
     out.resize(ir.outputs.len(), f64::NAN);
     for at in 0..len {
-        if at & 255 == 0 && crate::cancellation::is_cancelled() {
+        if at.is_multiple_of(256) && crate::cancellation::is_cancelled() {
             return;
         }
         ir.eval_at(
@@ -1064,7 +1064,11 @@ fn exec_block(
             | KernelOp::Mul(a, b) => binary(regs, d, a, b, n, |x, y| x * y),
             | KernelOp::Div(a, b) => binary(regs, d, a, b, n, |x, y| x / y),
             | KernelOp::Neg(a) => unary(regs, d, a, n, |x| -x),
-            | KernelOp::PowI(a, e) => unary(regs, d, a, n, |x| int_pow(x, e)),
+            | KernelOp::PowI(a, e) => {
+                let (head, tail) = regs.split_at_mut(d * LANES);
+                let start = a as usize * LANES;
+                eval_powi_slice(&mut tail[..n], &head[start..start + n], e);
+            },
             | KernelOp::PowF(a, b) => binary(regs, d, a, b, n, f64::powf),
             | KernelOp::Atan2(a, b) => binary(regs, d, a, b, n, f64::atan2),
             | KernelOp::Unary(f, a) => {

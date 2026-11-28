@@ -19,6 +19,15 @@
 //!   an extensible [`PlanRegistry`] of named caches.
 //! * [`global_pool`] provides the process-wide singleton augmented with
 //!   fast thread-local scratch slot caches for zero-lock steady-state reuse.
+//!
+//! [`Scratch`]: crate::kernels::reuse::Scratch
+//! [`Arc`]: std::sync::Arc
+//! [`ComputeReusePool::clear_all`]: crate::kernels::reuse::ComputeReusePool::clear_all
+//! [`ScratchPool`]: crate::kernels::reuse::ScratchPool
+//! [`ComputeReusePool`]: crate::kernels::reuse::ComputeReusePool
+//! [`PlanCache`]: crate::kernels::reuse::PlanCache
+//! [`PlanRegistry`]: crate::kernels::reuse::PlanRegistry
+//! [`global_pool`]: crate::kernels::reuse::global_pool
 
 use std::any::Any;
 use std::any::TypeId;
@@ -70,7 +79,7 @@ pub struct CacheStats {
 }
 
 impl CacheStats {
-    fn accumulate(
+    const fn accumulate(
         &mut self,
         other: Self,
     ) {
@@ -162,9 +171,9 @@ impl<T> ScratchShard<T> {
 }
 
 struct TlsOps<T> {
-    try_pop_any: fn() -> Option<Vec<T>>,
-    try_pop_for: fn(usize) -> Option<Vec<T>>,
-    try_push: fn(Vec<T>) -> Option<Vec<T>>,
+    pop_any: fn() -> Option<Vec<T>>,
+    pop_for: fn(usize) -> Option<Vec<T>>,
+    push: fn(Vec<T>) -> Option<Vec<T>>,
 }
 
 impl<T> Clone for TlsOps<T> {
@@ -359,7 +368,7 @@ impl<T> ScratchPool<T> {
             };
         }
         if let Some(tls) = self.tls
-            && let Some(buffer) = (tls.try_pop_any)()
+            && let Some(buffer) = (tls.pop_any)()
         {
             self.hits.fetch_add(1, Ordering::Relaxed);
             return Scratch { pool: self, buffer };
@@ -403,7 +412,7 @@ impl<T> ScratchPool<T> {
             };
         }
         if let Some(tls) = self.tls
-            && let Some(buffer) = (tls.try_pop_for)(minimum)
+            && let Some(buffer) = (tls.pop_for)(minimum)
         {
             self.hits.fetch_add(1, Ordering::Relaxed);
             return Scratch { pool: self, buffer };
@@ -539,6 +548,7 @@ impl<T> ScratchPool<T> {
                 let mut guard = lock_shard(home_shard);
                 guard.push(buffer);
                 self.idle_bytes.fetch_add(buf_bytes, Ordering::Relaxed);
+                drop(guard);
                 return;
             }
             self.idle_count.fetch_sub(1, Ordering::Release);
@@ -591,6 +601,7 @@ impl<T> ScratchPool<T> {
                         .sum();
                     self.idle_count.fetch_sub(count, Ordering::Release);
                     self.idle_bytes.fetch_sub(bytes, Ordering::Relaxed);
+                    drop(guard);
                     total_freed = total_freed.saturating_add(bytes);
                     total_count = total_count.saturating_add(count);
                     taken
@@ -636,6 +647,7 @@ impl<T> ScratchPool<T> {
                 self.idle_count.fetch_sub(1, Ordering::Release);
                 self.idle_bytes.fetch_sub(bytes, Ordering::Relaxed);
             }
+            drop(guard);
             taken
         };
         removed.map_or(0, |buf| {
@@ -694,7 +706,7 @@ impl<T> Drop for Scratch<'_, T> {
         self.buffer.clear();
         let mut buf = mem::take(&mut self.buffer);
         if let Some(tls) = self.pool.tls {
-            let Some(overflow) = (tls.try_push)(buf) else {
+            let Some(overflow) = (tls.push)(buf) else {
                 return;
             };
             buf = overflow;
@@ -1421,6 +1433,7 @@ impl PlanRegistry {
         for entry in guard.iter() {
             total.accumulate(entry.managed.managed_stats());
         }
+        drop(guard);
         total
     }
 
@@ -1553,27 +1566,27 @@ impl ComputeReusePool {
                 DEFAULT_POOL_MAX_IDLE,
                 DEFAULT_SCRATCH_BYTES,
                 TlsOps {
-                    try_pop_any: tls_pop_any_f64,
-                    try_pop_for: tls_pop_for_f64,
-                    try_push: tls_push_f64,
+                    pop_any: tls_pop_any_f64,
+                    pop_for: tls_pop_for_f64,
+                    push: tls_push_f64,
                 },
             ),
             f32_pool: ScratchPool::with_tls(
                 DEFAULT_POOL_MAX_IDLE,
                 DEFAULT_SCRATCH_BYTES,
                 TlsOps {
-                    try_pop_any: tls_pop_any_f32,
-                    try_pop_for: tls_pop_for_f32,
-                    try_push: tls_push_f32,
+                    pop_any: tls_pop_any_f32,
+                    pop_for: tls_pop_for_f32,
+                    push: tls_push_f32,
                 },
             ),
             complex64_pool: ScratchPool::with_tls(
                 DEFAULT_POOL_MAX_IDLE,
                 COMPLEX64_SCRATCH_BYTES,
                 TlsOps {
-                    try_pop_any: tls_pop_any_complex64,
-                    try_pop_for: tls_pop_for_complex64,
-                    try_push: tls_push_complex64,
+                    pop_any: tls_pop_any_complex64,
+                    pop_for: tls_pop_for_complex64,
+                    push: tls_push_complex64,
                 },
             ),
             complex64_large_pool: ScratchPool::new(4, LARGE_COMPLEX64_SCRATCH_BYTES),
@@ -1581,27 +1594,27 @@ impl ComputeReusePool {
                 DEFAULT_POOL_MAX_IDLE,
                 DEFAULT_SCRATCH_BYTES,
                 TlsOps {
-                    try_pop_any: tls_pop_any_usize,
-                    try_pop_for: tls_pop_for_usize,
-                    try_push: tls_push_usize,
+                    pop_any: tls_pop_any_usize,
+                    pop_for: tls_pop_for_usize,
+                    push: tls_push_usize,
                 },
             ),
             i64_pool: ScratchPool::with_tls(
                 DEFAULT_POOL_MAX_IDLE,
                 DEFAULT_SCRATCH_BYTES,
                 TlsOps {
-                    try_pop_any: tls_pop_any_i64,
-                    try_pop_for: tls_pop_for_i64,
-                    try_push: tls_push_i64,
+                    pop_any: tls_pop_any_i64,
+                    pop_for: tls_pop_for_i64,
+                    push: tls_push_i64,
                 },
             ),
             bytes_pool: ScratchPool::with_tls(
                 DEFAULT_POOL_MAX_IDLE,
                 DEFAULT_SCRATCH_BYTES,
                 TlsOps {
-                    try_pop_any: tls_pop_any_bytes,
-                    try_pop_for: tls_pop_for_bytes,
-                    try_push: tls_push_bytes,
+                    pop_any: tls_pop_any_bytes,
+                    pop_for: tls_pop_for_bytes,
+                    push: tls_push_bytes,
                 },
             ),
             fft_small_plans: PlanCache::new_lru(16),
@@ -2386,10 +2399,10 @@ fn build_gauss_kronrod_rule(points: usize) -> (Vec<f64>, Vec<f64>) {
         let diag_deg = m.saturating_add(1).saturating_sub(k.saturating_mul(2));
         let diag = adams_triple_legendre(m, diag_deg, l);
         if let Some(ck) = coeffs.get_mut(k) {
-            *ck = if diag != 0.0 {
-                -rhs / diag
-            } else {
+            *ck = if diag == 0.0 {
                 0.0
+            } else {
+                -rhs / diag
             };
         }
     }
@@ -3174,10 +3187,13 @@ mod tests {
         assert!(scratch.capacity() >= points);
         assert!(std::ptr::eq(
             scratch.pool,
-            &global_pool().complex64_large_pool
+            &raw const global_pool().complex64_large_pool
         ));
         let small = fft_scratch_for(17);
-        assert!(std::ptr::eq(small.pool, &global_pool().complex64_pool));
+        assert!(std::ptr::eq(
+            small.pool,
+            &raw const global_pool().complex64_pool
+        ));
         assert!(!std::ptr::eq(scratch.pool, small.pool));
     }
 
@@ -3373,7 +3389,7 @@ mod tests {
 
         // Gauss-Kronrod edge cases, G7K15, G10K21, and higher order G15K31.
         let gk0 = pool.gauss_kronrod_rule(0);
-        assert!(gk0.0.is_empty());
+        assert_eq!(gk0.0, [] as [f64; 0]);
         let gk1 = pool.gauss_kronrod_rule(1);
         assert_eq!(gk1.0, vec![0.0]);
         assert_eq!(gk1.1, vec![2.0]);
@@ -3458,7 +3474,7 @@ mod tests {
 
         let binom = pool.binomial_row(10);
         assert!(Arc::ptr_eq(&binom, &pool.binomial_row(10)));
-        assert_eq!(binom.get(0).copied(), Some(1.0));
+        assert_eq!(binom.first().copied(), Some(1.0));
         assert_eq!(binom.get(5).copied(), Some(252.0));
         assert_eq!(binom.get(10).copied(), Some(1.0));
 

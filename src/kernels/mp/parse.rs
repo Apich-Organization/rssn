@@ -20,6 +20,7 @@ use super::consts;
 use super::decimal;
 use super::funcs;
 use super::real::Real;
+use super::real::Round;
 
 /// Longest expression text accepted.
 const MAX_TEXT: usize = 4096;
@@ -138,6 +139,29 @@ fn tokenize(text: &str) -> Result<Vec<Token>, String> {
     Ok(tokens)
 }
 
+fn expression_tokens(text: &str) -> Result<Vec<Token>, String> {
+    if text.len() > MAX_TEXT {
+        return Err("the expression is too long".to_string());
+    }
+    tokenize(text)
+}
+
+/// Handles plain decimal expressions without losing exact rounding ties.
+pub(super) fn round_literal(
+    text: &str,
+    digits: usize,
+) -> Result<Option<String>, String> {
+    match expression_tokens(text)?.as_slice() {
+        | [Token::Number(literal)] | [Token::Plus, Token::Number(literal)] => {
+            decimal::round_decimal(literal, digits, Round::NearestEven).map(Some)
+        },
+        | [Token::Minus, Token::Number(literal)] => {
+            decimal::round_decimal(&format!("-{literal}"), digits, Round::NearestEven).map(Some)
+        },
+        | _ => Ok(None),
+    }
+}
+
 /// A cursor over the tokens.
 struct Parser<'a> {
     tokens: &'a [Token],
@@ -223,8 +247,7 @@ impl Parser<'_> {
         match token {
             | Token::Number(text) => {
                 self.at += 1;
-                let value = decimal::from_decimal(&text, self.prec)?;
-                Ok(Ball::point(value))
+                decimal::enclose_decimal(&text, self.prec)
             },
             | Token::Name(name) => {
                 self.at += 1;
@@ -415,10 +438,7 @@ pub fn evaluate(
     text: &str,
     prec: u32,
 ) -> Result<Ball, String> {
-    if text.len() > MAX_TEXT {
-        return Err("the expression is too long".to_string());
-    }
-    let tokens = tokenize(text)?;
+    let tokens = expression_tokens(text)?;
     let mut parser = Parser {
         tokens: &tokens,
         at: 0,
@@ -429,12 +449,23 @@ pub fn evaluate(
     if parser.at != tokens.len() {
         return Err("trailing text after the expression".to_string());
     }
-    Ok(Ball {
-        mid: value
-            .mid
-            .with_precision(prec, super::real::Round::NearestEven)?,
-        rad: value.rad,
-    })
+    let mid = value.mid.with_precision(prec, Round::NearestEven)?;
+    // A shorter radius can represent smaller exponents. Retain an outward
+    // bound even when the displacement is too small at the target precision.
+    let displacement = value
+        .mid
+        .sub(&mid, prec, Round::AwayFromZero)
+        .or_else(|_| value.mid.sub(&mid, 1, Round::AwayFromZero))?
+        .abs();
+    let rad = if displacement.is_zero() {
+        value.rad
+    } else {
+        value
+            .rad
+            .add(&displacement, prec, Round::TowardPositive)
+            .or_else(|_| value.rad.add(&displacement, 1, Round::TowardPositive))?
+    };
+    Ok(Ball { mid, rad })
 }
 
 /// The names [`evaluate`] accepts as functions, for diagnostics and help.
@@ -444,4 +475,67 @@ pub const fn functions() -> &'static [&'static str] {
         "exp", "ln", "log", "log2", "log10", "sqrt", "cbrt", "abs", "sin", "cos", "tan", "asin",
         "acos", "atan", "atan2", "sinh", "cosh", "tanh", "exp2", "hypot", "pow",
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::real::MAX_BITS;
+    use super::*;
+    use num_bigint::BigInt;
+    use num_rational::BigRational;
+
+    fn exact(value: &Real) -> BigRational {
+        let shift = usize::try_from(value.exponent().unsigned_abs()).unwrap();
+        if value.exponent() < 0 {
+            BigRational::new(value.mantissa().clone(), BigInt::from(1) << shift)
+        } else {
+            BigRational::from_integer(value.mantissa() << shift)
+        }
+    }
+
+    fn contains_exact(
+        ball: &Ball,
+        value: &BigRational,
+    ) {
+        let midpoint = exact(ball.midpoint());
+        let radius = exact(ball.radius());
+        assert!(
+            &midpoint - &radius <= *value,
+            "lower bound excludes {value}"
+        );
+        assert!(midpoint + radius >= *value, "upper bound excludes {value}");
+    }
+
+    #[test]
+    fn decimal_literals_enclose_exact_rationals() {
+        let one_tenth = BigRational::new(BigInt::from(1), BigInt::from(10));
+        for precision in [8, MAX_BITS] {
+            let positive = evaluate("0.1", precision).unwrap();
+            assert_eq!(positive.midpoint().precision(), precision);
+            if precision == 8 {
+                assert_eq!(positive.midpoint().mantissa(), &BigInt::from(205));
+                assert_eq!(positive.midpoint().exponent(), -11);
+            }
+            contains_exact(&positive, &one_tenth);
+            contains_exact(&evaluate("-0.1", precision).unwrap(), &-one_tenth.clone());
+        }
+
+        // The power of five is too wide to fit even at maximum binary
+        // precision, so both directed denominator conversions matter.
+        let tiny = BigRational::new(BigInt::from(-1), BigInt::from(10_u32).pow(15_000));
+        contains_exact(
+            &decimal::enclose_decimal("-1e-15000", MAX_BITS).unwrap(),
+            &tiny,
+        );
+    }
+
+    #[test]
+    fn final_midpoint_rounding_encloses_exact_dyadic_literals() {
+        for (literal, integer) in [("257", 257), ("-257", -257)] {
+            let ball = evaluate(literal, 8).unwrap();
+            assert_eq!(ball.midpoint().precision(), 8);
+            contains_exact(&ball, &BigRational::from_integer(BigInt::from(integer)));
+        }
+        assert!(evaluate("0.125", 8).unwrap().radius().is_zero());
+    }
 }

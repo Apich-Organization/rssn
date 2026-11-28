@@ -21,6 +21,21 @@ fn eval_sym(src: &str) -> String {
 }
 
 #[test]
+fn complex_wynn_never_returns_an_auxiliary_column() {
+    let one = Complex64::new(1.0, 2.0);
+    let two = Complex64::new(2.0, 4.0);
+    let three = Complex64::new(3.0, 6.0);
+    let four = Complex64::new(4.0, 8.0);
+    // Equal increments make the first auxiliary column constant.
+    assert_eq!(ac::wynn_epsilon_complex(&[one, two, three]), three);
+    assert_eq!(ac::wynn_epsilon_complex(&[one, two, three, four]), four);
+    // A repeated even-column estimate is an estimate of the original sequence.
+    assert_eq!(ac::wynn_epsilon_complex(&[one, two, two]), two);
+    assert_eq!(ac::wynn_epsilon_complex(&[one]), one);
+    assert_eq!(ac::wynn_epsilon_complex(&[]), Complex64::ZERO);
+}
+
+#[test]
 fn contours_keyhole_dogbone_indented_and_deformation() {
     let i_unit = Complex64::new(0.0, 1.0);
     // Keyhole around z^(1/2) / (z + 1) at branch point 0, radius 2:

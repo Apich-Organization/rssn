@@ -30,6 +30,9 @@
 //!
 //! Every function is `const`, so a context built from a literal modulus is
 //! folded at compile time.
+//!
+//! [`Montgomery`]: crate::kernels::modular::Montgomery
+//! [`Barrett`]: crate::kernels::modular::Barrett
 
 #![allow(
     clippy::arithmetic_side_effects,
@@ -120,7 +123,7 @@ impl Montgomery {
     /// modulus (including every even modulus, where `2^64` is not invertible).
     #[must_use]
     pub const fn new(modulus: u64) -> Option<Self> {
-        if modulus <= 1 || modulus % 2 == 0 {
+        if modulus <= 1 || modulus.is_multiple_of(2) {
             return None;
         }
         Some(Self::build(modulus))
@@ -386,7 +389,7 @@ impl Montgomery {
         self,
         x: u64,
     ) -> u64 {
-        if x % 2 == 0 {
+        if x.is_multiple_of(2) {
             x >> 1
         } else {
             (x >> 1) + (self.modulus >> 1) + 1
@@ -729,6 +732,15 @@ pub const fn extended_gcd_u64(
     a: u64,
     b: u64,
 ) -> (u64, i128, i128) {
+    euclid_with_coefficients::<true>(a, b)
+}
+
+// The inverse uses only the coefficient of the reduced input. Discard
+// the other recurrence at compile time, without duplicating Euclid.
+const fn euclid_with_coefficients<const TRACK_FIRST: bool>(
+    a: u64,
+    b: u64,
+) -> (u64, i128, i128) {
     let mut r0 = a;
     let mut r1 = b;
     let mut s0: i128 = 1;
@@ -739,12 +751,14 @@ pub const fn extended_gcd_u64(
         let q = r0 / r1;
         let r2 = r0 % r1;
         let q_i128 = q as i128;
-        let s2 = s0 - q_i128 * s1;
+        if TRACK_FIRST {
+            let s2 = s0 - q_i128 * s1;
+            s0 = s1;
+            s1 = s2;
+        }
         let t2 = t0 - q_i128 * t1;
         r0 = r1;
         r1 = r2;
-        s0 = s1;
-        s1 = s2;
         t0 = t1;
         t1 = t2;
     }
@@ -766,20 +780,25 @@ pub const fn mod_inv_u64(
     if modulus <= 1 {
         return None;
     }
-    let a_red = a % modulus;
+    let a_red = if a >= modulus {
+        a % modulus
+    } else {
+        a
+    };
     if a_red == 0 {
         return None;
     }
-    let (g, x, _) = extended_gcd_u64(a_red, modulus);
+    let (g, _, x) = euclid_with_coefficients::<false>(modulus, a_red);
     if g != 1 {
         return None;
     }
-    let m = modulus as i128;
-    let mut inv = x % m;
-    if inv < 0 {
-        inv += m;
-    }
-    Some(inv as u64)
+    // For 0 < a_red < modulus, Euclid gives |x| < modulus.
+    let inverse = if x < 0 {
+        x + modulus as i128
+    } else {
+        x
+    };
+    Some(inverse as u64)
 }
 
 #[cfg(test)]

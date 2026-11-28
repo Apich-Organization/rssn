@@ -1510,7 +1510,11 @@ fn prepared_linear_split_step_supports_measured_odd_grids_and_inverse_time() {
     let forward = call(&s, new, &args(0.125));
     let backward = call(&s, new, &args(-0.125));
     let stationary = call(&s, new, &args(0.0));
-    let size = call(&s, "num_native_split_linear_plan_size", &[forward.clone()]);
+    let size = call(
+        &s,
+        "num_native_split_linear_plan_size",
+        std::slice::from_ref(&forward),
+    );
     assert_eq!(size, Value::int(5));
     let evolved = call(&s, evolve, &[forward.clone(), psi.clone(), Value::int(4)]);
     let round_trip = call(&s, evolve, &[backward, evolved.clone(), Value::int(4)]);

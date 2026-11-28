@@ -305,7 +305,9 @@ pub mod special_exact;
 /// Generic tensor contractions with caller-provided scalar operations.
 pub mod contractions;
 
-/// Geometry import and repair: STL and STEP readers, mesh repair and Boolean operations on triangle meshes.
+/// Geometry import and repair for triangle meshes.
+///
+/// Includes STL and STEP readers, mesh repair, and Boolean operations.
 #[allow(
     clippy::missing_errors_doc,
     clippy::missing_panics_doc,
@@ -338,7 +340,10 @@ pub mod contractions;
     clippy::use_self
 )]
 pub mod cad;
-/// Control systems: state space, transfer functions, Riccati equations, LQR/LQG/MPC, PID tuning, frequency response and system identification.
+/// Analysis and design of control systems.
+///
+/// Includes state space, transfer functions, Riccati equations, LQR/LQG/MPC, PID tuning,
+/// frequency response, and system identification.
 #[allow(
     clippy::missing_errors_doc,
     clippy::missing_panics_doc,
@@ -371,7 +376,10 @@ pub mod cad;
     clippy::use_self
 )]
 pub mod control;
-/// Convex optimisation: dense and sparse quadratic programs, second-order cone and semidefinite programs.
+/// Solvers for convex optimisation.
+///
+/// Supports dense and sparse quadratic programs, second-order cone programs,
+/// and semidefinite programs.
 #[allow(
     clippy::missing_errors_doc,
     clippy::missing_panics_doc,
@@ -470,7 +478,9 @@ pub mod glm;
     clippy::use_self
 )]
 pub mod mcmc;
-/// Mesh generation: constrained Delaunay triangulation, quality refinement, tetrahedralisation and advancing front.
+/// Mesh generation and quality refinement.
+///
+/// Includes constrained Delaunay triangulation, tetrahedralisation, and advancing front.
 #[allow(
     clippy::missing_errors_doc,
     clippy::missing_panics_doc,

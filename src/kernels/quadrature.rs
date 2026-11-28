@@ -349,30 +349,36 @@ pub fn integrate_infinite<F: Fn(f64) -> f64>(
     integrate_gk(g, -1.0, 1.0, GkRule::G10K21, tol * 1e-3, tol, 2000)
 }
 
-/// Generic double-exponential driver: `map(t) = (x, weight)`.
+/// Generic double-exponential driver. The map returns the nodes at `t` and `-t`
+/// and their weights for nonnegative `t`.
 ///
 /// Evaluates trapezoid sums with step `2^-level` on `t in [-tmax, tmax]`,
 /// reusing earlier levels, until two successive levels agree.
-fn de_driver<F: Fn(f64) -> f64, M: Fn(f64) -> (f64, f64)>(
+fn de_driver<F: Fn(f64) -> f64, M: Fn(f64) -> [(f64, f64); 2]>(
     f: &F,
     map: &M,
     tmax: f64,
     tol: f64,
     max_level: u32,
 ) -> Integral {
-    let term = |t: f64| {
-        let (x, w) = map(t);
+    let term = |(x, w): (f64, f64)| {
         if !w.is_finite() || w == 0.0 {
             return 0.0;
         }
         f(x) * w
     };
-    let mut sum = term(0.0);
+    let pair = |t| {
+        let [positive, negative] = map(t);
+        term(positive) + term(negative)
+    };
+    // t = 0 is one node. Keep the callback order and the pairwise sum
+    // used for all later nodes, including when a weight skips evaluation.
+    let mut sum = term(map(0.0)[0]);
     let mut evals = 1;
     let mut h = 1.0;
     let mut k = 1.0;
     while k <= tmax {
-        sum += term(k) + term(-k);
+        sum += pair(k);
         evals += 2;
         k += 1.0;
     }
@@ -395,7 +401,7 @@ fn de_driver<F: Fn(f64) -> f64, M: Fn(f64) -> (f64, f64)>(
         h *= 0.5;
         let mut k = h;
         while k <= tmax {
-            sum += term(k) + term(-k);
+            sum += pair(k);
             evals += 2;
             k += 2.0 * h;
         }
@@ -480,17 +486,11 @@ pub fn tanh_sinh_with_levels<F: Fn(f64) -> f64>(
         // distance of the node from its end point, in units of `half`
         let d = 2.0 / ((2.0 * u.abs()).exp() + 1.0);
         if d <= 0.0 || !w.is_finite() {
-            return (a, 0.0);
+            return [(a, 0.0); 2];
         }
-        let x = if t >= 0.0 {
-            b - half * d
-        } else {
-            a + half * d
-        };
-        if x <= a || x >= b {
-            return (x, 0.0);
-        }
-        (x, w)
+        let distance = half * d;
+        let node = |x| (x, if x <= a || x >= b { 0.0 } else { w });
+        [node(b - distance), node(a + distance)]
     };
     de_driver(&f, &map, 6.5, tol, max_levels.min(20) as u32)
 }
@@ -504,8 +504,13 @@ pub fn exp_sinh<F: Fn(f64) -> f64>(
 ) -> Integral {
     let map = |t: f64| {
         let u = 0.5 * PI * t.sinh();
-        let e = u.exp();
-        (a + e, 0.5 * PI * t.cosh() * e)
+        let scale = 0.5 * PI * t.cosh();
+        // Use separate exponentials to preserve the rounding at each node.
+        let node = |u: f64| {
+            let e = u.exp();
+            (a + e, scale * e)
+        };
+        [node(u), node(-u)]
     };
     de_driver(&f, &map, 6.5, tol, 10)
 }
@@ -517,7 +522,9 @@ pub fn sinh_sinh<F: Fn(f64) -> f64>(
 ) -> Integral {
     let map = |t: f64| {
         let u = 0.5 * PI * t.sinh();
-        (u.sinh(), 0.5 * PI * t.cosh() * u.cosh())
+        let x = u.sinh();
+        let w = 0.5 * PI * t.cosh() * u.cosh();
+        [(x, w), (-x, w)]
     };
     de_driver(&f, &map, 6.5, tol, 10)
 }
@@ -3083,7 +3090,7 @@ mod rule_cache_and_parallel_tests {
         let _ = clenshaw_curtis_rule(96);
         let after = crate::kernels::reuse::global_pool().stats().plans.hits;
         assert!(
-            after >= before + 1,
+            after > before,
             "repeated rule requests must be served by the cache"
         );
     }
@@ -3092,23 +3099,21 @@ mod rule_cache_and_parallel_tests {
     fn parallel_rules_are_bit_identical_to_the_serial_rule() {
         let f = |x: f64| (3.0 * x).sin() * (-x * x).exp();
         for n in [64_usize, 257] {
-            let serial = gauss_legendre(&f, -1.0, 1.0, n);
-            let one = crate::execution::with_scoped_pool(Some(1), || {
-                gauss_legendre_par(&f, -1.0, 1.0, n)
-            });
-            let four = crate::execution::with_scoped_pool(Some(4), || {
-                gauss_legendre_par(&f, -1.0, 1.0, n)
-            });
+            let serial = gauss_legendre(f, -1.0, 1.0, n);
+            let one =
+                crate::execution::with_scoped_pool(Some(1), || gauss_legendre_par(f, -1.0, 1.0, n));
+            let four =
+                crate::execution::with_scoped_pool(Some(4), || gauss_legendre_par(f, -1.0, 1.0, n));
             assert_eq!(one.to_bits(), serial.to_bits());
             assert_eq!(four.to_bits(), serial.to_bits());
         }
         for n in [64_usize, 256] {
-            let serial = clenshaw_curtis(&f, -1.0, 1.0, n);
+            let serial = clenshaw_curtis(f, -1.0, 1.0, n);
             let one = crate::execution::with_scoped_pool(Some(1), || {
-                clenshaw_curtis_par(&f, -1.0, 1.0, n)
+                clenshaw_curtis_par(f, -1.0, 1.0, n)
             });
             let four = crate::execution::with_scoped_pool(Some(4), || {
-                clenshaw_curtis_par(&f, -1.0, 1.0, n)
+                clenshaw_curtis_par(f, -1.0, 1.0, n)
             });
             assert_eq!(one.to_bits(), serial.to_bits());
             assert_eq!(four.to_bits(), serial.to_bits());

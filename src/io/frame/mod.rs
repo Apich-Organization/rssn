@@ -23,6 +23,9 @@
 //!   demotes the whole column to `Str`.
 //! - Joins and groupings are in-memory hash operations with no spill to disk,
 //!   and `group_by_agg` produces one output column per call.
+//!
+//! [`DataFrame`]: crate::io::frame::DataFrame
+//! [`CsvOptions::preserve_nullable_int`]: crate::io::frame::CsvOptions::preserve_nullable_int
 
 mod column;
 mod csv;

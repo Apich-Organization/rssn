@@ -11,15 +11,15 @@
 //! Prioritised gaps of the layer as a whole; each submodule documents its own
 //! details.
 //!
-//! - **Data formats.** CSV, JSON and `.npy` store dense `f64` 2-D arrays only:
-//!   no integer/complex/string/structured dtypes, no headers or metadata, no
-//!   compression, or incremental array results. CSV is
-//!   unquoted (a value must not contain a comma) and strict on input; JSON
-//!   uses `serde_json`'s default float formatting, which is not guaranteed
-//!   bit-exact for every `f64` on re-read (`float_roundtrip` is not enabled).
-//! - **`.npy` feature gating.** `.npy` support needs the `npy` feature, which
-//!   is off by default. Without it [`write_npy_file`] and [`read_npy_file`]
-//!   still compile but always return an error naming the missing feature.
+//! - **Data formats.** The file helpers use dense rank-two `f64` arrays.
+//!   CSV is unquoted and strict on input. JSON uses the default `serde_json`
+//!   float parser, which can change the last bit on re-read. The `npy` codec
+//!   reads arbitrary-rank `f32` and `f64` arrays and writes little-endian `f64`.
+//!   It supports both byte orders and both C and Fortran input layouts,
+//!   including rank zero, empty arrays and binary64 NaN payloads.
+//! - **`.npy` feature gating.** The default build enables the `npy` feature.
+//!   A minimal build without it retains [`write_npy_file`] and [`read_npy_file`].
+//!   These functions return an error naming the missing feature.
 //! - **Plots are SVG** (text, annotated, standalone files): 2-D coverage is
 //!   functions, series, expression terms, vector fields, scaled quivers,
 //!   contour lines, filled contour bands and streamlines; 3-D coverage is
@@ -153,6 +153,7 @@ pub(crate) mod markup;
     clippy::use_self
 )]
 pub mod netcdf;
+pub mod npy;
 /// Apache Parquet files with a flat schema.
 #[allow(
     clippy::missing_errors_doc,
@@ -248,10 +249,6 @@ use std::io::Write;
 use std::path::Path;
 
 use ndarray::Array2;
-#[cfg(feature = "npy")]
-use ndarray_npy::read_npy;
-#[cfg(feature = "npy")]
-use ndarray_npy::write_npy;
 use serde_json;
 
 /// Writes a 2D `ndarray::Array` to a `.npy` file.
@@ -263,15 +260,20 @@ use serde_json;
 /// # Errors
 ///
 /// This function will return an error if the file cannot be written to.
-///
-/// # Panics
-/// Panics if the write fails.
 #[cfg(feature = "npy")]
 pub fn write_npy_file<P: AsRef<Path>>(
     filename: P,
     arr: &Array2<f64>,
 ) -> Result<(), String> {
-    write_npy(filename, arr).map_err(|e| e.to_string())
+    let data;
+    let values = if let Some(contiguous) = arr.as_slice() {
+        contiguous
+    } else {
+        data = arr.iter().copied().collect::<Vec<_>>();
+        &data
+    };
+    let bytes = npy::encode(arr.shape(), values)?;
+    std::fs::write(filename, bytes).map_err(|e| e.to_string())
 }
 
 /// Writes a 2D array to a `.npy` file.
@@ -299,12 +301,17 @@ pub fn write_npy_file<P: AsRef<Path>>(
 /// # Errors
 ///
 /// This function will return an error if the file cannot be read.
-///
-/// # Panics
-/// Panics if the read fails.
 #[cfg(feature = "npy")]
 pub fn read_npy_file<P: AsRef<Path>>(filename: P) -> Result<Array2<f64>, String> {
-    read_npy(filename).map_err(|e| e.to_string())
+    let bytes = std::fs::read(filename).map_err(|e| e.to_string())?;
+    let (shape, values) = npy::decode(&bytes)?;
+    let [rows, columns] = shape.as_slice() else {
+        return Err(format!(
+            "expected a rank-two NPY array, found rank {}",
+            shape.len()
+        ));
+    };
+    Array2::from_shape_vec((*rows, *columns), values).map_err(|e| e.to_string())
 }
 
 /// Reads a 2D array from a `.npy` file.

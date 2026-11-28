@@ -91,7 +91,7 @@ fn same_level_fine_and_coarse_retain_the_brownian_coupling() {
     )
     .unwrap();
     assert_eq!(result.levels.len(), 4);
-    for pair in payoffs[10..].chunks_exact(2) {
+    for pair in payoffs[10..].as_chunks::<2>().0 {
         assert!((pair[0] - pair[1]).abs() <= 2e-15, "{pair:?}");
     }
 }

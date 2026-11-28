@@ -604,17 +604,20 @@ pub fn batch_mod_pow(
         return Ok(vec![0; bases.len()]);
     }
     let m = modulus as u64;
-    if let Some(mont) = number_theory::MontU64::new(m) {
-        Ok(par::map_indexed(bases.len(), 256, |i| {
-            let base = bases[i].rem_euclid(modulus) as u64;
-            mont.pow(base, exponents[i]) as i64
-        }))
-    } else {
-        Ok(par::map_indexed(bases.len(), 256, |i| {
-            let base = bases[i].rem_euclid(modulus) as u128;
-            number_theory::mod_pow(base, exponents[i], m) as i64
-        }))
-    }
+    number_theory::MontU64::new(m).map_or_else(
+        || {
+            Ok(par::map_indexed(bases.len(), 256, |i| {
+                let base = bases[i].rem_euclid(modulus) as u128;
+                number_theory::mod_pow(base, exponents[i], m) as i64
+            }))
+        },
+        |mont| {
+            Ok(par::map_indexed(bases.len(), 256, |i| {
+                let base = bases[i].rem_euclid(modulus) as u64;
+                mont.pow(base, exponents[i]) as i64
+            }))
+        },
+    )
 }
 
 #[cfg(test)]

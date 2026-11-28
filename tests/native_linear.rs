@@ -197,7 +197,7 @@ fn schur_plans_keep_quotient_units_and_accept_independent_right_hand_sides() {
     let lyapunov = "num_linear_lyapunov_plan_new";
     let solve = "num_linear_sylvester_plan_solve";
     let syl = call(&s, new, &[a.clone(), b]).unwrap();
-    let lyap = call(&s, lyapunov, &[a.clone()]).unwrap();
+    let lyap = call(&s, lyapunov, std::slice::from_ref(&a)).unwrap();
     let quotient = DimExpr::Mul(vec![
         DimExpr::Base("Length".into()),
         DimExpr::Inverse(Box::new(DimExpr::Base("Time".into()))),

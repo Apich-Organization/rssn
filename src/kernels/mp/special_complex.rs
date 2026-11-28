@@ -50,9 +50,10 @@ fn pi_ball(prec: u32) -> Result<Ball, String> {
     let inner = prec.saturating_add(16);
     let p = consts::pi(inner)?;
     let mid = p.with_precision(prec, Round::NearestEven)?;
-    let exp = mid.floor_log2().map_or(-i64::from(prec), |t| {
-        t.saturating_sub(i64::from(prec)).saturating_add(1)
-    });
+    let exp = mid.floor_log2().map_or_else(
+        || -i64::from(prec),
+        |t| t.saturating_sub(i64::from(prec)).saturating_add(1),
+    );
     let rad = Real::rounded(BigInt::from(1), exp, 1, Round::AwayFromZero)?;
     Ball::new(mid, rad)
 }
@@ -213,7 +214,7 @@ impl MpComplex {
         let mut term = Self::one(inner).div(&nu_plus_1.gamma(inner)?, inner)?;
         let mut sum = term.clone();
         for k in 1..=300 {
-            let kf = i64::try_from(k).unwrap_or(i64::MAX);
+            let kf = i64::from(k);
             let denom =
                 mp_from_i64(kf, inner)?.mul(&nu.add(&mp_from_i64(kf, inner)?, inner)?, inner)?;
             term = term.mul(&hz2, inner)?.neg().div(&denom, inner)?;
@@ -236,6 +237,16 @@ impl MpComplex {
         &self,
         prec: u32,
     ) -> Result<Self, String> {
+        // B_{2k}/(2k)! for k=1..=6
+        const B_FACT: [(i64, i64); 6] = [
+            (1, 12),
+            (-1, 720),
+            (1, 30_240),
+            (-1, 1_209_600),
+            (1, 47_900_160),
+            (-691, 1_307_674_368_000),
+        ];
+
         let inner = prec.saturating_add(48);
         let one = Self::one(inner);
         let n_steps = (prec / 4).clamp(16, 128);
@@ -257,15 +268,6 @@ impl MpComplex {
         let mut poch = self.clone();
         let mut pow_term = inv_n;
         let mut em = Self::zero(inner);
-        // B_{2k}/(2k)! for k=1..=6
-        const B_FACT: [(i64, i64); 6] = [
-            (1, 12),
-            (-1, 720),
-            (1, 30_240),
-            (-1, 1_209_600),
-            (1, 47_900_160),
-            (-691, 1_307_674_368_000),
-        ];
         for (idx, &(num, den)) in B_FACT.iter().enumerate() {
             if idx > 0 {
                 let two_k = i64::try_from(2 * idx).unwrap_or(2);
