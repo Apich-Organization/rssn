@@ -7929,12 +7929,12 @@ rssn_num_analysis_simplex_budgeted <- function(a0, a1, a2, a3, a4, a5, a6, a7, a
     (if (checked) .rssn_call else .rssn_apply)("num_analysis_simplex_budgeted", list(a0, a1, a2, a3, a4, a5, a6, a7, a8), session)
 }
 
-# Native simplex LP with normalized coefficient conversion using positive coordinate/objective/constraint references; preserves Optimal,Infeasible,Unbounded with…
+# Two-phase nonnegative simplex with measured coordinate, objective and constraint references.
 rssn_num_analysis_simplex_scaled <- function(a0, a1, a2, a3, a4, a5, a6, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_analysis_simplex_scaled", list(a0, a1, a2, a3, a4, a5, a6), session)
 }
 
-# Native simplex LP with actual selectable Dantzig,SteepestEdge,Bland pricing and retained pivot statistics; independent positive coordinate/objective/constraint…
+# Two-phase nonnegative simplex with measured reference scales, selectable pricing and pivot statistics.
 rssn_num_analysis_simplex_with_scaled <- function(a0, a1, a2, a3, a4, a5, a6, a7, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_analysis_simplex_with_scaled", list(a0, a1, a2, a3, a4, a5, a6, a7), session)
 }

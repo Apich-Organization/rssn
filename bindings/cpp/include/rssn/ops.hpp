@@ -16068,13 +16068,13 @@ inline Term num_analysis_simplex_budgeted(const Term& a0, const Term& a1, const 
     return apply("num_analysis_simplex_budgeted", args, 9);
 }
 
-/// Native simplex LP with normalized coefficient conversion using positive coordinate/objective/constraint references; preserves Optimal,Infeasible,Unbounded without fabricated coordinates or objective. Two-phase simplex: minimise `c . x` subject to rows `a_i . x (rel_i) b_i` and `x >= 0`, with steepest-edge pricing and the Bland anti-cycling fallback; see [`simplex_with`].
+/// Two-phase nonnegative simplex with measured coordinate, objective and constraint references. Two-phase simplex: minimise `c . x` subject to rows `a_i . x (rel_i) b_i` and `x >= 0`, with steepest-edge pricing and the Bland anti-cycling fallback; see [`simplex_with`].
 inline Term num_analysis_simplex_scaled(const Term& a0, const Term& a1, const Term& a2, const Term& a3, const Term& a4, const Term& a5, const Term& a6) {
     Term args[] = {a0, a1, a2, a3, a4, a5, a6};
     return apply("num_analysis_simplex_scaled", args, 7);
 }
 
-/// Native simplex LP with actual selectable Dantzig,SteepestEdge,Bland pricing and retained pivot statistics; independent positive coordinate/objective/constraint references. Two-phase tableau simplex with a selectable pricing rule. For [`Pricing::Dantzig`] and [`Pricing::SteepestEdge`] the solver monitors degeneracy: after a run of consecutive pivots that do not improve the objective it switches to Bland's rule (smallest-index entering variable, ties in the ratio test broken by smallest basic index) until a strictly improving pivot occurs, which guarantees termination on cycling examples such as Beale's. The leaving-variable tie-break is always Bland's.
+/// Two-phase nonnegative simplex with measured reference scales, selectable pricing and pivot statistics. Two-phase tableau simplex with a selectable pricing rule. For [`Pricing::Dantzig`] and [`Pricing::SteepestEdge`] the solver monitors degeneracy: after a run of consecutive pivots that do not improve the objective it switches to Bland's rule (smallest-index entering variable, ties in the ratio test broken by smallest basic index) until a strictly improving pivot occurs, which guarantees termination on cycling examples such as Beale's. The leaving-variable tie-break is always Bland's.
 inline Term num_analysis_simplex_with_scaled(const Term& a0, const Term& a1, const Term& a2, const Term& a3, const Term& a4, const Term& a5, const Term& a6, const Term& a7) {
     Term args[] = {a0, a1, a2, a3, a4, a5, a6, a7};
     return apply("num_analysis_simplex_with_scaled", args, 8);
