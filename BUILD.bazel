@@ -471,14 +471,6 @@ scientific_run(
 )
 
 scientific_run(
-    name = "refresh_bindings_from_manifest",
-    rssn = ":sources",
-    scope = "bindings",
-    tags = ["manual"],
-    workflow = "refresh-bindings-from-manifest",
-)
-
-scientific_run(
     name = "check",
     rssn = ":sources",
     workflow = "check",
