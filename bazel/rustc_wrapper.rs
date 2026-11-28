@@ -22,7 +22,9 @@ fn run() -> Result<i32, Box<dyn std::error::Error>> {
 
     let mut command = if let Some(marker) = late {
         arguments.remove(marker);
-        let mut command = Command::new(env::var_os("RSSN_BAZEL_LATE_PYTHON").ok_or("missing LLVM adapter Python")?);
+        let mut command = Command::new(
+            env::var_os("RSSN_BAZEL_LATE_PYTHON").ok_or("missing LLVM adapter Python")?,
+        );
         command
             .arg(env::var_os("RSSN_BAZEL_LATE_ADAPTER").ok_or("missing LLVM adapter")?)
             .args([OsStr::new("llvm-link"), &rustc]);
