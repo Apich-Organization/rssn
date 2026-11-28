@@ -20,7 +20,7 @@
 | `bazel test //:clippy_test` | 对全特性工作区的全部 Rust 目标执行严格 Clippy |
 | `bazel test //:ffi_native_clients_test` | 运行原生 C、C++ 客户端测试，Linux 使用静态库，macOS 和 Windows 使用动态库 |
 | `bazel test //:rust_all_features_test` | 全特性 Rust 测试，包括构建机可执行的 GPU 测试 |
-| `bazel test --define=rssn_bounded_tests=1 //:rust_all_features_test` | 逐个运行 RSSN 集成测试程序，运行下一批前回收已生成的测试文件 |
+| `bazel test --define=rssn_bounded_tests=1 //:rust_all_features_test` | 每批运行两个 RSSN 集成测试程序，完成后回收该批的可执行文件 |
 | `bazel test //:rust_all_features_test --test_arg=--batches=4` | 每批运行四个集成测试程序并回收其缓存空间，仍执行全量测试 |
 | `bazel test //:rust_ignored_test //:witness_test` | 耗时数值回归和已签入见证表的重放 |
 | `bazel test //:bindings_check_test //:bindings_test` | 针对同一个全特性 cdylib 检查 API 以及 Python、Julia、R、C++ 绑定 |

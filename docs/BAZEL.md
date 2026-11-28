@@ -20,7 +20,7 @@ Use Bazel 7.7.1 through Bazelisk, Python 3.11 or later, and the Rust toolchain s
 | `bazel test //:clippy_test` | Strict Clippy across the full-feature workspace and all Rust targets |
 | `bazel test //:ffi_native_clients_test` | Run native C and C++ client tests with static linkage on Linux and shared linkage on macOS and Windows |
 | `bazel test //:rust_all_features_test` | Full-feature Rust tests, including the GPU tests the host can run |
-| `bazel test --define=rssn_bounded_tests=1 //:rust_all_features_test` | Run each RSSN integration binary separately and reclaim its generated executables before the next group |
+| `bazel test --define=rssn_bounded_tests=1 //:rust_all_features_test` | Run the full suite in groups of two integration binaries and reclaim their executables after each group |
 | `bazel test //:rust_all_features_test --test_arg=--batches=4` | Run the full Rust suite in groups of four integration binaries and reclaim their cache space after each group |
 | `bazel test //:rust_ignored_test //:witness_test` | Long numerical regressions and replay of the checked-in signatures |
 | `bazel test //:bindings_check_test //:bindings_test` | API and Python, Julia, R and C++ tests against the same all-feature cdylib |
