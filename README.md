@@ -76,11 +76,11 @@ See the [examples index](examples/README.md) for complete programs.
 
 A few starting points
 
-- `cargo run --release --example quickstart`: a tour of the API.
-- `cargo run --release --example simulation`: simulations by name with JSON parameters.
+- `bazel run //:example -- --profile release quickstart`: a tour of the API.
+- `bazel run //:example -- --profile release simulation`: simulations by name with JSON parameters.
 - `examples/c/smoke.c`: a C client. Build instructions are in the file.
 
-Benchmarks: `cargo bench --bench engine`.
+Benchmarks: `bazel run //:benchmark -- engine`.
 
 ### Cargo features
 
@@ -101,18 +101,18 @@ The default features are `jit`, `npy` and `gpu-wgpu`. Use
 ## Testing
 
 ```bash
-cargo test                       # RSSN tests with default features
-cargo test --lib graph::dim      # dimension unit tests
-cargo test --test dimensions     # one integration test file
-cargo test --test kernels pde    # PDE kernel integration tests
-cargo test --features gpu-wgpu --lib backend::device   # GPU device tests (run on an adapter if present)
+bazel test //:rust_tests
+bazel test //:rust_tests --test_arg=--lib --test_arg=graph::dim
+bazel test //:rust_tests --test_arg=--test --test_arg=dimensions
+bazel test //:rust_tests --test_arg=--test --test_arg=kernels --test_arg=pde
+bazel test //:gpu_test
 ```
 
-The suite is large and these are measured costs on one development machine, not guarantees:
+These timings were measured on one development machine.
 
-- The test profile is `opt-level = 1`; building the library's unit tests (`cargo test --lib`) takes 10 to 20 minutes after a source change, and running all of them about 19 minutes.
-- `cargo test --test sim` takes about 25 minutes. Pass a substring filter (`cargo test --test sim acoustics`) or name a module path to run a part.
-- `cargo check --lib --tests` (about 2 minutes) is the cheap way to see whether edits compile.
+- The test profile is `opt-level = 1`; building the library's unit tests takes 10 to 20 minutes after a source change, and running all of them about 19 minutes.
+- The `sim` suite takes about 25 minutes. Run a subset with `bazel test //:rust_tests --test_arg=--test --test_arg=sim --test_arg=acoustics`.
+- `bazel run //:check -- --lib --tests` checks compilation in about two minutes.
 
 CI uses `bazel test //:rust_all_features_test` on Linux and Windows and checks the generated ABI and runtime contracts with `bazel test //:api_generator_test //:contracts_test //:headers_check_test`. [Development workflow](CONTRIBUTING.md)
 

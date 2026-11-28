@@ -285,7 +285,7 @@ remain valid. `Module::interpret` provides a reference implementation and
 
 [Backend timing example](../examples/backend_timing.rs) compares reference,
 tape row and column execution, and both Cranelift modes over 100,000 rows.
-Run it with `cargo run --profile tools --features jit --example backend_timing`
+Run it with `bazel run //:example -- --profile tools backend_timing`
 to measure the executors on your machine.
 
 ## GPU source targets and precision

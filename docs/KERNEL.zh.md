@@ -66,9 +66,8 @@ overlay 只作为未声明签名的算子的类型来源：声明优先，因此
 5. 只有实参签名与其他重载可比较或不相交的候选才保留。同一实参签名下更精确的结果单独记录为 `refinements`，不参与重载选择。
 
 ```text
-RSSN_SORT_TRACE=sorts.tsv cargo test --lib
-cargo run --profile tools --bin signature-mine -- sorts.tsv
-cargo run --profile tools --bin signature-mine -- --check
+bazel run //:refresh_witness
+bazel test //:witness_test
 ```
 
 生成的 `signatures.witnessed.json` 随源码保存。清单用 `signature_source` 和 `overload_sources` 记录来源，用 `witnesses` 提供可重放调用。见证不证明对所有实参都能求出同类结果，宿主还要验证解码结果。两个可比较的重载同时匹配时，逐参数比较其具体程度。
@@ -84,7 +83,7 @@ cargo run --profile tools --bin signature-mine -- --check
 | `opaque_payload` | 携带内核不解释的宿主数据 |
 | `not_yet_specified` | 缺失声明，覆盖检查报错 |
 
-`cargo run --locked --bin signature-audit` 按签名来源汇总当前算子。若算子既无签名也无获认可的原因，命令返回非零退出码。
+`bazel test //:contracts_test --test_output=all` 中的签名审计按签名来源汇总当前算子。若算子既无签名也无获认可的原因，命令返回非零退出码。
 
 ### 5. 确定性
 

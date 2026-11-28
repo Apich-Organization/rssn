@@ -140,9 +140,8 @@ typing judgement. The module
    listed separately in the manifest and taking no part in resolution.
 
 ```text
-RSSN_SORT_TRACE=sorts.tsv cargo test --lib       # the test suite is the corpus
-cargo run --profile tools --bin signature-mine -- sorts.tsv
-cargo run --profile tools --bin signature-mine -- --check   # replay the shipped table
+bazel run //:refresh_witness   # collect the corpus and regenerate the table
+bazel test //:witness_test      # replay the checked-in witnesses
 ```
 
 The required `signatures.witnessed.json` table is generated and versioned. The
@@ -195,7 +194,7 @@ Every operator is either typed or explained. The explanation is a
 | `opaque_payload` | it carries host data the kernel does not interpret |
 | `not_yet_specified` | a declaration is missing; the audit treats this as a defect |
 
-`cargo run --locked --bin signature-audit` reports the live operator counts by
+The signature audit in `bazel test //:contracts_test --test_output=all` reports the live operator counts by
 signature source. Its exit status is nonzero if an operator has neither a
 signature nor an accepted reason.
 

@@ -53,9 +53,9 @@ fn main() -> Result<(), ComputeError> {
 `bazel build //:ffi_distribution //:headers` 构建 C 库和头文件。[构建指南](docs/BUILDING.zh.md)
 
 ```console
-cargo build --locked
-cargo test --locked --test dimensions
-cargo run --locked --example quickstart
+bazel build //:rustlib
+bazel test //:rust_tests --test_arg=--test --test_arg=dimensions
+bazel run //:example -- quickstart
 ```
 
 ## 许可
