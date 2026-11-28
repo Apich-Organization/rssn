@@ -47,8 +47,10 @@ fn main() -> Result<(), ComputeError> {
 
 ## 从源码构建
 
-使用 Rust 1.100 或更新版本。默认构建产生 Rust 库。`jit` 启用 Cranelift，`npy` 启用数组文件读写，
-`gpu-wgpu` 启用 GPU 设备接口。要生成 C 库及头文件，请使用[构建指南](docs/BUILDING.zh.md)中的脚本。
+使用 Rust 1.100 或更新版本。默认构建产生 Rust 库，并启用 `jit`、`npy` 和
+`gpu-wgpu`，分别提供 Cranelift、NumPy 数组文件读写和 GPU 设备接口。
+使用 `--no-default-features` 可构建最小 Rust 库。运行
+`bazel build //:ffi_distribution //:headers` 构建 C 库和头文件。[构建指南](docs/BUILDING.zh.md)
 
 ```console
 cargo build --locked

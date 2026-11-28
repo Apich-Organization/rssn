@@ -46,7 +46,13 @@ RSSN 推导符号计算的量纲，也允许宿主通过内核 ABI 传递带量�
 | `sde_levy_areas(seed, h, dw, terms)` | 结果采用 `h` 的量纲，与两个增量相乘一致。 |
 | `matexp(A, t)` | 要求 `dim(A) × dim(t) = 1`，适用于速率矩阵乘以持续时间。 |
 | `matfun(f, x, A)` | 次数为 `k` 的齐次多项式结果带有系数量纲和矩阵元素量纲的 `k` 次幂。其他函数要求元素无量纲。 |
-| 复平面算子 | 复变量和分支索引无量纲。轮廓积分保留被积函数的量纲。 |
+| 归一化轮廓与分支算子 | 归一化轮廓采用无量纲复变量，因此轮廓积分保留被积函数的量纲。分支角度和索引无量纲。 |
+| `abs_sq(z)` · `sqrt_cut(z, angle)` · `from_polar(r, angle)` | 分别取 `z` 量纲的平方、平方根，或保留 `r` 的量纲。角度无量纲。 |
+| `arg(z)` · `to_polar(z)` | 相位不带量纲，极坐标的半径保留 `z` 的量纲。 |
+| `complex_diff(f, z, n)` · `complex_laplacian(f, z)` | 将 `f` 的量纲除以坐标量纲的相应次幂。 |
+| `cball_*` · `cinterval_*` | 圆盘 `list(re, im, rad)` 和矩形区间 `list(re_lo, re_hi, im_lo, im_hi)` 的坐标均无量纲。构造包络前请先归一化带量纲的坐标。 |
+| `cauchy_pv(f, x, a, b, pole)` · `hilbert_transform(f, x, y)` | 各坐标的量纲须相容。柯西主值积分乘上坐标量纲，希尔伯特变换保留 `f` 的量纲。 |
+| `bromwich_inverse_laplace(F, s, t)` | 要求 `dim(s) × dim(t) = 1`。结果量纲为 `dim(F) × dim(s)`。 |
 
 ## 6. 推导过程
 

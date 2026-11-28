@@ -10,7 +10,7 @@ independent trajectory.
 
 | Interface | Implementations and uses |
 |---|---|
-| `backend::Backend` | `Interpreter` is the default scalar backend. The shared tape implements `Compiled` and `CompiledMulti` through `TapeFunction`. With `jit`, `CraneliftBackend` compiles to CPU machine code and `TieredBackend` compiles scalar functions in the background after a configurable call or row threshold. |
+| `backend::Backend` | `Interpreter` is always available. The shared tape implements `Compiled` and `CompiledMulti` through `TapeFunction`. `CraneliftBackend` compiles to CPU machine code. `TieredBackend` starts on the CPU tape and compiles hot scalar functions in the background. |
 | `backend::device::Device` | `cpu` and `cpu-parallel` run on the host. With `gpu-wgpu`, each usable wgpu adapter can register a `gpu:wgpu:N` device. |
 | `backend::device::DeviceBackend` | Connects the interfaces. A batch uploads its inputs, launches the compiled device program and downloads its outputs. A single-point call uses a one-row launch. |
 
@@ -18,8 +18,41 @@ independent trajectory.
 inputs. `compile_multi` produces a `CompiledMulti` program with shared
 subexpressions, parameters constant across a batch, and multiple outputs.
 `backend::current()` uses the innermost thread-local `with_backend` scope, then
-the process default set by `set_default`, then the interpreter.
+a process override, then `auto`. The default build includes `jit`, `gpu-wgpu`
+and `npy`. `auto` chooses `tiered` on hosts supported by Cranelift and
+`interpreter` on other hosts. Default tiering starts native compilation
+at 2,000 evaluations or batch rows. Failed compilation keeps the function
+on the CPU tape. GPU support is discovered when requested. Scalar `auto`
+keeps IEEE binary64 semantics, including on machines with a wgpu adapter.
+Use `--no-default-features` for Rust builds with explicit feature opt-ins.
 [Backend API](../src/backend/mod.rs) · [Cranelift and tiering](../src/backend/jit.rs)
+
+`backend::named("cranelift")` requests immediate native compilation.
+`backend::available()` lists canonical selectors, including `cpu`,
+`cpu-parallel`, and concrete `gpu:wgpu:N` IDs. `gpu` selects the preferred usable
+wgpu adapter. A named device reports compilation errors when it cannot run a
+program. `DeviceBackend::new` keeps its existing tape fallback. Use
+`backend::select_default("auto")` to clear the process override. Values already
+compiled keep their backend.
+
+The C value ABI and its C++, Python, Julia and R wrappers share these operations.
+`num_backend_current_name` queries the active selector without creating a handle.
+`num_backend_named` creates a handle for `num_backend_compile` or scoped
+compilation. `num_backend_select_default` updates the process default used by
+`num_backend_compile_current`. Pass `auto` to restore host selection.
+
+Embedding hosts can wrap source execution in `backend::restrict_to_source` to
+control whether a program can acquire or use GPU resources. Under a CPU-only
+scope, `auto` and the CPU/JIT selectors continue to work. The process default
+is controlled by the embedding host. RSSN's parallel workers inherit the
+source grant and the active thread-local backend override.
+
+The portable NumPy codec reads float32 and float64 arrays with either byte order
+and C or Fortran layout. It preserves rank, including scalars and empty arrays.
+It writes row-major little-endian float64. Rust and Aevia use the same codec at
+`rssn::io::npy`. The C value ABI uses `num_npy_encode(shape, data)` and
+`num_npy_decode(hex)` with up to 262,144 values. Octets cross that ABI as
+hexadecimal text and the high-level wrappers take and return ordinary bytes.
 
 `TieredBackend` uses the shared column interpreter for batches of built-in tape instructions before native code is ready. From 32,768 rows it evaluates fixed blocks on the active CPU pool when multiple workers are available. Tapes with host callbacks keep their row-wise execution order. Reaching the compilation threshold queues native code generation in a separate, lazily initialized pool of up to four workers, sized by `execution::default_cpu_threads()`. A function stays interpreted if native compilation fails.
 
@@ -45,11 +78,15 @@ positive physical reference for the sources and the result.
 ## Device selection and buffers
 
 `registry().list()` describes devices present at run time. Use `get(id)` for an
-explicit choice or `default_device()` for the first registered GPU, then
+explicit choice or `default_device()` for the preferred available GPU, then
 `cpu-parallel` when the active Rayon pool has multiple workers, then `cpu` or
-the first available device. wgpu may expose software adapters
-and marks them in their names. An absent adapter leaves both CPU devices
-available. The kernel manifest's `features.devices` uses `build_devices()` to
+the first available device. wgpu registers usable discrete adapters first,
+followed by integrated, other or unknown, virtual, and software adapters.
+Adapters in the same class follow wgpu's enumeration order. Each `gpu:wgpu:N`
+ID uses that adapter's original enumeration ordinal, so a failed open can leave
+a gap in the IDs. Software adapters are marked in their names. Both CPU devices
+are available when discovery finds no usable GPU. The kernel manifest's
+`features.devices` uses `build_devices()` to
 describe capabilities compiled into a build, independently of adapter discovery.
 [Registry](../src/backend/device/mod.rs) · [Adapter discovery](../src/backend/device/gpu.rs) · [Kernel manifest](../src/kernel/manifest.rs)
 

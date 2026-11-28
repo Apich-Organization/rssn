@@ -7,7 +7,7 @@
 //! also be opened with `h5py`, `pyarrow` or the NetCDF tools to check that
 //! other implementations agree.
 
-use std::path::PathBuf;
+use std::path::Path;
 
 use rssn::io::Colormap;
 use rssn::io::GifAnimation;
@@ -67,7 +67,7 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
-fn hdf5(directory: &PathBuf) -> Result<(), String> {
+fn hdf5(directory: &Path) -> Result<(), String> {
     let path = directory.join("rssn_example.h5");
     let datasets = vec![
         Dataset::new_numeric(
@@ -118,7 +118,7 @@ fn hdf5(directory: &PathBuf) -> Result<(), String> {
     Ok(())
 }
 
-fn parquet(directory: &PathBuf) -> Result<(), String> {
+fn parquet(directory: &Path) -> Result<(), String> {
     let path = directory.join("rssn_example.parquet");
     let schema = Schema {
         fields: vec![
@@ -182,7 +182,7 @@ fn parquet(directory: &PathBuf) -> Result<(), String> {
     Ok(())
 }
 
-fn frame(directory: &PathBuf) -> Result<(), String> {
+fn frame(directory: &Path) -> Result<(), String> {
     let frame = DataFrame::new(vec![
         (
             "label".to_owned(),
@@ -207,7 +207,7 @@ fn frame(directory: &PathBuf) -> Result<(), String> {
     Ok(())
 }
 
-fn media_and_vtk(directory: &PathBuf) -> Result<(), String> {
+fn media_and_vtk(directory: &Path) -> Result<(), String> {
     // 1. Chunked + Shuffle + Deflate + Fletcher32 HDF5 + SoftLink + VlenNumeric
     let h5_ext = directory.join("rssn_extended.h5");
     let ds_grid = Dataset::new_numeric(
@@ -332,9 +332,9 @@ fn media_and_vtk(directory: &PathBuf) -> Result<(), String> {
     println!("png: {}x{}", png_back.width, png_back.height);
 
     let gif_path = directory.join("rssn_example.gif");
-    let mut f1 = GifFrame::new(4, 4, 10, vec![255, 0, 0, 255].repeat(16));
+    let mut f1 = GifFrame::new(4, 4, 10, [255, 0, 0, 255].repeat(16));
     f1.dispose = GifDisposal::Background;
-    let mut f2 = GifFrame::new(2, 2, 15, vec![0, 255, 0, 255].repeat(4));
+    let mut f2 = GifFrame::new(2, 2, 15, [0, 255, 0, 255].repeat(4));
     f2.left = 1;
     f2.top = 1;
     write_gif_file(&gif_path, &GifAnimation::new(4, 4, 0, vec![f1, f2]))?;

@@ -1,10 +1,11 @@
 //! The numeric side on its own: quadrature, root finding, an ODE
-//! integration and a minimisation, with the closed-form value next to each.
+//! integration, a minimisation and a real FFT.
 //!
 //! Run with `cargo run --release --example numeric_kernels`.
 
 use std::f64::consts::PI;
 
+use rssn::kernels::fft;
 use rssn::kernels::ode;
 use rssn::kernels::optim;
 use rssn::kernels::quadrature;
@@ -59,5 +60,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "\nRosenbrock minimum    = ({:.9}, {:.9}), f = {:.2e} in {} iterations",
         best.x[0], best.x[1], best.fx, best.iterations
     );
+
+    // The real transform stores only the nonredundant bins. Pass the
+    // original axis length to recover an odd-length signal.
+    let samples = [1.0, 2.5, -1.0, 0.0, 0.5];
+    let (bins, shape) = fft::rfft_axes(&samples, &[samples.len()], &[0])?;
+    let (recovered, _) = fft::irfft_axes(&bins, &shape, &[0], samples.len())?;
+    let mut frequencies = fft::fftfreq(samples.len(), 0.2);
+    fft::shift_axes_in_place(&mut frequencies, &[samples.len()], &[0], false)?;
+    println!("\nCentered frequencies  = {frequencies:?}");
+    println!("Recovered signal      = {recovered:?}");
     Ok(())
 }

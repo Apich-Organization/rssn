@@ -105,6 +105,218 @@ let value = session.call_key(&key, &args, &CallCtx::new())?;
 
 匹配优先级是 `Exact`、`Widened`、`Shaped`、`Generic`，调用按最弱的实参匹配评分。等价候选产生 `OpError::Ambiguous`。参数个数或找不到算子分别有 `OpError::Arity` 与 `OpError::UnknownOp`。`CallCtx` 携带符号或数值目标、搜索预算、量纲模式、假设、变量绑定、代入、宿主回调和可选跟踪。算子可向跟踪追加事件。
 
+### 拟合和复用多项式
+
+便携多项式模型用降幂系数表示归一化坐标 `x / coordinate_scale` 的多项式。
+拟合一次后，可以把模型传回内核，一次求出多个坐标的值。结果保持查询顺序。
+
+```python
+import rssn
+
+with rssn.Session() as session:
+    model = session.call_value(
+        "num_polynomial_model_interpolate_lagrange", [0.0, 2.0, 4.0], [1.0, 5.0, 17.0], 2.0
+    )
+    values = session.call_value("num_polynomial_model_eval_batch", model, [3.0, 1.0])
+    print([v.float() for v in values])  # [10.0, 2.0]
+```
+
+对于带单位的数据，正坐标标度和查询坐标与拟合横轴同量纲，预测值保留纵坐标的量纲。
+`num_polynomial_model_from_roots` 从根构造的多项式在归一化坐标下首一。
+调用 `num_polynomial_model_compose` 时先传外层模型，其坐标量纲须与内层模型的输出量纲相同。
+
+### 批量计算特殊函数
+
+向 `num_special_gamma_batch` 传入一维 Float 张量，结果保持输入顺序。
+批量数据达到内核的并行阈值后会按执行策略分配工作。对数伽马、双伽马、
+误差函数、余误差函数及贝塞尔函数的批量接口沿用同一输入和结果形式。
+
+```python
+import rssn
+
+with rssn.Session() as session:
+    result = session.call_value("num_special_gamma_batch", [1.0, 2.0, 3.0, 4.0])
+    print([item.float() for item in result])  # [1.0, 1.0, 2.0, 6.0]
+```
+
+输入和输出均无量纲。如果标量内核产生非有限值，例如实数伽马函数在极点的结果，
+值接口会报告定义域错误。
+
+### 双曲坐标与魏尔斯特拉斯周期
+
+用 `num_uhp_to_disk` 和 `num_disk_to_uhp` 在开上半平面与庞加莱开圆盘之间
+转换复坐标。`num_uhp_distance` 与 `num_poincare_disk_distance` 分别在两种
+模型中计算曲率为 −1 的测地距离。例如，上半平面中的 `i` 和 `4i` 相距
+`ln(4)`。参数与结果均无量纲。边界点以及舍入后落在目标开区域之外的转换
+结果会报定义域错误。
+
+`num_weierstrass_p_prime_complex(z, omega1, omega2)` 接收两个复数半周期，
+对应的基本周期为 `2 * omega1` 和 `2 * omega2`。
+`num_weierstrass_invariants_complex(omega1, omega2)` 返回带有 `g2` 与
+`g3` 字段的记录。半周期须有限且不共线。导数遇到格点极点时报定义域错误。
+计算采用 binary64，底层 theta 函数求值若产生非有限结果也会报定义域错误。
+
+### 向量更新和批量扫描
+
+`num_vector_axpy(alpha, x, y)` 计算 `alpha*x + y`，增量必须与原向量同量纲。
+`num_vector_axpby` 对两个向量分别缩放，要求缩放结果的量纲相同。
+两个接口都返回新向量。
+
+```python
+import rssn
+
+with rssn.Session() as session:
+    updated = session.call_value("num_vector_axpy", 2.0, [1.0, 3.0], [5.0, 7.0])
+    print([x.float() for x in updated])  # [7.0, 13.0]
+```
+
+逐元素积和外积将输入量纲相乘，`num_vector_hadamard_div` 将输入量纲相除。
+固定分块的二范数和包含当前项的前缀和保留输入量纲。
+`num_par_dot_fixed` 对输入向量的共同前缀求点积，结果为两者的量纲乘积。
+分块大小决定浮点数的累加分组，`grain` 是启动并行计算的阈值。
+比较不同线程数的结果时应使用相同的分块大小。
+
+### 精确整数和模运算
+
+`num_finite_field_` 系列的向量算子使用 `Tensor<1, Int>`，接受完整的
+`u64` 范围和大于等于 2 的模数，也支持合数模。加减、AXPY 和点积要求输入
+向量等长。批量求逆的严格版本在存在不可逆元素时报告定义域错误，
+`num_finite_field_batch_inverse_skip_zeros` 则将不可逆位置置零。
+空向量可参与向量运算，空向量的点积为 0。
+
+`num_number_theory_gcd_u128`、`num_number_theory_mul_mod_u128` 和
+`num_number_theory_mod_pow_u128` 接受完整的无符号 128 位范围。
+模运算要求正模数。所有参数和结果均为无量纲精确整数。
+绑定的宽整数转换方法见[语言绑定契约](../bindings/api/CONTRACT.md)。
+
+### 通过 C ABI 传入带量纲浮点值
+
+用 `rssn_value_with_coherent_dimension` 将具体量纲附到相干单位下的 Float
+或稠密 binary64 张量。对于米，传入 UTF-8 JSON `{"base":"Length"}`
+及其字节数。结果在同一会话中使用独立的值单元，保留张量的阶、空维长度及 Float 表示。
+要求带量纲参数的算子也须接收带量纲的零值。
+
+JSON 沿用清单的量纲格式。为带单位名称的值添加量纲之前，先换算为相干单位下的值。
+可用 `rssn_value_json` 查看返回值的量纲。
+
+### 带量纲三对角方程组
+
+对称正定三对角方程组使用 `num_dense_solve_spd_tridiagonal(diag, off, rhs)`。
+消元主元均非零的一般三对角方程组可用
+`num_dense_solve_tridiagonal(sub, diag, sup, rhs)`。两者的时间和空间开销均
+随方程组大小线性增长。`diag` 和 `rhs` 的长度为 `n`，次对角线长度为
+`max(n - 1, 0)`。各条对角线的量纲一致，解的量纲为右端量纲除以矩阵量纲。
+一般求解器采用不选主元的 Thomas 算法。对于需要选主元的非奇异方程组，
+可将完整矩阵传入 `num_dense_solve`。
+
+### 测量网格
+
+`num_meshgen_delaunay_2d_incremental(points)` 接收 3 到 4096 个互不相同的
+二维点，返回逆时针三角形的零基顶点索引。坐标张量中各项须使用同一量纲。
+`num_meshgen_triangle_areas(points, triangles)` 和
+`num_meshgen_tetra_volumes(points, tetrahedra)` 按单元输入顺序返回面积和体积，
+量纲分别为坐标量纲的平方和立方。越界顶点索引会报告定义域错误，退化单元的测量结果为零。
+
+`num_meshgen_min_angle_deg` 以度数返回最小角。`num_meshgen_boundary_faces` 提取只与
+一个四面体相邻的三角面并保持顶点绕序。正定向四面体的边界面朝外，内部共用面被移除。
+
+### 精确组合计数与浮点数值入口
+
+`num_harmonic(0)` 返回 0。`num_ln_binomial(n, k)` 在
+`0 <= k <= n` 时直接计算对数，即使系数本身超出 binary64 范围也可用。
+`num_multinomial(n, parts)` 要求各分量之和精确等于 `n`，并在结果溢出时报告定义域错误。
+需要任意精度整数结果时，使用符号算子 `binomial` 和 `multinomial`。
+
+`num_inverse_beta_reg(a, b, p)` 接收有限正形状参数和区间 `[0, 1]` 内的概率。
+端点及形状参数等于 1 的情形用解析公式。一般情形在 binary64 上有界求解，
+精度取决于正向概率计算。正向计算超出可表示范围时返回错误。
+
+### 零相位滤波
+
+`num_signal_filtfilt(b, a, samples)` 采用奇反射填充和稳态初始化，沿正反两个方向滤波。
+系数向量 `b`、`a` 无量纲，返回值保留输入样本数和量纲。每侧填充长度取滤波器阶数的
+三倍与样本数减一中的较小值。单样本也按两次滤波的稳态响应处理。系数向量为空、
+分母首项为零、稳态无定义或存在非有限值时，返回定义域错误。
+
+### 多项式根界与单位圆盘
+
+`num_cauchy_root_bound`、`num_cauchy_sharp_root_bound` 和
+`num_fujiwara_root_bound` 接收按幂次升序排列的有限复系数。
+`num_enestrom_kakeya_bounds` 接收至少两个严格为正的实系数，并返回包含
+`lower`、`upper` 半径的记录。多项式自变量无量纲，所有系数可以共用同一量纲，
+该量纲在根界计算中抵消。通过值接口调用时，超出 binary64 范围的根界会返回定义域错误。
+
+对于单位圆盘上的归一化单叶函数，`num_koebe_growth_bounds(r)` 和
+`num_koebe_distortion_bounds(r)` 分别返回函数模和导数模的上下界。
+`num_koebe_rotation_bound(r)` 返回导数连续辐角绝对值的上界，单位为弧度。
+输入半径无量纲且满足 `0 <= r < 1`。
+
+### 原根与精确多项式乘法
+
+`num_number_theory_extended_gcd_u64(a, b)` 返回精确的 `{gcd, x, y}`
+记录，其中 Bézout 系数带符号。`num_number_theory_mod_inv_u64` 接收至少为 2 的模数，
+在输入与模数互素时返回最小非负逆元。Jacobi 与 Legendre 接口区分非法分母和合法的零值。
+
+`num_number_theory_primitive_root` 返回循环剩余类乘法群的最小正生成元。
+`num_finite_field_primitive_root_prime` 要求模数为素数，也接受 2。
+`num_finite_field_poly_mul_ntt_mod(a, b, p)` 返回奇素数 `p` 下的系数卷积。
+两个输入的系数排列方向须一致。非空结果的长度向上取到最近的二次幂后，必须整除
+`p - 1`。模数有效时，空输入返回空张量。值接口使用通用的原生张量长度上限。
+
+### 精确二进制多精度值
+
+`num_mp_real_round(mantissa, exponent, precision, mode)` 返回无量纲记录
+`{mantissa, exponent, precision}`。三个字段都是精确整数，数值为
+`mantissa * 2^exponent`。非零尾数的绝对值恰占 `precision` 位。
+零值的指数为零，并保留请求精度。
+
+精度范围为 1 至 32,768 位。构造器最多接收 65,536 位的输入尾数。
+输入和规格化后的指数绝对值均不得超过 262,144。舍入模式为
+`nearest`（等距取偶）、`zero`、`away`、`up` 和 `down`。
+
+`num_mp_real_compare(left, right)` 可精确比较不同精度的值，返回 -1、0 或 1。
+`num_mp_real_add`、`num_mp_real_sub`、`num_mp_real_mul` 和 `num_mp_real_div` 接收
+`(left, right, precision, mode)`，对精确结果只舍入一次。除法拒绝零除数。
+通过值接口再次传入结果时，保持记录字段为整数。
+
+`num_mp_ball_div(left, right, precision)` 返回两个闭区间相除的包络。
+`{midpoint, radius}` 的两个字段都是上述精确二进制记录，`radius` 非负。
+该记录表示 `[midpoint - radius, midpoint + radius]`。请求精度决定中点的精度，
+半径可以采用不同精度以保持包络。除数区间不得含零，包括端点为零的情况。
+指数超出可表示范围时返回定义域错误。
+
+### 时序统计、重建与状态空间模型
+
+`num_timeseries_integrate(differences, initial)` 还原多阶一阶差分，
+阶数由 `initial` 的长度决定。两组输入须共用量纲，输出保留该量纲。
+
+`num_timeseries_rolling_moments(samples, window, ddof)` 按窗口起点顺序返回完整窗口的
+`mean` 和 `variance` 向量。均值保留样本量纲，方差使用其平方。总体方差使用
+`ddof=0`。样本方差使用 `ddof=1`，窗口宽度须至少为 2。正的窗口宽度大于序列
+长度时返回两个空向量。样本须为有限数，且 `ddof` 须小于窗口宽度。
+
+`num_timeseries_kalman_filter(y, f, h, q, r, x0, p0, observation_scale)`
+返回滤波均值、预测均值、按时间排列的三阶滤波协方差张量及对数似然。
+第一次预测使用给定的先验。状态分量共用一个量纲，观测分量共用另一个量纲，
+观测矩阵负责在两者之间转换。正的 `observation_scale` 使用观测单位，
+作为无量纲对数似然的参考量。协方差使用相应状态或观测量纲的平方。
+
+`num_timeseries_kalman_smooth(y, f, h, q, r, x0, p0)` 按时间顺序返回每条观测的
+平滑状态均值。反向求解每一步都需要正定的预测协方差。
+
+### 带量纲状态空间仿真
+
+`num_control_c2d_zoh(a, b, c, d, dt)` 在零阶保持下离散化连续模型，
+返回可移植记录 `{a, b, c, d, dt}`。采样周期 `dt` 须为正且带时间量纲。
+对于 `n` 个状态、`m` 个输入和 `p` 个输出，四个矩阵的形状依次为
+`[n,n]`、`[n,m]`、`[p,n]` 和 `[p,m]`。连续模型的 `a` 使用
+逆时间量纲。离散模型的 `a` 无量纲，`b` 增加一个时间因子。
+
+`num_control_simulate_discrete(model, x0, inputs)` 可直接使用离散化记录。
+`num_control_simulate_continuous(a, b, c, d, x0, inputs, times)`
+还要求一个严格递增、带时间量纲的网格，每个时刻对应一行输入。两个算子均按输入行
+返回输出，首行使用给定初始状态，并计入直接馈通项 `d`。连续仿真将每行输入保持到下一采样时刻。
+
 ## 插件
 
 插件通过 `Registry` 注册算子与重写规则。`SimplePlugin` 接收一段注册函数，向 `Registry::register_op` 提供 `OpDescriptor`，并可用 `register_rewrites` 设置规则和重写层级。每个注册算子需要签名或 `DynamicReason`。同名但形状不兼容的注册失败。为同一算子增加签名时使用描述符的 `.overload()`。[Rust 插件示例](KERNEL.md#plugins)
@@ -177,7 +389,7 @@ uint64_t hash = rssn_manifest_hash();
 
 ## 添加算子
 
-对于可组合编解码器支持的数值函数，在 `codec-policy.tsv` 中登记 Rust 路径、ABI 名称、命名空间及量纲策略。运行 `cargo run --locked -p rssn-api-gen -- --codecs-write` 生成重载，宿主仍通过内核清单与值调用接口访问它。 [绑定生成与支持的契约结构](../tools/rssn-api-gen/README.md)
+对于可组合编解码器支持的数值函数，在 `codec-policy.tsv` 中登记 Rust 路径、ABI 名称、命名空间及量纲策略。运行 `bazel run //:refresh_contracts` 生成重载，宿主仍通过内核清单与值调用接口访问它。 [绑定生成与支持的契约结构](../tools/rssn-api-gen/README.md)
 
 符号规则、回调与原生对象适配器按下列步骤直接注册。
 
@@ -186,4 +398,4 @@ uint64_t hash = rssn_manifest_hash();
 1. 用 `Installer::op` 或 `Registry::register_op` 注册。
 2. 给出 `Signature` 或 `DynamicReason`，并声明量纲规则。
 3. 填写 `.doc(..)`、`.category(..)` 和 `.since(..)`。这些字段随清单提供给宿主。
-4. 运行 `cargo run --locked --bin signature-audit` 和该算子的测试。
+4. 运行 `bazel test //:contracts_test` 和该算子的测试。

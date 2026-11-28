@@ -46,7 +46,13 @@ Each standard operator registers a `DimRule`. A rule may preserve an argument di
 | `sde_levy_areas(seed, h, dw, terms)` | Use `h`'s dimension. The iterated integral has the dimension of a pair of increments. |
 | `matexp(A, t)` | Require `dim(A) × dim(t) = 1`. This accepts a rate matrix times a duration. |
 | `matfun(f, x, A)` | A homogeneous polynomial of degree `k` contributes `entry^k` times the coefficient dimension. Other functions require dimensionless entries. |
-| Complex-plane operators | The complex variable and branch indexes are dimensionless. A contour integral keeps its integrand dimension. |
+| Normalized contour and branch operators | A normalized contour uses a dimensionless complex variable, so its integral keeps the integrand dimension. Branch angles and indexes are dimensionless. |
+| `abs_sq(z)` · `sqrt_cut(z, angle)` · `from_polar(r, angle)` | Square the dimension of `z`, take its square root, or keep the dimension of `r`, respectively. Angles are dimensionless. |
+| `arg(z)` · `to_polar(z)` | The phase is dimensionless for any input dimension. In the polar pair, the radius keeps the dimension of `z`. |
+| `complex_diff(f, z, n)` · `complex_laplacian(f, z)` | Divide the dimension of `f` by the appropriate power of the coordinate dimension. |
+| `cball_*` · `cinterval_*` | The disk `list(re, im, rad)` and rectangle `list(re_lo, re_hi, im_lo, im_hi)` coordinates are dimensionless. Normalize measured coordinates before building an enclosure. |
+| `cauchy_pv(f, x, a, b, pole)` · `hilbert_transform(f, x, y)` | Coordinates must have compatible dimensions. The principal value multiplies by the coordinate dimension. The Hilbert transform preserves the dimension of `f`. |
+| `bromwich_inverse_laplace(F, s, t)` | Require `dim(s) × dim(t) = 1`. The result carries `dim(F) × dim(s)`. |
 
 ## 6. Inference
 

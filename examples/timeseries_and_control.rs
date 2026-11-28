@@ -16,7 +16,7 @@ use rssn::kernels::timeseries::pacf;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Time series: AR(1)-like series, ACF, PACF, and differencing.
     let series: Vec<f64> = (0..64)
-        .map(|t| 0.7_f64.powi((t % 8) as i32) + 0.05 * (t as f64 * 0.25).sin())
+        .map(|t| 0.7_f64.powi(t % 8) + 0.05 * (t as f64 * 0.25).sin())
         .collect();
     let r = acf(&series, 4);
     let p = pacf(&series, 4);

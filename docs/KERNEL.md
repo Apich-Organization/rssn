@@ -262,6 +262,274 @@ The match lattice is `Exact` > `Widened` (an `Int` into a `Real`, a `Real` into
 a `Complex`) > `Shaped` (same constructor, looser argument) > `Generic` (a type
 variable or `Dyn`), and a call is scored by its *worst* parameter.
 
+### Fitting and reusing a polynomial
+
+A portable polynomial stores descending coefficients in the normalized coordinate
+`x / coordinate_scale`. Fit the model once and pass it back to the kernel to
+evaluate a vector of coordinates in a single call. Sample order is preserved.
+
+```python
+import rssn
+
+with rssn.Session() as session:
+    model = session.call_value(
+        "num_polynomial_model_interpolate_lagrange", [0.0, 2.0, 4.0], [1.0, 5.0, 17.0], 2.0
+    )
+    values = session.call_value("num_polynomial_model_eval_batch", model, [3.0, 1.0])
+    print([v.float() for v in values])  # [10.0, 2.0]
+```
+
+For measured data the positive scale and query coordinates share the units of
+the fitted axis. The predictions carry the units of the ordinates. A model
+built with `num_polynomial_model_from_roots` is monic in the normalized
+coordinate. To chain two models, pass the outer model first to
+`num_polynomial_model_compose`. Its coordinate dimension must match the
+inner model’s ordinate dimension.
+
+### Evaluating special functions in batches
+
+Pass one rank-one Float tensor to `num_special_gamma_batch` and read back a
+tensor in the same order. The kernel uses its parallel execution policy for
+larger inputs. The log-gamma, digamma, error function, complementary error
+function and Bessel variants share this interface.
+
+```python
+import rssn
+
+with rssn.Session() as session:
+    result = session.call_value("num_special_gamma_batch", [1.0, 2.0, 3.0, 4.0])
+    print([item.float() for item in result])  # [1.0, 1.0, 2.0, 6.0]
+```
+
+Inputs and outputs are dimensionless. The value ABI reports a domain error
+when the scalar kernel produces a nonfinite value, as it does at a gamma pole.
+
+### Hyperbolic charts and Weierstrass periods
+
+Use `num_uhp_to_disk` and `num_disk_to_uhp` to move complex points
+between the open upper half-plane and the open Poincaré disk. The two
+distance operators `num_uhp_distance` and `num_poincare_disk_distance`
+measure the same geodesic length in curvature −1 coordinates. For
+example, the half-plane points `i` and `4i` are separated by `ln(4)`.
+Each input and the result are dimensionless. Boundary points and chart
+images that round outside the open target chart return a domain error.
+
+The Weierstrass derivative `num_weierstrass_p_prime_complex(z, omega1, omega2)`
+takes two complex half-periods. The fundamental periods are
+`2 * omega1` and `2 * omega2`. Evaluate the associated named fields
+`g2` and `g3` with `num_weierstrass_invariants_complex(omega1, omega2)`.
+These calls require a finite non-collinear pair. The derivative rejects
+lattice poles. The calculation uses binary64, and a nonfinite result
+from the underlying theta evaluation returns a domain error.
+
+### Updating vectors and scanning batches
+
+`num_vector_axpy(alpha, x, y)` computes `alpha*x + y`. Each scaled increment
+must have the same dimension as its destination. `num_vector_axpby` scales
+both vectors and requires the two products to share a dimension. Both calls
+return an owned vector.
+
+```python
+import rssn
+
+with rssn.Session() as session:
+    updated = session.call_value("num_vector_axpy", 2.0, [1.0, 3.0], [5.0, 7.0])
+    print([x.float() for x in updated])  # [7.0, 13.0]
+```
+
+The Hadamard product and outer product multiply the input dimensions.
+`num_vector_hadamard_div` divides them. The fixed-block Euclidean norm and
+inclusive prefix sum retain the input dimension, and `num_par_dot_fixed`
+returns the product dimension over the common prefix. In the fixed-block
+operators, the block size determines the floating-point grouping and
+`grain` sets the threshold for parallel work. Keep the block size fixed when
+comparing results across worker counts.
+
+### Exact integer and modular arithmetic
+
+Numerical vector operators under `num_finite_field_` use `Tensor<1, Int>`,
+accept the full `u64` range and support any modulus of at least 2, including
+composite moduli. Add, subtract, AXPY and dot product require equal vector
+lengths. Strict batch inversion reports a domain error if any element is
+noninvertible. `num_finite_field_batch_inverse_skip_zeros` leaves a zero in
+each noninvertible position. Empty vectors are valid and an empty dot product
+is zero.
+
+`num_number_theory_gcd_u128`, `num_number_theory_mul_mod_u128` and
+`num_number_theory_mod_pow_u128` accept the full unsigned 128-bit range.
+Modular scalar operations require positive moduli. Inputs and outputs are
+dimensionless exact integers. See the [binding contract](../bindings/api/CONTRACT.md)
+for wide integer cells in each host language.
+
+### Passing measured floats through the C ABI
+
+Use `rssn_value_with_coherent_dimension` to attach a concrete dimension to an existing
+Float or dense binary64 tensor with values in coherent units. For metres
+pass `{"base":"Length"}` as UTF-8 JSON with its byte length. The result
+has its own value cell in the same session. Rank, empty extents and the Float
+representation survive the attachment. Supply a dimensioned zero where
+an operation requires a measured argument.
+
+The JSON uses the same dimension schema as the manifest. Convert named
+units to coherent values before attaching the dimension. Use
+`rssn_value_json` to inspect the resulting wire dimension.
+
+### Measured tridiagonal systems
+
+Use `num_dense_solve_spd_tridiagonal(diag, off, rhs)` for a symmetric
+positive-definite tridiagonal system. Use
+`num_dense_solve_tridiagonal(sub, diag, sup, rhs)` for a general
+tridiagonal system with nonzero elimination pivots. Both take linear time
+and storage in the system size. `diag` and `rhs` have length `n`. The
+off-diagonals have length `max(n - 1, 0)`. The diagonals share one
+dimension, and the solution has the right-hand-side dimension divided
+by the matrix dimension. The general solver uses the Thomas algorithm
+without pivoting. For a nonsingular system requiring a pivot, use
+`num_dense_solve` with a full matrix.
+
+### Measuring meshes
+
+`num_meshgen_delaunay_2d_incremental(points)` accepts 3 to 4096 distinct
+planar points and returns counter-clockwise triangles with zero-based vertex
+indices. The coordinate tensor has one common dimension.
+`num_meshgen_triangle_areas(points, triangles)` and
+`num_meshgen_tetra_volumes(points, tetrahedra)` produce areas and volumes in
+cell order, with squared and cubed coordinate units. Out-of-range vertex
+indices give domain errors. Degenerate cells have zero measure.
+
+`num_meshgen_min_angle_deg` reports the smallest angle in degrees.
+`num_meshgen_boundary_faces` keeps faces incident to exactly one tetrahedron
+and preserves their winding. Positively oriented tetrahedra give outward faces.
+
+### Combinatorial counts and beta quantiles
+
+`num_harmonic(0)` returns zero. `num_ln_binomial(n, k)` evaluates the
+logarithm for `0 <= k <= n` and remains available when the coefficient
+exceeds binary64. `num_multinomial(n, parts)` checks that the parts sum
+exactly to `n` and reports overflow as a domain error. For arbitrary-precision
+integer coefficients, use the symbolic `binomial` and `multinomial` operators.
+
+`num_inverse_beta_reg(a, b, p)` accepts finite positive shape parameters and
+a probability in `[0, 1]`. Endpoint and unit-shape cases use analytic
+formulas. The general case brackets the solution in binary64, with precision
+set by the forward probability evaluation. An unrepresentable evaluation
+returns an error.
+
+### Zero-phase filtering
+
+`num_signal_filtfilt(b, a, samples)` applies a digital filter in both directions
+with odd reflection and steady-state initialization. The coefficient vectors
+`b` and `a` are dimensionless. The result has the original length and sample
+units. Padding is limited to three times the filter order or one fewer than
+the number of samples, whichever is smaller. A singleton uses the steady
+response of the two passes. Empty coefficients, a zero leading denominator,
+an undefined steady state, and non-finite values produce domain errors.
+
+### Polynomial root bounds and the unit disk
+
+`num_cauchy_root_bound`, `num_cauchy_sharp_root_bound`, and
+`num_fujiwara_root_bound` accept finite complex coefficients in ascending
+order. `num_enestrom_kakeya_bounds` accepts at least two strictly positive
+real coefficients and returns a record with `lower` and `upper` radii.
+The input polynomial uses a dimensionless coordinate. Its coefficients
+may share ordinate units, which cancel from the bounds. A bound that
+exceeds binary64 range produces a domain error through the value API.
+
+For a normalized univalent function on the unit disk,
+`num_koebe_growth_bounds(r)` and `num_koebe_distortion_bounds(r)` give
+`lower` and `upper` bounds for the function and derivative magnitudes.
+`num_koebe_rotation_bound(r)` gives the bound on the continuous derivative
+argument in radians. The dimensionless radius must satisfy `0 <= r < 1`.
+
+### Primitive roots and exact polynomial products
+
+`num_number_theory_extended_gcd_u64(a, b)` returns the exact record
+`{gcd, x, y}` with signed Bézout coefficients. `num_number_theory_mod_inv_u64`
+returns the least nonnegative inverse for a coprime input and modulus at
+least two. The Jacobi and Legendre operators distinguish an invalid
+denominator from the valid value zero.
+
+`num_number_theory_primitive_root` returns the least positive generator
+for a cyclic multiplicative group of residues.
+`num_finite_field_primitive_root_prime` requires a prime modulus and also
+accepts two. `num_finite_field_poly_mul_ntt_mod(a, b, p)` returns the
+coefficient convolution under an odd prime `p`. Use the same coefficient
+order in both inputs. The next power of two of a nonempty result length
+must divide `p - 1`. An empty input yields an empty tensor for a valid
+prime. This value operator applies the standard native tensor size limit.
+
+### Exact binary multiprecision values
+
+`num_mp_real_round(mantissa, exponent, precision, mode)` returns a
+dimensionless record `{mantissa, exponent, precision}`. All fields are
+exact integers. The value is `mantissa * 2^exponent`. A nonzero mantissa
+has exactly `precision` bits in magnitude. Zero has exponent zero and
+keeps the requested precision.
+
+Choose 1 to 32,768 bits of precision. The constructor accepts input
+mantissas up to 65,536 bits. Input and normalised exponents have magnitude
+at most 262,144. Valid rounding modes are `nearest` (ties to even),
+`zero`, `away`, `up` and `down`.
+
+`num_mp_real_compare(left, right)` returns -1, 0 or 1 for exact order
+across precisions. `num_mp_real_add`, `num_mp_real_sub`, `num_mp_real_mul` and
+`num_mp_real_div` accept `(left, right, precision, mode)` and round the
+exact result once. Division rejects a zero divisor. Keep the record
+fields as integers when passing a result back through the value API.
+
+`num_mp_ball_div(left, right, precision)` encloses the quotients of two
+closed intervals written as `{midpoint, radius}`. Both fields are exact
+dyadic records as above, with `radius` nonnegative. The record denotes
+`[midpoint - radius, midpoint + radius]`. The requested precision sets
+the midpoint precision. The radius may use a different precision to
+preserve the enclosure. The divisor interval must exclude zero, including
+at its endpoints. Exponents outside the representable range give a domain
+error.
+
+### Time-series statistics, reconstruction, and state-space models
+
+`num_timeseries_integrate(differences, initial)` undoes the number of first
+differences specified by the length of `initial`. The inputs share one
+dimension and the reconstructed samples retain it.
+
+`num_timeseries_rolling_moments(samples, window, ddof)` returns `mean` and
+`variance` vectors for complete windows in start order. Means retain the
+sample dimension and variances square it. Use `ddof=0` for population
+variance or `ddof=1` for sample variance with a window of at least two.
+A positive width larger than the series gives two empty vectors. Samples
+must be finite and `ddof` must be smaller than the width.
+
+`num_timeseries_kalman_filter(y, f, h, q, r, x0, p0, observation_scale)`
+returns filtered and predicted means, the rank-three filtered covariance
+history in time order, and log likelihood. The first prediction uses the
+given prior. State components share one dimension, observations share
+another, and the observation matrix maps between them. The positive
+`observation_scale` uses observation units and defines the reference for
+the dimensionless log likelihood. Covariance matrices use squared units
+of the corresponding state or observations.
+
+`num_timeseries_kalman_smooth(y, f, h, q, r, x0, p0)` returns one
+smoothed state mean per observation in time order. The solve requires a
+positive-definite predicted covariance at each backward step.
+
+### Measured state-space simulation
+
+`num_control_c2d_zoh(a, b, c, d, dt)` discretises a continuous
+model under a zero-order hold and returns the portable record
+`{a, b, c, d, dt}`. Specify a positive `dt` with time units. For
+`n` states, `m` inputs and `p` outputs, pass matrices with shapes
+`[n,n]`, `[n,m]`, `[p,n]` and `[p,m]`. A continuous `a`
+has inverse-time units. Its discrete counterpart is dimensionless,
+and the discrete `b` gains one factor of time.
+
+`num_control_simulate_discrete(model, x0, inputs)` accepts the
+record directly. `num_control_simulate_continuous(a, b, c, d, x0,
+inputs, times)` also accepts a strictly increasing measured time
+grid, with one input row per time. Both return one output row per input
+row, starting with the output at the given initial state, including
+the direct feedthrough `d`. Continuous simulation holds each input
+until the following sample.
+
 ## Plugins
 
 A plugin is a bundle of extensions registered through `Registry`:
@@ -467,7 +735,7 @@ summarised in [ARCHITECTURE.md](../ARCHITECTURE.md#c-interface).
 
 For numerical functions supported by the composable codecs, add a Rust source
 path, ABI name, namespace and dimension policy to `codec-policy.tsv`. Run
-`cargo run --locked -p rssn-api-gen -- --codecs-write` and use the emitted
+`bazel run //:refresh_contracts` and use the emitted
 overload through the same manifest and value-call APIs.
 [Binding generation and supported contract shapes](../tools/rssn-api-gen/README.md)
 
@@ -484,4 +752,4 @@ and tensor shape before the native method runs.
    (`.dynamic_reason(..)`).
 3. Add `.doc(..)`, `.category(..)` and `.since(..)` — the manifest is the
    documentation a host reads.
-4. Run `cargo run --locked --bin signature-audit` and the operator tests.
+4. Run `bazel test //:contracts_test` and the operator tests.

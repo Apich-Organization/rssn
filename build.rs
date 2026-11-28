@@ -5,6 +5,9 @@ use std::path::Path;
 use std::process::Command;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
+#[cfg(feature = "dev-headers")]
+#[path = "buildsrc/headers.rs"]
+mod header_generation;
 #[path = "buildsrc/rustdocs.rs"]
 mod rustdocs;
 const KEYS: &[&str] = &[
@@ -146,17 +149,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for key in KEYS {
         println!("cargo:rerun-if-env-changed={key}");
     }
-    for arg in ["HEAD", "packed-refs"] {
-        if let Some(path) = git(&["rev-parse", "--git-path", arg]) {
+    let idempotent = env::var_os("VERGEN_IDEMPOTENT").is_some();
+    if !idempotent {
+        for arg in ["HEAD", "packed-refs"] {
+            if let Some(path) = git(&["rev-parse", "--git-path", arg]) {
+                println!("cargo:rerun-if-changed={path}");
+            }
+        }
+        if let Some(head) = git(&["symbolic-ref", "-q", "HEAD"])
+            && let Some(path) = git(&["rev-parse", "--git-path", &head])
+        {
             println!("cargo:rerun-if-changed={path}");
         }
     }
-    if let Some(head) = git(&["symbolic-ref", "-q", "HEAD"])
-        && let Some(path) = git(&["rev-parse", "--git-path", &head])
-    {
-        println!("cargo:rerun-if-changed={path}");
-    }
-    let idempotent = env::var_os("VERGEN_IDEMPOTENT").is_some();
     let time = match env::var("SOURCE_DATE_EPOCH") {
         | Ok(value) => {
             Some(
@@ -248,23 +253,8 @@ fn headers(_root: &Path) -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(feature = "dev-headers")]
 fn headers(root: &Path) -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed=cbindgen.toml");
-    let config = cbindgen::Config::from_file(root.join("cbindgen.toml"))?;
-    let cpp_config = cbindgen::Config {
-        language: cbindgen::Language::Cxx,
-        ..config.clone()
-    };
-    let generate = |config| {
-        cbindgen::Builder::new()
-            .with_src(root.join("src/ffi/mod.rs"))
-            // Preserve the existing opaque Ball and Wavelet declarations.
-            .with_src(root.join("src/graph/store.rs"))
-            .with_src(root.join("src/kernels/wavelets.rs"))
-            .with_config(config)
-            .generate()
-    };
-    let c = generate(config)?;
-    let cpp = generate(cpp_config)?;
-    c.write_to_file(root.join("rssn.h"));
-    cpp.write_to_file(root.join("rssn.hpp"));
+    for (name, bindings) in header_generation::generate(root)? {
+        bindings.write_to_file(root.join(name));
+    }
     Ok(())
 }

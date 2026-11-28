@@ -6,25 +6,35 @@ RSSN 将数值表达式的编译与批量内核执行分开。选择 `Backend` �
 
 | 接口 | 实现与用途 |
 |---|---|
-| `backend::Backend` | `Interpreter` 是默认标量后端。共享指令带通过 `TapeFunction` 实现 `Compiled` 和 `CompiledMulti`。启用 `jit` 后，`CraneliftBackend` 生成 CPU 机器码，`TieredBackend` 在调用次数或批量行数达到设定阈值时在后台编译标量函数。 |
+| `backend::Backend` | `Interpreter` 始终可用。共享指令带通过 `TapeFunction` 实现 `Compiled` 和 `CompiledMulti`。`CraneliftBackend` 生成 CPU 机器码。`TieredBackend` 先在 CPU 上解释执行，在后台编译热点标量函数。 |
 | `backend::device::Device` | `cpu` 和 `cpu-parallel` 在宿主运行。启用 `gpu-wgpu` 后，每个可用的 wgpu 适配器可注册为一个 `gpu:wgpu:N` 设备。 |
 | `backend::device::DeviceBackend` | 连接两套接口。批量调用会上载输入、在设备上启动已编译程序，再下载输出。单点调用启动一个仅处理一行的内核。 |
 
-`Backend::compile` 根据声明的输入生成一个标量 `Compiled` 函数。`compile_multi` 生成 `CompiledMulti` 程序，支持共享子表达式、批内保持不变的参数和多个输出。`backend::current()` 依次选用当前线程最内层 `with_backend` 中的后端、`set_default` 设置的进程默认后端，以及解释器。
+`Backend::compile` 根据声明的输入生成一个标量 `Compiled` 函数。`compile_multi` 生成 `CompiledMulti` 程序，支持共享子表达式、批内保持不变的参数和多个输出。`backend::current()` 依次选用当前线程最内层 `with_backend` 中的后端、`set_default` 设置的进程默认后端，以及 `auto` 的自动选择。默认构建包含 `jit`、`gpu-wgpu` 和 `npy`。支持 Cranelift 的宿主在 `auto` 下采用 `tiered`，累计调用或批量行数达到 2,000 后尝试生成机器码。其他宿主使用 `interpreter`，生成机器码失败时也会继续执行 CPU 指令带。按需探测 GPU。标量 `auto` 保持 IEEE binary64 语义。Rust 可通过 `--no-default-features` 自行选择编译特性。
 [后端 API](../src/backend/mod.rs) · [Cranelift 与分层执行](../src/backend/jit.rs)
+
+`backend::named("cranelift")` 请求立即编译机器码。`backend::available()` 列出可用选项，包括 `cpu`、`cpu-parallel` 和 `gpu:wgpu:N` 这样的设备 ID。`gpu` 选择优先级最高且可用的 wgpu 适配器。显式选择设备时，无法执行的程序会返回编译错误。`DeviceBackend::new` 保留 CPU 指令带回退。`backend::select_default("auto")` 恢复自动选择，已经编译的程序继续使用原后端。
+
+C 值 ABI 及其 C++、Python、Julia、R 封装共享同一套选择操作。`num_backend_current_name` 查询当前后端，无需创建句柄。`num_backend_named` 创建用于 `num_backend_compile` 或作用域编译的句柄。`num_backend_select_default` 设置 `num_backend_compile_current` 使用的进程默认后端，传入 `auto` 可恢复自动选择。
+
+嵌入宿主可用 `backend::restrict_to_source` 控制源程序能否获取或使用 GPU 资源。
+仅允许 CPU 的作用域中，`auto` 和 CPU/JIT 选项仍可用。进程默认值由嵌入宿主控制。
+RSSN 并行工作线程继承源程序权限和当前线程的后端覆盖。
+
+NumPy 编解码器支持读入大端或小端、C 或 Fortran 布局的 float32 和 float64 数组，包括零维及空数组。写出采用小端 float64 和行主序。Rust 与 Aevia 使用 `rssn::io::npy` 的同一实现。C 值 ABI 使用 `num_npy_encode(shape, data)` 和 `num_npy_decode(hex)`，每次最多处理 262,144 个元素。ABI 传输十六进制文本，高级封装直接接收和返回字节。
 
 `TieredBackend` 在机器码就绪前使用共享列式解释器处理内置指令批次。达到 32,768 行且当前 CPU 池有多个工作线程时，解释器将批次分成固定大小的块并行执行。含宿主回调的指令带保留逐行执行顺序。调用量达到编译阈值时，系统将编译工作提交给独立的后台线程池。线程池按需创建，使用 `execution::default_cpu_threads()` 确定线程数，最多四个。若机器码编译失败，该函数继续以解释模式执行。
 
 Cranelift 在批次达到 64 行时把原生行循环的编译提交给同一个后台池。编译期间继续使用已有的逐行入口。单输出且无宿主回调的批次达到 32,768 行时，也可在当前 CPU 池中并行运行原生代码。
 
-表达式被降低为直线指令带（tape），其中共享子表达式并折叠常量。指令带支持宿主算子调用、微分和区间求值。`KernelIr::from_tape` 转换可移植的算术、内建函数、比较、选择和索引选列操作。遇到持有宿主函数指针的 `Call`、`Extern1` 或 `Extern2` 时会返回 `DeviceError::Unsupported`。如果表达式已成功生成指令带，而内核转换或设备编译失败，`DeviceBackend` 会用 `TapeFunction` 在宿主执行。设备运行期间，`Compiled` 系列接口用 NaN 表示设备错误。需要处理具体错误时，可直接调用 `Device` API。
+表达式被降低为直线指令带（tape），其中共享子表达式并折叠常量。指令带支持宿主算子调用、微分和区间求值。`KernelIr::from_tape` 转换可移植的算术、内建函数、比较、选择和索引选列操作。遇到持有宿主函数指针的 `Call`、`Extern1` 或 `Extern2` 时会返回 `DeviceError::Unsupported`。如果表达式已成功生成指令带，而内核转换或设备编译失败，由 `DeviceBackend::new` 创建的运行时会用 `TapeFunction` 在宿主执行。设备运行期间，`Compiled` 系列接口用 NaN 表示设备错误。需要处理具体错误时，可直接调用 `Device` API。
 [指令带](../src/backend/tape.rs) · [内核转换](../src/backend/device/kernel.rs) · [设备适配后端](../src/backend/device/mod.rs)
 
 `Tape::column_gather` 构造指令带，第一个输入为偏移量，其余输入为来源列。`Tape::eval_columns` 为每行仅读取选中的来源列。带量纲的清单适配器为各来源列和结果使用同一个正物理参考量。
 
 ## 设备选择与缓冲区
 
-`registry().list()` 列出运行时可用设备。可通过 `get(id)` 指定设备。`default_device()` 优先选择已注册的首个 GPU，其次是在当前 Rayon 池有多个工作线程时选择 `cpu-parallel`，最后选择 `cpu` 或首个可用设备。wgpu 会在名称中标明软件适配器。即使缺少可用适配器，两种 CPU 设备仍然可用。内核清单的 `features.devices` 通过 `build_devices()` 描述本次构建包含的设备支持，运行时探测通过注册表完成。
+`registry().list()` 列出运行时可用设备。可通过 `get(id)` 指定设备。`default_device()` 优先选择排序最靠前的可用 GPU，其次是在当前 Rayon 池有多个工作线程时选择 `cpu-parallel`，最后选择 `cpu` 或首个可用设备。wgpu 按独立显卡、集成显卡、其他、虚拟和软件适配器的顺序排列可用设备，同类保持枚举顺序。`gpu:wgpu:N` 保留 wgpu 的原始枚举编号。打开适配器失败时，设备编号可能不连续。软件适配器会在名称中标明。即使缺少可用适配器，两种 CPU 设备仍然可用。内核清单的 `features.devices` 通过 `build_devices()` 描述本次构建包含的设备支持，运行时探测通过注册表完成。
 [设备注册表](../src/backend/device/mod.rs) · [适配器探测](../src/backend/device/gpu.rs) · [内核清单](../src/kernel/manifest.rs)
 
 全局 Rayon 池自动探测可用 CPU，也可用 `RAYON_NUM_THREADS` 指定线程数。宿主可将内核计算放在自有的 Rayon 池内。并行辅助函数使用当前池，单线程或低于工作量阈值时直接执行。自建线程池的宿主可通过 `execution::default_cpu_threads()` 查询默认线程数，无需启动全局池。 [CPU 执行策略](../src/execution.rs)
