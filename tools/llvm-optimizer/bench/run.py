@@ -52,15 +52,16 @@ def ir_build(args, root, suite, ir, runner, symbol):
     source = root / f"{suite}.ll"
     base = root / f"{suite}-off.ll"
     optimized = root / f"{suite}-transform.ll"
+    tool_env = os.environ | args.llvm_env
     environment = dict(
-        os.environ,
+        tool_env,
         RSSN_SPILL_MODE="off",
         RSSN_SPILL_FILTER="",
         RSSN_SPILL_ABI="off",
         RSSN_SPILL_PLAN_WIDTH=str(args.plan_width),
     )
     source.write_text(ir)
-    build([args.opt, "-mcpu=native", "-passes=default<O3>", "-S", source, "-o", base])
+    build([args.opt, "-mcpu=native", "-passes=default<O3>", "-S", source, "-o", base], env=tool_env)
     build(
         [
             args.opt,
@@ -83,8 +84,8 @@ def ir_build(args, root, suite, ir, runner, symbol):
         asm = binary.with_suffix(".s")
         obj = binary.with_suffix(".o")
         opts = [args.llc, "-mcpu=native", "-O3", ir]
-        build([*opts, "-o", asm])
-        build([*opts, "-filetype=obj", "-o", obj])
+        build([*opts, "-o", asm], env=tool_env)
+        build([*opts, "-filetype=obj", "-o", obj], env=tool_env)
         build([args.cc, "-O3", BENCH / runner, obj, "-o", binary])
         return binary, stack_counts(asm, symbol)
 
@@ -131,6 +132,7 @@ def abi_build(args, root, mode):
 
 def fft_build(args, root, mode):
     target_dir = root / f"rustfft-{mode}"
+    asm = root / f"rustfft-{mode}.s"
     flags = [
         "-Ctarget-cpu=native",
         f"-Zllvm-plugins={args.plugin}",
@@ -148,6 +150,7 @@ def fft_build(args, root, mode):
         RSSN_SPILL_ABI="off",
         RSSN_SPILL_PLAN_WIDTH=str(args.plan_width),
         CARGO_TARGET_DIR=str(target_dir),
+        CARGO_BUILD_BUILD_DIR=str(target_dir),
         CARGO_BUILD_JOBS=str(args.jobs),
         CARGO_ENCODED_RUSTFLAGS="\x1f".join(flags),
     )
@@ -161,8 +164,8 @@ def fft_build(args, root, mode):
     ]
     if args.offline:
         command.append("--offline")
-    build([*command, "--", "--emit=asm,link"], env=env, log=root / f"rustfft-{mode}.log")
-    (asm,) = (target_dir / "release").rglob("rssn_spill_rustfft_bench*.s")
+    # Cargo may store intermediate outputs in a separate build directory.
+    build([*command, "--", f"--emit=asm={asm},link"], env=env, log=root / f"rustfft-{mode}.log")
     return target_dir / "release" / TARGET, stack_counts(asm, "7rustfft")
 
 
@@ -210,6 +213,7 @@ def main():
     parser.add_argument("--work-dir", type=Path, default=BENCH.parent / "build-bench")
     parser.add_argument("--opt", default="opt-23")
     parser.add_argument("--llc", default="llc-23")
+    parser.add_argument("--llvm-env", action="append", default=[], help=argparse.SUPPRESS)
     parser.add_argument("--rustc", default="rustc")
     parser.add_argument("--cargo", default="cargo")
     parser.add_argument("--cc", default="cc")
@@ -223,6 +227,7 @@ def main():
     parser.add_argument("--callback-rounds", type=int, default=4000000)
     parser.add_argument("--abi-rounds", type=int, default=60000000)
     args = parser.parse_args()
+    args.llvm_env = dict(setting.split("=", 1) for setting in args.llvm_env)
     if min(args.jobs, args.fft_rounds, args.callback_rounds, args.abi_rounds) < 1 or args.pairs < 3:
         parser.error("positive jobs and rounds and at least 3 pairs are required")
     if args.cpu is not None and args.cpu not in cpus:

@@ -282,10 +282,11 @@ def llvm_benchmark(build, args):
     build.need_rust()
     bench = build.root / "tools/llvm-optimizer/bench"
     caller = Path(build.env.get("BUILD_WORKING_DIRECTORY", str(build.workspace)))
+    llvm_env = [f"--llvm-env={name}={value}" for name, value in build.llvm_loader_env().items()]
     build.python(bench / "run.py", build.plugin,
                  "--work-dir", build.state / "runs", "--opt", build.sdk_tool("opt"),
                  "--llc", build.sdk_tool("llc"), "--rustc", build.rustc_exe,
-                 "--cargo", build.cargo_exe, *args, cwd=caller, env=build.llvm_loader_env())
+                 "--cargo", build.cargo_exe, *llvm_env, *args, cwd=caller)
 
 
 def llvm_benchmark_build(build, args):
