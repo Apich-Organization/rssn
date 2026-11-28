@@ -1151,7 +1151,7 @@ fn pair_redundant_u64(
 
 fn monic_u64(
     barrett: BarrettMod,
-    terms: &mut Vec<(Mono, u64)>,
+    terms: &mut [(Mono, u64)],
 ) -> Option<()> {
     let Some((_, lead)) = terms.first() else {
         return Some(());

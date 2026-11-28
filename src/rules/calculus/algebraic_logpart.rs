@@ -120,13 +120,6 @@ fn coefficient(
 }
 
 /// A basis of the nullspace of the rational matrix `rows`.
-fn nullspace(
-    rows: Vec<Vec<BigRational>>,
-    columns: usize,
-) -> Vec<Vec<BigRational>> {
-    crate::kernels::qlinalg::nullspace(&rows, columns)
-}
-
 /// Solves `g'/g = (a + b y)/c` for `g = P + Q y` with rational polynomials
 /// `P`, `Q`.
 ///
@@ -198,7 +191,7 @@ fn log_derivative(
     if rows.is_empty() {
         return None;
     }
-    for vector in nullspace(rows, columns) {
+    for vector in crate::kernels::qlinalg::nullspace(&rows, columns) {
         let first = m.saturating_add(1);
         let p = trim(vector[..first].to_vec());
         let q = trim(vector[first..].to_vec());

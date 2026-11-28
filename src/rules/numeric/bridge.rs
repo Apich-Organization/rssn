@@ -491,7 +491,7 @@ pub(super) fn text_opt(
 
 // reason: kept `Option` so every kernel body is a uniform `Option<Data>` expression.
 #[allow(clippy::unnecessary_wraps)]
-pub(super) fn text_out(text: String) -> Option<Data> {
+pub(super) const fn text_out(text: String) -> Option<Data> {
     Some(Data::Text(text))
 }
 
@@ -2222,12 +2222,50 @@ pub(super) type BridgeFn = fn(&[Data]) -> Option<Data>;
 
 /// The kernel reducing every operator of [`ENTRIES`].
 pub(super) struct Bridge {
-    pub(super) ops: Vec<(OpId, BridgeFn)>,
+    ops: Box<[OpId]>,
+    first: usize,
+    dispatch: Box<[Option<BridgeFn>]>,
+}
+
+impl Bridge {
+    pub(super) fn new(entries: Vec<(OpId, BridgeFn)>) -> Self {
+        let first = entries.iter().map(|(op, _)| op.index()).min().unwrap_or(0);
+        let span = entries
+            .iter()
+            .map(|(op, _)| op.index().saturating_sub(first).saturating_add(1))
+            .max()
+            .unwrap_or(0);
+        let mut dispatch = vec![None; span];
+        let mut ops = Vec::with_capacity(entries.len());
+        for (op, eval) in entries {
+            if let Some(slot) = dispatch.get_mut(op.index().saturating_sub(first))
+                && slot.is_none()
+            {
+                *slot = Some(eval);
+                ops.push(op);
+            }
+        }
+        Self {
+            ops: ops.into_boxed_slice(),
+            first,
+            dispatch: dispatch.into_boxed_slice(),
+        }
+    }
+
+    fn evaluator(
+        &self,
+        op: OpId,
+    ) -> Option<BridgeFn> {
+        self.dispatch
+            .get(op.index().wrapping_sub(self.first))
+            .copied()
+            .flatten()
+    }
 }
 
 impl Kernel for Bridge {
     fn ops(&self) -> Vec<OpId> {
-        self.ops.iter().map(|&(op, _)| op).collect()
+        self.ops.to_vec()
     }
 
     fn reduce(
@@ -2236,14 +2274,14 @@ impl Kernel for Bridge {
         node: NodeId,
     ) -> Outcome {
         let op = cx.graph.op(node);
-        let Some(&(_, eval)) = self.ops.iter().find(|&&(o, _)| o == op) else {
+        let Some(eval) = self.evaluator(op) else {
             return Outcome::Pass;
         };
         let args: Option<Vec<Data>> = cx
             .graph
             .children(node)
-            .to_vec()
-            .into_iter()
+            .iter()
+            .copied()
             .map(|child| decode(cx.graph, child))
             .collect();
         let Some(args) = args else {
@@ -2253,5 +2291,35 @@ impl Kernel for Bridge {
             | Some(term) => Outcome::Equal(term),
             | None => Outcome::Pass,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dispatch_preserves_the_first_registration_and_handles_gaps() {
+        let low = OpId::from_raw(10);
+        let high = OpId::from_raw(12);
+        let table = Bridge::new(vec![
+            (high, |_| Some(Data::Scalar(1.0))),
+            (low, |_| Some(Data::Scalar(2.0))),
+            (high, |_| Some(Data::Scalar(3.0))),
+        ]);
+
+        assert_eq!(table.ops(), vec![high, low]);
+        assert!(matches!(
+            table.evaluator(high).and_then(|eval| eval(&[])),
+            Some(Data::Scalar(1.0))
+        ));
+        assert!(matches!(
+            table.evaluator(low).and_then(|eval| eval(&[])),
+            Some(Data::Scalar(2.0))
+        ));
+        for missing in [0, 9, 11, 13, u32::MAX] {
+            assert!(table.evaluator(OpId::from_raw(missing)).is_none());
+        }
+        assert_eq!(Bridge::new(Vec::new()).ops(), Vec::<OpId>::new());
     }
 }

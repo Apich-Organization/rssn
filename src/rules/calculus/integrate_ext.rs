@@ -51,14 +51,6 @@ use crate::rules::poly::univariate::QPoly;
 
 /// Solves a square or overdetermined linear system over `Q` (columns =
 /// unknowns), `None` if inconsistent; free unknowns are set to zero.
-fn solve_q(
-    rows: Vec<Vec<BigRational>>,
-    rhs: Vec<BigRational>,
-    n: usize,
-) -> Option<Vec<BigRational>> {
-    crate::kernels::qlinalg::solve(&rows, n, &rhs)
-}
-
 impl Integrator<'_, '_> {
     fn q_term(
         &mut self,
@@ -851,7 +843,7 @@ impl Integrator<'_, '_> {
         for (k, v) in p.iter().enumerate() {
             rhs[k] = v.clone();
         }
-        let sol = solve_q(rows, rhs, unknowns)?;
+        let sol = crate::kernels::qlinalg::solve(&rows, unknowns, &rhs)?;
         let s_poly: QPoly = sol[..s_len].to_vec();
         let lambda = sol[s_len].clone();
         let mut pieces = Vec::new();

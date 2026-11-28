@@ -20,7 +20,6 @@
 //! single list of numbers for the others.
 
 use super::bridge::Data;
-use super::bridge::Entry;
 use super::bridge::bad;
 use super::bridge::count;
 use super::bridge::require;
@@ -28,35 +27,27 @@ use super::bridge::vector;
 use crate::kernel::diag::DiagKind;
 
 /// Every operator of this family.
-pub(super) const ENTRIES: &[Entry] = &[
-    Entry {
-        name: "rhat",
-        params: "t",
-        eval: rhat,
-        doc: "`rhat(chains)`: the split Gelman–Rubin potential scale reduction of a list of chains of the same parameter; values near 1 indicate the chains have mixed.",
-    },
-    Entry {
-        name: "effective_sample_size",
-        params: "v",
-        eval: effective_sample_size,
-        doc: "`effective_sample_size(chain)`: the effective number of independent draws in `chain`, from the initial positive sequence of its autocorrelations.",
-    },
-    Entry {
-        name: "chain_autocorrelation",
-        params: "vd",
-        eval: chain_autocorrelation,
-        doc: "`chain_autocorrelation(chain, max_lag)`: the sample autocorrelation of `chain` for lags `0..=max_lag`.",
-    },
-    Entry {
-        name: "geweke",
-        params: "v",
-        eval: geweke,
-        doc: "`geweke(chain)`: the Geweke convergence z-score of the first tenth against the last half of `chain`.",
-    },
-];
+reviewed_entries! {
+    (
+        "rhat", "t", rhat, mcmc::rhat,
+        "`rhat(chains)`: the split Gelman–Rubin potential scale reduction of a list of chains of the same parameter; values near 1 indicate the chains have mixed."
+    ),
+    (
+        "effective_sample_size", "v", effective_sample_size, mcmc::effective_sample_size,
+        "`effective_sample_size(chain)`: the effective number of independent draws in `chain`, from the initial positive sequence of its autocorrelations."
+    ),
+    (
+        "chain_autocorrelation", "vd", chain_autocorrelation, mcmc::autocorrelation,
+        "`chain_autocorrelation(chain, max_lag)`: the sample autocorrelation of `chain` for lags `0..=max_lag`."
+    ),
+    (
+        "geweke", "v", geweke, mcmc::geweke,
+        "`geweke(chain)`: the Geweke convergence z-score of the first tenth against the last half of `chain`."
+    ),
+}
 
 fn rhat(args: &[Data]) -> Option<Data> {
-    let Some(Data::Tree(chains)) = args.get(0) else {
+    let Some(Data::Tree(chains)) = args.first() else {
         return bad(
             0,
             DiagKind::Shape,

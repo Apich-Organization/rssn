@@ -1694,14 +1694,6 @@ fn z_interval(
 // ---------------------------------------------------------------------
 
 /// Solves the square system `a x = b` over the rationals.
-fn solve_rational(
-    a: Vec<Vec<BigRational>>,
-    b: Vec<BigRational>,
-) -> Option<Vec<BigRational>> {
-    let n = a.len();
-    crate::kernels::qlinalg::solve_unique(&a, n, &b)
-}
-
 /// Least-squares coefficients for the design matrix `rows` by the normal
 /// equations.
 fn least_squares(
@@ -1719,7 +1711,7 @@ fn least_squares(
             }
         }
     }
-    solve_rational(gram, moment)
+    crate::kernels::qlinalg::solve_unique(&gram, k, &moment)
 }
 
 /// The exact values of a list of numbers, and whether any was a float.

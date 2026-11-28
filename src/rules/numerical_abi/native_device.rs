@@ -91,12 +91,21 @@ macro_rules! native {
 }
 mod extra;
 mod features;
-native!(
-    DeviceObject,
-    "rssn/native/device/v1",
-    8_388_608,
-    |_: &DeviceObject| Ok(())
-);
+impl NativeType for DeviceObject {
+    const KIND: &'static str = "rssn/native/device/v1";
+    const MAX_BYTES: usize = 8_388_608;
+
+    fn validate(&self) -> Result<(), OpError> {
+        Ok(())
+    }
+
+    fn uses_gpu(&self) -> bool {
+        !matches!(
+            self.0.info().kind,
+            d::DeviceKind::Cpu | d::DeviceKind::CpuParallel
+        )
+    }
+}
 native!(
     Registry,
     "rssn/native/device-registry/v1",
@@ -146,15 +155,22 @@ native!(
         }
     }
 );
-native!(
-    Compiled,
-    "rssn/native/device-kernel/v1",
-    1_048_576,
-    |b: &Compiled| {
-        budget(b.native.ir())?;
-        b.native.ir().validate().map_err(api::error)
+impl NativeType for Compiled {
+    const KIND: &'static str = "rssn/native/device-kernel/v1";
+    const MAX_BYTES: usize = 1_048_576;
+
+    fn validate(&self) -> Result<(), OpError> {
+        budget(self.native.ir())?;
+        self.native.ir().validate().map_err(api::error)
     }
-);
+
+    fn uses_gpu(&self) -> bool {
+        !matches!(
+            self.device.info().kind,
+            d::DeviceKind::Cpu | d::DeviceKind::CpuParallel
+        )
+    }
+}
 native!(Op, "rssn/native/device-op/v1", 128, |_: &Op| Ok(()));
 native!(
     Options,
@@ -460,13 +476,13 @@ object_binding!(kind,"num_native_device_kind","crate::backend::device::DeviceKin
 object_binding!(preferred_dtype,"num_native_device_preferred_dtype","crate::backend::device::preferred_dtype","Explicit checked native device adapter. Machine IR and buffers use normalized coordinates; use physical map for independently measured columns. Session, shape and bounded work are validated before native execution.",true,(a:Handle<DeviceObject>)->String,|ctx,a|{let _=ctx;a.with(ctx,|a|Ok(format!("{:?}",d::preferred_dtype(a.0.info()))))});
 object_binding!(dtype_epsilon,"num_native_device_dtype_epsilon","crate::backend::device::dtype_epsilon","Explicit checked native device adapter. Machine IR and buffers use normalized coordinates; use physical map for independently measured columns. Session, shape and bounded work are validated before native execution.",true,(a:Handle<DeviceObject>,kind:String)->f64,|ctx,a,kind|{let _=ctx;a.with(ctx,|a|Ok(d::dtype_epsilon(a.0.info(),dtype(&kind)?)))});
 object_binding!(synchronize,"num_native_device_synchronize","crate::backend::device::Device::synchronize","Explicit checked native device adapter. Machine IR and buffers use normalized coordinates; use physical map for independently measured columns. Session, shape and bounded work are validated before native execution.",true,(a:Handle<DeviceObject>)->bool,|ctx,a|{let _=ctx;a.with(ctx,|a|{a.0.synchronize().map_err(api::error)?;Ok(true)})});
-object_binding!(registry_new,"num_native_device_registry_new","crate::backend::device::DeviceRegistry::new","Explicit checked native device adapter. Machine IR and buffers use normalized coordinates; use physical map for independently measured columns. Session, shape and bounded work are validated before native execution.",true,()->NewObject<Registry>,|ctx,|{let _=ctx;Ok(NewObject::normalized(Registry(d::DeviceRegistry::new())))});
+object_binding!(registry_new,"num_native_device_registry_new","crate::backend::device::DeviceRegistry::new","Explicit checked native device adapter. Machine IR and buffers use normalized coordinates; use physical map for independently measured columns. Session, shape and bounded work are validated before native execution.",true,()->NewObject<Registry>,|_ctx,|{let r=if crate::backend::access::gpu_allowed(){d::DeviceRegistry::new()}else{d::DeviceRegistry::cpu_only()};Ok(NewObject::normalized(Registry(r)))});
 object_binding!(registry_empty,"num_native_device_registry_empty","crate::backend::device::DeviceRegistry::empty","Explicit checked native device adapter. Machine IR and buffers use normalized coordinates; use physical map for independently measured columns. Session, shape and bounded work are validated before native execution.",true,()->NewObject<Registry>,|ctx,|{let _=ctx;Ok(NewObject::normalized(Registry(d::DeviceRegistry::empty())))});
-object_binding!(registry_global,"num_native_device_registry_global","crate::backend::device::registry","Explicit checked native device adapter. Machine IR and buffers use normalized coordinates; use physical map for independently measured columns. Session, shape and bounded work are validated before native execution.",true,()->String,|ctx,|{let _=ctx;serde_json::to_string(&d::registry().list()).map_err(api::error)});
-object_binding!(registry_list,"num_native_device_registry_list","crate::backend::device::DeviceRegistry::list","Explicit checked native device adapter. Machine IR and buffers use normalized coordinates; use physical map for independently measured columns. Session, shape and bounded work are validated before native execution.",true,(a:Handle<Registry>)->String,|ctx,a|{let _=ctx;a.with(ctx,|a|serde_json::to_string(&a.0.list()).map_err(api::error))});
+object_binding!(registry_global,"num_native_device_registry_global","crate::backend::device::registry","Explicit checked native device adapter. Machine IR and buffers use normalized coordinates; use physical map for independently measured columns. Session, shape and bounded work are validated before native execution.",true,()->String,|_ctx,|serde_json::to_string(&d::registry_for_source().list()).map_err(api::error));
+object_binding!(registry_list,"num_native_device_registry_list","crate::backend::device::DeviceRegistry::list","Explicit checked native device adapter. Machine IR and buffers use normalized coordinates; use physical map for independently measured columns. Session, shape and bounded work are validated before native execution.",true,(a:Handle<Registry>)->String,|ctx,a|a.with(ctx,|a|{let allow_gpu=crate::backend::access::gpu_allowed();let mut devices=a.0.list();devices.retain(|d|allow_gpu||matches!(d.kind,d::DeviceKind::Cpu|d::DeviceKind::CpuParallel));serde_json::to_string(&devices).map_err(api::error)}));
 object_binding!(registry_register,"num_native_device_registry_register","crate::backend::device::DeviceRegistry::register","Explicit checked native device adapter. Machine IR and buffers use normalized coordinates; use physical map for independently measured columns. Session, shape and bounded work are validated before native execution.",true,(a:Handle<Registry>,device:Handle<DeviceObject>)->bool,|ctx,a,device|{let _=ctx;device.with(ctx,|d|a.with(ctx,|a|{if a.0.list().len()>=2{return Err(api::error("owned registry device count budget exceeded"));}a.0.register(d.0.clone()).map_err(api::error)?;Ok(true)}))});
 object_binding!(registry_get,"num_native_device_registry_get","crate::backend::device::DeviceRegistry::get","Explicit checked native device adapter. Machine IR and buffers use normalized coordinates; use physical map for independently measured columns. Session, shape and bounded work are validated before native execution.",true,(a:Handle<Registry>,id:String)->Maybe<NewObject<DeviceObject>>,|ctx,a,id|{let _=ctx;a.with(ctx,|a|Ok(Maybe(a.0.get(&id).map(|d|NewObject::normalized(DeviceObject(d))))))});
-object_binding!(registry_default,"num_native_device_registry_default","crate::backend::device::DeviceRegistry::default_device","Explicit checked native device adapter. Machine IR and buffers use normalized coordinates; use physical map for independently measured columns. Session, shape and bounded work are validated before native execution.",true,(a:Handle<Registry>)->Maybe<NewObject<DeviceObject>>,|ctx,a|{let _=ctx;a.with(ctx,|a|Ok(Maybe(a.0.default_device().map(|d|NewObject::normalized(DeviceObject(d))))))});
+object_binding!(registry_default,"num_native_device_registry_default","crate::backend::device::DeviceRegistry::default_device","Explicit checked native device adapter. Machine IR and buffers use normalized coordinates; use physical map for independently measured columns. Session, shape and bounded work are validated before native execution.",true,(a:Handle<Registry>)->Maybe<NewObject<DeviceObject>>,|ctx,a|{let _=ctx;a.with(ctx,|a|Ok(Maybe(a.0.default_allowed_device(crate::backend::access::gpu_allowed()).map(|d|NewObject::normalized(DeviceObject(d))))))});
 object_binding!(registry_first,"num_native_device_registry_first","crate::backend::device::DeviceRegistry::first_of","Explicit checked native device adapter. Machine IR and buffers use normalized coordinates; use physical map for independently measured columns. Session, shape and bounded work are validated before native execution.",true,(a:Handle<Registry>,kind:String)->Maybe<NewObject<DeviceObject>>,|ctx,a,kind|{let _=ctx;let kind=match kind.as_str(){"Cpu"=>d::DeviceKind::Cpu,"CpuParallel"=>d::DeviceKind::CpuParallel,_=>return Err(api::error("explicit CPU registry specialization expects Cpu/CpuParallel"))};a.with(ctx,|a|Ok(Maybe(a.0.first_of(&kind).map(|d|NewObject::normalized(DeviceObject(d))))))});
 object_binding!(alloc,"num_native_device_alloc","crate::backend::device::Device::alloc","Explicit checked native device adapter. Machine IR and buffers use normalized coordinates; use physical map for independently measured columns. Session, shape and bounded work are validated before native execution.",true,(a:Handle<DeviceObject>,len:usize,kind:String)->NewObject<BufferObject>,|ctx,a,len,kind|{let _=ctx;if len>LIMIT{return Err(api::error("buffer allocation budget exceeded"));}a.with(ctx,|a|Ok(NewObject::normalized(BufferObject(a.0.alloc(len,dtype(&kind)?).map_err(api::error)?))))});
 object_binding!(upload,"num_native_device_upload","crate::backend::device::Device::upload","Explicit checked native device adapter. Machine IR and buffers use normalized coordinates; use physical map for independently measured columns. Session, shape and bounded work are validated before native execution.",true,(a:Handle<DeviceObject>,values:Vec<f64>,kind:String)->NewObject<BufferObject>,|ctx,a,values,kind|{let _=ctx;if values.len()>LIMIT{return Err(api::error("buffer allocation budget exceeded"));}a.with(ctx,|a|Ok(NewObject::normalized(BufferObject(a.0.upload(&values,dtype(&kind)?).map_err(api::error)?))))});

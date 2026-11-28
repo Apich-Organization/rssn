@@ -30,10 +30,14 @@
 //! refused — silently choosing one is how a typed caller and the runtime drift
 //! apart.
 
+use crate::graph::DimError;
+use crate::kernel::call::OpError;
+use crate::kernel::signature::ArityInfo;
 use crate::kernel::signature::DimExpr;
 use crate::kernel::signature::NatExpr;
 use crate::kernel::signature::Signature;
 use crate::kernel::signature::TypeExpr;
+use crate::kernel::signature::dim_name;
 use crate::kernel::value::Value;
 
 /// How one parameter accepts one argument.
@@ -596,6 +600,105 @@ pub fn score_types(
     })
 }
 
+// Called after the exact signature has rejected these types. Keep the same
+// parameter walk as scoring, including the repeated variadic slot.
+pub(crate) fn diagnose_rejected(
+    signature: &Signature,
+    args: &[TypeExpr],
+) -> OpError {
+    if !signature.accepts_arity(args.len()) {
+        let fixed = signature.arity();
+        let (min, max) = signature
+            .variadic
+            .as_ref()
+            .map_or((fixed, Some(fixed)), |tail| {
+                (
+                    fixed.saturating_add(usize::from(tail.min)),
+                    tail.max.map(|max| fixed.saturating_add(usize::from(max))),
+                )
+            });
+        let (Ok(min), Ok(max)) = (u8::try_from(min), max.map(u8::try_from).transpose()) else {
+            return OpError::Internal(format!("signature arity {min}..{max:?} exceeds ArityInfo"));
+        };
+        return OpError::Arity {
+            expected: ArityInfo { min, max },
+            got: args.len(),
+        };
+    }
+    let mut failure = None;
+    let _ = score_fold(signature, args.len(), |index, expected| {
+        let actual = &args[index];
+        let matched = matches_type(expected, actual);
+        if !matched.accepted() {
+            failure = Some(
+                scalar_dimension_conflict(expected, actual, index).unwrap_or_else(|| {
+                    OpError::Type {
+                        expected: Box::new(expected.clone()),
+                        got: Box::new(actual.clone()),
+                        arg: index,
+                    }
+                }),
+            );
+        }
+        matched
+    });
+    failure.unwrap_or_else(|| {
+        OpError::Internal("rejected signature has no failing parameter".to_owned())
+    })
+}
+
+// Only scalar results have a single proven dimension here. Substitute the
+// expected dimension into the advertised actual type and run the real matcher
+// again. Any simultaneous kind, rank, shape or callback-parameter mismatch
+// still prevents acceptance.
+fn scalar_dimension_conflict(
+    expected: &TypeExpr,
+    actual: &TypeExpr,
+    index: usize,
+) -> Option<OpError> {
+    fn number_parts(ty: &TypeExpr) -> Option<(&TypeExpr, &DimExpr)> {
+        let (number, dim) = match ty {
+            | TypeExpr::Dim(inner, dim) => (inner.as_ref(), dim),
+            | _ => (ty, &DimExpr::Dimless),
+        };
+        matches!(
+            number,
+            TypeExpr::Int | TypeExpr::Real | TypeExpr::Float | TypeExpr::Complex
+        )
+        .then_some((number, dim))
+    }
+
+    let (expected_scalar, actual_scalar, params) = match (expected, actual) {
+        | (TypeExpr::Function(_, expected), TypeExpr::Function(params, actual)) => {
+            (expected.as_ref(), actual.as_ref(), Some(params))
+        },
+        | _ => (expected, actual, None),
+    };
+    let (_, expected_dim) = number_parts(expected_scalar)?;
+    let (actual_number, actual_dim) = number_parts(actual_scalar)?;
+    if canonical_concrete_dimension(expected_dim)? == canonical_concrete_dimension(actual_dim)? {
+        return None;
+    }
+
+    let corrected = TypeExpr::Dim(Box::new(actual_number.clone()), expected_dim.clone());
+    let corrected = match params {
+        | Some(params) => TypeExpr::Function(params.clone(), Box::new(corrected)),
+        | None => corrected,
+    };
+    matches_type(expected, &corrected).accepted().then(|| {
+        let location = if params.is_some() {
+            " callback result"
+        } else {
+            ""
+        };
+        OpError::Dimension(DimError::Mismatch {
+            left: dim_name(expected_dim),
+            right: dim_name(actual_dim),
+            context: format!("argument {index}{location}"),
+        })
+    })
+}
+
 /// The outcome of choosing among the overloads of one operator.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Best {
@@ -743,6 +846,95 @@ mod tests {
     use crate::kernel::value::QuantityValue;
     use num_bigint::BigInt;
     use num_rational::BigRational;
+
+    #[test]
+    fn rejected_signature_reports_fixed_and_variadic_arity() {
+        let signature = Signature::new(vec![TypeExpr::Int], TypeExpr::Real);
+        assert_eq!(
+            diagnose_rejected(&signature, &[]),
+            OpError::Arity {
+                expected: ArityInfo::fixed(1),
+                got: 0
+            }
+        );
+        let variadic = signature.variadic(crate::kernel::signature::Variadic {
+            min: 1,
+            max: Some(2),
+            elem: TypeExpr::Float,
+        });
+        assert_eq!(
+            diagnose_rejected(&variadic, &[TypeExpr::Int]),
+            OpError::Arity {
+                expected: ArityInfo { min: 2, max: Some(3) },
+                got: 1
+            }
+        );
+        assert!(matches!(
+            diagnose_rejected(&variadic, &[TypeExpr::Int, TypeExpr::Float, TypeExpr::Bool]),
+            OpError::Type { arg: 2, expected, got }
+                if *expected == TypeExpr::Float && *got == TypeExpr::Bool
+        ));
+    }
+
+    #[test]
+    fn rejected_signature_reports_only_proven_scalar_dimensions() {
+        let time = DimExpr::base("Time");
+        let length = DimExpr::base("Length");
+        let measured = TypeExpr::Float.with_dim(time.clone());
+        let scalar = Signature::new(vec![measured.clone()], TypeExpr::Float);
+        assert!(matches!(
+            diagnose_rejected(&scalar, &[TypeExpr::Float]),
+            OpError::Dimension(DimError::Mismatch { left, right, context })
+                if left == "Time" && right == "1" && context == "argument 0"
+        ));
+        assert!(matches!(
+            diagnose_rejected(&scalar, &[TypeExpr::Float.with_dim(length.clone())]),
+            OpError::Dimension(DimError::Mismatch { left, right, .. })
+                if left == "Time" && right == "Length"
+        ));
+        assert!(matches!(
+            diagnose_rejected(&scalar, &[TypeExpr::Real.with_dim(length.clone())]),
+            OpError::Type { arg: 0, .. }
+        ));
+        let tensor = |rank| {
+            TypeExpr::Tensor {
+                rank: NatExpr::Lit(rank),
+                shape: None,
+                elem: Box::new(TypeExpr::Float),
+            }
+        };
+        let callback = |rank, ret| TypeExpr::Function(vec![tensor(rank)], Box::new(ret));
+        let pinned = Signature::new(vec![callback(1, TypeExpr::Float)], TypeExpr::Float);
+        assert!(matches!(
+            diagnose_rejected(&pinned, &[callback(1, measured.clone())]),
+            OpError::Dimension(DimError::Mismatch { left, right, context })
+                if left == "1" && right == "Time" && context == "argument 0 callback result"
+        ));
+        for candidate in [
+            callback(2, measured),
+            callback(1, TypeExpr::Bool),
+            TypeExpr::Function(Vec::new(), Box::new(TypeExpr::Float.with_dim(time.clone()))),
+        ] {
+            assert!(matches!(
+                diagnose_rejected(&pinned, &[candidate]),
+                OpError::Type { arg: 0, .. }
+            ));
+        }
+        let pinned = Signature::new(
+            vec![callback(1, TypeExpr::Float.with_dim(time.clone()))],
+            TypeExpr::Float,
+        );
+        let unknown = callback(1, TypeExpr::Float.with_dim(DimExpr::Any));
+        assert!(score_types(&pinned, std::slice::from_ref(&unknown)).is_none());
+        assert!(matches!(
+            diagnose_rejected(&pinned, &[unknown]),
+            OpError::Type { arg: 0, .. }
+        ));
+        let area_time = TypeExpr::Float.with_dim(DimExpr::Mul(vec![time.clone(), length.clone()]));
+        let reordered = TypeExpr::Float.with_dim(DimExpr::Mul(vec![length, time]));
+        let pinned = Signature::new(vec![callback(1, area_time)], TypeExpr::Float);
+        assert!(score_types(&pinned, &[callback(1, reordered)]).is_some());
+    }
 
     /// A `Real`: an exact rational, not a `Float`, so the parameter matches
     /// exactly rather than by widening.

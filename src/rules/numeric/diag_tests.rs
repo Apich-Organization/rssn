@@ -423,3 +423,30 @@ fn the_session_reports_why_an_operator_did_not_reduce() {
     let diag = session.explain(term).expect("a reason");
     assert_eq!(diag.kind, DiagKind::Shape, "{diag}");
 }
+
+#[test]
+fn model_prediction_refuses_short_rows_even_after_a_valid_first_row() {
+    let session = Session::new();
+    for (op, request, correct, expected) in [
+        (
+            "glm_predict",
+            "glm_predict(list(list(1,2),list(3)),list(1,2,3),identity)",
+            "glm_predict(list(list(1,2),list(3,4)),list(1,2,3),identity)",
+            vec![9.0, 19.0],
+        ),
+        (
+            "cox_predict",
+            "cox_predict(list(list(1,2),list(3)),list(1,2))",
+            "cox_predict(list(list(1,2),list(3,4)),list(1,2))",
+            vec![5.0_f64.exp(), 11.0_f64.exp()],
+        ),
+    ] {
+        let request = session.parse(request).unwrap();
+        let error = session.explain(request).unwrap();
+        assert_eq!(
+            (error.op.as_str(), error.kind, error.arg),
+            (op, DiagKind::Shape, Some(0))
+        );
+        close(&flat(&run(correct)), &expected, 1e-10);
+    }
+}

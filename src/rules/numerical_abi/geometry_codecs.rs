@@ -128,9 +128,16 @@ binding!(bvh_nearest,"num_bvh_nearest","numerical_vector","Nearest AABB on a por
 binding!(bvh_ray,"num_bvh_ray","numerical_vector","Indices of AABBs hit by origin+t*direction, t>=0, on an immutable portable BVH. Origin shares coordinate units; direction is dimensionless and nonzero. Payload kind/version, finite corners and allocation bounds are checked before reconstruction.","crate::kernels::geometry::Bvh::ray_intersect",DimensionPolicy::SpatialRay,
 (model:crate::rules::numerical_abi::codecs::BvhModel,origin:[f64;3],direction:[f64;3])->Result<Vec<usize>,OpError>,|model:super::BvhModel,origin:[f64;3],direction:[f64;3]|{if direction.iter().all(|v|crate::kernels::exact_eq(*v,0.0)){return Err(super::model_error("BVH ray direction must be nonzero"));}let boxes=super::bvh_boxes(&model.payload.0)?;Ok(crate::kernels::geometry::Bvh::build(&boxes).ray_intersect(origin,direction))});
 
-/// Explicit adapters for dimensioned Voronoi topology and portable BVH data.
+include!("mesh_codecs.rs");
+
+/// Adapters for measured meshes, Voronoi topology and portable BVH data.
 pub const GEOMETRY_EXPORTS: &[&CodecExport] = &[
     &voronoi_diagram::EXPORT,
+    &meshgen_triangle_areas::EXPORT,
+    &meshgen_tetra_volumes::EXPORT,
+    &meshgen_min_angle_deg::EXPORT,
+    &meshgen_boundary_faces::EXPORT,
+    &meshgen_delaunay_2d_incremental::EXPORT,
     &bvh_build::EXPORT,
     &bvh_nearest::EXPORT,
     &bvh_ray::EXPORT,

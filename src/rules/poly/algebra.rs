@@ -651,7 +651,7 @@ fn sign_at_z(
             let mut den_pow = BigInt::one();
             for (i, c) in q.iter().rev().enumerate() {
                 if i == 0 {
-                    acc = c.clone();
+                    acc.clone_from(c);
                 } else {
                     den_pow *= den;
                     acc = acc * num + c * &den_pow;

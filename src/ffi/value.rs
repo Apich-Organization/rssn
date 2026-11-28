@@ -57,6 +57,8 @@ use super::guard;
 use super::to_c;
 use crate::kernel::call::CallCtx;
 use crate::kernel::call::OpError;
+use crate::kernel::signature::DimExpr;
+use crate::kernel::signature::OpKey;
 use crate::kernel::signature::TypeExpr;
 use crate::kernel::value::TensorValue;
 use crate::kernel::value::Value;
@@ -64,13 +66,13 @@ use crate::kernel::value::ValueKind;
 
 /// A session-owned table of dynamic values.
 #[derive(Debug)]
-pub(crate) struct ValueBank {
+pub struct ValueBank {
     next: u32,
     cells: BTreeMap<u32, Value>,
 }
 
 impl ValueBank {
-    pub(crate) fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             next: 1,
             cells: BTreeMap::new(),
@@ -196,7 +198,7 @@ fn with_session(
 ) -> RssnStatus {
     guard(|| {
         // SAFETY: caller contract.
-        match unsafe { borrow(raw) }.and_then(|session| body(session)) {
+        match unsafe { borrow(raw) }.and_then(body) {
             | Ok(()) => RssnStatus::Ok,
             | Err(status) => status,
         }
@@ -252,17 +254,76 @@ fn store(
 
 /// A rank-one tensor of `values`, typed with their common type when they have
 /// one (the term type otherwise, which every operator accepts).
-fn list_value(values: Vec<Value>) -> Value {
-    let elem = values
-        .first()
-        .map(Value::type_expr)
-        .filter(|first| values.iter().all(|value| value.type_expr() == *first))
+pub(super) fn list_value(values: Vec<Value>) -> Value {
+    cell_tensor(vec![values.len()], values, false)
+}
+
+fn tensor_element_type(
+    value: &Value,
+    context: &CallCtx<'_>,
+) -> TypeExpr {
+    match value {
+        | Value::Dyn(witness) if matches!(witness.value.as_ref(), Value::Float(_)) => {
+            context
+                .value_type(value)
+                .unwrap_or_else(|_| value.type_expr())
+        },
+        | _ => value.type_expr(),
+    }
+}
+
+fn exact_cell_widens_to_real(
+    integer_type: &TypeExpr,
+    real: &TypeExpr,
+) -> bool {
+    let integer = |ty: &TypeExpr| {
+        matches!(ty, TypeExpr::Int)
+            || matches!(ty, TypeExpr::Dim(inner, _) if **inner == TypeExpr::Int)
+    };
+    let rational = |ty: &TypeExpr| {
+        matches!(ty, TypeExpr::Real)
+            || matches!(ty, TypeExpr::Dim(inner, _) if **inner == TypeExpr::Real)
+    };
+    integer(integer_type)
+        && rational(real)
+        && crate::kernel::overload::matches_type(real, integer_type)
+            == crate::kernel::overload::Match::Widened
+}
+
+fn cell_tensor(
+    shape: Vec<usize>,
+    values: Vec<Value>,
+    join_exact_numeric: bool,
+) -> Value {
+    let context = CallCtx::new();
+    let mut types = values
+        .iter()
+        .map(|value| tensor_element_type(value, &context));
+    let elem = types
+        .next()
+        .and_then(|first| {
+            types.try_fold(first, |common, actual| {
+                if actual == common
+                    || matches!(
+                        (&common, &actual),
+                        (TypeExpr::Dim(expected, _), TypeExpr::Dim(got, _))
+                            if expected.as_ref() == &TypeExpr::Float
+                                && got.as_ref() == &TypeExpr::Float
+                                && crate::kernel::overload::matches_type(&common, &actual)
+                                    == crate::kernel::overload::Match::Exact
+                    )
+                    || (join_exact_numeric && exact_cell_widens_to_real(&actual, &common))
+                {
+                    Some(common)
+                } else if join_exact_numeric && exact_cell_widens_to_real(&common, &actual) {
+                    Some(actual)
+                } else {
+                    None
+                }
+            })
+        })
         .unwrap_or_else(crate::kernel::infer::term);
-    Value::Tensor(TensorValue {
-        shape: vec![values.len()],
-        data: values,
-        elem,
-    })
+    Value::Tensor(TensorValue::of(shape, values, elem))
 }
 
 /// Fills a `RssnTensor` with owned buffers, as `rssn_tensor_free` expects.
@@ -337,6 +398,38 @@ pub unsafe extern "C" fn rssn_value_new_int(
 ) -> RssnStatus {
     with_session(session, |session| {
         store(session, Value::Int(value.into()), out)
+    })
+}
+
+/// Stores an exact integer from signed decimal digits and writes its cell id.
+///
+/// The input accepts an optional leading sign and one or more ASCII digits.
+///
+/// # Safety
+/// `session` must be live, `value` must be NUL-terminated, and `out` writable.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_value_new_int_decimal(
+    session: *const RssnSession,
+    value: *const c_char,
+    out: *mut u32,
+) -> RssnStatus {
+    with_session(session, |session| {
+        // SAFETY: caller contract.
+        let text = unsafe { super::text(value) }?;
+        let digits = text.strip_prefix(['+', '-']).unwrap_or(text);
+        if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+            return Err(fail(
+                RssnStatus::InvalidArgument,
+                "expected signed decimal integer digits",
+            ));
+        }
+        let integer = text.parse().map_err(|_| {
+            fail(
+                RssnStatus::InvalidArgument,
+                "could not parse the exact decimal integer",
+            )
+        })?;
+        store(session, Value::Int(integer), out)
     })
 }
 
@@ -441,9 +534,8 @@ pub unsafe extern "C" fn rssn_value_new_list(
 /// Stores a dense `f64` tensor and writes its cell id to `*out`.
 ///
 /// # Safety
-/// `data` must hold `len` values, `shape` must hold `rank` extents whose
-/// product is `len`, `session` must be a live session, and `out` a valid
-/// pointer.
+/// `data` must hold `len` values and `shape` must hold `rank` extents.
+/// `session` must be a live session and `out` must be a valid pointer.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_value_new_tensor(
     session: *const RssnSession,
@@ -457,27 +549,14 @@ pub unsafe extern "C" fn rssn_value_new_tensor(
         if len > 0 && data.is_null() {
             return Err(fail(RssnStatus::NullArgument, "null tensor data"));
         }
-        if rank > 0 && shape.is_null() {
-            return Err(fail(RssnStatus::NullArgument, "null tensor shape"));
-        }
-        // SAFETY: caller contract; a null pointer is allowed only for an empty
-        // extent list, and `from_raw_parts` requires a non-null pointer.
+        // SAFETY: caller contract. Null is accepted for rank zero.
+        let extents = unsafe { tensor_extents(shape, rank, len) }?;
+        // SAFETY: caller contract; from_raw_parts requires a non-null pointer.
         let values: &[f64] = if len == 0 {
             &[]
         } else {
             unsafe { std::slice::from_raw_parts(data, len) }
         };
-        let extents: &[usize] = if rank == 0 {
-            &[]
-        } else {
-            unsafe { std::slice::from_raw_parts(shape, rank) }
-        };
-        if rank > 0 && extents.iter().product::<usize>() != len {
-            return Err(fail(
-                RssnStatus::InvalidArgument,
-                "tensor shape does not match the data length",
-            ));
-        }
         let tensor = TensorValue {
             shape: extents.to_vec(),
             data: values.iter().copied().map(Value::Float).collect(),
@@ -488,6 +567,145 @@ pub unsafe extern "C" fn rssn_value_new_tensor(
             elem: TypeExpr::Float,
         };
         store(session, Value::Tensor(tensor), out)
+    })
+}
+
+/// Copies `len` cells into a dense row-major tensor with `rank` extents.
+///
+/// Cells carry their original values, including exact integers and rationals.
+/// The elements have their common type when it can be inferred, or the
+/// dynamic term type otherwise. Rank zero takes one cell. A shape containing
+/// a zero extent takes no cells. For that empty case, a nonzero `exemplar_cell`
+/// supplies the element type of an existing cell. Pass zero to infer the type.
+/// The result owns its data independently and leaves inputs and `*out`
+/// unchanged on failure.
+///
+/// # Safety
+/// `session` and `out` must be live. `cells` must contain `len` cell IDs from
+/// that session, and `shape` must hold `rank` extents. A nonzero exemplar ID
+/// must belong to the same session. The arrays may be null only when their
+/// respective lengths are zero.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_value_new_tensor_cells(
+    session: *const RssnSession,
+    cells: *const u32,
+    len: usize,
+    shape: *const usize,
+    rank: usize,
+    exemplar_cell: u32,
+    out: *mut u32,
+) -> RssnStatus {
+    with_session(session, |session| {
+        if len > 0 && cells.is_null() {
+            return Err(fail(RssnStatus::NullArgument, "null tensor cells"));
+        }
+        if out.is_null() {
+            return Err(fail(RssnStatus::NullArgument, "null output pointer"));
+        }
+        // SAFETY: caller contract. Null is accepted for rank zero.
+        let extents = unsafe { tensor_extents(shape, rank, len) }?;
+        if exemplar_cell != 0 {
+            if len != 0 {
+                return Err(fail(
+                    RssnStatus::InvalidArgument,
+                    "an element exemplar requires an empty tensor",
+                ));
+            }
+            let elem = with_cell(session, exemplar_cell, |value| {
+                Ok(tensor_element_type(value, &CallCtx::new()))
+            })?;
+            return store(
+                session,
+                Value::Tensor(TensorValue::of(extents.to_vec(), Vec::new(), elem)),
+                out,
+            );
+        }
+        let ids = if len == 0 {
+            &[]
+        } else {
+            // SAFETY: a non-null `cells` holds `len` readable cell IDs.
+            unsafe { std::slice::from_raw_parts(cells, len) }
+        };
+        let values = collect_values(session, ids)?;
+        store(session, cell_tensor(extents.to_vec(), values, true), out)
+    })
+}
+
+/// # Safety
+/// `shape` must hold `rank` extents for the returned borrow, or be null
+/// when `rank` is zero.
+unsafe fn tensor_extents<'a>(
+    shape: *const usize,
+    rank: usize,
+    len: usize,
+) -> Result<&'a [usize], RssnStatus> {
+    let extents = if rank == 0 {
+        &[]
+    } else {
+        if shape.is_null() {
+            return Err(fail(RssnStatus::NullArgument, "null tensor shape"));
+        }
+        // SAFETY: caller contract.
+        unsafe { std::slice::from_raw_parts(shape, rank) }
+    };
+    if TensorValue::checked_extent(extents) != Some(len) {
+        return Err(fail(
+            RssnStatus::InvalidArgument,
+            "tensor shape does not match the data length",
+        ));
+    }
+    Ok(extents)
+}
+
+pub(super) const MAX_COHERENT_DIMENSION_JSON_BYTES: usize = 65_536;
+
+/// Attaches a concrete dimension to a Float or dense Float tensor.
+///
+/// The cell contains magnitudes already in coherent units. `dimension_json`
+/// is UTF-8 `DimExpr` JSON as used in the kernel manifest, with at most 65,536
+/// bytes and no terminating NUL required. The output is a fresh session-owned
+/// cell. The input cell and `*out` are left unchanged on failure.
+///
+/// # Safety
+/// `session` must be a live session, `dimension_json` must point to
+/// `dimension_json_len` readable bytes, and `out` must be a valid pointer.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_value_with_coherent_dimension(
+    session: *const RssnSession,
+    cell_id: u32,
+    dimension_json: *const u8,
+    dimension_json_len: usize,
+    out: *mut u32,
+) -> RssnStatus {
+    with_session(session, |session| {
+        if out.is_null() || dimension_json.is_null() {
+            return Err(fail(
+                RssnStatus::NullArgument,
+                "null dimension JSON or output pointer",
+            ));
+        }
+        if dimension_json_len == 0 || dimension_json_len > MAX_COHERENT_DIMENSION_JSON_BYTES {
+            return Err(fail(
+                RssnStatus::InvalidArgument,
+                "dimension JSON must contain 1 to 65536 bytes",
+            ));
+        }
+        // SAFETY: the non-null input holds dimension_json_len readable bytes.
+        let bytes = unsafe { std::slice::from_raw_parts(dimension_json, dimension_json_len) };
+        let text = std::str::from_utf8(bytes)
+            .map_err(|_| fail(RssnStatus::InvalidUtf8, "dimension JSON is not UTF-8"))?;
+        let dimension = serde_json::from_str::<DimExpr>(text).map_err(|error| {
+            fail(
+                RssnStatus::InvalidArgument,
+                &format!("invalid dimension JSON: {error}"),
+            )
+        })?;
+        let measured = with_cell(session, cell_id, |value| {
+            value
+                .with_coherent_dimension(&dimension)
+                .map_err(|error| op_error(&error))
+        })?;
+        store(session, measured, out)
     })
 }
 
@@ -587,6 +805,25 @@ pub unsafe extern "C" fn rssn_value_new_record(
 // ---------------------------------------------------------------------------
 // calling
 // ---------------------------------------------------------------------------
+/// # Safety
+/// `args` must be null or point to `count` readable cell ids.
+unsafe fn argument_values(
+    session: &RssnSession,
+    args: *const u32,
+    count: usize,
+) -> Result<Vec<Value>, RssnStatus> {
+    let ids = if count == 0 {
+        &[]
+    } else {
+        if args.is_null() {
+            return Err(fail(RssnStatus::NullArgument, "null argument array"));
+        }
+        // SAFETY: `args` is non-null and holds `count` ids by the caller's contract.
+        unsafe { std::slice::from_raw_parts(args, count) }
+    };
+    collect_values(session, ids)
+}
+
 /// Calls the operator `op` with the `count` argument cells and stores the
 /// result as a new cell.
 ///
@@ -616,21 +853,67 @@ pub unsafe extern "C" fn rssn_value_call(
     with_session(session, |session| {
         // SAFETY: caller contract.
         let name = unsafe { super::text(op) }?;
-        if count > 0 && args.is_null() {
-            return Err(fail(RssnStatus::NullArgument, "null argument array"));
-        }
-        // SAFETY: `args` holds `count` ids by the caller's contract; a null
-        // pointer is allowed only when `count` is 0.
-        let ids: &[u32] = if count == 0 {
-            &[]
-        } else {
-            unsafe { std::slice::from_raw_parts(args, count) }
-        };
-        let values = collect_values(session, ids)?;
+        // SAFETY: the argument array follows the caller contract.
+        let values = unsafe { argument_values(session, args, count) }?;
         let ctx = context(session);
         let result = session
             .session
             .call_value(name, &values, &ctx)
+            .map_err(|error| op_error(&error))?;
+        store(session, result, out)
+    })
+}
+
+/// Calls the exact operator overload identified by the manifest key.
+///
+/// Pass the canonical name, registered rule set, and the 16 bytes in
+/// `signature_hash` from an operator's `keys` entry. The engine checks input
+/// values against the selected overload. The result is an owned value cell
+/// with the same lifetime and execution context as [`rssn_value_call`].
+///
+/// # Safety
+/// `session` must be a live session. `rule_set` and `name` must be readable
+/// NUL-terminated strings. `signature_hash` must hold 16 readable bytes.
+/// `args` must hold `count` cell ids (null is allowed when `count` is 0).
+/// `out` must be valid for writing one cell id.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_value_call_key(
+    session: *const RssnSession,
+    rule_set: *const c_char,
+    name: *const c_char,
+    signature_hash: *const u8,
+    args: *const u32,
+    count: usize,
+    out: *mut u32,
+) -> RssnStatus {
+    with_session(session, |session| {
+        if signature_hash.is_null() || out.is_null() {
+            return Err(fail(
+                RssnStatus::NullArgument,
+                "null signature hash or output pointer",
+            ));
+        }
+        // SAFETY: the strings and 16-byte hash follow the caller contract.
+        let rule_set = unsafe { super::text(rule_set) }?;
+        let name = unsafe { super::text(name) }?;
+        if rule_set.is_empty() || name.is_empty() {
+            return Err(fail(
+                RssnStatus::InvalidArgument,
+                "operator key needs a rule set and name",
+            ));
+        }
+        // SAFETY: non-null and readable for 16 bytes by the caller's contract.
+        let signature_hash = unsafe { signature_hash.cast::<[u8; 16]>().read() };
+        let key = OpKey {
+            rule_set: rule_set.into(),
+            name: name.into(),
+            signature_hash,
+        };
+        // SAFETY: the argument array follows the caller contract.
+        let values = unsafe { argument_values(session, args, count) }?;
+        let result = session
+            .session
+            .call_key(&key, &values, &context(session))
             .map_err(|error| op_error(&error))?;
         store(session, result, out)
     })
@@ -658,17 +941,8 @@ pub unsafe extern "C" fn rssn_value_call_json(
         }
         // SAFETY: caller contract.
         let name = unsafe { super::text(op) }?;
-        if count > 0 && args.is_null() {
-            return Err(fail(RssnStatus::NullArgument, "null argument array"));
-        }
-        // SAFETY: `args` holds `count` ids by the caller's contract; a null
-        // pointer is allowed only when `count` is 0.
-        let ids: &[u32] = if count == 0 {
-            &[]
-        } else {
-            unsafe { std::slice::from_raw_parts(args, count) }
-        };
-        let values = collect_values(session, ids)?;
+        // SAFETY: the argument array follows the caller contract.
+        let values = unsafe { argument_values(session, args, count) }?;
         let ctx = context(session);
         let result = session
             .session
@@ -693,7 +967,10 @@ pub unsafe extern "C" fn rssn_value_call_json(
 // inspection
 // ---------------------------------------------------------------------------
 
-/// Writes the kind code of the value in `cell_id` to `*out`.
+/// Writes the kind code of the payload in `cell_id` to `*out`.
+///
+/// Dynamic dimension and quantity wrappers are unwrapped. Use
+/// [`rssn_value_json`] to read their wire metadata.
 ///
 /// The codes are the declaration order of `ValueKind`: `0` int, `1` real,
 /// `2` float, `3` complex, `4` bool, `5` string, `6` symbol, `7` unit,
@@ -724,7 +1001,8 @@ pub unsafe extern "C" fn rssn_value_kind(
 /// Writes the numeric value of `cell_id` to `*out` when it has one.
 ///
 /// A dimensioned scalar (`dyn`) and a quantity are read as the number they
-/// carry; `rssn_value_kind` still says which wrapper it was.
+/// carry. The payload kind is returned by [`rssn_value_kind`]. Use
+/// [`rssn_value_json`] to read the original wrapper and its metadata.
 ///
 /// # Safety
 /// `session` must be a live session and `out` a valid pointer.
@@ -842,7 +1120,7 @@ pub unsafe extern "C" fn rssn_value_to_tensor(
                     session
                         .session
                         .term_by_id(handle.node)
-                        .and_then(|term| term.as_tensor())
+                        .and_then(super::super::api::Term::as_tensor)
                         .ok_or_else(|| {
                             fail(
                                 RssnStatus::NoValue,
@@ -1029,6 +1307,25 @@ pub unsafe extern "C" fn rssn_value_tag(
     })
 }
 
+/// Copies a value into a new cell of the same session.
+///
+/// The caller can release the new cell independently or transfer it to a
+/// callback result. Copied native handles refer to the same native object.
+///
+/// # Safety
+/// `session` must be a live session and `out` must point to writable storage.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_value_clone(
+    session: *const RssnSession,
+    cell_id: u32,
+    out: *mut u32,
+) -> RssnStatus {
+    with_session(session, |session| {
+        let value = with_cell(session, cell_id, |value| Ok(value.clone()))?;
+        store(session, value, out)
+    })
+}
+
 /// Releases a cell. A live session releases the rest with itself.
 ///
 /// # Safety
@@ -1057,7 +1354,5 @@ pub unsafe extern "C" fn rssn_value_free(
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_value_count(session: *const RssnSession) -> usize {
     // SAFETY: caller contract.
-    unsafe { borrow(session) }
-        .map(|session| session.values.borrow().len())
-        .unwrap_or(0)
+    unsafe { borrow(session) }.map_or(0, |session| session.values.borrow().len())
 }

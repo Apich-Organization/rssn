@@ -51,7 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
     if let Some(action) = command.strip_prefix("--contracts-") {
-        let policy = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("contracts.tsv");
+        let policy = root.join("tools/rssn-api-gen/contracts.tsv");
         let target = root.join("src/rules/numerical_abi/contract_generated.rs");
         let result = contract_codegen::generate(&std::fs::read_to_string(policy)?)?;
         match action {
@@ -77,7 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         return Err("unknown generator command".into());
     };
-    let policy_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).to_path_buf();
+    let policy_dir = root.join("tools/rssn-api-gen");
     let policy = policy_dir.join(if structured {
         "structured-policy.tsv"
     } else {

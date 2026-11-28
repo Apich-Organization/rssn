@@ -351,10 +351,10 @@ impl Hyper {
 
 /// A basis of the nullspace of `rows` over `Q`.
 pub(super) fn nullspace(
-    rows: Vec<Vec<Q>>,
+    rows: &[Vec<Q>],
     columns: usize,
 ) -> Vec<Vec<Q>> {
-    crate::kernels::qlinalg::nullspace(&rows, columns)
+    crate::kernels::qlinalg::nullspace(rows, columns)
 }
 
 /// `L(P E)/E` for `P = x^j`: `Σ_i a_i (D + ω)^i x^j`.
@@ -408,7 +408,7 @@ fn polynomial_solutions(
                 .collect()
         })
         .collect();
-    Some(nullspace(rows, d + 1))
+    Some(nullspace(&rows, d + 1))
 }
 
 /// Local candidates `(E, ρ)` at the roots of the irreducible factor `f`.
@@ -1154,7 +1154,7 @@ fn eigenring_factors_with(
         return Vec::new();
     }
     let mut elements: Vec<Ore> = Vec::new();
-    for u in nullspace(rows, basis.len()).into_iter().take(12) {
+    for u in nullspace(&rows, basis.len()).into_iter().take(12) {
         let mut r = Ore::new(Vec::new());
         let mut ok = true;
         for (c, e) in u.iter().zip(&basis) {
@@ -1291,7 +1291,7 @@ fn factors_from_eigenvalue_element(
         let Some(rows) = operator_rows(&powers, n) else {
             return out;
         };
-        let dependencies = nullspace(rows, powers.len());
+        let dependencies = nullspace(&rows, powers.len());
         if let Some(mu) = dependencies
             .into_iter()
             .find(|v| v.get(k).is_some_and(|c| !c.is_zero()))
@@ -1625,7 +1625,7 @@ mod tests {
             vec![rational(3, 2), q(1), rational(5, 2), q(0)],
         ];
         assert_eq!(
-            nullspace(rows, 4),
+            nullspace(&rows, 4),
             vec![
                 vec![q(-1), q(-1), q(1), q(0)],
                 vec![rational(4, 3), q(-2), q(0), q(1)]

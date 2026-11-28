@@ -18,7 +18,6 @@
 //! the search did not finish proving.
 
 use super::bridge::Data;
-use super::bridge::Entry;
 use super::bridge::bad;
 use super::bridge::count;
 use super::bridge::require;
@@ -31,12 +30,12 @@ use crate::kernel::diag::DiagKind;
 use crate::kernels::milp::VarKind;
 
 /// Every operator of this family.
-pub(super) const ENTRIES: &[Entry] = &[Entry {
-    name: "milp_solve",
-    params: "ttttttd",
-    eval: milp_solve,
-    doc: "`milp_solve(c, a, rel, b, bounds, kinds, max_nodes)`: `list(x, objective, nodes, gap, optimal)` of a mixed-integer linear program by branch and bound; `kinds` is a list of `continuous`, `integer` or `binary`.",
-}];
+reviewed_entries! {
+    (
+        "milp_solve", "ttttttd", milp_solve, milp::solve_milp,
+        "`milp_solve(c, a, rel, b, bounds, kinds, max_nodes)`: `list(x, objective, nodes, gap, optimal)` of a mixed-integer linear program by branch and bound; `kinds` is a list of `continuous`, `integer` or `binary`."
+    ),
+}
 
 fn milp_solve(args: &[Data]) -> Option<Data> {
     let c = numbers(args, 0)?;

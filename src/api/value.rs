@@ -615,8 +615,36 @@ impl Session {
         args: &[Value],
         ctx: &CallCtx<'_>,
     ) -> Result<Value, OpError> {
+        self.call_key_inner(key, args, ctx, false)
+    }
+
+    /// Calls the pinned overload and explains argument mismatches for a live key.
+    ///
+    /// The key pins the same descriptor as [`Self::call_key`]. Its signature is
+    /// checked against the arguments before invoking the operator.
+    ///
+    /// # Errors
+    /// Returns [`OpError::UnknownOp`] for an absent key, or a specific arity,
+    /// type or proven dimension error if the pinned signature refuses the inputs.
+    /// Errors from the context and evaluator are propagated as usual.
+    pub fn call_key_diagnosed(
+        &self,
+        key: &OpKey,
+        args: &[Value],
+        ctx: &CallCtx<'_>,
+    ) -> Result<Value, OpError> {
+        self.call_key_inner(key, args, ctx, true)
+    }
+
+    fn call_key_inner(
+        &self,
+        key: &OpKey,
+        args: &[Value],
+        ctx: &CallCtx<'_>,
+        diagnose: bool,
+    ) -> Result<Value, OpError> {
         let ctx = clone_ctx(ctx);
-        let op = self.op_for_key(key, args, &ctx)?;
+        let op = self.op_for_key(key, args, &ctx, diagnose)?;
         self.call_op(op, &key.name, args, &ctx)
     }
 
@@ -632,10 +660,12 @@ impl Session {
         key: &OpKey,
         args: &[Value],
         ctx: &CallCtx<'_>,
+        diagnose: bool,
     ) -> Result<OpId, OpError> {
         let types = ctx.argument_types(args)?;
         let inner = self.inner.borrow();
         let graph = &inner.graph;
+        let mut rejected = None;
         for &id in graph.ops().lookup_all(&key.name) {
             let descriptor = graph.ops().get(id);
             if !key.rule_set.is_empty() && *descriptor.rule_set != *key.rule_set {
@@ -655,7 +685,17 @@ impl Session {
                 }) {
                     return Ok(id);
                 }
+                if diagnose {
+                    rejected.get_or_insert((id, index));
+                }
             }
+        }
+        if let Some((id, index)) = rejected {
+            let (signatures, _) = crate::kernel::infer::signature_view(graph.ops().get(id));
+            return Err(signatures.get(index).map_or_else(
+                || OpError::Internal(format!("signature metadata is missing for `{key}`")),
+                |pinned| crate::kernel::overload::diagnose_rejected(pinned, &types),
+            ));
         }
         Err(OpError::UnknownOp(key.clone()))
     }
@@ -1010,7 +1050,7 @@ impl Kernel for Session {
         let ctx = clone_ctx(ctx);
         let combined = callback_arguments(args, fns, &ctx)?;
         let args = combined.as_deref().unwrap_or(args);
-        let registration = self.op_for_key(op, args, &ctx)?;
+        let registration = self.op_for_key(op, args, &ctx, false)?;
         self.call_op(registration, &op.name, args, &ctx)
     }
 
@@ -1272,13 +1312,31 @@ fn resolve_op_types(
     }
 }
 
+fn literal_value(
+    graph: &Graph,
+    node: NodeId,
+) -> Option<Value> {
+    if let Some(number) = graph.number_of(node) {
+        return Some(match number {
+            | Number::Int(value) => Value::Int(value.clone()),
+            | other => Value::Real(other.clone()),
+        });
+    }
+    if graph.op(node) == core::LIT {
+        match graph.payload(node) {
+            | Some(Payload::Bool(value)) => return Some(Value::Bool(*value)),
+            | Some(Payload::Str(text)) => return Some(Value::String(text.to_string())),
+            | _ => {},
+        }
+    }
+    None
+}
+
 /// The value of a node.
 ///
-/// Infallible: a node that is not a number, a literal, a symbol, a quantity
-/// or a list of numbers is a term, and a term is a value. `units` is the
-/// session's registry and `definitions` the unit definitions its manifest
-/// describes, so that a unit the session registered is resolved and carried
-/// with the same definition the session's engine uses.
+/// A node that cannot be represented as a scalar or homogeneous tensor
+/// remains a term. `units` and `definitions` resolve quantities using the
+/// same unit definitions as the session's engine.
 fn value_of_node(
     graph: &Graph,
     node: NodeId,
@@ -1286,20 +1344,8 @@ fn value_of_node(
     units: &super::SessionUnits,
     definitions: &[UnitValue],
 ) -> Value {
-    if let Some(number) = graph.number_of(node) {
-        return match number {
-            | Number::Int(value) => Value::Int(value.clone()),
-            | Number::Rat(_) | Number::Float(_) => Value::Real(number.clone()),
-        };
-    }
-    match graph.payload(node) {
-        | Some(Payload::Bool(value)) if graph.op(node) == core::LIT => {
-            return Value::Bool(*value);
-        },
-        | Some(Payload::Str(text)) if graph.op(node) == core::LIT => {
-            return Value::String(text.to_string());
-        },
-        | _ => {},
+    if let Some(value) = literal_value(graph, node) {
+        return value;
     }
     if let Some(symbol) = graph.as_symbol(node) {
         return Value::Symbol(graph.interner().symbol_name(symbol).to_owned());
@@ -1308,7 +1354,7 @@ fn value_of_node(
     if let Some(quantity) = quantity_of(graph, node, session, units, definitions) {
         return Value::Quantity(quantity);
     }
-    // A rectangular list of numbers.
+    // A rectangular list of compatible literal values.
     if let Some(tensor) = tensor_of(graph, node, session, units, definitions) {
         return Value::Tensor(tensor);
     }
@@ -1440,11 +1486,8 @@ fn tensor_of(
         units: &super::SessionUnits,
         definitions: &[UnitValue],
     ) -> Option<Value> {
-        if let Some(number) = graph.number_of(node) {
-            return Some(match number {
-                | Number::Int(value) => Value::Int(value.clone()),
-                | other => Value::Real(other.clone()),
-            });
+        if let Some(value) = literal_value(graph, node) {
+            return Some(value);
         }
         let quantity = quantity_of(graph, node, session, units, definitions)?;
         quantity.value.as_number()?;
@@ -1583,9 +1626,9 @@ fn term_of_value(
                 }
             })?;
             let unit = graph.node(unit_op, &[]);
-            let imag_part = if im == 1.0 {
+            let imag_part = if crate::kernels::exact_eq(im, 1.0) {
                 unit
-            } else if im == -1.0 {
+            } else if crate::kernels::exact_eq(im, -1.0) {
                 let neg_one = graph.int(-1);
                 graph.node(core::MUL, &[neg_one, unit])
             } else {
@@ -2037,6 +2080,55 @@ mod tests {
         };
         assert_eq!(tensor.shape, vec![3]);
         assert_eq!(tensor.data.len(), 3);
+    }
+
+    #[test]
+    fn nonnumeric_literal_tensors_keep_their_shape_and_element_kind() {
+        use crate::kernel::signature::TypeExpr;
+        let session = Session::new();
+        let args = [Value::String("1/3".to_owned()), Value::int(1)];
+        let enclosure = session
+            .call_value("mp_ball", &args, &CallCtx::new())
+            .unwrap();
+        assert_eq!(
+            enclosure,
+            Value::Tensor(TensorValue {
+                shape: vec![2],
+                data: vec![
+                    Value::String("0.3".to_owned()),
+                    Value::String("0.4".to_owned())
+                ],
+                elem: TypeExpr::String,
+            }),
+        );
+        let bounds = session
+            .call_value(
+                "mp_complex_ball",
+                &[Value::String("(1-I)/3".to_owned()), Value::int(1)],
+                &CallCtx::new(),
+            )
+            .unwrap();
+        let Value::Tensor(bounds) = bounds else {
+            panic!("expected rectangular string bounds");
+        };
+        assert_eq!(bounds.shape, [2, 2]);
+        assert_eq!(bounds.elem, TypeExpr::String);
+        assert_eq!(
+            bounds.data,
+            ["0.3", "0.4", "-0.4", "-0.3"].map(|text| Value::String(text.to_owned())),
+        );
+
+        for value in [
+            Value::Tensor(TensorValue {
+                shape: vec![2],
+                data: vec![Value::Bool(true), Value::Bool(false)],
+                elem: TypeExpr::Bool,
+            }),
+            enclosure,
+        ] {
+            let term = session.term_of(&value).unwrap();
+            assert_eq!(session.value_of(term).unwrap(), value);
+        }
     }
 
     #[test]

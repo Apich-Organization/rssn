@@ -89,11 +89,11 @@ impl Kernel for Asymptotics {
         let res = if op == self.prin
             && let [f, z, a, order] = children.as_slice()
         {
-            self.split_laurent(cx, *f, *z, *a, *order, true)
+            Self::split_laurent(cx, *f, *z, *a, *order, true)
         } else if op == self.anal
             && let [f, z, a, order] = children.as_slice()
         {
-            self.split_laurent(cx, *f, *z, *a, *order, false)
+            Self::split_laurent(cx, *f, *z, *a, *order, false)
         } else if op == self.saddle
             && let [g, phi, z, z0, lambda] = children.as_slice()
         {
@@ -101,7 +101,7 @@ impl Kernel for Asymptotics {
         } else if op == self.ml
             && let [f, z] = children.as_slice()
         {
-            self.mittag_leffler(cx, *f, *z)
+            Self::mittag_leffler(cx, *f, *z)
         } else {
             None
         };
@@ -111,7 +111,6 @@ impl Kernel for Asymptotics {
 
 impl Asymptotics {
     fn split_laurent(
-        &self,
         cx: &mut Cx<'_>,
         f: NodeId,
         z: NodeId,
@@ -187,7 +186,6 @@ impl Asymptotics {
     }
 
     fn mittag_leffler(
-        &self,
         cx: &mut Cx<'_>,
         f: NodeId,
         z: NodeId,
@@ -213,7 +211,7 @@ impl Asymptotics {
                 .unwrap_or(1)
                 .max(1);
             let order_node = cx.graph.int(order + 1);
-            if let Some(pp) = self.split_laurent(cx, f, z, p_node, order_node, true) {
+            if let Some(pp) = Self::split_laurent(cx, f, z, p_node, order_node, true) {
                 parts.push(pp);
             }
         }
@@ -225,47 +223,45 @@ impl Asymptotics {
             &mut gens,
             f,
             crate::rules::poly::repr::Limits::default(),
-        ) {
-            if let (Some(num_u), Some(den_u)) =
-                (r.numer.univariate_in(gz), r.denom.univariate_in(gz))
-            {
-                if !den_u.is_empty() && num_u.len() >= den_u.len() {
-                    // Polynomial long division over Q when possible
-                    if let (Some(nq), Some(dq)) = (
-                        num_u
-                            .iter()
-                            .map(Number::to_rational)
-                            .collect::<Option<Vec<_>>>(),
-                        den_u
-                            .iter()
-                            .map(Number::to_rational)
-                            .collect::<Option<Vec<_>>>(),
-                    ) {
-                        let mut rem = nq;
-                        let d_deg = dq.len() - 1;
-                        let lead_d = dq[d_deg].clone();
-                        if !lead_d.is_zero() {
-                            let q_len = rem.len() - d_deg;
-                            let mut q_coeffs =
-                                vec![num_rational::BigRational::from_integer(0.into()); q_len];
-                            for k in (0..q_len).rev() {
-                                let c = &rem[k + d_deg] / &lead_d;
-                                q_coeffs[k] = c.clone();
-                                for j in 0..=d_deg {
-                                    let sub = &c * &dq[j];
-                                    rem[k + j] = &rem[k + j] - sub;
-                                }
-                            }
-                            for (k, qc) in q_coeffs.into_iter().enumerate() {
-                                if !qc.is_zero() {
-                                    let cn = cx.graph.num(Number::rat(qc));
-                                    if k == 0 {
-                                        parts.push(cn);
-                                    } else {
-                                        let zk = build::powi(cx.graph, z, k as i64);
-                                        parts.push(build::mul(cx.graph, &[cn, zk]));
-                                    }
-                                }
+        ) && let (Some(num_u), Some(den_u)) =
+            (r.numer.univariate_in(gz), r.denom.univariate_in(gz))
+            && !den_u.is_empty()
+            && num_u.len() >= den_u.len()
+        {
+            // Polynomial long division over Q when possible
+            if let (Some(nq), Some(dq)) = (
+                num_u
+                    .iter()
+                    .map(Number::to_rational)
+                    .collect::<Option<Vec<_>>>(),
+                den_u
+                    .iter()
+                    .map(Number::to_rational)
+                    .collect::<Option<Vec<_>>>(),
+            ) {
+                let mut rem = nq;
+                let d_deg = dq.len() - 1;
+                let lead_d = dq[d_deg].clone();
+                if !lead_d.is_zero() {
+                    let q_len = rem.len() - d_deg;
+                    let mut q_coeffs =
+                        vec![num_rational::BigRational::from_integer(0.into()); q_len];
+                    for k in (0..q_len).rev() {
+                        let c = &rem[k + d_deg] / &lead_d;
+                        q_coeffs[k] = c.clone();
+                        for j in 0..=d_deg {
+                            let sub = &c * &dq[j];
+                            rem[k + j] = &rem[k + j] - sub;
+                        }
+                    }
+                    for (k, qc) in q_coeffs.into_iter().enumerate() {
+                        if !qc.is_zero() {
+                            let cn = cx.graph.num(Number::rat(qc));
+                            if k == 0 {
+                                parts.push(cn);
+                            } else {
+                                let zk = build::powi(cx.graph, z, k as i64);
+                                parts.push(build::mul(cx.graph, &[cn, zk]));
                             }
                         }
                     }

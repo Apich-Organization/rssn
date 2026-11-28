@@ -72,13 +72,6 @@ fn power(
 }
 
 /// The null space of a matrix over `Q` (rows of equal length).
-pub(super) fn null_space(
-    rows: Vec<Vec<BigRational>>,
-    columns: usize,
-) -> Vec<Vec<BigRational>> {
-    crate::kernels::qlinalg::nullspace(&rows, columns)
-}
-
 /// Solutions of a linear homogeneous identity `expr = 0` in the
 /// `unknowns`, required to hold identically in every other generator.
 /// Returns a basis of the solution space, or `None` when `expr` is not a
@@ -117,10 +110,8 @@ pub(super) fn solve_identity(
             .or_insert_with(|| vec![BigRational::zero(); unknowns.len()]);
         row[k] += coeff.to_rational()?;
     }
-    Some(null_space(
-        equations.into_values().collect(),
-        unknowns.len(),
-    ))
+    let rows: Vec<_> = equations.into_values().collect();
+    Some(crate::kernels::qlinalg::nullspace(&rows, unknowns.len()))
 }
 
 /// Point symmetries `(ξ, η)` of `y' = ω(x, y)` with polynomial
@@ -683,10 +674,13 @@ mod tests {
     #[test]
     fn null_space_of_small_systems() {
         let q = |v: i64| BigRational::from_integer(v.into());
-        let basis = null_space(vec![vec![q(1), q(1), q(0)], vec![q(0), q(0), q(1)]], 3);
+        let basis = crate::kernels::qlinalg::nullspace(
+            &[vec![q(1), q(1), q(0)], vec![q(0), q(0), q(1)]],
+            3,
+        );
         assert_eq!(basis, vec![vec![q(-1), q(1), q(0)]]);
         assert!(
-            null_space(vec![vec![q(1), q(0)], vec![q(0), q(1)]], 2).is_empty(),
+            crate::kernels::qlinalg::nullspace(&[vec![q(1), q(0)], vec![q(0), q(1)]], 2).is_empty(),
             "not empty"
         );
     }

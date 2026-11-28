@@ -48,6 +48,7 @@ struct NativeTape {
 }
 struct Multi {
     native: Arc<dyn CompiledMulti>,
+    uses_gpu: bool,
     frame: Frame,
     work_per_row: usize,
 }
@@ -69,7 +70,7 @@ impl NativeType for NativeTape {
 }
 impl NativeType for Multi {
     const KIND: &'static str = "rssn/native/backend/multiple/v1";
-    const MAX_BYTES: usize = 4_194_304;
+    const MAX_BYTES: usize = 8_388_608;
 
     fn validate(&self) -> Result<(), OpError> {
         if self.native.inputs() != self.frame.inputs.len()
@@ -80,6 +81,10 @@ impl NativeType for Multi {
         } else {
             Ok(())
         }
+    }
+
+    fn uses_gpu(&self) -> bool {
+        self.uses_gpu
     }
 }
 fn vector(value: &Value) -> Result<&[Value], OpError> {
@@ -314,7 +319,7 @@ fn source(
     Ok(())
 }
 object_binding!(new_tape,"num_native_tape_lower","crate::backend::tape::lower","Lower elementary expressions in declared symbol/parameter order. Every coordinate, parameter and output has an explicit positive physical reference; mixed units stay in checked Value cells.",false,(expressions:Vec<String>,inputs:Vec<String>,params:Vec<String>,input_scales:Input,param_scales:Input,output_scales:Input)->NewObject<NativeTape>,|ctx,expressions,inputs,params,input_scales,param_scales,output_scales|{source(&expressions,&inputs,&params)?;let f=frame(ctx,&input_scales.0,&param_scales.0,&output_scales.0)?;if f.inputs.len()!=inputs.len()||f.params.len()!=params.len()||f.outputs.len()!=expressions.len(){return Err(api::error("program references do not match source arities"));}let session=Session::with_rules(&[crate::rules::elementary()]).map_err(api::error)?;let tape=session.with_native_compilation(&expressions,&inputs,&params,tape::lower).map_err(api::error)?;let dims=domains(&f);Ok(NewObject::new(NativeTape{tape,frame:f},dims))});
-object_binding!(compile_multi,"num_native_backend_compile_multi","crate::backend::Backend::compile_multi","Compile multiple elementary expressions with physical coordinate, parameter and output references. Uses the actual selected native backend and bounded source work.",false,(expressions:Vec<String>,inputs:Vec<String>,params:Vec<String>,input_scales:Input,param_scales:Input,output_scales:Input)->NewObject<Multi>,|ctx,expressions,inputs,params,input_scales,param_scales,output_scales|{source(&expressions,&inputs,&params)?;let f=frame(ctx,&input_scales.0,&param_scales.0,&output_scales.0)?;if f.inputs.len()!=inputs.len()||f.params.len()!=params.len()||f.outputs.len()!=expressions.len(){return Err(api::error("program references do not match source arities"));}let session=Session::with_rules(&[crate::rules::elementary()]).map_err(api::error)?;let chosen=backend::current();if chosen.name()!="interpreter" {return Err(api::error("bounded multi-output compilation requires interpreter backend"));}let mut work_per_row=0usize;let native=session.with_native_compilation(&expressions,&inputs,&params,|g,r,i,p|{let tape=tape::lower(g,r,i,p)?;work_per_row=tape.insts.len()+tape.args.len();if tape.insts.len()>4096{return Err(backend::BackendError::Codegen("program exceeds4096instructions".into()));}chosen.compile_multi(g,r,i,p)}).map_err(api::error)?;let dims=domains(&f);Ok(NewObject::new(Multi{native:Arc::from(native),frame:f,work_per_row},dims))});
+object_binding!(compile_multi,"num_native_backend_compile_multi","crate::backend::Backend::compile_multi","Compile multiple elementary expressions with physical coordinate, parameter and output references. Uses the actual selected native backend and bounded source work.",false,(expressions:Vec<String>,inputs:Vec<String>,params:Vec<String>,input_scales:Input,param_scales:Input,output_scales:Input)->NewObject<Multi>,|ctx,expressions,inputs,params,input_scales,param_scales,output_scales|{source(&expressions,&inputs,&params)?;let f=frame(ctx,&input_scales.0,&param_scales.0,&output_scales.0)?;if f.inputs.len()!=inputs.len()||f.params.len()!=params.len()||f.outputs.len()!=expressions.len(){return Err(api::error("program references do not match source arities"));}let session=Session::with_rules(&[crate::rules::elementary()]).map_err(api::error)?;let chosen=backend::current();let budget=chosen.native_program_budget().ok_or_else(||OpError::Unsupported { backend: chosen.selector().into(), feature: "bounded native multi-output compilation".into() })?;let mut work_per_row=0usize;let native=session.with_native_compilation(&expressions,&inputs,&params,|g,r,i,p|{let tape=tape::lower(g,r,i,p)?;work_per_row=tape.insts.len()+tape.args.len();if tape.insts.len()>budget.instructions || tape.args.len()>65536{return Err(backend::BackendError::Codegen(format!("program exceeds the instruction or operand budget for {}", chosen.selector())));}chosen.compile_multi(g,r,i,p)}).map_err(api::error)?;let dims=domains(&f);Ok(NewObject::new(Multi{native:Arc::from(native),uses_gpu:chosen.uses_gpu(),frame:f,work_per_row},dims))});
 object_binding!(optimize,"num_native_tape_optimise","crate::backend::tape::Tape::optimise","Return the native optimized tape retaining its physical frame.",true,(a:Handle<NativeTape>)->NewObject<NativeTape>,|ctx,a|a.with(ctx,|t|Ok(NewObject::new(NativeTape{tape:t.tape.optimise(),frame:t.frame.clone()},domains(&t.frame)))));
 object_binding!(hash,"num_native_tape_hash","crate::backend::tape::Tape::structural_hash","Native deterministic structural tape hash.",true,(a:Handle<NativeTape>)->u64,|ctx,a|a.with(ctx,|t|Ok(t.tape.structural_hash())));
 object_binding!(validate,"num_native_tape_validate","crate::backend::tape::Tape::validate","Validate native tape register and output invariants.",true,(a:Handle<NativeTape>)->bool,|ctx,a|a.with(ctx,|t|{t.tape.validate().map_err(api::error)?;Ok(true)}));
@@ -325,7 +330,7 @@ object_binding!(reverse,"num_native_tape_gradient_reverse","crate::backend::tape
 object_binding!(hessian,"num_native_tape_hessian","crate::backend::tape::Tape::hessian","Native hyperdual tape Hessian; output(i,j) has units E/(D_i D_j).",false,(a:Handle<NativeTape>,k:usize,x:Input,p:Input)->Dynamic,|ctx,a,k,x,p|a.with(ctx,|t|{if k>=t.frame.outputs.len(){return Err(api::error("output index out of range"));}
 if t.frame.inputs.len()>32{return Err(api::error("Hessian work budget exceeds32coordinates"));}let x=points(ctx,&x.0,&t.frame.inputs)?;let p=points(ctx,&p.0,&t.frame.params)?;derivative(t.tape.hessian(k,&x,&p),&t.frame,k,true)}));
 object_binding!(hvp,"num_native_tape_hessian_vector_product","crate::backend::tape::Tape::hessian_vector_product","Native Hessian-vector product with a measured coordinate displacement direction; result units E/D_i.",false,(a:Handle<NativeTape>,k:usize,x:Input,p:Input,direction:Input)->Dynamic,|ctx,a,k,x,p,direction|a.with(ctx,|t|{if k>=t.frame.outputs.len(){return Err(api::error("output index out of range"));}let x=points(ctx,&x.0,&t.frame.inputs)?;let p=points(ctx,&p.0,&t.frame.params)?;let d=points(ctx,&direction.0,&t.frame.inputs)?;derivative(t.tape.hessian_vector_product(k,&x,&p,&d),&t.frame,k,false)}));
-object_binding!(multi_from_tape,"num_native_tape_function_from_tape","crate::backend::TapeFunction::from_tape","Wrap a real native tape in the multiple-output executor.",true,(a:Handle<NativeTape>)->NewObject<Multi>,|ctx,a|a.with(ctx,|t|Ok(NewObject::new(Multi{native:Arc::new(TapeFunction::from_tape(t.tape.clone())),frame:t.frame.clone(),work_per_row:t.tape.insts.len()+t.tape.args.len()},domains(&t.frame)))));
+object_binding!(multi_from_tape,"num_native_tape_function_from_tape","crate::backend::TapeFunction::from_tape","Wrap a real native tape in the multiple-output executor.",true,(a:Handle<NativeTape>)->NewObject<Multi>,|ctx,a|a.with(ctx,|t|Ok(NewObject::new(Multi{native:Arc::new(TapeFunction::from_tape(t.tape.clone())),uses_gpu:false,frame:t.frame.clone(),work_per_row:t.tape.insts.len()+t.tape.args.len()},domains(&t.frame)))));
 object_binding!(multi_eval,"num_native_compiled_multi_eval","crate::backend::CompiledMulti::eval","Evaluate a native multiple-output program with physical references.",false,(a:Handle<Multi>,x:Input,p:Input)->Dynamic,|ctx,a,x,p|a.with(ctx,|t|{let x=points(ctx,&x.0,&t.frame.inputs)?;let p=points(ctx,&p.0,&t.frame.params)?;let mut out=vec![0.0;t.frame.outputs.len()];t.native.eval(&x,&p,&mut out);values(out,&t.frame.outputs)}));
 object_binding!(multi_inputs,"num_native_compiled_multi_inputs","crate::backend::CompiledMulti::inputs","Native program inputs count.",true,(a:Handle<Multi>)->usize,|ctx,a|a.with(ctx,|t|Ok(t.native.inputs())));
 object_binding!(multi_params,"num_native_compiled_multi_params","crate::backend::CompiledMulti::params","Native program params count.",true,(a:Handle<Multi>)->usize,|ctx,a|a.with(ctx,|t|Ok(t.native.params())));

@@ -48,7 +48,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let ops = Ops::of(i.graph()).ok_or_else(|| {
         RuleError::Invalid {
             rule: "complex/dynamics".into(),
-            reason: "needs elementary".into(),
+            reason: "needs elementary",
         }
     })?;
     i.kernel(
@@ -184,7 +184,7 @@ impl ComplexDynamics {
             }
         }
         let mut p = 1_usize;
-        while 2 * p + 1 <= order {
+        while 2 * p < order {
             let mut rhs_terms = Vec::new();
             for r in 1..=p {
                 let s = p - r;
@@ -203,7 +203,7 @@ impl ComplexDynamics {
             }
             let rhs = build::add(cx.graph, &rhs_terms);
             let mut conv_terms = Vec::new();
-            for j in 1..=(2 * p - 1) {
+            for j in 1..(2 * p) {
                 let aj = *a.get(j)?;
                 let al = *a.get(2 * p - j)?;
                 if !cx.graph.number_of(aj).is_some_and(Number::is_zero)

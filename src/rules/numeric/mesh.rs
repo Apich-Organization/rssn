@@ -23,7 +23,6 @@
 //! that names a missing vertex — is a [`DiagKind::Domain`] finding.
 
 use super::bridge::Data;
-use super::bridge::Entry;
 use super::bridge::bad;
 use super::bridge::require;
 use super::bridge::scalar;
@@ -33,32 +32,24 @@ use crate::kernel::diag::DiagKind;
 const MAX_POINTS: usize = 50_000;
 
 /// Every operator of this family.
-pub(super) const ENTRIES: &[Entry] = &[
-    Entry {
-        name: "delaunay_2d",
-        params: "t",
-        eval: delaunay_2d,
-        doc: "`delaunay_2d(points)`: the counter-clockwise Delaunay triangulation of a list of `list(x, y)` points, as `list(i, j, k)` index triples.",
-    },
-    Entry {
-        name: "delaunay_3d",
-        params: "t",
-        eval: delaunay_3d,
-        doc: "`delaunay_3d(points)`: the Delaunay tetrahedralisation of a list of `list(x, y, z)` points, as `list(i, j, k, l)` index quadruples.",
-    },
-    Entry {
-        name: "cdt_2d",
-        params: "tt",
-        eval: cdt_2d,
-        doc: "`cdt_2d(points, segments)`: the constrained Delaunay triangulation of `points` that keeps every `list(i, j)` segment as an edge.",
-    },
-    Entry {
-        name: "refine_quality",
-        params: "ttdd",
-        eval: refine_quality,
-        doc: "`refine_quality(points, triangles, min_angle, max_area)`: `list(points, triangles)` after Ruppert-style circumcentre insertion until no triangle is below `min_angle` degrees or above `max_area`.",
-    },
-];
+reviewed_entries! {
+    (
+        "delaunay_2d", "t", delaunay_2d, meshgen::delaunay_2d,
+        "`delaunay_2d(points)`: the counter-clockwise Delaunay triangulation of a list of `list(x, y)` points, as `list(i, j, k)` index triples."
+    ),
+    (
+        "delaunay_3d", "t", delaunay_3d, meshgen::delaunay_3d,
+        "`delaunay_3d(points)`: the Delaunay tetrahedralisation of a list of `list(x, y, z)` points, as `list(i, j, k, l)` index quadruples."
+    ),
+    (
+        "cdt_2d", "tt", cdt_2d, meshgen::constrained_delaunay_2d,
+        "`cdt_2d(points, segments)`: the constrained Delaunay triangulation of `points` that keeps every `list(i, j)` segment as an edge."
+    ),
+    (
+        "refine_quality", "ttdd", refine_quality, meshgen::refine_quality,
+        "`refine_quality(points, triangles, min_angle, max_area)`: `list(points, triangles)` after Ruppert-style circumcentre insertion until no triangle is below `min_angle` degrees or above `max_area`."
+    ),
+}
 
 /// The points of a two-dimensional list argument.
 fn points2(

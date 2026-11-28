@@ -17,7 +17,6 @@
 //! model the data cannot identify.
 
 use super::bridge::Data;
-use super::bridge::Entry;
 use super::bridge::bad;
 use super::bridge::count;
 use super::bridge::require;
@@ -34,62 +33,44 @@ const MAX_P: usize = 6;
 const MAX_Q: usize = 4;
 
 /// Every operator of this family.
-pub(super) const ENTRIES: &[Entry] = &[
-    Entry {
-        name: "acf",
-        params: "vd",
-        eval: acf,
-        doc: "`acf(x, max_lag)`: the sample autocorrelation of `x` for lags `0..=max_lag`.",
-    },
-    Entry {
-        name: "pacf",
-        params: "vd",
-        eval: pacf,
-        doc: "`pacf(x, max_lag)`: the partial autocorrelation of `x` for lags `1..=max_lag`, by the Durbin–Levinson recursion.",
-    },
-    Entry {
-        name: "difference",
-        params: "vd",
-        eval: difference,
-        doc: "`difference(x, d)`: the `d`-fold first difference of `x`.",
-    },
-    Entry {
-        name: "ar_fit",
-        params: "vd",
-        eval: ar_fit,
-        doc: "`ar_fit(x, p)`: `list(phi, sigma2, aic, intercept)` of an autoregression of order `p` fitted by the Yule–Walker equations.",
-    },
-    Entry {
-        name: "arima_fit",
-        params: "vddd",
-        eval: arima_fit,
-        doc: "`arima_fit(x, p, d, q)`: `list(ar, ma, sigma2, aic, loglik, mean)` of an ARIMA(`p`, `d`, `q`) fitted by Hannan–Rissanen and refined by conditional sum of squares.",
-    },
-    Entry {
-        name: "arima_forecast",
-        params: "vdddd",
-        eval: arima_forecast,
-        doc: "`arima_forecast(x, p, d, q, horizon)`: the next `horizon` values of `x` under an ARIMA(`p`, `d`, `q`) refitted to the whole series.",
-    },
-    Entry {
-        name: "holt_winters",
-        params: "vdddd",
-        eval: holt_winters,
-        doc: "`holt_winters(x, season, alpha, beta, gamma)`: `list(fitted, level, trend, season, sse)` of additive Holt–Winters smoothing.",
-    },
-    Entry {
-        name: "holt_winters_mul",
-        params: "vdddd",
-        eval: holt_winters_mul,
-        doc: "`holt_winters_mul(x, season, alpha, beta, gamma)`: the multiplicative Holt–Winters form, `list(fitted, level, trend, season, sse)`.",
-    },
-    Entry {
-        name: "kalman_filter",
-        params: "ttttt",
-        eval: kalman_filter,
-        doc: "`kalman_filter(y, transition, observation, process_cov, noise_cov)`: `list(filtered, loglik)` of a linear Gaussian state-space model from a zero initial state and the unit initial covariance; `y` is a list of observation vectors.",
-    },
-];
+reviewed_entries! {
+    (
+        "acf", "vd", acf, timeseries::acf,
+        "`acf(x, max_lag)`: the sample autocorrelation of `x` for lags `0..=max_lag`."
+    ),
+    (
+        "pacf", "vd", pacf, timeseries::pacf,
+        "`pacf(x, max_lag)`: the partial autocorrelation of `x` for lags `1..=max_lag`, by the Durbin–Levinson recursion."
+    ),
+    (
+        "difference", "vd", difference, timeseries::difference,
+        "`difference(x, d)`: the `d`-fold first difference of `x`."
+    ),
+    (
+        "ar_fit", "vd", ar_fit, timeseries::ar_yule_walker,
+        "`ar_fit(x, p)`: `list(phi, sigma2, aic, intercept)` of an autoregression of order `p` fitted by the Yule–Walker equations."
+    ),
+    (
+        "arima_fit", "vddd", arima_fit, timeseries::arima_fit,
+        "`arima_fit(x, p, d, q)`: `list(ar, ma, sigma2, aic, loglik, mean)` of an ARIMA(`p`, `d`, `q`) fitted by Hannan–Rissanen and refined by conditional sum of squares."
+    ),
+    (
+        "arima_forecast", "vdddd", arima_forecast, timeseries::arima_forecast,
+        "`arima_forecast(x, p, d, q, horizon)`: the next `horizon` values of `x` under an ARIMA(`p`, `d`, `q`) refitted to the whole series."
+    ),
+    (
+        "holt_winters", "vdddd", holt_winters, timeseries::holt_winters_additive,
+        "`holt_winters(x, season, alpha, beta, gamma)`: `list(fitted, level, trend, season, sse)` of additive Holt–Winters smoothing."
+    ),
+    (
+        "holt_winters_mul", "vdddd", holt_winters_mul, timeseries::holt_winters_multiplicative,
+        "`holt_winters_mul(x, season, alpha, beta, gamma)`: the multiplicative Holt–Winters form, `list(fitted, level, trend, season, sse)`."
+    ),
+    (
+        "kalman_filter", "ttttt", kalman_filter, timeseries::kalman_filter,
+        "`kalman_filter(y, transition, observation, process_cov, noise_cov)`: `list(filtered, loglik)` of a linear Gaussian state-space model from a zero initial state and the unit initial covariance; `y` is a list of observation vectors."
+    ),
+}
 
 /// The sample at `at`.
 fn sample(
@@ -257,7 +238,7 @@ fn square(
 }
 
 fn kalman_filter(args: &[Data]) -> Option<Data> {
-    let Some(observations) = args.get(0).and_then(rows) else {
+    let Some(observations) = args.first().and_then(rows) else {
         return bad(
             0,
             DiagKind::Shape,
@@ -274,7 +255,13 @@ fn kalman_filter(args: &[Data]) -> Option<Data> {
         ),
     )?;
     let transition = square(args, 1, "transition")?;
-    let observation = square(args, 2, "observation")?;
+    let Some(observation) = args.get(2).and_then(rows) else {
+        return bad(
+            2,
+            DiagKind::Shape,
+            format_args!("expected the observation matrix as a list of rows"),
+        );
+    };
     let process = square(args, 3, "process covariance")?;
     let noise = square(args, 4, "noise covariance")?;
     let states = transition.len();

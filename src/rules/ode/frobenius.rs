@@ -820,36 +820,6 @@ fn newton_embeddings(
         .flat_map(|solution| (0..solution.field.degree()).map(move |k| (solution, k)))
 }
 
-#[cfg(test)]
-mod tests {
-    use super::super::formal::Field;
-    use super::*;
-
-    #[test]
-    fn newton_embeddings_borrow_solutions_in_branch_order() {
-        let solution = |field| {
-            FormalSolution {
-                field,
-                ramification: 1,
-                exponent: Vec::new(),
-                rho: Vec::new(),
-                coefficients: vec![vec![q(1)]],
-                log_terms: Vec::new(),
-            }
-        };
-        let rational = solution(Field::rationals());
-        let quadratic = solution(Field::extension(vec![q(1), q(0), q(1)]));
-        let solutions = [rational.clone(), quadratic, rational];
-        let branches: Vec<_> = newton_embeddings(&solutions).collect();
-        assert_eq!(branches.len(), 4);
-        for ((solution, k), (index, expected_k)) in
-            branches.into_iter().zip([(0, 0), (1, 0), (1, 1), (2, 0)])
-        {
-            assert!(std::ptr::eq(solution, &solutions[index]));
-            assert_eq!(k, expected_k);
-        }
-    }
-}
 
 /// The local variable, field embedding and powers in `exp(exponent) v^rho`.
 struct NewtonPrefactor {
@@ -1740,4 +1710,35 @@ pub(super) fn hyper2f1(args: &[f64]) -> f64 {
         }
     }
     sum
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::formal::Field;
+    use super::*;
+
+    #[test]
+    fn newton_embeddings_borrow_solutions_in_branch_order() {
+        let solution = |field| {
+            FormalSolution {
+                field,
+                ramification: 1,
+                exponent: Vec::new(),
+                rho: Vec::new(),
+                coefficients: vec![vec![q(1)]],
+                log_terms: Vec::new(),
+            }
+        };
+        let rational = solution(Field::rationals());
+        let quadratic = solution(Field::extension(vec![q(1), q(0), q(1)]));
+        let solutions = [rational.clone(), quadratic, rational];
+        let branches: Vec<_> = newton_embeddings(&solutions).collect();
+        assert_eq!(branches.len(), 4);
+        for ((solution, k), (index, expected_k)) in
+            branches.into_iter().zip([(0, 0), (1, 0), (1, 1), (2, 0)])
+        {
+            assert!(std::ptr::eq(solution, &raw const solutions[index]));
+            assert_eq!(k, expected_k);
+        }
+    }
 }

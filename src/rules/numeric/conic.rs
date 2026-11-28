@@ -24,7 +24,6 @@
 //! numbers cannot carry. It is a library API for a host that owns the model.
 
 use super::bridge::Data;
-use super::bridge::Entry;
 use super::bridge::bad;
 use super::bridge::count;
 use super::bridge::require;
@@ -40,26 +39,20 @@ const MAX_VARIABLES: usize = 2_000;
 const MAX_ROWS: usize = 20_000;
 
 /// Every operator of this family.
-pub(super) const ENTRIES: &[Entry] = &[
-    Entry {
-        name: "qp_solve",
-        params: "tttttt",
-        eval: qp_solve,
-        doc: "`qp_solve(q, c, a, rel, b, bounds)`: `list(x, objective, iterations, active)` minimising `0.5 x'Qx + c'x` subject to `a x (rel) b` and `bounds` (`list(list(lo, hi), ..)`, `inf` for no upper bound).",
-    },
-    Entry {
-        name: "socp_solve",
-        params: "ttttttd",
-        eval: socp_solve,
-        doc: "`socp_solve(c, a, rel, b, cones, bounds, max_iter)`: `list(x, objective, iterations, primal_residual, dual_residual, gap)` of a second-order cone program; each cone is `list(a, b, c, d)` standing for `||A x + b|| <= c . x + d`.",
-    },
-    Entry {
-        name: "sdp_solve",
-        params: "ttttttd",
-        eval: sdp_solve,
-        doc: "`sdp_solve(c, f0, fs, a, rel, b, max_iter)`: `list(x, objective, iterations, primal_residual, dual_residual, min_eigenvalue)` minimising `c . x` subject to `F_0 + sum x_i F_i >= 0` and the equality rows `a x = b`.",
-    },
-];
+reviewed_entries! {
+    (
+        "qp_solve", "tttttt", qp_solve, convex::solve_qp,
+        "`qp_solve(q, c, a, rel, b, bounds)`: `list(x, objective, iterations, active)` minimising `0.5 x'Qx + c'x` subject to `a x (rel) b` and `bounds` (`list(list(lo, hi), ..)`, `inf` for no upper bound)."
+    ),
+    (
+        "socp_solve", "ttttttd", socp_solve, convex::solve_socp,
+        "`socp_solve(c, a, rel, b, cones, bounds, max_iter)`: `list(x, objective, iterations, primal_residual, dual_residual, gap)` of a second-order cone program; each cone is `list(a, b, c, d)` standing for `||A x + b|| <= c . x + d`."
+    ),
+    (
+        "sdp_solve", "ttttttd", sdp_solve, convex::solve_sdp,
+        "`sdp_solve(c, f0, fs, a, rel, b, max_iter)`: `list(x, objective, iterations, primal_residual, dual_residual, min_eigenvalue)` minimising `c . x` subject to `F_0 + sum x_i F_i >= 0` and the equality rows `a x = b`."
+    ),
+}
 
 /// A vector argument, copied.
 pub(super) fn numbers(
@@ -112,10 +105,10 @@ pub(super) fn matrix(
 }
 
 /// The symbols of a list argument.
-pub(super) fn symbols<'a>(
-    args: &'a [Data],
+pub(super) fn symbols(
+    args: &[Data],
     at: usize,
-) -> Option<Vec<&'a str>> {
+) -> Option<Vec<&str>> {
     let Some(Data::Tree(parts)) = args.get(at) else {
         return bad(
             at,

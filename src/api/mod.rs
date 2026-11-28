@@ -959,6 +959,9 @@ impl Session {
         terms: &[Term<'s>],
         config: &Config,
     ) -> Vec<Result<Answer<'s>, ComputeError>> {
+        if let [term] = terms {
+            return vec![self.compute(*term, config)];
+        }
         if crate::cancellation::is_cancelled() {
             return terms.iter().map(|_| Err(ComputeError::Cancelled)).collect();
         }
@@ -1012,12 +1015,14 @@ impl Session {
             1
         };
         let cancellation = crate::cancellation::current();
+        let backend = (batch_size > 1).then(crate::backend::worker_context);
         for batch in pending.chunks(batch_size) {
             let Some(template) = inner.templates.get(index) else {
                 break;
             };
             let source = &inner.graph;
             let run = |request: &BatchRequest| {
+                let _backend_scope = backend.as_ref().map(crate::backend::WorkerContext::enter);
                 let _scope = crate::cancellation::install_optional(cancellation.clone());
                 crate::cancellation::checkpoint().map_err(|_| ComputeError::Cancelled)?;
                 let (job, seeded) = prepare(
@@ -1407,7 +1412,12 @@ fn run_job(
         // the structural note is suppressed for such a request.
         let structured = input
             .as_ref()
-            .is_some_and(|outcome| outcome.dimension.non_metric);
+            .is_some_and(|outcome| outcome.dimension.non_metric)
+            || (answer.dimension.non_metric
+                && matches!(
+                    graph.dim_rule(graph.op(root)),
+                    Some(crate::graph::DimRule::Container)
+                ));
         let mut findings = answer.errors;
         if let Some(input) = &input {
             findings.extend(input.errors.iter().cloned());

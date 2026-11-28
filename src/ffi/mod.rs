@@ -22,22 +22,22 @@
 //!
 //! 1. **It is a JSON-and-handles ABI, not a typed ABI.** Answers cross as
 //!    JSON text (`rssn_compute_json`, `rssn_dimension`, `rssn_sim_run`,
-//!    `rssn_manifest_json`) or as the two plain C structs [`RssnAnswer`] and
+//!    `rssn_manifest_json`) or as plain C structs such as [`RssnAnswer`] and
 //!    [`RssnTensor`]. Terms are `uint32_t` handles into one session, never
 //!    pointers to Rust objects. There are no per-operator entry points
 //!    (`rssn_diff`, `rssn_integral`, ...): a host that needs an operator by
 //!    name builds the request with `rssn_term_apply` and computes it.
 //!
 //!    A dynamic [`Value`](crate::kernel::value::Value) crosses through the
-//!    *value ABI* in [`value`]: a value is stored in a session-owned cell and
-//!    addressed by a `uint32_t` id, `rssn_value_call` runs an operator on cells
+//!    *value ABI*: a value is stored in a session-owned cell and addressed
+//!    by a `uint32_t` id. [`rssn_value_call`] runs an operator on cells
 //!    and returns a cell, and `rssn_value_to_term` / `_to_f64` / `_to_text` /
 //!    `_to_tensor` / `_json` read one. That is how an operator whose arguments
 //!    have no term form — a native object handle, a record — is called from C.
 //!
-//!    A host callback crosses through the *callback ABI* in [`callback`]: the
-//!    host registers a C function with `rssn_callback_new` (an explicit JSON
-//!    signature) or `rssn_callback_new_for` (the signature the operator
+//!    A host callback crosses through the *callback ABI*. The host registers
+//!    a C function with [`rssn_callback_new`] (an explicit JSON signature) or
+//!    [`rssn_callback_new_for`] (the signature the operator
 //!    declares at that argument position), gets a cell holding a
 //!    `Value::Function`, and passes that cell like any other argument. The
 //!    callback receives its arguments as cells, so it reads them with the same
@@ -79,6 +79,8 @@
 //!    [`DimError::code`](crate::graph::DimError::code) strings (`mismatch`,
 //!    `unknown_unit`, `unannotated`, ...) — for the most recent computation on
 //!    the thread, so a host branches on them without parsing a message.
+//!    [`rssn_compute_all_with_metadata`] provides the codes, dimension and error
+//!    message for each request alongside its answer and status.
 //! 4. **`rssn_last_error` semantics.** The message is thread-local, is set by
 //!    the call that failed and is *not* cleared by a later successful call.
 //!    Read it immediately after a failure; the pointer is valid only until
@@ -134,6 +136,10 @@
 //!     entry points describe the process-wide standard rule sets, not a
 //!     session's plugins; a host that needs a per-session manifest reads it
 //!     through [`Session::manifest`](crate::api::Session::manifest) in Rust.
+//!
+//! [`rssn_value_call`]: crate::ffi::rssn_value_call
+//! [`rssn_callback_new`]: crate::ffi::rssn_callback_new
+//! [`rssn_callback_new_for`]: crate::ffi::rssn_callback_new_for
 
 // The C ABI necessarily dereferences raw pointers handed in by the caller.
 #![allow(unsafe_code)]

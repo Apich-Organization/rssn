@@ -525,7 +525,7 @@ pub(super) fn prepare(
 }
 /// Resolve explicitly declared shape-dependent output powers using validated input tensors.
 pub(super) fn finish_shaped(
-    signature: &crate::kernel::signature::Signature,
+    result_type: &TypeExpr,
     vars: &BTreeMap<&str, Dimension>,
     args: &[Value],
     result: Value,
@@ -609,9 +609,9 @@ pub(super) fn finish_shaped(
         }
         Ok(())
     }
-    let mut signature = signature.clone();
-    resolve_type(&mut signature.ret, args)?;
-    finish(&signature, vars, result)
+    let mut result_type = result_type.clone();
+    resolve_type(&mut result_type, args)?;
+    decorate(result, &instantiated_type(&result_type, vars)?)
 }
 /// Attach the instantiated dimensional witnesses to a kernel result.
 pub(super) fn finish(

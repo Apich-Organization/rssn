@@ -1775,7 +1775,7 @@ mod tests {
         let field = field_sqrt2();
         let theta = field.theta();
         let one = Elem::rational(q(1, 1));
-        let linear = [theta.clone(), one.clone()];
+        let linear = [theta, one.clone()];
         assert_eq!(
             norm_shift(&linear, 1, &field),
             Some(vec![q(0, 1), q(0, 1), q(1, 1)])

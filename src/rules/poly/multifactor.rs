@@ -1,12 +1,12 @@
 //! Factorisation and greatest common divisors of multivariate and univariate
 //! polynomials over `Q` and `Z`, backed by:
 //!
-//! * **Fast modular polynomial arithmetic & Half-GCD over $\mathbb{F}_p[x]$**
+//! * **Fast modular polynomial arithmetic & Half-GCD over $\mathbb{F}_p\[x\]$**
 //!   (`hgcd_fp`, `gcd_fp`, `ext_gcd_fp`), achieving $O(M(n)\log n)$ greatest
 //!   common divisors and Bézout coefficients for machine-word primes $p < 2^{31}$
 //!   with scratch arena reuse from [`crate::kernels::reuse::global_pool`].
-//! * **Brown's Modular GCD + Chinese Remainder Theorem over $\mathbb{Z}[x]$ &
-//!   $\mathbb{Q}[x]$** (`gcd_z`, `gcd_q`), eliminating rational PRS coefficient
+//! * **Brown's Modular GCD + Chinese Remainder Theorem over $\mathbb{Z}\[x\]$ &
+//!   $\mathbb{Q}\[x\]$** (`gcd_z`, `gcd_q`), eliminating rational PRS coefficient
 //!   swell via leading-coefficient normalization, unlucky-prime detection,
 //!   incremental Garner CRT reconstruction, Landau–Mignotte stability checks,
 //!   and parallel multi-prime evaluation.
@@ -238,11 +238,10 @@ pub(crate) fn fp_reduce_z(
     let mut out: Vec<u64> = poly
         .iter()
         .map(|c| {
-            if let Some(v) = c.to_i64() {
-                v.rem_euclid(p as i64) as u64
-            } else {
-                c.mod_floor(&modulus).to_u64().unwrap_or(0)
-            }
+            c.to_i64().map_or_else(
+                || c.mod_floor(&modulus).to_u64().unwrap_or(0),
+                |v| v.rem_euclid(p as i64) as u64,
+            )
         })
         .collect();
     trim_fp(&mut out);
@@ -951,7 +950,7 @@ fn mignotte_bound_bits(
     gamma.bits() + deg + min_norm + 4
 }
 
-/// Primitive greatest common divisor of two polynomials over $\mathbb{Z}[x]$
+/// Primitive greatest common divisor of two polynomials over $\mathbb{Z}\[x\]$
 /// using Brown's modular GCD algorithm with Chinese Remainder reconstruction,
 /// unlucky-prime detection, and trial division.
 #[must_use]
@@ -1075,10 +1074,10 @@ pub fn gcd_z(
                 stable_steps = 0;
             }
             let changed = crt_step_poly(&mut crt_residues, &mut crt_modulus, &gp, p);
-            if !changed {
-                stable_steps += 1;
-            } else {
+            if changed {
                 stable_steps = 0;
+            } else {
+                stable_steps += 1;
             }
 
             if stable_steps >= 1 || crt_modulus.bits() > bound_bits {
@@ -1102,7 +1101,7 @@ pub fn gcd_z(
 }
 
 /// Monic greatest common divisor of two univariate rational polynomials
-/// over $\mathbb{Q}[x]$ via Brown's modular GCD.
+/// over $\mathbb{Q}\[x\]$ via Brown's modular GCD.
 #[must_use]
 pub fn gcd_q(
     a: &[BigRational],
@@ -1221,11 +1220,10 @@ fn eval_non_main_fp(
             return None;
         }
         let n = r.numer();
-        let mut c = if let Some(v) = n.to_i64() {
-            v.rem_euclid(p as i64) as u64
-        } else {
-            n.mod_floor(&modulus).to_u64().unwrap_or(0)
-        };
+        let mut c = n.to_i64().map_or_else(
+            || n.mod_floor(&modulus).to_u64().unwrap_or(0),
+            |v| v.rem_euclid(p as i64) as u64,
+        );
         let mut main_exp = 0_usize;
         for &(g, e) in mono {
             if g == main_var {
@@ -1258,11 +1256,10 @@ fn eval_full_fp(
             return None;
         }
         let n = r.numer();
-        let mut c = if let Some(v) = n.to_i64() {
-            v.rem_euclid(p as i64) as u64
-        } else {
-            n.mod_floor(&modulus).to_u64().unwrap_or(0)
-        };
+        let mut c = n.to_i64().map_or_else(
+            || n.mod_floor(&modulus).to_u64().unwrap_or(0),
+            |v| v.rem_euclid(p as i64) as u64,
+        );
         for &(g, e) in mono {
             let val = point
                 .iter()
@@ -1321,7 +1318,7 @@ enum ModularGcdFp {
 }
 
 /// Dense / sparse recursive evaluation-interpolation of $\gcd(A, B)$ over
-/// $\mathbb{F}_p[x_0, \dots, x_k]$, normalized by `gamma = gcd(lc(A), lc(B))`.
+/// $\mathbb{F}_p[`x_0`, \dots, `x_k`]$, normalized by `gamma = gcd(lc(A), lc(B))`.
 ///
 /// `main_var` is the primary variable; `aux_vars` are the remaining variables
 /// interpolated sequentially via Newton interpolation, with immediate
@@ -1750,9 +1747,9 @@ fn primitive_in_main_var(
     Some((content, prim))
 }
 
-/// Computes the exact greatest common divisor of two multivariate polynomials
-/// `a` and `b` over $\mathbb{Q}[x_1, \dots, x_k]$ using Zippel/Brown modular
-/// evaluation-interpolation and Chinese Remainder reconstruction.
+/// Computes the exact greatest common divisor of multivariate rational polynomials.
+///
+/// Uses Zippel/Brown modular evaluation-interpolation and Chinese remainder reconstruction.
 ///
 /// The returned GCD has primitive integer coefficients (or `1` when coprime)
 /// with positive leading coefficient.
@@ -1834,7 +1831,7 @@ pub fn poly_gcd(
     for &v in &supp_a {
         if !supp_b.contains(&v) {
             let coeffs = za.coefficients_in(v);
-            let mut g = zb.clone();
+            let mut g = zb;
             for c in coeffs.into_iter().filter(|c| !c.is_zero()) {
                 g = poly_gcd(&g, &c)?;
                 if g.as_constant().is_some_and(|n| n.is_one()) {
@@ -1847,7 +1844,7 @@ pub fn poly_gcd(
     for &v in &supp_b {
         if !supp_a.contains(&v) {
             let coeffs = zb.coefficients_in(v);
-            let mut g = za.clone();
+            let mut g = za;
             for c in coeffs.into_iter().filter(|c| !c.is_zero()) {
                 g = poly_gcd(&g, &c)?;
                 if g.as_constant().is_some_and(|n| n.is_one()) {
@@ -1982,7 +1979,7 @@ pub fn poly_gcd(
         let mut aligned_acc = vec![BigInt::zero(); all_monos.len()];
         for (m, r) in crt_monos.iter().zip(crt_residues.iter()) {
             if let Ok(idx) = all_monos.binary_search(m) {
-                aligned_acc[idx] = r.clone();
+                aligned_acc[idx].clone_from(r);
             }
         }
         let mut aligned_new = vec![0_u64; all_monos.len()];

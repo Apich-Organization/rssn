@@ -47,6 +47,25 @@
 //! evaluator under [`crate::kernel::diag::capture`]; see the diagnostics
 //! chapter of `ARCHITECTURE.md`.
 
+/// Registers entries and, where applicable, the public Rust kernel called by the adapter.
+macro_rules! reviewed_entries {
+    ($(($name:literal, $params:literal, $eval:ident $(, $($path:ident)::+)? , $doc:literal)),* $(,)?) => {
+        pub(super) const ENTRIES: &[super::bridge::Entry] = &[
+            $(super::bridge::Entry { name: $name, params: $params, eval: $eval, doc: $doc }),*
+        ];
+
+        pub(super) fn rust_source(name: &str) -> Option<&'static str> {
+            match name {
+                $($($name => {
+                    let _ = crate::kernels::$($path)::+;
+                    Some(concat!("crate::kernels" $(, "::", stringify!($path))+))
+                },)?)*
+                _ => None,
+            }
+        }
+    };
+}
+
 mod bridge;
 mod complex_ball;
 mod conic;
@@ -94,24 +113,60 @@ pub fn numeric() -> RuleSet {
     RuleSet::new("numeric", install).needs(calculus())
 }
 
-/// Every table of operators the bridge reduces.
-const TABLES: [&[bridge::Entry]; 16] = [
-    bridge::ENTRIES,
-    complex_ball::ENTRIES,
-    special::ENTRIES,
-    resample::ENTRIES,
-    transform::ENTRIES,
-    decomp::ENTRIES,
-    solvers::ENTRIES,
-    conic::ENTRIES,
-    milp::ENTRIES,
-    glm::ENTRIES,
-    timeseries::ENTRIES,
-    control::ENTRIES,
-    survival::ENTRIES,
-    mcmc::ENTRIES,
-    mesh::ENTRIES,
-    mp::ENTRIES,
+type SourceLookup = fn(&str) -> Option<&'static str>;
+
+struct Table {
+    entries: &'static [bridge::Entry],
+    dimension: Option<DimRule>,
+    source: Option<SourceLookup>,
+}
+
+impl Table {
+    const fn new(entries: &'static [bridge::Entry]) -> Self {
+        Self {
+            entries,
+            dimension: None,
+            source: None,
+        }
+    }
+
+    const fn reviewed(
+        entries: &'static [bridge::Entry],
+        source: SourceLookup,
+    ) -> Self {
+        Self {
+            entries,
+            dimension: None,
+            source: Some(source),
+        }
+    }
+}
+
+const TABLES: &[Table] = &[
+    Table::new(bridge::ENTRIES),
+    Table {
+        entries: complex_ball::ENTRIES,
+        dimension: Some(DimRule::Dimensionless),
+        source: Some(complex_ball::rust_source),
+    },
+    Table {
+        entries: special::ENTRIES,
+        dimension: Some(DimRule::Dimensionless),
+        source: Some(special::rust_source),
+    },
+    Table::reviewed(resample::ENTRIES, resample::rust_source),
+    Table::reviewed(transform::ENTRIES, transform::rust_source),
+    Table::reviewed(decomp::ENTRIES, decomp::rust_source),
+    Table::reviewed(solvers::ENTRIES, solvers::rust_source),
+    Table::reviewed(conic::ENTRIES, conic::rust_source),
+    Table::reviewed(milp::ENTRIES, milp::rust_source),
+    Table::reviewed(glm::ENTRIES, glm::rust_source),
+    Table::reviewed(timeseries::ENTRIES, timeseries::rust_source),
+    Table::reviewed(control::ENTRIES, control::rust_source),
+    Table::reviewed(survival::ENTRIES, survival::rust_source),
+    Table::reviewed(mcmc::ENTRIES, mcmc::rust_source),
+    Table::reviewed(mesh::ENTRIES, mesh::rust_source),
+    Table::reviewed(mp::ENTRIES, mp::rust_source),
 ];
 
 /// Why the call `node` of a table-driven numeric operator does not reduce.
@@ -129,8 +184,8 @@ pub(crate) fn explain(
     let descriptor = graph.ops().get(graph.op(node));
     let name: &str = &descriptor.name;
     let entry = TABLES
-        .into_iter()
-        .flatten()
+        .iter()
+        .flat_map(|table| table.entries)
         .find(|entry| entry.name == name)?;
     bridge::explain_entry(entry, graph, node)
 }
@@ -157,16 +212,23 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // The table-driven numeric kernels (robust statistics, signal processing,
     // wavelets and the dimension-free finite-difference solvers).
     let mut bridged = Vec::new();
-    for entry in TABLES.into_iter().flatten() {
-        let op = i.op(request(entry.name, entry.params.len() as u8).doc(entry.doc))?;
-        i.dim(op, bridge_dimension(entry.name));
-        bridged.push((op, entry.eval));
+    for table in TABLES {
+        for entry in table.entries {
+            let mut descriptor = request(entry.name, entry.params.len() as u8).doc(entry.doc);
+            if let Some(path) = table.source.and_then(|lookup| lookup(entry.name)) {
+                descriptor = descriptor.rust_path(path);
+            }
+            let op = i.op(descriptor)?;
+            i.dim(
+                op,
+                table
+                    .dimension
+                    .unwrap_or_else(|| bridge_dimension(entry.name)),
+            );
+            bridged.push((op, entry.eval));
+        }
     }
-    i.kernel(
-        "numeric/bridge",
-        Tier::Reduce,
-        bridge::Bridge { ops: bridged },
-    );
+    i.kernel("numeric/bridge", Tier::Reduce, bridge::Bridge::new(bridged));
     let heavy = |name: &str, arity: u8| request(name, arity);
     let oscillatory = i.op(heavy("oscillatory_integral", 7).doc(
         "`oscillatory_integral(f, g, x, a, b, w, n)`: `list(re, im)` of `int_a^b f(x) exp(i w g(x)) dx` by Levin collocation at `n` Chebyshev points.",
@@ -235,97 +297,10 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
 /// solvers whose grid is the unit box) do not track one.
 fn bridge_dimension(name: &str) -> DimRule {
     match name {
-        // Windows and special functions of a complex argument take bare
-        // numbers.
-        | "hann_window"
-        | "hamming_window"
-        | "blackman_window"
-        | "lgamma_complex"
-        | "gamma_complex"
-        | "digamma_complex"
-        | "lambert_w_complex"
-        | "bessel_j_complex"
-        | "bessel_i_complex"
-        | "erf_complex"
-        | "fresnel_s_complex"
-        | "fresnel_c_complex"
-        | "cball_add"
-        | "cball_sub"
-        | "cball_mul"
-        | "cball_div"
-        | "cball_pow"
-        | "cball_exp"
-        | "cball_ln"
-        | "cball_sqrt"
-        | "cball_sin"
-        | "cball_cos"
-        | "cball_tan"
-        | "cball_sinh"
-        | "cball_cosh"
-        | "cball_tanh"
-        | "cinterval_add"
-        | "cinterval_sub"
-        | "cinterval_mul"
-        | "cinterval_div"
-        | "cinterval_exp"
-        | "cinterval_ln"
-        | "cinterval_sqrt"
-        | "cinterval_sin"
-        | "cinterval_cos"
-        | "rgamma_complex"
-        | "polygamma_complex"
-        | "beta_complex"
-        | "ln_beta_complex"
-        | "lower_gamma_complex"
-        | "upper_gamma_complex"
-        | "incomplete_beta_complex"
-        | "pochhammer_complex"
-        | "barnes_g_complex"
-        | "erfc_complex"
-        | "erfcx_complex"
-        | "erfi_complex"
-        | "faddeeva_w_complex"
-        | "dawson_complex"
-        | "exp_integral_e1_complex"
-        | "exp_integral_ei_complex"
-        | "log_integral_complex"
-        | "sin_integral_complex"
-        | "cos_integral_complex"
-        | "sinh_integral_complex"
-        | "cosh_integral_complex"
-        | "bessel_y_complex"
-        | "bessel_k_complex"
-        | "hankel_h1_complex"
-        | "hankel_h2_complex"
-        | "airy_ai_complex"
-        | "airy_ai_prime_complex"
-        | "airy_bi_complex"
-        | "airy_bi_prime_complex"
-        | "struve_h_complex"
-        | "struve_l_complex"
-        | "riemann_zeta_complex"
-        | "dirichlet_eta_complex"
-        | "hurwitz_zeta_complex"
-        | "polylog_complex"
-        | "lerch_phi_complex"
-        | "elliptic_k_complex"
-        | "elliptic_e_complex"
-        | "jacobi_sn_complex"
-        | "jacobi_cn_complex"
-        | "jacobi_dn_complex"
-        | "jacobi_theta_complex"
-        | "weierstrass_p_complex"
-        | "dedekind_eta_complex"
-        | "klein_j_complex"
-        | "wright_omega_complex"
-        | "whittaker_m_complex"
-        | "whittaker_w_complex"
-        | "parabolic_cylinder_d_complex"
-        | "hyp0f1_complex"
-        | "hyp1f1_complex"
-        | "hyp2f1_complex" => DimRule::Dimensionless,
-        // This interval takes normalized observations. The statistic controls its scale.
-        | "bootstrap_basic_ci" => DimRule::Dimensionless,
+        // Windows and bootstrap intervals take bare, normalized numbers.
+        | "hann_window" | "hamming_window" | "blackman_window" | "bootstrap_basic_ci" => {
+            DimRule::Dimensionless
+        },
         | "cross_correlation" | "tensor_inner" | "tensor_outer" | "tensordot" => DimRule::Product,
         // Probability and coherence are independent of the samples' units.
         | "ecdf" | "coherence" => DimRule::NonMetric,
@@ -415,11 +390,6 @@ fn bridge_dimension(name: &str) -> DimRule {
         },
         // A forecast or a fitted mean keeps the dimension of the sample it
         // was computed from.
-        | "difference"
-        | "arima_forecast"
-        | "glm_predict"
-        | "cox_predict"
-        | "chain_autocorrelation" => DimRule::Same(0),
         | _ => DimRule::Same(0),
     }
 }
@@ -897,6 +867,17 @@ mod tests {
         let mut graph = Graph::new();
         let sets: Vec<RuleSet> = vec![numeric()];
         assert!(Engine::install(&mut graph, &sets).is_ok());
+        for entry in super::special::ENTRIES {
+            let op = graph.ops().lookup(entry.name).unwrap();
+            let rule = graph.ops().attr::<super::DimRule>(op);
+            assert!(
+                matches!(rule, Some(super::DimRule::Dimensionless)),
+                "{}",
+                entry.name
+            );
+            let path = super::special::rust_source(entry.name).unwrap();
+            assert_eq!(graph.ops().get(op).rust_path.as_deref(), Some(path));
+        }
         let tables: [&[super::bridge::Entry]; 15] = [
             super::bridge::ENTRIES,
             super::special::ENTRIES,
@@ -1020,9 +1001,6 @@ mod tests {
             "ifft_abs",
         ] {
             assert_eq!(rule(name), DimRuleInfo::Same(0), "{name}");
-        }
-        for name in ["erf_complex", "fresnel_s_complex", "fresnel_c_complex"] {
-            assert_eq!(rule(name), DimRuleInfo::Dimensionless, "{name}");
         }
         assert_eq!(rule("tensordot"), DimRuleInfo::Product);
     }

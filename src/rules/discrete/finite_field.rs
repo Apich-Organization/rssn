@@ -200,15 +200,15 @@ pub(super) fn pmul_u64(
         }
         let a128 = u128::from(a_red);
         let dst = &mut out[i..i + g.len()];
-        let mut cg = g.chunks_exact(4);
-        let mut cd = dst.chunks_exact_mut(4);
-        for (xg, yd) in cg.by_ref().zip(cd.by_ref()) {
+        let (g_chunks, g_tail) = g.as_chunks::<4>();
+        let (dst_chunks, dst_tail) = dst.as_chunks_mut::<4>();
+        for (xg, yd) in g_chunks.iter().zip(dst_chunks) {
             yd[0] = barrett.reduce_u128(u128::from(yd[0]) + a128 * u128::from(xg[0]));
             yd[1] = barrett.reduce_u128(u128::from(yd[1]) + a128 * u128::from(xg[1]));
             yd[2] = barrett.reduce_u128(u128::from(yd[2]) + a128 * u128::from(xg[2]));
             yd[3] = barrett.reduce_u128(u128::from(yd[3]) + a128 * u128::from(xg[3]));
         }
-        for (&xg, yd) in cg.remainder().iter().zip(cd.into_remainder()) {
+        for (&xg, yd) in g_tail.iter().zip(dst_tail) {
             *yd = barrett.reduce_u128(u128::from(*yd) + a128 * u128::from(xg));
         }
     }
@@ -243,16 +243,16 @@ pub(super) fn pdivmod_u64(
         if coeff != 0 && !g_tail.is_empty() {
             let neg_coeff = barrett.neg(coeff);
             let window = &mut rem[k + 1..k + g.len()];
-            let mut cg = g_tail.chunks_exact(4);
-            let mut cw = window.chunks_exact_mut(4);
+            let (g_chunks, g_tail) = g_tail.as_chunks::<4>();
+            let (window_chunks, window_tail) = window.as_chunks_mut::<4>();
             let a128 = u128::from(neg_coeff);
-            for (xg, yw) in cg.by_ref().zip(cw.by_ref()) {
+            for (xg, yw) in g_chunks.iter().zip(window_chunks) {
                 yw[0] = barrett.reduce_u128(u128::from(yw[0]) + a128 * u128::from(xg[0]));
                 yw[1] = barrett.reduce_u128(u128::from(yw[1]) + a128 * u128::from(xg[1]));
                 yw[2] = barrett.reduce_u128(u128::from(yw[2]) + a128 * u128::from(xg[2]));
                 yw[3] = barrett.reduce_u128(u128::from(yw[3]) + a128 * u128::from(xg[3]));
             }
-            for (&xg, yw) in cg.remainder().iter().zip(cw.into_remainder()) {
+            for (&xg, yw) in g_tail.iter().zip(window_tail) {
                 *yw = barrett.reduce_u128(u128::from(*yw) + a128 * u128::from(xg));
             }
         }
@@ -285,16 +285,16 @@ pub(super) fn reduce_u64(
         if coeff != 0 && !m_tail.is_empty() {
             let neg_coeff = barrett.neg(coeff);
             let window = &mut rem[k + 1..k + m.len()];
-            let mut cm = m_tail.chunks_exact(4);
-            let mut cw = window.chunks_exact_mut(4);
+            let (m_tail_chunks, m_tail_tail) = m_tail.as_chunks::<4>();
+            let (window_chunks, window_tail) = window.as_chunks_mut::<4>();
             let a128 = u128::from(neg_coeff);
-            for (xm, yw) in cm.by_ref().zip(cw.by_ref()) {
+            for (xm, yw) in m_tail_chunks.iter().zip(window_chunks) {
                 yw[0] = barrett.reduce_u128(u128::from(yw[0]) + a128 * u128::from(xm[0]));
                 yw[1] = barrett.reduce_u128(u128::from(yw[1]) + a128 * u128::from(xm[1]));
                 yw[2] = barrett.reduce_u128(u128::from(yw[2]) + a128 * u128::from(xm[2]));
                 yw[3] = barrett.reduce_u128(u128::from(yw[3]) + a128 * u128::from(xm[3]));
             }
-            for (&xm, yw) in cm.remainder().iter().zip(cw.into_remainder()) {
+            for (&xm, yw) in m_tail_tail.iter().zip(window_tail) {
                 *yw = barrett.reduce_u128(u128::from(*yw) + a128 * u128::from(xm));
             }
         }
@@ -1403,7 +1403,7 @@ mod tests {
         let (q_ntt, r_ntt) =
             super::pdivmod(&prod_ntt, &g_ntt, &p_ntt).unwrap_or_else(|| panic!("pdivmod failed"));
         assert_eq!(q_ntt, f_ntt);
-        assert!(r_ntt.is_empty());
+        assert_eq!(r_ntt, [] as [num_bigint::BigInt; 0]);
 
         // Verify pgcd_u64 matches gfp_gcd and pegcd for shared factor.
         let common = vec![BigInt::from(1), BigInt::from(17), BigInt::from(99)];
@@ -1443,7 +1443,7 @@ mod tests {
         let (q61, r61) =
             super::pdivmod(&prod61, &b61, &p61).unwrap_or_else(|| panic!("pdivmod61 failed"));
         assert_eq!(q61, a61);
-        assert!(r61.is_empty());
+        assert_eq!(r61, [] as [num_bigint::BigInt; 0]);
         assert_eq!(
             s(&format!(
                 "gfp_gcd(list(1, 0, {}), list(1, {}), {p61_u64})",
@@ -1462,7 +1462,7 @@ mod tests {
         let (q127, r127) =
             super::pdivmod(&prod127, &a127, &p127).unwrap_or_else(|| panic!("pdivmod127 failed"));
         assert_eq!(q127, b127);
-        assert!(r127.is_empty());
+        assert_eq!(r127, [] as [num_bigint::BigInt; 0]);
         assert_eq!(
             s("gfx_mul(list(1, 0), list(1, 1), list(1, 0, 1), 2^127 - 1)"),
             format!("list(1, {})", (BigInt::from(1) << 127) - 2)

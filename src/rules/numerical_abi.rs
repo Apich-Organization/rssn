@@ -59,6 +59,7 @@ mod native_linear;
 mod native_lir;
 mod native_misc;
 pub(super) mod native_models;
+mod native_npy;
 pub(in crate::rules) mod native_object_api;
 mod native_particles;
 mod native_relativity;
@@ -666,6 +667,7 @@ fn install(
     }
     if namespace == "numerical_matrix" {
         native_backend::install(i)?;
+        native_npy::install(i)?;
     }
     if namespace == "numerical_vector" {
         native_runtime::install(i)?;

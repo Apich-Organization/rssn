@@ -1023,13 +1023,6 @@ fn poly_x_derivative(
 }
 
 /// Solves `J δ = r` via [`crate::kernels::dense::solve_linear_rows`].
-fn solve_linear(
-    a: Vec<Vec<f64>>,
-    b: Vec<f64>,
-) -> Option<Vec<f64>> {
-    crate::kernels::dense::solve_linear_rows(&a, &b).ok()
-}
-
 /// Polynomials `Σ c S^i T^j` (`j ∈ {0, 1}`, `S = sech`, `T = tanh`, `T² = 1 - S²`).
 type SechPoly = std::collections::BTreeMap<(usize, usize), f64>;
 
@@ -1223,7 +1216,7 @@ fn tanh_method(
                     for (i, row) in damped.iter_mut().enumerate() {
                         row[i] += lambda * (1.0 + normal[i][i]);
                     }
-                    if let Some(step) = solve_linear(damped, gradient.clone()) {
+                    if let Ok(step) = crate::kernels::dense::solve_linear_rows(&damped, &gradient) {
                         let candidate: Vec<f64> = z.iter().zip(&step).map(|(a, b)| a + b).collect();
                         if let Some(rc) = evaluate(cx, &candidate, degree, sech) {
                             let candidate_norm: f64 = rc.iter().map(|v| v * v).sum();

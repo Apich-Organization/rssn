@@ -57,7 +57,7 @@ impl CallbackBank {
     /// The number of slots, including retired ones. A handle is valid when it
     /// is below this and [`CallbackBank::get`] returns a callback for it.
     #[must_use]
-    pub fn slots(&self) -> usize {
+    pub const fn slots(&self) -> usize {
         self.entries.len()
     }
 

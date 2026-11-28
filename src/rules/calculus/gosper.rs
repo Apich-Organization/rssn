@@ -580,7 +580,7 @@ mod tests {
         assert_eq!(candidate_degrees(&qk, &rk, Some(&q(3)), 4), [2]);
         // Matching leading coefficients, with a nonintegral resonance.
         assert_eq!(candidate_degrees(&qk, &rk, Some(&q(2)), 4), [3]);
-        assert!(candidate_degrees(&qk, &rk, None, 1).is_empty());
+        assert_eq!(candidate_degrees(&qk, &rk, None, 1), [] as [usize; 0]);
     }
 
     #[test]

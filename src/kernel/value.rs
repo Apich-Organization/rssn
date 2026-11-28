@@ -34,6 +34,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::graph::Number;
+use crate::kernel::call::OpError;
 use crate::kernel::signature::DimExpr;
 use crate::kernel::signature::NatExpr;
 use crate::kernel::signature::TypeExpr;
@@ -325,16 +326,26 @@ impl TensorValue {
         self.shape.len()
     }
 
-    /// The number of elements the shape implies.
+    /// The number of elements the shape implies, saturated to `usize::MAX`.
     #[must_use]
     pub fn extent(&self) -> usize {
-        self.shape.iter().product()
+        Self::checked_extent(&self.shape).unwrap_or(usize::MAX)
     }
 
     /// Whether `data` matches `shape`.
     #[must_use]
     pub fn is_consistent(&self) -> bool {
-        self.extent() == self.data.len()
+        Self::checked_extent(&self.shape) == Some(self.data.len())
+    }
+
+    pub(crate) fn checked_extent(shape: &[usize]) -> Option<usize> {
+        if shape.contains(&0) {
+            Some(0)
+        } else {
+            shape
+                .iter()
+                .try_fold(1usize, |size, &n| size.checked_mul(n))
+        }
     }
 }
 
@@ -991,6 +1002,97 @@ impl Value {
             | Self::Dyn(d) => Some(&d.dim),
             | _ => None,
         }
+    }
+
+    /// Attaches a concrete physical dimension to a Float or dense Float tensor.
+    ///
+    /// Magnitudes must already be in coherent units. An attached dimension
+    /// preserves tensor shape and the Float representation. A dimensionless
+    /// witness keeps a Float unwrapped. A coherent Float already carrying the
+    /// same dimension may be attached again.
+    ///
+    /// # Errors
+    /// Fails for nonconcrete dimensions, conflicting witnesses, unsupported
+    /// value kinds or inconsistent tensor storage.
+    pub fn with_coherent_dimension(
+        &self,
+        dimension: &DimExpr,
+    ) -> Result<Self, OpError> {
+        let canonical = |dim: &DimExpr| {
+            crate::dim::units::canonical_dimension_expression(dim)
+                .map_err(|error| OpError::Domain(error.to_string()))
+        };
+        let dimension = canonical(dimension)?;
+        let check_dimension = |current: &DimExpr| {
+            if current == &dimension || canonical(current)? == dimension {
+                Ok(())
+            } else {
+                Err(OpError::Domain(
+                    "coherent Float has a conflicting dimension".into(),
+                ))
+            }
+        };
+        let measure = |value: &Self, declared: Option<&DimExpr>| {
+            let magnitude = match value {
+                | Self::Float(magnitude) => *magnitude,
+                | Self::Dyn(dynamic) => {
+                    if declared.is_none_or(|declared| declared != &dynamic.dim) {
+                        check_dimension(&dynamic.dim)?;
+                    }
+                    let Self::Float(magnitude) = dynamic.value.as_ref() else {
+                        return Err(OpError::Domain("expected a coherent Float scalar".into()));
+                    };
+                    *magnitude
+                },
+                | _ => return Err(OpError::Domain("expected a coherent Float scalar".into())),
+            };
+            Ok(if dimension == DimExpr::Dimless {
+                Self::Float(magnitude)
+            } else {
+                Self::Dyn(DynValue {
+                    value: Box::new(Self::Float(magnitude)),
+                    dim: dimension.clone(),
+                })
+            })
+        };
+        let Self::Tensor(tensor) = self else {
+            return measure(self, None);
+        };
+        let declared = match &tensor.elem {
+            | TypeExpr::Float => None,
+            | TypeExpr::Dim(inner, current) if inner.as_ref() == &TypeExpr::Float => {
+                check_dimension(current)?;
+                Some(current)
+            },
+            | _ => return Err(OpError::Domain("expected a dense Float tensor".into())),
+        };
+        if TensorValue::checked_extent(&tensor.shape) != Some(tensor.data.len()) {
+            return Err(OpError::Domain(
+                "tensor shape does not match its data".into(),
+            ));
+        }
+        let data = tensor
+            .data
+            .iter()
+            .map(|value| {
+                if declared.is_none() && !matches!(value, Self::Float(_)) {
+                    return Err(OpError::Domain(
+                        "unmeasured Float tensor has a non-Float element".into(),
+                    ));
+                }
+                measure(value, declared)
+            })
+            .collect::<Result<_, _>>()?;
+        let elem = if dimension == DimExpr::Dimless {
+            TypeExpr::Float
+        } else {
+            TypeExpr::Float.with_dim(dimension)
+        };
+        Ok(Self::Tensor(TensorValue::of(
+            tensor.shape.clone(),
+            data,
+            elem,
+        )))
     }
 
     /// The encoding of this value as deterministic CBOR.

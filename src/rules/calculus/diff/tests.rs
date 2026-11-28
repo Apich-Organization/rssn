@@ -13,7 +13,7 @@ use crate::graph::OpDescriptor;
 use crate::graph::OpFlags;
 use crate::graph::Outcome;
 use crate::graph::Pat;
-use crate::graph::id::FastMap;
+use crate::graph::id::FastSet;
 use crate::graph::op::core;
 
 fn setup() -> (Graph, Differentiate) {
@@ -80,11 +80,11 @@ fn dag_edges(
     graph: &Graph,
     root: NodeId,
 ) -> usize {
-    let mut seen = FastMap::default();
+    let mut seen = FastSet::default();
     let mut stack = vec![root];
     let mut edges = 0;
     while let Some(node) = stack.pop() {
-        if seen.insert(node, ()).is_none() {
+        if seen.insert(node) {
             let children = graph.children(node);
             edges += children.len();
             stack.extend_from_slice(children);

@@ -401,7 +401,6 @@ fn is_entire(
 /// Structural check for whether `term` is entire in `z_sym`.
 fn classify_entire(
     graph: &Graph,
-    ops: Ops,
     term: NodeId,
     z_sym: SymbolId,
 ) -> bool {
@@ -414,11 +413,7 @@ fn classify_entire(
     let op = graph.op(term);
     let children = graph.children(term);
     match op {
-        | core::ADD => {
-            children
-                .iter()
-                .all(|&c| classify_entire(graph, ops, c, z_sym))
-        },
+        | core::ADD => children.iter().all(|&c| classify_entire(graph, c, z_sym)),
         | core::MUL => {
             if children.len() == 2 {
                 let is_inv_z = |n: NodeId| {
@@ -452,9 +447,7 @@ fn classify_entire(
                     return true;
                 }
             }
-            children
-                .iter()
-                .all(|&c| classify_entire(graph, ops, c, z_sym))
+            children.iter().all(|&c| classify_entire(graph, c, z_sym))
         },
         | core::POW => {
             let Some(&base) = children.first() else {
@@ -468,12 +461,12 @@ fn classify_entire(
                     .number_of(exp)
                     .is_some_and(|n| n.is_integer() && n.to_f64() >= 0.0)
             {
-                return classify_entire(graph, ops, base, z_sym);
+                return classify_entire(graph, base, z_sym);
             }
             if !graph.depends_on(graph.find(base), z_sym)
                 && !graph.number_of(base).is_some_and(Number::is_zero)
             {
-                return classify_entire(graph, ops, exp, z_sym);
+                return classify_entire(graph, exp, z_sym);
             }
             false
         },
@@ -483,10 +476,7 @@ fn classify_entire(
                 name,
                 "exp" | "sin" | "cos" | "sinh" | "cosh" | "erf" | "erfc" | "airyai" | "airybi"
             );
-            entire_unary
-                && children
-                    .iter()
-                    .all(|&c| classify_entire(graph, ops, c, z_sym))
+            entire_unary && children.iter().all(|&c| classify_entire(graph, c, z_sym))
         },
     }
 }
@@ -494,11 +484,10 @@ fn classify_entire(
 /// Structural check for whether `term` is meromorphic in `z_sym`.
 fn classify_meromorphic(
     graph: &Graph,
-    ops: Ops,
     term: NodeId,
     z_sym: SymbolId,
 ) -> bool {
-    if classify_entire(graph, ops, term, z_sym) {
+    if classify_entire(graph, term, z_sym) {
         return true;
     }
     let op = graph.op(term);
@@ -507,7 +496,7 @@ fn classify_meromorphic(
         | core::ADD | core::MUL => {
             children
                 .iter()
-                .all(|&c| classify_meromorphic(graph, ops, c, z_sym))
+                .all(|&c| classify_meromorphic(graph, c, z_sym))
         },
         | core::POW => {
             let Some(&base) = children.first() else {
@@ -519,7 +508,7 @@ fn classify_meromorphic(
             if !graph.depends_on(graph.find(exp), z_sym)
                 && graph.number_of(exp).is_some_and(Number::is_integer)
             {
-                return classify_meromorphic(graph, ops, base, z_sym);
+                return classify_meromorphic(graph, base, z_sym);
             }
             false
         },
@@ -540,10 +529,7 @@ fn classify_meromorphic(
                     | "polygamma"
                     | "zeta"
             );
-            mero_unary
-                && children
-                    .iter()
-                    .all(|&c| classify_entire(graph, ops, c, z_sym))
+            mero_unary && children.iter().all(|&c| classify_entire(graph, c, z_sym))
         },
     }
 }
@@ -1374,12 +1360,12 @@ impl Analysis {
             },
             | Request::CauchyRiemannCartesian => self.cr_cartesian(cx, arg(0)?, arg(1)?),
             | Request::CauchyRiemannPolar => self.cr_polar(cx, arg(0)?, arg(1)?, arg(2)?),
-            | Request::HarmonicConjugate => self.harmonic_conjugate(cx, arg(0)?, arg(1)?, arg(2)?),
+            | Request::HarmonicConjugate => Self::harmonic_conjugate(cx, arg(0)?, arg(1)?, arg(2)?),
             | Request::ReconstructHolomorphic => {
                 let u = arg(0)?;
                 let x = arg(1)?;
                 let y = arg(2)?;
-                let v = self.harmonic_conjugate(cx, u, x, y)?;
+                let v = Self::harmonic_conjugate(cx, u, x, y)?;
                 let unit = cx.graph.node(self.ops.unit, &[]);
                 let iv = build::mul(cx.graph, &[unit, v]);
                 let sum = build::add(cx.graph, &[u, iv]);
@@ -1548,7 +1534,6 @@ impl Analysis {
     }
 
     fn harmonic_conjugate(
-        &self,
         cx: &mut Cx<'_>,
         u: NodeId,
         x: NodeId,
@@ -1614,7 +1599,7 @@ impl Analysis {
         {
             return Some(cx.graph.lit(Payload::Bool(false)));
         }
-        let is_ent = classify_entire(cx.graph, self.ops, term, z_sym);
+        let is_ent = classify_entire(cx.graph, term, z_sym);
         if entire_only {
             if is_ent {
                 return Some(cx.graph.lit(Payload::Bool(true)));
@@ -1626,7 +1611,7 @@ impl Analysis {
             }
             return Some(cx.graph.lit(Payload::Bool(false)));
         }
-        let is_mero = is_ent || classify_meromorphic(cx.graph, self.ops, term, z_sym);
+        let is_mero = is_ent || classify_meromorphic(cx.graph, term, z_sym);
         Some(cx.graph.lit(Payload::Bool(is_mero)))
     }
 

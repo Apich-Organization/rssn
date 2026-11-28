@@ -29,7 +29,6 @@
 //! finding, not a matrix of numbers that is not a gain.
 
 use super::bridge::Data;
-use super::bridge::Entry;
 use super::bridge::bad;
 use super::bridge::count;
 use super::bridge::require;
@@ -41,92 +40,64 @@ use crate::kernels::control::TransferFunction;
 use crate::kernels::control::TuningRule;
 
 /// Every operator of this family.
-pub(super) const ENTRIES: &[Entry] = &[
-    Entry {
-        name: "care",
-        params: "tttt",
-        eval: care,
-        doc: "`care(a, b, q, r)`: the stabilising solution `P` of the continuous algebraic Riccati equation `A'P + PA - PBR^-1B'P + Q = 0`.",
-    },
-    Entry {
-        name: "dare",
-        params: "tttt",
-        eval: dare,
-        doc: "`dare(a, b, q, r)`: the stabilising solution `P` of the discrete algebraic Riccati equation.",
-    },
-    Entry {
-        name: "lqr",
-        params: "tttt",
-        eval: lqr,
-        doc: "`lqr(a, b, q, r)`: `list(K, P)`, the continuous linear-quadratic gain `K = R^-1 B' P` and the Riccati solution.",
-    },
-    Entry {
-        name: "dlqr",
-        params: "tttt",
-        eval: dlqr,
-        doc: "`dlqr(a, b, q, r)`: `list(K, P)`, the discrete linear-quadratic gain and the Riccati solution.",
-    },
-    Entry {
-        name: "lqg",
-        params: "ttttttt",
-        eval: lqg,
-        doc: "`lqg(a, b, c, q, r, w, v)`: `list(K, L)`, the LQR gain and the steady-state Kalman gain of the dual problem.",
-    },
-    Entry {
-        name: "kalman_gain",
-        params: "tttt",
-        eval: kalman_gain,
-        doc: "`kalman_gain(a, c, w, v)`: the steady-state Kalman gain of `x+ = a x + w` observed through `c`, with process covariance `w` and noise covariance `v`.",
-    },
-    Entry {
-        name: "tf_state_space",
-        params: "tt",
-        eval: tf_state_space,
-        doc: "`tf_state_space(num, den)`: `list(a, b, c, d)`, the controllable canonical realisation of the transfer function `num(s)/den(s)` (descending powers).",
-    },
-    Entry {
-        name: "ss_transfer",
-        params: "tttt",
-        eval: ss_transfer,
-        doc: "`ss_transfer(a, b, c, d)`: `list(num, den)`, the transfer function from the first input to the first output.",
-    },
-    Entry {
-        name: "tf_poles",
-        params: "tt",
-        eval: tf_poles,
-        doc: "`tf_poles(num, den)`: the poles of the transfer function as `list(re, im)` pairs.",
-    },
-    Entry {
-        name: "tf_bode",
-        params: "ttv",
-        eval: tf_bode,
-        doc: "`tf_bode(num, den, omega)`: `list(magnitude_db, phase_deg)` of the frequency response at `omega`.",
-    },
-    Entry {
-        name: "tf_nyquist",
-        params: "ttv",
-        eval: tf_nyquist,
-        doc: "`tf_nyquist(num, den, omega)`: `list(re, im)` of `G(i omega)` at `omega`.",
-    },
-    Entry {
-        name: "pid_tune",
-        params: "ttnd",
-        eval: pid_tune,
-        doc: "`pid_tune(num, den, rule, lambda)`: `list(kp, ki, kd)` from a first-order-plus-dead-time model of the plant; `rule` is `ziegler_nichols`, `cohen_coon`, `imc`, `amigo` or `chien_hrones_reswick`.",
-    },
-    Entry {
-        name: "mpc_plan",
-        params: "ttttttddd",
-        eval: mpc_plan,
-        doc: "`mpc_plan(a, b, c, d, x0, reference, horizon, q, r)`: `list(u, predicted_states, objective, iterations)` of one receding-horizon step solved as a condensed quadratic program.",
-    },
-    Entry {
-        name: "arx_fit",
-        params: "vvddd",
-        eval: arx_fit,
-        doc: "`arx_fit(u, y, na, nb, delay)`: `list(a, b, fit)` of an ARX model by least squares.",
-    },
-];
+reviewed_entries! {
+    (
+        "care", "tttt", care, control::care,
+        "`care(a, b, q, r)`: the stabilising solution `P` of the continuous algebraic Riccati equation `A'P + PA - PBR^-1B'P + Q = 0`."
+    ),
+    (
+        "dare", "tttt", dare, control::dare,
+        "`dare(a, b, q, r)`: the stabilising solution `P` of the discrete algebraic Riccati equation."
+    ),
+    (
+        "lqr", "tttt", lqr, control::lqr,
+        "`lqr(a, b, q, r)`: `list(K, P)`, the continuous linear-quadratic gain `K = R^-1 B' P` and the Riccati solution."
+    ),
+    (
+        "dlqr", "tttt", dlqr, control::dlqr,
+        "`dlqr(a, b, q, r)`: `list(K, P)`, the discrete linear-quadratic gain and the Riccati solution."
+    ),
+    (
+        "lqg", "ttttttt", lqg, control::lqg,
+        "`lqg(a, b, c, q, r, w, v)`: `list(K, L)`, the LQR gain and the steady-state Kalman gain of the dual problem."
+    ),
+    (
+        "kalman_gain", "tttt", kalman_gain, control::kalman_gain,
+        "`kalman_gain(a, c, w, v)`: the steady-state Kalman gain of `x+ = a x + w` observed through `c`, with process covariance `w` and noise covariance `v`."
+    ),
+    (
+        "tf_state_space", "tt", tf_state_space, control::TransferFunction::to_state_space,
+        "`tf_state_space(num, den)`: `list(a, b, c, d)`, the controllable canonical realisation of the transfer function `num(s)/den(s)` (descending powers)."
+    ),
+    (
+        "ss_transfer", "tttt", ss_transfer, control::ss_to_tf,
+        "`ss_transfer(a, b, c, d)`: `list(num, den)`, the transfer function from the first input to the first output."
+    ),
+    (
+        "tf_poles", "tt", tf_poles, control::TransferFunction::poles,
+        "`tf_poles(num, den)`: the poles of the transfer function as `list(re, im)` pairs."
+    ),
+    (
+        "tf_bode", "ttv", tf_bode, control::bode,
+        "`tf_bode(num, den, omega)`: `list(magnitude_db, phase_deg)` of the frequency response at `omega`."
+    ),
+    (
+        "tf_nyquist", "ttv", tf_nyquist, control::nyquist,
+        "`tf_nyquist(num, den, omega)`: `list(re, im)` of `G(i omega)` at `omega`."
+    ),
+    (
+        "pid_tune", "ttnd", pid_tune, control::tune,
+        "`pid_tune(num, den, rule, lambda)`: `list(kp, ki, kd)` from a first-order-plus-dead-time model of the plant; `rule` is `ziegler_nichols`, `cohen_coon`, `imc`, `amigo` or `chien_hrones_reswick`."
+    ),
+    (
+        "mpc_plan", "ttttttddd", mpc_plan, control::mpc_step,
+        "`mpc_plan(a, b, c, d, x0, reference, horizon, q, r)`: `list(u, predicted_states, objective, iterations)` of one receding-horizon step solved as a condensed quadratic program."
+    ),
+    (
+        "arx_fit", "vvddd", arx_fit, control::arx,
+        "`arx_fit(u, y, na, nb, delay)`: `list(a, b, fit)` of an ARX model by least squares."
+    ),
+}
 
 /// A matrix result.
 fn matrix_out(rows: Vec<Vec<f64>>) -> Data {
@@ -145,19 +116,13 @@ fn transfer(args: &[Data]) -> Option<TransferFunction> {
 
 /// A state-space model from four matrix arguments.
 fn state_space(args: &[Data]) -> Option<StateSpace> {
-    let Some(a) = args.get(0).and_then(super::bridge::rows) else {
+    let Some(a) = args.first().and_then(super::bridge::rows) else {
         return bad(0, DiagKind::Shape, format_args!("expected the matrix `a`"));
     };
     let states = a.len();
-    let Some(b) = matrix(args, 1, None) else {
-        return None;
-    };
-    let Some(c) = matrix(args, 2, None) else {
-        return None;
-    };
-    let Some(d) = matrix(args, 3, None) else {
-        return None;
-    };
+    let b = matrix(args, 1, None)?;
+    let c = matrix(args, 2, None)?;
+    let d = matrix(args, 3, None)?;
     if a.iter().any(|row| row.len() != states) {
         return bad(0, DiagKind::Shape, format_args!("`a` must be square"));
     }
@@ -168,7 +133,7 @@ fn state_space(args: &[Data]) -> Option<StateSpace> {
 }
 
 fn care(args: &[Data]) -> Option<Data> {
-    let Some(a) = args.get(0).and_then(super::bridge::rows) else {
+    let Some(a) = args.first().and_then(super::bridge::rows) else {
         return bad(0, DiagKind::Shape, format_args!("expected the matrix `a`"));
     };
     let size = a.len();
@@ -182,7 +147,7 @@ fn care(args: &[Data]) -> Option<Data> {
 }
 
 fn dare(args: &[Data]) -> Option<Data> {
-    let Some(a) = args.get(0).and_then(super::bridge::rows) else {
+    let Some(a) = args.first().and_then(super::bridge::rows) else {
         return bad(0, DiagKind::Shape, format_args!("expected the matrix `a`"));
     };
     let size = a.len();
@@ -200,7 +165,7 @@ fn quadratic_gain(
     args: &[Data],
     discrete: bool,
 ) -> Option<Data> {
-    let Some(a) = args.get(0).and_then(super::bridge::rows) else {
+    let Some(a) = args.first().and_then(super::bridge::rows) else {
         return bad(0, DiagKind::Shape, format_args!("expected the matrix `a`"));
     };
     let size = a.len();
@@ -227,7 +192,7 @@ fn dlqr(args: &[Data]) -> Option<Data> {
 }
 
 fn lqg(args: &[Data]) -> Option<Data> {
-    let Some(a) = args.get(0).and_then(super::bridge::rows) else {
+    let Some(a) = args.first().and_then(super::bridge::rows) else {
         return bad(0, DiagKind::Shape, format_args!("expected the matrix `a`"));
     };
     let size = a.len();
@@ -244,7 +209,7 @@ fn lqg(args: &[Data]) -> Option<Data> {
 }
 
 fn kalman_gain(args: &[Data]) -> Option<Data> {
-    let Some(a) = args.get(0).and_then(super::bridge::rows) else {
+    let Some(a) = args.first().and_then(super::bridge::rows) else {
         return bad(0, DiagKind::Shape, format_args!("expected the matrix `a`"));
     };
     let size = a.len();

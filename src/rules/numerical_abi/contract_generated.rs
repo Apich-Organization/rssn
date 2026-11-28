@@ -18,6 +18,10 @@ AnalysisSimplexWith,
 AnalysisWaveletBandsBuild,
 #[doc = "Reconstruct measured signals from checked ragged bands and dimensionless offsets."]
 AnalysisWaveletBandsRecover,
+#[doc = "Both scaled vectors share units and the result retains that dimension."]
+Axpby,
+#[doc = "The retained vector and the scaled increment share units."]
+Axpy,
 #[doc = "Knots/query share a dimension; basis values are dimensionless."]
 BSplineBasis,
 #[doc = "Fitted knots and coefficients retain their separate dimensions."]
@@ -62,6 +66,10 @@ IntervalPoints,
 Inverse,
 #[doc = "Spacing determines reciprocal frequency dimension."]
 InverseSecond,
+#[doc = "Homogeneous state and observation dimensions; likelihood relative to an observation scale."]
+KalmanFilter,
+#[doc = "Smoothed means preserve the state dimension."]
+KalmanSmooth,
 #[doc = "Kernel density and optional bandwidth use reciprocal sample and sample units."]
 Kde,
 #[doc = "Lasso penalty has predictor times response dimension; tolerance has coefficient units."]
@@ -134,6 +142,8 @@ RbfScaled,
 Regression,
 #[doc = "Ridge penalty has squared predictor dimension."]
 RidgeUnits,
+#[doc = "Rolling means retain sample units and variances square them."]
+RollingMoments,
 #[doc = "Dimensioned input and square-root-dimensioned result."]
 Root,
 #[doc = "Sample maximum absolute ordinate retains ordinate units."]
@@ -222,12 +232,20 @@ SpatialQuery,
 SpatialRadius,
 #[doc = "Ray origin shares spatial model coordinate units; direction and returned indices are dimensionless."]
 SpatialRay,
+#[doc = "The main and off-diagonal share the matrix dimension; the solution has right-hand-side units divided by matrix units."]
+SpdTridiagonalSolve,
 #[doc = "Portable fitted B-spline with separate axis and ordinate witnesses."]
 SplineBuild,
 #[doc = "B-spline query respects axis and ordinate units."]
 SplineQuery,
 #[doc = "Argument 0 is dimensioned, the result is its square."]
 Square,
+#[doc = "Continuous state and input dimensions determine its output dimension through C, using measured times."]
+StateSpaceContinuous,
+#[doc = "Discrete model state and input dimensions determine its output dimension through C."]
+StateSpaceDiscrete,
+#[doc = "Discretisation makes A dimensionless, integrates B over time and preserves the output and feedthrough maps."]
+StateSpaceZoh,
 #[doc = "Record fields u/v are dimensionless and s has input dimension."]
 Svd,
 #[doc = "AX+XB=C requires compatible A/B and X has C/A dimension."]
@@ -236,6 +254,8 @@ Sylvester,
 SymmetricEigen,
 #[doc = "Input data sets scale/error; cores and tolerance are dimensionless."]
 TensorTrain,
+#[doc = "The three diagonals share the matrix dimension; the solution has right-hand-side units divided by matrix units."]
+TridiagonalSolve,
 #[doc = "Transformed data retains units and shape metadata is integral."]
 TuplePreserve,
 #[doc = "Argument 0 is dimensioned, the result is dimensionless."]
@@ -261,6 +281,8 @@ static CONTRACT_ANALYSISSIMPLEX: DimContract = DimContract { inputs: &[InputBind
 static CONTRACT_ANALYSISSIMPLEXWITH: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 5, path: &[] }, InputBinding { name: "E", argument: 6, path: &[] }, InputBinding { name: "C", argument: 7, path: &[] }], constraints: &[InputConstraint { argument: 0, path: &[], formula: &super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("E"), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), -1, 1)]) }, InputConstraint { argument: 1, path: &[], formula: &super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("C"), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), -1, 1)]) }, InputConstraint { argument: 3, path: &[], formula: &super::dimensions::DimFormula::Var("C") }], outputs: &[("status", FieldDimension::NonNumeric), ("x", FieldDimension::Formula(&super::dimensions::DimFormula::Var("D"))), ("value", FieldDimension::Formula(&super::dimensions::DimFormula::Var("E"))), ("iterations", FieldDimension::NonNumeric), ("bland_pivots", FieldDimension::NonNumeric)], output_paths: &[], result: None, other_args_dimensionless: true };
 static CONTRACT_ANALYSISWAVELETBANDSBUILD: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[], outputs: &[("data", FieldDimension::Formula(&super::dimensions::DimFormula::Var("D"))), ("offsets", FieldDimension::NonNumeric)], output_paths: &[], result: None, other_args_dimensionless: true };
 static CONTRACT_ANALYSISWAVELETBANDSRECOVER: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &["data"] }], constraints: &[], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Var("D")), other_args_dimensionless: true };
+static CONTRACT_AXPBY: DimContract = DimContract { inputs: &[InputBinding { name: "A", argument: 0, path: &[] }, InputBinding { name: "X", argument: 1, path: &[] }, InputBinding { name: "B", argument: 2, path: &[] }], constraints: &[InputConstraint { argument: 3, path: &[], formula: &super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("A"), super::dimensions::DimFormula::Var("X")]), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("B"), -1, 1)]) }], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("A"), super::dimensions::DimFormula::Var("X")])), other_args_dimensionless: true };
+static CONTRACT_AXPY: DimContract = DimContract { inputs: &[InputBinding { name: "A", argument: 0, path: &[] }, InputBinding { name: "X", argument: 1, path: &[] }], constraints: &[InputConstraint { argument: 2, path: &[], formula: &super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("A"), super::dimensions::DimFormula::Var("X")]) }], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("A"), super::dimensions::DimFormula::Var("X")])), other_args_dimensionless: true };
 static CONTRACT_BSPLINEBASIS: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[InputConstraint { argument: 3, path: &[], formula: &super::dimensions::DimFormula::Var("D") }], outputs: &[], output_paths: &[], result: None, other_args_dimensionless: true };
 static CONTRACT_BSPLINEFIT: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }, InputBinding { name: "E", argument: 1, path: &[] }], constraints: &[], outputs: &[("item0", FieldDimension::Formula(&super::dimensions::DimFormula::Var("D"))), ("item1", FieldDimension::Formula(&super::dimensions::DimFormula::Var("E")))], output_paths: &[], result: None, other_args_dimensionless: true };
 static CONTRACT_BSPLINEUNITS: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }, InputBinding { name: "E", argument: 1, path: &[] }], constraints: &[InputConstraint { argument: 3, path: &[], formula: &super::dimensions::DimFormula::Var("D") }], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Var("E")), other_args_dimensionless: true };
@@ -283,6 +305,8 @@ static CONTRACT_INTERPOLATION: DimContract = DimContract { inputs: &[InputBindin
 static CONTRACT_INTERVALPOINTS: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 1, path: &[] }], constraints: &[InputConstraint { argument: 2, path: &[], formula: &super::dimensions::DimFormula::Var("D") }], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Var("D")), other_args_dimensionless: true };
 static CONTRACT_INVERSE: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::One, super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), -1, 1)])), other_args_dimensionless: true };
 static CONTRACT_INVERSESECOND: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 1, path: &[] }], constraints: &[], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::One, super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), -1, 1)])), other_args_dimensionless: true };
+static CONTRACT_KALMANFILTER: DimContract = DimContract { inputs: &[InputBinding { name: "Y", argument: 0, path: &[] }, InputBinding { name: "X", argument: 5, path: &[] }], constraints: &[InputConstraint { argument: 2, path: &[], formula: &super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("Y"), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("X"), -1, 1)]) }, InputConstraint { argument: 3, path: &[], formula: &super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("X"), 2, 1) }, InputConstraint { argument: 4, path: &[], formula: &super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("Y"), 2, 1) }, InputConstraint { argument: 6, path: &[], formula: &super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("X"), 2, 1) }, InputConstraint { argument: 7, path: &[], formula: &super::dimensions::DimFormula::Var("Y") }], outputs: &[("filtered", FieldDimension::Formula(&super::dimensions::DimFormula::Var("X"))), ("predicted", FieldDimension::Formula(&super::dimensions::DimFormula::Var("X"))), ("covariance", FieldDimension::Formula(&super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("X"), 2, 1))), ("loglik", FieldDimension::Formula(&super::dimensions::DimFormula::One))], output_paths: &[], result: None, other_args_dimensionless: true };
+static CONTRACT_KALMANSMOOTH: DimContract = DimContract { inputs: &[InputBinding { name: "Y", argument: 0, path: &[] }, InputBinding { name: "X", argument: 5, path: &[] }], constraints: &[InputConstraint { argument: 2, path: &[], formula: &super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("Y"), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("X"), -1, 1)]) }, InputConstraint { argument: 3, path: &[], formula: &super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("X"), 2, 1) }, InputConstraint { argument: 4, path: &[], formula: &super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("Y"), 2, 1) }, InputConstraint { argument: 6, path: &[], formula: &super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("X"), 2, 1) }], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Var("X")), other_args_dimensionless: true };
 static CONTRACT_KDE: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[InputConstraint { argument: 1, path: &[], formula: &super::dimensions::DimFormula::Var("D") }, InputConstraint { argument: 2, path: &[], formula: &super::dimensions::DimFormula::Var("D") }], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::One, super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), -1, 1)])), other_args_dimensionless: true };
 static CONTRACT_LASSOUNITS: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 2, path: &[] }, InputBinding { name: "E", argument: 3, path: &[] }], constraints: &[InputConstraint { argument: 4, path: &[], formula: &super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("D"), super::dimensions::DimFormula::Var("E")]) }, InputConstraint { argument: 7, path: &[], formula: &super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("E"), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), -1, 1)]) }], outputs: &[("coefficients", FieldDimension::Formula(&super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("E"), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), -1, 1)]))), ("intercept", FieldDimension::Formula(&super::dimensions::DimFormula::Var("E"))), ("r_squared", FieldDimension::Formula(&super::dimensions::DimFormula::One)), ("residuals", FieldDimension::Formula(&super::dimensions::DimFormula::Var("E")))], output_paths: &[], result: None, other_args_dimensionless: true };
 static CONTRACT_LEASTSQUARES: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }, InputBinding { name: "E", argument: 1, path: &[] }], constraints: &[], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("E"), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), -1, 1)])), other_args_dimensionless: true };
@@ -319,6 +343,7 @@ static CONTRACT_RAY3: DimContract = DimContract { inputs: &[InputBinding { name:
 static CONTRACT_RBFSCALED: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }, InputBinding { name: "E", argument: 1, path: &[] }], constraints: &[InputConstraint { argument: 2, path: &[], formula: &super::dimensions::DimFormula::Var("D") }, InputConstraint { argument: 4, path: &[], formula: &super::dimensions::DimFormula::Var("D") }], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Var("E")), other_args_dimensionless: true };
 static CONTRACT_REGRESSION: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 2, path: &[] }, InputBinding { name: "E", argument: 3, path: &[] }], constraints: &[], outputs: &[("coefficients", FieldDimension::Formula(&super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("E"), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), -1, 1)]))), ("intercept", FieldDimension::Formula(&super::dimensions::DimFormula::Var("E"))), ("r_squared", FieldDimension::Formula(&super::dimensions::DimFormula::One)), ("residuals", FieldDimension::Formula(&super::dimensions::DimFormula::Var("E")))], output_paths: &[], result: None, other_args_dimensionless: true };
 static CONTRACT_RIDGEUNITS: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 2, path: &[] }, InputBinding { name: "E", argument: 3, path: &[] }], constraints: &[InputConstraint { argument: 4, path: &[], formula: &super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), 2, 1) }], outputs: &[("coefficients", FieldDimension::Formula(&super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("E"), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), -1, 1)]))), ("intercept", FieldDimension::Formula(&super::dimensions::DimFormula::Var("E"))), ("r_squared", FieldDimension::Formula(&super::dimensions::DimFormula::One)), ("residuals", FieldDimension::Formula(&super::dimensions::DimFormula::Var("E")))], output_paths: &[], result: None, other_args_dimensionless: true };
+static CONTRACT_ROLLINGMOMENTS: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[], outputs: &[("mean", FieldDimension::Formula(&super::dimensions::DimFormula::Var("D"))), ("variance", FieldDimension::Formula(&super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), 2, 1)))], output_paths: &[], result: None, other_args_dimensionless: true };
 static CONTRACT_ROOT: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), 1, 2)), other_args_dimensionless: true };
 static CONTRACT_SAMPLEDINFINITY: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &["item0"] }, InputBinding { name: "E", argument: 0, path: &["item1"] }], constraints: &[], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Var("E")), other_args_dimensionless: true };
 static CONTRACT_SAMPLEDINNER: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &["item0"] }, InputBinding { name: "E", argument: 0, path: &["item1"] }, InputBinding { name: "F", argument: 1, path: &["item1"] }], constraints: &[InputConstraint { argument: 1, path: &["item0"], formula: &super::dimensions::DimFormula::Var("D") }], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("D"), super::dimensions::DimFormula::Var("E")]), super::dimensions::DimFormula::Var("F")])), other_args_dimensionless: true };
@@ -363,13 +388,18 @@ static CONTRACT_SPATIALBUILD: DimContract = DimContract { inputs: &[InputBinding
 static CONTRACT_SPATIALQUERY: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &["coordinate_unit"] }], constraints: &[InputConstraint { argument: 1, path: &[], formula: &super::dimensions::DimFormula::Var("D") }], outputs: &[("indices", FieldDimension::NonNumeric), ("distances", FieldDimension::Formula(&super::dimensions::DimFormula::Var("D")))], output_paths: &[], result: None, other_args_dimensionless: true };
 static CONTRACT_SPATIALRADIUS: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &["coordinate_unit"] }], constraints: &[InputConstraint { argument: 1, path: &[], formula: &super::dimensions::DimFormula::Var("D") }, InputConstraint { argument: 2, path: &[], formula: &super::dimensions::DimFormula::Var("D") }], outputs: &[("indices", FieldDimension::NonNumeric), ("distances", FieldDimension::Formula(&super::dimensions::DimFormula::Var("D")))], output_paths: &[], result: None, other_args_dimensionless: true };
 static CONTRACT_SPATIALRAY: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &["coordinate_unit"] }], constraints: &[InputConstraint { argument: 1, path: &[], formula: &super::dimensions::DimFormula::Var("D") }], outputs: &[], output_paths: &[], result: None, other_args_dimensionless: true };
+static CONTRACT_SPDTRIDIAGONALSOLVE: DimContract = DimContract { inputs: &[InputBinding { name: "A", argument: 0, path: &[] }, InputBinding { name: "B", argument: 2, path: &[] }], constraints: &[InputConstraint { argument: 1, path: &[], formula: &super::dimensions::DimFormula::Var("A") }], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("B"), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("A"), -1, 1)])), other_args_dimensionless: true };
 static CONTRACT_SPLINEBUILD: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }, InputBinding { name: "E", argument: 1, path: &[] }], constraints: &[], outputs: &[("payload", FieldDimension::NonNumeric), ("coordinate_unit", FieldDimension::Formula(&super::dimensions::DimFormula::Var("D"))), ("value_unit", FieldDimension::Formula(&super::dimensions::DimFormula::Var("E")))], output_paths: &[], result: None, other_args_dimensionless: true };
 static CONTRACT_SPLINEQUERY: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &["coordinate_unit"] }, InputBinding { name: "E", argument: 0, path: &["value_unit"] }], constraints: &[InputConstraint { argument: 1, path: &[], formula: &super::dimensions::DimFormula::Var("D") }], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Var("E")), other_args_dimensionless: true };
 static CONTRACT_SQUARE: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), 2, 1)), other_args_dimensionless: true };
+static CONTRACT_STATESPACECONTINUOUS: DimContract = DimContract { inputs: &[InputBinding { name: "X", argument: 4, path: &[] }, InputBinding { name: "U", argument: 5, path: &[] }, InputBinding { name: "G", argument: 2, path: &[] }], constraints: &[InputConstraint { argument: 0, path: &[], formula: &super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::One, super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Base("Time"), -1, 1)]) }, InputConstraint { argument: 1, path: &[], formula: &super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("X"), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("U"), super::dimensions::DimFormula::Base("Time")]), -1, 1)]) }, InputConstraint { argument: 3, path: &[], formula: &super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("G"), super::dimensions::DimFormula::Var("X")]), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("U"), -1, 1)]) }, InputConstraint { argument: 6, path: &[], formula: &super::dimensions::DimFormula::Base("Time") }], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("G"), super::dimensions::DimFormula::Var("X")])), other_args_dimensionless: true };
+static CONTRACT_STATESPACEDISCRETE: DimContract = DimContract { inputs: &[InputBinding { name: "X", argument: 1, path: &[] }, InputBinding { name: "U", argument: 2, path: &[] }, InputBinding { name: "G", argument: 0, path: &["c"] }], constraints: &[InputConstraint { argument: 0, path: &["a"], formula: &super::dimensions::DimFormula::One }, InputConstraint { argument: 0, path: &["b"], formula: &super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("X"), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("U"), -1, 1)]) }, InputConstraint { argument: 0, path: &["d"], formula: &super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("G"), super::dimensions::DimFormula::Var("X")]), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("U"), -1, 1)]) }, InputConstraint { argument: 0, path: &["dt"], formula: &super::dimensions::DimFormula::Base("Time") }], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("G"), super::dimensions::DimFormula::Var("X")])), other_args_dimensionless: true };
+static CONTRACT_STATESPACEZOH: DimContract = DimContract { inputs: &[InputBinding { name: "R", argument: 1, path: &[] }, InputBinding { name: "G", argument: 2, path: &[] }], constraints: &[InputConstraint { argument: 0, path: &[], formula: &super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::One, super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Base("Time"), -1, 1)]) }, InputConstraint { argument: 3, path: &[], formula: &super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("R"), super::dimensions::DimFormula::Var("G")]), super::dimensions::DimFormula::Base("Time")]) }, InputConstraint { argument: 4, path: &[], formula: &super::dimensions::DimFormula::Base("Time") }], outputs: &[("a", FieldDimension::Formula(&super::dimensions::DimFormula::One)), ("b", FieldDimension::Formula(&super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("R"), super::dimensions::DimFormula::Base("Time")]))), ("c", FieldDimension::Formula(&super::dimensions::DimFormula::Var("G"))), ("d", FieldDimension::Formula(&super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("R"), super::dimensions::DimFormula::Var("G")]), super::dimensions::DimFormula::Base("Time")]))), ("dt", FieldDimension::Formula(&super::dimensions::DimFormula::Base("Time")))], output_paths: &[], result: None, other_args_dimensionless: true };
 static CONTRACT_SVD: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[], outputs: super::codecs::STRUCTURED_SVD, output_paths: &[], result: None, other_args_dimensionless: true };
 static CONTRACT_SYLVESTER: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }, InputBinding { name: "E", argument: 2, path: &[] }], constraints: &[InputConstraint { argument: 1, path: &[], formula: &super::dimensions::DimFormula::Var("D") }], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("E"), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), -1, 1)])), other_args_dimensionless: true };
 static CONTRACT_SYMMETRICEIGEN: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[], outputs: &[("values", FieldDimension::Formula(&super::dimensions::DimFormula::Var("D"))), ("vectors", FieldDimension::Formula(&super::dimensions::DimFormula::One))], output_paths: &[], result: None, other_args_dimensionless: true };
 static CONTRACT_TENSORTRAIN: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[], outputs: &[("cores", FieldDimension::Formula(&super::dimensions::DimFormula::One)), ("shape", FieldDimension::NonNumeric), ("scale", FieldDimension::Formula(&super::dimensions::DimFormula::Var("D"))), ("error", FieldDimension::Formula(&super::dimensions::DimFormula::Var("D"))), ("tolerance_met", FieldDimension::NonNumeric)], output_paths: &[], result: None, other_args_dimensionless: true };
+static CONTRACT_TRIDIAGONALSOLVE: DimContract = DimContract { inputs: &[InputBinding { name: "A", argument: 1, path: &[] }, InputBinding { name: "B", argument: 3, path: &[] }], constraints: &[InputConstraint { argument: 0, path: &[], formula: &super::dimensions::DimFormula::Var("A") }, InputConstraint { argument: 2, path: &[], formula: &super::dimensions::DimFormula::Var("A") }], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("B"), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("A"), -1, 1)])), other_args_dimensionless: true };
 static CONTRACT_TUPLEPRESERVE: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[], outputs: &[("item0", FieldDimension::Formula(&super::dimensions::DimFormula::Var("D"))), ("item1", FieldDimension::NonNumeric)], output_paths: &[], result: None, other_args_dimensionless: true };
 static CONTRACT_UNITLESSRESULT: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[], outputs: &[], output_paths: &[], result: None, other_args_dimensionless: true };
 static CONTRACT_VORONOIGEOMETRY: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[], outputs: &[("vertices", FieldDimension::Formula(&super::dimensions::DimFormula::Var("D"))), ("edges", FieldDimension::NonNumeric), ("ray_vertices", FieldDimension::NonNumeric), ("ray_directions", FieldDimension::Formula(&super::dimensions::DimFormula::One)), ("cell_offsets", FieldDimension::NonNumeric), ("cell_indices", FieldDimension::NonNumeric)], output_paths: &[], result: None, other_args_dimensionless: true };
@@ -387,6 +417,8 @@ DimensionPolicy::AnalysisSimplex => &CONTRACT_ANALYSISSIMPLEX,
 DimensionPolicy::AnalysisSimplexWith => &CONTRACT_ANALYSISSIMPLEXWITH,
 DimensionPolicy::AnalysisWaveletBandsBuild => &CONTRACT_ANALYSISWAVELETBANDSBUILD,
 DimensionPolicy::AnalysisWaveletBandsRecover => &CONTRACT_ANALYSISWAVELETBANDSRECOVER,
+DimensionPolicy::Axpby => &CONTRACT_AXPBY,
+DimensionPolicy::Axpy => &CONTRACT_AXPY,
 DimensionPolicy::BSplineBasis => &CONTRACT_BSPLINEBASIS,
 DimensionPolicy::BSplineFit => &CONTRACT_BSPLINEFIT,
 DimensionPolicy::BSplineUnits => &CONTRACT_BSPLINEUNITS,
@@ -409,6 +441,8 @@ DimensionPolicy::Interpolation => &CONTRACT_INTERPOLATION,
 DimensionPolicy::IntervalPoints => &CONTRACT_INTERVALPOINTS,
 DimensionPolicy::Inverse => &CONTRACT_INVERSE,
 DimensionPolicy::InverseSecond => &CONTRACT_INVERSESECOND,
+DimensionPolicy::KalmanFilter => &CONTRACT_KALMANFILTER,
+DimensionPolicy::KalmanSmooth => &CONTRACT_KALMANSMOOTH,
 DimensionPolicy::Kde => &CONTRACT_KDE,
 DimensionPolicy::LassoUnits => &CONTRACT_LASSOUNITS,
 DimensionPolicy::LeastSquares => &CONTRACT_LEASTSQUARES,
@@ -445,6 +479,7 @@ DimensionPolicy::Ray3 => &CONTRACT_RAY3,
 DimensionPolicy::RbfScaled => &CONTRACT_RBFSCALED,
 DimensionPolicy::Regression => &CONTRACT_REGRESSION,
 DimensionPolicy::RidgeUnits => &CONTRACT_RIDGEUNITS,
+DimensionPolicy::RollingMoments => &CONTRACT_ROLLINGMOMENTS,
 DimensionPolicy::Root => &CONTRACT_ROOT,
 DimensionPolicy::SampledInfinity => &CONTRACT_SAMPLEDINFINITY,
 DimensionPolicy::SampledInner => &CONTRACT_SAMPLEDINNER,
@@ -489,13 +524,18 @@ DimensionPolicy::SpatialBuild => &CONTRACT_SPATIALBUILD,
 DimensionPolicy::SpatialQuery => &CONTRACT_SPATIALQUERY,
 DimensionPolicy::SpatialRadius => &CONTRACT_SPATIALRADIUS,
 DimensionPolicy::SpatialRay => &CONTRACT_SPATIALRAY,
+DimensionPolicy::SpdTridiagonalSolve => &CONTRACT_SPDTRIDIAGONALSOLVE,
 DimensionPolicy::SplineBuild => &CONTRACT_SPLINEBUILD,
 DimensionPolicy::SplineQuery => &CONTRACT_SPLINEQUERY,
 DimensionPolicy::Square => &CONTRACT_SQUARE,
+DimensionPolicy::StateSpaceContinuous => &CONTRACT_STATESPACECONTINUOUS,
+DimensionPolicy::StateSpaceDiscrete => &CONTRACT_STATESPACEDISCRETE,
+DimensionPolicy::StateSpaceZoh => &CONTRACT_STATESPACEZOH,
 DimensionPolicy::Svd => &CONTRACT_SVD,
 DimensionPolicy::Sylvester => &CONTRACT_SYLVESTER,
 DimensionPolicy::SymmetricEigen => &CONTRACT_SYMMETRICEIGEN,
 DimensionPolicy::TensorTrain => &CONTRACT_TENSORTRAIN,
+DimensionPolicy::TridiagonalSolve => &CONTRACT_TRIDIAGONALSOLVE,
 DimensionPolicy::TuplePreserve => &CONTRACT_TUPLEPRESERVE,
 DimensionPolicy::UnitlessResult => &CONTRACT_UNITLESSRESULT,
 DimensionPolicy::VoronoiGeometry => &CONTRACT_VORONOIGEOMETRY,

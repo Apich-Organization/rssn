@@ -18,7 +18,6 @@
 //! [`DiagKind::Domain`] finding, not a curve.
 
 use super::bridge::Data;
-use super::bridge::Entry;
 use super::bridge::bad;
 use super::bridge::require;
 use super::bridge::rows;
@@ -29,38 +28,28 @@ use crate::kernel::diag::DiagKind;
 use crate::kernels::survival::Ties;
 
 /// Every operator of this family.
-pub(super) const ENTRIES: &[Entry] = &[
-    Entry {
-        name: "kaplan_meier",
-        params: "vvd",
-        eval: kaplan_meier,
-        doc: "`kaplan_meier(time, event, conf)`: `list(times, at_risk, events, survival, variance, lower, upper)` of the product-limit estimator, with `event` a list of 1 (observed) and 0 (censored) and a `conf` confidence level.",
-    },
-    Entry {
-        name: "nelson_aalen",
-        params: "vv",
-        eval: nelson_aalen,
-        doc: "`nelson_aalen(time, event)`: `list(times, hazard, cumulative_hazard)` of the Nelson–Aalen estimator.",
-    },
-    Entry {
-        name: "log_rank",
-        params: "vvvv",
-        eval: log_rank,
-        doc: "`log_rank(time_a, event_a, time_b, event_b)`: `list(chi2, p_value, observed, expected)` of the two-sample log-rank test.",
-    },
-    Entry {
-        name: "cox_fit",
-        params: "tvvdd",
-        eval: cox_fit,
-        doc: "`cox_fit(x, time, event, ties, tol)`: `list(beta, se, z, p, loglik, concordance)` of the Cox proportional-hazards model; `x` is a list of covariate rows without an intercept and `ties` is `breslow` or `efron`.",
-    },
-    Entry {
-        name: "cox_predict",
-        params: "tv",
-        eval: cox_predict,
-        doc: "`cox_predict(x, beta)`: the relative hazard `exp(x . beta)` of each covariate row.",
-    },
-];
+reviewed_entries! {
+    (
+        "kaplan_meier", "vvd", kaplan_meier, survival::kaplan_meier,
+        "`kaplan_meier(time, event, conf)`: `list(times, at_risk, events, survival, variance, lower, upper)` of the product-limit estimator, with `event` a list of 1 (observed) and 0 (censored) and a `conf` confidence level."
+    ),
+    (
+        "nelson_aalen", "vv", nelson_aalen, survival::nelson_aalen,
+        "`nelson_aalen(time, event)`: `list(times, hazard, cumulative_hazard)` of the Nelson–Aalen estimator."
+    ),
+    (
+        "log_rank", "vvvv", log_rank, survival::log_rank,
+        "`log_rank(time_a, event_a, time_b, event_b)`: `list(chi2, p_value, observed, expected)` of the two-sample log-rank test."
+    ),
+    (
+        "cox_fit", "tvvdd", cox_fit, survival::cox_fit,
+        "`cox_fit(x, time, event, ties, tol)`: `list(beta, se, z, p, loglik, concordance)` of the Cox proportional-hazards model; `x` is a list of covariate rows without an intercept and `ties` is `breslow` or `efron`."
+    ),
+    (
+        "cox_predict", "tv", cox_predict, survival::cox::cox_predict_coefficients,
+        "`cox_predict(x, beta)`: the relative hazard `exp(x . beta)` of each covariate row."
+    ),
+}
 
 /// The event flags of `at`, rejecting anything that is not `0` or `1`.
 fn events(
@@ -70,7 +59,7 @@ fn events(
     let values = vector(args, at)?;
     let mut flags = Vec::with_capacity(values.len());
     for &value in values {
-        if value == 1.0 {
+        if crate::kernels::exact_eq(value, 1.0) {
             flags.push(true);
         } else if value == 0.0 {
             flags.push(false);
@@ -194,7 +183,7 @@ fn log_rank(args: &[Data]) -> Option<Data> {
 }
 
 fn cox_fit(args: &[Data]) -> Option<Data> {
-    let Some(x) = args.get(0).and_then(rows) else {
+    let Some(x) = args.first().and_then(rows) else {
         return bad(
             0,
             DiagKind::Shape,
@@ -249,7 +238,7 @@ fn cox_fit(args: &[Data]) -> Option<Data> {
 }
 
 fn cox_predict(args: &[Data]) -> Option<Data> {
-    let Some(x) = args.get(0).and_then(rows) else {
+    let Some(x) = args.first().and_then(rows) else {
         return bad(
             0,
             DiagKind::Shape,
@@ -269,13 +258,8 @@ fn cox_predict(args: &[Data]) -> Option<Data> {
             beta.len()
         ),
     )?;
-    let mut hazards = Vec::with_capacity(x.len());
-    for row in &x {
-        let mut score = 0.0;
-        for (value, coefficient) in row.iter().zip(beta.iter()) {
-            score += value * coefficient;
-        }
-        hazards.push(score.exp());
+    match crate::kernels::survival::cox::cox_predict_coefficients(&beta, &x) {
+        | Ok(hazards) => super::bridge::vec_out(hazards),
+        | Err(message) => bad(0, DiagKind::Shape, format_args!("{message}")),
     }
-    super::bridge::vec_out(hazards)
 }

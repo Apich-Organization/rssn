@@ -102,7 +102,10 @@ use crate::kernel::value::Value;
 
 /// A host function rssn may call.
 ///
-/// See the [module documentation](self) for the contract of each argument.
+/// `user` is the registered context pointer. `session` owns the `count`
+/// argument cells in `args`, which remain valid until the callback returns.
+/// Write the result cell ID to `out` and return [`RssnStatus::Ok`] on success.
+/// The result can be one of the argument cells or a cell the host created.
 pub type RssnCallbackFn = extern "C" fn(
     user: *mut c_void,
     session: *const RssnSession,
@@ -222,8 +225,8 @@ pub unsafe extern "C" fn rssn_callback_fail(message: *const c_char) {
 /// Registers `function` with an explicit signature and writes a cell holding
 /// the callback to `*out`.
 ///
-/// `signature` is JSON: `{"params": ["real"], "ret": "real"}`. The `TypeExpr`
-/// spelling is the manifest's own; see the [module documentation](self).
+/// `signature` is JSON: `{"params": ["real"], "ret": "real"}`. The
+/// [`TypeExpr`](crate::kernel::signature::TypeExpr) spelling follows the manifest.
 /// The callback must be concrete (no type parameters, no variadic tail, no
 /// dimension variables once instantiated) or registration fails with
 /// [`RssnStatus::InvalidArgument`].
@@ -265,7 +268,7 @@ pub unsafe extern "C" fn rssn_callback_new(
         };
         register(
             session,
-            Signature::new(parsed.params, parsed.ret),
+            &Signature::new(parsed.params, parsed.ret),
             function,
             user,
             out,
@@ -319,7 +322,7 @@ pub unsafe extern "C" fn rssn_callback_new_for(
                 &format!("operator `{name}` declares no function parameter at index {index}"),
             );
         };
-        register(session, signature, function, user, out)
+        register(session, &signature, function, user, out)
     })
 }
 
@@ -414,9 +417,7 @@ pub unsafe extern "C" fn rssn_callback_free(
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_callback_count(session: *const RssnSession) -> usize {
     // SAFETY: caller contract.
-    unsafe { session.as_ref() }
-        .map(|session| session.callbacks.borrow().len())
-        .unwrap_or(0)
+    unsafe { session.as_ref() }.map_or(0, |session| session.callbacks.borrow().len())
 }
 
 /// Stores `Value::Function(handle)` in a new cell.
@@ -434,7 +435,7 @@ fn store(
 /// Adds `signature` to the session's bank and stores the resulting value.
 fn register(
     session: &RssnSession,
-    signature: Signature,
+    signature: &Signature,
     function: RssnCallbackFn,
     user: *mut c_void,
     out: *mut u32,
@@ -446,7 +447,7 @@ fn register(
     let callback = Arc::new(HostFn {
         function,
         user,
-        session: session as *const RssnSession,
+        session: std::ptr::from_ref::<RssnSession>(session),
         signature,
     });
     match session.callbacks.borrow_mut().add(callback) {

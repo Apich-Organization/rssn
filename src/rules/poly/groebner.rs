@@ -434,8 +434,7 @@ pub fn reduce_batch_in(
     if let Some(p_u64) = small_prime_modulus(domain)
         && let Some(barrett) = BarrettMod::new(p_u64)
     {
-        let mut u64_basis: Option<Vec<Vec<(Vec<u32>, u64)>>> =
-            Some(Vec::with_capacity(basis.len()));
+        let mut u64_basis: Option<Vec<ModTerms>> = Some(Vec::with_capacity(basis.len()));
         if let Some(ref mut converted) = u64_basis {
             for g in basis {
                 if let Some(terms) = gpoly_to_u64(g, p_u64) {
@@ -544,11 +543,10 @@ fn sub_scaled_u64_tail(
     let mut j = 0_usize;
     let mut pending_mono: Vec<u32> = Vec::new();
     let mut pending_coeff = 0_u64;
-    let mut has_pending = false;
+    let mut has_pending = !g_tail.is_empty();
     if let Some((gm, gc)) = g_tail.first() {
         pending_mono.extend(gm.iter().zip(shift).map(|(&a, &b)| a.saturating_add(b)));
         pending_coeff = barrett.mul(*gc, neg_factor);
-        has_pending = true;
     }
     loop {
         match (work_tail.get(i), has_pending) {
@@ -681,7 +679,7 @@ fn reduce_mod_u64(
 ) -> Option<GPoly> {
     let p_u64 = barrett.modulus();
     let mut work = gpoly_to_u64(p, p_u64)?;
-    let mut cached: Vec<Option<Vec<(Vec<u32>, u64)>>> = vec![None; basis.len()];
+    let mut cached: Vec<Option<ModTerms>> = vec![None; basis.len()];
     let mut scratch: Vec<(Vec<u32>, u64)> = Vec::with_capacity(work.len());
     let mut done: Vec<(Vec<u32>, u64)> = Vec::new();
     let mut shift: Vec<u32> = Vec::new();
@@ -934,7 +932,7 @@ pub fn groebner(
 
 fn monic_u64(
     barrett: BarrettMod,
-    terms: &mut Vec<(Vec<u32>, u64)>,
+    terms: &mut [(Vec<u32>, u64)],
 ) -> Option<()> {
     let Some((_, lead)) = terms.first() else {
         return Some(());
@@ -1010,11 +1008,10 @@ fn s_polynomial_u64(
     let mut j = 0_usize;
     let mut pending_mono: Vec<u32> = Vec::new();
     let mut pending_coeff = 0_u64;
-    let mut has_pending = false;
+    let mut has_pending = !g_tail.is_empty();
     if let Some((gm, gc)) = g_tail.first() {
         pending_mono.extend(gm.iter().zip(&shift_g).map(|(&a, &b)| a.saturating_add(b)));
         pending_coeff = barrett.mul(*gc, neg_inv_gc);
-        has_pending = true;
     }
     loop {
         match (left.get(i), has_pending) {
@@ -1106,7 +1103,13 @@ pub fn groebner_in(
     groebner_general(domain, generators, order, limits)
 }
 
+type ModTerms = Vec<(Vec<u32>, u64)>;
+
 #[allow(clippy::single_call_fn)]
+#[expect(
+    clippy::option_option,
+    reason = "An unsupported modular case retries the general solver, while exhausted limits halt immediately"
+)]
 fn groebner_mod_u64(
     barrett: BarrettMod,
     generators: &[GPoly],
@@ -1150,7 +1153,7 @@ fn groebner_mod_u64(
         let mut batch: Vec<(usize, usize)> = Vec::new();
         let mut batch_degree: Option<u64> = None;
         while !pairs.is_empty() && batch.len() < cap {
-            let pick = match (0..pairs.len()).min_by(|&a, &b| {
+            let Some(pick) = (0..pairs.len()).min_by(|&a, &b| {
                 let key = |pair_idx: usize| -> Vec<u32> {
                     let Some(&(i, j)) = pairs.get(pair_idx) else {
                         return Vec::new();
@@ -1164,9 +1167,8 @@ fn groebner_mod_u64(
                     }
                 };
                 order.cmp(&key(a), &key(b))
-            }) {
-                | Some(p) => p,
-                | None => return Some(None),
+            }) else {
+                return Some(None);
             };
             let &(i, j) = pairs.get(pick)?;
             let (Some((lead_i, _)), Some((lead_j, _))) = (
@@ -3274,7 +3276,7 @@ mod tests {
             assert_eq!(fast_gb, gen_gb, "groebner mismatch for GF({modulus})");
 
             // Batch normal-form reduction agreement and serial-vs-parallel determinism.
-            let mut candidates = gens.clone();
+            let mut candidates = gens;
             for k in 0..48 {
                 let mut m = vec![0_u32; 4];
                 m[k % 4] = u32::try_from((k / 4) % 3 + 1).unwrap_or(1);

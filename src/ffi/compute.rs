@@ -1,7 +1,9 @@
 //! Configurations and `rssn_compute`.
 
+use std::ffi::CString;
 use std::mem::MaybeUninit;
 use std::os::raw::c_char;
+use std::ptr;
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -42,6 +44,81 @@ pub struct RssnAnswer {
     pub reduced: bool,
     /// Outer iterations the engine performed.
     pub iterations: usize,
+}
+
+/// Per-request metadata returned by `rssn_compute_all_with_metadata`.
+///
+/// Each non-null pointer is an owned string. Release it with `rssn_string_free`.
+#[repr(C)]
+#[derive(Debug)]
+pub struct RssnAnswerMetadata {
+    /// Inferred dimension of a successful answer, or null if unavailable.
+    pub dimension: *mut c_char,
+    /// Stable diagnostic codes separated by line feeds, or null if empty.
+    pub diagnostic_codes: *mut c_char,
+    /// Error message for this request, or null on success.
+    pub message: *mut c_char,
+}
+
+#[derive(Default)]
+struct OwnedAnswerMetadata {
+    dimension: Option<CString>,
+    diagnostic_codes: Option<CString>,
+    message: Option<CString>,
+}
+
+impl OwnedAnswerMetadata {
+    fn computed(answer: &Answer<'_>) -> Self {
+        Self {
+            dimension: answer
+                .dimension
+                .as_ref()
+                .and_then(|dimension| CString::new(dimension.to_string()).ok()),
+            diagnostic_codes: (!answer.diagnostics.is_empty())
+                .then(|| {
+                    answer
+                        .diagnostics
+                        .iter()
+                        .map(crate::graph::DimError::code)
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                })
+                .and_then(|codes| CString::new(codes).ok()),
+            message: None,
+        }
+    }
+
+    fn failed(
+        message: &str,
+        code: Option<&str>,
+    ) -> Self {
+        Self {
+            dimension: None,
+            diagnostic_codes: code.and_then(|code| CString::new(code).ok()),
+            message: CString::new(message.replace('\0', " ")).ok(),
+        }
+    }
+
+    fn into_ffi(self) -> RssnAnswerMetadata {
+        RssnAnswerMetadata {
+            dimension: self.dimension.map_or(ptr::null_mut(), CString::into_raw),
+            diagnostic_codes: self
+                .diagnostic_codes
+                .map_or(ptr::null_mut(), CString::into_raw),
+            message: self.message.map_or(ptr::null_mut(), CString::into_raw),
+        }
+    }
+}
+
+fn raw_answer(answer: &Answer<'_>) -> RssnAnswer {
+    RssnAnswer {
+        term: answer.term.id(),
+        has_value: answer.value.is_some(),
+        value: answer.value.unwrap_or(f64::NAN),
+        error: answer.error.unwrap_or(f64::NAN),
+        reduced: answer.reduced,
+        iterations: answer.report.iterations,
+    }
 }
 
 /// The answer of one computation, as the record both `rssn_compute_json` and
@@ -376,16 +453,8 @@ pub unsafe extern "C" fn rssn_compute(
             | Ok(answer) => answer,
             | Err(status) => return status,
         };
-        let result = RssnAnswer {
-            term: answer.term.id(),
-            has_value: answer.value.is_some(),
-            value: answer.value.unwrap_or(f64::NAN),
-            error: answer.error.unwrap_or(f64::NAN),
-            reduced: answer.reduced,
-            iterations: answer.report.iterations,
-        };
         // SAFETY: non-null and valid by contract.
-        unsafe { *out = result };
+        unsafe { *out = raw_answer(&answer) };
         RssnStatus::Ok
     })
 }
@@ -555,8 +624,55 @@ pub unsafe extern "C" fn rssn_compute_all(
     answers: *mut RssnAnswer,
     statuses: *mut RssnStatus,
 ) -> RssnStatus {
+    // SAFETY: the caller supplies the arrays required by compute_batch.
+    unsafe { compute_batch(session, terms, n, config, answers, statuses, None) }
+}
+
+/// Computes requests in parallel and writes one metadata record per request.
+///
+/// The answer and status arrays follow the same contract as `rssn_compute_all`.
+/// Metadata stays in request order, including when some requests fail. Each
+/// non-null string belongs to the caller and is released with `rssn_string_free`.
+///
+/// # Safety
+/// The session, configuration and arrays must satisfy `rssn_compute_all`'s
+/// contract. The metadata array must be writable for `n` elements and disjoint
+/// from the other arrays. It may be null when `n` is zero. Every element is
+/// initialized on an `Ok` return.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_compute_all_with_metadata(
+    session: *const RssnSession,
+    terms: *const u32,
+    n: usize,
+    config: *const RssnConfig,
+    answers: *mut RssnAnswer,
+    statuses: *mut RssnStatus,
+    metadata: *mut RssnAnswerMetadata,
+) -> RssnStatus {
+    // SAFETY: the caller supplies the arrays required by compute_batch.
+    unsafe { compute_batch(session, terms, n, config, answers, statuses, Some(metadata)) }
+}
+
+#[allow(
+    clippy::too_many_lines,
+    reason = "keeps handle resolution, parallel dispatch and ordered writes together"
+)]
+unsafe fn compute_batch(
+    session: *const RssnSession,
+    terms: *const u32,
+    n: usize,
+    config: *const RssnConfig,
+    answers: *mut RssnAnswer,
+    statuses: *mut RssnStatus,
+    metadata: Option<*mut RssnAnswerMetadata>,
+) -> RssnStatus {
     guard(|| {
-        if n > 0 && (terms.is_null() || answers.is_null() || statuses.is_null()) {
+        if n > 0
+            && (terms.is_null()
+                || answers.is_null()
+                || statuses.is_null()
+                || metadata.is_some_and(<*mut RssnAnswerMetadata>::is_null))
+        {
             return fail(RssnStatus::NullArgument, "null array argument");
         }
         // SAFETY: caller contract.
@@ -596,6 +712,11 @@ pub unsafe extern "C" fn rssn_compute_all(
         };
         let mut live = Vec::new();
         let mut slots = Vec::new();
+        let mut reports = metadata.map(|_| {
+            let mut reports = Vec::with_capacity(n);
+            reports.resize_with(n, OwnedAnswerMetadata::default);
+            reports
+        });
         // `resolve` already records the missing-handle message.
         let mut first_missing = n;
         for (index, ((answer, status), &id)) in
@@ -611,6 +732,9 @@ pub unsafe extern "C" fn rssn_compute_all(
                 },
                 | Err(code) => {
                     first_missing = first_missing.min(index);
+                    if let Some(report) = reports.as_mut().and_then(|rows| rows.get_mut(index)) {
+                        *report = OwnedAnswerMetadata::failed(&super::last_error_text(), None);
+                    }
                     code
                 },
             };
@@ -618,27 +742,32 @@ pub unsafe extern "C" fn rssn_compute_all(
         }
         let mut first_error: Option<String> = None;
         for (&k, result) in slots.iter().zip(session.compute_all(&live, config)) {
+            let report = reports.as_mut().and_then(|rows| rows.get_mut(k));
             match result {
                 | Ok(answer) => {
                     super::remember_dimensions(&answer.diagnostics);
                     statuses[k].write(RssnStatus::Ok);
-                    answers[k].write(RssnAnswer {
-                        term: answer.term.id(),
-                        has_value: answer.value.is_some(),
-                        value: answer.value.unwrap_or(f64::NAN),
-                        error: answer.error.unwrap_or(f64::NAN),
-                        reduced: answer.reduced,
-                        iterations: answer.report.iterations,
-                    });
+                    answers[k].write(raw_answer(&answer));
+                    if let Some(report) = report {
+                        *report = OwnedAnswerMetadata::computed(&answer);
+                    }
                 },
                 | Err(e) => {
-                    if let crate::api::ComputeError::Dimension(error) = &e {
+                    let dimension_code = if let crate::api::ComputeError::Dimension(error) = &e {
                         super::remember_dimension_codes([error.code()]);
+                        Some(error.code())
                     } else {
                         super::clear_dimensions();
-                    }
+                        None
+                    };
                     statuses[k].write(super::status_of(&e));
-                    if k < first_missing {
+                    if let Some(report) = report {
+                        let message = e.to_string();
+                        *report = OwnedAnswerMetadata::failed(&message, dimension_code);
+                        if k < first_missing {
+                            first_error.get_or_insert(message);
+                        }
+                    } else if k < first_missing {
                         first_error.get_or_insert_with(|| e.to_string());
                     }
                 },
@@ -646,6 +775,14 @@ pub unsafe extern "C" fn rssn_compute_all(
         }
         if let Some(message) = first_error {
             let _ = fail(RssnStatus::Ok, &message);
+        }
+        if let (Some(metadata), Some(reports)) = (metadata, reports) {
+            for (index, report) in reports.into_iter().enumerate() {
+                // SAFETY: the caller provides n writable metadata slots. No
+                // allocations or fallible work remain after taking ownership
+                // of the strings from the Rust records.
+                unsafe { metadata.add(index).write(report.into_ffi()) };
+            }
         }
         RssnStatus::Ok
     })

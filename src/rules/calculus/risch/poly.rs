@@ -192,11 +192,11 @@ pub fn formal_derivative<F: Coeff>(p: &[F]) -> Vec<F> {
     p.iter()
         .enumerate()
         .skip(1)
-        .filter_map(|(i, c)| {
+        .map(|(i, c)| {
             let k = F::from_q(&num_rational::BigRational::from_integer(
                 num_bigint::BigInt::from(i),
             ));
-            Some(c.mul(&k))
+            c.mul(&k)
         })
         .collect()
 }

@@ -270,14 +270,14 @@ fn leading_minors(h: &[Vec<f64>]) -> Vec<f64> {
     (1..=h.len())
         .map(|k| {
             let sub: Vec<Vec<f64>> = h[..k].iter().map(|r| r[..k].to_vec()).collect();
-            determinant(sub)
+            determinant(&sub)
         })
         .collect()
 }
 
 /// Determinant via [`crate::kernels::dense::lu_factor`].
-fn determinant(m: Vec<Vec<f64>>) -> f64 {
-    let Ok(mat) = crate::kernels::dense::Mat::from_rows(&m) else {
+fn determinant(m: &[Vec<f64>]) -> f64 {
+    let Ok(mat) = crate::kernels::dense::Mat::from_rows(m) else {
         return 0.0;
     };
     crate::kernels::dense::lu_factor(&mat).map_or(0.0, |lu| lu.det())
@@ -473,7 +473,7 @@ fn bordered_kind(
         vec![at(cx, gx)?, at(cx, lxx)?, at(cx, lxy)?],
         vec![at(cx, gy)?, at(cx, lxy)?, at(cx, lyy)?],
     ];
-    let det = determinant(m);
+    let det = determinant(&m);
     if det.abs() < 1e-12 {
         return None;
     }

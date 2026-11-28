@@ -228,7 +228,7 @@ fn eval_homog_z(
     let mut den_pow = BigInt::one();
     for (i, c) in p.iter().rev().enumerate() {
         if i == 0 {
-            acc = c.clone();
+            acc.clone_from(c);
         } else {
             den_pow *= den;
             acc = acc * num + c * &den_pow;
@@ -527,7 +527,7 @@ fn shift_linear_z(
     }
     let d_p = p.len() - 1;
     let mut acc = vec![BigInt::zero(); m];
-    acc[0] = p[d_p].clone();
+    acc[0].clone_from(&p[d_p]);
     let mut cur_len = 1_usize;
     let mut a_pow = BigInt::one();
     let neg_b = -b;
@@ -2105,9 +2105,15 @@ mod tests {
             .map(|i| frac((i * 7 - 5) % 13 + 1, (i % 3) + 1))
             .collect();
         let parts = apart(&numer, &denom).expect("high multiplicity decomposition");
-        assert!(recombination_defect(&parts, &numer, &denom).is_empty());
+        assert_eq!(
+            recombination_defect(&parts, &numer, &denom),
+            [] as [num_rational::Ratio<num_bigint::BigInt>; 0]
+        );
         for piece in &parts.pieces {
-            assert!(!piece.numerator.is_empty());
+            assert_ne!(
+                piece.numerator,
+                [] as [num_rational::Ratio<num_bigint::BigInt>; 0]
+            );
             assert!(piece.numerator.len() < piece.factor.len());
         }
         // Verify binary-splitting f-adic path (`multiplicity >= 8`) directly on (x^2 + 1)^9.
@@ -2115,7 +2121,10 @@ mod tests {
         let d_hi = univariate::mul(&polynomial_power(&q_fac, 9), &q(&[2, 3]));
         let n_hi: QPoly = (0..=20).map(|i| frac(i - 4, 5)).collect();
         let parts_hi = apart(&n_hi, &d_hi).expect("multiplicity-9 quadratic decomposition");
-        assert!(recombination_defect(&parts_hi, &n_hi, &d_hi).is_empty());
+        assert_eq!(
+            recombination_defect(&parts_hi, &n_hi, &d_hi),
+            [] as [num_rational::Ratio<num_bigint::BigInt>; 0]
+        );
     }
 
     #[test]
@@ -2129,7 +2138,10 @@ mod tests {
         let numer: QPoly = (0..=15).map(|i| frac(i * 11 - 17, 7)).collect();
         let parts = apart(&numer, &denom).expect("higher-degree decomposition");
         assert_eq!(parts.pieces.len(), 3);
-        assert!(recombination_defect(&parts, &numer, &denom).is_empty());
+        assert_eq!(
+            recombination_defect(&parts, &numer, &denom),
+            [] as [num_rational::Ratio<num_bigint::BigInt>; 0]
+        );
 
         // Large-coefficient irreducible quartics forcing multi-prime CRT inverse beyond 31 bits.
         let f1: ZPoly = [-100_003_i64, 17, -23, 5, 19]
@@ -2191,7 +2203,10 @@ mod tests {
         assert!(seq.is_some());
         assert_eq!(seq, par);
         let parts = seq.unwrap();
-        assert!(recombination_defect(&parts, &numer, &denom).is_empty());
+        assert_eq!(
+            recombination_defect(&parts, &numer, &denom),
+            [] as [num_rational::Ratio<num_bigint::BigInt>; 0]
+        );
     }
 
     #[test]

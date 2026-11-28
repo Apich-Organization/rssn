@@ -425,8 +425,8 @@ enum SubproductNode {
     },
     Branch {
         poly: QPoly,
-        left: Box<SubproductNode>,
-        right: Box<SubproductNode>,
+        left: Box<Self>,
+        right: Box<Self>,
     },
 }
 
@@ -1071,6 +1071,10 @@ fn bigint_mod_u64(
     }
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "Convolution uses distinct coefficient sources and reusable transform buffers"
+)]
 fn ntt_convolve_with<FA, FB>(
     a_len: usize,
     b_len: usize,
@@ -1374,17 +1378,7 @@ fn pack_kronecker_limbs(
             continue;
         }
         let is_neg = c.is_negative() ^ flip;
-        if !is_neg {
-            let mut b_val = u32::from(borrow);
-            let mut digits = c.magnitude().iter_u32_digits();
-            for slot in dst.iter_mut() {
-                let d = digits.next().unwrap_or(0);
-                let (res, underflow) = d.overflowing_sub(b_val);
-                *slot = res;
-                b_val = u32::from(underflow);
-            }
-            borrow = false;
-        } else {
+        if is_neg {
             let mut carry = u64::from(!borrow);
             let mut digits = c.magnitude().iter_u32_digits();
             for slot in dst.iter_mut() {
@@ -1394,6 +1388,16 @@ fn pack_kronecker_limbs(
                 carry = sum >> 32;
             }
             borrow = true;
+        } else {
+            let mut b_val = u32::from(borrow);
+            let mut digits = c.magnitude().iter_u32_digits();
+            for slot in dst.iter_mut() {
+                let d = digits.next().unwrap_or(0);
+                let (res, underflow) = d.overflowing_sub(b_val);
+                *slot = res;
+                b_val = u32::from(underflow);
+            }
+            borrow = false;
         }
     }
     limbs
@@ -1525,7 +1529,7 @@ pub fn z_mul(
     } else {
         let max_bits_a = a.iter().map(BigInt::bits).max().unwrap_or(0);
         let max_bits_b = b.iter().map(BigInt::bits).max().unwrap_or(0);
-        let min_len_bits = u64::from(usize::BITS - min_len.leading_zeros());
+        let min_len_bits = u64::from(min_len.bit_width());
         let approx_bound_bits = max_bits_a
             .saturating_add(max_bits_b)
             .saturating_add(min_len_bits);
@@ -1722,7 +1726,7 @@ fn z_gcd_subresultant(
         v = r.into_iter().map(|c| c / &denom).collect();
         g = u.last().cloned().unwrap_or_else(BigInt::one);
         if delta == 1 {
-            h = g.clone();
+            h.clone_from(&g);
         } else if delta > 1 {
             let num = num_traits::pow(g.clone(), delta);
             let den = num_traits::pow(h, delta - 1);
@@ -1823,7 +1827,7 @@ fn mignotte_bound_bits_z(
 ) -> u64 {
     let norm_bits = |p: &[BigInt]| -> u64 {
         let max_b = p.iter().map(BigInt::bits).max().unwrap_or(1);
-        let len_b = u64::from(usize::BITS - p.len().leading_zeros());
+        let len_b = u64::from(p.len().bit_width());
         max_b + len_b + 2
     };
     let deg = a.len().min(b.len()).saturating_sub(1) as u64;
@@ -2436,8 +2440,12 @@ impl Fp {
         let lead = b[b.len() - 1];
         let inv_lead = self.inv(lead);
         let k = a.len() - b.len() + 1;
-        let b_monic: PPoly = b.iter().map(|&c| self.barrett.mul(c, inv_lead)).collect();
-        let rev_b: PPoly = b_monic.into_iter().rev().collect();
+
+        let rev_b: PPoly = b
+            .iter()
+            .map(|&c| self.barrett.mul(c, inv_lead))
+            .rev()
+            .collect();
 
         let mut g = vec![1_u64];
         let mut cur = 1_usize;
@@ -2515,7 +2523,7 @@ impl Fp {
     ) -> PPoly {
         let p = trim_slice(p);
         match p.last() {
-            | Some(&lead) if lead == 1 => p.to_vec(),
+            | Some(&1) => p.to_vec(),
             | Some(&lead) => {
                 let inv = self.inv(lead);
                 p.iter().map(|&c| self.barrett.mul(c, inv)).collect()

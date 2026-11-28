@@ -209,11 +209,15 @@ mod tests {
         let engine = Engine::install(&mut graph, &standard()).unwrap_or_else(|e| panic!("{e}"));
         let verdicts =
             check_program(&graph, engine.program(), 60).unwrap_or_else(|e| panic!("{e}"));
-        // Rules about requests (derivatives, integrals) have no numeric
-        // value to compare; they are covered by the dual-phase tests of
-        // their rule sets and listed here explicitly so that the list
-        // cannot grow unnoticed.
-        let exempt = ["calculus/ftc", "calculus/defint-empty"];
+        // The calculus rule-set tests cover requests without a numeric value.
+        // The complex coordinate test checks each element of the two
+        // structured results because this sampler compares scalar values.
+        let exempt = [
+            "calculus/ftc",
+            "calculus/defint-empty",
+            "complex/to-polar",
+            "complex/to-sphere",
+        ];
         let untested: Vec<&str> = verdicts
             .iter()
             .filter(|(name, v)| v.agreed == 0 && !exempt.contains(&name.as_str()))

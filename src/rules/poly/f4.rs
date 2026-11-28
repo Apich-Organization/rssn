@@ -2160,10 +2160,7 @@ pub(super) mod common {
                         let mut top_col = lead;
                         let mut local_steps = 0_usize;
                         let mut hit_limit = false;
-                        loop {
-                            let Some(curr_lead) = highest_bit_le(&local_mask, top_col) else {
-                                break;
-                            };
+                        while let Some(curr_lead) = highest_bit_le(&local_mask, top_col) {
                             let val = (local_acc[curr_lead] % p_u128) as u64;
                             local_mask[curr_lead >> WORD_SHIFT] &=
                                 !(1_usize << (curr_lead & WORD_MASK));
@@ -2268,10 +2265,7 @@ pub(super) mod common {
             }
 
             let mut top_col = lead;
-            loop {
-                let Some(curr_lead) = highest_bit_le(&mask_words, top_col) else {
-                    break;
-                };
+            while let Some(curr_lead) = highest_bit_le(&mask_words, top_col) {
                 let val = (acc[curr_lead] % p_u128) as u64;
                 if val == 0 {
                     acc[curr_lead] = 0;
@@ -2499,10 +2493,7 @@ pub(super) mod common {
             }
 
             let mut top_col = lead;
-            loop {
-                let Some(curr_lead) = highest_bit_le(&mask_words, top_col) else {
-                    break;
-                };
+            while let Some(curr_lead) = highest_bit_le(&mask_words, top_col) {
                 if domain.is_zero(&acc[curr_lead]) {
                     acc[curr_lead] = BigRational::zero();
                     mask_words[curr_lead >> WORD_SHIFT] &= !(1_usize << (curr_lead & WORD_MASK));
@@ -2518,7 +2509,7 @@ pub(super) mod common {
                     if *steps > limit {
                         return None;
                     }
-                    let factor = std::mem::replace(&mut acc[curr_lead], BigRational::zero());
+                    let factor = std::mem::take(&mut acc[curr_lead]);
                     mask_words[curr_lead >> WORD_SHIFT] &= !(1_usize << (curr_lead & WORD_MASK));
                     let factor_is_one = domain.is_one(&factor);
                     for (col, p_val) in &pivot[..pivot.len().saturating_sub(1)] {
@@ -2574,7 +2565,7 @@ pub(super) mod common {
                             let bit = word.trailing_zeros() as usize;
                             word &= word - 1;
                             let col = (w_idx << WORD_SHIFT) | bit;
-                            let raw = std::mem::replace(&mut acc[col], BigRational::zero());
+                            let raw = std::mem::take(&mut acc[col]);
                             if !domain.is_zero(&raw) {
                                 let c = if col == curr_lead {
                                     domain.one()

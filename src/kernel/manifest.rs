@@ -113,6 +113,9 @@ pub struct Features {
     /// is answered at run time by `backend::device::registry().list()`.
     #[serde(default)]
     pub devices: Vec<String>,
+    /// `NumPy` float array compatibility.
+    #[serde(default)]
+    pub npy: bool,
 }
 
 impl Features {
@@ -123,6 +126,7 @@ impl Features {
             dynamic_call: true,
             plugin_abi: crate::kernel::signature::PLUGIN_ABI,
             jit: cfg!(feature = "jit"),
+            npy: cfg!(feature = "npy"),
             jit_branch: cfg!(feature = "jit"),
             jit_index: cfg!(feature = "jit"),
             parallel_symbolic: true,
@@ -712,6 +716,16 @@ impl KernelManifest {
         serde_json::to_string_pretty(self).unwrap_or_else(|e| format!("{{\"error\":\"{e}\"}}"))
     }
 
+    /// Reads a manifest written by [`KernelManifest::to_json`].
+    ///
+    /// Call [`Self::verify`] to compare the stored digest with the contents.
+    ///
+    /// # Errors
+    /// Returns a serialization error for invalid JSON or manifest fields.
+    pub fn from_json(json: &str) -> Result<Self, serde_json::Error> {
+        serde_json::from_str(json)
+    }
+
     /// The full digest as 64 lowercase hex characters.
     ///
     /// This is the string a host should pin: it is the whole 32-byte BLAKE3
@@ -935,6 +949,9 @@ mod tests {
             .remove("rust_path");
         let old: OpInfo = serde_json::from_value(json).expect("read old JSON without provenance");
         assert_eq!(old.rust_path, None);
+        let decoded = KernelManifest::from_json(&manifest.to_json()).expect("read manifest JSON");
+        assert!(decoded.verify());
+        assert_eq!(decoded, manifest);
         let bytes = manifest.to_bytes().expect("encode current binary manifest");
         assert_eq!(
             KernelManifest::from_bytes(&bytes).expect("decode current binary manifest"),

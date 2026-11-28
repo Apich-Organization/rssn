@@ -474,7 +474,7 @@ mod tests {
         };
         assert_eq!(finding.kind, super::DiagKind::Arity);
         assert_eq!(finding.op, "diff");
-        assert!(!finding.message.is_empty());
+        assert_ne!(finding.message, "");
     }
 
     /// The classifier never invents a numeric cause: with the right number of

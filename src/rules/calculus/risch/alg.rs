@@ -61,7 +61,7 @@ fn integrate_level(
     }
     let (a, d) = current.parts()?;
     let (q, r) = poly::divrem(a, d)?;
-    let (g, r, d) = hermite(&r, &d, level, tower)?;
+    let (g, r, d) = hermite(&r, d, level, tower)?;
     current = Elem::ratio(level, r, d)?;
     let mut logs: Vec<(Q, Elem)> = Vec::new();
     if !current.is_zero() {
@@ -194,13 +194,15 @@ fn hermite(
     Some((g, poly::trim(remainder), d_sqf))
 }
 
+type PrincipalPart = (Vec<(i64, Elem)>, Elem);
+
 /// Splits the principal part at `theta = 0` off an element of an
 /// exponential extension: `f = sum c_k theta^{-k} + rest` with the
 /// denominator of `rest` coprime to `theta`.
 fn split_principal(
     f: &Elem,
     level: usize,
-) -> Option<Option<(Vec<(i64, Elem)>, Elem)>> {
+) -> Option<Option<PrincipalPart>> {
     let (a, d) = f.parts()?;
     let m = d.iter().take_while(|c| c.is_zero()).count();
     if m == 0 {

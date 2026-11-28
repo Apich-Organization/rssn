@@ -196,8 +196,10 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "complex/im-real: im(?x) => 0 if real(?x)",
             "complex/conj-real: conj(?x) => ?x if real(?x)",
             "complex/conj-conj: conj(conj(?x)) => ?x",
-            // Conjugation is a field automorphism and commutes with every
-            // function whose power series has real coefficients.
+            // Conjugation commutes with these algebraic and meromorphic
+            // operations on their domains. For the principal inverses,
+            // interchanging conjugation with evaluation can swap the side
+            // selected on a branch cut.
             "complex/conj-add: conj(?a + ?b) => conj(?a) + conj(?b)",
             "complex/conj-mul: conj(?a * ?b) => conj(?a) * conj(?b)",
             "complex/conj-pow: conj(?a ^ ?n) => conj(?a) ^ ?n if integer(?n)",
@@ -214,12 +216,6 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "complex/conj-coth: conj(coth(?a)) => coth(conj(?a))",
             "complex/conj-sech: conj(sech(?a)) => sech(conj(?a))",
             "complex/conj-csch: conj(csch(?a)) => csch(conj(?a))",
-            "complex/conj-asin: conj(asin(?a)) => asin(conj(?a))",
-            "complex/conj-acos: conj(acos(?a)) => acos(conj(?a))",
-            "complex/conj-atan: conj(atan(?a)) => atan(conj(?a))",
-            "complex/conj-asinh: conj(asinh(?a)) => asinh(conj(?a))",
-            "complex/conj-acosh: conj(acosh(?a)) => acosh(conj(?a))",
-            "complex/conj-atanh: conj(atanh(?a)) => atanh(conj(?a))",
             "complex/arg-positive: arg(?x) => 0 if positive(?x)",
             "complex/arg-negative: arg(?x) => pi if negative(?x)",
             "complex/abs-sq: abs_sq(?z) => re(?z)^2 + im(?z)^2",
@@ -1133,11 +1129,83 @@ mod tests {
 
     #[test]
     fn integer_power_outside_the_split_bound_stays_symbolic() {
-        let got = run("re((1 + I)^(-9223372036854775808))");
+        // A base with a known phase such as 1 + I can reduce exactly by
+        // another rule. Use a base that exercises the Cartesian split bound.
+        let got = run("re((2 + I)^(-9223372036854775808))");
         assert!(
             got.contains("re(") && got.contains("9223372036854775808"),
             "{got}"
         );
+    }
+
+    #[test]
+    fn coordinate_rewrites_produce_the_expected_components() {
+        let mut graph = Graph::new();
+        let engine = Engine::install(&mut graph, &[complex()]).unwrap();
+        let list = graph.ops().lookup("list").unwrap();
+        for (source, expected) in [
+            ("to_polar(3 + 4*I)", &[5.0, 4.0_f64.atan2(3.0)][..]),
+            ("to_polar(-I)", &[1.0, -std::f64::consts::FRAC_PI_2][..]),
+            (
+                "to_riemann_sphere(3 + 4*I)",
+                &[3.0 / 13.0, 4.0 / 13.0, 12.0 / 13.0][..],
+            ),
+            ("to_riemann_sphere(-I)", &[0.0, -1.0, 0.0][..]),
+        ] {
+            let root = graph.parse(source).unwrap();
+            engine.run(
+                &mut graph,
+                &[root],
+                &crate::graph::Env::symbolic(),
+                &crate::graph::Saturate,
+                &crate::graph::Budget::default(),
+            );
+            let result = crate::graph::Extractor::new(&graph, &[root], &crate::graph::ClosedForm)
+                .build(&mut graph, root)
+                .unwrap();
+            assert_eq!(graph.op(result), list, "{source}");
+            let components = graph.children(result);
+            assert_eq!(components.len(), expected.len(), "{source}");
+            for (&component, &expected) in components.iter().zip(expected) {
+                let actual = graph.eval_complex(component, &HashMap::new()).unwrap();
+                assert!(
+                    (actual - expected).norm() < 1e-12,
+                    "{source}: {actual} vs {expected}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn principal_inverse_conjugation_keeps_the_value_on_each_cut() {
+        let mut graph = Graph::new();
+        let engine = Engine::install(&mut graph, &[complex()]).unwrap();
+        for source in [
+            "conj(asin(2))",
+            "conj(acos(2))",
+            "conj(atan(2*I))",
+            "conj(asinh(2*I))",
+            "conj(acosh(-2))",
+            "conj(atanh(2))",
+        ] {
+            let root = graph.parse(source).unwrap();
+            let expected = graph.eval_complex(root, &HashMap::new()).unwrap();
+            engine.run(
+                &mut graph,
+                &[root],
+                &crate::graph::Env::symbolic(),
+                &crate::graph::Saturate,
+                &crate::graph::Budget::default(),
+            );
+            let node = crate::graph::Extractor::new(&graph, &[root], &crate::graph::ClosedForm)
+                .build(&mut graph, root)
+                .unwrap();
+            let actual = graph.eval_complex(node, &HashMap::new()).unwrap();
+            assert!(
+                (actual - expected).norm() < 1e-12,
+                "{source}: {actual} vs {expected}"
+            );
+        }
     }
 
     #[test]

@@ -400,7 +400,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
                     }
                     Some(Complex64::from_polar(
                         z.norm().sqrt(),
-                        0.5 * (theta0 + shifted),
+                        f64::midpoint(theta0, shifted),
                     ))
                 })
             },

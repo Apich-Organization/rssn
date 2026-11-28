@@ -8,6 +8,12 @@ use crate::kernels::qlinalg::{
 use num_traits::One;
 use num_traits::Signed;
 use num_traits::Zero;
+#[path = "qmatrix_exact.rs"]
+mod exact;
+
+const MATRIX_LIMIT: usize = 32;
+const COEFFICIENT_BIT_LIMIT: u64 = 1_048_576;
+
 pub(super) struct QMatrix {
     pub(super) data: QMat,
     pub(super) cols: usize,
@@ -17,21 +23,12 @@ impl NativeType for QMatrix {
     const MAX_BYTES: usize = 1_048_576;
 
     fn validate(&self) -> Result<(), OpError> {
-        limit(self.data.len(), 32)?;
-        limit(self.cols, 32)?;
+        limit(self.data.len(), MATRIX_LIMIT)?;
+        limit(self.cols, MATRIX_LIMIT)?;
         if self.data.iter().any(|r| r.len() != self.cols) {
             return Err(error("exact matrix is ragged"));
         }
-        let mut bits = 0u64;
-        for q in self.data.iter().flatten() {
-            bits = bits
-                .checked_add(q.numer().bits() + q.denom().bits())
-                .ok_or_else(|| error("exact coefficient bit count overflows"))?;
-        }
-        if bits > 1_048_576 {
-            return Err(error("exact coefficient storage budget exhausted"));
-        }
-        Ok(())
+        coefficient_storage(self.data.iter().flatten().map(rational_bits))
     }
 }
 impl QMatrix {
@@ -122,17 +119,25 @@ fn columns(
     }
     Ok(())
 }
-fn matrix_growth(model: &QMatrix) -> Result<(), OpError> {
-    let largest = model
-        .data
-        .iter()
-        .flatten()
-        .map(|q| q.numer().bits() + q.denom().bits())
-        .max()
-        .unwrap_or(0);
+fn rational_bits(value: &Q) -> u64 {
+    value.numer().bits().saturating_add(value.denom().bits())
+}
+fn coefficient_storage(bits: impl Iterator<Item = u64>) -> Result<(), OpError> {
+    let bits = bits.fold(0u64, u64::saturating_add);
+    if bits > COEFFICIENT_BIT_LIMIT {
+        return Err(error("exact coefficient storage budget exhausted"));
+    }
+    Ok(())
+}
+fn elimination_growth(
+    rows: usize,
+    cols: usize,
+    coefficients: impl Iterator<Item = u64>,
+) -> Result<(), OpError> {
+    let largest = coefficients.max().unwrap_or(0);
     if largest
-        .saturating_mul(model.data.len().max(1) as u64)
-        .saturating_mul(model.data.len().saturating_mul(model.cols) as u64)
+        .saturating_mul(rows.max(1) as u64)
+        .saturating_mul(rows.saturating_mul(cols) as u64)
         > 8_388_608
     {
         return Err(error(
@@ -140,6 +145,13 @@ fn matrix_growth(model: &QMatrix) -> Result<(), OpError> {
         ));
     }
     Ok(())
+}
+fn matrix_growth(model: &QMatrix) -> Result<(), OpError> {
+    elimination_growth(
+        model.data.len(),
+        model.cols,
+        model.data.iter().flatten().map(rational_bits),
+    )
 }
 object_binding!(qmatrix_new,"num_native_qmatrix_new","","Construct exact rational coefficient algebra after explicit division by a same-unit positive reference. All subsequent Q operations are normalized coefficient-space operations; physical scales are retained by the caller rather than silently erased. Finite Float inputs are converted to their exact binary rational values.",false,(values:Input,reference:Input)->NewObject<QMatrix>,|_ctx:&CallCtx<'_>,values:Input,reference:Input|{api::same_dimension(&api::dimension(&values.0)?,&api::dimension(&reference.0)?)?;let scale=rational(&reference.0)?;if !scale.is_positive(){return Err(error("exact coefficient reference must be positive"));}let mut model=matrix(&values.0)?;for x in model.data.iter_mut().flatten(){*x/=&scale;}model.validate()?;Ok(NewObject::normalized(model))});
 object_binding!(qmatrix_export,"num_native_qmatrix_export","","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(a:Handle<QMatrix>)->Dynamic,|ctx:&CallCtx<'_>,a:Handle<QMatrix>|{a.with(ctx,|m|packed(m.data.clone(),m.cols))});
@@ -181,5 +193,6 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &qlinalg_reduce_mod::BINDING,
         ],
         "numerical_vector",
-    )
+    )?;
+    exact::install(i)
 }

@@ -27,7 +27,6 @@
 //! the enclosure, for a host that wants to see the uncertainty itself.
 
 use super::bridge::Data;
-use super::bridge::Entry;
 use super::bridge::bad;
 use super::bridge::count;
 use super::bridge::name;
@@ -37,99 +36,68 @@ use super::bridge::text_opt;
 use crate::kernel::diag::DiagKind;
 use crate::kernels::mp;
 
-/// Every operator of this family.
-pub(super) const ENTRIES: &[Entry] = &[
-    Entry {
-        name: "mp_eval",
-        params: "td",
-        eval: mp_eval,
-        doc: "`mp_eval(expr, digits)`: the value of the expression `expr` to `digits` significant decimal digits, as text, correctly rounded.",
-    },
-    Entry {
-        name: "mp_const",
-        params: "nd",
-        eval: mp_const,
-        doc: "`mp_const(name, digits)`: the constant `pi`, `e`, `tau`, `ln2`, `sqrt2` or `phi` to `digits` significant decimal digits.",
-    },
-    Entry {
-        name: "mp_round",
-        params: "td",
-        eval: mp_round,
-        doc: "`mp_round(x, digits)`: the decimal `x` rounded to `digits` significant digits, nearest even.",
-    },
-    Entry {
-        name: "mp_round_mode",
-        params: "tdn",
-        eval: mp_round_mode,
-        doc: "`mp_round_mode(x, digits, mode)`: `x` rounded to `digits` significant digits in `mode` (`nearest`, `zero`, `away`, `up`, `down`).",
-    },
-    Entry {
-        name: "mp_add",
-        params: "ttd",
-        eval: mp_add,
-        doc: "`mp_add(a, b, digits)`: the sum of two decimal numbers, to `digits` significant digits.",
-    },
-    Entry {
-        name: "mp_sub",
-        params: "ttd",
-        eval: mp_sub,
-        doc: "`mp_sub(a, b, digits)`: the difference of two decimal numbers, to `digits` significant digits.",
-    },
-    Entry {
-        name: "mp_mul",
-        params: "ttd",
-        eval: mp_mul,
-        doc: "`mp_mul(a, b, digits)`: the product of two decimal numbers, to `digits` significant digits.",
-    },
-    Entry {
-        name: "mp_div",
-        params: "ttd",
-        eval: mp_div,
-        doc: "`mp_div(a, b, digits)`: the quotient of two decimal numbers, to `digits` significant digits.",
-    },
-    Entry {
-        name: "mp_compare",
-        params: "tt",
-        eval: mp_compare,
-        doc: "`mp_compare(a, b)`: `-1`, `0` or `1` as the decimal `a` is below, equal to or above `b`, compared exactly.",
-    },
-    Entry {
-        name: "mp_to_float",
-        params: "t",
-        eval: mp_to_float,
-        doc: "`mp_to_float(x)`: the decimal `x` narrowed to a double, correctly rounded (no double rounding through an intermediate).",
-    },
-    Entry {
-        name: "mp_from_float",
-        params: "sd",
-        eval: mp_from_float,
-        doc: "`mp_from_float(x, digits)`: the decimal expansion of the double `x` to `digits` significant digits; the double is exact, so the digits are its true value.",
-    },
-    Entry {
-        name: "mp_ball",
-        params: "td",
-        eval: mp_ball,
-        doc: "`mp_ball(expr, digits)`: `list(low, high)`, a rigorous enclosure of `expr` at `digits` significant digits.",
-    },
-    Entry {
-        name: "mp_complex_ball",
-        params: "td",
-        eval: mp_complex_ball,
-        doc: "`mp_complex_ball(expr, digits)`: `list(list(re_lo, re_hi), list(im_lo, im_hi))`, a rigorous complex enclosure of `expr` at `digits` significant digits.",
-    },
-    Entry {
-        name: "mp_complex_eval",
-        params: "td",
-        eval: mp_complex_eval,
-        doc: "`mp_complex_eval(expr, digits)`: `list(re, im)` of the complex expression `expr` to `digits` significant decimal digits.",
-    },
-    Entry {
-        name: "mp_digits",
-        params: "t",
-        eval: mp_digits,
-        doc: "`mp_digits(x)`: the number of significant decimal digits the literal `x` carries.",
-    },
-];
+reviewed_entries! {
+    (
+        "mp_eval", "td", mp_eval, mp::eval_text,
+        "`mp_eval(expr, digits)`: the value of the expression `expr` to `digits` significant decimal digits, as text, correctly rounded."
+    ),
+    (
+        "mp_const", "nd", mp_const, mp::const_text,
+        "`mp_const(name, digits)`: the constant `pi`, `e`, `tau`, `ln2`, `sqrt2` or `phi` to `digits` significant decimal digits."
+    ),
+    (
+        "mp_round", "td", mp_round, mp::round_text,
+        "`mp_round(x, digits)`: the decimal `x` rounded to `digits` significant digits, nearest even."
+    ),
+    (
+        "mp_round_mode", "tdn", mp_round_mode, mp::round_text,
+        "`mp_round_mode(x, digits, mode)`: `x` rounded to `digits` significant digits in `mode` (`nearest`, `zero`, `away`, `up`, `down`)."
+    ),
+    (
+        "mp_add", "ttd", mp_add, mp::arithmetic_text,
+        "`mp_add(a, b, digits)`: the sum of two decimal numbers, to `digits` significant digits."
+    ),
+    (
+        "mp_sub", "ttd", mp_sub, mp::arithmetic_text,
+        "`mp_sub(a, b, digits)`: the difference of two decimal numbers, to `digits` significant digits."
+    ),
+    (
+        "mp_mul", "ttd", mp_mul, mp::arithmetic_text,
+        "`mp_mul(a, b, digits)`: the product of two decimal numbers, to `digits` significant digits."
+    ),
+    (
+        "mp_div", "ttd", mp_div, mp::arithmetic_text,
+        "`mp_div(a, b, digits)`: the quotient of two decimal numbers, to `digits` significant digits."
+    ),
+    (
+        "mp_compare", "tt", mp_compare, mp::compare_text,
+        "`mp_compare(a, b)`: `-1`, `0` or `1` as the decimal `a` is below, equal to or above `b`, compared exactly."
+    ),
+    (
+        "mp_to_float", "t", mp_to_float, mp::to_float_text,
+        "`mp_to_float(x)`: the decimal `x` narrowed to a double, correctly rounded (no double rounding through an intermediate)."
+    ),
+    (
+        "mp_from_float", "sd", mp_from_float, mp::from_float_text,
+        "`mp_from_float(x, digits)`: the decimal expansion of the double `x` to `digits` significant digits; the double is exact, so the digits are its true value."
+    ),
+    (
+        "mp_ball", "td", mp_ball, mp::enclosure_text,
+        "`mp_ball(expr, digits)`: `list(low, high)`, a rigorous enclosure of `expr` at `digits` significant digits."
+    ),
+    (
+        "mp_complex_ball", "td", mp_complex_ball, mp::enclosure_complex_text,
+        "`mp_complex_ball(expr, digits)`: `list(list(re_lo, re_hi), list(im_lo, im_hi))`, a rigorous complex enclosure of `expr` at `digits` significant digits."
+    ),
+    (
+        "mp_complex_eval", "td", mp_complex_eval, mp::eval_complex_text,
+        "`mp_complex_eval(expr, digits)`: `list(re, im)` of the complex expression `expr` to `digits` significant decimal digits."
+    ),
+    (
+        "mp_digits", "t", mp_digits, mp::digits_of,
+        "`mp_digits(x)`: the number of significant decimal digits the literal `x` carries."
+    ),
+}
 
 /// Maps a kernel failure onto a recorded reason.
 fn reason<T>(
@@ -165,9 +133,15 @@ fn mp_eval(args: &[Data]) -> Option<Data> {
     super::bridge::text_out(rendered)
 }
 
+fn name_or_text(
+    args: &[Data],
+    at: usize,
+) -> Option<&str> {
+    text_opt(args, at).map_or_else(|| name(args, at), Some)
+}
+
 fn mp_const(args: &[Data]) -> Option<Data> {
-    let symbol = text_opt(args, 0).map_or_else(|| name(args, 0), |text| Some(text));
-    let symbol = symbol?;
+    let symbol = name_or_text(args, 0)?;
     let places = digits(args, 1)?;
     let rendered = reason(0, mp::const_text(symbol, places))?;
     super::bridge::text_out(rendered)
@@ -183,7 +157,7 @@ fn mp_round(args: &[Data]) -> Option<Data> {
 fn mp_round_mode(args: &[Data]) -> Option<Data> {
     let value = text(args, 0)?;
     let places = digits(args, 1)?;
-    let mode = name(args, 2)?;
+    let mode = name_or_text(args, 2)?;
     let rounding = reason(2, mp::round_named(mode))?;
     let rendered = reason(0, mp::round_text(value, places, rounding))?;
     super::bridge::text_out(rendered)
@@ -319,6 +293,19 @@ mod tests {
 
     fn literal(text: &str) -> Value {
         Value::String(text.to_string())
+    }
+
+    #[test]
+    fn named_options_accept_text_or_symbol_at_the_value_boundary() {
+        for upward in [literal("up"), Value::Symbol("up".to_owned())] {
+            assert_eq!(
+                text("mp_round_mode", &[literal("1.25"), Value::int(2), upward]),
+                "1.3"
+            );
+        }
+        for pi in [literal("pi"), Value::Symbol("pi".to_owned())] {
+            assert_eq!(text("mp_const", &[pi, Value::int(4)]), "3.142");
+        }
     }
 
     #[test]

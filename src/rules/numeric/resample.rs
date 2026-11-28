@@ -14,7 +14,6 @@
 //! resamples and the sample size are capped so that one call stays bounded.
 
 use super::bridge::Data;
-use super::bridge::Entry;
 use super::bridge::bad;
 use super::bridge::count;
 use super::bridge::name;
@@ -162,26 +161,20 @@ fn bootstrap(
     vec_out(vec![lo, hi])
 }
 
-pub(super) const ENTRIES: &[Entry] = &[
-    Entry {
-        name: "quantile_hf",
-        params: "vss",
-        eval: quantile_hf,
-        doc: "`quantile_hf(data, p, kind)`: sample quantile at probability `p` in `[0, 1]` using Hyndman-Fan definition `kind` (1 to 9).",
-    },
-    Entry {
-        name: "bootstrap_basic_ci",
-        params: "vwsss",
-        eval: bootstrap_basic_ci,
-        doc: "`bootstrap_basic_ci(data, statistic, alpha, resamples, seed)`: `list(lo, hi)` reverse percentile confidence interval of level `1 - alpha`, reflected about the statistic of the data. Pass finite normalized observations and a statistic symbol (`mean`, `median`, `std`, `variance`, `mad` or `iqr`).",
-    },
-    Entry {
-        name: "bootstrap_ci",
-        params: "vwsss",
-        eval: bootstrap_ci,
-        doc: "`bootstrap_ci(data, statistic, alpha, resamples, seed)`: `list(lo, hi)` percentile bootstrap confidence interval of level `1 - alpha`.",
-    },
-];
+reviewed_entries! {
+    (
+        "quantile_hf", "vss", quantile_hf, robust::quantile,
+        "`quantile_hf(data, p, kind)`: sample quantile at probability `p` in `[0, 1]` using Hyndman-Fan definition `kind` (1 to 9)."
+    ),
+    (
+        "bootstrap_basic_ci", "vwsss", bootstrap_basic_ci,
+        "`bootstrap_basic_ci(data, statistic, alpha, resamples, seed)`: `list(lo, hi)` reverse percentile confidence interval of level `1 - alpha`, reflected about the statistic of the data. Pass finite normalized observations and a statistic symbol (`mean`, `median`, `std`, `variance`, `mad` or `iqr`)."
+    ),
+    (
+        "bootstrap_ci", "vwsss", bootstrap_ci,
+        "`bootstrap_ci(data, statistic, alpha, resamples, seed)`: `list(lo, hi)` percentile bootstrap confidence interval of level `1 - alpha`."
+    ),
+}
 
 #[cfg(test)]
 mod tests {

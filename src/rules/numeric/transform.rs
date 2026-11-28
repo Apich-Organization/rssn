@@ -15,7 +15,6 @@
 use num_complex::Complex64;
 
 use super::bridge::Data;
-use super::bridge::Entry;
 use super::bridge::MAX_LEN;
 use super::bridge::MAX_SYSTEM;
 use super::bridge::Reason;
@@ -270,62 +269,44 @@ fn inverse_wavelet_packet(a: &[Data]) -> Option<Data> {
     )?)
 }
 
-pub(super) const ENTRIES: &[Entry] = &[
-    Entry {
-        name: "coherence",
-        params: "vvvss",
-        eval: coherence,
-        doc: "`coherence(x, y, window, hop, sample_rate)`: one-sided magnitude-squared Welch coherence. Bins with zero power have zero coherence.",
-    },
-    Entry {
-        name: "wavelet_packet",
-        params: "vws",
-        eval: wavelet_packet,
-        doc: "`wavelet_packet(x, wavelet, levels)`: equal-width leaf bands of a complete periodic wavelet packet tree, with each low child before its high sibling.",
-    },
-    Entry {
-        name: "inverse_wavelet_packet",
-        params: "nw",
-        eval: inverse_wavelet_packet,
-        doc: "`inverse_wavelet_packet(bands, wavelet)`: reconstruct the signal from the equal-width leaf bands of `wavelet_packet`.",
-    },
-    Entry {
-        name: "wavedec",
-        params: "vws",
-        eval: wavedec,
-        doc: "`wavedec(x, wavelet, levels)`: multilevel periodized discrete wavelet decomposition `list(a_L, d_L, ..., d_1)`.",
-    },
-    Entry {
-        name: "waverec",
-        params: "nw",
-        eval: waverec,
-        doc: "`waverec(coeffs, wavelet)`: reconstruct signal from a `wavedec` coefficient list.",
-    },
-    Entry {
-        name: "dwt2",
-        params: "nw",
-        eval: dwt2,
-        doc: "`dwt2(matrix, wavelet)`: single-level 2D separable discrete wavelet transform returning `list(LL, LH, HL, HH)`. The first letter gives the row-wise filter and the second gives the column-wise filter.",
-    },
-    Entry {
-        name: "idwt2",
-        params: "nnnnw",
-        eval: idwt2,
-        doc: "`idwt2(ll, lh, hl, hh, wavelet)`: single-level 2D inverse discrete wavelet transform from four sub-bands.",
-    },
-    Entry {
-        name: "frft_re",
-        params: "vvs",
-        eval: frft_re,
-        doc: "`frft_re(re, im, a)`: real part of the discrete fractional Fourier transform of order `a` of `re + i*im`.",
-    },
-    Entry {
-        name: "frft_im",
-        params: "vvs",
-        eval: frft_im,
-        doc: "`frft_im(re, im, a)`: imaginary part of the discrete fractional Fourier transform of order `a` of `re + i*im`.",
-    },
-];
+reviewed_entries! {
+    (
+        "coherence", "vvvss", coherence, signal::welch_cross_spectrum,
+        "`coherence(x, y, window, hop, sample_rate)`: one-sided magnitude-squared Welch coherence. Bins with zero power have zero coherence."
+    ),
+    (
+        "wavelet_packet", "vws", wavelet_packet, wavelets::wavelet_packet,
+        "`wavelet_packet(x, wavelet, levels)`: equal-width leaf bands of a complete periodic wavelet packet tree, with each low child before its high sibling."
+    ),
+    (
+        "inverse_wavelet_packet", "nw", inverse_wavelet_packet, wavelets::inverse_wavelet_packet,
+        "`inverse_wavelet_packet(bands, wavelet)`: reconstruct the signal from the equal-width leaf bands of `wavelet_packet`."
+    ),
+    (
+        "wavedec", "vws", wavedec, wavelets::wavedec,
+        "`wavedec(x, wavelet, levels)`: multilevel periodized discrete wavelet decomposition `list(a_L, d_L, ..., d_1)`."
+    ),
+    (
+        "waverec", "nw", waverec, wavelets::waverec,
+        "`waverec(coeffs, wavelet)`: reconstruct signal from a `wavedec` coefficient list."
+    ),
+    (
+        "dwt2", "nw", dwt2, wavelets::dwt2,
+        "`dwt2(matrix, wavelet)`: single-level 2D separable discrete wavelet transform returning `list(LL, LH, HL, HH)`. The first letter gives the row-wise filter and the second gives the column-wise filter."
+    ),
+    (
+        "idwt2", "nnnnw", idwt2, wavelets::idwt2,
+        "`idwt2(ll, lh, hl, hh, wavelet)`: single-level 2D inverse discrete wavelet transform from four sub-bands."
+    ),
+    (
+        "frft_re", "vvs", frft_re, wavelets::frft,
+        "`frft_re(re, im, a)`: real part of the discrete fractional Fourier transform of order `a` of `re + i*im`."
+    ),
+    (
+        "frft_im", "vvs", frft_im, wavelets::frft,
+        "`frft_im(re, im, a)`: imaginary part of the discrete fractional Fourier transform of order `a` of `re + i*im`."
+    ),
+}
 
 #[cfg(test)]
 mod tests {

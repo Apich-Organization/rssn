@@ -789,7 +789,7 @@ fn cos_fixed(
 }
 
 /// `gcd(a, b)`; the implementation is [`crate::kernels::number_theory::gcd`].
-fn gcd_u64(
+const fn gcd_u64(
     a: u64,
     b: u64,
 ) -> u64 {

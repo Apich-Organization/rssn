@@ -86,6 +86,46 @@ unsafe fn json_record(
 }
 
 #[test]
+fn list_schema_keeps_coherent_float_dimensions_without_assigning_units_to_bare_zero() {
+    use crate::kernel::signature::DimExpr;
+    use crate::kernel::signature::TypeExpr;
+    use crate::kernel::value::DynValue;
+    use crate::kernel::value::Value;
+
+    let measured = |f, dim| {
+        Value::Dyn(DynValue {
+            value: Box::new(Value::Float(f)),
+            dim,
+        })
+    };
+    let length = DimExpr::base("Length");
+    let time = DimExpr::base("Time");
+    let same_length = DimExpr::Mul(vec![length.clone(), DimExpr::Dimless]);
+    let a = measured(2.0, length.clone());
+    let b = measured(-0.0, same_length);
+    let t = measured(0.0, time);
+    let list_schema = |data| {
+        let Value::Tensor(tensor) = super::value::list_value(data) else {
+            unreachable!()
+        };
+        tensor.elem
+    };
+    assert_eq!(
+        list_schema(vec![a.clone(), b]),
+        TypeExpr::Float.with_dim(length)
+    );
+    assert_eq!(
+        list_schema(vec![a.clone(), Value::Float(0.0)]),
+        crate::kernel::infer::term()
+    );
+    assert_eq!(list_schema(vec![a, t]), crate::kernel::infer::term());
+    assert_eq!(
+        list_schema(vec![Value::int(0), Value::int(1)]),
+        TypeExpr::Int
+    );
+}
+
+#[test]
 fn compute_round_trip() {
     let s = rssn_session_new();
     unsafe {
@@ -221,6 +261,69 @@ fn simulation_by_name() {
     // SAFETY: a static NUL-terminated string.
     let version = unsafe { CStr::from_ptr(rssn_version()) };
     assert_eq!(version.to_str().unwrap(), env!("CARGO_PKG_VERSION"));
+}
+
+#[test]
+fn batch_metadata_stays_with_its_request() {
+    use std::mem::MaybeUninit;
+    use std::ptr;
+
+    let session = rssn_session_new();
+    // SAFETY: the session is live and the provided arrays have three slots.
+    unsafe {
+        let mixed = rssn_term_parse(session, c("quantity(3, m) + quantity(4, s)").as_ptr());
+        let length = rssn_term_parse(session, c("quantity(2, m)").as_ptr());
+        let terms = [mixed, u32::MAX, length];
+        let mut answers = MaybeUninit::<[RssnAnswer; 3]>::uninit();
+        let mut statuses = MaybeUninit::<[RssnStatus; 3]>::uninit();
+        let mut metadata = MaybeUninit::<[RssnAnswerMetadata; 3]>::uninit();
+        assert_status(
+            rssn_compute_all_with_metadata(
+                session,
+                terms.as_ptr(),
+                terms.len(),
+                ptr::null(),
+                answers.as_mut_ptr().cast(),
+                statuses.as_mut_ptr().cast(),
+                ptr::null_mut(),
+            ),
+            RssnStatus::NullArgument,
+        );
+        assert_ok(rssn_compute_all_with_metadata(
+            session,
+            terms.as_ptr(),
+            terms.len(),
+            ptr::null(),
+            answers.as_mut_ptr().cast(),
+            statuses.as_mut_ptr().cast(),
+            metadata.as_mut_ptr().cast(),
+        ));
+        assert_eq!(
+            statuses.assume_init(),
+            [RssnStatus::Ok, RssnStatus::NoSuchTerm, RssnStatus::Ok]
+        );
+        let [mixed, missing, length] = metadata.assume_init();
+        let mut json = ptr::null_mut();
+        assert_ok(rssn_compute_json(
+            session,
+            terms[0],
+            ptr::null(),
+            &raw mut json,
+        ));
+        let json: serde_json::Value = serde_json::from_str(&owned(json)).unwrap();
+        assert_eq!(owned(mixed.dimension), json["dimension"].as_str().unwrap());
+        assert!(
+            owned(mixed.diagnostic_codes)
+                .lines()
+                .any(|code| code == "mismatch")
+        );
+        assert!(mixed.message.is_null());
+        assert!(missing.dimension.is_null() && missing.diagnostic_codes.is_null());
+        assert_ne!(owned(missing.message), "");
+        assert_eq!(owned(length.dimension), "Length");
+        assert!(length.diagnostic_codes.is_null() && length.message.is_null());
+        rssn_session_free(session);
+    }
 }
 
 #[test]
@@ -1140,6 +1243,106 @@ unsafe fn int_cell_of(
 }
 
 #[test]
+fn dense_value_cells_validate_rank_zero_and_extent_products() {
+    let session = rssn_session_new();
+    assert!(!session.is_null());
+    // SAFETY: the session, extent storage and out pointers stay live. No data
+    // pointer is needed for an empty tensor.
+    unsafe {
+        let empty_tensor = |shape: &[usize], out: *mut u32| {
+            rssn_value_new_tensor(
+                session,
+                std::ptr::null(),
+                0,
+                shape.as_ptr(),
+                shape.len(),
+                out,
+            )
+        };
+        let mut cell = 0;
+        assert_eq!(
+            empty_tensor(&[], &raw mut cell),
+            RssnStatus::InvalidArgument
+        );
+        assert_eq!(
+            empty_tensor(&[usize::MAX, 2], &raw mut cell),
+            RssnStatus::InvalidArgument
+        );
+        assert_eq!(cell, 0);
+        assert_ok(empty_tensor(&[2, 0, 3], &raw mut cell));
+        let mut tensor = RssnTensor {
+            shape: std::ptr::null_mut(),
+            rank: 0,
+            len: 0,
+            data: std::ptr::null_mut(),
+        };
+        assert_ok(rssn_value_to_tensor(session, cell, &raw mut tensor));
+        assert_eq!(tensor.len, 0);
+        assert_eq!(
+            std::slice::from_raw_parts(tensor.shape, tensor.rank),
+            &[2, 0, 3]
+        );
+        rssn_tensor_free(&raw mut tensor);
+        rssn_value_free(session, cell);
+        rssn_session_free(session);
+    }
+}
+
+#[test]
+fn decimal_integer_cells_preserve_sign_and_every_digit() {
+    let session = rssn_session_new();
+    assert!(!session.is_null());
+    let digits = "-1267650600228229401496703205383";
+    let text = c(digits);
+    let invalid = c("1e7");
+    // SAFETY: the session, input C strings and output storage remain live.
+    unsafe {
+        let mut cell = 0;
+        assert_ok(rssn_value_new_int_decimal(
+            session,
+            text.as_ptr(),
+            &raw mut cell,
+        ));
+        let mut result = std::ptr::null_mut();
+        assert_ok(rssn_value_to_text(session, cell, &raw mut result));
+        assert_eq!(owned(result), digits);
+        rssn_value_free(session, cell);
+        assert_status(
+            rssn_value_new_int_decimal(session, invalid.as_ptr(), &raw mut cell),
+            RssnStatus::InvalidArgument,
+        );
+        assert_eq!(rssn_value_count(session), 0);
+        rssn_session_free(session);
+    }
+}
+
+#[test]
+fn cloned_cells_have_independent_lifetimes() {
+    let session = rssn_session_new();
+    assert!(!session.is_null());
+    // SAFETY: the session and all output pointers are live for the calls.
+    unsafe {
+        let original = int_cell_of(session, 42);
+        let mut copy = 0;
+        assert_ok(rssn_value_clone(session, original, &raw mut copy));
+        assert_ne!(copy, original);
+        rssn_value_free(session, original);
+        let mut number = 0.0;
+        assert_ok(rssn_value_to_f64(session, copy, &raw mut number));
+        assert_eq!(number.to_bits(), 42.0_f64.to_bits());
+        let mut missing = 0;
+        assert_eq!(
+            rssn_value_clone(session, original, &raw mut missing),
+            RssnStatus::NoValue
+        );
+        assert_eq!(missing, 0);
+        rssn_value_free(session, copy);
+        assert_eq!(rssn_value_count(session), 0);
+        rssn_session_free(session);
+    }
+}
+
+#[test]
 fn a_host_callback_reaches_a_higher_order_operator() {
     let session = rssn_session_new();
     assert!(!session.is_null(), "{}", last_error());
@@ -1303,4 +1506,187 @@ fn callback_signatures_are_listed_and_failures_propagate() {
     );
     // SAFETY: the session is still live.
     unsafe { rssn_session_free(session) };
+}
+
+#[test]
+fn coherent_dimension_value_failures_leave_output_and_cell_bank_unchanged() {
+    use super::value::MAX_COHERENT_DIMENSION_JSON_BYTES;
+
+    const SENTINEL: u32 = u32::MAX;
+    let session = rssn_session_new();
+    let mut input = 0;
+    let mut integer = 0;
+    // SAFETY: session and all pointers are valid for each call.
+    unsafe {
+        assert_ok(rssn_value_new_float(session, -0.0, &raw mut input));
+        assert_ok(rssn_value_new_int(session, 0, &raw mut integer));
+        let count = rssn_value_count(session);
+        let check = |cell, bytes: &[u8], expected| {
+            let mut out = SENTINEL;
+            assert_status(
+                rssn_value_with_coherent_dimension(
+                    session,
+                    cell,
+                    bytes.as_ptr(),
+                    bytes.len(),
+                    &raw mut out,
+                ),
+                expected,
+            );
+            assert_eq!(out, SENTINEL);
+            assert_eq!(rssn_value_count(session), count);
+        };
+        for bytes in [
+            &b""[..],
+            br#""s""#,
+            br#""m/N/s""#,
+            br#""any""#,
+            br#""non_metric""#,
+            br#""container""#,
+            br#"{"var":"D"}"#,
+            br#"{"pow":[{"base":"Length"},{"symbol":"n"}]}"#,
+            br#"{"pow":[{"base":"Length"},{"rat":{"numer":1,"denom":0}}]}"#,
+            b"{\"base\":\"Length\"}\0",
+        ] {
+            check(input, bytes, RssnStatus::InvalidArgument);
+        }
+        check(input, &[0xff], RssnStatus::InvalidUtf8);
+        check(
+            integer,
+            br#"{"base":"Length"}"#,
+            RssnStatus::InvalidArgument,
+        );
+        check(SENTINEL, br#"{"base":"Length"}"#, RssnStatus::NoValue);
+
+        let mut boundary = br#"{"base":"Length"}"#.to_vec();
+        boundary.resize(MAX_COHERENT_DIMENSION_JSON_BYTES + 1, b' ');
+        check(input, &boundary, RssnStatus::InvalidArgument);
+        let mut output = SENTINEL;
+        assert_status(
+            rssn_value_with_coherent_dimension(
+                session,
+                input,
+                std::ptr::null(),
+                0,
+                &raw mut output,
+            ),
+            RssnStatus::NullArgument,
+        );
+        assert_eq!(output, SENTINEL);
+        assert_status(
+            rssn_value_with_coherent_dimension(
+                session,
+                input,
+                boundary.as_ptr(),
+                MAX_COHERENT_DIMENSION_JSON_BYTES,
+                std::ptr::null_mut(),
+            ),
+            RssnStatus::NullArgument,
+        );
+        assert_eq!(rssn_value_count(session), count);
+
+        assert_ok(rssn_value_with_coherent_dimension(
+            session,
+            input,
+            boundary.as_ptr(),
+            MAX_COHERENT_DIMENSION_JSON_BYTES,
+            &raw mut output,
+        ));
+        assert_ne!(output, input);
+        assert_ne!(output, SENTINEL);
+        assert_eq!(rssn_value_count(session), count + 1);
+        let mut kind = u8::MAX;
+        assert_ok(rssn_value_kind(session, output, &raw mut kind));
+        assert_eq!(kind, 2);
+        let mut magnitude = 1.0;
+        assert_ok(rssn_value_to_f64(session, output, &raw mut magnitude));
+        assert_f64_is_negative_zero(magnitude);
+        let mut wire = std::ptr::null_mut();
+        assert_ok(rssn_value_json(session, output, &raw mut wire));
+        let json: serde_json::Value = serde_json::from_str(&owned(wire)).unwrap();
+        assert_eq!(json["dyn"]["dim"], serde_json::json!({"base": "Length"}));
+        rssn_value_free(session, output);
+        assert_eq!(rssn_value_count(session), count);
+        rssn_session_free(session);
+    }
+}
+
+fn assert_f64_is_negative_zero(value: f64) {
+    assert_eq!(value.to_bits(), (-0.0_f64).to_bits());
+}
+
+#[test]
+fn coherent_dimension_value_preserves_rank_shape_and_rejects_retagging() {
+    let session = rssn_session_new();
+    let length = br#"{"base":"Length"}"#;
+    let time = br#"{"base":"Time"}"#;
+    // SAFETY: session and all pointers are valid for each call.
+    unsafe {
+        for (shape, magnitude) in [
+            (&[][..], &[1.25][..]),
+            (&[0, 3][..], &[][..]),
+            (&[3, 0][..], &[][..]),
+            (&[2, 2][..], &[1.0, -0.0, 3.0, 4.0][..]),
+        ] {
+            let mut plain = 0;
+            assert_ok(rssn_value_new_tensor(
+                session,
+                magnitude.as_ptr(),
+                magnitude.len(),
+                shape.as_ptr(),
+                shape.len(),
+                &raw mut plain,
+            ));
+            let mut measured = 0;
+            assert_ok(rssn_value_with_coherent_dimension(
+                session,
+                plain,
+                length.as_ptr(),
+                length.len(),
+                &raw mut measured,
+            ));
+            let mut wire = std::ptr::null_mut();
+            assert_ok(rssn_value_json(session, measured, &raw mut wire));
+            let json: serde_json::Value = serde_json::from_str(&owned(wire)).unwrap();
+            let tensor = &json["tensor"];
+            assert_eq!(tensor["shape"], serde_json::json!(shape));
+            assert_eq!(
+                tensor["elem"],
+                serde_json::json!({"dim": ["float", {"base": "Length"}]})
+            );
+            assert_eq!(tensor["data"].as_array().unwrap().len(), magnitude.len());
+            let count = rssn_value_count(session);
+            let mut conflicted = u32::MAX;
+            assert_status(
+                rssn_value_with_coherent_dimension(
+                    session,
+                    measured,
+                    time.as_ptr(),
+                    time.len(),
+                    &raw mut conflicted,
+                ),
+                RssnStatus::InvalidArgument,
+            );
+            assert_eq!(conflicted, u32::MAX);
+            assert_eq!(rssn_value_count(session), count);
+            if let Some(&first) = magnitude.first() {
+                let mut element = 0;
+                assert_ok(rssn_value_at(session, measured, 0, &raw mut element));
+                let mut element_wire = std::ptr::null_mut();
+                assert_ok(rssn_value_json(session, element, &raw mut element_wire));
+                let element_json: serde_json::Value =
+                    serde_json::from_str(&owned(element_wire)).unwrap();
+                assert_eq!(
+                    element_json["dyn"]["dim"],
+                    serde_json::json!({"base":"Length"})
+                );
+                assert_eq!(element_json["dyn"]["value"]["float"].as_f64(), Some(first));
+                rssn_value_free(session, element);
+            }
+            rssn_value_free(session, measured);
+            rssn_value_free(session, plain);
+            assert_eq!(rssn_value_count(session), 0);
+        }
+        rssn_session_free(session);
+    }
 }

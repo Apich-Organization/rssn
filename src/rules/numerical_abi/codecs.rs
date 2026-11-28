@@ -24,6 +24,7 @@ use super::tensor;
 use super::tensor_type;
 use crate::kernel::value::RecordValue;
 use num_traits::ToPrimitive;
+use std::sync::OnceLock;
 
 /// A value type that can be decoded from and described in the kernel ABI.
 pub(in crate::rules) trait Arg: Sized {
@@ -260,7 +261,7 @@ macro_rules! integer_codec {
             fn ty() -> TypeExpr { TypeExpr::Int }
             fn decode(value: &Value, index: usize) -> Result<Self, OpError> {
                 let Value::Int(value) = value else { return Err(OpError::Type { expected: Box::new(TypeExpr::Int), got: Box::new(value.type_expr()), arg:index }); };
-                value.to_string().parse::<Self>().map_err(|_| OpError::Domain(format!("argument {index} does not fit {}",stringify!($ty))))
+                Self::try_from(value).map_err(|_| OpError::Domain(format!("argument {index} does not fit {}",stringify!($ty))))
             }
         }
     )*};
@@ -353,6 +354,18 @@ impl<T: Output> Output for Option<T> {
         }))
     }
 }
+// Keep fixed-width rows on the stack and stop on the first bad cell.
+fn decode_fixed_array<T: Arg, const N: usize>(
+    cells: &[Value; N],
+    index: usize,
+) -> Result<[T; N], OpError> {
+    let mut decoded: [Option<T>; N] = std::array::from_fn(|_| None);
+    for (slot, cell) in decoded.iter_mut().zip(cells) {
+        *slot = Some(T::decode(cell, index)?);
+    }
+    Ok(decoded.map(|item| item.expect("every fixed array slot was filled")))
+}
+
 impl<T: Arg, const N: usize> Arg for [T; N] {
     fn ty() -> TypeExpr {
         TypeExpr::Tensor {
@@ -378,12 +391,12 @@ impl<T: Arg, const N: usize> Arg for [T; N] {
                 "argument {index} must have shape [{N}]"
             )));
         }
-        t.data
-            .iter()
-            .map(|v| T::decode(v, index))
-            .collect::<Result<Vec<_>, _>>()?
+        let cells = t
+            .data
+            .as_slice()
             .try_into()
-            .map_err(|_| OpError::Domain("invalid fixed array length".into()))
+            .map_err(|_| OpError::Domain("invalid fixed array length".into()))?;
+        decode_fixed_array(cells, index)
     }
 }
 impl<T: Output, const N: usize> Output for [T; N] {
@@ -439,13 +452,7 @@ impl<T: Arg, const N: usize> Arg for Vec<[T; N]> {
             .as_chunks::<N>()
             .0
             .iter()
-            .map(|row| {
-                row.iter()
-                    .map(|v| T::decode(v, index))
-                    .collect::<Result<Vec<_>, _>>()?
-                    .try_into()
-                    .map_err(|_| OpError::Domain("invalid row length".into()))
-            })
+            .map(|row| decode_fixed_array(row, index))
             .collect()
     }
 }
@@ -798,13 +805,19 @@ pub struct CodecExport {
     /// Shared argument/result dimensional relationship.
     pub dimension_policy: DimensionPolicy,
     base_signature: fn() -> Signature,
+    signature: OnceLock<Signature>,
     call: fn(&[Value]) -> Result<Value, OpError>,
 }
 impl CodecExport {
     /// The exact signature derived from codecs and dimensional policy.
     #[must_use]
     pub fn signature(&self) -> Signature {
-        dimensions::apply((self.base_signature)(), self.dimension_policy)
+        self.checked_signature().clone()
+    }
+
+    fn checked_signature(&self) -> &Signature {
+        self.signature
+            .get_or_init(|| dimensions::apply((self.base_signature)(), self.dimension_policy))
     }
 }
 // Compound raw-number arguments must not hide physical quantities in Some,
@@ -895,7 +908,8 @@ impl EvalDyn for &'static CodecExport {
         args: &[Value],
         _: &CallCtx<'_>,
     ) -> Result<Value, OpError> {
-        let arity = self.signature().params.len();
+        let signature = self.checked_signature();
+        let arity = signature.params.len();
         if args.len() != arity {
             return Err(OpError::Arity {
                 expected: crate::kernel::signature::ArityInfo::fixed(arity as u8),
@@ -921,7 +935,7 @@ impl EvalDyn for &'static CodecExport {
         let dimensions = runtime_dimensions::prepare(self.dimension_policy, args)?;
         native_scalar_preflight(self.name, args)?;
         let result = (self.call)(args)?;
-        runtime_dimensions::finish_shaped(&self.signature(), &dimensions, args, result)
+        runtime_dimensions::finish_shaped(&signature.ret, &dimensions, args, result)
     }
 }
 // A descriptor contains only the kernel call. Its codecs generate both the
@@ -946,7 +960,7 @@ macro_rules! binding {
                 result.encode()
             }
             pub static EXPORT: CodecExport = CodecExport { rust_path: $rust_path, name: $name, namespace: $namespace,
-                doc: $doc, stability: Stability::Experimental, dimension_policy: $policy, base_signature: signature, call };
+                doc: $doc, stability: Stability::Experimental, dimension_policy: $policy, base_signature: signature, signature: std::sync::OnceLock::new(), call };
         }
     };
 }
@@ -969,10 +983,7 @@ binding!(factorial, "num_factorial", "numerical_special", "Floating-point factor
     Ok(special::factorial(n))
 });
 binding!(binomial, "num_binomial", "numerical_special", "Floating-point binomial coefficient; returns zero when k exceeds n.", "crate::kernels::special::binomial", DimensionPolicy::Dimensionless,
-(n: u64, k: u64) -> Result<f64, OpError>, |n: u64, k: u64| {
-    if n == u64::MAX { return Err(OpError::Domain("binomial argument exceeds implementation range".into())); }
-    Ok(special::binomial(n,k))
-});
+(n: u64, k: u64) -> f64, special::binomial);
 struct TrainResult {
     cores: TrainCores,
     shape: Vec<usize>,
@@ -1003,10 +1014,89 @@ pub static EXPORTS: &[&CodecExport] = &[
     &rank::EXPORT,
     &factorial::EXPORT,
     &binomial::EXPORT,
+    &harmonic::EXPORT,
+    &log_binomial::EXPORT,
+    &checked_multinomial::EXPORT,
+    &inverse_beta_reg::EXPORT,
     &tt_svd::EXPORT,
+    &vector_axpy::EXPORT,
+    &vector_axpby::EXPORT,
+    &vector_outer_product::EXPORT,
+    &signal_filtfilt::EXPORT,
+    &timeseries_integrate::EXPORT,
+    &timeseries_rolling_moments::EXPORT,
+    &timeseries_kalman_filter::EXPORT,
+    &timeseries_kalman_smooth::EXPORT,
+    &control_c2d_zoh::EXPORT,
+    &control_simulate_discrete::EXPORT,
+    &control_simulate_continuous::EXPORT,
+    &cauchy_radius::EXPORT,
+    &sharp_cauchy_radius::EXPORT,
+    &fujiwara_radius::EXPORT,
+    &enestrom_kakeya::EXPORT,
+    &koebe_growth::EXPORT,
+    &koebe_distortion::EXPORT,
+    &koebe_rotation::EXPORT,
+    &weierstrass_p_prime::EXPORT,
+    &weierstrass_invariants::EXPORT,
+    &mp_real_round::EXPORT,
+    &mp_real_compare::EXPORT,
+    &mp_real_add::EXPORT,
+    &mp_real_sub::EXPORT,
+    &mp_real_mul::EXPORT,
+    &mp_real_div::EXPORT,
+    &mp_ball_div::EXPORT,
+    &mp_real_abs::EXPORT,
+    &mp_real_neg::EXPORT,
+    &mp_real_is_zero::EXPORT,
+    &mp_real_is_integer::EXPORT,
+    &mp_real_floor_log2::EXPORT,
+    &mp_real_trunc_to_bigint::EXPORT,
+    &mp_real_with_precision::EXPORT,
+    &mp_real_sqrt::EXPORT,
+    &mp_real_scale_pow2::EXPORT,
+    &mp_ball_new::EXPORT,
+    &mp_ball_point::EXPORT,
+    &mp_ball_contains_zero::EXPORT,
+    &mp_ball_width::EXPORT,
+    &mp_ball_neg::EXPORT,
+    &mp_ball_abs::EXPORT,
+    &mp_ball_endpoints::EXPORT,
+    &finite_field_batch_inverse::EXPORT,
+    &finite_field_batch_inverse_skip_zeros::EXPORT,
+    &finite_field_slice_add::EXPORT,
+    &finite_field_slice_sub::EXPORT,
+    &finite_field_slice_scale::EXPORT,
+    &finite_field_slice_axpy::EXPORT,
+    &finite_field_dot::EXPORT,
+    &number_theory_mul_mod::EXPORT,
+    &number_theory_mul_mod_u128::EXPORT,
+    &number_theory_mod_pow_u128::EXPORT,
+    &extended_gcd_u64::EXPORT,
+    &modular_inverse_u64::EXPORT,
+    &jacobi_i128::EXPORT,
+    &legendre_u64::EXPORT,
+    &primitive_root_u64::EXPORT,
+    &finite_field_prime_generator::EXPORT,
+    &finite_field_poly_mul_ntt::EXPORT,
+    &uhp_to_disk::EXPORT,
+    &disk_to_uhp::EXPORT,
+    &poincare_disk_distance::EXPORT,
+    &uhp_distance::EXPORT,
 ];
 
+include!("vector_codecs.rs");
+include!("signal_filter_codecs.rs");
+include!("timeseries_codecs.rs");
+include!("state_space_codecs.rs");
+include!("complex_bound_codecs.rs");
+include!("weierstrass_codecs.rs");
+include!("modular_codecs.rs");
+include!("prime_group_codecs.rs");
+include!("special_probability_codecs.rs");
 include!("native_scalar_codecs.rs");
+include!("mp_real_codecs.rs");
+include!("mp_ball_codecs.rs");
 include!("codec_generated.rs");
 
 include!("functional_codecs.rs");
@@ -1015,6 +1105,7 @@ include!("dual_codecs.rs");
 include!("geometry_codecs.rs");
 include!("native_analysis/mod.rs");
 include!("native_linear/codecs.rs");
+include!("hyperbolic_codecs.rs");
 
 impl Output for String {
     fn ty() -> TypeExpr {

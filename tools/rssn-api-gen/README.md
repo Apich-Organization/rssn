@@ -4,19 +4,14 @@ The source generator builds without the RSSN library, even if the checked-in
 fragments are missing or invalid. From the RSSN repository root:
 
 ```sh
-cargo run -p rssn-api-gen -- --codecs-check
-cargo run -p rssn-api-gen -- --bindings-check
-cargo run -p rssn-api-gen -- --structured-check
-cargo run -p rssn-api-gen -- --contracts-check
-cargo run -p rssn-api-gen -- --codecs-write
-cargo run -p rssn-api-gen -- --bindings-write
-cargo run -p rssn-api-gen -- --structured-write
-cargo run -p rssn-api-gen -- --contracts-write
-cargo test -p rssn-api-model -p rssn-api-gen
+bazel test //:api_generator_test //:generated_sources_check_test
+bazel run //:refresh_contracts
 ```
 
-Use `--bindings-report` or `--structured-report` to review the generated
-output. An optional final argument specifies an alternate RSSN source root.
+Use `bazel test //:contracts_test` to check the generated fragments together
+with the linked operator manifest. The underlying generator also accepts
+`--bindings-report` or `--structured-report` to print a single fragment.
+An optional final argument specifies an alternate RSSN source root.
 Policies describe reviewed semantic contracts; supported Rust function and
 record shapes come from syntax and are checked by generated Rust bindings.
 The Aevia-side `rssn-api-audit` separately compares the live manifest with the

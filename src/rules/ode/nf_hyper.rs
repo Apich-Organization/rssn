@@ -450,7 +450,7 @@ fn solve_polynomial(
             rows.push(row);
         }
     }
-    super::linear::nullspace(rows, columns)
+    super::linear::nullspace(&rows, columns)
         .into_iter()
         .map(|u| {
             let mut poly: Poly = Vec::new();

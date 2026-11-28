@@ -329,6 +329,11 @@ fn special_rule(name: &str) -> DimRule {
 
 #[allow(clippy::too_many_lines)]
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
+    // Complex-argument evaluation across the special function matrix.
+    use crate::kernels::special_complex;
+
+    use crate::kernels::special_complex_ext;
+
     // name, arity, semantics, what is known of the value for real arguments
     let functions: [(&str, u8, EvalFn, Facts); 56] = [
         (
@@ -871,9 +876,6 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         }
     }
     let op_named = |name: &str| registered.iter().find(|r| r.0 == name).map(|r| r.1);
-    // Complex-argument evaluation across the special function matrix.
-    use crate::kernels::special_complex;
-    use crate::kernels::special_complex_ext;
     for (name, eval) in [
         (
             "erf",

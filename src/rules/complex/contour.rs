@@ -92,7 +92,7 @@ impl Kernel for ContourExt {
         let res = if op == self.res_inf
             && let [f, z] = children.as_slice()
         {
-            self.residue_at_infinity(cx, *f, *z)
+            Self::residue_at_infinity(cx, *f, *z)
         } else if op == self.cauchy_pv
             && let [f, x, a, b, p] = children.as_slice()
         {
@@ -114,7 +114,6 @@ impl Kernel for ContourExt {
 
 impl ContourExt {
     fn residue_at_infinity(
-        &self,
         cx: &mut Cx<'_>,
         f: NodeId,
         z: NodeId,
@@ -169,10 +168,10 @@ impl ContourExt {
         if let Some(xs) = cx.graph.symbol_of(x) {
             let mut m = std::collections::HashMap::new();
             m.insert(xs, Complex64::new(p_v + 1e-6, 0.0));
-            if let Some(v) = eval_complex(cx.graph, smooth, &m) {
-                if v.norm() > 1e8 {
-                    return None;
-                }
+            if let Some(v) = eval_complex(cx.graph, smooth, &m)
+                && v.norm() > 1e8
+            {
+                return None;
             }
         }
         let pv_sing = if cx.graph.number_of(r).is_some_and(Number::is_zero) {

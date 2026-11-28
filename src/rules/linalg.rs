@@ -1060,8 +1060,8 @@ fn determinant(
     if n == 0 {
         return Some(cx.graph.int(1));
     }
-    if let Some(mut exact) = rational_matrix(cx.graph, m) {
-        let factor = crate::kernels::qlinalg::det_in_place(&mut exact);
+    if let Some(exact) = rational_matrix(cx.graph, m) {
+        let factor = crate::kernels::qlinalg::det(&exact);
         return Some(rational_node(cx.graph, &factor));
     }
     if n <= 10 {
@@ -3320,7 +3320,7 @@ fn minpoly_q(m: &[Vec<qlinalg::Q>]) -> Option<Vec<qlinalg::Q>> {
             if v[*p_col].is_zero() {
                 continue;
             }
-            let f = std::mem::replace(&mut v[*p_col], qlinalg::Q::zero());
+            let f = std::mem::take(&mut v[*p_col]);
             for (dst, src) in v[*p_col + 1..].iter_mut().zip(&e_vec[*p_col + 1..]) {
                 if !src.is_zero() {
                     *dst -= &f * src;

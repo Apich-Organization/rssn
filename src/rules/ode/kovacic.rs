@@ -548,14 +548,6 @@ fn omega(
 
 /// Gaussian elimination for `rows · p = rhs` (consistent, possibly
 /// overdetermined); `None` when inconsistent or underdetermined.
-fn solve_linear(
-    rows: Vec<Vec<Q>>,
-    rhs: Vec<Q>,
-    unknowns: usize,
-) -> Option<Vec<Q>> {
-    crate::kernels::qlinalg::solve_unique(&rows, unknowns, &rhs)
-}
-
 /// Solutions of `a2 y'' + a1 y' + a0 y = 0` by Kovacic's cases 1 and 2: one
 /// hyperexponential solution, or the two solutions of case 2.
 pub(super) fn solutions(
@@ -735,7 +727,7 @@ fn find_polynomial(
         }
         Vec::new()
     } else {
-        solve_linear(rows, rhs, d)?
+        crate::kernels::qlinalg::solve_unique(&rows, d, &rhs)?
     };
     coefficients.push(Q::one());
     Some(coefficients)
@@ -1014,7 +1006,7 @@ fn find_third_order(
         }
         Vec::new()
     } else {
-        solve_linear(rows, rhs, d)?
+        crate::kernels::qlinalg::solve_unique(&rows, d, &rhs)?
     };
     coefficients.push(Q::one());
     Some(coefficients)
@@ -1689,7 +1681,7 @@ fn find_third_order_quadratic(
         }
         Vec::new()
     } else {
-        solve_linear(rows, rhs, 2 * degree)?
+        crate::kernels::qlinalg::solve_unique(&rows, 2 * degree, &rhs)?
     };
     let mut polynomial = Vec::with_capacity(degree + 1);
     for j in 0..degree {
@@ -2144,7 +2136,7 @@ fn case_three_recursion(
         }
         Vec::new()
     } else {
-        solve_linear(rows, rhs, d)?
+        crate::kernels::qlinalg::solve_unique(&rows, d, &rhs)?
     };
     p.push(Q::one());
     let values = chain(&p)?;

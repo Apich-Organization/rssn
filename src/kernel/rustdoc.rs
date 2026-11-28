@@ -42,16 +42,16 @@ pub struct RustDoc {
 }
 
 struct Index {
-    by_path: HashMap<&'static str, RustDoc>,
-    by_name: HashMap<&'static str, Vec<RustDoc>>,
+    path: HashMap<&'static str, RustDoc>,
+    name: HashMap<&'static str, Vec<RustDoc>>,
     /// The same table keyed by [`normalized_path`], so a `rust_path` that
     /// writes the generic arguments of the type it names still finds the
     /// function (`FdMode<F>::parallel` against `FdMode::parallel`).
-    by_normalized: HashMap<String, RustDoc>,
+    normalized: HashMap<String, RustDoc>,
     /// The last two segments of every path (`Type::method`, `module::function`),
     /// for a `rust_path` that names a public re-export instead of the module
     /// the item is defined in.
-    by_suffix: HashMap<String, Vec<RustDoc>>,
+    suffix: HashMap<String, Vec<RustDoc>>,
 }
 
 fn index() -> &'static Index {
@@ -78,10 +78,10 @@ fn index() -> &'static Index {
                 .push(entry);
         }
         Index {
-            by_path,
-            by_name,
-            by_normalized,
-            by_suffix,
+            path: by_path,
+            name: by_name,
+            normalized: by_normalized,
+            suffix: by_suffix,
         }
     })
 }
@@ -89,7 +89,7 @@ fn index() -> &'static Index {
 /// How many documented functions the build harvested.
 #[must_use]
 pub fn count() -> usize {
-    index().by_path.len()
+    index().path.len()
 }
 
 /// `path` without the generic arguments and lifetimes of its type segments:
@@ -143,17 +143,17 @@ fn suffix_of(path: &str) -> String {
 #[must_use]
 pub fn by_path(path: &str) -> Option<RustDoc> {
     let index = index();
-    if let Some(entry) = index.by_path.get(path) {
+    if let Some(entry) = index.path.get(path) {
         return Some(*entry);
     }
     let normalized = normalized_path(path);
-    if let Some(entry) = index.by_normalized.get(&normalized) {
+    if let Some(entry) = index.normalized.get(&normalized) {
         return Some(*entry);
     }
-    if let Some(candidates) = index.by_suffix.get(&suffix_of(&normalized)) {
-        if let [one] = candidates.as_slice() {
-            return Some(*one);
-        }
+    if let Some(candidates) = index.suffix.get(&suffix_of(&normalized))
+        && let [one] = candidates.as_slice()
+    {
+        return Some(*one);
     }
     // A free function defined in a submodule of the module the registration
     // names (`crate::kernels::ode_geom::solve_adaptive_geometric` is defined in
@@ -165,7 +165,7 @@ pub fn by_path(path: &str) -> Option<RustDoc> {
     }
     let prefix = format!("{}::", segments.join("::"));
     let candidates: Vec<RustDoc> = index
-        .by_name
+        .name
         .get(name)?
         .iter()
         .copied()
@@ -196,7 +196,7 @@ pub fn by_name(
     hints: &[&str],
 ) -> Option<RustDoc> {
     let candidates: Vec<RustDoc> = index()
-        .by_name
+        .name
         .get(name)?
         .iter()
         .copied()
@@ -384,7 +384,7 @@ mod tests {
     fn the_table_is_populated_and_keyed_by_module_path() {
         assert!(count() > 100, "the build harvested {} docs", count());
         let (path, _) = index()
-            .by_path
+            .path
             .iter()
             .find(|(path, _)| path.starts_with("crate::"))
             .expect("at least one entry");
@@ -434,7 +434,7 @@ mod tests {
         let doc = by_path("crate::kernels::jacobian::FdMode<F>::parallel")
             .expect("the documented method behind a generic type");
         assert_eq!(doc.path, "crate::kernels::jacobian::FdMode::parallel");
-        assert!(!doc.doc.trim().is_empty());
+        assert_ne!(doc.doc.trim(), "");
     }
 
     #[test]

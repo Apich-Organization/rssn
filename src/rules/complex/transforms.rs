@@ -69,7 +69,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let ops = Ops::of(i.graph()).ok_or_else(|| {
         RuleError::Invalid {
             rule: "complex/transforms".into(),
-            reason: "needs elementary".into(),
+            reason: "needs elementary",
         }
     })?;
     i.kernel(

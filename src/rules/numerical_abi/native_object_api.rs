@@ -337,6 +337,10 @@ pub(in crate::rules) trait NativeType: Any {
     const MAX_BYTES: usize;
     fn validate(&self) -> Result<(), OpError>;
 
+    fn uses_gpu(&self) -> bool {
+        false
+    }
+
     fn retained_bytes(&self) -> usize {
         Self::MAX_BYTES
     }
@@ -367,7 +371,10 @@ impl<T: NativeType> Handle<T> {
         ctx: &CallCtx<'_>,
         f: impl FnOnce(&T) -> Result<R, OpError>,
     ) -> Result<R, OpError> {
-        get(ctx, &self.value, T::KIND, f)
+        get(ctx, &self.value, T::KIND, |value: &T| {
+            crate::backend::access::require_gpu_if(value.uses_gpu())?;
+            f(value)
+        })
     }
 
     pub fn with_mut<R>(
@@ -375,7 +382,10 @@ impl<T: NativeType> Handle<T> {
         ctx: &CallCtx<'_>,
         f: impl FnOnce(&mut T) -> Result<R, OpError>,
     ) -> Result<R, OpError> {
-        get_mut(ctx, &self.value, T::KIND, f)
+        get_mut(ctx, &self.value, T::KIND, |value: &mut T| {
+            crate::backend::access::require_gpu_if(value.uses_gpu())?;
+            f(value)
+        })
     }
 
     pub fn dimensions(
@@ -485,6 +495,7 @@ impl<T: NativeType> NativeOutput for NewObject<T> {
         self,
         ctx: &CallCtx<'_>,
     ) -> Result<Value, OpError> {
+        crate::backend::access::require_gpu_if(self.value.uses_gpu())?;
         self.value.validate()?;
         let retained_bytes = self.value.retained_bytes();
         if retained_bytes > T::MAX_BYTES {

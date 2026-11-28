@@ -71,7 +71,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let ops = Ops::of(i.graph()).ok_or_else(|| {
         RuleError::Invalid {
             rule: "complex/conformal".into(),
-            reason: "needs elementary".into(),
+            reason: "needs elementary",
         }
     })?;
     {
@@ -208,10 +208,10 @@ impl ConformalKernel {
             Some(cx.simplify(res))
         } else if op == self.schwarzian {
             let (f, z) = (*ch.first()?, *ch.get(1)?);
-            self.schwarzian_reduce(cx, f, z)
+            Self::schwarzian_reduce(cx, f, z)
         } else if op == self.is_conf {
             let (f, z, z0) = (*ch.first()?, *ch.get(1)?, *ch.get(2)?);
-            self.is_conformal_reduce(cx, f, z, z0)
+            Self::is_conformal_reduce(cx, f, z, z0)
         } else if op == self.rouche {
             let (f, g, z, center, radius) = (
                 *ch.first()?,
@@ -220,17 +220,16 @@ impl ConformalKernel {
                 *ch.get(3)?,
                 *ch.get(4)?,
             );
-            self.rouche_reduce(cx, f, g, z, center, radius)
+            Self::rouche_reduce(cx, f, g, z, center, radius)
         } else if op == self.cauchy_bnd {
             let (poly, z) = (*ch.first()?, *ch.get(1)?);
-            self.cauchy_bound_reduce(cx, poly, z)
+            Self::cauchy_bound_reduce(cx, poly, z)
         } else {
             None
         }
     }
 
     fn schwarzian_reduce(
-        &self,
         cx: &mut Cx<'_>,
         f: NodeId,
         z: NodeId,
@@ -258,7 +257,6 @@ impl ConformalKernel {
     }
 
     fn is_conformal_reduce(
-        &self,
         cx: &mut Cx<'_>,
         f: NodeId,
         z: NodeId,
@@ -282,7 +280,6 @@ impl ConformalKernel {
     }
 
     fn rouche_reduce(
-        &self,
         cx: &mut Cx<'_>,
         f: NodeId,
         g: NodeId,
@@ -326,7 +323,6 @@ impl ConformalKernel {
     }
 
     fn cauchy_bound_reduce(
-        &self,
         cx: &mut Cx<'_>,
         poly: NodeId,
         z: NodeId,

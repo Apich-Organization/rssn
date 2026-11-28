@@ -235,7 +235,7 @@ fn execute(
     let cost_for_value = TapeCost {
         tape: Arc::clone(&tape),
         output,
-        params: params.clone(),
+        params,
         remaining: Arc::new(AtomicUsize::new(budget)),
     };
     let cost_for_gradient = cost_for_value.clone();
@@ -249,9 +249,7 @@ fn execute(
         | 0 => EquationOptimizer::solve_with_gradient_descent(&problem, &x, &cfg),
         | 1 => EquationOptimizer::solve_with_bfgs(&problem, &x, &cfg),
         | 2 => EquationOptimizer::auto_solve_conjugate_gradient(&problem, &x, &cfg),
-        | 3 => {
-            EquationOptimizer::solve_with_pso(&problem, bounds.clone().unwrap_or_default(), &cfg)
-        },
+        | 3 => EquationOptimizer::solve_with_pso(&problem, bounds.unwrap_or_default(), &cfg),
         | 4 => {
             EquationOptimizer::auto_solve(
                 &problem,

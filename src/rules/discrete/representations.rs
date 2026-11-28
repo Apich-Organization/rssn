@@ -105,7 +105,7 @@ const fn minv(
     mpow(a, p - 2, p)
 }
 
-fn is_prime(n: u64) -> bool {
+const fn is_prime(n: u64) -> bool {
     crate::kernels::number_theory::is_prime_miller_rabin(n)
 }
 

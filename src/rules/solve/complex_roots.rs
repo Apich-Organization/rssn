@@ -119,10 +119,10 @@ impl Kernel for SolveComplex {
                 // Extract degree via numeric sampling at 32 roots of unity if univariate in z
                 let mut free = graph.free_symbols(graph.find(expr)).to_vec();
                 free.retain(|&s| s != z_sym);
-                if free.is_empty() {
-                    if let Some(roots) = solve_complex_numeric_poly(graph, expr, z_sym, unit) {
-                        return Outcome::Equal(graph.node(core::LIST, &roots));
-                    }
+                if free.is_empty()
+                    && let Some(roots) = solve_complex_numeric_poly(graph, expr, z_sym, unit)
+                {
+                    return Outcome::Equal(graph.node(core::LIST, &roots));
                 }
             }
             return Outcome::Pass;

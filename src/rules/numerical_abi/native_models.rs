@@ -209,11 +209,19 @@ fn array<T: Scalar>(
     value: &Value,
     rank: usize,
 ) -> Result<(Vec<usize>, Vec<T>), OpError> {
+    array_with_axis_limit(value, rank, SIDE)
+}
+
+fn array_with_axis_limit<T: Scalar>(
+    value: &Value,
+    rank: usize,
+    axis_limit: usize,
+) -> Result<(Vec<usize>, Vec<T>), OpError> {
     let Value::Tensor(t) = value else {
         return Err(error("expected a dense tensor"));
     };
     if t.shape.len() != rank
-        || t.shape.iter().any(|n| *n > SIDE)
+        || t.shape.iter().any(|n| *n > axis_limit)
         || t.shape.iter().try_fold(1usize, |a, b| a.checked_mul(*b)) != Some(t.data.len())
         || t.data.len() > LIMIT
     {
@@ -1047,6 +1055,7 @@ const MATRIX_METHODS: &[(&str, &str, MatrixMethod)] = &[
 
 // A normalized polynomial carries ordinate coefficients and one physical axis
 // scale, so c[k]*(x/scale)^k never mixes different physical powers in a tensor.
+const MAX_COEFFICIENTS: usize = 129;
 const POLY_FIELDS: &[&str] = &["format", "coefficients", "coordinate_scale"];
 const QUOTIENT: DimFormula = DimFormula::Mul(&[D, DimFormula::Pow(&E, -1, 1)]);
 const X: DimFormula = DimFormula::Var("X");
@@ -1064,16 +1073,17 @@ fn decode_polynomial(value: &Value) -> Result<(Polynomial, f64), OpError> {
         field(value, "format", POLY_FIELDS)?,
         "rssn/polynomial-normalized/v1",
     )?;
-    let (_, coefficients) = array::<f64>(field(value, "coefficients", POLY_FIELDS)?, 1)?;
-    if coefficients.is_empty() || coefficients.len() > 129 {
+    let (_, coefficients) = array_with_axis_limit::<f64>(
+        field(value, "coefficients", POLY_FIELDS)?,
+        1,
+        MAX_COEFFICIENTS,
+    )?;
+    if coefficients.is_empty() {
         return Err(error(
             "polynomial must contain 1..=129 descending coefficients",
         ));
     }
-    let scale = numeric(field(value, "coordinate_scale", POLY_FIELDS)?, 0)?;
-    if scale <= 0.0 {
-        return Err(error("coordinate scale must be positive"));
-    }
+    let scale = positive_polynomial_scale(field(value, "coordinate_scale", POLY_FIELDS)?, 0)?;
     Ok((Polynomial::new(coefficients), scale))
 }
 fn encode_polynomial(
@@ -1083,7 +1093,7 @@ fn encode_polynomial(
     if polynomial.coeffs.is_empty() {
         polynomial.coeffs.push(0.0);
     }
-    if polynomial.coeffs.len() > 129 {
+    if polynomial.coeffs.len() > MAX_COEFFICIENTS {
         return Err(error("polynomial result exceeds degree budget"));
     }
     Ok(record(vec![
@@ -1101,7 +1111,14 @@ fn encode_polynomial(
 #[derive(Clone, Copy)]
 enum PolynomialMethod {
     New,
+    Interpolate,
+    FromRoots,
+    Compose,
     Eval,
+    EvalBatch,
+    MulSchoolbook,
+    MulKaratsuba,
+    MulFft,
     Roots,
     Derivative,
     Integral,
@@ -1142,10 +1159,36 @@ fn polynomial_adapter(method: PolynomialMethod) -> PolynomialAdapter {
             args = vec![tensor_type(1, TypeExpr::Float), TypeExpr::Float];
             inputs = vec![input("D", 0, &[]), input("X", 1, &[])];
         },
-        | P::Eval => {
-            args.push(TypeExpr::Float);
+        | P::Interpolate => {
+            args = vec![
+                tensor_type(1, TypeExpr::Float),
+                tensor_type(1, TypeExpr::Float),
+                TypeExpr::Float,
+            ];
+            inputs = vec![input("X", 0, &[]), input("D", 1, &[])];
+            checks.push(constraint(2, &[], &X));
+        },
+        | P::FromRoots => {
+            args = vec![tensor_type(1, TypeExpr::Float), TypeExpr::Float];
+            // Bind X from the scale, even when the roots tensor is empty.
+            inputs = vec![input("X", 1, &[])];
+            checks.push(constraint(0, &[], &X));
+            outputs[0] = output(&["coefficients"], &DimFormula::One);
+        },
+        | P::Compose => {
+            args.push(model);
+            inputs.push(input("E", 1, &["coordinate_scale"]));
+            checks.push(constraint(1, &["coefficients"], &X));
+            outputs[1] = output(&["coordinate_scale"], &E);
+        },
+        | P::Eval | P::EvalBatch => {
+            ret = if matches!(method, P::EvalBatch) {
+                tensor_type(1, TypeExpr::Float)
+            } else {
+                TypeExpr::Float
+            };
+            args.push(ret.clone());
             checks.push(constraint(1, &[], &X));
-            ret = TypeExpr::Float;
             outputs.clear();
             result = Some(&D);
         },
@@ -1166,7 +1209,15 @@ fn polynomial_adapter(method: PolynomialMethod) -> PolynomialAdapter {
             ret = TypeExpr::Bool;
             outputs.clear();
         },
-        | P::Add | P::Sub | P::Mul | P::Div | P::LongDivision | P::TryLongDivision => {
+        | P::Add
+        | P::Sub
+        | P::Mul
+        | P::MulSchoolbook
+        | P::MulKaratsuba
+        | P::MulFft
+        | P::Div
+        | P::LongDivision
+        | P::TryLongDivision => {
             args.push(model.clone());
             checks.push(constraint(1, &["coordinate_scale"], &X));
             if matches!(method, P::Add | P::Sub) {
@@ -1174,7 +1225,10 @@ fn polynomial_adapter(method: PolynomialMethod) -> PolynomialAdapter {
             } else {
                 inputs.push(input("E", 1, &["coefficients"]));
             }
-            if matches!(method, P::Mul) {
+            if matches!(
+                method,
+                P::Mul | P::MulSchoolbook | P::MulKaratsuba | P::MulFft
+            ) {
                 outputs[0] = output(&["coefficients"], &PRODUCT);
             }
             if matches!(method, P::Div) {
@@ -1214,6 +1268,31 @@ fn polynomial_adapter(method: PolynomialMethod) -> PolynomialAdapter {
         contract,
     }
 }
+fn positive_polynomial_scale(
+    value: &Value,
+    argument: usize,
+) -> Result<f64, OpError> {
+    let scale = numeric(value, argument)?;
+    if scale <= 0.0 {
+        return Err(error("coordinate scale must be positive"));
+    }
+    Ok(scale)
+}
+
+fn normalize_coordinates(
+    coordinates: &mut [f64],
+    scale: f64,
+) -> Result<(), OpError> {
+    for coordinate in coordinates {
+        let normalized = *coordinate / scale;
+        if !normalized.is_finite() || (*coordinate != 0.0 && normalized == 0.0) {
+            return Err(error("coordinate cannot be represented at this scale"));
+        }
+        *coordinate = normalized;
+    }
+    Ok(())
+}
+
 impl EvalDyn for PolynomialAdapter {
     fn signature(&self) -> Signature {
         self.signature.clone()
@@ -1235,17 +1314,48 @@ impl EvalDyn for PolynomialAdapter {
         let dims = runtime_dimensions::prepare_contract(&self.contract, args)?;
         let result = if matches!(self.method, P::New) {
             let (_, coefficients) = array::<f64>(&args[0], 1)?;
-            let scale = numeric(&args[1], 1)?;
-            if coefficients.is_empty() || coefficients.len() > 65 || scale <= 0.0 {
+            let scale = positive_polynomial_scale(&args[1], 1)?;
+            if coefficients.is_empty() || coefficients.len() > 65 {
                 return Err(error(
                     "polynomial requires 1..=65 coefficients and positive coordinate scale",
                 ));
             }
             encode_polynomial(Polynomial::new(coefficients), scale)?
+        } else if matches!(self.method, P::Interpolate) {
+            let scale = positive_polynomial_scale(&args[2], 2)?;
+            let (_, mut nodes) = array_with_axis_limit::<f64>(&args[0], 1, MAX_COEFFICIENTS)?;
+            let (_, values) = array_with_axis_limit::<f64>(&args[1], 1, MAX_COEFFICIENTS)?;
+            normalize_coordinates(&mut nodes, scale)?;
+            encode_polynomial(
+                Polynomial::interpolate_lagrange(&nodes, &values).map_err(error)?,
+                scale,
+            )?
+        } else if matches!(self.method, P::FromRoots) {
+            let scale = positive_polynomial_scale(&args[1], 1)?;
+            let (_, mut roots) = array_with_axis_limit::<f64>(&args[0], 1, MAX_COEFFICIENTS - 1)?;
+            normalize_coordinates(&mut roots, scale)?;
+            encode_polynomial(Polynomial::from_roots(&roots), scale)?
         } else {
             let (a, scale) = decode_polynomial(&args[0])?;
             match self.method {
                 | P::Eval => super::output_scalar(a.eval(numeric(&args[1], 1)? / scale))?,
+                | P::EvalBatch => {
+                    let (shape, mut points) = array_with_axis_limit::<f64>(&args[1], 1, LIMIT)?;
+                    for point in &mut points {
+                        *point /= scale;
+                    }
+                    encode_array(shape, a.eval_batch(&points))?
+                },
+                | P::Compose => {
+                    let (mut inner, inner_scale) = decode_polynomial(&args[1])?;
+                    if a.degree() * inner.degree() >= MAX_COEFFICIENTS {
+                        return Err(error("polynomial composition exceeds degree budget"));
+                    }
+                    if a.degree() > 0 {
+                        normalize_coordinates(&mut inner.coeffs, scale)?;
+                    }
+                    encode_polynomial(a.compose(&inner), inner_scale)?
+                },
                 | P::Roots => {
                     if a.coeffs.iter().all(|v| crate::kernels::exact_eq(*v, 0.0)) {
                         return Err(error("zero polynomial has no finite isolated root list"));
@@ -1272,7 +1382,15 @@ impl EvalDyn for PolynomialAdapter {
                 | P::DivScalar => {
                     encode_polynomial(a.div_scalar(numeric(&args[1], 1)?).map_err(error)?, scale)?
                 },
-                | P::Add | P::Sub | P::Mul | P::Div | P::LongDivision | P::TryLongDivision => {
+                | P::Add
+                | P::Sub
+                | P::Mul
+                | P::MulSchoolbook
+                | P::MulKaratsuba
+                | P::MulFft
+                | P::Div
+                | P::LongDivision
+                | P::TryLongDivision => {
                     let (b, other_scale) = decode_polynomial(&args[1])?;
                     if !crate::kernels::exact_eq(scale, other_scale) {
                         return Err(error(
@@ -1290,6 +1408,9 @@ impl EvalDyn for PolynomialAdapter {
                         | P::Add => encode_polynomial(a + b, scale)?,
                         | P::Sub => encode_polynomial(a - b, scale)?,
                         | P::Mul => encode_polynomial(a * b, scale)?,
+                        | P::MulSchoolbook => encode_polynomial(a.mul_schoolbook(&b), scale)?,
+                        | P::MulKaratsuba => encode_polynomial(a.mul_karatsuba(&b), scale)?,
+                        | P::MulFft => encode_polynomial(a.mul_fft(&b), scale)?,
                         | P::Div => encode_polynomial(a / b, scale)?,
                         | _ => {
                             let (q, r) = if matches!(self.method, P::TryLongDivision) {
@@ -1304,7 +1425,7 @@ impl EvalDyn for PolynomialAdapter {
                         },
                     }
                 },
-                | P::New => unreachable!(),
+                | P::New | P::Interpolate | P::FromRoots => unreachable!(),
             }
         };
         runtime_dimensions::finish(&self.signature, &dims, result)
@@ -1315,10 +1436,34 @@ fn install_polynomials(installer: &mut Installer<'_>) -> Result<(), RuleError> {
         let name = format!("num_polynomial_model_{suffix}");
         let adapter = polynomial_adapter(*method);
         let signature = adapter.signature();
-        let doc = if matches!(method, PolynomialMethod::TryLongDivision) {
-            "Divide measured descending-coefficient polynomials with the same coordinate reference. Leading zeros in the divisor are skipped. Returns quotient coefficients in dividend units divided by divisor units and remainder coefficients in dividend units. Zero divisors and nonfinite results are errors."
-        } else {
-            "Portable descending-coefficient Polynomial of normalized x/coordinate_scale. Coefficients retain ordinate dimensions; derivative and integral restore physical scale powers. Arithmetic requires identical coordinate scales. Kind/version, positive scale, finite values and degree/allocation budgets are validated. Native polynomial algorithms are called directly; no pointer or process-local handle is exposed."
+        let doc = match method {
+            | PolynomialMethod::EvalBatch => {
+                "Evaluate a descending-coefficient polynomial at a rank-one tensor of up to 16384 physical coordinates. The output retains the input shape, sample order and polynomial ordinate dimension. An empty tensor produces an empty result."
+            },
+            | PolynomialMethod::FromRoots => {
+                "Build a portable polynomial from up to 128 real roots and a positive coordinate scale in the same units. The result is the monic product in x/coordinate_scale with dimensionless coefficients. Repeated roots retain their multiplicity. An empty root tensor gives the constant one."
+            },
+            | PolynomialMethod::Interpolate => {
+                "Build a portable polynomial from 1 to 129 distinct coordinates, their ordinates and a positive coordinate scale. Coordinates and scale share units. The model stores descending coefficients in ordinate units for x/coordinate_scale."
+            },
+            | PolynomialMethod::Compose => {
+                "Compose outer(inner(x)). Inner ordinates must have the dimension of the outer coordinate. The result preserves the inner coordinate scale and the outer ordinate dimension. The maximum result degree is 128."
+            },
+            | PolynomialMethod::MulSchoolbook => {
+                "Multiply two descending-coefficient polynomials with the same coordinate reference using schoolbook convolution. Coefficient units multiply."
+            },
+            | PolynomialMethod::MulKaratsuba => {
+                "Multiply two descending-coefficient polynomials with the same coordinate reference using the native Karatsuba kernel. Coefficient units multiply."
+            },
+            | PolynomialMethod::MulFft => {
+                "Multiply two descending-coefficient polynomials with the same coordinate reference using the native FFT kernel. Coefficient units multiply."
+            },
+            | PolynomialMethod::TryLongDivision => {
+                "Divide measured descending-coefficient polynomials with the same coordinate reference. Leading zeros in the divisor are skipped. Returns quotient coefficients in dividend units divided by divisor units and remainder coefficients in dividend units. Zero divisors and nonfinite results are errors."
+            },
+            | _ => {
+                "Portable descending-coefficient Polynomial of normalized x/coordinate_scale. Coefficients retain ordinate dimensions; derivative and integral restore physical scale powers. Arithmetic requires identical coordinate scales. Kind/version, positive scale, finite values and degree/allocation budgets are validated. Native polynomial algorithms are called directly; no pointer or process-local handle is exposed."
+            },
         };
         let mut descriptor = OpDescriptor::new(&name, Arity::Fixed(signature.params.len() as u8))
             .category("numerical_vector")
@@ -1344,6 +1489,41 @@ const POLYNOMIAL_METHODS: &[(&str, &str, PolynomialMethod)] = &[
         "eval",
         "crate::kernels::polynomial::Polynomial::eval",
         PolynomialMethod::Eval,
+    ),
+    (
+        "eval_batch",
+        "crate::kernels::polynomial::Polynomial::eval_batch",
+        PolynomialMethod::EvalBatch,
+    ),
+    (
+        "from_roots",
+        "crate::kernels::polynomial::Polynomial::from_roots",
+        PolynomialMethod::FromRoots,
+    ),
+    (
+        "interpolate_lagrange",
+        "crate::kernels::polynomial::Polynomial::interpolate_lagrange",
+        PolynomialMethod::Interpolate,
+    ),
+    (
+        "compose",
+        "crate::kernels::polynomial::Polynomial::compose",
+        PolynomialMethod::Compose,
+    ),
+    (
+        "mul_schoolbook",
+        "crate::kernels::polynomial::Polynomial::mul_schoolbook",
+        PolynomialMethod::MulSchoolbook,
+    ),
+    (
+        "mul_karatsuba",
+        "crate::kernels::polynomial::Polynomial::mul_karatsuba",
+        PolynomialMethod::MulKaratsuba,
+    ),
+    (
+        "mul_fft",
+        "crate::kernels::polynomial::Polynomial::mul_fft",
+        PolynomialMethod::MulFft,
     ),
     (
         "find_roots",

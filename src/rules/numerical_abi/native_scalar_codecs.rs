@@ -565,6 +565,37 @@ fn native_rips_budget(
     native_budget(&[points, points], NATIVE_VALUE_LIMIT)?;
     Ok(())
 }
+fn native_exact_vector(value: &Value) -> Result<&[Value], OpError> {
+    match value {
+        | Value::Tensor(t) if t.shape == [t.data.len()] && t.data.len() <= NATIVE_VALUE_LIMIT => {
+            Ok(&t.data)
+        },
+        | _ => {
+            Err(OpError::Domain(
+                "exact number vector shape or allocation budget is invalid".into(),
+            ))
+        },
+    }
+}
+
+fn native_bigint_budget<'a>(values: impl Iterator<Item = &'a Value>) -> Result<(), OpError> {
+    // Count zero as one bit so a vector of zeros also consumes the finite budget.
+    const BITS: u64 = 65_536;
+    values
+        .filter_map(|value| {
+            match value {
+                | Value::Int(n) => Some(n.bits().max(1)),
+                | _ => None, // The scalar decoder keeps the original type diagnostic.
+            }
+        })
+        .try_fold(0, |sum: u64, bits| {
+            sum.checked_add(bits).filter(|n| *n <= BITS).ok_or_else(|| {
+                OpError::Domain("exact integer coefficient bit budget exceeded".into())
+            })
+        })?;
+    Ok(())
+}
+
 #[allow(
     clippy::too_many_lines,
     clippy::indexing_slicing,
@@ -575,6 +606,37 @@ fn native_scalar_preflight(
     args: &[Value],
 ) -> Result<(), OpError> {
     native_discrete_preflight(name, args)?;
+    match name {
+        | "num_number_exact_bigint_crt_garner"
+        | "num_number_ext_batch_mod_pow"
+        | "num_number_ext_crt_bigint" => {
+            let left = native_exact_vector(&args[0])?;
+            let right = native_exact_vector(&args[1])?;
+            let length = left.len().max(right.len());
+            if name == "num_number_exact_bigint_crt_garner" {
+                // Garner's residue reconstruction visits at most n² pairs.
+                native_budget(&[length, length], NATIVE_VALUE_LIMIT)?;
+            } else if name == "num_number_ext_batch_mod_pow" {
+                // A u64 exponent requires at most 128 modular products.
+                native_budget(&[length, 128], 50_000_000)?;
+            } else {
+                // The period's width cannot exceed the sum of modulus widths.
+                native_bigint_budget(left.iter().chain(right))?;
+            }
+            crate::cancellation::checkpoint()?;
+        },
+        | "num_number_ext_totient_sieve" => {
+            let limit = native_count(args, 0)?;
+            // The inclusive sieve has one more output than its limit.
+            native_budget(&[limit.saturating_add(1)], NATIVE_VALUE_LIMIT)?;
+            crate::cancellation::checkpoint()?;
+        },
+        | _ if name.starts_with("num_number_exact_") => {
+            native_bigint_budget(args.iter())?;
+            crate::cancellation::checkpoint()?;
+        },
+        | _ => {},
+    }
     if let Some(operation) = name.strip_prefix("num_fractal_geometry_and_chaos_") {
         if operation.starts_with("generate_")
             && (operation.ends_with("set")

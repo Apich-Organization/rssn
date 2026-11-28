@@ -27,7 +27,6 @@
 use ndarray::ArrayD;
 
 use super::bridge::Data;
-use super::bridge::Entry;
 use super::bridge::Reason;
 use super::bridge::bad;
 use super::bridge::count;
@@ -421,68 +420,48 @@ fn cp_dense(a: &[Data]) -> Option<Data> {
     from_tensor(&tensor::cp_reconstruct(weights, &factors).reason(DiagKind::Shape, Some(1))?)
 }
 
-pub(super) const ENTRIES: &[Entry] = &[
-    Entry {
-        name: "qr_pivoted_rank",
-        params: "vs",
-        eval: qr_pivoted_rank,
-        doc: "`qr_pivoted_rank(a, tol)`: numerical rank of matrix `a` from column-pivoted QR diagonal entries above `tol * max(|R_ii|)`.",
-    },
-    Entry {
-        name: "qr_pivoted_permutation",
-        params: "v",
-        eval: qr_pivoted_permutation,
-        doc: "`qr_pivoted_permutation(a)`: 0-based column permutation vector `perm` from column-pivoted QR of `a`.",
-    },
-    Entry {
-        name: "qr_pivoted_diagonal",
-        params: "v",
-        eval: qr_pivoted_diagonal,
-        doc: "`qr_pivoted_diagonal(a)`: non-increasing absolute diagonal `|R_ii|` from column-pivoted QR of `a`.",
-    },
-    Entry {
-        name: "hosvd",
-        params: "nv",
-        eval: hosvd,
-        doc: "`hosvd(t, ranks)`: truncated higher-order SVD of tensor `t` returning `list(core, factors, singular_values)`.",
-    },
-    Entry {
-        name: "hooi",
-        params: "nvss",
-        eval: hooi,
-        doc: "`hooi(t, ranks, sweeps, tol)`: Tucker approximation of tensor `t` by higher-order orthogonal iteration, returning `list(core, factors, error)`.",
-    },
-    Entry {
-        name: "cp_als",
-        params: "nsss",
-        eval: cp_als,
-        doc: "`cp_als(t, rank, sweeps, seed)`: CP decomposition of tensor `t` by alternating least squares returning `list(weights, factors, residual)`.",
-    },
-    Entry {
-        name: "tt_svd",
-        params: "nss",
-        eval: tt_svd,
-        doc: "`tt_svd(t, tol, max_rank)`: tensor-train SVD of `t` returning `list(cores, error)`.",
-    },
-    Entry {
-        name: "tt_dense",
-        params: "n",
-        eval: tt_dense,
-        doc: "`tt_dense(cores)`: reconstruct dense tensor from a list of tensor-train cores.",
-    },
-    Entry {
-        name: "tucker_dense",
-        params: "nn",
-        eval: tucker_dense,
-        doc: "`tucker_dense(core, factors)`: reconstruct dense tensor from Tucker `core` and mode factor matrices.",
-    },
-    Entry {
-        name: "cp_dense",
-        params: "vn",
-        eval: cp_dense,
-        doc: "`cp_dense(weights, factors)`: reconstruct dense tensor from CP `weights` and factor matrices.",
-    },
-];
+reviewed_entries! {
+    (
+        "qr_pivoted_rank", "vs", qr_pivoted_rank, lowrank::qr_pivoted,
+        "`qr_pivoted_rank(a, tol)`: numerical rank of matrix `a` from column-pivoted QR diagonal entries above `tol * max(|R_ii|)`."
+    ),
+    (
+        "qr_pivoted_permutation", "v", qr_pivoted_permutation, lowrank::qr_pivoted,
+        "`qr_pivoted_permutation(a)`: 0-based column permutation vector `perm` from column-pivoted QR of `a`."
+    ),
+    (
+        "qr_pivoted_diagonal", "v", qr_pivoted_diagonal, lowrank::qr_pivoted,
+        "`qr_pivoted_diagonal(a)`: non-increasing absolute diagonal `|R_ii|` from column-pivoted QR of `a`."
+    ),
+    (
+        "hosvd", "nv", hosvd, tensor::hosvd,
+        "`hosvd(t, ranks)`: truncated higher-order SVD of tensor `t` returning `list(core, factors, singular_values)`."
+    ),
+    (
+        "hooi", "nvss", hooi, tensor::hooi,
+        "`hooi(t, ranks, sweeps, tol)`: Tucker approximation of tensor `t` by higher-order orthogonal iteration, returning `list(core, factors, error)`."
+    ),
+    (
+        "cp_als", "nsss", cp_als, tensor::cp_als,
+        "`cp_als(t, rank, sweeps, seed)`: CP decomposition of tensor `t` by alternating least squares returning `list(weights, factors, residual)`."
+    ),
+    (
+        "tt_svd", "nss", tt_svd, tensor_train::tt_svd,
+        "`tt_svd(t, tol, max_rank)`: tensor-train SVD of `t` returning `list(cores, error)`."
+    ),
+    (
+        "tt_dense", "n", tt_dense, tensor_train::TensorTrain::to_dense_with_limit,
+        "`tt_dense(cores)`: reconstruct dense tensor from a list of tensor-train cores."
+    ),
+    (
+        "tucker_dense", "nn", tucker_dense, tensor::tucker_reconstruct,
+        "`tucker_dense(core, factors)`: reconstruct dense tensor from Tucker `core` and mode factor matrices."
+    ),
+    (
+        "cp_dense", "vn", cp_dense, tensor::cp_reconstruct,
+        "`cp_dense(weights, factors)`: reconstruct dense tensor from CP `weights` and factor matrices."
+    ),
+}
 
 #[cfg(test)]
 mod tests {

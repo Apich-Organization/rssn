@@ -180,7 +180,7 @@ impl NativeType for Contact {
         self.refs.validate()?;
         if std::iter::once(&self.gap)
             .chain(self.normal.iter())
-            .try_fold(0usize, |n, s| n.checked_add(s.retained_bytes))
+            .try_fold(0usize, |n, s| n.checked_add(s.program_payload_bytes()))
             .is_none_or(|n| n > 131072)
         {
             return Err(err("penalty contact compiled storage cap exceeded"));
@@ -216,7 +216,7 @@ impl NativeType for Hyper {
                     .iter()
                     .flat_map(|c| std::iter::once(&c.gap).chain(c.normal.iter())),
             )
-            .try_fold(0usize, |n, s| n.checked_add(s.retained_bytes));
+            .try_fold(0usize, |n, s| n.checked_add(s.program_payload_bytes()));
         if retained.is_none_or(|n| n > 4194304) {
             return Err(err("hyperelastic compiled storage cap exceeded"));
         }
@@ -232,18 +232,52 @@ impl NativeType for Hyper {
 }
 struct State {
     data: hyp::DynamicState,
-    problem: Hyper,
+    problem: Handle<Hyper>,
+    dofs: usize,
+}
+impl State {
+    fn dependent(
+        data: hyp::DynamicState,
+        problem: &Handle<Hyper>,
+        model: &Hyper,
+    ) -> NewObject<Self> {
+        NewObject::dependent(
+            Self {
+                data,
+                problem: problem.clone(),
+                dofs: model
+                    .mesh
+                    .data
+                    .nodes
+                    .len()
+                    .saturating_mul(model.mesh.data.dim),
+            },
+            model.material.refs.dims.to_vec(),
+            vec![problem.value.clone()],
+        )
+    }
 }
 impl NativeType for State {
     const KIND: &'static str = "rssn/native/hyper-state/v1";
     const MAX_BYTES: usize = 20 * 1024 * 1024;
 
+    fn retained_bytes(&self) -> usize {
+        let vectors = self
+            .data
+            .u
+            .capacity()
+            .saturating_add(self.data.v.capacity())
+            .saturating_add(self.data.a.capacity())
+            .saturating_mul(size_of::<f64>());
+        size_of::<Self>()
+            .saturating_add(vectors)
+            .saturating_add(self.problem.heap_bytes())
+    }
+
     fn validate(&self) -> Result<(), OpError> {
-        self.problem.validate()?;
-        let n = self.problem.mesh.data.nodes.len() * self.problem.mesh.data.dim;
-        if self.data.u.len() != n
-            || self.data.v.len() != n
-            || self.data.a.len() != n
+        if self.data.u.len() != self.dofs
+            || self.data.v.len() != self.dofs
+            || self.data.a.len() != self.dofs
             || self
                 .data
                 .u
@@ -416,15 +450,65 @@ object_binding!(elastic_von_mises,"num_grid_elastic_von_mises","crate::sim::elas
 object_binding!(hyper_lame,"num_grid_hyper_lame","crate::sim::hyperelastic::HyperMaterial::lame","Native elasticity call in an explicit mechanical reference frame. Numeric displacements/coordinates use Length, body forces use Mass/(Length^2 Time^2), stress/Young modulus use Mass/(Length Time^2), and density uses Mass/Length^3. Reduced 2D hyperelastic energies are per unit out-of-plane thickness. Outputs retain distinct dimensional reference witnesses. Native DOF, nonlinear work, callbacks and allocation budgets are checked.",true,(material:Handle<Material>)->Dynamic,|ctx:&CallCtx<'_>,material:Handle<Material>|{material.with(ctx,|m|{let(a,b)=m.data.lame();fields(&m.refs,vec![a,b],[-1,-2,1,0])})});
 object_binding!(hyper_piola,"num_grid_hyper_piola","crate::sim::hyperelastic::first_piola","Native elasticity call in an explicit mechanical reference frame. Numeric displacements/coordinates use Length, body forces use Mass/(Length^2 Time^2), stress/Young modulus use Mass/(Length Time^2), and density uses Mass/Length^3. Reduced 2D hyperelastic energies are per unit out-of-plane thickness. Outputs retain distinct dimensional reference witnesses. Native DOF, nonlinear work, callbacks and allocation budgets are checked.",true,(material:Handle<Material>,gradient:Vec<Vec<f64>>)->Dynamic,|ctx:&CallCtx<'_>,material:Handle<Material>,gradient:Vec<Vec<f64>>|{let gradient=mat3(gradient)?;material.with(ctx,|m|{let p=hyp::first_piola(&m.data,&gradient).map_err(err)?;Ok(Dynamic(api::record(vec![("shape",vec![3usize,3].encode()?),("entries",fields(&m.refs,p.into_iter().flatten().collect(),[-1,-2,1,0])?.0)])))})});
 object_binding!(hyper_tangent,"num_grid_hyper_tangent","crate::sim::hyperelastic::tangent_moduli","Native elasticity call in an explicit mechanical reference frame. Numeric displacements/coordinates use Length, body forces use Mass/(Length^2 Time^2), stress/Young modulus use Mass/(Length Time^2), and density uses Mass/Length^3. Reduced 2D hyperelastic energies are per unit out-of-plane thickness. Outputs retain distinct dimensional reference witnesses. Native DOF, nonlinear work, callbacks and allocation budgets are checked.",true,(material:Handle<Material>,gradient:Vec<Vec<f64>>)->Dynamic,|ctx:&CallCtx<'_>,material:Handle<Material>,gradient:Vec<Vec<f64>>|{let gradient=mat3(gradient)?;material.with(ctx,|m|{let p=hyp::tangent_moduli(&m.data,&gradient).map_err(err)?;Ok(Dynamic(api::record(vec![("shape",vec![3usize,3,3,3].encode()?),("entries",fields(&m.refs,p.into_iter().flatten().flatten().flatten().collect(),[-1,-2,1,0])?.0)])))})});
-object_binding!(hyper_contact,"num_grid_hyper_contact","","Native elasticity call in an explicit mechanical reference frame. Numeric displacements/coordinates use Length, body forces use Mass/(Length^2 Time^2), stress/Young modulus use Mass/(Length Time^2), and density uses Mass/Length^3. Reduced 2D hyperelastic energies are per unit out-of-plane thickness. Outputs retain distinct dimensional reference witnesses. Native DOF, nonlinear work, callbacks and allocation budgets are checked.",true,(refs:Handle<References>,marker:i32,gap:Input,normal:Many<Input>,penalty:f64,budget:usize)->NewObject<Contact>,|ctx:&CallCtx<'_>,refs:Handle<References>,marker:i32,gap:Input,normal:Many<Input>,penalty:f64,budget:usize|{refs.with(ctx,|r|{if normal.0.len()!=3{return Err(err("three normal components required"));}let inputs=vec![r.dims[0].clone();3];let gap=checked_snapshot(ctx,&gap,budget,&inputs,&r.dims[0])?;let normal=normal.0.iter().map(|p|checked_snapshot(ctx,p,budget,&inputs,&DimExpr::Dimless)).collect::<Result<Vec<_>,_>>()?.try_into().map_err(|_|err("three normal components required"))?;Ok(NewObject::new(Contact{marker,gap,normal,penalty,refs:r.clone()},r.dims.to_vec()))})});
-object_binding!(hyper_problem,"num_grid_hyper_problem","","Native elasticity call in an explicit mechanical reference frame. Numeric displacements/coordinates use Length, body forces use Mass/(Length^2 Time^2), stress/Young modulus use Mass/(Length Time^2), and density uses Mass/Length^3. Reduced 2D hyperelastic energies are per unit out-of-plane thickness. Outputs retain distinct dimensional reference witnesses. Native DOF, nonlinear work, callbacks and allocation budgets are checked.",true,(mesh:Handle<Mesh>,material:Handle<Material>,bcs:Handle<Bcs>,body:Many<Input>,contacts:Many<Handle<Contact>>,budget:usize)->NewObject<Hyper>,|ctx:&CallCtx<'_>,mesh:Handle<Mesh>,material:Handle<Material>,bcs:Handle<Bcs>,body:Many<Input>,contacts:Many<Handle<Contact>>,budget:usize|{mesh.with(ctx,|mesh|material.with(ctx,|material|bcs.with(ctx,|bcs|{if contacts.0.len()>16{return Err(err("contact budget exceeded"));}check_refs(&material.refs,&bcs.refs)?;let force=force(ctx,&body,&material.refs,budget)?;let contacts=contacts.0.into_iter().map(|c|c.with(ctx,|c|{check_refs(&material.refs,&c.refs)?;Ok(c.clone())})).collect::<Result<Vec<_>,_>>()?;Ok(NewObject::new(Hyper{mesh:mesh.clone(),material:material.clone(),bcs:bcs.clone(),force,contacts},material.refs.dims.to_vec()))})))});
+object_binding!(hyper_contact,"num_grid_hyper_contact","","Native elasticity call in an explicit mechanical reference frame. Numeric displacements/coordinates use Length, body forces use Mass/(Length^2 Time^2), stress/Young modulus use Mass/(Length Time^2), and density uses Mass/Length^3. Reduced 2D hyperelastic energies are per unit out-of-plane thickness. Outputs retain distinct dimensional reference witnesses. Native DOF, nonlinear work, callbacks and allocation budgets are checked.",true,(refs:Handle<References>,marker:i32,gap:Input,normal:Many<Input>,penalty:f64,budget:usize)->NewObject<Contact>,|ctx: &CallCtx<'_>, refs: Handle<References>, marker: i32, gap: Input, normal: Many<Input>, penalty: f64, budget: usize| {
+    refs.with(ctx, |r| {
+        if normal.0.len() != 3 {
+            return Err(err("three normal components required"));
+        }
+        let inputs = vec![r.dims[0].clone(); 3];
+        let gap_snapshot = checked_snapshot(ctx, &gap, budget, &inputs, &r.dims[0])?;
+        let normal_snapshots = normal.0.iter()
+            .map(|p| checked_snapshot(ctx, p, budget, &inputs, &DimExpr::Dimless))
+            .collect::<Result<Vec<_>, _>>()?
+            .try_into()
+            .map_err(|_| err("three normal components required"))?;
+        let mut parents = vec![gap.0];
+        parents.extend(normal.0.into_iter().map(|component| component.0));
+        Ok(NewObject::dependent(
+            Contact { marker, gap: gap_snapshot, normal: normal_snapshots, penalty, refs: r.clone() },
+            r.dims.to_vec(),
+            parents,
+        ))
+    })
+});
+object_binding!(hyper_problem,"num_grid_hyper_problem","","Native elasticity call in an explicit mechanical reference frame. Numeric displacements/coordinates use Length, body forces use Mass/(Length^2 Time^2), stress/Young modulus use Mass/(Length Time^2), and density uses Mass/Length^3. Reduced 2D hyperelastic energies are per unit out-of-plane thickness. Outputs retain distinct dimensional reference witnesses. Native DOF, nonlinear work, callbacks and allocation budgets are checked.",true,(mesh:Handle<Mesh>,material:Handle<Material>,bcs:Handle<Bcs>,body:Many<Input>,contacts:Many<Handle<Contact>>,budget:usize)->NewObject<Hyper>,|ctx: &CallCtx<'_>, mesh: Handle<Mesh>, material: Handle<Material>, bcs: Handle<Bcs>, body: Many<Input>, contacts: Many<Handle<Contact>>, budget: usize| {
+    mesh.with(ctx, |mesh| material.with(ctx, |material| bcs.with(ctx, |bcs| {
+        if contacts.0.len() > 16 {
+            return Err(err("contact budget exceeded"));
+        }
+        check_refs(&material.refs, &bcs.refs)?;
+        let force = force(ctx, &body, &material.refs, budget)?;
+        let checked_contacts = contacts.0.iter().map(|contact| contact.with(ctx, |contact| {
+            check_refs(&material.refs, &contact.refs)?;
+            Ok(contact.clone())
+        })).collect::<Result<Vec<_>, _>>()?;
+        let mut parents: Vec<_> = body.0.into_iter().map(|component| component.0).collect();
+        parents.extend(contacts.0.into_iter().map(|contact| contact.value));
+        Ok(NewObject::dependent(
+            Hyper { mesh: mesh.clone(), material: material.clone(), bcs: bcs.clone(), force, contacts: checked_contacts },
+            material.refs.dims.to_vec(),
+            parents,
+        ))
+    })))
+});
 object_binding!(hyper_static,"num_grid_hyper_static","crate::sim::hyperelastic::solve_static","Native elasticity call in an explicit mechanical reference frame. Numeric displacements/coordinates use Length, body forces use Mass/(Length^2 Time^2), stress/Young modulus use Mass/(Length Time^2), and density uses Mass/Length^3. Reduced 2D hyperelastic energies are per unit out-of-plane thickness. Outputs retain distinct dimensional reference witnesses. Native DOF, nonlinear work, callbacks and allocation budgets are checked.",true,(problem:Handle<Hyper>,steps:usize,tolerance:f64,iterations:usize)->Dynamic,|ctx:&CallCtx<'_>,problem:Handle<Hyper>,steps:usize,tolerance:f64,iterations:usize|{if steps==0||steps>64||iterations==0||iterations>128||steps*iterations>4096||tolerance<=0.0||tolerance>1.0{return Err(err("hyperelastic Newton/load budget invalid"));}problem.with(ctx,|p|{if steps.checked_mul(iterations).and_then(|n|n.checked_mul(p.mesh.data.cells.len())).and_then(|n|n.checked_mul(p.mesh.data.dim.pow(4))).is_none_or(|n|n>50000000){return Err(err("hyperelastic static assembly work cap exceeded"));}p.with(|native|{let s=hyp::solve_static(native,steps,tolerance,iterations,structured::LinearSolver::Auto).map_err(err)?;let dim=p.mesh.data.dim as i64;Ok(Dynamic(api::record(vec![("displacement",fields(&p.material.refs,s.u,[1,0,0,0])?.0),("residuals",fields(&p.material.refs,s.residuals,[dim-2,-2,1,0])?.0),("iterations",s.iterations.encode()?)])))})})});
 
-object_binding!(hyper_rest,"num_grid_hyper_rest","crate::sim::hyperelastic::rest_state","Native elasticity call in an explicit mechanical reference frame. Numeric displacements/coordinates use Length, body forces use Mass/(Length^2 Time^2), stress/Young modulus use Mass/(Length Time^2), and density uses Mass/Length^3. Reduced 2D hyperelastic energies are per unit out-of-plane thickness. Outputs retain distinct dimensional reference witnesses. Native DOF, nonlinear work, callbacks and allocation budgets are checked.",true,(problem:Handle<Hyper>,displacement:Vec<f64>)->NewObject<State>,|ctx:&CallCtx<'_>,problem:Handle<Hyper>,displacement:Vec<f64>|{problem.with(ctx,|p|{if displacement.len()!=p.mesh.data.nodes.len()*p.mesh.data.dim{return Err(err("initial displacement shape mismatch"));}p.with(|native|Ok(NewObject::new(State{data:hyp::rest_state(native,&displacement,structured::LinearSolver::Auto).map_err(err)?,problem:p.clone()},p.material.refs.dims.to_vec())))})});
+object_binding!(hyper_rest,"num_grid_hyper_rest","crate::sim::hyperelastic::rest_state","Native elasticity call in an explicit mechanical reference frame. Numeric displacements/coordinates use Length, body forces use Mass/(Length^2 Time^2), stress/Young modulus use Mass/(Length Time^2), and density uses Mass/Length^3. Reduced 2D hyperelastic energies are per unit out-of-plane thickness. Outputs retain distinct dimensional reference witnesses. Native DOF, nonlinear work, callbacks and allocation budgets are checked.",true,(problem:Handle<Hyper>,displacement:Vec<f64>)->NewObject<State>,|ctx: &CallCtx<'_>, problem: Handle<Hyper>, displacement: Vec<f64>| {
+    problem.with(ctx, |model| {
+        if displacement.len() != model.mesh.data.nodes.len() * model.mesh.data.dim {
+            return Err(err("initial displacement shape mismatch"));
+        }
+        model.with(|native| {
+            let data = hyp::rest_state(native, &displacement, structured::LinearSolver::Auto)
+                .map_err(err)?;
+            Ok(State::dependent(data, &problem, model))
+        })
+    })
+});
 object_binding!(hyper_kinetic,"num_grid_hyper_kinetic","crate::sim::hyperelastic::kinetic_energy","Native elasticity call in an explicit mechanical reference frame. Numeric displacements/coordinates use Length, body forces use Mass/(Length^2 Time^2), stress/Young modulus use Mass/(Length Time^2), and density uses Mass/Length^3. Reduced 2D hyperelastic energies are per unit out-of-plane thickness. Outputs retain distinct dimensional reference witnesses. Native DOF, nonlinear work, callbacks and allocation budgets are checked.",true,(problem:Handle<Hyper>,velocity:Vec<f64>)->Dynamic,|ctx:&CallCtx<'_>,problem:Handle<Hyper>,velocity:Vec<f64>|{problem.with(ctx,|p|{if velocity.len()!=p.mesh.data.nodes.len()*p.mesh.data.dim{return Err(err("hyperelastic field length mismatch"));}p.with(|native|{let value=hyp::kinetic_energy(native,&velocity);let(s,d)=p.material.refs.derived([p.mesh.data.dim as i64-1,-2,1,0])?;Ok(Dynamic(api::quantity(value*s,d)?))})})});
 object_binding!(hyper_strain,"num_grid_hyper_strain","crate::sim::hyperelastic::strain_energy","Native elasticity call in an explicit mechanical reference frame. Numeric displacements/coordinates use Length, body forces use Mass/(Length^2 Time^2), stress/Young modulus use Mass/(Length Time^2), and density uses Mass/Length^3. Reduced 2D hyperelastic energies are per unit out-of-plane thickness. Outputs retain distinct dimensional reference witnesses. Native DOF, nonlinear work, callbacks and allocation budgets are checked.",true,(problem:Handle<Hyper>,displacement:Vec<f64>)->Dynamic,|ctx:&CallCtx<'_>,problem:Handle<Hyper>,displacement:Vec<f64>|{problem.with(ctx,|p|{if displacement.len()!=p.mesh.data.nodes.len()*p.mesh.data.dim{return Err(err("hyperelastic field length mismatch"));}p.with(|native|{let value=hyp::strain_energy(native,&displacement).map_err(err)?;let(s,d)=p.material.refs.derived([p.mesh.data.dim as i64-1,-2,1,0])?;Ok(Dynamic(api::quantity(value*s,d)?))})})});
-object_binding!(hyper_dynamic,"num_grid_hyper_dynamic","crate::sim::hyperelastic::solve_dynamic","Native elasticity call in an explicit mechanical reference frame. Numeric displacements/coordinates use Length, body forces use Mass/(Length^2 Time^2), stress/Young modulus use Mass/(Length Time^2), and density uses Mass/Length^3. Reduced 2D hyperelastic energies are per unit out-of-plane thickness. Outputs retain distinct dimensional reference witnesses. Native DOF, nonlinear work, callbacks and allocation budgets are checked.",true,(state:Handle<State>,scheme:String,beta:f64,gamma:f64,rho_infinity:f64,dt:f64,steps:usize,tolerance:f64,observer:Observer,observer_budget:usize)->NewObject<State>,|ctx:&CallCtx<'_>,state:Handle<State>,scheme:String,beta:f64,gamma:f64,rho_infinity:f64,dt:f64,steps:usize,tolerance:f64,observer:Observer,observer_budget:usize|{if observer_budget<steps||observer_budget>100000||dt<=0.0||steps==0||steps>1024||tolerance<=0.0||tolerance>1.0{return Err(err("hyperelastic dynamic time/work controls invalid"));}let scheme=match scheme.as_str(){"Newmark" if beta>0.0&&gamma>=0.5=>hyp::TimeScheme::Newmark{beta,gamma},"GeneralizedAlpha" if (0.0..=1.0).contains(&rho_infinity)=>hyp::TimeScheme::GeneralizedAlpha{rho_inf:rho_infinity},_=>return Err(err("invalid hyperelastic integration scheme/parameters"))};state.with(ctx,|s|{let n=s.data.u.len();if n.checked_mul(n).and_then(|n|n.checked_mul(steps)).and_then(|n|n.checked_mul(30)).is_none_or(|n|n>50000000){return Err(err("dynamic work budget exceeded"));}s.problem.with(|native|{let failure=std::cell::RefCell::new(None);let mut remaining=observer_budget;let mut notify=|state:&hyp::DynamicState|{let result=(||{if remaining==0{return Err(err("dynamic observer budget exhausted"));}remaining-=1;let value=state_value(&s.problem.material.refs,state)?;match ctx.invoke_callback(observer.0,&[value])?{Value::Bool(true)=>Ok(()),Value::Bool(false)=>Err(err("dynamic observer requested cancellation")),_=>Err(err("dynamic observer must return Bool acknowledgement"))}})();if let Err(error)=result{*failure.borrow_mut()=Some(error);std::panic::resume_unwind(Box::new(ObserverStop));}};let result=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||hyp::solve_dynamic(native,scheme,&s.data,dt,steps,tolerance,structured::LinearSolver::Auto,&mut notify)));if let Some(error)=failure.into_inner(){return Err(error);}let data=match result{Ok(result)=>result.map_err(err)?,Err(payload)=>std::panic::resume_unwind(payload)};Ok(NewObject::new(State{data,problem:s.problem.clone()},s.problem.material.refs.dims.to_vec()))})})});
-object_binding!(hyper_state_fields,"num_grid_hyper_state_fields","","Native elasticity call in an explicit mechanical reference frame. Numeric displacements/coordinates use Length, body forces use Mass/(Length^2 Time^2), stress/Young modulus use Mass/(Length Time^2), and density uses Mass/Length^3. Reduced 2D hyperelastic energies are per unit out-of-plane thickness. Outputs retain distinct dimensional reference witnesses. Native DOF, nonlinear work, callbacks and allocation budgets are checked.",true,(state:Handle<State>)->Dynamic,|ctx:&CallCtx<'_>,state:Handle<State>|{state.with(ctx,|s|{let f=&s.problem.material.refs;Ok(Dynamic(api::record(vec![("displacement",fields(f,s.data.u.clone(),[1,0,0,0])?.0),("velocity",fields(f,s.data.v.clone(),[1,-1,0,0])?.0),("acceleration",fields(f,s.data.a.clone(),[1,-2,0,0])?.0),("time",api::quantity(s.data.t*f.scales[1],f.dims[1].clone())?)])))})});
+object_binding!(hyper_dynamic,"num_grid_hyper_dynamic","crate::sim::hyperelastic::solve_dynamic","Native elasticity call in an explicit mechanical reference frame. Numeric displacements/coordinates use Length, body forces use Mass/(Length^2 Time^2), stress/Young modulus use Mass/(Length Time^2), and density uses Mass/Length^3. Reduced 2D hyperelastic energies are per unit out-of-plane thickness. Outputs retain distinct dimensional reference witnesses. Native DOF, nonlinear work, callbacks and allocation budgets are checked.",true,(state:Handle<State>,scheme:String,beta:f64,gamma:f64,rho_infinity:f64,dt:f64,steps:usize,tolerance:f64,observer:Observer,observer_budget:usize)->NewObject<State>,|ctx:&CallCtx<'_>,state:Handle<State>,scheme:String,beta:f64,gamma:f64,rho_infinity:f64,dt:f64,steps:usize,tolerance:f64,observer:Observer,observer_budget:usize|{if observer_budget<steps||observer_budget>100000||dt<=0.0||steps==0||steps>1024||tolerance<=0.0||tolerance>1.0{return Err(err("hyperelastic dynamic time/work controls invalid"));}let scheme=match scheme.as_str(){"Newmark" if beta>0.0&&gamma>=0.5=>hyp::TimeScheme::Newmark{beta,gamma},"GeneralizedAlpha" if (0.0..=1.0).contains(&rho_infinity)=>hyp::TimeScheme::GeneralizedAlpha{rho_inf:rho_infinity},_=>return Err(err("invalid hyperelastic integration scheme/parameters"))};state.with(ctx,|s|{let n=s.data.u.len();if n.checked_mul(n).and_then(|n|n.checked_mul(steps)).and_then(|n|n.checked_mul(30)).is_none_or(|n|n>50000000){return Err(err("dynamic work budget exceeded"));}s.problem.with(ctx, |model| model.with(|native|{let failure=std::cell::RefCell::new(None);let mut remaining=observer_budget;let mut notify=|state:&hyp::DynamicState|{let result=(||{if remaining==0{return Err(err("dynamic observer budget exhausted"));}remaining-=1;let value=state_value(&model.material.refs,state)?;match ctx.invoke_callback(observer.0,&[value])?{Value::Bool(true)=>Ok(()),Value::Bool(false)=>Err(err("dynamic observer requested cancellation")),_=>Err(err("dynamic observer must return Bool acknowledgement"))}})();if let Err(error)=result{*failure.borrow_mut()=Some(error);std::panic::resume_unwind(Box::new(ObserverStop));}};let result=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||hyp::solve_dynamic(native,scheme,&s.data,dt,steps,tolerance,structured::LinearSolver::Auto,&mut notify)));if let Some(error)=failure.into_inner(){return Err(error);}let data=match result{Ok(result)=>result.map_err(err)?,Err(payload)=>std::panic::resume_unwind(payload)};Ok(State::dependent(data,&s.problem,model))}))})});
+object_binding!(hyper_state_fields,"num_grid_hyper_state_fields","","Native elasticity call in an explicit mechanical reference frame. Numeric displacements/coordinates use Length, body forces use Mass/(Length^2 Time^2), stress/Young modulus use Mass/(Length Time^2), and density uses Mass/Length^3. Reduced 2D hyperelastic energies are per unit out-of-plane thickness. Outputs retain distinct dimensional reference witnesses. Native DOF, nonlinear work, callbacks and allocation budgets are checked.",true,(state:Handle<State>)->Dynamic,|ctx:&CallCtx<'_>,state:Handle<State>|{state.with(ctx,|s|s.problem.with(ctx,|model|{let f=&model.material.refs;Ok(Dynamic(api::record(vec![("displacement",fields(f,s.data.u.clone(),[1,0,0,0])?.0),("velocity",fields(f,s.data.v.clone(),[1,-1,0,0])?.0),("acceleration",fields(f,s.data.a.clone(),[1,-2,0,0])?.0),("time",api::quantity(s.data.t*f.scales[1],f.dims[1].clone())?)])))}))});
 object_binding!(
     hyper_prepare_point, "num_grid_hyper_prepare_point", "crate::sim::hyperelastic::HyperelasticPoint::new",
     "Prepares one hyperelastic material point at a dimensionless 3 by 3 deformation gradient. Stress, stiffness and energy density share its constitutive state and retain the material pressure units.",

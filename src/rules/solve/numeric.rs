@@ -71,13 +71,6 @@ impl Compiled_ {
     }
 }
 
-fn solve_dense(
-    a: Vec<Vec<f64>>,
-    b: Vec<f64>,
-) -> Option<Vec<f64>> {
-    crate::kernels::dense::solve_linear_rows(&a, &b).ok()
-}
-
 fn norm(v: &[f64]) -> f64 {
     crate::kernels::vector::norm(v)
 }
@@ -124,7 +117,7 @@ fn newton(
         for (j, row) in a.iter_mut().enumerate() {
             row[j] += 1e-14;
         }
-        let step = solve_dense(a, b)?;
+        let step = crate::kernels::dense::solve_linear_rows(&a, &b).ok()?;
         let current = norm(&r);
         let mut scale = 1.0;
         let mut accepted = false;

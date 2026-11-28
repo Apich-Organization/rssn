@@ -19,7 +19,6 @@
 //! returning a fit of a model the data do not support.
 
 use super::bridge::Data;
-use super::bridge::Entry;
 use super::bridge::bad;
 use super::bridge::name;
 use super::bridge::require;
@@ -34,20 +33,16 @@ use crate::kernels::glm::Link;
 const MAX_ROWS: usize = 100_000;
 
 /// Every operator of this family.
-pub(super) const ENTRIES: &[Entry] = &[
-    Entry {
-        name: "glm_fit",
-        params: "ttnnts",
-        eval: glm_fit,
-        doc: "`glm_fit(x, y, family, link, weights, tol)`: `list(beta, se, deviance, null_deviance, aic, iterations, fitted)` of a generalised linear model fitted by iteratively reweighted least squares; `x` is a list of rows without an intercept, `weights` is empty for equal weights.",
-    },
-    Entry {
-        name: "glm_predict",
-        params: "ttn",
-        eval: glm_predict,
-        doc: "`glm_predict(x, beta, link)`: the fitted mean of each row of `x` given the coefficients `beta` (intercept first) and the `link`.",
-    },
-];
+reviewed_entries! {
+    (
+        "glm_fit", "ttnnts", glm_fit, glm::fit,
+        "`glm_fit(x, y, family, link, weights, tol)`: `list(beta, se, deviance, null_deviance, aic, iterations, fitted)` of a generalised linear model fitted by iteratively reweighted least squares; `x` is a list of rows without an intercept, `weights` is empty for equal weights."
+    ),
+    (
+        "glm_predict", "ttn", glm_predict, glm::predict::predict_coefficients,
+        "`glm_predict(x, beta, link)`: the fitted mean of each row of `x` given the coefficients `beta` (intercept first) and the `link`."
+    ),
+}
 
 /// The family named by `text`.
 fn family_named(text: &str) -> Option<Family> {
@@ -216,13 +211,15 @@ fn glm_predict(args: &[Data]) -> Option<Data> {
             beta.len()
         ),
     )?;
-    let mut means = Vec::with_capacity(x.len());
-    for row in &x {
-        let mut eta = beta.first().copied().unwrap_or(0.0);
-        for (value, coefficient) in row.iter().zip(beta.iter().skip(1)) {
-            eta += value * coefficient;
-        }
-        means.push(crate::kernels::glm::link_inverse(link, eta));
+    match crate::kernels::glm::predict::predict_coefficients(beta, &x, link) {
+        | Ok(means) => super::bridge::vec_out(means),
+        | Err(message) => {
+            let kind = if x.iter().any(|row| row.len() != width) {
+                DiagKind::Shape
+            } else {
+                DiagKind::Domain
+            };
+            bad(0, kind, format_args!("{message}"))
+        },
     }
-    super::bridge::vec_out(means)
 }

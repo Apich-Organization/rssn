@@ -4,292 +4,210 @@
 use num_complex::Complex64;
 
 use super::bridge::Data;
-use super::bridge::Entry;
 use super::bridge::bad;
 use super::bridge::vector;
 use crate::kernel::diag::DiagKind;
 use crate::kernels::ball::Cball;
 use crate::kernels::complex_ball::ComplexBall;
 
-/// Every operator of this family.
-pub(super) const ENTRIES: &[Entry] = &[
-    Entry {
-        name: "cball_add",
-        params: "vv",
-        eval: cball_add,
-        doc: "`cball_add(a, b)`: sum of two complex balls `list(re, im, rad)`.",
-    },
-    Entry {
-        name: "cball_sub",
-        params: "vv",
-        eval: cball_sub,
-        doc: "`cball_sub(a, b)`: difference of two complex balls `list(re, im, rad)`.",
-    },
-    Entry {
-        name: "cball_mul",
-        params: "vv",
-        eval: cball_mul,
-        doc: "`cball_mul(a, b)`: product of two complex balls `list(re, im, rad)`.",
-    },
-    Entry {
-        name: "cball_div",
-        params: "vv",
-        eval: cball_div,
-        doc: "`cball_div(a, b)`: quotient of two complex balls `list(re, im, rad)` when `b` excludes zero.",
-    },
-    Entry {
-        name: "cball_pow",
-        params: "vv",
-        eval: cball_pow,
-        doc: "`cball_pow(a, b)`: principal complex power `a^b` over complex balls `list(re, im, rad)`.",
-    },
-    Entry {
-        name: "cball_exp",
-        params: "v",
-        eval: cball_exp,
-        doc: "`cball_exp(z)`: complex exponential enclosure of `list(re, im, rad)`.",
-    },
-    Entry {
-        name: "cball_ln",
-        params: "v",
-        eval: cball_ln,
-        doc: "`cball_ln(z)`: principal complex logarithm enclosure of `list(re, im, rad)`.",
-    },
-    Entry {
-        name: "cball_sqrt",
-        params: "v",
-        eval: cball_sqrt,
-        doc: "`cball_sqrt(z)`: principal complex square root enclosure of `list(re, im, rad)`.",
-    },
-    Entry {
-        name: "cball_sin",
-        params: "v",
-        eval: cball_sin,
-        doc: "`cball_sin(z)`: complex sine enclosure of `list(re, im, rad)`.",
-    },
-    Entry {
-        name: "cball_cos",
-        params: "v",
-        eval: cball_cos,
-        doc: "`cball_cos(z)`: complex cosine enclosure of `list(re, im, rad)`.",
-    },
-    Entry {
-        name: "cball_tan",
-        params: "v",
-        eval: cball_tan,
-        doc: "`cball_tan(z)`: complex tangent enclosure of `list(re, im, rad)`.",
-    },
-    Entry {
-        name: "cball_sinh",
-        params: "v",
-        eval: cball_sinh,
-        doc: "`cball_sinh(z)`: complex hyperbolic sine enclosure of `list(re, im, rad)`.",
-    },
-    Entry {
-        name: "cball_cosh",
-        params: "v",
-        eval: cball_cosh,
-        doc: "`cball_cosh(z)`: complex hyperbolic cosine enclosure of `list(re, im, rad)`.",
-    },
-    Entry {
-        name: "cball_tanh",
-        params: "v",
-        eval: cball_tanh,
-        doc: "`cball_tanh(z)`: complex hyperbolic tangent enclosure of `list(re, im, rad)`.",
-    },
-    Entry {
-        name: "cball_asin",
-        params: "v",
-        eval: cball_asin,
-        doc: "`cball_asin(z)`: principal inverse sine enclosure of `list(re, im, rad)`.",
-    },
-    Entry {
-        name: "cball_acos",
-        params: "v",
-        eval: cball_acos,
-        doc: "`cball_acos(z)`: principal inverse cosine enclosure of `list(re, im, rad)`.",
-    },
-    Entry {
-        name: "cball_atan",
-        params: "v",
-        eval: cball_atan,
-        doc: "`cball_atan(z)`: principal inverse tangent enclosure of `list(re, im, rad)`.",
-    },
-    Entry {
-        name: "cball_asinh",
-        params: "v",
-        eval: cball_asinh,
-        doc: "`cball_asinh(z)`: principal inverse hyperbolic sine enclosure of `list(re, im, rad)`.",
-    },
-    Entry {
-        name: "cball_acosh",
-        params: "v",
-        eval: cball_acosh,
-        doc: "`cball_acosh(z)`: principal inverse hyperbolic cosine enclosure of `list(re, im, rad)`.",
-    },
-    Entry {
-        name: "cball_atanh",
-        params: "v",
-        eval: cball_atanh,
-        doc: "`cball_atanh(z)`: principal inverse hyperbolic tangent enclosure of `list(re, im, rad)`.",
-    },
-    Entry {
-        name: "cball_conj",
-        params: "v",
-        eval: cball_conj,
-        doc: "`cball_conj(z)`: complex conjugate enclosure of `list(re, im, rad)`.",
-    },
-    Entry {
-        name: "cball_powi",
-        params: "vs",
-        eval: cball_powi,
-        doc: "`cball_powi(z, n)`: integer power enclosure `z^n` of `list(re, im, rad)`.",
-    },
-    Entry {
-        name: "cball_abs",
-        params: "v",
-        eval: cball_abs,
-        doc: "`cball_abs(z)`: modulus enclosure `|z|` as a complex ball `list(re, 0, rad)`.",
-    },
-    Entry {
-        name: "cball_arg",
-        params: "v",
-        eval: cball_arg,
-        doc: "`cball_arg(z)`: principal argument enclosure `arg(z)` as a complex ball `list(re, 0, rad)`.",
-    },
-    Entry {
-        name: "cball_contains",
-        params: "vv",
-        eval: cball_contains,
-        doc: "`cball_contains(b, pt)`: returns `1` if `pt` (`list(re, im, 0)` or `list(re, im, rad)`) lies in `b`, else `0`.",
-    },
-    Entry {
-        name: "cball_overlaps",
-        params: "vv",
-        eval: cball_overlaps,
-        doc: "`cball_overlaps(a, b)`: returns `1` if complex balls `a` and `b` overlap, else `0`.",
-    },
-    Entry {
-        name: "cball_to_cinterval",
-        params: "v",
-        eval: cball_to_cinterval,
-        doc: "`cball_to_cinterval(b)`: converts a complex ball `list(re, im, rad)` to a rectangular interval `list(re_lo, re_hi, im_lo, im_hi)`.",
-    },
-    Entry {
-        name: "cinterval_to_cball",
-        params: "v",
-        eval: cinterval_to_cball,
-        doc: "`cinterval_to_cball(rect)`: converts a rectangular complex interval `list(re_lo, re_hi, im_lo, im_hi)` to a complex ball `list(re, im, rad)`.",
-    },
-    Entry {
-        name: "cinterval_add",
-        params: "vv",
-        eval: cinterval_add,
-        doc: "`cinterval_add(a, b)`: sum of two complex intervals `list(re_lo, re_hi, im_lo, im_hi)`.",
-    },
-    Entry {
-        name: "cinterval_sub",
-        params: "vv",
-        eval: cinterval_sub,
-        doc: "`cinterval_sub(a, b)`: difference of two complex intervals `list(re_lo, re_hi, im_lo, im_hi)`.",
-    },
-    Entry {
-        name: "cinterval_mul",
-        params: "vv",
-        eval: cinterval_mul,
-        doc: "`cinterval_mul(a, b)`: product of two complex intervals `list(re_lo, re_hi, im_lo, im_hi)`.",
-    },
-    Entry {
-        name: "cinterval_div",
-        params: "vv",
-        eval: cinterval_div,
-        doc: "`cinterval_div(a, b)`: quotient of two complex intervals `list(re_lo, re_hi, im_lo, im_hi)`.",
-    },
-    Entry {
-        name: "cinterval_exp",
-        params: "v",
-        eval: cinterval_exp,
-        doc: "`cinterval_exp(z)`: complex exponential enclosure of `list(re_lo, re_hi, im_lo, im_hi)`.",
-    },
-    Entry {
-        name: "cinterval_ln",
-        params: "v",
-        eval: cinterval_ln,
-        doc: "`cinterval_ln(z)`: principal complex logarithm enclosure of `list(re_lo, re_hi, im_lo, im_hi)`.",
-    },
-    Entry {
-        name: "cinterval_sqrt",
-        params: "v",
-        eval: cinterval_sqrt,
-        doc: "`cinterval_sqrt(z)`: principal complex square root enclosure of `list(re_lo, re_hi, im_lo, im_hi)`.",
-    },
-    Entry {
-        name: "cinterval_sin",
-        params: "v",
-        eval: cinterval_sin,
-        doc: "`cinterval_sin(z)`: complex sine enclosure of `list(re_lo, re_hi, im_lo, im_hi)`.",
-    },
-    Entry {
-        name: "cinterval_cos",
-        params: "v",
-        eval: cinterval_cos,
-        doc: "`cinterval_cos(z)`: complex cosine enclosure of `list(re_lo, re_hi, im_lo, im_hi)`.",
-    },
-    Entry {
-        name: "cinterval_tan",
-        params: "v",
-        eval: cinterval_tan,
-        doc: "`cinterval_tan(z)`: complex tangent enclosure of `list(re_lo, re_hi, im_lo, im_hi)`.",
-    },
-    Entry {
-        name: "cinterval_sinh",
-        params: "v",
-        eval: cinterval_sinh,
-        doc: "`cinterval_sinh(z)`: complex hyperbolic sine enclosure of `list(re_lo, re_hi, im_lo, im_hi)`.",
-    },
-    Entry {
-        name: "cinterval_cosh",
-        params: "v",
-        eval: cinterval_cosh,
-        doc: "`cinterval_cosh(z)`: complex hyperbolic cosine enclosure of `list(re_lo, re_hi, im_lo, im_hi)`.",
-    },
-    Entry {
-        name: "cinterval_tanh",
-        params: "v",
-        eval: cinterval_tanh,
-        doc: "`cinterval_tanh(z)`: complex hyperbolic tangent enclosure of `list(re_lo, re_hi, im_lo, im_hi)`.",
-    },
-    Entry {
-        name: "cinterval_pow",
-        params: "vv",
-        eval: cinterval_pow,
-        doc: "`cinterval_pow(a, b)`: principal complex power enclosure `a^b`.",
-    },
-    Entry {
-        name: "cinterval_asin",
-        params: "v",
-        eval: cinterval_asin,
-        doc: "`cinterval_asin(z)`: principal inverse sine enclosure of `list(re_lo, re_hi, im_lo, im_hi)`.",
-    },
-    Entry {
-        name: "cinterval_acos",
-        params: "v",
-        eval: cinterval_acos,
-        doc: "`cinterval_acos(z)`: principal inverse cosine enclosure of `list(re_lo, re_hi, im_lo, im_hi)`.",
-    },
-    Entry {
-        name: "cinterval_atan",
-        params: "v",
-        eval: cinterval_atan,
-        doc: "`cinterval_atan(z)`: principal inverse tangent enclosure of `list(re_lo, re_hi, im_lo, im_hi)`.",
-    },
-    Entry {
-        name: "cinterval_intersect",
-        params: "vv",
-        eval: cinterval_intersect,
-        doc: "`cinterval_intersect(a, b)`: intersection of two rectangular complex intervals.",
-    },
-];
+reviewed_entries! {
+    (
+        "cball_add", "vv", cball_add, complex_ball::ComplexBall::add_ball,
+        "`cball_add(a, b)`: sum of two complex balls `list(re, im, rad)`."
+    ),
+    (
+        "cball_sub", "vv", cball_sub, complex_ball::ComplexBall::sub_ball,
+        "`cball_sub(a, b)`: difference of two complex balls `list(re, im, rad)`."
+    ),
+    (
+        "cball_mul", "vv", cball_mul, complex_ball::ComplexBall::mul_ball,
+        "`cball_mul(a, b)`: product of two complex balls `list(re, im, rad)`."
+    ),
+    (
+        "cball_div", "vv", cball_div, complex_ball::ComplexBall::div_ball,
+        "`cball_div(a, b)`: quotient of two complex balls `list(re, im, rad)` when `b` excludes zero."
+    ),
+    (
+        "cball_pow", "vv", cball_pow, complex_ball::ComplexBall::powc,
+        "`cball_pow(a, b)`: principal complex power `a^b` over complex balls `list(re, im, rad)`."
+    ),
+    (
+        "cball_exp", "v", cball_exp, complex_ball::ComplexBall::exp,
+        "`cball_exp(z)`: complex exponential enclosure of `list(re, im, rad)`."
+    ),
+    (
+        "cball_ln", "v", cball_ln, complex_ball::ComplexBall::ln,
+        "`cball_ln(z)`: principal complex logarithm enclosure of `list(re, im, rad)`."
+    ),
+    (
+        "cball_sqrt", "v", cball_sqrt, complex_ball::ComplexBall::sqrt,
+        "`cball_sqrt(z)`: principal complex square root enclosure of `list(re, im, rad)`."
+    ),
+    (
+        "cball_sin", "v", cball_sin, complex_ball::ComplexBall::sin,
+        "`cball_sin(z)`: complex sine enclosure of `list(re, im, rad)`."
+    ),
+    (
+        "cball_cos", "v", cball_cos, complex_ball::ComplexBall::cos,
+        "`cball_cos(z)`: complex cosine enclosure of `list(re, im, rad)`."
+    ),
+    (
+        "cball_tan", "v", cball_tan, complex_ball::ComplexBall::tan,
+        "`cball_tan(z)`: complex tangent enclosure of `list(re, im, rad)`."
+    ),
+    (
+        "cball_sinh", "v", cball_sinh, complex_ball::ComplexBall::sinh,
+        "`cball_sinh(z)`: complex hyperbolic sine enclosure of `list(re, im, rad)`."
+    ),
+    (
+        "cball_cosh", "v", cball_cosh, complex_ball::ComplexBall::cosh,
+        "`cball_cosh(z)`: complex hyperbolic cosine enclosure of `list(re, im, rad)`."
+    ),
+    (
+        "cball_tanh", "v", cball_tanh, complex_ball::ComplexBall::tanh,
+        "`cball_tanh(z)`: complex hyperbolic tangent enclosure of `list(re, im, rad)`."
+    ),
+    (
+        "cball_asin", "v", cball_asin, complex_ball::ComplexBall::asin,
+        "`cball_asin(z)`: principal inverse sine enclosure of `list(re, im, rad)`."
+    ),
+    (
+        "cball_acos", "v", cball_acos, complex_ball::ComplexBall::acos,
+        "`cball_acos(z)`: principal inverse cosine enclosure of `list(re, im, rad)`."
+    ),
+    (
+        "cball_atan", "v", cball_atan, complex_ball::ComplexBall::atan,
+        "`cball_atan(z)`: principal inverse tangent enclosure of `list(re, im, rad)`."
+    ),
+    (
+        "cball_asinh", "v", cball_asinh, complex_ball::ComplexBall::asinh,
+        "`cball_asinh(z)`: principal inverse hyperbolic sine enclosure of `list(re, im, rad)`."
+    ),
+    (
+        "cball_acosh", "v", cball_acosh, complex_ball::ComplexBall::acosh,
+        "`cball_acosh(z)`: principal inverse hyperbolic cosine enclosure of `list(re, im, rad)`."
+    ),
+    (
+        "cball_atanh", "v", cball_atanh, complex_ball::ComplexBall::atanh,
+        "`cball_atanh(z)`: principal inverse hyperbolic tangent enclosure of `list(re, im, rad)`."
+    ),
+    (
+        "cball_conj", "v", cball_conj, complex_ball::ComplexBall::conj,
+        "`cball_conj(z)`: complex conjugate enclosure of `list(re, im, rad)`."
+    ),
+    (
+        "cball_powi", "vs", cball_powi, complex_ball::ComplexBall::powi,
+        "`cball_powi(z, n)`: integer power enclosure `z^n` of `list(re, im, rad)`."
+    ),
+    (
+        "cball_abs", "v", cball_abs, complex_ball::ComplexBall::abs_ball,
+        "`cball_abs(z)`: modulus enclosure `|z|` as a complex ball `list(re, 0, rad)`."
+    ),
+    (
+        "cball_arg", "v", cball_arg, complex_ball::ComplexBall::arg_ball,
+        "`cball_arg(z)`: principal argument enclosure `arg(z)` as a complex ball `list(re, 0, rad)`."
+    ),
+    (
+        "cball_contains", "vv", cball_contains,
+        "`cball_contains(b, pt)`: returns `1` if `pt` (`list(re, im, 0)` or `list(re, im, rad)`) lies in `b`, else `0`."
+    ),
+    (
+        "cball_overlaps", "vv", cball_overlaps, complex_ball::ComplexBall::overlaps,
+        "`cball_overlaps(a, b)`: returns `1` if complex balls `a` and `b` overlap, else `0`."
+    ),
+    (
+        "cball_to_cinterval", "v", cball_to_cinterval, complex_ball::ComplexBall::to_cball,
+        "`cball_to_cinterval(b)`: converts a complex ball `list(re, im, rad)` to a rectangular interval `list(re_lo, re_hi, im_lo, im_hi)`."
+    ),
+    (
+        "cinterval_to_cball", "v", cinterval_to_cball, complex_ball::ComplexBall::from_cball,
+        "`cinterval_to_cball(rect)`: converts a rectangular complex interval `list(re_lo, re_hi, im_lo, im_hi)` to a complex ball `list(re, im, rad)`."
+    ),
+    (
+        "cinterval_add", "vv", cinterval_add,
+        "`cinterval_add(a, b)`: sum of two complex intervals `list(re_lo, re_hi, im_lo, im_hi)`."
+    ),
+    (
+        "cinterval_sub", "vv", cinterval_sub,
+        "`cinterval_sub(a, b)`: difference of two complex intervals `list(re_lo, re_hi, im_lo, im_hi)`."
+    ),
+    (
+        "cinterval_mul", "vv", cinterval_mul,
+        "`cinterval_mul(a, b)`: product of two complex intervals `list(re_lo, re_hi, im_lo, im_hi)`."
+    ),
+    (
+        "cinterval_div", "vv", cinterval_div, ball::Cball::div,
+        "`cinterval_div(a, b)`: quotient of two complex intervals `list(re_lo, re_hi, im_lo, im_hi)`."
+    ),
+    (
+        "cinterval_exp", "v", cinterval_exp, ball::Cball::exp,
+        "`cinterval_exp(z)`: complex exponential enclosure of `list(re_lo, re_hi, im_lo, im_hi)`."
+    ),
+    (
+        "cinterval_ln", "v", cinterval_ln, ball::Cball::ln,
+        "`cinterval_ln(z)`: principal complex logarithm enclosure of `list(re_lo, re_hi, im_lo, im_hi)`."
+    ),
+    (
+        "cinterval_sqrt", "v", cinterval_sqrt, ball::Cball::sqrt,
+        "`cinterval_sqrt(z)`: principal complex square root enclosure of `list(re_lo, re_hi, im_lo, im_hi)`."
+    ),
+    (
+        "cinterval_sin", "v", cinterval_sin, ball::Cball::sin,
+        "`cinterval_sin(z)`: complex sine enclosure of `list(re_lo, re_hi, im_lo, im_hi)`."
+    ),
+    (
+        "cinterval_cos", "v", cinterval_cos, ball::Cball::cos,
+        "`cinterval_cos(z)`: complex cosine enclosure of `list(re_lo, re_hi, im_lo, im_hi)`."
+    ),
+    (
+        "cinterval_tan", "v", cinterval_tan, ball::Cball::tan,
+        "`cinterval_tan(z)`: complex tangent enclosure of `list(re_lo, re_hi, im_lo, im_hi)`."
+    ),
+    (
+        "cinterval_sinh", "v", cinterval_sinh, ball::Cball::sinh,
+        "`cinterval_sinh(z)`: complex hyperbolic sine enclosure of `list(re_lo, re_hi, im_lo, im_hi)`."
+    ),
+    (
+        "cinterval_cosh", "v", cinterval_cosh, ball::Cball::cosh,
+        "`cinterval_cosh(z)`: complex hyperbolic cosine enclosure of `list(re_lo, re_hi, im_lo, im_hi)`."
+    ),
+    (
+        "cinterval_tanh", "v", cinterval_tanh, ball::Cball::tanh,
+        "`cinterval_tanh(z)`: complex hyperbolic tangent enclosure of `list(re_lo, re_hi, im_lo, im_hi)`."
+    ),
+    (
+        "cinterval_pow", "vv", cinterval_pow, ball::Cball::powc,
+        "`cinterval_pow(a, b)`: principal complex power enclosure `a^b`."
+    ),
+    (
+        "cinterval_asin", "v", cinterval_asin, ball::Cball::asin,
+        "`cinterval_asin(z)`: principal inverse sine enclosure of `list(re_lo, re_hi, im_lo, im_hi)`."
+    ),
+    (
+        "cinterval_acos", "v", cinterval_acos, ball::Cball::acos,
+        "`cinterval_acos(z)`: principal inverse cosine enclosure of `list(re_lo, re_hi, im_lo, im_hi)`."
+    ),
+    (
+        "cinterval_atan", "v", cinterval_atan, ball::Cball::atan,
+        "`cinterval_atan(z)`: principal inverse tangent enclosure of `list(re_lo, re_hi, im_lo, im_hi)`."
+    ),
+    (
+        "cinterval_asinh", "v", cinterval_asinh, ball::Cball::asinh,
+        "`cinterval_asinh(z)`: principal inverse hyperbolic sine enclosure of dimensionless bounds `list(re_lo, re_hi, im_lo, im_hi)`. Symbolic calls stay unevaluated when a bound cannot be formed. Checked calls report a domain diagnostic."
+    ),
+    (
+        "cinterval_acosh", "v", cinterval_acosh, ball::Cball::acosh,
+        "`cinterval_acosh(z)`: principal inverse hyperbolic cosine enclosure of dimensionless bounds `list(re_lo, re_hi, im_lo, im_hi)`. Symbolic calls stay unevaluated when a bound cannot be formed. Checked calls report a domain diagnostic."
+    ),
+    (
+        "cinterval_atanh", "v", cinterval_atanh, ball::Cball::atanh,
+        "`cinterval_atanh(z)`: principal inverse hyperbolic tangent enclosure of dimensionless bounds `list(re_lo, re_hi, im_lo, im_hi)`. Symbolic calls stay unevaluated when a bound cannot be formed. Checked calls report a domain diagnostic."
+    ),
+    (
+        "cinterval_intersect", "vv", cinterval_intersect, ball::Cball::intersect,
+        "`cinterval_intersect(a, b)`: intersection of two rectangular complex intervals."
+    ),
+}
 
 fn decode_ball(
     args: &[Data],
@@ -760,6 +678,34 @@ fn cinterval_atan(args: &[Data]) -> Option<Data> {
         );
     };
     encode_cball(res)
+}
+
+fn inverse_hyperbolic_interval(
+    args: &[Data],
+    name: &str,
+    enclose: fn(&Cball) -> Option<Cball>,
+) -> Option<Data> {
+    let interval = decode_cball(args, 0)?;
+    let Some(result) = enclose(&interval) else {
+        return bad(
+            0,
+            DiagKind::Domain,
+            format_args!("cannot enclose principal {name} on this complex interval"),
+        );
+    };
+    encode_cball(result)
+}
+
+fn cinterval_asinh(args: &[Data]) -> Option<Data> {
+    inverse_hyperbolic_interval(args, "asinh", Cball::asinh)
+}
+
+fn cinterval_acosh(args: &[Data]) -> Option<Data> {
+    inverse_hyperbolic_interval(args, "acosh", Cball::acosh)
+}
+
+fn cinterval_atanh(args: &[Data]) -> Option<Data> {
+    inverse_hyperbolic_interval(args, "atanh", Cball::atanh)
 }
 
 fn cinterval_intersect(args: &[Data]) -> Option<Data> {

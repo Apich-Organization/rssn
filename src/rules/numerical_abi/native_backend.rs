@@ -51,6 +51,7 @@ const MAX_ROWS: usize = 16_384;
 const MAX_CELLS: usize = 262_144;
 const MAX_NODES: usize = 4096;
 const MAX_WORK: usize = 100_000_000;
+const PROGRAM_SESSION_RESERVATION: usize = 4_194_304;
 #[derive(Clone)]
 struct Scalar {
     value: f64,
@@ -58,8 +59,10 @@ struct Scalar {
     dimension: DimExpr,
 }
 struct Program {
+    payload_bytes: usize,
     retained_bytes: usize,
     compiled: Arc<dyn Compiled>,
+    bounded_point_tape: Option<Arc<backend::TapeFunction>>,
     // Retain every object owning graph/plugin function pointers for at least
     // as long as the executable, including a snapshot of its actual backend.
     _session: Session,
@@ -106,8 +109,12 @@ impl Program {
     }
 }
 
-struct CurrentCompile(Arc<dyn Backend>);
-impl Backend for CurrentCompile {
+struct SelectedCompile(Arc<dyn Backend>, bool);
+impl Backend for SelectedCompile {
+    fn uses_gpu(&self) -> bool {
+        self.0.uses_gpu()
+    }
+
     fn name(&self) -> &'static str {
         self.0.name()
     }
@@ -118,11 +125,25 @@ impl Backend for CurrentCompile {
         root: NodeId,
         inputs: &[SymbolId],
     ) -> Result<Box<dyn Compiled>, backend::BackendError> {
-        backend::with_backend(self.0.clone(), || backend::compile(graph, root, inputs))
+        let compile = || self.0.compile_native(graph, root, inputs);
+        if self.1 {
+            backend::with_backend(self.0.clone(), compile)
+        } else {
+            compile()
+        }
     }
 }
 fn error(message: impl std::fmt::Display) -> OpError {
     OpError::Domain(message.to_string())
+}
+fn unavailable(
+    selector: &str,
+    error: &backend::BackendError,
+) -> OpError {
+    OpError::Unsupported {
+        backend: selector.into(),
+        feature: error.to_string(),
+    }
 }
 fn objects<'a>(ctx: &'a CallCtx<'_>) -> Result<&'a NativeObjects, OpError> {
     ctx.native_objects
@@ -302,6 +323,10 @@ fn source(text: &str) -> Result<(), OpError> {
 #[derive(Clone, Copy)]
 enum Method {
     Current,
+    CurrentName,
+    Available,
+    Named,
+    SelectDefault,
     Interpreter,
     Name,
     Reference,
@@ -326,6 +351,10 @@ impl EvalDyn for Adapter {
         let selected = || opaque(BACKEND);
         let (params, ret) = match self.0 {
             | M::Current | M::Interpreter => (vec![], selected()),
+            | M::CurrentName => (vec![], TypeExpr::String),
+            | M::Available => (vec![], tensor_type(1, TypeExpr::String)),
+            | M::Named => (vec![TypeExpr::String], selected()),
+            | M::SelectDefault => (vec![TypeExpr::String], TypeExpr::String),
             | M::Name => (vec![selected()], TypeExpr::String),
             | M::Reference | M::Value => {
                 (
@@ -402,17 +431,40 @@ impl EvalDyn for Adapter {
         }
         let bank = objects(ctx)?;
         match self.0 {
-            | M::Current | M::Interpreter => {
-                let backend: Arc<dyn Backend> = if matches!(self.0, M::Current) {
-                    backend::current()
-                } else {
-                    Arc::new(Interpreter)
+            | M::Current | M::Interpreter | M::Named => {
+                let selected: Arc<dyn Backend> = match self.0 {
+                    | M::Named => {
+                        let selector = text(&args[0])?;
+                        backend::access::require_gpu_if(!backend::access::is_host_selector(
+                            selector,
+                        ))?;
+                        backend::named(selector).map_err(|err| unavailable(selector, &err))?
+                    },
+                    | M::Current => backend::current(),
+                    | _ => Arc::new(Interpreter),
                 };
-                bank.insert(BACKEND, vec![], backend, 1024)
+                bank.insert(BACKEND, vec![], selected, 1024)
+            },
+            | M::CurrentName => Ok(Value::String(backend::current().selector().into())),
+            | M::Available => {
+                let names = backend::available();
+                Ok(Value::Tensor(TensorValue {
+                    shape: vec![names.len()],
+                    elem: TypeExpr::String,
+                    data: names.into_iter().map(Value::String).collect(),
+                }))
+            },
+            | M::SelectDefault => {
+                backend::access::require_process_default()?;
+                let selector = text(&args[0])?;
+                let active =
+                    backend::select_default(selector).map_err(|err| unavailable(selector, &err))?;
+                Ok(Value::String(active))
             },
             | M::Name => {
                 bank.with::<Arc<dyn Backend>, _>(&args[0], BACKEND, |backend| {
-                    Ok(Value::String(backend.name().into()))
+                    backend::access::require_gpu_if(backend.uses_gpu())?;
+                    Ok(Value::String(backend.selector().into()))
                 })
             },
             | M::Reference | M::Value => {
@@ -435,16 +487,13 @@ impl EvalDyn for Adapter {
                 } else {
                     bank.with::<Arc<dyn Backend>, _>(&args[0], BACKEND, |value| Ok(value.clone()))?
                 };
-                // The native Compiled trait exposes no allocation accounting for
-                // arbitrary host backends. Do not substitute an executor silently.
-                if chosen.name() != "interpreter" {
-                    return Err(OpError::Unsupported {
-                        backend: chosen.name().into(),
-                        feature:
-                            "bounded native compilation currently supports the interpreter backend"
-                                .into(),
-                    });
-                }
+                backend::access::require_gpu_if(chosen.uses_gpu())?;
+                let budget = chosen.native_program_budget().ok_or_else(|| {
+                    OpError::Unsupported {
+                        backend: chosen.selector().into(),
+                        feature: "bounded native expression compilation".into(),
+                    }
+                })?;
                 let expression = text(&args[offset])?;
                 source(expression)?;
                 let names = strings(&args[offset + 1])?;
@@ -475,8 +524,12 @@ impl EvalDyn for Adapter {
                 let borrowed = names.iter().map(String::as_str).collect::<Vec<_>>();
                 let tape = term.tape(&borrowed).map_err(error)?;
                 let nodes = tape.insts.len();
-                if nodes > MAX_NODES {
-                    return Err(error("compiled tape exceeds 4096 nodes"));
+                if nodes > MAX_NODES.min(budget.instructions) {
+                    return Err(error(format!(
+                        "compiled tape exceeds {} nodes for backend `{}`",
+                        MAX_NODES.min(budget.instructions),
+                        chosen.selector()
+                    )));
                 }
                 let work_per_row = nodes
                     .checked_add(tape.args.len())
@@ -485,19 +538,34 @@ impl EvalDyn for Adapter {
                 if work_per_row > work_budget {
                     return Err(error("work budget cannot evaluate even one compiled row"));
                 }
-                let retained_bytes = 4_194_304usize
-                    .checked_add(expression.len() * 64)
-                    .and_then(|n| n.checked_add(work_per_row * 512))
+                let payload_bytes = (expression.len() * 64)
+                    .checked_add(work_per_row * 512)
+                    .ok_or_else(|| error("compiled payload-memory charge overflows"))?;
+                let retained_bytes = PROGRAM_SESSION_RESERVATION
+                    .checked_add(payload_bytes)
+                    .and_then(|n| n.checked_add(budget.extra_bytes))
                     .ok_or_else(|| error("compiled retained-memory charge overflows"))?;
-                let compiled = if matches!(self.0, M::Compile) {
-                    term.compile_with(&*chosen, &borrowed)
-                } else {
-                    term.compile_with(&CurrentCompile(chosen.clone()), &borrowed)
-                }
-                .map_err(error)?;
+                let compiler = SelectedCompile(chosen.clone(), matches!(self.0, M::CompileScoped));
+                let compiled = term.compile_with(&compiler, &borrowed).map_err(error)?;
                 if compiled.arity() != references.len() {
                     return Err(error("backend returned an inconsistent compiled arity"));
                 }
+                // A solver that detaches a point callback needs an executor with
+                // a retained-memory bound. Reuse the preflight tape when the
+                // selected executor has no such bound.
+                let bounded_point_tape =
+                    if compiled.retained_bytes().is_none() || chosen.retained_bytes().is_none() {
+                        Some(Arc::new(backend::TapeFunction::from_tape(tape)))
+                    } else {
+                        None
+                    };
+                let reserved_bytes = if let Some(tape) = &bounded_point_tape {
+                    tape.retained_bytes()
+                        .and_then(|bytes| retained_bytes.checked_add(bytes))
+                        .ok_or_else(|| error("compiled point tape memory charge overflows"))?
+                } else {
+                    retained_bytes
+                };
                 let mut dimensions = references
                     .iter()
                     .map(|r| r.dimension.clone())
@@ -507,8 +575,10 @@ impl EvalDyn for Adapter {
                     PROGRAM,
                     dimensions,
                     Program {
-                        retained_bytes,
+                        payload_bytes,
+                        retained_bytes: reserved_bytes,
                         compiled: Arc::from(compiled),
+                        bounded_point_tape,
                         _session: session,
                         backend: chosen,
                         references,
@@ -516,15 +586,19 @@ impl EvalDyn for Adapter {
                         work_per_row,
                         work_budget,
                     },
-                    retained_bytes,
+                    reserved_bytes,
                 )
             },
             | M::Arity => {
-                bank.with::<Program, _>(&args[0], PROGRAM, |p| Ok(Value::int(p.compiled.arity())))
+                bank.with::<Program, _>(&args[0], PROGRAM, |p| {
+                    backend::access::require_gpu_if(p.backend.uses_gpu())?;
+                    Ok(Value::int(p.compiled.arity()))
+                })
             },
             | M::Call => {
                 let values = handles(&args[1], 1)?;
                 bank.with::<Program, _>(&args[0], PROGRAM, |p| {
+                    backend::access::require_gpu_if(p.backend.uses_gpu())?;
                     let point = normalized_point(p, bank, &values.data)?;
                     measured(
                         p.compiled.call(&point) * p.output.value,
@@ -535,6 +609,7 @@ impl EvalDyn for Adapter {
             | M::Batch | M::ParallelBatch => {
                 let values = handles(&args[1], 2)?;
                 bank.with::<Program, _>(&args[0], PROGRAM, |p| {
+                    backend::access::require_gpu_if(p.backend.uses_gpu())?;
                     let rows = values.shape[1];
                     p.check_batch(values.shape[0], rows)?;
                     let parallel = matches!(self.0, M::ParallelBatch);
@@ -574,6 +649,7 @@ impl EvalDyn for Adapter {
             | M::PhysicalBatch => {
                 let rows = integer(&args[1])?;
                 bank.with::<Program, _>(&args[0], PROGRAM, |p| {
+                    backend::access::require_gpu_if(p.backend.uses_gpu())?;
                     p.check_batch(p.references.len(), rows)?;
                     crate::cancellation::checkpoint()?;
                     let scales = p.references.iter().map(|s| (s.value, &s.dimension));
@@ -587,17 +663,19 @@ impl EvalDyn for Adapter {
                 })
             },
             | M::SetDefault => {
+                backend::access::require_process_default()?;
                 let chosen =
                     bank.with::<Arc<dyn Backend>, _>(&args[0], BACKEND, |value| Ok(value.clone()))?;
                 match text(&args[1])? {
                     | "set_process_default" => {
-                        let name = chosen.name();
+                        let name = chosen.selector().to_owned();
                         backend::set_default(Some(chosen));
-                        Ok(Value::String(name.into()))
+                        Ok(Value::String(name))
                     },
                     | "restore_interpreter" => {
-                        backend::set_default(None);
-                        Ok(Value::String("interpreter".into()))
+                        backend::select_default("interpreter")
+                            .map(Value::String)
+                            .map_err(error)
                     },
                     | _ => {
                         Err(error(
@@ -619,10 +697,18 @@ pub(super) fn install(installer: &mut Installer<'_>) -> Result<(), RuleError> {
         let signature = adapter.signature();
         let documentation = if matches!(method, Method::PhysicalBatch) {
             "Evaluate a retained scalar program over measured rank-one columns in declared symbol order. Each column has its own physical unit and matches the explicit row count. Returns a single measured vector in input order. The active CPU pool splits sufficiently large work into fixed independent blocks. Cancellation and the program's row and work limits apply."
+        } else if matches!(method, Method::CurrentName) {
+            "Return the canonical active backend selector without allocating a handle."
+        } else if matches!(method, Method::Available) {
+            "List valid backend selectors discovered on this host. The first device query can initialize GPU adapters."
+        } else if matches!(method, Method::Named) {
+            "Resolve a named backend into a session-owned handle for measured compilation. An unavailable selector returns Unsupported."
+        } else if matches!(method, Method::SelectDefault) {
+            "Set a named process default and return its resolved selector. Use auto to clear the override. Thread-local overrides keep priority."
         } else if matches!(method, Method::ParallelBatch) {
             "Evaluate a retained scalar program over a tensor of session-owned input handles with shape `[arity, rows]`. Columns follow declared symbol order and retain their individual physical dimensions.\n\nThe executor estimates the work per row from the compiled program and uses the active CPU pool for independent blocks when there is enough work.\n\nThe measured result preserves row order. Cancellation is checked between blocks, and shape, units, and the program’s row and work limits apply."
         } else {
-            "Session-owned native backend/compiled/scalar handles. Compile an elementary ASCII expression in declared symbol order, normalized by positive physical coordinate references and a positive output reference. Scalar-value handles preserve mixed dimensions individually; call columns are [arity,rows] handles, not mixed-unit numeric tensors. The compiled object retains its private elementary RSSN Session and actual backend. Interpreter compilation has explicit source/node/allocation and per-call work bounds; an unsupported selected backend errors without substitution. Current snapshots environment; scoped compile selects its backend explicitly. Process-default changes require an explicit action string. Kind/session/lifetime and units are checked; release invalidates every handle copy."
+            "Session-owned native backend/compiled/scalar handles. Compile an elementary ASCII expression in declared symbol order, normalized by positive physical coordinate references and a positive output reference. Scalar-value handles preserve mixed dimensions individually; call columns are [arity,rows] handles, not mixed-unit numeric tensors. The compiled object retains its private elementary RSSN Session and actual backend. Compilation enforces source, allocation and per-call work bounds for the selected backend. Current snapshots environment; scoped compile selects its backend explicitly. Process-default changes require an explicit action string. Kind/session/lifetime and units are checked; release invalidates every handle copy."
         };
         let mut descriptor = OpDescriptor::new(name, Arity::Fixed(signature.params.len() as u8))
             .category("numerical_matrix")
@@ -655,6 +741,18 @@ const METHODS: &[(&str, &str, Method)] = &[
         "num_backend_current",
         "crate::backend::current",
         Method::Current,
+    ),
+    ("num_backend_current_name", "", Method::CurrentName),
+    (
+        "num_backend_available",
+        "crate::backend::available",
+        Method::Available,
+    ),
+    ("num_backend_named", "crate::backend::named", Method::Named),
+    (
+        "num_backend_select_default",
+        "crate::backend::select_default",
+        Method::SelectDefault,
     ),
     ("num_backend_interpreter", "", Method::Interpreter),
     (
@@ -712,9 +810,11 @@ const METHODS: &[(&str, &str, Method)] = &[
 /// and backend own their code; the constructor session has only static kernels.
 #[derive(Clone)]
 pub(in crate::rules) struct CompiledSnapshot {
+    payload_bytes: usize,
     pub retained_bytes: usize,
     compiled: Arc<dyn Compiled>,
-    _backend: Arc<dyn Backend>,
+    bounded_point_tape: Option<Arc<backend::TapeFunction>>,
+    backend: Arc<dyn Backend>,
     pub input_dimensions: Vec<DimExpr>,
     pub output_dimension: DimExpr,
     pub input_scales: Vec<f64>,
@@ -723,6 +823,14 @@ pub(in crate::rules) struct CompiledSnapshot {
     failure: Arc<std::sync::Mutex<Option<OpError>>>,
 }
 impl CompiledSnapshot {
+    /// The source and instruction reservation for a program kept alive by a
+    /// native parent handle. The parent separately reserves the session and
+    /// backend storage for the entire lifetime of its dependents.
+    #[must_use]
+    pub const fn program_payload_bytes(&self) -> usize {
+        self.payload_bytes
+    }
+
     fn charge(&self) -> Result<(), OpError> {
         use std::sync::atomic::Ordering;
         let mut n = self.remaining.load(Ordering::Relaxed);
@@ -802,6 +910,81 @@ impl CompiledSnapshot {
         }
     }
 
+    /// Switch an unbounded executor to its shared CPU point tape.
+    ///
+    /// The physical scales and the evaluation ledger are kept intact.
+    pub fn bound_detached_point_storage(&mut self) -> bool {
+        let Some(tape) = self.bounded_point_tape.take() else {
+            return false;
+        };
+        self.compiled = tape;
+        self.backend = Arc::new(Interpreter);
+        true
+    }
+
+    /// Return the identity and charge of the shared executable plus the cost
+    /// of each retained snapshot. The program's constructor Session is absent.
+    pub fn detached_storage(&self) -> Option<(usize, usize, usize)> {
+        fn dimension_bytes(dimension: &DimExpr) -> usize {
+            match dimension {
+                | DimExpr::Base(name) | DimExpr::Var(name) => name.capacity(),
+                | DimExpr::Mul(factors) => {
+                    factors
+                        .capacity()
+                        .saturating_mul(size_of::<DimExpr>())
+                        .saturating_add(
+                            factors
+                                .iter()
+                                .map(dimension_bytes)
+                                .fold(0, usize::saturating_add),
+                        )
+                },
+                | DimExpr::Inverse(inner) => {
+                    size_of::<DimExpr>().saturating_add(dimension_bytes(inner))
+                },
+                | DimExpr::Pow(inner, exponent) => {
+                    let symbol = match exponent {
+                        | crate::kernel::signature::Exp::Symbol(symbol) => symbol.capacity(),
+                        | crate::kernel::signature::Exp::Rat(_) => 0,
+                    };
+                    size_of::<DimExpr>()
+                        .saturating_add(dimension_bytes(inner))
+                        .saturating_add(symbol)
+                },
+                | _ => 0,
+            }
+        }
+
+        let key = Arc::as_ptr(&self.compiled).cast::<()>() as usize;
+        let executable = self
+            .compiled
+            .retained_bytes()?
+            .checked_add(self.backend.retained_bytes()?)?;
+        let dimensions = self
+            .input_dimensions
+            .iter()
+            .chain(std::iter::once(&self.output_dimension))
+            .map(dimension_bytes)
+            .fold(0, usize::saturating_add);
+        // Covers Arc headers, the per-use failure message, bookkeeping,
+        // and allocation slack for a solver's Arc and callback entries.
+        let snapshot = size_of::<Self>()
+            .saturating_add(size_of::<std::sync::Mutex<Option<OpError>>>())
+            .saturating_add(512)
+            .saturating_add(
+                self.input_scales
+                    .capacity()
+                    .saturating_mul(size_of::<f64>()),
+            )
+            .saturating_add(
+                self.input_dimensions
+                    .capacity()
+                    .saturating_mul(size_of::<DimExpr>()),
+            )
+            .saturating_add(dimensions);
+        Some((key, executable, snapshot))
+    }
+
     pub fn finish(&self) -> Result<(), OpError> {
         let failure = self
             .failure
@@ -822,9 +1005,11 @@ pub(in crate::rules) fn compiled_snapshot(
     }
     objects(ctx)?.with::<Program, _>(handle, PROGRAM, |p| {
         Ok(CompiledSnapshot {
+            payload_bytes: p.payload_bytes,
             retained_bytes: p.retained_bytes,
             compiled: p.compiled.clone(),
-            _backend: p.backend.clone(),
+            bounded_point_tape: p.bounded_point_tape.clone(),
+            backend: p.backend.clone(),
             input_dimensions: p.references.iter().map(|r| r.dimension.clone()).collect(),
             output_dimension: p.output.dimension.clone(),
             input_scales: p.references.iter().map(|r| r.value).collect(),
@@ -880,9 +1065,11 @@ mod tests {
             let scales: Vec<_> = (0..arity).map(|i| (i + 1) as f64).collect();
             let values: Vec<_> = scales.iter().map(|scale| 0.5 * scale).collect();
             let snapshot = CompiledSnapshot {
+                payload_bytes: 0,
                 retained_bytes: 0,
                 compiled: Arc::new(Sum(arity)),
-                _backend: Arc::new(Interpreter),
+                bounded_point_tape: None,
+                backend: Arc::new(Interpreter),
                 input_dimensions: vec![DimExpr::Dimless; arity],
                 output_dimension: DimExpr::Dimless,
                 input_scales: scales,

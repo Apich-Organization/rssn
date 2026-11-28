@@ -18,7 +18,6 @@
 //! sizes are capped so one call stays bounded.
 
 use super::bridge::Data;
-use super::bridge::Entry;
 use super::bridge::bad;
 use super::bridge::bad_op;
 use super::bridge::name;
@@ -422,32 +421,24 @@ fn polynomial_system_roots(a: &[Data]) -> Option<Data> {
     })
 }
 
-pub(super) const ENTRIES: &[Entry] = &[
-    Entry {
-        name: "sparse_solve",
-        params: "nvsw",
-        eval: sparse_solve,
-        doc: "`sparse_solve(entries, b, tol, method)`: solve sparse `A x = b` from `(i, j, v)` triplets using `minres`, `fgmres`, `bicgstab_l`, or `idr_s`.",
-    },
-    Entry {
-        name: "amg_solve",
-        params: "nvsw",
-        eval: amg_solve,
-        doc: "`amg_solve(entries, b, tol, kind)`: solve sparse `A x = b` by algebraic multigrid (`ruge_stuben` or `smoothed_aggregation`).",
-    },
-    Entry {
-        name: "nested_dissection_order",
-        params: "n",
-        eval: nested_dissection_order,
-        doc: "`nested_dissection_order(adjacency)`: fill-reducing elimination ordering `perm` of a symmetric graph by multilevel nested dissection.",
-    },
-    Entry {
-        name: "polynomial_system_roots",
-        params: "n",
-        eval: polynomial_system_roots,
-        doc: "`polynomial_system_roots(system)`: finite roots of a square polynomial system by total-degree homotopy continuation as `list(list(re, im), ...)`.",
-    },
-];
+reviewed_entries! {
+    (
+        "sparse_solve", "nvsw", sparse_solve,
+        "`sparse_solve(entries, b, tol, method)`: solve sparse `A x = b` from `(i, j, v)` triplets using `minres`, `fgmres`, `bicgstab_l`, or `idr_s`."
+    ),
+    (
+        "amg_solve", "nvsw", amg_solve,
+        "`amg_solve(entries, b, tol, kind)`: solve sparse `A x = b` by algebraic multigrid (`ruge_stuben` or `smoothed_aggregation`)."
+    ),
+    (
+        "nested_dissection_order", "n", nested_dissection_order, ordering_ml::multilevel_nested_dissection_order,
+        "`nested_dissection_order(adjacency)`: fill-reducing elimination ordering `perm` of a symmetric graph by multilevel nested dissection."
+    ),
+    (
+        "polynomial_system_roots", "n", polynomial_system_roots, homotopy::homotopy_solve,
+        "`polynomial_system_roots(system)`: finite roots of a square polynomial system by total-degree homotopy continuation as `list(list(re, im), ...)`."
+    ),
+}
 
 #[cfg(test)]
 mod tests {

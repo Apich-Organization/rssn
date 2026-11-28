@@ -321,7 +321,7 @@ fn small_rem_u32_digits(
     words: &[u32],
     modulus: u64,
 ) -> u64 {
-    if modulus <= u64::from(u32::MAX) {
+    if u32::try_from(modulus).is_ok() {
         words.iter().rev().fold(0_u64, |carry, &word| {
             ((carry << 32) | u64::from(word)) % modulus
         })
@@ -1065,7 +1065,7 @@ fn crt_solution(
             idx = idx.saturating_add(1);
             continue;
         }
-        let Some(m_u64) = m_big.to_u64().filter(|&v| v <= i64::MAX as u64) else {
+        let Some(m_u64) = m_big.to_u64().filter(|&v| i64::try_from(v).is_ok()) else {
             break;
         };
         let r_u64 = bigint_mod_u64(r_big, m_u64);
@@ -2783,34 +2783,11 @@ fn mult_order(
 
 fn primitive_root(n: &BigInt) -> Option<BigInt> {
     let modulus = small(n)?;
-    match modulus {
-        | 1 => return Some(BigInt::zero()),
-        | 2 => return Some(BigInt::one()),
-        | 4 => return Some(big(3)),
-        | _ => {},
+    if modulus == 1 {
+        // Keep the symbolic convention for the trivial group.
+        return Some(BigInt::zero());
     }
-    let primes = factor(n)?;
-    let cyclic = match primes.as_slice() {
-        | [(p, _)] => *p != 2,
-        | [(2, 1), _] => true,
-        | _ => false,
-    };
-    if !cyclic {
-        return None;
-    }
-    let phi: u64 = primes
-        .iter()
-        .map(|&(p, e)| (p - 1) * p.pow(e - 1))
-        .product();
-    let prime_factors: Vec<u64> = factor(&big(phi))?.into_iter().map(|(p, _)| p).collect();
-    (2..modulus)
-        .find(|&g| {
-            gcd(&big(g), n).is_one()
-                && prime_factors
-                    .iter()
-                    .all(|&q| pow_mod(g, phi / q, modulus) != 1)
-        })
-        .map(BigInt::from)
+    crate::kernels::number_theory::primitive_root(modulus).map(BigInt::from)
 }
 
 /// Least `x >= 0` with `g^x = h (mod n)`.
