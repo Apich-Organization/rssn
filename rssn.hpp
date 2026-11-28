@@ -125,7 +125,10 @@ struct Wavelet;
 /**
  * A host function rssn may call.
  *
- * See the [module documentation](self) for the contract of each argument.
+ * `user` is the registered context pointer. `session` owns the `count`
+ * argument cells in `args`, which remain valid until the callback returns.
+ * Write the result cell ID to `out` and return [`RssnStatus::Ok`] on success.
+ * The result can be one of the argument cells or a cell the host created.
  */
 using RssnCallbackFn = RssnStatus(*)(void *user,
                                      const RssnSession *session,
@@ -193,6 +196,45 @@ struct RssnAnswer {
                error != other.error ||
                reduced != other.reduced ||
                iterations != other.iterations;
+    }
+};
+
+/**
+ * Per-request metadata returned by `rssn_compute_all_with_metadata`.
+ *
+ * Each non-null pointer is an owned string. Release it with `rssn_string_free`.
+ */
+struct RssnAnswerMetadata {
+    /**
+     * Inferred dimension of a successful answer, or null if unavailable.
+     */
+    char *dimension;
+    /**
+     * Stable diagnostic codes separated by line feeds, or null if empty.
+     */
+    char *diagnostic_codes;
+    /**
+     * Error message for this request, or null on success.
+     */
+    char *message;
+
+    RssnAnswerMetadata(char *const& dimension,
+                       char *const& diagnostic_codes,
+                       char *const& message)
+      : dimension(dimension),
+        diagnostic_codes(diagnostic_codes),
+        message(message)
+    {}
+
+    bool operator==(const RssnAnswerMetadata& other) const {
+        return dimension == other.dimension &&
+               diagnostic_codes == other.diagnostic_codes &&
+               message == other.message;
+    }
+    bool operator!=(const RssnAnswerMetadata& other) const {
+        return dimension != other.dimension ||
+               diagnostic_codes != other.diagnostic_codes ||
+               message != other.message;
     }
 };
 
@@ -290,8 +332,8 @@ void rssn_callback_free(const RssnSession *session, uint32_t cell_id);
  * Registers `function` with an explicit signature and writes a cell holding
  * the callback to `*out`.
  *
- * `signature` is JSON: `{"params": ["real"], "ret": "real"}`. The `TypeExpr`
- * spelling is the manifest's own; see the [module documentation](self).
+ * `signature` is JSON: `{"params": ["real"], "ret": "real"}`. The
+ * [`TypeExpr`](crate::kernel::signature::TypeExpr) spelling follows the manifest.
  * The callback must be concrete (no type parameters, no variadic tail, no
  * dimension variables once instantiated) or registration fails with
  * [`RssnStatus::InvalidArgument`].
@@ -414,6 +456,27 @@ RssnStatus rssn_compute_all_bincode(const RssnSession *session,
                                     const RssnConfig *config,
                                     uint8_t **out,
                                     size_t *out_len);
+
+/**
+ * Computes requests in parallel and writes one metadata record per request.
+ *
+ * The answer and status arrays follow the same contract as `rssn_compute_all`.
+ * Metadata stays in request order, including when some requests fail. Each
+ * non-null string belongs to the caller and is released with `rssn_string_free`.
+ *
+ * # Safety
+ * The session, configuration and arrays must satisfy `rssn_compute_all`'s
+ * contract. The metadata array must be writable for `n` elements and disjoint
+ * from the other arrays. It may be null when `n` is zero. Every element is
+ * initialized on an `Ok` return.
+ */
+RssnStatus rssn_compute_all_with_metadata(const RssnSession *session,
+                                          const uint32_t *terms,
+                                          size_t n,
+                                          const RssnConfig *config,
+                                          RssnAnswer *answers,
+                                          RssnStatus *statuses,
+                                          RssnAnswerMetadata *metadata);
 
 /**
  * Computes `term` and writes the answer as a `bincode-next` byte string.
@@ -616,6 +679,39 @@ uint64_t rssn_manifest_hash();
  * [`KernelManifest::to_cbor`] for deterministic, self-describing exchange.
  */
 char *rssn_manifest_json();
+
+/**
+ * Writes one operator's live manifest entry as a NUL-terminated JSON string.
+ *
+ * Accepts a registered name or alias. The record includes the canonical name,
+ * overload keys, type signatures, their sources, and dimensional metadata.
+ * The caller releases the successful result with
+ * [`rssn_string_free`](super::rssn_string_free).
+ *
+ * # Safety
+ * `name` must be null or a readable NUL-terminated string. `out` must be
+ * null or valid for writing a string pointer.
+ */
+RssnStatus rssn_op_info_json(const char *name, char **out);
+
+/**
+ * Reads one live operator key without parsing JSON.
+ *
+ * `name` may be a registered name or alias. `index` is the zero-based offset
+ * in that operator's manifest `keys` array. Free the two successful string
+ * results with [`rssn_string_free`](super::rssn_string_free). Outputs are
+ * written only on success.
+ *
+ * # Safety
+ * `name` must be null or a readable NUL-terminated string. The output
+ * pointers must be null or valid for writing two distinct string pointers
+ * and 16 hash bytes, respectively. Output storage must not overlap.
+ */
+RssnStatus rssn_op_key_at(const char *name,
+                          size_t index,
+                          char **out_rule_set,
+                          char **out_name,
+                          uint8_t *out_signature_hash);
 
 /**
  * Releases a session and all its terms. Null is ignored.
@@ -840,6 +936,39 @@ RssnStatus rssn_value_call_json(const RssnSession *session,
                                 char **out_json);
 
 /**
+ * Calls the exact operator overload identified by the manifest key.
+ *
+ * Pass the canonical name, registered rule set, and the 16 bytes in
+ * `signature_hash` from an operator's `keys` entry. The engine checks input
+ * values against the selected overload. The result is an owned value cell
+ * with the same lifetime and execution context as [`rssn_value_call`].
+ *
+ * # Safety
+ * `session` must be a live session. `rule_set` and `name` must be readable
+ * NUL-terminated strings. `signature_hash` must hold 16 readable bytes.
+ * `args` must hold `count` cell ids (null is allowed when `count` is 0).
+ * `out` must be valid for writing one cell id.
+ */
+RssnStatus rssn_value_call_key(const RssnSession *session,
+                               const char *rule_set,
+                               const char *name,
+                               const uint8_t *signature_hash,
+                               const uint32_t *args,
+                               size_t count,
+                               uint32_t *out);
+
+/**
+ * Copies a value into a new cell of the same session.
+ *
+ * The caller can release the new cell independently or transfer it to a
+ * callback result. Copied native handles refer to the same native object.
+ *
+ * # Safety
+ * `session` must be a live session and `out` must point to writable storage.
+ */
+RssnStatus rssn_value_clone(const RssnSession *session, uint32_t cell_id, uint32_t *out);
+
+/**
  * The number of live cells in `session`; a diagnostic for leak hunting.
  *
  * # Safety
@@ -880,7 +1009,10 @@ void rssn_value_free(const RssnSession *session, uint32_t cell_id);
 RssnStatus rssn_value_json(const RssnSession *session, uint32_t cell_id, char **out);
 
 /**
- * Writes the kind code of the value in `cell_id` to `*out`.
+ * Writes the kind code of the payload in `cell_id` to `*out`.
+ *
+ * Dynamic dimension and quantity wrappers are unwrapped. Use
+ * [`rssn_value_json`] to read their wire metadata.
  *
  * The codes are the declaration order of `ValueKind`: `0` int, `1` real,
  * `2` float, `3` complex, `4` bool, `5` string, `6` symbol, `7` unit,
@@ -938,6 +1070,16 @@ RssnStatus rssn_value_new_float(const RssnSession *session, double value, uint32
 RssnStatus rssn_value_new_int(const RssnSession *session, int64_t value, uint32_t *out);
 
 /**
+ * Stores an exact integer from signed decimal digits and writes its cell id.
+ *
+ * The input accepts an optional leading sign and one or more ASCII digits.
+ *
+ * # Safety
+ * `session` must be live, `value` must be NUL-terminated, and `out` writable.
+ */
+RssnStatus rssn_value_new_int_decimal(const RssnSession *session, const char *value, uint32_t *out);
+
+/**
  * Stores a list of the `count` cells `cells` and writes its cell id to `*out`.
  *
  * The elements keep their individual kinds; a list of a float and a symbol is
@@ -984,9 +1126,8 @@ RssnStatus rssn_value_new_symbol(const RssnSession *session, const char *name, u
  * Stores a dense `f64` tensor and writes its cell id to `*out`.
  *
  * # Safety
- * `data` must hold `len` values, `shape` must hold `rank` extents whose
- * product is `len`, `session` must be a live session, and `out` a valid
- * pointer.
+ * `data` must hold `len` values and `shape` must hold `rank` extents.
+ * `session` must be a live session and `out` must be a valid pointer.
  */
 RssnStatus rssn_value_new_tensor(const RssnSession *session,
                                  const double *data,
@@ -994,6 +1135,31 @@ RssnStatus rssn_value_new_tensor(const RssnSession *session,
                                  const size_t *shape,
                                  size_t rank,
                                  uint32_t *out);
+
+/**
+ * Copies `len` cells into a dense row-major tensor with `rank` extents.
+ *
+ * Cells carry their original values, including exact integers and rationals.
+ * The elements have their common type when it can be inferred, or the
+ * dynamic term type otherwise. Rank zero takes one cell. A shape containing
+ * a zero extent takes no cells. For that empty case, a nonzero `exemplar_cell`
+ * supplies the element type of an existing cell. Pass zero to infer the type.
+ * The result owns its data independently and leaves inputs and `*out`
+ * unchanged on failure.
+ *
+ * # Safety
+ * `session` and `out` must be live. `cells` must contain `len` cell IDs from
+ * that session, and `shape` must hold `rank` extents. A nonzero exemplar ID
+ * must belong to the same session. The arrays may be null only when their
+ * respective lengths are zero.
+ */
+RssnStatus rssn_value_new_tensor_cells(const RssnSession *session,
+                                       const uint32_t *cells,
+                                       size_t len,
+                                       const size_t *shape,
+                                       size_t rank,
+                                       uint32_t exemplar_cell,
+                                       uint32_t *out);
 
 /**
  * Stores the term `handle` as a value and writes its cell id to `*out`.
@@ -1028,7 +1194,8 @@ RssnStatus rssn_value_tag(const RssnSession *session, uint32_t cell_id, char **o
  * Writes the numeric value of `cell_id` to `*out` when it has one.
  *
  * A dimensioned scalar (`dyn`) and a quantity are read as the number they
- * carry; `rssn_value_kind` still says which wrapper it was.
+ * carry. The payload kind is returned by [`rssn_value_kind`]. Use
+ * [`rssn_value_json`] to read the original wrapper and its metadata.
  *
  * # Safety
  * `session` must be a live session and `out` a valid pointer.
@@ -1065,6 +1232,24 @@ RssnStatus rssn_value_to_term(const RssnSession *session, uint32_t cell_id, uint
  * `session` must be a live session and `out` a valid pointer.
  */
 RssnStatus rssn_value_to_text(const RssnSession *session, uint32_t cell_id, char **out);
+
+/**
+ * Attaches a concrete dimension to a Float or dense Float tensor.
+ *
+ * The cell contains magnitudes already in coherent units. `dimension_json`
+ * is UTF-8 `DimExpr` JSON as used in the kernel manifest, with at most 65,536
+ * bytes and no terminating NUL required. The output is a fresh session-owned
+ * cell. The input cell and `*out` are left unchanged on failure.
+ *
+ * # Safety
+ * `session` must be a live session, `dimension_json` must point to
+ * `dimension_json_len` readable bytes, and `out` must be a valid pointer.
+ */
+RssnStatus rssn_value_with_coherent_dimension(const RssnSession *session,
+                                              uint32_t cell_id,
+                                              const uint8_t *dimension_json,
+                                              size_t dimension_json_len,
+                                              uint32_t *out);
 
 /**
  * The crate version, e.g. `"3.0.0-beta.1"`. Static; do not free.

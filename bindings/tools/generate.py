@@ -119,7 +119,7 @@ def jl_name(name: str) -> str:
 def r_name(name: str) -> str:
     """The R binding name for an operator: `rssn_` and the operator's own name.
 
-    The prefix is what keeps 5411 generated functions out of base R's way:
+    The prefix is what keeps generated functions out of base R's way:
     `rssn_diff()` rather than `diff`. Every operator name in the manifest is
     already a valid R identifier.
     """
@@ -197,7 +197,7 @@ def _first_sentence(text: str, limit: int = 160) -> str:
     cleaned = " ".join(text.split())
     match = re.search(r"(?<=[.!?])\s", cleaned)
     if match and match.start() < limit:
-        return cleaned[: match.start() + 1]
+        return cleaned[: match.start()]
     if len(cleaned) <= limit:
         return cleaned
     return cleaned[: limit - 1].rstrip() + "…"
@@ -226,6 +226,11 @@ def _signature_text(op: dict) -> str:
 
 
 
+def _checked_value(op: dict) -> bool:
+    """Whether the facade can opt in to a checked call with native values."""
+    return op["eval"] == "dynamic" and op["ffi"]
+
+
 def _doc_block(lines: list[str], op: dict, comment: str) -> list[str]:
     out = list(lines)
     if op["eval"] == "host_callback":
@@ -240,6 +245,8 @@ def _doc_block(lines: list[str], op: dict, comment: str) -> list[str]:
             if comment == "#"
             else "Returns an unevaluated term; call `compute` to reduce it."
         )
+    if _checked_value(op):
+        out.append("Pass ``checked=True`` to call it with native arguments and receive a Value.")
     if not op["ffi"]:
         out.append(
             "Not callable through the C ABI: the manifest marks this operator "
@@ -295,17 +302,17 @@ def _apply(name: str, args: tuple, session) -> Term:
 
 
 def _call(name: str, args: tuple, session):
-    """Resolve the session and call a higher-order operator through the value ABI.
+    """Resolve the session and call an operator through the value ABI.
 
     The value ABI is the one that can carry a host callback, so a callable in
     ``args`` becomes one, registered with the signature this operator declares.
     """
     if session is None:
-        for arg in args:
-            if isinstance(arg, Term):
-                session = arg.session
-                break
-        else:
+        from .callback import Callback
+        from .value import Value
+
+        session = next((arg.session for arg in args if isinstance(arg, (Term, Value, Callback))), None)
+        if session is None:
             session = default_session()
     return session.call_value(name, *args)
 
@@ -365,27 +372,32 @@ def _python_function(op: dict) -> str:
     # A higher-order operator can only be called through the value ABI, because
     # that is the one that carries a host callback.
     caller = "_call" if op["eval"] == "host_callback" else "_apply"
+    checked = _checked_value(op)
+    keyword_option = ", checked=False" if checked else ""
+    if checked:
+        caller = "(_call if checked else _apply)"
     doc = "\n".join(
         "    " + line for line in _doc_block([_clean_doc(op["doc"])], op, comment="#")
     )
     if maximum is None:
         return (
-            f'\n\ndef {name}(*args, session=None):\n'
+            f'\n\ndef {name}(*args, session=None{keyword_option}):\n'
             f'    """\n{doc}\n    """\n'
             f'    return {caller}("{op["name"]}", args, session)\n'
         )
     if maximum == 0:
         return (
-            f'\n\ndef {name}(*, session=None):\n'
+            f'\n\ndef {name}(*, session=None{keyword_option}):\n'
             f'    """\n{doc}\n    """\n'
             f'    return {caller}("{op["name"]}", (), session)\n'
         )
-    names = param_names(op, "a", set(keyword.kwlist))
+    reserved = set(keyword.kwlist) | ({"checked"} if checked else set())
+    names = param_names(op, "a", reserved)
     params = ", ".join(names)
     passed = ", ".join(names)
     tuple_text = f"({passed},)" if maximum == 1 else f"({passed})"
     return (
-        f'\n\ndef {name}({params}, *, session=None):\n'
+        f'\n\ndef {name}({params}, *, session=None{keyword_option}):\n'
         f'    """\n{doc}\n    """\n'
         f'    return {caller}("{op["name"]}", {tuple_text}, session)\n'
     )
@@ -632,6 +644,8 @@ def emit_julia_ops(api: dict) -> str:
             if op["eval"] == "host_callback"
             else "Returns an unevaluated term; call `compute` to reduce it."
         )
+        if _checked_value(op):
+            extra += " Pass `checked=true` to call it with native arguments and receive a Value."
         lines.append(
             f'    "{op["name"]}" => "{doc}{BACKSLASH}n{BACKSLASH}n{extra}",'
         )
@@ -643,25 +657,30 @@ def emit_julia_ops(api: dict) -> str:
             continue
         name = jl_name(op["name"])
         caller = "_call" if op["eval"] == "host_callback" else "_apply"
+        checked = _checked_value(op)
+        keyword_option = ", checked = false" if checked else ""
+        if checked:
+            caller = "(checked ? _call : _apply)"
         doc = '    $(OPERATOR_DOCS["' + op["name"] + '"])'
 
         if op["arity_max"] is None:
             lines.append(
-                f'"""\n{doc}\n"""\n{name}(args...; session = nothing) = '
+                f'"""\n{doc}\n"""\n{name}(args...; session = nothing{keyword_option}) = '
                 f'{caller}("{op["name"]}", args, session)\n'
             )
         elif op["arity_max"] == 0:
             lines.append(
-                f'"""\n{doc}\n"""\n{name}(; session = nothing) = '
+                f'"""\n{doc}\n"""\n{name}(; session = nothing{keyword_option}) = '
                 f'{caller}("{op["name"]}", (), session)\n'
             )
         else:
-            names = param_names(op, "a", JL_KEYWORDS)
+            reserved = JL_KEYWORDS | ({"checked"} if checked else set())
+            names = param_names(op, "a", reserved)
             params = ", ".join(names)
             passed = ", ".join(names)
             tuple_text = f"({passed},)" if op["arity_max"] == 1 else f"({passed})"
             lines.append(
-                f'"""\n{doc}\n"""\n{name}({params}; session = nothing) = '
+                f'"""\n{doc}\n"""\n{name}({params}; session = nothing{keyword_option}) = '
                 f'{caller}("{op["name"]}", {tuple_text}, session)\n'
             )
 
@@ -941,33 +960,36 @@ def emit_r_ops(api: dict) -> str:
         "# `diff`, so nothing masks `base::diff`. Arithmetic (`x + 1`, `x^2`) and the",
         "# `Math` group generics (`sin(x)`, `sqrt(x)`, ...) work on a term directly.",
         "#",
-        "# Every function returns an unevaluated request; `compute()` reduces it.",
+        "# Functions return an unevaluated request by default; `compute()` reduces it.",
+        "# Higher-order functions and dynamic calls with `checked = TRUE` return values.",
         "# `op_help(\"<name>\")` prints an operator's documentation.",
         "",
     ]
     for op in api["ops"]:
         name = r_name(op["name"])
         caller = ".rssn_call" if op["eval"] == "host_callback" else ".rssn_apply"
-        note = "a value: this operator is higher-order" if op["eval"] == "host_callback" \
-            else "an unevaluated term; `compute()` reduces it"
+        checked = _checked_value(op)
+        keyword_option = ", checked = FALSE" if checked else ""
+        if checked:
+            caller = "(if (checked) .rssn_call else .rssn_apply)"
         doc = _first_sentence(op["doc"])
         lines.append(f"# {doc}")
         if op["arity_max"] is None:
-            lines.append(f"{name} <- function(..., session = NULL) {{")
+            lines.append(f"{name} <- function(..., session = NULL{keyword_option}) {{")
             lines.append(f'    {caller}("{op["name"]}", list(...), session)')
             lines.append("}")
         elif op["arity_max"] == 0:
-            lines.append(f"{name} <- function(session = NULL) {{")
+            lines.append(f"{name} <- function(session = NULL{keyword_option}) {{")
             lines.append(f'    {caller}("{op["name"]}", list(), session)')
             lines.append("}")
         else:
-            names = param_names(op, "a", R_KEYWORDS)
-            lines.append(f"{name} <- function({', '.join(names)}, session = NULL) {{")
+            reserved = R_KEYWORDS | ({"checked"} if checked else set())
+            names = param_names(op, "a", reserved)
+            lines.append(f"{name} <- function({', '.join(names)}, session = NULL{keyword_option}) {{")
             arguments = ", ".join(names)
             lines.append(f'    {caller}("{op["name"]}", list({arguments}), session)')
             lines.append("}")
         lines.append("")
-        del note
 
     for op in api["ops"]:
         for alias in op["aliases"]:
@@ -1071,7 +1093,7 @@ def emit_r_units(api: dict) -> str:
         aliases = ", ".join(f'"{alias}"' for alias in unit["aliases"])
         lines.append(
             f'UNITS[["{unit["name"]}"]] <- list('
-            f'name = "{unit["name"]}", display = "{unit["display"]}", '
+            f'name = "{unit["name"]}", display = {_r_literal(unit["display"])}, '
             f'dimension = "{unit["dimension"]}", '
             f'numer = "{unit["scale"]["numer"]}", denom = "{unit["scale"]["denom"]}", '
             f'pi = {unit["scale"]["pi"]}L, offset_numer = {on}, offset_denom = {od}, '
@@ -1149,7 +1171,9 @@ def _r_literal(value) -> str:
         return "list(" + ", ".join(
             f'"{key}" = {_r_literal(entry)}' for key, entry in value.items()
         ) + ")"
-    return json.dumps(value)
+    # R uses \U with eight digits for supplementary Unicode characters.
+    quoted = json.dumps(value, ensure_ascii=False)
+    return re.sub(r"[^\x00-\x7f]", lambda match: f"\\U{ord(match.group()):08x}", quoted)
 
 
 def emit_r_scenarios(api: dict) -> str:
@@ -1226,7 +1250,7 @@ def emit_r_operators_rd(api: dict) -> str:
     R functions have no docstring, so an `\alias{}` per operator is what makes
     `?rssn_diff` work; the documentation itself is in `OPERATORS`, which is what
     the help page points at. `\usage` is omitted on purpose: the reference is the
-    table, and 5411 usage entries would be a second copy of it.
+    table, and individual usage entries would be a second copy of it.
     """
     names = [op["name"] for op in api["ops"]]
     for op in api["ops"]:
@@ -1239,7 +1263,7 @@ def emit_r_operators_rd(api: dict) -> str:
         aliases,
         "\\title{The generated operator functions}",
         "\\description{",
-        "  Every one of the engine's 5411 registered operators has a function here,",
+        "  Each registered operator has a corresponding function here,",
         "  named \\code{rssn_<name>()}: \\code{rssn_diff()}, \\code{rssn_integral()},",
         "  \\code{rssn_factorint()}, and so on.  The \\code{rssn_} prefix keeps the",
         "  generated names out of base R's way, so nothing masks \\code{base::diff}.",
@@ -1249,6 +1273,8 @@ def emit_r_operators_rd(api: dict) -> str:
         "  reduces it.  An operator that is higher-order -- one that takes a",
         "  function -- returns a value instead, and is called through the value ABI",
         "  (\\code{\\link{call_value}()}).",
+        "  Dynamic operators also accept \\code{checked = TRUE} to call with",
+        "  native arguments and receive a value through the same ABI.",
         "",
         "  The signature, arity, category and the engine's own documentation of an",
         "  operator are in \\code{OPERATORS}; \\code{\\link{op_help}(\"diff\")} prints",
@@ -1353,8 +1379,8 @@ def emit_cpp_ops(api: dict) -> str:
             lines.append(
                 "template <class... Args>\n"
                 f"inline Value {name}(Args&&... args) {{\n"
-                f'    return default_session().call_value("{op["name"]}",\n'
-                "                                              std::forward<Args>(args)...);\n"
+                f'    return detail::call_inferred("{op["name"]}",\n'
+                "                                 std::forward<Args>(args)...);\n"
                 "}\n"
             )
             continue
@@ -1402,7 +1428,24 @@ def emit_cpp_ops(api: dict) -> str:
                 names = ", ".join(f"a{index}" for index in range(op["arity_max"]))
                 lines.append(f"inline Term {alias_name}({params}) {{ return {target}({names}); }}\n")
 
-    lines += ["}  // namespace client", "}  // namespace rssn", "", "#endif  // RSSN_CLIENT_OPS_HPP", ""]
+    lines += [
+        "// Checked dynamic operators accept native arguments in an explicit session.",
+        "// They use the value ABI and preserve its typed errors.",
+        "namespace checked {",
+        "",
+    ]
+    for op in api["ops"]:
+        if not _checked_value(op):
+            continue
+        name = cpp_name(op["name"])
+        lines.append(
+            "template <class... Args>\n"
+            f"inline Value {name}(const Session& session, Args&&... args) {{\n"
+            f'    return session.call_value("{op["name"]}", std::forward<Args>(args)...);\n'
+            "}\n"
+        )
+    lines += ["}  // namespace checked", "", "}  // namespace client", "}  // namespace rssn",
+              "", "#endif  // RSSN_CLIENT_OPS_HPP", ""]
     return "\n".join(lines)
 
 
@@ -1670,7 +1713,9 @@ def main(argv: list[str] | None = None) -> int:
                 stale.append(relative)
             continue
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8")
+        newline = "\r\n" if path.exists() and b"\r\n" in path.read_bytes() else "\n"
+        with path.open("w", encoding="utf-8", newline=newline) as output:
+            output.write(text)
         print(f"wrote {path.relative_to(BINDINGS)} ({len(text.splitlines())} lines)")
 
     if args.check:

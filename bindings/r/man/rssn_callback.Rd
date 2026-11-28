@@ -31,6 +31,7 @@ parse_signature(text)
     from one.}
   \item{callback}{A \code{rssn_callback}.}
   \item{con}{A \code{rssn_callback}.}
+  \item{...}{Ignored.}
   \item{text}{A compact signature.}
 }
 \value{

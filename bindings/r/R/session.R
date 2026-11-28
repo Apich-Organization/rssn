@@ -285,7 +285,7 @@ format.rssn_term <- function(x, ...) term_text(x)
 
 #' @export
 print.rssn_term <- function(x, ...) {
-    cat("<rssn term> ", text(x), "\n", sep = "")
+    cat("<rssn term> ", term_text(x), "\n", sep = "")
     invisible(x)
 }
 
@@ -432,17 +432,8 @@ print.rssn_answer <- function(x, ...) {
 #' @export
 format.rssn_answer <- function(x, ...) x$text
 
-# Reads the thread's dimension report, then the text of the answer term.
 .rssn_answer_from <- function(session, term, has_value, value, error, reduced, iterations,
-                              config = NULL) {
-    findings <- .Call(C_rssn_dimension_count)
-    codes <- if (findings > 0L) {
-        vapply(seq_len(findings) - 1L, function(index) .Call(C_rssn_dimension_code, index),
-               character(1))
-    } else {
-        character()
-    }
-    inferred <- .Call(C_rssn_dimension, session$ptr, term, .rssn_config_ptr(config))
+                              inferred, codes) {
     answer(
         term = .rssn_term(session, term),
         text = .Call(C_rssn_term_to_string, session$ptr, term),
@@ -473,9 +464,7 @@ compute <- function(x, config = NULL, session = NULL) {
         term(x, session %||% default_session())
     }
     session <- .rssn_session_of(term)
-    raw <- .Call(C_rssn_compute, session$ptr, handle(term), .rssn_config_ptr(config))
-    .rssn_answer_from(session, raw$term, raw$has_value, raw$value, raw$error,
-                      raw$reduced, raw$iterations)
+    compute_all(list(term), config, session)[[1L]]
 }
 
 #' Parse and reduce text with the default symbolic configuration
@@ -490,6 +479,20 @@ simplify <- function(source, session = NULL) {
     session <- session %||% default_session()
     term <- .rssn_term(session, .Call(C_rssn_simplify, session$ptr, as.character(source)))
     compute(term)
+}
+
+.rssn_batch_handles <- function(requests, session) {
+    if (is.null(session)) {
+        for (request in requests) {
+            if (inherits(request, "rssn_term")) {
+                session <- .rssn_session_of(request)
+                break
+            }
+        }
+        session <- session %||% default_session()
+    }
+    terms <- lapply(requests, function(request) term(request, session))
+    list(session = session, handles = vapply(terms, handle, integer(1)))
 }
 
 #' Compute several requests in parallel inside the library
@@ -509,22 +512,31 @@ compute_all <- function(requests, config = NULL, session = NULL,
     errors <- match.arg(errors)
     requests <- as.list(requests)
     if (length(requests) == 0L) return(list())
-    terms <- lapply(requests, function(request) term(request, session))
-    session <- .rssn_session_of(terms[[1L]])
-    handles <- vapply(terms, handle, integer(1))
-    raw <- .Call(C_rssn_compute_all, session$ptr, handles, .rssn_config_ptr(config))
+    batch <- .rssn_batch_handles(requests, session)
+    session <- batch$session
+    raw <- .Call(C_rssn_compute_all, session$ptr, batch$handles, .rssn_config_ptr(config))
+    batch_error <- .Call(C_rssn_last_error)
     first_error <- NULL
-    out <- vector("list", length(terms))
-    for (index in seq_along(terms)) {
+    out <- vector("list", length(requests))
+    for (index in seq_along(requests)) {
         status <- raw$status[[index]]
         if (status == 0L) {
+            if (is.null(raw$dimension)) {
+                inferred <- .Call(C_rssn_dimension, session$ptr, batch$handles[[index]],
+                                  .rssn_config_ptr(config))
+                codes <- dimension_report()
+            } else {
+                inferred <- raw$dimension[[index]]
+                codes <- strsplit(raw$diagnostic_codes[[index]], "\n", fixed = TRUE)[[1L]]
+            }
             out[[index]] <- .rssn_answer_from(
                 session, raw$term[[index]], raw$has_value[[index]], raw$value[[index]],
-                raw$error[[index]], raw$reduced[[index]], raw$iterations[[index]])
+                raw$error[[index]], raw$reduced[[index]], raw$iterations[[index]], inferred, codes)
         } else {
-            condition <- .rssn_condition(status)
+            message <- if (is.null(raw$message)) batch_error else raw$message[[index]]
+            condition <- .rssn_condition(status, message)
             if (is.null(first_error)) first_error <- condition
-            out[[index]] <- switch(errors, raise = NULL, collect = condition, ignore = NULL)
+            if (errors == "collect") out[[index]] <- condition
         }
     }
     if (errors == "raise" && !is.null(first_error)) stop(first_error)
@@ -570,10 +582,8 @@ compute_bincode <- function(x, config = NULL, session = NULL) {
 #' @return A raw vector.
 #' @export
 compute_all_bincode <- function(requests, config = NULL, session = NULL) {
-    terms <- lapply(as.list(requests), function(request) term(request, session))
-    session <- .rssn_session_of(terms[[1L]])
-    handles <- vapply(terms, handle, integer(1))
-    .Call(C_rssn_compute_all_bincode, session$ptr, handles, .rssn_config_ptr(config))
+    batch <- .rssn_batch_handles(as.list(requests), session)
+    .Call(C_rssn_compute_all_bincode, batch$session$ptr, batch$handles, .rssn_config_ptr(config))
 }
 
 #' Evaluate a term numerically without running any rule

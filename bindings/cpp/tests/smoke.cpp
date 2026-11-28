@@ -43,6 +43,16 @@ int main() {
     Session session;
     const Term x = session.sym("x");
 
+    const Term mixed_units = session.parse("quantity(3, m) + quantity(4, s)");
+    const Term length = session.parse("quantity(2, m)");
+    const Answer mixed_units_single = session.compute(mixed_units);
+    const auto unit_batch = session.compute_all({mixed_units, length});
+    expect(!mixed_units_single.diagnostic_codes.empty(), "single answer reports the mismatch");
+    expect(unit_batch[0].dimension == mixed_units_single.dimension &&
+               unit_batch[0].diagnostic_codes == mixed_units_single.diagnostic_codes &&
+               unit_batch[1].dimension == "Length" && unit_batch[1].diagnostic_codes.empty(),
+           "batch dimensions and diagnostics stay with their requests");
+
     // A symbolic request, reduced to a closed form.
     const Answer derivative = session.compute(diff(sin(x) * cos(x), x));
     std::printf("d/dx sin(x)cos(x) = %s\n", derivative.text.c_str());
@@ -96,6 +106,14 @@ int main() {
         std::printf("  batch: %s\n", answer.text.c_str());
     }
     expect(answers.size() == 3, "three batch answers");
+    Session other;
+    bool foreign_batch_rejected = false;
+    try {
+        (void)session.compute_all({x, other.sym("foreign")});
+    } catch (const Error& error) {
+        foreign_batch_rejected = error.status() == Status::InvalidArgument;
+    }
+    expect(foreign_batch_rejected, "a batch rejects term handles from other sessions");
 
     // Failures carry a status code.
     bool raised = false;
@@ -113,7 +131,7 @@ int main() {
         const Value backend = session.call_value("num_backend_current");
         expect(backend.kind() == "opaque", "a backend handle is an opaque value");
         const Value name = session.call_value("num_backend_name", backend);
-        expect(name.text() == "interpreter", "the backend is the interpreter");
+        expect(name.text() == session.current_backend(), "the active backend name");
         bool raised = false;
         try {
             (void)backend.to_term();
@@ -129,6 +147,25 @@ int main() {
         const Value number = session.call_value("num_ad_var_value", product);
         expect(std::abs(number.as_f64() - std::sin(1.5) * 1.5) < 1e-12,
                "the AD tape evaluates sin(x)*x");
+    }
+
+    // Read record fields by name and retain positional access.
+    {
+        const Value moments = session.call_value(
+            "num_timeseries_rolling_moments", std::vector<double>{1.0, 3.0, 5.0}, 2, 0);
+        expect(moments.field_name(0) == "mean" && moments.field_name(1) == "variance",
+               "rolling record exposes its field names");
+        expect(moments.field("mean").tensor() == std::vector<double>{2.0, 4.0} &&
+                   moments.field("variance").tensor() == moments.at(1).tensor(),
+               "named record access reads the requested tensor");
+
+        bool missing = false;
+        try {
+            (void)moments.field("missing");
+        } catch (const Error& error) {
+            missing = error.status() == Status::InvalidArgument;
+        }
+        expect(missing, "named record access rejects an unknown field");
     }
 
     // The manifest is readable.

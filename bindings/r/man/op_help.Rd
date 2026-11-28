@@ -69,7 +69,7 @@ op_help("num_brent")
 head(op_table(pattern = "brent"))
 nrow(op_table(category = "calculus"))
 
-length(op_names())                       # 5411
+length(op_names())                       # count for this binding release
 op_apply("diff", sym("x")^3, sym("x"))
 }
 \seealso{\code{\link{term}}, \code{\link{compute}}}

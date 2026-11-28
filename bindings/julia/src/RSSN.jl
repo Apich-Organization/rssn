@@ -41,6 +41,8 @@ include("config.jl")
 include("session.jl")
 include("value.jl")
 include("callback.jl")
+include("backend.jl")
+include("npy.jl")
 include("sim.jl")
 include("ops.jl")
 include("base_ext.jl")
@@ -63,7 +65,10 @@ export
     Answer, compute, compute_all, simplify, compute_json, compute_bincode,
     compute_all_bincode, eval_term, dimension, last_error,
     # dynamic values (operators with native-object arguments)
-    Value, call_value, kind, json, value_count, VALUE_KINDS,
+    Value, call_value, call_key, kind, json, value_count, VALUE_KINDS,
+    with_coherent_dimension, tensor_cells,
+    available_backends, current_backend, open_backend, release_backend!, set_default_backend!,
+    encode_npy, decode_npy,
     # host callbacks (operators that take a function)
     Callback, callback_signatures, parse_signature,
     # sessions and metadata
@@ -72,7 +77,7 @@ export
     # simulations
     run_scenario, SCENARIO_NAMES, SCENARIO_PARAMS,
     # the operator reference
-    op_help, op_search, op_names, op_categories, op_rule_sets, BY_CATEGORY,
+    op_info, op_help, op_search, op_names, op_categories, op_rule_sets, BY_CATEGORY,
     OPERATOR_DOCS,
     # units and constants
     UnitDef, UNITS, UNIT_BY_ALIAS, unit, unit_names,

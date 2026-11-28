@@ -6,6 +6,8 @@
 # check the same file, so a wrapper that disagrees with the engine — or with
 # another wrapper — fails.
 #
+# The manifest row expects 1 when the ABI hash matches the current build's JSON.
+#
 # columns: 1 name, 2 kind, 3 payload, 4 target, 5 tolerance, 6 bindings, 7 expect_text, 8 expect_value, 9 expect_status
 #
 name	kind	payload	target	tolerance	bindings	expect_text	expect_value	expect_status
@@ -25,6 +27,7 @@ linear_algebra.det	compute	det(list(list(1, 2), list(3, 4)))	symbolic			-2		ok
 linear_algebra.matmul	compute	matmul(list(list(1,2),list(3,4)), list(list(0,1),list(1,0)))	symbolic			list(list(2, 1), list(4, 3))		ok
 numeric.pythagorean	compute	sin(x)^2 + cos(x)^2	numeric	1e-12	x=0.7	1	1.0	ok
 numeric.sqrt	compute	sqrt(x)	numeric	1e-12	x=2	1.4142135623730951	1.4142135623730951	ok
+complex.modulus_squared	compute	abs_sq(3 + 4*I)	symbolic			25		ok
 simplify.ratio	simplify	(x^2 - 1)/(x - 1)	symbolic			x + 1		ok
 arith.sub	apply	sub			5,3	5 - 3		ok
 arith.neg	apply	neg			5	-5		ok
@@ -35,7 +38,7 @@ errors.unknown_operator	apply	definitely_not_an_operator			1			unknown_operator
 errors.not_numeric	compute	diff(x^2, x)	numeric	1e-12				not_numeric
 sim.ising	sim	ising {"width":4,"height":4,"temperature":2.0,"mc_steps":5,"seed":7}				magnetization,spins		ok
 sim.poisson_multigrid	sim	poisson_multigrid {"dim":2,"n":9,"sigma":0.0,"cycle":"v","tol":1e-8}				converged,convergence_factor,levels,max_error,residuals		ok
-manifest.hash	manifest						1139261357918084758	ok
+manifest.hash	manifest						1	ok
 units.table	units						82	ok
 calculus.derivative_second	compute	diff(diff(x^3, x), x)	symbolic			6*x		ok
 calculus.taylor	compute	taylor(sin(x), x, 0, 5)	symbolic			x - 1/6*x^3 + 1/120*x^5		ok
@@ -65,3 +68,24 @@ sim.heat_nd	sim	heat_nd {"dim":2,"n":9,"t_end":0.01,"steps":5}				line,max_error
 sim.wave_nd	sim	wave_nd {"dim":2,"n":9,"c":1.0,"t_end":0.05}				max_error,steps		ok
 errors.unknown_scenario	sim	no_such_scenario {}						simulation
 constants.table	constants						30	ok
+contract.alias	op_info	airy_ai				airyai		ok
+contract.mesh_dimensions	op_info	num_meshgen_tetra_volumes	container			num_meshgen_tetra_volumes		ok
+contract.exact_wide_gcd	keyed_integer	num_number_theory_gcd_u128			79228162514264337593543950336,237684487542793012780631851008	79228162514264337593543950336		ok
+errors.stale_operator_key	stale_integer_key	num_number_theory_gcd_u128			12,18			unknown_operator
+errors.unknown_operator_contract	op_info	no_such_rssn_operator_contract						unknown_operator
+contract.zero_phase_filter	op_info	num_signal_filtfilt	container			num_signal_filtfilt		ok
+contract.multinomial	op_info	num_multinomial	dimensionless			num_multinomial		ok
+value.inverse_regularized_beta	value	num_inverse_beta_reg 2.0,2.0,0.5				0.5		ok
+contract.sharp_cauchy_root_bound	op_info	num_cauchy_sharp_root_bound	dimensionless			num_cauchy_sharp_root_bound		ok
+contract.koebe_growth	op_info	num_koebe_growth_bounds	dimensionless			num_koebe_growth_bounds		ok
+contract.ntt_product	op_info	num_finite_field_poly_mul_ntt_mod	dimensionless			num_finite_field_poly_mul_ntt_mod		ok
+contract.extended_gcd	op_info	num_number_theory_extended_gcd_u64	dimensionless			num_number_theory_extended_gcd_u64		ok
+value.prime_generator	value	num_finite_field_primitive_root_prime 18446744069414584321				7		ok
+contract.timeseries_integrate	op_info	num_timeseries_integrate				num_timeseries_integrate		ok
+contract.kalman_filter	op_info	num_timeseries_kalman_filter	container			num_timeseries_kalman_filter		ok
+contract.kalman_smooth	op_info	num_timeseries_kalman_smooth	container			num_timeseries_kalman_smooth		ok
+contract.rolling_moments	op_info	num_timeseries_rolling_moments	container			num_timeseries_rolling_moments		ok
+value.bigint_gcd_by_key	keyed_integer	num_number_exact_bigint_gcd			-2041694201525630780780247644590609268736,5104235503814076951950619111476523171840	1020847100762815390390123822295304634368		ok
+contract.bigint_crt	op_info	num_number_ext_crt_bigint	dimensionless			num_number_ext_crt_bigint		ok
+contract.exact_smith	op_info	num_native_qlinalg_smith_normal_form	container			num_native_qlinalg_smith_normal_form		ok
+contract.exact_dixon	op_info	num_native_qlinalg_solve_dixon	container			num_native_qlinalg_solve_dixon		ok

@@ -19,6 +19,6 @@ License: Apache License (>= 2)
 Encoding: UTF-8
 Depends: R (>= 4.1)
 NeedsCompilation: yes
-SystemRequirements: rssn shared library (rssn.dll, librssn.so or
-    librssn.dylib), version 3.0 or later
+SystemRequirements: RSSN 3.0 C ABI (rssn.dll, librssn.so or
+    librssn.dylib), including prerelease builds
 LazyData: false

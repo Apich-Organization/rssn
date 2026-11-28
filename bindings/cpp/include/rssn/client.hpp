@@ -22,9 +22,12 @@
 #ifndef RSSN_CLIENT_HPP
 #define RSSN_CLIENT_HPP
 
+#include <array>
+#include <complex>
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -85,6 +88,13 @@ class Term;
 class Value;
 struct Answer;
 class Error;
+
+/// The canonical name, rule set and signature digest from a manifest entry.
+struct OpKey {
+    std::string rule_set;
+    std::string name;
+    std::array<std::uint8_t, 16> signature_hash{};
+};
 
 namespace detail {
 
@@ -522,17 +532,44 @@ public:
     Value value(long long number) const;
     /// Store an `int` as a dynamic value (an exact overload of the two above).
     Value value(int number) const;
+    template <class Integer, std::enable_if_t<std::is_integral_v<Integer>, int> = 0>
+    Value value(Integer number) const;
+    /// Preserve the Boolean or complex scalar kind.
+    Value value(bool flag) const;
+    Value value(std::complex<double> number) const;
     /// Store text as a dynamic value.
     Value value(const std::string& text) const;
+    Value value(const char* text) const;
     /// Store a dense vector as a rank-1 tensor value.
     Value value(const std::vector<double>& numbers) const;
     /// Call `op` through the value ABI (see `rssn/value.hpp`).
     Value call_value(const char* op) const;
+
+    /// The selectors usable on this host with the loaded library.
+    std::vector<std::string> available_backends() const;
+    /// The effective backend without changing process selection.
+    std::string current_backend() const;
+    /// An explicit backend handle. Release it with release_backend.
+    Value open_backend(const std::string& selector) const;
+    /// Release the native handle and invalidate every copy of it.
+    void release_backend(const Value& backend) const;
+    /// Select a process-wide default. "auto" restores the native policy.
+    std::string set_default_backend(const std::string& selector) const;
+
+    /// Encode flat row-major binary64 samples as NumPy bytes.
+    std::vector<std::uint8_t> encode_npy(const std::vector<std::size_t>& shape,
+                                        const std::vector<double>& samples) const;
+    /// Decode a NumPy Float32 or Float64 payload as an owned binary64 tensor.
+    Value decode_npy(const std::vector<std::uint8_t>& payload) const;
     /// Call `op` with `count` value arguments.
     Value call_values(const char* op, const Value* args, std::size_t count) const;
     /// Call `op` with arguments of any kind `Session::value` accepts.
     template <class... Args>
     Value call_value(const char* op, Args&&... args) const;
+
+    /// Call the exact overload identified by a key from the live manifest.
+    template <class... Args>
+    Value call_key(const OpKey& key, Args&&... args) const;
 
     /// The message of the last failed call on this thread.
     static std::string last_error() { return detail::last_error(); }
@@ -542,6 +579,33 @@ public:
 
     /// The standard kernel manifest as JSON text.
     static std::string manifest_json() { return detail::take_string(rssn_manifest_json()); }
+
+    /// One live operator manifest entry, with overloads, keys and dimensions.
+    static std::string op_info_json(const std::string& name) {
+        if (name.empty() || name.find('\0') != std::string::npos) {
+            detail::fail(Status::InvalidArgument, "provide one operator name");
+        }
+        char* json = nullptr;
+        detail::check(rssn_op_info_json(name.c_str(), &json));
+        return detail::take_string(json);
+    }
+
+    /// Read one overload key at its zero-based position in the live operator contract.
+    static OpKey op_key(const std::string& name, std::size_t index = 0) {
+        if (name.empty() || name.find('\0') != std::string::npos) {
+            detail::fail(Status::InvalidArgument, "provide one operator name");
+        }
+        OpKey key;
+        char* rule_set = nullptr;
+        char* canonical_name = nullptr;
+        detail::check(rssn_op_key_at(name.c_str(), index, &rule_set, &canonical_name,
+                                    key.signature_hash.data()));
+        const std::unique_ptr<char, decltype(&rssn_string_free)> rule_set_owner(rule_set, rssn_string_free);
+        const std::unique_ptr<char, decltype(&rssn_string_free)> name_owner(canonical_name, rssn_string_free);
+        key.rule_set = rule_set_owner.get();
+        key.name = name_owner.get();
+        return key;
+    }
 
     /// The crate version.
     static const char* version() { return rssn_version(); }
@@ -677,15 +741,41 @@ inline Term Session::apply(const char* op, const Term* args, std::size_t count) 
 
 namespace detail {
 
-/// Builds an `Answer` from the C struct plus the thread's dimension report.
-inline Answer answer_from(SessionHandle session, std::uint32_t handle, const RssnAnswer& raw);
+class MetadataStrings {
+public:
+    MetadataStrings(RssnAnswerMetadata* rows, std::size_t count) : rows_(rows), count_(count) {}
+    MetadataStrings(const MetadataStrings&) = delete;
+    MetadataStrings& operator=(const MetadataStrings&) = delete;
+    ~MetadataStrings() {
+        for (std::size_t index = 0; index < count_; ++index) {
+            rssn_string_free(rows_[index].dimension);
+            rssn_string_free(rows_[index].diagnostic_codes);
+            rssn_string_free(rows_[index].message);
+        }
+    }
+
+private:
+    RssnAnswerMetadata* rows_;
+    std::size_t count_;
+};
+
+inline Answer answer_from(SessionHandle session, const RssnAnswer& raw,
+                          const RssnAnswerMetadata& metadata);
 
 }  // namespace detail
 
 inline Answer Term::compute(const Config* config) const {
     RssnAnswer raw{};
-    detail::check(rssn_compute(session_, handle_, config == nullptr ? nullptr : config->raw(), &raw));
-    return detail::answer_from(session_, raw.term, raw);
+    RssnStatus status = RSSN_STATUS_OK;
+    RssnAnswerMetadata metadata{};
+    const detail::MetadataStrings owned(&metadata, 1);
+    detail::check(rssn_compute_all_with_metadata(session_, &handle_, 1,
+                                                config == nullptr ? nullptr : config->raw(),
+                                                &raw, &status, &metadata));
+    if (status != RSSN_STATUS_OK) {
+        detail::fail(static_cast<Status>(status), metadata.message == nullptr ? "" : metadata.message);
+    }
+    return detail::answer_from(session_, raw, metadata);
 }
 
 inline double Term::to_double() const {
@@ -727,18 +817,23 @@ inline std::vector<std::pair<Status, Answer>> Session::compute_all_each(
     }
     std::vector<std::uint32_t> handles(count);
     for (std::size_t index = 0; index < count; ++index) {
+        if (requests[index].session() != pointer_) {
+            detail::fail(Status::InvalidArgument, "a batch request belongs to another session");
+        }
         handles[index] = requests[index].handle();
     }
     std::vector<RssnAnswer> answers(count);
     std::vector<RssnStatus> statuses(count);
-    detail::check(rssn_compute_all(pointer_, handles.data(), count,
-                                   config == nullptr ? nullptr : config->raw(), answers.data(),
-                                   statuses.data()));
+    std::vector<RssnAnswerMetadata> metadata(count);
+    const detail::MetadataStrings owned(metadata.data(), count);
+    detail::check(rssn_compute_all_with_metadata(pointer_, handles.data(), count,
+                                                config == nullptr ? nullptr : config->raw(),
+                                                answers.data(), statuses.data(), metadata.data()));
     out.reserve(count);
     for (std::size_t index = 0; index < count; ++index) {
         const Status status = static_cast<Status>(statuses[index]);
         if (status == Status::Ok) {
-            out.emplace_back(status, detail::answer_from(pointer_, answers[index].term, answers[index]));
+            out.emplace_back(status, detail::answer_from(pointer_, answers[index], metadata[index]));
         } else {
             out.emplace_back(status, Answer{});
         }
@@ -748,28 +843,28 @@ inline std::vector<std::pair<Status, Answer>> Session::compute_all_each(
 
 namespace detail {
 
-inline Answer answer_from(SessionHandle session, std::uint32_t handle, const RssnAnswer& raw) {
+inline Answer answer_from(SessionHandle session, const RssnAnswer& raw,
+                          const RssnAnswerMetadata& metadata) {
     Answer answer;
-    answer.term = Term(session, handle);
-    answer.text = detail::take_string(rssn_term_to_string(session, handle));
+    answer.term = Term(session, raw.term);
+    answer.text = detail::take_string(rssn_term_to_string(session, raw.term));
     if (raw.has_value) {
         answer.value = raw.value;
         answer.error = raw.error;
     }
     answer.reduced = raw.reduced;
     answer.iterations = raw.iterations;
-    char* dimension_text = nullptr;
-    if (rssn_dimension(session, handle, nullptr, &dimension_text) == RSSN_STATUS_OK) {
-        const std::string text = detail::take_string(dimension_text);
-        if (!text.empty()) {
-            answer.dimension = text;
-        }
+    if (metadata.dimension != nullptr) {
+        answer.dimension = metadata.dimension;
     }
-    const std::size_t findings = rssn_dimension_count();
-    answer.diagnostic_codes.reserve(findings);
-    for (std::size_t index = 0; index < findings; ++index) {
-        const char* code = rssn_dimension_code(index);
-        answer.diagnostic_codes.emplace_back(code == nullptr ? "" : code);
+    if (metadata.diagnostic_codes != nullptr) {
+        std::string_view codes(metadata.diagnostic_codes);
+        while (!codes.empty()) {
+            const auto delimiter = codes.find('\n');
+            answer.diagnostic_codes.emplace_back(codes.substr(0, delimiter));
+            if (delimiter == std::string_view::npos) break;
+            codes.remove_prefix(delimiter + 1);
+        }
     }
     return answer;
 }

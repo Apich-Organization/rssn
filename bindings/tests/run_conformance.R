@@ -37,7 +37,7 @@ literal <- function(text) {
     text <- trimws(text)
     if (grepl("[.eE]", text)) return(as.numeric(text))
     value <- suppressWarnings(as.integer(text))
-    if (is.na(value)) as.numeric(text) else value
+    if (is.na(value)) value_integer_decimal(text) else value
 }
 
 config_for <- function(row) {
@@ -62,14 +62,54 @@ status_of <- function(condition) {
     if (inherits(condition, "rssn_error")) condition$status_name else "exception"
 }
 
+# The hexadecimal-sized ABI value is exposed as decimal text. Decode it
+# into two exact 32-bit words to compare without rounding through a double.
+manifest_hash_matches <- function() {
+    json <- manifest_json()
+    field <- regmatches(json, regexpr('"manifest_hash"[[:space:]]*:[[:space:]]*\\[[^]]*\\]',
+                                      json, perl = TRUE))
+    if (length(field) != 1L) return(FALSE)
+    bytes <- unlist(json_decode(sub('^[^:]+:', '', field)))
+    if (length(bytes) != 32L) return(FALSE)
+
+    digits <- utf8ToInt(manifest_hash()) - utf8ToInt("0")
+    if (!length(digits) || any(digits < 0 | digits > 9) || all(digits == 0)) return(FALSE)
+    low <- high <- 0
+    for (digit in digits) {
+        combined <- low * 10 + digit
+        low <- combined %% 2^32
+        high <- high * 10 + combined %/% 2^32
+    }
+    weights <- 256^(0:3)
+    low == sum(bytes[1:4] * weights) && high == sum(bytes[5:8] * weights)
+}
+
 # Runs one case; answers list(text=, value=, status=).
 run_case <- function(row) {
     kind <- trimws(row$kind)
     payload <- row$payload
+    if (kind == "op_info") {
+        info <- op_info(payload)
+        stopifnot(length(info$keys) > 0L, length(info$overloads) > 0L,
+                  "dim_rule" %in% names(info))
+        if (nzchar(row$target)) stopifnot(identical(info$dim_rule, row$target))
+        return(list(text = info$name, value = "", status = "ok"))
+    }
+    if (kind %in% c("keyed_integer", "stale_integer_key")) {
+        key <- op_info(payload)$keys[[1L]]
+        if (kind == "stale_integer_key") {
+            key$signature_hash[[1L]] <- bitwXor(key$signature_hash[[1L]], 128L)
+        }
+        session <- rssn_session()
+        on.exit(close(session), add = TRUE)
+        digits <- strsplit(row$bindings, ",", fixed = TRUE)[[1L]]
+        arguments <- lapply(trimws(digits), value_integer_decimal, session = session)
+        answer <- do.call(call_key, c(list(key), arguments, list(session = session)))
+        return(list(text = value_text(answer), value = "", status = "ok"))
+    }
     if (kind == "manifest") {
-        digest <- manifest_hash()
-        stopifnot(nzchar(digest), digest != "0")
-        return(list(text = "", value = digest, status = "ok"))
+        return(list(text = "", value = as.character(as.integer(manifest_hash_matches())),
+                    status = "ok"))
     }
     if (kind == "units") {
         return(list(text = "", value = as.character(length(UNITS)), status = "ok"))
@@ -172,10 +212,10 @@ for (row in cases) {
         failures <- failures + 1L
         next
     }
-    if (nzchar(row$expect_value) && nzchar(observed$value)) {
+    if (nzchar(row$expect_value)) {
         want <- as.numeric(row$expect_value)
         got <- as.numeric(observed$value)
-        if (!is.na(want) && !is.na(got) && abs(want - got) > 1e-9 * max(1, abs(want))) {
+        if (is.na(got) || abs(want - got) > 1e-9 * max(1, abs(want))) {
             cat(sprintf("FAIL %s: value %s != %s\n", name, observed$value, row$expect_value))
             failures <- failures + 1L
             next

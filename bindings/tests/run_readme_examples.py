@@ -179,61 +179,36 @@ def run_language(language: str, verbose: bool) -> int:
     return 1 if failures or completed.returncode != 0 else 0
 
 
-def _import_library() -> Path | None:
-    """The import library next to the shared library, as `run_all.sh` finds it.
-
-    `RSSN_LIB` names the DLL (`librssn.so`, `librssn.dylib`); the import library
-    that a link step needs sits beside it. Without `RSSN_LIB`, the build
-    directories of a source checkout are tried in turn.
-    """
-    import os
-
-    names = ("rssn.dll.lib", "librssn.dll.a", "rssn.lib", "librssn.a")
-    environment = os.environ.get("RSSN_LIB", "")
-    if environment:
-        directory = Path(environment).parent
-        for name in names:
-            candidate = directory / name
-            if candidate.exists():
-                return candidate
-        return None
-    for directory in ("target/debug", "target-bindings/debug", "target/ffi",
-                      "target/release"):
-        for name in names:
-            candidate = ROOT / directory / name
-            if candidate.exists():
-                return candidate
-    return None
-
-
 def run_cpp(verbose: bool) -> int:
     """The C++ examples are compiled, not extracted: build and run the tour."""
     build = ROOT / "build-bindings" / "cpp-workflow"
-    library = _import_library()
-    if library is None:
-        print("skip cpp: no import library next to a built rssn (see bindings/README.md)")
+    if shutil.which("cmake") is None or shutil.which("ctest") is None:
+        print("skip cpp: CMake or CTest not on PATH")
         return 0
     configure = subprocess.run(
-        ["cmake", "-S", str(BINDINGS / "cpp"), "-B", str(build), "-DRSSN_ROOT=" + str(ROOT),
-         "-DRSSN_LIBRARY=" + str(library)],
+        ["cmake", "-S", str(BINDINGS / "cpp"), "-B", str(build)],
         capture_output=True, text=True)
     if configure.returncode != 0:
         print("FAIL cpp: cmake configure failed")
         print(configure.stdout[-2000:], configure.stderr[-2000:])
         return 1
-    compile_step = subprocess.run(["cmake", "--build", str(build), "--target", "rssn_workflow"],
-                                  capture_output=True, text=True)
+    compile_step = subprocess.run(
+        ["cmake", "--build", str(build), "--config", "Release", "--target", "rssn_workflow"],
+        capture_output=True, text=True,
+    )
     if compile_step.returncode != 0:
         print("FAIL cpp: build failed")
         print(compile_step.stdout[-3000:], compile_step.stderr[-3000:])
         return 1
-    executable = build / ("rssn_workflow.exe" if sys.platform == "win32" else "rssn_workflow")
-    completed = subprocess.run([str(executable)], capture_output=True, text=True, cwd=ROOT)
+    completed = subprocess.run(
+        ["ctest", "--test-dir", str(build), "-C", "Release", "-R", "^workflow$",
+         "--output-on-failure"],
+        capture_output=True, text=True,
+    )
     output = completed.stdout + completed.stderr
     print("== cpp: bindings/cpp/README.md (tests/workflow.cpp)")
-    failures = [line for line in output.splitlines() if line.startswith("FAIL ")]
-    print(f"   {'; '.join(failures) if failures else 'every example ran'}")
-    if verbose or failures:
+    print("   every example ran" if completed.returncode == 0 else "   workflow failed")
+    if verbose or completed.returncode != 0:
         for line in output.splitlines():
             print(f"     | {line}")
     return 1 if completed.returncode != 0 else 0

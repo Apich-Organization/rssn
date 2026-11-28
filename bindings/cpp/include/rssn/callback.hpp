@@ -69,8 +69,12 @@ extern "C" inline RssnStatus callback_thunk(void* user, const RssnSession* sessi
             rssn_callback_fail("the callback returned no value");
             return RSSN_STATUS_INVALID_ARGUMENT;
         }
-        // The engine reads the cell and frees it; the callback stops owning it.
-        *out = result.detach();
+        if (result.session() != session) {
+            rssn_callback_fail("the callback returned a value from another session");
+            return RSSN_STATUS_INVALID_ARGUMENT;
+        }
+        // The engine consumes the result cell. Preserve borrowed callback arguments.
+        *out = result.owns_cell() ? result.detach() : result.clone().detach();
         return RSSN_STATUS_OK;
     } catch (const std::exception& error) {
         rssn_callback_fail(error.what());

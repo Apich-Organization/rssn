@@ -13,13 +13,16 @@ wants on top of that -- one operator by name, and a search over all of them.
 
 from __future__ import annotations
 
+import ctypes
 import inspect
+import json
 import re
 from typing import Iterable
 
-from . import _ops
+from . import _ffi, _ops
+from .errors import RssnError, Status, check
 
-__all__ = ["op_help", "op_search", "op_names", "op_categories", "op_rule_sets"]
+__all__ = ["op_info", "op_help", "op_search", "op_names", "op_categories", "op_rule_sets"]
 
 
 def _arity(minimum: int, maximum: int | None) -> str:
@@ -28,6 +31,18 @@ def _arity(minimum: int, maximum: int | None) -> str:
     if minimum == maximum:
         return f"{minimum} argument" if minimum == 1 else f"{minimum} arguments"
     return f"{minimum} to {maximum} arguments"
+
+
+def op_info(name: str) -> dict:
+    """Return one live operator contract, including overload keys and dimensions."""
+    if not isinstance(name, str) or not name or "\0" in name:
+        raise ValueError("provide one operator name")
+    entry = getattr(_ffi.library(), "rssn_op_info_json", None)
+    if entry is None:
+        raise RssnError(Status.INVALID_ARGUMENT, "this RSSN library lacks operator contract lookup")
+    result = ctypes.c_void_p()
+    check(entry(name.encode("utf-8"), ctypes.byref(result)))
+    return json.loads(_ffi.take_string(result.value))
 
 
 def op_help(name: str) -> str:

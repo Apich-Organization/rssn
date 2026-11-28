@@ -13,6 +13,17 @@ push!(LOAD_PATH, normpath(joinpath(HERE, "..", "src")))
 
 using RSSN
 
+@testset "library discovery rejects a foreign library" begin
+    loader = Module(gensym(:RssnLibraryDiscovery))
+    Base.include(loader, joinpath(HERE, "..", "src", "ffi.jl"))
+    julia_library = first(filter(path -> startswith(lowercase(basename(path)), "libjulia"),
+                                 loader.Libdl.dllist()))
+    withenv("RSSN_LIB" => julia_library) do
+        @test_throws "does not expose the RSSN C ABI" Base.invokelatest(loader.libpath)
+        @test isempty(loader._LIB[])
+    end
+end
+
 const CASES = normpath(joinpath(HERE, "..", "..", "tests", "cases.tsv"))
 
 struct Case
@@ -70,15 +81,37 @@ function numeric_literal(text)
     literal = strip(text)
     (occursin('.', literal) || occursin('e', literal) || occursin('E', literal)) &&
         return parse(Float64, literal)
-    return parse(Int, literal)
+    word = tryparse(Int, literal)
+    return isnothing(word) ? parse(BigInt, literal) : word
 end
 
 function run_case(case)
     kind = case.kind
-    if kind == "manifest"
+    if kind == "op_info"
+        info = op_info(case.payload)
+        @test !isempty(info["keys"]) && !isempty(info["overloads"]) && haskey(info, "dim_rule")
+        if !isempty(case.target)
+            @test info["dim_rule"] == case.target
+        end
+        return (text = info["name"], value = "", status = "ok")
+    elseif kind in ("keyed_integer", "stale_integer_key")
+        key = op_info(case.payload)["keys"][1]
+        if kind == "stale_integer_key"
+            key["signature_hash"][1] = xor(Int(key["signature_hash"][1]), 128)
+        end
+        arguments = [parse(BigInt, strip(entry)) for entry in split(case.bindings, ',')]
+        session = Session()
+        try
+            return (text = text(call_key(session, key, arguments...)), value = "", status = "ok")
+        finally
+            close(session)
+        end
+    elseif kind == "manifest"
         digest = manifest_hash()
-        @test digest != 0
-        return (text = "", value = string(digest), status = "ok")
+        manifest_bytes = RSSN.json_decode(manifest_json_string())["manifest_hash"]
+        expected = sum(UInt64(manifest_bytes[i]) << (8 * (i - 1)) for i in 1:8)
+        valid = length(manifest_bytes) == 32 && digest != 0 && digest == expected
+        return (text = "", value = string(Int(valid)), status = "ok")
     elseif kind == "units"
         return (text = "", value = string(length(UNITS)), status = "ok")
     elseif kind == "constants"
@@ -147,6 +180,18 @@ function run_case(case)
     end
 end
 
+@testset "library discovery" begin
+    previous = libpath()
+    if isfile(previous)
+        @test RSSN.set_library!(dirname(previous)) == abspath(previous)
+    end
+    mktempdir() do directory
+        @test_throws ErrorException RSSN.set_library!(directory)
+        @test libpath() == previous
+    end
+    @test startswith(RSSN.version(), "3.")
+end
+
 @testset "conformance" begin
     for case in read_cases(CASES)
         wanted = isempty(case.expect_status) ? "ok" : case.expect_status
@@ -158,7 +203,9 @@ end
         @test observed.status == wanted
         if wanted == "ok"
             @test observed.text == case.expect_text
-            if !isempty(case.expect_value) && !isempty(observed.value)
+            if !isempty(case.expect_value)
+                @test !isempty(observed.value)
+                isempty(observed.value) && continue
                 @test isapprox(parse(Float64, observed.value), parse(Float64, case.expect_value);
                                rtol = 1e-9, atol = 1e-12)
             end
@@ -206,7 +253,14 @@ end
     @test entries[2, 1] == 4.0
 
     # Batch computation.
+    @test_throws ArgumentError compute_all(session, [x]; errors = :typo)
     answers = compute_all(session, ["diff(x^3, x)", "integral(x^2, x)", "solve(x^2 - 4, x)"])
+    requests = ["quantity(3, m) + quantity(4, s)", "quantity(2, m)"]
+    individual = compute.(Ref(session), requests)
+    batch = compute_all(session, requests)
+    @test "mismatch" in individual[1].diagnostic_codes
+    @test [(a.dimension, a.diagnostic_codes) for a in batch] ==
+          [(a.dimension, a.diagnostic_codes) for a in individual]
     @test length(answers) == 3
     @test all(answer -> answer isa Answer, answers)
 
@@ -225,11 +279,40 @@ end
     close(session)
 end
 
+struct CollectOnConversion{T}
+    payload::T
+end
+
+function RSSN.value(session::Session, argument::CollectOnConversion)
+    GC.gc()
+    return value(session, argument.payload)
+end
+
 @testset "values" begin
     session = Session()
+
+    large = -(big(2)^100 + 7)
+    exact = value(session, large)
+    try
+        @test kind(exact) == "int"
+        @test parse(BigInt, text(exact)) == large
+        @test parse(BigInt, text(integer(session, large))) == large
+    finally
+        close(exact)
+    end
+
+    for input in (zeros(0, 2, 3), reshape(collect(1.0:24.0), 2, 3, 4), fill(3.5))
+        stored = value(session, input)
+        try
+            @test size(tensor(stored)) == size(input)
+            @test tensor(stored) == input
+        finally
+            close(stored)
+        end
+    end
     backend = call_value(session, "num_backend_current")
     @test kind(backend) == "opaque"
-    @test text(call_value(session, "num_backend_name", backend)) == "interpreter"
+    @test text(call_value(session, "num_backend_name", backend)) == current_backend(session)
 
     tape = call_value(session, "num_ad_tape_new", 16)
     x = call_value(session, "num_ad_tape_var", tape, 1.5)
@@ -240,18 +323,37 @@ end
                    cos(1.5) * 1.5 + sin(1.5); rtol = 1e-12)
     @test json(call_value(session, "num_ad_tape_len", tape)) isa AbstractDict
 
+    # A later argument can collect temporary wrappers before the call.
+    @test value(call_value(session, "gcd", 18, CollectOnConversion(12))) == 6.0
+    root = call_value(session, "num_brent", 1.0, CollectOnConversion(2.0),
+                      1e-12, 64, x -> x * x - 2.0)
+    @test isapprox(value(root[1]), sqrt(2.0); rtol = 1e-10)
+
     # A list argument keeps its element kinds.
     list = value(session, Any[1, 2.5, 3])
     @test kind(list) == "tensor"
     @test length(list) == 3
     @test isapprox(value(list[2]), 2.5)
 
-    # A record value: the ABI's `record` kind, which a dict builds.
-    record = value(session, Dict("a" => 1.0, "b" => "two"))
+    # Named tuples supply field order. A dictionary supplies keys and values.
+    record = value(session, (a = 1.0, b = "two"))
     @test kind(record) == "record"
     @test length(record) == 2
     @test text(record[1]) == "1"
     @test json(record)["record"]["fields"][2][1] == "b"
+    @test text(record["b"]) == "two"
+    @test_throws ArgumentError list["b"]
+
+    moments = call_value(session, "num_timeseries_rolling_moments", [1.0, 2.0, 3.0], 2, 1)
+    @test tensor(moments["variance"]) == [0.5, 0.5]
+    @test tensor(moments[2]) == [0.5, 0.5]
+    @test_throws KeyError moments["var"]
+    dictionary = value(session, Dict("a" => 1.0, "b" => "two"))
+    fields = json(dictionary)["record"]["fields"]
+    @test Set(field[1] for field in fields) == Set(["a", "b"])
+    for (index, field) in enumerate(fields)
+        @test text(dictionary[index]) == (field[1] == "a" ? "1" : "two")
+    end
 
     # Evaluation without any rule, in both spellings.
     @test eval_term(parse_term(session, "sin(x) + 1"); x = 0.0) == 1.0
@@ -284,8 +386,81 @@ end
     @test constant("G_0").dimension == "Length^-2*Mass^-1*Time^3*Current^2"
 end
 
+@testset "checked dynamic facade" begin
+    session = Session()
+    try
+        request = num_special_ext_lerch(-1234.0, 2.0, 1.0; session)
+        @test request isa Term
+        @test startswith(text(request), "num_special_ext_lerch(")
+        lerch = num_special_ext_lerch(-1234.0, 2.0, 1.0; session, checked=true)
+        @test isapprox(value(lerch), 0.021861589304464496; rtol=2e-13)
+        polylog = num_special_ext_polylog(2.0, -1234.0; session, checked=true)
+        @test isapprox(value(polylog) / -1234.0, value(lerch); rtol=2e-13)
+        point = num_uhp_to_disk(1.0im; session, checked=true)
+        @test json(point)["complex"]["float"] == Dict("re" => 0.0, "im" => 0.0)
+        recovered = num_disk_to_uhp(point; checked=true)
+        @test recovered.session === session
+        @test json(recovered)["complex"]["float"] == Dict("re" => 0.0, "im" => 1.0)
+        @test_throws RssnError num_disk_to_uhp(1.0 + 0.0im; session, checked=true)
+    finally
+        close(session)
+    end
+end
+
+@testset "backend selection" begin
+    session = Session()
+    other = Session()
+    try
+        before = call_value(session, "num_native_usage")
+        @test !isempty(current_backend(session))
+        after = call_value(session, "num_native_usage")
+        @test text(before["objects"]) == text(after["objects"])
+        @test "interpreter" in available_backends(session)
+        handle = open_backend(session, "interpreter")
+        try
+            @test text(call_value(session, "num_backend_name", handle)) == "interpreter"
+        finally
+            release_backend!(handle)
+        end
+        @test_throws RssnError call_value(session, "num_backend_name", handle)
+        close(handle)
+        @test set_default_backend!(session, "interpreter") == "interpreter"
+        @test current_backend(other) == "interpreter"
+        @test_throws RssnError set_default_backend!(other, "not-an-rssn-backend")
+        @test current_backend(other) == "interpreter"
+        @test_throws ArgumentError set_default_backend!(other, "interpreter\0ignored")
+    finally
+        set_default_backend!(session, "auto")
+        close(other)
+        close(session)
+    end
+end
+
+if get(RSSN.json_decode(manifest_json_string())["features"], "npy", false)
+    @testset "NumPy byte codec" begin
+        session = Session()
+        try
+            for input in ([-0.0 1.0 2.0; 3.0 Inf NaN], fill(-0.0),
+                          Array{Float64}(undef, 2, 0, 3))
+                payload = encode_npy(session, input)
+                @test payload[1:6] == UInt8[0x93, 0x4e, 0x55, 0x4d, 0x50, 0x59]
+                output = decode_npy(session, payload)
+                try
+                    @test size(tensor(output)) == size(input)
+                    @test isequal(tensor(output), input)
+                finally
+                    close(output)
+                end
+            end
+            @test_throws RssnError decode_npy(session, UInt8[0x93, 0x4e])
+        finally
+            close(session)
+        end
+    end
+end
+
 @testset "the operator reference" begin
-    @test length(op_names()) == 5411
+    @test Set(op_names()) == Set(row["name"] for row in RSSN.json_decode(manifest_json_string())["ops"])
     @test "diff" in op_names()
     @test length(op_categories()) == 40
     @test "calculus" in op_categories()
@@ -339,12 +514,33 @@ end
     close(callback)
 
     # The declared signatures are listed, and the parser reads the compact form.
+    retained = value(session, 0.0)
+    callback = Callback(session, _ -> retained; signature = "(float) -> float")
+    try
+        @test num_brent(1.0, 2.0, 1e-12, 64, callback).session === session
+        @test value(retained) == 0.0
+        @test kind(value(session, true)) == "bool"
+        @test kind(value(session, 1.0 + 2.0im)) == "complex"
+    finally
+        close(callback)
+        close(retained)
+    end
+
     listed = callback_signatures(session, "num_brent", 5)
     @test length(listed) == 1
     @test listed[1]["params"] == ["float"]
     @test RSSN.parse_signature("(float) -> float") ==
           "{\"params\":[\"float\"],\"ret\":\"float\"}"
     @test isempty(callback_signatures(session, "num_brent", 1))
+
+    center = 0.3 + 0.4im
+    sampled = ComplexF64[]
+    square(z) = (push!(sampled, z); z * z)
+    derivative = num_complex_derivative_scaled(center, 1.0, 1.0, 64, square; session)
+    parts = json(derivative)["complex"]["float"]
+    @test isapprox(complex(parts["re"], parts["im"]), 2 * center; atol=1e-8)
+    @test !isempty(sampled) && all(z -> abs(z - center) < 1e-4, sampled)
+    close(derivative)
 
     # An objective and its gradient: two callbacks in one call.
     objective(xs) = sum((x - 1.0)^2 for x in xs)

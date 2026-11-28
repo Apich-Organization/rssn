@@ -83,16 +83,28 @@ function value(session::Session, x::Term)
 end
 
 function value(session::Session, x::Bool)
-    return value(session, Int(x))
+    out = Ref{UInt32}(0)
+    _check(value_new_bool(session.ptr, x, out))
+    return Value(session, out[])
 end
 
 function value(session::Session, x::Integer)
     out = Ref{UInt32}(0)
-    _check(value_new_int(session.ptr, x, out))
+    if typemin(Int64) <= x <= typemax(Int64)
+        _check(value_new_int(session.ptr, x, out))
+    else
+        _check(value_new_int_decimal(session.ptr, string(x), out))
+    end
     return Value(session, out[])
 end
 
-function value(session::Session, x::AbstractFloat)
+function value(session::Session, x::Complex)
+    out = Ref{UInt32}(0)
+    _check(value_new_complex(session.ptr, real(x), imag(x), out))
+    return Value(session, out[])
+end
+
+function value(session::Session, x::Real)
     out = Ref{UInt32}(0)
     _check(value_new_float(session.ptr, x, out))
     return Value(session, out[])
@@ -105,13 +117,12 @@ function value(session::Session, x::AbstractString)
 end
 
 """
-    value(session, x::AbstractDict) -> Value
+    value(session, x::Union{AbstractDict, NamedTuple}) -> Value
 
-A record value: the keys are the field names, in order. This is the kind a
-callback answers with when the operator declares a record-returning function,
-and what `json` shows as `{"record": {"fields": ...}}`.
+Creates a record using the input's iteration order. Use a named tuple when
+field order matters. Both forms can serve as records for the value ABI.
 """
-function value(session::Session, x::AbstractDict)
+function value(session::Session, x::Union{AbstractDict, NamedTuple})
     names = String[String(key) for key in keys(x)]
     # The members own their cells: a comprehension of bare cells would let the
     # temporary `Value`s be finalized -- and their cells freed -- before the
@@ -119,23 +130,26 @@ function value(session::Session, x::AbstractDict)
     members = Value[value(session, element) for element in values(x)]
     cells = UInt32[member.cell for member in members]
     out = Ref{UInt32}(0)
-    _check(value_new_record(session.ptr, names, cells, out))
+    GC.@preserve members _check(value_new_record(session.ptr, names, cells, out))
     return Value(session, out[])
 end
 
 """
     value(session, x::Union{AbstractArray, Tuple}) -> Value
 
-A rank-1 numeric vector becomes a list of its elements, which keeps each
-element's own kind (an integer vector stays `tensor<int>`); a matrix or a
-higher-rank numeric array becomes a dense tensor. Julia arrays are
+A floating-point array becomes a dense Float tensor, preserving rank and
+empty extents. A vector of integers stays `tensor<int>`. Higher-rank real
+arrays use the Float tensor constructor. Julia arrays are
 column-major and the ABI is row-major, so the data is transposed on the way
 out and [`tensor`](@ref) transposes it back.
 """
 function value(session::Session, x::Union{AbstractArray, Tuple})
-    if x isa AbstractArray && ndims(x) >= 2 && eltype(x) <: Number
-        shape = Csize_t[size(x, dimension) for dimension in 1:ndims(x)]
-        data = Cdouble[vec(permutedims(Array(x)));]
+    if x isa AbstractArray && (eltype(x) <: AbstractFloat ||
+            (ndims(x) >= 2 && eltype(x) <: Number))
+        rank = ndims(x)
+        shape = Csize_t[size(x, axis) for axis in 1:rank]
+        storage = rank < 2 ? x : permutedims(x, rank:-1:1)
+        data = Cdouble[vec(storage);]
         out = Ref{UInt32}(0)
         _check(value_new_tensor(session.ptr, data, shape, out))
         return Value(session, out[])
@@ -143,7 +157,57 @@ function value(session::Session, x::Union{AbstractArray, Tuple})
     members = Value[value(session, element) for element in x]
     cells = UInt32[member.cell for member in members]
     out = Ref{UInt32}(0)
-    _check(value_new_list(session.ptr, cells, out))
+    GC.@preserve members _check(value_new_list(session.ptr, cells, out))
+    return Value(session, out[])
+end
+
+"""
+    tensor_cells(session::Session, x::AbstractArray; exemplar=nothing) -> Value
+
+Copy an array into a tensor with its original rank and extents. Integers and
+rationals retain their exact values. Supply an exemplar to choose the element
+type of an empty array. Existing `Value` cells must belong to `session`.
+Julia's column-major layout is converted to the ABI's row-major layout.
+"""
+function tensor_cells(session::Session, x::AbstractArray; exemplar=nothing)
+    if exemplar !== nothing && !isempty(x)
+        throw(ArgumentError("an element exemplar requires an empty tensor"))
+    end
+    as_cell(element) = element isa Rational ?
+        call_value(session, "divide", numerator(element), denominator(element)) : value(session, element)
+    rank = ndims(x)
+    shape = Csize_t[size(x, axis) for axis in 1:rank]
+    storage = rank < 2 ? x : permutedims(x, rank:-1:1)
+    members = Value[
+        if element isa Union{AbstractArray, Tuple}
+            throw(ArgumentError("supply a rectangular array or explicit Value cells"))
+        else
+            as_cell(element)
+        end for element in vec(storage)
+    ]
+    cells = UInt32[member.cell for member in members]
+    out = Ref{UInt32}(0)
+    proof = exemplar === nothing ? nothing : as_cell(exemplar)
+    exemplar_cell = proof === nothing ? UInt32(0) : proof.cell
+    GC.@preserve members proof _check(value_new_tensor_cells(session.ptr, cells, shape, exemplar_cell, out))
+    return Value(session, out[])
+end
+
+"""An independently owned value cell in the same session."""
+function Base.copy(source::Value)
+    session = source.session
+    entry = _optional_sym(:rssn_value_clone)
+    if entry == C_NULL
+        holder = value(session, (source,))
+        try
+            return holder[1]
+        finally
+            close(holder)
+        end
+    end
+    out = Ref{UInt32}(0)
+    GC.@preserve source _check(ccall(entry, Cint, (Ptr{Cvoid}, UInt32, Ptr{UInt32}),
+                                     session.ptr, source.cell, out))
     return Value(session, out[])
 end
 
@@ -158,7 +222,7 @@ end
     call_value(session, op, args...) -> Value
 
 Call `op` through the value ABI. This is the path to the operators whose
-arguments have no term form: `OPS[op][3]` is `false` for exactly those.
+arguments have no term form, including records and native object handles.
 
 Arguments may be `Value`s, `Term`s, numbers, strings, vectors, arrays, dicts
 (records) — and functions. A `Function` argument becomes a host callback with
@@ -181,9 +245,40 @@ function call_value(session::Session, op::AbstractString, args...)
     if any(argument -> argument isa Function, args)
         return _call_with_callbacks(session, op, args)
     end
-    cells = UInt32[value(session, arg).cell for arg in args]
+    members = Value[value(session, arg) for arg in args]
+    return _invoke_value(session, op, members)
+end
+
+"""
+    call_key(session, key, args...) -> Value
+
+Call the exact overload identified by a key from [`op_info`](@ref). Pass a
+registered `Callback` as the value for a function parameter.
+"""
+function call_key(session::Session, key::AbstractDict, args...)
+    rule_set = get(key, "rule_set", nothing)
+    name = get(key, "name", nothing)
+    if !(rule_set isa AbstractString && !isempty(rule_set) &&
+         name isa AbstractString && !isempty(name))
+        throw(ArgumentError("operator key requires a rule set and name"))
+    end
+    hash = get(key, "signature_hash", nothing)
+    if !(hash isa AbstractVector && length(hash) == 16 &&
+         all(byte -> byte isa Integer && 0 <= byte <= 255, hash))
+        throw(ArgumentError("operator key requires 16 signature hash bytes"))
+    end
+    digest = UInt8[hash...]
+    members = Value[value(session, argument) for argument in args]
+    cells = UInt32[member.cell for member in members]
     out = Ref{UInt32}(0)
-    _check(value_call(session.ptr, op, cells, out))
+    GC.@preserve members _check(value_call_key(session.ptr, rule_set, name, digest, cells, out))
+    return Value(session, out[])
+end
+
+function _invoke_value(session::Session, op::AbstractString, members::Vector{Value})
+    cells = UInt32[member.cell for member in members]
+    out = Ref{UInt32}(0)
+    GC.@preserve members _check(value_call(session.ptr, op, cells, out))
     return Value(session, out[])
 end
 
@@ -217,7 +312,8 @@ function _call_with_callbacks(session::Session, op::AbstractString, args)
         attempts > 8 && break
         callbacks = Callback[]
         try
-            cells = UInt32[]
+            members = Value[]
+            sizehint!(members, length(args))
             for (position, argument) in enumerate(args)
                 if argument isa Function
                     slot = findfirst(==(position), positions)
@@ -226,15 +322,13 @@ function _call_with_callbacks(session::Session, op::AbstractString, args)
                                Callback(session, argument; op = op, index = position) :
                                Callback(session, argument; signature = declared)
                     push!(callbacks, callback)
-                    push!(cells, callback.value.cell)
+                    push!(members, callback.value)
                 else
-                    push!(cells, value(session, argument).cell)
+                    push!(members, value(session, argument))
                 end
             end
-            out = Ref{UInt32}(0)
             try
-                _check(value_call(session.ptr, op, cells, out))
-                return Value(session, out[])
+                return _invoke_value(session, op, members)
             catch error
                 first_error === nothing && (first_error = error)
                 continue
@@ -247,6 +341,18 @@ function _call_with_callbacks(session::Session, op::AbstractString, args)
     end
     first_error === nothing && throw(ArgumentError("no callback signature to try for $op"))
     throw(first_error)
+end
+
+"""Attach a concrete dimension to a Float value already in coherent units.
+
+Pass a dimension object such as `Dict("base" => "Length")`, or `"dimless"`.
+The result owns a separate cell and keeps the tensor shape.
+"""
+function with_coherent_dimension(source::Value, dimension)
+    out = Ref{UInt32}(0)
+    payload = json_encode(dimension)
+    GC.@preserve source _check(value_with_coherent_dimension(source.session.ptr, source.cell, payload, out))
+    return Value(source.session, out[])
 end
 
 """The kind of a value: `"float"`, `"tensor"`, `"opaque"`, ..."""
@@ -307,12 +413,31 @@ function Base.length(value::Value)
     return Int(out[])
 end
 
-function Base.getindex(value::Value, index::Integer)
+function _value_at(value::Value, index::Integer)
     # The C side counts from zero; a Julia index counts from one.
-    1 <= index <= length(value) || throw(BoundsError(value, index))
     out = Ref{UInt32}(0)
     _check(value_at(value.session.ptr, value.cell, index - 1, out))
     return Value(value.session, out[])
+end
+
+function Base.getindex(value::Value, index::Integer)
+    1 <= index <= length(value) || throw(BoundsError(value, index))
+    return _value_at(value, index)
+end
+
+function _value_field_name(record::Value, index::Integer)
+    out = Ref{Ptr{UInt8}}(C_NULL)
+    _check(value_field_name(record.session.ptr, record.cell, index - 1, out))
+    return take_string(out[])
+end
+
+"""Read one field of a record by its exact name."""
+function Base.getindex(record::Value, name::AbstractString)
+    kind(record) == "record" || throw(ArgumentError("named indexing requires an RSSN record"))
+    for index in 1:length(record)
+        _value_field_name(record, index) == name && return _value_at(record, index)
+    end
+    throw(KeyError(name))
 end
 
 Base.firstindex(value::Value) = 1

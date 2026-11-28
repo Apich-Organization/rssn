@@ -1,6 +1,7 @@
 \name{manifest}
 \alias{manifest}
 \alias{manifest_json}
+\alias{rssn_features}
 \alias{manifest_hash}
 \alias{MANIFEST_META}
 \alias{rssn_version}
@@ -24,6 +25,8 @@ manifest()
 
 manifest_json()
 
+rssn_features()
+
 manifest_hash()
 
 json_decode(text)
@@ -44,7 +47,8 @@ rssn_condition(status, message = NULL)
 \value{
   \code{rssn_version()} and \code{rssn_library()} return a string;
   \code{rssn_library_candidates()} the search order; \code{manifest()} a named
-  list; \code{manifest_hash()} a decimal string; the codec functions a decoded
+  list; \code{rssn_features()} the loaded library's feature flags;
+  \code{manifest_hash()} a decimal string; the codec functions a decoded
   object or a string; \code{rssn_condition()} an \code{rssn_error} condition.
 }
 \description{
@@ -58,7 +62,8 @@ rssn_condition(status, message = NULL)
   from it, so \code{OPERATORS} and \code{OPS} cannot drift from the engine.
   \code{manifest()} assembles it from those tables -- a data frame of operators
   rather than a list of lists -- and \code{manifest_json()} hands over the
-  engine's own serialisation, which is about 18 MB and slow to parse in R.
+  engine's own serialisation. Use \code{rssn_features()} for the live flags
+  when the installed package and the loaded library use different feature sets.
 
   R has no JSON parser in base, and this package deliberately has no
   dependencies, so the codec is included.  \code{json_decode()} answers a named
@@ -77,7 +82,7 @@ rssn_condition(status, message = NULL)
 rssn_version()
 rssn_library()
 
-nrow(manifest()$ops)             # 5411
+nrow(manifest()$ops)             # count for this binding release
 manifest()$rssn_version
 manifest_hash()
 

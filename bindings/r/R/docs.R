@@ -19,7 +19,8 @@
 #' `ops` is the reference data frame (`OPERATORS`) and `units`, `constants` and
 #' `scenarios` are the generated tables, so this is assembled without parsing
 #' the engine's JSON: it is the same data the package was built from. Use
-#' [manifest_json()] for the raw text.
+#' [manifest_json()] for the raw text and [rssn_features()] for the loaded
+#' library's feature flags.
 #'
 #' @return A named list, assembled once per session.
 #' @examples
@@ -50,6 +51,23 @@ manifest_json <- function() {
     .Call(C_rssn_manifest_json)
 }
 
+#' Feature flags from the loaded library
+#'
+#' @return A named list of feature flags from the runtime manifest.
+#' @export
+rssn_features <- function() {
+    state <- .json_state(manifest_json())
+    .json_expect(state, "{")
+    repeat {
+        key <- .json_string(state)
+        .json_expect(state, ":")
+        field <- .json_value(state)
+        if (identical(key, "features")) return(field)
+        .json_skip_space(state)
+        if (.json_take(state) != ",") stop("the live RSSN manifest has no features field")
+    }
+}
+
 #' The first 64 bits of the manifest hash
 #'
 #' Returned as a decimal string: the value is a `uint64_t` and R's double cannot
@@ -65,6 +83,20 @@ manifest_hash <- function() {
 # ---------------------------------------------------------------------------
 # the operator reference
 # ---------------------------------------------------------------------------
+
+#' Read one live operator contract
+#'
+#' @param name The operator's name or alias.
+#' @return A list containing the live manifest entry, including `keys`,
+#'   overload signatures and dimensions.
+#' @export
+op_info <- function(name) {
+    if (!is.character(name) || length(name) != 1L || is.na(name) || !nzchar(name)) {
+        stop("provide one operator name")
+    }
+    .rssn_require()
+    json_decode(.Call(C_rssn_op_info_json, name))
+}
 
 #' Look one operator up
 #'
@@ -134,7 +166,7 @@ op_table <- function(pattern = NULL, category = NULL, rule_set = NULL, limit = 2
 
 #' Every operator name
 #'
-#' @return A sorted character vector of the 5411 registered operator names.
+#' @return A sorted character vector of all registered operator names.
 #' @export
 op_names <- function() OPERATORS$name
 

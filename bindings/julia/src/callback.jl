@@ -244,18 +244,26 @@ The Julia object a value cell holds. This is what a callback receives for each
 argument: numbers, `Bool`, `Complex`, `String`, arrays, and `Dict`s for records.
 """
 function to_julia(session::Session, cell::Integer)
-    wrapped = Value(session, cell; owned = false)
+    return to_julia(Value(session, cell; owned = false))
+end
+
+function to_julia(wrapped::Value)
+    session = wrapped.session
     kind_ = kind(wrapped)
-    kind_ == "int" && return Int(round(value(wrapped)))
+    if kind_ == "int"
+        digits = text(wrapped)
+        small = tryparse(Int, digits)
+        return isnothing(small) ? parse(BigInt, digits) : small
+    end
     (kind_ == "real" || kind_ == "float") && return value(wrapped)
     kind_ == "bool" && return Bool(json(wrapped)["bool"])
     if kind_ == "complex"
         body = json(wrapped)["complex"]
-        if haskey(body, "Exact")
-            exact = body["Exact"]
+        exact = get(body, "exact", get(body, "Exact", nothing))
+        if exact !== nothing
             return Complex(_number(exact["re"]), _number(exact["im"]))
         end
-        floating = body["Float"]
+        floating = haskey(body, "float") ? body["float"] : body["Float"]
         return Complex(Float64(floating["re"]), Float64(floating["im"]))
     end
     (kind_ == "string" || kind_ == "symbol") && return text(wrapped)
@@ -264,15 +272,13 @@ function to_julia(session::Session, cell::Integer)
             return tensor(wrapped)
         catch error
             error isa RssnError || rethrow()
-            return Any[to_julia(session, element.cell) for element in wrapped]
+            return Any[to_julia(element) for element in wrapped]
         end
     end
     if kind_ == "record"
         fields = Dict{String, Any}()
         for index in 1:length(wrapped)
-            out = Ref{Ptr{UInt8}}(C_NULL)
-            _check(value_field_name(session.ptr, wrapped.cell, index - 1, out))
-            fields[take_string(out[])] = to_julia(session, wrapped[index].cell)
+            fields[_value_field_name(wrapped, index)] = to_julia(wrapped[index])
         end
         return fields
     end
@@ -280,7 +286,7 @@ function to_julia(session::Session, cell::Integer)
         out = Ref{Ptr{UInt8}}(C_NULL)
         _check(value_tag(session.ptr, wrapped.cell, out))
         tag = take_string(out[])
-        return (tag, Any[to_julia(session, element.cell) for element in wrapped])
+        return (tag, Any[to_julia(element) for element in wrapped])
     end
     return json(wrapped)
 end
@@ -307,55 +313,9 @@ A cell holding `x`, which the caller then owns. This is how a callback's return
 value crosses back.
 """
 function from_julia(session::Session, x)
-    out = Ref{UInt32}(0)
-    x isa Value && return x.cell
-    x isa Callback && return x.value.cell
-    if x isa Term
-        x.session === session || throw(ArgumentError("term belongs to another session"))
-        _check(value_new_term(session.ptr, x.handle, out))
-        return out[]
+    result = value(session, x)
+    if x isa Union{Value, Callback}
+        result = copy(result)
     end
-    if x isa Bool
-        _check(value_new_bool(session.ptr, x, out))
-        return out[]
-    end
-    if x isa Integer
-        _check(value_new_int(session.ptr, x, out))
-        return out[]
-    end
-    if x isa Real
-        _check(value_new_float(session.ptr, Float64(x), out))
-        return out[]
-    end
-    if x isa Complex
-        _check(value_new_complex(session.ptr, real(x), imag(x), out))
-        return out[]
-    end
-    if x isa AbstractString
-        _check(value_new_text(session.ptr, x, out))
-        return out[]
-    end
-    if x isa AbstractDict
-        names = String[String(key) for key in keys(x)]
-        cells = UInt32[from_julia(session, element) for element in values(x)]
-        _check(value_new_record(session.ptr, names, cells, out))
-        return out[]
-    end
-    if x isa AbstractArray
-        if x isa AbstractVector && all(element -> element isa Union{Bool, Integer, AbstractFloat, AbstractString}, x)
-            # A vector of scalars: keep each element's own kind, exactly as
-            # `value` does for an argument.
-            return detach(value(session, x))
-        end
-        if eltype(x) <: Number && ndims(x) >= 2
-            shape = Csize_t[size(x, dimension) for dimension in 1:ndims(x)]
-            data = Cdouble[vec(permutedims(Array(x)));]
-            _check(value_new_tensor(session.ptr, data, shape, out))
-            return out[]
-        end
-        cells = UInt32[from_julia(session, element) for element in x]
-        _check(value_new_list(session.ptr, cells, out))
-        return out[]
-    end
-    throw(ArgumentError("cannot use $(typeof(x)) as a callback result"))
+    return detach(result)
 end

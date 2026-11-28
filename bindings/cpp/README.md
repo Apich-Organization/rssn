@@ -28,13 +28,12 @@ The client needs `rssn.h` on the include path (the repository root) and the C
 library:
 
 ```sh
-bash scripts/build_ffi.sh                       # produces rssn.dll + rssn.dll.lib
+bash scripts/build_ffi.sh --profile dev
+export RSSN_LIB="$PWD/target/debug"
 
-cmake -S bindings/cpp -B build/cpp \
-      -DRSSN_ROOT=$PWD \
-      -DRSSN_LIBRARY=$PWD/target/ffi/rssn.dll.lib
-cmake --build build/cpp
-ctest --test-dir build/cpp --output-on-failure
+cmake -S bindings/cpp -B build/cpp
+cmake --build build/cpp --config Release
+ctest --test-dir build/cpp -C Release --output-on-failure
 ```
 
 Or by hand:
@@ -44,9 +43,24 @@ g++ -std=c++17 -I bindings/cpp/include -I . \
     bindings/cpp/tests/smoke.cpp -L<dir> -lrssn -o smoke
 ```
 
-`RSSN_LIBRARY` is whichever library matches the toolchain: the MSVC import
-library `rssn.dll.lib`, the static archive `rssn.lib`, or a MinGW import library
-built from the DLL:
+CMake accepts a full shared-library path or a directory via `RSSN_LIB`.
+Pass `-DRSSN_LIBRARY=/path/to/link/library` to choose a link library explicitly.
+
+| Stock archive | Shared linkage | Static archive |
+| --- | --- | --- |
+| Linux x86-64 and ARM64 | `librssn.so` | `librssn.a` |
+| macOS x86-64 and ARM64 | `librssn.dylib` | `librssn.a` |
+| Windows x86-64 and ARM64 (MSVC) | `rssn.dll.lib` (import library) and `rssn.dll` (runtime) | `rssn.lib` |
+
+On Linux, select the static archive with
+`cmake -S bindings/cpp -B build-cpp-static "-DRSSN_LIBRARY=$PWD/librssn.a"`
+from the extracted root. The `rssn_client` CMake target supplies the
+platform math, thread and dynamic-loader libraries. The package tests exercise
+static linking on Linux and shared linking on all three operating systems.
+For a macOS or Windows static link, supply the target's native system libraries
+from the RSSN Rust build's `--print native-static-libs` output.
+
+For MinGW, generate an import library from `rssn.dll`.
 
 ```sh
 gendef rssn.dll && dlltool -d rssn.def -l librssn.dll.a
@@ -107,7 +121,7 @@ const auto answer = session.compute(diff(sin(x), x), &cfg);
 answer.value      // std::optional<double>: 0.877582561890373
 answer.error      // the estimated absolute error
 
-session.compute_all({diff(x * x * x, x), integral(x * x, x), gcd(4, 6)});
+session.compute_all({diff(x * x * x, x), integral(x * x, x), session.parse("gcd(4, 6)")});
 ```
 
 ## Workflow: linear algebra and tensors
@@ -116,6 +130,17 @@ session.compute_all({diff(x * x * x, x), integral(x * x, x), gcd(4, 6)});
 const auto matrix = session.parse("matmul(list(list(1,2),list(3,4)), list(list(0,1),list(1,0)))");
 std::vector<std::size_t> shape;
 const auto entries = session.compute(matrix).tensor(&shape);   // row-major, 4 doubles
+```
+
+## Workflow: NumPy arrays
+
+With NumPy support in the native build, pass the extents and flat row-major
+samples to the codec. The decoded value is a native tensor.
+
+```cpp
+const auto payload = session.encode_npy({2, 2}, {1.0, 2.0, 3.0, 4.0});
+std::vector<std::size_t> extents;
+const auto restored = session.decode_npy(payload).tensor(&extents);
 ```
 
 ## Workflow: a simulation
@@ -143,9 +168,59 @@ foot->dimension                     // "Length"
 rssn::client::constant_value(*rssn::client::lookup_constant("c"))   // 299792458
 ```
 
+For an integer beyond the signed 64-bit range, construct a value cell from its
+decimal spelling and read it with `Value::text()`.
+
+```cpp
+const auto exact = rssn::client::value_integer_decimal(
+    session.raw(), "1267650600228229401496703205383");
+exact.text();
+```
+
+## Workflow: choosing a backend
+
+The loaded library uses automatic selection until the process default is set explicitly.
+Query the host's usable backends before changing the process default.
+
+```cpp
+const auto available = session.available_backends();
+const auto active = session.current_backend();
+session.set_default_backend("interpreter");
+session.set_default_backend("auto");   // restore the engine's automatic policy
+```
+
+For explicit native compilation, pass the handle from `session.open_backend(name)`
+to `session.call_value("num_backend_compile", ...)`. Use
+`session.release_backend(handle)` to release the native handle when finished.
+
+## Workflow: passing measured floats
+
+The binary64 values below are already in coherent units. The dimension
+object follows the kernel manifest's `DimExpr` JSON format. Attaching a
+dimension preserves tensor shape and does not apply a unit scale or offset.
+
+```cpp
+const auto dimension = R"({"base":"Length"})";
+const auto differences = session.value(std::vector<double>{2.0, 3.0}).with_coherent_dimension(dimension);
+const auto initial = session.value(std::vector<double>{0.0}).with_coherent_dimension(dimension);
+const auto positions = session.call_value("num_timeseries_integrate", differences, initial);
+// positions.tensor() contains 0.0, 2.0 and 5.0 in metres.
+```
+
+## Workflow: a checked dynamic operator
+
+Use the operator in `rssn::client::checked` with the session as its first
+argument. It accepts the native inputs of that signature and returns a
+session-owned `Value`.
+
+```cpp
+const auto lerch_value = checked::num_special_ext_lerch(session, -1234.0, 2.0, 1.0);
+lerch_value.as_f64();  // 0.0218615893044645
+```
+
 ## Workflow: finding an operator
 
-The documentation of all 5411 operators is generated from the kernel manifest
+The documentation of all registered operators is generated from the kernel manifest
 into `rssn/ops.hpp`, as a comment above each function, together with the
 `kOps` table (`name`, arity, reachability) that `op_spec()` searches:
 
@@ -175,12 +250,16 @@ spec->ffi;          // true
 - Operators whose arguments are native objects are called through the value ABI,
   in `rssn/value.hpp`:
 
-      const auto backend = session.call_value("num_backend_current");
-      std::cout << session.call_value("num_backend_name", backend).text() << "
-";
+      std::cout << session.current_backend() << '\n';
 
   `op_spec(name)->ffi` is `true` for every operator: the value ABI carries
-  native objects and host callbacks alike.
+  native objects and host callbacks alike. For record outputs, `Value::field(name)`
+  retrieves a single field and `Value::field_name(index)` reads its label.
+
+      const auto moments = session.call_value(
+          "num_timeseries_rolling_moments", std::vector<double>{1.0, 3.0, 5.0}, 2, 0);
+      const auto variance = moments.field("variance").tensor();  // {1.0, 1.0}
+
 - A higher-order operator takes a function; `rssn/callback.hpp` wraps a
   `std::function` in the C function pointer the engine calls:
 

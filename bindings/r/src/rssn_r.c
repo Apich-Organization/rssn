@@ -36,10 +36,13 @@
 #include <Rinternals.h>
 #include <R_ext/Rdynload.h>
 
+#include <math.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #ifdef _WIN32
 #  define WIN32_LEAN_AND_MEAN
@@ -71,12 +74,18 @@ static void lib_close(rssn_lib_handle handle) {
 
 typedef struct RssnAnswer {
     uint32_t term;
-    int has_value;
+    bool has_value;
     double value;
     double error;
-    int reduced;
+    bool reduced;
     size_t iterations;
 } RssnAnswer;
+
+typedef struct RssnAnswerMetadata {
+    char *dimension;
+    char *diagnostic_codes;
+    char *message;
+} RssnAnswerMetadata;
 
 typedef struct RssnTensor {
     size_t rank;
@@ -95,6 +104,7 @@ typedef struct {
     const char *(*version)(void);
     const char *(*last_error)(void);
     char *(*manifest_json)(void);
+    int (*op_info_json)(const char *, char **);
     uint64_t (*manifest_hash)(void);
     void (*string_free)(char *);
     void (*bytes_free)(uint8_t *, size_t);
@@ -131,25 +141,33 @@ typedef struct {
 
     int (*compute)(void *, uint32_t, void *, RssnAnswer *);
     int (*compute_all)(void *, const uint32_t *, size_t, void *, RssnAnswer *, int *);
+    int (*compute_all_with_metadata)(void *, const uint32_t *, size_t, void *,
+                                     RssnAnswer *, int *, RssnAnswerMetadata *);
     int (*compute_json)(void *, uint32_t, void *, char **);
-    int (*compute_bincode)(void *, uint32_t, void *, char **, size_t *);
-    int (*compute_all_bincode)(void *, const uint32_t *, size_t, void *, char **, size_t *);
+    int (*compute_bincode)(void *, uint32_t, void *, uint8_t **, size_t *);
+    int (*compute_all_bincode)(void *, const uint32_t *, size_t, void *, uint8_t **, size_t *);
     uint32_t (*simplify)(void *, const char *);
     int (*dimension)(void *, uint32_t, void *, char **);
     size_t (*dimension_count)(void);
     const char *(*dimension_code)(size_t);
 
+    int (*value_with_coherent_dimension)(void *, uint32_t, const uint8_t *, size_t, uint32_t *);
     int (*value_new_int)(void *, int64_t, uint32_t *);
+    int (*value_new_int_decimal)(void *, const char *, uint32_t *);
     int (*value_new_float)(void *, double, uint32_t *);
     int (*value_new_text)(void *, const char *, uint32_t *);
     int (*value_new_symbol)(void *, const char *, uint32_t *);
     int (*value_new_term)(void *, uint32_t, uint32_t *);
     int (*value_new_list)(void *, const uint32_t *, size_t, uint32_t *);
     int (*value_new_tensor)(void *, const double *, size_t, const size_t *, size_t, uint32_t *);
+    int (*value_new_tensor_cells)(void *, const uint32_t *, size_t, const size_t *, size_t,
+                                  uint32_t, uint32_t *);
     int (*value_new_bool)(void *, int, uint32_t *);
     int (*value_new_complex)(void *, double, double, uint32_t *);
     int (*value_new_record)(void *, const char *const *, const uint32_t *, size_t, uint32_t *);
     int (*value_call)(void *, const char *, const uint32_t *, size_t, uint32_t *);
+    int (*value_call_key)(void *, const char *, const char *, const uint8_t *,
+                          const uint32_t *, size_t, uint32_t *);
     int (*value_call_json)(void *, const char *, const uint32_t *, size_t, char **);
     int (*value_kind)(void *, uint32_t, uint8_t *);
     int (*value_to_f64)(void *, uint32_t, double *);
@@ -161,6 +179,7 @@ typedef struct {
     int (*value_field_name)(void *, uint32_t, size_t, char **);
     int (*value_tag)(void *, uint32_t, char **);
     int (*value_json)(void *, uint32_t, char **);
+    int (*value_clone)(void *, uint32_t, uint32_t *);
     void (*value_free)(void *, uint32_t);
     size_t (*value_count)(void *);
 
@@ -252,11 +271,11 @@ static SEXP take_string(char *text) {
     return out;
 }
 
-static SEXP take_bytes(char *data, size_t length) {
+static SEXP take_bytes(uint8_t *data, size_t length) {
     if (data == NULL) return Rf_allocVector(RAWSXP, 0);
     SEXP out = PROTECT(Rf_allocVector(RAWSXP, (R_xlen_t)length));
     if (length > 0) memcpy(RAW(out), data, length);
-    api.bytes_free((uint8_t *)data, length);
+    api.bytes_free(data, length);
     UNPROTECT(1);
     return out;
 }
@@ -301,15 +320,24 @@ static uint32_t *handle_buffer(SEXP x, size_t *count) {
 /* ------------------------------------------------------------------------- */
 
 static const char *LIB_NAMES[] = {
-    "rssn.dll", "librssn.so", "librssn.so.0", "librssn.dylib", "rssn.so", "rssn.dylib",
+#ifdef _WIN32
+    "rssn.dll", "librssn.dll",
+#elif defined(__APPLE__)
+    "librssn.dylib", "rssn.dylib",
+#else
+    "librssn.so", "librssn.so.0", "rssn.so",
+#endif
 };
 #define LIB_NAME_COUNT ((size_t)(sizeof(LIB_NAMES) / sizeof(LIB_NAMES[0])))
 
 static int file_exists(const char *path) {
-    FILE *handle = fopen(path, "rb");
-    if (handle == NULL) return 0;
-    fclose(handle);
-    return 1;
+#ifdef _WIN32
+    DWORD attributes = GetFileAttributesA(path);
+    return attributes != INVALID_FILE_ATTRIBUTES && !(attributes & FILE_ATTRIBUTE_DIRECTORY);
+#else
+    struct stat metadata;
+    return stat(path, &metadata) == 0 && S_ISREG(metadata.st_mode);
+#endif
 }
 
 static void join_path(char *out, size_t size, const char *dir, const char *name) {
@@ -325,8 +353,11 @@ static void join_path(char *out, size_t size, const char *dir, const char *name)
 static int candidate_exists(const char *candidate, char *out, size_t size) {
     if (candidate[0] == '\0') return 0;
     if (file_exists(candidate)) {
-        snprintf(out, size, "%s", candidate);
-        return 1;
+        // dlopen searches its loader path for bare names. This branch has
+        // already found a local file, so resolve that file explicitly.
+        const char *prefix = strpbrk(candidate, "/\\:") == NULL ? "./" : "";
+        int length = snprintf(out, size, "%s%s", prefix, candidate);
+        return length >= 0 && (size_t)length < size;
     }
     for (size_t index = 0; index < LIB_NAME_COUNT; index++) {
         join_path(out, size, candidate, LIB_NAMES[index]);
@@ -337,8 +368,8 @@ static int candidate_exists(const char *candidate, char *out, size_t size) {
 
 #define RESOLVE(field, symbol)                                                      \
     do {                                                                            \
-        api.field = (void *)lib_sym(handle, symbol);                                \
-        if (api.field == NULL) {                                                    \
+        next.field = (void *)lib_sym(handle, symbol);                               \
+        if (next.field == NULL) {                                                    \
             lib_close(handle);                                                      \
             Rf_error("the rssn library at '%s' has no symbol %s", path, symbol);    \
         }                                                                           \
@@ -351,25 +382,32 @@ static int candidate_exists(const char *candidate, char *out, size_t size) {
  */
 SEXP C_rssn_load(SEXP candidates) {
     char path[4096];
-    int found = 0;
+    rssn_lib_handle handle = NULL;
     for (R_xlen_t index = 0; index < Rf_xlength(candidates); index++) {
         const char *candidate = Rf_translateCharUTF8(STRING_ELT(candidates, index));
         if (candidate_exists(candidate, path, sizeof(path))) {
-            found = 1;
+            handle = lib_open(path);
+            if (handle == NULL) Rf_error("cannot load the rssn shared library at '%s'", path);
             break;
         }
+        if (candidate[0] != '\0' && strpbrk(candidate, "/\\:") == NULL) {
+            int length = snprintf(path, sizeof(path), "%s", candidate);
+            if (length >= 0 && (size_t)length < sizeof(path)) {
+                handle = lib_open(path);
+                if (handle != NULL) break;
+            }
+        }
     }
-    if (!found) {
-        Rf_error("no rssn shared library found; set RSSN_LIB to rssn.dll / librssn.so, "
+    if (handle == NULL) {
+        Rf_error("no rssn shared library found; set RSSN_LIB to the library file or its directory, "
                  "or build one with `bash scripts/build_ffi.sh`");
     }
-    rssn_lib_handle handle = lib_open(path);
-    if (handle == NULL) Rf_error("cannot load the rssn shared library at '%s'", path);
 
-    memset(&api, 0, sizeof(api));
+    rssn_api next = {0};
     RESOLVE(version, "rssn_version");
     RESOLVE(last_error, "rssn_last_error");
     RESOLVE(manifest_json, "rssn_manifest_json");
+    next.op_info_json = (void *)lib_sym(handle, "rssn_op_info_json");
     RESOLVE(manifest_hash, "rssn_manifest_hash");
     RESOLVE(string_free, "rssn_string_free");
     RESOLVE(bytes_free, "rssn_bytes_free");
@@ -406,6 +444,7 @@ SEXP C_rssn_load(SEXP candidates) {
 
     RESOLVE(compute, "rssn_compute");
     RESOLVE(compute_all, "rssn_compute_all");
+    next.compute_all_with_metadata = (void *)lib_sym(handle, "rssn_compute_all_with_metadata");
     RESOLVE(compute_json, "rssn_compute_json");
     RESOLVE(compute_bincode, "rssn_compute_bincode");
     RESOLVE(compute_all_bincode, "rssn_compute_all_bincode");
@@ -414,17 +453,21 @@ SEXP C_rssn_load(SEXP candidates) {
     RESOLVE(dimension_count, "rssn_dimension_count");
     RESOLVE(dimension_code, "rssn_dimension_code");
 
+    next.value_with_coherent_dimension = (void *)lib_sym(handle, "rssn_value_with_coherent_dimension");
     RESOLVE(value_new_int, "rssn_value_new_int");
+    next.value_new_int_decimal = (void *)lib_sym(handle, "rssn_value_new_int_decimal");
     RESOLVE(value_new_float, "rssn_value_new_float");
     RESOLVE(value_new_text, "rssn_value_new_text");
     RESOLVE(value_new_symbol, "rssn_value_new_symbol");
     RESOLVE(value_new_term, "rssn_value_new_term");
     RESOLVE(value_new_list, "rssn_value_new_list");
     RESOLVE(value_new_tensor, "rssn_value_new_tensor");
+    next.value_new_tensor_cells = (void *)lib_sym(handle, "rssn_value_new_tensor_cells");
     RESOLVE(value_new_bool, "rssn_value_new_bool");
     RESOLVE(value_new_complex, "rssn_value_new_complex");
     RESOLVE(value_new_record, "rssn_value_new_record");
     RESOLVE(value_call, "rssn_value_call");
+    next.value_call_key = (void *)lib_sym(handle, "rssn_value_call_key");
     RESOLVE(value_call_json, "rssn_value_call_json");
     RESOLVE(value_kind, "rssn_value_kind");
     RESOLVE(value_to_f64, "rssn_value_to_f64");
@@ -436,6 +479,7 @@ SEXP C_rssn_load(SEXP candidates) {
     RESOLVE(value_field_name, "rssn_value_field_name");
     RESOLVE(value_tag, "rssn_value_tag");
     RESOLVE(value_json, "rssn_value_json");
+    next.value_clone = (void *)lib_sym(handle, "rssn_value_clone");
     RESOLVE(value_free, "rssn_value_free");
     RESOLVE(value_count, "rssn_value_count");
 
@@ -450,8 +494,9 @@ SEXP C_rssn_load(SEXP candidates) {
 
     if (api_handle != NULL) lib_close(api_handle);
     api_handle = handle;
-    api.loaded = 1;
-    snprintf(api.path, sizeof(api.path), "%s", path);
+    next.loaded = 1;
+    snprintf(next.path, sizeof(next.path), "%s", path);
+    api = next;
     return Rf_mkString(api.path);
 }
 
@@ -483,6 +528,13 @@ SEXP C_rssn_manifest_hash(void) {
 SEXP C_rssn_manifest_json(void) {
     if (!api.loaded) Rf_error("the rssn library is not loaded");
     return take_string(api.manifest_json());
+}
+
+SEXP C_rssn_op_info_json(SEXP name) {
+    if (api.op_info_json == NULL) Rf_error("this RSSN library lacks operator contract lookup");
+    char *json = NULL;
+    check_status(api.op_info_json(as_cstring(name), &json));
+    return take_string(json);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -603,8 +655,18 @@ SEXP C_rssn_term_sym(SEXP session, SEXP name) {
     return term_handle(api.term_sym(as_handle(session, "session"), as_cstring(name)), 4);
 }
 
+static int64_t as_i64(SEXP value) {
+    double number = Rf_asReal(value);
+    const double signed_limit = 9223372036854775808.0;
+    if (!R_FINITE(number) || number < -signed_limit || number >= signed_limit ||
+        number != trunc(number)) {
+        Rf_error("expected a whole number in the signed 64-bit range; use value_integer_decimal for larger values");
+    }
+    return (int64_t)number;
+}
+
 SEXP C_rssn_term_int(SEXP session, SEXP value) {
-    return term_handle(api.term_int(as_handle(session, "session"), (int64_t)Rf_asReal(value)), 13);
+    return term_handle(api.term_int(as_handle(session, "session"), as_i64(value)), 13);
 }
 
 SEXP C_rssn_term_float(SEXP session, SEXP value) {
@@ -613,8 +675,8 @@ SEXP C_rssn_term_float(SEXP session, SEXP value) {
 
 SEXP C_rssn_term_rational(SEXP session, SEXP numerator, SEXP denominator) {
     return term_handle(api.term_rational(as_handle(session, "session"),
-                                         (int64_t)Rf_asReal(numerator),
-                                         (int64_t)Rf_asReal(denominator)),
+                                         as_i64(numerator),
+                                         as_i64(denominator)),
                        13);
 }
 
@@ -692,14 +754,46 @@ SEXP C_rssn_compute(SEXP session, SEXP term, SEXP config) {
     return out;
 }
 
+typedef struct BatchMetadata {
+    RssnAnswerMetadata *rows;
+    size_t count;
+    SEXP dimensions;
+    SEXP findings;
+    SEXP messages;
+} BatchMetadata;
+
+static SEXP copy_batch_metadata(void *data) {
+    BatchMetadata *batch = data;
+    for (size_t index = 0; index < batch->count; index++) {
+        RssnAnswerMetadata *row = &batch->rows[index];
+        SET_STRING_ELT(batch->dimensions, (R_xlen_t)index,
+                       Rf_mkCharCE(row->dimension ? row->dimension : "", CE_UTF8));
+        SET_STRING_ELT(batch->findings, (R_xlen_t)index,
+                       Rf_mkCharCE(row->diagnostic_codes ? row->diagnostic_codes : "", CE_UTF8));
+        SET_STRING_ELT(batch->messages, (R_xlen_t)index,
+                       Rf_mkCharCE(row->message ? row->message : "", CE_UTF8));
+    }
+    return R_NilValue;
+}
+
+static void release_batch_metadata(void *data) {
+    BatchMetadata *batch = data;
+    for (size_t index = 0; index < batch->count; index++) {
+        api.string_free(batch->rows[index].dimension);
+        api.string_free(batch->rows[index].diagnostic_codes);
+        api.string_free(batch->rows[index].message);
+    }
+}
+
 SEXP C_rssn_compute_all(SEXP session, SEXP handles, SEXP config) {
     size_t count = 0;
     uint32_t *buffer = handle_buffer(handles, &count);
     RssnAnswer *answers = (RssnAnswer *)R_alloc(count > 0 ? count : 1, sizeof(RssnAnswer));
     int *statuses = (int *)R_alloc(count > 0 ? count : 1, sizeof(int));
     memset(answers, 0, (count > 0 ? count : 1) * sizeof(RssnAnswer));
-    check_status(api.compute_all(as_handle(session, "session"), buffer, count,
-                                 optional_handle(config), answers, statuses));
+    void *session_handle = as_handle(session, "session");
+    void *config_handle = optional_handle(config);
+    const bool with_metadata = api.compute_all_with_metadata != NULL;
 
     SEXP terms = PROTECT(Rf_allocVector(INTSXP, (R_xlen_t)count));
     SEXP has_value = PROTECT(Rf_allocVector(LGLSXP, (R_xlen_t)count));
@@ -708,6 +802,19 @@ SEXP C_rssn_compute_all(SEXP session, SEXP handles, SEXP config) {
     SEXP reduced = PROTECT(Rf_allocVector(LGLSXP, (R_xlen_t)count));
     SEXP iterations = PROTECT(Rf_allocVector(REALSXP, (R_xlen_t)count));
     SEXP codes = PROTECT(Rf_allocVector(INTSXP, (R_xlen_t)count));
+    SEXP dimensions = PROTECT(with_metadata ? Rf_allocVector(STRSXP, (R_xlen_t)count) : R_NilValue);
+    SEXP findings = PROTECT(with_metadata ? Rf_allocVector(STRSXP, (R_xlen_t)count) : R_NilValue);
+    SEXP messages = PROTECT(with_metadata ? Rf_allocVector(STRSXP, (R_xlen_t)count) : R_NilValue);
+    if (with_metadata) {
+        RssnAnswerMetadata *rows = (RssnAnswerMetadata *)R_alloc(
+            count > 0 ? count : 1, sizeof(RssnAnswerMetadata));
+        check_status(api.compute_all_with_metadata(session_handle, buffer, count, config_handle,
+                                                   answers, statuses, rows));
+        BatchMetadata batch = {rows, count, dimensions, findings, messages};
+        R_ExecWithCleanup(copy_batch_metadata, &batch, release_batch_metadata, &batch);
+    } else {
+        check_status(api.compute_all(session_handle, buffer, count, config_handle, answers, statuses));
+    }
     for (size_t index = 0; index < count; index++) {
         INTEGER(terms)[index] = (int)answers[index].term;
         LOGICAL(has_value)[index] = answers[index].has_value ? TRUE : FALSE;
@@ -718,7 +825,7 @@ SEXP C_rssn_compute_all(SEXP session, SEXP handles, SEXP config) {
         INTEGER(codes)[index] = statuses[index];
     }
 
-    SEXP out = PROTECT(Rf_allocVector(VECSXP, 7));
+    SEXP out = PROTECT(Rf_allocVector(VECSXP, 10));
     SET_VECTOR_ELT(out, 0, terms);
     SET_VECTOR_ELT(out, 1, has_value);
     SET_VECTOR_ELT(out, 2, values);
@@ -726,12 +833,15 @@ SEXP C_rssn_compute_all(SEXP session, SEXP handles, SEXP config) {
     SET_VECTOR_ELT(out, 4, reduced);
     SET_VECTOR_ELT(out, 5, iterations);
     SET_VECTOR_ELT(out, 6, codes);
-    SEXP names = PROTECT(Rf_allocVector(STRSXP, 7));
+    SET_VECTOR_ELT(out, 7, dimensions);
+    SET_VECTOR_ELT(out, 8, findings);
+    SET_VECTOR_ELT(out, 9, messages);
+    SEXP names = PROTECT(Rf_allocVector(STRSXP, 10));
     const char *labels[] = {"term", "has_value", "value", "error", "reduced", "iterations",
-                            "status"};
-    for (int index = 0; index < 7; index++) SET_STRING_ELT(names, index, Rf_mkChar(labels[index]));
+                            "status", "dimension", "diagnostic_codes", "message"};
+    for (int index = 0; index < 10; index++) SET_STRING_ELT(names, index, Rf_mkChar(labels[index]));
     Rf_setAttrib(out, R_NamesSymbol, names);
-    UNPROTECT(9);
+    UNPROTECT(12);
     return out;
 }
 
@@ -743,7 +853,7 @@ SEXP C_rssn_compute_json(SEXP session, SEXP term, SEXP config) {
 }
 
 SEXP C_rssn_compute_bincode(SEXP session, SEXP term, SEXP config) {
-    char *data = NULL;
+    uint8_t *data = NULL;
     size_t length = 0;
     check_status(api.compute_bincode(as_handle(session, "session"), (uint32_t)Rf_asInteger(term),
                                      optional_handle(config), &data, &length));
@@ -753,7 +863,7 @@ SEXP C_rssn_compute_bincode(SEXP session, SEXP term, SEXP config) {
 SEXP C_rssn_compute_all_bincode(SEXP session, SEXP handles, SEXP config) {
     size_t count = 0;
     uint32_t *buffer = handle_buffer(handles, &count);
-    char *data = NULL;
+    uint8_t *data = NULL;
     size_t length = 0;
     check_status(api.compute_all_bincode(as_handle(session, "session"), buffer, count,
                                          optional_handle(config), &data, &length));
@@ -784,9 +894,29 @@ SEXP C_rssn_dimension_code(SEXP index) {
 /* values (the cell ABI)                                                     */
 /* ------------------------------------------------------------------------- */
 
+SEXP C_rssn_value_with_coherent_dimension(SEXP session, SEXP source, SEXP json) {
+    if (api.value_with_coherent_dimension == NULL) {
+        Rf_error("this RSSN library lacks coherent dimension cells");
+    }
+    if (TYPEOF(json) != RAWSXP) Rf_error("dimension JSON must be raw UTF-8 bytes");
+    uint32_t cell = 0;
+    check_status(api.value_with_coherent_dimension(as_handle(session, "session"),
+        (uint32_t)Rf_asInteger(source), RAW(json), (size_t)XLENGTH(json), &cell));
+    return Rf_ScalarInteger((int)cell);
+}
+
 SEXP C_rssn_value_new_int(SEXP session, SEXP value) {
     uint32_t cell = 0;
-    check_status(api.value_new_int(as_handle(session, "session"), (int64_t)Rf_asReal(value), &cell));
+    check_status(api.value_new_int(as_handle(session, "session"), as_i64(value), &cell));
+    return Rf_ScalarInteger((int)cell);
+}
+
+SEXP C_rssn_value_new_int_decimal(SEXP session, SEXP digits) {
+    if (api.value_new_int_decimal == NULL) {
+        Rf_error("this RSSN library only supports signed 64-bit integer cells");
+    }
+    uint32_t cell = 0;
+    check_status(api.value_new_int_decimal(as_handle(session, "session"), as_cstring(digits), &cell));
     return Rf_ScalarInteger((int)cell);
 }
 
@@ -854,6 +984,26 @@ SEXP C_rssn_value_new_tensor(SEXP session, SEXP data, SEXP dim) {
     return Rf_ScalarInteger((int)cell);
 }
 
+SEXP C_rssn_value_new_tensor_cells(SEXP session, SEXP handles, SEXP dim, SEXP exemplar) {
+    if (api.value_new_tensor_cells == NULL) {
+        Rf_error("this RSSN library lacks tensor cell construction");
+    }
+    if (TYPEOF(dim) != INTSXP) Rf_error("tensor extents must be integers");
+    size_t rank = (size_t)XLENGTH(dim);
+    size_t *shape = (size_t *)R_alloc(rank > 0 ? rank : 1, sizeof(size_t));
+    for (size_t axis = 0; axis < rank; axis++) {
+        int extent = INTEGER(dim)[axis];
+        if (extent == NA_INTEGER || extent < 0) Rf_error("invalid tensor extent");
+        shape[axis] = (size_t)extent;
+    }
+    size_t count = 0;
+    uint32_t *cells = handle_buffer(handles, &count);
+    uint32_t output = 0;
+    check_status(api.value_new_tensor_cells(as_handle(session, "session"), cells, count, shape,
+                                            rank, (uint32_t)Rf_asInteger(exemplar), &output));
+    return Rf_ScalarInteger((int)output);
+}
+
 SEXP C_rssn_value_new_record(SEXP session, SEXP names, SEXP handles) {
     size_t count = 0;
     uint32_t *cells = handle_buffer(handles, &count);
@@ -873,6 +1023,19 @@ SEXP C_rssn_value_call(SEXP session, SEXP op, SEXP handles) {
     check_status(api.value_call(as_handle(session, "session"), as_cstring(op), buffer, count,
                                 &cell));
     return Rf_ScalarInteger((int)cell);
+}
+
+SEXP C_rssn_value_call_key(SEXP session, SEXP rule_set, SEXP name, SEXP hash, SEXP handles) {
+    if (api.value_call_key == NULL) Rf_error("this RSSN library lacks keyed calls");
+    if (TYPEOF(hash) != RAWSXP || XLENGTH(hash) != 16) {
+        Rf_error("operator key requires 16 signature hash bytes");
+    }
+    size_t count = 0;
+    uint32_t *buffer = handle_buffer(handles, &count);
+    uint32_t result = 0;
+    check_status(api.value_call_key(as_handle(session, "session"), as_cstring(rule_set),
+                                    as_cstring(name), RAW(hash), buffer, count, &result));
+    return Rf_ScalarInteger((int)result);
 }
 
 SEXP C_rssn_value_call_json(SEXP session, SEXP op, SEXP handles) {
@@ -953,6 +1116,22 @@ SEXP C_rssn_value_json(SEXP session, SEXP cell) {
     check_status(api.value_json(as_handle(session, "session"), (uint32_t)Rf_asInteger(cell),
                                 &text));
     return take_string(text);
+}
+
+SEXP C_rssn_value_clone(SEXP session, SEXP cell) {
+    void *owner = as_handle(session, "session");
+    uint32_t source = (uint32_t)Rf_asInteger(cell);
+    uint32_t copy = 0;
+    if (api.value_clone != NULL) {
+        check_status(api.value_clone(owner, source, &copy));
+    } else {
+        uint32_t holder = 0;
+        check_status(api.value_new_list(owner, &source, 1, &holder));
+        int status = api.value_at(owner, holder, 0, &copy);
+        api.value_free(owner, holder);
+        check_status(status);
+    }
+    return Rf_ScalarInteger((int)copy);
 }
 
 SEXP C_rssn_value_free(SEXP session, SEXP cell) {
@@ -1133,6 +1312,7 @@ static const R_CallMethodDef call_methods[] = {
     {"C_rssn_last_error", (DL_FUNC)&C_rssn_last_error, 0},
     {"C_rssn_manifest_hash", (DL_FUNC)&C_rssn_manifest_hash, 0},
     {"C_rssn_manifest_json", (DL_FUNC)&C_rssn_manifest_json, 0},
+    {"C_rssn_op_info_json", (DL_FUNC)&C_rssn_op_info_json, 1},
 
     {"C_rssn_session_new", (DL_FUNC)&C_rssn_session_new, 0},
     {"C_rssn_session_free", (DL_FUNC)&C_rssn_session_free, 1},
@@ -1172,7 +1352,9 @@ static const R_CallMethodDef call_methods[] = {
     {"C_rssn_dimension_count", (DL_FUNC)&C_rssn_dimension_count, 0},
     {"C_rssn_dimension_code", (DL_FUNC)&C_rssn_dimension_code, 1},
 
+    {"C_rssn_value_with_coherent_dimension", (DL_FUNC)&C_rssn_value_with_coherent_dimension, 3},
     {"C_rssn_value_new_int", (DL_FUNC)&C_rssn_value_new_int, 2},
+    {"C_rssn_value_new_int_decimal", (DL_FUNC)&C_rssn_value_new_int_decimal, 2},
     {"C_rssn_value_new_float", (DL_FUNC)&C_rssn_value_new_float, 2},
     {"C_rssn_value_new_text", (DL_FUNC)&C_rssn_value_new_text, 2},
     {"C_rssn_value_new_symbol", (DL_FUNC)&C_rssn_value_new_symbol, 2},
@@ -1181,8 +1363,10 @@ static const R_CallMethodDef call_methods[] = {
     {"C_rssn_value_new_term", (DL_FUNC)&C_rssn_value_new_term, 2},
     {"C_rssn_value_new_list", (DL_FUNC)&C_rssn_value_new_list, 2},
     {"C_rssn_value_new_tensor", (DL_FUNC)&C_rssn_value_new_tensor, 3},
+    {"C_rssn_value_new_tensor_cells", (DL_FUNC)&C_rssn_value_new_tensor_cells, 4},
     {"C_rssn_value_new_record", (DL_FUNC)&C_rssn_value_new_record, 3},
     {"C_rssn_value_call", (DL_FUNC)&C_rssn_value_call, 3},
+    {"C_rssn_value_call_key", (DL_FUNC)&C_rssn_value_call_key, 5},
     {"C_rssn_value_call_json", (DL_FUNC)&C_rssn_value_call_json, 3},
     {"C_rssn_value_kind", (DL_FUNC)&C_rssn_value_kind, 2},
     {"C_rssn_value_to_f64", (DL_FUNC)&C_rssn_value_to_f64, 2},
@@ -1194,6 +1378,7 @@ static const R_CallMethodDef call_methods[] = {
     {"C_rssn_value_field_name", (DL_FUNC)&C_rssn_value_field_name, 3},
     {"C_rssn_value_tag", (DL_FUNC)&C_rssn_value_tag, 2},
     {"C_rssn_value_json", (DL_FUNC)&C_rssn_value_json, 2},
+    {"C_rssn_value_clone", (DL_FUNC)&C_rssn_value_clone, 2},
     {"C_rssn_value_free", (DL_FUNC)&C_rssn_value_free, 2},
     {"C_rssn_value_count", (DL_FUNC)&C_rssn_value_count, 1},
 

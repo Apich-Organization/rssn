@@ -1,4 +1,4 @@
-source("D:/rssn/bindings/r/R/json.R")
+library(rssn)
 
 check <- function(label, condition) {
     if (!isTRUE(condition)) stop("FAILED: ", label, call. = FALSE)

@@ -3,8 +3,7 @@
 # The term API carries only values that are nodes of the expression graph. An
 # operator that returns a native object -- an AD tape, a compiled backend, a
 # solver handle -- returns a *value* instead, and an operator that takes one can
-# only be called with a value. Those are the operators `OPS` marks with
-# `ffi = FALSE`; they are reached with `call_value()`.
+# only be called through the value ABI using `call_value()`.
 #
 #     s <- rssn_session()
 #     backend <- call_value("num_backend_current", session = s)
@@ -86,12 +85,33 @@ as.numeric.rssn_value <- function(x, ...) value_float(x)
 #' @export
 length.rssn_value <- function(x) value_len(x)
 
+.rssn_value_at <- function(session, cell, index) {
+    .rssn_value(session, .Call(C_rssn_value_at, session$ptr, cell, index - 1L))
+}
+
+.rssn_value_field_name <- function(session, cell, index) {
+    .Call(C_rssn_value_field_name, session$ptr, cell, index - 1L)
+}
+
 #' @export
 `[[.rssn_value` <- function(x, index) {
+    if (is.character(index) && value_kind(x) == "record") {
+        if (length(index) != 1L || is.na(index)) {
+            stop("a record field name must be a single string", call. = FALSE)
+        }
+        session <- x$session
+        cell <- value_cell(x)
+        for (position in seq_len(value_len(x))) {
+            if (.rssn_value_field_name(session, cell, position) == index) {
+                return(.rssn_value_at(session, cell, position))
+            }
+        }
+        stop(sprintf("no record field named %s", sQuote(index)), call. = FALSE)
+    }
     index <- as.integer(index)
     length <- value_len(x)
     if (index < 1L || index > length) stop("subscript out of bounds")
-    .rssn_value(x$session, .Call(C_rssn_value_at, x$session$ptr, value_cell(x), index - 1L))
+    .rssn_value_at(x$session, value_cell(x), index)
 }
 
 #' Release a value cell early
@@ -227,13 +247,102 @@ value_count <- function(session = NULL) {
 #' value_kind(value_new(c(1, 2.5, 3), s))   # "tensor"
 #' @export
 value_new <- function(x, session = NULL) {
+    if (is.null(session) && inherits(x, c("rssn_value", "rssn_callback"))) session <- x$session
+    if (is.null(session) && inherits(x, "rssn_term")) session <- .rssn_session_of(x)
     session <- session %||% default_session()
-    .rssn_value(session, .rssn_cell(x, session))
+    .rssn_value(session, .rssn_owned_cell(x, session))
+}
+
+#' Construct a shaped tensor from dynamic cells
+#'
+#' Copies elements in row-major order, retaining the kinds of existing value
+#' cells and exact integers. Rank zero takes one element. A shape with a zero
+#' extent takes no elements. Supply an exemplar to choose the element type of
+#' an empty tensor.
+#' @param values A flat vector or list of values.
+#' @param shape Nonnegative integer extents, outermost axis first.
+#' @param session The RSSN session, inferred from the elements when omitted.
+#' @param exemplar A value providing the element type of an empty tensor.
+#' @return A separate RSSN tensor cell.
+#' @export
+value_tensor_cells <- function(values, shape, session = NULL, exemplar = NULL) {
+    if ((!is.atomic(values) && !is.list(values)) || !is.null(dim(values)) ||
+            (is.list(values) && any(vapply(values, is.list, logical(1))))) {
+        stop("supply tensor cells in a flat row-major vector or list")
+    }
+    if (!is.numeric(shape) || any(!is.finite(shape) | shape < 0 |
+                                  shape != trunc(shape) | shape > .Machine$integer.max)) {
+        stop("tensor extents must be nonnegative integers representable by R")
+    }
+    expected <- if (any(shape == 0)) 0 else prod(shape)
+    if (length(values) != expected) stop("tensor shape does not match the number of cells")
+    if (length(values) && !is.null(exemplar)) stop("an element exemplar requires an empty tensor")
+    arguments <- if (is.null(exemplar)) values else list(exemplar)
+    session <- session %||% .rssn_argument_session(arguments)
+    extents <- as.integer(shape)
+    cell <- .rssn_with_cells(arguments, session, function(cells) {
+        if (is.null(exemplar)) {
+            .Call(C_rssn_value_new_tensor_cells, session$ptr, cells, extents, 0L)
+        } else {
+            .Call(C_rssn_value_new_tensor_cells, session$ptr, integer(), extents, cells[[1L]])
+        }
+    })
+    .rssn_value(session, cell)
+}
+
+#' Attach a concrete dimension to a coherent Float value
+#'
+#' @param value An RSSN Float or dense Float tensor in coherent units.
+#' @param dimension A dimension object such as `list(base = "Length")`, or `"dimless"`.
+#' @return A separate RSSN value cell with the same tensor shape.
+#' @export
+value_with_coherent_dimension <- function(value, dimension) {
+    json <- charToRaw(enc2utf8(json_encode(dimension)))
+    .rssn_value(value$session, .Call(C_rssn_value_with_coherent_dimension,
+                                    value$session$ptr, value_cell(value), json))
+}
+
+#' Construct an exact integer from signed decimal digits
+#'
+#' @param digits One character string with decimal digits and an optional sign.
+#' @param session The RSSN session.
+#' @return An owned `rssn_value` containing an exact integer.
+#' @export
+value_integer_decimal <- function(digits, session = NULL) {
+    if (!is.character(digits) || length(digits) != 1L || is.na(digits)) {
+        stop("provide one character string of signed decimal digits")
+    }
+    session <- session %||% default_session()
+    .rssn_value(session, .Call(C_rssn_value_new_int_decimal, session$ptr, digits))
 }
 
 #' @rdname value_new
 #' @export
 value_of <- value_new
+
+.rssn_owned_cell <- function(x, session) {
+    cell <- .rssn_cell(x, session)
+    if (inherits(x, c("rssn_value", "rssn_callback"))) {
+        return(.Call(C_rssn_value_clone, session$ptr, cell))
+    }
+    cell
+}
+
+# Keep existing values and callbacks alive. Release every temporary created
+# from a host object, including when conversion of a later argument fails.
+.rssn_with_cells <- function(arguments, session, consume, kinds = rep("auto", length(arguments))) {
+    cells <- integer(length(arguments))
+    owned <- logical(length(arguments))
+    on.exit({
+        for (cell in cells[owned & cells != 0L]) .Call(C_rssn_value_free, session$ptr, cell)
+    })
+    for (index in seq_along(arguments)) {
+        argument <- arguments[[index]]
+        owned[[index]] <- !inherits(argument, c("rssn_value", "rssn_callback"))
+        cells[[index]] <- .rssn_cell(argument, session, kinds[[index]])
+    }
+    consume(cells)
+}
 
 .rssn_cell <- function(x, session, numeric = "auto") {
     if (inherits(x, "rssn_value")) {
@@ -254,6 +363,9 @@ value_of <- value_new
         }
         return(callback_cell(x))
     }
+    if (inherits(x, "rssn_integer_decimal")) {
+        return(.Call(C_rssn_value_new_int_decimal, session$ptr, as.character(x)))
+    }
     if (is.function(x)) {
         stop("a function is a value only as an operator argument: pass it to call_value()")
     }
@@ -265,8 +377,9 @@ value_of <- value_new
         return(.rssn_cell_list(x, session))
     }
     if (is.numeric(x)) {
+        if (!is.null(dim(x))) return(.rssn_cell_tensor(x, session))
         if (length(x) == 1L) return(.rssn_cell_number(x, session, numeric))
-        if (length(dim(x)) >= 2L) return(.rssn_cell_tensor(x, session))
+        if (is.double(x) && !anyNA(x)) return(.rssn_cell_tensor(x, session))
         return(.rssn_cell_list(x, session))
     }
     if (is.complex(x)) {
@@ -286,8 +399,9 @@ value_of <- value_new
         names <- names(x)
         if (!is.null(names) && any(nzchar(names))) {
             if (any(!nzchar(names))) stop("a record needs a name for every field")
-            cells <- vapply(x, .rssn_cell, integer(1), session = session)
-            return(.Call(C_rssn_value_new_record, session$ptr, names, cells))
+            return(.rssn_with_cells(x, session, function(cells) {
+                .Call(C_rssn_value_new_record, session$ptr, names, cells)
+            }))
         }
         return(.rssn_cell_list(x, session))
     }
@@ -295,7 +409,7 @@ value_of <- value_new
                  paste(class(x), collapse = "/")))
 }
 
-# R has no integer literal: `1` is a double and `1L` is an integer, and the
+# Plain R numeric literals are doubles: `1` is a double and `1L` is an integer, and the
 # engine's value ABI is strict about the difference (an operator that wants a
 # `Float` refuses an `Int`, and the other way round). The R type decides by
 # default; `numeric` overrides it for one argument, which is what the retry in
@@ -317,12 +431,11 @@ value_of <- value_new
 }
 
 .rssn_cell_list <- function(x, session) {
-    cells <- vapply(seq_along(x), function(index) .rssn_cell(x[[index]], session), integer(1))
-    .Call(C_rssn_value_new_list, session$ptr, cells)
+    .rssn_with_cells(x, session, function(cells) .Call(C_rssn_value_new_list, session$ptr, cells))
 }
 
 .rssn_cell_tensor <- function(x, session) {
-    extents <- dim(x)
+    extents <- dim(x) %||% length(x)
     rank <- length(extents)
     data <- if (rank == 1L) as.numeric(x) else as.numeric(aperm(x, rev(seq_len(rank))))
     .Call(C_rssn_value_new_tensor, session$ptr, data, as.integer(extents))
@@ -333,18 +446,37 @@ value_of <- value_new
 # ---------------------------------------------------------------------------
 
 .rssn_to_r <- function(session, cell, owned = FALSE) {
-    value <- .rssn_value(session, cell, owned = owned)
+    .rssn_value_to_r(.rssn_value(session, cell, owned = owned))
+}
+
+.rssn_value_to_r <- function(value) {
+    session <- value$session
+    cell <- value_cell(value)
+    member <- function(index) {
+        child <- value[[index]]
+        on.exit(close(child))
+        .rssn_value_to_r(child)
+    }
     kind <- value_kind(value)
-    if (kind == "int") return(as.integer(round(value_float(value))))
+    if (kind == "int") {
+        digits <- value_text(value)
+        number <- suppressWarnings(as.integer(digits))
+        if (!is.na(number)) return(number)
+        return(structure(digits, class = "rssn_integer_decimal"))
+    }
     if (kind == "real" || kind == "float") return(value_float(value))
     if (kind == "bool") return(isTRUE(value_json(value)[["bool"]]))
     if (kind == "complex") {
         body <- value_json(value)[["complex"]]
-        if (!is.null(body[["Exact"]])) {
-            return(complex(real = .rssn_number(body[["Exact"]][["re"]]),
-                           imaginary = .rssn_number(body[["Exact"]][["im"]])))
+        exact <- body[["exact"]] %||% body[["Exact"]]
+        if (!is.null(exact)) {
+            return(complex(real = .rssn_number(exact[["re"]]),
+                           imaginary = .rssn_number(exact[["im"]])))
         }
-        floating <- body[["Float"]]
+        floating <- body[["float"]] %||% body[["Float"]]
+        if (is.null(floating[["re"]]) || is.null(floating[["im"]])) {
+            stop("complex value is missing a floating component")
+        }
         return(complex(real = as.numeric(floating[["re"]]),
                        imaginary = as.numeric(floating[["im"]])))
     }
@@ -352,22 +484,22 @@ value_of <- value_new
     if (kind == "tensor") {
         return(tryCatch(value_tensor(value), error = function(condition) {
             lapply(seq_len(value_len(value)), function(index) {
-                .rssn_to_r(session, value[[index]]$cell, owned = TRUE)
+                member(index)
             })
         }))
     }
     if (kind == "record") {
         fields <- list()
         for (index in seq_len(value_len(value))) {
-            name <- .Call(C_rssn_value_field_name, session$ptr, cell, index - 1L)
-            fields[[name]] <- .rssn_to_r(session, value[[index]]$cell, owned = TRUE)
+            name <- .rssn_value_field_name(session, cell, index)
+            fields[[name]] <- member(index)
         }
         return(fields)
     }
     if (kind == "variant") {
         tag <- .Call(C_rssn_value_tag, session$ptr, cell)
         payload <- lapply(seq_len(value_len(value)), function(index) {
-            .rssn_to_r(session, value[[index]]$cell, owned = TRUE)
+            member(index)
         })
         return(list(tag = tag, value = payload))
     }
@@ -419,27 +551,50 @@ call_value <- function(op, ..., session = NULL) {
 # The entry point the generated facade uses for a higher-order operator: the
 # same call, with the arguments already collected in a list.
 .rssn_call <- function(op, arguments, session) {
-    if (is.null(session)) {
-        for (argument in arguments) {
-            if (inherits(argument, "rssn_value")) {
-                session <- argument$session
-                break
-            }
-            if (inherits(argument, "rssn_term")) {
-                session <- .rssn_session_of(argument)
-                break
-            }
-        }
-        if (is.null(session)) session <- default_session()
-    }
+    session <- session %||% .rssn_argument_session(arguments)
     .rssn_value(session, .rssn_value_call(op, arguments, session))
+}
+
+.rssn_argument_session <- function(arguments) {
+    for (argument in arguments) {
+        if (inherits(argument, c("rssn_value", "rssn_callback"))) return(argument$session)
+        if (inherits(argument, "rssn_term")) return(.rssn_session_of(argument))
+    }
+    default_session()
+}
+
+#' Call an exact operator overload
+#'
+#' @param key An element of `op_info(name)$keys`.
+#' @param ... Values accepted by that overload. Use R integer literals such
+#'   as `2L` for integer parameters and registered callbacks for functions.
+#' @param session The RSSN session, inferred from the arguments when omitted.
+#' @return An owned `rssn_value`.
+#' @export
+call_key <- function(key, ..., session = NULL) {
+    if (!is.list(key)) stop("provide an operator key from op_info()")
+    rule_set <- key[["rule_set"]]
+    name <- key[["name"]]
+    valid_name <- function(x) is.character(x) && length(x) == 1L && !is.na(x) && nzchar(x)
+    if (!valid_name(rule_set) || !valid_name(name)) stop("operator key requires a rule set and name")
+    hash <- unlist(key[["signature_hash"]], use.names = FALSE)
+    if (length(hash) != 16L || anyNA(hash) ||
+        (!is.raw(hash) && (!is.numeric(hash) || any(hash != trunc(hash) | hash < 0 | hash > 255)))) {
+        stop("operator key requires 16 signature hash bytes")
+    }
+    arguments <- list(...)
+    session <- session %||% .rssn_argument_session(arguments)
+    cell <- .rssn_with_cells(arguments, session, function(cells) {
+        .Call(C_rssn_value_call_key, session$ptr, rule_set, name, as.raw(hash), cells)
+    })
+    .rssn_value(session, cell)
 }
 
 # Calls the operator, registering every function argument as a callback and
 # retrying when the engine reports that an argument's numeric kind is the other
 # one.
 #
-# R has no integer literal, so `64` reaches the engine as a `Float` while the
+# Plain R numeric literals are doubles, so `64` reaches the engine as a `Float` while the
 # parameter may be an `Int` (and `1L` the other way round). Rather than make
 # every caller learn which parameters are integers, the first failure that names
 # an argument and a kind flips that one argument and tries again -- at most a
@@ -481,47 +636,39 @@ call_value <- function(op, ..., session = NULL) {
 # One attempt: the callbacks registered, the other arguments converted, one call.
 .rssn_value_call_once <- function(op, arguments, session, kinds) {
     positions <- which(vapply(arguments, is.function, logical(1)))
-    if (length(positions) == 0L) {
-        cells <- integer(length(arguments))
-        for (index in seq_along(arguments)) {
-            cells[[index]] <- .rssn_cell(arguments[[index]], session, kinds[[index]])
-        }
-        return(.Call(C_rssn_value_call, session$ptr, op, cells))
+    invoke <- function(args) {
+        .rssn_with_cells(args, session, function(cells) .Call(C_rssn_value_call, session$ptr, op, cells), kinds)
     }
+    if (length(positions) == 0L) return(invoke(arguments))
     options <- lapply(positions, function(position) {
         signatures <- callback_signatures(op, position, session = session)
         if (length(signatures) == 0L) list(NULL) else signatures
     })
     combinations <- expand.grid(lapply(options, seq_along), KEEP.OUT.ATTRS = FALSE,
                                 stringsAsFactors = FALSE)
-    first_error <- NULL
-    for (row in seq_len(min(nrow(combinations), 8L))) {
+    attempt <- function(row) {
+        prepared <- arguments
         callbacks <- list()
-        result <- tryCatch({
-            cells <- integer(length(arguments))
-            for (index in seq_along(arguments)) {
-                slot <- match(index, positions)
-                if (is.na(slot)) {
-                    cells[[index]] <- .rssn_cell(arguments[[index]], session, kinds[[index]])
-                } else {
-                    declared <- options[[slot]][[combinations[row, slot]]]
-                    callback <- if (is.null(declared)) {
-                        rssn_callback(arguments[[index]], session = session, op = op,
-                                      index = index)
-                    } else {
-                        rssn_callback(arguments[[index]], session = session,
-                                      signature = declared)
-                    }
-                    callbacks[[length(callbacks) + 1L]] <- callback
-                    cells[[index]] <- callback_cell(callback)
-                }
+        on.exit(for (callback in callbacks) close(callback))
+        for (slot in seq_along(positions)) {
+            index <- positions[[slot]]
+            declared <- options[[slot]][[combinations[row, slot]]]
+            callback <- if (is.null(declared)) {
+                rssn_callback(arguments[[index]], session = session, op = op, index = index)
+            } else {
+                rssn_callback(arguments[[index]], session = session, signature = declared)
             }
-            .Call(C_rssn_value_call, session$ptr, op, cells)
-        }, error = function(condition) {
+            callbacks[[slot]] <- callback
+            prepared[[index]] <- callback
+        }
+        invoke(prepared)
+    }
+    first_error <- NULL
+    for (row in seq_len(nrow(combinations))) {
+        result <- tryCatch(attempt(row), error = function(condition) {
             if (is.null(first_error)) first_error <<- condition
             NULL
         })
-        for (callback in callbacks) close(callback)
         if (!is.null(result)) return(result)
     }
     if (is.null(first_error)) stop("no callback signature to try for this operator")

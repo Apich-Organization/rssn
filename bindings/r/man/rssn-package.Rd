@@ -7,7 +7,7 @@
   A computer algebra system, a set of numerical kernels and a physics
   simulation engine behind one small API.  This package binds the rssn C ABI:
   a \emph{session} owns an expression graph, \emph{operators} are requests that
-  \code{\link{compute}()} reduces, and every one of the engine's 5411
+  \code{\link{compute}()} reduces, and every one of the engine's registered
   registered operators has a function here.
 
   The bindings are generated from the engine's own kernel manifest, so the

@@ -5,8 +5,10 @@ from __future__ import annotations
 import ctypes
 import itertools
 import json
+import operator
 import threading
-from typing import Any, Iterable
+from collections.abc import Mapping
+from typing import Any, Iterable, cast
 
 from . import _ffi
 from .answer import Answer
@@ -88,7 +90,13 @@ class Session:
 
     def int(self, value: int) -> Term:
         """An exact integer."""
-        return Term(self, _ffi.library().rssn_term_int(self.ptr, int(value)))
+        value = int(value)
+        if -(1 << 63) <= value < (1 << 63):
+            return Term(self, _ffi.library().rssn_term_int(self.ptr, value))
+        from .value import Value
+
+        with Value.of(self, value) as exact:
+            return exact.to_term()
 
     def float(self, value: float) -> Term:
         """A floating point number."""
@@ -205,19 +213,111 @@ class Session:
         assert first_error is not None
         raise first_error
 
+    def call_key(self, key: Mapping[str, Any], *args: Any) -> "Value":
+        """Call the exact overload in a key from :func:`rssn.op_info`.
+
+        Use a registered :class:`~rssn.callback.Callback` value for a function
+        parameter. Argument types and dimensions are checked by the kernel.
+        """
+        from .value import Value
+
+        rule_set, name = key.get("rule_set"), key.get("name")
+        if any(not isinstance(part, str) or not part or "\0" in part for part in (rule_set, name)):
+            raise ValueError("operator key requires a rule set and name")
+        digest = key.get("signature_hash")
+        if not isinstance(digest, (list, tuple, bytes, bytearray)) or len(digest) != 16:
+            raise ValueError("operator key requires 16 signature hash bytes")
+        hash_buffer = (ctypes.c_uint8 * 16).from_buffer_copy(bytes(digest))
+        entry = getattr(_ffi.library(), "rssn_value_call_key", None)
+        if entry is None:
+            raise RssnError(Status.INVALID_ARGUMENT, "this RSSN library lacks keyed calls")
+        cells = [Value.of(self, arg) for arg in args]
+        return self._call_prepared(entry, (rule_set.encode(), name.encode(), hash_buffer), cells)
+
     def _value_call(self, op: str, cells: list["Value"]) -> "Value":
-        """One `rssn_value_call` with prepared cells."""
+        return self._call_prepared(_ffi.library().rssn_value_call, (op.encode("utf-8"),), cells)
+
+    def _call_prepared(self, entry, identifiers: tuple, cells: list["Value"]) -> "Value":
         from .value import Value
 
         buffer = _ffi.as_handle_buffer([value.cell for value in cells])
         out = ctypes.c_uint32()
-        check(
-            _ffi.library().rssn_value_call(
-                ctypes.c_void_p(self.ptr), op.encode("utf-8"), buffer,
-                ctypes.c_size_t(len(cells)), ctypes.byref(out),
-            )
-        )
+        check(entry(self.ptr, *identifiers, buffer, len(cells), ctypes.byref(out)))
         return Value(self, out.value)
+
+    def available_backends(self) -> tuple[str, ...]:
+        """Selectors the loaded RSSN library can use on this host."""
+        with self.call_value("num_backend_available") as choices:
+            names = []
+            for index in range(len(choices)):
+                with choices[index] as choice:
+                    names.append(choice.text())
+            return tuple(names)
+
+    def current_backend(self) -> str:
+        """Return the active backend's name without changing the selection."""
+        try:
+            with self.call_value("num_backend_current_name") as name:
+                return name.text()
+        except RssnError as error:
+            if error.status != Status.UNKNOWN_OPERATOR:
+                raise
+
+        with self.call_value("num_backend_current") as backend:
+            try:
+                with self.call_value("num_backend_name", backend) as name:
+                    return name.text()
+            finally:
+                self.release_backend(backend)
+
+    def open_backend(self, name: str) -> "Value":
+        """Open a named backend for explicit compilation in this session.
+
+        Use :meth:`release_backend` to release the native handle when finished.
+        """
+        if "\0" in name:
+            raise ValueError("the backend selector contains NUL")
+        return self.call_value("num_backend_named", name)
+
+    def release_backend(self, backend: "Value") -> None:
+        """Release a native backend handle and invalidate its copies."""
+        with self.call_value("num_backend_release", backend):
+            pass
+
+    def set_default_backend(self, name: str) -> str:
+        """Select the process-wide backend and return its effective name.
+
+        Pass `"auto"` to restore the library's automatic selection policy.
+        """
+        if "\0" in name:
+            raise ValueError("the backend selector contains NUL")
+        with self.call_value("num_backend_select_default", name) as selected:
+            return selected.text()
+
+    def encode_npy(self, shape: Iterable[int], values: Iterable[float]) -> bytes:
+        """Encode row-major samples as a NumPy float64 array in memory."""
+        from .value import Value
+
+        extents = tuple(operator.index(size) for size in shape)
+        samples = list(values)
+        with Value.tensor_cells(self, extents, (len(extents),),
+                                exemplar=None if extents else 0) as dimensions:
+            with Value._dense(self, samples, (len(samples),), ctypes.c_uint32()) as data:
+                with self.call_value("num_npy_encode", dimensions, data) as wire:
+                    return bytes.fromhex(wire.text())
+
+    def decode_npy(self, payload: bytes | bytearray | memoryview) -> "Value":
+        """Read NumPy float32 or float64 bytes as a binary64 tensor."""
+        from .value import Value
+
+        with self.call_value("num_npy_decode", memoryview(payload).hex()) as record:
+            with record["shape"] as dimensions, record["data"] as data:
+                extents = []
+                for index in range(len(dimensions)):
+                    with dimensions[index] as extent:
+                        extents.append(int(extent))
+                _, samples = data._tensor_parts()
+                return Value._dense(self, samples, tuple(extents), ctypes.c_uint32())
 
     def callback(self, function: Any, *, signature: str | dict | None = None,
                  op: str | None = None, index: int = 0):
@@ -287,23 +387,12 @@ class Session:
     # -- computation ------------------------------------------------------
     def compute(self, request: Any, config: Config | None = None) -> Answer:
         """Reduce `request` (a term or infix text) to the target of `config`."""
-        term = self.term(request)
-        answer = _ffi.RssnAnswer()
-        code = _ffi.library().rssn_compute(
-            self.ptr, term.handle, config.ptr if config is not None else None, ctypes.byref(answer)
-        )
-        if int(code) != int(Status.OK):
-            raise RssnError(Status(int(code)), _ffi.last_error())
-        return self._answer(term, answer)
+        return cast(Answer, self.compute_all((request,), config)[0])
 
     def simplify(self, source: Any) -> Answer:
         """Parse and reduce `source` with the default symbolic configuration."""
         term = self.parse(source) if isinstance(source, str) else self.term(source)
-        answer = _ffi.RssnAnswer()
-        code = _ffi.library().rssn_compute(self.ptr, term.handle, None, ctypes.byref(answer))
-        if int(code) != int(Status.OK):
-            raise RssnError(Status(int(code)), _ffi.last_error())
-        return self._answer(term, answer)
+        return self.compute(term)
 
     def compute_all(
         self,
@@ -319,6 +408,8 @@ class Session:
         :class:`~rssn.errors.RssnError` in its place, and `"ignore"` puts
         `None` there. The answers equal one :meth:`compute` per request.
         """
+        if errors not in ("raise", "collect", "ignore"):
+            raise ValueError("errors must be 'raise', 'collect', or 'ignore'")
         terms = [self.term(request) for request in requests]
         count = len(terms)
         if count == 0:
@@ -326,26 +417,40 @@ class Session:
         handles = _ffi.as_handle_buffer([term.handle for term in terms])
         answers = (_ffi.RssnAnswer * count)()
         statuses = (ctypes.c_int * count)()
-        code = _ffi.library().rssn_compute_all(
-            self.ptr,
-            handles,
-            ctypes.c_size_t(count),
-            config.ptr if config is not None else None,
-            answers,
-            statuses,
-        )
-        if int(code) != int(Status.OK):
-            raise RssnError(Status(int(code)), _ffi.last_error())
+        library = _ffi.library()
+        with_metadata = getattr(library, "rssn_compute_all_with_metadata", None)
+        arguments = (self.ptr, handles, count, config.ptr if config is not None else None,
+                     answers, statuses)
+        metadata = None
         out: list[Answer | RssnError | None] = []
         first_error: RssnError | None = None
-        for index, term in enumerate(terms):
-            status = int(statuses[index])
-            if status == int(Status.OK):
-                out.append(self._answer(term, answers[index]))
+        try:
+            if with_metadata is None:
+                check(library.rssn_compute_all(*arguments))
             else:
-                error = RssnError(Status(status), _ffi.last_error())
-                first_error = first_error or error
-                out.append(error if errors == "collect" else None)
+                metadata = (_ffi.RssnAnswerMetadata * count)()
+                check(with_metadata(*arguments, metadata))
+            batch_error = _ffi.last_error()
+            for index, term in enumerate(terms):
+                status = int(statuses[index])
+                row = metadata[index] if metadata is not None else None
+                if status == int(Status.OK):
+                    if row is None:
+                        dimension = self.dimension(term, config)
+                        codes = self._dimension_codes()
+                    else:
+                        dimension = row.take("dimension")
+                        codes = tuple(row.take("diagnostic_codes").splitlines())
+                    out.append(self._answer(answers[index], dimension, codes))
+                else:
+                    message = batch_error if row is None else row.take("message")
+                    error = RssnError(Status(status), message)
+                    first_error = first_error or error
+                    out.append(error if errors == "collect" else None)
+        finally:
+            if metadata is not None:
+                for row in metadata:
+                    row.close()
         if errors == "raise" and first_error is not None:
             raise first_error
         return out
@@ -449,18 +554,18 @@ class Session:
         return _ffi.last_error()
 
     # -- internals --------------------------------------------------------
-    def _answer(self, term: Term, raw: _ffi.RssnAnswer) -> Answer:
-        """Build an :class:`Answer` from the C struct plus the dimension report."""
-        # Read the thread's dimension codes first: `rssn_dimension` runs the
-        # request again (a cache hit, but it re-records the findings).
+    @staticmethod
+    def _dimension_codes() -> tuple[str, ...]:
         count = int(_ffi.library().rssn_dimension_count())
         codes: list[str] = []
         for index in range(count):
             code = _ffi.library().rssn_dimension_code(ctypes.c_size_t(index))
             codes.append(code.decode("utf-8", "replace") if code else "")
+        return tuple(codes)
+
+    def _answer(self, raw: _ffi.RssnAnswer, dimension: str, codes: tuple[str, ...]) -> Answer:
         answer_term = Term(self, raw.term)
         text = _ffi.take_string(_ffi.library().rssn_term_to_string(self.ptr, raw.term))
-        dimension = self.dimension(answer_term)
         return Answer(
             term=answer_term,
             text=text,
@@ -469,7 +574,7 @@ class Session:
             reduced=bool(raw.reduced),
             iterations=int(raw.iterations),
             dimension=dimension or None,
-            diagnostic_codes=tuple(codes),
+            diagnostic_codes=codes,
         )
 
 
@@ -517,13 +622,14 @@ class use_session:  # noqa: N801 - used as a context manager
         set_default_session(self._previous)
 
 
-_manifest_cache: dict | None = None
+_manifest_cache: tuple[ctypes.CDLL, dict] | None = None
 
 
 def manifest() -> dict:
-    """The standard kernel manifest as a dict (decoded once per process)."""
+    """The standard kernel manifest, reused while the library stays bound."""
     global _manifest_cache
-    if _manifest_cache is None:
-        pointer = _ffi.library().rssn_manifest_json()
-        _manifest_cache = json.loads(_ffi.take_string(pointer))
-    return _manifest_cache
+    library = _ffi.library()
+    if _manifest_cache is None or _manifest_cache[0] is not library:
+        pointer = library.rssn_manifest_json()
+        _manifest_cache = (library, json.loads(_ffi.take_string(pointer)))
+    return _manifest_cache[1]

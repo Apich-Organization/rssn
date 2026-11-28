@@ -10,6 +10,19 @@
 #     julia> op_search(category = "calculus")[1:5]
 
 """
+    op_info(name) -> Dict
+
+Read one live manifest entry, including overload keys, signatures and
+dimensional metadata. The name can be a registered alias.
+"""
+function op_info(name::AbstractString)
+    isempty(name) && throw(ArgumentError("provide one operator name"))
+    out = Ref{Ptr{UInt8}}(C_NULL)
+    _check(op_info_json(name, out))
+    return json_decode(take_string(out[]))
+end
+
+"""
     op_help(name) -> String
 
 The documentation of one operator, as text: the binding, the arity, the

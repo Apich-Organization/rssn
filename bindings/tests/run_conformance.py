@@ -69,10 +69,28 @@ def run_case(row: dict[str, str]) -> dict[str, str]:
     payload = row["payload"]
     result = {"expect_text": "", "expect_value": "", "expect_status": "ok"}
 
+    if kind == "op_info":
+        info = rssn.op_info(payload)
+        assert info["keys"] and info["overloads"] and "dim_rule" in info
+        if row["target"]:
+            assert info["dim_rule"] == row["target"]
+        result["expect_text"] = info["name"]
+        return result
+
+    if kind in ("keyed_integer", "stale_integer_key"):
+        key = rssn.op_info(payload)["keys"][0]
+        if kind == "stale_integer_key":
+            key["signature_hash"][0] ^= 0x80
+        arguments = [int(entry) for entry in row["bindings"].split(",")]
+        with rssn.Session() as session:
+            result["expect_text"] = session.call_key(key, *arguments).text()
+        return result
+
     if kind == "manifest":
         digest = rssn.manifest_hash()
-        assert digest != 0, "manifest hash is zero"
-        result["expect_value"] = str(digest)
+        manifest_bytes = bytes(rssn.manifest()["manifest_hash"])
+        expected = int.from_bytes(manifest_bytes[:8], "little")
+        result["expect_value"] = str(int(len(manifest_bytes) == 32 and digest != 0 and digest == expected))
         return result
 
     if kind == "units":
@@ -206,7 +224,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"FAIL {name}: text {observed['expect_text']!r} != {row['expect_text']!r}")
             failures += 1
             continue
-        if row["expect_value"] and observed["expect_value"]:
+        if row["expect_value"]:
+            if not observed["expect_value"]:
+                print(f"FAIL {name}: expected a numeric value")
+                failures += 1
+                continue
             want = float(row["expect_value"])
             got = float(observed["expect_value"])
             if abs(want - got) > 1e-9 * max(1.0, abs(want)):

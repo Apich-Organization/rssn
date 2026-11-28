@@ -8,8 +8,8 @@
 #   2. `options(rssn.library = ...)`;
 #   3. the `RSSN_LIB` environment variable (a file or a directory);
 #   4. the package's own `libs/` directory (an installed copy shipped with it);
-#   5. the build directories of a source checkout, relative to the working
-#      directory (`target/debug`, `target-bindings/debug`, ...);
+#   5. the extracted archive or Bazel and Cargo build directories of a
+#      source checkout, located from the working directory;
 #   6. the bare library name, which lets the platform loader search its own
 #      path.
 #
@@ -50,12 +50,34 @@ rssn_library_candidates <- function() {
     }
     installed <- system.file("libs", package = "rssn")
     if (nzchar(installed)) {
-        candidates <- c(candidates, installed, system.file("lib", package = "rssn"))
+        bundled <- file.path(installed, .rssn_library_names())
+        bundled <- bundled[file.exists(bundled)]
+        # The installed R bridge can itself be named rssn.so or rssn.dll.
+        # Loading it as a kernel makes every later candidate unreachable.
+        bridge <- getLoadedDLLs()[["rssn"]]
+        if (!is.null(bridge)) {
+            bridge_path <- normalizePath(bridge[["path"]], winslash = "/")
+            bundled <- bundled[normalizePath(bundled, winslash = "/") != bridge_path]
+        }
+        candidates <- c(candidates, bundled)
+    }
+    bundled_dir <- system.file("lib", package = "rssn")
+    if (nzchar(bundled_dir)) {
+        candidates <- c(candidates, bundled_dir)
     }
     # A source checkout: the working directory, then the parents of the package
     # when it is being developed in place.
     roots <- c(".", "..", "../..", "../../..")
     profiles <- c("debug", "ffi", "release")
+    for (root in roots) {
+        if (file.exists(file.path(root, "rssn.h"))) {
+            candidates <- c(candidates, root)
+            if (file.exists(file.path(root, "MODULE.bazel"))) {
+                targets <- c("ffi_distribution", "ffi", "ffi_distribution_portable", "ffi_dev")
+                candidates <- c(candidates, file.path(root, "bazel-bin", targets, "ffi"))
+            }
+        }
+    }
     for (root in roots) {
         for (directory in c("target", "target-bindings", "target-ffi",
                             file.path("dist", "rssn"))) {

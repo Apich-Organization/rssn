@@ -18,12 +18,26 @@ s.compute(rssn.diff(rssn.sin(x) * rssn.cos(x), x),
 
 ```sh
 pip install -e bindings/python          # or: pip install bindings/python
-export RSSN_LIB=/path/to/rssn.dll       # or librssn.so / librssn.dylib
+export RSSN_LIB=/path/to/library-directory  # a full shared-library path also works
 ```
 
-Without `RSSN_LIB` the package looks in `rssn/_lib/`, then in a source
-checkout's `target/debug`, `target/ffi` and `target/release`, then on the
-platform loader path. `rssn.library_path()` reports what it bound.
+Without `RSSN_LIB` the package looks in `rssn/_lib/`, then at the root of an
+extracted distribution when running from its `bindings/python` directory. It
+also searches a source checkout's Bazel FFI output directories, including
+`bazel-bin/ffi_distribution/ffi`, `bazel-bin/ffi_distribution_portable/ffi` and
+`bazel-bin/ffi_dev/ffi`, then its Cargo output directories and the platform
+loader path. After installing the
+SDK with pip, point `RSSN_LIB` at the extracted archive directory.
+`rssn.library_path()` reports the bound path or loader name. You can also call
+`rssn.load(path)` with a file or a directory before creating a session.
+
+A wheel built from this directory uses an external RSSN library by default.
+When placing a native library in `rssn/_lib/`, set a wheel platform tag that
+matches the library, for example:
+
+```sh
+RSSN_WHEEL_PLATFORM=linux_x86_64 pip wheel bindings/python --no-deps
+```
 
 ## Shape of the API
 
@@ -101,6 +115,19 @@ s.compute("inverse(list(list(1,2),list(3,4)))").text
 s.compute("eigenvals(list(list(2,0),list(0,3)))").text
 ```
 
+## Workflow: NumPy arrays
+
+When the loaded library provides the NumPy codec, use bytes for the payload
+and read the decoded value as a tensor. The codec works without installing
+NumPy for Python.
+
+```python
+if rssn.manifest()["features"].get("npy"):
+    payload = s.encode_npy((2, 2), [1.0, 2.0, 3.0, 4.0])
+    with s.decode_npy(payload) as array:
+        print(array.tensor())
+```
+
 ## Workflow: a simulation
 
 ```python
@@ -118,10 +145,6 @@ Operators whose arguments or results are native objects go through the value
 ABI:
 
 ```python
-backend = s.call_value("num_backend_current")
-backend.kind()                                     # 'opaque'
-s.call_value("num_backend_name", backend).text()   # 'interpreter'
-
 tape = s.call_value("num_ad_tape_new", 16)
 v = s.call_value("num_ad_tape_var", tape, 1.5)
 z = s.call_value("num_ad_var_mul", s.call_value("num_ad_var_sin", v), v)
@@ -129,6 +152,27 @@ s.call_value("num_ad_var_value", z).float()        # sin(1.5) * 1.5
 
 grad = s.call_value("num_ad_var_backward", z)
 s.call_value("num_ad_var_grad_in", v, grad).float()   # cos(1.5)*1.5 + sin(1.5)
+```
+
+Record results support field names as well as integer positions. `field_names()`
+returns the labels in declaration order. An unknown field raises `KeyError`.
+
+```python
+with s.call_value("num_timeseries_rolling_moments", [1.0, 3.0, 5.0], 2, 0) as moments:
+    assert moments.field_names() == ("mean", "variance")
+    with moments["mean"] as mean, moments["variance"] as variance:
+        assert list(mean.tensor()) == [2.0, 4.0]
+        assert list(variance.tensor()) == [1.0, 1.0]
+```
+
+Python integers outside the signed 64-bit range are passed as exact decimal
+digits. Read an integer cell with `int(value)` to retain every digit.
+These conversions work with integers wider than Python's decimal string
+conversion limit and leave that interpreter setting unchanged.
+
+```python
+with rssn.Value.of(s, 2**100 + 7) as cell:
+    print(int(cell))  # 1267650600228229401496703205383
 ```
 
 ## Workflow: units, constants and dimensions
@@ -150,13 +194,57 @@ except rssn.RssnError as error:
     error                              # dimension mismatch in `x + y`: Length vs Time
 ```
 
+## Workflow: choosing a backend
+
+The loaded library uses automatic selection until the process default is set explicitly.
+Use the effective name and the host's usable selectors to inspect it. Changing
+the default affects all sessions in this process.
+
+```python
+print(s.available_backends())
+print(s.current_backend())
+try:
+    assert s.set_default_backend("interpreter") == "interpreter"
+    assert s.current_backend() == "interpreter"
+finally:
+    s.set_default_backend("auto")
+```
+
+Use `s.open_backend(name)` to pass a named handle to
+`s.call_value("num_backend_compile", ...)`. Call `s.release_backend(handle)`
+when the native handle is no longer needed.
+
+## Workflow: passing measured floats
+
+The binary64 values below are already in coherent units. The dimension
+object follows the kernel manifest's `DimExpr` JSON format. Attaching a
+dimension preserves tensor shape and does not apply a unit scale or offset.
+
+```python
+distance = {"base": "Length"}
+with rssn.Value.of(s, [2.0, 3.0]) as raw, rssn.Value.of(s, [0.0]) as zero:
+    with raw.with_coherent_dimension(distance) as differences, zero.with_coherent_dimension(distance) as initial:
+        with s.call_value("num_timeseries_integrate", differences, initial) as positions:
+            assert list(positions.tensor()) == [0.0, 2.0, 5.0]
+```
+
+## Workflow: a checked dynamic operator
+
+Pass `checked=True` on a dynamic operator to send native inputs directly to its
+declared signature. The result is a session-owned `Value`.
+
+```python
+with rssn.num_special_ext_lerch(-1234.0, 2.0, 1.0, session=s, checked=True) as value:
+    print(value.float())  # 0.0218615893044645
+```
+
 ## Workflow: finding an operator
 
 ```python
 print(rssn.op_help("diff"))            # the signature, arity, category and docs
 rssn.op_search("brent")                # [(name, first line of the doc), ...]
 rssn.op_search(category="calculus", limit=5)
-len(rssn.op_names())                   # 5411
+len(rssn.op_names())                   # count for this binding release
 ```
 
 ## Notes
@@ -175,11 +263,10 @@ len(rssn.op_names())                   # 5411
   solver handles — are called with `Session.call_value`, which uses the value
   ABI instead of the term ABI:
 
-      backend = s.call_value("num_backend_current")
-      s.call_value("num_backend_name", backend).text()      # 'interpreter'
+      s.current_backend()                                 # effective backend
 
   `OPS[name][2]` is `True` for every operator reachable through one of the two
-  ABIs — which is all 5411 of them.
+  ABIs — which is all registered operators.
 - Higher-order operators (`num_bfgs`, `num_brent`, the adaptive quadrature
   family, ...) take a *function*; pass any Python callable and it becomes a host
   callback:

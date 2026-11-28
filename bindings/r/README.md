@@ -20,15 +20,19 @@ compute(rssn_diff(sin(x) * cos(x), x),
 
 ```sh
 R CMD INSTALL bindings/r
-export RSSN_LIB=/path/to/rssn.dll       # or librssn.so / librssn.dylib
+export RSSN_LIB=/path/to/extracted-rssn  # a full shared-library path also works
 ```
 
-Without `RSSN_LIB` the package looks in `options(rssn.library =)`, its own
-`libs/` directory, then in a source checkout's `target/debug`, `target/ffi`,
-`target/release` and `target-bindings/*`, then on the platform loader path.
-`rssn_library()` reports what it bound and `rssn_load(path)` rebinds.
+The search order starts with `options(rssn.library =)` and `RSSN_LIB`, then
+checks the installed package and the root of an extracted SDK. From a source
+checkout the search prefers the Bazel FFI output directories, including
+`bazel-bin/ffi_distribution/ffi`, `bazel-bin/ffi_distribution_portable/ffi` and
+`bazel-bin/ffi_dev/ffi`. It then checks Cargo output directories and the
+platform loader path.
+`rssn_library()` reports the bound library. You can also call
+`rssn_load(path)` with a file or directory before creating a session.
 
-The install takes a minute or two: the package carries 5411 generated functions
+The install takes a minute or two: the package carries a generated function for each operator
 and the operator reference, which is the price of not spelling operator names
 as strings.
 
@@ -107,6 +111,21 @@ The engine stores tensors row-major and R stores arrays column-major, so the
 extents are permuted on the way in and out: what you read is the matrix the
 expression describes.
 
+## Workflow: NumPy arrays
+
+Use `rssn_features()` to query the loaded library's capabilities. The NumPy
+codec takes a numeric array or a flat row-major vector and returns raw bytes.
+
+```r
+if (isTRUE(rssn_features()$npy)) {
+    samples <- matrix(c(1.0, 2.0, 3.0, 4.0), nrow = 2L, byrow = TRUE)
+    payload <- rssn_encode_npy(samples, session = s)
+    restored <- rssn_decode_npy(payload, session = s)
+    print(value_tensor(restored))
+    close(restored)
+}
+```
+
 ## Workflow: a simulation
 
 ```r
@@ -152,10 +171,6 @@ Operators whose arguments or results are native objects -- an AD tape, a
 compiled backend, a solver handle -- go through the value ABI:
 
 ```r
-backend <- call_value("num_backend_current")
-value_kind(backend)                                    # "opaque"
-value_text(call_value("num_backend_name", backend))    # "interpreter"
-
 tape <- call_value("num_ad_tape_new", 16)
 v <- call_value("num_ad_tape_var", tape, 1.5)
 z <- call_value("num_ad_var_mul", call_value("num_ad_var_sin", v), v)
@@ -163,6 +178,30 @@ value_float(call_value("num_ad_var_value", z))         # sin(1.5) * 1.5
 
 grad <- call_value("num_ad_var_backward", z)
 value_float(call_value("num_ad_var_grad_in", v, grad)) # cos(1.5)*1.5 + sin(1.5)
+
+moments <- call_value("num_timeseries_rolling_moments", c(1, 2, 3), 2L, 1L)
+value_tensor(moments[["variance"]])                    # 0.5, 0.5
+```
+
+`[[` reads a record field by its exact name or one-based position. An unknown
+field name raises an R error.
+
+Use `array(x, dim = 1L)` when an operator needs a one-element vector. R treats
+`x` and `c(x)` as the same scalar when `x` is a single number. The dimension
+makes `value_new()` and `call_value()` preserve the vector's shape.
+
+```r
+single <- array(3, dim = 1L)
+value_float(call_value("num_dot", single, single))   # 9
+```
+
+Pass signed decimal text to `value_integer_decimal()` when you need an exact
+integer beyond R's numeric precision. Use `value_text()` to read it back.
+
+```r
+exact <- value_integer_decimal("1267650600228229401496703205383", session = s)
+value_text(exact)
+close(exact)
 ```
 
 ## Workflow: units, constants and dimensions
@@ -182,13 +221,56 @@ strict <- rssn_config() |>
 try(compute(parse_term("x + y"), strict))   # an rssn_error with status "dimension"
 ```
 
+## Workflow: choosing a backend
+
+The loaded library uses automatic selection until the process default is set explicitly.
+Query the host's usable backends and change the process default when needed.
+
+```r
+rssn_available_backends(s)
+rssn_current_backend(s)
+tryCatch({
+    stopifnot(rssn_set_default_backend("interpreter", s) == "interpreter")
+    stopifnot(rssn_current_backend(s) == "interpreter")
+}, finally = rssn_set_default_backend("auto", s))
+```
+
+For explicit native compilation, pass a handle from
+`rssn_open_backend(name, s)` to `call_value("num_backend_compile", ...)`.
+Release the handle with `rssn_release_backend(handle)` before closing its value.
+
+## Workflow: passing measured floats
+
+The binary64 values below are already in coherent units. The dimension
+object follows the kernel manifest's `DimExpr` JSON format. Attaching a
+dimension preserves tensor shape and does not apply a unit scale or offset.
+
+```r
+distance <- list(base = "Length")
+differences <- value_with_coherent_dimension(value_new(array(c(2.0, 3.0), 2L), s), distance)
+initial <- value_with_coherent_dimension(value_new(array(0.0, 1L), s), distance)
+positions <- call_value("num_timeseries_integrate", differences, initial, session = s)
+stopifnot(identical(as.numeric(value_tensor(positions)), c(0.0, 2.0, 5.0)))
+```
+
+## Workflow: a checked dynamic operator
+
+Pass `checked = TRUE` on a dynamic operator to send native inputs directly to
+its declared signature. The result is a session-owned `rssn_value`.
+
+```r
+lerch_value <- rssn_num_special_ext_lerch(-1234.0, 2.0, 1.0, session = s, checked = TRUE)
+value_float(lerch_value)  # 0.0218615893044645
+close(lerch_value)
+```
+
 ## Workflow: finding an operator
 
 ```r
 op_help("diff")                  # the signature, arity, category and documentation
 op_table(pattern = "brent")      # a search over names and documentation
 op_table(category = "calculus")
-length(op_names())               # 5411
+length(op_names())               # count for this binding release
 ```
 
 ## Notes
@@ -202,9 +284,10 @@ length(op_names())               # 5411
   one session.  The operator functions take the session from their first term
   argument and fall back to `default_session()`; `with_session(s, ...)` scopes
   that fallback.
-- **Failures are conditions.** Every failure is an `rssn_error` carrying
-  `$status` (the `RssnStatus` code) and `$status_name`:
-  `tryCatch(parse_term("sin("), rssn_error = function(e) e$status_name)`.
+- **Engine errors.** A failed engine call raises an `rssn_error` with
+  `$status` (the `RssnStatus` code) and `$status_name`.
+  `tryCatch(parse_term("sin("), rssn_error = function(e) e$status_name)` reads
+  the status name.
 - **Integers.** R has no integer literal: `1` is a double and `1L` an integer,
   and the value ABI is strict about the difference.  `call_value()` flips an
   argument's numeric kind when the engine says it wanted the other one, so `64`

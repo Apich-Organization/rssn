@@ -34,7 +34,7 @@ from ._ops import BY_CATEGORY, BY_RULE_SET, NAMES, OPS
 from .answer import Answer
 from .callback import Callback, callback_signatures, parse_signature
 from .config import Assumption, Config, DimensionMode
-from .docs import op_categories, op_help, op_names, op_rule_sets, op_search
+from .docs import op_categories, op_help, op_info, op_names, op_rule_sets, op_search
 from .errors import RssnError, Status
 from .session import (
     Session,
@@ -72,6 +72,7 @@ __all__ = sorted(
         "manifest_hash",
         "op_categories",
         "op_help",
+        "op_info",
         "op_names",
         "op_rule_sets",
         "op_search",

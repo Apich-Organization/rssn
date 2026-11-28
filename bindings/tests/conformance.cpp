@@ -2,8 +2,7 @@
 //
 //     rssn_conformance bindings/tests/cases.tsv
 //
-// It reads the same table as the Python and Julia runners and checks the same
-// answers, so the three wrappers are held to one set of expectations.
+// It reads the same table as the Python, Julia and R runners.
 
 #include <algorithm>
 #include <cmath>
@@ -12,6 +11,7 @@
 #include <fstream>
 #include <iomanip>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -112,6 +112,28 @@ bool has_keys(const std::string& json, const std::string& keys) {
     return true;
 }
 
+bool manifest_hash_matches() {
+    using rssn::client::Session;
+    const std::string manifest = Session::manifest_json();
+    const auto field = manifest.find("\"manifest_hash\"");
+    if (field == std::string::npos) return false;
+    const auto start = manifest.find('[', field);
+    const auto end = manifest.find(']', start);
+    if (start == std::string::npos || end == std::string::npos) return false;
+    std::istringstream bytes(manifest.substr(start + 1, end - start - 1));
+    std::uint64_t expected = 0;
+    for (unsigned int index = 0; index < 32; ++index) {
+        unsigned int byte = 0;
+        if (!(bytes >> byte) || byte > 255) return false;
+        if (index < 8) expected |= std::uint64_t{byte} << (8 * index);
+        if (index < 31) {
+            char separator = '\0';
+            if (!(bytes >> separator) || separator != ',') return false;
+        }
+    }
+    return expected != 0 && expected == Session::manifest_hash();
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -127,8 +149,31 @@ int main(int argc, char** argv) {
         std::string text;
         std::string value;
         try {
-            if (entry.kind == "manifest") {
-                value = std::to_string(Session::manifest_hash());
+            if (entry.kind == "op_info") {
+                const std::string contract = Session::op_info_json(entry.payload);
+                if (!has_keys(contract, "keys,overloads,dim_rule")) {
+                    throw std::runtime_error("operator contract is missing required fields");
+                }
+                if (!entry.target.empty() &&
+                    contract.find("\"dim_rule\":\"" + entry.target + "\"") == std::string::npos) {
+                    throw std::runtime_error("operator contract has an unexpected dimension rule");
+                }
+                text = Session::op_key(entry.payload).name;
+            } else if (entry.kind == "keyed_integer" || entry.kind == "stale_integer_key") {
+                Session session;
+                OpKey key = Session::op_key(entry.payload);
+                if (entry.kind == "stale_integer_key") {
+                    key.signature_hash.front() ^= 0x80;
+                }
+                const auto comma = entry.bindings.find(',');
+                if (comma == std::string::npos || entry.bindings.find(',', comma + 1) != std::string::npos) {
+                    throw std::runtime_error("keyed integer fixture requires two decimal inputs");
+                }
+                const Value left = value_integer_decimal(session.raw(), entry.bindings.substr(0, comma));
+                const Value right = value_integer_decimal(session.raw(), entry.bindings.substr(comma + 1));
+                text = session.call_key(key, left, right).text();
+            } else if (entry.kind == "manifest") {
+                value = manifest_hash_matches() ? "1" : "0";
             } else if (entry.kind == "units") {
                 value = std::to_string(std::size(kUnits));
             } else if (entry.kind == "constants") {
@@ -214,15 +259,17 @@ int main(int argc, char** argv) {
                                                 : entry.payload.substr(space + 1);
                     while (!remaining.empty()) {
                         const std::size_t comma = remaining.find(',');
-                        const std::string literal = remaining.substr(0, comma);
-                        if (!literal.empty()) {
+                        const std::string item = remaining.substr(0, comma);
+                        const auto first = item.find_first_not_of(" \t\r\n");
+                        if (first != std::string::npos) {
+                            const auto last = item.find_last_not_of(" \t\r\n");
+                            const std::string literal = item.substr(first, last - first + 1);
                             const bool integral =
                                 literal.find('.') == std::string::npos &&
                                 literal.find('e') == std::string::npos &&
                                 literal.find('E') == std::string::npos;
                             if (integral) {
-                                values.push_back(
-                                    session.value(static_cast<long long>(std::stoll(literal))));
+                                values.push_back(value_integer_decimal(session.raw(), literal));
                             } else {
                                 values.push_back(session.value(std::stod(literal)));
                             }
@@ -357,8 +404,8 @@ int main(int argc, char** argv) {
                 ++failures;
                 continue;
             }
-            if (!entry.expect_value.empty() && !value.empty()) {
-                if (!close_enough(std::stod(value), std::stod(entry.expect_value))) {
+            if (!entry.expect_value.empty()) {
+                if (value.empty() || !close_enough(std::stod(value), std::stod(entry.expect_value))) {
                     std::printf("FAIL %-32s value %s != %s\n", entry.name.c_str(), value.c_str(),
                                 entry.expect_value.c_str());
                     ++failures;

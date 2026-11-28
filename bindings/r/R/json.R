@@ -27,16 +27,21 @@ json_decode <- function(text) {
     if (length(text) != 1L || is.na(text)) {
         stop("json_decode() takes one string")
     }
-    state <- new.env(parent = emptyenv())
-    state$text <- text
-    state$position <- 1L
-    state$length <- nchar(text, type = "chars")
+    state <- .json_state(text)
     value <- .json_value(state)
     .json_skip_space(state)
     if (state$position <= state$length) {
         stop(sprintf("trailing text in JSON at character %d", state$position))
     }
     value
+}
+
+.json_state <- function(text) {
+    state <- new.env(parent = emptyenv())
+    state$text <- text
+    state$position <- 1L
+    state$length <- nchar(text, type = "chars")
+    state
 }
 
 #' Encode an R object as a JSON string

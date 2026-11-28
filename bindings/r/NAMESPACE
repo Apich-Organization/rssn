@@ -7,6 +7,10 @@
 useDynLib(rssn, .registration = TRUE)
 
 # Sessions, terms, configuration and computation.
+export(rssn_available_backends, rssn_current_backend, rssn_open_backend,
+       rssn_release_backend, rssn_set_default_backend)
+export(rssn_encode_npy, rssn_decode_npy, rssn_features)
+
 export(
   rssn_session, default_session, with_session, session_ptr, rssn_close,
   rssn_config, config_ptr,
@@ -20,8 +24,9 @@ export(
   term_text, term_latex, term_typst, term_pretty, term_value, to_float, handle,
   answer, is_answer,
   # dynamic values
-  call_value, value_of, value_new, value_kind, value_tensor, value_json,
+  call_value, call_key, value_of, value_new, value_integer_decimal, value_kind, value_tensor, value_json,
   value_term, value_text, value_float, value_len, value_count, value_cell, tensor,
+  value_with_coherent_dimension, value_tensor_cells,
   # host callbacks
   rssn_callback, callback_signatures, parse_signature, callback_count, callback_cell,
   # simulations, units, constants
@@ -30,7 +35,7 @@ export(
   constant_get, constants_table, constant_value, CONSTANTS, CONSTANT_BY_SYMBOL,
   SCENARIOS, SCENARIO_PARAMS, VALUE_KINDS, rssn_condition,
   # operator discovery
-  op_apply, op_help, op_table, op_names, OPERATORS, OPS,
+  op_apply, op_info, op_help, op_table, op_names, OPERATORS, OPS,
   manifest, manifest_json, manifest_hash, MANIFEST_META,
   rssn_version, rssn_library, rssn_load,
   json_decode, json_encode

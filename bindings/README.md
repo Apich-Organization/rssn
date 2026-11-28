@@ -17,7 +17,7 @@ built on one ABI and held to one conformance table.
 ## What "complete" covers
 
 rssn exposes one small C ABI (`rssn.h`, ~50 entry points) and one large
-operator table (5411 registered operators). A wrapper that only forwarded the
+operator table described by the kernel manifest. A wrapper that only forwarded the
 C functions would force every caller to spell operator names as strings, so each
 binding covers both layers:
 
@@ -29,7 +29,8 @@ binding covers both layers:
 - terms: parse, symbol, integer, float, rational, apply-by-name, numeric
   evaluation, literal value, dense tensor extraction, and the four renderings
   (infix text, LaTeX, Typst, Unicode pretty);
-- computation: single, batch, JSON record, `bincode-next` record, batch record;
+- computation: single and parallel batch calls with per-request dimensions,
+  diagnostics and error messages, plus JSON and `bincode-next` records;
 - the value ABI: session-owned cells for dynamic values, `call_value` for the
   operators whose arguments have no term form, and readers for every value kind;
 - the callback ABI: a host function registered as a `Value::Function` and
@@ -45,13 +46,20 @@ binding covers both layers:
 
 **The operator table, one function per operator.** `python/rssn/_ops.py`,
 `julia/src/ops.jl`, `cpp/include/rssn/ops.hpp` and `r/R/ops.R` are generated
-from the kernel manifest: 5411 functions, each with the operator's own
+from the kernel manifest. Each function carries the operator's own
 documentation and arity. Aliases are generated as forwarders. A name that is a
 keyword in the target language is mangled (`and_` in Python, `and_op` in C++,
 `rssn_and` in R); the original spelling stays reachable through
 `apply("and", ...)` and the `OPS` table. Parameters are named as the operator's
 own documentation names them (`diff(f, x)`), so keyword and named calls read
 like the engine's reference.
+
+For operators with `eval = dynamic` in the manifest, use the checked form of
+the same facade name to pass host numbers, complex numbers, tensors and
+records accepted by that operator. Use `checked=True` in Python,
+`checked=true` in Julia, `checked = TRUE` in R, and
+`rssn::client::checked` with an explicit session in C++. These calls return
+session-owned values and report invalid arguments through the value API.
 
 `sub`, `neg` and `divide` are engine operators (the arithmetic quotient is
 `divide` because `div` is the divergence), so `x - 1`, `-x` and `x/2` are real
@@ -77,12 +85,18 @@ Build the shared library once (this is the slow step; see
 [the build note](#build-notes)):
 
 ```sh
-bash scripts/build_ffi.sh                       # release profile, ~1h
-RSSN_FFI_PROFILE=dev bash scripts/build_ffi.sh  # development profile, faster
+bazel build //:ffi_distribution                 # full-feature LLVM distribution
+bazel build //:ffi_dev                          # full-feature development shared library
 ```
 
-Point a wrapper at the result with `RSSN_LIB` (or let it find a checkout's
-`target/debug`, `target/ffi` or `target/release` on its own).
+Set `RSSN_LIB` to the shared library file or its directory. From the repository
+root, use `export RSSN_LIB="$PWD/bazel-bin/ffi_distribution/ffi"` for the default
+Bazel build or `export RSSN_LIB="$PWD/bazel-bin/ffi_dev/ffi"` for the development
+build. Use `$env:RSSN_LIB = (Join-Path $PWD "bazel-bin/ffi_distribution/ffi")`
+for the Bazel build in PowerShell. Python, Julia, R and the C++ CMake project
+can discover the default Bazel output from a source checkout.
+On Windows, keep the MSVC or MinGW import library beside the DLL when building
+the C++ client.
 
 ```python
 import rssn
@@ -126,6 +140,100 @@ compute(rssn_diff(sin(x) * cos(x), x))$text                             # "cos(2
 cfg <- rssn_config() |> cfg_numeric(1e-12) |> cfg_bind("x", 0)
 compute(rssn_diff(sin(x) * cos(x), x), cfg)$value                       # 1
 ```
+
+## Execution backends
+
+Query the loaded library for usable selectors before asking for a hardware or
+JIT backend. The same RSSN policy applies in every language. An explicit
+process-wide selection stays active across sessions. Pass `auto` to restore
+automatic selection. Use an explicit backend handle for a native compilation
+that should leave the process default alone.
+
+| Language | Discover | Read the active backend | Set the process default |
+| --- | --- | --- | --- |
+| C | `rssn_value_call` with `num_backend_available` | `num_backend_current_name` | `num_backend_select_default` |
+| C++ | `session.available_backends()` | `session.current_backend()` | `session.set_default_backend(name)` |
+| Python | `session.available_backends()` | `session.current_backend()` | `session.set_default_backend(name)` |
+| Julia | `available_backends(session)` | `current_backend(session)` | `set_default_backend!(session, name)` |
+| R | `rssn_available_backends(session)` | `rssn_current_backend(session)` | `rssn_set_default_backend(name, session)` |
+
+See the [C backend example](../examples/c/backend_selection.c) and the
+[backend guide](../docs/BACKENDS.md) for engine and device behavior.
+
+## NumPy arrays
+
+The native NumPy codec reads float32 and float64 payloads in C or Fortran
+order and writes little-endian float64. The binding helpers work on bytes in
+memory. A decoded value is a native binary64 tensor with the original extents.
+Use the host's usual file API if the bytes come from a file.
+
+| Language | Encode to bytes | Decode to a tensor |
+| --- | --- | --- |
+| C | `rssn_value_call` with `num_npy_encode` | `num_npy_decode` |
+| C++ | `session.encode_npy(shape, samples)` | `session.decode_npy(bytes)` |
+| Python | `session.encode_npy(shape, samples)` | `session.decode_npy(bytes)` |
+| Julia | `encode_npy(session, array)` | `decode_npy(session, bytes)` |
+| R | `rssn_encode_npy(array, session = s)` | `rssn_decode_npy(bytes, s)` |
+
+Supply flat samples in row-major order when passing an explicit shape. The
+shared C value ABI uses hexadecimal text for the payload. See the
+[C NumPy codec example](../examples/c/npy_codec.c). The loaded library's
+manifest declares NumPy support in `features.npy`.
+
+## Full-width integers
+
+This example finds the smallest primitive root modulo the 64-bit prime
+`18446744069414584321`. Each call returns the exact integer `7`. With the
+sessions from the quick start, use an exact integer value in each language.
+
+```python
+print(s.call_value("num_finite_field_primitive_root_prime", 18446744069414584321).text())
+```
+
+```julia
+p = parse(BigInt, "18446744069414584321")
+text(call_value(session, "num_finite_field_primitive_root_prime", p))
+```
+
+```cpp
+#include "rssn/value.hpp"
+#include <iostream>
+
+int main() {
+    rssn::client::Session session;
+    const auto p = rssn::client::value_integer_decimal(session.raw(), "18446744069414584321");
+    std::cout << session.call_value("num_finite_field_primitive_root_prime", p).text() << "\n";
+}
+```
+
+```r
+p <- value_integer_decimal("18446744069414584321", session)
+value_text(call_value("num_finite_field_primitive_root_prime", p, session = session))
+```
+
+The arbitrary-precision GCD, roots and modular inverse take exact `Int` values.
+For example, the GCD of `-6 * 2^128` and `15 * 2^128` is `3 * 2^128`.
+
+```python
+with rssn.Session() as exact:
+    scale = 1 << 128
+    gcd = exact.call_value("num_number_exact_bigint_gcd", -6 * scale, 15 * scale)
+    assert gcd.text() == str(3 * scale)
+```
+
+Use `num_number_ext_crt_bigint` for congruences with positive arbitrary-precision
+moduli. Its result fields `item0` and `item1` give the least nonnegative solution
+and the least common multiple of the moduli. An inconsistent system returns a
+domain error. `num_number_ext_batch_mod_pow` uses signed 64-bit bases, unsigned
+64-bit exponents and a positive signed 64-bit modulus. `num_number_ext_totient_sieve`
+includes entries for zero and for the supplied limit.
+
+For exact matrix algebra, create a session-owned normalized handle with
+`num_native_qmatrix_new`. Pass a matrix and a positive reference with matching
+physical dimensions. Supply integers or rational values to preserve the exact
+coefficients. The Hermite and Smith operations return integer tensors and
+unimodular transforms. The Dixon and unique-system solvers return an option with
+rational coefficients. Keep the handle in its creating session.
 
 ## Host callbacks
 
@@ -181,16 +289,15 @@ is passed to: destroying it retires the registration.
 
 ## Tests
 
-One table, four runners. `tests/cases.tsv` holds 56 cases — calculus, algebra,
-number theory, linear algebra, tensors, numeric targets, the value ABI, host
-callbacks (one function, and an objective with its gradient), the failure
-statuses, three simulations, the manifest hash, and the unit and constant
-counts. The Python runner records the expectations; the Julia, C++ and R runners
-verify the same rows, so a wrapper that disagrees with the engine *or with
-another wrapper* fails.
+The four runners share `tests/cases.tsv`. Contract cases check alias resolution,
+measured signatures, exact wide-integer values and rejection of stale overload
+keys. The table also covers symbolic and numeric evaluation, native values,
+callbacks, simulation, the loaded manifest hash, units and constants.
+The Python runner can record results, and all four runners verify the same
+expectations.
 
 ```sh
-export RSSN_LIB=$PWD/target-bindings/debug/rssn.dll     # or librssn.so
+export RSSN_LIB="$PWD/target/debug"                     # development build
 
 python bindings/tests/run_conformance.py                # verify
 python bindings/tests/run_conformance.py --record       # rewrite the expectations
@@ -198,11 +305,24 @@ python -m unittest discover -s bindings/python/tests    # Python unit tests
 julia --project=bindings/julia bindings/julia/test/runtests.jl
 Rscript bindings/tests/run_conformance.R                # the R runner
 Rscript bindings/r/tests/test-rssn.R                    # R unit tests
-cmake -S bindings/cpp -B build/cpp -DRSSN_ROOT=$PWD       -DRSSN_LIBRARY=$PWD/target-bindings/debug/rssn.dll.lib
-cmake --build build/cpp && ctest --test-dir build/cpp --output-on-failure
+cmake -S bindings/cpp -B build/cpp
+cmake --build build/cpp --config Release
+ctest --test-dir build/cpp -C Release --output-on-failure
 ```
 
-`bindings/tests/run_all.sh` runs all of them in order.
+In a source checkout, Bazel checks generated API files and runs all four suites
+against the same shared library. Bazel installs the R package in its build
+state. The CI bindings job uses these targets with the all-feature cdylib.
+
+```sh
+bazel test //:bindings_check_test //:bindings_test
+bazel run //:bindings_from_library -- --library /path/to/librssn.so
+```
+
+`bindings/tests/run_all.sh` forwards legacy checkout invocations to Bazel.
+Without `--require-all`, it can run with Python, Julia and C++ when the R package
+is missing. In an extracted SDK, use the individual runners above with
+`RSSN_LIB` set to the shared library at the archive root.
 
 The READMEs are part of the test surface: `run_readme_examples.py` extracts every
 fenced example from the four READMEs and runs it, so a workflow that stops
@@ -216,33 +336,52 @@ Each language also has its own unit tests for the parts the table cannot see:
 `ctypes`/`ccall` marshalling, the exception mapping, the Julia JSON codec,
 Python operator overloading, C++ RAII and move semantics.
 
+## Inspecting an operator's contract
+
+Use `op_info(name)` in Python, Julia or R, or `Session::op_info_json(name)` in
+C++, to inspect the signatures and dimensions supplied by the loaded library.
+Pass a returned key to `call_key` to select one overload.
+[Contract and example](api/CONTRACT.md#live-operator-contracts)
+
 ## Regenerating the generated files
 
 ```
-target/manifest.json  ──extract_api.py──▶  api/rssn_api.json  ──generate.py──▶  17 files
+target/manifest.json  ──extract_api.py──▶  api/rssn_api.json  ──generate.py──▶  language facades
 ```
 
 ```sh
-python bindings/tools/extract_api.py    # refresh api/rssn_api.json from the manifest
+mkdir -p target
+cargo run --locked --bin signature-audit -- --json > target/manifest.json
+python bindings/tools/extract_api.py --manifest target/manifest.json
 python bindings/tools/generate.py       # rewrite the operator facade, units, constants
 python bindings/tools/extract_api.py --check   # exit 1 when stale
 python bindings/tools/generate.py --check      # exit 1 when stale
 ```
 
+To regenerate from a release artifact and save the same kernel manifest for
+Aevia, point the extractor at the built shared library.
+
+```sh
+python bindings/tools/extract_api.py --library /path/to/librssn.so --write-manifest target/manifest.json
+python bindings/tools/generate.py
+```
+
+`--output PATH` writes the binding API description to a staging location. It
+can also be combined with `--check` to compare an existing staged description.
+
 The generated files are `python/rssn/{_ops,units,constants,scenarios}.py`,
 `julia/src/{ops,base_ext,exports,units,constants,scenarios}.jl`,
-`r/R/{ops,operators,units,constants,scenarios}.R` and
-`cpp/include/rssn/{ops,units,constants}.hpp`.
+`r/R/{ops,operators,units,constants,scenarios,manifest}.R`,
+`r/man/rssn-operators.Rd` and `cpp/include/rssn/{ops,units,constants,scenarios}.hpp`.
 
 `bindings/api/julia_base_names.txt` and `julia_base_functions.txt` are one-off
-scans of `names(Base)` (1.13) that the generator uses to decide which operator
+scans of `names(Base)` from Julia 1.11 that the generator uses to decide which operator
 names Julia can export as-is, which it extends `Base` with, and which it must
 mangle. Regenerate them with
 
 ```sh
-julia -e 'print(join(sort(string.(names(Base))), "
-"))' > bindings/api/julia_base_names.txt
-julia -e 'for n in names(Base); v = try getproperty(Base, n) catch; continue end; v isa Function && println(n); end' > bindings/api/julia_base_functions.txt
+julia -e 'foreach(println, sort!(names(Base)))' > bindings/api/julia_base_names.txt
+julia -e 'for n in sort!(names(Base)); isdefined(Base, n) && getfield(Base, n) isa Function && println(n); end' > bindings/api/julia_base_functions.txt
 ```
 
 `extract_api.py` reads `bindings/api/manifest.json` when it exists, else
@@ -301,7 +440,7 @@ is included.
 
 These are the C ABI's limits, documented in `src/ffi/mod.rs`, not the wrappers':
 
-1. **Every one of the 5411 operators is callable from C**, and
+1. **Every registered operator is callable from C**, and
    `backend_support.ffi` is `true` for all of them. An operator is reached by
    the ABI its arguments need: `apply` when they are terms, `call_value` when
    they are native objects, records or other values with no term form, and a
@@ -316,18 +455,20 @@ These are the C ABI's limits, documented in `src/ffi/mod.rs`, not the wrappers':
    the same fields and is the convenient path.
 4. **The manifest is the standard snapshot.** It describes the process-wide rule
    sets, not a session's plugins (a C host cannot install plugins anyway).
-5. **Panic containment is a build property.** The `ffi` profile inherits the
-   release profile, whose `panic = "abort"` means a Rust panic aborts the host
-   process. A `dev` build unwinds and reports `Panic` instead.
+5. **Panic containment is a build property.** The stock FFI distribution and
+   Cargo development builds use unwind semantics. A guarded C ABI entry can
+   translate a caught Rust panic into the `Panic` status.
 
 ## Build notes
 
-`cargo build` produces an `rlib` only; the C libraries come from
-`scripts/build_ffi.sh` (`cargo rustc --lib --crate-type staticlib,cdylib`).
-The default `ffi` profile inherits release optimizations with LTO and takes
-about an hour on a development machine; `RSSN_FFI_PROFILE=dev` is much faster
-and is what the tests here use. Set `CARGO_TARGET_DIR` to keep that build out of
-a `target/` another process is using.
+`cargo build` produces a Rust `rlib`. `bazel build //:ffi_distribution`
+builds the static and shared libraries with all Cargo features, the LLVM
+optimizer and fat LTO under `bazel-bin/ffi_distribution/ffi`. Use
+`//:ffi_distribution_portable` for the distribution without the optimizer
+or `//:ffi_dev` for a development shared library. The compatibility script's
+`RSSN_FFI_PROFILE=dev` path invokes Bazel and copies the artifacts to
+`target/debug`, or to `target/<triple>/debug` when a target is specified.
+Set `CARGO_TARGET_DIR` to choose a different compatibility output directory.
 
 The wrappers never call Cargo themselves. They load `rssn.dll` / `librssn.so` /
 `librssn.dylib` from `RSSN_LIB`, from `rssn/_lib/`, from a checkout's build

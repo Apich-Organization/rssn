@@ -15,88 +15,123 @@ libname() = Sys.iswindows() ? "rssn.dll" :
             Sys.isapple() ? "librssn.dylib" : "librssn.so"
 
 const _LIB = Ref{String}("")
+const _HANDLE = Ref{Ptr{Cvoid}}(C_NULL)
+const _SYMBOLS = Dict{Symbol, Ptr{Cvoid}}()
+const _LIB_LOCK = ReentrantLock()
+
+function _library_location(path::AbstractString)
+    if isdir(path)
+        candidate = joinpath(path, libname())
+        isfile(candidate) || error("no rssn shared library in $(repr(path)); expected $(libname())")
+        return abspath(candidate)
+    end
+    return isfile(path) ? abspath(path) : String(path)
+end
 
 function _candidate_paths()
-    paths = String[]
     explicit = get(ENV, "RSSN_LIB", "")
-    if !isempty(explicit)
-        if isdir(explicit)
-            push!(paths, joinpath(explicit, libname()))
-        else
-            push!(paths, explicit)
-        end
-        return paths
-    end
-    here = @__DIR__                     # bindings/julia/src
+    isempty(explicit) || return [_library_location(explicit)]
+
+    here = @__DIR__
     root = normpath(joinpath(here, "..", "..", ".."))
-    push!(paths, joinpath(here, "..", "lib", libname()))
-    for profile in ("debug", "ffi", "release")
-        push!(paths, joinpath(root, "target", profile, libname()))
-        push!(paths, joinpath(root, "target-bindings", profile, libname()))
-        push!(paths, joinpath(root, "target-ffi", profile, libname()))
+    paths = [joinpath(here, "..", "lib", libname())]
+    if here == joinpath(root, "bindings", "julia", "src") && isfile(joinpath(root, "rssn.h"))
+        push!(paths, joinpath(root, libname()))
+        if isfile(joinpath(root, "MODULE.bazel"))
+            for target in ("ffi_distribution", "ffi", "ffi_distribution_portable", "ffi_dev")
+                push!(paths, joinpath(root, "bazel-bin", target, "ffi", libname()))
+            end
+        end
     end
-    push!(paths, libname())             # the loader's search path
+    for profile in ("debug", "ffi", "release")
+        for directory in ("target", "target-bindings", "target-ffi", joinpath("dist", "rssn"))
+            push!(paths, joinpath(root, directory, profile, libname()))
+        end
+    end
+    filter!(isfile, paths)
+    push!(paths, libname())
     return paths
 end
 
 """
     libpath() -> String
 
-The path of the bound `rssn` shared library.
-
-Resolved once, from `RSSN_LIB` when it is set, else from the usual build
-directories of a source checkout, else from the platform loader path. Call
-[`set_library!`](@ref) to point the package somewhere else.
+The path or platform loader name of the bound RSSN shared library. On first
+use, resolves `RSSN_LIB`, the package or extracted distribution, a source
+checkout's build directories, then the platform loader path.
 """
 function libpath()
-    if isempty(_LIB[])
-        for path in _candidate_paths()
-            if path == libname() || isfile(path)
+    lock(_LIB_LOCK) do
+        if isempty(_LIB[])
+            requested = get(ENV, "RSSN_LIB", "")
+            for path in _candidate_paths()
+                handle = Libdl.dlopen_e(path, Libdl.RTLD_LAZY | Libdl.RTLD_GLOBAL)
+                handle == C_NULL && continue
+                if Libdl.dlsym_e(handle, :rssn_version) == C_NULL
+                    Libdl.dlclose(handle)
+                    isempty(requested) || error("the library at $(repr(path)) does not expose the RSSN C ABI")
+                    continue
+                end
+                _HANDLE[] = handle
                 _LIB[] = path
                 break
             end
+            if isempty(_LIB[])
+                isempty(requested) || error("cannot load the RSSN shared library at $(repr(requested))")
+                error("cannot load the RSSN shared library. Set RSSN_LIB to the library file or its " *
+                      "directory, or build it with `bash scripts/build_ffi.sh`.")
+            end
         end
-        isempty(_LIB[]) && error(
-            "no rssn shared library found: set RSSN_LIB to $(libname()) " *
-            "or build one with `bash scripts/build_ffi.sh`")
+        return _LIB[]
     end
-    return _LIB[]
 end
 
 """
     set_library!(path)
 
-Bind the package to the library at `path`; `""` restores automatic discovery.
+Bind RSSN to a shared-library file or directory before creating sessions.
+An empty path restores automatic discovery.
 """
 function set_library!(path::AbstractString)
-    _LIB[] = String(path)
-    empty!(_SYMBOLS)
-    if _HANDLE[] != C_NULL
-        Libdl.dlclose(_HANDLE[])
-        _HANDLE[] = C_NULL
+    lock(_LIB_LOCK) do
+        resolved = isempty(path) ? "" : _library_location(path)
+        handle = isempty(resolved) ? C_NULL :
+                 Libdl.dlopen(resolved, Libdl.RTLD_LAZY | Libdl.RTLD_GLOBAL)
+        if handle != C_NULL && Libdl.dlsym_e(handle, :rssn_version) == C_NULL
+            Libdl.dlclose(handle)
+            error("the library at $(repr(resolved)) does not expose the RSSN C ABI")
+        end
+        if _HANDLE[] != C_NULL
+            Libdl.dlclose(_HANDLE[])
+        end
+        _HANDLE[] = handle
+        _LIB[] = resolved
+        empty!(_SYMBOLS)
+        return resolved
     end
-    return _LIB[]
 end
 
-# The path is only known at run time, so entry points are resolved with `dlsym`
-# and called through the resulting ptr. `_sym` caches each lookup.
-const _HANDLE = Ref{Ptr{Cvoid}}(C_NULL)
-const _SYMBOLS = Dict{Symbol, Ptr{Cvoid}}()
-
-function _handle()
-    if _HANDLE[] == C_NULL
-        _HANDLE[] = Libdl.dlopen(libpath(), Libdl.RTLD_LAZY | Libdl.RTLD_GLOBAL)
-    end
-    return _HANDLE[]
-end
-
+# Sessions can live on different host threads. Protect the shared symbol cache
+# while discovering the library and on its first use from each entry point.
 function _sym(name::Symbol)
-    cached = get(_SYMBOLS, name, C_NULL)
-    cached == C_NULL || return cached
-    ptr = Libdl.dlsym(_handle(), name)
-    _SYMBOLS[name] = ptr
-    return ptr
+    lock(_LIB_LOCK) do
+        get!(_SYMBOLS, name) do
+            libpath()
+            Libdl.dlsym(_HANDLE[], name)
+        end
+    end
 end
+
+function _optional_sym(name::Symbol)
+    lock(_LIB_LOCK) do
+        get!(_SYMBOLS, name) do
+            libpath()
+            Libdl.dlsym_e(_HANDLE[], name)
+        end
+    end
+end
+
+_batch_metadata_symbol() = _optional_sym(:rssn_compute_all_with_metadata)
 
 # ---------------------------------------------------------------------------
 # C types
@@ -114,6 +149,15 @@ struct CAnswer
     reduced::Bool
     iterations::Csize_t
 end
+
+"""Owned metadata strings from `rssn_compute_all_with_metadata`."""
+struct CAnswerMetadata
+    dimension::Ptr{UInt8}
+    diagnostic_codes::Ptr{UInt8}
+    message::Ptr{UInt8}
+end
+
+const _EMPTY_ANSWER_METADATA = CAnswerMetadata(C_NULL, C_NULL, C_NULL)
 
 """`struct RssnTensor`: a dense row-major `f64` array extracted from a term."""
 struct CTensor
@@ -133,6 +177,25 @@ function take_string(ptr::Ptr{UInt8})
     text = unsafe_string(ptr)
     ccall(_sym(:rssn_string_free), Cvoid, (Ptr{UInt8},), ptr)
     return text
+end
+
+function _free_metadata(metadata::CAnswerMetadata)
+    for pointer in (metadata.dimension, metadata.diagnostic_codes, metadata.message)
+        pointer == C_NULL && continue
+        ccall(_sym(:rssn_string_free), Cvoid, (Ptr{UInt8},), pointer)
+    end
+end
+
+function _read_metadata!(rows, index)
+    metadata = rows[index]
+    rows[index] = _EMPTY_ANSWER_METADATA
+    try
+        read_string(p) = p == C_NULL ? "" : unsafe_string(p)
+        return (read_string(metadata.dimension), read_string(metadata.diagnostic_codes),
+                read_string(metadata.message))
+    finally
+        _free_metadata(metadata)
+    end
 end
 
 """Read a caller-owned byte buffer and release it with `rssn_bytes_free`."""
@@ -249,6 +312,12 @@ compute_all(ptr::Ptr{Cvoid}, terms::Vector{UInt32}, config::Ptr{Cvoid},
     ccall(_sym(:rssn_compute_all), Cint,
           (Ptr{Cvoid}, Ptr{UInt32}, Csize_t, Ptr{Cvoid}, Ptr{CAnswer}, Ptr{Cint}),
           ptr, Base.pointer(terms), length(terms), config, Base.pointer(answers), Base.pointer(statuses))
+compute_all_with_metadata(symbol::Ptr{Cvoid}, ptr::Ptr{Cvoid}, terms::Vector{UInt32},
+                          config::Ptr{Cvoid}, answers::Vector{CAnswer},
+                          statuses::Vector{Cint}, metadata::Vector{CAnswerMetadata}) =
+    ccall(symbol, Cint,
+          (Ptr{Cvoid}, Ptr{UInt32}, Csize_t, Ptr{Cvoid}, Ptr{CAnswer}, Ptr{Cint}, Ptr{CAnswerMetadata}),
+          ptr, terms, length(terms), config, answers, statuses, metadata)
 compute_json(ptr::Ptr{Cvoid}, term::UInt32, config::Ptr{Cvoid}, out::Base.RefValue{Ptr{UInt8}}) =
     ccall(_sym(:rssn_compute_json), Cint,
           (Ptr{Cvoid}, UInt32, Ptr{Cvoid}, Ptr{Ptr{UInt8}}), ptr, term, config, out)
@@ -273,6 +342,8 @@ dimension_code(index::Integer) =
 
 manifest_json() = ccall(_sym(:rssn_manifest_json), Ptr{UInt8}, ())
 manifest_hash() = ccall(_sym(:rssn_manifest_hash), UInt64, ())
+op_info_json(name::AbstractString, out::Base.RefValue{Ptr{UInt8}}) =
+    ccall(_sym(:rssn_op_info_json), Cint, (Cstring, Ptr{Ptr{UInt8}}), name, out)
 sim_run(name::AbstractString, params::AbstractString, out::Base.RefValue{Ptr{UInt8}}) =
     ccall(_sym(:rssn_sim_run), Cint, (Cstring, Cstring, Ptr{Ptr{UInt8}}),
           name, params, out)
@@ -283,6 +354,19 @@ sim_run(name::AbstractString, params::AbstractString, out::Base.RefValue{Ptr{UIn
 
 value_new_int(ptr::Ptr{Cvoid}, value::Integer, out::Base.RefValue{UInt32}) =
     ccall(_sym(:rssn_value_new_int), Cint, (Ptr{Cvoid}, Int64, Ptr{UInt32}), ptr, value, out)
+function value_new_int_decimal(ptr::Ptr{Cvoid}, digits::AbstractString, out::Base.RefValue{UInt32})
+    entry = _optional_sym(:rssn_value_new_int_decimal)
+    entry == C_NULL && throw(ArgumentError("this RSSN library only supports signed 64-bit integer cells"))
+    return ccall(entry, Cint, (Ptr{Cvoid}, Cstring, Ptr{UInt32}), ptr, digits, out)
+end
+function value_with_coherent_dimension(ptr::Ptr{Cvoid}, cell::UInt32, payload::String,
+                                       out::Base.RefValue{UInt32})
+    entry = _optional_sym(:rssn_value_with_coherent_dimension)
+    entry == C_NULL && throw(ArgumentError("this RSSN library lacks coherent dimension cells"))
+    GC.@preserve payload return ccall(entry, Cint,
+        (Ptr{Cvoid}, UInt32, Ptr{UInt8}, Csize_t, Ptr{UInt32}),
+        ptr, cell, pointer(payload), ncodeunits(payload), out)
+end
 value_new_float(ptr::Ptr{Cvoid}, value::Real, out::Base.RefValue{UInt32}) =
     ccall(_sym(:rssn_value_new_float), Cint, (Ptr{Cvoid}, Cdouble, Ptr{UInt32}), ptr, value, out)
 value_new_text(ptr::Ptr{Cvoid}, text::AbstractString, out::Base.RefValue{UInt32}) =
@@ -298,6 +382,11 @@ value_call(ptr::Ptr{Cvoid}, op::AbstractString, cells::Vector{UInt32},
            out::Base.RefValue{UInt32}) =
     ccall(_sym(:rssn_value_call), Cint, (Ptr{Cvoid}, Cstring, Ptr{UInt32}, Csize_t, Ptr{UInt32}),
           ptr, op, isempty(cells) ? C_NULL : Base.pointer(cells), length(cells), out)
+value_call_key(ptr::Ptr{Cvoid}, rule_set::AbstractString, name::AbstractString,
+               hash::Vector{UInt8}, cells::Vector{UInt32}, out::Base.RefValue{UInt32}) =
+    ccall(_sym(:rssn_value_call_key), Cint,
+          (Ptr{Cvoid}, Cstring, Cstring, Ptr{UInt8}, Ptr{UInt32}, Csize_t, Ptr{UInt32}),
+          ptr, rule_set, name, hash, cells, length(cells), out)
 value_kind(ptr::Ptr{Cvoid}, cell::UInt32, out::Base.RefValue{UInt8}) =
     ccall(_sym(:rssn_value_kind), Cint, (Ptr{Cvoid}, UInt32, Ptr{UInt8}), ptr, cell, out)
 value_to_f64(ptr::Ptr{Cvoid}, cell::UInt32, out::Base.RefValue{Cdouble}) =
@@ -367,6 +456,16 @@ callback_free(ptr::Ptr{Cvoid}, cell::UInt32) =
 callback_count(ptr::Ptr{Cvoid}) = ccall(_sym(:rssn_callback_count), Csize_t, (Ptr{Cvoid},), ptr)
 callback_fail(message::AbstractString) =
     ccall(_sym(:rssn_callback_fail), Cvoid, (Cstring,), message)
+
+function value_new_tensor_cells(ptr::Ptr{Cvoid}, cells::Vector{UInt32},
+                                shape::Vector{Csize_t}, exemplar::UInt32,
+                                out::Base.RefValue{UInt32})
+    entry = _optional_sym(:rssn_value_new_tensor_cells)
+    entry == C_NULL && throw(ArgumentError("this RSSN library lacks tensor cell construction"))
+    return ccall(entry, Cint,
+                 (Ptr{Cvoid}, Ptr{UInt32}, Csize_t, Ptr{Csize_t}, Csize_t, UInt32, Ptr{UInt32}),
+                 ptr, cells, length(cells), shape, length(shape), exemplar, out)
+end
 
 value_new_tensor(ptr::Ptr{Cvoid}, data::Vector{Cdouble}, shape::Vector{Csize_t},
                  out::Base.RefValue{UInt32}) =

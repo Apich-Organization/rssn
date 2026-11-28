@@ -66,11 +66,11 @@ VALUE_KINDS
     arrays, and functions.}
   \item{session}{The session to call it in; taken from the first value or term
     argument when omitted.}
-  \item{x}{The object to store as a cell, or a \code{rssn_value}.}
+  \item{x}{The object to store as a cell, or a \code{rssn_value}.
+    For \code{tensor()}, a \code{rssn_term} or an \code{rssn_answer}.}
   \item{value}{A \code{rssn_value}.}
   \item{con}{A \code{rssn_value}.}
-  \item{index}{The position of an element, counting from one.}
-  \item{term}{A \code{rssn_term} or an \code{rssn_answer}, for \code{tensor()}.}
+  \item{index}{The one-based element position or the exact name of a record field.}
 }
 \value{
   \code{call_value()} and \code{value_new()} return an \code{rssn_value};
@@ -103,6 +103,11 @@ VALUE_KINDS
   so \code{64} reaches an \code{Int} parameter as an integer without the caller
   having to write \code{64L}.
 
+  Use \code{array(x, dim = 1L)} to pass one numeric element as a rank-one
+  tensor. R represents a plain length-one numeric vector as a scalar.
+  \code{value_new()} and \code{call_value()} preserve the rank of numeric
+  arrays.
+
   \code{VALUE_KINDS} lists the kind names \code{value_kind()} reports.
 }
 \examples{
@@ -123,6 +128,12 @@ answer <- call_value("num_brent", 1, 2, 1e-12, 64, function(t) t * t - 2,
 value_float(answer[[1]])                                   # 1.4142135623730951
 
 value_kind(value_new(c(1, 2.5, 3), s))                     # "tensor"
+single <- array(3, dim = 1L)
+value_kind(value_new(single, s))                          # "tensor"
+value_float(call_value("num_dot", single, single, session = s)) # 9
+
+moments <- call_value("num_timeseries_rolling_moments", c(1, 2, 3), 2L, 1L, session = s)
+value_tensor(moments[["variance"]])                      # 0.5, 0.5
 
 tensor(compute(parse_term("matmul(list(list(1,2),list(3,4)), list(list(1,0),list(0,1)))")))
 }

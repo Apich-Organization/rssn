@@ -152,41 +152,34 @@ def to_python(session: "Session", cell: int) -> Any:
     a `numpy` array when numpy is installed and a nested list otherwise; a
     record becomes a `dict`; a variant becomes `(tag, [payload...])`.
     """
-    value = Value.borrowed(session, cell)
+    return _to_python(Value.borrowed(session, cell))
+
+
+def _to_python(value: Value) -> Any:
+    session, cell = value.session, value.cell
     kind = value.kind()
     if kind == "int":
-        return int(value.float())
+        return int(value)
     if kind in ("real", "float"):
         return value.float()
     if kind == "bool":
         return bool(value.json()["bool"])
     if kind == "complex":
         body = value.json()["complex"]
-        exact = body.get("Exact")
+        exact = body.get("exact", body.get("Exact"))
         if exact is not None:
             return complex(_number(exact["re"]), _number(exact["im"]))
-        floating = body.get("Float", {})
-        return complex(float(floating.get("re", 0.0)), float(floating.get("im", 0.0)))
+        floating = body["float"] if "float" in body else body["Float"]
+        return complex(float(floating["re"]), float(floating["im"]))
     if kind in ("string", "symbol"):
         return value.text()
     if kind == "tensor":
         try:
             return value.tensor()
         except RssnError:
-            return [to_python(session, element.cell) for element in value]
+            return [_to_python(element) for element in value]
     if kind == "record":
-        library = _ffi.library()
-        fields: dict[str, Any] = {}
-        for index in range(len(value)):
-            raw = ctypes.c_void_p()
-            check(
-                library.rssn_value_field_name(
-                    ctypes.c_void_p(session.ptr), cell, ctypes.c_size_t(index),
-                    ctypes.byref(raw),
-                )
-            )
-            fields[_ffi.take_string(raw.value)] = to_python(session, value[index].cell)
-        return fields
+        return {value._field_name(index): _to_python(value[index]) for index in range(len(value))}
     if kind == "variant":
         library = _ffi.library()
         raw = ctypes.c_void_p()
@@ -196,50 +189,16 @@ def to_python(session: "Session", cell: int) -> Any:
             )
         )
         tag = _ffi.take_string(raw.value)
-        return tag, [to_python(session, element.cell) for element in value]
+        return tag, [_to_python(element) for element in value]
     return value.json()
 
 
 def from_python(session: "Session", value: Any) -> int:
     """A cell id holding `value`, which the caller then owns."""
-    from .term import Term
-
-    library = _ffi.library()
-    out = ctypes.c_uint32()
-    if isinstance(value, Value):
-        return value.cell
-    if isinstance(value, Callback):
-        return value.cell
-    if isinstance(value, Term):
-        if value.session is not session:
-            raise ValueError("term belongs to another session")
-        check(library.rssn_value_new_term(ctypes.c_void_p(session.ptr), value.handle,
-                                          ctypes.byref(out)))
-        return out.value
-    if isinstance(value, bool):
-        check(library.rssn_value_new_bool(ctypes.c_void_p(session.ptr), int(value),
-                                          ctypes.byref(out)))
-        return out.value
-    if isinstance(value, int):
-        check(library.rssn_value_new_int(ctypes.c_void_p(session.ptr), value,
-                                         ctypes.byref(out)))
-        return out.value
-    if isinstance(value, float):
-        check(library.rssn_value_new_float(ctypes.c_void_p(session.ptr), value,
-                                           ctypes.byref(out)))
-        return out.value
-    if isinstance(value, complex):
-        check(library.rssn_value_new_complex(ctypes.c_void_p(session.ptr), value.real,
-                                             value.imag, ctypes.byref(out)))
-        return out.value
-    if isinstance(value, str):
-        check(library.rssn_value_new_text(ctypes.c_void_p(session.ptr),
-                                          value.encode("utf-8"), ctypes.byref(out)))
-        return out.value
-    # Anything else goes through `Value.of`, which knows how to build a record
-    # from a dict and a tensor from a rectangular sequence. The cell it mints
-    # is handed to the caller, so the temporary must not free it.
-    return Value.of(session, value).detach()
+    result = Value.of(session, value)
+    if isinstance(value, (Value, Callback)):
+        result = result.clone()
+    return result.detach()
 
 
 class Callback:

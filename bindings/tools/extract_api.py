@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Extract the RSSN embedding surface into one machine-readable file.
 
-The three bindings in this directory are generated from `api/rssn_api.json`,
+The language bindings in this directory are generated from `api/rssn_api.json`,
 which this script derives from the engine's own kernel manifest plus a source
 scan for the simulation scenarios (the manifest does not list them and the C
 ABI has no entry point that enumerates them).
@@ -14,15 +14,18 @@ Usage, from the repository root:
 The manifest is read from `bindings/api/manifest.json` when it exists, else
 from `target/manifest.json`. Refresh the copy with
 
-    cargo run --bin signature-audit >/dev/null      # or any program that dumps
-    cp target/manifest.json bindings/api/manifest.json
+    mkdir -p target
+    cargo run --locked --bin signature-audit -- --json > target/manifest.json
 
-`--manifest` overrides the input path.
+`--manifest` overrides the input path. Use `--library` to read the JSON
+manifest from a built RSSN shared library directly. `--write-manifest`
+saves the same input JSON for tools such as the Aevia API audit.
 """
 
 from __future__ import annotations
 
 import argparse
+import ctypes
 import hashlib
 import json
 import re
@@ -270,8 +273,24 @@ def extract_scenarios() -> list[dict[str, Any]]:
 
 # --------------------------------------------------------------------------
 
-def build(manifest_path: Path) -> dict[str, Any]:
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+def read_library_manifest(path: Path) -> str:
+    library = ctypes.CDLL(str(path.resolve()))
+    manifest_json = library.rssn_manifest_json
+    manifest_json.argtypes = []
+    manifest_json.restype = ctypes.c_void_p
+    release = library.rssn_string_free
+    release.argtypes = [ctypes.c_void_p]
+    release.restype = None
+    pointer = manifest_json()
+    if pointer is None:
+        raise ValueError("the RSSN library returned no manifest")
+    try:
+        return ctypes.string_at(pointer).decode("utf-8")
+    finally:
+        release(pointer)
+
+
+def build(manifest: dict[str, Any]) -> dict[str, Any]:
     ops = []
     for op in manifest["ops"]:
         arity = op["arity"]
@@ -285,6 +304,12 @@ def build(manifest_path: Path) -> dict[str, Any]:
                 "doc": (op.get("doc") or "").strip(),
                 "ffi": bool(op["backend_support"]["ffi"]),
                 "eval": op["eval"],
+                "keys": op["keys"],
+                "overloads": op["overloads"],
+                "overload_sources": op["overload_sources"],
+                "signature_source": op["signature_source"],
+                "dim_rule": op["dim_rule"],
+                "dynamic_reason": op["dynamic_reason"],
                 "binder": op["binder"],
                 "aliases": list(op.get("aliases") or []),
                 "since": op.get("since") or "",
@@ -350,36 +375,47 @@ def build(manifest_path: Path) -> dict[str, Any]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--manifest", type=Path, default=None)
+    source = parser.add_mutually_exclusive_group()
+    source.add_argument("--manifest", type=Path, help="read the kernel manifest JSON")
+    source.add_argument("--library", type=Path, help="read the manifest from a built RSSN shared library")
+    parser.add_argument("--write-manifest", type=Path, help="save the source manifest JSON for other tools")
+    parser.add_argument("--output", type=Path, default=API_JSON, help="write the binding API description here")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args(argv)
 
     manifest_path = args.manifest
-    if manifest_path is None:
-        for candidate in (API_DIR / "manifest.json", ROOT / "target" / "manifest.json"):
-            if candidate.exists():
-                manifest_path = candidate
-                break
-    if manifest_path is None or not manifest_path.exists():
-        print("error: no kernel manifest found; pass --manifest", file=sys.stderr)
-        return 2
-
-    payload = build(manifest_path)
+    if manifest_path is None and args.library is None:
+        candidates = (API_DIR / "manifest.json", ROOT / "target" / "manifest.json")
+        manifest_path = next((candidate for candidate in candidates if candidate.is_file()), None)
+        if manifest_path is None:
+            parser.error("no kernel manifest found; use --manifest or --library")
+    try:
+        if args.library is None:
+            manifest_text = manifest_path.read_text(encoding="utf-8")
+        else:
+            manifest_text = read_library_manifest(args.library)
+        payload = build(json.loads(manifest_text))
+    except (OSError, AttributeError, ValueError, TypeError, KeyError) as error:
+        parser.error(f"cannot read the RSSN manifest: {error}")
+    if args.write_manifest is not None:
+        args.write_manifest.parent.mkdir(parents=True, exist_ok=True)
+        args.write_manifest.write_text(manifest_text.rstrip() + "\n", encoding="utf-8")
+    output = args.output
     text = json.dumps(payload, indent=1, sort_keys=False, ensure_ascii=False) + "\n"
 
     if args.check:
-        current = API_JSON.read_text(encoding="utf-8") if API_JSON.exists() else ""
+        current = output.read_text(encoding="utf-8") if output.exists() else ""
         if current != text:
-            print(f"error: {API_JSON} is stale; rerun extract_api.py", file=sys.stderr)
+            print(f"error: {output} is stale; rerun extract_api.py", file=sys.stderr)
             return 1
-        print(f"{API_JSON} is current ({len(payload['ops'])} ops)")
+        print(f"{output} is current ({len(payload['ops'])} ops)")
         return 0
 
-    API_DIR.mkdir(parents=True, exist_ok=True)
-    API_JSON.write_text(text, encoding="utf-8")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(text, encoding="utf-8")
     digest = hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
     print(
-        f"wrote {API_JSON} ({len(payload['ops'])} ops, {len(payload['units'])} units, "
+        f"wrote {output} ({len(payload['ops'])} ops, {len(payload['units'])} units, "
         f"{len(payload['constants'])} constants, {len(payload['scenarios'])} scenarios, "
         f"sha256:{digest})"
     )

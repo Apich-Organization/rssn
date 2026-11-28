@@ -152,7 +152,7 @@ rssn_callback <- function(function_, session = NULL, signature = NULL, op = NULL
                 .rssn_to_r(session, cell, owned = FALSE)
             })
             result <- do.call(function_, arguments)
-            as.integer(.rssn_cell(result, session))
+            as.integer(.rssn_owned_cell(result, session))
         }, error = function(condition) {
             message <- paste0(class(condition)[[1L]], ": ", conditionMessage(condition))
             try(.Call(C_rssn_callback_fail, message), silent = TRUE)

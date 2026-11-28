@@ -27,8 +27,8 @@ message is for humans. The bindings therefore:
 - raise with the code attached (`RssnError.status`, `RssnError.status`,
   `Error::status()`, the R condition's `$status`), and never parse the message;
   the one exception is R's `call_value`, which reads the "argument N has type
-  ..., expected ..." wording to retry with the other numeric kind, because R has
-  no integer literal;
+  ..., expected ..." wording to retry with the other numeric kind, because plain R
+  numeric literals are doubles;
 - read `rssn_last_error()` immediately after a failure, because it is
   thread-local and is not cleared by a later success;
 - treat the shortcut entry points (`rssn_simplify`, the four renderers, the term
@@ -37,10 +37,15 @@ message is for humans. The bindings therefore:
 
 ## Ordering inside a computation
 
-`rssn_compute` fills `RssnAnswer` and records the thread's dimension findings.
-`rssn_dimension` **runs the request again** and re-records them, so a wrapper
-that wants both reads `rssn_dimension_count`/`rssn_dimension_code` first. The
-session's answer cache makes the second run a hit, so the cost is not doubled.
+`rssn_compute_all_with_metadata` fills three arrays in request order. Each
+`RssnAnswerMetadata` holds the answer dimension from the supplied configuration,
+newline-separated stable diagnostic codes and the request's error message.
+Each non-null string is released with `rssn_string_free`. A binding can use the
+same entry point with one request to assemble a single answer.
+
+`rssn_compute` and `rssn_dimension` record findings in the thread-local report.
+Read `rssn_dimension_count` and `rssn_dimension_code` immediately after the call
+whose findings you need.
 
 ## Threads
 
@@ -74,9 +79,95 @@ any value for a host that would rather parse than branch.
 `KernelManifest.backend_support.ffi` is the engine's own statement about whether
 an operator can be called through this ABI: `rssn_term_apply` when its arguments
 are terms, `rssn_value_call` when they are values, and `rssn_callback_new*` for
-the function arguments of a higher-order operator. It is `true` for all 5411
+the function arguments of a higher-order operator. It is `true` for all registered
 operators; the generated facades keep every name and route the 189
 higher-order ones through the value ABI.
+
+Exact integer cells can hold more than 64 bits. C callers create them from
+decimal text with `rssn_value_new_int_decimal` and read them with
+`rssn_value_to_text`. Python integers and Julia `BigInt` inputs use this path
+automatically when they exceed the signed 64-bit range. C++ and R expose
+`value_integer_decimal` to create a cell from decimal digits. Use the value's
+text accessor to read the exact result.
+
+For exact modular vector operators, use the value-call interface and pass
+a Python list of integers, a Julia integer vector, or an R list of integers
+and `value_integer_decimal()` cells. C++ callers can build a rank-1 input
+from `std::vector<std::uint64_t>` with `value_integer_vector(session.raw(), elements)`.
+At the C ABI, construct a list from exact integer cells with `rssn_value_new_list`.
+To read results at full precision, index the result cell and read the
+element's text or use Python's `int(element)`. Dense tensor extraction
+converts elements to binary64.
+
+## Live operator contracts
+
+`rssn_op_info_json` accepts a registered name or alias and writes the
+corresponding record from the loaded library's manifest. It returns the
+canonical name, overload signatures and their sources, dimension metadata, and
+the stable keys. Free the successful result with `rssn_string_free`.
+
+`rssn_value_call_key` takes the name, rule set, and exactly 16 signature-hash
+bytes from one of those keys. It applies the selected overload's argument checks
+and returns a session-owned result cell. The normal value-call context and cell
+ownership rules apply. Pass a registered callback cell for a function parameter.
+
+Python, Julia and R expose `op_info` for discovery. C++ exposes
+`Session::op_info_json`. All four expose `call_key`. The generated convenience
+functions and the session's by-name value calls keep their existing behavior.
+
+For example, select the exact integer overload from the loaded library.
+
+```python
+import rssn
+
+info = rssn.op_info("num_number_theory_gcd_u128")
+with rssn.Session() as session:
+    result = session.call_key(info["keys"][0], 1 << 96, 3 << 96)
+    print(int(result))
+```
+
+Julia and R use one-based indexing for the overload list.
+
+```julia
+using RSSN
+
+session = Session()
+try
+    key = op_info("num_number_theory_gcd_u128")["keys"][1]
+    println(text(call_key(session, key, big(1) << 96, big(3) << 96)))
+finally
+    close(session)
+end
+```
+
+```r
+library(rssn)
+
+session <- rssn_session()
+key <- op_info("num_number_theory_gcd_u128")$keys[[1L]]
+a <- value_integer_decimal("79228162514264337593543950336", session)
+b <- value_integer_decimal("237684487542793012780631851008", session)
+value_text(call_key(key, a, b, session = session))
+close(session)
+```
+
+In C++, `Session::op_key(name, index)` reads the key directly from the
+loaded library. The index is zero-based, just as in `rssn_op_key_at` on the C
+ABI. The C function returns two owned strings and the 16 digest bytes. Release
+each string with `rssn_string_free`. Use `Session::op_info_json` to examine
+signatures before choosing the index.
+
+```cpp
+rssn::client::Session session;
+auto key = session.op_key("num_number_theory_gcd_u128");
+auto a = rssn::client::value_integer_decimal(session.raw(), "79228162514264337593543950336");
+auto b = rssn::client::value_integer_decimal(session.raw(), "237684487542793012780631851008");
+auto result = session.call_key(key, a, b);
+```
+
+For host tooling that works before loading the library, the generated
+`rssn_api.json` retains the manifest's keys, overload schemas, signature
+sources and dimension rules.
 
 ## Host callbacks
 
@@ -100,10 +191,13 @@ A declared signature that mentions a dimension variable (`Real[D]`) is
 instantiated as dimensionless before it is handed to the host: a C callback sees
 plain numbers and tensors of them, which is what the engine passes it anyway.
 
-Inside a callback the arguments are live cells owned by rssn, so a host must not
-free them; the result cell it writes to `*out` becomes the engine's. The
-callback runs on the thread that entered the computation and the engine does not
-call it in parallel.
+Callback arguments are borrowed for the duration of the call. Return an owned
+cell through `*out`; the engine releases it after reading its value. To return
+an argument or another retained cell, use `rssn_value_clone(session, cell, out)`.
+The new cell preserves the original value kind, including a native object
+handle. Both cells refer to the same underlying native object. The supplied
+language wrappers handle this copy when a callback returns a borrowed value.
+Callbacks run on the thread that entered the computation.
 
 ## What the wrappers add
 

@@ -1,8 +1,8 @@
 /* Minimal C client of rssn: differentiate, evaluate, extract a matrix and
  * run a simulation. Build (from the repository root):
  *
- *   DEV=1 bash scripts/build_ffi.sh --features dev-headers
- *   cc -I. examples/c/smoke.c target/ffi/librssn.a -lm -lpthread -ldl -o smoke
+ *   bazel build //:ffi_static_dev
+ *   cc -I. examples/c/smoke.c bazel-bin/ffi_static_dev/ffi/librssn.a -lm -lpthread -ldl -o smoke
  */
 #include <stdio.h>
 #include "rssn.h"

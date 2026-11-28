@@ -19,7 +19,7 @@ compute(diff(sin(x) * cos(x), x), cfg).value           # 1.0
 
 ```sh
 julia --project=bindings/julia -e 'using Pkg; Pkg.instantiate()'
-export RSSN_LIB=/path/to/rssn.dll       # or librssn.so / librssn.dylib
+export RSSN_LIB=/path/to/library-directory  # a full shared-library path also works
 ```
 
 Or develop it into an environment:
@@ -29,10 +29,14 @@ Or develop it into an environment:
 using Pkg; Pkg.develop(path = "bindings/julia"); using RSSN
 ```
 
-Without `RSSN_LIB` the package looks in `src/../lib/`, then in a source
-checkout's `target/debug`, `target/ffi` and `target/release`, then on the
-platform loader path. `RSSN.libpath()` reports what it bound and
-`RSSN.set_library!(path)` rebinds.
+Without `RSSN_LIB` the package looks in `lib/` and at the extracted
+distribution root when running from its `bindings/julia` project. It also
+searches a source checkout's Bazel FFI output directories, including
+`bazel-bin/ffi_distribution/ffi`, `bazel-bin/ffi_distribution_portable/ffi` and
+`bazel-bin/ffi_dev/ffi`, then its Cargo output directories and the platform
+loader path. `RSSN.libpath()` reports what it bound
+and `RSSN.set_library!(path)` accepts a file or directory before you create
+sessions.
 
 ## Shape of the API
 
@@ -107,6 +111,20 @@ compute(parse_term(session, "det(list(list(2,0),list(0,3)))")).text   # "6"
 compute(parse_term(session, "inverse(list(list(1,2),list(3,4)))")).text
 ```
 
+## Workflow: NumPy arrays
+
+The NumPy codec accepts Julia arrays and returns standard NumPy bytes. The
+decoded tensor preserves the original shape.
+
+```julia
+if get(RSSN.json_decode(manifest_json_string())["features"], "npy", false)
+    payload = encode_npy(session, [1.0 2.0; 3.0 4.0])
+    restored = decode_npy(session, payload)
+    println(tensor(restored))
+    close(restored)
+end
+```
+
 ## Workflow: a simulation
 
 ```julia
@@ -120,14 +138,29 @@ result["magnetization"]
 ## Workflow: dynamic values
 
 ```julia
-backend = call_value(session, "num_backend_current")
-kind(backend)                                          # "opaque"
-text(call_value(session, "num_backend_name", backend)) # "interpreter"
-
 tape = call_value(session, "num_ad_tape_new", 16)
 v = call_value(session, "num_ad_tape_var", tape, 1.5)
 z = call_value(session, "num_ad_var_mul", call_value(session, "num_ad_var_sin", v), v)
 value(call_value(session, "num_ad_var_value", z))      # sin(1.5) * 1.5
+
+record = value(session, (estimate = 2.5, method = "fit"))
+value(record[1])                                       # 2.5
+text(record["method"])                                 # "fit"
+
+moments = call_value(session, "num_timeseries_rolling_moments", [1.0, 2.0, 3.0], 2, 1)
+tensor(moments["variance"])                             # [0.5, 0.5]
+```
+
+A record accepts exact field names and one-based positions. An unknown field
+name raises `KeyError`.
+
+`value(session, x)` accepts `BigInt`. Read an integer cell as decimal digits
+with `text`, then parse those digits as a Julia `BigInt`.
+
+```julia
+exact = value(session, big(2)^100 + 7)
+parse(BigInt, text(exact))
+close(exact)
 ```
 
 ## Workflow: units, constants and dimensions
@@ -144,8 +177,56 @@ strict = dimension_mode!(dimension!(dimension!(Config(), "x", "m"), "y", "s"), "
 try
     compute(parse_term(session, "x + y"), strict)
 catch error
-    error.status    # "dimension": a dimension mismatch in `x + y`: Length vs Time
+    error isa RssnError || rethrow()
+    error.status                 # 12, the RssnStatus dimension code
+    sprint(showerror, error)     # starts with "RssnError(dimension):"
 end
+```
+
+## Workflow: choosing a backend
+
+The loaded library uses automatic selection until the process default is set explicitly.
+Query the host's usable backends and change the process default when needed.
+
+```julia
+println(available_backends(session))
+println(current_backend(session))
+try
+    @assert set_default_backend!(session, "interpreter") == "interpreter"
+    @assert current_backend(session) == "interpreter"
+finally
+    set_default_backend!(session, "auto")
+end
+```
+
+For explicit native compilation, pass the handle from
+`open_backend(session, name)` to `call_value(session, "num_backend_compile", ...)`.
+Release the handle with `release_backend!(handle)` and close its value when
+finished.
+
+## Workflow: passing measured floats
+
+The binary64 values below are already in coherent units. The dimension
+object follows the kernel manifest's `DimExpr` JSON format. Attaching a
+dimension preserves tensor shape and does not apply a unit scale or offset.
+
+```julia
+distance = Dict("base" => "Length")
+differences = with_coherent_dimension(RSSN.value(session, [2.0, 3.0]), distance)
+initial = with_coherent_dimension(RSSN.value(session, [0.0]), distance)
+positions = call_value(session, "num_timeseries_integrate", differences, initial)
+@assert tensor(positions) == [0.0, 2.0, 5.0]
+```
+
+## Workflow: a checked dynamic operator
+
+Pass `checked=true` on a dynamic operator to send native inputs directly to its
+declared signature. The result is a session-owned `Value`.
+
+```julia
+lerch_value = num_special_ext_lerch(-1234.0, 2.0, 1.0; session, checked=true)
+println(value(lerch_value))  # 0.0218615893044645
+close(lerch_value)
 ```
 
 ## Workflow: finding an operator
@@ -154,7 +235,7 @@ end
 print(op_help("diff"))            # the signature, arity, category and the engine's docs
 op_search("brent")                # [(name, first line of the doc), ...]
 op_search(category = "calculus", limit = 5)
-length(op_names())                # 5411
+length(op_names())                # count for this binding release
 ```
 
 The documentation of every operator is generated from the kernel manifest into
@@ -187,8 +268,7 @@ operators (the quotient is `divide` because `div` is the divergence).
 
 - Operators whose arguments are native objects are called through the value ABI:
 
-      backend = call_value(session, "num_backend_current")
-      text(call_value(session, "num_backend_name", backend))   # "interpreter"
+      current_backend(session)                                # effective backend
 
   `OPS[name][3]` is `true` for every operator: the value ABI carries native
   objects and host callbacks alike.

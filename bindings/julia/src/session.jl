@@ -177,8 +177,17 @@ sym(session::Session, name::AbstractString) =
     _wrap(session, term_sym(session.ptr, name), Int32(4))
 
 """An exact integer."""
-integer(session::Session, value::Integer) =
-    _wrap(session, term_int(session.ptr, value), Int32(13))
+function integer(session::Session, x::Integer)
+    if typemin(Int64) <= x <= typemax(Int64)
+        return _wrap(session, term_int(session.ptr, x), Int32(13))
+    end
+    exact = value(session, x)
+    try
+        return term(exact)
+    finally
+        close(exact)
+    end
+end
 
 """A floating point number."""
 number(session::Session, value::Real) =
@@ -271,7 +280,7 @@ signature `op` declares for that position.
 function _call(op::AbstractString, args::Tuple, session)
     if session === nothing
         for value in args
-            if value isa Term
+            if value isa Union{Term, Value, Callback}
                 session = value.session
                 break
             end
@@ -368,10 +377,7 @@ Base.hash(answer::Answer, seed::UInt) = hash(answer.text, seed)
 Reduce `term` to the target of `config` (symbolic by default).
 """
 function compute(term::Term, config::Union{Config, Nothing} = nothing)
-    raw = Ref{CAnswer}()
-    _check(compute(term.session.ptr, term.handle,
-                   config === nothing ? C_NULL : config.ptr, raw))
-    return _answer(term.session, raw[])
+    return first(compute_all(term.session, (term,); config = config))::Answer
 end
 
 compute(session::Session, request, config::Union{Config, Nothing} = nothing) =
@@ -400,24 +406,46 @@ first failure, `:collect` puts the [`RssnError`](@ref) in its place, and
 function compute_all(session::Session, requests;
                      config::Union{Config, Nothing} = nothing,
                      errors::Symbol = :raise)
+    errors in (:raise, :collect, :ignore) ||
+        throw(ArgumentError("errors must be :raise, :collect, or :ignore"))
     terms = Term[term(session, request) for request in requests]
     isempty(terms) && return Any[]
     handles = UInt32[entry.handle for entry in terms]
     answers = Vector{CAnswer}(undef, length(terms))
     statuses = Vector{Cint}(undef, length(terms))
-    _check(compute_all(session.ptr, handles, config === nothing ? C_NULL : config.ptr,
-                       answers, statuses))
+    symbol = _batch_metadata_symbol()
+    metadata = symbol == C_NULL ? nothing : fill(_EMPTY_ANSWER_METADATA, length(terms))
+    config_ptr = config === nothing ? C_NULL : config.ptr
     out = Vector{Any}(undef, length(terms))
     first_error = nothing
-    for index in eachindex(terms)
-        status = Int32(statuses[index])
-        if status == 0
-            out[index] = _answer(session, answers[index])
+    try
+        if metadata === nothing
+            _check(compute_all(session.ptr, handles, config_ptr, answers, statuses))
         else
-            error = RssnError(status, last_error())
-            first_error === nothing && (first_error = error)
-            out[index] = errors === :collect ? error : nothing
+            _check(compute_all_with_metadata(symbol, session.ptr, handles, config_ptr,
+                                             answers, statuses, metadata))
         end
+        batch_error = last_error()
+        for index in eachindex(terms)
+            status = Int32(statuses[index])
+            dim, codes, message = metadata === nothing ?
+                                  ("", "", batch_error) : _read_metadata!(metadata, index)
+            if status == 0
+                if metadata === nothing
+                    dim = dimension(terms[index], config)
+                    diagnostic_codes = _dimension_codes()
+                else
+                    diagnostic_codes = String.(split(codes, '\n'; keepempty = false))
+                end
+                out[index] = _answer(session, answers[index], dim, diagnostic_codes)
+            else
+                error = RssnError(status, message)
+                first_error === nothing && (first_error = error)
+                out[index] = errors === :collect ? error : nothing
+            end
+        end
+    finally
+        metadata === nothing || foreach(_free_metadata, metadata)
     end
     errors === :raise && first_error !== nothing && throw(first_error)
     return out
@@ -485,7 +513,7 @@ function dimension(term::Term, config::Union{Config, Nothing} = nothing)
     return take_string(out[])
 end
 
-function _answer(session::Session, raw::CAnswer)
+function _dimension_codes()
     # `dimension_count()` is a `Csize_t`; convert before subtracting so an empty
     # report does not wrap around to a huge range.
     findings = Int(dimension_count())
@@ -494,8 +522,11 @@ function _answer(session::Session, raw::CAnswer)
         pointer = dimension_code(index)
         codes[index + 1] = pointer == C_NULL ? "" : unsafe_string(pointer)
     end
+    return codes
+end
+
+function _answer(session::Session, raw::CAnswer, dimension_text::String, codes::Vector{String})
     answer_term = Term(session, raw.term)
-    dimension_text = dimension(answer_term)
     return Answer(
         answer_term,
         text(answer_term),
