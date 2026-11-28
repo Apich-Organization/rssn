@@ -14,6 +14,10 @@
 | `bazel test //:docs_test` | 检查文档，再构建示例并执行功能示例 |
 | `bazel run //:example -- quickstart` | 运行 Rust 示例，可用 `--profile` 选择配置 |
 | `bazel run //:benchmark -- engine -- polynomials` | 运行指定基准并向其传递参数 |
+| `bazel run //:benchmark -- engine -- economy_qr` | 单线程测量四种固定尺寸的薄 QR |
+| `bazel run //:llvm_benchmark -- --help` | 使用 Bazel 构建的优化器运行 LLVM 回调、lanes、ABI 和 RustFFT 基准 |
+| `bazel run //:llvm_benchmark_build -- --help` | 按指定配置和工具链构建 LLVM 基准程序 |
+| `bazel run //:llvm_benchmark_compare -- --help` | 以相同输入比较预构建的研究程序 |
 | `bazel test //:test` | 默认 Rust 测试和生成契约检查 |
 | `bazel test //:rust_minimal_test` | 关闭默认特性后运行 Rust 测试 |
 | `bazel test //:integration_test` | Rust 全特性、契约、头文件、见证重放及四语言绑定测试 |
@@ -39,6 +43,11 @@
 绑定集成测试使用带 NumPy 的 Python、Julia、带开发头文件的 R、CMake 和 C++ 编译器。R 包安装在构建缓存中，所有语言都使用同一个指定的库文件。加上 `--config=release` 可测试优化后的 cdylib。只需全特性开发版动态库时，可运行 `bazel build //:ffi_dev`。
 
 如果 R 环境提供独立的 C++ 工具链，可用 `--repo_env=CXX=/path/to/c++` 选择与待测库兼容的编译器。
+
+比较两个工作树时，请为两边设置同一个绝对路径 `CRITERION_HOME`。
+用 `bazel run //:benchmark -- engine -- economy_qr --save-baseline before` 保存第一版的结果，
+再用 `bazel run //:benchmark -- engine -- economy_qr --baseline before` 比较第二版。
+两次应使用同一台机器和同一套 Rust 工具链。
 
 ## FFI 分发
 

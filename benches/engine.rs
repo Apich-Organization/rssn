@@ -344,6 +344,35 @@ fn finite_field_ntt(c: &mut Criterion) {
     group.finish();
 }
 
+fn economy_qr(c: &mut Criterion) {
+    use rssn::kernels::dense::Mat;
+    use rssn::kernels::dense::qr_thin;
+
+    let mut group = c.benchmark_group("economy_qr");
+    for (rows, cols) in [(128, 8), (1024, 16), (4096, 32), (128, 128)] {
+        let values: Vec<Vec<f64>> = (0..rows)
+            .map(|i| {
+                (0..cols)
+                    .map(|j| f64::from(i * 31 + j * 3).sin() + f64::from(i == j))
+                    .collect()
+            })
+            .collect();
+        let matrix = Mat::from_rows(&values).expect("rectangular benchmark input");
+        group.bench_with_input(
+            BenchmarkId::from_parameter(format!("{rows}x{cols}")),
+            &matrix,
+            |bench, matrix| {
+                bench.iter(|| {
+                    rssn::execution::with_scoped_pool(Some(1), || {
+                        qr_thin(black_box(matrix)).expect("finite input has a QR")
+                    })
+                });
+            },
+        );
+    }
+    group.finish();
+}
+
 fn kalman_history(c: &mut Criterion) {
     use rssn::kernels::timeseries::kalman_filter;
     use rssn::kernels::timeseries::kalman_smooth;
@@ -444,6 +473,7 @@ criterion_group!(
     zero_phase_filter,
     sharp_cauchy_radius,
     finite_field_ntt,
+    economy_qr,
     kalman_history,
     rolling_window,
     jit

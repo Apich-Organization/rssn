@@ -14,6 +14,10 @@ Use Bazel 7.7.1 through Bazelisk, Python 3.11 or later, and the Rust toolchain s
 | `bazel test //:docs_test` | Check documentation, then build and run the functional examples |
 | `bazel run //:example -- quickstart` | Run a Rust example with an optional `--profile` |
 | `bazel run //:benchmark -- engine -- polynomials` | Run the named benchmark with its arguments |
+| `bazel run //:benchmark -- engine -- economy_qr` | Measure thin QR on four fixed shapes with a single worker |
+| `bazel run //:llvm_benchmark -- --help` | Run the LLVM callback, lanes, ABI and RustFFT study with the Bazel-built optimizer |
+| `bazel run //:llvm_benchmark_build -- --help` | Build the LLVM study harnesses for a selected profile and toolchain |
+| `bazel run //:llvm_benchmark_compare -- --help` | Compare prebuilt study binaries with matched inputs |
 | `bazel test //:test` | Default Rust suite and generated contracts |
 | `bazel test //:rust_minimal_test` | Rust tests with default features disabled |
 | `bazel test //:integration_test` | Rust features, contracts, headers, witness replay and all four bindings |
@@ -40,6 +44,13 @@ The binding integration test needs Python with NumPy, Julia, R with development 
 
 When R is installed in an environment with a separate C++ toolchain, select a
 compiler compatible with the supplied library using `--repo_env=CXX=/path/to/c++`.
+
+To compare the same benchmark across two checkouts, use an absolute
+`CRITERION_HOME` shared by both. Save the first revision with
+`bazel run //:benchmark -- engine -- economy_qr --save-baseline before`
+and compare the second with
+`bazel run //:benchmark -- engine -- economy_qr --baseline before`.
+Keep the same Rust toolchain and machine for the two runs.
 
 ## FFI distribution
 
