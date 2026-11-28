@@ -1,77 +1,326 @@
-name: CI/CD workflow for branch main & pull requests
+# Continuous integration. The same structure is used by the aevia repository:
+# Formatting, lint, test, benchmark, contract, FFI, binding and documentation jobs share one
+# `ci-success` job so branch protection needs a single required check.
+
+name: CI
+
+"on":
+  push:
+    branches: [main, v0.3]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      benchmark_reports:
+        description: Collect full RSSN benchmark reports
+        type: boolean
+        default: false
+      llvm_benchmarks:
+        description: Run the LLVM benchmarks with the matching x86-64 Linux SDK
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      benchmark_reports:
+        type: boolean
+        default: false
+  schedule:
+    - cron: '17 7 * * 1'
 
 permissions:
   contents: read
 
-on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-  push:
-    branches:
-      - main
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  CARGO_PROFILE_DEV_DEBUG: "0"
+  # Workspace `rust-version`; the toolchain every gate below uses.
+  RUST_TOOLCHAIN: "1.100.0"
 
 jobs:
-  build-test-bench-fmt-doc:
-    runs-on: self-hosted
-    strategy:
-      matrix:
-        toolchain: [stable, beta, nightly, 1.89.0]
+  fmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable action, nightly toolchain
         with:
-          egress-policy: audit
-
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Install Rust ${{ matrix.toolchain }}
-        uses: step-security/actions-rs-toolchain@40a2f87e50bed6faa2d050e99810b226b75d8c8a # v1.0.7
+          toolchain: nightly
+          components: rustfmt
+      - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
         with:
-          toolchain: ${{ matrix.toolchain }}
-          override: true
+          bazelisk-cache: true
+          repository-cache: true
+      - run: bazel test //:fmt_test
 
-      - name: Install System Dependencies for fontconfig & bench testing
-        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev linux-tools-common linux-tools-generic linux-tools-`uname -r`
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: clippy
+      - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
+        with:
+          bazelisk-cache: true
+          repository-cache: true
+      - name: System dependencies
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
+      - run: bazel test //:clippy_test
 
-      - name: Install Cargo flamegraph
-        run: cargo install flamegraph
-
-      - name: Install Clippy & Rustfmt if using nightly
+  test:
+    name: test (${{ matrix.os }}, ${{ matrix.features }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 150
+    env:
+      CARGO_PROFILE_TEST_DEBUG: "0"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, features: full, test_target: "//:rust_all_features_test" }
+          - { os: windows-latest, features: full, test_target: "//:rust_all_features_test" }
+          - { os: macos-latest, features: minimal, test_target: "//:rust_minimal_test" }
+          - { os: macos-latest, features: default, test_target: "//:rust_tests" }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
+      - name: System dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev libvulkan1 mesa-vulkan-drivers
+      - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
+        with:
+          bazelisk-cache: true
+          repository-cache: true
+      - name: Run the workspace tests
+        env:
+          # MSVC otherwise writes a large PDB for every linked test.
+          _LINK_: ${{ runner.os == 'Windows' && '/DEBUG:NONE' || '' }}
+        run: bazel test --test_env=_LINK_ ${{ matrix.test_target }}
+      - name: Require wgpu compute execution on software Vulkan
+        if: runner.os == 'Linux'
+        shell: bash
         run: |
-             if [[ "${{ matrix.toolchain }}" == "nightly" ]]; then
-                rustup component add --toolchain nightly clippy
-                rustup component add --toolchain nightly rustfmt
-             fi
-      
-      - name: Install Clippy & Rustfmt if using beta
+          export VK_DRIVER_FILES
+          VK_DRIVER_FILES="$(find /usr/share/vulkan/icd.d -maxdepth 1 -name 'lvp_icd*.json' -print -quit)"
+          test -s "$VK_DRIVER_FILES"
+          export XDG_RUNTIME_DIR="$RUNNER_TEMP/rssn-vulkan"
+          install -d -m 700 "$XDG_RUNTIME_DIR"
+          bazel test --test_env=VK_DRIVER_FILES --test_env=XDG_RUNTIME_DIR //:gpu_test
+      - name: Run long numerical regressions
+        if: runner.os == 'Linux' && github.event_name == 'schedule' && github.event.schedule == '17 7 * * 1'
+        run: bazel test //:rust_ignored_test
+
+  contracts:
+    name: contracts (signature audit, generated bindings)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
+      - name: System dependencies
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
+      - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
+        with:
+          bazelisk-cache: true
+          repository-cache: true
+      - name: C++ formatter
+        run: python3 -m pip install clang-format==23.1.5
+      - name: Verify operator contracts, generated bindings and headers
+        run: bazel test //:api_generator_test //:contracts_test //:headers_check_test
+      - name: Install cargo-about
+        run: cargo install --locked cargo-about@0.9.3
+      - name: Verify third-party license attributions
+        run: cargo fetch --locked && python3 scripts/check_attributions.py
+
+  ffi:
+    name: C and C++ API (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
+      - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
+        with:
+          bazelisk-cache: true
+          repository-cache: true
+      - name: Link and run C and C++ clients
+        if: runner.os != 'Windows'
+        run: bazel test //:ffi_native_clients_test
+      - name: Link and run C and C++ clients on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-             if [[ "${{ matrix.toolchain }}" == "beta" ]]; then
-                rustup component add --toolchain beta clippy
-                rustup component add --toolchain beta rustfmt
-             fi
-      
-      - name: Install Clippy & Rustfmt if using v1.89
+          $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
+          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if ($LASTEXITCODE -ne 0 -or !$vs) { throw 'Visual Studio C++ tools were not found' }
+          & "$vs/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
+          bazel test //:ffi_native_clients_test
+          exit $LASTEXITCODE
+
+  bindings:
+    name: Python, Julia, R and C++ binding contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
+        with:
+          key: bindings-all-features
+      - uses: julia-actions/setup-julia@da908477b5db94c10ffce8cfea9f2b3b9d5db687 # v3.0.3
+        with:
+          version: '1.10.14'
+      - name: Install host dependencies
         run: |
-             if [[ "${{ matrix.toolchain }}" == "1.89.0" ]]; then
-                rustup component add --toolchain 1.89.0 clippy
-                rustup component add --toolchain 1.89.0 rustfmt
-             fi
-      
-      - name: Build with full features
-        run: cargo clippy --all-features --verbose
-        continue-on-error: true
+          sudo apt-get update
+          sudo apt-get install -y cmake fontconfig libfontconfig1-dev python-is-python3 python3-numpy r-base-core r-base-dev
+      - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
+        with:
+          bazelisk-cache: true
+          repository-cache: true
+      - name: C++ formatter
+        run: python3 -m pip install clang-format==23.1.5
+      - name: Run all bindings against one Bazel-built library
+        run: bazel test //:bindings_check_test //:bindings_test
 
-      - name: Test with full features
-        run: cargo test --all-features --verbose
+  docs:
+    name: documentation and examples
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
+      - name: System dependencies
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
+      - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
+        with:
+          bazelisk-cache: true
+          repository-cache: true
+      - run: bazel test //:docs_test
 
-      - name: Flamegraph with full features
-        run: cargo flamegraph --examples matrix_demo.rs
-        continue-on-error: true
+  benchmarks:
+    name: Benchmarks (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      RAYON_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
+        with:
+          bazelisk-cache: true
+          repository-cache: true
+      - name: System dependencies
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
+      - name: Validate or measure benchmarks
+        shell: bash
+        env:
+          BENCHMARK_REPORTS: ${{ (github.event_name == 'schedule' && github.event.schedule == '17 7 * * 1') || inputs.benchmark_reports }}
+          CRITERION_HOME: ${{ runner.temp }}/rssn-criterion
+        run: |
+          args=()
+          if [[ "$BENCHMARK_REPORTS" == true ]]; then args+=(--full); fi
+          bazel run --define=rssn_jobs=2 //:benchmark_ci -- "${args[@]}"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 7 * * 1') || inputs.benchmark_reports
+        with:
+          name: rssn-criterion
+          path: ${{ runner.temp }}/rssn-criterion
+          if-no-files-found: error
 
-      - name: Check formatting
-        run: cargo fmt --all --check
-        continue-on-error: true
+  llvm-benchmarks:
+    name: LLVM benchmarks (Linux x86-64)
+    if: github.event_name == 'workflow_dispatch' && inputs.llvm_benchmarks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
+        with:
+          bazelisk-cache: true
+          repository-cache: true
+      - name: System dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++ zstd
+      - name: Run the LLVM benchmark suite
+        shell: bash
+        env:
+          RUSTC: ${{ fromJSON(vars.RSSN_RELEASE_RUSTCS || '{}')['x86_64-unknown-linux-gnu'] || vars.RSSN_RUSTC }}
+          CARGO: ${{ fromJSON(vars.RSSN_RELEASE_CARGOS || '{}')['x86_64-unknown-linux-gnu'] || vars.RSSN_CARGO }}
+          RSSN_LLVM_CONFIG: ${{ fromJSON(vars.RSSN_RELEASE_LLVM_CONFIGS || '{}')['x86_64-unknown-linux-gnu'] || vars.RSSN_LLVM_CONFIG }}
+        run: |
+          flags=(--define=rssn_jobs=2 --repo_env=RSSN_FETCH_LLVM_SDK=1)
+          for variable in RUSTC CARGO RSSN_LLVM_CONFIG; do
+            if [[ -n "${!variable:-}" ]]; then flags+=("--repo_env=$variable=${!variable}"); fi
+          done
+          bazel run "${flags[@]}" //:llvm_benchmark_ci -- --reports-dir "$RUNNER_TEMP/rssn-llvm-benchmarks"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ !cancelled() }}
+        with:
+          name: rssn-llvm-benchmarks
+          path: |
+            ${{ runner.temp }}/rssn-llvm-benchmarks/*/results.json
+            ${{ runner.temp }}/rssn-llvm-benchmarks/*/*.log
+          if-no-files-found: warn
 
-      - name: Check docing
-        run: cargo doc --all
+  release-policy:
+    name: Release target CPU and optimization policy
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
+      - run: bazel test --config=release-max //:release_policy_test
+
+  ci-success:
+    name: CI success
+    if: always()
+    needs: [fmt, clippy, test, contracts, ffi, bindings, docs, release-policy, benchmarks, llvm-benchmarks]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every job to have succeeded
+        env:
+          JOB_RESULTS: ${{ toJSON(needs) }}
+        run: |
+          jq -e 'all(to_entries[];
+            .value.result == "success" or (.key == "llvm-benchmarks" and .value.result == "skipped"))' <<< "$JOB_RESULTS"

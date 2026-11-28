@@ -1,0 +1,400 @@
+//! Native dimensional transport, Fourier helpers and Crank–Nicolson wrappers.
+use super::DimExpr;
+use super::Dynamic;
+use super::Faces;
+use super::Frame;
+use super::Handle;
+use super::Installer;
+use super::LIMIT;
+use super::NativeType;
+use super::NewObject;
+use super::OpError;
+use super::Output;
+use super::RuleError;
+use super::TensorValue;
+use super::TypeExpr;
+use super::Value;
+use super::api;
+use super::err;
+use super::object_binding;
+use super::payload;
+use crate::kernel::CallCtx;
+use crate::kernels::transforms::IrfftPlan;
+use crate::rules::numerical_abi::codecs::Arg;
+use crate::rules::numerical_abi::output_scalar;
+use crate::sim::dimensional as dn;
+use crate::sim::physics_cnm as cn;
+use crate::sim::physics_sm as sm;
+use num_complex::Complex64 as C;
+use std::mem::size_of;
+
+// The tensor's root is one of the nodes counted by the native value budget.
+const IRFFT_LIMIT: usize = api::VALUE_LIMIT - 1;
+const IRFFT_BIN_LIMIT: usize = IRFFT_LIMIT / 2 + 1;
+const IRFFT_ALLOCATION_HEADER: usize = size_of::<IrfftPlan>() + 2 * size_of::<usize>();
+
+impl NativeType for IrfftPlan {
+    const KIND: &'static str = "rssn/native/fft/irfft-plan/v1";
+    const MAX_BYTES: usize = IRFFT_ALLOCATION_HEADER + (IRFFT_LIMIT / 2) * size_of::<C>();
+
+    fn validate(&self) -> Result<(), OpError> {
+        if self.output_len() > IRFFT_LIMIT {
+            return Err(err(
+                "inverse real FFT sample count exceeds the native value budget",
+            ));
+        }
+        Ok(())
+    }
+
+    fn retained_bytes(&self) -> usize {
+        let n = self.output_len();
+        // An even plan holds at most one complex factor per sample pair.
+        let factors = if n.is_multiple_of(2) && n >= 4 {
+            n / 2
+        } else {
+            0
+        };
+        IRFFT_ALLOCATION_HEADER + factors * size_of::<C>()
+    }
+}
+
+struct IrfftSpectrum {
+    bins: Vec<C>,
+    dimension: DimExpr,
+}
+
+impl api::NativeArg for IrfftSpectrum {
+    fn ty() -> TypeExpr {
+        api::tensor_type(1, TypeExpr::Complex.with_dim(DimExpr::Var("D".into())))
+    }
+
+    fn decode(
+        value: &Value,
+        index: usize,
+        _: &CallCtx<'_>,
+    ) -> Result<Self, OpError> {
+        let Value::Tensor(tensor) = value else {
+            return Err(err("expected a rank-one inverse real FFT half spectrum"));
+        };
+        if tensor.shape != [tensor.data.len()] || tensor.data.len() > IRFFT_BIN_LIMIT {
+            return Err(err(
+                "inverse real FFT half-spectrum shape or bin budget exceeded",
+            ));
+        }
+        let dimension = api::dimension(value)?;
+        let bins = <Vec<C> as Arg>::decode(value, index)?;
+        Ok(Self { bins, dimension })
+    }
+}
+
+struct IrfftSamples {
+    data: Vec<f64>,
+    dimension: DimExpr,
+}
+
+impl api::NativeOutput for IrfftSamples {
+    fn ty() -> TypeExpr {
+        api::tensor_type(1, TypeExpr::Float.with_dim(DimExpr::Var("D".into())))
+    }
+
+    fn encode(
+        self,
+        _: &CallCtx<'_>,
+    ) -> Result<Value, OpError> {
+        let shape = vec![self.data.len()];
+        let data = self
+            .data
+            .into_iter()
+            .map(output_scalar)
+            .collect::<Result<_, _>>()?;
+        Ok(Value::Tensor(TensorValue {
+            elem: TypeExpr::Float.with_dim(self.dimension),
+            shape,
+            data,
+        }))
+    }
+}
+
+object_binding!(
+    irfft_plan_new,
+    "num_native_irfft_plan_new",
+    "crate::kernels::transforms::IrfftPlan::new",
+    "Prepare a fixed-length inverse real FFT for repeated half spectra in this session. Supply the number of real output samples, from 0 through 262143. This determines odd or even transform parity and the required bin count. The plan holds the even-length unpacking factors.",
+    true,
+    (n: usize) -> NewObject<IrfftPlan>,
+    |_, n| {
+        if n > IRFFT_LIMIT {
+            return Err(err("inverse real FFT sample count exceeds the native value budget"));
+        }
+        let plan = IrfftPlan::new(n).map_err(|_| err("invalid inverse real FFT plan length"))?;
+        Ok(NewObject::normalized(plan))
+    }
+);
+
+object_binding!(
+    irfft_plan_apply,
+    "num_native_irfft_plan_apply",
+    "crate::kernels::transforms::IrfftPlan::apply_into",
+    "Transform a finite rank-one half spectrum with n/2 + 1 bins, or zero bins for n = 0. Imaginary DC and even Nyquist components do not contribute. Returns n real 1/n-normalized samples as a measured tensor with the spectrum's physical units. In Rust, IrfftPlan::apply_into writes into a caller-owned output slice.",
+    false,
+    (plan: Handle<IrfftPlan>, spectrum: IrfftSpectrum) -> IrfftSamples,
+    |ctx, plan, spectrum| plan.with(ctx, |plan| {
+        if spectrum.bins.len() != plan.spectrum_len() {
+            return Err(err("half-spectrum bin count differs from the inverse real FFT plan"));
+        }
+        let mut data = vec![0.0; plan.output_len()];
+        plan.apply_into(&spectrum.bins, &mut data).map_err(|_| err("inverse real FFT shape mismatch"))?;
+        Ok(IrfftSamples { data, dimension: spectrum.dimension })
+    })
+);
+
+object_binding!(
+    irfft_plan_output_len,
+    "num_native_irfft_plan_output_len",
+    "crate::kernels::transforms::IrfftPlan::output_len",
+    "Report the number of real samples produced by this session's inverse real FFT plan.",
+    true,
+    (plan: Handle<IrfftPlan>) -> usize,
+    |ctx, plan| plan.with(ctx, |plan| Ok(plan.output_len()))
+);
+
+object_binding!(
+    irfft_plan_spectrum_len,
+    "num_native_irfft_plan_spectrum_len",
+    "crate::kernels::transforms::IrfftPlan::spectrum_len",
+    "Report the number of half-spectrum bins required by this session's inverse real FFT plan. The empty plan requires zero bins.",
+    true,
+    (plan: Handle<IrfftPlan>) -> usize,
+    |ctx, plan| plan.with(ctx, |plan| Ok(plan.spectrum_len()))
+);
+
+#[derive(Clone)]
+struct Transport {
+    data: dn::Transport,
+    frame: Frame,
+}
+impl NativeType for Transport {
+    const KIND: &'static str = "rssn/native/transport-equation/v1";
+    const MAX_BYTES: usize = 4096;
+
+    fn validate(&self) -> Result<(), OpError> {
+        self.frame.validate()
+    }
+}
+fn mesh(
+    dims: &[usize],
+    spacing: &[f64],
+    n: usize,
+) -> Result<(), OpError> {
+    if dims.is_empty()
+        || dims.len() > 3
+        || spacing.len() != dims.len()
+        || dims.iter().any(|n| *n == 0 || *n > 4096)
+        || dims.iter().try_fold(1usize, |n, m| n.checked_mul(*m)) != Some(n)
+        || n > LIMIT
+        || spacing.iter().any(|x| !x.is_finite() || *x <= 0.0)
+    {
+        return Err(err("native grid shape/spacing/allocation budget invalid"));
+    }
+    Ok(())
+}
+fn work(
+    n: usize,
+    steps: usize,
+    history: bool,
+) -> Result<(), OpError> {
+    if steps > 8192
+        || n.checked_mul(steps.max(1)).is_none_or(|w| w > 8_388_608)
+        || history && n.checked_mul(steps + 1).is_none_or(|w| w > LIMIT)
+    {
+        return Err(err("native grid evolution work/history budget exceeded"));
+    }
+    Ok(())
+}
+fn heat_adi_2d_config(
+    dims: &[usize],
+    spacing: &[f64],
+    nodes: usize,
+    diffusivity: f64,
+    dt: f64,
+    steps: usize,
+) -> Result<cn::HeatEquationSolverConfig, OpError> {
+    mesh(dims, spacing, nodes)?;
+    work(nodes, steps, false)?;
+    let ([nx, ny], [dx, dy]) = (dims, spacing) else {
+        return Err(err("Crank–Nicolson ADI requires a two-dimensional grid"));
+    };
+    Ok(cn::HeatEquationSolverConfig {
+        nx: *nx,
+        ny: *ny,
+        dx: *dx,
+        dy: *dy,
+        dt,
+        d_coeff: diffusivity,
+        steps,
+    })
+}
+
+object_binding!(
+    transform_cnm_heat_adi_fixed_boundary,
+    "num_grid_cnm_solve_heat_equation_2d_cn_adi_fixed_boundary",
+    "crate::sim::physics_cnm::solve_heat_equation_2d_cn_adi_fixed_boundary",
+    "Advances a 2D heat field with Crank–Nicolson ADI. The x-fastest initial field provides all four fixed Dirichlet edges, which retain their values throughout the solve. Supply spacing in units of length_reference, diffusivity in length_reference^2/time_reference, the time step in time_reference, and temperature in value_reference. The returned field keeps its grid references.",
+    true,
+    (
+        frame: Handle<Frame>,
+        dims: Vec<usize>,
+        spacing: Vec<f64>,
+        initial: Vec<f64>,
+        diffusivity: f64,
+        dt: f64,
+        steps: usize,
+    ) -> Dynamic,
+    |ctx, frame, dims, spacing, initial, diffusivity, dt, steps| frame.with(ctx, |f| {
+        let config = heat_adi_2d_config(&dims, &spacing, initial.len(), diffusivity, dt, steps)?;
+        let field = cn::solve_heat_equation_2d_cn_adi_fixed_boundary(&initial, &config)
+            .map_err(err)?;
+        payload(f, field, dims)
+    })
+);
+
+fn complex(
+    data: Vec<C>,
+    dims: Vec<usize>,
+    frame: &Frame,
+) -> Result<Dynamic, OpError> {
+    if data.len() > LIMIT
+        || dims.iter().try_fold(1usize, |n, m| n.checked_mul(*m)) != Some(data.len())
+    {
+        return Err(err("complex field shape budget invalid"));
+    }
+    Ok(Dynamic(api::record(vec![
+        ("shape", dims.encode()?),
+        ("data", data.encode()?),
+        (
+            "reference",
+            api::quantity(frame.value, frame.dims[2].clone())?,
+        ),
+    ])))
+}
+object_binding!(transform_transport_equation,"num_grid_transport_equation","","Actual native grid/transform method in explicit Length/Time/field references; arrays and coefficients are normalized in that frame and native x-fastest storage is retained. Method identity, FFT normalization, boundary semantics and bounded work/history are preserved.",true,(frame:Handle<Frame>,kind:String,velocity:Vec<f64>,diffusivity:f64)->NewObject<Transport>,|ctx,frame,kind,velocity,diffusivity|{let _=ctx;if diffusivity<0.0||velocity.len()>3{return Err(err("transport coefficient/vector domain invalid"));}frame.with(ctx,|f|{let data=match kind.as_str(){"Advection" if crate::kernels::exact_eq(diffusivity,0.0)=>dn::Transport::Advection{velocity},"Diffusion" if velocity.is_empty()=>dn::Transport::Diffusion{alpha:diffusivity},"AdvectionDiffusion"=>dn::Transport::AdvectionDiffusion{velocity,alpha:diffusivity},"Burgers" if velocity.is_empty()=>dn::Transport::Burgers{nu:diffusivity},"BurgersCentral" if velocity.is_empty()=>dn::Transport::BurgersCentral{nu:diffusivity},_=>return Err(err("unknown transport variant or nonempty unused controls"))};Ok(NewObject::new(Transport{data,frame:f.clone()},f.dims.to_vec()))})});
+object_binding!(transform_dimensional_advance_transport_nd,"num_grid_dimensional_advance_transport_nd","crate::sim::dimensional::advance_transport_nd","Actual native grid/transform method in explicit Length/Time/field references; arrays and coefficients are normalized in that frame and native x-fastest storage is retained. Method identity, FFT normalization, boundary semantics and bounded work/history are preserved.",true,(equation:Handle<Transport>,dims:Vec<usize>,spacing:Vec<f64>,initial:Vec<f64>,dt:f64,steps:usize)->Dynamic,|ctx,equation,dims,spacing,initial,dt,steps|{let _=ctx;equation.with(ctx,|e|{mesh(&dims,&spacing,initial.len())?;work(initial.len(),steps,false)?;if dt<=0.0{return Err(err("transport timestep must be positive"));}let out=dn::advance_transport_nd(&initial,&dims,&spacing,&e.data,dt,steps).map_err(err)?;payload(&e.frame,out,dims)})});
+object_binding!(transform_dimensional_solve_transport_nd,"num_grid_dimensional_solve_transport_nd","crate::sim::dimensional::solve_transport_nd","Actual native grid/transform method in explicit Length/Time/field references; arrays and coefficients are normalized in that frame and native x-fastest storage is retained. Method identity, FFT normalization, boundary semantics and bounded work/history are preserved.",true,(equation:Handle<Transport>,dims:Vec<usize>,spacing:Vec<f64>,initial:Vec<f64>,dt:f64,steps:usize)->Dynamic,|ctx,equation,dims,spacing,initial,dt,steps|{let _=ctx;equation.with(ctx,|e|{mesh(&dims,&spacing,initial.len())?;work(initial.len(),steps,true)?;if dt<=0.0{return Err(err("transport timestep must be positive"));}let out=dn::solve_transport_nd(&initial,&dims,&spacing,&e.data,dt,steps).map_err(err)?;let rows=out.len();let cols=initial.len();payload(&e.frame,out.into_iter().flatten().collect(),vec![rows,cols])})});
+object_binding!(
+    transform_dimensional_solve_transport_sampled_nd,
+    "num_grid_dimensional_solve_transport_sampled_nd",
+    "crate::sim::dimensional::solve_transport_sampled_nd",
+    "Advance the retained transport equation and record step 0, positive multiples of save_every, and the final step. Data, spacings, and time steps are normalized in the equation's Length/Time/field frame. Returns x-fastest fields as rows with their physical reference. Work and retained history are bounded independently.",
+    true,
+    (equation: Handle<Transport>, dims: Vec<usize>, spacing: Vec<f64>, initial: Vec<f64>, dt: f64, steps: usize, save_every: usize) -> Dynamic,
+    |ctx, equation, dims, spacing, initial, dt, steps, save_every| {
+        equation.with(ctx, |e| {
+            mesh(&dims, &spacing, initial.len())?;
+            work(initial.len(), steps, false)?;
+            let rows = dn::transport_snapshot_count(steps, save_every).map_err(err)?;
+            let cols = initial.len();
+            if rows.checked_mul(cols).is_none_or(|size| size > LIMIT) {
+                return Err(err("native grid evolution history budget exceeded"));
+            }
+            let out = dn::solve_transport_sampled_nd(
+                &initial, &dims, &spacing, &e.data, dt, steps, save_every,
+            ).map_err(err)?;
+            payload(&e.frame, out.into_iter().flatten().collect(), vec![rows, cols])
+        })
+    }
+);
+object_binding!(transform_dimensional_heat_adi,"num_grid_dimensional_heat_adi","crate::sim::dimensional::solve_heat_adi_nd","Actual native grid/transform method in explicit Length/Time/field references; arrays and coefficients are normalized in that frame and native x-fastest storage is retained. Method identity, FFT normalization, boundary semantics and bounded work/history are preserved.",true,(frame:Handle<Frame>,dims:Vec<usize>,spacing:Vec<f64>,initial:Vec<f64>,diffusivity:f64,dt:f64,steps:usize)->Dynamic,|ctx,frame,dims,spacing,initial,diffusivity,dt,steps|{let _=ctx;frame.with(ctx,|f|{mesh(&dims,&spacing,initial.len())?;work(initial.len(),steps,false)?;if diffusivity<0.0||dt<=0.0{return Err(err("ADI diffusion/timestep domain invalid"));}let out=dn::solve_heat_adi_nd(&initial,&dims,&spacing,diffusivity,dt,steps).map_err(err)?;payload(f,out,dims)})});
+object_binding!(transform_dimensional_poisson,"num_grid_dimensional_poisson","crate::sim::dimensional::solve_poisson_iterative_nd","Actual native grid/transform method in explicit Length/Time/field references; arrays and coefficients are normalized in that frame and native x-fastest storage is retained. Method identity, FFT normalization, boundary semantics and bounded work/history are preserved.",true,(frame:Handle<Frame>,dims:Vec<usize>,spacing:Vec<f64>,source:Vec<f64>,initial:Vec<f64>,method:String,relaxation:Option<f64>,iterations:usize,tolerance:f64)->Dynamic,|ctx,frame,dims,spacing,source,initial,method,relaxation,iterations,tolerance|{let _=ctx;frame.with(ctx,|f|{mesh(&dims,&spacing,source.len())?;work(source.len(),iterations,false)?;if initial.len()!=source.len()||iterations==0||tolerance<=0.0{return Err(err("Poisson initial/tolerance domain invalid"));}let method=match(method.as_str(),relaxation){("Jacobi",None)=>dn::IterativeMethod::Jacobi,("GaussSeidel",None)=>dn::IterativeMethod::GaussSeidel,("Sor",Some(omega))if omega>0.0&&omega<2.0=>dn::IterativeMethod::Sor(omega),_=>return Err(err("Jacobi/GaussSeidel need None relaxation; Sor needs Some(omega in (0,2))"))};let out=dn::solve_poisson_iterative_nd(&source,&initial,&dims,&spacing,method,iterations,tolerance).map_err(err)?;payload(f,out,dims)})});
+object_binding!(transform_dimensional_wave,"num_grid_dimensional_wave","crate::sim::dimensional::solve_wave_leapfrog_nd","Actual native grid/transform method in explicit Length/Time/field references; arrays and coefficients are normalized in that frame and native x-fastest storage is retained. Method identity, FFT normalization, boundary semantics and bounded work/history are preserved.",true,(frame:Handle<Frame>,dims:Vec<usize>,spacing:Vec<f64>,initial:Vec<f64>,initial_velocity:Vec<f64>,speed:f64,dt:f64,steps:usize)->Dynamic,|ctx,frame,dims,spacing,initial,initial_velocity,speed,dt,steps|{let _=ctx;frame.with(ctx,|f|{mesh(&dims,&spacing,initial.len())?;work(initial.len(),steps,true)?;if initial_velocity.len()!=initial.len()||speed<0.0||dt<=0.0{return Err(err("wave velocity/speed/time domain invalid"));}let out=dn::solve_wave_leapfrog_nd(&initial,&initial_velocity,&dims,&spacing,speed,dt,steps).map_err(err)?;let rows=out.len();let cols=initial.len();payload(f,out.into_iter().flatten().collect(),vec![rows,cols])})});
+object_binding!(transform_dimensional_schrodinger,"num_grid_dimensional_schrodinger","crate::sim::dimensional::solve_schrodinger_cn_nd","Native nondimensional Crank-Nicolson Schrodinger equation i*psi_t=-Delta(psi)/2+V*psi. The explicit frame restores kinetic coefficient L²/(2T), potential frequency 1/T and complex amplitude units; it does not silently choose SI hbar or mass. Native spacing, method, layout and work bounds are retained.",true,(frame:Handle<Frame>,dims:Vec<usize>,spacing:Vec<f64>,initial:Vec<C>,potential:Vec<f64>,dt:f64,steps:usize)->Dynamic,|ctx,frame,dims,spacing,initial,potential,dt,steps|{let _=ctx;frame.with(ctx,|f|{mesh(&dims,&spacing,initial.len())?;work(initial.len(),steps,false)?;if potential.len()!=initial.len()||dt<=0.0{return Err(err("Schrodinger potential/time/dimension invalid"));}complex(dn::solve_schrodinger_cn_nd(&initial,&potential,&dims,&spacing,dt,steps).map_err(err)?,dims,f)})});
+object_binding!(transform_cnm_schrodinger_1d,"num_grid_cnm_schrodinger_1d","crate::sim::physics_cnm::solve_schrodinger_1d_cn","Native nondimensional Crank-Nicolson Schrodinger equation i*psi_t=-Delta(psi)/2+V*psi. The explicit frame restores kinetic coefficient L²/(2T), potential frequency 1/T and complex amplitude units; it does not silently choose SI hbar or mass. Native spacing, method, layout and work bounds are retained.",true,(frame:Handle<Frame>,dims:Vec<usize>,spacing:Vec<f64>,initial:Vec<C>,potential:Vec<f64>,dt:f64,steps:usize)->Dynamic,|ctx,frame,dims,spacing,initial,potential,dt,steps|{let _=ctx;frame.with(ctx,|f|{mesh(&dims,&spacing,initial.len())?;work(initial.len(),steps,false)?;if potential.len()!=initial.len()||dims.iter().any(|n|*n<2)||dt<=0.0||dims.len()!=1{return Err(err("Schrodinger potential/time/dimension invalid"));}complex(cn::solve_schrodinger_1d_cn(&initial,&potential,spacing[0],dt,steps),dims,f)})});
+object_binding!(transform_cnm_schrodinger_2d,"num_grid_cnm_schrodinger_2d","crate::sim::physics_cnm::solve_schrodinger_2d_cn","Native nondimensional Crank-Nicolson Schrodinger equation i*psi_t=-Delta(psi)/2+V*psi. The explicit frame restores kinetic coefficient L²/(2T), potential frequency 1/T and complex amplitude units; it does not silently choose SI hbar or mass. Native spacing, method, layout and work bounds are retained.",true,(frame:Handle<Frame>,dims:Vec<usize>,spacing:Vec<f64>,initial:Vec<C>,potential:Vec<f64>,dt:f64,steps:usize)->Dynamic,|ctx,frame,dims,spacing,initial,potential,dt,steps|{let _=ctx;frame.with(ctx,|f|{mesh(&dims,&spacing,initial.len())?;work(initial.len(),steps,false)?;if potential.len()!=initial.len()||dims.iter().any(|n|*n<2)||dt<=0.0||dims.len()!=2{return Err(err("Schrodinger potential/time/dimension invalid"));}let n:[usize;2]=dims.clone().try_into().map_err(|_|err("dimension mismatch"))?;let h:[f64;2]=spacing.try_into().map_err(|_|err("spacing mismatch"))?;complex(cn::solve_schrodinger_2d_cn(&initial,&potential,n,h,dt,steps).map_err(err)?,dims,f)})});
+object_binding!(transform_cnm_schrodinger_3d,"num_grid_cnm_schrodinger_3d","crate::sim::physics_cnm::solve_schrodinger_3d_cn","Native nondimensional Crank-Nicolson Schrodinger equation i*psi_t=-Delta(psi)/2+V*psi. The explicit frame restores kinetic coefficient L²/(2T), potential frequency 1/T and complex amplitude units; it does not silently choose SI hbar or mass. Native spacing, method, layout and work bounds are retained.",true,(frame:Handle<Frame>,dims:Vec<usize>,spacing:Vec<f64>,initial:Vec<C>,potential:Vec<f64>,dt:f64,steps:usize)->Dynamic,|ctx,frame,dims,spacing,initial,potential,dt,steps|{let _=ctx;frame.with(ctx,|f|{mesh(&dims,&spacing,initial.len())?;work(initial.len(),steps,false)?;if potential.len()!=initial.len()||dims.iter().any(|n|*n<2)||dt<=0.0||dims.len()!=3{return Err(err("Schrodinger potential/time/dimension invalid"));}let n:[usize;3]=dims.clone().try_into().map_err(|_|err("dimension mismatch"))?;let h:[f64;3]=spacing.try_into().map_err(|_|err("spacing mismatch"))?;complex(cn::solve_schrodinger_3d_cn(&initial,&potential,n,h,dt,steps).map_err(err)?,dims,f)})});
+object_binding!(transform_cnm_solve_heat_equation_2d_cn_adi,"num_grid_cnm_solve_heat_equation_2d_cn_adi","crate::sim::physics_cnm::solve_heat_equation_2d_cn_adi","Actual native grid/transform method in explicit Length/Time/field references; arrays and coefficients are normalized in that frame and native x-fastest storage is retained. Method identity, FFT normalization, boundary semantics and bounded work/history are preserved.",true,(frame:Handle<Frame>,dims:Vec<usize>,spacing:Vec<f64>,initial:Vec<f64>,diffusivity:f64,dt:f64,steps:usize)->Dynamic,|ctx,frame,dims,spacing,initial,diffusivity,dt,steps|{let _=ctx;frame.with(ctx,|f|{let config=heat_adi_2d_config(&dims,&spacing,initial.len(),diffusivity,dt,steps)?;if dims.iter().any(|n|*n<2)||diffusivity<0.0||dt<=0.0{return Err(err("CN/ADI coefficient/dimension domain invalid"));}let out=cn::solve_heat_equation_2d_cn_adi(&initial,&config);payload(f,out,dims)})});
+object_binding!(transform_cnm_solve_heat_equation_3d_cn_adi,"num_grid_cnm_solve_heat_equation_3d_cn_adi","crate::sim::physics_cnm::solve_heat_equation_3d_cn_adi","Actual native grid/transform method in explicit Length/Time/field references; arrays and coefficients are normalized in that frame and native x-fastest storage is retained. Method identity, FFT normalization, boundary semantics and bounded work/history are preserved.",true,(frame:Handle<Frame>,dims:Vec<usize>,spacing:Vec<f64>,initial:Vec<f64>,diffusivity:f64,dt:f64,steps:usize)->Dynamic,|ctx,frame,dims,spacing,initial,diffusivity,dt,steps|{let _=ctx;frame.with(ctx,|f|{mesh(&dims,&spacing,initial.len())?;work(initial.len(),steps,false)?;if dims.len()!=3||diffusivity<0.0||dt<=0.0{return Err(err("CN/ADI coefficient/dimension domain invalid"));}let config=cn::HeatEquationSolverConfig3D{nx:dims[0],ny:dims[1],dx:spacing[0],dy:spacing[1],dt,d_coeff:diffusivity,steps,nz:dims[2],dz:spacing[2]};let out=cn::solve_heat_equation_3d_cn_adi(&initial,&config).map_err(err)?;payload(f,out,dims)})});
+object_binding!(transform_cnm_heat_nd,"num_grid_cnm_heat_nd","crate::sim::physics_cnm::solve_heat_equation_nd_cn","Actual native grid/transform method in explicit Length/Time/field references; arrays and coefficients are normalized in that frame and native x-fastest storage is retained. Method identity, FFT normalization, boundary semantics and bounded work/history are preserved.",true,(bcs:Handle<Faces>,dims:Vec<usize>,spacing:Vec<f64>,initial:Vec<f64>,diffusivity:f64,dt:f64,steps:usize)->Dynamic,|ctx,bcs,dims,spacing,initial,diffusivity,dt,steps|{let _=ctx;mesh(&dims,&spacing,initial.len())?;work(initial.len(),steps,false)?;if diffusivity<0.0||dt<=0.0{return Err(err("CN diffusion/time domain invalid"));}bcs.with(ctx,|b|{let out=cn::solve_heat_equation_nd_cn(&dims,&spacing,&initial,diffusivity,dt,steps,&b.data).map_err(err)?;b.finish_for(dims.len())?;payload(&b.frame,out,dims)})});
+object_binding!(transform_sm_fft2d,"num_grid_sm_fft2d","crate::sim::physics_sm::fft2d","Actual native grid/transform method in explicit Length/Time/field references; arrays and coefficients are normalized in that frame and native x-fastest storage is retained. Method identity, FFT normalization, boundary semantics and bounded work/history are preserved.",true,(frame:Handle<Frame>,dims:Vec<usize>,data:Vec<C>)->Dynamic,|ctx,frame,dims,data|{let _=ctx;frame.with(ctx,|f|{mesh(&dims,&vec![1.0;dims.len()],data.len())?;if dims.len()!=2{return Err(err("FFT rank mismatch"));}let mut data=data;sm::fft2d(&mut data,dims[0],dims[1]);complex(data,dims,f)})});
+object_binding!(transform_sm_fft3d,"num_grid_sm_fft3d","crate::sim::physics_sm::fft3d","Actual native grid/transform method in explicit Length/Time/field references; arrays and coefficients are normalized in that frame and native x-fastest storage is retained. Method identity, FFT normalization, boundary semantics and bounded work/history are preserved.",true,(frame:Handle<Frame>,dims:Vec<usize>,data:Vec<C>)->Dynamic,|ctx,frame,dims,data|{let _=ctx;frame.with(ctx,|f|{mesh(&dims,&vec![1.0;dims.len()],data.len())?;if dims.len()!=3{return Err(err("FFT rank mismatch"));}let mut data=data;sm::fft3d(&mut data,dims[0],dims[1],dims[2]);complex(data,dims,f)})});
+object_binding!(transform_sm_ifft2d,"num_grid_sm_ifft2d","crate::sim::physics_sm::ifft2d","Actual native grid/transform method in explicit Length/Time/field references; arrays and coefficients are normalized in that frame and native x-fastest storage is retained. Method identity, FFT normalization, boundary semantics and bounded work/history are preserved.",true,(frame:Handle<Frame>,dims:Vec<usize>,data:Vec<C>)->Dynamic,|ctx,frame,dims,data|{let _=ctx;frame.with(ctx,|f|{mesh(&dims,&vec![1.0;dims.len()],data.len())?;if dims.len()!=2{return Err(err("FFT rank mismatch"));}let mut data=data;sm::ifft2d(&mut data,dims[0],dims[1]);complex(data,dims,f)})});
+object_binding!(transform_sm_ifft3d,"num_grid_sm_ifft3d","crate::sim::physics_sm::ifft3d","Actual native grid/transform method in explicit Length/Time/field references; arrays and coefficients are normalized in that frame and native x-fastest storage is retained. Method identity, FFT normalization, boundary semantics and bounded work/history are preserved.",true,(frame:Handle<Frame>,dims:Vec<usize>,data:Vec<C>)->Dynamic,|ctx,frame,dims,data|{let _=ctx;frame.with(ctx,|f|{mesh(&dims,&vec![1.0;dims.len()],data.len())?;if dims.len()!=3{return Err(err("FFT rank mismatch"));}let mut data=data;sm::ifft3d(&mut data,dims[0],dims[1],dims[2]);complex(data,dims,f)})});
+object_binding!(transform_sm_solve_advection_diffusion_1d,"num_grid_sm_solve_advection_diffusion_1d","crate::sim::physics_sm::solve_advection_diffusion_1d","Original Fourier spectral Forward Euler stepping, preserving conditional stability and the native method; this is distinct from sm_advection_diffusion_exact_nd. Coordinates, velocities, diffusivity and steps use explicit L/T/field reference normalization. Odd/even FFT sizes, native x-fastest layout and work bounds are checked.",true,(frame:Handle<Frame>,dims:Vec<usize>,spacing:Vec<f64>,initial:Vec<f64>,velocity:Vec<f64>,diffusivity:f64,dt:f64,steps:usize)->Dynamic,|ctx,frame,dims,spacing,initial,velocity,diffusivity,dt,steps|{let _=ctx;frame.with(ctx,|f|{mesh(&dims,&spacing,initial.len())?;work(initial.len(),steps,false)?;if dims.len()!=1||velocity.len()!=1||diffusivity<0.0||dt<=0.0{return Err(err("Fourier Forward-Euler coefficient/time dimension invalid"));}payload(f,sm::solve_advection_diffusion_1d(&initial,spacing[0],velocity[0],diffusivity,dt,steps),dims)})});
+object_binding!(transform_sm_solve_advection_diffusion_2d,"num_grid_sm_solve_advection_diffusion_2d","crate::sim::physics_sm::solve_advection_diffusion_2d","Original Fourier spectral Forward Euler stepping, preserving conditional stability and the native method; this is distinct from sm_advection_diffusion_exact_nd. Coordinates, velocities, diffusivity and steps use explicit L/T/field reference normalization. Odd/even FFT sizes, native x-fastest layout and work bounds are checked.",true,(frame:Handle<Frame>,dims:Vec<usize>,spacing:Vec<f64>,initial:Vec<f64>,velocity:Vec<f64>,diffusivity:f64,dt:f64,steps:usize)->Dynamic,|ctx,frame,dims,spacing,initial,velocity,diffusivity,dt,steps|{let _=ctx;frame.with(ctx,|f|{mesh(&dims,&spacing,initial.len())?;work(initial.len(),steps,false)?;if dims.len()!=2||velocity.len()!=2||diffusivity<0.0||dt<=0.0{return Err(err("Fourier Forward-Euler coefficient/time dimension invalid"));}let config=sm::AdvectionDiffusionConfig{width:dims[0],height:dims[1],dx:spacing[0],dy:spacing[1],c:(velocity[0],velocity[1]),d:diffusivity,dt,steps};payload(f,sm::solve_advection_diffusion_2d(&initial,&config),dims)})});
+object_binding!(transform_sm_solve_advection_diffusion_3d,"num_grid_sm_solve_advection_diffusion_3d","crate::sim::physics_sm::solve_advection_diffusion_3d","Original Fourier spectral Forward Euler stepping, preserving conditional stability and the native method; this is distinct from sm_advection_diffusion_exact_nd. Coordinates, velocities, diffusivity and steps use explicit L/T/field reference normalization. Odd/even FFT sizes, native x-fastest layout and work bounds are checked.",true,(frame:Handle<Frame>,dims:Vec<usize>,spacing:Vec<f64>,initial:Vec<f64>,velocity:Vec<f64>,diffusivity:f64,dt:f64,steps:usize)->Dynamic,|ctx,frame,dims,spacing,initial,velocity,diffusivity,dt,steps|{let _=ctx;frame.with(ctx,|f|{mesh(&dims,&spacing,initial.len())?;work(initial.len(),steps,false)?;if dims.len()!=3||velocity.len()!=3||diffusivity<0.0||dt<=0.0{return Err(err("Fourier Forward-Euler coefficient/time dimension invalid"));}let config=sm::AdvectionDiffusionConfig3d{width:dims[0],height:dims[1],dx:spacing[0],dy:spacing[1],c:(velocity[0],velocity[1],velocity[2]),d:diffusivity,dt,steps,depth:dims[2],dz:spacing[2]};payload(f,sm::solve_advection_diffusion_3d(&initial,&config),dims)})});
+object_binding!(transform_sm_advection_diffusion_exact_nd,"num_grid_sm_advection_diffusion_exact_nd","crate::sim::physics_sm::advection_diffusion_exact_nd","Actual native grid/transform method in explicit Length/Time/field references; arrays and coefficients are normalized in that frame and native x-fastest storage is retained. Method identity, FFT normalization, boundary semantics and bounded work/history are preserved.",true,(frame:Handle<Frame>,dims:Vec<usize>,lengths:Vec<f64>,initial:Vec<f64>,velocity:Vec<f64>,diffusivity:f64,time:f64)->Dynamic,|ctx,frame,dims,lengths,initial,velocity,diffusivity,time|{let _=ctx;frame.with(ctx,|f|{mesh(&dims,&lengths,initial.len())?;if velocity.len()!=dims.len()||diffusivity<0.0{return Err(err("exact Fourier transport coefficient dimensions invalid"));}let out=sm::advection_diffusion_exact_nd(&dims,&lengths,&initial,&velocity,diffusivity,time).map_err(err)?;payload(f,out,dims)})});
+object_binding!(transform_physics_sm_simulate_1d_advection_diffusion_scenario,"num_grid_physics_sm_simulate_1d_advection_diffusion_scenario","crate::sim::physics_sm::simulate_1d_advection_diffusion_scenario","Actual native grid/transform method in explicit Length/Time/field references; arrays and coefficients are normalized in that frame and native x-fastest storage is retained. Method identity, FFT normalization, boundary semantics and bounded work/history are preserved.",true,(frame:Handle<Frame>,work_budget:usize)->Dynamic,|ctx,frame,work_budget|{let _=ctx;if !(179200..=64_000_000).contains(&work_budget){return Err(err("explicit scenario work budget is insufficient or excessive"));}frame.with(ctx,|f|payload(f,sm::simulate_1d_advection_diffusion_scenario(),vec![128]))});
+object_binding!(transform_physics_sm_simulate_2d_advection_diffusion_scenario,"num_grid_physics_sm_simulate_2d_advection_diffusion_scenario","crate::sim::physics_sm::simulate_2d_advection_diffusion_scenario","Actual native grid/transform method in explicit Length/Time/field references; arrays and coefficients are normalized in that frame and native x-fastest storage is retained. Method identity, FFT normalization, boundary semantics and bounded work/history are preserved.",true,(frame:Handle<Frame>,work_budget:usize)->Dynamic,|ctx,frame,work_budget|{let _=ctx;if !(4915200..=64_000_000).contains(&work_budget){return Err(err("explicit scenario work budget is insufficient or excessive"));}frame.with(ctx,|f|payload(f,sm::simulate_2d_advection_diffusion_scenario(),vec![64, 64]))});
+object_binding!(transform_physics_sm_simulate_3d_advection_diffusion_scenario,"num_grid_physics_sm_simulate_3d_advection_diffusion_scenario","crate::sim::physics_sm::simulate_3d_advection_diffusion_scenario","Actual native grid/transform method in explicit Length/Time/field references; arrays and coefficients are normalized in that frame and native x-fastest storage is retained. Method identity, FFT normalization, boundary semantics and bounded work/history are preserved.",true,(frame:Handle<Frame>,work_budget:usize)->Dynamic,|ctx,frame,work_budget|{let _=ctx;if !(9830400..=64_000_000).contains(&work_budget){return Err(err("explicit scenario work budget is insufficient or excessive"));}frame.with(ctx,|f|payload(f,sm::simulate_3d_advection_diffusion_scenario(),vec![16, 16, 16]))});
+object_binding!(transform_physics_cnm_simulate_1d_heat_conduction_cn_scenario,"num_grid_physics_cnm_simulate_1d_heat_conduction_cn_scenario","crate::sim::physics_cnm::simulate_1d_heat_conduction_cn_scenario","Actual native grid/transform method in explicit Length/Time/field references; arrays and coefficients are normalized in that frame and native x-fastest storage is retained. Method identity, FFT normalization, boundary semantics and bounded work/history are preserved.",true,(frame:Handle<Frame>,work_budget:usize)->Dynamic,|ctx,frame,work_budget|{let _=ctx;if !(80000..=64_000_000).contains(&work_budget){return Err(err("explicit scenario work budget is insufficient or excessive"));}frame.with(ctx,|f|payload(f,cn::simulate_1d_heat_conduction_cn_scenario(),vec![100]))});
+object_binding!(transform_physics_cnm_simulate_2d_heat_conduction_cn_adi_scenario,"num_grid_physics_cnm_simulate_2d_heat_conduction_cn_adi_scenario","crate::sim::physics_cnm::simulate_2d_heat_conduction_cn_adi_scenario","Actual native grid/transform method in explicit Length/Time/field references; arrays and coefficients are normalized in that frame and native x-fastest storage is retained. Method identity, FFT normalization, boundary semantics and bounded work/history are preserved.",true,(frame:Handle<Frame>,work_budget:usize)->Dynamic,|ctx,frame,work_budget|{let _=ctx;if !(4000000..=64_000_000).contains(&work_budget){return Err(err("explicit scenario work budget is insufficient or excessive"));}frame.with(ctx,|f|payload(f,cn::simulate_2d_heat_conduction_cn_adi_scenario(),vec![50, 50]))});
+object_binding!(
+    transform_sm_advance_advection_diffusion_3d_modes,
+    "num_grid_sm_advance_advection_diffusion_3d_modes",
+    "crate::sim::physics_sm::advance_advection_diffusion_3d_modes",
+    "Advance existing unnormalized-forward 3D FFT coefficients with spectral Forward Euler. Data uses x-fastest order and the supplied frame's field reference. Spacing, velocity, diffusivity and time are normalized in the supplied frame. Zero steps or a zero time step preserves the coefficients.",
+    true,
+    (frame: Handle<Frame>, dims: Vec<usize>, spacing: Vec<f64>, data: Vec<C>, velocity: Vec<f64>, diffusivity: f64, dt: f64, steps: usize) -> Dynamic,
+    |ctx, frame, dims, spacing, mut data, velocity, diffusivity, dt, steps| {
+        mesh(&dims, &spacing, data.len())?;
+        work(data.len(), steps, false)?;
+        let ([width, height, depth], [dx, dy, dz], [ux, uy, uz]) =
+            (dims.as_slice(), spacing.as_slice(), velocity.as_slice())
+        else {
+            return Err(err("spectral mode updates require three extents, spacings and velocities"));
+        };
+        let config = sm::AdvectionDiffusionConfig3d {
+            width: *width,
+            height: *height,
+            depth: *depth,
+            dx: *dx,
+            dy: *dy,
+            dz: *dz,
+            c: (*ux, *uy, *uz),
+            d: diffusivity,
+            dt,
+            steps,
+        };
+        frame.with(ctx, |frame| {
+            sm::advance_advection_diffusion_3d_modes(&mut data, &config).map_err(err)?;
+            complex(data, dims, frame)
+        })
+    }
+);
+
+pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
+    api::install(i, BINDINGS, "numerical_vector")
+}
+static BINDINGS: &[&api::Binding] = &[
+    &irfft_plan_new::BINDING,
+    &irfft_plan_apply::BINDING,
+    &irfft_plan_output_len::BINDING,
+    &irfft_plan_spectrum_len::BINDING,
+    &transform_transport_equation::BINDING,
+    &transform_dimensional_advance_transport_nd::BINDING,
+    &transform_dimensional_solve_transport_nd::BINDING,
+    &transform_dimensional_solve_transport_sampled_nd::BINDING,
+    &transform_dimensional_heat_adi::BINDING,
+    &transform_dimensional_poisson::BINDING,
+    &transform_dimensional_wave::BINDING,
+    &transform_dimensional_schrodinger::BINDING,
+    &transform_cnm_schrodinger_1d::BINDING,
+    &transform_cnm_schrodinger_2d::BINDING,
+    &transform_cnm_schrodinger_3d::BINDING,
+    &transform_cnm_solve_heat_equation_2d_cn_adi::BINDING,
+    &transform_cnm_heat_adi_fixed_boundary::BINDING,
+    &transform_cnm_solve_heat_equation_3d_cn_adi::BINDING,
+    &transform_cnm_heat_nd::BINDING,
+    &transform_sm_fft2d::BINDING,
+    &transform_sm_fft3d::BINDING,
+    &transform_sm_ifft2d::BINDING,
+    &transform_sm_ifft3d::BINDING,
+    &transform_sm_solve_advection_diffusion_1d::BINDING,
+    &transform_sm_solve_advection_diffusion_2d::BINDING,
+    &transform_sm_solve_advection_diffusion_3d::BINDING,
+    &transform_sm_advance_advection_diffusion_3d_modes::BINDING,
+    &transform_sm_advection_diffusion_exact_nd::BINDING,
+    &transform_physics_sm_simulate_1d_advection_diffusion_scenario::BINDING,
+    &transform_physics_sm_simulate_2d_advection_diffusion_scenario::BINDING,
+    &transform_physics_sm_simulate_3d_advection_diffusion_scenario::BINDING,
+    &transform_physics_cnm_simulate_1d_heat_conduction_cn_scenario::BINDING,
+    &transform_physics_cnm_simulate_2d_heat_conduction_cn_adi_scenario::BINDING,
+];

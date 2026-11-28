@@ -1,0 +1,15 @@
+[package]
+name = "rssn-spill-rustfft-bench"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+rustfft = "=6.4.1"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+panic = "abort"

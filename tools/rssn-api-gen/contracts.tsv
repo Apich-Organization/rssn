@@ -1,0 +1,157 @@
+# policy	input bindings	constraints	result formula	result fields	documentation
+Dimensionless	-	-	-	-	Every numeric argument/result is dimensionless.
+Preserve	D=0	-	D	-	Argument 0 and the result share a dimension.
+EqualPreserve	D=0	1=D	D	-	Two arguments share a dimension; the result has it too.
+LocationWithScale	D=0	1=1,2=D	D	-	Location and scale use the sample dimension; the tuning constant is dimensionless.
+DistributionScale	D=1	-	D	-	Distribution quantiles use the scale dimension; shape and probabilities are dimensionless.
+Product	D=0,E=1	-	D*E	-	Two independent argument dimensions are multiplied for the result.
+Axpy	A=0,X=1	2=A*X	A*X	-	The retained vector and the scaled increment share units.
+Axpby	A=0,X=1,B=2	3=(A*X)/B	A*X	-	Both scaled vectors share units and the result retains that dimension.
+PolarCoordinates	D=0	-	-	radius=D;angle=1	The radius retains the coordinate dimension and the principal angle is dimensionless.
+Square	D=0	-	D^2	-	Argument 0 is dimensioned, the result is its square.
+ContourOneCoordinate	D=0	-	-	starts=D;ends=D;arc_segments=-;arc_centers=D;arc_radii=D;theta_start=1;theta_end=1;closed=-	Contour positions and radii share coordinate units; arc angles and indices are dimensionless.
+ContourTwoCoordinates	D=0	1=D	-	starts=D;ends=D;arc_segments=-;arc_centers=D;arc_radii=D;theta_start=1;theta_end=1;closed=-	Contour positions and radii share coordinate units; arc angles and indices are dimensionless.
+ContourThreeCoordinates	D=0	1=D,2=D	-	starts=D;ends=D;arc_segments=-;arc_centers=D;arc_radii=D;theta_start=1;theta_end=1;closed=-	Contour positions and radii share coordinate units; arc angles and indices are dimensionless.
+ContourFiveCoordinates	D=0	1=D,2=D,3=D,4=D	-	starts=D;ends=D;arc_segments=-;arc_centers=D;arc_radii=D;theta_start=1;theta_end=1;closed=-	Contour positions and radii share coordinate units; arc angles and indices are dimensionless.
+ContourFourCoordinates	D=0	1=D,2=D,3=D	-	starts=D;ends=D;arc_segments=-;arc_centers=D;arc_radii=D;theta_start=1;theta_end=1;closed=-	Contour positions and radii share coordinate units; arc angles and indices are dimensionless.
+WelchPower	D=0,W=1,F=3	-	-	frequencies=F;density=(D^2)/F	Window scaling cancels. Frequencies use the sample rate units and power density uses squared sample units per unit frequency.
+WelchCross	D=0,E=1,W=2,F=4	-	-	frequencies=F;density=D*E/F;coherence=1	Window scaling cancels. Cross density uses the product of the sample units per unit frequency. Coherence is dimensionless.
+UnitlessResult	D=0	-	-	-	Argument 0 is dimensioned, the result is dimensionless.
+IndependentUnitless	D=0,E=1	-	-	-	Two independently dimensioned inputs, with dimensionless result.
+IndependentPreserveLeft	D=0,E=1	-	D	-	Two independent inputs, output takes the first dimension.
+PreserveWithUnitlessSecond	D=0	-	D	-	Argument 0 is dimensioned, second is dimensionless; output takes first.
+Inverse	D=0	-	1/D	-	Dimensioned input and inverse-dimensioned result.
+Root	D=0	-	sqrt(D)	-	Dimensioned input and square-root-dimensioned result.
+Svd	D=0	-	-	@SVD	Record fields u/v are dimensionless and s has input dimension.
+Qr	D=0	-	-	q=1;r=D	Record field q is dimensionless and r has input dimension.
+SymmetricEigen	D=0	-	-	values=D;vectors=1	Eigenvectors are dimensionless and eigenvalues have input dimension.
+LeastSquares	D=0,E=1	-	E/D	-	Matrix A and vector b have independent dimensions; x has b/A.
+RankTolerance	D=0	1=D	-	-	Matrix and absolute tolerance share a dimension; rank is dimensionless.
+TensorTrain	D=0	-	-	cores=1;shape=-;scale=D;error=D;tolerance_met=-	Input data sets scale/error; cores and tolerance are dimensionless.
+EqualInputs	D=0	1=D	-	-	Two measured inputs must share a dimension; the result is dimensionless.
+WeightedEcdf	D=0	1=1,2=D	-	-	Sample and query share units, weights and the CDF value are dimensionless.
+WeightedQuantile	D=0	1=1,2=1	D	-	Weights and probability are dimensionless, and the result retains sample units.
+Cube	D=0	-	D^3	-	Volume has cubed coordinate dimension.
+InverseSecond	D=1	-	1/D	-	Spacing determines reciprocal frequency dimension.
+PreserveThird	D=2	-	D	-	Filter coefficients are dimensionless; signal units are preserved.
+TuplePreserve	D=0	-	-	item0=D;item1=-	Transformed data retains units and shape metadata is integral.
+SchurTuple	D=0	-	-	item0=1;item1=D	Orthogonal factor is dimensionless; Schur factor retains matrix units.
+SchurUnits	D=0	-	-	q=1;t=D	Orthogonal factor is dimensionless; Schur factor retains matrix units.
+QzUnits	D=0,E=1	-	-	s=D;t=E;q=1;z=1;alpha=D;beta=E	QZ preserves the two matrix scales separately.
+Quotient	D=0,E=1	-	D/E	-	Generalized eigenvalues have A/B dimension.
+Sylvester	D=0,E=2	1=D	E/D	-	AX+XB=C requires compatible A/B and X has C/A dimension.
+Lyapunov	D=0,E=1	-	E/D	-	AX+XA^T=Q gives X dimension Q/A.
+PivotedQrUnits	D=0	-	-	q=1;r=D;perm=-	Pivoted QR preserves matrix units in R.
+Interpolation	D=0,E=1	2=D	E	-	Abscissas and queries agree; ordinates determine output units.
+BSplineUnits	D=0,E=1	3=D	E	-	Knots/query share a dimension and coefficients set ordinate units.
+BSplineBasis	D=0	3=D	-	-	Knots/query share a dimension; basis values are dimensionless.
+BSplineFit	D=0,E=1	-	-	item0=D;item1=E	Fitted knots and coefficients retain their separate dimensions.
+IntervalPoints	D=1	2=D	D	-	Interval endpoints and generated nodes share a dimension.
+GridInterpolation	D=0,E=1,F=2	3=D,4=E	F	-	Two independently dimensioned grid axes and measured ordinates.
+NdInterpolation	D=0,E=1	2=D	E	-	Homogeneous coordinate axes and query share units; output follows values.
+FitOrdinate	D=1	-	D	-	Dimensionless polynomial coordinates and coefficients with ordinate units.
+RationalOrdinate	D=0	-	D	-	Dimensionless coordinate and denominator; numerator determines result units.
+EqualFour	D=0	1=D,2=D,3=D	D	-	Intersection coordinates all share a dimension.
+EqualFive	D=0	1=D,2=D,3=D,4=D	D	-	Intersection coordinates all share a dimension.
+Ray2	D=0,E=1	2=D,3=D	-	item0=D/E;item1=D	Ray parameter has coordinate/direction units; intersection has coordinate units.
+Ray3	D=0,E=1	2=D,3=D,4=D	-	item0=D/E;item1=D	Ray parameter has coordinate/direction units; intersection has coordinate units.
+Kde	D=0	1=D,2=D	1/D	-	Kernel density and optional bandwidth use reciprocal sample and sample units.
+Regression	D=2,E=3	-	-	coefficients=E/D;intercept=E;r_squared=1;residuals=E	Regression on homogeneous measured predictors and responses.
+RidgeUnits	D=2,E=3	4=D^2	-	coefficients=E/D;intercept=E;r_squared=1;residuals=E	Ridge penalty has squared predictor dimension.
+LassoUnits	D=2,E=3	4=D*E,7=E/D	-	coefficients=E/D;intercept=E;r_squared=1;residuals=E	Lasso penalty has predictor times response dimension; tolerance has coefficient units.
+LogisticUnits	D=2	-	-	coefficients=1/D;intercept=1;log_likelihood=1;iterations=-	Logistic labels are dimensionless and coefficients have inverse predictor units.
+PcaUnits	D=2	-	-	mean=D;components=1;explained_variance=D^2;explained_variance_ratio=1;transformed=D;n_components=-	PCA centers/scores retain data units and variances square them.
+NormalSampleUnits	D=0	1=D^2	D	-	Multivariate normal mean and sample share units; covariance squares them.
+SpatialBuild	D=0	-	-	payload=-;coordinate_unit=D	Portable spatial descriptor with a canonical coordinate-unit witness.
+SpatialQuery	D=0.coordinate_unit	1=D	-	indices=-;distances=D	Spatial query distances retain coordinate units; indices are dimensionless.
+SpatialRadius	D=0.coordinate_unit	1=D,2=D	-	indices=-;distances=D	Radius and coordinates must share units.
+SplineBuild	D=0,E=1	-	-	payload=-;coordinate_unit=D;value_unit=E	Portable fitted B-spline with separate axis and ordinate witnesses.
+SplineQuery	D=0.coordinate_unit,E=0.value_unit	1=D	E	-	B-spline query respects axis and ordinate units.
+ClampedSpline	D=0,E=1	2=D,3=E/D,4=E/D	E	-	Clamped endpoint slopes have ordinate per abscissa units.
+RbfScaled	D=0,E=1	2=D,4=D	E	-	RBF coordinates are normalized by an explicit positive length scale.
+ScaledGradient	D=2,E=4	3=D	E/D	-	Expression uses normalized coordinates; reference scales restore physical gradient units.
+ScaledHessian	D=2,E=4	3=D	E/(D^2)	-	Expression uses normalized coordinates; reference scales restore physical Hessian units.
+NormalizedFit	D=0,E=1	3=D	E	-	Polynomial coefficients represent powers of `x/coordinate_scale` and all retain ordinate units.
+NormalizedPolynomial	D=1,E=0	2=D	E	-	Polynomial uses dimensionless `x/coordinate_scale` and dimensioned coefficients.
+NormalizedRoots	D=1,E=0	-	D	-	Polynomial roots are restored using an explicit coordinate scale.
+MultivariateDensity	D=0	1=D^2,2=D	extent_pow(D,0,0,-1)	-	Density uses inverse coordinate dimension raised to vector length, resolved from checked runtime shape.
+DeterminantUnits	D=0	-	extent_pow(D,0,0,1)	-	Determinant dimension is matrix-entry dimension raised to matrix order.
+NormalizedLogDensity	D=0	1=D^2,2=D,3=D	-	-	Log density is relative to an explicit positive coordinate reference measure.
+WaveletSplit	D=0	-	-	item0=D;item1=D	Wavelet approximation and detail coefficients retain signal units.
+PadeOrdinate	D=0	-	-	item0=D;item1=1	Normalized-coordinate Taylor coefficients and numerator share ordinate units; denominator is dimensionless.
+
+SampledL1	D=0.item0,E=0.item1	-	D*E	-	Sampled L1 integral has coordinate times ordinate dimension.
+SampledL2	D=0.item0,E=0.item1	-	sqrt(D)*E	-	Sampled L2 norm has square-root coordinate times ordinate dimension.
+SampledInfinity	D=0.item0,E=0.item1	-	E	-	Sample maximum absolute ordinate retains ordinate units.
+SampledInner	D=0.item0,E=0.item1,F=1.item1	1.item0=D	D*E*F	-	Sampled inner product multiplies the shared coordinate measure and independent ordinate dimensions.
+SampledProject	D=0.item0,E=0.item1,F=1.item1	1.item0=D	-	item0=D;item1=E	Projection preserves the first function's ordinate units and the common coordinate units.
+SampledNormalize	D=0.item0,E=0.item1	-	-	item0=D;item1=1/sqrt(D)	An L2-normalized function has inverse square-root coordinate dimension.
+SampledOrthogonal	D=0.item0,E=0.item1	-	-	item0=D;item1=E	Orthogonalization preserves coordinate and ordinate units.
+VoronoiGeometry	D=0	-	-	vertices=D;edges=-;ray_vertices=-;ray_directions=1;cell_offsets=-;cell_indices=-	Voronoi vertices retain coordinate units; unbounded ray directions and topology are dimensionless.
+BvhBuild	D=0	1=D	-	payload=-;coordinate_unit=D	Bounding-box endpoints share coordinate units, retained by the portable model witness.
+SpatialRay	D=0.coordinate_unit	1=D	-	-	Ray origin shares spatial model coordinate units; direction and returned indices are dimensionless.
+
+SiCoulombForce	-	0=base("Current")*base("Time"),1=base("Current")*base("Time"),2=base("Length")	base("Mass")*base("Length")/(base("Time")^2)	-	Canonical SI arguments and result for the native coulomb force formula; numeric singularities remain explicit errors.
+SiElectricFieldPointCharge	-	0=base("Current")*base("Time"),1=base("Length")	base("Mass")*base("Length")/(base("Current")*(base("Time")^3))	-	Canonical SI arguments and result for the native electric field point charge formula; numeric singularities remain explicit errors.
+SiElectricPotentialPointCharge	-	0=base("Current")*base("Time"),1=base("Length")	base("Mass")*(base("Length")^2)/(base("Current")*(base("Time")^3))	-	Canonical SI arguments and result for the native electric potential point charge formula; numeric singularities remain explicit errors.
+SiMagneticFieldInfiniteWire	-	0=base("Current"),1=base("Length")	base("Mass")/(base("Current")*(base("Time")^2))	-	Canonical SI arguments and result for the native magnetic field infinite wire formula; numeric singularities remain explicit errors.
+SiLorentzForce	-	0=base("Current")*base("Time"),1=base("Length")/base("Time"),2=base("Mass")*base("Length")/(base("Current")*(base("Time")^3)),3=base("Mass")/(base("Current")*(base("Time")^2))	base("Mass")*base("Length")/(base("Time")^2)	-	Canonical SI arguments and result for the native lorentz force formula; numeric singularities remain explicit errors.
+SiCyclotronRadius	-	0=base("Mass"),1=base("Length")/base("Time"),2=base("Current")*base("Time"),3=base("Mass")/(base("Current")*(base("Time")^2))	base("Length")	-	Canonical SI arguments and result for the native cyclotron radius formula; numeric singularities remain explicit errors.
+SiIdealGasPressure	-	0=base("Amount"),1=base("Temperature"),2=(base("Length")^3)	base("Mass")/(base("Length")*(base("Time")^2))	-	Canonical SI arguments and result for the native ideal gas pressure formula; numeric singularities remain explicit errors.
+SiIdealGasVolume	-	0=base("Amount"),1=base("Temperature"),2=base("Mass")/(base("Length")*(base("Time")^2))	(base("Length")^3)	-	Canonical SI arguments and result for the native ideal gas volume formula; numeric singularities remain explicit errors.
+SiIdealGasTemperature	-	0=base("Mass")/(base("Length")*(base("Time")^2)),1=(base("Length")^3),2=base("Amount")	base("Temperature")	-	Canonical SI arguments and result for the native ideal gas temperature formula; numeric singularities remain explicit errors.
+SiMaxwellBoltzmannSpeedDistribution	-	0=base("Length")/base("Time"),1=base("Mass"),2=base("Temperature")	base("Time")/base("Length")	-	Canonical SI arguments and result for the native maxwell boltzmann speed distribution formula; numeric singularities remain explicit errors.
+SiThermalSpeed	-	0=base("Mass"),1=base("Temperature")	base("Length")/base("Time")	-	Canonical SI arguments and result for the native maxwell boltzmann mean speed formula; numeric singularities remain explicit errors.
+SiBlackbodyPower	-	0=(base("Length")^2),1=base("Temperature")	base("Mass")*(base("Length")^2)/(base("Time")^3)	-	Canonical SI arguments and result for the native blackbody power formula; numeric singularities remain explicit errors.
+SiWienDisplacementWavelength	-	0=base("Temperature")	base("Length")	-	Canonical SI arguments and result for the native wien displacement wavelength formula; numeric singularities remain explicit errors.
+SiLorentzFactor	-	0=base("Length")/base("Time")	1	-	Canonical SI arguments and result for the native lorentz factor formula; numeric singularities remain explicit errors.
+SiTimeDilation	-	0=base("Time"),1=base("Length")/base("Time")	base("Time")	-	Canonical SI arguments and result for the native time dilation formula; numeric singularities remain explicit errors.
+SiLengthContraction	-	0=base("Length"),1=base("Length")/base("Time")	base("Length")	-	Canonical SI arguments and result for the native length contraction formula; numeric singularities remain explicit errors.
+SiRelativisticMomentum	-	0=base("Mass"),1=base("Length")/base("Time")	base("Mass")*base("Length")/base("Time")	-	Canonical SI arguments and result for the native relativistic momentum formula; numeric singularities remain explicit errors.
+SiRelativisticEnergy	-	0=base("Mass"),1=base("Length")/base("Time")	base("Mass")*(base("Length")^2)/(base("Time")^2)	-	Canonical SI arguments and result for the native relativistic kinetic energy formula; numeric singularities remain explicit errors.
+SiMassEnergy	-	0=base("Mass")	base("Mass")*(base("Length")^2)/(base("Time")^2)	-	Canonical SI arguments and result for the native mass energy formula; numeric singularities remain explicit errors.
+SiRelativisticVelocityAddition	-	0=base("Length")/base("Time"),1=base("Length")/base("Time")	base("Length")/base("Time")	-	Canonical SI arguments and result for the native relativistic velocity addition formula; numeric singularities remain explicit errors.
+SiQuantumHarmonicOscillatorEnergy	-	1=1/base("Time")	base("Mass")*(base("Length")^2)/(base("Time")^2)	-	Canonical SI arguments and result for the native quantum harmonic oscillator energy formula; numeric singularities remain explicit errors.
+SiHydrogenEnergyLevel	-	-	base("Mass")*(base("Length")^2)/(base("Time")^2)	-	Canonical SI arguments and result for the native hydrogen energy level formula; numeric singularities remain explicit errors.
+SiDeBroglieWavelength	-	0=base("Mass")*base("Length")/base("Time")	base("Length")	-	Canonical SI arguments and result for the native de broglie wavelength formula; numeric singularities remain explicit errors.
+SiHeisenbergPositionUncertainty	-	0=base("Mass")*base("Length")/base("Time")	base("Length")	-	Canonical SI arguments and result for the native heisenberg position uncertainty formula; numeric singularities remain explicit errors.
+SiPhotonEnergy	-	0=base("Length")	base("Mass")*(base("Length")^2)/(base("Time")^2)	-	Canonical SI arguments and result for the native photon energy formula; numeric singularities remain explicit errors.
+SiPhotonWavelength	-	0=base("Mass")*(base("Length")^2)/(base("Time")^2)	base("Length")	-	Canonical SI arguments and result for the native photon wavelength formula; numeric singularities remain explicit errors.
+SiComptonWavelength	-	0=base("Mass")	base("Length")	-	Canonical SI arguments and result for the native compton wavelength formula; numeric singularities remain explicit errors.
+SiHarmonicPosition	D=0	1=1/base("Time"),3=base("Time")	D	-	Harmonic displacement retains arbitrary amplitude units; frequency and time are reciprocal SI time units and phase is dimensionless.
+HistoryEvaluation	D=0,E=1	2=E/D,3=D	E	-	Hermite history times and query share an axis dimension; stored states and rates retain state and state-per-axis units.
+
+NativeHistogram	D=0	-	-	item0=-;item1=D	Uniform histogram edges retain sample units; counts are integral.
+NativeRipsFiltration	D=0	1=D	-	radii=D;complex_offsets=-;simplices=-	Vietoris-Rips filtration radii retain coordinate units; simplices use CSR integer metadata.
+NativeRipsPersistence	D=0	1=D	-	dimensions=-;offsets=-;births=D;deaths=D;essential=-	Persistent interval endpoints retain point/radius units; essential intervals have an explicit Boolean mask and ignored zero death placeholders.
+NativeFiltrationPersistence	D=0.radii	-	-	dimensions=-;offsets=-;births=D;deaths=D;essential=-	Explicit filtration radii determine interval units; CSR simplex metadata is integral.
+NativeLineFit	D=0,E=1	-	-	item0=E/D;item1=E	Simple linear regression accepts separately measured predictor/response vectors; slope and intercept retain their physical relationships.
+NativeGroupsAnova	D=0.values	-	-	-	Independently sized CSR sample groups share ordinate units; ANOVA F statistic and probability are dimensionless.
+AnalysisWaveletBandsBuild	D=0	-	-	data=D;offsets=-	Wavelet bands retain measured signal units; offsets describe ragged band boundaries.
+AnalysisWaveletBandsRecover	D=0.data	-	D	-	Reconstruct measured signals from checked ragged bands and dimensionless offsets.
+AnalysisPolyEval	D=1,E=3	2=D	-	item0=E;item1=E/D	Normalized polynomial evaluation restores ordinate units and derivative ordinate per coordinate units.
+AnalysisQp	D=6,E=7,C=8,G=9	0=E/D^2,1=E/D,2=C/D,3=C,4=G/D,5=G	-	d=D;lambda=E/C;mu=E/G	Normalized QP coefficients and independent constraint domains restore physical steps and multipliers.
+AnalysisSimplex	D=4,E=5,C=6	0=E/D,1=C/D,3=C	-	status=-;x=D;value=E;iterations=-;bland_pivots=-	LP preserves coordinate and objective units and reports actual native feasibility status.
+AnalysisSimplexWith	D=5,E=6,C=7	0=E/D,1=C/D,3=C	-	status=-;x=D;value=E;iterations=-;bland_pivots=-	Pricing-selectable LP preserves physical output and actual pivot statistics.
+AnalysisBoundedLp	D=4,E=5,C=6	0=E/D,1=C/D,3=C,7=D,8=D	-	status=-;x=D;value=E;iterations=-;bland_pivots=-	Bounded dense linear programming preserves measured coordinates and objectives.
+AnalysisKkt	D=5,E=6,C=7,G=8	0=E/D,1=C/D,2=G/D,3=E/C,4=E/G	-	-	KKT residual is measured in the normalized coordinate/objective metric with independently scaled equality and inequality domains.
+AnalysisHomotopy	D=3,E=4	-	-	roots=D;offsets=-;finite=-;residuals=E	Normalized homotopy returns physical roots and residuals; failed path coordinates remain explicitly absent.
+KalmanFilter	Y=0,X=5	2=Y/X,3=X^2,4=Y^2,6=X^2,7=Y	-	filtered=X;predicted=X;covariance=X^2;loglik=1	Homogeneous state and observation dimensions; likelihood relative to an observation scale.
+KalmanSmooth	Y=0,X=5	2=Y/X,3=X^2,4=Y^2,6=X^2	X	-	Smoothed means preserve the state dimension.
+RollingMoments	D=0	-	-	mean=D;variance=D^2	Rolling means retain sample units and variances square them.
+StateSpaceZoh	R=1,G=2	0=1/base("Time"),3=R*G*base("Time"),4=base("Time")	-	a=1;b=R*base("Time");c=G;d=R*G*base("Time");dt=base("Time")	Discretisation makes A dimensionless, integrates B over time and preserves the output and feedthrough maps.
+StateSpaceDiscrete	X=1,U=2,G=0.c	0.a=1,0.b=X/U,0.d=G*X/U,0.dt=base("Time")	G*X	-	Discrete model state and input dimensions determine its output dimension through C.
+StateSpaceContinuous	X=4,U=5,G=2	0=1/base("Time"),1=X/(U*base("Time")),3=G*X/U,6=base("Time")	G*X	-	Continuous state and input dimensions determine its output dimension through C, using measured times.
+StateSpaceDiscreteInspect	R=0.b,G=0.c	0.a=1,0.d=R*G,0.dt=base("Time")	-	-	Discrete model counts, poles and stability are dimensionless.
+StateSpaceDiscreteControllability	R=0.b,G=0.c	0.a=1,0.d=R*G,0.dt=base("Time")	R	-	A dimensionless discrete state matrix preserves the input-map units through all controllability blocks.
+StateSpaceDiscreteObservability	R=0.b,G=0.c	0.a=1,0.d=R*G,0.dt=base("Time")	G	-	A dimensionless discrete state matrix preserves the output-map units through all observability blocks.
+TridiagonalSolve	A=1,B=3	0=A,2=A	B/A	-	The three diagonals share the matrix dimension; the solution has right-hand-side units divided by matrix units.
+SpdTridiagonalSolve	A=0,B=2	1=A	B/A	-	The main and off-diagonal share the matrix dimension; the solution has right-hand-side units divided by matrix units.
+
+KaplanMeier	D=0	-	-	times=D;at_risk=-;events=-;survival=1;variance=1;lower=1;upper=1	The event times retain the observation dimension and the probabilities are dimensionless.
+MedianSurvival	D=0.times	0.survival=1,0.variance=1,0.lower=1,0.upper=1	D	-	The optional median retains the dimension of the observed event times.
+
+CsrTranspose	D=0.values	-	-	rows=-;cols=-;indptr=-;indices=-;values=D	The transposed CSR entries retain their physical dimension.
+CsrDenseProduct	D=0.values,E=1	-	D*E	-	Sparse and dense entry dimensions multiply.
+CsrSparseProduct	D=0.values,E=1.values	-	-	rows=-;cols=-;indptr=-;indices=-;values=D*E	Sparse entry dimensions multiply without densifying either operand.
+CsrLeastSquares	D=0.values,E=1	2=D	-	@ITERATIVE_LINEAR_SOLVE	Damping shares the matrix dimension and the solution has right-hand-side divided by matrix units.

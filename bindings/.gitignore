@@ -1,0 +1,20 @@
+# Python byte code and test caches
+__pycache__/
+*.py[cod]
+
+# The shared library copied into the package by a distribution build
+python/rssn/_lib/
+
+# CMake build trees created by the documented commands
+build/
+
+# The R package's compiled bridge (R CMD INSTALL builds it in src/)
+r/src/*.o
+r/src/*.dll
+r/src/*.so
+r/src/*.dylib
+r/src/*.dll.a
+r/src/*.def
+r/src/symbols.rds
+r/.Rhistory
+r/.Rproj.user/

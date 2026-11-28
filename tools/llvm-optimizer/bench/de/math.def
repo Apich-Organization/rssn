@@ -1,0 +1,12 @@
+LIBRARY api-ms-win-crt-math-l1-1-0.dll
+EXPORTS
+cosh
+exp
+exp2
+expm1
+log
+log1p
+pow
+sin
+sinh
+tanh

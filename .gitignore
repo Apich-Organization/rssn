@@ -10,6 +10,14 @@ Cargo.lock
 **/*.js
 *.json
 **/*.json
+# The signature overlay is source, not build output: `build.rs` copies it
+# into `$OUT_DIR` so that a clean clone still builds, but the corrections it
+# carries have to be versioned.
+!signatures.overlay.json
+# Mined by `signature-mine` and versioned for the same reason.
+!signatures.witnessed.json
+# Witnessed scenario result shapes, compiled in by `sim::schema`.
+!src/sim/scenario_results.json
 scc
 *.exe
 *.a
@@ -37,6 +45,13 @@ librssn.so
 *.txt
 *.csv
 *.npy
+
+# The C++ binding's build file: the `*.txt` rule above would swallow it.
+!bindings/cpp/CMakeLists.txt
+!tests/ffi/package/CMakeLists.txt
+# These scans are inputs to the generated Julia facade.
+!bindings/api/julia_base_names.txt
+!bindings/api/julia_base_functions.txt
 /tmp
 
 /node_modules
@@ -288,3 +303,15 @@ patch_engine_structs.py
 fix_trap.py
 fix_brnz.py
 tidy.py
+.claude/worktrees/
+target-opt/
+
+# Ad-hoc manifest dumps written by local tooling.
+rssn-manifest.tmp.json
+target-bindings/
+build-bindings/
+
+# Bazel outputs and workstation configuration
+/.bazel-cache/
+/.bazelrc.local
+/bazel-*

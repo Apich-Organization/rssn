@@ -1,0 +1,24 @@
+Package: rssn
+Type: Package
+Title: Scientific Computing with the rssn Engine
+Version: 3.0.0
+Authors@R: c(
+    person("The rssn developers", role = c("aut", "cre"),
+           email = "developers@rssn.invalid")
+  )
+Description: A computer algebra system, a set of numerical kernels and a
+    physics simulation engine behind one small API.  This package binds the
+    rssn C ABI: a session owns an expression graph, operators are requests that
+    'compute()' reduces, and every one of the engine's registered operators has
+    a function here, generated from the engine's own kernel manifest.  Terms
+    carry the four renderings the engine produces (infix text, LaTeX, Typst and
+    a Unicode drawing), the unit and constant tables travel with the manifest,
+    and higher-order operators accept an ordinary R function as a host
+    callback.
+License: Apache License (>= 2)
+Encoding: UTF-8
+Depends: R (>= 4.1)
+NeedsCompilation: yes
+SystemRequirements: RSSN 3.0 C ABI (rssn.dll, librssn.so or
+    librssn.dylib), including prerelease builds
+LazyData: false
