@@ -7,7 +7,13 @@ DistributionScale	D=1	-	D	-	Distribution quantiles use the scale dimension; shap
 Product	D=0,E=1	-	D*E	-	Two independent argument dimensions are multiplied for the result.
 Axpy	A=0,X=1	2=A*X	A*X	-	The retained vector and the scaled increment share units.
 Axpby	A=0,X=1,B=2	3=(A*X)/B	A*X	-	Both scaled vectors share units and the result retains that dimension.
+PolarCoordinates	D=0	-	-	radius=D;angle=1	The radius retains the coordinate dimension and the principal angle is dimensionless.
 Square	D=0	-	D^2	-	Argument 0 is dimensioned, the result is its square.
+ContourOneCoordinate	D=0	-	-	starts=D;ends=D;arc_segments=-;arc_centers=D;arc_radii=D;theta_start=1;theta_end=1;closed=-	Contour positions and radii share coordinate units; arc angles and indices are dimensionless.
+ContourTwoCoordinates	D=0	1=D	-	starts=D;ends=D;arc_segments=-;arc_centers=D;arc_radii=D;theta_start=1;theta_end=1;closed=-	Contour positions and radii share coordinate units; arc angles and indices are dimensionless.
+ContourThreeCoordinates	D=0	1=D,2=D	-	starts=D;ends=D;arc_segments=-;arc_centers=D;arc_radii=D;theta_start=1;theta_end=1;closed=-	Contour positions and radii share coordinate units; arc angles and indices are dimensionless.
+ContourFiveCoordinates	D=0	1=D,2=D,3=D,4=D	-	starts=D;ends=D;arc_segments=-;arc_centers=D;arc_radii=D;theta_start=1;theta_end=1;closed=-	Contour positions and radii share coordinate units; arc angles and indices are dimensionless.
+ContourFourCoordinates	D=0	1=D,2=D,3=D	-	starts=D;ends=D;arc_segments=-;arc_centers=D;arc_radii=D;theta_start=1;theta_end=1;closed=-	Contour positions and radii share coordinate units; arc angles and indices are dimensionless.
 WelchPower	D=0,W=1,F=3	-	-	frequencies=F;density=(D^2)/F	Window scaling cancels. Frequencies use the sample rate units and power density uses squared sample units per unit frequency.
 WelchCross	D=0,E=1,W=2,F=4	-	-	frequencies=F;density=D*E/F;coherence=1	Window scaling cancels. Cross density uses the product of the sample units per unit frequency. Coherence is dimensionless.
 UnitlessResult	D=0	-	-	-	Argument 0 is dimensioned, the result is dimensionless.
@@ -127,6 +133,7 @@ AnalysisPolyEval	D=1,E=3	2=D	-	item0=E;item1=E/D	Normalized polynomial evaluatio
 AnalysisQp	D=6,E=7,C=8,G=9	0=E/D^2,1=E/D,2=C/D,3=C,4=G/D,5=G	-	d=D;lambda=E/C;mu=E/G	Normalized QP coefficients and independent constraint domains restore physical steps and multipliers.
 AnalysisSimplex	D=4,E=5,C=6	0=E/D,1=C/D,3=C	-	status=-;x=D;value=E;iterations=-;bland_pivots=-	LP preserves coordinate and objective units and reports actual native feasibility status.
 AnalysisSimplexWith	D=5,E=6,C=7	0=E/D,1=C/D,3=C	-	status=-;x=D;value=E;iterations=-;bland_pivots=-	Pricing-selectable LP preserves physical output and actual pivot statistics.
+AnalysisBoundedLp	D=4,E=5,C=6	0=E/D,1=C/D,3=C,7=D,8=D	-	status=-;x=D;value=E;iterations=-;bland_pivots=-	Bounded dense linear programming preserves measured coordinates and objectives.
 AnalysisKkt	D=5,E=6,C=7,G=8	0=E/D,1=C/D,2=G/D,3=E/C,4=E/G	-	-	KKT residual is measured in the normalized coordinate/objective metric with independently scaled equality and inequality domains.
 AnalysisHomotopy	D=3,E=4	-	-	roots=D;offsets=-;finite=-;residuals=E	Normalized homotopy returns physical roots and residuals; failed path coordinates remain explicitly absent.
 KalmanFilter	Y=0,X=5	2=Y/X,3=X^2,4=Y^2,6=X^2,7=Y	-	filtered=X;predicted=X;covariance=X^2;loglik=1	Homogeneous state and observation dimensions; likelihood relative to an observation scale.
@@ -135,5 +142,16 @@ RollingMoments	D=0	-	-	mean=D;variance=D^2	Rolling means retain sample units and
 StateSpaceZoh	R=1,G=2	0=1/base("Time"),3=R*G*base("Time"),4=base("Time")	-	a=1;b=R*base("Time");c=G;d=R*G*base("Time");dt=base("Time")	Discretisation makes A dimensionless, integrates B over time and preserves the output and feedthrough maps.
 StateSpaceDiscrete	X=1,U=2,G=0.c	0.a=1,0.b=X/U,0.d=G*X/U,0.dt=base("Time")	G*X	-	Discrete model state and input dimensions determine its output dimension through C.
 StateSpaceContinuous	X=4,U=5,G=2	0=1/base("Time"),1=X/(U*base("Time")),3=G*X/U,6=base("Time")	G*X	-	Continuous state and input dimensions determine its output dimension through C, using measured times.
+StateSpaceDiscreteInspect	R=0.b,G=0.c	0.a=1,0.d=R*G,0.dt=base("Time")	-	-	Discrete model counts, poles and stability are dimensionless.
+StateSpaceDiscreteControllability	R=0.b,G=0.c	0.a=1,0.d=R*G,0.dt=base("Time")	R	-	A dimensionless discrete state matrix preserves the input-map units through all controllability blocks.
+StateSpaceDiscreteObservability	R=0.b,G=0.c	0.a=1,0.d=R*G,0.dt=base("Time")	G	-	A dimensionless discrete state matrix preserves the output-map units through all observability blocks.
 TridiagonalSolve	A=1,B=3	0=A,2=A	B/A	-	The three diagonals share the matrix dimension; the solution has right-hand-side units divided by matrix units.
 SpdTridiagonalSolve	A=0,B=2	1=A	B/A	-	The main and off-diagonal share the matrix dimension; the solution has right-hand-side units divided by matrix units.
+
+KaplanMeier	D=0	-	-	times=D;at_risk=-;events=-;survival=1;variance=1;lower=1;upper=1	The event times retain the observation dimension and the probabilities are dimensionless.
+MedianSurvival	D=0.times	0.survival=1,0.variance=1,0.lower=1,0.upper=1	D	-	The optional median retains the dimension of the observed event times.
+
+CsrTranspose	D=0.values	-	-	rows=-;cols=-;indptr=-;indices=-;values=D	The transposed CSR entries retain their physical dimension.
+CsrDenseProduct	D=0.values,E=1	-	D*E	-	Sparse and dense entry dimensions multiply.
+CsrSparseProduct	D=0.values,E=1.values	-	-	rows=-;cols=-;indptr=-;indices=-;values=D*E	Sparse entry dimensions multiply without densifying either operand.
+CsrLeastSquares	D=0.values,E=1	2=D	-	@ITERATIVE_LINEAR_SOLVE	Damping shares the matrix dimension and the solution has right-hand-side divided by matrix units.

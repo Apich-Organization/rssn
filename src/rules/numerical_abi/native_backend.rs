@@ -45,7 +45,7 @@ use std::collections::BTreeSet;
 use std::sync::Arc;
 const BACKEND: &str = "rssn/native/backend/v1";
 const SCALAR: &str = "rssn/native/backend-scalar/v1";
-const PROGRAM: &str = "rssn/native/compiled/v1";
+pub(in crate::rules) const PROGRAM: &str = "rssn/native/compiled/v1";
 const MAX_INPUTS: usize = 63;
 const MAX_ROWS: usize = 16_384;
 const MAX_CELLS: usize = 262_144;

@@ -1,4 +1,4 @@
-// Measured linear state-space discretisation and simulation.
+// Measured linear state-space discretisation, simulation and diagnostics.
 use crate::kernels::control::StateSpace;
 
 struct DiscreteStateSpace {
@@ -49,14 +49,50 @@ impl Arg for DiscreteStateSpace {
     }
 }
 
-struct StateSpaceShape {
-    states: usize,
-    inputs: usize,
-    outputs: usize,
+impl DiscreteStateSpace {
+    fn into_model(self) -> Result<(StateSpace, StateSpaceShape), OpError> {
+        let Self { a, b, c, d, dt } = self;
+        state_space_from_matrices(a, b, c, d, Some(dt))
+    }
+}
+
+pub(in crate::rules) struct StateSpaceShape {
+    pub states: usize,
+    pub inputs: usize,
+    pub outputs: usize,
 }
 
 impl StateSpaceShape {
-    fn check_zoh_workspace(&self) -> Result<(), OpError> {
+    pub(in crate::rules) fn check_diagnostic_work(
+        &self,
+        channels: usize,
+    ) -> Result<(), OpError> {
+        // A dense eigensolve is cubic in n. Each matrix diagnostic performs
+        // up to n products of an n-by-n matrix and an n-by-channels block.
+        const MAX_WORK: usize = 67_108_864;
+        if self.states.saturating_pow(3).saturating_mul(channels) > MAX_WORK {
+            return Err(OpError::Domain(
+                "state-space diagnostic exceeds the native work limit".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    pub(in crate::rules) fn check_diagnostic_matrix(
+        &self,
+        channels: usize,
+    ) -> Result<(), OpError> {
+        let entries = self.states.saturating_pow(2).saturating_mul(channels);
+        // Each measured value can require its own witness.
+        if entries.saturating_mul(2).saturating_add(1) > super::native_object_api::VALUE_LIMIT {
+            return Err(OpError::Domain(
+                "state-space diagnostic matrix exceeds the native value limit".into(),
+            ));
+        }
+        self.check_diagnostic_work(channels)
+    }
+
+    pub(in crate::rules) fn check_zoh_workspace(&self) -> Result<(), OpError> {
         let size = self.states.saturating_add(self.inputs);
         if self.states != 0 && size.saturating_mul(size) >= super::native_object_api::VALUE_LIMIT {
             return Err(OpError::Domain(
@@ -90,14 +126,14 @@ impl StateSpaceShape {
     }
 }
 
-fn state_space_rows(matrix: dense::Mat) -> Vec<Vec<f64>> {
+pub(in crate::rules) fn state_space_rows(matrix: dense::Mat) -> Vec<Vec<f64>> {
     let mut data = matrix.data.into_iter();
     (0..matrix.rows)
         .map(|_| data.by_ref().take(matrix.cols).collect())
         .collect()
 }
 
-fn state_space_result(
+pub(in crate::rules) fn state_space_result(
     rows: Vec<Vec<f64>>,
     cols: usize,
 ) -> dense::Mat {
@@ -108,20 +144,21 @@ fn state_space_result(
     }
 }
 
-fn state_space_error(message: String) -> OpError {
+pub(in crate::rules) fn state_space_error(message: String) -> OpError {
     match crate::cancellation::checkpoint() {
         | Ok(()) => OpError::Domain(message),
         | Err(cancelled) => cancelled.into(),
     }
 }
 
-fn state_space_from_matrices(
+pub(in crate::rules) type StateMatrixRows = [Vec<Vec<f64>>; 4];
+
+pub(in crate::rules) fn checked_state_matrix_payload(
     a: dense::Mat,
     b: dense::Mat,
     c: dense::Mat,
     d: dense::Mat,
-    dt: Option<f64>,
-) -> Result<(StateSpace, StateSpaceShape), OpError> {
+) -> Result<(StateMatrixRows, StateSpaceShape), OpError> {
     let n = a.rows;
     let m = b.cols;
     let p = c.rows;
@@ -136,20 +173,26 @@ fn state_space_from_matrices(
         ));
     }
     crate::cancellation::checkpoint()?;
-    let [a, b, c, d] = [a, b, c, d].map(state_space_rows);
+    Ok((
+        [a, b, c, d].map(state_space_rows),
+        StateSpaceShape { states: n, inputs: m, outputs: p },
+    ))
+}
+
+fn state_space_from_matrices(
+    a: dense::Mat,
+    b: dense::Mat,
+    c: dense::Mat,
+    d: dense::Mat,
+    dt: Option<f64>,
+) -> Result<(StateSpace, StateSpaceShape), OpError> {
+    let ([a, b, c, d], shape) = checked_state_matrix_payload(a, b, c, d)?;
     let model = match dt {
         | Some(dt) => StateSpace::discrete(a, b, c, d, dt),
         | None => StateSpace::continuous(a, b, c, d),
     }
     .map_err(state_space_error)?;
-    Ok((
-        model,
-        StateSpaceShape {
-            states: n,
-            inputs: m,
-            outputs: p,
-        },
-    ))
+    Ok((model, shape))
 }
 
 fn state_space_trajectory(
@@ -217,8 +260,7 @@ binding!(
     DimensionPolicy::StateSpaceDiscrete,
     (model: super::DiscreteStateSpace, x0: Vec<f64>, inputs: dense::Mat) -> Result<dense::Mat, OpError>,
     |model: super::DiscreteStateSpace, x0: Vec<f64>, inputs: dense::Mat| {
-        let super::DiscreteStateSpace { a, b, c, d, dt } = model;
-        let (model, shape) = super::state_space_from_matrices(a, b, c, d, Some(dt))?;
+        let (model, shape) = model.into_model()?;
         super::state_space_trajectory(&model, &shape, &x0, inputs, None)
     }
 );
@@ -234,5 +276,121 @@ binding!(
     |a: dense::Mat, b: dense::Mat, c: dense::Mat, d: dense::Mat, x0: Vec<f64>, inputs: dense::Mat, times: Vec<f64>| {
         let (model, shape) = super::state_space_from_matrices(a, b, c, d, None)?;
         super::state_space_trajectory(&model, &shape, &x0, inputs, Some(&times))
+    }
+);
+
+binding!(
+    control_discrete_n_states,
+    "num_control_discrete_n_states",
+    "numerical_matrix",
+    "`num_control_discrete_n_states(model)` returns the number of states of a checked discrete state-space model.",
+    "crate::kernels::control::state_space::StateSpace::n_states",
+    DimensionPolicy::StateSpaceDiscreteInspect,
+    (model: super::DiscreteStateSpace) -> Result<usize, OpError>,
+    |model: super::DiscreteStateSpace| {
+        let (model, _) = model.into_model()?;
+        Ok(model.n_states())
+    }
+);
+
+binding!(
+    control_discrete_n_inputs,
+    "num_control_discrete_n_inputs",
+    "numerical_matrix",
+    "`num_control_discrete_n_inputs(model)` returns the number of inputs of a checked discrete state-space model.",
+    "crate::kernels::control::state_space::StateSpace::n_inputs",
+    DimensionPolicy::StateSpaceDiscreteInspect,
+    (model: super::DiscreteStateSpace) -> Result<usize, OpError>,
+    |model: super::DiscreteStateSpace| {
+        let (model, _) = model.into_model()?;
+        Ok(model.n_inputs())
+    }
+);
+
+binding!(
+    control_discrete_n_outputs,
+    "num_control_discrete_n_outputs",
+    "numerical_matrix",
+    "`num_control_discrete_n_outputs(model)` returns the number of outputs of a checked discrete state-space model.",
+    "crate::kernels::control::state_space::StateSpace::n_outputs",
+    DimensionPolicy::StateSpaceDiscreteInspect,
+    (model: super::DiscreteStateSpace) -> Result<usize, OpError>,
+    |model: super::DiscreteStateSpace| {
+        let (model, _) = model.into_model()?;
+        Ok(model.n_outputs())
+    }
+);
+
+binding!(
+    control_discrete_poles,
+    "num_control_discrete_poles",
+    "numerical_matrix",
+    "`num_control_discrete_poles(model)` returns the dimensionless eigenvalues of the discrete state matrix. A failed eigensolve or a pole outside binary64 range produces an error.",
+    "crate::kernels::control::state_space::StateSpace::try_poles",
+    DimensionPolicy::StateSpaceDiscreteInspect,
+    (model: super::DiscreteStateSpace) -> Result<Vec<num_complex::Complex64>, OpError>,
+    |model: super::DiscreteStateSpace| {
+        let (model, shape) = model.into_model()?;
+        shape.check_diagnostic_work(1)?;
+        let poles = model.try_poles().map_err(super::state_space_error)?;
+        crate::cancellation::checkpoint()?;
+        Ok(poles)
+    }
+);
+
+binding!(
+    control_discrete_is_stable,
+    "num_control_discrete_is_stable",
+    "numerical_matrix",
+    "`num_control_discrete_is_stable(model)` checks whether every pole lies strictly inside the unit circle. A failed eigensolve is reported as an error.",
+    "crate::kernels::control::state_space::StateSpace::try_is_stable",
+    DimensionPolicy::StateSpaceDiscreteInspect,
+    (model: super::DiscreteStateSpace) -> Result<bool, OpError>,
+    |model: super::DiscreteStateSpace| {
+        let (model, shape) = model.into_model()?;
+        shape.check_diagnostic_work(1)?;
+        let stable = model.try_is_stable().map_err(super::state_space_error)?;
+        crate::cancellation::checkpoint()?;
+        Ok(stable)
+    }
+);
+
+binding!(
+    control_discrete_controllability_matrix,
+    "num_control_discrete_controllability_matrix",
+    "numerical_matrix",
+    "`num_control_discrete_controllability_matrix(model)` returns [B, A B, ..., A^(n-1) B] with n rows and n*m columns for n states and m inputs. Its entries retain the units of B.",
+    "crate::kernels::control::state_space::StateSpace::controllability_matrix",
+    DimensionPolicy::StateSpaceDiscreteControllability,
+    (model: super::DiscreteStateSpace) -> Result<dense::Mat, OpError>,
+    |model: super::DiscreteStateSpace| {
+        let (model, shape) = model.into_model()?;
+        shape.check_diagnostic_matrix(shape.inputs)?;
+        if shape.inputs == 0 {
+            return Ok(dense::Mat { rows: shape.states, cols: 0, data: Vec::new() });
+        }
+        let rows = model.controllability_matrix();
+        crate::cancellation::checkpoint()?;
+        Ok(super::state_space_result(rows, shape.states * shape.inputs))
+    }
+);
+
+binding!(
+    control_discrete_observability_matrix,
+    "num_control_discrete_observability_matrix",
+    "numerical_matrix",
+    "`num_control_discrete_observability_matrix(model)` returns [C; C A; ...; C A^(n-1)] with n*p rows and n columns for n states and p outputs. Its entries retain the units of C.",
+    "crate::kernels::control::state_space::StateSpace::observability_matrix",
+    DimensionPolicy::StateSpaceDiscreteObservability,
+    (model: super::DiscreteStateSpace) -> Result<dense::Mat, OpError>,
+    |model: super::DiscreteStateSpace| {
+        let (model, shape) = model.into_model()?;
+        shape.check_diagnostic_matrix(shape.outputs)?;
+        if shape.outputs == 0 {
+            return Ok(dense::Mat { rows: 0, cols: shape.states, data: Vec::new() });
+        }
+        let rows = model.observability_matrix();
+        crate::cancellation::checkpoint()?;
+        Ok(super::state_space_result(rows, shape.states))
     }
 );

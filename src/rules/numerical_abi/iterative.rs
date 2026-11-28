@@ -142,6 +142,18 @@ fn index_vector(
     t.data.iter().map(|item| integer(item, label)).collect()
 }
 pub(super) fn decode_csr(value: &Value) -> Result<Csr, OpError> {
+    decode_csr_impl(value, true)
+}
+
+pub(super) fn decode_rectangular_csr(value: &Value) -> Result<Csr, OpError> {
+    super::native_object_api::bounded(value)?;
+    decode_csr_impl(value, false)
+}
+
+fn decode_csr_impl(
+    value: &Value,
+    square: bool,
+) -> Result<Csr, OpError> {
     let Value::Record(record) = value else {
         return Err(OpError::Domain("CSR matrix must be a record".into()));
     };
@@ -166,8 +178,8 @@ pub(super) fn decode_csr(value: &Value) -> Result<Csr, OpError> {
     let indices = index_vector(get("indices")?, "indices")?;
     let data = get("values")?;
     let (_, values) = tensor(data, 1, 0)?;
-    if rows == 0
-        || rows != cols
+    if (square && (rows == 0 || rows != cols))
+        || (!square && rows.max(cols) >= super::native_object_api::VALUE_LIMIT)
         || rows.checked_add(1) != Some(indptr.len())
         || indices.len() != values.len()
         || indptr.first() != Some(&0)
@@ -176,9 +188,12 @@ pub(super) fn decode_csr(value: &Value) -> Result<Csr, OpError> {
             .windows(2)
             .any(|p| p[0] > p[1] || p[1] > values.len())
     {
-        return Err(OpError::Domain(
-            "invalid square CSR shape or row pointers".into(),
-        ));
+        let message = if square {
+            "invalid square CSR shape or row pointers"
+        } else {
+            "invalid CSR shape, row pointers or allocation budget"
+        };
+        return Err(OpError::Domain(message.into()));
     }
     for row in indptr.windows(2) {
         let columns = &indices[row[0]..row[1]];

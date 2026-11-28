@@ -5,10 +5,22 @@ mod autodiff;
 mod calculus;
 #[path = "native_callbacks/complex.rs"]
 mod complex;
+#[path = "native_callbacks/complex_certification.rs"]
+mod complex_certification;
+#[path = "native_callbacks/contour.rs"]
+mod contour;
+#[path = "native_callbacks/saddle.rs"]
+mod saddle;
+#[path = "native_callbacks/transforms.rs"]
+mod transforms;
+
 #[path = "native_callbacks/convergence.rs"]
 mod convergence;
+mod laurent;
 #[path = "native_callbacks/optimization.rs"]
 mod optimization;
+#[path = "native_callbacks/riemann_hilbert.rs"]
+mod riemann_hilbert;
 use super::CallCtx;
 use super::DimExpr;
 use super::EvalDyn;
@@ -266,8 +278,14 @@ pub(super) fn bounded_size(
 
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     calculus::install(i)?;
+    transforms::install(i)?;
     autodiff::install(i)?;
     complex::install(i)?;
+    complex_certification::install(i)?;
+    saddle::install(i)?;
+    contour::install(i)?;
+    laurent::install(i)?;
     convergence::install(i)?;
+    riemann_hilbert::install(i)?;
     optimization::install(i)
 }

@@ -16,6 +16,7 @@ mod ode_advanced;
 mod pde;
 mod physical_optim;
 mod resampling;
+mod sparse_sqp;
 use super::numerical_abi::numeric;
 use super::numerical_abi::runtime_dimensions::canonical;
 use super::numerical_abi::runtime_dimensions::expression;
@@ -224,6 +225,7 @@ fn install(installer: &mut Installer<'_>) -> Result<(), RuleError> {
     native_callbacks::install(installer)?;
     native_analysis::install(installer)?;
     adaptive_sde::install(installer)?;
+    sparse_sqp::install(installer)?;
     Ok(())
 }
 /// Serial numerical operators with checked host callbacks.

@@ -8,6 +8,8 @@ pub mod codecs;
 /// Declarative dimensional relationships for numerical exports.
 pub mod dimensions;
 mod iterative;
+#[path = "numerical_abi/native_analysis/bilinear_grid.rs"]
+mod native_analysis_bilinear_grid;
 #[path = "numerical_abi/native_analysis/functional.rs"]
 mod native_analysis_functional;
 #[path = "numerical_abi/native_analysis/holonomic.rs"]
@@ -49,6 +51,9 @@ mod native_analysis_yee;
 pub(in crate::rules) mod native_backend;
 pub(in crate::rules) mod native_backend_extended;
 mod native_backend_scalar;
+mod native_cad;
+mod native_control;
+mod native_control_state_space;
 mod native_device;
 mod native_discrete;
 mod native_fdtd_model;
@@ -57,8 +62,13 @@ mod native_homology;
 mod native_jit;
 mod native_linear;
 mod native_lir;
+mod native_mcmc;
+mod native_mcmc_sampler;
+mod native_meshgen;
 mod native_misc;
 pub(super) mod native_models;
+mod native_modular;
+mod native_mpc;
 mod native_npy;
 pub(in crate::rules) mod native_object_api;
 mod native_particles;
@@ -66,6 +76,8 @@ mod native_relativity;
 pub(in crate::rules) mod native_runtime;
 mod native_scenario;
 mod native_special;
+mod native_statrs;
+mod native_transfer;
 pub(super) mod runtime_dimensions;
 mod spectral_sparse;
 use dimensions::DimensionPolicy;
@@ -625,8 +637,14 @@ fn install(
 ) -> Result<(), RuleError> {
     native_models::install(i, namespace)?;
     native_discrete::install(i, namespace)?;
+    if namespace == "numerical_stats" {
+        native_statrs::install(i)?;
+        native_mcmc::install(i)?;
+        native_mcmc_sampler::install(i)?;
+    }
     if namespace == "numerical_special" {
         native_special::install(i)?;
+        native_modular::install(i)?;
     }
     if namespace == "numerical_vector" {
         native_backend_extended::install(i)?;
@@ -648,6 +666,7 @@ fn install(
         native_fdtd_model::install(i)?;
     }
     if namespace == "numerical_vector" {
+        native_cad::install(i)?;
         native_grids::install(i)?;
         native_analysis_objects::install(i)?;
         native_analysis_parallel::install(i)?;
@@ -661,6 +680,8 @@ fn install(
         native_analysis_series::install(i)?;
         native_analysis_wavelets::install(i)?;
         native_analysis_overlap_save::install(i)?;
+        native_meshgen::install(i)?;
+        native_analysis_bilinear_grid::install(i)?;
     }
     if namespace == "numerical_matrix" {
         native_linear::install(i)?;
@@ -670,6 +691,10 @@ fn install(
         native_npy::install(i)?;
     }
     if namespace == "numerical_vector" {
+        native_transfer::install(i)?;
+        native_control::install(i)?;
+        native_control_state_space::install(i)?;
+        native_mpc::install(i)?;
         native_runtime::install(i)?;
         native_homology::install(i)?;
     }

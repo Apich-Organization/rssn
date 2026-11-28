@@ -479,6 +479,8 @@ pub(super) static ANALYSIS_EXPORTS: &[&CodecExport] = &[
     &analysis_qp::EXPORT,
     &analysis_simplex::EXPORT,
     &analysis_simplex_with::EXPORT,
+    &analysis_simplex_budgeted::EXPORT,
+    &analysis_bounded_lp::EXPORT,
     &analysis_kkt::EXPORT,
     &analysis_homotopy_system::EXPORT,
     &analysis_homotopy_gamma::EXPORT,

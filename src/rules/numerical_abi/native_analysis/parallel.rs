@@ -1,16 +1,21 @@
 //! True parallel native quadrature using owned immutable compiled programs.
 use crate::graph::RuleError;
+use crate::graph::dim::DimRule;
 use crate::graph::rule::Installer;
 use crate::kernel::CallCtx;
 use crate::kernel::OpError;
 use crate::kernel::signature::DimExpr;
 use crate::kernel::signature::Exp;
 use crate::kernel::signature::Rational;
+use crate::kernel::signature::Signature;
+use crate::kernel::signature::TypeExpr;
 use crate::kernels::quadrature as q;
 use crate::rules::numerical_abi::codecs::Arg;
 use crate::rules::numerical_abi::codecs::Output;
 use crate::rules::numerical_abi::native_backend::CompiledSnapshot;
+use crate::rules::numerical_abi::native_backend::PROGRAM;
 use crate::rules::numerical_abi::native_backend::compiled_snapshot;
+use crate::rules::numerical_abi::native_object_api::Binding;
 use crate::rules::numerical_abi::native_object_api::Dynamic;
 use crate::rules::numerical_abi::native_object_api::Input;
 use crate::rules::numerical_abi::native_object_api::object_binding;
@@ -134,6 +139,141 @@ object_binding!(gk_panel,"num_analysis_gk_panel_parallel","crate::kernels::quadr
  Ok(Dynamic(object::record(vec![("value",object::quantity(v,d.clone())?),("error",object::quantity(e,d)?),("evaluations",Output::encode(n)?)])))
 });
 
+#[derive(Clone, Copy)]
+enum FixedRule {
+    GaussLegendre,
+    ClenshawCurtis,
+}
+
+impl FixedRule {
+    fn integrate(
+        self,
+        ctx: &CallCtx<'_>,
+        lo: &Input,
+        hi: &Input,
+        order: usize,
+        output_reference: &Input,
+        function: &Input,
+    ) -> Result<Dynamic, OpError> {
+        if !(1..=4096).contains(&order) {
+            return Err(object::error("fixed quadrature order must be in 1..=4096"));
+        }
+        let coordinate = object::dimension(&lo.0)?;
+        object::same_dimension(&coordinate, &object::dimension(&hi.0)?)?;
+        let a = crate::rules::numerical_abi::numeric(&lo.0, 0)?;
+        let b = crate::rules::numerical_abi::numeric(&hi.0, 1)?;
+        let evaluations = match self {
+            | Self::GaussLegendre => order,
+            | Self::ClenshawCurtis => order.max(2).next_multiple_of(2) + 1,
+        };
+        let program = compiled_snapshot(ctx, &function.0, evaluations)?;
+        let [input] = program.input_dimensions.as_slice() else {
+            return Err(object::error(
+                "fixed quadrature requires a scalar compiled integrand",
+            ));
+        };
+        object::same_dimension(&coordinate, input)?;
+        crate::rules::numerical_abi::numeric(&output_reference.0, 3)?;
+        let integrand = object::dimension(&output_reference.0)?;
+        object::same_dimension(&integrand, &program.output_dimension)?;
+        let units = DimExpr::Mul(vec![coordinate, integrand]);
+        if crate::kernels::exact_eq(a, b) {
+            return object::quantity(0.0, units).map(Dynamic);
+        }
+        let f = |x| program.sample(&[x]);
+        let value = match self {
+            | Self::GaussLegendre => q::gauss_legendre_par(f, a, b, order),
+            | Self::ClenshawCurtis => q::clenshaw_curtis_par(f, a, b, order),
+        };
+        program.finish()?;
+        object::quantity(value, units).map(Dynamic)
+    }
+}
+
+object_binding!(
+    gauss_fixed,
+    "num_analysis_gauss_legendre_parallel",
+    "crate::kernels::quadrature::gauss_legendre_par",
+    "Fixed Gauss–Legendre quadrature of a scalar compiled integrand. Bounds share the input units; the supplied output reference witnesses the integrand units. Order is 1..=4096.",
+    false,
+    (lo: Input, hi: Input, order: usize, output_reference: Input, function: Input) -> Dynamic,
+    |ctx: &CallCtx<'_>, lo, hi, order, output_reference, function| {
+        super::FixedRule::GaussLegendre.integrate(ctx, &lo, &hi, order, &output_reference, &function)
+    }
+);
+
+object_binding!(
+    clenshaw_fixed,
+    "num_analysis_clenshaw_curtis_parallel",
+    "crate::kernels::quadrature::clenshaw_curtis_par",
+    "Fixed Clenshaw–Curtis quadrature of a scalar compiled integrand. Order is rounded up to an even number of at least two; the return unit is coordinate times integrand.",
+    false,
+    (lo: Input, hi: Input, order: usize, output_reference: Input, function: Input) -> Dynamic,
+    |ctx: &CallCtx<'_>, lo, hi, order, output_reference, function| {
+        super::FixedRule::ClenshawCurtis.integrate(ctx, &lo, &hi, order, &output_reference, &function)
+    }
+);
+
+object_binding!(
+    sum_compensated,
+    "num_analysis_sum_compensated",
+    "crate::kernels::par::sum_kahan_fixed",
+    "Deterministic Neumaier-compensated sum of a finite measured vector. Positive block and grain parameters control accumulation and parallel scheduling. The return unit matches the input.",
+    false,
+    (values: Input, block: usize, grain: usize) -> Dynamic,
+    |_ctx: &CallCtx<'_>, values: Input, block: usize, grain: usize| {
+        if block == 0 || grain == 0 {
+            return Err(object::error("compensated sum block and grain must be positive"));
+        }
+        let units = object::dimension(&values.0)?;
+        let values = <Vec<f64> as Arg>::decode(&values.0, 0)?;
+        let sum =
+            crate::kernels::par::sum_kahan_fixed(values.len(), block, grain, |index| values[index]);
+        object::quantity(sum, units).map(Dynamic)
+    }
+);
+
+fn fixed_signature() -> Signature {
+    let coordinate = DimExpr::Var("Coordinate".into());
+    let integrand = DimExpr::Var("Integrand".into());
+    let bounds = TypeExpr::Float.with_dim(coordinate.clone());
+    Signature::new(
+        vec![
+            bounds.clone(),
+            bounds,
+            TypeExpr::Int,
+            TypeExpr::Float.with_dim(integrand.clone()),
+            TypeExpr::Opaque(PROGRAM.into()),
+        ],
+        TypeExpr::Float.with_dim(DimExpr::Mul(vec![coordinate, integrand])),
+    )
+}
+
+fn sum_signature() -> Signature {
+    let sample = TypeExpr::Float.with_dim(DimExpr::Var("Sample".into()));
+    Signature::new(
+        vec![
+            object::tensor_type(1, sample.clone()),
+            TypeExpr::Int,
+            TypeExpr::Int,
+        ],
+        sample,
+    )
+}
+
+static GAUSS_FIXED: Binding = Binding {
+    signature: fixed_signature,
+    ..gauss_fixed::BINDING
+};
+static CLENSHAW_FIXED: Binding = Binding {
+    signature: fixed_signature,
+    ..clenshaw_fixed::BINDING
+};
+static SUM_COMPENSATED: Binding = Binding {
+    signature: sum_signature,
+    ..sum_compensated::BINDING
+};
+
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     object::install(
         i,
@@ -151,5 +291,12 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &gk_panel::BINDING,
         ],
         "numerical_vector",
-    )
+    )?;
+    object::install_with_dimension(
+        i,
+        &[&GAUSS_FIXED, &CLENSHAW_FIXED],
+        "numerical_vector",
+        DimRule::Integral { f: 3, x: 0 },
+    )?;
+    object::install_with_dimension(i, &[&SUM_COMPENSATED], "numerical_vector", DimRule::Same(0))
 }

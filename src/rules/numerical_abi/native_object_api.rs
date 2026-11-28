@@ -686,6 +686,21 @@ pub(in crate::rules) fn install(
     bindings: &[&'static Binding],
     namespace: &str,
 ) -> Result<(), RuleError> {
+    install_with_dimension(
+        i,
+        bindings,
+        namespace,
+        crate::graph::dim::DimRule::Container,
+    )
+}
+
+/// Install a native family whose graph dimension rule is more specific than a container.
+pub(in crate::rules) fn install_with_dimension(
+    i: &mut Installer<'_>,
+    bindings: &[&'static Binding],
+    namespace: &str,
+    dimension_rule: crate::graph::dim::DimRule,
+) -> Result<(), RuleError> {
     for b in bindings {
         let s = b.signature();
         let higher = s.params.iter().any(has_callback);
@@ -716,7 +731,7 @@ pub(in crate::rules) fn install(
             d = d.rust_path(b.source);
         }
         let op = i.op(d)?;
-        i.dim(op, crate::graph::dim::DimRule::Container);
+        i.dim(op, dimension_rule);
     }
     Ok(())
 }

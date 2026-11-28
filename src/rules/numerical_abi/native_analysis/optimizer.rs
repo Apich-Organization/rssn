@@ -346,7 +346,7 @@ fn regression_loss_value(
     )
 }
 
-object_binding!(regression_cost,"num_analysis_regression_cost","","Evaluate the retained native regression CostFunction with measured intercept/slope coefficients; returns physical half mean-squared residual units.",false,(model:Handle<RegressionObject>,coefficients:Input)->Dynamic,|ctx:&CallCtx<'_>,model:Handle<RegressionObject>,coefficients:Input|model.with(ctx,|r|{let beta=regression_parameters(&coefficients,r)?;let value=r.native.value_and_gradient(beta.as_slice().unwrap_or(&[])).map_err(api::error)?.0;Ok(Dynamic(regression_loss_value(value,r)?))}));
+object_binding!(regression_cost,"num_analysis_regression_cost","","Evaluate the retained native regression CostFunction with measured intercept/slope coefficients; returns physical half mean-squared residual units.",false,(model:Handle<RegressionObject>,coefficients:Input)->Dynamic,|ctx:&CallCtx<'_>,model:Handle<RegressionObject>,coefficients:Input|model.with(ctx,|r|{let beta=regression_parameters(&coefficients,r)?;let value=r.native.loss(beta.as_slice().unwrap_or(&[])).map_err(api::error)?;Ok(Dynamic(regression_loss_value(value,r)?))}));
 
 object_binding!(
     regression_value_and_gradient, "num_analysis_regression_value_and_gradient",
@@ -376,6 +376,9 @@ object_binding!(
     })
 );
 
+#[path = "optimizer_prepared.rs"]
+mod prepared;
+
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     api::install(
         i,
@@ -393,5 +396,6 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &regression_value_and_gradient::BINDING,
         ],
         "numerical_vector",
-    )
+    )?;
+    prepared::install(i)
 }
