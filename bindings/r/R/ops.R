@@ -5959,6 +5959,11 @@ rssn_num_analysis_band_lu_solve <- function(a0, a1, session = NULL, checked = FA
     (if (checked) .rssn_call else .rssn_apply)("num_analysis_band_lu_solve", list(a0, a1), session)
 }
 
+# Fixed Clenshaw–Curtis quadrature of a scalar compiled integrand.
+rssn_num_analysis_clenshaw_curtis_parallel <- function(a0, a1, a2, a3, a4, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_analysis_clenshaw_curtis_parallel", list(a0, a1, a2, a3, a4), session)
+}
+
 # Native complex mobius_apply; normalized dimensionless arguments unless the declared contract preserves measured signal units.
 rssn_num_analysis_complex_mobius_apply <- function(a0, a1, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_analysis_complex_mobius_apply", list(a0, a1), session)
@@ -6277,6 +6282,11 @@ rssn_num_analysis_filon2d_compiled <- function(a0, a1, a2, a3, a4, a5, a6, a7, s
 # Native complex2D Filon quadrature with physical coordinate,amplitude,linear-phase and frequency contracts.
 rssn_num_analysis_filon2d_complex_compiled <- function(a0, a1, a2, a3, a4, a5, a6, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_analysis_filon2d_complex_compiled", list(a0, a1, a2, a3, a4, a5, a6), session)
+}
+
+# Fixed Gauss–Legendre quadrature of a scalar compiled integrand.
+rssn_num_analysis_gauss_legendre_parallel <- function(a0, a1, a2, a3, a4, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_analysis_gauss_legendre_parallel", list(a0, a1, a2, a3, a4), session)
 }
 
 # Gaussian model with same-unit physical mean and positive standard deviation.
@@ -7914,6 +7924,11 @@ rssn_num_analysis_signal_stft <- function(a0, a1, a2, session = NULL, checked = 
     (if (checked) .rssn_call else .rssn_apply)("num_analysis_signal_stft", list(a0, a1, a2), session)
 }
 
+# Two-phase nonnegative simplex with selectable Dantzig, SteepestEdge or Bland pricing and an exact total pivot budget.
+rssn_num_analysis_simplex_budgeted <- function(a0, a1, a2, a3, a4, a5, a6, a7, a8, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_analysis_simplex_budgeted", list(a0, a1, a2, a3, a4, a5, a6, a7, a8), session)
+}
+
 # Native simplex LP with normalized coefficient conversion using positive coordinate/objective/constraint references; preserves Optimal,Infeasible,Unbounded with…
 rssn_num_analysis_simplex_scaled <- function(a0, a1, a2, a3, a4, a5, a6, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_analysis_simplex_scaled", list(a0, a1, a2, a3, a4, a5, a6), session)
@@ -8202,6 +8217,11 @@ rssn_num_analysis_stochastic_structure_noise <- function(a0, a1, a2, a3, session
 # Actual native stochastic method in explicit physical reference coordinates.
 rssn_num_analysis_stochastic_wiener <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_analysis_stochastic_wiener", list(a0, a1, a2, a3), session)
+}
+
+# Deterministic Neumaier-compensated sum of a finite measured vector.
+rssn_num_analysis_sum_compensated <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_analysis_sum_compensated", list(a0, a1, a2), session)
 }
 
 # Actual native geometric operation; physical rigid-body moments/torques use explicit positive SI M/L/T references, while orientations and composition coefficien…
@@ -8914,6 +8934,86 @@ rssn_num_bvh_ray <- function(a0, a1, a2, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_bvh_ray", list(a0, a1, a2), session)
 }
 
+# Copies the mesh's coherent length coordinates and zero-based triangle indices.
+rssn_num_cad_mesh_arrays <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_cad_mesh_arrays", list(a0), session)
+}
+
+# Combines outward-wound convex meshes by union, difference or intersection within fixed evaluation limits.
+rssn_num_cad_mesh_boolean <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_cad_mesh_boolean", list(a0, a1, a2), session)
+}
+
+# Returns V − E + F with isolated indexed vertices included.
+rssn_num_cad_mesh_euler_characteristic <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_cad_mesh_euler_characteristic", list(a0), session)
+}
+
+# Checks that every edge of the nonempty indexed surface has exactly two incident triangles.
+rssn_num_cad_mesh_is_closed <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_cad_mesh_is_closed", list(a0), session)
+}
+
+# Checks edge-manifoldness.
+rssn_num_cad_mesh_is_manifold <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_cad_mesh_is_manifold", list(a0), session)
+}
+
+# Prepares an indexed mesh from a rank-two [x, y, z] tensor of lengths and zero-based triangle indices.
+rssn_num_cad_mesh_new <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_cad_mesh_new", list(a0, a1), session)
+}
+
+# Welds, reorients and fills boundary loops where the repair algorithm can resolve them.
+rssn_num_cad_mesh_repair <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_cad_mesh_repair", list(a0, a1), session)
+}
+
+# Returns the signed volume of a closed consistently wound mesh.
+rssn_num_cad_mesh_signed_volume <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_cad_mesh_signed_volume", list(a0), session)
+}
+
+# Returns the number of indexed triangle faces.
+rssn_num_cad_mesh_triangle_count <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_cad_mesh_triangle_count", list(a0), session)
+}
+
+# Returns the number of indexed vertices.
+rssn_num_cad_mesh_vertex_count <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_cad_mesh_vertex_count", list(a0), session)
+}
+
+# Merges nearby vertices using the supplied length tolerance and returns a new mesh and a vertex count.
+rssn_num_cad_mesh_weld <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_cad_mesh_weld", list(a0, a1), session)
+}
+
+# Reads bounded planar STEP B-reps with LINE edges directly from text.
+rssn_num_cad_step_read_text <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_cad_step_read_text", list(a0), session)
+}
+
+# Reads binary or ASCII STL directly from byte values 0–255.
+rssn_num_cad_stl_read <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_cad_stl_read", list(a0, a1), session)
+}
+
+# Reads ASCII STL directly from text using the supplied coordinate unit length.
+rssn_num_cad_stl_read_text <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_cad_stl_read_text", list(a0, a1), session)
+}
+
+# Returns ASCII STL text with coordinates divided by the supplied unit length.
+rssn_num_cad_stl_write_ascii <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_cad_stl_write_ascii", list(a0, a1, a2), session)
+}
+
+# Returns binary STL as byte values 0–255.
+rssn_num_cad_stl_write_binary <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_cad_stl_write_binary", list(a0, a1), session)
+}
+
 # Classic Cauchy upper bound from a complex coefficient vector in ascending order.
 rssn_num_cauchy_root_bound <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_cauchy_root_bound", list(a0), session)
@@ -9139,6 +9239,21 @@ rssn_num_complex_cauchy_derivative_scaled <- function(a0, a1, a2, a3, a4, a5, a6
     .rssn_call("num_complex_cauchy_derivative_scaled", list(a0, a1, a2, a3, a4, a5, a6, a7), session)
 }
 
+# Returns Cauchy FFT derivatives in the normalized local coordinate (z-center)/radius.
+rssn_num_complex_cauchy_fft_derivatives_checked <- function(a0, a1, a2, a3, a4, a5, a6, a7, session = NULL) {
+    .rssn_call("num_complex_cauchy_fft_derivatives_checked", list(a0, a1, a2, a3, a4, a5, a6, a7), session)
+}
+
+# `num_complex_cauchy_riemann_checked(point, step, coordinate_scale, value_scale, tolerance, budget, callback)`: Checks the relative Cauchy–Riemann residual in t…
+rssn_num_complex_cauchy_riemann_checked <- function(point, step, coordinate_scale, value_scale, tolerance, budget, callback, session = NULL) {
+    .rssn_call("num_complex_cauchy_riemann_checked", list(point, step, coordinate_scale, value_scale, tolerance, budget, callback), session)
+}
+
+# `num_complex_cauchy_riemann_polar_checked(radius, angle, radial_step, angular_step, value_scale, budget, callback)`: Returns radial and angular polar Cauchy–Ri…
+rssn_num_complex_cauchy_riemann_polar_checked <- function(radius, angle, radial_step, angular_step, value_scale, budget, callback, session = NULL) {
+    .rssn_call("num_complex_cauchy_riemann_polar_checked", list(radius, angle, radial_step, angular_step, value_scale, budget, callback), session)
+}
+
 # Native complex analysis with positive coordinate/value scales, independent D/E physical units and a shared actual callback budget.
 rssn_num_complex_circle_integral_scaled <- function(a0, a1, a2, a3, a4, a5, a6, session = NULL) {
     .rssn_call("num_complex_circle_integral_scaled", list(a0, a1, a2, a3, a4, a5, a6), session)
@@ -9147,6 +9262,86 @@ rssn_num_complex_circle_integral_scaled <- function(a0, a1, a2, a3, a4, a5, a6, 
 # Native complex analysis with positive coordinate/value scales, independent D/E physical units and a shared actual callback budget.
 rssn_num_complex_contour_integral_scaled <- function(a0, a1, a2, a3, a4, a5, session = NULL) {
     .rssn_call("num_complex_contour_integral_scaled", list(a0, a1, a2, a3, a4, a5), session)
+}
+
+# Returns the squared modulus in squared coordinate units.
+rssn_num_complex_coords_abs_sq <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_coords_abs_sq", list(a0), session)
+}
+
+# `num_complex_coords_arg_branch(z, theta0)` returns the argument of z in (theta0, theta0 + 2π], with theta0 in radians.
+rssn_num_complex_coords_arg_branch <- function(z, theta0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_coords_arg_branch", list(z, theta0), session)
+}
+
+# Estimates the positive-normal lip minus the negative-normal lip of a branch cut.
+rssn_num_complex_coords_branch_jump_checked <- function(a0, a1, a2, a3, a4, a5, session = NULL) {
+    .rssn_call("num_complex_coords_branch_jump_checked", list(a0, a1, a2, a3, a4, a5), session)
+}
+
+# `chordal_distance(z1, z2)` returns the Euclidean distance of the images on the unit sphere.
+rssn_num_complex_coords_chordal_distance <- function(z1, z2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_coords_chordal_distance", list(z1, z2), session)
+}
+
+# `cis(theta)` returns the unit complex number `cos(theta) + i * sin(theta)`.
+rssn_num_complex_coords_cis <- function(theta, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_coords_cis", list(theta), session)
+}
+
+# Tracks the continuous degree-th root of a dimensionless sampled path away from zero.
+rssn_num_complex_coords_continue_root <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_coords_continue_root", list(a0, a1, a2), session)
+}
+
+# Reconstructs a complex point in radius units from a nonnegative radius and an angle in radians.
+rssn_num_complex_coords_from_polar <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_coords_from_polar", list(a0, a1), session)
+}
+
+# `num_complex_coords_from_riemann_sphere(x, y, z)` inverts stereographic projection for a dimensionless unit sphere point.
+rssn_num_complex_coords_from_riemann_sphere <- function(x, y, z, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_coords_from_riemann_sphere", list(x, y, z), session)
+}
+
+# `num_complex_coords_log_cut(z, theta0)` returns ln(|z|) + i·arg_branch(z, theta0) for dimensionless nonzero z.
+rssn_num_complex_coords_log_cut <- function(z, theta0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_coords_log_cut", list(z, theta0), session)
+}
+
+# `num_complex_coords_pow_cut(z, w, theta0)` returns exp(w·log_cut(z, theta0)) for dimensionless nonzero base z and dimensionless exponent w.
+rssn_num_complex_coords_pow_cut <- function(z, w, theta0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_coords_pow_cut", list(z, w, theta0), session)
+}
+
+# Returns the dimensionless unit direction of a finite nonzero point; zero maps to zero.
+rssn_num_complex_coords_sign <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_coords_sign", list(a0), session)
+}
+
+# `spherical_metric_factor(z)` returns the conformal factor `2 / (1 + |z|^2)`.
+rssn_num_complex_coords_spherical_metric_factor <- function(z, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_coords_spherical_metric_factor", list(z), session)
+}
+
+# `num_complex_coords_sqrt_cut(z, theta0)` returns sqrt(|z|)·exp(i·arg_branch(z, theta0)/2), with theta0 in radians.
+rssn_num_complex_coords_sqrt_cut <- function(z, theta0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_coords_sqrt_cut", list(z, theta0), session)
+}
+
+# Returns a measured radius and the principal angle in radians.
+rssn_num_complex_coords_to_polar <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_coords_to_polar", list(a0), session)
+}
+
+# `num_complex_coords_to_riemann_sphere(point)` projects a finite dimensionless complex point to a unit sphere record with x, y and z fields.
+rssn_num_complex_coords_to_riemann_sphere <- function(point, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_coords_to_riemann_sphere", list(point), session)
+}
+
+# Unwraps phases in radians of nonzero samples with a shared coordinate dimension.
+rssn_num_complex_coords_unwrap_phase <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_coords_unwrap_phase", list(a0), session)
 }
 
 # Native complex analysis with positive coordinate/value scales, independent D/E physical units and a shared actual callback budget.
@@ -9159,9 +9354,409 @@ rssn_num_complex_derivative_scaled <- function(a0, a1, a2, a3, a4, session = NUL
     .rssn_call("num_complex_derivative_scaled", list(a0, a1, a2, a3, a4), session)
 }
 
+# `num_complex_disk_add(a, b)` encloses every sum of points in two disks of the same dimension.
+rssn_num_complex_disk_add <- function(a, b, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_add", list(a, b), session)
+}
+
+# Encloses the principal Bessel function J of nonnegative real or negative integral order.
+rssn_num_complex_disk_bessel_j <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_bessel_j", list(a0, a1), session)
+}
+
+# `num_complex_disk_center(disk)` returns the disk center as a complex quantity.
+rssn_num_complex_disk_center <- function(disk, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_center", list(disk), session)
+}
+
+# Krawczyk existence and uniqueness test.
+rssn_num_complex_disk_certify_root <- function(a0, a1, a2, session = NULL) {
+    .rssn_call("num_complex_disk_certify_root", list(a0, a1, a2), session)
+}
+
+# Checks the strict Rouché inequality on every covering disk of the normalized circle.
+rssn_num_complex_disk_certify_rouche <- function(a0, a1, a2, a3, a4, a5, session = NULL) {
+    .rssn_call("num_complex_disk_certify_rouche", list(a0, a1, a2, a3, a4, a5), session)
+}
+
+# Krawczyk existence and uniqueness test for a normalized complex box.
+rssn_num_complex_disk_certify_system <- function(a0, a1, a2, a3, session = NULL) {
+    .rssn_call("num_complex_disk_certify_system", list(a0, a1, a2, a3), session)
+}
+
+# `num_complex_disk_conj(disk)` reflects the disk in the real axis and preserves its coordinate dimension.
+rssn_num_complex_disk_conj <- function(disk, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_conj", list(disk), session)
+}
+
+# `num_complex_disk_contains(disk, point)` tests whether the point may lie in the closed disk.
+rssn_num_complex_disk_contains <- function(disk, point, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_contains", list(disk, point), session)
+}
+
+# `num_complex_disk_contains_zero(disk)` tests whether zero may lie in the closed disk.
+rssn_num_complex_disk_contains_zero <- function(disk, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_contains_zero", list(disk), session)
+}
+
+# `num_complex_disk_cot(disk)` encloses the dimensionless cotangent.
+rssn_num_complex_disk_cot <- function(disk, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_cot", list(disk), session)
+}
+
+# `num_complex_disk_coth(disk)` encloses the dimensionless hyperbolic cotangent.
+rssn_num_complex_disk_coth <- function(disk, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_coth", list(disk), session)
+}
+
+# `num_complex_disk_csc(disk)` encloses the dimensionless cosecant.
+rssn_num_complex_disk_csc <- function(disk, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_csc", list(disk), session)
+}
+
+# `num_complex_disk_csch(disk)` encloses the dimensionless hyperbolic cosecant.
+rssn_num_complex_disk_csch <- function(disk, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_csch", list(disk), session)
+}
+
+# `num_complex_disk_div(numerator, denominator)` encloses quotients with numerator over denominator dimension.
+rssn_num_complex_disk_div <- function(numerator, denominator, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_div", list(numerator, denominator), session)
+}
+
+# Encloses the complex error function for a dimensionless disk, using an explicit series remainder or a whole-disk integral bound.
+rssn_num_complex_disk_erf <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_erf", list(a0), session)
+}
+
+# Encloses complex Gamma for a dimensionless disk on the supported log-Gamma domain.
+rssn_num_complex_disk_gamma <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_gamma", list(a0), session)
+}
+
+# `num_complex_disk_i()` returns a dimensionless point disk at the imaginary unit.
+rssn_num_complex_disk_i <- function(session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_i", list(), session)
+}
+
+# `num_complex_disk_inside_strictly(inner, outer)` certifies that the inner disk lies strictly in the interior of the outer disk.
+rssn_num_complex_disk_inside_strictly <- function(inner, outer, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_inside_strictly", list(inner, outer), session)
+}
+
+# Tests whether well-formed disk coordinates and radius are all finite.
+rssn_num_complex_disk_is_finite <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_is_finite", list(a0), session)
+}
+
+# `num_complex_disk_jet_acos(value)` encloses the dimensionless principal inverse cosine and its first derivative.
+rssn_num_complex_disk_jet_acos <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_jet_acos", list(value), session)
+}
+
+# `num_complex_disk_jet_acosh(value)` encloses the dimensionless principal inverse hyperbolic cosine and its first derivative.
+rssn_num_complex_disk_jet_acosh <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_jet_acosh", list(value), session)
+}
+
+# `num_complex_disk_jet_add(a, b)` adds two dimensionless jets, enclosing both value and first derivative.
+rssn_num_complex_disk_jet_add <- function(a, b, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_jet_add", list(a, b), session)
+}
+
+# `num_complex_disk_jet_asin(value)` encloses the dimensionless principal inverse sine and its first derivative.
+rssn_num_complex_disk_jet_asin <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_jet_asin", list(value), session)
+}
+
+# `num_complex_disk_jet_asinh(value)` encloses the dimensionless principal inverse hyperbolic sine and its first derivative.
+rssn_num_complex_disk_jet_asinh <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_jet_asinh", list(value), session)
+}
+
+# `num_complex_disk_jet_atan(value)` encloses the dimensionless principal inverse tangent and its first derivative.
+rssn_num_complex_disk_jet_atan <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_jet_atan", list(value), session)
+}
+
+# `num_complex_disk_jet_atanh(value)` encloses the dimensionless principal inverse hyperbolic tangent and its first derivative.
+rssn_num_complex_disk_jet_atanh <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_jet_atanh", list(value), session)
+}
+
+# `num_complex_disk_jet_constant(disk)` initializes a dimensionless jet with a zero derivative.
+rssn_num_complex_disk_jet_constant <- function(disk, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_jet_constant", list(disk), session)
+}
+
+# `num_complex_disk_jet_cos(value)` encloses the dimensionless cosine and its first derivative.
+rssn_num_complex_disk_jet_cos <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_jet_cos", list(value), session)
+}
+
+# `num_complex_disk_jet_cosh(value)` encloses the dimensionless hyperbolic cosine and its first derivative.
+rssn_num_complex_disk_jet_cosh <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_jet_cosh", list(value), session)
+}
+
+# `num_complex_disk_jet_div(numerator, denominator)` divides dimensionless jets with the quotient rule.
+rssn_num_complex_disk_jet_div <- function(numerator, denominator, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_jet_div", list(numerator, denominator), session)
+}
+
+# `num_complex_disk_jet_exp(value)` encloses the dimensionless exponential and its first derivative.
+rssn_num_complex_disk_jet_exp <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_jet_exp", list(value), session)
+}
+
+# `num_complex_disk_jet_ln(value)` encloses the dimensionless principal logarithm and its first derivative.
+rssn_num_complex_disk_jet_ln <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_jet_ln", list(value), session)
+}
+
+# `num_complex_disk_jet_mul(a, b)` multiplies two dimensionless jets, enclosing both value and first derivative.
+rssn_num_complex_disk_jet_mul <- function(a, b, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_jet_mul", list(a, b), session)
+}
+
+# `num_complex_disk_jet_pow(base, exponent)` encloses the principal complex power of two dimensionless jets and its first derivative.
+rssn_num_complex_disk_jet_pow <- function(base, exponent, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_jet_pow", list(base, exponent), session)
+}
+
+# `num_complex_disk_jet_powi(value, exponent)` raises a dimensionless jet to a signed integer power and encloses its first derivative.
+rssn_num_complex_disk_jet_powi <- function(value, exponent, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_jet_powi", list(value, exponent), session)
+}
+
+# `num_complex_disk_jet_sin(value)` encloses the dimensionless sine and its first derivative.
+rssn_num_complex_disk_jet_sin <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_jet_sin", list(value), session)
+}
+
+# `num_complex_disk_jet_sinh(value)` encloses the dimensionless hyperbolic sine and its first derivative.
+rssn_num_complex_disk_jet_sinh <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_jet_sinh", list(value), session)
+}
+
+# `num_complex_disk_jet_sqrt(value)` encloses the dimensionless principal square root and its first derivative.
+rssn_num_complex_disk_jet_sqrt <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_jet_sqrt", list(value), session)
+}
+
+# `num_complex_disk_jet_sub(a, b)` subtracts two dimensionless jets, enclosing both value and first derivative.
+rssn_num_complex_disk_jet_sub <- function(a, b, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_jet_sub", list(a, b), session)
+}
+
+# `num_complex_disk_jet_tan(value)` encloses the dimensionless tangent and its first derivative.
+rssn_num_complex_disk_jet_tan <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_jet_tan", list(value), session)
+}
+
+# `num_complex_disk_jet_tanh(value)` encloses the dimensionless hyperbolic tangent and its first derivative.
+rssn_num_complex_disk_jet_tanh <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_jet_tanh", list(value), session)
+}
+
+# `num_complex_disk_jet_variable(disk)` initializes a dimensionless jet with a unit derivative.
+rssn_num_complex_disk_jet_variable <- function(disk, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_jet_variable", list(disk), session)
+}
+
+# Encloses principal log Gamma on a dimensionless disk off the nonpositive real cut.
+rssn_num_complex_disk_log_gamma <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_log_gamma", list(a0), session)
+}
+
+# `num_complex_disk_matmul(a, b)` encloses a product of disk matrices.
+rssn_num_complex_disk_matmul <- function(a, b, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_matmul", list(a, b), session)
+}
+
+# `num_complex_disk_matvec(matrix, vector)` encloses a nonempty disk matrix of shape `[rows, columns, 3]` times a disk vector of shape `[columns, 3]`.
+rssn_num_complex_disk_matvec <- function(matrix, vector, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_matvec", list(matrix, vector), session)
+}
+
+# `num_complex_disk_modulus_lower(disk)` returns an outward lower bound on the modulus of every point in the disk.
+rssn_num_complex_disk_modulus_lower <- function(disk, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_modulus_lower", list(disk), session)
+}
+
+# `num_complex_disk_modulus_upper(disk)` returns an outward upper bound on the modulus of every point in the disk.
+rssn_num_complex_disk_modulus_upper <- function(disk, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_modulus_upper", list(disk), session)
+}
+
+# `num_complex_disk_mul(a, b)` encloses products of points in two disks.
+rssn_num_complex_disk_mul <- function(a, b, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_mul", list(a, b), session)
+}
+
+# `num_complex_disk_neg(disk)` negates a disk and preserves its coordinate dimension.
+rssn_num_complex_disk_neg <- function(disk, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_neg", list(disk), session)
+}
+
+# `num_complex_disk_new(center, radius)` constructs a disk `[real, imag, radius]` from a finite complex center and a finite nonnegative radius with the same phys…
+rssn_num_complex_disk_new <- function(center, radius, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_new", list(center, radius), session)
+}
+
+# `num_complex_disk_of(center)` returns the exact point disk of a finite complex center, preserving its dimension.
+rssn_num_complex_disk_of <- function(center, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_of", list(center), session)
+}
+
+# `num_complex_disk_one()` returns a dimensionless point disk at 1.
+rssn_num_complex_disk_one <- function(session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_one", list(), session)
+}
+
+# `num_complex_disk_overlaps(a, b)` tests whether two disks with the same coordinate dimension may intersect.
+rssn_num_complex_disk_overlaps <- function(a, b, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_overlaps", list(a, b), session)
+}
+
+# `num_complex_disk_point(real, imag)` returns an exact point disk from finite real and imaginary coordinates with the same dimension.
+rssn_num_complex_disk_point <- function(real, imag, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_point", list(real, imag), session)
+}
+
+# `num_complex_disk_radius(disk)` returns the disk radius with the coordinates’ physical dimension.
+rssn_num_complex_disk_radius <- function(disk, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_radius", list(disk), session)
+}
+
+# `num_complex_disk_recip(disk)` encloses reciprocals with inverse coordinate dimension.
+rssn_num_complex_disk_recip <- function(disk, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_recip", list(disk), session)
+}
+
+# `num_complex_disk_scale(disk, scale)` multiplies the disk by a finite real scalar.
+rssn_num_complex_disk_scale <- function(disk, scale, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_scale", list(disk, scale), session)
+}
+
+# `num_complex_disk_sec(disk)` encloses the dimensionless secant.
+rssn_num_complex_disk_sec <- function(disk, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_sec", list(disk), session)
+}
+
+# `num_complex_disk_sech(disk)` encloses the dimensionless hyperbolic secant.
+rssn_num_complex_disk_sech <- function(disk, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_sech", list(disk), session)
+}
+
+# `num_complex_disk_solve(matrix, rhs)` encloses the solution to a square disk-valued system when residual certification succeeds.
+rssn_num_complex_disk_solve <- function(matrix, rhs, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_solve", list(matrix, rhs), session)
+}
+
+# `num_complex_disk_square(disk)` encloses the squares of points in a disk.
+rssn_num_complex_disk_square <- function(disk, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_square", list(disk), session)
+}
+
+# `num_complex_disk_sub(a, b)` encloses every difference of points in two disks of the same dimension.
+rssn_num_complex_disk_sub <- function(a, b, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_sub", list(a, b), session)
+}
+
+# `num_complex_disk_zero()` returns a dimensionless point disk at 0.
+rssn_num_complex_disk_zero <- function(session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_disk_zero", list(), session)
+}
+
+# `num_complex_dynamics_bottcher(point, c, max_steps)` returns a truncated principal Böttcher coordinate estimate in the exterior quadratic basin.
+rssn_num_complex_dynamics_bottcher <- function(point, c, max_steps, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_dynamics_bottcher", list(point, c, max_steps), session)
+}
+
+# `num_complex_dynamics_external_ray(c, angle, potential, max_steps)` estimates a quadratic external-ray point and reports a relative Böttcher-coordinate residua…
+rssn_num_complex_dynamics_external_ray <- function(c, angle, potential, max_steps, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_dynamics_external_ray", list(c, angle, potential, max_steps), session)
+}
+
+# `num_complex_dynamics_in_main_components(c)` tests membership in the Mandelbrot main cardioid or period-two bulb.
+rssn_num_complex_dynamics_in_main_components <- function(c, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_dynamics_in_main_components", list(c), session)
+}
+
+# `num_complex_dynamics_julia_escape(initial, c, max_steps, radius)` checks iterates preceding the budget for a radius crossing.
+rssn_num_complex_dynamics_julia_escape <- function(initial, c, max_steps, radius, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_dynamics_julia_escape", list(initial, c, max_steps, radius), session)
+}
+
+# Returns a truncated measured Koenigs coordinate estimate with its fixed-point closure error and actual counts.
+rssn_num_complex_dynamics_koenigs_checked <- function(a0, a1, a2, a3, a4, a5, a6, a7, session = NULL) {
+    .rssn_call("num_complex_dynamics_koenigs_checked", list(a0, a1, a2, a3, a4, a5, a6, a7), session)
+}
+
+# `num_complex_dynamics_mandelbrot_distance(c, max_steps)` returns an exterior distance estimate when an iterate crosses the native threshold, or None when no cr…
+rssn_num_complex_dynamics_mandelbrot_distance <- function(c, max_steps, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_dynamics_mandelbrot_distance", list(c, max_steps), session)
+}
+
+# `num_complex_dynamics_mandelbrot_escape(c, max_steps, radius)` checks iterates preceding the budget for a radius crossing.
+rssn_num_complex_dynamics_mandelbrot_escape <- function(c, max_steps, radius, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_dynamics_mandelbrot_escape", list(c, max_steps, radius), session)
+}
+
+# Tests a Newton basin from an initial coordinate using positive coordinate and value scales, absolute residual tolerance, iteration and callback budgets, and fu…
+rssn_num_complex_dynamics_newton_basin_checked <- function(a0, a1, a2, a3, a4, a5, a6, a7, session = NULL) {
+    .rssn_call("num_complex_dynamics_newton_basin_checked", list(a0, a1, a2, a3, a4, a5, a6, a7), session)
+}
+
+# `num_complex_dynamics_quadratic_lyapunov(initial, c, steps, burn_in)` estimates the mean log derivative magnitude along the dimensionless quadratic orbit after…
+rssn_num_complex_dynamics_quadratic_lyapunov <- function(initial, c, steps, burn_in, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_dynamics_quadratic_lyapunov", list(initial, c, steps, burn_in), session)
+}
+
+# `num_complex_dynamics_quadratic_multiplier(point, c, period, tolerance)` returns the multiplier, closure residual and numerical class for the requested quadrat…
+rssn_num_complex_dynamics_quadratic_multiplier <- function(point, c, period, tolerance, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_dynamics_quadratic_multiplier", list(point, c, period, tolerance), session)
+}
+
+# `num_complex_dynamics_quadratic_orbit(initial, c, steps)` returns the dimensionless forward orbit of z -> z²+c, including the initial point.
+rssn_num_complex_dynamics_quadratic_orbit <- function(initial, c, steps, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_dynamics_quadratic_orbit", list(initial, c, steps), session)
+}
+
+# `num_complex_dynamics_quadratic_periodic_points(c, period, seeds, max_steps, tolerance)` uses bounded Newton searches from the supplied seeds and returns dedup…
+rssn_num_complex_dynamics_quadratic_periodic_points <- function(c, period, seeds, max_steps, tolerance, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_dynamics_quadratic_periodic_points", list(c, period, seeds, max_steps, tolerance), session)
+}
+
+# `num_complex_laplacian_checked(point, step, value_scale, budget, callback)`: Estimates the Cartesian Laplacian in callback-value units over coordinate units sq…
+rssn_num_complex_laplacian_checked <- function(point, step, value_scale, budget, callback, session = NULL) {
+    .rssn_call("num_complex_laplacian_checked", list(point, step, value_scale, budget, callback), session)
+}
+
 # Native complex analysis with positive coordinate/value scales, independent D/E physical units and a shared actual callback budget.
 rssn_num_complex_newton_scaled <- function(a0, a1, a2, a3, a4, a5, a6, a7, session = NULL) {
     .rssn_call("num_complex_newton_scaled", list(a0, a1, a2, a3, a4, a5, a6, a7), session)
+}
+
+# Finds approximate roots with Aberth–Ehrlich in dimensionless coordinates.
+rssn_num_complex_polynomial_aberth_ehrlich <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_polynomial_aberth_ehrlich", list(a0, a1, a2), session)
+}
+
+# Finds approximate roots with Durand–Kerner in dimensionless coordinates.
+rssn_num_complex_polynomial_durand_kerner <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_polynomial_durand_kerner", list(a0, a1, a2), session)
+}
+
+# Certifies disjoint simple-root disks for an ascending dimensionless polynomial of degree at most 128.
+rssn_num_complex_polynomial_isolate_verified <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_polynomial_isolate_verified", list(a0, a1), session)
+}
+
+# Finds an approximate root of an ascending dimensionless polynomial from the supplied complex seed.
+rssn_num_complex_polynomial_laguerre <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_polynomial_laguerre", list(a0, a1, a2, a3), session)
 }
 
 # Native complex analysis with positive coordinate/value scales, independent D/E physical units and a shared actual callback budget.
@@ -9169,9 +9764,74 @@ rssn_num_complex_residue_scaled <- function(a0, a1, a2, a3, a4, a5, a6, session 
     .rssn_call("num_complex_residue_scaled", list(a0, a1, a2, a3, a4, a5, a6), session)
 }
 
+# Returns sampled logarithmic-derivative moments of (z-center)/radius, the largest coarse/fine difference, and sample/evaluation counts.
+rssn_num_complex_root_circle_moments <- function(a0, a1, a2, a3, a4, a5, a6, a7, session = NULL) {
+    .rssn_call("num_complex_root_circle_moments", list(a0, a1, a2, a3, a4, a5, a6, a7), session)
+}
+
+# Reports |f|>|g| at each sampled point of a measured circle and returns actual counts.
+rssn_num_complex_root_circle_rouche_samples <- function(a0, a1, a2, a3, a4, a5, a6, session = NULL) {
+    .rssn_call("num_complex_root_circle_rouche_samples", list(a0, a1, a2, a3, a4, a5, a6), session)
+}
+
+# Returns a sampled winding estimate and actual counts if the coarse and refined complex integrals approach the same integer.
+rssn_num_complex_root_circle_winding <- function(a0, a1, a2, a3, a4, a5, a6, session = NULL) {
+    .rssn_call("num_complex_root_circle_winding", list(a0, a1, a2, a3, a4, a5, a6), session)
+}
+
+# Approximates zeros of a pole-free function inside a sampled circle.
+rssn_num_complex_root_delves_lyness <- function(a0, a1, a2, a3, a4, a5, a6, session = NULL) {
+    .rssn_call("num_complex_root_delves_lyness", list(a0, a1, a2, a3, a4, a5, a6), session)
+}
+
+# Halley root using a measured seed, coordinate and value scales, normalized residual tolerance, iteration limit, callback budget, f, f' and f''.
+rssn_num_complex_root_halley <- function(a0, a1, a2, a3, a4, a5, a6, a7, a8, session = NULL) {
+    .rssn_call("num_complex_root_halley", list(a0, a1, a2, a3, a4, a5, a6, a7, a8), session)
+}
+
+# Follows a measured complex zero from t=0 to t=1.
+rssn_num_complex_root_homotopy <- function(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, session = NULL) {
+    .rssn_call("num_complex_root_homotopy", list(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9), session)
+}
+
+# Muller root using three measured guesses, coordinate scale, residual scale, normalized residual tolerance, iteration limit, callback budget and one analytic ca…
+rssn_num_complex_root_muller <- function(a0, a1, a2, a3, a4, a5, a6, a7, a8, session = NULL) {
+    .rssn_call("num_complex_root_muller", list(a0, a1, a2, a3, a4, a5, a6, a7, a8), session)
+}
+
+# `num_complex_step_derivative_checked(x, step, value_scale, budget, callback)`: Estimates a real analytic derivative from the imaginary part of a single sample.
+rssn_num_complex_step_derivative_checked <- function(x, step, value_scale, budget, callback, session = NULL) {
+    .rssn_call("num_complex_step_derivative_checked", list(x, step, value_scale, budget, callback), session)
+}
+
+# Returns normalized hyperelliptic covering topology for w^2 with given finite roots.
+rssn_num_complex_surface_hyperelliptic <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_surface_hyperelliptic", list(a0), session)
+}
+
+# Tracks polynomial fibers on a normalized closed piecewise-linear loop.
+rssn_num_complex_surface_monodromy_checked <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_surface_monodromy_checked", list(a0, a1, a2), session)
+}
+
+# Returns normalized superelliptic covering topology for w^degree with given finite roots.
+rssn_num_complex_surface_superelliptic <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_complex_surface_superelliptic", list(a0, a1), session)
+}
+
 # Returns the winding number about zero of the polygon formed by a rank-one tensor of complex vertices with a common physical dimension.
 rssn_num_complex_winding_number <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_complex_winding_number", list(a0), session)
+}
+
+# `num_complex_wirtinger_dz_checked(point, step, value_scale, budget, callback)`: Estimates the Wirtinger derivative with respect to z.
+rssn_num_complex_wirtinger_dz_checked <- function(point, step, value_scale, budget, callback, session = NULL) {
+    .rssn_call("num_complex_wirtinger_dz_checked", list(point, step, value_scale, budget, callback), session)
+}
+
+# `num_complex_wirtinger_dzbar_checked(point, step, value_scale, budget, callback)`: Estimates the Wirtinger derivative with respect to conjugate z.
+rssn_num_complex_wirtinger_dzbar_checked <- function(point, step, value_scale, budget, callback, session = NULL) {
+    .rssn_call("num_complex_wirtinger_dzbar_checked", list(point, step, value_scale, budget, callback), session)
 }
 
 # Converts degrees to radians.
@@ -9194,9 +9854,314 @@ rssn_num_cond <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_cond", list(a0), session)
 }
 
+# Bergman kernel of the unit disk.
+rssn_num_conformal_bergman_kernel_disk <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_conformal_bergman_kernel_disk", list(a0, a1), session)
+}
+
+# Evaluates a dimensionless Bergman expansion with rows of ascending complex basis coefficients.
+rssn_num_conformal_bergman_polynomial_basis <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_conformal_bergman_polynomial_basis", list(a0, a1, a2), session)
+}
+
+# `cayley_transform(z)` returns the Möbius map `(z - i) / (z + i)`.
+rssn_num_conformal_cayley_transform <- function(z, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_conformal_cayley_transform", list(z), session)
+}
+
+# Classifies finite, projectively equivalent Möbius coefficients as identity, elliptic, parabolic, hyperbolic or loxodromic.
+rssn_num_conformal_classify_mobius <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_conformal_classify_mobius", list(a0), session)
+}
+
+# `cross_ratio(z1, z2, z3, z4)` computes `((z1 - z3) * (z2 - z4)) / ((z1 - z4) * (z2 - z3))`.
+rssn_num_conformal_cross_ratio <- function(z1, z2, z3, z4, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_conformal_cross_ratio", list(z1, z2, z3, z4), session)
+}
+
+# Builds a Möbius automorphism of the unit disk with |alpha| < 1 and angle theta in radians.
+rssn_num_conformal_disk_automorphism <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_conformal_disk_automorphism", list(a0, a1), session)
+}
+
+# `joukowsky(z)` returns the Joukowsky airfoil transformation `(z + 1/z)/2`.
+rssn_num_conformal_joukowsky <- function(z, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_conformal_joukowsky", list(z), session)
+}
+
+# `num_conformal_joukowsky_inverse(point)` returns the two dimensionless inverse branches as named plus and minus fields, ordered by the principal square root of…
+rssn_num_conformal_joukowsky_inverse <- function(point, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_conformal_joukowsky_inverse", list(point), session)
+}
+
+# `karman_trefftz(z, exponent)` evaluates the Kármán–Trefftz map with principal complex powers.
+rssn_num_conformal_karman_trefftz <- function(z, exponent, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_conformal_karman_trefftz", list(z, exponent), session)
+}
+
+# `koebe_map(z)` returns the Koebe function `z / (1 - z)^2`.
+rssn_num_conformal_koebe_map <- function(z, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_conformal_koebe_map", list(z), session)
+}
+
+# Returns finite complex fixed points in the points field.
+rssn_num_conformal_mobius_fixed_points <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_conformal_mobius_fixed_points", list(a0), session)
+}
+
+# Builds the projective Möbius map sending three distinct finite source points to three distinct finite target points.
+rssn_num_conformal_mobius_three_points <- function(a0, a1, a2, a3, a4, a5, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_conformal_mobius_three_points", list(a0, a1, a2, a3, a4, a5), session)
+}
+
+# `num_conformal_numeric_checked(point, step, coordinate_scale, value_scale, tolerance, budget, callback)`: Checks the relative Cauchy–Riemann residual and nonze…
+rssn_num_conformal_numeric_checked <- function(point, step, coordinate_scale, value_scale, tolerance, budget, callback, session = NULL) {
+    .rssn_call("num_conformal_numeric_checked", list(point, step, coordinate_scale, value_scale, tolerance, budget, callback), session)
+}
+
+# `num_conformal_scale_rotation_checked(point, step, value_scale, budget, callback)`: Returns measured local magnification and dimensionless rotation in radians.
+rssn_num_conformal_scale_rotation_checked <- function(point, step, value_scale, budget, callback, session = NULL) {
+    .rssn_call("num_conformal_scale_rotation_checked", list(point, step, value_scale, budget, callback), session)
+}
+
+# Evaluates a normalized Schwarz–Christoffel map on the open upper half-plane.
+rssn_num_conformal_schwarz_christoffel_evaluate <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_conformal_schwarz_christoffel_evaluate", list(a0, a1, a2, a3), session)
+}
+
+# Fits a reusable Schwarz–Christoffel map to a simple counterclockwise polygon in normalized coordinates.
+rssn_num_conformal_schwarz_christoffel_solve <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_conformal_schwarz_christoffel_solve", list(a0, a1, a2), session)
+}
+
+# Evaluates an interior point against a portable prepared Szegő quadrature.
+rssn_num_conformal_szego_evaluate <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_conformal_szego_evaluate", list(a0, a1), session)
+}
+
+# Evaluates the Bergman kernel via the prepared Szegő quadrature at an interior point.
+rssn_num_conformal_szego_evaluate_bergman <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_conformal_szego_evaluate_bergman", list(a0, a1), session)
+}
+
+# Evaluates a Riemann map and Szegő kernel from prepared quadrature.
+rssn_num_conformal_szego_evaluate_map <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_conformal_szego_evaluate_map", list(a0, a1), session)
+}
+
+# Returns a Riemann map and the Szegő kernel for one interior query.
+rssn_num_conformal_szego_map_checked <- function(a0, a1, a2, a3, a4, a5, session = NULL) {
+    .rssn_call("num_conformal_szego_map_checked", list(a0, a1, a2, a3, a4, a5), session)
+}
+
+# Prepares reusable Szegő quadrature from a counterclockwise boundary callback and its derivative on a normalized chart.
+rssn_num_conformal_szego_prepare_checked <- function(a0, a1, a2, a3, a4, session = NULL) {
+    .rssn_call("num_conformal_szego_prepare_checked", list(a0, a1, a2, a3, a4), session)
+}
+
+# Prepares reusable Szegő quadrature from 16 to 192 equally spaced counterclockwise boundary samples and their complex parameter derivatives, in dimensionless no…
+rssn_num_conformal_szego_prepare_sampled <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_conformal_szego_prepare_sampled", list(a0, a1, a2), session)
+}
+
+# Borel–Padé resummation of an ascending dimensionless asymptotic series through order m+n.
+rssn_num_continuation_borel_pade <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_continuation_borel_pade", list(a0, a1, a2, a3), session)
+}
+
+# Evaluates the dimensionless Padé numerator divided by its denominator at a complex point.
+rssn_num_continuation_eval_pade <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_continuation_eval_pade", list(a0, a1), session)
+}
+
+# Continues the derivative state [y, y', ...] of a dimensionless polynomial-coefficient ODE along a complex polygonal path.
+rssn_num_continuation_holonomic_follow <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_continuation_holonomic_follow", list(a0, a1, a2, a3), session)
+}
+
+# Continues the derivative-state identity basis around the closed complex loop; an omitted closing point is appended.
+rssn_num_continuation_holonomic_monodromy <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_continuation_holonomic_monodromy", list(a0, a1, a2), session)
+}
+
+# Returns the order of an ODE described by rows p_0 through p_r with polynomial coefficients in ascending powers, padded with zeros.
+rssn_num_continuation_holonomic_order <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_continuation_holonomic_order", list(a0), session)
+}
+
+# Samples an analytic annulus along a measured circle and returns Laurent coefficients in the dimensionless coordinate (z-center)/radius.
+rssn_num_continuation_laurent_fft <- function(a0, a1, a2, a3, a4, a5, a6, session = NULL) {
+    .rssn_call("num_continuation_laurent_fft", list(a0, a1, a2, a3, a4, a5, a6), session)
+}
+
+# Forms a complex [m/n] Padé approximant from Taylor coefficients in ascending order.
+rssn_num_continuation_pade <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_continuation_pade", list(a0, a1, a2), session)
+}
+
+# Re-centers ascending complex Taylor coefficients along the supplied chain of dimensionless centers.
+rssn_num_continuation_recenter <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_continuation_recenter", list(a0, a1), session)
+}
+
+# Accelerates convergence of up to 4096 dimensionless complex partial sums with Wynn's epsilon algorithm.
+rssn_num_continuation_wynn <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_continuation_wynn", list(a0), session)
+}
+
+# `num_contour_bromwich(c, y_max)` returns the open upward interval from c-i*y_max to c+i*y_max, with y_max positive.
+rssn_num_contour_bromwich <- function(c, y_max, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_contour_bromwich", list(c, y_max), session)
+}
+
+# Constructs an open contour from start to end with positive pole clearance and no branch-ray crossing.
+rssn_num_contour_deform_checked <- function(a0, a1, a2, a3, a4, a5, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_contour_deform_checked", list(a0, a1, a2, a3, a4, a5), session)
+}
+
+# `num_contour_dogbone(a, b, radius)` returns the closed contour enclosing the finite cut from a to b at a positive offset.
+rssn_num_contour_dogbone <- function(a, b, radius, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_contour_dogbone", list(a, b, radius), session)
+}
+
+# `num_contour_hankel(inner, outer, cut_angle, gap)` returns an open Hankel path around a cut through zero.
+rssn_num_contour_hankel <- function(inner, outer, cut_angle, gap, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_contour_hankel", list(inner, outer, cut_angle, gap), session)
+}
+
+# `num_contour_indented_semicircle(radius, poles, indent, upper)` returns a closed semicircle with a bypass for each real pole.
+rssn_num_contour_indented_semicircle <- function(radius, poles, indent, upper, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_contour_indented_semicircle", list(radius, poles, indent, upper), session)
+}
+
+# Integrates an oriented measured path, returning the value with the legacy tolerance and quadrature defaults.
+rssn_num_contour_integrate <- function(a0, a1, a2, a3, a4, a5, session = NULL) {
+    .rssn_call("num_contour_integrate", list(a0, a1, a2, a3, a4, a5), session)
+}
+
+# Estimates an oriented line-and-arc integral along a portable contour record.
+rssn_num_contour_integrate_checked <- function(a0, a1, a2, a3, a4, a5, a6, session = NULL) {
+    .rssn_call("num_contour_integrate_checked", list(a0, a1, a2, a3, a4, a5, a6), session)
+}
+
+# Builds a verified deformation from measured endpoints, poles, ray origins, positive clearance and bare ray angles, then integrates without sampling unsafe geom…
+rssn_num_contour_integrate_deformed_checked <- function(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, session = NULL) {
+    .rssn_call("num_contour_integrate_deformed_checked", list(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11), session)
+}
+
+# Integrates one oriented measured segment, returning the value with the legacy tolerance and quadrature defaults.
+rssn_num_contour_integrate_segment <- function(a0, a1, a2, a3, a4, a5, session = NULL) {
+    .rssn_call("num_contour_integrate_segment", list(a0, a1, a2, a3, a4, a5), session)
+}
+
+# Estimates one oriented line or arc from a single-segment portable contour record.
+rssn_num_contour_integrate_segment_checked <- function(a0, a1, a2, a3, a4, a5, a6, session = NULL) {
+    .rssn_call("num_contour_integrate_segment_checked", list(a0, a1, a2, a3, a4, a5, a6), session)
+}
+
+# `num_contour_keyhole(branch_point, inner, outer, cut_angle, gap)` returns a closed, positively oriented keyhole path around a cut.
+rssn_num_contour_keyhole <- function(branch_point, inner, outer, cut_angle, gap, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_contour_keyhole", list(branch_point, inner, outer, cut_angle, gap), session)
+}
+
+# Returns the legacy value-only principal value with interior pole filtering.
+rssn_num_contour_principal_value <- function(a0, a1, a2, a3, a4, a5, a6, a7, session = NULL) {
+    .rssn_call("num_contour_principal_value", list(a0, a1, a2, a3, a4, a5, a6, a7), session)
+}
+
+# Estimates a Cauchy principal value on two finite endpoints with a vector of strictly interior simple poles.
+rssn_num_contour_principal_value_checked <- function(a0, a1, a2, a3, a4, a5, a6, a7, a8, session = NULL) {
+    .rssn_call("num_contour_principal_value_checked", list(a0, a1, a2, a3, a4, a5, a6, a7, a8), session)
+}
+
+# `num_contour_rectangle(x0, x1, y0, y1)` returns a closed counterclockwise rectangle.
+rssn_num_contour_rectangle <- function(x0, x1, y0, y1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_contour_rectangle", list(x0, x1, y0, y1), session)
+}
+
+# Adaptively estimates the residue at infinity on a positive circle enclosing the finite singularities supplied by the caller.
+rssn_num_contour_residue_infinity_checked <- function(a0, a1, a2, a3, a4, a5, a6, session = NULL) {
+    .rssn_call("num_contour_residue_infinity_checked", list(a0, a1, a2, a3, a4, a5, a6), session)
+}
+
+# Estimates residue at infinity with exactly max(samples, 32) circular samples.
+rssn_num_contour_residue_infinity_fixed <- function(a0, a1, a2, a3, a4, a5, session = NULL) {
+    .rssn_call("num_contour_residue_infinity_fixed", list(a0, a1, a2, a3, a4, a5), session)
+}
+
+# `num_contour_sector(radius, angle)` returns a closed sector with positive radius and a nonzero signed sweep of at most one turn in radians.
+rssn_num_contour_sector <- function(radius, angle, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_contour_sector", list(radius, angle), session)
+}
+
 # Discretise a measured continuous state-space model under a zero-order hold.
 rssn_num_control_c2d_zoh <- function(a0, a1, a2, a3, a4, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_control_c2d_zoh", list(a0, a1, a2, a3, a4), session)
+}
+
+# `num_control_discrete_controllability_matrix(model)` returns [B, A B, ..., A^(n-1) B] with n rows and n*m columns for n states and m inputs.
+rssn_num_control_discrete_controllability_matrix <- function(model, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_discrete_controllability_matrix", list(model), session)
+}
+
+# `num_control_discrete_is_stable(model)` checks whether every pole lies strictly inside the unit circle.
+rssn_num_control_discrete_is_stable <- function(model, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_discrete_is_stable", list(model), session)
+}
+
+# `num_control_discrete_n_inputs(model)` returns the number of inputs of a checked discrete state-space model.
+rssn_num_control_discrete_n_inputs <- function(model, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_discrete_n_inputs", list(model), session)
+}
+
+# `num_control_discrete_n_outputs(model)` returns the number of outputs of a checked discrete state-space model.
+rssn_num_control_discrete_n_outputs <- function(model, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_discrete_n_outputs", list(model), session)
+}
+
+# `num_control_discrete_n_states(model)` returns the number of states of a checked discrete state-space model.
+rssn_num_control_discrete_n_states <- function(model, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_discrete_n_states", list(model), session)
+}
+
+# `num_control_discrete_observability_matrix(model)` returns [C; C A; ...; C A^(n-1)] with n*p rows and n columns for n states and p outputs.
+rssn_num_control_discrete_observability_matrix <- function(model, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_discrete_observability_matrix", list(model), session)
+}
+
+# `num_control_discrete_poles(model)` returns the dimensionless eigenvalues of the discrete state matrix.
+rssn_num_control_discrete_poles <- function(model, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_discrete_poles", list(model), session)
+}
+
+# Fits a normalized discrete one-input state-space model from finite input and output samples.
+rssn_num_control_era <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_era", list(a0, a1, a2), session)
+}
+
+# Returns the fitted A, B and C matrices and realisation order from a live ERA handle.
+rssn_num_control_era_matrices <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_era_matrices", list(a0), session)
+}
+
+# Computes the first-input impulse response in sample-by-output order from a fitted ERA model.
+rssn_num_control_impulse_response <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_impulse_response", list(a0, a1), session)
+}
+
+# Runs a normalized MPC from an initial state toward a fixed state reference, reusing the condensed QP for every step.
+rssn_num_control_mpc_closed_loop <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_mpc_closed_loop", list(a0, a1, a2, a3), session)
+}
+
+# Prepares a bounded normalized discrete MPC from state and input matrices, positive sample time, horizons, weights and optional ordered bounds.
+rssn_num_control_mpc_prepare <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_mpc_prepare", list(a0, a1, a2, a3), session)
+}
+
+# Simulates a parallel PID against a prepared proper transfer model on a finite increasing normalized time grid from rest.
+rssn_num_control_pid_response <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_pid_response", list(a0, a1, a2, a3), session)
 }
 
 # Simulate a measured continuous state-space model on a strictly increasing time grid.
@@ -9207,6 +10172,116 @@ rssn_num_control_simulate_continuous <- function(a0, a1, a2, a3, a4, a5, a6, ses
 # Simulate a portable discrete state-space model from an initial state and one input row per sample.
 rssn_num_control_simulate_discrete <- function(a0, a1, a2, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_control_simulate_discrete", list(a0, a1, a2), session)
+}
+
+# Simulates a positional parallel PID over finite normalized error samples using a positive step, optional derivative filtering and bounded-output anti-windup.
+rssn_num_control_simulate_pid <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_simulate_pid", list(a0, a1, a2, a3), session)
+}
+
+# Prepares a continuous state-space model from normalized A, B, C and D matrices.
+rssn_num_control_state_space_continuous <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_state_space_continuous", list(a0, a1, a2, a3), session)
+}
+
+# Prepares a discrete model from normalized A, B, C and D matrices and a positive sampling interval.
+rssn_num_control_state_space_discrete <- function(a0, a1, a2, a3, a4, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_state_space_discrete", list(a0, a1, a2, a3, a4), session)
+}
+
+# Checks whether the normalized state-space controllability matrix has full row rank.
+rssn_num_control_state_space_is_controllable <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_state_space_is_controllable", list(a0), session)
+}
+
+# Checks whether the normalized state-space observability matrix has full column rank.
+rssn_num_control_state_space_is_observable <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_state_space_is_observable", list(a0), session)
+}
+
+# Checks whether all continuous poles have negative real part or all discrete poles lie inside the unit circle.
+rssn_num_control_state_space_is_stable <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_state_space_is_stable", list(a0), session)
+}
+
+# Prepares a continuous model from normalized A, B, C and D matrices.
+rssn_num_control_state_space_new <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_state_space_new", list(a0, a1, a2, a3), session)
+}
+
+# Returns finite poles of a prepared model.
+rssn_num_control_state_space_poles <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_state_space_poles", list(a0), session)
+}
+
+# Simulates a normalized model at positive sampling interval dt.
+rssn_num_control_state_space_simulate_with_dt <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_state_space_simulate_with_dt", list(a0, a1, a2, a3), session)
+}
+
+# Evaluates a transfer function at a finite normalized complex frequency.
+rssn_num_control_transfer_evaluate <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_transfer_evaluate", list(a0, a1), session)
+}
+
+# Prepares the negative feedback connection a / (1 + a b).
+rssn_num_control_transfer_feedback <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_transfer_feedback", list(a0, a1), session)
+}
+
+# Returns gain margin in dB and phase margin in degrees.
+rssn_num_control_transfer_gain_margin_phase_margin <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_transfer_gain_margin_phase_margin", list(a0), session)
+}
+
+# Returns whether the numerator degree is at most the denominator degree.
+rssn_num_control_transfer_is_proper <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_transfer_is_proper", list(a0), session)
+}
+
+# Checks that all continuous-time poles have negative real parts.
+rssn_num_control_transfer_is_stable <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_transfer_is_stable", list(a0), session)
+}
+
+# Returns whether the numerator degree is below the denominator degree.
+rssn_num_control_transfer_is_strictly_proper <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_transfer_is_strictly_proper", list(a0), session)
+}
+
+# Prepares a real SISO transfer function from finite coefficients in descending powers of normalized s.
+rssn_num_control_transfer_new <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_transfer_new", list(a0, a1), session)
+}
+
+# Prepares a proper real SISO transfer function from finite coefficients in descending powers of normalized s.
+rssn_num_control_transfer_new_proper <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_transfer_new_proper", list(a0, a1), session)
+}
+
+# Returns the denominator degree after trimming leading zeros.
+rssn_num_control_transfer_order <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_transfer_order", list(a0), session)
+}
+
+# Prepares the parallel connection a + b.
+rssn_num_control_transfer_parallel <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_transfer_parallel", list(a0, a1), session)
+}
+
+# Prepares the series connection a b.
+rssn_num_control_transfer_series <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_transfer_series", list(a0, a1), session)
+}
+
+# Returns the fourth-order Runge-Kutta unit-step response of a proper model on a finite, strictly increasing normalized time grid.
+rssn_num_control_transfer_step_response <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_transfer_step_response", list(a0, a1), session)
+}
+
+# Returns the finite zeros of the transfer numerator as a complex vector.
+rssn_num_control_transfer_zeros <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_control_transfer_zeros", list(a0), session)
 }
 
 # One pass of Aitken's delta-squared process over `sequence`.
@@ -9227,6 +10302,11 @@ rssn_num_convergence_richardson_extrapolation_with <- function(a0, a1, session =
 # Wynn's epsilon algorithm (Shanks transformation) on `sequence`.
 rssn_num_convergence_wynn_epsilon <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_convergence_wynn_epsilon", list(a0), session)
+}
+
+# Bounded dense LP with physical reference scales, finite lower bounds, masked upper bounds and a total simplex pivot budget.
+rssn_num_convex_solve_lp <- function(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_convex_solve_lp", list(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10), session)
 }
 
 # Pearson correlation of equally sized samples.
@@ -9304,6 +10384,21 @@ rssn_num_csr_gmres <- function(a0, a1, a2, a3, a4, session = NULL, checked = FAL
     (if (checked) .rssn_call else .rssn_apply)("num_csr_gmres", list(a0, a1, a2, a3, a4), session)
 }
 
+# Solves rectangular sparse least squares using cached working buffers and the original normal equations for convergence.
+rssn_num_csr_lsqr <- function(a0, a1, a2, a3, a4, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_csr_lsqr", list(a0, a1, a2, a3, a4), session)
+}
+
+# Multiplies a rectangular CSR matrix by a dense rank-two tensor using SIMD row updates.
+rssn_num_csr_matmul_dense <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_csr_matmul_dense", list(a0, a1), session)
+}
+
+# Multiplies two rectangular CSR records.
+rssn_num_csr_matmul_sparse <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_csr_matmul_sparse", list(a0, a1), session)
+}
+
 # MINRES for symmetric indefinite systems, identity preconditioning; reports independently recomputed original-system residual.
 rssn_num_csr_minres <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_csr_minres", list(a0, a1, a2, a3), session)
@@ -9357,6 +10452,11 @@ rssn_num_csr_model_permute <- function(a0, a1, session = NULL, checked = FALSE) 
 # Validated portable native dense/sparse factor definition.
 rssn_num_csr_model_rcm <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_csr_model_rcm", list(a0), session)
+}
+
+# Transposes a checked rectangular CSR record, preserving entry units and strictly ordered columns.
+rssn_num_csr_transpose <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_csr_transpose", list(a0), session)
 }
 
 # Coefficient of variation.
@@ -10289,6 +11389,16 @@ rssn_num_finite_field_gf256_scale <- function(a0, a1, session = NULL, checked = 
     (if (checked) .rssn_call else .rssn_apply)("num_finite_field_gf256_scale", list(a0, a1), session)
 }
 
+# Validates an odd prime and a power-of-two transform length dividing p-1.
+rssn_num_finite_field_ntt_plan <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_finite_field_ntt_plan", list(a0, a1), session)
+}
+
+# Applies the cached forward or inverse number-theoretic transform to ordinary unsigned coefficients.
+rssn_num_finite_field_ntt_transform <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_finite_field_ntt_transform", list(a0, a1, a2), session)
+}
+
 # Exact coefficient convolution modulo an odd prime.
 rssn_num_finite_field_poly_mul_ntt_mod <- function(a0, a1, a2, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_finite_field_poly_mul_ntt_mod", list(a0, a1, a2), session)
@@ -10762,6 +11872,36 @@ rssn_num_geometry_segment_triangle_intersection_3d <- function(a0, a1, a2, a3, a
 # The non-negative volume of a tetrahedron, from four vertices in `R^3`.
 rssn_num_geometry_tetrahedron_volume <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_geometry_tetrahedron_volume", list(a0), session)
+}
+
+# Fits a generalized linear model.
+rssn_num_glm_fit <- function(a0, a1, a2, a3, a4, a5, a6, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_glm_fit", list(a0, a1, a2, a3, a4, a5, a6), session)
+}
+
+# Maps a finite dimensionless linear predictor to its response mean.
+rssn_num_glm_inverse_link <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_glm_inverse_link", list(a0, a1), session)
+}
+
+# Maps a dimensionless mean to the linear predictor.
+rssn_num_glm_link <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_glm_link", list(a0, a1), session)
+}
+
+# Returns the dimensionless derivative of a named GLM link at an admissible mean.
+rssn_num_glm_link_derivative <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_glm_link_derivative", list(a0, a1), session)
+}
+
+# Predicts response means from a fitted model with the model's stored link.
+rssn_num_glm_predict <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_glm_predict", list(a0, a1), session)
+}
+
+# Returns the dimensionless variance function at a mean in the named family's support.
+rssn_num_glm_variance <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_glm_variance", list(a0, a1), session)
 }
 
 # Native staggered acoustic call in a mechanical reference frame.
@@ -13259,6 +14399,16 @@ rssn_num_integrate_semi_infinite <- function(a0, a1, a2, a3, session = NULL) {
     .rssn_call("num_integrate_semi_infinite", list(a0, a1, a2, a3), session)
 }
 
+# Interpolates one finite point on a prepared rectilinear grid.
+rssn_num_interp_bilinear_grid_evaluate <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_interp_bilinear_grid_evaluate", list(a0, a1, a2, a3), session)
+}
+
+# Prepares a rectilinear grid with measured axes.
+rssn_num_interp_bilinear_grid_prepare <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_interp_bilinear_grid_prepare", list(a0, a1, a2), session)
+}
+
 # Akima 1D cubic spline interpolation.
 rssn_num_interp_ext_akima <- function(a0, a1, a2, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_interp_ext_akima", list(a0, a1, a2), session)
@@ -14679,6 +15829,86 @@ rssn_num_linear_solve_wiedemann <- function(a0, a1, a2, a3, session = NULL, chec
     (if (checked) .rssn_call else .rssn_apply)("num_linear_solve_wiedemann", list(a0, a1, a2, a3), session)
 }
 
+# Solves a square rational sparse system with one right-hand side per tensor row.
+rssn_num_linear_sparse_exact_dixon_multi <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_linear_sparse_exact_dixon_multi", list(a0, a1), session)
+}
+
+# Returns the canonical residue of a plus b, including for unreduced u64 inputs.
+rssn_num_linear_sparse_exact_field_add <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_linear_sparse_exact_field_add", list(a0, a1, a2), session)
+}
+
+# Inverts a vector of up to 16,384 residues with one field inversion.
+rssn_num_linear_sparse_exact_field_batch_inv <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_linear_sparse_exact_field_batch_inv", list(a0, a1), session)
+}
+
+# Returns the canonical inverse of a field element, or None for a zero residue.
+rssn_num_linear_sparse_exact_field_inv <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_linear_sparse_exact_field_inv", list(a0, a1), session)
+}
+
+# Returns the canonical residue of a times b using the prepared field.
+rssn_num_linear_sparse_exact_field_mul <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_linear_sparse_exact_field_mul", list(a0, a1, a2), session)
+}
+
+# Prepares a session-owned prime field after validating the full unsigned 64-bit modulus.
+rssn_num_linear_sparse_exact_field_new <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_linear_sparse_exact_field_new", list(a0), session)
+}
+
+# Raises an element to an unsigned exponent using the prepared field.
+rssn_num_linear_sparse_exact_field_pow <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_linear_sparse_exact_field_pow", list(a0, a1, a2), session)
+}
+
+# Returns the exact prime modulus.
+rssn_num_linear_sparse_exact_field_prime <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_linear_sparse_exact_field_prime", list(a0), session)
+}
+
+# Reduces a signed exact integer of up to 16,384 bits to its canonical prime-field residue.
+rssn_num_linear_sparse_exact_field_reduce <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_linear_sparse_exact_field_reduce", list(a0, a1), session)
+}
+
+# Returns an independently owned, reusable Barrett reducer for this prime field.
+rssn_num_linear_sparse_exact_field_reducer <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_linear_sparse_exact_field_reducer", list(a0), session)
+}
+
+# Returns the canonical residue of a minus b, including for unreduced u64 inputs.
+rssn_num_linear_sparse_exact_field_sub <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_linear_sparse_exact_field_sub", list(a0, a1, a2), session)
+}
+
+# Computes exact RREF and ascending zero-based pivot columns in the matrix's field.
+rssn_num_linear_sparse_exact_prime_rref <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_linear_sparse_exact_prime_rref", list(a0), session)
+}
+
+# Copies a prime-field sparse matrix into a rank-two tensor of exact residues.
+rssn_num_linear_sparse_exact_prime_to_dense <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_linear_sparse_exact_prime_to_dense", list(a0), session)
+}
+
+# Computes exact rational RREF and ascending zero-based pivot columns.
+rssn_num_linear_sparse_exact_rational_rref <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_linear_sparse_exact_rational_rref", list(a0), session)
+}
+
+# Reduces a rational sparse matrix in the prepared field.
+rssn_num_linear_sparse_exact_rational_to_prime <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_linear_sparse_exact_rational_to_prime", list(a0, a1), session)
+}
+
+# Returns a cached symmetric Reverse Cuthill–McKee ordering of a square sparse pattern.
+rssn_num_linear_sparse_exact_rcm_plan <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_linear_sparse_exact_rcm_plan", list(a0), session)
+}
+
 # Native sparse factor/preconditioner with its matrix entry reference.
 rssn_num_linear_sparse_lu_dim <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_linear_sparse_lu_dim", list(a0), session)
@@ -15304,6 +16534,76 @@ rssn_num_max <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_max", list(a0), session)
 }
 
+# Dimensionless sample autocorrelations at lags zero through max_lag.
+rssn_num_mcmc_autocorrelation <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mcmc_autocorrelation", list(a0, a1), session)
+}
+
+# Initial positive sequence estimate of effective sample size from a measured chain of at most 4096 draws.
+rssn_num_mcmc_effective_sample_size <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mcmc_effective_sample_size", list(a0), session)
+}
+
+# Dimensionless Geweke z-score comparing the first tenth against the last half of one measured chain.
+rssn_num_mcmc_geweke <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mcmc_geweke", list(a0), session)
+}
+
+# Seeded Gibbs sweeps with a typed conditional sampler taking a zero-based coordinate, normalized state and a uniform draw.
+rssn_num_mcmc_gibbs <- function(a0, a1, a2, session = NULL) {
+    .rssn_call("num_mcmc_gibbs", list(a0, a1, a2), session)
+}
+
+# Seeded Gibbs sweeps with a typed coordinate conditional and joint log target.
+rssn_num_mcmc_gibbs_with_log_posterior <- function(a0, a1, a2, a3, session = NULL) {
+    .rssn_call("num_mcmc_gibbs_with_log_posterior", list(a0, a1, a2, a3), session)
+}
+
+# Seeded Hamiltonian Monte Carlo on normalized coordinates with typed log-target and gradient functions and a fixed leapfrog schedule.
+rssn_num_mcmc_hmc <- function(a0, a1, a2, a3, a4, a5, session = NULL) {
+    .rssn_call("num_mcmc_hmc", list(a0, a1, a2, a3, a4, a5), session)
+}
+
+# Seeded Metropolis–Hastings with normalized coordinates, positive Gaussian proposal scales and a typed log-target function.
+rssn_num_mcmc_metropolis_hastings <- function(a0, a1, a2, a3, session = NULL) {
+    .rssn_call("num_mcmc_metropolis_hastings", list(a0, a1, a2, a3), session)
+}
+
+# Creates a deterministic PCG32 stream from a u64 seed and a 63-bit stream selector.
+rssn_num_mcmc_pcg32_new <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mcmc_pcg32_new", list(a0, a1), session)
+}
+
+# Advances the specified PCG32 stream and returns a 53-bit uniform draw in [0, 1).
+rssn_num_mcmc_pcg32_next_f64 <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mcmc_pcg32_next_f64", list(a0), session)
+}
+
+# Advances the specified PCG32 stream and returns its next unsigned 32-bit output.
+rssn_num_mcmc_pcg32_next_u32 <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mcmc_pcg32_next_u32", list(a0), session)
+}
+
+# Draws a standard normal from the specified PCG32 stream, preserving its cached Box–Muller variate.
+rssn_num_mcmc_pcg32_normal <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mcmc_pcg32_normal", list(a0), session)
+}
+
+# Creates a deterministic PCG32 stream with the default stream selector.
+rssn_num_mcmc_pcg32_seeded <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mcmc_pcg32_seeded", list(a0), session)
+}
+
+# Seeded random-walk Metropolis with normalized coordinates, fixed Gaussian proposal scales and a typed log-target function.
+rssn_num_mcmc_random_walk_metropolis <- function(a0, a1, a2, a3, session = NULL) {
+    .rssn_call("num_mcmc_random_walk_metropolis", list(a0, a1, a2, a3), session)
+}
+
+# Split Rhat for rank-two measured draws, with one equally long chain per row.
+rssn_num_mcmc_split_rhat <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mcmc_split_rhat", list(a0), session)
+}
+
 # Arithmetic mean; zero for an empty sample.
 rssn_num_mean <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_mean", list(a0), session)
@@ -15314,9 +16614,19 @@ rssn_num_median <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_median", list(a0), session)
 }
 
+# Builds a counterclockwise triangle mesh of a simple planar boundary.
+rssn_num_meshgen_advancing_front_2d <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_meshgen_advancing_front_2d", list(a0, a1, a2, a3), session)
+}
+
 # `num_meshgen_boundary_faces(tetrahedra)` returns the oriented triangular faces incident to exactly one tetrahedron, in first occurrence order.
 rssn_num_meshgen_boundary_faces <- function(tetrahedra, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_meshgen_boundary_faces", list(tetrahedra), session)
+}
+
+# Triangulates measured points while preserving zero-based constrained segment endpoints as chains of edges.
+rssn_num_meshgen_constrained_delaunay_2d <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_meshgen_constrained_delaunay_2d", list(a0, a1, a2, a3), session)
 }
 
 # `num_meshgen_delaunay_2d_incremental(points)` inserts between 3 and 4096 distinct planar points in input order and returns counter-clockwise triangles of zero-…
@@ -15344,14 +16654,244 @@ rssn_num_min <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_min", list(a0), session)
 }
 
+# `num_modular_barrett_add(plan, a, b)` Adds two unsigned words modulo the prepared modulus.
+rssn_num_modular_barrett_add <- function(plan, a, b, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_barrett_add", list(plan, a, b), session)
+}
+
+# `num_modular_barrett_div(plan, numerator, denominator)` Returns the modular quotient, or None when the denominator is not invertible.
+rssn_num_modular_barrett_div <- function(plan, numerator, denominator, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_barrett_div", list(plan, numerator, denominator), session)
+}
+
+# `num_modular_barrett_inv(plan, value)` Returns the modular inverse, or None when the value is not coprime to the modulus.
+rssn_num_modular_barrett_inv <- function(plan, value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_barrett_inv", list(plan, value), session)
+}
+
+# `num_modular_barrett_modulus(plan)` Returns the prepared modulus.
+rssn_num_modular_barrett_modulus <- function(plan, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_barrett_modulus", list(plan), session)
+}
+
+# `num_modular_barrett_mu(plan)` Returns floor(2^64 / modulus), the high word of the reciprocal.
+rssn_num_modular_barrett_mu <- function(plan, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_barrett_mu", list(plan), session)
+}
+
+# `num_modular_barrett_mul(plan, a, b)` Multiplies two unsigned words modulo the prepared modulus.
+rssn_num_modular_barrett_mul <- function(plan, a, b, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_barrett_mul", list(plan, a, b), session)
+}
+
+# `num_modular_barrett_neg(plan, value)` Negates an unsigned word modulo the prepared modulus.
+rssn_num_modular_barrett_neg <- function(plan, value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_barrett_neg", list(plan, value), session)
+}
+
+# `num_modular_barrett_new(modulus)` prepares reusable reduction constants for an unsigned 64-bit modulus of at least two.
+rssn_num_modular_barrett_new <- function(modulus, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_barrett_new", list(modulus), session)
+}
+
+# `num_modular_barrett_new_prime(modulus)` certifies a prime before preparing reduction constants.
+rssn_num_modular_barrett_new_prime <- function(modulus, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_barrett_new_prime", list(modulus), session)
+}
+
+# `num_modular_barrett_pow(plan, base, exponent)` Raises an unsigned word to an unsigned 64-bit exponent modulo the prepared modulus.
+rssn_num_modular_barrett_pow <- function(plan, base, exponent, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_barrett_pow", list(plan, base, exponent), session)
+}
+
+# `num_modular_barrett_reduce_u128(plan, value)` Reduces an unsigned 128-bit word modulo the prepared modulus.
+rssn_num_modular_barrett_reduce_u128 <- function(plan, value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_barrett_reduce_u128", list(plan, value), session)
+}
+
+# `num_modular_barrett_reduce_u64(plan, value)` Reduces an unsigned 64-bit word modulo the prepared modulus.
+rssn_num_modular_barrett_reduce_u64 <- function(plan, value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_barrett_reduce_u64", list(plan, value), session)
+}
+
+# `num_modular_barrett_sub(plan, a, b)` Subtracts two unsigned words modulo the prepared modulus.
+rssn_num_modular_barrett_sub <- function(plan, a, b, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_barrett_sub", list(plan, a, b), session)
+}
+
+# `num_modular_montgomery_add(plan, a, b)` Adds two unsigned words modulo the prepared modulus.
+rssn_num_modular_montgomery_add <- function(plan, a, b, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_add", list(plan, a, b), session)
+}
+
+# `num_modular_montgomery_add_mont(plan, a, b)` Adds two canonical Montgomery residues.
+rssn_num_modular_montgomery_add_mont <- function(plan, a, b, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_add_mont", list(plan, a, b), session)
+}
+
+# `num_modular_montgomery_div(plan, numerator, denominator)` Returns the modular quotient, or None when the denominator is not invertible.
+rssn_num_modular_montgomery_div <- function(plan, numerator, denominator, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_div", list(plan, numerator, denominator), session)
+}
+
+# `num_modular_montgomery_fma_mont(plan, a, b, accumulator)` Adds the product to the accumulator in Montgomery representation.
+rssn_num_modular_montgomery_fma_mont <- function(plan, a, b, accumulator, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_fma_mont", list(plan, a, b, accumulator), session)
+}
+
+# `num_modular_montgomery_from_mont(plan, value)` Converts a canonical Montgomery residue to standard representation.
+rssn_num_modular_montgomery_from_mont <- function(plan, value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_from_mont", list(plan, value), session)
+}
+
+# `num_modular_montgomery_half(plan, value)` Halves a canonical residue for the odd modulus, in either representation.
+rssn_num_modular_montgomery_half <- function(plan, value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_half", list(plan, value), session)
+}
+
+# `num_modular_montgomery_inv(plan, value)` Returns the modular inverse, or None when the value is not coprime to the modulus.
+rssn_num_modular_montgomery_inv <- function(plan, value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_inv", list(plan, value), session)
+}
+
+# `num_modular_montgomery_modulus(plan)` Returns the prepared odd modulus.
+rssn_num_modular_montgomery_modulus <- function(plan, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_modulus", list(plan), session)
+}
+
+# `num_modular_montgomery_mul(plan, a, b)` Multiplies two unsigned words modulo the prepared modulus.
+rssn_num_modular_montgomery_mul <- function(plan, a, b, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_mul", list(plan, a, b), session)
+}
+
+# `num_modular_montgomery_mul_mont(plan, a, b)` Multiplies two canonical Montgomery residues.
+rssn_num_modular_montgomery_mul_mont <- function(plan, a, b, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_mul_mont", list(plan, a, b), session)
+}
+
+# `num_modular_montgomery_n_prime(plan)` Returns the Montgomery reduction multiplier -p^(-1) mod 2^64.
+rssn_num_modular_montgomery_n_prime <- function(plan, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_n_prime", list(plan), session)
+}
+
+# `num_modular_montgomery_neg(plan, value)` Negates an unsigned word modulo the prepared modulus.
+rssn_num_modular_montgomery_neg <- function(plan, value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_neg", list(plan, value), session)
+}
+
+# `num_modular_montgomery_neg_mont(plan, value)` Negates a canonical Montgomery residue.
+rssn_num_modular_montgomery_neg_mont <- function(plan, value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_neg_mont", list(plan, value), session)
+}
+
+# `num_modular_montgomery_new(modulus)` prepares reusable reduction constants for an unsigned 64-bit odd modulus greater than one.
+rssn_num_modular_montgomery_new <- function(modulus, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_new", list(modulus), session)
+}
+
+# `num_modular_montgomery_new_prime(modulus)` certifies an odd prime before preparing reduction constants.
+rssn_num_modular_montgomery_new_prime <- function(modulus, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_new_prime", list(modulus), session)
+}
+
+# `num_modular_montgomery_one(plan)` Returns the multiplicative identity in standard representation.
+rssn_num_modular_montgomery_one <- function(plan, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_one", list(plan), session)
+}
+
+# `num_modular_montgomery_one_mont(plan)` Returns the Montgomery representation of the multiplicative identity.
+rssn_num_modular_montgomery_one_mont <- function(plan, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_one_mont", list(plan), session)
+}
+
+# `num_modular_montgomery_pow(plan, base, exponent)` Raises an unsigned word to an unsigned 64-bit exponent modulo the prepared modulus.
+rssn_num_modular_montgomery_pow <- function(plan, base, exponent, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_pow", list(plan, base, exponent), session)
+}
+
+# `num_modular_montgomery_pow_mont(plan, base, exponent)` Raises a canonical Montgomery residue to an unsigned 64-bit exponent.
+rssn_num_modular_montgomery_pow_mont <- function(plan, base, exponent, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_pow_mont", list(plan, base, exponent), session)
+}
+
+# `num_modular_montgomery_r2_mod(plan)` Returns 2^128 reduced modulo the prepared modulus.
+rssn_num_modular_montgomery_r2_mod <- function(plan, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_r2_mod", list(plan), session)
+}
+
+# `num_modular_montgomery_r_mod(plan)` Returns 2^64 reduced modulo the prepared modulus.
+rssn_num_modular_montgomery_r_mod <- function(plan, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_r_mod", list(plan), session)
+}
+
+# `num_modular_montgomery_redc(plan, value)` Returns value times the inverse Montgomery radix modulo p.
+rssn_num_modular_montgomery_redc <- function(plan, value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_redc", list(plan, value), session)
+}
+
+# `num_modular_montgomery_sub(plan, a, b)` Subtracts two unsigned words modulo the prepared modulus.
+rssn_num_modular_montgomery_sub <- function(plan, a, b, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_sub", list(plan, a, b), session)
+}
+
+# `num_modular_montgomery_sub_mont(plan, a, b)` Subtracts two canonical Montgomery residues.
+rssn_num_modular_montgomery_sub_mont <- function(plan, a, b, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_sub_mont", list(plan, a, b), session)
+}
+
+# `num_modular_montgomery_to_mont(plan, value)` Converts an unsigned 64-bit word to a reduced Montgomery residue.
+rssn_num_modular_montgomery_to_mont <- function(plan, value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_to_mont", list(plan, value), session)
+}
+
+# `num_modular_montgomery_to_mont_u128(plan, value)` Converts an unsigned 128-bit word to a reduced Montgomery residue.
+rssn_num_modular_montgomery_to_mont_u128 <- function(plan, value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_modular_montgomery_to_mont_u128", list(plan, value), session)
+}
+
 # Returns a dyadic enclosure of the absolute values in the closed interval at the requested precision.
 rssn_num_mp_ball_abs <- function(a0, a1, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_abs", list(a0, a1), session)
 }
 
+# `num_mp_ball_acos(interval, precision)` encloses the inverse cosine on the real domain [-1, 1].
+rssn_num_mp_ball_acos <- function(interval, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_acos", list(interval, precision), session)
+}
+
+# `num_mp_ball_add(left, right, precision)` encloses every sum of two dyadic intervals.
+rssn_num_mp_ball_add <- function(left, right, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_add", list(left, right, precision), session)
+}
+
+# `num_mp_ball_asin(interval, precision)` encloses the inverse sine on the real domain [-1, 1].
+rssn_num_mp_ball_asin <- function(interval, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_asin", list(interval, precision), session)
+}
+
+# `num_mp_ball_atan(interval, precision)` encloses the real inverse tangent of a closed interval.
+rssn_num_mp_ball_atan <- function(interval, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_atan", list(interval, precision), session)
+}
+
+# `num_mp_ball_atan2(y, x, precision)` encloses the principal angle of a closed rectangle away from the origin and wrapping cut.
+rssn_num_mp_ball_atan2 <- function(y, x, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_atan2", list(y, x, precision), session)
+}
+
 # Tests whether the closed interval contains zero, including either endpoint.
 rssn_num_mp_ball_contains_zero <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_contains_zero", list(a0), session)
+}
+
+# `num_mp_ball_cos(interval, precision)` encloses the real cos over a closed dyadic interval.
+rssn_num_mp_ball_cos <- function(interval, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_cos", list(interval, precision), session)
+}
+
+# `num_mp_ball_cosh(interval, precision)` encloses the hyperbolic cosine over a closed dyadic interval.
+rssn_num_mp_ball_cosh <- function(interval, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_cosh", list(interval, precision), session)
 }
 
 # Encloses all quotients of two closed dimensionless intervals.
@@ -15362,6 +16902,46 @@ rssn_num_mp_ball_div <- function(a0, a1, a2, session = NULL, checked = FALSE) {
 # Returns the lower endpoint rounded down and upper endpoint rounded up at the requested precision.
 rssn_num_mp_ball_endpoints <- function(a0, a1, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_endpoints", list(a0, a1), session)
+}
+
+# `num_mp_ball_exp(interval, precision)` encloses the exponential over a closed dyadic interval.
+rssn_num_mp_ball_exp <- function(interval, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_exp", list(interval, precision), session)
+}
+
+# `num_mp_ball_exp2(interval, precision)` encloses the base-two exponential over a closed dyadic interval.
+rssn_num_mp_ball_exp2 <- function(interval, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_exp2", list(interval, precision), session)
+}
+
+# Given the exact mapped midpoint and a caller-supplied nonnegative Lipschitz bound, widens the radius by input radius times the bound and includes rounding of t…
+rssn_num_mp_ball_lipschitz <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_lipschitz", list(a0, a1, a2, a3), session)
+}
+
+# `num_mp_ball_ln(interval, precision)` encloses the natural logarithm over a closed dyadic interval.
+rssn_num_mp_ball_ln <- function(interval, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_ln", list(interval, precision), session)
+}
+
+# `num_mp_ball_log10(interval, precision)` encloses the base-ten logarithm over a closed dyadic interval.
+rssn_num_mp_ball_log10 <- function(interval, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_log10", list(interval, precision), session)
+}
+
+# `num_mp_ball_log2(interval, precision)` encloses the base-two logarithm over a closed dyadic interval.
+rssn_num_mp_ball_log2 <- function(interval, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_log2", list(interval, precision), session)
+}
+
+# `num_mp_ball_midpoint(interval)` Returns the midpoint of the closed dyadic interval.
+rssn_num_mp_ball_midpoint <- function(interval, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_midpoint", list(interval), session)
+}
+
+# `num_mp_ball_mul(left, right, precision)` encloses every product of two dyadic intervals.
+rssn_num_mp_ball_mul <- function(left, right, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_mul", list(left, right, precision), session)
 }
 
 # Reflects a closed interval about zero and retains its radius.
@@ -15379,9 +16959,319 @@ rssn_num_mp_ball_point <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_point", list(a0), session)
 }
 
+# `num_mp_ball_pow(base, exponent, precision)` encloses a real power over closed base and exponent intervals.
+rssn_num_mp_ball_pow <- function(base, exponent, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_pow", list(base, exponent, precision), session)
+}
+
+# `num_mp_ball_pow_ratio(base, numerator, denominator, precision)` encloses a closed interval raised to an exact rational exponent.
+rssn_num_mp_ball_pow_ratio <- function(base, numerator, denominator, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_pow_ratio", list(base, numerator, denominator, precision), session)
+}
+
+# `num_mp_ball_powi(base, exponent, precision)` encloses a closed interval raised to a signed integer exponent.
+rssn_num_mp_ball_powi <- function(base, exponent, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_powi", list(base, exponent, precision), session)
+}
+
+# `num_mp_ball_radius(interval)` Returns the nonnegative radius of the closed dyadic interval.
+rssn_num_mp_ball_radius <- function(interval, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_radius", list(interval), session)
+}
+
+# `num_mp_ball_sin(interval, precision)` encloses the real sin over a closed dyadic interval.
+rssn_num_mp_ball_sin <- function(interval, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_sin", list(interval, precision), session)
+}
+
+# `num_mp_ball_sinh(interval, precision)` encloses the hyperbolic sine over a closed dyadic interval.
+rssn_num_mp_ball_sinh <- function(interval, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_sinh", list(interval, precision), session)
+}
+
+# `num_mp_ball_sqrt(interval, precision)` Encloses the square root of a nonnegative closed interval.
+rssn_num_mp_ball_sqrt <- function(interval, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_sqrt", list(interval, precision), session)
+}
+
+# `num_mp_ball_sub(left, right, precision)` encloses every difference of two dyadic intervals.
+rssn_num_mp_ball_sub <- function(left, right, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_sub", list(left, right, precision), session)
+}
+
+# `num_mp_ball_tan(interval, precision)` encloses the real tan over a closed dyadic interval.
+rssn_num_mp_ball_tan <- function(interval, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_tan", list(interval, precision), session)
+}
+
+# `num_mp_ball_tanh(interval, precision)` encloses the hyperbolic tangent over a closed dyadic interval.
+rssn_num_mp_ball_tanh <- function(interval, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_tanh", list(interval, precision), session)
+}
+
 # Returns twice the radius as a dyadic.
 rssn_num_mp_ball_width <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_mp_ball_width", list(a0), session)
+}
+
+# `num_mp_complex_abs(value, precision)` encloses the modulus of a closed dyadic rectangle.
+rssn_num_mp_complex_abs <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_abs", list(value, precision), session)
+}
+
+# `num_mp_complex_abs_sq(value, precision)` encloses the squared magnitudes using the rectangle’s nearest and farthest coordinates from zero.
+rssn_num_mp_complex_abs_sq <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_abs_sq", list(value, precision), session)
+}
+
+# `num_mp_complex_acos(value, precision)` encloses the principal inverse cosine of a closed dyadic rectangle.
+rssn_num_mp_complex_acos <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_acos", list(value, precision), session)
+}
+
+# `num_mp_complex_acosh(value, precision)` encloses the principal inverse hyperbolic cosine of a closed dyadic rectangle.
+rssn_num_mp_complex_acosh <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_acosh", list(value, precision), session)
+}
+
+# `num_mp_complex_add(left, right, precision)` encloses the pairwise sums at the requested bit precision.
+rssn_num_mp_complex_add <- function(left, right, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_add", list(left, right, precision), session)
+}
+
+# `num_mp_complex_arg(value, precision)` encloses the principal argument of an exact dyadic rectangle off the non-positive real axis.
+rssn_num_mp_complex_arg <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_arg", list(value, precision), session)
+}
+
+# `num_mp_complex_asin(value, precision)` encloses the principal inverse sine of a closed dyadic rectangle.
+rssn_num_mp_complex_asin <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_asin", list(value, precision), session)
+}
+
+# `num_mp_complex_asinh(value, precision)` encloses the principal inverse hyperbolic sine of a closed dyadic rectangle.
+rssn_num_mp_complex_asinh <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_asinh", list(value, precision), session)
+}
+
+# `num_mp_complex_atan(value, precision)` encloses the principal inverse tangent of a closed dyadic rectangle.
+rssn_num_mp_complex_atan <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_atan", list(value, precision), session)
+}
+
+# `num_mp_complex_atanh(value, precision)` encloses the principal inverse hyperbolic tangent of a closed dyadic rectangle.
+rssn_num_mp_complex_atanh <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_atanh", list(value, precision), session)
+}
+
+# Encloses principal Bessel J for dimensionless dyadic argument and order rectangles.
+rssn_num_mp_complex_bessel_j <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_bessel_j", list(a0, a1, a2), session)
+}
+
+# `num_mp_complex_conj(value)` conjugates a rectangle by negating its imaginary interval.
+rssn_num_mp_complex_conj <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_conj", list(value), session)
+}
+
+# `num_mp_complex_cos(value, precision)` encloses the cosine of a closed dyadic rectangle.
+rssn_num_mp_complex_cos <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_cos", list(value, precision), session)
+}
+
+# `num_mp_complex_cosh(value, precision)` encloses the hyperbolic cosine of a closed dyadic rectangle.
+rssn_num_mp_complex_cosh <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_cosh", list(value, precision), session)
+}
+
+# Encloses the logarithmic derivative of gamma for a closed dyadic rectangle separated from the poles.
+rssn_num_mp_complex_digamma <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_digamma", list(a0, a1), session)
+}
+
+# `num_mp_complex_div(left, right, precision)` encloses the pairwise quotients at the requested bit precision.
+rssn_num_mp_complex_div <- function(left, right, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_div", list(left, right, precision), session)
+}
+
+# Encloses the complex error function over a closed dyadic rectangle with a certified series remainder.
+rssn_num_mp_complex_erf <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_erf", list(a0, a1), session)
+}
+
+# Encloses the complex complementary error function over a closed dyadic rectangle.
+rssn_num_mp_complex_erfc <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_erfc", list(a0, a1), session)
+}
+
+# `num_mp_complex_exp(value, precision)` encloses the exponential of a closed dyadic rectangle.
+rssn_num_mp_complex_exp <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_exp", list(value, precision), session)
+}
+
+# `num_mp_complex_from_real(real)` lifts the real interval into a rectangle with an exact zero imaginary part.
+rssn_num_mp_complex_from_real <- function(real, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_from_real", list(real), session)
+}
+
+# Encloses gamma for a closed dyadic rectangle separated from the nonpositive integer poles.
+rssn_num_mp_complex_gamma <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_gamma", list(a0, a1), session)
+}
+
+# `num_mp_complex_i(precision)` constructs the exact imaginary unit at the requested bit precision.
+rssn_num_mp_complex_i <- function(precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_i", list(precision), session)
+}
+
+# `num_mp_complex_ln(value, precision)` encloses the principal logarithm of a closed dyadic rectangle that avoids the branch cut.
+rssn_num_mp_complex_ln <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_ln", list(value, precision), session)
+}
+
+# Encloses the analytic log-gamma branch real on positive reals.
+rssn_num_mp_complex_log_gamma <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_log_gamma", list(a0, a1), session)
+}
+
+# `num_mp_complex_mul(left, right, precision)` encloses the pairwise products at the requested bit precision.
+rssn_num_mp_complex_mul <- function(left, right, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_mul", list(left, right, precision), session)
+}
+
+# `num_mp_complex_neg(value)` negates both coordinate intervals exactly.
+rssn_num_mp_complex_neg <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_neg", list(value), session)
+}
+
+# `num_mp_complex_new(real, imag)` constructs a rectangle from two closed dyadic intervals.
+rssn_num_mp_complex_new <- function(real, imag, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_new", list(real, imag), session)
+}
+
+# `num_mp_complex_one(precision)` constructs the exact real unit at the requested bit precision.
+rssn_num_mp_complex_one <- function(precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_one", list(precision), session)
+}
+
+# `num_mp_complex_point(real, imag)` constructs an exact complex point from two dyadics.
+rssn_num_mp_complex_point <- function(real, imag, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_point", list(real, imag), session)
+}
+
+# Encloses polylogarithm when the argument rectangle lies strictly within the unit disk and the order rectangle has Re(order) >= -256.
+rssn_num_mp_complex_polylog <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_polylog", list(a0, a1, a2), session)
+}
+
+# `num_mp_complex_pow(base, exponent, precision)` encloses a signed integer power or the principal complex power of dyadic rectangles.
+rssn_num_mp_complex_pow <- function(base, exponent, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_pow", list(base, exponent, precision), session)
+}
+
+# `num_mp_complex_powi(value, exponent, precision)` encloses the integer power at the requested bit precision.
+rssn_num_mp_complex_powi <- function(value, exponent, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_powi", list(value, exponent, precision), session)
+}
+
+# `num_mp_complex_recip(value, precision)` encloses the reciprocals at the requested bit precision.
+rssn_num_mp_complex_recip <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_recip", list(value, precision), session)
+}
+
+# Encloses the analytic continuation of Riemann zeta.
+rssn_num_mp_complex_riemann_zeta <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_riemann_zeta", list(a0, a1), session)
+}
+
+# `num_mp_complex_sin(value, precision)` encloses the sine of a closed dyadic rectangle.
+rssn_num_mp_complex_sin <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_sin", list(value, precision), session)
+}
+
+# `num_mp_complex_sinh(value, precision)` encloses the hyperbolic sine of a closed dyadic rectangle.
+rssn_num_mp_complex_sinh <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_sinh", list(value, precision), session)
+}
+
+# `num_mp_complex_sqrt(value, precision)` encloses the principal square root of a closed dyadic rectangle.
+rssn_num_mp_complex_sqrt <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_sqrt", list(value, precision), session)
+}
+
+# `num_mp_complex_sub(left, right, precision)` encloses the pairwise differences at the requested bit precision.
+rssn_num_mp_complex_sub <- function(left, right, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_sub", list(left, right, precision), session)
+}
+
+# `num_mp_complex_tan(value, precision)` encloses the tangent of a closed dyadic rectangle.
+rssn_num_mp_complex_tan <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_tan", list(value, precision), session)
+}
+
+# `num_mp_complex_tanh(value, precision)` encloses the hyperbolic tangent of a closed dyadic rectangle.
+rssn_num_mp_complex_tanh <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_tanh", list(value, precision), session)
+}
+
+# `num_mp_complex_zero(precision)` constructs the exact zero rectangle at the requested bit precision.
+rssn_num_mp_complex_zero <- function(precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_complex_zero", list(precision), session)
+}
+
+# `num_mp_decimal_enclose(text, precision)` Encloses an exact decimal in a dyadic ball at the requested midpoint precision.
+rssn_num_mp_decimal_enclose <- function(text, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_decimal_enclose", list(text, precision), session)
+}
+
+# `num_mp_decimal_exponent(value)` Returns the exact base-ten order of magnitude, or None for zero.
+rssn_num_mp_decimal_exponent <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_decimal_exponent", list(value), session)
+}
+
+# `num_mp_decimal_format_ball(interval, digits)` Formats a dyadic ball when both endpoints determine the same rounded digits.
+rssn_num_mp_decimal_format_ball <- function(interval, digits, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_decimal_format_ball", list(interval, digits), session)
+}
+
+# `num_mp_decimal_from_text(text, precision)` Parses exact decimal text and rounds to a dyadic with ties to even.
+rssn_num_mp_decimal_from_text <- function(text, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_decimal_from_text", list(text, precision), session)
+}
+
+# `num_mp_decimal_from_text_in(text, precision, rounding)` Parses exact decimal text and rounds once in the requested direction.
+rssn_num_mp_decimal_from_text_in <- function(text, precision, rounding, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_decimal_from_text_in", list(text, precision, rounding), session)
+}
+
+# `num_mp_decimal_round_text(text, digits, rounding)` Rounds a decimal literal directly to significant digits without binary conversion.
+rssn_num_mp_decimal_round_text <- function(text, digits, rounding, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_decimal_round_text", list(text, digits, rounding), session)
+}
+
+# `num_mp_decimal_significant_digits(value)` Counts digits in the exact terminating decimal, capped at 10000.
+rssn_num_mp_decimal_significant_digits <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_decimal_significant_digits", list(value), session)
+}
+
+# `num_mp_decimal_to_text(value, digits)` Formats an exact dyadic to significant digits with ties to even.
+rssn_num_mp_decimal_to_text <- function(value, digits, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_decimal_to_text", list(value, digits), session)
+}
+
+# `num_mp_decimal_to_text_in(value, digits, rounding)` Formats an exact dyadic to significant digits in the requested direction.
+rssn_num_mp_decimal_to_text_in <- function(value, digits, rounding, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_decimal_to_text_in", list(value, digits, rounding), session)
+}
+
+# `num_mp_decimal_working_bits(digits)` Estimates working binary precision including 16 guard bits for decimal digits.
+rssn_num_mp_decimal_working_bits <- function(digits, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_decimal_working_bits", list(digits), session)
+}
+
+# Evaluates a bounded arithmetic expression to a dyadic enclosure.
+rssn_num_mp_expression_enclose <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_expression_enclose", list(a0, a1), session)
 }
 
 # Returns the absolute value of an exact dyadic without rounding.
@@ -15389,9 +17279,39 @@ rssn_num_mp_real_abs <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_mp_real_abs", list(a0), session)
 }
 
+# `num_mp_real_acos(value, precision)` encloses the inverse cosine on the real domain [-1, 1].
+rssn_num_mp_real_acos <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_acos", list(value, precision), session)
+}
+
 # Adds two canonical dyadic records and rounds the exact sum once to the requested bit precision and mode.
 rssn_num_mp_real_add <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_mp_real_add", list(a0, a1, a2, a3), session)
+}
+
+# `num_mp_real_asin(value, precision)` encloses the inverse sine on the real domain [-1, 1].
+rssn_num_mp_real_asin <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_asin", list(value, precision), session)
+}
+
+# `num_mp_real_atan(value, precision)` encloses the real inverse tangent of a dyadic.
+rssn_num_mp_real_atan <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_atan", list(value, precision), session)
+}
+
+# `num_mp_real_atan2(y, x, precision)` encloses the principal angle of the exact dyadic coordinates (x, y).
+rssn_num_mp_real_atan2 <- function(y, x, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_atan2", list(y, x, precision), session)
+}
+
+# `num_mp_real_cbrt(value, precision)` Encloses the real cube root of a dyadic, including negative inputs.
+rssn_num_mp_real_cbrt <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_cbrt", list(value, precision), session)
+}
+
+# `num_mp_real_cbrt_in(value, precision, rounding)` Rounds the real cube root of a dyadic in the requested direction.
+rssn_num_mp_real_cbrt_in <- function(value, precision, rounding, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_cbrt_in", list(value, precision, rounding), session)
 }
 
 # Compares canonical dyadic records exactly.
@@ -15399,14 +17319,109 @@ rssn_num_mp_real_compare <- function(a0, a1, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_mp_real_compare", list(a0, a1), session)
 }
 
+# `num_mp_real_const_e(precision)` returns Euler’s number e, correctly rounded to the requested bit precision.
+rssn_num_mp_real_const_e <- function(precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_const_e", list(precision), session)
+}
+
+# `num_mp_real_const_enclose(name, precision)` returns an outward dyadic enclosure of a named constant.
+rssn_num_mp_real_const_enclose <- function(name, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_const_enclose", list(name, precision), session)
+}
+
+# `num_mp_real_const_functions()` lists the function names recognized by the multiprecision expression parser.
+rssn_num_mp_real_const_functions <- function(session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_const_functions", list(), session)
+}
+
+# `num_mp_real_const_ln2(precision)` returns the natural logarithm of two, correctly rounded to the requested bit precision.
+rssn_num_mp_real_const_ln2 <- function(precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_const_ln2", list(precision), session)
+}
+
+# `num_mp_real_const_named(name, precision)` returns a named constant correctly rounded to the requested bit precision.
+rssn_num_mp_real_const_named <- function(name, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_const_named", list(name, precision), session)
+}
+
+# `num_mp_real_const_names()` lists the exact names accepted by the dyadic constant functions.
+rssn_num_mp_real_const_names <- function(session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_const_names", list(), session)
+}
+
+# `num_mp_real_const_phi(precision)` returns the golden ratio, correctly rounded to the requested bit precision.
+rssn_num_mp_real_const_phi <- function(precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_const_phi", list(precision), session)
+}
+
+# `num_mp_real_const_pi(precision)` returns the circle constant pi, correctly rounded to the requested bit precision.
+rssn_num_mp_real_const_pi <- function(precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_const_pi", list(precision), session)
+}
+
+# `num_mp_real_const_pi_scaled(bits)` returns the exact integer floor of pi times 2^bits.
+rssn_num_mp_real_const_pi_scaled <- function(bits, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_const_pi_scaled", list(bits), session)
+}
+
+# `num_mp_real_const_sqrt2(precision)` returns the square root of two, correctly rounded to the requested bit precision.
+rssn_num_mp_real_const_sqrt2 <- function(precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_const_sqrt2", list(precision), session)
+}
+
+# `num_mp_real_cos(value, precision)` encloses the real cos of an exact dyadic.
+rssn_num_mp_real_cos <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_cos", list(value, precision), session)
+}
+
+# `num_mp_real_cosh(value, precision)` encloses the hyperbolic cosine of an exact dyadic.
+rssn_num_mp_real_cosh <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_cosh", list(value, precision), session)
+}
+
 # Divides two canonical dyadic records and rounds the exact quotient once to the requested bit precision and mode.
 rssn_num_mp_real_div <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_mp_real_div", list(a0, a1, a2, a3), session)
 }
 
+# `num_mp_real_exp(value, precision)` encloses the exponential of an exact dyadic.
+rssn_num_mp_real_exp <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_exp", list(value, precision), session)
+}
+
+# `num_mp_real_exp2(value, precision)` encloses the base-two exponential of an exact dyadic.
+rssn_num_mp_real_exp2 <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_exp2", list(value, precision), session)
+}
+
+# `num_mp_real_exponent(value)` Returns the binary exponent of the canonical dyadic.
+rssn_num_mp_real_exponent <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_exponent", list(value), session)
+}
+
 # Returns floor(log2(abs(value))) or None if value is zero.
 rssn_num_mp_real_floor_log2 <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_mp_real_floor_log2", list(a0), session)
+}
+
+# `num_mp_real_from_bigint(value, precision, mode)` converts a signed integer up to 65536 bits in magnitude, rounded once to the requested bit precision and mode…
+rssn_num_mp_real_from_bigint <- function(value, precision, mode, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_from_bigint", list(value, precision, mode), session)
+}
+
+# `num_mp_real_from_f64(value, precision)` rounds a finite binary64 value to the requested bit precision with ties to even.
+rssn_num_mp_real_from_f64 <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_from_f64", list(value, precision), session)
+}
+
+# `num_mp_real_from_i64(value, precision)` converts an integer in the signed 64-bit range, rounded to the requested bit precision with ties to even.
+rssn_num_mp_real_from_i64 <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_from_i64", list(value, precision), session)
+}
+
+# `num_mp_real_hypot(left, right, precision)` Encloses the Euclidean norm of two exact dyadics.
+rssn_num_mp_real_hypot <- function(left, right, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_hypot", list(left, right, precision), session)
 }
 
 # Tests whether a dyadic has no fractional binary digits.
@@ -15419,6 +17434,31 @@ rssn_num_mp_real_is_zero <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_mp_real_is_zero", list(a0), session)
 }
 
+# `num_mp_real_limits()` Reports the supported dyadic precision and exponent limits.
+rssn_num_mp_real_limits <- function(session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_limits", list(), session)
+}
+
+# `num_mp_real_ln(value, precision)` encloses the natural logarithm of an exact dyadic.
+rssn_num_mp_real_ln <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_ln", list(value, precision), session)
+}
+
+# `num_mp_real_log10(value, precision)` encloses the base-ten logarithm of an exact dyadic.
+rssn_num_mp_real_log10 <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_log10", list(value, precision), session)
+}
+
+# `num_mp_real_log2(value, precision)` encloses the base-two logarithm of an exact dyadic.
+rssn_num_mp_real_log2 <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_log2", list(value, precision), session)
+}
+
+# `num_mp_real_mantissa(value)` Returns the exact arbitrary-width integer mantissa.
+rssn_num_mp_real_mantissa <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_mantissa", list(value), session)
+}
+
 # Multiplies two canonical dyadic records and rounds the exact product once to the requested bit precision and mode.
 rssn_num_mp_real_mul <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_mp_real_mul", list(a0, a1, a2, a3), session)
@@ -15429,14 +17469,74 @@ rssn_num_mp_real_neg <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_mp_real_neg", list(a0), session)
 }
 
+# `num_mp_real_one(precision)` returns the exact number one at the requested bit precision.
+rssn_num_mp_real_one <- function(precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_one", list(precision), session)
+}
+
+# `num_mp_real_pow(base, exponent, precision)` encloses the real power of two exact dyadics.
+rssn_num_mp_real_pow <- function(base, exponent, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_pow", list(base, exponent, precision), session)
+}
+
+# `num_mp_real_pow_ratio(base, numerator, denominator, precision)` encloses an exact dyadic raised to the rational exponent numerator / denominator.
+rssn_num_mp_real_pow_ratio <- function(base, numerator, denominator, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_pow_ratio", list(base, numerator, denominator, precision), session)
+}
+
+# `num_mp_real_powi(base, exponent, precision)` encloses an exact dyadic raised to a signed integer exponent.
+rssn_num_mp_real_powi <- function(base, exponent, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_powi", list(base, exponent, precision), session)
+}
+
+# `num_mp_real_precision(value)` Returns the dyadic significand precision in bits.
+rssn_num_mp_real_precision <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_precision", list(value), session)
+}
+
 # Rounds mantissa times 2^exponent once to the requested bit precision.
 rssn_num_mp_real_round <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_mp_real_round", list(a0, a1, a2, a3), session)
 }
 
+# `num_mp_real_rounding_mode(rounding)` Returns the canonical rounding name for a supported spelling.
+rssn_num_mp_real_rounding_mode <- function(rounding, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_rounding_mode", list(rounding), session)
+}
+
+# `num_mp_real_scale_decimal(value, exponent, precision)` multiplies an exact dyadic by a power of ten and rounds once to nearest-even.
+rssn_num_mp_real_scale_decimal <- function(value, exponent, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_scale_decimal", list(value, exponent, precision), session)
+}
+
+# `num_mp_real_scale_decimal_in(value, exponent, precision, rounding)` multiplies an exact dyadic by a power of ten and rounds once in the requested direction.
+rssn_num_mp_real_scale_decimal_in <- function(value, exponent, precision, rounding, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_scale_decimal_in", list(value, exponent, precision, rounding), session)
+}
+
 # Multiplies a dyadic by an integer power of two exactly.
 rssn_num_mp_real_scale_pow2 <- function(a0, a1, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_mp_real_scale_pow2", list(a0, a1), session)
+}
+
+# `num_mp_real_sign(value)` returns -1, 0 or 1 for a negative, zero or positive dyadic.
+rssn_num_mp_real_sign <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_sign", list(value), session)
+}
+
+# `num_mp_real_sin(value, precision)` encloses the real sin of an exact dyadic.
+rssn_num_mp_real_sin <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_sin", list(value, precision), session)
+}
+
+# `num_mp_real_sin_cos(value, precision)` encloses sine and cosine with one certified argument reduction.
+rssn_num_mp_real_sin_cos <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_sin_cos", list(value, precision), session)
+}
+
+# `num_mp_real_sinh(value, precision)` encloses the hyperbolic sine of an exact dyadic.
+rssn_num_mp_real_sinh <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_sinh", list(value, precision), session)
 }
 
 # Rounds the square root of a nonnegative dyadic at the requested bit precision.
@@ -15449,6 +17549,21 @@ rssn_num_mp_real_sub <- function(a0, a1, a2, a3, session = NULL, checked = FALSE
     (if (checked) .rssn_call else .rssn_apply)("num_mp_real_sub", list(a0, a1, a2, a3), session)
 }
 
+# `num_mp_real_tan(value, precision)` encloses the real tan of an exact dyadic.
+rssn_num_mp_real_tan <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_tan", list(value, precision), session)
+}
+
+# `num_mp_real_tanh(value, precision)` encloses the hyperbolic tangent of an exact dyadic.
+rssn_num_mp_real_tanh <- function(value, precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_tanh", list(value, precision), session)
+}
+
+# `num_mp_real_to_f64(value)` rounds a dyadic directly to binary64 with ties to even.
+rssn_num_mp_real_to_f64 <- function(value, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_to_f64", list(value), session)
+}
+
 # Truncates a dyadic toward zero and returns an exact integer.
 rssn_num_mp_real_trunc_to_bigint <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_mp_real_trunc_to_bigint", list(a0), session)
@@ -15457,6 +17572,11 @@ rssn_num_mp_real_trunc_to_bigint <- function(a0, session = NULL, checked = FALSE
 # Rounds an existing canonical dyadic to a new bit precision.
 rssn_num_mp_real_with_precision <- function(a0, a1, a2, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_mp_real_with_precision", list(a0, a1, a2), session)
+}
+
+# `num_mp_real_zero(precision)` returns canonical zero at the requested bit precision.
+rssn_num_mp_real_zero <- function(precision, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_mp_real_zero", list(precision), session)
 }
 
 # `num_multinomial(n, parts)` returns the floating-point multinomial coefficient.
@@ -23644,6 +25764,101 @@ rssn_num_ode_verlet_adaptive <- function(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9,
     .rssn_call("num_ode_verlet_adaptive", list(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10), session)
 }
 
+# Runs a bounded bracketed root search with a scoped normalized callback.
+rssn_num_optimizer_find_root <- function(a0, a1, session = NULL) {
+    .rssn_call("num_optimizer_find_root", list(a0, a1), session)
+}
+
+# Runs a bounded bracketed root search with scoped normalized function and derivative callbacks.
+rssn_num_optimizer_find_root_with_derivative <- function(a0, a1, a2, session = NULL) {
+    .rssn_call("num_optimizer_find_root_with_derivative", list(a0, a1, a2), session)
+}
+
+# Reports whether a prepared problem carries an analytic gradient.
+rssn_num_optimizer_has_gradient <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_optimizer_has_gradient", list(a0), session)
+}
+
+# Runs a named solver against a prepared normalized objective with explicit iteration, evaluation and seed controls.
+rssn_num_optimizer_minimize <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_optimizer_minimize", list(a0, a1, a2, a3), session)
+}
+
+# Reports whether the named solver requires an explicit finite box.
+rssn_num_optimizer_needs_bounds <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_optimizer_needs_bounds", list(a0), session)
+}
+
+# Reports whether the named solver uses the objective's analytic gradient.
+rssn_num_optimizer_needs_gradient <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_optimizer_needs_gradient", list(a0), session)
+}
+
+# Prepares an objective from an immutable unit-scale tape, an output slot, dimensionless parameters, and an optional analytic tape gradient.
+rssn_num_optimizer_problem_new <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_optimizer_problem_new", list(a0, a1, a2, a3), session)
+}
+
+# Prepares a fallible objective from an immutable unit-scale tape.
+rssn_num_optimizer_problem_try_new <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_optimizer_problem_try_new", list(a0, a1, a2, a3), session)
+}
+
+# Builds a normalized Rastrigin objective with its analytic gradient.
+rssn_num_optimizer_rastrigin <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_optimizer_rastrigin", list(a0), session)
+}
+
+# Evaluates the Rastrigin function at a normalized point.
+rssn_num_optimizer_rastrigin_cost <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_optimizer_rastrigin_cost", list(a0), session)
+}
+
+# Returns the coefficient count of the retained regression, including the intercept.
+rssn_num_optimizer_regression_coefficient_count <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_optimizer_regression_coefficient_count", list(a0), session)
+}
+
+# Prepares the regression objective in its stored normalized coordinates and response scale, with an intercept followed by slopes.
+rssn_num_optimizer_regression_problem <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_optimizer_regression_problem", list(a0), session)
+}
+
+# Returns fitted minus observed responses in coherent response units.
+rssn_num_optimizer_regression_residuals <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_optimizer_regression_residuals", list(a0, a1, a2), session)
+}
+
+# Builds a normalized Rosenbrock objective with its analytic gradient.
+rssn_num_optimizer_rosenbrock <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_optimizer_rosenbrock", list(a0), session)
+}
+
+# Evaluates the Rosenbrock polynomial at a point with at least two coordinates.
+rssn_num_optimizer_rosenbrock_cost <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_optimizer_rosenbrock_cost", list(a0), session)
+}
+
+# Builds a normalized sphere objective with its analytic gradient.
+rssn_num_optimizer_sphere <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_optimizer_sphere", list(a0), session)
+}
+
+# Evaluates the sum of squared coordinates.
+rssn_num_optimizer_sphere_cost <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_optimizer_sphere_cost", list(a0), session)
+}
+
+# Evaluates a prepared objective and its analytic gradient at one normalized point.
+rssn_num_optimizer_value_and_gradient <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_optimizer_value_and_gradient", list(a0, a1), session)
+}
+
+# Returns a new prepared problem with finite strictly ordered bounds, sharing its objective.
+rssn_num_optimizer_with_bounds <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_optimizer_with_bounds", list(a0, a1, a2), session)
+}
+
 # Deterministic dot product of `a` and `b` over their common prefix `a.len().min(b.len())`.
 rssn_num_par_dot_fixed <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_par_dot_fixed", list(a0, a1, a2, a3), session)
@@ -24114,6 +26329,11 @@ rssn_num_qr <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_qr", list(a0), session)
 }
 
+# Economy Householder QR.
+rssn_num_qr_thin <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_qr_thin", list(a0), session)
+}
+
 # Clenshaw-Curtis nodes and weights on `[-1, 1]` with `n + 1` points (`n` is rounded up to an even number, at least 2).
 rssn_num_quadrature_clenshaw_curtis_rule <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_quadrature_clenshaw_curtis_rule", list(a0), session)
@@ -24144,9 +26364,94 @@ rssn_num_rbf_scaled <- function(a0, a1, a2, a3, a4, session = NULL, checked = FA
     (if (checked) .rssn_call else .rssn_apply)("num_rbf_scaled", list(a0, a1, a2, a3, a4), session)
 }
 
+# Interpolates finite samples with up to 2048 distinct nodes.
+rssn_num_real_polynomial_barycentric_eval <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_real_polynomial_barycentric_eval", list(a0, a1, a2), session)
+}
+
+# Returns the monic numerical greatest common divisor of two dimensionless coefficient vectors.
+rssn_num_real_polynomial_gcd <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_real_polynomial_gcd", list(a0, a1, a2), session)
+}
+
+# Raises a polynomial with dimensionless descending coefficients to a nonnegative integer power.
+rssn_num_real_polynomial_power <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_real_polynomial_power", list(a0, a1), session)
+}
+
 # Reflect about a unit normal supplied by the caller.
 rssn_num_reflect <- function(a0, a1, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_reflect", list(a0, a1), session)
+}
+
+# Evaluates the Cauchy transform off [-1, 1] using checked adaptive quadrature.
+rssn_num_riemann_hilbert_cauchy_checked <- function(a0, a1, a2, a3, a4, a5, session = NULL) {
+    .rssn_call("num_riemann_hilbert_cauchy_checked", list(a0, a1, a2, a3, a4, a5), session)
+}
+
+# Factors a nonzero dimensionless jump on (-1, 1).
+rssn_num_riemann_hilbert_factor_checked <- function(a0, a1, a2, a3, a4, a5, session = NULL) {
+    .rssn_call("num_riemann_hilbert_factor_checked", list(a0, a1, a2, a3, a4, a5), session)
+}
+
+# Adds two 2x2 matrices with the same entry dimension.
+rssn_num_riemann_hilbert_matrix_add <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_riemann_hilbert_matrix_add", list(a0, a1), session)
+}
+
+# Returns the dimensionless 2x2 identity matrix.
+rssn_num_riemann_hilbert_matrix_identity <- function(session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_riemann_hilbert_matrix_identity", list(), session)
+}
+
+# Returns the inverse in reciprocal units.
+rssn_num_riemann_hilbert_matrix_inv <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_riemann_hilbert_matrix_inv", list(a0), session)
+}
+
+# Multiplies two 2x2 matrices.
+rssn_num_riemann_hilbert_matrix_mul <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_riemann_hilbert_matrix_mul", list(a0, a1), session)
+}
+
+# Constructs a complex 2x2 matrix from four row-major entries of the same dimension.
+rssn_num_riemann_hilbert_matrix_new <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_riemann_hilbert_matrix_new", list(a0), session)
+}
+
+# Returns a scale-stable Frobenius norm retaining the matrix entry dimension.
+rssn_num_riemann_hilbert_matrix_norm <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_riemann_hilbert_matrix_norm", list(a0), session)
+}
+
+# Scales a 2x2 matrix by a complex scalar.
+rssn_num_riemann_hilbert_matrix_scale <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_riemann_hilbert_matrix_scale", list(a0, a1), session)
+}
+
+# Subtracts two 2x2 matrices with the same entry dimension.
+rssn_num_riemann_hilbert_matrix_sub <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_riemann_hilbert_matrix_sub", list(a0, a1), session)
+}
+
+# Returns the dimensionless 2x2 zero matrix.
+rssn_num_riemann_hilbert_matrix_zero <- function(session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_riemann_hilbert_matrix_zero", list(), session)
+}
+
+# Evaluates both Plemelj boundary limits inside (-1, 1), using singularity subtraction and a shared error estimate.
+rssn_num_riemann_hilbert_plemelj_checked <- function(a0, a1, a2, a3, a4, a5, session = NULL) {
+    .rssn_call("num_riemann_hilbert_plemelj_checked", list(a0, a1, a2, a3, a4, a5), session)
+}
+
+# Evaluates a portable Riemann–Hilbert collocation record at a dimensionless complex point off [-1, 1].
+rssn_num_riemann_hilbert_solution_eval <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_riemann_hilbert_solution_eval", list(a0, a1), session)
+}
+
+# Collocates a dimensionless 2x2 jump on the normalized interval (-1, 1).
+rssn_num_riemann_hilbert_solve <- function(a0, a1, a2, session = NULL) {
+    .rssn_call("num_riemann_hilbert_solve", list(a0, a1, a2), session)
 }
 
 # Computes the Riemann zeta function ζ(s) for real `s`.
@@ -24247,6 +26552,26 @@ rssn_num_robust_winsorized_mean <- function(a0, a1, session = NULL, checked = FA
 # Dimension-aware serial quadrature with a strict callback evaluation budget.
 rssn_num_romberg <- function(a0, a1, a2, a3, a4, a5, session = NULL) {
     .rssn_call("num_romberg", list(a0, a1, a2, a3, a4, a5), session)
+}
+
+# Finds a slope zero from a measured complex guess, coordinate reference, normalized slope tolerance, callback budget, phase and its first two derivatives.
+rssn_num_saddle_find <- function(a0, a1, a2, a3, a4, a5, a6, session = NULL) {
+    .rssn_call("num_saddle_find", list(a0, a1, a2, a3, a4, a5, a6), session)
+}
+
+# Numeric finite path integral from the negative to positive branch of an oriented simple saddle.
+rssn_num_saddle_integrate <- function(a0, a1, a2, a3, a4, a5, a6, a7, session = NULL) {
+    .rssn_call("num_saddle_integrate", list(a0, a1, a2, a3, a4, a5, a6, a7), session)
+}
+
+# Leading oriented Gaussian saddle term.
+rssn_num_saddle_leading <- function(a0, a1, a2, a3, a4, session = NULL) {
+    .rssn_call("num_saddle_leading", list(a0, a1, a2, a3, a4), session)
+}
+
+# Oriented Gaussian approximation with the first inverse-lambda correction.
+rssn_num_saddle_order2 <- function(a0, a1, a2, a3, a4, a5, session = NULL) {
+    .rssn_call("num_saddle_order2", list(a0, a1, a2, a3, a4, a5), session)
 }
 
 # Multiplies a vector by a scalar.
@@ -24529,6 +26854,11 @@ rssn_num_solve_dg_with <- function(a0, a1, a2, a3, a4, a5, a6, a7, session = NUL
     (if (checked) .rssn_call else .rssn_apply)("num_solve_dg_with", list(a0, a1, a2, a3, a4, a5, a6, a7), session)
 }
 
+# Solves a finite dense square system A x = b.
+rssn_num_solve_linear_rows <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_solve_linear_rows", list(a0, a1), session)
+}
+
 # Validated portable native dense/sparse factor definition.
 rssn_num_sparse_auto_model_apply <- function(a0, a1, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_sparse_auto_model_apply", list(a0, a1), session)
@@ -24657,6 +26987,136 @@ rssn_num_special_chebyshev_t <- function(a0, a1, session = NULL, checked = FALSE
 # Computes the Chebyshev polynomial of the second kind `U_n(x)`.
 rssn_num_special_chebyshev_u <- function(a0, a1, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_special_chebyshev_u", list(a0, a1), session)
+}
+
+# Anger J for real order and complex argument using its finite integral.
+rssn_num_special_complex_anger_j <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_anger_j", list(a0, a1), session)
+}
+
+# Associated Legendre P_l^m(z) with the Condon–Shortley phase and principal sqrt(1-z²).
+rssn_num_special_complex_associated_legendre_p <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_associated_legendre_p", list(a0, a1, a2), session)
+}
+
+# Bernoulli polynomial B_n(z), with B_1(0) = -1/2.
+rssn_num_special_complex_bernoulli <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_bernoulli", list(a0, a1), session)
+}
+
+# Modified Bessel I with complex order and argument on the principal branch.
+rssn_num_special_complex_bessel_i_order <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_bessel_i_order", list(a0, a1), session)
+}
+
+# Bessel J with complex order and argument on the principal branch.
+rssn_num_special_complex_bessel_j_order <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_bessel_j_order", list(a0, a1), session)
+}
+
+# Carlson R_C(x, y) is R_F(x, y, y); y must be nonzero.
+rssn_num_special_complex_carlson_rc <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_carlson_rc", list(a0, a1), session)
+}
+
+# Carlson R_D uses principal square roots.
+rssn_num_special_complex_carlson_rd <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_carlson_rd", list(a0, a1, a2), session)
+}
+
+# Carlson R_F accepts up to one zero and uses principal square roots.
+rssn_num_special_complex_carlson_rf <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_carlson_rf", list(a0, a1, a2), session)
+}
+
+# Carlson R_G uses principal square roots and accepts zero arguments.
+rssn_num_special_complex_carlson_rg <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_carlson_rg", list(a0, a1, a2), session)
+}
+
+# Carlson R_J accepts nonnegative real parts for x, y, z and a positive real part for p.
+rssn_num_special_complex_carlson_rj <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_carlson_rj", list(a0, a1, a2, a3), session)
+}
+
+# First-kind Chebyshev polynomial T_n(z) for a dimensionless complex point and integer degree 0 through 4096.
+rssn_num_special_complex_chebyshev_t <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_chebyshev_t", list(a0, a1), session)
+}
+
+# Second-kind Chebyshev polynomial U_n(z) for a dimensionless complex point and integer degree 0 through 4096.
+rssn_num_special_complex_chebyshev_u <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_chebyshev_u", list(a0, a1), session)
+}
+
+# Complex Clausen function using the antisymmetric polylog combination for even order and the symmetric combination for odd order.
+rssn_num_special_complex_clausen <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_clausen", list(a0, a1), session)
+}
+
+# Euler polynomial E_n(z), with E_1(z) = z - 1/2.
+rssn_num_special_complex_euler <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_euler", list(a0, a1), session)
+}
+
+# Generalized exponential integral E_n for nonnegative integer orders up to 4096.
+rssn_num_special_complex_exp_integral_en <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_exp_integral_en", list(a0, a1), session)
+}
+
+# Fresnel auxiliary functions f and g, returned as the named components of a record.
+rssn_num_special_complex_fresnel_auxiliary <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_fresnel_auxiliary", list(a0), session)
+}
+
+# Gegenbauer C_n^(lambda)(z) with dimensionless complex parameter and point.
+rssn_num_special_complex_gegenbauer_c <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_gegenbauer_c", list(a0, a1, a2), session)
+}
+
+# Physicists’ Hermite polynomial H_n(z) for a dimensionless complex point and integer degree 0 through 4096.
+rssn_num_special_complex_hermite_h <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_hermite_h", list(a0, a1), session)
+}
+
+# Jacobi P_n^(alpha,beta)(z) with dimensionless complex parameters and point.
+rssn_num_special_complex_jacobi_p <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_jacobi_p", list(a0, a1, a2, a3), session)
+}
+
+# Kelvin ber, bei, ker and kei for real order and complex argument as named components.
+rssn_num_special_complex_kelvin <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_kelvin", list(a0, a1), session)
+}
+
+# Generalized Laguerre L_n^(alpha)(z) with dimensionless complex parameter and point.
+rssn_num_special_complex_laguerre_l <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_laguerre_l", list(a0, a1, a2), session)
+}
+
+# Legendre polynomial P_n(z) for a dimensionless complex point and integer degree 0 through 4096.
+rssn_num_special_complex_legendre_p <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_legendre_p", list(a0, a1), session)
+}
+
+# Principal Legendre Q of the second kind for nonnegative integer degrees up to 4096.
+rssn_num_special_complex_legendre_q <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_legendre_q", list(a0, a1), session)
+}
+
+# Analytic log Barnes G, real on the positive axis.
+rssn_num_special_complex_log_barnes_g <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_log_barnes_g", list(a0), session)
+}
+
+# Normalized spherical harmonic Y_l^m(theta, phi) with Condon–Shortley phase.
+rssn_num_special_complex_spherical_harmonic <- function(a0, a1, a2, a3, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_spherical_harmonic", list(a0, a1, a2, a3), session)
+}
+
+# Weber E for real order and complex argument using its finite integral.
+rssn_num_special_complex_weber_e <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_special_complex_weber_e", list(a0, a1), session)
 }
 
 # [`digamma_numerical`] over a slice, with the same bit-identical contract as [`gamma_batch`].
@@ -25004,9 +27464,94 @@ rssn_num_spline_not_a_knot <- function(a0, a1, a2, session = NULL, checked = FAL
     (if (checked) .rssn_call else .rssn_apply)("num_spline_not_a_knot", list(a0, a1, a2), session)
 }
 
+# Reads equality-first values from the checked SQP evaluation callback.
+rssn_num_sqp_oracle_constraints <- function(a0, a1, a2, session = NULL) {
+    .rssn_call("num_sqp_oracle_constraints", list(a0, a1, a2), session)
+}
+
+# Returns the declared equality row count of the normalized SQP oracle.
+rssn_num_sqp_oracle_equality_count <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_sqp_oracle_equality_count", list(a0), session)
+}
+
+# Reads the objective gradient from the checked SQP evaluation callback.
+rssn_num_sqp_oracle_gradient <- function(a0, a1, a2, session = NULL) {
+    .rssn_call("num_sqp_oracle_gradient", list(a0, a1, a2), session)
+}
+
+# Evaluates the callback for the sparse upper-triangular Lagrangian Hessian.
+rssn_num_sqp_oracle_hessian <- function(a0, a1, a2, a3, session = NULL) {
+    .rssn_call("num_sqp_oracle_hessian", list(a0, a1, a2, a3), session)
+}
+
+# Returns the declared inequality row count of the normalized SQP oracle.
+rssn_num_sqp_oracle_inequality_count <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_sqp_oracle_inequality_count", list(a0), session)
+}
+
+# Reads the zero-based sparse constraint Jacobian from the checked SQP evaluation callback.
+rssn_num_sqp_oracle_jacobian <- function(a0, a1, a2, session = NULL) {
+    .rssn_call("num_sqp_oracle_jacobian", list(a0, a1, a2), session)
+}
+
+# Reads the objective from the checked SQP evaluation callback.
+rssn_num_sqp_oracle_objective <- function(a0, a1, a2, session = NULL) {
+    .rssn_call("num_sqp_oracle_objective", list(a0, a1, a2), session)
+}
+
+# Solves a normalized nonlinear program with bounded typed evaluation and Lagrangian-Hessian callbacks.
+rssn_num_sqp_solve <- function(a0, a1, a2, a3, a4, a5, a6, a7, session = NULL) {
+    .rssn_call("num_sqp_solve", list(a0, a1, a2, a3, a4, a5, a6, a7), session)
+}
+
 # Standard error of the mean.
 rssn_num_standard_error <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_standard_error", list(a0), session)
+}
+
+# Cumulative probability at the dimensionless query point.
+rssn_num_statrs_distribution_cdf <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_statrs_distribution_cdf", list(a0, a1), session)
+}
+
+# Returns the discrete or differential entropy in nats when defined.
+rssn_num_statrs_distribution_entropy <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_statrs_distribution_entropy", list(a0), session)
+}
+
+# Whether the distribution is discrete.
+rssn_num_statrs_distribution_is_discrete <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_statrs_distribution_is_discrete", list(a0), session)
+}
+
+# Whether the distribution uses signed integer support.
+rssn_num_statrs_distribution_is_signed_discrete <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_statrs_distribution_is_signed_discrete", list(a0), session)
+}
+
+# Returns a finite distribution mean when defined.
+rssn_num_statrs_distribution_mean <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_statrs_distribution_mean", list(a0), session)
+}
+
+# Creates a checked statrs distribution from its kebab-case Rust name and ordered dimensionless parameters.
+rssn_num_statrs_distribution_new <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_statrs_distribution_new", list(a0, a1), session)
+}
+
+# Evaluates the dimensionless density or discrete mass.
+rssn_num_statrs_distribution_pdf <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_statrs_distribution_pdf", list(a0, a1), session)
+}
+
+# Upper-tail probability evaluated directly to avoid subtracting a cdf rounded to one.
+rssn_num_statrs_distribution_sf <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_statrs_distribution_sf", list(a0, a1), session)
+}
+
+# Returns a finite distribution variance when defined.
+rssn_num_statrs_distribution_variance <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_statrs_distribution_variance", list(a0), session)
 }
 
 # Performs a chi-squared goodness-of-fit test.
@@ -25154,6 +27699,26 @@ rssn_num_std_dev <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_std_dev", list(a0), session)
 }
 
+# Fits a Cox proportional-hazards model for observed times, event flags and finite dimensionless covariate rows without an intercept.
+rssn_num_survival_fit_cox <- function(a0, a1, a2, a3, a4, a5, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_survival_fit_cox", list(a0, a1, a2, a3, a4, a5), session)
+}
+
+# Estimates the Kaplan–Meier curve and log-log confidence bounds.
+rssn_num_survival_kaplan_meier <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_survival_kaplan_meier", list(a0, a1, a2), session)
+}
+
+# Returns the first measured time at or below one-half survival.
+rssn_num_survival_median <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_survival_median", list(a0), session)
+}
+
+# Predicts finite relative hazards exp(row*beta) from a portable fitted Cox model and covariate rows with the fitted column count.
+rssn_num_survival_predict_cox <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_survival_predict_cox", list(a0, a1), session)
+}
+
 # Thin SVD A = U diag(s) V^T; returns u, s and v.
 rssn_num_svd <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_svd", list(a0), session)
@@ -25299,6 +27864,71 @@ rssn_num_topology_vietoris_rips_filtration <- function(a0, a1, a2, session = NUL
     (if (checked) .rssn_call else .rssn_apply)("num_topology_vietoris_rips_filtration", list(a0, a1, a2), session)
 }
 
+# Finite Borel polynomial with dimensionless argument and a shared coefficient dimension.
+rssn_num_transform_borel_series <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_transform_borel_series", list(a0, a1), session)
+}
+
+# Truncated Hankel transform of the given order and wavenumber, on [0, limit].
+rssn_num_transform_hankel_checked <- function(a0, a1, a2, a3, a4, a5, a6, session = NULL) {
+    .rssn_call("num_transform_hankel_checked", list(a0, a1, a2, a3, a4, a5, a6), session)
+}
+
+# Finite Hilbert transform with a real density and singularity subtraction.
+rssn_num_transform_hilbert_checked <- function(a0, a1, a2, a3, a4, a5, session = NULL) {
+    .rssn_call("num_transform_hilbert_checked", list(a0, a1, a2, a3, a4, a5), session)
+}
+
+# Truncated inverse Mellin transform on a caller-selected vertical line.
+rssn_num_transform_inverse_mellin_checked <- function(a0, a1, a2, a3, a4, a5, a6, session = NULL) {
+    .rssn_call("num_transform_inverse_mellin_checked", list(a0, a1, a2, a3, a4, a5, a6), session)
+}
+
+# Unshifted parabolic Laplace inversion with an empirical error from a second grid.
+rssn_num_transform_laplace_parabola_checked <- function(a0, a1, a2, a3, a4, session = NULL) {
+    .rssn_call("num_transform_laplace_parabola_checked", list(a0, a1, a2, a3, a4), session)
+}
+
+# Shifted parabolic Laplace inversion.
+rssn_num_transform_laplace_parabola_shifted_checked <- function(a0, a1, a2, a3, a4, a5, session = NULL) {
+    .rssn_call("num_transform_laplace_parabola_shifted_checked", list(a0, a1, a2, a3, a4, a5), session)
+}
+
+# Real-axis Gaver–Stehfest inversion, comparing successive even orders to estimate error.
+rssn_num_transform_laplace_stehfest_checked <- function(a0, a1, a2, a3, a4, session = NULL) {
+    .rssn_call("num_transform_laplace_stehfest_checked", list(a0, a1, a2, a3, a4), session)
+}
+
+# Unshifted Talbot Laplace inversion with an empirical error from a second grid.
+rssn_num_transform_laplace_talbot_checked <- function(a0, a1, a2, a3, a4, session = NULL) {
+    .rssn_call("num_transform_laplace_talbot_checked", list(a0, a1, a2, a3, a4), session)
+}
+
+# Shifted Talbot Laplace inversion.
+rssn_num_transform_laplace_talbot_shifted_checked <- function(a0, a1, a2, a3, a4, a5, session = NULL) {
+    .rssn_call("num_transform_laplace_talbot_shifted_checked", list(a0, a1, a2, a3, a4, a5), session)
+}
+
+# Finite Meijer G quadrature with a caller-selected pole-separating line and explicit termination information.
+rssn_num_transform_meijer_g_checked <- function(a0, a1, a2, a3, a4, a5, a6, a7, a8, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_transform_meijer_g_checked", list(a0, a1, a2, a3, a4, a5, a6, a7, a8), session)
+}
+
+# Finite Mellin–Barnes quadrature on a pole-free segment.
+rssn_num_transform_mellin_barnes_checked <- function(a0, a1, a2, a3, a4, a5, a6, a7, a8, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_transform_mellin_barnes_checked", list(a0, a1, a2, a3, a4, a5, a6, a7, a8), session)
+}
+
+# Truncated Mellin transform between exp(-limit) and exp(limit).
+rssn_num_transform_mellin_checked <- function(a0, a1, a2, a3, a4, a5, session = NULL) {
+    .rssn_call("num_transform_mellin_checked", list(a0, a1, a2, a3, a4, a5), session)
+}
+
+# Finite Stieltjes transform on [0, limit], with the spectral argument off the negative real cut.
+rssn_num_transform_stieltjes_checked <- function(a0, a1, a2, a3, a4, a5, session = NULL) {
+    .rssn_call("num_transform_stieltjes_checked", list(a0, a1, a2, a3, a4, a5), session)
+}
+
 # Inverts [`rfft`]: reconstructs the real signal of length `n` from its `n/2 + 1` non-redundant bins, with the `1/n` normalisation of [`ifft`].
 rssn_num_transforms_irfft <- function(a0, a1, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_transforms_irfft", list(a0, a1), session)
@@ -25409,6 +28039,61 @@ rssn_num_uhp_to_disk <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_uhp_to_disk", list(a0), session)
 }
 
+# Tests Becker’s pointwise dimensionless inequality at a point in the unit disk with a nonzero first derivative.
+rssn_num_univalent_becker <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_univalent_becker", list(a0, a1, a2), session)
+}
+
+# Checks the necessary Bieberbach–de Branges coefficient inequalities for dimensionless Taylor coefficients [a0,a1,...].
+rssn_num_univalent_bieberbach <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_univalent_bieberbach", list(a0, a1), session)
+}
+
+# Bisects a finite angular diagnostic for convexity.
+rssn_num_univalent_convexity_radius_sampled <- function(a0, a1, a2, a3, a4, session = NULL) {
+    .rssn_call("num_univalent_convexity_radius_sampled", list(a0, a1, a2, a3, a4), session)
+}
+
+# Returns |a3 - mu*a2^2| for normalized dimensionless Taylor coefficients.
+rssn_num_univalent_fekete_szego <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_univalent_fekete_szego", list(a0, a1, a2), session)
+}
+
+# Tests the complex bilinear Grunsky inequality for a supplied vector and checks a power-iteration estimate of the spectral norm.
+rssn_num_univalent_grunsky_check <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_univalent_grunsky_check", list(a0, a1, a2), session)
+}
+
+# Builds the symmetric normalized complex Grunsky matrix.
+rssn_num_univalent_grunsky_matrix <- function(a0, a1, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_univalent_grunsky_matrix", list(a0, a1), session)
+}
+
+# Returns the dimensionless Hankel determinant with entry coefficients[start+i+j].
+rssn_num_univalent_hankel <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_univalent_hankel", list(a0, a1, a2), session)
+}
+
+# Takes one radial Loewner RK4 step in the normalized disk.
+rssn_num_univalent_loewner_step <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_univalent_loewner_step", list(a0, a1, a2), session)
+}
+
+# Checks Nehari’s inequality on a finite angular/radial grid in the normalized unit disk.
+rssn_num_univalent_nehari_sampled <- function(a0, a1, a2, a3, a4, session = NULL) {
+    .rssn_call("num_univalent_nehari_sampled", list(a0, a1, a2, a3, a4), session)
+}
+
+# Estimates the measured Schwarzian derivative from one 64-sample Cauchy circle.
+rssn_num_univalent_schwarzian_checked <- function(a0, a1, a2, a3, a4, session = NULL) {
+    .rssn_call("num_univalent_schwarzian_checked", list(a0, a1, a2, a3, a4), session)
+}
+
+# Bisects a finite angular diagnostic for starlikeness.
+rssn_num_univalent_starlikeness_radius_sampled <- function(a0, a1, a2, a3, a4, session = NULL) {
+    .rssn_call("num_univalent_starlikeness_radius_sampled", list(a0, a1, a2, a3, a4), session)
+}
+
 # Population variance; zero for an empty sample.
 rssn_num_variance <- function(a0, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_variance", list(a0), session)
@@ -25514,9 +28199,24 @@ rssn_num_weierstrass_invariants_complex <- function(a0, a1, session = NULL, chec
     (if (checked) .rssn_call else .rssn_apply)("num_weierstrass_invariants_complex", list(a0, a1), session)
 }
 
+# Discriminant (2*pi)^12 * eta(tau)^24 for a dimensionless tau in the open upper half-plane.
+rssn_num_weierstrass_modular_discriminant_complex <- function(a0, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_weierstrass_modular_discriminant_complex", list(a0), session)
+}
+
 # Numerically evaluates the Weierstrass derivative at z.
 rssn_num_weierstrass_p_prime_complex <- function(a0, a1, a2, session = NULL, checked = FALSE) {
     (if (checked) .rssn_call else .rssn_apply)("num_weierstrass_p_prime_complex", list(a0, a1, a2), session)
+}
+
+# Weierstrass sigma for dimensionless complex z and two nonzero, non-collinear half-periods.
+rssn_num_weierstrass_sigma_complex <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_weierstrass_sigma_complex", list(a0, a1, a2), session)
+}
+
+# Weierstrass zeta for dimensionless complex z and two nonzero, non-collinear half-periods.
+rssn_num_weierstrass_zeta_complex <- function(a0, a1, a2, session = NULL, checked = FALSE) {
+    (if (checked) .rssn_call else .rssn_apply)("num_weierstrass_zeta_complex", list(a0, a1, a2), session)
 }
 
 # Sample z scores.

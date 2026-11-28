@@ -1224,6 +1224,7 @@ inline constexpr OpSpec kOps[] = {
     {"num_analysis_auto_solve_tape", 8, 8, true},
     {"num_analysis_band_lu_factor", 4, 4, true},
     {"num_analysis_band_lu_solve", 2, 2, true},
+    {"num_analysis_clenshaw_curtis_parallel", 5, 5, true},
     {"num_analysis_complex_mobius_apply", 2, 2, true},
     {"num_analysis_complex_mobius_compose", 2, 2, true},
     {"num_analysis_complex_mobius_identity", 0, 0, true},
@@ -1288,6 +1289,7 @@ inline constexpr OpSpec kOps[] = {
     {"num_analysis_fftconv_fft", 2, 2, true},
     {"num_analysis_filon2d_compiled", 8, 8, true},
     {"num_analysis_filon2d_complex_compiled", 7, 7, true},
+    {"num_analysis_gauss_legendre_parallel", 5, 5, true},
     {"num_analysis_gaussian_new", 2, 2, true},
     {"num_analysis_gaussian_pdf", 2, 2, true},
     {"num_analysis_gaussian_sample", 2, 2, true},
@@ -1615,6 +1617,7 @@ inline constexpr OpSpec kOps[] = {
     {"num_analysis_signal_fft", 1, 1, true},
     {"num_analysis_signal_ifft", 1, 1, true},
     {"num_analysis_signal_stft", 3, 3, true},
+    {"num_analysis_simplex_budgeted", 9, 9, true},
     {"num_analysis_simplex_scaled", 7, 7, true},
     {"num_analysis_simplex_with_scaled", 8, 8, true},
     {"num_analysis_sobol_new", 1, 1, true},
@@ -1673,6 +1676,7 @@ inline constexpr OpSpec kOps[] = {
     {"num_analysis_stochastic_structure_is_commutative", 4, 4, true},
     {"num_analysis_stochastic_structure_noise", 4, 4, true},
     {"num_analysis_stochastic_wiener", 4, 4, true},
+    {"num_analysis_sum_compensated", 3, 3, true},
     {"num_analysis_symplectic_body_data", 1, 1, true},
     {"num_analysis_symplectic_body_new", 6, 6, true},
     {"num_analysis_symplectic_composition_weights", 1, 1, true},
@@ -1815,6 +1819,22 @@ inline constexpr OpSpec kOps[] = {
     {"num_bvh_build", 2, 2, true},
     {"num_bvh_nearest", 2, 2, true},
     {"num_bvh_ray", 3, 3, true},
+    {"num_cad_mesh_arrays", 1, 1, true},
+    {"num_cad_mesh_boolean", 3, 3, true},
+    {"num_cad_mesh_euler_characteristic", 1, 1, true},
+    {"num_cad_mesh_is_closed", 1, 1, true},
+    {"num_cad_mesh_is_manifold", 1, 1, true},
+    {"num_cad_mesh_new", 2, 2, true},
+    {"num_cad_mesh_repair", 2, 2, true},
+    {"num_cad_mesh_signed_volume", 1, 1, true},
+    {"num_cad_mesh_triangle_count", 1, 1, true},
+    {"num_cad_mesh_vertex_count", 1, 1, true},
+    {"num_cad_mesh_weld", 2, 2, true},
+    {"num_cad_step_read_text", 1, 1, true},
+    {"num_cad_stl_read", 2, 2, true},
+    {"num_cad_stl_read_text", 2, 2, true},
+    {"num_cad_stl_write_ascii", 3, 3, true},
+    {"num_cad_stl_write_binary", 2, 2, true},
     {"num_cauchy_root_bound", 1, 1, true},
     {"num_cauchy_sharp_root_bound", 1, 1, true},
     {"num_cholesky", 1, 1, true},
@@ -1860,24 +1880,220 @@ inline constexpr OpSpec kOps[] = {
     {"num_combinatorics_solve_recurrence_numerical", 3, 3, true},
     {"num_combinatorics_stirling_second", 2, 2, true},
     {"num_complex_cauchy_derivative_scaled", 8, 8, true},
+    {"num_complex_cauchy_fft_derivatives_checked", 8, 8, true},
+    {"num_complex_cauchy_riemann_checked", 7, 7, true},
+    {"num_complex_cauchy_riemann_polar_checked", 7, 7, true},
     {"num_complex_circle_integral_scaled", 7, 7, true},
     {"num_complex_contour_integral_scaled", 6, 6, true},
+    {"num_complex_coords_abs_sq", 1, 1, true},
+    {"num_complex_coords_arg_branch", 2, 2, true},
+    {"num_complex_coords_branch_jump_checked", 6, 6, true},
+    {"num_complex_coords_chordal_distance", 2, 2, true},
+    {"num_complex_coords_cis", 1, 1, true},
+    {"num_complex_coords_continue_root", 3, 3, true},
+    {"num_complex_coords_from_polar", 2, 2, true},
+    {"num_complex_coords_from_riemann_sphere", 3, 3, true},
+    {"num_complex_coords_log_cut", 2, 2, true},
+    {"num_complex_coords_pow_cut", 3, 3, true},
+    {"num_complex_coords_sign", 1, 1, true},
+    {"num_complex_coords_spherical_metric_factor", 1, 1, true},
+    {"num_complex_coords_sqrt_cut", 2, 2, true},
+    {"num_complex_coords_to_polar", 1, 1, true},
+    {"num_complex_coords_to_riemann_sphere", 1, 1, true},
+    {"num_complex_coords_unwrap_phase", 1, 1, true},
     {"num_complex_count_zeros_poles_scaled", 7, 7, true},
     {"num_complex_derivative_scaled", 5, 5, true},
+    {"num_complex_disk_add", 2, 2, true},
+    {"num_complex_disk_bessel_j", 2, 2, true},
+    {"num_complex_disk_center", 1, 1, true},
+    {"num_complex_disk_certify_root", 3, 3, true},
+    {"num_complex_disk_certify_rouche", 6, 6, true},
+    {"num_complex_disk_certify_system", 4, 4, true},
+    {"num_complex_disk_conj", 1, 1, true},
+    {"num_complex_disk_contains", 2, 2, true},
+    {"num_complex_disk_contains_zero", 1, 1, true},
+    {"num_complex_disk_cot", 1, 1, true},
+    {"num_complex_disk_coth", 1, 1, true},
+    {"num_complex_disk_csc", 1, 1, true},
+    {"num_complex_disk_csch", 1, 1, true},
+    {"num_complex_disk_div", 2, 2, true},
+    {"num_complex_disk_erf", 1, 1, true},
+    {"num_complex_disk_gamma", 1, 1, true},
+    {"num_complex_disk_i", 0, 0, true},
+    {"num_complex_disk_inside_strictly", 2, 2, true},
+    {"num_complex_disk_is_finite", 1, 1, true},
+    {"num_complex_disk_jet_acos", 1, 1, true},
+    {"num_complex_disk_jet_acosh", 1, 1, true},
+    {"num_complex_disk_jet_add", 2, 2, true},
+    {"num_complex_disk_jet_asin", 1, 1, true},
+    {"num_complex_disk_jet_asinh", 1, 1, true},
+    {"num_complex_disk_jet_atan", 1, 1, true},
+    {"num_complex_disk_jet_atanh", 1, 1, true},
+    {"num_complex_disk_jet_constant", 1, 1, true},
+    {"num_complex_disk_jet_cos", 1, 1, true},
+    {"num_complex_disk_jet_cosh", 1, 1, true},
+    {"num_complex_disk_jet_div", 2, 2, true},
+    {"num_complex_disk_jet_exp", 1, 1, true},
+    {"num_complex_disk_jet_ln", 1, 1, true},
+    {"num_complex_disk_jet_mul", 2, 2, true},
+    {"num_complex_disk_jet_pow", 2, 2, true},
+    {"num_complex_disk_jet_powi", 2, 2, true},
+    {"num_complex_disk_jet_sin", 1, 1, true},
+    {"num_complex_disk_jet_sinh", 1, 1, true},
+    {"num_complex_disk_jet_sqrt", 1, 1, true},
+    {"num_complex_disk_jet_sub", 2, 2, true},
+    {"num_complex_disk_jet_tan", 1, 1, true},
+    {"num_complex_disk_jet_tanh", 1, 1, true},
+    {"num_complex_disk_jet_variable", 1, 1, true},
+    {"num_complex_disk_log_gamma", 1, 1, true},
+    {"num_complex_disk_matmul", 2, 2, true},
+    {"num_complex_disk_matvec", 2, 2, true},
+    {"num_complex_disk_modulus_lower", 1, 1, true},
+    {"num_complex_disk_modulus_upper", 1, 1, true},
+    {"num_complex_disk_mul", 2, 2, true},
+    {"num_complex_disk_neg", 1, 1, true},
+    {"num_complex_disk_new", 2, 2, true},
+    {"num_complex_disk_of", 1, 1, true},
+    {"num_complex_disk_one", 0, 0, true},
+    {"num_complex_disk_overlaps", 2, 2, true},
+    {"num_complex_disk_point", 2, 2, true},
+    {"num_complex_disk_radius", 1, 1, true},
+    {"num_complex_disk_recip", 1, 1, true},
+    {"num_complex_disk_scale", 2, 2, true},
+    {"num_complex_disk_sec", 1, 1, true},
+    {"num_complex_disk_sech", 1, 1, true},
+    {"num_complex_disk_solve", 2, 2, true},
+    {"num_complex_disk_square", 1, 1, true},
+    {"num_complex_disk_sub", 2, 2, true},
+    {"num_complex_disk_zero", 0, 0, true},
+    {"num_complex_dynamics_bottcher", 3, 3, true},
+    {"num_complex_dynamics_external_ray", 4, 4, true},
+    {"num_complex_dynamics_in_main_components", 1, 1, true},
+    {"num_complex_dynamics_julia_escape", 4, 4, true},
+    {"num_complex_dynamics_koenigs_checked", 8, 8, true},
+    {"num_complex_dynamics_mandelbrot_distance", 2, 2, true},
+    {"num_complex_dynamics_mandelbrot_escape", 3, 3, true},
+    {"num_complex_dynamics_newton_basin_checked", 8, 8, true},
+    {"num_complex_dynamics_quadratic_lyapunov", 4, 4, true},
+    {"num_complex_dynamics_quadratic_multiplier", 4, 4, true},
+    {"num_complex_dynamics_quadratic_orbit", 3, 3, true},
+    {"num_complex_dynamics_quadratic_periodic_points", 5, 5, true},
+    {"num_complex_laplacian_checked", 5, 5, true},
     {"num_complex_newton_scaled", 8, 8, true},
+    {"num_complex_polynomial_aberth_ehrlich", 3, 3, true},
+    {"num_complex_polynomial_durand_kerner", 3, 3, true},
+    {"num_complex_polynomial_isolate_verified", 2, 2, true},
+    {"num_complex_polynomial_laguerre", 4, 4, true},
     {"num_complex_residue_scaled", 7, 7, true},
+    {"num_complex_root_circle_moments", 8, 8, true},
+    {"num_complex_root_circle_rouche_samples", 7, 7, true},
+    {"num_complex_root_circle_winding", 7, 7, true},
+    {"num_complex_root_delves_lyness", 7, 7, true},
+    {"num_complex_root_halley", 9, 9, true},
+    {"num_complex_root_homotopy", 10, 10, true},
+    {"num_complex_root_muller", 9, 9, true},
+    {"num_complex_step_derivative_checked", 5, 5, true},
+    {"num_complex_surface_hyperelliptic", 1, 1, true},
+    {"num_complex_surface_monodromy_checked", 3, 3, true},
+    {"num_complex_surface_superelliptic", 2, 2, true},
     {"num_complex_winding_number", 1, 1, true},
+    {"num_complex_wirtinger_dz_checked", 5, 5, true},
+    {"num_complex_wirtinger_dzbar_checked", 5, 5, true},
     {"num_computer_graphics_degrees_to_radians", 1, 1, true},
     {"num_computer_graphics_dot_product_nd", 2, 2, true},
     {"num_computer_graphics_radians_to_degrees", 1, 1, true},
     {"num_cond", 1, 1, true},
+    {"num_conformal_bergman_kernel_disk", 2, 2, true},
+    {"num_conformal_bergman_polynomial_basis", 3, 3, true},
+    {"num_conformal_cayley_transform", 1, 1, true},
+    {"num_conformal_classify_mobius", 1, 1, true},
+    {"num_conformal_cross_ratio", 4, 4, true},
+    {"num_conformal_disk_automorphism", 2, 2, true},
+    {"num_conformal_joukowsky", 1, 1, true},
+    {"num_conformal_joukowsky_inverse", 1, 1, true},
+    {"num_conformal_karman_trefftz", 2, 2, true},
+    {"num_conformal_koebe_map", 1, 1, true},
+    {"num_conformal_mobius_fixed_points", 1, 1, true},
+    {"num_conformal_mobius_three_points", 6, 6, true},
+    {"num_conformal_numeric_checked", 7, 7, true},
+    {"num_conformal_scale_rotation_checked", 5, 5, true},
+    {"num_conformal_schwarz_christoffel_evaluate", 4, 4, true},
+    {"num_conformal_schwarz_christoffel_solve", 3, 3, true},
+    {"num_conformal_szego_evaluate", 2, 2, true},
+    {"num_conformal_szego_evaluate_bergman", 2, 2, true},
+    {"num_conformal_szego_evaluate_map", 2, 2, true},
+    {"num_conformal_szego_map_checked", 6, 6, true},
+    {"num_conformal_szego_prepare_checked", 5, 5, true},
+    {"num_conformal_szego_prepare_sampled", 3, 3, true},
+    {"num_continuation_borel_pade", 4, 4, true},
+    {"num_continuation_eval_pade", 2, 2, true},
+    {"num_continuation_holonomic_follow", 4, 4, true},
+    {"num_continuation_holonomic_monodromy", 3, 3, true},
+    {"num_continuation_holonomic_order", 1, 1, true},
+    {"num_continuation_laurent_fft", 7, 7, true},
+    {"num_continuation_pade", 3, 3, true},
+    {"num_continuation_recenter", 2, 2, true},
+    {"num_continuation_wynn", 1, 1, true},
+    {"num_contour_bromwich", 2, 2, true},
+    {"num_contour_deform_checked", 6, 6, true},
+    {"num_contour_dogbone", 3, 3, true},
+    {"num_contour_hankel", 4, 4, true},
+    {"num_contour_indented_semicircle", 4, 4, true},
+    {"num_contour_integrate", 6, 6, true},
+    {"num_contour_integrate_checked", 7, 7, true},
+    {"num_contour_integrate_deformed_checked", 12, 12, true},
+    {"num_contour_integrate_segment", 6, 6, true},
+    {"num_contour_integrate_segment_checked", 7, 7, true},
+    {"num_contour_keyhole", 5, 5, true},
+    {"num_contour_principal_value", 8, 8, true},
+    {"num_contour_principal_value_checked", 9, 9, true},
+    {"num_contour_rectangle", 4, 4, true},
+    {"num_contour_residue_infinity_checked", 7, 7, true},
+    {"num_contour_residue_infinity_fixed", 6, 6, true},
+    {"num_contour_sector", 2, 2, true},
     {"num_control_c2d_zoh", 5, 5, true},
+    {"num_control_discrete_controllability_matrix", 1, 1, true},
+    {"num_control_discrete_is_stable", 1, 1, true},
+    {"num_control_discrete_n_inputs", 1, 1, true},
+    {"num_control_discrete_n_outputs", 1, 1, true},
+    {"num_control_discrete_n_states", 1, 1, true},
+    {"num_control_discrete_observability_matrix", 1, 1, true},
+    {"num_control_discrete_poles", 1, 1, true},
+    {"num_control_era", 3, 3, true},
+    {"num_control_era_matrices", 1, 1, true},
+    {"num_control_impulse_response", 2, 2, true},
+    {"num_control_mpc_closed_loop", 4, 4, true},
+    {"num_control_mpc_prepare", 4, 4, true},
+    {"num_control_pid_response", 4, 4, true},
     {"num_control_simulate_continuous", 7, 7, true},
     {"num_control_simulate_discrete", 3, 3, true},
+    {"num_control_simulate_pid", 4, 4, true},
+    {"num_control_state_space_continuous", 4, 4, true},
+    {"num_control_state_space_discrete", 5, 5, true},
+    {"num_control_state_space_is_controllable", 1, 1, true},
+    {"num_control_state_space_is_observable", 1, 1, true},
+    {"num_control_state_space_is_stable", 1, 1, true},
+    {"num_control_state_space_new", 4, 4, true},
+    {"num_control_state_space_poles", 1, 1, true},
+    {"num_control_state_space_simulate_with_dt", 4, 4, true},
+    {"num_control_transfer_evaluate", 2, 2, true},
+    {"num_control_transfer_feedback", 2, 2, true},
+    {"num_control_transfer_gain_margin_phase_margin", 1, 1, true},
+    {"num_control_transfer_is_proper", 1, 1, true},
+    {"num_control_transfer_is_stable", 1, 1, true},
+    {"num_control_transfer_is_strictly_proper", 1, 1, true},
+    {"num_control_transfer_new", 2, 2, true},
+    {"num_control_transfer_new_proper", 2, 2, true},
+    {"num_control_transfer_order", 1, 1, true},
+    {"num_control_transfer_parallel", 2, 2, true},
+    {"num_control_transfer_series", 2, 2, true},
+    {"num_control_transfer_step_response", 2, 2, true},
+    {"num_control_transfer_zeros", 1, 1, true},
     {"num_convergence_aitken_acceleration", 1, 1, true},
     {"num_convergence_richardson_extrapolation", 1, 1, true},
     {"num_convergence_richardson_extrapolation_with", 2, 2, true},
     {"num_convergence_wynn_epsilon", 1, 1, true},
+    {"num_convex_solve_lp", 11, 11, true},
     {"num_correlation", 2, 2, true},
     {"num_cosh_integral", 1, 1, true},
     {"num_cosine_integral", 1, 1, true},
@@ -1893,6 +2109,9 @@ inline constexpr OpSpec kOps[] = {
     {"num_csr_eigs_shift_invert", 7, 7, true},
     {"num_csr_eigs_sym", 6, 6, true},
     {"num_csr_gmres", 5, 5, true},
+    {"num_csr_lsqr", 5, 5, true},
+    {"num_csr_matmul_dense", 2, 2, true},
+    {"num_csr_matmul_sparse", 2, 2, true},
     {"num_csr_minres", 4, 4, true},
     {"num_csr_model_amd", 1, 1, true},
     {"num_csr_model_bandwidth", 1, 1, true},
@@ -1904,6 +2123,7 @@ inline constexpr OpSpec kOps[] = {
     {"num_csr_model_nested_dissection", 1, 1, true},
     {"num_csr_model_permute", 2, 2, true},
     {"num_csr_model_rcm", 1, 1, true},
+    {"num_csr_transpose", 1, 1, true},
     {"num_cv", 1, 1, true},
     {"num_dae_implicit_adaptive", 14, 14, true},
     {"num_dae_index1_adaptive", 19, 19, true},
@@ -2090,6 +2310,8 @@ inline constexpr OpSpec kOps[] = {
     {"num_finite_field_gf256_mul_add", 3, 3, true},
     {"num_finite_field_gf256_pow", 2, 2, true},
     {"num_finite_field_gf256_scale", 2, 2, true},
+    {"num_finite_field_ntt_plan", 2, 2, true},
+    {"num_finite_field_ntt_transform", 3, 3, true},
     {"num_finite_field_poly_mul_ntt_mod", 3, 3, true},
     {"num_finite_field_primitive_root_prime", 1, 1, true},
     {"num_finite_field_slice_add_mod", 3, 3, true},
@@ -2185,6 +2407,12 @@ inline constexpr OpSpec kOps[] = {
     {"num_geometry_segment_intersection_2d", 4, 4, true},
     {"num_geometry_segment_triangle_intersection_3d", 5, 5, true},
     {"num_geometry_tetrahedron_volume", 1, 1, true},
+    {"num_glm_fit", 7, 7, true},
+    {"num_glm_inverse_link", 2, 2, true},
+    {"num_glm_link", 2, 2, true},
+    {"num_glm_link_derivative", 2, 2, true},
+    {"num_glm_predict", 2, 2, true},
+    {"num_glm_variance", 2, 2, true},
     {"num_grid_acoustics_config", 9, 9, true},
     {"num_grid_acoustics_energy", 1, 1, true},
     {"num_grid_acoustics_fields", 1, 1, true},
@@ -2684,6 +2912,8 @@ inline constexpr OpSpec kOps[] = {
     {"num_integrate_infinite", 3, 3, true},
     {"num_integrate_left_infinite", 4, 4, true},
     {"num_integrate_semi_infinite", 4, 4, true},
+    {"num_interp_bilinear_grid_evaluate", 4, 4, true},
+    {"num_interp_bilinear_grid_prepare", 3, 3, true},
     {"num_interp_ext_akima", 3, 3, true},
     {"num_interp_ext_akima_many", 3, 3, true},
     {"num_interp_ext_bicubic", 5, 5, true},
@@ -2968,6 +3198,22 @@ inline constexpr OpSpec kOps[] = {
     {"num_linear_simplex_map_volume", 1, 1, true},
     {"num_linear_solve_linear_system", 2, 2, true},
     {"num_linear_solve_wiedemann", 4, 4, true},
+    {"num_linear_sparse_exact_dixon_multi", 2, 2, true},
+    {"num_linear_sparse_exact_field_add", 3, 3, true},
+    {"num_linear_sparse_exact_field_batch_inv", 2, 2, true},
+    {"num_linear_sparse_exact_field_inv", 2, 2, true},
+    {"num_linear_sparse_exact_field_mul", 3, 3, true},
+    {"num_linear_sparse_exact_field_new", 1, 1, true},
+    {"num_linear_sparse_exact_field_pow", 3, 3, true},
+    {"num_linear_sparse_exact_field_prime", 1, 1, true},
+    {"num_linear_sparse_exact_field_reduce", 2, 2, true},
+    {"num_linear_sparse_exact_field_reducer", 1, 1, true},
+    {"num_linear_sparse_exact_field_sub", 3, 3, true},
+    {"num_linear_sparse_exact_prime_rref", 1, 1, true},
+    {"num_linear_sparse_exact_prime_to_dense", 1, 1, true},
+    {"num_linear_sparse_exact_rational_rref", 1, 1, true},
+    {"num_linear_sparse_exact_rational_to_prime", 2, 2, true},
+    {"num_linear_sparse_exact_rcm_plan", 1, 1, true},
     {"num_linear_sparse_lu_dim", 1, 1, true},
     {"num_linear_sparse_lu_nnz", 1, 1, true},
     {"num_linear_sparse_lu_permutation", 1, 1, true},
@@ -3093,37 +3339,215 @@ inline constexpr OpSpec kOps[] = {
     {"num_matrix_real_with_backend", 2, 2, true},
     {"num_matrix_real_zeros", 3, 3, true},
     {"num_max", 1, 1, true},
+    {"num_mcmc_autocorrelation", 2, 2, true},
+    {"num_mcmc_effective_sample_size", 1, 1, true},
+    {"num_mcmc_geweke", 1, 1, true},
+    {"num_mcmc_gibbs", 3, 3, true},
+    {"num_mcmc_gibbs_with_log_posterior", 4, 4, true},
+    {"num_mcmc_hmc", 6, 6, true},
+    {"num_mcmc_metropolis_hastings", 4, 4, true},
+    {"num_mcmc_pcg32_new", 2, 2, true},
+    {"num_mcmc_pcg32_next_f64", 1, 1, true},
+    {"num_mcmc_pcg32_next_u32", 1, 1, true},
+    {"num_mcmc_pcg32_normal", 1, 1, true},
+    {"num_mcmc_pcg32_seeded", 1, 1, true},
+    {"num_mcmc_random_walk_metropolis", 4, 4, true},
+    {"num_mcmc_split_rhat", 1, 1, true},
     {"num_mean", 1, 1, true},
     {"num_median", 1, 1, true},
+    {"num_meshgen_advancing_front_2d", 4, 4, true},
     {"num_meshgen_boundary_faces", 1, 1, true},
+    {"num_meshgen_constrained_delaunay_2d", 4, 4, true},
     {"num_meshgen_delaunay_2d_incremental", 1, 1, true},
     {"num_meshgen_min_angle_deg", 2, 2, true},
     {"num_meshgen_tetra_volumes", 2, 2, true},
     {"num_meshgen_triangle_areas", 2, 2, true},
     {"num_min", 1, 1, true},
+    {"num_modular_barrett_add", 3, 3, true},
+    {"num_modular_barrett_div", 3, 3, true},
+    {"num_modular_barrett_inv", 2, 2, true},
+    {"num_modular_barrett_modulus", 1, 1, true},
+    {"num_modular_barrett_mu", 1, 1, true},
+    {"num_modular_barrett_mul", 3, 3, true},
+    {"num_modular_barrett_neg", 2, 2, true},
+    {"num_modular_barrett_new", 1, 1, true},
+    {"num_modular_barrett_new_prime", 1, 1, true},
+    {"num_modular_barrett_pow", 3, 3, true},
+    {"num_modular_barrett_reduce_u128", 2, 2, true},
+    {"num_modular_barrett_reduce_u64", 2, 2, true},
+    {"num_modular_barrett_sub", 3, 3, true},
+    {"num_modular_montgomery_add", 3, 3, true},
+    {"num_modular_montgomery_add_mont", 3, 3, true},
+    {"num_modular_montgomery_div", 3, 3, true},
+    {"num_modular_montgomery_fma_mont", 4, 4, true},
+    {"num_modular_montgomery_from_mont", 2, 2, true},
+    {"num_modular_montgomery_half", 2, 2, true},
+    {"num_modular_montgomery_inv", 2, 2, true},
+    {"num_modular_montgomery_modulus", 1, 1, true},
+    {"num_modular_montgomery_mul", 3, 3, true},
+    {"num_modular_montgomery_mul_mont", 3, 3, true},
+    {"num_modular_montgomery_n_prime", 1, 1, true},
+    {"num_modular_montgomery_neg", 2, 2, true},
+    {"num_modular_montgomery_neg_mont", 2, 2, true},
+    {"num_modular_montgomery_new", 1, 1, true},
+    {"num_modular_montgomery_new_prime", 1, 1, true},
+    {"num_modular_montgomery_one", 1, 1, true},
+    {"num_modular_montgomery_one_mont", 1, 1, true},
+    {"num_modular_montgomery_pow", 3, 3, true},
+    {"num_modular_montgomery_pow_mont", 3, 3, true},
+    {"num_modular_montgomery_r2_mod", 1, 1, true},
+    {"num_modular_montgomery_r_mod", 1, 1, true},
+    {"num_modular_montgomery_redc", 2, 2, true},
+    {"num_modular_montgomery_sub", 3, 3, true},
+    {"num_modular_montgomery_sub_mont", 3, 3, true},
+    {"num_modular_montgomery_to_mont", 2, 2, true},
+    {"num_modular_montgomery_to_mont_u128", 2, 2, true},
     {"num_mp_ball_abs", 2, 2, true},
+    {"num_mp_ball_acos", 2, 2, true},
+    {"num_mp_ball_add", 3, 3, true},
+    {"num_mp_ball_asin", 2, 2, true},
+    {"num_mp_ball_atan", 2, 2, true},
+    {"num_mp_ball_atan2", 3, 3, true},
     {"num_mp_ball_contains_zero", 1, 1, true},
+    {"num_mp_ball_cos", 2, 2, true},
+    {"num_mp_ball_cosh", 2, 2, true},
     {"num_mp_ball_div", 3, 3, true},
     {"num_mp_ball_endpoints", 2, 2, true},
+    {"num_mp_ball_exp", 2, 2, true},
+    {"num_mp_ball_exp2", 2, 2, true},
+    {"num_mp_ball_lipschitz", 4, 4, true},
+    {"num_mp_ball_ln", 2, 2, true},
+    {"num_mp_ball_log10", 2, 2, true},
+    {"num_mp_ball_log2", 2, 2, true},
+    {"num_mp_ball_midpoint", 1, 1, true},
+    {"num_mp_ball_mul", 3, 3, true},
     {"num_mp_ball_neg", 1, 1, true},
     {"num_mp_ball_new", 2, 2, true},
     {"num_mp_ball_point", 1, 1, true},
+    {"num_mp_ball_pow", 3, 3, true},
+    {"num_mp_ball_pow_ratio", 4, 4, true},
+    {"num_mp_ball_powi", 3, 3, true},
+    {"num_mp_ball_radius", 1, 1, true},
+    {"num_mp_ball_sin", 2, 2, true},
+    {"num_mp_ball_sinh", 2, 2, true},
+    {"num_mp_ball_sqrt", 2, 2, true},
+    {"num_mp_ball_sub", 3, 3, true},
+    {"num_mp_ball_tan", 2, 2, true},
+    {"num_mp_ball_tanh", 2, 2, true},
     {"num_mp_ball_width", 1, 1, true},
+    {"num_mp_complex_abs", 2, 2, true},
+    {"num_mp_complex_abs_sq", 2, 2, true},
+    {"num_mp_complex_acos", 2, 2, true},
+    {"num_mp_complex_acosh", 2, 2, true},
+    {"num_mp_complex_add", 3, 3, true},
+    {"num_mp_complex_arg", 2, 2, true},
+    {"num_mp_complex_asin", 2, 2, true},
+    {"num_mp_complex_asinh", 2, 2, true},
+    {"num_mp_complex_atan", 2, 2, true},
+    {"num_mp_complex_atanh", 2, 2, true},
+    {"num_mp_complex_bessel_j", 3, 3, true},
+    {"num_mp_complex_conj", 1, 1, true},
+    {"num_mp_complex_cos", 2, 2, true},
+    {"num_mp_complex_cosh", 2, 2, true},
+    {"num_mp_complex_digamma", 2, 2, true},
+    {"num_mp_complex_div", 3, 3, true},
+    {"num_mp_complex_erf", 2, 2, true},
+    {"num_mp_complex_erfc", 2, 2, true},
+    {"num_mp_complex_exp", 2, 2, true},
+    {"num_mp_complex_from_real", 1, 1, true},
+    {"num_mp_complex_gamma", 2, 2, true},
+    {"num_mp_complex_i", 1, 1, true},
+    {"num_mp_complex_ln", 2, 2, true},
+    {"num_mp_complex_log_gamma", 2, 2, true},
+    {"num_mp_complex_mul", 3, 3, true},
+    {"num_mp_complex_neg", 1, 1, true},
+    {"num_mp_complex_new", 2, 2, true},
+    {"num_mp_complex_one", 1, 1, true},
+    {"num_mp_complex_point", 2, 2, true},
+    {"num_mp_complex_polylog", 3, 3, true},
+    {"num_mp_complex_pow", 3, 3, true},
+    {"num_mp_complex_powi", 3, 3, true},
+    {"num_mp_complex_recip", 2, 2, true},
+    {"num_mp_complex_riemann_zeta", 2, 2, true},
+    {"num_mp_complex_sin", 2, 2, true},
+    {"num_mp_complex_sinh", 2, 2, true},
+    {"num_mp_complex_sqrt", 2, 2, true},
+    {"num_mp_complex_sub", 3, 3, true},
+    {"num_mp_complex_tan", 2, 2, true},
+    {"num_mp_complex_tanh", 2, 2, true},
+    {"num_mp_complex_zero", 1, 1, true},
+    {"num_mp_decimal_enclose", 2, 2, true},
+    {"num_mp_decimal_exponent", 1, 1, true},
+    {"num_mp_decimal_format_ball", 2, 2, true},
+    {"num_mp_decimal_from_text", 2, 2, true},
+    {"num_mp_decimal_from_text_in", 3, 3, true},
+    {"num_mp_decimal_round_text", 3, 3, true},
+    {"num_mp_decimal_significant_digits", 1, 1, true},
+    {"num_mp_decimal_to_text", 2, 2, true},
+    {"num_mp_decimal_to_text_in", 3, 3, true},
+    {"num_mp_decimal_working_bits", 1, 1, true},
+    {"num_mp_expression_enclose", 2, 2, true},
     {"num_mp_real_abs", 1, 1, true},
+    {"num_mp_real_acos", 2, 2, true},
     {"num_mp_real_add", 4, 4, true},
+    {"num_mp_real_asin", 2, 2, true},
+    {"num_mp_real_atan", 2, 2, true},
+    {"num_mp_real_atan2", 3, 3, true},
+    {"num_mp_real_cbrt", 2, 2, true},
+    {"num_mp_real_cbrt_in", 3, 3, true},
     {"num_mp_real_compare", 2, 2, true},
+    {"num_mp_real_const_e", 1, 1, true},
+    {"num_mp_real_const_enclose", 2, 2, true},
+    {"num_mp_real_const_functions", 0, 0, true},
+    {"num_mp_real_const_ln2", 1, 1, true},
+    {"num_mp_real_const_named", 2, 2, true},
+    {"num_mp_real_const_names", 0, 0, true},
+    {"num_mp_real_const_phi", 1, 1, true},
+    {"num_mp_real_const_pi", 1, 1, true},
+    {"num_mp_real_const_pi_scaled", 1, 1, true},
+    {"num_mp_real_const_sqrt2", 1, 1, true},
+    {"num_mp_real_cos", 2, 2, true},
+    {"num_mp_real_cosh", 2, 2, true},
     {"num_mp_real_div", 4, 4, true},
+    {"num_mp_real_exp", 2, 2, true},
+    {"num_mp_real_exp2", 2, 2, true},
+    {"num_mp_real_exponent", 1, 1, true},
     {"num_mp_real_floor_log2", 1, 1, true},
+    {"num_mp_real_from_bigint", 3, 3, true},
+    {"num_mp_real_from_f64", 2, 2, true},
+    {"num_mp_real_from_i64", 2, 2, true},
+    {"num_mp_real_hypot", 3, 3, true},
     {"num_mp_real_is_integer", 1, 1, true},
     {"num_mp_real_is_zero", 1, 1, true},
+    {"num_mp_real_limits", 0, 0, true},
+    {"num_mp_real_ln", 2, 2, true},
+    {"num_mp_real_log10", 2, 2, true},
+    {"num_mp_real_log2", 2, 2, true},
+    {"num_mp_real_mantissa", 1, 1, true},
     {"num_mp_real_mul", 4, 4, true},
     {"num_mp_real_neg", 1, 1, true},
+    {"num_mp_real_one", 1, 1, true},
+    {"num_mp_real_pow", 3, 3, true},
+    {"num_mp_real_pow_ratio", 4, 4, true},
+    {"num_mp_real_powi", 3, 3, true},
+    {"num_mp_real_precision", 1, 1, true},
     {"num_mp_real_round", 4, 4, true},
+    {"num_mp_real_rounding_mode", 1, 1, true},
+    {"num_mp_real_scale_decimal", 3, 3, true},
+    {"num_mp_real_scale_decimal_in", 4, 4, true},
     {"num_mp_real_scale_pow2", 2, 2, true},
+    {"num_mp_real_sign", 1, 1, true},
+    {"num_mp_real_sin", 2, 2, true},
+    {"num_mp_real_sin_cos", 2, 2, true},
+    {"num_mp_real_sinh", 2, 2, true},
     {"num_mp_real_sqrt", 3, 3, true},
     {"num_mp_real_sub", 4, 4, true},
+    {"num_mp_real_tan", 2, 2, true},
+    {"num_mp_real_tanh", 2, 2, true},
+    {"num_mp_real_to_f64", 1, 1, true},
     {"num_mp_real_trunc_to_bigint", 1, 1, true},
     {"num_mp_real_with_precision", 3, 3, true},
+    {"num_mp_real_zero", 1, 1, true},
     {"num_multinomial", 2, 2, true},
     {"num_multivariate_normal_log_pdf_scaled", 4, 4, true},
     {"num_native_aaa_build", 4, 4, true},
@@ -4761,6 +5185,25 @@ inline constexpr OpSpec kOps[] = {
     {"num_ode_rosenbrock23", 8, 8, true},
     {"num_ode_ruth4_adaptive", 11, 11, true},
     {"num_ode_verlet_adaptive", 11, 11, true},
+    {"num_optimizer_find_root", 2, 2, true},
+    {"num_optimizer_find_root_with_derivative", 3, 3, true},
+    {"num_optimizer_has_gradient", 1, 1, true},
+    {"num_optimizer_minimize", 4, 4, true},
+    {"num_optimizer_needs_bounds", 1, 1, true},
+    {"num_optimizer_needs_gradient", 1, 1, true},
+    {"num_optimizer_problem_new", 4, 4, true},
+    {"num_optimizer_problem_try_new", 4, 4, true},
+    {"num_optimizer_rastrigin", 1, 1, true},
+    {"num_optimizer_rastrigin_cost", 1, 1, true},
+    {"num_optimizer_regression_coefficient_count", 1, 1, true},
+    {"num_optimizer_regression_problem", 1, 1, true},
+    {"num_optimizer_regression_residuals", 3, 3, true},
+    {"num_optimizer_rosenbrock", 1, 1, true},
+    {"num_optimizer_rosenbrock_cost", 1, 1, true},
+    {"num_optimizer_sphere", 1, 1, true},
+    {"num_optimizer_sphere_cost", 1, 1, true},
+    {"num_optimizer_value_and_gradient", 2, 2, true},
+    {"num_optimizer_with_bounds", 3, 3, true},
     {"num_par_dot_fixed", 4, 4, true},
     {"num_par_norm2_fixed", 3, 3, true},
     {"num_par_prefix_sum_f64_fixed", 3, 3, true},
@@ -4855,13 +5298,31 @@ inline constexpr OpSpec kOps[] = {
     {"num_polyval_normalized", 3, 3, true},
     {"num_project", 2, 2, true},
     {"num_qr", 1, 1, true},
+    {"num_qr_thin", 1, 1, true},
     {"num_quadrature_clenshaw_curtis_rule", 1, 1, true},
     {"num_quadrature_gauss_legendre_rule", 1, 1, true},
     {"num_quadrature_halton_point", 2, 2, true},
     {"num_range", 1, 1, true},
     {"num_rank_tol", 2, 2, true},
     {"num_rbf_scaled", 5, 5, true},
+    {"num_real_polynomial_barycentric_eval", 3, 3, true},
+    {"num_real_polynomial_gcd", 3, 3, true},
+    {"num_real_polynomial_power", 2, 2, true},
     {"num_reflect", 2, 2, true},
+    {"num_riemann_hilbert_cauchy_checked", 6, 6, true},
+    {"num_riemann_hilbert_factor_checked", 6, 6, true},
+    {"num_riemann_hilbert_matrix_add", 2, 2, true},
+    {"num_riemann_hilbert_matrix_identity", 0, 0, true},
+    {"num_riemann_hilbert_matrix_inv", 1, 1, true},
+    {"num_riemann_hilbert_matrix_mul", 2, 2, true},
+    {"num_riemann_hilbert_matrix_new", 1, 1, true},
+    {"num_riemann_hilbert_matrix_norm", 1, 1, true},
+    {"num_riemann_hilbert_matrix_scale", 2, 2, true},
+    {"num_riemann_hilbert_matrix_sub", 2, 2, true},
+    {"num_riemann_hilbert_matrix_zero", 0, 0, true},
+    {"num_riemann_hilbert_plemelj_checked", 6, 6, true},
+    {"num_riemann_hilbert_solution_eval", 2, 2, true},
+    {"num_riemann_hilbert_solve", 3, 3, true},
     {"num_riemann_zeta", 1, 1, true},
     {"num_robust_bandwidth_scott", 1, 1, true},
     {"num_robust_bandwidth_silverman", 1, 1, true},
@@ -4882,6 +5343,10 @@ inline constexpr OpSpec kOps[] = {
     {"num_robust_weighted_quantiles", 3, 3, true},
     {"num_robust_winsorized_mean", 2, 2, true},
     {"num_romberg", 6, 6, true},
+    {"num_saddle_find", 7, 7, true},
+    {"num_saddle_integrate", 8, 8, true},
+    {"num_saddle_leading", 5, 5, true},
+    {"num_saddle_order2", 6, 6, true},
     {"num_scalar_mul", 2, 2, true},
     {"num_schur_eigvals_generalized", 2, 2, true},
     {"num_schur_lyapunov", 2, 2, true},
@@ -4938,6 +5403,7 @@ inline constexpr OpSpec kOps[] = {
     {"num_solve_dg3d", 8, 8, true},
     {"num_solve_dg_limited", 8, 8, true},
     {"num_solve_dg_with", 8, 8, true},
+    {"num_solve_linear_rows", 2, 2, true},
     {"num_sparse_auto_model_apply", 2, 2, true},
     {"num_sparse_auto_model_borrow_apply", 2, 2, true},
     {"num_sparse_auto_model_build", 1, 1, true},
@@ -4964,6 +5430,32 @@ inline constexpr OpSpec kOps[] = {
     {"num_special_beta_numerical", 2, 2, true},
     {"num_special_chebyshev_t", 2, 2, true},
     {"num_special_chebyshev_u", 2, 2, true},
+    {"num_special_complex_anger_j", 2, 2, true},
+    {"num_special_complex_associated_legendre_p", 3, 3, true},
+    {"num_special_complex_bernoulli", 2, 2, true},
+    {"num_special_complex_bessel_i_order", 2, 2, true},
+    {"num_special_complex_bessel_j_order", 2, 2, true},
+    {"num_special_complex_carlson_rc", 2, 2, true},
+    {"num_special_complex_carlson_rd", 3, 3, true},
+    {"num_special_complex_carlson_rf", 3, 3, true},
+    {"num_special_complex_carlson_rg", 3, 3, true},
+    {"num_special_complex_carlson_rj", 4, 4, true},
+    {"num_special_complex_chebyshev_t", 2, 2, true},
+    {"num_special_complex_chebyshev_u", 2, 2, true},
+    {"num_special_complex_clausen", 2, 2, true},
+    {"num_special_complex_euler", 2, 2, true},
+    {"num_special_complex_exp_integral_en", 2, 2, true},
+    {"num_special_complex_fresnel_auxiliary", 1, 1, true},
+    {"num_special_complex_gegenbauer_c", 3, 3, true},
+    {"num_special_complex_hermite_h", 2, 2, true},
+    {"num_special_complex_jacobi_p", 4, 4, true},
+    {"num_special_complex_kelvin", 2, 2, true},
+    {"num_special_complex_laguerre_l", 3, 3, true},
+    {"num_special_complex_legendre_p", 2, 2, true},
+    {"num_special_complex_legendre_q", 2, 2, true},
+    {"num_special_complex_log_barnes_g", 1, 1, true},
+    {"num_special_complex_spherical_harmonic", 4, 4, true},
+    {"num_special_complex_weber_e", 2, 2, true},
     {"num_special_digamma_batch", 1, 1, true},
     {"num_special_double_factorial", 1, 1, true},
     {"num_special_elliptic_pi_plan_complete", 1, 1, true},
@@ -5033,7 +5525,24 @@ inline constexpr OpSpec kOps[] = {
     {"num_spectral_radius", 1, 1, true},
     {"num_spline_clamped", 5, 5, true},
     {"num_spline_not_a_knot", 3, 3, true},
+    {"num_sqp_oracle_constraints", 3, 3, true},
+    {"num_sqp_oracle_equality_count", 1, 1, true},
+    {"num_sqp_oracle_gradient", 3, 3, true},
+    {"num_sqp_oracle_hessian", 4, 4, true},
+    {"num_sqp_oracle_inequality_count", 1, 1, true},
+    {"num_sqp_oracle_jacobian", 3, 3, true},
+    {"num_sqp_oracle_objective", 3, 3, true},
+    {"num_sqp_solve", 8, 8, true},
     {"num_standard_error", 1, 1, true},
+    {"num_statrs_distribution_cdf", 2, 2, true},
+    {"num_statrs_distribution_entropy", 1, 1, true},
+    {"num_statrs_distribution_is_discrete", 1, 1, true},
+    {"num_statrs_distribution_is_signed_discrete", 1, 1, true},
+    {"num_statrs_distribution_mean", 1, 1, true},
+    {"num_statrs_distribution_new", 2, 2, true},
+    {"num_statrs_distribution_pdf", 2, 2, true},
+    {"num_statrs_distribution_sf", 2, 2, true},
+    {"num_statrs_distribution_variance", 1, 1, true},
     {"num_stats_chi_squared_test", 2, 2, true},
     {"num_stats_ext_adjust_p_bh", 1, 1, true},
     {"num_stats_ext_adjust_p_by", 1, 1, true},
@@ -5063,6 +5572,10 @@ inline constexpr OpSpec kOps[] = {
     {"num_stats_variance_with_type", 2, 2, true},
     {"num_stats_welch_t_test", 2, 2, true},
     {"num_std_dev", 1, 1, true},
+    {"num_survival_fit_cox", 6, 6, true},
+    {"num_survival_kaplan_meier", 3, 3, true},
+    {"num_survival_median", 1, 1, true},
+    {"num_survival_predict_cox", 2, 2, true},
     {"num_svd", 1, 1, true},
     {"num_tanh_sinh", 6, 6, true},
     {"num_timeseries_integrate", 2, 2, true},
@@ -5092,6 +5605,19 @@ inline constexpr OpSpec kOps[] = {
     {"num_topology_verify_coboundary_property", 1, 1, true},
     {"num_topology_vietoris_rips_complex", 3, 3, true},
     {"num_topology_vietoris_rips_filtration", 3, 3, true},
+    {"num_transform_borel_series", 2, 2, true},
+    {"num_transform_hankel_checked", 7, 7, true},
+    {"num_transform_hilbert_checked", 6, 6, true},
+    {"num_transform_inverse_mellin_checked", 7, 7, true},
+    {"num_transform_laplace_parabola_checked", 5, 5, true},
+    {"num_transform_laplace_parabola_shifted_checked", 6, 6, true},
+    {"num_transform_laplace_stehfest_checked", 5, 5, true},
+    {"num_transform_laplace_talbot_checked", 5, 5, true},
+    {"num_transform_laplace_talbot_shifted_checked", 6, 6, true},
+    {"num_transform_meijer_g_checked", 9, 9, true},
+    {"num_transform_mellin_barnes_checked", 9, 9, true},
+    {"num_transform_mellin_checked", 6, 6, true},
+    {"num_transform_stieltjes_checked", 6, 6, true},
     {"num_transforms_irfft", 2, 2, true},
     {"num_transforms_rfft", 1, 1, true},
     {"num_transpose", 1, 1, true},
@@ -5114,6 +5640,17 @@ inline constexpr OpSpec kOps[] = {
     {"num_tt_svd", 4, 4, true},
     {"num_uhp_distance", 2, 2, true},
     {"num_uhp_to_disk", 1, 1, true},
+    {"num_univalent_becker", 3, 3, true},
+    {"num_univalent_bieberbach", 2, 2, true},
+    {"num_univalent_convexity_radius_sampled", 5, 5, true},
+    {"num_univalent_fekete_szego", 3, 3, true},
+    {"num_univalent_grunsky_check", 3, 3, true},
+    {"num_univalent_grunsky_matrix", 2, 2, true},
+    {"num_univalent_hankel", 3, 3, true},
+    {"num_univalent_loewner_step", 3, 3, true},
+    {"num_univalent_nehari_sampled", 5, 5, true},
+    {"num_univalent_schwarzian_checked", 5, 5, true},
+    {"num_univalent_starlikeness_radius_sampled", 5, 5, true},
     {"num_variance", 1, 1, true},
     {"num_vector_add", 2, 2, true},
     {"num_vector_axpby", 4, 4, true},
@@ -5135,7 +5672,10 @@ inline constexpr OpSpec kOps[] = {
     {"num_wavelets_wavelet_packet", 3, 3, true},
     {"num_wavelets_wavelet_soft_threshold", 5, 5, true},
     {"num_weierstrass_invariants_complex", 2, 2, true},
+    {"num_weierstrass_modular_discriminant_complex", 1, 1, true},
     {"num_weierstrass_p_prime_complex", 3, 3, true},
+    {"num_weierstrass_sigma_complex", 3, 3, true},
+    {"num_weierstrass_zeta_complex", 3, 3, true},
     {"num_z_scores", 1, 1, true},
     {"ode_asymptotic", 6, 6, true},
     {"ode_borel", 6, 6, true},
@@ -13070,6 +13610,12 @@ inline Term num_analysis_band_lu_solve(const Term& a0, const Term& a1) {
     return apply("num_analysis_band_lu_solve", args, 2);
 }
 
+/// Fixed Clenshaw–Curtis quadrature of a scalar compiled integrand. Order is rounded up to an even number of at least two; the return unit is coordinate times integrand. [`clenshaw_curtis`] with the node evaluations spread over the pool. Node values are collected in node order and the weighted terms are summed in that order, so the value is bit-identical to [`clenshaw_curtis`] for every thread count.
+inline Term num_analysis_clenshaw_curtis_parallel(const Term& a0, const Term& a1, const Term& a2, const Term& a3, const Term& a4) {
+    Term args[] = {a0, a1, a2, a3, a4};
+    return apply("num_analysis_clenshaw_curtis_parallel", args, 5);
+}
+
 /// Native complex mobius_apply; normalized dimensionless arguments unless the declared contract preserves measured signal units. Enum arguments use exact Rust variant names. The image of `z` (infinite at the pole `-d / c`).
 inline Term num_analysis_complex_mobius_apply(const Term& a0, const Term& a1) {
     Term args[] = {a0, a1};
@@ -13443,6 +13989,12 @@ inline Term num_analysis_filon2d_compiled(const Term& a0, const Term& a1, const 
 inline Term num_analysis_filon2d_complex_compiled(const Term& a0, const Term& a1, const Term& a2, const Term& a3, const Term& a4, const Term& a5, const Term& a6) {
     Term args[] = {a0, a1, a2, a3, a4, a5, a6};
     return apply("num_analysis_filon2d_complex_compiled", args, 7);
+}
+
+/// Fixed Gauss–Legendre quadrature of a scalar compiled integrand. Bounds share the input units; the supplied output reference witnesses the integrand units. Order is 1..=4096. [`gauss_legendre`] with the `n` node evaluations spread over the pool. The node values are independent and are collected in node order, and the weighted terms are still summed in that order, so the value is bit-identical to [`gauss_legendre`] for every thread count. Most useful when one evaluation of `f` is expensive.
+inline Term num_analysis_gauss_legendre_parallel(const Term& a0, const Term& a1, const Term& a2, const Term& a3, const Term& a4) {
+    Term args[] = {a0, a1, a2, a3, a4};
+    return apply("num_analysis_gauss_legendre_parallel", args, 5);
 }
 
 /// Gaussian model with same-unit physical mean and positive standard deviation. Creates a Gaussian with the given mean and standard deviation.
@@ -15510,6 +16062,12 @@ inline Term num_analysis_signal_stft(const Term& a0, const Term& a1, const Term&
     return apply("num_analysis_signal_stft", args, 3);
 }
 
+/// Two-phase nonnegative simplex with selectable Dantzig, SteepestEdge or Bland pricing and an exact total pivot budget. Two-phase tableau simplex with a selectable pricing rule and an explicit total pivot budget across Phase I and Phase II. # Errors Returns an error string when the total number of pivots across Phase I and Phase II would exceed `max_iter` before optimality, infeasibility, or unboundedness is determined.
+inline Term num_analysis_simplex_budgeted(const Term& a0, const Term& a1, const Term& a2, const Term& a3, const Term& a4, const Term& a5, const Term& a6, const Term& a7, const Term& a8) {
+    Term args[] = {a0, a1, a2, a3, a4, a5, a6, a7, a8};
+    return apply("num_analysis_simplex_budgeted", args, 9);
+}
+
 /// Native simplex LP with normalized coefficient conversion using positive coordinate/objective/constraint references; preserves Optimal,Infeasible,Unbounded without fabricated coordinates or objective. Two-phase simplex: minimise `c . x` subject to rows `a_i . x (rel_i) b_i` and `x >= 0`, with steepest-edge pricing and the Bland anti-cycling fallback; see [`simplex_with`].
 inline Term num_analysis_simplex_scaled(const Term& a0, const Term& a1, const Term& a2, const Term& a3, const Term& a4, const Term& a5, const Term& a6) {
     Term args[] = {a0, a1, a2, a3, a4, a5, a6};
@@ -15876,6 +16434,12 @@ inline Term num_analysis_stochastic_structure_noise(const Term& a0, const Term& 
 inline Term num_analysis_stochastic_wiener(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
     Term args[] = {a0, a1, a2, a3};
     return apply("num_analysis_stochastic_wiener", args, 4);
+}
+
+/// Deterministic Neumaier-compensated sum of a finite measured vector. Positive block and grain parameters control accumulation and parallel scheduling. The return unit matches the input. Neumaier-compensated sum of `f(i)` over `0..n` using fixed blocks of size `block`. Each block accumulates a `(sum, compensation)` pair deterministically and block pairs are folded sequentially in block order with Neumaier compensation, so serial execution (`grain = usize::MAX`) and parallel execution produce bit-identical `f64` values.
+inline Term num_analysis_sum_compensated(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_analysis_sum_compensated", args, 3);
 }
 
 /// Actual native geometric operation; physical rigid-body moments/torques use explicit positive SI M/L/T references, while orientations and composition coefficients are dimensionless.
@@ -16758,6 +17322,102 @@ inline Term num_bvh_ray(const Term& a0, const Term& a1, const Term& a2) {
     return apply("num_bvh_ray", args, 3);
 }
 
+/// Copies the mesh's coherent length coordinates and zero-based triangle indices. Empty tensors retain three columns.
+inline Term num_cad_mesh_arrays(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_cad_mesh_arrays", args, 1);
+}
+
+/// Combines outward-wound convex meshes by union, difference or intersection within fixed evaluation limits. Inputs and result share the same coherent length frame. Combines the closed meshes `a` and `b` with the operation `op`. # Errors Returns `Err` when a mesh has no non-degenerate triangle, so that no solid can be built from it.
+inline Term num_cad_mesh_boolean(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_cad_mesh_boolean", args, 3);
+}
+
+/// Returns V − E + F with isolated indexed vertices included. The Euler characteristic `V - E + F` of `mesh`.
+inline Term num_cad_mesh_euler_characteristic(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_cad_mesh_euler_characteristic", args, 1);
+}
+
+/// Checks that every edge of the nonempty indexed surface has exactly two incident triangles. Whether every undirected edge of `mesh` is shared by exactly two triangles.
+inline Term num_cad_mesh_is_closed(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_cad_mesh_is_closed", args, 1);
+}
+
+/// Checks edge-manifoldness. This allows boundary edges and requires each triangle to use three distinct indices. Whether `mesh` is edge-manifold: no edge is shared by more than two triangles and no triangle repeats a vertex.
+inline Term num_cad_mesh_is_manifold(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_cad_mesh_is_manifold", args, 1);
+}
+
+/// Prepares an indexed mesh from a rank-two [x, y, z] tensor of lengths and zero-based triangle indices. Both tensors have three columns. Builds a mesh from raw vertex and triangle arrays.
+inline Term num_cad_mesh_new(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_cad_mesh_new", args, 2);
+}
+
+/// Welds, reorients and fills boundary loops where the repair algorithm can resolve them. Returns a new model and counts of the changes. Welds, re-orients and closes `mesh`. The passes run in that order: coincident vertices are merged, triangles that collapse are dropped, the surface is oriented consistently, and every remaining boundary loop is closed using Liepa's minimum-weight triangulation.
+inline Term num_cad_mesh_repair(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_cad_mesh_repair", args, 2);
+}
+
+/// Returns the signed volume of a closed consistently wound mesh. An inward-wound surface gives negative volume. The signed volume enclosed by `mesh`, positive for outward-facing normals.
+inline Term num_cad_mesh_signed_volume(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_cad_mesh_signed_volume", args, 1);
+}
+
+/// Returns the number of indexed triangle faces. The number of triangles.
+inline Term num_cad_mesh_triangle_count(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_cad_mesh_triangle_count", args, 1);
+}
+
+/// Returns the number of indexed vertices. The number of vertices.
+inline Term num_cad_mesh_vertex_count(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_cad_mesh_vertex_count", args, 1);
+}
+
+/// Merges nearby vertices using the supplied length tolerance and returns a new mesh and a vertex count. Zero tolerance merges bit-identical coordinates. Merges vertices closer than `tolerance` and drops degenerate triangles. Returns the welded mesh and the number of vertices that disappeared. A non-positive or non-finite `tolerance` falls back to exact matching.
+inline Term num_cad_mesh_weld(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_cad_mesh_weld", args, 2);
+}
+
+/// Reads bounded planar STEP B-reps with LINE edges directly from text. Each output is a measured mesh. Declared STEP length units are applied; otherwise one coordinate unit is one metre. Reads every solid in a STEP file. Returns one [`Mesh`] per `MANIFOLD_SOLID_BREP`, or one per `CLOSED_SHELL` when the file has no solid wrapper. When the file declares a length unit (`SI_UNIT` or `CONVERSION_BASED_UNIT`), coordinates are scaled into metres; unitless files keep scale `1.0`. # Errors Returns `Err` when the bytes are not UTF-8, when there is no `DATA` section, when there is no closed shell, or when an entity reference is undefined or malformed.
+inline Term num_cad_step_read_text(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_cad_step_read_text", args, 1);
+}
+
+/// Reads binary or ASCII STL directly from byte values 0–255. Supply the length of one unit in the file. STL triangles repeat vertex coordinates until welded. Reads an STL file, detecting binary and ASCII encodings automatically. # Errors Returns `Err` when the data is too short to be an STL file, when a binary triangle count does not match the payload length, when the ASCII body has a malformed `vertex` line, or when the ASCII vertex count is not a multiple of three.
+inline Term num_cad_stl_read(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_cad_stl_read", args, 2);
+}
+
+/// Reads ASCII STL directly from text using the supplied coordinate unit length.
+inline Term num_cad_stl_read_text(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_cad_stl_read_text", args, 2);
+}
+
+/// Returns ASCII STL text with coordinates divided by the supplied unit length. Serialises `mesh` as an ASCII STL file with the given solid `name`.
+inline Term num_cad_stl_write_ascii(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_cad_stl_write_ascii", args, 3);
+}
+
+/// Returns binary STL as byte values 0–255. Coordinates are divided by the supplied unit length before conversion to STL Float32. Serialises `mesh` as a binary STL file. Triangles whose indices are out of range are written with zero coordinates rather than skipped, so the declared facet count always matches the payload.
+inline Term num_cad_stl_write_binary(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_cad_stl_write_binary", args, 2);
+}
+
 /// Classic Cauchy upper bound from a complex coefficient vector in ascending order. Coefficients may share ordinate units. The polynomial coordinate and the result are dimensionless. Classic Cauchy upper bound on the modulus of all roots of $p(z) = \\sum_{k=0}^n `c_k` z^k$ (ascending coefficients): $R = 1 + \\max_{0 \\le k < n} |`c_k` / `c_n`|$.
 inline Term num_cauchy_root_bound(const Term& a0) {
     Term args[] = {a0};
@@ -17038,6 +17698,39 @@ inline Value num_complex_cauchy_derivative_scaled(Args&&... args) {
                                  std::forward<Args>(args)...);
 }
 
+/// Returns Cauchy FFT derivatives in the normalized local coordinate (z-center)/radius. All entries share the callback value dimension. A doubled grid estimates the largest absolute difference, and convergence compares this estimate with the requested absolute tolerance. Reports the refined sample count and actual callback evaluations. Computes `f^(0)(z0), f^(1)(z0), ..., f^(max_order)(z0)` in one pass using Cauchy's integral formula discretized with an FFT (Lyness-Moler method) on `|z - z0| = radius` with `n_samples` equispaced nodes.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_complex_cauchy_fft_derivatives_checked(Args&&... args) {
+    return detail::call_inferred("num_complex_cauchy_fft_derivatives_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// `num_complex_cauchy_riemann_checked(point, step, coordinate_scale, value_scale, tolerance, budget, callback)`: Checks the relative Cauchy–Riemann residual in the normalized reference frame. Invalid or collapsed stencils and exhaustion of the total callback budget produce errors. Checks the Cauchy-Riemann equations numerically at `z` via `|d/d(conj(z)) f(z)| <= tol * (1 + |d/dz f(z)|)`.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_complex_cauchy_riemann_checked(Args&&... args) {
+    return detail::call_inferred("num_complex_cauchy_riemann_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// `num_complex_cauchy_riemann_polar_checked(radius, angle, radial_step, angular_step, value_scale, budget, callback)`: Returns radial and angular polar Cauchy–Riemann residuals with separate radial and angular steps. Invalid or collapsed stencils and exhaustion of the total callback budget produce errors. Numerical polar Cauchy-Riemann residual `(r * u_r - v_theta, u_theta + r * v_r)` at `(r, theta)`.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_complex_cauchy_riemann_polar_checked(Args&&... args) {
+    return detail::call_inferred("num_complex_cauchy_riemann_polar_checked",
+                                 std::forward<Args>(args)...);
+}
+
 /// Native complex analysis with positive coordinate/value scales, independent D/E physical units and a shared actual callback budget. Circle/residue/count: center,radius,n,xscale,yscale,max_evaluations,f. Contour: path,panels,xscale,yscale,max_evaluations,f. Derivative: z,xscale,yscale,max_evaluations,f. Newton: z,xscale,yscale,tolerance,max_iterations,max_evaluations,f,df. Cauchy: z,radius,order,n,xscale,yscale,max_evaluations,f; dynamic result explicitly retains exact E/D^order units. Analyticity and contour isolation are caller assumptions; native singular/nonconvergence outcomes remain errors. `∮ f(z) dz` over the circle `|z - center| = radius`, counter-clockwise, with `n` equally spaced nodes.
 ///
 /// Higher-order: the function parameters are host callbacks.
@@ -17058,6 +17751,107 @@ template <class... Args>
 inline Value num_complex_contour_integral_scaled(Args&&... args) {
     return detail::call_inferred("num_complex_contour_integral_scaled",
                                  std::forward<Args>(args)...);
+}
+
+/// Returns the squared modulus in squared coordinate units. An unrepresentable result is a domain error. Squared modulus `|z|^2 = re^2 + im^2`.
+inline Term num_complex_coords_abs_sq(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_coords_abs_sq", args, 1);
+}
+
+/// `num_complex_coords_arg_branch(z, theta0)` returns the argument of z in (theta0, theta0 + 2π], with theta0 in radians. The upper endpoint is used on the cut. At zero the result follows the signed-zero convention of atan2 before wrapping. Both arguments are dimensionless. Argument of `z` in `(theta0, theta0 + 2*pi]`, placing the branch cut along ray `theta0`.
+inline Term num_complex_coords_arg_branch(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_coords_arg_branch", args, 2);
+}
+
+/// Estimates the positive-normal lip minus the negative-normal lip of a branch cut. Pass point, coordinate step, bare normal angle in radians, callback-value scale, callback budget and callback. Numerical branch-cut jump `lim_{eps -> 0+} (f(p + i*eps) - f(p - i*eps))` using Richardson extrapolation across `eps` and `eps / 2`.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_complex_coords_branch_jump_checked(Args&&... args) {
+    return detail::call_inferred("num_complex_coords_branch_jump_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// `chordal_distance(z1, z2)` returns the Euclidean distance of the images on the unit sphere. `2 * |z1 - z2| / sqrt((1 + |z1|^2) * (1 + |z2|^2))`. Overflow-safe for large moduli. Spherical chordal distance on the Riemann sphere: `2 * |z1 - z2| / sqrt((1 + |z1|^2) * (1 + |z2|^2))`. Overflow-safe for large moduli.
+inline Term num_complex_coords_chordal_distance(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_coords_chordal_distance", args, 2);
+}
+
+/// `cis(theta)` returns the unit complex number `cos(theta) + i * sin(theta)`. The angle is in radians. Unit complex number `cos(theta) + i * sin(theta)`.
+inline Term num_complex_coords_cis(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_coords_cis", args, 1);
+}
+
+/// Tracks the continuous degree-th root of a dimensionless sampled path away from zero. A positive degree and increments of less than π between samples select a branch. Tracks a continuous branch of `z^(1/n)` along `points` starting on `initial_branch`.
+inline Term num_complex_coords_continue_root(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_complex_coords_continue_root", args, 3);
+}
+
+/// Reconstructs a complex point in radius units from a nonnegative radius and an angle in radians. Reconstructs `r * exp(i * theta)`.
+inline Term num_complex_coords_from_polar(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_coords_from_polar", args, 2);
+}
+
+/// `num_complex_coords_from_riemann_sphere(x, y, z)` inverts stereographic projection for a dimensionless unit sphere point. The north pole returns None. Invalid coordinates or an unrepresentable finite image produce a domain error. Inverse stereographic projection from `S^2` to `C`. Returns `None` at the north pole `(0, 0, 1)` (infinity).
+inline Term num_complex_coords_from_riemann_sphere(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_complex_coords_from_riemann_sphere", args, 3);
+}
+
+/// `num_complex_coords_log_cut(z, theta0)` returns ln(|z|) + i·arg_branch(z, theta0) for dimensionless nonzero z. The cut angle theta0 is in radians. The upper endpoint is used on the cut. Logarithm `ln|z| + i * arg_branch(z, theta0)` with branch cut along ray `theta0`.
+inline Term num_complex_coords_log_cut(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_coords_log_cut", args, 2);
+}
+
+/// `num_complex_coords_pow_cut(z, w, theta0)` returns exp(w·log_cut(z, theta0)) for dimensionless nonzero base z and dimensionless exponent w. The cut angle theta0 is in radians. The upper endpoint is used on the cut. Complex power `exp(w * log_cut(z, theta0))` with branch cut along ray `theta0`.
+inline Term num_complex_coords_pow_cut(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_complex_coords_pow_cut", args, 3);
+}
+
+/// Returns the dimensionless unit direction of a finite nonzero point; zero maps to zero. Complex signum `z / |z|`, or `0` if `z == 0`.
+inline Term num_complex_coords_sign(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_coords_sign", args, 1);
+}
+
+/// `spherical_metric_factor(z)` returns the conformal factor `2 / (1 + |z|^2)`. Spherical metric conformal factor `2 / (1 + |z|^2)`.
+inline Term num_complex_coords_spherical_metric_factor(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_coords_spherical_metric_factor", args, 1);
+}
+
+/// `num_complex_coords_sqrt_cut(z, theta0)` returns sqrt(|z|)·exp(i·arg_branch(z, theta0)/2), with theta0 in radians. The result has the square root of the input dimension. Zero maps to zero. Square root `sqrt(|z|) * cis(arg_branch(z, theta0) / 2)` with branch cut along ray `theta0`.
+inline Term num_complex_coords_sqrt_cut(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_coords_sqrt_cut", args, 2);
+}
+
+/// Returns a measured radius and the principal angle in radians. Signed zero selects the angle on the negative real axis. Polar coordinates `(r, theta)` with `r = |z|` and `theta = arg(z) in (-pi, pi]`.
+inline Term num_complex_coords_to_polar(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_coords_to_polar", args, 1);
+}
+
+/// `num_complex_coords_to_riemann_sphere(point)` projects a finite dimensionless complex point to a unit sphere record with x, y and z fields. Zero maps to the south pole. Stereographic projection from `C` to the unit Riemann sphere `S^2`. Maps `0` to `(0, 0, -1)` and `infinity` to `(0, 0, 1)`. Uses `1/z` scaling when `|z| > 1` to avoid overflow for huge `|z|`.
+inline Term num_complex_coords_to_riemann_sphere(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_coords_to_riemann_sphere", args, 1);
+}
+
+/// Unwraps phases in radians of nonzero samples with a shared coordinate dimension. Consecutive increments are in (−π, π]. Unwraps the phase `arg(samples[k])` continuously along a sampled path.
+inline Term num_complex_coords_unwrap_phase(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_coords_unwrap_phase", args, 1);
 }
 
 /// Native complex analysis with positive coordinate/value scales, independent D/E physical units and a shared actual callback budget. Circle/residue/count: center,radius,n,xscale,yscale,max_evaluations,f. Contour: path,panels,xscale,yscale,max_evaluations,f. Derivative: z,xscale,yscale,max_evaluations,f. Newton: z,xscale,yscale,tolerance,max_iterations,max_evaluations,f,df. Cauchy: z,radius,order,n,xscale,yscale,max_evaluations,f; dynamic result explicitly retains exact E/D^order units. Analyticity and contour isolation are caller assumptions; native singular/nonconvergence outcomes remain errors. The number of zeros minus the number of poles of `f` inside a circle. The circle is `|z - center| = radius` (argument principle), and the count is the winding number of the polygon through the sampled values of `f`. Samples `f` once per node, in counterclockwise order, with at least 64 nodes. Returns `None` if a sampled value is zero or nonfinite or if a sampled change of argument exceeds `pi / 2`. Undersampling can still alias a winding whose changes between nodes are not observed.
@@ -17082,6 +17876,483 @@ inline Value num_complex_derivative_scaled(Args&&... args) {
                                  std::forward<Args>(args)...);
 }
 
+/// `num_complex_disk_add(a, b)` encloses every sum of points in two disks of the same dimension. Addition `self + other`.
+inline Term num_complex_disk_add(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_disk_add", args, 2);
+}
+
+/// Encloses the principal Bessel function J of nonnegative real or negative integral order. Fractional orders use the principal branch on dimensionless disks. Complex Bessel function `J_nu(z)` enclosure for real `nu >= 0`, using `|J_nu'(w)| = 0.5 * |J_{nu-1}(w) - J_{nu+1}(w)|` Lipschitz bound.
+inline Term num_complex_disk_bessel_j(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_disk_bessel_j", args, 2);
+}
+
+/// `num_complex_disk_center(disk)` returns the disk center as a complex quantity.
+inline Term num_complex_disk_center(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_center", args, 1);
+}
+
+/// Krawczyk existence and uniqueness test. The callback must enclose the function and derivative on each entire normalized disk. None means the test could not certify a root. Certifies existence and uniqueness of a simple complex root of `f` inside `ball`. Uses the 1D complex Krawczyk operator: `K(B) = m - f(m)/f'(m) + (1 - f'(B)/f'(m)) * (B - m)`. Returns `Some(K(B))` if `K(B)` lies strictly inside `ball`.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_complex_disk_certify_root(Args&&... args) {
+    return detail::call_inferred("num_complex_disk_certify_root",
+                                 std::forward<Args>(args)...);
+}
+
+/// Checks the strict Rouché inequality on every covering disk of the normalized circle. Both callbacks must enclose their functions on the entire input disk and the functions must be holomorphic in the enclosed region. Certifies Rouché's theorem on the circle `|z - center| = radius` by covering the circle with `segments` overlapping [`ComplexBall`]s and checking `|g(B)|_upper < |f(B)|_lower` on every segment.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_complex_disk_certify_rouche(Args&&... args) {
+    return detail::call_inferred("num_complex_disk_certify_rouche",
+                                 std::forward<Args>(args)...);
+}
+
+/// Krawczyk existence and uniqueness test for a normalized complex box. The Jacobian callback must enclose every derivative on the entire box. None means no certificate was obtained. Multi-dimensional complex Krawczyk root certification for `F(z) = 0`. Given a box `balls` (`[B_0, ..., B_{n-1}]`), midpoint evaluation `f_mid = F(m)`, and Jacobian enclosure `jac_box = J_F(B)` (evaluated over `balls`), computes `K(B) = m - R * f_mid + (I - R * J_F(B)) * (B - m)` where `R ~ J_F(m)^{-1}`. Returns `Some(K(B))` if every component `K(B)_i` lies strictly inside `B_i`.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_complex_disk_certify_system(Args&&... args) {
+    return detail::call_inferred("num_complex_disk_certify_system",
+                                 std::forward<Args>(args)...);
+}
+
+/// `num_complex_disk_conj(disk)` reflects the disk in the real axis and preserves its coordinate dimension. Complex conjugate of this ball.
+inline Term num_complex_disk_conj(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_conj", args, 1);
+}
+
+/// `num_complex_disk_contains(disk, point)` tests whether the point may lie in the closed disk. Uncertainty due to rounding at its boundary counts as possible membership. Whether `z` lies in this closed disk (checked with outward tolerance on `|z - mid|`).
+inline Term num_complex_disk_contains(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_disk_contains", args, 2);
+}
+
+/// `num_complex_disk_contains_zero(disk)` tests whether zero may lie in the closed disk. Whether `0` may lie in this disk.
+inline Term num_complex_disk_contains_zero(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_contains_zero", args, 1);
+}
+
+/// `num_complex_disk_cot(disk)` encloses the dimensionless cotangent. Returns None if the denominator cannot be certified nonzero. Complex cotangent `cot(z) = cos(z) / sin(z)`.
+inline Term num_complex_disk_cot(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_cot", args, 1);
+}
+
+/// `num_complex_disk_coth(disk)` encloses the dimensionless hyperbolic cotangent. Returns None if the denominator cannot be certified nonzero. Complex hyperbolic cotangent `coth(z) = cosh(z) / sinh(z)`.
+inline Term num_complex_disk_coth(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_coth", args, 1);
+}
+
+/// `num_complex_disk_csc(disk)` encloses the dimensionless cosecant. Returns None if the denominator cannot be certified nonzero. Complex cosecant `csc(z) = 1 / sin(z)`.
+inline Term num_complex_disk_csc(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_csc", args, 1);
+}
+
+/// `num_complex_disk_csch(disk)` encloses the dimensionless hyperbolic cosecant. Returns None if the denominator cannot be certified nonzero. Complex hyperbolic cosecant `csch(z) = 1 / sinh(z)`.
+inline Term num_complex_disk_csch(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_csch", args, 1);
+}
+
+/// `num_complex_disk_div(numerator, denominator)` encloses quotients with numerator over denominator dimension. Returns None if the denominator disk cannot be separated from zero. Division `self / other`. Returns `None` if `other` cannot be separated from zero.
+inline Term num_complex_disk_div(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_disk_div", args, 2);
+}
+
+/// Encloses the complex error function for a dimensionless disk, using an explicit series remainder or a whole-disk integral bound. Complex error function enclosure `erf(z)` via midpoint evaluation + Lipschitz derivative bound `|erf'(w)| = (2/sqrt(pi)) * |exp(-w^2)|`.
+inline Term num_complex_disk_erf(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_erf", args, 1);
+}
+
+/// Encloses complex Gamma for a dimensionless disk on the supported log-Gamma domain. None indicates an unavailable finite enclosure. Complex gamma enclosure `Gamma(z) = exp(ln_gamma(z))` away from `(-inf, 0]`.
+inline Term num_complex_disk_gamma(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_gamma", args, 1);
+}
+
+/// `num_complex_disk_i()` returns a dimensionless point disk at the imaginary unit. The imaginary unit point ball `0 + 1i`.
+inline Term num_complex_disk_i() { return apply("num_complex_disk_i", nullptr, 0); }
+
+/// `num_complex_disk_inside_strictly(inner, outer)` certifies that the inner disk lies strictly in the interior of the outer disk. Whether `self` lies strictly in the interior of `outer`.
+inline Term num_complex_disk_inside_strictly(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_disk_inside_strictly", args, 2);
+}
+
+/// Tests whether well-formed disk coordinates and radius are all finite. An infinite radius gives false; malformed disks give an error. Whether center and radius are finite.
+inline Term num_complex_disk_is_finite(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_is_finite", args, 1);
+}
+
+/// `num_complex_disk_jet_acos(value)` encloses the dimensionless principal inverse cosine and its first derivative. Returns None when a finite analytic enclosure cannot be certified. Inverse cosine.
+inline Term num_complex_disk_jet_acos(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_jet_acos", args, 1);
+}
+
+/// `num_complex_disk_jet_acosh(value)` encloses the dimensionless principal inverse hyperbolic cosine and its first derivative. Returns None when a finite analytic enclosure cannot be certified. Inverse hyperbolic cosine.
+inline Term num_complex_disk_jet_acosh(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_jet_acosh", args, 1);
+}
+
+/// `num_complex_disk_jet_add(a, b)` adds two dimensionless jets, enclosing both value and first derivative. Addition.
+inline Term num_complex_disk_jet_add(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_disk_jet_add", args, 2);
+}
+
+/// `num_complex_disk_jet_asin(value)` encloses the dimensionless principal inverse sine and its first derivative. Returns None when a finite analytic enclosure cannot be certified. Inverse sine.
+inline Term num_complex_disk_jet_asin(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_jet_asin", args, 1);
+}
+
+/// `num_complex_disk_jet_asinh(value)` encloses the dimensionless principal inverse hyperbolic sine and its first derivative. Returns None when a finite analytic enclosure cannot be certified. Inverse hyperbolic sine.
+inline Term num_complex_disk_jet_asinh(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_jet_asinh", args, 1);
+}
+
+/// `num_complex_disk_jet_atan(value)` encloses the dimensionless principal inverse tangent and its first derivative. Returns None when a finite analytic enclosure cannot be certified. Inverse tangent.
+inline Term num_complex_disk_jet_atan(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_jet_atan", args, 1);
+}
+
+/// `num_complex_disk_jet_atanh(value)` encloses the dimensionless principal inverse hyperbolic tangent and its first derivative. Returns None when a finite analytic enclosure cannot be certified. Inverse hyperbolic tangent.
+inline Term num_complex_disk_jet_atanh(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_jet_atanh", args, 1);
+}
+
+/// `num_complex_disk_jet_constant(disk)` initializes a dimensionless jet with a zero derivative. The record stores value and derivative disks. Constant `c` with derivative `0`.
+inline Term num_complex_disk_jet_constant(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_jet_constant", args, 1);
+}
+
+/// `num_complex_disk_jet_cos(value)` encloses the dimensionless cosine and its first derivative. A non-finite enclosure reports an error. Cosine.
+inline Term num_complex_disk_jet_cos(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_jet_cos", args, 1);
+}
+
+/// `num_complex_disk_jet_cosh(value)` encloses the dimensionless hyperbolic cosine and its first derivative. A non-finite enclosure reports an error. Hyperbolic cosine.
+inline Term num_complex_disk_jet_cosh(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_jet_cosh", args, 1);
+}
+
+/// `num_complex_disk_jet_div(numerator, denominator)` divides dimensionless jets with the quotient rule. Returns None when a denominator cannot be separated from zero. Division.
+inline Term num_complex_disk_jet_div(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_disk_jet_div", args, 2);
+}
+
+/// `num_complex_disk_jet_exp(value)` encloses the dimensionless exponential and its first derivative. A non-finite enclosure reports an error. Exponential.
+inline Term num_complex_disk_jet_exp(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_jet_exp", args, 1);
+}
+
+/// `num_complex_disk_jet_ln(value)` encloses the dimensionless principal logarithm and its first derivative. Returns None when a finite analytic enclosure cannot be certified. Principal logarithm.
+inline Term num_complex_disk_jet_ln(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_jet_ln", args, 1);
+}
+
+/// `num_complex_disk_jet_mul(a, b)` multiplies two dimensionless jets, enclosing both value and first derivative. Multiplication.
+inline Term num_complex_disk_jet_mul(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_disk_jet_mul", args, 2);
+}
+
+/// `num_complex_disk_jet_pow(base, exponent)` encloses the principal complex power of two dimensionless jets and its first derivative. Returns None when a principal logarithm cannot be certified. Complex power `self^exponent` for a constant exponent `c` or general jet.
+inline Term num_complex_disk_jet_pow(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_disk_jet_pow", args, 2);
+}
+
+/// `num_complex_disk_jet_powi(value, exponent)` raises a dimensionless jet to a signed integer power and encloses its first derivative. The exponent and exponent minus one must fit i32. Integer power.
+inline Term num_complex_disk_jet_powi(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_disk_jet_powi", args, 2);
+}
+
+/// `num_complex_disk_jet_sin(value)` encloses the dimensionless sine and its first derivative. A non-finite enclosure reports an error. Sine.
+inline Term num_complex_disk_jet_sin(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_jet_sin", args, 1);
+}
+
+/// `num_complex_disk_jet_sinh(value)` encloses the dimensionless hyperbolic sine and its first derivative. A non-finite enclosure reports an error. Hyperbolic sine.
+inline Term num_complex_disk_jet_sinh(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_jet_sinh", args, 1);
+}
+
+/// `num_complex_disk_jet_sqrt(value)` encloses the dimensionless principal square root and its first derivative. Returns None when a finite analytic enclosure cannot be certified. Principal square root.
+inline Term num_complex_disk_jet_sqrt(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_jet_sqrt", args, 1);
+}
+
+/// `num_complex_disk_jet_sub(a, b)` subtracts two dimensionless jets, enclosing both value and first derivative. Subtraction.
+inline Term num_complex_disk_jet_sub(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_disk_jet_sub", args, 2);
+}
+
+/// `num_complex_disk_jet_tan(value)` encloses the dimensionless tangent and its first derivative. Returns None when a finite analytic enclosure cannot be certified. Tangent.
+inline Term num_complex_disk_jet_tan(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_jet_tan", args, 1);
+}
+
+/// `num_complex_disk_jet_tanh(value)` encloses the dimensionless hyperbolic tangent and its first derivative. Returns None when a finite analytic enclosure cannot be certified. Hyperbolic tangent.
+inline Term num_complex_disk_jet_tanh(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_jet_tanh", args, 1);
+}
+
+/// `num_complex_disk_jet_variable(disk)` initializes a dimensionless jet with a unit derivative. The record stores value and derivative disks. Independent variable `z` with derivative `1`.
+inline Term num_complex_disk_jet_variable(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_jet_variable", args, 1);
+}
+
+/// Encloses principal log Gamma on a dimensionless disk off the nonpositive real cut. Uses outward recurrence and a bounded Stirling remainder. Complex log-gamma enclosure `ln(Gamma(z))` away from `(-inf, 0]`, using `|psi(w)|` Lipschitz bound.
+inline Term num_complex_disk_log_gamma(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_log_gamma", args, 1);
+}
+
+/// `num_complex_disk_matmul(a, b)` encloses a product of disk matrices. Each input has nonempty row and column axes, and every disk uses a trailing coordinate axis of length 3; physical dimensions multiply. Matrix-matrix product over [`ComplexBall`].
+inline Term num_complex_disk_matmul(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_disk_matmul", args, 2);
+}
+
+/// `num_complex_disk_matvec(matrix, vector)` encloses a nonempty disk matrix of shape `[rows, columns, 3]` times a disk vector of shape `[columns, 3]`. Physical dimensions multiply. Matrix-vector product over [`ComplexBall`].
+inline Term num_complex_disk_matvec(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_disk_matvec", args, 2);
+}
+
+/// `num_complex_disk_modulus_lower(disk)` returns an outward lower bound on the modulus of every point in the disk. Lower bound on `|z|` for all `z` in this disk.
+inline Term num_complex_disk_modulus_lower(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_modulus_lower", args, 1);
+}
+
+/// `num_complex_disk_modulus_upper(disk)` returns an outward upper bound on the modulus of every point in the disk. Upper bound on `|z|` for all `z` in this disk.
+inline Term num_complex_disk_modulus_upper(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_modulus_upper", args, 1);
+}
+
+/// `num_complex_disk_mul(a, b)` encloses products of points in two disks. The coordinate dimensions multiply. Multiplication `self * other`.
+inline Term num_complex_disk_mul(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_disk_mul", args, 2);
+}
+
+/// `num_complex_disk_neg(disk)` negates a disk and preserves its coordinate dimension. Negation `-self`.
+inline Term num_complex_disk_neg(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_neg", args, 1);
+}
+
+/// `num_complex_disk_new(center, radius)` constructs a disk `[real, imag, radius]` from a finite complex center and a finite nonnegative radius with the same physical dimension. Constructs a ball `{ z : |z - mid| <= rad }`. Returns `None` if `rad < 0.0` or `rad.is_nan()` or `mid` has NaN components.
+inline Term num_complex_disk_new(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_disk_new", args, 2);
+}
+
+/// `num_complex_disk_of(center)` returns the exact point disk of a finite complex center, preserving its dimension. A [`Complex64`] as a point ball with radius `0.0`.
+inline Term num_complex_disk_of(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_of", args, 1);
+}
+
+/// `num_complex_disk_one()` returns a dimensionless point disk at 1. The unit ball `1 + 0i`.
+inline Term num_complex_disk_one() { return apply("num_complex_disk_one", nullptr, 0); }
+
+/// `num_complex_disk_overlaps(a, b)` tests whether two disks with the same coordinate dimension may intersect. Whether two balls intersect.
+inline Term num_complex_disk_overlaps(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_disk_overlaps", args, 2);
+}
+
+/// `num_complex_disk_point(real, imag)` returns an exact point disk from finite real and imaginary coordinates with the same dimension. The exact point ball `re + i*im` with radius `0.0`.
+inline Term num_complex_disk_point(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_disk_point", args, 2);
+}
+
+/// `num_complex_disk_radius(disk)` returns the disk radius with the coordinates’ physical dimension.
+inline Term num_complex_disk_radius(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_radius", args, 1);
+}
+
+/// `num_complex_disk_recip(disk)` encloses reciprocals with inverse coordinate dimension. Returns None if the disk cannot be separated from zero. Reciprocal `1 / self`. Returns `None` if `self` cannot be separated from zero.
+inline Term num_complex_disk_recip(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_recip", args, 1);
+}
+
+/// `num_complex_disk_scale(disk, scale)` multiplies the disk by a finite real scalar. The physical dimensions multiply. Multiplication by a real scalar `s`.
+inline Term num_complex_disk_scale(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_disk_scale", args, 2);
+}
+
+/// `num_complex_disk_sec(disk)` encloses the dimensionless secant. Returns None if the denominator cannot be certified nonzero. Complex secant `sec(z) = 1 / cos(z)`.
+inline Term num_complex_disk_sec(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_sec", args, 1);
+}
+
+/// `num_complex_disk_sech(disk)` encloses the dimensionless hyperbolic secant. Returns None if the denominator cannot be certified nonzero. Complex hyperbolic secant `sech(z) = 1 / cosh(z)`.
+inline Term num_complex_disk_sech(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_sech", args, 1);
+}
+
+/// `num_complex_disk_solve(matrix, rhs)` encloses the solution to a square disk-valued system when residual certification succeeds. The solution dimension is right-hand side over matrix; failed certification gives None. Solves `A x = b` over [`ComplexBall`] with verified enclosure via midpoint Gaussian elimination and Krawczyk/Rump residual certification.
+inline Term num_complex_disk_solve(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_disk_solve", args, 2);
+}
+
+/// `num_complex_disk_square(disk)` encloses the squares of points in a disk. The result has squared coordinate dimension. Square `self * self`.
+inline Term num_complex_disk_square(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_disk_square", args, 1);
+}
+
+/// `num_complex_disk_sub(a, b)` encloses every difference of points in two disks of the same dimension. Subtraction `self - other`.
+inline Term num_complex_disk_sub(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_disk_sub", args, 2);
+}
+
+/// `num_complex_disk_zero()` returns a dimensionless point disk at 0. The zero ball `0 + 0i`.
+inline Term num_complex_disk_zero() { return apply("num_complex_disk_zero", nullptr, 0); }
+
+/// `num_complex_dynamics_bottcher(point, c, max_steps)` returns a truncated principal Böttcher coordinate estimate in the exterior quadratic basin. Requires a positive iteration budget and an initial point outside the conservative radius sqrt(2) sqrt(max(abs(re(c)), abs(im(c)))) + 1, with a minimum radius of 2. Computes Böttcher's coordinate `\\phi_c(z) = z \\prod_{n=0}^{N-1} (1 + c / z_n^2)^{2^{-(n+1)}}` in the basin of infinity of `f_c(z) = z^2 + c`, satisfying `\\phi_c(z^2 + c) = \\phi_c(z)^2`. # Errors Returns an error if the orbit hits zero or does not clearly escape to infinity.
+inline Term num_complex_dynamics_bottcher(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_complex_dynamics_bottcher", args, 3);
+}
+
+/// `num_complex_dynamics_external_ray(c, angle, potential, max_steps)` estimates a quadratic external-ray point and reports a relative Böttcher-coordinate residual. Angles are turns in [0, 1); the potential is positive and at most 325. Traces a point on a quadratic map’s external ray. Traces a point on the external ray of `f_c(z) = z^2 + c` at angle `theta_turns` `\\in [0, 1)` and Green potential `potential_r > 0`, satisfying `\\phi_c(z) = e^{r + 2\\pi i \\theta}`, by stepping inward from a large radius `R_0 = e^{2^k r}` via `k` square-root continuations. # Errors Returns an error for a nonpositive potential, a zero step count, or failed Böttcher coordinate evaluation.
+inline Term num_complex_dynamics_external_ray(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_complex_dynamics_external_ray", args, 4);
+}
+
+/// `num_complex_dynamics_in_main_components(c)` tests membership in the Mandelbrot main cardioid or period-two bulb. Other bounded parameters may return false. Checks if `c` lies inside the main cardioid or period-2 bulb of the Mandelbrot set.
+inline Term num_complex_dynamics_in_main_components(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_dynamics_in_main_components", args, 1);
+}
+
+/// `num_complex_dynamics_julia_escape(initial, c, max_steps, radius)` checks iterates preceding the budget for a radius crossing. Returns the crossing step and a potential estimate, or the exhausted budget and no estimate. Julia escape time and Green's potential $`G_c(z_0)`$ for $z_{n+1} = `z_n^2` + c$.
+inline Term num_complex_dynamics_julia_escape(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_complex_dynamics_julia_escape", args, 4);
+}
+
+/// Returns a truncated measured Koenigs coordinate estimate with its fixed-point closure error and actual counts. The supplied multiplier must have magnitude strictly between zero and one. Uses positive coordinate scale and closure tolerance, and bounded iterations and callbacks. Computes the Koenigs coordinate of an attracting fixed point. Computes Koenigs's linearizing coordinate $\\psi(z) = \\lim_{n\\to\\infty} \\lambda^{-n} (f^{\\circ n}(z) - `z_0`)$ near an attracting fixed point $`z_0`$ ($0 < |\\lambda| < 1$), satisfying $\\psi(f(z)) = \\lambda \\psi(z)$. # Errors Returns an error if the multiplier does not satisfy `0 < |lambda| < 1`.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_complex_dynamics_koenigs_checked(Args&&... args) {
+    return detail::call_inferred("num_complex_dynamics_koenigs_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// `num_complex_dynamics_mandelbrot_distance(c, max_steps)` returns an exterior distance estimate when an iterate crosses the native threshold, or None when no crossing was observed within the budget. Mandelbrot distance estimator `d(c) ≈ |z_n| * ln|z_n| / |z'_n|` (returns `0.0` if bounded).
+inline Term num_complex_dynamics_mandelbrot_distance(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_dynamics_mandelbrot_distance", args, 2);
+}
+
+/// `num_complex_dynamics_mandelbrot_escape(c, max_steps, radius)` checks iterates preceding the budget for a radius crossing. Returns the crossing step and a potential estimate, or the exhausted budget and no estimate. Mandelbrot escape time and Green's potential `G_c(c) = \\lim 2^{-(n-1)} \\ln|z_n|` for `z_0 = 0, z_{n+1} = z_n^2 + c`.
+inline Term num_complex_dynamics_mandelbrot_escape(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_complex_dynamics_mandelbrot_escape", args, 3);
+}
+
+/// Tests a Newton basin from an initial coordinate using positive coordinate and value scales, absolute residual tolerance, iteration and callback budgets, and function and derivative callbacks. Reports an optional measured root, the number of tested points and actual callbacks. Evaluates Newton fractal basin convergence for `f(z) / df(z)` starting at `z0`, returning `(converged_root, iterations)`.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_complex_dynamics_newton_basin_checked(Args&&... args) {
+    return detail::call_inferred("num_complex_dynamics_newton_basin_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// `num_complex_dynamics_quadratic_lyapunov(initial, c, steps, burn_in)` estimates the mean log derivative magnitude along the dimensionless quadratic orbit after the requested burn-in. A zero or nonfinite derivative is an error. Estimates the Lyapunov exponent $\\frac{1}{N} \\sum_{n=\\text{burn\\_in}}^{\\text{burn\\_in}+N-1} \\ln |f'(`z_n`)|$. # Errors Returns an error for a zero step count or a zero or non-finite derivative along the orbit.
+inline Term num_complex_dynamics_quadratic_lyapunov(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_complex_dynamics_quadratic_lyapunov", args, 4);
+}
+
+/// `num_complex_dynamics_quadratic_multiplier(point, c, period, tolerance)` returns the multiplier, closure residual and numerical class for the requested quadratic iterate, or an error when it fails to close within tolerance. Computes the multiplier $\\lambda = \\prod_{k=0}^{p-1} f'(`z_k`)$ along a period-`p` orbit starting at `z0`, and classifies the periodic point.
+inline Term num_complex_dynamics_quadratic_multiplier(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_complex_dynamics_quadratic_multiplier", args, 4);
+}
+
+/// `num_complex_dynamics_quadratic_orbit(initial, c, steps)` returns the dimensionless forward orbit of z -> z²+c, including the initial point. A nonfinite iterate produces an error. Computes the forward orbit $[`z_0`, `f(z_0)`, \\dots, f^{\\circ `n}(z_0)`]$.
+inline Term num_complex_dynamics_quadratic_orbit(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_complex_dynamics_quadratic_orbit", args, 3);
+}
+
+/// `num_complex_dynamics_quadratic_periodic_points(c, period, seeds, max_steps, tolerance)` uses bounded Newton searches from the supplied seeds and returns deduplicated candidates for the requested primitive period with their residuals. Empty results report that the supplied searches found no candidate. Finds periodic points of $`f_c(z)` = z^2 + c$ of period `period` by running Newton's method on $`f_c^{\\circ` p}(z) - z = 0$ from the provided initial `seeds`, deduplicating within `tol * 1e3`.
+inline Term num_complex_dynamics_quadratic_periodic_points(const Term& a0, const Term& a1, const Term& a2, const Term& a3, const Term& a4) {
+    Term args[] = {a0, a1, a2, a3, a4};
+    return apply("num_complex_dynamics_quadratic_periodic_points", args, 5);
+}
+
+/// `num_complex_laplacian_checked(point, step, value_scale, budget, callback)`: Estimates the Cartesian Laplacian in callback-value units over coordinate units squared. Invalid or collapsed stencils and exhaustion of the total callback budget produce errors. Numerical complex Laplacian `4 * d^2 f / (dz d(conj(z))) = f_xx + f_yy` using central 2nd-order finite differences with step `h`.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_complex_laplacian_checked(Args&&... args) {
+    return detail::call_inferred("num_complex_laplacian_checked",
+                                 std::forward<Args>(args)...);
+}
+
 /// Native complex analysis with positive coordinate/value scales, independent D/E physical units and a shared actual callback budget. Circle/residue/count: center,radius,n,xscale,yscale,max_evaluations,f. Contour: path,panels,xscale,yscale,max_evaluations,f. Derivative: z,xscale,yscale,max_evaluations,f. Newton: z,xscale,yscale,tolerance,max_iterations,max_evaluations,f,df. Cauchy: z,radius,order,n,xscale,yscale,max_evaluations,f; dynamic result explicitly retains exact E/D^order units. Analyticity and contour isolation are caller assumptions; native singular/nonconvergence outcomes remain errors. Newton's method for an analytic `f` with derivative `df`, from `z0`. Returns the root once a step is below `tolerance`, or `None` after `max_iterations` or at a vanishing derivative.
 ///
 /// Higher-order: the function parameters are host callbacks.
@@ -17091,6 +18362,30 @@ template <class... Args>
 inline Value num_complex_newton_scaled(Args&&... args) {
     return detail::call_inferred("num_complex_newton_scaled",
                                  std::forward<Args>(args)...);
+}
+
+/// Finds approximate roots with Aberth–Ehrlich in dimensionless coordinates. Coefficients are ascending. Reports the degree, root candidates including multiplicities, their coefficientwise relative backward errors and the largest coefficient error of the reconstructed polynomial after normalization. A nonzero constant has an empty root set. The zero polynomial, exceeded work budget and nonconvergence return errors. Finds all roots of a polynomial with ascending coefficients using the Aberth–Ehrlich method. # Errors Returns an error for an empty coefficient slice or when the iterations fail to converge.
+inline Term num_complex_polynomial_aberth_ehrlich(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_complex_polynomial_aberth_ehrlich", args, 3);
+}
+
+/// Finds approximate roots with Durand–Kerner in dimensionless coordinates. Coefficients are ascending. Reports the degree, root candidates including multiplicities, their coefficientwise relative backward errors and the largest coefficient error of the reconstructed polynomial after normalization. A nonzero constant has an empty root set. The zero polynomial, exceeded work budget and nonconvergence return errors. Finds all roots of a polynomial with ascending coefficients using the Durand–Kerner method. # Errors Returns an error for an empty coefficient slice or when the iterations fail to converge.
+inline Term num_complex_polynomial_durand_kerner(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_complex_polynomial_durand_kerner", args, 3);
+}
+
+/// Certifies disjoint simple-root disks for an ascending dimensionless polynomial of degree at most 128. Each disk is [real, imaginary, radius]. complete is true only if the certificates account for every root; unresolved or multiple roots may produce a partial set. Verified root isolation for a complex polynomial inside `|Re(z)|, |Im(z)| <= R` using [`ComplexBall`](crate::kernels::complex_ball::ComplexBall) interval exclusion, quadtree subdivision, and 1D Krawczyk certification.
+inline Term num_complex_polynomial_isolate_verified(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_polynomial_isolate_verified", args, 2);
+}
+
+/// Finds an approximate root of an ascending dimensionless polynomial from the supplied complex seed. The result includes its coefficientwise relative backward error. A nonzero constant returns None. The zero polynomial, exceeded work budget and nonconvergence return errors. Finds a single root of a polynomial starting from `z0` via Laguerre's method. # Errors Returns an error for a constant polynomial, a vanishing Laguerre denominator, or nonconvergence.
+inline Term num_complex_polynomial_laguerre(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_complex_polynomial_laguerre", args, 4);
 }
 
 /// Native complex analysis with positive coordinate/value scales, independent D/E physical units and a shared actual callback budget. Circle/residue/count: center,radius,n,xscale,yscale,max_evaluations,f. Contour: path,panels,xscale,yscale,max_evaluations,f. Derivative: z,xscale,yscale,max_evaluations,f. Newton: z,xscale,yscale,tolerance,max_iterations,max_evaluations,f,df. Cauchy: z,radius,order,n,xscale,yscale,max_evaluations,f; dynamic result explicitly retains exact E/D^order units. Analyticity and contour isolation are caller assumptions; native singular/nonconvergence outcomes remain errors. The residue of `f` at `z0`: `(1 / 2 pi i) ∮ f dz` over a small circle that must enclose no other singularity.
@@ -17104,10 +18399,138 @@ inline Value num_complex_residue_scaled(Args&&... args) {
                                  std::forward<Args>(args)...);
 }
 
+/// Returns sampled logarithmic-derivative moments of (z-center)/radius, the largest coarse/fine difference, and sample/evaluation counts. Takes a measured center, radius, callback value scale, initial sample count, maximum moment, host budget, analytic function and derivative. Computes power-sum moments $`s_k` = \\frac{1}{2\\pi i} \\oint_{|z-c|=r} z^k \\frac{f'(z)}{f(z)} dz$ for $k = 0, \\dots, \\text{max\\_moment}$ using the periodic trapezoidal rule. # Errors Returns an error for an invalid radius or sample count, or if the function is nearly zero on the circle.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_complex_root_circle_moments(Args&&... args) {
+    return detail::call_inferred("num_complex_root_circle_moments",
+                                 std::forward<Args>(args)...);
+}
+
+/// Reports |f|>|g| at each sampled point of a measured circle and returns actual counts. Takes the circle, shared callback value scale, sample count, host budget and two analytic functions. An entire-circle inequality requires a separate enclosure. Checks Rouché's condition $|f(z)| > |g(z)|$ on $|z - \\text{center}| = \\text{radius}$. # Errors Returns an error for an invalid circle radius or sample count.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_complex_root_circle_rouche_samples(Args&&... args) {
+    return detail::call_inferred("num_complex_root_circle_rouche_samples",
+                                 std::forward<Args>(args)...);
+}
+
+/// Returns a sampled winding estimate and actual counts if the coarse and refined complex integrals approach the same integer. Takes the measured circle, value scale, initial samples, host budget, and analytic or meromorphic function and derivative. Computes the argument principle winding number `(Z - P) = \\text{round}(\\text{Re}(s_0))`. # Errors Returns an error when moment evaluation fails or the winding estimate is too far from an integer.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_complex_root_circle_winding(Args&&... args) {
+    return detail::call_inferred("num_complex_root_circle_winding",
+                                 std::forward<Args>(args)...);
+}
+
+/// Approximates zeros of a pole-free function inside a sampled circle. Takes its measured center and radius, residual reference scale, sample count, callback budget, f and f'. Finds zeros of an analytic function in a disk using Delves–Lyness localization. Uses argument-principle moments, Newton’s identities to form the monic polynomial, and Aberth–Ehrlich iteration to extract its zeros. The function must be pole-free in the disk. # Errors Returns an error when moment evaluation or the polynomial solve fails, or the winding number is invalid.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_complex_root_delves_lyness(Args&&... args) {
+    return detail::call_inferred("num_complex_root_delves_lyness",
+                                 std::forward<Args>(args)...);
+}
+
+/// Halley root using a measured seed, coordinate and value scales, normalized residual tolerance, iteration limit, callback budget, f, f' and f''. The derivative units follow the axis dimension. Finds a complex root using Halley's cubically convergent method. # Errors Returns an error if the iterations fail to converge.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_complex_root_halley(Args&&... args) {
+    return detail::call_inferred("num_complex_root_halley",
+                                 std::forward<Args>(args)...);
+}
+
+/// Follows a measured complex zero from t=0 to t=1. Takes seed, coordinate and value scales, normalized residual tolerance, nominal step count, correction limit, callback budget, H, dH/dz and dH/dt. Tracks a complex homotopy root from `t = 0` to `t = 1`. Starts at `z(0) = z_0` for `H(z(t), t) = 0`, using an adaptive RK4 predictor and Newton corrector with damping near a singular target. # Errors Returns an error for a zero step count, a singular Jacobian, or failure to reach and correct the endpoint within the step budget.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_complex_root_homotopy(Args&&... args) {
+    return detail::call_inferred("num_complex_root_homotopy",
+                                 std::forward<Args>(args)...);
+}
+
+/// Muller root using three measured guesses, coordinate scale, residual scale, normalized residual tolerance, iteration limit, callback budget and one analytic callback. Finds a complex root of an arbitrary analytic function `f` using Muller's quadratic interpolation. # Errors Returns an error if the interpolation denominator vanishes or the iterations fail to converge.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_complex_root_muller(Args&&... args) {
+    return detail::call_inferred("num_complex_root_muller",
+                                 std::forward<Args>(args)...);
+}
+
+/// `num_complex_step_derivative_checked(x, step, value_scale, budget, callback)`: Estimates a real analytic derivative from the imaginary part of a single sample. Invalid or collapsed stencils and exhaustion of the total callback budget produce errors. Complex-step differentiation `Im(f(x + i*h)) / h` for real analytic functions, avoiding subtractive cancellation down to machine precision.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_complex_step_derivative_checked(Args&&... args) {
+    return detail::call_inferred("num_complex_step_derivative_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// Returns normalized hyperelliptic covering topology for w^2 with given finite roots. Generators act on zero-based sheets, and ramification cycles are packed with offsets. Topological invariants for a hyperelliptic curve `w^2 = prod_{k=1}^d (z - r_k)` assuming the `roots` are distinct.
+inline Term num_complex_surface_hyperelliptic(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_complex_surface_hyperelliptic", args, 1);
+}
+
+/// Tracks polynomial fibers on a normalized closed piecewise-linear loop. Coefficient rows index w degree and columns index z degree in ascending order. The last vertex is connected back to the first. Returns zero-based sheet images or an error for ambiguous fibers. Returns the monodromy permutation of `P(z, w) = 0` along a closed loop. Tracks the `n` sheets from `loop_pts[0]` around the loop and back, subdividing steps adaptively to prevent sheet collisions. The permutation acts on `0..n`.
+inline Term num_complex_surface_monodromy_checked(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_complex_surface_monodromy_checked", args, 3);
+}
+
+/// Returns normalized superelliptic covering topology for w^degree with given finite roots. The infinity permutation uses a positive loop in the 1/z coordinate. Topological invariants for a superelliptic curve `w^n = prod_{k=1}^d (z - r_k)` deduplicating roots within `1e-12` (so repeated roots do not inflate genus).
+inline Term num_complex_surface_superelliptic(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_complex_surface_superelliptic", args, 2);
+}
+
 /// Returns the winding number about zero of the polygon formed by a rank-one tensor of complex vertices with a common physical dimension. The last vertex connects to the first. Counterclockwise winding is positive. Empty paths and paths through zero return a domain error. Winding number about the origin of the closed polygonal path through `points`. Joins the last vertex to the first. Counterclockwise turns count as positive. Returns `None` for an empty path, a nonfinite vertex or an edge through the origin. A single nonzero finite vertex has winding number zero.
 inline Term num_complex_winding_number(const Term& a0) {
     Term args[] = {a0};
     return apply("num_complex_winding_number", args, 1);
+}
+
+/// `num_complex_wirtinger_dz_checked(point, step, value_scale, budget, callback)`: Estimates the Wirtinger derivative with respect to z. Invalid or collapsed stencils and exhaustion of the total callback budget produce errors. Numerical Wirtinger derivative `d/dz = 0.5 * (d/dx - i * d/dy)` by central finite differences with step `h`.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_complex_wirtinger_dz_checked(Args&&... args) {
+    return detail::call_inferred("num_complex_wirtinger_dz_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// `num_complex_wirtinger_dzbar_checked(point, step, value_scale, budget, callback)`: Estimates the Wirtinger derivative with respect to conjugate z. Invalid or collapsed stencils and exhaustion of the total callback budget produce errors. Numerical Wirtinger derivative `d/d(conj(z)) = 0.5 * (d/dx + i * d/dy)` by central finite differences with step `h`.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_complex_wirtinger_dzbar_checked(Args&&... args) {
+    return detail::call_inferred("num_complex_wirtinger_dzbar_checked",
+                                 std::forward<Args>(args)...);
 }
 
 /// Converts degrees to radians.
@@ -17134,10 +18557,446 @@ inline Term num_cond(const Term& a0) {
     return apply("num_cond", args, 1);
 }
 
+/// Bergman kernel of the unit disk. Both dimensionless complex inputs must lie inside the open disk. Exact Bergman kernel of the unit disk: $K_{\\mathbb{D}}(z, w) = \\frac{1}{\\pi (1 - z \\bar{w})^2}$.
+inline Term num_conformal_bergman_kernel_disk(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_conformal_bergman_kernel_disk", args, 2);
+}
+
+/// Evaluates a dimensionless Bergman expansion with rows of ascending complex basis coefficients. Zero-pad lower-degree polynomials. The diagonal evaluates the basis once per row. Evaluates a Bergman kernel expansion `K(z, w) = \\sum_{k=0}^M \\phi_k(z) \\overline{\\phi_k(w)}` from a list of orthonormal polynomial basis vectors (each in ascending power coefficients).
+inline Term num_conformal_bergman_polynomial_basis(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_conformal_bergman_polynomial_basis", args, 3);
+}
+
+/// `cayley_transform(z)` returns the Möbius map `(z - i) / (z + i)`. Its pole is at `-i`. On the upper half-plane its image is the open unit disk. Cayley transform $C(z) = \\frac{z - i}{z + i}$ mapping the upper half-plane to the unit disk.
+inline Term num_conformal_cayley_transform(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_conformal_cayley_transform", args, 1);
+}
+
+/// Classifies finite, projectively equivalent Möbius coefficients as identity, elliptic, parabolic, hyperbolic or loxodromic. Classifies a Möbius transformation by its normalized trace squared $\\tau = (a+d)^2 / (ad-bc)$. # Errors Returns an error for a degenerate transformation.
+inline Term num_conformal_classify_mobius(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_conformal_classify_mobius", args, 1);
+}
+
+/// `cross_ratio(z1, z2, z3, z4)` computes `((z1 - z3) * (z2 - z4)) / ((z1 - z4) * (z2 - z3))`. Computes the cross ratio `(z_1, z_2; z_3, z_4) = \\frac{(z_1 - z_3)(z_2 - z_4)}{(z_1 - z_4)(z_2 - z_3)}`.
+inline Term num_conformal_cross_ratio(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_conformal_cross_ratio", args, 4);
+}
+
+/// Builds a Möbius automorphism of the unit disk with |alpha| < 1 and angle theta in radians. Unit disk automorphism $f(z) = e^{i\\theta} \\frac{z - \\alpha}{1 - \\bar{\\alpha} z}$ for $|\\alpha| < 1$. # Errors Returns an error if the translation parameter lies on or outside the unit circle.
+inline Term num_conformal_disk_automorphism(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_conformal_disk_automorphism", args, 2);
+}
+
+/// `joukowsky(z)` returns the Joukowsky airfoil transformation `(z + 1/z)/2`. Joukowsky airfoil transformation $J(z) = \\frac{1}{2}(z + 1/z)$.
+inline Term num_conformal_joukowsky(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_conformal_joukowsky", args, 1);
+}
+
+/// `num_conformal_joukowsky_inverse(point)` returns the two dimensionless inverse branches as named plus and minus fields, ordered by the principal square root of point² - 1. An unrepresentable branch produces a domain error. Two branches of the inverse Joukowsky map $w \\pm \\sqrt{w^2 - 1}$.
+inline Term num_conformal_joukowsky_inverse(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_conformal_joukowsky_inverse", args, 1);
+}
+
+/// `karman_trefftz(z, exponent)` evaluates the Kármán–Trefftz map with principal complex powers. For exponent `n`, the map is `n * ((z+1)^n + (z-1)^n) / ((z+1)^n - (z-1)^n)`. Kármán–Trefftz transformation $`K_n(z)` = n \\frac{(z+1)^n + (z-1)^n}{(z+1)^n - (z-1)^n}$.
+inline Term num_conformal_karman_trefftz(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_conformal_karman_trefftz", args, 2);
+}
+
+/// `koebe_map(z)` returns the Koebe function `z / (1 - z)^2`. Koebe function $k(z) = \\frac{z}{(1 - z)^2}$.
+inline Term num_conformal_koebe_map(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_conformal_koebe_map", args, 1);
+}
+
+/// Returns finite complex fixed points in the points field. For the identity all is true and points is empty. Returns the finite fixed points of $m(z) = z$, i.e. roots of $c z^2 + (d - a) z - b = 0$.
+inline Term num_conformal_mobius_fixed_points(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_conformal_mobius_fixed_points", args, 1);
+}
+
+/// Builds the projective Möbius map sending three distinct finite source points to three distinct finite target points. Coefficients are homogeneous. Constructs the unique Möbius transformation mapping `(z1, z2, z3) -> (w1, w2, w3)`. # Errors Returns an error if the source triple or the target triple contains repeated points.
+inline Term num_conformal_mobius_three_points(const Term& a0, const Term& a1, const Term& a2, const Term& a3, const Term& a4, const Term& a5) {
+    Term args[] = {a0, a1, a2, a3, a4, a5};
+    return apply("num_conformal_mobius_three_points", args, 6);
+}
+
+/// `num_conformal_numeric_checked(point, step, coordinate_scale, value_scale, tolerance, budget, callback)`: Checks the relative Cauchy–Riemann residual and nonzero normalized magnification using one stencil. Invalid or collapsed stencils and exhaustion of the total callback budget produce errors. Numerically verifies conformality at `z`: Cauchy–Riemann holds and $|f'(z)| > \\text{tol}$.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_conformal_numeric_checked(Args&&... args) {
+    return detail::call_inferred("num_conformal_numeric_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// `num_conformal_scale_rotation_checked(point, step, value_scale, budget, callback)`: Returns measured local magnification and dimensionless rotation in radians. Invalid or collapsed stencils and exhaustion of the total callback budget produce errors. Returns the local conformal magnification $|f'(z)|$ and rotation angle $\\arg f'(z)$.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_conformal_scale_rotation_checked(Args&&... args) {
+    return detail::call_inferred("num_conformal_scale_rotation_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// Evaluates a normalized Schwarz–Christoffel map on the open upper half-plane. Provide the prepared map, point, positive absolute tolerance and panel budget. The result contains the complex value, absolute error estimate, evaluations and convergence. Evaluates the Schwarz–Christoffel integral from $`z_0` = i$ to $z$ (with $\\text{Im}(z) > 0$). # Errors This method currently returns `Ok` for every evaluation.
+inline Term num_conformal_schwarz_christoffel_evaluate(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_conformal_schwarz_christoffel_evaluate", args, 4);
+}
+
+/// Fits a reusable Schwarz–Christoffel map to a simple counterclockwise polygon in normalized coordinates. Pass a positive tolerance and Newton iteration budget. Solves for the prevertices of a Schwarz–Christoffel map. Maps the upper half-plane to the simple counterclockwise polygon `polygon_vertices`. Fixes the first three prevertices at `(-1, 0, 1)` and finds the remaining `n - 3` by damped Newton iteration. # Errors Returns an error for an invalid polygon or when the quadrature or Newton solve fails.
+inline Term num_conformal_schwarz_christoffel_solve(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_conformal_schwarz_christoffel_solve", args, 3);
+}
+
+/// Evaluates an interior point against a portable prepared Szegő quadrature. Evaluates the Szegő kernel $S(w, a)$ at an interior point `w`.
+inline Term num_conformal_szego_evaluate(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_conformal_szego_evaluate", args, 2);
+}
+
+/// Evaluates the Bergman kernel via the prepared Szegő quadrature at an interior point. Bergman kernel $K(z, a) = 4 \\pi S(z, a)^2$ for simply-connected $\\Omega$.
+inline Term num_conformal_szego_evaluate_bergman(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_conformal_szego_evaluate_bergman", args, 2);
+}
+
+/// Evaluates a Riemann map and Szegő kernel from prepared quadrature. The straight segment from the center to the query must stay interior. Evaluates the Riemann map $f(z)$ and Szegő kernel $S(z, a)$ at `z`.
+inline Term num_conformal_szego_evaluate_map(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_conformal_szego_evaluate_map", args, 2);
+}
+
+/// Returns a Riemann map and the Szegő kernel for one interior query. Pass center, query, nodes, callback budget, boundary and derivative callbacks. Computes a Riemann map of a smooth Jordan domain. Computes the Szegő kernel `S(\\cdot, a)` on the boundary of a smooth Jordan domain parameterized CCW by `gamma(t)` with derivative `dgamma(t)` for `t \\in [0, 2\\pi]` via the Kerzman–Stein integral equation `(I + A) S_a = \\bar{H}_a`, and evaluates the Riemann map `f(z) = \\frac{2\\pi}{S(a,a)} \\int_a^z S(\\zeta, a)^2 d\\zeta` at `z`. # Errors Returns an error if the boundary data or integral-equation solve is invalid.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_conformal_szego_map_checked(Args&&... args) {
+    return detail::call_inferred("num_conformal_szego_map_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// Prepares reusable Szegő quadrature from a counterclockwise boundary callback and its derivative on a normalized chart. Pass center, nodes, callback budget and callbacks. Solves $(I + A) `S_a` = \\bar{H}_a$ once and caches the boundary Szegő kernel. # Errors Returns an error for fewer than 16 quadrature nodes, a vanishing boundary tangent, or a failed linear solve.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_conformal_szego_prepare_checked(Args&&... args) {
+    return detail::call_inferred("num_conformal_szego_prepare_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// Prepares reusable Szegő quadrature from 16 to 192 equally spaced counterclockwise boundary samples and their complex parameter derivatives, in dimensionless normalized coordinates. Solves $(I + A) `S_a` = \\bar{H}_a$ once and caches the boundary Szegő kernel. # Errors Returns an error for fewer than 16 quadrature nodes, a vanishing boundary tangent, or a failed linear solve.
+inline Term num_conformal_szego_prepare_sampled(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_conformal_szego_prepare_sampled", args, 3);
+}
+
+/// Borel–Padé resummation of an ascending dimensionless asymptotic series through order m+n. Poles on the positive Borel axis select the upper lateral integral. Borel-Padé resummation of a divergent asymptotic series `sum_{k>=0} c_k z^k` via Borel transform `B(t) = sum (c_k / k!) t^k`, Padé `[m/n]` approximant, and Laplace integral `int_0^oo e^(-t) B(z * t) dt`.
+inline Term num_continuation_borel_pade(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_continuation_borel_pade", args, 4);
+}
+
+/// Evaluates the dimensionless Padé numerator divided by its denominator at a complex point. Pass the record returned by num_continuation_pade. A zero denominator or unrepresentable result returns a domain error. Evaluates rational function `P(z) / Q(z)` via Horner's method.
+inline Term num_continuation_eval_pade(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_continuation_eval_pade", args, 2);
+}
+
+/// Continues the derivative state [y, y', ...] of a dimensionless polynomial-coefficient ODE along a complex polygonal path. Returns the endpoint state, or an error for a singular or unresolved step. Analytically continues `[y, y', ..., y^(r-1)]` of a [`HolonomicOde`] along the polygonal `path` using adaptive local Taylor series steps.
+inline Term num_continuation_holonomic_follow(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_continuation_holonomic_follow", args, 4);
+}
+
+/// Continues the derivative-state identity basis around the closed complex loop; an omitted closing point is appended. Matrix columns correspond to the initial basis vectors. Computes the `r x r` monodromy matrix of a [`HolonomicOde`] around the closed loop `loop_pts` (closing back to `loop_pts[0]`).
+inline Term num_continuation_holonomic_monodromy(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_continuation_holonomic_monodromy", args, 3);
+}
+
+/// Returns the order of an ODE described by rows p_0 through p_r with polynomial coefficients in ascending powers, padded with zeros. Order `r` of the differential equation.
+inline Term num_continuation_holonomic_order(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_continuation_holonomic_order", args, 1);
+}
+
+/// Samples an analytic annulus along a measured circle and returns Laurent coefficients in the dimensionless coordinate (z-center)/radius. Coefficients share the callback amplitude units; first_power is the first exponent and evaluations counts actual callback calls. Extracts Laurent coefficients `c_k` for `k in -neg_order..=pos_order` around `center` on the circle `|z - center| = radius` using a single FFT.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_continuation_laurent_fft(Args&&... args) {
+    return detail::call_inferred("num_continuation_laurent_fft",
+                                 std::forward<Args>(args)...);
+}
+
+/// Forms a complex [m/n] Padé approximant from Taylor coefficients in ascending order. Supply at least m+n+1 dimensionless coefficients. The denominator has constant coefficient one and can drop in degree for a rank-deficient system. The denominator degree may not exceed 64. Constructs the `[m/n]` complex Padé approximant `P(z) / Q(z)` from Taylor coefficients `c_0, c_1, ..., c_{m+n}` (with `Q(0) = 1`).
+inline Term num_continuation_pade(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_continuation_pade", args, 3);
+}
+
+/// Re-centers ascending complex Taylor coefficients along the supplied chain of dimensionless centers. The first center corresponds to the input coefficients and the last to the output. Empty inputs and work above eight million coefficient pairs are rejected. Continues a Taylor series along a chain of overlapping disks. The series `sum c_k (z - a_0)^k` is re-centered at each successive point in `centers`, returning the coefficients at the last center.
+inline Term num_continuation_recenter(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_continuation_recenter", args, 2);
+}
+
+/// Accelerates convergence of up to 4096 dimensionless complex partial sums with Wynn's epsilon algorithm. With no finite accelerated estimate, returns the last sum. An empty sequence returns zero. Wynn's epsilon algorithm for accelerating convergence of complex sequences.
+inline Term num_continuation_wynn(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_continuation_wynn", args, 1);
+}
+
+/// `num_contour_bromwich(c, y_max)` returns the open upward interval from c-i*y_max to c+i*y_max, with y_max positive. Vertical Bromwich contour `c + i * y` for `y in [-y_max, y_max]`.
+inline Term num_contour_bromwich(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_contour_bromwich", args, 2);
+}
+
+/// Constructs an open contour from start to end with positive pole clearance and no branch-ray crossing. Endpoint, pole, ray origin, and clearance dimensions agree. Angles are bare radians. Up to 64 poles and rays are allowed in total. Returns an error when the bounded construction cannot verify a path. Deforms the straight path `[start, end]` around nearby `poles` and crossed `BranchRay`s by inserting circular detour arcs of radius `clearance`.
+inline Term num_contour_deform_checked(const Term& a0, const Term& a1, const Term& a2, const Term& a3, const Term& a4, const Term& a5) {
+    Term args[] = {a0, a1, a2, a3, a4, a5};
+    return apply("num_contour_deform_checked", args, 6);
+}
+
+/// `num_contour_dogbone(a, b, radius)` returns the closed contour enclosing the finite cut from a to b at a positive offset. Coincident endpoints give a circle. Dogbone (dumbbell) contour surrounding the finite branch cut `[a, b]`.
+inline Term num_contour_dogbone(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_contour_dogbone", args, 3);
+}
+
+/// `num_contour_hankel(inner, outer, cut_angle, gap)` returns an open Hankel path around a cut through zero. The radii share units; angles are bare radians. Open Hankel contour around `0` avoiding the branch cut along `cut_angle`. Enters from `r_outer` along `cut_angle + gap`, wraps `2*pi - 2*gap` around the origin at `r_inner`, and exits to `r_outer` along `cut_angle - gap`.
+inline Term num_contour_hankel(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_contour_hankel", args, 4);
+}
+
+/// `num_contour_indented_semicircle(radius, poles, indent, upper)` returns a closed semicircle with a bypass for each real pole. Internal geometry uses a unit-radius frame and returns the original coordinate units. Indented semicircle contour on `[-radius, radius]` bypassing `real_poles` with small semicircular indents into the upper (or lower) half-plane.
+inline Term num_contour_indented_semicircle(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_contour_indented_semicircle", args, 4);
+}
+
+/// Integrates an oriented measured path, returning the value with the legacy tolerance and quadrature defaults. Pass path, coordinate scale, integrand scale, tolerance, callback budget and callback. Integrates `f(z)` along a sequence of [`ContourSegment`]s.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_contour_integrate(Args&&... args) {
+    return detail::call_inferred("num_contour_integrate",
+                                 std::forward<Args>(args)...);
+}
+
+/// Estimates an oriented line-and-arc integral along a portable contour record. Pass positive coordinate and callback-value scales, absolute tolerance, panel limit per component, total callback limit, then the callback. The result includes the value, heuristic absolute error, actual evaluations, and convergence status.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_contour_integrate_checked(Args&&... args) {
+    return detail::call_inferred("num_contour_integrate_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// Builds a verified deformation from measured endpoints, poles, ray origins, positive clearance and bare ray angles, then integrates without sampling unsafe geometry. Pass positive coordinate and callback-value scales, absolute tolerance, panel limit per component, total callback limit, then the callback. The result includes the value, heuristic absolute error, actual evaluations, and convergence status. Integrates `f(z)` from `start` to `end` along an automatically deformed path avoiding `poles` and `cuts` by at least `clearance`.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_contour_integrate_deformed_checked(Args&&... args) {
+    return detail::call_inferred("num_contour_integrate_deformed_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// Integrates one oriented measured segment, returning the value with the legacy tolerance and quadrature defaults. Pass path, coordinate scale, integrand scale, tolerance, callback budget and callback. Integrates `f(z)` along a single [`ContourSegment`] using adaptive Gauss-Kronrod.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_contour_integrate_segment(Args&&... args) {
+    return detail::call_inferred("num_contour_integrate_segment",
+                                 std::forward<Args>(args)...);
+}
+
+/// Estimates one oriented line or arc from a single-segment portable contour record. Pass positive coordinate and callback-value scales, absolute tolerance, panel limit per component, total callback limit, then the callback. The result includes the value, heuristic absolute error, actual evaluations, and convergence status.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_contour_integrate_segment_checked(Args&&... args) {
+    return detail::call_inferred("num_contour_integrate_segment_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// `num_contour_keyhole(branch_point, inner, outer, cut_angle, gap)` returns a closed, positively oriented keyhole path around a cut. The branch point and both radii share units; angles are bare radians. Keyhole contour around a branch cut at `branch_pt` along `cut_angle`.
+inline Term num_contour_keyhole(const Term& a0, const Term& a1, const Term& a2, const Term& a3, const Term& a4) {
+    Term args[] = {a0, a1, a2, a3, a4};
+    return apply("num_contour_keyhole", args, 5);
+}
+
+/// Returns the legacy value-only principal value with interior pole filtering. Reversed intervals return zero. Pass endpoints, poles, coordinate scale, integrand scale, tolerance, callback budget and callback. Cauchy principal value `P.V. int_a^b f(x) dx` with real simple poles in `(a, b)` via symmetric folding `int_0^delta (f(p + t) + f(p - t)) dt`.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_contour_principal_value(Args&&... args) {
+    return detail::call_inferred("num_contour_principal_value",
+                                 std::forward<Args>(args)...);
+}
+
+/// Estimates a Cauchy principal value on two finite endpoints with a vector of strictly interior simple poles. Pass positive coordinate and callback-value scales, absolute tolerance, panel limit per component, total callback limit, then the callback. The result includes the value, heuristic absolute error, actual evaluations, and convergence status.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_contour_principal_value_checked(Args&&... args) {
+    return detail::call_inferred("num_contour_principal_value_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// `num_contour_rectangle(x0, x1, y0, y1)` returns a closed counterclockwise rectangle. Both real bounds and both imaginary bounds must strictly increase and share units. Counterclockwise rectangular contour `[x0, x1] x [y0, y1]`.
+inline Term num_contour_rectangle(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_contour_rectangle", args, 4);
+}
+
+/// Adaptively estimates the residue at infinity on a positive circle enclosing the finite singularities supplied by the caller. Pass positive coordinate and callback-value scales, absolute tolerance, panel limit per component, total callback limit, then the callback. The result includes the value, heuristic absolute error, actual evaluations, and convergence status.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_contour_residue_infinity_checked(Args&&... args) {
+    return detail::call_inferred("num_contour_residue_infinity_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// Estimates residue at infinity with exactly max(samples, 32) circular samples. Pass radius, requested samples, coordinate reference, callback-value reference, callback budget and callback. Numerical residue at infinity: `Res_{z=oo} f(z) = -1/(2*pi*i) * oint_{|z|=R} f(z) dz`.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_contour_residue_infinity_fixed(Args&&... args) {
+    return detail::call_inferred("num_contour_residue_infinity_fixed",
+                                 std::forward<Args>(args)...);
+}
+
+/// `num_contour_sector(radius, angle)` returns a closed sector with positive radius and a nonzero signed sweep of at most one turn in radians. Closed sector (wedge) contour from `0` to `radius`, along arc `0..angle`, and back to `0`.
+inline Term num_contour_sector(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_contour_sector", args, 2);
+}
+
 /// Discretise a measured continuous state-space model under a zero-order hold. Accepts positive sample time and returns a portable record with a, b, c, d and dt. Matrix a has inverse-time units before discretisation, and b gains one factor of Time. Zero-order-hold discretisation with sample time `dt`. Computes `exp([A B; 0 0] dt)` by scaling and squaring with a diagonal Pade approximant of order six. The upper-right block is the exactly integrated input matrix, not a Euler approximation. # Errors Returns an error when `dt` is not finite and positive, or when the matrix exponential fails.
 inline Term num_control_c2d_zoh(const Term& a0, const Term& a1, const Term& a2, const Term& a3, const Term& a4) {
     Term args[] = {a0, a1, a2, a3, a4};
     return apply("num_control_c2d_zoh", args, 5);
+}
+
+/// `num_control_discrete_controllability_matrix(model)` returns [B, A B, ..., A^(n-1) B] with n rows and n*m columns for n states and m inputs. Its entries retain the units of B. Controllability matrix `[B, A B, ..., A^{n-1} B]` (`n x (n m)`).
+inline Term num_control_discrete_controllability_matrix(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_control_discrete_controllability_matrix", args, 1);
+}
+
+/// `num_control_discrete_is_stable(model)` checks whether every pole lies strictly inside the unit circle. A failed eigensolve is reported as an error.
+inline Term num_control_discrete_is_stable(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_control_discrete_is_stable", args, 1);
+}
+
+/// `num_control_discrete_n_inputs(model)` returns the number of inputs of a checked discrete state-space model. Number of inputs `m`.
+inline Term num_control_discrete_n_inputs(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_control_discrete_n_inputs", args, 1);
+}
+
+/// `num_control_discrete_n_outputs(model)` returns the number of outputs of a checked discrete state-space model. Number of outputs `p`.
+inline Term num_control_discrete_n_outputs(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_control_discrete_n_outputs", args, 1);
+}
+
+/// `num_control_discrete_n_states(model)` returns the number of states of a checked discrete state-space model. Number of states `n`.
+inline Term num_control_discrete_n_states(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_control_discrete_n_states", args, 1);
+}
+
+/// `num_control_discrete_observability_matrix(model)` returns [C; C A; ...; C A^(n-1)] with n*p rows and n columns for n states and p outputs. Its entries retain the units of C. Observability matrix `[C; C A; ...; C A^{n-1}]` (`(n p) x n`).
+inline Term num_control_discrete_observability_matrix(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_control_discrete_observability_matrix", args, 1);
+}
+
+/// `num_control_discrete_poles(model)` returns the dimensionless eigenvalues of the discrete state matrix. A failed eigensolve or a pole outside binary64 range produces an error.
+inline Term num_control_discrete_poles(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_control_discrete_poles", args, 1);
+}
+
+/// Fits a normalized discrete one-input state-space model from finite input and output samples. Output matrix rows are sample times. The first input must be nonzero. The fitted model has no direct feedthrough. Realises a state-space model from input/output data by the eigensystem realisation algorithm. The impulse response is recovered by deconvolution and arranged in a block Hankel matrix; an SVD truncated to `order` gives the shift-invariant subspace from which `A`, `B` and `C` are read. # Errors Returns an error for inconsistent data, a zero first input sample, too few samples for the requested order, or a rank-deficient Hankel matrix.
+inline Term num_control_era(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_control_era", args, 3);
+}
+
+/// Returns the fitted A, B and C matrices and realisation order from a live ERA handle.
+inline Term num_control_era_matrices(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_control_era_matrices", args, 1);
+}
+
+/// Computes the first-input impulse response in sample-by-output order from a fitted ERA model. The first row is zero and a zero-step result preserves the output column count. Impulse response of a realised model, `h[0] = 0` and `h[k] = C A^{k-1} B`. # Errors Returns an error when the model has no inputs.
+inline Term num_control_impulse_response(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_control_impulse_response", args, 2);
+}
+
+/// Runs a normalized MPC from an initial state toward a fixed state reference, reusing the condensed QP for every step. The trajectory includes the initial state. Runs the MPC controller in closed loop for `steps` samples. Returns the state trajectory including the initial state, so the result has `steps + 1` entries. # Errors As [`mpc_step`].
+inline Term num_control_mpc_closed_loop(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_control_mpc_closed_loop", args, 4);
+}
+
+/// Prepares a bounded normalized discrete MPC from state and input matrices, positive sample time, horizons, weights and optional ordered bounds. Each input weight must be positive.
+inline Term num_control_mpc_prepare(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_control_mpc_prepare", args, 4);
+}
+
+/// Simulates a parallel PID against a prepared proper transfer model on a finite increasing normalized time grid from rest. Closed-loop step response of `plant` under `pid` on the time grid `t`. The derivative is filtered with a first-order filter of time constant [`Pid::tf`] when it is set. The plant is integrated with fourth-order Runge-Kutta on each interval. # Errors Returns an error when the plant cannot be converted to state space or the time grid is not strictly increasing.
+inline Term num_control_pid_response(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_control_pid_response", args, 4);
 }
 
 /// Simulate a measured continuous state-space model on a strictly increasing time grid. Hold each input row until the next time and return one measured output row per grid point. Simulates a continuous-time model on the strictly increasing time grid `t` from initial state `x0` under piecewise-constant (zero-order-hold) inputs `u`, where `u[k]` is held across `[t[k], t[k + 1])`. Each step uses exact zero-order-hold discretisation via [`StateSpace::c2d_zoh`], caching `(Ad, Bd)` whenever consecutive step sizes match to a relative tolerance of `1e-12`. Uniform grids compute the matrix exponential only once. Returns the output `y[k] = C x(t[k]) + D u[k]` at each grid point. # Errors Returns an error when the model is discrete-time, when `x0` or `u` dimensions are wrong, when `u.len() != t.len()`, when any entry is non-finite, or when `t` is not strictly increasing.
@@ -17150,6 +19009,138 @@ inline Term num_control_simulate_continuous(const Term& a0, const Term& a1, cons
 inline Term num_control_simulate_discrete(const Term& a0, const Term& a1, const Term& a2) {
     Term args[] = {a0, a1, a2};
     return apply("num_control_simulate_discrete", args, 3);
+}
+
+/// Simulates a positional parallel PID over finite normalized error samples using a positive step, optional derivative filtering and bounded-output anti-windup. Simulates a positional PID over an error sequence with optional output limits and conditional-integration anti-windup. Returns the control signal at each sample.
+inline Term num_control_simulate_pid(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_control_simulate_pid", args, 4);
+}
+
+/// Prepares a continuous state-space model from normalized A, B, C and D matrices. Builds a continuous-time model. # Errors As [`StateSpace::new`].
+inline Term num_control_state_space_continuous(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_control_state_space_continuous", args, 4);
+}
+
+/// Prepares a discrete model from normalized A, B, C and D matrices and a positive sampling interval. Builds a discrete-time model with sample time `dt`. # Errors As [`StateSpace::new`], plus an error when `dt` is not finite and positive.
+inline Term num_control_state_space_discrete(const Term& a0, const Term& a1, const Term& a2, const Term& a3, const Term& a4) {
+    Term args[] = {a0, a1, a2, a3, a4};
+    return apply("num_control_state_space_discrete", args, 5);
+}
+
+/// Checks whether the normalized state-space controllability matrix has full row rank. Whether the pair `(A, B)` is controllable (numerical rank test with a relative tolerance of `1e-9`).
+inline Term num_control_state_space_is_controllable(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_control_state_space_is_controllable", args, 1);
+}
+
+/// Checks whether the normalized state-space observability matrix has full column rank. Whether the pair `(A, C)` is observable (numerical rank test with a relative tolerance of `1e-9`).
+inline Term num_control_state_space_is_observable(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_control_state_space_is_observable", args, 1);
+}
+
+/// Checks whether all continuous poles have negative real part or all discrete poles lie inside the unit circle. Whether the model is asymptotically stable. A continuous model is stable when every pole has negative real part; a discrete model when every pole lies inside the unit circle.
+inline Term num_control_state_space_is_stable(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_control_state_space_is_stable", args, 1);
+}
+
+/// Prepares a continuous model from normalized A, B, C and D matrices. Simulation times use the model's chosen time unit. Builds a continuous-time model after checking the matrix dimensions. # Errors Returns an error when `a` is not square, when `b`/`c`/`d` are not consistent with `a`, or when an entry is not finite.
+inline Term num_control_state_space_new(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_control_state_space_new", args, 4);
+}
+
+/// Returns finite poles of a prepared model. A static model has no poles. Eigenvalue failure returns an error. Eigenvalues of `A`. Returns an empty vector for a static model or when the eigensolver fails.
+inline Term num_control_state_space_poles(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_control_state_space_poles", args, 1);
+}
+
+/// Simulates a normalized model at positive sampling interval dt. A discrete model requires its configured sample interval. Simulates either a continuous-time model (by zero-order-hold discretisation at sample time `dt`) or a discrete-time model whose sample time matches `dt` to a relative tolerance of `1e-12`. # Errors Returns an error when `dt` is not finite and positive, when a discrete model's `dt` does not match the requested `dt`, or when [`StateSpace::c2d_zoh`] or [`StateSpace::simulate`] fails.
+inline Term num_control_state_space_simulate_with_dt(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_control_state_space_simulate_with_dt", args, 4);
+}
+
+/// Evaluates a transfer function at a finite normalized complex frequency. Rejects a pole or a response outside Float range. Evaluates `G(s)` at a complex frequency.
+inline Term num_control_transfer_evaluate(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_control_transfer_evaluate", args, 2);
+}
+
+/// Prepares the negative feedback connection a / (1 + a b). Negative feedback `a / (1 + a b)`. # Errors As [`TransferFunction::new`].
+inline Term num_control_transfer_feedback(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_control_transfer_feedback", args, 2);
+}
+
+/// Returns gain margin in dB and phase margin in degrees. Each margin is None when its crossover is absent on the normalized log-frequency grid. Gain and phase margins of a loop transfer function. Returns `(gain margin in dB, phase margin in degrees)`. Each margin is `None` when the corresponding crossover does not occur on the internal log-spaced grid from `1e-3` to `1e3` rad/s. Crossovers are refined by bisection on `log10(omega)`. # Errors Returns an error when the transfer function cannot be evaluated.
+inline Term num_control_transfer_gain_margin_phase_margin(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_control_transfer_gain_margin_phase_margin", args, 1);
+}
+
+/// Returns whether the numerator degree is at most the denominator degree. Whether the transfer function is proper (`deg(num) <= deg(den)`). A zero numerator is always proper.
+inline Term num_control_transfer_is_proper(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_control_transfer_is_proper", args, 1);
+}
+
+/// Checks that all continuous-time poles have negative real parts. Returns an error if the poles cannot be computed. Whether every pole has negative real part.
+inline Term num_control_transfer_is_stable(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_control_transfer_is_stable", args, 1);
+}
+
+/// Returns whether the numerator degree is below the denominator degree. The zero transfer is strictly proper. Whether the transfer function is strictly proper (`deg(num) < deg(den)`). A zero numerator is always strictly proper.
+inline Term num_control_transfer_is_strictly_proper(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_control_transfer_is_strictly_proper", args, 1);
+}
+
+/// Prepares a real SISO transfer function from finite coefficients in descending powers of normalized s. A nonzero denominator is required; improper functions are allowed. Builds a transfer function after trimming leading zero coefficients. Improper rational functions (`deg(num) > deg(den)`, such as a pure differentiator or PD controller) are permitted here so they can be used in frequency-response and block-algebra calculations; use [`TransferFunction::new_proper`] when a state-space realisation is required. # Errors Returns an error when the denominator is zero or when a coefficient is not finite.
+inline Term num_control_transfer_new(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_control_transfer_new", args, 2);
+}
+
+/// Prepares a proper real SISO transfer function from finite coefficients in descending powers of normalized s. Builds a proper transfer function (`deg(num) <= deg(den)`) after trimming leading zero coefficients. # Errors Returns an error when [`TransferFunction::new`] fails or when the numerator has higher degree than the denominator.
+inline Term num_control_transfer_new_proper(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_control_transfer_new_proper", args, 2);
+}
+
+/// Returns the denominator degree after trimming leading zeros. Order of the denominator (degree of `den`).
+inline Term num_control_transfer_order(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_control_transfer_order", args, 1);
+}
+
+/// Prepares the parallel connection a + b. Parallel connection `a + b`. # Errors As [`TransferFunction::new`].
+inline Term num_control_transfer_parallel(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_control_transfer_parallel", args, 2);
+}
+
+/// Prepares the series connection a b. Series connection `a b`. # Errors As [`TransferFunction::new`].
+inline Term num_control_transfer_series(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_control_transfer_series", args, 2);
+}
+
+/// Returns the fourth-order Runge-Kutta unit-step response of a proper model on a finite, strictly increasing normalized time grid. The initial state is zero at the first sample. Closed-loop step response of `tf` on the time grid `t`. The model is converted to state space and integrated with fourth-order Runge-Kutta on each interval `t[k+1] - t[k]`. # Errors Returns an error when the time grid is not strictly increasing or the conversion fails.
+inline Term num_control_transfer_step_response(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_control_transfer_step_response", args, 2);
+}
+
+/// Returns the finite zeros of the transfer numerator as a complex vector. Constant and zero numerators have an empty result. Zeros: roots of the numerator (empty for a zero numerator).
+inline Term num_control_transfer_zeros(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_control_transfer_zeros", args, 1);
 }
 
 /// One pass of Aitken's delta-squared process over `sequence`. Entry `i` is `s_i - (s_{i+1} - s_i)^2 / (s_{i+2} - 2 s_{i+1} + s_i)`. Entries whose second difference is below `1e-9` in magnitude (already converged, or numerically meaningless) are skipped, so the result can be shorter than `len - 2`; fewer than three inputs give an empty vector.
@@ -17174,6 +19165,12 @@ inline Term num_convergence_richardson_extrapolation_with(const Term& a0, const 
 inline Term num_convergence_wynn_epsilon(const Term& a0) {
     Term args[] = {a0};
     return apply("num_convergence_wynn_epsilon", args, 1);
+}
+
+/// Bounded dense LP with physical reference scales, finite lower bounds, masked upper bounds and a total simplex pivot budget. Solves a bounded dense linear program. `max_iter` limits the total number of simplex pivots performed across Phase I and Phase II. # Errors Returns an error string when the dimensions disagree, when any input entry is not finite, when `max_iter` is zero, or when the simplex exceeds `max_iter` pivots.
+inline Term num_convex_solve_lp(const Term& a0, const Term& a1, const Term& a2, const Term& a3, const Term& a4, const Term& a5, const Term& a6, const Term& a7, const Term& a8, const Term& a9, const Term& a10) {
+    Term args[] = {a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10};
+    return apply("num_convex_solve_lp", args, 11);
 }
 
 /// Pearson correlation of equally sized samples. Computes the Pearson correlation coefficient of two slices of data. # Arguments * `data1` - The first slice of `f64` data points. * `data2` - The second slice of `f64` data points. # Returns The Pearson correlation coefficient as an `f64`.
@@ -17266,6 +19263,24 @@ inline Term num_csr_gmres(const Term& a0, const Term& a1, const Term& a2, const 
     return apply("num_csr_gmres", args, 5);
 }
 
+/// Solves rectangular sparse least squares using cached working buffers and the original normal equations for convergence. Damping uses the matrix entry dimension. The reported residual is the unaugmented relative residual.
+inline Term num_csr_lsqr(const Term& a0, const Term& a1, const Term& a2, const Term& a3, const Term& a4) {
+    Term args[] = {a0, a1, a2, a3, a4};
+    return apply("num_csr_lsqr", args, 5);
+}
+
+/// Multiplies a rectangular CSR matrix by a dense rank-two tensor using SIMD row updates. The result keeps the product of both entry units. Sparse-matrix × dense-matrix product `C = A * B`, parallelised over output rows and accelerated with SIMD row AXPY updates. # Errors Returns an error if `self.cols != rhs.rows`.
+inline Term num_csr_matmul_dense(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_csr_matmul_dense", args, 2);
+}
+
+/// Multiplies two rectangular CSR records. Output columns are strictly ordered and the value budget is checked before allocation. Entry dimensions multiply. Sparse-matrix × sparse-matrix product `C = A * B` in CSR format with sorted column indices per row. Parallelises rows deterministically for large matrices. # Errors Returns an error if `self.cols != other.rows`.
+inline Term num_csr_matmul_sparse(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_csr_matmul_sparse", args, 2);
+}
+
 /// MINRES for symmetric indefinite systems, identity preconditioning; reports independently recomputed original-system residual. MINRES for a symmetric (indefinite allowed) operator with an SPD preconditioner `precond`. The reported `residual` is the true relative residual `|b - A x| / |b|` of the returned iterate; the iteration stops when the recurrence estimate (preconditioned residual norm) drops below `tol` relative to its initial value.
 inline Term num_csr_minres(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
     Term args[] = {a0, a1, a2, a3};
@@ -17330,6 +19345,12 @@ inline Term num_csr_model_permute(const Term& a0, const Term& a1) {
 inline Term num_csr_model_rcm(const Term& a0) {
     Term args[] = {a0};
     return apply("num_csr_model_rcm", args, 1);
+}
+
+/// Transposes a checked rectangular CSR record, preserving entry units and strictly ordered columns. Returns the transpose `A^T` in CSR format with sorted column indices.
+inline Term num_csr_transpose(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_csr_transpose", args, 1);
 }
 
 /// Coefficient of variation. Computes the coefficient of variation (CV = `std_dev` / mean). Useful for comparing variability across datasets with different means.
@@ -18493,6 +20514,18 @@ inline Term num_finite_field_gf256_scale(const Term& a0, const Term& a1) {
     return apply("num_finite_field_gf256_scale", args, 2);
 }
 
+/// Validates an odd prime and a power-of-two transform length dividing p-1. Returns a portable plan description backed by the shared NTT cache. Looks up or constructs a cached [`NttPrimePlan`] for `(modulus, len)` in [`crate::kernels::reuse::global_pool`]'s named plan cache `"finite_field_ntt_plan"`. Returns `None` if `modulus` is not an odd prime, `len` is not a power of two, or `len` does not divide `modulus - 1`.
+inline Term num_finite_field_ntt_plan(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_finite_field_ntt_plan", args, 2);
+}
+
+/// Applies the cached forward or inverse number-theoretic transform to ordinary unsigned coefficients. The input must match the plan length. Coefficients are reduced modulo the prime and the inverse is normalized.
+inline Term num_finite_field_ntt_transform(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_finite_field_ntt_transform", args, 3);
+}
+
 /// Exact coefficient convolution modulo an odd prime. Inputs use the same coefficient order. For a nonempty product the next power of two of the output length must divide p-1. An empty input gives an empty product. Output uses the native tensor size limit.
 inline Term num_finite_field_poly_mul_ntt_mod(const Term& a0, const Term& a1, const Term& a2) {
     Term args[] = {a0, a1, a2};
@@ -19060,6 +21093,42 @@ inline Term num_geometry_segment_triangle_intersection_3d(const Term& a0, const 
 inline Term num_geometry_tetrahedron_volume(const Term& a0) {
     Term args[] = {a0};
     return apply("num_geometry_tetrahedron_volume", args, 1);
+}
+
+/// Fits a generalized linear model. Design rows omit the intercept; optional weights must align with observations. Returns a portable named model with coefficients, convergence status and the inverse link used for prediction. Fits a generalised linear model by iteratively reweighted least squares. `x` holds one row of covariates per observation and must **not** contain an intercept column; `fit` prepends one, so the returned coefficient vector has `x[0].len() + 1` entries with the intercept first. `weights` are prior weights (number of trials for a binomial proportion, exposure for a Poisson rate); when `None` every observation weighs one. Convergence is declared when `max |Δβ| / (1 + |β|) < tol`. Each step is halved up to `MAX_HALVINGS` times while the deviance would increase. # Errors Returns a lowercase message when the design and response disagree in length, the design is empty or non-finite, a weight is not strictly positive, the response leaves the family's support, `max_iter` is zero, `tol` is not positive, there are fewer observations than parameters, or a linear system in the iteration is singular.
+inline Term num_glm_fit(const Term& a0, const Term& a1, const Term& a2, const Term& a3, const Term& a4, const Term& a5, const Term& a6) {
+    Term args[] = {a0, a1, a2, a3, a4, a5, a6};
+    return apply("num_glm_fit", args, 7);
+}
+
+/// Maps a finite dimensionless linear predictor to its response mean. Uses the same named links as num_glm_link and preserves representable lower-tail probabilities. Evaluates the inverse link `g⁻¹(eta)`, i.e. the mean implied by a linear predictor.
+inline Term num_glm_inverse_link(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_glm_inverse_link", args, 2);
+}
+
+/// Maps a dimensionless mean to the linear predictor. Choose identity, log, logit, probit, inverse, loglog, or cloglog. Means at a boundary with an infinite link are rejected. Evaluates the link function `g(mu)`. Out-of-range arguments follow the limits of the function: the logit link returns `±inf` at `mu = 0` or `mu = 1`, and the log link returns `-inf` at `mu = 0`.
+inline Term num_glm_link(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_glm_link", args, 2);
+}
+
+/// Returns the dimensionless derivative of a named GLM link at an admissible mean. The reciprocal link has a negative derivative. Evaluates the derivative `g'(mu) = d eta / d mu`. The derivative is always positive on the interior of the mean space, so the working weights `1 / (V(mu) g'(mu)²)` stay positive.
+inline Term num_glm_link_derivative(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_glm_link_derivative", args, 2);
+}
+
+/// Predicts response means from a fitted model with the model's stored link. Design rows omit the intercept and must match the fitted slope count. Predicts the mean response for new covariate rows. `x` holds one row of covariates per observation, without the intercept column, exactly as accepted by [`fit`](crate::kernels::glm::fit::fit). The returned values are on the response scale, `g⁻¹(x'β)`. # Errors Returns a lowercase message when the model has no coefficients or a row does not have one entry per fitted slope.
+inline Term num_glm_predict(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_glm_predict", args, 2);
+}
+
+/// Returns the dimensionless variance function at a mean in the named family's support. Choose gaussian, poisson, binomial, gamma, or inverse_gaussian. The variance function `V(mu)` of the family.
+inline Term num_glm_variance(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_glm_variance", args, 2);
 }
 
 /// Native staggered acoustic call in a mechanical reference frame. In dimension d, density is Mass/Length^d and pressure is Energy/Length^d, representing the explicitly reduced continuum. Velocity is Length/Time and total energy is Energy. All numeric coordinates, spacings, speed, density and arrays are normalized by these references. Compiled physical callbacks retain dimensions and finite evaluation budgets; failed mutations invalidate their solver handle. Rigid-wall configuration with unit density. # Errors For a bad dimension or sizes.
@@ -22059,6 +24128,18 @@ inline Value num_integrate_semi_infinite(Args&&... args) {
                                  std::forward<Args>(args)...);
 }
 
+/// Interpolates one finite point on a prepared rectilinear grid. Queries are clamped at the edges. The supplied value witness sets the return unit and must match the grid cells. Returns one clamped interpolant without rescanning the grid. # Errors Rejects non-finite coordinates.
+inline Term num_interp_bilinear_grid_evaluate(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_interp_bilinear_grid_evaluate", args, 4);
+}
+
+/// Prepares a rectilinear grid with measured axes. The value tensor is [y axis length, x axis length] in row-major order. Each axis and the values may have independent units. Prepares a grid using the same validation as [`interp2`]. # Errors Rejects empty, non-finite or unordered axes and invalid grid storage.
+inline Term num_interp_bilinear_grid_prepare(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_interp_bilinear_grid_prepare", args, 3);
+}
+
 /// Akima 1D cubic spline interpolation. [Akima's local slope weights](https://doi.org/10.1145/321607.321609) reduce oscillation near sharp corners. Queries outside the sampled interval extend the nearest segment's polynomial. One sample defines a constant and two samples define a line. # Errors Unequal sample lengths, empty samples, non-finite inputs, non-increasing knots, or local arithmetic outside the `f64` range.
 inline Term num_interp_ext_akima(const Term& a0, const Term& a1, const Term& a2) {
     Term args[] = {a0, a1, a2};
@@ -23787,6 +25868,102 @@ inline Term num_linear_solve_wiedemann(const Term& a0, const Term& a1, const Ter
     return apply("num_linear_solve_wiedemann", args, 4);
 }
 
+/// Solves a square rational sparse system with one right-hand side per tensor row. Shares a modular factorization and returns None for a singular system. Solves a square nonsingular rational system with multiple right-hand sides. Dixon’s `p`-adic lifting shares one modular factorization of `A` and one flat CSR workspace across all columns of `rhs`. Returns `None` when `matrix` is not square, any vector in `rhs` does not have length `matrix.rows`, or `matrix` is singular.
+inline Term num_linear_sparse_exact_dixon_multi(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_linear_sparse_exact_dixon_multi", args, 2);
+}
+
+/// Returns the canonical residue of a plus b, including for unreduced u64 inputs. `(a + b) mod p`.
+inline Term num_linear_sparse_exact_field_add(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_linear_sparse_exact_field_add", args, 3);
+}
+
+/// Inverts a vector of up to 16,384 residues with one field inversion. Returns None when any entry is zero modulo the prime. Batch modular inversion of non-zero elements in `values` modulo `p` using Montgomery's trick: 1 extended GCD plus `3(k - 1)` modular multiplications, all division-free, leasing its prefix-product workspace from [`crate::kernels::reuse::global_pool`]. Returns `None` if `p <= 1` or any element is divisible by `p`.
+inline Term num_linear_sparse_exact_field_batch_inv(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_linear_sparse_exact_field_batch_inv", args, 2);
+}
+
+/// Returns the canonical inverse of a field element, or None for a zero residue.
+inline Term num_linear_sparse_exact_field_inv(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_linear_sparse_exact_field_inv", args, 2);
+}
+
+/// Returns the canonical residue of a times b using the prepared field.
+inline Term num_linear_sparse_exact_field_mul(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_linear_sparse_exact_field_mul", args, 3);
+}
+
+/// Prepares a session-owned prime field after validating the full unsigned 64-bit modulus. The field of integers modulo `p`. A modulus below two is not a field; such a value keeps the historical behaviour of mapping every residue to zero, which the operations below check before touching the reducer.
+inline Term num_linear_sparse_exact_field_new(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_linear_sparse_exact_field_new", args, 1);
+}
+
+/// Raises an element to an unsigned exponent using the prepared field.
+inline Term num_linear_sparse_exact_field_pow(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_linear_sparse_exact_field_pow", args, 3);
+}
+
+/// Returns the exact prime modulus. The prime modulus.
+inline Term num_linear_sparse_exact_field_prime(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_linear_sparse_exact_field_prime", args, 1);
+}
+
+/// Reduces a signed exact integer of up to 16,384 bits to its canonical prime-field residue.
+inline Term num_linear_sparse_exact_field_reduce(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_linear_sparse_exact_field_reduce", args, 2);
+}
+
+/// Returns an independently owned, reusable Barrett reducer for this prime field. The division-free reducer for this modulus.
+inline Term num_linear_sparse_exact_field_reducer(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_linear_sparse_exact_field_reducer", args, 1);
+}
+
+/// Returns the canonical residue of a minus b, including for unreduced u64 inputs. `(a - b) mod p`.
+inline Term num_linear_sparse_exact_field_sub(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_linear_sparse_exact_field_sub", args, 3);
+}
+
+/// Computes exact RREF and ascending zero-based pivot columns in the matrix's field.
+inline Term num_linear_sparse_exact_prime_rref(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_linear_sparse_exact_prime_rref", args, 1);
+}
+
+/// Copies a prime-field sparse matrix into a rank-two tensor of exact residues.
+inline Term num_linear_sparse_exact_prime_to_dense(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_linear_sparse_exact_prime_to_dense", args, 1);
+}
+
+/// Computes exact rational RREF and ascending zero-based pivot columns. Input coefficient bits are bounded before elimination. Reduced row echelon form (Gauss-Jordan form) of a sparse matrix over `dom`. Scales every pivot row so its pivot entry is `1` and eliminates each pivot column from all earlier pivot rows as well as subsequent rows. Returns the reduced [`SparseMat<D::E>`] with pivot rows placed in canonical order at the top followed by any zero rows, together with the sorted list of pivot columns.
+inline Term num_linear_sparse_exact_rational_rref(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_linear_sparse_exact_rational_rref", args, 1);
+}
+
+/// Reduces a rational sparse matrix in the prepared field. A denominator divisible by the prime gives None. Reduces a sparse rational matrix directly to `GF(p)` using Montgomery's trick batch inversion over all non-trivial denominators, leasing its workspace from [`crate::kernels::reuse::global_pool`]. Returns `None` if the modulus is below two or any entry has a denominator divisible by it.
+inline Term num_linear_sparse_exact_rational_to_prime(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_linear_sparse_exact_rational_to_prime", args, 2);
+}
+
+/// Returns a cached symmetric Reverse Cuthill–McKee ordering of a square sparse pattern. permutation[new] is the old index, and inverse[old] is the new index. Computes and caches a symmetric Reverse Cuthill-McKee bandwidth-reducing ordering for this matrix's sparsity pattern via [`crate::kernels::reuse::ComputeReusePool::sparse_ordering_plan`].
+inline Term num_linear_sparse_exact_rcm_plan(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_linear_sparse_exact_rcm_plan", args, 1);
+}
+
 /// Native sparse factor/preconditioner with its matrix entry reference. Application returns a normalized result with physical reference RHS/matrix; shapes, unit domains and factor work are checked. Dimension of the factored matrix.
 inline Term num_linear_sparse_lu_dim(const Term& a0) {
     Term args[] = {a0};
@@ -24537,6 +26714,115 @@ inline Term num_max(const Term& a0) {
     return apply("num_max", args, 1);
 }
 
+/// Dimensionless sample autocorrelations at lags zero through max_lag. The chain must vary and the lag and attempted work must fit the limits.
+inline Term num_mcmc_autocorrelation(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mcmc_autocorrelation", args, 2);
+}
+
+/// Initial positive sequence estimate of effective sample size from a measured chain of at most 4096 draws.
+inline Term num_mcmc_effective_sample_size(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mcmc_effective_sample_size", args, 1);
+}
+
+/// Dimensionless Geweke z-score comparing the first tenth against the last half of one measured chain.
+inline Term num_mcmc_geweke(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mcmc_geweke", args, 1);
+}
+
+/// Seeded Gibbs sweeps with a typed conditional sampler taking a zero-based coordinate, normalized state and a uniform draw. No joint log values are recorded. Gibbs sampler driven by user-supplied full conditionals. Each coordinate is refreshed in turn from its full conditional. A conditional is a function of the current state and one uniform variate in `(0, 1)`; it returns the new value of its coordinate, normally by inverting the conditional CDF on a bracketed grid. One sweep over all coordinates is one iteration. [`MhOptions::proposal_sd`] is not used, because Gibbs moves have no proposal distribution; prefer [`gibbs_with_log_posterior`] with [`GibbsOptions`] when you also have the joint log density. Because no joint density is provided, [`Chain::log_posterior`] is filled with `NaN`. # Errors Returns an error when the number of conditionals does not match the state, the state is empty, `n` or `thin` is zero, the iteration budget overflows, or a conditional returns a non-finite value.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_mcmc_gibbs(Args&&... args) {
+    return detail::call_inferred("num_mcmc_gibbs",
+                                 std::forward<Args>(args)...);
+}
+
+/// Seeded Gibbs sweeps with a typed coordinate conditional and joint log target. The log posterior is evaluated at every retained draw. Gibbs sampler driven by user-supplied full conditionals that also records the joint `log_posterior` at every kept draw. Each coordinate is refreshed in turn from its full conditional, exactly as in [`gibbs`]. After each retained sweep, `log_posterior(&state)` is evaluated and stored in [`Chain::log_posterior`]. # Errors Returns an error when the number of conditionals does not match the state, the state is empty or contains non-finite values, `n` or `thin` is zero, the iteration budget overflows, a conditional returns a non-finite value, or `log_posterior` returns a non-finite value at a kept draw.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_mcmc_gibbs_with_log_posterior(Args&&... args) {
+    return detail::call_inferred("num_mcmc_gibbs_with_log_posterior",
+                                 std::forward<Args>(args)...);
+}
+
+/// Seeded Hamiltonian Monte Carlo on normalized coordinates with typed log-target and gradient functions and a fixed leapfrog schedule. Hamiltonian Monte Carlo sampler. A standard-normal momentum is drawn at every iteration, the Hamiltonian dynamics of the target are integrated with the leapfrog scheme for `leapfrog_steps` steps of length `step_size`, and the endpoint is accepted with the Metropolis probability `min(1, exp(H_old - H_new))`. The returned chain holds `n` draws taken every `thin` iterations after `burn_in` discarded ones. # Errors Returns an error when the initial state is empty, the step size is not positive and finite, the number of leapfrog steps, `n` or `thin` is zero, the iteration budget overflows, the target log density is not finite at the initial state, or the gradient has the wrong length or a non-finite entry.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_mcmc_hmc(Args&&... args) {
+    return detail::call_inferred("num_mcmc_hmc",
+                                 std::forward<Args>(args)...);
+}
+
+/// Seeded Metropolis–Hastings with normalized coordinates, positive Gaussian proposal scales and a typed log-target function. Metropolis-Hastings sampler with a symmetric Gaussian random walk. Each iteration proposes one joint move `x + proposal_sd * z` with `z` standard normal per coordinate and accepts it with probability `min(1, exp(log_target(new) - log_target(old)))`. Proposals whose target density is not a number are rejected. The returned chain holds `n` draws taken every `thin` iterations after `burn_in` discarded ones. # Errors Returns an error when the initial state or `proposal_sd` is empty or mismatched, a proposal scale is not positive and finite, `n` or `thin` is zero, the iteration budget overflows, or the target log density is not finite at the initial state.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_mcmc_metropolis_hastings(Args&&... args) {
+    return detail::call_inferred("num_mcmc_metropolis_hastings",
+                                 std::forward<Args>(args)...);
+}
+
+/// Creates a deterministic PCG32 stream from a u64 seed and a 63-bit stream selector. Creates a generator from a seed and a stream selector.
+inline Term num_mcmc_pcg32_new(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mcmc_pcg32_new", args, 2);
+}
+
+/// Advances the specified PCG32 stream and returns a 53-bit uniform draw in [0, 1). Next uniform variate in `[0, 1)` with 53 bits of resolution.
+inline Term num_mcmc_pcg32_next_f64(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mcmc_pcg32_next_f64", args, 1);
+}
+
+/// Advances the specified PCG32 stream and returns its next unsigned 32-bit output. Next 32-bit output.
+inline Term num_mcmc_pcg32_next_u32(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mcmc_pcg32_next_u32", args, 1);
+}
+
+/// Draws a standard normal from the specified PCG32 stream, preserving its cached Box–Muller variate. Next standard-normal variate by the Box-Muller transform. The second variate of each pair is cached and returned by the next call.
+inline Term num_mcmc_pcg32_normal(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mcmc_pcg32_normal", args, 1);
+}
+
+/// Creates a deterministic PCG32 stream with the default stream selector. Creates a generator on the default stream.
+inline Term num_mcmc_pcg32_seeded(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mcmc_pcg32_seeded", args, 1);
+}
+
+/// Seeded random-walk Metropolis with normalized coordinates, fixed Gaussian proposal scales and a typed log-target function. Random-walk Metropolis sampler. This is the same algorithm as [`metropolis_hastings`] with the per-coordinate proposal scales taken as given: no adaptation of the step sizes is performed, so the chain stays a time-homogeneous Markov chain. # Errors Returns the errors of [`metropolis_hastings`].
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_mcmc_random_walk_metropolis(Args&&... args) {
+    return detail::call_inferred("num_mcmc_random_walk_metropolis",
+                                 std::forward<Args>(args)...);
+}
+
+/// Split Rhat for rank-two measured draws, with one equally long chain per row. All chains measure the same quantity. The result is dimensionless.
+inline Term num_mcmc_split_rhat(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mcmc_split_rhat", args, 1);
+}
+
 /// Arithmetic mean; zero for an empty sample. Computes the mean of a slice of data. # Arguments * `data` - A unmutable slice of `f64` data points. # Returns The mean of the data as an `f64`.
 inline Term num_mean(const Term& a0) {
     Term args[] = {a0};
@@ -24549,10 +26835,22 @@ inline Term num_median(const Term& a0) {
     return apply("num_median", args, 1);
 }
 
+/// Builds a counterclockwise triangle mesh of a simple planar boundary. Pass two coordinate columns, positive target spacing, positive coordinate reference and maximum vertices. Both length-like arguments share the boundary unit. Meshes the interior of the closed loop `boundary` by front advancement. `spacing` is the target edge length; boundary edges are resampled to it and new interior vertices are placed at the height of an equilateral triangle over the front. The returned mesh is counter-clockwise and covers the polygon. # Errors Returns `Err` when the boundary has fewer than three points, contains non-finite coordinates or repeated consecutive points, when the enclosed area is zero, or when `spacing` is not positive and finite.
+inline Term num_meshgen_advancing_front_2d(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_meshgen_advancing_front_2d", args, 4);
+}
+
 /// `num_meshgen_boundary_faces(tetrahedra)` returns the oriented triangular faces incident to exactly one tetrahedron, in first occurrence order. Tetrahedron rows have four distinct zero-based vertex indices. Positively oriented tetrahedra give outward face winding. The faces of `tets` that belong to exactly one tetrahedron. Each face is returned once, with the winding it has in the tetrahedron that owns it, so the faces of a closed mesh point outwards.
 inline Term num_meshgen_boundary_faces(const Term& a0) {
     Term args[] = {a0};
     return apply("num_meshgen_boundary_faces", args, 1);
+}
+
+/// Triangulates measured points while preserving zero-based constrained segment endpoints as chains of edges. Crossing constraints can create additional measured vertices up to the supplied vertex budget. Constrained Delaunay triangulation of `points` and `segments`, returning the full [`TriMesh2`] including any Steiner vertices inserted where input segments cross. Segments passing through existing collinear vertices are split at those vertices, and mutually crossing segments are split at their intersection points (deduplicated against existing vertices within tolerance). Every input segment is guaranteed to be represented as a chain of constrained edges in the output mesh. # Errors Returns `Err` when the points are invalid, when a segment index is out of range, or when a segment joins a vertex to itself.
+inline Term num_meshgen_constrained_delaunay_2d(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_meshgen_constrained_delaunay_2d", args, 4);
 }
 
 /// `num_meshgen_delaunay_2d_incremental(points)` inserts between 3 and 4096 distinct planar points in input order and returns counter-clockwise triangles of zero-based vertex indices. Points may carry coordinate units. The triangulation contains indices only. Incremental Delaunay triangulation of `points`. This is the incremental entry point of the same Bowyer–Watson insertion used by [`delaunay_2d`]: points are inserted one at a time into the growing triangulation, and each insertion only re-triangulates the cavity of triangles whose circumcircle contains the new point. # Errors Returns `Err` under the same conditions as [`delaunay_2d`].
@@ -24585,16 +26883,292 @@ inline Term num_min(const Term& a0) {
     return apply("num_min", args, 1);
 }
 
+/// `num_modular_barrett_add(plan, a, b)` Adds two unsigned words modulo the prepared modulus. `(a + b) mod m`.
+inline Term num_modular_barrett_add(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_modular_barrett_add", args, 3);
+}
+
+/// `num_modular_barrett_div(plan, numerator, denominator)` Returns the modular quotient, or None when the denominator is not invertible. `a * b^(-1) mod m`, or `None` when `b` is not invertible.
+inline Term num_modular_barrett_div(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_modular_barrett_div", args, 3);
+}
+
+/// `num_modular_barrett_inv(plan, value)` Returns the modular inverse, or None when the value is not coprime to the modulus. `a^(-1) mod m`, or `None` when `gcd(a, m) != 1`.
+inline Term num_modular_barrett_inv(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_modular_barrett_inv", args, 2);
+}
+
+/// `num_modular_barrett_modulus(plan)` Returns the prepared modulus. The modulus `m`.
+inline Term num_modular_barrett_modulus(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_modular_barrett_modulus", args, 1);
+}
+
+/// `num_modular_barrett_mu(plan)` Returns floor(2^64 / modulus), the high word of the reciprocal. The high word of `mu = floor(2^128 / m)`, which is `floor(2^64 / m)`.
+inline Term num_modular_barrett_mu(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_modular_barrett_mu", args, 1);
+}
+
+/// `num_modular_barrett_mul(plan, a, b)` Multiplies two unsigned words modulo the prepared modulus. `(a * b) mod m`.
+inline Term num_modular_barrett_mul(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_modular_barrett_mul", args, 3);
+}
+
+/// `num_modular_barrett_neg(plan, value)` Negates an unsigned word modulo the prepared modulus. `(-a) mod m`.
+inline Term num_modular_barrett_neg(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_modular_barrett_neg", args, 2);
+}
+
+/// `num_modular_barrett_new(modulus)` prepares reusable reduction constants for an unsigned 64-bit modulus of at least two. Builds a reducer for `modulus >= 2`, or `None` for `0` and `1`.
+inline Term num_modular_barrett_new(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_modular_barrett_new", args, 1);
+}
+
+/// `num_modular_barrett_new_prime(modulus)` certifies a prime before preparing reduction constants. Builds a reducer for a modulus the caller has already established as at least two. # Panics Panics if `modulus < 2`.
+inline Term num_modular_barrett_new_prime(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_modular_barrett_new_prime", args, 1);
+}
+
+/// `num_modular_barrett_pow(plan, base, exponent)` Raises an unsigned word to an unsigned 64-bit exponent modulo the prepared modulus. `a^exp mod m`.
+inline Term num_modular_barrett_pow(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_modular_barrett_pow", args, 3);
+}
+
+/// `num_modular_barrett_reduce_u128(plan, value)` Reduces an unsigned 128-bit word modulo the prepared modulus. Reduces a `u128` modulo `m`. For `x < 2^126` — every product of two residues below `2^63` — the reduction is pure multiply-and-shift with at most two conditional subtractions. Above that the high word no longer fits the bound the estimate relies on, so the hardware division is used; that path only runs for moduli above `2^63`.
+inline Term num_modular_barrett_reduce_u128(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_modular_barrett_reduce_u128", args, 2);
+}
+
+/// `num_modular_barrett_reduce_u64(plan, value)` Reduces an unsigned 64-bit word modulo the prepared modulus. Reduces a `u64` modulo `m` without hardware division.
+inline Term num_modular_barrett_reduce_u64(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_modular_barrett_reduce_u64", args, 2);
+}
+
+/// `num_modular_barrett_sub(plan, a, b)` Subtracts two unsigned words modulo the prepared modulus. `(a - b) mod m`.
+inline Term num_modular_barrett_sub(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_modular_barrett_sub", args, 3);
+}
+
+/// `num_modular_montgomery_add(plan, a, b)` Adds two unsigned words modulo the prepared modulus. `(a + b) mod p` in the standard domain; inputs may exceed `p`.
+inline Term num_modular_montgomery_add(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_modular_montgomery_add", args, 3);
+}
+
+/// `num_modular_montgomery_add_mont(plan, a, b)` Adds two canonical Montgomery residues. `(a + b) mod p` for Montgomery residues in `[0, p)`.
+inline Term num_modular_montgomery_add_mont(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_modular_montgomery_add_mont", args, 3);
+}
+
+/// `num_modular_montgomery_div(plan, numerator, denominator)` Returns the modular quotient, or None when the denominator is not invertible. `a * b^(-1) mod p`, or `None` when `b` is not invertible.
+inline Term num_modular_montgomery_div(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_modular_montgomery_div", args, 3);
+}
+
+/// `num_modular_montgomery_fma_mont(plan, a, b, accumulator)` Adds the product to the accumulator in Montgomery representation. All three inputs must be canonical. `acc + a * b * R^(-1) mod p`, the fused form used by inner products.
+inline Term num_modular_montgomery_fma_mont(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_modular_montgomery_fma_mont", args, 4);
+}
+
+/// `num_modular_montgomery_from_mont(plan, value)` Converts a canonical Montgomery residue to standard representation. Converts a Montgomery residue back to `[0, p)`.
+inline Term num_modular_montgomery_from_mont(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_modular_montgomery_from_mont", args, 2);
+}
+
+/// `num_modular_montgomery_half(plan, value)` Halves a canonical residue for the odd modulus, in either representation. Halves a residue modulo the odd modulus. Halving commutes with the Montgomery representation (`(x * R) / 2` is the representation of `x / 2`), so this is valid in either domain.
+inline Term num_modular_montgomery_half(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_modular_montgomery_half", args, 2);
+}
+
+/// `num_modular_montgomery_inv(plan, value)` Returns the modular inverse, or None when the value is not coprime to the modulus. `a^(-1) mod p`, or `None` when `a` is a multiple of `p`.
+inline Term num_modular_montgomery_inv(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_modular_montgomery_inv", args, 2);
+}
+
+/// `num_modular_montgomery_modulus(plan)` Returns the prepared odd modulus. The modulus `p`.
+inline Term num_modular_montgomery_modulus(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_modular_montgomery_modulus", args, 1);
+}
+
+/// `num_modular_montgomery_mul(plan, a, b)` Multiplies two unsigned words modulo the prepared modulus. `(a * b) mod p` in the standard domain. One conversion plus one REDC: `a * (b * R) * R^(-1) = a * b`, so only `b` needs to enter the Montgomery domain.
+inline Term num_modular_montgomery_mul(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_modular_montgomery_mul", args, 3);
+}
+
+/// `num_modular_montgomery_mul_mont(plan, a, b)` Multiplies two canonical Montgomery residues. `a * b * R^(-1) mod p` for Montgomery residues in `[0, p)`.
+inline Term num_modular_montgomery_mul_mont(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_modular_montgomery_mul_mont", args, 3);
+}
+
+/// `num_modular_montgomery_n_prime(plan)` Returns the Montgomery reduction multiplier -p^(-1) mod 2^64. `n' = -p^(-1) mod 2^64`, the REDC multiplier.
+inline Term num_modular_montgomery_n_prime(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_modular_montgomery_n_prime", args, 1);
+}
+
+/// `num_modular_montgomery_neg(plan, value)` Negates an unsigned word modulo the prepared modulus. `(-a) mod p`. Negation commutes with the Montgomery representation, so this serves both domains; `neg_mont` is the same computation without the defensive reduction.
+inline Term num_modular_montgomery_neg(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_modular_montgomery_neg", args, 2);
+}
+
+/// `num_modular_montgomery_neg_mont(plan, value)` Negates a canonical Montgomery residue. `(-a) mod p` for a Montgomery residue in `[0, p)`.
+inline Term num_modular_montgomery_neg_mont(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_modular_montgomery_neg_mont", args, 2);
+}
+
+/// `num_modular_montgomery_new(modulus)` prepares reusable reduction constants for an unsigned 64-bit odd modulus greater than one. Builds a context for an odd `modulus > 1`, or `None` for any other modulus (including every even modulus, where `2^64` is not invertible).
+inline Term num_modular_montgomery_new(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_modular_montgomery_new", args, 1);
+}
+
+/// `num_modular_montgomery_new_prime(modulus)` certifies an odd prime before preparing reduction constants. Builds a context for a modulus the caller has already established as an odd integer greater than one. The only callers are primality tests and prime-field constructors that have certified the modulus, so the branch is a formality; it is checked rather than assumed because a silent wrong answer in modular arithmetic is far more expensive than one compare. # Panics Panics if `modulus <= 1` or `modulus` is even.
+inline Term num_modular_montgomery_new_prime(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_modular_montgomery_new_prime", args, 1);
+}
+
+/// `num_modular_montgomery_one(plan)` Returns the multiplicative identity in standard representation. `R mod p`, the Montgomery form of `1`.
+inline Term num_modular_montgomery_one(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_modular_montgomery_one", args, 1);
+}
+
+/// `num_modular_montgomery_one_mont(plan)` Returns the Montgomery representation of the multiplicative identity. `R mod p`, the Montgomery form of `1` (alias of [`Self::one`] kept for the call sites that name the representation explicitly).
+inline Term num_modular_montgomery_one_mont(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_modular_montgomery_one_mont", args, 1);
+}
+
+/// `num_modular_montgomery_pow(plan, base, exponent)` Raises an unsigned word to an unsigned 64-bit exponent modulo the prepared modulus. `a^exp mod p` in the standard domain.
+inline Term num_modular_montgomery_pow(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_modular_montgomery_pow", args, 3);
+}
+
+/// `num_modular_montgomery_pow_mont(plan, base, exponent)` Raises a canonical Montgomery residue to an unsigned 64-bit exponent. `base^exp * R mod p` from a Montgomery base.
+inline Term num_modular_montgomery_pow_mont(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_modular_montgomery_pow_mont", args, 3);
+}
+
+/// `num_modular_montgomery_r2_mod(plan)` Returns 2^128 reduced modulo the prepared modulus. `R^2 mod p = 2^128 mod p`, used to convert into Montgomery form.
+inline Term num_modular_montgomery_r2_mod(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_modular_montgomery_r2_mod", args, 1);
+}
+
+/// `num_modular_montgomery_r_mod(plan)` Returns 2^64 reduced modulo the prepared modulus. `R mod p = 2^64 mod p`, the Montgomery form of `1`.
+inline Term num_modular_montgomery_r_mod(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_modular_montgomery_r_mod", args, 1);
+}
+
+/// `num_modular_montgomery_redc(plan, value)` Returns value times the inverse Montgomery radix modulo p. Requires value < p * 2^64. Montgomery reduction `t * R^(-1) mod p` for `0 <= t < p * 2^64`. The sum `t + m * p` can carry out of 128 bits for a modulus near `2^64`; `overflowing_add` reports that carry, and the wrap-around subtraction `u.wrapping_sub(p)` then yields `u + 2^64 - p`, which is the reduced value.
+inline Term num_modular_montgomery_redc(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_modular_montgomery_redc", args, 2);
+}
+
+/// `num_modular_montgomery_sub(plan, a, b)` Subtracts two unsigned words modulo the prepared modulus. `(a - b) mod p` in the standard domain; inputs may exceed `p`.
+inline Term num_modular_montgomery_sub(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_modular_montgomery_sub", args, 3);
+}
+
+/// `num_modular_montgomery_sub_mont(plan, a, b)` Subtracts two canonical Montgomery residues. `(a - b) mod p` for Montgomery residues in `[0, p)`.
+inline Term num_modular_montgomery_sub_mont(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_modular_montgomery_sub_mont", args, 3);
+}
+
+/// `num_modular_montgomery_to_mont(plan, value)` Converts an unsigned 64-bit word to a reduced Montgomery residue. Converts a standard residue `a` to `a * R mod p`.
+inline Term num_modular_montgomery_to_mont(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_modular_montgomery_to_mont", args, 2);
+}
+
+/// `num_modular_montgomery_to_mont_u128(plan, value)` Converts an unsigned 128-bit word to a reduced Montgomery residue. Converts a `u128` value to its Montgomery form, reducing first.
+inline Term num_modular_montgomery_to_mont_u128(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_modular_montgomery_to_mont_u128", args, 2);
+}
+
 /// Returns a dyadic enclosure of the absolute values in the closed interval at the requested precision. The absolute value, as the hull of the endpoints' absolute values. # Errors Fails when an exponent leaves the range.
 inline Term num_mp_ball_abs(const Term& a0, const Term& a1) {
     Term args[] = {a0, a1};
     return apply("num_mp_ball_abs", args, 2);
 }
 
+/// `num_mp_ball_acos(interval, precision)` encloses the inverse cosine on the real domain [-1, 1].
+inline Term num_mp_ball_acos(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_ball_acos", args, 2);
+}
+
+/// `num_mp_ball_add(left, right, precision)` encloses every sum of two dyadic intervals. Precision sets the midpoint bit width; the radius includes midpoint rounding. The sum. # Errors Fails when an exponent leaves the range.
+inline Term num_mp_ball_add(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_ball_add", args, 3);
+}
+
+/// `num_mp_ball_asin(interval, precision)` encloses the inverse sine on the real domain [-1, 1].
+inline Term num_mp_ball_asin(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_ball_asin", args, 2);
+}
+
+/// `num_mp_ball_atan(interval, precision)` encloses the real inverse tangent of a closed interval.
+inline Term num_mp_ball_atan(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_ball_atan", args, 2);
+}
+
+/// `num_mp_ball_atan2(y, x, precision)` encloses the principal angle of a closed rectangle away from the origin and wrapping cut.
+inline Term num_mp_ball_atan2(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_ball_atan2", args, 3);
+}
+
 /// Tests whether the closed interval contains zero, including either endpoint. Whether the interval contains zero.
 inline Term num_mp_ball_contains_zero(const Term& a0) {
     Term args[] = {a0};
     return apply("num_mp_ball_contains_zero", args, 1);
+}
+
+/// `num_mp_ball_cos(interval, precision)` encloses the real cos over a closed dyadic interval.
+inline Term num_mp_ball_cos(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_ball_cos", args, 2);
+}
+
+/// `num_mp_ball_cosh(interval, precision)` encloses the hyperbolic cosine over a closed dyadic interval.
+inline Term num_mp_ball_cosh(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_ball_cosh", args, 2);
 }
 
 /// Encloses all quotients of two closed dimensionless intervals. Both arguments and the result have canonical dyadic midpoint and radius fields. The radius is nonnegative and can have a different bit precision from the midpoint. The divisor interval must exclude zero, including at its endpoints. An out-of-range exponent is a domain error. Encloses the quotients of the two intervals when the divisor excludes zero. # Errors Fails when the divisor contains zero or an exponent leaves the range.
@@ -24607,6 +27181,54 @@ inline Term num_mp_ball_div(const Term& a0, const Term& a1, const Term& a2) {
 inline Term num_mp_ball_endpoints(const Term& a0, const Term& a1) {
     Term args[] = {a0, a1};
     return apply("num_mp_ball_endpoints", args, 2);
+}
+
+/// `num_mp_ball_exp(interval, precision)` encloses the exponential over a closed dyadic interval.
+inline Term num_mp_ball_exp(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_ball_exp", args, 2);
+}
+
+/// `num_mp_ball_exp2(interval, precision)` encloses the base-two exponential over a closed dyadic interval.
+inline Term num_mp_ball_exp2(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_ball_exp2", args, 2);
+}
+
+/// Given the exact mapped midpoint and a caller-supplied nonnegative Lipschitz bound, widens the radius by input radius times the bound and includes rounding of the midpoint. Widens the radius by a Lipschitz bound of the function applied to the midpoint. # Errors Fails when an exponent leaves the range.
+inline Term num_mp_ball_lipschitz(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_mp_ball_lipschitz", args, 4);
+}
+
+/// `num_mp_ball_ln(interval, precision)` encloses the natural logarithm over a closed dyadic interval.
+inline Term num_mp_ball_ln(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_ball_ln", args, 2);
+}
+
+/// `num_mp_ball_log10(interval, precision)` encloses the base-ten logarithm over a closed dyadic interval.
+inline Term num_mp_ball_log10(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_ball_log10", args, 2);
+}
+
+/// `num_mp_ball_log2(interval, precision)` encloses the base-two logarithm over a closed dyadic interval.
+inline Term num_mp_ball_log2(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_ball_log2", args, 2);
+}
+
+/// `num_mp_ball_midpoint(interval)` Returns the midpoint of the closed dyadic interval. The midpoint.
+inline Term num_mp_ball_midpoint(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_ball_midpoint", args, 1);
+}
+
+/// `num_mp_ball_mul(left, right, precision)` encloses every product of two dyadic intervals. Precision sets the midpoint bit width; the radius includes midpoint rounding. The product. # Errors Fails when an exponent leaves the range.
+inline Term num_mp_ball_mul(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_ball_mul", args, 3);
 }
 
 /// Reflects a closed interval about zero and retains its radius. The value negated.
@@ -24627,10 +27249,382 @@ inline Term num_mp_ball_point(const Term& a0) {
     return apply("num_mp_ball_point", args, 1);
 }
 
+/// `num_mp_ball_pow(base, exponent, precision)` encloses a real power over closed base and exponent intervals.
+inline Term num_mp_ball_pow(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_ball_pow", args, 3);
+}
+
+/// `num_mp_ball_pow_ratio(base, numerator, denominator, precision)` encloses a closed interval raised to an exact rational exponent.
+inline Term num_mp_ball_pow_ratio(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_mp_ball_pow_ratio", args, 4);
+}
+
+/// `num_mp_ball_powi(base, exponent, precision)` encloses a closed interval raised to a signed integer exponent.
+inline Term num_mp_ball_powi(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_ball_powi", args, 3);
+}
+
+/// `num_mp_ball_radius(interval)` Returns the nonnegative radius of the closed dyadic interval. The radius.
+inline Term num_mp_ball_radius(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_ball_radius", args, 1);
+}
+
+/// `num_mp_ball_sin(interval, precision)` encloses the real sin over a closed dyadic interval.
+inline Term num_mp_ball_sin(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_ball_sin", args, 2);
+}
+
+/// `num_mp_ball_sinh(interval, precision)` encloses the hyperbolic sine over a closed dyadic interval.
+inline Term num_mp_ball_sinh(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_ball_sinh", args, 2);
+}
+
+/// `num_mp_ball_sqrt(interval, precision)` Encloses the square root of a nonnegative closed interval.
+inline Term num_mp_ball_sqrt(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_ball_sqrt", args, 2);
+}
+
+/// `num_mp_ball_sub(left, right, precision)` encloses every difference of two dyadic intervals. Precision sets the midpoint bit width; the radius includes midpoint rounding. The difference. # Errors Fails when an exponent leaves the range.
+inline Term num_mp_ball_sub(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_ball_sub", args, 3);
+}
+
+/// `num_mp_ball_tan(interval, precision)` encloses the real tan over a closed dyadic interval.
+inline Term num_mp_ball_tan(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_ball_tan", args, 2);
+}
+
+/// `num_mp_ball_tanh(interval, precision)` encloses the hyperbolic tangent over a closed dyadic interval.
+inline Term num_mp_ball_tanh(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_ball_tanh", args, 2);
+}
+
 /// Returns twice the radius as a dyadic. An out-of-range exponent is a domain error. The width `2 * rad`. # Errors Fails when an exponent leaves the range.
 inline Term num_mp_ball_width(const Term& a0) {
     Term args[] = {a0};
     return apply("num_mp_ball_width", args, 1);
+}
+
+/// `num_mp_complex_abs(value, precision)` encloses the modulus of a closed dyadic rectangle. Modulus `|self| = sqrt(re^2 + im^2)`. # Errors Fails if an exponent leaves the range.
+inline Term num_mp_complex_abs(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_abs", args, 2);
+}
+
+/// `num_mp_complex_abs_sq(value, precision)` encloses the squared magnitudes using the rectangle’s nearest and farthest coordinates from zero. Squared modulus `re^2 + im^2`. # Errors Fails if an exponent leaves the range.
+inline Term num_mp_complex_abs_sq(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_abs_sq", args, 2);
+}
+
+/// `num_mp_complex_acos(value, precision)` encloses the principal inverse cosine of a closed dyadic rectangle. Principal inverse cosine `acos(z) = pi/2 - asin(z)`. # Errors Fails if the expression crosses a branch cut.
+inline Term num_mp_complex_acos(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_acos", args, 2);
+}
+
+/// `num_mp_complex_acosh(value, precision)` encloses the principal inverse hyperbolic cosine of a closed dyadic rectangle. Principal inverse hyperbolic cosine `acosh(z) = ln(z + sqrt(z - 1) * sqrt(z + 1))`. # Errors Fails if the expression crosses a branch cut.
+inline Term num_mp_complex_acosh(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_acosh", args, 2);
+}
+
+/// `num_mp_complex_add(left, right, precision)` encloses the pairwise sums at the requested bit precision. Addition `self + other`. # Errors Fails if an exponent leaves the supported range.
+inline Term num_mp_complex_add(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_complex_add", args, 3);
+}
+
+/// `num_mp_complex_arg(value, precision)` encloses the principal argument of an exact dyadic rectangle off the non-positive real axis. Principal argument `arg(self) = atan2(im, re)` in `(-pi, pi]`. # Errors Fails if the enclosure meets the non-positive real axis cut.
+inline Term num_mp_complex_arg(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_arg", args, 2);
+}
+
+/// `num_mp_complex_asin(value, precision)` encloses the principal inverse sine of a closed dyadic rectangle. Principal inverse sine `asin(z) = -i * ln(i*z + sqrt(1 - z^2))`. # Errors Fails if the expression crosses a branch cut.
+inline Term num_mp_complex_asin(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_asin", args, 2);
+}
+
+/// `num_mp_complex_asinh(value, precision)` encloses the principal inverse hyperbolic sine of a closed dyadic rectangle. Principal inverse hyperbolic sine `asinh(z) = ln(z + sqrt(z^2 + 1))`. # Errors Fails if the expression crosses a branch cut.
+inline Term num_mp_complex_asinh(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_asinh", args, 2);
+}
+
+/// `num_mp_complex_atan(value, precision)` encloses the principal inverse tangent of a closed dyadic rectangle. Principal inverse tangent `atan(z) = (i/2) * ln((1 - i*z) / (1 + i*z))`. # Errors Fails if the expression crosses a branch cut.
+inline Term num_mp_complex_atan(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_atan", args, 2);
+}
+
+/// `num_mp_complex_atanh(value, precision)` encloses the principal inverse hyperbolic tangent of a closed dyadic rectangle. Principal inverse hyperbolic tangent `atanh(z) = 0.5 * ln((1 + z) / (1 - z))`. # Errors Fails if the expression crosses a branch cut.
+inline Term num_mp_complex_atanh(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_atanh", args, 2);
+}
+
+/// Encloses principal Bessel J for dimensionless dyadic argument and order rectangles. Exact integer orders through magnitude 512 admit either side of the cut. General orders require Re(order) >= 0 and up to 512 bits. The argument rectangle must stay within |Re(z)| + |Im(z)| <= 256. Complex Bessel function `J_nu(z)` at `prec` bits for `nu >= 0`. # Errors Fails if `z` meets `(-inf, 0]` for non-integer `nu` or series fails to converge.
+inline Term num_mp_complex_bessel_j(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_complex_bessel_j", args, 3);
+}
+
+/// `num_mp_complex_conj(value)` conjugates a rectangle by negating its imaginary interval. Complex conjugate `re - i * im`.
+inline Term num_mp_complex_conj(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_complex_conj", args, 1);
+}
+
+/// `num_mp_complex_cos(value, precision)` encloses the cosine of a closed dyadic rectangle. Complex cosine `cos(x + i*y) = cos(x)cosh(y) - i*sin(x)sinh(y)`. # Errors Fails if an exponent leaves the range.
+inline Term num_mp_complex_cos(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_cos", args, 2);
+}
+
+/// `num_mp_complex_cosh(value, precision)` encloses the hyperbolic cosine of a closed dyadic rectangle. Complex hyperbolic cosine `cosh(x + i*y) = cosh(x)cos(y) + i*sinh(x)sin(y)`. # Errors Fails if an exponent leaves the range.
+inline Term num_mp_complex_cosh(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_cosh", args, 2);
+}
+
+/// Encloses the logarithmic derivative of gamma for a closed dyadic rectangle separated from the poles. Precision is at most 1024 bits and recurrence work is bounded. Complex digamma function `psi(z) = Gamma'(z) / Gamma(z)` at `prec` bits. # Errors Fails if `z` meets `(-inf, 0]` or exponents overflow.
+inline Term num_mp_complex_digamma(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_digamma", args, 2);
+}
+
+/// `num_mp_complex_div(left, right, precision)` encloses the pairwise quotients at the requested bit precision. The divisor must be separated from zero by the squared-modulus enclosure. Division `self / other`. # Errors Fails if `|other|^2` contains zero or an exponent leaves the range.
+inline Term num_mp_complex_div(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_complex_div", args, 3);
+}
+
+/// Encloses the complex error function over a closed dyadic rectangle with a certified series remainder. Complex error function `erf(z)` at `prec` bits. # Errors Fails if series does not converge or exponents overflow.
+inline Term num_mp_complex_erf(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_erf", args, 2);
+}
+
+/// Encloses the complex complementary error function over a closed dyadic rectangle. A certified right-sector tail avoids cancellation in the far positive range. Complex complementary error function `erfc(z) = 1 - erf(z)` at `prec` bits. # Errors Fails if `erf` fails.
+inline Term num_mp_complex_erfc(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_erfc", args, 2);
+}
+
+/// `num_mp_complex_exp(value, precision)` encloses the exponential of a closed dyadic rectangle. Complex exponential `exp(x + i*y) = exp(x) * (cos(y) + i*sin(y))`. # Errors Fails if an exponent leaves the range.
+inline Term num_mp_complex_exp(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_exp", args, 2);
+}
+
+/// `num_mp_complex_from_real(real)` lifts the real interval into a rectangle with an exact zero imaginary part. Lifts a real [`Ball`] to `re + 0i`.
+inline Term num_mp_complex_from_real(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_complex_from_real", args, 1);
+}
+
+/// Encloses gamma for a closed dyadic rectangle separated from the nonpositive integer poles. Precision is at most 1024 bits and recurrence work is bounded. Complex gamma function `Gamma(z) = exp(ln_gamma(z))` at `prec` bits. # Errors Fails if `z` meets `(-inf, 0]` or exponents overflow.
+inline Term num_mp_complex_gamma(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_gamma", args, 2);
+}
+
+/// `num_mp_complex_i(precision)` constructs the exact imaginary unit at the requested bit precision. `0 + 1i` at precision `prec`.
+inline Term num_mp_complex_i(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_complex_i", args, 1);
+}
+
+/// `num_mp_complex_ln(value, precision)` encloses the principal logarithm of a closed dyadic rectangle that avoids the branch cut. Principal complex logarithm `ln(z) = ln|z| + i*arg(z)`. # Errors Fails if the enclosure meets the branch cut `(-inf, 0]`.
+inline Term num_mp_complex_ln(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_ln", args, 2);
+}
+
+/// Encloses the analytic log-gamma branch real on positive reals. The closed dyadic rectangle must avoid the nonpositive real cut. Precision is at most 1024 bits and recurrence work is bounded. Principal complex log-gamma `ln(Gamma(z))` at `prec` bits (away from `(-inf, 0]`). # Errors Fails if `z` meets `(-inf, 0]` or exponents overflow.
+inline Term num_mp_complex_log_gamma(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_log_gamma", args, 2);
+}
+
+/// `num_mp_complex_mul(left, right, precision)` encloses the pairwise products at the requested bit precision. Multiplication `self * other`. # Errors Fails if an exponent leaves the supported range.
+inline Term num_mp_complex_mul(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_complex_mul", args, 3);
+}
+
+/// `num_mp_complex_neg(value)` negates both coordinate intervals exactly. Negation `-self`.
+inline Term num_mp_complex_neg(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_complex_neg", args, 1);
+}
+
+/// `num_mp_complex_new(real, imag)` constructs a rectangle from two closed dyadic intervals. Constructs an [`MpComplex`] from real and imaginary [`Ball`]s.
+inline Term num_mp_complex_new(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_new", args, 2);
+}
+
+/// `num_mp_complex_one(precision)` constructs the exact real unit at the requested bit precision. `1 + 0i` at precision `prec`.
+inline Term num_mp_complex_one(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_complex_one", args, 1);
+}
+
+/// `num_mp_complex_point(real, imag)` constructs an exact complex point from two dyadics. Constructs an exact point [`MpComplex`] from two [`Real`] values.
+inline Term num_mp_complex_point(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_point", args, 2);
+}
+
+/// Encloses polylogarithm when the argument rectangle lies strictly within the unit disk and the order rectangle has Re(order) >= -256. Returns an error when a certified tail cannot be reached within the bounded series. Precision is at most 512 bits. Complex polylogarithm `Li_s(z) = sum_{k>=1} z^k / k^s` at `prec` bits for `|z| < 0.85`. # Errors Fails if `|z| >= 0.85` or series fails to converge.
+inline Term num_mp_complex_polylog(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_complex_polylog", args, 3);
+}
+
+/// `num_mp_complex_pow(base, exponent, precision)` encloses a signed integer power or the principal complex power of dyadic rectangles. Complex power `self^w`. Uses [`Self::powi`] when `w` is an exact integer point, otherwise computes `exp(w * ln(self))`. # Errors Fails if `self` meets the logarithm cut or an exponent overflows.
+inline Term num_mp_complex_pow(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_complex_pow", args, 3);
+}
+
+/// `num_mp_complex_powi(value, exponent, precision)` encloses the integer power at the requested bit precision. The exponent must fit a signed 64-bit integer. Negative powers require separation from zero. Integer power `self^n` via binary exponentiation (exact at `n = 0` and for non-positive real bases). # Errors Fails if `n < 0` and `self` cannot be separated from zero, or on exponent overflow.
+inline Term num_mp_complex_powi(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_complex_powi", args, 3);
+}
+
+/// `num_mp_complex_recip(value, precision)` encloses the reciprocals at the requested bit precision. The rectangle must be separated from zero by the squared-modulus enclosure. Reciprocal `1 / self`. # Errors Fails if `|self|^2` contains zero or an exponent leaves the range.
+inline Term num_mp_complex_recip(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_recip", args, 2);
+}
+
+/// Encloses the analytic continuation of Riemann zeta. General order rectangles must avoid one and satisfy Re(order) >= -32 and |order| <= 256. Exact negative even integer orders are trivial zeros and the supported exact odd orders extend down to -127. Precision is at most 512 bits. Complex Riemann zeta function `zeta(s)` at `prec` bits for `Re(s) > 1` or `s != 1`. # Errors Fails at `s = 1` or on exponent overflow.
+inline Term num_mp_complex_riemann_zeta(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_riemann_zeta", args, 2);
+}
+
+/// `num_mp_complex_sin(value, precision)` encloses the sine of a closed dyadic rectangle. Complex sine `sin(x + i*y) = sin(x)cosh(y) + i*cos(x)sinh(y)`. # Errors Fails if an exponent leaves the range.
+inline Term num_mp_complex_sin(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_sin", args, 2);
+}
+
+/// `num_mp_complex_sinh(value, precision)` encloses the hyperbolic sine of a closed dyadic rectangle. Complex hyperbolic sine `sinh(x + i*y) = sinh(x)cos(y) + i*cosh(x)sin(y)`. # Errors Fails if an exponent leaves the range.
+inline Term num_mp_complex_sinh(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_sinh", args, 2);
+}
+
+/// `num_mp_complex_sqrt(value, precision)` encloses the principal square root of a closed dyadic rectangle. Principal complex square root `sqrt(z)`. # Errors Fails if the enclosure crosses the negative real axis `(-inf, 0)`.
+inline Term num_mp_complex_sqrt(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_sqrt", args, 2);
+}
+
+/// `num_mp_complex_sub(left, right, precision)` encloses the pairwise differences at the requested bit precision. Subtraction `self - other`. # Errors Fails if an exponent leaves the supported range.
+inline Term num_mp_complex_sub(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_complex_sub", args, 3);
+}
+
+/// `num_mp_complex_tan(value, precision)` encloses the tangent of a closed dyadic rectangle. Complex tangent `tan(z) = sin(z) / cos(z)`. # Errors Fails if `cos(z)` contains zero or an exponent leaves the range.
+inline Term num_mp_complex_tan(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_tan", args, 2);
+}
+
+/// `num_mp_complex_tanh(value, precision)` encloses the hyperbolic tangent of a closed dyadic rectangle. Complex hyperbolic tangent `tanh(z) = sinh(z) / cosh(z)`. # Errors Fails if `cosh(z)` contains zero or an exponent leaves the range.
+inline Term num_mp_complex_tanh(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_complex_tanh", args, 2);
+}
+
+/// `num_mp_complex_zero(precision)` constructs the exact zero rectangle at the requested bit precision. `0 + 0i` at precision `prec`.
+inline Term num_mp_complex_zero(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_complex_zero", args, 1);
+}
+
+/// `num_mp_decimal_enclose(text, precision)` Encloses an exact decimal in a dyadic ball at the requested midpoint precision.
+inline Term num_mp_decimal_enclose(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_decimal_enclose", args, 2);
+}
+
+/// `num_mp_decimal_exponent(value)` Returns the exact base-ten order of magnitude, or None for zero. The decimal exponent of `x`, `floor(log10(|x|))`, or `None` for zero.
+inline Term num_mp_decimal_exponent(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_decimal_exponent", args, 1);
+}
+
+/// `num_mp_decimal_format_ball(interval, digits)` Formats a dyadic ball when both endpoints determine the same rounded digits. The digits `ball` pins down, or an error when its radius straddles a rounding boundary. # Errors Fails when the two endpoints round to different text.
+inline Term num_mp_decimal_format_ball(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_decimal_format_ball", args, 2);
+}
+
+/// `num_mp_decimal_from_text(text, precision)` Parses exact decimal text and rounds to a dyadic with ties to even. The exact value of decimal text, rounded to `prec` bits. Accepts an optional sign, digits with an optional decimal point, and an optional `e` or `E` exponent. Spaces around the text are ignored. # Errors Fails on malformed text, an empty mantissa, or an exponent outside the representable range.
+inline Term num_mp_decimal_from_text(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_decimal_from_text", args, 2);
+}
+
+/// `num_mp_decimal_from_text_in(text, precision, rounding)` Parses exact decimal text and rounds once in the requested direction.
+inline Term num_mp_decimal_from_text_in(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_decimal_from_text_in", args, 3);
+}
+
+/// `num_mp_decimal_round_text(text, digits, rounding)` Rounds a decimal literal directly to significant digits without binary conversion. Rounds decimal text to `digits` significant digits in `mode`. # Errors Fails on malformed text or when an exponent leaves the range.
+inline Term num_mp_decimal_round_text(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_decimal_round_text", args, 3);
+}
+
+/// `num_mp_decimal_significant_digits(value)` Counts digits in the exact terminating decimal, capped at 10000. The number of significant decimal digits `x` needs to be exact, capped at [`MAX_DIGITS`].
+inline Term num_mp_decimal_significant_digits(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_decimal_significant_digits", args, 1);
+}
+
+/// `num_mp_decimal_to_text(value, digits)` Formats an exact dyadic to significant digits with ties to even. `x` as decimal text with `digits` significant digits, correctly rounded. # Errors Fails for fewer than one digit or when an exponent leaves the range.
+inline Term num_mp_decimal_to_text(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_decimal_to_text", args, 2);
+}
+
+/// `num_mp_decimal_to_text_in(value, digits, rounding)` Formats an exact dyadic to significant digits in the requested direction. `x` as decimal text with `digits` significant digits, rounded in `mode`. # Errors Fails for fewer than one digit or when an exponent leaves the range.
+inline Term num_mp_decimal_to_text_in(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_decimal_to_text_in", args, 3);
+}
+
+/// `num_mp_decimal_working_bits(digits)` Estimates working binary precision including 16 guard bits for decimal digits. Bits that hold `digits` decimal digits, with guard bits.
+inline Term num_mp_decimal_working_bits(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_decimal_working_bits", args, 1);
+}
+
+/// Evaluates a bounded arithmetic expression to a dyadic enclosure. Invalid syntax, uncertifiable domains and out-of-range precision return errors. Evaluates `text` at `prec` bits. # Errors Fails on malformed text, an unknown name, a domain error, or when an exponent leaves the representable range.
+inline Term num_mp_expression_enclose(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_expression_enclose", args, 2);
 }
 
 /// Returns the absolute value of an exact dyadic without rounding. The absolute value.
@@ -24639,10 +27633,46 @@ inline Term num_mp_real_abs(const Term& a0) {
     return apply("num_mp_real_abs", args, 1);
 }
 
+/// `num_mp_real_acos(value, precision)` encloses the inverse cosine on the real domain [-1, 1]. `acos(x)` as a ball, for `|x| <= 1`. # Errors Fails outside `[-1, 1]` or when an exponent leaves the range.
+inline Term num_mp_real_acos(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_real_acos", args, 2);
+}
+
 /// Adds two canonical dyadic records and rounds the exact sum once to the requested bit precision and mode. The sum, rounded once to `prec` bits. # Errors Fails when the exponent would leave the representable range.
 inline Term num_mp_real_add(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
     Term args[] = {a0, a1, a2, a3};
     return apply("num_mp_real_add", args, 4);
+}
+
+/// `num_mp_real_asin(value, precision)` encloses the inverse sine on the real domain [-1, 1]. `asin(x)` as a ball, for `|x| <= 1`. # Errors Fails outside `[-1, 1]` or when an exponent leaves the range.
+inline Term num_mp_real_asin(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_real_asin", args, 2);
+}
+
+/// `num_mp_real_atan(value, precision)` encloses the real inverse tangent of a dyadic. `atan(x)` as a ball. # Errors Fails when an exponent leaves the representable range.
+inline Term num_mp_real_atan(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_real_atan", args, 2);
+}
+
+/// `num_mp_real_atan2(y, x, precision)` encloses the principal angle of the exact dyadic coordinates (x, y). `atan2(y, x)` as a ball, with the quadrant resolved. # Errors Fails when both operands are zero or an exponent leaves the range.
+inline Term num_mp_real_atan2(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_real_atan2", args, 3);
+}
+
+/// `num_mp_real_cbrt(value, precision)` Encloses the real cube root of a dyadic, including negative inputs. The cube root as a ball. # Errors Fails when an exponent leaves the representable range.
+inline Term num_mp_real_cbrt(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_real_cbrt", args, 2);
+}
+
+/// `num_mp_real_cbrt_in(value, precision, rounding)` Rounds the real cube root of a dyadic in the requested direction.
+inline Term num_mp_real_cbrt_in(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_real_cbrt_in", args, 3);
 }
 
 /// Compares canonical dyadic records exactly. Returns -1, 0, or 1 and allows different operand precisions. Total order: `-1`, `0` or `1` as `self` is below, equal to or above `other`.
@@ -24651,16 +27681,124 @@ inline Term num_mp_real_compare(const Term& a0, const Term& a1) {
     return apply("num_mp_real_compare", args, 2);
 }
 
+/// `num_mp_real_const_e(precision)` returns Euler’s number e, correctly rounded to the requested bit precision. `e` at `prec` bits. # Errors Fails when an exponent leaves the representable range.
+inline Term num_mp_real_const_e(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_real_const_e", args, 1);
+}
+
+/// `num_mp_real_const_enclose(name, precision)` returns an outward dyadic enclosure of a named constant.
+inline Term num_mp_real_const_enclose(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_real_const_enclose", args, 2);
+}
+
+/// `num_mp_real_const_functions()` lists the function names recognized by the multiprecision expression parser. The names [`evaluate`] accepts as functions, for diagnostics and help.
+inline Term num_mp_real_const_functions() { return apply("num_mp_real_const_functions", nullptr, 0); }
+
+/// `num_mp_real_const_ln2(precision)` returns the natural logarithm of two, correctly rounded to the requested bit precision. `ln 2` at `prec` bits. # Errors Fails when an exponent leaves the representable range.
+inline Term num_mp_real_const_ln2(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_real_const_ln2", args, 1);
+}
+
+/// `num_mp_real_const_named(name, precision)` returns a named constant correctly rounded to the requested bit precision. The constant `name` at `prec` bits, if it is known. # Errors Fails for an unknown name or when an exponent leaves the range.
+inline Term num_mp_real_const_named(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_real_const_named", args, 2);
+}
+
+/// `num_mp_real_const_names()` lists the exact names accepted by the dyadic constant functions. The names [`named`] accepts, for diagnostics and the operator's help text.
+inline Term num_mp_real_const_names() { return apply("num_mp_real_const_names", nullptr, 0); }
+
+/// `num_mp_real_const_phi(precision)` returns the golden ratio, correctly rounded to the requested bit precision. The golden ratio `(1 + sqrt 5) / 2` at `prec` bits. # Errors Fails when an exponent leaves the representable range.
+inline Term num_mp_real_const_phi(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_real_const_phi", args, 1);
+}
+
+/// `num_mp_real_const_pi(precision)` returns the circle constant pi, correctly rounded to the requested bit precision. `pi` at `prec` bits. # Errors Fails when an exponent leaves the representable range.
+inline Term num_mp_real_const_pi(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_real_const_pi", args, 1);
+}
+
+/// `num_mp_real_const_pi_scaled(bits)` returns the exact integer floor of pi times 2^bits. Accepts 0 to 32768 bits. A fixed-point approximation to `pi` as a [`BigInt`] numerator over `2^prec`. The constant is evaluated with guard bits before scaling and truncating. # Errors Fails when an exponent leaves the range.
+inline Term num_mp_real_const_pi_scaled(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_real_const_pi_scaled", args, 1);
+}
+
+/// `num_mp_real_const_sqrt2(precision)` returns the square root of two, correctly rounded to the requested bit precision. `sqrt 2` at `prec` bits. # Errors Fails when an exponent leaves the representable range.
+inline Term num_mp_real_const_sqrt2(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_real_const_sqrt2", args, 1);
+}
+
+/// `num_mp_real_cos(value, precision)` encloses the real cos of an exact dyadic. `cos(x)` as a ball. # Errors Fails for an argument beyond `2^20` in magnitude or when an exponent leaves the range.
+inline Term num_mp_real_cos(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_real_cos", args, 2);
+}
+
+/// `num_mp_real_cosh(value, precision)` encloses the hyperbolic cosine of an exact dyadic. `cosh(x)` as a ball. # Errors Fails when an exponent leaves the representable range.
+inline Term num_mp_real_cosh(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_real_cosh", args, 2);
+}
+
 /// Divides two canonical dyadic records and rounds the exact quotient once to the requested bit precision and mode. A zero divisor or an out-of-range normalized exponent is a domain error. The quotient, rounded once to `prec` bits. # Errors Fails on division by zero or when the exponent leaves the range.
 inline Term num_mp_real_div(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
     Term args[] = {a0, a1, a2, a3};
     return apply("num_mp_real_div", args, 4);
 }
 
+/// `num_mp_real_exp(value, precision)` encloses the exponential of an exact dyadic. `exp(x)` as a ball. # Errors Fails when an exponent leaves the representable range.
+inline Term num_mp_real_exp(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_real_exp", args, 2);
+}
+
+/// `num_mp_real_exp2(value, precision)` encloses the base-two exponential of an exact dyadic. `2^x`, a convenience over [`exp`]. # Errors Fails when an exponent leaves the representable range.
+inline Term num_mp_real_exp2(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_real_exp2", args, 2);
+}
+
+/// `num_mp_real_exponent(value)` Returns the binary exponent of the canonical dyadic. The binary exponent: the value is `mantissa * 2^exponent`.
+inline Term num_mp_real_exponent(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_real_exponent", args, 1);
+}
+
 /// Returns floor(log2(abs(value))) or None if value is zero. `floor(log2(|x|))`, or `None` for zero.
 inline Term num_mp_real_floor_log2(const Term& a0) {
     Term args[] = {a0};
     return apply("num_mp_real_floor_log2", args, 1);
+}
+
+/// `num_mp_real_from_bigint(value, precision, mode)` converts a signed integer up to 65536 bits in magnitude, rounded once to the requested bit precision and mode. The integer `value` at precision `prec`, rounded when it does not fit. # Errors Fails when the exponent would leave the representable range.
+inline Term num_mp_real_from_bigint(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_real_from_bigint", args, 3);
+}
+
+/// `num_mp_real_from_f64(value, precision)` rounds a finite binary64 value to the requested bit precision with ties to even. Both signed zeros give the canonical dyadic zero. The exact value of an `f64` at precision `prec`. # Errors Fails for an infinity or a NaN, or when the exponent leaves the range.
+inline Term num_mp_real_from_f64(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_real_from_f64", args, 2);
+}
+
+/// `num_mp_real_from_i64(value, precision)` converts an integer in the signed 64-bit range, rounded to the requested bit precision with ties to even. The integer `value` at precision `prec`, exactly when it fits. # Errors Fails when the exponent would leave the representable range.
+inline Term num_mp_real_from_i64(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_real_from_i64", args, 2);
+}
+
+/// `num_mp_real_hypot(left, right, precision)` Encloses the Euclidean norm of two exact dyadics. `sqrt(a^2 + b^2)` as a ball. # Errors Fails when an exponent leaves the representable range.
+inline Term num_mp_real_hypot(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_real_hypot", args, 3);
 }
 
 /// Tests whether a dyadic has no fractional binary digits. Whether the value is an exact integer.
@@ -24675,6 +27813,33 @@ inline Term num_mp_real_is_zero(const Term& a0) {
     return apply("num_mp_real_is_zero", args, 1);
 }
 
+/// `num_mp_real_limits()` Reports the supported dyadic precision and exponent limits.
+inline Term num_mp_real_limits() { return apply("num_mp_real_limits", nullptr, 0); }
+
+/// `num_mp_real_ln(value, precision)` encloses the natural logarithm of an exact dyadic. `ln(x)` as a ball, for `x > 0`. # Errors Fails for a non-positive operand or when an exponent leaves the range.
+inline Term num_mp_real_ln(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_real_ln", args, 2);
+}
+
+/// `num_mp_real_log10(value, precision)` encloses the base-ten logarithm of an exact dyadic. `log10(x)` as a ball, for `x > 0`. # Errors Fails for a non-positive operand or when an exponent leaves the range.
+inline Term num_mp_real_log10(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_real_log10", args, 2);
+}
+
+/// `num_mp_real_log2(value, precision)` encloses the base-two logarithm of an exact dyadic. `log2(x)` as a ball, for `x > 0`. # Errors Fails for a non-positive operand or when an exponent leaves the range.
+inline Term num_mp_real_log2(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_real_log2", args, 2);
+}
+
+/// `num_mp_real_mantissa(value)` Returns the exact arbitrary-width integer mantissa. The mantissa, normalised to [`Self::precision`] bits.
+inline Term num_mp_real_mantissa(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_real_mantissa", args, 1);
+}
+
 /// Multiplies two canonical dyadic records and rounds the exact product once to the requested bit precision and mode. The product, rounded once to `prec` bits. # Errors Fails when the exponent would leave the representable range.
 inline Term num_mp_real_mul(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
     Term args[] = {a0, a1, a2, a3};
@@ -24687,16 +27852,88 @@ inline Term num_mp_real_neg(const Term& a0) {
     return apply("num_mp_real_neg", args, 1);
 }
 
+/// `num_mp_real_one(precision)` returns the exact number one at the requested bit precision. The value one at precision `prec`.
+inline Term num_mp_real_one(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_real_one", args, 1);
+}
+
+/// `num_mp_real_pow(base, exponent, precision)` encloses the real power of two exact dyadics. `x^y` as a ball. # Errors Fails for a negative base with a non-integer exponent, or when an exponent leaves the representable range.
+inline Term num_mp_real_pow(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_real_pow", args, 3);
+}
+
+/// `num_mp_real_pow_ratio(base, numerator, denominator, precision)` encloses an exact dyadic raised to the rational exponent numerator / denominator.
+inline Term num_mp_real_pow_ratio(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_mp_real_pow_ratio", args, 4);
+}
+
+/// `num_mp_real_powi(base, exponent, precision)` encloses an exact dyadic raised to a signed integer exponent.
+inline Term num_mp_real_powi(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_real_powi", args, 3);
+}
+
+/// `num_mp_real_precision(value)` Returns the dyadic significand precision in bits. The mantissa width in bits.
+inline Term num_mp_real_precision(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_real_precision", args, 1);
+}
+
 /// Rounds mantissa times 2^exponent once to the requested bit precision. Returns the integer fields mantissa, exponent and precision. Nonzero mantissas have exactly precision bits and zero has exponent zero. Precision is 1 to 32768 bits, input mantissas may have up to 65536 bits and exponents must lie within +/-262144. Accepts nearest (ties to even), zero, away, up, or down. `mant * 2^exp` rounded to `prec` bits. # Errors Fails when the exponent would leave the representable range.
 inline Term num_mp_real_round(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
     Term args[] = {a0, a1, a2, a3};
     return apply("num_mp_real_round", args, 4);
 }
 
+/// `num_mp_real_rounding_mode(rounding)` Returns the canonical rounding name for a supported spelling. The rounding modes an operator accepts, by name. # Errors Fails for an unknown name.
+inline Term num_mp_real_rounding_mode(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_real_rounding_mode", args, 1);
+}
+
+/// `num_mp_real_scale_decimal(value, exponent, precision)` multiplies an exact dyadic by a power of ten and rounds once to nearest-even. `x * 10^n` for an integer `n`, exact up to the target precision. # Errors Fails when an exponent leaves the representable range.
+inline Term num_mp_real_scale_decimal(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_mp_real_scale_decimal", args, 3);
+}
+
+/// `num_mp_real_scale_decimal_in(value, exponent, precision, rounding)` multiplies an exact dyadic by a power of ten and rounds once in the requested direction.
+inline Term num_mp_real_scale_decimal_in(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_mp_real_scale_decimal_in", args, 4);
+}
+
 /// Multiplies a dyadic by an integer power of two exactly. Zero keeps its canonical exponent. A requested exponent outside the representable range is a domain error. `self * 2^k`, exact. # Errors Fails when the exponent leaves the representable range.
 inline Term num_mp_real_scale_pow2(const Term& a0, const Term& a1) {
     Term args[] = {a0, a1};
     return apply("num_mp_real_scale_pow2", args, 2);
+}
+
+/// `num_mp_real_sign(value)` returns -1, 0 or 1 for a negative, zero or positive dyadic. `-1`, `0` or `1`.
+inline Term num_mp_real_sign(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_real_sign", args, 1);
+}
+
+/// `num_mp_real_sin(value, precision)` encloses the real sin of an exact dyadic. `sin(x)` as a ball. # Errors Fails for an argument beyond `2^20` in magnitude, where the reduction would need more bits than the exponent range allows, or when an exponent leaves the range.
+inline Term num_mp_real_sin(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_real_sin", args, 2);
+}
+
+/// `num_mp_real_sin_cos(value, precision)` encloses sine and cosine with one certified argument reduction.
+inline Term num_mp_real_sin_cos(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_real_sin_cos", args, 2);
+}
+
+/// `num_mp_real_sinh(value, precision)` encloses the hyperbolic sine of an exact dyadic. `sinh(x)` as a ball. # Errors Fails when an exponent leaves the representable range.
+inline Term num_mp_real_sinh(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_real_sinh", args, 2);
 }
 
 /// Rounds the square root of a nonnegative dyadic at the requested bit precision. A negative input is a domain error. The square root, rounded once to `prec` bits. # Errors Fails for a negative operand or an exponent outside the range.
@@ -24711,6 +27948,24 @@ inline Term num_mp_real_sub(const Term& a0, const Term& a1, const Term& a2, cons
     return apply("num_mp_real_sub", args, 4);
 }
 
+/// `num_mp_real_tan(value, precision)` encloses the real tan of an exact dyadic. `tan(x)` as a ball. # Errors Fails where the cosine interval contains zero, or for an argument beyond `2^20` in magnitude.
+inline Term num_mp_real_tan(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_real_tan", args, 2);
+}
+
+/// `num_mp_real_tanh(value, precision)` encloses the hyperbolic tangent of an exact dyadic. `tanh(x)` as a ball. # Errors Fails when an exponent leaves the representable range.
+inline Term num_mp_real_tanh(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_mp_real_tanh", args, 2);
+}
+
+/// `num_mp_real_to_f64(value)` rounds a dyadic directly to binary64 with ties to even. Subnormal and signed-zero results are preserved. Overflow is a domain error. The value as an `f64`, rounded to nearest-even. Subnormals, overflow to infinity and underflow to zero follow IEEE-754, so this is the correctly rounded conversion of the arbitrary-precision value rather than a conversion of a `f64` approximation of it.
+inline Term num_mp_real_to_f64(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_real_to_f64", args, 1);
+}
+
 /// Truncates a dyadic toward zero and returns an exact integer. The dyadic representation bounds the result to 294912 bits. The value truncated toward zero to an integer. # Errors Fails when the exponent leaves the representable range.
 inline Term num_mp_real_trunc_to_bigint(const Term& a0) {
     Term args[] = {a0};
@@ -24721,6 +27976,12 @@ inline Term num_mp_real_trunc_to_bigint(const Term& a0) {
 inline Term num_mp_real_with_precision(const Term& a0, const Term& a1, const Term& a2) {
     Term args[] = {a0, a1, a2};
     return apply("num_mp_real_with_precision", args, 3);
+}
+
+/// `num_mp_real_zero(precision)` returns canonical zero at the requested bit precision. The value zero at precision `prec`.
+inline Term num_mp_real_zero(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_mp_real_zero", args, 1);
 }
 
 /// `num_multinomial(n, parts)` returns the floating-point multinomial coefficient. Parts are nonnegative integers and must sum exactly to n. The empty partition of zero gives one. A coefficient that exceeds binary64 produces a domain error. Computes a floating-point multinomial coefficient as a product of binomials. Returns `None` if the parts do not sum to `n`, and `Some(infinity)` when the coefficient overflows. Zero parts and the empty partition of zero have no effect on the product.
@@ -34916,6 +38177,130 @@ inline Value num_ode_verlet_adaptive(Args&&... args) {
                                  std::forward<Args>(args)...);
 }
 
+/// Runs a bounded bracketed root search with a scoped normalized callback. Newton and Halley estimate a missing derivative. Finds a root of `f` inside `bracket`. `derivative` is used by [`RootSolver::Newton`] and [`RootSolver::Halley`]; when it is `None` a central difference stands in, and Halley's second derivative is differenced from the same source. # Errors Returns an error when the bracket is not finite and ordered, when the endpoints do not bracket a sign change, or when the solver reports a non-convergent failure.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_optimizer_find_root(Args&&... args) {
+    return detail::call_inferred("num_optimizer_find_root",
+                                 std::forward<Args>(args)...);
+}
+
+/// Runs a bounded bracketed root search with scoped normalized function and derivative callbacks.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_optimizer_find_root_with_derivative(Args&&... args) {
+    return detail::call_inferred("num_optimizer_find_root_with_derivative",
+                                 std::forward<Args>(args)...);
+}
+
+/// Reports whether a prepared problem carries an analytic gradient. Whether the problem carries an analytic gradient.
+inline Term num_optimizer_has_gradient(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_optimizer_has_gradient", args, 1);
+}
+
+/// Runs a named solver against a prepared normalized objective with explicit iteration, evaluation and seed controls. Minimises `problem` with `kind`. `start` is the initial point; a scalar solver ([`SolverKind::Brent`], [`SolverKind::GoldenSection`]) requires exactly one variable. # Errors Returns an error when the problem has no gradient but the solver needs one, when the solver needs bounds and none were supplied, when a scalar solver receives more than one variable, or when the solver aborts.
+inline Term num_optimizer_minimize(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_optimizer_minimize", args, 4);
+}
+
+/// Reports whether the named solver requires an explicit finite box. Whether the solver requires finite box bounds.
+inline Term num_optimizer_needs_bounds(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_optimizer_needs_bounds", args, 1);
+}
+
+/// Reports whether the named solver uses the objective's analytic gradient. Whether the solver evaluates the analytic gradient.
+inline Term num_optimizer_needs_gradient(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_optimizer_needs_gradient", args, 1);
+}
+
+/// Prepares an objective from an immutable unit-scale tape, an output slot, dimensionless parameters, and an optional analytic tape gradient. Builds a problem from a cost closure and an optional gradient closure. `bounds` is `(lower, upper)`; a free side uses [`f64::INFINITY`]. When `bounds` is `None` every variable is free.
+inline Term num_optimizer_problem_new(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_optimizer_problem_new", args, 4);
+}
+
+/// Prepares a fallible objective from an immutable unit-scale tape. Nonfinite objective and gradient evaluations return domain errors. Builds a problem from fallible closures.
+inline Term num_optimizer_problem_try_new(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_optimizer_problem_try_new", args, 4);
+}
+
+/// Builds a normalized Rastrigin objective with its analytic gradient. The problem over this instance's dimension.
+inline Term num_optimizer_rastrigin(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_optimizer_rastrigin", args, 1);
+}
+
+/// Evaluates the Rastrigin function at a normalized point. The function value at `x`.
+inline Term num_optimizer_rastrigin_cost(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_optimizer_rastrigin_cost", args, 1);
+}
+
+/// Returns the coefficient count of the retained regression, including the intercept. Number of coefficients, including the intercept.
+inline Term num_optimizer_regression_coefficient_count(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_optimizer_regression_coefficient_count", args, 1);
+}
+
+/// Prepares the regression objective in its stored normalized coordinates and response scale, with an intercept followed by slopes. The problem form used by [`minimize`].
+inline Term num_optimizer_regression_problem(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_optimizer_regression_problem", args, 1);
+}
+
+/// Returns fitted minus observed responses in coherent response units. The positive response reference attests the output dimension. Residual vector at `beta`.
+inline Term num_optimizer_regression_residuals(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_optimizer_regression_residuals", args, 3);
+}
+
+/// Builds a normalized Rosenbrock objective with its analytic gradient. The problem over `dimension` variables.
+inline Term num_optimizer_rosenbrock(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_optimizer_rosenbrock", args, 1);
+}
+
+/// Evaluates the Rosenbrock polynomial at a point with at least two coordinates. The function value at `x`.
+inline Term num_optimizer_rosenbrock_cost(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_optimizer_rosenbrock_cost", args, 1);
+}
+
+/// Builds a normalized sphere objective with its analytic gradient. The problem over `dimension` variables.
+inline Term num_optimizer_sphere(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_optimizer_sphere", args, 1);
+}
+
+/// Evaluates the sum of squared coordinates. The function value at `x`.
+inline Term num_optimizer_sphere_cost(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_optimizer_sphere_cost", args, 1);
+}
+
+/// Evaluates a prepared objective and its analytic gradient at one normalized point. Cost and gradient at `x`. # Errors Returns an error when the cost fails or the problem has no gradient.
+inline Term num_optimizer_value_and_gradient(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_optimizer_value_and_gradient", args, 2);
+}
+
+/// Returns a new prepared problem with finite strictly ordered bounds, sharing its objective. The same closures over a different box.
+inline Term num_optimizer_with_bounds(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_optimizer_with_bounds", args, 3);
+}
+
 /// Deterministic dot product of `a` and `b` over their common prefix `a.len().min(b.len())`. Each fixed block of `block` elements accumulates with a 4-way unrolled sum, and block sums are folded sequentially in block order so serial execution (`grain = usize::MAX`) and parallel execution produce bit-identical results.
 inline Term num_par_dot_fixed(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
     Term args[] = {a0, a1, a2, a3};
@@ -35600,6 +38985,12 @@ inline Term num_qr(const Term& a0) {
     return apply("num_qr", args, 1);
 }
 
+/// Economy Householder QR. For an m by n matrix, q is m by min(m,n) and dimensionless, and r is min(m,n) by n with the input units. Unrepresentable factors are errors. Economy (thin) Householder QR: returns `(Q, R)` with `Q` of size `m x k` and `R` of size `k x n`, where `k = min(m, n)`. Avoids materialising an `m x m` orthogonal matrix when `m >> n`. # Errors Returns [`DenseError::Shape`] if `a` has inconsistent internal storage.
+inline Term num_qr_thin(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_qr_thin", args, 1);
+}
+
 /// Clenshaw-Curtis nodes and weights on `[-1, 1]` with `n + 1` points (`n` is rounded up to an even number, at least 2).
 inline Term num_quadrature_clenshaw_curtis_rule(const Term& a0) {
     Term args[] = {a0};
@@ -35636,10 +39027,126 @@ inline Term num_rbf_scaled(const Term& a0, const Term& a1, const Term& a2, const
     return apply("num_rbf_scaled", args, 5);
 }
 
+/// Interpolates finite samples with up to 2048 distinct nodes. The nodes and query share abscissa units, and the result uses ordinate units. Evaluates the Lagrange interpolating polynomial through `(xs[i], ys[i])` directly at `x` using the second (true) barycentric interpolation formula. # Errors Returns an error if `xs` and `ys` have different lengths, are empty, contain non-finite values, or contain duplicate `x` nodes.
+inline Term num_real_polynomial_barycentric_eval(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_real_polynomial_barycentric_eval", args, 3);
+}
+
+/// Returns the monic numerical greatest common divisor of two dimensionless coefficient vectors. Tolerance is relative to normalized coefficients and must lie in [0, 1). Computes the numerical monic greatest common divisor of `self` and `other` using the Euclidean algorithm with tolerance `tol` for leading-term and remainder cleanup.
+inline Term num_real_polynomial_gcd(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_real_polynomial_gcd", args, 3);
+}
+
+/// Raises a polynomial with dimensionless descending coefficients to a nonnegative integer power. The result contains at most 4097 coefficients. Raises the polynomial to the integer power `exp` by binary exponentiation.
+inline Term num_real_polynomial_power(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_real_polynomial_power", args, 2);
+}
+
 /// Reflect about a unit normal supplied by the caller. Reflects vector `v` about a normal vector `n`. Formula: $\\mathbf{r} = \\mathbf{v} - 2(\\mathbf{v} \\cdot \\mathbf{n})\\mathbf{n}$ Note: The normal vector `n` must be normalized. The result can remain finite even when the intermediate correction overflows. # Errors Returns an error if the vectors have different lengths.
 inline Term num_reflect(const Term& a0, const Term& a1) {
     Term args[] = {a0, a1};
     return apply("num_reflect", args, 2);
+}
+
+/// Evaluates the Cauchy transform off [-1, 1] using checked adaptive quadrature. The density, output, amplitude scale and absolute tolerance share one dimension. The result reports the estimated error, convergence and actual host callbacks. Evaluates the scalar Cauchy transform $C\\[\\phi\\](z) = \\frac{1}{2\\pi i} \\int_{-1}^1 \\frac{\\phi(t)}{t - z} \\, dt$ for $z \\notin [-1, 1]$.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_riemann_hilbert_cauchy_checked(Args&&... args) {
+    return detail::call_inferred("num_riemann_hilbert_cauchy_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// Factors a nonzero dimensionless jump on (-1, 1). The supplied mesh must resolve its continuous phase from the principal phase at -1. Reports the estimates and errors before and after exponentiation, convergence against the absolute value tolerance and actual host callbacks. Solves the scalar Riemann–Hilbert problem $X^+(t) = G(t) X^-(t)$ on $(-1, 1)$ with $X(\\infty) = 1$ via continuous phase unwrapping of $\\ln G(t)$.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_riemann_hilbert_factor_checked(Args&&... args) {
+    return detail::call_inferred("num_riemann_hilbert_factor_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// Adds two 2x2 matrices with the same entry dimension.
+inline Term num_riemann_hilbert_matrix_add(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_riemann_hilbert_matrix_add", args, 2);
+}
+
+/// Returns the dimensionless 2x2 identity matrix. Identity 2x2 matrix.
+inline Term num_riemann_hilbert_matrix_identity() { return apply("num_riemann_hilbert_matrix_identity", nullptr, 0); }
+
+/// Returns the inverse in reciprocal units. None denotes a numerically singular matrix or an inverse outside binary64 range. Matrix inverse.
+inline Term num_riemann_hilbert_matrix_inv(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_riemann_hilbert_matrix_inv", args, 1);
+}
+
+/// Multiplies two 2x2 matrices. Result entries have the product dimension.
+inline Term num_riemann_hilbert_matrix_mul(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_riemann_hilbert_matrix_mul", args, 2);
+}
+
+/// Constructs a complex 2x2 matrix from four row-major entries of the same dimension. Matrix from 4 complex entries `[m00, m01, m10, m11]`.
+inline Term num_riemann_hilbert_matrix_new(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_riemann_hilbert_matrix_new", args, 1);
+}
+
+/// Returns a scale-stable Frobenius norm retaining the matrix entry dimension. Frobenius norm of the 2x2 matrix.
+inline Term num_riemann_hilbert_matrix_norm(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_riemann_hilbert_matrix_norm", args, 1);
+}
+
+/// Scales a 2x2 matrix by a complex scalar. Result entries have the product dimension. Scalar multiplication.
+inline Term num_riemann_hilbert_matrix_scale(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_riemann_hilbert_matrix_scale", args, 2);
+}
+
+/// Subtracts two 2x2 matrices with the same entry dimension.
+inline Term num_riemann_hilbert_matrix_sub(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_riemann_hilbert_matrix_sub", args, 2);
+}
+
+/// Returns the dimensionless 2x2 zero matrix. Zero 2x2 matrix.
+inline Term num_riemann_hilbert_matrix_zero() { return apply("num_riemann_hilbert_matrix_zero", nullptr, 0); }
+
+/// Evaluates both Plemelj boundary limits inside (-1, 1), using singularity subtraction and a shared error estimate. The density, output, amplitude scale and absolute tolerance share one dimension. Reports convergence and actual host callbacks. Computes the Plemelj–Sokhotski boundary limits $(C_+\\[\\phi\\](x), C_-\\[\\phi\\](x))$ on $x \\in (-1, 1)$ via singularity subtraction: $C_+ - C_- = \\phi(x)$. # Errors Returns an error if the evaluation point lies outside the open interval `(-1, 1)`.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_riemann_hilbert_plemelj_checked(Args&&... args) {
+    return detail::call_inferred("num_riemann_hilbert_plemelj_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// Evaluates a portable Riemann–Hilbert collocation record at a dimensionless complex point off [-1, 1]. Nodes and positive weights have shape [n], and jump density has shape [n, 2, 2]. Evaluates $Y(z) = I + \\frac{1}{2\\pi i} \\int_{-1}^1 \\frac{U(t)}{t - z} \\, dt$ off the arc, using singularity subtraction near `[-1, 1]` for high accuracy up to the boundary.
+inline Term num_riemann_hilbert_solution_eval(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_riemann_hilbert_solution_eval", args, 2);
+}
+
+/// Collocates a dimensionless 2x2 jump on the normalized interval (-1, 1). The callback must give the identity at both endpoints. Uses 4 to 64 Gauss–Legendre nodes and a host budget for both endpoint checks and each collocation sample. Returns the reusable collocation solution and actual callback count. Solves a two-by-two matrix Riemann–Hilbert problem on `(-1, 1)`. Solves the 2x2 matrix Riemann–Hilbert problem $Y^+(t) = Y^-(t) G(t)$ on $(-1, 1)$ with $Y(\\infty) = I$ (assuming $G(\\pm 1) = I$) via spectral collocation on `n_nodes` Gauss–Legendre nodes using the singular integral equation $U - C_-\\[U\\](G - I) = G - I$. # Errors Returns an error for fewer than four collocation nodes or when the collocation system cannot be assembled or solved.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_riemann_hilbert_solve(Args&&... args) {
+    return detail::call_inferred("num_riemann_hilbert_solve",
+                                 std::forward<Args>(args)...);
 }
 
 /// Computes the Riemann zeta function ζ(s) for real `s`. * `s > 1`: Euler-Maclaurin summation (via [`hurwitz_zeta`] with q = 1): the first terms directly, the tail by its integral plus Bernoulli-number corrections; accurate to about 1e-15. * `s = 1`: `+∞` (the pole). * `-1/2 < s < 1`: the alternating eta series `η(s) = (1 - 2^(1-s)) ζ(s)` accelerated with Borwein's algorithm (relative error about `1e-15`); `s = 0` is exactly `-1/2`. * `s <= -1/2`: the analytic continuation by the functional equation `ζ(s) = 2^s π^(s-1) sin(πs/2) Γ(1-s) ζ(1-s)`. The trivial zeros at the negative even integers are returned as exactly `0`, and `ζ(-1) = -1/12`, `ζ(-3) = 1/120`, ... follow from the same formula. Returns `NaN` for `NaN` or `-∞`, and `±∞` where the value overflows (roughly `s < -170`).
@@ -35764,6 +39271,50 @@ inline Term num_robust_winsorized_mean(const Term& a0, const Term& a1) {
 template <class... Args>
 inline Value num_romberg(Args&&... args) {
     return detail::call_inferred("num_romberg",
+                                 std::forward<Args>(args)...);
+}
+
+/// Finds a slope zero from a measured complex guess, coordinate reference, normalized slope tolerance, callback budget, phase and its first two derivatives. Phase is dimensionless. Locates a saddle point `phi'(z0) = 0` from `z_guess` via Newton's method.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_saddle_find(Args&&... args) {
+    return detail::call_inferred("num_saddle_find",
+                                 std::forward<Args>(args)...);
+}
+
+/// Numeric finite path integral from the negative to positive branch of an oriented simple saddle. Takes saddle, coordinate reference, positive lambda, measured half length, absolute tolerance in the result units, callback budget, phase and amplitude. Integrates numerically along a curved steepest-descent path. Traces `Im(phi(z)) = Im(phi(z0))` by predictor-corrector projection onto the constant-phase curve, with `Re(phi(z))` decreasing away from `z0`.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_saddle_integrate(Args&&... args) {
+    return detail::call_inferred("num_saddle_integrate",
+                                 std::forward<Args>(args)...);
+}
+
+/// Leading oriented Gaussian saddle term. Takes the saddle, coordinate reference, positive lambda, callback budget and analytic amplitude. Leading-order saddle-point approximation: `g(z0) * exp(lambda * phi(z0)) * sqrt(2*pi / (-lambda * phi''(z0)))` with branch oriented along `saddle.steepest_angle`.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_saddle_leading(Args&&... args) {
+    return detail::call_inferred("num_saddle_leading",
+                                 std::forward<Args>(args)...);
+}
+
+/// Oriented Gaussian approximation with the first inverse-lambda correction. The phase and amplitude must be analytic on the sampling disk of radius one tenth of the coordinate reference. Second-order saddle-point approximation including the `O(1/lambda)` term, using Cauchy-FFT derivatives of `phi` (to order 4) and `g` (to order 2) at `z0`.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_saddle_order2(Args&&... args) {
+    return detail::call_inferred("num_saddle_order2",
                                  std::forward<Args>(args)...);
 }
 
@@ -36133,6 +39684,12 @@ inline Term num_solve_dg_with(const Term& a0, const Term& a1, const Term& a2, co
     return apply("num_solve_dg_with", args, 8);
 }
 
+/// Solves a finite dense square system A x = b. The solution has the units of b divided by the units of A. Solves a dense square linear system `A x = b` given as row slices, checking that the solution is finite. # Errors Returns [`DenseError::Shape`] for mismatched dimensions, [`DenseError::Singular`] if the matrix is singular or produces a non-finite solution, or [`DenseError::NonFinite`] if inputs contain NaN/Inf.
+inline Term num_solve_linear_rows(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_solve_linear_rows", args, 2);
+}
+
 /// Validated portable native dense/sparse factor definition. Reconstructs native factors from finite defining matrices, preserving method identity and right-hand-side/matrix quotient units. Format/version/kind, CSR sorting, shapes, indices, exact permutations and allocation budgets are checked before native methods. No process-local factor pointers are serialized. Writes `M^-1 r` into `z`.
 inline Term num_sparse_auto_model_apply(const Term& a0, const Term& a1) {
     Term args[] = {a0, a1};
@@ -36287,6 +39844,162 @@ inline Term num_special_chebyshev_t(const Term& a0, const Term& a1) {
 inline Term num_special_chebyshev_u(const Term& a0, const Term& a1) {
     Term args[] = {a0, a1};
     return apply("num_special_chebyshev_u", args, 2);
+}
+
+/// Anger J for real order and complex argument using its finite integral. Complex Anger function `J_nu^A(z) = (1/pi) * int_0^pi cos(nu*t - z*sin(t)) dt`.
+inline Term num_special_complex_anger_j(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_special_complex_anger_j", args, 2);
+}
+
+/// Associated Legendre P_l^m(z) with the Condon–Shortley phase and principal sqrt(1-z²). Degree 0 through 4096. Orders m > l return zero. Complex associated Legendre function `P_l^m(z)` for `0 <= m <= l`.
+inline Term num_special_complex_associated_legendre_p(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_special_complex_associated_legendre_p", args, 3);
+}
+
+/// Bernoulli polynomial B_n(z), with B_1(0) = -1/2. Degree 0 through 128. Complex Bernoulli polynomial `B_n(z)`.
+inline Term num_special_complex_bernoulli(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_special_complex_bernoulli", args, 2);
+}
+
+/// Modified Bessel I with complex order and argument on the principal branch. Complex-order modified Bessel function of the first kind `I_nu(z)` for `nu, z in C`.
+inline Term num_special_complex_bessel_i_order(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_special_complex_bessel_i_order", args, 2);
+}
+
+/// Bessel J with complex order and argument on the principal branch. Complex-order Bessel function of the first kind `J_nu(z)` for `nu, z in C`.
+inline Term num_special_complex_bessel_j_order(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_special_complex_bessel_j_order", args, 2);
+}
+
+/// Carlson R_C(x, y) is R_F(x, y, y); y must be nonzero. Inputs and output are dimensionless. Poles and values outside binary64 range produce a domain error. Complex Carlson degenerate integral `R_C(x, y) = R_F(x, y, y)`.
+inline Term num_special_complex_carlson_rc(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_special_complex_carlson_rc", args, 2);
+}
+
+/// Carlson R_D uses principal square roots. The last argument must be nonzero, and the first two cannot both vanish. Inputs and output are dimensionless. Poles and values outside binary64 range produce a domain error. Complex Carlson symmetric elliptic integral `R_D(x, y, z)`.
+inline Term num_special_complex_carlson_rd(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_special_complex_carlson_rd", args, 3);
+}
+
+/// Carlson R_F accepts up to one zero and uses principal square roots. Inputs and output are dimensionless. Poles and values outside binary64 range produce a domain error. Complex Carlson symmetric elliptic integral `R_F(x, y, z)`.
+inline Term num_special_complex_carlson_rf(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_special_complex_carlson_rf", args, 3);
+}
+
+/// Carlson R_G uses principal square roots and accepts zero arguments. Inputs and output are dimensionless. Poles and values outside binary64 range produce a domain error. Complex Carlson symmetric elliptic integral `R_G(x, y, z)`.
+inline Term num_special_complex_carlson_rg(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_special_complex_carlson_rg", args, 3);
+}
+
+/// Carlson R_J accepts nonnegative real parts for x, y, z and a positive real part for p. If p equals one of x, y, z, the corresponding R_D branch applies. Inputs and output are dimensionless. Poles and values outside binary64 range produce a domain error. Complex Carlson symmetric elliptic integral `R_J(x, y, z, p)`.
+inline Term num_special_complex_carlson_rj(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_special_complex_carlson_rj", args, 4);
+}
+
+/// First-kind Chebyshev polynomial T_n(z) for a dimensionless complex point and integer degree 0 through 4096. Complex Chebyshev polynomial of the first kind `T_n(z)`.
+inline Term num_special_complex_chebyshev_t(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_special_complex_chebyshev_t", args, 2);
+}
+
+/// Second-kind Chebyshev polynomial U_n(z) for a dimensionless complex point and integer degree 0 through 4096. Complex Chebyshev polynomial of the second kind `U_n(z)`.
+inline Term num_special_complex_chebyshev_u(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_special_complex_chebyshev_u", args, 2);
+}
+
+/// Complex Clausen function using the antisymmetric polylog combination for even order and the symmetric combination for odd order. Integer order 0 through 4096. Complex Clausen function: `Im(Li_n(e^(i z)))` for even `n`, `Re(Li_n(e^(i z)))` for odd `n`.
+inline Term num_special_complex_clausen(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_special_complex_clausen", args, 2);
+}
+
+/// Euler polynomial E_n(z), with E_1(z) = z - 1/2. Degree 0 through 128. Complex Euler polynomial `E_n(z) = (2 / (n + 1)) * (B_{n+1}(z) - 2^(n+1) B_{n+1}(z / 2))`.
+inline Term num_special_complex_euler(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_special_complex_euler", args, 2);
+}
+
+/// Generalized exponential integral E_n for nonnegative integer orders up to 4096. At the negative real cut, the sign of the imaginary zero selects the boundary value. Generalized complex exponential integral `E_n(z)`.
+inline Term num_special_complex_exp_integral_en(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_special_complex_exp_integral_en", args, 2);
+}
+
+/// Fresnel auxiliary functions f and g, returned as the named components of a record. Auxiliary Fresnel functions `(f(z), g(z))` in `C` satisfying `C(z) = 1/2 + f(z) sin(pi z^2 / 2) - g(z) cos(pi z^2 / 2)`.
+inline Term num_special_complex_fresnel_auxiliary(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_special_complex_fresnel_auxiliary", args, 1);
+}
+
+/// Gegenbauer C_n^(lambda)(z) with dimensionless complex parameter and point. Degree 0 through 4096. Complex Gegenbauer (ultraspherical) polynomial `C_n^(lambda)(z)`.
+inline Term num_special_complex_gegenbauer_c(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_special_complex_gegenbauer_c", args, 3);
+}
+
+/// Physicists’ Hermite polynomial H_n(z) for a dimensionless complex point and integer degree 0 through 4096. Complex physicists' Hermite polynomial `H_n(z)`.
+inline Term num_special_complex_hermite_h(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_special_complex_hermite_h", args, 2);
+}
+
+/// Jacobi P_n^(alpha,beta)(z) with dimensionless complex parameters and point. Degree 0 through 4096. Complex Jacobi polynomial `P_n^(alpha, beta)(z)`.
+inline Term num_special_complex_jacobi_p(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_special_complex_jacobi_p", args, 4);
+}
+
+/// Kelvin ber, bei, ker and kei for real order and complex argument as named components. Complex Kelvin functions `(ber_nu(z), bei_nu(z), ker_nu(z), kei_nu(z))`.
+inline Term num_special_complex_kelvin(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_special_complex_kelvin", args, 2);
+}
+
+/// Generalized Laguerre L_n^(alpha)(z) with dimensionless complex parameter and point. Degree 0 through 4096. Complex generalized Laguerre polynomial `L_n^(alpha)(z)`.
+inline Term num_special_complex_laguerre_l(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_special_complex_laguerre_l", args, 3);
+}
+
+/// Legendre polynomial P_n(z) for a dimensionless complex point and integer degree 0 through 4096. Complex Legendre polynomial `P_n(z)`.
+inline Term num_special_complex_legendre_p(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_special_complex_legendre_p", args, 2);
+}
+
+/// Principal Legendre Q of the second kind for nonnegative integer degrees up to 4096. The sign of the imaginary zero selects the side of the cut from -1 to 1. Complex Legendre function of the second kind `Q_n(z)` for integer `n >= 0` off `[-1, 1]`, via forward recurrence from `Q_0(z) = 0.5 * ln((z + 1)/(z - 1))`.
+inline Term num_special_complex_legendre_q(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_special_complex_legendre_q", args, 2);
+}
+
+/// Analytic log Barnes G, real on the positive axis. The signed imaginary zero selects a side of the non-positive real cut. Zeros of G return a domain error. Complex log Barnes G-function `ln G(z)`.
+inline Term num_special_complex_log_barnes_g(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_special_complex_log_barnes_g", args, 1);
+}
+
+/// Normalized spherical harmonic Y_l^m(theta, phi) with Condon–Shortley phase. Theta is colatitude, phi is azimuth, in radians. Degree 0 through 4096. Orders |m| > l return zero. Complex spherical harmonic `Y_l^m(theta, phi)`.
+inline Term num_special_complex_spherical_harmonic(const Term& a0, const Term& a1, const Term& a2, const Term& a3) {
+    Term args[] = {a0, a1, a2, a3};
+    return apply("num_special_complex_spherical_harmonic", args, 4);
+}
+
+/// Weber E for real order and complex argument using its finite integral. Complex Weber function `E_nu(z) = (1/pi) * int_0^pi sin(nu*t - z*sin(t)) dt`.
+inline Term num_special_complex_weber_e(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_special_complex_weber_e", args, 2);
 }
 
 /// [`digamma_numerical`] over a slice, with the same bit-identical contract as [`gamma_batch`].
@@ -36703,10 +40416,142 @@ inline Term num_spline_not_a_knot(const Term& a0, const Term& a1, const Term& a2
     return apply("num_spline_not_a_knot", args, 3);
 }
 
+/// Reads equality-first values from the checked SQP evaluation callback.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_sqp_oracle_constraints(Args&&... args) {
+    return detail::call_inferred("num_sqp_oracle_constraints",
+                                 std::forward<Args>(args)...);
+}
+
+/// Returns the declared equality row count of the normalized SQP oracle.
+inline Term num_sqp_oracle_equality_count(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_sqp_oracle_equality_count", args, 1);
+}
+
+/// Reads the objective gradient from the checked SQP evaluation callback.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_sqp_oracle_gradient(Args&&... args) {
+    return detail::call_inferred("num_sqp_oracle_gradient",
+                                 std::forward<Args>(args)...);
+}
+
+/// Evaluates the callback for the sparse upper-triangular Lagrangian Hessian.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_sqp_oracle_hessian(Args&&... args) {
+    return detail::call_inferred("num_sqp_oracle_hessian",
+                                 std::forward<Args>(args)...);
+}
+
+/// Returns the declared inequality row count of the normalized SQP oracle.
+inline Term num_sqp_oracle_inequality_count(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_sqp_oracle_inequality_count", args, 1);
+}
+
+/// Reads the zero-based sparse constraint Jacobian from the checked SQP evaluation callback.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_sqp_oracle_jacobian(Args&&... args) {
+    return detail::call_inferred("num_sqp_oracle_jacobian",
+                                 std::forward<Args>(args)...);
+}
+
+/// Reads the objective from the checked SQP evaluation callback.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_sqp_oracle_objective(Args&&... args) {
+    return detail::call_inferred("num_sqp_oracle_objective",
+                                 std::forward<Args>(args)...);
+}
+
+/// Solves a normalized nonlinear program with bounded typed evaluation and Lagrangian-Hessian callbacks. The evaluation callback receives each consecutive point once. Equality rows precede inequalities g(x) <= 0. Returns KKT residual, convergence, multipliers and callback counts. Solves a sparse nonlinear program by sequential quadratic programming. # Errors Returns an error string when the dimensions reported by the oracle are inconsistent or a working-set system is singular.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_sqp_solve(Args&&... args) {
+    return detail::call_inferred("num_sqp_solve",
+                                 std::forward<Args>(args)...);
+}
+
 /// Standard error of the mean. Computes the sample standard error of the mean (SEM = `std_dev` / sqrt(n)).
 inline Term num_standard_error(const Term& a0) {
     Term args[] = {a0};
     return apply("num_standard_error", args, 1);
+}
+
+/// Cumulative probability at the dimensionless query point. The cumulative probability at `x`. # Errors Returns an error when the parameters are invalid.
+inline Term num_statrs_distribution_cdf(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_statrs_distribution_cdf", args, 2);
+}
+
+/// Returns the discrete or differential entropy in nats when defined. The differential (or discrete) entropy, when `statrs` defines it. # Errors Returns an error when the parameters are invalid.
+inline Term num_statrs_distribution_entropy(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_statrs_distribution_entropy", args, 1);
+}
+
+/// Whether the distribution is discrete.
+inline Term num_statrs_distribution_is_discrete(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_statrs_distribution_is_discrete", args, 1);
+}
+
+/// Whether the distribution uses signed integer support. Whether the distribution indexes with a signed integer.
+inline Term num_statrs_distribution_is_signed_discrete(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_statrs_distribution_is_signed_discrete", args, 1);
+}
+
+/// Returns a finite distribution mean when defined. The mean, when it exists. # Errors Returns an error when the parameters are invalid or the mean is infinite.
+inline Term num_statrs_distribution_mean(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_statrs_distribution_mean", args, 1);
+}
+
+/// Creates a checked statrs distribution from its kebab-case Rust name and ordered dimensionless parameters. Use exact parameter counts. The categorical family takes a vector of weights. Builds a distribution from a name and its parameters. The names are the `statrs` type names in kebab case: `normal`, `uniform`, `beta`, `cauchy`, `chi`, `chi-squared`, `erlang`, `exponential`, `fisher-snedecor`, `gamma`, `gumbel`, `inverse-gamma`, `laplace`, `levy`, `log-normal`, `pareto`, `student-t`, `triangular`, `weibull`, `bernoulli`, `binomial`, `categorical`, `discrete-uniform`, `geometric`, `hypergeometric`, `negative-binomial` and `poisson`. # Errors Returns an error for an unknown name or a wrong parameter count.
+inline Term num_statrs_distribution_new(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_statrs_distribution_new", args, 2);
+}
+
+/// Evaluates the dimensionless density or discrete mass. A density singularity may return positive infinity. The density (continuous) or mass (discrete) at `x`. # Errors Returns an error when the parameters are invalid.
+inline Term num_statrs_distribution_pdf(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_statrs_distribution_pdf", args, 2);
+}
+
+/// Upper-tail probability evaluated directly to avoid subtracting a cdf rounded to one. The survival probability `1 - cdf(x)`, computed without cancellation. # Errors Returns an error when the parameters are invalid.
+inline Term num_statrs_distribution_sf(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_statrs_distribution_sf", args, 2);
+}
+
+/// Returns a finite distribution variance when defined. The variance, when it exists. # Errors Returns an error when the parameters are invalid or the variance is infinite.
+inline Term num_statrs_distribution_variance(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_statrs_distribution_variance", args, 1);
 }
 
 /// Performs a chi-squared goodness-of-fit test. Tests if observed frequencies match expected frequencies. Returns (chi-squared statistic, p-value).
@@ -36881,6 +40726,30 @@ inline Term num_stats_welch_t_test(const Term& a0, const Term& a1) {
 inline Term num_std_dev(const Term& a0) {
     Term args[] = {a0};
     return apply("num_std_dev", args, 1);
+}
+
+/// Fits a Cox proportional-hazards model for observed times, event flags and finite dimensionless covariate rows without an intercept. Select breslow or efron for tied events. Returns portable coefficients and fit diagnostics. Fits a Cox proportional-hazards model by Newton-Raphson on the partial likelihood, with step halving when a full step lowers the likelihood. `x` holds one row of covariates per observation, `time` the observed times and `event` whether the observation ended in the event. The iteration stops when the largest absolute change of a coefficient falls below `tol` or after `max_iter` iterations; the fit reports which happened through [`CoxFit::converged`]. # Errors Returns an error for empty or mismatched inputs, non-finite values, an empty design matrix, a covariate column with zero variance, a sample in which every observation is censored, a singular observed information matrix, or a non-positive `max_iter` or `tol`.
+inline Term num_survival_fit_cox(const Term& a0, const Term& a1, const Term& a2, const Term& a3, const Term& a4, const Term& a5) {
+    Term args[] = {a0, a1, a2, a3, a4, a5};
+    return apply("num_survival_fit_cox", args, 6);
+}
+
+/// Estimates the Kaplan–Meier curve and log-log confidence bounds. Event flags distinguish observed events from censoring. The estimate retains the input time dimension. Kaplan-Meier product-limit estimate of the survival function. `time` holds the observed times and `event` is true when the observation ended in the event of interest and false when it was censored. The inputs are not modified; the estimate is computed on an internal sorted copy. `conf` is the two-sided confidence level and must lie strictly between 0 and 1. # Errors Returns an error for empty or mismatched inputs, non-finite times, a confidence level outside `(0, 1)`, or a sample in which every observation is censored.
+inline Term num_survival_kaplan_meier(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_survival_kaplan_meier", args, 3);
+}
+
+/// Returns the first measured time at or below one-half survival. Returns None if the fitted estimate never crosses one-half. Smallest observed time at which the estimated survival drops to at most one half, or `None` when the curve never reaches one half.
+inline Term num_survival_median(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_survival_median", args, 1);
+}
+
+/// Predicts finite relative hazards exp(row*beta) from a portable fitted Cox model and covariate rows with the fitted column count. Relative hazards `exp(x . beta)` for new covariate rows. # Errors Returns an error when a row does not have one entry per fitted coefficient.
+inline Term num_survival_predict_cox(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_survival_predict_cox", args, 2);
 }
 
 /// Thin SVD A = U diag(s) V^T; returns u, s and v. Thin singular-value decomposition using the bidiagonal SVD backend. Rank-deficient matrices retain orthonormal null-space columns. No Gram matrix is formed, so small singular values do not lose accuracy through squaring the condition number. # Errors Returns [`DenseError::Shape`] for inconsistent storage or non-finite input, and [`DenseError::NoConvergence`] if the backend does not converge.
@@ -37062,6 +40931,134 @@ inline Term num_topology_vietoris_rips_filtration(const Term& a0, const Term& a1
     return apply("num_topology_vietoris_rips_filtration", args, 3);
 }
 
+/// Finite Borel polynomial with dimensionless argument and a shared coefficient dimension. Evaluates the truncated Borel transform `B[a](t) = \\sum_{n=0}^{N-1} \\frac{a_n}{n!} t^n`.
+inline Term num_transform_borel_series(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_transform_borel_series", args, 2);
+}
+
+/// Truncated Hankel transform of the given order and wavenumber, on [0, limit]. Coordinates and wavenumber are dimensionless. Numerical Hankel transform of order `nu`: `\\mathcal{H}_\\nu[f](k) = \\int_0^{R_{\\max}} f(r) J_\\nu(k r) r \\, dr`.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_transform_hankel_checked(Args&&... args) {
+    return detail::call_inferred("num_transform_hankel_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// Finite Hilbert transform with a real density and singularity subtraction. Numerical Hilbert transform $\\mathcal{H}\\[f\\](x) = \\frac{1}{\\pi} \\text{PV} \\int_{-L}^L \\frac{f(t)}{x - t} \\, dt$ using singularity subtraction on $[-L, L]$. # Errors Returns an error if the evaluation point lies outside the open integration interval.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_transform_hilbert_checked(Args&&... args) {
+    return detail::call_inferred("num_transform_hilbert_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// Truncated inverse Mellin transform on a caller-selected vertical line. The absolute error estimate excludes the omitted tail. Numerical inverse Mellin transform $f(x) = \\frac{1}{2\\pi i} \\int_{c - i T}^{c + i T} x^{-s} F(s) \\, ds$.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_transform_inverse_mellin_checked(Args&&... args) {
+    return detail::call_inferred("num_transform_inverse_mellin_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// Unshifted parabolic Laplace inversion with an empirical error from a second grid. Numerical Bromwich Laplace inversion using Weideman's parabolic contour $s(u) = \\mu (i u + 1)^2$ ($u \\in \\mathbb{R}$) for $t > 0$. # Errors Returns an error if time is nonpositive or there are fewer than four quadrature points.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_transform_laplace_parabola_checked(Args&&... args) {
+    return detail::call_inferred("num_transform_laplace_parabola_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// Shifted parabolic Laplace inversion. The caller selects a shift to the right of relevant singularities. Numerical Bromwich Laplace inversion using Weideman's parabolic contour shifted by abscissa `sigma`: $s(u) = \\sigma + \\mu (i u + 1)^2$. # Errors Returns an error if time is nonpositive, the shift is non-finite, or there are fewer than four quadrature points.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_transform_laplace_parabola_shifted_checked(Args&&... args) {
+    return detail::call_inferred("num_transform_laplace_parabola_shifted_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// Real-axis Gaver–Stehfest inversion, comparing successive even orders to estimate error. Gaver–Stehfest real-axis inverse Laplace transform for $t > 0$ (`m_even` in `2..=14`). # Errors Returns an error if time is nonpositive or the order is not even and in `2..=14`.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_transform_laplace_stehfest_checked(Args&&... args) {
+    return detail::call_inferred("num_transform_laplace_stehfest_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// Unshifted Talbot Laplace inversion with an empirical error from a second grid. Numerical Bromwich Laplace inversion using Weideman's optimal Talbot contour: $f(t) = \\frac{1}{2\\pi i} \\int_{\\Gamma} e^{s t} F(s) \\, ds$ for $t > 0$. # Errors Returns an error if time is nonpositive or there are fewer than four quadrature points.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_transform_laplace_talbot_checked(Args&&... args) {
+    return detail::call_inferred("num_transform_laplace_talbot_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// Shifted Talbot Laplace inversion. The caller selects a shift to the right of relevant singularities. Numerical Bromwich Laplace inversion using Weideman's optimal Talbot contour shifted by abscissa `sigma` (so singularities with `Re(s) < sigma` are enclosed). # Errors Returns an error if time is nonpositive, the shift is non-finite, or there are fewer than four quadrature points.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_transform_laplace_talbot_shifted_checked(Args&&... args) {
+    return detail::call_inferred("num_transform_laplace_talbot_shifted_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// Finite Meijer G quadrature with a caller-selected pole-separating line and explicit termination information.
+inline Term num_transform_meijer_g_checked(const Term& a0, const Term& a1, const Term& a2, const Term& a3, const Term& a4, const Term& a5, const Term& a6, const Term& a7, const Term& a8) {
+    Term args[] = {a0, a1, a2, a3, a4, a5, a6, a7, a8};
+    return apply("num_transform_meijer_g_checked", args, 9);
+}
+
+/// Finite Mellin–Barnes quadrature on a pole-free segment. The error estimate excludes contour tails. Evaluates a Mellin–Barnes integral. Evaluates a Mellin–Barnes integral `\\frac{1}{2\\pi i} \\int_{c - iT}^{c + iT} \\frac{\\prod \\Gamma(\\alpha_j + s) \\prod \\Gamma(\\beta_j - s)}{\\prod \\Gamma(\\gamma_j + s) \\prod \\Gamma(\\delta_j - s)} z^{-s} \\, ds` along a slightly tilted/vertical contour `\\text{Re}(s) = c`.
+inline Term num_transform_mellin_barnes_checked(const Term& a0, const Term& a1, const Term& a2, const Term& a3, const Term& a4, const Term& a5, const Term& a6, const Term& a7, const Term& a8) {
+    Term args[] = {a0, a1, a2, a3, a4, a5, a6, a7, a8};
+    return apply("num_transform_mellin_barnes_checked", args, 9);
+}
+
+/// Truncated Mellin transform between exp(-limit) and exp(limit). The absolute error estimate covers finite quadrature only. Numerical Mellin transform `\\mathcal{M}[f](s) = \\int_0^\\infty x^{s-1} f(x) \\, dx` via the substitution `x = e^u` (`u \\in [-L, L]`).
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_transform_mellin_checked(Args&&... args) {
+    return detail::call_inferred("num_transform_mellin_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// Finite Stieltjes transform on [0, limit], with the spectral argument off the negative real cut. Numerical Stieltjes transform `S[f](z) = int_0^{r_max} f(t) / (t + z) dt` for `z` off `(-inf, 0]`.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_transform_stieltjes_checked(Args&&... args) {
+    return detail::call_inferred("num_transform_stieltjes_checked",
+                                 std::forward<Args>(args)...);
+}
+
 /// Inverts [`rfft`]: reconstructs the real signal of length `n` from its `n/2 + 1` non-redundant bins, with the `1/n` normalisation of [`ifft`].
 inline Term num_transforms_irfft(const Term& a0, const Term& a1) {
     Term args[] = {a0, a1};
@@ -37199,6 +41196,92 @@ inline Term num_uhp_to_disk(const Term& a0) {
     return apply("num_uhp_to_disk", args, 1);
 }
 
+/// Tests Becker’s pointwise dimensionless inequality at a point in the unit disk with a nonzero first derivative. Checks Becker's sufficient univalence criterion `(1 - |z|^2) * |z * f''(z)/f'(z)| <= 1`.
+inline Term num_univalent_becker(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_univalent_becker", args, 3);
+}
+
+/// Checks the necessary Bieberbach–de Branges coefficient inequalities for dimensionless Taylor coefficients [a0,a1,...]. False rules out the normalized class within the nonnegative tolerance. Checks the Bieberbach–de Branges necessary condition $|`a_n` / `a_1`| \\le n$ ($n \\ge 2$) for a normalized univalent function $f(z) = `a_1` z + `a_2` z^2 + \\dots$ (with `coeffs[k]` = $`a_k`$).
+inline Term num_univalent_bieberbach(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_univalent_bieberbach", args, 2);
+}
+
+/// Bisects a finite angular diagnostic for convexity. Pass maximum normalized radius, angular count, callback budget, the first and second derivatives. Numerically estimates the radius of convexity $\\sup \\{ r \\in (0, r_{\\max}] : 1 + \\text{Re}(z f''(z)/f'(z)) > 0 \\text{ on } |z|=r \\}$ via bisection.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_univalent_convexity_radius_sampled(Args&&... args) {
+    return detail::call_inferred("num_univalent_convexity_radius_sampled",
+                                 std::forward<Args>(args)...);
+}
+
+/// Returns |a3 - mu*a2^2| for normalized dimensionless Taylor coefficients. Computes the Fekete–Szegő functional $|`a_3` - \\mu `a_2^2`|$.
+inline Term num_univalent_fekete_szego(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_univalent_fekete_szego", args, 3);
+}
+
+/// Tests the complex bilinear Grunsky inequality for a supplied vector and checks a power-iteration estimate of the spectral norm. This is a finite-dimensional numerical diagnostic. Verifies the Grunsky inequality $\\left|\\sum_{m,n=1}^M G_{m,n} `x_m` `x_n\\right`| \\le \\sum_{m=1}^M |`x_m|^2` + \\text{tol}$. # Errors Returns an error if the supplied vector length does not match the matrix dimension.
+inline Term num_univalent_grunsky_check(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_univalent_grunsky_check", args, 3);
+}
+
+/// Builds the symmetric normalized complex Grunsky matrix. Requires 2*order+2 dimensionless Taylor coefficients for a positive order through 92. Computes the Grunsky matrix of a Taylor series. Computes the $M \\times M$ Grunsky matrix $G_{m,n} = \\sqrt{mn} \\, c_{m,n}$ for $1 \\le m, n \\le M$ from the Taylor coefficients $f(z) = z + `a_2` z^2 + \\dots$ (`taylor_coeffs[k]` = $`a_k`$, $`a_1` = 1$), defined via $\\ln \\frac{f(z) - f(\\zeta)}{z - \\zeta} = -\\sum_{m,n \\ge 1} c_{m,n} z^m \\zeta^n$. # Errors Returns an error when the Taylor coefficients are missing, have a zero linear term, or do not reach the requested order.
+inline Term num_univalent_grunsky_matrix(const Term& a0, const Term& a1) {
+    Term args[] = {a0, a1};
+    return apply("num_univalent_grunsky_matrix", args, 2);
+}
+
+/// Returns the dimensionless Hankel determinant with entry coefficients[start+i+j]. Order zero returns one. Orders through 256 are supported. Computes the $q \\times q$ Hankel determinant $`H_q(n)` = \\det [c_{n + i + j}]_{i,j=0}^{q-1}$. # Errors Returns an error if the supplied series has too few coefficients for the requested determinant.
+inline Term num_univalent_hankel(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_univalent_hankel", args, 3);
+}
+
+/// Takes one radial Loewner RK4 step in the normalized disk. The driving angle is in radians, the step is nonnegative and each sampled state must stay away from the driving pole. Advances one RK4 step of the radial Loewner slit ODE $\\frac{dw}{dt} = w \\frac{e^{i\\kappa} + w}{e^{i\\kappa} - w}$ with constant driving `driving_kappa` over `dt`.
+inline Term num_univalent_loewner_step(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_univalent_loewner_step", args, 3);
+}
+
+/// Checks Nehari’s inequality on a finite angular/radial grid in the normalized unit disk. Pass sample radii, angles per radius, positive Cauchy radius, callback budget, then the callback. Checks Nehari's sufficient univalence criterion $(1 - |z|^2)^2 |\\{f, z\\}| \\le 2$ across sample radii in $(0, 1)$ and `n_angles` angles per radius. # Errors Returns an error for invalid sample radii, a zero angular sample count, or failed Schwarzian evaluation.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_univalent_nehari_sampled(Args&&... args) {
+    return detail::call_inferred("num_univalent_nehari_sampled",
+                                 std::forward<Args>(args)...);
+}
+
+/// Estimates the measured Schwarzian derivative from one 64-sample Cauchy circle. Pass center, radius, a positive callback-value scale, total callback budget, then the callback. Computes the Schwarzian derivative $\\{f, z\\} = \\frac{f'''(z)}{f'(z)} - \\frac{3}{2} \\left(\\frac{f''(z)}{f'(z)}\\right)^2$ using Cauchy–FFT derivatives on a circle of radius `h`. # Errors Returns an error when derivative evaluation fails or the first derivative vanishes.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_univalent_schwarzian_checked(Args&&... args) {
+    return detail::call_inferred("num_univalent_schwarzian_checked",
+                                 std::forward<Args>(args)...);
+}
+
+/// Bisects a finite angular diagnostic for starlikeness. Pass maximum normalized radius, angular count, callback budget, the map and its first derivative. Numerically estimates the radius of starlikeness $\\sup \\{ r \\in (0, r_{\\max}] : \\text{Re}(z f'(z)/f(z)) > 0 \\text{ on } |z|=r \\}$ via bisection.
+///
+/// Higher-order: the function parameters are host callbacks.
+/// Pass a `Callback` (see `rssn/callback.hpp`) or a `Value` for each
+/// one; the result is a `Value`, not a `Term`.
+template <class... Args>
+inline Value num_univalent_starlikeness_radius_sampled(Args&&... args) {
+    return detail::call_inferred("num_univalent_starlikeness_radius_sampled",
+                                 std::forward<Args>(args)...);
+}
+
 /// Population variance; zero for an empty sample. Computes the variance of a slice of f64 values (defaults to population variance). # Arguments * `data` - An immutable slice of `f64` data points. # Returns The variance of the data as an `f64`.
 inline Term num_variance(const Term& a0) {
     Term args[] = {a0};
@@ -37325,10 +41408,28 @@ inline Term num_weierstrass_invariants_complex(const Term& a0, const Term& a1) {
     return apply("num_weierstrass_invariants_complex", args, 2);
 }
 
+/// Discriminant (2*pi)^12 * eta(tau)^24 for a dimensionless tau in the open upper half-plane. Modular discriminant `Delta(tau) = (2*pi)^12 * eta(tau)^24` for `Im(tau) > 0`.
+inline Term num_weierstrass_modular_discriminant_complex(const Term& a0) {
+    Term args[] = {a0};
+    return apply("num_weierstrass_modular_discriminant_complex", args, 1);
+}
+
 /// Numerically evaluates the Weierstrass derivative at z. The arguments omega1 and omega2 are nonzero, non-collinear half-periods, so the basic periods are 2*omega1 and 2*omega2. All arguments and the result are dimensionless. A detected lattice pole, an invalid lattice or a nonfinite result produces a domain error. Weierstrass elliptic derivative `wp'(z; omega1, omega2)` via central complex step or theta.
 inline Term num_weierstrass_p_prime_complex(const Term& a0, const Term& a1, const Term& a2) {
     Term args[] = {a0, a1, a2};
     return apply("num_weierstrass_p_prime_complex", args, 3);
+}
+
+/// Weierstrass sigma for dimensionless complex z and two nonzero, non-collinear half-periods. Sigma vanishes at lattice points and its derivative at zero is one. Weierstrass sigma function `sigma(z; omega1, omega2)`.
+inline Term num_weierstrass_sigma_complex(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_weierstrass_sigma_complex", args, 3);
+}
+
+/// Weierstrass zeta for dimensionless complex z and two nonzero, non-collinear half-periods. Lattice poles return a domain error. Weierstrass zeta function `zeta_W(z; omega1, omega2)`.
+inline Term num_weierstrass_zeta_complex(const Term& a0, const Term& a1, const Term& a2) {
+    Term args[] = {a0, a1, a2};
+    return apply("num_weierstrass_zeta_complex", args, 3);
 }
 
 /// Sample z scores. Computes the z-scores (standard scores) for each data point. z = (x - mean) / `std_dev`
@@ -41458,6 +45559,11 @@ inline Value num_analysis_band_lu_solve(const Session& session, Args&&... args) 
 }
 
 template <class... Args>
+inline Value num_analysis_clenshaw_curtis_parallel(const Session& session, Args&&... args) {
+    return session.call_value("num_analysis_clenshaw_curtis_parallel", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_analysis_complex_mobius_apply(const Session& session, Args&&... args) {
     return session.call_value("num_analysis_complex_mobius_apply", std::forward<Args>(args)...);
 }
@@ -41775,6 +45881,11 @@ inline Value num_analysis_filon2d_compiled(const Session& session, Args&&... arg
 template <class... Args>
 inline Value num_analysis_filon2d_complex_compiled(const Session& session, Args&&... args) {
     return session.call_value("num_analysis_filon2d_complex_compiled", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_analysis_gauss_legendre_parallel(const Session& session, Args&&... args) {
+    return session.call_value("num_analysis_gauss_legendre_parallel", std::forward<Args>(args)...);
 }
 
 template <class... Args>
@@ -43283,6 +47394,11 @@ inline Value num_analysis_signal_stft(const Session& session, Args&&... args) {
 }
 
 template <class... Args>
+inline Value num_analysis_simplex_budgeted(const Session& session, Args&&... args) {
+    return session.call_value("num_analysis_simplex_budgeted", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_analysis_simplex_scaled(const Session& session, Args&&... args) {
     return session.call_value("num_analysis_simplex_scaled", std::forward<Args>(args)...);
 }
@@ -43550,6 +47666,11 @@ inline Value num_analysis_stochastic_structure_noise(const Session& session, Arg
 template <class... Args>
 inline Value num_analysis_stochastic_wiener(const Session& session, Args&&... args) {
     return session.call_value("num_analysis_stochastic_wiener", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_analysis_sum_compensated(const Session& session, Args&&... args) {
+    return session.call_value("num_analysis_sum_compensated", std::forward<Args>(args)...);
 }
 
 template <class... Args>
@@ -44223,6 +48344,86 @@ inline Value num_bvh_ray(const Session& session, Args&&... args) {
 }
 
 template <class... Args>
+inline Value num_cad_mesh_arrays(const Session& session, Args&&... args) {
+    return session.call_value("num_cad_mesh_arrays", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_cad_mesh_boolean(const Session& session, Args&&... args) {
+    return session.call_value("num_cad_mesh_boolean", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_cad_mesh_euler_characteristic(const Session& session, Args&&... args) {
+    return session.call_value("num_cad_mesh_euler_characteristic", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_cad_mesh_is_closed(const Session& session, Args&&... args) {
+    return session.call_value("num_cad_mesh_is_closed", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_cad_mesh_is_manifold(const Session& session, Args&&... args) {
+    return session.call_value("num_cad_mesh_is_manifold", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_cad_mesh_new(const Session& session, Args&&... args) {
+    return session.call_value("num_cad_mesh_new", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_cad_mesh_repair(const Session& session, Args&&... args) {
+    return session.call_value("num_cad_mesh_repair", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_cad_mesh_signed_volume(const Session& session, Args&&... args) {
+    return session.call_value("num_cad_mesh_signed_volume", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_cad_mesh_triangle_count(const Session& session, Args&&... args) {
+    return session.call_value("num_cad_mesh_triangle_count", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_cad_mesh_vertex_count(const Session& session, Args&&... args) {
+    return session.call_value("num_cad_mesh_vertex_count", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_cad_mesh_weld(const Session& session, Args&&... args) {
+    return session.call_value("num_cad_mesh_weld", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_cad_step_read_text(const Session& session, Args&&... args) {
+    return session.call_value("num_cad_step_read_text", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_cad_stl_read(const Session& session, Args&&... args) {
+    return session.call_value("num_cad_stl_read", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_cad_stl_read_text(const Session& session, Args&&... args) {
+    return session.call_value("num_cad_stl_read_text", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_cad_stl_write_ascii(const Session& session, Args&&... args) {
+    return session.call_value("num_cad_stl_write_ascii", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_cad_stl_write_binary(const Session& session, Args&&... args) {
+    return session.call_value("num_cad_stl_write_binary", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_cauchy_root_bound(const Session& session, Args&&... args) {
     return session.call_value("num_cauchy_root_bound", std::forward<Args>(args)...);
 }
@@ -44438,6 +48639,466 @@ inline Value num_combinatorics_stirling_second(const Session& session, Args&&...
 }
 
 template <class... Args>
+inline Value num_complex_coords_abs_sq(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_coords_abs_sq", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_coords_arg_branch(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_coords_arg_branch", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_coords_chordal_distance(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_coords_chordal_distance", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_coords_cis(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_coords_cis", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_coords_continue_root(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_coords_continue_root", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_coords_from_polar(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_coords_from_polar", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_coords_from_riemann_sphere(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_coords_from_riemann_sphere", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_coords_log_cut(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_coords_log_cut", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_coords_pow_cut(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_coords_pow_cut", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_coords_sign(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_coords_sign", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_coords_spherical_metric_factor(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_coords_spherical_metric_factor", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_coords_sqrt_cut(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_coords_sqrt_cut", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_coords_to_polar(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_coords_to_polar", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_coords_to_riemann_sphere(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_coords_to_riemann_sphere", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_coords_unwrap_phase(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_coords_unwrap_phase", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_add(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_add", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_bessel_j(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_bessel_j", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_center(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_center", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_conj(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_conj", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_contains(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_contains", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_contains_zero(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_contains_zero", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_cot(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_cot", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_coth(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_coth", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_csc(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_csc", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_csch(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_csch", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_div(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_div", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_erf(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_erf", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_gamma(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_gamma", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_i(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_i", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_inside_strictly(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_inside_strictly", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_is_finite(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_is_finite", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_jet_acos(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_jet_acos", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_jet_acosh(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_jet_acosh", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_jet_add(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_jet_add", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_jet_asin(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_jet_asin", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_jet_asinh(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_jet_asinh", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_jet_atan(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_jet_atan", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_jet_atanh(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_jet_atanh", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_jet_constant(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_jet_constant", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_jet_cos(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_jet_cos", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_jet_cosh(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_jet_cosh", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_jet_div(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_jet_div", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_jet_exp(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_jet_exp", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_jet_ln(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_jet_ln", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_jet_mul(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_jet_mul", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_jet_pow(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_jet_pow", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_jet_powi(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_jet_powi", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_jet_sin(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_jet_sin", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_jet_sinh(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_jet_sinh", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_jet_sqrt(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_jet_sqrt", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_jet_sub(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_jet_sub", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_jet_tan(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_jet_tan", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_jet_tanh(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_jet_tanh", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_jet_variable(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_jet_variable", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_log_gamma(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_log_gamma", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_matmul(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_matmul", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_matvec(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_matvec", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_modulus_lower(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_modulus_lower", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_modulus_upper(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_modulus_upper", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_mul(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_mul", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_neg(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_neg", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_new(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_new", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_of(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_of", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_one(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_one", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_overlaps(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_overlaps", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_point(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_point", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_radius(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_radius", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_recip(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_recip", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_scale(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_scale", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_sec(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_sec", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_sech(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_sech", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_solve(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_solve", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_square(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_square", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_sub(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_sub", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_disk_zero(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_disk_zero", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_dynamics_bottcher(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_dynamics_bottcher", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_dynamics_external_ray(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_dynamics_external_ray", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_dynamics_in_main_components(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_dynamics_in_main_components", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_dynamics_julia_escape(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_dynamics_julia_escape", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_dynamics_mandelbrot_distance(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_dynamics_mandelbrot_distance", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_dynamics_mandelbrot_escape(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_dynamics_mandelbrot_escape", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_dynamics_quadratic_lyapunov(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_dynamics_quadratic_lyapunov", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_dynamics_quadratic_multiplier(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_dynamics_quadratic_multiplier", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_dynamics_quadratic_orbit(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_dynamics_quadratic_orbit", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_dynamics_quadratic_periodic_points(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_dynamics_quadratic_periodic_points", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_polynomial_aberth_ehrlich(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_polynomial_aberth_ehrlich", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_polynomial_durand_kerner(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_polynomial_durand_kerner", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_polynomial_isolate_verified(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_polynomial_isolate_verified", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_polynomial_laguerre(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_polynomial_laguerre", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_surface_hyperelliptic(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_surface_hyperelliptic", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_surface_monodromy_checked(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_surface_monodromy_checked", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_complex_surface_superelliptic(const Session& session, Args&&... args) {
+    return session.call_value("num_complex_surface_superelliptic", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_complex_winding_number(const Session& session, Args&&... args) {
     return session.call_value("num_complex_winding_number", std::forward<Args>(args)...);
 }
@@ -44463,8 +49124,243 @@ inline Value num_cond(const Session& session, Args&&... args) {
 }
 
 template <class... Args>
+inline Value num_conformal_bergman_kernel_disk(const Session& session, Args&&... args) {
+    return session.call_value("num_conformal_bergman_kernel_disk", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_conformal_bergman_polynomial_basis(const Session& session, Args&&... args) {
+    return session.call_value("num_conformal_bergman_polynomial_basis", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_conformal_cayley_transform(const Session& session, Args&&... args) {
+    return session.call_value("num_conformal_cayley_transform", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_conformal_classify_mobius(const Session& session, Args&&... args) {
+    return session.call_value("num_conformal_classify_mobius", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_conformal_cross_ratio(const Session& session, Args&&... args) {
+    return session.call_value("num_conformal_cross_ratio", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_conformal_disk_automorphism(const Session& session, Args&&... args) {
+    return session.call_value("num_conformal_disk_automorphism", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_conformal_joukowsky(const Session& session, Args&&... args) {
+    return session.call_value("num_conformal_joukowsky", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_conformal_joukowsky_inverse(const Session& session, Args&&... args) {
+    return session.call_value("num_conformal_joukowsky_inverse", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_conformal_karman_trefftz(const Session& session, Args&&... args) {
+    return session.call_value("num_conformal_karman_trefftz", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_conformal_koebe_map(const Session& session, Args&&... args) {
+    return session.call_value("num_conformal_koebe_map", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_conformal_mobius_fixed_points(const Session& session, Args&&... args) {
+    return session.call_value("num_conformal_mobius_fixed_points", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_conformal_mobius_three_points(const Session& session, Args&&... args) {
+    return session.call_value("num_conformal_mobius_three_points", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_conformal_schwarz_christoffel_evaluate(const Session& session, Args&&... args) {
+    return session.call_value("num_conformal_schwarz_christoffel_evaluate", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_conformal_schwarz_christoffel_solve(const Session& session, Args&&... args) {
+    return session.call_value("num_conformal_schwarz_christoffel_solve", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_conformal_szego_evaluate(const Session& session, Args&&... args) {
+    return session.call_value("num_conformal_szego_evaluate", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_conformal_szego_evaluate_bergman(const Session& session, Args&&... args) {
+    return session.call_value("num_conformal_szego_evaluate_bergman", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_conformal_szego_evaluate_map(const Session& session, Args&&... args) {
+    return session.call_value("num_conformal_szego_evaluate_map", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_conformal_szego_prepare_sampled(const Session& session, Args&&... args) {
+    return session.call_value("num_conformal_szego_prepare_sampled", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_continuation_borel_pade(const Session& session, Args&&... args) {
+    return session.call_value("num_continuation_borel_pade", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_continuation_eval_pade(const Session& session, Args&&... args) {
+    return session.call_value("num_continuation_eval_pade", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_continuation_holonomic_follow(const Session& session, Args&&... args) {
+    return session.call_value("num_continuation_holonomic_follow", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_continuation_holonomic_monodromy(const Session& session, Args&&... args) {
+    return session.call_value("num_continuation_holonomic_monodromy", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_continuation_holonomic_order(const Session& session, Args&&... args) {
+    return session.call_value("num_continuation_holonomic_order", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_continuation_pade(const Session& session, Args&&... args) {
+    return session.call_value("num_continuation_pade", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_continuation_recenter(const Session& session, Args&&... args) {
+    return session.call_value("num_continuation_recenter", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_continuation_wynn(const Session& session, Args&&... args) {
+    return session.call_value("num_continuation_wynn", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_contour_bromwich(const Session& session, Args&&... args) {
+    return session.call_value("num_contour_bromwich", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_contour_deform_checked(const Session& session, Args&&... args) {
+    return session.call_value("num_contour_deform_checked", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_contour_dogbone(const Session& session, Args&&... args) {
+    return session.call_value("num_contour_dogbone", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_contour_hankel(const Session& session, Args&&... args) {
+    return session.call_value("num_contour_hankel", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_contour_indented_semicircle(const Session& session, Args&&... args) {
+    return session.call_value("num_contour_indented_semicircle", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_contour_keyhole(const Session& session, Args&&... args) {
+    return session.call_value("num_contour_keyhole", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_contour_rectangle(const Session& session, Args&&... args) {
+    return session.call_value("num_contour_rectangle", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_contour_sector(const Session& session, Args&&... args) {
+    return session.call_value("num_contour_sector", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_control_c2d_zoh(const Session& session, Args&&... args) {
     return session.call_value("num_control_c2d_zoh", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_discrete_controllability_matrix(const Session& session, Args&&... args) {
+    return session.call_value("num_control_discrete_controllability_matrix", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_discrete_is_stable(const Session& session, Args&&... args) {
+    return session.call_value("num_control_discrete_is_stable", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_discrete_n_inputs(const Session& session, Args&&... args) {
+    return session.call_value("num_control_discrete_n_inputs", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_discrete_n_outputs(const Session& session, Args&&... args) {
+    return session.call_value("num_control_discrete_n_outputs", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_discrete_n_states(const Session& session, Args&&... args) {
+    return session.call_value("num_control_discrete_n_states", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_discrete_observability_matrix(const Session& session, Args&&... args) {
+    return session.call_value("num_control_discrete_observability_matrix", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_discrete_poles(const Session& session, Args&&... args) {
+    return session.call_value("num_control_discrete_poles", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_era(const Session& session, Args&&... args) {
+    return session.call_value("num_control_era", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_era_matrices(const Session& session, Args&&... args) {
+    return session.call_value("num_control_era_matrices", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_impulse_response(const Session& session, Args&&... args) {
+    return session.call_value("num_control_impulse_response", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_mpc_closed_loop(const Session& session, Args&&... args) {
+    return session.call_value("num_control_mpc_closed_loop", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_mpc_prepare(const Session& session, Args&&... args) {
+    return session.call_value("num_control_mpc_prepare", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_pid_response(const Session& session, Args&&... args) {
+    return session.call_value("num_control_pid_response", std::forward<Args>(args)...);
 }
 
 template <class... Args>
@@ -44475,6 +49371,116 @@ inline Value num_control_simulate_continuous(const Session& session, Args&&... a
 template <class... Args>
 inline Value num_control_simulate_discrete(const Session& session, Args&&... args) {
     return session.call_value("num_control_simulate_discrete", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_simulate_pid(const Session& session, Args&&... args) {
+    return session.call_value("num_control_simulate_pid", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_state_space_continuous(const Session& session, Args&&... args) {
+    return session.call_value("num_control_state_space_continuous", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_state_space_discrete(const Session& session, Args&&... args) {
+    return session.call_value("num_control_state_space_discrete", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_state_space_is_controllable(const Session& session, Args&&... args) {
+    return session.call_value("num_control_state_space_is_controllable", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_state_space_is_observable(const Session& session, Args&&... args) {
+    return session.call_value("num_control_state_space_is_observable", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_state_space_is_stable(const Session& session, Args&&... args) {
+    return session.call_value("num_control_state_space_is_stable", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_state_space_new(const Session& session, Args&&... args) {
+    return session.call_value("num_control_state_space_new", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_state_space_poles(const Session& session, Args&&... args) {
+    return session.call_value("num_control_state_space_poles", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_state_space_simulate_with_dt(const Session& session, Args&&... args) {
+    return session.call_value("num_control_state_space_simulate_with_dt", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_transfer_evaluate(const Session& session, Args&&... args) {
+    return session.call_value("num_control_transfer_evaluate", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_transfer_feedback(const Session& session, Args&&... args) {
+    return session.call_value("num_control_transfer_feedback", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_transfer_gain_margin_phase_margin(const Session& session, Args&&... args) {
+    return session.call_value("num_control_transfer_gain_margin_phase_margin", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_transfer_is_proper(const Session& session, Args&&... args) {
+    return session.call_value("num_control_transfer_is_proper", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_transfer_is_stable(const Session& session, Args&&... args) {
+    return session.call_value("num_control_transfer_is_stable", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_transfer_is_strictly_proper(const Session& session, Args&&... args) {
+    return session.call_value("num_control_transfer_is_strictly_proper", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_transfer_new(const Session& session, Args&&... args) {
+    return session.call_value("num_control_transfer_new", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_transfer_new_proper(const Session& session, Args&&... args) {
+    return session.call_value("num_control_transfer_new_proper", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_transfer_order(const Session& session, Args&&... args) {
+    return session.call_value("num_control_transfer_order", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_transfer_parallel(const Session& session, Args&&... args) {
+    return session.call_value("num_control_transfer_parallel", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_transfer_series(const Session& session, Args&&... args) {
+    return session.call_value("num_control_transfer_series", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_transfer_step_response(const Session& session, Args&&... args) {
+    return session.call_value("num_control_transfer_step_response", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_control_transfer_zeros(const Session& session, Args&&... args) {
+    return session.call_value("num_control_transfer_zeros", std::forward<Args>(args)...);
 }
 
 template <class... Args>
@@ -44495,6 +49501,11 @@ inline Value num_convergence_richardson_extrapolation_with(const Session& sessio
 template <class... Args>
 inline Value num_convergence_wynn_epsilon(const Session& session, Args&&... args) {
     return session.call_value("num_convergence_wynn_epsilon", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_convex_solve_lp(const Session& session, Args&&... args) {
+    return session.call_value("num_convex_solve_lp", std::forward<Args>(args)...);
 }
 
 template <class... Args>
@@ -44573,6 +49584,21 @@ inline Value num_csr_gmres(const Session& session, Args&&... args) {
 }
 
 template <class... Args>
+inline Value num_csr_lsqr(const Session& session, Args&&... args) {
+    return session.call_value("num_csr_lsqr", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_csr_matmul_dense(const Session& session, Args&&... args) {
+    return session.call_value("num_csr_matmul_dense", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_csr_matmul_sparse(const Session& session, Args&&... args) {
+    return session.call_value("num_csr_matmul_sparse", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_csr_minres(const Session& session, Args&&... args) {
     return session.call_value("num_csr_minres", std::forward<Args>(args)...);
 }
@@ -44625,6 +49651,11 @@ inline Value num_csr_model_permute(const Session& session, Args&&... args) {
 template <class... Args>
 inline Value num_csr_model_rcm(const Session& session, Args&&... args) {
     return session.call_value("num_csr_model_rcm", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_csr_transpose(const Session& session, Args&&... args) {
+    return session.call_value("num_csr_transpose", std::forward<Args>(args)...);
 }
 
 template <class... Args>
@@ -45513,6 +50544,16 @@ inline Value num_finite_field_gf256_scale(const Session& session, Args&&... args
 }
 
 template <class... Args>
+inline Value num_finite_field_ntt_plan(const Session& session, Args&&... args) {
+    return session.call_value("num_finite_field_ntt_plan", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_finite_field_ntt_transform(const Session& session, Args&&... args) {
+    return session.call_value("num_finite_field_ntt_transform", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_finite_field_poly_mul_ntt_mod(const Session& session, Args&&... args) {
     return session.call_value("num_finite_field_poly_mul_ntt_mod", std::forward<Args>(args)...);
 }
@@ -45980,6 +51021,36 @@ inline Value num_geometry_segment_triangle_intersection_3d(const Session& sessio
 template <class... Args>
 inline Value num_geometry_tetrahedron_volume(const Session& session, Args&&... args) {
     return session.call_value("num_geometry_tetrahedron_volume", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_glm_fit(const Session& session, Args&&... args) {
+    return session.call_value("num_glm_fit", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_glm_inverse_link(const Session& session, Args&&... args) {
+    return session.call_value("num_glm_inverse_link", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_glm_link(const Session& session, Args&&... args) {
+    return session.call_value("num_glm_link", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_glm_link_derivative(const Session& session, Args&&... args) {
+    return session.call_value("num_glm_link_derivative", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_glm_predict(const Session& session, Args&&... args) {
+    return session.call_value("num_glm_predict", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_glm_variance(const Session& session, Args&&... args) {
+    return session.call_value("num_glm_variance", std::forward<Args>(args)...);
 }
 
 template <class... Args>
@@ -48448,6 +53519,16 @@ inline Value num_homology_wedge(const Session& session, Args&&... args) {
 }
 
 template <class... Args>
+inline Value num_interp_bilinear_grid_evaluate(const Session& session, Args&&... args) {
+    return session.call_value("num_interp_bilinear_grid_evaluate", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_interp_bilinear_grid_prepare(const Session& session, Args&&... args) {
+    return session.call_value("num_interp_bilinear_grid_prepare", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_interp_ext_akima(const Session& session, Args&&... args) {
     return session.call_value("num_interp_ext_akima", std::forward<Args>(args)...);
 }
@@ -49838,6 +54919,86 @@ inline Value num_linear_solve_wiedemann(const Session& session, Args&&... args) 
 }
 
 template <class... Args>
+inline Value num_linear_sparse_exact_dixon_multi(const Session& session, Args&&... args) {
+    return session.call_value("num_linear_sparse_exact_dixon_multi", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_linear_sparse_exact_field_add(const Session& session, Args&&... args) {
+    return session.call_value("num_linear_sparse_exact_field_add", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_linear_sparse_exact_field_batch_inv(const Session& session, Args&&... args) {
+    return session.call_value("num_linear_sparse_exact_field_batch_inv", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_linear_sparse_exact_field_inv(const Session& session, Args&&... args) {
+    return session.call_value("num_linear_sparse_exact_field_inv", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_linear_sparse_exact_field_mul(const Session& session, Args&&... args) {
+    return session.call_value("num_linear_sparse_exact_field_mul", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_linear_sparse_exact_field_new(const Session& session, Args&&... args) {
+    return session.call_value("num_linear_sparse_exact_field_new", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_linear_sparse_exact_field_pow(const Session& session, Args&&... args) {
+    return session.call_value("num_linear_sparse_exact_field_pow", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_linear_sparse_exact_field_prime(const Session& session, Args&&... args) {
+    return session.call_value("num_linear_sparse_exact_field_prime", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_linear_sparse_exact_field_reduce(const Session& session, Args&&... args) {
+    return session.call_value("num_linear_sparse_exact_field_reduce", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_linear_sparse_exact_field_reducer(const Session& session, Args&&... args) {
+    return session.call_value("num_linear_sparse_exact_field_reducer", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_linear_sparse_exact_field_sub(const Session& session, Args&&... args) {
+    return session.call_value("num_linear_sparse_exact_field_sub", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_linear_sparse_exact_prime_rref(const Session& session, Args&&... args) {
+    return session.call_value("num_linear_sparse_exact_prime_rref", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_linear_sparse_exact_prime_to_dense(const Session& session, Args&&... args) {
+    return session.call_value("num_linear_sparse_exact_prime_to_dense", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_linear_sparse_exact_rational_rref(const Session& session, Args&&... args) {
+    return session.call_value("num_linear_sparse_exact_rational_rref", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_linear_sparse_exact_rational_to_prime(const Session& session, Args&&... args) {
+    return session.call_value("num_linear_sparse_exact_rational_to_prime", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_linear_sparse_exact_rcm_plan(const Session& session, Args&&... args) {
+    return session.call_value("num_linear_sparse_exact_rcm_plan", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_linear_sparse_lu_dim(const Session& session, Args&&... args) {
     return session.call_value("num_linear_sparse_lu_dim", std::forward<Args>(args)...);
 }
@@ -50463,6 +55624,51 @@ inline Value num_max(const Session& session, Args&&... args) {
 }
 
 template <class... Args>
+inline Value num_mcmc_autocorrelation(const Session& session, Args&&... args) {
+    return session.call_value("num_mcmc_autocorrelation", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mcmc_effective_sample_size(const Session& session, Args&&... args) {
+    return session.call_value("num_mcmc_effective_sample_size", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mcmc_geweke(const Session& session, Args&&... args) {
+    return session.call_value("num_mcmc_geweke", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mcmc_pcg32_new(const Session& session, Args&&... args) {
+    return session.call_value("num_mcmc_pcg32_new", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mcmc_pcg32_next_f64(const Session& session, Args&&... args) {
+    return session.call_value("num_mcmc_pcg32_next_f64", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mcmc_pcg32_next_u32(const Session& session, Args&&... args) {
+    return session.call_value("num_mcmc_pcg32_next_u32", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mcmc_pcg32_normal(const Session& session, Args&&... args) {
+    return session.call_value("num_mcmc_pcg32_normal", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mcmc_pcg32_seeded(const Session& session, Args&&... args) {
+    return session.call_value("num_mcmc_pcg32_seeded", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mcmc_split_rhat(const Session& session, Args&&... args) {
+    return session.call_value("num_mcmc_split_rhat", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_mean(const Session& session, Args&&... args) {
     return session.call_value("num_mean", std::forward<Args>(args)...);
 }
@@ -50473,8 +55679,18 @@ inline Value num_median(const Session& session, Args&&... args) {
 }
 
 template <class... Args>
+inline Value num_meshgen_advancing_front_2d(const Session& session, Args&&... args) {
+    return session.call_value("num_meshgen_advancing_front_2d", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_meshgen_boundary_faces(const Session& session, Args&&... args) {
     return session.call_value("num_meshgen_boundary_faces", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_meshgen_constrained_delaunay_2d(const Session& session, Args&&... args) {
+    return session.call_value("num_meshgen_constrained_delaunay_2d", std::forward<Args>(args)...);
 }
 
 template <class... Args>
@@ -50503,13 +55719,243 @@ inline Value num_min(const Session& session, Args&&... args) {
 }
 
 template <class... Args>
+inline Value num_modular_barrett_add(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_barrett_add", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_barrett_div(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_barrett_div", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_barrett_inv(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_barrett_inv", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_barrett_modulus(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_barrett_modulus", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_barrett_mu(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_barrett_mu", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_barrett_mul(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_barrett_mul", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_barrett_neg(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_barrett_neg", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_barrett_new(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_barrett_new", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_barrett_new_prime(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_barrett_new_prime", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_barrett_pow(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_barrett_pow", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_barrett_reduce_u128(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_barrett_reduce_u128", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_barrett_reduce_u64(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_barrett_reduce_u64", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_barrett_sub(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_barrett_sub", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_add(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_add", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_add_mont(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_add_mont", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_div(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_div", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_fma_mont(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_fma_mont", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_from_mont(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_from_mont", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_half(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_half", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_inv(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_inv", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_modulus(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_modulus", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_mul(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_mul", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_mul_mont(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_mul_mont", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_n_prime(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_n_prime", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_neg(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_neg", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_neg_mont(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_neg_mont", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_new(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_new", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_new_prime(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_new_prime", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_one(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_one", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_one_mont(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_one_mont", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_pow(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_pow", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_pow_mont(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_pow_mont", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_r2_mod(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_r2_mod", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_r_mod(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_r_mod", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_redc(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_redc", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_sub(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_sub", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_sub_mont(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_sub_mont", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_to_mont(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_to_mont", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_modular_montgomery_to_mont_u128(const Session& session, Args&&... args) {
+    return session.call_value("num_modular_montgomery_to_mont_u128", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_mp_ball_abs(const Session& session, Args&&... args) {
     return session.call_value("num_mp_ball_abs", std::forward<Args>(args)...);
 }
 
 template <class... Args>
+inline Value num_mp_ball_acos(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_acos", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_ball_add(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_add", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_ball_asin(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_asin", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_ball_atan(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_atan", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_ball_atan2(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_atan2", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_mp_ball_contains_zero(const Session& session, Args&&... args) {
     return session.call_value("num_mp_ball_contains_zero", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_ball_cos(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_cos", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_ball_cosh(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_cosh", std::forward<Args>(args)...);
 }
 
 template <class... Args>
@@ -50520,6 +55966,46 @@ inline Value num_mp_ball_div(const Session& session, Args&&... args) {
 template <class... Args>
 inline Value num_mp_ball_endpoints(const Session& session, Args&&... args) {
     return session.call_value("num_mp_ball_endpoints", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_ball_exp(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_exp", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_ball_exp2(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_exp2", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_ball_lipschitz(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_lipschitz", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_ball_ln(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_ln", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_ball_log10(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_log10", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_ball_log2(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_log2", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_ball_midpoint(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_midpoint", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_ball_mul(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_mul", std::forward<Args>(args)...);
 }
 
 template <class... Args>
@@ -50538,8 +56024,318 @@ inline Value num_mp_ball_point(const Session& session, Args&&... args) {
 }
 
 template <class... Args>
+inline Value num_mp_ball_pow(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_pow", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_ball_pow_ratio(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_pow_ratio", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_ball_powi(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_powi", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_ball_radius(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_radius", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_ball_sin(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_sin", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_ball_sinh(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_sinh", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_ball_sqrt(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_sqrt", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_ball_sub(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_sub", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_ball_tan(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_tan", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_ball_tanh(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_ball_tanh", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_mp_ball_width(const Session& session, Args&&... args) {
     return session.call_value("num_mp_ball_width", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_abs(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_abs", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_abs_sq(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_abs_sq", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_acos(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_acos", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_acosh(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_acosh", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_add(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_add", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_arg(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_arg", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_asin(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_asin", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_asinh(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_asinh", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_atan(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_atan", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_atanh(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_atanh", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_bessel_j(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_bessel_j", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_conj(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_conj", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_cos(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_cos", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_cosh(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_cosh", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_digamma(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_digamma", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_div(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_div", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_erf(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_erf", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_erfc(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_erfc", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_exp(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_exp", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_from_real(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_from_real", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_gamma(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_gamma", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_i(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_i", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_ln(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_ln", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_log_gamma(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_log_gamma", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_mul(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_mul", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_neg(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_neg", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_new(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_new", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_one(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_one", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_point(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_point", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_polylog(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_polylog", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_pow(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_pow", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_powi(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_powi", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_recip(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_recip", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_riemann_zeta(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_riemann_zeta", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_sin(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_sin", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_sinh(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_sinh", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_sqrt(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_sqrt", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_sub(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_sub", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_tan(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_tan", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_tanh(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_tanh", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_complex_zero(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_complex_zero", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_decimal_enclose(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_decimal_enclose", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_decimal_exponent(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_decimal_exponent", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_decimal_format_ball(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_decimal_format_ball", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_decimal_from_text(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_decimal_from_text", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_decimal_from_text_in(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_decimal_from_text_in", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_decimal_round_text(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_decimal_round_text", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_decimal_significant_digits(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_decimal_significant_digits", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_decimal_to_text(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_decimal_to_text", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_decimal_to_text_in(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_decimal_to_text_in", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_decimal_working_bits(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_decimal_working_bits", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_expression_enclose(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_expression_enclose", std::forward<Args>(args)...);
 }
 
 template <class... Args>
@@ -50548,8 +56344,38 @@ inline Value num_mp_real_abs(const Session& session, Args&&... args) {
 }
 
 template <class... Args>
+inline Value num_mp_real_acos(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_acos", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_mp_real_add(const Session& session, Args&&... args) {
     return session.call_value("num_mp_real_add", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_asin(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_asin", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_atan(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_atan", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_atan2(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_atan2", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_cbrt(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_cbrt", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_cbrt_in(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_cbrt_in", std::forward<Args>(args)...);
 }
 
 template <class... Args>
@@ -50558,13 +56384,108 @@ inline Value num_mp_real_compare(const Session& session, Args&&... args) {
 }
 
 template <class... Args>
+inline Value num_mp_real_const_e(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_const_e", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_const_enclose(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_const_enclose", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_const_functions(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_const_functions", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_const_ln2(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_const_ln2", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_const_named(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_const_named", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_const_names(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_const_names", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_const_phi(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_const_phi", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_const_pi(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_const_pi", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_const_pi_scaled(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_const_pi_scaled", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_const_sqrt2(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_const_sqrt2", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_cos(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_cos", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_cosh(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_cosh", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_mp_real_div(const Session& session, Args&&... args) {
     return session.call_value("num_mp_real_div", std::forward<Args>(args)...);
 }
 
 template <class... Args>
+inline Value num_mp_real_exp(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_exp", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_exp2(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_exp2", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_exponent(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_exponent", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_mp_real_floor_log2(const Session& session, Args&&... args) {
     return session.call_value("num_mp_real_floor_log2", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_from_bigint(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_from_bigint", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_from_f64(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_from_f64", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_from_i64(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_from_i64", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_hypot(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_hypot", std::forward<Args>(args)...);
 }
 
 template <class... Args>
@@ -50578,6 +56499,31 @@ inline Value num_mp_real_is_zero(const Session& session, Args&&... args) {
 }
 
 template <class... Args>
+inline Value num_mp_real_limits(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_limits", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_ln(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_ln", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_log10(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_log10", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_log2(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_log2", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_mantissa(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_mantissa", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_mp_real_mul(const Session& session, Args&&... args) {
     return session.call_value("num_mp_real_mul", std::forward<Args>(args)...);
 }
@@ -50588,13 +56534,73 @@ inline Value num_mp_real_neg(const Session& session, Args&&... args) {
 }
 
 template <class... Args>
+inline Value num_mp_real_one(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_one", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_pow(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_pow", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_pow_ratio(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_pow_ratio", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_powi(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_powi", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_precision(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_precision", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_mp_real_round(const Session& session, Args&&... args) {
     return session.call_value("num_mp_real_round", std::forward<Args>(args)...);
 }
 
 template <class... Args>
+inline Value num_mp_real_rounding_mode(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_rounding_mode", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_scale_decimal(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_scale_decimal", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_scale_decimal_in(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_scale_decimal_in", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_mp_real_scale_pow2(const Session& session, Args&&... args) {
     return session.call_value("num_mp_real_scale_pow2", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_sign(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_sign", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_sin(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_sin", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_sin_cos(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_sin_cos", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_sinh(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_sinh", std::forward<Args>(args)...);
 }
 
 template <class... Args>
@@ -50608,6 +56614,21 @@ inline Value num_mp_real_sub(const Session& session, Args&&... args) {
 }
 
 template <class... Args>
+inline Value num_mp_real_tan(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_tan", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_tanh(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_tanh", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_to_f64(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_to_f64", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_mp_real_trunc_to_bigint(const Session& session, Args&&... args) {
     return session.call_value("num_mp_real_trunc_to_bigint", std::forward<Args>(args)...);
 }
@@ -50615,6 +56636,11 @@ inline Value num_mp_real_trunc_to_bigint(const Session& session, Args&&... args)
 template <class... Args>
 inline Value num_mp_real_with_precision(const Session& session, Args&&... args) {
     return session.call_value("num_mp_real_with_precision", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_mp_real_zero(const Session& session, Args&&... args) {
+    return session.call_value("num_mp_real_zero", std::forward<Args>(args)...);
 }
 
 template <class... Args>
@@ -58363,6 +64389,91 @@ inline Value num_ode_history_eval(const Session& session, Args&&... args) {
 }
 
 template <class... Args>
+inline Value num_optimizer_has_gradient(const Session& session, Args&&... args) {
+    return session.call_value("num_optimizer_has_gradient", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_optimizer_minimize(const Session& session, Args&&... args) {
+    return session.call_value("num_optimizer_minimize", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_optimizer_needs_bounds(const Session& session, Args&&... args) {
+    return session.call_value("num_optimizer_needs_bounds", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_optimizer_needs_gradient(const Session& session, Args&&... args) {
+    return session.call_value("num_optimizer_needs_gradient", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_optimizer_problem_new(const Session& session, Args&&... args) {
+    return session.call_value("num_optimizer_problem_new", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_optimizer_problem_try_new(const Session& session, Args&&... args) {
+    return session.call_value("num_optimizer_problem_try_new", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_optimizer_rastrigin(const Session& session, Args&&... args) {
+    return session.call_value("num_optimizer_rastrigin", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_optimizer_rastrigin_cost(const Session& session, Args&&... args) {
+    return session.call_value("num_optimizer_rastrigin_cost", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_optimizer_regression_coefficient_count(const Session& session, Args&&... args) {
+    return session.call_value("num_optimizer_regression_coefficient_count", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_optimizer_regression_problem(const Session& session, Args&&... args) {
+    return session.call_value("num_optimizer_regression_problem", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_optimizer_regression_residuals(const Session& session, Args&&... args) {
+    return session.call_value("num_optimizer_regression_residuals", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_optimizer_rosenbrock(const Session& session, Args&&... args) {
+    return session.call_value("num_optimizer_rosenbrock", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_optimizer_rosenbrock_cost(const Session& session, Args&&... args) {
+    return session.call_value("num_optimizer_rosenbrock_cost", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_optimizer_sphere(const Session& session, Args&&... args) {
+    return session.call_value("num_optimizer_sphere", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_optimizer_sphere_cost(const Session& session, Args&&... args) {
+    return session.call_value("num_optimizer_sphere_cost", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_optimizer_value_and_gradient(const Session& session, Args&&... args) {
+    return session.call_value("num_optimizer_value_and_gradient", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_optimizer_with_bounds(const Session& session, Args&&... args) {
+    return session.call_value("num_optimizer_with_bounds", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_par_dot_fixed(const Session& session, Args&&... args) {
     return session.call_value("num_par_dot_fixed", std::forward<Args>(args)...);
 }
@@ -58713,6 +64824,11 @@ inline Value num_qr(const Session& session, Args&&... args) {
 }
 
 template <class... Args>
+inline Value num_qr_thin(const Session& session, Args&&... args) {
+    return session.call_value("num_qr_thin", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_quadrature_clenshaw_curtis_rule(const Session& session, Args&&... args) {
     return session.call_value("num_quadrature_clenshaw_curtis_rule", std::forward<Args>(args)...);
 }
@@ -58743,8 +64859,73 @@ inline Value num_rbf_scaled(const Session& session, Args&&... args) {
 }
 
 template <class... Args>
+inline Value num_real_polynomial_barycentric_eval(const Session& session, Args&&... args) {
+    return session.call_value("num_real_polynomial_barycentric_eval", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_real_polynomial_gcd(const Session& session, Args&&... args) {
+    return session.call_value("num_real_polynomial_gcd", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_real_polynomial_power(const Session& session, Args&&... args) {
+    return session.call_value("num_real_polynomial_power", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_reflect(const Session& session, Args&&... args) {
     return session.call_value("num_reflect", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_riemann_hilbert_matrix_add(const Session& session, Args&&... args) {
+    return session.call_value("num_riemann_hilbert_matrix_add", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_riemann_hilbert_matrix_identity(const Session& session, Args&&... args) {
+    return session.call_value("num_riemann_hilbert_matrix_identity", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_riemann_hilbert_matrix_inv(const Session& session, Args&&... args) {
+    return session.call_value("num_riemann_hilbert_matrix_inv", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_riemann_hilbert_matrix_mul(const Session& session, Args&&... args) {
+    return session.call_value("num_riemann_hilbert_matrix_mul", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_riemann_hilbert_matrix_new(const Session& session, Args&&... args) {
+    return session.call_value("num_riemann_hilbert_matrix_new", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_riemann_hilbert_matrix_norm(const Session& session, Args&&... args) {
+    return session.call_value("num_riemann_hilbert_matrix_norm", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_riemann_hilbert_matrix_scale(const Session& session, Args&&... args) {
+    return session.call_value("num_riemann_hilbert_matrix_scale", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_riemann_hilbert_matrix_sub(const Session& session, Args&&... args) {
+    return session.call_value("num_riemann_hilbert_matrix_sub", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_riemann_hilbert_matrix_zero(const Session& session, Args&&... args) {
+    return session.call_value("num_riemann_hilbert_matrix_zero", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_riemann_hilbert_solution_eval(const Session& session, Args&&... args) {
+    return session.call_value("num_riemann_hilbert_solution_eval", std::forward<Args>(args)...);
 }
 
 template <class... Args>
@@ -59093,6 +65274,11 @@ inline Value num_solve_dg_with(const Session& session, Args&&... args) {
 }
 
 template <class... Args>
+inline Value num_solve_linear_rows(const Session& session, Args&&... args) {
+    return session.call_value("num_solve_linear_rows", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_sparse_auto_model_apply(const Session& session, Args&&... args) {
     return session.call_value("num_sparse_auto_model_apply", std::forward<Args>(args)...);
 }
@@ -59220,6 +65406,136 @@ inline Value num_special_chebyshev_t(const Session& session, Args&&... args) {
 template <class... Args>
 inline Value num_special_chebyshev_u(const Session& session, Args&&... args) {
     return session.call_value("num_special_chebyshev_u", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_anger_j(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_anger_j", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_associated_legendre_p(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_associated_legendre_p", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_bernoulli(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_bernoulli", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_bessel_i_order(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_bessel_i_order", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_bessel_j_order(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_bessel_j_order", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_carlson_rc(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_carlson_rc", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_carlson_rd(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_carlson_rd", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_carlson_rf(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_carlson_rf", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_carlson_rg(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_carlson_rg", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_carlson_rj(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_carlson_rj", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_chebyshev_t(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_chebyshev_t", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_chebyshev_u(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_chebyshev_u", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_clausen(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_clausen", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_euler(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_euler", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_exp_integral_en(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_exp_integral_en", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_fresnel_auxiliary(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_fresnel_auxiliary", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_gegenbauer_c(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_gegenbauer_c", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_hermite_h(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_hermite_h", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_jacobi_p(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_jacobi_p", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_kelvin(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_kelvin", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_laguerre_l(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_laguerre_l", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_legendre_p(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_legendre_p", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_legendre_q(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_legendre_q", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_log_barnes_g(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_log_barnes_g", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_spherical_harmonic(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_spherical_harmonic", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_special_complex_weber_e(const Session& session, Args&&... args) {
+    return session.call_value("num_special_complex_weber_e", std::forward<Args>(args)...);
 }
 
 template <class... Args>
@@ -59568,8 +65884,63 @@ inline Value num_spline_not_a_knot(const Session& session, Args&&... args) {
 }
 
 template <class... Args>
+inline Value num_sqp_oracle_equality_count(const Session& session, Args&&... args) {
+    return session.call_value("num_sqp_oracle_equality_count", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_sqp_oracle_inequality_count(const Session& session, Args&&... args) {
+    return session.call_value("num_sqp_oracle_inequality_count", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_standard_error(const Session& session, Args&&... args) {
     return session.call_value("num_standard_error", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_statrs_distribution_cdf(const Session& session, Args&&... args) {
+    return session.call_value("num_statrs_distribution_cdf", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_statrs_distribution_entropy(const Session& session, Args&&... args) {
+    return session.call_value("num_statrs_distribution_entropy", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_statrs_distribution_is_discrete(const Session& session, Args&&... args) {
+    return session.call_value("num_statrs_distribution_is_discrete", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_statrs_distribution_is_signed_discrete(const Session& session, Args&&... args) {
+    return session.call_value("num_statrs_distribution_is_signed_discrete", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_statrs_distribution_mean(const Session& session, Args&&... args) {
+    return session.call_value("num_statrs_distribution_mean", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_statrs_distribution_new(const Session& session, Args&&... args) {
+    return session.call_value("num_statrs_distribution_new", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_statrs_distribution_pdf(const Session& session, Args&&... args) {
+    return session.call_value("num_statrs_distribution_pdf", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_statrs_distribution_sf(const Session& session, Args&&... args) {
+    return session.call_value("num_statrs_distribution_sf", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_statrs_distribution_variance(const Session& session, Args&&... args) {
+    return session.call_value("num_statrs_distribution_variance", std::forward<Args>(args)...);
 }
 
 template <class... Args>
@@ -59718,6 +66089,26 @@ inline Value num_std_dev(const Session& session, Args&&... args) {
 }
 
 template <class... Args>
+inline Value num_survival_fit_cox(const Session& session, Args&&... args) {
+    return session.call_value("num_survival_fit_cox", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_survival_kaplan_meier(const Session& session, Args&&... args) {
+    return session.call_value("num_survival_kaplan_meier", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_survival_median(const Session& session, Args&&... args) {
+    return session.call_value("num_survival_median", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_survival_predict_cox(const Session& session, Args&&... args) {
+    return session.call_value("num_survival_predict_cox", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_svd(const Session& session, Args&&... args) {
     return session.call_value("num_svd", std::forward<Args>(args)...);
 }
@@ -59858,6 +66249,21 @@ inline Value num_topology_vietoris_rips_filtration(const Session& session, Args&
 }
 
 template <class... Args>
+inline Value num_transform_borel_series(const Session& session, Args&&... args) {
+    return session.call_value("num_transform_borel_series", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_transform_meijer_g_checked(const Session& session, Args&&... args) {
+    return session.call_value("num_transform_meijer_g_checked", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_transform_mellin_barnes_checked(const Session& session, Args&&... args) {
+    return session.call_value("num_transform_mellin_barnes_checked", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_transforms_irfft(const Session& session, Args&&... args) {
     return session.call_value("num_transforms_irfft", std::forward<Args>(args)...);
 }
@@ -59960,6 +66366,41 @@ inline Value num_uhp_distance(const Session& session, Args&&... args) {
 template <class... Args>
 inline Value num_uhp_to_disk(const Session& session, Args&&... args) {
     return session.call_value("num_uhp_to_disk", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_univalent_becker(const Session& session, Args&&... args) {
+    return session.call_value("num_univalent_becker", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_univalent_bieberbach(const Session& session, Args&&... args) {
+    return session.call_value("num_univalent_bieberbach", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_univalent_fekete_szego(const Session& session, Args&&... args) {
+    return session.call_value("num_univalent_fekete_szego", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_univalent_grunsky_check(const Session& session, Args&&... args) {
+    return session.call_value("num_univalent_grunsky_check", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_univalent_grunsky_matrix(const Session& session, Args&&... args) {
+    return session.call_value("num_univalent_grunsky_matrix", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_univalent_hankel(const Session& session, Args&&... args) {
+    return session.call_value("num_univalent_hankel", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_univalent_loewner_step(const Session& session, Args&&... args) {
+    return session.call_value("num_univalent_loewner_step", std::forward<Args>(args)...);
 }
 
 template <class... Args>
@@ -60068,8 +66509,23 @@ inline Value num_weierstrass_invariants_complex(const Session& session, Args&&..
 }
 
 template <class... Args>
+inline Value num_weierstrass_modular_discriminant_complex(const Session& session, Args&&... args) {
+    return session.call_value("num_weierstrass_modular_discriminant_complex", std::forward<Args>(args)...);
+}
+
+template <class... Args>
 inline Value num_weierstrass_p_prime_complex(const Session& session, Args&&... args) {
     return session.call_value("num_weierstrass_p_prime_complex", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_weierstrass_sigma_complex(const Session& session, Args&&... args) {
+    return session.call_value("num_weierstrass_sigma_complex", std::forward<Args>(args)...);
+}
+
+template <class... Args>
+inline Value num_weierstrass_zeta_complex(const Session& session, Args&&... args) {
+    return session.call_value("num_weierstrass_zeta_complex", std::forward<Args>(args)...);
 }
 
 template <class... Args>
