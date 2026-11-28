@@ -9,6 +9,7 @@ use rssn::kernels::quadrature::GkRule;
 use rssn::kernels::quadrature::LowDiscrepancy;
 use rssn::kernels::quadrature::Sobol;
 use rssn::kernels::quadrature::clenshaw_curtis;
+use rssn::kernels::quadrature::clenshaw_curtis_par;
 use rssn::kernels::quadrature::clenshaw_curtis_rule;
 use rssn::kernels::quadrature::cubature_genz_malik;
 use rssn::kernels::quadrature::cubature_nested;
@@ -16,6 +17,8 @@ use rssn::kernels::quadrature::exp_sinh;
 use rssn::kernels::quadrature::filon;
 use rssn::kernels::quadrature::filon2d;
 use rssn::kernels::quadrature::filon2d_complex;
+use rssn::kernels::quadrature::gauss_legendre;
+use rssn::kernels::quadrature::gauss_legendre_par;
 use rssn::kernels::quadrature::gk_panel;
 use rssn::kernels::quadrature::halton_point;
 use rssn::kernels::quadrature::integrate;
@@ -237,6 +240,39 @@ fn exp_sinh_and_sinh_sinh() {
     assert!((r.value - PI / 2.0).abs() < 1e-9, "{r:?}");
     let r = sinh_sinh(|x| (-x * x).exp(), 1e-12);
     assert!((r.value - PI.sqrt()).abs() < 1e-11, "{r:?}");
+}
+
+#[test]
+fn fixed_rules_keep_order_and_handle_finite_wide_intervals() {
+    let integrand = |x: f64| x.sin() + 2.0;
+    for threads in [1, 4] {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap();
+        for order in [24, 129, 1024] {
+            let gauss = gauss_legendre(integrand, -2.0, 3.0, order);
+            let curtis = clenshaw_curtis(integrand, -2.0, 3.0, order);
+            pool.install(|| {
+                assert_eq!(
+                    gauss.to_bits(),
+                    gauss_legendre_par(integrand, -2.0, 3.0, order).to_bits()
+                );
+                assert_eq!(
+                    curtis.to_bits(),
+                    clenshaw_curtis_par(integrand, -2.0, 3.0, order).to_bits()
+                );
+            });
+        }
+        pool.install(|| {
+            let over_wide_interval = |_| 0.5 * f64::MIN_POSITIVE;
+            let exact = f64::MAX * f64::MIN_POSITIVE;
+            let gauss = gauss_legendre_par(over_wide_interval, -f64::MAX, f64::MAX, 128);
+            let curtis = clenshaw_curtis_par(over_wide_interval, -f64::MAX, f64::MAX, 128);
+            assert!((gauss - exact).abs() <= 5e-13, "{gauss} vs {exact}");
+            assert!((curtis - exact).abs() <= 5e-13, "{curtis} vs {exact}");
+        });
+    }
 }
 
 #[test]

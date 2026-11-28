@@ -215,3 +215,132 @@ fn named_and_optional_shapes_are_declared_dimensionless() {
         assert_eq!(signature.ret, result);
     }
 }
+
+#[test]
+fn polar_coordinates_keep_the_measured_radius_and_dimensionless_angle() {
+    let session = Session::new();
+    let ctx = CallCtx::new();
+    let order = DimExpr::Base("Length".into());
+    let value = Value::Dyn(DynValue {
+        value: Box::new(complex(Complex64::new(3.0, 4.0))),
+        dim: order.clone(),
+    });
+    let Value::Record(result) = session
+        .call_value(
+            "num_complex_coords_to_polar",
+            std::slice::from_ref(&value),
+            &ctx,
+        )
+        .unwrap()
+    else {
+        panic!("the polar calculation must return a record");
+    };
+    let [
+        (_, angle @ Value::Float(radians)),
+        (_, radius @ Value::Dyn(radius_value)),
+    ] = result.fields.as_slice()
+    else {
+        panic!("expected the radius witness and dimensionless angle: {result:?}");
+    };
+    assert_eq!(radius_value.dim, order);
+    assert_eq!(*radius_value.value, Value::Float(5.0));
+    assert!((*radians - 4.0_f64.atan2(3.0)).abs() <= f64::EPSILON);
+    let Value::Dyn(restored) = session
+        .call_value(
+            "num_complex_coords_from_polar",
+            &[radius.clone(), angle.clone()],
+            &ctx,
+        )
+        .unwrap()
+    else {
+        panic!("expected the original physical dimension");
+    };
+    assert_eq!(restored.dim, order);
+    assert!((decoded(&restored.value) - Complex64::new(3.0, 4.0)).norm() < 2e-15);
+    let Value::Dyn(squared) = session
+        .call_value("num_complex_coords_abs_sq", &[value], &ctx)
+        .unwrap()
+    else {
+        panic!("expected squared physical units");
+    };
+    assert_eq!(*squared.value, Value::Float(25.0));
+    assert_eq!(
+        squared.dim,
+        order.pow(rssn::kernel::signature::Exp::Rat(
+            rssn::kernel::signature::Rational::new(2, 1)
+        ))
+    );
+    assert!(
+        session
+            .call_value(
+                "num_complex_coords_from_polar",
+                &[Value::Float(-1.0), Value::Float(0.0)],
+                &ctx
+            )
+            .is_err()
+    );
+}
+
+#[test]
+fn unit_direction_and_root_radius_survive_both_exponent_extremes() {
+    use rssn::kernels::complex_coords::analytic_continuation_root;
+    use rssn::kernels::complex_coords::sign_complex;
+    use rssn::kernels::complex_coords::to_polar;
+    use std::f64::consts::FRAC_1_SQRT_2;
+    use std::f64::consts::PI;
+    let smallest = f64::from_bits(1);
+    for scale in [smallest, f64::MAX] {
+        let point = Complex64::new(scale, -scale);
+        let expected = Complex64::new(FRAC_1_SQRT_2, -FRAC_1_SQRT_2);
+        assert!((sign_complex(point) - expected).norm() <= 2e-15);
+        let root = analytic_continuation_root(&[point], 2, 0)[0];
+        let root_radius = scale.sqrt() * 2.0_f64.powf(0.25);
+        assert!((root.norm() / root_radius - 1.0).abs() <= 2e-15);
+    }
+    assert_eq!(
+        to_polar(Complex64::new(-1.0, -0.0)).1.to_bits(),
+        (-PI).to_bits()
+    );
+    assert_eq!(
+        to_polar(Complex64::new(-1.0, 0.0)).1.to_bits(),
+        PI.to_bits()
+    );
+}
+
+#[test]
+fn phase_reconstruction_tracks_many_turns_in_both_directions() {
+    use rssn::kernels::complex_coords::analytic_continuation_root;
+    use rssn::kernels::complex_coords::unwrap_phase;
+    use std::f64::consts::FRAC_PI_2;
+    use std::f64::consts::PI;
+    let corners = [
+        Complex64::new(1.0, 0.0),
+        Complex64::new(0.0, 1.0),
+        Complex64::new(-1.0, 0.0),
+        Complex64::new(0.0, -1.0),
+    ];
+    let turns = 100_000;
+    for direction in [-1.0_f64, 1.0] {
+        let points = (0..=4 * turns)
+            .map(|step| {
+                let point = corners[step % 4];
+                if direction.is_sign_negative() {
+                    point.conj()
+                } else {
+                    point
+                }
+            })
+            .collect::<Vec<_>>();
+        let phase = unwrap_phase(&points);
+        for (step, radians) in phase.into_iter().enumerate().step_by(197) {
+            let expected = direction * f64::from(u32::try_from(step).unwrap()) * FRAC_PI_2;
+            assert!((radians - expected).abs() <= 2.0 * f64::EPSILON * expected.abs().max(1.0));
+        }
+    }
+    let roots = analytic_continuation_root(
+        &[corners[0], corners[1], corners[2], corners[3], corners[0]],
+        2,
+        -2,
+    );
+    assert!((roots[4] - Complex64::from_polar(1.0, PI)).norm() <= 1e-15);
+}
