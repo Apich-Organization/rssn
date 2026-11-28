@@ -396,9 +396,13 @@ function tensor(value::Value)
     out = Ref{CTensor}()
     _check(value_to_tensor(value.session.ptr, value.cell, out))
     raw = out[]
-    shape = [Int(unsafe_load(raw.shape, index)) for index in 1:Int(raw.rank)]
-    data = [unsafe_load(raw.data, index) for index in 1:Int(raw.len)]
-    tensor_free(out)
+    shape, data = try
+        extents = [Int(unsafe_load(raw.shape, index)) for index in 1:Int(raw.rank)]
+        samples = [unsafe_load(raw.data, index) for index in 1:Int(raw.len)]
+        extents, samples
+    finally
+        tensor_free(out)
+    end
     if isempty(shape)
         return fill(isempty(data) ? 0.0 : data[1])
     end

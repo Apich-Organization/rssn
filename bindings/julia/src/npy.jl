@@ -41,7 +41,9 @@ function decode_npy(session::Session, payload::AbstractVector{UInt8})
             for index in 1:length(dimensions)
                 extent = dimensions[index]
                 try
-                    push!(shape, parse(Csize_t, text(extent)))
+                    size = parse(Csize_t, text(extent))
+                    size <= typemax(Int) || throw(ArgumentError("NumPy extent exceeds Julia's array index range"))
+                    push!(shape, size)
                 finally
                     close(extent)
                 end
