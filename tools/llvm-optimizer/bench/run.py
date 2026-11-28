@@ -215,7 +215,8 @@ def main():
     parser.add_argument("--cc", default="cc")
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--jobs", type=int, default=1)
-    parser.add_argument("--cpu", type=int, default=min(os.sched_getaffinity(0)))
+    cpus = os.sched_getaffinity(0) if hasattr(os, "sched_getaffinity") else ()
+    parser.add_argument("--cpu", type=int, default=min(cpus) if cpus else None)
     parser.add_argument("--pairs", type=int, default=11)
     parser.add_argument("--plan-width", type=int, choices=range(1, 5), default=4)
     parser.add_argument("--fft-rounds", type=int, default=24000)
@@ -224,7 +225,7 @@ def main():
     args = parser.parse_args()
     if min(args.jobs, args.fft_rounds, args.callback_rounds, args.abi_rounds) < 1 or args.pairs < 3:
         parser.error("positive jobs and rounds and at least 3 pairs are required")
-    if args.cpu not in os.sched_getaffinity(0):
+    if args.cpu is not None and args.cpu not in cpus:
         parser.error("--cpu must be in the current process affinity mask")
     args.plugin = args.plugin.resolve(strict=True)
     args.work_dir.mkdir(parents=True, exist_ok=True)
@@ -266,7 +267,8 @@ def main():
         }
         setups.extend((name, baseline[0], experiment[0], opts) for name, opts in cases)
 
-    os.sched_setaffinity(0, {args.cpu})
+    if args.cpu is not None:
+        os.sched_setaffinity(0, {args.cpu})
     results = {
         "cpu": args.cpu,
         "plan_width": args.plan_width,

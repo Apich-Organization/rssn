@@ -89,7 +89,7 @@ opt-23 -load-pass-plugin="$plugin" -passes=rssn-call-abi-report \
   -pass-remarks-analysis=rssn-call-abi -disable-output input.ll
 
 # Rust 三切片、标志与步进参数的真实 fat-LTO ABI A/B
-python3 tools/llvm-optimizer/bench/run.py "$plugin" --suite abi
+bazel run --repo_env=RSSN_LLVM_CONFIG="$(command -v llvm-config-23)" //:llvm_benchmark -- --suite abi
 ```
 
 rustc 自动流程用 `RSSN_SPILL_ABI=report` 或 `RSSN_SPILL_ABI=transform`，默认关闭。加上 `-Cremark=rssn-call-abi` 和 `-Cllvm-args=-pass-remarks-analysis=rssn-call-abi` 可查看诊断。ABI 模式独立于函数压力 pass，故 A/B 可设 `RSSN_SPILL_MODE=off`。完整结果见 [BENCHMARKS.md](BENCHMARKS.md)。

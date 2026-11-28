@@ -277,6 +277,79 @@ def plugin_build(build):
     raise ValueError(f"CMake built no RssnLLVMOptimizer loadable module in {cache}")
 
 
+def llvm_benchmark(build, args):
+    build.assert_native()
+    build.need_rust()
+    bench = build.root / "tools/llvm-optimizer/bench"
+    caller = Path(build.env.get("BUILD_WORKING_DIRECTORY", str(build.workspace)))
+    build.python(bench / "run.py", build.plugin,
+                 "--work-dir", build.state / "runs", "--opt", build.sdk_tool("opt"),
+                 "--llc", build.sdk_tool("llc"), "--rustc", build.rustc_exe,
+                 "--cargo", build.cargo_exe, *args, cwd=caller, env=build.llvm_loader_env())
+
+
+def llvm_benchmark_build(build, args):
+    parser = argparse.ArgumentParser(description="Build an LLVM research benchmark")
+    parser.add_argument("case", choices=("example", "de", "zstd-io", "lanes", "tape"))
+    parser.add_argument("--out-dir", required=True, type=Path)
+    parser.add_argument("--profile", choices=("dev", "release"), default="release")
+    parser.add_argument("--example", default="numeric_kernels")
+    parser.add_argument("--source", type=Path, help="older CPU or Tape source")
+    parser.add_argument("--lib", action="store_true", help="build the DE library")
+    parser.add_argument("--rustflag", action="append", default=[])
+    parser.add_argument("--env", action="append", default=[], metavar="NAME=VALUE")
+    separator = args.index("--") if "--" in args else len(args)
+    options = parser.parse_args(args[:separator])
+    rustc_args = args[separator + 1:]
+    if options.source and options.case not in ("lanes", "tape"):
+        parser.error("--source applies to lanes and tape")
+    if options.lib and options.case != "de":
+        parser.error("--lib applies to de")
+    bench = build.root / "tools/llvm-optimizer/bench"
+    caller = Path(build.env.get("BUILD_WORKING_DIRECTORY", str(build.workspace)))
+    out = (caller / options.out_dir).resolve()
+    out.mkdir(parents=True, exist_ok=True)
+    overrides = {}
+    for entry in options.env:
+        key, equals, value = entry.partition("=")
+        if not equals or not re.fullmatch(r"[A-Z][A-Z0-9_]*", key):
+            parser.error("--env expects NAME=VALUE")
+        overrides[key] = value
+    env = {"RUSTC_BOOTSTRAP": "1", "RUSTC": str(build.rustc_exe),
+           "CARGO_BUILD_BUILD_DIR": str(out),
+           "CARGO_ENCODED_RUSTFLAGS": "\x1f".join(options.rustflag), **overrides}
+    build.need_rust()
+    if options.case in ("lanes", "tape"):
+        lane = options.case == "lanes"
+        source = out / "kernel.rs"
+        script = "extract.py" if lane else "extract_tape.py"
+        source_flag = "--cpu-source" if lane else "--tape-source"
+        extraction = [source_flag, (caller / options.source).resolve()] if options.source else []
+        build.python(bench / "device-lanes" / script, source, *extraction)
+        env["LANE_SOURCE" if lane else "TAPE_SOURCE"] = str(source)
+        entry = bench / "device-lanes" / ("main.rs" if lane else "tape.rs")
+        suffix = ".exe" if "windows" in build.target else ""
+        build.run([build.rustc_exe, "--edition=2024", "--target", build.target,
+                   "-Copt-level=3", "-Cpanic=abort", *options.rustflag, *rustc_args,
+                   entry, "-o", out / (options.case + suffix)], env=env)
+        return
+    manifest = build.root / "Cargo.toml" if options.case == "example" else bench / options.case / "Cargo.toml"
+    if options.case == "de":
+        source = out / "kernels.rs"
+        build.python(bench / "de/extract.py", source)
+        env["RSSN_DE_SOURCE"] = str(source)
+        target = ["--lib"] if options.lib else ["--bin", "rssn-de-study"]
+    elif options.case == "example":
+        target = ["--example", options.example]
+    else:
+        target = ["--bin", "rssn-io-codec-study"]
+    target_flag = ["--target", build.target] if build.settings["target"] else []
+    extra = ["--", *rustc_args] if rustc_args else []
+    build.run([build.cargo_exe, "rustc", "--locked", "--jobs", build.jobs,
+               "--manifest-path", manifest, "--target-dir", out, "--profile",
+               options.profile, *target_flag, *target, *extra], env=env)
+
+
 def llvm_test(build, tests):
     build.assert_native()
     plugin, = build.extra
@@ -481,6 +554,13 @@ def dispatch(build, workflow, args):
         # Cargo uses the checkout's Git metadata and package inclusion rules.
         flags = ["--dry-run"] if options.dry_run else []
         build.cargo(["publish", *flags], cwd=build.checkout("rssn"), target=False)
+    elif workflow == "llvm-benchmark":
+        llvm_benchmark(build, args)
+    elif workflow == "llvm-benchmark-build":
+        llvm_benchmark_build(build, args)
+    elif workflow == "llvm-benchmark-compare":
+        caller = Path(build.env.get("BUILD_WORKING_DIRECTORY", str(build.workspace)))
+        build.python(build.root / "tools/llvm-optimizer/bench/compare.py", *args, cwd=caller)
     elif workflow == "llvm-build":
         plugin_build(build)
     elif workflow in ("llvm-test", "llvm-test-tools", "llvm-test-rustc"):

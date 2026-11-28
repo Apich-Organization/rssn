@@ -50,21 +50,16 @@ python3 tools/llvm-optimizer/analysis/pe_math_calls.py target/rssn.dll
   --stop-address=0x1802b74fd target/rssn.dll
 
 study=$(mktemp -d)
-manifest=tools/llvm-optimizer/bench/de/Cargo.toml
-python3 tools/llvm-optimizer/bench/de/extract.py "$study/kernels.rs"
-export RSSN_DE_SOURCE="$study/kernels.rs" RUSTC_BOOTSTRAP=1
+bazel run --define=rust_target=x86_64-pc-windows-msvc //:llvm_benchmark_build -- de \
+  --profile dev --lib --out-dir "$study/win" --env CARGO_PROFILE_DEV_CODEGEN_UNITS=1 \
+  --env CARGO_PROFILE_DEV_PANIC=abort --rustflag=-Ctarget-cpu=x86-64-v4 \
+  --rustflag=-Zverbose-asm -- --emit=llvm-ir,asm,obj
 
-CARGO_TARGET_DIR="$study/win" CARGO_PROFILE_DEV_CODEGEN_UNITS=1 \
-  CARGO_PROFILE_DEV_PANIC=abort RUSTFLAGS='-Ctarget-cpu=x86-64-v4 -Zverbose-asm' \
-  cargo rustc --locked --target x86_64-pc-windows-msvc --manifest-path "$manifest" \
-  --lib -- --emit=llvm-ir,asm,obj
+bazel run --define=rust_target=x86_64-pc-windows-msvc //:llvm_benchmark_build -- de \
+  --out-dir "$study/win" --rustflag=-Ctarget-cpu=x86-64-v4 --rustflag=-Zverbose-asm \
+  -- "--emit=llvm-ir=$study/win-full.ll,asm,obj,link" -Zno-link
 
-CARGO_TARGET_DIR="$study/win" RUSTFLAGS='-Ctarget-cpu=x86-64-v4 -Zverbose-asm' \
-  cargo rustc --locked --release --target x86_64-pc-windows-msvc \
-  --manifest-path "$manifest" --bin rssn-de-study -- --emit=llvm-ir,asm,obj,link -Zno-link
-
-win_ir=$(find "$study/win/x86_64-pc-windows-msvc/release" -name rssn_de_study.ll -print -quit)
-"$llvm_bin/llvm-extract" -S --recursive --func=rssn_de_small "$win_ir" -o "$study/win.ll"
+"$llvm_bin/llvm-extract" -S --recursive --func=rssn_de_small "$study/win-full.ll" -o "$study/win.ll"
 "$llvm_bin/opt" -S -mcpu=x86-64-v4 -load-pass-plugin="$plugin" \
   -passes='function(rssn-libm-pressure)' -pass-remarks-analysis=rssn-libm-pressure \
   -verify-each "$study/win.ll" -o "$study/win-guard.ll"
@@ -77,23 +72,20 @@ for stem in win win-guard; do
 done
 
 for mode in off transform; do
-  CARGO_TARGET_DIR="$study/$mode" RSSN_SPILL_MODE=off RSSN_SPILL_ABI=off \
-    RSSN_SPILL_FILTER=rssn_de_small RSSN_SPILL_LIBM="$mode" \
-    RUSTFLAGS="-Ctarget-cpu=native -Zverbose-asm -Zverify-llvm-ir -Zllvm-plugins=$plugin" \
-    cargo rustc --locked --release --manifest-path "$manifest" --bin rssn-de-study \
-    -- --emit=llvm-ir,asm,link
+  bazel run //:llvm_benchmark_build -- de --out-dir "$study/$mode" \
+    --env RSSN_SPILL_MODE=off --env RSSN_SPILL_ABI=off \
+    --env RSSN_SPILL_FILTER=rssn_de_small --env "RSSN_SPILL_LIBM=$mode" \
+    --rustflag=-Ctarget-cpu=native --rustflag=-Zverbose-asm --rustflag=-Zverify-llvm-ir \
+    --rustflag="-Zllvm-plugins=$plugin" -- --emit=llvm-ir,asm,link
 done
 
 # 将 3 替换为当前进程可用的 CPU 编号。
-PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=tools/llvm-optimizer/bench taskset -c 3 python3 - "$study" <<'PY'
-from pathlib import Path
-import sys
-from run import measure
-study = Path(sys.argv[1])
-base, other = (study / mode / "release/rssn-de-study" for mode in ("off", "transform"))
-for case, rounds in (("small", 650), ("positive", 650), ("negative", 1600)):
-    print(case, measure(base, other, (case, rounds), 21))
-PY
+for sample in "small 650" "positive 650" "negative 1600"; do
+  read -r case rounds <<< "$sample"
+  bazel run //:llvm_benchmark_compare -- --cpu 3 pair \
+    "$study/off/release/rssn-de-study" "$study/transform/release/rssn-de-study" \
+    --pairs 21 -- "$case" "$rounds"
+done
 ```
 
 可在计时之外编译调用计数探针。每组以 `small 1` 的计数减去 `small 0` 的计数，扣除两个进程都会执行的预热。
@@ -102,7 +94,9 @@ PY
 cc -shared -fPIC -O2 tools/llvm-optimizer/bench/de/count_exp.c -ldl -o "$study/count_exp.so"
 for mode in off transform; do
   for rounds in 0 1; do
-    LD_PRELOAD="$study/count_exp.so" "$study/$mode/release/rssn-de-study" small "$rounds"
+ \
+      bazel run //:llvm_benchmark_compare -- run "$study/$mode/release/rssn-de-study" \
+      --env "LD_PRELOAD=$study/count_exp.so" -- small "$rounds"
   done
 done
 ```
@@ -210,7 +204,8 @@ for variant in base pack reuse both; do
 done
 lld-link /entry:mainCRTStartup /subsystem:console /nodefaultlib \
   "/out:$study/appell-suite.exe" "$study/runner.obj" "$kernel32_lib"
-RSSN_WIN_ROUNDS=120 RSSN_WIN_PAIRS=24 wine "$study/appell-suite.exe"
+RSSN_WIN_ROUNDS=120 RSSN_WIN_PAIRS=24 bazel run //:llvm_benchmark_compare -- \
+  run "$study/appell-suite.exe" --runner wine
 ```
 
 输出每行依次为版本、墙钟纳秒、线程 CPU 纳秒和位级哈希。每四行形成一组，版本顺序随组次轮换。
@@ -577,22 +572,18 @@ Win64 A/B 使用同一份提取源码，以 `x86_64-pc-windows-gnullvm` 和 AVX2
 
 ```bash
 dir=$(mktemp -d)
-bench=tools/llvm-optimizer/bench/device-lanes
-python3 "$bench/extract.py" "$dir/base.rs" --cpu-source "$old_cpu"
-python3 "$bench/extract.py" "$dir/final.rs"
+bazel run //:llvm_benchmark_build -- lanes --source "$old_cpu" \
+  --out-dir "$dir/base" --rustflag=-Ctarget-cpu=x86-64-v3
+bazel run //:llvm_benchmark_build -- lanes --out-dir "$dir/final" \
+  --rustflag=-Ctarget-cpu=x86-64-v3
 for version in base final; do
-  LANE_SOURCE="$dir/$version.rs" rustc --edition=2024 -Copt-level=3 \
-    -Cpanic=abort -Ctarget-cpu=x86-64-v3 "$bench/main.rs" -o "$dir/$version"
-  "$dir/$version" check
+  bazel run //:llvm_benchmark_compare -- run "$dir/$version/lanes" -- check
 done
-PYTHONPATH=tools/llvm-optimizer/bench taskset -c "$cpu" python3 - "$dir" <<'PY'
-from pathlib import Path
-import sys
-from run import measure
-root = Path(sys.argv[1])
-for name, rounds in [("smooth", 460), ("everything", 180)]:
-    print(measure(root / "base", root / "final", (name, 4099, rounds), 23))
-PY
+for sample in "smooth 460" "everything 180"; do
+  read -r case rounds <<< "$sample"
+  bazel run //:llvm_benchmark_compare -- --cpu "$cpu" pair \
+    "$dir/base/lanes" "$dir/final/lanes" --pairs 23 -- "$case" 4099 "$rounds"
+done
 ```
 
 ## Win64 跨调用压力诊断
@@ -630,22 +621,18 @@ A/B 提取生产 `eval_columns_range` 和算术实现，使用单线程、可复
 
 ```bash
 dir=$(mktemp -d)
-bench=tools/llvm-optimizer/bench/device-lanes
-python3 "$bench/extract_tape.py" "$dir/base.rs" --tape-source "$old_tape"
-python3 "$bench/extract_tape.py" "$dir/current.rs"
+bazel run //:llvm_benchmark_build -- tape --source "$old_tape" \
+  --out-dir "$dir/base" --rustflag=-Ctarget-cpu=x86-64-v3
+bazel run //:llvm_benchmark_build -- tape --out-dir "$dir/current" \
+  --rustflag=-Ctarget-cpu=x86-64-v3
 for version in base current; do
-  TAPE_SOURCE="$dir/$version.rs" rustc --edition=2024 -Copt-level=3 \
-    -Cpanic=abort -Ctarget-cpu=x86-64-v3 "$bench/tape.rs" -o "$dir/$version"
-  "$dir/$version" check
+  bazel run //:llvm_benchmark_compare -- run "$dir/$version/tape" -- check
 done
-PYTHONPATH=tools/llvm-optimizer/bench taskset -c "$cpu" python3 - "$dir" <<'PY'
-from pathlib import Path
-import sys
-from run import measure
-root = Path(sys.argv[1])
-for name, rounds in [("smooth", 1750), ("everything", 540), ("powi", 2400)]:
-    print(measure(root / "base", root / "current", (name, 4099, rounds), 17))
-PY
+for sample in "smooth 1750" "everything 540" "powi 2400"; do
+  read -r case rounds <<< "$sample"
+  bazel run //:llvm_benchmark_compare -- --cpu "$cpu" pair \
+    "$dir/base/tape" "$dir/current/tape" --pairs 17 -- "$case" 4099 "$rounds"
+done
 ```
 
 ## 循环前置块的分支专用计算

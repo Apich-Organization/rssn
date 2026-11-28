@@ -40,19 +40,16 @@ RSSN_SPILL_MODE=off RSSN_LIBM_UNIT_LOG=transform \
   "-Clink-arg=-Wl,--load-pass-plugin=$plugin" -Clink-arg=-Wl,--lto-O3 main.rs
 ```
 
-以一个最终链接的 RSSN release 目标为例。编码后的 Cargo rustflags 保留仓库原有的 `target-cpu=native`。指定 rustc 时，在 CMake 和 Cargo 中使用同一个可执行文件。
+以下命令用同一个插件和不同的输出目录构建两个 release 示例，保留 `target-cpu=native`。
 
 ```bash
 plugin="$PWD/bazel-bin/llvm_optimizer/RssnLLVMOptimizer.so"
-flags=$(printf '%s\037%s' '-Ctarget-cpu=native' "-Zllvm-plugins=$plugin")
-
-RSSN_SPILL_MODE=transform RUSTC_BOOTSTRAP=1 \
-  CARGO_ENCODED_RUSTFLAGS="$flags" CARGO_TARGET_DIR="$PWD/target/spill-transform" \
-  cargo build --release --example numeric_kernels
-
-RSSN_SPILL_MODE=off RUSTC_BOOTSTRAP=1 \
-  CARGO_ENCODED_RUSTFLAGS="$flags" CARGO_TARGET_DIR="$PWD/target/spill-off" \
-  cargo build --release --example numeric_kernels
+study=$(mktemp -d)
+for mode in off transform; do
+  bazel run //:llvm_benchmark_build -- example --out-dir "$study/$mode" \
+    --rustflag=-Ctarget-cpu=native --rustflag="-Zllvm-plugins=$plugin" \
+    --env "RSSN_SPILL_MODE=$mode"
+done
 ```
 
 - `RSSN_SPILL_MODE=transform` 执行分析和改写。显式加载插件时采用这个模式。
@@ -118,10 +115,10 @@ RSSN_SPILL_MODE=off RUSTC_BOOTSTRAP=1 \
 ## 复现实验
 
 ```bash
-python3 tools/llvm-optimizer/bench/run.py "$plugin" \
-  --opt opt-23 --llc llc-23 --cpu 3
+bazel run --repo_env=RSSN_LLVM_CONFIG="$(command -v llvm-config-23)" \
+  //:llvm_benchmark -- --cpu 3
 ```
 
-`--cpu` 选择当前 affinity mask 中的一个 CPU，可省略。脚本在独立目录编译两组，使用相同输入轮流运行 A/B 和 B/A，对每组输出计算覆盖整个数组的位级哈希，并保存每对耗时、区间、汇编和编译诊断。RustFFT 编译使用锁定的 crate 6.4.1 与 rustc fat LTO。两个回调内核都从同一份 O3 IR 生成两组机器码，唯一的 IR A/B 变量是这个 pass。一个回调可安全越过，另一个实际修改输入，必须保留调用之前的值。汇编统计读取 LLVM 的 `Spill` 和 `Reload` 注释并包含 folded 形式。RustFFT 的统计覆盖最后二进制中带 `7rustfft` 符号片段的整个函数集合，包含没有在定时窗口里运行的函数。
+Bazel 构建插件，并从匹配的 SDK 选择 LLVM 工具。可用 `--opt`、`--llc`、`--jobs`、`--pairs` 和 `--work-dir` 调整实验。`--cpu` 选择当前 affinity mask 中的一个 CPU，可省略。脚本在独立目录编译两组，使用相同输入轮流运行 A/B 和 B/A，对每组输出计算覆盖整个数组的位级哈希，并保存每对耗时、区间、汇编和编译诊断。RustFFT 编译使用锁定的 crate 6.4.1 与 rustc fat LTO。两个回调内核都从同一份 O3 IR 生成两组机器码，唯一的 IR A/B 变量是这个 pass。一个回调可安全越过，另一个实际修改输入，必须保留调用之前的值。汇编统计读取 LLVM 的 `Spill` 和 `Reload` 注释并包含 folded 形式。RustFFT 的统计覆盖最后二进制中带 `7rustfft` 符号片段的整个函数集合，包含没有在定时窗口里运行的函数。
 
 测量结果见 [BENCHMARKS.md](BENCHMARKS.md)。

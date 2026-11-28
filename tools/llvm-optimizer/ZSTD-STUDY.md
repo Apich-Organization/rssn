@@ -59,9 +59,9 @@ for version in base packed; do
     -o "$study/decode-$version.o"
   cc -O2 -no-pie -I"$zstd_lib" tools/llvm-optimizer/bench/zstd.c \
     "$study/decode-$version.o" "$study/libcommon.a" -o "$study/$version"
-  "$study/$version" 100 tests/fixtures/parquet/codec_zstd.parquet \
-    tests/fixtures/hdf5/filters_plugins.h5
 done
+bazel run //:llvm_benchmark_compare -- pair "$study/base" "$study/packed" --pairs 23 -- \
+  100 tests/fixtures/parquet/codec_zstd.parquet tests/fixtures/hdf5/filters_plugins.h5
 ```
 
 加上 `tests/fixtures/hdf5/dense_nested.h5` 参数即可纳入较大负载。正常 C 编译可用 `RSSN_SPILL_MODE=off RSSN_SCALAR_LOAD_PACK=transform` 与 `clang -O3 -fpass-plugin="$plugin"`。该插件入口同样支持报告模式。现有 `zstd-sys` 使用独立的 C 构建步骤，Rust 的 `-Zllvm-plugins` 只会用于 Rust 编译动作。使用此 pass 处理 zstd 时，将 C 编译选项纳入 Cargo C 工具链或后续 Bazel 的 C/C++ action。
@@ -85,22 +85,21 @@ A/B 使用现有 PyArrow 和 h5py fixture，以及 RSSN writer 生成的两组�
 
 ### 复现完整入口 A/B
 
-在源码修改前后各构建一次 pass 关闭版和打开版，保存为 `old-off`、`old-transform`、`new-off`、`new-transform`。基线应包含同一份 harness 和同一组生产模块，仅撤销 Parquet 与 HDF5 的上下文复用修改。为四次构建使用各自的 `CARGO_TARGET_DIR`，因为 `cc` 无法感知插件的模式环境变量。
+在源码修改前后各构建一次 pass 关闭版和打开版，保存为 `old-off`、`old-transform`、`new-off`、`new-transform`。基线应包含同一份 harness 和同一组生产模块，仅撤销 Parquet 与 HDF5 的上下文复用修改。用 `--out-dir` 为四次构建指定独立目录，因为 `cc` 无法感知插件的模式环境变量。
 
 ```bash
-export CC="$clang"
-export CFLAGS="-march=x86-64-v3 -fpass-plugin=$plugin -Rpass-analysis=rssn-scalar-load-pack"
-export RUSTFLAGS="-Ctarget-cpu=x86-64-v3"
-export RSSN_SPILL_MODE=off RSSN_SPILL_FILTER=ZSTD_decompressSequences
-RSSN_SCALAR_LOAD_PACK="$mode" CARGO_TARGET_DIR="$target_dir" cargo build \
-  --release --locked --manifest-path tools/llvm-optimizer/bench/zstd-io/Cargo.toml
+bazel run //:llvm_benchmark_build -- zstd-io --out-dir "$target_dir" \
+  --env "CC=$clang" --rustflag=-Ctarget-cpu=x86-64-v3 \
+  --env "CFLAGS=-march=x86-64-v3 -fpass-plugin=$plugin -Rpass-analysis=rssn-scalar-load-pack" \
+  --env RSSN_SPILL_MODE=off --env RSSN_SPILL_FILTER=ZSTD_decompressSequences \
+  --env "RSSN_SCALAR_LOAD_PACK=$mode"
 cp "$target_dir/release/rssn-io-codec-study" "$study/$variant"
 ```
 
 ```bash
-"$study/new-off" generate "$study/generated.parquet"
-"$study/new-off" generate-hdf5 "$study/generated.h5"
-taskset -c "$cpu" python3 tools/llvm-optimizer/bench/zstd-io/compare.py "$study"
+bazel run //:llvm_benchmark_compare -- run "$study/new-off" -- generate "$study/generated.parquet"
+bazel run //:llvm_benchmark_compare -- run "$study/new-off" -- generate-hdf5 "$study/generated.h5"
+bazel run //:llvm_benchmark_compare -- --cpu "$cpu" zstd-io "$study"
 ```
 
 ## 通用候选与分析开销
@@ -155,9 +154,9 @@ for mode in off transform; do
     "$study/dfast-$mode.ll" -o "$study/dfast-$mode.o"
   cc -O2 -no-pie -I"$zstd_lib" tools/llvm-optimizer/bench/zstd.c \
     "$study/dfast-$mode.o" "$study/libcommon.a" -o "$study/dfast-$mode"
-  "$study/dfast-$mode" --compress-min4 2500 \
-    tests/fixtures/hdf5/filters_plugins.h5 "$study/sample.dict"
 done
+bazel run //:llvm_benchmark_compare -- pair "$study/dfast-off" "$study/dfast-transform" --pairs 17 -- \
+  --compress-min4 2500 tests/fixtures/hdf5/filters_plugins.h5 "$study/sample.dict"
 ```
 
 `--compress` 保留 level 3 的压缩参数，并可附带原始字典。无字典的大文件对照没有进入表初始化，默认参数的原始字典输入进入初始化时 `minMatch=5`。定向对照以真实 HDF5 fixture 为输入，用另一个 HDF5 fixture 的最后 64 KiB 作为 raw prefix，并显式设置 doubleFast 和 `minMatch=4`。GDB 确认这组进入目标分支。各样本在计时窗口外逐字节校验解压结果，A/B 进一步比较编码后帧的哈希。
@@ -196,10 +195,8 @@ Wine 的定向结果接近 10 ms 线程计时粒度，区间触及零。其余�
 
 ```bash
 tail -c 65536 tests/fixtures/hdf5/dense_nested.h5 > "$study/sample.dict"
-"$study/base" --decode-cold-dict 700 \
-  tests/fixtures/hdf5/dense_order.h5 "$study/sample.dict"
-"$study/packed" --decode-cold-dict 700 \
-  tests/fixtures/hdf5/dense_order.h5 "$study/sample.dict"
+bazel run //:llvm_benchmark_compare -- pair "$study/base" "$study/packed" --pairs 18 -- \
+  --decode-cold-dict 700 tests/fixtures/hdf5/dense_order.h5 "$study/sample.dict"
 ```
 
 Linux 原始页面还试了把字节投影推迟到各字段的第一次使用。在同批 12 组数据中，这仍比向量载体慢 **20.69%**，区间 **+19.02% 至 +23.98%**。另在单独构建中撤除 FSE 依赖链门槛，强制处理两组已捕获 Huffman 权重头部。原始字节载体相对未合并在 RSSN 页头部上慢 **9.27%** [**+7.15%, +13.02%**]，在 42 个较大文件的头部上快 **5.54%** [**−9.64%, −2.26%**]。后者相对向量载体为 **−1.69%** [**−10.06%, +2.38%**]。生产选择沿用向量载体和依赖链门槛，原始字节载体继续用于上一节已经单独验证的分支共用读取。

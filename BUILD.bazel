@@ -68,6 +68,52 @@ filegroup(
     ]),
 )
 
+filegroup(
+    name = "llvm_benchmark_sources",
+    srcs = glob(
+        [
+            "tools/llvm-optimizer/bench/**",
+            "tools/llvm-optimizer/tests/fusion.ll",
+        ],
+        exclude = [
+            "**/target/**",
+            "**/__pycache__/**",
+            "**/*.pyc",
+        ],
+    ),
+)
+
+filegroup(
+    name = "llvm_research_sources",
+    srcs = [
+        ":llvm_benchmark_sources",
+        ":sources",
+    ],
+)
+
+scientific_run(
+    name = "llvm_benchmark",
+    plugin = ":llvm_optimizer",
+    rssn = ":llvm_benchmark_sources",
+    scope = "llvm-benchmark",
+    tags = ["manual"],
+    workflow = "llvm-benchmark",
+)
+
+[
+    scientific_run(
+        name = name,
+        rssn = ":llvm_research_sources",
+        scope = "llvm-research",
+        tags = ["manual"],
+        workflow = workflow,
+    )
+    for name, workflow in [
+        ("llvm_benchmark_build", "llvm-benchmark-build"),
+        ("llvm_benchmark_compare", "llvm-benchmark-compare"),
+    ]
+]
+
 config_setting(
     name = "optimized",
     values = {"compilation_mode": "opt"},
