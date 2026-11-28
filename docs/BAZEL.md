@@ -13,8 +13,10 @@ Use Bazel 7.7.1 through Bazelisk, Python 3.11 or later, and the Rust toolchain s
 | `bazel test //:fmt_test` / `bazel run //:fmt` | Check or format Rust sources using nightly rustfmt |
 | `bazel test //:docs_test` | Check documentation, then build and run the functional examples |
 | `bazel run //:example -- quickstart` | Run a Rust example with an optional `--profile` |
+| `bazel run //:benchmark -- --help` | List timing workloads and benchmark arguments |
 | `bazel run //:benchmark -- engine -- polynomials` | Run the named benchmark with its arguments |
 | `bazel run //:benchmark -- engine -- economy_qr` | Measure thin QR on four fixed shapes with a single worker |
+| `bazel run //:benchmark_ci -- --help` | Run the Criterion smoke suite or collect all RSSN timing reports |
 | `bazel run //:llvm_benchmark -- --help` | Run the LLVM callback, lanes, ABI and RustFFT study with the Bazel-built optimizer |
 | `bazel run //:llvm_benchmark_build -- --help` | Build the LLVM study harnesses for a selected profile and toolchain |
 | `bazel run //:llvm_benchmark_compare -- --help` | Compare prebuilt study binaries with matched inputs |
@@ -45,12 +47,36 @@ The binding integration test needs Python with NumPy, Julia, R with development 
 When R is installed in an environment with a separate C++ toolchain, select a
 compiler compatible with the supplied library using `--repo_env=CXX=/path/to/c++`.
 
+Run a timing workload with `bazel run //:benchmark -- NAME`.
+
+| Name | Workload |
+| --- | --- |
+| `backends` | Batch execution through the reference interpreter, tape and JIT |
+| `engine-timing` | End-to-end symbolic requests with the `tools` profile |
+| `extract` | Expression extraction and reachable-class traversal |
+| `eval-cost` | Cold and cached evaluation cost |
+| `cp-als` | Rank-three tensor decomposition and sweep cost |
+| `groebner-elimination` | Block elimination and lexicographic Gröbner bases |
+| `fft-plans` | Forward transforms at composite and power-of-two sizes |
+| `parallel-kernels` | One-worker and parallel execution across numerical kernels |
+| `parallel-sim` | One-worker and parallel execution across simulation kernels |
+
+The timing examples use the `tools` profile by default. Test-backed reports
+use the `test` profile with one test executing at a time. Set
+`RAYON_NUM_THREADS` to choose the number of workers for the parallel side. For
+example, run `RAYON_NUM_THREADS=4 bazel run //:benchmark -- parallel-kernels`.
+
 To compare the same benchmark across two checkouts, use an absolute
 `CRITERION_HOME` shared by both. Save the first revision with
 `bazel run //:benchmark -- engine -- economy_qr --save-baseline before`
 and compare the second with
 `bazel run //:benchmark -- engine -- economy_qr --baseline before`.
 Keep the same Rust toolchain and machine for the two runs.
+
+Linux CI exercises Criterion in test mode. Set the `benchmark_reports` input
+when dispatching CI to collect Criterion results and all nine timing workloads.
+The scheduled run also collects these reports. Criterion saves an artifact and
+the timing workloads write to the job log.
 
 ## FFI distribution
 

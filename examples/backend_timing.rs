@@ -1,5 +1,5 @@
 //! Times batch evaluation of one compiled expression through each executor:
-//! `bazel run //:example -- --profile tools backend_timing`.
+//! `bazel run //:benchmark -- backends`.
 //!
 //! * the reference interpreter (`backend::Interpreter`, the default backend);
 //! * the tape interpreter row by row (`Tape::eval` in a loop) and column-wise

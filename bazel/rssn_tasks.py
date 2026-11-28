@@ -31,8 +31,27 @@ def format_sources(build, check):
             build.run(command)
 
 
+TIMING_EXAMPLES = {
+    "backends": "backend_timing",
+    "engine-timing": "engine_timing",
+}
+
+# A trailing :: selects a suite. Other filters select one exact libtest case.
+BENCHMARK_TESTS = {
+    "extract": (None, "graph::extract::tests::extraction_hot_path_timing_report"),
+    "eval-cost": (None, "graph::extract::tests::eval_cost_benchmark_report"),
+    "cp-als": (None, "kernels::tensor::tests::test_cp_cost_20x20x20_rank3"),
+    "groebner-elimination": (None, "rules::poly::groebner::tests::hard_examples_report_basis_sizes_and_times"),
+    "fft-plans": ("kernels", "transforms::composite_and_power_of_two_plans_return_finite_values"),
+    "parallel-kernels": ("kernels", "par_sites::"),
+    "parallel-sim": ("sim", "par_sites::"),
+}
+
+
 def run_cargo_target(build, workflow, args):
     parser = argparse.ArgumentParser(description=f"Run an RSSN {workflow}")
+    if workflow == "benchmark":
+        parser.epilog = "Timing workloads: " + ", ".join((*TIMING_EXAMPLES, *BENCHMARK_TESTS)) + "."
     parser.add_argument("name")
     parser.add_argument("--profile")
     # The inner separator passes application or benchmark flags through as-is.
@@ -40,9 +59,35 @@ def run_cargo_target(build, workflow, args):
     options, target_args = parser.parse_known_args(args[:separator])
     target_args.extend(args[separator + 1:])
     build.assert_runnable()
-    command = ["run", "--example"] if workflow == "example" else ["bench", "--bench"]
-    profile = ["--profile", options.profile] if options.profile else []
-    build.cargo([*command, options.name, *profile, *(["--", *target_args] if target_args else [])])
+    name = options.name
+    profile = options.profile
+    env = None
+    if workflow == "example":
+        command = ["run", "--example", name]
+    elif name in TIMING_EXAMPLES:
+        command = ["run", "--example", TIMING_EXAMPLES[name]]
+        profile = profile or "tools"
+    elif name in BENCHMARK_TESTS:
+        target, filter_name = BENCHMARK_TESTS[name]
+        exact = [] if filter_name.endswith("::") else ["--exact"]
+        command = ["test", *(["--test", target] if target else ["--lib"])]
+        target_args = [filter_name, *exact, "--nocapture", *target_args]
+        env = {"RUST_TEST_THREADS": build.env.get("RUST_TEST_THREADS", "1")}
+    else:
+        command = ["bench", "--bench", name]
+    profile_args = ["--profile", profile] if profile else []
+    build.cargo([*command, *profile_args, *(["--", *target_args] if target_args else [])], env=env)
+
+
+def benchmark_ci(build, args):
+    parser = argparse.ArgumentParser(description="Run the RSSN CI benchmark suite")
+    parser.add_argument("--full", action="store_true", help="collect Criterion and timing reports")
+    options = parser.parse_args(args)
+    engine_args = ["--noplot"] if options.full else ["--test"]
+    run_cargo_target(build, "benchmark", ["--profile", "tools", "engine", "--", *engine_args])
+    if options.full:
+        for name in (*TIMING_EXAMPLES, *BENCHMARK_TESTS):
+            run_cargo_target(build, "benchmark", [name])
 
 
 def rustdoc(build):
@@ -55,9 +100,8 @@ def rust_examples(build):
     build.cargo(["build", "--examples"])
     directory = build.cargo_output("debug") / "examples"
     suffix = ".exe" if "windows" in build.target else ""
-    timings = {"backend_timing", "engine_timing"}
     for source in sorted((build.root / "examples").glob("*.rs")):
-        if source.stem not in timings:
+        if source.stem not in TIMING_EXAMPLES.values():
             build.run([directory / (source.stem + suffix)])
 
 
@@ -538,6 +582,8 @@ def dispatch(build, workflow, args):
         format_sources(build, workflow == "fmt-check")
     elif workflow in ("example", "benchmark"):
         run_cargo_target(build, workflow, args)
+    elif workflow == "benchmark_ci":
+        benchmark_ci(build, args)
     elif workflow in ("signature_audit", "doc_audit"):
         build.assert_runnable()
         tool = "signature-audit" if workflow == "signature_audit" else "doc_gen_check"

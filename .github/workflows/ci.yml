@@ -1,5 +1,5 @@
 # Continuous integration. The same structure is used by the aevia repository:
-# Formatting, lint, test, contract, FFI, binding and documentation jobs share one
+# Formatting, lint, test, benchmark, contract, FFI, binding and documentation jobs share one
 # `ci-success` job so branch protection needs a single required check.
 
 name: CI
@@ -9,6 +9,11 @@ name: CI
     branches: [main, v0.3]
   pull_request:
   workflow_dispatch:
+    inputs:
+      benchmark_reports:
+        description: Collect full RSSN benchmark reports
+        type: boolean
+        default: false
   workflow_call:
   schedule:
     - cron: '17 7 * * 1'
@@ -206,10 +211,45 @@ jobs:
           repository-cache: true
       - run: bazel test //:docs_test
 
+  benchmarks:
+    name: Benchmarks (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      RAYON_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: bazel-contrib/setup-bazel@104e3eea9447cdaa4b00d0fb46191a3985d26ab3 # 0.19.1
+        with:
+          bazelisk-cache: true
+          repository-cache: true
+      - name: System dependencies
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
+      - name: Validate or measure benchmarks
+        shell: bash
+        env:
+          BENCHMARK_REPORTS: ${{ github.event_name == 'schedule' || inputs.benchmark_reports }}
+          CRITERION_HOME: ${{ runner.temp }}/rssn-criterion
+        run: |
+          args=()
+          if [[ "$BENCHMARK_REPORTS" == true ]]; then args+=(--full); fi
+          bazel run --define=rssn_jobs=2 //:benchmark_ci -- "${args[@]}"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: github.event_name == 'schedule' || inputs.benchmark_reports
+        with:
+          name: rssn-criterion
+          path: ${{ runner.temp }}/rssn-criterion
+          if-no-files-found: error
+
   ci-success:
     name: CI success
     if: always()
-    needs: [fmt, clippy, test, contracts, ffi, bindings, docs]
+    needs: [fmt, clippy, test, contracts, ffi, bindings, docs, benchmarks]
     runs-on: ubuntu-latest
     steps:
       - name: Require every job to have succeeded

@@ -456,7 +456,7 @@ scientific_run(
         tags = ["manual"],
         workflow = name,
     )
-    for name in ("fmt", "example", "benchmark", "signature_audit", "doc_audit")
+    for name in ("fmt", "example", "benchmark", "benchmark_ci", "signature_audit", "doc_audit")
 ]
 
 scientific_run(

@@ -13,8 +13,10 @@
 | `bazel test //:fmt_test` / `bazel run //:fmt` | 检查或格式化 Rust 源码，使用 nightly rustfmt |
 | `bazel test //:docs_test` | 检查文档，再构建示例并执行功能示例 |
 | `bazel run //:example -- quickstart` | 运行 Rust 示例，可用 `--profile` 选择配置 |
+| `bazel run //:benchmark -- --help` | 查看计时用例和基准参数 |
 | `bazel run //:benchmark -- engine -- polynomials` | 运行指定基准并向其传递参数 |
 | `bazel run //:benchmark -- engine -- economy_qr` | 单线程测量四种固定尺寸的薄 QR |
+| `bazel run //:benchmark_ci -- --help` | 运行 Criterion 冒烟检查或收集全部 RSSN 计时报表 |
 | `bazel run //:llvm_benchmark -- --help` | 使用 Bazel 构建的优化器运行 LLVM 回调、lanes、ABI 和 RustFFT 基准 |
 | `bazel run //:llvm_benchmark_build -- --help` | 按指定配置和工具链构建 LLVM 基准程序 |
 | `bazel run //:llvm_benchmark_compare -- --help` | 以相同输入比较预构建的研究程序 |
@@ -44,10 +46,31 @@
 
 如果 R 环境提供独立的 C++ 工具链，可用 `--repo_env=CXX=/path/to/c++` 选择与待测库兼容的编译器。
 
+使用 `bazel run //:benchmark -- NAME` 运行计时用例。
+
+| 名称 | 测量内容 |
+| --- | --- |
+| `backends` | 参考解释器、Tape 和 JIT 的批量执行 |
+| `engine-timing` | `tools` 配置下的端到端符号请求 |
+| `extract` | 表达式提取和可达等价类遍历 |
+| `eval-cost` | 首次及缓存后的求值代价计算 |
+| `cp-als` | 秩为 3 的张量分解和单次迭代成本 |
+| `groebner-elimination` | 分块消元和字典序 Gröbner 基 |
+| `fft-plans` | 合数长度和 2 的幂长度的正向变换 |
+| `parallel-kernels` | 数值内核单线程和多线程执行对照 |
+| `parallel-sim` | 仿真内核单线程和多线程执行对照 |
+
+计时示例默认使用 `tools` 配置。基于测试的计时用例默认使用 `test` 配置，并逐个执行。
+可用 `RAYON_NUM_THREADS` 选择并行侧的线程数，例如
+`RAYON_NUM_THREADS=4 bazel run //:benchmark -- parallel-kernels`。
+
 比较两个工作树时，请为两边设置同一个绝对路径 `CRITERION_HOME`。
 用 `bazel run //:benchmark -- engine -- economy_qr --save-baseline before` 保存第一版的结果，
 再用 `bazel run //:benchmark -- engine -- economy_qr --baseline before` 比较第二版。
 两次应使用同一台机器和同一套 Rust 工具链。
+
+常规 Linux CI 以测试模式执行 Criterion。定时任务会收集 Criterion 结果和全部九项计时报表，
+手动触发时也可以启用 `benchmark_reports`。Criterion 结果保存为工件，其他计时报表写入任务日志。
 
 ## FFI 分发
 
